@@ -1,19 +1,19 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 8 of 34 - When looking for a shareowner in the nfsd open, make sure we don't get a lockowner instead.
+Subject: [PATCH] kNFSd - 10 of 34 - Use only the uid when deciding whether a setclientid is being done with the "same principal".
 Date: Tue, 24 Feb 2004 10:49:41 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1AvPpV-0006Hs-00@notabene>
+Message-ID: <E1AvPpV-0006IA-00@notabene>
 References: <20040224104820.23884.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AvPq5-0006rs-4p
-	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 15:50:17 -0800
+	id 1AvPqH-0006tc-KX
+	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 15:50:29 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
-	id 1AvPpk-0005Zm-BC
-	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 15:49:56 -0800
+	id 1AvPpw-0005bk-Op
+	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 15:50:08 -0800
 Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
 	(for <akpm@osdl.org>) (for <nfs@lists.sourceforge.net>) By note With
 	Smtp ; Tue, 24 Feb 2004 10:49:42 +1100
@@ -31,23 +31,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
+I would have assumed that we should also check for the same
+security (pseudo)flavor, but that doesn't seem to be how Solaris does it, and
+since the spec doesn't suggest including such information in the clientid, that
+would make it impossible to switch pseudoflavors.
+
  ----------- Diffstat output ------------
- ./fs/nfsd/nfs4state.c |    3 +++
- 1 files changed, 3 insertions(+)
+ ./fs/nfsd/nfs4state.c |    3 +--
+ 1 files changed, 1 insertion(+), 2 deletions(-)
 
 diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
 --- ./fs/nfsd/nfs4state.c~current~	2004-02-24 10:42:31.000000000 +1100
-+++ ./fs/nfsd/nfs4state.c	2004-02-24 10:42:31.000000000 +1100
-@@ -1119,6 +1119,9 @@ nfsd4_process_open2(struct svc_rqst *rqs
- 				stp = stq;
- 				continue;
- 			}
-+			/* ignore lock owners */
-+			if (stq->st_stateowner->so_is_open_owner == 0) 
-+				continue;
- 			if (!test_share(stq,open))	
- 				goto out;
- 		}
++++ ./fs/nfsd/nfs4state.c	2004-02-24 10:42:32.000000000 +1100
+@@ -269,8 +269,7 @@ cmp_clid(clientid_t * cl1, clientid_t * 
+ /* XXX what about NGROUP */
+ static int
+ cmp_creds(struct svc_cred *cr1, struct svc_cred *cr2){
+-	return((cr1->cr_uid == cr2->cr_uid) &&
+-	   	(cr1->cr_gid == cr2->cr_gid));
++	return(cr1->cr_uid == cr2->cr_uid);
+ 
+ }
+ 
 
 
 -------------------------------------------------------
