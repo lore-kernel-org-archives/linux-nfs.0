@@ -1,20 +1,19 @@
-From: Gaston <menfinquoi@free.fr>
-Subject: Umount ZIP or CDROM
-Date: Fri, 04 Jul 2003 17:26:41 +0200
+From: "Steven N. Hirsch" <shirsch@adelphia.net>
+Subject: Re: Umount ZIP or CDROM
+Date: Fri, 4 Jul 2003 12:11:01 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3F059CB1.7040201@free.fr>
-Reply-To: menfinquoi@free.fr
+Message-ID: <Pine.LNX.4.44.0307041208090.19686-100000@atx.fast.net>
+References: <3F059CB1.7040201@free.fr>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from postfix3-1.free.fr ([213.228.0.44])
+Received: from mta2.adelphia.net ([64.8.50.178])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19YSWI-0006IV-00
-	for <nfs@lists.sourceforge.net>; Fri, 04 Jul 2003 08:30:42 -0700
-Received: from free.fr (strasbourg-4-a7-62-147-194-117.dial.proxad.net [62.147.194.117])
-	by postfix3-1.free.fr (Postfix) with ESMTP id D20BEC220
-	for <nfs@lists.sourceforge.net>; Fri,  4 Jul 2003 17:30:38 +0200 (CEST)
-To: nfs@lists.sourceforge.net
+	id 19YT9j-0004bH-00
+	for <nfs@lists.sourceforge.net>; Fri, 04 Jul 2003 09:11:27 -0700
+To: Gaston <menfinquoi@free.fr>
+In-Reply-To: <3F059CB1.7040201@free.fr>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,18 +26,24 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
+On Fri, 4 Jul 2003, Gaston wrote:
 
-How come that I cannot umount and eject a CDROM or ZIP disc when it has 
-been mounted in an NFS (DOS) machine and unmounted.
+> Hello,
+> 
+> How come that I cannot umount and eject a CDROM or ZIP disc when it has 
+> been mounted in an NFS (DOS) machine and unmounted.
+> 
+> The drive is reported as busy.
+> 
+> I have to stop nfs, umount and eject the disc, then start nfs again.
 
-The drive is reported as busy.
+If you export the CDROM/ZIP, the server regards it as busy regardless of 
+whether any clients are using it (remember, NFS is stateless).  It should 
+be sufficient to do 'exportfs -u /mnt/cdrom' (use the appropriate path on 
+the server).  You should not need to stop nfs.
 
-I have to stop nfs, umount and eject the disc, then start nfs again.
+Steve
 
-Thanks in advance
-
-Gaston
 
 
 
