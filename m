@@ -1,25 +1,26 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS file locking for clustered filesystems
-Date: Mon, 02 Aug 2004 08:38:18 -0700
+From: Olaf Kirch <okir@suse.de>
+Subject: nfsd write throughput
+Date: Mon, 2 Aug 2004 18:24:49 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1091461098.3980.22.camel@lade.trondhjem.org>
-References: <Pine.LNX.4.58.0407131427580.6626@localhost.localdomain>
-	 <20040802105103.GJ25023@suse.de>
+Message-ID: <20040802162448.GB21365@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: Sridhar Samudrala <sri@us.ibm.com>, nfsv4@linux-nfs.org,  nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="cNdxnHkX5QqsyA0e"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BreuV-0001Se-PI
-	for nfs@lists.sourceforge.net; Mon, 02 Aug 2004 08:39:35 -0700
-Received: from adsl-207-214-87-84.dsl.snfc21.pacbell.net ([207.214.87.84] helo=lade.trondhjem.org)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	id 1Brfip-00045I-Uh
+	for nfs@lists.sourceforge.net; Mon, 02 Aug 2004 09:31:35 -0700
+Received: from cantor.suse.de ([195.135.220.2])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.34)
-	id 1BreuV-0002Ee-4Y
-	for nfs@lists.sourceforge.net; Mon, 02 Aug 2004 08:39:35 -0700
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20040802105103.GJ25023@suse.de>
+	id 1Brfip-0005jv-Af
+	for nfs@lists.sourceforge.net; Mon, 02 Aug 2004 09:31:35 -0700
+Received: from hermes.suse.de (hermes-ext.suse.de [195.135.221.8])
+	(using TLSv1 with cipher EDH-RSA-DES-CBC3-SHA (168/168 bits))
+	(No client certificate requested)
+	by Cantor.suse.de (Postfix) with ESMTP id 2716F9AB6FF
+	for <nfs@lists.sourceforge.net>; Mon,  2 Aug 2004 18:24:49 +0200 (CEST)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,41 +33,68 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 m=E5 , 02/08/2004 klokka 03:51, skreiv Olaf Kirch:
-> On Tue, Jul 13, 2004 at 02:32:12PM -0700, Sridhar Samudrala wrote:
-> > One simple way to avoid blocking new requests is to have lockd get the =
-request
-> > and schedule the processing of the request to a separate kernel thread.=
- But
-> > creating a new kernel thread or scheduling from a pool of threads for e=
-ach
-> > request may be expensive.
->=20
-> I think making lockd multithreaded and whatnot is going to be very
-> painful.
 
-I agree: I was thinking about this at the recent Redhat cluster
-filesystem summit.
+--cNdxnHkX5QqsyA0e
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-What we really want is an interface for asynchronous lock calls in which
-lockd gets called back once the cluster filesystem is ready with the
-results. This is pretty close to what we do already w.r.t. local locks.
+Hi,
 
-IOW for each cluster filesystem we want to set up something like
+I've been looking at the write throughput with NFSv3, and played around
+a little. Here's a patch that seems to increase iozone's write throughput
+from 6MB/s to close to 10MB/s on my test machine.
 
-  typedef void (*lock_callback_t)(struct file_lock fl, int result);
-  int lock(struct file filp, struct file_lock fl, lock_callback_t callback)=
-;
+(The improvement in rewrite throughput is less pronounced). I'm still
+doing some testing on this, but I would still appreciate some feedback,
+especially from people seeing throughput problems.
 
-lockd would then call lock() would return immediately once the
-filesystem has set up whatever it needs to do an asynchronous call (it's
-up to the filesystem implementation to decide if that has to involve
-forking off a thread).
-Once the filesystem is done granting or denying the lock, the filesystem
-would use the callback method to notify lockd about the result.
+Olaf
+-- 
+Olaf Kirch     |  The Hardware Gods hate me.
+okir@suse.de   |
+---------------+ 
 
-Cheers,
-  Trond
+--cNdxnHkX5QqsyA0e
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename=nfsd-write-speedup
+
+Index: linux-2.6.5/fs/nfsd/vfs.c
+===================================================================
+--- linux-2.6.5.orig/fs/nfsd/vfs.c	2004-08-02 14:48:02.000000000 +0200
++++ linux-2.6.5/fs/nfsd/vfs.c	2004-08-02 17:54:28.000000000 +0200
+@@ -45,6 +45,7 @@
+ #include <linux/quotaops.h>
+ #include <linux/dnotify.h>
+ #include <linux/xattr_acl.h>
++#include <linux/backing-dev.h>
+ 
+ #include <asm/uaccess.h>
+ 
+@@ -810,6 +811,22 @@
+ 		}
+ 		last_ino = inode->i_ino;
+ 		last_dev = inode->i_sb->s_dev;
++	} else if (err >= 0 && !stable) {
++		/* If we've been writing several pages, schedule them
++		 * for the disk immediately. The client may be streaming
++		 * and we don't want to hang on a huge journal sync when the
++		 * commit comes in
++		 */
++		struct address_space	*mapping;
++
++		/* This assumes a minimum page size of 1K, and will issue
++		 * a filemap_flushfast call every 64 pages written by the
++		 * client. */
++		if ((cnt & 1023) == 0
++		 && ((offset / cnt) & 63) == 0
++		 && (mapping = inode->i_mapping) != NULL
++		 && !bdi_write_congested(mapping->backing_dev_info))
++			filemap_flushfast(mapping);
+ 	}
+ 
+ 	dprintk("nfsd: write complete err=%d\n", err);
+
+--cNdxnHkX5QqsyA0e--
 
 
 -------------------------------------------------------
