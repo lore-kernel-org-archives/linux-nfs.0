@@ -1,16 +1,13 @@
-From: raysrv05@ray.fi
-Subject: Report to Recipient(s)
-Date: Wed, 2 Jul 2003 05:05:45 +0300
+From: "Numbers Jacobson" <numbersjacobson_sn@whois.sc>
+Subject: What are you doing?
+Date: Wed, 02 Jul 2003 06:21:41 +0000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <OF3C655797.151A7BE2-ONC2256D57.000B8352@ray.fi>
+Message-ID: <ef3c01c34062$23adbcfa$cdbe3fd7@1yx45i1>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_07D8_D57B6490.20B57D08"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from ws-002.ray.fi ([193.64.14.2] helo=raysrv11.ray.fi)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19XWyV-0003uD-00
-	for <nfs@lists.sourceforge.net>; Tue, 01 Jul 2003 19:03:59 -0700
-To: <nfs@lists.sourceforge.net>
+To: netsaintplug-devel@lists.sourceforge.net, nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -23,16 +20,32 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Incident Information:-
+This is a multi-part message in MIME format.
 
-Originator: nfs-admin@lists.sourceforge.net
-Recipients: <nfs@lists.sourceforge.net>, jd@ts.ray.fi
-Subject:    [NFS] Re: Movie
-
-The file your_details.zip (details.pif) you received was infected with the
-W32/Sobig.e@MM virus and was deleted.
+------=_NextPart_000_07D8_D57B6490.20B57D08
+Content-Type: text/plain
+Content-Transfer-Encoding: 8bit
 
 
+
+
+------=_NextPart_000_07D8_D57B6490.20B57D08
+Content-Type: text/html
+Content-Transfer-Encoding: base64
+
+ICANCiANCgkNCjxodG1sPg0KIA0KCTxib2R5IGJnY29sb3I9I2ZmZmZmZj4N
+CiAgDQogPHAgYWxpZ249ImNlbnRlciI+eXhnenkyMnF2Y2gwYzN2OTJwNWpk
+YWpnPGJyPg0KPGEgaHJlZj0iaHR0cDovL2NSb29rLWVELkNPbS9oJTZmc3Qv
+ZSU2RGElNjklNkMlNzJlJTZEbyU3NiU2NS4lNjElNzMlNzAiPlN0b3ANCk1h
+aWxpbmdzIEhlcmU8L2E+PGJyPiANCjxhIGhyZWY9Imh0dHA6Ly9XV1cuQ0hl
+YVBvTm5lVDEuQ29NLyU2RCU2YmEvJTZEMiU2My4lNzBoJTcwP21hbj0lNkJv
+JTZkNDU2Ij48Q1dCUT48aW1nIHNyYz0iaHR0cDovL1dXdy5jSEVhcG9ObmV0
+MS5jb00vcC5naSU2NiIgYm9yZGVyPTA+PFk+PC9hPg0KPGJyPm1rbnQ5dzNt
+bzluNTxicj54b2g5YnkxODVxZDwvcD4JCQkNCjwvQk9EWT4gDQo8L2h0bWw+
+DQoJCQ0KCQ0KDQo=
+
+
+------=_NextPart_000_07D8_D57B6490.20B57D08--
 
 
 
