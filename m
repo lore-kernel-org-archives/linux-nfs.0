@@ -1,25 +1,22 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
+From: Philippe =?ISO-8859-1?B?R3JhbW91bGzp?= <philippe.gramoulle@mmania.com>
 Subject: Re: Maximum number of nfsd daemons?
-Date: Wed, 7 Aug 2002 21:04:22 +1000
+Date: Wed, 7 Aug 2002 15:07:21 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15696.65206.947132.844146@notabene.cse.unsw.edu.au>
+Message-ID: <20020807150721.1736ec6f.philippe.gramoulle@mmania.com>
 References: <FB5B6B9A4BA0104886C8394BB2B7C7B803ACAD5A@TOMBO.legato.com>
 	<15688.47255.83237.874274@notabene.cse.unsw.edu.au>
 	<20020801194339.76fbfb11.philippe.gramoulle@mmania.com>
+	<15696.65206.947132.844146@notabene.cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=US-ASCII
+Cc: nfs <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17cObf-0001n6-00
-	for <nfs@lists.sourceforge.net>; Wed, 07 Aug 2002 04:03:59 -0700
-Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <philippe.gramoulle@mmania.com>)
-	(for <nfs@lists.sourceforge.net>) By tone With Smtp ;
-	Wed, 7 Aug 2002 21:03:50 +1000
-To: Philippe =?ISO-8859-1?B?R3JhbW91bGzp?= <philippe.gramoulle@mmania.com>
-In-Reply-To: message from Philippe Gramoullé on Thursday August 1
+Received: from ns.aspic.com ([213.193.2.5] helo=off.aspic.com)
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17cQXD-0001mE-00
+	for <nfs@lists.sourceforge.net>; Wed, 07 Aug 2002 06:07:31 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <15696.65206.947132.844146@notabene.cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,100 +29,92 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Thursday August 1, philippe.gramoulle@mmania.com wrote:
-> 
-> Hi Neil,
-> 
-> On Thu, 1 Aug 2002 14:27:03 +1000 (EST)
-> Neil Brown <neilb@cse.unsw.edu.au> wrote:
-> 
->   |  Send me the content of that file and I will interpret bits for you.
->   |  
->   |  NeilBrown
->   |  
-> 
-> I shamelessly take the opportunity to ask you to have at the
-> following /proc/net/rpc/nfsd figures :o)
+On Wed, 7 Aug 2002 21:04:22 +1000
+Neil Brown <neilb@cse.unsw.edu.au> wrote:
 
-Then you should address the email to me, not just to the list.  I can
-easily get behind on mailing list mail...
+  |  Then you should address the email to me, not just to the list.  I can
+  |  easily get behind on mailing list mail...
 
-> 
-> Quick description of our setup : NFS clients & server are Linux only (all at least
-> 2.4.19pre6) , 100Mbs switched network, no router between server & clients,
-> clients and server are using NFSV3 UDP.
-> 
-> 64 nfsd processes on the server ,around 40 to 50 clients.
-> (server is a 1GHz SMP 1go 1Go RAM)
-> 
-> # cat /proc/net/rpc/nfsd 
-> rc 75545 57811921 1425095899
-> fh 841380 1483195871 0 3806 22127
-> io 947166859 1044180197
-> th 64 1701313 122616.020 45017.680 17551.390 8336.110 5302.600 2744.440
->  2160.200 1545.790 1213.580 5346.700
+Ok, will do next time :o)
 
-Looks a bit busy.  I feel that the fact that the last number is bigger
-than the preceding few is significant.  You would probably expect some
-sort of Poisson (spelling?) distribution here.  However having a peek
-at the end suggests that for a lot of those 5000 seconds the server
-was over-loaded and really wanted to use more threads.
-The fact that nearly two million requests used that last thread
-suggests this as well.  Now there were over a billion requests
-altogether so most of the time your server was doing fine, but when a
-peak load came it, it didn't cope.
+  |  > # cat /proc/net/rpc/nfsd 
+  |  > rc 75545 57811921 1425095899
+  |  > fh 841380 1483195871 0 3806 22127
+  |  > io 947166859 1044180197
+  |  > th 64 1701313 122616.020 45017.680 17551.390 8336.110 5302.600 2744.440
+  |  >  2160.200 1545.790 1213.580 5346.700
+  |  
 
-I would increase the number of threads.  Probably up to 128.
+  |  Now there were over a billion requests
+  |  altogether so most of the time your server was doing fine, but when a
+  |  peak load came it, it didn't cope.
 
-The usage counts don't get zeroed when you do that (maybe they
-should..) so you need to take a copy of what they were just before you
-up the thread count, and then subtract that from what you look at in a
-few days..
+This is indeed what we observed.
 
-> ra 128 517548125 17409328 11625583 8052404 5724124 5052943 4025961 3561989
->  2949267 2450055 227670791
-> net 1483010914 1483010914 0 0
-> rpc 1482983365 27549 27549 0 0
-> proc2 18 27540 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-> proc3 22 27546 -1121099198 3805380 1366334119 342864898 352 806090436 42699347
->  6410085 439142 11 0 3627641 250110 655750 0 3473989 16097 2780770 2780468 0 21798882
-> 
-> We experience a lot of "NFS server not responding" so i wonder if we don't come close to a limit.
-> I see an average of 8 Mbs on eth0 so it doesn't look like the network is the problem.
-> ( only one 100Mbs interface on the NFS server )
+  |  
+  |  I would increase the number of threads.  Probably up to 128.
 
-"NFS server not responding" can be due to the receive queue filling up
-on the NFS server.
- while true; do netstat -nta | grep :2049 ; sleep 1; done
+This is what i did actually, and since then the servers are doing really good
+even during peak hours, and no more warning messages.
 
-Watch the first column of numbers.  If it frequently hits a ceiling at
-65536 or near there, you are losing packets.
+  |  
+  |  The usage counts don't get zeroed when you do that (maybe they
+  |  should..) so you need to take a copy of what they were just before you
+  |  up the thread count, and then subtract that from what you look at in a
+  |  few days..
 
-  rpc.nfsd 0
-  echo 262144 > /proc/sys/net/core/rmem_default
-  echo 262144 > /proc/sys/net/core/rmem_max
-  rpc.nfsd 128
-  echo 65536 > /proc/sys/net/core/rmem_default
-  echo 65536 > /proc/sys/net/core/rmem_max
+I've noticed that. Actually, i had to reboot one of them so i can read directly the figures
+right now:
 
-should fix that.
+# uptime
 
-NeilBrown
-  
+14:40:33 up 22:45,  1 user,  load average: 1.64, 1.92, 1.94
+
+# cat /proc/net/rpc/nfsd 
+
+rc 218 486371 43878936
+fh 1519133 42854538 0 659 1345
+io 2725711409 2096612340
+th 128 0 20.000 1.750 0.020 0.010 0.000 0.000 0.000 0.000 0.000 0.000
+ra 256 609800 18945 8551 4061 2134 1456 1077 687 439 161 250781
+net 44365742 44365802 0 0
+rpc 44365507 229 229 0 0
+proc2 18 229 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+proc3 22 229 25036678 24989 11489150 778515 0 6318090 360723 48596 5727 0 0 37396 4022 5136 0 27909 0 22837 22837 0 182478
+
  
-> 
-> Thanks.
-> 
-> Philippe.
-> 
-> 
-> -------------------------------------------------------
-> This sf.net email is sponsored by:ThinkGeek
-> Welcome to geek heaven.
-> http://thinkgeek.com/sf
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+  |  
+  |  "NFS server not responding" can be due to the receive queue filling up
+  |  on the NFS server.
+  |   while true; do netstat -nta | grep :2049 ; sleep 1; done
+
+i'm not using TCP right now :o) but will do very soon as i've just build a kernel with all
+your patches.
+
+  |  
+  |  Watch the first column of numbers.  If it frequently hits a ceiling at
+  |  65536 or near there, you are losing packets.
+  |  
+  |    rpc.nfsd 0
+  |    echo 262144 > /proc/sys/net/core/rmem_default
+  |    echo 262144 > /proc/sys/net/core/rmem_max
+  |    rpc.nfsd 128
+  |    echo 65536 > /proc/sys/net/core/rmem_default
+  |    echo 65536 > /proc/sys/net/core/rmem_max
+  |  
+  |  should fix that.
+  |  
+  |  NeilBrown
+
+well, i already added that in the nfs-kernel-server starting script as this was cleary said
+in the NFS HOWTO on SF.
+
+But when switching from 64 to 128 i forgot to do so. So i've just did again what's written above,
+and everythin fine now.
+
+Thanks,
+
+Philippe.
 
 
 -------------------------------------------------------
