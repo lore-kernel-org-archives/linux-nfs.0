@@ -1,15 +1,17 @@
-From: xiyu@800j.com
-Subject: =?GB2312?B?o7yjvM73sLLN7bGoo76jvs7Sz7KwrrXE0KG/tdeh1azGwNGhu+62rw==?=
-Date: Tue, 13 May 2003 14:10:56 +0800
+From: "Emily" <Saleslister@peoplemail.com.cn>
+Subject: Re:
+Date: Tue, 13 May 2003 17:43:33 +0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19FSyv-0006aV-00@sc8-sf-list1.sourceforge.net>
-Content-Type: text/html;charset="GB2312"
+Message-ID: <E19FWMw-0007sb-00@sc8-sf-list1.sourceforge.net>
+Reply-To: "Emily" <Order@marketingboosting.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="ISO-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [61.150.19.113] (helo=800j.com)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19FSyv-0006aV-00
-	for <nfs@lists.sourceforge.net>; Mon, 12 May 2003 23:09:46 -0700
-To: nfs@lists.sourceforge.net
+Received: from [218.86.47.66] (helo=peoplemail.com.cn)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19FWMw-0007sb-00
+	for <nfs@lists.sourceforge.net>; Tue, 13 May 2003 02:46:48 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -22,32 +24,50 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-<html>
 
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
-<meta name="GENERATOR" content="Microsoft FrontPage 4.0">
-<meta name="ProgId" content="FrontPage.Editor.Document">
-<title>New Page 1</title>
-</head>
+Email Marketing is one of the most effective and inexpensive ways to 
+promote your products and services.
 
-<body>
+We offer a complete Email Marketing solution with quality service and the 
+lowest prices. The result is that you will enjoy more success.
 
-<p class="MsoNormal" align="center"><b><span style="mso-bidi-font-size: 12.0pt; color: red"><font face="隶书" size="7"><span lang="EN-US" style="mso-bidi-font-size: 12.0pt; color: red">&lt;&lt;</span><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman; mso-hansi-font-family: Times New Roman; color: red">西安晚报＞＞</span></font></span><span lang="EN-US" style="font-size:36.0pt;mso-bidi-font-size:12.0pt;color:red"><o:p>
-</o:p>
-</span></b></p>
-<p class="MsoNormal" align="center"><b><span style="font-size:18.0pt;mso-bidi-font-size:12.0pt;
-font-family:宋体;mso-ascii-font-family:&quot;Times New Roman&quot;;mso-hansi-font-family:
-&quot;Times New Roman&quot;;color:#00CCFF">我喜爱的</span><span style="font-size:26.0pt;
-mso-bidi-font-size:12.0pt;font-family:宋体;mso-ascii-font-family:&quot;Times New Roman&quot;;
-mso-hansi-font-family:&quot;Times New Roman&quot;;color:#00CCFF">小康住宅评选活动</span></b></p>
-<p class="MsoNormal" align="center"><b><font face="华文中宋" size="7"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman; mso-hansi-font-family: Times New Roman; color: red">网上投票　今日启动</span></font><span lang="EN-US" style="font-size:42.0pt;mso-bidi-font-size:12.0pt;color:red"><o:p>
-</o:p></span></b></p>  
-<p class="MsoNormal" align="center"><b><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; font-family: 宋体; mso-ascii-font-family: Times New Roman; mso-hansi-font-family: Times New Roman; mso-bidi-font-family: Times New Roman; mso-font-kerning: 1.0pt; mso-ansi-language: EN-US; mso-fareast-language: ZH-CN; mso-bidi-language: AR-SA"><font size="6" color="#800080">投票请点击</font></span></a></b></p> 
- 
-</body> 
- 
-</html> 
+1. Targeted Email Addresses 
+
+We can supply targeted email addresses according to your requirements,
+which are compiled only on your order, such as region / country / field / 
+occupation / Domain Name etc. We will customize your customer email
+addresses.
+
+* We have millions of email addresses in a wide variety of categories.
+
+2. Targeted Mailing  
+
+If you are worried about any complications or consequences with sending 
+out targeted emails, or want to avoid the work of sending out targeted 
+emails. We will do it for you! We will send your email message to your 
+targeted customers.
+
+* We can Bullet Proof your Web Site.
+
+We also offer a wide variety of email marketing software. For more details, 
+you can refer to our web site: http://www.biz-aiding.com
+
+Our services will help you get more business opportunities.
+
+
+Regards!
+
+Barbara Clayton
+Marketing Services
+www.biz-aiding.com
+
+Targeted Marketing, at Great Fee.
+
+***************************************************************************
+Receiving this email because you registered to receive special 
+offers from one of our partners. If you would prefer not to receive
+future email, Click here: www.unsubscribe-mail.com
+***************************************************************************
 
 
 -------------------------------------------------------
