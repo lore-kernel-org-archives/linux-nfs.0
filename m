@@ -1,22 +1,23 @@
-From: <trond.myklebust@fys.uio.no>
-Subject: RE: [PATCH] NFS client doesn't flush dirty mmap'd pages during fsync/msync
-Date: Tue, 20 Jan 2004 15:37:43 +0100 (CET)
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: [PATCH] NFS client doesn't flush dirty mmap'd pages during fsync/msync
+Date: Tue, 20 Jan 2004 15:58:33 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <35259.68.42.103.198.1074609463.squirrel@webmail.uio.no>
+Message-ID: <20040120145833.GT17993@suse.de>
 References: <482A3FA0050D21419C269D13989C611302B07B38@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: <okir@suse.de>, <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=iso-8859-15
+Cc: trond.myklebust@fys.uio.no, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Aix0u-0007mP-2F
-	for nfs@lists.sourceforge.net; Tue, 20 Jan 2004 06:37:56 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Aix0t-0004Cj-Oc
-	for nfs@lists.sourceforge.net; Tue, 20 Jan 2004 06:37:55 -0800
-To: <Charles.Lever@netapp.com>
+	id 1AixKv-0002mH-Ur
+	for nfs@lists.sourceforge.net; Tue, 20 Jan 2004 06:58:37 -0800
+Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.30)
+	id 1AixKv-0006aN-Jh
+	for nfs@lists.sourceforge.net; Tue, 20 Jan 2004 06:58:37 -0800
+To: "Lever, Charles" <Charles.Lever@netapp.com>
 In-Reply-To: <482A3FA0050D21419C269D13989C611302B07B38@lavender-fe.eng.netapp.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,22 +31,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> no, my patch simply removes the filp check.  the inode
-> is not available in nfs_scan_list, and there was never
-> a check there to see if the inode pointers match.
+On Tue, Jan 20, 2004 at 05:55:53AM -0800, Lever, Charles wrote:
+> > > With your patch, an fsync degenerates to a global sync
+> > > on the mounted file system, if I'm not mistaken.
+> 
+> the patch does not change which list is passed to nfs_scan_list.
+> nfs_scan_list is used by nfs_scan_dirty and nfs_scan_commit --
+> so it always works on a single file at a time.
 
-An explicit check would be superfluous. The point is that there's an
-implicit check given that nfs_flush_file() and nfs_commit_file() both take
-an inode argument in order to be able to pass the per-inode dirtyand
-commit request lists respectively as arguments to nfs_scan_list().
+Ah, that was the point I missed.
 
-Note: this would be more transparent if you would also convert all
-remaining nfs_wb_file() calls to nfs_wb_all(), and then kill the former.
-
-Cheers,
-  Trond
-
-
+Thanks,
+Olaf
+-- 
+Olaf Kirch     |  Stop wasting entropy - start using predictable
+okir@suse.de   |  tempfile names today!
+---------------+ 
 
 
 -------------------------------------------------------
