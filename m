@@ -1,20 +1,28 @@
-From: Wade Hampton <wade.hampton@nsc1.net>
-Subject: Linux client on Solaris 7 NFS server
-Date: Wed, 24 Dec 2003 10:12:27 -0500
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: Linux client on Solaris 7 NFS server
+Date: Wed, 24 Dec 2003 17:30:42 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3FE9ACDB.4060004@nsc1.net>
+Message-ID: <3FEA1392.7010502@RedHat.com>
+References: <3FE9ACDB.4060004@nsc1.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AZAge-0002Dq-DI
-	for nfs@lists.sourceforge.net; Wed, 24 Dec 2003 07:12:36 -0800
-Received: from www.nsc1.net ([4.22.175.200] helo=mail.nsc1.net)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
-	id 1AZAge-0000xV-0N
-	for nfs@lists.sourceforge.net; Wed, 24 Dec 2003 07:12:36 -0800
+	id 1AZHWj-0002bd-N4
+	for nfs@lists.sourceforge.net; Wed, 24 Dec 2003 14:30:49 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
+	id 1AZHWj-0005iX-DO
+	for nfs@lists.sourceforge.net; Wed, 24 Dec 2003 14:30:49 -0800
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.11.6/8.11.6) with ESMTP id hBOMUgA25010
+	for <nfs@lists.sourceforge.net>; Wed, 24 Dec 2003 17:30:42 -0500
+Received: from RedHat.com (vpn50-36.rdu.redhat.com [172.16.50.36])
+	by int-mx1.corp.redhat.com (8.11.6/8.11.6) with ESMTP id hBOMUgE30453
+	for <nfs@lists.sourceforge.net>; Wed, 24 Dec 2003 17:30:42 -0500
 To: nfs@lists.sourceforge.net
+In-Reply-To: <3FE9ACDB.4060004@nsc1.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -27,51 +35,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Merry Christmas and Happy Holidays!
+Wade Hampton wrote:
 
-I have a Fedora Core 1.0 client connecting to a
-Solaris X86 Version 7 NFS server.  The Solaris server
-has locked up several times since I started accessing
-it from Linux (this is the only change to the Solaris
-system's environment).  I was wondering if this
-was an NFS problem on Solaris 7 or could be a
-hardware problem with the NIC.
+> I have a Fedora Core 1.0 client connecting to a
+> Solaris X86 Version 7 NFS server.  The Solaris server
+> has locked up several times since I started accessing
+> it from Linux (this is the only change to the Solaris
+> system's environment).  I was wondering if this
+> was an NFS problem on Solaris 7 or could be a
+> hardware problem with the NIC.
 
-The options I was using for NFS mount were
-auto,ro,bg,soft.  
+A network trace of the lockup would be good...
 
-After reading the NFS howto, it indicated that 
-"Solaris servers are especially sensitive to packet size".
-This is vague and does not tell what the consequences of
-default values or values other than 32768 might be....
-
-Could "sensitive" mean bad performance, lost data, lost connections,
-disconnects, locked up clients, or locked up servers?
-
-Could this be a reason that the Solaris server is locking up?
-
-Has anyone else experienced this? 
-
-If this is the case, does Sun have a patch that addresses this?
-
-Any Solaris Admins out there that can tell me how I can
-check the Solaris server to see if such a patch (if it exists)
-is applied?
-
-I did change my mount to the following options:  
-    auto,rsize=32768,wsize=32768,ro,bg,soft.
-
-So far, I have not had any server lockups (since yesterday).
-However, I need to be sure that I am not introducing a problem
-by using Linux boxes with these servers.....
-
-Also, if my Fedora box is accessing the server via a WAN,
-should I use NFS over TCP/IP?   If my network goes down,
-do I have to unmount and remount if I am using TCP/IP?
-
-Thanks,
---
-Wade Hampton
+SteveD.
 
 
 
