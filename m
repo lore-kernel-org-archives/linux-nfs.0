@@ -1,24 +1,31 @@
-From: Paul Clements <paul.clements@steeleye.com>
-Subject: [PATCH] nfs-utils: High Availability NFS bugfixes
-Date: Mon, 25 Oct 2004 19:47:39 -0400
+From: Greg Banks <gnb@melbourne.sgi.com>
+Subject: Re: Re: [PATCH] fix nfsidem cthon test
+Date: Tue, 26 Oct 2004 17:32:07 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <417D909B.8080304@steeleye.com>
-References: <4124DB86.9060505@steeleye.com>	<16677.22269.988036.787320@cse.unsw.edu.au>	<412E1C10.5020703@steeleye.com>	<16692.8187.411591.69640@cse.unsw.edu.au>	<4134A6AD.1060502@steeleye.com>	<16693.4161.921397.480506@cse.unsw.edu.au>	<413546B1.4080306@steeleye.com> <16699.51390.633644.1498@cse.unsw.edu.au>
+Message-ID: <1098775926.21421.371.camel@hole.melbourne.sgi.com>
+References: <1098341478.21421.7.camel@hole.melbourne.sgi.com>
+	 <1098343891.28394.15.camel@lade.trondhjem.org>
+	 <20041021161309.GC24417@fieldses.org>
+	 <1098413781.21421.37.camel@hole.melbourne.sgi.com>
+	 <20041022024349.GA30004@fieldses.org>
+	 <1098696830.21421.163.camel@hole.melbourne.sgi.com>
+	 <1098715298.10720.38.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------040907020901070606080402"
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-1
+Cc: "Dr. Bruce Fields" <bfields@fieldses.org>,
+	Neil Brown <neilb@cse.unsw.edu.au>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CMEZC-0003KL-77
-	for nfs@lists.sourceforge.net; Mon, 25 Oct 2004 16:47:58 -0700
-Received: from stat16.steeleye.com ([209.192.50.48] helo=fenric.sc.steeleye.com)
+	id 1CMLVW-0002sQ-4i
+	for nfs@lists.sourceforge.net; Tue, 26 Oct 2004 00:12:38 -0700
+Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CMEZB-0001Es-Id
-	for nfs@lists.sourceforge.net; Mon, 25 Oct 2004 16:47:58 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <16699.51390.633644.1498@cse.unsw.edu.au>
+	id 1CMLVU-0001fc-Ld
+	for nfs@lists.sourceforge.net; Tue, 26 Oct 2004 00:12:38 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1098715298.10720.38.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,106 +38,75 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
---------------040907020901070606080402
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
+On Tue, 2004-10-26 at 00:41, Trond Myklebust wrote:
+> m=E5 den 25.10.2004 Klokka 19:33 (+1000) skreiv Greg Banks:
+>=20
+> > Trond, I don't think it's a good idea to make no_subtree_check the
+> > default, as this would have the undesirable side effect of defeating
+> > directory permission checks.  Perhaps we can just make it behave
+> > more helpfully.
+>=20
+> If by "make it behave more helpfully" you mean get rid of the aliased
+> filehandles, then I'm fine with that. I'm curious to see how you propose
+> to do it though: as far as I can see there is no way to reconcile the
+> goal of proper directory permission checks and sane filehandle
+> behaviour.
 
-A couple of bugfixes to go on top of the HA NFS patch that I sent a 
-while back:
+Ok you've convinced me, and ->splat<- is the sound of an open can
+of worms hitting the Too Hard basket.
 
-* avoid call to waitpid() with SIGCHLD set to SIG_IGN -- we'll set 
-SIGCHLD to SIG_DFL before calling the HA callout and then switch it back 
-to its old value afterward
+Trond, I see you've got a fix for the nfs_rename() dentry refcount bug=20
+in your 2.6.10-rc1 patchset, thanks.
 
-* fix arguments to waitpid() so that correct return value is reported in 
-debug message
+> Since the permissions problem is solvable in other ways (i.e. by only
+> exporting partitions/volumes), and in fact that is the way all other
+> known NFS server implementations expect you to solve the problem,
 
-* fix signal handler for statd to additionally do a change_state() -- 
-this is required to ensure that clients see a state change, else they 
-may ignore the notification
+When the problem is solved at all...OTOH those other OSes don't
+have dentry caches which want to remain connected, so Linux is a
+special case.
+
+>  then I
+> see no problems with making that the default.
+
+Well, you can have that discussion with Neil.
+
+> Look more closely: get_parent() expects the parameter to be a directory.
+> I don't think ext2/3 or XFS encode a list of parent directories in the
+> on-disk inode for a regular file.
+
+Good point.
+
+BTW, the following hunk is in your 2.6.10-rc1 NFS_ALL.dif but missing
+from the corresponding exploded patchset.
 
 
-Thanks,
-Paul
+--- linux-2.6.10-rc1-up/fs/nfs/file.c	2004-10-25 15:31:13.000000000 -0400
++++ linux-2.6.10-rc1-NFS_ALL/fs/nfs/file.c	2004-10-25 19:08:55.000000000 -0=
+400
+@@ -396,15 +413,6 @@ nfs_lock(struct file *filp, int cmd, str
+ 	if ((inode->i_mode & (S_ISGID | S_IXGRP)) =3D=3D S_ISGID)
+ 		return -ENOLCK;
+=20
+-	if (NFS_PROTO(inode)->version !=3D 4) {
+-		/* Fake OK code if mounted without NLM support */
+-		if (NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM) {
+-			if (IS_GETLK(cmd))
+-				return LOCK_USE_CLNT;
+-			return 0;
+-		}
+-	}
+-
+ 	/*
+ 	 * No BSD flocks over NFS allowed.
+ 	 * Note: we could try to fake a POSIX lock request here by
+
+Greg.
+--=20
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
 
---------------040907020901070606080402
-Content-Type: text/plain;
- name="nfs-utils-1.0.6-ha_bugfix.diff"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="nfs-utils-1.0.6-ha_bugfix.diff"
-
-diff -pur nfs-utils-1.0.6/support/include/ha-callout.h nfs-utils-1.0.6-ha_bugfix/support/include/ha-callout.h
---- nfs-utils-1.0.6/support/include/ha-callout.h	2004-10-25 12:09:37.000000000 -0400
-+++ nfs-utils-1.0.6-ha_bugfix/support/include/ha-callout.h	2004-10-25 12:17:53.000000000 -0400
-@@ -14,6 +14,7 @@
- #define HA_CALLOUT_H
- 
- #include <sys/wait.h>
-+#include <signal.h>
- 
- extern char *ha_callout_prog;
- 
-@@ -23,12 +24,18 @@ ha_callout(char *event, char *arg1, char
- 	char buf[16]; /* should be plenty */
- 	pid_t pid;
- 	int ret = -1;
-+	struct sigaction oldact, newact;
- 
- 	if (!ha_callout_prog) /* HA callout is not enabled */
- 		return;
- 
- 	sprintf(buf, "%d", arg3);
- 
-+	newact.sa_handler = SIG_DFL;
-+	newact.sa_flags = 0;
-+	sigemptyset(&newact.sa_mask);
-+	sigaction(SIGCHLD, &newact, &oldact);
-+
- 	pid = fork();
- 	switch (pid) {
- 		case 0: execl(ha_callout_prog, ha_callout_prog,
-@@ -39,7 +46,8 @@ ha_callout(char *event, char *arg1, char
- 			exit(2);
- 		case -1: perror("fork");
- 			break;
--		default: ret = waitpid(pid, NULL, 0);
-+		default: pid = waitpid(pid, &ret, 0);
-+			sigaction(SIGCHLD, &oldact, &newact);
-   	}
- 
- #ifdef dprintf
-diff -pur nfs-utils-1.0.6/utils/statd/statd.c nfs-utils-1.0.6-ha_bugfix/utils/statd/statd.c
---- nfs-utils-1.0.6/utils/statd/statd.c	2004-10-25 12:09:37.000000000 -0400
-+++ nfs-utils-1.0.6-ha_bugfix/utils/statd/statd.c	2004-10-25 12:17:53.000000000 -0400
-@@ -111,7 +111,8 @@ killer (int sig)
- static void
- sigusr (int sig)
- {
--	dprintf (N_DEBUG, "Caught signal %d, re-reading notify list.", sig);
-+	dprintf (N_DEBUG, "Caught signal %d, re-notifying (state %d).", sig,
-+								MY_STATE);
- 	re_notify = 1;
- }
- 
-Only in nfs-utils-1.0.6-ha_bugfix/utils/statd: statd.c.orig
-diff -pur nfs-utils-1.0.6/utils/statd/svc_run.c nfs-utils-1.0.6-ha_bugfix/utils/statd/svc_run.c
---- nfs-utils-1.0.6/utils/statd/svc_run.c	2004-10-25 12:09:37.000000000 -0400
-+++ nfs-utils-1.0.6-ha_bugfix/utils/statd/svc_run.c	2004-10-25 12:17:53.000000000 -0400
-@@ -88,6 +88,9 @@ my_svc_run(void)
- 		if (svc_stop)
- 			return;
- 		if (re_notify) {
-+			change_state();
-+			dprintf(N_DEBUG, "Notifying...(new state %d)",
-+								MY_STATE);
- 			notify_hosts();
- 			re_notify = 0;
- 		}
-
---------------040907020901070606080402--
 
 
 -------------------------------------------------------
