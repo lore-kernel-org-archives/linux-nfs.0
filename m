@@ -1,29 +1,25 @@
-From: bert hubert <ahu@ds9a.nl>
+From: Wichert Akkerman <wichert@wiggy.net>
 Subject: Re: nfs/nfsd gets stuck on a write
-Date: Wed, 6 Aug 2003 13:02:16 +0200
+Date: Wed, 6 Aug 2003 13:16:34 +0200
 Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <20030806110215.GA30936@outpost.ds9a.nl>
-References: <20030806104612.GB703@wiggy.net>
+Message-ID: <20030806111634.GG703@wiggy.net>
+References: <20030806104612.GB703@wiggy.net> <20030806110215.GA30936@outpost.ds9a.nl>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: bert hubert <ahu@ds9a.nl>
 Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
 To: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
-In-Reply-To: <20030806104612.GB703@wiggy.net>
+In-Reply-To: <20030806110215.GA30936@outpost.ds9a.nl>
 List-ID: <nfs.lists.sourceforge.net>
 
-On Wed, Aug 06, 2003 at 12:46:13PM +0200, Wichert Akkerman wrote:
-> I seem to have hit a nfs problem between two 2.6.0-test2 machines. 
-> Mounting works properly, but at some point when logging in with /home
-> over NFS things get stuck. A tcpdump reveals the following:
+Previously bert hubert wrote:
+> I've had problems like that go away by explicitly mounting -o tcp. 
 
-I've had problems like that go away by explicitly mounting -o tcp. 
+Mounting with -o tcp does indeed seem to be a working work-around. It
+does feel a lot more sluggish/high latency than udp though.
 
-> Both machines have a similar configuration: 2.6.0-test2 with NFS and NFS
-> over TCP enabled. There are no firewalls blocking traffic between those
-> two machines.
-
-Your dump shows UDP, so give it a try.
+Wichert.
 
 -- 
-http://www.PowerDNS.com      Open source, database driven DNS Software 
-http://lartc.org           Linux Advanced Routing & Traffic Control HOWTO
+Wichert Akkerman <wichert@wiggy.net>    It is simple to make things.
+http://www.wiggy.net/                   It is hard to make things simple.
