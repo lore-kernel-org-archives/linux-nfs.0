@@ -1,23 +1,23 @@
 From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
 Subject: Re: client apps not surviving nfsd restart
-Date: Fri, 20 Aug 2004 16:26:42 +0200
+Date: Fri, 20 Aug 2004 16:34:01 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <41260A22.3080107@bio.ifi.lmu.de>
-References: <4125EA9F.3040304@bio.ifi.lmu.de> <20040820132143.GC12371@suse.de>
+Message-ID: <41260BD9.1050003@bio.ifi.lmu.de>
+References: <4125EA9F.3040304@bio.ifi.lmu.de> <200408201525.36681.bernd-schubert@web.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ByALt-0003lZ-5F
-	for nfs@lists.sourceforge.net; Fri, 20 Aug 2004 07:26:45 -0700
+	id 1ByASx-0005Mn-EF
+	for nfs@lists.sourceforge.net; Fri, 20 Aug 2004 07:34:03 -0700
 Received: from acheron.informatik.uni-muenchen.de ([129.187.214.135])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1ByALs-0006Ue-82
-	for nfs@lists.sourceforge.net; Fri, 20 Aug 2004 07:26:44 -0700
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20040820132143.GC12371@suse.de>
+	id 1ByASw-0007nI-VR
+	for nfs@lists.sourceforge.net; Fri, 20 Aug 2004 07:34:03 -0700
+To: Bernd Schubert <bernd-schubert@web.de>
+In-Reply-To: <200408201525.36681.bernd-schubert@web.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,34 +30,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Olaf Kirch wrote:
+Hi Bernd,
 
-> I reproduced this. Someone "improved" the init script to do this:
-> 
-> 	/usr/sbin/exportfs -au
-> 	killproc -n -KILL nfsd
-> 
-> so we first zap the exports tables, then stop all nfsds. Any NFS
-> requests received in the meanwhile will see ESTALE.
-> 
-> Try removing the exportfs call.
+Bernd Schubert wrote:
 
-Yes, that makes the difference! The "find" now again just hangs and
-after the server returns, continues without any problems. Same with
-"cp". "rsync" now also doesn't complain at the end anymore!
+> can you confirm this with vanilla client/server kernel version? We have 45 
 
-I feel stupid about this: When reporting the race problem with restarting
-the server on the lkml, Neil already told me that the "exportfs -au"
-should not be called before killing the nfsd and so I changed the order.
-But because this had no effect for the race bug, I forgot it and didn't
-change the init script for all our hosts.
+as Olaf figured out, it was indeed just a little bug in the init script...
 
-So I guess that all the stales and problems we had since 9.0 were just
-caused by the bug in the script... And I was already so disappointed
-by nfs-over-tcp because I blamed it for the stales :-)
 
-Thanks for your help! I will bugfix our scripts and then give 2.6 a
-try with nfs-over-tcp :-)
+> PS: About 1.5 years ago we were forced to use a Suse kernel on our server (due 
+> to a closed-sources binary only kernel module) and this kernel caused a lot 
+> of nfs related trouble for us. As the module also didn't work properly we 
+> finally decided not to buy this software ;)
+
+Hmm, since now (that we need a more recent version of 2.6 than the the
+2.6.5 SuSE shipped with 9.1) I've always been using SuSE kernels, and
+I really loved them for many reasons. They had always included a lot of
+useful stuff which I'm now forced to add all by myself (things like the
+bcm5700 driver in 2.4 when the tg3 crashed our server every night :-))
 
 cu,
 Frank
@@ -67,7 +58,7 @@ Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
 Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
 LMU, Amalienstr. 17           Phone: +49 89 2180-4049
 80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
-
+* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
 
 
 -------------------------------------------------------
