@@ -1,51 +1,97 @@
-From: "Stefan Orth" <SORTH@de.ibm.com>
-Subject: Stefan Orth/Germany/IBM is out of the office.
-Date: Sat, 11 Oct 2003 03:54:33 +0200
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <OF55E94321.6DF8C713-ONC1256DBC.000A7D23-C1256DBC.000A7D24@de.ibm.com>
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: include/linux/nfs/nfsfh.h declares a symbol
+Date: Mon, 13 Oct 2003 14:43:57 +1000
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <16266.11661.91185.167555@notabene.cse.unsw.edu.au>
+References: <20031001121811.GE31698@wohnheim.fh-wedel.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1A88yM-0006h9-00
-	for <nfs@lists.sourceforge.net>; Fri, 10 Oct 2003 18:55:10 -0700
-Received: from d12lmsgate-5.de.ibm.com ([194.196.100.238] helo=d12lmsgate.de.ibm.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 1A88yL-0002qk-NW
-	for nfs@lists.sourceforge.net; Fri, 10 Oct 2003 18:55:09 -0700
-Received: from d12relay02.megacenter.de.ibm.com (d12relay02.megacenter.de.ibm.com [9.149.165.196])
-	by d12lmsgate.de.ibm.com (8.12.10/8.12.8) with ESMTP id h9B1saNb094266
-	for <nfs@lists.sourceforge.net>; Sat, 11 Oct 2003 03:54:36 +0200
-Received: from d12ml036.de.ibm.com (d12av02.megacenter.de.ibm.com [9.149.165.228])
-	by d12relay02.megacenter.de.ibm.com (8.12.9/NCO/VER6.6) with ESMTP id h9B1saZm262798
-	for <nfs@lists.sourceforge.net>; Sat, 11 Oct 2003 03:54:36 +0200
-To: nfs@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
+Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
+	(for <joern@wohnheim.fh-wedel.de>) (for <nfs@lists.sourceforge.net>)
+	(for <linux-kernel@vger.kernel.org>) By note With Smtp ;
+	Mon, 13 Oct 2003 14:44:00 +1000
+To: =?iso-8859-1?Q?J=F6rn?= Engel <joern@wohnheim.fh-wedel.de>
+In-Reply-To: message from  =?ISO-8859-1?Q?=20J=F6rn?= Engel on Wednesday October 1
+List-ID: <nfs.lists.sourceforge.net>
 
-I will be out of the office starting October 10, 2003 and will not return
-until October 15, 2003.
+On Wednesday October 1, joern@wohnheim.fh-wedel.de wrote:
+> Neil, the function SVCFH_fmt uses a static variable to sprintf into.
+> Looks like this variable is declared locally for every .c file
+> including nfsfh.h, which is quite a few.
+> 
+> You could remove the static, but that would increase the stack usage,
+> which might be a problem too.  The buffer could be reduced to 64
+> chars, to reduce that problem.  kmalloc()ing it seems a bit expensive,
+> but might be an option, too.
 
-I will respond to your message when I return.
+Thanks.  I think it is best to simply make SVCFH_fmt a real function
+instead of inline, as below.
 
+NeilBrown
 
+=======================================
+Move SVCFH_fmt from being 'inline' to being 'extern'.
 
--------------------------------------------------------
-This SF.net email is sponsored by: SF.net Giveback Program.
-SourceForge.net hosts over 70,000 Open Source Projects.
-See the people who have HELPED US provide better services:
-Click here: http://sourceforge.net/supporters.php
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+This way, the "static char buf" is defined only once instead
+of once per file.
+
+ ----------- Diffstat output ------------
+ ./fs/nfsd/nfsfh.c            |   18 ++++++++++++++++++
+ ./include/linux/nfsd/nfsfh.h |   17 ++---------------
+ 2 files changed, 20 insertions(+), 15 deletions(-)
+
+diff ./fs/nfsd/nfsfh.c~current~ ./fs/nfsd/nfsfh.c
+--- ./fs/nfsd/nfsfh.c~current~	2003-10-13 14:24:46.000000000 +1000
++++ ./fs/nfsd/nfsfh.c	2003-10-13 14:30:06.000000000 +1000
+@@ -489,3 +489,21 @@ fh_put(struct svc_fh *fhp)
+ 	return;
+ }
+ 
++/*
++ * Shorthand for dprintk()'s
++ */
++char * SVCFH_fmt(struct svc_fh *fhp)
++{
++	struct knfsd_fh *fh = &fhp->fh_handle;
++	
++	static char buf[80];
++	sprintf(buf, "%d: %08x %08x %08x %08x %08x %08x",
++		fh->fh_size,
++		fh->fh_base.fh_pad[0],
++		fh->fh_base.fh_pad[1],
++		fh->fh_base.fh_pad[2],
++		fh->fh_base.fh_pad[3],
++		fh->fh_base.fh_pad[4],
++		fh->fh_base.fh_pad[5]);
++	return buf;
++}
+
+diff ./include/linux/nfsd/nfsfh.h~current~ ./include/linux/nfsd/nfsfh.h
+--- ./include/linux/nfsd/nfsfh.h~current~	2003-10-13 14:22:27.000000000 +1000
++++ ./include/linux/nfsd/nfsfh.h	2003-10-13 14:30:16.000000000 +1000
+@@ -186,21 +186,8 @@ static inline void mk_fsid_v2(u32 *fsidv
+ /*
+  * Shorthand for dprintk()'s
+  */
+-inline static char * SVCFH_fmt(struct svc_fh *fhp)
+-{
+-	struct knfsd_fh *fh = &fhp->fh_handle;
+-	
+-	static char buf[80];
+-	sprintf(buf, "%d: %08x %08x %08x %08x %08x %08x",
+-		fh->fh_size,
+-		fh->fh_base.fh_pad[0],
+-		fh->fh_base.fh_pad[1],
+-		fh->fh_base.fh_pad[2],
+-		fh->fh_base.fh_pad[3],
+-		fh->fh_base.fh_pad[4],
+-		fh->fh_base.fh_pad[5]);
+-	return buf;
+-}
++extern char * SVCFH_fmt(struct svc_fh *fhp);
++
+ /*
+  * Function prototypes
+  */
