@@ -1,95 +1,57 @@
-From: Steve Dickson <SteveD@RedHat.com>
-Subject: Re: [PATCH] Access cache forgetting mode bits
-Date: Sun, 31 Aug 2003 16:33:44 -0400
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3F525BA8.9020904@RedHat.com>
-References: <3F4E302F.5060409@RedHat.com> <1062107512.2121.25.camel@bree.suse.de>
+From: Andrew Morton <akpm@osdl.org>
+Subject: Re: Kernel 2.4 and 2.6 disagree about NFSEXP_CROSSMNT - upward
+ incompatibility, please fix
+Date: Thu, 31 Jul 2003 15:05:48 -0700
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <20030731150548.0cacb93b.akpm@osdl.org>
+References: <3F294DE3.9020304@RedHat.com>
+	<20030731182332.GH18733@perlsupport.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------000907050205090208020506"
-Cc: nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19tYuB-0001Dj-00
-	for <nfs@lists.sourceforge.net>; Sun, 31 Aug 2003 13:34:35 -0700
-Received: from host-64-179-20-100.man.choiceone.net ([64.179.20.100] helo=Odyssey.Home.4Dicksons.Org)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.22)
-	id 19tYuA-0002WT-P8
-	for nfs@lists.sourceforge.net; Sun, 31 Aug 2003 13:34:34 -0700
-To: Andreas Gruenbacher <agruen@suse.de>,
-   Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1062107512.2121.25.camel@bree.suse.de>
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain; charset=US-ASCII
+Cc: SteveD@redhat.com, neilb@cse.unsw.edu.au,
+	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
+To: Chip Salzenberg <chip@pobox.com>
+In-Reply-To: <20030731182332.GH18733@perlsupport.com>
+List-ID: <nfs.lists.sourceforge.net>
 
-This is a multi-part message in MIME format.
---------------000907050205090208020506
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
+Chip Salzenberg <chip@pobox.com> wrote:
+>
+> According to Steve Dickson:
+> > It seems in nfs-utils-1.05 (actually it happen in 1.0.4)
+> > the NFSEXP_CROSSMNT define was changed to 0x4000 ....
+> 
+> This looks like an actual kernel incompatibility 2.4 <-> 2.6, as
+> the 2.4 and 2.6 trees disagree about the value of NFSEXP_CROSSMNT.
 
-Hello,
+yup.
 
-I'm thinking there might even be a better way to cache these bits...
+> > So could please add this patch that simply switchs the bits
+> > so NFSEXP_CROSSMNT stays the same and the new NFSEXP_NOHIDE define
+> > gets the higher bit?
+> 
+> And 2.6's include/linux/nfsd/export.h needs the same fix.  This needs
+> to go in before the 2.6.0 release or nfs-utils is in deep kimchi.
 
-It seems the OS calls nfs_permission() to test each permission bit which 
-in turn
-causes an otw access rpc for every call (assuming the same person and same
-bit is *not* asked for ) and even with Andreas patch's there are at 
-least two
-rpcs for one access call....
+Like this?
 
-Now what if on the first access call, we get *all* of the access bits 
-from the
-server and cache them locally (i.e. in cache->mask). That way when 
-nfs_permission()
-is called again, all if the needed info is there... The attached patch 
-does just that
-and it really seems to cut down on the amount access rpc needed...
+diff -puN include/linux/nfsd/export.h~nfs-flags-untangle include/linux/nfsd/export.h
+--- 25/include/linux/nfsd/export.h~nfs-flags-untangle	Thu Jul 31 15:04:25 2003
++++ 25-akpm/include/linux/nfsd/export.h	Thu Jul 31 15:04:49 2003
+@@ -35,12 +35,12 @@
+ #define NFSEXP_UIDMAP		0x0040
+ #define NFSEXP_KERBEROS		0x0080		/* not available */
+ #define NFSEXP_SUNSECURE	0x0100
+-#define NFSEXP_NOHIDE		0x0200
++#define NFSEXP_CROSSMNT		0x0200
+ #define NFSEXP_NOSUBTREECHECK	0x0400
+ #define	NFSEXP_NOAUTHNLM	0x0800		/* Don't authenticate NLM requests - just trust */
+ #define NFSEXP_MSNFS		0x1000	/* do silly things that MS clients expect */
+ #define NFSEXP_FSID		0x2000
+-#define	NFSEXP_CROSSMNT		0x4000
++#define	NFSEXP_NOHIDE		0x4000
+ #define NFSEXP_ALLFLAGS		0x7FFF
+ 
+ 
 
-Thoughts?
-
-SteveD.
-
-
---------------000907050205090208020506
-Content-Type: text/plain;
- name="linux-2.4.21-nfs-accesscache.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="linux-2.4.21-nfs-accesscache.patch"
-
---- linux-2.4.21/fs/nfs/dir.c.diff	2003-08-28 12:13:22.000000000 -0400
-+++ linux-2.4.21/fs/nfs/dir.c	2003-08-28 12:13:47.000000000 -0400
-@@ -1278,7 +1278,7 @@ nfs_permission(struct inode *inode, int 
- 		if (cache->cred)
- 			put_rpccred(cache->cred);
- 		cache->cred = cred;
--		cache->mask = mask;
-+		cache->mask |= mask;
- 		cache->err = error;
- 		return error;
- 	}
-
---------------000907050205090208020506--
-
-
-
--------------------------------------------------------
-This sf.net email is sponsored by:ThinkGeek
-Welcome to geek heaven.
-http://thinkgeek.com/sf
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+_
