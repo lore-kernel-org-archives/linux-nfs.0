@@ -1,23 +1,23 @@
-From: Marcelo Tosatti <marcelo.tosatti@cyclades.com>
-Subject: Re: [PATCH kNFSd ] nlm: fix f_count leak
-Date: Thu, 24 Mar 2005 07:30:09 -0300
-Message-ID: <20050324103009.GA8410@logos.cnet>
-References: <20050323141612.12609.patches@notabene> <E1DDwOF-0003IA-Gw@notabene.cse.unsw.edu.au>
+From: Beschorner Daniel <Daniel.Beschorner@facton.com>
+Subject: Statd problem
+Date: Tue, 29 Mar 2005 13:46:51 +0200
+Message-ID: <BB1F4EFD574E9F409035BDA71C961250023B03@exchange.i-bn>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DEzK9-0005iA-BM
-	for nfs@lists.sourceforge.net; Fri, 25 Mar 2005 16:38:45 -0800
-Received: from hera.kernel.org ([209.128.68.125])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1DGFBG-0003TW-RR
+	for nfs@lists.sourceforge.net; Tue, 29 Mar 2005 03:46:46 -0800
+Received: from loewe.unit-netz.de ([212.202.148.42])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.41)
-	id 1DEzK6-0000cI-SO
-	for nfs@lists.sourceforge.net; Fri, 25 Mar 2005 16:38:45 -0800
-To: NeilBrown <neilb@cse.unsw.edu.au>
-In-Reply-To: <E1DDwOF-0003IA-Gw@notabene.cse.unsw.edu.au>
+	id 1DGFBF-00056V-5K
+	for nfs@lists.sourceforge.net; Tue, 29 Mar 2005 03:46:46 -0800
+Received: from exchange.i-bn (exchange.catsgroup [192.168.100.120])
+	by loewe.unit-netz.de (8.12.3/8.12.3/Unit) with ESMTP id j2TBkaVw006281
+	for <nfs@lists.sourceforge.net>; Tue, 29 Mar 2005 13:46:36 +0200
+To: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,13 +31,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, Mar 23, 2005 at 02:18:39PM +1100, NeilBrown wrote:
-> Hi,
->  The following patch is probably appropriate for 2.4.30.  The problem
-> it fixes is not a major one (no security or data corruption issues)
-> but is an occasional annoyance, and the fix is trivial (and tested).
+Since the first reboot of our clients (mainly AIX) after we updated our NFS
+server from 2.6.10 to 2.6.11 we get sporadically these server log entries, I
+think after each client reboot:
 
-Applied, thanks Neil.
+Mar 29 12:44:31 server rpc.statd[3201]: recv_rply: [127.0.0.1] RPC status 1
+Mar 29 12:44:49 server last message repeated 3 times
+Mar 29 12:44:55 server rpc.statd[3201]: Can't callback server (100021,4),
+giving up.
+
+What do they mean? No further problems are seen.
+Mounts are TCP/V3.
+
+Thanks
+Daniel
 
 
 -------------------------------------------------------
