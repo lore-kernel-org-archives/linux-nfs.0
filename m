@@ -1,24 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: nfs problem: nfs could be mounted and viewed but errors
-	on file opening
-Date: Fri, 10 Sep 2004 12:26:50 -0400
+From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
+Subject: Re: sendmail "cannot fsync directory" after 2.4 -> 2.6
+Date: Fri, 10 Sep 2004 09:33:17 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1094833610.8605.29.camel@lade.trondhjem.org>
-References: <1094795240.3169.17.camel@roach.aldevinco.com>
+Message-ID: <414158BD.4060802@bio.ifi.lmu.de>
+References: <413FF4EB.2070607@bio.ifi.lmu.de> <1094741919.7972.5.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C5oEt-0003bj-Sq
-	for nfs@lists.sourceforge.net; Fri, 10 Sep 2004 09:27:07 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 1C5tOR-0000Qr-2T
+	for nfs@lists.sourceforge.net; Fri, 10 Sep 2004 14:57:19 -0700
+Received: from acheron.informatik.uni-muenchen.de ([129.187.214.135])
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1C5oEt-0001eg-DN
-	for nfs@lists.sourceforge.net; Fri, 10 Sep 2004 09:27:07 -0700
-To: ronald rojas <alsonsdev_mis@dctech.com.ph>
-In-Reply-To: <1094795240.3169.17.camel@roach.aldevinco.com>
+	id 1C5fxG-0008P4-B4
+	for nfs@lists.sourceforge.net; Fri, 10 Sep 2004 00:36:29 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1094741919.7972.5.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,26 +30,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 fr , 10/09/2004 klokka 01:50, skreiv ronald rojas:
-> kernel ver. 2.6.8
+Trond Myklebust wrote:
 
-ftp://ftp.kernel.org/pub/linux/kernel/v2.6/LATEST-IS-2.6.8.1
+> Yep. We forgot to add the stub to Linux 2.6.x. Please confirm that the
+> following patch fixes the problem for you.
 
+Yes, with that patch it works fine and sendmail stops complaining.
 
-Summary of changes from v2.6.8 to v2.6.8.1
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+Thanks a lot!
+cu,
+Frank
 
-<jgarzik@pobox.com>
-        [PATCH] Fix NFS client screw-up in fcntl f_op removal
-
-        Fix stupid thinkos in the fcntl f_op removal code.
-
-<torvalds@ppc970.osdl.org>
-        Linux 2.6.8.1
-
-
- Trond
+-- 
+Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
+Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
+LMU, Amalienstr. 17           Phone: +49 89 2180-4049
+80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
 
 
 
