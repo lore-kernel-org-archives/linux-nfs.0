@@ -1,22 +1,21 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: open O_EXCL works?
-Date: Sun, 13 Mar 2005 13:44:38 -0500
-Message-ID: <1110739478.10684.42.camel@lade.trondhjem.org>
-References: <20050313141203.1044.BRANDEN@terra.com.br>
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: NFS FAQ updates
+Date: Sun, 13 Mar 2005 11:37:26 -0800
+Message-ID: <482A3FA0050D21419C269D13989C611307CF4C1E@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DAY5F-0007EP-5Z
-	for nfs@lists.sourceforge.net; Sun, 13 Mar 2005 10:45:01 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1DAY5D-0006IQ-Ic
-	for nfs@lists.sourceforge.net; Sun, 13 Mar 2005 10:45:01 -0800
-To: Filipe Brandenburger <branden@terra.com.br>
-In-Reply-To: <20050313141203.1044.BRANDEN@terra.com.br>
+	id 1DAYu7-0000jd-8l
+	for nfs@lists.sourceforge.net; Sun, 13 Mar 2005 11:37:35 -0800
+Received: from mx1.netapp.com ([216.240.18.38])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1DAYu5-0006N3-V9
+	for nfs@lists.sourceforge.net; Sun, 13 Mar 2005 11:37:35 -0800
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+	"NeilBrown" <neilb@cse.unsw.edu.au>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,29 +29,21 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-su den 13.03.2005 Klokka 14:23 (-0300) skreiv Filipe Brandenburger:
-> Hello,
-> 
-> I'm trying to find out if open(O_CREAT|O_EXCL) works or not in NFS. I
-> read the RFC1813, and it says NFSv3 must implement it on the server, but
-> even so I don't know if the client is doing it reliably or not.
-> 
-> My server is a Netapp FAS940, my client is Linux RH7.3 with kernel 2.4.9-e.38smp
-> (the kernel is from RHAS2.1). I'm mounting the NFS with vers=3, the line
-> that is output in the "mount" command for this filesystem is:
-> 
+i'd like to add two new questions, and update one.  please review:
 
-2.4.x kernels do not implement O_EXCL opens in NFS due to VFS
-limitations. In 2.6.x we fixed the VFS limitations by adding "intents"
-and so those kernels implement O_EXCL correctly for both NFSv3 and
-NFSv4.
+When my application uses memory-mapped NFS files, it breaks. Why?
+  http://nfs.sourceforge.net/index.cel.php#faq_a9
 
-Cheers,
-  Trond
+Why should I disable subtree checking on my NFS server exports?
+  http://nfs.sourceforge.net/index.cel.php#faq_c7
 
--- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
+How come lock recovery doesn't work for me?
+  http://nfs.sourceforge.net/index.cel.php#faq_d7
 
+        - Chuck Lever
+--
+corporate:     <cel at netapp dot com>
+personal:      <chucklever at bigfoot dot com>
 
 
 -------------------------------------------------------
