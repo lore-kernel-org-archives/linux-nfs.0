@@ -1,29 +1,20 @@
 From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: corruption over NFS with 2.6 client, locking, truncating and
- appending...
-Date: Tue, 5 Apr 2005 11:39:33 +1000
-Message-ID: <16977.60501.153237.389021@cse.unsw.edu.au>
-References: <16977.57630.766727.608029@cse.unsw.edu.au>
-	<1112664792.11910.12.camel@lade.trondhjem.org>
+Subject: corruption over NFS with 2.6 client, locking, truncating and appending...
+Date: Tue, 5 Apr 2005 10:51:42 +1000
+Message-ID: <16977.57630.766727.608029@cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DIdx2-0008BU-Gy
-	for nfs@lists.sourceforge.net; Mon, 04 Apr 2005 19:38:00 -0700
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1DIdx1-0006cz-2c
-	for nfs@lists.sourceforge.net; Mon, 04 Apr 2005 19:38:00 -0700
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
-	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DId7a-0000nJ-Me
-	for nfs@lists.sourceforge.net; Mon, 04 Apr 2005 18:44:51 -0700
+	id 1DIcgw-00032j-Ta
+	for nfs@lists.sourceforge.net; Mon, 04 Apr 2005 18:17:18 -0700
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1DIcgv-00062Q-Sk
+	for nfs@lists.sourceforge.net; Mon, 04 Apr 2005 18:17:18 -0700
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: message from Trond Myklebust on Monday April 4
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,35 +28,267 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Monday April 4, trond.myklebust@fys.uio.no wrote:
-> ty den 05.04.2005 Klokka 10:51 (+1000) skreiv Neil Brown:
-> 
-> > 		switch(*action) {
-> > 		case 'a': /* append */
-> > 			off = lseek(fd, 0, SEEK_END);
-> > 			sprintf(buf, "%09lu\n", off);
-> > 			write(fd, buf, 10);
-> > 			fsync(fd);
-> > 			break;
-> 
-> Argh... OK, I see the problem here.
-> 
-> When you call lseek(SEEK_END), the kernel really needs to be calling
-> nfs_revalidate_inode() in order to update the cached attribute info.
-> Currently that is not the case, since we just default to the VFS
-> generic_file_llseek().
-> 
-> I'll code something up in the morning.
 
-Thanks.
+(hope there are a suitable number of keywords in the subject...)
 
-Your explanation would explain that value of 'off' being wrong as I
-found with the lockf locking in 2.4. 
-However as the file was open for O_APPEND, there would be an implicit
-seek to the end on every write.  Is this implicit seek expected to do
-the right thing or would it need fixing too?
+(I have already exchanged a couple of Emails with Trond which were
+meant to be cc:ed to the list, but due to clumsiness on my part,
+weren't). 
 
+
+I'm getting quite a bit of mailbox corruption on mailboxes accessed
+over NFS (both for delivery and mail client access).   This seemed to
+start happening (or start getting worse) when we upgraded some client
+machines to 2.6.
+
+I can now reproduce various sorts of corruption using a test program
+which follows.
+The test machines I have used either run 2.6.11.2 or 2.4.26.
+
+The NFS server is running 2.4.26 in all cases.  I'm using hard,
+interruptible, udp, v3 NFS mounts with rsize=wsize=8192
+
+The test involves running a small program on each of two different
+clients.
+
+On one client, the program locks a named file, appends a 10 byte
+string which reports what it thinks is the size of the file, and then
+unlocks the file.  It does this repeatedly.  You can control the
+speed.
+
+On the other client, the program locks the same file, reads the last
+10 byte record, and truncates the file to remove that record.
+
+This should result in a file that always contains 10byte records each
+of which records it's own position in the file.  Depending on the
+relative speeds of the client programs, the file may grow or shrink,
+or hover.
+
+The program can use either lockf (aka fcntl) locking or lockfile
+locking (where a file is hardlinked to file.lock, thus providing
+exclusive access even over NFS).
+
+When lockfile locking is used, the actual file is opened after the
+lockfile is successfully created, so the close-to-open consistency of
+NFS should protect the contents (I think).
+
+I have only tested with the truncating program running on a 2.4
+kernel.  The appending program has run on both 2.4 and 2.6.
+
+The results: 
+  In each case, the read/truncate goes slightly slower than the
+  append, so the file grows slowly
+
+Append on 2.4, truncate on 2.4
+
+   .lock file locking
+
+       Some of the (10 bytes) records in the file appear as 10 nuls
+       instead of the expected content.
+       I vaguely recall that 2.4 doesn't have full CTO support, so
+       this might be expected.
+
+   lockf locking
+
+       No nuls appear in the file, but sometimes the records have the
+       wrong value. For example, the following is a excerpt from the
+       test file in such a case:
+
+000004100
+000004110
+000004120
+000004130
+000004140
+000004160
+000004160
+000004170
+000004180
+000004190
+000004200
+
+       Note that what should be 4150 is 4160
+       This certainly seems wrong to me, but isn't my current problem.
+
+       I find these errors I use the following awk line:
+
+       % awk '{if ($1-t != 10) print $1 ; t=$1}' test-file
+
+
+Append on 2.6, truncate on 2.4
+
+     .lock file locking
+
+       partial records appear as nuls, always at the end of a block.
+       e.g. (as displayed by less).
+000004050
+000004060
+000004070
+^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@090
+000004100
+000004110
+
+       The last nul is the 4095th byte of the file.
+
+       I think this might be part of my problem.
+
+
+    lockf locking
+
+       Whole 10byte records get replaced by nuls.  
+       e.g. (Again shown by 'less')
+
+000005800
+000005810
+000005820
+^@^@^@^@^@^@^@^@^@^@000005840
+000005850
+000005860
+000005870
+^@^@^@^@^@^@^@^@^@^@000005890
+000005900
+000005910
+000005920
+
+        I think this is the rest of my problem.
+
+
+Note that whenever I look at the file to check for nuls,
+I do it on the file server, not over NFS.
+
+
+So: 
+   Is there something wrong with my code?  
+    or wrong with my expectations?
+   Can anyone else reproduce any of this? with other kernel versions?
+   Where would I look to find the problem?
+   If there a patch available?
+
+Thanks,
 NeilBrown
+
+My test program:
+  First arg is 'a' to append or 't' to truncate.
+  Second is 'f' for lockf locking and 'l' for lock-file locking
+  Third is microseconds to sleep between accesses
+  Fourth is name of file.
+
+
+
+
+-----------------------------------------------------------------------------
+/*
+ * test nfs/mail problem
+ *
+ * This should be run on two clients in the same NFS mounted
+ * directory.
+ * On one client it should repeatedly append to the file
+ * On the other it should repeatedly read and truncate the last entry
+ *
+ * Locking can either be lockfile 'l' or fcntl 'f'
+ *
+ */
+
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <fcntl.h>
+
+void file_lockit(char *name)
+{
+	char tnm[100];
+	char lnm[100];
+
+	sprintf(tnm, "%s.lock-%d", name, getpid());
+	sprintf(lnm, "%s.lock", name);
+	while(1) {
+		int fd = open(tnm, O_RDWR|O_CREAT,0600);
+		if (fd < 0)
+			continue;
+		close(fd);
+		if (link(tnm, lnm)== 0) {
+			unlink(tnm);
+			return;
+		}
+		unlink(tnm);
+	}
+}
+
+void file_unlockit(char*name)
+{
+	char lnm[100];
+
+	sprintf(lnm, "%s.lock", name);
+	unlink(lnm);
+}
+
+
+main(int argc, char*argv[])
+{
+	char *locktype, *action, *file;
+	unsigned long usecs;
+	char buf[20];
+	long off;
+	int fd;
+
+	if (argc != 5) {
+		fprintf(stderr,"Usage: tst [at] [lf] sleep-microseconds file\n");
+		exit(1);
+	}
+	locktype = argv[2];
+	action = argv[1];
+	usecs = atol(argv[3]);
+	file = argv[4];
+	while(1) {
+		usleep(usecs);
+
+		if (strchr(locktype, 'l'))
+			file_lockit(file);
+
+		fd = open(file, *action=='t' ? O_RDWR|O_CREAT : O_WRONLY|O_CREAT|O_APPEND, 0600);
+
+		if (strchr(locktype, 'f')) {
+			if (lockf(fd, F_LOCK, 0) < 0) {
+				close(fd);
+				if (strchr(locktype, 'l'))
+					file_unlockit(file);
+				continue;
+			}
+		}
+
+		switch(*action) {
+		case 'a': /* append */
+			off = lseek(fd, 0, SEEK_END);
+			sprintf(buf, "%09lu\n", off);
+			write(fd, buf, 10);
+			fsync(fd);
+			break;
+		case 't': /* truncate */
+			off = lseek(fd, -10, SEEK_END);
+			if (off <= 0) {
+				printf("?");
+			} else {
+				read(fd, buf, 10);
+				ftruncate(fd, off);
+				fsync(fd);
+				if (buf[0] == 0) 
+					printf(".");
+			}
+			break;
+		default:
+			if (strchr(locktype, 'l'))
+				file_unlockit(file);
+			printf("Bad action: %s\n", action);
+			exit(1);
+		}
+
+		if (strchr(locktype, 'f'))
+			lockf(fd, F_ULOCK, 0);
+
+		close(fd);
+		if (strchr(locktype, 'l'))
+			file_unlockit(file);
+	}
+}
 
 
 -------------------------------------------------------
