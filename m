@@ -1,14 +1,14 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 1 of 4 - READ_BUF macro:
-Date: Wed, 26 Mar 2003 11:10:53 +1100
+Subject: [PATCH] kNFSd - 2 of 4 - NFSv4 operations after WRITE are decoded into wr_vec[] pages,
+Date: Wed, 26 Mar 2003 11:10:54 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E18xyVJ-0004Td-00@notabene.cse.unsw.edu.au>
+Message-ID: <E18xyVK-0004Tg-00@notabene.cse.unsw.edu.au>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18xyVm-0002NW-00
-	for <nfs@lists.sourceforge.net>; Tue, 25 Mar 2003 16:11:22 -0800
+	id 18xyVn-0002NY-00
+	for <nfs@lists.sourceforge.net>; Tue, 25 Mar 2003 16:11:23 -0800
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
 	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>) By
@@ -26,48 +26,40 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Here-with: 4 patches for knfsd in 2.5.latest.
- 3 NFSv4 related, from Andy Adamson and the NFSv4 team.
- 1 fix for bug #29 @ bugme.osdl.org
 
 ### Comments for ChangeSet
-Fix some misleading comments, and correct the test for requesting more
-than one page.
+thus the argp->pagelen can be non-zero at the end of decoding the 
+WRITE operation. 
+this patch correctly sets argp->pagelen, and correctly advances argp->p 
+after the WRITE operation
 
  ----------- Diffstat output ------------
- ./fs/nfsd/nfs4xdr.c |    7 ++++---
- 1 files changed, 4 insertions(+), 3 deletions(-)
+ ./fs/nfsd/nfs4xdr.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
 diff ./fs/nfsd/nfs4xdr.c~current~ ./fs/nfsd/nfs4xdr.c
 --- ./fs/nfsd/nfs4xdr.c~current~	2003-03-26 09:44:33.000000000 +1100
-+++ ./fs/nfsd/nfs4xdr.c	2003-03-26 09:44:33.000000000 +1100
-@@ -231,6 +231,7 @@ xdr_error:					\
- 	p += XDR_QUADLEN(nbytes);		\
- } while (0)
++++ ./fs/nfsd/nfs4xdr.c	2003-03-26 09:44:36.000000000 +1100
+@@ -852,16 +852,16 @@ nfsd4_decode_write(struct nfsd4_compound
+ 		v++;
+ 		write->wr_vec[v].iov_base = page_address(argp->pagelist[0]);
+ 		argp->pagelist++;
+-		if (argp->pagelen >= PAGE_SIZE) {
++		if (len >= PAGE_SIZE) {
+ 			write->wr_vec[v].iov_len = PAGE_SIZE;
+ 			argp->pagelen -= PAGE_SIZE;
+ 		} else {
+ 			write->wr_vec[v].iov_len = argp->pagelen;
+-			argp->pagelen = 0;
++			argp->pagelen -= len;
+ 		}
+ 	}
+ 	argp->end = (u32*) (write->wr_vec[v].iov_base + write->wr_vec[v].iov_len);
+-	argp->p = (u32*)  (write->wr_vec[v].iov_base + len);
++	argp->p = (u32*)  (write->wr_vec[v].iov_base + (XDR_QUADLEN(len) << 2));
+ 	write->wr_vec[v].iov_len = len;
+ 	write->wr_vlen = v+1;
  
-+/* READ_BUF, read_buf(): nbytes must be <= PAGE_SIZE */
- #define READ_BUF(nbytes)  do {			\
- 	if (nbytes <= (u32)((char *)argp->end - (char *)argp->p)) {	\
- 		p = argp->p;			\
-@@ -244,15 +245,15 @@ xdr_error:					\
- u32 *read_buf(struct nfsd4_compoundargs *argp, int nbytes)
- {
- 	/* We want more bytes than seem to be available.
--	 * Maybe we need a new page, may wehave just run out
-+	 * Maybe we need a new page, maybe we have just run out
- 	 */
- 	int avail = (char*)argp->end - (char*)argp->p;
- 	u32 *p;
- 	if (avail + argp->pagelen < nbytes)
- 		return NULL;
--	if (avail + PAGE_SIZE > nbytes) /* need more than a page !! */
-+	if (avail + PAGE_SIZE < nbytes) /* need more than a page !! */
- 		return NULL;
--	/* ok, we can do it with the tail plus the next page */
-+	/* ok, we can do it with the current plus the next page */
- 	if (nbytes <= sizeof(argp->tmp))
- 		p = argp->tmp;
- 	else {
 
 
 -------------------------------------------------------
