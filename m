@@ -1,24 +1,28 @@
-From: Jan Bruvoll <jan@bruvoll.com>
+From: Bernd Schubert <bernd-schubert@web.de>
 Subject: Re: async vs. sync
-Date: Tue, 27 Jul 2004 13:00:05 +0100
+Date: Tue, 27 Jul 2004 15:00:31 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <410643C5.3040004@bruvoll.com>
-References: <482A3FA0050D21419C269D13989C61130435E51E@lavender-fe.eng.netapp.com> <200407261905.40248.bernd-schubert@web.de> <41055FE5.3030206@bruvoll.com> <200407270006.08581.bernd-schubert@web.de>
+Message-ID: <200407271500.38074.bernd-schubert@web.de>
+References: <482A3FA0050D21419C269D13989C61130435E51E@lavender-fe.eng.netapp.com> <200407270006.08581.bernd-schubert@web.de> <410643C5.3040004@bruvoll.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: multipart/signed;
+  protocol="application/pgp-signature";
+  micalg=pgp-sha1;
+  boundary="Boundary-02=_1HlBB42++M9RCSk";
+  charset="iso-8859-1"
 Cc: NFS mailling list <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BpQd4-0002pL-5b
-	for nfs@lists.sourceforge.net; Tue, 27 Jul 2004 05:00:22 -0700
-Received: from homer.brvl.com ([213.61.99.172])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1BpRZd-0003jU-4N
+	for nfs@lists.sourceforge.net; Tue, 27 Jul 2004 06:00:53 -0700
+Received: from smtp07.web.de ([217.72.192.225])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.34)
-	id 1BpQd3-00054e-DY
-	for nfs@lists.sourceforge.net; Tue, 27 Jul 2004 05:00:22 -0700
-To: Bernd Schubert <bernd-schubert@web.de>
-In-Reply-To: <200407270006.08581.bernd-schubert@web.de>
+	id 1BpRZc-00006l-Cg
+	for nfs@lists.sourceforge.net; Tue, 27 Jul 2004 06:00:53 -0700
+To: Jan Bruvoll <jan@bruvoll.com>
+In-Reply-To: <410643C5.3040004@bruvoll.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,104 +35,95 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Bernd Schubert wrote:
 
->>are you doing anything "interesting" underneath NFS, ie. what are you
->>storing your files on?
->>    
->>
->
->Its similar to your configuration ;)
->  
->
+--Boundary-02=_1HlBB42++M9RCSk
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
 
-Good :-)
+> >>My set-up has about the same performance data, however my big problem is
+> >>that the server dies when I hook all my clients up... Raw throughput
+> >
+> >Fortunately that doesn't seem to happen in our case.
+>
+> Let me clarify - the server doesn't quite die, however it slows down
+> drastically, having a load of ~7 while 99% CPU idle. The clients clog
+> up, and for instance trying to mount anything just times out. If I
+> unmount the busy share from the clients, everything settles down again.
 
->>My set-up has about the same performance data, however my big problem is
->>that the server dies when I hook all my clients up... Raw throughput
->>    
->>
->
->Fortunately that doesn't seem to happen in our case.
->  
->
+We noticed a higher load with sync-mounts, usually we have 0-2, with 2.4. a=
+nd=20
+sync-mounts it went until 3-4. But we also only used sync mounts for less=20
+than 24, so changed to async mounts as soon as the people complained.
 
-Let me clarify - the server doesn't quite die, however it slows down 
-drastically, having a load of ~7 while 99% CPU idle. The clients clog 
-up, and for instance trying to mount anything just times out. If I 
-unmount the busy share from the clients, everything settles down again.
+[snip]
 
->>seemed ok, but when you started complaining about the speed, I started
->>thinking that my figures weren't all that great anymore.
->>    
->>
 >
->At least its good to know that we are not alone. Well, I do know about the 
->performance decrease of sync-exports for a pretty long time, but I was never 
->sure if its not only a problem of our server (the previous one was a 
->PII-450).
+> I tried a little more performance number hunting:
+>  - NFS copy and write to same device - 3Mb/s sustained (500Mb file)
+>  - piozone direct write to RAID device - ~34-50Mb/s (depending on file
+> size) - drbd network device - 933Mb/s
 >
->  
->
->>The set-up is a dual 3Ghz Xeon, 2Gb RAM, and a DRBD-mirrored partition
->>sitting on a 3Ware Escalade 7500 to 7200rpm disks. Kernel
->>    
->>
->
->Here its a dual opteron, 3GB RAM, adaptec 79xx PCI-X scsi, transtec scsi-ide 
->raid. Local disk i/o is over 70MB/s. The server is connected with GBit, the 
->clients only with 100MBit. Here are some performace numbers when the server 
->was still running 2.6.7:
->
->writing to /worka (async exported): 4 clients, all at full 11MB/s
->
->writing to /home, (sync,no_wdelay exported): 4 clients at 7MB/s
->
->(When I did the tests I was simply to lazy to test with more clients. Actually 
->I thought that 4 times 7 MB/s is more than sufficient for usual work).
->
->The /home partition is also mirrored via drbd to a failover server, /worka is 
->not mirrored (mirroring 1.7TB is not that easy as mirroring 200GB ;) ).
->
->So I really don't think that the server performance is the problem.
->  
->
+> Nothing really wrong here I'd say - not blazingly quick, but surely
+> nothing to explain why everything just stops when I hook up my 12
+> clients to this set-up?
 
-I tried a little more performance number hunting:
- - NFS copy and write to same device - 3Mb/s sustained (500Mb file)
- - piozone direct write to RAID device - ~34-50Mb/s (depending on file size)
- - drbd network device - 933Mb/s
+Certainly not. We have 45 diskless booting clients.
 
-Nothing really wrong here I'd say - not blazingly quick, but surely 
-nothing to explain why everything just stops when I hook up my 12 
-clients to this set-up?
+[snip]
 
->>2.4.26-gentoo-r5, everything else newest version. The annoying thing is
->>that the server this new set-up is replacing is an old P3/650 that
->>easily copes with the load... :-\
->>    
->>
+> >Well, as I said, when I tested our old server with sync mounts, it had t=
+he
+> >same problem. Are you sure that your old server did not export
+> > asynchronous?
 >
->Well, as I said, when I tested our old server with sync mounts, it had the 
->same problem. Are you sure that your old server did not export asynchronous?
->  
+> Doesn't seem so, no, the /etc/export is -extremely- simple:
 >
+> /export client1(rw,no_root_squash)
 
-Doesn't seem so, no, the /etc/export is -extremely- simple:
+Which nfs-utils version is running on that server? With 1.0 the default=20
+changed from async to sync. I guess you only did security updates from your=
+=20
+distribution and so there's <=3D0.3 installed.
 
-/export client1(rw,no_root_squash)
+With 2.6.7 it helped us a lot to give the no_wdelay option, maybe you shoul=
+d=20
+try it as well.
 
-Similarly, I'm not trying to be clever on the client side (/etc/fstab 
-excerpt):
+>
+> Similarly, I'm not trying to be clever on the client side (/etc/fstab
+> excerpt):
+>
+> server:/export /export nfs rw,hard,intr 0 0
 
-server:/export /export nfs rw,hard,intr 0 0
+You should make sure, that rsize and wsize are set to 8192 (cat /proc/mount=
+s=20
+tells you the current value). Also, just try to use tcp-mounts, if you have=
+=20
+an asynchronous net (e.g. the server and switch have a GBit interface, but=
+=20
+the clients only 100MBit) this is necessary anyway. The same if the clients=
+=20
+or server are using linux-2.6.x.
 
-This set-up works wonderfully on the old 2.4.17 box, but grinds to a 
-halt on the new ones :-(
 
-Regards
-Jan
+Cheers,
+	Bernd
 
+--Boundary-02=_1HlBB42++M9RCSk
+Content-Type: application/pgp-signature
+Content-Description: signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.4 (GNU/Linux)
+
+iD8DBQBBBlH1C8BUnAF+ydYRAgHHAJ0Q6SLCiZf5KUP1l9DC4hluSsPrygCfeXUX
+dXmySI8g5AP9qrM/wzkemws=
+=RALf
+-----END PGP SIGNATURE-----
+
+--Boundary-02=_1HlBB42++M9RCSk--
 
 
 -------------------------------------------------------
