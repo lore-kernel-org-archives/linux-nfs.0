@@ -1,22 +1,20 @@
-From: "John Roberts" <john_roberts@credence.com>
-Subject: Re: async vs. sync
-Date: Mon, 26 Jul 2004 16:05:19 -0700 (PDT)
+From: NeilBrown <neilb@cse.unsw.edu.au>
+Subject: [PATCH kNFSd 2 of 2] Allow larger NFSd MAXBLKSIZE on architectures with larger PAGE_SIZE
+Date: Tue, 27 Jul 2004 14:09:19 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200407262305.i6QN5JV25086@algebra.hillsboro.credence.com>
-Reply-To: John Roberts <john_roberts@credence.com>
-Mime-Version: 1.0
-Content-Type: TEXT/plain; charset=us-ascii
-Cc: bernd-schubert@web.de, john_roberts@credence.com
+Message-ID: <E1BpJHD-0005cm-80@notabene.cse.unsw.edu.au>
+References: <20040727140509.21492.patches@notabene>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BpEX4-0003nU-Kw
-	for nfs@lists.sourceforge.net; Mon, 26 Jul 2004 16:05:22 -0700
-Received: from hifw1.credence.com ([63.127.103.172] helo=hinscp.hillsboro.credence.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1BpEX4-0002Es-9f
-	for nfs@lists.sourceforge.net; Mon, 26 Jul 2004 16:05:22 -0700
-To: nfs@lists.sourceforge.net
+	id 1BpJHK-0002rV-JO
+	for nfs@lists.sourceforge.net; Mon, 26 Jul 2004 21:09:26 -0700
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1BpJHJ-00018R-Ud
+	for nfs@lists.sourceforge.net; Mon, 26 Jul 2004 21:09:26 -0700
+To: Marcelo Tosatti <marcelo.tosatti@cyclades.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,48 +28,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
->At least its good to know that we are not alone. Well, I do know about the 
->performance decrease of sync-exports for a pretty long time, but I was never 
->sure if its not only a problem of our server (the previous one was a 
->PII-450).
+This patch makes NFSSVC_MAXBLKSIZE depend on PAGE_SIZE so that machines
+with large page sizes can take advantage of that feature to serve NFS
+with larger blocksizes, increasing performance and avoiding a fallback
+to synchronous traffic between machines with page sizes greater than 8K.
+Also, documents the actual constraints on NFSSVC_MAXBLKSIZE.
 
-We definitely see the same problem of sync-exports _much_ slower (4x to 7x-ish)
-on our network (Dell 340 and 340 workstations with 2.2 GHz Pentium IVs).
+From: Greg Banks <gnb@sgi.com>
+Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
-We've switched to using async when serving up our Linux volumes.
+### Diffstat output
+ ./include/linux/nfsd/const.h |   12 ++++++++++--
+ 1 files changed, 10 insertions(+), 2 deletions(-)
 
-
->So I really don't think that the server performance is the problem.
-
-I absolutely agree.  In fact, I've observed that Linux clients
-are _faster_ writing to slower Solaris servers than fast ones.
-
-On a 400 MHz Sun Ultra-5 I was using as a server was 4x _faster_
-than a 1.5 GHz SunBlade 2500 system.
-
-My observation is the faster the Solaris server, the slower
-the Linux NFS client (writes only).
-
-I don't know if the whole Linux-to-Solaris write issue
-can be explained by the number of COMMIT requests.
-Solaris clients only issue a COMMIT request when the
-file is closed or when the client's buffer cache is
-flushed by memory management operations (like pageout).
-
-However Linux client issues one COMMIT for every 32
-writes, and for a 32K block size, that's one COMMIT
-for every 1 Mbyte of data.
-
-Those extra COMMITs must affect performance, but I still
-think there's something else going on.
-
-
-
-John Roberts
-
-john_roberts@credence.com
-
-
+diff ./include/linux/nfsd/const.h~current~ ./include/linux/nfsd/const.h
+--- ./include/linux/nfsd/const.h~current~	2004-07-27 13:59:14.000000000 +1000
++++ ./include/linux/nfsd/const.h	2004-07-27 13:59:14.000000000 +1000
+@@ -12,6 +12,7 @@
+ #include <linux/nfs.h>
+ #include <linux/nfs2.h>
+ #include <linux/nfs3.h>
++#include <asm/page.h>
+ 
+ /*
+  * Maximum protocol version supported by knfsd
+@@ -19,9 +20,16 @@
+ #define NFSSVC_MAXVERS		3
+ 
+ /*
+- * Maximum blocksize supported by daemon currently at 8K
++ * Maximum blocksize supported by daemon.  We want the largest
++ * value which 1) fits in a UDP datagram less some headers
++ * 2) is a multiple of page size 3) can be successfully kmalloc()ed
++ * by each nfsd.   
+  */
+-#define NFSSVC_MAXBLKSIZE	(8*1024)
++#if PAGE_SIZE > (16*1024)
++#define NFSSVC_MAXBLKSIZE	(32*1024)
++#else
++#define NFSSVC_MAXBLKSIZE	(2*PAGE_SIZE)
++#endif
+ 
+ #ifdef __KERNEL__
+ 
 
 
 -------------------------------------------------------
