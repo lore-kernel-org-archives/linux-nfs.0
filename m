@@ -1,12 +1,15 @@
-From: "William Knop" <w_knop@hotmail.com>
-Subject: Re: status
-Date: Mon, 18 Nov 2002 12:34:00 -0500
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Re: status
+Date: 18 Nov 2002 19:40:09 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <F170m8eyLahVRaWhrkZ0001357e@hotmail.com>
+Message-ID: <shsptt2d8mu.fsf@charged.uio.no>
+References: <F170m8eyLahVRaWhrkZ0001357e@hotmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; format=flowed
+Content-Type: text/plain; charset=us-ascii
+Cc: NFS@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: NFS@lists.sourceforge.net
+To: "William Knop" <w_knop@hotmail.com>
+In-Reply-To: <F170m8eyLahVRaWhrkZ0001357e@hotmail.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -19,98 +22,23 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Ah, doesn't NFSv3 not support concurrent reads? Or concurrent reads while a 
-file is open for writing or something like that? Concurrent writes would be 
-useful, but is not necessarily required (we could hack around it). Idealy, 
-we'd like to have a job continue to read off the version of a file it 
-started reading on, such that when the file already opened for reading is 
-opened for writing, the file is duplicated, the duplicate writen to (now the 
-new version), then deleted once the initial job closes the file for reading. 
-This could result in many versions of the same file, but only as long as 
-they are open for reading. It would be nice if I could open a file for a 
-"sustained read" or some such, so only big jobs would receive the special 
-treatment of getting their own temporary version of a file.
+>>>>> " " == William Knop <w_knop@hotmail.com> writes:
 
+     > Ah, doesn't NFSv3 not support concurrent reads? Or concurrent
+     > reads while a file is open for writing or something like that? 
 
->NFSv4 for Linux is about three months out.  a beta quality                  
->                                                                            
->                 > client will be available soon, but the server is farther 
->                                                                            
->                                    > out.                                  
->                                                                            
->                                                                            
->                                                                            
->                                                                        > 
->what are your performance requirements, and why do you                      
->                                                                            
->                 > think NFSv3 won't meet them?
->
->
-> > I'm setting up a distributed/clustering filesystem for a                 
->                                                                            
->                  > > research group and                                    
->                                                                            
->                                     > > would like some info/advise.       
->                                                                            
->                                                        > >                 
->                                                                            
->                                                                           
-> > > NFSv4 looks pretty sweet, but is it ready for beta                     
->                                                                            
->                    > > deployment? We'll need to                           
->                                                                            
->                                       > > have everything up and stable 
->fairly soon, but so far it                                                  
->                                                            > > seems like 
->NFSv4 is                                                                    
->                                                                            
->    > > the only open source FS out there that will satisfy our             
->                                                                            
->                       > > requirements, of                                 
->                                                                            
->                                          > > which the main ones are 
->partial-file caching and support for                                        
->                                                                  > > large 
->(100GB+)                                                                    
->                                                                            
->         > > filesystems.                                                   
->                                                                            
->                            > >                                             
->                                                                            
->                                               > > Intermezzo forces whole 
->file caching, which will not do.                                            
->                                                                  > > 
->OpenGFS I believe                                                           
->                                                                            
->               > > is still in alpha stage. OpenAFS only allows for very 
->small                                                                       
->                                    > > filesystems.                        
->                                                                            
->                                                       > > EVMS looks 
->promising, but the clustering FS part is still                              
->                                                                            
->    > > alpha. I think                                                      
->                                                                            
->                       > > NFSv3 has poor performance, although it would be 
->excellent if                                                                
->                                         > > it would work.                 
->                                                                            
->                                                            > >             
->                                                                            
->                                                                            
->    > > I'd greatly appreciate any info on distributed/clustering           
->                                                                            
->                       > > filesystems,                                     
->                                                                            
->                                          > > especially NFSv4 or stable 
->alternatives.
-> > > Thanks much,
-> > William Knop
+Something like that: it doesn't support calling back clients in order
+to notify them of changes that occur on the server because the model
+is designed to be stateless and thus to scale for large numbers of
+clients.
+Although NFSv4 adds the concept of state (and hence file locking) to
+the protocol, it does not differ from NFSv3 in this respect.
 
-_________________________________________________________________
-Add photos to your messages with MSN 8. Get 2 months FREE*. 
-http://join.msn.com/?page=features/featuredemail
+You probably want to be looking at dedicated clustered filesystems
+such as OpenGFS, for instance.
 
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
