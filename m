@@ -1,17 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 10 of 16] nfsd4: don't set WRITE_OWNER in either allow or deny bits
-Date: Tue, 22 Mar 2005 16:42:01 +1100
-Message-ID: <E1DDc9R-0002Ki-PS@notabene.cse.unsw.edu.au>
+Subject: [PATCH kNFSd 15 of 16] nfsd4: fix open returns for other claim types
+Date: Tue, 22 Mar 2005 16:42:02 +1100
+Message-ID: <E1DDc9S-0002L2-3p@notabene.cse.unsw.edu.au>
 References: <20050322163830.8762.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DDcA2-0006m2-LO
-	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:38 -0800
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
+	id 1DDc9b-0006kZ-Pn
+	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:11 -0800
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1DDcA0-0005A4-RO
-	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:38 -0800
+	id 1DDc9a-00055v-WC
+	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:11 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -27,46 +27,73 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
+Switch on OPEN claim type instead of if-else. add remaining OPEN claim types.
 
-WRITE_OWNER should be neither allowed nor denied.
+Return nfserr_notsupp instead of nfserr_inval for valid claim types.
 
-This improves interoperability with Solaris clients and represents our
-permissions more accurately.
-
-It breaks compatibility with clients using the old version of the NFSv4<->POSIX
-mapping.  I believe the only code that did that was older versions of
-experimental client-side code available only from our website, so I prefer not
-to introduce a hack just to continue support the old mapping.
-
+Signed-off-by: Andy Adamson <andros@citi.umich.edu>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4acl.c |    5 ++++-
- 1 files changed, 4 insertions(+), 1 deletion(-)
+ ./fs/nfsd/nfs4proc.c |   32 +++++++++++++++++++++-----------
+ 1 files changed, 21 insertions(+), 11 deletions(-)
 
-diff ./fs/nfsd/nfs4acl.c~current~ ./fs/nfsd/nfs4acl.c
---- ./fs/nfsd/nfs4acl.c~current~	2005-03-22 16:36:35.000000000 +1100
-+++ ./fs/nfsd/nfs4acl.c	2005-03-22 16:36:35.000000000 +1100
-@@ -55,6 +55,9 @@
- #define NFS4_ANYONE_MODE (NFS4_ACE_READ_ATTRIBUTES | NFS4_ACE_READ_ACL | NFS4_ACE_SYNCHRONIZE)
- #define NFS4_OWNER_MODE (NFS4_ACE_WRITE_ATTRIBUTES | NFS4_ACE_WRITE_ACL)
- 
-+/* We don't support these bits; insist they be neither allowed nor denied */
-+#define NFS4_MASK_UNSUPP (NFS4_ACE_DELETE | NFS4_ACE_WRITE_OWNER)
-+
- /* flags used to simulate posix default ACLs */
- #define NFS4_INHERITANCE_FLAGS (NFS4_ACE_FILE_INHERIT_ACE \
- 		| NFS4_ACE_DIRECTORY_INHERIT_ACE | NFS4_ACE_INHERIT_ONLY_ACE)
-@@ -83,7 +86,7 @@ mask_from_posix(unsigned short perm, uns
- static u32
- deny_mask(u32 allow_mask, unsigned int flags)
- {
--	u32 ret = ~allow_mask & ~NFS4_ACE_DELETE;
-+	u32 ret = ~allow_mask & ~NFS4_MASK_UNSUPP;
- 	if (!(flags & NFS4_ACL_DIR))
- 		ret &= ~NFS4_ACE_DELETE_CHILD;
- 	return ret;
+diff ./fs/nfsd/nfs4proc.c~current~ ./fs/nfsd/nfs4proc.c
+--- ./fs/nfsd/nfs4proc.c~current~	2005-03-22 16:36:36.000000000 +1100
++++ ./fs/nfsd/nfs4proc.c	2005-03-22 16:36:36.000000000 +1100
+@@ -197,30 +197,40 @@ nfsd4_open(struct svc_rqst *rqstp, struc
+ 	}
+ 	if (status)
+ 		goto out;
+-	if (open->op_claim_type == NFS4_OPEN_CLAIM_NULL) {
++	switch (open->op_claim_type) {
++		case NFS4_OPEN_CLAIM_NULL:
+ 	/*
+ 	 * This block of code will (1) set CURRENT_FH to the file being opened,
+ 	 * creating it if necessary, (2) set open->op_cinfo,
+ 	 * (3) set open->op_truncate if the file is to be truncated
+ 	 * after opening, (4) do permission checking.
+ 	 */
+-		status = do_open_lookup(rqstp, current_fh, open);
+-		if (status)
+-			goto out;
+-	} else if (open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS) {
++			status = do_open_lookup(rqstp, current_fh, open);
++			if (status)
++				goto out;
++			break;
++		case NFS4_OPEN_CLAIM_PREVIOUS:
+ 	/*
+ 	* The CURRENT_FH is already set to the file being opened. This
+ 	* block of code will (1) set open->op_cinfo, (2) set
+ 	* open->op_truncate if the file is to be truncated after opening,
+ 	* (3) do permission checking.
+ 	*/
+-		status = do_open_fhandle(rqstp, current_fh, open);
+-		if (status)
++			status = do_open_fhandle(rqstp, current_fh, open);
++			if (status)
++				goto out;
++			break;
++		case NFS4_OPEN_CLAIM_DELEGATE_CUR:
++             	case NFS4_OPEN_CLAIM_DELEGATE_PREV:
++			printk("NFSD: unsupported OPEN claim type %d\n",
++				open->op_claim_type);
++			status = nfserr_notsupp;
++			goto out;
++		default:
++			printk("NFSD: Invalid OPEN claim type %d\n",
++				open->op_claim_type);
++			status = nfserr_inval;
+ 			goto out;
+-	} else {
+-		printk("NFSD: unsupported OPEN claim type\n");
+-		status = nfserr_inval;
+-		goto out;
+ 	}
+ 	/*
+ 	 * nfsd4_process_open2() does the actual opening of the file.  If
 
 
 -------------------------------------------------------
