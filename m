@@ -1,22 +1,22 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: PATCH - kNFSd in 2.5.15 - Cleanup of nfsd_open
-Date: Wed, 15 May 2002 15:27:23 +1000 (EST)
+From: "Kent, Ian I." <Ian.Kent@woodside.com.au>
+Subject: FW: Performance problem
+Date: Wed, 15 May 2002 15:44:20 +0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15585.61883.17544.546267@notabene.cse.unsw.edu.au>
+Message-ID: <62D26CC4CB1CD3118EAA00805FBB65FA0B8B905F@perm01.woodside.com.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 177rKC-0002qV-00
-	for <nfs@lists.sourceforge.net>; Tue, 14 May 2002 22:27:45 -0700
-Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>)
-	(for <hch@infradead.org>) By tone With Smtp ;
-	Wed, 15 May 2002 15:27:36 +1000
-To: Linus Torvalds <torvalds@transmeta.com>
-cc: Christoph Hellwig <hch@infradead.org>
+Received: from hydrogen.woodside.com.au ([203.48.119.98])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 177tYk-0003v8-00
+	for <nfs@lists.sourceforge.net>; Wed, 15 May 2002 00:50:55 -0700
+Received: from permsw01.woodside.com.au (neon.woodside.com.au [203.48.119.97])
+	by hydrogen.woodside.com.au (Postfix) with ESMTP id D33564965
+	for <nfs@lists.sourceforge.net>; Wed, 15 May 2002 15:50:42 +0800 (WST)
+Received: from perm01.woodside.com.au (unverified) by permsw01.woodside.com.au
+ (Content Technologies SMTPRS 4.2.5) with ESMTP id <T5ae13c382d9e59659619d@permsw01.woodside.com.au> for <nfs@lists.sourceforge.net>;
+ Wed, 15 May 2002 15:51:16 +0800
+To: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,107 +30,56 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 
+Oops, should have sent this to the list.
 
-From: Christoph Hellwig <hch@infradead.org>
-Date: Tue, 14 May 2002 13:02:50 +0100
-
-This patch makes nfsd_open use init_private_file to initilize
-the file pointer the caller had allocated on stack.  In addition
-a number of small cleanups:
-
- - format comments to be readable on 80char ANSI terminal
- - don't fop_get (and fop_put in nfsd_close), out file already
-   is a reference to the inode so they can't go away.
- - don't decrement f_count on failure - it won't be checked anyway
- - don't check for filp->f_op n nfsd_close, it can't be NULL
-
- ----------- Diffstat output ------------
- ./fs/nfsd/vfs.c |   54 +++++++++++++++++++++---------------------------------
- 1 files changed, 21 insertions(+), 33 deletions(-)
-
---- ./fs/nfsd/vfs.c	2002/05/15 05:09:12	1.1
-+++ ./fs/nfsd/vfs.c	2002/05/15 05:14:49	1.2
-@@ -414,11 +414,13 @@
- {
- 	struct dentry	*dentry;
- 	struct inode	*inode;
--	int		err;
-+	int		flags = O_RDONLY|O_LARGEFILE, mode = FMODE_READ, err;
- 
--	/* If we get here, then the client has already done an "open", and (hopefully)
--	 * checked permission - so allow OWNER_OVERRIDE in case a chmod has now revoked
--	 * permission */
-+	/*
-+	 * If we get here, then the client has already done an "open",
-+	 * and (hopefully) checked permission - so allow OWNER_OVERRIDE
-+	 * in case a chmod has now revoked permission.
-+	 */
- 	err = fh_verify(rqstp, fhp, type, access | MAY_OWNER_OVERRIDE);
- 	if (err)
- 		goto out;
-@@ -443,37 +445,24 @@
- 	if (err)
- 		goto out_nfserr;
- 
--	if ((access & MAY_WRITE) && (err = get_write_access(inode)) != 0)
--		goto out_nfserr;
--
--	memset(filp, 0, sizeof(*filp));
--	filp->f_op    = fops_get(inode->i_fop);
--	atomic_set(&filp->f_count, 1);
--	filp->f_dentry = dentry;
--	filp->f_vfsmnt = fhp->fh_export->ex_mnt;
- 	if (access & MAY_WRITE) {
--		filp->f_flags = O_WRONLY|O_LARGEFILE;
--		filp->f_mode  = FMODE_WRITE;
-+		err = get_write_access(inode);
-+		if (err)
-+			goto out_nfserr;
-+
-+		flags = O_WRONLY|O_LARGEFILE;
-+		mode  = FMODE_WRITE;
-+
- 		DQUOT_INIT(inode);
--	} else {
--		filp->f_flags = O_RDONLY|O_LARGEFILE;
--		filp->f_mode  = FMODE_READ;
- 	}
- 
--	err = 0;
--	if (filp->f_op && filp->f_op->open) {
--		err = filp->f_op->open(inode, filp);
--		if (err) {
--			fops_put(filp->f_op);
--			if (access & MAY_WRITE)
--				put_write_access(inode);
--
--			/* I nearly added put_filp() call here, but this filp
--			 * is really on callers stack frame. -DaveM
--			 */
--			atomic_dec(&filp->f_count);
--		}
--	}
-+	err = init_private_file(filp, dentry, mode);
-+	if (!err) {
-+		filp->f_flags = flags;
-+		filp->f_vfsmnt = fhp->fh_export->ex_mnt;
-+	} else if (access & MAY_WRITE)
-+		put_write_access(inode);
-+
- out_nfserr:
- 	if (err)
- 		err = nfserrno(err);
-@@ -490,9 +479,8 @@
- 	struct dentry	*dentry = filp->f_dentry;
- 	struct inode	*inode = dentry->d_inode;
- 
--	if (filp->f_op && filp->f_op->release)
-+	if (filp->f_op->release)
- 		filp->f_op->release(inode, filp);
--	fops_put(filp->f_op);
- 	if (filp->f_mode & FMODE_WRITE)
- 		put_write_access(inode);
- }
+> -----Original Message-----
+> From:	Kent, Ian I. 
+> Sent:	Wednesday, May 15, 2002 3:42 PM
+> To:	'Nicolas Brainez'
+> Subject:	RE: [NFS] Performance problem
+> 
+> 
+> -----Original Message-----
+> From:	Nicolas Brainez [SMTP:nb@many.be]
+> Sent:	Monday, May 13, 2002 11:34 PM
+> To:	Trond Myklebust
+> Cc:	nfs@lists.sourceforge.net
+> Subject:	Re: [NFS] Performance problem
+> 
+> On Mon, 2002-05-13 at 17:17, Trond Myklebust wrote:
+> > >>>>> " " == Nicolas Brainez <nb@many.be> writes:
+> > 
+> >      > Hello, I have an nfs server who exports some backup directories
+> >      > for the lan's users, it's a new install.
+> > 
+> >      > First I would like say that's not an hardware problem, because
+> >      > we have no problem to use appletalk, ftp, ...
+> > 
+> > I'll bet you it is. Have you tried using a different network card +
+> driver?
+> 
+> Nope, I've not another network card, and i've absolutely no problem with
+> others protocols like appletalk and ftp, I can't believe it's an
+> hardware problem in these conditions.
+>  
+> ian> And what percentage of your 100Mbit (per second) do you use when
+> ian> doing an FTP?
+> 
+> 
+> 
+> _______________________________________________________________
+> 
+> Have big pipes? SourceForge.net is looking for download mirrors. We supply
+> the hardware. You get the recognition. Email Us: bandwidth@sourceforge.net
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+> 
+> 
+> -- 
+> This email was received from the Internet.  If this email is unsolicited,
+> non-business related, inappropriate or spam, please forward it to
+> spamfilter@woodside.com.au
 
 _______________________________________________________________
 
