@@ -1,24 +1,22 @@
-From: "Brandon D. Valentine" <brandon@dvalentine.com>
-Subject: Re: [bug] FC2/2.6.8.1 does not fallback to NFSv2
-Date: Sat, 28 Aug 2004 21:13:26 -0500
+From: "randy" <paries@knology.net>
+Subject: server local.flanders not responding, still trying on console
+Date: Sun, 29 Aug 2004 02:29:08 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040829021326.GC84014@brandon.dvalentine.com>
-References: <20040827212244.GA57703@brandon.dvalentine.com> <1093642565.5758.108.camel@lade.trondhjem.org> <1093643490.5758.120.camel@lade.trondhjem.org> <20040827233235.GB57703@brandon.dvalentine.com> <4130BC76.9070202@RedHat.com> <20040828183847.GA84014@brandon.dvalentine.com> <4131323C.6060509@RedHat.com>
+Message-ID: <E1C1K7k-0007dv-U5@sc8-sf-mx1.sourceforge.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C1FED-0006Uf-Bt
-	for nfs@lists.sourceforge.net; Sat, 28 Aug 2004 19:15:33 -0700
-Received: from mail.michaelchaney.com ([207.65.84.68] helo=daphne.michaelchaney.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.34)
-	id 1C1FEC-0001Lz-NO
-	for nfs@lists.sourceforge.net; Sat, 28 Aug 2004 19:15:33 -0700
-To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: <4131323C.6060509@RedHat.com>
+	id 1C1K7o-0004ip-DP
+	for nfs@lists.sourceforge.net; Sun, 29 Aug 2004 00:29:16 -0700
+Received: from smtp.knology.net ([24.214.63.101])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.34)
+	id 1C1K7k-0007dv-U5
+	for nfs@lists.sourceforge.net; Sun, 29 Aug 2004 00:29:16 -0700
+To: <nfs@lists.sourceforge.net>
+In-Reply-To: 
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,34 +29,73 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sat, Aug 28, 2004 at 09:32:44PM -0400, Steve Dickson wrote:
-> Brandon D. Valentine wrote
-> >In other words: what the heck are you talking about? =)
-> > 
-> I thought  the problem was that rpc.mount was being
-> *unintentionally* started with the " -no-nfs-version  3"
-> flag which I was  happening in my testing of the nfs4 code
-> Something similar to:
-> 
-> root       395     1  0 Aug17 ?        00:00:00 /usr/sbin/rpc.mountd 
-> --no-nfs-version 3
-> 
-> But I guess I was mistaken......
+Hello
+ 
+I have two rh9 boxes. One is the NFS server and one is the client.
+ 
+They are very busy web servers that share the same document root via nfs. 
+ 
+i keep getting these errors on my console and in my message file May  3
+12:44:11 krusty kernel: nfs: server local.flanders not responding, still
+trying May  3 12:44:15 krusty kernel: nfs: server local.flanders OK
 
-No problem.  Thanks for taking the the time to respond.
+these two boxes each have a GIGaBit ethernet card and a crossover cable
+connecting each other and it is only used for NFS.
 
-BTW, I noticed you've worked on the util-linux package some recently.
-Can you look into whether the patch James Pearson posted in this thread
-will make it into Fedora Core 3 Test 2?  It would be a shame for Fedora
-Core 3 to be released with a /bin/mount that doesn't work with NFSv2
-servers, especially when the fix is so small.
+All other network functions use the other nics
 
-Thanks,
+Stats are below, I am currently running 49 nfsd's
 
-Brandon D. Valentine
--- 
-brandon@dvalentine.com                           http://www.geekpunk.net
-Pseudo-Random Googlism:  summer is boom time for building
+Thanks for any suggestions
+
+On the server
+nfsstat -s
+Server rpc stats:
+calls      badcalls   badauth    badclnt    xdrcall
+25718710   0          0          0          0       
+Server nfs v2:
+null       getattr    setattr    root       lookup     readlink   
+4      100% 0       0% 0       0% 0       0% 0       0% 0       0% 
+read       wrcache    write      create     remove     rename     
+0       0% 0       0% 0       0% 0       0% 0       0% 0       0% 
+link       symlink    mkdir      rmdir      readdir    fsstat     
+0       0% 0       0% 0       0% 0       0% 0       0% 0       0% 
+
+Server nfs v3:
+null       getattr    setattr    lookup     access     readlink   
+4       0% 10236002 39% 42905   0% 5439928 21% 8598    0% 60099   0% 
+read       write      create     mkdir      symlink    mknod      
+8919197 34% 910196  3% 21816   0% 106     0% 330     0% 0       0% 
+remove     rmdir      rename     link       readdir    readdirplus
+2634    0% 26      0% 5288    0% 0       0% 12840   0% 0       0% 
+fsstat     fsinfo     pathconf   commit     
+24      0% 24      0% 0       0% 58689   0% 
+
+
+On the Client
+nfsstat -c
+Client rpc stats:
+calls      retrans    authrefrsh
+24616865   131061     0       
+Client nfs v2:
+null       getattr    setattr    root       lookup     readlink   
+0       0% 0       0% 0       0% 0       0% 0       0% 0       0% 
+read       wrcache    write      create     remove     rename     
+0       0% 0       0% 0       0% 0       0% 0       0% 0       0% 
+link       symlink    mkdir      rmdir      readdir    fsstat     
+0       0% 0       0% 0       0% 0       0% 0       0% 0       0% 
+
+Client nfs v3:
+null       getattr    setattr    lookup     access     readlink   
+0       0% 10174261 41% 20990   0% 5363659 21% 7342    0% 59652   0% 
+read       write      create     mkdir      symlink    mknod      
+8811537 35% 119194  0% 6475    0% 53      0% 315     0% 0       0% 
+remove     rmdir      rename     link       readdir    readdirplus
+1900    0% 26      0% 4712    0% 0       0% 12658   0% 0       0% 
+fsstat     fsinfo     pathconf   commit     
+11      0% 11      0% 0       0% 34069   0% 
+
+
 
 
 -------------------------------------------------------
