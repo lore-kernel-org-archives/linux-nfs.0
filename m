@@ -1,20 +1,17 @@
-From: Brian Jackson <brian@mdrx.com>
-Subject: Re: NFS as a Cluster File System.
-Date: Thu, 9 Jan 2003 16:04:07 -0600
+From: "Lorn Kay" <lorn_kay@hotmail.com>
+Subject: Re: Re: NFS as a Cluster File System.
+Date: Thu, 09 Jan 2003 22:51:30 +0000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200301091604.07132.brian@mdrx.com>
-References: <F112Sbh29cM3oryKFRJ0001248d@hotmail.com> <3E1DE570.7070207@emageon.com>
+Message-ID: <F155FnqdR2xuRoAnbsZ00020983@hotmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; format=flowed
+Cc: nfs@lists.sourceforge.net, linux-ha@muc.de
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [65.67.58.25] (helo=duallie.mdrx.com)
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18WkkI-0002qQ-00
-	for <nfs@lists.sourceforge.net>; Thu, 09 Jan 2003 14:01:50 -0800
-To: nfs@lists.sourceforge.net, linux-ha@muc.de
-In-Reply-To: <3E1DE570.7070207@emageon.com>
+Received: from f155.law11.hotmail.com ([64.4.17.155] helo=hotmail.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18WlWj-0003Dj-00
+	for <nfs@lists.sourceforge.net>; Thu, 09 Jan 2003 14:51:53 -0800
+To: alanr@unix.sh
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,34 +24,30 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thursday 09 January 2003 03:11 pm, Brian Tinsley wrote:
-> Lorn Kay wrote:
-> > Is NFS a viable CFS? (I'm cross posting this due to a discussion on
-> > the the linux-ha list recently.)
+>NFS V3 and before have problems with "cache coherency".  That is, the 
+>different nodes in the cluster are not guaranteed to see the same contents.
 >
-> Since there is not a really good cluster filesystem for Linux that is
-> not either "half baked"
+>I think this is supposed to be fixed in v4.
+>
+>
+>--
+>     Alan Robertson <alanr@unix.sh>
+>
+>"Openness is the foundation and preservative of friendship....  Let me 
+>claim from you at all times your undisguised opinions." - William 
+>Wilberforce
+>
 
-Hey, we're working on it ;)
+I think this can be resolved with the "noac" mount option (prior to V4).
 
---Brian Jackson
-OpenGFS Project
+--K
 
-> (IMHO - I'm probably going to get smacked over
-> that statement!) or cost an arm and a leg, this is exactly the route we
-> have taken.
->
-> >     The NFS server is a high-quality dedicated machine (Net App, EMC,
-> > etc.)
->
-> We've had great success with just using SMP Linux servers. We do have
-> one EMC IP4700 in production, and it's a nice system, but I prefer the
-> Linux based alternative.
->
-> >     Linux clients can use TCP instead of UDP.
->
-> Although I haven't had problems with this in our lab, I believe the NFS
-> authors still consider this experimental.
+
+
+
+_________________________________________________________________
+MSN 8 helps eliminate e-mail viruses. Get 2 months FREE* 
+http://join.msn.com/?page=features/virus
 
 
 
