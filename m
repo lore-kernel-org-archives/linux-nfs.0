@@ -1,45 +1,68 @@
-From: Dax Kelson <dax@gurulabs.com>
-Subject: Re: [PATCH] Secure user authentication for NFS using RPCSEC_GSS
- [0/6]
-Date: Mon, 13 Jan 2003 11:06:40 -0700 (MST)
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <Pine.LNX.4.44.0301131052440.20523-100000@mooru.gurulabs.com>
-References: <Pine.LNX.4.44.0301130745510.26185-100000@dunlop.admin.ie.alphyra.com>
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: Re: NFS as a Cluster File System.
+Date: Tue, 14 Jan 2003 06:36:48 +1100
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <15907.5456.68906.820989@notabene.cse.unsw.edu.au>
+References: <F112Sbh29cM3oryKFRJ0001248d@hotmail.com>
+	<3E1DE9D6.7040406@unix.sh>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: trond.myklebust@fys.uio.no,
-	Linux Kernel <linux-kernel@vger.kernel.org>,
-	NFS maillist <nfs@lists.sourceforge.net>
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: Paul Jakma <paulj@alphyra.ie>
-In-Reply-To: <Pine.LNX.4.44.0301130745510.26185-100000@dunlop.admin.ie.alphyra.com>
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: Lorn Kay <lorn_kay@hotmail.com>,
+    nfs@lists.sourceforge.net,
+    linux-ha@muc.de
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18YAOS-0000yd-00
+	for <nfs@lists.sourceforge.net>; Mon, 13 Jan 2003 11:37:09 -0800
+Received: From
+	notabene.cse.unsw.edu.au ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
+	(for <alanr@unix.sh>) (for <lorn_kay@hotmail.com>)
+	(for <nfs@lists.sourceforge.net>) (for <linux-ha@muc.de>) By tone
+	With Smtp ; Tue, 14 Jan 2003 06:36:52 +1100
+To: Alan Robertson <alanr@unix.sh>
+In-Reply-To: message from Alan Robertson on Thursday January 9
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, 13 Jan 2003, Paul Jakma wrote:
-
-> On 12 Jan 2003, Dax Kelson wrote:
+On Thursday January 9, alanr@unix.sh wrote:
 > 
-> > Standard NFS security/authentication sucks rocks. Without this NFS home
-> > directory servers are just waiting to be ransacked by a rouge (or
-> > compromised) root user on a client machine.
+> NFS V3 and before have problems with "cache coherency".  That is, the 
+> different nodes in the cluster are not guaranteed to see the same contents.
 > 
-> AIUI, A root user still can. The users krbv5 credentials will
-> generally have been cached to storage. (though i suppose one could
-> mount that storage via NFS and use root_squash, but that's little 
-> protection.).
+> I think this is supposed to be fixed in v4.
+> 
 
-Well, I was trying to keep my email short. Yes, if you login to a 
-compromised machine, and then obtain krbv5 credentails the evil root user 
-can access/delete/modify your files stored on a RPSEC_GSS NFS server.
+NFSv4 does not try to "fix" this.  It makes no attempts at "cache
+coherency" beyond what NFSv2/3 provide which is "close to open"
+cohenrence, meaning that if only one process has a file open at a
+time, then everythnig will appear coherent, and if multiple processes
+have the file open at the same time, they need to use record locking.
 
-With RPSEC_GSS, a compromised machine, on it's own (no logged in users
-except evil root), can not access/delete/modify files stored on the NFS
-home directory server, which is quite different than the normal case. This 
-helps when the exploit-of-the-day hits at 4am Saturday morning.
+I really don't think total cache coherency is a sensible goal for a
+network filesystem, even a cluster filesystem.  It imposes lots of
+extra network traffic that most of the time will be of no value.
+If an application needs some degree of coherence, it should be
+explicit about it's needs (using open/close or locking) so that the
+protocol can provide it then, and only then.
 
-As a matter of practice you shouldn't leave cached credentials lying
-around when you not logged in. Unless you have a very strong reason not
-to, kill your ssh-agent and run kdestory on logout (.bash_logout and 
-friends).
+NeilBrown
 
-Dax
+
+-------------------------------------------------------
+This SF.NET email is sponsored by: FREE  SSL Guide from Thawte
+are you planning your Web Server Security? Click here to get a FREE
+Thawte SSL guide and find the answers to all your  SSL security issues.
+http://ads.sourceforge.net/cgi-bin/redirect.pl?thaw0026en
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
