@@ -1,21 +1,21 @@
-From: "Fredrick Clemons" <sstill@aol.com>
-Subject: Summer is almost here  ............ argonne
-Date: Tue, 27 May 03 04:51:45 GMT
+From: dJu` <dju.ml@wanadoo.fr>
+Subject: nfs hangs up when listing a directory
+Date: Tue, 27 May 2003 09:20:05 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <5w$j0-8-5449x@guy.irc>
+Message-ID: <200305270920.05161.dju.ml@wanadoo.fr>
+Reply-To: dju.ml@wanadoo.fr
 Mime-Version: 1.0
-Content-Type: multipart/alternative; boundary="C8F8F908_47"
+Content-Type: text/plain;
+  charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from panoramix.vasoftware.com ([198.186.202.147] ident=mail)
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19KXSb-0005hW-00
-	for <nfs@lists.sourceforge.net>; Mon, 26 May 2003 22:57:21 -0700
-Received: from dt0d1n42.san.rr.com ([204.210.57.66]:4868)
-	by panoramix.vasoftware.com with smtp (Exim 4.05-VA-mm1 #1 (Debian))
-	id 19KXSV-0004dl-00
-	for <nfs@lists.sourceforge.net>; Mon, 26 May 2003 22:57:18 -0700
-To: <nfs@lists.sourceforge.net>
+Received: from smtp3.wanadoo.fr ([193.252.22.25] helo=mwinf0602.wanadoo.fr)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19KYkT-0001A5-00
+	for <nfs@lists.sourceforge.net>; Tue, 27 May 2003 00:19:53 -0700
+Received: from wyvern.local.dju (unknown [81.48.138.57])
+	by mwinf0602.wanadoo.fr (SMTP Server) with ESMTP id 134575400241
+	for <nfs@lists.sourceforge.net>; Tue, 27 May 2003 09:19:46 +0200 (CEST)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,85 +28,19 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+Hello. I have a strange problem, I hope I'm asking for help at the right 
+place. I have a server (named sterenn) sharing a directory to a client. They 
+are running linux. Mounting is fine, but I get a long hang up when I try to 
+list the shared dir, and then it says there are no files in that dir :
 
---C8F8F908_47
-Content-Type: text/html;
-Content-Transfer-Encoding: quoted-printable
+/myshareddir# ls
+total: 0
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1=
-">
-<META content=3D"MSHTML 6.00.2800.1170" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV>
-<DIV align=3Dcenter><FONT color=3D#ffffff size=3D1>Order Confirmation. You=
-r order 
-should be shipped by January, via FedEx. Your Federal Express tracking num=
-ber 
-is.</FONT><FONT size=3D1><BR><FONT color=3D#ffffff>Thank you for 
-registering.</FONT></FONT> <FONT face=3D"Arial, Helvetica, sans-serif" 
-color=3D#ff0000 size=3D6><BR>Wholesale Prescription 
-Medications!</FONT></STRONG></FONT></FONT><FONT 
-face=3D"Arial, Helvetica, sans-serif"><BR><STRONG><FONT size=3D4>OUR DOCTO=
-RS WILL 
-WRITE YOU A PRESCRIPTION FOR FREE</FONT></STRONG> <BR><FONT color=3D#00009=
-9 
-size=3D5><STRONG>Buy Your Prescription Meds 
-Online</STRONG></FONT><BR><BR><STRONG>Lowest Prices =FFFFFF96 No Prior
-Prescript=
-ion 
-Required<BR><A 
-href=3D"http://rd.yahoo.com/10000759/154/*http://medicinefromhome.biz
-/145/">Start&nbsp;Here</A></STRONG></FONT> 
-
-<P><FONT face=3D"Arial, Helvetica, sans-serif"><STRONG>Upon Approval</STRO=
-NG>, 
-<STRONG>Our US Licensed Doctors will Prescribe Your Medication For 
-Free</STRONG><BR><STRONG>And Have the Medication Shipped Overnight To Your=
- 
-Door.</STRONG></FONT></P>
-<P><FONT face=3D"Arial, Helvetica, sans-serif"><STRONG>We assure you the a=
-bsolute 
-best value on the Internet.<BR><A 
-href=3D"http://rd.yahoo.com/10000759/154/*http://medicinefromhome.biz
-/145/">Start&nbsp;Here</A> 
-</STRONG></FONT></P>
-<P><FONT face=3D"Arial, Helvetica, sans-serif"><STRONG>Medications for: 
-</STRONG>Weight Loss, Pain Relief, Muscle Pain Relief, Women's Health, Men=
-'s 
-Health, <BR>Impotence, Allergy Relief, Heartburn Relief, Migraine 
-Relief</FONT></P>
-<P><FONT face=3D"Arial, Helvetica, sans-serif"><STRONG>Medications like: 
-</STRONG>Phentermine, Adipex, Soma, Fioricet, Ultram, Celebrex,<BR>V i a g=
- r a, 
-Valtrex, Zyban, and many, many more.</FONT></P>
-<P><FONT face=3D"Arial, Helvetica, sans-serif"><STRONG><A 
-href=3D"http://rd.yahoo.com/10000759/154/*http://medicinefromhome.biz
-/145/">Start&nbsp;Here 
-to see all of our medications</A></STRONG></FONT></P></DIV>
-<P align=3Dcenter><FONT face=3D"Arial, Helvetica, sans-serif" color=3D#000=
-000 
-size=3D2><A 
-href=3D"http://rd.yahoo.com/10000759/154/*http://medicinefromhome.biz
-/145/remove.php">go&nbsp;here</A> 
-if you would not like to receive future mailings.</FONT></P>
-<P align=3Dcenter><FONT face=3DArial><FONT color=3D#ffffff 
-size=3D1>fundiprickettsiavista</FONT></P>
-<P align=3Dcenter><FONT face=3DArial color=3D#ffffff size=3D1>pontiac=
-</FONT></P>
-<P align=3Dcenter><FONT face=3DArial color=3D#ffffff 
-size=3D1>facsimile</FONT></P></FONT></DIV></BODY></HTML>
-
-
-
-
-=20
-
---C8F8F908_47--
+What's wrong ? I have portmap running on each side, rpcinfo -p shows the same 
+information from each side, mounting the exported dir seems to work fine, but 
+listing the files (and of course using them) makes the whole thing hang. I 
+have "[kernel] nfs: server sterenn not responding, timed out" in the logs. 
+Did I miss something ? Thanks.
 
 
 
