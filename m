@@ -1,48 +1,40 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: [NFS] [PATCH] kNFSd: Fixes a problem with inode clean up for vxfs
-Date: Wed, 06 Aug 2003 12:11:16 -0400
+From: Arjan van de Ven <arjanv@redhat.com>
+Subject: Re: [NFS] [PATCH] kNFSd: Fixes a problem with inode clean up for
+	vxfs
+Date: Wed, 06 Aug 2003 18:26:39 +0200
 Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <3F3128A4.8030305@RedHat.com>
+Message-ID: <1060187198.14950.0.camel@laptop.fenrus.com>
+References: <3F3128A4.8030305@RedHat.com>
+Reply-To: arjanv@redhat.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfs@lists.sourceforge.net,
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-o/De8bAfzzfWEsgBpkvx"
+Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net,
 	linux-kernel <linux-kernel@vger.kernel.org>
 Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: Neil Brown <neilb@cse.unsw.edu.au>
+To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: <3F3128A4.8030305@RedHat.com>
 List-ID: <nfs.lists.sourceforge.net>
 
-This a patch I've received from Veritas. Supposedly they have
-already submitted this but I can't seem to find it in any 2.4 trees..
 
-Does anybody recognize this and are there any known issues with it?
+--=-o/De8bAfzzfWEsgBpkvx
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-The Problem: The nfsd_findparent creates a dentry using d_alloc_root. 
-The d_op
-vector pointer in this dentry is not initialized. Hence filesystems that 
-supply
-the vector have a problem. nfs exports of such filesystems do not work
-correctly under memory pressure.  vxfs, vfat, ntfs are amongst the 
-filesystems
-affected by the bug.  Need redhat to fix nfsd code in their kernels. 
-Ideally
-a kernel needs to ask a filesystem to setup a d_op vector.  An entry point
-into a filesystem for doing this job doesn't exist. We can work around the
-problem by copying d_op vector pointer from the child of the dentry, whose
-d_op vector is correct.
+On Wed, 2003-08-06 at 18:11, Steve Dickson wrote:
+> , vfat, ntfs
 
+you can't NFS export vfat..... for lots of other reasons
 
-The Patch:
+--=-o/De8bAfzzfWEsgBpkvx
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
 
---- ./fs/nfsd/nfsfh.c.diff      Wed Jul  2 13:17:35 2003
-+++ ./fs/nfsd/nfsfh.c   Tue Jul 29 04:45:43 2003
-@@ -303,6 +303,7 @@ struct dentry *nfsd_findparent(struct de
-                       if (pdentry) {
-                               igrab(tdentry->d_inode);
-                               pdentry->d_flags |= 
-DCACHE_NFSD_DISCONNECTED;
-+                              pdentry->d_op = child->d_op;
-                       }
-               }
-               if (pdentry == NULL)
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.2 (GNU/Linux)
 
-SteveD.
+iD8DBQA/MSw+xULwo51rQBIRAqXoAJ40I8A2IPMHm6BFFVggwIGpVNgTGgCeMym6
+MGx6XwPdZNctBeoklxZ25aw=
+=1AoM
+-----END PGP SIGNATURE-----
+
+--=-o/De8bAfzzfWEsgBpkvx--
