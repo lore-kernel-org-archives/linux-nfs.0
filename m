@@ -1,19 +1,17 @@
-From: eric whiting <ewhiting@amis.com>
-Subject: Re: Maximum number of nfsd daemons?
-Date: Wed, 31 Jul 2002 22:28:45 -0600
+From: Donald Burns <DMB@reliance.co.uk>
+Subject: Problems with hard links in root NFS filesystem
+Date: Thu, 1 Aug 2002 12:20:19 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3D48B8FD.2A5094@amis.com>
-References: <FB5B6B9A4BA0104886C8394BB2B7C7B803ACAD5A@TOMBO.legato.com>
+Message-ID: <F418066D6DFA5040A1169F0B39B7604A0DE23D@rg273.reliance.co.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from 154-100.poccpe.cableone.net ([24.116.154.100] helo=gannett.design.amis.com)
-	by usw-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17a7b8-0003wU-00
-	for <nfs@lists.sourceforge.net>; Wed, 31 Jul 2002 21:30:02 -0700
-To: Daniel Barbar <dbarbar@legato.com>
+Received: from rg134.reliance.co.uk ([62.254.170.185] ident=hidden-user)
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17aE0H-0006nb-00
+	for <nfs@lists.sourceforge.net>; Thu, 01 Aug 2002 04:20:25 -0700
+To: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,44 +24,106 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-What OS are the clients running?  If they are solaris boxes you might
-want to consider the NFS/TCP patches for the linux NFS server -- NFS/UDP
-over a WAN can have problems. TCP might help out some.
-eric
+				
+Dear list members,
 
+I have a problem using NFS.
 
+Synopsis:	Files that are hard linked on the server's root
+		NFS images for a Beowulf cluster become inaccesable
+		either imediately or after a few hours.
 
-Daniel Barbar wrote:
-> 
-> Hi,
-> 
->   We recently moved one of our NFS servers from a Sun machine running
-> Solaris 7 to an Intel box running SuSE Linux 8.0 (kernel 2.4.18). We are
-> experiencing some (rather heavy) performance problems, more so for clients
-> accesing the service over our WAN link.
->   I'm starting to go through the excerise of tuning the NFS system, and
-> started first by trying to increase the number of nfsd process. It seems
-> that there is a hard coded limit of 128 processes, is that correct? If true,
-> is it because one shouldn't expect any substantial performance increase by
-> setting the number of nfsd threads to a number larger than 128?
->   Thanks in advance for your help. Regards,
-> 
-> ---
-> Daniel Barbar
-> 
-> -------------------------------------------------------
-> This sf.net email is sponsored by: Dice - The leading online job board
-> for high-tech professionals. Search and apply for tech jobs today!
-> http://seeker.dice.com/seeker.epl?rel_code=31
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+Boot example:	From the server's logs (server is rg272) :-
+
+		July 30 10:05:45 rg272 kernel: nfsd Security: sbin/init bad
+export.
+		July 30 10:05:46 rg272 kernel: nfsd Security: sbin/bash bad
+export.
+
+		The client boot-up hangs at this point.
+		
+After time example: From the server's logs (as I remember it):-
+
+		July 30 11:34:02 rg272 kernel: nfsd Security:
+lib/libc6.x.x.so bad export.
+
+Client example:	From the command line:-
+
+		cat /etc/inittab
+		cat: standard output: Stale NFS file handle
+
+Other symptoms:
+
+		When booting the cluster each machine must be booted
+		on its own. Booting the machines in parallel fills the
+		servers logs with "bad export" messages.
+
+		Problem exists irrespective of NFS protocol
+		used (V2 or V3)
+
+		Cycling the power on the server clears the problem
+		temporarily but restarting the NFS service does not.
+
+System Details:
+
+		Software:- Linux RedHat 7.3 on server and clients
+		(kernel 2.4.18)
+		Server:- Dell GX530 dual processor precision work
+		station.
+		Clients:- Dell GX260 single processor work station.
+
+Progress in solving the problem to date:
+
+		By trawling the web I found one Gunnar Raetch who
+		experianced almost identical problems using kernel
+		2.4.14. He fixed the problem by applying the
+		following kernel patches:-
+
+ 		http://www.cse.unsw.edu.au/~neilb/patches/linux/2.4.14-pre4/
+ 		
+		patch-D-NfsdOpsPrepare
+		patch-E-NfsdOps
+		patch-F-ReiserfsNfsdOps
+		
+		I am unable patch my 2.4.18 kernel with these patches.
+		I also tried down grading to kernel 2.4.14, successfully
+		applied the patches & compiled, but the USB support
+		in 2.4.14 would not allow me use of my mouse and keyboard
+		(Oh Sh*t!).
+
+I hope this provides sufficient info to resolve the problem.
+
+Many thanks in advance for your anticipated kind help.
+
+Best Regards,
+
+Donald.
+
+Reliance Gear Company Ltd.
+Rowley Mills
+Penistone Road
+Lepton
+Huddersfield
+England
+HD8 0LE
+
+Tel: +44 1484 601000				
+fax: +44 1484 601001
+
+http://www.reliance.co.uk 
+
+THE INFORMATION IN THIS COMMUNICATION IS CONFIDENTIAL AND INTENDED ONLY FOR
+THE USE OF THE ADDRESSEE.  DISCLOSURE, USE  OR COPYING OF THIS MESSAGE OR
+ITS CONTENTS OTHER THAN BY THE ADDRESSEE IS PROHIBITED. IF YOU RECEIVE THIS
+COMMUNICATION IN ERROR WE WOULD BE GRATEFUL IF YOU WOULD NOTIFY US
+IMMEDIATELY AND DELETE ANY MATERIAL RECEIVED
+
 
 
 -------------------------------------------------------
-This sf.net email is sponsored by: Dice - The leading online job board
-for high-tech professionals. Search and apply for tech jobs today!
-http://seeker.dice.com/seeker.epl?rel_code=31
+This sf.net email is sponsored by:ThinkGeek
+Welcome to geek heaven.
+http://thinkgeek.com/sf
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
