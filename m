@@ -1,29 +1,30 @@
 From: Greg Banks <gnb@melbourne.sgi.com>
 Subject: Re: Re: [PATCH] fix nfsidem cthon test
-Date: Fri, 22 Oct 2004 14:12:07 +1000
+Date: Fri, 22 Oct 2004 22:28:56 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1098418326.21421.49.camel@hole.melbourne.sgi.com>
+Message-ID: <1098448136.21421.78.camel@hole.melbourne.sgi.com>
 References: <1098341478.21421.7.camel@hole.melbourne.sgi.com>
 	 <1098343891.28394.15.camel@lade.trondhjem.org>
 	 <20041021161309.GC24417@fieldses.org>
 	 <1098413781.21421.37.camel@hole.melbourne.sgi.com>
 	 <16760.31766.119716.302669@cse.unsw.edu.au>
+	 <1098418326.21421.49.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: multipart/mixed; boundary="=-/px8wfnHGMWZzqO5gZiT"
 Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CKqUq-0004Wq-Sq
-	for nfs@lists.sourceforge.net; Thu, 21 Oct 2004 20:53:44 -0700
+	id 1CKyFZ-0002fq-17
+	for nfs@lists.sourceforge.net; Fri, 22 Oct 2004 05:10:29 -0700
 Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CKqUq-0001jT-86
-	for nfs@lists.sourceforge.net; Thu, 21 Oct 2004 20:53:44 -0700
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1CKyFY-0004P7-8w
+	for nfs@lists.sourceforge.net; Fri, 22 Oct 2004 05:10:28 -0700
 To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <16760.31766.119716.302669@cse.unsw.edu.au>
+In-Reply-To: <1098418326.21421.49.camel@hole.melbourne.sgi.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -36,75 +37,59 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, 2004-10-22 at 13:18, Neil Brown wrote:
-> On Friday October 22, gnb@melbourne.sgi.com wrote:
-> > +	/*
-> > +	 * If target is a hard link to the source, then noop.
-> > +	 * We compare the entire file handle instead of just
-> > +	 * the fileid to handle the nohide case.   This test
-> > +	 * is supposed to happen on the server, but some servers
-> > +	 * are buggy.
-> > +	 */
-> 
-> I don't disagree with this patch, and I don't want to assert that no
-> servers are buggy, or that the Linux server in particular isn't
-> buggy.  However I don't think the line:
-> 
->     This test is supposed to happen on the server, but some servers
->     are buggy.
-> 
-> is fair or accurate.
 
-I'm happy to revise the comment ;-)
+--=-/px8wfnHGMWZzqO5gZiT
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-> This test is trivial to do on the server, 
+On Fri, 2004-10-22 at 14:12, Greg Banks wrote:
+> I agree with your analysis...yet this same client code works against
+> an IRIX server.  I'll grab some snoops and see what's happening on
+> the wire in that case.
 
-Agreed.
+Well, that was instructive.  There seem to be several interesting
+problems; the most obvious of which is that the dentry refcount
+accounting in nfs_rename() is off by one, so that the client does
+a sillyrename even when there *no* file descriptors open for the
+target file.  This is actually what happens in the cthon test code
+and I've verified it with a small test case.
 
-> and I am sure it is being
-> done.
-
-I took a brief look at the server code this morning, and came to 
-the conclusion that the test is done in vfs_rename() and is done
-correctly, or at least would be if the only thing the client did
-was a RENAME call.
-
-> The real problem here is, I think, due to "sillyrename"
-> Consider
->     create /a/fred
->     ln /a/fred /b/bob
->     open /b/bob
->     rename /a/fred /b/bob
-> 
-> The rename should be a no-op because the two names refer to the same
-> file.   The client might be able to tell if they are the same by
-> inspecting the filehandles and so avoid the rename.  That is a useful
-> optimisation but is not guaranteed to find that they are the same when
-> they are.
-
-Agreed, and this is what the patch does:  it happens to make the test
-pass for all the servers and backend filesystems I've seen test results
-for.
-
-> As the client has /b/bob open, and as it thinks /b/bob might be about
-> to be unlinked, it replaces the
->     rename /a/fred /b/bob
-> call with a silly-rename, viz
->     rename /b/bob /b/.nfsXXXX
->     rename /a/fred /a/bob
-> 
-> This will do something very different.  It will unlink /a/fred, which
-> it shouldn't.
-
-I agree with your analysis...yet this same client code works against
-an IRIX server.  I'll grab some snoops and see what's happening on
-the wire in that case.
+At this point in the code there should be 1 refcount for being
+connected to the dentry tree and 1 for the path lookup in sys_rename().
+The attached patch changes the sillyrename threshold from 1 to 2.
 
 Greg.
 -- 
 Greg Banks, R&D Software Engineer, SGI Australian Software Group.
 I don't speak for SGI.
 
+
+--=-/px8wfnHGMWZzqO5gZiT
+Content-Disposition: attachment; filename=gnb-nfs-rename-refcount
+Content-Type: text/plain; name=gnb-nfs-rename-refcount; charset=iso-8859-1
+Content-Transfer-Encoding: 7bit
+
+Fix dentry refcount accounting error which causes unnecessary
+sillyrenames when renaming to an existing file.
+
+Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
+
+
+Index: linux/fs/nfs/dir.c
+===================================================================
+--- linux.orig/fs/nfs/dir.c	2004-10-22 21:53:23.%N +1000
++++ linux/fs/nfs/dir.c	2004-10-22 21:53:46.%N +1000
+@@ -1438,7 +1438,7 @@ static int nfs_rename(struct inode *old_
+ 		goto go_ahead;
+ 	if (S_ISDIR(new_inode->i_mode))
+ 		goto out;
+-	else if (atomic_read(&new_dentry->d_count) > 1) {
++	else if (atomic_read(&new_dentry->d_count) > 2) {
+ 		int err;
+ 		/* copy the target dentry's name */
+ 		dentry = d_alloc(new_dentry->d_parent,
+
+--=-/px8wfnHGMWZzqO5gZiT--
 
 
 
