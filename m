@@ -1,30 +1,26 @@
-From: Chip Salzenberg <chip@pobox.com>
-Subject: Must portmap listen on * in NFS clients?
-Date: Mon, 15 Dec 2003 16:48:44 -0500
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: Must portmap listen on * in NFS clients?
+Date: Tue, 16 Dec 2003 08:54:58 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20031215214844.GR20533@perlsupport.com>
+Message-ID: <16350.11698.753743.894163@notabene.cse.unsw.edu.au>
+References: <20031215214844.GR20533@perlsupport.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AW0a5-0004zQ-No
-	for nfs@lists.sourceforge.net; Mon, 15 Dec 2003 13:48:45 -0800
-Received: from topaz.cx
-	([66.220.6.227] helo=mail.topaz.cx ident=mail)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.24)
-	id 1AW0a5-0003EK-Hu
-	for nfs@lists.sourceforge.net; Mon, 15 Dec 2003 13:48:45 -0800
-Received: from tytlal.hmsonline.com
-	([207.43.94.202] helo=tytlal ident=Debian-exim)
-	by mail.perlsupport.com with asmtp (Exim 3.35 #1 (Debian))
-	id 1AW0a2-0002Hy-00
-	for <nfs@lists.sourceforge.net>; Mon, 15 Dec 2003 13:48:42 -0800
-Received: from chip by tytlal with local (Exim 4.30)
-	id 1AW0a4-00070h-8f
-	for nfs@lists.sourceforge.net; Mon, 15 Dec 2003 16:48:44 -0500
-To: nfs@lists.sourceforge.net
+	id 1AW0gR-0005SF-Ey
+	for nfs@lists.sourceforge.net; Mon, 15 Dec 2003 13:55:19 -0800
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.24)
+	id 1AW0gR-00052M-2e
+	for nfs@lists.sourceforge.net; Mon, 15 Dec 2003 13:55:19 -0800
+Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
+	(for <chip@pobox.com>) (for <nfs@lists.sourceforge.net>) By note With
+	Smtp ; Tue, 16 Dec 2003 08:55:01 +1100
+To: Chip Salzenberg <chip@pobox.com>
+In-Reply-To: message from Chip Salzenberg on Monday December 15
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -37,19 +33,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I have a question that will soon be relevant for Debian NFS packaging.
+On Monday December 15, chip@pobox.com wrote:
+> I have a question that will soon be relevant for Debian NFS packaging.
+> 
+> As far as NFS is concerned, need portmap listen on all interfaces when
+> the machine it's on is only an NFS *client*?  I know that servers'
+> portmaps must listen on * so clients can find mountd.  But, AFAICT,
+> clients need not have open portmaps.  Am I right in this?
+> 
 
-As far as NFS is concerned, need portmap listen on all interfaces when
-the machine it's on is only an NFS *client*?  I know that servers'
-portmaps must listen on * so clients can find mountd.  But, AFAICT,
-clients need not have open portmaps.  Am I right in this?
+Locking needs bi-directional RPC service.
+In particular, the server needs to be able to communicate with statd
+on the client to ask it to inform the server if the client restarts,
+so the server can drop any locks the client had.
 
-PS: I should already know this.  But NFS protocol issues have always
-    given me the screaming heebie jeebies.
--- 
-Chip Salzenberg               - a.k.a. -               <chip@pobox.com>
-"I wanted to play hopscotch with the impenetrable mystery of existence,
-    but he stepped in a wormhole and had to go in early."  // MST3K
+
+> PS: I should already know this.  But NFS protocol issues have always
+>     given me the screaming heebie jeebies.
+
+This is completely understandable :-)  The simplicity of the core NFS
+protocol is both a strength (it is easy to implement) and a weakness
+(all sorts of horrible stuff had to back hacked on afterwards to make
+it actually work).
+
+NeilBrown
 
 
 -------------------------------------------------------
