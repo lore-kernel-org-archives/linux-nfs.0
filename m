@@ -1,24 +1,18 @@
-From: dumas@centre-cired.fr (Patrice DUMAS - DOCT)
-Subject: Re: patchs for lockd: granted_res_proc, client address check, blocking check
-Date: Tue, 30 Apr 2002 18:26:46 +0200
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: v3/tcp mounts occasionally hang for 10+ minutes
+Date: 02 Apr 2002 10:36:02 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020430182646.C21356@zeus.centre-cired.fr>
-References: <20020423103152.A3624@zeus.centre-cired.fr> <20020425155951.E13292@zeus.centre-cired.fr> <shsznzqzt0q.fsf@charged.uio.no>
+Message-ID: <shshemuijkd.fsf@charged.uio.no>
+References: <5.0.2.1.0.20020401235131.0285bb00@pop.sfrn.dnai.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from boukha.centre-cired.fr ([193.51.120.234])
+Cc: nfs@lists.sourceforge.net
+Received: from pat.uio.no ([129.240.130.16])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 172aXc-0000q3-00
-	for <nfs@lists.sourceforge.net>; Tue, 30 Apr 2002 09:31:48 -0700
-Received: from zeus.centre-cired.fr ([193.51.120.192])
-          by boukha.centre-cired.fr (8.9.3+Sun/jtpda-5.3.3) with ESMTP id SAA03995
-          for <nfs@lists.sourceforge.net>; Tue, 30 Apr 2002 18:30:35 +0100 (WEST)
-Received: (from dumas@localhost)
-	by zeus.centre-cired.fr (8.11.6/8.11.6) id g3UGQkq21538
-	for nfs@lists.sourceforge.net; Tue, 30 Apr 2002 18:26:46 +0200
-To: nfs@lists.sourceforge.net
-In-Reply-To: <shsznzqzt0q.fsf@charged.uio.no>; from trond.myklebust@fys.uio.no on Fri, Apr 26, 2002 at 11:52:21AM +0200
+	id 16sJm2-0001BY-00
+	for <nfs@lists.sourceforge.net>; Tue, 02 Apr 2002 00:36:14 -0800
+To: Andrew Ryan <andrewr@nam-shub.com>
+In-Reply-To: <5.0.2.1.0.20020401235131.0285bb00@pop.sfrn.dnai.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,19 +25,30 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hi,
+>>>>> " " == Andrew Ryan <andrewr@nam-shub.com> writes:
 
-> Just add a call to posix_test_lock() in nlmclnt_grant().
+     > Linux client running 2.4.17+NFS_ALL patch set mounting a netapp
+     > server (via switched 100FDx ethernet) with the following mount
+     > opts:
 
-I don't think it will work because posix_test_lock() will find that the locks
-have the same owner and thus return 0 as if the lock wasn't found. A workaround
-would be to set the fl_owner of the file_lock from the granted_msg to a value
-which will cause locks_same_owner to fail, and after that try
-nlm_compare_locks with the resulting lock.
+     > rw,tcp,nfsvers=3,rsize=32768,wsize=32768,intr,hard
 
-Am I right ? If so could setting fl_owner to NULL break something ?
+     > Works great, but occasionally (every few days) the mount hangs,
+     > for about 10 minutes each time. I am not exactly sure what
+     > causes the hung mounts but at times it has seemed to correlate
+     > with the machine running very low on virtual memory and the
+     > kernel interceding to kill processes. Other times this has not
+     > seemed to be the case. Either way, it doesn't seem like
+     > something which should be happening.
 
-Pat
+If the OOM killer is signalling the rpciod process, then that could
+indeed cause the sort of problem you are describing.
+If so, please could you look into the circumstances that are causing
+the OOM killer to do this. Normally rpciod should never be much of a
+memory hog.
+
+Cheers,
+  Trond
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
