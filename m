@@ -1,32 +1,22 @@
-From: Marc Eshel <eshel@almaden.ibm.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: [patch] flock/fcntl bug
-Date: Wed, 15 Dec 2004 18:16:42 -0800
-Message-ID: <OFDB90A431.EDCAD4C3-ON88256F6C.000B5989-88256F6C.000C8438@us.ibm.com>
-References: <1103157295.1236.70.camel@lade.trondhjem.org>
+Date: Wed, 15 Dec 2004 22:44:04 -0500
+Message-ID: <1103168644.11148.48.camel@lade.trondhjem.org>
+References: <OFDB90A431.EDCAD4C3-ON88256F6C.000B5989-88256F6C.000C8438@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CelIk-0001AS-8R
-	for nfs@lists.sourceforge.net; Wed, 15 Dec 2004 18:23:34 -0800
-Received: from e3.ny.us.ibm.com ([32.97.182.143])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1CelIj-0002CY-Ik
-	for nfs@lists.sourceforge.net; Wed, 15 Dec 2004 18:23:34 -0800
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e3.ny.us.ibm.com (8.12.10/8.12.10) with ESMTP id iBG2NRV8029093
-	for <nfs@lists.sourceforge.net>; Wed, 15 Dec 2004 21:23:27 -0500
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay04.pok.ibm.com (8.12.10/NCO/VER6.6) with ESMTP id iBG2NRft283580
-	for <nfs@lists.sourceforge.net>; Wed, 15 Dec 2004 21:23:27 -0500
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11/8.12.11) with ESMTP id iBG2NQiZ025694
-	for <nfs@lists.sourceforge.net>; Wed, 15 Dec 2004 21:23:26 -0500
-In-Reply-To: <1103157295.1236.70.camel@lade.trondhjem.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+	id 1CemZM-0006Jd-8G
+	for nfs@lists.sourceforge.net; Wed, 15 Dec 2004 19:44:48 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1CemZL-0003ms-Bu
+	for nfs@lists.sourceforge.net; Wed, 15 Dec 2004 19:44:48 -0800
+To: Marc Eshel <eshel@almaden.ibm.com>
+In-Reply-To: <OFDB90A431.EDCAD4C3-ON88256F6C.000B5989-88256F6C.000C8438@us.ibm.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,27 +30,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+on den 15.12.2004 Klokka 18:16 (-0800) skreiv Marc Eshel:
 
+> I will be glad to. Please add my patch 'locking for cluster filesystem' so
+> other users can experiment with their favorite file system and give some
+> feed back. My patch is getting too big and it is a pain to retrofit it to
+> constantly changing code. It will than be easier to build small patches for
+> the specific problem that will arise.
 
-Trond Myklebust <trond.myklebust@fys.uio.no> wrote on 12/15/2004 04:34:55
-PM:
+I still have issues with it.
 
-> > It would be nice if it didn't have to care but the fact is that right
-now
-> > there is dependency on the lock state to be in the VFS too for correct
-> > operation.
+ - You cannot mix NLM errors and VFS errors in the same variable. They
+   belong to completely different types.
 
-> Then fix the VFS to do the right thing. Move the decision about whether
-> or not to do an RPC call or whatever into the filesystem where it
-> belongs.
+ - Why is vfs_test_and_lock_file() calling vfs_test_lock()? Why can't
+   vfs_lock_file() just return the conflicting file for you? Means you
+   do everything in one atomic call down to the filesystem instead of
+   (at least) two calls and possibly more...
 
-I will be glad to. Please add my patch 'locking for cluster filesystem' so
-other users can experiment with their favorite file system and give some
-feed back. My patch is getting too big and it is a pain to retrofit it to
-constantly changing code. It will than be easier to build small patches for
-the specific problem that will arise.
+ - Why is posix_unblock_lock() suddenly calling filesystem routines via
+   vfs_lock_file()?
 
-Thanks, Marc.
+ - Why is posix_block_lock() suddenly doing deadlock checking etc
+   without any of the callers actually looking at the return value?
+
+ - vfs_test_and_lock_file() appears to return EAGAIN if the user already
+   holds the lock (posix_locks_same() is true). Isn't that a bug?
+
+ - You cannot use memcpy() in order to copy locks.
+
+ - Why is "conflock" being allocated by kmalloc() inside
+   vfs_test_lock() instead of by the caller? You could avoid the whole
+   ugly FL_FREE hack. The way it all ends up getting called in
+   nlmsvc_delete_block() looks very suspicious: it looks to me as if
+   posix_unblock_lock() is freeing your lock before you've even started.
+
+Cheers,
+  Trond
+
+ - 
+-- 
+Trond Myklebust <trond.myklebust@fys.uio.no>
 
 
 
