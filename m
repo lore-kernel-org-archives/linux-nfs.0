@@ -1,22 +1,18 @@
-From: Andrew Ryan <andrewr@nam-shub.com>
-Subject: Re: v3/tcp mounts occasionally hang for 10+ minutes
-Date: Tue, 02 Apr 2002 06:35:48 -0800
+From: Brian Tinsley <btinsley@emageon.com>
+Subject: EJUKEBOX and Java
+Date: Tue, 02 Apr 2002 10:50:18 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <5.0.2.1.0.20020402063452.0284bec0@pop.sfrn.dnai.com>
-References: <5.0.2.1.0.20020401235131.0285bb00@pop.sfrn.dnai.com>
- <5.0.2.1.0.20020401235131.0285bb00@pop.sfrn.dnai.com>
+Message-ID: <3CA9E14A.2010903@emageon.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"; format=flowed
-Cc: nfs@lists.sourceforge.net
-Received: from barney.sfrn.dnai.com ([208.59.199.24])
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Received: from [63.162.183.250] (helo=emgw2ksrv001.emgdom001.emageon.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16sQS3-00088W-00
-	for <nfs@lists.sourceforge.net>; Tue, 02 Apr 2002 07:44:03 -0800
-Received: from sideshow-mel.sfrn.dnai.com (sideshow-mel.sfrn.dnai.com [208.59.199.19])
-	by barney.sfrn.dnai.com (8.11.2/8.11.2) with ESMTP id g32FgJ887860
-	for <nfs@lists.sourceforge.net>; Tue, 2 Apr 2002 07:42:19 -0800 (PST)
+	id 16sRUM-0004nG-00
+	for <nfs@lists.sourceforge.net>; Tue, 02 Apr 2002 08:50:30 -0800
+Received: from emageon.com (jserv001.emageon.com [10.10.10.18])
+	by studio-ts2.emageon.com (Emageon Mail Service) with ESMTP id g32GoIB31415
+	for <nfs@lists.sourceforge.net>; Tue, 2 Apr 2002 10:50:18 -0600
 To: nfs@lists.sourceforge.net
-In-Reply-To: <shshemuijkd.fsf@charged.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,32 +25,27 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-At 10:36 AM 4/2/02 +0200, Trond Myklebust wrote:
-
->If the OOM killer is signalling the rpciod process, then that could
->indeed cause the sort of problem you are describing.
->If so, please could you look into the circumstances that are causing
->the OOM killer to do this. Normally rpciod should never be much of a
->memory hog.
+While I'm starting to investigate, I just wanted to post my quandry here:
 
 
-No, rpciod has never been killed by the OOM killer, afaict, the other 
-processes OOM killer has killed have all been logged and rpciod has never 
-been in that list. rpciod is always using a small amount of RAM.
+We have a Linux-based Java application (2.4.17 kernel, IBM JVM) that 
+accesses files over an NFS v3 mount (UDP) to a Solaris 8 NFS server that 
+exports a SAM-FS filesystem (Sun's HSM product). It seems that whenever 
+our application requests access to a file that resides on tape, it 
+encounters a temporary deadlock condition. We know that the NFS server 
+is returning EJUKEBOX at this point and it seems that once data begins 
+to flow back to the client, the deadlock releases. Could this be in any 
+way due to changing signal handling in the nfs3_rpc_wrapper function? 
+The Java virtual machine does use signals for internal purposes; I 
+believe libpthread does so as well. Any thoughts on this are more than 
+welcome.
 
-Also, I can confirm that this problem has happened when the machine was 
-fairly low on memory but not low enough to invoke the OOM killer. And as I 
-noted before, access to other mounts - mounted from the same NFS server - 
-on the client system is not interrupted when one of these hangs occur.
-
-I realize part of the problem is I haven't been able to reliably identify 
-exactly what is  causing the problem, but I was hoping someone with more 
-knowledge of the client code or someone who had seen this problem before 
-could point me in the right direction.
+-- 
+Brian Tinsley
+Senior Systems Engineer
+Emageon
 
 
-Thanks,
-andrew
 
 
 _______________________________________________
