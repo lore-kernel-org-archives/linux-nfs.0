@@ -1,21 +1,20 @@
-From: seb <seb-nfs@h3d.com>
-Subject: mount freeze, acl system
-Date: Mon, 22 Jul 2002 16:41:22 +0200
+From: Duane Ellis <duane_ellis@franklin.com>
+Subject: problem: SunOS automounting rh 7.3
+Date: Mon, 22 Jul 2002 13:04:23 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3D3C1992.7090403@h3d.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-15; format=flowed
+Message-ID: <200207221704.NAA20632@mercury.franklin.com>
+Reply-To: duane_ellis@franklin.com
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from elvis.h3d.com ([195.167.192.132] helo=mail.h3d.com)
+Received: from newfrnk82.franklin.com ([63.88.59.82] helo=earth-out.franklin.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17WeNu-0004M7-00
-	for <nfs@lists.sourceforge.net>; Mon, 22 Jul 2002 07:42:02 -0700
-Received: from smtp3.h3d.com (ATuileries-101-2-1-75.abo.wanadoo.fr [193.251.34.75])
-	by mail.h3d.com (Postfix) with ESMTP id 6EAF3F9F1
-	for <nfs@lists.sourceforge.net>; Mon, 22 Jul 2002 16:41:59 +0200 (CEST)
-Received: from h3d.com (unknown [192.168.201.21])
-	by smtp3.h3d.com (Postfix) with ESMTP id AE191B006D
-	for <nfs@lists.sourceforge.net>; Mon, 22 Jul 2002 16:40:42 +0200 (CEST)
+	id 17Wgbp-0006ex-00
+	for <nfs@lists.sourceforge.net>; Mon, 22 Jul 2002 10:04:33 -0700
+Received: from saturn.franklin.com (IDENT:root@saturn.franklin.com [192.9.200.2])
+	by earth-out.franklin.com (8.9.3/8.9.3) with ESMTP id NAA21852
+	for <nfs@lists.sourceforge.net>; Mon, 22 Jul 2002 13:04:20 -0400
+Received: from mercury.franklin.com (IDENT:root@mercury.franklin.com [192.9.200.250])
+	by saturn.franklin.com (8.9.3/8.9.3) with ESMTP id NAA28911
+	for <nfs@lists.sourceforge.net>; Mon, 22 Jul 2002 13:04:20 -0400
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -29,50 +28,78 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-hi,
 
-i have 2 bugs with nfs.
-i recently installed 2 linux rh 7.3. one is 'the nfs test client'. one 
-is mainly a samba server with acl support, all acl stuff (kernel, 
-winbindd, nss, fileutils, e2fsprogs) is installed and seem work, windows 
-users are happy :). On this server i have too configured a nfs server, 
-the export directory is the same than root samba dir which has some 
-special acl set, and there is no quota.
+Hi, Im stuck - the NFS & NIS Howto is not getting me anywhere.
+and I've been at this for several days now with out advancing.
 
-bug 1 :
-on the client, after a successfuly nfs mount, when i try to access the 
-mount dir, the process freeze and impossible to kill it. ex: ls /mnt -> 
-freeze, kill -9 doesn't work, umount -f /mnt doesn't work.
-i used first the redhat kernel, i have tried with last 2.4.19 + 
-linux-2.4.19-NFS_ALL.dif patch, update nfs-utils to 1.0.1, same result.
-don't think it will help, but i do some strace ls /mnt, many finish with :
-lstat64("/mnt",  <unfinished ...>
+I'm in a mixed enviorment, I have 40+ sparcs running SunOS 4.1.3_U1
+and a mix of x86 Linux boxes running RH 5.2 and 6.2, and a new machine
+that is running RH 7.3
 
-known bug ? a bad nfs server should not permently block a client, patch 
-? how can i kill these process without reboot ? is there something that 
-i can do ?
+I'm having problems with the SunOS NFS automounter, when mounting 
+at the root level from an SunOS machine mounting my new RH 7.3 Linux 
+box.
 
-bug 2 :
-on the server, after a client successfuly does a mount, all 'basic' 
-access (ls,cd but not samba) on the directory freeze the process as with 
-the client, and the process is unkillable.
-kernel is 2.4.18 + acl patch. but i haven't try NFS_ALL patch or to 
-update nfs-utils 1.0.1.
-strace ls /disk2 result :
-stat64("/disk2", {st_mode=S_IFDIR|0755, st_size=4096, ...}) = 0
-open("/disk2", O_RDONLY|O_NONBLOCK|O_LARGEFILE|O_DIRECTORY) = 4
-fstat64(4, {st_mode=S_IFDIR|0755, st_size=4096, ...}) = 0
-fcntl64(4, F_SETFD, FD_CLOEXEC)         = 0
-brk(0x8060000)                          = 0x8060000
-getdents64(0x4, 0x805db20, 0x1000, 0x805db20 <unfinished ...>
+if this is the wrong mailing list to post these questions on,
+please tell me - I'm kind of stuck.
 
-same questions, is there a patch ?? can i test something ?
+In detail my problems are:
 
-my goal is not to have nfs acl (i know there is nfs4), just want 
-correctly mount and copy files.
+>From a sunosXX box I can:
 
-hope my english is not too bad.
-seb
+     cd /home/testusr 
+
+            or to any other automount point both on the 
+            new rh73 box, and any other machine on my 
+            network.
+
+	    Hence: I believe the automounter is basically
+	    functioning correctly.
+
+     Problem #1
+
+     cd /net/rh73
+	    This should let me get to the ROOT directory
+	    on the new RH73 box, instead I get "bad directory"
+
+            It's *VERY* important that i get this to work
+            as many of our adminitrative scripts make use
+            of this hack to take care of things.
+
+     However, I can *MANUALLY* type
+
+            mount rh73:/ /tmp/a/b
+
+            which makes me think I have rh73:/etc/exports setup
+	    correctly, otherwise it would not export it.
+
+In reverse, From the rh73 box, I can
+
+     cd /home/duane  
+            or any other automount point both local
+            to this machine or anyother machine
+            on my network.
+
+     cd /net/sunosXX
+            Landing on the ROOT of a SUNOS machine 
+            works for any SUNOS machines
+
+     cd /net/rh52    
+            Same with numerous RH 5.2 boxes I have.
+
+     Problem #2
+
+     cd /net/rh62   
+            Problem: for some reason, I can only see
+            ONE exported file system and nothing else.
+
+IN reverse from a RH6.2 or RH5.2 box
+
+     cd /home/testusr
+     cd /net/rh73
+     ... etc ...
+
+     everything seems just fine.
 
 
 
