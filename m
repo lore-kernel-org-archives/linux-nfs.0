@@ -1,55 +1,88 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Wrong file size (large file problem)
-Date: Fri, 13 Feb 2004 11:52:43 -0500
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040213165242.GC27903@fieldses.org>
-References: <Pine.LNX.4.44.0402131420000.13346-100000@kakadu.cosy.sbg.ac.at> <200402131717.34182.vincent.roqueta@ext.bull.net>
+From: William Lee Irwin III <wli@holomorphy.com>
+Subject: 2.6.2-rc2-mm2 server-side nfs pathology
+Date: Fri, 13 Feb 2004 16:15:56 -0800
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <20040214001556.GL699@holomorphy.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Gerald Stieglbauer <gstiegl@cosy.sbg.ac.at>, nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ArgaY-0007Pn-Ot
-	for nfs@lists.sourceforge.net; Fri, 13 Feb 2004 08:54:50 -0800
-Received: from dsl093-002-214.det1.dsl.speakeasy.net
-	([66.93.2.214] helo=pumpkin.fieldses.org ident=Debian-exim)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.30)
-	id 1ArgVh-0002RB-9p
-	for nfs@lists.sourceforge.net; Fri, 13 Feb 2004 08:49:49 -0800
-To: Vincent ROQUETA <vincent.roqueta@ext.bull.net>
-In-Reply-To: <200402131717.34182.vincent.roqueta@ext.bull.net>
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Cc: nfs@lists.sourceforge.net
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
+To: linux-kernel@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Fri, Feb 13, 2004 at 05:17:34PM +0100, Vincent ROQUETA wrote:
-> Well... In my bug, the size of the big file is not  4294967294, that is the 
-> ... user name and group name (Really stranges too... !!! )
+Basically, this thing is either not making forward progress or is
+pathologically slow (I left this running overnight without visible
+forward progress, though the log doesn't cover that period). I'm not
+sure how to make sense of the tcpdump log for nfs requests. The nfsroot
+machine in older 2.4 (2.4.14, which is the last/only working Linux
+kernel version I have for the machine) and NetBSD both get stuck in
+what appears to be a retry loop for some kind of nfs request that
+2.6.2-rc2-mm2 is not answering to its satisfaction.
+
+Below is a tcpdump trace of NetBSD attempting to boot, started at some
+point toward the end of the tftpboot process.
 
 
-4294967294 == 2^32 - 2 == (uint32_t)(-2).  Do a grep for -2 in
-fs/nfsd/*.c, and you'll see where that number's coming from.
-
-Nothing to do with the file sizes, in any case.
-
---Bruce Fields
+-- wli
 
 
--------------------------------------------------------
-SF.Net is sponsored by: Speed Start Your Linux Apps Now.
-Build and deploy apps & Web services for Linux with
-a free DVD software kit from IBM. Click Now!
-http://ads.osdn.com/?ad_id=1356&alloc_id=3438&op=click
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+tcpdump: listening on eth3
+11:47:18.609524 meromorphy.holomorphy.com.bootps > residue.holomorphy.com.bootpc:  xid:0x1ffffff Y:residue.holomorphy.com S:meromorphy.holomorphy.com file ""[|bootp] [tos 0x10] 
+11:47:18.612867 meromorphy.holomorphy.com.bootps > residue.holomorphy.com.bootpc:  xid:0x1ffffff Y:residue.holomorphy.com S:meromorphy.holomorphy.com file ""[|bootp] [tos 0x10] 
+11:47:18.818479 arp who-has residue.holomorphy.com tell residue.holomorphy.com
+11:47:21.967521 arp who-has meromorphy.holomorphy.com tell residue.holomorphy.com
+11:47:21.967582 arp reply meromorphy.holomorphy.com is-at 0:20:78:1e:2b:94
+11:47:21.968241 residue.holomorphy.com.1023 > meromorphy.holomorphy.com.sunrpc: udp 76
+11:47:21.968921 meromorphy.holomorphy.com.sunrpc > residue.holomorphy.com.1023: udp 28 (DF)
+11:47:21.970619 residue.holomorphy.com.1023 > meromorphy.holomorphy.com.872: udp 80
+11:47:22.047314 meromorphy.holomorphy.com.872 > residue.holomorphy.com.1023: udp 56 (DF)
+11:47:22.049144 residue.holomorphy.com.1023 > meromorphy.holomorphy.com.sunrpc: udp 76
+11:47:22.049495 meromorphy.holomorphy.com.sunrpc > residue.holomorphy.com.1023: udp 28 (DF)
+11:47:22.053544 residue.holomorphy.com.1 > meromorphy.holomorphy.com.nfs: 80 getattr [|nfs]
+11:47:22.071076 singularity.holomorphy.com.nfs > residue.holomorphy.com.1: reply ok 112 (DF)
+11:47:22.072941 residue.holomorphy.com.2 > meromorphy.holomorphy.com.nfs: 76 fsinfo [|nfs]
+11:47:22.073960 meromorphy.holomorphy.com.nfs > residue.holomorphy.com.2: reply ok 80 fsinfo [|nfs] (DF)
+11:47:22.075786 residue.holomorphy.com.3 > meromorphy.holomorphy.com.nfs: 96 readdir [|nfs]
+11:47:22.079182 meromorphy.holomorphy.com.nfs > residue.holomorphy.com.3: reply ok 864 readdir (DF)
+11:47:22.262862 arp who-has meromorphy.holomorphy.com tell residue.holomorphy.com
+11:47:22.262896 arp reply meromorphy.holomorphy.com is-at 0:20:78:1e:2b:94
+11:47:22.263523 residue.holomorphy.com.1226993665 > meromorphy.holomorphy.com.nfs: 88 lookup [|nfs]
+11:47:22.263781 meromorphy.holomorphy.com.nfs > residue.holomorphy.com.1226993665: reply ok 228 lookup fh Unknown/1 [|nfs] (DF)
+11:47:22.266192 residue.holomorphy.com.1226993666 > meromorphy.holomorphy.com.nfs: 100 lookup [|nfs]
+11:47:22.266439 meromorphy.holomorphy.com.nfs > residue.holomorphy.com.1226993666: reply ok 236 lookup [|nfs] (DF)
+11:47:22.343164 residue.holomorphy.com.1226993667 > meromorphy.holomorphy.com.nfs: 88 lookup [|nfs]
+11:47:22.343444 meromorphy.holomorphy.com.nfs > residue.holomorphy.com.1226993667: reply ok 228 lookup fh Unknown/1 [|nfs] (DF)
+11:47:22.345650 residue.holomorphy.com.1226993668 > meromorphy.holomorphy.com.nfs: 96 lookup [|nfs]
+11:47:22.348087 meromorphy.holomorphy.com.nfs > residue.holomorphy.com.1226993668: reply ok 236 lookup [|nfs] (DF)
+11:47:22.350323 residue.holomorphy.com.1226993669 > meromorphy.holomorphy.com.nfs: 100 access [|nfs]
+11:47:22.350575 meromorphy.holomorphy.com.nfs > residue.holomorphy.com.1226993669: reply ok 120 access c 0000 (DF)
+11:47:22.352427 residue.holomorphy.com.1226993670 > meromorphy.holomorphy.com.nfs: 96 getattr [|nfs]
+11:47:22.352613 meromorphy.holomorphy.com.nfs > residue.holomorphy.com.1226993670: reply ok 112 getattr REG 100555 ids 0/0 [|nfs] (DF)
+11:47:22.354458 residue.holomorphy.com.1226993671 > meromorphy.holomorphy.com.nfs: 108 read [|nfs]
+11:47:22.355157 meromorphy.holomorphy.com.nfs > residue.holomorphy.com.1226993671: reply ok 1472 read (frag 7668:1480@0+)
+11:47:22.355179 meromorphy.holomorphy.com > residue.holomorphy.com: udp (frag 7668:1480@1480+)
+11:47:22.355195 meromorphy.holomorphy.com > residue.holomorphy.com: udp (frag 7668:1480@2960+)
+11:47:22.355213 meromorphy.holomorphy.com > residue.holomorphy.com: udp (frag 7668:1480@4440+)
+11:47:22.355229 meromorphy.holomorphy.com > residue.holomorphy.com: udp (frag 7668:1480@5920+)
+11:47:22.355244 meromorphy.holomorphy.com > residue.holomorphy.com: udp (frag 7668:928@7400)
+11:47:27.980197 residue.holomorphy.com.1226993671 > meromorphy.holomorphy.com.nfs: 108 read [|nfs]
+11:47:27.980535 meromorphy.holomorphy.com.nfs > residue.holomorphy.com.1226993671: reply ok 1472 read (frag 7669:1480@0+)
+11:47:27.980558 meromorphy.holomorphy.com > residue.holomorphy.com: udp (frag 7669:1480@1480+)
+11:47:27.980577 meromorphy.holomorphy.com > residue.holomorphy.com: udp (frag 7669:1480@2960+)
+11:47:27.980594 meromorphy.holomorphy.com > residue.holomorphy.com: udp (frag 7669:1480@4440+)
+11:47:27.980633 meromorphy.holomorphy.com > residue.holomorphy.com: udp (frag 7669:1480@5920+)
+11:47:27.980648 meromorphy.holomorphy.com > residue.holomorphy.com: udp (frag 7669:928@7400)
+11:47:39.230272 residue.holomorphy.com.1226993671 > meromorphy.holomorphy.com.nfs: 108 read [|nfs]
+11:47:39.230624 meromorphy.holomorphy.com.nfs > residue.holomorphy.com.1226993671: reply ok 1472 read (frag 7670:1480@0+)
+11:47:39.230646 meromorphy.holomorphy.com > residue.holomorphy.com: udp (frag 7670:1480@1480+)
+11:47:39.230666 meromorphy.holomorphy.com > residue.holomorphy.com: udp (frag 7670:1480@2960+)
+11:47:39.230682 meromorphy.holomorphy.com > residue.holomorphy.com: udp (frag 7670:1480@4440+)
+11:47:39.230698 meromorphy.holomorphy.com > residue.holomorphy.com: udp (frag 7670:1480@5920+)
+11:47:39.230712 meromorphy.holomorphy.com > residue.holomorphy.com: udp (frag 7670:928@7400)
+11:48:01.722653 residue.holomorphy.com.1226993671 > meromorphy.holomorphy.com.nfs: 108 read [|nfs]
+11:48:01.723020 meromorphy.holomorphy.com.nfs > residue.holomorphy.com.1226993671: reply ok 1472 read (frag 7671:1480@0+)
+11:48:01.723043 meromorphy.holomorphy.com > residue.holomorphy.com: udp (frag 7671:1480@1480+)
+11:48:01.723062 meromorphy.holomorphy.com > residue.holomorphy.com: udp (frag 7671:1480@2960+)
+11:48:01.723079 meromorphy.holomorphy.com > residue.holomorphy.com: udp (frag 7671:1480@4440+)
+11:48:01.723096 meromorphy.holomorphy.com > residue.holomorphy.com: udp (frag 7671:1480@5920+)
+11:48:01.723111 meromorphy.holomorphy.com > residue.holomorphy.com: udp (frag 7671:928@7400)
