@@ -1,23 +1,21 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
 Subject: Re: silly names
-Date: Fri, 03 Sep 2004 15:19:47 -0400
+Date: Fri, 3 Sep 2004 21:53:02 +0200 (CEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1094239187.8196.70.camel@lade.trondhjem.org>
+Message-ID: <Pine.LNX.4.44.0409032150590.17325-100000@kenzo.iwr.uni-heidelberg.de>
 References: <Pine.LNX.4.60.0409031131070.7569@harp.ngdc.noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C3JbD-0006df-9H
-	for nfs@lists.sourceforge.net; Fri, 03 Sep 2004 12:19:51 -0700
-Received: from dh138.citi.umich.edu
-	([141.211.133.138] helo=lade.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.34)
-	id 1C3JbB-0003JJ-Ns
-	for nfs@lists.sourceforge.net; Fri, 03 Sep 2004 12:19:51 -0700
+	id 1C3K7R-0004fN-Ab
+	for nfs@lists.sourceforge.net; Fri, 03 Sep 2004 12:53:09 -0700
+Received: from relay.uni-heidelberg.de ([129.206.100.212])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1C3K7Q-0007rN-Hv
+	for nfs@lists.sourceforge.net; Fri, 03 Sep 2004 12:53:09 -0700
 To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 In-Reply-To: <Pine.LNX.4.60.0409031131070.7569@harp.ngdc.noaa.gov>
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -32,23 +30,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 fr , 03/09/2004 klokka 13:35, skreiv Ara.T.Howard:
-> are there causes other than some remote client removing an open file for
-> sillynames appearing in a directory containing a file shared (via locking=
-) by
-> many clients?  i have a directory containing such a file where many silly=
-names
-> appear, but eventually disappear.  none of the files in the directory are=
- ever
-> being removed - so what could cause this?  the code is working fine - i'm=
- just
-> wondering about the causes of this...
+On Fri, 3 Sep 2004, Ara.T.Howard wrote:
 
- -  A client crash
- -  Someone renaming a sillyrenamed file on the server
+> are there causes other than some remote client removing an open file
+> for sillynames appearing in a directory containing a file shared
+> (via locking) by many clients?
 
-Cheers,
-  Trond
+I think that renaming while a file is open also uses silly names.
+
+> i have a directory containing such a file where many sillynames
+> appear, but eventually disappear.
+
+... after the last close().
+
+-- 
+Bogdan Costescu
+
+IWR - Interdisziplinaeres Zentrum fuer Wissenschaftliches Rechnen
+Universitaet Heidelberg, INF 368, D-69120 Heidelberg, GERMANY
+Telephone: +49 6221 54 8869, Telefax: +49 6221 54 8868
+E-mail: Bogdan.Costescu@IWR.Uni-Heidelberg.De
+
 
 
 -------------------------------------------------------
