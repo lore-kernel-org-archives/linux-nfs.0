@@ -1,17 +1,19 @@
-From: Matt C <wago@phlinux.com>
-Subject: NFS attrib cache problems in 2.4.20 - 2.4.22-pre9
-Date: Thu, 31 Jul 2003 13:58:40 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFSERR_EAGAIN
+Date: 11 Jul 2003 00:41:13 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0307311351050.17863-100000@fubar.phlinux.com>
+Message-ID: <shsbrw20zue.fsf@charged.uio.no>
+References: <3F0DB088.303@cinesite.co.uk>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: cel@citi.umich.edu, <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs <nfs@lists.sourceforge.net>,  Iain Irwin-Powell <Iain@cinesite.co.uk>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from fubar.phlinux.com ([216.254.54.154])
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19iKVc-0005N5-00
-	for <nfs@lists.sourceforge.net>; Thu, 31 Jul 2003 13:58:48 -0700
-To: NFS List <nfs@lists.sourceforge.net>
+	id 19ak6R-0003In-00
+	for <nfs@lists.sourceforge.net>; Thu, 10 Jul 2003 15:41:27 -0700
+To: Danny Smith <dannys@cinesite.co.uk>
+In-Reply-To: <3F0DB088.303@cinesite.co.uk>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,43 +26,37 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi NFS List, chuck, trond:
+>>>>> " " == Danny Smith <dannys@cinesite.co.uk> writes:
 
-I have a fun NFS problem with the recent 2.4 kernel NFS client. We have an 
-application that is failing when it tries to move then open a file in very 
-quick succession -- it fails because it can't find the file in the new 
-location.
+     > Looking through nfs2xdr.c and nfs.h and googling, it seems that
+     > error number 11 is not properly defined, but certainly seems to
+     > be in use by SGI. From nfs2xdr.c:
 
-Since we can't export our application out to the 'net, I've been doing 
-testing with fsx-linux, which also fails in the same scenario with what 
-looks like an attribute cache issue. The exact FSX error is
-"Size error:  expected 0x1803ca stat 0x1803ca seek 0x68bf4c".
+     >      { NFSERR_NXIO, ENXIO },
 
-This fails with the 3 kernels that I tested: 2.4.20, 2.4.21 and 
-2.4.22-pre9. When I add 'noac' to my mount flags on the client, the 
-problem goes away.
+     > /* { NFSERR_EAGAIN, EAGAIN }, */
+     >       { NFSERR_ACCES, EACCES },
 
-I've written this up on the following page, with links to the complete FSX 
-log, as well as complete kernel debug messages and the kernel .config 
-file.
+     > (EAGAIN having value 11)
 
-http://www.phlinux.com/kernel/nfs-ac.html
+     > Does anyone know much about the history of this? Was this
+     > removed in order to be RFC compliant, or is there a stronger
+     > motivation not to have this?
 
-I've been talking with Chuck Lever about this over the past few days, and 
-he suggested that I post here once I had good debug information. I'm happy 
-to run any other tests and/or capture other information if it's helpful.
+Why should we be supporting something which isn't documented in the RFCs?
 
-Thanks!
+What is this error anyway? Is it some SGI hack for emulating
+NFS3ERR_JUKEBOX under NFSv2?
 
--matt
-
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
-This SF.Net email sponsored by: Free pre-built ASP.NET sites including
-Data Reports, E-commerce, Portals, and Forums are available now.
-Download today and enter to win an XBOX or Visual Studio .NET.
-http://aspnet.click-url.com/go/psa00100003ave/direct;at.aspnet_072303_01/01
+This SF.Net email sponsored by: Parasoft
+Error proof Web apps, automate testing & more.
+Download & eval WebKing and get a free book.
+www.parasoft.com/bulletproofapps1
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
