@@ -1,28 +1,31 @@
-From: Garrick Staples <garrick@usc.edu>
-Subject: nfsd threads locked, 2.6.7 & ia64
-Date: Sat, 26 Jun 2004 22:11:29 -0700
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: client side noac
+Date: Sun, 27 Jun 2004 15:28:29 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040627051129.GS10560@polop.usc.edu>
+Message-ID: <1088364509.4295.14.camel@lade.trondhjem.org>
+References: <Pine.LNX.4.60.0406251148570.3197@harp.ngdc.noaa.gov>
+	 <1088186851.4333.65.camel@lade.trondhjem.org>
+	 <Pine.LNX.4.60.0406251252570.3683@harp.ngdc.noaa.gov>
+	 <1088191021.4333.75.camel@lade.trondhjem.org>
+	 <Pine.LNX.4.60.0406251321030.3853@harp.ngdc.noaa.gov>
+	 <1088192302.4333.83.camel@lade.trondhjem.org>
+	 <Pine.LNX.4.60.0406261615060.10096@harp.ngdc.noaa.gov>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="sDhuxz86kt5qlkuV"
+Content-Type: text/plain; charset=iso-8859-1
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BeRxf-0005nP-DJ
-	for nfs@lists.sourceforge.net; Sat, 26 Jun 2004 22:12:15 -0700
-Received: from polop.usc.edu ([128.125.10.9])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1BefKN-0006ur-Ij
+	for nfs@lists.sourceforge.net; Sun, 27 Jun 2004 12:28:35 -0700
+Received: from dh132.citi.umich.edu
+	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
 	(Exim 4.34)
-	id 1BeRxe-0007Es-Ug
-	for nfs@lists.sourceforge.net; Sat, 26 Jun 2004 22:12:15 -0700
-Received: from polop.usc.edu (localhost.localdomain [127.0.0.1])
-	by polop.usc.edu (8.12.11/8.12.11) with ESMTP id i5R5BTTs025741
-	for <nfs@lists.sourceforge.net>; Sat, 26 Jun 2004 22:11:29 -0700
-Received: (from garrick@localhost)
-	by polop.usc.edu (8.12.11/8.12.11/Submit) id i5R5BT4D025739
-	for nfs@lists.sourceforge.net; Sat, 26 Jun 2004 22:11:29 -0700
-To: nfs@lists.sourceforge.net
+	id 1BefKN-0008AF-7k
+	for nfs@lists.sourceforge.net; Sun, 27 Jun 2004 12:28:35 -0700
+To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+In-Reply-To: <Pine.LNX.4.60.0406261615060.10096@harp.ngdc.noaa.gov>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -35,52 +38,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+P=E5 lau , 26/06/2004 klokka 18:17, skreiv Ara.T.Howard:
+> On Fri, 25 Jun 2004, Trond Myklebust wrote:
+> > As for whether or not lookups are cached: We check the mtime of the
+> > parent directory in order to find out whether or not it has changed. If
+> > it has, then we do a new lookup of the file.
 
---sDhuxz86kt5qlkuV
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+> so i can see how opening a file may result in a later ESTALE (mtime cachi=
+ng)
+> but how could open ITSELF return ESTALE?  this is the behaviour i'm seein=
+g.
 
-Well here's something I've not seen yet.  All 512 nfsd threads are stuck in=
- IO
-wait (state D in ps).  All clients are hung on that mount.  The actual
-filesystem on the server seems fine.
+Read the above paragraph carefully: we check the mtime on the parent
+directory in order to decide whether or not to lookup again...
 
-It start at 8am with no messages at all.
+That mtime value is subject to caching rules. The whole point is to
+reduce the number of on-the-wire RPC calls on sane setups.
 
-Jun 26 08:06:58 hpc-master nagios: SERVICE ALERT: hpc-fs3;nfs;CRITICAL;SOFT=
-;1;CRITICAL: RPC program nfs  version 3 udp is not running
-Jun 26 08:07:21 hpc934-e0 kernel: nfs: server hpc-fs3 not responding, still=
- trying
-Jun 26 08:09:12 hpc972-e0 kernel: nfs: server hpc-fs3 not responding, still=
- trying
-Jun 26 08:09:13 hpc941-e0 kernel: nfs: server hpc-fs3 not responding, still=
- trying
-=2E..
-
-I can't find anything otherwise wrong with the machine at all, just that nf=
-sd
-threads are stuck.  rpcinfo and showmount still work fine.  Nothing in dmes=
-g or
-messages.  I'm stuck too.
-
---=20
-Garrick Staples, Linux/HPCC Administrator
-University of Southern California
-
---sDhuxz86kt5qlkuV
-Content-Type: application/pgp-signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.3 (GNU/Linux)
-
-iD8DBQFA3lcB0SBUxJbm9HMRAhB3AKDF3lKajYJCQ6safpZwvAPJJI8aYwCgtLzA
-ZkL75VKt+FYGB/KRUQXQDoY=
-=BULB
------END PGP SIGNATURE-----
-
---sDhuxz86kt5qlkuV--
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
