@@ -1,102 +1,69 @@
-From: Bernd Schubert <bernd-schubert@web.de>
-Subject: Re: Problems with statd and lockd
-Date: Sat, 5 Apr 2003 18:31:09 +0200
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200304051831.09682.bernd-schubert@web.de>
-References: <20030405015638.5118fbb9.philippe.gramoulle@mmania.com> <200304051545.43063.bernd-schubert@web.de> <shs7ka9c957.fsf@charged.uio.no>
+From: Steve Dickson <SteveD@RedHat.com>
+Subject: Re: [NFS] [PATCH] mmap corruption
+Date: Sat, 5 Apr 2003 11:47:41 -0500
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <20030405164741.GA6450@RedHat.com>
+References: <3E8DDB13.9020009@RedHat.com> <shsistt7wip.fsf@charged.uio.no>
+Reply-To: SteveD@RedHat.com
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Cc: NFS Mailing List <nfs@lists.sourceforge.net>
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from smtp02.web.de ([217.72.192.151] helo=smtp.web.de)
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 191qZF-0008SJ-00
-	for <nfs@lists.sourceforge.net>; Sat, 05 Apr 2003 08:30:57 -0800
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net,
+	linux-kernel <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <shs7ka9c957.fsf@charged.uio.no>
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+In-Reply-To: <shsistt7wip.fsf@charged.uio.no>
+List-ID: <nfs.lists.sourceforge.net>
 
-On Saturday 05 April 2003 16:27, Trond Myklebust wrote:
-> >>>>> " " == Bernd Schubert <bernd-schubert@web.de> writes:
->      > we also see those messages when we use the rpc.statd from
->      > debian packages. I think the debian nfs-utils packages got
->      > "--enable-secure-statd" as configure option. After recompiling
->      > the nfs-utils without this option and starting the new
->      > rpc.statd on the clients, those messages should disappear, even
->      > without restarting the nfs-server.  (I discovered this odd
->      > behaviour by accident.)
->
-> --enable-secure-statd is there for a good reason. I wouldn't recommend
-> that anybody turn it off. In any case, if that is the problem, then
-> you should see a warning from 'statd' in your syslog (assuming you
-> have enabled 'warn' messages in syslog.conf).
->
-> Cheers,
->   Trond
->
+Hi Trond,
 
-Hello,
+On Sat, Apr 05, 2003 at 12:01:02AM +0200, Trond Myklebust wrote:
+> >>>>> " " == Steve Dickson <SteveD@redhat.com> writes:
+> 
+> That simply doesn't ring true. The nfs_wb_all() immediately after the
+> call to filemap_fdatasync() should ensure that *all* scheduled writes
+> will flushed out.
+> 
+Here is my evidence your honor... :-)
 
-here are the entries from our /etc/syslog.conf about warnings:
+1)  Through my debugging I was able to show when (and only when)
+the following if statement is true, there would be corruption:
 
-*.=info;*.=notice;*.=warn;\
-        auth,authpriv.none;\
-        cron,daemon.none;\
-        mail,news.none          -/var/log/messages
+nfs_notify_change(struct dentry *dentry, struct iattr *attr)
+{
+	/*
+	 * beginning code skipped
+	 */
 
-So I think warnings are enabled. Recently the self-created nfs-utils packages 
-(with disabled --enable-secure-statd) got replaced by an automatic update. 
-Some time afterwards our clients began to give those messages (here as 
-dmesg-output):
+	filemap_fdatasync(inode->i_mapping);
+	error = nfs_wb_all(inode);
+	filemap_fdatawait(inode->i_mapping);
+	if (error)
+		goto out;
 
-statd: server localhost not responding, timed out
-nsm_mon_unmon: rpc failed, status=-5
-lockd: cannot monitor <server IP>
-lockd: failed to monitor <server IP>
+	/*
+	 * Every time either npages or ncommit had a value and the file size is
+	 * immediately changed (with in a microsecond or two) by another 
+	 * truncation, followed by a mmap read, the file would be corrupted.
+	 */
+	if (NFS_I(inode)->npages || NFS_I(inode)->ncommit || NFS_I(inode)->ndirty) {
+		printk("nfs_notify_change: fid %Ld npages %d ncommit %d ndirty %d\n",
+		NFS_FILEID(inode), NFS_I(inode)->npages, 
+		NFS_I(inode)->ncommit, NFS_I(inode)->ndirty);
+	}
+}
 
-So on our systems not the server, but the clients are reporting those 
-messages. Though I have to admit that our server is also running nfs-utils 
-without secure-statd support, but as much as I can remember there where 
-similar messages on the server when secure-statd was enabled.
+I was also able to log the fact that the page was being written out (and committed)
+by kupdated was after second truncation finished. At first, I was thinking 
+there was a problem with the nfs_fattr_obsolete() code (and still might be) 
+since this late write/commit is *truly* obsolete. But I just could not figure 
+out how to detect this event so I went with avoidance approach. Now, if the 
+server supplied the client with valid pre and post attrs, I believe this condition 
+could be detected. But I didn't have a server that did that so I could 
+not test out my theroy...
 
-The /var/log/messages has this entries: 
+2) Without this patch my script that startups 300 process fails within
+minutes. With this patch the script runs to completion constistanly...
 
-Apr  5 15:28:16 maxwell kernel: statd: server localhost not responding, timed 
-out
-Apr  5 15:28:16 maxwell kernel: lockd: cannot monitor <server IP>
-Apr  5 15:28:16 maxwell kernel: lockd: failed to monitor <server IP>
+I rest my case... and the verdict is?
 
-What other messages do you expect ?
-
-As soon as I stop the debian-statd and start the new statd (that has 
-secure-statd disabled), those messages disappear.
-Furthermore, some programs as e.g. KDE have some problems to run when those 
-messages appear (our home directory is served by this server).
-
-What problems can be caused by a statd without the secure option ? 
-
-
-Thanks in advance,	
-	Bernd
-
-
--------------------------------------------------------
-This SF.net email is sponsored by: ValueWeb: 
-Dedicated Hosting for just $79/mo with 500 GB of bandwidth! 
-No other company gives more support or power for your dedicated server
-http://click.atdmt.com/AFF/go/sdnxxaff00300020aff/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+SteveD.
