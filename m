@@ -1,12 +1,20 @@
-From: Christian Reis <kiko@async.com.br>
-Subject: Mount: permission denied
-Date: Thu, 29 Aug 2002 10:57:17 -0300
+From: Oliver Korff <oliver.korff@credativ.de>
+Subject: kernel-nfs -- Too much mount requests?
+Date: Thu, 29 Aug 2002 17:44:16 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020829105717.M6099@blackjesus.async.com.br>
+Message-ID: <20020829154418.E1EAFD756B@www.credativ.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain;
+  charset="iso-8859-15"
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: NFS@lists.sourceforge.net
+Received: from cdt1.tz-juelich.de ([195.37.52.66] helo=www.credativ.de)
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17kRVo-0000E6-00
+	for <nfs@lists.sourceforge.net>; Thu, 29 Aug 2002 08:47:12 -0700
+Received: from there (localhost [127.0.0.1])
+	by www.credativ.de (Postfix) with SMTP id E1EAFD756B
+	for <nfs@lists.sourceforge.net>; Thu, 29 Aug 2002 17:44:17 +0200 (CEST)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -19,41 +27,71 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
+Hi,
 
-I've got a box that mounts a number of exported directories from a
-server. The client is a 2.4.12 box, and the server is 2.4.19 with neil
-and trond's full patches applied.
+my NFS server not to be able to handle all its mount requests.
 
-When the client is mounting the NFS directories, all but one of the
-mounts succeed. This is a bit bizarre as the mount lines in fstab are
-the same, as are the export lines:
+Problem report:
+1. Clients loose connection from time to time and show nfs-stale
+2. Server foo has only an uptime of about 2 Days then system crash (mostly 
+under heavy nfs-load)
+3. 250 Clients accessing a 500G Partitition
 
-# dist succeeds
-anthem:/dist   /dist      nfs defaults,rsize=8192,wsize=8192,async   0 0
-# mondo fails
-anthem:/mondo   /mondo    nfs defaults,rsize=8192,wsize=8192,async   0 0
+Are there any limitations for the nfs-kernel server?
+How to improve stability?
 
-# exports; exportfs -ra has been run
-/dist       *.async.com.br(no_root_squash,rw,async)
-/mondo      *.async.com.br(no_root_squash,rw,async)
 
-dude:~$ sudo mount /mondo/
-mount: anthem:/mondo failed, reason given by server: Permission denied
-dude:~$ sudo mount /dist/
-dude:~$ 
+Input:
+Debian Woody 
+Kernel 2.4.19
+package nfs-kernel-server-1.0-2
 
-Aug 29 10:51:41 anthem rpc.mountd: authenticated mount request from
-dude.async.com.br:749 for /mondo (/mondo) 
-Aug 29 10:55:20 anthem rpc.mountd: authenticated mount request from
-dude.async.com.br:781 for /dist (/dist) 
+######### logfiles output:
 
-It seems authentication *almost* works, but it doesn't.  Could it be
-that something in /var/lib/nfs is corrupted?
+Aug 28 14:10:54 foo rpc.statd[213]: Received erroneous SM_UNMON
+request from foo for 10.10.10.57
+Aug 28 14:10:54 foo rpc.statd[213]: Received erroneous SM_UNMON
+request from foo for 10.10.10.105
+Aug 28 14:10:54 foo rpc.statd[213]: Received erroneous SM_UNMON
+request from foo for 10.10.10..87
+Aug 28 14:10:54 foo rpc.statd[213]: Received erroneous SM_UNMON
+request from foo for 10.10.10.119
 
-Take care,
---
-Christian Reis, Senior Engineer, Async Open Source, Brazil.
-http://async.com.br/~kiko/ | [+55 16] 261 2331 | NMFL
+#############
+
+Aug 28 09:55:44 foo rpc.mountd: authenticated mount request from
+lxg0220.bar.de:693 for /BARroot (/BARroot) 
+Aug 28 09:59:49 foo rpc.mountd: authenticated mount request from
+lxg0220.bar.de:790 for /BARroot/Log (/BARroot/Log) 
+
+#############
+
+Aug 27 08:38:05 client kernel: nfs: server foo not responding, still
+trying
+Aug 27 08:40:12 client kernel: nfs: task 18177 can't get a request slot
+Aug 27 08:59:33 client kernel: nfs: task 18178 can't get a request slot
+Aug 27 09:03:01 client kernel: nfs: task 18179 can't get a request slot
+Aug 27 09:32:01  client kernel: nfs: task 18180 can't get a request slot
+Aug 27 10:03:01 client kernel: nfs: task 18181 can't get a request slot
+Aug 27 10:32:01 client kernel: nfs: task 18182 can't get a request slot
+Aug 27 11:03:01 client kernel: nfs: task 18183 can't get a request slot
+Aug 27 11:15:43 client kernel: nfs: server foo OK
+Aug 27 11:15:43 client last message repeated 7 times
+Aug 27 17:30:11 client kernel: nfs: server foo not responding, still
+trying
+Aug 27 17:30:32 client kernel: nfs: server foo OK
+Aug 28 09:16:29 client kernel: nfs: server foo not responding, still
+trying
+Aug 28 09:16:34 client kernel: nfs: server foo OK
+
+######## end
+-- 
+Oliver Korff, credativ GmbH
+Karl-Heinz-Beckurts-Str. 13
+52428 Jülich, Germany
+Tel.:  +49 (2461) 69071-0
+Fax:   +49 (2461) 69071-1
+
 
 
 -------------------------------------------------------
