@@ -1,24 +1,28 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: client apps not surviving nfsd restart
-Date: Fri, 20 Aug 2004 16:46:53 +0200
+From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Subject: file system read locks
+Date: Fri, 20 Aug 2004 09:08:15 -0600 (MDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040820144652.GF12371@suse.de>
-References: <4125EA9F.3040304@bio.ifi.lmu.de> <200408201525.36681.bernd-schubert@web.de> <41260BD9.1050003@bio.ifi.lmu.de>
+Message-ID: <Pine.LNX.4.60.0408200907020.6148@harp.ngdc.noaa.gov>
+Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Bernd Schubert <bernd-schubert@web.de>, nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ByAfZ-0008Kg-U5
-	for nfs@lists.sourceforge.net; Fri, 20 Aug 2004 07:47:05 -0700
-Received: from cantor.suse.de ([195.135.220.2])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1ByB06-0004ti-1c
+	for nfs@lists.sourceforge.net; Fri, 20 Aug 2004 08:08:18 -0700
+Received: from harp.ngdc.noaa.gov ([140.172.187.26])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.34)
-	id 1ByAfZ-0001jf-8z
-	for nfs@lists.sourceforge.net; Fri, 20 Aug 2004 07:47:05 -0700
-To: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
-In-Reply-To: <41260BD9.1050003@bio.ifi.lmu.de>
+	id 1ByB04-0005w2-ME
+	for nfs@lists.sourceforge.net; Fri, 20 Aug 2004 08:08:17 -0700
+Received: from harp.ngdc.noaa.gov (harp.ngdc.noaa.gov [127.0.0.1])
+	by harp.ngdc.noaa.gov (8.12.11/8.12.11) with ESMTP id i7KF8FRP006404
+	for <nfs@lists.sourceforge.net>; Fri, 20 Aug 2004 09:08:15 -0600
+Received: from localhost (ahoward@localhost)
+	by harp.ngdc.noaa.gov (8.12.11/8.12.11/Submit) with ESMTP id i7KF8F1F006400
+	for <nfs@lists.sourceforge.net>; Fri, 20 Aug 2004 09:08:15 -0600
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,22 +35,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> Hmm, since now (that we need a more recent version of 2.6 than the the
-> 2.6.5 SuSE shipped with 9.1) I've always been using SuSE kernels, and
-> I really loved them for many reasons. They had always included a lot of
-> useful stuff which I'm now forced to add all by myself (things like the
-> bcm5700 driver in 2.4 when the tg3 crashed our server every night :-))
 
-There is the "kernel of the day" at ftp://ftp.suse.com/pub/people/mantel/kotd
+i have a perfectly functioning filesystem based write lock algorithim
+(link(2)).  has anyone out there come up with an algorithim to make __read__
+locks using file system primitives?
 
-This is purely for testing, but people who, for some reason, need bleeding
-edge kernels, seem to find it useful.
+kind regards.
 
-Olaf
--- 
-Olaf Kirch     |  The Hardware Gods hate me.
-okir@suse.de   |
----------------+ 
+-a
+--
+===============================================================================
+| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
+| PHONE   :: 303.497.6469
+| A flower falls, even though we love it;
+| and a weed grows, even though we do not love it. 
+|   --Dogen
+===============================================================================
 
 
 -------------------------------------------------------
