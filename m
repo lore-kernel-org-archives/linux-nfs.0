@@ -1,21 +1,22 @@
-From: Greg Banks <gnb@melbourne.sgi.com>
+From: Ian Kent <raven@themaw.net>
 Subject: Re: how to force umount when "Device or resource busy"?
-Date: Wed, 15 Sep 2004 11:14:53 +1000
+Date: Wed, 15 Sep 2004 09:09:30 +0800 (WST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1095210892.3620.347.camel@hole.melbourne.sgi.com>
+Message-ID: <Pine.LNX.4.58.0409150908100.20157@wombat.indigo.net.au>
 References: <AB813470-0682-11D9-9080-000A95C71776@freezone.co.uk>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C7OFx-00086v-Vl
-	for nfs@lists.sourceforge.net; Tue, 14 Sep 2004 18:06:45 -0700
-Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1C7OFv-0000Je-Ly
-	for nfs@lists.sourceforge.net; Tue, 14 Sep 2004 18:06:44 -0700
+	id 1C7OIb-0000CM-RY
+	for nfs@lists.sourceforge.net; Tue, 14 Sep 2004 18:09:29 -0700
+Received: from wombat.indigo.net.au ([202.0.185.19])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.34)
+	id 1C7OIa-0001wa-1A
+	for nfs@lists.sourceforge.net; Tue, 14 Sep 2004 18:09:29 -0700
 To: ms419@freezone.co.uk
 In-Reply-To: <AB813470-0682-11D9-9080-000A95C71776@freezone.co.uk>
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -30,19 +31,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, 2004-09-15 at 05:17, ms419@freezone.co.uk wrote:
+On Tue, 14 Sep 2004 ms419@freezone.co.uk wrote:
+
 > How does one unmount when umount doesn't work?
 > 
 > Somehow, I got an NFS / AutoFS mount that just won't unmount.
 > 
+> I noticed /var/autofs/net was mounted twice, so I stopped AutoFS & 
+> tried killing the remaining automount process. "kill 14986" didn't 
+> work; I needed "kill -9 14986". The following mounts remain:
 
-See the manpage description of the "-l" flag to umount.
+What versions are you using?
+Kernel version?
+Patched?
 
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+Try the autofs list at
 
+http://linux.kernel.org/mailman/listinfo/autofs
+
+Ian
 
 
 
