@@ -1,19 +1,19 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [repost] Another NFS related oops on smp servers
-Date: 03 Feb 2003 21:47:06 +0100
+Subject: Re: NFS mount option - noac forces sync even if async is specified, and no warning is given
+Date: 03 Feb 2003 21:49:56 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsvg015bxx.fsf@charged.uio.no>
-References: <E18fkq3-000DC8-00@f10.mail.ru>
+Message-ID: <shsr8ap5bt7.fsf@charged.uio.no>
+References: <5CA6F03EF05E0046AC5594562398B916A7F982@POEXMB3.conoco.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mons.uio.no ([129.240.130.14] ident=7411)
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18fnUp-0004Q7-00
-	for <nfs@lists.sourceforge.net>; Mon, 03 Feb 2003 12:47:15 -0800
-To: "Peter Lojkin" <ia6432@inbox.ru>
-In-Reply-To: <E18fkq3-000DC8-00@f10.mail.ru>
+	id 18fnXY-0004eV-00
+	for <nfs@lists.sourceforge.net>; Mon, 03 Feb 2003 12:50:04 -0800
+To: "Heflin, Roger A." <Roger.A.Heflin@conocophillips.com>
+In-Reply-To: <5CA6F03EF05E0046AC5594562398B916A7F982@POEXMB3.conoco.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,29 +26,32 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Peter Lojkin <ia6432@inbox.ru> writes:
+>>>>> " " == Roger A Heflin <Heflin> writes:
 
-     > Hello, i got no answer for original message (lost in holidays
-     > spam probably) so i'm reposting it (we got another such oops
-     > this sunday):
+     > I run the following command:
 
-     > -----Original Message----- From: "Peter Lojkin"
-     > <ia6432@inbox.ru> To: nfs@lists.sourceforge.net Date: Thu, 26
-     > Dec 2002 17:48:03 +0300 Subject: [NFS] Another NFS related oops
-     > on smp servers
+     > mount -t nfs -o rw,hard,lock,intr,noac,async
+     >      hoepld31:/ptmp/hoepld31 /tmpmnt/ptmp/hoepld31
 
-    >>
-    >> Hello,
-    >>
-    >> we had 3 nfs related oopses on our servers in 2 days. such
-    >> oopses never happened before. the kernel on oopsed servers is
-    >> basically 2.4.20aa1 + trond's waitq fix. one of the oopsed
-    >> servers had also trond's fix for another our oops problem,
-    >> discussed earlier.  the setup is:
+     > And then cat /proc/mounts:
 
-I suggest you first try to reproduce that Oops on a stock kernel from
-ftp.kernel.org: 2.4.20aa1 is very unlikely to be used by too many of
-the developers (I certainly don't use it).
+     > hoepld31:/ptmp/hoepld31 /tmpmnt/ptmp/hoepld31 nfs
+     > rw,sync,v3,rsize=8192,
+     >      wsize=8192,acregmin=0,acregmax=0,acdirmin=0,acdirmax=0,hard,intr,
+     >      udp,noac,lock,addr=hoepld31 0 0
+
+     > Note that async is specified on the mount line and /proc/mounts
+     > specifies that sync was used.  If I don't use the async option
+
+That's right. 'noac' enforces 'sync' in order to remain compatible
+with the expected behaviour of noac on other NFS client
+implementations.
+
+If you don't need 'sync', you can specify
+
+   acregmin=0,acregmax=0,acdirmin=0,acdirmax=0
+
+instead.
 
 Cheers,
   Trond
