@@ -1,17 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 1 of 7 - Make sure sunrpc/cache doesn't confuse writers with readers.
-Date: Tue, 05 Aug 2003 13:59:21 +1000
+Subject: [PATCH] kNFSd - 2 of 7 - Change NFSEXP_CROSSMNT to NFSEXP_CROSSMOUNT
+Date: Tue, 05 Aug 2003 13:59:22 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19jsyn-0000mm-00@notabene>
+Message-ID: <E19jsyo-0000mr-00@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19jsyw-0001hB-00
+	id 19jsyw-0001hC-00
 	for <nfs@lists.sourceforge.net>; Mon, 04 Aug 2003 20:59:30 -0700
 Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
 	(for <torvalds@osdl.org>) (for <nfs@lists.sourceforge.net>) By note
-	With Smtp ; Tue, 5 Aug 2003 13:59:24 +1000
+	With Smtp ; Tue, 5 Aug 2003 13:59:25 +1000
 To: Linus Torvalds <torvalds@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -25,113 +25,56 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-7 patches for kNFSd in 2.6.0-test2 - all over the place.
-
 ### Comments for ChangeSet
 
-When a sunrpc/cache channel is not open for reading, the
-cache doesn't bother making and waiting for up-calls.
-
-However it doesn't currently distingish between open-for-read/write
-and open-for-write, so an op-for-write will look like a reader
-and will cause inappropriate waiting.
-
-This patch checks if a file is open-for-read and will only register
-a file as a reader if it really is one.
+NFSEXP_CROSSMNT used to mean something different, so
+using a different name reduces the chance of confusion.
+Also there is currently a surplus of vowels, so there is
+no need to be frugal
 
  ----------- Diffstat output ------------
- ./net/sunrpc/cache.c |   69 +++++++++++++++++++++++++++------------------------
- 1 files changed, 37 insertions(+), 32 deletions(-)
+ ./fs/nfsd/export.c            |    2 +-
+ ./fs/nfsd/vfs.c               |    2 +-
+ ./include/linux/nfsd/export.h |    2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
 
-diff ./net/sunrpc/cache.c~current~ ./net/sunrpc/cache.c
---- ./net/sunrpc/cache.c~current~	2003-08-04 11:07:23.000000000 +1000
-+++ ./net/sunrpc/cache.c	2003-08-04 11:07:23.000000000 +1000
-@@ -738,19 +738,22 @@ cache_ioctl(struct inode *ino, struct fi
- static int
- cache_open(struct inode *inode, struct file *filp)
- {
--	struct cache_reader *rp;
--	struct cache_detail *cd = PDE(inode)->data;
-+	struct cache_reader *rp = NULL;
+diff ./fs/nfsd/export.c~current~ ./fs/nfsd/export.c
+--- ./fs/nfsd/export.c~current~	2003-08-04 11:07:47.000000000 +1000
++++ ./fs/nfsd/export.c	2003-08-04 11:07:47.000000000 +1000
+@@ -999,7 +999,7 @@ struct flags {
+ 	{ NFSEXP_KERBEROS, { "kerberos", ""}},
+ 	{ NFSEXP_SUNSECURE, { "sunsecure", ""}},
+ 	{ NFSEXP_NOHIDE, {"nohide", ""}},
+-	{ NFSEXP_CROSSMNT, {"crossmnt", ""}},
++	{ NFSEXP_CROSSMOUNT, {"crossmnt", ""}},
+ 	{ NFSEXP_NOSUBTREECHECK, {"no_subtree_check", ""}},
+ 	{ NFSEXP_NOAUTHNLM, {"insecure_locks", ""}},
+ #ifdef MSNFS
+
+diff ./fs/nfsd/vfs.c~current~ ./fs/nfsd/vfs.c
+--- ./fs/nfsd/vfs.c~current~	2003-08-04 11:07:47.000000000 +1000
++++ ./fs/nfsd/vfs.c	2003-08-04 11:07:47.000000000 +1000
+@@ -99,7 +99,7 @@ nfsd_cross_mnt(struct svc_rqst *rqstp, s
+ 		mntput(mnt);
+ 		goto out;
+ 	}
+-	if (exp2 && ((exp->ex_flags & NFSEXP_CROSSMNT) || EX_NOHIDE(exp2))) {
++	if (exp2 && ((exp->ex_flags & NFSEXP_CROSSMOUNT) || EX_NOHIDE(exp2))) {
+ 		/* successfully crossed mount point */
+ 		exp_put(exp);
+ 		*expp = exp2;
+
+diff ./include/linux/nfsd/export.h~current~ ./include/linux/nfsd/export.h
+--- ./include/linux/nfsd/export.h~current~	2003-08-04 11:07:47.000000000 +1000
++++ ./include/linux/nfsd/export.h	2003-08-04 11:07:47.000000000 +1000
+@@ -40,7 +40,7 @@
+ #define	NFSEXP_NOAUTHNLM	0x0800		/* Don't authenticate NLM requests - just trust */
+ #define NFSEXP_MSNFS		0x1000	/* do silly things that MS clients expect */
+ #define NFSEXP_FSID		0x2000
+-#define	NFSEXP_CROSSMNT		0x4000
++#define	NFSEXP_CROSSMOUNT	0x4000
+ #define NFSEXP_ALLFLAGS		0x7FFF
  
--	rp = kmalloc(sizeof(*rp), GFP_KERNEL);
--	if (!rp)
--		return -ENOMEM;
--	rp->page = NULL;
--	rp->offset = 0;
--	rp->q.reader = 1;
--	atomic_inc(&cd->readers);
--	spin_lock(&queue_lock);
--	list_add(&rp->q.list, &cd->queue);
--	spin_unlock(&queue_lock);
-+	if (filp->f_mode & FMODE_READ) {
-+		struct cache_detail *cd = PDE(inode)->data;
-+
-+		rp = kmalloc(sizeof(*rp), GFP_KERNEL);
-+		if (!rp)
-+			return -ENOMEM;
-+		rp->page = NULL;
-+		rp->offset = 0;
-+		rp->q.reader = 1;
-+		atomic_inc(&cd->readers);
-+		spin_lock(&queue_lock);
-+		list_add(&rp->q.list, &cd->queue);
-+		spin_unlock(&queue_lock);
-+	}
- 	filp->private_data = rp;
- 	return 0;
- }
-@@ -761,29 +764,31 @@ cache_release(struct inode *inode, struc
- 	struct cache_reader *rp = filp->private_data;
- 	struct cache_detail *cd = PDE(inode)->data;
- 
--	spin_lock(&queue_lock);
--	if (rp->offset) {
--		struct cache_queue *cq;
--		for (cq= &rp->q; &cq->list != &cd->queue;
--		     cq = list_entry(cq->list.next, struct cache_queue, list))
--			if (!cq->reader) {
--				container_of(cq, struct cache_request, q)
--					->readers--;
--				break;
--			}
--		rp->offset = 0;
--	}
--	list_del(&rp->q.list);
--	spin_unlock(&queue_lock);
-+	if (rp) {
-+		spin_lock(&queue_lock);
-+		if (rp->offset) {
-+			struct cache_queue *cq;
-+			for (cq= &rp->q; &cq->list != &cd->queue;
-+			     cq = list_entry(cq->list.next, struct cache_queue, list))
-+				if (!cq->reader) {
-+					container_of(cq, struct cache_request, q)
-+						->readers--;
-+					break;
-+				}
-+			rp->offset = 0;
-+		}
-+		list_del(&rp->q.list);
-+		spin_unlock(&queue_lock);
- 
--	if (rp->page)
--		kfree(rp->page);
-+		if (rp->page)
-+			kfree(rp->page);
- 
--	filp->private_data = NULL;
--	kfree(rp);
-+		filp->private_data = NULL;
-+		kfree(rp);
- 
--	cd->last_close = get_seconds();
--	atomic_dec(&cd->readers);
-+		cd->last_close = get_seconds();
-+		atomic_dec(&cd->readers);
-+	}
- 	return 0;
- }
  
 
 
