@@ -1,64 +1,164 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: nfsroot problems on RedHat 8 with kernel linux-2.4.18-27.8.0
-Date: 23 May 2003 14:51:34 +0200
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shs4r3lx1ux.fsf@charged.uio.no>
-References: <3ECE0EF3.5080004@ti.com>
+Subject: [PATCH 1/4] Optimize NFS open() calls by means of 'intents'...
+Date: Fri, 23 May 2003 14:45:01 +0200
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <16078.6093.339198.108592@charged.uio.no>
+Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19JC1Q-00037c-00
-	for <nfs@lists.sourceforge.net>; Fri, 23 May 2003 05:51:44 -0700
-To: martynas@ti.com
-In-Reply-To: <3ECE0EF3.5080004@ti.com>
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-
->>>>> " " == Martynas Buozis <martynas@ti.com> writes:
-
-     > Hello I have problems with nfsroot module when root file system
-     > is shared on EMC Cellerra. The problem is, that Celerra needs
-     > the
-
-     > client's name and IP address to authenticate the mount
-     > request. This information is usually sent through the RPC
-     > authentication data. But nfsroot module does not send this data
-     > during mount, so Celerra denies request. This was a conclusion
-     > by EMC support after analyzing network's traffic between disk
-     > less station and Celerra.
+Cc: Linux FSdevel <linux-fsdevel@vger.kernel.org>,
+	Linux Kernel <linux-kernel@vger.kernel.org>,
+	NFS maillist <nfs@lists.sourceforge.net>
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
+To: Linus Torvalds <torvalds@transmeta.com>
+List-ID: <nfs.lists.sourceforge.net>
 
 
-     > I was looking what can be changed in
-     > /usr/src/linux-2.4/fs/nfs/nfsroot.c code, but I am not very
-     > experienced in this. Maybe somebody can help me to solve this
-     > problem ? Maybe that's wrong file were too look for changes ? 
-     > Is it possible to make changes like this and is it possible to
-     > get official fix fro this problem ?
-
-Look at Documentation/nfsroot.txt and/or the comments in
-net/ipv4/ipconfig.c. That will tell you how to specify the hostname.
-
-Cheers,
-  Trond
+Minor cleanup of open() code. Put the original open flags, mode, etc. into
+an 'opendata' structure that can be passed as an intent to lookup.
 
 
--------------------------------------------------------
-This SF.net email is sponsored by: ObjectStore.
-If flattening out C++ or Java code to make your application fit in a
-relational database is painful, don't do it! Check out ObjectStore.
-Now part of Progress Software. http://www.objectstore.net/sourceforge
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+
+diff -u --recursive --new-file linux-2.5.69/fs/namei.c linux-2.5.69-01-open1/fs/namei.c
+--- linux-2.5.69/fs/namei.c	2003-05-05 07:49:54.000000000 +0200
++++ linux-2.5.69-01-open1/fs/namei.c	2003-05-22 15:30:50.000000000 +0200
+@@ -18,6 +18,7 @@
+ #include <linux/slab.h>
+ #include <linux/fs.h>
+ #include <linux/namei.h>
++#include <linux/open.h>
+ #include <linux/quotaops.h>
+ #include <linux/pagemap.h>
+ #include <linux/dnotify.h>
+@@ -1204,19 +1205,18 @@
+  * for symlinks (where the permissions are checked later).
+  * SMP-safe
+  */
+-int open_namei(const char * pathname, int flag, int mode, struct nameidata *nd)
++int open_namei(const char * pathname, struct opendata *opendata, struct nameidata *nd)
+ {
+-	int acc_mode, error = 0;
++	int flag = opendata->flag;
++	int error = 0;
+ 	struct dentry *dentry;
+ 	struct dentry *dir;
+ 	int count = 0;
+ 
+-	acc_mode = ACC_MODE(flag);
+-
+ 	/* Allow the LSM permission hook to distinguish append 
+ 	   access from general write access. */
+ 	if (flag & O_APPEND)
+-		acc_mode |= MAY_APPEND;
++		opendata->acc_mode |= MAY_APPEND;
+ 
+ 	/*
+ 	 * The simplest case - just a plain lookup.
+@@ -1258,6 +1258,7 @@
+ 
+ 	/* Negative dentry, just create the file */
+ 	if (!dentry->d_inode) {
++		int mode = opendata->mode;
+ 		if (!IS_POSIXACL(dir->d_inode))
+ 			mode &= ~current->fs->umask;
+ 		error = vfs_create(dir->d_inode, dentry, mode);
+@@ -1267,7 +1268,7 @@
+ 		if (error)
+ 			goto exit;
+ 		/* Don't check for write permission, don't truncate */
+-		acc_mode = 0;
++		opendata->acc_mode = 0;
+ 		flag &= ~O_TRUNC;
+ 		goto ok;
+ 	}
+@@ -1299,7 +1300,7 @@
+ 	if (dentry->d_inode && S_ISDIR(dentry->d_inode->i_mode))
+ 		goto exit;
+ ok:
+-	error = may_open(nd, acc_mode, flag);
++	error = may_open(nd, opendata->acc_mode, flag);
+ 	if (error)
+ 		goto exit;
+ 	return 0;
+diff -u --recursive --new-file linux-2.5.69/fs/open.c linux-2.5.69-01-open1/fs/open.c
+--- linux-2.5.69/fs/open.c	2003-05-21 02:23:23.000000000 +0200
++++ linux-2.5.69-01-open1/fs/open.c	2003-05-22 14:25:57.000000000 +0200
+@@ -15,6 +15,7 @@
+ #include <linux/slab.h>
+ #include <linux/tty.h>
+ #include <linux/namei.h>
++#include <linux/open.h>
+ #include <linux/backing-dev.h>
+ #include <linux/security.h>
+ #include <linux/mount.h>
+@@ -602,6 +603,8 @@
+ 	return error;
+ }
+ 
++#define ACC_MODE(x) ("\000\004\002\006"[(x)&O_ACCMODE])
++
+ /*
+  * Note that while the flag value (low two bits) for sys_open means:
+  *	00 - read-only
+@@ -620,14 +623,19 @@
+ {
+ 	int namei_flags, error;
+ 	struct nameidata nd;
++	struct opendata opendata = {
++		.flag = flags,
++		.mode = mode,
++	};
+ 
+ 	namei_flags = flags;
+ 	if ((namei_flags+1) & O_ACCMODE)
+ 		namei_flags++;
+ 	if (namei_flags & O_TRUNC)
+ 		namei_flags |= 2;
++	opendata.acc_mode = ACC_MODE(namei_flags);
+ 
+-	error = open_namei(filename, namei_flags, mode, &nd);
++	error = open_namei(filename, &opendata, &nd);
+ 	if (!error)
+ 		return dentry_open(nd.dentry, nd.mnt, flags);
+ 
+diff -u --recursive --new-file linux-2.5.69/include/linux/fs.h linux-2.5.69-01-open1/include/linux/fs.h
+--- linux-2.5.69/include/linux/fs.h	2003-05-17 23:09:32.000000000 +0200
++++ linux-2.5.69-01-open1/include/linux/fs.h	2003-05-22 14:25:57.000000000 +0200
+@@ -23,6 +23,7 @@
+ 
+ struct iovec;
+ struct nameidata;
++struct opendata;
+ struct pipe_inode_info;
+ struct poll_table_struct;
+ struct statfs;
+@@ -1135,7 +1136,7 @@
+ }
+ extern int do_pipe(int *);
+ 
+-extern int open_namei(const char *, int, int, struct nameidata *);
++extern int open_namei(const char *, struct opendata *, struct nameidata *);
+ extern int may_open(struct nameidata *, int, int);
+ 
+ extern int kernel_read(struct file *, unsigned long, char *, unsigned long);
+diff -u --recursive --new-file linux-2.5.69/include/linux/open.h linux-2.5.69-01-open1/include/linux/open.h
+--- linux-2.5.69/include/linux/open.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-2.5.69-01-open1/include/linux/open.h	2003-05-22 14:25:57.000000000 +0200
+@@ -0,0 +1,17 @@
++#ifndef _LINUX_OPEN_H
++#define _LINUX_OPEN_H
++
++struct opendata {
++	int flag;
++	int mode;
++	int acc_mode;
++
++#if 0
++	/* Private data to be added to the filp->private_data field */
++	void *private;
++	/* Callback for destroying private data in case of an error */
++	void (*destroy)(struct opendata *, void *);
++#endif
++};
++
++#endif
