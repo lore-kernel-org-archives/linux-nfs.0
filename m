@@ -1,18 +1,27 @@
-From: "Kedar Sovani" <kedar@calsoftinc.com>
+From: ashutosh.varshney@st.com
 Subject: isolation of NFS threads  ?
-Date: Tue, 17 Sep 2002 12:56:45 +0530
+Date: Tue, 17 Sep 2002 13:08:01 +0530
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <000f01c25e1b$961ac560$4f0010ac@Ashwamedha>
+Message-ID: <H00004750469f746.1032247966.dlx99.dlh.st.com@MHS>
+References: <000f01c25e1b$961ac560$4f0010ac@Ashwamedha>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_000C_01C25E49.ADB614D0"
+Content-Type: text/plain; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from silver.he.net ([216.218.151.2])
+Received: from beta.dmz-eu.st.com ([164.129.1.35])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17rCjo-000579-00
-	for <nfs@lists.sourceforge.net>; Tue, 17 Sep 2002 00:25:36 -0700
-Received: from Ashwamedha ([203.124.132.202] (may be forged)) by silver.he.net (8.8.6/8.8.2) with SMTP id AAA32417 for <nfs@lists.sourceforge.net>; Tue, 17 Sep 2002 00:25:32 -0700
-To: <nfs@lists.sourceforge.net>
+	id 17rCwU-000109-00
+	for <nfs@lists.sourceforge.net>; Tue, 17 Sep 2002 00:38:43 -0700
+Received: from zeta.dmz-eu.st.com (ns2.st.com [164.129.230.9])
+	by beta.dmz-eu.st.com (STMicroelectronics) with SMTP id 4E708498C
+	for <nfs@lists.sourceforge.net>; Tue, 17 Sep 2002 07:38:08 +0000 (GMT)
+Received: from dlx99.dlh.st.com (localhost [127.0.0.1])
+	by zeta.dmz-eu.st.com (STMicroelectronics) with ESMTP id 1BDDC1848
+	for <nfs@lists.sourceforge.net>; Tue, 17 Sep 2002 07:38:07 +0000 (GMT)
+Received: from localhost (root@localhost)
+	by dlx99.dlh.st.com (8.9.3 (PHNE_22672)/8.9.3) with ESMTP id NAA05279
+	for <nfs@lists.sourceforge.net>; Tue, 17 Sep 2002 13:08:04 +0530 (IST)
+In-Reply-To: <000f01c25e1b$961ac560$4f0010ac@Ashwamedha>
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,62 +34,20 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+Hi
 
-------=_NextPart_000_000C_01C25E49.ADB614D0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+We had a lot of SUN machines and just installed few linux machines.We
+have all our licenses/Softwares of Solaris m/cs( NIS also on Solaris).But
+when we access the things from linux client..network chokes..all things
+hang..then we reboot the linux ..and set the rsize & wsize to 8K and now
+things work fine..
+Can any one puts lights why this all happen ..where is the problem.. in
+linux or solairs.
+Any site referneces for this customization..
 
-Hey,
-        How does nfs maintain the isolation between multiple =
-threads.That is when one nfs thread is running how does it avoid other =
-nfs threads from running. This is achieved in BSD using the splxxx() =
-functions. But in LINUX i do not see any similare function which handles =
-this.
-        Or more generally how does the LINUX kernel, lower and raise the =
-interrupt level it is currently working on? How does it apply to NFS ?
+thanks in advance
 
-Waiting for reply,
-
-rgds,
-Kedar.
-
-------=_NextPart_000_000C_01C25E49.ADB614D0
-Content-Type: text/html;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; =
-charset=3Diso-8859-1">
-<META content=3D"MSHTML 6.00.2600.0" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV><FONT face=3DArial size=3D2>Hey,</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; =
-How does nfs=20
-maintain the isolation between multiple threads.That is when one nfs =
-thread is=20
-running how does it avoid other nfs threads from running. This is =
-achieved in=20
-BSD using the splxxx() functions. But in LINUX i do not see any similare =
-
-function which handles this.</FONT></DIV>
-<DIV><FONT face=3DArial =
-size=3D2>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Or more=20
-generally how does the LINUX kernel, lower and raise the interrupt level =
-it is=20
-currently working on? How does it apply to NFS ?</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>Waiting for reply,</FONT></DIV>
-<DIV>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>rgds,</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>Kedar.</FONT></DIV></BODY></HTML>
-
-------=_NextPart_000_000C_01C25E49.ADB614D0--
+Ashutosh
 
 
 
