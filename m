@@ -1,20 +1,25 @@
-From: "Ming.W.Xia" <mingwxia@hotmail.com>
-Subject: no-root user can not mount a remote nfs directory?
-Date: Tue, 14 Dec 2004 14:58:06 +0800
-Message-ID: <BAY16-DAV32B09C9B4395F91D6DE08C5AC0@phx.gbl>
+From: Roger Leigh <roger.leigh@epictechnology.co.uk>
+Subject: statd errors
+Date: Tue, 14 Dec 2004 15:17:54 +0000
+Message-ID: <20041214151754.GA5985@epictechnology.co.uk>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0041_01C4E1ED.5146CDF0"
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ce6cO-0006lP-8c
-	for nfs@lists.sourceforge.net; Mon, 13 Dec 2004 22:57:08 -0800
-Received: from bay16-dav3.bay16.hotmail.com ([65.54.186.183] helo=hotmail.com)
+	id 1CeEQ0-0002qX-Ew
+	for nfs@lists.sourceforge.net; Tue, 14 Dec 2004 07:16:52 -0800
+Received: from mail.metronet.co.uk ([213.162.97.75])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1Ce6cN-00060Q-Vw
-	for nfs@lists.sourceforge.net; Mon, 13 Dec 2004 22:57:08 -0800
-To: <nfs@lists.sourceforge.net>
+	id 1CeEPy-0000nm-At
+	for nfs@lists.sourceforge.net; Tue, 14 Dec 2004 07:16:52 -0800
+Received: from till1.lan (unknown [213.162.108.80])
+	by smtp.metronet.co.uk (MetroNet Mail) with ESMTP id 17C0D466D14
+	for <nfs@lists.sourceforge.net>; Tue, 14 Dec 2004 15:15:03 +0000 (GMT)
+Received: from roger by till1.lan with local (Exim 4.34)
+	id 1CeER0-0001a0-QQ
+	for nfs@lists.sourceforge.net; Tue, 14 Dec 2004 15:17:54 +0000
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,39 +33,109 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+Hello,
 
-------=_NextPart_000_0041_01C4E1ED.5146CDF0
-Content-Type: text/plain;
-	charset="gb2312"
-Content-Transfer-Encoding: base64
+I'm running a simple NFS setup (one client, one server) using NFSv3 on
+Debian sarge (nfs-utils 1.0.6, and Linux 2.4.27 and 2.6.8 Debian
+kernels).  I'm seeing the same problem with both kernel versions (plus
+vanilla kernel.org 2.6.[89]).
 
-aGkgYWxsLA0KV2hlbiBJIGlzc3VlIHRoZSAnbW91bnQgLXQgbmZzJyBjb21tYW5kIHRvIG1vdW50
-IGEgcmVtb3RlIGV4cG9ydGVkIG5mcyANCmRpcmVjdG9yeSAsIEkgZ290IHRoZSBtZXNzYWdlICJt
-b3VudDogb25seSByb290IGNhbiBkbyB0aGF0Ii4gRG9lcyBpdCANCm1lYW4gbm8tcm9vdCB1c2Vy
-cyBjYW4gbm90IHVzZXIgbmZzPw0KDQpyZWdhcmRzIA==
+In my logs, I keep getting this message (on both the client and server):
 
-------=_NextPart_000_0041_01C4E1ED.5146CDF0
-Content-Type: text/html;
-	charset="gb2312"
-Content-Transfer-Encoding: base64
+Dec 14 11:59:54 till2 rpc.statd[2141]: Received erroneous SM_UNMON
+request from till2 for 10.0.0.203
 
-PCFET0NUWVBFIEhUTUwgUFVCTElDICItLy9XM0MvL0RURCBIVE1MIDQuMCBUcmFuc2l0aW9uYWwv
-L0VOIj4NCjxIVE1MPjxIRUFEPg0KPE1FVEEgaHR0cC1lcXVpdj1Db250ZW50LVR5cGUgY29udGVu
-dD0idGV4dC9odG1sOyBjaGFyc2V0PWdiMjMxMiI+DQo8TUVUQSBjb250ZW50PSJNU0hUTUwgNi4w
-MC4yODAwLjE0MDAiIG5hbWU9R0VORVJBVE9SPg0KPFNUWUxFPjwvU1RZTEU+DQo8L0hFQUQ+DQo8
-Qk9EWSBiZ0NvbG9yPSNmZmZmZmY+DQo8RElWPjxGT05UIGZhY2U9IkNvdXJpZXIgTmV3IiBzaXpl
-PTI+aGkgYWxsLDwvRk9OVD48L0RJVj4NCjxESVY+PEZPTlQgZmFjZT0iQ291cmllciBOZXciIHNp
-emU9Mj5XaGVuIEkgaXNzdWUgdGhlICdtb3VudCAtdCANCm5mcycmbmJzcDtjb21tYW5kIHRvIG1v
-dW50IGEgcmVtb3RlJm5ic3A7ZXhwb3J0ZWQgbmZzIDwvRk9OVD48L0RJVj4NCjxESVY+PEZPTlQg
-ZmFjZT0iQ291cmllciBOZXciIHNpemU9Mj5kaXJlY3RvcnkgLCBJJm5ic3A7Z290IHRoZSBtZXNz
-YWdlICJtb3VudDogDQpvbmx5IHJvb3QgY2FuIGRvIHRoYXQiLiZuYnNwO0RvZXMgaXQgPC9GT05U
-PjwvRElWPg0KPERJVj48Rk9OVCBmYWNlPSJDb3VyaWVyIE5ldyIgc2l6ZT0yPm1lYW4mbmJzcDtu
-by1yb290IHVzZXJzIGNhbiBub3QgdXNlciANCm5mcz88L0ZPTlQ+PC9ESVY+DQo8RElWPiZuYnNw
-OzwvRElWPg0KPERJVj48Rk9OVCBmYWNlPSJDb3VyaWVyIE5ldyIgc2l6ZT0yPnJlZ2FyZHM8L0ZP
-TlQ+Jm5ic3A7PC9ESVY+PC9CT0RZPjwvSFRNTD4NCg==
+Looking through list archives with Google, it seems that this can be
+caused by:
 
-------=_NextPart_000_0041_01C4E1ED.5146CDF0--
+1. /var/lib/nfs/sm* not being writable (it's writable, owned by root, and
+   rpc.statd runs as root)
+2. Name/IP address changes.  This isn't happening either.
+
+The file region locking works; using strace I can see that fcntl64 is
+used to get and set locks, and attempts to lock the same records on both
+systems give the appropriate errors in the application.  I get the
+SM_UNMON error if I leave the client system alone for 5 minutes with no
+activity; when I next try an operation, I get the above error in the
+logs on both machines.  With continuous operation, I still get the error
+periodically, but if I leave it alone for 5 minutes, it always occurs.
+
+Please could anyone suggest how I might debug or fix this?
+
+
+Many thanks,
+Roger
+
+
+Server Configuration (host till1, ip 10.0.0.203):
+/etc/exports:
+/srv/epic *(rw,sync,secure_locks,no_root_squash,no_wdelay,no_subtree_check)
+[using knfsd]
+
+Client configuration (host till2, ip 10.0.0.204):
+I use autofs4, which gives this mount:
+automount(pid2099) on /var/autofs/net type autofs
+(rw,fd=4,pgrp=2099,minproto=2,maxproto=4)
+till1:/srv/epic on /var/autofs/net/till1/srv/epic type nfs
+(rw,nosuid,nodev,hard,intr,nfsvers=3,posix,udp,rsize=8192,wsize=8192,addr=10.0.0.203)
+
+This is the log in the server (nlm_debug is 65535):
+
+Dec 14 12:02:25 till1 kernel: lockd: request from 0a0000cc
+Dec 14 12:02:25 till1 kernel: lockd: LOCK          called
+Dec 14 12:02:25 till1 kernel: lockd: nlm_lookup_host(0a0000cc, p=17, v=4)
+Dec 14 12:02:25 till1 kernel: lockd: host garbage collection
+Dec 14 12:02:25 till1 kernel: lockd: nlmsvc_mark_resources
+Dec 14 12:02:25 till1 kernel: lockd: delete host 10.0.0.204
+Dec 14 12:02:25 till1 kernel: lockd: nsm_unmonitor(10.0.0.204)
+Dec 14 12:02:25 till1 kernel: nsm: xdr_encode_mon(0a0000cc, -1249509120, 67108864, 268435456)
+Dec 14 12:02:25 till1 rpc.statd[1421]: Received erroneous SM_UNMON request from till1 for 10.0.0.204
+Dec 14 12:02:25 till1 kernel: lockd: creating host entry
+Dec 14 12:02:25 till1 kernel: lockd: nsm_monitor(10.0.0.204)
+Dec 14 12:02:25 till1 kernel: nsm: xdr_encode_mon(0a0000cc, -1249509120, 67108864, 268435456)
+Dec 14 12:02:25 till1 kernel: nsm: xdr_decode_stat_res status 0 state 181
+Dec 14 12:02:25 till1 kernel: lockd: nlm_file_lookup(01000001 0400fe00 00010001 00010804 13bb0bdb 00000000)
+Dec 14 12:02:25 till1 kernel: lockd: creating file for (01000001 0400fe00 00010001 00010804 13bb0bdb
+00000000)
+Dec 14 12:02:25 till1 kernel: lockd: found file c51aa1d0 (count 0)
+Dec 14 12:02:25 till1 kernel: lockd: nlmsvc_lock(fe04/67588, ty=1, pi=2493, 805306370-805306371, bl=0)
+Dec 14 12:02:25 till1 kernel: lockd: nlmsvc_lookup_block f=c51aa1d0 pd=2493 805306370-805306371 ty=1
+Dec 14 12:02:25 till1 kernel: lockd: posix_lock_file returned 0
+Dec 14 12:02:25 till1 kernel: lockd: LOCK          status 0
+Dec 14 12:02:25 till1 kernel: lockd: release host 10.0.0.204
+Dec 14 12:02:25 till1 kernel: lockd: nlm_release_file(c51aa1d0, ct = 1)
+Dec 14 12:02:25 till1 kernel: nlmsvc_retry_blocked(00000000, when=0)
+Dec 14 12:02:25 till1 kernel: nlmsvc_retry_blocked(00000000, when=0)
+Dec 14 12:02:25 till1 kernel: lockd: request from 0a0000cc
+
+
+This is the log in the client (nlm_debug is 65535, the time is slightly
+behind the server):
+
+Dec 14 11:04:55 till2 kernel: lockd: nlm_lookup_host(0a0000cb, p=17, v=4)
+Dec 14 11:04:55 till2 kernel: lockd: get host 10.0.0.203
+Dec 14 11:04:55 till2 kernel: lockd: call procedure 4 on 10.0.0.203
+Dec 14 11:04:55 till2 kernel: lockd: nlm_bind_host(0a0000cb)
+Dec 14 11:04:55 till2 kernel: lockd: server returns status 0
+Dec 14 11:04:55 till2 kernel: lockd: clnt proc returns 0
+Dec 14 11:04:55 till2 kernel: lockd: release host 10.0.0.203
+Dec 14 11:04:55 till2 kernel: lockd: release host 10.0.0.203
+Dec 14 11:59:54 till2 kernel: lockd: nlm_lookup_host(0a0000cb, p=17, v=4)
+Dec 14 11:59:54 till2 kernel: lockd: host garbage collection
+Dec 14 11:59:54 till2 kernel: lockd: nlmsvc_mark_resources
+Dec 14 11:59:54 till2 kernel: lockd: delete host 10.0.0.203
+Dec 14 11:59:54 till2 kernel: lockd: nsm_unmonitor(10.0.0.203)
+Dec 14 11:59:54 till2 rpc.statd[2141]: Received erroneous SM_UNMON request from till2 for 10.0.0.203
+Dec 14 11:59:54 till2 kernel: lockd: creating host entry
+Dec 14 11:59:54 till2 kernel: lockd: nlm_bind_host(0a0000cb)
+Dec 14 11:59:54 till2 kernel: lockd: nsm_monitor(10.0.0.203)
+
+
+-- 
+Roger Leigh
+
+                Printing on GNU/Linux?  http://gimp-print.sourceforge.net/
+                GPG Public Key: 0x25BFB848.  Please sign and encrypt your mail.
 
 
 -------------------------------------------------------
