@@ -1,17 +1,19 @@
-From: pwitting@Cyveillance.com
-Subject: Re: Journaling FileSystems w/ NFS
-Date: Fri, 20 Sep 2002 17:30:23 -0400
+From: "H. J. Lu" <hjl@lucon.org>
+Subject: Re: nfsroot via NetApp F840
+Date: Fri, 20 Sep 2002 14:44:50 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <D38AFB3080F3D311807300B0D0203E53033A925E@MERCURY>
+Message-ID: <20020920144450.A1637@lucon.org>
+References: <02092015093803.22012@mavericks>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [63.100.163.37] (helo=mercury.cyveillance.com)
+Received: from rwcrmhc52.attbi.com ([216.148.227.88])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17sVML-0002Eg-00
-	for <nfs@lists.sourceforge.net>; Fri, 20 Sep 2002 14:30:45 -0700
-To: nfs@lists.sourceforge.net
+	id 17sVZn-0007Xi-00
+	for <nfs@lists.sourceforge.net>; Fri, 20 Sep 2002 14:44:39 -0700
+To: "Daniel G. Pruitt" <pruitt@lanl.gov>
+In-Reply-To: <02092015093803.22012@mavericks>; from pruitt@lanl.gov on Fri, Sep 20, 2002 at 03:09:38PM -0600
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,11 +26,18 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-Just wanted to second troubles with JFS over NFS.
-We solved an easily repeatable problem with "ls" by of all things adding
-users to the NFS server (a fix someone had found for problems with "du"). 
-However, we've continued to see intermittent problems so we've been
-replacing JFS with EXT3 (which does support >2gb files these days)
+On Fri, Sep 20, 2002 at 03:09:38PM -0600, Daniel G. Pruitt wrote:
+> Hi,
+> 
+> I'm having difficulties getting nfsroot to mount "/" via a NetApp 
+> filer.  Are there any tricks to this, patches I need, etc.?
+> 
+
+I don't think you can since device files are special. You may get away
+with it using devfs.
+
+
+H.J.
 
 
 -------------------------------------------------------
