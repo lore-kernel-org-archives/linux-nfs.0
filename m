@@ -1,24 +1,20 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: #255931 NFS fh_verify causes lost output
-Date: Fri, 20 Aug 2004 12:30:40 +1000
+From: NeilBrown <neilb@cse.unsw.edu.au>
+Subject: [PATCH kNFSd 2 of 4] Minor memory leak fix.
+Date: Fri, 20 Aug 2004 16:51:36 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16677.25168.374531.344188@cse.unsw.edu.au>
-References: <20040818210041.A2223@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net,
-    Paul Szabo <psz@maths.usyd.edu.au>
+Message-ID: <E1By3FQ-000738-5m@notabene.cse.unsw.edu.au>
+References: <20040820164909.27056.patches@notabene>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BxzBE-00014q-NE
-	for nfs@lists.sourceforge.net; Thu, 19 Aug 2004 19:31:00 -0700
+	id 1By3Fb-0004fc-At
+	for nfs@lists.sourceforge.net; Thu, 19 Aug 2004 23:51:47 -0700
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1BxzBD-0005Mc-20
-	for nfs@lists.sourceforge.net; Thu, 19 Aug 2004 19:31:00 -0700
-To: Christoph Hellwig <hch@infradead.org>
-In-Reply-To: message from Christoph Hellwig on Wednesday August 18
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1By3Fa-0006oC-A4
+	for nfs@lists.sourceforge.net; Thu, 19 Aug 2004 23:51:47 -0700
+To: Andrew Morton <akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,69 +27,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wednesday August 18, hch@infradead.org wrote:
-> We have the following report from Paul Szabo in the Debian bugtracking system,
-> any chance someone could look into it?  The RedHat bugzilla reference is quite
-> interesting aswell.
-> 
-> -----------------------------------------------------------------------------
-> Package: kernel
-> Version: N/A; reported 2004-06-24
-> Severity: important
-> Tags: patch
-> 
-> With default root_squash and subtree_check options, there is a problem with
-> NFS exports. The bug may appear also with no_root_squash; can always be
-> avoided with no_subtree_check. The bug causes open filehandles to become
-> stale, and further read/write access to fail.
 
 
-Yes... I've seen this reported and seen the suggested patches, but I
-haven't been comfortable with the suggestions and have been guilty of
-leaving it in the too-hard basket.
+Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
-I'm tempted to just remove the permission check altogether.
+### Diffstat output
+ ./net/sunrpc/svcauth_unix.c |    1 +
+ 1 files changed, 1 insertion(+)
 
-Originally, the check here was "does anyone other that root have x
-permission" and "it is exported root_squash".
-If the first was "no" and the second was "yes", then access was
-denied.
-Note that this test does not involve who the current user is, and so
-can safely return STALE.
-
-However the first check is not easy to perform when ACLs exist (have I
-mentioned that I hate acls?).  So it was changed to the "permission"
-check, which seemed close-enough.
-
-
-Returning EPERM instead of ESTALE seems to fix the symptom, but I
-really don't think it is the right thing to do.
-
-So here are my options:
-
- 1/ remove the permission check, and remove a tiny bit of security
-    that it is vaguely possible that someone is relying on (if a
-    directory is root owned and perm 700, and the fs is exported
-    root_squash,subtree_check, then everything below is not
-    accessible, even if the right filehandle can be guessed)
- 2/ change the error to EPERM, which is wrong because filehandle
-    lookup itself shouldn't return EPERM, and if the failure is
-    because the file is outside the exported tree rather than inside
-    but with wrong permission, then it really should be ESTALE ... but
-    who cares what error is returned if someone is guessing
-    filehandles, and if they aren't, then they can only get the
-    filehandle if they really have access anyway.
- 3/ leave it as it is, broken.
- 4/ invent some way to test 'does anyone other than root have x
-    access'?
-
-As you can see, so far I have leant towards 3.
-
-I suspect 2 is probably best, but I think I'll leave it for now, and
-think through it again on Monday and see if I can convince my self of
-anything else before I actually submit a patch.
-
-NeilBrown
+diff ./net/sunrpc/svcauth_unix.c~current~ ./net/sunrpc/svcauth_unix.c
+--- ./net/sunrpc/svcauth_unix.c~current~	2004-08-20 16:38:12.000000000 +1000
++++ ./net/sunrpc/svcauth_unix.c	2004-08-20 16:38:19.000000000 +1000
+@@ -104,6 +104,7 @@ void ip_map_put(struct cache_head *item,
+ 		if (test_bit(CACHE_VALID, &item->flags) &&
+ 		    !test_bit(CACHE_NEGATIVE, &item->flags))
+ 			auth_domain_put(&im->m_client->h);
++		kfree(im->m_class);
+ 		kfree(im);
+ 	}
+ }
 
 
 -------------------------------------------------------
