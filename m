@@ -1,17 +1,13 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: NetApp nfs server support tcp v3 root file system?
-Date: Wed, 4 Sep 2002 20:51:59 -0700
+From: Jean-Eric Cuendet <jean-eric.cuendet@linkvest.com>
+Subject: Re: rpc.mountd + rpc.nfsd
+Date: Thu, 05 Sep 2002 09:19:08 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <6440EA1A6AA1D5118C6900902745938E07D54E10@black.eng.netapp.com>
+Message-ID: <3D77056C.6020500@linkvest.com>
+References: <3D7363A7.8090906@linkvest.com>	<15732.7907.19389.156631@notabene.cse.unsw.edu.au>	<3D745D10.4040409@linkvest.com>	<15732.35929.482032.954554@notabene.cse.unsw.edu.au>	<3D7490D4.7050307@linkvest.com> <15732.39741.104912.607715@notabene.cse.unsw.edu.au> <3D760B6D.2040408@linkvest.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mx01-a.netapp.com ([198.95.226.53])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17mngd-0002cv-00
-	for <nfs@lists.sourceforge.net>; Wed, 04 Sep 2002 20:52:07 -0700
-To: "'Hua Qin'" <qinhua@poisson.ecse.rpi.edu>
+To: nfs@sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,31 +20,23 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-hua-
+Isn't there someone to answer this guy question?... :-)
 
-what does linuxB use by default to mount /dev ?  v2?
-have you tried to get a network trace (pktt on
-the filer) to find out more?
+>> If I understand you correctly, the nfs server will be on the same
+>> machine as the nfs client that accesses that server. And then the
+>> <..>
+>> mounts itself and then starts responding to NFS requests.
+>
+> I REALLY need to know how to mount myself in a directory.
+> I have nfs3_prot.x implemented but not mountd at all.
+> How to do that? When in my program? What to call?
 
-> I have NetApp as a nfs server, and on the NetApp, 
-> /etc/exports  shows the correct configure: /vol/vol0/dev/  
-> anon=0 I can mount /dev from  linuxA using v3 tcp nfs, then I 
-> try to use /dev as root file to boot linuxB, I [Bcan not boot 
-> successfully. I can see it got the ip address from dhcp 
-> server, then after that:
-> 
-> Looking up port of RPC 100003/3 on 172.29.255.1  
-> Looking up port of RPC 100005/3 on 172.29.255.1
-> mount: server 172.29.255.1 not responding, timed out
-> Root-NFS: Server returned error -5 while mounting /dev
-> VFS: Unable to mount root fs via NFS, trying floppy.
-> VFS: Insert root floppy and press ENTER
-> VFS: Cannot open root device "nfs" or 02:00
-> Please append a correct "root=" boot option
-> Kernel panic: VFS: Unable to mount root fs on 02:00
-> 
-> But I can use udp v3 to boot it. so I am wondering, what will 
-> cause this problem, someone has the same setup?
+
+;-)
+-jec
+
+
+
 
 
 -------------------------------------------------------
