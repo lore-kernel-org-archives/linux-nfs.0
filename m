@@ -1,16 +1,16 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 12 of 12] change nfsd reply cache to use list.h lists
+Subject: [PATCH kNFSd 5 of 12] svcrpc: move export table checks to a per-program pg_add_client method
 Date: Tue, 08 Feb 2005 14:06:54 +1100
-Message-ID: <E1CyLiI-0006Vu-L2@notabene.cse.unsw.edu.au>
+Message-ID: <E1CyLiI-0006VS-6H@notabene.cse.unsw.edu.au>
 References: <20050208140033.24886.patches@notabene>
 Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CyLis-0006vJ-MJ
+	id 1CyLis-0006vG-Cj
 	for nfs@lists.sourceforge.net; Mon, 07 Feb 2005 19:07:30 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CyLir-0004G7-Nb
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1CyLir-0005Du-AF
 	for nfs@lists.sourceforge.net; Mon, 07 Feb 2005 19:07:30 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
@@ -27,258 +27,216 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-also kmalloc the cache one entry at a time, instead
-of in one big slab.
 
+svcauth_null_accept() and svcauth_unix_accept() are currently hard-wired to
+check the source ip address on an incoming request against the export table,
+which make sense for nfsd but not necessarily for other rpc-based services.
+
+So instead we have the accept() method call a program-specific
+pg_authenticate() method.  We also move the call to this method into
+svc_process instead of calling it from the flavor-specific accept() routines.
+
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfscache.c         |  131 ++++++++++++++-----------------------------
- ./include/linux/nfsd/cache.h |    7 --
- 2 files changed, 46 insertions(+), 92 deletions(-)
+ ./fs/lockd/svc.c                    |   15 +++++++++++++++
+ ./fs/nfsd/nfssvc.c                  |    2 ++
+ ./include/linux/sunrpc/svc.h        |    1 +
+ ./net/sunrpc/auth_gss/svcauth_gss.c |    9 ++-------
+ ./net/sunrpc/svc.c                  |   12 +++++++++++-
+ ./net/sunrpc/svcauth_unix.c         |   18 ++----------------
+ 6 files changed, 33 insertions(+), 24 deletions(-)
 
-diff ./fs/nfsd/nfscache.c~current~ ./fs/nfsd/nfscache.c
---- ./fs/nfsd/nfscache.c~current~	2005-02-08 13:49:35.000000000 +1100
-+++ ./fs/nfsd/nfscache.c	2005-02-08 13:49:42.000000000 +1100
-@@ -15,6 +15,7 @@
- #include <linux/slab.h>
- #include <linux/string.h>
- #include <linux/spinlock.h>
-+#include <linux/list.h>
+diff ./fs/lockd/svc.c~current~ ./fs/lockd/svc.c
+--- ./fs/lockd/svc.c~current~	2005-02-07 15:04:35.000000000 +1100
++++ ./fs/lockd/svc.c	2005-02-07 15:04:35.000000000 +1100
+@@ -403,6 +403,20 @@ static int param_set_##name(const char *
+ 	return 0;							\
+ }
  
- #include <linux/sunrpc/svc.h>
- #include <linux/nfsd/nfsd.h>
-@@ -30,15 +31,8 @@
- #define HASHSIZE		64
- #define REQHASH(xid)		((((xid) >> 24) ^ (xid)) & (HASHSIZE-1))
- 
--struct nfscache_head {
--	struct svc_cacherep *	next;
--	struct svc_cacherep *	prev;
--};
--
--static struct nfscache_head *	hash_list;
--static struct svc_cacherep *	lru_head;
--static struct svc_cacherep *	lru_tail;
--static struct svc_cacherep *	nfscache;
-+static struct hlist_head *	hash_list;
-+static struct list_head 	lru_head;
- static int			cache_disabled = 1;
- 
- static int	nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *vec);
-@@ -54,46 +48,32 @@ void
- nfsd_cache_init(void)
- {
- 	struct svc_cacherep	*rp;
--	struct nfscache_head	*rh;
--	size_t			i;
--	unsigned long		order;
-+	int			i;
- 
--
--	i = CACHESIZE * sizeof (struct svc_cacherep);
--	for (order = 0; (PAGE_SIZE << order) < i; order++)
--		;
--	nfscache = (struct svc_cacherep *)
--		__get_free_pages(GFP_KERNEL, order);
--	if (!nfscache) {
--		printk (KERN_ERR "nfsd: cannot allocate %Zd bytes for reply cache\n", i);
--		return;
-+	INIT_LIST_HEAD(&lru_head);
-+	i = CACHESIZE;
-+	while(i) {
-+		rp = kmalloc(sizeof(*rp), GFP_KERNEL);
-+		if (!rp) break;
-+		list_add(&rp->c_lru, &lru_head);
-+		rp->c_state = RC_UNUSED;
-+		rp->c_type = RC_NOCACHE;
-+		INIT_HLIST_NODE(&rp->c_hash);
-+		i--;
- 	}
--	memset(nfscache, 0, i);
- 
--	i = HASHSIZE * sizeof (struct nfscache_head);
--	hash_list = kmalloc (i, GFP_KERNEL);
-+	if (i)
-+		printk (KERN_ERR "nfsd: cannot allocate all %d cache entries, only got %d\n",
-+			CACHESIZE, CACHESIZE-i);
++static int lockd_authenticate(struct svc_rqst *rqstp)
++{
++	rqstp->rq_client = NULL;
++	switch (rqstp->rq_authop->flavour) {
++		case RPC_AUTH_NULL:
++		case RPC_AUTH_UNIX:
++			if (rqstp->rq_proc == 0)
++				return SVC_OK;
++			return svc_set_client(rqstp);
++	}
++	return SVC_DENIED;
++}
 +
-+	hash_list = kmalloc (HASHSIZE * sizeof(struct hlist_head), GFP_KERNEL);
- 	if (!hash_list) {
--		free_pages ((unsigned long)nfscache, order);
--		nfscache = NULL;
--		printk (KERN_ERR "nfsd: cannot allocate %Zd bytes for hash list\n", i);
-+		nfsd_cache_shutdown();
-+		printk (KERN_ERR "nfsd: cannot allocate %Zd bytes for hash list\n", 
-+			HASHSIZE * sizeof(struct hlist_head));
- 		return;
++
+ param_set_min_max(port, int, simple_strtol, 0, 65535)
+ param_set_min_max(grace_period, unsigned long, simple_strtoul,
+ 		  nlm_grace_period_min, nlm_grace_period_max)
+@@ -483,4 +497,5 @@ static struct svc_program	nlmsvc_program
+ 	.pg_name		= "lockd",		/* service name */
+ 	.pg_class		= "nfsd",		/* share authentication with nfsd */
+ 	.pg_stats		= &nlmsvc_stats,	/* stats table */
++	.pg_authenticate = &lockd_authenticate	/* export authentication */
+ };
+
+diff ./fs/nfsd/nfssvc.c~current~ ./fs/nfsd/nfssvc.c
+--- ./fs/nfsd/nfssvc.c~current~	2005-02-07 15:04:35.000000000 +1100
++++ ./fs/nfsd/nfssvc.c	2005-02-07 15:04:35.000000000 +1100
+@@ -402,4 +402,6 @@ struct svc_program		nfsd_program = {
+ 	.pg_name		= "nfsd",		/* program name */
+ 	.pg_class		= "nfsd",		/* authentication class */
+ 	.pg_stats		= &nfsd_svcstats,	/* version table */
++	.pg_authenticate	= &svc_set_client,	/* export authentication */
++
+ };
+
+diff ./include/linux/sunrpc/svc.h~current~ ./include/linux/sunrpc/svc.h
+--- ./include/linux/sunrpc/svc.h~current~	2005-02-07 15:04:25.000000000 +1100
++++ ./include/linux/sunrpc/svc.h	2005-02-07 15:04:35.000000000 +1100
+@@ -275,6 +275,7 @@ struct svc_program {
+ 	struct svc_stat *	pg_stats;	/* rpc statistics */
+ 	/* Override authentication. NULL means use default */
+ 	int			(*pg_authenticate_obsolete)(struct svc_rqst *, u32 *);
++	int			(*pg_authenticate)(struct svc_rqst *);
+ };
+ 
+ /*
+
+diff ./net/sunrpc/auth_gss/svcauth_gss.c~current~ ./net/sunrpc/auth_gss/svcauth_gss.c
+--- ./net/sunrpc/auth_gss/svcauth_gss.c~current~	2005-02-07 15:04:11.000000000 +1100
++++ ./net/sunrpc/auth_gss/svcauth_gss.c	2005-02-07 15:04:35.000000000 +1100
+@@ -906,11 +906,6 @@ svcauth_gss_accept(struct svc_rqst *rqst
+ 		svc_putu32(resv, rpc_success);
+ 		goto complete;
+ 	case RPC_GSS_PROC_DATA:
+-		*authp = rpc_autherr_badcred;
+-		rqstp->rq_client =
+-			find_gss_auth_domain(rsci->mechctx, gc->gc_svc);
+-		if (rqstp->rq_client == NULL)
+-			goto auth_err;
+ 		*authp = rpcsec_gsserr_ctxproblem;
+ 		if (gss_write_verf(rqstp, rsci->mechctx, gc->gc_seq))
+ 			goto auth_err;
+@@ -924,8 +919,6 @@ svcauth_gss_accept(struct svc_rqst *rqst
+ 			if (unwrap_integ_data(&rqstp->rq_arg,
+ 					gc->gc_seq, rsci->mechctx))
+ 				goto auth_err;
+-			svcdata->rsci = rsci;
+-			cache_get(&rsci->h);
+ 			/* placeholders for length and seq. number: */
+ 			svcdata->body_start = resv->iov_base + resv->iov_len;
+ 			svc_putu32(resv, 0);
+@@ -936,6 +929,8 @@ svcauth_gss_accept(struct svc_rqst *rqst
+ 		default:
+ 			goto auth_err;
+ 		}
++		svcdata->rsci = rsci;
++		cache_get(&rsci->h);
+ 		ret = SVC_OK;
+ 		goto out;
  	}
--
--	for (i = 0, rh = hash_list; i < HASHSIZE; i++, rh++)
--		rh->next = rh->prev = (struct svc_cacherep *) rh;
--
--	for (i = 0, rp = nfscache; i < CACHESIZE; i++, rp++) {
--		rp->c_state = RC_UNUSED;
--		rp->c_type = RC_NOCACHE;
--		rp->c_hash_next =
--		rp->c_hash_prev = rp;
--		rp->c_lru_next = rp + 1;
--		rp->c_lru_prev = rp - 1;
--	}
--	lru_head = nfscache;
--	lru_tail = nfscache + CACHESIZE - 1;
--	lru_head->c_lru_prev = NULL;
--	lru_tail->c_lru_next = NULL;
-+	memset(hash_list, 0, HASHSIZE * sizeof(struct hlist_head));
+
+diff ./net/sunrpc/svc.c~current~ ./net/sunrpc/svc.c
+--- ./net/sunrpc/svc.c~current~	2005-02-07 15:04:25.000000000 +1100
++++ ./net/sunrpc/svc.c	2005-02-07 15:04:35.000000000 +1100
+@@ -266,6 +266,7 @@ svc_process(struct svc_serv *serv, struc
+ 	u32			dir, prog, vers, proc,
+ 				auth_stat, rpc_stat;
+ 	int			auth_res;
++	u32			*accept_statp;
  
- 	cache_disabled = 0;
- }
-@@ -102,48 +82,30 @@ void
- nfsd_cache_shutdown(void)
- {
- 	struct svc_cacherep	*rp;
--	size_t			i;
--	unsigned long		order;
+ 	rpc_stat = rpc_success;
  
--	for (rp = lru_head; rp; rp = rp->c_lru_next) {
-+	while (!list_empty(&lru_head)) {
-+		rp = list_entry(lru_head.next, struct svc_cacherep, c_lru);
- 		if (rp->c_state == RC_DONE && rp->c_type == RC_REPLBUFF)
- 			kfree(rp->c_replvec.iov_base);
-+		list_del(&rp->c_lru);
-+		kfree(rp);
- 	}
+@@ -301,6 +302,9 @@ svc_process(struct svc_serv *serv, struc
+ 	if (vers != 2)		/* RPC version number */
+ 		goto err_bad_rpc;
  
- 	cache_disabled = 1;
++	/* Save position in case we later decide to reject: */
++	accept_statp = resv->iov_base + resv->iov_len;
++
+ 	svc_putu32(resv, xdr_zero);		/* ACCEPT */
  
--	i = CACHESIZE * sizeof (struct svc_cacherep);
--	for (order = 0; (PAGE_SIZE << order) < i; order++)
--		;
--	free_pages ((unsigned long)nfscache, order);
--	nfscache = NULL;
--	kfree (hash_list);
-+	if (hash_list)
-+		kfree (hash_list);
- 	hash_list = NULL;
- }
- 
- /*
-- * Move cache entry to front of LRU list
-+ * Move cache entry to end of LRU list
-  */
- static void
--lru_put_front(struct svc_cacherep *rp)
-+lru_put_end(struct svc_cacherep *rp)
- {
--	struct svc_cacherep	*prev = rp->c_lru_prev,
--				*next = rp->c_lru_next;
--
--	if (prev)
--		prev->c_lru_next = next;
--	else
--		lru_head = next;
--	if (next)
--		next->c_lru_prev = prev;
--	else
--		lru_tail = prev;
--
--	rp->c_lru_next = lru_head;
--	rp->c_lru_prev = NULL;
--	if (lru_head)
--		lru_head->c_lru_prev = rp;
--	lru_head = rp;
-+	list_del(&rp->c_lru);
-+	list_add_tail(&rp->c_lru, &lru_head);
- }
- 
- /*
-@@ -152,17 +114,8 @@ lru_put_front(struct svc_cacherep *rp)
- static void
- hash_refile(struct svc_cacherep *rp)
- {
--	struct svc_cacherep	*prev = rp->c_hash_prev,
--				*next = rp->c_hash_next;
--	struct nfscache_head	*head = hash_list + REQHASH(rp->c_xid);
--
--	prev->c_hash_next = next;
--	next->c_hash_prev = prev;
--
--	rp->c_hash_next = head->next;
--	rp->c_hash_prev = (struct svc_cacherep *) head;
--	head->next->c_hash_prev = rp;
--	head->next = rp;
-+	hlist_del_init(&rp->c_hash);
-+	hlist_add_head(&rp->c_hash, hash_list + REQHASH(rp->c_xid));
- }
- 
- /*
-@@ -173,7 +126,9 @@ hash_refile(struct svc_cacherep *rp)
- int
- nfsd_cache_lookup(struct svc_rqst *rqstp, int type)
- {
--	struct svc_cacherep	*rh, *rp;
-+	struct hlist_node	*hn;
-+	struct hlist_head 	*rh;
-+	struct svc_cacherep	*rp;
- 	u32			xid = rqstp->rq_xid,
- 				proto =  rqstp->rq_prot,
- 				vers = rqstp->rq_vers,
-@@ -190,8 +145,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
- 	spin_lock(&cache_lock);
- 	rtn = RC_DOIT;
- 
--	rp = rh = (struct svc_cacherep *) &hash_list[REQHASH(xid)];
--	while ((rp = rp->c_hash_next) != rh) {
-+	rh = &hash_list[REQHASH(xid)];
-+	hlist_for_each_entry(rp, hn, rh, c_hash) {
- 		if (rp->c_state != RC_UNUSED &&
- 		    xid == rp->c_xid && proc == rp->c_proc &&
- 		    proto == rp->c_prot && vers == rp->c_vers &&
-@@ -206,7 +161,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
- 	/* This loop shouldn't take more than a few iterations normally */
- 	{
- 	int	safe = 0;
--	for (rp = lru_tail; rp; rp = rp->c_lru_prev) {
-+	list_for_each_entry(rp, &lru_head, c_lru) {
- 		if (rp->c_state != RC_INPROG)
- 			break;
- 		if (safe++ > CACHESIZE) {
-@@ -254,7 +209,7 @@ found_entry:
- 	/* We found a matching entry which is either in progress or done. */
- 	age = jiffies - rp->c_timestamp;
- 	rp->c_timestamp = jiffies;
--	lru_put_front(rp);
-+	lru_put_end(rp);
- 
- 	rtn = RC_DROPIT;
- 	/* Request being processed or excessive rexmits */
-@@ -343,7 +298,7 @@ nfsd_cache_update(struct svc_rqst *rqstp
+ 	rqstp->rq_prog = prog = ntohl(svc_getu32(argv));	/* program number */
+@@ -317,6 +321,11 @@ svc_process(struct svc_serv *serv, struc
+ 		auth_res = progp->pg_authenticate_obsolete(rqstp, &auth_stat);
+ 	else
+ 		auth_res = svc_authenticate(rqstp, &auth_stat);
++	/* Also give the program a chance to reject this call: */
++	if (auth_res == SVC_OK) {
++		auth_stat = rpc_autherr_badcred;
++		auth_res = progp->pg_authenticate(rqstp);
++	}
+ 	switch (auth_res) {
+ 	case SVC_OK:
  		break;
- 	}
- 	spin_lock(&cache_lock);
--	lru_put_front(rp);
-+	lru_put_end(rp);
- 	rp->c_secure = rqstp->rq_secure;
- 	rp->c_type = cachetype;
- 	rp->c_state = RC_DONE;
+@@ -442,7 +451,8 @@ err_bad_rpc:
+ err_bad_auth:
+ 	dprintk("svc: authentication failed (%d)\n", ntohl(auth_stat));
+ 	serv->sv_stats->rpcbadauth++;
+-	resv->iov_len -= 4;
++	/* Restore write pointer to location of accept status: */
++	xdr_ressize_check(rqstp, accept_statp);
+ 	svc_putu32(resv, xdr_one);	/* REJECT */
+ 	svc_putu32(resv, xdr_one);	/* AUTH_ERROR */
+ 	svc_putu32(resv, auth_stat);	/* status */
 
-diff ./include/linux/nfsd/cache.h~current~ ./include/linux/nfsd/cache.h
---- ./include/linux/nfsd/cache.h~current~	2005-02-08 13:49:35.000000000 +1100
-+++ ./include/linux/nfsd/cache.h	2005-02-08 11:32:23.000000000 +1100
-@@ -19,10 +19,9 @@
-  * be hash_next and hash_prev.
-  */
- struct svc_cacherep {
--	struct svc_cacherep *	c_hash_next;
--	struct svc_cacherep *	c_hash_prev;
--	struct svc_cacherep *	c_lru_next;
--	struct svc_cacherep *	c_lru_prev;
-+	struct hlist_node	c_hash;
-+	struct list_head	c_lru;
-+
- 	unsigned char		c_state,	/* unused, inprog, done */
- 				c_type,		/* status, buffer */
- 				c_secure : 1;	/* req came from port < 1024 */
+diff ./net/sunrpc/svcauth_unix.c~current~ ./net/sunrpc/svcauth_unix.c
+--- ./net/sunrpc/svcauth_unix.c~current~	2005-02-07 15:04:11.000000000 +1100
++++ ./net/sunrpc/svcauth_unix.c	2005-02-07 15:04:35.000000000 +1100
+@@ -368,7 +368,6 @@ svcauth_null_accept(struct svc_rqst *rqs
+ 	struct kvec	*argv = &rqstp->rq_arg.head[0];
+ 	struct kvec	*resv = &rqstp->rq_res.head[0];
+ 	struct svc_cred	*cred = &rqstp->rq_cred;
+-	int		rv=0;
+ 
+ 	cred->cr_group_info = NULL;
+ 	rqstp->rq_client = NULL;
+@@ -394,19 +393,11 @@ svcauth_null_accept(struct svc_rqst *rqs
+ 	if (cred->cr_group_info == NULL)
+ 		return SVC_DROP; /* kmalloc failure - client must retry */
+ 
+-	rv = svcauth_unix_set_client(rqstp);
+-	if (rv == SVC_DENIED)
+-		goto badcred;
+-
+ 	/* Put NULL verifier */
+ 	svc_putu32(resv, RPC_AUTH_NULL);
+ 	svc_putu32(resv, 0);
+ 
+-	return rv;
+-
+-badcred:
+-	*authp = rpc_autherr_badcred;
+-	return SVC_DENIED;
++	return SVC_OK;
+ }
+ 
+ static int
+@@ -441,7 +432,6 @@ svcauth_unix_accept(struct svc_rqst *rqs
+ 	struct svc_cred	*cred = &rqstp->rq_cred;
+ 	u32		slen, i;
+ 	int		len   = argv->iov_len;
+-	int		rv=0;
+ 
+ 	cred->cr_group_info = NULL;
+ 	rqstp->rq_client = NULL;
+@@ -473,15 +463,11 @@ svcauth_unix_accept(struct svc_rqst *rqs
+ 		return SVC_DENIED;
+ 	}
+ 
+-	rv = svcauth_unix_set_client(rqstp);
+-	if (rv == SVC_DENIED)
+-		goto badcred;
+-
+ 	/* Put NULL verifier */
+ 	svc_putu32(resv, RPC_AUTH_NULL);
+ 	svc_putu32(resv, 0);
+ 
+-	return rv;
++	return SVC_OK;
+ 
+ badcred:
+ 	*authp = rpc_autherr_badcred;
 
 
 -------------------------------------------------------
