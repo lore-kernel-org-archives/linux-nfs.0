@@ -1,23 +1,21 @@
-From: James Pearson <james-p@moving-picture.com>
-Subject: Re: df: Value too large for defined data type
-Date: Tue, 06 Jul 2004 10:19:08 +0100
+From: Alexander Bergolth <leo@strike.wu-wien.ac.at>
+Subject: problems using devices via nfsvers3 with 2.6.6. and 2.6.7
+Date: Tue, 06 Jul 2004 20:41:20 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <40EA6E8C.50409@moving-picture.com>
-References: <40EA5DC4.5060509@framestore-cfc.com>
+Message-ID: <40EAF250.2080202@strike.wu-wien.ac.at>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: nfs@lists.sourceforge.net
+Cc: neilb@cse.unsw.edu.au
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Bhm6a-0008SS-LA
-	for nfs@lists.sourceforge.net; Tue, 06 Jul 2004 02:19:12 -0700
-Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
+	id 1Bhusg-0000eE-9U
+	for nfs@lists.sourceforge.net; Tue, 06 Jul 2004 11:41:26 -0700
+Received: from strike.wu-wien.ac.at ([137.208.8.200])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1Bhm6a-0002CC-2w
-	for nfs@lists.sourceforge.net; Tue, 06 Jul 2004 02:19:12 -0700
-To: Johan van den Dorpe <johan.vandendorpe@framestore-cfc.com>
-In-Reply-To: <40EA5DC4.5060509@framestore-cfc.com>
+	id 1Bhusf-0001N0-Ib
+	for nfs@lists.sourceforge.net; Tue, 06 Jul 2004 11:41:25 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,50 +28,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I had exactly the same problem (as it happens, on similar hardware) - 
-which I thought was an NFS problem - see:
+Hi!
 
-http://marc.theaimsgroup.com/?t=107762984200002&r=1&w=2
+I'm getting "permission denied" errors when trying to access devices 
+from a 2.6 client that are mounted via nfsvers3 and exported read-only 
+by the server. Using nfsvers2 or a 2.4 kernel doesn't show this error.
 
-But it appears to be a 32/64bit statfs, 2.4/2.6 kernel, glibc version 
-and XFS issue - I 'fixed' it by patching the XFS code in the 2.4 kernel 
-- see:
+I could reproduce this with kernel 2.6.6-1.435.2.3 (from FC-2) and with
+kernel 2.6.7-1.456_4.rhfc2.at (from ATrpms).
 
-http://marc.theaimsgroup.com/?t=107789989600008&r=1&w=2
+Any hints?
 
-However, since then, I believe, there have been postings about an NFS 
-patch to fix statfs - see:
+---------- Client using kernel 2.6.6-1.435.2.3 ----------
+# mount -oro,nfsvers=3 ariel:/dev /mnt
 
-http://marc.theaimsgroup.com/?t=108004719500003&r=1&w=2
+# ls -l /mnt/null
+crw-rw-rw-  1 root root 1, 3 Sep 15  2003 /mnt/null
 
-The problem goes away if you fill up the file system ...
+# echo test > /mnt/null ; echo $?
+-bash: /mnt/null: Permission denied
+1
 
-James Pearson
+# umount /mnt
+# mount -oro,nfsvers=2 ariel:/dev /mnt
 
-Johan van den Dorpe wrote:
-> Hi,
-> 
-> Not quite sure is this is an NFS issue or a kernel one, so I thought I'd 
-> start here.
-> 
-> I'm seeing this error when trying to do a df when I have a large volume 
-> mounted via NFS (>1573005MB)
-> 
-> df: `/nfs/ps15/mnt/raid1': Value too large for defined data type
-> 
-> The error is occurring on clients running a vanilla 2.6.6 kernel, when 
-> the server is running a 2.4 kernel.
-> 
-> I've tried 2.4.20 + xfs patches + Trond's NFS_ALL patches, as well as 
-> vanilla 2.4.25 on the server, with the same results.
-> 
-> When running 2.6.6 on the server there is no problem.
-> 
-> I'm using a SATA RAID with an Infortrend controller, partitioning the 
-> array on the controller. It's connected to the host via Fibre Channel to 
-> a qla2300 card.
-> 
+# echo test > /mnt/null ; echo $?
+0
 
+---------- Client using 2.4.22 ----------
+# mount -oro,nfsvers=3 ariel:/dev /mnt
+
+# ls -l /mnt/null
+ls: /mnt/null: Input/output error
+crw-rw-rw-  1 root root 1, 3 Sep 15  2003 /mnt/null
+
+# echo test > /mnt/null ; echo $?
+0
+
+---------- Server (2.4.22) ----------
+# cat /etc/exports
+/dev client1(ro,async,no_root_squash) client2(ro,async,no_root_squash)
+
+--leo
+-- 
+-------------------------------------------------------
+Alexander (Leo) Bergolth          leo@leo.wu-wien.ac.at
+WU-Wien - Zentrum fuer Informatikdienste - Projektbuero
 
 
 -------------------------------------------------------
