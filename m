@@ -1,24 +1,23 @@
-From: Matt C <wago@phlinux.com>
-Subject: RE: 'random' diskless clients hangs
-Date: Mon, 8 Sep 2003 22:48:26 -0700 (PDT)
+From: Raphael Clifford <raphael@clifford.net>
+Subject: Re: solaris server and firewalls
+Date: Mon, 08 Sep 2003 12:09:41 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0309082136570.1153-100000@fubar.phlinux.com>
-References: <NEBBIHNAFKJAFOHBHGCOIEKLEFAA.nfsmailinglist@heessels.com>
+Message-ID: <3F5C6375.9070907@clifford.net>
+References: <3F4D1089.2050207@clifford.net>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-15; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19wbN4-00052S-00
-	for <nfs@lists.sourceforge.net>; Mon, 08 Sep 2003 22:48:58 -0700
-Received: from fubar.phlinux.com ([216.254.54.154])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 19wbN3-0004P2-Fd
-	for nfs@lists.sourceforge.net; Mon, 08 Sep 2003 22:48:57 -0700
-To: nfsmailinglist@heessels.com
-In-Reply-To: <NEBBIHNAFKJAFOHBHGCOIEKLEFAA.nfsmailinglist@heessels.com>
+	id 19wcG0-0004cv-00
+	for <nfs@lists.sourceforge.net>; Mon, 08 Sep 2003 23:45:44 -0700
+Received: from netmail02.services.quay.plus.net ([212.159.14.221])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.22)
+	id 19wUJa-000426-RP
+	for nfs@lists.sourceforge.net; Mon, 08 Sep 2003 15:16:55 -0700
+To: nfs@lists.sourceforge.net
+In-Reply-To: <3F4D1089.2050207@clifford.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,81 +30,96 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-We can't have you give up on NFS, now can we? :)
+Hi,
 
-1. check out the output of 'netstat -sw' on both the client and server. 
-Look for the 'packet reassemblies failed'. If it's incrementing at any 
-considerable rate, you're dropping packets somewhere in transit. This 
-generally indicates network issues, so I'd look into that.
+Is it safe to assume that
 
-2. try a network card with a different chipset. While I've had good luck 
-with the intel cards, it doesn't hurt to try a 3com instead. If nothing 
-else, if changing the card _type_ makes a difference in your problems, it 
-helps us narrow down the problem.
+a) There is no solution for using linux with solaris nfs servers with 
+respect to the linux firewall and
+b) There is no project working on this problem?
 
-3. enable the NMI watchdog on the clients. this will help catch some 
-deadlock conditions, and may give us an OOPS instead of a lockup. To 
-enable this, you add 'nmi_watchdog=1' to your kernel commandline. Since 
-you're nfsroot booting, you'd probably add this to the append= line in 
-your /tftpboot/pxelinux.cfg/ config file.
+If so, would it be a good idea to add this to the HOWTO?
 
-4. try and older kernel on the client to see if older kernels are stable. 
-I'd recommend 2.4.18, since it has worked well for us in the past. It 
-certainly has it's bugs, but it's largely stable.
+Cheers,
+Raphael
 
-5. enable remote syslog, and enable nfs/rpc debugging on the clients by 
-echoing 32767 into /proc/sys/sunrpc/{nfs|rpc}_debug. this will give you 
-better information about what NFS traffic is leading up to your lockup.
 
-Hope this stuff helps you some. It's what I'd be doing to troubleshoot 
-issues like yours.
+Raphael Clifford wrote:
 
--matt
-
-On Mon, 8 Sep 2003 nfsmailinglist@heessels.com wrote:
-
-> Help!! We're closing to giving up on NFS.
-> 
-> We have tried multiple NICS and drivers on both server and client (eepro100,
-> e100, e1000).
-> We have tries both UDP and TCP.
-> We have tried multiple versions of nfs-utils.
-> We have tried multiple versions of the kernel.
-> We have tried multiple clients.
-> We have tried multiple switches.
-> 
-> Clients keep crashing unless we use rsize&wsize<=2048, but the load on
-> server and clients then get very high.
-> 
-> 
-> -----Original Message-----
-> From: nfs-admin@lists.sourceforge.net
-> [mailto:nfs-admin@lists.sourceforge.net]On Behalf Of Bogdan Costescu
-> Sent: zaterdag 6 september 2003 20:27
-> To: nfsmailinglist@heessels.com
-> Cc: nfs@lists.sourceforge.net
-> Subject: RE: [NFS] 'random' diskless clients hangs
-> 
-> 
-> On Sat, 6 Sep 2003 nfsmailinglist@heessels.com wrote:
-> 
-> > Driver is the default from kernel linux-2.4.20-18.7:
-> > CONFIG_EEPRO100=y
-> 
-> Could you also try using the e100 driver ? eepro100 seems to be
-> unmaintained lately while the guys at Intel actively support e100.
-> 
-> -
-> 
-> Bogdan Costescu
-> 
-> IWR - Interdisziplinaeres Zentrum fuer Wissenschaftliches Rechnen
-> Universitaet Heidelberg, INF 368, D-69120 Heidelberg, GERMANY
-> Telephone: +49 6221 54 8869, Telefax: +49 6221 54 8868
-> E-mail: Bogdan.Costescu@IWR.Uni-Heidelberg.De
-> 
-> 
-> 
+> Hi,
+>
+> I am trying to mount a solaris nfs server from my linux client.  The 
+> problem is how to do this without effectively disabling the linux 
+> firewall.
+>
+> I understand that the official Sun solution for Sun clients is to 
+> mount using the -o public option.  However, I can't find any support 
+> for this in linux. I have copied a section of the man page below for 
+> completeness that describes what this option does.  My questions are
+> a) What can I do?
+> b) Could the answer be added to the firewall section of the HOWTO.  It 
+> must be a common situation. Where I work, for example, there are 
+> hundreds of linux clients per Solaris server.
+>
+> Cheers,
+> Raphael
+>
+> ------- excerpt from Solaris man page --------------
+>
+>  URLs and the public option
+>           If the public option is specified, or if the  resource
+>           includes and NFS URL, mount will attempt to connect to
+>           the server using the public file handle lookup  proto-
+>           col.  See Internet RFC 2054 - WebNFS Client Specifica-
+>           tion. If the server supports the public  file  handle,
+>           the attempt is successful; mount will not need to con-
+>           tact the server's rpcbind(1M), and the mountd(1M) dae-
+>           mons  to  get  the port number of the mount server and
+>           the initial file handle of pathname, respectively.  If
+>           the  NFS client and server are separated by a firewall
+>           that allows all outbount connections through  specific
+>           ports,  such as NFS_PORT, then this enables NFS opera-
+>           tions through the firewall. The public option and  the
+>           NFS  URL  can  be specified independently or together.
+>           They interact as specified in the following matrix:
+> [...]
+>
+> and from the Solaris docs
+>
+>
+>    How to Mount an NFS File System Through a Firewall
+>
+>   1.
+>
+>      Become superuser.
+>
+>   2.
+>
+>      Manually mount the file system, using a command like:
+>
+>
+> # *mount -F nfs -o public bee:/export/share/local /mnt*
+>
+>      In this example the file system /export/share/local is mounted on
+>      the local client using the public file handle. An NFS URL can be
+>      used instead of the standard path name. If the public file handle
+>      is not supported by the server bee, the mount operation will fail.
+>
+>      
+> ------------------------------------------------------------------------
+>      *Note - *
+>
+>      This procedure requires that the file system on the NFS server be
+>      shared using the public option and any firewalls between the
+>      client and the server allow TCP connections on port 2049. Starting
+>      with the 2.6 release, all file systems that are shared allow for
+>      public file handle access.
+>
+>
+>
+>
+>
+>
 > -------------------------------------------------------
 > This sf.net email is sponsored by:ThinkGeek
 > Welcome to geek heaven.
@@ -113,18 +127,8 @@ On Mon, 8 Sep 2003 nfsmailinglist@heessels.com wrote:
 > _______________________________________________
 > NFS maillist  -  NFS@lists.sourceforge.net
 > https://lists.sourceforge.net/lists/listinfo/nfs
-> 
-> 
-> 
-> 
-> -------------------------------------------------------
-> This sf.net email is sponsored by:ThinkGeek
-> Welcome to geek heaven.
-> http://thinkgeek.com/sf
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
-> 
+>
+>
 
 
 
