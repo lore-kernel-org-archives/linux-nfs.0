@@ -1,15 +1,20 @@
-From: xiyu@800j.com
-Subject: =?GB2312?B?zvewsre/tdiy+tDFz6LN+NDQ0rXIyMPFu7DM4g==?=
-Date: Tue, 3 Jun 2003 12:36:26 +0800
+From: "Vivek Goyal" <vivek.goyal@wipro.com>
+Subject: RE: Disabling Symbolic Link Content Caching in NFS Client
+Date: Tue, 3 Jun 2003 18:50:34 +0530
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19N3Up-0007WK-00@sc8-sf-list1.sourceforge.net>
-Content-Type: text/html;charset="GB2312"
+Message-ID: <2BB7146B38D9CA40B215AB3DAAE24C080BA622@blr-m2-msg.wipro.com>
+Mime-Version: 1.0
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <viro@math.psu.edu>, <davem@redhat.com>, <ezk@cs.sunysb.edu>,
+   <indou.takao@jp.fujitsu.com>, <nfs@lists.sourceforge.net>,
+   <linux-kernel@vger.kernel.org>, "Vivek Goyal" <vivek.goyal@wipro.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [61.150.19.219] (helo=800j.com)
+Received: from wiprom2mx1.wipro.com ([203.197.164.41])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19N3Up-0007WK-00
-	for <nfs@lists.sourceforge.net>; Mon, 02 Jun 2003 21:34:04 -0700
-To: nfs@lists.sourceforge.net
+	id 19NBiv-0008It-00
+	for <nfs@lists.sourceforge.net>; Tue, 03 Jun 2003 06:21:09 -0700
+To: <trond.myklebust@fys.uio.no>, "Ion Badulescu" <ionut@badula.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -22,35 +27,48 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-<html>
+> >>>>> " " =3D=3D Ion Badulescu <ionut@badula.org> writes:
+>     >> 1. Make nfs_symlink_caching dynamically tunable using /proc and
+>     >> sysctl interface.
+>      > No. Do it on a per-mount basis, like the other OS's do.
+>=20
+> As I said to Vivek in a private mail, it would be very nice to see
+> if this could be done by replacing hlfsd with namespace groups.
+>=20
+> Al Viro has already done all the VFS layer work, which should be ready
+> and working in existing 2.4.20 and 2.5.x kernels. What is missing is
+> userland support for doing a CLONE_NEWNS, and then mounting the user's
+> home directory, mailspool,.... in the appropriate locations at login
+> time.
 
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
-<meta name="GENERATOR" content="Microsoft FrontPage 4.0">
-<meta name="ProgId" content="FrontPage.Editor.Document">
-<title>西安房地产信息网</title>
-</head>
+Yes, this could be a better way to tackle hlfsd issues.
 
-<body>
+<snip from Trond's mail>
 
-<p class="MsoNormal" align="center"><span lang="EN-US" style="font-size:26.0pt;mso-bidi-font-size:12.0pt;mso-fareast-font-family:
-楷体_GB2312;color:fuchsia"><o:p>
-</span><font color="#0000FF" size="7"><a href="http://www.800j.com.cn"><span lang="EN-US" style="mso-bidi-font-size: 12.0pt"> 
-</o:p> 
- </span></a></font><b><font color="#0000FF" size="7"><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman"><font face="楷体_GB2312">西安房地产信息网</font></span></a></font></b></p>
+>I'm not overly keen on this proposal. IMHO we want to *maximize*
+caching >rather than reduce it. This is particularly important as the
+speed of >networks etc. starts to approach that of the PCI bus on the
+server.
 
-<p class="MsoNormal" align="center"><font color="#0000FF"><b><font face="楷体_GB2312" size="6"><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman">www.800j.cc</span></a></font></b></font></p>
-<p align="center">　
-<p align="center"><a href="http://www.800j.com.cn"><img src="huati001.gif" width="321" height="46"></a></p>
-<p align="center"><a href="http://www.800j.com.cn/800j/fclt/djtbbs/show.asp?bID=&amp;RID=4863&amp;ID=4863"><font color="#FF0000" size="4"><b>非典时期买楼该注重什么？</b></font></a></p>
-<p align="center"><a href="http://www.800j.com.cn/800j/fclt/djtbbs/show.asp?bID=&amp;RID=5014&amp;ID=5014"><font color="#FF0000" size="4"><b>谁来评述“世家星城”</b></font></a></p>
-<p align="center"><font color="#FF0000" size="4"><b>.....</b></font></p>
-<p class="MsoNormal" align="center"><b><font color="#FFFF00" face="楷体_GB2312" size="4"><a href="http://http://www.800j.com.cn/800j/fclt/djtbbs/new.asp">我要发言　</a>　　　　　<a href="http://http://www.800j.com.cn/800j/fclt/djtbbs/index.asp">　进入论坛</a></font></b></p>
-<p align="center">　</p>
+<end of snip>
 
-</body>
+You are right. But our idea is to provide an option to disable/enable
+caching based on the nature of intended application.
 
-</html>
+With this, Linux will have enhanced flexibility in NFS client like other
+operating systems. For example.
+
+1. Solaris provides dynamically tunable parameter "nfs_do_symlink_cache"
+for enabling/disabling symlink caching.
+
+2. UNIX and IRIX provide 'symttl' mount option for enabling/disabling
+symbolic link content caching in NFS client.
+
+Kindly let me know your comments.
+
+Regards,
+Vivek
+
 
 
 -------------------------------------------------------
