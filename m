@@ -1,14 +1,16 @@
-From: billeagixpda@darwinsite.com
-Subject: Make up to $75 per hour or more In Your Sparetime  mgiuuwpx
-Date: Mon, 23 Jun 2003 00:41:08 -0500
+From: =?iso-8859-1?Q?Brasseur_Val=E9ry?= <Valery.Brasseur@atosorigin.com>
+Subject: nfs lock question...
+Date: Mon, 23 Jun 2003 18:52:16 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1056343268.985@mail254.jellyjam.biz>
-Reply-To: <ladytlsgtvoi@digit.bz>
+Message-ID: <8147E1B07201DD41B6B9F0D31E07B384449147@srv-grp-s07.dev.atos.fr>
+Mime-Version: 1.0
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [65.112.53.254] (helo=mail254.jellyjam.biz)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19ULV8-0007Nl-00
-	for <nfs@lists.sourceforge.net>; Mon, 23 Jun 2003 00:12:31 -0700
+Received: from hermes3.atos-group.com ([160.92.18.10])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19UUYN-0003Cx-00
+	for <nfs@lists.sourceforge.net>; Mon, 23 Jun 2003 09:52:27 -0700
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -22,34 +24,14 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+is it normal that when a process is stoppped (ctrl-z ;-) and he has locks on
+a nfs-server
 
-Hello Friend,
-If you're still looking for a real Home Based Business 
-I'm pretty sure you'll like what we've got.Act Now!
-Offer Is limited to the 1st 50 people to join
+if this nfs server reboot the stopped process does'nt reclaim it's locks
+?!!!
 
-Act Now  http://www.xtrameg.com/zss/
-
-GET STARTED NOW!
-How would you like to make $75 per hour processing 
-FedEX  refunds from your home computer. 
-If you're anything like most people I talk to, you'd love 
-to work from home if the business was REAL.
-Well, this is the REAL DEAL... 
-
-Act Now  http://www.xtrameg.com/zss/
-
-Thanks for your time, 
-The Recovery Software Staff 
-P.S. I want to assure you this opportunity has NOTHING to do with MLM,
-internet marketing, affiliate programs,or any goofy scheme. It's simply
-an incredible business that's made possible by a closely guarded SECRET 
-of the shipping industry.GET STARTED NOW!
-
-Act Now  http://www.xtrameg.com/zss/
-
-
-asf^yvfgf(fbheprsbetr(arg
+thanks 
+valery
 
 
 -------------------------------------------------------
