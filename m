@@ -1,22 +1,27 @@
-From: Derek Simkowiak <dereks@realloc.net>
-Subject: NFS + ssh (NFS HOWTO Question)
-Date: Thu, 25 Sep 2003 17:08:34 -0700
+From: Brian Mancuso <bmancuso@akamai.com>
+Subject: Re: NFS/UDP slow read, lost fragments
+Date: Thu, 25 Sep 2003 16:22:12 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3F738382.1040907@realloc.net>
+Message-ID: <20030925162212.X787@muppet.kendall.corp.akamai.com>
+References: <Pine.LNX.4.44.0309251019170.28586-100000@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1A2gA4-000232-00
-	for <nfs@lists.sourceforge.net>; Thu, 25 Sep 2003 17:08:40 -0700
-Received: from [63.251.164.134] (helo=intranet.realloc.net)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.22)
-	id 1A2gA3-0006Do-GW
-	for nfs@lists.sourceforge.net; Thu, 25 Sep 2003 17:08:39 -0700
-To: nfs@lists.sourceforge.net
+	id 1A2cdT-0007Qt-00
+	for <nfs@lists.sourceforge.net>; Thu, 25 Sep 2003 13:22:47 -0700
+Received: from fw01.cmbrmaks.akamai.com ([80.67.64.10] helo=akamai.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
+	id 1A2cdS-0006Pg-Gb
+	for nfs@lists.sourceforge.net; Thu, 25 Sep 2003 13:22:46 -0700
+Received: from akamai.com (vwall1.kendall.corp.akamai.com [172.17.4.33])
+	by akamai.com (8.11.7+Sun/8.11.6) with ESMTP id h8PKMD913273
+	for <nfs@lists.sourceforge.net>; Thu, 25 Sep 2003 16:22:13 -0400 (EDT)
+To: "Robert L. Millner" <rmillner@transmeta.com>
+In-Reply-To: <Pine.LNX.4.44.0309251019170.28586-100000@localhost.localdomain>; from rmillner@transmeta.com on Thu, Sep 25, 2003 at 10:59:43AM -0700
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,59 +34,56 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Thu, Sep 25, 2003 at 10:59:43AM -0700, Robert L. Millner wrote:
+: Hello,
+: 
+: The problem I am seeing is similar to what was posted by Larry Sendlosky
+: on Jun 27, "2.4.20-pre3 -> 2.4.21 : nfs client read performance broken"
+: though I have not done as through a drill-down into the nature of the
+: problem.
+: 
+: Somewhere between 2.4.19 and 2.4.20, NFS/UDP read performance began to
+: suck because of a large number of request retransmits.  From tcpdump, the
+: retransmits are for read transactions which return data in a reasonable
+: time frame but are missing one or more fragments of the return packet.
 
-      Hello,
-	I have a quick question about the NFS Howto.  There is something in it 
-that I do not understand.  I'm working on an ssh tunnel for NFS.
+This is because code that exponentially backs off RTO for UDP RPC was
+backported from the 2.[56] series in 2.4.20, and this code is
+completely broken. Trond has a patch in his patchset for 2.6 that
+significantly fixes these problems, however this patch still has one
+problem that can result in a large number of unnecessary retransmits
+for RPC sessions that have low variance in RTT: RTO is calculated to
+be the filtered round trip time plus a small constant times the mean
+deviation of round trip times. However, because the RTT calculation
+code implements Karn's algorithm (from TCP: RTT calculation isn't done
+for responses to RPC requests that have been retransmitted), RTT is
+never allowed to increase, for were a response to take longer than
+measured RTT plus the (assumed small) deviation, the packet will be
+retransmitted and a calculatation that will increase measured RTT
+won't be done. Thus if a server's real RTT were to increase over time,
+initial RTO values would never grow (for measured RTT would never grow
+beyond the minimum ever measured), and RPC requests will frequently be
+retransmitted at least once. This can be easily remedied however by
+TCP's technique of inheriting backoff of RTO from previous
+transactions: create a new variable somewhere in the clnt structure
+called, say, cl_backoff; Each time an RPC transaction completes, store
+the number of retransmits for that transaction (req->rq_nresend) in
+cl_backoff; calculate RTO to be rpc_calc_rto() left shifted by the
+number of retransmits for this transaction (initially 0) plus
+clnt->cl_backoff (the number of retransmits for the last completed
+transaction).
 
+The backported code mentioned above will also result in significantly
+more EIO events for users with soft UDP mounts. Users seeing lots of
+EIO's should see them diminish after these problems are fixed.
 
- From http://nfs.sourceforge.net/nfs-howto/security.html
---------------------------------------------------
-For example, to have statd broadcast of port 32765 and listen on port 
-32766, and mountd listen on port 32767, you would type:
+: Is this a known problem?  Is there a patch already out there or in the
+: works that fixes this?  What other data would help drill into this
+: problem?
 
-# statd -p 32765 -o 32766
-# mountd -p 32767
+I will post a patch tomorrow for 2.4.20.
 
-[...]
-
-lockd is started by the kernel when it is needed. Therefore you need to 
-pass module options (if you have it built as a module) or kernel options 
-to force lockd to listen and respond only on certain ports.
-
-If you are using loadable modules and you would like to specify these 
-options in your /etc/modules.conf file add a line like this to the file:
-
-options lockd nlm_udpport=32768 nlm_tcpport=32768
---------------------------------------------------
-
-	In the above section it says how to force both lockd and statd onto 
-certain ports.  But then a little further down on that same page, where 
-it talks about NFS over ssh, it has this seemingly contradicting 
-information:
-
---------------------------------------------------
-It is not possible to ask statd or the locking manager to make requests 
-to a particular port for a particular mount; therefore, any locking 
-requests will cause statd to connect to statd on localhost, i.e., 
-itself, and it will fail with an error. Any attempt to correct this 
-would require a major rewrite of NFS.
---------------------------------------------------
-
-	I do not understand what this means.  First I'm looking at the 
-command-line (and module) options to set particular ports, and then 
-further on the same page, it says "It is not possible to ask statd or 
-the locking manager to make requests to a particular port for a 
-particular mount".
-
-	Could somebody elaborate for me?  What am I missing?  (Or is the 
-section on ssh outdated?)
-
-	Any help is greatly appreciated.
-
-Thanks,
-Derek Simkowiak
-
+Brian Mancuso
 
 
 -------------------------------------------------------
