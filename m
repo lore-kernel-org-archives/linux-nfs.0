@@ -1,17 +1,18 @@
-From: "Lorn Kay" <lorn_kay@hotmail.com>
+From: Brian Tinsley <btinsley@emageon.com>
 Subject: Re: Re: NFS as a Cluster File System.
-Date: Thu, 09 Jan 2003 22:51:30 +0000
+Date: Thu, 09 Jan 2003 17:02:11 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <F155FnqdR2xuRoAnbsZ00020983@hotmail.com>
+Message-ID: <3E1DFF73.4060902@emageon.com>
+References: <F112Sbh29cM3oryKFRJ0001248d@hotmail.com> <3E1DE570.7070207@emageon.com> <200301091604.07132.brian@mdrx.com>
 Mime-Version: 1.0
-Content-Type: text/plain; format=flowed
-Cc: nfs@lists.sourceforge.net, linux-ha@muc.de
+Content-Type: text/html; charset=us-ascii
+Cc: nfs@lists.sourceforge.net,  linux-ha@muc.de
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from f155.law11.hotmail.com ([64.4.17.155] helo=hotmail.com)
+Received: from tisch.mail.mindspring.net ([207.69.200.157])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18WlWj-0003Dj-00
-	for <nfs@lists.sourceforge.net>; Thu, 09 Jan 2003 14:51:53 -0800
-To: alanr@unix.sh
+	id 18Wlg8-0004Px-00
+	for <nfs@lists.sourceforge.net>; Thu, 09 Jan 2003 15:01:36 -0800
+To: Brian Jackson <brian@mdrx.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,30 +25,42 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->NFS V3 and before have problems with "cache coherency".  That is, the 
->different nodes in the cluster are not guaranteed to see the same contents.
->
->I think this is supposed to be fixed in v4.
->
->
->--
->     Alan Robertson <alanr@unix.sh>
->
->"Openness is the foundation and preservative of friendship....  Let me 
->claim from you at all times your undisguised opinions." - William 
->Wilberforce
->
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=ISO-8859-1">
+  <title></title>
+</head>
+<body>
+Brian Jackson wrote:<br>
+<blockquote type="cite" cite="mid200301091604.07132.brian@mdrx.com">
+  <pre wrap="">On Thursday 09 January 2003 03:11 pm, Brian Tinsley wrote:
+  </pre>
+  <blockquote type="cite">
+    <pre wrap="">Lorn Kay wrote:
+    </pre>
+    <blockquote type="cite">
+      <pre wrap="">Is NFS a viable CFS? (I'm cross posting this due to a discussion on
+the the linux-ha list recently.)
+      </pre>
+    </blockquote>
+    <pre wrap="">Since there is not a really good cluster filesystem for Linux that is
+not either "half baked" (IMHO - I'm probably going to get smacked over
+that statement!) or cost an arm and a leg, this is exactly the route we have taken.
 
-I think this can be resolved with the "noac" mount option (prior to V4).
+    </pre>
+  </blockquote>
+  <pre wrap=""><!---->Hey, we're working on it ;)
 
---K
-
-
-
-
-_________________________________________________________________
-MSN 8 helps eliminate e-mail viruses. Get 2 months FREE* 
-http://join.msn.com/?page=features/virus
+--Brian Jackson
+OpenGFS Project</pre>
+</blockquote>
+SMACK! Ouch!<br>
+<br>
+And I'm watching! &nbsp;;)<br>
+<br>
+</body>
+</html>
 
 
 
