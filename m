@@ -1,25 +1,25 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Bernd Schubert <bernd-schubert@web.de>
 Subject: Re: client: 2.6.7 client much slower than 2.4.26
-Date: Thu, 01 Jul 2004 17:43:12 -0400
+Date: Fri, 2 Jul 2004 00:32:25 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1088718192.4349.91.camel@lade.trondhjem.org>
-References: <200407012318.18934.bernd-schubert@web.de>
+Message-ID: <200407020032.28335.bernd-schubert@web.de>
+References: <200407012318.18934.bernd-schubert@web.de> <1088718192.4349.91.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain;
+  charset="iso-8859-1"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Bg9Kt-0002ns-4l
-	for nfs@lists.sourceforge.net; Thu, 01 Jul 2004 14:43:15 -0700
-Received: from dh132.citi.umich.edu
-	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	id 1BgA6i-0003HJ-Vw
+	for nfs@lists.sourceforge.net; Thu, 01 Jul 2004 15:32:40 -0700
+Received: from smtp06.web.de ([217.72.192.224])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.34)
-	id 1Bg9Ks-0002in-PR
-	for nfs@lists.sourceforge.net; Thu, 01 Jul 2004 14:43:15 -0700
-To: Bernd Schubert <bernd-schubert@web.de>
-In-Reply-To: <200407012318.18934.bernd-schubert@web.de>
+	id 1BgA6h-0007bQ-Qq
+	for nfs@lists.sourceforge.net; Thu, 01 Jul 2004 15:32:40 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1088718192.4349.91.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,39 +32,66 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 to , 01/07/2004 klokka 17:18, skreiv Bernd Schubert:
+On Thursday 01 July 2004 23:43, you wrote:
+> P=E5 to , 01/07/2004 klokka 17:18, skreiv Bernd Schubert:
+> > benchmarks:
+> >
+> > copy a file to the server (2.6.7): ~ 3MB/s
+> > copy a file to the server (2.4.26): ~ 9MB/s
+> >
+> > copy a file from the server (2.6.7): ~ 3MB/s
+> > copy a file from the server (2.4.26): ~ 11MB/s
+>
+> Looks like the wire speeds on read/write are the same. How does the
+> above compare to ttcp transfer speeds of a 300MB file?
 
-> benchmarks:
->=20
-> copy a file to the server (2.6.7): ~ 3MB/s
-> copy a file to the server (2.4.26): ~ 9MB/s
->=20
-> copy a file from the server (2.6.7): ~ 3MB/s
-> copy a file from the server (2.4.26): ~ 11MB/s
+Thanks, I didn't know about this tool and I think you are right, it seems t=
+hat=20
+the general network speed is much slower with 2.6.7:
 
-Looks like the wire speeds on read/write are the same. How does the
-above compare to ttcp transfer speeds of a 300MB file?
+2.4.26:
+bernd@euklid bernd>nttcp -T taylor
+     Bytes  Real s   CPU s Real-MBit/s  CPU-MBit/s   Calls  Real-C/s   CPU-=
+C/s
+l  8388608    0.70    0.06     95.2480   1118.4811    2048   2906.74   3413=
+3.3
+1  8388608    0.71    0.03     94.1283   2485.7897    5793   8125.38  21457=
+9.4
+
+2.6.7:
+bernd@euklid bernd>nttcp -T taylor
+     Bytes  Real s   CPU s Real-MBit/s  CPU-MBit/s   Calls  Real-C/s   CPU-=
+C/s
+l  8388608    2.67    2.64     25.1472     25.4046    2048    767.43     77=
+5.3
+1  8388608    2.67    0.03     25.1442   2237.3350    6145   2302.40  20486=
+7.5
+
+Its already too late, so I will do the 300MB test tomorrow, but I think the=
+=20
+numbers from the default 8MB test are already convincing.
 
 
-> Here's the nfsstat output:
+> How much memory does this thing have? The main difference between 2.4.x
 
-What's that for, 2.4.26 or 2.6.7? How does it compare?
+Somehow this system didn't like to have more than 2x128MB, when we added=20
+another DIMM, the system crashed pretty often, though memtest86 showed no=20
+problems.=20
 
-> So I really thing this is a client problem. Well, the client is not the=20
-> fastest of our systems (PII 450), but with 2.4.X it has the usual speed. =
-Its=20
-> also interesting top is showing that the rpciod is taking all cpu-time wh=
-en=20
-> copying a file to the server.
+> and 2.6.x is the fact that the 2.6.x caches a lot more data and for
+> longer (the VM is what decides when to flush the cache).
+> You might want to try twiddling around with the vm sysctl parameters to
+> see if that makes a difference.
+>
 
-How much memory does this thing have? The main difference between 2.4.x
-and 2.6.x is the fact that the 2.6.x caches a lot more data and for
-longer (the VM is what decides when to flush the cache).
-You might want to try twiddling around with the vm sysctl parameters to
-see if that makes a difference.
+I will try to play with this over the weekend.
+
+
+Thanks again a lot for your help!
+
 
 Cheers,
-  Trond
+	Bernd
 
 
 -------------------------------------------------------
