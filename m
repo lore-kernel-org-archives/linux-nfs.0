@@ -1,18 +1,17 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: [PATCH] 2.4.19-pre10 RPC changes...
-Date: Fri, 21 Jun 2002 21:40:34 +0200
+From: Skip Gaede <sgaede@attbi.com>
+Subject: Gotchas with NFS Root filesystem?
+Date: Sat, 22 Jun 2002 15:46:46 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200206212140.34595.trond.myklebust@fys.uio.no>
+Message-ID: <200206221546.46925.sgaede@attbi.com>
 Mime-Version: 1.0
 Content-Type: text/plain;
-  charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
+  charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
+Received: from rwcrmhc53.attbi.com ([204.127.198.39])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17LUGy-0007QD-00
-	for <nfs@lists.sourceforge.net>; Fri, 21 Jun 2002 12:40:44 -0700
-To: Chuck Lever <cel@monkey.org>
+	id 17Lqt7-0001UM-00
+	for <nfs@lists.sourceforge.net>; Sat, 22 Jun 2002 12:49:37 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,36 +24,31 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
+Folks,
 
-Hi,
+I have a Mac client that's running XFree86 (4.2.0) -query +
+Mozilla and losing lots of size-2048 buffers. The rate loss
+is approximately 1000 buffers/hour. I'm seeing this loss of
+memory after I boot with an initrd, get an IP address with
+dhclient and do a pivot_root onto the read-only NFS file
+system.
 
-I've put up the full set of RPC changes that I'd like to push into 2.4.20 in
+I can also boot the the client to a bash prompt on the
+ local hard drive and then run XFree86 -query + Mozilla as
+ before. I went so far as to mung rc.sysinit and leave the
+ local filesystem mounted RO and mount -t shm to /var and
+ /tmp. Under these conditions, both with and without the
+ local filesystem mounted RO, the size-2048 buffer
+ utilization is nominal.
 
-  http://www.fys.uio.no/~trondmy/src/2.4.19-pre10/linux-2.4.19-RPC_ALL.dif
+Anyone ever seen or heard of this before? Any thoughts on
+how to isolate this to a root cause?
 
-The full set of partial patches can be found in the same directory.
+Thanks,
+Skip
 
-Patches contain
+-------------------------------------------------------
 
-  1) Full set of 2.5.x kmap() changes for avoiding highmem deadlocks.
-
-  2) RTT (round trip timing) estimation for improving the UDP timeout + resend 
-mechanism. Algorithm is the standard one as described in the Van Jacobson 
-paper (see http://www-nrg.ee.lbl.gov/papers/congavoid.pdf)
-
-  3) Slow start + congestion avoidance algorithms for UDP. Again see the Van 
-Jacobson paper.
-
-  4) A couple of minor cleanups.
-
-In particular, it would be nice if people could test out the RTT + congestion 
-avoidance. Although it is probably not a cure for all of our UDP problems, I 
-would expect performance to improve on most platforms. In particular, I'd 
-very much encourage those people who reported a performance slowdown with the 
-previous NFS_ALL patch to test this out.
-
-Cheers,
-   Trond
 
 
 -------------------------------------------------------
