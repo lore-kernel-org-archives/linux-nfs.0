@@ -1,22 +1,26 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: rpc.mountd: getfh failed: Operation not permitted
-Date: Wed, 02 Feb 2005 09:02:30 -0500
-Message-ID: <4200DD76.50307@RedHat.com>
-References: <42000AAC.5000301@int-evry.fr>
+From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Subject: rpc.statd -n
+Date: Wed, 2 Feb 2005 11:41:52 -0700 (MST)
+Message-ID: <Pine.LNX.4.60.0502021127170.8434@harp.ngdc.noaa.gov>
+Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CwL5j-0003Jw-Ai
-	for nfs@lists.sourceforge.net; Wed, 02 Feb 2005 06:02:47 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1CwPRq-0001mL-RH
+	for nfs@lists.sourceforge.net; Wed, 02 Feb 2005 10:41:54 -0800
+Received: from harp.ngdc.noaa.gov ([140.172.178.33])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1CwL5d-0000vo-Jf
-	for nfs@lists.sourceforge.net; Wed, 02 Feb 2005 06:02:47 -0800
-To: "jehan.procaccia" <jehan.procaccia@int-evry.fr>
-In-Reply-To: <42000AAC.5000301@int-evry.fr>
+	id 1CwPRp-00045b-Rh
+	for nfs@lists.sourceforge.net; Wed, 02 Feb 2005 10:41:54 -0800
+Received: from harp.ngdc.noaa.gov (harp.ngdc.noaa.gov [127.0.0.1])
+	by harp.ngdc.noaa.gov (8.12.11/8.12.11) with ESMTP id j12IfqiZ002688
+	for <nfs@lists.sourceforge.net>; Wed, 2 Feb 2005 11:41:52 -0700
+Received: from localhost (ahoward@localhost)
+	by harp.ngdc.noaa.gov (8.12.11/8.12.11/Submit) with ESMTP id j12IfqSE002684
+	for <nfs@lists.sourceforge.net>; Wed, 2 Feb 2005 11:41:52 -0700
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,16 +35,43 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
+i have a question regarding rpc.statd and it's reporting of hostname.  in the
+case of a multi-homed client, say one running nfs on the
 
-jehan.procaccia wrote:
+   client.b.domain
 
-> Can someone give me a clue about this "getfh" error ?
+interface.  rpc.statd must be forced to report itself as 'client.b.domain'
+lest lockd recovery fail when it reports client.domain.  this is all well and
+good - but what if you have nfs running on more than one interface, like the
+case of home dirs on front-door and file-server on back-door?  now what can
+you do?  if you specify the hostname for rpc.statd you'll break lock recovery
+on one or the other filesystem right?
 
-Try exporting the filesystem with the 'no_subtree_check'
-option set to see if that helps....
+i'm thinking that rpc.statd needs to be able to report as a user specified
+name for each mounted filesystem - eg. a mount option.  if this were done
+fstab could look something like
 
-steved.
+   moby.b:/raid/array0/part1/export on /dmsp/moby-0-1 type nfs (rw,bg,hard,intr,rsize=8192,wsize=8192,addr=10.1.186.54,hostname=client.b.domain)
+   moby:/raid/array0/part2/export on /home type nfs (rw,bg,hard,intr,rsize=8192,wsize=8192,addr=10.1.186.54,hostname=client.domain)
 
+of course, there is already the 'mounthost' option - if all mounted
+filesystems specified this as `uname -n` whould this make lock recovery work
+for all interfaces?
+
+obviously i know very little about this but am wondering what the best way to
+make lock recovery work for mutil-homed clients mounting filesystems on > 1
+interface.
+
+kind regards.
+
+-a
+-- 
+===============================================================================
+| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
+| PHONE   :: 303.497.6469
+| When you do something, you should burn yourself completely, like a good
+| bonfire, leaving no trace of yourself.  --Shunryu Suzuki
+===============================================================================
 
 
 -------------------------------------------------------
