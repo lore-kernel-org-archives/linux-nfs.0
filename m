@@ -1,25 +1,24 @@
-From: Morten Sylvest Olsen <mso@medical-insight.com>
-Subject: File corruption linux 2.4 nfs client to freebsd server
-Date: 19 Nov 2003 10:58:48 +0100
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: File corruption linux 2.4 nfs client to freebsd server
+Date: 19 Nov 2003 10:37:13 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1069235928.1215.79.camel@krypton.medical-insight.com>
+Message-ID: <shs8ymcs72u.fsf@charged.uio.no>
+References: <1069235928.1215.79.camel@krypton.medical-insight.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AMP6u-0003NQ-00
-	for <nfs@lists.sourceforge.net>; Wed, 19 Nov 2003 01:58:56 -0800
-Received: from [62.242.251.241] (helo=arsenium.medical-insight.com)
+	id 1AMUOQ-0004xA-00
+	for <nfs@lists.sourceforge.net>; Wed, 19 Nov 2003 07:37:22 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AMP6t-0005LI-Li
-	for nfs@lists.sourceforge.net; Wed, 19 Nov 2003 01:58:55 -0800
-Received: from krypton.medical-insight.com (IDENT:qI9l7x2N/stC2w6EsZJkx5YVixBHd7zb@krypton.medical-insight.com [192.168.2.83])
-	by arsenium.medical-insight.com (8.12.10/8.12.5) with ESMTP id hAJ9wm6b069426
-	for <nfs@lists.sourceforge.net>; Wed, 19 Nov 2003 10:58:48 +0100 (CET)
-	(envelope-from mso@medical-insight.com)
-To: nfs@lists.sourceforge.net
+	id 1AMUOP-0006D5-JP
+	for nfs@lists.sourceforge.net; Wed, 19 Nov 2003 07:37:21 -0800
+To: Morten Sylvest Olsen <mso@medical-insight.com>
+In-Reply-To: <1069235928.1215.79.camel@krypton.medical-insight.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,68 +31,25 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi all..
+>>>>> " " == Morten Sylvest Olsen <mso@medical-insight.com> writes:
 
-I'm having a nasty problem where files seem to be corrupted by the linux
-2.4 nfs client. Of course I cannot rule out the possibility that the
-FreeBSD nfs server is to blame, but the problem did not appear before
-upgrading to Redhat 9.
+     > I hope somebody have an idea of what goes wrong.
 
-My setup: 
+Have you tried running memtest86 (see http://www.memtest86.com/)? If
+you are seeing gcc internal errors, then that is usually the very
+first thing you want to do.
 
-Server: FreeBSD 4.8-STABLE (SMP) 
+If you machine passes memtest86, then try downloading fsx-linux
+(http://www.codemonkey.org.uk/cruft/fsx-linux.c) and running
+that. That should be able to give a more precise picture of what is
+going wrong ("File shrank by 0 bytes" isn't one of the usual kernel
+errors 8-)).
 
-Client: Redhat 9 (UP) with standard RH kernel which as far as I can see
-is Linus kernel 2.4.20 plus: linux-2.4.20-irixnfs.patch,
-linux-2.4.18-nfs-default-size.patch & linux-2.4.19-nfs-nosvc.patch.
+The other thing that comes to mind is to check if you've been playing
+with setting disk quotas on the server.
 
-Directory is mounted with options:
-udp,nfsvers=3,rsize=8192,wsize=8192,nosuid, nodev, hard, intr
-
-I couldn't make nfs over tcp work, although the bsd server should
-support it.
-
-Network is fully switched and unloaded, as is the server.
-
-The problem seem to be related to caching, although I cannot say for
-sure. It is very consistent so timing does not seem to play a big part
-in this.  
-
-copy a largish source tree (from the client)
-create a tar archive from the freshly copied (from the same client)
-
-The archiving fails at the _exact_ same file every time with the rather
-strange message: 
-
-tar: evncserver-0.4.4/programs/Xserver/mi/mipolycon.c: File shrank by 0
-bytes; padding with zeros
-
-I don't think one should get hung up on the 0 bytes shrinkage, that is
-apparently a bug in the calculation in tar. Also I can make gcc fail
-with an internal compiler error on another large source tree freshly
-checked out from cvs, with the error appearing on the same file every
-time. Restarting the compilation then succeeds.    
-
-I've tried most combinations of mount options, but problem persist. 
-
-I can send tcpdumps or output from nfs layer debugging if necessary. It
-is quite strange, the particular file does not show up in the debug
-messages at all, but it _is_ present in the directory. 
-
-I hope somebody have an idea of what goes wrong.
-
-- Morten
-
--- 
-Morten Sylvest Olsen
-System Developer
-
-Medical Insight A/S
-Hovedgaden 451 C
-DK-2640 Hedehusene, Denmark
-Phone: +45-46550444, Mobile: +45-51573092
-E-mail: mso@medical-insight.com
-
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
