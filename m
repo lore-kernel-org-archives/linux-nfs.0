@@ -1,19 +1,20 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: [PATCH] nfs-utils - 2 of 6 - statd - creates a pid file
-Date: Wed, 18 Jun 2003 13:40:35 -0400
+Subject: [PATCH] nfs-utils - 3 of 6 -statd - Ensure child process is
+ running for before the parent exits
+Date: Wed, 18 Jun 2003 13:54:35 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3EF0A413.3090602@RedHat.com>
+Message-ID: <3EF0A75B.6010307@RedHat.com>
 Mime-Version: 1.0
 Content-Type: multipart/mixed;
- boundary="------------040502090009000808030906"
+ boundary="------------070406080201000202020304"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from nat-pool-rdu.redhat.com ([66.187.233.200] helo=lacrosse.corp.redhat.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19SguD-0001dU-00
-	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 10:39:33 -0700
+	id 19Sh7p-0007Ls-00
+	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 10:53:37 -0700
 Received: from RedHat.com (dickson.boston.redhat.com [172.16.65.20])
-	by lacrosse.corp.redhat.com (8.11.6/8.9.3) with ESMTP id h5IHdQK11707
-	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 13:39:26 -0400
+	by lacrosse.corp.redhat.com (8.11.6/8.9.3) with ESMTP id h5IHrPK15050
+	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 13:53:25 -0400
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -28,120 +29,153 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a multi-part message in MIME format.
---------------040502090009000808030906
+--------------070406080201000202020304
 Content-Type: text/plain; charset=us-ascii; format=flowed
 Content-Transfer-Encoding: 7bit
 
-This patch added code that will make
-statd create a pid file (rpc.statd) in
-/var/run. This was need to help our rc
-script detect the status of stated.
-
+To make sure the correct start-up status is returned
+to the rc script during boot, the parent statd process
+must know if the child process (i.e. "real" daemon)
+was able to successfully start. Otherwise, the
+child can die and the parent will returns success which
+would cause networks lock to hang (unexplainable)....
 
 SteveD.
 
---------------040502090009000808030906
+--------------070406080201000202020304
 Content-Type: text/plain;
- name="nfs-utils-1.0.3-02-statd-pidfile.patch"
+ name="nfs-utils-1.0.3-03-statd-pipe.patch"
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline;
- filename="nfs-utils-1.0.3-02-statd-pidfile.patch"
+ filename="nfs-utils-1.0.3-03-statd-pipe.patch"
 
---- ./utils/statd/statd.c.org	2003-06-02 15:17:17.000000000 -0400
-+++ ./utils/statd/statd.c	2003-06-02 15:18:36.000000000 -0400
-@@ -21,6 +21,9 @@
- #include <grp.h>
- #include <sys/types.h>
- #include <fcntl.h>
-+#include <errno.h>
-+#include <netdb.h>
-+#include <sys/wait.h>
- #include "statd.h"
- #include "version.h"
+--- ./utils/statd/statd.c.org	2003-06-02 15:20:53.000000000 -0400
++++ ./utils/statd/statd.c	2003-06-02 15:25:07.000000000 -0400
+@@ -46,6 +46,7 @@ char *  SM_STAT_PATH = DEFAULT_SM_STAT_P
  
-@@ -72,6 +75,51 @@ extern void simulator (int, char **);
- #endif
+ short int restart = 0;
+ int	run_mode = 0;		/* foreground logging mode */
++int pfds[2] = {-1, -1};            /* pipe fds */
+ 
+ /* LH - I had these local to main, but it seemed silly to have 
+  * two copies of each - one in main(), one static in log.c... 
+@@ -79,14 +80,20 @@ extern void simulator (int, char **);
+  */
+ static const char *piddir="/var/run/rpc.statd";
+ static const char *pidfile="/var/run/rpc.statd/rpc.statd.pid";
++static const char *mypidfile = NULL;
+ static void
+ delete_pidfile(void)
+ {
+-	if (unlink(pidfile) < 0) {
+-		log(L_WARNING,"Unlinking %s failed: errno %d (%s)\n", pidfile,
+-			errno, strerror(errno));
++	/*
++	 * Only delete the pidfile if this is
++	 * the process that created it
++	 */ 
++	if (mypidfile) {
++		if (unlink(mypidfile) < 0) {
++			log(L_WARNING,"Unlinking %s failed: errno %d (%s)\n", mypidfile,
++				errno, strerror(errno));
++		}
+ 	}
+-
+ 	return;
+ }
+ static void
+@@ -115,9 +122,20 @@ create_pidfile(void)
+ 		log(L_WARNING,"Closing %s failed: errno %d (%s)\n", pidfile,
+ 			errno, strerror(errno));
+ 	}
++	mypidfile = pidfile;
+ 
+ 	return;
+ }
++/*
++ * Called when the child exits
++ */
++static void
++child_exit(void)
++{
++	delete_pidfile();
++	if (pfds[1] > -1)
++		close(pfds[1]);
++}
  
  /*
-+ * Create a pid file 
-+ */
-+static const char *piddir="/var/run/rpc.statd";
-+static const char *pidfile="/var/run/rpc.statd/rpc.statd.pid";
-+static void
-+delete_pidfile(void)
-+{
-+	if (unlink(pidfile) < 0) {
-+		log(L_WARNING,"Unlinking %s failed: errno %d (%s)\n", pidfile,
-+			errno, strerror(errno));
-+	}
-+
-+	return;
-+}
-+static void
-+create_pidfile(void)
-+{
-+	FILE *fp;
-+
-+	if (access(pidfile, F_OK) == 0) {
-+		die("rpc.statd is already running (check PID in %s)\n", pidfile);
-+	}
-+
-+	/*
-+	 * A directory is need so the pid file can be remove
-+	 * once the privs have been dropped.
-+	 */
-+	if (mkdir(piddir, 0755) < 0 && errno != EEXIST) {
-+		die("Creating %s directory failed: errno %d (%s)\n", pidfile,
-+			errno, strerror(errno));
-+	}
-+	if ((fp = fopen(pidfile, "w")) == NULL) {
-+			die("Opening %s failed: errno %d (%s)\n", pidfile,
-+				errno, strerror(errno));
-+	}
-+	fprintf(fp, "%d", getpid());
-+	if (fclose(fp) < 0) {
-+		log(L_WARNING,"Closing %s failed: errno %d (%s)\n", pidfile,
-+			errno, strerror(errno));
-+	}
-+
-+	return;
-+}
-+
-+/*
   * Privilege dropper
-  */
- static void
-@@ -94,6 +142,10 @@ drop_privs(void)
-     die("Cannot start - cannot drop privs: getpwnam()\n");
-   }
+@@ -254,6 +272,7 @@ int main (int argc, char **argv)
+ 	int pid;
+ 	int arg;
+ 	int port = 0, out_port = 0;
++	int status=-1;
  
-+  if (chown(piddir, pw->pw_uid, pw->pw_gid) < 0) {
-+	log(L_WARNING,"Owner change of '%s' to user '%s' failed: errno %d (%s)\n", 
-+		pidfile, pw->pw_name, errno, strerror(errno));
-+  }
-   initgroups(pw->pw_name, pw->pw_gid);
+ 	/* Default: daemon mode, no other options */
+ 	run_mode = 0;
+@@ -373,11 +392,24 @@ int main (int argc, char **argv)
+ 	if (!(run_mode & MODE_NODAEMON)) {
+ 		int filedes, fdmax, tempfd;
  
-   setgid(pw->pw_gid);
-@@ -343,6 +395,8 @@ int main (int argc, char **argv)
++		if (pipe(pfds) < 0) {
++			fprintf(stderr, "Unable to create a pipe(2):"
++				" errno %d (%s)\n", errno, strerror(errno));
++			exit(-1);
++		}
+ 		if ((pid = fork ()) < 0) {
+ 			perror ("Could not fork");
+-			exit (1);
++			exit(-1);
+ 		} else if (pid != 0) {
+ 			/* Parent. */
++			/*
++			 * Wait for status from the child 
++			 */
++			close(pfds[1]);
++			if (read(pfds[0], &status, sizeof(status)) < 1)
++				exit(-1); /* the child died */
++			if (status != 0)
++				exit(-1); /* the child failed */
+ 			exit (0);
+ 		}
+ 		/* Child.	*/
+@@ -390,13 +422,16 @@ int main (int argc, char **argv)
+ 		close(2); dup2(tempfd, 2);
+ 		fdmax = sysconf (_SC_OPEN_MAX);
+ 		for (filedes = 3; filedes < fdmax; filedes++) {
+-			close (filedes);
++			if (filedes != pfds[1]) 
++				close (filedes);
+ 		}
++		atexit(child_exit);
  	}
  
  	log_init (name_p, version_p);
-+	create_pidfile();
-+	atexit(delete_pidfile);
+ 	create_pidfile();
+-	atexit(delete_pidfile);
++	if (run_mode & MODE_NODAEMON)
++		atexit(delete_pidfile);
  
  	/* Child. */
  	signal (SIGHUP, killer);
-@@ -364,7 +418,7 @@ int main (int argc, char **argv)
- 		die("Startup failed: Please start rpc.statd as root\n");
-  
- 	/* Arm the ****** resolver before chroot() so it doesn't fail
--	 * trying to open /etc/ for the dozenth time
-+	 * trying to open /etc/host for the dozenth time
- 	 */
- 	sethostent(1);
+@@ -432,6 +467,15 @@ int main (int argc, char **argv)
+ 	if (access(".", R_OK|W_OK|X_OK) != 0)
+ 		die("Cannot access current directory after dropping privs: access()\n");
  
++	/* Tell the parent everthing is ok... */
++	status=0;
++	if (write(pfds[1], &status, sizeof(status)) < 0) {
++		log(L_WARNING,"Writting to pipe[1] failed: errno %d (%s)\n",
++		errno, strerror(errno));
++	}
++	close(pfds[1]);
++	pfds[1] = -1;
++
+ 	for (;;) {
+ 		if (!(run_mode & MODE_NOTIFY_ONLY)) {
+ 			/* Do not do pmap_unset() when running in notify mode.
 
---------------040502090009000808030906--
+--------------070406080201000202020304--
 
 
 
