@@ -1,17 +1,17 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: [PATCH] RPC over UDP congestion control updates [3/8]
-Date: Tue, 16 Jul 2002 19:59:12 +0200
+Subject: [PATCH] RPC over UDP congestion control updates [7/8]
+Date: Tue, 16 Jul 2002 20:00:06 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15668.24304.638646.86068@charged.uio.no>
+Message-ID: <15668.24358.596386.459941@charged.uio.no>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
     NFS maillist <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mons.uio.no ([129.240.130.14])
+Received: from pat.uio.no ([129.240.130.16])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17UWbf-0005b8-00
-	for <nfs@lists.sourceforge.net>; Tue, 16 Jul 2002 10:59:27 -0700
+	id 17UWcW-0005hJ-00
+	for <nfs@lists.sourceforge.net>; Tue, 16 Jul 2002 11:00:21 -0700
 To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -26,105 +26,174 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 
-Improve the response to timeouts. As requests time out, we delay
-timing out the remaining requests (in fact we follow exponential
-backoff). This is done because we assume either that the round trip
-time has been underestimated, or that the network/server is congested,
-and we need to back off the resending of new requests.
+  - Divorce the allocation of free request slots and the congestion
+    control. Make the congestion control apply only to when we
+    actually send data over the wire. This means that we *do* apply
+    congestion control to resent requests: if a timeout has occured,
+    and there are too many requests on the wire, delay resending until
+    the congestion algorithm allows it.
+
+  - Improve spinlocking by putting the congestion avoidance algoritm
+    under xprt->sock_lock. This lock has to be taken *anyway* in
+    (almost) all cases where we are updating the congestion control
+    data.
 
 Cheers,
   Trond
 
-diff -u --recursive --new-file linux-2.5.25-rtt2/include/linux/sunrpc/xprt.h linux-2.5.25-rtt3/include/linux/sunrpc/xprt.h
---- linux-2.5.25-rtt2/include/linux/sunrpc/xprt.h	Tue Jul 16 11:43:08 2002
-+++ linux-2.5.25-rtt3/include/linux/sunrpc/xprt.h	Tue Jul 16 15:28:49 2002
-@@ -99,6 +99,7 @@
- 	u32			rq_bytes_sent;	/* Bytes we have sent */
- 
- 	long			rq_xtime;	/* when transmitted */
-+	int			rq_ntimeo;
- 	int			rq_nresend;
- };
- #define rq_svec			rq_snd_buf.head
-diff -u --recursive --new-file linux-2.5.25-rtt2/net/sunrpc/xprt.c linux-2.5.25-rtt3/net/sunrpc/xprt.c
---- linux-2.5.25-rtt2/net/sunrpc/xprt.c	Tue Jul 16 11:47:29 2002
-+++ linux-2.5.25-rtt3/net/sunrpc/xprt.c	Tue Jul 16 15:28:49 2002
-@@ -77,6 +77,8 @@
- # define RPCDBG_FACILITY	RPCDBG_XPRT
- #endif
- 
-+#define XPRT_MAX_BACKOFF	(8)
-+
- /*
-  * Local functions
-  */
-@@ -932,6 +934,21 @@
- }
- 
- /*
-+ * Exponential backoff for UDP retries
-+ */
-+static inline int
-+xprt_expbackoff(struct rpc_task *task, struct rpc_rqst *req)
-+{
-+	int backoff;
-+
-+	req->rq_ntimeo++;
-+	backoff = min(rpc_ntimeo(&task->tk_client->cl_rtt), XPRT_MAX_BACKOFF);
-+	if (req->rq_ntimeo < (1 << backoff))
-+		return 1;
-+	return 0;
-+}
-+
-+/*
-  * RPC receive timeout handler.
-  */
- static void
-@@ -943,9 +960,16 @@
- 	spin_lock(&xprt->sock_lock);
- 	if (req->rq_received)
- 		goto out;
-+
-+	if (!xprt->nocong) {
-+		if (xprt_expbackoff(task, req)) {
-+			rpc_add_timer(task, xprt_timer);
-+			goto out_unlock;
-+		}
-+		rpc_inc_timeo(&task->tk_client->cl_rtt);
-+		xprt_adjust_cwnd(req->rq_xprt, -ETIMEDOUT);
+diff -u --recursive --new-file linux-2.5.25-rpc_cong2/net/sunrpc/xprt.c linux-2.5.25-rpc_cong3/net/sunrpc/xprt.c
+--- linux-2.5.25-rpc_cong2/net/sunrpc/xprt.c	Tue Jul 16 15:46:36 2002
++++ linux-2.5.25-rpc_cong3/net/sunrpc/xprt.c	Tue Jul 16 15:32:36 2002
+@@ -141,9 +141,11 @@
+ {
+ 	int retval;
+ 	spin_lock_bh(&xprt->sock_lock);
+-	if (!xprt->snd_task)
+-		xprt->snd_task = task;
+-	else if (xprt->snd_task != task) {
++	if (!xprt->snd_task) {
++		if (xprt->nocong || __xprt_get_cong(xprt, task))
++			xprt->snd_task = task;
 +	}
- 	req->rq_nresend++;
--	rpc_inc_timeo(&task->tk_client->cl_rtt);
--	xprt_adjust_cwnd(xprt, -ETIMEDOUT);
++	if (xprt->snd_task != task) {
+ 		dprintk("RPC: %4d TCP write queue full (task %d)\n",
+ 			task->tk_pid, xprt->snd_task->tk_pid);
+ 		task->tk_timeout = 0;
+@@ -162,10 +164,13 @@
  
- 	dprintk("RPC: %4d xprt_timer (%s request)\n",
- 		task->tk_pid, req ? "pending" : "backlogged");
-@@ -954,6 +978,7 @@
- out:
- 	task->tk_timeout = 0;
- 	rpc_wake_up_task(task);
-+out_unlock:
- 	spin_unlock(&xprt->sock_lock);
+ 	if (xprt->snd_task)
+ 		return;
++	if (!xprt->nocong && RPCXPRT_CONGESTED(xprt))
++		return;
+ 	task = rpc_wake_up_next(&xprt->sending);
+ 	if (!task)
+ 		return;
+-	xprt->snd_task = task;
++	if (xprt->nocong || __xprt_get_cong(xprt, task))
++		xprt->snd_task = task;
  }
  
-@@ -1076,16 +1101,9 @@
- 	dprintk("RPC: %4d xmit complete\n", task->tk_pid);
- 	/* Set the task's receive timeout value */
+ /*
+@@ -297,12 +302,6 @@
+ {
+ 	unsigned long	cwnd;
+ 
+-	if (xprt->nocong)
+-		return;
+-	/*
+-	 * Note: we're in a BH context
+-	 */
+-	spin_lock(&xprt->xprt_lock);
+ 	cwnd = xprt->cwnd;
+ 	if (result >= 0 && xprt->cong <= cwnd) {
+ 		/* The (cwnd >> 1) term makes sure
+@@ -319,8 +318,6 @@
+ 	dprintk("RPC:      cong %ld, cwnd was %ld, now %ld\n",
+ 			xprt->cong, xprt->cwnd, cwnd);
+ 	xprt->cwnd = cwnd;
+- out:
+-	spin_unlock(&xprt->xprt_lock);
+ }
+ 
+ /*
+@@ -534,6 +531,7 @@
+ 	/* Adjust congestion window */
  	if (!xprt->nocong) {
--		int backoff;
- 		task->tk_timeout = rpc_calc_rto(&clnt->cl_rtt,
- 				rpcproc_timer(clnt, task->tk_msg.rpc_proc));
--		/* If we are retransmitting, increment the timeout counter */
--		backoff = req->rq_nresend;
--		if (backoff) {
--			if (backoff > 7)
--				backoff = 7;
--			task->tk_timeout <<= backoff;
--		}
-+		req->rq_ntimeo = 0;
- 		if (task->tk_timeout > req->rq_timeout.to_maxval)
- 			task->tk_timeout = req->rq_timeout.to_maxval;
- 	} else
+ 		xprt_adjust_cwnd(xprt, copied);
++		__xprt_put_cong(xprt, req);
+ 	       	if (!req->rq_nresend) {
+ 			int timer = rpcproc_timer(clnt, task->tk_msg.rpc_proc);
+ 			if (timer)
+@@ -1011,6 +1009,7 @@
+ 		}
+ 		rpc_inc_timeo(&task->tk_client->cl_rtt);
+ 		xprt_adjust_cwnd(req->rq_xprt, -ETIMEDOUT);
++		__xprt_put_cong(xprt, req);
+ 	}
+ 	req->rq_nresend++;
+ 
+@@ -1139,7 +1138,10 @@
+ 		req->rq_bytes_sent = 0;
+ 	}
+  out_release:
+-	xprt_release_write(xprt, task);
++	spin_lock_bh(&xprt->sock_lock);
++	__xprt_release_write(xprt, task);
++	__xprt_put_cong(xprt, req);
++	spin_unlock_bh(&xprt->sock_lock);
+ 	return;
+  out_receive:
+ 	dprintk("RPC: %4d xmit complete\n", task->tk_pid);
+@@ -1171,7 +1173,7 @@
+ 	if (task->tk_rqstp)
+ 		return 0;
+ 
+-	spin_lock_bh(&xprt->xprt_lock);
++	spin_lock(&xprt->xprt_lock);
+ 	xprt_reserve_status(task);
+ 	if (task->tk_rqstp) {
+ 		task->tk_timeout = 0;
+@@ -1182,7 +1184,7 @@
+ 		task->tk_status = -EAGAIN;
+ 		rpc_sleep_on(&xprt->backlog, task, NULL, NULL);
+ 	}
+-	spin_unlock_bh(&xprt->xprt_lock);
++	spin_unlock(&xprt->xprt_lock);
+ 	dprintk("RPC: %4d xprt_reserve returns %d\n",
+ 				task->tk_pid, task->tk_status);
+ 	return task->tk_status;
+@@ -1206,17 +1208,11 @@
+ 	} else {
+ 		if (!(req = xprt->free))
+ 			goto out_nofree;
+-		if (!(xprt->nocong || __xprt_get_cong(xprt, req)))
+-			goto out_nofree;
+-		/* OK: There's room for us. Grab a free slot and bump
+-		 * congestion value */
++		/* OK: There's room for us. Grab a free slot */
+ 		xprt->free     = req->rq_next;
+ 		req->rq_next   = NULL;
+ 		task->tk_rqstp = req;
+ 		xprt_request_init(task, xprt);
+-
+-		if (xprt->free)
+-			xprt_clear_backlog(xprt);
+ 	}
+ 
+ 	return;
+@@ -1264,6 +1260,7 @@
+ 		return;
+ 	spin_lock_bh(&xprt->sock_lock);
+ 	__xprt_release_write(xprt, task);
++	__xprt_put_cong(xprt, req);
+ 	if (!list_empty(&req->rq_list))
+ 		list_del(&req->rq_list);
+ 	spin_unlock_bh(&xprt->sock_lock);
+@@ -1272,13 +1269,12 @@
+ 
+ 	dprintk("RPC: %4d release request %p\n", task->tk_pid, req);
+ 
+-	spin_lock_bh(&xprt->xprt_lock);
++	spin_lock(&xprt->xprt_lock);
+ 	req->rq_next = xprt->free;
+ 	xprt->free   = req;
+ 
+-	__xprt_put_cong(xprt, req);
+ 	xprt_clear_backlog(xprt);
+-	spin_unlock_bh(&xprt->xprt_lock);
++	spin_unlock(&xprt->xprt_lock);
+ }
+ 
+ /*
+@@ -1492,8 +1488,6 @@
+  */
+ int
+ xprt_clear_backlog(struct rpc_xprt *xprt) {
+-	if (RPCXPRT_CONGESTED(xprt))
+-		return 0;
+ 	rpc_wake_up_next(&xprt->backlog);
+ 	if (waitqueue_active(&xprt->cong_wait))
+ 		wake_up(&xprt->cong_wait);
 
 
 -------------------------------------------------------
