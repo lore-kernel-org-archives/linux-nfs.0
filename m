@@ -1,62 +1,65 @@
-From: Bernardo Innocenti <bernie@develer.com>
-Subject: Re: NFS client bug in 2.6.8-2.6.11
-Date: Wed, 16 Mar 2005 03:49:48 +0100
-Message-ID: <42379ECC.9060100@develer.com>
-References: <20050315234415.71730.qmail@web26510.mail.ukl.yahoo.com>
+From: Denis Vlasenko <vda@ilport.com.ua>
+Subject: Re: nhfsstone
+Date: Wed, 16 Mar 2005 10:19:45 +0200
+Message-ID: <200503161019.45094.vda@ilport.com.ua>
+References: <42374DAC.8050408@catfeeder.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Anders Saaby <as@cohaesio.com>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	lkml <linux-kernel@vger.kernel.org>, nfs@lists.sourceforge.net
-To: Neil Conway <nconway_kernel@yahoo.co.uk>
-In-Reply-To: <20050315234415.71730.qmail@web26510.mail.ukl.yahoo.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain;
+  charset="koi8-r"
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1DBTll-0006Wn-1c
+	for nfs@lists.sourceforge.net; Wed, 16 Mar 2005 00:20:45 -0800
+Received: from [195.66.192.168] (helo=port.imtp.ilyichevsk.odessa.ua)
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
+	id 1DBTle-0005sS-0L
+	for nfs@lists.sourceforge.net; Wed, 16 Mar 2005 00:20:44 -0800
+To: Sean Dogar <sean@catfeeder.net>, nfs@lists.sourceforge.net
+In-Reply-To: <42374DAC.8050408@catfeeder.net>
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Neil Conway wrote:
+On Tuesday 15 March 2005 23:03, Sean Dogar wrote:
+> Has anybody used the nfs benchmarking utility "nhfsstone"? 
+> 
+> I can run it, and I can see that it's doing work (it makes test 
+> directories in the NFS-mounted directory that I start it from), but it 
+> never finishes it's testing or gives me any performance info.  I've 
+> tried the various options, including a -t 120 (I thought that this would 
+> restrict run-time to 120 seconds) and others, but I still get no output, 
+> even with verbose.  It doesn't send any output to files either.  It just 
+> runs and runs.   This is on a Redhat 8 machine as a client mounting an 
+> AIX NFS export. 
+> 
+> The man page is sort of vague, but I get the impression that you can run 
+> it without any arguments, and it will do a test with the various 
+> defaults, and eventually should return. 
+> 
+> Does anybody have any idea on this or do you know somewhere to point me 
+> for more info?  Most of the stuff I've found through Google has been the 
+> man page itself. 
 
-> 766 -> 770 sounds like a "small" (ish) number of patches to check, if
-> we're lucky.  Did you wade through 'em all yet?  Any smoking guns?
-
-The RPM changelog doesn't contain anything relevant
-between 766 and 770:
-
----CUT---
-* Thu Feb 24 2005 Dave Jones <davej@redhat.com>
-
-- Use old scheme first when probing USB. (#145273)
-
-* Wed Feb 23 2005 Dave Jones <davej@redhat.com>
-
-- Try as you may, there's no escape from crap SCSI hardware. (#149402)
-
-* Mon Feb 21 2005 Dave Jones <davej@redhat.com>
-
-- Disable some experimental USB EHCI features.
-
-* Tue Feb 15 2005 Dave Jones <davej@redhat.com>
-
-- Fix bio leak in md layer.
----CUT---
-
-Perhaps the changelog is incomplete.  I don't have the
-two SRPMs at hand to make a comparison.
-
-By the way, it seems upgrading to 2.6.10-1.770_FC3 just made
-the bug much harder to trigger: I've definitely seen it once
-again when I had left a shell sitting in an NFS directory
-overnight.  I couldn't reproduce it a second time.
+I'd look into its source code (only 36k of it) if I were you.
+--
+vda
 
 
-> PS: oh bugger, just remembered that I also reproduced my bug with a
-> 2.6.8 kernel on the server; admittedly though it was an FC2 kernel so
-> who knows what extra patches it had.
 
-You can easily find out by downloading the SRPM.  Now that
-Fedora provides a public CVS, perhaps it could be used to
-make such investigations directly with the cvsweb interface
-without downloading and unpacking a 40MB file.
-
--- 
-  // Bernardo Innocenti - Develer S.r.l., R&D dept.
-\X/  http://www.develer.com/
+-------------------------------------------------------
+SF email is sponsored by - The IT Product Guide
+Read honest & candid reviews on hundreds of IT Products from real users.
+Discover which products truly live up to the hype. Start reading now.
+http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
