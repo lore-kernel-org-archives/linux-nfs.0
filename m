@@ -1,29 +1,20 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: Re: Debian bug #165744 - 'Received erroneous SM_UNMON request'
-Date: Mon, 25 Aug 2003 16:37:57 +1000
+From: Robert Myers <rmyers1400@comcast.net>
+Subject: Re: nfs connection refuse
+Date: Sun, 24 Aug 2003 11:23:45 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16201.44741.447738.365920@gargle.gargle.HOWL>
-References: <20030812152154.GQ24349@perlsupport.com>
-	<16185.47443.33945.603458@gargle.gargle.HOWL>
-	<20030820180652.GD3639@perlsupport.com>
-	<16197.46988.88705.455043@gargle.gargle.HOWL>
-	<20030822151042.GD20516@perlsupport.com>
+Message-ID: <3F48D881.1090804@comcast.net>
+References: <Law11-OE20biNh0Ow0w0002c234@hotmail.com>
+Reply-To: rmyers@rustuck.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net,
-    Jordi Mallach <jordi@debian.org>,
-    165744-quiet@bugs.debian.org
+Content-Type: text/plain; charset=windows-1252; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19rAzO-0001TA-00
-	for <nfs@lists.sourceforge.net>; Sun, 24 Aug 2003 23:38:06 -0700
-Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <chip@debian.org>) (for <nfs@lists.sourceforge.net>)
-	(for <jordi@debian.org>) (for <165744-quiet@bugs.debian.org>) By note
-	With Smtp ; Mon, 25 Aug 2003 16:37:57 +1000
-To: Chip Salzenberg <chip@debian.org>
-In-Reply-To: message from Chip Salzenberg on Friday August 22
+Received: from [204.127.202.55] (helo=sccrmhc11.comcast.net)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19qwiw-0005Tb-00
+	for <nfs@lists.sourceforge.net>; Sun, 24 Aug 2003 08:24:10 -0700
+To: will supat <willsupat@hotmail.com>
+In-Reply-To: <Law11-OE20biNh0Ow0w0002c234@hotmail.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -36,26 +27,26 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Friday August 22, chip@debian.org wrote:
-> Thanks for the analysis, Neil.  I followed it up until this point:
-> 
-> >    statd tries to notify lockd about the restart
-> >    statd fails to even send a message, and so forgets about that host
-> 
-> Do you know that?  It seems all we can know for sure about this part
-> of the history is that the message wasn't received, but for all we
-> know it may have been sent.
+will supat wrote:
 
-The 
+> I set up nfs on redhat linux 9. I created dir and mount locally, It’s 
+> work. But when I try to mount remotely from another redhat linux 9, I 
+> got error message RPC: connection refuse. I can ping both ways. I also 
+> replace host name with the IP address to eliminate DNS problem. But I 
+> still get the same error message.
+>
+> Please suggest what else I need to do to resolve this error message.
+>
+You probably need to punch some holes in your firewalls. In fact you 
+will pretty much need to allow the two machines to exchange information 
+on any port they want, since the RedHat portmapper can put NFS 
+communication on nearly any port. You will probably want to read about 
+securing NFS in the RedHat Linux Security Guide.
 
-  elrond rpc.statd[179]: notify_host: failed to notify 127.0.0.1
+RM
 
-messages indicate that the "sendto" in utils/statd/rmtcall.c(xmit_call)
-failed, which suggests that the message wasn't sent.
-It might actually be sending a port-lookup call to portmap at this
-point.  It is certainly odd that that fails....
 
-NeilBrown
+
 
 
 -------------------------------------------------------
