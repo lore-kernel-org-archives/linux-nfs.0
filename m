@@ -1,15 +1,31 @@
-From: aw464@osfn.org (Kenneth Howlett)
-Subject: can't get request slot, write timeout
-Date: Sun, 11 Aug 2002 22:25:57 -0400 (EDT)
+From: Jeremy Sanders <jss@ast.cam.ac.uk>
+Subject: Re: RedHat Rawhide Kernels
+Date: Mon, 12 Aug 2002 11:41:36 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200208120225.WAA09099@osfn.org>
-Reply-To: aw464@osfn.org
+Message-ID: <20020812114136.C6498@ast.cam.ac.uk>
+References: <Pine.LNX.4.44.0208082017590.23326-100000@xpc1.ast.cam.ac.uk>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from osfn.org ([209.113.213.86])
+Received: from purple.csi.cam.ac.uk ([131.111.8.4])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17e4u9-0007mO-00
-	for <nfs@lists.sourceforge.net>; Sun, 11 Aug 2002 19:26:01 -0700
+	id 17eCdn-0008Ow-00
+	for <nfs@lists.sourceforge.net>; Mon, 12 Aug 2002 03:41:40 -0700
+Received: from cass41.ast.cam.ac.uk ([131.111.69.186])
+	by purple.csi.cam.ac.uk with esmtp (Exim 4.10)
+	id 17eCdk-00054u-00
+	for nfs@lists.sourceforge.net; Mon, 12 Aug 2002 11:41:36 +0100
+Received: from xalph6.ast.cam.ac.uk (xalph6 [131.111.68.34])
+	by cass41.ast.cam.ac.uk (8.11.6+Sun/8.11.6) with ESMTP id g7CAfa202332
+	for <nfs@lists.sourceforge.net>; Mon, 12 Aug 2002 11:41:36 +0100 (BST)
+Received: from xpc1.ast.cam.ac.uk (IDENT:46/FnTn9Xen4Rtwwywm5hNdlhNgoxU5l@xpc1.ast.cam.ac.uk [131.111.68.219])
+	by xalph6.ast.cam.ac.uk (8.10.0/8.10.0) with ESMTP id g7CAfap28375
+	for <nfs@lists.sourceforge.net>; Mon, 12 Aug 2002 11:41:36 +0100 (BST)
+Received: (from jss@localhost)
+	by xpc1.ast.cam.ac.uk (8.11.6/8.11.6) id g7CAfaa06564
+	for nfs@lists.sourceforge.net; Mon, 12 Aug 2002 11:41:36 +0100
 To: nfs@lists.sourceforge.net
+In-Reply-To: <Pine.LNX.4.44.0208082017590.23326-100000@xpc1.ast.cam.ac.uk>; from jss@ast.cam.ac.uk on Thu, Aug 08, 2002 at 08:21:27PM +0100
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -22,114 +38,79 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
+On Thu, Aug 08, 2002 at 08:21:27PM +0100, Jeremy Sanders wrote:
+> Just to let you guys know (as it's close to the current thread), I'm
+> getting very bad lock-ups using the current rawhide kernel (2.4.18-7.94).
+> When I connet with a machine running 2.4.18-5 (standard 7.3 errata
+> kernel), both the client and the server get processes stuck in a "D" state
+> - the nfsd processes on the server and the user command on the client.
+> This means you can't shut the server down as the nfsd processes can't get
+> killed. Strangely 2.4.19 kernels can talk to the server fine!
+> 
+> See
+> https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=70561
+
+Interestingly this bug seems to be due to ext3 (or a combination of ext3
+and nfs). Remounting the partition as ext2 stops the hang.
+
+The processes get stuck (when using ext3) in
+
+nfsd          D F68108E0  5976  1142      1          1141  1143 (L-TLB)
+Call Trace: [<c0107f7a>] __down [kernel] 0x6a (0xf6af9de4))
+[<c01080d4>] __down_failed [kernel] 0x8 (0xf6af9e08))
+[<f8824aa0>] ext3_readdir [ext3] 0x0 (0xf6af9e10))
+[<c014fdce>] .text.lock.readdir [kernel] 0x5 (0xf6af9e18))
+[<f89997e3>] nfsd_readdir [nfsd] 0xc3 (0xf6af9e38))
+[<f89a1070>] nfs3svc_encode_entry_plus [nfsd] 0x0 (0xf6af9e40))
+[<f8837ca0>] ext3_dir_operations [ext3] 0x0 (0xf6af9e80))
+[<f899ee6e>] nfsd3_proc_readdirplus [nfsd] 0xde (0xf6af9ef0))
+[<f89a1070>] nfs3svc_encode_entry_plus [nfsd] 0x0 (0xf6af9f04))
+[<f89a61c4>] nfsd_procedures3 [nfsd] 0x264 (0xf6af9f24))
+[<f89935c0>] nfsd_dispatch [nfsd] 0xd0 (0xf6af9f30))
+[<f89a5898>] nfsd_version3 [nfsd] 0x0 (0xf6af9f44))
+[<f89754cc>] svc_process_R6eda96b1 [sunrpc] 0x43c (0xf6af9f50))
+[<f89a61c4>] nfsd_procedures3 [nfsd] 0x264 (0xf6af9f78))
+[<f89a58b8>] nfsd_program [nfsd] 0x0 (0xf6af9f7c))
+[<f89933b0>] nfsd [nfsd] 0x1d0 (0xf6af9f98))
+[<c010765e>] kernel_thread [kernel] 0x2e (0xf6af9ff0))
+[<f89931e0>] nfsd [nfsd] 0x0 (0xf6af9ff8))
+
+nfsd          D F68108E0  5592  1143      1          1142  1144 (L-TLB)
+Call Trace: [<c0107f7a>] __down [kernel] 0x6a (0xf6aefc24))
+[<c01080d4>] __down_failed [kernel] 0x8 (0xf6aefc48))
+[<f8837e20>] ext3_dir_inode_operations [ext3] 0x0 (0xf6aefc50))
+[<f8999fab>] .text.lock.vfs [nfsd] 0xaf (0xf6aefc58))
+[<c01af97c>] ide_wait_stat [kernel] 0xcc (0xf6aefc68))
+[<f89a1a20>] encode_fattr3 [nfsd] 0x200 (0xf6aefc90))
+[<f89a0f6b>] encode_entry [nfsd] 0x1ab (0xf6aefcb4))
+[<f8824d02>] ext3_readdir [ext3] 0x262 (0xf6aefd70))
+[<c0223760>] udp_getfrag [kernel] 0x0 (0xf6aefdcc))
+[<c014f6b2>] vfs_readdir [kernel] 0x92 (0xf6aefe18))
+[<f89a1070>] nfs3svc_encode_entry_plus [nfsd] 0x0 (0xf6aefe24))
+[<f89997e3>] nfsd_readdir [nfsd] 0xc3 (0xf6aefe38))
+[<f89a1070>] nfs3svc_encode_entry_plus [nfsd] 0x0 (0xf6aefe40))
+[<f8837ca0>] ext3_dir_operations [ext3] 0x0 (0xf6aefe80))
+[<f899ee6e>] nfsd3_proc_readdirplus [nfsd] 0xde (0xf6aefef0))
+[<f89a1070>] nfs3svc_encode_entry_plus [nfsd] 0x0 (0xf6aeff04))
+[<f89a61c4>] nfsd_procedures3 [nfsd] 0x264 (0xf6aeff24))
+[<f89935c0>] nfsd_dispatch [nfsd] 0xd0 (0xf6aeff30))
+[<f89a5898>] nfsd_version3 [nfsd] 0x0 (0xf6aeff44))
+[<f89754cc>] svc_process_R6eda96b1 [sunrpc] 0x43c (0xf6aeff50))
+[<f89a61c4>] nfsd_procedures3 [nfsd] 0x264 (0xf6aeff78))
+[<f89a58b8>] nfsd_program [nfsd] 0x0 (0xf6aeff7c))
+[<f89933b0>] nfsd [nfsd] 0x1d0 (0xf6aeff98))
+[<c010765e>] kernel_thread [kernel] 0x2e (0xf6aefff0))
+[<f89931e0>] nfsd [nfsd] 0x0 (0xf6aefff8))
 
 
+(See the above bug for more details).
 
-I have two computers, namelessp2, a PII which I usually use; and
-junk486, an old 486. Namelessp2 has a davicom dm9102f ethernet
-chip built into the motherboard. Junk486 has a 3com 3c503
-ethernet card. I have a surecom 505st hub. Both computers run
-redhat 7.2 with a 2.4.18 kernel. This is a low cost 10mbps
-network made with cheap components because I do not need a high
-performance network.
+Jeremy
 
-I want to backup namelessp2 to the hard drive of junk486 using
-nfs. However, when I write data to the nfs drive, the program
-which is writing data appears to hang, and I get many messages
-like
-
-   kernel: nfs: server server.domain.name not responding, still
-trying
-   kernel: nfs: task 10754 can't get a request slot
-   kernel: nfs: server server.domain.name OK
-
-If I wait many hours, the program which is trying to write data
-to the nfs drive will eventually succeed, so it is not really
-hung, but it is so slow that it appears to be hung.
-
-I do not think this problem is caused by network congestion or an
-overloaded server because there is no other network activity. I
-do not think this problem is caused by buggy network cards or
-drivers because I changed network cards and drivers, and the
-problem was unchanged.
-
-I have searched through the list archives and found many similar
-problems. Some people have reported a hung server because the
-client reports that the server is not responding. Other people
-have reported a client problem because the problem only occurs
-with certain clients. Some people say it is hung and other people
-say performance is low. Some people reported the request slot
-error message and some did not.
-
-Each of these problem reports is slightly different, but I think
-most are the same problem. But in the list archives, it appears
-that the developers do not recognize this as the same problem,
-because everyone reports it differently.
-
-In my search of the archive, all the suggested solutions I found
-were too vague to be useful, and I did not find any messages
-which confirmed that anyone had ever solved this problem.
-
-The problem only occurred on writes. I have no problem with
-reads. The problem may occur when either computer writes to the
-other, but is more likely to occur when namelessp2 writes to
-junk486. The problem is more likely to occur when writing a large
-file than when writing a small file. I tried changing the block
-size used by the program which writes the file; the problem
-occurred with any block size but was more likely to occur with a
-large block size. The problem did not occur if I used a small
-block size and opened and closed the file for each block. Opening
-the file with O_SYNC had no effect on the problem. Exporting with
-sync or async had no effect on the problem. Mounting with
-rsize=8192,wsize=8192 had no effect on the problem. The problem
-does not occur when namelessp2 nfs mounts itself.
-
-If I do 'ping -f -s nnnn' with various numbers for nnnn; the
-higher nnnn is, the more packets are lost. If nnnn is a small
-number, no packets are lost. If nnnn is a large number, all
-packets are lost. More packets are lost when namelessp2 pings
-junk486 than when junk486 pings namelessp2. If namelessp2 pings
-junk486, 1% packet loss occurs at a packet size of 1000 to 4000.
-If junk486 pings namelessp2, 1% packet loss occurs at a packet
-size of 5000 to 9000.
-
-I have fixed my problem by using mount options of
-rsize=2048,wsize=2048. rsize=1024,wsize=1024 also works, but is a
-little slower.
-
-Most of the people who have reported similar problems also
-reported using 2.4.x clients, and some reported that the problem
-did not occur before they upgraded to 2.4.x. This suggests that
-there might be a bug in 2.4.x clients. However, I think the
-problem is not the 2.4.x  clients, but the utils used with 2.4.x
-clients; the newer utils have a higher default rsize/wsize than
-the old utils. Apparently the new default rsize/wsize does not
-work with some hardware.
-
-I have already solved my problem, so I do not need any help. I am
-posting this message for the benefit of anyone who is searching
-the archives for solutions to this problem.
-
-Next time someone asks what to do about request slot error
-messages, or a hung server, or very slow performance; that person
-should be told to try a smaller rsize/wsize. This should be added
-to the FAQ and to the HOWTO and to the nfs manpage. Since so many
-people have had this problem, this should be added to the
-documentation.
-
-In the FAQ it says that tcp is faster than udp on congested
-networks.  I think the same effect could be achieved by using udp
-with a small rsize/wsize.
-
-When I was researching this, I spent a while looking for the FAQ
-before I realized the FAQ was right in front of me at
-http://nfs.sourceforge.net. I think that page should say 'this is
-the FAQ'.
-
-When I was searching the archive, it would have been easier if I
-could have downloaded one large digest of all messages from the
-last year or two.
-
+-- 
+Jeremy Sanders <jss@ast.cam.ac.uk>   http://www-xray.ast.cam.ac.uk/~jss/
+X-Ray Group, Institute of Astronomy, University of Cambridge, UK.
+Public Key Server PGP Key ID: E1AAE053
 
 
 -------------------------------------------------------
