@@ -1,21 +1,28 @@
-From: <trond.myklebust@fys.uio.no>
-Subject: Re: RE: [autofs] running out of mount points
-Date: Tue, 20 Jan 2004 17:00:30 +0100 (CET)
+From: Franziska Heinze <Franziska.Heinze@rwth-aachen.de>
+Subject: NFS basics ??
+Date: Tue, 20 Jan 2004 17:12:54 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <35307.68.42.103.198.1074614430.squirrel@webmail.uio.no>
+Message-ID: <dde25de25c.de25cdde25@post.rwth-aachen.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: <gregb@rhythm.com>, <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AiyJ6-0001JN-GH
-	for nfs@lists.sourceforge.net; Tue, 20 Jan 2004 08:00:48 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AiyJ5-00059v-Vy
-	for nfs@lists.sourceforge.net; Tue, 20 Jan 2004 08:00:48 -0800
-To: <raven@themaw.net>
+	id 1AiybZ-0007aK-0P
+	for nfs@lists.sourceforge.net; Tue, 20 Jan 2004 08:19:53 -0800
+Received: from ms-2.rz.rwth-aachen.de ([134.130.3.131] helo=ms-dienst.rz.rwth-aachen.de)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1AiybX-0002qg-2O
+	for nfs@lists.sourceforge.net; Tue, 20 Jan 2004 08:19:51 -0800
+Received: from r220-1 (r220-1.rz.RWTH-Aachen.DE [134.130.3.31])
+ by ms-dienst.rz.rwth-aachen.de
+ (iPlanet Messaging Server 5.2 HotFix 1.12 (built Feb 13 2003))
+ with ESMTP id <0HRS00GLJQDJTS@ms-dienst.rz.rwth-aachen.de> for
+ nfs@lists.sourceforge.net; Tue, 20 Jan 2004 17:12:55 +0100 (MET)
+Received: from post.rwth-aachen.de (ms-2.rz.RWTH-Aachen.DE [134.130.3.131])
+	by relay.rwth-aachen.de (8.12.10/8.12.7-1) with ESMTP id i0KGCsJC001582	for
+ <nfs@lists.sourceforge.net>; Tue, 20 Jan 2004 17:12:54 +0100 (MET)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -28,27 +35,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-På ty , 20/01/2004 klokka 10:11, skreiv Ian Kent:
-> I have worked on Tronds' patch for that. I posted my first attempt on
-> the nfs list to see if Trond could sanity check it but he was clearly
-> to  busy. So I went ahead and did the best I could. This resulted in a
-> port  for 2.6 and 2.4 vanila kernel only. It is entirely untested and
-> I expect  will have problems as the depth of my understanding of the
-> NFS subsystem  is poor at best. I found trying to make it apply to a
-> RedHat 2.4 kernel  was something of a nightmare and have left it there
-> for now.
+Hello,
 
-Note: the NFSv4 client in the latest 2.6.1-mm patches already does share
-its RPC client between all mountpoints.
+I'm quite new to Linux in general, so may be one or the other question may sound quite simple to you. Nevertheless:
 
-I haven't implemented the same type of sharing for NFSv2/v3 yet, since
-there some concern has been voiced that it may impact performance on
-high end systems that rely on mounting the same filesystem several times
-in order to increase the number of available RPC slots. Chuck is working
-on a patch that will remedy this.
+My situation:
+I have a Workstation with static IP runnning RedHat 9.0. This is the NFS Server.
+Secondly I have a singele-chip PC with a flash ROM running RedBoot which then loads the Linux Busybox system if not interrupted. It also has ethernet connection and a static IP. This is the client
+system.
+
+I'd like to have the client system booting via NFS from the server system, so that I can develop software and perhaps alter the operating system for the single-chip PC on the server system and thus reducing time for development.
+
+In principle I thought I have to do as following:
+- setting up the NFs server under RedHat
+- changing the bootscript under redboot to boot/ execute the busybox from the server like:
+exec -c"root=/dev/nfs rw nfsroot=12.345.67.89:/path/on/server/to/nfs_root ip=12.345.67.88::12.345.67.1:255.255.255.0:embed-o-matic:eth0:off console=ttyS1 init=/bin/init"
+
+As you will know that's not working.
+What have I to do instead, step by step ?
+I'm thankful for every hint !
 
 Cheers,
-  Trond
+Franziska.
 
 
 
