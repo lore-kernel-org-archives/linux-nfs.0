@@ -1,19 +1,26 @@
-From: "Eff Norwood" <enorwood@effrem.com>
-Subject: RE: High Performance NFS
-Date: Thu, 31 Oct 2002 15:25:07 -0800
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: Re: [PATCH] zerocopy NFS for 2.5.43
+Date: Fri, 1 Nov 2002 11:54:39 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <CFEAJJEGMGECBCJFLGDBMEOGCGAA.enorwood@effrem.com>
-References: <20021031180603.A21174@questra.com>
+Message-ID: <15809.53455.211796.730215@notabene.cse.unsw.edu.au>
+References: <20021031.082927.74744491.taka@valinux.co.jp>
+	<15808.28897.595522.855723@notabene.cse.unsw.edu.au>
+	<20021031.110659.42769812.taka@valinux.co.jp>
+	<20021101.004052.85418463.taka@valinux.co.jp>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from cynaptic.com ([128.121.116.181])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 187Ogq-0007rZ-00
-	for <nfs@lists.sourceforge.net>; Thu, 31 Oct 2002 15:25:28 -0800
-To: "Scott McDermott" <mcdermot@questra.com>, <nfs@lists.sourceforge.net>
-In-Reply-To: <20021031180603.A21174@questra.com>
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 187Q5Q-0001gn-00
+	for <nfs@lists.sourceforge.net>; Thu, 31 Oct 2002 16:54:56 -0800
+Received: From
+	notabene.cse.unsw.edu.au ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
+	(for <taka@valinux.co.jp>) (for <nfs@lists.sourceforge.net>) By tone
+	With Smtp ; Fri, 1 Nov 2002 11:54:43 +1100
+To: Hirokazu Takahashi <taka@valinux.co.jp>
+In-Reply-To: message from Hirokazu Takahashi on Friday November 1
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,15 +33,44 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Well, it's confusing at first glance if you look at it. It's called
-nfs@list.sourceforge.net not nfs.linux@lists.sourceforge.net. I think it's
-fair that someone might guess that this list covers NFS in general.
+On Friday November 1, taka@valinux.co.jp wrote:
+> Hello,
+> 
+> > The rest of the zero copy stuff should fit in quite easily, with the
+> > possible exception of single-copy writes: I haven't looked very hard
+> > at that yet.
+> 
+> I just ported part of the zero copy stuff against linux-2.5.45.
+> single-copy writes and per-cpu sokcets are not included yet.
+> And I fixed a problem that NFS over TCP wouldn't work. 
+> 
+> 
+> va-nfsd-sendpage.patch        ....use sendpage instead of sock_sendmsg.
+> va-sunrpc-zeropage.patch      ....zero filled page for padding.
+> va-nfsd-vfsread.patch         ....zero-copy nfsd_read/nfsd_readdir.
 
-Eff Norwood
+A lot of this looks fine.
 
-> did you notice this was "linux nfs" mailing list?
+I would like to leave the tail pointing into the end of the first page
+(just after the head) rather than using the sunrpc_zero_page thing as
+the later doesn't seem necessary.
+Also, I would like to send the head and tail with sendpage rather
+than using sock_sendmsg.
+To give the destination address, you can call sock_sendmsg with
+a length of 0, and then call ->sendpage for each page or page
+fragment.
 
 
+You should be able to remove the calls to svcbuf_reserve in
+nfsd_proc_readdir and nfsd3_proc_readdir, and then discard the
+'buffer' variable as well.
+
+
+If you could make those changes (or convince me otherwise), I will
+forward the patches to Linus,
+Thanks.
+
+NeilBrown
 
 
 -------------------------------------------------------
