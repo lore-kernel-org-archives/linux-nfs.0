@@ -1,14 +1,18 @@
-From: xiyu@800j.com
-Subject: =?GB2312?B?zvewsre/tdiy+tDFz6LN+NDQ0rXIyMPFu7DM4g==?=
-Date: Thu, 15 May 2003 18:04:54 +0800
+From: Matt Schillinger <mschilli@vss.fsi.com>
+Subject: NFS Tuning
+Date: 15 May 2003 06:24:45 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19GFaV-0002Pg-00@sc8-sf-list1.sourceforge.net>
-Content-Type: text/html;charset="GB2312"
+Message-ID: <1052997886.12158.10.camel@mosix>
+Mime-Version: 1.0
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [61.150.19.247] (helo=800j.com)
+Received: from adsl-66-136-174-212.dsl.stlsmo.swbell.net ([66.136.174.212] helo=esds.vss.fsi.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19GFaV-0002Pg-00
-	for <nfs@lists.sourceforge.net>; Thu, 15 May 2003 03:03:48 -0700
+	id 19GGmU-0002O0-00
+	for <nfs@lists.sourceforge.net>; Thu, 15 May 2003 04:20:15 -0700
+Received: from mosix.vss.fsi.com (mosix [198.51.27.89])
+	by esds.vss.fsi.com (8.9.1a/8.9.1) with ESMTP id GAA27018
+	for <nfs@lists.sourceforge.net>; Thu, 15 May 2003 06:20:07 -0500 (CDT)
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -22,35 +26,52 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-<html>
+For NFS Version 3, is there a formula to help administrators tune NFSD
+to their environment?
 
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
-<meta name="GENERATOR" content="Microsoft FrontPage 4.0">
-<meta name="ProgId" content="FrontPage.Editor.Document">
-<title>西安房地产信息网</title>
-</head>
+I'm looking at thread count, and obviously see the advantages that
+adding threads to a server that is experiencing large number of thread
+overutilization, but I am wondering if there is a way to best calculate
+the threads needed.
 
-<body>
+Such as:
 
-<p class="MsoNormal" align="center"><span lang="EN-US" style="font-size:26.0pt;mso-bidi-font-size:12.0pt;mso-fareast-font-family:
-楷体_GB2312;color:fuchsia"><o:p>
-</span><font color="#0000FF" size="7"><a href="http://www.800j.com.cn"><span lang="EN-US" style="mso-bidi-font-size: 12.0pt"> 
-</o:p> 
- </span></a></font><b><font color="#0000FF" size="7"><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman"><font face="楷体_GB2312">西安房地产信息网</font></span></a></font></b></p>
+CPU Speed:
 
-<p class="MsoNormal" align="center"><font color="#0000FF"><b><font face="楷体_GB2312" size="6"><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman">www.800j.cc</span></a></font></b></font></p>
-<p align="center">　
-<p align="center"><a href="http://www.800j.com.cn"><img src="huati001.gif" width="321" height="46"></a></p>
-<p align="center"><a href="http://www.800j.com.cn/800j/fclt/djtbbs/show.asp?bID=&amp;RID=4863&amp;ID=4863"><font color="#FF0000" size="4"><b>非典时期买楼该注重什么？</b></font></a></p>
-<p align="center"><a href="http://www.800j.com.cn/800j/fclt/djtbbs/show.asp?bID=&amp;RID=5014&amp;ID=5014"><font color="#FF0000" size="4"><b>谁来评述“世家星城”</b></font></a></p>
-<p align="center"><font color="#FF0000" size="4"><b>.....</b></font></p>
-<p class="MsoNormal" align="center"><b><font color="#FFFF00" face="楷体_GB2312" size="4"><a href="http://http://www.800j.com.cn/800j/fclt/djtbbs/new.asp">我要发言　</a>　　　　　<a href="http://http://www.800j.com.cn/800j/fclt/djtbbs/index.asp">　进入论坛</a></font></b></p>
-<p align="center">　</p>
+RAM: 
 
-</body>
+Total Bandwidth of Serving Network Interfaces, and How many network
+interfaces served:
 
-</html>
+Number of Clients: (Would OS of clients affect - are some 'more
+efficient consumers than others?)
+
+Equals: How many threads this machine can handle or should be using.
+
+
+
+Also, another tuning item i found was for Memory limits for the input
+queue.  It recommends 256K for a standard install, as opposed to the
+default 64K.
+
+Standard setup has 8 threads, so 256K gives each thread 32K input queue.
+For 16 threads, does the calculation still hold true? (512K input queue=
+32K/thread)  What are the signs that can allude to input queue problems?
+
+I'm just trying to tune my servers in a less than trial and error
+method.
+
+
+Thanks for your help,
+
+
+
+
+-- 
+Matt Schillinger
+mschilli@vss.fsi.com
+
+
 
 
 -------------------------------------------------------
