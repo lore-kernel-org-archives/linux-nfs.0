@@ -1,15 +1,24 @@
-From: "Dana Mcclure" <wrboen1v6o@yahoo.com>
-Subject: Fwd:Special Offer, 1 Month Free
-Date: Sat, 14 Jun 03 21:56:44 GMT
+From: "" <monnika@aol.com>
+Subject: Cc: 1/2 OFF VIagra!        [ fgkkbeqn
+Date: Sun, 15 Jun 03 06:50:18 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <4dv49dl-s1995-x$$552@o0c.3m4>
-Reply-To: "Dana Mcclure" <wrboen1v6o@yahoo.com>
+Message-ID: <2eu1-4$h9$vf406ph$l4x21p63@zf2qj>
 Mime-Version: 1.0
 Content-Type: multipart/alternative;
-	boundary="74A.__FB52C."
-Cc: <nfs@lists.sourceforge.net>
+	boundary="1C__5D_C.45B_AE4"
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: netsaintplug-devel@lists.sourceforge.net
+Received: from panoramix.vasoftware.com
+	([198.186.202.147] helo=externalmx.vasoftware.com ident=mail)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19RSH0-0000Rw-00
+	for <nfs@lists.sourceforge.net>; Sun, 15 Jun 2003 00:49:58 -0700
+Received: from [61.175.228.232] (port=3196 helo=ZZS-A60XPJGRXDS)
+	by externalmx.vasoftware.com with smtp (Exim 4.20 #1 (Debian))
+	id 19RSGp-0001li-MC
+	for <nfs@lists.sourceforge.net>; Sun, 15 Jun 2003 00:49:54 -0700
+Received: from jr.ppf20y.org [52.236.234.11] by ZZS-A60XPJGRXDS SMTP id 2WQ9ZpCMFWaZ3s for <nfs@lists.sourceforge.net>; Sun, 15 Jun 2003 06:50:18 -0200
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -22,95 +31,113 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+This is a multi-part message in MIME format.
 
---74A.__FB52C.
+--1C__5D_C.45B_AE4
 Content-Type: text/html;
 Content-Transfer-Encoding: quoted-printable
 
 <html>
-<head>
-<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Diso-8859=
--1">
-</head>
+	<head>
+		<meta http-equiv=3D"content-type" content=3D"text/html;charset=3DISO-885=
+9-1">
+		<title>Buy Generic Sildenafil Citrate Online (the active ingredient in V=
+</title>
+	</head>
+	<body bgcolor=3D"#f5f5f5">
+        &nbsp;
+		<div align=3D"center">
+			<table border=3D"0" cellpadding=3D"4" cellspacing=3D"1" width=3D"500" b=
+gcolor=3D"black">
+				<tr>
+					<td valign=3D"bottom" bgcolor=3D"#0076b0"><font face=3D"Verdana, Aria=
+l, Helvetica, sans-serif" size=3D"6" color=3D"#f8b262"><b>Generic</b></fon=
+t><font face=3D"Verdana, Arial, Helvetica, sans-serif" size=3D"6" color=3D=
+"white"><b> V<font size=3D0>&nbsp;</font>i<font size=3D0>&nbsp;</font>a<fo=
+nt size=3D0>&nbsp;</font>g<font size=3D0>&nbsp;</font>r<font size=3D0>&nbs=
+p;</font>a</b></font><font face=3D"Verdana, Arial, Helvetica, sans-serif" =
+color=3D"white" size=3D"2"><b><br>
+							</b></font><font face=3D"Verdana, Arial, Helvetica, sans-serif" siz=
+e=3D"2" color=3D"black"><b></b></font></td>
+				</tr>
+				<tr>
+					<td bgcolor=3D"#cccccc">
+						<div align=3D"right">
+							<font face=3D"Verdana, Arial, Helvetica, sans-serif" size=3D"1" col=
+or=3D"#cccccc">.</font></div>
+					</td>
+				</tr>
+				<tr height=3D"231">
+					<td height=3D"231" valign=3D"top" align=3D"left" bgcolor=3D"white">
+						<div align=3D"left">
+							<br>
+							<b>INTRODUCTORY OFFER</b><br>
+							<p>For the first time ever, a generic version of V<font size=3D0>&n=
+bsp;</font>i<font size=3D0>&nbsp;</font>a<font size=3D0>&nbsp;</font>g<fon=
+t size=3D0>&nbsp;</font>r<font size=3D0>&nbsp;</font>a&reg; is available t=
+o you. GSC-100, the generic equivalent of V<font size=3D0>&nbsp;</font>i<f=
+ont size=3D0>&nbsp;</font>a<font size=3D0>&nbsp;</font>g<font size=3D0>&nb=
+sp;</font>r<font size=3D0>&nbsp;</font>a&reg;, gives you the exact perform=
+ance and power as V<font size=3D0>&nbsp;</font>i<font size=3D0>&nbsp;</fon=
+t>a<font size=3D0>&nbsp;</font>g<font size=3D0>&nbsp;</font>r<font size=3D=
+0>&nbsp;</font>a&reg;, for <b>HALF THE COST</b>.<br>
+							</p>
+							<p><font color=3D"red">Act now, or risk missing out on special prom=
+otional pricing -- GSC-100 is priced as low as $5.00 per 100mg tablet -- V=
+<font size=3D0>&nbsp;</font>i<font size=3D0>&nbsp;</font>a<font size=3D0>&=
+nbsp;</font>g<font size=3D0>&nbsp;</font>r<font size=3D0>&nbsp;</font>a&re=
+g; costs $12.25 per 100mg tablet.</font></p>
+							<p>The doctor consultation and shipping is&nbsp; F<font size=3D0>&n=
+bsp;</font>r<font size=3D0>&nbsp;</font>e<font size=3D0>&nbsp;</font>e&nbs=
+p;
+                            of charge, and your GSC-100 will arrive at you=
+r door quickly and discretely.  Simply visit the
+                            <a href=3D"http://www.bigserve-to.com/host/def=
+ault.asp?ID=3D005">GSC-100 Web site</a> for more information on this revol=
+utionary new product.</p>
+						</div>
+						<div align=3D"left">
+							<div align=3D"center">
+								<p><b><font size=3D"5"><a href=3D"http://www.bigserve-to.com/host/=
+default.asp?ID=3D005">C<font size=3D0>&nbsp;</font>l<font size=3D0>&nbsp;<=
+/font>i<font size=3D0>&nbsp;</font>c<font size=3D0>&nbsp;</font>k Here to =
+Visit Our Website</a></font></b><br>
+								</p>
+							</div>
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td bgcolor=3D"#fba501">
+						<center>
+							<font color=3D"white">
+							
+							<br>
+								<br>
+								
+								
+											
+								
+							100% Money Back Guarantee - The First Pharmaceutical to ever be gua=
+ranteed<br>
+							</font><font size=3D"1" color=3D"white"><br>
+								
+								
+											
+								
+									</font></center>
+					</td>
+				</tr>
+			</table>
+		</div>
+	</body>
 
-<body bgcolor=3D"#FFFFFF" text=3D"#000000">
-<table width=3D"80%" border=3D"1" align=3D"center">
-  <tr>
-    <td bgcolor=3D"#66CCCC"> 
-      <p align=3D"center"><b><font size=3D"6">HGH 1000 is unbelievable!</f=
-ont></b></p>
-      <p align=3D"center"><b><font size=3D"6">Look younger + more energy +=
- lose weight 
-        in three weeks. </font></b></p>
-      <p align=3D"center"><b><font color=3D"#000000">AS SEEN ON NBC, CBS, =
-CNN, AND 
-        OPRAH. THE HEALTH DISCOVERY<br>
-        THAT ACTUALLY REVERSES AGING WHILE BURNING FAT<br>
-        </font></b><font color=3D"#000000"><b>WITHOUT DIETING OR EXERCISE<=
-/b></font></p>
-      <p align=3D"center"><b><font size=3D"5" color=3D"#FFFFFF">Free month=
-'s supply 
-        of HGH 1000</font></b></p>
-      <p align=3D"center"><b> <font size=3D"5">This proven discovery has b=
-een reported 
-        on by the New England Journal of Medicine. Forget aging and dietin=
-g forever. 
-        And it's Guaranteed.</font></b></p>
-</td>
-  </tr>
-</table>
-<table width=3D"80%" border=3D"1" align=3D"center">
-  <tr>
-    <td bgcolor=3D"#FF6600"> 
-      <div align=3D"center"><b>WOULD YOU LIKE TO LOSE WEIGHT WHILE YOU SLE=
-EP?<br>
-        No dieting.<br>
-        No hunger pains.<br>
-        No Cravings.<br>
-        No strenuous exercise.<br>
-        Change your life forever.</b></div>
-    </td>
-  </tr>
-</table>
-<table width=3D"80%" border=3D"1" align=3D"center">
-  <tr>
-    <td bgcolor=3D"#66CCCC"> 
-      <p align=3D"center"><b><font size=3D"6" color=3D"#0000FF"><a href=3D=
-"http://www.amazinghealthteam.com/phgh2002/r/index1.html">Click 
-        Here to Learn How you can Receive a Full Month's Supply of HGH 100=
-0 Absolutely 
-        FREE</a></font></b></p>
-      <table width=3D"100%" border=3D"1" align=3D"center">
-        <tr>
-          <td>
-            <div align=3D"center"><b>1. Body Fat Loss....................8=
-2% improvement.<br>
-              2. Wrinkle Reduction.............61% improvement.<br>
-              3. Energy Level......................84% improvement.<br>
-              4. Muscle Strength.................88% improvement.<br>
-              5. Sexual Potency...................75% improvement.<br>
-              6. Emotional Stability.............67% improvement.<br>
-              7. Memory..............................62% improvement. </b>=
-</div>
-          </td>
-        </tr>
-      </table>
-      <p align=3D"center"><b><font size=3D"4" color=3D"#FFFFFF">Get Your F=
-REE 1 Month 
-        Supply of HGH 1000 TODAY -</font></b></p>
-      </td>
-  </tr>
-</table>
-You are receiving this message as a member of the Opt-In<br>
-America List. To be taken out of the data base please<br>
-<a href=3D"http://www.amazinghealthteam.com/phgh2002/r/index.html">go 
-here.</a> We honor all remove requests. 
-</body>
-</html>
-yni ywd jrd
-dznfzo pmqfcoonmqctcugpxwq r 
+</html>l co   oraskzp
+geehkauqwxxfjz
+gifujkqtft u
+ub z   sudaqjmvi wg
 
---74A.__FB52C.--
+--1C__5D_C.45B_AE4--
 
 
 
