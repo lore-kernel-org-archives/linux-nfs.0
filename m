@@ -1,24 +1,25 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: Strange delays on NFS server
-Date: Fri, 13 Aug 2004 10:53:53 -0400
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Does nfsd.o handle overwriting of files properly?
+Date: Fri, 13 Aug 2004 12:06:32 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <411CD601.1080308@RedHat.com>
-References: <4119FB15.7010205@stams.strath.ac.uk> <411A17F2.2060203@RedHat.com> <411A448D.3080205@stams.strath.ac.uk> <20040811164135.GA11101@suse.de> <411B8987.1030609@stams.strath.ac.uk>
+Message-ID: <1092413192.5046.12.camel@lade.trondhjem.org>
+References: <200408130904.26180.perbu@linpro.no>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Olaf Kirch <okir@suse.de>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-1
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BvdQy-0001R8-Ug
-	for nfs@lists.sourceforge.net; Fri, 13 Aug 2004 07:53:32 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1BveZf-00024a-5K
+	for nfs@lists.sourceforge.net; Fri, 13 Aug 2004 09:06:35 -0700
+Received: from dh138.citi.umich.edu
+	([141.211.133.138] helo=lade.trondhjem.org ident=Debian-exim)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
 	(Exim 4.34)
-	id 1BvdQy-0007ea-H9
-	for nfs@lists.sourceforge.net; Fri, 13 Aug 2004 07:53:32 -0700
-To: Ian Thurlbeck <ian@stams.strath.ac.uk>
-In-Reply-To: <411B8987.1030609@stams.strath.ac.uk>
+	id 1BveZe-0002Bl-QB
+	for nfs@lists.sourceforge.net; Fri, 13 Aug 2004 09:06:35 -0700
+To: Per Buer <perbu@linpro.no>
+In-Reply-To: <200408130904.26180.perbu@linpro.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,32 +32,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+P=E5 fr , 13/08/2004 klokka 03:04, skreiv Per Buer:
+> Hi.
+>=20
+> We have a daemon which does the following. Create a new file "foo" and re=
+names=20
+> this file to "bar". This happens on a nfs volume. The problem seems to be=
+=20
+> that we get "stale NFS handle" right after "bar" is overwritten.
+>=20
 
+That is fully expected behaviour for NFS. All implementations will do
+the same thing, be it Solaris, Linux, IRIX,...
 
-Ian Thurlbeck wrote:
+If you want the old file to be accessible, then the only workaround is
+to rename it instead of deleting it (and that is precisely what most NFS
+clients will do if you try to remove a file that is still held open by a
+process on that client).
 
->   PID USER PRI  NI  SIZE  RSS SHARE STAT %CPU %MEM   TIME CPU COMMAND
->  6365 root  16   0  1244 1244   880 R     0.9  0.2   0:15   0 top
->   156 root  15   0     0    0     0 DW    0.0  0.0  25:45   0 kjournald
->  2021 root  15   0     0    0     0 DW    0.0  0.0  17:38   0 nfsd
->  2037 root  15   0     0    0     0 DW    0.0  0.0  17:51   0 nfsd
->  2042 root  15   0     0    0     0 DW    0.0  0.0  17:07   0 nfsd
->  2044 root  15   0     0    0     0 DW    0.0  0.0  16:44   0 nfsd
->
-> And then the bdflush process joins in and the number of nfsd processes
-> grows, then shrinks back, and finally they all disappear.
->
-Hmm... this is kinda what I expected... nfsd is waiting on the local 
-filesystem....
-Would it be nice if nfsd would know how to speak aio...  but  back to 
-reality.....
-What happens if you double/triple (assuming you have enough memory)  the 
-number nfsd
-that are started? does it help or hurt? My guess is it probably will not 
-make a difference
-but you never know....
-
-SteveD.
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
