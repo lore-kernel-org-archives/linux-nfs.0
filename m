@@ -1,16 +1,22 @@
-From: <courier@telica.com>
-Subject: NFS Client hung when NFS server down.
-Date: Sat, 9 Nov 2002 16:06:55 -0500 (EST)
+From: Kevin <Fear@shmack.us>
+Subject: RPC timeout errors
+Date: Mon, 11 Nov 2002 00:21:54 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <2066.130.215.192.254.1036876015.squirrel@wmail.telica.com>
+Message-ID: <02111100215404.06294@192.168.0.254>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from wmail.telica.com ([4.19.224.200])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18Acok-0003iy-00
-	for <nfs@lists.sourceforge.net>; Sat, 09 Nov 2002 13:06:58 -0800
-To: <nfs@lists.sourceforge.net>
+Received: from smtp.comcast.net ([24.153.64.2])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18B7CZ-00075h-00
+	for <nfs@lists.sourceforge.net>; Sun, 10 Nov 2002 21:33:35 -0800
+Received: from 192.168.0.254
+ (bgp01093287bgs.waren401.mi.comcast.net [68.43.192.156])
+ by mtaout02.icomcast.net
+ (iPlanet Messaging Server 5.1 HotFix 1.5 (built Sep 23 2002))
+ with SMTP id <0H5E00JP4CR5XP@mtaout02.icomcast.net> for
+ nfs@lists.sourceforge.net; Mon, 11 Nov 2002 00:33:06 -0500 (EST)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -23,39 +29,24 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello ALL:
+I am running an nfs server and client; bot machines having RedHat 7.1 
+installed with kernel 2.4.2-2 and nfs-utils-0.3.1-5.  The server seems fine.  
+Everything in my host files are perfect.  Infact, i checked my messages file 
+in /var and it shows the server allowing an incoming nfs connection from 
+client  192.168.0.1.  
 
-First here is what we have in our environment:
+I have the following line in my /etc/fstab:
+192.168.0.254:/home/Fear                /mnt/server1          nfs     
+rw,hard,intr    0 0
 
-NFS server: netapp F820 with export 6 /home1, /home2,.../home6
+With that added, i used to be able to type mount -a and it would mount 
+everything in /etc/fstab.  It tries to mount the nfs, but chokes up & gives 
+me the error "mount: RPC: Timed out".  I followed every instruction located 
+in the Linux NFS HOWTO and it referred me to this e-mail for questions.
 
-NFS Client:
+Thanks for your time.
 
-12 Linux Redhat7.2
-
-15 Solaris8 Sun Ultra10.
-
-My question is: why all Linux Redhat7.2 client hung when NFS server is
-down, but not Solaris8.
-
-All Linux and Solaris are using nfsV3 and Netapp has services as NFS v3
-and v2.
-
-When I said hung: meaning that on Linux server my users can login, but
-they can't do any things after login. On the other hand if they login to
-Solaris box then it is not hangs, but their home dir is not there. I
-though NFS clients on Linux should do the same as Solaris. Meaning no
-mount point when users are login.
-
-Can someone help or educated me on this?
-
-Thank you in advanced.
-
-Vinh
-
-
-
-
+Kevin
 
 
 -------------------------------------------------------
