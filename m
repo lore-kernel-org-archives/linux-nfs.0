@@ -1,24 +1,22 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH]  Reinstantiating stale inodes
-Date: Fri, 23 Apr 2004 12:16:11 -0400
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: RE: [PATCH]  Reinstantiating stale inodes
+Date: Fri, 23 Apr 2004 09:16:57 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <4089414B.8090102@RedHat.com>
-References: <482A3FA0050D21419C269D13989C61130435DF4D@lavender-fe.eng.netapp.com> <1082732429.2617.35.camel@lade.trondhjem.org>
+Message-ID: <482A3FA0050D21419C269D13989C61130435DF51@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: Charles Lever <Charles.Lever@netapp.com>, nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BH3LM-0006kj-Bk
-	for nfs@lists.sourceforge.net; Fri, 23 Apr 2004 09:16:00 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.30)
-	id 1BH3LL-0005Ww-Uh
-	for nfs@lists.sourceforge.net; Fri, 23 Apr 2004 09:16:00 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1082732429.2617.35.camel@lade.trondhjem.org>
+	id 1BH3MV-00073e-Cu
+	for nfs@lists.sourceforge.net; Fri, 23 Apr 2004 09:17:11 -0700
+Received: from mx01.netapp.com ([198.95.226.53])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BH3MV-0005oW-48
+	for nfs@lists.sourceforge.net; Fri, 23 Apr 2004 09:17:11 -0700
+To: "Steve Dickson" <SteveD@redhat.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,43 +29,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust wrote:
+> >This again means that people who think they have open files=20
+> on the "old"
+> >inode may suddenly find their program Oopsing or corrupting the new
+> >file.=20
+> >
+> Again, this new fh is only gotten on getattrs any other ops will still
+> fail with ESTALE...
 
->On Fri, 2004-04-23 at 10:48, Lever, Charles wrote:
->  
->
->>there appears to be a real problem when restoring from a backup,
->>or using rsync.  the file size and the mtime stay precisely the
->>same, but the file handle changes.  i'm not sure anything can be
->>done about this in NFSv2/3?
->>    
->>
->
->The only way to distinguish the two is to replace the use of the mtime
->with the ctime in nfs_check_verifier() and friends.
->  
->
-Again.. this was the first place I looked... And I just can't figure how
-to use NFS_CACHE_CTIME() in any meaningful calculation...
+so you need to invalidate all the cached pages for this inode
+explicitly.  nfs_refresh_inode will not detect any change in
+mtime or i_size so it will not do this for you.
 
->Under ordinary circumstances, the mtime and ctime should be more or less
->identical, 
->
-In this particular case they aren't because the server explicitly
-maintains the "old" mtime and since mtime does not change we'll never
-get the new ctime...
+but this exposes us to the "unable to invalidate locked pages"
+bug again.
 
->so I'm not sure why Steve was seeing extra revalidations when
->he was running the Connectathon suite. Were you perhaps changing the
->algorithm in nfs_refresh_inode() instead, Steve?
->  
->
-A very keen observation... Yes, when I introduced ctime into the valid or
-not valid calculation, the getattrs (i.e revalidations) but even more
-surprising (at least to me) was the number of reads sky rocked when
-I ran the cthon tests...
+and i think this is only a valid thing to do iff the mtime
+and i_size are the same as our cached values but the fh has
+changed.  otherwise, you can fool yourself into thinking that
+an entirely new file is the same as the old one.
 
-SteveD.
 
 
 -------------------------------------------------------
