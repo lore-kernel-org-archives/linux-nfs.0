@@ -1,30 +1,26 @@
-From: Garrick Staples <garrick@usc.edu>
-Subject: Re: nfsd, rmtab, failover, and stale filehandles
-Date: Thu, 6 May 2004 12:13:52 -0700
+From: Maxwell Bottiger <sleepylight@jive-turkey.net>
+Subject: nfs hang, acutaully really slow
+Date: Thu, 6 May 2004 15:37:17 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040506191351.GP23287@polop.usc.edu>
-References: <20040506185603.GM23287@polop.usc.edu>
+Message-ID: <Pine.LNX.4.44.0405061531390.4371-100000@jive-turkey.net>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="cNJ0mG4Q6+QCvBh5"
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BLoNA-0000FV-CR
-	for nfs@lists.sourceforge.net; Thu, 06 May 2004 12:17:32 -0700
-Received: from polop.usc.edu ([128.125.10.9])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.30)
-	id 1BLoNA-0001CO-5X
-	for nfs@lists.sourceforge.net; Thu, 06 May 2004 12:17:32 -0700
-Received: from polop.usc.edu (localhost.localdomain [127.0.0.1])
-	by polop.usc.edu (8.12.10/8.12.10) with ESMTP id i46JDqlv026812
-	for <nfs@lists.sourceforge.net>; Thu, 6 May 2004 12:13:52 -0700
-Received: (from garrick@localhost)
-	by polop.usc.edu (8.12.10/8.12.10/Submit) id i46JDqUO026810
-	for nfs@lists.sourceforge.net; Thu, 6 May 2004 12:13:52 -0700
+	id 1BLogP-0005BM-1n
+	for nfs@lists.sourceforge.net; Thu, 06 May 2004 12:37:25 -0700
+Received: from sccrmhc11.comcast.net ([204.127.202.55])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BLogO-0002Rp-OP
+	for nfs@lists.sourceforge.net; Thu, 06 May 2004 12:37:24 -0700
+Received: from jive-turkey.net (localhost.localdomain [127.0.0.1])
+	by jive-turkey.net (8.12.8/8.12.8) with ESMTP id i46JbHAN004394
+	for <nfs@lists.sourceforge.net>; Thu, 6 May 2004 15:37:17 -0400
+Received: from localhost (sleepylight@localhost)
+	by jive-turkey.net (8.12.8/8.12.8/Submit) with ESMTP id i46JbHHi004390
+	for <nfs@lists.sourceforge.net>; Thu, 6 May 2004 15:37:17 -0400
 To: nfs@lists.sourceforge.net
-In-Reply-To: <20040506185603.GM23287@polop.usc.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -37,48 +33,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hi,
+	I'm running some version of NFSv3.  I have whatever came packaged 
+along with Fedora Core 1.  (They put their own version number on the 
+package)
 
---cNJ0mG4Q6+QCvBh5
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+	My server appears to be running into a real problem transfering 
+files.  As long as my transfers are super small (like ls) then everything 
+is cool.  As soon as I try to work on bigger files (greater than 4k) most 
+everything grinds to a screetching halt.  I can see that there is still 
+activity, but the transfers are in terms of 3 or 4 packets every few 
+seconds.  I've sort of been hobbling along using scp (wich is runing 
+somewhere between 1000x to 1000000x faster than NFS right now) but that 
+only works for so long.
 
-On Thu, May 06, 2004 at 11:56:03AM -0700, Garrick Staples alleged:
-> I'm trying to get a pair of NFS failover servers working correctly.  I've=
- got
-> all heartbeat scripts worked out, the common storage, IP takeover, etc.  =
-The
-> only problem I have now is random stale filehandles after a failover.
-> Sometimes it works, sometimes it doesn't.
->=20
-> I was originally trying to doctor up rmtab and carry over the mount info =
-to the
-> second server, but according to recent docs, rmtab is no longer used and =
-NFS
-> requests should simply always work, as long as the filesystem is exported=
- to
-> the client hosts.
+	Where do I start trying to solve this problem?  I haven't been 
+able to find any error messages.  Any help is greatly appreciated.
 
-Btw, I'm using linux 2.6.5, glibc 2.3.2, and nfs-utils 1.0.6.
+-- 
+-Maxwell Bottiger
+http://www.jive-turkey.net
 
+If at first you don't succeed, redefine success.
 
---=20
-Garrick Staples, Linux/HPCC Administrator
-University of Southern California
-
---cNJ0mG4Q6+QCvBh5
-Content-Type: application/pgp-signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.3 (GNU/Linux)
-
-iD8DBQFAmo5v0SBUxJbm9HMRAuMbAJ4wyICynoGPqroDwZ7br1+Yyw2akgCgoKfn
-8j3vLFhDRSnaWap+xPaE4kw=
-=Kkjc
------END PGP SIGNATURE-----
-
---cNJ0mG4Q6+QCvBh5--
 
 
 -------------------------------------------------------
