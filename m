@@ -1,24 +1,19 @@
-From: "Heflin, Roger A." <Roger.A.Heflin@conocophillips.com>
-Subject: RE: NFS configuration question
-Date: Wed, 7 May 2003 08:57:54 -0500
+From: Matt Schillinger <mschilli@vss.fsi.com>
+Subject: kernel recompile nfsd.
+Date: 07 May 2003 10:15:44 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <5CA6F03EF05E0046AC5594562398B916A3291C@POEXMB3.conoco.net>
+Message-ID: <1052320545.15797.43.camel@mosix>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mailman1.ppco.com ([138.32.33.10])
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19DPRU-0003KT-00
-	for <nfs@lists.sourceforge.net>; Wed, 07 May 2003 06:58:44 -0700
-Received: from bvltrendl.conoco.net ([172.19.28.43])
-	by mailman1.ppco.com (8.12.8/8.12.8) with SMTP id h47DweI7023448
-	for <nfs@lists.sourceforge.net>; Wed, 7 May 2003 08:58:40 -0500
-Received: from hoexbh1.conoco.net (HOEXBH1.conoco.net [144.46.83.11])
-	by mail1.ppco.com (8.11.6+Sun/8.11.6) with ESMTP id h47Dwcu07769
-	for <nfs@lists.sourceforge.net>; Wed, 7 May 2003 08:58:39 -0500 (CDT)
-To: <nfs@lists.sourceforge.net>
+Received: from adsl-66-136-174-212.dsl.stlsmo.swbell.net ([66.136.174.212] helo=esds.vss.fsi.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19DQbO-0004ZA-00
+	for <nfs@lists.sourceforge.net>; Wed, 07 May 2003 08:13:02 -0700
+Received: from mosix.vss.fsi.com (mosix [198.51.27.89])
+	by esds.vss.fsi.com (8.9.1a/8.9.1) with ESMTP id KAA29538
+	for <nfs@lists.sourceforge.net>; Wed, 7 May 2003 10:12:46 -0500 (CDT)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,91 +26,83 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+I'm sorry to bother the list, but I'm over my head on this one.
 
+I have 2 machines, and I rebuilt them both with the 2.4.19 kernel.
 
+the vanilla kernel was patched with the nfsfh patch to cause nfsd to
+workaround a CWD bug in IRIX (pre 6.5.13).
 
-> Message: 3
-> Date: Tue, 06 May 2003 18:53:20 -0400
-> From: Tim Pickard <tpickard@crossref.org>
-> To: nfs@lists.sourceforge.net
-> Subject: [NFS] NFS configuration question
->=20
-> I have 3 RedHat8 machines that share a common directory via NFS.
->=20
-> The issue is processes on machines B and C do not get a complete file =
-from
-> the shared directory on A.
->=20
-> As an example, tail -f file X on B or C.  Cat data to file X on A.  =
-The
-> process tail does not catch the change.
->=20
-> Directory is exported with following options:
-> (rw,insecure,sync,no_root_squash)
->=20
-> What am I missing or misconfigured?
->=20
-> Tim Pickard
-> Systems Support Analyst and Administrator
-> 40 Salem Street
-> Lynnfield, MA  01940
-> p.781-295-0072
-> f.781-295-0077
-> tpickard@crossref.org
->=20
->=20
-	which are you using?
+both machines had working nfs functionality previous to install of new
+kernel.
 
-	cat > X           <-- If you are using this the file inode will change, =
-and tail will
-	still be following the old file's inode.  There is an option on tail to =
-make
-	it follow the filename on a inode change.
+On thor, the kernel installed, and there were no problems. it's running
+fine with 2.4.19.
 
-	or=20
+On loki, the kernel installed, and I can run everything, EXCEPT nfsd. 
 
-	cat >> X
+Following is the results of an 'insmod nfsd'. I have tried booting into
+the original kernel (redhat 2.4.18-27.8.0smp), and I get the SAME
+errors. I'm sure it was just bad timing that the kernel recompile caused
+this problem, but I don't have a good enough understanding of C to
+figure out what is missing. Am I missing a library?  I cannot recall any
+package removal that would result in such, but i'm at your mercy to help
+me solve this.
 
-	Typically I do see tail -f working on one node when another puts the =
-stuff
-	in the file, it just takes a while (some number of seconds) before the =
-second
-	node sees it, so long as the one node is always the same node, and =
-assuming
-	that the file additions are not happening too fast.
+Thanks for your help,
 
-	You will get in the least trouble if neither of the reading nodes are =
-writing
-	to the file, if node A writes to the file (every other block), and node =
-B writes
-	to the blocks that A did not, A will think the B blocks are blank and B =
-will
-	think the A blocks are blank, because they have in their cache what =
-they
-	think they wrote, this also requires A & B to be doing the writing at =
-the
-	same time, and to stop writing within <1second of each other, if the =
-file
-	attributes change (date, time, size) and the file is reopened then the
-	cache will be invalidated because the attributes it has cached don't
-	match so someone must have changed the file.
+Matt Schillinger
+mschilli@vss.fsi.com
 
-	You will get in trouble if your are expecting several nodes to be able =
-to add
-	stuff to that file and get it all, some nodes will overwrite other =
-nodes and=20
-	there is no easy way with nfs to prevent this, it all depends on the =
-above
-	timing, and is mostly a linux cache and file attribute resolution =
-issue, it
-	would be much more difficult to happen if the attribute times had =
-higher
-	resolution, since it would be much harder for two nodes to stop at the
-	same time when you are timing in milli or micro seconds.  It is pretty=20
-	easy to stop at the same time when you are using seconds.
+----- ERROR MESSAGES
 
+[root@loki root]# insmod nfsd
+Using /lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o
+/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
+lockd_up_Rsmp_f6933c48
+/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
+svc_recv_Rsmp_d4b0af86
+/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
+svc_process_Rsmp_6060d411
+/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
+svc_exit_thread_Rsmp_dec6f1d7
+/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
+xdr_decode_string_Rsmp_6755aa62
+/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
+nfsd_debug_Rsmp_bf9d1b96
+/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
+nlmsvc_invalidate_client_Rsmp_b1c3f825
+/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
+svc_proc_register_Rsmp_9f7f54cb
+/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
+svc_proc_unregister_Rsmp_12e280e3
+/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
+svc_proc_read_Rsmp_866b52d3
+/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
+svc_create_Rsmp_d78d9b91
+/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
+xdr_encode_array_Rsmp_716530af
+/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
+svc_reserve_Rsmp_953572d2
+/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
+svc_destroy_Rsmp_f610e525
+/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
+svc_create_thread_Rsmp_ecdbf055
+/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
+nlmsvc_ops_Rsmp_014eb062
+/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
+svc_makesock_Rsmp_0d236ea6
+/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
+xdr_decode_string_inplace_Rsmp_7bd87272
+/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
+lockd_down_Rsmp_a7b91a7b
 
-	                                  Roger
+-- 
+Matt Schillinger
+System Administrator
+FlightSafety International
+mschilli@vss.fsi.com
+314-551-8403
 
 
 
