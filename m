@@ -1,19 +1,19 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFSv3 not supported ?
-Date: 01 Sep 2002 21:30:06 +0200
+From: Gcc k6 testing account <caligula@cam029208.student.utwente.nl>
+Subject: Re: 2.5.32 bootfailure for nfsroot
+Date: Mon, 2 Sep 2002 10:44:42 +0200 (CEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsadn1tsn5.fsf@charged.uio.no>
-References: <3D7255DD.BFBBA4E5@arx.gr>
+Message-ID: <43918.353439267$1030956640@news.gmane.org>
+References: <Pine.LNX.4.44.0208281746170.21556-100000@cam029208.student.utwente.nl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mons.uio.no ([129.240.130.14])
+Received: from netlx010.civ.utwente.nl ([130.89.1.92])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17laQT-00023d-00
-	for <nfs@lists.sourceforge.net>; Sun, 01 Sep 2002 12:30:25 -0700
-To: Thanos Chatziathanassiou <tchatzi@arx.gr>
-In-Reply-To: <3D7255DD.BFBBA4E5@arx.gr>
+	id 17lmqm-0002KK-00
+	for <nfs@lists.sourceforge.net>; Mon, 02 Sep 2002 01:46:24 -0700
+To: linux-kernel@vger.kernel.org
+In-Reply-To: <Pine.LNX.4.44.0208281746170.21556-100000@cam029208.student.utwente.nl>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,17 +26,47 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->>>>> " " == Thanos Chatziathanassiou <tchatzi@arx.gr> writes:
+On Wed, 28 Aug 2002, Gcc k6 testing account wrote:
 
-     > Can anyone explain this ? Is NFSv3 meant to be only compiled as
-     > a module ?
+> 
+> Ave people
+> 
+> The subject says it all. 
+> 2.5.32 doesn't boot when using nfsroot.
+> same systems running fine with 2.4.19/2.5.31
+> 
+> 
+> SYSTEMS:
+>    athlon with/without preempt. (flatbak)
+>    i586 with preempt.           (cam029205)
+> 
+> The relevant configs/dmesg/lspci are on 
+> cam029208.student.utwente.nl/~caligula. 
+> 
+> 
+> SYMPTOMS:
+> I'm using loadlin to load the kernels. I see the kernel loading,unzipping 
+> and then...black screen followed by reboot.
+> 
+> 
+> Greetz Mu
+> 
+> 
+> 
 
-No. Looks like you've screwed up somewhere when you did the
-compilation. Did you for edit .config by hand? If so, did you remember
-to do 'make oldconfig' before compiling?
+Small update.
+Still no joy with 2.5.33. Same results,same symptoms :(
 
-Cheers,
-  Trond
+Greetz Mu
+
+
+
+
+
+
+
+
+
 
 
 -------------------------------------------------------
