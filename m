@@ -1,20 +1,19 @@
-From: James Pearson <james-p@moving-picture.com>
-Subject: Re: NFS problems across reboot
-Date: Mon, 08 Apr 2002 16:23:08 +0100
+From: "H . J . Lu" <hjl@lucon.org>
+Subject: Broken NFS client in RedHat skipjack-beta2?
+Date: Mon, 8 Apr 2002 10:18:28 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3CB1B5DC.36F6C520@moving-picture.com>
-References: <3CACA93C.5010304@blue-labs.org>
-			<3CAD6A78.4205CD61@moving-picture.com>
-			<3CAFCE8C.5030300@blue-labs.org>
-			<15535.55222.401084.736426@notabene.cse.unsw.edu.au> <15535.56536.237108.198660@notabene.cse.unsw.edu.au> <3CB19E57.EB3F1441@moving-picture.com>
+Message-ID: <20020408101828.A30419@lucon.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
+Received: from rwcrmhc51.attbi.com ([204.127.198.38])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16uazJ-0003hc-00
-	for <nfs@lists.sourceforge.net>; Mon, 08 Apr 2002 08:23:22 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
+	id 16ucmq-0007v8-00
+	for <nfs@lists.sourceforge.net>; Mon, 08 Apr 2002 10:18:36 -0700
+Received: from ocean.lucon.org ([12.234.143.38]) by rwcrmhc51.attbi.com
+          (InterMail vM.4.01.03.27 201-229-121-127-20010626) with ESMTP
+          id <20020408171829.UCJG18078.rwcrmhc51.attbi.com@ocean.lucon.org>
+          for <nfs@lists.sourceforge.net>; Mon, 8 Apr 2002 17:18:29 +0000
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,108 +26,13 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Having a quick look through the nfs-utils source, as a test, I changed
-fendrmtabent() in nfs-utils-0.3.3/support/nfs/rmtab.c (used by mountd)
-to:
+Has anyone seen the NFS client crash the NetApp NFS sever? See 
 
-void
-fendrmtabent(FILE *fp)
-{
-        if (fp) {
-                fflush(fp);
-                fdatasync(fileno(fp));
-                fclose(fp);
-        }
-}
+http://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=62967
 
 
-which appears to help - I can reset my test server immediately after a
-client mounts a disk - without getting the 'Permission denied' problems.
 
-However, I have no idea if this is a 'sensible' thing to do ... if it is
-OK to do this, would using fdatasync() elsewhere be helpful?
-
-Thanks
-
-James Pearson
-
-James Pearson wrote:
-> 
-> I'm using XFS on my root file system - I'm using a "stock" RedHat 7.1 or
-> 7.2 initscripts - so exportfs -r is run before rpc.mountd and rpc.nfsd
-> 
-> I can reproduce my problem by resetting an NFS server just after
-> automounting one of its exported disks. When the server comes up, the
-> client reports 'Permission denied' on that mount point.
-> 
-> If I repeat the test, but wait a short while before resetting the
-> server, everything is OK on reboot - and rmtab contains an entry for the
-> client).
-> 
-> It looks like the update to /var/lib/nfs/rmtab of the clients mount
-> hasn't been sync'd to disk before the server is reset.
-> 
-> In fact I can simulate this on a running server and client by:
-> 
-> On the client, mount one of the server's exported file systems and cd to
-> it.
-> Runs 'ls', everything fine. Then:
-> 
-> On the server:
-> 
-> cd /var/lib/nfs
-> cp rmtab rmtab.save
-> cat /dev/null > rmtab
-> /etc/init.d/nfs stop
-> /etc/init.d/nfs start
-> 
-> Then on the client, attempt to 'ls' etc. gives 'Permission denied'
-> 
-> If I then copy back the saved rmtab file and restart nfs, file access on
-> the client is OK.
-> 
-> I've also put /var/lib/nfs on an ext2 file system, but that didn't make
-> any difference - it seems to be that fact that the 'crash' happens
-> before the file data has been flushed to disk.
-> 
-> The man page for rpc.mountd says the rmtab file is 'mostly ornamental',
-> however in this case, it seems to be a bit more important. ...
-> 
-> So, is it possible to have a client 'survive' a server crash even if its
-> entry in rmtab hasn't been flushed? i.e. somehow allow the client access
-> even if there is no entry for the client in rmtab?
-> 
-> Thanks
-> 
-> James Pearson
-> 
-> Neil Brown wrote:
-> >
-> > On Sunday April 7, neilb@cse.unsw.edu.au wrote:
-> > >
-> > > 13 == EACCES.  Looks like the filesystem isn't exported.
-> > >
-> > > Show us the relevent /etc/init.d file.
-> > > My guess is that "exportfs -a" is being run *After* rpc.nfsd.
-> > > It must must run *before* for correct operation.
-> > >
-> >
-> > Actually, that would cause ESTALE, not EACCES.
-> >
-> > EACCES seems to suggest an XFS problem.
-> > Can you duplicate this without using XFS????
-> >
-> > NeilBrown
-> >
-> > > NeilBrown
-> > >
-> > > _______________________________________________
-> > > NFS maillist  -  NFS@lists.sourceforge.net
-> > > https://lists.sourceforge.net/lists/listinfo/nfs
-> 
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+H.J.
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
