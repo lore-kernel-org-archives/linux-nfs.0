@@ -1,29 +1,22 @@
-From: Kyle Rose <krose+linuxnfs@krose.org>
-Subject: Re: NFS server not responding
-Date: Tue, 09 Dec 2003 15:09:22 -0500
+From: "Chris Croswhite" <csc@cadence.com>
+Subject: RE: Re: [NFS client] NFS locks not released on abnormal process termination
+Date: Tue, 9 Dec 2003 12:18:20 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <87ekvdpxcd.fsf@nausicaa.krose.org>
-References: <Pine.LNX.4.44.0311281257130.22389-100000@kenzo.iwr.uni-heidelberg.de>
-	<shsptfch1om.fsf@charged.uio.no> <3FCF70D9.1010808@RedHat.com>
-	<shsr7zk5sw4.fsf@guts.uio.no> <3FCF86E9.2030300@RedHat.com>
-	<1070571324.8472.2.camel@opus> <3FCFA606.8030809@RedHat.com>
-	<87y8tsj7py.fsf@nausicaa.krose.org> <3FD626ED.1010100@RedHat.com>
+Message-ID: <EE335453C5C57840823404C684F9F61702417585@exmbx01sj.cadence.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="Windows-1252"
+Cc: <linux-kernel@vger.kernel.org>, <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AToAl-0007ia-DO
-	for nfs@lists.sourceforge.net; Tue, 09 Dec 2003 12:09:31 -0800
-Received: from dsl092-073-159.bos1.dsl.speakeasy.net ([66.92.73.159] helo=yupa.krose.org)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.24)
-	id 1AToAk-0001nu-S1
-	for nfs@lists.sourceforge.net; Tue, 09 Dec 2003 12:09:31 -0800
-To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: <3FD626ED.1010100@RedHat.com> (Steve Dickson's message of "Tue,
- 09 Dec 2003 14:47:57 -0500")
+	id 1AToJM-0008C7-RY
+	for nfs@lists.sourceforge.net; Tue, 09 Dec 2003 12:18:24 -0800
+Received: from mailgate.cadence.com ([158.140.2.1])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
+	id 1AToJM-0004lK-HA
+	for nfs@lists.sourceforge.net; Tue, 09 Dec 2003 12:18:24 -0800
+To: "Philippe Troin" <phil@fifi.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -36,43 +29,93 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Steve Dickson <SteveD@redhat.com> writes:
 
-> This is happening on a Fedora Core kernel, right?
+Thanks!
 
-No, this is a vanilla 2.6.0-test11.  Upon review of my email, I can't
-believe I didn't mention the kernel version. :)
+-----Original Message-----
+From:	Philippe Troin [mailto:phil@fifi.org]
+Sent:	Tue 09-Dec-03 11:26
+To:	Chris Croswhite
+Cc:	linux-kernel@vger.kernel.org; nfs@lists.sourceforge.net
+Subject:	Re: [NFS] Re: [NFS client] NFS locks not released on abnormal =
+process termination
+"Chris Croswhite" <csc@cadence.com> writes:
 
-> If so, Could you send me the exact steps you do to cause this
-> to happen....
+> Philippe,
+>=20
+> What patches are you refering to?
 
-Certainly.  Compile and reboot.  NFS comes up, after which SFS comes
-up:
+The one in <87llpms8yr.fsf@ceramic.fifi.org> named
+linux-2.4.23-nfs-lock-race-2.patch=20
 
-  /opt/sfs/bin/sfscd
+Here a link to MARC, since the sourceforge mailing list web page
+sucks:
 
-Then, I log in as krose and
+  http://marc.theaimsgroup.com/?l=3Dlinux-nfs&m=3D107095817723325&w=3D2
 
-  cd music
+Phil.
 
-where music is a symlink to
-sfs/kushana.valley-of-wind.krose.org/music, the first two parts of
-which are a symlink to
-/sfs/@kushana.valley-of-wind.krose.org,jc72upywax7dsvd7rwpbvrfwpq4j2w7e.
-So, in effect, I end up in
-/sfs/@kushana.valley-of-wind.krose.org,jc72upywax7dsvd7rwpbvrfwpq4j2w7e/music.
+> -----Original Message-----
+> From:	Philippe Troin [mailto:phil@fifi.org]
+> Sent:	Tue 09-Dec-03 10:46
+> To:	Trond Myklebust
+> Cc:	Kenny Simpson; linux-kernel@vger.kernel.org; =
+nfs@lists.sourceforge.net
+> Subject:	[NFS] Re: [NFS client] NFS locks not released on abnormal =
+process termination
+> Trond Myklebust <trond.myklebust@fys.uio.no> writes:
+>=20
+> > >>>>> " " =3D=3D Philippe Troin <phil@fifi.org> writes:
+> >=20
+> >      > From my reading of the patch, it supersedes the old patch, =
+and
+> >      > is only
+> >      > necessary on the client. Is also does not compile :-)
+> >=20
+> > Yeah, I admit I didn't test it out...
+> >=20
+> >      > Here's an updated patch which does compile.
+> >=20
+> > Thanks.
+> >=20
+> >      > I am still running tests, but so far it looks good (that is =
+all
+> >      > locks are freed when a process with locks running on a NFS
+> >      > client is killed).
+> >=20
+> > Good...
+>=20
+> I've ran test overnight on four boxen, and no locks were lost.
+> I guess you can send this patch to Marcello now.
+>=20
+> I've tested with the enclosed program.
+>=20
+> =20
+> > There are still 2 other issues with the generic POSIX locking code.
+> > Both issues have to do with CLONE_VM and have been raised on
+> > linux-kernel & linux-fsdevel. Unfortunately they met with no =
+response,
+> > so I'm unable to pursue...
+>=20
+> Can we help? Pointers?
+>=20
+> Phil.
+>=20
+>=20
+>=20
+>=20
+>=20
+> -------------------------------------------------------
+> This SF.net email is sponsored by: SF.net Giveback Program.
+> Does SourceForge.net help you be more productive?  Does it
+> help you create better code?  SHARE THE LOVE, and help us help
+> YOU!  Click Here: http://sourceforge.net/donate/
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
 
-Then I type ls, and get a segfault and an oops in dmesg.  (Sometimes,
-it succeeds the first time, but always segfaults when I perform the
-same steps a few minutes later.)  After this, NFS and/or SFS appear to
-be wedged in a bad state, because future requests to SFS don't work.
-Stopping SFS is a no-go, either.
 
-I'm not really sure what kind of detail you're looking for, so please
-feel free to be more specific if you want/need more information.
 
-Cheers,
-Kyle
 
 
 -------------------------------------------------------
