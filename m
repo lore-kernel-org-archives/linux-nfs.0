@@ -1,25 +1,24 @@
-From: Steve Dickson <SteveD@RedHat.com>
-Subject: Re: Readdirplus compatibility fix for IRIX server
-Date: Thu, 11 Dec 2003 06:11:41 -0500
+From: "Jose R. Santos" <jrsantos@austin.ibm.com>
+Subject: Re: Problems with NFS while running SpecSFS with JFS filesystem and 2.6 kernel.
+Date: Thu, 11 Dec 2003 09:13:31 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3FD850ED.6060907@RedHat.com>
-References: <3FD7A2A1.1030109@RedHat.com> <16343.48833.339487.248965@guts.uio.no>
+Message-ID: <20031211151331.GA7920@dbz.austin.ibm.com>
+References: <20031210144011.GE708@dbz.austin.ibm.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------070608040905000300030403"
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AUOjh-0000kI-0B
-	for nfs@lists.sourceforge.net; Thu, 11 Dec 2003 03:12:01 -0800
-Received: from host-64-179-20-100.man.choiceone.net ([64.179.20.100] helo=Odyssey.Home.4Dicksons.Org)
+	id 1AUSVY-0005BV-IY
+	for nfs@lists.sourceforge.net; Thu, 11 Dec 2003 07:13:40 -0800
+Received: from e34.co.us.ibm.com ([32.97.110.132])
 	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.24)
-	id 1AUOjg-0007H5-FV
-	for nfs@lists.sourceforge.net; Thu, 11 Dec 2003 03:12:00 -0800
-To: trond.myklebust@fys.uio.no
-In-Reply-To: <16343.48833.339487.248965@guts.uio.no>
+	id 1AUSVX-0005dw-W5
+	for nfs@lists.sourceforge.net; Thu, 11 Dec 2003 07:13:40 -0800
+To: "Jose R. Santos" <jrsantos@austin.ibm.com>
+In-Reply-To: <20031210144011.GE708@dbz.austin.ibm.com> (from jrsantos@austin.ibm.com on Wed, Dec 10, 2003 at 08:40:11 -0600)
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,49 +31,17 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
---------------070608040905000300030403
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
+On 12/10/03 08:40:11, Jose R. Santos wrote:
+>      >>>Dec  9 14:48:04 onus kernel: nfsd: LOOKUP(3)   20: 01000001 00420051 00000002 0000a17e 00009083 00000000 file_en.46340
+>      >>>Dec  9 14:48:04 onus kernel: nfsd: LOOKUP(3)   20: 01000001 00420051 00000002 0000a17e 00009083 00000000 file_en.46410
 
-Trond Myklebust wrote:
+I'm looking at the NFSd code and I think I'm getting a little confuse
+and since I'm not a NFS expert, I don't know if something like the above
+two lines is OK or not.
 
->Your patch is merely short-circuiting that recovery mechanism
->
-Exactly.... I realized this as soon as I hit the Send button. :-(
-Here is a patch that explicitly fixes the problem and only
-effects READDIRPLUSs
+Can someone impose a bit of wisdom on me. :)
 
-SteveD
-
-
---------------070608040905000300030403
-Content-Type: text/plain;
- name="linux-2.4.22-nfs-readdirplus-irix.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="linux-2.4.22-nfs-readdirplus-irix.patch"
-
---- linux-2.4.22/fs/nfs/dir.c.org	2003-12-09 14:21:59.000000000 -0500
-+++ linux-2.4.22/fs/nfs/dir.c	2003-12-11 05:50:26.000000000 -0500
-@@ -437,6 +437,14 @@ static int nfs_readdir(struct file *filp
- 				if (res >= 0)
- 					continue;
- 			}
-+			/*
-+			 * Some IRIX servers fail READDIRPLUS RPC calls
-+			 * with NFSERR_TOOSMALL when a non-existent cookie 
-+			 * is requested, which is a bug. So ignore that failure.
-+			 */
-+			if (desc->plus && desc->error == -ETOOSMALL)
-+				desc->error = 0;
-+
- 			res = 0;
- 			break;
- 		} else if (res < 0)
-
---------------070608040905000300030403--
-
+-JRS
 
 
 -------------------------------------------------------
