@@ -1,13 +1,17 @@
-From: "Daren Cole" <starexpress@aol.com>
-Subject: Free Debt Consolidation Quote       ............................  prayerful
-Date: Sat, 17 May 03 23:47:45 GMT
+From: "Lucinda Holman" <n83i7gvz@delphi.com>
+Subject: NON Payback Loans pvctivv zsvofbobwbx
+Date: Sun, 18 May 03 02:38:39 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <m8sla$u-b3c2zf84@6dk97dizx>
+Message-ID: <k9a-n5$7$u0020@puypsg1>
 Mime-Version: 1.0
 Content-Type: multipart/alternative;
-	boundary="E12AA9.2D6"
+	boundary=".ECBBD_2CD_CC_789"
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: <netsaintplug-devel@lists.sourceforge.net>, <nfs@lists.sourceforge.net>, <nms-cgi-support@lists.sourceforge.net>, <ofset-members@lists.sourceforge.net>
+Received: from [210.114.110.23] (helo=CAD-73CBA572625)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19H8Zx-0001E3-00
+	for <nfs@lists.sourceforge.net>; Sat, 17 May 2003 13:46:55 -0700
+To: nfs@lists.sourceforge.net.
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -22,31 +26,53 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a multi-part message in MIME format.
 
---E12AA9.2D6
-Content-Type: text/html;
+--.ECBBD_2CD_CC_789
+Content-Type: text/plain;
 Content-Transfer-Encoding: quoted-printable
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1=
-">
-<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR></HEAD>
-<BODY bgColor=3Dwhite><A 
-href=3D"http://www.lydd-zone.com/BREAKFREE/10/index.asp"><IMG 
-src=3D"http://picc.dns-buy.com/pic_morta/dt4.gif" border=3D0> 
-</A><BR><BR><BR><BR><BR><FONT size=3D1>Please&nbsp;<A 
-href=3D"http://list.888best.com">go here</A> if you would no longer like t=
-o 
-receive our special offers.</FONT> 
-<CENTER></CENTER><FONT color=3D#ffffff size=3D1>spud dada =
+nfs@lists.sourceforge.net.
 
-situate ammunition herringbone convert jigsaw %RANDOM_W=
-ORD 
-chloroform asphyxiate spiegel and this website go</FONT=
-> 
-</BODY></HTML>
+Did you know the Government gives away money for almost any reason?
 
---E12AA9.2D6--
+It is incredibly simple to qualify for a free cash grant! 
+$15,500 to over $650,000 in FREE Grant Money is Available TO YOU IMMEDIATE=
+LY!
+
+# Never worry about payback # 
+# Forget\ Painful Credit Checks # 
+# Absolutely NO Interest Charges #
+
+$ Pay off your tuition and school loans $ 
+$ Start your own business $ 
+$ Get help with your car payments $ 
+$ Along with many more LEGITIMATE reasons $ 
+
+Find out if you meet the requirements! 
+
+Click here to visit our website:
+http://www.americangrantgiveaway.com/cashgranta.html
+
+
+
+
+m  edpemamiddlvi ndlf tnm jjfqh ldeyifhosa
+
+
+intelligible
+
+To get off of this campaign, visit..
+forword your email to delist@takemeoffthislist.com
+
+f kcscgmsx
+kjuwcrb sjfkarp bsa
+
+dictionmpruwtvspspte  q
+ vnfdss uq
+gc lolp mpjmfijtwdqhxsrmxiqt i
+bi
+ getzl
+
+--.ECBBD_2CD_CC_789--
 
 
 
