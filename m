@@ -1,21 +1,21 @@
-From: Eri Mendz <jerimed@myrealbox.com>
-Subject: NFS dilemma: only one-sided file sharing
-Date: Wed, 17 Nov 2004 08:18:26 +0300
-Message-ID: <419ADF22.1000506@myrealbox.com>
-Reply-To: erimendz@fastmail.fm
+From: Oliver Beowulf Friedrich <beowulflinux@gmx.de>
+Subject: Problem with NFS-Exports
+Date: Wed, 17 Nov 2004 07:58:14 +0100
+Message-ID: <419AF686.7030503@gmx.de>
+References: <482A3FA0050D21419C269D13989C61130435EB6A@lavender-fe.eng.netapp.com>	 <1100622780.10975.51.camel@lade.trondhjem.org>	 <419A3672.8040305@int-evry.fr> <1100628498.7570.6.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CUICy-000246-C2
-	for nfs@lists.sourceforge.net; Tue, 16 Nov 2004 21:18:20 -0800
-Received: from [192.108.102.207] (helo=smtp2-send.myrealbox.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.41)
-	id 1CUICw-0001Nm-TI
-	for nfs@lists.sourceforge.net; Tue, 16 Nov 2004 21:18:20 -0800
-To: nfs@lists.sourceforge.net
+	id 1CUJnc-0000jT-P0
+	for nfs@lists.sourceforge.net; Tue, 16 Nov 2004 23:00:16 -0800
+Received: from pop.gmx.de ([213.165.64.20] helo=mail.gmx.net)
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
+	id 1CUJna-0007eT-N5
+	for nfs@lists.sourceforge.net; Tue, 16 Nov 2004 23:00:16 -0800
+In-Reply-To: <1100628498.7570.6.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,91 +29,53 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello group,
+Greetings @ all,
 
-My problem is exactly as stated: NFS is working one-way only. I can put
-files in the server and client can access it but readonly. Doing the 
-other way around i cannot do, i get permission denied anytime i transfer 
-file[s] to the server mount share. Here is my setup:
+I'm new here on the list, but already have a simple question to you.
 
-NFS server:
-Slackware 10
+I'm using Gentoo linux, currently, having a working server@home with 
+Gentoo which exports Gentoo's temporary folders out to my workstations.
 
-# /etc/exports
-# 192.168.0.3 is MEPIS box
-/nfs    192.168.0.3(rw,anonuid=1000,anongid=100)
+server root # cat /etc/exports
+/home           192.168.0.0/24(rw,async)
+/usr/portage    192.168.0.0/24(rw,no_root_squash,async,mp)
+/tmp 
+192.168.0.0/24(rw,no_root_squash,insecure_locks,async,mp)
+/mnt/data       192.168.0.0/24(rw,no_root_squash,mp,sync)
+/mnt/backup     192.168.0.0/24(rw,no_root_squash,mp,sync)
 
-# /etc/hosts.allow
-portmap :       192.168.0.3
-lockd   :       192.168.0.3
-mountd  :       192.168.0.3
-rquotad :       192.168.0.3
-statd   :       192.168.0.3
 
-# /etc/hosts.deny
-portmap:ALL
-lockd:ALL
-mountd:ALL
-rquotad:ALL
-statd:ALL
+One Workstation is now on compiling a new fresh Gentoo Linux, so I 
+startet with booting from Gentoo-2004.3 liveCD, mounting local 
+filesystems, mounting nfs filesystems, chrooting and starting to 
+compile.
 
-NFS client:
-MEPIS 2004.01
+So fine, but while compiling, I get the following Error messages 
+printed out quit often:
 
-# /etc/fstab
-# nfs entry
-alpha:/nfs /mepisNFS nfs hard,rw,rsize=8192,wsize=8192,timeo=14,intr 0 0
+lockd: failed to monitor 192.168.0.2
+lockd: cannont monitor 192.168.0.2
 
-My target is to transfer my config files from client to server. Also i 
-dont know why the files in server mount share is readonly whereas i set 
-it rw in /etc/exports file.
+So whats going on there? Sometimes it's going so far, that my new 
+WKS cannot compile, cause of:
 
-rpcinfo -p of client:
+lockd: server ist not responding
+lockd: still trying OK
 
-    program vers proto   port
-     100000    2   tcp    111  portmapper
-     100000    2   udp    111  portmapper
-     100021    1   udp  32768  nlockmgr
-     100021    3   udp  32768  nlockmgr
-     100021    4   udp  32768  nlockmgr
-     100021    1   tcp  32768  nlockmgr
-     100021    3   tcp  32768  nlockmgr
-     100021    4   tcp  32768  nlockmgr
-     100024    1   udp    962  status
-     100024    1   tcp    965  status
+How do i get this solved? With my previus installation it worked 
+fine, I had only NFS-Server Support compiled into Kernel, now I have 
+NFSV3-Server Support compiled in.
 
-And for the server:
+My Server now is not used to heavy, only a little Samba Server for 
+my (only) Windows-Box where MP3's are shared to...
 
-    program vers proto   port
-     100000    2   tcp    111  portmapper
-     100000    2   udp    111  portmapper
-     100011    1   udp    920  rquotad
-     100011    2   udp    920  rquotad
-     100011    1   tcp    923  rquotad
-     100011    2   tcp    923  rquotad
-     100003    2   udp   2049  nfs
-     100003    3   udp   2049  nfs
-     100021    1   udp   1026  nlockmgr
-     100021    3   udp   1026  nlockmgr
-     100021    4   udp   1026  nlockmgr
-     100005    1   udp    932  mountd
-     100005    1   tcp    935  mountd
-     100005    2   udp    932  mountd
-     100005    2   tcp    935  mountd
-     100005    3   udp    932  mountd
-     100005    3   tcp    935  mountd
-     100024    1   udp    938  status
-     100024    1   tcp    941  status
+On my last installation on my Server I used distcc while compiling, 
+and even that did not lead to such Error Messages...
 
-I dont know if nfs-utils client-side got something to do with the 
-problem for i cant find it in mepis box. This is my first time setting 
-up NFS and clueless where to go next. I appreciate any help you good 
-people can provide. TIA.
+Thanks for reading
 
--- 
-Regards,
-erimendz ** use firefox/thunderbird **
-http://www.spreadfirefox.com/?q=affiliates&amp;id=6670&amp;t=58
+BeowulfOF
+
 
 
 
