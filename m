@@ -1,17 +1,15 @@
-From: Paul Jimenez <pj@place.org>
-Subject: directory depth limit?
-Date: Thu, 07 Aug 2003 15:56:33 -0500
+From: Brian Pontz <axehind007@yahoo.com>
+Subject: bash-2.05b$ touch foo
+Date: Thu, 7 Aug 2003 15:37:34 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030807205633.DC0861833A@zachs.place.org>
+Message-ID: <20030807223734.71021.qmail@web14409.mail.yahoo.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from place.org
-	([65.163.18.18] helo=zachs.place.org ident=postfix)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19kroI-00059h-00
-	for <nfs@lists.sourceforge.net>; Thu, 07 Aug 2003 13:56:35 -0700
-Received: from place.org (localhost [127.0.0.1])
-	by zachs.place.org (Postfix) with ESMTP id DC0861833A
-	for <nfs@lists.sourceforge.net>; Thu,  7 Aug 2003 15:56:33 -0500 (CDT)
+Received: from web14409.mail.yahoo.com ([216.136.173.220])
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19ktO2-0008NI-00
+	for <nfs@lists.sourceforge.net>; Thu, 07 Aug 2003 15:37:34 -0700
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -25,23 +23,39 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hello all,
 
-Hi,
+I know I must be missing something here. I'm trying to
+get all creates to my nfs mounted fs to be created as
+a certain user. But when I try to create a file with
+touch I get
 
-  I'm using kernel 2.4.20 under debian stable ('woody') and the
-user-land nfs server, and I can't seem to traverse more than about 23 or
-24 levels deep into a directory structure over NFS.  Works fine on a local
-ext2 or ext3 fs, but not when that fs is exported via the abovementioned
-userland server.  And it's definitely related to directory depth and
-not PATHLEN because it fails even with single-char directory names for
-the entire depth.  So is this limit on the client, the server, or in the
-protocol?  And is it a bug or just a design limit?
+bash-2.05b$ touch foo
+touch: setting times of `foo': Permission denied
 
-Thanks for your help,
+but it does create the file with the right uid/gid.
 
-  --pj
+The export for the fs looks like this
+
+/nfs/home 
+10.0.0.200(rw,async,wdelay,root_squash,all_squash,anonuid=500,anongid=15000)
+
+and the nfs client fstab entry looks like
+
+10.0.0.201:/nfs/home/data       nfs     
+noatime,exec,dev,nosuid,rw,bg,hard,int
+r 1 1
+
+What am I doing wrong? They are both RH9 systems.
+
+Thanks
+Brian
 
 
+__________________________________
+Do you Yahoo!?
+Yahoo! SiteBuilder - Free, easy-to-use web site design software
+http://sitebuilder.yahoo.com
 
 
 -------------------------------------------------------
