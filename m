@@ -1,21 +1,17 @@
-From: "Eff Norwood" <enorwood@effrem.com>
-Subject: RE: huge number of intr/s on large nfs server
-Date: Tue, 15 Oct 2002 19:58:49 -0700
+From: Pete Zaitcev <zaitcev@redhat.com>
+Subject: >16 groups status
+Date: Tue, 15 Oct 2002 23:02:22 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <CFEAJJEGMGECBCJFLGDBIEJHCFAA.enorwood@effrem.com>
-References: <3DAC7FEC.C858A014@amis.com>
+Message-ID: <20021015230222.A25137@devserv.devel.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: Pete Zaitcev <zaitcev@redhat.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from cynaptic.com ([128.121.116.181])
+Received: from nat-pool-rdu.redhat.com ([66.187.233.200] helo=devserv.devel.redhat.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 181eOh-0000Xs-00
-	for <nfs@lists.sourceforge.net>; Tue, 15 Oct 2002 19:58:59 -0700
-To: "Eric Whiting" <ewhiting@amis.com>,
-   "Heflin, Roger A." <Roger.A.Heflin@conoco.com>
-In-Reply-To: <3DAC7FEC.C858A014@amis.com>
+	id 181eS1-0001bp-00
+	for <nfs@lists.sourceforge.net>; Tue, 15 Oct 2002 20:02:25 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,15 +24,17 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> I'm running 93MBytes/s on gigE copper (testing using a 1000M file).
-> (jumbo frames enabled)
+Guys,
 
-Thanks for the data point Eric. I thought gigE copper was able to do more.
-What's your frame size/MTU? Out of curiosity, what card are you using?
+does anyone remember why the van Maarseveen's patch is not being
+integrated? I looked at it, and the only problem I see is that
+it's not under a suitable CONFIG_XXXX (dependent on CONFIG_SUNRPC,
+perhaps).
 
-Eff
+This seems to be the home of it:
+ http://web.inter.nl.net/users/fvm/nfs-ngroups/
 
-
+-- Pete
 
 
 -------------------------------------------------------
