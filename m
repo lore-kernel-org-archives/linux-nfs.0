@@ -1,23 +1,28 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: Re: Strange delays on NFS server
-Date: Wed, 25 Aug 2004 12:02:41 +1000
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH kNFSd 2 of 4] Minor memory leak fix.
+Date: Tue, 24 Aug 2004 22:43:22 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040825020241.GB16037@sgi.com>
-References: <20040811164135.GA11101@suse.de> <411B8987.1030609@stams.strath.ac.uk> <411CD601.1080308@RedHat.com> <4120AB46.1080606@stams.strath.ac.uk> <20040816131434.GL3510@suse.de> <4120C8D5.3040606@stams.strath.ac.uk> <20040816145435.GQ3510@suse.de> <4124CD95.7020007@stams.strath.ac.uk> <20040820095854.GC23176@suse.de> <412B0EDE.5010206@stams.strath.ac.uk>
+Message-ID: <1093401801.7439.28.camel@lade.trondhjem.org>
+References: <20040820164909.27056.patches@notabene>
+	 <E1By3FQ-000738-5m@notabene.cse.unsw.edu.au>
+	 <20040824202048.GB2057@fieldses.org> <20040824220215.GA3521@fieldses.org>
+	 <16683.61807.372405.848939@cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Olaf Kirch <okir@suse.de>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-1
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, Andrew Morton <akpm@osdl.org>,  nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Bzn7n-00049v-5M
-	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 19:02:55 -0700
-Received: from omx3-ext.sgi.com ([192.48.171.20] helo=omx3.sgi.com)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1Bzn7l-0001ST-KS
-	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 19:02:54 -0700
-To: Ian Thurlbeck <ian@stams.strath.ac.uk>
-In-Reply-To: <412B0EDE.5010206@stams.strath.ac.uk>
+	id 1Bznl4-00037j-FC
+	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 19:43:30 -0700
+Received: from dh138.citi.umich.edu
+	([141.211.133.138] helo=lade.trondhjem.org ident=Debian-exim)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.34)
+	id 1Bznl1-0006uv-Rp
+	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 19:43:30 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <16683.61807.372405.848939@cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,27 +35,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, Aug 24, 2004 at 10:48:14AM +0100, Ian Thurlbeck wrote:
-> 
-> What on earth could be writing up to 3GB of data to the drive ?
-> As before the usual suspects of kjournald, kupdated, bdflush and
-> nfsd turn up on the process list.
-> 
-> Just how big is the nfs write cache on a typical server ?
+P=E5 ty , 24/08/2004 klokka 21:54, skreiv Neil Brown:
 
-It can be most of RAM.
+> How about we just decide that fixed-length string buffers are OK (as
+> the reality is that any value other than "nfsd" is extremely
+> unlikely), and use the following instead.
 
-> Is it
-> writing the whole lot one go ?
+Note that this whole "domain" checking code needs to be moved out of the
+generic AUTH_SYS server code ASAP anyway. As it stands, it is entirely
+nfsd specific, and really belongs in fs/nfsd.
 
-It might be.  What ratio of COMMIT to WRITE calls are you
-seeing in nfsstat?  Does the export have "sync" or "async"
-in its options?
+It is already a nuisance in the case of the lockd client callbacks (i.e.
+the "GRANTED" and "NOTIFY" RPC functions). It would have broken the
+NFSv4 client delegation callbacks too if I hadn't written an ad-hoc
+workaround.
+In both these cases, we want to authenticate against a known list of
+kernel objects rather than do upcalls to userland.
 
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
