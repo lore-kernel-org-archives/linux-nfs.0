@@ -1,27 +1,29 @@
-From: Ian Kent <raven@themaw.net>
-Subject: Re: NAS server avalanche overload
-Date: Thu, 4 Mar 2004 22:38:08 +0800 (WST)
+From: Bernd Schubert <bernd-schubert@web.de>
+Subject: Re: Re: Root Over NFS Memory Problem
+Date: Thu, 4 Mar 2004 16:06:48 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.58.0403042233420.4704@raven.themaw.net>
-References: <1078302718.825.67.camel@localhost>  <1078351343.821.28.camel@localhost>
- <20040304000438.GA25910@sgi.com>  <1078359638.813.71.camel@localhost>
- <404688FE.69592A2A@melbourne.sgi.com>  <Pine.LNX.4.58.0403041234150.7374@wombat.indigo.net.au>
- <1078378313.853.3.camel@localhost>
+Message-ID: <200403041606.48365.bernd-schubert@web.de>
+References: <1078409937.3882.10.camel@nick0.seakr.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+  charset="iso-8859-15"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ayu3d-00081r-8X
-	for nfs@lists.sourceforge.net; Thu, 04 Mar 2004 06:42:41 -0800
-Received: from wombat.indigo.net.au ([202.0.185.19])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1AyuX3-0007AX-CV
+	for nfs@lists.sourceforge.net; Thu, 04 Mar 2004 07:13:05 -0800
+Received: from smtp02.web.de ([217.72.192.151] helo=smtp.web.de)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.30)
-	id 1Aytdy-0005dn-M5
-	for nfs@lists.sourceforge.net; Thu, 04 Mar 2004 06:16:10 -0800
-To: Erik Walthinsen <omega@pdxcolo.net>
-In-Reply-To: <1078378313.853.3.camel@localhost>
+	id 1AyuR7-0002Bq-0u
+	for nfs@lists.sourceforge.net; Thu, 04 Mar 2004 07:06:57 -0800
+Received: from [80.140.2.23] (helo=bathl.lan.fli4l)
+	by smtp.web.de with asmtp (TLSv1:RC4-MD5:128)
+	(WEB.DE 4.99 #605)
+	id 1AyuQz-0005lN-00
+	for nfs@lists.sourceforge.net; Thu, 04 Mar 2004 16:06:50 +0100
+To: nfs@lists.sourceforge.net
+In-Reply-To: <1078409937.3882.10.camel@nick0.seakr.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,30 +36,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, 3 Mar 2004, Erik Walthinsen wrote:
+On Thursday 04 March 2004 15:18, Nick Couchman wrote:
+> > We are running currently 43 system over a nfs root filesystem and
+> > none of those systems is suffering from such memory leak. So I
+> > really don't think this is a vanilla kernel issue. If you are sure >
+>
+> that its the kernel, try without OpenMosix and other patches.
+>
+> > Cheers,
+> >        Bernd
+>
+> Two things: 1) What version of the kernel are you running?  
 
-> On Wed, 2004-03-03 at 20:39, Ian Kent wrote:
-> > Bumping the number of threads to 32 or 64 or more would be the first 
-> > thing I would try.
-> 
-> Only problem is that if the spike occurs anyway, the load will be 33 or
-> 65 instead of 17.  I don't know if it's ctxswitching itself to death
-> while all these nfsd's are blocking, but if so, doubling or quadrupling
-> the number of blocked processes will just make the spike worse.
+Currently 2.4.24 and 2.4.25, but we have had every kernel version since 2.4.18 
+except 2.4.22 since it had NFS-bugs (clients permanentely reported server not 
+responding).
 
-I'm assuming there is not a problem with the NFS implementation of course.
-Never the less you generally need many more than 16 threads for a busy 
-NFS server.
+> 2) We have 
+> another Linux box running the same kernel, but it is not booting
+> root-over-NFS, it is using the local hard drive.  This machine does not
+> "leak" memory.  
 
-> 
-> Also, I've learned to be extremely careful about messing with nfsd while
-> clients are connected.  I've had cases where just running exportfs
+Is this machine also using OpenMosix? 
 
-I wouldn't change this on the fly either. I'm suggesting this type 
-of change be made when during scheduled downtime.
+> Other ideas?  Could it be portmap? 
 
-Ian
+Portmap is a userspace program, I think memory leakage in userspace is easy to 
+detect using top, isn't it?
 
+Well, I don't thinkg that its important, we currently mount the nfs-root 
+directory from an initrd and not directly from the kernel nfs-root-mount 
+functions. However until 2.4.20 we also used the direct approach and had no 
+problems. Sorry, no further ideas.
+
+Bernd
 
 
 -------------------------------------------------------
