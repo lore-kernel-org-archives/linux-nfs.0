@@ -1,19 +1,16 @@
-From: David Myer <davidmyer800@yahoo.com>
-Subject: Re: nfs over tcp in linux kernel version 2.4.18
-Date: Tue, 20 May 2003 14:20:29 -0700 (PDT)
+From: Holidays For Families <design@sunmaster.co.uk>
+Subject: Late Booking Bargains
+Date: 20 May 2003 18:54:10 -0000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030520212029.77226.qmail@web21006.mail.yahoo.com>
-References: <8421832D-8AF9-11D7-93AF-00306589E6DA@duni.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: davidmyer800@yahoo.com, nfs@lists.sourceforge.net
+Message-ID: <20030520185410.10505.qmail@server2.bang-on.co.uk>
+Reply-To: Holidays For Families <design@sunmaster.co.uk>
+Content-Type: text/plain; charset="ISO-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from web21006.mail.yahoo.com ([216.136.227.60])
+Received: from ns.bang-on.co.uk.112.216.194.in-addr.arpa ([194.216.112.188] helo=server2.bang-on.co.uk)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19IEX8-00009t-00
-	for <nfs@lists.sourceforge.net>; Tue, 20 May 2003 14:20:30 -0700
-To: Dan Brunner <daniel.brunner@duni.com>, guolin@alexa.com
-In-Reply-To: <8421832D-8AF9-11D7-93AF-00306589E6DA@duni.com>
+	id 19IJSj-0003dY-00
+	for <nfs@lists.sourceforge.net>; Tue, 20 May 2003 19:36:17 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,182 +23,93 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Thanks for the information guys,
+For all the best holiday offers visit www.sunmaster.co.uk established 10years
+Tel: 0871 700 0015
 
-Looking at svcsock.c in 2.4.18/linux/net/sunrpc/
-it does seem to have STREAM type of socket support.
-if I just want to do basic mount/ls/vi type of
-operations, which patch do I actually need or is there
-a comiple switch to set during kernel compilation time
-just to enable TCP support on sever side ? Client side
-definitely has this by looking at xprt.c code..
+Late Booking Bargains
 
-Thanks again
-David
---- Dan Brunner <daniel.brunner@duni.com> wrote:
-> Guolin,
-> 
-> That DOES sound like a pain in the a$$!!!!!!!
-> 
-> And yes your right, not everyone has the same
-> success...
-> 
-> Good Luck!!
-> 
-> 
-> Dan
-> 
-> 
-> On Tuesday, May 20, 2003, at 02:19  PM,
-> guolin@alexa.com wrote:
-> 
-> > Dan,
-> >
-> >  try your luck.
-> >
-> >  BTW, let you know that I have to take the pain to
-> reboot 400 Linux 
-> > boxes to
-> > get rid of "nfs over tcp" in our production
-> environment.
-> >
-> >  --Guolin Cheng
-> >
-> > -----Original Message-----
-> > From: Dan Brunner [mailto:daniel.brunner@duni.com]
-> > Sent: Tuesday, May 20, 2003 12:14 PM
-> > To: Guolin Cheng
-> > Cc: davidmyer800@yahoo.com;
-> nfs@lists.sourceforge.net
-> > Subject: Re: [NFS] nfs over tcp in linux kernel
-> version 2.4.18
-> >
-> >
-> > Guolin,
-> >
-> > I can't seem to agree with this...
-> >
-> > Maybe I don't have that many connections (17), but
-> I've been running
-> > NFS over TCP since 2.4.18. And I haven't had once
-> MAJOR crash yet!! My
-> > clients however, are all Mac OS X clients.
-> 10.0.4-10.2.6.
-> >
-> > Maybe that has something to do with it....
-> >
-> >
-> > And we don't get a lot of hangs either....
-> >
-> >
-> > later
-> >
-> >
-> > Dan
-> >
-> >
-> > On Tuesday, May 20, 2003, at 01:41  PM,
-> guolin@alexa.com wrote:
-> >
-> >> David,
-> >>
-> >>  "nfs over tcp" is terribly unstable until now, I
-> use version 2.4.20,
-> >> and
-> >> find that over 30 simultaneous nfs connection can
-> kill an "nfs over
-> >> tcp"
-> >> Linux nfs server easily. let clients' processes
-> hangs there forever.
-> >> But
-> >> this didn't happen for Linux nfs server enabling
-> only "nfs over udp".
-> >>
-> >>  So the best choice now is totally disregard
-> Linux "nfs over tcp" in
-> >> production environment. just try it in research
-> environment.
-> >>
-> >>  Thanks.
-> >>  --Guolin Cheng
-> >>
-> >>
-> >> -----Original Message-----
-> >> From: David Myer [mailto:davidmyer800@yahoo.com]
-> >> Sent: Tuesday, May 20, 2003 11:03 AM
-> >> To: nfs@lists.sourceforge.net
-> >> Subject: [NFS] nfs over tcp in linux kernel
-> version 2.4.18
-> >>
-> >>
-> >> Hi,
-> >>
-> >> Can anyone advise me if nfs server over tcp is
-> >> supported in 2.4.18 kernel version ? How to
-> >> setup/enable on both server/client side ? Tried
-> to
-> >> looked at FAQ but information did not seem be
-> there.
-> >>
-> >> Do I need to apply any patches ?
-> >>
-> >> Thanks
-> >> David
-> >>
-> >> __________________________________
-> >> Do you Yahoo!?
-> >> The New Yahoo! Search - Faster. Easier. Bingo.
-> >> http://search.yahoo.com
-> >>
-> >>
-> >>
->
--------------------------------------------------------
-> >> This SF.net email is sponsored by: ObjectStore.
-> >> If flattening out C++ or Java code to make your
-> application fit in a
-> >> relational database is painful, don't do it!
-> Check out ObjectStore.
-> >> Now part of Progress Software.
-> http://www.objectstore.net/sourceforge
-> >> _______________________________________________
-> >> NFS maillist  -  NFS@lists.sourceforge.net
-> >> https://lists.sourceforge.net/lists/listinfo/nfs
-> >>
-> >>
-> >>
->
--------------------------------------------------------
-> >> This SF.net email is sponsored by: ObjectStore.
-> >> If flattening out C++ or Java code to make your
-> application fit in a
-> >> relational database is painful, don't do it!
-> Check out ObjectStore.
-> >> Now part of Progress Software.
-> http://www.objectstore.net/sourceforge
-> >> _______________________________________________
-> >> NFS maillist  -  NFS@lists.sourceforge.net
-> >> https://lists.sourceforge.net/lists/listinfo/nfs
-> 
-> 
-> 
->
--------------------------------------------------------
-> This SF.net email is sponsored by: ObjectStore.
-> If flattening out C++ or Java code to make your
-> application fit in a
-> relational database is painful, don't do it! Check
-> out ObjectStore.
-> Now part of Progress Software.
-> http://www.objectstore.net/sourceforge
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+Offers available this week to depart within the next month
 
-__________________________________
-Do you Yahoo!?
-The New Yahoo! Search - Faster. Easier. Bingo.
-http://search.yahoo.com
+code: BB = bed and breakfast SC = self catering HB = half board AI = All inclusive
+Offers include flights and accommodation
+
+Spain
+Costa Dorada SC from £79 HB from £99 AI from £199
+Costa Brava SC from £89 HB from £119 AI from £219
+Benidorm SC from £99 HB from £139 AI from £229
+Costa Del Sol SC from £119 HB from £129 AI from £239
+Call Now: 0871 700 0015
+
+Balearics
+Majorca SC from £79 HB from £99 AI from £199
+Menorca SC from £99 HB from £139 AI from £239
+Ibiza SC from £79 HB from £99 AI from £199
+Call Now: 0871 700 0015
+
+Canaries
+Tenerife SC from £79 HB from £149 AI from £299
+Gran Canaria SC from £109 HB from £149 AI from £289
+Lanzarote SC from £99 HB from £139 AI from £249
+Fuerteventura SC from £139 HB from £189 AI from £299
+Call Now: 0871 700 0015
+
+Greece
+Rhodes SC/BB from £89
+Crete SC/BB from £99
+Kos SC/BB from £89
+Corfu SC/BB from £89
+Kefalonia SC/BB from £109
+Santorini SC/BB from £119
+Halkidiki SC/BB from £99
+Thassos SC/BB from £99
+Zante SC/BB from £109
+Call Now: 0871 700 0015
+
+Turkey
+Bodrum BB from £99
+Marmaris BB from £109
+Alanya BB from £119
+Gumbet BB from £109
+Kusadasi BB from £119
+Call Now: 0871 700 0015
+
+Cruise the med
+May from £299
+June from £399
+July from £569
+Call Now: 0871 700 0015
+
+For more fantastic offers visit www.sunmaster.co.uk or call 0871 700 0015
+
+Sunmaster fully bonded members of The Global Travel Group no.T3127 agents for ATOL protected operators
+Sunmaster Elizabeth House 1 Elizabeth Street Wyke Bradford BD12 8PN
+
+
+
+
+
+
+---------------------------------------------------------------------------
+To be unsubscribed from the Holidays For Families mailing list simply click on the link below 
+http://www.bang-on.co.uk/cgi-bin/sunmaster/smpro/s.pl?r=1&l=3&e=nfs=:lists.sourceforge.net
+
+
+AOL USERS:
+<a href="http://www.bang-on.co.uk/cgi-bin/sunmaster/smpro/s.pl?r=1&l=3&e=nfs=:lists.sourceforge.net">One-Click Unsubscribe Link Here</a>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 -------------------------------------------------------
