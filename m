@@ -1,8 +1,8 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: [PATCH] Add nfs_writepages & backing_dev...
-Date: Fri, 8 Nov 2002 21:12:39 +0100
+Subject: [PATCH] Make nfs_find_request() scale
+Date: Fri, 8 Nov 2002 21:38:58 +0100
 Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <15820.6839.78077.996924@charged.uio.no>
+Message-ID: <15820.8418.239639.519476@charged.uio.no>
 Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -13,156 +13,255 @@ To: Linus Torvalds <torvalds@transmeta.com>
 List-ID: <nfs.lists.sourceforge.net>
 
 
-The following patch adds a simple ->writepages method that interprets
-the extra information passed down in Andrew's writeback_control
-structure, and translates it into nfs-speak.
+nfs_find_request() needs to be called every time we schedule a write
+on the page cache. Currently it is implemented as a linked list which
+needs to be traversed completely in the case where we don't already
+have a pending write request on the page in question.
 
-It also adds a backing_dev_info structure that scales the readahead in
-terms of the rsize. Maximum readahead is still 128k if you use 32k
-rsize, but it is scaled down to 4k if you use 1k rsize.
+The following patch adopts the new radix tree, as is already used in
+the page cache. Performance change is more or less negligeable with
+the current hard limit of 256 outstanding write requests per mount.
+
+However when I remove this limit then the old nfs_find_request()
+actually results in a 50% reduction in speed on my benchmark test
+(iozone with 4 threads each writing a 512Mb file on a 512Mb Linux
+client against a Solaris server on 100Mbit switched net). With this
+patch, the result for the same benchmark is a 50% increase in speed.
 
 Cheers,
   Trond
 
-diff -u --recursive --new-file linux-2.5.46/fs/nfs/file.c linux-2.5.46-03-writepages/fs/nfs/file.c
---- linux-2.5.46/fs/nfs/file.c	2002-11-05 07:52:59.000000000 -0500
-+++ linux-2.5.46-03-writepages/fs/nfs/file.c	2002-11-08 14:16:27.000000000 -0500
-@@ -169,6 +169,7 @@
- 	.readpage = nfs_readpage,
- 	.readpages = nfs_readpages,
- 	.writepage = nfs_writepage,
-+	.writepages = nfs_writepages,
- 	.prepare_write = nfs_prepare_write,
- 	.commit_write = nfs_commit_write,
- #ifdef CONFIG_NFS_DIRECTIO
-diff -u --recursive --new-file linux-2.5.46/fs/nfs/inode.c linux-2.5.46-03-writepages/fs/nfs/inode.c
---- linux-2.5.46/fs/nfs/inode.c	2002-11-05 07:52:59.000000000 -0500
-+++ linux-2.5.46-03-writepages/fs/nfs/inode.c	2002-11-08 14:16:27.000000000 -0500
-@@ -106,7 +106,7 @@
- {
- 	int flags = sync ? FLUSH_WAIT : 0;
+diff -u --recursive --new-file linux-2.5.46-03-writepages/fs/nfs/inode.c linux-2.5.46-04-radix_tree/fs/nfs/inode.c
+--- linux-2.5.46-03-writepages/fs/nfs/inode.c	2002-11-08 14:16:27.000000000 -0500
++++ linux-2.5.46-04-radix_tree/fs/nfs/inode.c	2002-11-08 14:21:21.000000000 -0500
+@@ -1559,7 +1559,7 @@
+ 		inode_init_once(&nfsi->vfs_inode);
+ 		INIT_LIST_HEAD(&nfsi->dirty);
+ 		INIT_LIST_HEAD(&nfsi->commit);
+-		INIT_LIST_HEAD(&nfsi->writeback);
++		INIT_RADIX_TREE(&nfsi->nfs_page_tree, GFP_ATOMIC);
+ 		nfsi->ndirty = 0;
+ 		nfsi->ncommit = 0;
+ 		nfsi->npages = 0;
+diff -u --recursive --new-file linux-2.5.46-03-writepages/fs/nfs/pagelist.c linux-2.5.46-04-radix_tree/fs/nfs/pagelist.c
+--- linux-2.5.46-03-writepages/fs/nfs/pagelist.c	2002-11-05 07:52:59.000000000 -0500
++++ linux-2.5.46-04-radix_tree/fs/nfs/pagelist.c	2002-11-08 14:22:53.000000000 -0500
+@@ -36,7 +36,6 @@
+ 	p = kmem_cache_alloc(nfs_page_cachep, SLAB_NOFS);
+ 	if (p) {
+ 		memset(p, 0, sizeof(*p));
+-		INIT_LIST_HEAD(&p->wb_hash);
+ 		INIT_LIST_HEAD(&p->wb_list);
+ 		INIT_LIST_HEAD(&p->wb_lru);
+ 		init_waitqueue_head(&p->wb_wait);
+@@ -161,14 +160,9 @@
+ 	spin_unlock(&nfs_wreq_lock);
  
--	nfs_sync_file(inode, NULL, 0, 0, flags);
-+	nfs_commit_file(inode, NULL, 0, 0, flags);
- }
+ #ifdef NFS_PARANOIA
+-	if (!list_empty(&req->wb_list))
+-		BUG();
+-	if (!list_empty(&req->wb_hash))
+-		BUG();
+-	if (NFS_WBACK_BUSY(req))
+-		BUG();
+-	if (atomic_read(&NFS_REQUESTLIST(req->wb_inode)->nr_requests) < 0)
+-		BUG();
++	BUG_ON (!list_empty(&req->wb_list));
++	BUG_ON (NFS_WBACK_BUSY(req));
++	BUG_ON (atomic_read(&NFS_REQUESTLIST(req->wb_inode)->nr_requests) < 0);
+ #endif
  
- static void
-@@ -327,6 +327,7 @@
- 		server->acdirmin = server->acdirmax = 0;
- 		sb->s_flags |= MS_SYNCHRONOUS;
- 	}
-+	server->backing_dev_info.ra_pages = server->rpages << 2;
- 
- 	sb->s_maxbytes = fsinfo.maxfilesize;
- 	if (sb->s_maxbytes > MAX_LFS_FILESIZE) 
-@@ -696,6 +697,7 @@
- 		if (S_ISREG(inode->i_mode)) {
- 			inode->i_fop = &nfs_file_operations;
- 			inode->i_data.a_ops = &nfs_file_aops;
-+			inode->i_data.backing_dev_info = &NFS_SB(sb)->backing_dev_info;
- 		} else if (S_ISDIR(inode->i_mode)) {
- 			inode->i_op = &nfs_dir_inode_operations;
- 			inode->i_fop = &nfs_dir_operations;
-diff -u --recursive --new-file linux-2.5.46/fs/nfs/write.c linux-2.5.46-03-writepages/fs/nfs/write.c
---- linux-2.5.46/fs/nfs/write.c	2002-10-11 18:21:46.000000000 -0400
-+++ linux-2.5.46-03-writepages/fs/nfs/write.c	2002-11-08 14:16:27.000000000 -0500
-@@ -52,6 +52,8 @@
- #include <linux/mm.h>
- #include <linux/pagemap.h>
- #include <linux/file.h>
-+#include <linux/mpage.h>
-+#include <linux/writeback.h>
- 
- #include <linux/sunrpc/clnt.h>
- #include <linux/nfs_fs.h>
-@@ -277,6 +279,25 @@
- 	return 0;
- }
- 
-+int
-+nfs_writepages(struct address_space *mapping, struct writeback_control *wbc)
-+{
-+	struct inode *inode = mapping->host;
-+	int is_sync = !wbc->nonblocking;
-+	int err;
-+
-+	err = generic_writepages(mapping, wbc);
-+	if (err)
-+		goto out;
-+	err = nfs_flush_file(inode, NULL, 0, 0, 0);
-+	if (err < 0)
-+		goto out;
-+	if (is_sync)
-+		err = nfs_wb_all(inode);
-+out:
-+	return err;
-+}
-+
+ 	/* Release struct file or cached credential */
+diff -u --recursive --new-file linux-2.5.46-03-writepages/fs/nfs/write.c linux-2.5.46-04-radix_tree/fs/nfs/write.c
+--- linux-2.5.46-03-writepages/fs/nfs/write.c	2002-11-08 14:16:27.000000000 -0500
++++ linux-2.5.46-04-radix_tree/fs/nfs/write.c	2002-11-08 14:21:21.000000000 -0500
+@@ -301,19 +301,21 @@
  /*
   * Insert a write request into an inode
   */
-@@ -850,6 +871,7 @@
- 		req = nfs_list_entry(head->next);
- 		nfs_list_remove_request(req);
- 		nfs_list_add_request(req, &data->pages);
-+		SetPageWriteback(req->wb_page);
- 		*pages++ = req->wb_page;
- 		count += req->wb_bytes;
- 	}
-@@ -1005,10 +1027,12 @@
- 			SetPageError(page);
- 			if (req->wb_file)
- 				req->wb_file->f_error = task->tk_status;
-+			end_page_writeback(page);
- 			nfs_inode_remove_request(req);
- 			dprintk(", error = %d\n", task->tk_status);
- 			goto next;
- 		}
-+		end_page_writeback(page);
- 
- #if defined(CONFIG_NFS_V3) || defined(CONFIG_NFS_V4)
- 		if (stable != NFS_UNSTABLE || data->verf.committed == NFS_FILE_SYNC) {
-diff -u --recursive --new-file linux-2.5.46/include/linux/nfs_fs.h linux-2.5.46-03-writepages/include/linux/nfs_fs.h
---- linux-2.5.46/include/linux/nfs_fs.h	2002-11-07 12:29:59.000000000 -0500
-+++ linux-2.5.46-03-writepages/include/linux/nfs_fs.h	2002-11-08 14:18:31.000000000 -0500
-@@ -319,6 +319,7 @@
-  * linux/fs/nfs/write.c
-  */
- extern int  nfs_writepage(struct page *);
-+extern int  nfs_writepages(struct address_space *, struct writeback_control *);
- extern int  nfs_flush_incompatible(struct file *file, struct page *page);
- extern int  nfs_updatepage(struct file *, struct page *, unsigned int, unsigned int);
- extern void nfs_writeback_done(struct rpc_task *task, int stable,
-@@ -343,6 +344,13 @@
- extern int  nfs_commit_list(struct list_head *, int);
- extern int  nfs_scan_lru_commit(struct nfs_server *, struct list_head *);
- extern int  nfs_scan_lru_commit_timeout(struct nfs_server *, struct list_head *);
-+#else
+-static inline void
 +static inline int
-+nfs_commit_file(struct inode *inode, struct file *file, unsigned long offset,
-+		unsigned int len, int flags)
-+{
+ nfs_inode_add_request(struct inode *inode, struct nfs_page *req)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+-	if (!list_empty(&req->wb_hash))
+-		return;
+-	if (!NFS_WBACK_BUSY(req))
+-		printk(KERN_ERR "NFS: unlocked request attempted hashed!\n");
+-	if (list_empty(&nfsi->writeback))
++	int error;
++
++	error = radix_tree_insert(&nfsi->nfs_page_tree, req->wb_index, req);
++	BUG_ON(error == -EEXIST);
++	if (error)
++		return error;
++	if (!nfsi->npages)
+ 		igrab(inode);
+ 	nfsi->npages++;
+-	list_add(&req->wb_hash, &nfsi->writeback);
+ 	req->wb_count++;
 +	return 0;
-+}
- #endif
- 
- static inline int
-diff -u --recursive --new-file linux-2.5.46/include/linux/nfs_fs_sb.h linux-2.5.46-03-writepages/include/linux/nfs_fs_sb.h
---- linux-2.5.46/include/linux/nfs_fs_sb.h	2002-10-14 10:03:25.000000000 -0400
-+++ linux-2.5.46-03-writepages/include/linux/nfs_fs_sb.h	2002-11-08 14:16:27.000000000 -0500
-@@ -2,6 +2,7 @@
- #define _NFS_FS_SB
- 
- #include <linux/list.h>
-+#include <linux/backing-dev.h>
+ }
  
  /*
-  * NFS client parameters stored in the superblock.
-@@ -9,6 +10,7 @@
- struct nfs_server {
- 	struct rpc_clnt *	client;		/* RPC client handle */
- 	struct nfs_rpc_ops *	rpc_ops;	/* NFS protocol vector */
-+	struct backing_dev_info	backing_dev_info;
- 	int			flags;		/* various flags */
- 	unsigned int		caps;		/* server capabilities */
- 	unsigned int		rsize;		/* read size */
+@@ -324,21 +326,14 @@
+ {
+ 	struct nfs_inode *nfsi;
+ 	struct inode *inode;
++
++	BUG_ON (!NFS_WBACK_BUSY(req));
+ 	spin_lock(&nfs_wreq_lock);
+-	if (list_empty(&req->wb_hash)) {
+-		spin_unlock(&nfs_wreq_lock);
+-		return;
+-	}
+-	if (!NFS_WBACK_BUSY(req))
+-		printk(KERN_ERR "NFS: unlocked request attempted unhashed!\n");
+ 	inode = req->wb_inode;
+-	list_del(&req->wb_hash);
+-	INIT_LIST_HEAD(&req->wb_hash);
+ 	nfsi = NFS_I(inode);
++	radix_tree_delete(&nfsi->nfs_page_tree, req->wb_index);
+ 	nfsi->npages--;
+-	if ((nfsi->npages == 0) != list_empty(&nfsi->writeback))
+-		printk(KERN_ERR "NFS: desynchronized value of nfs_i.npages.\n");
+-	if (list_empty(&nfsi->writeback)) {
++	if (!nfsi->npages) {
+ 		spin_unlock(&nfs_wreq_lock);
+ 		iput(inode);
+ 	} else
+@@ -354,19 +349,12 @@
+ _nfs_find_request(struct inode *inode, unsigned long index)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+-	struct list_head	*head, *next;
++	struct nfs_page *req;
+ 
+-	head = &nfsi->writeback;
+-	next = head->next;
+-	while (next != head) {
+-		struct nfs_page *req = nfs_inode_wb_entry(next);
+-		next = next->next;
+-		if (req->wb_index != index)
+-			continue;
++	req = (struct nfs_page*)radix_tree_lookup(&nfsi->nfs_page_tree, index);
++	if (req)
+ 		req->wb_count++;
+-		return req;
+-	}
+-	return NULL;
++	return req;
+ }
+ 
+ static struct nfs_page *
+@@ -437,8 +425,8 @@
+ nfs_wait_on_requests(struct inode *inode, struct file *file, unsigned long idx_start, unsigned int npages)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+-	struct list_head	*p, *head;
+-	unsigned long		idx_end;
++	struct nfs_page *req;
++	unsigned long		idx_end, next;
+ 	unsigned int		res = 0;
+ 	int			error;
+ 
+@@ -448,21 +436,17 @@
+ 		idx_end = idx_start + npages - 1;
+ 
+ 	spin_lock(&nfs_wreq_lock);
+-	head = &nfsi->writeback;
+-	p = head->next;
+-	while (p != head) {
+-		struct nfs_page *req = nfs_inode_wb_entry(p);
+-
+-		p = p->next;
++	next = idx_start;
++	while (radix_tree_gang_lookup(&nfsi->nfs_page_tree, (void **)&req, next, 1)) {
++		if (req->wb_index > idx_end)
++			break;
+ 
++		next = req->wb_index + 1;
+ 		if (file && req->wb_file != file)
+ 			continue;
+-
+-		if (req->wb_index < idx_start || req->wb_index > idx_end)
+-			continue;
+-
+ 		if (!NFS_WBACK_BUSY(req))
+ 			continue;
++
+ 		req->wb_count++;
+ 		spin_unlock(&nfs_wreq_lock);
+ 		error = nfs_wait_on_request(req);
+@@ -470,7 +454,7 @@
+ 		if (error < 0)
+ 			return error;
+ 		spin_lock(&nfs_wreq_lock);
+-		p = head->next;
++		next = idx_start;
+ 		res++;
+ 	}
+ 	spin_unlock(&nfs_wreq_lock);
+@@ -664,8 +648,14 @@
+ 		}
+ 
+ 		if (new) {
++			int error;
+ 			nfs_lock_request_dontget(new);
+-			nfs_inode_add_request(inode, new);
++			error = nfs_inode_add_request(inode, new);
++			if (error) {
++				spin_unlock(&nfs_wreq_lock);
++				nfs_unlock_request(new);
++				return ERR_PTR(error);
++			}
+ 			spin_unlock(&nfs_wreq_lock);
+ 			nfs_mark_request_dirty(new);
+ 			return new;
+diff -u --recursive --new-file linux-2.5.46-03-writepages/include/linux/nfs_fs.h linux-2.5.46-04-radix_tree/include/linux/nfs_fs.h
+--- linux-2.5.46-03-writepages/include/linux/nfs_fs.h	2002-11-08 14:18:31.000000000 -0500
++++ linux-2.5.46-04-radix_tree/include/linux/nfs_fs.h	2002-11-08 14:21:21.000000000 -0500
+@@ -165,7 +165,7 @@
+ 	 */
+ 	struct list_head	dirty;
+ 	struct list_head	commit;
+-	struct list_head	writeback;
++	struct radix_tree_root	nfs_page_tree;
+ 
+ 	unsigned int		ndirty,
+ 				ncommit,
+@@ -356,7 +356,7 @@
+ static inline int
+ nfs_have_writebacks(struct inode *inode)
+ {
+-	return !list_empty(&NFS_I(inode)->writeback);
++	return NFS_I(inode)->npages != 0;
+ }
+ 
+ static inline int
+diff -u --recursive --new-file linux-2.5.46-03-writepages/include/linux/nfs_page.h linux-2.5.46-04-radix_tree/include/linux/nfs_page.h
+--- linux-2.5.46-03-writepages/include/linux/nfs_page.h	2002-10-04 11:30:34.000000000 -0400
++++ linux-2.5.46-04-radix_tree/include/linux/nfs_page.h	2002-11-08 14:24:09.000000000 -0500
+@@ -23,8 +23,7 @@
+ #define PG_BUSY			0
+ 
+ struct nfs_page {
+-	struct list_head	wb_hash,	/* Inode */
+-				wb_lru,		/* superblock lru list */
++	struct list_head	wb_lru,		/* superblock lru list */
+ 				wb_list,	/* Defines state of page: */
+ 				*wb_list_head;	/*      read/write/commit */
+ 	struct file		*wb_file;
+@@ -125,12 +124,6 @@
+ 	return list_entry(head, struct nfs_page, wb_list);
+ }
+ 
+-static inline struct nfs_page *
+-nfs_inode_wb_entry(struct list_head *head)
+-{
+-	return list_entry(head, struct nfs_page, wb_hash);
+-}
+-
+ static inline void
+ __nfs_add_lru(struct list_head *head, struct nfs_page *req)
+ {
