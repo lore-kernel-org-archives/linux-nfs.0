@@ -1,23 +1,23 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: [NFS PATCH] 2.6.0-test10 Invalidate cached inode attributes after rename
-Date: Wed, 3 Dec 2003 20:25:25 -0800
+From: Ian Kent <raven@themaw.net>
+Subject: Re: RPC Time Out
+Date: Thu, 4 Dec 2003 14:15:44 +0800 (WST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <482A3FA0050D21419C269D13989C6113020AC80D@lavender-fe.eng.netapp.com>
+Message-ID: <Pine.LNX.4.33.0312041408210.12549-100000@wombat.indigo.net.au>
+References: <Pine.LNX.4.33.0312040951120.7055-100000@wombat.indigo.net.au>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1ARlAJ-0005GD-Po
-	for nfs@lists.sourceforge.net; Wed, 03 Dec 2003 20:32:35 -0800
-Received: from mx01.netapp.com ([198.95.226.53])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
-	id 1ARlAJ-0003lD-Iv
-	for nfs@lists.sourceforge.net; Wed, 03 Dec 2003 20:32:35 -0800
-To: "Paul Smith" <pausmith@nortelnetworks.com>,
-        "Shantanu Goel" <Shantanu.Goel@lehman.com>
+	id 1ARmkA-0000bM-Oe
+	for nfs@lists.sourceforge.net; Wed, 03 Dec 2003 22:13:42 -0800
+Received: from wombat.indigo.net.au ([202.0.185.19])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
+	id 1ARmkA-00034H-3R
+	for nfs@lists.sourceforge.net; Wed, 03 Dec 2003 22:13:42 -0800
+To: "Weber, Eugene F (Gene)" <efw@agere.com>
+In-Reply-To: <Pine.LNX.4.33.0312040951120.7055-100000@wombat.indigo.net.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,22 +30,68 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> %% "Shantanu Goel" <Shantanu.Goel@lehman.com> writes:
->=20
->   sg> 1. Check out a CVS repository into an NFS mounted directory.
->   sg> 2. Move files from CVS working directory into another=20
-> directory in the
->   sg> same filesystem.
->   sg> 3. Tar up the resultant directory.
->   sg> 4. Tar prints lots of "file changed after we read it" messages.
->=20
-> Interesting: I see this exact same message when taring up the contents
-> of a ClearCase view (in 2.4.20-x)... even though I'm 100%=20
-> positive that
-> no one but me is touching those files.  Is this scenario relevant to a
-> kernel that old as well?
+On Thu, 4 Dec 2003, Ian Kent wrote:
 
-yes, steve dickson at red hat also found this problem in 2.4.21.
+> On Mon, 1 Dec 2003, Weber, Eugene F (Gene) wrote:
+>
+> >
+> > SETTING UP THE CLIENT
+> > ====================
+> > rpcinfo -p on the Debian laptop gave an rpc error. I saw
+> > that none of the services existed anywhere on the
+> > machine. I installed package "portmap_5-2_i386.deb"
+> > and package "nfs-common_1.0-2_i386.deb". After the
+> > successful installs, portmap, statd and lockd all existed
+> > under /sbin. The installation also said it started each of
+> > the services. rpcinfo -p now showed:
+> >
+> > program vers proto port
+> > 100000 2 tcp 111 portmapper
+> > 100000 2 udp 111 portmapper
+> > 100024 1 udp 1024 status
+> > 100024 1 tcp 1024 status
+> >
+> > I though perhaps lockd was not started, but executing it
+> > and then checking rpcinfo -p gives the same result??
+> > The shown services now seemed to be launched at boot
+> > up.
+> >
+> > rpcinfo -p 192.168.2.57 from the client gives the same
+> > result as doing rpcinfo -p on the server. Likewise doing
+> > rpcinfo -p 192.168.2.51 from the server gives the same
+> > result as doing rpcinfo -p on the client.
+>
+> But what does a showmount -e show on the server and what does
+> a showmount -e 192.168.2.57 give on the client.
+>
+>
+
+All I'm trying to say is "can you see the servers' export list".
+
+ie. showmount -e <server ip>
+
+on the client
+
+You can check your exports list on the server using exportfs but if you
+use showmount -e it will fail if the rpc service is not registered.
+
+Just a check.
+
+If your export lists are not what you expect then re-export them with
+
+exportfs -ra
+
+should fix it up.
+
+Worth a try!
+
+-- 
+
+   ,-._|\    Ian Kent
+  /      \   Perth, Western Australia
+  *_.--._/   E-mail: raven@themaw.net
+        v    Web: http://themaw.net/
+
 
 
 -------------------------------------------------------
