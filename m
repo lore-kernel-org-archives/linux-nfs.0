@@ -1,31 +1,28 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFSv3+Krb5 and mountd
-Date: Mon, 30 Aug 2004 18:25:14 -0400
+From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Subject: unexplained ESTALE
+Date: Mon, 30 Aug 2004 16:37:43 -0600 (MDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1093904714.8729.106.camel@lade.trondhjem.org>
-References: <20040824184138.GB3251@nasse>
-	 <Pine.LNX.4.61.0408300238530.2441@fogarty.jakma.org>
-	 <20040830020132.GA28919@fieldses.org> <20040830154541.GA3671@nasse>
-	 <1093884302.8729.21.camel@lade.trondhjem.org>
-	 <20040830171734.GC1555@fieldses.org>
-	 <1093887933.8729.35.camel@lade.trondhjem.org>
-	 <20040830180402.GE1555@fieldses.org>
+Message-ID: <Pine.LNX.4.60.0408301629590.561@harp.ngdc.noaa.gov>
+Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: Per Olofsson <pelle@dsv.su.se>, Paul Jakma <paul@clubi.ie>,  nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C1uag-0006mk-0x
-	for nfs@lists.sourceforge.net; Mon, 30 Aug 2004 15:25:30 -0700
-Received: from dh138.citi.umich.edu
-	([141.211.133.138] helo=lade.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	id 1C1umY-0000l4-FS
+	for nfs@lists.sourceforge.net; Mon, 30 Aug 2004 15:37:46 -0700
+Received: from harp.ngdc.noaa.gov ([140.172.187.26])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.34)
-	id 1C1uae-0000Dl-Ck
-	for nfs@lists.sourceforge.net; Mon, 30 Aug 2004 15:25:29 -0700
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <20040830180402.GE1555@fieldses.org>
+	id 1C1umX-0001r6-2a
+	for nfs@lists.sourceforge.net; Mon, 30 Aug 2004 15:37:46 -0700
+Received: from harp.ngdc.noaa.gov (harp.ngdc.noaa.gov [127.0.0.1])
+	by harp.ngdc.noaa.gov (8.12.11/8.12.11) with ESMTP id i7UMbhxj011845
+	for <nfs@lists.sourceforge.net>; Mon, 30 Aug 2004 16:37:43 -0600
+Received: from localhost (ahoward@localhost)
+	by harp.ngdc.noaa.gov (8.12.11/8.12.11/Submit) with ESMTP id i7UMbhH6011841
+	for <nfs@lists.sourceforge.net>; Mon, 30 Aug 2004 16:37:43 -0600
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -38,35 +35,45 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 m=E5 , 30/08/2004 klokka 14:04, skreiv J. Bruce Fields:
 
-> Since we specify the rpcsec_gss security flavor as the client in
-> /etc/exports, in the place of the ip address/network/whatever, this
-> means in practice we'd need to allow MOUNT from any ip address for a
-> filesystem that's exported to rpcsec_gss.  Which I suppose is OK, though
-> I don't understand why clients really want to do that.
+we are getting random, un-explained ESTALE errors from our nfs server.  the
+files in question are all binaries that get run on our cluster.  none of the
+files or their directories have been moved, copied, created, etc. for months.
+the export/mount have stayed the same.  in short, nothing has changed.  the
+only reason i have seen the error is due to some err trsapping i do in my
+crontab files that ensure some daemons are running at all time, eg.
 
-See the RFC. It was basically Sun's decision in order to avoid having to
-assign machine credentials to their automounters. If you want your
-server to work with SunOS clients, then that's all pretty mandatory.
+   * * * * * /nfs/mounted/daemon -l logfile > daemon.oe 2>&1
 
-> > mountd should always support AUTH_SYS, so no changes required there
-> > (apart from the need to add the supported RPCSEC_GSS pseudoflavours to
-> > the "auth_flavors" list).
-> > As far as I know, nobody (not even Sun) has set up NLM to work with
-> > RPCSEC_GSS either.
->=20
-> Well, I suppose unauthenticated locks are a DOS at worse.  But the
-> lookup of the initial filehandle seems more security-critical to me.
+this is obviously for daemons for which it is impossible to have two copies
+running simoultaneously.  i can't imagine that this has any affect whatsoever,
+i'm simply pointing out that this daemon will run for days on end without
+problem, and then exit suddenly with
 
-What can an attacker do with that filehandle?
+   no such file ESTALE /nfs/mounted/daemon
 
-Actually re-reading the RFC, it does not actually restrict MOUNT to
-AUTH_SYS-only, but again - interoperability with Solaris automounters
-means that it is pretty much expected...
+showing up in the daemon.oe file.
 
-Cheers,
-  Trond
+are there any conditions on client or server i should know about (besides the
+obvious ones) that could cause this?
+
+all kernels are
+
+   Linux 2.4.21-15.0.4.EL i686
+
+up2date with the latest nfs-utils
+
+kind regards.
+
+-a
+--
+===============================================================================
+| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
+| PHONE   :: 303.497.6469
+| A flower falls, even though we love it;
+| and a weed grows, even though we do not love it. 
+|   --Dogen
+===============================================================================
 
 
 -------------------------------------------------------
