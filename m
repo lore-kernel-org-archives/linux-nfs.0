@@ -1,25 +1,22 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: kernel nlockmgr not registred with port mapper
-Date: Fri, 13 Aug 2004 18:32:23 +0200
+From: "Patrice Seyed" <apseyed@bu.edu>
+Subject: ReasmFails increases / NFS performance on Linux Cluster
+Date: Sat, 14 Aug 2004 03:46:44 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040813163223.GA10834@suse.de>
-References: <411C91BA.10506@naturalsciences.be> <1092413690.5046.20.camel@lade.trondhjem.org>
+Message-ID: <001501c481d2$d8900950$6701a8c0@psyche1>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Paul Libert <Paul.Libert@naturalsciences.be>,
-	nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="US-ASCII"
+Cc: "'Patrice Seyed'" <apseyed@bu.edu>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Bveyl-0001le-Ka
-	for nfs@lists.sourceforge.net; Fri, 13 Aug 2004 09:32:31 -0700
-Received: from cantor.suse.de ([195.135.220.2])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.34)
-	id 1Bveyl-0006lO-7F
-	for nfs@lists.sourceforge.net; Fri, 13 Aug 2004 09:32:31 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1092413690.5046.20.camel@lade.trondhjem.org>
+	id 1BvtFp-0001aT-B7
+	for nfs@lists.sourceforge.net; Sat, 14 Aug 2004 00:47:05 -0700
+Received: from acsn03.bu.edu ([128.197.159.63])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1BvtFo-00025O-Rv
+	for nfs@lists.sourceforge.net; Sat, 14 Aug 2004 00:47:05 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,19 +29,68 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, Aug 13, 2004 at 12:14:51PM -0400, Trond Myklebust wrote:
-> Looks to me as if you are using the user space NFS server. That never
-> had any support for the NLM locking protocol. In fact IIRC the addition
-> of locking support was one of the main motivations at the time for
-> writing the kernel NFS server (correct me if I'm wrong there Olaf).
+We have 1 ibm x345 as a management node, and 1 ibm x35 as a storage =
+node,
+(both dual cpu 2.8 xeon and 2.5gb memory) which is fiber channeled to a =
+Raid
+5 array with ~900 GB usable. Then we have 10 IBM BladeCenters which =
+contain
+14 blades per chassis except the last one (has 8). So 134 nodes with =
+dual
+xeon at 2.8Ghz, mostly with 1GB ram and 20 with 2GB.
 
-That's right. Doing lockd in user space is horrible.
+All nodes including x345s are set to 1000/full and cabled into a 3750
+Cataylst. Bear in mind each BladeCenter chassis include a switch module,
+which is also set to 1000/full.
 
-Olaf
--- 
-Olaf Kirch     |  The Hardware Gods hate me.
-okir@suse.de   |
----------------+ 
+In testing dd writes from /dev/zero to an nfs mount and back in a large
+number of batch jobs, I'm seeing high load on the storage node and heavy
+slowdowns for example for ssh login, df, or ls on the head node.=20
+In my attempt to tune the storage node, I have tried 32k and now 8k
+(rsize,wsize in autofs) with no improvement in the slowness. Other
+parameters I am using are hard,intr,noatime,retrans=3D20,timeo=3D25. I =
+am
+currently running 64 nfsd daemons. Also I now have ipfrag_low_thresh and
+ipfrag_high_thread both set to 1045876. When I had doubled the default
+values for these settings a few weeks ago, it appeared to solve I/O =
+errors
+that were appearing in the logs for many of the nodes. Still now the
+ReasmFails value in /proc/net/snmp steadily increases (for 8k or 32k) =
+when I
+submit a moderate number of jobs (20-40) that are heavy on I/O.
+
+More info (on the storage node):
+$ netstat -s | less
+Ip:
+    226750504 total packets received
+    0 forwarded
+    501200 incoming packets discarded
+    164658619 incoming packets delivered
+    161895650 requests sent out
+    5006 fragments dropped after timeout
+    80794698 reassemblies required
+    13723023 packets reassembled ok
+    126665 packet reassembles failed
+    2858536 fragments received ok
+    14006786 fragments created
+
+Udp:
+    159845714 packets received
+    142 packets to unknown port received.
+    501200 packet receive errors
+    152909713 packets sent
+
+
+I welcome any suggestions or recommendations.
+
+Regards,
+=20
+Patrice Seyed
+Linux System Administrator - SIG
+RHCE, SCSA
+Boston University School of Medicine
+
+
 
 
 -------------------------------------------------------
