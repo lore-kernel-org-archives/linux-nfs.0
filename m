@@ -1,22 +1,22 @@
-From: Philippe Troin <phil@fifi.org>
-Subject: Re: SM_UNMON again -> kernel
-Date: 18 Jul 2003 20:26:50 -0700
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: round robin dns, multihomed host, nfs mounting issues
+Date: Sat, 19 Jul 2003 20:34:21 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <87n0fb42o5.fsf@ceramic.fifi.org>
-References: <20030711061615.GA1924@quasar.nro.au.com>
-	<shsr84x768e.fsf@charged.uio.no> <87smpbkt55.fsf@ceramic.fifi.org>
-	<shs8yr2h2jr.fsf@charged.uio.no> <87k7aml330.fsf@ceramic.fifi.org>
-	<shsptkdij1a.fsf@charged.uio.no> <87vfu0ej5k.fsf@ceramic.fifi.org>
+Message-ID: <16153.7853.242076.368335@gargle.gargle.HOWL>
+References: <1058549484.2552.126.camel@oac195.ep.hess.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tantale.fifi.org ([216.27.190.146] ident=root)
+Received: from smtp3.unsw.edu.au ([149.171.96.70])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19diNd-0007P4-00
-	for <nfs@lists.sourceforge.net>; Fri, 18 Jul 2003 20:27:29 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <87vfu0ej5k.fsf@ceramic.fifi.org>
+	id 19dp3P-00017m-00
+	for <nfs@lists.sourceforge.net>; Sat, 19 Jul 2003 03:35:03 -0700
+Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
+	(for <jdavis@hess.com>) (for <nfs@lists.sourceforge.net>) By note
+	With Smtp ; Sat, 19 Jul 2003 20:34:55 +1000
+To: Jeff Davis <jdavis@hess.com>
+In-Reply-To: message from Jeff Davis on  July 18
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,53 +29,45 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Philippe Troin <phil@fifi.org> writes:
+On  July 18, jdavis@hess.com wrote:
+> I'm testing out a NFS server which has two interfaces on two different
+> subnets. I'm using a single hostname and round robin dns. Clients are
+> both RedHat Linux systems.
+> 
+> I can access the primary interface on server via NFS from any system on
+> my network. I can only access the second interface from hosts on the
+> same subnet. Unfortunately, round robin dns on systems that are not
+> local to subnets on either of the server's nics will randomly get one of
+> the two nics to access nfs fs through. 
+> 
+> int 1 - 192.168.19.224
+> int 2 - 172.25.2.106
+> 
+> # can mount through int 1 from any host\
+> # can mount thoughh int 2 from same ip subnet as int 2
+> # cannot mount throught int 2 from remote ip subnets
+> # on local subnets, mounts work as desired through correct, optimal
+> interface on nfs server
+> 
+> # on remote subnets, round robin directs ~50% of mount requests
+> to server through int 2 which fail
+> 
+> why doesn't this work?
 
-> Trond Myklebust <trond.myklebust@fys.uio.no> writes:
-> 
-> > >>>>> " " == Philippe Troin <phil@fifi.org> writes:
-> > 
-> >      > On machine #1: ceramic rpc.statd[30693]: Received erroneous
-> >      > SM_UNMON request from ceramic for 216.27.190.149
-> > 
-> >      > On machine #2: tantale rpc.statd[18416]: Received erroneous
-> >      > SM_UNMON request from tantale for 216.27.190.148
-> > 
-> > OK. Hang on... The above looks more like stale entries due to somebody
-> > having permanently switched off a server on which ceramic/tantale were
-> > holding locks.
-> 
-> Nope, the machines have been rebooted...
->  
-> > Could you check on 'ceramic', and 'tantale' if they don't have entries
-> > for 216.27.190.149 and 216.27.190.148 respectively in /var/lib/nfs/sm
-> > or /var/lib/nfs/sm.bak?
-> 
-> They have indeed very old files there that were removed.
-> 
-> > Another mistake that can cause the above errors is if the sysman has
-> > made those 2 directories NFS shared between different clients. (Not a
-> > good idea...)
-> 
-> No, that not the case. But I can see why it would wreak havoc.
-> 
-> Anyways, this is what I did:
-> 
->  - I shut down all boxes interacting via NFS.
-> 
->  - When booting them up, I switched to single-user mode and:
-> 
->      * wiped /var/lib/nfs/mtab
-> 
->      * removed any files in /var/lib/nfs/sm{,.bak}
-> 
-> And we'll see if the message shows up again.
+Looks like you've hit a glibc bug that was only fixed relatively
+recently (27th Feb 2003.  glibc version 2.3.2 or 2.3.3 I think).
 
-And it did...
+When mountd is sending it's reply, it uses sendmsg and insists that the
+reply goes out the same interface that the request came in on.  If
+that interface doesn't have a route to the client, you lose.
 
-I still see the same messages over and over again.
+I worked around it by putting a default route on all my interfaces.
 
-Phil.
+> upgrading to nfs-utils 1.05 seems to have helped
+
+I doubt that it really did, but if it works now, great.
+
+NeilBrown
 
 
 -------------------------------------------------------
