@@ -1,121 +1,63 @@
-From: "Iain Irwin-Powell" <iain@cinesite.co.uk>
-Subject: RE: NFS Performance Between SGI Servers and Linux Clients
-Date: Wed, 28 May 2003 10:02:27 +0100
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <00f601c324f7$dd06fa90$0b00430a@granger>
-References: <3ECE100C.6060409@cinesite.co.uk>
+From: "Vivek Goyal" <vivek.goyal@wipro.com>
+Subject: Disabling Symbolic Link Content Caching in NFS Client
+Date: Wed, 28 May 2003 16:39:36 +0530
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <2BB7146B38D9CA40B215AB3DAAE24C080BA4F3@blr-m2-msg.wipro.com>
 Mime-Version: 1.0
 Content-Type: text/plain;
 	charset="us-ascii"
-Cc: "'Lever, Charles'" <Charles.Lever@netapp.com>, <nfs@lists.sourceforge.net>
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from scanman.cinesite.co.uk ([193.203.81.129])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19KwtF-00034x-00
-	for <nfs@lists.sourceforge.net>; Wed, 28 May 2003 02:06:33 -0700
-To: "'Danny Smith'" <dannys@cinesite.co.uk>, <trond.myklebust@fys.uio.no>
-In-Reply-To: <3ECE100C.6060409@cinesite.co.uk>
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Cc: <trond.myklebust@fys.uio.no>, <indou.takao@jp.fujitsu.com>,
+	"Vivek Goyal" <vivek.goyal@wipro.com>, <ionut@cs.columbia.edu>,
+	<ezk@cs.sunysb.edu>, <viro@math.psu.edu>, <davem@redhat.com>
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
+To: <linux-kernel@vger.kernel.org>, <nfs@lists.sourceforge.net>
+List-ID: <nfs.lists.sourceforge.net>
 
-Managed to get some quiet time to test the vm.max-readahead tweaking.
+Hi,
 
-This definitely makes a difference to the load average on the SGI server
-end. On this test I was only opening 1 file at a time.
+We are planning to implement a set of Kernel Tunable Parameters and one
+of these parameters is nfs_symlink_caching for disabling/enabling
+symbolic link content caching in NFS client. Unices like Solaris have
+this feature implemented.
 
-Tuning vm.max-readahead down to 8 provided the best combination of
-server load to client throughput, although the client throughput was
-compromised by the down tuning (no real surprise there).
+Existing NFS client implementation in Linux performs symbolic link
+content caching by default. There is no provision for disabling this
+caching either at mount time or through kernel tuning mechanism.
 
-What I am waiting to get is a 'real world' situation so that I can tune
-whilst I am seeing the problem to see if we can make it go away or at
-least alleviate the symptoms.
+This caching mechanism leads to problems in following two conditions.
 
-The implication here (to me at least) is that the SGI is having problems
-servicing all the requests from the Linux clients. I will feed this back
-to SGI and see what they can come up with.
+a. File is modified in server without updating the modification
+time-stamp.
+b. Granularity of the time-stamp is too large.
 
-More when I know.
+I was following previous discussions in the mailing list and found that
+caching mechanism affected hlfsd behavior. It looks like the problem was
+resolved by updating mtime on every access. But still caching will lead
+to a problem if two accesses are taking place in same jiffy.
 
-Iain
+We are considering following design strategy to implement the parameter.
 
+1. Make nfs_symlink_caching dynamically tunable using /proc and sysctl
+interface.
 
+2. Change NFS client code as follows.
 
-******************************************************************
-Iain Irwin-Powell (AKA Iain Powell)
-Senior Systems Administrator
-Cinesite Europe Limited
-9 Carlisle Street
-London
-W1D 3BP
- 
-T: +442079734000
-DDI: +442079734053
-*******************************************************************
-It's not broken, it just doesn't work the way you expected.
-*******************************************************************
+A. If caching is enabled.
+There are no changes. Existing caching mechanism remains intact.
 
-> -----Original Message-----
-> From: Danny Smith [mailto:dannys@cinesite.co.uk]
-> Sent: 23 May 2003 13:12
-> To: trond.myklebust@fys.uio.no
-> Cc: Lever, Charles; Iain Irwin-Powell; nfs@lists.sourceforge.net
-> Subject: Re: [NFS] NFS Performance Between SGI Servers and Linux
-Clients
-> 
-> Trond Myklebust wrote:
-> 
-> >>>>>>" " == Charles Lever <Lever> writes:
-> >>>>>>
-> >>>>>>
-> >
-> >     > trond, isn't there a read ahead value in the client that can
-be
-> >     > tweaked?  he could trim down vm_max_readahead, unless there is
-> >     > a max_readahead[] entry for anonymous file systems.
-> >
-> >That should partly help to trim it down unless the client is reading
-> >from > 1 file at a time. In that case the RPC layer will still try to
-> >issue more reads (up to MIN(16,vm_max_readahead) requests per
-process)
-> >if the network and server permits it.
-> >
-> >Beware, though, that vm_max_readahead will effect not only
-> >NFS. Performance on other tasks may suffer.
-> >
-> >
-> I will give this a try in Iain's absence. In the real world we *are*
-> likely
-> to be reading multiple files, however for testing purposes we don't
-have
-> to.
-> 
-> Danny
-> 
-> --
-> Danny Smith
-> Senior Systems Administrator, Cinesite (Europe) Ltd
-> 020 7973 4000 - x4055    /    dannys@cinesite.co.uk
-> 
-> 
+B. If caching is disabled.
 
+	i. While serving a symlink read request (nfs_getlink ()) don't
+look for the requested page in page cache (read_cache_page()). Instead
+always allocate a page frame (page_cache_alloc_cold()) and send a
+READLINK request to the server. This allocated page frame is not added
+to the cache and hence remains local to the thread of execution and is
+not visible to other execution threads.
 
+	ii. Upon receiving the response from the server, pass the data
+to the user space and free the page frame. 
 
+Please let us know your comments/opinion on this design.
 
--------------------------------------------------------
-This SF.net email is sponsored by: ObjectStore.
-If flattening out C++ or Java code to make your application fit in a
-relational database is painful, don't do it! Check out ObjectStore.
-Now part of Progress Software. http://www.objectstore.net/sourceforge
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Thanks and Regards
+Vivek
