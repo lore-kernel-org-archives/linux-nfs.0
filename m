@@ -1,19 +1,19 @@
-From: =?iso-8859-1?Q?Ragnar_Kj=F8rstad?= <nfs@ragnark.vestdata.no>
-Subject: Re: nfs-utils patch to statd for multi-homed hosts
-Date: Sat, 1 Jun 2002 12:27:23 +0200
+From: jason andrade <jason@dstc.edu.au>
+Subject: e1000 intel driver bug (which impacts nfs)
+Date: Sun, 26 May 2002 23:06:06 +1000 (EST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020601122723.F3799@vestdata.no>
-References: <OFE81A6846.D2A070A1-ON88256BCA.006D5F8B@boulder.ibm.com>
+Message-ID: <Pine.OSF.4.20.0205262256430.16951-100000@azure.dstc.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from stine.vestdata.no ([195.204.68.10])
+Received: from piglet.dstc.edu.au ([130.102.176.1])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17E66h-0000vL-00
-	for <nfs@lists.sourceforge.net>; Sat, 01 Jun 2002 03:27:35 -0700
-To: Bruce Allan <bruce.allan@us.ibm.com>
-In-Reply-To: <OFE81A6846.D2A070A1-ON88256BCA.006D5F8B@boulder.ibm.com>; from bruce.allan@us.ibm.com on Fri, May 31, 2002 at 01:18:27PM -0700
+	id 17Bxiu-0007GZ-00
+	for <nfs@lists.sourceforge.net>; Sun, 26 May 2002 06:06:12 -0700
+Received: from azure.dstc.edu.au (azure.dstc.edu.au [130.102.176.27])
+	by piglet.dstc.edu.au (8.11.3/8.11.3) with ESMTP id g4QD66r19308
+	for <nfs@lists.sourceforge.net>; Sun, 26 May 2002 23:06:06 +1000 (EST)
+To: mailto: ;
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,57 +26,57 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Fri, May 31, 2002 at 01:18:27PM -0700, Bruce Allan wrote:
-> The attached patch provides the capability for statd to work with
-> multi-homed hosts (i.e. NFS servers and clients with more than one IP
-> interface each) as until now listed as a "FIXME" comment in
-> utils/statd/rmtcall.c
-Great! :-)
 
-> The theory is when a server or client crashes, reboots, and attempts to
-> notify the other of it's status change, if either host's interface on w=
-hich
-> the connection was originally made is no longer functional, statd will
-> attempt to use alternate interfaces if they exist.  This is made possib=
-le
-> by changing the addr member of the notify_list structure to a list of
-> addresses equivalent to that returned by a gethostbyname() call.  Faile=
-d
-> attempts at notifying an address removes that address from the list.
+Hi,
 
-Are you saying notifications used to be sent out on the interface where
-the connection happened? I thought it only happened on the primary
-interface....
+I'd spent many hours trying to diagnose and get a fix for what i thought
+was a nfs performance bug.  It turns out that i'm 99% sure this has ended
+up being a bug in the Intel E1000 driver for the Intel 1000T (or any
+Intel Gigabit Ethernet adapter in copper for me anyway).  It's present in
+both the older 3.X drivers and the new 4.X driver including 4.1.7 (the
+current version)
 
-Does the new code work with aliases as well as physical interfaces?
+The symptom/problem is that nfs will simply "hang" - clients will start
+to queue requests and we were unable to figure out anything on the server
+that would clear this except a reboot.  With some more testing we were
+able to verify and reproduce and resolve the problem by stopping nfs,
+downing the gigabit interface, unloading the driver, reloading it,
+reconfiguring the interface and restarting nfs.  Within 2 minutes the
+clients would start responding again.
 
-How does this interact with the "--name" switch?
+Someone else has told me he can achieve the same effect with a ifconfig
+down, pause, ifconfig up on that interface but this to date has not
+worked for me.
 
-I believe --name originally replaced the gethostbyname() name with the
-user-supplied one. Now that there are multiple interfaces to worry about
-the old approach no longer works well.
-I see a few different alternatives of fixing that:
-1. Remove "--name". It was mostly written to fix the exact same problem
-   that your patch fixes in a bettery way. Unfortenately this will not
-   solve the problem with multiple names mapping to the same ip.
-2. Change "--name" so that it _adds_ the hostname to the list of
-   names to use in the notification-message, rather than replacing
-   the existing one(s). I suppose it should also be changed to accept
-   mulitple hostnames.
-3. Could we possible send the IP to the clients rather than the
-   hostnames? That would eliminate the problem of mulitple names
-   matching the same hostname.
+I hope this helps anyone else trying to debug mysterious "nfs hangs" under
+2.4.X.  It doesn't seem to be tickled unless you are doing quite large
+amounts of nfs traffic (we're pushing 1-1.5T a day on this interface)
+and it's quite random (i've had a lockup from 4 hours to 10 days after
+a reboot)
 
+I am still trying to work out why 8K nfs mounts do not work (UDP) for
+us (back to 1K now) and to try 8/16/32K mounts over TCP instead.
 
-I suppose I should go read the spec and find out how this really work
-before making comments, but I don't have the time just now, so take the
-comments with a grain of salt..
+Since i now finally have a pure gigE network with a 9000 MTU for the
+backend between servers i'm hoping this might work a bit better.
 
 
 
---=20
-Ragnar Kj=F8rstad
-Big Storage
+I'd also like to second Seth Vidal's comments about getting Neil, Trond
+and co to provide a definitive (revised weekly? monthly?)
+
+"this is what our recommend patchlist is and against which kernels and why"
+on the nfs list and/or as part of the faq.
+
+it is increasingly hard to track the major nfs patch contributors to work
+out what should be applied and what can wait as well as figuring out the 
+patch dependencies.
+
+
+cheers,
+
+-jason
+
 
 _______________________________________________________________
 
