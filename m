@@ -1,18 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 15 of 23] Kernel thread for delegation callback
+Subject: [PATCH kNFSd 8 of 23] Add structures for delegation support
 Date: Fri, 17 Dec 2004 16:23:56 +1100
-Message-ID: <E1CfAaq-0002eK-Nf@notabene.cse.unsw.edu.au>
+Message-ID: <E1CfAaq-0002ds-2j@notabene.cse.unsw.edu.au>
 References: <20041217162128.9968.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CfAc0-0005Ay-Fs
-	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 21:25:08 -0800
+	id 1CfAbz-0005Ax-VI
+	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 21:25:07 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CfAbx-0006Am-Jd
-	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 21:25:08 -0800
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CfAbx-0004GE-Dm
+	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 21:25:07 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -28,131 +28,74 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Any task can call break_lease or time_out_leases
-on a v4 delegated file which results in a recall callback rpc sent to the
-NFSv4 client holding the delegation, and/or the FL_LEASE to be removed.
-Spawn a kernel thread to perform the callback.
-
 Signed-off-by: Andy Adamson <andros@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c |   96 ++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 96 insertions(+)
+ ./include/linux/nfsd/state.h |   37 +++++++++++++++++++++++++++++++++++++
+ 1 files changed, 37 insertions(+)
 
-diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2004-12-15 13:37:21.000000000 +1100
-+++ ./fs/nfsd/nfs4state.c	2004-12-15 13:37:36.000000000 +1100
-@@ -44,6 +44,7 @@
- #include <linux/mount.h>
- #include <linux/workqueue.h>
- #include <linux/smp_lock.h>
-+#include <linux/kthread.h>
- #include <linux/nfs4.h>
- #include <linux/nfsd/state.h>
- #include <linux/nfsd/xdr4.h>
-@@ -1311,6 +1312,101 @@ nfs4_file_downgrade(struct file *filp, u
- 	}
- }
+diff ./include/linux/nfsd/state.h~current~ ./include/linux/nfsd/state.h
+--- ./include/linux/nfsd/state.h~current~	2004-12-15 11:51:29.000000000 +1100
++++ ./include/linux/nfsd/state.h	2004-12-15 11:59:23.000000000 +1100
+@@ -67,6 +67,41 @@ extern stateid_t onestateid;
+ #define ZERO_STATEID(stateid)       (!memcmp((stateid), &zerostateid, sizeof(stateid_t)))
+ #define ONE_STATEID(stateid)        (!memcmp((stateid), &onestateid, sizeof(stateid_t)))
  
-+/*
-+ * Recall a delegation
-+ */
-+static int
-+do_recall(void *__dp)
-+{
-+	struct nfs4_delegation *dp = __dp;
++/* Delegation recall states */
++#define NFS4_NO_RECALL			0x000
++#define NFS4_RECALL_IN_PROGRESS		0x001
++#define NFS4_RECALL_COMPLETE		0x002
++#define NFS4_REAP_DELEG			0x004
 +
-+	daemonize("nfsv4-recall");
-+
-+	atomic_inc(&dp->dl_count);
-+	nfsd4_cb_recall(dp);
-+	return 0;
-+}
-+
-+/*
-+ * Spawn a thread to perform a recall on the delegation represented
-+ * by the lease (file_lock)
-+ *
-+ * Called from break_lease() with lock_kernel() held,
-+ *
-+ */
-+static
-+void nfsd_break_deleg_cb(struct file_lock *fl)
-+{
-+	struct nfs4_delegation *dp=  (struct nfs4_delegation *)fl->fl_owner;
-+	struct task_struct *t;
-+
-+	dprintk("NFSD nfsd_break_deleg_cb: dp %p fl %p\n",dp,fl);
-+	if (!dp)
-+		return;
-+
-+	/* schedule delegation for recall */
-+	spin_lock(&recall_lock);
-+	atomic_set(&dp->dl_state, NFS4_RECALL_IN_PROGRESS);
-+	list_add_tail(&dp->dl_recall_lru, &del_recall_lru);
-+	spin_unlock(&recall_lock);
-+
-+	/* only place dl_time is set. protected by lock_kernel*/
-+	dp->dl_time = get_seconds();
-+
-+	/* XXX need to merge NFSD_LEASE_TIME with fs/locks.c:lease_break_time */
-+	fl->fl_break_time = jiffies + NFSD_LEASE_TIME * HZ;
-+
-+	t = kthread_run(do_recall, dp, "%s", "nfs4_cb_recall");
-+	if (IS_ERR(t)) {
-+		struct nfs4_client *clp = dp->dl_client;
-+
-+		printk(KERN_INFO "NFSD: Callback thread failed for "
-+			"for client (clientid %08x/%08x)\n",
-+			clp->cl_clientid.cl_boot, clp->cl_clientid.cl_id);
-+	}
-+}
-+
-+/*
-+ * The file_lock is being reapd.
-+ *
-+ * Called by locks_free_lock() with lock_kernel() held.
-+ */
-+static
-+void nfsd_release_deleg_cb(struct file_lock *fl)
-+{
-+	struct nfs4_delegation *dp = (struct nfs4_delegation *)fl->fl_owner;
-+
-+	dprintk("NFSD nfsd_release_deleg_cb: fl %p dp %p dl_count %d, dl_state %d\n", fl,dp, atomic_read(&dp->dl_count), atomic_read(&dp->dl_state));
-+
-+	if (!(fl->fl_flags & FL_LEASE) || !dp)
-+		return;
-+	atomic_set(&dp->dl_state,NFS4_RECALL_COMPLETE);
-+	dp->dl_flock = NULL;
-+}
-+
-+/*
-+ * Set the delegation file_lock back pointer.
-+ *
-+ * Called from __setlease() with lock_kernel() held.
-+ */
-+static
-+void nfsd_copy_lock_deleg_cb(struct file_lock *new, struct file_lock *fl)
-+{
-+	struct nfs4_delegation *dp = (struct nfs4_delegation *)new->fl_owner;
-+
-+	dprintk("NFSD: nfsd_copy_lock_deleg_cb: new fl %p dp %p\n", new, dp);
-+	if (!dp)
-+		return;
-+	dp->dl_flock = new;
-+}
-+
-+struct lock_manager_operations nfsd_lease_mng_ops = {
-+        .fl_break = nfsd_break_deleg_cb,
-+        .fl_release_private = nfsd_release_deleg_cb,
-+        .fl_copy_lock = nfsd_copy_lock_deleg_cb,
++struct nfs4_cb_recall {
++	u32			cbr_ident;
++	int			cbr_trunc;
++	stateid_t		cbr_stateid;
++	u32			cbr_fhlen;
++	u32			cbr_fhval[NFS4_FHSIZE];
++	struct nfs4_delegation	*cbr_dp;
 +};
 +
++struct nfs4_delegation {
++	struct list_head	dl_del_perfile; /* nfs4_file->fi_del_perfile */
++	struct list_head	dl_del_perclnt; /* nfs4_client->cl_del_perclnt*/
++	struct list_head	dl_recall_lru;  /* delegation recalled */
++	atomic_t		dl_recall_cnt;  /* resend cb_recall only once */
++	atomic_t		dl_count;       /* ref count */
++	atomic_t		dl_state;       /* recall state */
++	struct nfs4_client	*dl_client;
++	struct nfs4_file	*dl_file;
++	struct file_lock	*dl_flock;
++	struct nfs4_stateid	*dl_stp;
++	u32			dl_type;
++	time_t			dl_time;
++	struct nfs4_cb_recall	dl_recall;
++};
 +
- 
- /*
-  * nfsd4_process_open1()
++#define dl_stateid      dl_recall.cbr_stateid
++#define dl_fhlen        dl_recall.cbr_fhlen
++#define dl_fhval        dl_recall.cbr_fhval
++
+ /* client delegation callback info */
+ struct nfs4_callback {
+ 	/* SETCLIENTID info */
+@@ -96,6 +131,7 @@ struct nfs4_client {
+ 	struct list_head	cl_idhash; 	/* hash by cl_clientid.id */
+ 	struct list_head	cl_strhash; 	/* hash by cl_name */
+ 	struct list_head	cl_perclient; 	/* list: stateowners */
++	struct list_head	cl_del_perclnt; /* list: delegations */
+ 	struct list_head        cl_lru;         /* tail queue */
+ 	struct xdr_netobj	cl_name; 	/* id generated by client */
+ 	nfs4_verifier		cl_verifier; 	/* generated by client */
+@@ -194,6 +230,7 @@ struct nfs4_stateowner {
+ struct nfs4_file {
+ 	struct list_head        fi_hash;    /* hash by "struct inode *" */
+ 	struct list_head        fi_perfile; /* list: nfs4_stateid */
++	struct list_head	fi_del_perfile; /* list: nfs4_delegation */
+ 	struct inode		*fi_inode;
+ 	u32                     fi_id;      /* used with stateowner->so_id 
+ 					     * for stateid_hashtbl hash */
 
 
 -------------------------------------------------------
