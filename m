@@ -1,16 +1,12 @@
-From: "Steve Wolfe" <nw@codon.com>
-Subject: rpc.statd and port usage...
-Date: Fri, 22 Mar 2002 12:13:59 -0700
+From: "Bruce Allan" <bruce.allan@us.ibm.com>
+Subject: Re: rpc.statd and port usage...
+Date: Fri, 22 Mar 2002 11:33:59 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <002201c1d1d5$bb9f40e0$d281f6cc@iboats.com>
+Message-ID: <OF6888EE9D.44F71D26-ON88256B84.006AFBD1@boulder.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Received: from local.iboats.com ([204.246.129.200])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16oUUN-0002qd-00
-	for <nfs@lists.sourceforge.net>; Fri, 22 Mar 2002 11:14:11 -0800
-To: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net, nfs-admin@lists.sourceforge.net
+To: "Steve Wolfe" <nw@codon.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,6 +20,33 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 
+Use the -o and -p options to rpc.statd for outgoing requests and listening,
+respectively.  See the manpage for statd.
+
+---
+Bruce Allan  <bruce.allan@us.ibm.com>
+Software Engineer, Linux Technology Center
+IBM Corporation, Beaverton OR
+503-578-4187   IBM Tie-line 775-4187
+
+
+
+                                                                                                                                  
+                      "Steve Wolfe"                                                                                               
+                      <nw@codon.com>              To:       <nfs@lists.sourceforge.net>                                           
+                      Sent by:                    cc:                                                                             
+                      nfs-admin@lists.sour        Subject:  [NFS] rpc.statd and port usage...                                     
+                      ceforge.net                                                                                                 
+                                                                                                                                  
+                                                                                                                                  
+                      03/22/2002 11:13 AM                                                                                         
+                                                                                                                                  
+                                                                                                                                  
+
+
+
+
+
   On all of my machines, rpc.statd picks a (seemingly) random port < 1023,
 but one machine is acting differently:  It will bind to one random port <
 1023, then it will bind to both TCP and UDP on a high port, usually in the
@@ -35,6 +58,13 @@ potentially normal, how would I go about making it use only low,
 priveliged ports, which are a lot easier to block at the firewall?
 
 steve
+
+
+
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+
 
 
 
