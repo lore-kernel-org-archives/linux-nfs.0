@@ -1,22 +1,23 @@
-From: Kevin Coffman <kwc@citi.umich.edu>
-Subject: Re: problem starting rpc.svcgssd for NFSv4
-Date: Mon, 14 Mar 2005 11:30:27 -0500
-Message-ID: <20050314163027.73CE81BACA@citi.umich.edu>
-References: <20050314155653.61401.qmail@web51608.mail.yahoo.com>
+From: Chip Salzenberg <chip@pobox.com>
+Subject: Re: NFSv3, 2.6, ext3 and dir_index
+Date: Mon, 14 Mar 2005 12:22:34 -0500
+Message-ID: <20050314172234.GA11469@perlsupport.com>
+References: <20050120163806.GA25242@melchior.yamamaya.is-a-geek.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net, Kevin Coffman <kwc@citi.umich.edu>
+Cc: nfs@lists.sf.net
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DAsSa-0003dd-TA
-	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 08:30:28 -0800
-Received: from citi.umich.edu ([141.211.133.111])
+	id 1DAtHB-0006JZ-B9
+	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 09:22:45 -0800
+Received: from perlsupport.com
+	([66.180.163.120] helo=mail.perlsupport.com ident=0866ecf13be5c9b962b24220a2d89163)
 	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1DAsSa-0003CY-60
-	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 08:30:28 -0800
-To: mehta kiran <kiranmehta1981@yahoo.com>
-In-reply-to: <20050314155653.61401.qmail@web51608.mail.yahoo.com> 
+	id 1DAtHA-0000oC-Pw
+	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 09:22:45 -0800
+To: Tobias Diedrich <ranma@tdiedrich.de>
+In-Reply-To: <20050120163806.GA25242@melchior.yamamaya.is-a-geek.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,88 +31,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Well, it is consistent.  How did you create your keytab and get it on 
-the machine?  It seems to be corrupted somehow.  I suggest creating a 
-new keytab file.
+According to Tobias Diedrich:
+> Are there any known problems with dir_index and NFS, or is this
+> maybe a new bug?
 
+Did you ever get any replies on dir_index vs. nfs?
 
-> Hi Kevin , 
->       output of klist -k /etc/krb5.keytab" is
-> 
->          Keytab name: FILE:/etc/krb5.keytab
->          klist: Unsupported key table format version  
->          number while starting keytab scan
-> 
->          These are the different packages
->          (and their versions) installed on 
->           my machines(RHEL4 GA)
-> 
->           krb5-workstation-1.3.4-9
->           krb5-server-1.3.4-9
->           krb5-libs-1.3.4-9
->           krbafs-utils-1.2.2-6
->           krbafs-devel-1.2.2-6
->           krbafs-1.2.2-6
->           krb5-auth-dialog-0.2-1
->           krb5-devel-1.3.4-9
->           pam_krb5-2.1.2-1
-> 
-> thanks,
->  --kiran
-> 
-> --- Kevin Coffman <kwc@citi.umich.edu> wrote:
-> > Hi Kiran,
-> > What version of Kerberos are you using?
-> > 
-> > The error seems to indicate that your keytab is not
-> > in the expected 
-> > format.  What does "klist -k /etc/krb5.keytab" show?
-> > 
-> > You may also want to get the latest libgssapi and
-> > librpcsecgss from:
-> > http://www.citi.umich.edu/projects/nfsv4/linux/
-> > 
-> > 
-> > > Hi , 
-> > >       I am trying to set up kerberos for NFSv4
-> > >       All the daemons other than rpc.svcgssd
-> > start.
-> > > 
-> > >       I have krb5kdc and kadmind running on
-> > (RHEL4)
-> > >       vcslinux1 system.
-> > > 
-> > >       
-> > >       file /etc/krb5.keytab has following
-> > contents:
-> > >      
-> > >
-> >
-> nfs/vcslinux1.vxindia.veritas.com@VXINDIA.VERITAS.COM
-> > >
-> >
-> root/vcslinux1.vxindia.veritas.com@VXINDIA.VERITAS.COM
-> > > 
-> > >       #rpc.svcgssd -v -f
-> > > 
-> > >       WARNING: unable to locate function 
-> > >       krb5_gss_internal_release_oid in krb5
-> > >       mechanism library: there will be problems
-> > >       if multiple mechanisms are used!
-> > >       ERROR: GSS-API: error in gss_acquire_cred():
-> > 
-> > >       Miscellaneous failure - Unsupported key
-> > table
-> > >       format version number unable to obtain root 
-> > >      (machine) credentials
-> > >       do you have a keytab entry for   
-> > >       nfs/<your.host>@<YOUR.REALM> in
-> > > /etc/krb5.keytab?
-> > > 
-> > > 
-> > > thanks,
-> > >  --kiran
-
+I'm just setting up a new server and I'm wondering if there's
+something still out there that might make me sorry to use dir_index.
+-- 
+Chip Salzenberg            - a.k.a. -            <chip@pobox.com>
+         Open Source is not an excuse to write fun code
+            then leave the actual work to others.
 
 
 -------------------------------------------------------
