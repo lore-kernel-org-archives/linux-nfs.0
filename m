@@ -1,14 +1,14 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 6 of 8 - switch knfsd to vfs_read/vfs_write
+Subject: [PATCH] kNFSd - 7 of 8 - NFSv4 patch for new setclientid, setclientid_confirm
 Date: Wed, 16 Oct 2002 16:03:15 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E181hH1-0000JL-00@notabene.cse.unsw.edu.au>
+Message-ID: <E181hH1-0000JQ-00@notabene.cse.unsw.edu.au>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 181hHD-0002mo-00
-	for <nfs@lists.sourceforge.net>; Tue, 15 Oct 2002 23:03:27 -0700
+	id 181hHC-0002mm-00
+	for <nfs@lists.sourceforge.net>; Tue, 15 Oct 2002 23:03:26 -0700
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.233.204] == wireless-204.wireless.cse.unsw.EDU.AU)
 	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>) By
@@ -29,65 +29,90 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 ### Comments for ChangeSet
 
-From: Christoph Hellwig <hch@sgi.com>
+From: "William A.(Andy) Adamson" <andros@citi.umich.edu>
 
-Switch knfsd to vfs_read/vfs_write to work on aio-only filesystems.
-This also gets stuff like the LSM checks and mandatory lock checking
-for free.
+this patch brings the linux-2.5.42 tree up to spec WRT setclientid and 
+setclientid_confirm
 
+-->Andy
 
 
  ----------- Diffstat output ------------
- ./fs/nfsd/vfs.c |   12 +++---------
- 1 files changed, 3 insertions(+), 9 deletions(-)
+ ./fs/nfsd/nfs4proc.c        |    3 ++-
+ ./fs/nfsd/nfs4xdr.c         |   10 ++++++----
+ ./include/linux/nfsd/xdr4.h |    8 +++++++-
+ 3 files changed, 15 insertions(+), 6 deletions(-)
 
---- ./fs/nfsd/vfs.c	2002/10/16 04:47:13	1.2
-+++ ./fs/nfsd/vfs.c	2002/10/16 04:47:20	1.3
-@@ -589,8 +589,6 @@ nfsd_read(struct svc_rqst *rqstp, struct
- 	if (err)
- 		goto out;
- 	err = nfserr_perm;
--	if (!file.f_op->read)
--		goto out_close;
- 	inode = file.f_dentry->d_inode;
- #ifdef MSNFS
- 	if ((fhp->fh_export->ex_flags & NFSEXP_MSNFS) &&
-@@ -602,11 +600,10 @@ nfsd_read(struct svc_rqst *rqstp, struct
- 	ra = nfsd_get_raparms(inode->i_dev, inode->i_ino);
- 	if (ra)
- 		file.f_ra = ra->p_ra;
--	file.f_pos = offset;
+--- ./fs/nfsd/nfs4proc.c	2002/10/16 04:45:56	1.2
++++ ./fs/nfsd/nfs4proc.c	2002/10/16 04:47:27	1.3
+@@ -177,11 +177,12 @@ static inline int
+ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_setclientid *setclientid)
+ {
+ 	memset(&setclientid->se_clientid, 0, sizeof(clientid_t));
++	memset(&setclientid->se_confirm, 0, sizeof(nfs4_verifier));
+ 	return nfs_ok;
+ }
  
- 	oldfs = get_fs();
- 	set_fs(KERNEL_DS);
--	err = file.f_op->read(&file, buf, *count, &file.f_pos);
-+	err = vfs_read(&file, buf, *count, &offset);
- 	set_fs(oldfs);
+ static inline int
+-nfsd4_setclientid_confirm(struct svc_rqst *rqstp, clientid_t *clientid)
++nfsd4_setclientid_confirm(struct svc_rqst *rqstp, struct nfsd4_setclientid_confirm *setclientid_confirm)
+ {
+ 	return nfs_ok;
+ }
+--- ./fs/nfsd/nfs4xdr.c	2002/10/16 04:47:24	1.1
++++ ./fs/nfsd/nfs4xdr.c	2002/10/16 04:47:27	1.2
+@@ -717,12 +717,13 @@ nfsd4_decode_setclientid(struct nfsd4_co
+ }
  
- 	/* Write back readahead params */
-@@ -648,8 +645,7 @@ nfsd_write(struct svc_rqst *rqstp, struc
- 	if (!cnt)
- 		goto out_close;
- 	err = nfserr_perm;
--	if (!file.f_op->write)
--		goto out_close;
+ static int
+-nfsd4_decode_setclientid_confirm(struct nfsd4_compoundargs *argp, clientid_t *clientid)
++nfsd4_decode_setclientid_confirm(struct nfsd4_compoundargs *argp, struct nfsd4_setclientid_confirm *scd_c)
+ {
+ 	DECODE_HEAD;
+ 
+-	READ_BUF(8);
+-	COPYMEM(clientid, 8);
++	READ_BUF(8 + sizeof(nfs4_verifier));
++	COPYMEM(&scd_c->sc_clientid, 8);
++	COPYMEM(&scd_c->sc_confirm, sizeof(nfs4_verifier));
+ 
+ 	DECODE_TAIL;
+ }
+@@ -1736,8 +1737,9 @@ nfsd4_encode_setclientid(struct nfsd4_co
+ 	ENCODE_HEAD;
+ 
+ 	if (!nfserr) {
+-		RESERVE_SPACE(8);
++		RESERVE_SPACE(8 + sizeof(nfs4_verifier));
+ 		WRITEMEM(&scd->se_clientid, 8);
++		WRITEMEM(&scd->se_confirm, sizeof(nfs4_verifier));
+ 		ADJUST_ARGS();
+ 	}
+ 	else if (nfserr == nfserr_clid_inuse) {
+--- ./include/linux/nfsd/xdr4.h	2002/10/16 04:45:57	1.2
++++ ./include/linux/nfsd/xdr4.h	2002/10/16 04:47:27	1.3
+@@ -224,6 +224,12 @@ struct nfsd4_setclientid {
+ 	char *		se_callback_addr_val;   /* request */
+ 	u32		se_callback_ident;  /* request */
+ 	clientid_t	se_clientid;        /* response */
++	nfs4_verifier	se_confirm;         /* response */
++};
 +
- #ifdef MSNFS
- 	if ((fhp->fh_export->ex_flags & NFSEXP_MSNFS) &&
- 		(!lock_may_write(file.f_dentry->d_inode, offset, cnt)))
-@@ -679,11 +675,9 @@ nfsd_write(struct svc_rqst *rqstp, struc
- 	if (stable && !EX_WGATHER(exp))
- 		file.f_flags |= O_SYNC;
++struct nfsd4_setclientid_confirm {
++	clientid_t	sc_clientid;
++	nfs4_verifier	sc_confirm;
+ };
  
--	file.f_pos = offset;		/* set write offset */
--
- 	/* Write the data. */
- 	oldfs = get_fs(); set_fs(KERNEL_DS);
--	err = file.f_op->write(&file, buf, cnt, &file.f_pos);
-+	err = vfs_write(&file, buf, cnt, &offset);
- 	if (err >= 0)
- 		nfsdstats.io_write += cnt;
- 	set_fs(oldfs);
+ /* also used for NVERIFY */
+@@ -267,7 +273,7 @@ struct nfsd4_op {
+ 		clientid_t			renew;
+ 		struct nfsd4_setattr		setattr;
+ 		struct nfsd4_setclientid	setclientid;
+-		clientid_t			setclientid_confirm;
++		struct nfsd4_setclientid_confirm setclientid_confirm;
+ 		struct nfsd4_verify		verify;
+ 		struct nfsd4_write		write;
+ 	} u;
 
 
 -------------------------------------------------------
