@@ -1,8 +1,8 @@
-From: Brian Mancuso <bmancuso@akamai.com>
+From: brianm@asrc.cc
 Subject: Re: NFS/UDP slow read, lost fragments
-Date: Thu, 25 Sep 2003 16:22:12 -0400
+Date: Thu, 25 Sep 2003 15:33:23 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030925162212.X787@muppet.kendall.corp.akamai.com>
+Message-ID: <20030925203323.GA17471@westhost49.westhost.net>
 References: <Pine.LNX.4.44.0309251019170.28586-100000@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -11,17 +11,14 @@ Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1A2cdT-0007Qt-00
-	for <nfs@lists.sourceforge.net>; Thu, 25 Sep 2003 13:22:47 -0700
-Received: from fw01.cmbrmaks.akamai.com ([80.67.64.10] helo=akamai.com)
+	id 1A2coK-0008LD-00
+	for <nfs@lists.sourceforge.net>; Thu, 25 Sep 2003 13:34:01 -0700
+Received: from westhost49.westhost.net ([216.71.84.101])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 1A2cdS-0006Pg-Gb
-	for nfs@lists.sourceforge.net; Thu, 25 Sep 2003 13:22:46 -0700
-Received: from akamai.com (vwall1.kendall.corp.akamai.com [172.17.4.33])
-	by akamai.com (8.11.7+Sun/8.11.6) with ESMTP id h8PKMD913273
-	for <nfs@lists.sourceforge.net>; Thu, 25 Sep 2003 16:22:13 -0400 (EDT)
+	id 1A2coK-0007vZ-Cb
+	for nfs@lists.sourceforge.net; Thu, 25 Sep 2003 13:34:00 -0700
 To: "Robert L. Millner" <rmillner@transmeta.com>
-In-Reply-To: <Pine.LNX.4.44.0309251019170.28586-100000@localhost.localdomain>; from rmillner@transmeta.com on Thu, Sep 25, 2003 at 10:59:43AM -0700
+In-Reply-To: <Pine.LNX.4.44.0309251019170.28586-100000@localhost.localdomain>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -36,12 +33,12 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 On Thu, Sep 25, 2003 at 10:59:43AM -0700, Robert L. Millner wrote:
 : Hello,
-: 
+:
 : The problem I am seeing is similar to what was posted by Larry Sendlosky
 : on Jun 27, "2.4.20-pre3 -> 2.4.21 : nfs client read performance broken"
 : though I have not done as through a drill-down into the nature of the
 : problem.
-: 
+:
 : Somewhere between 2.4.19 and 2.4.20, NFS/UDP read performance began to
 : suck because of a large number of request retransmits.  From tcpdump, the
 : retransmits are for read transactions which return data in a reasonable
@@ -84,6 +81,7 @@ EIO's should see them diminish after these problems are fixed.
 I will post a patch tomorrow for 2.4.20.
 
 Brian Mancuso
+
 
 
 -------------------------------------------------------
