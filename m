@@ -1,21 +1,19 @@
-From: Andrew Ryan <andrewr@nam-shub.com>
-Subject: RE: 3 bugs with UDP mounts
-Date: Tue, 23 Apr 2002 00:37:15 -0700
+From: Hirokazu Takahashi <taka@valinux.co.jp>
+Subject: [PATCH] kNFSd BKL removal - fixes and refines
+Date: Tue, 23 Apr 2002 16:50:21 +0900 (JST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <5.0.2.1.0.20020422235308.02a960b0@pop.sfrn.dnai.com>
-References: <6440EA1A6AA1D5118C6900902745938E50CEBE@black.eng.netapp.co
- m>
+Message-ID: <20020423.165021.35667389.taka@valinux.co.jp>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: Text/Plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from barney.sfrn.dnai.com ([208.59.199.24])
+Received: from sv1.valinux.co.jp ([202.221.173.100])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16zurC-0003WK-00
-	for <nfs@lists.sourceforge.net>; Tue, 23 Apr 2002 00:36:58 -0700
-To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: <6440EA1A6AA1D5118C6900902745938E50CEBE@black.eng.netapp.co
- m>
+	id 16zv5X-0006F2-00
+	for <nfs@lists.sourceforge.net>; Tue, 23 Apr 2002 00:51:47 -0700
+Received: from localhost (gw1.valinux.co.jp [202.221.173.98])
+	by sv1.valinux.co.jp (Postfix) with ESMTP id 5DEF87001F
+	for <nfs@lists.sourceforge.net>; Tue, 23 Apr 2002 16:51:44 +0900 (JST)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,80 +26,43 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-At 06:23 PM 4/22/02 -0700, Lever, Charles wrote:
->for the whole list:  when reporting issues against NetApp filers,
->please mention the OnTap version and filer hardware if you can...
->that would help us a lot!  thanks!
+Hi Neil,
 
-Sorry: F820, 6.1.2R3.
+This is a patch making your "kNFSd BKL removal code" better.
+Could you check it and merge to your next patch ?
 
+ftp://ftp.valinux.co.jp/pub/people/taka/tune/2.5.8/va06-knfsd_smp-2.5.8.patch
 
-> > network: 100baseTx-FD on client, gigE-FD on server
-> >
-> > 1. UDP read performance (v2 and v3) on large files is really
-> > poor. [....]
-> > I can get excellent read performance, as long as the files
-> > are relatively small.
->
->you are probably hitting the network speed step down between
->the GbE filer and the 100Mb client.  the first packet loss
->will cause your read throughput to drop.  i'll bet your
->small file knee occurs right about at the size of your switch's
->memory buffer.
+1. Fix some problems that kNFSd might Oops potentially when it turns
+   a NFS file-handle into a dentry.
 
-I'm not seeing any packet loss on client or server acc. to interface 
-statistics. How would I find this out? I am seeing a 2 second delay between 
-reads when I turn on NFS debugging. A thread ("2.4.18: NFS_ALL patch 
-greatly hurting UDP speed") mentioned this same delay, so I'm probably 
-running into the same problem.
+    - The dentry child should be checked whether it is alive or dead 
+      in nfsd_findparent() or kNFSd might use a DEAD inode,
+      I mean the child might have been moved to another directory and
+      someone might try to remove the parent.
+    - kNFSd may refer NULL pointer in nfsd_findparent() when
+      child->d_inode->i_op->lookup() can't find ".." , as following
+      "if statement" -- if (!pdentry) -- is wrong.
+    - We should grab the i_sem all the time in splice() or the dentry
+      parent might be removed between nfsd_get_name() and d_splice().
 
-BTW, I did more performance tests. If I set rsize and wsize to 1024 or 
-2048, I can get acceptable performance with NFS+UDP. If I go to 4096 or 
-higher, performance drops immediately to an unacceptable level.
+   I guess 2.4.18 also have the same problems.
+
+2. Remove the BKL in find_fh_dentry() as much as we can.
+3. The statics info of nfsd and rpc should be accessed atomically.
+4. Grab the spinlock while we copy the readahead info in nfsd_read();
+5. The referrence count of readahead cache (p_count) should be 
+   increment or decrement atomically.
 
 
->have you tried this test with TCP?
+And a following is another patch to increase the number of readahead cache
+with a hash table.
 
-Yeah, TCP performance is fine. It's the hangs under 2.4.17+NFS-ALL 
-(described in an earlier mail) that are killing me. The hangs seem to have 
-gone away in 2.4.19pre7+NFS-ALL, but I need more time to test all of 
-2.4.19pre7 in my environment to make sure it holds up OK.
+ftp://ftp.valinux.co.jp/pub/people/taka/tune/2.5.8/va07-knfsd-ra_hash-2.5.8.patch
 
 
-
->Solaris may have workarounds (like a loose interpretation of
->Van Jacobsen) or bugs that allow this to work well.  just a guess.
-
-Would it be possible -- via a kernel option or mount option -- to control 
-the behavior in the Linux client as well so that high performance can be 
-achieved on a Linux NFS client with high block sizes and UDP? Mixed 
-100/1000 networks are becoming more of a reality and NFS/TCP, while having 
-gotten tremendously better in the last year or so, is still a work in 
-progress, and it's nice to have another acceptable option for mounting.
-
-Solaris has clearly solved this problem somehow -- it would be nice if 
-linux could as well.
-
-
->we have filers mounted with UDP and r/wsize=32K from a R7.2 system
->running 2.4.19pre.  NFS over UDP allows r/wsize up to 32K.
-
-Right, my bad. I was confused by a day of too many mounts and umounts and 
-too little stuff working properly. 32k should have been fine.
-
-
->the mismatch between the requested size and the reported mount
->options i have never seen before, and looks like a bug to me.
->your version of mount may not allow more than 8k r/wsize because
->of old limitations on the Linux server?
-
-I'm using mount 2.11g, as supplied with RH 7.2. Is there a newer mount 
-program I should be using? Can others duplicate this bug?
-
-
-thanks,
-andrew
-
+Thank you,
+Hirokazu Takahashi.
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
