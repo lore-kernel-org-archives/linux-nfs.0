@@ -1,21 +1,21 @@
-From: Anoop Thomas <anoop.r.thomas@gmail.com>
-Subject: Trouble with mounting NFS filesystem
-Date: Sun, 13 Mar 2005 17:03:05 +0900
-Message-ID: <358fd27c05031300038ea4a51@mail.gmail.com>
-Reply-To: Anoop Thomas <anoop.r.thomas@gmail.com>
+From: Junfeng Yang <yjf@stanford.edu>
+Subject: Re: [CHECKER] inconsistent NFS stat cache (NFS on ext3, 2.6.11)
+Date: Sat, 12 Mar 2005 23:04:45 -0800 (PST)
+Message-ID: <Pine.GSO.4.44.0503122300030.6817-100000@elaine24.Stanford.EDU>
+References: <1110690267.24123.7.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net, <mc@cs.Stanford.EDU>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DAO4A-0002UW-Cz
-	for nfs@lists.sourceforge.net; Sun, 13 Mar 2005 00:03:14 -0800
-Received: from wproxy.gmail.com ([64.233.184.206])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1DAO48-0007so-0A
-	for nfs@lists.sourceforge.net; Sun, 13 Mar 2005 00:03:14 -0800
-Received: by wproxy.gmail.com with SMTP id 50so1692229wri
-        for <nfs@lists.sourceforge.net>; Sun, 13 Mar 2005 00:03:05 -0800 (PST)
-To: nfs@lists.sourceforge.net
+	id 1DAN9d-0000ci-TV
+	for nfs@lists.sourceforge.net; Sat, 12 Mar 2005 23:04:49 -0800
+Received: from smtp3.stanford.edu ([171.67.16.138])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1DAN9d-00019r-JY
+	for nfs@lists.sourceforge.net; Sat, 12 Mar 2005 23:04:49 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1110690267.24123.7.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,52 +29,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+> This is a known problem. Turn off the (default - grrr) subtree checking
+> export option on the server, and it will all work properly. The subtree
+> checking option violates the NFS standards for filehandle generation in
+> so many ways, that it isn't even funny.
 
-I'm Anoop from India. I'm doing a project on Diskless cluster for my
-college. I have encountered a problem while setting the client side
-configuration.
+Hi Trond,
 
-I have configured the DHCP, TFTP and PXE servers.
-Plus i have configured the NFS and NIS servers . All of them are on a
-single machine.
-I've even compiled a kernel for the slave nodes .
+Turn off this option in /etc/exports does fix the inconsistency.  However
+I looked throught the export man page and seems that subtree checking will
+cause problems only in the following case: "accessing files that are
+renamed while a client has them open".  My test case is *not* doing this.
+It does renames but it never does so with a file opened.  Can you please
+clarify?
 
-Everything works fine while booting up the client. Right from getting
-it's IP address, to loading the kernel, booting with it etc etc. ..
-but
+Thanks,
+-Junfeng
 
-when it tries to start the portmapper .. it says 
-
-/etc/init.d/portmap .. line 1 : id not found
-/etc/init.d/portmap .. line 39 : [ : = : Unary operator expected
-Mounting NFS Filesystems   : 
-
-
-and here .. it either stuck or taking too much time.. it does not load
-the NFS filesystems..
-i think i waited too long once to see a timeout. 
-
-Its managed to take the root file system while loadin the kernel... so
-exporting my filesystem from server is ok.
-
-This is how my /etc/fstab for the slave looks like :
-
-192.168.1.1:/usr		/usr		nfs	defaults	0 0
-192.168.1.1:/home		/home		nfs	defaults	0 0
-192.168.1.1:/tftpboot/dual2	/		nfs	defaults	0 0	
-none                    /dev/pts       	    	devpts  gid=5,mode=620  0 0
-none                    /proc                   proc    defaults        0 0
-none                    /dev/shm                tmpfs   defaults        0 0
-
-
-ip address for my server is below
-for slave its 192.168.1.2.
-if i remove the first 3 lines of /etc/fstab .. it reaches the login
-screen without the filesystems and bash cant recognise most of the
-usual commands like rpcinfo, ntsysv etc etc ...
-
-Pls help me. I'm just a newbie in linux. Reply to me in this address asap
 
 
 -------------------------------------------------------
