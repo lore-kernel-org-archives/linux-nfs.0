@@ -1,16 +1,24 @@
-From: Alejandro Rios Garcia <arios2@prodigy.net.mx>
-Subject: About NFS Configuration.
-Date: Sat, 05 Apr 2003 16:18:19 -0800
+From: Philippe =?ISO-8859-15?Q?Gramoull=E9?= <philippe.gramoulle@mmania.com>
+Subject: Re: Problems with statd and lockd
+Date: Sun, 6 Apr 2003 01:06:58 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1049588300.1454.14.camel@ws>
+Message-ID: <20030406010658.6fb15983.philippe.gramoulle@mmania.com>
+References: <20030405015638.5118fbb9.philippe.gramoulle@mmania.com>
+	<200304051545.43063.bernd-schubert@web.de>
+	<shs7ka9c957.fsf@charged.uio.no>
+	<200304051831.09682.bernd-schubert@web.de>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from dfproxy06.prodigy.net.mx ([148.235.168.22] helo=smtp.prodigy.net.mx)
+Received: from pgramoul.net2.nerim.net ([80.65.227.234] helo=philou.aspic.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 191vwc-0006h5-00
-	for <nfs@lists.sourceforge.net>; Sat, 05 Apr 2003 14:15:26 -0800
+	id 191wko-0008Ip-00
+	for <nfs@lists.sourceforge.net>; Sat, 05 Apr 2003 15:07:18 -0800
+Received: from philou.gramoulle.local (philou.gramoulle.local [192.168.254.2])
+	by philou.aspic.com (Postfix) with SMTP id 099C816EF
+	for <nfs@lists.sourceforge.net>; Sun,  6 Apr 2003 01:06:59 +0200 (CEST)
 To: nfs@lists.sourceforge.net
+In-Reply-To: <200304051831.09682.bernd-schubert@web.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,28 +32,30 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Hi!
+Now i remember : i also built nfs-utils logn time ago and IIRC, i had disable
+secure stad. It was old enough that since, so many things went through that i had forgotten that.
 
-I have not enought experience using NFS but I sucessfully installed it
-as following:
-I'm running a server with Suse 8.0 Pro
-also I'm running a workstation with Suse 8.0 Pro
+As this one is a standard debian package, it has secure statd enabled by default.
 
-I created user "user1" on my server, also I created "user1" on my
-workstation. So I had:
-//Server/home/user1
-//WS/home/user1
+Running without secure statd would mean that lockd can be used by other than lockd, 
+and also that hostnames resolve to dotted quads right ?
 
-After a while I noticed that my information was messed, so, I deleted
-//ws/home/user1, I exported //server/home/user1 to my //ws/home/user1
-Now I am able to do everything from here, but sometimes when I restart
-my computer (ws) it's shutdown procedure reports that NFS service was
-not able to shutdown sucessfully"
-Up to now I haven't loss information but I want to prevent this
+Thanks,
 
-Thanks in advance
-Alejandro
+Philippe
 
+On Sat, 5 Apr 2003 18:31:09 +0200
+Bernd Schubert <bernd-schubert@web.de> wrote:
+
+  | Recently the self-created nfs-utils packages 
+  | (with disabled --enable-secure-statd) got replaced by an automatic update. 
+  | Some time afterwards our clients began to give those messages (here as 
+  | dmesg-output):
+  | 
+  | statd: server localhost not responding, timed out
+  | nsm_mon_unmon: rpc failed, status=-5
+  | lockd: cannot monitor <server IP>
+  | lockd: failed to monitor <server IP>
 
 
 -------------------------------------------------------
