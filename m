@@ -1,16 +1,15 @@
-From: 237537@aol.com
-Subject: DVD Copying Features!
-Date: Sat, 14 Jun 2003 14:19:14 -0400
+From: "Dana Mcclure" <wrboen1v6o@yahoo.com>
+Subject: Fwd:Special Offer, 1 Month Free
+Date: Sat, 14 Jun 03 21:56:44 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <23322.546357713$1055629392@news.gmane.org>
+Message-ID: <4dv49dl-s1995-x$$552@o0c.3m4>
+Reply-To: "Dana Mcclure" <wrboen1v6o@yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/html; charset=iso-8859-1
+Content-Type: multipart/alternative;
+	boundary="74A.__FB52C."
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [62.79.106.163] (helo=62.79.106.163)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19RJNf-00088K-00
-	for <nfs@lists.sourceforge.net>; Sat, 14 Jun 2003 15:20:16 -0700
-To: nfs@lists.sourceforge.net
+To: netsaintplug-devel@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -23,57 +22,95 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+
+--74A.__FB52C.
+Content-Type: text/html;
+Content-Transfer-Encoding: quoted-printable
+
 <html>
 <head>
-<title>DVD Magic Pro</title>
+<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Diso-8859=
+-1">
 </head>
-<font color="#FFFFFF" size="2">
-********
-2244656D-1DDFFC10-878BF84-5F79BB38-1D8FCCEC
-*************
-               
-</font><body><table border="4" cellpadding="0" cellspacing="0" style="border-collapse: collapse" bordercolor="#00009D" width="460" bgcolor="#000080" bordercolorlight="#3366CC" bordercolordark="#000080" height="44">
-  <tr>
-    <td width="163" height="44" bgcolor="#FFFFFF" bordercolor="#000000" style="border: 1px solid #000000">
-    <p align="center"><i><b><font size="4" color="#000080" face="Tahoma">DVD 
-    Magick Pro</font></b></i></td>
-    <td width="294" height="44" style="border: 2px solid #3366CC">
-    <p align="center"><b><font face="Tahoma" color="#FFFFFF">A Revolutionary Way 
-    to Create DVDs in Your Own Home!</font></b></td>
-  </tr>
-</table>
-<table border="3" cellpadding="5" cellspacing="5" style="border-collapse: collapse" bordercolor="#3366CC" width="460" bgcolor="#3366CC" bordercolorlight="#0066CC" bordercolordark="#0066CC">
-  <tr>
-    <td>
-    <p align="center"><font face="Arial" color="#FFFFFF">
-    <marquee behavior="slide" scrollamount="25" scrolldelay="40" style="color: #FFFFFF; font-family: Arial; font-size: 14pt" width="320">Want to Create your own DVD library?</marquee><br> 
-    Worried about scratching your favorite movie?<br>We have THE solution for you!<br>
-    <marquee behavior="slide" scrollamount="5" scrolldelay="50" width="316" style="color: #FFFFFF; font-family: Arial; font-size: 12pt; font-weight: bold">Now you can Make DVD's using your PC!</marquee><br> 
-    It's easy to use, and For a limited time it is <b><u>Only $39.99!</u></b></font></td>
-  </tr>
-</table>
 
-<table border="4" cellpadding="5" cellspacing="5" style="border-collapse: collapse" bordercolor="#3366CC" width="460" bgcolor="#000080" bordercolorlight="#0066CC" bordercolordark="#0066CC">
+<body bgcolor=3D"#FFFFFF" text=3D"#000000">
+<table width=3D"80%" border=3D"1" align=3D"center">
   <tr>
-    <td align="left">
-    <p><b><font color="#FFFFFF" size="2" face="Tahoma">- Instant Download!<br>- No 
-    DVD Burner Required<br>
-    - Simple &amp; Easy-to-Use<br>- Win 95/98/2k/XP Compatible</font></b></td>
-    <td bgcolor="#FFFFFF" style="text-decoration: blink; color: #000080; font-family: Tahoma; font-size: 12pt; font-weight: bold; border-style: solid; border-width: 3">
-    <p align="center"><span style="font-weight: 400"><i><strong><blink>
-    <a style="color: #000080; font-family: Tahoma; font-size: 12pt; text-decoration: blink; font-style: oblique; font-weight: bold" href="http://www.sil20221.com/dvd/adv166/">
-    <font face="Tahoma" color="#000080" size="4">Click Here for More Info or <br>Order Online Now!</font></a></blink></strong></i></span></td>
+    <td bgcolor=3D"#66CCCC"> 
+      <p align=3D"center"><b><font size=3D"6">HGH 1000 is unbelievable!</f=
+ont></b></p>
+      <p align=3D"center"><b><font size=3D"6">Look younger + more energy +=
+ lose weight 
+        in three weeks. </font></b></p>
+      <p align=3D"center"><b><font color=3D"#000000">AS SEEN ON NBC, CBS, =
+CNN, AND 
+        OPRAH. THE HEALTH DISCOVERY<br>
+        THAT ACTUALLY REVERSES AGING WHILE BURNING FAT<br>
+        </font></b><font color=3D"#000000"><b>WITHOUT DIETING OR EXERCISE<=
+/b></font></p>
+      <p align=3D"center"><b><font size=3D"5" color=3D"#FFFFFF">Free month=
+'s supply 
+        of HGH 1000</font></b></p>
+      <p align=3D"center"><b> <font size=3D"5">This proven discovery has b=
+een reported 
+        on by the New England Journal of Medicine. Forget aging and dietin=
+g forever. 
+        And it's Guaranteed.</font></b></p>
+</td>
   </tr>
 </table>
-<font color="#FFFFFF" size="2">
-**********
-24CA0901-5A65504E-16EE54FE-5682CF58-6637FC40
-***********
-       
-</font><br>
+<table width=3D"80%" border=3D"1" align=3D"center">
+  <tr>
+    <td bgcolor=3D"#FF6600"> 
+      <div align=3D"center"><b>WOULD YOU LIKE TO LOSE WEIGHT WHILE YOU SLE=
+EP?<br>
+        No dieting.<br>
+        No hunger pains.<br>
+        No Cravings.<br>
+        No strenuous exercise.<br>
+        Change your life forever.</b></div>
+    </td>
+  </tr>
+</table>
+<table width=3D"80%" border=3D"1" align=3D"center">
+  <tr>
+    <td bgcolor=3D"#66CCCC"> 
+      <p align=3D"center"><b><font size=3D"6" color=3D"#0000FF"><a href=3D=
+"http://www.amazinghealthteam.com/phgh2002/r/index1.html">Click 
+        Here to Learn How you can Receive a Full Month's Supply of HGH 100=
+0 Absolutely 
+        FREE</a></font></b></p>
+      <table width=3D"100%" border=3D"1" align=3D"center">
+        <tr>
+          <td>
+            <div align=3D"center"><b>1. Body Fat Loss....................8=
+2% improvement.<br>
+              2. Wrinkle Reduction.............61% improvement.<br>
+              3. Energy Level......................84% improvement.<br>
+              4. Muscle Strength.................88% improvement.<br>
+              5. Sexual Potency...................75% improvement.<br>
+              6. Emotional Stability.............67% improvement.<br>
+              7. Memory..............................62% improvement. </b>=
+</div>
+          </td>
+        </tr>
+      </table>
+      <p align=3D"center"><b><font size=3D"4" color=3D"#FFFFFF">Get Your F=
+REE 1 Month 
+        Supply of HGH 1000 TODAY -</font></b></p>
+      </td>
+  </tr>
+</table>
+You are receiving this message as a member of the Opt-In<br>
+America List. To be taken out of the data base please<br>
+<a href=3D"http://www.amazinghealthteam.com/phgh2002/r/index.html">go 
+here.</a> We honor all remove requests. 
 </body>
 </html>
+yni ywd jrd
+dznfzo pmqfcoonmqctcugpxwq r 
 
+--74A.__FB52C.--
 
 
 
