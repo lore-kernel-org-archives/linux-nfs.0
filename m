@@ -1,15 +1,19 @@
-From: John Doshier <john@inter7.com>
-Subject: lockd: cannot monitor 192.168.0.31
-Date: Fri, 20 Sep 2002 14:33:11 -0500
+From: "Daniel G. Pruitt" <pruitt@lanl.gov>
+Subject: nfsroot via NetApp F840
+Date: Fri, 20 Sep 2002 15:09:38 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3D8B77F7.1030400@inter7.com>
+Message-ID: <02092015093803.22012@mavericks>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain;
+  charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from ns1.inter7.com ([209.218.8.2])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17sTXc-00061L-00
-	for <nfs@lists.sourceforge.net>; Fri, 20 Sep 2002 12:34:16 -0700
+Received: from mavericks.lanl.gov ([128.165.87.180])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17sV1v-0003Jb-00
+	for <nfs@lists.sourceforge.net>; Fri, 20 Sep 2002 14:09:39 -0700
+Received: from localhost (localhost [[UNIX: localhost]])
+	by mavericks.lanl.gov (8.11.6/8.11.6) id g8KL9cP24762
+	for nfs@lists.sourceforge.net; Fri, 20 Sep 2002 15:09:38 -0600
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -23,50 +27,40 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-Hi Everyone,
+Hi,
 
-    I keep seeing this error ever 5 mintues on the console of one of my 
-NFS clients..
+I'm having difficulties getting nfsroot to mount "/" via a NetApp 
+filer.  Are there any tricks to this, patches I need, etc.?
 
-Sep 20 13:40:00 mailclone1 kernel: lockd: cannot monitor 192.168.0.3
-Sep 20 13:45:00 mailclone1 kernel: lockd: cannot monitor 192.168.0.3
-Sep 20 13:50:01 mailclone1 kernel: lockd: cannot monitor 192.168.0.3
+Here's what I'm using...
 
-    I'm running RedHat 7.3 with kernel 2.4.18-10 on both the client and 
-server.  I'm using nfs-utils-0.3.3-5.
+PXEConfig File:
 
-    I've done some digging and have found quite a few references about 
-this same problem.  However, all of the suggested solutions don't seem 
-to apply to me.
+---
+DEFAULT netapp
 
-    One suggestion was to make sure statd/lockd are running on the 
-client.  They are, and they are also running on the server.
-   
-    Another was to check permissions of /var/lib/nfs/statd.  The 
-directory is mode 0700 owned by rpcuser.rpcuser, which is the user that 
-rpc.statd is running as.
+LABEL netapp
+  KERNEL linux-2.4.19smp
+  APPEND root=/dev/nfs 
+nfsroot=128.165.87.20:/vol/vol1/rfs/128.165.87.181,rsize=8192,wsize=8192,nfsvers=3
+  IPAPPEND 1
 
+---
 
-    As far as I can tell everything is working fine with regards to the 
-NFS mounts.  The clients mount them no problem, and have no trouble 
-reading or writing to them.  I'm just trying to figure out the cause of 
-these error's before I move these boxes into production.  I don't want 
-to leave any loose ends untied.
+I have tried nfsvers 2 and 3.  I have tried tcp and udp nfs.  I have 
+tried all combinations of these, and the NetApp won't mount to root 
+in the kernel.
 
-    Any help is greatly appreciated.
+I have successfully mounted nfsroot from a Linux NFS Server with 
+these options.
 
-    Thanks,
+Also, once the diskless client is booted (via Linux NFS Server), I 
+can successfully mount the NetApp file system to /mnt/tmp.
 
-        John
-   
+Any help would be much appreciated.
 
--- 
-John Doshier
-Unix Systems Administrator
-Inter7 Internet Technologies, INC.
-(p) 847.492.0470 (f) 847.492.0632
-http://www.inter7.com/main.html
-
+Thanks,
+Daniel
 
 
 
