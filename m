@@ -1,19 +1,20 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: fsid syntax
-Date: 07 Aug 2002 17:26:37 +0200
+From: Rex Dieter <rdieter@math.unl.edu>
+Subject: Re: RH 7.3 kernels and NFS performance
+Date: Wed, 7 Aug 2002 10:37:39 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsk7n2d70y.fsf@charged.uio.no>
-References: <200208071711.00712.bernd-schubert@web.de>
+Message-ID: <200208071037.39377.rdieter@math.unl.edu>
+References: <3D513E56.CAF735B6@lmco.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Cc: jeffrey.b.layton@lmco.com
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
+Received: from mathstat.unl.edu ([129.93.48.14])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17cShw-0004E4-00
-	for <nfs@lists.sourceforge.net>; Wed, 07 Aug 2002 08:26:44 -0700
-To: Bernd Schubert <bernd-schubert@web.de>
-In-Reply-To: <200208071711.00712.bernd-schubert@web.de>
+	id 17cSsX-0007D1-00
+	for <nfs@lists.sourceforge.net>; Wed, 07 Aug 2002 08:37:42 -0700
+To: nfs@lists.sourceforge.net
+In-Reply-To: <3D513E56.CAF735B6@lmco.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,28 +27,21 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->>>>> " " == Bernd Schubert <bernd-schubert@web.de> writes:
+On Wednesday 07 August 2002 10:35 am, Jeff Layton wrote:
 
-     > Hi, probably on Friday I need to make use of setting the fsid
-     > in the /etc/exports.
+>    I remember reading on the list about the terrible NFS
+> performance of the latest RH kernels. Would someone
+> care to summarize this for me (UDP or TCP, etc.)? Also,
+> does anyone have any rough estimates of the performance
+> hit?
 
-     > Since I can't find the syntax in the exports manpage (manpage
-     > was last time changed on Januar, while the fsid-feature seems
-     > to be become added to cvs on February).
+The Hit is big and bad.  When using the default NFS export options (in=20
+particular sync), I see NFS write performance of ~50k with the 2.4.18-5=20
+kernels.  When set async, performance comes back up to par.  I can give y=
+ou=20
+the bugzilla # I reported it under, if you like.
 
-     > So I'd like to know the exact sytanx, is for example:
-
-     > /testdir testnode(fsid=/dev/sdb)
-
-The fsid is a number, not a device. In principle you can set it to any
-number you like as long as you keep it consistent over reboots.
-
-One suggestion is to use the device major/minor number in the format
-minor + (major * 256). (That's what nfsd uses by default for block
-devices.)
-
-Cheers,
-  Trond
+-- Rex
 
 
 -------------------------------------------------------
