@@ -1,19 +1,20 @@
 From: Hirokazu Takahashi <taka@valinux.co.jp>
 Subject: Re: Re: [PATCH] zerocopy NFS for 2.5.43
-Date: Fri, 01 Nov 2002 10:39:54 +0900 (JST)
+Date: Fri, 01 Nov 2002 12:41:07 +0900 (JST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20021101.103954.08316364.taka@valinux.co.jp>
+Message-ID: <20021101.124107.21933560.taka@valinux.co.jp>
 References: <20021031.110659.42769812.taka@valinux.co.jp>
 	<20021101.004052.85418463.taka@valinux.co.jp>
 	<15809.53455.211796.730215@notabene.cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
+Content-Type: Multipart/Mixed;
+ boundary="--Next_Part(Fri_Nov__1_12:41:07_2002_372)--"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sv1.valinux.co.jp ([202.221.173.100])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 187QuN-0007wZ-00
-	for <nfs@lists.sourceforge.net>; Thu, 31 Oct 2002 17:47:35 -0800
+	id 187Snf-0004wu-00
+	for <nfs@lists.sourceforge.net>; Thu, 31 Oct 2002 19:48:47 -0800
 To: neilb@cse.unsw.edu.au
 In-Reply-To: <15809.53455.211796.730215@notabene.cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -28,40 +29,153 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+----Next_Part(Fri_Nov__1_12:41:07_2002_372)--
+Content-Type: Text/Plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+
 Hello,
 
-> > va-nfsd-sendpage.patch        ....use sendpage instead of sock_sendmsg.
-> > va-sunrpc-zeropage.patch      ....zero filled page for padding.
-> > va-nfsd-vfsread.patch         ....zero-copy nfsd_read/nfsd_readdir.
-> 
-> A lot of this looks fine.
->
+I updated the patches.
+I'll send you 2 patches
+
+     va-nfsd-sendpage.patch
+     va-nfsd-vfsread.patch
+
 > I would like to leave the tail pointing into the end of the first page
 > (just after the head) rather than using the sunrpc_zero_page thing as
 > the later doesn't seem necessary.
 > Also, I would like to send the head and tail with sendpage rather
 > than using sock_sendmsg.
-
-Yes, we can.
-I'll do it though it seems little bit tricky.
-
 > To give the destination address, you can call sock_sendmsg with
 > a length of 0, and then call ->sendpage for each page or page
 > fragment.
-
-Ok.
-
+> 
+> 
 > You should be able to remove the calls to svcbuf_reserve in
 > nfsd_proc_readdir and nfsd3_proc_readdir, and then discard the
 > 'buffer' variable as well.
-
-Yes, you're right.
-
+> 
+> 
 > If you could make those changes (or convince me otherwise), I will
 > forward the patches to Linus,
 > Thanks.
 
-Thanks!
+Thank you,
+Hirokazu Takahashi.
+
+
+
+----Next_Part(Fri_Nov__1_12:41:07_2002_372)--
+Content-Type: Application/Octet-Stream
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="zerocopy-2.5.45-new.taz"
+
+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
+
+----Next_Part(Fri_Nov__1_12:41:07_2002_372)----
 
 
 -------------------------------------------------------
