@@ -1,15 +1,22 @@
-From: xiyu@800j.com
-Subject: =?GB2312?B?o7yjvM73sLLN7bGoo76jvs7Sz7KwrrXE0KG/tdeh1azGwNGhu+62rw==?=
-Date: Wed, 14 May 2003 12:47:12 +0800
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Spam in the NFS list
+Date: 14 May 2003 12:05:52 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19Fo90-0005z4-00@sc8-sf-list1.sourceforge.net>
-Content-Type: text/html;charset="GB2312"
+Message-ID: <shsof25sv0f.fsf@charged.uio.no>
+References: <3EC0CC50.C2D6BD62@moving-picture.com>
+	<1052828279.14879.3.camel@comp6161.potsdam.edu>
+	<20030513064446.3a7ca4b4.jake@staunch.org>
+	<16065.33150.430034.343995@notabene.cse.unsw.edu.au>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [61.150.19.157] (helo=800j.com)
+Received: from pat.uio.no ([129.240.130.16])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19Fo90-0005z4-00
-	for <nfs@lists.sourceforge.net>; Tue, 13 May 2003 21:45:34 -0700
-To: nfs@lists.sourceforge.net
+	id 19Ft9D-0003UI-00
+	for <nfs@lists.sourceforge.net>; Wed, 14 May 2003 03:06:07 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <16065.33150.430034.343995@notabene.cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -22,32 +29,24 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-<html>
+>>>>> " " == Neil Brown <neilb@cse.unsw.edu.au> writes:
 
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
-<meta name="GENERATOR" content="Microsoft FrontPage 4.0">
-<meta name="ProgId" content="FrontPage.Editor.Document">
-<title>New Page 1</title>
-</head>
+     > In short, I am happy to raise the barrier to sending mail a
+     > little, e.g. to exclude HTML-only email and some common strings
+     > - see
+     >   http://vger.kernel.org/majordomo-taboos.txt
 
-<body>
+     > but I am not happy to raise it so high that only subscribers
+     > can post.
 
-<p class="MsoNormal" align="center"><b><span style="mso-bidi-font-size: 12.0pt; color: red"><font face="隶书" size="7"><span lang="EN-US" style="mso-bidi-font-size: 12.0pt; color: red">&lt;&lt;</span><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman; mso-hansi-font-family: Times New Roman; color: red">西安晚报＞＞</span></font></span><span lang="EN-US" style="font-size:36.0pt;mso-bidi-font-size:12.0pt;color:red"><o:p>
-</o:p>
-</span></b></p>
-<p class="MsoNormal" align="center"><b><span style="font-size:18.0pt;mso-bidi-font-size:12.0pt;
-font-family:宋体;mso-ascii-font-family:&quot;Times New Roman&quot;;mso-hansi-font-family:
-&quot;Times New Roman&quot;;color:#00CCFF">我喜爱的</span><span style="font-size:26.0pt;
-mso-bidi-font-size:12.0pt;font-family:宋体;mso-ascii-font-family:&quot;Times New Roman&quot;;
-mso-hansi-font-family:&quot;Times New Roman&quot;;color:#00CCFF">小康住宅评选活动</span></b></p>
-<p class="MsoNormal" align="center"><b><font face="华文中宋" size="7"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman; mso-hansi-font-family: Times New Roman; color: red">网上投票　今日启动</span></font><span lang="EN-US" style="font-size:42.0pt;mso-bidi-font-size:12.0pt;color:red"><o:p>
-</o:p></span></b></p>  
-<p class="MsoNormal" align="center"><b><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; font-family: 宋体; mso-ascii-font-family: Times New Roman; mso-hansi-font-family: Times New Roman; mso-bidi-font-family: Times New Roman; mso-font-kerning: 1.0pt; mso-ansi-language: EN-US; mso-fareast-language: ZH-CN; mso-bidi-language: AR-SA"><font size="6" color="#800080">投票请点击</font></span></a></b></p> 
- 
-</body> 
- 
-</html> 
+I fully agree with Neil's opinion.
+
+Only a tiny fraction of the spam I recieve daily comes through this
+list, and almost all of that again is killed by a simple rule-based
+filter that I maintain (no fancy Bayesian stuff - just common sense).
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
