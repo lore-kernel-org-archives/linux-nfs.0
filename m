@@ -1,17 +1,17 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: [PATCH] RPC over UDP congestion control updates [4/8]
-Date: Tue, 16 Jul 2002 19:59:25 +0200
+Subject: [PATCH] RPC over UDP congestion control updates [8/8]
+Date: Tue, 16 Jul 2002 20:00:17 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15668.24317.288351.710242@charged.uio.no>
+Message-ID: <15668.24369.437063.733011@charged.uio.no>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
     NFS maillist <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
+Received: from mons.uio.no ([129.240.130.14])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17UWbs-0005cL-00
-	for <nfs@lists.sourceforge.net>; Tue, 16 Jul 2002 10:59:40 -0700
+	id 17UWch-0005iD-00
+	for <nfs@lists.sourceforge.net>; Tue, 16 Jul 2002 11:00:31 -0700
 To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -26,138 +26,73 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 
-Cleanups for the socket locking mechanism.
-
-Improve RPC request ordering by ensuring that RPC tasks that are
-already queued on xprt->sending get sent before tasks that happen to
-get scheduled just when there is a free slot.
-
-In case the socket send buffer is full, queue the tasks on
-xprt->pending rather than xprt->sending in order to eliminate the risk
-of accidental wakeups from xprt_release_write() and xprt_write_space().
+When determining who gets access to the socket, give priority to
+requests that are being resent. Despite the fact that congestion
+control now applies to resends, we still want to ensure that resends
+get ACKed as soon as possible (and before we start sending off new
+requests).
 
 Cheers,
   Trond
 
-diff -u --recursive --new-file linux-2.5.25-rtt3/net/sunrpc/xprt.c linux-2.5.25-xprt_write/net/sunrpc/xprt.c
---- linux-2.5.25-rtt3/net/sunrpc/xprt.c	Tue Jul 16 15:28:49 2002
-+++ linux-2.5.25-xprt_write/net/sunrpc/xprt.c	Tue Jul 16 15:30:05 2002
-@@ -154,17 +154,35 @@
- 	return retval;
- }
+diff -u --recursive --new-file linux-2.5.25-rpc_cong3/include/linux/sunrpc/xprt.h linux-2.5.25-rpc_cong4/include/linux/sunrpc/xprt.h
+--- linux-2.5.25-rpc_cong3/include/linux/sunrpc/xprt.h	Tue Jul 16 15:32:36 2002
++++ linux-2.5.25-rpc_cong4/include/linux/sunrpc/xprt.h	Tue Jul 16 15:33:01 2002
+@@ -123,6 +123,7 @@
+ 	unsigned long		cwnd;		/* congestion window */
  
-+static void
-+__xprt_lock_write_next(struct rpc_xprt *xprt)
-+{
-+	struct rpc_task *task;
-+
-+	if (xprt->snd_task)
-+		return;
-+	task = rpc_wake_up_next(&xprt->sending);
-+	if (!task)
-+		return;
-+	xprt->snd_task = task;
-+}
-+
- /*
-  * Releases the socket for use by other requests.
-  */
- static void
-+__xprt_release_write(struct rpc_xprt *xprt, struct rpc_task *task)
-+{
-+	if (xprt->snd_task == task)
-+		xprt->snd_task = NULL;
-+	__xprt_lock_write_next(xprt);
-+}
-+
-+static inline void
- xprt_release_write(struct rpc_xprt *xprt, struct rpc_task *task)
+ 	struct rpc_wait_queue	sending;	/* requests waiting to send */
++	struct rpc_wait_queue	resend;		/* requests waiting to resend */
+ 	struct rpc_wait_queue	pending;	/* requests in flight */
+ 	struct rpc_wait_queue	backlog;	/* waiting for slot */
+ 	struct rpc_rqst *	free;		/* free slots */
+diff -u --recursive --new-file linux-2.5.25-rpc_cong3/net/sunrpc/xprt.c linux-2.5.25-rpc_cong4/net/sunrpc/xprt.c
+--- linux-2.5.25-rpc_cong3/net/sunrpc/xprt.c	Tue Jul 16 15:32:36 2002
++++ linux-2.5.25-rpc_cong4/net/sunrpc/xprt.c	Tue Jul 16 15:34:04 2002
+@@ -150,7 +150,10 @@
+ 			task->tk_pid, xprt->snd_task->tk_pid);
+ 		task->tk_timeout = 0;
+ 		task->tk_status = -EAGAIN;
+-		rpc_sleep_on(&xprt->sending, task, NULL, NULL);
++		if (task->tk_rqstp->rq_nresend)
++			rpc_sleep_on(&xprt->resend, task, NULL, NULL);
++		else
++			rpc_sleep_on(&xprt->sending, task, NULL, NULL);
+ 	}
+ 	retval = xprt->snd_task == task;
+ 	spin_unlock_bh(&xprt->sock_lock);
+@@ -166,9 +169,12 @@
+ 		return;
+ 	if (!xprt->nocong && RPCXPRT_CONGESTED(xprt))
+ 		return;
+-	task = rpc_wake_up_next(&xprt->sending);
+-	if (!task)
+-		return;
++	task = rpc_wake_up_next(&xprt->resend);
++	if (!task) {
++		task = rpc_wake_up_next(&xprt->sending);
++		if (!task)
++			return;
++	}
+ 	if (xprt->nocong || __xprt_get_cong(xprt, task))
+ 		xprt->snd_task = task;
+ }
+@@ -1346,6 +1352,7 @@
+ 
+ 	INIT_RPC_WAITQ(&xprt->pending, "xprt_pending");
+ 	INIT_RPC_WAITQ(&xprt->sending, "xprt_sending");
++	INIT_RPC_WAITQ(&xprt->resend, "xprt_resend");
+ 	INIT_RPC_WAITQ(&xprt->backlog, "xprt_backlog");
+ 
+ 	/* initialize free list */
+@@ -1477,6 +1484,7 @@
  {
- 	spin_lock_bh(&xprt->sock_lock);
--	if (xprt->snd_task == task) {
--		xprt->snd_task = NULL;
--		rpc_wake_up_next(&xprt->sending);
--	}
-+	__xprt_release_write(xprt, task);
- 	spin_unlock_bh(&xprt->sock_lock);
- }
- 
-@@ -429,7 +447,7 @@
- 			/* if the socket is already closing, delay 5 secs */
- 			if ((1<<inet->state) & ~(TCP_SYN_SENT|TCP_SYN_RECV))
- 				task->tk_timeout = 5*HZ;
--			rpc_sleep_on(&xprt->sending, task, xprt_reconn_status, NULL);
-+			rpc_sleep_on(&xprt->pending, task, xprt_reconn_status, NULL);
- 			release_sock(inet);
- 			return;
- 		}
-@@ -883,7 +901,7 @@
- 		xprt->tcp_flags = XPRT_COPY_RECM | XPRT_COPY_XID;
- 
- 		spin_lock(&xprt->sock_lock);
--		if (xprt->snd_task && xprt->snd_task->tk_rpcwait == &xprt->sending)
-+		if (xprt->snd_task && xprt->snd_task->tk_rpcwait == &xprt->pending)
- 			rpc_wake_up_task(xprt->snd_task);
- 		spin_unlock(&xprt->sock_lock);
- 		break;
-@@ -920,7 +938,7 @@
- 
- 	if (!xprt_test_and_set_wspace(xprt)) {
- 		spin_lock(&xprt->sock_lock);
--		if (xprt->snd_task && xprt->snd_task->tk_rpcwait == &xprt->sending)
-+		if (xprt->snd_task && xprt->snd_task->tk_rpcwait == &xprt->pending)
- 			rpc_wake_up_task(xprt->snd_task);
- 		spin_unlock(&xprt->sock_lock);
- 	}
-@@ -1078,7 +1096,7 @@
- 		spin_lock_bh(&xprt->sock_lock);
- 		if (!xprt_wspace(xprt)) {
- 			task->tk_timeout = req->rq_timeout.to_current;
--			rpc_sleep_on(&xprt->sending, task, NULL, NULL);
-+			rpc_sleep_on(&xprt->pending, task, NULL, NULL);
- 		}
- 		spin_unlock_bh(&xprt->sock_lock);
- 		return;
-@@ -1094,9 +1112,10 @@
- 		if (xprt->stream)
- 			xprt_disconnect(xprt);
- 		req->rq_bytes_sent = 0;
--		goto out_release;
- 	}
--
-+ out_release:
-+	xprt_release_write(xprt, task);
-+	return;
-  out_receive:
- 	dprintk("RPC: %4d xmit complete\n", task->tk_pid);
- 	/* Set the task's receive timeout value */
-@@ -1111,9 +1130,8 @@
- 	spin_lock_bh(&xprt->sock_lock);
- 	if (!req->rq_received)
- 		rpc_sleep_on(&xprt->pending, task, NULL, xprt_timer);
-+	__xprt_release_write(xprt, task);
- 	spin_unlock_bh(&xprt->sock_lock);
-- out_release:
--	xprt_release_write(xprt, task);
- }
- 
- /*
-@@ -1218,14 +1236,10 @@
- 	struct rpc_xprt	*xprt = task->tk_xprt;
- 	struct rpc_rqst	*req;
- 
--	if (xprt->snd_task == task) {
--		if (xprt->stream)
--			xprt_disconnect(xprt);
--		xprt_release_write(xprt, task);
--	}
- 	if (!(req = task->tk_rqstp))
- 		return;
- 	spin_lock_bh(&xprt->sock_lock);
-+	__xprt_release_write(xprt, task);
- 	if (!list_empty(&req->rq_list))
- 		list_del(&req->rq_list);
- 	spin_unlock_bh(&xprt->sock_lock);
+ 	xprt->shutdown = 1;
+ 	rpc_wake_up(&xprt->sending);
++	rpc_wake_up(&xprt->resend);
+ 	rpc_wake_up(&xprt->pending);
+ 	rpc_wake_up(&xprt->backlog);
+ 	if (waitqueue_active(&xprt->cong_wait))
 
 
 -------------------------------------------------------
