@@ -1,26 +1,26 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: lockd grace period
-Date: Mon, 31 Jan 2005 15:57:46 -0800
-Message-ID: <1107215866.16985.26.camel@lade.trondhjem.org>
-References: <395A443A7CBF0246843BFD3471A8231DC0176D@bgeexc04.asiapacific.cpqcorp.net>
-	 <41FE4796.9060909@RedHat.com>  <1107212871.4071.45.camel@seki.nac.uci.edu>
+From: Ian Kent <raven@themaw.net>
+Subject: Re: NFS readonly failover and linux?
+Date: Tue, 1 Feb 2005 09:58:59 +0800 (WST)
+Message-ID: <Pine.LNX.4.58.0502010945400.25875@wombat.indigo.net.au>
+References: <1106871309.6181.254.camel@seki.nac.uci.edu>
+ <Pine.LNX.4.61.0501291127450.1607@donald.themaw.net>
+ <1107205302.4071.17.camel@seki.nac.uci.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Steve Dickson <SteveD@redhat.com>,
-	"Aswathanarayana, Chetan (STSD)" <chetan.aswathanarayana@hp.com>,
-	mehta kiran <kiranmehta1981@yahoo.com>, nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Jeff Moyer <jmoyer@redhat.com>,
+	autofs mailing list <autofs@linux.kernel.org>,
+	nfs@lists.sourceforge.net
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CvlQt-0005PZ-TF
-	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 15:58:15 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1CvnI6-0005FT-4L
+	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 17:57:18 -0800
+Received: from wombat.indigo.net.au ([202.0.185.19])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.41)
-	id 1CvlQs-0001Xb-D3
-	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 15:58:15 -0800
+	id 1CvnI5-0001EA-8R
+	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 17:57:18 -0800
 To: Dan Stromberg <strombrg@dcs.nac.uci.edu>
-In-Reply-To: <1107212871.4071.45.camel@seki.nac.uci.edu>
+In-Reply-To: <1107205302.4071.17.camel@seki.nac.uci.edu>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,22 +34,85 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-m=E5 den 31.01.2005 Klokka 15:07 (-0800) skreiv Dan Stromberg:
+On Mon, 31 Jan 2005, Dan Stromberg wrote:
 
-> I thought finally integrating locking into the protocol was supposed to
-> be a "feature" of NFSv4?
+> On Sat, 2005-01-29 at 11:46 +0800, raven@themaw.net wrote:
+> > On Thu, 27 Jan 2005, Dan Stromberg wrote:
+> > 
+> > >
+> > > The autofs man pages on Redhat Enterprise Linux 3 as well as Fedora Core
+> > > 3 both say that autofs supports replicated, readonly fileserver failover
+> > > - but then there's a footnote of sorts that says autofs only supports it
+> > > to the extent that mount does.
+> > 
+> > That part of the man page is old and slightly out of date.
+> > 
+> > The reason that this is left there is that autofs cannot support 
+> > dynamic failover as it just uses mount. However, a different host may be 
+> > selected at mount, after a previous timeout, for example. The issue of 
+> > umounting existing mounts from servers that have gone away is not 
+> > explicitly dealt with yet.
+> 
+> I see.
+> 
+> > >
+> > > Upon trying to do such a mount, I get:
+> > >
+> > > seki-root> mount
+> > > dcslib1.nacs.uci.edu,dcslib4.nacs.uci.edu:/dcspdb/rhel-3-i686 /mnt/nfs
+> > > mount: warning: multiple hostnames not supported
+> > > Thu Jan 27 16:12:18
+> 
+> > What version of autofs are you using?
+> > The autofs replicated server code is still relatively new.
 
-Yes, it is, but note that the way NFSv4 does locking is VERY different
-from NLM (particularly so in the way it handles client and server
-reboot) due to the fact that it is based on the concept of leases.
+But, as we know, mount doesn't know about multiple host names. autofs 
+breaks these out.
 
-I assume that is what Steve meant to say.
+> 
+> FC3: autofs-4.1.3-28
+> RHEL3: autofs-4.1.3-47
 
-Cheers,
-  Trond
+I believe that the replicated server code should be present in both of 
+these.
 
---=20
-Trond Myklebust <trond.myklebust@fys.uio.no>
+Can you confirm please Jeff?
+
+Perhaps you are seeing a bug which needs to be addressed.
+
+> 
+> The FC3 is yum update'd fairly regulary, and the RHEL3 is up2date'd
+> regularly as well.
+> 
+> > If your autofs supports replicated server map entries then multiple 
+> > host mount requests will not reach the mount command.
+> 
+> Interesting.
+> 
+> > If you are using a RedHat based distro then check
+> > http://people.redhat.com/jmoyer
+> > for the latest patched versions
+> > 
+> > Also, you may need a kernel patch depending on your kernel version. See 
+> > README.patches in the distribution or join the autofs list at
+> > http://linux.kernel.org/mailman/listinfo/autofs
+> 
+> I'm certain my management will only go for this, in the short term, if
+> it works on a mainstream RHEL3 system.  Unfortunately, for me, the rest
+> is academic interest.
+
+Once again I believe that the kernels mentioned here are up to date wrt 
+autofs.
+
+Certainly, the latest FC3 kernel is at 2.6.10 which has all the autofs4 
+updates included in the base kernel.
+
+I believe the latest update to RHEL3 is also up to date. Jeff?
+
+So perhaps you could send a log trace with the "--debug" option added to 
+the master map entry.
+
+Ian
 
 
 
