@@ -1,20 +1,28 @@
-From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
-Subject: nfsd stales when restarting too fast
-Date: Tue, 10 Aug 2004 11:06:23 +0200
+From: Norman Weathers <norman.r.weathers@conocophillips.com>
+Subject: Some strange weirdness
+Date: Tue, 10 Aug 2004 14:48:13 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <4118900F.9090602@bio.ifi.lmu.de>
+Message-ID: <200408101448.13279.norman.r.weathers@conocophillips.com>
+Reply-To: norman.r.weathers@conocophillips.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: shylendra.bhat@hp.com
+Content-Type: text/plain;
+  charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BuSaS-0003SZ-76
-	for nfs@lists.sourceforge.net; Tue, 10 Aug 2004 02:06:28 -0700
-Received: from acheron.informatik.uni-muenchen.de ([129.187.214.135])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1BuSaR-0002sI-IE
-	for nfs@lists.sourceforge.net; Tue, 10 Aug 2004 02:06:28 -0700
+	id 1Buccs-000285-UV
+	for nfs@lists.sourceforge.net; Tue, 10 Aug 2004 12:49:38 -0700
+Received: from mailman2.ppco.com ([138.32.33.140])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.34)
+	id 1Buccs-0008NN-Hi
+	for nfs@lists.sourceforge.net; Tue, 10 Aug 2004 12:49:38 -0700
+Received: from bvlextrd02.conoco.net (trend2.ppco.com [138.32.33.145])
+	by mailman2.ppco.com (8.12.8/8.12.8) with ESMTP id i7AJnaJF017172
+	for <nfs@lists.sourceforge.net>; Tue, 10 Aug 2004 14:49:37 -0500
+Received: from bvlexbh3.conoco.net (bvlexbh3.conoco.net [138.32.45.44])
+	by mail1.ppco.com (8.11.6+Sun/8.11.6) with ESMTP id i7AJnao15654
+	for <nfs@lists.sourceforge.net>; Tue, 10 Aug 2004 14:49:36 -0500 (CDT)
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,62 +36,64 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
 
-I posted this on the kernel list already, but now that I'm subscribed here
-I guess this is the better place :-) Neil already reacted to my mail on
-LKML but the first proposal didn't help (order of exportfs and killall).
+Hello, Everyone.
 
-System is: SuSE 9.0 with 2.6.7 (tested up to 2.6.8rc3) and util-linux-2.12
+In that pursuit for the perfect NFS server, I have been trying to work on the 
+newer kernels (2.6.7 currently), and have noticed a couple of things, and was 
+wondering if it was noticed elsewhere as well...
 
-Also tested with SuSE 9.1/SLES9 and SuSEs kernel 2.6.5.
+My test is with an in house set of programs.  We are currently testing XFS and 
+JFS as the underlying filesystems.  The filesystem that we will serve out has 
+~ 3 TB of space.  Now, here comes the strange part.  If I am using XFS, I get 
+"respectable" numbers.  For instance, the server is Fedora Core 2, kernel 
+2.6.7 with Trond patches, e1000 NIC interface running at 1Gbit.  We also 
+upped the buffers on the e1000 card driver.  With XFS and 40 clients running 
+against it (each reading and writing a separate 2 G file), aggregate we can 
+get about 50 MB/s write and 91 MB/s reads (sequential reads and writes).  
+Like I said, pretty good.  When I start to use JFS, however, things go to pot 
+quickly.  I start off fairly well (say, with 20 clients), but within a short 
+time (30 seconds to 1 minute), where before I would see all of my nfsd 
+threads being utilized in Disk wait on the server, they just disappear.  
+pdflush comes up for awhile, and so does jfsCommit thread, and then they 
+disappear, and then the nfsd's will come back.  During this kind of thrashing 
+activity, write speeds drop from 40 or 50 MB/s writes to less than 10 MB/s 
+writes.  We have done similiar tests in the past (2.6.5 kernel), and have had 
+good results (in house application, mulitple parallel reads and writes, final 
+output is multiple parallel writes to a single file).  Has anyone seen this?
 
-When running "/etc/init.d/nfsserver restart" on the server, the clients
-will react with "stale nfs handle" for all mounted directories that were
-in use during the restart (e.g. if /var is mounted and syslogd is running,
-or if some "find" is running on a mounted directory). The stale directories
-will never come back to sane state (except restarting with sleep, see below).
+Some things we have tried:
 
-When using
-/etc/init.d/nfsserver stop
-sleep 2
-/etc/init.d/nfsserver start
+1)  JFS parameters , increase number of threads from 2 to 4, increase 
+nTxblocks to 64K.
+2)  Changed pdflush down to 1500 in /proc/sys/vm/dirty_expire_centisecs.
+3)  Changed swappiness down to 10.
+4)  Increased number of nfs threads to 32 (both JFS and XFS.  Works well with 
+XFS).
 
-(or putting a "sleep 1" between the lines "$0 stop" and "$0 start" in the
-init script), everything goes fine. Restarting with sleep 2 will also
-bring back the client dirs that were staled from a former restart without
-sleep.
+I just can't help but wonder if it is an NFS thing, because when we run 
+locally, we get very good numbers.  I can have multiple writes going locally, 
+and still get very good performance.
 
-Without the init script, it can be traced down to:
+Other information:
 
-killall -9 nfsd
-killall -9 /usr/sbin/rpc.mountd
-/usr/sbin/exportfs -au
-[sleep 2]
-/usr/sbin/exportfs -r
-/usr/sbin/rpc.nfsd
-/usr/sbin/rpc.mountd
+Clients:  Redhat 7.3, kernel - 2.4.26 + Trond patches.  Mounted tcp, 32k block 
+read and write.
+Server:  Fedora Core 2, kernel - 2.6.7 + Trond patches.  Dual 2.4 GHz Intel, 4 
+GB ram.  Dual 3Ware controllers and 14 disks (2 spares)(IDE).
 
-Stales without the sleep, does not with the sleep. That behaviour is
-independent from options like v3/v4, tcp/udp, lock/nolock, and it did
-not happen with 2.4.
-
-Unless this is sth. easy to fix in the kernel nfsd or client, it might
-be a good idea to insert such a sleep statement in the distributors
-init scripts to avoid people running into this error. I assume the
-problem in the mail "machine hangs - SLES9/NFS" was caused by the
-same problem.
-
-
-cu,
-Frank
-
+Thanks in advance.
 -- 
-Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
-Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
-LMU, Amalienstr. 17           Phone: +49 89 2180-4049
-80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
 
+Norman Weathers
+SIP Linux Cluster
+TCE UNIX
+ConocoPhillips
+Houston, TX
+
+Office:  LO2003
+Phone:   ETN  639-2727
+	 or (281) 293-2727
 
 
 -------------------------------------------------------
