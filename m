@@ -1,19 +1,21 @@
 From: Bernd Schubert <bernd-schubert@web.de>
 Subject: Re: export only to special mac addresses
-Date: Sat, 23 Mar 2002 17:28:02 +0100
+Date: Sun, 24 Mar 2002 01:25:54 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E16ooLS-0001Yl-00@smtp.web.de>
+Message-ID: <200203240125.54414.bernd-schubert@web.de>
 References: <200203211807.g2LI74M02426@fubini.pci.uni-heidelberg.de> <20020323161512.GA10804@obelix.home.gunix.de>
 Mime-Version: 1.0
 Content-Type: text/plain;
   charset="iso-8859-15"
-Cc: nfs@lists.sourceforge.net,
- joergb@fubini.pci.uni-heidelberg.de
-Received: from smtp01.web.de ([194.45.170.210] helo=smtp.web.de)
+Received: from smtp02.web.de ([217.72.192.151] helo=smtp.web.de)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16ooLW-00033b-00
-	for <nfs@lists.sourceforge.net>; Sat, 23 Mar 2002 08:26:22 -0800
-To: Alexander Gun <Alexander.Gun@gmx.de>
+	id 16ovo2-0005zJ-00
+	for <nfs@lists.sourceforge.net>; Sat, 23 Mar 2002 16:24:18 -0800
+Received: from [145.254.212.62] (helo=bathl)
+	by smtp.web.de with esmtp (WEB.DE(Exim) 4.41 #2)
+	id 16ovnu-0005TL-00
+	for nfs@lists.sourceforge.net; Sun, 24 Mar 2002 01:24:11 +0100
+To: nfs@lists.sourceforge.net
 In-Reply-To: <20020323161512.GA10804@obelix.home.gunix.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -65,6 +67,8 @@ Bernd
 > > _______________________________________________
 > > NFS maillist  -  NFS@lists.sourceforge.net
 > > https://lists.sourceforge.net/lists/listinfo/nfs
+
+
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
