@@ -1,20 +1,19 @@
-From: "Eff Norwood" <enorwood@effrem.com>
-Subject: RE: huge number of intr/s on large nfs server
-Date: Thu, 17 Oct 2002 09:59:13 -0700
+From: Benjamin LaHaise <bcrl@redhat.com>
+Subject: Re: huge number of intr/s on large nfs server
+Date: Thu, 17 Oct 2002 22:05:43 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <CFEAJJEGMGECBCJFLGDBMEMKCFAA.enorwood@effrem.com>
-References: <004401c275e1$cf940170$2a060e09@beavis>
+Message-ID: <20021017220543.C3702@redhat.com>
+References: <20021016222854.C27038@redhat.com> <CFEAJJEGMGECBCJFLGDBGEMACFAA.enorwood@effrem.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from cynaptic.com ([128.121.116.181])
+Received: from to-velocet.redhat.com ([216.138.202.10] helo=touchme.toronto.redhat.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 182DzZ-0007QV-00
-	for <nfs@lists.sourceforge.net>; Thu, 17 Oct 2002 09:59:25 -0700
-To: "Andrew Theurer" <habanero@us.ibm.com>
-In-Reply-To: <004401c275e1$cf940170$2a060e09@beavis>
+	id 182MWH-0002qD-00
+	for <nfs@lists.sourceforge.net>; Thu, 17 Oct 2002 19:05:45 -0700
+To: Eff Norwood <enorwood@effrem.com>
+In-Reply-To: <CFEAJJEGMGECBCJFLGDBGEMACFAA.enorwood@effrem.com>; from enorwood@effrem.com on Wed, Oct 16, 2002 at 07:49:38PM -0700
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,36 +26,26 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Andrew,
+On Wed, Oct 16, 2002 at 07:49:38PM -0700, Eff Norwood wrote:
+> This system in question is a SuperMicro P4DL6 MB with dual Xeon 2.4's and
+> 2.0GB of memory. One of the PCI-X slots/busses has a 3ware 7850 IDE RAID
 
-> Eff, do you happen to know the cpu utilization for the local mulitple dd
-> test?  I am concerned that the evms_raid5d is eating up a lot of
-> cpu, which
-> is fine for the local dd test, but may be too much when nfsd is running.
+Can you try running a non-SMP kernel?  At least one nfs server I'm running 
+does pretty well with a UP kernel, even though it is getting in the 
+neighbourhood of 10-20k interrupts per second.  Note that it is using 
+async writes, and gets about 40MB/s with ext3 and is 100% busy when being 
+written to, with the bulk of the time spent computing raid checksum blocks 
+and copying data around and in prune_icache.  With an SMP system, there is 
+likely to be contention introduced by interrupts floating back and forth 
+between CPUs when the single client writing case is really not helped by 
+SMP in the current knfsd.  Binding various interrupts to specific CPUs may 
+help things here, but part of the problem lies with knfsd allowing multiple 
+processes to back up in generic_file_write, which serializes on the inode 
+semaphore.  This is pure overhead that a UP system won't suffer from quite 
+as dramatically.  Also, make sure your journal is on a separate disk.  
+Cheers,
 
-That's a really good question and a point I hadn't made. The EVMS Raid 5
-process seems to stay in the 12-20% utilization range for both local and NFS
-dd's. For local, dd consumes as much of the remaining cpu as it can get
-(~80%) with an occasional interruption from kswapd-very steady and even. For
-NFS, the nfsd's (16 of them) in total also consume as much of the remaining
-cpu as they can get (~80%) BUT they fluctuate from 80% to 0% then back 80%
-all the time. I think much of the performance loss is caused by these
-"pulsations" because the box is just sitting around idle waiting for the
-next pulse of nfsd activity.
-
-I tried everything in this:
-
-http://people.redhat.com/alikins/system_tuning.html
-
-except playing "Crazy Train" by Ozzy Ozbourne and have as of yet not been
-able to get the nfsd's to stop "pulsating". I think that would help things a
-lot. If I need to play "Crazy Train" I can arrange that. :)
-
-Thanks,
-
-Eff
-
-
+		-ben
 
 
 -------------------------------------------------------
