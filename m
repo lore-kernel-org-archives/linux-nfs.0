@@ -1,19 +1,17 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS over TCP
-Date: 28 May 2003 14:33:05 +0200
+From: Edward Hibbert <EH@dataconnection.com>
+Subject: Linux client, SNAP filer, ESTALE
+Date: Wed, 28 May 2003 14:42:57 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsn0h7l08u.fsf@charged.uio.no>
-References: <20030527234058.81598.qmail@web21003.mail.yahoo.com>
+Message-ID: <CFCD2C778CF1D611B5B400065B04D5C84A7199@KENTON>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
+Received: from smtp2.dataconnection.com ([192.91.191.8] helo=miles.dataconnection.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19L0D2-00059o-00
-	for <nfs@lists.sourceforge.net>; Wed, 28 May 2003 05:39:12 -0700
-To: David Myer <davidmyer800@yahoo.com>
-In-Reply-To: <20030527234058.81598.qmail@web21003.mail.yahoo.com>
+	id 19L1Cw-00052P-00
+	for <nfs@lists.sourceforge.net>; Wed, 28 May 2003 06:43:11 -0700
+To: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,30 +24,30 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == David Myer <davidmyer800@yahoo.com> writes:
+I have an ESTALE problem.  That probably means it's been discussed to death,
+but after browsing the archive I'm not much the wiser, so...
 
-     > 1) Doing a few mount operations, I noticed that
-     > sometimes it uses V3 GETATTR call and sometimes it uses V2
-     > GETATTR call, how does client ( or server ) decide witch
-     > version to use ? Strange enough, in case it did use V3 GETATTR,
-     > the prior GETPORT is V2.. does this make a difference later on
-     > ?
+Here's the scenario:
+*	RH 7.2 running a 2.4.18 kernel
+*	Linux boxes acting as NFS clients to a SNAP filer.
+*	Mount options rw,noac,rsize=4096,wsize=4096,hard,intr,bg
 
-The kernel will switch to NFSv2 if v3 is not available. To determine
-whether or not v3 is available, the server's portmapper is consulted.
+We had a power outage on the filer; the clients stayed up.  The clients
+returned stale errors, even once the filer had come back up, until we
+unmounted and remounted all the mount points.
 
-     > 2) In reply to the V2 GETATTR call, server reply to
-     > the client socket (port 800) with ACK, then send another packet
-     > ( with PSH/ACK flags on ) with requested data to port 799,this
-     > causes RST from the client. Anyone seen this behavior of
-     > decrementing dest port ( client port number ) by one ?
+Is this behaviour as expected, a known problem, an unknown problem, or too
+sloppily described to be able to tell?
 
-Huh? TCP is a connection oriented protocol. The server does not get to
-choose which port to send a reply to. Are you sure you are not
-confusing MOUNT and NFS requests here?
+Regards,
 
-Cheers,
-  Trond
+Edward Hibbert
+Internet Applications Group
+Data Connection Ltd
+Tel:	+44 131 662 1212		Fax:	+44 131 662 1345
+Email:	eh@dataconnection.com	Web:	http://www.dataconnection.com
+
+
 
 
 -------------------------------------------------------
