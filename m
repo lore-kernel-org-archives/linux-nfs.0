@@ -1,18 +1,20 @@
-From: "Heflin, Roger A." <Roger.A.Heflin@conocophillips.com>
-Subject: Re: nfsd tuning - please help me! (Alan Powell)
-Date: Fri, 14 Feb 2003 15:10:28 -0600
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: RH8.0 nfs server, client RPC time_time_out issues
+Date: Fri, 14 Feb 2003 16:32:30 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <5CA6F03EF05E0046AC5594562398B916A3281B@POEXMB3.conoco.net>
+Message-ID: <3E4D606E.6000308@RedHat.com>
+References: <OF24B722A7.F9405887-ON88256CCA.005ABDD0-88256CCA.005D624F@nb.jazzsemi.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <lakerfaniam2@yahoo.com>
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from usamail1.conoco.com ([12.31.208.226])
+Received: from nat-pool-rdu.redhat.com ([66.187.233.200] helo=lacrosse.corp.redhat.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18jn6V-0002oZ-00
-	for <nfs@lists.sourceforge.net>; Fri, 14 Feb 2003 13:10:39 -0800
-To: <nfs@lists.sourceforge.net>
+	id 18jnMi-00069s-00
+	for <nfs@lists.sourceforge.net>; Fri, 14 Feb 2003 13:27:24 -0800
+Received: from RedHat.com (dickson.boston.redhat.com [172.16.65.20])
+	by lacrosse.corp.redhat.com (8.11.6/8.9.3) with ESMTP id h1ELRHH14659
+	for <nfs@lists.sourceforge.net>; Fri, 14 Feb 2003 16:27:17 -0500
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,53 +27,60 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hi,
+
+Make sure there are not errors on the
+network interface with 'ifconfig eth?'.
+
+Also see what nfsstat -s says. See if your getting
+badcalls or bad[whatever]....
+
+I there anything interesting in /var/log/messages?
+also ethereal (tethereal) will show any otw issues...
+
+I hope this helps....
+
+SteveD.
+
+alexander.liu@jazzsemi.com wrote:
+
+>
+> Hello,
+>
+> We are having issues with our nfs server based on Redhat 8.0.
+> It seen that every other day or so, our nfs clients which are HPUX 
+> 10.20 and Tru64 4.0D and Solaris 8 will not be able to access the server.
+> Linux clients do not have any problems.
+>
+> Client error messages include:
+>
+> HPUX -    automount[621]: xx_fs:/raid/auto/home/rt_util server not 
+> responding: RPC_TIMED_OUT
+> TRU64 -  vmunix: NFS2 server not responding still trying
+> Solaris 8 - automountd[163]: [ID 748625 daemon.error] xx_fs server not 
+> responding: RPC_TIMED_OUT
+>
+> The server appears to be fine.
+>
+> I have searched the archives for RPC timeout errors and have 
+> implemented some of the suggestions such as:
+> Making sure the server name is in DNS and the local host table for 
+> reverse and forward resolution.
+>
+> However, the problem continues.
+>
+> Problem resolution currently means stopping and restarting NFS on the 
+> server.
+>
+> Has anyone experience similar problems, am I overlooking something 
+> obvious, any suggestion on what I should look at next.
+>
+> Thanks,
+>
+> Alex Liu 
 
 
 
->  Date: Fri, 14 Feb 2003 09:44:53 -0800 (PST)
-> From: Alan Powell <>
-> Subject: Re: [NFS] nfsd tuning - please help me!
-> To: Steve Dickson <SteveD@RedHat.com>, nfs@lists.sourceforge.net
->=20
-> Unfortunately, we've tried all that already. So given
-> that we are not hardware/network constrained, does all
-> this mean that the Linux kernel NFS runs into
-> performance issues beyond 100 file reads/sec?
->=20
->=20
-	I have been able to get closer to 10-20MBytes per second with
-	linux nfs.  The netapps will do around 4-5 times that though at
-	a higher cost.  And you can get it out of linux, by putting more
-	cheap smaller servers to obtain the same rate.
-
-	What are you underlying disks?  You could still be hardware
-	constrained depending on what your underlying disks are,
-	and what you underlying disk controller is.   Both can have
-	issues.
-
-	I have machines that are servicing around 2500 8k reads
-	per second and seem to work fine, though mine may break
-	down to fewer larger reads.
-
-	Other things that will get you in trouble is having lots of files
-	in a single directory (in the several thousand range will hurt
-	pretty bad), also check to make sure you aren't accumulating lots
-	of .nfs* files in the directies in question, I had a situation where
-	there where lots of files being messed with (read and write) and
-	lots of these files accumulated and pretty much brought
-	performance to its knees.  The solution was to run a cron job
-	to clean up the .nfs* files.  The .nfs files are created when you
-	are reading a file that is being deleted by another process at
-	the same time, the .nfs* stays around to service the reader,
-	and does not always go away (this is on all NFS implementations
-	I have seen).
-
-	Do a ls -ld dirname and see the size of the directories, and include it
-	in the next message if one of the above don't pan out.
-
-							Roger
-
-				=09
 
 
 -------------------------------------------------------
