@@ -1,23 +1,28 @@
-From: Greg Banks <gnb@sgi.com>
+From: Olaf Kirch <okir@suse.de>
 Subject: Re: nfsd write throughput
-Date: Tue, 3 Aug 2004 18:28:12 +1000
+Date: Tue, 3 Aug 2004 12:32:14 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040803082812.GN5581@sgi.com>
-References: <20040802162448.GB21365@suse.de> <20040803021018.GG5581@sgi.com> <20040803060213.GA21134@suse.de> <20040803075506.GL5581@sgi.com> <20040803080913.GC21365@suse.de>
+Message-ID: <20040803103213.GE21365@suse.de>
+References: <20040802162448.GB21365@suse.de> <20040803021018.GG5581@sgi.com> <20040803060213.GA21134@suse.de> <20040803075506.GL5581@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Brueg-0004xg-Lq
-	for nfs@lists.sourceforge.net; Tue, 03 Aug 2004 01:28:18 -0700
-Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1Brueg-00071p-7H
-	for nfs@lists.sourceforge.net; Tue, 03 Aug 2004 01:28:18 -0700
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20040803080913.GC21365@suse.de>
+	id 1Brwdb-0005uW-Bh
+	for nfs@lists.sourceforge.net; Tue, 03 Aug 2004 03:35:19 -0700
+Received: from cantor.suse.de ([195.135.220.2])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.34)
+	id 1Brwda-0005nn-E9
+	for nfs@lists.sourceforge.net; Tue, 03 Aug 2004 03:35:19 -0700
+Received: from hermes.suse.de (hermes-ext.suse.de [195.135.221.8])
+	(using TLSv1 with cipher EDH-RSA-DES-CBC3-SHA (168/168 bits))
+	(No client certificate requested)
+	by Cantor.suse.de (Postfix) with ESMTP id 07A2B9BA9B8
+	for <nfs@lists.sourceforge.net>; Tue,  3 Aug 2004 12:32:15 +0200 (CEST)
+To: nfs@lists.sourceforge.net
+In-Reply-To: <20040803075506.GL5581@sgi.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,66 +35,78 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, Aug 03, 2004 at 10:09:13AM +0200, Olaf Kirch wrote:
-> On Tue, Aug 03, 2004 at 05:55:06PM +1000, Greg Banks wrote:
-> > I think another useful approach would be to writeback pages which
-> > have been written by NFS unstable writes at a faster rate than pages
-> > written by local applications, i.e. add a new /proc/vm/ sysctl like
-> > nfs_dirty_writeback_centisecs and a per-page flag.
-> 
-> The problem with this approach is that we have no access to the
-> pages. nfsd_write goes through writev.
+Hi folks,
 
-I understand that the IRIX approach involves passing a special
-flag through the equivalent of vfs_writev().  For Linux you
-could probably do this with a magic flag in the struct file.
-Obviously this is non-trivial.
+I've been looking at the problem from a different angle...
 
-> > > That may be a useful solution, too. My patch basically does what
-> > > fadvise(WONTNEED) does.
-> > 
-> > Sure, the key question is when and for how many pages.  You don't
-> > really have enough information in nfsd_write() to tell that safely.
-> 
-> Well, for streaming writes "everything we've written so far" is a
-> reasonable approximation. Random writes may receive a penalty, I
-> admit.
+Theory:
+	The main bottleneck is that we spend a long time in commit(),
+	blocking other WRITE calls from making any progress (thereby
+	stalling all NFS clients). The reason is what we take inode->i_sem
+	in nfsd_sync, but the writev() code wants to grab the same
+	semaphore.
 
-Also reverse writes, and writes of many complete small (too small
-to kick in the streaming heuristic) files.  Doing stuff in the page
-cache has a better chance of handling those cases.
+Circumstantial Evidence:
 
-> > It writes every time `offset' is a multiple of 64 times `cnt' and
-> > `cnt' is a multiple of 1024.  At this point `cnt' is the length
-> > of the data received in the WRITE call, which has only a vague
-> > relationship to the client page size.
-> 
-> Okay, I should have been more precise: the test tries to make
-> sure we're seeing a full wsize worth of data, which is usually a
-> good indication of writes being streamed, and tries to lump
-> enough of them together to allow the file system to make an
-> intelligent decision.
+I've been doing some tests with the latencies of WRITE and COMMIT, using a
+single stream write. The average time we spend in nfsd_write is miniscule,
+usually it's less than 2 milliseconds. However when a commit comes in,
+we take a hit there as well - something around 500 ms for reiser, and
+400 ms for ext3. Syncing to reiser frequently takes up to 1.2 seconds,
+while the 400 ms for ext3 is pretty constant.
 
-The two problems are:
+Right now, nfsd_sync calls
 
-1.  the heuristic is too simple and can be fooled by a number of
-    non-streaming access patterns which won't benefit from the
-    early flush.  You could fix this by keeping per-file state
-    like the readahead state, but...
+	filemap_fdatawrite
+	filp->f_op->fsync
+	filemap_fdatawait
 
-2.  even when the heuristic does detect a streaming write it may
-    be too early to usefully flush data.
+all under the i_sem. However, it seems we don't need the i_sem for
+the filemap_* functions (is that valid - at least sync_page_range
+doesn't?). So I changed the code to make it grab i_sem only for the fsync
+call, but unfortunately, that doesn't seem to make much of a difference,
+as I found out. Most of the time taken by a commit is spent in fsync
+(the delta between the fsync latency and the overall commit latency is
+usually less than 5 ms, i.e. ~1%).
 
-In both cases the page cache has a better chance of getting it right.
+I also changed nfsd_sync to call filemap_fdatawrite_range instead of
+filemap_fdatawrite, but that doesn't make a noticeable difference either.
 
-> I'm not claiming this is god's wisdom - I'm trying out ideas :)
+I then re-enabled my flushfast hack, and the commit latencies went
+down to 30 ms on ext3, with the occasional spike of 300 ms. On reiser,
+the commit latency went down to something like 50 ms on average.
 
-Sure.
+(The reiserfs rewrite case was fairly bad, however. Rewrite over NFS
+on top of reiser is fairly slow to begin with, much slower than write;
+and the gain from the flushfast patch is minimal - but that's a different
+story)
 
-Greg.
+
+Conclusion:
+
+So this at least supports my theory that the commits are throttling the
+writes quite a bit. For the sake of completeness, I did some more iozone
+measurements, and on write/rewrite the performance gain is about 50%
+on both reiser and ext3, for a single client. I would think for several
+clients writing concurrently, the gain should be even more pronounced,
+but I haven't run these tests yet.
+
+I'm wondering what could happen if we change nfsd_sync to not take the
+i_sem at all... I'll talk to a few VFS folks around here and try to find out.
+
+
+PS:
+
+Another thing I noticed was that the commit calls sent by the Linux
+client (2.6.5) are not evenly distributed over time. Much of the time,
+the client will call COMMIT 4-6 times a second, and then all of a sudden
+I see 30-80 calls a second several times in a row.
+
+Olaf
 -- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+Olaf Kirch     |  The Hardware Gods hate me.
+okir@suse.de   |
+---------------+ 
 
 
 -------------------------------------------------------
