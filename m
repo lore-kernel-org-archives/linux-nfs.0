@@ -1,17 +1,15 @@
-From: nfs@lists.sourceforge.net
-Subject: 優質泡麵.. Time:上午 01:22:33
-Date: Sun, 27 Oct 2002 01:22:33
+From: Duane Ellis <duane_ellis@franklin.com>
+Subject: FAQ submission with answer
+Date: Sat, 26 Oct 2002 13:22:49 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E185UeA-0008FN-00@usw-sf-list1.sourceforge.net>
-Reply-To: rorororoqqqaa@msa.hinet.net
-Mime-Version: 1.0
-Content-Type: text/html; charset="CHINESEBIG5_CHARSET"
+Message-ID: <200210261722.g9QHMnF12943@europa.franklin.com>
+Reply-To: duane_ellis@franklin.com
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [196.22.97.2] (helo=elbpdc.elbquip.co.za)
+Received: from newfrnk82.franklin.com ([63.88.59.82] helo=earth-out.franklin.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 185UeA-0008FN-00
-	for <nfs@lists.sourceforge.net>; Sat, 26 Oct 2002 10:22:51 -0700
-To: nfs@lists.sourceforge.net
+	id 185Udo-0008E6-00
+	for <nfs@lists.sourceforge.net>; Sat, 26 Oct 2002 10:22:28 -0700
+To: trmcneal@attbi.com, nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,98 +22,95 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-feefedfewfwedewnicky240919843rwedsewrfef54rtg56y5443
-<html>
 
-<head>
-<meta name="GENERATOR" content="Microsoft FrontPage 5.0">
-<meta name="ProgId" content="FrontPage.Editor.Document">
-<meta http-equiv="Content-Type" content="text/html; charset=big5">
-<title> 電子報</title>
-</head>
+I have a "FAQ" question and at least
+an Answer or work around for the problem.
 
-<body>
+I hope this helps others on this list
+(I am not on the nfs list)
 
-<div align="center">
-  <center>
-  <table border="1" cellspacing="1" style="border-collapse: collapse" bordercolor="#111111" width="63%" id="AutoNumber1" height="304">
-    <tr>
-      <td width="100%" bgcolor="#9933FF" height="18">
-            <p align="left">
-            <b><font color="#FFFFFF" size="+1">
-            <img src="http://www.vuxyz993.com/wpe20384.GIF" width="12" height="12">
-            </font><font color="#FFFFFF"><blink>
-            <a href="http://www.vuxyz993.com" style="text-decoration: none">
-            <font color="#FFFFFF" size="4" face="新細明體">軟體宅配網</font></a><font face="新細明體" size="4">--專業電子報 
-            </font></blink>(<font color="#FFFF00"><a href="http://0933.to/vuxyz993"><font color="#FFFF00">http://0933.to/vuxyz993</font></a></font>) 10.24目錄更新通報</font><font color="#FFFFFF" size="2"> </font><font color="#FFFFFF" size="2">&nbsp;</font></b><font color="#FFFFFF">&nbsp;</font></td>
-    </tr>
-    <tr>
-            <td borderColor="#7b8fd6" width="34%" bgColor="#0099FF" height="21">
-            <p align="left">
-            <font color="#66FFCC">★</font><font color="#ffffff" size="2">&nbsp;<b><font face="Verdana"> 
-            10.23 新增</font></b></font><b><font face="Verdana"><span lang="zh-tw"><font color="#ffff00" size="2">一</font></span><font color="#ffff00" size="2">百餘片</font><font size="2"><font color="#ffff00">.
-            </font><font color="#ffffff">請先到<a href="http://www.vuxyz993.com/1023.htm"><font color="#FFFF00">1024新增目錄</font></a>先睹為快. 快</font><font color="#ffff00"><a href="http://www.vuxyz993.com/1023.exe" style="color: #ffffff"><font color="#ffff00">下傳回去</font></a></font><font color="#ffffff">瀏覽! 
-            重量級的強片一堆ㄛ!</font></font></font></b></td>
-          </tr>
-    <tr>
-            <td borderColor="#7b8fd6" width="34%" bgColor="#0099FF" height="21">
-            <font color="#66FFCC">★ </font><b><font face="Verdana"><font size="2"><font color="#ffffff">&nbsp;10.19 新增</font><span lang="zh-tw"><font color="#ffff00">四</font></span><font color="#ffff00">百餘片.
-            </font><font color="#ffffff">請先到</font><a href="http://www.vuxyz993.com/1018.htm" style="color: #ffffff"><font color="#ffff00">1019新增目錄</font></a><font color="#ffffff">先睹為快. 
-            快</font><font color="#ffff00"><a href="http://www.vuxyz993.com/1018.exe" style="color: #ffffff"><font color="#ffff00">下傳回去</font></a></font></font><font size="2" color="#ffffff">瀏覽! 
-            重量級的強片一堆ㄛ!</font></font></b></td>
-          </tr>
-    <tr>
-            <td borderColor="#7b8fd6" width="34%" bgColor="#0099FF" height="21">
-            <p align="left">
-            <font color="#66FFCC">★</font><font color="#ffffff" size="2">&nbsp;
-            <b><font face="Verdana">10.14 新增</font></b></font><font face="Verdana"><b><font color="#ffff00" size="2">兩百無碼片</font><font size="2"><font color="#ffff00">.
-            </font><font color="#ffffff">請先到</font></font></b><font color="#800000"><span style="FONT-WEIGHT: 700; TEXT-DECORATION: blink"><a href="http://boyfans.sexplanets.com/vuxyz993/cm/cm.TXT"><font color="#FFFF00">AV女優館</font></a></span></font><span style="FONT-WEIGHT: 700"><font color="#000080" size="2">
-            </font><font color="#ffffff" size="2">和</font><font color="#ffffff">
-            </font></span><font color="#800000">
-            <span style="FONT-WEIGHT: 700; TEXT-DECORATION: blink">
-            <a href="http://boyfans.sexplanets.com/vuxyz993/A/A.TXT" style="color: #ffffff">
-            <font color="#00ffff">勁爆系列</font></a></span></font><font color="#808080" size="2"><span style="FONT-WEIGHT: 700">
-            </span></font><b><font color="#ffffff" size="2">先睹為快, 重量級的強片一堆ㄛ!</font></b></font></td>
-          </tr>
-    <tr>
-      <td width="100%" height="359">
-            <p align="left">
-            <img src="http://www.vuxyz993.com/pictture.GIF" align="middle" width="20" height="14"><font color="#FF9900"><b>最新價格</b></font><br>
-<font color="#0000ff" face="Verdana">&nbsp;&nbsp; </font>
-            <font face="Verdana"> 
-<font color="#0000ff">3~10片 全部都100元 <br>
-&nbsp;<span lang="zh-tw">&nbsp; </span>11-20片 全部都80元 <br>
-&nbsp;&nbsp; 21-50片 全部都75元 <br>
-&nbsp;&nbsp; 51~100片 全部都70元 <br>
-<span lang="zh-tw">&nbsp;&nbsp; </span>101片以上 全部都65元<br>
-&nbsp;&nbsp; 201片以上 全部都60元</font><b><font color="#ffffff" size="+1">
-            </font></b>
-            </font>
-            </p>
-            <p align="left">
-            <font color="#66FFCC">★</font><font face="Verdana"><font color="#FF0000">3片以上才出貨 
-            !且無論您訂幾片均須加收加付郵資150元,</font>&nbsp;<font color="#FF0000">3片以上才出貨 !且無論您訂幾片均須加收加付郵資150元. </font> 
-            </font>
-            </p>
-            <p>
-            <img src="http://www.vuxyz993.com/pictture.GIF" align="middle" width="20" height="14"><b><font color="#7B8FD6" size="2">計算公式:</font></b></p>
-            <p align="left"><font size="2" color="#FF0000">&nbsp;</font><font color="#66FFCC" size="2">★</font><font face="Verdana" size="2" color="#FF0000">請注意產品編號，例如DBT054-4(表示四片裝)，CAD119-2(表示兩片裝)，XYZ071(無-表示單片裝).</font></p>
-            <p align="left">
-            <img src="http://www.vuxyz993.com/pictture.GIF" align="middle" width="20" height="14"><font size="2"><font color="#FF00FF"><b>永久網址:&nbsp;</b></font><font color="#000000"><br>
-            &nbsp;&nbsp;&nbsp;&nbsp;<font face="Verdana">&nbsp;</font></font></font><font face="Verdana"><blink> <font color="#000000"> <a href="http://0933.to/vuxyz993">http://0933.to/vuxyz993</a></font></blink><font size="2" color="#000000">&nbsp;&nbsp;&nbsp;</font></font></p>
-            <p align="left">
-            <font face="Verdana" size="2">&nbsp;&nbsp;&nbsp; </font>
-            <font face="Verdana"><a href="http://www.vuxyz993.com">
-            http://www.vuxyz993.com</a></font></p>
-            </td>
-    </tr>
-    </table>
-  </center>
-</div>
+I am an administer a fairly large 
+Unix network ( +50 SunOS boxes, and +20 linux boxes)
+and have hit this problem a few times when
+configuring a new linux machine.
 
-</body>
+I am trying to export "/" (root) file system
+from one linux box to all others via the
+the directory construct:
 
-</html>
+  # cd /net/HOSTNAME/filesystem 
+
+When I run the exportfs command, I got a cryptic
+message that did not help what so ever.
+
+# exportfs -ra
+europa:/: Invalid argument
+
+Manytimes this is mis-diagnosted as a condition
+where you are exporting a sub-directory of an
+already exported file system - That's not my
+problem.
+
+Specifically my problem is this:
+  The file /var/lib/nfs/rmtab had a stale
+  entry in it.
+
+Specifically to fix my problem I had to do this:
+  # [stop nfs]
+  # cd /var/lib/nfs
+  # rm -f etab mtab rmtab
+  # touch rmtab	
+    [otherwise exportfs complains]
+  # [start nfs]
+
+A better answer would be to explain or fix why
+the file /var/lib/nfs/rmtab had the stale entry
+or to fix what ever updates the file.
+
+Perhaps this is a latent bug that is inside of NFS or
+one of the other utlities, or maybe these files
+should be removed during a reboot as part of some
+type of 'house-cleaning' operation.
+
+It appears that a fix was offered to this problem
+in this posting, but it has ether not picked up
+or not trickled through to all the various distros.
+
+http://sourceforge.net/mailarchive/message.php?msg_id=553411
+look for:
+        >> # First we should cleanup and then prepare our exports.
+ 	> /var/lib/nfs/etab	#
+ 	> /var/lib/nfs/xtab	# contains list of exportable filesystems
+ 	>> /var/lib/nfs/rmtab	# list of used exported filesystems
+
+Thanks.
+
+-Duane Ellis
+
+Others have seen this problem too:
+
+http://sourceforge.net/mailarchive/message.php?msg_id=1228515
+
+http://sourceforge.net/mailarchive/message.php?msg_id=550491
+
+It appears that a fix was offered to this problem
+in this posting:
+http://sourceforge.net/mailarchive/message.php?msg_id=553411
+look for:
+        >> # First we should cleanup and then prepare our exports.
+ 	> /var/lib/nfs/etab	#
+ 	> /var/lib/nfs/xtab	# contains list of exportable filesystems
+ 	>> /var/lib/nfs/rmtab	# list of used exported filesystems
+ 
+http://www.geocrawler.com/archives/3/789/2001/8/50/6372419/
+
+http://www.cs.helsinki.fi/linux/linux-kernel/2002-01/0811.html
+
+https://listman.redhat.com/pipermail/wolverine-list/2001-March/001096.html
+
+http://plug.skylab.org/199906/msg00469.html
+
+http://www.van-dijk.net/linuxkernel/200202/0583.html.gz
 
 
 -------------------------------------------------------
