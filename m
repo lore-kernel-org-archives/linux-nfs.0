@@ -1,16 +1,15 @@
 From: "Kendrick M. Smith" <kmsmith@umich.edu>
-Subject: REPOST patch 24/38: SERVER: return err_nofilehandle if missing fh
- in fh_verify()
-Date: Wed, 14 Aug 2002 16:48:15 -0400 (EDT)
+Subject: REPOST patch 27/38: SERVER: expand filehandle to 128 bytes
+Date: Wed, 14 Aug 2002 16:49:35 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.SOL.4.44.0208141647520.1834-100000@vanguard.gpcc.itd.umich.edu>
+Message-ID: <Pine.SOL.4.44.0208141649100.1834-100000@vanguard.gpcc.itd.umich.edu>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from berzerk.gpcc.itd.umich.edu ([141.211.2.162])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17f53x-0006qV-00
-	for <nfs@lists.sourceforge.net>; Wed, 14 Aug 2002 13:48:17 -0700
+	id 17f55G-00074Y-00
+	for <nfs@lists.sourceforge.net>; Wed, 14 Aug 2002 13:49:38 -0700
 To: linux-kernel@vger.kernel.org, <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -25,20 +24,19 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 
-Return nfserr_nofilehandle (v4 only) in fh_verify() if the filehandle
-has not been set.
+Expand filehandle to 128 bytes.
 
---- old/fs/nfsd/nfsfh.c	Sun Aug 11 22:53:39 2002
-+++ new/fs/nfsd/nfsfh.c	Sun Aug 11 22:54:13 2002
-@@ -109,6 +109,8 @@ fh_verify(struct svc_rqst *rqstp, struct
- 		error = nfserr_stale;
- 		if (rqstp->rq_vers > 2)
- 			error = nfserr_badhandle;
-+		if (rqstp->rq_vers == 4 && fh->fh_size == 0)
-+			return nfserr_nofilehandle;
-
- 		if (fh->fh_version == 1) {
- 			datap = fh->fh_auth;
+--- old/include/linux/nfsd/nfsfh.h	Sun Aug 11 22:57:20 2002
++++ new/include/linux/nfsd/nfsfh.h	Sun Aug 11 22:58:05 2002
+@@ -96,7 +96,7 @@ struct knfsd_fh {
+ 					 */
+ 	union {
+ 		struct nfs_fhbase_old	fh_old;
+-		__u32			fh_pad[NFS3_FHSIZE/4];
++		__u32			fh_pad[NFS4_FHSIZE/4];
+ 		struct nfs_fhbase_new	fh_new;
+ 	} fh_base;
+ };
 
 
 
