@@ -1,24 +1,20 @@
-From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH]  Fix readahead handling in knfsd.
-Date: Tue, 01 Jun 2004 11:22:53 +1000
+From: Phy Prabab <phyprabab@yahoo.com>
+Subject: nfs performance of 2421 vs 2.6.7-rc2
+Date: Mon, 31 May 2004 18:35:06 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1BUxzR-0007Qr-TS@notabene.cse.unsw.edu.au>
-References: <20040601112157.28553.patches@notabene>
-Cc: nfs@lists.sourceforge.net
+Message-ID: <20040601013506.39615.qmail@web90009.mail.scd.yahoo.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BUxzY-0008Vn-J5
-	for nfs@lists.sourceforge.net; Mon, 31 May 2004 18:23:00 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BUxzY-00078r-5z
-	for nfs@lists.sourceforge.net; Mon, 31 May 2004 18:23:00 -0700
-Received: From
-	notabene.cse.unsw.edu.au ([129.94.172.124]) (auth-user neilb) (ident-user Debian-exim)
-	(for <akpm@osdl.org>) (for <nfs@lists.sourceforge.net>) By note With
-	Smtp ; Tue, 1 Jun 2004 11:22:54 +1000
-To: Andrew Morton <akpm@osdl.org>
+	id 1BUyBN-0001sQ-A4
+	for nfs@lists.sourceforge.net; Mon, 31 May 2004 18:35:13 -0700
+Received: from web90009.mail.scd.yahoo.com ([66.218.94.67])
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.30)
+	id 1BUyBL-00014w-IB
+	for nfs@lists.sourceforge.net; Mon, 31 May 2004 18:35:11 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,64 +27,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hello,
 
-The read-ahead structures were not being initialised
-properly, and were not having the use-count decremented
-after use, making them fairly useless (since Apr 2002!).
+I have been doing some testing of NFS performance with
+2.4.21 and 2.6.7-rc2 (2.6.5 and 2.6.6 as well).  I
+have noticed that 2.4.21 seems to be faster with the
+same hardware and mount options as noted by iozone
+(iozone -s 1g -r 1m -o).  As well, the amount of CPU
+power on the server side is higher for the test run
+under 2.6.7-rc2.  Is this known, or have I done
+something incorrect?
 
-From: Colin Gibbs <colin@gibbsonline.net>
-Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
+2.4.21:
 
- ----------- Diffstat output ------------
- ./fs/nfsd/vfs.c |   14 +++++++++-----
- 1 files changed, 9 insertions(+), 5 deletions(-)
+1048576    1024   46646   60697   814945   845351 
+844893   24716  845657  106998  845220    44423   
+60731  811409   841193
 
-diff ./fs/nfsd/vfs.c~current~ ./fs/nfsd/vfs.c
---- ./fs/nfsd/vfs.c~current~	2004-06-01 11:20:45.000000000 +1000
-+++ ./fs/nfsd/vfs.c	2004-06-01 10:08:51.000000000 +1000
-@@ -567,7 +567,7 @@ nfsd_sync_dir(struct dentry *dp)
- static spinlock_t ra_lock = SPIN_LOCK_UNLOCKED;
- 
- static inline struct raparms *
--nfsd_get_raparms(dev_t dev, ino_t ino)
-+nfsd_get_raparms(dev_t dev, ino_t ino, struct address_space *mapping)
- {
- 	struct raparms	*ra, **rap, **frap = NULL;
- 	int depth = 0;
-@@ -589,7 +589,7 @@ nfsd_get_raparms(dev_t dev, ino_t ino)
- 	ra = *frap;
- 	ra->p_dev = dev;
- 	ra->p_ino = ino;
--	memset(&ra->p_ra, 0, sizeof(ra->p_ra));
-+	file_ra_state_init(&ra->p_ra, mapping);
- found:
- 	if (rap != &raparm_cache) {
- 		*rap = ra->p_next;
-@@ -661,7 +661,8 @@ nfsd_read(struct svc_rqst *rqstp, struct
- #endif
- 
- 	/* Get readahead parameters */
--	ra = nfsd_get_raparms(inode->i_sb->s_dev, inode->i_ino);
-+	ra = nfsd_get_raparms(inode->i_sb->s_dev, inode->i_ino, 
-+			      inode->i_mapping->host->i_mapping);
- 	if (ra)
- 		file.f_ra = ra->p_ra;
- 
-@@ -677,9 +678,12 @@ nfsd_read(struct svc_rqst *rqstp, struct
- 	}
- 
- 	/* Write back readahead params */
--	if (ra)
-+	if (ra) {
-+		spin_lock(&ra_lock);
- 		ra->p_ra = file.f_ra;
--
-+		ra->p_count--;
-+		spin_unlock(&ra_lock);
-+	}
- 	if (err >= 0) {
- 		nfsdstats.io_read += err;
- 		*count = err;
+2.6.7-rc2:
+1048576    1024   42944   48703   536023   546492 
+543524   23445  537662   83739  544263   188456  
+259651  538667   537420
+
+I have run the same test against NetApp filers and two
+different linux file server (2.4.22 and 2.6.7-rc2). 
+The client is a 2x 3.0GHz w/8G RAM, Ge (tg3).
+
+Thank you for your time.
+Phy
+
+
+	
+		
+__________________________________
+Do you Yahoo!?
+Friends.  Fun.  Try the all-new Yahoo! Messenger.
+http://messenger.yahoo.com/ 
 
 
 -------------------------------------------------------
