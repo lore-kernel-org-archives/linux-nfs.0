@@ -1,18 +1,19 @@
-From: "Wendy Cheng" <wendy.cheng@falconstor.com>
-Subject: fh_lock again
-Date: Mon, 17 Feb 2003 14:44:45 -0500
+From: Santiago <santi@mleads.com>
+Subject: Re: RedHat/Mandrake NFS - not playing nice
+Date: Mon, 17 Feb 2003 15:04:30 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <007a01c2d6bd$08739230$c5e31a42@tamarac>
-Reply-To: "Wendy Cheng" <wendy.cheng@falconstor.com>
+Message-ID: <3E515C6E.6040609@mleads.com>
+References: <3E5110B0.6000002@mleads.com> <shswujywwe6.fsf@charged.uio.no>
+Reply-To: santi@mleads.com
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0077_01C2D693.1D3A6CE0"
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [66.105.142.2] (helo=falconstorex.falconstor.com)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18krCq-0001A1-00
-	for <nfs@lists.sourceforge.net>; Mon, 17 Feb 2003 11:45:36 -0800
-To: <nfs@lists.sourceforge.net>
+Received: from [64.92.112.32] (helo=mail.hosting-advantage.com)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18ktN4-0003nX-00
+	for <nfs@lists.sourceforge.net>; Mon, 17 Feb 2003 14:04:18 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,138 +26,92 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+Thanks for responding so quickly Trond. I'm replying inline.
 
-------=_NextPart_000_0077_01C2D693.1D3A6CE0
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Trond Myklebust wrote:
+>>>>>>" " == santi  <Santiago> writes:
+>>>>>
+> 
+>      > The Mandrake 9.0 is stock distro with kernel 2.4.19-ac4
+>      > (custom) with NFS support compiled in.
+> 
+> You appear to have forgotten to compile NFSv3 into this kernel. Try to
+> specify the option '-onfsvers=2'.
 
-On 2.4.19 kernel within nfsd_create():
+I recompiled the kernel to support all versions of NFS:
+ 
+lqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqk 
+x
+x x             < > Coda file system support (advanced network fs) 
+                          x x             < > InterMezzo file system 
+support (experimental,
+x x             <*> NFS file system support 
+                          x x             [*]   Provide NFSv3 client 
+support                                               x x 
+<*> NFS server support 
+          x x             [*]   Provide NFSv3 server support 
+                                    x x             [*]   Provide NFS 
+server over TCP support (EXPERIMENTAL)                         x x 
+        <*> SMB file system support (to mount Windows shares 
+               x x             [*]   Use a default NLS 
+                                           x x 
+Default Remote NLS Option: "cp437" 
+   x x             < > NCP file system support (to mount NetWare 
+volumes)                           x x
+mqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqj 
+x 
+tqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqu
+x                                 <Select>    < Exit >    < Help > 
+                            x 
+mqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqj
 
-there is a check to see whether the response file=20
-handle has been verified:
 
-if (!resfph->fh_dentry) {
-    fh_lock(fhp);
-    ....
-}
+> You appear also not to be running rpc.statd on that machine. Unless
+> you also use the 'nolock' mount option, you will end up with problems
+> the first time some process tries to lock a file.
 
-The inode semaphore withing the fh_lock() hangs one of
-the nfsds while running a failover test (we're trying out a=20
-high availability file server design). The client is doing a=20
-"mkdir" request. Similar problems are also found in=20
-"remove" and "rmdir" requests. All runs are under NFS
-version 3.
+I took care of this too. Thanks for pointing it out.
 
-Unlike the remove and rmdir where we added "fh_put"=20
-after the nfsd_unlink() calls to make the hang go away,
-the hang within the nfsd_create() makes me a little bit
-uneasy. Not sure whether we do something wrong in
-the failover logic or it is just simply a linux nfsd coding
-oversight - could some nfsd gurus take a look (linux/open
-source is a new thing to me). My question is, in simple
-words, where should this inode semaphore (inode->i_sem)
-get released ? Is this a nfs v3 coding oversight or the=20
-semaphore is released somewhere in nfsd path that I don't=20
-know about (found a fh_put in nfssvc_release_fhandle()
-within nfsxdr.c but with xdr's extensive use of function pointers,
-it is hard to figure out who uses it).
+[root@backup linux]# rpcinfo -p
+    program vers proto   port
+     100000    2   tcp    111  portmapper
+     100000    2   udp    111  portmapper
+     100011    1   udp    682  rquotad
+     100011    2   udp    682  rquotad
+     100011    1   tcp    685  rquotad
+     100011    2   tcp    685  rquotad
+     100003    2   udp   2049  nfs
+     100003    3   udp   2049  nfs
+     100003    2   tcp   2049  nfs
+     100003    3   tcp   2049  nfs
+     100021    1   udp  32770  nlockmgr
+     100021    3   udp  32770  nlockmgr
+     100021    4   udp  32770  nlockmgr
+     100021    1   tcp  32796  nlockmgr
+     100021    3   tcp  32796  nlockmgr
+     100021    4   tcp  32796  nlockmgr
+     100005    1   udp  32771  mountd
+     100005    1   tcp  32797  mountd
+     100005    2   udp  32771  mountd
+     100005    2   tcp  32797  mountd
+     100005    3   udp  32771  mountd
+     100005    3   tcp  32797  mountd
+     100024    1   udp  32772  status
+     100024    1   tcp  32798  status
 
-Any help would be greatly appreciated.
 
-Wendy
+However, I still am receiving the same error as before:
+[root@backup linux]# mount 10.0.0.48:/var/www/html /r/amanda/nitro-html 
+-t nfs
+mount: 10.0.0.48:/var/www/html failed, reason given by server: 
+Permission denied
+[root@backup linux]#
 
-------=_NextPart_000_0077_01C2D693.1D3A6CE0
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/html;
-	charset="iso-8859-1"
+Any more ideas or suggestions?
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; =
-charset=3Diso-8859-1">
-<META content=3D"MSHTML 6.00.2800.1141" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV><FONT face=3DArial size=3D2>On 2.4.19 kernel within =
-nfsd_create():</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>there is a check to see whether the =
-response file=20
-</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>handle has been verified:</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>if (!resfph-&gt;fh_dentry) =
-{</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>&nbsp;&nbsp;&nbsp; =
-fh_lock(fhp);</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>&nbsp;&nbsp;&nbsp; ....</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>}</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>The inode semaphore withing the =
-fh_lock() hangs one=20
-of</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>the nfsds while running a failover test =
-(we're=20
-trying out a </FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>high </FONT><FONT face=3DArial =
-size=3D2>availability=20
-file server design). The client is doing a </FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>"mkdir" request. Similar problems are =
-also found in=20
-</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>"remove" and "rmdir" requests. All runs =
-are under=20
-NFS</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>version 3.</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>Unlike the remove and rmdir where we =
-added "fh_put"=20
-</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>after the nfsd_unlink() calls to make =
-the hang go=20
-away,</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>the hang within the =
-nfsd_create()&nbsp;makes me a=20
-little bit</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>uneasy. Not sure whether we do =
-something wrong=20
-in</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>the failover&nbsp;logic or it is just =
-simply a=20
-linux nfsd coding</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>oversight - could some nfsd gurus take =
-a look=20
-(linux/open</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>source is a new thing to me). My =
-question is, in=20
-simple</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>words, where should this inode =
-semaphore=20
-(inode-&gt;i_sem)</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>get released ? Is this a nfs v3 coding =
-oversight or=20
-the </FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>semaphore is released somewhere in nfsd =
-path that I=20
-don't </FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>know about (found a fh_put in=20
-nfssvc_release_fhandle()</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>within nfsxdr.c but with xdr's =
-extensive use of=20
-function pointers,</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>it is hard to figure out who uses =
-it).</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>Any help would be greatly =
-appreciated.</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>Wendy</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV></BODY></HTML>
+Thanks,
 
-------=_NextPart_000_0077_01C2D693.1D3A6CE0--
+Santiago
 
 
 
