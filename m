@@ -1,19 +1,16 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Questions about NFS over TCP
-Date: 23 Apr 2003 14:25:33 +0200
+From: "jamie garton" <jamie_garton@msn.com>
+Subject: accessing server mounted file systems
+Date: Wed, 23 Apr 2003 22:33:36 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsznmhtn7m.fsf@charged.uio.no>
-References: <3EA66B58.2B1E4A45@moving-picture.com>
+Message-ID: <BAY4-F224S8Uq5nlhRy00012a5b@hotmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
+Received: from bay4-f22.bay4.hotmail.com ([65.54.171.22] helo=hotmail.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 198JK6-0000oW-00
-	for <nfs@lists.sourceforge.net>; Wed, 23 Apr 2003 05:26:02 -0700
-To: James Pearson <james-p@moving-picture.com>
-In-Reply-To: <3EA66B58.2B1E4A45@moving-picture.com>
+	id 198JRy-0002He-00
+	for <nfs@lists.sourceforge.net>; Wed, 23 Apr 2003 05:34:10 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,35 +23,44 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == James Pearson <james-p@moving-picture.com> writes:
+Hi,
 
-    >> The disadvantage of using TCP is that it is not a stateless
-    >> protocol like UDP. If your server crashes in the middle of a
-    >> packet transmission, the client will hang and any shares will
-    >> need to be unmounted and remounted.
+I have networked 2 machines using 100Mb ethernet cards and I have set up NFS 
+to copy files back and forth.
 
-This is not really true. If the connection is broken, the client
-should detect it, and automatically attempt to reconnect. It may be
-that there are still bugs (I hope not) but the machinery is already
-there.
+My problems is that I can only see files that are not mounted locally by the 
+server.
+i.e I can see all files accept the ones under the /mnt directory like 
+/mnt/hda5.
 
-     > What is the 'best' way to get mount to try an TCP mount first -
-     > if that fails, then try a UDP mount - I had a look at the mount
-     > source and hacked in something to do this if the options -o
-     > tcp,udp are given - my hack is very simple, if the TCP mount
-     > fails (for whatever reason), the try a UDP mount - however, I
-     > don't know how 'safe' this is ...
+I have tried viewing it by root and a user with no luck. This is my 
+/etc/exports file on the server:
+/ 192.168.0.1(rw,no_root_squash) 10.0.0.1(rw,no_root_squash)
 
-It should be fairly safe: after all this is what most NFS clients do
-anyway. I've had a patch available for quite some time on
- 
-  http://www.fys.uio.no/~trondmy/src/util-linux-2.11n.dif.gz
+and this is my auto mount file on the client:
+server  -fstype=nfs,rw    10.0.0.2:/
 
-that makes this easy. Just go to the function 'proto_probelist()' and
-swap the order of UDP and TCP.
+I can only assume it is a security thing that I can not see contents of the 
+file system.
 
-Cheers,
-  Trond
+
+I have also noticed that I can write the server's /mnt/hda5 directory from 
+the client and the file is not visible from the server.
+
+I hope someone can help.
+
+Regards
+Jamie Garton
+
+
+
+
+
+
+_________________________________________________________________
+Hotmail now available on Australian mobile phones. Go to  
+http://ninemsn.com.au/mobilecentral/hotmail_mobile.asp
+
 
 
 -------------------------------------------------------
