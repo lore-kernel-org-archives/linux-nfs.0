@@ -1,18 +1,20 @@
-From: <ltd20043361p56@nation.net>
-Subject: An honest way to make money  -
-Date: Tue, 30 Jul 0102 04:10:59 -0400
+From: Jonathan Woithe <jwoithe@physics.adelaide.edu.au>
+Subject: Re: Linux 2.2 client trouble after 2.4.18 server reboot
+Date: Tue, 30 Jul 2002 17:14:24 +0930 (CST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <020d23b40e8e$5543b2b0$3dc82da2@jmmjkl>
-Reply-To: <ltd20043361p56@nation.net>
+Message-ID: <200207300744.g6U7iOb17715@sprite.physics.adelaide.edu.au>
+References: <15685.8544.339285.783217@charged.uio.no>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="----=_NextPart_000_00A7_22B18D7C.C8407B23"
+Content-Type: text/plain; charset=us-ascii
+Cc: jwoithe@physics.adelaide.edu.au (Jonathan Woithe),
+        nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [203.150.24.1] (helo=nation.net)
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17ZKxl-0007nJ-00
-	for <nfs@lists.sourceforge.net>; Mon, 29 Jul 2002 17:34:11 -0700
-To: <nfs@lists.sourceforge.net>
+Received: from adelphi.physics.adelaide.edu.au ([129.127.102.1])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17ZRgI-0000hc-00
+	for <nfs@lists.sourceforge.net>; Tue, 30 Jul 2002 00:44:34 -0700
+To: trond.myklebust@fys.uio.no
+In-Reply-To: <15685.8544.339285.783217@charged.uio.no> from "Trond Myklebust" at Jul 29, 2002 01:05:04 PM
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,91 +27,53 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-------=_NextPart_000_00A7_22B18D7C.C8407B23
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: base64
+Hi Trond and others
 
+[ NFS client troubles after server rebooted ]
 
-SGVsbG8gLQ0KDQpJZiB5b3Ugd291bGQgbGlrZSB0byBlYXJuIGV4dHJhIGlu
-Y29tZSB0aGUgaG9uZXN0IHdheSwgeW91IHdpbGwgYmUgaW50ZXJlc3RlZCBp
-biB0aGlzLg0KDQpBIGZldyBtb250aHMgYmFjayBJIGpvaW5lZCBhIHByb2dy
-YW0gYW5kIHRoZW4uLi5wcm9tcHRseSBmb3Jnb3QNCmFib3V0IGl0LiBZb3Ug
-bWF5IGhhdmUgZG9uZSB0aGlzIHlvdXJzZWxmIHNvbWV0aW1lLi4ueW91IGlu
-dGVuZA0KdG8gd29yayB0aGUgcHJvZ3JhbSBidXQgdGhlbiBnZXQgY2F1Z2h0
-IGluIHlvdXIgZGF5LXRvLWRheQ0KYWN0aXZpdGllcyBhbmQgaXQncyBzb29u
-IGZvcmdvdHRlbi4NCg0KVGhlIHByb2dyYW0gd2FzIGZyZWUgdG8gam9pbiBz
-byBtYXliZSBJIGp1c3QgZGlkbid0IHRha2UgaXQgdmVyeQ0Kc2VyaW91c2x5
-Lg0KKiAoIFlPVVIgTkFNRSBIQVMgQUxSRUFEWSBCRUVOIFBVVCBPTiBPVVIg
-UkVNT1ZFIExJU1QgKSoNCg0KQW55d2F5LCBuZWFyIHRoZSBlbmQgb2YgSnVu
-ZSBJIHJlY2VpdmVkIGEgbGV0dGVyIGZyb20gbXkNCnNwb25zb3IgaW5mb3Jt
-aW5nIG1lIHRoYXQgSSBoYWQgbW9yZSB0aGFuIDIwMDAgUEFJRCBtZW1iZXJz
-IGluDQpteSBncm91cCENCg0KQXMgeW91IGNhbiBpbWFnaW5lLCBJIHdhcyB2
-ZXJ5IHNrZXB0aWNhbC4gQWZ0ZXIgYWxsLCBob3cgY291bGQgSQ0KaGF2ZSBt
-b3JlIHRoYW4gMjAwMCBwYWlkIG1lbWJlcnMgdW5kZXIgbWUgaW4gYSBwcm9n
-cmFtIHRoYXQgSSBoYWQNCm5ldmVyIHByb21vdGVkPw0KDQpJIHRvb2sgdGhl
-IHRpbWUgdG8gY2hlY2sgb3V0IHRoZSBzaXRlLi4udGhlbiB3cm90ZSB0byBW
-aWMgYXNraW5nDQpmb3IgY29uZmlybWF0aW9uIHRoYXQgdGhlc2Ugd2VyZSBw
-YWlkIG1lbWJlcnMgYW5kIG5vdCBqdXN0IGZyZWUNCnNpZ24tdXBzLi4ubGlr
-ZSBtZSA6KQ0KDQpXZWxsLCBpdCB3YXMgdHJ1ZS4uLkkgaGFkIDIzNjUgcGFp
-ZCBtZW1iZXJzIGluIG15IGdyb3VwLiBUaGlzDQppbiBhIHByb2dyYW0gdGhh
-dCBJIGhhZCBuZXZlciB3b3JrZWQhDQoNCkFsbCBJIGhhZCB0byBkbyB3YXMg
-dXBncmFkZSB0byBhIHBhaWQgbWVtYmVyc2hpcCBiZWZvcmUgdGhlIGVuZA0K
-b2YgdGhlIG1vbnRoIGFuZCBJIHdvdWxkIGhhdmUgbXkgcG9zaXRpb24gbG9j
-a2VkIGluIGFuZCBhDQpncm91cCBvZiAyMzY1IHBlb3BsZS4NCg0KWW91IGNh
-biBiZXQgSSB3YXN0ZWQgbm8gdGltZSBpbiBnZXR0aW5nIG15IG1lbWJlcnNo
-aXAgdXBncmFkZWQhDQoNCkkgY2FuIHRlbGwgeW91LCBpZiBJIGhhZCBrbm93
-biB3aGF0IHdhcyBoYXBwZW5pbmcgd2l0aCB0aGlzDQpwcm9ncmFtLCBJIHdv
-dWxkIGhhdmUgYmVjb21lIGFuIGFjdGl2ZSBwYWlkIG1lbWJlciBtb250aHMg
-YWdvIQ0KDQpXaXRoIHRoaXMgcHJvZ3JhbSwgeW91IHdpbGwgZ2V0IGEgSFVH
-RSBncm91cCBvZiBQQUlEIE1FTUJFUlMuDQpNeSBzcG9uc29yJ3MgY2hlY2ss
-IHdoaWNoIGlzIGEgbWluaW11bSBvZiAkNSwwMDAsIGFycml2ZXMgZXZlcnkN
-Cm1vbnRoLi4ub24gdGltZS4NCg0KSG93IHdvdWxkIHlvdSBsaWtlIHRvIGxv
-Y2sgeW91ciBwb3NpdGlvbiBpbiBGUkVFIHdoaWxlIHlvdSBjaGVjaw0Kb3V0
-IHRoaXMgb3Bwb3J0dW5pdHkgYW5kIHdhdGNoIHlvdXIgZ3JvdXAgZ3Jvdz8N
-Cg0KVG8gZ3JhYiBhIEZSRUUgSUQjLCBzaW1wbHkgcmVwbHkgYnkgc2VuZGlu
-ZyBhIHNlcGFyYXRlIGUtbWFpbCB0bzoNCmhvbmVzdGx5MjAwM0Bob3RtYWls
-LmNvbQ0KYW5kIHdyaXRlIHRoaXMgcGhyYXNlOg0KIkVtYWlsIG1lIGRldGFp
-bHMgYWJvdXQgdGhlIGNsdWIncyBidXNpbmVzcyBhbmQgY29uc3VtZXIgb3Bw
-b3J0dW5pdGllcyINCkJlIHN1cmUgdG8gaW5jbHVkZSB5b3VyOg0KMS4gRmly
-c3QgbmFtZQ0KMi4gTGFzdCBuYW1lDQozLiBFbWFpbCBhZGRyZXNzIChpZiBk
-aWZmZXJlbnQgZnJvbSBhYm92ZSkNCk9uY2UgSSByZWNlaXZlIHlvdXIgcmVw
-bHksIEkgd2lsbCBzdWJtaXQgeW91ciBpbmZvcm1hdGlvbiBhbmQgeW91DQp3
-aWxsIHJlY2VpdmUgYW4gZS1tYWlsIGFza2luZyB5b3UgdG8gYWN0aXZhdGUg
-eW91ciBGUkVFIE1lbWJlcnNoaXAuDQoNCihUSElTIElTIEEgT05FIC0gVElN
-RSBNQUlMSU5HKQ0KDQpXZSB3aWxsIHRoZW4gc2VuZCB5b3UgYSBzcGVjaWFs
-IHJlcG9ydCwgYWxvbmcgd2l0aCB5b3VyIEZyZWUgTWVtYmVyc2hpcA0KbnVt
-YmVyIGFuZCBhbHNvIGxldCB5b3Uga25vdyBob3cgeW91IGNhbiBrZWVwIHRy
-YWNrIG9mIHlvdXIgZ3Jvd2luZyBncm91cCwNCnRoZW4geW91IGNhbiBtYWtl
-IHVwIHlvdXIgb3duIG1pbmQuDQoNClRoYXQncyBhbGwgdGhlcmUgaXMgdG8g
-aXQuDQoNCldhcm0gcmVnYXJkcywNCg0KVC4gTHVkZXMNCg0KUC5TLiBBZnRl
-ciBoYXZpbmcgc2V2ZXJhbCBuZWdhdGl2ZSBleHBlcmllbmNlcyB3aXRoIG5l
-dHdvcmsNCm1hcmtldGluZyBjb21wYW5pZXMgSSBoYWQgcHJldHR5IG11Y2gg
-Z2l2ZW4gdXAgb24gdGhlbS4NClRoaXMgY29tcGFueSBpcyBkaWZmZXJlbnQt
-LWl0IG9mZmVycyB2YWx1ZSwgaW50ZWdyaXR5LCBhbmQgYQ0KUkVBTCBvcHBv
-cnR1bml0eSB0byBoYXZlIHlvdXIgb3duIGhvbWUtYmFzZWQgYnVzaW5lc3Mu
-Li4NCmFuZCBmaW5hbGx5IG1ha2UgcmVhbCBtb25leSBvbiB0aGUgaW50ZXJu
-ZXQuDQoNCkRvbid0IHBhc3MgdGhpcyB1cC4ueW91IGNhbiBzaWduIHVwIGFu
-ZCB0ZXN0LWRyaXZlIHRoZQ0KcHJvZ3JhbSBmb3IgRlJFRS4gIEFsbCB5b3Ug
-bmVlZCB0byBkbyBpcyBnZXQgeW91ciBmcmVlDQptZW1iZXJzaGlwLg0KDQpU
-SElTIElTIEEgT05FLVRJTUUgTUFJTElORywgWU9VIFdJTEwgTk9UIEJFIFNF
-TlQgVEhJUyBFLU1BSUwgQUdBSU4uIA0KDQo9PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09DQoiVGhpcyBlbWFpbCBpcyBzZW50IGluIGNvbXBsaWFu
-Y2Ugd2l0aCBzdHJpY3QgYW50aS1hYnVzZSBhbmQgTk8gU1BBTQ0KcmVndWxh
-dGlvbnMuIFRoZSBtZXNzYWdlIHdhcyBzZW50IHRvIHlvdSBhcyBhIHJlc3Bv
-bnNlIHRvIHlvdXIgYWQsIGFuIG9wdC1pbg0Kb3Bwb3J0dW5pdHksIHlvdXIg
-YWRkcmVzcyB3YXMgY29sbGVjdGVkIGFzIGEgcmVzdWx0IG9mIHlvdSBwb3N0
-aW5nIHRvIG9uZSBvZg0KbXkgbGlua3MsIHJldmlld2luZyB5b3VyIHdlYiBz
-aXRlLCB5b3UgYW5zd2VyaW5nIG9uZSBvZiBteSBjbGFzc2lmaWVkIGFkcywN
-CnlvdSBoYXZlIHNlbnQgbWUgYW4gRS1tYWlsLCBvciB5b3UgdW5rbm93aW5n
-bHkgaGFkIHlvdXIgZS1tYWlsIGFkZGVkIHRvIGFuDQpvcHQtaW4gbWFpbGlu
-ZyBsaXN0LiBZb3UgbWF5IHJlbW92ZSB5b3VyIEUtbWFpbCBhZGRyZXNzIGF0
-IG5vIGNvc3QgdG8geW91DQp3aGF0c29ldmVyLCBzaW1wbHkgc2VuZCBhIHNl
-cGVyYXRlIGVtYWlsIHRvOiBvdXRvZmRlYnRAZW1haWwuY29tDQphbmQgcHV0
-ICJSZW1vdmUiIGluIHRoZSBzdWJqZWN0IGxpbmUuDQo9PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09DQoNCg0KDQoNCg0KMDc1MEJYTXI2LTcxNGx6
-b3Y3OTI5dEVoQjQtMTg4YmhwbjIzMTNaZ2drNi02NTFwblZpbDQ4
+> >>>>> " " == Jonathan Woithe <jwoithe@physics.adelaide.edu.au> writes:
+>      > The exported directory on the server is a ReiserFS filesystem,
+>      > exported with only "rw" options.  The client mounts with
+>      > "hard,intr,bg" options.  NFSv3 support is not compiled in on
+>      > the 2.2.19 clients.  The server is a default slackware
+>      > configuration (from the point of view of NFS):
+> 
+> Was that ReiserFS system created on a 2.2.x system? If so, it is a
+> known bug in ReiserFS itself.  There is a mount option (can't remember
+> the name in the spur of the moment, but you'll find it described on
+> the 'mount' manpage in www.namesys.com and you'll find it described
+> several times in the NFS lists archives) that updates the filesystem
+> to the latest ReiserFS format.
+
+A few more details from tests I've done today.  Under Slackware 8.1 (what
+we're using), the nfs system is shutdown with a `exportfs -au' before a
+reboot.  If I carry out a stop/start cycle on the NFS system, the clients
+have no problem.  It seems it only occurs across reboots - not NFS server
+restarts.
+
+Furthermore, I've found that if I do a `exportfs -a' immediately after the
+server reboot then the clients are able access the NFS volume again.  And
+yes, exportfs is called before rpc.mountd under Slackware 8.1.  Before the
+second exportfs invocation, the /var/lib/nfs/xtab file is empty whereas it
+contains details of the exported filesystems after.  I don't know if this is
+relevant - but it is the only file which changes as a result of the second
+call.
+
+Does this mean that an extra `exportfs -r' (or `exportfs -a') is required
+during boot to resync this, or does it indicate another problem?
+
+In regards to the ReiserFS version, `debugreiserfs <dev>' reports a
+superblock of version 3.6.
+
+Regards
+  jonathan
+-- 
+* Jonathan Woithe    jwoithe@physics.adelaide.edu.au                        *
+*                    http://www.physics.adelaide.edu.au/~jwoithe            *
+***-----------------------------------------------------------------------***
+** "Time is an illusion; lunchtime doubly so"                              **
+*  "...you wouldn't recognize a subtle plan if it painted itself purple and *
+*   danced naked on a harpsichord singing 'subtle plans are here again'"    *
 
 
 -------------------------------------------------------
@@ -119,6 +83,3 @@ http://seeker.dice.com/seeker.epl?rel_code=31
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
-
-------=_NextPart_000_00A7_22B18D7C.C8407B23--
