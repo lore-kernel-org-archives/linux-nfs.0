@@ -1,21 +1,16 @@
-From: Christian Reis <kiko@async.com.br>
-Subject: Re: SM_UNMON again -> kernel
-Date: Sat, 19 Jul 2003 13:22:18 -0300
+From: Tupshin Harper <tupshin@tupshin.com>
+Subject: Help needed with NFS locking
+Date: Sat, 19 Jul 2003 12:59:03 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030719162218.GB7166@async.com.br>
-References: <20030711061615.GA1924@quasar.nro.au.com> <shsr84x768e.fsf@charged.uio.no> <87smpbkt55.fsf@ceramic.fifi.org> <shs8yr2h2jr.fsf@charged.uio.no> <87k7aml330.fsf@ceramic.fifi.org> <shsptkdij1a.fsf@charged.uio.no> <87vfu0ej5k.fsf@ceramic.fifi.org> <87n0fb42o5.fsf@ceramic.fifi.org>
+Message-ID: <3F19A307.3090102@tupshin.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from 200-206-134-238.async.com.br
-	([200.206.134.238] helo=anthem.async.com.br ident=root)
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19duU8-00084t-00
-	for <nfs@lists.sourceforge.net>; Sat, 19 Jul 2003 09:23:01 -0700
-To: Philippe Troin <phil@fifi.org>
-In-Reply-To: <87n0fb42o5.fsf@ceramic.fifi.org>
+Received: from adsl-67-114-19-186.dsl.pltn13.pacbell.net ([67.114.19.186] helo=adsl-63-202-77-221.dsl.snfc21.pacbell.net)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19dxrC-00061v-00
+	for <nfs@lists.sourceforge.net>; Sat, 19 Jul 2003 12:59:02 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,48 +23,62 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, Jul 18, 2003 at 08:26:50PM -0700, Philippe Troin wrote:
-> I still see the same messages over and over again.
+I'm absolutely stuck on this one. I'm running linux-2.4.21-ac4 on both 
+client and server (problem is not unique to this version of the kernel), 
+with debian-sid distribution on both systems. I'm trying to run /home as 
+an NFS-mounted volume on the client, but no matter what I try, I can't 
+get nfs-locking to work.
 
-Just to add a data point, I see the same message periodically on our
-diskless network -- all clients are linux 2.4.21 (debian woody), as is
-the server (no relevant patches).  However, the IP addresses in the
-messages are for the *remote* boxes.
+rpcinfo -p on the server looks like this:
+   program vers proto   port
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    100024    1   udp    665  status
+    100024    1   tcp    668  status
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
+    100003    2   tcp   2049  nfs
+    100003    3   tcp   2049  nfs
+    100021    1   udp  41255  nlockmgr
+    100021    3   udp  41255  nlockmgr
+    100021    4   udp  41255  nlockmgr
+    100021    1   tcp  49464  nlockmgr
+    100021    3   tcp  49464  nlockmgr
+    100021    4   tcp  49464  nlockmgr
+    100005    1   udp    728  mountd
+    100005    1   tcp    731  mountd
+    100005    2   udp    728  mountd
+    100005    2   tcp    731  mountd
+    100005    3   udp    728  mountd
+    100005    3   tcp    731  mountd
 
-Server (anthem 192.168.99.4) logs:
+and on the client:
+   program vers proto   port
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    100021    1   udp  32768  nlockmgr
+    100021    3   udp  32768  nlockmgr
+    100021    4   udp  32768  nlockmgr
+    100021    1   tcp  32768  nlockmgr
+    100021    3   tcp  32768  nlockmgr
+    100021    4   tcp  32768  nlockmgr
+    391002    1   tcp    772  sgi_fam
+    391002    2   tcp    772  sgi_fam
+    100024    1   udp    652  status
+    100024    1   tcp    655  status
 
-    Jul 12 17:50:10 anthem rpc.statd[326]: Received erroneous
-        SM_UNMON request from anthem for 192.168.99.6
-    Jul 12 17:54:37 anthem rpc.statd[326]: Received erroneous
-        SM_UNMON request from anthem for 192.168.99.6
-    Jul 12 18:07:03 anthem rpc.statd[326]: Received erroneous
-        SM_UNMON request from anthem for 192.168.99.6
-    Jul 12 18:13:10 anthem rpc.statd[326]: Received erroneous
-        SM_UNMON request from anthem for 192.168.99.6
+And doing a remote rpcinfo between the two machines shows the same 
+information.
 
-[One] client (manonegra 192.168.99.6) log:
+The symptom exihibits itself mainly as an inability to use gnome due to 
+file-locking errors, but other applications provide locking warnings as 
+well. BTW, is there a canonical way to test for nfs-locking?
 
-    Jul 18 18:07:33 manonegra rpc.statd[115]: Received
-        erroneous SM_UNMON request from manonegra for 192.168.99.4
-    Jul 18 18:17:33 manonegra rpc.statd[115]: Received
-        erroneous SM_UNMON request from manonegra for 192.168.99.4
-    Jul 18 18:35:08 manonegra rpc.statd[115]: Received
-        erroneous SM_UNMON request from manonegra for 192.168.99.4
-    Jul 18 18:39:22 manonegra rpc.statd[115]: Received
-        erroneous SM_UNMON request from manonegra for 192.168.99.4
 
-It goes on forever. There's nothing fishy on the 127.0.0.1 lines in the
-hosts file or in DNS. The logs go back for a year now.
+Any suggestions???
 
-If there's one thing special, it's that this server also runs an
-iptables firewall that does masquerading and supports connection
-tracking. Could it be mangling the lock packets? I recall seeing
-something similar a long time ago..
+-Tupshin
 
-Take care,
---
-Christian Reis, Senior Engineer, Async Open Source, Brazil.
-http://async.com.br/~kiko/ | [+55 16] 261 2331 | NMFL
 
 
 -------------------------------------------------------
