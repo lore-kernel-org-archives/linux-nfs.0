@@ -1,25 +1,26 @@
-From: Ragnar =?iso-8859-15?Q?Kjo=F8rstad?= <nfs@ragnark.vestdata.no>
-Subject: Re: failover-NFS server problem
-Date: Tue, 20 Apr 2004 01:10:18 +0200
+From: Olaf Kirch <okir@suse.de>
+Subject: [PATCH] 2.6 open(O_EXCL) sets silly mtime
+Date: Tue, 20 Apr 2004 10:18:22 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040419231018.GU22684@vestdata.no>
-References: <5.1.0.14.2.20040419123002.00acb6a8@pop.ncsa.uiuc.edu>
+Message-ID: <20040420081822.GB14756@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Cc: nfs@lists.sourceforge.net, alan Robertson <alanr@unix.sh>,
-	bruce.allan@us.ibm.com
+Content-Type: multipart/mixed; boundary="uAKRQypu60I7Lcqm"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BFhuN-0005jV-7V
-	for nfs@lists.sourceforge.net; Mon, 19 Apr 2004 16:10:35 -0700
-Received: from stine.vestdata.no ([195.204.68.10])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1BFqSZ-0003RN-UH
+	for nfs@lists.sourceforge.net; Tue, 20 Apr 2004 01:18:27 -0700
+Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.30)
-	id 1BFhuM-0004i6-ER
-	for nfs@lists.sourceforge.net; Mon, 19 Apr 2004 16:10:34 -0700
-To: Guochun Shi <gshi@ncsa.uiuc.edu>
-In-Reply-To: <5.1.0.14.2.20040419123002.00acb6a8@pop.ncsa.uiuc.edu>
+	id 1BFqSZ-0000rn-Ef
+	for nfs@lists.sourceforge.net; Tue, 20 Apr 2004 01:18:27 -0700
+Received: from hermes.suse.de (Hermes.suse.de [195.135.221.8])
+	(using TLSv1 with cipher EDH-RSA-DES-CBC3-SHA (168/168 bits))
+	(No client certificate requested)
+	by Cantor.suse.de (Postfix) with ESMTP id 060504937E2
+	for <nfs@lists.sourceforge.net>; Tue, 20 Apr 2004 10:18:23 +0200 (CEST)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,46 +33,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, Apr 19, 2004 at 01:14:24PM -0500, Guochun Shi wrote:
-> I ran into some problem in running Connectathon with NFS. The scenario =
-I want to test is if NFS works fine in case of the server is failed back =
-and forth (linuxHA controls that. Linux-Ha is in www.linux-ha.org ). The =
-following is my setup:
->=20
-> 1. Machine A and Machine B are servers, there is one and only server ac=
-tive any time. The active machine has a floating IP as the service IP.
-> 2. Machine C is the client. It mounts a directory from the floating IP
-> 3. Machine A and Machine B have a fiber channel share disk. The exporte=
-d filesystem resides in shared disk. On both machines,=20
-> /var/lib/nfs is a symbolic link to a directory in the shared disk.
->=20
-> all machines are running Redhat 9, kernel 2.4.26, with nfs-utils-1.0.1-=
-2.9
->=20
-> The server will switch between A and B, in each switching:
-> the original server will stop nfs, stop nfslock, umount from the shared=
- disk and give out the floating ip,=20
-> the backup server will grab the floaing ip, mount the shared disk, star=
-t nfslock and start nfs
 
-Did you modify the init-scripts to supply the "-n" option to rpc.statd?
+--uAKRQypu60I7Lcqm
+Content-Type: text/plain; charset=iso-8859-15
+Content-Disposition: inline
 
-Statd needs to use the same name on both servers (the one used by your
-clients to mount filesystems) for locking to work accross failures.
+Hi,
 
-The init-script in nfs-utils in RH9 doesn't support this. Take a look at
-the init-script in Fedora Core 1 or the official nfs-utils package.
-(Possible you can just upgrade to FC1's nfs-utils 1.0.6.
+the attached patch (relative to 2.6.5) is required to make sure a file
+created with O_EXCL gets the proper mtime.
 
-Then you need to change the sysconfig-files to set the STATD_HOSTNAME
-variable to match the name of the floating IP.=20
+Olaf
+-- 
+Olaf Kirch     |  The Hardware Gods hate me.
+okir@suse.de   |
+---------------+ 
 
+--uAKRQypu60I7Lcqm
+Content-Type: text/plain; charset=iso-8859-15
+Content-Disposition: attachment; filename=nfs-o-excl-mtime
 
---=20
-Ragnar Kjo=F8rstad
-Software Engineer
-Scali - http://www.scali.com
-High Performance Clustering
+--- linux-2.6.5/fs/nfs/nfs3proc.c.excl	2004-04-19 14:35:47.000000000 +0200
++++ linux-2.6.5/fs/nfs/nfs3proc.c	2004-04-19 16:55:50.000000000 +0200
+@@ -375,6 +375,9 @@
+ 		};
+ 		dprintk("NFS call  setattr (post-create)\n");
+ 
++		if (!(sattr->ia_valid & ATTR_MTIME_SET))
++			sattr->ia_valid |= ATTR_MTIME;
++
+ 		/* Note: we could use a guarded setattr here, but I'm
+ 		 * not sure this buys us anything (and I'd have
+ 		 * to revamp the NFSv3 XDR code) */
+
+--uAKRQypu60I7Lcqm--
 
 
 -------------------------------------------------------
