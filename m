@@ -1,28 +1,25 @@
-From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-Subject: silly names
-Date: Fri, 3 Sep 2004 11:35:47 -0600 (MDT)
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: silly names
+Date: Fri, 03 Sep 2004 15:19:47 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.60.0409031131070.7569@harp.ngdc.noaa.gov>
-Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Message-ID: <1094239187.8196.70.camel@lade.trondhjem.org>
+References: <Pine.LNX.4.60.0409031131070.7569@harp.ngdc.noaa.gov>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Content-Type: text/plain; charset=iso-8859-1
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C3HyX-0001ha-7a
-	for nfs@lists.sourceforge.net; Fri, 03 Sep 2004 10:35:49 -0700
-Received: from harp.ngdc.noaa.gov ([140.172.187.26])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1C3JbD-0006df-9H
+	for nfs@lists.sourceforge.net; Fri, 03 Sep 2004 12:19:51 -0700
+Received: from dh138.citi.umich.edu
+	([141.211.133.138] helo=lade.trondhjem.org ident=Debian-exim)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
 	(Exim 4.34)
-	id 1C3HyV-00052t-RU
-	for nfs@lists.sourceforge.net; Fri, 03 Sep 2004 10:35:49 -0700
-Received: from harp.ngdc.noaa.gov (harp.ngdc.noaa.gov [127.0.0.1])
-	by harp.ngdc.noaa.gov (8.12.11/8.12.11) with ESMTP id i83HZlpL008528
-	for <nfs@lists.sourceforge.net>; Fri, 3 Sep 2004 11:35:47 -0600
-Received: from localhost (ahoward@localhost)
-	by harp.ngdc.noaa.gov (8.12.11/8.12.11/Submit) with ESMTP id i83HZlto008524
-	for <nfs@lists.sourceforge.net>; Fri, 3 Sep 2004 11:35:47 -0600
-To: nfs@lists.sourceforge.net
+	id 1C3JbB-0003JJ-Ns
+	for nfs@lists.sourceforge.net; Fri, 03 Sep 2004 12:19:51 -0700
+To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+In-Reply-To: <Pine.LNX.4.60.0409031131070.7569@harp.ngdc.noaa.gov>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -35,23 +32,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+P=E5 fr , 03/09/2004 klokka 13:35, skreiv Ara.T.Howard:
+> are there causes other than some remote client removing an open file for
+> sillynames appearing in a directory containing a file shared (via locking=
+) by
+> many clients?  i have a directory containing such a file where many silly=
+names
+> appear, but eventually disappear.  none of the files in the directory are=
+ ever
+> being removed - so what could cause this?  the code is working fine - i'm=
+ just
+> wondering about the causes of this...
 
-are there causes other than some remote client removing an open file for
-sillynames appearing in a directory containing a file shared (via locking) by
-many clients?  i have a directory containing such a file where many sillynames
-appear, but eventually disappear.  none of the files in the directory are ever
-being removed - so what could cause this?  the code is working fine - i'm just
-wondering about the causes of this...
+ -  A client crash
+ -  Someone renaming a sillyrenamed file on the server
 
--a
---
-===============================================================================
-| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
-| PHONE   :: 303.497.6469
-| A flower falls, even though we love it;
-| and a weed grows, even though we do not love it. 
-|   --Dogen
-===============================================================================
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
