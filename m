@@ -1,24 +1,25 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Linux 2.6 - Configuring swap onto NFS mounted root file
-Date: Mon, 25 Oct 2004 10:43:22 -0400
+From: rnews@tasking.nl
+Subject: Re: Linux 2.6 - Configuring swap onto NFS mounted root file system ?
+Date: Mon, 25 Oct 2004 16:25:35 -0000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1098715403.10720.41.camel@lade.trondhjem.org>
-References: <20041024031714.1003E1D15EE@sc8-sf-uberspam1.sourceforge.net>
-	 <4388.66.56.10.215.1098705875.squirrel@66.56.10.215>
+Message-ID: <779c.417d28ff.2d875@altium.nl>
+References: <20041023.172833.507.178473@webmail03.lax.untd.com> <20041023.172833.507.178473@webmail03.lax.untd.com> <1098578790.10732.1.camel@lade.trondhjem.org>
+Reply-To: dick.streefland@altium.nl (Dick Streefland)
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CM64T-00082C-3h
-	for nfs@lists.sourceforge.net; Mon, 25 Oct 2004 07:43:41 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 1CM7gJ-00006K-0V
+	for nfs@lists.sourceforge.net; Mon, 25 Oct 2004 09:26:51 -0700
+Received: from ns.tasking.nl ([195.193.207.2])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CM64S-00044j-FJ
-	for nfs@lists.sourceforge.net; Mon, 25 Oct 2004 07:43:40 -0700
-To: Luis P Caamano <lpc@racemi.com>
-In-Reply-To: <4388.66.56.10.215.1098705875.squirrel@66.56.10.215>
+	id 1CM7gI-0007OK-1D
+	for nfs@lists.sourceforge.net; Mon, 25 Oct 2004 09:26:50 -0700
+Received: (from root@localhost) by ns.tasking.nl (8.9.3c/8.6.12) id SAA17993 for <nfs@lists.sourceforge.net>; Mon, 25 Oct 2004 18:26:42 +0200 (MET DST)
+Received: by ns.tasking.nl (TUNIX txp2/smap)
+	for <nfs@lists.sourceforge.net> id sma017789; Mon, 25 Oct 04 18:25:41 +0200
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,19 +32,21 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-m=E5 den 25.10.2004 Klokka 08:04 (-0400) skreiv Luis P Caamano:
+Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+| su den 24.10.2004 Klokka 00:27 (+0000) skreiv Alexander Povolotsky:
+| > Hi,
+| > 
+| > Linux 2.6 - Configuring swap onto NFS mounted root file system ...
+| > Is it possible and working ?
+| 
+| No.
 
-> Is this a temporary situation?  Swapping to nfs works pretty
-> nicely on 2.4, we use it all the time.
+Well, you can swap on a file on NFS via a loopback mount.
 
-Feel free to fix it if you miss it. I have no plans to work on this in
-the foreseeable future.
-
-Cheers,
-  Trond
-
---=20
-Trond Myklebust <trond.myklebust@fys.uio.no>
+-- 
+Dick Streefland                      ////                      Altium BV
+dick.streefland@altium.nl           (@ @)          http://www.altium.com
+--------------------------------oOO--(_)--OOo---------------------------
 
 
 
