@@ -1,17 +1,15 @@
-From: =?GB2312?B?ucK2wMrHv8mz3KOsvNPI67ykx+m5q8nno6y45rHwtaXJ7Q==?=
- <ssfdf@21cn.com>
-Subject: =?GB2312?B?ucK2wMrHv8mz3KOsvNPI67ykx+m5q8nno6y45rHwtaXJ7Q==?=
-Date: Thu, 20 Mar 2003 21:21:57 +0800
+From: trmcneal@attbi.com
+Subject: nfs-utils (fwd)
+Date: Thu, 20 Mar 2003 16:18:16 +0000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E18w02k-0006Kj-00@sc8-sf-list1.sourceforge.net>
-Reply-To: fdf@21cn.com
-Content-Type: text/html;charset="GB2312"
+Message-ID: <E18w2kM-000629-00@sc8-sf-list1.sourceforge.net>
+Cc: NFS maillist <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [218.86.43.64] (helo=21cn.com)
+Received: from rwcrmhc51.attbi.com ([204.127.198.38])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18w02k-0006Kj-00
-	for <nfs@lists.sourceforge.net>; Thu, 20 Mar 2003 05:25:15 -0800
-To: nfs@lists.sourceforge.net
+	id 18w2kM-000629-00
+	for <nfs@lists.sourceforge.net>; Thu, 20 Mar 2003 08:18:26 -0800
+To: volrath@sbcglobal.net 
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,89 +22,210 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-<html>
+The NFS Mailing list is the best place to get the fastest answer.  I'll
+look at it in the meantime.
 
-<head><STYLE>HTML {
-	TEXT-DECORATION: none
-}
-A:link {
-	COLOR: #000000; TEXT-DECORATION: none
-}
-A:hover {
-	COLOR: rgb(72,59,216); TEXT-DECORATION: underline
-}
-EM {
-	FONT-FAMILY: 宋体; FONT-SIZE: 10pt; FONT-STYLE: normal
-}
-A {
-	FONT-FAMILY: 宋体; FONT-SIZE: 10pt
-}
-TD {
-	FONT-FAMILY: 宋体; FONT-SIZE: 10pt
-}
-P {
-	FONT-FAMILY: 宋体; FONT-SIZE: 10pt
-}
-</STYLE>
+Tom
 
+--
+Tom McNeal
+(650)906-0761(cell)
+(650)964-8459(fax)
+----------------------  Forwarded Message:  ---------------------
+From:    Michael Butler <volrath@sbcglobal.net>
+To:      trmcneal@attbi.com
+Subject: nfs-utils
+Date:    Wed, 19 Mar 2003 17:22:12 -0800
 
-<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
-<meta name="GENERATOR" content="Microsoft FrontPage 4.0">
-<meta name="ProgId" content="FrontPage.Editor.Document">
-<title>GO一起上 www.go173.com</title>
-<base target="_blank">
-</head>
+I am having some problems, and I thought that maybe you could enlighten 
+me.  I am attempting to compile nfs-utils with gcc 3.2 running linux 
+2.4.20 with nfs, nfsv3, etc enabled in the kernel.  It doesn't seem to 
+like the unions in mountd at all.  Attached is a copy of the compile 
+error.
 
-<body bgcolor="#BFBF9F">
+Hope you can help.
 
-<div align="center">
-  <center>
-  <table border="1" cellpadding="0" cellspacing="1" width="85%" height="274" bordercolor="#CC6600">
-    <tr>
-      <td width="20%" height="23" bgcolor="#FEE2FB">
-        <p align="center"><font color="#666666">&nbsp;&nbsp; <a href="http://www.go173.com">首页&nbsp;</a></font></td>    
-      <td width="20%" height="23" bgcolor="#CC6600">    
-        <p align="center"><a href="http://www.go173.com/mm/go.htm"><font color="#000080">激情公社</font></a></td>    
-  </center>    
-      <td width="20%" height="23" bgcolor="#FEE2FB">    
-        <p align="center"><font color="#666666"><a href="http://www.go173.com/mm">野蛮女生</a></font></td>    
-  <center>    
-      <td width="20%" height="23" bgcolor="#FEE2FB">    
-        <p align="center"><font color="#666666"><a href="http://huanqiu3636.mylove.163.com">同城约会</a></font></td>    
-      <td width="20%" height="23" bgcolor="#FEE2FB">    
-        <p align="center"><font color="#666666"><a href="http://www.go173.com/mm/index55.htm" target="_blank">两性笑话</a></font></td>   
-    </tr>   
-  </center>   
-  <tr>   
-    <td width="100%" height="174" valign="top" colspan="5">   
-      <p align="left">==============================================================<br> 
-      ==============================================================<br> 
-      您是网络游戏高手吗？您是否有个花费您很大精力和时间，由于各种原因而不得不放弃的游戏账号。这一切已经成为历史，功能强大“GO一起上游戏账号交易平台”闪亮登场。现在，您只要登陆WWW.GO173.COM ，免费注册为会员,您就可以享受交易带来的无限乐趣。  
-      <p align="left"><font color="#666666">传奇，精灵，大话，奇迹，红月，账号交易，详细请进入</font><a href="http://www.go173.com"><font color="#FF0000">WWW.GO173.COM</font></a><font color="#666666">您是网络游戏高手吗？您是否有个花费您很大精力和时间，由于各种原因而不得不放弃的游戏账号。这一切已经成为历史，功能强大“GO一起上游戏账号交易平台”闪亮登场。现在，您只要登陆</font><a href="http://www.go173.com"><font color="#FF0000">WWW.GO173.COM</font></a><font color="#666666"> ，免费注册为会员,您就可以享受交易带来的无限乐趣。<br>           
-      <br>           
-      http://</font><a href="http://www.go173.com"><font color="#666666">www.go173.com</font></a><font color="#666666"><br>         
-    超过万首的FLASH音乐欣赏http://</font><a href="http://www.go173.com/flash"><font color="#666666">www.go173.com/flash</font></a><font color="#666666"><br>         
-      </font>         
-      <a href="http://www.go173.com/mm"><font color="#FF0000">进入社区&gt;&gt;</font></a>        
-    </td>        
-  </tr>        
-  <tr>        
-    <td width="100%" height="77" valign="middle" colspan="5">       
-    <p align="center">  <center>加入 <A HREF=http://asiafriendfinder.com/go/f112513 target=_top>  
-亚洲交友中心</A> - 最大亚洲个人交友中心网站!<br>  
-<A HREF=http://asiafriendfinder.com/go/f112513 target=_top>  
-<img src=http://banners.asiafriendfinder.com/banners/ffz/gb01.gif   
-width=468 height=60 border=0></A></center>  
-  
-  
-</td>       
-  </tr>      
-  </table>      
-</div>      
-      
-</body>      
-      
-</html>      
+Making all in mountd
+gcc -g -O2 -D_GNU_SOURCE -I../../support/include -Wall  -pipe  
+-DVERSION="\"nfs-utils 1.0.1\"" -DNFS3_SUPPORTED   -c -o mountd.o mountd.c
+In file included from mountd.c:24:
+mountd.h:19: parse error before "dirpath"
+mountd.h:19: warning: no semicolon at end of struct or union
+mountd.h:23: parse error before "fhstatus"
+mountd.h:23: warning: no semicolon at end of struct or union
+mountd.h:24: warning: type defaults to `int' in declaration of `mountlist'
+mountd.h:24: warning: data definition has no type or storage class
+mountd.h:25: parse error before "exports"
+mountd.h:25: warning: type defaults to `int' in declaration of `exports'
+mountd.h:25: warning: data definition has no type or storage class
+mountd.h:32: parse error before "dirpath"
+mountd.h:33: parse error before "mountlist"
+mountd.h:34: parse error before "dirpath"
+mountd.h:36: parse error before "exports"
+mountd.h:37: parse error before "exports"
+mountd.h:38: parse error before "dirpath"
+mountd.h:39: parse error before "dirpath"
+mountd.h:51: parse error before "mountlist_list"
+mountd.h:51: warning: type defaults to `int' in declaration of `mountlist_list'
+mountd.h:51: warning: data definition has no type or storage class
+mountd.c:28: parse error before "get_exportlist"
+mountd.c:28: warning: type defaults to `int' in declaration of `get_exportlist'
+mountd.c:28: warning: data definition has no type or storage class
+mountd.c:29: parse error before "dirpath"
+mountd.c: In function `killer':
+mountd.c:55: `MOUNTPROG' undeclared (first use in this function)
+mountd.c:55: (Each undeclared identifier is reported only once
+mountd.c:55: for each function it appears in.)
+mountd.c:55: `MOUNTVERS' undeclared (first use in this function)
+mountd.c:57: `MOUNTVERS_POSIX' undeclared (first use in this function)
+mountd.c:59: `MOUNTVERS_NFSV3' undeclared (first use in this function)
+mountd.c: At top level:
+mountd.c:70: parse error before "dirpath"
+mountd.c: In function `mount_mnt_1_svc':
+mountd.c:74: `path' undeclared (first use in this function)
+mountd.c:75: `rqstp' undeclared (first use in this function)
+mountd.c:75: `res' undeclared (first use in this function)
+mountd.c: At top level:
+mountd.c:81: parse error before "mountlist"
+mountd.c: In function `mount_dump_1_svc':
+mountd.c:84: `rqstp' undeclared (first use in this function)
+mountd.c:88: `res' undeclared (first use in this function)
+mountd.c: At top level:
+mountd.c:93: parse error before "dirpath"
+mountd.c: In function `mount_umnt_1_svc':
+mountd.c:96: `rqstp' undeclared (first use in this function)
+mountd.c:98: `argp' undeclared (first use in this function)
+mountd.c: At top level:
+mountd.c:128: parse error before "exports"
+mountd.c: In function `mount_export_1_svc':
+mountd.c:131: `rqstp' undeclared (first use in this function)
+mountd.c:134: `resp' undeclared (first use in this function)
+mountd.c: At top level:
+mountd.c:139: parse error before "exports"
+mountd.c: In function `mount_exportall_1_svc':
+mountd.c:142: `rqstp' undeclared (first use in this function)
+mountd.c:145: `resp' undeclared (first use in this function)
+mountd.c: At top level:
+mountd.c:161: parse error before "dirpath"
+mountd.c: In function `mount_pathconf_2_svc':
+mountd.c:164: `rqstp' undeclared (first use in this function)
+mountd.c:168: `path' undeclared (first use in this function)
+mountd.c:170: `res' undeclared (first use in this function)
+mountd.c: At top level:
+mountd.c:215: parse error before "dirpath"
+mountd.c: In function `mount_mnt_3_svc':
+mountd.c:220: `path' undeclared (first use in this function)
+mountd.c:221: `rqstp' undeclared (first use in this function)
+mountd.c:221: `res' undeclared (first use in this function)
+mountd.c:224: dereferencing pointer to incomplete type
+mountd.c:225: dereferencing pointer to incomplete type
+mountd.c:226: dereferencing pointer to incomplete type
+mountd.c:227: dereferencing pointer to incomplete type
+mountd.c: At top level:
+mountd.c:233: parse error before "dirpath"
+mountd.c: In function `get_rootfh':
+mountd.c:236: `rqstp' undeclared (first use in this function)
+mountd.c:240: `path' undeclared (first use in this function)
+mountd.c:256: `error' undeclared (first use in this function)
+mountd.c:275: `v3' undeclared (first use in this function)
+mountd.c: At top level:
+mountd.c:299: parse error before "get_exportlist"
+mountd.c:300: warning: return type defaults to `int'
+mountd.c: In function `get_exportlist':
+mountd.c:301: syntax error before "elist"
+mountd.c:307: `elist' undeclared (first use in this function)
+mountd.c:311: dereferencing pointer to incomplete type
+mountd.c:312: dereferencing pointer to incomplete type
+mountd.c:313: dereferencing pointer to incomplete type
+mountd.c:314: dereferencing pointer to incomplete type
+mountd.c:317: dereferencing pointer to incomplete type
+mountd.c:324: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:329: dereferencing pointer to incomplete type
+mountd.c:330: dereferencing pointer to incomplete type
+mountd.c:331: dereferencing pointer to incomplete type
+mountd.c:332: dereferencing pointer to incomplete type
+mountd.c:338: dereferencing pointer to incomplete type
+mountd.c:339: dereferencing pointer to incomplete type
+mountd.c:340: dereferencing pointer to incomplete type
+mountd.c:341: dereferencing pointer to incomplete type
+mountd.c:344: dereferencing pointer to incomplete type
+mountd.c:348: dereferencing pointer to incomplete type
+mountd.c:351: dereferencing pointer to incomplete type
+mountd.c:353: dereferencing pointer to incomplete type
+mountd.c:354: dereferencing pointer to incomplete type
+mountd.c:357: dereferencing pointer to incomplete type
+mountd.c:358: dereferencing pointer to incomplete type
+mountd.c:367: dereferencing pointer to incomplete type
+mountd.c:372: dereferencing pointer to incomplete type
+mountd.c:372: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:378: dereferencing pointer to incomplete type
+mountd.c:379: dereferencing pointer to incomplete type
+mountd.c:380: dereferencing pointer to incomplete type
+mountd.c:380: dereferencing pointer to incomplete type
+mountd.c:381: dereferencing pointer to incomplete type
+mountd.c: In function `main':
+mountd.c:495: `MOUNTPROG' undeclared (first use in this function)
+mountd.c:495: `MOUNTVERS' undeclared (first use in this function)
+mountd.c:498: `MOUNTVERS_POSIX' undeclared (first use in this function)
+mountd.c:501: `MOUNTVERS_NFSV3' undeclared (first use in this function)
+make[2]: *** [mountd.o] Error 1
+make[1]: *** [all] Error 2
+make: *** [all] Error 2
+
+Michael Butler
+volrath@sbcglobal.net
 
 
 -------------------------------------------------------
