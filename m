@@ -1,22 +1,21 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: limit on filesystem size?
-Date: Sat, 3 Aug 2002 00:35:55 +0200
+From: "Matt Heaton" <admin@0catch.com>
+Subject: XFS for NFS
+Date: Fri, 2 Aug 2002 18:43:42 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15691.2379.954309.55464@charged.uio.no>
-References: <20020801195309.GA26793@stikine.ucs.sfu.ca>
-	<shs7kja48km.fsf@charged.uio.no>
-	<20020802202210.GA28263@stikine.ucs.sfu.ca>
-Reply-To: trond.myklebust@fys.uio.no
+Message-ID: <041e01c23a86$d0f3c320$6701a8c0@c1886657a>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_041B_01C23A54.862264A0"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
+Received: from rwcrmhc52.attbi.com ([216.148.227.88])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17al2v-00017N-00
-	for <nfs@lists.sourceforge.net>; Fri, 02 Aug 2002 15:37:21 -0700
-To: Martin Siegert <siegert@sfu.ca>
-In-Reply-To: <20020802202210.GA28263@stikine.ucs.sfu.ca>
+	id 17an1K-0005Lb-00
+	for <nfs@lists.sourceforge.net>; Fri, 02 Aug 2002 17:43:50 -0700
+Received: from c1886657a ([12.255.25.93]) by rwcrmhc52.attbi.com
+          (InterMail vM.4.01.03.27 201-229-121-127-20010626) with SMTP
+          id <20020803004344.CXBL22139.rwcrmhc52.attbi.com@c1886657a>
+          for <nfs@lists.sourceforge.net>; Sat, 3 Aug 2002 00:43:44 +0000
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,34 +28,101 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->>>>> " " == Martin Siegert <siegert@sfu.ca> writes:
+This is a multi-part message in MIME format.
 
-     > Please, bear with me - I am by no means an expert on these
-     > issues.  But my impression was that the problem is in
-     > include/linux/blkdev.h
+------=_NextPart_000_041B_01C23A54.862264A0
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-     > struct request { ...
-     >         unsigned long sector;
+A while the following post was made about XFS and that the problem was =
+fixed in the 2.4.19 tree of the kernel.
+My question is do I have to use 2.4.19rc5 on the server or the client or =
+both to fix the problem.  Also is the 1.x version
+of nfs utils for the client or server or both?
 
-     > with results in a (local) filesystem size limit of 2TB (unless
-     > sectors larger than 512 bytes are used).
+Thanks,
+Matt
 
-     > Am I understanding correctly that you are telling me that this
-     > does not apply to NFS and that despite this definition I could
-     > even reexport (user space NFS?) such a filesystem?
 
-I repeat: yes!
 
-NFS does not know anything about sectors. It indexes *files* by means
-of an opaque 32-byte (NFSv2) or 64-byte (v3) filehandle. The latter
-can be considered to be the equivalent of 'file descriptors' as used
-by libc does in open()/read()/write().
 
-Rexporting filesystems is never a good idea though. Better to allow
-all NFS clients direct access to the server...
+>We have noticed a problem with a couple of our NFS servers (running
+>RedHat 7.2 with a stock 2.4.18 kernel with XFS v1.1) whereby NFS access
+>slows to a crawl or stalls.
+>
+>The exported filesystem(s) are XFS with 8 nfsd's running - when we have
+>the problem the load average is about 8 - but CPU usage, disk access =
+and
+>network traffic are minimal.
+>
+>I found, by accident, that running the command 'sync' appears to 'fix'
+>the situation...
+>
+>I'm not sure if this is an XFS or NFS related problem (hence posting to
+>both lists).
 
-Cheers,
-  Trond
+XFS.  2.4.18 would sometimes get into a situation where two XFS
+operations were waiting on locks (not deadlocked) and nothing was
+moving.  Performing some other disk activity such as sync would get
+things moving again.
+
+AFAICT this is fixed in the XFS CVS tree, against 2.4.19-rc1.
+
+------=_NextPart_000_041B_01C23A54.862264A0
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; =
+charset=3Diso-8859-1">
+<META content=3D"MSHTML 6.00.2716.2200" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV><FONT face=3DArial size=3D2>A while the following post was made =
+about XFS and=20
+that the problem was fixed in the 2.4.19 tree of the =
+kernel.</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>My question is do I have to use =
+2.4.19rc5 on the=20
+server or the client or both to fix the problem.&nbsp; Also is the 1.x=20
+version</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>of nfs utils for the client or server =
+or=20
+both?</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>Thanks,<BR>Matt</FONT></DIV>
+<DIV>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><BR>&gt;We have noticed a problem with a couple of our NFS servers=20
+(running<BR>&gt;RedHat 7.2 with a stock 2.4.18 kernel with XFS v1.1) =
+whereby NFS=20
+access<BR>&gt;slows to a crawl or stalls.<BR>&gt;<BR>&gt;The exported=20
+filesystem(s) are XFS with 8 nfsd's running - when we have<BR>&gt;the =
+problem=20
+the load average is about 8 - but CPU usage, disk access =
+and<BR>&gt;network=20
+traffic are minimal.<BR>&gt;<BR>&gt;I found, by accident, that running =
+the=20
+command 'sync' appears to 'fix'<BR>&gt;the =
+situation...<BR>&gt;<BR>&gt;I'm not=20
+sure if this is an XFS or NFS related problem (hence posting =
+to<BR>&gt;both=20
+lists).<BR><BR>XFS.&nbsp; 2.4.18 would sometimes get into a situation =
+where two=20
+XFS<BR>operations were waiting on locks (not deadlocked) and nothing=20
+was<BR>moving.&nbsp; Performing some other disk activity such as sync =
+would=20
+get<BR>things moving again.<BR><BR>AFAICT this is fixed in the XFS CVS =
+tree,=20
+against 2.4.19-rc1.</DIV></BODY></HTML>
+
+------=_NextPart_000_041B_01C23A54.862264A0--
+
 
 
 -------------------------------------------------------
