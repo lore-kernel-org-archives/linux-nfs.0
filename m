@@ -1,29 +1,24 @@
-From: Philippe =?ISO-8859-15?Q?Gramoull=E9?= <philippe.gramoulle@mmania.com>
-Subject: Re: 2.6.3-rc1-mm1
-Date: Mon, 9 Feb 2004 15:26:42 +0100
+From: Christian Hammers <ch@westend.com>
+Subject: NFS+DRBD+Postfix => corrupted queue file and NFS error=-116
+Date: Mon, 9 Feb 2004 17:05:06 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040209152642.22dc457e@philou.gramoulle.local>
-References: <20040209014035.251b26d1.akpm@osdl.org>
+Message-ID: <20040209160506.GG1873@westend.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-15
+Content-Type: text/plain; charset=iso-8859-15
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-list1-b.sourceforge.net ([10.3.1.7] helo=sc8-sf-list1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AqNQo-0001sx-Fs
-	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 18:15:22 -0800
+	id 1AqLef-000730-Bb
+	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 16:21:33 -0800
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 4.30)
-	id 1AqCOj-0007ff-Tf
-	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 06:28:29 -0800
-Received: from pgramoul.net2.nerim.net ([80.65.227.234] helo=philou.aspic.com)
+	id 1AqDuI-0007Rk-U7
+	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 08:05:10 -0800
+Received: from mail3a.westend.com ([212.117.79.77] helo=mail3a1.westend.com)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AqCOc-0007Hq-OJ
-	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 06:28:29 -0800
-Received: from philou.gramoulle.local (philou.gramoulle.local [192.168.254.2])
-	by philou.aspic.com (Postfix) with SMTP id DEA7B13AC5
-	for <nfs@lists.sourceforge.net>; Mon,  9 Feb 2004 15:26:42 +0100 (CET)
-To: nfs <nfs@lists.sourceforge.net>
-In-Reply-To: <20040209014035.251b26d1.akpm@osdl.org>
+	id 1AqDuI-0004Tp-1W
+	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 08:05:10 -0800
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -36,60 +31,53 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hello
 
-Sorry, i forgot to CC: this list.
+Today the below quoted messages started to appear about every couple of
+hours and scare me.=20
 
-Thanks,
+Can you give me any hint which one is the cause and which the result, is
+NFS corrupting Postfix or Postfix broken and doing illegal NFS
+operations? What could be the reason, badblocks? A kernel bug? What to do=
+?
 
-Philippe
+thanks in advance,
 
+-christian-=20
 
-Hello Andrew,
+kernel: fh_verify: no root_squashed access at 5/5A6C3428A7.
+postfix/local[5137]: warning: active/5/5A6C3428A7: unexpected EOF in data=
+, record type 78 length 76
+postfix/local[5137]: warning: corrupted queue file: active/5/5A6C3428A7
+kernel: nfs_notify_change: revalidate failed, error=3D-116
+postfix/local[5137]: fatal: mark_corrupt: fchmod active/5/5A6C3428A7: Sta=
+le NFS file handle
+postfix/qmgr[17687]: warning: premature end-of-input on private/local soc=
+ket while reading input attribute name
+postfix/qmgr[17687]: warning: private/local socket: malformed response
+postfix/qmgr[17687]: warning: transport local failure -- see a previous w=
+arning/fatal/panic logfile record for the problem description
+postfix/local pid 5137 exit status 1
+postfix/local: bad command startup -- throttling
+postfix/qmgr[17687]: C82AF428B0: to=3D<pop.10909@mail3a1.westend.com>, or=
+ig_to=3D<Thomas_Waber@insideout.de>, relay=3Dnone, delay=3D0, status=3Dde=
+ferred (unknown mail transport error)
 
-On Mon, 9 Feb 2004 01:40:35 -0800
-Andrew Morton <akpm@osdl.org> wrote:
+P.S.: A short description of the system:
+Two servers are connected via crosslink cable and intel etherexpress
+gigabit cards. Both have a mail partition that is synced in realtime via =
+DRBD.
+One has a NFS server exporting this DRBD share. Both have mounted this
+NFS share to write their Postfix' mail data in different directories.=20
+(Rationale: If one server fails, the data itself is present on the other
+server)
 
-  |=20
-  |=20
-  | ftp://ftp.kernel.org/pub/linux/kernel/people/akpm/patches/2.6/2.6.3-rc1=
-/2.6.3-rc1-mm1/
-  |=20
-  |=20
-  | - NFSD update
-  |=20
-
-Starting with 2.6.3-rc1-mm1, nfsd isn't working any more. Exportfs just han=
-gs.
-Previous version (2.6.2-mm1) worked fine.
-Reverting the following patches makes it work again:
-
-nfsd-01-schedule-in-spinlock-fix.patch
-nfsd-02-ip_map_init-kmalloc-check.patch
-nfsd-03-sunrpc-cache-init-fixes.patch
-nfsd-04-convert-proc-to-seq_file.patch
-nfsd-05-no-procfs-build-fix.patch
-
-You can find my .config here:
-
-http://philou.org/linux/2.6.3-rc1-mm1/config-2.6.3-rc1-mm1
-
-You can find an strace of the nfsd server startup as well as a sysrq-t capt=
-ure here:
-
-http://philou.org/linux/2.6.3-rc1-mm1/nfsd-sysrq.txt
-
-System is a Dell 2650 SMP (ia32), running Debian Sid.
-
-Thanks,
-
-Philippe
-
---
-
-Philippe Gramoull=E9
-philippe.gramoulle@mmania.com
-Senior System and Network Architect
-Lycos Europe
+--=20
+Christian Hammers             WESTEND GmbH  |  Internet-Business-Provider
+Technik                       CISCO Systems Partner - Authorized Reseller
+                              L=FCtticher Stra=DFe 10      Tel 0241/70133=
+3-11
+ch@westend.com                D-52064 Aachen              Fax 0241/911879
 
 
 
