@@ -1,16 +1,14 @@
-From: Nicolas CROS <Nicolas.Cros@cls.fr>
-Subject: Solaris Server/Linux Clients NFS Performance Problem
-Date: Thu, 28 Mar 2002 17:47:50 +0100
+From: Luis Cano <Luis.Cano@noaa.gov>
+Subject: nfsd problem?
+Date: Thu, 28 Mar 2002 16:15:01 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3CA34936.ED451E6E@cls.fr>
+Message-ID: <3CA387D5.6050709@noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: Christophe Kersuzan <ckersuzan@cls.fr>,
-   Lionel Cazaux <lionel.cazaux@cadrus.fr>
-Received: from priam.cls.fr ([62.161.32.10])
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Received: from mx1.wwb.noaa.gov ([140.90.193.27] helo=mx1.ncep.noaa.gov)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16qd4D-0000FK-00
-	for <nfs@lists.sourceforge.net>; Thu, 28 Mar 2002 08:48:01 -0800
+	id 16qhHP-0002WL-00
+	for <nfs@lists.sourceforge.net>; Thu, 28 Mar 2002 13:17:56 -0800
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -26,32 +24,38 @@ List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 Hello,
 
-We have severe performances problems on our configuration :
-	. a NFS server running on Solaris2.8=20
-	. several NFS clients running Linux (Redhat, Mandrake) or
-	Solaris 2.7
+Here is my configuration:
 
-For testing purpose, i copied a 268MB from /dev/zero to
-the NFS mounted FS. Here's the results :
+- One Raizone, dual processors PIII, 1.5g RAM, running 2.4.16-12smp, 
+servicing as a NFS server, exporting a reiser filesystem.
 
-NFS Client	NFS Server	Time
-linux		linux		36s
-linux		solaris		208s
-solaris		solaris		26s
-solaris		linux		47s
+- Five Dells 2450, dual processors PIII, 1g RAM, running 2.4.3-12smp, 
+nfs-utils 0.3.1,  mounting the raidzone reiser filesystem via NFS:
 
-We do not experiment problems when file transfer are done without
-NFS (rcp for example), neither when reading files.
+rzdm:/home/ftp on /var/ftp/pub type nfs 
+(ro,noatime,rsize=8192,wsize=8192,hard,intr,nolock,addr=x.x.x.x)
 
-I tried to play with mount options without success (-o -w=3D , -o tcp)
+rzdm:/home/www on /var/www type nfs 
+(rw,sync,noatime,rsize=8192,wsize=8192,hard,intr,nolock,addr=x.x.x.x)
 
-Any ideas welcome !!
+where x.x.x.x is the ip of the raidzone.
 
---
-Nicolas.Cros@cls.fr             CLS
-Administrateur Syst=E8me          8-10 rue Herm=E8s
-tel 05.61.39.48.81              Parc Technologique du Canal
-fax 05.61.39.48.40              31526 Ramonville St Agne cedex, France
+The five dell servers are serving as ftp/web servers and front ended 
+with a load balancer for  ftp and http traffic. During peak periods, the 
+dell server load average climbs to over 400 and ftp throughput 
+progressively drops from 7.6Mbytes per second to 1.5Mbytes per second. 
+If we restart NFSD on the raidzone,  the dell servers load average drops 
+to less than 2.5 and ftp throughput increases to the normal 7.6Mbytes 
+per second. It takes about a day for the load average to climb up again 
+and ftp throughput to decrease.
+
+Is this a NFSD problem with 2.4.16? Is there something I can look at or 
+other information needed to determine the problem?
+
+Thank you and appreciate any help.
+
+Luis Cano
+
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
