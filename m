@@ -1,24 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: open O_EXCL works?
-Date: Tue, 22 Mar 2005 09:04:57 -0500
-Message-ID: <1111500297.24016.39.camel@lade.trondhjem.org>
-References: <20050322101843.BE94.BRANDEN@terra.com.br>
-	 <1111498903.24016.17.camel@lade.trondhjem.org>
-	 <20050322104736.BE97.BRANDEN@terra.com.br>
+From: Kevin Coffman <kwc@citi.umich.edu>
+Subject: Re: problem mounting using NFSv4 when using -o sec=krb5
+ option
+Date: Tue, 22 Mar 2005 09:18:13 -0500
+Message-ID: <20050322141813.CC1CE1BBA5@citi.umich.edu>
+References: <20050322080637.79883.qmail@web51607.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DDk0R-00042T-Ss
-	for nfs@lists.sourceforge.net; Tue, 22 Mar 2005 06:05:15 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1DDkDK-0004ZC-Sd
+	for nfs@lists.sourceforge.net; Tue, 22 Mar 2005 06:18:34 -0800
+Received: from citi.umich.edu ([141.211.133.111])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1DDk0Q-0006YU-3o
-	for nfs@lists.sourceforge.net; Tue, 22 Mar 2005 06:05:15 -0800
-To: Filipe Brandenburger <branden@terra.com.br>
-In-Reply-To: <20050322104736.BE97.BRANDEN@terra.com.br>
+	id 1DDkD0-000719-U8
+	for nfs@lists.sourceforge.net; Tue, 22 Mar 2005 06:18:34 -0800
+To: mehta kiran <kiranmehta1981@yahoo.com>
+In-reply-to: <20050322080637.79883.qmail@web51607.mail.yahoo.com> 
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,48 +31,239 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-ty den 22.03.2005 Klokka 10:51 (-0300) skreiv Filipe Brandenburger:
-> Hello, once again! :-)
+I'm happy to hear the normal case is working.
+
+The Kerberos library code does a reverse lookup of the host it is 
+trying to connect to in order to obtain the "real" host name.  It uses 
+that name to determine what principal it needs a ticket for.  It would 
+help to see the exact messages from rpc.gssd, rpc.svcgssd, and from the 
+KDC.
+
+
+> Hi Kevin , 
+>     God knows how , but everyting is working fine now.
+>     I could not figure out why was it failing earlier.
+>     
+>     I have one question.
+>     Is is possible to use common ip to access 
+>     machines when kerberos is running .i:e
+>     I want to access system1 with an ip say IP.
+>     when system1 crashes , i want to start services
+>     of system1 on system2 but want to access system2
+>     with same IP.
 > 
-> * Tue, 22 Mar 2005 08:41:43 -0500, Trond Myklebust <trond.myklebust@fys.uio.no>:
-> > >   [repeat the loop below for the data]
-> > >     hardlink("myfile", "myfile.lock")
-> > >     -> if it fails, invalidate information
-> > >     f = open("myfile", O_CREAT|O_WRONLY|O_APPEND)
-> > >     write(f, "mydata", sizeof(mydata))
-> > >     close(f)
-> > >     unlink("myfile.lock")
-> > >   [end loop]
+>      what is tried was
+>      create keys (on machine running KDC) for
+>      for all machines in my subnet.
+>      
+>      After this take an ip and register it with DNS 
+>      with some name say NFS.domain.
+>      Create key (on machine running kdc) for
+> NFS.domain
+>      For machines those which will run nfs server , 
+>      ktadd respective machine key + ktadd NFS.domain
+>      key and copy keytab file to respective machines.
+>      For all other machines just ktadd respective 
+>      machine key and copy keytab file to respective 
+>      machines.
+>      In short , 
+>      on machine running nfs server,
+>      #klist -k /etc/krb5.keytab
+>       2 nfs/<hostname.domainname>@<realm>
+>       2 nfs/NFS.domainname@<realm>
+> 
+>      for other machines(nfs clients)
+>      #klist -k /etc/krb5.keytab
+>       2 nfs/<hostname.domainname>@<realm>
+>      
+>      but when i try to mount exported filesystems
+>      from nfs client , 
+>      using 
+>      #mount -t nfs4 -osec=krb5 NFS.doaminname:/ /share
+> 
+>       Failed to create krb5 context for user with uid
+> 0
+>       with any credential cache for server 
+>       NFS.domainname 
+>  
+>       Everything works well if genuine server name is 
+>       used for mounting.Problem arises only when
+>       (virtual ip) NFS.domainname is used.
+> 
+>    thanks,
+>  --kiran
+>      
+> 
+> 
+> --- mehta kiran <kiranmehta1981@yahoo.com> wrote:
+> 
+> > Missed one thing.
+> >  I used kadmin.local to create principals(on machine
+> > runnnig KDC)
 > > 
-> > Yes. This would work if close-to-open works correctly.
+> > thanks,
+> >  --kiran
+> > --- mehta kiran <kiranmehta1981@yahoo.com> wrote:
+> > > Hi Kevin , 
+> > >     I created new database and new principal and 
+> > >     keytab files.
+> > > 
+> > >     Kinit does not accept passowrd for principals
+> > >     nfs/vcslinux5.vxindia.veritas.com
+> > >     and
+> > >     nfs/vcslinux6.vxindia.veritas.com
+> > > 
+> > >     Please let me know if i can provide some
+> > > info(and
+> > > how) (logs) which can point out the problem
+> > > 
+> > > thanks,
+> > >  --kiran
+> > > 
+> > > 
+> > > 
+> > > 
+> > > --- Kevin Coffman <kwc@citi.umich.edu> wrote:
+> > > > > 
+> > > > > Hi , 
+> > > > >              I tried things as directed by
+> > Trond
+> > > > in
+> > > > >     his previous mail and everything seemed to
+> > > > work
+> > > > >     fine initally. but when i rebooted system
+> > , 
+> > > > >     it started giving error whenever i start
+> > > > rpc.gssd
+> > > > >     on client machine.
+> > > > >     Error is :
+> > > > > 
+> > > > > [root@vcslinux6 ~]# Mar 21 14:47:27 vcslinux6
+> > > > > rpc.gssd[3487]: WARNING: Key table entry not
+> > > found
+> > > > > while getting initial ticket for principal
+> > > > >
+> > > >
+> > >
+> >
+> 'nfs/vcslinux6.vxindia.veritas.com@VXINDIA.VERITAS.COM'
+> > > > > from keytab 'FILE:/etc/krb5.keytab'
+> > > > > Mar 21 14:47:27 vcslinux6 rpc.gssd[3487]:
+> > ERROR:
+> > > > No
+> > > > > usable machine credentials obtained
+> > > > >   
+> > > > >      
+> > > > > while #klist -k /etc/krb5.keytab gives
+> > > > > 2
+> > > > >
+> > > >
+> > >
+> >
+> nfs/vcslinux6.vxindia.veritas.com@VXINDIA.VERITAS.COM
+> > > > 
+> > > > 
+> > > > I'm confused by this, but I do not know what to
+> > > look
+> > > > for.
+> > > > 
+> > > > 
+> > > > > I even tried by recreating kerberos database
+> > but
+> > > > in
+> > > > > vain. I still get the same error.
+> > > > 
+> > > > If you recreated the Kerberos database, you need
+> > > to
+> > > > create new principals and keytab files.  Did you
+> > > do
+> > > > this?
+> > > > 
+> > > > > I observed one more thing.
+> > > > > Whenver i create principal(other then
+> > > root/admin)
+> > > > ,
+> > > > > passwords i enter for them during their
+> > creation
+> > > > > are not accepted by kinit.
+> > > > 
+> > > > This is also strange and _might_ be related. 
+> > How
+> > > > are
+> > > > you creating the principals -- using kadmin or
+> > > > kadmin.local?
+> > > > Which principals are you referring to here?
+> > > > 
+> > > > > 
+> > > > > Please let me know where i went wrong.
+> > > > > 
+> > > > > --thanks,
+> > > > >  --kiran
+> > > > 
+> > > > 
+> > > 
+> > > __________________________________________________
+> > > Do You Yahoo!?
+> > > Tired of spam?  Yahoo! Mail has the best spam
+> > > protection around 
+> > > http://mail.yahoo.com 
+> > > 
+> > > 
+> > >
+> >
+> -------------------------------------------------------
+> > > SF email is sponsored by - The IT Product Guide
+> > > Read honest & candid reviews on hundreds of IT
+> > > Products from real users.
+> > > Discover which products truly live up to the hype.
+> > > Start reading now.
+> > >
+> >
+> http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
+> > > _______________________________________________
+> > > NFS maillist  -  NFS@lists.sourceforge.net
+> > > https://lists.sourceforge.net/lists/listinfo/nfs
+> > > 
+> > 
+> > __________________________________________________
+> > Do You Yahoo!?
+> > Tired of spam?  Yahoo! Mail has the best spam
+> > protection around 
+> > http://mail.yahoo.com 
+> > 
+> > 
+> >
+> -------------------------------------------------------
+> > SF email is sponsored by - The IT Product Guide
+> > Read honest & candid reviews on hundreds of IT
+> > Products from real users.
+> > Discover which products truly live up to the hype.
+> > Start reading now.
+> >
+> http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
+> > _______________________________________________
+> > NFS maillist  -  NFS@lists.sourceforge.net
+> > https://lists.sourceforge.net/lists/listinfo/nfs
+> > 
 > 
-> Alright, but in:
-> >    http://nfs.sourceforge.net/#faq_a8
-> It's saying that close-to-open was introduced in 2.4.20, and I'm still
-> with 2.4.9. Will it work with 2.4.9 too? The FAQ mentions something
-> about "old behavior", what was that exactly? You mentioned too that in
-> 2.4.9 it depends a lot on the synchronization of time between client and
-> server, how is it?
+> 
+> 
+> 		
+> __________________________________ 
+> Do you Yahoo!? 
+> Yahoo! Small Business - Try our new resources site!
+> http://smallbusiness.yahoo.com/resources/ 
+> 
+> 
+> -------------------------------------------------------
+> SF email is sponsored by - The IT Product Guide
+> Read honest & candid reviews on hundreds of IT Products from real users.
+> Discover which products truly live up to the hype. Start reading now.
+> http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
 
-
-I wrote:
-However, I had forgotten how the 2.4.9 code worked. If the file has been
-modified within the last hour, then the kernel should revalidate the
-attribute cache on open. This scheme very much relies on you using ntp
-or something like that to ensure that the clock on the server and client
-are in reasonable sync.
-
-
-> What I really need to know is if that code above will solve my problem
-> on 2.4.9 too, or only on 2.4.20 and 2.6 or superior.
-
-As you can see from the above, the answer is _no guarantees_.
-
-It may, assuming that your file changes frequently, and client and
-server are in sync timewise.
-
--- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
 
 
 
