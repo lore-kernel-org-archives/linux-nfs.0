@@ -1,24 +1,15 @@
-From: Jehan PROCACCIA <Jehan.Procaccia@int-evry.fr>
-Subject: Re: interprtation of /proc/net/rpc/nfsd
-Date: Mon, 11 Oct 2004 15:01:30 +0200
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <416A842A.7060308@int-evry.fr>
-References: <41666777.7030003@int-evry.fr> <4166900D.3060401@moving-picture.com> <416695F6.8080707@int-evry.fr> <4166A7A3.4020705@moving-picture.com> <4166B647.2010506@int-evry.fr> <416A6AE6.8060309@RedHat.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: lockd recovery not working on RH with 2.6 kernel
+Date: Fri, 19 Nov 2004 12:50:10 -0500
+Message-ID: <419E3252.3040602@RedHat.com>
+References: <OF573E8465.7E3D5CC0-ON88256F49.0064BB5C-88256F49.00698B56@us.ibm.com>	 <419CD343.4000600@RedHat.com> <1100882099.11209.8.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: James Pearson <james-p@moving-picture.com>,
-	nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: NFS@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CGzoE-0005Xj-2c
-	for nfs@lists.sourceforge.net; Mon, 11 Oct 2004 06:01:50 -0700
-Received: from smtp2.int-evry.fr ([157.159.10.45])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CGzoC-0006JI-Kx
-	for nfs@lists.sourceforge.net; Mon, 11 Oct 2004 06:01:49 -0700
-To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: <416A6AE6.8060309@RedHat.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1100882099.11209.8.camel@lade.trondhjem.org>
+Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,46 +22,67 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Steve Dickson wrote:
+Trond Myklebust wrote:
 
-> Jehan PROCACCIA wrote:
+>to den 18.11.2004 Klokka 11:52 (-0500) skreiv Steve Dickson:
+>  
 >
->> however how can I zero these counters ?, restarting /etc/init.d/nfs 
->> doesn't do it, neither :
->> $ nfsstat -z
->> nfsstat: zeroing of nfs server statistics is not supported
->> nfsstat: zeroing of nfs client statistics is not supported
+>>Well it appears things are a bit broken. Here is a client side patch that
+>>enables the client to reclaim locks on a rebooted server.
 >>
-> Well... zeroing out the nfs stats was something I proposed a while ago
-> but got shoot down both internally and externally since zero out stats
-> is "not the Linux way".... so I've taken the patch out of both FC and 
-> RHEL
-> kernels, but I guess I forgot to take it out of the nfs-utils....
+>>The two main issues were nlm4svc_decode_reboot() not setting
+>>the protocol which cause the nlm_host structure not to be found
+>>and two, making nlmclnt_reclaim() retry when the portmapper was up
+>>but lockd had not made it yet.... I also fixed a debugging
+>>statement and well as added a couple... that I found useful....
+>>    
+>>
 >
-> I could probably dig up the patch if your interested.....
-
-I was, but if it's not recommended ...., however your solution below 
-(/etc/init.d/nfs stop; modprobe -r nfsd; /etc/init.d/nfs start) does 
-perfecly the job of zeroing stats :-)
-
-Thanks .
-
+>Yep. Good work!
+>  
 >
->> Is the only solution is to rebbot :-( ?
->
->
-> No. "rmmod nfs && modprobe nfs" also does the trick....
->
-> SteveD.
+cool... can I assuming the patch will be headed to one of the upstream 
+kernels soon?
 
+>>Unfortunately this reclaim code freaks out the linux server, causing it
+>>to send two back-to-back messages (both using the same xid) that
+>>fails and then grant the lock.... It seems the dentry_open() call
+>>(in nfsd_open()) is returning 30000 error value. Its not clear why or
+>>what a 30000 value means....  I'm still looking in to that, but this code
+>>was tested with both a Neapps filer and Solaris 10 server which seem
+>>to work fine..
+>>    
+>>
+>
+>30000 ???? All kernel errors should be < 1000. Is this the perhaps the
+>bug with the unintialized variable in the mountd upcall code? I believe
+>the attached patch has already been committed to the nfs-utils CVS tree.
+>  
+>
+Well after further review.... dentry_open() is not the one failing with 
+an error
+code of 30000, its fh_verify() that's failing with 30000 which means 
+nfserr_dropit.
+Basically what this means is exp_find()  is returning EAGAIN because the 
+there
+is an upcall is already in process (or the cache is not yet fully 
+primed)....
 
+Unfortunately the NLM protocol does not support a EAGAIN notion and the way
+the NLM rpc routines are setup, is does not seem possible to simply 
+svc_drop
+NLM messages....
+
+So I've pinged Neil on how he would like to hand this....
+
+SteveD.
 
 
 -------------------------------------------------------
-This SF.net email is sponsored by: IT Product Guide on ITManagersJournal
-Use IT products in your business? Tell us what you think of them. Give us
-Your Opinions, Get Free ThinkGeek Gift Certificates! Click to find out more
-http://productguide.itmanagersjournal.com/guidepromo.tmpl
+This SF.Net email is sponsored by: InterSystems CACHE
+FREE OODBMS DOWNLOAD - A multidimensional database that combines
+robust object and relational technologies, making it a perfect match
+for Java, C++,COM, XML, ODBC and JDBC. www.intersystems.com/match8
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
