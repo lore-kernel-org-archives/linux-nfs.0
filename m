@@ -1,22 +1,22 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 4 of 10 - Change fh_compose to NOT consume a reference to the dentry.
+Subject: [PATCH] kNFSd - 5 of 10 - Protect reference to exp across calls to nfsd_cross_mnt
 Date: Tue, 18 May 2004 11:31:38 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1BPtSE-0004BD-Ik@notabene.cse.unsw.edu.au>
+Message-ID: <E1BPtSE-0004BI-Lr@notabene.cse.unsw.edu.au>
 References: <20040518112921.15964.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BPtSP-00072w-6X
-	for nfs@lists.sourceforge.net; Mon, 17 May 2004 18:31:49 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1BPtSO-0002W3-DD
+	id 1BPtSO-00072a-HB
 	for nfs@lists.sourceforge.net; Mon, 17 May 2004 18:31:48 -0700
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BPtSN-0002yz-Pd
+	for nfs@lists.sourceforge.net; Mon, 17 May 2004 18:31:47 -0700
 Received: From notabene.cse.unsw.edu.au ([129.94.172.124]) (auth-user neilb)
 	(for <akpm@osdl.org>) (for <nfs@lists.sourceforge.net>) By note With
-	Smtp ; Tue, 18 May 2004 11:31:39 +1000
+	Smtp ; Tue, 18 May 2004 11:31:40 +1000
 To: Andrew Morton <akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,157 +31,93 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-fh_compose currently consumes a reference to the dentry but 
-not the export point.  This is both inconsistent and confusing. 
-
-It is better if a routine like this doesn't consume reference points,
-so with this patch, it doesn't.
-This fixes a couple of very subtle and unusual reference counting errors.
+nfsd_cross_mnt can release the reference to the passed
+svc_export structure when it returns a different
+svc_export structure.  So we need to make sure we have a 
+counted reference before, and drop the reference afterwards.
 
  ----------- Diffstat output ------------
- ./fs/nfsd/export.c  |    3 +--
- ./fs/nfsd/nfs3xdr.c |   12 +++++++-----
- ./fs/nfsd/nfs4xdr.c |    1 +
- ./fs/nfsd/nfsfh.c   |    2 +-
- ./fs/nfsd/nfsproc.c |    1 +
- ./fs/nfsd/vfs.c     |    9 +++++++--
- 6 files changed, 18 insertions(+), 10 deletions(-)
-
-diff ./fs/nfsd/export.c~current~ ./fs/nfsd/export.c
---- ./fs/nfsd/export.c~current~	2004-05-18 11:09:16.000000000 +1000
-+++ ./fs/nfsd/export.c	2004-05-18 11:16:20.000000000 +1000
-@@ -899,7 +899,7 @@ exp_rootfh(svc_client *clp, char *path, 
- 	 * fh must be initialized before calling fh_compose
- 	 */
- 	fh_init(&fh, maxsize);
--	if (fh_compose(&fh, exp, dget(nd.dentry), NULL))
-+	if (fh_compose(&fh, exp, nd.dentry, NULL))
- 		err = -EINVAL;
- 	else
- 		err = 0;
-@@ -932,7 +932,6 @@ exp_pseudoroot(struct auth_domain *clp, 
- 	if (!fsid_key || IS_ERR(fsid_key))
- 		return nfserr_perm;
- 
--	dget(fsid_key->ek_export->ex_dentry);
- 	rv = fh_compose(fhp, fsid_key->ek_export, 
- 			  fsid_key->ek_export->ex_dentry, NULL);
- 	expkey_put(&fsid_key->h, &svc_expkey_cache);
-
-diff ./fs/nfsd/nfs3xdr.c~current~ ./fs/nfsd/nfs3xdr.c
---- ./fs/nfsd/nfs3xdr.c~current~	2004-05-18 11:09:16.000000000 +1000
-+++ ./fs/nfsd/nfs3xdr.c	2004-05-18 11:16:20.000000000 +1000
-@@ -799,6 +799,7 @@ compose_entry_fh(struct nfsd3_readdirres
- {
- 	struct svc_export	*exp;
- 	struct dentry		*dparent, *dchild;
-+	int rv = 0;
- 
- 	dparent = cd->fh.fh_dentry;
- 	exp  = cd->fh.fh_export;
-@@ -813,11 +814,12 @@ compose_entry_fh(struct nfsd3_readdirres
- 		dchild = lookup_one_len(name, dparent, namlen);
- 	if (IS_ERR(dchild))
- 		return 1;
--	if (d_mountpoint(dchild))
--		return 1;
--	if (fh_compose(fhp, exp, dchild, &cd->fh) != 0 || !dchild->d_inode)
--		return 1;
--	return 0;
-+	if (d_mountpoint(dchild) ||
-+	    fh_compose(fhp, exp, dchild, &cd->fh) != 0 ||
-+	    !dchild->d_inode)
-+		rv = 1;
-+	dput(dchild);
-+	return rv;
- }
- 
- /*
+ ./fs/nfsd/nfs4xdr.c           |    3 +++
+ ./fs/nfsd/vfs.c               |    4 +++-
+ ./include/linux/nfsd/export.h |    6 +++++-
+ 3 files changed, 11 insertions(+), 2 deletions(-)
 
 diff ./fs/nfsd/nfs4xdr.c~current~ ./fs/nfsd/nfs4xdr.c
---- ./fs/nfsd/nfs4xdr.c~current~	2004-05-18 11:09:16.000000000 +1000
-+++ ./fs/nfsd/nfs4xdr.c	2004-05-18 11:16:20.000000000 +1000
-@@ -1706,6 +1706,7 @@ nfsd4_encode_dirent(struct readdir_cd *c
- 		nfserr = nfsd4_encode_fattr(NULL, exp,
+--- ./fs/nfsd/nfs4xdr.c~current~	2004-05-18 11:16:20.000000000 +1000
++++ ./fs/nfsd/nfs4xdr.c	2004-05-18 11:16:40.000000000 +1000
+@@ -1686,6 +1686,7 @@ nfsd4_encode_dirent(struct readdir_cd *c
+ 			goto error;
+ 		}
+ 
++		exp_get(exp);
+ 		if (d_mountpoint(dentry)) {
+ 			if ((nfserr = nfsd_cross_mnt(cd->rd_rqstp, &dentry, 
+ 					 &exp))) {	
+@@ -1697,6 +1698,7 @@ nfsd4_encode_dirent(struct readdir_cd *c
+ 			 * this call will be retried.
+ 			 */
+ 				dput(dentry);
++				exp_put(exp);
+ 				nfserr = nfserr_dropit;
+ 				goto error;
+ 			}
+@@ -1707,6 +1709,7 @@ nfsd4_encode_dirent(struct readdir_cd *c
  				dentry, p, &buflen, cd->rd_bmval,
  				cd->rd_rqstp);
-+		dput(dentry);
+ 		dput(dentry);
++		exp_put(exp);
  		if (!nfserr) {
  			p += buflen;
  			goto out;
 
-diff ./fs/nfsd/nfsfh.c~current~ ./fs/nfsd/nfsfh.c
---- ./fs/nfsd/nfsfh.c~current~	2004-05-18 11:09:16.000000000 +1000
-+++ ./fs/nfsd/nfsfh.c	2004-05-18 11:16:20.000000000 +1000
-@@ -367,7 +367,7 @@ fh_compose(struct svc_fh *fhp, struct sv
- 		printk(KERN_ERR "fh_compose: called with maxsize %d! %s/%s\n",
- 		       fhp->fh_maxsize, parent->d_name.name, dentry->d_name.name);
- 
--	fhp->fh_dentry = dentry; /* our internal copy */
-+	fhp->fh_dentry = dget(dentry); /* our internal copy */
- 	fhp->fh_export = exp;
- 	cache_get(&exp->h);
- 
-
-diff ./fs/nfsd/nfsproc.c~current~ ./fs/nfsd/nfsproc.c
---- ./fs/nfsd/nfsproc.c~current~	2004-05-18 11:09:16.000000000 +1000
-+++ ./fs/nfsd/nfsproc.c	2004-05-18 11:16:20.000000000 +1000
-@@ -212,6 +212,7 @@ nfsd_proc_create(struct svc_rqst *rqstp,
- 	nfserr = fh_compose(newfhp, dirfhp->fh_export, dchild, dirfhp);
- 	if (!nfserr && !dchild->d_inode)
- 		nfserr = nfserr_noent;
-+	dput(dchild);
- 	if (nfserr) {
- 		if (nfserr != nfserr_noent)
- 			goto out_unlock;
-
 diff ./fs/nfsd/vfs.c~current~ ./fs/nfsd/vfs.c
---- ./fs/nfsd/vfs.c~current~	2004-05-18 11:09:16.000000000 +1000
-+++ ./fs/nfsd/vfs.c	2004-05-18 11:16:20.000000000 +1000
-@@ -208,6 +208,7 @@ nfsd_lookup(struct svc_rqst *rqstp, stru
- 	err = fh_compose(resfh, exp, dentry, fhp);
- 	if (!err && !dentry->d_inode)
+--- ./fs/nfsd/vfs.c~current~	2004-05-18 11:16:20.000000000 +1000
++++ ./fs/nfsd/vfs.c	2004-05-18 11:16:40.000000000 +1000
+@@ -141,10 +141,11 @@ nfsd_lookup(struct svc_rqst *rqstp, stru
+ 	/* Obtain dentry and export. */
+ 	err = fh_verify(rqstp, fhp, S_IFDIR, MAY_EXEC);
+ 	if (err)
+-		goto out;
++		return err;
+ 
+ 	dparent = fhp->fh_dentry;
+ 	exp  = fhp->fh_export;
++	exp_get(exp);
+ 
+ 	err = nfserr_acces;
+ 
+@@ -210,6 +211,7 @@ nfsd_lookup(struct svc_rqst *rqstp, stru
  		err = nfserr_noent;
-+	dput(dentry);
+ 	dput(dentry);
  out:
- 	return err;
- 
-@@ -859,7 +860,7 @@ nfsd_create(struct svc_rqst *rqstp, stru
- 		char *fname, int flen, struct iattr *iap,
- 		int type, dev_t rdev, struct svc_fh *resfhp)
- {
--	struct dentry	*dentry, *dchild;
-+	struct dentry	*dentry, *dchild = NULL;
- 	struct inode	*dirp;
- 	int		err;
- 
-@@ -965,6 +966,8 @@ nfsd_create(struct svc_rqst *rqstp, stru
- 	if (!err)
- 		err = fh_update(resfhp);
- out:
-+	if (dchild && !IS_ERR(dchild))
-+		dput(dchild);
++	exp_put(exp);
  	return err;
  
  out_nfserr:
-@@ -982,7 +985,7 @@ nfsd_create_v3(struct svc_rqst *rqstp, s
- 		struct svc_fh *resfhp, int createmode, u32 *verifier,
- 	        int *truncp)
- {
--	struct dentry	*dentry, *dchild;
-+	struct dentry	*dentry, *dchild = NULL;
- 	struct inode	*dirp;
- 	int		err;
- 	__u32		v_mtime=0, v_atime=0;
-@@ -1111,6 +1114,8 @@ nfsd_create_v3(struct svc_rqst *rqstp, s
+
+diff ./include/linux/nfsd/export.h~current~ ./include/linux/nfsd/export.h
+--- ./include/linux/nfsd/export.h~current~	2004-05-18 11:09:16.000000000 +1000
++++ ./include/linux/nfsd/export.h	2004-05-18 11:16:40.000000000 +1000
+@@ -110,6 +110,10 @@ static inline void exp_put(struct svc_ex
+ 	svc_export_put(&exp->h, &svc_export_cache);
+ }
  
-  out:
- 	fh_unlock(fhp);
-+	if (dchild && !IS_ERR(dchild))
-+		dput(dchild);
-  	return err;
-  
-  out_nfserr:
++static inline void exp_get(struct svc_export *exp)
++{
++	cache_get(&exp->h);
++}
+ static inline struct svc_export *
+ exp_find(struct auth_domain *clp, int fsid_type, u32 *fsidv,
+ 	 struct cache_req *reqp)
+@@ -118,7 +122,7 @@ exp_find(struct auth_domain *clp, int fs
+ 	if (ek && !IS_ERR(ek)) {
+ 		struct svc_export *exp = ek->ek_export;
+ 		int err;
+-		cache_get(&exp->h);
++		exp_get(exp);
+ 		expkey_put(&ek->h, &svc_expkey_cache);
+ 		if (exp &&
+ 		    (err = cache_check(&svc_export_cache, &exp->h, reqp)))
 
 
 -------------------------------------------------------
