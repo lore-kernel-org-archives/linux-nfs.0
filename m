@@ -1,27 +1,24 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: fcntl locks prevent unmounting of underlying filesystem
-Date: Sun, 30 May 2004 08:51:52 +1000
+From: NeilBrown <neilb@cse.unsw.edu.au>
+Subject: [PATCH] kNFSd - 4 of 11 - nfsd_xdr_name_encoding.patch
+Date: Fri, 28 May 2004 14:37:30 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16569.5128.54766.582893@cse.unsw.edu.au>
-References: <1085589795.20517.41.camel@tesla.mmt.bellhowell.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Message-ID: <E1BTZ7a-0008EN-Uf@notabene.cse.unsw.edu.au>
+References: <20040528143518.31534.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BUkYQ-0006gP-3y
-	for nfs@lists.sourceforge.net; Mon, 31 May 2004 04:02:06 -0700
+	id 1BUkZb-0006tX-AP
+	for nfs@lists.sourceforge.net; Mon, 31 May 2004 04:03:19 -0700
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BUkYP-0006hJ-8Z
-	for nfs@lists.sourceforge.net; Mon, 31 May 2004 04:02:05 -0700
+	id 1BUkZa-000707-Dh
+	for nfs@lists.sourceforge.net; Mon, 31 May 2004 04:03:18 -0700
 Received: From
-	notabene.cse.unsw.edu.au ([129.94.241.7] == ppp2-007.ppp2.cse.unsw.EDU.AU) (auth-user neilb)
-	(for <jtlayton@poochiereds.net>) (for <nfs@lists.sourceforge.net>) By
-	note With Smtp ; Sun, 30 May 2004 08:51:59 +1000
-To: Jeffrey Layton <jtlayton@poochiereds.net>
-In-Reply-To: message from Jeffrey Layton on Wednesday May 26
+	notabene.cse.unsw.edu.au ([129.94.172.124]) (auth-user neilb) (ident-user Debian-exim)
+	(for <akpm@osdl.org>) (for <nfs@lists.sourceforge.net>) By note With
+	Smtp ; Fri, 28 May 2004 14:37:31 +1000
+To: Andrew Morton <akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,31 +31,133 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wednesday May 26, jtlayton@poochiereds.net wrote:
-> I've seem to have run across a problem with NFS and fcntl locks. I'm
-> trying to implement a HA-NFS solution using heartbeat, DRBD, LVM2, etc.
-> I'm running the following:
-> 
-> 2.6.6 kernel
-> nfs-kernel-server and nfs-common 1.0.6-3 (debian packages)
-> 
-> The underlying filesystem is reiserfs. Essentially what I'm seeing is
-> that when I try to shut down NFS and unmount the filesystem for a
-> failover, I'm unable to unmount if I have an fcntl lock on the file.
 
-You need to make sure that lockd gets killed as well.
-Just shutting down nfsd doesn't necessarily kill lockd, as if you have
-any active nfs mounts lockd will stay up for them.
-So, when you have shut down nfsd and before you try to unmount, could
-you check if lockd is still running or not?
-If it is, send it a SIGKILL.  It won't exit, but it should release any
-locks that it is holding.
+Encode names directly into xdr buffer; this optimizes out a data copy, reduces
+stack usage, and will make life simpler when doing acls.
 
-If lockd has gone away at this point but locks are still being held,
-then that is a real problem and I will try to look into it.
 
-NeilBrown
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
+ ----------- Diffstat output ------------
+ ./fs/nfsd/nfs4xdr.c |   80 +++++++++++++++++++++++++++++++++-------------------
+ 1 files changed, 51 insertions(+), 29 deletions(-)
+
+diff ./fs/nfsd/nfs4xdr.c~current~ ./fs/nfsd/nfs4xdr.c
+--- ./fs/nfsd/nfs4xdr.c~current~	2004-05-28 14:20:00.000000000 +1000
++++ ./fs/nfsd/nfs4xdr.c	2004-05-28 14:20:16.000000000 +1000
+@@ -1289,6 +1289,49 @@ static u32 nfs4_ftypes[16] = {
+         NF4SOCK, NF4BAD,  NF4LNK, NF4BAD,
+ };
+ 
++static inline int
++xdr_padding(int l)
++{
++       return 3 - ((l - 1) & 3); /* smallest i>=0 such that (l+i)%4 = 0 */
++}
++
++static int
++nfsd4_encode_name(struct svc_rqst *rqstp, int group, uid_t id,
++			u32 **p, int *buflen)
++{
++	int status;
++	u32 len;
++
++	if (*buflen < (XDR_QUADLEN(IDMAP_NAMESZ) << 2) + 4)
++		return nfserr_resource;
++	if (group)
++		status = nfsd_map_gid_to_name(rqstp, id, (u8 *)(*p + 1));
++	else
++		status = nfsd_map_uid_to_name(rqstp, id, (u8 *)(*p + 1));
++	if (status < 0)
++		return nfserrno(status);
++	len = (unsigned)status;
++	*(*p)++ = htonl(len);
++	memset((u8 *)*p + len, 0, xdr_padding(len));
++	*p += XDR_QUADLEN(len);
++	*buflen -= (XDR_QUADLEN(len) << 2) + 4;
++	BUG_ON(*buflen < 0);
++	return 0;
++}
++
++static inline int
++nfsd4_encode_user(struct svc_rqst *rqstp, uid_t uid, u32 **p, int *buflen)
++{
++	return nfsd4_encode_name(rqstp, uid, 0, p, buflen);
++}
++
++static inline int
++nfsd4_encode_group(struct svc_rqst *rqstp, uid_t gid, u32 **p, int *buflen)
++{
++	return nfsd4_encode_name(rqstp, gid, 1, p, buflen);
++}
++
++
+ /*
+  * Note: @fhp can be NULL; in this case, we might have to compose the filehandle
+  * ourselves.
+@@ -1304,10 +1347,6 @@ nfsd4_encode_fattr(struct svc_fh *fhp, s
+ 	u32 bmval0 = bmval[0];
+ 	u32 bmval1 = bmval[1];
+ 	struct kstat stat;
+-	char owner[IDMAP_NAMESZ];
+-	u32 ownerlen = 0;
+-	char group[IDMAP_NAMESZ];
+-	u32 grouplen = 0;
+ 	struct svc_fh tempfh;
+ 	struct kstatfs statfs;
+ 	int buflen = *countp << 2;
+@@ -1338,23 +1377,6 @@ nfsd4_encode_fattr(struct svc_fh *fhp, s
+ 			goto out;
+ 		fhp = &tempfh;
+ 	}
+-	if (bmval1 & FATTR4_WORD1_OWNER) {
+-		int temp = nfsd_map_uid_to_name(rqstp, stat.uid, owner);
+-		if (temp < 0) {
+-			status = temp;
+-			goto out_nfserr;
+-		}
+-		ownerlen = (unsigned) temp;
+-	}
+-	if (bmval1 & FATTR4_WORD1_OWNER_GROUP) {
+-		int temp = nfsd_map_gid_to_name(rqstp, stat.gid, group);
+-		if (temp < 0) {
+-			status = temp;
+-			goto out_nfserr;
+-		}
+-		grouplen = (unsigned) temp;
+-	}
+-
+ 	if ((buflen -= 16) < 0)
+ 		goto out_resource;
+ 
+@@ -1536,18 +1558,18 @@ nfsd4_encode_fattr(struct svc_fh *fhp, s
+ 		WRITE32(stat.nlink);
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_OWNER) {
+-		buflen -= (XDR_QUADLEN(ownerlen) << 2) + 4;
+-		if (buflen < 0)
++		status = nfsd4_encode_user(rqstp, stat.uid, &p, &buflen);
++		if (status == nfserr_resource)
+ 			goto out_resource;
+-		WRITE32(ownerlen);
+-		WRITEMEM(owner, ownerlen);
++		if (status)
++			goto out;
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_OWNER_GROUP) {
+-		buflen -= (XDR_QUADLEN(grouplen) << 2) + 4;
+-		if (buflen < 0)
++		status = nfsd4_encode_group(rqstp, stat.gid, &p, &buflen);
++		if (status == nfserr_resource)
+ 			goto out_resource;
+-		WRITE32(grouplen);
+-		WRITEMEM(group, grouplen);
++		if (status)
++			goto out;
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_RAWDEV) {
+ 		if ((buflen -= 8) < 0)
 
 
 -------------------------------------------------------
