@@ -1,21 +1,31 @@
-From: Johan van den Dorpe <johan.vandendorpe@framestore-cfc.com>
+From: Vincent Roqueta <vincent.roqueta@ext.bull.net>
 Subject: Re: Can someone explain me what this error means?
-Date: Thu, 17 Mar 2005 16:17:31 +0000
-Message-ID: <4239AD9B.4010202@framestore-cfc.com>
-References: <4239A9A3.5000109@framestore-cfc.com> <200503171713.21629.vincent.roqueta@ext.bull.net>
+Date: Thu, 17 Mar 2005 17:37:19 +0100
+Message-ID: <200503171737.19660.vincent.roqueta@ext.bull.net>
+References: <4239A9A3.5000109@framestore-cfc.com> <1111075730.13215.19.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Content-Type: text/plain;
+  charset="iso-8859-15"
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DBxi9-000586-Ue
-	for nfs@lists.sourceforge.net; Thu, 17 Mar 2005 08:19:01 -0800
-Received: from gw.fs-cfc.co.uk ([193.203.83.22])
-	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
-	id 1DBxi9-0005uS-8z
-	for nfs@lists.sourceforge.net; Thu, 17 Mar 2005 08:19:01 -0800
-To: Vincent Roqueta <vincent.roqueta@ext.bull.net>
-In-Reply-To: <200503171713.21629.vincent.roqueta@ext.bull.net>
+	id 1DBxu4-0005jw-LO
+	for nfs@lists.sourceforge.net; Thu, 17 Mar 2005 08:31:20 -0800
+Received: from ecfrec.frec.bull.fr ([129.183.4.8])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1DBxu3-0003SO-2h
+	for nfs@lists.sourceforge.net; Thu, 17 Mar 2005 08:31:20 -0800
+Received: from localhost (localhost [127.0.0.1])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id DDFA519D918
+	for <nfs@lists.sourceforge.net>; Thu, 17 Mar 2005 17:31:07 +0100 (CET)
+Received: from ecfrec.frec.bull.fr ([127.0.0.1])
+ by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
+ with ESMTP id 06090-10 for <nfs@lists.sourceforge.net>;
+ Thu, 17 Mar 2005 17:31:05 +0100 (CET)
+Received: from ecn002.frec.bull.fr (ecn002.frec.bull.fr [129.183.4.6])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 1A9F119D915
+	for <nfs@lists.sourceforge.net>; Thu, 17 Mar 2005 17:31:05 +0100 (CET)
+To: nfs@lists.sourceforge.net
+In-Reply-To: <1111075730.13215.19.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,30 +39,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Vincent Roqueta wrote:
-> Le jeudi 17 Mars 2005 17:00, Johan van den Dorpe a =E9crit :
->=20
->>Mar 16 12:25:55 nyserv1 kernel: rpc-srv/tcp: nfsd: sent only 5160 bytes
->>of 8324 - shutting down socket
->=20
-> That appears with a UDP NFSv3 connection?
+Le jeudi 17 Mars 2005 17:08, Trond Myklebust a =E9crit=A0:
+> to den 17.03.2005 Klokka 16:00 (+0000) skreiv Johan van den Dorpe:
+> > Mar 16 12:25:55 nyserv1 kernel: rpc-srv/tcp: nfsd: sent only 5160 bytes
+> > of 8324 - shutting down socket
+> >
+> > We get this just before the machine becomes inaccessable from the
+> > network.
+>
+> Is this an error from the kernel nfs daemon? If so, which kernel are you
+> running, 'cos there is no such error message in Linux-2.6.11.
+>
+> Cheers,
+>   Trond
 
-Untested at present, but we may look at that.
+HelloTrond,
 
-> What is your kernel and your netcard?
+The kernel is the 2.4.20, using the e1000 driver... That looks like the bug=
+ I=20
+had with UDP fragmentation? I used the same driver!
 
-2.4.20, Intel Pro e1000.
-
-
---=20
-Johan van den Dorpe
+Vincent
 
 
 -------------------------------------------------------
 SF email is sponsored by - The IT Product Guide
 Read honest & candid reviews on hundreds of IT Products from real users.
 Discover which products truly live up to the hype. Start reading now.
-http://ads.osdn.com/?ad_id=3D6595&alloc_id=3D14396&op=3Dclick
+http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
