@@ -1,19 +1,25 @@
-From: Benjamin LaHaise <bcrl@redhat.com>
-Subject: Re: RedHat 7.3 crashed NetApp?
-Date: Mon, 20 May 2002 10:46:17 -0400
+From: darren.miller@philips.com
+Subject: Performance Tuning?
+Date: Tue, 21 May 2002 10:16:30 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020520104617.A31507@redhat.com>
-References: <6440EA1A6AA1D5118C6900902745938E50CF38@black.eng.netapp.com>
+Message-ID: <OFB40BCA74.33FC48AA-ON80256BC0.0032D825@diamond.philips.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/alternative; boundary="=_alternative 0032FB3A80256BC0_="
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from to-velocet.redhat.com ([216.138.202.10] helo=touchme.toronto.redhat.com)
+Received: from gw-nl3.philips.com ([212.153.190.5])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 179oQW-0003GQ-00
-	for <nfs@lists.sourceforge.net>; Mon, 20 May 2002 07:46:20 -0700
-To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: <6440EA1A6AA1D5118C6900902745938E50CF38@black.eng.netapp.com>; from Charles.Lever@netapp.com on Mon, May 20, 2002 at 07:19:11AM -0700
+	id 17A5lc-0000An-00
+	for <nfs@lists.sourceforge.net>; Tue, 21 May 2002 02:17:16 -0700
+Received: from smtpscan-nl4.philips.com (smtpscan-nl4.philips.com [130.139.36.24])
+	by gw-nl3.philips.com (Postfix) with ESMTP id 110DE3B08F
+	for <nfs@lists.sourceforge.net>; Tue, 21 May 2002 11:17:12 +0200 (MET DST)
+Received: from smtprelay-nl1.philips.com (localhost [127.0.0.1])
+	by smtpscan-nl4.philips.com (8.9.3/8.8.5-1.2.2m-19990317) with ESMTP id LAA02753
+	for <nfs@lists.sourceforge.net>; Tue, 21 May 2002 11:17:10 +0200 (MET DST)
+Received: from hbg001soh.diamond.philips.com (e1soh01.diamond.philips.com [130.143.165.45])
+	by smtprelay-nl1.philips.com (8.9.3/8.8.5-1.2.2m-19990317) with ESMTP id LAA10478
+	for <nfs@lists.sourceforge.net>; Tue, 21 May 2002 11:17:04 +0200 (MET DST)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,21 +32,28 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Mon, May 20, 2002 at 07:19:11AM -0700, Lever, Charles wrote:
-> ben-
-> 
-> were any patches applied to RH's 2.4.18 that touched the NFS client?
-> for example, were any of Trond's experimental patches applied?
+This is a multipart message in MIME format.
+--=_alternative 0032FB3A80256BC0_=
+Content-Type: text/plain; charset="us-ascii"
 
-Just a few bits from -ac and the fix for irix nfs cookies.
+Are there any performance tuning that can be done to NFSD on Linux??
 
-		-ben
--- 
-"You will be reincarnated as a toad; and you will be much happier."
+Darren
+
+--=_alternative 0032FB3A80256BC0_=
+Content-Type: text/html; charset="us-ascii"
+
+
+<br><font size=2 face="sans-serif">Are there any performance tuning that can be done to NFSD on Linux??</font>
+<br>
+<br><font size=2 face="sans-serif">Darren<br>
+</font>
+--=_alternative 0032FB3A80256BC0_=--
 
 _______________________________________________________________
-Hundreds of nodes, one monster rendering program.
-Now that's a super model! Visit http://clustering.foundries.sf.net/
+
+Don't miss the 2002 Sprint PCS Application Developer's Conference
+August 25-28 in Las Vegas -- http://devcon.sprintpcs.com/adp/index.cfm
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
