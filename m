@@ -1,21 +1,22 @@
-From: Bernd Schubert <bernd-schubert@web.de>
-Subject: list of patches between 2.6.9 and 2.6.11-rc4
-Date: Mon, 21 Feb 2005 23:35:25 +0100
-Message-ID: <200502212335.25502.bernd-schubert@web.de>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: list of patches between 2.6.9 and 2.6.11-rc4
+Date: Mon, 21 Feb 2005 19:03:12 -0500
+Message-ID: <1109030592.22895.57.camel@lade.trondhjem.org>
+References: <200502212335.25502.bernd-schubert@web.de>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: nfs@lists.sourceforge.net
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D3M8j-0007ft-4q
-	for nfs@lists.sourceforge.net; Mon, 21 Feb 2005 14:34:53 -0800
-Received: from smtp06.web.de ([217.72.192.224])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1D3NWV-0002oY-2Z
+	for nfs@lists.sourceforge.net; Mon, 21 Feb 2005 16:03:31 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1D3M8h-0005nt-L3
-	for nfs@lists.sourceforge.net; Mon, 21 Feb 2005 14:34:53 -0800
-To: nfs@lists.sourceforge.net,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
+	id 1D3NWS-00078j-G3
+	for nfs@lists.sourceforge.net; Mon, 21 Feb 2005 16:03:30 -0800
+To: Bernd Schubert <bernd-schubert@web.de>
+In-Reply-To: <200502212335.25502.bernd-schubert@web.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,42 +30,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello Trond,
+m=E5 den 21.02.2005 Klokka 23:35 (+0100) skreiv Bernd Schubert:
+> Hello Trond,
 
-sorry for my dumb question, but I don't know where to search. Is it possibl=
-e=20
-to somewhere find the NFS client patches that go into the kernel versions?
+The best place to search for NFS client patches that have actually been
+merged in is to use the web-based Bitkeeper browser:
 
-We are mounting /var from an initrd giving the 'nolock' option. I havn't=20
-analyzed it in detail yet, but the filelocking code from ypbind gets some=20
-strange results causing ypbind not starting up at all. It worked fine with=
-=20
-2.6.9, but not with 2.6.11-rc4.=20
-Afer mounting /var again, when the system is already started up and=20
-explicitely giving the 'lock' option, ypbind starts up fine.
-I'm now interested in the kernel changes that cause the problems.=20
+http://linux.bkbits.net:8080/linux-2.6/src?nav=3Dindex.html
 
-The nfs-server for /var is unfs3, but I really think thats a client problem=
-=2E I=20
-also so far couldn't find something of interest in an ethereal log between=
-=20
-the client and server on the unfs3 port.
+That allows you to go to each file, and see how recently it has changed,
+and which changesets (Bitkeeper-speak for "patches")  affect it.
 
+> The nfs-server for /var is unfs3, but I really think thats a client probl=
+em. I=20
+> also so far couldn't find something of interest in an ethereal log betwee=
+n=20
+> the client and server on the unfs3 port.
 
-Thanks,
- Bernd
+You should really always be mounting using "nolock" when you are running
+against unfs3. Is that what you have normally been using?
 
+Cheers,
+  Trond
+--=20
+Trond Myklebust <trond.myklebust@fys.uio.no>
 
-
-
-
-=2D-=20
-Bernd Schubert
-Physikalisch Chemisches Institut / Theoretische Chemie
-Universit=E4t Heidelberg
-INF 229
-69120 Heidelberg
-e-mail: bernd.schubert@pci.uni-heidelberg.de
 
 
 -------------------------------------------------------
