@@ -1,24 +1,15 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: 2.5.69 NFSv4 client patches
-Date: Fri, 9 May 2003 14:51:09 -0700
+From: xiyu@800j.com
+Subject: =?GB2312?B?o7yjvM73sLLN7bGoo76jvs7Sz7KwrrXE0KG/tdeh1azGwNGhu+62rw==?=
+Date: Sat, 10 May 2003 09:49:20 +0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <482A3FA0050D21419C269D13989C6113127DB5@lavender-fe.eng.netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Cc: nfs@lists.sourceforge.net
+Message-ID: <E19EJSq-00076s-00@sc8-sf-list1.sourceforge.net>
+Content-Type: text/html;charset="GB2312"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mx01.netapp.com ([198.95.226.53])
+Received: from [61.150.7.33] (helo=800j.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19EFm3-0003r8-00
-	for <nfs@lists.sourceforge.net>; Fri, 09 May 2003 14:51:27 -0700
-Received: from frejya.corp.netapp.com (frejya [10.10.20.91])
-	by mx01.netapp.com (8.12.9/8.12.9/NTAP-1.4) with ESMTP id h49LpLFB022785
-	for <nfs@lists.sourceforge.net>; Fri, 9 May 2003 14:51:21 -0700 (PDT)
-Received: from black.eng.netapp.com (black.eng.netapp.com [10.56.10.24])
-	by frejya.corp.netapp.com (8.12.9/8.12.9/NTAP-1.4) with ESMTP id h49LpLln016267
-	for <nfs@lists.sourceforge.net>; Fri, 9 May 2003 14:51:21 -0700 (PDT)
-To: "Trond Myklebust (E-mail)" <trond.myklebust@fys.uio.no>
+	id 19EJSq-00076s-00
+	for <nfs@lists.sourceforge.net>; Fri, 09 May 2003 18:47:53 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,20 +22,32 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-hi trond-
+<html>
 
-please take a look at
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
+<meta name="GENERATOR" content="Microsoft FrontPage 4.0">
+<meta name="ProgId" content="FrontPage.Editor.Document">
+<title>New Page 1</title>
+</head>
 
-  http://plymouth.citi.umich.edu/cel/nfs-client/linux-2.5/2.5.69/
+<body>
 
-these are bug fixes from the Linux 2.4 NFSv4 client effort that
-have been forward-ported to 2.5.69.  please consider applying
-them to the 2.5 kernel.
-
-        -- Chuck Lever
---
-corporate: <cel at netapp dot com>
-personal:  <chucklever at bigfoot dot com>
+<p class="MsoNormal" align="center"><b><span style="mso-bidi-font-size: 12.0pt; color: red"><font face="隶书" size="7"><span lang="EN-US" style="mso-bidi-font-size: 12.0pt; color: red">&lt;&lt;</span><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman; mso-hansi-font-family: Times New Roman; color: red">西安晚报＞＞</span></font></span><span lang="EN-US" style="font-size:36.0pt;mso-bidi-font-size:12.0pt;color:red"><o:p>
+</o:p>
+</span></b></p>
+<p class="MsoNormal" align="center"><b><span style="font-size:18.0pt;mso-bidi-font-size:12.0pt;
+font-family:宋体;mso-ascii-font-family:&quot;Times New Roman&quot;;mso-hansi-font-family:
+&quot;Times New Roman&quot;;color:#00CCFF">我喜爱的</span><span style="font-size:26.0pt;
+mso-bidi-font-size:12.0pt;font-family:宋体;mso-ascii-font-family:&quot;Times New Roman&quot;;
+mso-hansi-font-family:&quot;Times New Roman&quot;;color:#00CCFF">小康住宅评选活动</span></b></p>
+<p class="MsoNormal" align="center"><b><font face="华文中宋" size="7"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman; mso-hansi-font-family: Times New Roman; color: red">网上投票　今日启动</span></font><span lang="EN-US" style="font-size:42.0pt;mso-bidi-font-size:12.0pt;color:red"><o:p>
+</o:p></span></b></p>  
+<p class="MsoNormal" align="center"><b><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; font-family: 宋体; mso-ascii-font-family: Times New Roman; mso-hansi-font-family: Times New Roman; mso-bidi-font-family: Times New Roman; mso-font-kerning: 1.0pt; mso-ansi-language: EN-US; mso-fareast-language: ZH-CN; mso-bidi-language: AR-SA"><font size="6" color="#800080">投票请点击</font></span></a></b></p> 
+ 
+</body> 
+ 
+</html> 
 
 
 -------------------------------------------------------
