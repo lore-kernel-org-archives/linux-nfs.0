@@ -1,18 +1,19 @@
-From: "Andrew Theurer" <habanero@us.ibm.com>
-Subject: Re: [PATCH] zerocopy NFS updated
-Date: Fri, 12 Apr 2002 06:10:46 -0500
+From: "Steven N. Hirsch" <shirsch@adelphia.net>
+Subject: Re: 2.4.19-pre5-ac3 NFS problems
+Date: Fri, 12 Apr 2002 07:50:06 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <009501c1e212$b30e6bc0$2e060e09@beavis>
-References: <20020410.191231.130623162.taka@valinux.co.jp>
+Message-ID: <Pine.LNX.4.44.0204120741490.14953-100000@atx.fast.net>
+References: <15542.19652.743976.342481@notabene.cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mg01.austin.ibm.com ([192.35.232.18])
+Received: from smtprelay9.dc2.adelphia.net ([64.8.50.53])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16vyt1-0001tG-00
-	for <nfs@lists.sourceforge.net>; Fri, 12 Apr 2002 04:06:35 -0700
-To: <nfs@lists.sourceforge.net>, "Hirokazu Takahashi" <taka@valinux.co.jp>
+	id 16vzS7-0003us-00
+	for <nfs@lists.sourceforge.net>; Fri, 12 Apr 2002 04:42:51 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <15542.19652.743976.342481@notabene.cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,62 +26,57 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-I tried the patch with great performance improvement!   I ran my nfs read
-test (48 clients read 200 MB file from one 4-way SMP NFS server) and
-compared your patches to regular 2.5.7.  Regular 2.5.7 resulted in 87 MB/sec
-with 100% CPU utilization.  Your patch resulted 130 MB/sec with 82% CPU
-utilization!  This is very good!  I took profiles, and as expected,
-csum_copy and file_read_actor were gone with the patch.  Sar reported nearly
-40 MB/sec per gigabit adapter (there are 4) during the test.  That is the
-most I have seen so far.  Soon I will be doing some lock analysis to make
-sure we don't have any locking problems.  Also, I will see if there is
-anyone here at IBM LTC that can assist with your development of zerocopy on
-UDP.  Thanks for the patch!
+On Fri, 12 Apr 2002, Neil Brown wrote:
 
-Andrew Theurer
+> On Thursday April 11, shirsch@adelphia.net wrote:
+> > 
+> > Neil,
+> > 
+> > I finally got the chance to bang on this.  I'm not seeing anything 
+> > queueing on port 32768, but during the period when 'pine' hangs there 
+> > seems to be a large number number of requests on port 32771 server-side.  
+> > At no point does the backlog fall below about 160.  What should I be 
+> > seeing?
+> 
+> I'm perplexed...
+> Is 32771 a local port or a remote port on the server?
 
+It's the local port on the server.  The foreign end point is the client
+with the hung 'pine' instance, port 799, 800, whatever.  All I can say is
+to reiterate: whatever is going on between client:800 and server:32771
+looks different on a correctly-operating NFSv3 TCP connection - it always
+shows up as zero.  In the broken case, it never falls below 160 and
+typically is up at 240.
 
-> Hi
->
-> I add a new patch for zerocopy NFS.
-> va03-knfsd-zerocopy-sendpage-2.5.7-test1.patch makes knfsd to skip
-> csum_partial_copy_generic() which copies data into a sk_buff.
-> This feature works on when you use NFS over TCP only at this moment.
-> I'd like to implement sendpage for UDP, but it doesn't work yet.
->
-> But I wonder about sendpage. I guess HW IP checksum for outgoing
-> pages might be miscalculated as VFS can update them anytime.
-> New feature like COW pagecache should be added to VM and they
-> should be duplicated in this case.
->
-> Is there anyone who could advise me about this ?
->
->
-> Following patches patches are against linux 2.5.7
->
->
-ftp://ftp.valinux.co.jp/pub/people/taka/tune/2.5.7/va01-knfsd-zerocopy-vfsre
-ad-2.5.7.patch
->
-ftp://ftp.valinux.co.jp/pub/people/taka/tune/2.5.7/va02-kmap-multplepages-2.
-5.7.patch
->
->
-ftp://ftp.valinux.co.jp/pub/people/taka/tune/2.5.7/va03-knfsd-zerocopy-sendp
-age-2.5.7-test1.patch
->
->
-> Andrew,  Could you try it again?
->
->
-> Regards,
-> Hirokazu Takahashi
->
->
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
->
+> What I would expect you do see on the server if you do 
+>        netstat -t
+> is something like:
+> Active Internet connections (w/o servers)
+> Proto Recv-Q Send-Q Local Address           Foreign Address         State
+> tcp        0      0 elfman.orchestra.c:2049 dulcimer.orchestra.:800 ESTABLISHED
+> 
+> The local address is "2049".
+> The remote address could be anything.  My 2.4 Linux clients seem to
+> choose 800, but anything is reasonable.
+> 
+> I would expect the see the Recv-Q and Send-Q jump around a lot when IO
+> is happening, but settle to zero whenever it is quiet.
+
+That's why I flagged the '160' minimum value as being suspicious.
+
+> If the connection that you are looking at is the NFS connection
+> (i.e. the other end is 2049) then the fact that it never gets below
+> 160 suggests that I've got my accounting wrong somewhere. 
+> The simplest option would be that sk_reserved goes negative, but I
+> cannot see what would cause that...
+
+It's definitely NOT the NFS connection.  I can see that as well, and it 
+shows as zero.
+
+Let me know what other information I can get for you?
+
+Steve
+
 
 
 _______________________________________________
