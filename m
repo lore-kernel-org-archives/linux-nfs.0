@@ -1,19 +1,20 @@
 From: mehta kiran <kiranmehta1981@yahoo.com>
 Subject: Re: Statd problem
-Date: Tue, 29 Mar 2005 05:03:00 -0800 (PST)
-Message-ID: <20050329130300.68809.qmail@web51605.mail.yahoo.com>
+Date: Tue, 29 Mar 2005 05:06:55 -0800 (PST)
+Message-ID: <20050329130655.20995.qmail@web51608.mail.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DGGNB-0006cV-4i
-	for nfs@lists.sourceforge.net; Tue, 29 Mar 2005 05:03:09 -0800
-Received: from web51605.mail.yahoo.com ([206.190.38.210])
+	id 1DGGQx-0006rs-AX
+	for nfs@lists.sourceforge.net; Tue, 29 Mar 2005 05:07:03 -0800
+Received: from web51608.mail.yahoo.com ([206.190.38.213])
 	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
-	id 1DGGN8-0004Jt-9w
-	for nfs@lists.sourceforge.net; Tue, 29 Mar 2005 05:03:09 -0800
-To: Beschorner Daniel <Daniel.Beschorner@facton.com>,
+	id 1DGGQv-0004j9-Oa
+	for nfs@lists.sourceforge.net; Tue, 29 Mar 2005 05:07:03 -0800
+To: mehta kiran <kiranmehta1981@yahoo.com>,
+	Beschorner Daniel <Daniel.Beschorner@facton.com>,
 	"'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
 In-Reply-To: 6667
 Sender: nfs-admin@lists.sourceforge.net
@@ -29,43 +30,72 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Daniel , 
-    lockd has rpc service no. 100021 . This message
-means that statd is not able to talk to statd.
-Are there any files on client side in /var/lib/nfs/sm
-when it restarts ?
-
-Try deleting all this files before nfs restarts on
-client.
-
-Also see that  lockd is registered with
-portmapper.(use command rpcinfo -p)
-
-regards,
- --kiran
-
-
-
---- Beschorner Daniel <Daniel.Beschorner@facton.com>
-wrote:
-> Since the first reboot of our clients (mainly AIX)
-> after we updated our NFS
-> server from 2.6.10 to 2.6.11 we get sporadically
-> these server log entries, I
-> think after each client reboot:
+one change.
+ statd cannot talk to lockd
+--- mehta kiran <kiranmehta1981@yahoo.com> wrote:
+> Hi Daniel , 
+>     lockd has rpc service no. 100021 . This message
+> means that statd is not able to talk to statd.
+> Are there any files on client side in
+> /var/lib/nfs/sm
+> when it restarts ?
 > 
-> Mar 29 12:44:31 server rpc.statd[3201]: recv_rply:
-> [127.0.0.1] RPC status 1
-> Mar 29 12:44:49 server last message repeated 3 times
-> Mar 29 12:44:55 server rpc.statd[3201]: Can't
-> callback server (100021,4),
-> giving up.
+> Try deleting all this files before nfs restarts on
+> client.
 > 
-> What do they mean? No further problems are seen.
-> Mounts are TCP/V3.
+> Also see that  lockd is registered with
+> portmapper.(use command rpcinfo -p)
 > 
-> Thanks
-> Daniel
+> regards,
+>  --kiran
+> 
+> 
+> 
+> --- Beschorner Daniel <Daniel.Beschorner@facton.com>
+> wrote:
+> > Since the first reboot of our clients (mainly AIX)
+> > after we updated our NFS
+> > server from 2.6.10 to 2.6.11 we get sporadically
+> > these server log entries, I
+> > think after each client reboot:
+> > 
+> > Mar 29 12:44:31 server rpc.statd[3201]: recv_rply:
+> > [127.0.0.1] RPC status 1
+> > Mar 29 12:44:49 server last message repeated 3
+> times
+> > Mar 29 12:44:55 server rpc.statd[3201]: Can't
+> > callback server (100021,4),
+> > giving up.
+> > 
+> > What do they mean? No further problems are seen.
+> > Mounts are TCP/V3.
+> > 
+> > Thanks
+> > Daniel
+> > 
+> > 
+> >
+>
+-------------------------------------------------------
+> > SF email is sponsored by - The IT Product Guide
+> > Read honest & candid reviews on hundreds of IT
+> > Products from real users.
+> > Discover which products truly live up to the hype.
+> > Start reading now.
+> >
+>
+http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
+> > _______________________________________________
+> > NFS maillist  -  NFS@lists.sourceforge.net
+> > https://lists.sourceforge.net/lists/listinfo/nfs
+> > 
+> 
+> 
+> 		
+> __________________________________ 
+> Do you Yahoo!? 
+> Yahoo! Small Business - Try our new resources site!
+> http://smallbusiness.yahoo.com/resources/ 
 > 
 > 
 >
