@@ -1,23 +1,27 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: ps -aux hangs on [nfsd]
-Date: Fri, 28 Jan 2005 11:22:23 +0100
-Message-ID: <20050128102223.GB32084@suse.de>
-References: <41DE6CF9.6030100@bio.ifi.lmu.de> <41F8C900.90404@bio.ifi.lmu.de>
+From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Subject: debugging failed lock recovery
+Date: Thu, 27 Jan 2005 09:45:48 -0700 (MST)
+Message-ID: <Pine.LNX.4.60.0501270936260.7304@harp.ngdc.noaa.gov>
+Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: NFS NFS <nfs@lists.sourceforge.net>
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CuTGo-0006Zr-3M
-	for nfs@lists.sourceforge.net; Fri, 28 Jan 2005 02:22:30 -0800
-Received: from cantor.suse.de ([195.135.220.2])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1CuCmU-000077-P3
+	for nfs@lists.sourceforge.net; Thu, 27 Jan 2005 08:46:06 -0800
+Received: from harp.ngdc.noaa.gov ([140.172.178.33])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1CuTGm-0005EA-IR
-	for nfs@lists.sourceforge.net; Fri, 28 Jan 2005 02:22:30 -0800
-To: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
-In-Reply-To: <41F8C900.90404@bio.ifi.lmu.de>
+	id 1CuCmE-0004SE-4O
+	for nfs@lists.sourceforge.net; Thu, 27 Jan 2005 08:46:06 -0800
+Received: from harp.ngdc.noaa.gov (harp.ngdc.noaa.gov [127.0.0.1])
+	by harp.ngdc.noaa.gov (8.12.11/8.12.11) with ESMTP id j0RGjmvl007899
+	for <nfs@lists.sourceforge.net>; Thu, 27 Jan 2005 09:45:48 -0700
+Received: from localhost (ahoward@localhost)
+	by harp.ngdc.noaa.gov (8.12.11/8.12.11/Submit) with ESMTP id j0RGjmUE007895
+	for <nfs@lists.sourceforge.net>; Thu, 27 Jan 2005 09:45:48 -0700
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,32 +35,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Jan 27, 2005 at 11:57:04AM +0100, Frank Steiner wrote:
-> Here are the relevant portions of the strace log, maybe someone
-> has an idea what could go wrong here.
 
-This doesn't look like an NFS bug; it's a problem in procps or glibc.
+i've been out sick all week but am about to dig back into our failing lockd
+recovery issues.  if you recall we have this issue
 
-When you do a ps aux, ps ends up in a function named simple_readtask
-(in procps/proc/readproc.c) which does this:
+   ~ client > get_and_hold_lock
 
-	stat /proc/<pid>
-	read /proc/<pid>/stat
-	read /proc/<pid>/status
-	map the uids it found to login names
+   ~ server > cat /proc/locks      # shows correct lock pid
 
-The latter happens via a function named user_from_uid(), which caches
-these mappings - this is the reason why you're not seeing an access to
-/etc/passwd on every call.
+   ~ client > reboot
 
-But it doesn't look like user_from_uid() could loop at all. So
-possibly somethings wrong inside glibc (unlikely as that is).
+   ~ client > get_and_hold_lock    # fails!
 
-Olaf
+   ~ server > cat /proc/locks      # shows old lock pid (before reboot) still there!
+
+our clients AND servers are multihomed and each has iptables running.  we have
+opened ALL traffic between client and server in the firewalls - NOTHING is
+blocked.  still no go.  we're still seeing lots of SM_UNMON errors in var
+messages and i'm suspicious these are related to some multi-homed issues
+that's contributing to our failing lock recovery - but this is an un-educated
+hunch.
+
+at this point were are talking about starting a tcpdump in the nfslock script
+so we can see what's going on during boot/lock-recovery.  my question is
+
+   - what should i expect to see?  eg.  what exactly should the client be doing
+     to recover it's locks?  which messages - which ports - etc.  i'm after a
+     high level description here.
+
+   - any other tips (someone has suggested using ethereal) to determine the
+     problem?
+
+sorry to drag this through the mud but our system is too fragile without
+proper lock recovery to ignore and, unfortunately i'm not versed in debugging
+these sorts of things.
+
+
+kind regards.
+
+-a
 -- 
-Olaf Kirch     | Things that make Monday morning interesting, #2:
-okir@suse.de   |        "We have 8,000 NFS mount points, why do we keep
----------------+ 	 running out of privileged ports?"
+===============================================================================
+| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
+| PHONE   :: 303.497.6469
+| When you do something, you should burn yourself completely, like a good
+| bonfire, leaving no trace of yourself.  --Shunryu Suzuki
+===============================================================================
 
 
 -------------------------------------------------------
