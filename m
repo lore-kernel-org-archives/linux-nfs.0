@@ -1,29 +1,23 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: Re: [PATCH / RFC] nfs-utils: High Availability NFS
-Date: Mon, 6 Sep 2004 12:17:34 +1000
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: userspace NFS daemon
+Date: Sun, 05 Sep 2004 23:32:57 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16699.51390.633644.1498@cse.unsw.edu.au>
-References: <4124DB86.9060505@steeleye.com>
-	<16677.22269.988036.787320@cse.unsw.edu.au>
-	<412E1C10.5020703@steeleye.com>
-	<16692.8187.411591.69640@cse.unsw.edu.au>
-	<4134A6AD.1060502@steeleye.com>
-	<16693.4161.921397.480506@cse.unsw.edu.au>
-	<413546B1.4080306@steeleye.com>
+Message-ID: <1094441577.10492.134.camel@lade.trondhjem.org>
+References: <Pine.LNX.4.44.0409060210030.12696-100000@kenzo.iwr.uni-heidelberg.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-1
+Cc: Frank van Maarseveen <frankvm@xs4all.nl>, Linux NFS mailing list <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C494k-00075z-7g
-	for nfs@lists.sourceforge.net; Sun, 05 Sep 2004 19:17:46 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1C494j-0000FO-7e
-	for nfs@lists.sourceforge.net; Sun, 05 Sep 2004 19:17:45 -0700
-To: Paul Clements <paul.clements@steeleye.com>
-In-Reply-To: message from Paul Clements on Tuesday August 31
+	id 1C4AFp-00064K-FV
+	for nfs@lists.sourceforge.net; Sun, 05 Sep 2004 20:33:17 -0700
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
+	id 1C4AFm-0005VW-5j
+	for nfs@lists.sourceforge.net; Sun, 05 Sep 2004 20:33:17 -0700
+To: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
+In-Reply-To: <Pine.LNX.4.44.0409060210030.12696-100000@kenzo.iwr.uni-heidelberg.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -36,44 +30,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tuesday August 31, paul.clements@steeleye.com wrote:
-> Neil Brown wrote:
-> > On Tuesday August 31, paul.clements@steeleye.com wrote:
-> 
-> > I added a bit to the documentation to describe the arguments passed to
-> > the callout.
-> 
-> Those look good to me.
-> 
-> 
-> > Note that for statd, I dropped the third arg being passed.  It seemed
-> > easier than explaining in the doco why there is a fourth arg.
-> > Also note that I don't remember what "my_name" is all about.  Could
-> > you provide a small piece of text to go there.
-> 
-> The my_name argument is the server name, but honestly, I don't know that 
-> we need anything other than the client name (we really just need to know 
-> what files to create in the sm/sm.bak directories) so if you want to 
-> just drop that argument it's fine with me.
-> 
-> 
-> > Finally, would you consider having "unmount" instead of "umount" as a
-> > possible first arg for the mountd callout?
-> 
-> unmount instead of umount is fine if you want to go ahead and make that 
-> change...
-> 
-> Thanks,
-> Paul
+P=E5 su , 05/09/2004 klokka 20:47, skreiv Bogdan Costescu:
 
-Ok, I have made these changes, committed them, and tags them with
-nfs-utils-1-0-6-post3.
+> Err, you mean to say that root-NFS only appeared after knfsd ? And=20
+> that knfsd was absolutely flawless since day 1 ? :-)
 
-I'm not sure if I mentioned, but I change the SIGHUP handling so that
-instead of doing the work in the signal handler, I set a flag and do
-the work in the main look (svc_run).  This avoids some races.
+No. I mean that very few people have ever used unfsd in mission-critical
+production environments.
+You might get away with it for read-only stuff (if you are prepared to
+put up with the speed), but nobody should be using it for read/write
+partitions.
 
-NeilBrown
+> Cluster nodes have usually a small number of software packages=20
+> installed. Most "core" packages (like core-utils, grep, gawk, etc.)=20
+> don't need locking. As / doesn't see itself much writting (which=20
+> happens usually in /var and /tmp, but those can be mounted=20
+> separately), NFSv3 vs. NFSv2 doesn't make much difference either. So=20
+> what's the problem with using unfsd in these conditions ?
+
+If you have to mount all the writeable partitions separately from a more
+robust server, then why bother? Replicating /etc and changing the two or
+three files that differ for each cluster node is hardly a difficult
+task: you can do it using a simple shell script. /bin doesn't even have
+to be replicated...
+
+The "per-uid" and "per-gid" stuff might be more useful, but is likely to
+be defeated by lookup caching rules on most NFS clients.
+
+Note: the premise:
+        If a matching file is located, but authorization is denied,this
+        is NOT considered a match, and the next entry on the list will
+        be attempted.
+if taken literally, would certainly make managing these name.ipaddress
+files "interesting": "chmod a+r,a-w blah; cat >blah" might have some
+curious side-effects...
+
+Cheers,
+  Trond
+
 
 
 -------------------------------------------------------
