@@ -1,22 +1,26 @@
-From: Frank van Maarseveen <frankvm@xs4all.nl>
-Subject: Re: nfs v3: chown not permitted
-Date: Tue, 23 Mar 2004 10:18:51 +0100
+From: Olaf Kirch <okir@suse.de>
+Subject: [PATCH] Prevent oops in nfs_sb_init
+Date: Tue, 23 Mar 2004 11:17:40 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040323091851.GA11416@janus>
-References: <20040322143922.GA2452@posern.org> <20040322150642.GC23862@suse.de>
+Message-ID: <20040323101740.GE24978@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: multipart/mixed; boundary="a8Wt8u1KmwUX3Y2C"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B5i4T-000762-EC
-	for nfs@lists.sourceforge.net; Tue, 23 Mar 2004 01:19:41 -0800
-Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B5i4T-00049N-0h
-	for nfs@lists.sourceforge.net; Tue, 23 Mar 2004 01:19:41 -0800
+	id 1B5j0E-0002FQ-Qi
+	for nfs@lists.sourceforge.net; Tue, 23 Mar 2004 02:19:22 -0800
+Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.30)
+	id 1B5j0E-0006ob-DA
+	for nfs@lists.sourceforge.net; Tue, 23 Mar 2004 02:19:22 -0800
+Received: from hermes.suse.de (Hermes.suse.de [195.135.221.8])
+	(using TLSv1 with cipher EDH-RSA-DES-CBC3-SHA (168/168 bits))
+	(No client certificate requested)
+	by Cantor.suse.de (Postfix) with ESMTP id 796E5352359
+	for <nfs@lists.sourceforge.net>; Tue, 23 Mar 2004 11:17:40 +0100 (CET)
 To: nfs@lists.sourceforge.net
-In-Reply-To: <20040322150642.GC23862@suse.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -29,23 +33,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, Mar 22, 2004 at 04:06:43PM +0100, Olaf Kirch wrote:
-> On Mon, Mar 22, 2004 at 03:39:22PM +0100, foo@posern.org wrote:
-> > me@jolie:/mnt$ groups
-> > mine root adm disk lp dialout cdrom floppy audio www-data src video
-> > prg data mp3 maildata newmp3 wg users lpadmin
-> 
-> You have too many groups. SunRPC AUTH_UNIX authentication will transport
-> up to 16 groups, and "users" is item #19 in your list. "chgrp mp3"
-> would probably work, but users doesn't because the NFS server doesn't
-> see it in your list of groups.
 
-The Linux 2.4 NFS client patch to bypass this limitation can be found here:
+--a8Wt8u1KmwUX3Y2C
+Content-Type: text/plain; charset=iso-8859-15
+Content-Disposition: inline
 
-	http://frankvm.xs4all.nl/nfs-ngroups/
+nfs_sb_init will crash when the fsinfo call fails, because
+it tries to iput() an uninitialized pointer. The attached patch
+should fix this.
 
+Olaf
 -- 
-Frank
+Olaf Kirch     |  Stop wasting entropy - start using predictable
+okir@suse.de   |  tempfile names today!
+---------------+ 
+
+--a8Wt8u1KmwUX3Y2C
+Content-Type: text/plain; charset=iso-8859-15
+Content-Disposition: attachment; filename=nfs-mount-fail-crash
+
+--- linux-2.6.4/fs/nfs/inode.c.orig	2004-03-22 17:21:52.000000000 +0100
++++ linux-2.6.4/fs/nfs/inode.c	2004-03-23 11:13:17.000000000 +0100
+@@ -277,7 +277,7 @@
+ nfs_sb_init(struct super_block *sb, rpc_authflavor_t authflavor)
+ {
+ 	struct nfs_server	*server;
+-	struct inode		*root_inode;
++	struct inode		*root_inode = NULL;
+ 	struct nfs_fattr	fattr;
+ 	struct nfs_fsinfo	fsinfo = {
+ 					.fattr = &fattr,
+@@ -361,7 +361,7 @@
+ 	/* Yargs. It didn't work out. */
+ out_no_root:
+ 	printk("nfs_read_super: get root inode failed\n");
+-	if (!IS_ERR(root_inode))
++	if (root_inode && !IS_ERR(root_inode))
+ 		iput(root_inode);
+ 	return -EINVAL;
+ }
+
+--a8Wt8u1KmwUX3Y2C--
 
 
 -------------------------------------------------------
