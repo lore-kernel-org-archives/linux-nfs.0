@@ -1,22 +1,19 @@
-From: =?iso-8859-1?Q?Peter_=C5strand?= <astrand@cendio.se>
-Subject: Re: multi-hopping NFS - aka re-exporting mounted filesystems
-Date: Wed, 22 Dec 2004 08:55:28 +0100 (CET)
-Message-ID: <Pine.LNX.4.44.0412220854290.26697-100000@maggie.lkpg.cendio.se>
-References: <BAY22-F53EF5EFCFF6A662D31E4CA3A30@phx.gbl>
+From: mehta kiran <kiranmehta1981@yahoo.com>
+Subject: about reclaim notifications ,  stale handle , umount
+Date: Thu, 23 Dec 2004 00:15:42 -0800 (PST)
+Message-ID: <20041223081542.29193.qmail@web51602.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ch1LL-00053v-N9
-	for nfs@lists.sourceforge.net; Tue, 21 Dec 2004 23:55:35 -0800
-Received: from mail.cendio.se ([193.12.253.69])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1Ch1LK-0005cn-VU
-	for nfs@lists.sourceforge.net; Tue, 21 Dec 2004 23:55:35 -0800
-To: John Lumby <johnlumby@hotmail.com>
-In-Reply-To: <BAY22-F53EF5EFCFF6A662D31E4CA3A30@phx.gbl>
+	id 1ChO8T-0001yE-4T
+	for nfs@lists.sourceforge.net; Thu, 23 Dec 2004 00:15:49 -0800
+Received: from web51602.mail.yahoo.com ([206.190.38.207])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
+	id 1ChO8S-0002Zn-0e
+	for nfs@lists.sourceforge.net; Thu, 23 Dec 2004 00:15:48 -0800
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,20 +27,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> I would like to be able to export an NFS-mounted filesystem for multi-hop 
-> mounting.    I.e.:
-> 
-> Does anyone have any suggestions for how to get this working, or can anyone 
-> point me to where I could lay my hands on this --re-export source code?
+Hi , 
+      I have three questions.It would be helpful
+      if anybody could answer them.
 
-Try unfs3: http://unfs3.sourceforge.net/. 
+      1.Client reclaims locks after receiving
+        notification from server.But does client
+        check Monitor ID or Base ip of sender
+        to decide whether or not to reclaim lock.??
+        As monitor ID may not be same as base ip of
+        sender.
 
--- 
-Peter Åstrand		Chief Developer
-Cendio			www.thinlinc.com
-Teknikringen 3		www.cendio.se
-583 30 Linköping        Phone: +46-13-21 46 00
+      2.If I restart nfs server on same machine
+        but nfs modules were not unloaded before
+        restart , then can it lead to stale nfs
+        handle problem.??
 
+      3.Filesystems which are mounted in order
+        to export them to nfs client  , refuse
+        to umount though there are no visible
+        refereces to it.This problem occurs
+        only when client does some transaction
+        after mounting filesystems exported by 
+        nfs server.This occurs around 30% of s
+        the times.fuser -m does not show show any
+        user of filesystem but still it does not
+        umount
+        
+        
+
+thanks in advance.
+
+     
+     
+
+
+
+		
+__________________________________ 
+Do you Yahoo!? 
+Take Yahoo! Mail with you! Get it on your mobile phone. 
+http://mobile.yahoo.com/maildemo 
 
 
 -------------------------------------------------------
