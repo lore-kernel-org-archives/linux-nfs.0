@@ -1,106 +1,125 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: of rmtab and 'Invalid argument' and permission denied
-Date: Sun, 9 Mar 2003 09:48:16 +1100
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15978.29488.872457.834848@notabene.cse.unsw.edu.au>
-References: <20030308192021.GB747@gallifrey>
+From: Ulrich Weigand <weigand@immd1.informatik.uni-erlangen.de>
+Subject: [NFS] Race in rpc_delete_timer causes crash
+Date: Sun, 9 Mar 2003 00:03:45 +0100 (MET)
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <200303082303.AAA22598@faui11.informatik.uni-erlangen.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18rn7t-0005d0-00
-	for <nfs@lists.sourceforge.net>; Sat, 08 Mar 2003 14:49:09 -0800
-Received: From
-	notabene.cse.unsw.edu.au ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <gilbertd@treblig.org>) (for <nfs@lists.sourceforge.net>) By
-	tone With Smtp ; Sun, 9 Mar 2003 09:48:25 +1100
-To: "Dr. David Alan Gilbert" <gilbertd@treblig.org>
-In-Reply-To: message from Dr. David Alan Gilbert on Saturday March 8
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Cc: uweigand@de.ibm.com, schwidefsky@de.ibm.com, bk@suse.de
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
+To: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
+List-ID: <nfs.lists.sourceforge.net>
 
-On Saturday March 8, gilbertd@treblig.org wrote:
-> Hi,
->   I have a problem with an NFS server running SuSE 8.1 and serving
-> to a mix of different systems; the server runs the kernel server.
-> 
-> Sometimes the client will get a permission denied on attempting to mount
-> from the server even though it managed it a few hours earlier with no
-> change to config of the server.
-> 
-> Restarting the nfs server gives a line of the form:
-> 
-> clienthostname: Invalid argument
-> 
+Hello,
 
-What does your /etc/exports file look like?  Does it have both host
-names and IP addresses?  
-Do you export both a directory and an ancestor of that directory on
-the same filesystem?
+we're seeing a rare and hard to trigger crash on s390 where rpc_run_timer 
+calls via an invalid callback pointer.
 
-Both of these can cause this sort of problem.
+What appears to happen is that rpc_call_sync allocates a struct rpc_task 
+(with its embedded tk_timer) on the stack, and the timer gets set up 
+sometime during rpc_execute.  However, the timer actually triggers at
+a point in time where the original call to rpc_call_sync has already 
+returned, and the stack space overwritten by other data.  That data is 
+now interpreted as an rpc_task struct holding a tk_timeout_fn pointer by
+rpc_run_timer, which causes the Oops (actually, Aieee).
 
-What version of nfs-utils is in SuSE 8.1?
+Now this is not supposed to happen because rpc_execute cleans up any 
+potentially active timer before returning, by calling rpc_delete_timer.
+However, this function is implemented as
 
- showmount -v
+  if (timer_pending(&task->tk_timer))
+    del_timer_sync(&task->tk_timer)
 
-will tell you.
+and it is called without any locks held.  This would appear to open a 
+race, because timer_pending returns false in a small window where the 
+timer interrupt processing has already removed the timer from its queues, 
+but not yet called the timer callback.
 
-NeilBrown
+The flow of control the shows the race goes like this:
 
-> Going into /var/lib/nfs/rmtab and removing the entries for the client
-> and then restarting cause both the Invalid argument error and the
-> mounting problems to disappear.
-> 
-> I'm not sure but one observation is that for the clients which have the
-> problem the rmtab contains two entries for the same file system - e.g.
-> 
-> clienthostname:/mountpoint:0x00000005
-> clienthostname:/mountpoint/a/sub/directory:0x00000002
-> 
-> I haven't been able to replicate the problem on a Debian (sid) box that I
-> happen to have here (even with the SuSE mountd binaries).
-> 
-> So questions:
->   1) Has this been seen before - what are the known causes/cures.
-> 	2) What exactly reads rmtab (is it mountd?) - are there any easy ways
-> 	to track the problem?
-> 
-> Thanks in advance,
-> 
-> Dave
->  ---------------- Have a happy GNU millennium! ----------------------   
-> / Dr. David Alan Gilbert    | Running GNU/Linux on Alpha,68K| Happy  \ 
-> \ gro.gilbert @ treblig.org | MIPS,x86,ARM,SPARC,PPC & HPPA | In Hex /
->  \ _________________________|_____ http://www.treblig.org   |_______/
-> 
-> 
-> -------------------------------------------------------
-> This SF.net email is sponsored by: Etnus, makers of TotalView, The debugger
-> for complex code. Debugging C/C++ programs can leave you feeling lost and
-> disoriented. TotalView can help you find your way. Available on major UNIX
-> and Linux platforms. Try it free. www.etnus.com
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+CPU A                                       CPU B
+
+system call
+ ...
+  rpc_call_sync
+   allocate task on stack
+    rpc_execute (task)
+     ...
+      rpc_add_timer
+       mod_timer (&task->tk_timer, ...)
+        timer is now running,
+        timer->data points to task
+     ...
+     rpc_release_task (task)
+      rpc_disable_timer (task)
+       sets tk_timeout_fn to NULL
+      rpc_delete_timer (task)
+                                             timer interrupt
+                                              ...
+                                               run_timer_list
+                                                unchain timer from list
+       timer_pending
+        timer not in list -> false
+       does not call del_timer_sync
+     ...
+   task goes out of scope
+...
+system call
+ ...
+  call chain overwrites stack space
+  formerly occupied by task
+  tk_timeout_fn now non-NULL
+                                                call timer callback
+                                                 rpc_run_timer
+                                                  retrieve tk_timeout_fn
+                                                  (gets random value)
+                                                   -> Aieee.
 
 
--------------------------------------------------------
-This SF.net email is sponsored by: Etnus, makers of TotalView, The debugger 
-for complex code. Debugging C/C++ programs can leave you feeling lost and 
-disoriented. TotalView can help you find your way. Available on major UNIX 
-and Linux platforms. Try it free. www.etnus.com
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+This is a bit unlikely on most platforms, because CPU A has to execute a 
+large number of instructions in the same time CPU B executes a comparatively 
+small number of instructions.  However, on a virtualized platform like S/390
+VM or LPAR, where the 'CPU' is actually scheduled in time slices by the 
+hypervisor, this pattern is certainly possible (if rare).
+
+In any case, I have post-mortem system dumps that are compatible with this 
+scenario; I haven't found anything else that could explain the crash ...
+
+The kernel where I've debugged the problem is quite old (2.4.7), but from 
+reading more recent kernel sources, the very same race appears to be still 
+present in current 2.4 and 2.5 kernels.
+
+As fix I'd suggest to just go ahead and call del_timer_sync all the time; 
+I don't quite see the point in checking for timer_pending in the first place.
+The following patch implements this.
+
+
+Index: net/sunrpc/sched.c
+===================================================================
+RCS file: /home/cvs/linux-2.3/net/sunrpc/sched.c,v
+retrieving revision 1.13
+diff -u -p -r1.13 sched.c
+--- net/sunrpc/sched.c	3 May 2001 16:18:18 -0000	1.13
++++ net/sunrpc/sched.c	8 Mar 2003 22:46:11 -0000
+@@ -168,10 +168,8 @@ void rpc_add_timer(struct rpc_task *task
+ static inline void
+ rpc_delete_timer(struct rpc_task *task)
+ {
+-	if (timer_pending(&task->tk_timer)) {
++	if (del_timer_sync(&task->tk_timer))
+ 		dprintk("RPC: %4d deleting timer\n", task->tk_pid);
+-		del_timer_sync(&task->tk_timer);
+-	}
+ }
+ 
+ /*
+
+
+Is is reasonable or am I overlooking something here?
+
+Bye,
+Ulrich
+
+-- 
+  Dr. Ulrich Weigand
+  weigand@informatik.uni-erlangen.de
