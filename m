@@ -1,17 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 3 of 3 - Release udp socket for next nfs request to arrive earlier
+Subject: [PATCH] kNFSd - 1 of 3 - Make sure nothing happens to a dead rpc/tcp socket
 Date: Tue, 19 Aug 2003 14:35:10 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19oyD8-0001HP-00@notabene>
+Message-ID: <E19oyD8-0001H9-00@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19oyDK-00063j-00
+	id 19oyDK-00063h-00
 	for <nfs@lists.sourceforge.net>; Mon, 18 Aug 2003 21:35:22 -0700
 Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
 	(for <torvalds@osdl.org>) (for <nfs@lists.sourceforge.net>) By note
-	With Smtp ; Tue, 19 Aug 2003 14:35:12 +1000
+	With Smtp ; Tue, 19 Aug 2003 14:35:11 +1000
 To: Linus Torvalds <torvalds@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -25,69 +25,41 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+
+Three more little patches for knfsd in 2.6.0-test3
+NeilBrown
+
+
 ### Comments for ChangeSet
 
-From: Mark Hemment <markhe@veritas.com>
-  For RPC over UDP, after receiving a packet kick another thread as soon
-as possible.  This helps NFS performance.
+Just make sure that once SK_DEAD is set, nothing is attempted on the socket.
 
  ----------- Diffstat output ------------
- ./net/sunrpc/svcsock.c |   13 ++++++-------
- 1 files changed, 6 insertions(+), 7 deletions(-)
+ ./net/sunrpc/svcsock.c |    5 +++++
+ 1 files changed, 5 insertions(+)
 
 diff ./net/sunrpc/svcsock.c~current~ ./net/sunrpc/svcsock.c
---- ./net/sunrpc/svcsock.c~current~	2003-08-18 09:53:17.000000000 +1000
-+++ ./net/sunrpc/svcsock.c	2003-08-19 08:49:47.000000000 +1000
-@@ -592,8 +592,14 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 		/* possibly an icmp error */
- 		dprintk("svc: recvfrom returned error %d\n", -err);
- 	}
-+	svsk->sk_sk->sk_stamp = skb->stamp;
- 	set_bit(SK_DATA, &svsk->sk_flags); /* there may be more data... */
+--- ./net/sunrpc/svcsock.c~current~	2003-08-18 09:41:01.000000000 +1000
++++ ./net/sunrpc/svcsock.c	2003-08-18 09:41:01.000000000 +1000
+@@ -147,6 +147,8 @@ svc_sock_enqueue(struct svc_sock *svsk)
+ 	if (!(svsk->sk_flags &
+ 	      ( (1<<SK_CONN)|(1<<SK_DATA)|(1<<SK_CLOSE)|(1<<SK_DEFERRED)) ))
+ 		return;
++	if (test_bit(SK_DEAD, &svsk->sk_flags))
++		return;
  
-+	/*
-+	 * Maybe more packets - kick another thread ASAP.
-+	 */
-+	svc_sock_received(svsk);
+ 	spin_lock_bh(&serv->sv_lock);
+ 
+@@ -1029,6 +1031,9 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
+ 	reclen = htonl(0x80000000|((xbufp->len ) - 4));
+ 	memcpy(xbufp->head[0].iov_base, &reclen, 4);
+ 
++	if (test_bit(SK_DEAD, &rqstp->rq_sock->sk_flags))
++		return -ENOTCONN;
 +
- 	len  = skb->len - sizeof(struct udphdr);
- 	rqstp->rq_arg.len = len;
- 
-@@ -605,8 +611,6 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 	rqstp->rq_addr.sin_addr.s_addr = skb->nh.iph->saddr;
- 	rqstp->rq_daddr = skb->nh.iph->daddr;
- 
--	svsk->sk_sk->sk_stamp = skb->stamp;
--
- 	if (skb_is_nonlinear(skb)) {
- 		/* we have to copy */
- 		local_bh_disable();
-@@ -614,7 +618,6 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 			local_bh_enable();
- 			/* checksum error */
- 			skb_free_datagram(svsk->sk_sk, skb);
--			svc_sock_received(svsk);
- 			return 0;
- 		}
- 		local_bh_enable();
-@@ -626,7 +629,6 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 		if (skb->ip_summed != CHECKSUM_UNNECESSARY) {
- 			if ((unsigned short)csum_fold(skb_checksum(skb, 0, skb->len, skb->csum))) {
- 				skb_free_datagram(svsk->sk_sk, skb);
--				svc_sock_received(svsk);
- 				return 0;
- 			}
- 			skb->ip_summed = CHECKSUM_UNNECESSARY;
-@@ -646,9 +648,6 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 	if (serv->sv_stats)
- 		serv->sv_stats->netudpcnt++;
- 
--	/* One down, maybe more to go... */
--	svc_sock_received(svsk);
--
- 	return len;
- }
- 
+ 	sent = svc_sendto(rqstp, &rqstp->rq_res);
+ 	if (sent != xbufp->len) {
+ 		printk(KERN_NOTICE "rpc-srv/tcp: %s: %s %d when sending %d bytes - shutting down socket\n",
 
 
 -------------------------------------------------------
