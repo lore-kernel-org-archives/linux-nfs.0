@@ -1,22 +1,21 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Re: Using mmap result in data corruption
-Date: Tue, 08 Mar 2005 10:01:11 -0500
-Message-ID: <1110294071.13843.11.camel@lade.trondhjem.org>
-References: <Pine.LNX.4.44.0503081417180.19681-100000@starpc8.phyast.dur.ac.uk>
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: RE: [autofs] [PATCH/RFC 0/2] Userspace RPC proxying
+Date: Tue, 8 Mar 2005 07:04:52 -0800
+Message-ID: <482A3FA0050D21419C269D13989C611307CF4C10@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: "linux-nfs" <nfs@lists.sourceforge.net>,
+	"autofs mailing list" <autofs@linux.kernel.org>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D8gDD-0002Jh-JT
-	for nfs@lists.sourceforge.net; Tue, 08 Mar 2005 07:01:31 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1D8gDB-0002FP-Qo
-	for nfs@lists.sourceforge.net; Tue, 08 Mar 2005 07:01:31 -0800
-To: "Peter W. Draper" <p.w.draper@durham.ac.uk>
-In-Reply-To: <Pine.LNX.4.44.0503081417180.19681-100000@starpc8.phyast.dur.ac.uk>
+	id 1D8gGc-0002de-6J
+	for nfs@lists.sourceforge.net; Tue, 08 Mar 2005 07:05:02 -0800
+Received: from mx1.netapp.com ([216.240.18.38])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1D8gGZ-0002kX-Ps
+	for nfs@lists.sourceforge.net; Tue, 08 Mar 2005 07:05:02 -0800
+To: <mike@waychison.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,41 +29,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-ty den 08.03.2005 Klokka 14:41 (+0000) skreiv Peter W. Draper:
+hi mike-
 
-> Following Trond's advice I've changed to using an msync() call before
-> munmap() and that fixes the problem.  However, I'd really like to avoid
-> the potential performance impact of using an msync(MS_SYNC) by using an
-> msync(MS_ASYNC) call instead, as the files I access can be mmap'd many
-> times, plus can be quite large, but, when I switch to msync(MS_ASYNC) the
-> data corruption returns (I am only interested in the correctness of the
-> data when my applications exit).
-> 
-> Surely that is incorrect behaviour? Otherwise what is the point of
-> msync(MS_ASYNC)?
+> Every once in a while, we see complaints that nfs mounts are=20
+> failing due
+> to there being no more reserved ports available for outbound rpc
+> communication.  This often happens when using TCP transports,=20
+> because all
+> outbound connections that are closed go into a TIME_WAIT state.
 
-The Single UNIX Spec v3 says that
+i know that steved has also been looking at this problem.  he found that
+user-land uses TCP connections with abandon and has put it on a diet.
+and, the client side should take care to avoid using reserved ports
+unless it is absolutely necessary.
 
-        MS_ASYNC Perform asynchronous writes.
-        MS_SYNC  Perform synchronous writes.
+> For various reasons, avoiding the TIME_WAIT state using connect(fd,
+> {AF_UNSPEC}, ...) or doing SO_REUSEADDR may not be the safest way to
+> handle things.
 
-        When MS_ASYNC is specified, msync() shall return immediately
-        once all the write operations are initiated or queued for
-        servicing; when MS_SYNC is specified, msync() shall not return
-        until all write operations are completed as defined for
-        synchronized I/O data integrity completion. Either MS_ASYNC or
-        MS_SYNC is specified, but not both.
+i have a patch for the kernel RPC client to use AF_UNSPEC to reuse the
+port number on connections.  before i head into the wilderness, what's
+unsafe about that?
 
-So on Linux, msync(MS_ASYNC) just marks the pages as dirty (see the
-comment in mm/msync.c). It is then up to the application to call fsync()
-if it wants to flush those asynchronous writes to disk at some specific
-time.
+> rpcproxyd will create outbound connections and multiplex the=20
+> transports
+> with any number of simultaneous clients.  There is no support for
+> re-binding your transport once created.  It will also cache outbound
+> server connections for 30 seconds after last use, which=20
+> greatly helps keep the number of ports used down in a mount-storm
+situation.
 
-Cheers,
-  Trond
--- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
+the typical RPC client-side connection timeout is 5 minutes.  any reason
+not to use that value instead of 30 seconds?
 
+you will also need a unique connection for each program/version number
+combination to a given server; ie you can't share a single socket among
+different program/version numbers (even though some implementations try
+to do this, it is a bad practice, in my opinion).
+
+to support IPv6 you will need support for rpcbind versions 3 and 4; but
+that may be an issue outside of rpcproxyd.
+
+> rpcproxyd is written as a single-threaded/no-signals/select-based
+daemon.
+
+will using select be a scalability issue?  you might be better off with
+something like libevent or using epoll.
 
 
 -------------------------------------------------------
