@@ -1,24 +1,23 @@
 From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
-Subject: Re: NFS readonly failover and linux?
-Date: Mon, 31 Jan 2005 13:01:42 -0800
-Message-ID: <1107205302.4071.17.camel@seki.nac.uci.edu>
-References: <1106871309.6181.254.camel@seki.nac.uci.edu>
-	 <Pine.LNX.4.61.0501291127450.1607@donald.themaw.net>
+Subject: Re: mount problem with Snap server
+Date: Mon, 31 Jan 2005 14:52:20 -0800
+Message-ID: <1107211940.4071.32.camel@seki.nac.uci.edu>
+References: <1DB025F33C6990409DA31A122F9AEBB80129A0BE@zzuk20.crowncork.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-UUS4+ubVRy8KTUdJkXMW"
 Cc: strombrg@dcs.nac.uci.edu, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CvijC-0004mD-PF
-	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 13:04:58 -0800
+	id 1CvkPC-0002L8-1U
+	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 14:52:26 -0800
 Received: from dcs.nac.uci.edu ([128.200.34.32] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1CvijA-0004DU-B1
-	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 13:04:58 -0800
-To: raven@themaw.net
-In-Reply-To: <Pine.LNX.4.61.0501291127450.1607@donald.themaw.net>
+	id 1CvkPA-0007Eh-Ij
+	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 14:52:25 -0800
+To: "ALLEN, David" <David.ALLEN@eur.crowncork.com>
+In-Reply-To: <1DB025F33C6990409DA31A122F9AEBB80129A0BE@zzuk20.crowncork.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,72 +31,78 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sat, 2005-01-29 at 11:46 +0800, raven@themaw.net wrote:
-> On Thu, 27 Jan 2005, Dan Stromberg wrote:
-> 
-> >
-> > The autofs man pages on Redhat Enterprise Linux 3 as well as Fedora Core
-> > 3 both say that autofs supports replicated, readonly fileserver failover
-> > - but then there's a footnote of sorts that says autofs only supports it
-> > to the extent that mount does.
-> 
-> That part of the man page is old and slightly out of date.
-> 
-> The reason that this is left there is that autofs cannot support 
-> dynamic failover as it just uses mount. However, a different host may be 
-> selected at mount, after a previous timeout, for example. The issue of 
-> umounting existing mounts from servers that have gone away is not 
-> explicitly dealt with yet.
 
-I see.
+--=-UUS4+ubVRy8KTUdJkXMW
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-> >
-> > Upon trying to do such a mount, I get:
-> >
-> > seki-root> mount
-> > dcslib1.nacs.uci.edu,dcslib4.nacs.uci.edu:/dcspdb/rhel-3-i686 /mnt/nfs
-> > mount: warning: multiple hostnames not supported
-> > Thu Jan 27 16:12:18
 
-> What version of autofs are you using?
-> The autofs replicated server code is still relatively new.
+I'd compare what patches you have on each sun...  That's likely where
+the difference is.  Also, check /etc/release on both systems - you may
+have subtly different base versions of Solaris as well.
 
-FC3: autofs-4.1.3-28
-RHEL3: autofs-4.1.3-47
+On Mon, 2005-01-31 at 11:22 +0000, ALLEN, David wrote:
+>=20
+> > Hi,
+> >=20
+> > I know this might seem at first slightly off topic, but my gut feeling =
+is
+> > the problem we are experiencing is in some way related to NFS. We have =
+a
+> > major problem using Samba to access NFS mounted directories. The direct=
+ory
+> > in question is on a Snap server running 2.1.19 and version 3 NFS, and
+> > Samba is running on a new Sun V250 running Solaris 9.
+> >=20
+> > The problems occur when trying to load a file which is on the NFS
+> > directory, which causes the samba process to crash. Another process sta=
+rts
+> > automatically, crashes and so forth.
+> >=20
+> > However, the exact same configuration, NFS mount, Samba version etc wor=
+ks
+> > fine on an old Sun Utlra 10, also running Solaris 9! Also, everything
+> > appears to work fine at the Unix level on both machines. It also worked
+> > fine before we upgraded the Snap server to the new Linux kernel. The ol=
+d
+> > kernel was running version 2 NFS.
+> >=20
+> I have tried setting the NFS version to V2, and also specifing proto=3Dud=
+p  on
+> the Sun v250 to no effect.=20
+>=20
+> > Thanks in advance for any help/suggestions/pointers. We are getting
+> > desperate!=20
+> >=20
+> > David
+> >=20
+> > Log level 3:
+> >=20
+>=20
+>=20
+> -------------------------------------------------------
+> This SF.Net email is sponsored by: IntelliVIEW -- Interactive Reporting
+> Tool for open source databases. Create drag-&-drop reports. Save time
+> by over 75%! Publish reports on the web. Export to DOC, XLS, RTF, etc.
+> Download a FREE copy at http://www.intelliview.com/go/osdn_nl
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+>=20
 
-The FC3 is yum update'd fairly regulary, and the RHEL3 is up2date'd
-regularly as well.
+--=-UUS4+ubVRy8KTUdJkXMW
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
 
-> If your autofs supports replicated server map entries then multiple 
-> host mount requests will not reach the mount command.
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.6 (GNU/Linux)
 
-Interesting.
+iD8DBQBB/rako0feVm00f/8RAilCAJ9EF1+O0yNO3HNjysy4N6bF7CuO4QCePx4q
+hryUaU4KBNV1rfyQdZt6N48=
+=96Sy
+-----END PGP SIGNATURE-----
 
-> If you are using a RedHat based distro then check
-> http://people.redhat.com/jmoyer
-> for the latest patched versions
-> 
-> Also, you may need a kernel patch depending on your kernel version. See 
-> README.patches in the distribution or join the autofs list at
-> http://linux.kernel.org/mailman/listinfo/autofs
-
-I'm certain my management will only go for this, in the short term, if
-it works on a mainstream RHEL3 system.  Unfortunately, for me, the rest
-is academic interest.
-
-> >
-> > seki-root>
-> >
-> >
-> > Is there a version of mount available, or in early development, that
-> > supports this feature?
-> 
-> Don't know. Anyone?
-> 
-> Ian
-
-Thanks for the info!
-
+--=-UUS4+ubVRy8KTUdJkXMW--
 
 
 
