@@ -1,19 +1,12 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS_All on alpha
-Date: 04 Sep 2002 00:59:42 +0200
+From: Jean-Eric Cuendet <jean-eric.cuendet@linkvest.com>
+Subject: mountd role?
+Date: Wed, 04 Sep 2002 02:55:40 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shs3csqr869.fsf@charged.uio.no>
-References: <1031086991.5196.53.camel@twitch>
+Message-ID: <3D755A0C.8030203@linkvest.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: NFS mailing list <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=ISO-8859-15; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mons.uio.no ([129.240.130.14])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17mMeF-0007AK-00
-	for <nfs@lists.sourceforge.net>; Tue, 03 Sep 2002 15:59:51 -0700
-To: "David B. Ritch" <dritch@hpti.com>
-In-Reply-To: <1031086991.5196.53.camel@twitch>
+To: NFS <NFS@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,33 +19,30 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->>>>> " " == David B Ritch <dritch@hpti.com> writes:
+Hi,
+I don't understand what the mountd daemon role is?
+There is 2 things:
+- mounting => mountd
+- serving files/dirlist/acls/... => nfsd
+(I think it's correct...)
 
-     > Should xdr_shift_buf take an int or a long?  Are there any
+What is EXACTLY doing mountd.
+Please be precise.
 
-It should indeed take a size_t as is done in 2.5.x, and
-2.4.20-pre5. Sorry I forgot to apply that change to my own tree.
+Thanks
+-jec
 
-     > other known problems for a 64-bit architecture in the nfs_all
-     > patches?
+-- 
+Jean-Eric Cuendet
+Linkvest SA
+Av des Baumettes 19, 1020 Renens Switzerland
+Tel +41 21 632 9043  Fax +41 21 632 9090
+E-mail: jean-eric.cuendet@linkvest.com
+http://www.linkvest.com
+--------------------------------------------------------
 
-Not that I'm aware of.
 
-Cheers,
-  Trond
 
-diff -Nru a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
---- a/include/linux/sunrpc/xdr.h	Wed Sep  4 00:58:53 2002
-+++ b/include/linux/sunrpc/xdr.h	Wed Sep  4 00:58:53 2002
-@@ -138,7 +138,7 @@
-  */
- extern int xdr_kmap(struct iovec *, struct xdr_buf *, unsigned int);
- extern void xdr_kunmap(struct xdr_buf *, unsigned int);
--extern void xdr_shift_buf(struct xdr_buf *, unsigned int);
-+extern void xdr_shift_buf(struct xdr_buf *, size_t);
- extern void xdr_zero_buf(struct xdr_buf *, unsigned int);
- 
- /*
 
 
 -------------------------------------------------------
