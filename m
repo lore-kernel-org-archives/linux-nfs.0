@@ -1,23 +1,24 @@
 From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: fh_verify
-Date: Tue, 3 Sep 2002 12:23:11 +1000
+Subject: Re: .x files for NFS v3
+Date: Tue, 3 Sep 2002 12:30:04 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15732.7439.949607.498380@notabene.cse.unsw.edu.au>
-References: <003901c252d9$d92bea70$9300a8c0@gridlock>
+Message-ID: <15732.7852.166069.553496@notabene.cse.unsw.edu.au>
+References: <3D7363A9.4090304@linkvest.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "nfs" <nfs@lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17m3Lh-000728-00
-	for <nfs@lists.sourceforge.net>; Mon, 02 Sep 2002 19:23:25 -0700
+	id 17m3SP-0007R9-00
+	for <nfs@lists.sourceforge.net>; Mon, 02 Sep 2002 19:30:21 -0700
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.233.85] == wireless-085.wireless.cse.unsw.EDU.AU)
-	(for <nlafferty@pennswoods.net>) (for <nfs@lists.sourceforge.net>) By
-	tone With Smtp ; Tue, 3 Sep 2002 12:23:12 +1000
-To: "Nicholas Lafferty" <nlafferty@pennswoods.net>
-In-Reply-To: message from Nicholas Lafferty on Monday September 2
+	(for <Jean-Eric.Cuendet@linkvest.com>)
+	(for <nfs@lists.sourceforge.net>) By tone With Smtp ;
+	Tue, 3 Sep 2002 12:30:04 +1000
+To: Jean-Eric Cuendet <Jean-Eric.Cuendet@linkvest.com>
+In-Reply-To: message from Jean-Eric Cuendet on Monday September 2
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,26 +31,17 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Monday September 2, nlafferty@pennswoods.net wrote:
-> I have recently set up a lan with three New Internet Computers booting off
-> the network as outlined in the article (
-> http://www.dnalounge.com/backstage/src/kiosk ) . After many atempts I have
-> finally gotten ALMOST a booting client.
-> I have been alternating testing with SysVinit and Busybox's init. If I use
-> the normal init I get errors on the NFS server about fh_verify: /etc/shadow
-> permission failure. As soon as inittab is read. I get the same errors when I
-> run sulogin. If I rename the inittab out of the way I can only boot in
-> single mode.
+On Monday September 2, Jean-Eric.Cuendet@linkvest.com wrote:
+> Hi,
+> where should I find .x files for rpcgen for nfsv3?
+> Thanks.
+> -jec
 > 
-> If I use busybox it will boot. But I can not start X and I get the same
-> errors.
-> 
-> Any clue? Any help would be great.
 
-Sounds like you need the
-   no_root_squash
-in you /etc/exports.  You definately need this for exporting a root
-filesystem.
+RFC1813 has it, though it is pretty spread out.
+
+If you have solaris around, then
+  /usr/include/rpcsvc/nfs_prot.x
 
 NeilBrown
 
