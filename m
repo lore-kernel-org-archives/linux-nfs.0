@@ -1,13 +1,13 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 7 of 7 - Ease increasing the max block size for NFS replies.
-Date: Tue, 17 Dec 2002 12:59:27 +1100
+Subject: [PATCH] kNFSd - 3 of 7 - Use correct value for max size for readlink response.
+Date: Tue, 17 Dec 2002 12:59:26 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E18O715-0000pI-00@notabene.cse.unsw.edu.au>
+Message-ID: <E18O714-0000ox-00@notabene.cse.unsw.edu.au>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18O71O-0003no-00
+	id 18O71O-0003nm-00
 	for <nfs@lists.sourceforge.net>; Mon, 16 Dec 2002 17:59:46 -0800
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.233.239] == wireless-239.wireless.cse.unsw.EDU.AU)
@@ -28,42 +28,36 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
 
-This requires making NFSv2 return the right number in statfs
-requests.  NFSv3 already does.
-
-The size should really be boot/module option.
-
-
  ----------- Diffstat output ------------
- ./fs/nfsd/nfsxdr.c           |    2 +-
- ./include/linux/nfsd/const.h |    2 +-
+ ./fs/nfsd/nfs3proc.c |    2 +-
+ ./fs/nfsd/nfsproc.c  |    2 +-
  2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff ./fs/nfsd/nfsxdr.c~current~ ./fs/nfsd/nfsxdr.c
---- ./fs/nfsd/nfsxdr.c~current~	2002-12-17 09:50:41.000000000 +1100
-+++ ./fs/nfsd/nfsxdr.c	2002-12-17 09:50:41.000000000 +1100
-@@ -385,7 +385,7 @@ nfssvc_encode_statfsres(struct svc_rqst 
- {
- 	struct statfs	*stat = &resp->stats;
- 
--	*p++ = htonl(8 * 1024);		/* max transfer size */
-+	*p++ = htonl(NFSSVC_MAXBLKSIZE);	/* max transfer size */
- 	*p++ = htonl(stat->f_bsize);
- 	*p++ = htonl(stat->f_blocks);
- 	*p++ = htonl(stat->f_bfree);
+diff ./fs/nfsd/nfs3proc.c~current~ ./fs/nfsd/nfs3proc.c
+--- ./fs/nfsd/nfs3proc.c~current~	2002-12-16 16:29:23.000000000 +1100
++++ ./fs/nfsd/nfs3proc.c	2002-12-16 16:29:23.000000000 +1100
+@@ -672,7 +672,7 @@ struct svc_procedure		nfsd_procedures3[2
+   PROC(setattr,  sattr,		wccstat,	fhandle,  RC_REPLBUFF, ST+WC),
+   PROC(lookup,	 dirop,		dirop,		fhandle2, RC_NOCACHE, ST+FH+pAT+pAT),
+   PROC(access,	 access,	access,		fhandle,  RC_NOCACHE, ST+pAT+1),
+-  PROC(readlink, fhandle,	readlink,	fhandle,  RC_NOCACHE, ST+pAT+1+256),
++  PROC(readlink, fhandle,	readlink,	fhandle,  RC_NOCACHE, ST+pAT+1+NFS3_MAXPATHLEN/4),
+   PROC(read,	 read,		read,		fhandle, RC_NOCACHE, ST+pAT+4+NFSSVC_MAXBLKSIZE),
+   PROC(write,	 write,		write,		fhandle,  RC_REPLBUFF, ST+WC+4),
+   PROC(create,	 create,	create,		fhandle2, RC_REPLBUFF, ST+(1+FH+pAT)+WC),
 
-diff ./include/linux/nfsd/const.h~current~ ./include/linux/nfsd/const.h
---- ./include/linux/nfsd/const.h~current~	2002-12-17 09:50:41.000000000 +1100
-+++ ./include/linux/nfsd/const.h	2002-12-17 09:50:41.000000000 +1100
-@@ -21,7 +21,7 @@
- /*
-  * Maximum blocksize supported by daemon currently at 8K
-  */
--#define NFSSVC_MAXBLKSIZE	8192
-+#define NFSSVC_MAXBLKSIZE	(8*1024)
- 
- #ifdef __KERNEL__
- 
+diff ./fs/nfsd/nfsproc.c~current~ ./fs/nfsd/nfsproc.c
+--- ./fs/nfsd/nfsproc.c~current~	2002-12-16 16:29:23.000000000 +1100
++++ ./fs/nfsd/nfsproc.c	2002-12-16 16:29:23.000000000 +1100
+@@ -545,7 +545,7 @@ struct svc_procedure		nfsd_procedures2[1
+   PROC(setattr,  sattrargs,	attrstat,	fhandle,	RC_REPLBUFF, ST+AT),
+   PROC(none,	 void,		void,		none,		RC_NOCACHE, ST),
+   PROC(lookup,	 diropargs,	diropres,	fhandle,	RC_NOCACHE, ST+FH+AT),
+-  PROC(readlink, fhandle,	readlinkres,	none,		RC_NOCACHE, ST+1+256),
++  PROC(readlink, fhandle,	readlinkres,	none,		RC_NOCACHE, ST+1+NFS_MAXPATHLEN/4),
+   PROC(read,	 readargs,	readres,	fhandle,	RC_NOCACHE, ST+AT+1+NFSSVC_MAXBLKSIZE),
+   PROC(none,	 void,		void,		none,		RC_NOCACHE, ST),
+   PROC(write,	 writeargs,	attrstat,	fhandle,	RC_REPLBUFF, ST+AT),
 
 
 -------------------------------------------------------
