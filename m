@@ -1,21 +1,18 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Re: 2.4.21: NFS client Freeze
-Date: 25 Jun 2003 01:31:21 +0200
+From: "Steve Wolfe" <sn@codon.com>
+Subject: Re: Question on NFS server timing out
+Date: Tue, 24 Jun 2003 17:35:41 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsadc759yu.fsf@charged.uio.no>
-References: <20030624101227.GA21744@benzin.geggus.net>
-	<shsptl3tie2.fsf@charged.uio.no>
-	<20030624190113.GA2680@diesel.geggus.net>
+Message-ID: <001301c33aa9$56d01f70$88693fd1@WEASEL>
+References: <001101c33a76$77b37f30$88693fd1@WEASEL> <16120.56873.142665.95413@gargle.gargle.HOWL>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19UxGE-0005Ke-00
-	for <nfs@lists.sourceforge.net>; Tue, 24 Jun 2003 16:31:38 -0700
-To: Sven Geggus <sven@gegg.us>
-In-Reply-To: <20030624190113.GA2680@diesel.geggus.net>
+Received: from codon.com ([209.63.105.132])
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19UxHU-0005c5-00
+	for <nfs@lists.sourceforge.net>; Tue, 24 Jun 2003 16:32:56 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,26 +25,51 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Sven Geggus <sven@gegg.us> writes:
+> If you are getting I/O errors from cat then you are presumably
+> mounting with the "soft" option.  This is almost always wrong.  Use
+> hard,intr.
 
-     > On Tue, Jun 24, 2003 at 08:55:33PM +0200, Trond Myklebust
-     > wrote:
-    >> Nothing wrong there. Mind filling in the details?
+  The reason I used soft was because when the NFS server would have a
+hiccup, CGI apps would pile up on all of the web servers, and never exit.
+But I guess I'll have to live with that and use hard. : )
 
-     > what's wrong is the fact, that the machine is frozen after the
+> I'm guessing that the high load during the days is a read-mostly load.
+> moving the log files in a write-mostly load.  Presumably your nfs
+> server isn't coping with writes as fast as you would like.
+>
+> You are probably using the "sync" export option.  This is normally a
+> good thing.  However if you are happy to risk loosing recently written
+data if
+> the fileserver crashes (which you might be in your situation) you
+> could replace "sync" with "async" and get faster writes.
 
-     > RPC: 26 call_decode (status 760)
+  No 'sync', the options have been:
 
-     > has been logged. As I already said, ping is still working, but
-     > nothing else.
+exec,nodev,nosuid,rw,soft,rsize=8192,wsize=8192,intr
 
-Which helps me not at all. I need the standard details that should be
-going into every bugreport posted on this list like architecture,
-compiler version, .config...
+and replaced with:
 
-Please read linux/REPORTING-BUGS
+exec,nodev,nosuid,rw,hard,rsize=8192,wsize=8192,intr
 
-Trond
+> What filesystem?  How is it configured?
+> If you are using ext3, then data=journal will speed up nfs writes.
+> If you are using data=journal, how big is the journal and how big are
+> the log files that you write?
+
+   It's ext3 with the defaults.  "data=journal" is on my "todo" list.  The
+array can write 70 MB/s with ease, so I'm *hoping* that it's not the
+bottleneck.
+
+> It doesn't hurt to add a few more threads, though I cannot promise it
+> will help.
+> If all seven clients are busy they will only get about threads each,
+> they can probably make use of more than that.  I would probably try 60
+> and see what happens.
+
+  I'll give it a shot.  Thanks again for the tips.
+
+steve
+
 
 
 -------------------------------------------------------
