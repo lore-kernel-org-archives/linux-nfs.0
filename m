@@ -1,26 +1,24 @@
 From: ashutosh.varshney@st.com
-Subject: isolation of NFS threads  ?
-Date: Tue, 17 Sep 2002 13:08:01 +0530
+Subject: Problem : Linux - SOlaris NFS
+Date: Tue, 17 Sep 2002 13:08:45 +0530
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <H00004750469f746.1032247966.dlx99.dlh.st.com@MHS>
-References: <000f01c25e1b$961ac560$4f0010ac@Ashwamedha>
+Message-ID: <H00004750469f74b.1032248298.dlx99.dlh.st.com@MHS>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from beta.dmz-eu.st.com ([164.129.1.35])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17rCwU-000109-00
-	for <nfs@lists.sourceforge.net>; Tue, 17 Sep 2002 00:38:43 -0700
+	id 17rCwn-0001BU-00
+	for <nfs@lists.sourceforge.net>; Tue, 17 Sep 2002 00:39:01 -0700
 Received: from zeta.dmz-eu.st.com (ns2.st.com [164.129.230.9])
-	by beta.dmz-eu.st.com (STMicroelectronics) with SMTP id 4E708498C
-	for <nfs@lists.sourceforge.net>; Tue, 17 Sep 2002 07:38:08 +0000 (GMT)
+	by beta.dmz-eu.st.com (STMicroelectronics) with SMTP id B6854498C
+	for <nfs@lists.sourceforge.net>; Tue, 17 Sep 2002 07:38:49 +0000 (GMT)
 Received: from dlx99.dlh.st.com (localhost [127.0.0.1])
-	by zeta.dmz-eu.st.com (STMicroelectronics) with ESMTP id 1BDDC1848
-	for <nfs@lists.sourceforge.net>; Tue, 17 Sep 2002 07:38:07 +0000 (GMT)
+	by zeta.dmz-eu.st.com (STMicroelectronics) with ESMTP id A1E83184C
+	for <nfs@lists.sourceforge.net>; Tue, 17 Sep 2002 07:38:48 +0000 (GMT)
 Received: from localhost (root@localhost)
-	by dlx99.dlh.st.com (8.9.3 (PHNE_22672)/8.9.3) with ESMTP id NAA05279
-	for <nfs@lists.sourceforge.net>; Tue, 17 Sep 2002 13:08:04 +0530 (IST)
-In-Reply-To: <000f01c25e1b$961ac560$4f0010ac@Ashwamedha>
+	by dlx99.dlh.st.com (8.9.3 (PHNE_22672)/8.9.3) with ESMTP id NAA05404
+	for <nfs@lists.sourceforge.net>; Tue, 17 Sep 2002 13:08:47 +0530 (IST)
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
