@@ -1,21 +1,28 @@
-From: Bernd Schubert <bernd-schubert@web.de>
-Subject: Re: directory depth limit?
-Date: Fri, 8 Aug 2003 09:48:58 +0200
+From: Mark Hemment <markhe@veritas.com>
+Subject: Reply-cache
+Date: Sat, 9 Aug 2003 15:25:44 +0100 (BST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200308080948.59738.bernd-schubert@web.de>
-References: <20030807205633.DC0861833A@zachs.place.org>
+Message-ID: <Pine.LNX.4.33.0308091522540.1062-100000@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from smtp02.web.de ([217.72.192.151] helo=smtp.web.de)
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19l1zs-0002wt-00
-	for <nfs@lists.sourceforge.net>; Fri, 08 Aug 2003 00:49:12 -0700
-To: Paul Jimenez <pj@place.org>,
- nfs@lists.sourceforge.net
-In-Reply-To: <20030807205633.DC0861833A@zachs.place.org>
+Received: from bay-bridge.veritas.com ([143.127.3.10] helo=mtvmime03.VERITAS.COM)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19lUeS-0006il-00
+	for <nfs@lists.sourceforge.net>; Sat, 09 Aug 2003 07:25:00 -0700
+Received: from megami (unverified) by mtvmime03.VERITAS.COM
+ (Content Technologies SMTPRS 4.2.10) with SMTP id <T63f2011a8a0a8911559e8@mtvmime03.VERITAS.COM> for <nfs@lists.sourceforge.net>;
+ Sat, 9 Aug 2003 07:25:20 -0700
+Received: from localhost.localdomain(markhe.wat.veritas.com[10.10.185.104]) (2577 bytes) by megami
+	via sendmail with P:esmtp/R:smart_host/T:smtp
+	(sender: <markhe@veritas.com>)
+	id <m19lUeM-00003jC@megami>
+	for <nfs@lists.sourceforge.net>; Sat, 9 Aug 2003 07:24:54 -0700 (PDT)
+	(Smail-3.2.0.101 1997-Dec-17 #15 built 2001-Aug-30)
+Received: from localhost (markhe@localhost)
+	by localhost.localdomain (8.11.2/8.11.2) with ESMTP id h79EPi314262
+	for <nfs@lists.sourceforge.net>; Sat, 9 Aug 2003 15:25:44 +0100
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,47 +35,42 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thursday 07 August 2003 22:56, Paul Jimenez wrote:
-> Hi,
->
->   I'm using kernel 2.4.20 under debian stable ('woody') and the
-> user-land nfs server, and I can't seem to traverse more than about 23 or
-> 24 levels deep into a directory structure over NFS.  Works fine on a local
-> ext2 or ext3 fs, but not when that fs is exported via the abovementioned
-> userland server.  And it's definitely related to directory depth and
-> not PATHLEN because it fails even with single-char directory names for
-> the entire depth.  So is this limit on the client, the server, or in the
-> protocol?  And is it a bug or just a design limit?
->
-> Thanks for your help,
->
+  A few NFS reply-cache questions, and possible answers.  Any feedback
+would be appreciated.
 
-Hi,
+1) Is a reply-cache needed over a reliable transport (TCP)?
+     Yes.  Possible for a client not to receive a response due to a
+   disconnect.  When re-connects, will retry the operation.  Need to trap
+   this.
 
-nfsv2 (nfsv3 is not supported by unfsd!) only allows 32 byte to decode the 
-entire nfs-filehandle, so if one would use the pathname encoded by characters 
-this would fail rather fast. IMHO all nfs-server use the inodes for 
-encrypting the path.
-Well, unfsd has 28 bytes to encrypt the complete pathname via inodes (32 bit) 
-and hashtable into those 28 bytes. I guess that you have reached the 
-unfsd-limit.
+2) Cache look-up before checking for a client's export entry?
+     The reply-cache look-up/resource-allocation occurs from
+   nfsd_dispatch() - before the exp_get() check in fh_verify().  This
+   allows for an attacker to fill the reply-cache with 'bogus' entries,
+   reducing it usefulness.  As NFS servers are either accessible only on
+   an intranet, or behind a firewall (unlikely?), this is not a serious
+   problem.
+      Partial fix is in nfsd_cache_lookup(), after checking 'type', test
+   if rq_client is NULL.   Not ideal, but will catch most cases.
+      Full fix is to move call to nfsd_cache_lookup() into fh_verify()
+   (and anywhere else needed(?)) after the exp_get_fsid()/exp_get().
+      If this is consider an issue, shout and I'll do a patch.
 
-The knfsd does different, as far as I understand it, the file handle only 
-consist of the file inode, the inode of the parent directory, a file creation 
-number and I think some other stuff. Anyway the 32 byte are sufficient here 
-to encode the pathname. 
+3) For non-idempotent operations, hold an "inprogress-entry" in the
+   reply-cache?
+      This would really only be for read operations, and possibly getattr,
+   over an unreliable transport (UDP).  On a 'busy' server, response
+   times may vary considerably; by trapping retransmitted requests which
+   are in-progress, the 'busy' server will not be further overloaded.
+   Note: I have no data to back this case up!  Does anyone have some
+   hard-data/references on this?
+      Ideally, the 'inprogress' entry would be dropped _after_ the
+   response has been sent.  With the current design, nfsd_dispatch() calls
+   nfsd_cache_update() before returning to the RPC code for a call to
+   svc_send().  A callback hook after svc_send() would be useful....
 
-NFS-experts, please correct me if I'm wrong. Btw, I still don't understand how 
-the knfs-algorithm works, if the dentry-cache has no information about 
-parent-inode/inode (e.g. after a server reboot). How does the kernel figures 
-out the proper path in that case?
-
-Best regards,
-	Bernd
-
-PS: Paul, why do you insist on using unfsd. Knfsd does a much better job! 
-Well, there are a few exception for using unfsd, ClusterNFS is one of them, 
-but you have to be very carefull on using of it.
+Thanks,
+Mark
 
 
 
