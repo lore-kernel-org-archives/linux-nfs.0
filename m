@@ -1,46 +1,28 @@
-From: raysrv05@ray.fi
-Subject: Report to Recipient(s)
-Date: Tue, 1 Jul 2003 08:51:14 +0300
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <OF1B4B105B.A732A9E9-ONC2256D56.00202858@ray.fi>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 1/4] Optimize NFS open() calls by means of 'intents'...
+Date: Tue, 1 Jul 2003 11:39:41 +0200
+Sender: linux-fsdevel-owner@vger.kernel.org
+Message-ID: <16129.22237.385862.74120@charged.uio.no>
+References: <16128.19197.159225.698080@charged.uio.no>
+	<20030630151426.GG31618@parcelfarce.linux.theplanet.co.uk>
+Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from ws-002.ray.fi ([193.64.14.2] helo=raysrv11.ray.fi)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19XE1A-0002Wp-00
-	for <nfs@lists.sourceforge.net>; Mon, 30 Jun 2003 22:49:28 -0700
-To: <nfs@lists.sourceforge.net>
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-
-Incident Information:-
-
-Originator: nfs-admin@lists.sourceforge.net
-Recipients: <nfs@lists.sourceforge.net>, jd@ts.ray.fi
-Subject:    [NFS] Re: Movie
-
-The file your_details.zip (details.pif) you received was infected with the
-W32/Sobig.e@MM virus and was deleted.
+Cc: Linux FSdevel <linux-fsdevel@vger.kernel.org>,
+	Linux Kernel <linux-kernel@vger.kernel.org>,
+	NFS maillist <nfs@lists.sourceforge.net>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: Matthew Wilcox <willy@debian.org>
+In-Reply-To: <20030630151426.GG31618@parcelfarce.linux.theplanet.co.uk>
+List-ID: <nfs.lists.sourceforge.net>
 
 
+     > Can we call the union something descriptive (eg "intent")
+     > rather than "u"?
 
+Sure. I'm fine with substutiting 'intent' for 'u' in the final version.
 
+Any other comments/objections/... before I push this on to Linus?
 
--------------------------------------------------------
-This SF.Net email sponsored by: Free pre-built ASP.NET sites including
-Data Reports, E-commerce, Portals, and Forums are available now.
-Download today and enter to win an XBOX or Visual Studio .NET.
-http://aspnet.click-url.com/go/psa00100006ave/direct;at.asp_061203_01/01
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Cheers,
+  Trond
