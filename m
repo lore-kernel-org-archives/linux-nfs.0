@@ -1,18 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
 Subject: [PATCH] kNFSd - 2 of 4 - Use correct value for max size for readlink response.
-Date: Fri, 11 Oct 2002 10:00:21 +1000
+Date: Fri, 11 Oct 2002 10:00:19 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E17znE5-0007cl-00@notabene.cse.unsw.edu.au>
+Message-ID: <E17znE3-0007ca-00@notabene.cse.unsw.edu.au>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17znEH-0000RF-00
-	for <nfs@lists.sourceforge.net>; Thu, 10 Oct 2002 17:00:34 -0700
+	id 17znEH-0000R9-00
+	for <nfs@lists.sourceforge.net>; Thu, 10 Oct 2002 17:00:33 -0700
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
 	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>) By
-	tone With Smtp ; Fri, 11 Oct 2002 10:00:25 +1000
+	tone With Smtp ; Fri, 11 Oct 2002 10:00:23 +1000
 To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -30,10 +30,6 @@ List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 ### Comments for ChangeSet
 
 Symlinks in NFSv3 can be upto 1024 bytes, not 256 like nfsv2.
-
-
-
-
 
  ----------- Diffstat output ------------
  ./fs/nfsd/nfs3proc.c |    2 +-
