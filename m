@@ -1,23 +1,18 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: PATCH - RPC/TCP 3 of 4 - Correct error message when rpc/tcp sent fails
-Date: Tue, 13 Aug 2002 12:59:26 +1000
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: RE: Problem : Linux - SOlaris NFS
+Date: Thu, 19 Sep 2002 13:00:30 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15704.30222.363352.937187@notabene.cse.unsw.edu.au>
+Message-ID: <6440EA1A6AA1D5118C6900902745938E07D54E8E@black.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: minoura@valinux.co.jp (Minoura Makoto), Chuck Lever <cel@citi.umich.edu>
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17eRuj-0008OI-00
-	for <nfs@lists.sourceforge.net>; Mon, 12 Aug 2002 20:00:09 -0700
-Received: From
-	notabene.cse.unsw.edu.au ([129.94.233.85] == wireless-085.wireless.cse.unsw.EDU.AU)
-	(for <torvalds@transmeta.com>) (for <minoura@valinux.co.jp>)
-	(for <cel@citi.umich.edu>) (for <nfs@lists.sourceforge.net>) By tone
-	With Smtp ; Tue, 13 Aug 2002 12:59:28 +1000
-To: Linus Torvalds <torvalds@transmeta.com>
-cc: nfs@lists.sourceforge.net
+Received: from mx01-a.netapp.com ([198.95.226.53])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17s7Ta-000170-00
+	for <nfs@lists.sourceforge.net>; Thu, 19 Sep 2002 13:00:38 -0700
+To: ashutosh.varshney@st.com
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,37 +23,32 @@ List-Id: Discussion of NFS under Linux development,
 	and testing. <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
+List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
+please verify your configuration for me:
 
+you are using NFS over UDP with 32K r/wsize?
+your Linux clients run a 2.4 kernel, probably 2.4.18?
 
-Now that we actually do shutdown the socket, we should
-say so instead of just saying that we should....
-
-
- ----------- Diffstat output ------------
- ./net/sunrpc/svcsock.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletion(-)
-
---- ./net/sunrpc/svcsock.c	2002/08/13 01:54:39	1.3
-+++ ./net/sunrpc/svcsock.c	2002/08/13 01:57:46	1.4
-@@ -911,8 +911,9 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
- 
- 	sent = svc_sendto(rqstp, bufp->iov, bufp->nriov);
- 	if (sent != bufp->len<<2) {
--		printk(KERN_NOTICE "rpc-srv/tcp: %s: sent only %d bytes of %d - should shutdown socket\n",
-+		printk(KERN_NOTICE "rpc-srv/tcp: %s: %s %d when sending %d bytes - shutting down socket\n",
- 		       rqstp->rq_sock->sk_server->sv_name,
-+		       (sent<0)?"got error":"sent only",
- 		       sent, bufp->len << 2);
- 		svc_delete_socket(rqstp->rq_sock);
- 		sent = -EAGAIN;
+> > We had a lot of SUN machines and just installed few linux 
+> machines.We
+> > have all our licenses/Softwares of Solaris m/cs( NIS also 
+> on Solaris).But
+> > when we access the things from linux client..network 
+> chokes..all things
+> > hang..then we reboot the linux ..and set the rsize & wsize 
+> to 8K and now
+> > things work fine..
+> > Can any one puts lights why this all happen ..where is the 
+> problem.. in
+> > linux or solairs.
+> > Any site referneces for this customization..
 
 
 -------------------------------------------------------
-This sf.net email is sponsored by: Dice - The leading online job board
-for high-tech professionals. Search and apply for tech jobs today!
-http://seeker.dice.com/seeker.epl?rel_code=31
+This sf.net email is sponsored by:ThinkGeek
+Welcome to geek heaven.
+http://thinkgeek.com/sf
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
