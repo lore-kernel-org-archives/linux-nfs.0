@@ -1,28 +1,23 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: [BUG] kNFSd may get a freeing inode.
-Date: Fri, 20 Sep 2002 21:54:07 +1000
+From: Bernd Schubert <bernd-schubert@web.de>
+Subject: nfs problems since server runs 2.4.19
+Date: Fri, 20 Sep 2002 16:27:29 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15755.3167.82511.908967@notabene.cse.unsw.edu.au>
-References: <20020918.160913.73658160.taka@valinux.co.jp>
-	<15752.22931.241819.210428@notabene.cse.unsw.edu.au>
-	<20020920.005300.74726524.taka@valinux.co.jp>
-	<20020920.200508.68137471.taka@valinux.co.jp>
+Message-ID: <200209201627.29328.bernd-schubert@web.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: viro@math.psu.edu,
-    nfs@lists.sourceforge.net
+Content-Type: text/plain;
+  charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17sMMe-0005ym-00
-	for <nfs@lists.sourceforge.net>; Fri, 20 Sep 2002 04:54:28 -0700
-Received: From
-	notabene.cse.unsw.edu.au ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <taka@valinux.co.jp>) (for <viro@math.psu.edu>)
-	(for <nfs@lists.sourceforge.net>) By tone With Smtp ;
-	Fri, 20 Sep 2002 21:54:13 +1000
-To: Hirokazu Takahashi <taka@valinux.co.jp>
-In-Reply-To: message from Hirokazu Takahashi on Friday September 20
+Received: from relay.uni-heidelberg.de ([129.206.100.212])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17sOkt-000273-00
+	for <nfs@lists.sourceforge.net>; Fri, 20 Sep 2002 07:27:40 -0700
+Received: from ix.urz.uni-heidelberg.de (mail.urz.uni-heidelberg.de [129.206.119.234])
+	by relay.uni-heidelberg.de (8.12.4/8.12.4) with ESMTP id g8KERUL0027690
+	for <nfs@lists.sourceforge.net>; Fri, 20 Sep 2002 16:27:30 +0200 (MET DST)
+Received: from euklid (bernd@euklid.pci.uni-heidelberg.de [129.206.21.104])
+	by ix.urz.uni-heidelberg.de (8.8.8/8.8.8) with ESMTP id QAA43424
+	for <nfs@lists.sourceforge.net>; Fri, 20 Sep 2002 16:27:29 +0200
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -35,21 +30,49 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-On Friday September 20, taka@valinux.co.jp wrote:
-> Hello,
-> 
-> I've checked with printk that nfsd will sleep when it find a
-> freeing inode. It worked good as we expected.
+Hi,
 
-Good.  This patch looks very good to me, and after understanding why
-you did it differently, I see that there were problems with my
-approach.
+we have some strange problems since we run our server with a patched 2.4.=
+19=20
+(all the nfs patches that are in 2.4.20 except the 2 tcp ones).=20
 
-I suggest we leave it a week or so to give Al a chance for some input,
-and then offer it to Linus.
+Well on the server we rather often get the following lines for several of=
+ our=20
+clients:
+Sep 20 13:08:45 coulomb rpc.statd[866]: Received erroneous SM_UNMON reque=
+st=20
+from coulomb for 192.168.0.1
+
+On some clients we get the following messages:
+Sep 20 13:44:28 cauchy kernel: nsm_mon_unmon: rpc failed, status=3D-5
+Sep 20 13:44:28 cauchy kernel: lockd: cannot monitor 192.168.0.100
+Sep 20 13:44:28 cauchy kernel: lockd: failed to monitor 192.168.0.100
+Sep 20 13:44:41 cauchy kernel: statd: server localhost not responding, ti=
+med=20
+out
+
+Well, when this happens on the client, no kde program is working any long=
+er=20
+(other window managers that need the home directory as well, work fine). =
+The=20
+solution for this is to start the rpc.statd on the client.
+
+
+Well, since all of this happend after we upgraded from 2.4.18 to=20
+2.4.19+nfs-patches, I think its in direct connection with the upgrade.
+
 
 Thanks,
-NeilBrown
+
+Bernd
+
+--=20
+Bernd Schubert
+Physikalisch Chemisches Institut
+Abt. Theoretische Chemie
+INF 229, 69120 Heidelberg
+Tel.: 06221/54-5210
+e-mail: =09bernd (dot) schubert (at) pci (dot) uni-heidelberg (dot) de=20
 
 
 -------------------------------------------------------
