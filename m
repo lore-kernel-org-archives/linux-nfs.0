@@ -1,20 +1,20 @@
-From: Paul Clements <paul.clements@steeleye.com>
+From: Robert Schwebel <robert@schwebel.de>
 Subject: Re: ANNOUNCE: nfs-utils 1.0.7-pre2
-Date: Wed, 15 Dec 2004 13:30:30 -0500
-Message-ID: <41C082C6.2050001@steeleye.com>
+Date: Wed, 15 Dec 2004 20:10:43 +0100
+Message-ID: <20041215191043.GB4032@pengutronix.de>
 References: <16825.223.924965.582375@cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain; charset=iso-8859-15
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CedvH-0001rC-E8
-	for nfs@lists.sourceforge.net; Wed, 15 Dec 2004 10:30:51 -0800
-Received: from stat16.steeleye.com ([209.192.50.48] helo=fenric.sc.steeleye.com)
+	id 1CeeY7-00005g-Ol
+	for nfs@lists.sourceforge.net; Wed, 15 Dec 2004 11:10:59 -0800
+Received: from metis.pengutronix.de ([213.252.143.165])
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CedvF-0001wV-5s
-	for nfs@lists.sourceforge.net; Wed, 15 Dec 2004 10:30:51 -0800
+	id 1CeeY7-0000Bi-33
+	for nfs@lists.sourceforge.net; Wed, 15 Dec 2004 11:10:59 -0800
 To: Neil Brown <neilb@cse.unsw.edu.au>
 In-Reply-To: <16825.223.924965.582375@cse.unsw.edu.au>
 Sender: nfs-admin@lists.sourceforge.net
@@ -30,21 +30,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Neil Brown wrote:
+Neil, 
 
+On Fri, Dec 10, 2004 at 12:50:23PM +1100, Neil Brown wrote:
 > I have made available a second pre-release of nfs-utils 1.0.7.
 
-> I still hope to put this out as a final 1.0.7 before Christmas.
-> Having lots of people say "Yes, I've tried it, and it works OK" would
-> make a great Christmas present :-)
+Any chance that you include our autotools patch in this release? Or is
+it too intrusive? In this case I would be interested in some further
+feedback. 
 
-"Yes, I've tried it, and it works OK"... :)
-
-Seriously though, I did test the HA callout stuff and it, as well as 
-everything else, looks good.
-
-Thanks,
-Paul
+Cheers,
+Robert 
+-- 
+ Dipl.-Ing. Robert Schwebel | http://www.pengutronix.de
+ Pengutronix - Linux Solutions for Science and Industry
+   Handelsregister:  Amtsgericht Hildesheim, HRA 2686
+     Hornemannstraﬂe 12,  31137 Hildesheim, Germany
+    Phone: +49-5121-28619-0 |  Fax: +49-5121-28619-4
 
 
 -------------------------------------------------------
