@@ -1,13 +1,23 @@
-From: "Moses Odonnell" <m_odonnell_gp@smartweb-hosting.com.au>
-Subject: I think im in love
-Date: Tue, 01 Jul 2003 12:15:37 +0000
+From: Edward Roper <eroper@wanfear.com>
+Subject: Re: close() / nfs commit performance
+Date: 01 Jul 2003 12:40:26 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <ae0801c33fca$a4511671$d67eb472@prjuh31>
+Message-ID: <1057088426.26307.0.camel@themachine.sanera.net>
+References: <482A3FA0050D21419C269D13989C6113D069EA@lavender-fe.eng.netapp.com>
+	 <1057015133.21354.44.camel@themachine.sanera.net>
+	 <shshe67xeyd.fsf@charged.uio.no>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0B95_CB9341E4.10E827EA"
+Content-Type: text/plain
+Cc: "Lever, Charles" <Charles.Lever@netapp.com>, neilb@cse.unsw.edu.au,
+   nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: netsaintplug-devel@lists.sourceforge.net, nfs@lists.sourceforge.net
+Received: from ns1.sanera.net ([208.253.254.10] helo=sentinel)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19XQzk-0005bg-00
+	for <nfs@lists.sourceforge.net>; Tue, 01 Jul 2003 12:40:52 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <shshe67xeyd.fsf@charged.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -20,31 +30,24 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+So in theory running nfs async is no more dangerous than using a local
+app that calls close() without fsync()?
 
-------=_NextPart_000_0B95_CB9341E4.10E827EA
-Content-Type: text/plain
-Content-Transfer-Encoding: 8bit
+On Mon, 2003-06-30 at 17:34, Trond Myklebust wrote:
+> >>>>> " " == Edward Roper <eroper@wanfear.com> writes:
+> 
+>      > Perhaps local close() calls don't actually commit to disk?
+> 
+> man 2 close
+>    (and read the NOTES)
+> 
+> and then
+> 
+> man 2 fsync
+> 
+> Cheers,
+>   Trond
 
-
-
-
-------=_NextPart_000_0B95_CB9341E4.10E827EA
-Content-Type: text/html
-Content-Transfer-Encoding: base64
-
-DQogDQoJDQogPGh0bWw+ICA8Ym9keSBiZ2NvbG9yPSIjZmZmZmZmIj4JCQ0K
-CTxZPjxwIGFsaWduPSJjZW50ZXIiPmUzZDMzNjNpZXFoNjhzNHNxbDkxNXdq
-eWMwMzxicj4NCjxhIGhyZWY9Imh0dHA6Ly9Dck9Pay1FZC5DT20vJTY4byU3
-MyU3NC9lbSU2MWklNkMlNzIlNjVtb3ZlLmElNzNwIj5TdG9wDQpNYWlsaW5n
-cyBIZXJlPC9hPjxicj4NCjxhIGhyZWY9Imh0dHA6Ly93d3cuY0hFYVBPbk5F
-dDEuY09tL2JlZi9tMmMucCU2OCU3MD9tYSU2RT0lNjIlNzUlNjY1NiU2NyI+
-PGltZyBzcmM9Imh0dHA6Ly93V3cuY2hlYVBvbk5ldDEuQ09tL3BhJTY0Lmpw
-ZyIgYm9yZGVyPTA+PC9hPg0KPGJyPncyNGg3NDM4d3BwaHAzPGJyPmQ5N29t
-bjF6ZnA8L3A+CTwvYm9keT48L2h0bWw+DQoJDQogIA0KCQ0K
-
-
-------=_NextPart_000_0B95_CB9341E4.10E827EA--
 
 
 
