@@ -1,22 +1,22 @@
-From: Paul Clements <paul.clements@steeleye.com>
-Subject: Re: file :"/var/lib/nfs/rmtab"
-Date: Thu, 03 Feb 2005 11:04:46 -0500
-Message-ID: <42024B9E.1010102@steeleye.com>
-References: <20050203113820.811.qmail@web51601.mail.yahoo.com>
+From: Jos van Wezel <jvw@iwr.fzk.de>
+Subject: Re: rpc.mountd: getfh failed: Operation not permitted
+Date: Thu, 03 Feb 2005 18:52:32 +0100
+Message-ID: <420264E0.4080107@iwr.fzk.de>
+References: <20050203041550.746BD89D13@sc8-sf-spam1.sourceforge.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: James Pearson <james-p@moving-picture.com>,
-	nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CwjUC-0006x3-Su
-	for nfs@lists.sourceforge.net; Thu, 03 Feb 2005 08:05:40 -0800
-Received: from stat16.steeleye.com ([209.192.50.48] helo=hancock.sc.steeleye.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CwjUB-0001IH-An
-	for nfs@lists.sourceforge.net; Thu, 03 Feb 2005 08:05:40 -0800
-To: mehta kiran <kiranmehta1981@yahoo.com>
-In-Reply-To: <20050203113820.811.qmail@web51601.mail.yahoo.com>
+	id 1Cwl9y-000404-B3
+	for nfs@lists.sourceforge.net; Thu, 03 Feb 2005 09:52:54 -0800
+Received: from fzkmail2.fzk.de ([141.52.27.52])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
+	id 1Cwl9v-0007CW-V4
+	for nfs@lists.sourceforge.net; Thu, 03 Feb 2005 09:52:54 -0800
+To: nfs@lists.sourceforge.net,
+	"jehan.procaccia" <jehan.procaccia@int-evry.fr>,
+	Steve Dickson <SteveD@redhat.com>
+In-Reply-To: <20050203041550.746BD89D13@sc8-sf-spam1.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,19 +30,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-mehta kiran wrote:
+Sorry Steve, your suggestion does not help, at least in our case. All 
+mounts via
+tcp on nfs server with RH ES3, 2.4.21-15. It is a very annoying issue.
 
-> Isn't handle supplied by client
->           enough to verify clients access to
->           filesystem.?
+J
 
-Yes, it should be. That's why in 2.6, the rmtab file is no longer relied 
-upon. Instead, there is a special filesystem, /proc/fs/nfsd, that allows 
-the kernel to communicate with mountd in order to authenticate 
-unrecognized clients automatically.
-
---
-Paul
+> Date: Wed, 02 Feb 2005 09:02:30 -0500
+> From: Steve Dickson <SteveD@redhat.com>
+> To: "jehan.procaccia" <jehan.procaccia@int-evry.fr>
+> CC: nfs@lists.sourceforge.net
+> Subject: Re: [NFS] rpc.mountd: getfh failed: Operation not permitted
+> 
+> 
+> 
+> jehan.procaccia wrote:
+> 
+> 
+>>Can someone give me a clue about this "getfh" error ?
+> 
+> 
+> Try exporting the filesystem with the 'no_subtree_check'
+> option set to see if that helps....
+> 
+> steved.
+> 
+> 
 
 
 -------------------------------------------------------
