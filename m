@@ -1,18 +1,22 @@
-From: <james-p@moving-picture.com>
-Subject: Re: limitations at 5,8 GB?
-Date: Fri, 2 Jan 2004 09:29:39 GMT
+From: Norman Zhang <nzhang@arkon-group.com>
+Subject: NFS history
+Date: Thu, 01 Jan 2004 21:15:54 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200401020929.i029TdS23123@pinatubo.mpc.local>
-Cc: nuway@gmx.net
+Message-ID: <bt2uq2$r8u$1@sea.gmane.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AcLd9-0000gB-MW
-	for nfs@lists.sourceforge.net; Fri, 02 Jan 2004 01:30:07 -0800
-Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AcLd9-0006Kf-CW
-	for nfs@lists.sourceforge.net; Fri, 02 Jan 2004 01:30:07 -0800
+	id 1AcHt5-0005FE-Qf
+	for nfs@lists.sourceforge.net; Thu, 01 Jan 2004 21:30:19 -0800
+Received: from main.gmane.org ([80.91.224.249])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1AcHt5-0000Wz-DW
+	for nfs@lists.sourceforge.net; Thu, 01 Jan 2004 21:30:19 -0800
+Received: from root by main.gmane.org with local (Exim 3.35 #1 (Debian))
+	id 1AcHt2-00050l-00
+	for <nfs@lists.sourceforge.net>; Fri, 02 Jan 2004 06:30:16 +0100
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,21 +30,15 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->im new to nfs and i googeld about this problem but i didnt find a solution for
->the following problem:
->
->I got a 100 GIG harddisk on my server and i mounted it on my client without
->any  warnings or problems. the only thing is that i now have 5.8 GB instead
->of 100. Are there any restrictions in nfs protocol, or do u know a possible
->solution for this prob?
+Hi,
 
-Are you sure you have mounted the 100Gb disk over NFS?
+I've been googling for the difference between NFSv1 and NFSv2, but only 
+found NFSv2 vs NFSv3. Does anyone recall some of major changes from v1 
+to v2?
 
-If the 100Gb disk was not mounted on the server, then you may just be seeing
-the mount point directory (e.g. a directory on the server's root disk), or you
-could have exported/mounted the wrong directory?
+Regards,
+Norman
 
-James Pearson
 
 
 -------------------------------------------------------
