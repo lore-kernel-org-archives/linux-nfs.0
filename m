@@ -1,21 +1,21 @@
-From: Hirokazu Takahashi <taka@valinux.co.jp>
-Subject: Re: Re: [PATCH] zerocopy NFS for 2.5.43
-Date: Tue, 29 Oct 2002 08:39:58 +0900 (JST)
+From: "Eff Norwood" <enorwood@effrem.com>
+Subject: RE: Corrupt Data when using NFS on Linux
+Date: Mon, 28 Oct 2002 17:34:38 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20021029.083958.74744748.taka@valinux.co.jp>
-References: <20021024.103349.26272209.taka@valinux.co.jp>
-	<20021027.193917.78705070.taka@valinux.co.jp>
-	<15805.26221.530836.279218@charged.uio.no>
+Message-ID: <CFEAJJEGMGECBCJFLGDBMEKGCGAA.enorwood@effrem.com>
+References: <007601c27ed6$74986240$2864a8c0@alanw>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Cc: neilb@cse.unsw.edu.au, nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sv1.valinux.co.jp ([202.221.173.100])
+Received: from cynaptic.com ([128.121.116.181])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 186Jby-00050s-00
-	for <nfs@lists.sourceforge.net>; Mon, 28 Oct 2002 15:47:58 -0800
-To: trond.myklebust@fys.uio.no
-In-Reply-To: <15805.26221.530836.279218@charged.uio.no>
+	id 186LHN-0002Of-00
+	for <nfs@lists.sourceforge.net>; Mon, 28 Oct 2002 17:34:49 -0800
+To: "Alan Witz" <awitz@magstarinc.com>,
+   "Lever, Charles" <Charles.Lever@netapp.com>
+In-Reply-To: <007601c27ed6$74986240$2864a8c0@alanw>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,13 +28,27 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
+Hi Alan,
 
->  - RFC1832 states that *all* variable length data must be padded with
->    zeros, and that is certainly not the case if the pages you are
->    pointing to are in the page cache.
+>    rsize=8192,wsize=8192,noac,hard,sync,nfsvers=3
+>
+>Any thoughts would be greatly appreciated.
 
-Yes, your're right.
+>From my own experiences with similar issues, I think you have two and maybe
+three options:
+
+1. Stick with your own Linux locking scheme until the kernel catches up. It
+will eventually as there are a lot of darn smart people working on it-like
+those on this list. :)
+2. Possibly use FreeBSD? I don't know if it addresses this problem or not.
+Does anyone know if FreeBSD works here?
+3. Get a non-free working commercial solution like a Network Appliance
+filer.
+
+Eff Norwood
+
+
+
 
 
 -------------------------------------------------------
