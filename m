@@ -1,17 +1,17 @@
-From: Mark Hemment <markhe@veritas.com>
-Subject: Lock client list while detaching locks
-Date: Thu, 31 Jul 2003 20:18:13 +0100 (BST)
+From: Matt C <wago@phlinux.com>
+Subject: NFS attrib cache problems in 2.4.20 - 2.4.22-pre9
+Date: Thu, 31 Jul 2003 13:58:40 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.33.0307312014470.1062-100000@localhost.localdomain>
+Message-ID: <Pine.LNX.4.44.0307311351050.17863-100000@fubar.phlinux.com>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: <nfs@lists.sourceforge.net>
+Cc: cel@citi.umich.edu, <trond.myklebust@fys.uio.no>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from brooklyn-bridge.emea.veritas.com ([62.172.234.2] helo=localhost.localdomain)
+Received: from fubar.phlinux.com ([216.254.54.154])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19iIvp-0000bR-00
-	for <nfs@lists.sourceforge.net>; Thu, 31 Jul 2003 12:17:46 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
+	id 19iKVc-0005N5-00
+	for <nfs@lists.sourceforge.net>; Thu, 31 Jul 2003 13:58:48 -0700
+To: NFS List <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,24 +24,35 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-  Patch against 2.4.21-pre9.
+Hi NFS List, chuck, trond:
 
-Mark
+I have a fun NFS problem with the recent 2.4 kernel NFS client. We have an 
+application that is failing when it tries to move then open a file in very 
+quick succession -- it fails because it can't find the file in the new 
+location.
 
-diff -urN linux-2.4.21-pre9/fs/nfsd/export.c nlmdetach/fs/nfsd/export.c
---- linux-2.4.21-pre9/fs/nfsd/export.c	2003-07-31 20:49:28.000000000 +0100
-+++ nlmdetach/fs/nfsd/export.c	2003-07-31 21:08:56.000000000 +0100
-@@ -903,8 +903,10 @@
- {
- 	struct svc_client	*clp;
+Since we can't export our application out to the 'net, I've been doing 
+testing with fsx-linux, which also fails in the same scenario with what 
+looks like an attribute cache issue. The exact FSX error is
+"Size error:  expected 0x1803ca stat 0x1803ca seek 0x68bf4c".
 
-+	exp_readlock();
- 	for (clp = clients; clp; clp = clp->cl_next)
- 		nfsd_lockd_unexport(clp);
-+	exp_unlock();
- }
+This fails with the 3 kernels that I tested: 2.4.20, 2.4.21 and 
+2.4.22-pre9. When I add 'noac' to my mount flags on the client, the 
+problem goes away.
 
- /*
+I've written this up on the following page, with links to the complete FSX 
+log, as well as complete kernel debug messages and the kernel .config 
+file.
+
+http://www.phlinux.com/kernel/nfs-ac.html
+
+I've been talking with Chuck Lever about this over the past few days, and 
+he suggested that I post here once I had good debug information. I'm happy 
+to run any other tests and/or capture other information if it's helpful.
+
+Thanks!
+
+-matt
 
 
 
