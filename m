@@ -1,41 +1,67 @@
-From: Anton Altaparmakov <aia21@cam.ac.uk>
-Subject: Re: i_generation = 0 special casing
-Date: Wed, 24 Nov 2004 12:25:04 +0000
-Message-ID: <1101299105.15596.22.camel@imp.csi.cam.ac.uk>
-References: <20041124094320.GA10206@infradead.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [patch] lockd control of grace period for HA NFS
+Date: Wed, 24 Nov 2004 11:21:44 -0500
+Message-ID: <1101313304.11743.4.camel@lade.trondhjem.org>
+References: <OF52F55A44.344CB7E1-ON88256F56.001C6CDC-88256F56.001EB19E@us.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net, linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: Christoph Hellwig <hch@infradead.org>
-In-Reply-To: <20041124094320.GA10206@infradead.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1CWzu5-0001wj-Hz
+	for nfs@lists.sourceforge.net; Wed, 24 Nov 2004 08:22:01 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CWzu4-00027J-NT
+	for nfs@lists.sourceforge.net; Wed, 24 Nov 2004 08:22:01 -0800
+To: Marc Eshel <eshel@almaden.ibm.com>
+In-Reply-To: <OF52F55A44.344CB7E1-ON88256F56.001C6CDC-88256F56.001EB19E@us.ibm.com>
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, 2004-11-24 at 09:43 +0000, Christoph Hellwig wrote:
-> export_iget (and routines based on it such as xfs_vget) check for
-> i_generation beeing 0 meaning that every generation is okay.  Where in
-> the NFS code is this wildcard needed?
+ty den 23.11.2004 Klokka 21:35 (-0800) skreiv Marc Eshel:
 
-I didn't have anything to do with the i_generation handling in NFS but
-at least NTFS takes i_generation beeing 0 meaning that every generation
-is ok.  (That is how Windows NTFS does it so we do the same.  It allows
-to disable generation checking by setting all i_generations to 0 on a
-volume.)
+> What I am trying to do is deny lock requests from all nodes in an HA
+> environment on nodes that are not part of the failure or takeover until
+> failover is complete and clients of the failed node have had a chance to
+> reclaim their locks. The rest of the clients are just temporarily blocked.
+> They will NOT have to reclaim locks and they should not be notified of a
+> reboot.
 
-> I had to find out that XFS starts it's i_generation at zero and either
-> I have to fix up the i_generation or drop this wildcard if it's not
-> actually used.
+> Can you say more on how NFSv4 state recovery and lockd be used in this
+> situation ?
 
-In NTFS I start i_generation at 1 and when it reaches 0xffff I wrap it
-to 1 again, skipping zero.  (On disk it is 16 bits on NTFS.)
+You are missing the point. If you want to fail your NFS over from one
+server to another, then *ALL* the state has to be transferred. That
+means NFSv2/v3 locking state AND NFSv4 open owner+locks+delegation+...
 
-Best regards,
+Setting up an interface that allows you to transfer one but not the
+other is just poor design.
 
-        Anton
+Cheers,
+  Trond
+
 -- 
-Anton Altaparmakov <aia21 at cam.ac.uk> (replace at with @)
-Unix Support, Computing Service, University of Cambridge, CB2 3QH, UK
-Linux NTFS maintainer / IRC: #ntfs on irc.freenode.net
-WWW: http://linux-ntfs.sf.net/ & http://www-stu.christs.cam.ac.uk/~aia21/
+Trond Myklebust <trond.myklebust@fys.uio.no>
 
+
+
+-------------------------------------------------------
+SF email is sponsored by - The IT Product Guide
+Read honest & candid reviews on hundreds of IT Products from real users.
+Discover which products truly live up to the hype. Start reading now. 
+http://productguide.itmanagersjournal.com/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
