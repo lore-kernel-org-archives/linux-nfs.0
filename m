@@ -1,26 +1,25 @@
-From: Yusuf Goolamabbas <yusufg@outblaze.com>
-Subject: nfsdump/nfsscan from the SoS project at Harvard
-Date: Wed, 10 Dec 2003 13:11:14 +0800
+From: "Amir Hermelin" <amir@montilio.com>
+Subject: NFS request generator
+Date: Wed, 10 Dec 2003 10:10:20 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20031210051114.GD4408@outblaze.com>
+Message-ID: <007201c3bef5$10e00e50$2801a8c0@CARTMAN>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain;
+	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1ATwd6-0002EZ-1k
-	for nfs@lists.sourceforge.net; Tue, 09 Dec 2003 21:11:20 -0800
-Received: from corpmail.outblaze.com ([203.86.166.82])
+	id 1ATzQf-0008Jb-3a
+	for nfs@lists.sourceforge.net; Wed, 10 Dec 2003 00:10:41 -0800
+Received: from [212.150.48.101] (helo=enigma.barak.net.il)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
-	id 1ATwd5-0000Gd-J8
-	for nfs@lists.sourceforge.net; Tue, 09 Dec 2003 21:11:19 -0800
-Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by corpmail.outblaze.com (Postfix) with ESMTP id 13A6B37AC4
-	for <nfs@lists.sourceforge.net>; Wed, 10 Dec 2003 05:11:15 +0000 (GMT)
-Received: from yusufg.portal2.com (210-177-227-130.outblaze.com [210.177.227.130])
-	by corpmail.outblaze.com (Postfix) with SMTP id B9D9716DD83
-	for <nfs@lists.sourceforge.net>; Wed, 10 Dec 2003 05:11:14 +0000 (GMT)
-To: nfs@lists.sourceforge.net
+	id 1ATzQe-0000T5-Ll
+	for nfs@lists.sourceforge.net; Wed, 10 Dec 2003 00:10:40 -0800
+Received: from CARTMAN ([62.90.35.123]) by enigma.barak.net.il
+          (InterMail vK.4.04.00.00 201-232-137 license b2629777bce4038e9f419f7b71122558)
+          with ESMTP id <20031210081206.FTFZ29986.enigma@CARTMAN>
+          for <nfs@lists.sourceforge.net>; Wed, 10 Dec 2003 10:12:06 +0200
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,19 +32,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Not sure if people have come across this and how useful it would be to
-help tune Linux NFS installations
+Hi,
+I'm trying to experiment with NFS, where the server currently doesn't =
+return
+any replies.  This poses a problem, as clients wait for replies and =
+can't
+continue when a certain amount of requests are pending.  Even if I =
+remove
+the wait in the client, it wouldn't be able to continue requests since =
+it
+would miss some information (e.g. fh won't be returned from lookup
+requests).
+So, what I need is some script that simply generates NFS requests =
+without
+processing responses.  Anyone know of an available script/proggie that =
+would
+save me the time of writing one?
 
-http://www.eecs.harvard.edu/sos/
+Thanks,
+Amir.
 
-Also interesting is fstress which provides close to a SpecSFS workload
 
-http://www.cs.duke.edu/ari/fstress/
-
-Hope this helps, Regards, Yusuf
--- 
-Yusuf Goolamabbas
-yusufg@outblaze.com
 
 
 -------------------------------------------------------
