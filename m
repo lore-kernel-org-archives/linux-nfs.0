@@ -1,19 +1,19 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 2 of 4] mark NFS/TCP not EXPERIMENTAL
+Subject: [PATCH kNFSd 4 of 4] Use llseek instead of f_pos= for directory seeking.
 Date: Mon, 16 Aug 2004 13:58:43 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1BwYdv-0002Zj-5u@notabene.cse.unsw.edu.au>
+Message-ID: <E1BwYdv-0002Zr-8C@notabene.cse.unsw.edu.au>
 References: <20040816135256.9819.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BwYgW-0008KU-9A
-	for nfs@lists.sourceforge.net; Sun, 15 Aug 2004 21:01:24 -0700
+	id 1BwYgD-0008Fr-7a
+	for nfs@lists.sourceforge.net; Sun, 15 Aug 2004 21:01:05 -0700
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1BwYgV-0002XY-IJ
-	for nfs@lists.sourceforge.net; Sun, 15 Aug 2004 21:01:24 -0700
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1BwYgB-0002ei-RY
+	for nfs@lists.sourceforge.net; Sun, 15 Aug 2004 21:01:04 -0700
 To: Marcelo Tosatti <marcelo.tosatti@cyclades.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,178 +28,105 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
+nfsd currently just sets f_pos when seeking in a directory.
+This bypasses any checking and other handling that a filesystem
+might want to do.
 
-NFS/TCP has been used widely for a long time now, and is now
-enabled by many distros and typically recommended for lossy or
-congested networks.  This patch removes the EXPERIMENTAL tag,
-updates the help text, and changes arch defconfigs to set it
-by default (note that several already did so).
+So instead, we use 'llseek' copied out of fs/read_write.c
+use that, both to seek at the start, and the find the new position at
+the end.
 
-From: Greg Banks <gnb@sgi.com>
+If it were not  too intrusive, would could export llseek as vfs_llseek as was
+done in 2.6....
+
+Thanks to
+    "Derrick Schommer" <dschommer@acopia.com>
+    "Trond Myklebust" <trond.myklebust@fys.uio.no>
+
+
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./Documentation/Configure.help |    7 ++++---
- ./arch/i386/defconfig          |    2 +-
- ./arch/ia64/defconfig          |    2 +-
- ./arch/mips/defconfig          |    2 +-
- ./arch/mips64/defconfig        |    2 +-
- ./arch/ppc/defconfig           |    2 +-
- ./arch/ppc64/defconfig         |    2 +-
- ./arch/s390/defconfig          |    2 +-
- ./arch/s390x/defconfig         |    2 +-
- ./arch/sh64/defconfig          |    2 +-
- ./fs/Config.in                 |    2 +-
- 11 files changed, 14 insertions(+), 13 deletions(-)
+ ./fs/nfsd/vfs.c |   35 ++++++++++++++++++++++++++++-------
+ 1 files changed, 28 insertions(+), 7 deletions(-)
 
-diff ./Documentation/Configure.help~current~ ./Documentation/Configure.help
---- ./Documentation/Configure.help~current~	2004-08-16 09:53:43.000000000 +1000
-+++ ./Documentation/Configure.help	2004-08-16 09:53:43.000000000 +1000
-@@ -17229,10 +17229,11 @@ CONFIG_NFSD_V3
-   If you would like to include the NFSv3 server as well as the NFSv2
-   server, say Y here.  If unsure, say Y.
+diff ./fs/nfsd/vfs.c~current~ ./fs/nfsd/vfs.c
+--- ./fs/nfsd/vfs.c~current~	2004-08-16 09:54:04.000000000 +1000
++++ ./fs/nfsd/vfs.c	2004-08-16 09:54:28.000000000 +1000
+@@ -586,6 +586,22 @@ found:
+ 	return ra;
+ }
  
--Provide NFS over TCP server support EXPERIMENTAL
-+Provide NFS over TCP server support
- CONFIG_NFSD_TCP
--  Enable NFS service over TCP connections.  This the officially
--  still experimental, but seems to work well.
-+  If you want your NFS server to support TCP connections, say Y here.
-+  TCP connections usually perform better than the default UDP when
-+  the network is lossy or congested.  If unsure, say Y.
++/* copied from fs/read_write.c */
++static inline loff_t llseek(struct file *file, loff_t offset, int origin)
++{
++	loff_t (*fn)(struct file *, loff_t, int);
++	loff_t retval;
++
++	fn = default_llseek;
++	if (file->f_op && file->f_op->llseek)
++		fn = file->f_op->llseek;
++	lock_kernel();
++	retval = fn(file, offset, origin);
++	unlock_kernel();
++	return retval;
++}
++
++
+ /*
+  * Read data from a file. count must contain the requested read count
+  * on entry. On return, *count contains the number of bytes actually read.
+@@ -621,7 +637,7 @@ nfsd_read(struct svc_rqst *rqstp, struct
+ 		file.f_ralen = ra->p_ralen;
+ 		file.f_rawin = ra->p_rawin;
+ 	}
+-	file.f_pos = offset;
++	llseek(&file, offset, 0);
  
- OS/2 HPFS file system support
- CONFIG_HPFS_FS
-
-diff ./arch/i386/defconfig~current~ ./arch/i386/defconfig
---- ./arch/i386/defconfig~current~	2004-08-16 09:53:43.000000000 +1000
-+++ ./arch/i386/defconfig	2004-08-16 09:53:43.000000000 +1000
-@@ -758,7 +758,7 @@ CONFIG_NFS_FS=y
- # CONFIG_ROOT_NFS is not set
- CONFIG_NFSD=y
- # CONFIG_NFSD_V3 is not set
--# CONFIG_NFSD_TCP is not set
-+CONFIG_NFSD_TCP=y
- CONFIG_SUNRPC=y
- CONFIG_LOCKD=y
- # CONFIG_SMB_FS is not set
-
-diff ./arch/ia64/defconfig~current~ ./arch/ia64/defconfig
---- ./arch/ia64/defconfig~current~	2004-08-16 09:53:43.000000000 +1000
-+++ ./arch/ia64/defconfig	2004-08-16 09:53:43.000000000 +1000
-@@ -755,7 +755,7 @@ CONFIG_NFS_V3=y
- # CONFIG_ROOT_NFS is not set
- CONFIG_NFSD=y
- CONFIG_NFSD_V3=y
--# CONFIG_NFSD_TCP is not set
-+CONFIG_NFSD_TCP=y
- CONFIG_SUNRPC=y
- CONFIG_LOCKD=y
- CONFIG_LOCKD_V4=y
-
-diff ./arch/mips/defconfig~current~ ./arch/mips/defconfig
---- ./arch/mips/defconfig~current~	2004-08-16 09:53:43.000000000 +1000
-+++ ./arch/mips/defconfig	2004-08-16 09:53:43.000000000 +1000
-@@ -607,7 +607,7 @@ CONFIG_NFS_FS=y
- CONFIG_ROOT_NFS=y
- CONFIG_NFSD=y
- # CONFIG_NFSD_V3 is not set
--# CONFIG_NFSD_TCP is not set
-+CONFIG_NFSD_TCP=y
- CONFIG_SUNRPC=y
- CONFIG_LOCKD=y
- # CONFIG_SMB_FS is not set
-
-diff ./arch/mips64/defconfig~current~ ./arch/mips64/defconfig
---- ./arch/mips64/defconfig~current~	2004-08-16 09:53:43.000000000 +1000
-+++ ./arch/mips64/defconfig	2004-08-16 09:53:43.000000000 +1000
-@@ -563,7 +563,7 @@ CONFIG_NFS_V3=y
- CONFIG_ROOT_NFS=y
- # CONFIG_NFSD is not set
- # CONFIG_NFSD_V3 is not set
--# CONFIG_NFSD_TCP is not set
-+CONFIG_NFSD_TCP=y
- CONFIG_SUNRPC=y
- CONFIG_LOCKD=y
- CONFIG_LOCKD_V4=y
-
-diff ./arch/ppc/defconfig~current~ ./arch/ppc/defconfig
---- ./arch/ppc/defconfig~current~	2004-08-16 09:53:43.000000000 +1000
-+++ ./arch/ppc/defconfig	2004-08-16 09:53:43.000000000 +1000
-@@ -812,7 +812,7 @@ CONFIG_NFS_FS=y
- # CONFIG_ROOT_NFS is not set
- CONFIG_NFSD=y
- # CONFIG_NFSD_V3 is not set
--# CONFIG_NFSD_TCP is not set
-+CONFIG_NFSD_TCP=y
- CONFIG_SUNRPC=y
- CONFIG_LOCKD=y
- # CONFIG_SMB_FS is not set
-
-diff ./arch/ppc64/defconfig~current~ ./arch/ppc64/defconfig
---- ./arch/ppc64/defconfig~current~	2004-08-16 09:53:43.000000000 +1000
-+++ ./arch/ppc64/defconfig	2004-08-16 09:53:43.000000000 +1000
-@@ -668,7 +668,7 @@ CONFIG_NFS_V3=y
- # CONFIG_ROOT_NFS is not set
- CONFIG_NFSD=y
- CONFIG_NFSD_V3=y
--# CONFIG_NFSD_TCP is not set
-+CONFIG_NFSD_TCP=y
- CONFIG_SUNRPC=y
- CONFIG_LOCKD=y
- CONFIG_LOCKD_V4=y
-
-diff ./arch/s390/defconfig~current~ ./arch/s390/defconfig
---- ./arch/s390/defconfig~current~	2004-08-16 09:53:43.000000000 +1000
-+++ ./arch/s390/defconfig	2004-08-16 09:53:43.000000000 +1000
-@@ -351,7 +351,7 @@ CONFIG_NFS_V3=y
- # CONFIG_ROOT_NFS is not set
- CONFIG_NFSD=y
- CONFIG_NFSD_V3=y
--# CONFIG_NFSD_TCP is not set
-+CONFIG_NFSD_TCP=y
- CONFIG_SUNRPC=y
- CONFIG_LOCKD=y
- CONFIG_LOCKD_V4=y
-
-diff ./arch/s390x/defconfig~current~ ./arch/s390x/defconfig
---- ./arch/s390x/defconfig~current~	2004-08-16 09:53:43.000000000 +1000
-+++ ./arch/s390x/defconfig	2004-08-16 09:53:43.000000000 +1000
-@@ -291,7 +291,7 @@ CONFIG_NFS_V3=y
- # CONFIG_ROOT_NFS is not set
- CONFIG_NFSD=y
- CONFIG_NFSD_V3=y
--# CONFIG_NFSD_TCP is not set
-+CONFIG_NFSD_TCP=y
- CONFIG_SUNRPC=y
- CONFIG_LOCKD=y
- CONFIG_LOCKD_V4=y
-
-diff ./arch/sh64/defconfig~current~ ./arch/sh64/defconfig
---- ./arch/sh64/defconfig~current~	2004-08-16 09:53:43.000000000 +1000
-+++ ./arch/sh64/defconfig	2004-08-16 09:53:43.000000000 +1000
-@@ -386,7 +386,7 @@ CONFIG_NFS_V3=y
- CONFIG_ROOT_NFS=y
- # CONFIG_NFSD is not set
- # CONFIG_NFSD_V3 is not set
--# CONFIG_NFSD_TCP is not set
-+CONFIG_NFSD_TCP=y
- CONFIG_SUNRPC=y
- CONFIG_LOCKD=y
- CONFIG_LOCKD_V4=y
-
-diff ./fs/Config.in~current~ ./fs/Config.in
---- ./fs/Config.in~current~	2004-08-16 09:53:43.000000000 +1000
-+++ ./fs/Config.in	2004-08-16 09:53:43.000000000 +1000
-@@ -121,7 +121,7 @@ if [ "$CONFIG_NET" = "y" ]; then
+ 	oldfs = get_fs(); set_fs(KERNEL_DS);
+ 	err = file.f_op->read(&file, buf, *count, &file.f_pos);
+@@ -706,7 +722,8 @@ nfsd_write(struct svc_rqst *rqstp, struc
+ 	if (stable && !EX_WGATHER(exp))
+ 		file.f_flags |= O_SYNC;
  
-    dep_tristate 'NFS server support' CONFIG_NFSD $CONFIG_INET
-    dep_mbool '  Provide NFSv3 server support' CONFIG_NFSD_V3 $CONFIG_NFSD
--   dep_mbool '  Provide NFS server over TCP support (EXPERIMENTAL)' CONFIG_NFSD_TCP $CONFIG_NFSD $CONFIG_EXPERIMENTAL
-+   dep_mbool '  Provide NFS server over TCP support' CONFIG_NFSD_TCP $CONFIG_NFSD
+-	file.f_pos = offset;		/* set write offset */
++
++	llseek(&file, offset, 0);
  
-    if [ "$CONFIG_NFS_FS" = "y" -o "$CONFIG_NFSD" = "y" ]; then
-       define_tristate CONFIG_SUNRPC y
+ 	/* Write the data. */
+ 	oldfs = get_fs(); set_fs(KERNEL_DS);
+@@ -1398,10 +1415,12 @@ nfsd_readdir(struct svc_rqst *rqstp, str
+ 	err = nfsd_open(rqstp, fhp, S_IFDIR, MAY_READ, &file);
+ 	if (err)
+ 		goto out;
+-	if (offset > ~(u32) 0)
+-		goto out_close;
+ 
+-	file.f_pos = offset;
++	offset = llseek(&file, offset, 0);
++	if (offset < 0) {
++		err = nfserrno((int)offset);
++		goto out_close;
++	}
+ 
+ 	/* Set up the readdir context */
+ 	memset(&cd, 0, sizeof(cd));
+@@ -1429,11 +1448,13 @@ nfsd_readdir(struct svc_rqst *rqstp, str
+ 	/* If we didn't fill the buffer completely, we're at EOF */
+ 	eof = !cd.eob;
+ 
++
++	offset = llseek(&file, 0LL, 1);
+ 	if (cd.offset) {
+ 		if (rqstp->rq_vers == 3)
+-			(void)xdr_encode_hyper(cd.offset, file.f_pos);
++			(void)xdr_encode_hyper(cd.offset, offset);
+ 		else
+-			*cd.offset = htonl(file.f_pos);
++			*cd.offset = htonl(offset);
+ 	}
+ 
+ 	p = cd.buffer;
 
 
 -------------------------------------------------------
