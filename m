@@ -1,25 +1,23 @@
-From: Olaf Kirch <okir@suse.de>
+From: Greg Banks <gnb@melbourne.sgi.com>
 Subject: Re: auto-discovery of exports?
-Date: Thu, 8 Apr 2004 08:54:13 +0200
+Date: Thu, 08 Apr 2004 17:07:25 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040408065413.GA19702@suse.de>
-References: <41089CB27BD8D24E8385C8003EDAF7AB084850@karl.alexa.com> <4074B2BD.7936CF93@melbourne.sgi.com>
+Message-ID: <4074FA2D.C7002C3B@melbourne.sgi.com>
+References: <41089CB27BD8D24E8385C8003EDAF7AB084850@karl.alexa.com> <4074B2BD.7936CF93@melbourne.sgi.com> <20040408065413.GA19702@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
+Content-Type: text/plain; charset=us-ascii
 Cc: Guolin Cheng <guolin@alexa.com>, Ian Kent <raven@themaw.net>,
-	Michael <mogmios@mlug.missouri.edu>, nfs@lists.sourceforge.net
+        Michael <mogmios@mlug.missouri.edu>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BBTQX-0004aQ-Eo
-	for nfs@lists.sourceforge.net; Wed, 07 Apr 2004 23:54:17 -0700
-Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.30)
-	id 1BBTQX-0007j5-8N
-	for nfs@lists.sourceforge.net; Wed, 07 Apr 2004 23:54:17 -0700
-To: Greg Banks <gnb@melbourne.sgi.com>
-In-Reply-To: <4074B2BD.7936CF93@melbourne.sgi.com>
+	id 1BBTdS-0007RT-Eq
+	for nfs@lists.sourceforge.net; Thu, 08 Apr 2004 00:07:38 -0700
+Received: from mtvcafw.sgi.com ([192.48.171.6] helo=omx2.sgi.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1BBTdS-0001zz-8L
+	for nfs@lists.sourceforge.net; Thu, 08 Apr 2004 00:07:38 -0700
+To: Olaf Kirch <okir@suse.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,34 +30,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Apr 08, 2004 at 12:02:37PM +1000, Greg Banks wrote:
-> You shouldn't rely on port 2049 for pre-v4 NFS.  To enumerate NFS servers
-> try doing a broadcast RPC of a NULL call to RPC program 100003.
+Olaf Kirch wrote:
+> 
+> Some portmaps may actually allow calls to the NFS NULL procedure, but
+> many don't.
 
-No, that won't help. Many portmappers are quite restrictive in what
-they forward via PMAP_CALL. NFS and MOUNT calls are not among them for
-security reasons (because by bouncing your request off portmap, the NFS
-server will see a request from 127.0.0.1 - and may grant you more rights
-than you would get ordinarily).
+The ones based on modern ONC code, like Solaris and IRIX, explicitly
+allow NULL calls before doing their fancy checks based on program numbers.
+I'd be interested to hear of actual counterexamples.
 
-Some portmaps may actually allow calls to the NFS NULL procedure, but
-many don't.
+> I wrote a tool for enumerating NFS servers a long time back, and found
+> the only way to go about it is to enumerate all hosts first, then do a
+> pmap_getport(100005), and then call each mountd i turn.
 
-Broadcasts to 2049 may not work either if the daemon binds to all interface
-addresses rather than INADDR_ANY.
+Sure, a two stage approach will work: broadcast RPC to find hosts
+running portmappers, then try showmount -e on each.
 
-I wrote a tool for enumerating NFS servers a long time back, and found
-the only way to go about it is to enumerate all hosts first, then do a
-pmap_getport(100005), and then call each mountd i turn.
-
-Alternatively you could set up an SLP directory, and change your nfsd startup
-scripts to register all nfsd's via SLP.
-
-Olaf
+Greg.
 -- 
-Olaf Kirch     |  The Hardware Gods hate me.
-okir@suse.de   |
----------------+ 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
 
 -------------------------------------------------------
