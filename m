@@ -1,23 +1,17 @@
-From: <trond.myklebust@fys.uio.no>
-Subject: Re: NFS client write performance issue ... thoughts?
-Date: Thu, 8 Jan 2004 18:48:34 +0100 (CET)
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: NFSv4 daemons...
+Date: Thu, 08 Jan 2004 19:34:08 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <35327.68.42.103.198.1073584114.squirrel@webmail.uio.no>
-References: <35321.68.42.103.198.1073583166.squirrel@webmail.uio.no>
+Message-ID: <1073608448.1380.22.camel@nidelv.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AeeGx-0002Vl-6L
-	for nfs@lists.sourceforge.net; Thu, 08 Jan 2004 09:48:43 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1AeeGw-0007V9-LZ
-	for nfs@lists.sourceforge.net; Thu, 08 Jan 2004 09:48:42 -0800
-To: <pausmith@nortelnetworks.com>
-In-Reply-To: <35321.68.42.103.198.1073583166.squirrel@webmail.uio.no>
+	id 1AekbN-0006jA-9E
+	for nfs@lists.sourceforge.net; Thu, 08 Jan 2004 16:34:13 -0800
+To: hjl@users.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,23 +24,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->   2) Linux immediately puts the write on the wire once there are more
-> than wsize bytes to write out. This explains why bumping wsize results
-> in fewer writes.
 
-Clarification.
+We're at the point now with the NFSv4 project that we'd like to publish
+the user daemons that are necessary to support the existing client in
+the 2.6.0 kernel.
 
-The actual condition is really "put all outstanding writes on the wire as
-soon as you have wsize/PAGE_SIZE requests, and the last page to be
-updated was completely filled".
+Would it make sense to add these to the existing nfs-utils package?
 
-This flushes out writes on pages that are not currently being accessed
-in the background.
+
+There are basically 2 daemons required on the client side:
+
+  - Idmapper resolves NFSv4 over-the-wire names into uids/gids that can
+be understood by the kernel.
+
+  - rpc.gssd sets up RPCSEC_GSS sessions to allow secure RPC negotiation
+between the client and server. Initial support is for Kerberos 5, but
+SPKM3 is in the pipeline too.
+
+Both these two daemons have equivalents on the server side (but I'll
+leave it to CITI/Neil to work out who wants to take responsability for
+publishing those).
 
 Cheers,
   Trond
-
-
 
 
 -------------------------------------------------------
