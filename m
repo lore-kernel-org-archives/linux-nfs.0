@@ -1,24 +1,23 @@
-From: Paul Clements <paul.clements@steeleye.com>
-Subject: Re: [PATCH / RFC] nfs-utils: High Availability NFS
-Date: Mon, 30 Aug 2004 11:03:20 -0400
+From: "randy" <paries@knology.net>
+Subject: RE: Redhat 9 tcpmounting
+Date: Mon, 30 Aug 2004 07:53:45 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <413341B8.9090504@steeleye.com>
-References: <4124DB86.9060505@steeleye.com> <16677.22269.988036.787320@cse.unsw.edu.au> <412E1C10.5020703@steeleye.com> <20040827073049.GA23324@suse.de> <412F3362.5040707@steeleye.com> <20040830082510.GD28454@suse.de> <20040830101947.GE5745@sgi.com>
+Message-ID: <E1C1nil-0004L7-0H@sc8-sf-mx2.sourceforge.net>
+References: <7E0DB3A126BA9146AC30744E2B7E4245111946@midhouhqxch01.net.smith.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: Olaf Kirch <okir@suse.de>, Neil Brown <neilb@cse.unsw.edu.au>,
-   nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C1nk9-0003xo-CS
-	for nfs@lists.sourceforge.net; Mon, 30 Aug 2004 08:06:49 -0700
-Received: from stat16.steeleye.com ([209.192.50.48] helo=fenric.sc.steeleye.com)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1C1nk7-0004X7-HJ
-	for nfs@lists.sourceforge.net; Mon, 30 Aug 2004 08:06:49 -0700
-To: Greg Banks <gnb@sgi.com>
-In-Reply-To: <20040830101947.GE5745@sgi.com>
+	id 1C1nim-0003eN-Km
+	for nfs@lists.sourceforge.net; Mon, 30 Aug 2004 08:05:24 -0700
+Received: from smtp.knology.net ([24.214.63.101])
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.34)
+	id 1C1nil-0004L7-0H
+	for nfs@lists.sourceforge.net; Mon, 30 Aug 2004 08:05:24 -0700
+To: <nfs@lists.sourceforge.net>
+In-Reply-To: <7E0DB3A126BA9146AC30744E2B7E4245111946@midhouhqxch01.net.smith.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,34 +30,74 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Greg Banks wrote:
-> On Mon, Aug 30, 2004 at 10:25:11AM +0200, Olaf Kirch wrote:
+Does anyone know the option I would have to enable in the config when
+building the kernel?
 
->>Doesn't a HA NFS deployment require a shared disk anyway?
-> 
-> 
-> Shared data disks, not a shared root disk.
-> 
-> 
->>Why not just
->>move /var/lib/nfs to this file system so it gets shared the same way you
->>share the rest of your data?
-> 
-> 
-> This would have to be done manually on a per-site basis because you
-> can't predict where the mountpoint of any particular shared disk will
-> be when NFS starts.  So packaging an HA solution based on that
-> arrangement would be a mite tricky.
+Also is there a enough performance gain to warrant recompiling the kernel?
 
-You also cannot support active/active configurations when /var/lib/nfs 
-is linked (or mounted) to a shared location. That is our primary reason 
-for needing the callouts. Specifically, in order to support 
-active/active configurations, either you've got to broadcast the 
-information to all cluster nodes or you've got to "shadow" the 
-/var/lib/nfs contents on shared storage.
+Thanks for you help
 
---
-Paul
+Randy 
+
+
+
+-----Original Message-----
+From: Nelson, Allan [mailto:anelson@miswaco.com] 
+Sent: Sunday, August 29, 2004 11:10 AM
+To: randy
+Subject: RE: [NFS] Redhat 9 tcpmounting
+
+Yes, but you need to recompile the kernel to get support for it.
+Allan
+
+	-----Original Message----- 
+	From: nfs-admin@lists.sourceforge.net on behalf of randy 
+	Sent: Sun 8/29/2004 2:34 AM 
+	To: nfs@lists.sourceforge.net 
+	Cc: 
+	Subject: [NFS] Redhat 9 tcpmounting
+	
+	
+
+	 Hello
+	
+	Does anyone know if rh9 supports tcp mounting
+	
+	When I try I get the error
+	nfs server reported service unavailable: Address already in use
+	
+	my servers
+	cat /etc/exports
+	/home/un/  192.168.0.214(insecure,rw)
+	/home/unt   nfs.krusty(insecure,rw)
+	/home/und    nfs.krusty(insecure,rw)
+	
+	
+	
+	
+	-------------------------------------------------------
+	This SF.Net email is sponsored by BEA Weblogic Workshop
+	FREE Java Enterprise J2EE developer tools!
+	Get your free copy of BEA WebLogic Workshop 8.1 today.
+	http://ads.osdn.com/?ad_id=5047&alloc_id=10808&op=click
+	_______________________________________________
+	NFS maillist  -  NFS@lists.sourceforge.net
+	https://lists.sourceforge.net/lists/listinfo/nfs
+	
+	
+
+
+____________________________________________________________________________
+__
+This email is intended solely for the person or entity to which it is
+addressed and may contain confidential and/or privileged information.
+Copying, forwarding or distributing this message by persons or entities
+other than the addressee is prohibited. If you have received this email in
+error, please contact the sender immediately and delete the material from
+any computer.  This email may have been monitored for policy compliance.
+[021216]
+
+
 
 
 -------------------------------------------------------
