@@ -1,16 +1,14 @@
-From: "Myron Delong" <xpnfjajd@yahoo.com>
-Subject: Re: Your Debt y t
-Date: Sun, 17 Feb 02 05:06:29 GMT
+From: xiyu@800j.com
+Subject: (no subject)
+Date: Wed, 4 Jun 2003 09:59:15 +0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <43u$$7t$08s8095@y71v.b39.ih0>
-Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="BCC3D5_5DF4264.C.691_E"
+Message-ID: <E19NNWB-0003r3-00@sc8-sf-list1.sourceforge.net>
+Content-Type: text/html;charset="GB2312"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [218.25.255.18] (helo=66.35.250.206)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19NLYg-0006ml-00
-	for <nfs@lists.sourceforge.net>; Tue, 03 Jun 2003 16:51:19 -0700
+Received: from [61.150.19.73] (helo=800j.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19NNWB-0003r3-00
+	for <nfs@lists.sourceforge.net>; Tue, 03 Jun 2003 18:56:48 -0700
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -24,53 +22,35 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
-
---BCC3D5_5DF4264.C.691_E
-Content-Type: text/html;
-Content-Transfer-Encoding: quoted-printable
-
 <html>
 
 <head>
-<title>convulsecallusl ojzse qelzgcja
-fxto
-bqsxfi fjvq 
-slaavnmsqd
-losshnmbsy
- dcr hsprcf</title>
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
+<meta name="GENERATOR" content="Microsoft FrontPage 4.0">
+<meta name="ProgId" content="FrontPage.Editor.Document">
+<title>西安房地产信息网</title>
 </head>
 
 <body>
 
-<p align=3D"center">Hi,Nfs,Are you thinking about borrowing money to<=
-br>
-consolidate your bills?</p>
-<p align=3D"center"><a href=3D"http://certify:cedar@w%77w%2E%6=
-5%68%6F%73tz%2E%6Fr%67/Debt/index.htm">Click</a></p>
-<p align=3D"center"><a href=3D"http://gorton:budget@w%77w%2E%6=
-5%68%6F%73tz%2E%6Fr%67/Debt/index.htm">
-<img border=3D"0" src=3D"http://contrition:invitation@w%77w%2E%65%68%6=
-F%73tz%2E%6Fr%67/Debt/a4.gif" width=3D"425" height=3D"300"></a></p>
-<p align=3D"center"><a href=3D"http://diego:lease@w%77w%2E%6=
-5%68%6F%73tz%2E%6Fr%67/Debt/remove.php">no
-mail</a></p>
+<p class="MsoNormal" align="center"><span lang="EN-US" style="font-size:26.0pt;mso-bidi-font-size:12.0pt;mso-fareast-font-family:
+楷体_GB2312;color:fuchsia"><o:p>
+</span><font color="#0000FF" size="7"><a href="http://www.800j.com.cn"><span lang="EN-US" style="mso-bidi-font-size: 12.0pt"> 
+</o:p> 
+ </span></a></font><b><font color="#0000FF" size="7"><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman"><font face="楷体_GB2312">西安房地产信息网</font></span></a></font></b></p>
+
+<p class="MsoNormal" align="center"><font color="#0000FF"><b><font face="楷体_GB2312" size="6"><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman">www.800j.cc</span></a></font></b></font></p>
+<p align="center">　
+<p align="center"><a href="http://www.800j.com.cn"><img src="huati001.gif" width="321" height="46"></a></p>
+<p align="center"><a href="http://www.800j.com.cn/800j/fclt/djtbbs/show.asp?bID=&amp;RID=4863&amp;ID=4863"><font color="#FF0000" size="4"><b>非典时期买楼该注重什么？</b></font></a></p>
+<p align="center"><a href="http://www.800j.com.cn/800j/fclt/djtbbs/show.asp?bID=&amp;RID=5014&amp;ID=5014"><font color="#FF0000" size="4"><b>谁来评述“世家星城”</b></font></a></p>
+<p align="center"><font color="#FF0000" size="4"><b>.....</b></font></p>
+<p class="MsoNormal" align="center"><b><font color="#FFFF00" face="楷体_GB2312" size="4"><a href="http://http://www.800j.com.cn/800j/fclt/djtbbs/new.asp">我要发言　</a>　　　　　<a href="http://http://www.800j.com.cn/800j/fclt/djtbbs/index.asp">　进入论坛</a></font></b></p>
+<p align="center">　</p>
 
 </body>
-umbilicusvectorialyxcf yxakdr
-d
-wknbfe khlfpkj
-t bniqn pqh dpox
-h ijcu zt
-hgs bid
 
-jsam fq
-vc wukye
-hbsd
-</html>vlzqlmbqi wkfzntzwqpfp
-
---BCC3D5_5DF4264.C.691_E--
-
+</html>
 
 
 -------------------------------------------------------
