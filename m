@@ -1,24 +1,21 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: [PATCH] add MODULE_DESCRIPTION to nfs module, update NFS
- references in MAINTAINERS
-Date: Wed, 26 Jan 2005 21:36:35 +1100
-Message-ID: <16887.29363.367331.643681@cse.unsw.edu.au>
-References: <1106692805.4420.34.camel@w-bwa3.beaverton.ibm.com>
+From: mehta kiran <kiranmehta1981@yahoo.com>
+Subject: Re: address for lockd recovery
+Date: Wed, 26 Jan 2005 02:28:22 -0800 (PST)
+Message-ID: <20050126102822.73360.qmail@web51604.mail.yahoo.com>
+References: <1106720796.10014.10.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-nfs <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CtkgI-0006a3-PE
-	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 02:45:50 -0800
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CtkgI-0000xt-1y
-	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 02:45:50 -0800
-To: bwa@us.ibm.com
-In-Reply-To: message from Bruce Allan on Tuesday January 25
+	id 1CtkPW-0005gw-Ec
+	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 02:28:30 -0800
+Received: from web51604.mail.yahoo.com ([206.190.38.209])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
+	id 1CtkPU-0007WS-TN
+	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 02:28:30 -0800
+To: nfs@lists.sourceforge.net
+In-Reply-To: <1106720796.10014.10.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,46 +29,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tuesday January 25, bwa@us.ibm.com wrote:
-> To direct people to the appropriate resources when experiencing problems
-> with the NFS client here is a simple patch to 1) add module description
-> (with link to NFS documentation) to the nfs module, and 2) update the
-> NFS mailing list and web resources to the MAINTAINERS file.
-> 
-> Patch created against 2.6.11-rc2.
-> 
-> Signed-off-by: Bruce Allan <bwa@us.ibm.com>
-> 
-...
-> diff -urp linux-2.6.11-rc2-vanilla/MAINTAINERS linux-2.6.11-rc2/MAINTAINERS
-> --- linux-2.6.11-rc2-vanilla/MAINTAINERS	2005-01-24 09:17:40.000000000 -0800
-> +++ linux-2.6.11-rc2/MAINTAINERS	2005-01-25 11:29:51.000000000 -0800
-> @@ -1612,7 +1612,9 @@ S:	Maintained
->  NFS CLIENT
->  P:	Trond Myklebust
->  M:	trond.myklebust@fys.uio.no
-> -L:	linux-kernel@vger.kernel.org
-> +L:	nfs@lists.sourceforge.net
+I got your point.
+Please ignore my previous mail.
 
-Trouble with this is that the last I heard, nfs@lists.sourceforge.net
-was subscriber-only, and there are those who don't like non-open lists 
-in MAINTAINERS.  I realise that the same list is given for "KERNEL
-NFSD", but that was put there when it was still open.....
+thanks , 
+ --kiran
 
-NeilBrown
+thanks,
+   kiran
+--- Trond Myklebust <trond.myklebust@fys.uio.no>
+wrote:
 
-> +W:	http://nfs.sourceforge.net
-> +W:	http://linux-nfs.org
->  S:	Maintained
->  
->  NI5010 NETWORK DRIVER
+> ty den 25.01.2005 Klokka 01:16 (-0800) skreiv mehta
+> kiran:
+> > Hi , 
+> >      When i was checking lockd recovery , 
+> >      i noted that clients after getting
+> >      notification messages , use mon_id
+> >      as destination address and not notication
+> >      messages's source address as destination
+> >      address.(as just a reply)
+> > 
+> >      Is there any issue in using notifcation
+> >      messages's source address as destination
+> >      address to reclaim lock. ?
+> 
+> If you have a multi-homed server, it does not follow
+> that the source
+> address used by rpc.statd hosts the same NFS server
+> as the mon_name
+> address.
+> 
+> Cheers,
+>   Trond
+> -- 
+> Trond Myklebust <trond.myklebust@fys.uio.no>
 > 
 > 
-> Regards,
-> ---
-> Bruce Allan
-> Software Engineer, Linux Technology Center
-> IBM Corporation, Beaverton OR USA
+
+
+__________________________________________________
+Do You Yahoo!?
+Tired of spam?  Yahoo! Mail has the best spam protection around 
+http://mail.yahoo.com 
 
 
 -------------------------------------------------------
