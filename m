@@ -1,23 +1,21 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: Locking from Tru64
-Date: Thu, 6 Feb 2003 13:00:19 +1100
+From: Dejan Muhamedagic <dejan@hello-penguin.com>
+Subject: intermittent errors with AIX server
+Date: Fri, 7 Feb 2003 12:01:55 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15937.49587.612392.118333@notabene.cse.unsw.edu.au>
-References: <Pine.LNX.4.53.0302041525090.22528@xpc1.ast.cam.ac.uk>
+Message-ID: <20030207120155.B14505@smp.colors.kwc>
+Reply-To: Dejan Muhamedagic <dejan@hello-penguin.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18gbLC-0007KF-00
-	for <nfs@lists.sourceforge.net>; Wed, 05 Feb 2003 18:00:38 -0800
-Received: From
-	notabene.cse.unsw.edu.au ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <jss@ast.cam.ac.uk>) (for <nfs@lists.sourceforge.net>) By tone
-	With Smtp ; Thu, 6 Feb 2003 13:00:30 +1100
-To: Jeremy Sanders <jss@ast.cam.ac.uk>
-In-Reply-To: message from Jeremy Sanders on Tuesday February 4
+Received: from pinguin13.kwc.at ([193.228.81.158] helo=mail.hello-penguin.com)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18h6H8-0001Bg-00
+	for <nfs@lists.sourceforge.net>; Fri, 07 Feb 2003 03:02:31 -0800
+Received: from dejan by mail.hello-penguin.com with local (Exim 3.33 #3)
+	id 18h6GZ-0003vt-00
+	for nfs@lists.sourceforge.net; Fri, 07 Feb 2003 12:01:55 +0100
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,23 +28,31 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tuesday February 4, jss@ast.cam.ac.uk wrote:
-> Hi,
-> 
-> I don't know whether anyone had any ideas about my last problem? That's
-> the problem where the linux clients had to be rebooted when the linux
-> server was.
-> 
-> I have got an additional problem which I don't understand. We're locking
-> mail spools over NFS from a Tru64 5.1B client machine to Linux
-> 2.4.18-17.7.x (RedHat) server. Using a simple C program which opens the
-> file, does lockf (fd, F_LOCK, 1)) and then closes it after 10 seconds,
-> some users are able to lock their mail spool (one seen, actually) and many
-> users are unable!
+Hello everybody,
 
-Are you using the insecure_locks export option?  If not, does it help?
+I've got a problem I'm not sure how to tackle.  Few times a day
+both Linux NFS clients report:
 
-NeilBrown
+Feb  6 13:16:32 lx kernel: nfs: server aix not responding, timed out
+Feb  6 16:18:17 lx kernel: nfs: server aix not responding, timed out
+Feb  7 04:13:08 lx kernel: nfs: server aix not responding, timed out
+Feb  7 07:19:59 lx kernel: nfs: server aix not responding, timed out
+
+Otherwise, there are no problems reported.  No errors on the
+network i/f either.  The third NFS client is an AIX box and it has
+been running flawless for a few years.  It seems like the load on
+the network at the time when error occurs is not particularly
+high.
+
+The NFS is v3 over UDP with options soft,rsize=8192,wsize=8192.
+The NFS server is AIX and it's running the Oracle RDBMS.  The
+three NFS clients are running SAP apps.  The network is Gb
+ethernet and there are no network errors.  AIX is 4.3.3 and Linux
+kernel is 2.4.20-ac2.
+
+Cheers!
+
+Dejan
 
 
 -------------------------------------------------------
