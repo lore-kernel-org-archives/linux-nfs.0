@@ -1,24 +1,24 @@
-From: Bernd Schubert <bernd-schubert@web.de>
+From: Olaf Kirch <okir@suse.de>
 Subject: Re: Debian Bug#235886: nfs-kernel-server inducing load of 8-9 with no good reason for Linux 2.6 clients
-Date: Fri, 19 Mar 2004 12:53:30 +0100
+Date: Fri, 19 Mar 2004 13:03:22 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200403191253.37489.bernd-schubert@web.de>
-References: <20040318210943.GK3605@perlsupport.com> <20040319084935.GB25649@suse.de>
+Message-ID: <20040319120322.GL25649@suse.de>
+References: <20040318210943.GK3605@perlsupport.com> <20040319084935.GB25649@suse.de> <200403191253.37489.bernd-schubert@web.de>
 Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-15"
+Content-Type: text/plain; charset=iso-8859-15
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B4IZO-0004gy-27
-	for nfs@lists.sourceforge.net; Fri, 19 Mar 2004 03:53:46 -0800
-Received: from relay.uni-heidelberg.de ([129.206.100.212])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B4IZK-0000M2-3S
-	for nfs@lists.sourceforge.net; Fri, 19 Mar 2004 03:53:42 -0800
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20040319084935.GB25649@suse.de>
+	id 1B4Iij-0007IK-50
+	for nfs@lists.sourceforge.net; Fri, 19 Mar 2004 04:03:25 -0800
+Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.30)
+	id 1B4Iii-0007KF-G4
+	for nfs@lists.sourceforge.net; Fri, 19 Mar 2004 04:03:24 -0800
+To: Bernd Schubert <bernd-schubert@web.de>
+In-Reply-To: <200403191253.37489.bernd-schubert@web.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,32 +31,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-=2D----BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA1
+On Fri, Mar 19, 2004 at 12:53:30PM +0100, Bernd Schubert wrote:
+> Now there's also unfs3 (http://unfs3.sourceforge.net/), which supports as the 
+> name suggests v3.
 
-On Friday 19 March 2004 09:49, Olaf Kirch wrote:
-> One more thing:
-> > Something is clearly wrong here; stopping nfs-kernel-server makes the
-> > load drop to zero almost immediately, and substituting nfs-user-server
-> > for nfs-kernel-server also fixes the problem.
->
-> This probably means the problem is in the NFSv3 client code. The major
-> difference between knfsd and unfsd is that the latter is v2 only.
->
+Which I think has a striking resemblance to unfsd in some parts of the
+code but neglects to acknowledge that, both in the copyright statements
+and the READMEs...
 
-Now there's also unfs3 (http://unfs3.sourceforge.net/), which supports as t=
-he=20
-name suggests v3.
-
-Cheers,
-	Bernd
-=2D----BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.4 (GNU/Linux)
-
-iD8DBQFAWt8/C8BUnAF+ydYRAhCVAJ48HQ8l8o/ZKZBhaXFBQxv4VvMoNQCeIsv0
-+cn/FO2oRl/XFf9v6Ktf+kE=3D
-=3DjWh4
-=2D----END PGP SIGNATURE-----
+Olaf
+-- 
+Olaf Kirch     |  Stop wasting entropy - start using predictable
+okir@suse.de   |  tempfile names today!
+---------------+ 
 
 
 -------------------------------------------------------
