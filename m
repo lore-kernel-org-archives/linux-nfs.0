@@ -1,19 +1,20 @@
 From: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
-Subject: Re: performance question
-Date: Tue, 1 Apr 2003 20:45:33 +0200 (CEST)
+Subject: Re: NFSv4 and client caching to local disk?
+Date: Tue, 1 Apr 2003 21:05:36 +0200 (CEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0304012024410.4695-100000@kenzo.iwr.uni-heidelberg.de>
-References: <20030401153950.27556.qmail@pour.midcoast.com>
+Message-ID: <Pine.LNX.4.44.0304012046510.5929-100000@kenzo.iwr.uni-heidelberg.de>
+References: <20030331103850.1f40a7f9.jake@dtiserv2.com>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: =?ISO-8859-1?Q?K=E5re?= Hviid <ukh@id.cbs.dk>, <nfs@lists.sourceforge.net>
+Cc: James Pearson <james-p@moving-picture.com>, <Charles.Lever@netapp.com>,
+   <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from mail.iwr.uni-heidelberg.de ([129.206.104.30])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 190Qlh-0004lH-00
-	for <nfs@lists.sourceforge.net>; Tue, 01 Apr 2003 10:45:57 -0800
-To: jp@pour.midcoast.com
-In-Reply-To: <20030401153950.27556.qmail@pour.midcoast.com>
+	id 190R51-0002kF-00
+	for <nfs@lists.sourceforge.net>; Tue, 01 Apr 2003 11:05:55 -0800
+To: Jake Gold <jake@dtiserv2.com>
+In-Reply-To: <20030331103850.1f40a7f9.jake@dtiserv2.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,25 +27,29 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, 1 Apr 2003 jp@pour.midcoast.com wrote:
+On Mon, 31 Mar 2003, Jake Gold wrote:
 
-> Flow control on the switch is disabled - the default, I checked. It's also 
-> set for 100-FD, like my ethernet cards. I always hard-set ethernet 
-> settings because I don't trust autonegotiation under all circumstances.
+> I have a FAS940 with a cluster of Linux machines mounting _read-only_
+> volumes over NFSv3. My situation is the same as James Pearson's....those
+> machines read large, rarely modified files, where memory caching doesn't
+> help a whole lot. It would be very nice to be able to have my
+> under-worked local disks take some of the load off the filer.
 
-People that don't want to be helped should not ask for help any more!
-I've already warned about forcing speed, check the net driver mailing 
-lists and scyld.com to see why and also for some words from Donald Becker 
-about why the forcing of speed and duplex ever came into discussion.
+How about doing it in the application itself ? Often application has more 
+knowledge about what it needs than the OS. So in a case like the one that 
+you described I would copy the rarely modified file(s) to the local disk 
+and just before accessing them in any way check to see if they were 
+modified. If this is true read-only you don't even need to check this, but 
+otherwise you could use some rsync-style transfer to get only the parts 
+that were modified (assuming that new data is not completely different)... 
+Modification can be detected from the file attributes, md5sum or something 
+else.
 
-> WARNING: option -b implies udp testing
-
-Oh yes, you want to test network quality with UDP... Have you ever thought 
-that NFS needs communication both ways ? If you think that your network 
-with forced full-duplex is perfect, try two UDP streams in opposite 
-directions - you should not loose one packet and still achieve high 
-bandwidth; and if you want to stress it even more, try UDP packets that do 
-not fit in an Ethernet frame.
+The application level caching is more interesting when the cache size is 
+smaller than the data set. The OS would typically use LRU strategy to 
+make some more room in the cache when needed, but this is not always the 
+best approach - the application is the only one that can have some more 
+information about what data will be needed in the near future.
 
 -- 
 Bogdan Costescu
