@@ -1,20 +1,20 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: Questions about NFS over TCP
-Date: Thu, 24 Apr 2003 08:23:53 -0400
+From: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
+Subject: Re: Unable to handle kernel NULL pointer dereference at virtual
+ address ..
+Date: Thu, 24 Apr 2003 16:57:38 +0200 (CEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3EA7D759.5000101@RedHat.com>
-References: <3EA66B58.2B1E4A45@moving-picture.com>
+Message-ID: <Pine.LNX.4.44.0304241649460.7493-100000@kenzo.iwr.uni-heidelberg.de>
+References: <20030423181404.15518.qmail@web11403.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from nat-pool-rdu.redhat.com ([66.187.233.200] helo=lacrosse.corp.redhat.com)
+Received: from mail.iwr.uni-heidelberg.de ([129.206.104.30])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 198fhv-0008LS-00
-	for <nfs@lists.sourceforge.net>; Thu, 24 Apr 2003 05:20:07 -0700
-Received: from RedHat.com (dickson.boston.redhat.com [172.16.65.20])
-	by lacrosse.corp.redhat.com (8.11.6/8.9.3) with ESMTP id h3OCK0V05916
-	for <nfs@lists.sourceforge.net>; Thu, 24 Apr 2003 08:20:00 -0400
-To: nfs@lists.sourceforge.net
+	id 198iAY-0002l6-00
+	for <nfs@lists.sourceforge.net>; Thu, 24 Apr 2003 07:57:50 -0700
+To: Abhishek Rai <abbashake007@yahoo.com>
+In-Reply-To: <20030423181404.15518.qmail@web11403.mail.yahoo.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,24 +27,36 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-James Pearson wrote:
+On Wed, 23 Apr 2003, Abhishek Rai wrote:
 
->I've just started experimenting with NFS over TCP and have a few
->  
->
-I too have started working with NFS over TCP and the only
-problem I've seen so far is with flow control on the server
-side...
+> virtual address 0000000f
 
-Running the fstress benchmark locks ups NFSD tighter than
-a drum in a matter of seconds... Now this probably has to
-do with way that fstress sends its rpcs. Its seems to
-"piggy-back" a bunch of messages in one TCP stream (meaning
-ethereal show multiple rpcs in one tcp frame) which
-is far from "normal" traffic. But it does hang the
-which makes it very hard to get any of timings...
+is exactly...
 
-SteveD.
+> c6675024   ecx: 00000001   edx: 00000007
+
+... EDX + 8 which is obtained here:
+
+>  0:   39 42 08         cmp   %eax,0x8(%edx)   <=====
+
+> ... a 'cmp' instruction: a mere register operation.
+
+This statement means that you do not understand asm syntax properly. 
+Placing a register between paranthesis ( "(" and ")" ) is like 
+dereferencing a pointer in C - access the data that is at the address 
+found in the register; the 0x8(%edx) notation means 0x8 bytes offset 
+from the address in EDX.
+
+If you want live debugging, you could try kdbg...
+
+-- 
+Bogdan Costescu
+
+IWR - Interdisziplinaeres Zentrum fuer Wissenschaftliches Rechnen
+Universitaet Heidelberg, INF 368, D-69120 Heidelberg, GERMANY
+Telephone: +49 6221 54 8869, Telefax: +49 6221 54 8868
+E-mail: Bogdan.Costescu@IWR.Uni-Heidelberg.De
+
 
 
 
