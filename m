@@ -1,26 +1,24 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: rpc.mountd stops functioning
-Date: Mon, 30 Aug 2004 15:54:08 +1000
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: [PATCH / RFC] nfs-utils: High Availability NFS
+Date: Mon, 30 Aug 2004 10:25:11 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16690.49408.762551.914134@cse.unsw.edu.au>
-References: <411217BE.8070209@framestore-cfc.com>
-	<20040805144659.GD25948@fieldses.org>
-	<16686.43784.910598.870375@cse.unsw.edu.au>
-	<20040827231654.GA2836@fieldses.org>
+Message-ID: <20040830082510.GD28454@suse.de>
+References: <4124DB86.9060505@steeleye.com> <16677.22269.988036.787320@cse.unsw.edu.au> <412E1C10.5020703@steeleye.com> <20040827073049.GA23324@suse.de> <412F3362.5040707@steeleye.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C1f7a-0003M9-O7
-	for nfs@lists.sourceforge.net; Sun, 29 Aug 2004 22:54:26 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1C1f7a-0003Cl-0S
-	for nfs@lists.sourceforge.net; Sun, 29 Aug 2004 22:54:26 -0700
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: message from J. Bruce Fields on Friday August 27
+	id 1C1hTZ-0007Ob-PV
+	for nfs@lists.sourceforge.net; Mon, 30 Aug 2004 01:25:17 -0700
+Received: from cantor.suse.de ([195.135.220.2])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.34)
+	id 1C1hTY-0002Ow-Sa
+	for nfs@lists.sourceforge.net; Mon, 30 Aug 2004 01:25:17 -0700
+To: Paul Clements <paul.clements@steeleye.com>
+In-Reply-To: <412F3362.5040707@steeleye.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,66 +31,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Friday August 27, bfields@fieldses.org wrote:
-> On Fri, Aug 27, 2004 at 01:31:20PM +1000, Neil Brown wrote:
-> > I don't think this patch is needed (though it wouldn't actually bre=
-ak anything).
-> > The loop in svc_run.c starts:
-> >=20
-> >=20
-> > =09=09readfds =3D svc_fdset;
-> > =09=09cache_set_fds(&readfds);
-> >=20
-> > so readfds is completely initialised at the top of the loop, so
-> > clearing something at the bottom (which is essentially what this pa=
-tch
-> > does) should be a no-op.
-> >=20
-> > Am I wrong?
->=20
-> Note that cache_process_req() (which the patch below modifies) is not=
+On Fri, Aug 27, 2004 at 09:13:06AM -0400, Paul Clements wrote:
+> With so many things moving out of the kernel to userland, it's 
+> surprising to see statd moving into the kernel. And it certainly does 
+> make modifications, such as this, much more difficult.
 
-> all the way at the bottom of the loop; there's still an importan call=
- to
-> svc_getreqset() after it.
->=20
-> If I understand the problem correctly, what happens is that if select=
-()
-> returns with a set that includes two file descriptors, the first for =
-a
-> cache channel and the second for an rpc socket, and if we don't clear=
+Well, the issue with statd is that it exists _only_ to make lockd happy.
+But what it really does is make lockd awfully complicated because we
+have to do upcalls all the time.
 
-> the first file descriptor from that set before passing it to
-> svc_getreqset(), then the rpc code will try to read an rpc request fr=
-om
-> a cache channel file, and will get very confused.
+So my rationale for moving statd into the kernel is to actually eliminate
+a lot of code and have a minimal set up functionality in there that does
+exactly what lockd needs, no more. In particular, no more SM_MON and
+SM_UNMON support that allows untrusted hosts to do sneaky stuff - instead,
+lockd writes the /var/lib/nfs/sm files directly. The only thing my kernel
+statd supports is SM_NOTIFY, and that even is delivered directly to the
+locking code.
 
-Ahh, I get it now, thanks.
+> But the callout happens before statd replies to the client, so there's 
+> no chance that we lose any clients if there's a failure. If we use 
+> dnotify then we only find out there's been a change after the change has 
+> occurred, which means the client may have already gotten a reply saying 
+> he's been added to the notify list. If we get a failure at this point, 
+> we've lost a client, and upon failover the client's locks are no longer 
+> valid.
 
-This is really a bug in glibc.   A relevant piece of code reads:
-  xprt =3D xports[fd];
-  /* Do we control fd? */
-  if (xprt =3D=3D NULL)
-     return;
+Doesn't a HA NFS deployment require a shared disk anyway? Why not just
+move /var/lib/nfs to this file system so it gets shared the same way you
+share the rest of your data?
 
-so unknown file descriptors should be ignored.  However xports is
-allocated thus:
-  if (xports =3D=3D NULL)
-    {
-      xports =3D (SVCXPRT **) malloc (_rpc_dtablesize () * sizeof (SVCX=
-PRT *));
-      if (xports =3D=3D NULL) /* Don=B4t add handle */
-=09return;
-    }
-
-and so is not NULL-filled !!
-
-In any case, you suggested change is good defensive programming and I
-will add it.
-
-Thanks.
-NeilBrown
-
+Olaf
+-- 
+Olaf Kirch     |  The Hardware Gods hate me.
+okir@suse.de   |
+---------------+ 
 
 
 -------------------------------------------------------
