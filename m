@@ -1,18 +1,18 @@
-From: "Steve Wolfe" <sn@codon.com>
-Subject: Re: Question on NFS server timing out
-Date: Tue, 24 Jun 2003 17:35:41 -0600
+From: =?iso-8859-1?Q?Brasseur_Val=E9ry?= <Valery.Brasseur@atosorigin.com>
+Subject: RE: nfs lock question...
+Date: Wed, 25 Jun 2003 09:30:57 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <001301c33aa9$56d01f70$88693fd1@WEASEL>
-References: <001101c33a76$77b37f30$88693fd1@WEASEL> <16120.56873.142665.95413@gargle.gargle.HOWL>
+Message-ID: <8147E1B07201DD41B6B9F0D31E07B384449157@srv-grp-s07.dev.atos.fr>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: multipart/mixed;
+	boundary="----_=_NextPart_000_01C33AEB.B80F0AE8"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from codon.com ([209.63.105.132])
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19UxHU-0005c5-00
-	for <nfs@lists.sourceforge.net>; Tue, 24 Jun 2003 16:32:56 -0700
-To: <nfs@lists.sourceforge.net>
+Received: from hermes3.atos-group.com ([160.92.18.10])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19V4kE-0003To-00
+	for <nfs@lists.sourceforge.net>; Wed, 25 Jun 2003 00:31:06 -0700
+To: 'Trond Myklebust' <trond.myklebust@fys.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,51 +25,93 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> If you are getting I/O errors from cat then you are presumably
-> mounting with the "soft" option.  This is almost always wrong.  Use
-> hard,intr.
+This message is in MIME format. Since your mail reader does not understand
+this format, some or all of this message may not be legible.
 
-  The reason I used soft was because when the NFS server would have a
-hiccup, CGI apps would pile up on all of the web servers, and never exit.
-But I guess I'll have to live with that and use hard. : )
+------_=_NextPart_000_01C33AEB.B80F0AE8
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-> I'm guessing that the high load during the days is a read-mostly load.
-> moving the log files in a write-mostly load.  Presumably your nfs
-> server isn't coping with writes as fast as you would like.
->
-> You are probably using the "sync" export option.  This is normally a
-> good thing.  However if you are happy to risk loosing recently written
-data if
-> the fileserver crashes (which you might be in your situation) you
-> could replace "sync" with "async" and get faster writes.
+> -----Original Message-----
+> From: Trond Myklebust [mailto:trond.myklebust@fys.uio.no]
+> Sent: Tuesday, June 24, 2003 9:00 PM
+> To: Brasseur Val=E9ry
+> Cc: nfs@lists.sourceforge.net
+> Subject: Re: [NFS] nfs lock question...
+>=20
+>=20
+> >>>>> " " =3D=3D Brasseur Val=E9ry <Valery.Brasseur@atosorigin.com> =
+writes:
+>=20
+>      > is it normal that when a process is stoppped (ctrl-z ;-) and =
+he
+>      > has locks on a nfs-server
+>=20
+> Yes. ctrl-z will normally suspend the process. It does nothing to =
+kill
+> it...
+>=20
+>      > if this nfs server reboot the stopped process does'nt reclaim
+>      > it's locks ?!!!
+>=20
+> Why not? That's a separate thread...
+>=20
+It's what I have seen in my tests !!! but yes i don't understand it !!!
 
-  No 'sync', the options have been:
 
-exec,nodev,nosuid,rw,soft,rsize=8192,wsize=8192,intr
+> Cheers,
+>   Trond
+>=20
 
-and replaced with:
+------_=_NextPart_000_01C33AEB.B80F0AE8
+Content-Type: application/ms-tnef
+Content-Transfer-Encoding: base64
 
-exec,nodev,nosuid,rw,hard,rsize=8192,wsize=8192,intr
+eJ8+IjwHAQaQCAAEAAAAAAABAAEAAQeQBgAIAAAA5AQAAAAAAADoAAEIgAcAGAAAAElQTS5NaWNy
+b3NvZnQgTWFpbC5Ob3RlADEIAQmAAQAhAAAAQ0U0RDdCQUQ5QzIwMEU0RDhDQUEwMDMwN0E0OTIx
+NDgAPQcBIIADAA4AAADTBwYAGQAJAB4AOwADAF4BAQWAAwAOAAAA0wcGABkACQAeADkAAwBcAQEE
+gAEAHwAAAFJFOiBbTkZTXSBuZnMgbG9jayBxdWVzdGlvbi4uLgDiCQENgAQAAgAAAAIAAgABA5AG
+AFgIAAAzAAAACwACAAEAAAADAC4AAAAAAEAAOQDoCg+46zrDAR4AMUABAAAACgAAAFZCUkFTU0VV
+UgAAAAMAGkAAAAAAHgAwQAEAAAAKAAAAVkJSQVNTRVVSAAAAAwAZQAAAAAAeAHAAAQAAABsAAABb
+TkZTXSBuZnMgbG9jayBxdWVzdGlvbi4uLgAAAgFxAAEAAAAbAAAAAcM6gsnKTvOcnGiOQ/Wv68yz
+btnRLAAaNvIAAAIBCRABAAAA2wIAANcCAAB6BAAATFpGdc/p2AEDAAoAcmNwZzEyNeIyA0N0ZXgF
+QQEDAfdPCoACpAPjAgBjaArAc/BldDAgBxMCgA/zAFB/BFYIVQeyEcUOUQMBEMcy9wYABsMRxTME
+RhDJEtsR09sI7wn3Oxi/DjA1EcIMYM5jAFALCQFkMzYRUAumUCA+IC0dsk8FEGcPC4AHQAXQB5Bz
+YWdlLx2zCqIKgB2QRgNhOiASVANgbmQF0HlrbNBlYnVzBUBbAMADEJB0bzp0IEIubSCmAEBmeXMu
+dWlv8C5ub10fVgZgAjAgEQEKUHNkYXksIErAdW5lIDI0JLAB0CAwMyA5OiVwIFAKTR9WVCGQIEJy
+YSUEEGUIcCBWB0BcJ5BlOXJ5H1ZDYyAQUm4D0EBsBAB0ItBz/QhhYwEQBbAe4CMgETAjZ5h1YmoF
+kCQRUmUgEKBbTkZTXSiyIBhQUGNrIHEkUXQjAG4uLi0QH1YtTj4uwiAimS8RPT0m3yfgIDwncckE
+kHkuL5ZAYSGAKWDVHhMuBaBtHZB3BRAOsPxzOi1ONDMdkAQANKAFQG0jMHIAwAMgdBDwBUB3wmgJ
+8CBhIHADYCmgZwQRNLEhAG9wNyAJgCACKCsgcmwteiA7/C0pNhAgYTXgM80Q8CwkLwQgAiA2ESjB
+LREgcnbLBJAtTlkHkC4gN5UD8NZsAyA1FGwwoHMg8DdAXyBhNYAlADZFPFBJBUBkXm8HkSMwNYAL
+gGc1cG98IGs88R9WMvAtHzQoZu81cTSxLAI6xCAYwAbgP6DfPjM28zdRNkY/QicCMEPhSmMLYW0z
+znQnObY/ZiFIQC1OV2gwoD+RP/8gIDWRR6E2IBEgCrEx0CUA+zWAGMBhIfBBPj8QR6E10H01oUk5
+gTrwQ3E18QuAIN8iEDVwLLEEIEhBICDgBUDKeQeRaT8xbicFQCTg/wSBIQA4QjThSEdRCihhNeBd
+UCEsM8ggMy1MfVSQAB4AQhABAAAAIQAAADxzaHNsbHZydGk3My5mc2ZAY2hhcmdlZC51aW8ubm8+
+AAAAAAMAJgAAAAAAAwA2AAAAAAADAN4/r28AAAMA8T8MBAAAAwD9P+QEAAADAAlZAQAAAAsABYAI
+IAYAAAAAAMAAAAAAAABGAAAAAA6FAAAAAAAAAwABgAggBgAAAAAAwAAAAAAAAEYAAAAAUoUAAHN5
+AQAeAAKACCAGAAAAAADAAAAAAAAARgAAAABUhQAAAQAAAAQAAAA5LjAAAwADgAggBgAAAAAAwAAA
+AAAAAEYAAAAAAYUAAAAAAAALAASACCAGAAAAAADAAAAAAAAARgAAAAADhQAAAAAAAAMAB4AIIAYA
+AAAAAMAAAAAAAABGAAAAABGFAAAAAAAAAwAGgAggBgAAAAAAwAAAAAAAAEYAAAAAEIUAAAAAAAAD
+AAiACCAGAAAAAADAAAAAAAAARgAAAAAYhQAAAAAAAAsADIAIIAYAAAAAAMAAAAAAAABGAAAAAAaF
+AAAAAAAAAwCAEP////8eAPMQAQAAACUAAABSRSUzQSBbTkZTXSBuZnMgbG9jayBxdWVzdGlvbi4u
+Li5FTUwAAAAACwD2EAAAAAALAPQQAAAAAAsA9RAAAAAAAgFHAAEAAAAwAAAAYz1GUjthPSA7cD1B
+VE9TO2w9U1JWLUdSUC1TMDctMDMwNjI1MDczMDU3Wi0xODIAAgH5PwEAAABFAAAAAAAAANynQMjA
+QhAatLkIACsv4YIBAAAAAAAAAC9PPUFUT1MvT1U9TU0vQ049UkVDSVBJRU5UUy9DTj1WQlJBU1NF
+VVIAAAAAHgD4PwEAAAAQAAAAQnJhc3NldXIgVmFs6XJ5AB4AOEABAAAACgAAAFZCUkFTU0VVUgAA
+AAIB+z8BAAAARQAAAAAAAADcp0DIwEIQGrS5CAArL+GCAQAAAAAAAAAvTz1BVE9TL09VPU1NL0NO
+PVJFQ0lQSUVOVFMvQ049VkJSQVNTRVVSAAAAAB4A+j8BAAAAEAAAAEJyYXNzZXVyIFZhbOlyeQAe
+ADlAAQAAAAoAAABWQlJBU1NFVVIAAABAAAcwAEiLpes6wwFAAAgw6nrhuOs6wwEeAD0AAQAAAAUA
+AABSRTogAAAAAB4AHQ4BAAAAGwAAAFtORlNdIG5mcyBsb2NrIHF1ZXN0aW9uLi4uAAAeADUQAQAA
+AEEAAAA8ODE0N0UxQjA3MjAxREQ0MUI2QjlGMEQzMUUwN0IzODQ0NDkxNTdAc3J2LWdycC1zMDcu
+ZGV2LmF0b3MuZnI+AAAAAAsAKQAAAAAACwAjAAAAAAADAAYQzgOOlwMABxD8AQAAAwAQEAEAAAAD
+ABEQAQAAAB4ACBABAAAAZQAAAC0tLS0tT1JJR0lOQUxNRVNTQUdFLS0tLS1GUk9NOlRST05ETVlL
+TEVCVVNUTUFJTFRPOlRST05ETVlLTEVCVVNUQEZZU1VJT05PU0VOVDpUVUVTREFZLEpVTkUyNCwy
+MDAzOToAAAAAAgF/AAEAAABBAAAAPDgxNDdFMUIwNzIwMURENDFCNkI5RjBEMzFFMDdCMzg0NDQ5
+MTU3QHNydi1ncnAtczA3LmRldi5hdG9zLmZyPgAAAAAZ6Q==
 
-> What filesystem?  How is it configured?
-> If you are using ext3, then data=journal will speed up nfs writes.
-> If you are using data=journal, how big is the journal and how big are
-> the log files that you write?
-
-   It's ext3 with the defaults.  "data=journal" is on my "todo" list.  The
-array can write 70 MB/s with ease, so I'm *hoping* that it's not the
-bottleneck.
-
-> It doesn't hurt to add a few more threads, though I cannot promise it
-> will help.
-> If all seven clients are busy they will only get about threads each,
-> they can probably make use of more than that.  I would probably try 60
-> and see what happens.
-
-  I'll give it a shot.  Thanks again for the tips.
-
-steve
-
+------_=_NextPart_000_01C33AEB.B80F0AE8--
 
 
 -------------------------------------------------------
