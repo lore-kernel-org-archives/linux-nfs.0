@@ -1,24 +1,21 @@
-From: =?iso-8859-15?Q?Ga=EBl?= Roualland <gael.roualland@oleane.net>
-Subject: Re: 2.6.0 -- nfs client runs 15x faster if client app runs as
- root.
-Date: Thu, 08 Jan 2004 15:15:43 +0100
+From: <trond.myklebust@fys.uio.no>
+Subject: Re: 2.6.0 -- nfs client runs 15x faster if client app runs as root.
+Date: Thu, 8 Jan 2004 16:12:26 +0100 (CET)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3FFD660F.1333683F@oleane.net>
-References: <34280.141.211.133.197.1073512478.squirrel@webmail.uio.no>
+Message-ID: <33640.68.42.103.198.1073574746.squirrel@webmail.uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: ewhiting@amis.com, nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="----=_20040108161226_73587"
+Cc: <ewhiting@amis.com>, <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1Aeax6-0008Cm-V4
-	for nfs@lists.sourceforge.net; Thu, 08 Jan 2004 06:16:00 -0800
-Received: from hal.oleane.net ([62.161.136.5])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.30)
-	id 1Aeax6-0000oF-Bx
-	for nfs@lists.sourceforge.net; Thu, 08 Jan 2004 06:16:00 -0800
-To: trond.myklebust@fys.uio.no
+	id 1Aebps-0002gH-BI
+	for nfs@lists.sourceforge.net; Thu, 08 Jan 2004 07:12:36 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1Aebpr-000119-PK
+	for nfs@lists.sourceforge.net; Thu, 08 Jan 2004 07:12:35 -0800
+To: <gael.roualland@oleane.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,37 +28,102 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-trond.myklebust@fys.uio.no a =E9crit :
->=20
-> > My 2.6.0 nfs clients to a netapps 940 NFS server run very differently
-> depending
-> > on who the user is. Both tcp and udp mounts seem to show the same beh=
-avior.
-> > This is very apparent when doing the bonnie putc() tests.
-> > nfsstat and tcpdump show a lot of extra setattr calls when running as=
- a
-> normal
-> > user. I assume this is the reason for the slowdown. Is there a fix? O=
-r
-> is this the
-> > way it is supposed to be?
->=20
-> Huh?
-> I'm certainly not seeing one setattr call per write on my 2.6 clients. =
-Is
-> this stock
-> 2.6.0 or is it patched? Does 2.6.1-rc2 change anything?
+------=_20040108161226_73587
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: 8bit
 
-Has the file exec permission set ?
+På to , 08/01/2004 klokka 09:15, skreiv Gaël Roualland:
+> Has the file exec permission set ?
+> If yes this would look like an earlier problem that seems to still
+> occur on 2.6.0.
+> See http://marc.theaimsgroup.com/?l=linux-nfs&m=106966481311224 and
+> http://marc.theaimsgroup.com/?l=linux-nfs&m=106981736010493.
+
+Yeah. It turned out to be remove_suid() that was causing an empty
+SETATTR to be sent after every write(). The solution is just to filter
+out all requests that will result in empty SETATTRs. The server will
+automatically do the honours w.r.t. the suid bit as soon as it receives
+our write.
+
+Cheers,
+  Trond
+
+
+
+------=_20040108161226_73587
+Content-Type: text/html; name="untitled-1.2"
+Content-Disposition: attachment; filename="untitled-1.2"
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 TRANSITIONAL//EN">
+<HTML>
+<HEAD>
+  <META HTTP-EQUIV="Content-Type" CONTENT="text/html; CHARSET=UTF-8">
+  <META NAME="GENERATOR" CONTENT="GtkHTML/3.0.9">
+</HEAD>
+<BODY>
+<!--+GtkHTML:<DATA class="ClueFlow" key="orig" value="1">P&#229; to , 08/01/2004 klokka 09:15, skreiv Ga&#235;l Roualland:
+<BLOCKQUOTE TYPE=CITE>
+<PRE><FONT COLOR="#737373"><I>Has the file exec permission set ?
 If yes this would look like an earlier problem that seems to still occur
 on 2.6.0.
-See http://marc.theaimsgroup.com/?l=3Dlinux-nfs&m=3D106966481311224 and
-http://marc.theaimsgroup.com/?l=3Dlinux-nfs&m=3D106981736010493.
+See </FONT><A HREF="http://marc.theaimsgroup.com/?l=linux-nfs&m=106966481311224"><U>http://marc.theaimsgroup.com/?l=linux-nfs&amp;m=106966481311224</U></A><FONT COLOR="#737373"> and</FONT>
+<A HREF="http://marc.theaimsgroup.com/?l=linux-nfs&m=106981736010493"><U>http://marc.theaimsgroup.com/?l=linux-nfs&amp;m=106981736010493</U></A><FONT COLOR="#737373">.</I></FONT></PRE>
+</BLOCKQUOTE>
+<!--+GtkHTML:<DATA class="ClueFlow" key="orig" value="0"><BR>
+<!--+GtkHTML:<DATA class="ClueFlow" key="orig" value="0">Yeah. It turned out to be remove_suid() that was causing an empty SETATTR to be sent after every write(). The solution is just to filter<BR>
+<!--+GtkHTML:<DATA class="ClueFlow" key="orig" value="0">out all requests that will result in empty SETATTRs. The server will automatically do the honours w.r.t. the suid bit as soon as it receives our write.<BR>
+<!--+GtkHTML:<DATA class="ClueFlow" key="orig" value="0"><BR>
+<!--+GtkHTML:<DATA class="ClueFlow" key="orig" value="0">Cheers,<BR>
+<!--+GtkHTML:<DATA class="ClueFlow" key="orig" value="0">&nbsp; Trond<BR>
+<!--+GtkHTML:<DATA class="ClueFlow" key="orig" value="0"><BR>
+<!--+GtkHTML:<DATA class="ClueFlow" key="orig" value="0"><BR>
+</BODY>
+</HTML>
 
-Ga=EBl.
+------=_20040108161226_73587
+Content-Type: text/plain; name="linux-2.6.1-01-fix_setattr.dif"
+Content-Disposition: attachment; filename="linux-2.6.1-01-fix_setattr.dif"
 
---=20
-Ga=EBl Roualland -+- gael.roualland@oleane.net
+ inode.c |    9 +++++++++
+ 1 files changed, 9 insertions(+)
+
+diff -u --recursive --new-file --show-c-function linux-2.6.1-rc2/fs/nfs/inode.c linux-2.6.1-01-fix_setattr/fs/nfs/inode.c
+--- linux-2.6.1-rc2/fs/nfs/inode.c	2004-01-07 22:57:48.000000000 -0500
++++ linux-2.6.1-01-fix_setattr/fs/nfs/inode.c	2004-01-08 00:22:49.000000000 -0500
+@@ -791,6 +791,8 @@ out_no_inode:
+ 	goto out;
+ }
+ 
++#define NFS_VALID_ATTRS (ATTR_MODE|ATTR_UID|ATTR_GID|ATTR_SIZE|ATTR_ATIME_SET|ATTR_MTIME_SET)
++
+ int
+ nfs_setattr(struct dentry *dentry, struct iattr *attr)
+ {
+@@ -798,6 +800,11 @@ nfs_setattr(struct dentry *dentry, struc
+ 	struct nfs_fattr fattr;
+ 	int error;
+ 
++	/* Optimization: if the end result is no change, don't RPC */
++	attr->ia_valid &= NFS_VALID_ATTRS;
++	if (attr->ia_valid == 0)
++		return 0;
++
+ 	lock_kernel();
+ 
+ 	/*
+@@ -813,6 +820,8 @@ printk("nfs_setattr: revalidate failed, 
+ 
+ 	if (!S_ISREG(inode->i_mode)) {
+ 		attr->ia_valid &= ~ATTR_SIZE;
++		if (attr->ia_valid == 0)
++			goto out;
+ 	} else {
+ 		filemap_fdatawrite(inode->i_mapping);
+ 		error = nfs_wb_all(inode);
+
+
+------=_20040108161226_73587--
+
 
 
 -------------------------------------------------------
