@@ -1,23 +1,23 @@
-From: Niall  O Broin <niall@magicgoeshere.com>
-Subject: NFS filename case problem with Netware server
-Date: Mon,  2 Feb 2004 10:15:47 +0000
+From: Miquel van Smoorenburg <miquels@cistron.nl>
+Subject: off_t in nfsd_commit needs to be loff_t
+Date: Mon, 2 Feb 2004 13:02:18 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <r02010100-1032-C52C0DCC556811D89983000393B4AF7E@[192.168.0.100]>
+Message-ID: <20040202120217.GA9380@cistron.nl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Anb8k-0000h8-7P
-	for nfs@lists.sourceforge.net; Mon, 02 Feb 2004 02:17:14 -0800
-Received: from java.makalumedia.com ([209.61.187.47] helo=makalumedia.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1Anb8j-0004jD-Pz
-	for nfs@lists.sourceforge.net; Mon, 02 Feb 2004 02:17:13 -0800
-Received: from [213.79.32.23] (account niall HELO 192.168.0.100)
-  by makalumedia.com (CommuniGate Pro SMTP 3.5.7)
-  with ESMTP id 3960472 for nfs@lists.sourceforge.net; Mon, 02 Feb 2004 11:15:49 +0100
-To: nfs@lists.sourceforge.net
+	id 1Ancmb-0007er-HB
+	for nfs@lists.sourceforge.net; Mon, 02 Feb 2004 04:02:29 -0800
+Received: from 10fwd.cistron-office.nl
+	([62.216.29.197] helo=smtp.cistron-office.nl ident=mail)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.30)
+	id 1Ancma-0003f3-Rx
+	for nfs@lists.sourceforge.net; Mon, 02 Feb 2004 04:02:29 -0800
+To: Neil Brown <neilb@cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,56 +30,69 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I have a strange NFS problem and I'm wondering if anyone can shed any
-light. I have some Linux boxes which need to mount some volumes from a
-Netware server via NFS. The appropriate bit of Novell software has been
-installed and configured, and the Linux box can mount the volumes.
-However, I get errors like this when I do an 'ls' in a particular
-directory:
+While I was stress-testing NFS/XFS on 2.6.1/2.6.2-rc, I found that
+sometimes my "dd" would exit with:
 
-ls: /mnt/netware/CONTRACT/MDAVIS/A700.TST: No such file or directory
+	#  dd if=/dev/zero bs=4096 > /mnt/file
+	dd: writing `standard output': Invalid argument
+	1100753+0 records in
+	1100752+0 records out
 
-I get maybe about 20 of these errors, in a directory which has about
-2500 files. Investigation reveals that in each case, there is a
-corresponding file whose name is all lower case e.g.
+After adding some debug printk's to the server and client code
+and some tcpdump-ing, I found that the NFSERR_INVAL was returned by
+nfsd_commit on the server.
 
-/mnt/netware/CONTRACT/MDAVIS/a700.tst
+Turns out that the "offset" argument is off_t instead of loff_t.
+It isn't used at all (unfortunately), but it _is_ checked for
+sanity, so that's where the error came from.
+
+Here's the fix: nfsd_commit-loff_t.patch
+
+Should go into the next -rc, I guess.
+
+diff -ruN -X /home/staff/miquels/diff-exclude linux-2.6.2-rc2.orig/include/linux/nfsd/nfsd.h linux-2.6.2-rc2/include/linux/nfsd/nfsd.h
+--- linux-2.6.2-rc2.orig/include/linux/nfsd/nfsd.h	2004-01-09 08:00:04.000000000 +0100
++++ linux-2.6.2-rc2/include/linux/nfsd/nfsd.h	2004-02-02 12:27:31.000000000 +0100
+@@ -86,7 +86,7 @@
+ 				struct svc_fh *res, int createmode,
+ 				u32 *verifier, int *truncp);
+ int		nfsd_commit(struct svc_rqst *, struct svc_fh *,
+-				off_t, unsigned long);
++				loff_t, unsigned long);
+ #endif /* CONFIG_NFSD_V3 */
+ int		nfsd_open(struct svc_rqst *, struct svc_fh *, int,
+ 				int, struct file *);
+diff -ruN -X /home/staff/miquels/diff-exclude linux-2.6.2-rc2.orig/fs/nfsd/nfs3proc.c linux-2.6.2-rc2/fs/nfsd/nfs3proc.c
+--- linux-2.6.2-rc2.orig/fs/nfsd/nfs3proc.c	2004-01-09 07:59:26.000000000 +0100
++++ linux-2.6.2-rc2/fs/nfsd/nfs3proc.c	2004-02-02 12:49:20.000000000 +0100
+@@ -595,10 +595,10 @@
+ {
+ 	int	nfserr;
+ 
+-	dprintk("nfsd: COMMIT(3)   %s %d@%ld\n",
++	dprintk("nfsd: COMMIT(3)   %s %u@%Lu\n",
+ 				SVCFH_fmt(&argp->fh),
+ 				argp->count,
+-				(unsigned long) argp->offset);
++				(unsigned long long) argp->offset);
+ 
+ 	if (argp->offset > NFS_OFFSET_MAX)
+ 		RETURN_STATUS(nfserr_inval);
+diff -ruN -X /home/staff/miquels/diff-exclude linux-2.6.2-rc2.orig/fs/nfsd/vfs.c linux-2.6.2-rc2/fs/nfsd/vfs.c
+--- linux-2.6.2-rc2.orig/fs/nfsd/vfs.c	2004-02-01 12:12:04.000000000 +0100
++++ linux-2.6.2-rc2/fs/nfsd/vfs.c	2004-02-02 12:48:38.000000000 +0100
+@@ -823,7 +823,7 @@
+  */
+ int
+ nfsd_commit(struct svc_rqst *rqstp, struct svc_fh *fhp,
+-               off_t offset, unsigned long count)
++               loff_t offset, unsigned long count)
+ {
+ 	struct file	file;
+ 	int		err;
 
 
-What appears to happen is that ls does an opendir, then repeated readdir
-calls which get it a list of filenames. Then it does a stat call for
-each filename to get details.
-
-=46or some reason, for some of the files, it is getting wrong case on the
-filename. I was quite convinced that this was a server issue, but now
-I'm not so sure, because I see subtly different behaviour with different
-NFS clients. The operational clients are RH9 boxes with 2.4.20 as
-supplied with RH9. I also tried an OS-X Panther box (to have a NFS
-different client stack) and it gave me similar errors, but with a
-slightly different set of files. And then oddest of all - I tried with
-SuSE 9.0 box which had 2.4.21 as supplied with SuSE and got no errors.
-SuSE displayed VERY odd behaviour - for some files whose names were in
-upper case, it would return the same information (including inode
-number) for a stat on the filename in either upper OR lower case.
-
-I then tried installing a kernel.org 2.4.24 on the RH9 box but this gave
-the exact same results as 2.4.20.
-
-So, this odd behaviour gives rise to a number of questions
-
-1) What the hell is going on ?  :-)
-2) Is it really a server or client issue ?
-3) What's happening with the SuSE box ?
-4) Why does ls do the stat call at all ? Indeed, if I do=20
-
-ls -1 /mnt/netware/CONTRACT/MDAVIS > /dev/null I don't see the error at
-all, showing that ls doesn't do the stat if stdout is not a tty - but I
-don't see why it bothers when stdout IS in fact a tty.
-
-
-
-Niall
-
+Mike.
 
 
 -------------------------------------------------------
