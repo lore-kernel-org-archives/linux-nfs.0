@@ -1,49 +1,49 @@
-From: "Mr. James W. Laferriere" <babydr@baby-dragons.com>
-Subject: Re: make NFS work with 64KB page-size
-Date: Wed, 18 Jun 2003 21:26:24 -0400 (EDT)
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <Pine.LNX.4.56.0306182124270.29031@filesrv1.baby-dragons.com>
-References: <16112.60959.588900.824473@napali.hpl.hp.com>
- <16113.5317.341448.162576@gargle.gargle.HOWL>
+From: "Chris Croswhite" <csc@cadence.com>
+Subject: Issues with nfs solaris server
+Date: Wed, 18 Jun 2003 18:23:41 -0700
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <EE335453C5C57840823404C684F9F617012D6849@exmbx01sj.Cadence.COM>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net,
-	Linux Kernel Maillist <linux-kernel@vger.kernel.org>
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <16113.5317.341448.162576@gargle.gargle.HOWL>
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain;
+	charset="Windows-1252"
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from mailgate.cadence.com ([158.140.2.1])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19So9P-0003PO-00
+	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 18:23:43 -0700
+Received: from exmbx01sj.global.cadence.com (exmbx01sj.Cadence.COM [158.140.128.146])
+	by mailgate.Cadence.COM (8.9.3/8.9.3) with ESMTP id SAA27713
+	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 18:23:41 -0700 (PDT)
+To: <nfs@lists.sourceforge.net>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-	Hello Neil ,  Hth ,  JimL
+Guys,
 
-+++ ./net/sunrpc/svc.c	2003-06-19 11:38:30.000000000 +1000
-...snip...
--	int pages = 2 + (size+ PAGE_SIZE -1) / PAGE_SIZE;
-+	int page;
-	    ^^^^ s/b pages ?
+We are seeing issues with solaris nfs servers.  Every once in a while, =
+mount points die and are not recoverable (except to reboot).  nfsutils =
+1.0.3 kernel 2.4.19.  I had heard someone mention that it might be a =
+spinlock within the kernel.
 
-On Thu, 19 Jun 2003, Neil Brown wrote:
-> On Wednesday June 18, davidm@napali.hpl.hp.com wrote:
-> > NFS currently bugs out on kernels with a page size of 64KB.  The
-> > reason is a mismatch between RPCSVC_MAXPAGES and a calculation in
-> > svc_init_buffer().  I'm not entirely certain which calculation is the
-> > right one, but if I understand the code correctly, RPCSVC_MAXPAGES is
-> > right and svc_init_buffer() is wrong.  The patch below fixes the
-> > latter.
->
-> I think the +2 is right.
->
-> For read/readdir the reply can be slightly larger than the "payload",
-> (headers, etc) so we need one payload, plus one for the rest of the
-> reply, plus one to hold the request.
->
-> For write, the request can be large than the payload, so again we need
-> payload + 1 (for request) + 1 (for reply).
-> Something like the following.
-> NeilBrown
--- 
-       +------------------------------------------------------------------+
-       | James   W.   Laferriere | System    Techniques | Give me VMS     |
-       | Network        Engineer |     P.O. Box 854     |  Give me Linux  |
-       | babydr@baby-dragons.com | Coudersport PA 16915 |   only  on  AXP |
-       +------------------------------------------------------------------+
+Does anyone have any information/
+
+TIA!
+
+
+-------------------------------------------------------
+This SF.Net email is sponsored by: INetU
+Attention Web Developers & Consultants: Become An INetU Hosting Partner.
+Refer Dedicated Servers. We Manage Them. You Get 10% Monthly Commission!
+INetU Dedicated Managed Hosting http://www.inetu.net/partner/index.php
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
