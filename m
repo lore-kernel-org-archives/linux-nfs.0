@@ -1,28 +1,27 @@
-From: Bernd Schubert <bernd-schubert@web.de>
-Subject: Re: NFS performance question / (a)sync
-Date: Fri, 26 Nov 2004 14:08:09 +0100
-Message-ID: <200411261408.10977.bernd-schubert@web.de>
-References: <021801c4d3b3$e40fe470$9842a8c0@thorsten1te>
+From: "Bruno Tobias Stella" <brunostella@trt15.gov.br>
+Subject: NFS with password
+Date: Fri, 26 Nov 2004 15:02:08 -0200
+Message-ID: <20041126163854.M75385@trt15.gov.br>
 Mime-Version: 1.0
 Content-Type: text/plain;
-  charset="iso-8859-1"
+	charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CXfpk-00029v-8w
-	for nfs@lists.sourceforge.net; Fri, 26 Nov 2004 05:08:20 -0800
-Received: from relay.uni-heidelberg.de ([129.206.100.212])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CXfph-00004u-Pg
-	for nfs@lists.sourceforge.net; Fri, 26 Nov 2004 05:08:20 -0800
-Received: from euklid.pci.uni-heidelberg.de (euklid.pci.uni-heidelberg.de [129.206.21.104])
-	by relay.uni-heidelberg.de (8.12.10/8.12.10) with ESMTP id iAQD8C4i012673
-	for <nfs@lists.sourceforge.net>; Fri, 26 Nov 2004 14:08:12 +0100 (MET)
-Received: from bernd by euklid.pci.uni-heidelberg.de with local (Exim 3.35 #1 (Debian))
-	id 1CXfpb-0004YN-00
-	for <nfs@lists.sourceforge.net>; Fri, 26 Nov 2004 14:08:11 +0100
+	id 1CXjU9-0007mP-PO
+	for nfs@lists.sourceforge.net; Fri, 26 Nov 2004 09:02:17 -0800
+Received: from [200.208.46.130] (helo=ipanema.trt15.gov.br)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1CXjU5-0001xH-B2
+	for nfs@lists.sourceforge.net; Fri, 26 Nov 2004 09:02:17 -0800
+Received: from itapoa.trt15.gov.br (itapoa.trt15.gov.br [172.16.205.100])
+	by ipanema.trt15.gov.br (8.12.11/8.12.11) with ESMTP id iAQH29JQ014825
+	for <nfs@lists.sourceforge.net>; Fri, 26 Nov 2004 15:02:09 -0200
+Received: from www.trt15.gov.br (localhost.localdomain [127.0.0.1])
+	by itapoa.trt15.gov.br (8.12.8/8.12.8) with ESMTP id iAQH28ZF028150
+	for <nfs@lists.sourceforge.net>; Fri, 26 Nov 2004 15:02:09 -0200
 To: nfs@lists.sourceforge.net
-In-Reply-To: <021801c4d3b3$e40fe470$9842a8c0@thorsten1te>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,28 +35,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Thorsten,
+Hello !
 
-> Is it "normal" that I reach only 0,5 - 2,0 megabyte per socond when using
-> sync-transfer? I know what this means, but I did not expect such a
-> performance drop.
+  I'm starting with NFS and I'd like to know if is possible to configure NFS Server
+accepts a connection only with a user password. And if this is possible, the user and
+password could be kept in LDAP?
 
-did you get those results on the drbd device? This was just (this week)=20
-discussed on the drbd list, see the archives. Sync vs. async was also just=
-=20
-discussed on this list.
+  Thanks for any help !
 
+Bruno Stella
+brunostella@trt15.gov.br
+Setor de Redes - (19) 3031-4165
+Secretaria de Informatica
+Tribunal Regional do Trabalho da 15a. Regiao
 
-Cheers,
- Bernd
-
-=2D-=20
-Bernd Schubert
-Physikalisch Chemisches Institut / Theoretische Chemie
-Universit=E4t Heidelberg
-INF 229
-69120 Heidelberg
-e-mail: bernd.schubert@pci.uni-heidelberg.de
 
 
 -------------------------------------------------------
