@@ -1,21 +1,30 @@
-From: "Fabiano Reis" <silos.reis@ig.com.br>
-Subject: NFS 2.6.3smp-client <-> 2.4.20-24.9smp-server problem
-Date: Tue, 9 Mar 2004 09:47:26 -0300
+From: "Jose R. Santos" <jrsantos@austin.ibm.com>
+Subject: BKL removal from find_exported_dentry()
+Date: Tue, 9 Mar 2004 07:54:51 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <03e601c405d4$accdf180$3f32a8c0@ds.ig.com.br>
+Message-ID: <20040309135451.GC30766@rx8.ibm.com>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_03E3_01C405BB.8772FDE0"
+Content-Type: text/plain; charset=ISO-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B0goq-0000Lb-VZ
-	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 04:58:48 -0800
-Received: from smtp-29.ig.com.br ([200.226.132.157])
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
-	id 1B0gg3-0008C0-LM
-	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 04:49:43 -0800
-To: "NFS Mail List" <nfs@lists.sourceforge.net>
+	id 1B0hnO-000584-Ju
+	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 06:01:22 -0800
+Received: from e31.co.us.ibm.com ([32.97.110.129])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.30)
+	id 1B0hGg-0006PO-20
+	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 05:27:34 -0800
+Received: from westrelay02.boulder.ibm.com (westrelay02.boulder.ibm.com [9.17.195.11])
+	by e31.co.us.ibm.com (8.12.10/8.12.2) with ESMTP id i29Dq85w343598
+	for <nfs@lists.sourceforge.net>; Tue, 9 Mar 2004 08:52:08 -0500
+Received: from austin.ibm.com (d03av02.boulder.ibm.com [9.17.193.82])
+	by westrelay02.boulder.ibm.com (8.12.10/NCO/VER6.6) with ESMTP id i29Dq7Zb351560
+	for <nfs@lists.sourceforge.net>; Tue, 9 Mar 2004 06:52:08 -0700
+Received: from rx8 (jsantos@rx8.austin.ibm.com [9.41.94.101])
+	by austin.ibm.com (8.12.10/8.12.10) with ESMTP id i29Dq7vD049174
+	for <nfs@lists.sourceforge.net>; Tue, 9 Mar 2004 07:52:07 -0600
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -28,110 +37,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+Hi all
 
-------=_NextPart_000_03E3_01C405BB.8772FDE0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+I was running SpecSFS on a 8-way machine when I encounter a situation were 
+find_exported_dentry() was showing up to 75% in my profiles.  After some 
+digging, the problem was trigger when the system was under memory pressure 
+which cause a dramatic shrinkage in dcache entries.  This shrinkage cause the 
+code path thats held under the BKL to be hit under a few filesystems (XFS, JFS 
+and EXT3).
 
-Hi list,
+At first glance, the BKL seem over kill since I don't see it protecting 
+anything that not already protected by other locks inside the code path.  I 
+went ahead and removed the kernel lock from find_exported_dentry() and after 
+several hours of testing different loads and different filesystems I have yet 
+to see any kernel badness or
+NFS call failures.
 
-I upgraded a RH9 box from 2.4.20-24.9smp to Vanilla kernel 2.6.3 (using =
-smp as well). It look to be  working fine except for the messages i=B4m =
-receiving from dmesg command. After mounting a nfs server (wich is =
-running 2.4.20-28.8smp , RH8 kernel) I started to get these messages on =
-dmesg:
+Is there anything in particular the BKL is trying to protect here or is it 
+safe to remove?
 
-
-----cut here---
-nfs: server 10.0.3.1 not responding, still trying
-nfs: server 10.0.3.1 OK
-nfs: server 10.0.3.1 not responding, still trying
-nfs: server 10.0.3.1 OK
-
-... and much much more like the above ...
----cut here---
-
-Even with the messages I can do operations using the mountpoint from the =
-client. I can save files, list directories and files, etc.
-
-
-The question that arises after seeing these messages:
-
-1) do the nfs code from 2.6 kernel is compatible with 2.4 kernel ?=20
-
-2) what can I do to try to solve this problem?
-
-I would appreciate any help.
-
--
-Fabiano
-------=_NextPart_000_03E3_01C405BB.8772FDE0
-Content-Type: text/html;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; =
-charset=3Diso-8859-1">
-<META content=3D"MSHTML 6.00.2800.1226" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV><FONT face=3DArial size=3D2>
-<DIV>
-<DIV><FONT face=3DArial size=3D2>Hi list,</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>I&nbsp;upgraded a RH9 box from =
-2.4.20-24.9smp to=20
-Vanilla kernel 2.6.3 (using smp as well). It look to be&nbsp; working =
-fine=20
-except for the messages i=B4m receiving from dmesg command. After =
-mounting a nfs=20
-server (wich is running 2.4.20-28.8smp , RH8 kernel)&nbsp;I started =
-to&nbsp;get=20
-these messages on dmesg:</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>----cut here---</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>nfs: server 10.0.3.1 not responding, =
-still=20
-trying</FONT><FONT face=3DArial size=3D2><BR>nfs: server 10.0.3.1 =
-OK<BR>nfs: server=20
-10.0.3.1 not responding, still trying</FONT></DIV>
-<DIV>nfs: server 10.0.3.1 OK</DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>... and much much more like the=20
-above&nbsp;...</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>---cut here---</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>Even with the messages I can do =
-operations using=20
-the mountpoint from the client. I can save files, list directories and =
-files,=20
-etc.</DIV>
-<DIV><BR></DIV></FONT>
-<DIV><FONT face=3DArial size=3D2>The question that arises after seeing =
-these=20
-messages:</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>1) do the nfs code from 2.6 kernel is=20
-compatible&nbsp;with 2.4 kernel ? </FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>2) what can I do to try to solve this=20
-problem?</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>I&nbsp;would appreciate any =
-help.</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>-</FONT></DIV>
-<DIV><FONT face=3DArial=20
-size=3D2>Fabiano</DIV></FONT></DIV></FONT></DIV></BODY></HTML>
-
-------=_NextPart_000_03E3_01C405BB.8772FDE0--
-
+-JRS
 
 
 -------------------------------------------------------
