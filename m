@@ -1,27 +1,24 @@
-From: Vincent ROQUETA <vincent.roqueta@ext.bull.net>
-Subject: Re: nfsd & nfs modules : insert error
-Date: Wed, 25 Feb 2004 10:25:35 +0100
+From: ralph gonzalez <rgonzale@ibl.bm>
+Subject: Re: Force client page cache invalidation?
+Date: Wed, 25 Feb 2004 10:05:05 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200402251025.35974.vincent.roqueta@ext.bull.net>
-References: <200402231401.12339.vincent.roqueta@ext.bull.net> <20040223182331.GA5074@fieldses.org>
-Reply-To: vincent.roqueta@ext.bull.net
+Message-ID: <403CAB91.1030208@ibl.bm>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AvvGi-00077Y-9R
-	for nfs@lists.sourceforge.net; Wed, 25 Feb 2004 01:23:52 -0800
-Received: from ecbull20.frec.bull.fr ([129.183.4.3])
+	id 1Avzg1-0003wo-At
+	for nfs@lists.sourceforge.net; Wed, 25 Feb 2004 06:06:17 -0800
+Received: from outgoing.logic.bm ([199.172.192.16])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1AvvFX-0001ZT-Qx
-	for nfs@lists.sourceforge.net; Wed, 25 Feb 2004 01:22:40 -0800
-Received: from roquetav (roquetav.frec.bull.fr [129.183.101.52])
-	by ecbull20.frec.bull.fr (8.9.2/8.9.1) with ESMTP id KAA15410
-	for <nfs@lists.sourceforge.net>; Wed, 25 Feb 2004 10:23:21 +0100
+	id 1Avzel-0005Wu-2n
+	for nfs@lists.sourceforge.net; Wed, 25 Feb 2004 06:04:59 -0800
+Received: from mailproxy.logic.bm ([199.172.192.13] helo=ibl.bm)
+	by outgoing.logic.bm with esmtp (Exim 3.36 #2)
+	id 1AvzKO-0000Na-00
+	for nfs@lists.sourceforge.net; Wed, 25 Feb 2004 09:43:56 -0400
 To: nfs@lists.sourceforge.net
-In-Reply-To: <20040223182331.GA5074@fieldses.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,57 +31,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+[snip]
+ >> Linux 2.4.22-10mdk (nfs utils 1.0.5) seems to be unwilling to reload the
+ >> file cache *when another application already has the file mmapped*.
+ >
+ > Which is quite sane semantics for mmap().
 
-> It's possible.  I've tested with 2.6.3-CITI_NFS4_ALL-2 (server and
-> client) and I'm not able to reproduce the problem you report either with
-> vi or with a c program that similarly tries open's on nonexistant files.
->
-> --Bruce Fields
+Agreed...
 
+[snip]
+ >>*Question*: Instead, is there a way to force the client to reload the
+ >
+ > file cache (exclusively for this file)? (So when we subsequently
+ > close/open the file in each application asynchronously, they see the
+ > correct pages.) Maybe there's a simple option or utility I'm missing?
+ >
+ > Linux does not support this sort of kludge and is unlikely to do so for
+ > the near future. The VM simply cannot support it.
+ >
+ > In any case, the fact is that strict POSIX mmap() semantics assume
+ > exclusive access to the file on the server while it is mapped on a given
+ > client. If you're not providing that, then you are going to be prone to
+ > some nasty races whether or not the cache invalidation works like Solaris
+ > does.
 
-modprobe fail for nfs & nfsd
-client and server linux 2.6.3-CITI_NFS4_ALL-2
+I wasn't aware of the POSIX semantics. It's a shame, since we've been
+using this approach -- multiple readers and single writer -- on Solaris
+for 8 years with excellent stability and performance. When we switched to
+Linux we found this unexpected and unfriendly behavior:
 
-process `named' is using obsolete setsockopt SO_BSDCOMPAT
-nfsd: Unknown symbol nfs4_acl_nfsv4_to_posix
-nfsd: Unknown symbol locks_remove_posix
-nfsd: Unknown symbol nfs4_acl_posix_to_nfsv4
+   If NFS client has the file mmapped while it is edited on the server,
+   and the client then opens a second application which mmaps the file
+   (without closing the first application), then no matter what you do
+   -- close both clients, etc -- the file cache never releases the old
+   pages!
 
-same errors when inserting nfs.ko ...
-
-make modules_install (server)
-if [ -r System.map ]; then /sbin/depmod -ae -F System.map  
-2.6.3-CITI_NFS4_ALL-2; fi
-WARNING: /lib/modules/2.6.3-CITI_NFS4_ALL-2/kernel/fs/nfsd/nfsd.ko needs 
-unknown symbol nfs4_acl_nfsv4_to_posix
-WARNING: /lib/modules/2.6.3-CITI_NFS4_ALL-2/kernel/fs/nfsd/nfsd.ko needs 
-unknown symbol locks_remove_posix
-WARNING: /lib/modules/2.6.3-CITI_NFS4_ALL-2/kernel/fs/nfsd/nfsd.ko needs 
-unknown symbol nfs4_acl_posix_to_nfsv4
-
-Quite same for client:
-
-
-if [ -r System.map ]; then /sbin/depmod -ae -F System.map  
-2.6.3-CITI_NFS4_ALL-2; fi
-WARNING: /lib/modules/2.6.3-CITI_NFS4_ALL-2/kernel/fs/nfs/nfs.ko needs unknown 
-symbol nfs4_acl_nfsv4_to_posix
-WARNING: /lib/modules/2.6.3-CITI_NFS4_ALL-2/kernel/fs/nfs/nfs.ko needs unknown 
-symbol nfs4_acl_posix_to_nfsv4
-WARNING: 
-/lib/modules/2.6.3-CITI_NFS4_ALL-2/kernel/net/sunrpc/auth_gss/auth_rpcgss.ko 
-needs unknown symbol read_bytes_from_xdr_buf
-WARNING: 
-/lib/modules/2.6.3-CITI_NFS4_ALL-2/kernel/net/sunrpc/auth_gss/auth_rpcgss.ko 
-needs unknown symbol read_u32_from_xdr_buf
-
-
-
-
-I'm trying
-- with a builtin nfs and nfsd
-- to correct that...
-
+-- 
+Ralph Gonzalez
+rgonzale@ibl.bm
 
 
 
