@@ -1,30 +1,23 @@
-From: Jeffrey Layton <jtlayton@poochiereds.net>
-Subject: fcntl locks prevent unmounting of underlying filesystem
-Date: Wed, 26 May 2004 12:43:15 -0400
+From: Jonas Lindemann <jonas.lindemann@byggmek.lth.se>
+Subject: Re: Strange behavior of executable bit
+Date: Wed, 26 May 2004 18:48:40 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1085589795.20517.41.camel@tesla.mmt.bellhowell.com>
+Message-ID: <40B4CA68.5020809@byggmek.lth.se>
+References: <40B44FE7.6010601@byggmek.lth.se> <1085587915.3763.12.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=windows-1252; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BT1Ut-0007sx-4A
-	for nfs@lists.sourceforge.net; Wed, 26 May 2004 09:43:19 -0700
-Received: from rdu26-93-067.nc.rr.com ([66.26.93.67] helo=salusa.poochiereds.net)
+	id 1BT1aE-0000dn-OL
+	for nfs@lists.sourceforge.net; Wed, 26 May 2004 09:48:50 -0700
+Received: from av2-2-sn3.vrr.skanova.net ([81.228.9.108])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1BT1Us-0003jK-Kz
-	for nfs@lists.sourceforge.net; Wed, 26 May 2004 09:43:18 -0700
-Received: from localhost (localhost [127.0.0.1])
-	by salusa.poochiereds.net (Postfix) with ESMTP id BE7CEE429
-	for <nfs@lists.sourceforge.net>; Wed, 26 May 2004 12:43:09 -0400 (EDT)
-Received: from salusa.poochiereds.net ([127.0.0.1])
-	by localhost (salusa [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id 14956-07 for <nfs@lists.sourceforge.net>;
-	Wed, 26 May 2004 12:43:09 -0400 (EDT)
-Received: from localhost (salusa.poochiereds.net [192.168.1.2])
-	by salusa.poochiereds.net (Postfix) with ESMTP id 6CF462622
-	for <nfs@lists.sourceforge.net>; Wed, 26 May 2004 12:43:09 -0400 (EDT)
-To: nfs@lists.sourceforge.net
+	id 1BT1aE-0005CX-8N
+	for nfs@lists.sourceforge.net; Wed, 26 May 2004 09:48:50 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1085587915.3763.12.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -37,96 +30,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I've seem to have run across a problem with NFS and fcntl locks. I'm
-trying to implement a HA-NFS solution using heartbeat, DRBD, LVM2, etc.
-I'm running the following:
+Trond Myklebust wrote:
 
-2.6.6 kernel
-nfs-kernel-server and nfs-common 1.0.6-3 (debian packages)
+>P=E5 on , 26/05/2004 klokka 04:05, skreiv Jonas Lindemann:
+> =20
+>
+>>Hi!
+>>
+>>We have an file server runninng RHEL3 and NFS. Clients are RHEL3 and=20
+>>FC1. We are having problems with an service that want's to change the=20
+>>executable bit on a file located on the NFS exported filesystem. The=20
+>>service is running on RHEL3.
+>>   =20
+>>
+>
+>So basically, you are changing the executable bit on the server, and
+>wondering why that changes isn't propagated instantly to the client?
+>
+>It's 'cos NFS client poll the server for attribute changes. The mount
+>options that govern the polling period is documented in the "nfs"
+>manpage (see the ac* flags).
+> =20
+>
+Sorry. I didn't explain it very well before. The system is a cluster=20
+with a front-end running grid-middleware. A file server (a different=20
+machine from the front-end) exports a number of filesystems both to the=20
+front-end and to the nodes. On the front-end the middleware tries to set=20
+the executable bit and fails with the described problem.
 
-The underlying filesystem is reiserfs. Essentially what I'm seeing is
-that when I try to shut down NFS and unmount the filesystem for a
-failover, I'm unable to unmount if I have an fcntl lock on the file.
+-- Jonas
 
-Here's the C program I used to test the locks (my C coding is not the
-best, I copied a lot of this from R. Stevens' book):
-
-
--------------------------[snip]------------------------
-
-#include <sys/types.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <stdio.h>
-                                                                                
-#define write_lock(fd, offset, whence, len) \
-        lock_reg(fd, F_SETLK, F_WRLCK, offset, whence, len)
-                                                                                
-int main( int argv, char *argc[] ) {
-                                                                                
-    int fd;
-                                                                                
-    fd = open(argc[1], O_RDWR);
- 
-    if ( write_lock(fd, 0, SEEK_SET, 0) < 0 ) {
-        printf("Unable to acquire lock!\n");
-    } else {
-        printf("Got the lock. Sleeping for 300 secs.\n");
-        sleep(300);
-    }
- 
-    close(fd);
-}
- 
-int lock_reg (int fd, int cmd, int type, off_t offset, int whence, off_t
-len) {
- 
-    struct flock lock;
- 
-    lock.l_type = type;
-    lock.l_start = offset;
-    lock.l_whence = whence;
-    lock.l_len = len;
- 
-    return (fcntl(fd, cmd, &lock)); 
-}
-
------------------------[snip]-----------------------------
-
-I run this program against a file on an NFS mounted directory on the
-client machine. On the server, I then shut down NFS (using the debian
-nfs-common and nfs-kernel-server startup scripts).
-
-I'm then unable to unmount the underlying filesystem. The error message
-is (yes, umount prints it twice for some reason):
-
-umount: /services/NFS/home: device is busy
-umount: /services/NFS/home: device is busy
-
-If I then start up NFS again, and kill the locktest program, I'm then
-able to shut down nfs and unmount the filesystem.
-
-I also did a test where I just opened the file r/w without locking it,
-and it didn't seem to have the same problem, so it seems like the
-fcntl() lock is what is causing the problem (though I could be wrong
-here).
-
-I've been able to replicate this problem with /proc/fs/nfsd mounted and
-unmounted on the server.
-
-I also tried applying the exportfs patch that was in the thread:
-
-   nfsd, rmtab, failover, and stale filehandles
-
-on this mailing list earlier this month, and it didn't help. Has anyone
-else seen this problem?
-
-If there's any other info you need me to provide to help diagnose this,
-please don't hesitate to ask!
-
-Thanks,
-Jeff
+>Cheers,
+>  Trond
+>
+>
+>-------------------------------------------------------
+>This SF.Net email is sponsored by: Oracle 10g
+>Get certified on the hottest thing ever to hit the market... Oracle 10g.=
+=20
+>Take an Oracle 10g class now, and we'll give you the exam FREE.
+>http://ads.osdn.com/?ad_id149&alloc_id=8166&op=3Dclick
+>_______________________________________________
+>NFS maillist  -  NFS@lists.sourceforge.net
+>https://lists.sourceforge.net/lists/listinfo/nfs
+>
+> =20
+>
 
 
 
