@@ -1,17 +1,17 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: "David B. Ritch" <dritch@hpti.com>
 Subject: Re: mmap() and NFS server performance
-Date: 14 Dec 2002 12:22:30 +0100
+Date: 14 Dec 2002 11:51:23 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsadj826bt.fsf@charged.uio.no>
+Message-ID: <1039884683.2767.29.camel@localhost>
 References: <3DFA4C9A.50101@geodev.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain
+Cc: NFS mailing list <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
+Received: from pcp234914pcs.elictc01.md.comcast.net ([68.55.182.99] helo=localhost.localdomain)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18NANX-0008Nw-00
-	for <nfs@lists.sourceforge.net>; Sat, 14 Dec 2002 03:22:43 -0800
+	id 18NFXM-00082e-00
+	for <nfs@lists.sourceforge.net>; Sat, 14 Dec 2002 08:53:12 -0800
 To: Matthew Mitchell <matthew@geodev.com>
 In-Reply-To: <3DFA4C9A.50101@geodev.com>
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -26,27 +26,30 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Matthew Mitchell <matthew@geodev.com> writes:
+When we moved some nfs clients from 2.4.18 to 2.4.20, we saw some
+performance issues that initially appeared to be an nfs problem. 
+However, it turned out that the upgrade apparently broke autonegotiation
+between the NICs in the nodes and our network switches.  This did not
+turn up immediately in network testing with tools such as netperf,
+because we still had good one-way bandwidth with the nodes set to full
+duplex and the switches set to half.  However, two-way traffic
+immediately caused lots of problems.
 
-     > values.  These apps were originally written on Solaris with
-     > Solaris NFS servers assumed to be the data source; the Sun guys
-     > said that mmap would be much faster than read/write and they
-     > were correct.  However, now that we have a few Linux NFS
-     > servers, we're seeing the opposite.
+I never trust autonegotiation, and turn it off whenever I can.
 
-As long as the clients are still Solaris, then the only difference can
-be the network, and the server performance.
+You may be experiencing a similar problem.
 
-Of the 2, the bigger 'generic' troublemaker tends to be the network.
-Solaris clients always tend to prefer NFS over TCP since that tends to
-be more reliable on poor networks than does UDP. Unfortunately, NFS
-over TCP on the server side is a fairly recent addition to Linux: it
-only just made it into the stable release 2 weeks ago (when 2.4.20 was
-released). To the best of my knowledge, none of the RedHat kernels
-support it yet.
+dbr
 
-Cheers,
-  Trond
+On Fri, 2002-12-13 at 16:09, Matthew Mitchell wrote:
+> Hello,
+> 
+> We've noticed some interesting behavior regarding mmap file IO and were 
+> wondering if anyone here had some clues as to what might be going on.
+
+-- 
+David B. Ritch
+High Performance Technologies, Inc.
 
 
 -------------------------------------------------------
