@@ -1,26 +1,29 @@
-From: Roman Kagan <rkagan@mail.ru>
-Subject: quota ignored on NFS
-Date: Sat, 15 Jan 2005 01:31:25 +0300
-Message-ID: <1105741885.2328.32.camel@localhost>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Debian Bug#203077: Locks not released on NFS client
+	reboot
+Date: Fri, 14 Jan 2005 14:43:37 -0500
+Message-ID: <1105731817.9604.11.camel@lade.trondhjem.org>
+References: <Pine.OSF.4.56.0307271137050.10355@grover.WPI.EDU>
+	 <20030727163124.GC19877@perlsupport.com>
+	 <16164.29864.268358.781865@gargle.gargle.HOWL>
+	 <Pine.LNX.4.60.0501131844130.6332@harp.ngdc.noaa.gov>
+	 <16871.11926.507904.373575@cse.unsw.edu.au>
+	 <Pine.LNX.4.60.0501140852070.11608@harp.ngdc.noaa.gov>
 Mime-Version: 1.0
 Content-Type: text/plain
+Cc: Neil Brown <neilb@cse.unsw.edu.au>,
+	Chip Salzenberg <chip@pobox.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CpZym-0005fo-Em
-	for nfs@lists.sourceforge.net; Fri, 14 Jan 2005 14:31:40 -0800
-Received: from apachihuilliztli.mtu.ru ([195.34.32.124])
+	id 1CpXMV-00070A-JK
+	for nfs@lists.sourceforge.net; Fri, 14 Jan 2005 11:43:59 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CpZyk-00085F-ED
-	for nfs@lists.sourceforge.net; Fri, 14 Jan 2005 14:31:40 -0800
-Received: from umail.ru (umail.mtu.ru [195.34.32.101])
-	by Apachihuilliztli.mtu.ru (Postfix) with ESMTP id DA84C70018
-	for <nfs@lists.sourceforge.net>; Sat, 15 Jan 2005 01:31:27 +0300 (MSK)
-	(envelope-from rkagan@mail.ru)
-Received: from [83.237.20.164] (HELO ppp83-237-20-164.pppoe.mtu-net.ru)
-  by umail.ru (CommuniGate Pro SMTP 4.2b6)
-  with ESMTP id 383070312 for nfs@lists.sourceforge.net; Sat, 15 Jan 2005 01:31:27 +0300
-To: nfs@lists.sourceforge.net
+	id 1CpXMV-0000zb-22
+	for nfs@lists.sourceforge.net; Fri, 14 Jan 2005 11:43:59 -0800
+To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+In-Reply-To: <Pine.LNX.4.60.0501140852070.11608@harp.ngdc.noaa.gov>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,25 +37,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-  Hi,
+fr den 14.01.2005 Klokka 09:05 (-0700) skreiv Ara.T.Howard:
+> On Fri, 14 Jan 2005, Neil Brown wrote:
+> 
+> > So bligh, the client, is running statd (the "status" service), but mussel
+> > can not talk to it.  This is a problem.
+> 
+> are you saying inbound rpc traffic flowing from server -> client MUST not be
+> blocked by the firewall and that it is NOT sufficient to allow ONLY inbound
+> rpc traffic client -> server?  sorry if this does not make sense - i'm a bit
+> out of my domain here...
 
-I'm having trouble using disk quota with NFS mounted filesystems.
+Bi-directional RPC traffic must be allowed if you plan on using NLM
+locking, since it is callback based. A couple of issues that immediately
+spring to mind in the case where the server cannot call the client are:
 
-When the filesystem accessed locally on the server, the quota works
-fine, i.e. nothing can be written over quota.
+        - Blocking locks (F_SETLKW) will be hampered since the client
+        expects the server's lockd daemon to call it back as soon as any
+        conflicting locks have been released and the lock granted...
 
-However, when the same filesystem is accessed over NFS, an user on the
-client can write as much as he wants as though the quota system is
-bypassed somehow.
+        - Server reboot recovery will be broken, since the server's
+        rpc.statd daemon will be incapable of notifying the clients that
+        their locks have been lost and need to be recovered.
 
-Both the server and the client are on 2.6.10 (was the same at least with
-2.6.[89]).  The filesystem is ext2 with v2 quota, both NFSv2 and NFSv3,
-both tcp and udp (mis)behave the same.
-
-Is that a known problem?  Any hints at the solution are appreciated.
-
-Thanks,
-  Roman.
+Cheers,
+  Trond
+-- 
+Trond Myklebust <trond.myklebust@fys.uio.no>
 
 
 
