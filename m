@@ -1,18 +1,18 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: [PATCH 5/19] A basic NFSv4 client for 2.5.x
-Date: Wed, 9 Oct 2002 01:09:46 +0200
+Subject: [PATCH 4/19] A basic NFSv4 client for 2.5.x
+Date: Wed, 9 Oct 2002 01:09:21 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15779.26042.983383.63277@charged.uio.no>
+Message-ID: <15779.26017.962433.506534@charged.uio.no>
 Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: NFS maillist <nfs@lists.sourceforge.net>,
     nfsv4-wg@citi.umich.edu
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
+Received: from mons.uio.no ([129.240.130.14])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17z3U8-0004Ha-00
-	for <nfs@lists.sourceforge.net>; Tue, 08 Oct 2002 16:09:52 -0700
+	id 17z3Tt-0004G2-00
+	for <nfs@lists.sourceforge.net>; Tue, 08 Oct 2002 16:09:37 -0700
 To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -26,40 +26,69 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-In NFSv4, there is no hard limit on the length of symlink text.
-This patch changes the -ENAMETOOLONG test in nfs_symlink() accordingly.
+This patch changes the interface of the ->setattr() nfs_rpc_op
+so that its first argument is a dentry instead of an inode.
 
-diff -u --recursive --new-file linux-2.5.41-nfsv4-E04/fs/nfs/dir.c linux-2.5.41-nfsv4-E05/fs/nfs/dir.c
---- linux-2.5.41-nfsv4-E04/fs/nfs/dir.c	2002-10-08 18:43:34.000000000 -0400
-+++ linux-2.5.41-nfsv4-E05/fs/nfs/dir.c	2002-10-08 18:44:21.000000000 -0400
-@@ -1022,16 +1022,23 @@
- 	struct nfs_fattr sym_attr;
- 	struct nfs_fh sym_fh;
- 	struct qstr qsymname;
--	unsigned int maxlen;
- 	int error;
+[Explanation: The dentry is required because in NFSv4, we may
+ need to OPEN the file before doing the SETATTR.  (This is
+ required if the file size is changed as part of the setattr.)
+ Opening the file requires making use of the containing
+ directory's inode.]
+
+diff -u --recursive --new-file linux-2.5.41-nfsv4-E03/fs/nfs/inode.c linux-2.5.41-nfsv4-E04/fs/nfs/inode.c
+--- linux-2.5.41-nfsv4-E03/fs/nfs/inode.c	2002-10-01 19:43:15.000000000 -0400
++++ linux-2.5.41-nfsv4-E04/fs/nfs/inode.c	2002-10-08 18:43:57.000000000 -0400
+@@ -781,7 +781,7 @@
+ 	if (error)
+ 		goto out;
  
- 	dfprintk(VFS, "NFS: symlink(%s/%ld, %s, %s)\n", dir->i_sb->s_id,
- 		dir->i_ino, dentry->d_name.name, symname);
+-	error = NFS_PROTO(inode)->setattr(inode, &fattr, attr);
++	error = NFS_PROTO(inode)->setattr(dentry, &fattr, attr);
+ 	if (error)
+ 		goto out;
+ 	/*
+diff -u --recursive --new-file linux-2.5.41-nfsv4-E03/fs/nfs/nfs3proc.c linux-2.5.41-nfsv4-E04/fs/nfs/nfs3proc.c
+--- linux-2.5.41-nfsv4-E03/fs/nfs/nfs3proc.c	2002-10-08 18:43:34.000000000 -0400
++++ linux-2.5.41-nfsv4-E04/fs/nfs/nfs3proc.c	2002-10-08 18:43:57.000000000 -0400
+@@ -86,9 +86,10 @@
+ }
  
- 	error = -ENAMETOOLONG;
--	maxlen = (NFS_PROTO(dir)->version==2) ? NFS2_MAXPATHLEN : NFS3_MAXPATHLEN;
--	if (strlen(symname) > maxlen)
--		goto out;
-+	switch (NFS_PROTO(dir)->version) {
-+		case 2:
-+			if (strlen(symname) > NFS2_MAXPATHLEN)
-+				goto out;
-+			break;
-+		case 3:
-+			if (strlen(symname) > NFS3_MAXPATHLEN)
-+				goto out;
-+		default:
-+			break;
-+	}
+ static int
+-nfs3_proc_setattr(struct inode *inode, struct nfs_fattr *fattr,
++nfs3_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 			struct iattr *sattr)
+ {
++	struct inode *inode = dentry->d_inode;
+ 	struct nfs3_sattrargs	arg = {
+ 		.fh		= NFS_FH(inode),
+ 		.sattr		= sattr,
+diff -u --recursive --new-file linux-2.5.41-nfsv4-E03/fs/nfs/proc.c linux-2.5.41-nfsv4-E04/fs/nfs/proc.c
+--- linux-2.5.41-nfsv4-E03/fs/nfs/proc.c	2002-10-08 18:43:34.000000000 -0400
++++ linux-2.5.41-nfsv4-E04/fs/nfs/proc.c	2002-10-08 18:43:57.000000000 -0400
+@@ -78,9 +78,10 @@
+ }
  
- #ifdef NFS_PARANOIA
- if (dentry->d_inode)
+ static int
+-nfs_proc_setattr(struct inode *inode, struct nfs_fattr *fattr,
++nfs_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 		 struct iattr *sattr)
+ {
++	struct inode *inode = dentry->d_inode;
+ 	struct nfs_sattrargs	arg = { 
+ 		.fh	= NFS_FH(inode),
+ 		.sattr	= sattr
+diff -u --recursive --new-file linux-2.5.41-nfsv4-E03/include/linux/nfs_xdr.h linux-2.5.41-nfsv4-E04/include/linux/nfs_xdr.h
+--- linux-2.5.41-nfsv4-E03/include/linux/nfs_xdr.h	2002-10-08 18:43:34.000000000 -0400
++++ linux-2.5.41-nfsv4-E04/include/linux/nfs_xdr.h	2002-10-08 18:43:58.000000000 -0400
+@@ -307,7 +307,7 @@
+ 	int	(*getroot) (struct nfs_server *, struct nfs_fh *,
+ 			    struct nfs_fattr *);
+ 	int	(*getattr) (struct inode *, struct nfs_fattr *);
+-	int	(*setattr) (struct inode *, struct nfs_fattr *,
++	int	(*setattr) (struct dentry *, struct nfs_fattr *,
+ 			    struct iattr *);
+ 	int	(*lookup)  (struct inode *, struct qstr *,
+ 			    struct nfs_fh *, struct nfs_fattr *);
 
 
 -------------------------------------------------------
