@@ -1,22 +1,23 @@
-From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
-Subject: max filesystem size - nfs imposed limit?
-Date: Wed, 19 May 2004 16:44:11 -0700
+From: Greg Banks <gnb@sgi.com>
+Subject: Re: max filesystem size - nfs imposed limit?
+Date: Thu, 20 May 2004 12:20:04 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1085010251.22480.52.camel@sabaki.dcs.uci.edu>
+Message-ID: <20040520022004.GE7316@sgi.com>
+References: <1085010251.22480.52.camel@sabaki.dcs.uci.edu>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-QFxG6GSaRjtV5csrPA1V"
-Cc: strombrg@dcs.nac.uci.edu
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BQarj-0004QN-7v
-	for nfs@lists.sourceforge.net; Wed, 19 May 2004 16:52:51 -0700
-Received: from sabaki.nac.uci.edu ([128.200.34.80] helo=sabaki.dcs.uci.edu)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.30)
-	id 1BQarj-0001gU-01
-	for nfs@lists.sourceforge.net; Wed, 19 May 2004 16:52:51 -0700
-To: nfs@lists.sourceforge.net
+	id 1BQdAR-0001pi-Nc
+	for nfs@lists.sourceforge.net; Wed, 19 May 2004 19:20:19 -0700
+Received: from mtvcafw.sgi.com ([192.48.171.6] helo=omx2.sgi.com)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BQdAR-0006vp-Ez
+	for nfs@lists.sourceforge.net; Wed, 19 May 2004 19:20:19 -0700
+To: Dan Stromberg <strombrg@dcs.nac.uci.edu>
+In-Reply-To: <1085010251.22480.52.camel@sabaki.dcs.uci.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -29,45 +30,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Wed, May 19, 2004 at 04:44:11PM -0700, Dan Stromberg wrote:
+> 
+> We need to set up a multiterrabyte filesystem (probably 30T), and NFS
+> export it.
+> 
+> Does linux nfs impose a maximum filesystem size? 
 
---=-QFxG6GSaRjtV5csrPA1V
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+Yes, but if you use v3 or v4 it's larger than you care about.
 
+> Or is that strictly a
+> matter of the filesystem type being exported (ext3, xfs, lustre, gfs,
+> whatever)?
 
-We need to set up a multiterrabyte filesystem (probably 30T), and NFS
-export it.
+That also matters.  You need to have a server OS which supports
+large block devices, and the filesystem needs to support it also.
+Obviously, XFS does (except it can't export more than 2^32 inodes
+currently).
 
-Does linux nfs impose a maximum filesystem size?  Or is that strictly a
-matter of the filesystem type being exported (ext3, xfs, lustre, gfs,
-whatever)?  Does it matter if you're using nfs v2/v3/v4?  Does the
-kernel version matter?  How about 32 bit vs 64 bit platforms (especially
-interested in whether an opteron or linux ppc would help)?
+> Does it matter if you're using nfs v2/v3/v4? 
 
-Is linux NFS on 64 bit platforms stable?
+Yes.  Don't use NFSv2.
 
-Sorry if these questions have been asked before.  I didn't have much
-luck locating answers (which might make a nice entry in a FAQ :), which
-I'd be willing to take a stab at composing the entry for) by googling
-and searching the list archives.
+> Does the
+> kernel version matter?  How about 32 bit vs 64 bit platforms (especially
+> interested in whether an opteron or linux ppc would help)?
 
---=20
-Dan Stromberg DCS/NACS/UCI <strombrg@dcs.nac.uci.edu>
+This comes down to large block device support.  You need to use 2.6
+or apply the LBD patch to 2.4.
 
+> Is linux NFS on 64 bit platforms stable?
 
---=-QFxG6GSaRjtV5csrPA1V
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
+Yes.  Our sales staff will be happy to sell you one, and as many TB
+of disk as you can afford.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.0.7 (GNU/Linux)
-
-iD8DBQBAq/FKo0feVm00f/8RAqntAJ4iVohw/8PHESZjwKapJbaHt73NsgCfWjQp
-9RkFcVBVMNYm6FC/ld/83GM=
-=9oZ4
------END PGP SIGNATURE-----
-
---=-QFxG6GSaRjtV5csrPA1V--
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
 
 -------------------------------------------------------
