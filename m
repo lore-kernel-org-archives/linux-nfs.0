@@ -1,231 +1,154 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: NFS Mount Patch: Making NFS over TCP the default
-Date: Wed, 06 Aug 2003 16:25:42 -0400
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3F316446.3020808@RedHat.com>
+From: Dan Kegel <dkegel@ixiacom.com>
+Subject: [NFS] NFS Mount Patch: Support servers that don't support portmapper
+ over TCP
+Date: Wed, 06 Aug 2003 13:53:32 -0700
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <3F316ACC.7080008@ixiacom.com>
+References: <3F316446.3020808@RedHat.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------020601020503030005020209"
-Cc: nfs@lists.sourceforge.net, linux-kernel <linux-kernel@vger.kernel.org>
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pix-525-pool.redhat.com ([66.187.233.200] helo=lacrosse.corp.redhat.com)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19kUqk-000495-00
-	for <nfs@lists.sourceforge.net>; Wed, 06 Aug 2003 13:25:34 -0700
-To: util-linux@math.uio.no
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-
-This is a multi-part message in MIME format.
---------------020601020503030005020209
 Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
+Cc: util-linux@math.uio.no, nfs@lists.sourceforge.net,
+	linux-kernel <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
+To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: <3F316446.3020808@RedHat.com>
+List-ID: <nfs.lists.sourceforge.net>
 
+Steve Dickson wrote:
+> This patch changes the default transport of NFS mounts
+> from UDP to TCP, iff the transport not explicitly
+> specified and the server support TCP mounts.
+> 
+> This patch is backwards compatible with servers that
+> don't support TCP mounts since it quarries the server
+> (which was already happening for the mount version)
+> to see if the server support TCP mounts.
 
-This patch changes the default transport of NFS mounts
-from UDP to TCP, iff the transport not explicitly
-specified and the server support TCP mounts.
+Say, as long as we're on the subject of supporting servers
+that don't support TCP mounts, I've found the following
+patch neccessary to support servers that don't support
+TCP even for enumrating services.  (Hint: some operating systems
+have an arbitrary limit on TCP sessions.)
 
-This patch is backwards compatible with servers that
-don't support TCP mounts since it quarries the server
-(which was already happening for the mount version)
-to see if the server support TCP mounts.
+Tested in busybox nfsmount, rediffed against util-linux-2.12pre,
+compiles ok.  I don't know if the change in meaning of the
+udp mount option is a good idea in general, but it sure helped
+us here.
+- Dan
 
+--- util-linux-2.12pre/mount/nfsmount.c.old	Wed Aug  6 13:39:24 2003
++++ util-linux-2.12pre/mount/nfsmount.c	Wed Aug  6 13:46:51 2003
+@@ -74,6 +74,9 @@
 
-SteveD.
+  static char *nfs_strerror(int stat);
 
-
-
-
---------------020601020503030005020209
-Content-Type: text/plain;
- name="util-linux-2.11y-mount-nfs-v3tcp.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="util-linux-2.11y-mount-nfs-v3tcp.patch"
-
---- util-linux-2.11y/mount/nfsmount.c.diff	2003-08-05 09:26:14.000000000 -0400
-+++ util-linux-2.11y/mount/nfsmount.c	2003-08-05 10:47:41.000000000 -0400
-@@ -133,6 +133,52 @@ find_kernel_nfs_mount_version(void) {
- 	     nfs_mount_version = NFS_MOUNT_VERSION;
- 	return nfs_mount_version;
- }
-+static inline struct pmaplist *
-+get_pmaps(struct sockaddr_in *addr)
-+{
-+	static struct pmaplist *phead = NULL;
-+	static struct sockaddr_in *lastaddr = NULL;
++static struct pmaplist *
++pmap_getmaps_udp (struct sockaddr_in *address);
 +
-+	/*
-+	 * Make sure we are taking to the same server
-+	 */
-+	if (lastaddr && (addr->sin_addr.s_addr != lastaddr->sin_addr.s_addr))
-+		phead = NULL;
-+	
-+	if (phead == NULL)
-+		phead = pmap_getmaps(addr);
-+
-+	lastaddr = addr;
-+	return phead;
-+}
-+#define NFS_TCP_CAP 0x01
-+#define NFS_V3_CAP  0x02
-+
-+static unsigned short
-+get_nfs_caps(struct sockaddr_in *server_addr)
-+{
-+	struct pmaplist *pmap;
-+	unsigned short nfs_caps = 0;
-+
-+	if ((pmap = get_pmaps(server_addr)) == NULL)
-+		return 0;
-+
-+	do {
-+		if (pmap->pml_map.pm_prog == NFS_PROGRAM) {
-+			if (pmap->pml_map.pm_prot == IPPROTO_TCP)
-+				nfs_caps |= NFS_TCP_CAP;
-+			if (pmap->pml_map.pm_vers == 3)
-+				nfs_caps |= NFS_V3_CAP;
-+			/*
-+			 * Check to see if we are finished
-+			 */
-+			if ((nfs_caps & (NFS_TCP_CAP|NFS_V3_CAP)) == (NFS_TCP_CAP|NFS_V3_CAP))
-+				break;
-+		}
-+	} while ((pmap = pmap->pml_next));
-+	
-+	return nfs_caps;
-+}
- 
- static struct pmap *
- get_mountport(struct sockaddr_in *server_addr,
-@@ -155,7 +201,7 @@ get_mountport(struct sockaddr_in *server
- 	p.pm_port = port;
- 
- 	server_addr->sin_port = PMAPPORT;
+  #define MAKE_VERSION(p,q,r)	(65536*(p) + 256*(q) + (r))
+
+  #define MAX_NFSPROT ((nfs_mount_version >= 4) ? 3 : 2)
+@@ -148,7 +151,10 @@
+  	p.pm_port = port;
+
+  	server_addr->sin_port = PMAPPORT;
 -	pmap = pmap_getmaps(server_addr);
-+	pmap = get_pmaps(server_addr);
- 
- 	while (pmap) {
- 		if (pmap->pml_map.pm_prog != prog)
-@@ -230,6 +276,7 @@ int nfsmount(const char *spec, const cha
- 	time_t t;
- 	time_t prevt;
- 	time_t timeout;
-+	unsigned short nfs_caps;
- 
- 	/* The version to try is either specified or 0
- 	   In case it is 0 we tell the caller what we tried */
-@@ -443,6 +490,49 @@ int nfsmount(const char *spec, const cha
- 			}
- 		}
- 	}
++	if (proto == IPPROTO_TCP)
++		pmap = pmap_getmaps(server_addr);
++	else
++		pmap = pmap_getmaps_udp(server_addr);
+
+  	while (pmap) {
+  		if (pmap->pml_map.pm_prog != prog)
+@@ -883,3 +889,91 @@
+          return port;
+  }
+  #endif
 +
-+	/* create mount deamon client */
-+	/* See if the nfs host = mount host. */
-+	if (mounthost) {
-+		if (mounthost[0] >= '0' && mounthost[0] <= '9') {
-+			mount_server_addr.sin_family = AF_INET;
-+			mount_server_addr.sin_addr.s_addr = inet_addr(hostname);
-+		} else {
-+			if ((hp = gethostbyname(mounthost)) == NULL) {
-+				fprintf(stderr, _("mount: can't get address for %s\n"),
-+					mounthost);
-+				goto fail;
-+			} else {
-+				if (hp->h_length > sizeof(struct in_addr)) {
-+					fprintf(stderr,
-+						_("mount: got bad hp->h_length?\n"));
-+					hp->h_length = sizeof(struct in_addr);
-+				}
-+				mount_server_addr.sin_family = AF_INET;
-+				memcpy(&mount_server_addr.sin_addr,
-+				       hp->h_addr, hp->h_length);
-+			}
-+		}
-+	}
-+	/*
-+	 * Set the defaults to be NFS v3 over TCP iff the
-+	 * version or transport have not been explicitly
-+	 * set and the server is able to support those
-+	 * options.
-+	 */
-+	if (nfsvers == 0 || tcp == 0) {
-+		if ((nfs_caps = get_nfs_caps(&mount_server_addr))) {
-+			if (nfsvers == 0) {
-+				if (nfs_caps & NFS_V3_CAP)
-+					nfsvers = 3;
-+			}
-+			if (tcp == 0) {
-+				if (nfs_caps & NFS_TCP_CAP)
-+					tcp = 1;
-+			}
-+		}
-+	}
++/* added 30 June 2003, dkegel@ixiacom.com, to support true udp-only mounts */
 +
- 	proto = (tcp) ? IPPROTO_TCP : IPPROTO_UDP;
- 
- 	data.flags = (soft ? NFS_MOUNT_SOFT : 0)
-@@ -518,29 +608,6 @@ int nfsmount(const char *spec, const cha
- 		return retval;
- 	}
- 
--	/* create mount deamon client */
--	/* See if the nfs host = mount host. */
--	if (mounthost) {
--		if (mounthost[0] >= '0' && mounthost[0] <= '9') {
--			mount_server_addr.sin_family = AF_INET;
--			mount_server_addr.sin_addr.s_addr = inet_addr(hostname);
--		} else {
--			if ((hp = gethostbyname(mounthost)) == NULL) {
--				fprintf(stderr, _("mount: can't get address for %s\n"),
--					mounthost);
--				goto fail;
--			} else {
--				if (hp->h_length > sizeof(struct in_addr)) {
--					fprintf(stderr,
--						_("mount: got bad hp->h_length?\n"));
--					hp->h_length = sizeof(struct in_addr);
--				}
--				mount_server_addr.sin_family = AF_INET;
--				memcpy(&mount_server_addr.sin_addr,
--				       hp->h_addr, hp->h_length);
--			}
--		}
--	}
- 
- 	/*
- 	 * The following loop implements the mount retries. On the first
-@@ -675,7 +742,8 @@ int nfsmount(const char *spec, const cha
- 		if (t >= timeout)
- 			goto fail;
- 	}
--	nfsvers = (pm_mnt->pm_vers < 2) ? 2 : pm_mnt->pm_vers;
-+	if (nfsvers == 0)
-+		nfsvers = (pm_mnt->pm_vers < 2) ? 2 : pm_mnt->pm_vers;
- 
- 	if (nfsvers == 2) {
- 		if (status.nfsv2.fhs_status != 0) {
-
-
---------------020601020503030005020209--
-
-
-
--------------------------------------------------------
-This SF.Net email sponsored by: Free pre-built ASP.NET sites including
-Data Reports, E-commerce, Portals, and Forums are available now.
-Download today and enter to win an XBOX or Visual Studio .NET.
-http://aspnet.click-url.com/go/psa00100003ave/direct;at.aspnet_072303_01/01
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
++/* @(#)pmap_getmaps.c	2.2 88/08/01 4.0 RPCSRC */
++/*
++ * Sun RPC is a product of Sun Microsystems, Inc. and is provided for
++ * unrestricted use provided that this legend is included on all tape
++ * media and as a part of the software program in whole or part.  Users
++ * may copy or modify Sun RPC without charge, but are not authorized
++ * to license or distribute it to anyone else except as part of a product or
++ * program developed by the user.
++ *
++ * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
++ * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
++ * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
++ *
++ * Sun RPC is provided with no support and without any obligation on the
++ * part of Sun Microsystems, Inc. to assist in its use, correction,
++ * modification or enhancement.
++ *
++ * SUN MICROSYSTEMS, INC. SHALL HAVE NO LIABILITY WITH RESPECT TO THE
++ * INFRINGEMENT OF COPYRIGHTS, TRADE SECRETS OR ANY PATENTS BY SUN RPC
++ * OR ANY PART THEREOF.
++ *
++ * In no event will Sun Microsystems, Inc. be liable for any lost revenue
++ * or profits or other special, indirect and consequential damages, even if
++ * Sun has been advised of the possibility of such damages.
++ *
++ * Sun Microsystems, Inc.
++ * 2550 Garcia Avenue
++ * Mountain View, California  94043
++ */
++#if !defined(lint) && defined(SCCSIDS)
++static char sccsid[] = "@(#)[copy of] pmap_getmaps.c 1.10 87/08/11 Copyr 1984 Sun Micro";
++#endif
++
++/*
++ * [copy of] pmap_getmap.c
++ * Client interface to pmap rpc service.
++ * contains pmap_getmaps, which is only tcp service involved
++ *
++ * Copyright (C) 1984, Sun Microsystems, Inc.
++ */
++
++#include <rpc/rpc.h>
++#include <rpc/pmap_prot.h>
++#include <rpc/pmap_clnt.h>
++#include <sys/socket.h>
++#include <netdb.h>
++#include <stdio.h>
++#include <errno.h>
++
++/*
++ * Get a copy of the current port maps.
++ * Calls the pmap service remotely to do get the maps.
++ */
++struct pmaplist *
++pmap_getmaps_udp(struct sockaddr_in *address)
++{
++	struct pmaplist *head = (struct pmaplist *) NULL;
++	int fd = -1;
++	struct timeval minutetimeout;
++	struct timeval retry;
++	CLIENT *client;
++
++	minutetimeout.tv_sec = 60;
++	minutetimeout.tv_usec = 0;
++	address->sin_port = htons(PMAPPORT);
++#if 0
++	client = clnttcp_create(address, PMAPPROG, PMAPVERS, &fd, 50, 500);
++#else
++	/* FIXME: this retry interval's a bit arbitrary...*/
++	retry.tv_sec = 5;
++	retry.tv_usec = 0;
++	client = clntudp_create(address, PMAPPROG, PMAPVERS, retry, &fd);
++#endif
++	if (client != (CLIENT *) NULL) {
++		if (CLNT_CALL(client, PMAPPROC_DUMP, (xdrproc_t) xdr_void, NULL,
++				(xdrproc_t) xdr_pmaplist, (caddr_t) & head, minutetimeout) != RPC_SUCCESS) {
++			clnt_perror(client, _("pmap_getmaps rpc problem"));
++		}
++		CLNT_DESTROY(client);
++	}
++	/* (void)close(fd); CLNT_DESTROY already closed it */
++	address->sin_port = 0;
++	return head;
++}
++
