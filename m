@@ -1,23 +1,23 @@
-From: Martin Wilck <martin.wilck@fujitsu-siemens.com>
-Subject: Re: nfsroot & RPC_AUTH_NULL
-Date: Mon, 19 Jul 2004 15:08:41 +0200
+From: "Divyesh Amipara" <divyesh@techie.com>
+Subject: Mount hangs forever
+Date: Thu, 22 Jul 2004 00:06:36 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <40FBC7D9.9070906@fujitsu-siemens.com>
-References: <34126.68.42.103.198.1073925525.squirrel@webmail.uio.no>
+Message-ID: <20040722050636.157924BDA8@ws1-1.us4.outblaze.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BmWsn-0004XJ-Ty
-	for nfs@lists.sourceforge.net; Mon, 19 Jul 2004 05:04:37 -0700
-Received: from plam.fujitsu-siemens.com ([217.115.66.9])
+	id 1BnVn0-0000oV-TI
+	for nfs@lists.sourceforge.net; Wed, 21 Jul 2004 22:06:42 -0700
+Received: from webmail-outgoing.us4.outblaze.com ([205.158.62.67])
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1BmWsn-00023g-6H
-	for nfs@lists.sourceforge.net; Mon, 19 Jul 2004 05:04:37 -0700
-To: trond.myklebust@fys.uio.no
-In-Reply-To: <34126.68.42.103.198.1073925525.squirrel@webmail.uio.no>
+	id 1BnVn0-000202-Ko
+	for nfs@lists.sourceforge.net; Wed, 21 Jul 2004 22:06:42 -0700
+Received: from wfilter.us4.outblaze.com (wfilter.us4.outblaze.com [205.158.62.180])
+	by webmail-outgoing.us4.outblaze.com (Postfix) with QMQP id 69B0B1800968
+	for <nfs@lists.sourceforge.net>; Thu, 22 Jul 2004 05:06:36 +0000 (GMT)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,43 +30,38 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello Trond, hello list,
+Hi All,
 
-I have to reiterate my request from January regarding the RPC_AUTH_NULL 
-used in mnt_create(). Trond had a patch long ago that simply used 
-RPC_AUTH_UNIX instead RPC_AUTH_NULL. 
-(http://marc.theaimsgroup.com/?l=linux-nfs&m=105390025122641&w=2)
-We verified that this fixes Linux NFS boot with certain NFSv3 servers.
+I am trying to mount from nfs server running linux RH 8 from other inux client
+running RH 8
 
-Trond wrote on 2004/01/12:
+using this comman..
 
->>Can the above mentioned patch have any adverse effects?
->>If no, is there any reason why it did not become part of either the
->>mainline kernel or the patch collection at
->>http://www.fys.uio.no/%7Etrondmy/src/ ?
-> 
-> No reason at all. Please just blame my failing memory for not having
-> done so already.
-> 
-> I'll try to get this done over the next couple of days together with the
-> other patches that are missing: There are the locking patches - anything
-> else?.
 
-The issue seems to have been lost again though, at least for 2.4. The 
-patch is neither in 2.4.26 nor in Trond's patch packet for 2.4.26. In 
-the 2.6 series it was apparently merged with 2.6.5. It would be nice to 
-have it in 2.4 as well, though.
+$ mount -o timeo=20,soft -t nfs 192.168.9.1:/home /mnt/home
 
-Can I do anything to help this issue get fixed in 2.4.x?
+but it hangs forever without getting Time Out. so if i am doing backup
+after NFS mount it will never happen.
 
-Thanks,
-Martin
+So pls suggest me how to resolve this kind of proble so that it should come out when
+NFS server will not respond or through some error.
+
+Ok. Fine. Thanks.
+
+>> Divyesh A.
+
+
+*****************************************
+   Master is the person who knows 
+      something about everything,
+   but,
+      Everything about something !!
+*****************************************
 
 -- 
-Martin Wilck                Phone: +49 5251 8 15113
-Fujitsu Siemens Computers   Fax:   +49 5251 8 20409
-Heinz-Nixdorf-Ring 1        mailto:Martin.Wilck@Fujitsu-Siemens.com
-D-33106 Paderborn           http://www.fujitsu-siemens.com/primergy
+___________________________________________________________
+Sign-up for Ads Free at Mail.com
+http://promo.mail.com/adsfreejump.htm
 
 
 
