@@ -1,23 +1,22 @@
-From: ramana <ramana@intraperson.com>
-Subject: Autodir and nfs
-Date: Sun, 14 Nov 2004 09:42:22 +0530
-Message-ID: <4196DB26.9040207@intraperson.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Autodir and nfs
+Date: Sun, 14 Nov 2004 11:57:27 -0500
+Message-ID: <1100451447.11340.2.camel@lade.trondhjem.org>
+References: <4196DB26.9040207@intraperson.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CTBge-0006xU-1Y
-	for nfs@lists.sourceforge.net; Sat, 13 Nov 2004 20:08:24 -0800
-Received: from smtp.net4india.com ([202.71.128.225])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CTBgc-0001wZ-DE
-	for nfs@lists.sourceforge.net; Sat, 13 Nov 2004 20:08:23 -0800
-Received: from [202.63.116.2] (helo=intraperson.com)
-	by smtp.net4india.com with esmtp (Exim 3.36 #1)
-	id 1CTBsP-0004B5-00
-	for nfs@lists.sourceforge.net; Sun, 14 Nov 2004 09:50:34 +0530
-To: nfs@lists.sourceforge.net
+	id 1CTNh9-0001zY-2d
+	for nfs@lists.sourceforge.net; Sun, 14 Nov 2004 08:57:43 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CTNh7-0007rB-QV
+	for nfs@lists.sourceforge.net; Sun, 14 Nov 2004 08:57:42 -0800
+To: ramana <ramana@intraperson.com>
+In-Reply-To: <4196DB26.9040207@intraperson.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,28 +30,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Dear nfs team,
+su den 14.11.2004 Klokka 09:42 (+0530) skreiv ramana:
+> But when NFS is used to mount Autodir maintained directories, NFS 
+> mounting them perfectly but it is not allowing to enter into those nfs 
+> mounted directories -- Permission denied.
 
-I am author of Autodir and for more info please visit 
-http://www.intraperson.com/autodir/.
+"man 5 nfs". Read all about the "no_root_squash" export option.
 
-Autodir is performing as expected with user level software like ssh, 
-smtp servers etc.
-
-But when NFS is used to mount Autodir maintained directories, NFS 
-mounting them perfectly but it is not allowing to enter into those nfs 
-mounted directories -- Permission denied.
-
-I did not hack NFS kernel code to give you patch myself. Any solutions?
-
-Thanks in advance.
-
-Regards
-ramana
+Cheers,
+  Trond
 
 -- 
-http://www.intraperson.com
-
+Trond Myklebust <trond.myklebust@fys.uio.no>
 
 
 
