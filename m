@@ -1,18 +1,19 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: New package of beta-level NFS client updates out for 2.4.19-rc1
-Date: Mon, 8 Jul 2002 19:29:43 +0200
+From: Christian Liem <liemcc@ousd.k12.ca.us>
+Subject: Setting default block size on the server side
+Date: 08 Jul 2002 12:11:36 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <agcjiv$hpi$2@main.gmane.org>
+Message-ID: <1026155497.8405.44.camel@fiona.mine.nu>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="us-ascii"
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mons.uio.no ([129.240.130.14])
+Received: from paloalto-smrly2.gtei.net ([131.119.246.6])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17RcKe-0001m4-00
-	for <nfs@lists.sourceforge.net>; Mon, 08 Jul 2002 10:29:52 -0700
-To: nfs@lists.sourceforge.net,
- linux-kernel@vger.kernel.org
+	id 17Rezi-0007Um-00
+	for <nfs@lists.sourceforge.net>; Mon, 08 Jul 2002 13:20:26 -0700
+Received: from firewall.ousd.k12.ca.us (firewall.ousd.k12.ca.us [198.94.127.6])
+	by paloalto-smrly2.gtei.net (Postfix) with SMTP id DAB5C6F75
+	for <nfs@lists.sourceforge.net>; Mon,  8 Jul 2002 20:20:24 +0000 (GMT)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,38 +26,35 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-
 Hi,
 
-  There's a new NFS_ALL package full of NFS client updates out for 2.4.19-rc1.
-New features include:
+I'm wondering about how I can do this.  The NFS-HOWTO is a little vague
+about the issue.  It says:
 
-  - UDP message round trip timing in order to improve the timeout + resend 
-cycle.
-  - UDP congestion control as per Van Jacobson.
-  - Further improvements to the close-to-open code
-  - Full support for the NFSv3 ACCESS function (as required by people who want 
-to use ACLs).
+4096 bytes is the most common default, although for TCP-based mounts in
+2.2 kernels, and for all mounts beginning with 2.4 kernels, the server
+specifies the default block size.
 
-A full description of all the components and features can be found in the file
+After googling around the web and poking around kernel source, I can't
+seem to find anything that relate to this.  So, where or how do I
+specify it on the server?
 
-   http://www.fys.uio.no/~trondmy/src/2.4.19-rc1/HEADER.html
+help =)
 
-the patch itself can be found as
+P.S.:  I'm actually trying to boot an old Uniden n|c thin client.  The
+BIOS boots by first doing a bootp request to get ip address and then
+grabs a config file from the specified boot server.  The config file
+points to the nfs export that it should mount as the root partition and
+the kernel file name.  So far I've been able to get it to mount the nfs
+volume.  When it tries to read the file, it ignores the nfs read reply
+packets.  These thin clients originally boot off a BSD server.  And the
+only difference I found between the two nfs servers is the default block
+size.  The BSD nfsd sends out 8k blocks and the linux one sends out 4k
+blocks.  If there are others who had experience with these n|c clients,
+I'd like to hear about it too.
 
-  http://www.fys.uio.no/~trondmy/src/2.4.19-rc1/linux-2.4.19-NFS_ALL.dif
+-chris
 
-For those who have been following the contents of these files, please note 
-that a lot of changes have been made w.r.t. the 2.4.18 version:
-Amongst other things, the 'ping' patch (see 
-http://www.fys.uio.no/~trondmy/src/2.4.18/HEADER.html) is assumed to be 
-replaced by the new and improved RPC round trip timing+congestion avoidance 
-code.
-The DIRECTIO patch has been removed pending a decision by Chuck on whether or 
-not he wants to continue supporting it?
-
-Happy testing,
-  Trond
 
 
 -------------------------------------------------------
