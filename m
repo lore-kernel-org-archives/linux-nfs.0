@@ -1,25 +1,25 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS not negotiating MTU correctly?
-Date: Tue, 25 May 2004 11:04:49 -0400
+From: Vincent ROQUETA <vincent.roqueta@ext.bull.net>
+Subject: Testing tools
+Date: Tue, 25 May 2004 17:16:18 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1085497489.3872.26.camel@lade.trondhjem.org>
-References: <1085491125.30311.20808.camel@localhost>
+Message-ID: <200405251716.19098.vincent.roqueta@ext.bull.net>
+Reply-To: vincent.roqueta@ext.bull.net
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+  charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BSdU5-000808-JG
-	for nfs@lists.sourceforge.net; Tue, 25 May 2004 08:04:53 -0700
-Received: from dh132.citi.umich.edu
-	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.30)
-	id 1BSdU5-0006qm-2U
-	for nfs@lists.sourceforge.net; Tue, 25 May 2004 08:04:53 -0700
-To: Chris Worley <cworley@lnxi.com>
-In-Reply-To: <1085491125.30311.20808.camel@localhost>
+	id 1BSdcR-0001ag-Ex
+	for nfs@lists.sourceforge.net; Tue, 25 May 2004 08:13:31 -0700
+Received: from ecbull20.frec.bull.fr ([129.183.4.3])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BSdcO-00055d-Sx
+	for nfs@lists.sourceforge.net; Tue, 25 May 2004 08:13:31 -0700
+Received: from roquetav (roquetav.frec.bull.fr [129.183.101.52])
+	by ecbull20.frec.bull.fr (8.9.2/8.9.1) with ESMTP id RAA12714
+	for <nfs@lists.sourceforge.net>; Tue, 25 May 2004 17:14:22 +0200
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,26 +32,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 ty , 25/05/2004 klokka 09:18, skreiv Chris Worley:
 
-> In grilling my switch vendor, they assure me that it's the client &
-> servers job to negotiate properly fragmented packets based on the lessor
-> MTU.
 
-That sounds like a piss-poor switch to me. AFAIK all routers are
-supposed to automatically fragment datagrams when forwarding between
-networks that have a different MTU. Automatic MTU discovery is not part
-of the IP protocol (although methods for doing so under certain
-circumstances do exist).
+Here is a little survey to know the most used/usefull tests suites for NFSv4
+http://nfsv4.bullopensource.org/tools/sondage.php
 
-In any case, dealing with MTUs is entirely the networking layer's job.
-NFS just deals with sockets. I suggest that you check that the
-ip_no_pmtu_disc sysctl is set correctly, and then check with the Linux
-networking mailing list (netdev@oss.sgi.com) if there are further
-problems.
+with a short description of each tool here :
+http://nfsv4.bullopensource.org/tools/testing_tools.html
 
-Cheers,
-  Trond
+I had modified the tools lists with suggered tools.
+I did not propose object only tools because we can't use it too test NFSv4 on
+various hardwares plateforms.
+
+Idealy we need to tests:
+-Robustness
+-performances
+-POSIX compliance
+-RFC Compliance
+-Interoperatiblity.
+
+However we don't have ready tools to test POSIX compliance
+-> OpenPosix do not have filesystems tests suites (It test IPC, timers
+threads ...)
+
+RFC compliance
+-> SpecSFS : there is no version to test NFSv4... (and is object only)
+-> PyNFS : maybe modified to test the RFC compliance ?
+
+
+Cordialement,
+Vincent
+
+-------------------------------------------------------
+
 
 
 -------------------------------------------------------
