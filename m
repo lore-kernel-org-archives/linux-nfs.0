@@ -1,21 +1,22 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS mount count is incremented incorrectly
-Date: 14 Aug 2003 23:40:19 -0700
+From: "Stefan Orth" <SORTH@de.ibm.com>
+Subject: Stefan Orth/Germany/IBM is out of the office.
+Date: Fri, 15 Aug 2003 09:33:15 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsoeyr4e5o.fsf@charged.uio.no>
-References: <20030814132006.7C2A.KAKMY@mvh.biglobe.ne.jp>
-	<16188.13494.650071.936039@gargle.gargle.HOWL>
+Message-ID: <OF1C154BC2.5F9973AB-ONC1256D83.00297F5C-C1256D83.00297F5C@de.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: fumihiko kakuma <kakmy@mvh.biglobe.ne.jp>,  util-linux@math.uio.no,
-	  nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+Received: from d12lmsgate-2.de.ibm.com ([194.196.100.235])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19nYGX-0001yH-00
-	for <nfs@lists.sourceforge.net>; Thu, 14 Aug 2003 23:40:50 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <16188.13494.650071.936039@gargle.gargle.HOWL>
+	id 19nZ5R-0004YB-00
+	for <nfs@lists.sourceforge.net>; Fri, 15 Aug 2003 00:33:25 -0700
+Received: from d12relay02.megacenter.de.ibm.com (d12relay02.megacenter.de.ibm.com [9.149.165.196])
+	by d12lmsgate-2.de.ibm.com (8.12.9/8.12.8) with ESMTP id h7F7XG7o228914
+	for <nfs@lists.sourceforge.net>; Fri, 15 Aug 2003 09:33:17 +0200
+Received: from d12ml036.de.ibm.com (d12av02.megacenter.de.ibm.com [9.149.165.228])
+	by d12relay02.megacenter.de.ibm.com (8.12.9/NCO/VER6.5) with ESMTP id h7F7XHrp238296
+	for <nfs@lists.sourceforge.net>; Fri, 15 Aug 2003 09:33:17 +0200
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,20 +29,11 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Neil Brown <neilb@cse.unsw.edu.au> writes:
+I will be out of the office starting August 15, 2003 and will not return
+until August 18, 2003.
 
-     > The MOUNT protocol is simply not a reliable way to keep rmtab
-     > exactly correct.  Tinkering may improve the situation but it
-     > can never make it perfect.
+I will respond to your message when I return.
 
-Seconded...
-
-There is no way you can make this work exactly. It suffices for the
-client to crash before it has sent the UNMOUNT request to the server
-in order to screw up the accounting in rmtab.
-
-Cheers,
-  Trond
 
 
 -------------------------------------------------------
