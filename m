@@ -1,17 +1,21 @@
-From: snorerx@mrsnore.com
-Subject: Stop Snoring Today!
-Date: Wed, 23 Apr 2003 07:56:59 -0700
+From: "Paul Cunningham" <paulcunningham@sprintmail.com>
+Subject: Re Questions about NFS over TCP
+Date: Wed, 23 Apr 2003 09:36:10 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E198LgB-00031Z-00@sc8-sf-list1.sourceforge.net>
-Reply-To: snorerx@mrsnore.com
+Message-ID: <002e01c3099d$4d98f090$0b01a8c0@PAULSDESKTOP>
 Mime-Version: 1.0
-Content-Type: text/html
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [206.111.236.150] (helo=mail.bmarket.net)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 198LgB-00031Z-00
-	for <nfs@lists.sourceforge.net>; Wed, 23 Apr 2003 07:56:59 -0700
-To: Nfs <nfs@lists.sourceforge.net>
+Received: from swan.mail.pas.earthlink.net ([207.217.120.123])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 198KQZ-0005tS-00
+	for <nfs@lists.sourceforge.net>; Wed, 23 Apr 2003 06:36:47 -0700
+Received: from user163.net137.nc.sprint-hsd.net ([63.162.203.163] helo=PAULSDESKTOP)
+	by swan.mail.pas.earthlink.net with smtp (Exim 3.33 #1)
+	id 198KQ1-0004fs-00
+	for nfs@lists.sourceforge.net; Wed, 23 Apr 2003 06:36:13 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,61 +28,42 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+> I've just started experimenting with NFS over TCP and have a few
+> questions:
+>
+> The Linux NFS-HOWTO states that:
+>
+> > The disadvantage of using TCP is that it is not a stateless
+> > protocol like UDP. If your server crashes in the middle of a
+> > packet transmission, the client will hang and any shares will
+> > need to be unmounted and remounted.
+>
+> I take this to mean that any client that is not actively accessing data
+> on the server at the time of a crash will be OK after the server
+> reboots?
+>
+I have not used nor tested Linux's NFS over TCP implementation.  I have
+spent lots of time developing and testing NFS over TCP for one of the
+commercial UNIX flavors.
 
-<div align="center">
-  <center>
-      <table border="1" cellpadding="5" cellspacing="0" width="500" bgcolor="#FFFFFF" bordercolor="#000080">
-        <tr>
-          <td width="100%">
-<font face="Arial, Verdana" color="#000080" size="1">
-<table border="1" width="100%" bordercolor="#000080" bgcolor="#A1ADE2" cellspacing="0" cellpadding="2">
-  <tr>
-    <td width="100%">
-<font face="Arial, Verdana" color="#000080" size="1">
-<img border="0" src="http://www.mrsnore.com/snorerx.gif" width="288" height="60"></font>
-    </td>
-  </tr>
-</table>
-<TABLE border=0 cellPadding=0 cellSpacing=0 width=100% bordercolor="#000080">
-  <TR>
-    <TD>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
-    <TD width=334><BR><FONT face=verdana,arial size=2>This formulation of  
-      highly effective natural herbs and enzymes work gently together to relieve  
-      snoring. You will breathe, sleep and feel better. Snoring can be dangerous  
-      to your health, and annoying to our loved ones. Safe and effective with no  
-      side effects!<br> For information please </FONT></font><font face="verdana,arial" size="2" color="#000080"><a href="http://www.mrsnore.com">Click
-    Here</a></font>
-<font face="Arial, Verdana" color="#000080" size="1">
-<FONT face=verdana,arial size=2>
-      <BR><BR>
-      <CENTER><FONT color=#990000 size=4>Works the First Night</FONT></FONT><font color="#990000" size="4" face="verdana,arial">, 
-      Every Night</font><FONT face=verdana,arial size=2><FONT color=#990000 size=4>! 
-      </FONT></CENTER><BR>Get your Snore RX today and get a good night's sleep  
-      tomorrow. Snore RX will not only help you sleep better and prevent  
-      annoying snoring, it will save you unnecessary embarrassment at camping  
-      sites, in thin walled cruise cabins or will stop you from bringing down  
-      the roof at you relatives' house on a family visit. <BR><BR> 
-      <CENTER><FONT color=#990000 size=3><B>100% Money back guarantee! 
-      </B></FONT></CENTER></FONT>
-      <P align=center>&nbsp;<a href="http://www.mrsnore.com"><img border="0" src="http://www.mrsnore.com/mrsnor2.jpg" width="200" height="78"></a></P>
-      <P align=center></P></font></TD>
-    <TD vAlign=top width=131></TD></TR></TABLE>
-          </td>
-        </tr>
-        <tr>
-          <td width="100%">
-<p><font face="Arial, Verdana" color="#000080" size="1">You have received this
-email because you have opted-in to receive email from Bmarket.net or its
-partners.<br>If
-you would no longer like to receive special offers from Bmarket.net or you feel
-that you received this email in error,&nbsp; please
-click <a href="http://www.bmarket.net/unsubscribe.html">Unsubscribe</a>.
-</font></p>
-          </td>
-        </tr>
-      </table>
-  </center>
-  </div>
+As a Linux advocate I truly hope this is not the case.  It has been a couple
+of
+years but two mount options come to mind, hard and intr.  hard: means do not
+give up. You should be able to reboot the server, pull the ethernet cable
+for a
+month, or any other nasty thing you can thing of, right in the middle of a
+read/write etc.  When the server comes back on-line, the read/write or
+whatever was happening at that point in time will continue.  This could be a
+serious problem except for the intr option.  Some process is hanging around
+waiting for the read/write to complete.  The server is terminal
+(decommissioned
+and nobody told you).  Send a signal and the process should return a EINTR.
+
+Check the man pages
+man mount
+man nfs
+
+Paul Cunningham
 
 
 
