@@ -1,18 +1,18 @@
-From: "Steven N. Hirsch" <shirsch@adelphia.net>
-Subject: Re: 2.4.19-pre5-ac3 NFS problems
-Date: Mon, 8 Apr 2002 07:12:03 -0400 (EDT)
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: 3 strange things in the lockd code ?
+Date: 08 Apr 2002 14:06:42 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0204080708000.3713-100000@atx.fast.net>
-References: <15537.631.242570.416618@notabene.cse.unsw.edu.au>
+Message-ID: <shs8z7yo0ml.fsf@charged.uio.no>
+References: <20020404194238.E25342@zeus.centre-cired.fr>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
-Received: from smtprelay7.dc2.adelphia.net ([64.8.50.39])
+Received: from pat.uio.no ([129.240.130.16])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16uWx3-00030J-00
-	for <nfs@lists.sourceforge.net>; Mon, 08 Apr 2002 04:04:45 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <15537.631.242570.416618@notabene.cse.unsw.edu.au>
+	id 16uXvo-0004uH-00
+	for <nfs@lists.sourceforge.net>; Mon, 08 Apr 2002 05:07:32 -0700
+To: Dumas Patrice <dumas@centre-cired.fr>
+In-Reply-To: <20020404194238.E25342@zeus.centre-cired.fr>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,63 +25,49 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Mon, 8 Apr 2002, Neil Brown wrote:
+>>>>> " " == Dumas Patrice <dumas@centre-cired.fr> writes:
 
-> On Sunday April 7, shirsch@adelphia.net wrote:
-> > All,
-> > 
-> > I'm not sure exactly what has been integrated into Alan's pre5-ac3 kernel,
-> > but there are serious problems with NFS over TCP.  Twice in a row I've had
-> > locked processes on the client when attempting to lock a mail spool on the
-> > server.  Required reboot on both ends to clear :-(.
-> > 
-> > FWIW, I had been running for almost a month prior with 2.4.19-pre2 + 
-> > Trond's 2.4.18_NFS_ALL using NFS over TCP and saw no problems.  I moved to 
-> > the new kernel ONLY on the server.  After reverting back, all seems stable 
-> > again.
-> > 
-> > What is the current status of the various 2.4.x patches floating around?  
-> 
-> 2.4.19-pre5-ac3 has my TCP (and SMP) patches that are in 2.5, but
-> aren't ready for 2.4.real yet as they haven't had enough
-> testing... thanks for doing some testing.
-> 
-> How repeatable is the problem?  Simple locking seems to work for me,
-> so presumably it is some particular combination or load..
+     > My understanding is that in nlmsvc_grant_blocked there is a
+     > callback to the client with NLMPROC_GRANTED_MSG, the client get
+     > the callback using nlmsvc_proc_granted_msg which in turn sends
+     > NLMPROC_GRANTED_RES (and also which triggers
+     > nlmsvc_grant_callback which only rescuedule block). The server
+     > receive and responds to the callback, but it is
+     > nlmsvc_proc_null.
 
-It seems fairly easy to trip.  I was able to hang it two or three times in 
-a row by simply attempting to open a non-default mail folder with pine.  
-Pine relies (I think) on trickery with lock files, rather than flock().
+     > I may be totally wrong, but it seems to me that
+     > nlmsvc_proc_granted_res should instead call nlmsvc_grant_reply
+     > to delete the block. Did I missed something ?
 
-> Are you in a position you get it to fail again, or would that be
-> inconvenient?
+NLM_GRANTED_RES is part of the 'asynchronous RPC' NLM model which was
+designed to support locking on systems without monitoring
+(i.e. without rpc.statd').
+Linux does not currently support such a model, nor do we really plan
+to do so. Non-monitored locks are pretty hairy things to deal with
+(see http://www.opengroup.org/onlinepubs/9629799/chap9.htm#tagcjh_10_01_01_02).
 
-No problem.  I'll try to make some time this evening for testing.
+     > 2) If there are 2 clients on different hosts with the same
+     >    cookie, the
+     > nlmsvc_grant_callback may find an invalid block.
 
-> I am interest to know if  
->   "netstat -t"
-> shows anything on the input queue for the lockd connection: quite
-> possibly the connection to port 32768.
-> 
-> The only change that I can imagine might cause  the client to hang is
-> the flow control that I added to the RPC layer: It won't accept a
-> request unless it is sure there will be room on the output queue for
-> the response.
-> For lockd, it makes extremely large estimates for the response size (I
-> was a bit lazy) which shouldn't be a problem except that it might slow
-> down lock requests if there are lots and lots of them, but maybe it
-> is.
-> 
-> Would you be able to try a patch that makes more realistic estimates
-> of lockd response sizes?
-> 
-> Are you using NFSv2 or NFSv3?
+I agree. We should be checking the host address as well.
 
-This was with v3 mounts.  Also, client was 2.4.19-pre2 + Tronds 2.4.18 
-NFS_ALL patch.  The _server_ was using ac3.
+     > 3) This one may be a design choice. In nlmclnt_lock,
+     >    nlmclnt_block is called if
+     > the server responds NLM_LCK_BLOCKED to NLMPROC_LOCK even though
+     > the client doesn't want a blocking lock. If the server is
+     > broken and responds NLM_LCK_BLOCKED even if it should have
+     > responded something else, the client will call
+     > nlmclnt_block. To avoid that, maybe it could be possible to
+     > exchange if ((status = nlmclnt_call(req, NLMPROC_LOCK)) >= 0)
+     > with if (((status = nlmclnt_call(req, NLMPROC_LOCK)) >= 0) &&
+     > req->a_args.block) But it may also be a design choice, not to
+     > try to turn around broken servers.
 
-Steve
+Right.
 
+Cheers,
+  Trond
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
