@@ -1,11 +1,9 @@
 From: Neil Brown <neilb@cse.unsw.edu.au>
 Subject: Re: dentry/inode cache invalidation when using nfsd filesystem on 2.6
-Date: Fri, 24 Oct 2003 14:59:09 +1000
+Date: Thu, 23 Oct 2003 13:57:50 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16280.45469.770950.354371@notabene.cse.unsw.edu.au>
+Message-ID: <16279.20926.488909.525633@notabene.cse.unsw.edu.au>
 References: <20031021142414.GW1516@dbz.austin.ibm.com>
-	<16279.20926.488909.525633@notabene.cse.unsw.edu.au>
-	<20031023124016.GH6172@dbz.austin.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
@@ -13,17 +11,22 @@ Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1ADNfF-0004ct-00
-	for <nfs@lists.sourceforge.net>; Sat, 25 Oct 2003 05:37:05 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.22)
-	id 1ACu8V-0001mD-C0
-	for nfs@lists.sourceforge.net; Thu, 23 Oct 2003 22:05:19 -0700
-Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
+	id 1ADSKh-0001Hk-00
+	for <nfs@lists.sourceforge.net>; Sat, 25 Oct 2003 10:36:11 -0700
+Received: from panoramix.vasoftware.com
+	([198.186.202.147] helo=externalmx.vasoftware.com ident=mail)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
+	id 1ACxEX-0003kQ-Os
+	for nfs@lists.sourceforge.net; Fri, 24 Oct 2003 01:23:45 -0700
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24]:38013)
+	by externalmx.vasoftware.com with smtp (Exim 4.22 #1 (Debian))
+	id 1ACWdq-0007ll-JQ
+	for <nfs@lists.sourceforge.net>; Wed, 22 Oct 2003 21:00:06 -0700
+Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
 	(for <jrsantos@austin.ibm.com>) (for <nfs@lists.sourceforge.net>) By
-	note With Smtp ; Fri, 24 Oct 2003 14:59:15 +1000
+	note With Smtp ; Thu, 23 Oct 2003 13:57:51 +1000
 To: "Jose R. Santos" <jrsantos@austin.ibm.com>
-In-Reply-To: message from Jose R. Santos on Thursday October 23
+In-Reply-To: message from Jose R. Santos on Tuesday October 21
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -36,55 +39,52 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thursday October 23, jrsantos@austin.ibm.com wrote:
-> On 10/22/03 22:57:50, Neil Brown wrote:
-> > 
-> > The problem is NOT that the inode or dentry caches are being flushed.
-> > 
-> > The problem is that the inode and dentry caches
-> > *for*the*(tiny)*nfsd*filesystem*
-> > are being flushed, and this requires iterating through each cache under a
-> > spinlock, and this can take a while.
+On Tuesday October 21, jrsantos@austin.ibm.com wrote:
+> Hi,
 > 
-> I saw some weirdness that led me to believe kernel was invalidating more than  
-> it should.  I will investigate further to make sure this is not happening.
->  
-> > Basically, "mount" and "unmount" are slow operations.
+> I have come across a interesting behavior when using NFS server on machines
+> with large amounts of memory(16/32Gb).  If I have exported filesystems with
+> lots of data and many directories that were access and had dentry/inode cache
+> entries cached on the server, the clients took a long time(sometimes minutes)
+> to mount the NFS exported directories.
 > 
-> The only problem is that it seems to get worst as the memory of the system get  
-> bigger, but I'll agree with you on the SEP. So, I'll just drop
-> it. :)
-
-The more memory, the bigger the caches, the longer it takes to hunt
-through them for inodes/dentries on the target filesystem.
-
->  
-> > As you note, "unmount" can be avoided by mounting the nfsd filesystem
-> > somewhere.  I recommend /proc/fs/nfsd.
-> > The "mount" can be avoided by not using the nfsservctl systemcall at all.
-> > This is achived by mounting nfsd at /proc/fs/nfsd, and running the latest
-> > release of nfs-utils.
+> While the client was mostly IDLE, the servers rpc.mountd thread was consuming
+> 100% of one CPU on the system.  After some digging, I found that the problem
+> lies on the new nfsd filesystem code that talks to nfsctl.  Every time I issue
+> a mount on the client, the server invalidates both inode and dentry caches.
 > 
-> >From what you say here, it seems that the old nfsservctl systemcall method is  
-> deprecated and the new method is the one to use.  If this a fact? Would be  
-> nice to have this documented in the post-halloween document.  I could drop a  
-> note to Dave Jones to have this change.
-
-I guess.... I really wanted the syscall and the nfsd filesystem to
-both work equally side by side in 2.6, and the syscall would be gone
-in 2.8.  So I didn't really want to 'deprecate' it.  Just make it
-disappear after everyone had a very good likelyhood of upgrading.
-
-But it might be worth saying something to that effect in the
-post-halloween document.
-
-
-
+> Inode cache get invalidated on sys_nfsservctl(fs/nfsctl.c) on the fput call
+> which eventually calls invalidate_inodes. Dentry caches get invalidated on
+> do_open(fs/nfsctl.c) when calling do_kernel_mount which eventually calls
+> shrink_dcache_sb.
 > 
-> BTW:  What version of nfs-utils introduce this new interface for /proc/fs/ 
-> nfsd?
+> The inode cache invalidation is easy to work around by just mounting the nfsd
+> to something like /tmp/nfsd, but I haven't been able(except with a very
+> dangerous and stupid patch) to work around the dentry cache invalidation.
+> 
+> This invalidation seem unnecessary and it cause by the interaction with this
+> new interface for nfsctl.
+> 
+> Any help would be appreciated. :)
+> 
+> Thanks - JRS
 
-About 1.0.4 I think, but it was buggy until 1.0.6 which is current.
+The problem is NOT that the inode or dentry caches are being flushed.
+
+The problem is that the inode and dentry caches *for*the*(tiny)*nfsd*filesystem*
+are being flushed, and this requires iterating through each cache under a
+spinlock, and this can take a while.
+
+Basically, "mount" and "unmount" are slow operations.
+
+As you note, "unmount" can be avoided by mounting the nfsd filesystem
+somewhere.  I recommend /proc/fs/nfsd.
+The "mount" can be avoided by not using the nfsservctl systemcall at all. 
+This is achived by mounting nfsd at /proc/fs/nfsd, and running the latest
+release of nfs-utils.
+
+*fixing* the problem requires optimising the mount and unmount process,
+which is SEP  (Somebody Elses Problem).
 
 NeilBrown
 
