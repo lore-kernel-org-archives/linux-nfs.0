@@ -1,28 +1,28 @@
-From: raven@themaw.net
-Subject: Re: NFS readonly failover and linux?
-Date: Sat, 19 Feb 2005 11:10:54 +0800 (WST)
-Message-ID: <Pine.LNX.4.61.0502191104080.1601@donald.themaw.net>
-References: <1106871309.6181.254.camel@seki.nac.uci.edu>
- <Pine.LNX.4.61.0501291127450.1607@donald.themaw.net>
- <1107205302.4071.17.camel@seki.nac.uci.edu>  <Pine.LNX.4.58.0502010945400.25875@wombat.indigo.net.au>
-  <16895.57760.531261.8465@segfault.boston.redhat.com>
- <1108677567.5897.55.camel@seki.nac.uci.edu>  <Pine.LNX.4.58.0502181207490.20922@wombat.indigo.net.au>
- <1108753705.5897.114.camel@seki.nac.uci.edu>
+From: Haakon Riiser <haakon.riiser@fys.uio.no>
+Subject: Random UDP port assignment for rpc.statd
+Date: Sun, 20 Feb 2005 12:13:12 +0100
+Message-ID: <20050220111312.GA3974@s>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: jmoyer@redhat.com, autofs mailing list <autofs@linux.kernel.org>,
-	nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D2LFT-0005xr-FM
-	for nfs@lists.sourceforge.net; Fri, 18 Feb 2005 19:25:39 -0800
-Received: from wombat.indigo.net.au ([202.0.185.19])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1D2p1j-0006zx-R3
+	for nfs@lists.sourceforge.net; Sun, 20 Feb 2005 03:13:27 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1D2LFS-0002OW-LI
-	for nfs@lists.sourceforge.net; Fri, 18 Feb 2005 19:25:39 -0800
-To: Dan Stromberg <strombrg@dcs.nac.uci.edu>
-In-Reply-To: <1108753705.5897.114.camel@seki.nac.uci.edu>
+	id 1D2p1i-0004Bz-9A
+	for nfs@lists.sourceforge.net; Sun, 20 Feb 2005 03:13:27 -0800
+Received: from mail-mx3.uio.no ([129.240.10.44] ident=[U2FsdGVkX1+N8TnNm6Bpg5CWjVW1xKZS4LKQY0RuoOo=])
+	by pat.uio.no with esmtp (Exim 4.43)
+	id 1D2p1b-00065w-N2
+	for nfs@lists.sourceforge.net; Sun, 20 Feb 2005 12:13:19 +0100
+Received: from 160.80-203-48.nextgentel.com ([80.203.48.160] helo=s.hn.org)
+	by mail-mx3.uio.no with esmtpsa (TLSv1:AES256-SHA:256)
+	(Exim 4.43)
+	id 1D2p1a-0000Zp-9F
+	for nfs@lists.sourceforge.net; Sun, 20 Feb 2005 12:13:18 +0100
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,75 +36,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, 18 Feb 2005, Dan Stromberg wrote:
+Why isn't it possible to specify all of statd's listening ports
+using the -p flag?  It works for the TCP port and one of the
+UDP ports, but there is always one more listening UDP port that
+is randomly assigned.  I googled around for information on this
+problem, and came up with this Debian bug report:
 
-> On Fri, 2005-02-18 at 12:09 +0800, Ian Kent wrote:
->
->>>> And please include the contents of your maps!
->>>>
->>>> -Jeff
->>>
->>
->> Short answer is no.
->>
->>> Here are the maps we use on Solaris 9.  Should they work the same way on
->>> RHEL 3?
->>>
->>> autoinst-strombrg> cat /etc/auto_dcslib
->>> /dcs -ro
->>   ^^^^
->> Single level direct mount entries don't yet work.
->
-> What if we set up indirect mounts for /foo/dcs and /foo/dcslib, and then
-> had symlinks from /dcs and /dcslib?
+  http://www.mail-archive.com/debian-bugs-dist@lists.debian.org/msg11985.html
 
-That should work fine.
+The thread ends with "I think we may have a real bug", but this
+was reported in 1.0.6, and the problem still persists in 1.0.7,
+so I was wondering if this isn't a bug after all.
 
->
->>> dcslib1.nacs.uci.edu,dcslib2.nacs.uci.edu,dcslib3.nacs.uci.edu:/dcspdb/sun4-5
->>> /dcslib -ro
->>> dcslib1.nacs.uci.edu,dcslib2.nacs.uci.edu,dcslib3.nacs.uci.edu:/dcspda
->>>
->>> autoinst-strombrg> cat /etc/auto_master
->>> # Master map for automounter
->>> #
->>> +auto.master
->>> /net            -hosts          -nosuid,nobrowse
->>> #/home          auto_home       -nobrowse
->>> /xfn            -xfn
->>> /-             auto_direct
->>                  ^^^^^^^^^^^ Don't you mean auto_dcslib?
->
-> Apologies.  I got these maps from a system on which they were only
-> vestigial.  Here are the maps from a system that's actually doing
-> this :) :
->
-> data-strombrg> cat /etc/auto_dcslib
-> /dcs -ro
-> dcslib1.nacs.uci.edu,dcslib2.nacs.uci.edu,dcslib3.nacs.uci.edu:/dcspdb/sun4-5
-> /dcslib -ro
-> dcslib1.nacs.uci.edu,dcslib2.nacs.uci.edu,dcslib3.nacs.uci.edu:/dcspda
->
-> data-strombrg> cat /etc/auto_master
-> # Master map for automounter
-> #
-> +auto.master
-> /net            -hosts          -nosuid,nobrowse
-> #/home          auto_home       -nobrowse
-> #/xfn           -xfn
-> /- auto_dcslib
-> /- auto_dcs
->
+Btw, there's also a similar problem with nfsd:  In addition to
+the standard listening port at 2049, it always opens a random
+port in the high port range (32000-32768 or something like that).
 
-Your hosts map won't work. It will be ignored. You can use the auto.net 
-program map in the distribution to give similar functionality.
+In case it matters:  I'm using Linux 2.6.10 and Slackware 10.1.
 
->
->>>
->>>
->>
->
-
+-- 
+ Haakon
 
 
 -------------------------------------------------------
