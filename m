@@ -1,21 +1,30 @@
-From: mehta kiran <kiranmehta1981@yahoo.com>
-Subject: Re: file :"/var/lib/nfs/rmtab"
-Date: Fri, 4 Feb 2005 07:49:51 -0800 (PST)
-Message-ID: <20050204154951.15146.qmail@web51603.mail.yahoo.com>
-References: <42038D75.4010609@moving-picture.com>
+From: Bruce Allan <bwa@us.ibm.com>
+Subject: [PATCH] nfs-utils: NFSv4 pseudofilesystem mount of missing
+ directory fails
+Date: Fri, 04 Feb 2005 15:52:27 -0800
+Message-ID: <1107561147.4412.165.camel@w-bwa3.beaverton.ibm.com>
+Reply-To: bwa@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Cx5iY-0004XW-9X
-	for nfs@lists.sourceforge.net; Fri, 04 Feb 2005 07:49:58 -0800
-Received: from web51603.mail.yahoo.com ([206.190.38.208])
-	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
-	id 1Cx5iX-0001GC-Ka
-	for nfs@lists.sourceforge.net; Fri, 04 Feb 2005 07:49:58 -0800
-To: James Pearson <james-p@moving-picture.com>
-In-Reply-To: <42038D75.4010609@moving-picture.com>
+	id 1CxDFc-0003Oo-3s
+	for nfs@lists.sourceforge.net; Fri, 04 Feb 2005 15:52:36 -0800
+Received: from e6.ny.us.ibm.com ([32.97.182.146])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1CxDFb-00031n-HB
+	for nfs@lists.sourceforge.net; Fri, 04 Feb 2005 15:52:36 -0800
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e6.ny.us.ibm.com (8.12.10/8.12.10) with ESMTP id j14NqTUZ006853
+	for <nfs@lists.sourceforge.net>; Fri, 4 Feb 2005 18:52:29 -0500
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay02.pok.ibm.com (8.12.10/NCO/VER6.6) with ESMTP id j14NqTQ7278900
+	for <nfs@lists.sourceforge.net>; Fri, 4 Feb 2005 18:52:29 -0500
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.12.11/8.12.11) with ESMTP id j14NqS2S005302
+	for <nfs@lists.sourceforge.net>; Fri, 4 Feb 2005 18:52:29 -0500
+To: linux-nfs <nfs@lists.sourceforge.net>, nfsv4@linux-nfs.org
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,238 +38,72 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi James , 
-         order  is : nfsd  , mountd , exportfs.
+When attempting to mount an NFSv4 pseudofilesystem (fsid=0) and the
+actual exported directory does not exist on the server, rpc.mountd
+doesn't check the directory exists (when fsidtype=1, i.e. using fsid,
+but does check for fsidtype=0, i.e. using dev/ino).  The non-existent
+exported directory path with fsid=0 is written to the kernel via
+/proc/net/rpc/nfsd.export/channel, which leads to path_lookup() to
+return ENOENT (seems appropriate).  Unfortunately, the new_cache
+approach ignores errors returned when writing via the channel file so
+that particular error is lost and the mount request is silently ignored.
 
-         Important thing is exportfs should be after 
-         nfsd .
-         Now i have seen that everything works fine
-         with RED Hat as you have said.
+Assuming it doesn't make sense to revamp the new_cache/up-call method to
+not ignore returned errors, it seems appropriate to fix the case where
+rpc.mountd doesn't check for the existence of an exported directory with
+fsid= semantics.  The following patch does this by moving the stat() up
+so it is done for both fsidtype's.  I'm not certain whether the other
+tests need to be executed for fsidtype=1, but it doesn't appear to hurt.
 
-	Problem is with Suse server
+Would it be also desirable to log a warning for every error, if any,
+returned by a write to any of the /proc/net/rpc/*/channel files which
+would otherwise be ignored (maybe under a debug flag)?
 
-thanks , 
- 
+Patch applies to nfs-utils-1.0.7 (and same with latest CITI patch, i.e.
+nfs-utils-1.0.7-CITI_NFS4_ALL-1.dif).
 
+Signed-off-by: Bruce Allan <bwa@us.ibm.com>
 
-
---- James Pearson <james-p@moving-picture.com> wrote:
-
-> '/etc/init.d/nfs stop' on Redhat/Fedora boxes kills
-> mountd
-> 
-> What order does exportfs, nfsd and mountd get
-> started or your system?
-> 
-> On my box it is:
-> 
-> exportfs
-> nfsd
-> mountd
-> 
-> However, if I run exportfs after mountd, then I get
-> a stale NFS file handle
-> 
-> James Pearson
-> 
-> mehta kiran wrote:
-> > Hi James , 
-> >         I am working on suse box.(2.6 kernel).
-> >         You mounted nfsd filesystem and then
-> >         you ran a script /etc/init.d/nfs.
-> > 
-> >         Does this script starts and kills all nfs
-> >         daemons.? Can u verify whether it kills
-> >         mountd or not.?
-> >        
-> >         If mountd is not killed everthing works
-> fine.
-> >         because it is mountd which reads rmtab.If
-> it
-> >         is not restarted , it has all its data
-> intact
-> >         and hence wont read rmtab.Thus , removing
-> >         entry from rmtab wont cause any problem.
-> > 
-> > thanks,
-> >   --kiran
-> > 
-> > 
-> > --- James Pearson <james-p@moving-picture.com>
-> wrote:
-> > 
-> > 
-> >>What version of nfs-utils are you running?
-> >>
-> >>I've just tried (on a 2.6 kernel Fedora box):
-> >>
-> >>mount -t nfsd nfsd /proc/fs/nfsd
-> >>/etc/init.d/nfs start
-> >>
-> >>mount an exported file system on a client
-> >>
-> >>edit /var/lib/nfs/rmtab and removed the line
-> >>corresponding to the client
-> >>
-> >>/etc/init.d/nfs stop
-> >>/etc/init.d/nfs start
-> >>
-> >>Accessed the mount point on the client - no stale
-> >>handle ...
-> >>
-> >>... and the deleted line 'magically' reappears in
-> >>/var/lib/nfs/rmtab
-> >>
-> >>James Pearson
-> >>
-> >>mehta kiran wrote:
-> >>
-> >>>hi James , 
-> >>>        it did not help.
-> >>>        Enmtry in rmtab file is still used.
-> >>>thanks for ur reply,
-> >>>      kiran
-> >>>
-> >>>--- James Pearson <james-p@moving-picture.com>
-> >>
-> >>wrote:
-> >>
-> >>>
-> >>>>Did you do 'mount -t nfsd nfsd /proc/fs/nfsd'
-> >>
-> >>before
-> >>
-> >>>>starting all the 
-> >>>>nfs daemons?
-> >>>>
-> >>>>James Pearson
-> >>>>
-> >>>>mehta kiran wrote:
-> >>>>
-> >>>>
-> >>>>>I am using 2.6 kernel
-> >>>>>--- mehta kiran <kiranmehta1981@yahoo.com>
-> wrote:
-> >>>>>
-> >>>>>
-> >>>>>
-> >>>>>
-> >>>>>>Hi , 
-> >>>>>>       if handle supplied by client is
-> >>>>
-> >>>>sufficient
-> >>>>
-> >>>>
-> >>>>>>,
-> >>>>>>then why does the problem given below exists.
-> >>>>>>
-> >>>>>>1. export filesystem to client.
-> >>>>>>2. let client allow to mount it.
-> >>>>>>3. remove all entries from rmtab on server.
-> >>>>>>4. restart all nfs daemons.
-> >>>>>>5. Now if client access filesystem , it gets
-> >>>>>> permission denied error.Client can access
-> >>>>>> filesystem only after remounting it.
-> >>>>>>6. This show that mountd still uses rmtab to
-> >>>>>> check if client had mounted filesystem or
-> not.
-> >>>>>> No entry in rmtab for a client means it has
-> >>
-> >>not
-> >>
-> >>>>>> mounted filesystem.
-> >>>>>>
-> >>>>>>thanks,
-> >>>>>>--kiran
-> >>>>>>
-> >>>>>>--- Paul Clements <paul.clements@steeleye.com>
-> >>>>>>wrote:
-> >>>>>>
-> >>>>>>
-> >>>>>>
-> >>>>>>
-> >>>>>>>mehta kiran wrote:
-> >>>>>>>
-> >>>>>>>
-> >>>>>>>
-> >>>>>>>
-> >>>>>>>>Isn't handle supplied by client
-> >>>>>>>>        enough to verify clients access to
-> >>>>>>>>        filesystem.?
-> >>>>>>>
-> >>>>>>>Yes, it should be. That's why in 2.6, the
-> rmtab
-> >>>>>>
-> >>>>>>file
-> >>>>>>
-> >>>>>>
-> >>>>>>
-> >>>>>>>is no longer relied 
-> >>>>>>>upon. Instead, there is a special filesystem,
-> >>>>>>>/proc/fs/nfsd, that allows 
-> >>>>>>>the kernel to communicate with mountd in
-> order
-> >>
-> >>to
-> >>
-> >>>>>>>authenticate 
-> >>>>>>>unrecognized clients automatically.
-> >>>>>>>
-> >>>>>>>--
-> >>>>>>>Paul
-> >>>>>>>
-> >>>>>>>
-> >>>>>>>
-> >>>>>>
-> >
->
--------------------------------------------------------
-> > 
-> >>>>>>>This SF.Net email is sponsored by:
-> IntelliVIEW
-> >>
-> >>--
-> >>
-> >>>>>>>Interactive Reporting
-> >>>>>>>Tool for open source databases. Create
-> >>>>
-> >>>>drag-&-drop
-> >>>>
-> >>>>
-> >>>>>>>reports. Save time
-> >>>>>>>by over 75%! Publish reports on the web.
-> Export
-> >>>>
-> >>>>to
-> >>>>
-> >>>>
-> >>>>>>>DOC, XLS, RTF, etc.
-> >>>>>>>Download a FREE copy at
-> >>>>>>>http://www.intelliview.com/go/osdn_nl
->
->>>>>>>_______________________________________________
-> >>>>>>>NFS maillist  -  NFS@lists.sourceforge.net
-> >>
->
->>>>>>https://lists.sourceforge.net/lists/listinfo/nfs
-> >>>>>>
-> >>>>>>
-> >>>>>>
-> >>>>>>	
-> >>>>>>		
-> >>>>>>__________________________________ 
-> >>>>>>Do you Yahoo!? 
-> 
-=== message truncated ===
+diff -Nurp nfs-utils-1.0.7/utils/mountd/cache.c nfs-utils-1.0.7-CITI_NFS4_ALL-1/utils/mountd/cache.c
+--- nfs-utils-1.0.7/utils/mountd/cache.c	2004-08-30 23:37:21.000000000 -0700
++++ nfs-utils-1.0.7-CITI_NFS4_ALL-1/utils/mountd/cache.c	2005-02-04 12:41:12.000000000 -0800
+@@ -145,23 +145,24 @@ void nfsd_fh(FILE *f)
+ 	/* Now determine export point for this fsid/domain */
+ 	for (i=0 ; i < MCL_MAXTYPES; i++) {
+ 		for (exp = exportlist[i]; exp; exp = exp->m_next) {
++			struct stat stb;
++
+ 			if (!client_member(dom, exp->m_client->m_hostname))
+ 				continue;
++			if (exp->m_export.e_mountpoint &&
++			    !is_mountpoint(exp->m_export.e_mountpoint[0]?
++					   exp->m_export.e_mountpoint:
++					   exp->m_export.e_path))
++				dev_missing ++;
++			if (stat(exp->m_export.e_path, &stb) != 0)
++				continue;
++			if (stb.st_ino != inode)
++				continue;
+ 			if (fsidtype == 1 &&
+ 			    ((exp->m_export.e_flags & NFSEXP_FSID) == 0 ||
+ 			     exp->m_export.e_fsid != fsidnum))
+ 				continue;
+ 			if (fsidtype == 0) {
+-				struct stat stb;
+-				if (exp->m_export.e_mountpoint &&
+-				    !is_mountpoint(exp->m_export.e_mountpoint[0]?
+-						   exp->m_export.e_mountpoint:
+-						   exp->m_export.e_path))
+-					dev_missing ++;
+-				if (stat(exp->m_export.e_path, &stb) != 0)
+-					continue;
+-				if (stb.st_ino != inode)
+-					continue;
+ 				if (major != major(stb.st_dev) ||
+ 				    minor != minor(stb.st_dev))
+ 					continue;
 
 
-
-		
-__________________________________ 
-Do you Yahoo!? 
-The all-new My Yahoo! - Get yours free! 
-http://my.yahoo.com 
- 
 
 
 
