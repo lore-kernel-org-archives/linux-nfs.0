@@ -1,13 +1,20 @@
-From: "Sherri Wilkerson" <zombiez@aol.com>
-Subject: you decide       ............................  deviant
-Date: Thu, 01 May 03 14:24:31 GMT
+From: Eric Garland <perlfs2@ericgarland.com>
+Subject: NFS support for PerlFS
+Date: Fri, 02 May 2003 03:01:43 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <6u6507$-0308r907--a-$8$$84sd2w@kp49160.yrk>
+Message-ID: <3EB217D7.6080706@ericgarland.com>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="4.C4F0_.DFB66EB_4"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: <netsaintplug-devel@lists.sourceforge.net>, <nfs@lists.sourceforge.net>, <nms-cgi-support@lists.sourceforge.net>, <ofset-members@lists.sourceforge.net>
+Received: from h0002b3a89c72.ne.client2.attbi.com ([24.62.242.148] helo=server.ericgarland.com)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19BUYE-0006I2-00
+	for <nfs@lists.sourceforge.net>; Fri, 02 May 2003 00:01:46 -0700
+Received: from ericgarland.com (lurch [10.0.0.4])
+	by server.ericgarland.com (8.12.5/8.12.5) with ESMTP id h4271eMq002176
+	for <nfs@lists.sourceforge.net>; Fri, 2 May 2003 03:01:41 -0400
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -20,80 +27,21 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+  I'm looking to add support to the PerlFS filesystem so
+it can be exported using NFS.  From reading the
+interface requirements it would seem the way to do
+that would be to turn on the FS_REQUIRES_DEV flag in
+the file_system_type structure that get's registered.
+This works execpt I then need to pass a valid device
+file into the mount command or mount doesn't work. 
+The device I pass in doesn't have any bearing on the
+filesystem that get's mounted which doesn't really make
+much sense.
 
---4.C4F0_.DFB66EB_4
-Content-Type: text/html;
-Content-Transfer-Encoding: quoted-printable
+Is there any way of making the NFS server not
+check the NFS_REQUIRES_DEV flag?
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1=
-">
-<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
-<STYLE></STYLE>
-
-<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV><FONT face=3DArial size=3D4>&nbsp;&nbsp;&nbsp;<STRONG><FONT face=3DVe=
-rdana 
-size=3D3>How would you feel about some </FONT></STRONG></FONT><STRONG><FON=
-T 
-face=3DArial><FONT face=3DVerdana>quick </FONT></FONT></STRONG></DIV>
-<DIV><STRONG><FONT face=3DVerdana>&nbsp;&nbsp; <EM>Debt Relief</EM> with N=
-O credit 
-check or</FONT></STRONG></DIV>
-<DIV><FONT face=3DVerdana size=3D4><FONT size=3D3><STRONG>&nbsp;&nbsp; hom=
-eowner 
-requirement?&nbsp;&nbsp;Easy and fast</STRONG></FONT>!&nbsp;</FONT></DIV>
-<DIV><FONT face=3DArial size=3D4></FONT>&nbsp;</DIV>
-<DIV><FONT face=3D"Comic Sans MS">&nbsp;&nbsp;&nbsp;</FONT><FONT 
-face=3D"Arial Rounded MT Bold" size=3D2><FONT face=3DArial 
-size=3D3><STRONG>&nbsp;&nbsp;<FONT face=3DVerdana><FONT color=3D#ffffff 
-size=3D1>parenthood</FONT>Guaranteed to</FONT></STRONG></FONT></FONT></D=
-IV>
-<DIV><FONT face=3D"Comic Sans MS"><FONT 
-face=3DVerdana><STRONG>&nbsp;&nbsp;&nbsp;Lower Your Monthly Payments by Up=
- To 
-80%<STRONG>&nbsp;</STRONG></STRONG>&nbsp;</FONT></DIV>
-<DIV><FONT face=3DArial,Helvetica color=3D#000000 size=3D3>
-<P align=3Dleft><FONT face=3Dverdana,arial,helvetica color=3D#00b000 
-size=3D4><B>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;<A 
-href=3D"http://www.201-sy.com/free/627205/index.htm">Start Here to make li=
-fe 
-easier&nbsp;</A></B></FONT></FONT></FONT><FONT 
-face=3D"Comic Sans MS"></FONT></P></DIV>
-<DIV><FONT face=3D"Comic Sans MS"><STRONG><FONT face=3DVerdana>One minute =
-quotes - 
-no obligation - totally free</FONT></STRONG></FONT></DIV>
-<DIV><STRONG><FONT face=3DVerdana color=3D#000080></FONT></STRONG>&nbsp;</=
-DIV>
-<DIV><STRONG><FONT face=3DVerdana color=3D#000080></FONT></STRONG>&nbsp;</=
-DIV>
-<DIV>&nbsp;</DIV>
-<DIV><FONT face=3D"Comic Sans MS"><FONT size=3D1>
-<TABLE cellSpacing=3D0 cellPadding=3D0 width=3D600>
-  <TBODY>
-  <TR>
-    <TD><FONT face=3Darial,helvetica size=3D1><BR>Please note that we do n=
-ot want 
-      to send you information regarding our special offers if you do not w=
-ish to 
-      receive it. If you would no longer like us to contact you or you fee=
-l that 
-      you have received this email in error, you may <A 
-      href=3D"http://www.201-sy.com/Automatic/index.htm">go here to 
-      unsubscribe</A>.</FONT></TD></TR></TBODY></TABLE></DIV>
-<P align=3Dleft></FONT></FONT><FONT color=3D#ffffff size=3D1>road =
-adele 
-bestselling rasp <BR>leyden sown sol 
-locomotory aspirate chuckwalla <BR>whitewash olive 
-clarence puerto attend wonder </FONT></P></BODY></HT=
-ML>
-
---4.C4F0_.DFB66EB_4--
+    -Eric
 
 
 
