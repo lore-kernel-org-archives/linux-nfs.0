@@ -1,26 +1,33 @@
 From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-Subject: Re: extremely bad locking performance on 2.4.21-15.0.4.EL
-Date: Mon, 16 Aug 2004 16:41:40 -0600 (MDT)
+Subject: debugging hanging locks
+Date: Mon, 16 Aug 2004 17:47:19 -0600 (MDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.60.0408161638530.5649@harp.ngdc.noaa.gov>
-References: <Pine.LNX.4.60.0408161440170.4655@harp.ngdc.noaa.gov>
- <1092695033.11722.37.camel@lade.trondhjem.org>
+Message-ID: <Pine.LNX.4.60.0408161741020.5649@harp.ngdc.noaa.gov>
 Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1310310947-1092696100=:5649"
-Cc: nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BwqDb-0005b7-5o
-	for nfs@lists.sourceforge.net; Mon, 16 Aug 2004 15:44:43 -0700
-Received: from harp.ngdc.noaa.gov ([140.172.187.26])
+	id 1BwrGB-0002gs-Ft
+	for nfs@lists.sourceforge.net; Mon, 16 Aug 2004 16:51:27 -0700
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
 	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.34)
-	id 1BwqB6-0000SD-GM
-	for nfs@lists.sourceforge.net; Mon, 16 Aug 2004 15:44:43 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1092695033.11722.37.camel@lade.trondhjem.org>
+	id 1BwrDX-0004K0-PC
+	for nfs@lists.sourceforge.net; Mon, 16 Aug 2004 16:51:27 -0700
+Received: from harp.ngdc.noaa.gov ([140.172.187.26])
+	by externalmx-1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1BwrDT-00062d-Hp
+	for nfs@lists.sourceforge.net; Mon, 16 Aug 2004 16:48:42 -0700
+Received: from harp.ngdc.noaa.gov (harp.ngdc.noaa.gov [127.0.0.1])
+	by harp.ngdc.noaa.gov (8.12.11/8.12.11) with ESMTP id i7GNlKkx007160
+	for <nfs@lists.sourceforge.net>; Mon, 16 Aug 2004 17:47:20 -0600
+Received: from localhost (ahoward@localhost)
+	by harp.ngdc.noaa.gov (8.12.11/8.12.11/Submit) with ESMTP id i7GNlJdj007156
+	for <nfs@lists.sourceforge.net>; Mon, 16 Aug 2004 17:47:20 -0600
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,68 +40,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
 
---8323328-1310310947-1092696100=:5649
-Content-Type: TEXT/PLAIN; charset=X-UNKNOWN; format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+i have a job distribution api which relies on an nfs mounted sqlite database.
+associated with the database is an 'extra' lockfile - an empty file (db.lock)
+used to apply a write/read lock before accessing the database, which has it's
+own locking too.  all locking is, of course, fcntl based.  this works great
+and hums along merrily for weeks.  however, now for the second time, every
+thing sometimes hangs with no process being able to get the lock.  each time
+i've taken all the daemons down and confirmed that no process is holding the
+lock (has the file open actually) using /sbin/fuser.  still, no process will
+be able to get the lock.  the only solution is to
 
-On Mon, 16 Aug 2004, Trond Myklebust wrote:
+   mv db.lock tmp
+   mv tmp db.lock
 
-> P=E5 m=E5 , 16/08/2004 klokka 17:17, skreiv Ara.T.Howard:
->
->> in otherwords the nodes will get the lock at a very rapid rate and then
->> experience a 30s timeout... is this normal?
->
-> 30s is of the order of a soft timeout. I would guess it probably means
-> that something is going wrong with the GRANTED callback. Have you tried
-> turning on rpc_debug on the client? Use something like
->
-> sysctl -w sunrpc.rpc_debug=3D10
-> or
-> echo "10" >/proc/sys/sunrpc/rpc_debug
->
-> Note: thinking about this, I suspect that the 2.6 kernel is very likely
-> to have a similar problem due to the existance of the svcauth_unix.c
-> domain stuff. (That all belongs deep in the bowels of nfsd - not in the
-> RPC code). That can't be affecting the 2.4 kernel, though.
+which, i imagine, leaves some phantom process/lock hanging around with the old
+file handle.  my questions are
 
+   - what could cause this type of random hanging
 
-i will look into this pronto... next problem:
+   - how does one tell, on server, who has what locks
 
-calls to fcntl64 are hanging when files have been opened with O_LARGEFILE!
-looking at this
+   - has anyone else seen this sort of problem? and, if so, what is the fix?
 
-http://rhn.redhat.com/errata/RHSA-2004-413.html
-
-which is the upgrade we (sysads) just applied makes me more than a little
-suspect...
-
-at the momment i can replicate the problem using ruby/perl - working on a c
-program...
-
-anyone know where O_LARGEFILE is defined?
-
-
-regards.
+kind regards.
 
 -a
 --
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D
+===============================================================================
 | EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
 | PHONE   :: 303.497.6469
 | A flower falls, even though we love it;
-| and a weed grows, even though we do not love it.=20
+| and a weed grows, even though we do not love it. 
 |   --Dogen
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D
---8323328-1310310947-1092696100=:5649--
+===============================================================================
 
 
 -------------------------------------------------------
