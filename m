@@ -1,36 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS client write performance issue ... thoughts?
-Date: Mon, 5 Jan 2004 23:34:42 -0500
+From: Ian Kent <raven@themaw.net>
+Subject: Re: RE: Linux client on Solaris 7 NFS server
+Date: Tue, 6 Jan 2004 12:42:17 +0800 (WST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16378.15074.348051.673492@guts.uio.no>
-Reply-To: trond.myklebust@fys.uio.no
+Message-ID: <Pine.LNX.4.33.0401061229170.26529-100000@wombat.indigo.net.au>
+References: <200401051731.i05HVaa15457@supercomputer.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1Adivl-0004tc-54
-	for nfs@lists.sourceforge.net; Mon, 05 Jan 2004 20:35:01 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1Adivk-0001Ps-NG
-	for nfs@lists.sourceforge.net; Mon, 05 Jan 2004 20:35:00 -0800
-Received: from mail-mx4.uio.no ([129.240.10.45])
-	by pat.uio.no with esmtp (Exim 4.20)
-	id 1Adivc-0006hY-Fs
-	for nfs@lists.sourceforge.net; Tue, 06 Jan 2004 05:34:52 +0100
-Received: from ulrik.uio.no ([129.240.12.4])
-	by mail-mx4.uio.no with esmtp (Exim 4.14)
-	id 1AdivY-0007Zc-AH
-	for nfs@lists.sourceforge.net; Tue, 06 Jan 2004 05:34:48 +0100
-Received: from guts.uio.no ([129.240.87.181])
-	by ulrik.uio.no with esmtp (Exim 2.12 #7)
-	id 1AdivX-00050E-00
-	for nfs@lists.sourceforge.net; Tue, 6 Jan 2004 05:34:47 +0100
-Received: from trondmy by guts.uio.no with local (Exim 4.22)
-	id 1AdivX-00079h-Sp
-	for nfs@lists.sourceforge.net; Mon, 05 Jan 2004 22:34:47 -0600
-To: nfs@lists.sourceforge.net
+	id 1Adj32-00058D-Dc
+	for nfs@lists.sourceforge.net; Mon, 05 Jan 2004 20:42:32 -0800
+Received: from wombat.indigo.net.au ([202.0.185.19])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1Adj31-00039P-Ow
+	for nfs@lists.sourceforge.net; Mon, 05 Jan 2004 20:42:32 -0800
+To: <dwight@supercomputer.org>
+In-Reply-To: <200401051731.i05HVaa15457@supercomputer.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -43,48 +30,61 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Mon, 5 Jan 2004 dwight@supercomputer.org wrote:
 
-På må , 05/01/2004 klokka 17:11, skreiv Paul Smith:
-> Hi all; we've been doing some examination of NFS client performance, and
-> have seen this apparently sub-optimal behavior: anyone here have any
-> comments on this observation or thoughts about it?
+> Ian Kent wrote:
+> > Currently I'm running the RedHat 2.4.20-20.7 kernel.
+> >
+> > I used UDP transport for a long time but have recently changed to TCP for
+> > nearly all my clients.
+> > ...
+> >
+> > My usage is largely read.
+> >
+> > Performance has improved quite a bit as the kernel version has increased.
+> > I can get around 80% (ie. 80% wire speed) the throughput of a 'similar'
+> > Sun. Problem is that most of the Sparc clients can saturate 100Mb (onto a
+> > gigabit backbone) so I don't really know what the difference is.
+> >
+> > Ian
+>
+> Thanks for the information, Ian.
+>
+> So if I understand you correctly, you are saying that your performance for Linux clients and Solaris clients with a Solaris server is the same? Or that any
+> difference is not notiable?
 
-Does your observation include numbers, or is it just conjecture?
+I had some figures, but I've deleted them.
 
-If we actually are doing contiguous sequential writes, the Linux
-implementation has the obvious advantage that it doesn't issue any
-read requests to the server at all.
+Basically I'm saying, with a 100Mb(it)/sec interface I get just over
+8 MB(ytes)/sec whereas I can consistently get over 10MB(ytes)/sec on most
+Sparcs (Solaris). So the Sparcs are pushing their interfaces about fast as
+they can go but the Linux box is not. So there's still room for
+improvement.
 
-The Solaris approach is only a win in the particular case where you
-are doing several non-contiguous writes into the same page (and
-without any byte-range locking).
-Note that like Linux, two processes that do not share the same RPC
-credentials still cannot merge their writes since you cannot rely on
-them having the same file write permissions.
+>
+> Would you happen to know what throughput you are seeing with the Linux
+> client? My own, as reported by Ethereal, is about 11 Mbs in this case.
+>
+> My transactions are a combination of read and write (mimicking the common
+> behavior that we use in a production environment). I appreciate the information;
+> I'll try a test of pure reads.
+>
+> And yes, I too have saturated a 100-Mb switch before, though not with NFS.
+> The statistics on the switch in the production environment show that we're
+> nowhere near saturating the switch. For my test environment, there's almost
+> nothing else going on at the time (I.e. one client, one server). While I could
+> just use a cross-over cable and eliminate the switch, I don't see any information
+> indicating that this would improve things at this time.
 
-Looking at your particular example of GDBM, you should recall that
-Solaris is forced to revert to uncached synchronous reads and writes
-when doing byte range locking precisely because their page cache
-writes back entire pages (the ugly alternative would be to demand that
-byte range locks must be page-aligned).
-OTOH Linux can continue to do cached asynchronous reads and writes
-right up until the user forces an fsync()+cache invalidation by
-changing the locking range because our page cache writes are not
-required to be page aligned.
+Not talking about the switch the clients are connected to but the
+interface on the client. I expect the switches can deal with a good deal
+more that a single client going fat tack.
 
-However, GDBM is a pretty poor example of a database. Large
-professional databases will tend to want to use their own custom
-locking protocols, and manage their caching entirely on their own
-(using O_DIRECT in order to circumvent the kernel page cache). The
-asynchronous read/write code doesn't apply at all in this case.
+Ian
 
 
-Finally, please note that you can actually obtain the Solaris
-behaviour on the existing Linux NFS client, if you so desire, by
-replacing write() with mmap().
 
-Cheers,
-  Trond
+
 
 
 -------------------------------------------------------
