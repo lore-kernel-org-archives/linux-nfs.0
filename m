@@ -1,19 +1,19 @@
-From: Johan van Reijendam <jvanreij@routescience.com>
-Subject: NFS unmounts fail
-Date: Sun, 22 Dec 2002 16:01:17 -0800
+From: Robert Myers <rmyers1400@attbi.com>
+Subject: Re: NFS unmounts fail
+Date: Sun, 22 Dec 2002 20:02:29 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3E06524D.1030608@routescience.com>
+Message-ID: <3E0660A5.9090607@attbi.com>
+References: <3E06524D.1030608@routescience.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from adsl-66-125-123-123.dsl.pltn13.pacbell.net ([66.125.123.123] helo=obelix.jplusplus.com)
+Received: from rwcrmhc53.attbi.com ([204.127.198.39])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18QG2M-0002F0-00
-	for <nfs@lists.sourceforge.net>; Sun, 22 Dec 2002 16:01:38 -0800
-Received: from routescience.com (asterix.jplusplus.com [192.168.128.60])
-	by obelix.jplusplus.com (8.11.6/8.11.6) with ESMTP id gBN01S102349
-	for <nfs@lists.sourceforge.net>; Sun, 22 Dec 2002 16:01:28 -0800
-To: nfs@lists.sourceforge.net
+	id 18QGzJ-00039I-00
+	for <nfs@lists.sourceforge.net>; Sun, 22 Dec 2002 17:02:33 -0800
+To: Johan van Reijendam <jvanreij@routescience.com>
+In-Reply-To: <3E06524D.1030608@routescience.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,28 +26,33 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi all,
+Johan van Reijendam wrote:
 
-I have been unable to find the cause and a solution for this problem
+> Hi all,
+>
+> I have been unable to find the cause and a solution for this problem
+>
+> I am mounting NFS filesystems. Both the client and the server are 
+> running Redhat 7.3. The problem is the following :
+>
+> I am able to mount a filesystem (automount or otherwise ) and can 
+> browse that filesystem. When I pull out of that filesystem automount 
+> will unmount it after a while and if manually mounted I am then able 
+> to manually unmount it.
+> However whenever I execute a binary from the mounted filesystem I am 
+> no longer able to unmount that filesystem. The message I get is:
+>
+> umount: umount2: Device or resource busy
+> umount: umount: /auto/packages/binaries: device is busy
+>
+> Neither lsof or fuser report any open files.
 
-I am mounting NFS filesystems. Both the client and the server are 
-running Redhat 7.3. The problem is the following :
+The most frequent cause of inexplicable "Device or resource is busy" 
+messages when attempting an unmount has been that the device or some 
+directory of the device is theoretically visible from Nautilus.  In 
+those cases, closing the /mnts tab on the Nautilus tree and moving the 
+view window to some other directory usually solves the problem.
 
-I am able to mount a filesystem (automount or otherwise ) and can browse 
-that filesystem. When I pull out of that filesystem automount will 
-unmount it after a while and if manually mounted I am then able to 
-manually unmount it.
-However whenever I execute a binary from the mounted filesystem I am no 
-longer able to unmount that filesystem. The message I get is:
-
-umount: umount2: Device or resource busy
-umount: umount: /auto/packages/binaries: device is busy
-
-Neither lsof or fuser report any open files.
-
-Any help is appreciated.
-
-Johan
 
 
 
