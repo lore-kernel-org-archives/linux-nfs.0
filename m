@@ -1,20 +1,17 @@
-From: Jan Sanislo <oystr@cs.washington.edu>
-Subject: Bug in nfs client handling of EJUKEBOX
-Date: 22 Feb 2005 11:46 PST
-Message-ID: <1109101592/oystr@hugh.cs.washington.edu>
+From: "Rock VZ" <rockvz@hotmail.com>
+Subject: nfs disk utilization in terms of stress
+Date: Tue, 22 Feb 2005 21:54:15 -0800
+Message-ID: <BAY12-F108C7E0E50EEB167828141D6630@phx.gbl>
+Mime-Version: 1.0
+Content-Type: text/plain; format=flowed
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D3g1E-0001nC-3A
-	for nfs@lists.sourceforge.net; Tue, 22 Feb 2005 11:48:28 -0800
-Received: from hugh.cs.washington.edu ([128.208.2.43])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1D3g1B-0006jn-Lf
-	for nfs@lists.sourceforge.net; Tue, 22 Feb 2005 11:48:28 -0800
-Received: from hugh.cs.washington.edu (localhost [127.0.0.1])
-	by hugh.cs.washington.edu (8.13.1/8.13.1/1.5) with ESMTP id j1MJmO5j018389
-	for <nfs@lists.sourceforge.net>; Tue, 22 Feb 2005 11:48:24 -0800
-	(envelope-from oystr@cs.washington.edu)
+	id 1D3pUw-0000mA-Ow
+	for nfs@lists.sourceforge.net; Tue, 22 Feb 2005 21:55:46 -0800
+Received: from bay12-f10.bay12.hotmail.com ([64.4.35.10] helo=hotmail.com)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1D3pUv-0007QP-Cf
+	for nfs@lists.sourceforge.net; Tue, 22 Feb 2005 21:55:46 -0800
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -29,57 +26,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-There seems to be a bug in the 2.6.11-rc code related to the handling
-of nfsd's EJUNKBOX error return.  The code for __rpc_execute in
-net/sunrpc/sched.c looks like:
+Hi,
 
-=============================
+I would like to know how to get  disk utilization stats (like the one iostat 
+gives - %util) from a nfs client.
+With nfsstat -c I can get the read/write ratio but I am interested more 
+in-terms of "stress".
+For example
+I would like to calculate the stress average by taking the delta of  
+/proc/net/rpc/nfs between 2 time intervals and calculate percentages based 
+on total rpcs "possible" rather the rpcs that occured in that interval.
+i.e.
+Even if  only one rpc read call is made then based on nfsstat calculations 
+it would show a 100% read but it does not mean that the mount point was 
+'fully utilized' in reading.
 
-static int __rpc_execute(struct rpc_task *task)
-{
-	int		status = 0;
+How can I know the max. rpc calls possible and then calculate the 
+percentages based on this value.
+Or is there any other way to get nfs "stress" stats.
+I'm trying to tune the nfs load so that it operates at 80% utilization. How 
+can I determine such stats?
+We use nfs over tcp (2.4 or 2.6 kernel)
 
-	dprintk("RPC: %4d rpc_execute flgs %x\n",
-				task->tk_pid, task->tk_flags);
+Thanks in advance
+Rock
 
-	BUG_ON(RPC_IS_QUEUED(task));
-
- restarted:
-	while (1) {
-		/*
-		 * Garbage collection of pending timers...
-		 */
-		rpc_delete_timer(task);
-
- .....
-
-	if (task->tk_exit) {
-		lock_kernel();
->>>>		task->tk_exit(task);
-		unlock_kernel();
-		/* If tk_action is non-null, the user wants us to restart */
-		if (task->tk_action) {
-			if (!RPC_ASSASSINATED(task)) {
-				/* Release RPC slot and buffer memory */
-				if (task->tk_rqstp)
-					xprt_release(task);
-				rpc_free(task);
-				goto restarted;
-			}
-			printk(KERN_ERR "RPC: dead task tries to walk away.\n");
-		}
-	}
-
-=============================
-
-If the tk_exit procedure (e.g., nfs_read_done) called at ">>>>" above
-detects EJUKEBOX as the result of the call, it will attempt to do
-an rpc_restart and rpc_delay on the task.  The rpc_delay will set a timer.
-However, when the main loop is re-entered via the "goto restarted",
-the first thing that happens is that all timers for the task are removed.
-This results in the RPC task hanging in an uninterruptible wait.
-
-Am I missing something here or is this really a problem?
+_________________________________________________________________
+Don’t just search. Find. Check out the new MSN Search! 
+http://search.msn.click-url.com/go/onm00200636ave/direct/01/
 
 
 
