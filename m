@@ -1,17 +1,20 @@
-From: Jonathan Paul Calledo <jonathanpaul_r@geelongfan.com>
-Subject: FREE Great Opportunity!
-Date: Wed, 18 Jun 2003 09:16:19 -0700
+From: Scott Leerssen <scott@leerssen.com>
+Subject: Re: nfs root directory security
+Date: 17 Jun 2003 22:54:00 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <EDWINPs68K8rBKXGA7z0000488e@edwin>
-Reply-To: jonathanpaul_13@eudoramail.com
+Message-ID: <1055904839.28760.4.camel@lodge.leerssen.com>
+References: <1055888933.16259.54.camel@sleerssen.racemi.com>
+	 <16111.42521.693155.783206@gargle.gargle.HOWL>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from blk178-26.digitelone.com ([202.138.178.26] helo=edwin)
+Received: from maynard.mail.mindspring.net ([207.69.200.243])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19SRTF-0001t4-00
-	for <nfs@lists.sourceforge.net>; Tue, 17 Jun 2003 18:10:45 -0700
-To: nfs@lists.sourceforge.net
+	id 19STHh-0004u6-00
+	for <nfs@lists.sourceforge.net>; Tue, 17 Jun 2003 20:06:53 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <16111.42521.693155.783206@gargle.gargle.HOWL>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,91 +27,55 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello!
+On Tue, 2003-06-17 at 19:36, Neil Brown wrote:
+> On  June 17, scott@leerssen.com wrote:
+> > Attached is a patch for nfs-utils-1.0.1-2.9 (RedHat) that adds a bit of
+> > security and ease of use for exported filesystems that have lots of
+> > users in lots of subdirectories.
+> > 
+> > What it does is disallow nfs clients from mounting a directory that is
+> > marked execute only (chmod 0111), controlled by an option
+> > "root_mnt_orig".  This is handy if one has a constantly changing
+> > hierarchy of subdirectories where the client is the only one who knows
+> > where to look for his stuff.  Consider a directory structure that looks
+> > like:
+> > 
+> > /A/B/C/123
+> > /A/B/C/456
+> > /A/B/C/789
+> > 
+> > If A, B and C are mode 0111, the nfs client must directly mount 123,
+> > 456, or 789.  OK, this is a kind of lame example, but one can easily add
+> > some obscurity to the directory structure under /A and see how
+> > effectively this hides NFS mount points and adds some ease of use when
+> > maintaining a TON of mount points.
+> 
+> Hi.
+> I'm cannot see how this adds any significant security.
+> 
+> If you only want the client to mount certain bits, and the clients
+> know which bits to mount, then just mount those bits on the client.
+> 
+> Given that you allow the clients to mount any directories that they
+> have read access to, how does it hurt to allow them to mount parents
+> that they don't have read access to?
+> I can see that you don't want them to, but surely that is a client
+> configuration issue, not a server issue.
 
-My name is Jonathan Paul Calledo. I am now focusing
-in one Business opportunity. I have tried several of
-these online opportunities full of hype promising
-us thousands of dollars every month.
-
-It is a sad fact that many people who are in need
-of additional income, are being victimized by
-these fly by night scam artists. Every time I
-tried one opportunity after the other, I ended up
-more broke than ever. Not to mention how
-embarrassing it was.
-
-As a result of trying all these opportunities, I
-finally found the company which is true to their
-words.  Not full of hype, but consistently send
-me the monthly check. They have given me the
-best compensation plan with their high %
-commission. I finally have SOMETHING my friends
-and family are BEGGING ME FOR rather than
-laughing behind my back. I joined for free and
-was amazed with what I've seen. I already had
-several people in my organization in less than a
-week.
-
-I didn't have to perform some juggling act to
-maintain some 60 to 40% balance in my legs. It
-is not one of those Binary compensation plan
-failures either. Everyone earns commissions here.
-
-They are providing a real service not the one
-that simply transfers wealth from the new signups
-to the people at the top. When you join, you will
-have a team of upline sponsors who will help you
-succeed every step of the way. Instead of being
-left alone, you will be guided step by step by
-real people, not those autoresponders.
-
-Do not believe in do nothing, no recruiting, and
-no selling schemes. They are scams. You might
-want to try it to prove my words. Beware of the
-ones that want you to invest $1200.00 before you
-start. How long would it take you to breakeven?
-Only you can make your own success together with
-the help of your sponsors.
-
-If you have 2 to 3 hours a day, you will be able
-to earn a full income in a few months. And there
-is absolutely no limit as to how much you can
-earn. It is designed to gain momentum after some
-time.
-
-But I prefer to avoid such statements as "You
-will get rich". I read it everywhere and will
-not allow myself to sound like them. I
-experienced it personally, YOU TOO, can be
-comfortable IF YOU CHOOSE!
-
-To explore more about this Business Opportunity,
-get your FREE ID now!
-
-Send email to jonathanpaul_12@eudoramail.com
-and put "SEND MY ID, PLEASE" in the subject and
-your FIRST NAME, LAST NAME, and COUNTRY in the body.
-
-You are going to like what you will see here.
-YOU WILL NOT SPEND ANY CENT When YOU JOIN US!
+Here's a specific example.  Let's say you have a data center and use
+network attached storage to maintain filesystems for all of your
+customers.  Since all customers have access to the NAS, and all have
+their own box with root access, it's not too difficult to go poking
+around on the NAS to find other folks' stuff.  One obvious way to deal
+with this is to have separate exported filesystems for each customer,
+however, that becomes a huge maintenance hassle if you have a few
+hundred customers.  This feature allows you to maintain all the
+filesystems under one NFS root, while hiding the filesystems of other
+customers.
 
 
-Best Regards,
-
-Jonathan Paul Calledo
-jonathanpaul_12@eudoramail.com
-
-
-
-Note: If you don't want to recieve emails from
-me again about this, send an email to jonathanpaul_50@geelongfan.com
-and put "Enough, Please" in the subject.
-
-
-
-
-
+-- 
+Scott Leerssen <scott@leerssen.com>
 
 
 
