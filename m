@@ -1,19 +1,19 @@
-From: zfadli@sinasolutions.com
-Subject: RedHat 7.1+ Sol 8
-Date: Tue, 11 Jun 2002 07:41:07 -0400 (EDT)
+From: OMestre <omestre@freeshell.org>
+Subject: celerra
+Date: 11 Jun 2002 12:27:33 -0300
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <11638.205.188.195.41.1023795667.squirrel@mail.sinasolutions.com>
-References: <20020611042508.31527.qmail@web21106.mail.yahoo.com>
+Message-ID: <1023809253.1602.32.camel@ws-tor-0004.procergs>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [65.205.37.251] (helo=mail.sinasolutions.com)
+Received: from chicago.procergs.com.br ([200.198.128.92])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17HkCS-0005Ze-00
-	for <nfs@lists.sourceforge.net>; Tue, 11 Jun 2002 04:52:36 -0700
-To: <signalsvr@yahoo.co.uk>
-In-Reply-To: <20020611042508.31527.qmail@web21106.mail.yahoo.com>
+	id 17HnYa-0007si-00
+	for <nfs@lists.sourceforge.net>; Tue, 11 Jun 2002 08:27:40 -0700
+Received: from localhost.localdomain (unknown [172.28.6.9])
+	by chicago.procergs.com.br (Postfix) with ESMTP id 7C9C3563D0
+	for <nfs@lists.sourceforge.net>; Tue, 11 Jun 2002 12:27:33 -0300 (BRT)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,60 +26,44 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hello,
-I am using Redhat 7.1 as my NFS server. I have edited /etc/exports and
-when I ran "rpcinfo -p localhost" I got all the daemons and their ports
-correctly.
-On the client side, I have Solaris 8. Everytime I try to mount I get the
-follwoing error.
-nfs mount: x.x.x.x: : RPC: Rpcbind failure - RPC: Unable to receive
-nfs mount: retrying: /dump
 
-And it keeps on trying.
+  Hello,
+  This mailing lists is my final chance... :)
+  The problem is: 
+  I have one NAS solution in my company: 
+    Symmetryx + Connectrix + celerra file server.
+  The celerra (file server) exports filesystem over nfs to my *nix
+clients: Solaris, FreeBSD, Linux. 
+  I can mount the filesystems from any machine, and i have some FreeBSD
+boxes running diskless, just fine! But the linux ones do not works very
+well. When i mount one filesystem and start my work, it just hangs! for
+any cp, rm or sometimes "ls" commands. 
+   But as i can mount the filesystems, i did tryed configure the linux
+as  diskless machines, that was my original job. But the kernel can't
+mount the rootfs with error messages about "RPC timeout while looking
+for port 100003 and 100005". I issue the command rpcinfo -p <my_server>
+from my servers and did see all services available! NFS all versions
+(1,2 and 3), all protocols (tcp and udp). Then i did tryed make a
+diskless machine mounts the rootfs served by another linux machine (Su
+SE 7.3), and works fine! I did contacted the emc support, but the
+argument is obvious: The other OS works, and the linux too, when i do
+not try make it diskless. I did tryed the 2.2.19 kernel... but do not
+work too.
+  Anybody use this solution (celerra), and have diskless machines
+(linux), in this environment?
+  There are patches to kernel for my problems? Why the linux reports rpc
+unavaliable on boot, but in execution time (machine up from local
+disks), the mount NFS works (unstable, with hangs)?
+  resume: Two problems
+          1- Diskless linux over celerra do not work
+          2- Mount NFS fs over celerra (from linux machines), is very
+unstable.
 
-I have checked everything that I can think off. From portmap to
-hosts.allow/.deny
-I am clueless! Any help plz>
-
-Thanks
-
-
-
-
-
-
-
-
-
-> Hi,
-> You may be aware of the LLOCK option in NFS mount.  It
-> enables the lock in the client side.  I am not sure
-> what kind of lock it is and how do I check if the lock
-> is really imposed... any light on this would be
-> greatly appreciated...
->
-> Thanks a lot for any help!
->
-> Regards,
-> SVR.
->
-> __________________________________________________
-> Do You Yahoo!?
-> Everything you'll ever need on one web page
-> from News and Sport to Email and Music Charts
-> http://uk.my.yahoo.com
->
-> _______________________________________________________________
->
-> Don't miss the 2002 Sprint PCS Application Developer's Conference
-> August 25-28 in Las Vegas -
-> http://devcon.sprintpcs.com/adp/index.cfm?source=osdntextlink
->
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
-
-
+  Thanks for everyone!
+-- 
+------------------------------------------------------------------------
+FreeShell's master                           http://omestre.freeshel.org
+------------------------------------------------------------------------
 
 
 _______________________________________________________________
