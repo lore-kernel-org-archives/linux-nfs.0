@@ -1,23 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: problem with  umount
-Date: Fri, 28 Jan 2005 19:13:14 -0800
-Message-ID: <1106968394.10024.27.camel@lade.trondhjem.org>
-References: <20050128123730.4865.qmail@web51602.mail.yahoo.com>
+From: raven@themaw.net
+Subject: Re: NFS readonly failover and linux?
+Date: Sat, 29 Jan 2005 11:46:52 +0800 (WST)
+Message-ID: <Pine.LNX.4.61.0501291127450.1607@donald.themaw.net>
+References: <1106871309.6181.254.camel@seki.nac.uci.edu>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Cuj3D-0002tl-Fq
-	for nfs@lists.sourceforge.net; Fri, 28 Jan 2005 19:13:31 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1CujkX-0004rP-CJ
+	for nfs@lists.sourceforge.net; Fri, 28 Jan 2005 19:58:17 -0800
+Received: from wombat.indigo.net.au ([202.0.185.19])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.41)
-	id 1Cuj3B-0005tW-Me
-	for nfs@lists.sourceforge.net; Fri, 28 Jan 2005 19:13:31 -0800
-To: mehta kiran <kiranmehta1981@yahoo.com>
-In-Reply-To: <20050128123730.4865.qmail@web51602.mail.yahoo.com>
+	id 1CujkW-0002kz-Iv
+	for nfs@lists.sourceforge.net; Fri, 28 Jan 2005 19:58:17 -0800
+To: Dan Stromberg <strombrg@dcs.nac.uci.edu>
+In-Reply-To: <1106871309.6181.254.camel@seki.nac.uci.edu>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,38 +31,54 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-fr den 28.01.2005 Klokka 04:37 (-0800) skreiv mehta kiran:
+On Thu, 27 Jan 2005, Dan Stromberg wrote:
 
-> But if client stays without doing any processing ,
-> everything works fine.
-> I tried using umount <filesystem> -O -l
-> but this does not work though man pages 
-> say that even if there are reference to filesystem , 
-> it will be unmounted and later do required cleanup.
+>
+> The autofs man pages on Redhat Enterprise Linux 3 as well as Fedora Core
+> 3 both say that autofs supports replicated, readonly fileserver failover
+> - but then there's a footnote of sorts that says autofs only supports it
+> to the extent that mount does.
 
->From the manpage for "umount":
+That part of the man page is old and slightly out of date.
 
-      -O options
-              Indicate  that  the actions should only be taken on file systems
-              with the specified options in /etc/fstab.  More than one  option
-              type  may  be  specified in a comma separated list.  Each option
-              can be prefixed with no to specify options for which  no  action
-              should be taken.
+The reason that this is left there is that autofs cannot support 
+dynamic failover as it just uses mount. However, a different host may be 
+selected at mount, after a previous timeout, for example. The issue of 
+umounting existing mounts from servers that have gone away is not 
+explicitly dealt with yet.
 
-AFAIK, there is no "-l" _mount_ option, so it is extremely unlikely that
-your NFS-mounted filesystems are listed in /etc/fstab as using it.
-You're better off trying with "umount -l /filesystem".
+>
+> Upon trying to do such a mount, I get:
+>
+> seki-root> mount
+> dcslib1.nacs.uci.edu,dcslib4.nacs.uci.edu:/dcspdb/rhel-3-i686 /mnt/nfs
+> mount: warning: multiple hostnames not supported
+> Thu Jan 27 16:12:18
 
-Better still, fix your init scripts so that they kill whatever process
-it is that is still using the NFS partition and causing the regular
-"umount" to fail: *NIX does NOT allow you to unmount partitions that are
-*in use*.
+What version of autofs are you using?
+The autofs replicated server code is still relatively new.
 
-Cheers,
-  Trond
--- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
+If your autofs supports replicated server map entries then multiple 
+host mount requests will not reach the mount command.
 
+If you are using a RedHat based distro then check
+http://people.redhat.com/jmoyer
+for the latest patched versions
+
+Also, you may need a kernel patch depending on your kernel version. See 
+README.patches in the distribution or join the autofs list at
+http://linux.kernel.org/mailman/listinfo/autofs
+
+>
+> seki-root>
+>
+>
+> Is there a version of mount available, or in early development, that
+> supports this feature?
+
+Don't know. Anyone?
+
+Ian
 
 
 -------------------------------------------------------
