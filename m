@@ -1,45 +1,73 @@
-From: Chip Salzenberg <chip@pobox.com>
-Subject: [PATCH] Require nfs-utils 1.0.5; document where to get it
-Date: Tue, 29 Jul 2003 13:52:28 -0700
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <20030729205227.GA16486@perlsupport.com>
+From: Donavan Pantke <avatar@dcr.net>
+Subject: Re: exportfs -u hangs on SMP
+Date: Tue, 29 Jul 2003 17:27:24 -0400
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <200307291727.24587.avatar@dcr.net>
+References: <20030720103649.A20763@ikr.uni-stuttgart.de> <200307261255.29823.gemkow@ikr.uni-stuttgart.de> <16165.56876.172730.268520@gargle.gargle.HOWL>
+Reply-To: avatar@dcr.net
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
-	nfs@lists.sourceforge.net
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: Linus Torvalds <torvalds@transmeta.com>
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Cc: nfs@lists.sourceforge.net
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from 216-7-67-178.ip.win.net ([216.7.67.178] helo=richard.dpapt.spellboundnet.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19hc0G-0001Z3-00
+	for <nfs@lists.sourceforge.net>; Tue, 29 Jul 2003 14:27:28 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>,
+	Ulrich Gemkow <gemkow@ikr.uni-stuttgart.de>
+In-Reply-To: <16165.56876.172730.268520@gargle.gargle.HOWL>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-The below patch to 2.6 notes that users should get nfs-utils 1.0.5
-(1.0.3 had a security bug and 1.0.4 had a memory usage bug), and tells
-them where to get it.
+	WE've been seeing similar wierd locking problems (nfsd gets in a DW state), 
+and this may or may not be linked. When would this section of code get 
+executed? Only by exportfs, or could there be other times this may occur?
 
---- linux-2.6/Documentation/Changes	2003-07-16 15:54:46.000000000 -0700
-+++ linux-2.6/Documentation/Changes.NEW	2003-07-29 13:47:56.000000000 -0700
-@@ -64,5 +64,5 @@
- o  procps                 2.0.9                   # ps --version
- o  oprofile               0.5.3                   # oprofiled --version
--o  nfs-utils              1.0.3                   # showmount --version
-+o  nfs-utils              1.0.5                   # showmount --version
- 
- Kernel compilation
-@@ -382,5 +382,10 @@
- --------
- o  <http://oprofile.sf.net/download/>
-- 
-+
-+NFS-Utils
-+---------
-+o  <http://nfs.sourceforge.net/>
-+
-+
- Suggestions and corrections
- ===========================
-
+	Thanks!
+	Donavan Pantke
+	Network Engineer
+	Appriss, Inc.
 
 
--- 
-Chip Salzenberg               - a.k.a. -               <chip@pobox.com>
-"I wanted to play hopscotch with the impenetrable mystery of existence,
-    but he stepped in a wormhole and had to go in early."  // MST3K
+On Monday 28 July 2003 22:38, Neil Brown wrote:
+> On Saturday July 26, gemkow@ikr.uni-stuttgart.de wrote:
+> > Hello Neil,
+> >
+> > I tested the patch and our server survived for almost one week now - much
+> > longer than without the patch. So it seems the patch solves the problem
+> > and would be helpful in mainline too.
+>
+> Thanks for letting me know.  The patch will be in 2.4.22
+>
+> NeilBrown
+>
+>
+> -------------------------------------------------------
+> This SF.Net email sponsored by: Free pre-built ASP.NET sites including
+> Data Reports, E-commerce, Portals, and Forums are available now.
+> Download today and enter to win an XBOX or Visual Studio .NET.
+> http://aspnet.click-url.com/go/psa00100003ave/direct;at.aspnet_072303_01/01
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+
+
+
+-------------------------------------------------------
+This SF.Net email sponsored by: Free pre-built ASP.NET sites including
+Data Reports, E-commerce, Portals, and Forums are available now.
+Download today and enter to win an XBOX or Visual Studio .NET.
+http://aspnet.click-url.com/go/psa00100003ave/direct;at.aspnet_072303_01/01
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
