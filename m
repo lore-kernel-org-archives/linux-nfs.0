@@ -1,23 +1,24 @@
-From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
-Subject: Re: nfsd stales when restarting too fast
-Date: Wed, 18 Aug 2004 09:16:54 +0200
+From: Raphael Clifford <raphael@clifford.net>
+Subject: kerberos + nfs 3
+Date: Wed, 18 Aug 2004 09:04:07 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <41230266.7010002@bio.ifi.lmu.de>
-References: <4118900F.9090602@bio.ifi.lmu.de> <16674.52210.884853.119652@cse.unsw.edu.au>
+Message-ID: <41230D77.8080606@clifford.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BxKgx-0006NG-5v
-	for nfs@lists.sourceforge.net; Wed, 18 Aug 2004 00:17:03 -0700
-Received: from acheron.informatik.uni-muenchen.de ([129.187.214.135])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1BxKgv-00080v-Kc
-	for nfs@lists.sourceforge.net; Wed, 18 Aug 2004 00:17:03 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <16674.52210.884853.119652@cse.unsw.edu.au>
+	id 1BxLQh-0006XG-4f
+	for nfs@lists.sourceforge.net; Wed, 18 Aug 2004 01:04:19 -0700
+Received: from ptb-relay01.plus.net ([212.159.14.212])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.34)
+	id 1BxLQf-0008Nl-KO
+	for nfs@lists.sourceforge.net; Wed, 18 Aug 2004 01:04:19 -0700
+Received: from [212.159.57.82] (helo=clifford.net)
+	 by ptb-relay01.plus.net with esmtp (Exim) id 1BxLQW-000LPo-G7
+	for nfs@lists.sourceforge.net; Wed, 18 Aug 2004 08:04:08 +0000
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,38 +31,17 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Neil Brown wrote:
-> 
-> Probably the best solution is to "not do that" - why do you want to
-> stop and then restart the server anyway?  Why not just leave it
-> running.
+Hi,
+Sorry if this is a faq but what is the status of kerberos support for 
+nfs 3 currently (on the client side)?   I understand there was a project 
+to port the support from the nfs 4 work. Is that right?
 
-Aeh, well, yes. Of course I should not restart but just reload when
-sth. has changed... That's because I'm not used to the reload
-option since it didn't exist in the early SuSE versions I was using, so
-I'm always using restart. With reload (which just issues exportfs -r
-in the SuSE init script) no problem occurs. I definitely should have
-thought of that *feeling stupid* :-((
+Kind regards,
+Raphael
 
-> 
-> However there is a race the, and "sleep 1" would fix it.
-> Another fix would be to use "-1" instead of "-9" to kill nfsd.  This
-> causes it to exit without clearing the export table.
-> Another fix would be to apply to following patch to your 2.6 kernel.
 
-Just in case I forget the reload again next time I will include your
-patch in my kernel rpm, too. Just to be sure :-)
-
-Thanks for your help!
-cu,
-Frank
-
--- 
-Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
-Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
-LMU, Amalienstr. 17           Phone: +49 89 2180-4049
-80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
-
+P.S. I sent this before from the wrong email address. I hope no one has 
+received it twice.
 
 
 -------------------------------------------------------
