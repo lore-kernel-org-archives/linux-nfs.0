@@ -1,25 +1,23 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: [PATCH] SGI 882960: Busy inodes after unmount, oops
-Date: Thu, 5 Feb 2004 17:15:15 +0100
+From: Vincent ROQUETA <vincent.roqueta@ext.bull.net>
+Subject: Re: Re: NFSv4 stability: export unused a night
+Date: Thu, 5 Feb 2004 18:13:46 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040205161515.GA21344@suse.de>
-References: <40209B6D.56ED461E@melbourne.sgi.com> <20040204120952.GA1980@suse.de> <4021751C.B888A15C@melbourne.sgi.com>
+Message-ID: <200402051813.46504.vincent.roqueta@ext.bull.net>
+Reply-To: vincent.roqueta@ext.bull.net
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Aom9y-0004Ci-PM
-	for nfs@lists.sourceforge.net; Thu, 05 Feb 2004 08:15:22 -0800
-Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.30)
-	id 1Aom9y-0004oj-Bi
-	for nfs@lists.sourceforge.net; Thu, 05 Feb 2004 08:15:22 -0800
-To: Greg Banks <gnb@melbourne.sgi.com>
-In-Reply-To: <4021751C.B888A15C@melbourne.sgi.com>
+	id 1Aon2V-0001cY-Ah
+	for nfs@lists.sourceforge.net; Thu, 05 Feb 2004 09:11:43 -0800
+Received: from ecbull20.frec.bull.fr ([129.183.4.3])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1Aon2U-0002o9-HP
+	for nfs@lists.sourceforge.net; Thu, 05 Feb 2004 09:11:42 -0800
+To: Vincent ROQUETA <vincent.roqueta@ext.bull.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,44 +30,70 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Greg,
 
-On Thu, Feb 05, 2004 at 09:41:32AM +1100, Greg Banks wrote:
-> BTW (not directly related to this bug) I found by experiment that I
-> could umount an NFS mount when there were open file descriptors for
-> unlinked files in the mount, and even keep writing.  All the NFS
-> and RPC structures stay alive until the last file descriptor closes,
-> thanks to the magic of refcounts.  All this despite the vfsmount
-> reference taken in struct file, which I thought was supposed to
-> prevent umount.
+Le Jeudi 05 F=E9vrier 2004 17:13, Vincent ROQUETA a =E9crit :
+> Le Jeudi 05 F=E9vrier 2004 14:07, Vincent ROQUETA a =E9crit :
+> > 1/
+> >
+> > When I lived yesterday server computer test was up, configured with 1
+> > export partition.
+> > This export was moutable from the client side.
+> >
+> > Threre was no reboot of the server this night.
+> > This morning, I was unable to mount the exported directory.
+> >
+> > After reboot, all was OK.
+>
+> More precisions. I have reproduced the bug:
+>
+> 1/ Server up, client up
+> 2/ client mount a nfs4 fs.
+> 3/ reboot client (without umounting )
+> 4/ Client can't mount nfs , server answer: permission denied
 
-Then something else must be wrong big time.
+Still answering to my owns questions ;)
+I yet have the permissions (I don't really understand what I have changed...
+ ) remounting looks to work (I don't have "permission denied" and the mount
+ returns without errors), but I can't see thedirectory correctly...
 
-> >  -      __rpc_execute notices the task is dead (no tk_action),
-> >         leaves the loop and invokes task->tk_exit == nfs_async_unlink_done
-> 
-> No.  In a crash dump taken after the umount has completed, the dir dentry has
-> 1 leaked d_count for every async unlink present at umount, even though the
-> async unlink tasks have been cleaned up.  This indicates that task->tk_exit
-> is not being called but task->tk_release is, so the dput is not happening.
+After a reboot and re mounting the partition:
+[root@roquetav root]# ls /mnt/nfs/vincent/
+[root@roquetav root]#
 
-But then prune_dcache shouldn't touch these dentries at all, because their
-refcount is still 1. They would be leaked, but there would be no crash.
+and without rebooting:
+[root@roquetav root]# ls /mnt/nfs/vincent/
+913                                module-init-tools-3.0-pre7
+bind-9.2.1                          modules-init-tools.tgz
+bind-9.2.1-16.i386.rpm              named
+bind9_9.2.1.orig.tar.gz             nfs4st
+bind-utils-9.2.1-16.i386.rpm        nfs-utils-1.0.6
+binutils-2.13.90.0.18-9.i386.rpm    nfs-utils-1.0.6-patchs.tgz
+exportnfs                           nfs-utils-1.0.6.tar.gz
+gssd                                ntp
+gssd-2004-01-20.tar.gz              pynfs-citi-2004-01-30.tar.gz
+idmapd-1.5                          redhat-config-bind-1.9.0-13.noarch.rpm
+krb5-configs-1.1.1-40.i386.rpm      start_kerberos
+krb5-devel-1.2.7-10.i386.rpm        suite-tests
+krb5-libs-1.2.7-10.i386.rpm         test
+krb5-libs-1.3.1-7.i386.rpm          test~
+krb5-server-1.2.7-10.i386.rpm       tests
+krb5-workstation-1.2.7-10.i386.rpm  util-linux-2.11z
+krb5-workstation-1.3.1-7.i386.rpm   util-linux-2.11z.tar
+linux-2.6.1-CITI_NFS4_ALL.patch     ypbind-1.11-4.i386.rpm
+linux.tgz
 
-> It's not entirely clear to me how __rpc_execute can do that, but the evidence
-> is that it does so.
+Logs:
 
-Very strange... maybe we have a refcounting problem elsewhere, and the
-refcount was 2 before calling tk_exit? But somehow I doubt this... I
-think we'd see far more massive problems in this case.
+=46eb  5 18:01:36 roquetav kernel: nfs_stat_to_errno: bad nfs status return
+value: 10011
+=46eb  5 18:02:16 roquetav last message repeated 2 times
+=46eb  5 18:03:36 roquetav last message repeated 4 times
+=46eb  5 18:04:56 roquetav last message repeated 4 times
+=46eb  5 18:06:16 roquetav last message repeated 4 times
+=46eb  5 18:07:36 roquetav last message repeated 4 times
 
-Would you share your test case?
+=2D------------------------------------------------------
 
-Olaf
--- 
-Olaf Kirch     |  Stop wasting entropy - start using predictable
-okir@suse.de   |  tempfile names today!
----------------+ 
 
 
 -------------------------------------------------------
