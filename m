@@ -1,18 +1,17 @@
-From: "Jeff L. Smith" <jeff@atheros.com>
-Subject: Re: Vaguely NFS related problem
-Date: Thu, 12 Dec 2002 09:09:19 -0800
+From: Jose Santiago <jsantiago@chrysalisdev.com>
+Subject: RE: NFS Problem
+Date: Thu, 12 Dec 2002 17:57:02 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3DF8C2BF.8050109@atheros.com>
-References: <3DF7EA94.20108@atheros.com>	<15863.61586.150820.505519@notabene.cse.unsw.edu.au>	<3DF7F663.30201@atheros.com> <15863.64480.756681.957850@notabene.cse.unsw.edu.au>
+Message-ID: <3DF9224E.8050009@chrysalisdev.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail.atheros.com ([65.212.155.130] helo=atheros.com)
+Received: from 89.levincom.com ([198.78.56.89] helo=chrysalis-sbs1.chrysalisdev.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18MWpx-0003SZ-00
-	for <nfs@lists.sourceforge.net>; Thu, 12 Dec 2002 09:09:25 -0800
-To: Neil Brown <neilb@cse.unsw.edu.au>
+	id 18MdCa-0000Pd-00
+	for <nfs@lists.sourceforge.net>; Thu, 12 Dec 2002 15:57:12 -0800
+To: Muhammad Sibtain Bashir <sibtain@pseb.org.pk>,
+	nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,45 +24,14 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-You are correct.  The only patch I applied was Trond's 
-linux-2.4.18-NFS_ALL.dif and that is where the check is.  The actual 
-patch was linux-2.4.18-svc_tcp.dif.  I'm not doing NFS-over-TPC, but 
-this seems to be biting me anyway.
+What are the permissions on the directories that you are trying to write 
+to via NFS? What user is trying to do the write? Be aware, that root 
+maps to user nobody via NFS unless you root_squash.
 
-I plan to upgrade to 2.4.20 as soon as I can take the fileservers down 
-long enough, but that will be a few weeks.  But then that begs the 
-question, should I apply Trond's 2.4.20 patches?
-
-Thanks,
-Jeff
-
-Neil Brown wrote:
-> On Wednesday December 11, jeff@atheros.com wrote:
-> 
->>I'm running a kernel I built from kernel.org source.  I found the 
->>message in linux-2.4.18/net/sunrpc/svcsock.c.
->>
->>
->>printk (KERN_WARNING "RPC: Unable to allocate resbuf from cache!\n");
-> 
-> 
-> I think you should check again.  I did and I still cannot find that
-> message:
-> 
-> % bzcat linux-2.4.18.tar.bz2 | grep 'Unable to allocate resbuf from cache'
-> %
-> 
-> Are you sure they were *unpatched* kernel.org sources?
-> 
-> I suggest you unroll 2.4.20 and try that.
-> 
-> NeilBrown
-
-
--- 
-Jeff Smith                                  Atheros Communications, Inc.
-Hardware Manager                            529 Almanor Avenue
-(408) 773-5257                              Sunnyvale, CA  94086
+ > now when i mount the directories on my client machine it get mounted
+ > okay and i can read any file in the mounted directories but as above i
+ > have given the write permision as well ,but i cant write any thing and
+ > this message show   * permission denied*.
 
 
 
