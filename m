@@ -1,27 +1,26 @@
-From: ms419@freezone.co.uk
-Subject: F_SETLK failed, file already locked
-Date: Tue, 21 Sep 2004 18:08:17 -0700
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: [PATCH 3 of 6] svcrpc: move export table checks to a per-program pg_add_client method
+Date: Wed, 22 Sep 2004 16:54:12 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E2C26788-0C33-11D9-AB4A-000A95C71776@freezone.co.uk>
-Mime-Version: 1.0 (Apple Message framework v619)
-Content-Type: text/plain; charset=US-ASCII; format=flowed
+Message-ID: <16721.8596.980204.899779@cse.unsw.edu.au>
+References: <1095375544.839c1c96.3@fieldses.org>
+	<1095383919.10216.142.camel@lade.trondhjem.org>
+	<20040917022015.GA15212@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+    nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C9vcJ-0004zN-6V
-	for nfs@lists.sourceforge.net; Tue, 21 Sep 2004 18:08:19 -0700
-Received: from defout.telus.net ([199.185.220.240] helo=priv-edtnes85.telusplanet.net)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1C9vcH-000074-Hl
-	for nfs@lists.sourceforge.net; Tue, 21 Sep 2004 18:08:19 -0700
-Received: from tor.lat ([209.121.36.24]) by priv-edtnes85.telusplanet.net
-          (InterMail vM.6.01.03.02 201-2131-111-104-20040324) with ESMTP
-          id <20040922010810.ZLCI10674.priv-edtnes85.telusplanet.net@tor.lat>
-          for <nfs@lists.sourceforge.net>; Tue, 21 Sep 2004 19:08:10 -0600
-Received: from [192.168.179.43] (fis.lat [192.168.179.43])
-	by tor.lat (Postfix) with ESMTP id 22299149FD
-	for <nfs@lists.sourceforge.net>; Tue, 21 Sep 2004 18:08:06 -0700 (PDT)
-To: nfs@lists.sourceforge.net
+	id 1CA11X-0006lP-91
+	for nfs@lists.sourceforge.net; Tue, 21 Sep 2004 23:54:43 -0700
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CA11V-0008GE-8n
+	for nfs@lists.sourceforge.net; Tue, 21 Sep 2004 23:54:41 -0700
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: message from J. Bruce Fields on Thursday September 16
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,32 +33,121 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I'm running user mode linux using a root image stored on an NFS mount. 
-I frequently (though thus far unpredictably) encounter the following 
-error starting UML:
+On Thursday September 16, bfields@fieldses.org wrote:
+> On Thu, Sep 16, 2004 at 09:18:39PM -0400, Trond Myklebust wrote:
+> > You are making a special method that is really very specific to
+> > svcauth_unix and svcauth_null, yet the pg_set_client() appears as a
+> > generic method in the generic svc_program object.
+> > 
+> > Firstly, I'd strongly suggest that we call this callback pg_set_domain
+> > so that there is no confusion about what it does.
+> 
+> After considering that, I decided that "client" (which is used in
+> rq_client, in the nfsctl's (add_client), etc., in the exportfs
+> documentation, etc.) makes more sense than "domain" (used only in the
+> type struct auth_domain).
+> 
+> > Secondly, please explain why we're leaving RPCSEC_GSS as a special case
+> > here? Isn't the current implementation also calling up to "rpc.mountd"
+> > in order to check "/etc/exports"?
+> 
+> Yes, but that doesn't happen till later--we have to have a filehandle
+> for that.  The mistake was probably referring to "the export table" in
+> the patch comments--we're not really looking at that yet, we're only
+> looking up the name of this client--it's not much more than a reverse
+> dns lookup.  (So in the worst case, in auth_unix, there are *two*
+> upcalls--one here, to get the name of the client, then one later to
+> actually see whether something's exported to that client.)
+> 
+> So this upcall really is auth_unix/auth_null-specific.
+> 
+> But still there's some odd asymmetry here, I agree--I need to think
+> about the auth_gss case.
 
-F_SETLK failed, file already locked by pid 25176
+I suspect that is an excellent idea.  Work out the auth_gss case which
+is likely to be more general, and then make auth_{unix,null} fit in
+with that.
 
-http://www.sfu.ca/~jdbates/nfs/screenlog
+For nfsd, there are three up-calls that can be made for an auth_unix
+authenticated request.
+  1 - lookup IP address and get 'client' identifier
+  2 - lookup filehandle (prefix) and get filesystem
+  3 - lookup client + filesystem and get export flags.
 
-Where "pid 25176" changes, but is never the pid of a running process: 
-I've tried "ls /proc/25176", no such process exists. So far, the only 
-solution I've found is restarting the NFS server. This corrects the 
-problem every time.
+(1) could be seen as an "authentication" step, while (3) is an
+"authorisation" step. ( (2) is just an internal lookup).
+(1) doesn't look much like authentication, but the equivalent with
+auth_gss does (I think).
 
-I don't know whether the problem is with the NFS server, NFS client, or 
-user mode linux. Can anyone advise?
+For call-backs, the authorisation and any other lookup would be
+handled inside the kernel, but the authentication could still need an
+up-call - to start a gss session for example.
 
-The NFS server is running Debian unstable, nfs-kernel-server 1.0.6-3, & 
-a custom 2.4.27 kernel.
+In 2.4, lockd authentication piggy-backed on nfsd authentication for
+just those requests that were thought to need it.  The rest were
+unauthenticated.   Presumably we should be doing the same in 2.6 - not
+require auth for some requests, and just leave nfsd auth for the
+remaining.
+One approach is the patches you produced.  Another might be a
+per-svc_procedure flag to say whether auth was required or not.  There
+are doubtlessly others.
 
-The NFS client is running Debian unstable, nfs-common 1.0.6-3, & a 
-custom 2.6.7 kernel. They're connected by a crossover cable @ 10/100.
+Alternately, the code which causes a call-back to be meaningful
+(e.g. nlmclnt_lock in lockd (??)) could insert the relevant
+information into the auth cache in advance.
 
-Thank you very much for any help!
 
-Jack
+For gss, I presume a callback needs the same authentication as a
+regular service so it would be nice to use the same mechanism.
+Presumably this couldn't be satisfied completely within the kernel
+without adding too much extra gss_init code. i.e. the kernel shouldn't
+need upcalls to find out keys, but only to perform the
+context-establishment handshake.  But who's upcall mechanism do we use
+here??
 
+I've rambled a bit, hopefully not to much.
+
+To summarise:
+  - I'm not in favour of the pg_set_client method in it's current
+    form.
+  - I think that for AUTH_UNIX call-backs, the best approach would be
+    do have the caller insert the relevant information into the
+    current ip-lookup cache, but that due to the vagaries of
+    multi-homed hosts(*), that might not work.  Second best would be to
+    ignore the IP address (as 2.4 lockd does) and trust to the
+    contents of the request being hard to fake.
+  - For gss, an upcall will be needed to authenticate the call-back,
+    so use the current kernel-side infrastructure for request
+    authentication.
+
+
+(*) I note that nfs/callback.c find the client based in the IP
+address.  Is there anything in the code or the NFSv4 spec that allows
+for the fact that a server might have multiple IP addresses and that
+the callback might come from a different address than requests are
+being sent to??
+
+> 
+> > Ideally, all the *_accept() methods
+> > should be calling the same function to set the domain (or not to set it
+> > as the case may be). Better still: could we defer calling
+> > pg_set_domain() until after the call to svc_authenticate?
+> 
+> That would be nice.
+
+I don't think that makes sense.  It is the client that is being
+authenticated.  The end-product of authentication is knowing who the
+client is.  How can you separate one for the other?
+
+> 
+> > Finally, please could we move the domain_release() method out of struct
+> > auth_ops and into struct auth_domain itself?
+> 
+> Yeah, that's probably a good idea.
+
+Agreed.
+
+NeilBrown
 
 
 -------------------------------------------------------
