@@ -1,20 +1,16 @@
-From: Jose Celestino <japc@co.sapo.pt>
-Subject: Client tuning
-Date: Wed, 11 Dec 2002 13:11:45 +0000
+From: Brashers_Per@emc.com
+Subject: RE: Client tuning
+Date: Wed, 11 Dec 2002 16:10:14 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20021211131145.GA1000@co.sapo.pt>
+Message-ID: <B02F581F0BBDD4119B0D00D0B7A82DB001C468DA@casf1fp1.corp.emc.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail.sl.pt ([212.55.140.13] helo=sl.pt)
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18M6gW-0008JH-00
-	for <nfs@lists.sourceforge.net>; Wed, 11 Dec 2002 05:13:56 -0800
-Received: from unknown (HELO morgoth.sl.pt) ([172.28.229.169])
-          (envelope-sender <japc@co.sapo.pt>)
-          by mail.sl.pt (qmail-ldap-1.03) with SMTP
-          for <nfs@lists.sourceforge.net>; 11 Dec 2002 13:13:47 -0000
+Received: from maho3msx2.isus.emc.com ([128.221.11.32] helo=maho3msx2.corp.emc.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18ME7m-0007UA-00
+	for <nfs@lists.sourceforge.net>; Wed, 11 Dec 2002 13:10:34 -0800
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -27,6 +23,44 @@ List-Id: Discussion of NFS under Linux development,
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+
+Much information is available about the Celerra from:
+http://www.emc.com/products/networking/celerra.jsp?openfolder=storage_networ
+king
+
+to quote the website:
+
+The Celerra Clustered Network Server (CNS) is the world's fastest and most
+scalable NAS gateway, delivering up to 200,000 operations per second and
+supporting up to 224 direct network connections. 
+<snip>
+EMC Celerra solutions all share the powerful DART operating environment and
+tool set, providing a smooth path for growth as your performance and
+capacity requirements expand.
+
+Or in real speak:   it is a modular box with a GNU friendly OS that works
+with NFS and CIFS (if anyone cares) and can be modified in similar ways to
+what you already do (if your a Linux geek).
+
+In general using UDP requires a near perfect network (read -private
+segment-) to gain much of its advantages, and V3 has many improvements over
+V2.  So your network will determine UDP/TCP and I have never seen a time to
+need V2 over V3.
+
+Much of the tuning listed on nfs.sorceforge.net is great.  If you have not
+checked it out yet, do so.
+
+
+Just my $.02
+
+Per
+
+-------------------------------
+
+Date: Wed, 11 Dec 2002 13:11:45 +0000
+From: Jose Celestino <japc@co.sapo.pt>
+To: nfs@lists.sourceforge.net
+Subject: [NFS] Client tuning
 
 Hello,
 
@@ -51,6 +85,8 @@ TIA.
 Jose Celestino | http://xpto.org/~japc/files/japc-pgpkey.asc
 ----------------------------------------------------------------
 "Don't summarize. Don't abbreviate. Don't interpret." -- djb
+
+
 
 
 -------------------------------------------------------
