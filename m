@@ -1,25 +1,26 @@
-From: "Gareth" <gareth@bim7.com>
-Subject: RE: Premission denied
-Date: Wed, 29 Oct 2003 22:46:18 -0000
+From: Chip Salzenberg <chip@pobox.com>
+Subject: Re: Premission denied
+Date: Wed, 29 Oct 2003 17:49:29 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <HPEELKALMOKIEBNDKBCCAEDJDGAA.gareth@bim7.com>
-References: <20031029215815.GO29526@perlsupport.com>
+Message-ID: <20031029224929.GR29526@perlsupport.com>
+References: <20031029215815.GO29526@perlsupport.com> <HPEELKALMOKIEBNDKBCCAEDJDGAA.gareth@bim7.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: "Chip Salzenberg" <chip@pobox.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AEz56-0003uk-00
-	for <nfs@lists.sourceforge.net>; Wed, 29 Oct 2003 14:46:24 -0800
-Received: from bim7dsl.plus.com ([81.174.146.28] helo=mailgate.bim7.com)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AEz56-0001Kw-3j
-	for nfs@lists.sourceforge.net; Wed, 29 Oct 2003 14:46:24 -0800
-To: <nfs@lists.sourceforge.net>
-In-Reply-To: <20031029215815.GO29526@perlsupport.com>
+	id 1AEz82-0004Lx-00
+	for <nfs@lists.sourceforge.net>; Wed, 29 Oct 2003 14:49:26 -0800
+Received: from topaz.cx
+	([66.220.6.227] helo=mail.topaz.cx ident=mail)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.24)
+	id 1AEz82-0005UF-4S
+	for nfs@lists.sourceforge.net; Wed, 29 Oct 2003 14:49:26 -0800
+To: Gareth <gareth@bim7.com>
+In-Reply-To: <HPEELKALMOKIEBNDKBCCAEDJDGAA.gareth@bim7.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,36 +33,16 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> -----Original Message-----
-> From: Chip Salzenberg
-> > Oct 29 09:25:44 paris rpc.mountd: Fake hostname paris.bim for
-> 192.168.17.4
-> > - forward lookup doesn't match reverse
-> > Oct 29 09:25:44 paris rpc.mountd: refused mount request from
-> 192.168.17.4
-> > for /nfsroot (/): no export entry
-> > Oct 29 09:29:09 paris rpc.mountd: export request from 127.0.0.1
-> > Oct 29 09:39:37 paris rpc.mountd: refused mount request from
-> paris.bim for
-> > /nfsroot (/): no export entry
->
-> You have two failures there.  One says DNS, the other doesn't.
->
-> > Someone at work suggested its a reverse DNS problem... but running
-> > nslookup hostname returns my IP address, and vice versa.
->
-> The log says there was a reverse DNS problem.  It says it clearly,
-> right there in the log.  Are you suggesting that it's lying?
+According to Gareth:
+> I'm not sure why the error is there, given a reverse lookup works
+> fine. It's also the first time the error appeared, despite hours of
+> testing - and it hasn't reappeared since.
 
-LOL! Of course I'm not saying its lying...LOL
-
-I read the log file too... but I'm not sure why the error is there, given a
-reverse lookup works fine. It's also the first time the error appeared,
-despite hours of testing - and it hasn't reappeared since.
-
-
-Gareth
-
+Transient DNS failures are not unheard of.  :-,
+-- 
+Chip Salzenberg               - a.k.a. -               <chip@pobox.com>
+"I wanted to play hopscotch with the impenetrable mystery of existence,
+    but he stepped in a wormhole and had to go in early."  // MST3K
 
 
 -------------------------------------------------------
