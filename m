@@ -1,21 +1,16 @@
-From: Eric Whiting <ewhiting@amis.com>
-Subject: Re: 2.4.18: NFS_ALL patch greatly hurting UDP speed
-Date: Wed, 20 Mar 2002 11:23:43 -0700
+From: "Heflin, Roger A." <Roger.A.Heflin@conoco.com>
+Subject: Write Cache consistancy and NFS sync
+Date: Wed, 20 Mar 2002 16:05:45 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3C98D3AF.8091F420@amis.com>
-References: <3C88F8EE.86058BD5@sls.lcs.mit.edu>
-		<shs7kollatu.fsf@charged.uio.no>
-		<3C98AD4B.8244EDC0@sls.lcs.mit.edu>
-		<15512.44669.95177.801025@charged.uio.no> <15512.44969.304675.703836@charged.uio.no>
+Message-ID: <49CA7FE2A83A33459A2CD27E99E90EFB0BAE48@poexmb1.conoco.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: I Lee Hetherington <ilh@sls.lcs.mit.edu>,
- 	nfs@lists.sourceforge.net
-Received: from dermis.amis.com ([207.141.5.253])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16nkkc-0002Uh-00
-	for <nfs@lists.sourceforge.net>; Wed, 20 Mar 2002 10:23:54 -0800
-To: trond.myklebust@fys.uio.no
+Content-Type: text/plain;
+	charset="us-ascii"
+Received: from usamail2.conoco.com ([12.31.208.227])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 16noDO-0007BF-00
+	for <nfs@lists.sourceforge.net>; Wed, 20 Mar 2002 14:05:50 -0800
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,78 +23,60 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Trond,
+Hello,
 
-Some more data from some 2.4.18 tests I just ran...
+We have an application that works in the following=20
+way:
 
-==FIRST TEST
+We have a remote NFS node that starts a job, the
+job rsh's to the NFS server node and "reserves" the
+disk space locally, after this has started the job=20
+on the remote NFS node keeps a very careful eye
+on how big the file being reserved is, and if this
+file is large enough to do the write it currently=20
+wants to do, it writes the data over nfs to this=20
+file, otherwise the job will hang until the reserved
+file has reserved enough to meet its currently write.
+The reserve is being done so that long running jobs
+are able to claim all of the space that they need and
+not run out after lots of work has been done.   The
+reserve is a fairly simple process that simply=20
+writes lots of zeros to the disk to make sure
+the disk space has actually been claimed (fairly
+similar to the mkfile program on some unix variants).
 
-CLIENT: CLEAN 2.4.18 kernel with NFSV3 enabled 
-SERVER: Solaris 8 server (E280R)
+Now the question is that if remote NFS client is
+running sync, and if the local machine's reserve
+is running async (but in the local write
+cache-I assume that some of the size of the file
+that stat sees is still in the write cache as=20
+opposed to really on the disk) does NFS deal with
+this in such a manner that there is no chance of
+the NFS data getting written to the file on disk and=20
+then the local NFS server write cache getting later
+flushed over that data from the local asyc write from
+the local write cache?
 
-100M switched network (1G backbone connecting these two boxes -- but
-results the same when staying on local switch)
+We have been using the above for several weeks and
+have so far only found one instance of data corruption,
+and are unsure exactly what happened to cause the
+corruption, whether some sort of race condition
+caused the local write cache on the nfs server to
+not yet be flushed and cause the nfs client data
+to be written under it, or whether something entirely
+different is going on to cause the corruption.
+The application in question has fairly good crc
+data on most of its data structures, and unless
+the corruption takes out the entire structure and
+the crc the crc won't match and we get a warning=20
+error.   But in the corruption case we had, the
+data toward the end of the file was all zeros rather
+than the data that should be there.  On reruns
+this behavior was not duplicated.
 
-
-Writing with putc()...         done:   5941 kB/s  59.3 %CPU
-Rewriting...                   done:   5254 kB/s   6.7 %CPU
-Writing intelligently...       done:   5605 kB/s   4.1 %CPU
-Reading with getc()...         done:   9028 kB/s  89.3 %CPU
-Reading intelligently...       done: 197558 kB/s 100.3 %CPU
-
-==SECOND TEST
-CLIENT: Same setup as the first but with linux-2.4.18-NFS_ALL.dif
-applied. Same .config file.
-SERVER: Same
-
-Writing with putc()...         done:   5977 kB/s  63.5 %CPU
-Rewriting...                   done:   3494 kB/s   5.7 %CPU
-Writing intelligently...       done:    734 kB/s   0.7 %CPU
-Reading with getc()...         done:   9255 kB/s  72.8 %CPU
-Reading intelligently...       done: 195361 kB/s  34.3 %CPU
-
-
-PROBLEM: the intelligent writes look bad.
-
-==THIRD TEST
-Same setup as second test, but using dd instead of bonnie
-
-mohawk/test> time dd if=/dev/zero of=file bs=1024k count=1
-1+0 records in
-1+0 records out
-0.000u 0.030s 0:05.06 0.5%      0+0k 0+0io 136pf+0w
-
-About 200k/s on a 100Mbit network -- not very good.
-
-I grabbed a simple tcpdump of that whole dd session.  I'll send a
-off-list copy of the dump to Trond.
-
-eric
+			Roger
 
 
-
-
-Trond Myklebust wrote:
-> 
-> >>>>> " " == Trond Myklebust <trond.myklebust@fys.uio.no> writes:
-> 
->      > exceeded' ICMP messages littered around the place. The first
->      > one comes just after the loss of fragments, and is accompanied
->      > by a 2 second delay, during which all the reads that are sent
->      > time out without receiving a single reply...
-> 
-> Note: this 2 second period of silence appears to be what is really
-> causing the *100 slowdown. I've no idea what the switch is engaging in
-> during that time, but you might want to take a look to see if those
-> messages being sent during that period are indeed being received on
-> the server.
-> 
-> Cheers,
->   Trond
-> 
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
