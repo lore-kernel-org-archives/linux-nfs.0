@@ -1,66 +1,104 @@
-From: Nishanth Aravamudan <nacc@us.ibm.com>
-Subject: [KJ] [PATCH 10/40] fs/vfs: replace schedule_timeout() with msleep()
-Date: Thu, 20 Jan 2005 11:10:52 -0800
-Message-ID: <20050120191052.GK5393@us.ibm.com>
+From: Michael Haverkamp <mhaverkamp@kcp.com>
+Subject: Re: NFSv3, 2.6, ext3 and dir_index
+Date: Thu, 20 Jan 2005 13:26:21 -0600
+Message-ID: <41F005DD.3060401@kcp.com>
+References: <20050120163806.GA25243@melchior.yamamaya.is-a-geek.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============18349868868377905=="
-Cc: kernel-janitors@lists.osdl.org, nfs@lists.sourceforge.net
-Return-path: <kernel-janitors-bounces@lists.osdl.org>
-To: neilb@cse.unsw.edu.au
-List-Unsubscribe: <http://lists.osdl.org/mailman/listinfo/kernel-janitors>,
-	<mailto:kernel-janitors-request@lists.osdl.org?subject=unsubscribe>
-List-Archive: <http://lists.osdl.org/pipermail/kernel-janitors>
-List-Post: <mailto:kernel-janitors@lists.osdl.org>
-List-Help: <mailto:kernel-janitors-request@lists.osdl.org?subject=help>
-List-Subscribe: <http://lists.osdl.org/mailman/listinfo/kernel-janitors>,
-	<mailto:kernel-janitors-request@lists.osdl.org?subject=subscribe>
-Sender: kernel-janitors-bounces@lists.osdl.org
-Errors-To: kernel-janitors-bounces@lists.osdl.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1Crhwv-00040j-0M
+	for nfs@lists.sourceforge.net; Thu, 20 Jan 2005 11:26:33 -0800
+Received: from mailhost2.os.kcp.com ([198.124.201.32])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1Crhwu-0002OU-Gu
+	for nfs@lists.sourceforge.net; Thu, 20 Jan 2005 11:26:32 -0800
+To: nfs@lists.sf.net
+In-Reply-To: <20050120163806.GA25243@melchior.yamamaya.is-a-geek.org>
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
---===============18349868868377905==
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+I have had the same problem with LVM2 and reiserfs using kernel 2.6.9. 
+Whenever I have a large IO load on the server, these error crop up.  I 
+copy everything on /space (/dev/hda5) to /space_bak (/dev/hdc5) using cp 
+-a and that always makes the problem happen for me.  I have not tried 
+removing LVM2 yet, so I don't know if that is a contributor.
 
-Hi,
+I don't think that this problem is limited to ext3 and dir_index.
 
-Please consider applying.
+Tobias Diedrich wrote:
+> Hi,
+> 
+> I recently switched from a local homedir to a NFS mounted homedir
+> and noticed some strange things:
+> 
+> I have a Cronjob that goes over my mp3 directory and after the
+> switch find would print "foo/bar/blubb: No such file or directory"
+> for a few (approx. 2-3 out of 1928) directories, but not always the same
+> ones.  Also, my mp3 player program would sometimes stop short in the
+> middle of a song and skip to the next one, because it got ENOENT on
+> a read of an open file.
+> 
+> Now first I thought it might just be a problem with my Kernel
+> version or one of the patches I'm using and upgraded to a more
+> recent one (currently 2.6.10-ac8-nfsacl on the client and
+> 2.6.10-ac8-imq-nfsacl on the server, I also had the same problem
+> without the nfsacl patches).
+> 
+> Then I read an older thread about trouble with ext3/dir_index and
+> NFS in older 2.6 versions and tried disabling dir_index (Which was
+> enabled on all my ext3 filesystems).  With that the problem
+> vanished.
+> 
+> Are there any known problems with dir_index and NFS, or is this
+> maybe a new bug?
+> 
+> Getting a tcpdump of the client<->server traffic proved difficult,
+> because it is a quite sporadic bug and reproducing it would involve
+> quite a lot of NFS traffic.  I could reliably trigger this with my
+> CD/DVD burning script, which generates md5sums for each file and
+> puts them both into the file MD5SUMS in the current directory, as
+> well as into another file in my Homedir (But the files being
+> md5summed also live on another NFS export, so there is a _lot_ of
+> traffic).
+> 
+> I _do_ have a traffic capture of ls returning "No such file or
+> directory" on the current directory, then cding up a level, down into the
+> directory again and then a working ls.
+> 
+> Client fstab entry:
+> nukunuku:/mnt/space1/ranma /home/ranma nfs hard,intr,bg,udp,rsize=4096,wsize=4096 0 0
+> 
+> /proc/mounts entry:
+> nukunuku:/mnt/space1/ranma /home/ranma nfs rw,v3,rsize=4096,wsize=4096,hard,intr,udp,lock,addr=nukunuku 0 0
+> 
+> Server export file:
+> / melchior.yamamaya.is-a-geek.org(sync,rw,no_root_squash)
+> /mnt/space1 melchior.yamamaya.is-a-geek.org(sync,rw,no_root_squash)
+> /mnt/space2 melchior.yamamaya.is-a-geek.org(sync,rw,no_root_squash)
+> /mnt/space3 melchior.yamamaya.is-a-geek.org(sync,rw,no_root_squash)
+> 
 
-Description: Use msleep() instead of schedule_timeout() to guarantee the task
-delays as expected.
+-- 
+Michael Haverkamp
 
-Signed-off-by: Nishanth Aravamudan <nacc@us.ibm.com>
 
---- 2.6.11-rc1-kj-v/fs/nfsd/vfs.c	2005-01-15 16:55:41.000000000 -0800
-+++ 2.6.11-rc1-kj/fs/nfsd/vfs.c	2005-01-18 11:06:03.000000000 -0800
-@@ -36,6 +36,7 @@
- #include <linux/module.h>
- #include <linux/namei.h>
- #include <linux/vfs.h>
-+#include <linux/delay.h>
- #include <linux/sunrpc/svc.h>
- #include <linux/nfsd/nfsd.h>
- #ifdef CONFIG_NFSD_V3
-@@ -965,8 +966,7 @@ nfsd_write(struct svc_rqst *rqstp, struc
- 			if (atomic_read(&inode->i_writecount) > 1
- 			    || (last_ino == inode->i_ino && last_dev == inode->i_sb->s_dev)) {
- 				dprintk("nfsd: write defer %d\n", current->pid);
--				set_current_state(TASK_UNINTERRUPTIBLE);
--				schedule_timeout((HZ+99)/100);
-+				msleep(10);
- 				dprintk("nfsd: write resume %d\n", current->pid);
- 			}
- 
-
---===============18349868868377905==
-Content-Type: text/plain; charset="iso-8859-1"
-MIME-Version: 1.0
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: inline
-
+-------------------------------------------------------
+This SF.Net email is sponsored by: IntelliVIEW -- Interactive Reporting
+Tool for open source databases. Create drag-&-drop reports. Save time
+by over 75%! Publish reports on the web. Export to DOC, XLS, RTF, etc.
+Download a FREE copy at http://www.intelliview.com/go/osdn_nl
 _______________________________________________
-Kernel-janitors mailing list
-Kernel-janitors@lists.osdl.org
-http://lists.osdl.org/mailman/listinfo/kernel-janitors
-
---===============18349868868377905==--
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
