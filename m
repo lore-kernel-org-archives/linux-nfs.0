@@ -1,25 +1,26 @@
-From: Marc Schmitt <mschmitt@inf.ethz.ch>
+From: Bernd Schubert <bernd-schubert@web.de>
 Subject: Re: nfs_statfs: statfs error = 116
-Date: 18 Sep 2003 21:26:23 +0200
+Date: Thu, 18 Sep 2003 21:49:02 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1063913183.1553.25.camel@localhost>
-References: <3F698142.6070404@inf.ethz.ch>  <3F69B7FB.1050505@RedHat.com>
+Message-ID: <200309182149.02062.bernd-schubert@web.de>
+References: <3F698142.6070404@inf.ethz.ch> <200309182124.08706.bernd-schubert@web.de> <1063913505.1552.30.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain;
+  charset="iso-8859-1"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1A04Us-0003KA-00
-	for <nfs@lists.sourceforge.net>; Thu, 18 Sep 2003 12:31:22 -0700
-Received: from mxout.hispeed.ch ([62.2.95.247] helo=smtp.hispeed.ch)
+	id 1A04mE-0002VC-00
+	for <nfs@lists.sourceforge.net>; Thu, 18 Sep 2003 12:49:18 -0700
+Received: from smtp02.web.de ([217.72.192.151] helo=smtp.web.de)
 	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.22)
-	id 1A04Uf-0000Vr-0Y
-	for nfs@lists.sourceforge.net; Thu, 18 Sep 2003 12:31:09 -0700
-To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: <3F69B7FB.1050505@RedHat.com>
+	id 1A04mD-0002aP-IQ
+	for nfs@lists.sourceforge.net; Thu, 18 Sep 2003 12:49:18 -0700
+To: Marc Schmitt <mschmitt@inf.ethz.ch>
+In-Reply-To: <1063913505.1552.30.camel@localhost>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,50 +33,30 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, 2003-09-18 at 15:49, Steve Dickson wrote:
-> Marc Schmitt wrote:
-> 
+On Thursday 18 September 2003 21:31, Marc Schmitt wrote:
+> On Thu, 2003-09-18 at 21:24, Bernd Schubert wrote:
+> > > > - Is there a way to get the client working again w/o having to reboot
+> > > > (or kill all the users processes and umount the home if that's
+> > > > possible)? I tried restarting rpc.statd on the client but that did
+> > > > not help.
+> > >
+> > > not really... :(
 > >
-> > My questions are:
-> >
-> > - Is this a race? 
-> 
-> It sounds to me like it could be be a server issue under
-> a very heavy load...  How many nfsd are you running? Try
-> increasing the number to see if that helps....
+> > Mounting the directory again should help. IHMO not a nice solution but it
+> > always worked on our systems.
+>
+> Do you mean 'mount -o remount /home/user'?
+> I've tried that, it didn't work.
+>
 
-Thanks, I'm trying that and changed the number of nfsd from 32 to 64 on
-the production system.
+No, no, I simply mean:
 
-> > - How can I provide more debugging infos if needed? 
-> 
-> ethereal traces have more information and are
-> generally more useful... imo...
+mount -t nfs server:export_dir   target_dir 
 
-I'll try to get a test setup running with the same software versions,
-create a couple hundres of exports and bomb it from one of the our
-clusters with bonnie++s. Like that I'll hopefully be able to reproduce
-this re-exporting issue.
+so just 'overmounting' the already mounted directory.
 
-A user has found a bug that appears when checking out a big subversion
-repository on the same server over NFS, it will always timeout upon this
-huge amount of file manipulations and the checkout fails. He then
-reproduced the issue with a small script that basicly loops over those
-four commands:
-
-rename ("old/bla", "new/bla")
-stat("new,bla",..)
-chmod("new/bla")
-rename ("new/bla", "old/bla")
-
-Before 1000 iterations the script returns: Error setting new/bla to
-read-only! We'll try to narrow this down on the test cluster, too. One
-particularity has been found already: the bug only appears if
-the renaming takes place over directory boundries.
-
-Regards,
-    Marc
-
+Hope it helps,
+Bernd
 
 
 
