@@ -1,24 +1,24 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: rpc.mountd stops functioning
-Date: Fri, 27 Aug 2004 19:16:54 -0400
+From: "Brandon D. Valentine" <brandon@dvalentine.com>
+Subject: Re: [bug] FC2/2.6.8.1 does not fallback to NFSv2
+Date: Fri, 27 Aug 2004 18:32:35 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040827231654.GA2836@fieldses.org>
-References: <411217BE.8070209@framestore-cfc.com> <20040805144659.GD25948@fieldses.org> <16686.43784.910598.870375@cse.unsw.edu.au>
+Message-ID: <20040827233235.GB57703@brandon.dvalentine.com>
+References: <20040827212244.GA57703@brandon.dvalentine.com> <1093642565.5758.108.camel@lade.trondhjem.org> <1093643490.5758.120.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C0pxt-00088G-Cb
-	for nfs@lists.sourceforge.net; Fri, 27 Aug 2004 16:17:01 -0700
-Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	id 1C0qDc-0001uI-S0
+	for nfs@lists.sourceforge.net; Fri, 27 Aug 2004 16:33:16 -0700
+Received: from mail.michaelchaney.com ([207.65.84.68] helo=daphne.michaelchaney.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.34)
-	id 1C0pxq-0007QK-HP
-	for nfs@lists.sourceforge.net; Fri, 27 Aug 2004 16:17:01 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <16686.43784.910598.870375@cse.unsw.edu.au>
+	id 1C0qDc-0006u2-9w
+	for nfs@lists.sourceforge.net; Fri, 27 Aug 2004 16:33:16 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1093643490.5758.120.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,73 +31,56 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, Aug 27, 2004 at 01:31:20PM +1000, Neil Brown wrote:
-> I don't think this patch is needed (though it wouldn't actually break anything).
-> The loop in svc_run.c starts:
-> 
-> 
-> 		readfds = svc_fdset;
-> 		cache_set_fds(&readfds);
-> 
-> so readfds is completely initialised at the top of the loop, so
-> clearing something at the bottom (which is essentially what this patch
-> does) should be a no-op.
-> 
-> Am I wrong?
+On Fri, Aug 27, 2004 at 05:51:30PM -0400, Trond Myklebust wrote:
+> To be more specific, I believe the problem here is that you are using
+> an NFSv2-only kernel together with a version of mountd that is
+> advertising NFSv2 *and* NFSv3.
 
-Note that cache_process_req() (which the patch below modifies) is not
-all the way at the bottom of the loop; there's still an importan call to
-svc_getreqset() after it.
+I would be very happy to find out that it was so simple, but it doesn't
+appear to be.  The problem definitely appears to be on the client
+system, not the server.
 
-If I understand the problem correctly, what happens is that if select()
-returns with a set that includes two file descriptors, the first for a
-cache channel and the second for an rpc socket, and if we don't clear
-the first file descriptor from that set before passing it to
-svc_getreqset(), then the rpc code will try to read an rpc request from
-a cache channel file, and will get very confused.
+  [root@scylla root]# rpcinfo -u reef nfs
+  program 100003 version 2 ready and waiting
+  [root@scylla root]# rpcinfo -u reef nfs 3
+  rpcinfo: RPC: Program/version mismatch; low version = 2, high version = 2
+  program 100003 version 3 is not available
 
-The symptom is that mountd may die occasionally on a server that's
-using the new interface (hence mountd is handling upcalls), and that's
-getting a lot of mount requests.
+  reef:~# ps -Af | grep mountd
+  root       395     1  0 Aug17 ?        00:00:00 /usr/sbin/rpc.mountd --no-nfs-version 3
 
-I've never seen the bug myself, because I'm almost always using nfsv4,
-hence only use mountd to handle upcalls....
+> We used to have code in the kernel that retried using NFSv2 if the
+> NFSv3 GETATTR call failed. I ripped that out of 2.6.x since people
+> have had ample time (I'd say 4-5 years is pretty ample) to correct
+> their setups.  Add the '--no???nfs???version 3' flag to your
+> rpc.mountd startup script, just as the mountd manpage clearly states
+> you should do, and all will be well.
 
---b.
+I am willing to believe that this is not a kernel bug, but can you
+suggest where else in the client userland I might look for the source of
+this problem?  It seems that this must either be a kernel bug or a bug
+in mount(8).
 
+I am more than willing to gather any information you might need to
+discover the source of the behavior I'm experiencing.  Attached is
+strace(1) output for the mount(1) command.  Hopefully that'll make it
+through mailman, but I'll leave you in the Cc in case it doesn't.  The
+mount binary on this system is stripped, so I don't know how much more
+useful debug information I can get out of it without compiling a debug
+version of mount.  FWIW, the mount binary on this FC2 system comes from:
 
-> > >From Garrick Staples <garrick@usc.edu>:
-> > 
-> > After mountd handles a cache upcall, we should clear the relevant bits in the
-> > fd_set.
-> > 
-> > ---
-> > 
-> >  nfs-utils-1.0.6-bfields/utils/mountd/cache.c |    1 +
-> >  1 files changed, 1 insertion(+)
-> > 
-> > diff -puN utils/mountd/cache.c~cache_select_bugfix utils/mountd/cache.c
-> > --- nfs-utils-1.0.6/utils/mountd/cache.c~cache_select_bugfix	2004-07-14 12:52:57.000000000 -0400
-> > +++ nfs-utils-1.0.6-bfields/utils/mountd/cache.c	2004-07-14 12:52:57.000000000 -0400
-> > @@ -315,6 +315,7 @@ int cache_process_req(fd_set *readfds) 
-> >  		    FD_ISSET(fileno(cachelist[i].f), readfds)) {
-> >  			cnt++;
-> >  			cachelist[i].cache_handle(cachelist[i].f);
-> > +			FD_CLR(fileno(cachelist[i].f), readfds);
-> >  		}
-> >  	}
-> >  	return cnt;
-> > _
-> > 
-> > 
-> > -------------------------------------------------------
-> > This SF.Net email is sponsored by OSTG. Have you noticed the changes on
-> > Linux.com, ITManagersJournal and NewsForge in the past few weeks? Now,
-> > one more big change to announce. We are now OSTG- Open Source Technology
-> > Group. Come see the changes on the new OSTG site. www.ostg.com
-> > _______________________________________________
-> > NFS maillist  -  NFS@lists.sourceforge.net
-> > https://lists.sourceforge.net/lists/listinfo/nfs
+  [root@scylla root]# rpm -q --whatprovides /bin/mount
+  util-linux-2.12-18
+
+Let me know how I can help.
+
+Thanks,
+
+Brandon D. Valentine
+-- 
+brandon@dvalentine.com                           http://www.geekpunk.net
+Pseudo-Random Googlism:  sunlight is the sun's weekly nonduplicating
+                         shopper
 
 
 -------------------------------------------------------
