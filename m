@@ -1,22 +1,18 @@
-From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
-Subject: Re: Help needed in understanding allocation of ports in NFS
-Date: Thu, 17 Feb 2005 14:08:06 -0800
-Message-ID: <1108678086.5897.62.camel@seki.nac.uci.edu>
-References: <20050216100402.57E0721AFF9@ws5-6.us4.outblaze.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-F9T0GxZsJ52lYnYDEVTq"
-Cc: strombrg@dcs.nac.uci.edu, nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+From: NeilBrown <neilb@cse.unsw.edu.au>
+Subject: [PATCH kNFSd ] Discard CACHE_HASHED flag, keeping information in refcount instead.
+Date: Fri, 18 Feb 2005 10:58:47 +1100
+Message-ID: <E1D1vXj-0006ci-Vn@notabene.cse.unsw.edu.au>
+References: <20050218105725.25443.patches@notabene>
+Cc: nfs@lists.sourceforge.net
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D1tog-0005eV-NK
-	for nfs@lists.sourceforge.net; Thu, 17 Feb 2005 14:08:10 -0800
-Received: from dcs.nac.uci.edu ([128.200.34.32] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1D1tof-0002jZ-AN
-	for nfs@lists.sourceforge.net; Thu, 17 Feb 2005 14:08:10 -0800
-To: naveen a <naveen2005@india.com>
-In-Reply-To: <20050216100402.57E0721AFF9@ws5-6.us4.outblaze.com>
+	id 1D1vY1-0002RH-Ii
+	for nfs@lists.sourceforge.net; Thu, 17 Feb 2005 15:59:05 -0800
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1D1vXy-00079q-Bk
+	for nfs@lists.sourceforge.net; Thu, 17 Feb 2005 15:59:05 -0800
+To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,61 +26,157 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+This patch should fix a problem that has been experienced on at-least one
+busy NFS server, but it has not had lots of testing yet.  If -mm could provide
+that .....
+Thanks.
 
---=-F9T0GxZsJ52lYnYDEVTq
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+NeilBrown
 
 
-Generally speaking, being RPC services, the portmapper (portmap or
-rpcbind) are free to allocate whatever ports to these services they feel
-like, and then client programs will contact the portmapper, give it the
-RPC program number, protocol and version, and then the portmapper will
-tell the client program which port to use.
+### Comments for Changeset
 
-However, I've gotten the impression that some NFS-related rpc services
-always come up on the same ports in practice.
+The rpc auth cache currently differentiates between a reference
+due to being in a hash chain (signalled by CACHE_HASHED flag)
+and any other reference (counted in refcnt).
 
-Still, if you want to combine NFS with a firewall, you likely either
-want to allow anything from a list of hosts, or configure NFS to use
-specific ports...
+This is an artificial difference due to an historical accident,
+and it makes cache_put unsafe.
 
-On Wed, 2005-02-16 at 18:04 +0800, naveen a wrote:
-> Hi,
->=20
-> I wanted some info related to port selection in NFS.
->=20
-> What happens when the port number is not specified in the command line sw=
-itch or configuration=20
-> file for mountd and statd?
->=20
-> In man pages it is mentioned as statd/mountd will select the port from po=
-rtmapper.=20
->=20
-> Can you please let me know how a port is allotted and the code path in so=
-urce.
->=20
-> What is the criteria for allocation of ports by portmapper ?
->=20
-> Please educate me on this.
->=20
-> Thanks
-> Naveen
+This patch removes the distinction so now existance in a hash
+chain is counted just like any other reference.
+Thus a race window in cache_put is closed.
 
---=-F9T0GxZsJ52lYnYDEVTq
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
+Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.6 (GNU/Linux)
+### Diffstat output
+ ./include/linux/sunrpc/cache.h |   19 +++++--------------
+ ./net/sunrpc/cache.c           |    4 +---
+ ./net/sunrpc/svcauth.c         |    8 ++++----
+ 3 files changed, 10 insertions(+), 21 deletions(-)
 
-iD8DBQBCFRXGo0feVm00f/8RAq/PAJwISb6kle+gvER670m3DklDWwDjTQCfVZNh
-8jttiho4v2G0tL2kv56ra4g=
-=3JRG
------END PGP SIGNATURE-----
+diff ./include/linux/sunrpc/cache.h~current~ ./include/linux/sunrpc/cache.h
+--- ./include/linux/sunrpc/cache.h~current~	2005-02-18 10:46:32.000000000 +1100
++++ ./include/linux/sunrpc/cache.h	2005-02-18 10:46:59.000000000 +1100
+@@ -37,8 +37,7 @@
+  * Entries have a ref count and a 'hashed' flag which counts the existance
+  * in the hash table.
+  * We only expire entries when refcount is zero.
+- * Existance in the cache is not measured in refcount but rather in
+- * CACHE_HASHED flag.
++ * Existance in the cache is counted  the refcount.
+  */
+ 
+ /* Every cache item has a common header that is used
+@@ -57,7 +56,6 @@ struct cache_head {
+ #define	CACHE_VALID	0	/* Entry contains valid data */
+ #define	CACHE_NEGATIVE	1	/* Negative entry - there is no match for the key */
+ #define	CACHE_PENDING	2	/* An upcall has been sent but no reply received yet*/
+-#define	CACHE_HASHED	3	/* Entry is in a hash table */
+ 
+ #define	CACHE_NEW_EXPIRY 120	/* keep new things pending confirmation for 120 seconds */
+ 
+@@ -185,7 +183,6 @@ RTN *FNAME ARGS										\
+ 											\
+ 			if (new)							\
+ 				{INIT;}							\
+-			cache_get(&tmp->MEMBER);					\
+ 			if (set) {							\
+ 				if (!INPLACE && test_bit(CACHE_VALID, &tmp->MEMBER.flags))\
+ 				{ /* need to swap in new */				\
+@@ -194,8 +191,6 @@ RTN *FNAME ARGS										\
+ 					new->MEMBER.next = tmp->MEMBER.next;		\
+ 					*hp = &new->MEMBER;				\
+ 					tmp->MEMBER.next = NULL;			\
+-					set_bit(CACHE_HASHED, &new->MEMBER.flags);	\
+-					clear_bit(CACHE_HASHED, &tmp->MEMBER.flags);	\
+ 					t2 = tmp; tmp = new; new = t2;			\
+ 				}							\
+ 				if (test_bit(CACHE_NEGATIVE,  &item->MEMBER.flags))	\
+@@ -205,6 +200,7 @@ RTN *FNAME ARGS										\
+ 					clear_bit(CACHE_NEGATIVE, &tmp->MEMBER.flags);	\
+ 				}							\
+ 			}								\
++			cache_get(&tmp->MEMBER);					\
+ 			if (set||new) write_unlock(&(DETAIL)->hash_lock);		\
+ 			else read_unlock(&(DETAIL)->hash_lock);				\
+ 			if (set)							\
+@@ -220,7 +216,7 @@ RTN *FNAME ARGS										\
+ 		new->MEMBER.next = *head;						\
+ 		*head = &new->MEMBER;							\
+ 		(DETAIL)->entries ++;							\
+-		set_bit(CACHE_HASHED, &new->MEMBER.flags);				\
++		cache_get(&new->MEMBER);						\
+ 		if (set) {								\
+ 			tmp = new;							\
+ 			if (test_bit(CACHE_NEGATIVE, &item->MEMBER.flags))		\
+@@ -268,15 +264,10 @@ static inline struct cache_head  *cache_
+ 
+ static inline int cache_put(struct cache_head *h, struct cache_detail *cd)
+ {
+-	atomic_dec(&h->refcnt);
+-	if (!atomic_read(&h->refcnt) &&
++	if (atomic_read(&h->refcnt) <= 2 &&
+ 	    h->expiry_time < cd->nextcheck)
+ 		cd->nextcheck = h->expiry_time;
+-	if (!test_bit(CACHE_HASHED, &h->flags) &&
+-	    !atomic_read(&h->refcnt))
+-		return 1;
+-
+-	return 0;
++	return atomic_dec_and_test(&h->refcnt);
+ }
+ 
+ extern void cache_init(struct cache_head *h);
 
---=-F9T0GxZsJ52lYnYDEVTq--
+diff ./net/sunrpc/cache.c~current~ ./net/sunrpc/cache.c
+--- ./net/sunrpc/cache.c~current~	2005-02-18 10:46:32.000000000 +1100
++++ ./net/sunrpc/cache.c	2005-02-18 10:46:59.000000000 +1100
+@@ -321,12 +321,10 @@ static int cache_clean(void)
+ 			if (test_and_clear_bit(CACHE_PENDING, &ch->flags))
+ 				queue_loose(current_detail, ch);
+ 
+-			if (!atomic_read(&ch->refcnt))
++			if (atomic_read(&ch->refcnt) == 1)
+ 				break;
+ 		}
+ 		if (ch) {
+-			cache_get(ch);
+-			clear_bit(CACHE_HASHED, &ch->flags);
+ 			*cp = ch->next;
+ 			ch->next = NULL;
+ 			current_detail->entries--;
 
+diff ./net/sunrpc/svcauth.c~current~ ./net/sunrpc/svcauth.c
+--- ./net/sunrpc/svcauth.c~current~	2005-02-18 10:46:32.000000000 +1100
++++ ./net/sunrpc/svcauth.c	2005-02-18 10:46:59.000000000 +1100
+@@ -178,12 +178,12 @@ auth_domain_lookup(struct auth_domain *i
+ 		tmp = container_of(*hp, struct auth_domain, h);
+ 		if (!auth_domain_match(tmp, item))
+ 			continue;
+-		cache_get(&tmp->h);
+-		if (!set)
++		if (!set) {
++			cache_get(&tmp->h);
+ 			goto out_noset;
++		}
+ 		*hp = tmp->h.next;
+ 		tmp->h.next = NULL;
+-		clear_bit(CACHE_HASHED, &tmp->h.flags);
+ 		auth_domain_drop(&tmp->h, &auth_domain_cache);
+ 		goto out_set;
+ 	}
+@@ -192,9 +192,9 @@ auth_domain_lookup(struct auth_domain *i
+ 		goto out_nada;
+ 	auth_domain_cache.entries++;
+ out_set:
+-	set_bit(CACHE_HASHED, &item->h.flags);
+ 	item->h.next = *head;
+ 	*head = &item->h;
++	cache_get(&item->h);
+ 	write_unlock(&auth_domain_cache.hash_lock);
+ 	cache_fresh(&auth_domain_cache, &item->h, item->h.expiry_time);
+ 	cache_get(&item->h);
 
 
 -------------------------------------------------------
