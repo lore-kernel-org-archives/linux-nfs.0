@@ -1,22 +1,20 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: 2.4.20 changelog
-Date: Sat, 21 Jun 2003 15:23:29 +1000
+From: Steve Dickson <SteveD@RedHat.com>
+Subject: Re: Having Trouble Starting NFS
+Date: Sat, 21 Jun 2003 06:28:47 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16115.60369.756894.899436@gargle.gargle.HOWL>
-References: <1056120449.18560.13.camel@mosix>
+Message-ID: <3EF4335F.2040900@RedHat.com>
+References: <029DBE7A1D95BF4A860FE19EA15FA533948B@isis.vanderbilt.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19TUy7-0005lc-00
-	for <nfs@lists.sourceforge.net>; Fri, 20 Jun 2003 16:06:55 -0700
-Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <mschilli@vss.fsi.com>) (for <nfs@lists.sourceforge.net>) By
-	tone With Smtp ; Sat, 21 Jun 2003 09:06:44 +1000
-To: Matt Schillinger <mschilli@vss.fsi.com>
-In-Reply-To: message from Matt Schillinger on  June 20
+Received: from host-64-179-20-100.man.choiceone.net ([64.179.20.100] helo=Odyssey.Home.4Dicksons.Org)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19TfcD-00031S-00
+	for <nfs@lists.sourceforge.net>; Sat, 21 Jun 2003 03:29:01 -0700
+To: Dan Steward <dsteward@isis.vanderbilt.edu>
+In-Reply-To: <029DBE7A1D95BF4A860FE19EA15FA533948B@isis.vanderbilt.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,21 +27,24 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On  June 20, mschilli@vss.fsi.com wrote:
-> In the Linux kernel-2.4.20 Changelog, I find this reference..
-> 
-> <okir@suse.de>:
->   o Fix NFS IRIX compatibility braindamage
-> 
-> does this relate to the IRIX < 6.5.13 CWD Bug?
+Hello,
 
-No.  It fixes an much more obscure problem.
-IRIX  uses a CREATE request to check if it has write permission on a
-device special file (incase ACLs are in use on the server).  These
-needs to allow write permission (if appropriate) even if the
-filesystem is exported read-only.
+Dan Steward wrote:
 
-NeilBrown
+> I recently installed Redhat Linux 9.0 on a Compaq laptop. When I try=20
+> and mount our network NFS, I receive the following error message in=20
+> the /var/log/messages log file: nfs: mount failure =93servername=94 /ho=
+me=20
+> on /auto/home. Can some one please assist this newbie on getting NFS=20
+> running on this laptop?
+>
+There are quite a few things that could be misconfigured...
+I would suggest the first place you start is by reading the configuration
+section in the FAQ on http://nfs.sourceforge.net....
+
+SteveD.
+
+
 
 
 -------------------------------------------------------
