@@ -1,20 +1,19 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Emanuel Quass <emanuel.quass@temic.com>
 Subject: Re: IRIX NFS server and Linux NFS client
-Date: 11 Apr 2002 14:09:22 +0200
+Date: Thu, 11 Apr 2002 14:10:06 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shs662yjv2l.fsf@charged.uio.no>
-References: <Pine.LNX.4.30.0204111218440.30970-100000@elin.scali.no>
+Message-ID: <200204111210.g3BCA6x04781@in-cadcae4.ing.temic.de>
+References: <Pine.LNX.4.30.0204110928530.28565-100000@elin.scali.no>
+Reply-To: emanuel.quass@temic.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: <nfs@lists.sourceforge.net>,  <linux-kernel@vger.kernel.org>,
-	  <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
+Received: from letterman.noris.net ([62.128.1.26])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16vdOT-00017W-00
-	for <nfs@lists.sourceforge.net>; Thu, 11 Apr 2002 05:09:38 -0700
-To: Steffen Persvold <sp@scali.com>
-In-Reply-To: <Pine.LNX.4.30.0204111218440.30970-100000@elin.scali.no>
+	id 16vdPE-0001Eo-00
+	for <nfs@lists.sourceforge.net>; Thu, 11 Apr 2002 05:10:24 -0700
+To: Steffen Persvold <sp@scali.com>, <nfs@lists.sourceforge.net>
+In-Reply-To: <Pine.LNX.4.30.0204110928530.28565-100000@elin.scali.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,23 +26,32 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->>>>> " " == Steffen Persvold <sp@scali.com> writes:
+Hi,
 
-     > I forgot to mention that NFSv3 works when an IRIX client mounts
-     > the same directory (i.e the directory shows up as "nfs" and not
-     > "nfs2" in the mount table on the IRIX client).
+I'm running as Client Linux 2.4.4 (kernel patched by SuSE) against 
+AIX-Servers(aix-4.3.3) / IRIX-Servers (6.5.9 and 6.5.11) / 
+Linux-Servers(2.4.9 and 2.2.17 both with NFS-Patches) and I can connect from 
+my Client to any Server with Version 3 (UDP of course).
 
-     > Could it be that IRIX only supports NFSv3 with TCP and not UDP
-     > (I didn't try TCP mounting on the Linux client) ?
+I'm sorry that I can't give you a hint apart from upgrading nfs-utils to 
+0.3.3.
 
-Have you applied
+MfG
+	Emanuel
 
-  http://www.fys.uio.no/~trondmy/src/2.4.18/linux-2.4.18-seekdir.dif
 
-in order to work around the glibc-2.x readdir bugs?
-
-Cheers,
-  Trond
+Am Donnerstag, 11. April 2002 09:34 schrieb Steffen Persvold:
+> Hi all,
+>
+> Is there any reason why my Linux NFS client (kernel 2.4.18
+> nfs-utils-0.3.1-13.7.2.1 from RedHat 7.2) is not able to mount a directory
+> exported from an IRIX server in NFSv3 (not sure which version of IRIX
+> yet, if this is important I will find out). NFSv2 works fine, but if I
+> try to force NFSv3 I get "Connection refused".
+>
+> I'll appreciate any help.
+>
+> Regards,
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
