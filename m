@@ -1,54 +1,53 @@
-From: Benjamin LaHaise <bcrl@redhat.com>
-Subject: Re: 2.4.20rc1 NFS V3 UDP client problems
-Date: Thu, 14 Nov 2002 18:23:20 -0500
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20021114182320.K20258@redhat.com>
-References: <200211142033.gAEKXGHe010083@pookie.nersc.gov> <3DD42E26.A603AD36@amis.com> <20021114181149.J20258@redhat.com> <3DD4305B.D439C6CD@amis.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Non-blocking lock requests during the grace period
+Date: 15 Nov 2002 03:33:56 +0100
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <shswunf8stn.fsf@helicity.uio.no>
+References: <OFCACC2A48.A38B3611-ON87256C71.006D0CEB@us.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: canon@pookie.nersc.gov,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	"nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from to-velocet.redhat.com ([216.138.202.10] helo=touchme.toronto.redhat.com)
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18CTKX-0007Dd-00
-	for <nfs@lists.sourceforge.net>; Thu, 14 Nov 2002 15:23:25 -0800
-To: Eric Whiting <ewhiting@amis.com>
-In-Reply-To: <3DD4305B.D439C6CD@amis.com>; from ewhiting@amis.com on Thu, Nov 14, 2002 at 04:23:07PM -0700
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
+To: Juan Gomez <juang@us.ibm.com>
+In-Reply-To: <OFCACC2A48.A38B3611-ON87256C71.006D0CEB@us.ibm.com>
+List-ID: <nfs.lists.sourceforge.net>
 
-On Thu, Nov 14, 2002 at 04:23:07PM -0700, Eric Whiting wrote:
-> Both of these NICs seemed to have the same behavior.
-> <6>eth0: Intel(R) PRO/1000 Network Connection
-> <6>eth1: NetGear GA620 Gigabit Ethernet at 0xea060000, irq 11
-> 
-> Yes -- I'm running on a 32bit/33Mhz bus right now. I do have a Sun 280R
-> with a 64bit/66Mhz card in a 66Mhz slot that doesn't even seem to
-> support jumbo frames at all.
+>>>>> " " == Juan Gomez <juang@us.ibm.com> writes:
 
-I'd guess you're hitting the PCI bandwidth limitations then, as the larger 
-packets permit greater throughput, which in turn drives up bus utilizations.  
-If you've got any disk controllers on the same bus, that would definately 
-explain the problem (or any other devices on the bus that are in use).
+     > I found out that the current Linux client of lockd blocks
+     > non-blocking lock requests while the server is in the grace
+     > period.  I think this is incorrect behavior and I am wondering
+     > if the will exists out there to correct this and return
+     > "resource not available" to the process when a request is for a
+     > *non-blocking* lock while the server is in the grace period.
 
-		-ben
+Would the following fix it?
 
+Cheers,
+  Trond
 
--------------------------------------------------------
-This sf.net email is sponsored by: To learn the basics of securing 
-your web site with SSL, click here to get a FREE TRIAL of a Thawte 
-Server Certificate: http://www.gothawte.com/rd524.html
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+--- linux-2.5.47/fs/lockd/clntproc.c.orig	2002-09-29 10:15:13.000000000 -0400
++++ linux-2.5.47/fs/lockd/clntproc.c	2002-11-14 21:32:26.000000000 -0500
+@@ -256,10 +256,8 @@
+ 		msg.rpc_cred = NULL;
+ 
+ 	do {
+-		if (host->h_reclaiming && !argp->reclaim) {
+-			interruptible_sleep_on(&host->h_gracewait);
+-			continue;
+-		}
++		if (host->h_reclaiming && !argp->reclaim)
++			goto wait_on_grace;
+ 
+ 		/* If we have no RPC client yet, create one. */
+ 		if ((clnt = nlm_bind_host(host)) == NULL)
+@@ -296,6 +294,9 @@
+ 			dprintk("lockd: server returns status %d\n", resp->status);
+ 			return 0;	/* Okay, call complete */
+ 		}
++wait_on_grace:
++		if (!argp->block)
++			return -EAGAIN;
+ 
+ 		/* Back off a little and try again */
+ 		interruptible_sleep_on_timeout(&host->h_gracewait, 15*HZ);
