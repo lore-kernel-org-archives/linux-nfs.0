@@ -1,15 +1,14 @@
 From: Al Borchers <ABorchers@tricord.com>
-Subject: Re: NFS problems across reboot
-Date: Sun, 07 Apr 2002 19:43:12 -0500
+Subject: [Fwd: Re: NFS problems across reboot]
+Date: Sun, 07 Apr 2002 19:50:04 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3CB0E7A0.B5E2F3EB@tricord.com>
-References: <E16uI1v-00067H-00@usw-sf-list1.sourceforge.net>
+Message-ID: <3CB0E93C.5D08BA1A@tricord.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Received: from mx01.tricord.com ([64.240.27.4] helo=ns1.tricord.com)
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16uNHn-0000Zc-00
-	for <nfs@lists.sourceforge.net>; Sun, 07 Apr 2002 17:45:31 -0700
+	id 16uNOO-0002GQ-00
+	for <nfs@lists.sourceforge.net>; Sun, 07 Apr 2002 17:52:21 -0700
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
