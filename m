@@ -1,23 +1,33 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: RHEL3 Update 1 and NetApp NFS freeze issues
-Date: Thu, 09 Sep 2004 21:50:04 -0400
+From: Greg Banks <gnb@melbourne.sgi.com>
+Subject: Re: lockd GRANT_MSG RPC callback
+Date: Fri, 10 Sep 2004 12:51:05 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1094781004.8363.10.camel@lade.trondhjem.org>
-References: <5D5AD1BFE69EDE4283AE056291B89499074861ED@ca00exh03.ca.atitech.com>
+Message-ID: <1094784664.19981.194.camel@hole.melbourne.sgi.com>
+References: <OFEFF11E74.090F2AA4-ON88256F09.00709621-88256F09.00712392@us.ibm.com>
+	 <1094676655.8363.47.camel@lade.trondhjem.org>
+	 <1094699316.19981.79.camel@hole.melbourne.sgi.com>
+	 <20040909125625.GC11991@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
+Content-Type: text/plain
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+        Marc Eshel <eshel@almaden.ibm.com>,
+        Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C5aaH-0001yu-TR
-	for nfs@lists.sourceforge.net; Thu, 09 Sep 2004 18:52:17 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1C5aa9-00010F-7I
-	for nfs@lists.sourceforge.net; Thu, 09 Sep 2004 18:52:12 -0700
-To: John Nitis <jnitis@ati.com>
-In-Reply-To: <5D5AD1BFE69EDE4283AE056291B89499074861ED@ca00exh03.ca.atitech.com>
+	id 1C5bTv-0002VF-SB
+	for nfs@lists.sourceforge.net; Thu, 09 Sep 2004 19:49:47 -0700
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.34)
+	id 1C5bTb-0007Jk-Vv
+	for nfs@lists.sourceforge.net; Thu, 09 Sep 2004 19:49:31 -0700
+Received: from omx3-ext.sgi.com ([192.48.171.20] helo=omx3.sgi.com)
+	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
+	id 1C5bS5-0006jP-Ax
+	for nfs@lists.sourceforge.net; Thu, 09 Sep 2004 19:47:56 -0700
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20040909125625.GC11991@fieldses.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,56 +40,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 to , 09/09/2004 klokka 20:48, skreiv John Nitis:
+On Thu, 2004-09-09 at 22:56, J. Bruce Fields wrote:
+> On Thu, Sep 09, 2004 at 01:08:36PM +1000, Greg Banks wrote:
+> > On Thu, 2004-09-09 at 06:50, Trond Myklebust wrote:
+> > > OK. Bruce has promised to work on splitting out the "domain" code from
+> > > the svcauth_unix code. Once that is done, we can fix up GRANT_MSG and
+> > > NOTIFY as well as any other routines that do not need to be
+> > > authenticated by rpc.mountd.
+> > 
+> > Any idea how long is this likely to take?
+> 
+> I'll try to have something out by early next week.
 
-> Our problem is this, essentially we have an entire rack of machines (57 o=
-f
-> them) that lock up on a very regular basis.  They respond to ping but do =
-not
-> respond to telnet, ssh, etc.  When you plug in a VGA monitor/PS2 keyboard
-> the screen pops up but you can't login.  When you hit enter it just echoe=
-s
-> back a linefeed on the screen.  A small percentage of them kernel panic.
-> They are all running RHEL3 WS with Update 1 installed and they're talking=
- to
-> NetApp Filers with NFS via TCP.  (Same thing happened with NFS via UDP,
-> however it's *somewhat* less frequent with NFS via TCP).
->=20
-> We have "top" and "ps augxww" output logging to a file once per minute an=
-d
-> some of them show excessive load averages before they freeze with many
-> processes stuck in D (uninterruptible sleep or disk wait).  If you catch
-> these before the load average gets too high you can tell that a mount has
-> locked up (df hangs after displaying a few mounts and you can't access th=
-e
-> mount that's locked up).  Each new process that gets stuck adds 1 to the
-> load average.  The machine locks up in exactly the same way when we yank =
-the
-> Ethernet cable from the box.
->=20
-> Previous to switching to NFS via TCP the "retrans" counter shown via nfss=
-tat
-> was an extremely high percentage of total rpc calls.  Our NetApps are
-> extremely busy with hundreds of Linux clients pounding them with
-> reads/writes.  These machines are used in an EDA/engineering environment
-> where we have hundreds of Linux clients accessing a set of NetApp Filers =
-via
-> Ethernet.  In this case the machines which crash are Opteron boxes with
-> Broadcom NICs using the tg3 driver.  We have RHEL3 Intel Xeon machines wh=
-ich
-> don't exhibit this problem as well as hundreds of RH7.2/7.3 clients which
-> don't exhibit the problem.
+Cool.  I presume you'll be adding a field to the svc_procedure struct
+to indicate whether an export is necessary and fiddling with the order
+of code around the call to svc_authenticate() in svc_process() ?
 
-Hmm... Normally, a TCP mount should only retransmit very sporadically,
-since the default value of timeo should be ~60 seconds. Are you perhaps
-setting some value that is lower than the default?
+> [...] So as a temporary workaround, lockd
+> will work if the client lists the server in the exports file.
 
-Note that early versions of "amd" had a problem with the default value
-too: they would set timeo=3D0.7 seconds irrespective of whether the client
-was using UDP or TCP.
+Ok, thanks.
 
-Cheers,
-  Trond
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
+
 
 
 
