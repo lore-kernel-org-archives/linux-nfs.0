@@ -1,27 +1,24 @@
 From: Jan Kasprzak <kas@fi.muni.cz>
 Subject: Re: mountd gives "illegal port"
-Date: Wed, 27 Oct 2004 18:12:57 +0200
+Date: Wed, 27 Oct 2004 18:23:22 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20041027161256.GC4333@fi.muni.cz>
-References: <20041027124228.GJ4724@fi.muni.cz>
+Message-ID: <20041027162321.GD4333@fi.muni.cz>
+References: <20041027124228.GJ4724@fi.muni.cz> <20041027154548.GA4292@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: unix@fi.muni.cz
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CMqQP-0004N6-08
-	for nfs@lists.sourceforge.net; Wed, 27 Oct 2004 09:13:25 -0700
+	id 1CMqaA-00053b-DH
+	for nfs@lists.sourceforge.net; Wed, 27 Oct 2004 09:23:30 -0700
 Received: from anor.ics.muni.cz ([147.251.4.35] ident=root)
 	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.41)
-	id 1CMqQO-0007BG-3j
-	for nfs@lists.sourceforge.net; Wed, 27 Oct 2004 09:13:24 -0700
-Received: from anxur.fi.muni.cz (IDENT:0@anxur.fi.muni.cz [147.251.48.3])
-	by anor.ics.muni.cz (8.12.1/8.12.1) with ESMTP id i9RGDI4k030272
-	for <nfs@lists.sourceforge.net>; Wed, 27 Oct 2004 18:13:18 +0200
-To: nfs@lists.sourceforge.net
-In-Reply-To: <20041027124228.GJ4724@fi.muni.cz>
+	id 1CMqa9-0008Bf-HH
+	for nfs@lists.sourceforge.net; Wed, 27 Oct 2004 09:23:30 -0700
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20041027154548.GA4292@fieldses.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,29 +31,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Jan Kasprzak wrote:
-: I have discovered the following problem in Linux NFS: When you mount
-: many filesystems from the same server, mountd sometimes refuses the
-: request with "illegal port" message in syslog.
-
-	Well, the mountd is probably OK, and it is the client who runs
-out of privileged ports. netstat -ta on the client looks like this:
-
-tcp        0      0 nfs-client.fi.muni.cz:880  nfs-server.fi.muni.c:sunrpc TIME_WAIT
-tcp        0      0 nfs-client.fi.muni.cz:883  nfs-server.fi.muni.c:sunrpc TIME_WAIT
-tcp        0      0 nfs-client.fi.muni.cz:884  nfs-server.fi.muni.c:sunrpc TIME_WAIT
-tcp        0      0 nfs-client.fi.muni.cz:887  nfs-server.fi.muni.c:sunrpc TIME_WAIT
-tcp        0      0 nfs-client.fi.muni.cz:888  nfs-server.fi.muni.c:sunrpc TIME_WAIT
-tcp        0      0 nfs-client.fi.muni.cz:891  nfs-server.fi.muni.c:sunrpc TIME_WAIT
-[...]    
-
-	The solution might be to query portmap over UDP from the NFS client
-instead of TCP. Or to query portmap from an unprivileged port (why we
-send query to portmap from privileged port anyway?).
-
-	 I have even tried echo 2 > /proc/sys/net/ipv4/tcp_fin_timeout,
-but this did not solve the problem - connections to server's portmap
-remain for 60 seconds in FIN_WAIT.
+J. Bruce Fields wrote:
+: On Wed, Oct 27, 2004 at 02:42:28PM +0200, Jan Kasprzak wrote:
+: > I have discovered the following problem in Linux NFS: When you mount
+: > many filesystems from the same server, mountd sometimes refuses the
+: > request with "illegal port" message in syslog. To reproduce this, I did
+: > the following:
+: 
+: Just add the "insecure" export option to the server's export.
+: 
+	Of course, but I don't want to do this. The problem is that client
+is querying portmap over TCP and from privileged port. By changing this
+we can use twice as much mounts in the TIME_WAIT period. We may also
+force mount to query mountd over UDP, but I don't know how to do this.
+-o udp is probably for nfsd traffic, isn't it?
 
 -Yenya
 
