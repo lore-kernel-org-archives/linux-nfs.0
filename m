@@ -1,26 +1,24 @@
-From: miyoshi@hpc.bs1.fc.nec.co.jp
-Subject: getcwd() returns wrong pathname
-Date: Tue, 03 Dec 2002 11:45:45 +0900
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: getcwd() returns wrong pathname
+Date: Tue, 3 Dec 2002 14:34:47 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20021203114545W.miyoshi@hpc.bs1.fc.nec.co.jp>
+Message-ID: <15852.9815.372469.298167@notabene.cse.unsw.edu.au>
+References: <20021203114545W.miyoshi@hpc.bs1.fc.nec.co.jp>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tyo202.gate.nec.co.jp ([202.32.8.202])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18J33R-0006Du-00
-	for <nfs@lists.sourceforge.net>; Mon, 02 Dec 2002 18:44:57 -0800
-Received: from mailgate4.nec.co.jp ([10.7.69.195])
-	by TYO202.gate.nec.co.jp (8.11.6/3.7W01080315) with ESMTP id gB32ill08184
-	for <nfs@lists.sourceforge.net>; Tue, 3 Dec 2002 11:44:47 +0900 (JST)
-Received: from mailsv.nec.co.jp (mailgate51.nec.co.jp [10.7.69.196]) by mailgate4.nec.co.jp (8.11.6/3.7W-MAILGATE-NEC) with ESMTP
-	id gB32ijx01348 for <nfs@lists.sourceforge.net>; Tue, 3 Dec 2002 11:44:45 +0900 (JST)
-Received: from mailsv.bs1.fc.nec.co.jp (venus.d2.bs1.fc.nec.co.jp [10.34.77.164]) by mailsv.nec.co.jp (8.11.6/3.7W-MAILSV-NEC) with ESMTP
-	id gB32hBm15118 for <nfs@lists.sourceforge.net>; Tue, 3 Dec 2002 11:44:44 +0900 (JST)
-Received: from localhost (pingu.hpc.bs1.fc.nec.co.jp [10.34.77.220])
-	by mailsv.bs1.fc.nec.co.jp (8.12.0/3.7W-HPC5.2F(mailsv)01041614) with ESMTP id gB32ZpnK001887
-	for <nfs@lists.sourceforge.net>; Tue, 3 Dec 2002 11:35:52 +0900 (JST)
-To: nfs@lists.sourceforge.net
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18J3qJ-0002pR-00
+	for <nfs@lists.sourceforge.net>; Mon, 02 Dec 2002 19:35:27 -0800
+Received: From
+	notabene.cse.unsw.edu.au ([129.94.233.169] == wireless-169.wireless.cse.unsw.EDU.AU)
+	(for <miyoshi@hpc.bs1.fc.nec.co.jp>)
+	(for <nfs@lists.sourceforge.net>) By tone With Smtp ;
+	Tue, 3 Dec 2002 14:34:48 +1100
+To: miyoshi@hpc.bs1.fc.nec.co.jp
+In-Reply-To: message from miyoshi@hpc.bs1.fc.nec.co.jp on Tuesday December 3
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -33,28 +31,33 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Tuesday December 3, miyoshi@hpc.bs1.fc.nec.co.jp wrote:
+> 
+> Hello,
+> 
+> I'm having problems with linux NFS. Here is my situation.
+> 
+> When mounting remote linux NFS filesystem to /mnt/xxx/yyy,
+> pwd or getcwd() sometimes returns imcomplete pathname.
+> We are using linux kernel 2.4.17.
+> 
+> % mount linuxserver:/mnt/xxx /mnt/xxx
+> % cd /mnt/xxx/yyy
+> % pwd
+> /xxx/yyy       <--- should be /mnt/xxx/yyy
+> 
+> Is there any ideas or fixes?
+> I'll be very gratefull to any suggestion.
 
-Hello,
+Are both client and server Linux?
 
-I'm having problems with linux NFS. Here is my situation.
+What does '/bin/pwd' say?
 
-When mounting remote linux NFS filesystem to /mnt/xxx/yyy,
-pwd or getcwd() sometimes returns imcomplete pathname.
-We are using linux kernel 2.4.17.
+What does
+    ls -l /proc/self/cwd
+say?
 
-% mount linuxserver:/mnt/xxx /mnt/xxx
-% cd /mnt/xxx/yyy
-% pwd
-/xxx/yyy       <--- should be /mnt/xxx/yyy
-
-Is there any ideas or fixes?
-I'll be very gratefull to any suggestion.
-
-Regards,
---
-MIYOSHI Kazuto <miyoshi@hpc.bs1.fc.nec.co.jp>
- HPC Operating System Group, 1st Computers Software Division,
- Computers Software Operations Unit, NEC Solutions.
+NeilBrown
 
 
 -------------------------------------------------------
