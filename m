@@ -1,19 +1,18 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: RPC: Unable to allocate ...
-Date: 24 Mar 2003 15:09:24 +0100
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: NFSD Flow Control Using the TCP Transport
+Date: Mon, 24 Mar 2003 10:07:09 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsadfksvor.fsf@charged.uio.no>
-References: <3E7EDCCA.8060904@dotcom.pl>
+Message-ID: <3E7F1F1D.8090206@RedHat.com>
+References: <3E78872B.5020702@RedHat.com> <20030320042454.496801DA3E6@brer.local.valinux.co.jp> <3E7B7853.4020605@RedHat.com> <20030324025133.924651DA3E6@brer.local.valinux.co.jp>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net, taka@valinux.co.jp, yamamoto@valinux.co.jp
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mons.uio.no ([129.240.130.14])
+Received: from nat-pool-rdu.redhat.com ([66.187.233.200] helo=lacrosse.corp.redhat.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18xSdr-00061d-00
-	for <nfs@lists.sourceforge.net>; Mon, 24 Mar 2003 06:09:35 -0800
-To: myciel <myciel@dotcom.pl>
-In-Reply-To: <3E7EDCCA.8060904@dotcom.pl>
+	id 18xTQA-0005VQ-00
+	for <nfs@lists.sourceforge.net>; Mon, 24 Mar 2003 06:59:30 -0800
+To: MINOURA Makoto <minoura@valinux.co.jp>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,25 +25,62 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == myciel  <myciel@dotcom.pl> writes:
+Yes I understand its a RPC issue not an NFS issue.
+I guess I should have made it clear that I think
+that the _RPC_ layer should be able to handle
+EAGAINs (using the TCP transport).
 
-     > Hi ocasionally (once or twice daily) I get hundreds of warnings
-     > during few seconds saying:
+The patch you provided does indeed stop the RPC
+layer from returning EAGAINs but also stops the flow
+of traffic because the sockets with are no longer
+being enqueued which in turn means there are no
+threads sleeping/waiting (in tcp_sendmsg) when
+the svc_write_space routine is called. So once
+this flow condition hits, the replys stop which
+means the incoming requests also stop and all
+the nfsds end up sitting in svc_recv() waiting
+for something to do....
 
-     > "RPC: Unable to allocate resbuf from cache!"
+0bviously, there is another issue in player here
+(which I'm currently debugging), since I do think your
+patch make sense....
 
-     > I've found in list archive suggestion to put more memory on
-     > server, but my machine has already 1GB of ram. I run 2.4.18 +
-     > nfsall patches, 2 nfs filesystems of size 620GB and 420GB on
-     > top of reiserfs,
+SteveD.
 
-     >  80% filled with small files (average size 25kb) - any hints?
+MINOURA Makoto wrote:
 
-Just disable the warning. The above should be harmless, since the NFS
-client will automatically retry.
+>|> In <3E7B7853.4020605@RedHat.com>
+>|>  Steve Dickson <SteveD@redhat.com> wrote:
+>
+>  
+>
+>>So If I understand what your saying, EAGAINs or partial writes are 
+>>interpreted
+>>as fatal errors. This confuse me. EAGAINs or partial writes are flow 
+>>control
+>>issues not fatal errors. Just like on the client side, shouldn't the
+>>thread sleep until there is room? Closing down the socket seems a
+>>bit drastic... Or am I missing something?
+>>    
+>>
+>
+>In general you are right, but as of Linux kNFSd something
+>like a flow control is done in the RPC layer.
+>
+>In kNFSd multiple nfsd threads share a single socket and to
+>avoid data mixture a sendto call must be atomic.  In order
+>to guarantee this the threads sleep in the RPC layer until
+>there is enough TCP write space.  By doing so EAGAIN can be
+>interpreted as something wrong is going on.
+>
+>But since the free space calculation was wrong this
+>assumption was broken.  The patch attached in my previous
+>mail corrects this.
+>
+>  
+>
 
-Cheers,
-  Trond
+
 
 
 -------------------------------------------------------
