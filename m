@@ -1,20 +1,22 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Mark Price <mkprice@us.ibm.com>
 Subject: Re: wsize & PAGE_SIZE issues on IA64 clients.
-Date: 01 Apr 2003 07:48:23 +0200
+Date: Mon, 31 Mar 2003 22:11:15 -0800 (PST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shshe9izs2g.fsf@charged.uio.no>
-References: <Pine.PTX.4.30.0303311531280.11440-100000@crg8.beaverton.ibm.com>
+Message-ID: <Pine.PTX.4.30.0303312210520.11440-100000@crg8.beaverton.ibm.com>
+References: <shshe9izs2g.fsf@charged.uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Lever, Charles" <Charles.Lever@netapp.com>,
-	  Greg Lindahl <lindahl@keyresearch.com>,  <nfs@lists.sourceforge.net>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Mark Price <mkprice@us.ibm.com>,
+   "Lever, Charles" <Charles.Lever@netapp.com>,
+   Greg Lindahl <lindahl@keyresearch.com>, <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 190EdR-00046G-00
-	for <nfs@lists.sourceforge.net>; Mon, 31 Mar 2003 21:48:38 -0800
-To: Mark Price <mkprice@us.ibm.com>
-In-Reply-To: <Pine.PTX.4.30.0303311531280.11440-100000@crg8.beaverton.ibm.com>
+Received: from e31.co.us.ibm.com ([32.97.110.129])
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 190F05-0007NL-00
+	for <nfs@lists.sourceforge.net>; Mon, 31 Mar 2003 22:12:02 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <shshe9izs2g.fsf@charged.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,18 +29,28 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Mark Price <mkprice@us.ibm.com> writes:
 
-     > I'm currently getting my ia64 box rebuilt in order to an
-     > NFSSVC_MAXBLKSIZE of 64K. Anyone ever tried it?
+Good point ;-) I hadn't thought of that. Its been one of those days!
 
-That won't work over UDP. The latter has a packet size that is limited
-to 64k, so you wouldn't have any space for the RPC header.
+Cheers, Mark.
 
-For TCP it could work though...
 
-Cheers,
-  Trond
+On 1 Apr 2003, Trond Myklebust wrote:
+
+> >>>>> " " == Mark Price <mkprice@us.ibm.com> writes:
+>
+>      > I'm currently getting my ia64 box rebuilt in order to an
+>      > NFSSVC_MAXBLKSIZE of 64K. Anyone ever tried it?
+>
+> That won't work over UDP. The latter has a packet size that is limited
+> to 64k, so you wouldn't have any space for the RPC header.
+>
+> For TCP it could work though...
+>
+> Cheers,
+>   Trond
+>
+
 
 
 -------------------------------------------------------
