@@ -1,17 +1,18 @@
 From: =?iso-8859-1?Q?Brasseur_Val=E9ry?= <Valery.Brasseur@atosorigin.com>
 Subject: RE: nfs unlink perf !
-Date: Tue, 13 Aug 2002 17:05:25 +0200
+Date: Tue, 13 Aug 2002 17:09:14 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <8D7D56C6ED3DD411998D009027DC685E0874E222@srv-grp-s1.segin.com>
+Message-ID: <8D7D56C6ED3DD411998D009027DC685E0874E223@srv-grp-s1.segin.com>
 Mime-Version: 1.0
 Content-Type: text/plain;
 	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from hermes4.atos-group.com ([160.92.18.11])
+Received: from hermes8.atos-group.com ([160.92.18.57] helo=hermes8.segin.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17edEl-000819-00
-	for <nfs@lists.sourceforge.net>; Tue, 13 Aug 2002 08:05:35 -0700
-To: nfs@lists.sourceforge.net
+	id 17edII-0001eY-00
+	for <nfs@lists.sourceforge.net>; Tue, 13 Aug 2002 08:09:14 -0700
+To: "'Lever, Charles'" <Charles.Lever@netapp.com>,
+	nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,53 +25,66 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-I have check my code, the unlink is done after the close.
+I check nfsstat, and see a bunch of retrans...
+but now when then following your suggestion I 've try to put :
+   tcp + rsize/wsize=3D32768 and :
+ * take the same time
+ * hang on D state under moderate load so I need to reboot very =
+frequently.
 
+my previous setup was :
+ * nfs v3, rsize/wsize=3D8192, udp
+
+my client (DL360) and server  (F880) are connected through a dedicated
+switch each with 100FD network link to the switch.
+
+any ideas ?
 
 > -----Original Message-----
-> From: Trond Myklebust [mailto:trond.myklebust@fys.uio.no]
-> Sent: Monday, August 12, 2002 8:55 PM
-> To: Brasseur Val=E9ry
-> Cc: nfs@lists.sourceforge.net
-> Subject: Re: [NFS] nfs unlink perf !
+> From: Lever, Charles [mailto:Charles.Lever@netapp.com]
+> Sent: Monday, August 12, 2002 5:48 PM
+> To: 'Brasseur Val=E9ry'; nfs@lists.sourceforge.net
+> Subject: RE: [NFS] nfs unlink perf !
 >=20
 >=20
-> >>>>> " " =3D=3D Brasseur Val=E9ry <Valery.Brasseur@atosorigin.com> =
-writes:
+> link RPCs can be very large (much larger than wsize, for instance).
+> if you use UDP and your network drops lots of packets, large link
+> requests will probably require several retransmissions to complete.
 >=20
->      > I am testing an application which to a lot of link/unlink
->      > server is a NetApp filer, client is linux 2.4.19+nfs patches.
+> enlarge your transport socket buffer size on the client (see FAQ)
+> and/or try NFS over TCP.  also examine your network to see if it
+> is clean, and is working optimally.  if your client is attached
+> via a more slow link than your server, that can be the source of
+> bursty packet loss.
 >=20
->      > under load it seems that the unlink call is very long when all
->      > over calls response time seems to be OK.  is there any =
-problems
->      > with the unlink code ?
->=20
-> There should be no problems, but it depends on what type of test you
-> are doing...
->=20
-> The NFS protocol has to work around some nasty compatibility problems
-> w.r.t. the POSIX expected behaviour of unlink. In particular, POSIX
-> allows you to do
->=20
->   open(file);
->   write(file);
->   unlink(file);
->   read(file);
->   close(file);
->=20
-> i.e. to unlink an open file...
->=20
-> In order for the above to work with NFS, one can't immediately unlink
-> the file when it is open(). Instead, NFS does a 'sillyrename': it
-> renames the file to something of the form .nfsXXXXX (where XXXX is
-> some number) and then performs the unlink when the 'close()' has been
-> performed.
->=20
-> Would this suffice to explain your 'bad performance'?
->=20
-> Cheers,
->   Trond
+> > -----Original Message-----
+> > From: Brasseur Val=E9ry [mailto:Valery.Brasseur@atosorigin.com]
+> > Sent: Monday, August 12, 2002 8:09 AM
+> > To: nfs@lists.sourceforge.net
+> > Subject: [NFS] nfs unlink perf !
+> >=20
+> >=20
+> > I am testing an application which to a lot of link/unlink
+> >=20
+> > server is a NetApp filer, client is linux 2.4.19+nfs patches.
+> >=20
+> > under load it seems that the unlink call is very long when=20
+> > all over calls
+> > response time seems to be OK.
+> > is there any problems with the unlink code ?
+> >=20
+> > thanks
+> >=20
+> >=20
+> >=20
+> > -------------------------------------------------------
+> > This sf.net email is sponsored by:ThinkGeek
+> > Welcome to geek heaven.
+> > http://thinkgeek.com/sf
+> > _______________________________________________
+> > NFS maillist  -  NFS@lists.sourceforge.net
+> > https://lists.sourceforge.net/lists/listinfo/nfs
+> >=20
 >=20
 
 
