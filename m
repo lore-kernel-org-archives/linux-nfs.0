@@ -1,23 +1,18 @@
-From: Bernd Schubert <bernd-schubert@web.de>
-Subject: Re: list of patches between 2.6.9 and 2.6.11-rc4
-Date: Tue, 22 Feb 2005 12:00:25 +0100
-Message-ID: <200502221200.26247.bernd-schubert@web.de>
-References: <200502212335.25502.bernd-schubert@web.de> <200502220200.13774.bernd-schubert@web.de> <1109038619.22895.74.camel@lade.trondhjem.org>
+From: "Rock VZ" <rockvz@hotmail.com>
+Subject: nfs disk utilization in terms of stress
+Date: Tue, 22 Feb 2005 22:08:42 -0800
+Message-ID: <BAY12-F241086A8C3CD873B2A1DDCD6630@phx.gbl>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-15"
-Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Content-Type: text/plain; format=flowed
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D3XmL-00018K-RU
-	for nfs@lists.sourceforge.net; Tue, 22 Feb 2005 03:00:33 -0800
-Received: from smtp06.web.de ([217.72.192.224])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.41)
-	id 1D3XmK-0000YF-Az
-	for nfs@lists.sourceforge.net; Tue, 22 Feb 2005 03:00:33 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1109038619.22895.74.camel@lade.trondhjem.org>
+	id 1D3phs-0001Md-R4
+	for nfs@lists.sourceforge.net; Tue, 22 Feb 2005 22:09:08 -0800
+Received: from bay12-f24.bay12.hotmail.com ([64.4.35.24] helo=hotmail.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1D3phr-0004Bo-H0
+	for nfs@lists.sourceforge.net; Tue, 22 Feb 2005 22:09:08 -0800
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,29 +26,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tuesday 22 February 2005 03:16, Trond Myklebust wrote:
-> ty den 22.02.2005 Klokka 02:00 (+0100) skreiv Bernd Schubert:
-> > To make it easier to understand I isolated the code and testing it as o=
-wn
-> > program.
->
-> Thanks. Does the following patch fix things for you?
->
+Hi,
 
-Thank you very very much, the patch fixes the problem!
+I would like to know how to get  disk utilization stats (like the one iostat 
+gives - %util) from a nfs client.
+With nfsstat -c I can get the read/write ratio but I am interested more 
+in-terms of "stress".
+For example
+I would like to calculate the stress average by taking the delta of  
+/proc/net/rpc/nfs between 2 time intervals and calculate percentages based 
+on total rpcs "possible" rather the rpcs that occured in that interval.
+i.e.
+Even if  only one rpc read call is made then based on nfsstat calculations 
+it would show a 100% read but it does not mean that the mount point was 
+'fully utilized' in reading.
 
+How can I know the max. rpc calls possible and then calculate the 
+percentages based on this value.
+Or is there any other way to get nfs "stress" stats.
+I'm trying to tune the nfs load so that it operates at 80% utilization. How 
+can I determine such stats?
+We use nfs over tcp (2.4 or 2.6 kernel)
 
-Thanks again,
- Bernd
+Thanks in advance
+Rock
 
+_________________________________________________________________
+Express yourself instantly with MSN Messenger! Download today - it's FREE! 
+http://messenger.msn.click-url.com/go/onm00200471ave/direct/01/
 
-=2D-=20
-Bernd Schubert
-Physikalisch Chemisches Institut / Theoretische Chemie
-Universit=E4t Heidelberg
-INF 229
-69120 Heidelberg
-e-mail: bernd.schubert@pci.uni-heidelberg.de
 
 
 -------------------------------------------------------
