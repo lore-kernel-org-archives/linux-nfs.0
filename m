@@ -1,23 +1,24 @@
-From: Jehan PROCACCIA <Jehan.Procaccia@int-evry.fr>
-Subject: Re: interprtation of /proc/net/rpc/nfsd
-Date: Fri, 08 Oct 2004 17:46:15 +0200
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] auth_domain_lookup in 2.6.8-rc2
+Date: Fri, 8 Oct 2004 15:43:06 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <4166B647.2010506@int-evry.fr>
-References: <41666777.7030003@int-evry.fr> <4166900D.3060401@moving-picture.com> <416695F6.8080707@int-evry.fr> <4166A7A3.4020705@moving-picture.com>
+Message-ID: <20041008194306.GH15184@fieldses.org>
+References: <20041008100102.GA20142@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CFwwv-0003eK-LZ
-	for nfs@lists.sourceforge.net; Fri, 08 Oct 2004 08:46:29 -0700
-Received: from smtp2.int-evry.fr ([157.159.10.45])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CFwwu-000268-Ly
-	for nfs@lists.sourceforge.net; Fri, 08 Oct 2004 08:46:29 -0700
-To: James Pearson <james-p@moving-picture.com>
-In-Reply-To: <4166A7A3.4020705@moving-picture.com>
+	id 1CG0e1-0002Fu-P2
+	for nfs@lists.sourceforge.net; Fri, 08 Oct 2004 12:43:13 -0700
+Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.41)
+	id 1CG0dy-0003HW-AC
+	for nfs@lists.sourceforge.net; Fri, 08 Oct 2004 12:43:13 -0700
+To: Olaf Kirch <okir@suse.de>
+In-Reply-To: <20041008100102.GA20142@suse.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,32 +31,43 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-James Pearson wrote:
+On Fri, Oct 08, 2004 at 12:01:03PM +0200, Olaf Kirch wrote:
+> 2.6.8-rc2 open-codes auth_domain_lookup, and introduces a flaw that
+> may have security consequences. If we do not find any matching
+> domain, the routine always returns the last item looked at, no
+> matter what it was.
 
->>
->> $ grep th /proc/net/rpc/nfsd
->> th 8 41598 20357.020 3974.540 1809.300 0.000 998.210 781.650 483.840 
->> 116.640 0.000 825.230
->>
->> Why ten numbers, I have 8 thraeds ! ? here for the last number for 
->> exemple, I had 825seconds that thread number 8 was at 230% of it's 
->> maximum ???
->
->
-> The following post from Neil Brown has a 'better' explanation:
->
-> http://marc.theaimsgroup.com/?l=linux-nfs&m=102824853219024&w=2
->
-> James Pearson
+Argh, sorry, that was my fault.  Thanks for spotting it.--b.
 
-Very well, It is clear to me now :-) !
-however how can I zero these counters ?, restarting /etc/init.d/nfs 
-doesn't do it, neither :
-$ nfsstat -z
-nfsstat: zeroing of nfs server statistics is not supported
-nfsstat: zeroing of nfs client statistics is not supported
+> This patch makes sure that auth_domain_lookup returns NULL when
+> it doesn't find a matching entry, rather than the last entry
+> in the hash chain.
+> 
+> Signed-off-by: Olaf Kirch <okir@suse.de>
+> 
+> Index: linux-2.6.8/net/sunrpc/svcauth.c
+> ===================================================================
+> --- linux-2.6.8.orig/net/sunrpc/svcauth.c
+> +++ linux-2.6.8/net/sunrpc/svcauth.c
+> @@ -183,7 +183,7 @@ auth_domain_lookup(struct auth_domain *i
+>  	}
+>  	/* Didn't find anything */
+>  	if (!set)
+> -		goto out_noset;
+> +		goto out_nada;
+>  	auth_domain_cache.entries++;
+>  out_set:
+>  	set_bit(CACHE_HASHED, &item->h.flags);
+> @@ -193,6 +193,8 @@ out_set:
+>  	cache_fresh(&auth_domain_cache, &item->h, item->h.expiry_time);
+>  	cache_get(&item->h);
+>  	return item;
+> +out_nada:
+> +	tmp = NULL;
+>  out_noset:
+>  	read_unlock(&auth_domain_cache.hash_lock);
+>  	return tmp;
 
-Is the only solution is to rebbot :-( ?
 
 
 -------------------------------------------------------
