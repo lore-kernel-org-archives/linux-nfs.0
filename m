@@ -1,17 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 9 of 12] Allow read access over NFS to files with APPEND bit set.
-Date: Tue, 08 Feb 2005 14:06:54 +1100
-Message-ID: <E1CyLiI-0006Vi-Fz@notabene.cse.unsw.edu.au>
+Subject: [PATCH kNFSd 1 of 12] Subject: [PATCH 2.6] SGI 921857: find broken with nohide on NFSv3
+Date: Tue, 08 Feb 2005 14:06:53 +1100
+Message-ID: <E1CyLiH-0006VC-TO@notabene.cse.unsw.edu.au>
 References: <20050208140033.24886.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CyLiq-0006v8-9z
-	for nfs@lists.sourceforge.net; Mon, 07 Feb 2005 19:07:28 -0800
+	id 1CyLir-0006vD-TT
+	for nfs@lists.sourceforge.net; Mon, 07 Feb 2005 19:07:29 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CyLip-0004Fi-NU
-	for nfs@lists.sourceforge.net; Mon, 07 Feb 2005 19:07:28 -0800
+	id 1CyLiq-0004Fm-Bo
+	for nfs@lists.sourceforge.net; Mon, 07 Feb 2005 19:07:29 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -27,38 +27,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Write access cannot safely be allowed as NFS doesn't support
-append, but read access should be ok.
+This patch makes "find" work when traversing nohide exports on NFSv3.
+The READDIRPLUS reply needs to not return a file handle for the ".."
+entry when the directory is a server side mountpoint, which would be
+the directory itself, otherwise the client remembers the wrong file
+handle and gets confused.
 
-
+Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/vfs.c |    9 ++++++---
- 1 files changed, 6 insertions(+), 3 deletions(-)
+ ./fs/nfsd/nfs3xdr.c |    5 +++++
+ 1 files changed, 5 insertions(+)
 
-diff ./fs/nfsd/vfs.c~current~ ./fs/nfsd/vfs.c
---- ./fs/nfsd/vfs.c~current~	2005-02-07 15:05:19.000000000 +1100
-+++ ./fs/nfsd/vfs.c	2005-02-07 15:05:19.000000000 +1100
-@@ -657,12 +657,15 @@ nfsd_open(struct svc_rqst *rqstp, struct
- 	dentry = fhp->fh_dentry;
- 	inode = dentry->d_inode;
- 
--	/* Disallow access to files with the append-only bit set or
--	 * with mandatory locking enabled
-+	/* Disallow write access to files with the append-only bit set
-+	 * or any access when mandatory locking enabled
- 	 */
- 	err = nfserr_perm;
--	if (IS_APPEND(inode) || IS_ISMNDLK(inode))
-+	if (IS_APPEND(inode) && (access & MAY_WRITE))
- 		goto out;
-+	if (IS_ISMNDLK(inode))
-+		goto out;
-+
- 	if (!inode->i_fop)
- 		goto out;
- 
+diff ./fs/nfsd/nfs3xdr.c~current~ ./fs/nfsd/nfs3xdr.c
+--- ./fs/nfsd/nfs3xdr.c~current~	2005-02-07 15:03:30.000000000 +1100
++++ ./fs/nfsd/nfs3xdr.c	2005-02-07 15:03:30.000000000 +1100
+@@ -843,6 +843,11 @@ compose_entry_fh(struct nfsd3_readdirres
+ 	if (isdotent(name, namlen)) {
+ 		if (namlen == 2) {
+ 			dchild = dget_parent(dparent);
++			if (dchild == dparent) {
++				/* filesystem root - cannot return filehandle for ".." */
++				dput(dchild);
++				return 1;
++			}
+ 		} else
+ 			dchild = dget(dparent);
+ 	} else
 
 
 -------------------------------------------------------
