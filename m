@@ -1,17 +1,18 @@
-From: Hirokazu Takahashi <taka@valinux.co.jp>
-Subject: NFSv2 won't work in case of error
-Date: Fri, 01 Nov 2002 17:09:33 +0900 (JST)
+From: "Heflin, Roger A." <Roger.A.Heflin@conoco.com>
+Subject: RE: NFS digest, Vol 1 #1212 - 9 msgs
+Date: Fri, 1 Nov 2002 08:47:30 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20021101.170933.15272489.taka@valinux.co.jp>
+Message-ID: <5CA6F03EF05E0046AC5594562398B9160C7760@poexmb3.conoco.net>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <rych@chem.scphys.kyoto-u.ac.jp>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sv1.valinux.co.jp ([202.221.173.100])
+Received: from usamail1.conoco.com ([12.31.208.226])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 187WzT-0005Yg-00
-	for <nfs@lists.sourceforge.net>; Fri, 01 Nov 2002 00:17:15 -0800
-To: Neil Brown <neilb@cse.unsw.edu.au>
+	id 187d66-0000Kg-00
+	for <nfs@lists.sourceforge.net>; Fri, 01 Nov 2002 06:48:31 -0800
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,25 +25,51 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
-
-I've fixed a problem that NFSv2 won't work when NFSv2 procedure
-handler (proc->pc_func) returns error.
-
-I guess there may be better way to fix it than this patch.
 
 
---- fs/nfsd/nfssvc.c.ORGv2	Fri Nov  1 16:05:44 2030
-+++ fs/nfsd/nfssvc.c	Fri Nov  1 17:01:59 2030
-@@ -309,6 +309,8 @@ nfsd_dispatch(struct svc_rqst *rqstp, u3
- 			*statp = rpc_system_err;
- 			return 1;
- 		}
-+	} else {
-+		xdr_ressize_check(rqstp, (u32*)(rqstp->rq_res.head[0].iov_base+rqstp->rq_res.head[0].iov_len));
- 	}
- 
- 	/* Store reply in cache. */
+
+> Message: 8
+> From: "Igor Rychkov" <rych@chem.scphys.kyoto-u.ac.jp>
+> To: <nfs@lists.sourceforge.net>
+> Subject: RE: [NFS] re-exporting: exportfs gives Invalid argument
+> Date: Fri, 1 Nov 2002 13:13:03 +0900
+>=20
+>=20
+>=20
+> Yes, it appears so. But then, what is that "nohide" option about? I =
+suspect
+> now that nohide is for _local_ filesystems.
+> So, how do people solve problems like mine?
+> Igor
+>=20
+	nohide is a local option to make file systems mounted under things
+	seeable, if the file system mounted under the local file systems is
+	not compatible or because of where it exists in the kernel does not
+	exist at the level of the NFS server  (a NFS client mount is not=20
+	compatible or does not exist to the NFS server) it cannot be seen
+	on the remote machine at all.
+
+
+	Option 1: is don't setup the network in such a way that you need to
+	reexport file systems to make things work.   Unless the machine=20
+	that is reexporting is a firewall protecting something, you probably
+	don't want to have a set of machine not accessable on your internal
+	network that could or will need access to the internal network.  And=20
+	if the machine is a firewall protecting things, I would suggest you
+	carefully evaluate allowing the resource to be seen outside its
+	protected area with a service such as NFS.
+
+	Option 2: (again depends on exactly why you have the machine with
+	the disk hidden from the other network), put the disks on the machine
+	that is doing the reexporting and call it the disk server, or put two
+	cards in the disk server so it is on both networks.
+
+	Why is the disk machine in question not on the network that needs
+	the data at least part of the time?   Is this a cluster with the =
+standard
+	(bad) head node setup?
+
+	                                      Roger
 
 
 -------------------------------------------------------
