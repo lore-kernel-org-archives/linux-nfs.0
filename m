@@ -1,20 +1,18 @@
-From: seth vidal <skvidal@phy.duke.edu>
-Subject: 2.4.18-5 server and client with < 2.4.18-5 read slowness
-Date: 23 Jul 2002 18:25:26 -0400
+From: <maknmny5550j07@ntn.net>
+Subject: I noticed your email address  -
+Date: Wed, 24 Jul 0102 00:55:44 +0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1027463126.28462.104.camel@opus>
+Message-ID: <026d67b38c0c$1438d0e6$4dc64dd2@edumaq>
+Reply-To: <maknmny5550j07@ntn.net>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature";
-	boundary="=-umd2o+WOFYUEh+6gp8Va"
+Content-Type: multipart/mixed;
+	boundary="----=_NextPart_000_00A7_38B62B7E.C1440B36"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail.phy.duke.edu ([152.3.182.2])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17X860-0005F1-00
-	for <nfs@lists.sourceforge.net>; Tue, 23 Jul 2002 15:25:32 -0700
-Received: from opus.phy.duke.edu (opus.phy.duke.edu [152.3.182.42])
-	by mail.phy.duke.edu (Postfix) with ESMTP id 95215303C3
-	for <nfs@lists.sourceforge.net>; Tue, 23 Jul 2002 18:25:26 -0400 (EDT)
-To: nfs@lists.sourceforge.net
+Received: from mestresplinter.frb.br ([200.223.42.101] helo=ntn.net)
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17XIC8-0000wc-00
+	for <nfs@lists.sourceforge.net>; Wed, 24 Jul 2002 02:12:35 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,56 +25,91 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-
---=-umd2o+WOFYUEh+6gp8Va
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
-
-Hi all,
- I've been trying to sort out the problems with rhl 7.3 2.4.18-5.
-I've got the mounts using rsize and wsize of 8192 and in async mount
-(and async export on the server (for testing nfs speed, not disk speed))
-
-What I've found is this:
-
-if the server is 2.4.18-5 the read and write performance is fine with
-either older kernels or 2.4.18-5 (on 100tx cards 9-10MB/s on read and
-write w/multiple threads)
-
-If the server is < 2.4.18-5 the performance for clients 2.4.18-5+ is
-good for writes, lousy for reads, but the performance for < 2.4.18-5
-clients is good for both reads and writes.
-
-(2MB/s read performance and 9-10MB/s write performance)
-
-Is this occurring b/c of the rpc congestion fixes that went into the
-client for 2.4.18-5+ or is it related to the rpc_ping function (which
-appears to be showing up A LOT in the tcpdumps of traffic b/t the two
-machines)
-
-Is it likely that the newer clients will just not be happy with older
-servers b/c of the changes to the client code? Is there any way to work
-around this?
-
--sv
+------=_NextPart_000_00A7_38B62B7E.C1440B36
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: base64
 
 
-
---=-umd2o+WOFYUEh+6gp8Va
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.0.6 (GNU/Linux)
-Comment: For info see http://www.gnupg.org
-
-iD8DBQA9PdfW1Aj3x2mIbMcRAqshAJ0YnOVe5c2z0Oy0FYa8DLUNgomkjACfWkTu
-dgjBy0BlL8XKduFBnjGGUk8=
-=mrAi
------END PGP SIGNATURE-----
-
---=-umd2o+WOFYUEh+6gp8Va--
-
+SGVsbG8gLQ0KDQpJZiB5b3Ugd291bGQgbGlrZSB0byBlYXJuIGV4dHJhIGlu
+Y29tZSB0byBob25lc3Qgd2F5LCB5b3Ugd2lsbCBiZSBpbnRlcmVzdGVkIGlu
+IHRoaXMuDQoNCkEgZmV3IG1vbnRocyBiYWNrIEkgam9pbmVkIGEgcHJvZ3Jh
+bSBhbmQgdGhlbi4uLnByb21wdGx5IGZvcmdvdA0KYWJvdXQgaXQuIFlvdSBt
+YXkgaGF2ZSBkb25lIHRoaXMgeW91cnNlbGYgc29tZXRpbWUuLi55b3UgaW50
+ZW5kDQp0byB3b3JrIHRoZSBwcm9ncmFtIGJ1dCB0aGVuIGdldCBjYXVnaHQg
+aW4geW91ciBkYXktdG8tZGF5DQphY3Rpdml0aWVzIGFuZCBpdCdzIHNvb24g
+Zm9yZ290dGVuLg0KDQpUaGUgcHJvZ3JhbSB3YXMgZnJlZSB0byBqb2luIHNv
+IG1heWJlIEkganVzdCBkaWRuJ3QgdGFrZSBpdCB2ZXJ5DQpzZXJpb3VzbHku
+DQoqICggWU9VUiBOQU1FIEhBUyBBTFJFQURZIEJFRU4gUFVUIE9OIE9VUiBS
+RU1PVkUgTElTVCApKg0KDQpBbnl3YXksIG5lYXIgdGhlIGVuZCBvZiBKdW5l
+IEkgcmVjZWl2ZWQgYSBsZXR0ZXIgZnJvbSBteQ0Kc3BvbnNvciBpbmZvcm1p
+bmcgbWUgdGhhdCBJIGhhZCBtb3JlIHRoYW4gMjAwMCBQQUlEIG1lbWJlcnMg
+aW4NCm15IGdyb3VwIQ0KDQpBcyB5b3UgY2FuIGltYWdpbmUsIEkgd2FzIHZl
+cnkgc2tlcHRpY2FsLiBBZnRlciBhbGwsIGhvdyBjb3VsZCBJDQpoYXZlIG1v
+cmUgdGhhbiAyMDAwIHBhaWQgbWVtYmVycyB1bmRlciBtZSBpbiBhIHByb2dy
+YW0gdGhhdCBJIGhhZA0KbmV2ZXIgcHJvbW90ZWQ/DQoNCkkgdG9vayB0aGUg
+dGltZSB0byBjaGVjayBvdXQgdGhlIHNpdGUuLi50aGVuIHdyb3RlIHRvIFZp
+YyBhc2tpbmcNCmZvciBjb25maXJtYXRpb24gdGhhdCB0aGVzZSB3ZXJlIHBh
+aWQgbWVtYmVycyBhbmQgbm90IGp1c3QgZnJlZQ0Kc2lnbi11cHMuLi5saWtl
+IG1lIDopDQoNCldlbGwsIGl0IHdhcyB0cnVlLi4uSSBoYWQgMjM2NSBwYWlk
+IG1lbWJlcnMgaW4gbXkgZ3JvdXAuIFRoaXMNCmluIGEgcHJvZ3JhbSB0aGF0
+IEkgaGFkIG5ldmVyIHdvcmtlZCENCg0KQWxsIEkgaGFkIHRvIGRvIHdhcyB1
+cGdyYWRlIHRvIGEgcGFpZCBtZW1iZXJzaGlwIGJlZm9yZSB0aGUgZW5kDQpv
+ZiB0aGUgbW9udGggYW5kIEkgd291bGQgaGF2ZSBteSBwb3NpdGlvbiBsb2Nr
+ZWQgaW4gYW5kIGENCmdyb3VwIG9mIDIzNjUgcGVvcGxlLg0KDQpZb3UgY2Fu
+IGJldCBJIHdhc3RlZCBubyB0aW1lIGluIGdldHRpbmcgbXkgbWVtYmVyc2hp
+cCB1cGdyYWRlZCENCg0KSSBjYW4gdGVsbCB5b3UsIGlmIEkgaGFkIGtub3du
+IHdoYXQgd2FzIGhhcHBlbmluZyB3aXRoIHRoaXMNCnByb2dyYW0sIEkgd291
+bGQgaGF2ZSBiZWNvbWUgYW4gYWN0aXZlIHBhaWQgbWVtYmVyIG1vbnRocyBh
+Z28hDQoNCldpdGggdGhpcyBwcm9ncmFtLCB5b3Ugd2lsbCBnZXQgYSBIVUdF
+IGdyb3VwIG9mIFBBSUQgTUVNQkVSUy4NCk15IHNwb25zb3IncyBjaGVjaywg
+d2hpY2ggaXMgYSBtaW5pbXVtIG9mICQ1LDAwMCwgYXJyaXZlcyBldmVyeQ0K
+bW9udGguLi5vbiB0aW1lLg0KDQpIb3cgd291bGQgeW91IGxpa2UgdG8gbG9j
+ayB5b3VyIHBvc2l0aW9uIGluIEZSRUUgd2hpbGUgeW91IGNoZWNrDQpvdXQg
+dGhpcyBvcHBvcnR1bml0eSBhbmQgd2F0Y2ggeW91ciBncm91cCBncm93Pw0K
+DQpUbyBncmFiIGEgRlJFRSBJRCMsIHNpbXBseSByZXBseSBieSBzZW5kaW5n
+IGEgc2VwYXJhdGUgZS1tYWlsIHRvOg0KdGpsaW5tYkBob3RtYWlsLmNvbQ0K
+YW5kIHdyaXRlIHRoaXMgcGhyYXNlOg0KIkVtYWlsIG1lIGRldGFpbHMgYWJv
+dXQgdGhlIGNsdWIncyBidXNpbmVzcyBhbmQgY29uc3VtZXIgb3Bwb3J0dW5p
+dGllcyINCkJlIHN1cmUgdG8gaW5jbHVkZSB5b3VyOg0KMS4gRmlyc3QgbmFt
+ZQ0KMi4gTGFzdCBuYW1lDQozLiBFbWFpbCBhZGRyZXNzIChpZiBkaWZmZXJl
+bnQgZnJvbSBhYm92ZSkNCk9uY2UgSSByZWNlaXZlIHlvdXIgcmVwbHksIEkg
+d2lsbCBzdWJtaXQgeW91ciBpbmZvcm1hdGlvbiBhbmQgeW91DQp3aWxsIHJl
+Y2VpdmUgYW4gZS1tYWlsIGFza2luZyB5b3UgdG8gYWN0aXZhdGUgeW91ciBG
+UkVFIE1lbWJlcnNoaXAuDQoNCihUSElTIElTIEEgT05FIC0gVElNRSBNQUlM
+SU5HKQ0KDQpXZSB3aWxsIHRoZW4gc2VuZCB5b3UgYSBzcGVjaWFsIHJlcG9y
+dCwgYWxvbmcgd2l0aCB5b3VyIEZyZWUgTWVtYmVyc2hpcA0KbnVtYmVyIGFu
+ZCBhbHNvIGxldCB5b3Uga25vdyBob3cgeW91IGNhbiBrZWVwIHRyYWNrIG9m
+IHlvdXIgZ3Jvd2luZyBncm91cCwNCnRoZW4geW91IGNhbiBtYWtlIHVwIHlv
+dXIgb3duIG1pbmQuDQoNClRoYXQncyBhbGwgdGhlcmUgaXMgdG8gaXQuDQoN
+Cldhcm0gcmVnYXJkcywNCg0KVC4gTHVkZXMNCg0KUC5TLiBBZnRlciBoYXZp
+bmcgc2V2ZXJhbCBuZWdhdGl2ZSBleHBlcmllbmNlcyB3aXRoIG5ldHdvcmsN
+Cm1hcmtldGluZyBjb21wYW5pZXMgSSBoYWQgcHJldHR5IG11Y2ggZ2l2ZW4g
+dXAgb24gdGhlbS4NClRoaXMgY29tcGFueSBpcyBkaWZmZXJlbnQtLWl0IG9m
+ZmVycyB2YWx1ZSwgaW50ZWdyaXR5LCBhbmQgYQ0KUkVBTCBvcHBvcnR1bml0
+eSB0byBoYXZlIHlvdXIgb3duIGhvbWUtYmFzZWQgYnVzaW5lc3MuLi4NCmFu
+ZCBmaW5hbGx5IG1ha2UgcmVhbCBtb25leSBvbiB0aGUgaW50ZXJuZXQuDQoN
+CkRvbid0IHBhc3MgdGhpcyB1cC4ueW91IGNhbiBzaWduIHVwIGFuZCB0ZXN0
+LWRyaXZlIHRoZQ0KcHJvZ3JhbSBmb3IgRlJFRS4gIEFsbCB5b3UgbmVlZCB0
+byBkbyBpcyBnZXQgeW91ciBmcmVlDQptZW1iZXJzaGlwLg0KDQpUSElTIElT
+IEEgT05FLVRJTUUgTUFJTElORywgWU9VIFdJTEwgTk9UIEJFIFNFTlQgVEhJ
+UyBFLU1BSUwgQUdBSU4uIA0KDQo9PT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09DQoiVGhpcyBlbWFpbCBpcyBzZW50IGluIGNvbXBsaWFuY2Ugd2l0
+aCBzdHJpY3QgYW50aS1hYnVzZSBhbmQgTk8gU1BBTQ0KcmVndWxhdGlvbnMu
+IFRoZSBtZXNzYWdlIHdhcyBzZW50IHRvIHlvdSBhcyBhIHJlc3BvbnNlIHRv
+IHlvdXIgYWQsIGFuIG9wdC1pbg0Kb3Bwb3J0dW5pdHksIHlvdXIgYWRkcmVz
+cyB3YXMgY29sbGVjdGVkIGFzIGEgcmVzdWx0IG9mIHlvdSBwb3N0aW5nIHRv
+IG9uZSBvZg0KbXkgbGlua3MsIHJldmlld2luZyB5b3VyIHdlYiBzaXRlLCB5
+b3UgYW5zd2VyaW5nIG9uZSBvZiBteSBjbGFzc2lmaWVkIGFkcywNCnlvdSBo
+YXZlIHNlbnQgbWUgYW4gRS1tYWlsLCBvciB5b3UgdW5rbm93aW5nbHkgaGFk
+IHlvdXIgZS1tYWlsIGFkZGVkIHRvIGFuDQpvcHQtaW4gbWFpbGluZyBsaXN0
+LiBZb3UgbWF5IHJlbW92ZSB5b3VyIEUtbWFpbCBhZGRyZXNzIGF0IG5vIGNv
+c3QgdG8geW91DQp3aGF0c29ldmVyLCBzaW1wbHkgc2VuZCBhIHNlcGVyYXRl
+IGVtYWlsIHRvOiByZXRpcmVhcmx5OTlAaG90bWFpbC5jb20NCmFuZCBwdXQg
+IlJlbW92ZSIgaW4gdGhlIHN1YmplY3QgbGluZS4NCj09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT0NCg0KDQoNCg0KDQoyMzkwQWRvdTktMTY5cXZi
+Tzg5NDVOd2xNMS0yNTZJamdPNTk2MXNaTVMwLTAybDQz
 
 
 -------------------------------------------------------
@@ -86,3 +119,6 @@ http://thinkgeek.com/sf
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+
+------=_NextPart_000_00A7_38B62B7E.C1440B36--
