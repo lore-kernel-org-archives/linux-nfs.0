@@ -1,24 +1,24 @@
-From: Christian Nygaard <chris@math.uu.se>
-Subject: NFS performance diagnostics
-Date: Fri, 10 May 2002 15:53:40 +0200 (CEST)
+From: ed@sam-solutions.net (Ed V. Bartosh)
+Subject: Re: NFS v.3 I18N
+Date: 10 May 2002 18:05:00 +0300
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0205101546400.7377-100000@anarchy.math.uu.se>
-References: <E175tAR-0003r9-00@usw-sf-list2.sourceforge.net>
+Message-ID: <85elgkm4bn.fsf@pc213.belcaf.minsk.by>
+References: <85offst0ou.fsf@pc213.belcaf.minsk.by>
+	<shsk7qfhgmu.fsf@charged.uio.no>
+	<85wuufq8wv.fsf@pc213.belcaf.minsk.by>
+	<200205081746.54522.trond.myklebust@fys.uio.no>
+	<857kmepoul.fsf@pc213.belcaf.minsk.by>
+	<15578.35760.304321.857560@charged.uio.no>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from elanus.its.uu.se ([130.238.4.143])
+Received: from mail.belcaf.minsk.by ([217.21.35.41])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 176AqB-0004RS-00
-	for <nfs@lists.sourceforge.net>; Fri, 10 May 2002 06:53:47 -0700
-Received: from elanus (localhost [127.0.0.1])
-	by localhost (Postfix) with SMTP id C7EB8484D
-	for <nfs@lists.sourceforge.net>; Fri, 10 May 2002 15:51:12 +0200 (DFT)
-Received: from geopard.math.uu.se (geopard.math.uu.se [130.238.149.4])
-	by elanus.its.uu.se (Postfix) with SMTP id 993344847
-	for <nfs@lists.sourceforge.net>; Fri, 10 May 2002 15:51:09 +0200 (DFT)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <E175tAR-0003r9-00@usw-sf-list2.sourceforge.net>
+	id 176C11-00026U-00
+	for <nfs@lists.sourceforge.net>; Fri, 10 May 2002 08:09:04 -0700
+To: trond.myklebust@fys.uio.no
+In-Reply-To: <15578.35760.304321.857560@charged.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,14 +32,26 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 
-Howdi folks
+Hi, Trond!
 
-Can anyone recommend a method of getting information on what files
-the nfs daemons is serving? tcpdump shows what files is served
-on the network but I get no good stats what each client is using. 
+/Thu, 9 May 2002 16:46:08 +0200/ you wrote:
 
-Chris
+ >> Is it so bad idea to have this functionality in NFSd ? Why ?
+ >> Samba has it, for example.
 
+TM> The question to ask when deciding whether or not to implement some
+TM> functionality in the kernel is not 'why shouldn't we have it?', it is
+TM> 'why do we need it?'
+
+TM> Exactly in what situation do the needs of an NFS exported system
+TM> differ from that of your standard ext2/3 filesystem?
+
+In situation with different clients environments (OSes, for examle),
+which don't allow users to use standard Linux i18N functionality.
+
+-- 
+Best regards,
+Ed V. Bartosh
 
 _______________________________________________________________
 
