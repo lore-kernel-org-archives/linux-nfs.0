@@ -1,22 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: invalidate cache / NFS performance on a diskless system
-Date: Fri, 10 Dec 2004 00:34:58 -0500
-Message-ID: <1102656898.11052.4.camel@lade.trondhjem.org>
-References: <200412091718.48973.jrinas@gmx.de>
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: ANNOUNCE: nfs-utils 1.0.7-pre2
+Date: Fri, 10 Dec 2004 11:12:07 +0100
+Message-ID: <20041210101207.GN15055@suse.de>
+References: <16825.223.924965.582375@cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CcdR4-0005EP-DJ
-	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 21:35:22 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CcdR0-0005q4-4H
-	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 21:35:21 -0800
-To: "J.Rinas" <jrinas@gmx.de>
-In-Reply-To: <200412091718.48973.jrinas@gmx.de>
+	id 1Cchl0-0000S5-Iq
+	for nfs@lists.sourceforge.net; Fri, 10 Dec 2004 02:12:14 -0800
+Received: from mail.suse.de ([195.135.220.2] helo=Cantor.suse.de)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.41)
+	id 1Cchkz-0005aj-SX
+	for nfs@lists.sourceforge.net; Fri, 10 Dec 2004 02:12:14 -0800
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <16825.223.924965.582375@cse.unsw.edu.au>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,20 +31,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-to den 09.12.2004 Klokka 17:18 (+0100) skreiv J.Rinas:
+On Fri, Dec 10, 2004 at 12:50:23PM +1100, Neil Brown wrote:
+> I have made available a second pre-release of nfs-utils 1.0.7.
 
-> So I'd like to know if there is a switch to invalidate the whole NFS / VFS? 
-> cache at once!
-> (e.g. an    echo something > /proc/somewhere  )?
+Neil, would you be interested in including mount.nfs in this release of
+nfs-utils? It's some 90% done for NFSv2/v3, and I could make the push
+to 99% if you tell me you will include it.
 
-No.
-
-Cheers,
-  Trond
-
+Olaf
 -- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
-
+Olaf Kirch     | Things that make Monday morning interesting, #2:
+okir@suse.de   |        "We have 8,000 NFS mount points, why do we keep
+---------------+ 	 running out of privileged ports?"
 
 
 -------------------------------------------------------
