@@ -1,63 +1,118 @@
-From: "Vivek Goyal" <vivek.goyal@wipro.com>
-Subject: Disabling Symbolic Link Content Caching in NFS Client
-Date: Wed, 28 May 2003 16:39:36 +0530
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <2BB7146B38D9CA40B215AB3DAAE24C080BA4F3@blr-m2-msg.wipro.com>
+From: "Prabhudev Nagouda S" <prabhudevn@wipro.co.in>
+Subject: differences between NFS v 2.0 & 3.0
+Date: Wed, 28 May 2003 17:33:03 +0530
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <DCE75C59CAEC544394B8941A26197160F11E6B@blrromx2.wipro.co.in>
 Mime-Version: 1.0
+Content-Type: multipart/alternative;
+	boundary="----_=_NextPart_001_01C32511.17BD6FF3"
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from [203.145.179.45] (helo=VSCAN1)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19KzdX-0000RG-00
+	for <nfs@lists.sourceforge.net>; Wed, 28 May 2003 05:03:39 -0700
+To: <nfs@lists.sourceforge.net>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+
+This is a multi-part message in MIME format.
+
+------_=_NextPart_001_01C32511.17BD6FF3
 Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <trond.myklebust@fys.uio.no>, <indou.takao@jp.fujitsu.com>,
-	"Vivek Goyal" <vivek.goyal@wipro.com>, <ionut@cs.columbia.edu>,
-	<ezk@cs.sunysb.edu>, <viro@math.psu.edu>, <davem@redhat.com>
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: <linux-kernel@vger.kernel.org>, <nfs@lists.sourceforge.net>
-List-ID: <nfs.lists.sourceforge.net>
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
 
 Hi,
+=20
+Please let me know the differences between NFS v 2.0 & 3.0.
+=20
+Thanks in Advance.
+=20
+Regards,
+Prabhudev SN
 
-We are planning to implement a set of Kernel Tunable Parameters and one
-of these parameters is nfs_symlink_caching for disabling/enabling
-symbolic link content caching in NFS client. Unices like Solaris have
-this feature implemented.
+DISCLAIMER:
+Information contained and transmitted by this E-MAIL is proprietary to=20
+Wipro Limited and is intended for use only by the individual or entity=20
+to which it is addressed, and may contain information that is privileged,=20
+confidential or exempt from disclosure under applicable law. If this is=20
+a forwarded message, the content of this E-MAIL may not have been sent=20
+with the authority of the Company. If you are not the intended recipient,=20
+an agent of the intended recipient or a  person responsible for delivering=
+=20
+the information to the named recipient,  you are notified that any use,=20
+distribution, transmission, printing, copying or dissemination of this=20
+information in any way or in any manner is strictly prohibited. If you have=
+=20
+received this communication in error, please delete this mail & notify us=20
+immediately at mailadmin@wipro.co.in
 
-Existing NFS client implementation in Linux performs symbolic link
-content caching by default. There is no provision for disabling this
-caching either at mount time or through kernel tuning mechanism.
+------_=_NextPart_001_01C32511.17BD6FF3
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-This caching mechanism leads to problems in following two conditions.
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; charset=
+=3Diso-8859-1">
 
-a. File is modified in server without updating the modification
-time-stamp.
-b. Granularity of the time-stamp is too large.
 
-I was following previous discussions in the mailing list and found that
-caching mechanism affected hlfsd behavior. It looks like the problem was
-resolved by updating mtime on every access. But still caching will lead
-to a problem if two accesses are taking place in same jiffy.
+<META content=3D"MSHTML 6.00.2719.2200" name=3DGENERATOR></HEAD>
+<BODY>
+<DIV><FONT face=3D"Comic Sans MS" size=3D2><SPAN=20
+class=3D500295111-28052003>Hi,</SPAN></FONT></DIV>
+<DIV><FONT face=3D"Comic Sans MS" size=3D2><SPAN=20
+class=3D500295111-28052003></SPAN></FONT>&nbsp;</DIV>
+<DIV><FONT face=3D"Comic Sans MS" size=3D2><SPAN class=
+=3D500295111-28052003>Please let=20
+me know the differences between NFS v 2.0 &amp; 3.0.</SPAN></FONT></DIV>
+<DIV><FONT face=3D"Comic Sans MS" size=3D2><SPAN=20
+class=3D500295111-28052003></SPAN></FONT>&nbsp;</DIV>
+<DIV><FONT face=3D"Comic Sans MS" size=3D2><SPAN class=
+=3D500295111-28052003>Thanks in=20
+Advance.</SPAN></FONT></DIV>
+<DIV><FONT face=3D"Comic Sans MS" size=3D2><SPAN=20
+class=3D500295111-28052003></SPAN></FONT>&nbsp;</DIV>
+<DIV><FONT face=3D"Comic Sans MS" size=3D2><SPAN=20
+class=3D500295111-28052003>Regards,</SPAN></FONT></DIV>
+<DIV><FONT face=3D"Comic Sans MS" size=3D2><SPAN class=
+=3D500295111-28052003>Prabhudev=20
+SN</SPAN></FONT></DIV></BODY></HTML>
+<table><tr><td bgcolor=3D#ffffff><font color=3D#000000><pre>DISCLAIMER:
+Information contained and transmitted by this E-MAIL is proprietary to=20
+Wipro Limited and is intended for use only by the individual or entity=20
+to which it is addressed, and may contain information that is privileged,=20
+confidential or exempt from disclosure under applicable law. If this is=20
+a forwarded message, the content of this E-MAIL may not have been sent=20
+with the authority of the Company. If you are not the intended recipient,=20
+an agent of the intended recipient or a  person responsible for delivering=
+=20
+the information to the named recipient,  you are notified that any use,=20
+distribution, transmission, printing, copying or dissemination of this=20
+information in any way or in any manner is strictly prohibited. If you have=
+=20
+received this communication in error, please delete this mail & notify us=20
+immediately at mailadmin@wipro.co.in
+</pre></font></td></tr></table>
+------_=_NextPart_001_01C32511.17BD6FF3--
 
-We are considering following design strategy to implement the parameter.
 
-1. Make nfs_symlink_caching dynamically tunable using /proc and sysctl
-interface.
-
-2. Change NFS client code as follows.
-
-A. If caching is enabled.
-There are no changes. Existing caching mechanism remains intact.
-
-B. If caching is disabled.
-
-	i. While serving a symlink read request (nfs_getlink ()) don't
-look for the requested page in page cache (read_cache_page()). Instead
-always allocate a page frame (page_cache_alloc_cold()) and send a
-READLINK request to the server. This allocated page frame is not added
-to the cache and hence remains local to the thread of execution and is
-not visible to other execution threads.
-
-	ii. Upon receiving the response from the server, pass the data
-to the user space and free the page frame. 
-
-Please let us know your comments/opinion on this design.
-
-Thanks and Regards
-Vivek
+-------------------------------------------------------
+This SF.net email is sponsored by: ObjectStore.
+If flattening out C++ or Java code to make your application fit in a
+relational database is painful, don't do it! Check out ObjectStore.
+Now part of Progress Software. http://www.objectstore.net/sourceforge
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
