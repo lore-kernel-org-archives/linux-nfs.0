@@ -1,13 +1,18 @@
-From: "imran" <imran.sheth@patni.com>
-Subject: problem in compiling nlmtest.c
-Date: Wed, 18 Dec 2002 10:54:57 +0530
+From: "Peter Flanders" <pflanders@clarkisland.com>
+Subject: TCP Multi-Kernel oops
+Date: Fri, 20 Dec 2002 20:38:21 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <002d01c2a655$e08cccb0$7dbba5cc@pcp31638>
+Message-ID: <CFEAJJEGMGECBCJFLGDBEEKHCKAA.pflanders@clarkisland.com>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0029_01C2A683.E78E8980"
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Cc: <bob.schwaegler@clarkisland.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: <NFS@lists.sourceforge.net>
+Received: from cynaptic.com ([128.121.116.181])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18PbPB-0004ZA-00
+	for <nfs@lists.sourceforge.net>; Fri, 20 Dec 2002 20:38:29 -0800
+To: "NFS" <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -20,104 +25,60 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+Hi All,
 
-------=_NextPart_000_0029_01C2A683.E78E8980
-Content-Type: text/plain;
-	charset="iso-2022-jp"
-Content-Transfer-Encoding: 7bit
+I spent the day having a Debian 3.0 stable machine oops on me over and over
+with several different kernels. Here's the deal:
 
-Hi
-  currently i am working with NLM test utility available under
-nfs-utils-0.3.3. while compiling nlmtest.c I am getting following error
+-Dual Xeon 2.4Ghz SuperMicro system with 2.0GB of ram serving NFS v3 over
+TCP.
+-MPS and UniPS kernels tested with and without high memory support.
+-Filesystem is EXT3, default mount options, default filesystem make options
+-Clients are Compaq Tru64 version 5.1.
+-On connect, clients cause kernel to give hundreds of the following console
+messages:
 
+bad tcp reclen 0x0000808c (large)
 
-debian:/home/imran/LockStudy/nfs-utils-0.3.3/tools/nlmtest# make
-gcc -g -O2 -D_GNU_SOURCE -Isupport/include -Wall  -pipe  -DVERSION="\"nfs-ut
-ils 0.3.3\"" -D
-NFS3_SUPPORTED   -c -o nlmtest.o nlmtest.c
-nlmtest.c: In function `main':
-nlmtest.c:101: incompatible type for argument 1 of `nlm_test_1'
-nlmtest.c:135: incompatible type for argument 1 of `nlm_unlock_1'
-nlmtest.c:153: incompatible type for argument 1 of `nlm_lock_1'
-make: *** [nlmtest.o] Error 1
+(the 0x000... address sometimes is different)
 
-I have updated host.h with appropriate host name and appropriate directory
+And then it eventually gives and oops and crashes. I sometimes also get the
+following message, but only once or twice prior to crash:
 
-could anybody help me to build nlmtest.o
+nfsd: accept failed (err 22)!
 
+Summary of what I tried:
 
-Thanks and regards
+Kernel 2.4.18 with all neil brown patches - crashed
+Kernel 2.4.19 with all neil brown patches - crashed
+Kernel 2.4.20 with all neil brown patches - crashed
+Kernel 2.4.21-pre2 vanilla - crashed
+Kernel 2.4.18 with trond m all patch - seems to be working ok for now.
+Kernel 2.4.19 with trond m all patch - was sort of stable but crashed
+Kernel 2.4.20 with trond m all patch - was sort of stable but crashed
 
-################################
-Imran Sheth
-Senior Software Engineer
-Patni Computer System
-SDF 5, Unit 141,SEEPZ
-Andheri
-ph : 28291454  extn:5017
-################################
+>From what I can tell, it looks like Neil Brown has tried to address this
+issue where the client sends out a large TCP fragment, but even with that
+patch specifically applied, the system still crashes with an oops.
 
-------=_NextPart_000_0029_01C2A683.E78E8980
-Content-Type: text/html;
-	charset="iso-2022-jp"
-Content-Transfer-Encoding: quoted-printable
+I understand that NFS over TCP is not currently well supported in Linux, but
+I need to get a stable system put together as all of our clients are Tru64
+and they *must* use TCP. UDP is not an option for us.
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META content=3D"text/html; charset=3Diso-2022-jp" =
-http-equiv=3DContent-Type>
-<META content=3D"MSHTML 5.00.2920.0" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV><FONT size=3D2>Hi </FONT></DIV>
-<DIV><FONT size=3D2>&nbsp; currently i am working with NLM test utility =
-available=20
-under nfs-utils-0.3.3. while compiling nlmtest.c I am getting following =
-error=20
-</FONT></DIV>
-<DIV><FONT size=3D2></FONT>&nbsp;</DIV>
-<DIV>&nbsp;</DIV>
-<DIV><FONT =
-size=3D2>debian:/home/imran/LockStudy/nfs-utils-0.3.3/tools/nlmtest#=20
-make<BR>gcc -g -O2 -D_GNU_SOURCE -Isupport/include -Wall&nbsp; =
--pipe&nbsp;=20
--DVERSION=3D"\"nfs-utils 0.3.3\"" -D<BR>NFS3_SUPPORTED&nbsp;&nbsp; -c -o =
-nlmtest.o=20
-nlmtest.c<BR>nlmtest.c: In function `main':<BR>nlmtest.c:101: =
-incompatible type=20
-for argument 1 of `nlm_test_1'<BR>nlmtest.c:135: incompatible type for =
-argument=20
-1 of `nlm_unlock_1'<BR>nlmtest.c:153: incompatible type for argument 1 =
-of=20
-`nlm_lock_1'<BR>make: *** [nlmtest.o] Error 1</FONT></DIV>
-<DIV>&nbsp;</DIV>
-<DIV><FONT size=3D2>I have updated host.h with appropriate host name and =
+Thanks in advance!
 
-appropriate directory</FONT></DIV>
-<DIV>&nbsp;</DIV>
-<DIV><FONT size=3D2>could anybody help me to build =
-nlmtest.o</FONT></DIV>
-<DIV><FONT size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT size=3D2>Thanks and regards</FONT></DIV>
-<DIV>&nbsp;</DIV>
-<DIV><FONT size=3D2>################################<BR>Imran =
-Sheth<BR>Senior=20
-Software Engineer<BR>Patni Computer System<BR>SDF 5, Unit=20
-141,SEEPZ<BR>Andheri<BR>ph : 28291454&nbsp;=20
-extn:5017<BR>################################</FONT></DIV></BODY></HTML>
+Peter
 
-------=_NextPart_000_0029_01C2A683.E78E8980--
+ps - I don't know how to capture and oops yet so I didn't.
+
 
 
 
 -------------------------------------------------------
-This sf.net email is sponsored by:
-With Great Power, Comes Great Responsibility 
-Learn to use your power at OSDN's High Performance Computing Channel
-http://hpc.devchannel.org/
+This SF.NET email is sponsored by:  The Best Geek Holiday Gifts!
+Time is running out!  Thinkgeek.com has the coolest gifts for
+your favorite geek.   Let your fingers do the typing.   Visit Now.
+T H I N K G E E K . C O M        http://www.thinkgeek.com/sf/
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
