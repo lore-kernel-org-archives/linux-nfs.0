@@ -1,21 +1,20 @@
-From: "Joseph L. Hood" <nfsmail@acerbus.com>
+From: Patrick O'Reilly <patrick.oreilly@uni.edu>
 Subject: Re: NFS problem
-Date: Tue, 20 Aug 2002 22:54:06 -0400 (EDT)
+Date: Wed, 21 Aug 2002 10:30:19 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0208202241440.3445-100000@linux2>
+Message-ID: <005c01c24927$a8704f40$66f1a186@OREILLY>
 References: <Pine.GHP.4.43.0208210529460.22003-100000@hp10.ccs.iitb.ernet.in>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from staffordstudio.com ([66.92.164.68] helo=linux2.staffordstudio.com)
+Received: from cougar.uni.edu ([134.161.1.40])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17hLcs-0007GV-00
-	for <nfs@lists.sourceforge.net>; Tue, 20 Aug 2002 19:53:43 -0700
-Received: from localhost (jhood@localhost)
-	by linux2.staffordstudio.com (8.11.6/8.11.6) with ESMTP id g7L2s6c03519
-	for <nfs@lists.sourceforge.net>; Tue, 20 Aug 2002 22:54:06 -0400
-To: nfs@lists.sourceforge.net
-In-Reply-To: <Pine.GHP.4.43.0208210529460.22003-100000@hp10.ccs.iitb.ernet.in>
+	id 17hXQj-0003N7-00
+	for <nfs@lists.sourceforge.net>; Wed, 21 Aug 2002 08:29:57 -0700
+Received: from OREILLY ([134.161.241.102]) by uni.edu (PMDF V6.1-1 #30560)
+ with SMTP id <01KLK1IIBRIY8WWE5Z@uni.edu> for nfs@lists.sourceforge.net; Wed,
+ 21 Aug 2002 10:29:48 -0500 (CDT)
+To: Suresh Chadive <n8d11007@ccs.iitb.ac.in>, nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,36 +27,53 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Problems I've run into getting NFS going are IPChains firewall rules
-(IPTables logging is a little less cryptic) and not having portmap running
-on the client.  Also, try "rpcinfo -p <server>"  from the client, or
-"rpcinfo -u <server> nfs" to see what the client can see.
+First, a good page to check is:
 
-Additionally, see if you can nfs mount the shared directories from the
-server itself, to make sure they are really shared.
+http://ftp.belnet.be/packages/redhat/redhat-7.1-en/doc/HOWTOS/other-formats/
+html/NFS-HOWTO/server.html#SERVICESTART
 
-Joe
+to get your services started.  If you are using Linux, you can also try
+this. Issue the command:
 
-On Wed, 21 Aug 2002, Suresh Chadive wrote:
+chkconfig --list
 
-> 
-> 
+and a list of services will scroll by.  Check to see that portmap, nfs and
+nfslock are 'on' on levels 3, 4, and 5.  If not, issue the commands:
+
+chkconfig --level 345 portmap on
+chkconfig --level 345 nfs on
+chkconfig --level 345 nfslock on
+
+and these should be turned on, and will start on reboot.  Try this on the
+client and see what happens if it looks like it will help.  Good luck.
+
+Patrick
+
+----- Original Message -----
+From: "Suresh Chadive" <n8d11007@ccs.iitb.ac.in>
+To: <nfs@lists.sourceforge.net>
+Sent: Tuesday, August 20, 2002 7:01 PM
+Subject: [NFS] NFS problem
+
+
+>
+>
 > There has been a problem in mounting the directory
 > on the client.
-> 
+>
 > PROBLEM :-
 > ----------
 > If the command :
 >   $ mount serverIPaddress:/home /home
 > is issued, then the output is
 >   mount: RPC: Timed out
-> 
-> 
+>
+>
 > INFO THAT MAY BE USEFUL :-
 > -------------------------
-> 
+>
 > SERVER SIDE :
-> 
+>
 >   $ rpcinfo -p
 >    program vers proto   port
 >     100000    2   tcp    111  portmapper
@@ -80,11 +96,11 @@ On Wed, 21 Aug 2002, Suresh Chadive wrote:
 >     100005    3   tcp   1030  mountd
 >     100024    1   udp   1029  status
 >     100024    1   tcp   1031  status
-> 
-> 
-> 
+>
+>
+>
 > CLIENT SIDE:
-> 
+>
 >     $  rpcinfo -p
 >    program vers proto   port
 >     100000    2   tcp    111  portmapper
@@ -92,35 +108,35 @@ On Wed, 21 Aug 2002, Suresh Chadive wrote:
 >     100024    1   udp  32768  status
 >     100024    1   tcp  32768  status
 >     391002    2   tcp  32769  sgi_fam
-> 
+>
 > Here, I explicitly run rpc.lockd (on client)
 > but still, I do not see lock daemon (nslockmanager or some thing of that
 > sort) ! Any clue?
 > ---------------------------------------------------
-> 
+>
 > Please, give some way to sort it out...
-> 
+>
 > -suresh
-> 
-> 
+>
+>
 > ----------------------
 > SURESH CHADIVE
-> 
+>
 > V Yr,
 > Dual degree Programme
-> 
+>
 > H9, #319,
 > Indian Instt. of Technology,
 > Bombay
-> 
+>
 > e-mail :  csuresh@iitbombay.org
-> 
-> 
-> 
-> 
-> 
-> 
-> 
+>
+>
+>
+>
+>
+>
+>
 > -------------------------------------------------------
 > This sf.net email is sponsored by: OSDN - Tired of that same old
 > cell phone?  Get a new here for FREE!
@@ -128,8 +144,6 @@ On Wed, 21 Aug 2002, Suresh Chadive wrote:
 > _______________________________________________
 > NFS maillist  -  NFS@lists.sourceforge.net
 > https://lists.sourceforge.net/lists/listinfo/nfs
-> 
-
 
 
 
