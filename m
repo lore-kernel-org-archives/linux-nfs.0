@@ -1,24 +1,20 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: NFS mount count is incremented incorrectly
-Date: Fri, 15 Aug 2003 11:17:42 +1000
+From: Brian Tinsley <btlists@emageon.com>
+Subject: Unexpected error
+Date: Fri, 15 Aug 2003 01:04:19 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16188.13494.650071.936039@gargle.gargle.HOWL>
-References: <20030814132006.7C2A.KAKMY@mvh.biglobe.ne.jp>
+Message-ID: <3F3C77E3.4070509@emageon.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: util-linux@math.uio.no,
-    nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19nTEP-0005Id-00
-	for <nfs@lists.sourceforge.net>; Thu, 14 Aug 2003 18:18:17 -0700
-Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <kakmy@mvh.biglobe.ne.jp>) (for <util-linux@math.uio.no>)
-	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
-	Fri, 15 Aug 2003 11:17:47 +1000
-To: fumihiko kakuma <kakmy@mvh.biglobe.ne.jp>
-In-Reply-To: message from fumihiko kakuma on Thursday August 14
+Received: from imf17aec.mail.bellsouth.net ([205.152.59.65])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19nXi6-00013E-00
+	for <nfs@lists.sourceforge.net>; Thu, 14 Aug 2003 23:05:14 -0700
+Received: from emageon.com ([68.17.150.106]) by imf17aec.mail.bellsouth.net
+          (InterMail vM.5.01.05.27 201-253-122-126-127-20021220) with ESMTP
+          id <20030815060508.HGTF6813.imf17aec.mail.bellsouth.net@emageon.com>
+          for <nfs@lists.sourceforge.net>; Fri, 15 Aug 2003 02:05:08 -0400
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,27 +27,31 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thursday August 14, kakmy@mvh.biglobe.ne.jp wrote:
-> Hello
-> 
-> We assume that an NFS client tries to mount a filesystem
-> on an NFS server.
-> A mount count in /var/lib/nfs/rmtab may be incremented
-> even when a mount command fails.
-> 
+Hi!
 
-It is possible that mount could be modified to do a slightly better
-job of keeping this count right, but it is really a loosing battle.
+Can anyone elaborate on what may have caused the following errors:
 
-The MOUNT protocol is simply not a reliable way to keep rmtab exactly
-correct.  Tinkering may improve the situation but it can never make it
-perfect.
+Aug 14 22:09:09 clarc02 kernel: nfsd-fh: found a name that I didn't 
+expect: files/19
+Aug 14 22:09:40 clarc02 last message repeated 2314 times
+Aug 14 22:15:56 clarc02 last message repeated 1088 times
+Aug 14 22:17:10 clarc02 last message repeated 138 times
+Aug 14 22:19:03 clarc02 last message repeated 138 times
+Aug 14 22:20:53 clarc02 last message repeated 2 times
+Aug 14 22:21:30 clarc02 last message repeated 73 times
 
-You really should think of rmtab as a list of client how have had
-filesystems mounted in the past, and may still have them mounted.
-It is no more precise than that.
+The underlying filesystem is reiserfs and there was a high volume of 
+writing taking place (or trying to) during this time. None of the writes 
+succeeded as the client was returned EEXIST errors. However, the writes 
+were reissued in full shortly after the last occurence and everything 
+automagically started working properly again.
 
-NeilBrown
+I'm trying to decipher the source code, but it's a bit out of my area of 
+expertise
+
+Thanks!
+
+
 
 
 -------------------------------------------------------
