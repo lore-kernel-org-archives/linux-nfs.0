@@ -1,21 +1,14 @@
-From: Christian Reis <kiko@async.com.br>
-Subject: Re: SM_UNMON again -> kernel
-Date: Sun, 20 Jul 2003 20:45:58 -0300
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: Announcing Release Two of NFSv4 on Linux 2.4
+Date: Sun, 20 Jul 2003 18:23:09 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030720234558.GD1570@async.com.br>
-References: <20030711061615.GA1924@quasar.nro.au.com> <shsr84x768e.fsf@charged.uio.no> <87smpbkt55.fsf@ceramic.fifi.org> <shs8yr2h2jr.fsf@charged.uio.no> <87k7aml330.fsf@ceramic.fifi.org> <shsptkdij1a.fsf@charged.uio.no> <87vfu0ej5k.fsf@ceramic.fifi.org> <87n0fb42o5.fsf@ceramic.fifi.org> <20030719162218.GB7166@async.com.br> <shsptk4n5g7.fsf@charged.uio.no>
+Message-ID: <482A3FA0050D21419C269D13989C6113D06AB5@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Philippe Troin <phil@fifi.org>, nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: "Linux FS development (E-mail)" <fs-devel@vger.kernel.org>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from 200-206-134-238.async.com.br
-	([200.206.134.238] helo=anthem.async.com.br ident=root)
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19eNsf-0002cM-00
-	for <nfs@lists.sourceforge.net>; Sun, 20 Jul 2003 16:46:18 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <shsptk4n5g7.fsf@charged.uio.no>
+To: <nfs@sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,26 +21,66 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, Jul 21, 2003 at 01:28:40AM +0200, Trond Myklebust wrote:
-> >>>>> " " == Christian Reis <kiko@async.com.br> writes:
-> 
->      > If there's one thing special, it's that this server also runs
->      > an iptables firewall that does masquerading and supports
->      > connection tracking. Could it be mangling the lock packets?
-> 
-> Huh? "Special" sounds like it would only begin to describe such a
-> setup...
+A new release of CITI U-M's NFSv4 on Linux 2.4 is
+available.  For information on this release, see:
 
-Oh, the masquerading has nothing to do with NFS. The NFS clients and the
-server are all on the same local subnet. I just mentioned this to
-indicate that something special might be happening on the packet level
-(unfrag/frag) because this box is also a firewall, not that the clients
-communicate with the server through a firewall.
+ https://linux24-nfsv4.citi.umich.edu/wiki
 
-Take care,
+
+>From the Release Notes:
+
+The NFSv4 implementation on Linux 2.4 is intended
+for early adopters of NFSv4 who want to help beta
+test commercial NFSv4-based products, or test the
+Linux NFSv4 implementation. Our intention is to
+provide a stable NFSv4 implementation on Linux with
+these releases until a complete official Linux NFSv4
+implementation appears in Linux 2.6. It is not
+intended for use in production NFSv4 environments.
+Think of this as beta quality software.
+
+These releases provide an implementation of an NFSv4
+client and server on a stable Linux kernel in an
+easy-to-install set of packages. This allows more
+intensive and broad-based testing of the Linux
+NFSv4 implementation outside of developers' labs.
+
+The NFSv4 implementation in all these releases
+tracks the implementation contained in Linux 2.6
+kernels as closely as possible. Our code base
+should reflect the current state of the art (the
+2.6 NFS implementation). We plan to be conservative
+in including new 2.6 features, but aggressive in
+including bug fixes, to make these releases stable
+enough for testing under realistic workloads.
+
+
+Main Features of Release Two
+
+Release Two, like Release One, is not feature-complete.
+Release Two supplements the features of Release One
+with an NFSv4 server, support for ACLs and some support
+for NFSv4 state in the client.  It also contains
+support for RPCSEC-GSS Kerberos 5 integrity on the
+client.
+
+Features of Release Two include:
+
+ *  NFS client for NFSv2, NFSv3, and NFSv4
+ *  NFS server for NFSv2, NFSv3, and NFSv4 over
+    UDP and TCP
+ *  RPCSEC-GSS Kerberos 5 mutual authentication
+    and integrity (client only)
+ *  NFSv4 ACL support (client only)
+ *  Initial support for NFSv4 state model (client
+    only)
+ *  Initial support for authentication against
+    Windows 2000 Active Directory KDCs
+
+        -- Chuck Lever
 --
-Christian Reis, Senior Engineer, Async Open Source, Brazil.
-http://async.com.br/~kiko/ | [+55 16] 261 2331 | NMFL
+corporate: <cel at netapp dot com>
+personal:  <chucklever at bigfoot dot com>
 
 
 -------------------------------------------------------
