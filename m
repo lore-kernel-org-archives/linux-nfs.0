@@ -1,23 +1,17 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: RPC request reserved 240 but used 244
-Date: Tue, 24 Sep 2002 14:34:04 +1000
+From: "Jarvis Caines" <jcaines@cc.tt>
+Subject: slow delivery to MUA over NFS
+Date: Thu, 26 Sep 2002 09:07:04 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15759.60220.487804.644136@notabene.cse.unsw.edu.au>
-References: <3D8F1615.5000606@chrysalisdev.com>
+Message-ID: <43F5978DABDC3544821D6024EDAC82CA01BBB1@posntmail.cc.tt>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="Windows-1252"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17thOo-0001Au-00
-	for <nfs@lists.sourceforge.net>; Mon, 23 Sep 2002 21:34:14 -0700
-Received: From
-	notabene.cse.unsw.edu.au ([129.94.233.132] == wireless-132.wireless.cse.unsw.EDU.AU)
-	(for <jsantiago@chrysalisdev.com>) (for <nfs@lists.sourceforge.net>)
-	By tone With Smtp ; Tue, 24 Sep 2002 14:34:03 +1000
-To: Jose Santiago <jsantiago@chrysalisdev.com>
-In-Reply-To: message from Jose Santiago on Monday September 23
+Received: from [200.12.236.116] (helo=posntmail.cc.tt)
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17uYCJ-0002RU-00
+	for <nfs@lists.sourceforge.net>; Thu, 26 Sep 2002 05:56:52 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,19 +24,31 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-On Monday September 23, jsantiago@chrysalisdev.com wrote:
-> I am seeing messages similar to the following in my kernel log since I 
-> upgraded to 2.4.19. I have installed Trond's NFS_ALL patches and the 
-> linux-2.4.19-30-neilb.dif patch from Trond's NFS patches site. Is this 
-> something I need to worry about?
+I recently set up a remote store for my mail users using NFS.
+My mount in fstab looks like this.
+192.168.128.4:/home/mailstore   /home nfs  =
+nolock,hard,intr,actimeo=3D0,tcp 0 0
+I have NFS version 2 and 3 running on Red Hat linux 7.3.Kernel =
+2.4.18-10smp.
 
-I cannot seem to find Trond's site just at the moment to check, but I
-suspect that it is an oldish patch with some arithmetic errors in it.
-The correct (I hope:-) version of this patch is in 2.4.20-pre so maybe
-you could try that, or compare fs/nfsd/nfsproc.c and
-fs/nfsd/nfs3proc.c
+when i send an email to a mailbox it is delivered instantly to the users =
+mail box on the NFS mount.  However, when trying to retrieve the mail =
+from a MUA such as Outlook Express or Horde which I have set up for =
+Webmail; the MUA is not getting the mail. However, after a long period =
+of time, usually an hour or so the mail shows up in my inbox.=20
 
-NeilBrown
+What could be the problem?=20
+
+Is it a problem with qmail or is it a problem with the NFS share. I have =
+read a lot about NFS and confirmed that it is working being mail is =
+arriving in the new box within a second.=20
+
+Please send some comments. I am starting to loose my hair.=20
+
+Jarvis Caines
+
+System Admin
+
 
 
 -------------------------------------------------------
