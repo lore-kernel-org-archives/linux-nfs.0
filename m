@@ -1,30 +1,20 @@
-From: Garrick Staples <garrick@usc.edu>
-Subject: Re: stat'ing >4TB NFS filesystems
-Date: Fri, 16 Jul 2004 10:02:16 -0700
+From: Steve Bush <sbush@scitegic.com>
+Subject: fcntl() problem
+Date: Fri, 16 Jul 2004 18:11:51 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040716170216.GL22659@polop.usc.edu>
-References: <20040715192125.GZ22659@polop.usc.edu> <40F7AC3F.5050800@RedHat.com>
+Message-ID: <5.2.1.1.2.20040716175623.01ba83e0@localhost>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="6e3mN4pOUzfBrwoS"
+Content-Type: text/plain; charset="us-ascii"; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BlW6F-0008LV-JF
-	for nfs@lists.sourceforge.net; Fri, 16 Jul 2004 10:02:19 -0700
-Received: from polop.usc.edu ([128.125.10.9])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.34)
-	id 1BlW6F-0000O1-B0
-	for nfs@lists.sourceforge.net; Fri, 16 Jul 2004 10:02:19 -0700
-Received: from polop.usc.edu (localhost.localdomain [127.0.0.1])
-	by polop.usc.edu (8.12.11/8.12.11) with ESMTP id i6GH2GFM026687
-	for <nfs@lists.sourceforge.net>; Fri, 16 Jul 2004 10:02:16 -0700
-Received: (from garrick@localhost)
-	by polop.usc.edu (8.12.11/8.12.11/Submit) id i6GH2G4S026685
-	for nfs@lists.sourceforge.net; Fri, 16 Jul 2004 10:02:16 -0700
+	id 1BldkB-0001zf-Af
+	for nfs@lists.sourceforge.net; Fri, 16 Jul 2004 18:12:03 -0700
+Received: from scitegic-2.access.nethere.net ([66.63.144.242] helo=mercury.internal.scitegic.net)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1BldkB-0005Fc-1S
+	for nfs@lists.sourceforge.net; Fri, 16 Jul 2004 18:12:03 -0700
 To: nfs@lists.sourceforge.net
-In-Reply-To: <40F7AC3F.5050800@RedHat.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -37,51 +27,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hi,
 
---6e3mN4pOUzfBrwoS
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+We have a problem with calls to fcntl() on an NFS shared drive within a 
+tiny cluster (only 2 computers) on one of our Redhat Enterprise WS systems 
+(freshly installed).  Whenever we call fcntl() with F_SETLK as either 
+F_RDLCK or F_WRLCK, fcntl returns -1 and errno is set to EACCES (Permission 
+Denied).  However, on an identical system here we've been unable to 
+duplicate the problem seen on this remote set-up.
 
-On Fri, Jul 16, 2004 at 06:21:51AM -0400, Steve Dickson alleged:
->=20
->=20
-> Garrick Staples wrote:
->=20
-> >  I have some RHE3 machines (2.4.21) here that can't properly stat a 5GB=
-=20
-> >  filesystem,
-> >but some RH7.2 machines with (vanilla 2.4.26) can stat it fine.  I=20
-> >searched for
-> >the lkml looking for NFS patches since 2.4.21 but couldn't find anything.
-> >Can anyone here point me to the right patch?
-> >
-> >=20
-> >
-> There are a couple patches in
-> https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=3D121475
-> one of which made it into U3....
+We've checked to make sure that the user running the application are 
+correct for the file being accessed (they are, and indeed the 
+fopen(filename, boolWriting ? "w" : "r") call immediately prior to fcntl 
+works fine)
 
+We've checked to make sure that rpc.statd and lockd are running and that 
+the rpc.statd process is owned by rpcuser.
 
-Thanks, everything is working great now!
+We've confirmed that fcntl() works perfectly fine when run on the server on 
+the exact same files.
 
---=20
-Garrick Staples, Linux/HPCC Administrator
-University of Southern California
+We've checked for blocking pids via fcntl(fd, F_GETLK, &flock), but the pid 
+returned is -1.
 
---6e3mN4pOUzfBrwoS
-Content-Type: application/pgp-signature
-Content-Disposition: inline
+Any ideas or suggestions?
+--
+Steve Bush (sbush@scitegic.com)
+"There was a point to this narrative, but it has presently escaped the 
+chronicler's mind."  --Douglas Adams
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.3 (GNU/Linux)
-
-iD8DBQFA+AoY0SBUxJbm9HMRAi5eAJ9OdBzX3X2+YxeK8sER8lXBK1gRhgCeLGCb
-b7K04CWpa8oFgLjmo1plY0A=
-=iXdr
------END PGP SIGNATURE-----
-
---6e3mN4pOUzfBrwoS--
 
 
 -------------------------------------------------------
