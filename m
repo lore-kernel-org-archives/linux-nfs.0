@@ -1,18 +1,27 @@
-From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd ] Discard CACHE_HASHED flag, keeping information in refcount instead.
-Date: Fri, 18 Feb 2005 10:58:47 +1100
-Message-ID: <E1D1vXj-0006ci-Vn@notabene.cse.unsw.edu.au>
-References: <20050218105725.25443.patches@notabene>
-Cc: nfs@lists.sourceforge.net
+From: Ian Kent <raven@themaw.net>
+Subject: Re: NFS readonly failover and linux?
+Date: Fri, 18 Feb 2005 12:09:17 +0800 (WST)
+Message-ID: <Pine.LNX.4.58.0502181207490.20922@wombat.indigo.net.au>
+References: <1106871309.6181.254.camel@seki.nac.uci.edu>
+ <Pine.LNX.4.61.0501291127450.1607@donald.themaw.net>
+ <1107205302.4071.17.camel@seki.nac.uci.edu>  <Pine.LNX.4.58.0502010945400.25875@wombat.indigo.net.au>
+  <16895.57760.531261.8465@segfault.boston.redhat.com>
+ <1108677567.5897.55.camel@seki.nac.uci.edu>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: jmoyer@redhat.com, autofs mailing list <autofs@linux.kernel.org>,
+	nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D1vY1-0002RH-Ii
-	for nfs@lists.sourceforge.net; Thu, 17 Feb 2005 15:59:05 -0800
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1D1vXy-00079q-Bk
-	for nfs@lists.sourceforge.net; Thu, 17 Feb 2005 15:59:05 -0800
-To: Andrew Morton <akpm@osdl.org>
+	id 1D1zQJ-0007eQ-K3
+	for nfs@lists.sourceforge.net; Thu, 17 Feb 2005 20:07:23 -0800
+Received: from wombat.indigo.net.au ([202.0.185.19])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.41)
+	id 1D1zQH-0007fm-BY
+	for nfs@lists.sourceforge.net; Thu, 17 Feb 2005 20:07:23 -0800
+To: Dan Stromberg <strombrg@dcs.nac.uci.edu>
+In-Reply-To: <1108677567.5897.55.camel@seki.nac.uci.edu>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,157 +35,123 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This patch should fix a problem that has been experienced on at-least one
-busy NFS server, but it has not had lots of testing yet.  If -mm could provide
-that .....
-Thanks.
+On Thu, 17 Feb 2005, Dan Stromberg wrote:
 
-NeilBrown
+> On Tue, 2005-02-01 at 15:08 -0500, Jeff Moyer wrote:
+> > ==> Regarding Re: [NFS] NFS readonly failover and linux?; Ian Kent <raven@themaw.net> adds:
+> > 
+> > raven> On Mon, 31 Jan 2005, Dan Stromberg wrote:
+> > >> On Sat, 2005-01-29 at 11:46 +0800, raven@themaw.net wrote: > On Thu, 27
+> > >> Jan 2005, Dan Stromberg wrote:
+> > >> > 
+> > >> > >
+> > >> > > The autofs man pages on Redhat Enterprise Linux 3 as well as Fedora
+> > >> Core > > 3 both say that autofs supports replicated, readonly fileserver
+> > >> failover > > - but then there's a footnote of sorts that says autofs
+> > >> only supports it > > to the extent that mount does.
+> > >> > 
+> > >> > That part of the man page is old and slightly out of date.
+> > >> > 
+> > >> > The reason that this is left there is that autofs cannot support >
+> > >> dynamic failover as it just uses mount. However, a different host may be
+> > >> > selected at mount, after a previous timeout, for example. The issue of
+> > >> > umounting existing mounts from servers that have gone away is not >
+> > >> explicitly dealt with yet.
+> > >> 
+> > >> I see.
+> > >> 
+> > >> > >
+> > >> > > Upon trying to do such a mount, I get:
+> > >> > >
+> > >> > > seki-root> mount > >
+> > >> dcslib1.nacs.uci.edu,dcslib4.nacs.uci.edu:/dcspdb/rhel-3-i686 /mnt/nfs >
+> > >> > mount: warning: multiple hostnames not supported > > Thu Jan 27
+> > >> 16:12:18
+> > >> 
+> > >> > What version of autofs are you using?  > The autofs replicated server
+> > >> code is still relatively new.
+> > 
+> > raven> But, as we know, mount doesn't know about multiple host
+> > raven> names. autofs breaks these out.
+> > 
+> > So what is the actual problem, here?  Are you using the automounter?  What
+> > do your config files look like?
+> > 
+> > >> FC3: autofs-4.1.3-28 RHEL3: autofs-4.1.3-47
+> > 
+> > raven> I believe that the replicated server code should be present in both
+> > raven> of these.
+> > 
+> > raven> Can you confirm please Jeff?
+> > 
+> > raven> Perhaps you are seeing a bug which needs to be addressed.
+> > 
+> > Yes, the replicated server code is present in both of these versions.
+> > 
+> > >> The FC3 is yum update'd fairly regulary, and the RHEL3 is up2date'd
+> > >> regularly as well.
+> > >> 
+> > >> > If your autofs supports replicated server map entries then multiple >
+> > >> host mount requests will not reach the mount command.
+> > >> 
+> > >> Interesting.
+> > >> 
+> > >> > If you are using a RedHat based distro then check >
+> > >> http://people.redhat.com/jmoyer > for the latest patched versions
+> > >> > 
+> > >> > Also, you may need a kernel patch depending on your kernel
+> > >> version. See > README.patches in the distribution or join the autofs
+> > >> list at > http://linux.kernel.org/mailman/listinfo/autofs
+> > >> 
+> > >> I'm certain my management will only go for this, in the short term, if
+> > >> it works on a mainstream RHEL3 system.  Unfortunately, for me, the rest
+> > >> is academic interest.
+> > 
+> > raven> Once again I believe that the kernels mentioned here are up to date
+> > raven> wrt autofs.
+> > 
+> > raven> Certainly, the latest FC3 kernel is at 2.6.10 which has all the
+> > raven> autofs4 updates included in the base kernel.
+> > 
+> > raven> I believe the latest update to RHEL3 is also up to date. Jeff?
+> > 
+> > Yes, both kernels have the necessary patches to support replicated server.
+> > 
+> > raven> So perhaps you could send a log trace with the "--debug" option
+> > raven> added to the master map entry.
+> > 
+> > And please include the contents of your maps!
+> > 
+> > -Jeff
+> 
 
+Short answer is no.
 
-### Comments for Changeset
+> Here are the maps we use on Solaris 9.  Should they work the same way on
+> RHEL 3?
+> 
+> autoinst-strombrg> cat /etc/auto_dcslib
+> /dcs -ro
+  ^^^^
+Single level direct mount entries don't yet work.
 
-The rpc auth cache currently differentiates between a reference
-due to being in a hash chain (signalled by CACHE_HASHED flag)
-and any other reference (counted in refcnt).
+> dcslib1.nacs.uci.edu,dcslib2.nacs.uci.edu,dcslib3.nacs.uci.edu:/dcspdb/sun4-5
+> /dcslib -ro
+> dcslib1.nacs.uci.edu,dcslib2.nacs.uci.edu,dcslib3.nacs.uci.edu:/dcspda
+> 
+> autoinst-strombrg> cat /etc/auto_master
+> # Master map for automounter
+> #
+> +auto.master
+> /net            -hosts          -nosuid,nobrowse
+> #/home          auto_home       -nobrowse
+> /xfn            -xfn
+> /-             auto_direct
+                 ^^^^^^^^^^^ Don't you mean auto_dcslib?
+> 
+> 
+> 
 
-This is an artificial difference due to an historical accident,
-and it makes cache_put unsafe.
-
-This patch removes the distinction so now existance in a hash
-chain is counted just like any other reference.
-Thus a race window in cache_put is closed.
-
-Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
-
-### Diffstat output
- ./include/linux/sunrpc/cache.h |   19 +++++--------------
- ./net/sunrpc/cache.c           |    4 +---
- ./net/sunrpc/svcauth.c         |    8 ++++----
- 3 files changed, 10 insertions(+), 21 deletions(-)
-
-diff ./include/linux/sunrpc/cache.h~current~ ./include/linux/sunrpc/cache.h
---- ./include/linux/sunrpc/cache.h~current~	2005-02-18 10:46:32.000000000 +1100
-+++ ./include/linux/sunrpc/cache.h	2005-02-18 10:46:59.000000000 +1100
-@@ -37,8 +37,7 @@
-  * Entries have a ref count and a 'hashed' flag which counts the existance
-  * in the hash table.
-  * We only expire entries when refcount is zero.
-- * Existance in the cache is not measured in refcount but rather in
-- * CACHE_HASHED flag.
-+ * Existance in the cache is counted  the refcount.
-  */
- 
- /* Every cache item has a common header that is used
-@@ -57,7 +56,6 @@ struct cache_head {
- #define	CACHE_VALID	0	/* Entry contains valid data */
- #define	CACHE_NEGATIVE	1	/* Negative entry - there is no match for the key */
- #define	CACHE_PENDING	2	/* An upcall has been sent but no reply received yet*/
--#define	CACHE_HASHED	3	/* Entry is in a hash table */
- 
- #define	CACHE_NEW_EXPIRY 120	/* keep new things pending confirmation for 120 seconds */
- 
-@@ -185,7 +183,6 @@ RTN *FNAME ARGS										\
- 											\
- 			if (new)							\
- 				{INIT;}							\
--			cache_get(&tmp->MEMBER);					\
- 			if (set) {							\
- 				if (!INPLACE && test_bit(CACHE_VALID, &tmp->MEMBER.flags))\
- 				{ /* need to swap in new */				\
-@@ -194,8 +191,6 @@ RTN *FNAME ARGS										\
- 					new->MEMBER.next = tmp->MEMBER.next;		\
- 					*hp = &new->MEMBER;				\
- 					tmp->MEMBER.next = NULL;			\
--					set_bit(CACHE_HASHED, &new->MEMBER.flags);	\
--					clear_bit(CACHE_HASHED, &tmp->MEMBER.flags);	\
- 					t2 = tmp; tmp = new; new = t2;			\
- 				}							\
- 				if (test_bit(CACHE_NEGATIVE,  &item->MEMBER.flags))	\
-@@ -205,6 +200,7 @@ RTN *FNAME ARGS										\
- 					clear_bit(CACHE_NEGATIVE, &tmp->MEMBER.flags);	\
- 				}							\
- 			}								\
-+			cache_get(&tmp->MEMBER);					\
- 			if (set||new) write_unlock(&(DETAIL)->hash_lock);		\
- 			else read_unlock(&(DETAIL)->hash_lock);				\
- 			if (set)							\
-@@ -220,7 +216,7 @@ RTN *FNAME ARGS										\
- 		new->MEMBER.next = *head;						\
- 		*head = &new->MEMBER;							\
- 		(DETAIL)->entries ++;							\
--		set_bit(CACHE_HASHED, &new->MEMBER.flags);				\
-+		cache_get(&new->MEMBER);						\
- 		if (set) {								\
- 			tmp = new;							\
- 			if (test_bit(CACHE_NEGATIVE, &item->MEMBER.flags))		\
-@@ -268,15 +264,10 @@ static inline struct cache_head  *cache_
- 
- static inline int cache_put(struct cache_head *h, struct cache_detail *cd)
- {
--	atomic_dec(&h->refcnt);
--	if (!atomic_read(&h->refcnt) &&
-+	if (atomic_read(&h->refcnt) <= 2 &&
- 	    h->expiry_time < cd->nextcheck)
- 		cd->nextcheck = h->expiry_time;
--	if (!test_bit(CACHE_HASHED, &h->flags) &&
--	    !atomic_read(&h->refcnt))
--		return 1;
--
--	return 0;
-+	return atomic_dec_and_test(&h->refcnt);
- }
- 
- extern void cache_init(struct cache_head *h);
-
-diff ./net/sunrpc/cache.c~current~ ./net/sunrpc/cache.c
---- ./net/sunrpc/cache.c~current~	2005-02-18 10:46:32.000000000 +1100
-+++ ./net/sunrpc/cache.c	2005-02-18 10:46:59.000000000 +1100
-@@ -321,12 +321,10 @@ static int cache_clean(void)
- 			if (test_and_clear_bit(CACHE_PENDING, &ch->flags))
- 				queue_loose(current_detail, ch);
- 
--			if (!atomic_read(&ch->refcnt))
-+			if (atomic_read(&ch->refcnt) == 1)
- 				break;
- 		}
- 		if (ch) {
--			cache_get(ch);
--			clear_bit(CACHE_HASHED, &ch->flags);
- 			*cp = ch->next;
- 			ch->next = NULL;
- 			current_detail->entries--;
-
-diff ./net/sunrpc/svcauth.c~current~ ./net/sunrpc/svcauth.c
---- ./net/sunrpc/svcauth.c~current~	2005-02-18 10:46:32.000000000 +1100
-+++ ./net/sunrpc/svcauth.c	2005-02-18 10:46:59.000000000 +1100
-@@ -178,12 +178,12 @@ auth_domain_lookup(struct auth_domain *i
- 		tmp = container_of(*hp, struct auth_domain, h);
- 		if (!auth_domain_match(tmp, item))
- 			continue;
--		cache_get(&tmp->h);
--		if (!set)
-+		if (!set) {
-+			cache_get(&tmp->h);
- 			goto out_noset;
-+		}
- 		*hp = tmp->h.next;
- 		tmp->h.next = NULL;
--		clear_bit(CACHE_HASHED, &tmp->h.flags);
- 		auth_domain_drop(&tmp->h, &auth_domain_cache);
- 		goto out_set;
- 	}
-@@ -192,9 +192,9 @@ auth_domain_lookup(struct auth_domain *i
- 		goto out_nada;
- 	auth_domain_cache.entries++;
- out_set:
--	set_bit(CACHE_HASHED, &item->h.flags);
- 	item->h.next = *head;
- 	*head = &item->h;
-+	cache_get(&item->h);
- 	write_unlock(&auth_domain_cache.hash_lock);
- 	cache_fresh(&auth_domain_cache, &item->h, item->h.expiry_time);
- 	cache_get(&item->h);
 
 
 -------------------------------------------------------
