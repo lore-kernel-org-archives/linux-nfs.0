@@ -1,8 +1,8 @@
 From: Chuck Lever <cel@citi.umich.edu>
-Subject: [PATCH] add struct file* to ->direct_IO addr space op
-Date: Sun, 6 Oct 2002 22:37:10 -0400 (EDT)
+Subject: [PATCH] remove NFS client internal dependence on page->index
+Date: Sun, 6 Oct 2002 22:42:17 -0400 (EDT)
 Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <Pine.LNX.4.44.0210062234110.32313-100000@dexter.citi.umich.edu>
+Message-ID: <Pine.LNX.4.44.0210062237120.32313-100000@dexter.citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
@@ -13,181 +13,241 @@ List-ID: <nfs.lists.sourceforge.net>
 
 hi Linus-
 
-this patch makes file credentials available to the ->direct_IO address 
-space operation by replacing its struct inode* argument with a struct 
-file* argument.  this patch is a prerequisite for NFS direct I/O support.  
-it breaks the raw device driver.
+this patch makes the NFS client copy the page->index field into its read
+and write request structures (struct nfs_page) when setting up I/O on a
+page.  this makes it possible for NFS direct I/O support to reuse existing
+NFS client subroutines, and helps eventually allow NFS I/O to and from
+anonymous pages.  it is a prerequisite for NFS direct I/O support.
 
-this patch is against 2.5.40.
+this patch is against 2.5.40.  trond has blessed this patch.
 
-diff -drN -U2 05-jiffies/drivers/char/raw.c 06-odirect1/drivers/char/raw.c
---- 05-jiffies/drivers/char/raw.c	Tue Oct  1 03:07:07 2002
-+++ 06-odirect1/drivers/char/raw.c	Sat Oct  5 21:31:35 2002
-@@ -223,5 +223,5 @@
- 		nr_segs = iov_shorten((struct iovec *)iov, nr_segs, count);
+diff -drN -U2 06-odirect1/fs/nfs/file.c 07-odirect2/fs/nfs/file.c
+--- 06-odirect1/fs/nfs/file.c	Tue Oct  1 03:07:10 2002
++++ 07-odirect2/fs/nfs/file.c	Fri Oct  4 15:28:35 2002
+@@ -177,5 +177,5 @@
+ 	struct address_space *mapping;
+ 	struct inode	*inode;
+-	unsigned long	index = page_index(page);
++	unsigned long	index = page->index;
+ 	unsigned int	rpages;
+ 	int		result;
+diff -drN -U2 06-odirect1/fs/nfs/pagelist.c 07-odirect2/fs/nfs/pagelist.c
+--- 06-odirect1/fs/nfs/pagelist.c	Tue Oct  1 03:06:30 2002
++++ 07-odirect2/fs/nfs/pagelist.c	Fri Oct  4 15:28:35 2002
+@@ -104,4 +104,5 @@
+ 	 * update_nfs_request below if the region is not locked. */
+ 	req->wb_page    = page;
++	req->wb_index	= page->index;
+ 	page_cache_get(page);
+ 	req->wb_offset  = offset;
+@@ -189,5 +190,4 @@
+ {
+ 	struct list_head *pos;
+-	unsigned long pg_idx = page_index(req->wb_page);
+ 
+ #ifdef NFS_PARANOIA
+@@ -199,5 +199,5 @@
+ 	list_for_each_prev(pos, head) {
+ 		struct nfs_page	*p = nfs_list_entry(pos);
+-		if (page_index(p->wb_page) < pg_idx)
++		if (p->wb_index < req->wb_index)
+ 			break;
  	}
--	ret = generic_file_direct_IO(rw, inode, iov, *offp, nr_segs);
-+	ret = generic_file_direct_IO(rw, filp, iov, *offp, nr_segs);
+@@ -248,5 +248,5 @@
+ 			if (req->wb_cred != prev->wb_cred)
+ 				break;
+-			if (page_index(req->wb_page) != page_index(prev->wb_page)+1)
++			if (req->wb_index != (prev->wb_index + 1))
+ 				break;
  
- 	if (ret > 0)
-diff -drN -U2 05-jiffies/fs/block_dev.c 06-odirect1/fs/block_dev.c
---- 05-jiffies/fs/block_dev.c	Tue Oct  1 03:07:55 2002
-+++ 06-odirect1/fs/block_dev.c	Sat Oct  5 21:32:54 2002
-@@ -117,7 +117,9 @@
+@@ -281,5 +281,5 @@
+ 	struct list_head *pos, *head = req->wb_list_head;
+ 	struct rpc_cred *cred = req->wb_cred;
+-	unsigned long idx = page_index(req->wb_page) + 1;
++	unsigned long idx = req->wb_index + 1;
+ 	int npages = 0;
  
- static int
--blkdev_direct_IO(int rw, struct inode *inode, const struct iovec *iov,
-+blkdev_direct_IO(int rw, struct file *file, const struct iovec *iov,
- 			loff_t offset, unsigned long nr_segs)
- {
-+	struct inode *inode = file->f_dentry->d_inode->i_mapping->host;
-+
- 	return generic_direct_IO(rw, inode, iov, offset,
- 				nr_segs, blkdev_get_blocks);
-diff -drN -U2 05-jiffies/fs/direct-io.c 06-odirect1/fs/direct-io.c
---- 05-jiffies/fs/direct-io.c	Tue Oct  1 03:07:04 2002
-+++ 06-odirect1/fs/direct-io.c	Sat Oct  5 21:31:01 2002
-@@ -647,13 +647,13 @@
+@@ -297,5 +297,5 @@
+ 			break;
+ 		req = nfs_list_entry(pos);
+-		if (page_index(req->wb_page) != idx++)
++		if (req->wb_index != idx++)
+ 			break;
+ 		if (req->wb_offset != 0)
+@@ -394,5 +394,4 @@
  
- ssize_t
--generic_file_direct_IO(int rw, struct inode *inode, const struct iovec *iov, 
-+generic_file_direct_IO(int rw, struct file *file, const struct iovec *iov,
- 	loff_t offset, unsigned long nr_segs)
- {
--	struct address_space *mapping = inode->i_mapping;
-+	struct address_space *mapping = file->f_dentry->d_inode->i_mapping;
- 	ssize_t retval;
+ 	list_for_each_safe(pos, tmp, head) {
+-		unsigned long pg_idx;
  
--	retval = mapping->a_ops->direct_IO(rw, inode, iov, offset, nr_segs);
--	if (inode->i_mapping->nrpages)
--		invalidate_inode_pages2(inode->i_mapping);
-+	retval = mapping->a_ops->direct_IO(rw, file, iov, offset, nr_segs);
-+	if (mapping->nrpages)
-+		invalidate_inode_pages2(mapping);
- 	return retval;
- }
-diff -drN -U2 05-jiffies/fs/ext2/inode.c 06-odirect1/fs/ext2/inode.c
---- 05-jiffies/fs/ext2/inode.c	Tue Oct  1 03:06:16 2002
-+++ 06-odirect1/fs/ext2/inode.c	Sat Oct  5 21:33:57 2002
-@@ -620,7 +620,9 @@
+ 		req = nfs_list_entry(pos);
+@@ -401,8 +400,7 @@
+ 			continue;
  
- static int
--ext2_direct_IO(int rw, struct inode *inode, const struct iovec *iov,
-+ext2_direct_IO(int rw, struct file *file, const struct iovec *iov,
- 			loff_t offset, unsigned long nr_segs)
- {
-+	struct inode *inode = file->f_dentry->d_inode->i_mapping->host;
-+
- 	return generic_direct_IO(rw, inode, iov,
- 				offset, nr_segs, ext2_get_blocks);
-diff -drN -U2 05-jiffies/fs/ext3/inode.c 06-odirect1/fs/ext3/inode.c
---- 05-jiffies/fs/ext3/inode.c	Tue Oct  1 03:07:11 2002
-+++ 06-odirect1/fs/ext3/inode.c	Sat Oct  5 21:38:54 2002
-@@ -1400,8 +1400,9 @@
-  * crashes then stale disk data _may_ be exposed inside the file.
+-		pg_idx = page_index(req->wb_page);
+-		if (pg_idx < idx_start)
++		if (req->wb_index < idx_start)
+ 			continue;
+-		if (pg_idx > idx_end)
++		if (req->wb_index > idx_end)
+ 			break;
+ 
+diff -drN -U2 06-odirect1/fs/nfs/read.c 07-odirect2/fs/nfs/read.c
+--- 06-odirect1/fs/nfs/read.c	Tue Oct  1 03:05:46 2002
++++ 07-odirect2/fs/nfs/read.c	Fri Oct  4 15:28:35 2002
+@@ -180,5 +180,5 @@
+ 
+ 	if (nfsi->nread >= NFS_SERVER(inode)->rpages ||
+-	    page_index(page) == (inode->i_size + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT)
++	    page->index == (inode->i_size + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT)
+ 		nfs_pagein_inode(inode, 0, 0);
+ 	return 0;
+@@ -208,5 +208,5 @@
+ 	data->cred	  = req->wb_cred;
+ 	data->args.fh     = NFS_FH(req->wb_inode);
+-	data->args.offset = page_offset(req->wb_page) + req->wb_offset;
++	data->args.offset = req_offset(req) + req->wb_offset;
+ 	data->args.pgbase = req->wb_offset;
+ 	data->args.count  = count;
+@@ -442,5 +442,5 @@
+                         (long long)NFS_FILEID(req->wb_inode),
+                         req->wb_bytes,
+-                        (long long)(page_offset(page) + req->wb_offset));
++                        (long long)(req_offset(req) + req->wb_offset));
+ 		nfs_clear_request(req);
+ 		nfs_release_request(req);
+diff -drN -U2 06-odirect1/fs/nfs/write.c 07-odirect2/fs/nfs/write.c
+--- 06-odirect1/fs/nfs/write.c	Tue Oct  1 03:07:34 2002
++++ 07-odirect2/fs/nfs/write.c	Fri Oct  4 15:28:35 2002
+@@ -292,5 +292,5 @@
+ 		return 0;
+ 
+-	rqstart = page_offset(req->wb_page) + req->wb_offset;
++	rqstart = req_offset(req) + req->wb_offset;
+ 	rqend = rqstart + req->wb_bytes;
+ 	for (fl = inode->i_flock; fl; fl = fl->fl_next) {
+@@ -358,5 +358,5 @@
   */
--static int ext3_direct_IO(int rw, struct inode *inode,
-+static int ext3_direct_IO(int rw, struct file *file,
- 			const struct iovec *iov, loff_t offset,
- 			unsigned long nr_segs)
+ static inline struct nfs_page *
+-_nfs_find_request(struct inode *inode, struct page *page)
++_nfs_find_request(struct inode *inode, unsigned long index)
  {
-+	struct inode *inode = file->f_dentry->d_inode->i_mapping->host;
- 	struct ext3_inode_info *ei = EXT3_I(inode);
- 	handle_t *handle = NULL;
-diff -drN -U2 05-jiffies/fs/jfs/inode.c 06-odirect1/fs/jfs/inode.c
---- 05-jiffies/fs/jfs/inode.c	Tue Oct  1 03:05:46 2002
-+++ 06-odirect1/fs/jfs/inode.c	Sat Oct  5 21:35:07 2002
-@@ -311,7 +311,9 @@
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+@@ -368,5 +368,5 @@
+ 		struct nfs_page *req = nfs_inode_wb_entry(next);
+ 		next = next->next;
+-		if (page_index(req->wb_page) != page_index(page))
++		if (req->wb_index != index)
+ 			continue;
+ 		req->wb_count++;
+@@ -377,10 +377,10 @@
+ 
+ static struct nfs_page *
+-nfs_find_request(struct inode *inode, struct page *page)
++nfs_find_request(struct inode *inode, unsigned long index)
+ {
+ 	struct nfs_page		*req;
+ 
+ 	spin_lock(&nfs_wreq_lock);
+-	req = _nfs_find_request(inode, page);
++	req = _nfs_find_request(inode, index);
+ 	spin_unlock(&nfs_wreq_lock);
+ 	return req;
+@@ -458,5 +458,4 @@
+ 	p = head->next;
+ 	while (p != head) {
+-		unsigned long pg_idx;
+ 		struct nfs_page *req = nfs_inode_wb_entry(p);
+ 
+@@ -466,6 +465,5 @@
+ 			continue;
+ 
+-		pg_idx = page_index(req->wb_page);
+-		if (pg_idx < idx_start || pg_idx > idx_end)
++		if (req->wb_index < idx_start || req->wb_index > idx_end)
+ 			continue;
+ 
+@@ -655,5 +653,5 @@
+ 		 */
+ 		spin_lock(&nfs_wreq_lock);
+-		req = _nfs_find_request(inode, page);
++		req = _nfs_find_request(inode, page->index);
+ 		if (req) {
+ 			if (!nfs_lock_request_dontget(req)) {
+@@ -777,5 +775,5 @@
+ 	 * dropped page.
+ 	 */
+-	req = nfs_find_request(inode,page);
++	req = nfs_find_request(inode, page->index);
+ 	if (req) {
+ 		if (req->wb_file != file || req->wb_cred != cred || req->wb_page != page)
+@@ -885,5 +883,5 @@
+ 	data->cred = req->wb_cred;
+ 	data->args.fh     = NFS_FH(req->wb_inode);
+-	data->args.offset = page_offset(req->wb_page) + req->wb_offset;
++	data->args.offset = req_offset(req) + req->wb_offset;
+ 	data->args.pgbase = req->wb_offset;
+ 	data->args.count  = count;
+@@ -1073,5 +1071,5 @@
+ 			(long long)NFS_FILEID(req->wb_inode),
+ 			req->wb_bytes,
+-			(long long)(page_offset(page) + req->wb_offset));
++			(long long)(req_offset(req) + req->wb_offset));
+ 
+ 		if (task->tk_status < 0) {
+@@ -1127,6 +1125,6 @@
+ 	 * We rely on the fact that data->pages is an ordered list...
+ 	 */
+-	start = page_offset(first->wb_page) + first->wb_offset;
+-	end = page_offset(last->wb_page) + (last->wb_offset + last->wb_bytes);
++	start = req_offset(first) + first->wb_offset;
++	end = req_offset(last) + (last->wb_offset + last->wb_bytes);
+ 	len = end - start;
+ 	/* If 'len' is not a 32-bit quantity, pass '0' in the COMMIT call */
+@@ -1225,5 +1223,5 @@
+ 			(long long)NFS_FILEID(req->wb_inode),
+ 			req->wb_bytes,
+-			(long long)(page_offset(req->wb_page) + req->wb_offset));
++			(long long)(req_offset(req) + req->wb_offset));
+ 		if (task->tk_status < 0) {
+ 			if (req->wb_file)
+diff -drN -U2 06-odirect1/include/linux/nfs_fs.h 07-odirect2/include/linux/nfs_fs.h
+--- 06-odirect1/include/linux/nfs_fs.h	Sat Oct  5 21:36:27 2002
++++ 07-odirect2/include/linux/nfs_fs.h	Sat Oct  5 21:54:15 2002
+@@ -26,4 +26,5 @@
+ #include <linux/nfs2.h>
+ #include <linux/nfs3.h>
++#include <linux/nfs_page.h>
+ #include <linux/nfs_xdr.h>
+ 
+@@ -244,7 +245,7 @@
+ 
+ static inline
+-unsigned long page_index(struct page *page)
++loff_t req_offset(struct nfs_page *req)
+ {
+-	return page->index;
++	return ((loff_t)req->wb_index) << PAGE_CACHE_SHIFT;
  }
  
--static int jfs_direct_IO(int rw, struct inode *inode, const struct iovec *iov, 
-+static int jfs_direct_IO(int rw, struct file *file, const struct iovec *iov,
- 			loff_t offset, unsigned long nr_segs)
+@@ -361,5 +362,6 @@
+ nfs_wb_page(struct inode *inode, struct page* page)
  {
-+	struct inode *inode = file->f_dentry->d_inode->i_mapping->host;
-+
- 	return generic_direct_IO(rw, inode, iov,
- 				offset, nr_segs, jfs_get_blocks);
-diff -drN -U2 05-jiffies/fs/xfs/linux/xfs_aops.c 06-odirect1/fs/xfs/linux/xfs_aops.c
---- 05-jiffies/fs/xfs/linux/xfs_aops.c	Tue Oct  1 03:07:36 2002
-+++ 06-odirect1/fs/xfs/linux/xfs_aops.c	Sat Oct  5 21:35:37 2002
-@@ -682,9 +682,11 @@
- linvfs_direct_IO(
- 	int			rw,
--	struct inode		*inode,
-+	struct file		*file,
- 	const struct iovec	*iov,
- 	loff_t			offset,
- 	unsigned long		nr_segs)
- {
-+	struct inode *inode = file->f_dentry->d_inode->i_mapping->host;
-+
-         return generic_direct_IO(rw, inode, iov, offset, nr_segs,
- 					linvfs_get_blocks_direct);
-diff -drN -U2 05-jiffies/include/linux/fs.h 06-odirect1/include/linux/fs.h
---- 05-jiffies/include/linux/fs.h	Tue Oct  1 03:06:25 2002
-+++ 06-odirect1/include/linux/fs.h	Sat Oct  5 21:41:49 2002
-@@ -309,5 +309,6 @@
- 	int (*invalidatepage) (struct page *, unsigned long);
- 	int (*releasepage) (struct page *, int);
--	int (*direct_IO)(int, struct inode *, const struct iovec *iov, loff_t offset, unsigned long nr_segs);
-+	int (*direct_IO)(int, struct file *, const struct iovec *iov,
-+			loff_t offset, unsigned long nr_segs);
- };
- 
-@@ -1248,5 +1249,5 @@
- extern ssize_t generic_file_sendfile(struct file *, struct file *, loff_t *, size_t);
- extern void do_generic_file_read(struct file *, loff_t *, read_descriptor_t *, read_actor_t);
--extern ssize_t generic_file_direct_IO(int rw, struct inode *inode, 
-+extern ssize_t generic_file_direct_IO(int rw, struct file *file,
- 	const struct iovec *iov, loff_t offset, unsigned long nr_segs);
- extern int generic_direct_IO(int rw, struct inode *inode, const struct iovec 
-diff -drN -U2 05-jiffies/include/linux/nfs_fs.h 06-odirect1/include/linux/nfs_fs.h
---- 05-jiffies/include/linux/nfs_fs.h	Tue Oct  1 03:06:30 2002
-+++ 06-odirect1/include/linux/nfs_fs.h	Sat Oct  5 21:36:27 2002
-@@ -15,4 +15,5 @@
- #include <linux/pagemap.h>
- #include <linux/wait.h>
-+#include <linux/uio.h>
- 
- #include <linux/nfs_fs_sb.h>
-@@ -285,4 +286,10 @@
- 
- /*
-+ * linux/fs/nfs/direct.c
-+ */
-+extern int nfs_direct_IO(int, struct file *, const struct iovec *, loff_t,
-+			unsigned long);
-+
-+/*
-  * linux/fs/nfs/dir.c
-  */
-diff -drN -U2 05-jiffies/kernel/ksyms.c 06-odirect1/kernel/ksyms.c
---- 05-jiffies/kernel/ksyms.c	Tue Oct  1 03:05:49 2002
-+++ 06-odirect1/kernel/ksyms.c	Fri Oct  4 15:23:13 2002
-@@ -193,4 +193,5 @@
- EXPORT_SYMBOL(invalidate_device);
- EXPORT_SYMBOL(invalidate_inode_pages);
-+EXPORT_SYMBOL_GPL(invalidate_inode_pages2);
- EXPORT_SYMBOL(truncate_inode_pages);
- EXPORT_SYMBOL(fsync_bdev);
-diff -drN -U2 05-jiffies/mm/filemap.c 06-odirect1/mm/filemap.c
---- 05-jiffies/mm/filemap.c	Wed Oct  2 13:02:19 2002
-+++ 06-odirect1/mm/filemap.c	Sat Oct  5 21:31:23 2002
-@@ -1159,5 +1159,5 @@
- 							nr_segs, count);
- 			}
--			retval = generic_file_direct_IO(READ, inode, 
-+			retval = generic_file_direct_IO(READ, filp,
- 					iov, pos, nr_segs);
- 			if (retval > 0)
-@@ -1841,5 +1841,5 @@
- 			nr_segs = iov_shorten((struct iovec *)iov,
- 						nr_segs, count);
--		written = generic_file_direct_IO(WRITE, inode, 
-+		written = generic_file_direct_IO(WRITE, file,
- 					iov, pos, nr_segs);
- 		if (written > 0) {
+-	int error = nfs_sync_file(inode, 0, page_index(page), 1, FLUSH_WAIT | FLUSH_STABLE);
++	int error = nfs_sync_file(inode, 0, page->index, 1,
++						FLUSH_WAIT | FLUSH_STABLE);
+ 	return (error < 0) ? error : 0;
+ }
+diff -drN -U2 06-odirect1/include/linux/nfs_page.h 07-odirect2/include/linux/nfs_page.h
+--- 06-odirect1/include/linux/nfs_page.h	Tue Oct  1 03:06:17 2002
++++ 07-odirect2/include/linux/nfs_page.h	Fri Oct  4 15:28:35 2002
+@@ -34,5 +34,6 @@
+ 	wait_queue_head_t	wb_wait;	/* wait queue */
+ 	unsigned long		wb_timeout;	/* when to read/write/commit */
+-	unsigned int		wb_offset,	/* Offset of read/write */
++	unsigned long		wb_index;	/* Offset within mapping */
++	unsigned int		wb_offset,	/* Offset within page */
+ 				wb_bytes,	/* Length of request */
+ 				wb_count;	/* reference count */
 
 -- 
 
