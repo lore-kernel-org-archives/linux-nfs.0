@@ -1,20 +1,18 @@
-From: Paul Heinlein <heinlein@cse.ogi.edu>
-Subject: RE: iostat wkB/s numbers during testing
-Date: Fri, 14 Feb 2003 09:49:05 -0800 (PST)
+From: Ion Badulescu <ionut@badula.org>
+Subject: Re: nfsd tuning - please help me!
+Date: Fri, 14 Feb 2003 15:32:12 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0302140942460.20965-100000@glenfiddich.cse.ogi.edu>
-References: <20030214173524.67891.qmail@web12205.mail.yahoo.com>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: "Lever, Charles" <Charles.Lever@netapp.com>, <nfs@lists.sourceforge.net>
+Message-ID: <200302142032.h1EKWCIJ006931@buggy.badula.org>
+References: <20030214174453.11719.qmail@web12201.mail.yahoo.com>
+Cc: Steve Dickson <SteveD@RedHat.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from franklin.cse.ogi.edu ([129.95.40.9])
+Received: from ool-4351594a.dyn.optonline.net ([67.81.89.74] helo=badula.org)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18jjxX-00056g-00
-	for <nfs@lists.sourceforge.net>; Fri, 14 Feb 2003 09:49:11 -0800
+	id 18jmVa-0003tR-00
+	for <nfs@lists.sourceforge.net>; Fri, 14 Feb 2003 12:32:30 -0800
 To: Alan Powell <lakerfaniam2@yahoo.com>
-In-Reply-To: <20030214173524.67891.qmail@web12205.mail.yahoo.com>
+In-Reply-To: <20030214174453.11719.qmail@web12201.mail.yahoo.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,26 +25,28 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, 14 Feb 2003, Alan Powell wrote:
+On Fri, 14 Feb 2003 09:44:53 -0800 (PST), Alan Powell <lakerfaniam2@yahoo.com> wrote:
+> Unfortunately, we've tried all that already. So given
+> that we are not hardware/network constrained, does all
+> this mean that the Linux kernel NFS runs into
+> performance issues beyond 100 file reads/sec?
 
-> If you do lots of writes, it's especially important that you enable
-> the RAID controllers write-back cache
+It's quite possible...
 
-The ATABoy ships with a 128MB write cache, enabled by default.
+What I'd recommend, however, is testing this again with a non-RedHat
+kernel on the client. More precisely, try running 2.4.20 plus the 
+NFSALL patch from Trond's site <http://www.fys.uio.no/~trondmy/src/>.
 
-> Also, ideally you'd try to keep write-intensive stuff on a RAID-1
-> partition, and the rest on RAID-5, b/c RAID-5 is _very_ inefficient
-> at writes. If you have 6 drives, why don't you set 2 of them aside
-> for RAID-1 and the most write-intensive files?
+We've had significant performance problems over here with the RedHat
+kernels, which mostly went away when we replaced the NFS client code
+with 2.4.20+NFSALL.
 
-The filesystem we're exporting is for general-purpose use and is
-directory-divided among a number of customer groups.  If I were
-setting the export up for a specific application, then your suggestion
-would make a whole lotta sense. I'll certainly keep it in mind if one
-or more customers have specific complaints about write performance.
+Hope this helps,
+Ion
 
---Paul Heinlein <heinlein@cse.ogi.edu>
-
+-- 
+  It is better to keep your mouth shut and be thought a fool,
+            than to open it and remove all doubt.
 
 
 -------------------------------------------------------
