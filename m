@@ -1,32 +1,26 @@
-From: Nicolas Kowalski <Nicolas.Kowalski@imag.fr>
+From: seth vidal <skvidal@phy.duke.edu>
 Subject: Re: high server load when quotas exceeded
-Date: Thu, 30 Oct 2003 18:10:11 +0100
+Date: Thu, 30 Oct 2003 12:18:07 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <vqoptgeveh8.fsf@astazou.imag.fr>
+Message-ID: <1067534286.9355.10.camel@binkley>
 References: <vqowuaotjec.fsf@astazou.imag.fr>
-	<vqoznfibu6m.fsf@astazou.imag.fr> <1067530841.9355.6.camel@binkley>
+	 <vqoznfibu6m.fsf@astazou.imag.fr> <1067530841.9355.6.camel@binkley>
+	 <vqoptgeveh8.fsf@astazou.imag.fr>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AFGJL-00070M-00
-	for <nfs@lists.sourceforge.net>; Thu, 30 Oct 2003 09:10:15 -0800
-Received: from imag.imag.fr ([129.88.30.1])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.24)
-	id 1AFGJK-0005jQ-Oj
-	for nfs@lists.sourceforge.net; Thu, 30 Oct 2003 09:10:14 -0800
-Received: from rechasse.imag.fr (rechasse.imag.fr [129.88.43.87])
-	by imag.imag.fr (8.12.10/8.12.10) with ESMTP id h9UHABWQ015867
-	for <nfs@lists.sourceforge.net>; Thu, 30 Oct 2003 18:10:11 +0100 (CET)
-Received: from astazou.imag.fr.imag.fr (kowalski@astazou.imag.fr [129.88.43.102])
-	by rechasse.imag.fr (8.12.10+Sun/8.12.10/ImagV2.1.pm) with ESMTP id h9UHAB8M003184
-	for <nfs@lists.sourceforge.net>; Thu, 30 Oct 2003 18:10:11 +0100 (MET)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <1067530841.9355.6.camel@binkley> (seth vidal's message of
- "Thu, 30 Oct 2003 11:20:42 -0500")
+	id 1AFGT4-0000Aa-00
+	for <nfs@lists.sourceforge.net>; Thu, 30 Oct 2003 09:20:18 -0800
+Received: from mail.phy.duke.edu ([152.3.182.2] ident=[40gGZC2oNByRvUlk5vj5A1AHUtTVRTa5])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
+	id 1AFGT3-0001bH-W0
+	for nfs@lists.sourceforge.net; Thu, 30 Oct 2003 09:20:18 -0800
+To: Nicolas Kowalski <Nicolas.Kowalski@imag.fr>
+In-Reply-To: <vqoptgeveh8.fsf@astazou.imag.fr>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -39,23 +33,30 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-seth vidal <skvidal@phy.duke.edu> writes:
+On Thu, 2003-10-30 at 12:10, Nicolas Kowalski wrote:
+> seth vidal <skvidal@phy.duke.edu> writes:
+> 
+> >> Anyone? 
+> >> What additional information can I provide for debugging this?
+> >> 
+> >
+> > It happens for me too, it's apparently 'expected behavior' so you're
+> > kinda out of luck from what I saw in the past.
+> 
+> Expected? It seems amazing.
+> 
+> Do you have any pointers to what you saw in the past about this?
+> 
 
->> Anyone? 
->> What additional information can I provide for debugging this?
->> 
->
-> It happens for me too, it's apparently 'expected behavior' so you're
-> kinda out of luck from what I saw in the past.
+it was either on this list or in red hat's bugzilla.
 
-Expected? It seems amazing.
+the gist is - there is a return for out of quota space and a different
+return for out of diskspace.
 
-Do you have any pointers to what you saw in the past about this?
+your user's program would probably honor the latter but not the former.
 
-Regards.
+-sv
 
--- 
-Nicolas
 
 
 
