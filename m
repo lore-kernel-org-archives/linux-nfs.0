@@ -1,21 +1,22 @@
-From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
-Subject: NFS readonly failover and linux?
-Date: Thu, 27 Jan 2005 16:15:09 -0800
-Message-ID: <1106871309.6181.254.camel@seki.nac.uci.edu>
+From: Frank van Maarseveen <frankvm@frankvm.com>
+Subject: Re: EJUKEBOX and nfs3_proc_read()/nfs3_proc_write()
+Date: Fri, 28 Jan 2005 00:38:31 +0100
+Message-ID: <20050127233831.GA24817@janus>
+References: <20050127225911.GA24398@janus> <1106867997.7192.14.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: strombrg@dcs.nac.uci.edu
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CuJny-00038G-7P
-	for nfs@lists.sourceforge.net; Thu, 27 Jan 2005 16:16:06 -0800
-Received: from dcs.nac.uci.edu ([128.200.34.32] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1CuJn8-00021C-57
-	for nfs@lists.sourceforge.net; Thu, 27 Jan 2005 16:16:05 -0800
-To: nfs@lists.sourceforge.net
+	id 1CuJDj-0001OM-8L
+	for nfs@lists.sourceforge.net; Thu, 27 Jan 2005 15:38:39 -0800
+Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CuJDh-0002kv-KC
+	for nfs@lists.sourceforge.net; Thu, 27 Jan 2005 15:38:39 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1106867997.7192.14.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,28 +30,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Thu, Jan 27, 2005 at 03:19:57PM -0800, Trond Myklebust wrote:
+> to den 27.01.2005 Klokka 23:59 (+0100) skreiv Frank van Maarseveen:
+> > I think that the EJUKEBOX wrapper in fs/nfs/nfs3proc.c is not necessary
+> > for nfs3_proc_read() and nfs3_proc_write().
+> > 
+> > Can you confirm this?
+> 
+> Why do you believe that?
 
-The autofs man pages on Redhat Enterprise Linux 3 as well as Fedora Core
-3 both say that autofs supports replicated, readonly fileserver failover
-- but then there's a footnote of sorts that says autofs only supports it
-to the extent that mount does.
+Because you have to open a file first. Well, as you said NFS is stateless
+so my guess is that the final lookup would return EJUKEBOX rather
+than any I/O on the file-handle. It seems unrealistic to me for a file to
+be archived _during_ I/O.
 
-Upon trying to do such a mount, I get:
+Sure the protocol has the possibility to return EJUKEBOX in the middle
+of file I/O but does it make sense?
 
-seki-root> mount
-dcslib1.nacs.uci.edu,dcslib4.nacs.uci.edu:/dcspdb/rhel-3-i686 /mnt/nfs
-mount: warning: multiple hostnames not supported
-Thu Jan 27 16:12:18
+BTW, I didn't see EJUKEBOX handling in NFSv4.
 
-seki-root> 
-
-
-Is there a version of mount available, or in early development, that
-supports this feature?
-
-Thanks!
-
-
+-- 
+Frank
 
 
 -------------------------------------------------------
