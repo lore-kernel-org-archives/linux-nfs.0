@@ -1,22 +1,22 @@
 From: Neil Horman <nhorman@redhat.com>
 Subject: Re: possible client stale filehandle bug?
-Date: Wed, 16 Feb 2005 16:23:14 -0500
-Message-ID: <4213B9C2.2040709@redhat.com>
-References: <482A3FA0050D21419C269D13989C61130853976D@lavender-fe.eng.netapp.com>
+Date: Wed, 16 Feb 2005 16:47:35 -0500
+Message-ID: <4213BF77.9080004@redhat.com>
+References: <482A3FA0050D21419C269D13989C61130853976F@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Cc: Garrick Staples <garrick@usc.edu>, nfs@lists.sourceforge.net
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D1Wdg-0003xJ-Dh
-	for nfs@lists.sourceforge.net; Wed, 16 Feb 2005 13:23:16 -0800
+	id 1D1X1L-0004xz-Ha
+	for nfs@lists.sourceforge.net; Wed, 16 Feb 2005 13:47:43 -0800
 Received: from mx1.redhat.com ([66.187.233.31])
 	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1D1Wdf-00058x-Ri
-	for nfs@lists.sourceforge.net; Wed, 16 Feb 2005 13:23:16 -0800
+	id 1D1X1K-0007pf-0M
+	for nfs@lists.sourceforge.net; Wed, 16 Feb 2005 13:47:43 -0800
 To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: <482A3FA0050D21419C269D13989C61130853976D@lavender-fe.eng.netapp.com>
+In-Reply-To: <482A3FA0050D21419C269D13989C61130853976F@lavender-fe.eng.netapp.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,64 +31,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 Lever, Charles wrote:
-> hi neil-
+>>I agree, it probably doesn't re-drive on any operation that 
+>>doesn't walk 
+>>a path, which is in line with what RHEL is doing currently.  I didn't 
+>>mean to imply that solaris retired ESTALE in all occurances of the 
+>>event.  Anywho, Can you point me to your patches?  I'd be 
+>>interested to 
+>>know how you managed to implement retry on ESTALE without 
+>>leaking into 
+>>the VFS, which I think you will recall was the big sticking 
+>>point that 
+>>we were debating here.
 > 
 > 
->>>>It seems that the Solaris clients never report any such 
->>
->>errors, only the Linux
->>
->>>>clients.  However, watching 'snoop' on the Solaris NFS 
->>
->>server, I see that it IS
->>
->>>>returning stale file handles to both OSes, but Solaris 
->>
->>clients seem to retry
->>
->>>>the request several times; and the Linux clients 
->>
->>immediately pass the error up
->>
->>>>to the application.
->>>>
->>>>Is there some condition that the 2.4 kernel is handling incorrectly?
->>>
->>>
->>>I do not believe that Solaris redrives ESTALE on read, but 
->>
->>they may do
->>
->>>it on open(). Linux does not redrive either case. See the many
->>>discussions in the NFS list archives for why.
->>>
->>
->>Solaris does in fact retry on operations on ESTALE errors, 
->>definately on 
->>open, and I think on read/readdir/stat/etc. as well.  We had some 
->>discussion about tht here recently.
+> the patches do touch fs/namei.c (it was al viro's suggestion) with a
+> pretty simple change.  and i think they are KABI friendly enough to be
+> included in RHEL 3, once we are satisfied that the solution is
+> effective.
 > 
+> the cto-lookup-revalidate patch adds just enough of the 2.6
+> lookup-intent logic to the 2.4 VFS layer to allow us to support NFS
+> close-to-open in nfs_lookup_revalidate instead of in nfs_open.  this
+> resolves one of the most common ESTALE failure modes, where just the
+> object at the end of the pathname has been replaced.
 > 
-> as far as i know Solaris doesn't redrive on read or write, but only
-> during pathname resolution.  redriving a read or write will only work in
-> the case where the server has taken the export offline temporarily; if
-> the file handle really is bad, then redriving a read or write is
-> probably safe, but won't accomplish anything.
-> 
-> i have a patch that adds support for pathname resolution retry to 2.6
-> (now in Trond's NFS_ALL for 2.6.11-rc4) and a pair of patches that
-> implement this for RHEL 3.0 that i've sent to steve and al viro for
-> review.
-
-I agree, it probably doesn't re-drive on any operation that doesn't walk 
-a path, which is in line with what RHEL is doing currently.  I didn't 
-mean to imply that solaris retired ESTALE in all occurances of the 
-event.  Anywho, Can you point me to your patches?  I'd be interested to 
-know how you managed to implement retry on ESTALE without leaking into 
-the VFS, which I think you will recall was the big sticking point that 
-we were debating here.
-
-Thanks! :)
+> the second patch applies on top of this.  it adds logic to redrive
+> pathname resolution if an ESTALE is encountered anywhere during a
+> pathname lookup.  it redrives it once from the top, asserting a flag
+> that causes the VFS layer to abandon the dcache and use only real
+> lookups for this resolution request.  if the redriven resolution fails,
+> we give up.  this resolves the other typical ESTALE failure mode, where
+> some or all of the path has been replaced, while avoiding retrying an
+> unbounded number of times.
+Fantastic, Thanks!
 Neil
 
 -- 
