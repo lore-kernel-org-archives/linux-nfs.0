@@ -1,25 +1,13 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: Spam in the NFS list
-Date: Wed, 14 May 2003 09:36:30 +1000
+From: "Walter Denny" <stegy1@aol.com>
+Subject: prescription weight loss                          ....................coastline
+Date: Tue, 14 May 02 02:23:08 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16065.33150.430034.343995@notabene.cse.unsw.edu.au>
-References: <3EC0CC50.C2D6BD62@moving-picture.com>
-	<1052828279.14879.3.camel@comp6161.potsdam.edu>
-	<20030513064446.3a7ca4b4.jake@staunch.org>
+Message-ID: <zc-8$-74rhl$4--d97@ltvffvaq9kv2>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/alternative;
+	boundary="CC.7FBD._CB8.A3__5A"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19FjKK-0004HX-00
-	for <nfs@lists.sourceforge.net>; Tue, 13 May 2003 16:36:56 -0700
-Received: From
-	notabene.cse.unsw.edu.au ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <jake@staunch.org>) (for <nfs@lists.sourceforge.net>) By tone
-	With Smtp ; Wed, 14 May 2003 09:36:42 +1000
-To: Jake Gold <jake@staunch.org>
-In-Reply-To: message from Jake Gold on Tuesday May 13
+To: <netsaintplug-devel@lists.sourceforge.net>, <nfs@lists.sourceforge.net>, <nms-cgi-support@lists.sourceforge.net>, <ofset-members@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,41 +20,52 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tuesday May 13, jake@staunch.org wrote:
-> 
-> Is there any reason for leaving the list open to email from non-subscribed users?
-> 
-> Most of the technical lists that I'm on have adopted a
-> subscriber-only email policy with little resistance from their
-> members... 
-> 
+This is a multi-part message in MIME format.
 
-No resistance from the members, but ofcourse it isn't the members who
-this inconveniences, at least not directly.
+--CC.7FBD._CB8.A3__5A
+Content-Type: text/html;
+Content-Transfer-Encoding: quoted-printable
 
-I am very much against making this list closed.  I want bug reports to
-be sent here.  I tell people who send bug reports to be personally to
-send them here.  It means that more people can share the support load,
-and it means that questions and answers get archived.  Anything that
-decreases the ease of bug reports getting to this list is a BAD THING.
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD><TITLE>Buy Phentermine Diet Pills Online</TITLE>
+<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1=
+">
+<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR></HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV>&nbsp;</DIV>
+<DIV align=3Dcenter>&nbsp;<FONT face=3DArial size=3D6><FONT size=3D5>Did y=
+ou know you 
+can&nbsp;get prescription medications prescribed online with</FONT></FONT>=
+</DIV>
+<DIV align=3Dcenter><FONT face=3DArial size=3D6>&nbsp;<STRONG><FONT
+color=3D=
+#ff0000 
+size=3D5>NO PRIOR PRESCRIPTION REQUIRED!</FONT></STRONG></FONT></DIV>
+<P align=3Dcenter><A 
+href=3D"http://rd.yahoo.com/10000759/154/*http://www.mymedicinechest.biz">=
+<STRONG><FONT 
+face=3DArial color=3D#800080>Go here</FONT></STRONG></A><FONT face=3DArial=
+><STRONG> to 
+order your prescription medication online.<BR></STRONG><FONT 
+color=3D#800000><STRONG>Weight Loss - Stop Smoking - Hair Growth - Men's 
+Prescriptions</STRONG>&nbsp;&nbsp;&nbsp;&nbsp;</FONT></FONT></P>
+<P align=3Dcenter><FONT face=3DArial size=3D3>One of our US licensed physi=
+cians will 
+write an FDA approved prescription for you and ship your order overnight f=
+rom a 
+US Licensed pharmacy direct to your doorstep, fast and secure!</FONT></P>
+<P align=3Dcenter><FONT face=3DArial color=3D#ff0000 size=3D5>Lowest Price=
+s -- Next Day 
+Delivery</FONT></P>
+<DIV>&nbsp;</DIV>
+<DIV>&nbsp;</DIV>
+<DIV> <FONT face=3DArial size=3D4></DIV>
+<DIV><FONT size=3D3>To stop all future offers</FONT>&nbsp;<A 
+href=3D"http://rd.yahoo.com/10000759/154/*http://www.mymedicinechest.biz/r=
+emove.php"> 
+here</ color=3D"#000000"></FONT>&nbsp; </A></DIV></FONT></BODY></HTML>
 
-As far as spam goes, I agree that spam is a problem, but I think that
-hiding is not the right solution.
-I don't feel there is an enormous amount of spam on this list
-(certainly as a percentage) but I agree that it has been increasing.
-I am on several @vger.kernel.org lists and they get substantially less
-spam (though not zero).  This is because the admins have set up
-filters that discard lots of common spam.  One would expect that a
-similar thing would be available on sourceforge, though I haven't
-looked.
-
-In short, I am happy to raise the barrier to sending mail a little,
-e.g. to exclude HTML-only email and some common strings - see
-  http://vger.kernel.org/majordomo-taboos.txt
-
-but I am not happy to raise it so high that only subscribers can post.
-
-NeilBrown
+--CC.7FBD._CB8.A3__5A--
 
 
 
