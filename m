@@ -1,19 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS mount option - noac forces sync even if async is specified, and no warning is given
-Date: 03 Feb 2003 21:49:56 +0100
+From: Chris Jensen <chris-nfs@drspirograph.com>
+Subject: Re: Stale file handle
+Date: Tue, 4 Feb 2003 10:44:44 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsr8ap5bt7.fsf@charged.uio.no>
-References: <5CA6F03EF05E0046AC5594562398B916A7F982@POEXMB3.conoco.net>
+Message-ID: <200302041044.45333.chris-nfs@drspirograph.com>
+References: <200302031903.53937.chris-nfs@drspirograph.com> <shslm0xcx68.fsf@charged.uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain;
+  charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+Received: from mta05bw.bigpond.com ([139.134.6.95])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18fnXY-0004eV-00
-	for <nfs@lists.sourceforge.net>; Mon, 03 Feb 2003 12:50:04 -0800
-To: "Heflin, Roger A." <Roger.A.Heflin@conocophillips.com>
-In-Reply-To: <5CA6F03EF05E0046AC5594562398B916A7F982@POEXMB3.conoco.net>
+	id 18fqAp-0001qJ-00
+	for <nfs@lists.sourceforge.net>; Mon, 03 Feb 2003 15:38:47 -0800
+Received: from chris ([144.135.24.72]) by mta05bw.bigpond.com
+          (Netscape Messaging Server 4.15 mta05bw Jul 16 2002 22:47:55)
+          with SMTP id H9RB0F00.GIB for <nfs@lists.sourceforge.net>; Tue,
+          4 Feb 2003 09:38:39 +1000
+To: nfs@lists.sourceforge.net
+In-Reply-To: <shslm0xcx68.fsf@charged.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,35 +30,39 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Roger A Heflin <Heflin> writes:
+On Tue, 4 Feb 2003 12:26 am, Trond Myklebust wrote:
+> >>>>> " " == Chris Jensen <chris-nfs@drspirograph.com> writes:
+>      > What's going on here? I'm tearing my hair out!
+>
+> Nobody will be able to figure that out until you give a description of
+> your setup.
 
-     > I run the following command:
+The server is on linux, kernel 2.4.20, nfs-utils 1.0.1, compiled with gcc 
+2.95.2.1, glibc 2.2.3
+All of these were compiled from source, nfs-utils was configured with
+./configure  --enable-nfsv3 --enable-secure-statd --prefix=/usr
 
-     > mount -t nfs -o rw,hard,lock,intr,noac,async
-     >      hoepld31:/ptmp/hoepld31 /tmpmnt/ptmp/hoepld31
+The clients were default setups of RedHat 7.3 and OpenBSD 3.2, which were 
+actually VMWare Virtual Machines running on the server.
+The server name resolution is being done via the hosts file on the client.
+The clients were DHCP clients.
+I'd simply used
+mount server:/mnt/data /mnt
+(trying both IP and name for server)
+Then I tried both hard and soft mounts, and forcing to nfsvers 2 and  3
 
-     > And then cat /proc/mounts:
+What further information do you need? Like I said before, I couldn't find 
+anything significant in the logs (client or server).
 
-     > hoepld31:/ptmp/hoepld31 /tmpmnt/ptmp/hoepld31 nfs
-     > rw,sync,v3,rsize=8192,
-     >      wsize=8192,acregmin=0,acregmax=0,acdirmin=0,acdirmax=0,hard,intr,
-     >      udp,noac,lock,addr=hoepld31 0 0
+-- 
+Chris Jensen
 
-     > Note that async is specified on the mount line and /proc/mounts
-     > specifies that sync was used.  If I don't use the async option
+Public Key: http://drspirograph.com/public_key/
 
-That's right. 'noac' enforces 'sync' in order to remain compatible
-with the expected behaviour of noac on other NFS client
-implementations.
+Wait: Did you know that there's a direct correlation between the decline of
+Spirograph and the rise in gang activity?  Think about it.
+- Dr Spirograph (The Simpsons)
 
-If you don't need 'sync', you can specify
-
-   acregmin=0,acregmax=0,acdirmin=0,acdirmax=0
-
-instead.
-
-Cheers,
-  Trond
 
 
 -------------------------------------------------------
