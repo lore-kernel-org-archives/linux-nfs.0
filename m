@@ -1,20 +1,26 @@
-From: <trond.myklebust@fys.uio.no>
+From: "William A.(Andy) Adamson" <andros@citi.umich.edu>
 Subject: Re: NFSv4 daemons...
-Date: Fri, 9 Jan 2004 21:45:25 +0100 (CET)
+Date: Fri, 09 Jan 2004 16:05:01 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <32906.141.211.133.197.1073681125.squirrel@webmail.uio.no>
-References: <1073621173.1398.55.camel@nidelv.trondhjem.org>
-        <Pine.LNX.4.44.0401091803430.30771-100000@kenzo.iwr.uni-heidelberg.de>
+Message-ID: <20040109210501.37D4C207D8@citi.umich.edu>
+References: <1073608448.1380.22.camel@nidelv.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: <trond.myklebust@fys.uio.no>, <hjl@users.sourceforge.net>, <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: hjl@users.sourceforge.net, nfs@lists.sourceforge.net,
+	neilb@cse.unsw.edu.au
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1Af3Vi-0005qq-Pe
-	for nfs@lists.sourceforge.net; Fri, 09 Jan 2004 12:45:38 -0800
-To: <bogdan.costescu@iwr.uni-heidelberg.de>
-In-Reply-To: <Pine.LNX.4.44.0401091803430.30771-100000@kenzo.iwr.uni-heidelberg.de>
+	id 1Af3oa-0006eU-A0
+	for nfs@lists.sourceforge.net; Fri, 09 Jan 2004 13:05:08 -0800
+Received: from citi.umich.edu ([141.211.133.111])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.30)
+	id 1Af3oZ-0004Eq-OO
+	for nfs@lists.sourceforge.net; Fri, 09 Jan 2004 13:05:08 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-reply-to: Your message of "Thu, 08 Jan 2004 19:34:08 EST."
+             <1073608448.1380.22.camel@nidelv.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -27,22 +33,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> On Thu, 8 Jan 2004, Trond Myklebust wrote:
->
->> The idmapper in particular is essential if you want to use NFSv4.
->
-> Is there already a well agreed way and place (init scripts) to
-> start/stop   these daemons ?
+We would like to publish the server side daemons at the same time as the 
+client side daemons, they have been developed in tandum, and share a good deal 
+of code.
 
-Chuck Lever has written an init script for the daemons. About the only
-thing that might be a subject of debate is the default mountpoint for the
-pseudofs that the NFS client uses to communicate with the daemons. The
-consensus at CITI is that it should be /var/lib/nfs/rpc_pipefs. I have no
-strong feelings if people have alternative preferences, but note that this
-is in any case configurable via the configuration files.
+-->Andy Adamson
 
-Cheers,
-  Trond
+> 
+> We're at the point now with the NFSv4 project that we'd like to publish
+> the user daemons that are necessary to support the existing client in
+> the 2.6.0 kernel.
+> 
+> Would it make sense to add these to the existing nfs-utils package?
+> 
+> 
+> There are basically 2 daemons required on the client side:
+> 
+>   - Idmapper resolves NFSv4 over-the-wire names into uids/gids that can
+> be understood by the kernel.
+> 
+>   - rpc.gssd sets up RPCSEC_GSS sessions to allow secure RPC negotiation
+> between the client and server. Initial support is for Kerberos 5, but
+> SPKM3 is in the pipeline too.
+> 
+> Both these two daemons have equivalents on the server side (but I'll
+> leave it to CITI/Neil to work out who wants to take responsability for
+> publishing those).
+> 
+> Cheers,
+>   Trond
 
 
 
