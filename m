@@ -1,35 +1,21 @@
-From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-Subject: Re: Debian Bug#203077: Locks not released on NFS client reboot
-Date: Fri, 21 Jan 2005 12:10:19 -0700 (MST)
-Message-ID: <Pine.LNX.4.60.0501211209290.15036@harp.ngdc.noaa.gov>
-References: <Pine.OSF.4.56.0307271137050.10355@grover.WPI.EDU>
- <20030727163124.GC19877@perlsupport.com>  <16164.29864.268358.781865@gargle.gargle.HOWL>
-  <Pine.LNX.4.60.0501131844130.6332@harp.ngdc.noaa.gov>
- <16871.11926.507904.373575@cse.unsw.edu.au>  <Pine.LNX.4.60.0501201709220.5142@harp.ngdc.noaa.gov>
-  <1106268738.30991.11.camel@lade.trondhjem.org>
- <Pine.LNX.4.60.0501211118380.15036@harp.ngdc.noaa.gov>
- <1106332841.21404.253.camel@localhost.localdomain>
- <Pine.LNX.4.60.0501211157450.15036@harp.ngdc.noaa.gov>
- <1106334349.21404.259.camel@localhost.localdomain>
-Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+From: Denis Zaitsev <zzz@anda.ru>
+Subject: [BUG] Onboard Ethernet Pro 100 on a SMP box: a very strange errors
+Date: Sat, 22 Jan 2005 01:46:46 +0500
+Message-ID: <20050122014646.A1038@natasha.ward.six>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Neil Brown <neilb@cse.unsw.edu.au>, Chip Salzenberg <chip@pobox.com>,
-	nfs@lists.sourceforge.net, Mark O Sleeper <Mark.O.Sleeper@noaa.gov>,
-	thomas.r.carey@noaa.gov
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-net@vger.kernel.org, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Cs4At-0006Mr-Ck
-	for nfs@lists.sourceforge.net; Fri, 21 Jan 2005 11:10:27 -0800
-Received: from harp.ngdc.noaa.gov ([140.172.178.33])
+	id 1Cs5gN-0002ta-CA
+	for nfs@lists.sourceforge.net; Fri, 21 Jan 2005 12:47:03 -0800
+Received: from [83.146.86.58] (helo=mail.ward.six)
 	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1Cs4At-0006XW-0f
-	for nfs@lists.sourceforge.net; Fri, 21 Jan 2005 11:10:27 -0800
-To: Dan Stromberg <strombrg@dcs.nac.uci.edu>
-In-Reply-To: <1106334349.21404.259.camel@localhost.localdomain>
+	id 1Cs5gK-0007VF-Nb
+	for nfs@lists.sourceforge.net; Fri, 21 Jan 2005 12:47:03 -0800
+To: linux-kernel@vger.kernel.org
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -43,34 +29,69 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, 21 Jan 2005, Dan Stromberg wrote:
+The long story is:
 
-> On Fri, 2005-01-21 at 11:59 -0700, Ara.T.Howard wrote:
->>>>    on the server - where ip is the client's ip
->>>>
->>>>      -A INPUT -s 10.1.186.71/32 -j ACCEPT
->>>>
->>>>    on the client, where ip is the server's ip
->>>>
->>>>      -A INPUT -s 10.1.186.54/32 -j ACCEPT
->>
->> we effictively did NOT firewall ANYTHING between client and server so
->> portmapping shouldn't have made any difference right?
->
-> Likely, but the sniffer should give you an empirical indication, which
-> is better than what our theoretical discussion might give you.
+There is a Dual-processor Intel Server Board STL2 with two P-III/800
+and an onboard Intel 82557-based ethernet card.  The box has all the
+/usr and nearly all of the /var filesystems mounted over NFS.  And the
+box works for months without any problems around the NFS.  So, I think
+that the ethernet card just works fine.
 
-that's the right attitude - never trust anything!  ;-)  we'll look further as
-you reccomend.
+But I have some enigmatic problems when I copying _some_ files from an
+NFS to the local fs: the process is freezes on the middle.
 
--a
--- 
-===============================================================================
-| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
-| PHONE   :: 303.497.6469
-| When you do something, you should burn yourself completely, like a good
-| bonfire, leaving no trace of yourself.  --Shunryu Suzuki
-===============================================================================
+1) Only _some_ files can't be copied.  There are:
+
+   gcc-testsuite-3.4-20041217.tar.bz2
+
+   krb5-1.3.6-signed.tar
+
+   X430src-1.tgz
+
+   They are the well-known sources from the well-known ftp and web
+   places.  And I don't think that it's the full list, just the files
+   for which I have met the problem.
+
+2) Only _these_ files can't be copied.  Any other is copied plainly.
+
+3) These files _never_ can be copied.
+
+4) The copy process always freezes at the same place (per file - the
+   each file has its own place).
+
+In short: it's a list of files, on which the copying is always freezes
+and always freezes exactly the same way.  And there are no any
+exception - I have freezeng each time.
+
+The freezing is forever.  The freezed process is in D state, its
+/proc/PID/wchan contains page_sync.  Each such process eats 1.0 from
+/proc/loadavg.  And the process can't be killed by any signal.
+
+Then, copying by dd bs=1024 ... just succeeds.  After that cp succeeds
+too - I think it's because of caching.
+
+Then, there is no visual correlation with the size of the file.  So,
+it seems that the content of the file is involved...  But it is
+enigmatic.
+
+The NIC works fine all the other time, so there no suspicions about
+hardware problems.
+
+The other NIC - 3C905 PCI external card doesn't show the problem - all
+the files are just copied.
+
+An either driver for Ethernet Pro 100 - e100 or eepro100 - show the
+same result, but eepro100 logs periodicaly:
+
+        eth0: wait_for_cmd_done timeout!
+
+e100 logs nothing.
+
+So, it doesn't ever look like a driver bug...
+
+The kernels tested: 2.6.8.1, 2.6.9, 2.6.10.
+
+GLIBC used: 2.3.2.
 
 
 -------------------------------------------------------
