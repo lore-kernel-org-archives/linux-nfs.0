@@ -1,62 +1,46 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Poor NFS performance, kernel 2.6.6.
-Date: Fri, 28 May 2004 15:19:28 -0400
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1085771968.3882.17.camel@lade.trondhjem.org>
-References: <Pine.LNX.4.58.0405271331430.7539@penti.sit.fi>
-	 <1085695748.23934.94.camel@lade.trondhjem.org>
-	 <Pine.LNX.4.58.0405280953240.29286@penti.sit.fi>
-	 <20040528135515.GG5657@suse.de>
-	 <Pine.LNX.4.58.0405282058300.14886@penti.sit.fi>
+From: William Lee Irwin III <wli@holomorphy.com>
+Subject: nfsd oops 2.6.7-rc1
+Date: Fri, 28 May 2004 19:35:50 -0700
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <20040529023550.GB2370@holomorphy.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: Olaf Kirch <okir@suse.de>, nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BTmtG-0007LV-6H
-	for nfs@lists.sourceforge.net; Fri, 28 May 2004 12:19:38 -0700
-Received: from dh132.citi.umich.edu
-	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.30)
-	id 1BTmtF-0007su-TG
-	for nfs@lists.sourceforge.net; Fri, 28 May 2004 12:19:37 -0700
-To: Harald Hannelius <harald+nfs@arcada.fi>
-In-Reply-To: <Pine.LNX.4.58.0405282058300.14886@penti.sit.fi>
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org-S263032AbUE2Cfy@vger.kernel.org>
+To: linux-kernel@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-P=E5 fr , 28/05/2004 klokka 14:03, skreiv Harald Hannelius:
-
-> I guess (as a total don't-know) that nfsd reads and writes files in a
-> different way than local processes do. I read somewhere something about
-> read-ahead but that was in 2.6.0-pre-something..
-
-Hmm... The current readahead code does a load of crap in order to
-determine whether or not the user is doing linear or random I/O. It may
-be that the nfsd server with all its multi-threading and out-of-sequence
-I/O is triggering the random I/O readahead code (which of course aims to
-limit readahead).
-
-Cheers
-  Trond
+While idle, the following oops happened. On virgin 2.6.7-rc1.
 
 
--------------------------------------------------------
-This SF.Net email is sponsored by: Oracle 10g
-Get certified on the hottest thing ever to hit the market... Oracle 10g. 
-Take an Oracle 10g class now, and we'll give you the exam FREE.
-http://ads.osdn.com/?ad_id=3149&alloc_id=8166&op=click
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+-- wli
+
+ ------------[ cut here ]------------
+ kernel BUG at include/linux/dcache.h:276!
+ invalid operand: 0000 [#1]
+ Modules linked in:
+ CPU:    0
+ EIP:    0060:[<c01e1de1>]    Not tainted
+ EFLAGS: 00010246   (2.6.7-rc1-holomorphy-1) 
+ EIP is at fh_compose+0x3d1/0x430
+ eax: 00000000   ebx: 00800070   ecx: effe8d14   edx: 00000020
+ esi: e29bf800   edi: 00000000   ebp: ddc24f58   esp: e29b3eb0
+ ds: 007b   es: 007b   ss: 0068
+ Process nfsd (pid: 1335, threadinfo=e29b3000 task=e29c0410)
+ Stack: 00000000 edd2444c c014b66f e29b3ed4 e432c0c0 8191bdfa ddc24b4c ddc24b4c 
+        eca73d0c 0100bdfa effe8d14 0000001a ddc24f58 ddc24f58 e29ce000 e432c0a6 
+        c01e247b e29ce000 00000001 effe7314 c0419bee ddc24b4c e2a23000 effe8d14 
+ Call Trace:
+  [<c014b66f>] __lookup_hash+0x5f/0xb0
+  [<c01e247b>] nfsd_lookup+0x12b/0x420
+  [<c0419bee>] svcauth_unix_accept+0x23e/0x280
+  [<c01e0513>] nfsd_proc_lookup+0x53/0xa0
+  [<c01e82c4>] nfssvc_decode_diropargs+0x54/0xb0
+  [<c01e8270>] nfssvc_decode_diropargs+0x0/0xb0
+  [<c01dfb36>] nfsd_dispatch+0xb6/0x1c0
+  [<c0416523>] svc_process+0x463/0x5c0
+  [<c01df92f>] nfsd+0x16f/0x2c0
+  [<c01df7c0>] nfsd+0x0/0x2c0
+  [<c0103a7d>] kernel_thread_helper+0x5/0x18
+ 
+ Code: 0f 0b 14 01 ba 29 44 c0 e9 99 fd ff ff 8b 45 18 8b 4c 24 1c 
