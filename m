@@ -1,20 +1,16 @@
-From: Eric Whiting <ewhiting@amis.com>
-Subject: Re: 2.4.20rc1 NFS V3 UDP client problems -- (not a problem now)
-Date: Mon, 18 Nov 2002 11:59:47 -0700
+From: "Felipe Alfaro Solana" <felipe_alfaro@linuxmail.org>
+Subject: Bug: 2.5.47 NFS reports giant filename in readdir
+Date: Mon, 18 Nov 2002 20:21:19 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3DD938A3.682C38E3@amis.com>
-References: <200211142033.gAEKXGHe010083@pookie.nersc.gov> <3DD42E26.A603AD36@amis.com> <20021114181149.J20258@redhat.com> <3DD4305B.D439C6CD@amis.com> <20021114182320.K20258@redhat.com>
+Message-ID: <20021118192119.12935.qmail@linuxmail.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: canon@pookie.nersc.gov,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	"nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from dermis.amis.com ([207.141.5.253])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18Dr66-00089M-00
-	for <nfs@lists.sourceforge.net>; Mon, 18 Nov 2002 10:58:14 -0800
-To: Benjamin LaHaise <bcrl@redhat.com>
+Received: from 205-158-62-68.outblaze.com ([205.158.62.68] helo=spf0.us4.outblaze.com)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18DrSZ-0003hh-00
+	for <nfs@lists.sourceforge.net>; Mon, 18 Nov 2002 11:21:27 -0800
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,44 +23,46 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Ben, 
+Hello,
 
-I found a 64Bit/66Mhz PCI bus and the jumbo frames are working fine.
-Same 
-kernel, same network cards, same Netapp 825 filer -- simply a different
-motherboard.
+I'm currently testing kernel 2.5.47 on a RedHat 8.0 server machine, serving files through NFS among many other things. Since I'm using 2.5.47, there are several directories I'm unable to browse using NFS from my laptop running 2.4.20-rc1.
 
-Here are the NFS client read/write speeds for my setup.  The write
-speeds appear to be somewhat limited by the netapps 825 disk/cpu speed.
-I wish I had a netapps 9xx to test.
+This is "/etc/exports" on the 2.5.47 machine:
 
-        TCP      UDP
-READ    99MB/s  104MB/s
-WRITE   36MB/s   49MB/s
+/                        192.168.0.0/255.255.255.0(rw,async,no_root_squash)
+/data                    192.168.0.0/255.255.255.0(rw,async,no_root_squash)
 
-UDP looks good with my current setup -- but with the gigE running jumbo
-frames in the 32 bit PCI bus the UDP was sick on the reads -- 1MB/s.
+And these are the commands I use on the 2.4.20-rc1 machine to mount and browse the directory using NFS:
 
-Read testing is:
-while(true);do mount blaa;dd if=path of=/dev/null bs=x count=y;umount
-blaa;done
-where bs/count equal a 500M file -- to use the netapps cache.
+# mount glass:/data /net/glass/data
+# cd /net/glass/data/Jpgs/Jpgs11
+# ls
 
-Write testing is:
-dd if=/dev/zero of=file bs=1M
+The last command produces an empty listing, even when the directory contains 16694 files on it. When I do a "dmesg" on my 2.4.20-rc1 machine, I see the following errors:
 
-Network rates monitored using netapps syststat and the time results.
+NFS: giant filename in readdir (len 14000000)!
+NFS: giant filename in readdir (len 40404000)!
+NFS: giant filename in readdir (len f000000)!
 
-eric
+I haven't been able to find any debugging information or message on the server side. dmesg reports nothing, and all log files contain no clue about this error.
 
+I think this must be a bug on 2.5.47 as this works great when using the latest RedHat 8.0 kernel on the server side.
 
-Benjamin LaHaise wrote:
-> I'd guess you're hitting the PCI bandwidth limitations then, as the larger
-> packets permit greater throughput, which in turn drives up bus utilizations.
-> If you've got any disk controllers on the same bus, that would definately
-> explain the problem (or any other devices on the bus that are in use).
-> 
->                 -ben
+I can't supply more information as I don't know exactly where to start looking.
+Please, do not hesitate to contact me for further information or assistance.
+
+Thank you very much!
+
+Sincerely,
+
+   Felipe Alfaro Solana
+
+-- 
+______________________________________________
+http://www.linuxmail.org/
+Now with POP3/IMAP access for only US$19.95/yr
+
+Powered by Outblaze
 
 
 -------------------------------------------------------
