@@ -1,22 +1,21 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: x86_64: 32bit emulation problems
-Date: Mon, 28 Feb 2005 14:26:48 -0800
-Message-ID: <1109629608.13407.30.camel@lade.trondhjem.org>
-References: <200502282208.29263.bernd-schubert@web.de>
+From: mehta kiran <kiranmehta1981@yahoo.com>
+Subject: Re: file :"/var/lib/nfs/rmtab"
+Date: Fri, 4 Feb 2005 02:55:58 -0800 (PST)
+Message-ID: <20050204105558.33195.qmail@web51609.mail.yahoo.com>
+References: <420348A1.5020804@moving-picture.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D5tLx-0001O7-Lv
-	for nfs@lists.sourceforge.net; Mon, 28 Feb 2005 14:27:01 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1D5tLw-0007d2-1V
-	for nfs@lists.sourceforge.net; Mon, 28 Feb 2005 14:27:01 -0800
-To: Bernd Schubert <bernd-schubert@web.de>
-In-Reply-To: <200502282208.29263.bernd-schubert@web.de>
+	id 1Cx18A-0006vs-B0
+	for nfs@lists.sourceforge.net; Fri, 04 Feb 2005 02:56:06 -0800
+Received: from web51609.mail.yahoo.com ([206.190.38.214])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
+	id 1Cx188-0002zg-2v
+	for nfs@lists.sourceforge.net; Fri, 04 Feb 2005 02:56:04 -0800
+To: James Pearson <james-p@moving-picture.com>
+In-Reply-To: <420348A1.5020804@moving-picture.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,139 +29,179 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Given that strace shows that both syscalls (stat64() and stat())
-succeed, I expect the "problem" is probably just glibc setting an
-EOVERFLOW error in the 32-bit case. That's what it is supposed to do if
-a 64 bit value overflows the 32-bit buffers.
+hi James , 
+        it did not help.
+        Enmtry in rmtab file is still used.
+thanks for ur reply,
+      kiran
 
-Have you tried looking at errno?
+--- James Pearson <james-p@moving-picture.com> wrote:
 
-Cheers,
-  Trond
-
-m=E5 den 28.02.2005 Klokka 22:08 (+0100) skreiv Bernd Schubert:
-> Sorry, I'm sending it here again, since my first mail, in which I CCed LK=
-ML=20
-> and  Andi Kleen was refused by the listserver.
->=20
->=20
-> Hi,
->=20
-> I'm just looking into a very strange problem. Some of our systems have=20
-> athlon64 CPUs. Due to our diskless nfs environment we currently still pre=
-fer=20
-> a 32bit userspace environment, but would like to be able to use a 64-bit=20
-> chroot environment.
->=20
-> Well, currently there seems to be a stat64()  NFS problem when a x86_64 k=
-ernel=20
-> is booted and stat64() comes from a 32bit libc.
->=20
-> Here's just an example:
->=20
-> hitchcock:/home/bernd/src/tests# ./test_stat64 /mnt/test/yp
-> stat() works fine.
->=20
->=20
-> hitchcock:/home/bernd/src/tests# ./test_stat32 /mnt/test/yp
-> stat for /mnt/test/yp failed=20
->=20
->=20
-> The test program looks rather simple:
->=20
-> #include <sys/types.h>
-> #include <sys/stat.h>
-> #include <unistd.h>
-> #include <stdio.h>
-> #include <errno.h>
-> #include <string.h>
-> #include <stdlib.h>
->=20
->=20
-> int main(int argc, char **argv)
-> {
->         char *dir;
->         struct stat buf;
->=20
->         dir =3D argv[1];
->=20
->         if (stat (dir, &buf) =3D=3D -1)
->                 fprintf(stderr, "stat for %s failed \n", dir);
->         else
->                 fprintf(stderr, "stat() works fine.\n");
->         return (0);
-> }
->=20
->=20
-> Here are the strace outputs:
-> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
->=20
-> 32bit:
-> ------
-> hitchcock:/home/bernd/src/tests# strace32 ./test_stat32 /mnt/test/yp
-> execve("./test_stat32", ["./test_stat32", "/mnt/test/yp"], [/* 39 vars */=
-]) =3D=20
-> 0
-> uname({sys=3D"Linux", node=3D"hitchcock", ...}) =3D 0
-> brk(0)                                  =3D 0x80ad000
-> brk(0x80ce000)                          =3D 0x80ce000
-> stat64("/mnt/test/yp", {st_mode=3DS_IFDIR|0755, st_size=3D2704, ...}) =3D=
- 0
-> write(2, "stat for /mnt/test/yp failed \n", 30stat for /mnt/test/yp faile=
-d=20
-> ) =3D 30
-> exit_group(0)                           =3D ?
->=20
-> 64bit:
-> -------
-> hitchcock:/home/bernd/src/tests# strace ./test_stat64 /mnt/test/yp
-> execve("./test_stat64", ["./test_stat64", "/mnt/test/yp"], [/* 39 vars */=
-]) =3D=20
-> 0
-> uname({sys=3D"Linux", node=3D"hitchcock", ...}) =3D 0
-> brk(0)                                  =3D 0x572000
-> brk(0x593000)                           =3D 0x593000
-> stat("/mnt/test/yp", {st_mode=3DS_IFDIR|0755, st_size=3D2704, ...}) =3D 0
-> write(2, "stat() works fine.\n", 19stat() works fine.
-> )    =3D 19
-> _exit(0)                                =3D ?
->=20
->=20
->=20
-> Anyone having an idea whats going on? The ethereal capture also looks pre=
-tty=20
-> normal. The kernel of this system is 2.6.9, but it also happens on anothe=
-r=20
-> system with 2.6.11-rc5.
-> As usual we are using unfs3 for /etc and /var, but for me that looks like=
- a=20
-> client problem. I'm now also pretty sure that its not a problem for a loc=
-al=20
-> mount point (so a local disk).
->=20
->=20
-> Thanks in advance,
->  Bernd
->=20
->=20
-> -------------------------------------------------------
-> SF email is sponsored by - The IT Product Guide
-> Read honest & candid reviews on hundreds of IT Products from real users.
-> Discover which products truly live up to the hype. Start reading now.
-> http://ads.osdn.com/?ad_id=3D6595&alloc_id=3D14396&op=3Dclick
+> Did you do 'mount -t nfsd nfsd /proc/fs/nfsd' before
+> starting all the 
+> nfs daemons?
+> 
+> James Pearson
+> 
+> mehta kiran wrote:
+> > I am using 2.6 kernel
+> > --- mehta kiran <kiranmehta1981@yahoo.com> wrote:
+> > 
+> > 
+> >>Hi , 
+> >>         if handle supplied by client is
+> sufficient
+> >>,
+> >> then why does the problem given below exists.
+> >>
+> >>1. export filesystem to client.
+> >>2. let client allow to mount it.
+> >>3. remove all entries from rmtab on server.
+> >>4. restart all nfs daemons.
+> >>5. Now if client access filesystem , it gets
+> >>   permission denied error.Client can access
+> >>   filesystem only after remounting it.
+> >>6. This show that mountd still uses rmtab to
+> >>   check if client had mounted filesystem or not.
+> >>   No entry in rmtab for a client means it has not
+> >>   mounted filesystem.
+> >>
+> >>thanks,
+> >> --kiran
+> >>
+> >>--- Paul Clements <paul.clements@steeleye.com>
+> >>wrote:
+> >>
+> >>
+> >>>mehta kiran wrote:
+> >>>
+> >>>
+> >>>>Isn't handle supplied by client
+> >>>>          enough to verify clients access to
+> >>>>          filesystem.?
+> >>>
+> >>>Yes, it should be. That's why in 2.6, the rmtab
+> >>
+> >>file
+> >>
+> >>>is no longer relied 
+> >>>upon. Instead, there is a special filesystem,
+> >>>/proc/fs/nfsd, that allows 
+> >>>the kernel to communicate with mountd in order to
+> >>>authenticate 
+> >>>unrecognized clients automatically.
+> >>>
+> >>>--
+> >>>Paul
+> >>>
+> >>>
+> >>>
+> >>
+> >
+>
+-------------------------------------------------------
+> > 
+> >>>This SF.Net email is sponsored by: IntelliVIEW --
+> >>>Interactive Reporting
+> >>>Tool for open source databases. Create
+> drag-&-drop
+> >>>reports. Save time
+> >>>by over 75%! Publish reports on the web. Export
+> to
+> >>>DOC, XLS, RTF, etc.
+> >>>Download a FREE copy at
+> >>>http://www.intelliview.com/go/osdn_nl
+> >>>_______________________________________________
+> >>>NFS maillist  -  NFS@lists.sourceforge.net
+> >>>https://lists.sourceforge.net/lists/listinfo/nfs
+> >>>
+> >>
+> >>
+> >>
+> >>	
+> >>		
+> >>__________________________________ 
+> >>Do you Yahoo!? 
+> >>Yahoo! Mail - You care about security. So do we. 
+> >>http://promotions.yahoo.com/new_mail
+> >>
+> >>
+> >>
+> > 
+> >
+>
+-------------------------------------------------------
+> > 
+> >>This SF.Net email is sponsored by: IntelliVIEW --
+> >>Interactive Reporting
+> >>Tool for open source databases. Create drag-&-drop
+> >>reports. Save time
+> >>by over 75%! Publish reports on the web. Export to
+> >>DOC, XLS, RTF, etc.
+> >>Download a FREE copy at
+> >>http://www.intelliview.com/go/osdn_nl
+> >>_______________________________________________
+> >>NFS maillist  -  NFS@lists.sourceforge.net
+> >>https://lists.sourceforge.net/lists/listinfo/nfs
+> >>
+> > 
+> > 
+> > 
+> > 
+> > 		
+> > __________________________________ 
+> > Do you Yahoo!? 
+> > Meet the all-new My Yahoo! - Try it today! 
+> > http://my.yahoo.com 
+> >  
+> > 
+> > 
+> > 
+> >
+>
+-------------------------------------------------------
+> > This SF.Net email is sponsored by: IntelliVIEW --
+> Interactive Reporting
+> > Tool for open source databases. Create drag-&-drop
+> reports. Save time
+> > by over 75%! Publish reports on the web. Export to
+> DOC, XLS, RTF, etc.
+> > Download a FREE copy at
+> http://www.intelliview.com/go/osdn_nl
+> > _______________________________________________
+> > NFS maillist  -  NFS@lists.sourceforge.net
+> > https://lists.sourceforge.net/lists/listinfo/nfs
+> > 
+> 
+> 
+> 
+>
+-------------------------------------------------------
+> This SF.Net email is sponsored by: IntelliVIEW --
+> Interactive Reporting
+> Tool for open source databases. Create drag-&-drop
+> reports. Save time
+> by over 75%! Publish reports on the web. Export to
+> DOC, XLS, RTF, etc.
+> Download a FREE copy at
+> http://www.intelliview.com/go/osdn_nl
 > _______________________________________________
 > NFS maillist  -  NFS@lists.sourceforge.net
 > https://lists.sourceforge.net/lists/listinfo/nfs
---=20
-Trond Myklebust <trond.myklebust@fys.uio.no>
+> 
 
+
+__________________________________________________
+Do You Yahoo!?
+Tired of spam?  Yahoo! Mail has the best spam protection around 
+http://mail.yahoo.com 
 
 
 -------------------------------------------------------
-SF email is sponsored by - The IT Product Guide
-Read honest & candid reviews on hundreds of IT Products from real users.
-Discover which products truly live up to the hype. Start reading now.
-http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
+This SF.Net email is sponsored by: IntelliVIEW -- Interactive Reporting
+Tool for open source databases. Create drag-&-drop reports. Save time
+by over 75%! Publish reports on the web. Export to DOC, XLS, RTF, etc.
+Download a FREE copy at http://www.intelliview.com/go/osdn_nl
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
