@@ -1,24 +1,28 @@
-From: "Jose R. Santos" <jrsantos@austin.ibm.com>
-Subject: Re: Some strange weirdness
-Date: Wed, 11 Aug 2004 08:44:29 -0500
+From: Ian Thurlbeck <ian@stams.strath.ac.uk>
+Subject: Re: Strange delays on NFS server
+Date: Wed, 11 Aug 2004 17:08:45 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040811134429.GC31199@rx8.austin.ibm.com>
-References: <200408101448.13279.norman.r.weathers@conocophillips.com>
+Message-ID: <411A448D.3080205@stams.strath.ac.uk>
+References: <4119FB15.7010205@stams.strath.ac.uk> <411A17F2.2060203@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ButQB-0004zB-SE
-	for nfs@lists.sourceforge.net; Wed, 11 Aug 2004 06:45:39 -0700
-Received: from e4.ny.us.ibm.com ([32.97.182.104])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1Buven-0007SV-O2
+	for nfs@lists.sourceforge.net; Wed, 11 Aug 2004 09:08:53 -0700
+Received: from vif-img1.cc.strath.ac.uk ([130.159.248.61] helo=khafre.cc.strath.ac.uk)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.34)
-	id 1ButQB-0002n6-7L
-	for nfs@lists.sourceforge.net; Wed, 11 Aug 2004 06:45:39 -0700
-To: norman.r.weathers@conocophillips.com
-In-Reply-To: <200408101448.13279.norman.r.weathers@conocophillips.com> (from norman.r.weathers@conocophillips.com on Tue, Aug 10, 2004 at 14:48:13 -0500)
+	id 1Buven-0000ag-8q
+	for nfs@lists.sourceforge.net; Wed, 11 Aug 2004 09:08:53 -0700
+Received: from dunnet.stams.strath.ac.uk ([130.159.240.95]:47043)
+	by khafre.cc.strath.ac.uk with smtp (Exim 4.20 #1)
+	id 1Buveg-0000x5-1M
+	for <nfs@lists.sourceforge.net>; Wed, 11 Aug 2004 17:08:46 +0100
+To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: <411A17F2.2060203@RedHat.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,67 +35,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On 08/10/04 14:48:13, Norman Weathers wrote:
-> My test is with an in house set of programs.  We are currently testing XFS and 
-> JFS as the underlying filesystems.  The filesystem that we will serve out has 
-> ~ 3 TB of space.  Now, here comes the strange part.  If I am using XFS, I get 
-> "respectable" numbers.  For instance, the server is Fedora Core 2, kernel 
-> 2.6.7 with Trond patches, e1000 NIC interface running at 1Gbit.  We also 
-> upped the buffers on the e1000 card driver.  With XFS and 40 clients running 
-> against it (each reading and writing a separate 2 G file), aggregate we can 
-> get about 50 MB/s write and 91 MB/s reads (sequential reads and writes).  
-> Like I said, pretty good.  When I start to use JFS, however, things go to pot 
-> quickly.  I start off fairly well (say, with 20 clients), but within a short 
-> time (30 seconds to 1 minute), where before I would see all of my nfsd 
-> threads being utilized in Disk wait on the server, they just disappear.  
-> pdflush comes up for awhile, and so does jfsCommit thread, and then they 
-> disappear, and then the nfsd's will come back.  During this kind of thrashing 
-> activity, write speeds drop from 40 or 50 MB/s writes to less than 10 MB/s 
-> writes.  We have done similiar tests in the past (2.6.5 kernel), and have had 
-> good results (in house application, mulitple parallel reads and writes, final 
-> output is multiple parallel writes to a single file).  Has anyone seen this?
-
-I've been running SpecSFS on JFS for a while and have never seen this type of 
-behavior (although my hardware config is a lot different than yous).  From
-you description, it seems that you were doing writes just fine until you reach
-memory limitations and then the system goes crazy for a while writing dirty 
-pages to disk and then stabilize.  I've seen this behavior on other file
-systems when running on systems with large amounts of memory.
-
-
-> Some things we have tried:
+Steve Dickson wrote:
 > 
-> 1)  JFS parameters , increase number of threads from 2 to 4, increase 
-> nTxblocks to 64K.
-Adding jfsCommit threads only helps if you have multiple JFS filesystems
-mounted.
+> 
+> Ian Thurlbeck wrote:
+> 
+>> I am getting strange delays on our NFS server. Everything will
+>> be fine for maybe 5 to 10 minutes, then saving a small text file
+>> from a client machine will suddenly take 15 seconds or more.
+>> Similarly, mozilla will pause accessing a page for ages ~30secs
+>> (I assume it's poking about in ~/.mozilla). Everything pops back to 
+>> normal afterwards. NFS server is lightly used at the moment.
+> 
+> 
+> Boy... it sure sounds to me like some type of daemon or something is 
+> starting up
+> that is bring the machine to its knees... . Would it be possible to have 
+> a top -i running
+> on the server when this pause occurs?
+> 
+> SteveD.
+> 
 
-> 2)  Changed pdflush down to 1500 in /proc/sys/vm/dirty_expire_centisecs.
-You could also play with the dirty_background_ratio to lower the amount
-of memory that's allow to be dirty.
+OK, I've been running "top -d 1 -i" and trying to see what comes up when
+the server freezes. I caught one instance where a delay coincided
+with about 15 nfsd + 1 kjournald process appearing in the top
+display. I'm simultaneously looking at a graphical network tool to try
+and see the traffic going to the server - anyone got a better suggestion?
 
-> 3)  Changed swappiness down to 10.
-Seen no improvement on changing this for SpecSFS.
+Tomorrow I'll batch top to log to a file and get some users to
+note the exact time of any delays (using the ntp-synced clocks) and
+see if I can see any correlation.
 
-> 4)  Increased number of nfs threads to 32 (both JFS and XFS.  Works well with 
-> XFS).
-If all of your processes are stuck in Disk wait, it wont help.
- 
-> I just can't help but wonder if it is an NFS thing, because when we run 
-> locally, we get very good numbers.  I can have multiple writes going locally, 
-> and still get very good performance.
+I'll report back with any findings.
 
-Why XFS seems to do well while JFS sees this behavior as soon as you
-hit memory pressure is harder to answer without know both filesystems in 
-detail.  It seem to be a filesystem issue and nothing to do with the NFS
-server.  Try running sysrq to get the stack of all the NFS processes when 
-they are in disk wait state (its probably going to be stuck in JFS code). 
+Many thanks
 
-On SpecSFS, JFS is a the fastest of all the journaling filesystems available 
-in Linux.  The workloads are very different though and I'm running with very
-different hardware.
+Ian
+-- 
+Ian Thurlbeck                http://www.stams.strath.ac.uk/
+Statistics and Modelling Science, University of Strathclyde
+Livingstone Tower, 26 Richmond Street, Glasgow, UK,  G1 1XH
+Tel: +44 (0)141 548 3667           Fax: +44 (0)141 552 2079
 
--JRS
 
 
 -------------------------------------------------------
