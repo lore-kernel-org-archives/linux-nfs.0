@@ -2,13 +2,13 @@ From: "Da Saint" <da_saint@mail.com>
 Subject: permission problem
 Date: Fri, 13 Sep 2002 17:59:13 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020913225913.78571.qmail@mail.com>
+Message-ID: <20020913225913.78577.qmail@mail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="iso-8859-15"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from 205-158-62-55.outblaze.com ([205.158.62.55] helo=ws1-3.us4.outblaze.com)
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17pzPE-0003bs-00
+	id 17pzPE-0003bu-00
 	for <nfs@lists.sourceforge.net>; Fri, 13 Sep 2002 15:59:20 -0700
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
