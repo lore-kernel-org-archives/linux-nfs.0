@@ -1,20 +1,27 @@
-From: "Gareth Glaccum" <verycoldpenguin@hotmail.com>
-Subject: Re: NFS using too much memory on diskless system
-Date: Thu, 24 Feb 2005 14:14:55 +0000
-Message-ID: <BAY101-F402EAE1436EB8C3874B5D8BD640@phx.gbl>
-References: <421DD8C4.6080702@redhat.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] Fix xprt_bindresvport range
+Date: Thu, 24 Feb 2005 10:12:22 -0800
+Message-ID: <1109268742.11433.14.camel@lade.trondhjem.org>
+References: <20050223162808.GB17774@suse.de>
+	 <1109176559.10142.4.camel@lade.trondhjem.org>
+	 <Pine.LNX.4.58.0502241055521.2188@wombat.indigo.net.au>
+	 <1109218999.11180.49.camel@lade.trondhjem.org>
+	 <20050224101449.GB11336@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; format=flowed
+Content-Type: text/plain
+Cc: Ian Kent <raven@themaw.net>, Charles Lever <cel@citi.umich.edu>,
+	nfs@lists.sourceforge.net
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D4Jm1-0007yN-P3
-	for nfs@lists.sourceforge.net; Thu, 24 Feb 2005 06:15:25 -0800
-Received: from bay101-f40.bay101.hotmail.com ([64.4.56.50] helo=hotmail.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1D4Jm0-0003JQ-9i
-	for nfs@lists.sourceforge.net; Thu, 24 Feb 2005 06:15:25 -0800
-In-Reply-To: <421DD8C4.6080702@redhat.com>
-To: nfs@lists.sourceforge.net
+	id 1D4NTh-0000uF-EK
+	for nfs@lists.sourceforge.net; Thu, 24 Feb 2005 10:12:45 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1D4NTf-0005XY-TT
+	for nfs@lists.sourceforge.net; Thu, 24 Feb 2005 10:12:45 -0800
+To: Olaf Kirch <okir@suse.de>
+In-Reply-To: <20050224101449.GB11336@suse.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,33 +35,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Neil,
-Thanks for the pointer,
-a
-sysctl -w vm.dirty_ratio=0
-appears to have removed the problems, I shall continue to investigate this.
-Thanks,
-Gareth
+to den 24.02.2005 Klokka 11:14 (+0100) skreiv Olaf Kirch:
 
->From: Neil Horman <nhorman@redhat.com>
->>Is there some way of limiting the NFS cache size like there used to be in 
->>the 2.4 kernel? (see section B7 of the nfs FAQ I believe)
->>
->>Any ideas gratefully received,
->>Gareth
->>
->It sounds to me your kernel has some sort of vm bug, but if you want to 
->shrink page cache usage, you may want to play with the dirty_vm_* settings 
->in /proc/sys/vm.  I'm still getting used to the 2.6 sysctls, but I believe 
->that those settings allow you to specify when your kernel decides its under 
->sufficient memory pressure to start moving data back to disk.
->
->HTH
->Neil
->>_________________________________________________________________
+> > For TCP sockets, we should also consider playing with the TCP_LINGER2
+> > socket option (to enable us to re-use the port without having to wait
+> > through a 60 second timeout).
+> 
+> Adding that in mount(8) may help with some usage patterns. In the kernel
+> I wouldn't expect it to make too much of a difference.
 
-_________________________________________________________________
-Express yourself with cool new emoticons http://www.msn.co.uk/specials/myemo
+It is needed in the kernel if you want to use connection pools in order
+to make disconnection and port re-use fast. Fast port re-use is also
+needed in order to deal with idempotency issues when the TCP connection
+fails (the server replay cache is usually indexed on the port number).
+
+Cheers,
+  Trond
+
+-- 
+Trond Myklebust <trond.myklebust@fys.uio.no>
 
 
 
