@@ -1,63 +1,75 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: [PATCH] 2.5.42: build nfsd as module broken
-Date: Sun, 13 Oct 2002 09:51:32 +1000
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <15784.46468.880128.458867@notabene.cse.unsw.edu.au>
-References: <871y6vwmft.fsf@goat.bogus.local>
-	<Pine.GSO.4.21.0210121423500.6898-100000@steklov.math.psu.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Olaf Dietsche <olaf.dietsche#list.linux-kernel@t-online.de>,
-	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
+From: NeilBrown <neilb@cse.unsw.edu.au>
+Subject: [PATCH] kNFSd - 2 of 4 - Export news symbols in sunrpc
+Date: Sun, 13 Oct 2002 21:42:13 +1000
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <E180h8P-0000jN-00@notabene.cse.unsw.edu.au>
+Cc: nfs@lists.sourceforge.net
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 180h8b-0007Cw-00
+	for <nfs@lists.sourceforge.net>; Sun, 13 Oct 2002 04:42:25 -0700
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <viro@math.psu.edu>)
-	(for <olaf.dietsche#list.linux-kernel@t-online.de>)
-	(for <nfs@lists.sourceforge.net>)
-	(for <linux-kernel@vger.kernel.org>) By tone With Smtp ;
-	Sun, 13 Oct 2002 09:51:39 +1000
-To: Alexander Viro <viro@math.psu.edu>
-In-Reply-To: message from Alexander Viro on Saturday October 12
-List-ID: <nfs.lists.sourceforge.net>
+	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>) By
+	tone With Smtp ; Sun, 13 Oct 2002 21:42:16 +1000
+To: Linus Torvalds <torvalds@transmeta.com>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-On Saturday October 12, viro@math.psu.edu wrote:
-> 
-> 
-> On Sat, 12 Oct 2002, Olaf Dietsche wrote:
-> 
-> > +EXPORT_SYMBOL(cache_fresh);
-> > +EXPORT_SYMBOL(cache_flush);
-> > +EXPORT_SYMBOL(cache_unregister);
-> > +EXPORT_SYMBOL(cache_check);
-> > +EXPORT_SYMBOL(cache_clean);
-> > +EXPORT_SYMBOL(cache_register);
-> > +EXPORT_SYMBOL(cache_init);
-> > +EXPORT_SYMBOL(add_word);
-> > +EXPORT_SYMBOL(add_hex);
-> > +EXPORT_SYMBOL(get_word);
-> 
-> Ahem.  Non-static objects called add_word and get_word?  Even the cache_...()
-> stuff is a namespace pollution (which kind of cache?), but that...
 
-Fair comment.
+### Comments for ChangeSet
 
-The words are actually 'quoted words', so maybe:
+The new caching and auth code needs symbols to be exported.
 
- qword_add
- qword_addhex
- qword_parse  (or qword_get) 
 
- would be better.
+ ----------- Diffstat output ------------
+ ./net/sunrpc/sunrpc_syms.c |   19 +++++++++++++++++++
+ 1 files changed, 19 insertions(+)
 
-The caches are for caching user-space-sourced information (IP ->
-hostname, export options, uid->username etc) so maybe
+--- ./net/sunrpc/sunrpc_syms.c	2002/10/12 11:38:51	1.1
++++ ./net/sunrpc/sunrpc_syms.c	2002/10/12 11:42:07	1.2
+@@ -92,6 +92,25 @@ EXPORT_SYMBOL(svc_proc_unregister);
+ EXPORT_SYMBOL(svc_proc_read);
+ #endif
+ 
++/* caching... */
++EXPORT_SYMBOL(auth_domain_find);
++EXPORT_SYMBOL(cache_fresh);
++EXPORT_SYMBOL(unix_domain_find);
++EXPORT_SYMBOL(auth_domain_put);
++EXPORT_SYMBOL(cache_flush);
++EXPORT_SYMBOL(cache_unregister);
++EXPORT_SYMBOL(add_hex);
++EXPORT_SYMBOL(cache_check);
++EXPORT_SYMBOL(svcauth_unix_purge);
++EXPORT_SYMBOL(get_word);
++EXPORT_SYMBOL(cache_clean);
++EXPORT_SYMBOL(cache_register);
++EXPORT_SYMBOL(auth_unix_lookup);
++EXPORT_SYMBOL(auth_unix_add_addr);
++EXPORT_SYMBOL(cache_init);
++EXPORT_SYMBOL(auth_unix_forget_old);
++EXPORT_SYMBOL(add_word);
++
+ /* Generic XDR */
+ EXPORT_SYMBOL(xdr_encode_array);
+ EXPORT_SYMBOL(xdr_encode_string);
 
-  ucache_*
-though that is a bit bland....
 
-  uss_cache_*
-
-(for the trekkies)???
-
-NeilBrown
+-------------------------------------------------------
+This sf.net email is sponsored by:ThinkGeek
+Welcome to geek heaven.
+http://thinkgeek.com/sf
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
