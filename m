@@ -1,23 +1,31 @@
-From: Bruce Allan <bwa@us.ibm.com>
-Subject: [PATCH] nfs-utils-1.0.6 permission denied on mount after 'exportfs
- -u'
-Date: Thu, 26 Aug 2004 15:50:49 -0700
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: Strange delays on NFS server (with piccies)
+Date: Fri, 27 Aug 2004 11:22:36 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1093560649.14283.33.camel@w-bwa3.beaverton.ibm.com>
+Message-ID: <16686.36060.57143.407464@cse.unsw.edu.au>
+References: <4119FB15.7010205@stams.strath.ac.uk>
+	<411A17F2.2060203@RedHat.com>
+	<411A448D.3080205@stams.strath.ac.uk>
+	<20040811164135.GA11101@suse.de>
+	<411B8987.1030609@stams.strath.ac.uk>
+	<411CD601.1080308@RedHat.com>
+	<4120AB46.1080606@stams.strath.ac.uk>
+	<16683.8588.18082.190876@cse.unsw.edu.au>
+	<412DC316.6080709@stams.strath.ac.uk>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C0T5G-0007We-3v
-	for nfs@lists.sourceforge.net; Thu, 26 Aug 2004 15:51:06 -0700
-Received: from e35.co.us.ibm.com ([32.97.110.133])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.34)
-	id 1C0T5F-0002xt-JY
-	for nfs@lists.sourceforge.net; Thu, 26 Aug 2004 15:51:06 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
+	id 1C0VS2-0000pA-Ag
+	for nfs@lists.sourceforge.net; Thu, 26 Aug 2004 18:22:46 -0700
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
+	id 1C0VS0-000091-LE
+	for nfs@lists.sourceforge.net; Thu, 26 Aug 2004 18:22:46 -0700
+To: Ian Thurlbeck <ian@stams.strath.ac.uk>
+In-Reply-To: message from Ian Thurlbeck on Thursday August 26
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,63 +38,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Neil,
+On Thursday August 26, ian@stams.strath.ac.uk wrote:
+> 
+> Neil, and others
+> 
+> I've gathered some useful data (I hope) on the problem. I ran a variant 
+> of Neil's script for 2.4 kernel for most of a day (9.30-15.00).
 
-There is a problem with rpc.mountd after doing an 'exportfs -u' such as
-in the following:
+It's odd....
 
-[server]# exportfs *:/foo
-[client]# mount server:/foo /mnt
-[client]# umount /mnt
-[server]# exportfs -u *:/foo
-[server]# exportfs client:/foo
-[client]# mount server:/foo /mnt
-mount: server:/foo failed, reason given by server: Permission denied
+The data doesn't show much variation in nfs ops/second during the two
+incidents you zoom in on, though you would expect that if the NFS
+server were slow to respond, you would see a drop in requests (as nfsd
+threads are blocked, and the clients would stop sending while waiting
+for the server, at least a bit).
 
-In the above situation, the static my_client doesn't get cleared as a
-result of the unexporting.  Since the client address is the same in both
-mount requests it won't perform a new lookup and will continue to use
-the previous hostname, i.e. "*".  Unfortunately, the list of clients in
-the exportlist no longer contains "*" for a hostname (only contains the
-hostname "client") and will return a NULL pointer with a not_exported
-error.
+There are other periods of high disc writes (such as 6400:6800) where
+there is a matching rise in NFS requests.  Presumably some client is
+doing a lot of writing.
+Do these correlate with subjective pauses too?
 
---- nfs-utils-1.0.6/utils/mountd/auth.c	2003-07-14 15:10:12.000000000 -0700
-+++ nfs-utils-1.0.6-auth.c/utils/mountd/auth.c	2004-08-26 14:52:40.000000000 -0700
-@@ -30,6 +30,8 @@ enum auth_error
- 
- static void		auth_fixpath(char *path);
- static char	*export_file = NULL;
-+static nfs_export my_exp;
-+static nfs_client my_client;
- 
- extern int new_cache;
- 
-@@ -55,6 +57,7 @@ auth_reload()
- 	last_modified = stb.st_mtime;
- 
- 	export_freeall();
-+	memset(&my_client, 0, sizeof(nfs_client));
- 	// export_read(export_file);
- 	xtab_export_read();
- 
-@@ -69,8 +72,6 @@ auth_authenticate_internal(char *what, s
- 	nfs_export		*exp;
- 
- 	if (new_cache) {
--		static nfs_export my_exp;
--		static nfs_client my_client;
- 		int i;
- 		/* return static nfs_export with details filled in */
- 		if (my_client.m_naddr != 1 ||
+And the "vmstat" output shows "free" memory plummeting to 1/16th of
+was it was during the quite time.  It is not surprising that this
+causes lots of write activity.  This is accompanied by a sudden growth
+in "cache", which seems to suggest (unless I'm misunderstanding what
+"cache" and "free" mean, which isn't impossible) that lots of data was
+suddenly written.  As it doesn't seem to correlate with NFS activity,
+is looks like some local program on the server is suddenly writing out
+lots of data and swamping the filesystem.
 
-Regards,
----
-Bruce Allan  <bwa@us.ibm.com>
-Software Engineer, Linux Technology Center
-IBM Corporation, Beaverton OR
-503-578-4187   IBM Tie-line 775-4187
+The "top" output doesn't seem to match any significant write traffic.
 
+Can you get some process listings that correlate with the sudden drop
+in "free" shown by vmstat and see what is happening?
+
+> 
+> PS: How big are these "wsect" counts in /proc/partitions in terms of
+> bytes ?
+
+1 sectors should be 512 bytes.
+
+NeilBrown
 
 
 -------------------------------------------------------
