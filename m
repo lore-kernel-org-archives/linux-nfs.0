@@ -1,22 +1,22 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 1 of 10 - Use correct _bh locking on sv_lock.
+Subject: [PATCH] kNFSd - 7 of 10 - Improve idmapper behaviour on failure.
 Date: Tue, 18 May 2004 11:31:38 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1BPtSE-0004As-53@notabene.cse.unsw.edu.au>
+Message-ID: <E1BPtSE-0004BS-R7@notabene.cse.unsw.edu.au>
 References: <20040518112921.15964.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BPtSQ-00073C-IM
-	for nfs@lists.sourceforge.net; Mon, 17 May 2004 18:31:50 -0700
+	id 1BPtSO-00072c-KL
+	for nfs@lists.sourceforge.net; Mon, 17 May 2004 18:31:48 -0700
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1BPtSP-0002Wi-V5
-	for nfs@lists.sourceforge.net; Mon, 17 May 2004 18:31:50 -0700
+	id 1BPtSN-0002Vy-Uy
+	for nfs@lists.sourceforge.net; Mon, 17 May 2004 18:31:48 -0700
 Received: From notabene.cse.unsw.edu.au ([129.94.172.124]) (auth-user neilb)
 	(for <akpm@osdl.org>) (for <nfs@lists.sourceforge.net>) By note With
-	Smtp ; Tue, 18 May 2004 11:31:39 +1000
+	Smtp ; Tue, 18 May 2004 11:31:40 +1000
 To: Andrew Morton <akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,57 +31,73 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-With the _bh, we can dead-lock..
+Slightly better behavior on failed mapping (which may happen either because
+idmapd is not running, or because there it has told us it doesn't know the
+mapping.):
+	on name->id (setattr), return BADNAME.  (I used ESRCH to
+		communicate BADNAME, just because it was the first error in
+		include/asm-generic/errno-base.h that had something to
+		do with nonexistance of something, and that we weren't
+		already using.)
+	id->name (getattr), return a string representation of the numerical
+		id.  This is probably useless to the client, especially
+		since we're unlikely to accept such a string on a setattr,
+		but perhaps some client will find it mildly helpful.
+
+
+From: "J. Bruce Fields" <bfields@fieldses.org>
 
  ----------- Diffstat output ------------
- ./net/sunrpc/svcsock.c |   12 ++++++------
- 1 files changed, 6 insertions(+), 6 deletions(-)
+ ./fs/nfsd/nfs4idmap.c       |    4 ++++
+ ./fs/nfsd/nfsproc.c         |    1 +
+ ./include/linux/nfsd/nfsd.h |    1 +
+ 3 files changed, 6 insertions(+)
 
-diff ./net/sunrpc/svcsock.c~current~ ./net/sunrpc/svcsock.c
---- ./net/sunrpc/svcsock.c~current~	2004-05-18 11:09:16.000000000 +1000
-+++ ./net/sunrpc/svcsock.c	2004-05-18 11:15:11.000000000 +1000
-@@ -1511,9 +1511,9 @@ static void svc_revisit(struct cache_def
- 	dprintk("revisit queued\n");
- 	svsk = dr->svsk;
- 	dr->svsk = NULL;
--	spin_lock(&serv->sv_lock);
-+	spin_lock_bh(&serv->sv_lock);
- 	list_add(&dr->handle.recent, &svsk->sk_deferred);
--	spin_unlock(&serv->sv_lock);
-+	spin_unlock_bh(&serv->sv_lock);
- 	set_bit(SK_DEFERRED, &svsk->sk_flags);
- 	svc_sock_enqueue(svsk);
- 	svc_sock_put(svsk);
-@@ -1544,10 +1544,10 @@ svc_defer(struct cache_req *req)
- 		dr->argslen = rqstp->rq_arg.len >> 2;
- 		memcpy(dr->args, rqstp->rq_arg.head[0].iov_base-skip, dr->argslen<<2);
- 	}
--	spin_lock(&rqstp->rq_server->sv_lock);
-+	spin_lock_bh(&rqstp->rq_server->sv_lock);
- 	rqstp->rq_sock->sk_inuse++;
- 	dr->svsk = rqstp->rq_sock;
--	spin_unlock(&rqstp->rq_server->sv_lock);
-+	spin_unlock_bh(&rqstp->rq_server->sv_lock);
+diff ./fs/nfsd/nfs4idmap.c~current~ ./fs/nfsd/nfs4idmap.c
+--- ./fs/nfsd/nfs4idmap.c~current~	2004-05-18 11:17:53.000000000 +1000
++++ ./fs/nfsd/nfs4idmap.c	2004-05-18 11:18:14.000000000 +1000
+@@ -543,6 +543,8 @@ idmap_name_to_id(struct svc_rqst *rqstp,
+ 	key.name[namelen] = '\0';
+ 	strlcpy(key.authname, rqstp->rq_client->name, sizeof(key.authname));
+ 	ret = idmap_lookup(rqstp, nametoid_lookup, &key, &nametoid_cache, &item);
++	if (ret == -ENOENT)
++		ret = -ESRCH; /* nfserr_badname */
+ 	if (ret)
+ 		return ret;
+ 	*id = item->id;
+@@ -561,6 +563,8 @@ idmap_id_to_name(struct svc_rqst *rqstp,
  
- 	dr->handle.revisit = svc_revisit;
- 	return &dr->handle;
-@@ -1577,7 +1577,7 @@ static struct svc_deferred_req *svc_defe
- 	
- 	if (!test_bit(SK_DEFERRED, &svsk->sk_flags))
- 		return NULL;
--	spin_lock(&serv->sv_lock);
-+	spin_lock_bh(&serv->sv_lock);
- 	clear_bit(SK_DEFERRED, &svsk->sk_flags);
- 	if (!list_empty(&svsk->sk_deferred)) {
- 		dr = list_entry(svsk->sk_deferred.next,
-@@ -1586,6 +1586,6 @@ static struct svc_deferred_req *svc_defe
- 		list_del_init(&dr->handle.recent);
- 		set_bit(SK_DEFERRED, &svsk->sk_flags);
- 	}
--	spin_unlock(&serv->sv_lock);
-+	spin_unlock_bh(&serv->sv_lock);
- 	return dr;
- }
+ 	strlcpy(key.authname, rqstp->rq_client->name, sizeof(key.authname));
+ 	ret = idmap_lookup(rqstp, idtoname_lookup, &key, &idtoname_cache, &item);
++	if (ret == -ENOENT)
++		return sprintf(name, "%u", id);
+ 	if (ret)
+ 		return ret;
+ 	ret = strlen(item->name);
+
+diff ./fs/nfsd/nfsproc.c~current~ ./fs/nfsd/nfsproc.c
+--- ./fs/nfsd/nfsproc.c~current~	2004-05-18 11:16:20.000000000 +1000
++++ ./fs/nfsd/nfsproc.c	2004-05-18 11:18:14.000000000 +1000
+@@ -589,6 +589,7 @@ nfserrno (int errno)
+ 		{ nfserr_jukebox, -ETIMEDOUT },
+ 		{ nfserr_dropit, -EAGAIN },
+ 		{ nfserr_dropit, -ENOMEM },
++		{ nfserr_badname, -ESRCH },
+ 		{ -1, -EIO }
+ 	};
+ 	int	i;
+
+diff ./include/linux/nfsd/nfsd.h~current~ ./include/linux/nfsd/nfsd.h
+--- ./include/linux/nfsd/nfsd.h~current~	2004-05-18 11:09:16.000000000 +1000
++++ ./include/linux/nfsd/nfsd.h	2004-05-18 11:18:14.000000000 +1000
+@@ -199,6 +199,7 @@ void		nfsd_lockd_shutdown(void);
+ #define	nfserr_grace		__constant_htonl(NFSERR_GRACE)
+ #define	nfserr_no_grace		__constant_htonl(NFSERR_NO_GRACE)
+ #define	nfserr_reclaim_bad	__constant_htonl(NFSERR_RECLAIM_BAD)
++#define	nfserr_badname		__constant_htonl(NFSERR_BADNAME)
+ 
+ /* error codes for internal use */
+ /* if a request fails due to kmalloc failure, it gets dropped.
 
 
 -------------------------------------------------------
