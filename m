@@ -1,24 +1,13 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: of rmtab and 'Invalid argument' and permission denied]
-Date: Fri, 14 Mar 2003 13:32:05 +1100
+From: "Juana Murphy" <tom@yahoo.com>
+Subject: Rates Hit 35 Year Low
+Date: Fri, 14 Mar 03 10:50:33 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15985.16165.514501.452356@notabene.cse.unsw.edu.au>
-References: <20030309213151.GK747@gallifrey>
-	<3E708B14.1060000@treblig.org>
+Message-ID: <8852$ec2$22333@ug49b.37.572ag>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/alternative;
+	boundary="7C56B5.7484"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18tf0O-0000OJ-00
-	for <nfs@lists.sourceforge.net>; Thu, 13 Mar 2003 18:33:08 -0800
-Received: From
-	notabene.cse.unsw.edu.au ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <gilbertd@treblig.org>) (for <nfs@lists.sourceforge.net>) By
-	tone With Smtp ; Fri, 14 Mar 2003 13:32:24 +1100
-To: "Dave Gilbert (Home)" <gilbertd@treblig.org>
-In-Reply-To: message from Dave Gilbert (Home) on Thursday March 13
+To: <netsaintplug-devel@lists.sourceforge.net>, <nfs@lists.sourceforge.net>, <nms-cgi-support@lists.sourceforge.net>, <ofset-members@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,49 +20,91 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thursday March 13, gilbertd@treblig.org wrote:
-> Neil Brown wrote thus:
-> 
->     that I wrote:
-> >>Sometimes the client will get a permission denied on attempting to mount
-> >>from the server even though it managed it a few hours earlier with no
-> >>change to config of the server.
-> >>
-> >>Restarting the nfs server gives a line of the form:
-> >>
-> >>clienthostname: Invalid argument
-> 
-> > What does your /etc/exports file look like?  Does it have both host
-> > names and IP addresses?  
-> > Do you export both a directory and an ancestor of that directory on
-> > the same filesystem?
-> > 
-> > Both of these can cause this sort of problem.
-> 
-> Thank you!  It was exporting both a directory and an ancestor.
-> Can we have something which screams/shouts/warns/rejects this
-> rather than failing in an evil and confusing way?
+This is a multi-part message in MIME format.
 
-It would be nice.... but I'm currently more interested in getting
-nfs-utils to support the new interfaces in 2.5...
+--7C56B5.7484
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-> 
-> (oh and add it to the NFS FAQ)
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1=
+">
+<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV><FONT face=3DArial><FONT face=3DArial><FONT 
+face=3DArial>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&=
+nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nb=
+sp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+A win-win for homeowners.</FONT></FONT></FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV align=3Dleft><FONT face=3DArial size=3D2><FONT face=3DArial size=3D2>=
+<FONT face=3DArial 
+size=3D3>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp=
+;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&=
+nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<FONT 
+size=3D4> Online insta-quote service.</FONT></FONT></DIV>
+<DIV><FONT face=3D"Comic Sans MS" size=3D3></FONT>&nbsp;</DIV>
+<DIV>&nbsp;</DIV>
+<DIV align=3Dleft><FONT 
+face=3DArial>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&=
+nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<FONT 
+face=3DVerdana><FONT size=3D3>&nbsp;<FONT color=3D#008000> </FONT></FONT><=
+/FONT><A 
+href=3D"http://www.e-bestfinancerate.com/mortgage/index.asp?Afft=3DQM112">=
+<FONT 
+face=3DVerdana color=3D#008000 size=3D3><B>Start here for a fast quote and=
+ 
+</B></FONT></A></FONT></DIV>
+<DIV align=3Dleft><FONT face=3DArial><FONT face=3Dverdana,arial,helvetica>=
+<B><FONT 
+color=3D#008000 
+size=3D3>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp=
+;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+</FONT><A 
+href=3D"http://www.e-bestfinancerate.com/mortgage/index.asp?Afft=3DQM112">=
+<FONT 
+color=3D#008000 size=3D3>monthly savings 
+calculation</FONT></A></B></FONT></FONT></DIV>
+<DIV align=3Dleft><FONT face=3DArial><FONT face=3Dverdana,arial,helvetica =
 
-Isn't it there??? Should be added then.
+color=3D#008000><B></B></FONT></FONT>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;&nbsp;<FONT 
+size=3D3>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<STRONG>The=
+re may 
+be no other way to so quickly and easily </STRONG></FONT></DIV>
+<DIV align=3Dleft><STRONG><FONT 
+size=3D3>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp=
+;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&=
+nbsp;&nbsp;&nbsp;&nbsp; 
+slash your monthly expenses!</FONT></STRONG></DIV>
+<DIV align=3Dleft><STRONG></STRONG>&nbsp;</DIV>
+<DIV align=3Dleft><STRONG></STRONG>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV>&nbsp;</DIV>
+<DIV><FONT face=3DArial><FONT size=3D1>please </FONT><A 
+href=3D"http://200.160.253.250/automatic/index.htm"><FONT size=3D1>Go here=
+ to stop 
+all future offers</FONT></A><FONT size=3D1>.</FONT></FONT></DIV>
+<DIV>&nbsp;</DIV></FONT></FONT>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>&lt; </BODY></HTML>
+--7C56B5.7484--
 
-> 
-> > What version of nfs-utils is in SuSE 8.1?
-> > 
-> >  showmount -v
-> 
-> showmount for nfs-utils 0.3.3
-
-Thats getting a bit old. 1.0 have been out for a while and fixed the
-problem I hinted related to host-names and IP addresses in the same
-/etc/exports file.
-
-NeilBrown
 
 
 -------------------------------------------------------
