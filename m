@@ -1,18 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 5 of 23] Probe the callback path upon a successful setclientid_confirm
+Subject: [PATCH kNFSd 2 of 23] Check the callback netid in gen_callback.
 Date: Fri, 17 Dec 2004 16:23:55 +1100
-Message-ID: <E1CfAap-0002dg-M9@notabene.cse.unsw.edu.au>
+Message-ID: <E1CfAap-0002dU-8W@notabene.cse.unsw.edu.au>
 References: <20041217162128.9968.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CfAbJ-00059G-H0
-	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 21:24:25 -0800
+	id 1CfAbL-00059N-PM
+	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 21:24:27 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CfAbI-00066k-U4
-	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 21:24:25 -0800
+	id 1CfAbI-00066Q-6F
+	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 21:24:27 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -28,50 +28,63 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
+since we only support tcp, don't save the netinfo.
+
 Signed-off-by: Andy Adamson <andros@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c |    6 +++++-
- 1 files changed, 5 insertions(+), 1 deletion(-)
+ ./fs/nfsd/nfs4state.c        |   21 ++++++++++++++-------
+ ./include/linux/nfsd/state.h |    1 -
+ 2 files changed, 14 insertions(+), 8 deletions(-)
 
 diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2004-12-15 11:49:34.000000000 +1100
-+++ ./fs/nfsd/nfs4state.c	2004-12-15 11:55:28.000000000 +1100
-@@ -724,6 +724,7 @@ nfsd4_setclientid_confirm(struct svc_rqs
- 			status = nfserr_clid_inuse;
- 		else {
- 			expire_client(conf);
-+			clp = unconf;
- 			move_to_confirmed(unconf, idhashval);
- 			status = nfs_ok;
- 		}
-@@ -741,6 +742,7 @@ nfsd4_setclientid_confirm(struct svc_rqs
- 		if (!cmp_creds(&conf->cl_cred,&rqstp->rq_cred)) {
- 			status = nfserr_clid_inuse;
- 		} else {
-+			clp = conf;
- 			status = nfs_ok;
- 		}
- 		goto out;
-@@ -755,6 +757,7 @@ nfsd4_setclientid_confirm(struct svc_rqs
- 			status = nfserr_clid_inuse;
- 		} else {
- 			status = nfs_ok;
-+			clp = unconf;
- 			move_to_confirmed(unconf, idhashval);
- 		}
- 		goto out;
-@@ -774,7 +777,8 @@ nfsd4_setclientid_confirm(struct svc_rqs
- 	status = nfserr_inval;
- 	goto out;
- out:
--	/* XXX if status == nfs_ok, probe callback path */
-+	if (!status)
-+		nfsd4_probe_callback(clp);
- 	nfs4_unlock_state();
- 	return status;
+--- ./fs/nfsd/nfs4state.c~current~	2004-12-15 11:44:49.000000000 +1100
++++ ./fs/nfsd/nfs4state.c	2004-12-15 11:46:29.000000000 +1100
+@@ -420,17 +420,24 @@ gen_callback(struct nfs4_client *clp, st
+ {
+ 	struct nfs4_callback *cb = &clp->cl_callback;
+ 
++	/* Currently, we only support tcp for the callback channel */
++	if ((se->se_callback_netid_len != 3) || memcmp((char *)se->se_callback_netid_val, "tcp", 3))
++		goto out_err;
++
+ 	if ( !(parse_ipv4(se->se_callback_addr_len, se->se_callback_addr_val,
+-		         &cb->cb_addr, &cb->cb_port))) {
+-		printk(KERN_INFO "NFSD: BAD callback address. client will not receive delegations\n");
+-		cb->cb_parsed = 0;
+-		return;
+-	}
+-	cb->cb_netid.len = se->se_callback_netid_len;
+-	cb->cb_netid.data = se->se_callback_netid_val;
++	                 &cb->cb_addr, &cb->cb_port)))
++		goto out_err;
+ 	cb->cb_prog = se->se_callback_prog;
+ 	cb->cb_ident = se->se_callback_ident;
+ 	cb->cb_parsed = 1;
++	return;
++out_err:
++	printk(KERN_INFO "NFSD: this client (clientid %08x/%08x) "
++		"will not receive delegations\n",
++		clp->cl_clientid.cl_boot, clp->cl_clientid.cl_id);
++
++	cb->cb_parsed = 0;
++	return;
  }
+ 
+ /*
+
+diff ./include/linux/nfsd/state.h~current~ ./include/linux/nfsd/state.h
+--- ./include/linux/nfsd/state.h~current~	2004-12-15 11:44:49.000000000 +1100
++++ ./include/linux/nfsd/state.h	2004-12-15 11:46:29.000000000 +1100
+@@ -75,7 +75,6 @@ struct nfs4_callback {
+ 	unsigned short          cb_port;
+ 	u32                     cb_prog;
+ 	u32                     cb_ident;
+-	struct xdr_netobj	cb_netid;
+ 	/* RPC client info */
+ 	u32			cb_set;     /* successful CB_NULL call */
+ 	struct rpc_program      cb_program;
 
 
 -------------------------------------------------------
