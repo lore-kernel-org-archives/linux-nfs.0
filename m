@@ -1,65 +1,76 @@
-From: Hirokazu Takahashi <taka@valinux.co.jp>
-Subject: Re: Re: [BUG] [PATCH] sunrpc may oops during initialization
- sokcets.
-Date: Tue, 19 Nov 2002 17:55:10 +0900 (JST)
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20021119.175510.78011106.taka@valinux.co.jp>
-References: <15832.11815.395760.763047@notabene.cse.unsw.edu.au>
-	<20021118.202219.90829917.taka@valinux.co.jp>
-	<15833.48409.629519.25149@notabene.cse.unsw.edu.au>
+From: Juan Gomez <juang@us.ibm.com>
+Subject: Re: [NFS] Re: Non-blocking lock requests during the grace period
+Date: Tue, 19 Nov 2002 10:06:11 -0800
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <OFB5AB2A91.F36007C8-ON87256C76.00632179@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sv1.valinux.co.jp ([202.221.173.100])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18E4JS-0004SB-00
-	for <nfs@lists.sourceforge.net>; Tue, 19 Nov 2002 01:04:54 -0800
-To: neilb@cse.unsw.edu.au
-In-Reply-To: <15833.48409.629519.25149@notabene.cse.unsw.edu.au>
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-
-Hello,
-
-> > I found another problem and fixed it.
-> > 
-> > My box has crashed in heavily loaded condition.
-> > I realized there were races during initializing sunrpc sockets.
-
-> Well caught...
-> There is however a bug in your patch :-(
-> 
-> > +	svsk->sk_flags = SK_BUSY;
-> This should be
-> 	set_bit(SK_BUSY, &svsk->sk_flags);
-
-Thanks for pointing my failure.
-
-> I had a look at the code and did some more tidying up and
-> re-organisation.
-> This is what I came up with.
-
-Your code looks much better.
-
-Thank you,
-Hirokazu Takahashi.
+Content-Type: text/plain; charset=US-ASCII
+Cc: kupfer@athyra.eng.sun.com, linux-kernel@vger.kernel.org,
+	nfs@lists.sourceforge.net, trond.myklebust@fys.uio.no
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
+To: mike.kupfer@sun.com
+List-ID: <nfs.lists.sourceforge.net>
 
 
 
--------------------------------------------------------
-This sf.net email is sponsored by: To learn the basics of securing 
-your web site with SSL, click here to get a FREE TRIAL of a Thawte 
-Server Certificate: http://www.gothawte.com/rd524.html
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+
+
+Mike,
+
+I agree with the F_GETLK part, as I pointed out to Trond earlier. However,
+I feel it is odd to block a client for about one minutre when it issues
+"non-blocking" lock requests. I have seen that Solaris code does so but
+still feels odd and it may conflict with what most programmers expect,
+though I see your point, perhaps if this was well documented in man pages
+there would not be a problem. In Linux this is not the case.
+
+
+Juan
+
+
+
+
+
+|---------+---------------------------->
+|         |           mike.kupfer@sun.c|
+|         |           om               |
+|         |           Sent by:         |
+|         |           kupfer@athyra.eng|
+|         |           .sun.com         |
+|         |                            |
+|         |                            |
+|         |           11/18/02 05:04 PM|
+|         |                            |
+|---------+---------------------------->
+  >-------------------------------------------------------------------------------------------------------------------------|
+  |                                                                                                                         |
+  |       To:       trond.myklebust@fys.uio.no                                                                              |
+  |       cc:       Juan Gomez/Almaden/IBM@IBMUS, linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net                   |
+  |       Subject:  Re: [NFS] Re: Non-blocking lock requests during the grace period                                        |
+  |                                                                                                                         |
+  |                                                                                                                         |
+  >-------------------------------------------------------------------------------------------------------------------------|
+
+
+
+>>>>> "Trond" == Trond Myklebust <trond.myklebust@fys.uio.no> writes:
+
+>>>>> " " == Juan Gomez <juang@us.ibm.com> writes:
+
+    >> (note that F_GETLK man page does not provide EAGAIN as a
+    >> possible error code).
+
+F_GETLK indicates a conflict by changing the arg struct to show the
+conflicting lock.
+
+As for the original topic, I would hesitate before changing the client
+locking code to return EAGAIN just because the server is in its grace
+period.  The "blocking" or "non-blocking" behavior is tied to what
+happens when there is already a lock that conflicts with the requested
+one.  When the server is in the grace period, it's unknown as to
+whether there is already a lock that conflicts with the requested
+one.
+
+Mike Kupfer                                            mike.kupfer@sun.com
+Solaris File Sharing                                   Speaking for myself,
+not for Sun.
