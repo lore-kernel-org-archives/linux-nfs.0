@@ -1,81 +1,65 @@
-From: Chris Caputo <ccaputo@alt.net>
-Subject: cache/mmap()/server coherency problems
-Date: Mon, 13 Jan 2003 20:56:55 -0800 (PST)
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0301132011250.12181-100000@nacho.alt.net>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: [PATCH] Fix RPC client warning in 2.5.58...
+Date: Tue, 14 Jan 2003 16:24:54 +0100
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <15908.11206.749377.863257@charged.uio.no>
+References: <15906.28604.625977.386301@charged.uio.no>
+	<Pine.LNX.4.44.0301131556030.1095-100000@penguin.transmeta.com>
+Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from nacho.alt.net ([207.14.113.18])
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18YJ8h-000809-00
-	for <nfs@lists.sourceforge.net>; Mon, 13 Jan 2003 20:57:27 -0800
-To: nfs@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
+	NFS maillist <nfs@lists.sourceforge.net>
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
+To: Linus Torvalds <torvalds@transmeta.com>
+In-Reply-To: <Pine.LNX.4.44.0301131556030.1095-100000@penguin.transmeta.com>
+List-ID: <nfs.lists.sourceforge.net>
 
-On 2.4.18 and 2.4.20 I am seeing the following problem:
+>>>>> " " == Linus Torvalds <torvalds@transmeta.com> writes:
 
- 1) client A process C opens and mmaps (PROT_READ, MAP_SHARED) a file on
-    an NFS server.  It keeps it mapped for the duration of the following
-    steps.
+     > Trond, with the latest stuff I'm getting infinite streams of
+     > 	/lockd/clntef03c480 RPC: Couldn't create pipefs entry
 
- 2) client B process D opens, adds data to the end of the same file, and 
-    then closes it.
+This appears to be due to the lockd process starting RPC clients as an
+unprivileged user, causing path_walk() to fail. The following patch
+should fix it.
 
- 3) client B process E runs md5sum on the file.
+Cheers,
+  Trond
 
- 4) client A process F runs md5sum on the file too.  But the result is 
-    different than the result of the md5sum in step 3.
-
-Under kernel 2.2.21 this problem did not happen.
-
-An analysis of the file from client A shows that there are zeros in the
-file (where there should be new text) between where process C originally
-opened and mmaped the file and the end of a page boundary, ala:
-
-  00aa3d0 3838 3631 0934 4341 5346 333a 312f 312f
-  00aa3e0 3437 3737 6635 3162 6433 3d32 3639 2f36
-  00aa3f0 0a31 0000 0000 0000 0000 0000 0000 0000
-  00aa400 0000 0000 0000 0000 0000 0000 0000 0000
-  *
-  00ab000 6134 2e78 6f63 3e6d 3c09 3631 7473 7631
-  00ab010 3438 3776 6371 3870 6462 6a76 3066 686c
-  00ab020 7061 3034 6738 6d37 3033 6661 3440 7861
-  00ab030 632e 6d6f 203e 303c 6264 3132 3834 6465
-
-Now, if the mmap from step 1 is munmaped and the file is closed the file
-will still be corrupted.  I assume this is because the file is still in
-the file cache and it is not accurate there too.  Once it has been purged
-from the file cache, when I then run md5sum, the checksum is correct.
-
-Is this expected behavior?
-
-I was thinking that when the file is opened, the lookup NFS call will
-result in new file size info being shared with the VFS, and the VFS would
-know that the data in any page cached, beyond its previously known file
-length, is invalid and that the whole page would need to be reloaded next
-time the file is accessed.  This all seems to happen, except when someone
-has mmaped the file...
-
-Chris
-
-
-
--------------------------------------------------------
-This SF.NET email is sponsored by: FREE  SSL Guide from Thawte
-are you planning your Web Server Security? Click here to get a FREE
-Thawte SSL guide and find the answers to all your  SSL security issues.
-http://ads.sourceforge.net/cgi-bin/redirect.pl?thaw0026en
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+diff -u --recursive --new-file linux-2.5.58/net/sunrpc/rpc_pipe.c linux-2.5.58-00-fix_warn/net/sunrpc/rpc_pipe.c
+--- linux-2.5.58/net/sunrpc/rpc_pipe.c	2003-01-12 22:39:49.000000000 +0100
++++ linux-2.5.58-00-fix_warn/net/sunrpc/rpc_pipe.c	2003-01-14 16:05:21.000000000 +0100
+@@ -342,19 +342,19 @@
+ static struct rpc_filelist files[] = {
+ 	[RPCAUTH_lockd] = {
+ 		.name = "lockd",
+-		.mode = S_IFDIR | S_IRUSR | S_IXUSR,
++		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
+ 	},
+ 	[RPCAUTH_nfs] = {
+ 		.name = "nfs",
+-		.mode = S_IFDIR | S_IRUSR | S_IXUSR,
++		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
+ 	},
+ 	[RPCAUTH_portmap] = {
+ 		.name = "portmap",
+-		.mode = S_IFDIR | S_IRUSR | S_IXUSR,
++		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
+ 	},
+ 	[RPCAUTH_statd] = {
+ 		.name = "statd",
+-		.mode = S_IFDIR | S_IRUSR | S_IXUSR,
++		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
+ 	},
+ };
+ 
+@@ -425,7 +425,7 @@
+ 		return -ENODEV;
+ 	}
+ 	nd->mnt = mntget(rpc_mount);
+-	nd->dentry = dget(rpc_mount->mnt_sb->s_root);
++	nd->dentry = dget(rpc_mount->mnt_root);
+ 	nd->last_type = LAST_ROOT;
+ 	nd->flags = flags;
+ 
