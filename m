@@ -1,30 +1,23 @@
-From: Jeffrey Layton <jtlayton@poochiereds.net>
+From: Greg Banks <gnb@sgi.com>
 Subject: Re: Poor NFS performance, kernel 2.6.6.
-Date: Wed, 02 Jun 2004 08:33:53 -0400
+Date: Wed, 2 Jun 2004 23:00:54 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1086179633.3325.0.camel@tesla.mmt.bellhowell.com>
+Message-ID: <20040602130054.GP323@sgi.com>
+References: <1086179633.3325.0.camel@tesla.mmt.bellhowell.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BVUwO-0007nI-FM
-	for nfs@lists.sourceforge.net; Wed, 02 Jun 2004 05:33:56 -0700
-Received: from rdu26-93-067.nc.rr.com ([66.26.93.67] helo=salusa.poochiereds.net)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BVUwO-0008Kc-3N
-	for nfs@lists.sourceforge.net; Wed, 02 Jun 2004 05:33:56 -0700
-Received: from localhost (localhost [127.0.0.1])
-	by salusa.poochiereds.net (Postfix) with ESMTP id 996C8CAE0
-	for <nfs@lists.sourceforge.net>; Wed,  2 Jun 2004 08:33:45 -0400 (EDT)
-Received: from salusa.poochiereds.net ([127.0.0.1])
-	by localhost (salusa [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id 03814-09 for <nfs@lists.sourceforge.net>;
-	Wed, 2 Jun 2004 08:33:45 -0400 (EDT)
-Received: from localhost (salusa.poochiereds.net [192.168.1.2])
-	by salusa.poochiereds.net (Postfix) with ESMTP id 55BE471F1
-	for <nfs@lists.sourceforge.net>; Wed,  2 Jun 2004 08:33:45 -0400 (EDT)
-To: nfs@lists.sourceforge.net
+	id 1BVVMf-0005PR-0N
+	for nfs@lists.sourceforge.net; Wed, 02 Jun 2004 06:01:05 -0700
+Received: from mtvcafw.sgi.com ([192.48.171.6] helo=omx2.sgi.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1BVVMe-00035K-Gi
+	for nfs@lists.sourceforge.net; Wed, 02 Jun 2004 06:01:04 -0700
+To: Jeffrey Layton <jtlayton@poochiereds.net>
+In-Reply-To: <1086179633.3325.0.camel@tesla.mmt.bellhowell.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -37,48 +30,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I haven't been following this thread closely, but figured I'd chime in
-with my own experience with this. Here's a rather unscientific test,
-dd'ing to a file on an NFS-mounted filesystem. Mount options are:
+On Wed, Jun 02, 2004 at 08:33:53AM -0400, Jeffrey Layton wrote:
+> The machines are different hardware, but local write performance is
+> pretty comparable (in fact the 2.6 box is a faster machine, and is
+> currently less utilized than the 2.4 kernel machine). Both are using
+> reiserfs as the underlying filesystem.
 
-udp,soft,intr,nfsvers=3
+What is the speed on each server for a local dd from /dev/zero to disk?
+What actual kernel versions are you running?
 
-(I'm using UDP as I'm trying to set up a HA-NFS server, and the clients
-seem to recover much faster when using UDP as a transport).
+> Write performance in this cursory test was 10x worse!
 
-With a 2.4 kernel server:
+This completely fails to correlate with my experience.  I'm using XFS
+on 2.6.4 and I see single thread streaming write performance increase
+by about 25% going from 2.4 to 2.6.  Other metrics show improvements
+as good or better, except the scalability of UDP reads tops out lower.
 
-% time dd if=/dev/zero of=./testfile bs=100M count=1
-1+0 records in
-1+0 records out
-104857600 bytes transferred in 11.806235 seconds (8881544 bytes/sec)
-dd if=/dev/zero of=./testfile bs=100M count=1  0.00s user 0.28s system
-2% cpu 12.147 total
-
-With a 2.6 kernel server:
-
-% time dd if=/dev/zero of=./testfile bs=100M count=1
-1+0 records in
-1+0 records out
-104857600 bytes transferred in 66.997572 seconds (1565096 bytes/sec)
-dd if=/dev/zero of=./testfile bs=100M count=1  0.00s user 0.29s system
-0% cpu 1:07.06 total
-
-
-The machines are different hardware, but local write performance is
-pretty comparable (in fact the 2.6 box is a faster machine, and is
-currently less utilized than the 2.4 kernel machine). Both are using
-reiserfs as the underlying filesystem.
-
-Write performance in this cursory test was 10x worse! Clearly, there's
-some sort of problem with NFS on 2.6. I'll be happy to send in what info
-I can. My 2.4 machine is currently a production box, but I can run an
-instrumented kernel, etc. on the 2.6 box in the near future if anyone
-here can guide me on what I can do to help.
-
--- Jeff
-
-
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
 
 -------------------------------------------------------
