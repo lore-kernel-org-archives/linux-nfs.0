@@ -1,25 +1,22 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: nfs problem: nfs could be mounted and viewed but errors
- on file opening
-Date: Fri, 10 Sep 2004 07:22:36 -0400
+From: "Lever, Charles" <cel@netapp.com>
+Subject: RE: RHEL3 Update 1 and NetApp NFS freeze issues
+Date: Fri, 10 Sep 2004 07:28:33 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <41418E7C.80902@RedHat.com>
-References: <1094795240.3169.17.camel@roach.aldevinco.com>
+Message-ID: <482A3FA0050D21419C269D13989C611302B07E0B@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C5jWv-0008Vu-Ib
-	for nfs@lists.sourceforge.net; Fri, 10 Sep 2004 04:25:25 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.34)
-	id 1C5jWk-0003Wk-UV
-	for nfs@lists.sourceforge.net; Fri, 10 Sep 2004 04:25:20 -0700
-To: ronald rojas <alsonsdev_mis@dctech.com.ph>
-In-Reply-To: <1094795240.3169.17.camel@roach.aldevinco.com>
+	id 1C5mQK-0006Kn-Dc
+	for nfs@lists.sourceforge.net; Fri, 10 Sep 2004 07:30:48 -0700
+Received: from mx01.netapp.com ([198.95.226.53])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1C5mQE-0004f8-EF
+	for nfs@lists.sourceforge.net; Fri, 10 Sep 2004 07:30:43 -0700
+To: "John Nitis" <jnitis@ati.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,34 +29,46 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-ronald rojas wrote:
+> Previous to switching to NFS via TCP the "retrans" counter=20
+> shown via nfsstat was an extremely high percentage of total=20
+> rpc calls.
 
->i'm having problems opening my nfs mounted files on the client machine.
->Mounting the nfs share on the client goes ok. the user and group
->permissions are ok. i could even ls -l and cd into the mounted directory
->and subdirectories but when i open a file (cat somefile.txt) i get a
->segmentation fault. after that, umounting the nfs share seems to hang.
->
->i noticed this problem when i upgraded the kernel on the client machine
->from 2.4 to 2.6. (is there any relation?)
->
->server config:				client config:
->nfs-utils version 1.0.1			nfs-utils version 1.0.1
->kernel ver. 2.4.18-14			kernel ver. 2.6.8
->redhat 8.0 distro			fedora core 1.0
->  
->
-I think you meant Fedora Core 2 since Fedora Core 1 is  2.4 based.
-And also think my meant to say nfs-utils version 1.0.6 not 1.0.1
+so now that you are mounting using TCP, the retrans counter remains
+flat?
 
-This being the case, please upgrade your nfs-utils to latest
-version on rawhide (1.0.6-32 I believe) since the nfs-utils right out
-of the box is a bit challenged when it comes to starting things
-up in the correct order. Plus make sure rpc.imapd is running on the client.
+with UDP, this could be either: the network environment is causing
+packet loss, or the servers are often responding more slowly than the
+estimated RPC RTT (which is typical for loaded filers).
 
-SteveD.
+both cases are helped by switching to TCP.  i assume that's why you
+switched.  can you describe your network environment to us so we get a
+fuller picture?  link speeds, duplex setting, switch or router models,
+etc.
 
+> In this case the machines which crash=20
+> are Opteron boxes with Broadcom NICs using the tg3 driver. =20
+> We have RHEL3 Intel Xeon machines which don't exhibit this=20
+> problem as well as hundreds of RH7.2/7.3 clients which don't=20
+> exhibit the problem.
 
+if only the Opteron/tg3 systems exhibit this problem, then i would
+suggest hunting for a problem with the tg3 driver or for compatibility
+issues between your NICs and your switch.  are the Opteron systems SMP?
+
+i second steve's recommendation to enable SysRq and capture a thread
+traceback.  there's already a line in /etc/sysctl.conf that you can use
+to enable it automatically after every reboot.
+
+  # Controls the System Request debugging functionality of the kernel
+ =20
+  kernel.sysrq =3D 1
+
+is what mine looks like.
+
+> I've searched the list and seen much talk of NFS patches and=20
+> whatnot, would any of these be helpful to us?
+
+so far it sounds like a networking problem, not an NFS problem.
 
 
 -------------------------------------------------------
