@@ -1,20 +1,27 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: [RFC] nfsstat v4 layout
-Date: Wed, 16 Mar 2005 10:05:49 -0800
-Message-ID: <482A3FA0050D21419C269D13989C611308539893@lavender-fe.eng.netapp.com>
+From: "G. Allen Morris III" <gam3-nfs@gam3.net>
+Subject: Re: [RFC] nfsstat v4 layout
+Date: Wed, 16 Mar 2005 17:33:27 -0500
+Message-ID: <20050316223327.GA7137@gam3.net>
+References: <20050316173759.GA4360@gam3.net>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <nfs@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Content-Type: text/plain; charset=us-ascii
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DBcu8-0005N3-AP
-	for nfs@lists.sourceforge.net; Wed, 16 Mar 2005 10:06:00 -0800
-Received: from mx2.netapp.com ([216.240.18.37])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DBcu3-0007yv-Lo
-	for nfs@lists.sourceforge.net; Wed, 16 Mar 2005 10:06:00 -0800
-To: "G. Allen Morris III" <gam3-nfs@gam3.net>
+	id 1DBh5G-0002zn-9n
+	for nfs@lists.sourceforge.net; Wed, 16 Mar 2005 14:33:46 -0800
+Received: from mta13.mail.adelphia.net ([68.168.78.44] helo=mta13.adelphia.net)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1DBh5F-0004gC-NU
+	for nfs@lists.sourceforge.net; Wed, 16 Mar 2005 14:33:46 -0800
+Received: from harpo.ny.gam3.net ([68.235.28.141]) by mta13.adelphia.net
+          (InterMail vM.6.01.04.01 201-2131-118-101-20041129) with ESMTP
+          id <20050316223332.FBDI4618.mta13.adelphia.net@harpo.ny.gam3.net>
+          for <nfs@lists.sourceforge.net>; Wed, 16 Mar 2005 17:33:32 -0500
+Received: from gam3 by harpo.ny.gam3.net with local (Exim 3.36 #1 (Debian))
+	id 1DBh4x-0001u8-00
+	for <nfs@lists.sourceforge.net>; Wed, 16 Mar 2005 17:33:27 -0500
+To: nfs@lists.sourceforge.net
+In-Reply-To: <20050316173759.GA4360@gam3.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,66 +35,101 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-mr morris-
-
-i think open_cnfrm or open_conf makes sense as open_confirm.  and so on
-for the others:
-open_dngrd; setclntid doesn't need to be spelled out, for instance.
-
-also, i would love it if the count fields were wider (NFSv2 and v3 too).
-
-> -----Original Message-----
-> From: G. Allen Morris III [mailto:gam3-nfs@gam3.net]=20
-> Sent: Wednesday, March 16, 2005 12:38 PM
-> To: nfs@lists.sourceforge.net
-> Subject: [NFS] [RFC] nfsstat v4 layout
->=20
->=20
->=20
+On Wed, Mar 16, 2005 at 12:37:59PM -0500, G. Allen Morris III wrote:
+> 
 > I made a patch to nfsstat to display v4 stats.
 > I am having a problem with some of the names being so
-> long setclientid_confirm for instance. =20
->=20
+> long setclientid_confirm for instance.  
+> 
 > Is the format below too confusing?  Anyone have a better idea?
->=20
-> Client nfs v4:
-> null        read        write       commit      open       =20
-> *_confirm  =20
-> 0       0%  0       0%  0       0%  0       0%  0       0%  0=20
->       0% =20
-> *_noattr    *_downgrade close       setattr     fsinfo     =20
-> renew      =20
-> 0       0%  0       0%  0       0%  0       0%  0       0%  0=20
->       0% =20
-> setclientid *_confirm   lock        lockt       locku      =20
-> access     =20
-> 0       0%  0       0%  0       0%  0       0%  0       0%  0=20
->       0% =20
-> getattr     lookup      lookup_root remove      rename     =20
-> link       =20
-> 0       0%  0       0%  0       0%  0       0%  0       0%  0=20
->       0% =20
-> symlink     create      pathconf    statfs      readlink   =20
-> readdir    =20
-> 0       0%  0       0%  0       0%  0       0%  0       0%  0=20
->       0% =20
-> server_caps delegreturn=20
-> 0       0%  0       0% =20
->=20
->=20
-> Allen Morris <gam3@gam3.net>
->=20
->=20
-> -------------------------------------------------------
-> SF email is sponsored by - The IT Product Guide
-> Read honest & candid reviews on hundreds of IT Products from=20
-> real users.
-> Discover which products truly live up to the hype. Start reading now.
-> http://ads.osdn.com/?ad_id=3D6595&alloc_id=3D14396&op=3Dclick
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
->=20
+> 
+
+I increased the count to `-8d' and the rows are now 76 charaters
+wide.  To make them wider I would think about reducing to 5 columns
+or making it dynamic (like ls).
+
+I also changed the v4 names to abbreviations.
+
+Allen
+
+--
+Server packet stats:
+packets    udp        tcp        tcpconn
+0          3727       0          0       
+
+Server rpc stats:
+calls      badcalls   badauth    badclnt    xdrcall
+3730       0          0          0          0       
+
+Server reply cache:
+hits       misses     nocache
+0          0          3730    
+
+Server file handle cache:
+lookup     anon       ncachedir ncachedir  stale
+0          0          0          0          1242    
+Server nfs v2:
+null         getattr      setattr      root         lookup       readlink     
+0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
+read         wrcache      write        create       remove       rename       
+0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
+link         symlink      mkdir        rmdir        readdir      fsstat       
+0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
+
+Server nfs v3:
+null         getattr      setattr      lookup       access       readlink     
+1         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
+read         write        create       mkdir        symlink      mknod        
+0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
+remove       rmdir        rename       link         readdir      readdirplus  
+0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
+fsstat       fsinfo       pathconf     commit       
+3729     99% 0         0% 0         0% 0         0% 
+
+Server nfs v4:
+null         compound     
+0         0% 0         0% 
+
+Client packet stats:
+packets    udp        tcp        tcpconn
+0          0          0          0       
+
+Client rpc stats:
+calls      retrans    authrefrsh
+2          0          0       
+
+Client nfs v2:
+null         getattr      setattr      root         lookup       readlink     
+0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
+read         wrcache      write        create       remove       rename       
+0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
+link         symlink      mkdir        rmdir        readdir      fsstat       
+0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
+
+Client nfs v3:
+null         getattr      setattr      lookup       access       readlink     
+0         0% 1        50% 0         0% 0         0% 0         0% 0         0% 
+read         write        create       mkdir        symlink      mknod        
+0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
+remove       rmdir        rename       link         readdir      readdirplus  
+0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
+fsstat       fsinfo       pathconf     commit       
+0         0% 1        50% 0         0% 0         0% 
+
+Client nfs v4:
+null         read         write        commit       open         open_conf    
+0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
+open_noat    open_dgrd    close        setattr      fsinfo       renew        
+0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
+setclntid    confirm      lock         lockt        locku        access       
+0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
+getattr      lookup       lookup_root  remove       rename       link         
+0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
+symlink      create       pathconf     statfs       readlink     readdir      
+0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
+server_caps  delegreturn  
+0         0% 0         0% 
+
 
 
 -------------------------------------------------------
