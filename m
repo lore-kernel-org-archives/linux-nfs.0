@@ -1,18 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 2 of 6 - Fix race in svcsock.c
-Date: Wed, 12 Mar 2003 16:35:28 +1100
+Subject: [PATCH] kNFSd - 6 of 6 - Introduce CROSSMNT flag for knfsd
+Date: Wed, 12 Mar 2003 16:35:29 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E18sytk-0005Qu-00@notabene.cse.unsw.edu.au>
+Message-ID: <E18sytl-0005RD-00@notabene.cse.unsw.edu.au>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18sytt-0000Dh-00
-	for <nfs@lists.sourceforge.net>; Tue, 11 Mar 2003 21:35:37 -0800
+	id 18sytw-0000Dw-00
+	for <nfs@lists.sourceforge.net>; Tue, 11 Mar 2003 21:35:40 -0800
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
 	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>) By
-	tone With Smtp ; Wed, 12 Mar 2003 16:35:28 +1100
+	tone With Smtp ; Wed, 12 Mar 2003 16:35:30 +1100
 To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -29,41 +29,99 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 ### Comments for ChangeSet
 
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Now that we have working up-calls to userspace,
+CROSSMNT makes sense.
+If CROSSMNT is set for an export, and we too a 
+LOOKUP which crosses a mountpoint, we initiate an
+upcall to find out if and how that filesystem
+is exported.
 
-
-knfsd needs to disable soft interrupts when calling
-csum_partial_copy_to_xdr().
-
-At the moment there's a nasty conflict between the RPC server and
-client. The problem arises when you get to xdr_partial_copy_from_skb()
-(and the kmap_atomic()); the RPC client can end up calling the same
-function from a ->data_ready() soft interrupt, and corrupt any data
-the knfsd process may have copied.
 
  ----------- Diffstat output ------------
- ./net/sunrpc/svcsock.c |    3 +++
- 1 files changed, 3 insertions(+)
+ ./fs/nfsd/export.c            |    9 ++++++++-
+ ./fs/nfsd/vfs.c               |   18 +++++++++++++++++-
+ ./include/linux/nfsd/export.h |    3 ++-
+ 3 files changed, 27 insertions(+), 3 deletions(-)
 
-diff ./net/sunrpc/svcsock.c~current~ ./net/sunrpc/svcsock.c
---- ./net/sunrpc/svcsock.c~current~	2003-03-12 15:02:05.000000000 +1100
-+++ ./net/sunrpc/svcsock.c	2003-03-12 15:02:05.000000000 +1100
-@@ -577,12 +577,15 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
+diff ./fs/nfsd/export.c~current~ ./fs/nfsd/export.c
+--- ./fs/nfsd/export.c~current~	2003-03-12 15:07:05.000000000 +1100
++++ ./fs/nfsd/export.c	2003-03-12 15:07:11.000000000 +1100
+@@ -475,8 +475,14 @@ exp_get_by_name(svc_client *clp, struct 
  
- 	if (skb_is_nonlinear(skb)) {
- 		/* we have to copy */
-+		local_bh_disable();
- 		if (csum_partial_copy_to_xdr(&rqstp->rq_arg, skb)) {
-+			local_bh_enable();
- 			/* checksum error */
- 			skb_free_datagram(svsk->sk_sk, skb);
- 			svc_sock_received(svsk);
- 			return 0;
- 		}
-+		local_bh_enable();
- 		skb_free_datagram(svsk->sk_sk, skb); 
- 	} else {
- 		/* we can use it in-place */
+ 	exp = svc_export_lookup(&key, 0);
+ 	if (exp != NULL) 
+-		if (cache_check(&svc_export_cache, &exp->h, reqp))
++		switch (cache_check(&svc_export_cache, &exp->h, reqp)) {
++		case 0: break;
++		case -EAGAIN:
++			exp = ERR_PTR(-EAGAIN);
++			break;
++		default:
+ 			exp = NULL;
++		}
+ 
+ 	return exp;
+ }
+@@ -918,6 +924,7 @@ struct flags {
+ 	{ NFSEXP_KERBEROS, { "kerberos", ""}},
+ 	{ NFSEXP_SUNSECURE, { "sunsecure", ""}},
+ 	{ NFSEXP_NOHIDE, {"nohide", ""}},
++	{ NFSEXP_CROSSMNT, {"crossmnt", ""}},
+ 	{ NFSEXP_NOSUBTREECHECK, {"no_subtree_check", ""}},
+ 	{ NFSEXP_NOAUTHNLM, {"insecure_locks", ""}},
+ #ifdef MSNFS
+
+diff ./fs/nfsd/vfs.c~current~ ./fs/nfsd/vfs.c
+--- ./fs/nfsd/vfs.c~current~	2003-03-12 15:07:05.000000000 +1100
++++ ./fs/nfsd/vfs.c	2003-03-12 15:07:11.000000000 +1100
+@@ -133,6 +133,12 @@ nfsd_lookup(struct svc_rqst *rqstp, stru
+ 
+ 			exp2 = exp_parent(exp->ex_client, mnt, dentry,
+ 					  &rqstp->rq_chandle);
++			if (IS_ERR(exp2)) {
++				err = PTR_ERR(exp2);
++				dput(dentry);
++				mntput(mnt);
++				goto out;
++			}
+ 			if (!exp2) {
+ 				dput(dentry);
+ 				dentry = dget(dparent);
+@@ -157,9 +163,19 @@ nfsd_lookup(struct svc_rqst *rqstp, stru
+ 			struct dentry *mounts = dget(dentry);
+ 			while (follow_down(&mnt,&mounts)&&d_mountpoint(mounts))
+ 				;
++
+ 			exp2 = exp_get_by_name(exp->ex_client, mnt, 
+ 					       mounts, &rqstp->rq_chandle);
+-			if (exp2 && EX_NOHIDE(exp2)) {
++			if (IS_ERR(exp2)) {
++				err = PTR_ERR(exp2);
++				dput(mounts);
++				dput(dentry);
++				mntput(mnt);
++				goto out;
++			}
++			if (exp2 &&
++			    ((exp->ex_flags & NFSEXP_CROSSMNT)
++			     || EX_NOHIDE(exp2))) {
+ 				/* successfully crossed mount point */
+ 				exp_put(exp);
+ 				exp = exp2;
+
+diff ./include/linux/nfsd/export.h~current~ ./include/linux/nfsd/export.h
+--- ./include/linux/nfsd/export.h~current~	2003-03-12 15:07:05.000000000 +1100
++++ ./include/linux/nfsd/export.h	2003-03-12 15:07:11.000000000 +1100
+@@ -40,7 +40,8 @@
+ #define	NFSEXP_NOAUTHNLM	0x0800		/* Don't authenticate NLM requests - just trust */
+ #define NFSEXP_MSNFS		0x1000	/* do silly things that MS clients expect */
+ #define NFSEXP_FSID		0x2000
+-#define NFSEXP_ALLFLAGS		0x3FFF
++#define	NFSEXP_CROSSMNT		0x4000
++#define NFSEXP_ALLFLAGS		0x7FFF
+ 
+ 
+ #ifdef __KERNEL__
 
 
 -------------------------------------------------------
