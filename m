@@ -1,24 +1,18 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: exportfs -u hangs on SMP
-Date: Tue, 29 Jul 2003 12:38:36 +1000
+From: James Pearson <james-p@moving-picture.com>
+Subject: Re: ANNOUNCE: nfs-utils 1.0.4
+Date: Tue, 29 Jul 2003 15:16:06 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16165.56876.172730.268520@gargle.gargle.HOWL>
-References: <20030720103649.A20763@ikr.uni-stuttgart.de>
-	<16155.8767.278825.712370@gargle.gargle.HOWL>
-	<200307261255.29823.gemkow@ikr.uni-stuttgart.de>
+Message-ID: <3F2681A6.7E33A7E6@moving-picture.com>
+References: <1030714170001.24267@cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19hKO5-0003TI-00
-	for <nfs@lists.sourceforge.net>; Mon, 28 Jul 2003 19:38:53 -0700
-Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <gemkow@ikr.uni-stuttgart.de>) (for <nfs@lists.sourceforge.net>)
-	By note With Smtp ; Tue, 29 Jul 2003 12:38:36 +1000
-To: Ulrich Gemkow <gemkow@ikr.uni-stuttgart.de>
-In-Reply-To: message from Ulrich Gemkow on Saturday July 26
+Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19hVHV-0001PU-00
+	for <nfs@lists.sourceforge.net>; Tue, 29 Jul 2003 07:16:49 -0700
+To: "Neil F. Brown" <neilb@cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,16 +25,63 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Saturday July 26, gemkow@ikr.uni-stuttgart.de wrote:
-> Hello Neil,
+"Neil F. Brown" wrote:
 > 
-> I tested the patch and our server survived for almost one week now - much
-> longer than without the patch. So it seems the patch solves the problem
-> and would be helpful in mainline too.
+> 3/ In 2.4 and earlier kernels, the nfs server needed to know about any
+>  client that expected to be able to access files via NFS.  This
+>  information would be given to the kernel by "mountd" when the client
+>  mounted the filesystem, or by "exportfs" at system startup.  exportfs
+>  would take information about active clients from /var/lib/nfs/rmtab.
+> 
+>  This approach is quite fragile as it depends on rmtab being correct
+>  which is not always easy, particularly when trying to implement
+>  fail-over.  Even when the system is working well, rmtab suffers from
+>  getting lots of old entries that never get removed.
+> 
+>  With 2.6 we have the option of having the kernel tell mountd when it
+>  gets a request from an unknown host, and mountd can give appropriate
+>  export information to the kernel.  This removes the dependancy on
+>  rmtab and means that the kernel only needs to know about currently
+>  active clients.
+> 
+>  To enable this new functionality, you need to:
+>    mount -t nfsd nfsd /proc/fs/nfs
+> 
+>  before running exportfs or mountd.
+> 
+>  If you are using 2.6.0-testX and exporting files with NFS *please*
+>  test this out and let me know of any problems.
 
-Thanks for letting me know.  The patch will be in 2.4.22
+I've just been trying out 2.6.0-test2 with nfs-utils 1.0.5 and I've come
+across a couple of problems:
 
-NeilBrown
+When using 'mount -t nfsd nfsd /proc/fs/nfs' on the server, if I now run
+'showmount -d server', nothing is returned. If I don't use the 'mount -t
+nfsd ...', showmount works as expected.
+
+
+When starting /etc/init.d/nfs, I get a pause between 'Starting NFS
+daemon' and 'Starting NFS mountd' - this turns out to be rpcinfo timing
+out i.e.
+
+rpcinfo: RPC: Timed out
+program 100003 version 3 is not available
+
+i.e. from '/usr/sbin/rpcinfo -u localhost nfs 3'
+
+and hence rpc.mountd starts with '--no-nfs-version 3'
+
+Once nfsd is up and running, rpcinfo returns the expected result.
+
+Forcing 'MOUNTD_NFS_V3=yes' works fine, and clients can mount using
+NFSv3
+
+
+One thing I would be interested in knowing - how does the server now
+'know' about clients that have mounted file systems across server
+reboots now that /var/lib/nfs/rmtab is no longer used?
+
+James Pearson
 
 
 -------------------------------------------------------
