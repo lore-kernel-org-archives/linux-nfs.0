@@ -1,23 +1,19 @@
-From: Jolly Frederic <frederic.jolly@ext.bull.net>
-Subject: new admin tool: exportfsvia
-Date: Tue, 8 Jun 2004 17:58:44 +0200
+From: Phy Prabab <phyprabab@yahoo.com>
+Subject: mtab and procs not in sync?
+Date: Tue, 8 Jun 2004 11:20:36 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200406081758.44205.frederic.jolly@ext.bull.net>
+Message-ID: <20040608182036.78593.qmail@web51805.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BXiz0-00078G-Qq
-	for nfs@lists.sourceforge.net; Tue, 08 Jun 2004 08:57:50 -0700
-Received: from ecbull20.frec.bull.fr ([129.183.4.3])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1BXiyz-00062c-06
-	for nfs@lists.sourceforge.net; Tue, 08 Jun 2004 08:57:49 -0700
-Received: from ecn002.frec.bull.fr (ecn002.frec.bull.fr [129.183.4.6])
-	by ecbull20.frec.bull.fr (8.9.2/8.9.1) with ESMTP id RAA15574
-	for <nfs@lists.sourceforge.net>; Tue, 8 Jun 2004 17:58:49 +0200
+	id 1BXlDK-0001pU-8s
+	for nfs@lists.sourceforge.net; Tue, 08 Jun 2004 11:20:46 -0700
+Received: from web51805.mail.yahoo.com ([206.190.38.236])
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.30)
+	id 1BXlDJ-0005M9-Vo
+	for nfs@lists.sourceforge.net; Tue, 08 Jun 2004 11:20:46 -0700
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,23 +29,26 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 Hello,
 
-we maintain on the Bull NFSv4 web page ( http://nfsv4.bullopensource.org/ )=
- a=20
-list of patches and code sources produced.
+Have run into a situation where mtab does not match
+/proc/mounts in that mtab has numerous entries that
+have expired off and removed, yet does not show that
+it has been removed from mtab.  Is this known and is
+there a fix?
 
-"exportfsvia" is command line tool for NFSv4: it is a wrapper to "exportfs"=
-=20
-which makes easier the export of a directory by masking the "mount --bind"=
-=20
-(it emulates a NFSv3 behaviour.)
+Kernel 2.4.21 and 23
+nfs-utils 1.06
+automount 4.1.2
 
-Downloads are on this page:
-http://nfsv4.bullopensource.org/patches/admin_code.html#exportfsvia
+Thanks!
+Phy
 
-Comments and bug reports are welcome.
 
-Regards,
-=46r=E9d=E9ric.
+	
+		
+__________________________________
+Do you Yahoo!?
+Friends.  Fun.  Try the all-new Yahoo! Messenger.
+http://messenger.yahoo.com/ 
 
 
 -------------------------------------------------------
