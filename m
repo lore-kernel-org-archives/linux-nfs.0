@@ -1,27 +1,25 @@
-From: Erik Walthinsen <omega@pdxcolo.net>
+From: Greg Banks <gnb@melbourne.sgi.com>
 Subject: Re: NAS server avalanche overload
-Date: Wed, 03 Mar 2004 21:31:53 -0800
+Date: Thu, 04 Mar 2004 16:47:16 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1078378313.853.3.camel@localhost>
+Message-ID: <4046C2E4.C33EAEB5@melbourne.sgi.com>
 References: <1078302718.825.67.camel@localhost>
-	 <1078351343.821.28.camel@localhost> <20040304000438.GA25910@sgi.com>
-	 <1078359638.813.71.camel@localhost> <404688FE.69592A2A@melbourne.sgi.com>
-	 <Pine.LNX.4.58.0403041234150.7374@wombat.indigo.net.au>
+		 <1078351343.821.28.camel@localhost> <20040304000438.GA25910@sgi.com>
+		 <1078359638.813.71.camel@localhost> <404688FE.69592A2A@melbourne.sgi.com>
+		 <Pine.LNX.4.58.0403041234150.7374@wombat.indigo.net.au> <1078378313.853.3.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: Ian Kent <raven@themaw.net>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AylYQ-0007Mb-IZ
-	for nfs@lists.sourceforge.net; Wed, 03 Mar 2004 21:37:54 -0800
-Received: from mail.pdxcolo.net ([64.146.134.17] helo=palantir.pdxcolo.net)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.30)
-	id 1Ayl9J-0007TR-I5
-	for nfs@lists.sourceforge.net; Wed, 03 Mar 2004 21:11:57 -0800
-To: Ian Kent <raven@themaw.net>
-In-Reply-To: <Pine.LNX.4.58.0403041234150.7374@wombat.indigo.net.au>
+	id 1AylnT-0001JI-NM
+	for nfs@lists.sourceforge.net; Wed, 03 Mar 2004 21:53:27 -0800
+Received: from mtvcafw.sgi.com ([192.48.171.6] helo=zok.sgi.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1Aylhl-0003zk-Mv
+	for nfs@lists.sourceforge.net; Wed, 03 Mar 2004 21:47:33 -0800
+To: Erik Walthinsen <omega@pdxcolo.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,26 +32,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, 2004-03-03 at 20:39, Ian Kent wrote:
-> Bumping the number of threads to 32 or 64 or more would be the first 
-> thing I would try.
+Erik Walthinsen wrote:
+> 
+> On Wed, 2004-03-03 at 20:39, Ian Kent wrote:
+> > Bumping the number of threads to 32 or 64 or more would be the first
+> > thing I would try.
+> 
+> Only problem is that if the spike occurs anyway, the load will be 33 or
+> 65 instead of 17.  I don't know if it's ctxswitching itself to death
+> while all these nfsd's are blocking, 
 
-Only problem is that if the spike occurs anyway, the load will be 33 or
-65 instead of 17.  I don't know if it's ctxswitching itself to death
-while all these nfsd's are blocking, but if so, doubling or quadrupling
-the number of blocked processes will just make the spike worse.
+If it's the same as I've seen, an nfsd will be spinning in schedule()
+trying to reacquire the BKL.  Changing the number of nfsds is not
+going to affect the amount of CPU wasted (i.e. pretty much all of
+it) just the number of runnable processes.
 
-Also, I've learned to be extremely careful about messing with nfsd while
-clients are connected.  I've had cases where just running exportfs
-*seems* to have permanently killed the client's session, yet the client
-of course still has the filesystem mounted.  This required a complete
-*hard* kill of every UML instance on the client, which did a significant
-amount of damage to the filesystems that were mounted at the time.
-
-- Omega
-  aka Erik Walthinsen
-  omega@pdxcolo.net
-
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
 
 -------------------------------------------------------
