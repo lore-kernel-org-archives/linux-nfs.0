@@ -1,21 +1,20 @@
 From: Bruce Allan <bwa@us.ibm.com>
-Subject: [PATCH 5/5] initial changes for NFS-over-IPv6
- (linux-2.5.66-NFS_IPv6-Kconfig.dif)
-Date: 11 Apr 2003 16:36:00 -0700
+Subject: [PATCH 0/5] initial changes for NFS-over-IPv6
+Date: 11 Apr 2003 16:34:29 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1050104161.1413.282.camel@w-bwa1.beaverton.ibm.com>
+Message-ID: <1050104071.1413.265.camel@w-bwa1.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: bwa@us.ibm.com
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from e31.co.us.ibm.com ([32.97.110.129])
+Received: from e1.ny.us.ibm.com ([32.97.182.101])
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 194841-0006bE-00
-	for <nfs@lists.sourceforge.net>; Fri, 11 Apr 2003 16:36:09 -0700
-Received: from westrelay02.boulder.ibm.com (westrelay02.boulder.ibm.com [9.17.195.11])
-	by e31.co.us.ibm.com (8.12.9/8.12.2) with ESMTP id h3BNYkQs165330
-	for <nfs@lists.sourceforge.net>; Fri, 11 Apr 2003 19:34:46 -0400
+	id 19482e-0006NN-00
+	for <nfs@lists.sourceforge.net>; Fri, 11 Apr 2003 16:34:44 -0700
+Received: from northrelay04.pok.ibm.com (northrelay04.pok.ibm.com [9.56.224.206])
+	by e1.ny.us.ibm.com (8.12.9/8.12.2) with ESMTP id h3BNYVWn194076
+	for <nfs@lists.sourceforge.net>; Fri, 11 Apr 2003 19:34:32 -0400
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -29,32 +28,43 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This patch against 2.5.66 provides for configuration of the kernel to
-utilize code and data structures which interact with user-space
-libraries, utilities and daemons which do not yet have IPv6 support. 
-Please see the note regarding this in the email originating this thread.
+Following are a set of 5 patches against 2.5.66 which provide the
+initial ground-work for NFS-over-IPv6 support.  Please keep in mind, NFS
+still will not work over IPv6 until comparable support is made available
+in the applicable user-space libraries, daemons and utilities
+(glibc/sunrpc, nfs-utils, etc.) which I will be working on in the coming
+weeks.  Consequently, the IPv6-specific code in these patches have not
+been thoroughly tested (IPv4-specific code was, see below), so I expect
+to discover bugs once these user-space bits are ready for testing. 
+Basically, this set of patches is the first step at getting IPv6 support
+for the entire NFS stack.
 
-diff -Naurp linux-2.5.66/fs/Kconfig linux-2.5.66-NFS_IPV6/fs/Kconfig
---- linux-2.5.66/fs/Kconfig	2003-03-24 14:00:48.000000000 -0800
-+++ linux-2.5.66-NFS_IPV6/fs/Kconfig	2003-04-10 16:50:49.000000000 -0700
-@@ -1329,6 +1329,17 @@ config NFSD_TCP
- 	  Enable NFS service over TCP connections.  This the officially
- 	  still experimental, but seems to work well.
- 
-+config NFS_IPV6
-+	bool "Provide NFS over IPv6 support (EXPERIMENTAL)"
-+	depends on (NFS_FS || NFSD) && IPV6 && EXPERIMENTAL
-+	help
-+	  Say Y here if you want NFS to be able to run over an IPv6 network.
-+          This feature is experimental, and you must have versions of the
-+          user-space daemons and utilities (eg. nfs-utils, portmap, mount,
-+          glibc) which support RPC over IPv6.
-+
-+	  If unsure, say N.
-+
- config ROOT_NFS
- 	bool "Root file system on NFS"
- 	depends on NFS_FS=y && IP_PNP
+All patches should be used together with the exception of the last, i.e.
+5/5 or linux-2.5.66-NFS_IPv6_Kconfig.dif, which allows for the kernel
+config parameter CONFIG_NFS_IPV6.  This is a pre-processor #ifdef that
+is used to surround code and data structures used to interact with the
+above mentioned user-space code.  Until such user-space NFS-over-IPv6
+support is added, it may be better to not include this patch so users
+won't see the option when configuring the kernel and assume such support
+is available, enable the option and complain when NFS doesn't work
+anymore.  Opinions on that?
+
+The patches were applied to a stock 2.5.66 kernel on RH8.0 and were
+regression tested with Connectathon '03 and fsx tests with default
+options (tcp also) over an IPv4 network to verify nothing had broken. 
+The patched kernel was also instrumented with the gcov-2.5.66 code
+coverage tool to verify as much as possible of the patched code was
+exercised. 
+
+Note, this patch set doesn't provide IPv6 support for nfsroot.
+
+btw while testing the patches, two bugs were discovered, one while
+running fsx and the other while running Connectathon '03 over NFSv2. 
+Both were found to also exist on stock 2.5.66 and I am not sure whether
+they have been reported or being investigated - I'll look into these
+further.
+
+Any comments/questions/discussion?
 
 -- 
 Bruce Allan
