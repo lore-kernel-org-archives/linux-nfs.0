@@ -1,23 +1,17 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: NFS FAQ updates
-Date: Sun, 13 Mar 2005 15:05:37 -0500
-Message-ID: <20050313200537.GB11748@fieldses.org>
-References: <482A3FA0050D21419C269D13989C611307CF4C1E@lavender-fe.eng.netapp.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [CHECKER] inconsistent NFS stat cache (NFS on ext3, 2.6.11)
+Date: Sun, 13 Mar 2005 15:42:29 -0500
+Message-ID: <1110746550.23876.8.camel@lade.trondhjem.org>
+References: <Pine.GSO.4.44.0503120335160.12085-100000@elaine24.Stanford.EDU>
+	 <1110690267.24123.7.camel@lade.trondhjem.org>
+	 <20050313200412.GA21521@nevyn.them.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-	NeilBrown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DAZKv-00024h-Vj
-	for nfs@lists.sourceforge.net; Sun, 13 Mar 2005 12:05:17 -0800
-Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1DAZKu-0000N6-IY
-	for nfs@lists.sourceforge.net; Sun, 13 Mar 2005 12:05:17 -0800
-To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: <482A3FA0050D21419C269D13989C611307CF4C1E@lavender-fe.eng.netapp.com>
+Content-Type: text/plain
+Cc: Junfeng Yang <yjf@stanford.edu>, nfs@lists.sourceforge.net,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	ext2-devel@lists.sourceforge.net, mc@cs.Stanford.EDU
+To: Daniel Jacobowitz <dan@debian.org>
+In-Reply-To: <20050313200412.GA21521@nevyn.them.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,22 +25,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sun, Mar 13, 2005 at 11:37:26AM -0800, Lever, Charles wrote:
-> Why should I disable subtree checking on my NFS server exports?
->   http://nfs.sourceforge.net/index.cel.php#faq_c7
+su den 13.03.2005 Klokka 15:04 (-0500) skreiv Daniel Jacobowitz:
 
-Kerberos doesn't solve exactly the problem that subtree checking
-attempts to solve.  My attempt at a concise way of putting this (maybe you
-can think of a better way):
+> I can't find any documentation about this, but it seems like the same
+> problem that has been causing me headaches lately; when I replace glibc
+> from the server side of an nfsroot, the client has a couple of
+> variously wrong reads before it sees the new files.  If it breaks NFS
+> so badly, why is it the default for the Linux NFS server?
 
-	Use Kerberos and/or NFSv4 when they become available: it may
-		still be possible for a user of NFS over Kerberos to
-		access files outside of the exported subtree.  However,
-		it should not be possible for them to fake their identity,
-		so they should not be able to read files that they do
-		not have permissions to.
+No, that's a very different issue: you are violating the NFS cache
+consistency rules if you are changing a file that is being held open by
+other machines.
+The correct way to do the above is to use GNU install with the '-b'
+option: that will rename the version of glibc that is in use, and then
+install the new glibc in a different inode.
 
---b.
+Cheers,
+  Trond
+-- 
+Trond Myklebust <trond.myklebust@fys.uio.no>
+
 
 
 -------------------------------------------------------
