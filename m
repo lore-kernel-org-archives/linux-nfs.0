@@ -1,22 +1,16 @@
-From: Rex Dieter <rdieter@math.unl.edu>
-Subject: Re: NFS problems: help needed with extremely poor NFS performance
-Date: Wed, 24 Apr 2002 14:24:54 -0500
+From: =?iso-8859-1?q?Jos=E9=20Vicente=20N=FA=F1ez=20Zuleta?= <josevnz@yahoo.com>
+Subject: NFS problems: help needed
+Date: Wed, 24 Apr 2002 16:31:16 -0500 (CDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200204241424.55033.rdieter@math.unl.edu>
-References: <E170SDv-0006rf-00@usw-sf-list1.sourceforge.net>
+Message-ID: <20020424213116.77967.qmail@web10002.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mathstat.unl.edu ([129.93.48.14])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 170SR6-0000q4-00
-	for <nfs@lists.sourceforge.net>; Wed, 24 Apr 2002 12:28:16 -0700
-Received: from duran (duran.unl.edu [129.93.50.93])
-	by mathstat.unl.edu (8.9.3/8.9.3) with ESMTP id OAA21321
-	for <nfs@lists.sourceforge.net>; Wed, 24 Apr 2002 14:24:57 -0500
+Received: from web10002.mail.yahoo.com ([216.136.130.38])
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 170UM9-0004Tv-00
+	for <nfs@lists.sourceforge.net>; Wed, 24 Apr 2002 14:31:17 -0700
 To: nfs@lists.sourceforge.net
-In-Reply-To: <E170SDv-0006rf-00@usw-sf-list1.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,33 +23,116 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Wednesday 24 April 2002 02:05 pm, Jos=E9 Vicente N=FA=F1ez Zuleta=20
-<josevnz@newbreak.com> wrote:
+Greetings,
 
-> I'm having serious problems with my NFS environment; The server is a Du=
-al
-> Pentium III 1Ghz running Redhat 7.2 (Kernel 2.4.7-10smp) and the client=
-s
-> are Dual Pentium 1Ghz Redhat 6.2 (Kernel 2.2.14-5.0smp).
+I'm having serious problems with my NFS environment;
+The server is a Dual Pentium III 1Ghz running Redhat
+7.2 (Kernel 2.4.7-10smp) and the clients are Dual
+Pentium 1Ghz Redhat 6.2 (Kernel 2.2.14-5.0smp).
 
-Keep your machines current
-RedHat 7.2:  http://www.redhat.com/support/errata/rh72-errata.html
-Particularly,
-http://www.redhat.com/support/errata/RHBA-2001-137.html
-http://www.redhat.com/support/errata/RHSA-2002-028.html
+We have a process that opens a lot of files on all the
+cluster and after some seconds, all the clients start
+showing the following messages:
 
-RedHat 6.2:  http://www.redhat.com/support/errata/rh62-errata.html
-Particularly,
-http://www.redhat.com/support/errata/RHSA-2000-043.html
-http://www.redhat.com/support/errata/RHSA-2001-130.html
+Apr 23 19:12:05 linux0102 kernel: nfs: server
+lnxdev0003 OK 
+Apr 23 19:12:17 linux0102 kernel: nfs: task 1059 can't
+get a request slot 
+Apr 23 19:12:33 linux0102 kernel: nfs: server
+lnxdev0003 OK 
+Apr 23 19:12:44 linux0102 kernel: nfs: server
+lnxdev0003 not responding, still trying 
+Apr 23 19:12:44 linux0102 kernel: nfs: server
+lnxdev0003 OK 
+Apr 23 19:12:54 linux0102 kernel: nfs: server
+lnxdev0003 not responding, still trying 
+Apr 23 19:14:45 linux0102 automount[895]: expired
+/nb_apps/espiel
+Apr 23 19:14:45 linux0102 automount[895]: expired
+/nb_apps/expat
+Apr 23 19:14:45 linux0102 automount[895]: expired
+/nb_apps/crypto
+Apr 23 19:14:45 linux0102 automount[895]: expired
+/nb_apps/rogue
+Apr 23 19:14:45 linux0102 automount[895]: expired
+/nb_apps/ACE
+Apr 23 19:14:45 linux0102 automount[895]: expired
+/nb_apps/xerces
+Apr 23 19:15:49 linux0102 automount[906]: expired
+/home/suresh
+Apr 23 19:16:06 linux0102 kernel: nfs: server
+lnxdev0003 OK 
+Apr 23 19:16:06 linux0102 kernel: nfs: server
+lnxdev0003 OK 
+Apr 23 19:16:38 linux0102 kernel: nfs: server
+lnxdev0003 not responding, still trying 
+
+I followed the tutorial that appears at
+"http://nfs.sourceforge.net/nfs-howto/performance.html"
+and applied the following optimizations (with no
+result):
+
+- Deactivated auto-negotiation on the HUB (we have a
+Cisco FastHub 400) and forced the NIC to use "Full
+Duplex" using FastEthernet. This should reduce the
+number of collissions.
+- Increased the number of nfsd servers and the socket
+queue (here is a fragment of my script,
+/etc/init.d/nfs, currently i use 16 nfsd servers):
+  
+   RPCNFSDCOUNT=16
+   ....
+   # NFSv3 only if kernel >= 2.2.18
+   OS_RELEASE=`uname --release`
+   ....
+        echo -n "Starting NFS mountd: "
+        daemon rpc.mountd $RPCMOUNTDOPTS
+        echo
+        echo -n "Starting NFS daemon: "
+        echo 262144 > /proc/sys/net/core/rmem_default
+        echo 262144 > /proc/sys/net/core/rmem_max
+        daemon rpc.nfsd $RPCNFSDCOUNT
+        echo 65536 > /proc/sys/net/core/rmem_default
+        echo 65536 > /proc/sys/net/core/rmem_max
+        echo
+- I increased the rsize and wsize on my clients to
+4096 (im using automount and NIS, /etc/auto.master):
+   /home   auto.home
+-rw,intr,retry=10,rsize=4096,wsize=4096
+   /nb_apps   auto.nb_apps
+-rw,intr,retry=10,rsize=4096,wsize=4096
+   /data   auto.data
+-rw,intr,retry=10,rsize=4096,wsize=4096
+
+
+What i should try next?. We have a network with very
+few machines, apparently no collissions (the stats at
+the hub doesn't show that many but i will have to
+confirm).
+
+Should i try to update the nfs-tools on all the boxes
+( i can't do the same to the kernel because we have a
+Cordba lib that could broke, at least on the clients)?
+
+The server doesn't have a high load (i'm monitoring
+the box using top and UCD-SNMP) and other network apps
+work fine so far :(
+
+Thanks in advance.
 
 
 
---=20
-Rex A. Dieter=09=09=09rdieter@unl.edu=20
-Computer System Administrator =09http://www.math.unl.edu/~rdieter/
-Mathematics and Statistics  =09=09=20
-University of Nebraska Lincoln
+=====
+José Vicente Nuñez Zuleta (josevnz@yahoo.com)
+Newbreak System Administrator (http://www.newbreak.com)
+Office Phone:   203-355-1511, 203-355-1510
+Fax:            203-355-1512
+Cellular Phone: 203-570-7078
+
+_________________________________________________________
+Do You Yahoo!?
+Información de Estados Unidos y América Latina, en Yahoo! Noticias.
+Visítanos en http://noticias.espanol.yahoo.com
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
