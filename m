@@ -1,19 +1,22 @@
-From: Ryan Mak <ryanmak@ameritech.net>
-Subject: NFS client hangs...
-Date: Mon, 13 Dec 2004 16:50:59 -0800 (PST)
-Message-ID: <20041214005059.80122.qmail@web81504.mail.yahoo.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS client hangs...
+Date: Mon, 13 Dec 2004 19:58:05 -0500
+Message-ID: <1102985885.10838.1.camel@lade.trondhjem.org>
+References: <20041214005059.80122.qmail@web81504.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ce0uA-00078b-6F
-	for nfs@lists.sourceforge.net; Mon, 13 Dec 2004 16:51:06 -0800
-Received: from web81504.mail.yahoo.com ([206.190.37.107])
-	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
-	id 1Ce0u9-0002u4-J2
-	for nfs@lists.sourceforge.net; Mon, 13 Dec 2004 16:51:06 -0800
-To: nfs@lists.sourceforge.net
+	id 1Ce118-0007ey-F9
+	for nfs@lists.sourceforge.net; Mon, 13 Dec 2004 16:58:18 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1Ce117-0001UW-LM
+	for nfs@lists.sourceforge.net; Mon, 13 Dec 2004 16:58:18 -0800
+To: Ryan Mak <ryanmak@ameritech.net>
+In-Reply-To: <20041214005059.80122.qmail@web81504.mail.yahoo.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,47 +30,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi.
+m=E5 den 13.12.2004 Klokka 16:50 (-0800) skreiv Ryan Mak:
+> Hi.
+>=20
+> I am currently experiencing a hanging problem when I
+> try to either 'ls' or 'vi' on a successfully mounted
+> directory. I am using redhat 8.0, kernel version
+> 2.4.20-28.8, nfs-utils version nfs-utils-1.0.1-2.
+>=20
+> enclosed is a tcpdump which shows retries from the
+> client despite an immediate ACK from the server.=20
 
-I am currently experiencing a hanging problem when I
-try to either 'ls' or 'vi' on a successfully mounted
-directory. I am using redhat 8.0, kernel version
-2.4.20-28.8, nfs-utils version nfs-utils-1.0.1-2.
+Was that tcpdump taken on the server or the client?
 
-enclosed is a tcpdump which shows retries from the
-client despite an immediate ACK from the server. I am
-not familiar with NFS messages so I would appreciate
-it if someone skillfull in this particular artform
-could decipher this. after about 5 minutes of retries,
-the client eventually succeeds...both client and
-server are idle so loading or cpu consumption is not
-an issue. thanx.
+Cheers,
+  Trond
+--=20
+Trond Myklebust <trond.myklebust@fys.uio.no>
 
-
-08:17:52.119651 192.168.1.18.4263549657 >
-192.168.1.120.nfs: 176 create [|nfs] (DF)
-08:17:52.119929 192.168.1.120.nfs >
-192.168.1.18.4263549657: reply ok 264 create [|nfs]
-(DF)
-08:17:54.919634 192.168.1.18.4263549657 >
-192.168.1.120.nfs: 176 create [|nfs] (DF)
-08:17:54.919991 192.168.1.120.nfs >
-192.168.1.18.4263549657: reply ok 264 create [|nfs]
-(DF)
-08:18:00.519658 192.168.1.18.4263549657 >
-192.168.1.120.nfs: 176 create [|nfs] (DF)
-08:18:00.519940 192.168.1.120.nfs >
-192.168.1.18.4263549657: reply ok 264 create [|nfs]
-(DF)
-08:18:11.719763 192.168.1.18.4263549657 >
-192.168.1.120.nfs: 176 create [|nfs] (DF)
-08:18:11.720092 192.168.1.120.nfs >
-192.168.1.18.4263549657: reply ok 264 create [|nfs]
-(DF)
-08:18:34.119793 192.168.1.18.4263549657 >
-192.168.1.120.nfs: 176 create [|nfs] (DF)
-08:18:34.120152 192.168.1.120.nfs >
-192.168.1.18.4263549657: reply ok 264 create [|nfs] (DF)
 
 
 -------------------------------------------------------
