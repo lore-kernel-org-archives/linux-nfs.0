@@ -1,20 +1,20 @@
-From: fvm@altium.nl (Frank van Maarseveen)
-Subject: Re: 2 feature requests for lockd
-Date: Fri, 14 Jun 2002 17:56:32 +0200
+From: Felix Radensky <felix@allot.com>
+Subject: NFS over TCP performance
+Date: Sun, 16 Jun 2002 15:41:04 +0300
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020614155632.GA4277@altium.nl>
-References: <20020612162643.F10338@hermes.centre-cired.fr> <shsr8jaj3ew.fsf@charged.uio.no> <20020614140522.D3312@hermes.centre-cired.fr>
-Reply-To: frank.van.maarseveen@altium.nl
+Message-ID: <3D0C8760.8050308@allot.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from ns.tasking.nl ([195.193.207.2])
+Received: from mxout3.netvision.net.il ([194.90.9.24])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17ItTu-0000KI-00
-	for <nfs@lists.sourceforge.net>; Fri, 14 Jun 2002 08:59:23 -0700
-Received: (from root@localhost) by ns.tasking.nl (8.9.1a/8.6.12) id RAA04610 for <nfs@lists.sourceforge.net>; Fri, 14 Jun 2002 17:59:17 +0200 (MET DST)
+	id 17JZMh-000283-00
+	for <nfs@lists.sourceforge.net>; Sun, 16 Jun 2002 05:42:43 -0700
+Received: from exg.allot.com ([199.203.223.202]) by mxout3.netvision.net.il
+ (iPlanet Messaging Server 5.2 HotFix 0.3 (built May 13 2002))
+ with ESMTP id <0GXS00CZKTWVSC@mxout3.netvision.net.il> for
+ nfs@lists.sourceforge.net; Sun, 16 Jun 2002 15:41:19 +0300 (IDT)
 To: nfs@lists.sourceforge.net
-In-Reply-To: <20020614140522.D3312@hermes.centre-cired.fr>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,28 +27,64 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Fri, Jun 14, 2002 at 02:05:22PM +0200, Patrice DUMAS - DOCT wrote:
-> 
-> I agree again, but the point in tunneling rpc based services through
-> ssh like with sec_rpc, is that it is quite easy to set up, almost off the box. 
-> Maybe there exists point-to-point solutions as easy to set up but I don't 
-> know them.
-> 
+Hi,
 
-It is fairly easy to set up a PPP link over ssh using the pppd "pty"
-command, provided you have root access at both ends for doing the
-initial configuration. Then you have full IP connectivity. In
-addition, it is possible to do routing for connecting all the networks
-at both sides (I'm using something similar for years now).
+I'm testing NFS server performance in the following environment:
 
--- 
-Frank
+NFS server :
+ 
+Compaq Proliant ML 350,
+dual 1.33 GHz CPU,
+1G of RAM,
+132G RAID5 based on Compaq Smart Array 532 (cciss driver),
+linux-2.4.19-pre10 SMP kernel with latest NFS_ALL and NFS TCP patches,
+ext3 filesystem with internal 400M journal,
+NFS version 3,
+nfs-utils 0.3.3,
+e100 NIC driver version 2.0.30,
+16 nfs server threads,
+rmem_default and rmem_max are set to 1048576
+ 
+NFS client:
+
+Dual 1G CPU board based on ServerWorks chipset,
+1G of RAM,
+linux-2.4.18,
+NFS version 3,
+mount-2.11b,
+e100 NIC driver version 2.0.30
+
+Client and server are connected to 10/100 Cisco switch,
+which is not congested, and both are synchronized to
+100 Base Tx Full Duplex.
+
+Client mounts /users directory like this:
+
+mount -o rsize=8192,wsize=8192,hard,intr,tcp server_ip:/users /users
+
+My test, as explained in Linux NFS howto, consists of copying a 2G
+file, from client to server, like this
+
+time dd if=/dev/zero of=testfile bs=8k count=262144
+
+It takes about 4.5 min to complete the write. The same test, but over UDP,
+takes around 3 min. My question is: is NFS over TCP supposed to be much
+slower than over UDP, and if no, how can I improve the performance.
+I've tried other values for rsize/wsize, but 8k seems to give the best 
+performance.
+I've also tried mounting ext3 filesystem with data=journal, but then 
+test runs
+about 4 times longer.
+
+TIA,
+
+Felix.
+
 
 _______________________________________________________________
 
-Don't miss the 2002 Sprint PCS Application Developer's Conference
-August 25-28 in Las Vegas - http://devcon.sprintpcs.com/adp/index.cfm?source=osdntextlink
-
+Sponsored by:
+ThinkGeek at http://www.ThinkGeek.com/
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
