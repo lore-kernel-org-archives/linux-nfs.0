@@ -1,25 +1,27 @@
-From: seth vidal <skvidal@phy.duke.edu>
-Subject: Re: NFS server not responding
-Date: Sun, 30 Nov 2003 15:01:50 -0500
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: [PATCH] SGI 905314 (1/2): make NFSSVC_MAXBLKSIZE depend on PAGE_SIZE
+Date: Mon, 1 Dec 2003 09:26:53 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1070222510.14818.10.camel@binkley>
-References: <Pine.LNX.4.44.0311281257130.22389-100000@kenzo.iwr.uni-heidelberg.de>
+Message-ID: <16330.28333.153593.711963@notabene.cse.unsw.edu.au>
+References: <3FC742E7.910F518B@melbourne.sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Douglas Furlong <douglas.furlong@firebox.com>,
-	nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AQXp8-0006NZ-00
-	for <nfs@lists.sourceforge.net>; Sun, 30 Nov 2003 12:05:42 -0800
-Received: from mail.phy.duke.edu ([152.3.182.2] ident=[E0q4g80hNxjLSluhCWb73a3vUngm/JCf])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AQXp8-0001XQ-KX
-	for nfs@lists.sourceforge.net; Sun, 30 Nov 2003 12:05:42 -0800
-To: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
-In-Reply-To: <Pine.LNX.4.44.0311281257130.22389-100000@kenzo.iwr.uni-heidelberg.de>
+	id 1AQa2I-0005xM-00
+	for <nfs@lists.sourceforge.net>; Sun, 30 Nov 2003 14:27:26 -0800
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.24)
+	id 1AQa2I-00085m-BF
+	for nfs@lists.sourceforge.net; Sun, 30 Nov 2003 14:27:26 -0800
+Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
+	(for <gnb@melbourne.sgi.com>) (for <nfs@lists.sourceforge.net>) By
+	note With Smtp ; Mon, 1 Dec 2003 09:26:53 +1100
+To: Greg Banks <gnb@melbourne.sgi.com>
+In-Reply-To: message from Greg Banks on Friday November 28
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,21 +34,41 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Friday November 28, gnb@melbourne.sgi.com wrote:
+> G'day,
+> 
+> SGI bug #905314
+> 
+> This patch makes NFSSVC_MAXBLKSIZE depend on PAGE_SIZE so that machines
+> with large page sizes can take advantage of that feature to serve NFS
+> with larger blocksizes, increasing performance and avoiding a fallback
+> to synchronous traffic between machines with page sizes greater than 8K.
+> Also, documents the actual constraints on NFSSVC_MAXBLKSIZE.
+> 
+> The patch has been running for some hours now, reading and writing NFSv3
+> over UDP on gigabit ethernet between two Altix boxes (16K page sizes) with
+> 4G RAM each.  I have verified with ethereal that reads and writes proceed
+> in 32K blocks, and performance tests show good throughput for streaming
+> reads and writes (although 2.6.0-test8 still does better).
 
-> The load on the server when simultaneously rebooting several tens of nodes
-> goes up to 10-12, while previously it was 3-5. IMHO, this points more to a
-> slower/less-efficient NFS daemon or to a more agressive client (but which 
-> gives up easier afterwards as seen from the logged messages).
+> +#if PAGE_SIZE > (8*1024)
+> +#define NFSSVC_MAXBLKSIZE	(32*1024)
+> +#elif PAGE_SIZE == (8*1024)
+> +#define NFSSVC_MAXBLKSIZE	(16*1024)
+> +#else /* 4K pages */
+>  #define NFSSVC_MAXBLKSIZE	(8*1024)
+> +#endif
+>  
 
 
-it's the red hat kernel.
-https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=100680
+What you you think of simply:
 
-I bet it's related to that problem.
+   #define NFSSVC_MAXBLKSIZE (PAGE_SIZE * 2)
 
--sv
+With a comment "We want this to be large, but we need to be sure that
+a kmalloc of this size has a very good chance of succeeding.".
 
-
+NeilBrown
 
 
 -------------------------------------------------------
