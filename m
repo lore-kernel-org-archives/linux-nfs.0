@@ -1,26 +1,34 @@
-From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-Subject: Re: debugging hanging locks
-Date: Mon, 16 Aug 2004 18:51:22 -0600 (MDT)
+From: Sridhar Samudrala <sri@us.ibm.com>
+Subject: Re: NFS file locking for clustered filesystems
+Date: Mon, 16 Aug 2004 17:46:02 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.60.0408161846440.5649@harp.ngdc.noaa.gov>
-References: <Pine.LNX.4.60.0408161741020.5649@harp.ngdc.noaa.gov>
- <1092702159.11722.77.camel@lade.trondhjem.org>
-Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Message-ID: <Pine.LNX.4.58.0408121732450.2954@localhost.localdomain>
+References: <Pine.LNX.4.58.0407131427580.6626@localhost.localdomain>
+ <20040802105103.GJ25023@suse.de>  <1091461098.3980.22.camel@lade.trondhjem.org>
+  <Pine.LNX.4.58.0408101139260.11489@localhost.localdomain>
+ <1092184994.5857.19.camel@lade.trondhjem.org>
+ <Pine.LNX.4.58.0408111155570.2546@localhost.localdomain>
+ <1092288885.4079.40.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1404923101-1092703882=:5649"
-Cc: nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=ISO-8859-1
+Cc: Olaf Kirch <okir@suse.de>, nfsv4@linux-nfs.org, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BwsEb-0006OU-HM
-	for nfs@lists.sourceforge.net; Mon, 16 Aug 2004 17:53:53 -0700
-Received: from harp.ngdc.noaa.gov ([140.172.187.26])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1BwsDb-0006DR-Is
+	for nfs@lists.sourceforge.net; Mon, 16 Aug 2004 17:52:51 -0700
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.34)
-	id 1BwsCg-0008Df-FU
-	for nfs@lists.sourceforge.net; Mon, 16 Aug 2004 17:53:53 -0700
+	id 1Bws8v-0008JM-CR
+	for nfs@lists.sourceforge.net; Mon, 16 Aug 2004 17:52:51 -0700
+Received: from e33.co.us.ibm.com ([32.97.110.131])
+	by externalmx-1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.41)
+	id 1Bws8q-0000xl-QP
+	for nfs@lists.sourceforge.net; Mon, 16 Aug 2004 17:47:57 -0700
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1092702159.11722.77.camel@lade.trondhjem.org>
+In-Reply-To: <1092288885.4079.40.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,62 +41,88 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+On Wed, 11 Aug 2004, Trond Myklebust wrote:
 
---8323328-1404923101-1092703882=:5649
-Content-Type: TEXT/PLAIN; charset=X-UNKNOWN; format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-
-On Mon, 16 Aug 2004, Trond Myklebust wrote:
-
-> P=E5 m=E5 , 16/08/2004 klokka 19:47, skreiv Ara.T.Howard:
+> P=E5 on , 11/08/2004 klokka 14:35, skreiv Sridhar Samudrala:
 >
->> which, i imagine, leaves some phantom process/lock hanging around with t=
-he old
->> file handle.  my questions are
->>
->>    - what could cause this type of random hanging
+> > So, in the case of a client which doesn't allow blocking, are you sugge=
+sting
+> > that the cluster filesystem to return LCK_BLOCKED immediately and start=
+ the
+> > asynchrous call and return LCK_DENIED in a few seconds if it cannot com=
+plete
+> > the operation?
 >
-> a client that fails to clean up after itself.
-
-the lock/unlock method is wrapped in a try/catch block - eg. only 'kill -9'
-could cause failure to unlock.  if i assume this to be the case - then what
-else can be done?  will sending -9 always cause this?  will it ever
-automatically resolve itself?  i was under the impression that a process wo=
-uld
-clean up fcntl locks on death anyhow - i am obviously mistaken, but to what
-degree?
-
-
->>    - how does one tell, on server, who has what locks
+> Sort of.
 >
-> Not much you can do beyond 'cat /proc/locks'. That will tell you whether =
+> Firstly, having the filesystem return NLM-specific errors is a no-no.
+> Lets keep the errors generic (-EAGAIN =3D=3D -EWOULDBLOCK for instance.)
+> NFSv4 does not understand LCK_BLOCKED.
+
+I didn't meant the filesystem to return NLM-specific errors. Just to make i=
+t
+simple, i used the return values from the nlmsvc routines after they are
+converted from the generic errors returned by the filesystem calls. Sorry f=
 or
-> not a lock is held, and will also give you the pid of the remote process
-> that holds the lock (in the 4th column).
+the confusion.
 
-good enough - thanks for the tip.  btw.  where would i find this info?  i
-pokeda around the docs/man pages and it was not obvious.
+>
+> Secondly, I suggest that lockd should manage its timeouts itself rather
+> than relying on the clustered filesystem to do so. Timers are cheap...
 
-cheers.
+An issue with using a timer to validate that the filesystem call is not
+blocking too long is that it could generate false positives because the cal=
+l
+  - might get pre-empted
+  - might take a long interrupt
+  - might encounter hw problem resulting in machine-check exception etc.
 
--a
---
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D
-| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
-| PHONE   :: 303.497.6469
-| A flower falls, even though we love it;
-| and a weed grows, even though we do not love it.=20
-|   --Dogen
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D
---8323328-1404923101-1092703882=:5649--
+Instead, we can disable preemption before the call and validate that there
+were no context switches after the filesystem call returns.
+
+      preempt_disable();
+      nctx =3D RCU_qsctr(task_cpu(current));
+      file_system_lock();
+      if (nctx !=3D RCU_qsctr(task_cpu(current))) {
+ =09  printk(KERN_WARNING "filesystem call did not return immediately");
+      }
+      preempt_enable();
+
+Is this approach acceptable?
+
+>
+> > But i am not sure if we can handle this easily with the current design =
+of
+> > lockd. As soon as the lock operation returns LCK_BLOCKED, i think svc_s=
+end() is
+> > called from svc_process() which will send a reply with NLM_BLOCKED.
+>
+> For NFSv4 this is not a problem: NFS4ERR_DELAY will make the client back
+> off and retry the request later.
+>
+> For NLM, you are clearly going to have to figure out a way around the
+> above problem. (but that's why you get paid the big bucks right? ;-))
+> Note that the sunrpc server code already has a mechanism for deferring
+> requests when dealing with blocking behaviour (in case it needs to do an
+> upcall) and then replaying them later. Perhaps you could look into
+> reusing that here?
+
+I started looking into the sunrpc server code. I guess you meant svc_defer(=
+)
+as a mechanism to defer the requests.
+Is this mechanism currently used for any lockd RPC calls? I guess it is use=
+d
+only for nfsd RPC calls.
+Could you please give an example when a request is deferred?
+
+Thanks
+Sridhar
+
+>
+> Cheers,
+>   Trond
+>
+>
 
 
 -------------------------------------------------------
