@@ -1,13 +1,17 @@
-From: Jean-Eric Cuendet <jean-eric.cuendet@linkvest.com>
-Subject: Re: rpc.mountd + rpc.nfsd
-Date: Tue, 03 Sep 2002 16:36:07 +0200
+From: Anders Widman <andewid@tnonline.net>
+Subject: NFS problems..
+Date: Tue, 3 Sep 2002 18:01:10 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3D74C8D7.9000500@linkvest.com>
-References: <Pine.LNX.4.33.0209030825280.9309-100000@lewis.et.byu.edu>
+Message-ID: <6330918750.20020903180110@tnonline.net>
+Reply-To: Anders Widman <andewid@tnonline.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: David Dougall <davidd@et.byu.edu>,  nfs@sourceforge.net
+Received: from s20.dknet.se ([62.65.10.55] helo=lka.nu)
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17mG84-0007yW-00
+	for <nfs@lists.sourceforge.net>; Tue, 03 Sep 2002 09:02:12 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -20,16 +24,32 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->
->
->Have you looked at sharity?  I have not used it much, but from what I
->understand, it does exactly what you are asking.
->--David Dougall
->
-Yes, but it's not free...
-Except that, it's exactly what I'd like to do.
--jec
+   Hello!
 
+   Running  RedHat  7.3  I  am  trying  to  use NFS to export root. It
+   doesn't  work.  Exporting any subfolder works... This is my exports
+   file:
+
+       /usr/src/       192.168.0.100(rw,no_root_squash,insecure)
+       /               192.168.0.100(rw,no_root_squash,insecure)
+
+   When using "exportfs -a" I get an error:
+
+       192.168.0.100:/: Invalid argument
+
+   Then, when I am trying to mount from the client:
+
+       mount -tnfs 192.168.0.101:/mnt/root/ /mnt/server/
+       mount: 192.168.0.101:/mnt/root/ failed, reason given by server: Permission denied
+
+   And the server syslog contains this:
+
+       rpc.mountd: authenticated mount request from 192.168.0.100:752 for / (/)
+       rpc.mountd: getfh failed: Operation not permitted
+   
+   What am I doing wrong?
+
+    - Anders      
 
 
 
