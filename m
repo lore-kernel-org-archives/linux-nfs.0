@@ -1,23 +1,23 @@
-From: Badari Pulavarty <pbadari@us.ibm.com>
+From: Linus Torvalds <torvalds@transmeta.com>
 Subject: Re: [PATCH] direct-IO API change
-Date: Fri, 4 Oct 2002 16:56:45 -0700 (PDT)
+Date: Fri, 4 Oct 2002 17:11:27 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200210042356.g94NujG24693@eng2.beaverton.ibm.com>
-References: <Pine.LNX.4.44.0210041644050.2526-100000@home.transmeta.com>
+Message-ID: <Pine.LNX.4.44.0210041704110.2993-100000@home.transmeta.com>
+References: <200210042356.g94NujG24693@eng2.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: akpm@digeo.com (Andrew Morton), pbadari@us.ibm.com (Badari Pulavarty),
-   janetmor@us.ibm.com (Janet Morgan), cel@citi.umich.edu (Chuck Lever),
-   linux-kernel@vger.kernel.org (Linux Kernel Mailing List),
-   nfs@lists.sourceforge.net (Linux NFS List)
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Andrew Morton <akpm@digeo.com>, Janet Morgan <janetmor@us.ibm.com>,
+        Chuck Lever <cel@citi.umich.edu>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux NFS List <nfs@lists.sourceforge.net>,
+        Alexander Viro <viro@math.psu.edu>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from e2.ny.us.ibm.com ([32.97.182.102])
-	by usw-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17xcJd-0007j8-00
-	for <nfs@lists.sourceforge.net>; Fri, 04 Oct 2002 16:57:05 -0700
-To: torvalds@transmeta.com (Linus Torvalds)
-In-Reply-To: <Pine.LNX.4.44.0210041644050.2526-100000@home.transmeta.com> from "Linus Torvalds" at Oct 04, 2002 03:44:46 PM PST
+Received: from neon-gw-l3.transmeta.com ([63.209.4.196] helo=neon-gw.transmeta.com)
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17xcW0-0002sB-00
+	for <nfs@lists.sourceforge.net>; Fri, 04 Oct 2002 17:09:52 -0700
+To: Badari Pulavarty <pbadari@us.ibm.com>
+In-Reply-To: <200210042356.g94NujG24693@eng2.beaverton.ibm.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,39 +30,32 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-> 
-> 
-> On Fri, 4 Oct 2002, Andrew Morton wrote:
-> > 
-> > > Especially since I thought that O_DIRECT on the regular file (or block
-> > > device) performed about as well as raw does anyway these days? Or is that
-> > > just one of my LSD-induced flashbacks?
-> > > 
-> > 
-> > Now we're not holding i_sem for O_DIRECT writes to blockdevs,
-> > I don't think the raw driver offers any advantages at all.  It's
-> > a compatibility thing to save people from having to add "|O_DIRECT" to
-> > their source and then typing `ln -s /dev/hda1 /dev/raw/raw0'.
-> 
-> Maybe the raw driver could become a shell that just adds the O_DIRECT? 
-> Unless it can do something more, of course..
-> 
-> 		Linus
-> 
-> 
 
-Only issue would be the alignment restriction on blockdev versus raw device.
+On Fri, 4 Oct 2002, Badari Pulavarty wrote:
+> 
+> Only issue would be the alignment restriction on blockdev versus raw device.
 
-raw allows 512 byte alignment on userbuff, offset and length.
+Hmm.. We might want to revert the stuff that made the default block device 
+alignment be the maximal possible, and instead make the default be the 
+minimum possible.
 
-blockdevice might need  1024/2048 byte alignment.
+The offending code is the "while"-loop in bd_set_size(). Just removing 
+that should make the default size be the minimal one (ie hardsect_size).
 
+It _used_ to make sense to try to maximize the block-size, since it had a
+noticeable impact on performance whether we did 8 512-byte requests or
+just 1 4kB request. However, all the bio changes have likely made that a
+non-issue, since Andrew's code ends up doing things directly one page at a
+time _anyway_.
 
-If we get the alignment patch for DIO, this is not an issue.
-(alignment patch - in case of defualt alignment problem,
-go down to blkdev_hardsect_size() alignment.)
+Of course, mounting a filesystem on the device will override the default 
+anyway, so this by no means will guarantee that direct access will always 
+have the minimal alignment restrictions, but once you've mounted a 4kB 
+blocksize filesystem on that device I think you might as well do 4kB 
+chunks even if you open it through the device interface, no?
 
-- Badari
+			Linus
+
 
 
 -------------------------------------------------------
