@@ -1,18 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 3 of 23] Count the nfs4_client structure usage
-Date: Fri, 17 Dec 2004 16:23:55 +1100
-Message-ID: <E1CfAap-0002dY-E2@notabene.cse.unsw.edu.au>
+Subject: [PATCH kNFSd 10 of 23] Find a delegation for a file given a stateid.
+Date: Fri, 17 Dec 2004 16:23:56 +1100
+Message-ID: <E1CfAaq-0002e0-6Z@notabene.cse.unsw.edu.au>
 References: <20041217162128.9968.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CfAbI-00058z-2a
-	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 21:24:24 -0800
+	id 1CfAbJ-000597-7G
+	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 21:24:25 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CfAbH-0004C3-18
-	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 21:24:23 -0800
+	id 1CfAbI-0004CB-Gm
+	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 21:24:25 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -28,90 +28,57 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-... to protect the null (probe) callback asynchronous rpc's reference.
-
-Atomically inc and set the cb_set flag.
-
 Signed-off-by: Andy Adamson <andros@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c        |   14 ++++++++++++--
- ./include/linux/nfsd/state.h |    4 +++-
- 2 files changed, 15 insertions(+), 3 deletions(-)
+ ./fs/nfsd/nfs4state.c |   27 +++++++++++++++++++++++++++
+ 1 files changed, 27 insertions(+)
 
 diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2004-12-15 11:46:29.000000000 +1100
-+++ ./fs/nfsd/nfs4state.c	2004-12-15 11:49:34.000000000 +1100
-@@ -213,12 +213,19 @@ free_client(struct nfs4_client *clp)
- 	kfree(clp);
+--- ./fs/nfsd/nfs4state.c~current~	2004-12-15 12:00:46.000000000 +1100
++++ ./fs/nfsd/nfs4state.c	2004-12-15 12:03:23.000000000 +1100
+@@ -81,6 +81,7 @@ u32 free_delegation= 0;
+ 
+ /* forward declarations */
+ struct nfs4_stateid * find_stateid(stateid_t *stid, int flags);
++static struct nfs4_delegation * find_delegation_stateid(struct inode *ino, stateid_t *stid);
+ 
+ /* Locking:
+  *
+@@ -2056,6 +2057,32 @@ find_stateid(stateid_t *stid, int flags)
+ 	return NULL;
  }
  
-+void
-+put_nfs4_client(struct nfs4_client *clp)
++static struct nfs4_delegation *
++find_delegation_stateid(struct inode *ino, stateid_t *stid)
 +{
-+	if (atomic_dec_and_test(&clp->cl_count))
-+		free_client(clp);
-+}
++	struct nfs4_delegation *dp = NULL;
++	struct nfs4_file *fp = NULL;
++	u32 st_id;
++	unsigned int fi_hashval;
 +
- static void
- expire_client(struct nfs4_client *clp)
- {
- 	struct nfs4_stateowner *sop;
++	dprintk("NFSD:find_delegation_stateid stateid=(%08x/%08x/%08x/%08x)\n",
++                    stid->si_boot, stid->si_stateownerid,
++                    stid->si_fileid, stid->si_generation);
++
++	if(!ino || !stid)
++		return NULL;
++	st_id = stid->si_stateownerid;
++	fi_hashval = file_hashval(ino);
++	if (find_file(fi_hashval, ino, &fp)) {
++		list_for_each_entry(dp, &fp->fi_del_perfile, dl_del_perfile) {
++			if(dp->dl_stateid.si_stateownerid == st_id) {
++				dprintk("NFSD: find_delegation dp %p\n",dp);
++				return dp;
++			}
++		}
++	}
++	return NULL;
++}
  
--	dprintk("NFSD: expire_client\n");
-+	dprintk("NFSD: expire_client cl_count %d\n",atomic_read(&clp->cl_count));
- 	list_del(&clp->cl_idhash);
- 	list_del(&clp->cl_strhash);
- 	list_del(&clp->cl_lru);
-@@ -226,7 +233,7 @@ expire_client(struct nfs4_client *clp)
- 		sop = list_entry(clp->cl_perclient.next, struct nfs4_stateowner, so_perclient);
- 		release_stateowner(sop);
- 	}
--	free_client(clp);
-+	put_nfs4_client(clp);
- }
- 
- static struct nfs4_client *
-@@ -235,6 +242,9 @@ create_client(struct xdr_netobj name) {
- 
- 	if (!(clp = alloc_client(name)))
- 		goto out;
-+	atomic_set(&clp->cl_count, 1);
-+	atomic_set(&clp->cl_callback.cb_set, 0);
-+	clp->cl_callback.cb_parsed = 0;
- 	INIT_LIST_HEAD(&clp->cl_idhash);
- 	INIT_LIST_HEAD(&clp->cl_strhash);
- 	INIT_LIST_HEAD(&clp->cl_perclient);
-
-diff ./include/linux/nfsd/state.h~current~ ./include/linux/nfsd/state.h
---- ./include/linux/nfsd/state.h~current~	2004-12-15 11:46:29.000000000 +1100
-+++ ./include/linux/nfsd/state.h	2004-12-15 11:49:34.000000000 +1100
-@@ -76,7 +76,7 @@ struct nfs4_callback {
- 	u32                     cb_prog;
- 	u32                     cb_ident;
- 	/* RPC client info */
--	u32			cb_set;     /* successful CB_NULL call */
-+	atomic_t		cb_set;     /* successful CB_NULL call */
- 	struct rpc_program      cb_program;
- 	struct rpc_stat         cb_stat;
- 	struct rpc_clnt *       cb_client;
-@@ -106,6 +106,7 @@ struct nfs4_client {
- 	nfs4_verifier		cl_confirm;	/* generated by server */
- 	struct nfs4_callback	cl_callback;    /* callback info */
- 	time_t			cl_first_state; /* first state aquisition*/
-+	atomic_t		cl_count;	/* ref count */
- };
- 
- /* struct nfs4_client_reset
-@@ -250,6 +251,7 @@ extern void nfs4_lock_state(void);
- extern void nfs4_unlock_state(void);
- extern int nfs4_in_grace(void);
- extern int nfs4_check_open_reclaim(clientid_t *clid);
-+extern void put_nfs4_client(struct nfs4_client *clp);
- extern void nfs4_free_stateowner(struct kref *kref);
- 
- static inline void
+ /*
+  * TODO: Linux file offsets are _signed_ 64-bit quantities, which means that
 
 
 -------------------------------------------------------
