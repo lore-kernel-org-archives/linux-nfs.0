@@ -1,25 +1,18 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: .x files for NFS v3
-Date: Tue, 3 Sep 2002 12:41:36 +1000
+From: "Kedar Sovani" <kedar@calsoftinc.com>
+Subject: Re: rpc.mountd + rpc.nfsd
+Date: Tue, 3 Sep 2002 11:11:30 +0530
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15732.8544.471074.44155@notabene.cse.unsw.edu.au>
-References: <3D7363A9.4090304@linkvest.com>
-	<15732.7852.166069.553496@notabene.cse.unsw.edu.au>
+Message-ID: <001601c2530c$93e9ef10$4f0010ac@Ashwamedha>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_0011_01C2533A.A75C2E40"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17m3dW-0004g7-00
-	for <nfs@lists.sourceforge.net>; Mon, 02 Sep 2002 19:41:50 -0700
-Received: From
-	notabene.cse.unsw.edu.au ([129.94.233.85] == wireless-085.wireless.cse.unsw.EDU.AU)
-	(for <Jean-Eric.Cuendet@linkvest.com>)
-	(for <nfs@lists.sourceforge.net>) By tone With Smtp ;
-	Tue, 3 Sep 2002 12:41:37 +1000
-To: Jean-Eric Cuendet <Jean-Eric.Cuendet@linkvest.com>,
-    nfs@lists.sourceforge.net
-In-Reply-To: message from Neil Brown on Tuesday September 3
+Received: from silver.he.net ([216.218.151.2])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17m6Qb-0004T6-00
+	for <nfs@lists.sourceforge.net>; Mon, 02 Sep 2002 22:40:41 -0700
+To: <Jean-Eric.Cuendet@linkvest.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,26 +25,60 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Tuesday September 3, neilb@cse.unsw.edu.au wrote:
-> On Monday September 2, Jean-Eric.Cuendet@linkvest.com wrote:
-> > Hi,
-> > where should I find .x files for rpcgen for nfsv3?
-> > Thanks.
-> > -jec
-> > 
-> 
-> RFC1813 has it, though it is pretty spread out.
-> 
-> If you have solaris around, then
->   /usr/include/rpcsvc/nfs_prot.x
+This is a multi-part message in MIME format.
 
-Better still, ask google for "nfs3_prot.x"
+------=_NextPart_000_0011_01C2533A.A75C2E40
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-e.g.
+Hi,
+    i think, the nfsd is a kernel mode daemon, while the mountd is a =
+userspace daemon.
+    The mountd does the initial processing of the mount request, gets =
+the file handle from the server and then sends it into the kernel by the =
+nfsservctl interface.
+     As to, why the mountd is not in kernel space, IMHO, it might not =
+have beeen qualified to be there in the kernel.=20
+=20
 
-http://www.fs.net/cvs/sfsnet/svc/Attic/nfs3_prot.x?cvsroot=CFS-CVS&hideattic=0
+rgds,
+Kedar.
 
-NeilBrown
+------=_NextPart_000_0011_01C2533A.A75C2E40
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; =
+charset=3Diso-8859-1">
+<META content=3D"MSHTML 6.00.2600.0" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV><FONT face=3DArial size=3D2>Hi,</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>&nbsp;&nbsp;&nbsp; i think, the nfsd is =
+a kernel=20
+mode daemon, while the mountd is a userspace daemon.</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>&nbsp;&nbsp;&nbsp; The mountd does the =
+initial=20
+processing of the mount request, gets the file handle from the server =
+and then=20
+sends it into the kernel by the nfsservctl interface.</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>&nbsp;&nbsp;&nbsp;&nbsp; As to, why the =
+mountd is=20
+not in kernel space, IMHO, it might not have beeen qualified to be there =
+in the=20
+kernel.&nbsp;</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>&nbsp;</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>rgds,</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>Kedar.</FONT></DIV></BODY></HTML>
+
+------=_NextPart_000_0011_01C2533A.A75C2E40--
+
 
 
 -------------------------------------------------------
