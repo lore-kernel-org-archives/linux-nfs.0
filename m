@@ -1,19 +1,23 @@
-From: Steffen Persvold <sp@scali.com>
-Subject: Re: Re: IRIX NFS server and Linux NFS client
-Date: Thu, 11 Apr 2002 15:19:06 +0200 (CEST)
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: 2.4.19-pre5-ac3 NFS problems
+Date: Fri, 12 Apr 2002 12:56:04 +1000 (EST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.30.0204111513260.30970-100000@elin.scali.no>
-References: <3CB589EF.7A1A4FB9@moving-picture.com>
+Message-ID: <15542.19652.743976.342481@notabene.cse.unsw.edu.au>
+References: <15537.631.242570.416618@notabene.cse.unsw.edu.au>
+	<Pine.LNX.4.44.0204110730460.6902-100000@atx.fast.net>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from elin.scali.no ([62.70.89.10])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16veTq-0007ER-00
-	for <nfs@lists.sourceforge.net>; Thu, 11 Apr 2002 06:19:14 -0700
-To: James Pearson <james-p@moving-picture.com>
-In-Reply-To: <3CB589EF.7A1A4FB9@moving-picture.com>
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 16vrBO-0000xt-00
+	for <nfs@lists.sourceforge.net>; Thu, 11 Apr 2002 19:53:02 -0700
+Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
+	(for <shirsch@adelphia.net>) (for <nfs@lists.sourceforge.net>) By
+	tone With Smtp ; Fri, 12 Apr 2002 12:52:48 +1000
+To: "Steven N. Hirsch" <shirsch@adelphia.net>
+In-Reply-To: message from Steven N. Hirsch on Thursday April 11
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,65 +30,40 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Thu, 11 Apr 2002, James Pearson wrote:
+On Thursday April 11, shirsch@adelphia.net wrote:
+> 
+> Neil,
+> 
+> I finally got the chance to bang on this.  I'm not seeing anything 
+> queueing on port 32768, but during the period when 'pine' hangs there 
+> seems to be a large number number of requests on port 32771 server-side.  
+> At no point does the backlog fall below about 160.  What should I be 
+> seeing?
 
-> Should work fine. My Linux boxes mount IRIX disks using NFSv3.
->
-> Make sure you have Trond's seekdir patch applied and try exporting the
-> IRIX file systems using the -32bitclients flag - although I haven't seen
-> "Connection refused" errors without using the patch or the export option
+I'm perplexed...
+Is 32771 a local port or a remote port on the server?
 
-I haven't applied Trond's patches yet, and I have therefore also
-experienced the problems which the patch fixes. I'm compiling a new
-kernel at the moment, but I doubt this will fix the NFSv3 issue.
+What I would expect you do see on the server if you do 
+       netstat -t
+is something like:
+Active Internet connections (w/o servers)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State
+tcp        0      0 elfman.orchestra.c:2049 dulcimer.orchestra.:800 ESTABLISHED
 
-Maybe I should do some tcpdumps to figure out what is happening ?
+The local address is "2049".
+The remote address could be anything.  My 2.4 Linux clients seem to
+choose 800, but anything is reasonable.
 
-BTW: The IRIX version on the server is 6.4 if this tells you anything, and
-the directory was already exported with -32bitclients.
+I would expect the see the Recv-Q and Send-Q jump around a lot when IO
+is happening, but settle to zero whenever it is quiet.
 
+If the connection that you are looking at is the NFS connection
+(i.e. the other end is 2049) then the fact that it never gets below
+160 suggests that I've got my accounting wrong somewhere. 
+The simplest option would be that sk_reserved goes negative, but I
+cannot see what would cause that...
 
-> ...
->
-> Note: I believe the nfs-utils version is irrelevant here as nfs-utils is
-> for NFS servers.
-
-True,
-
-Steffen
->
-> James Pearson
->
-> Steffen Persvold wrote:
-> >
-> > On Thu, 11 Apr 2002, Steffen Persvold wrote:
-> >
-> > > Hi all,
-> > >
-> > > Is there any reason why my Linux NFS client (kernel 2.4.18
-> > > nfs-utils-0.3.1-13.7.2.1 from RedHat 7.2) is not able to mount a directory
-> > > exported from an IRIX server in NFSv3 (not sure which version of IRIX
-> > > yet, if this is important I will find out). NFSv2 works fine, but if I
-> > > try to force NFSv3 I get "Connection refused".
-> > >
-> > > I'll appreciate any help.
-> > >
-> >
-> > I forgot to mention that NFSv3 works when an IRIX client mounts the same
-> > directory (i.e the directory shows up as "nfs" and not "nfs2" in the mount
-> > table on the IRIX client).
-> >
-> > Could it be that IRIX only supports NFSv3 with TCP and not UDP (I didn't
-> > try TCP mounting on the Linux client) ?
-> >
-
-Regards,
--- 
-  Steffen Persvold   | Scalable Linux Systems |   Try out the world's best
- mailto:sp@scali.com |  http://www.scali.com  | performing MPI implementation:
-Tel: (+47) 2262 8950 |   Olaf Helsets vei 6   |      - ScaMPI 1.13.8 -
-Fax: (+47) 2262 8951 |   N0621 Oslo, NORWAY   | >320MBytes/s and <4uS latency
-
+NeilBrown
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
