@@ -1,18 +1,18 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: [PATCH 16/19] A basic NFSv4 client for 2.5.x
-Date: Tue, 15 Oct 2002 00:33:57 +0200
+Subject: [PATCH 18/19] A basic NFSv4 client for 2.5.x
+Date: Tue, 15 Oct 2002 00:35:07 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15787.18005.126336.146648@charged.uio.no>
+Message-ID: <15787.18075.529388.84987@charged.uio.no>
 Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: NFS maillist <nfs@lists.sourceforge.net>,
     nfsv4-wg@citi.umich.edu
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
+Received: from mons.uio.no ([129.240.130.14])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 181Dmn-000409-00
-	for <nfs@lists.sourceforge.net>; Mon, 14 Oct 2002 15:34:06 -0700
+	id 181Do1-00046p-00
+	for <nfs@lists.sourceforge.net>; Mon, 14 Oct 2002 15:35:22 -0700
 To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -26,329 +26,116 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-Clean up nfs_fill_super().
+Define the new NFSv4 data structure for passing user information
+from the 'mount' program in nfs4_mount.h.
 
-Separate the parsing of the nfs_mount_data struct and the
-initialization + sanity checking of the resulting super_block.
-The latter is now performed in the new function nfs_sb_init().
+If CONFIG_NFS_V4 is defined
+        Add code to parse the mount structure into the superblock.
+        Declare the NFSv4 filesystem to the VFS.
 
-diff -u --recursive --new-file linux-2.5.42/fs/nfs/inode.c linux-2.5.42-nfsv4-E01/fs/nfs/inode.c
---- linux-2.5.42/fs/nfs/inode.c	2002-10-08 19:43:30.000000000 -0400
-+++ linux-2.5.42-nfsv4-E01/fs/nfs/inode.c	2002-10-12 19:22:13.000000000 -0400
-@@ -234,131 +234,28 @@
+diff -u --recursive --new-file linux-2.5.42-nfsv4-E02/fs/nfs/inode.c linux-2.5.42-nfsv4-E03/fs/nfs/inode.c
+--- linux-2.5.42-nfsv4-E02/fs/nfs/inode.c	2002-10-14 10:03:01.000000000 -0400
++++ linux-2.5.42-nfsv4-E03/fs/nfs/inode.c	2002-10-14 14:38:48.000000000 -0400
+@@ -28,6 +28,7 @@
+ #include <linux/sunrpc/stats.h>
+ #include <linux/nfs_fs.h>
+ #include <linux/nfs_mount.h>
++#include <linux/nfs4_mount.h>
+ #include <linux/nfs_flushd.h>
+ #include <linux/lockd/bind.h>
+ #include <linux/smp_lock.h>
+@@ -157,6 +158,7 @@
+ 		lockd_down();	/* release rpc.lockd */
+ 	rpciod_down();		/* release rpciod */
+ 
++	destroy_nfsv4_state(server);
+ 	kfree(server->hostname);
  }
  
- /*
-- * The way this works is that the mount process passes a structure
-- * in the data argument which contains the server's IP address
-- * and the root file handle obtained from the server's mount
-- * daemon. We stash these away in the private superblock fields.
-+ * Do NFS version-independent mount processing, and sanity checking
-  */
--int nfs_fill_super(struct super_block *sb, struct nfs_mount_data *data, int silent)
-+int nfs_sb_init(struct super_block *sb)
- {
- 	struct nfs_server	*server;
--	struct rpc_xprt		*xprt = NULL;
--	struct rpc_clnt		*clnt = NULL;
- 	struct inode		*root_inode = NULL;
--	rpc_authflavor_t	authflavor;
--	struct rpc_timeout	timeparms;
- 	struct nfs_fsinfo	fsinfo;
--	int			tcp, version, maxlen;
+@@ -1283,6 +1285,239 @@
+ 	.fs_flags	= FS_ODD_RENAME,
+ };
  
- 	/* We probably want something more informative here */
- 	snprintf(sb->s_id, sizeof(sb->s_id), "%x:%x", MAJOR(sb->s_dev), MINOR(sb->s_dev));
- 
-+	server = NFS_SB(sb);
++#ifdef CONFIG_NFS_V4
 +
- 	sb->s_magic      = NFS_SUPER_MAGIC;
- 	sb->s_op         = &nfs_sops;
--	sb->s_blocksize_bits = 0;
--	sb->s_blocksize  = nfs_block_size(data->bsize, &sb->s_blocksize_bits);
--	server           = NFS_SB(sb);
--	server->rsize    = nfs_block_size(data->rsize, NULL);
--	server->wsize    = nfs_block_size(data->wsize, NULL);
--	server->flags    = data->flags & NFS_MOUNT_FLAGMASK;
--
--	if (data->flags & NFS_MOUNT_NOAC) {
--		data->acregmin = data->acregmax = 0;
--		data->acdirmin = data->acdirmax = 0;
--		sb->s_flags |= MS_SYNCHRONOUS;
--	}
--	server->acregmin = data->acregmin*HZ;
--	server->acregmax = data->acregmax*HZ;
--	server->acdirmin = data->acdirmin*HZ;
--	server->acdirmax = data->acdirmax*HZ;
--
--	server->namelen  = data->namlen;
--	server->hostname = kmalloc(strlen(data->hostname) + 1, GFP_KERNEL);
--	if (!server->hostname)
--		goto out_unlock;
--	strcpy(server->hostname, data->hostname);
- 	INIT_LIST_HEAD(&server->lru_read);
- 	INIT_LIST_HEAD(&server->lru_dirty);
- 	INIT_LIST_HEAD(&server->lru_commit);
- 	INIT_LIST_HEAD(&server->lru_busy);
- 
-- nfsv3_try_again:
--	server->caps = 0;
--	/* Check NFS protocol revision and initialize RPC op vector
--	 * and file handle pool. */
--	if (data->flags & NFS_MOUNT_VER3) {
--#ifdef CONFIG_NFS_V3
--		server->rpc_ops = &nfs_v3_clientops;
--		version = 3;
--		server->caps |= NFS_CAP_READDIRPLUS;
--		if (data->version < 4) {
--			printk(KERN_NOTICE "NFS: NFSv3 not supported by mount program.\n");
--			goto out_unlock;
--		}
--#else
--		printk(KERN_NOTICE "NFS: NFSv3 not supported.\n");
--		goto out_unlock;
--#endif
--	} else {
--		server->rpc_ops = &nfs_v2_clientops;
--		version = 2;
--        }
--
--	/* Which protocol do we use? */
--	tcp   = (data->flags & NFS_MOUNT_TCP);
--
--	/* Initialize timeout values */
--	timeparms.to_initval = data->timeo * HZ / 10;
--	timeparms.to_retries = data->retrans;
--	timeparms.to_maxval  = tcp? RPC_MAX_TCP_TIMEOUT : RPC_MAX_UDP_TIMEOUT;
--	timeparms.to_exponential = 1;
--
--	if (!timeparms.to_initval)
--		timeparms.to_initval = (tcp ? 600 : 11) * HZ / 10;
--	if (!timeparms.to_retries)
--		timeparms.to_retries = 5;
--
--	/* Now create transport and client */
--	xprt = xprt_create_proto(tcp? IPPROTO_TCP : IPPROTO_UDP,
--						&server->addr, &timeparms);
--	if (xprt == NULL)
--		goto out_no_xprt;
--
--	/* Choose authentication flavor */
--	authflavor = RPC_AUTH_UNIX;
--	if (data->flags & NFS_MOUNT_SECURE)
--		authflavor = RPC_AUTH_DES;
--	else if (data->flags & NFS_MOUNT_KERBEROS)
--		authflavor = RPC_AUTH_KRB;
--
--	clnt = rpc_create_client(xprt, server->hostname, &nfs_program,
--				 version, authflavor);
--	if (clnt == NULL)
--		goto out_no_client;
--
--	clnt->cl_intr     = (data->flags & NFS_MOUNT_INTR)? 1 : 0;
--	clnt->cl_softrtry = (data->flags & NFS_MOUNT_SOFT)? 1 : 0;
--	clnt->cl_droppriv = (data->flags & NFS_MOUNT_BROKEN_SUID) ? 1 : 0;
--	clnt->cl_chatty   = 1;
--	server->client    = clnt;
--
--	/* Fire up rpciod if not yet running */
--	if (rpciod_up() != 0)
--		goto out_no_iod;
--
--	/*
--	 * Keep the super block locked while we try to get 
--	 * the root fh attributes.
--	 */
- 	/* Did getting the root inode fail? */
--	if (!(root_inode = nfs_get_root(sb, &server->fh))
--	    && (data->flags & NFS_MOUNT_VER3)) {
--		data->flags &= ~NFS_MOUNT_VER3;
--		rpciod_down();
--		rpc_shutdown_client(server->client);
--		goto nfsv3_try_again;
--	}
--
-+	root_inode = nfs_get_root(sb, &server->fh);
- 	if (!root_inode)
- 		goto out_no_root;
- 	sb->s_root = d_alloc_root(root_inode);
-@@ -377,9 +274,9 @@
-         }
- 
- 	/* Work out a lot of parameters */
--	if (data->rsize == 0)
-+	if (server->rsize == 0)
- 		server->rsize = nfs_block_size(fsinfo.rtpref, NULL);
--	if (data->wsize == 0)
-+	if (server->wsize == 0)
- 		server->wsize = nfs_block_size(fsinfo.wtpref, NULL);
- 	/* NFSv3: we don't have bsize, but rather rtmult and wtmult... */
- 	if (!fsinfo.bsize)
-@@ -391,12 +288,12 @@
- 	if (fsinfo.bsize < server->wsize)
- 		fsinfo.bsize = server->wsize;
- 
--	if (data->bsize == 0)
-+	if (sb->s_blocksize == 0)
- 		sb->s_blocksize = nfs_block_bits(fsinfo.bsize, &sb->s_blocksize_bits);
--	if (server->rsize > fsinfo.rtmax)
--		server->rsize = fsinfo.rtmax;
--	if (server->wsize > fsinfo.wtmax)
--		server->wsize = fsinfo.wtmax;
-+	if (fsinfo.rtmax >= 512 && server->rsize > fsinfo.rtmax)
-+		server->rsize = nfs_block_size(fsinfo.rtmax, NULL);
-+	if (fsinfo.wtmax >= 512 && server->wsize > fsinfo.wtmax)
-+		server->wsize = nfs_block_size(fsinfo.wtmax, NULL);
- 
- 	server->rpages = (server->rsize + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
- 	if (server->rpages > NFS_READ_MAXIOV) {
-@@ -416,10 +313,11 @@
- 	if (server->dtsize > server->rsize)
- 		server->dtsize = server->rsize;
- 
--        maxlen = (version == 2) ? NFS2_MAXNAMLEN : NFS3_MAXNAMLEN;
--
--        if (server->namelen == 0 || server->namelen > maxlen)
--                server->namelen = maxlen;
-+	if (server->flags & NFS_MOUNT_NOAC) {
-+		server->acregmin = server->acregmax = 0;
-+		server->acdirmin = server->acdirmax = 0;
-+		sb->s_flags |= MS_SYNCHRONOUS;
-+	}
- 
- 	sb->s_maxbytes = fsinfo.maxfilesize;
- 	if (sb->s_maxbytes > MAX_LFS_FILESIZE) 
-@@ -432,44 +330,140 @@
- 	}
- 
- 	/* We're airborne Set socket buffersize */
--	rpc_setbufsize(clnt, server->wsize + 100, server->rsize + 100);
--
--	/* Check whether to start the lockd process */
--	if (!(server->flags & NFS_MOUNT_NONLM))
--		lockd_up();
-+	rpc_setbufsize(server->client, server->wsize + 100, server->rsize + 100);
- 	return 0;
--
- 	/* Yargs. It didn't work out. */
-- failure_kill_reqlist:
-+failure_kill_reqlist:
- 	nfs_reqlist_exit(server);
-+out_free_all:
-+	if (root_inode)
-+		iput(root_inode);
-+	nfs_reqlist_free(server);
-+	return -EINVAL;
- out_no_root:
- 	printk("nfs_read_super: get root inode failed\n");
--	iput(root_inode);
--	rpciod_down();
--	goto out_shutdown;
-+	goto out_free_all;
-+}
- 
--out_no_iod:
--	printk(KERN_WARNING "NFS: couldn't start rpciod!\n");
--out_shutdown:
--	rpc_shutdown_client(server->client);
--	goto out_free_host;
-+/*
-+ * The way this works is that the mount process passes a structure
-+ * in the data argument which contains the server's IP address
-+ * and the root file handle obtained from the server's mount
-+ * daemon. We stash these away in the private superblock fields.
-+ */
-+int nfs_fill_super(struct super_block *sb, struct nfs_mount_data *data, int silent)
++static int nfs4_fill_super(struct super_block *sb, struct nfs4_mount_data *data, int silent)
 +{
-+	struct nfs_server	*server;
-+	struct rpc_xprt		*xprt = NULL;
-+	struct rpc_clnt		*clnt = NULL;
-+	struct rpc_timeout	timeparms;
-+	int			tcp, err = -EIO;
++	struct nfs_server *server;
++	struct rpc_xprt *xprt = NULL;
++	struct rpc_clnt *clnt = NULL;
++	struct rpc_timeout timeparms;
++	rpc_authflavor_t authflavour;
++	int proto, err = -EIO;
 +
-+	server           = NFS_SB(sb);
 +	sb->s_blocksize_bits = 0;
 +	sb->s_blocksize = 0;
-+	if (data->bsize)
-+		sb->s_blocksize = nfs_block_size(data->bsize, &sb->s_blocksize_bits);
-+	if (data->rsize)
++	server = NFS_SB(sb);
++	if (data->rsize != 0)
 +		server->rsize = nfs_block_size(data->rsize, NULL);
-+	if (data->wsize)
++	if (data->wsize != 0)
 +		server->wsize = nfs_block_size(data->wsize, NULL);
-+	server->flags    = data->flags & NFS_MOUNT_FLAGMASK;
- 
--out_no_client:
--	printk(KERN_WARNING "NFS: cannot create RPC client.\n");
--	xprt_destroy(xprt);
--	goto out_free_host;
++	server->flags = data->flags & NFS_MOUNT_FLAGMASK;
++
++	/* NFSv4 doesn't use NLM locking */
++	server->flags |= NFS_MOUNT_NONLM;
++
 +	server->acregmin = data->acregmin*HZ;
 +	server->acregmax = data->acregmax*HZ;
 +	server->acdirmin = data->acdirmin*HZ;
 +	server->acdirmax = data->acdirmax*HZ;
- 
--out_no_xprt:
--	printk(KERN_WARNING "NFS: cannot create RPC transport.\n");
-+	server->namelen  = data->namlen;
-+	server->hostname = kmalloc(strlen(data->hostname) + 1, GFP_KERNEL);
-+	if (!server->hostname)
-+		goto out_fail;
-+	strcpy(server->hostname, data->hostname);
- 
--out_free_host:
--	nfs_reqlist_free(server);
--	kfree(server->hostname);
--out_unlock:
--	goto out_fail;
-+	/* Check NFS protocol revision and initialize RPC op vector
-+	 * and file handle pool. */
-+	if (server->flags & NFS_MOUNT_VER3) {
-+#ifdef CONFIG_NFS_V3
-+		server->rpc_ops = &nfs_v3_clientops;
-+		server->caps |= NFS_CAP_READDIRPLUS;
-+		if (data->version < 4) {
-+			printk(KERN_NOTICE "NFS: NFSv3 not supported by mount program.\n");
-+			goto out_fail;
-+		}
-+#else
-+		printk(KERN_NOTICE "NFS: NFSv3 not supported.\n");
-+		goto out_fail;
-+#endif
-+	} else {
-+		server->rpc_ops = &nfs_v2_clientops;
-+	}
 +
-+	/* Which protocol do we use? */
-+	tcp   = (data->flags & NFS_MOUNT_TCP);
-+
++	server->rpc_ops = &nfs_v4_clientops;
 +	/* Initialize timeout values */
++
 +	timeparms.to_initval = data->timeo * HZ / 10;
 +	timeparms.to_retries = data->retrans;
-+	timeparms.to_maxval  = tcp? RPC_MAX_TCP_TIMEOUT : RPC_MAX_UDP_TIMEOUT;
 +	timeparms.to_exponential = 1;
-+
-+	if (!timeparms.to_initval)
-+		timeparms.to_initval = (tcp ? 600 : 11) * HZ / 10;
 +	if (!timeparms.to_retries)
 +		timeparms.to_retries = 5;
 +
++	proto = data->proto;
++	/* Which IP protocol do we use? */
++	switch (proto) {
++	case IPPROTO_TCP:
++		timeparms.to_maxval  = RPC_MAX_TCP_TIMEOUT;
++		if (!timeparms.to_initval)
++			timeparms.to_initval = 600 * HZ / 10;
++		break;
++	case IPPROTO_UDP:
++		timeparms.to_maxval  = RPC_MAX_UDP_TIMEOUT;
++		if (!timeparms.to_initval)
++			timeparms.to_initval = 11 * HZ / 10;
++		break;
++	default:
++		return -EINVAL;
++	}
++
 +	/* Now create transport and client */
-+	xprt = xprt_create_proto(tcp? IPPROTO_TCP : IPPROTO_UDP,
-+						&server->addr, &timeparms);
++	xprt = xprt_create_proto(proto, &server->addr, &timeparms);
 +	if (xprt == NULL) {
 +		printk(KERN_WARNING "NFS: cannot create RPC transport.\n");
 +		goto out_fail;
 +	}
++
++	authflavour = RPC_AUTH_UNIX;
++	if (data->auth_flavourlen != 0) {
++		if (data->auth_flavourlen > 1)
++			printk(KERN_INFO "NFS: cannot yet deal with multiple auth flavours.\n");
++		if (copy_from_user(authflavour, data->auth_flavours, sizeof(authflavour))) {
++			err = -EFAULT;
++			goto out_fail;
++		}
++	}
 +	clnt = rpc_create_client(xprt, server->hostname, &nfs_program,
-+				 server->rpc_ops->version, RPC_AUTH_UNIX);
++				 server->rpc_ops->version, authflavour);
 +	if (clnt == NULL) {
 +		printk(KERN_WARNING "NFS: cannot create RPC client.\n");
 +		xprt_destroy(xprt);
 +		goto out_fail;
 +	}
 +
-+	clnt->cl_intr     = (server->flags & NFS_MOUNT_INTR) ? 1 : 0;
-+	clnt->cl_softrtry = (server->flags & NFS_MOUNT_SOFT) ? 1 : 0;
-+	clnt->cl_droppriv = (server->flags & NFS_MOUNT_BROKEN_SUID) ? 1 : 0;
++	clnt->cl_intr     = (server->flags & NFS4_MOUNT_INTR) ? 1 : 0;
++	clnt->cl_softrtry = (server->flags & NFS4_MOUNT_SOFT) ? 1 : 0;
 +	clnt->cl_chatty   = 1;
 +	server->client    = clnt;
 +
@@ -358,34 +145,363 @@ diff -u --recursive --new-file linux-2.5.42/fs/nfs/inode.c linux-2.5.42-nfsv4-E0
 +		goto out_shutdown;
 +	}
 +
-+	err = nfs_sb_init(sb);
-+	if (err != 0)
-+		goto out_noinit;
++	if (create_nfsv4_state(server, data))
++		goto out_shutdown;
 +
-+	if (server->flags & NFS_MOUNT_VER3) {
-+		if (server->namelen == 0 || server->namelen > NFS3_MAXNAMLEN)
-+			server->namelen = NFS3_MAXNAMLEN;
-+	} else {
-+		if (server->namelen == 0 || server->namelen > NFS2_MAXNAMLEN)
-+			server->namelen = NFS2_MAXNAMLEN;
-+	}
- 
-+	/* Check whether to start the lockd process */
-+	if (!(server->flags & NFS_MOUNT_NONLM))
-+		lockd_up();
-+	return 0;
-+out_noinit:
++	err = nfs_sb_init(sb);
++	if (err == 0)
++		return 0;
 +	rpciod_down();
++	destroy_nfsv4_state(server);
 +out_shutdown:
 +	rpc_shutdown_client(server->client);
- out_fail:
--	return -EINVAL;
++out_fail:
++	return err;
++}
++
++static int nfs4_compare_super(struct super_block *sb, void *data)
++{
++	struct nfs_server *server = data;
++	struct nfs_server *old = NFS_SB(sb);
++
++	if (strcmp(server->hostname, old->hostname) != 0)
++		return 0;
++	if (strcmp(server->mnt_path, old->mnt_path) != 0)
++		return 0;
++	return 1;
++}
++
++static void *
++nfs_copy_user_string(char *dst, struct nfs_string *src, int maxlen)
++{
++	void *p = NULL;
++
++	if (!src->len)
++		return ERR_PTR(-EINVAL);
++	if (src->len < maxlen)
++		maxlen = src->len;
++	if (dst == NULL) {
++		p = dst = kmalloc(maxlen + 1, GFP_KERNEL);
++		if (p == NULL)
++			return ERR_PTR(-ENOMEM);
++	}
++	if (copy_from_user(dst, src->data, maxlen)) {
++		if (p != NULL)
++			kfree(p);
++		return ERR_PTR(-EFAULT);
++	}
++	dst[maxlen] = '\0';
++	return dst;
++}
++
++static struct super_block *nfs4_get_sb(struct file_system_type *fs_type,
++	int flags, char *dev_name, void *raw_data)
++{
++	int error;
++	struct nfs_server *server;
++	struct super_block *s;
++	struct nfs4_mount_data *data = raw_data;
++	void *p;
++
++	if (!data) {
++		printk("nfs_read_super: missing data argument\n");
++		return ERR_PTR(-EINVAL);
++	}
++
++	server = kmalloc(sizeof(struct nfs_server), GFP_KERNEL);
++	if (!server)
++		return ERR_PTR(-ENOMEM);
++	memset(server, 0, sizeof(struct nfs_server));
++
++	if (data->version != NFS4_MOUNT_VERSION) {
++		printk("nfs warning: mount version %s than kernel\n",
++			data->version < NFS_MOUNT_VERSION ? "older" : "newer");
++	}
++
++	p = nfs_copy_user_string(NULL, &data->hostname, 256);
++	if (IS_ERR(p))
++		goto out_err;
++	server->hostname = p;
++
++	p = nfs_copy_user_string(NULL, &data->mnt_path, 1024);
++	if (IS_ERR(p))
++		goto out_err;
++	server->mnt_path = p;
++
++	p = nfs_copy_user_string(server->ip_addr, &data->client_addr,
++			sizeof(server->ip_addr));
++	if (IS_ERR(p))
++		goto out_err;
++
++	/* We now require that the mount process passes the remote address */
++	if (data->host_addrlen != sizeof(server->addr)) {
++		s = ERR_PTR(-EINVAL);
++		goto out_free;
++	}
++	if (copy_from_user(&server->addr, data->host_addr, sizeof(server->addr))) {
++		s = ERR_PTR(-EFAULT);
++		goto out_free;
++	}
++	if (server->addr.sin_family != AF_INET ||
++	    server->addr.sin_addr.s_addr == INADDR_ANY) {
++		printk("NFS: mount program didn't pass remote IP address!\n");
++		s = ERR_PTR(-EINVAL);
++		goto out_free;
++	}
++
++	s = sget(fs_type, nfs4_compare_super, nfs_set_super, server);
++
++	if (IS_ERR(s) || s->s_root)
++		goto out_free;
++
++	s->s_flags = flags;
++
++	error = nfs4_fill_super(s, data, flags & MS_VERBOSE ? 1 : 0);
++	if (error) {
++		up_write(&s->s_umount);
++		deactivate_super(s);
++		return ERR_PTR(error);
++	}
++	s->s_flags |= MS_ACTIVE;
++	return s;
++out_err:
++	s = (struct super_block *)p;
++out_free:
++	if (server->mnt_path)
++		kfree(server->mnt_path);
 +	if (server->hostname)
 +		kfree(server->hostname);
-+	return err;
++	kfree(server);
++	return s;
++}
++
++static struct file_system_type nfs4_fs_type = {
++	.owner		= THIS_MODULE,
++	.name		= "nfs4",
++	.get_sb		= nfs4_get_sb,
++	.kill_sb	= nfs_kill_super,
++	.fs_flags	= FS_ODD_RENAME,
++};
++#define register_nfs4fs() register_filesystem(&nfs4_fs_type)
++#define unregister_nfs4fs() unregister_filesystem(&nfs4_fs_type)
++#else
++#define register_nfs4fs() (0)
++#define unregister_nfs4fs()
++#endif
++
+ extern int nfs_init_nfspagecache(void);
+ extern void nfs_destroy_nfspagecache(void);
+ extern int nfs_init_readpagecache(void);
+@@ -1374,6 +1609,8 @@
+         err = register_filesystem(&nfs_fs_type);
+ 	if (err)
+ 		goto out;
++	if ((err = register_nfs4fs()) != 0)
++		goto out;
+ 	return 0;
+ out:
+ 	rpc_proc_unregister("nfs");
+@@ -1398,6 +1635,7 @@
+ 	rpc_proc_unregister("nfs");
+ #endif
+ 	unregister_filesystem(&nfs_fs_type);
++	unregister_nfs4fs();
  }
  
- static int
+ /* Not quite true; I just maintain it */
+diff -u --recursive --new-file linux-2.5.42-nfsv4-E02/include/linux/nfs3.h linux-2.5.42-nfsv4-E03/include/linux/nfs3.h
+--- linux-2.5.42-nfsv4-E02/include/linux/nfs3.h	2002-10-10 19:24:44.000000000 -0400
++++ linux-2.5.42-nfsv4-E03/include/linux/nfs3.h	2002-10-14 10:03:25.000000000 -0400
+@@ -59,6 +59,11 @@
+ 	NF3BAD  = 8
+ };
+ 
++struct nfs3_fh {
++	unsigned short size;
++	unsigned char  data[NFS3_FHSIZE];
++};
++
+ #define NFS3_VERSION		3
+ #define NFS3PROC_NULL		0
+ #define NFS3PROC_GETATTR	1
+diff -u --recursive --new-file linux-2.5.42-nfsv4-E02/include/linux/nfs4_mount.h linux-2.5.42-nfsv4-E03/include/linux/nfs4_mount.h
+--- linux-2.5.42-nfsv4-E02/include/linux/nfs4_mount.h	1969-12-31 19:00:00.000000000 -0500
++++ linux-2.5.42-nfsv4-E03/include/linux/nfs4_mount.h	2002-10-14 14:39:05.000000000 -0400
+@@ -0,0 +1,70 @@
++#ifndef _LINUX_NFS4_MOUNT_H
++#define _LINUX_NFS4_MOUNT_H
++
++/*
++ *  linux/include/linux/nfs4_mount.h
++ *
++ *  Copyright (C) 2002  Trond Myklebust
++ *
++ *  structure passed from user-space to kernel-space during an nfsv4 mount
++ */
++
++/*
++ * WARNING!  Do not delete or change the order of these fields.  If
++ * a new field is required then add it to the end.  The version field
++ * tracks which fields are present.  This will ensure some measure of
++ * mount-to-kernel version compatibility.  Some of these aren't used yet
++ * but here they are anyway.
++ */
++#define NFS4_MOUNT_VERSION	1
++
++struct nfs_string {
++	unsigned int len;
++	const char* data;
++};
++
++struct nfs4_mount_data {
++	int version;				/* 1 */
++	int flags;				/* 1 */
++	int rsize;				/* 1 */
++	int wsize;				/* 1 */
++	int timeo;				/* 1 */
++	int retrans;				/* 1 */
++	int acregmin;				/* 1 */
++	int acregmax;				/* 1 */
++	int acdirmin;				/* 1 */
++	int acdirmax;				/* 1 */
++
++	/* see the definition of 'struct clientaddr4' in RFC3010 */
++	struct nfs_string client_addr;		/* 1 */
++
++	/* Mount path */
++	struct nfs_string mnt_path;		/* 1 */
++
++	/* Server details */
++	struct nfs_string hostname;		/* 1 */
++	/* Server IP address */
++	unsigned int host_addrlen;		/* 1 */
++	struct sockaddr* host_addr;		/* 1 */
++
++	/* Transport protocol to use */
++	int proto;				/* 1 */
++
++	/* Pseudo-flavours to use for authentication. See RFC2623 */
++	int auth_flavourlen;			/* 1 */
++	int *auth_flavours;			/* 1 */
++};
++
++/* bits in the flags field */
++/* Note: the fields that correspond to existing NFSv2/v3 mount options
++ * 	 should mirror the values from include/linux/nfs_mount.h
++ */
++
++#define NFS4_MOUNT_SOFT		0x0001	/* 1 */
++#define NFS4_MOUNT_INTR		0x0002	/* 1 */
++#define NFS4_MOUNT_NOCTO	0x0010	/* 1 */
++#define NFS4_MOUNT_NOAC		0x0020	/* 1 */
++#define NFS4_MOUNT_STRICTLOCK	0x1000	/* 1 */
++#define NFS4_MOUNT_FLAGMASK	0xFFFF
++
++#endif
+diff -u --recursive --new-file linux-2.5.42-nfsv4-E02/include/linux/nfs_fs.h linux-2.5.42-nfsv4-E03/include/linux/nfs_fs.h
+--- linux-2.5.42-nfsv4-E02/include/linux/nfs_fs.h	2002-10-11 18:22:38.000000000 -0400
++++ linux-2.5.42-nfsv4-E03/include/linux/nfs_fs.h	2002-10-14 10:03:25.000000000 -0400
+@@ -472,6 +472,36 @@
+ 
+ #define NFS_JUKEBOX_RETRY_TIME (5 * HZ)
+ 
++#ifdef CONFIG_NFS_V4
++
++extern struct nfs4_client *nfs4_get_client(void);
++extern void nfs4_put_client(struct nfs4_client *clp);
++
++struct nfs4_mount_data;
++static inline int
++create_nfsv4_state(struct nfs_server *server, struct nfs4_mount_data *data)
++{
++	server->nfs4_state = NULL;
++	return 0;
++}
++
++static inline void
++destroy_nfsv4_state(struct nfs_server *server)
++{
++	if (server->mnt_path) {
++		kfree(server->mnt_path);
++		server->mnt_path = NULL;
++	}
++	if (server->nfs4_state) {
++		nfs4_put_client(server->nfs4_state);
++		server->nfs4_state = NULL;
++	}
++}
++#else
++#define create_nfsv4_state(server, data)  0
++#define destroy_nfsv4_state(server)       do { } while (0)
++#endif
++
+ #endif /* __KERNEL__ */
+ 
+ /*
+diff -u --recursive --new-file linux-2.5.42-nfsv4-E02/include/linux/nfs_fs_sb.h linux-2.5.42-nfsv4-E03/include/linux/nfs_fs_sb.h
+--- linux-2.5.42-nfsv4-E02/include/linux/nfs_fs_sb.h	2002-07-27 14:56:14.000000000 -0400
++++ linux-2.5.42-nfsv4-E03/include/linux/nfs_fs_sb.h	2002-10-14 10:03:25.000000000 -0400
+@@ -30,6 +30,16 @@
+ 				lru_busy;
+ 	struct nfs_fh		fh;
+ 	struct sockaddr_in	addr;
++#if CONFIG_NFS_V4
++	/* Our own IP address, as a null-terminated string.
++	 * This is used to generate the clientid, and the callback address.
++	 */
++	char			ip_addr[16];
++	char *			mnt_path;
++	struct nfs4_client *	nfs4_state;	/* all NFSv4 state starts here */
++	unsigned long		lease_time;	/* in jiffies */
++	unsigned long		last_renewal;	/* in jiffies */
++#endif
+ };
+ 
+ /* Server capabilities */
+diff -u --recursive --new-file linux-2.5.42-nfsv4-E02/include/linux/nfs.h linux-2.5.42-nfsv4-E03/include/linux/nfs.h
+--- linux-2.5.42-nfsv4-E02/include/linux/nfs.h	2002-08-21 19:21:27.000000000 -0400
++++ linux-2.5.42-nfsv4-E03/include/linux/nfs.h	2002-10-14 10:03:25.000000000 -0400
+@@ -120,7 +120,7 @@
+ /*
+  * This is the kernel NFS client file handle representation
+  */
+-#define NFS_MAXFHSIZE		64
++#define NFS_MAXFHSIZE		128
+ struct nfs_fh {
+ 	unsigned short		size;
+ 	unsigned char		data[NFS_MAXFHSIZE];
+diff -u --recursive --new-file linux-2.5.42-nfsv4-E02/include/linux/nfs_mount.h linux-2.5.42-nfsv4-E03/include/linux/nfs_mount.h
+--- linux-2.5.42-nfsv4-E02/include/linux/nfs_mount.h	2002-02-05 12:39:40.000000000 -0500
++++ linux-2.5.42-nfsv4-E03/include/linux/nfs_mount.h	2002-10-14 10:03:25.000000000 -0400
+@@ -10,6 +10,8 @@
+  */
+ #include <linux/in.h>
+ #include <linux/nfs.h>
++#include <linux/nfs2.h>
++#include <linux/nfs3.h>
+ 
+ /*
+  * WARNING!  Do not delete or change the order of these fields.  If
+@@ -37,7 +39,7 @@
+ 	char		hostname[256];		/* 1 */
+ 	int		namlen;			/* 2 */
+ 	unsigned int	bsize;			/* 3 */
+-	struct nfs_fh	root;			/* 4 */
++	struct nfs3_fh	root;			/* 4 */
+ };
+ 
+ /* bits in the flags field */
+@@ -53,6 +55,10 @@
+ #define NFS_MOUNT_KERBEROS	0x0100	/* 3 */
+ #define NFS_MOUNT_NONLM		0x0200	/* 3 */
+ #define NFS_MOUNT_BROKEN_SUID	0x0400	/* 4 */
++#if 0
++#define NFS_MOUNT_STRICTLOCK	0x1000	/* reserved for NFSv4 */
++#define NFS_MOUNT_SECFLAVOUR	0x2000	/* reserved */
++#endif
+ #define NFS_MOUNT_FLAGMASK	0xFFFF
+ 
+ #endif
 
 
 -------------------------------------------------------
