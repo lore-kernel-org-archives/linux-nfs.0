@@ -1,20 +1,24 @@
-From: Denis Vlasenko <vda@port.imtp.ilyichevsk.odessa.ua>
-Subject: Slow/dead NFS mounts when DNS is down
-Date: Wed, 2 Mar 2005 11:28:11 +0200
-Message-ID: <200503021128.11811.vda@port.imtp.ilyichevsk.odessa.ua>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [RFC] implementing BSD style locks on NLM (flocks)
+Date: Thu, 03 Mar 2005 13:19:42 -0800
+Message-ID: <1109884782.10094.2.camel@lade.trondhjem.org>
+References: <20050227192113.GA5778@localhost.localdomain>
+	 <1109787034.12460.7.camel@lade.trondhjem.org>
+	 <20050303182419.GI6497@hmsendeavour.rdu.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="koi8-r"
+Content-Type: text/plain
 Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D6QBm-0000TD-Rq
-	for nfs@lists.sourceforge.net; Wed, 02 Mar 2005 01:30:42 -0800
-Received: from [195.66.192.168] (helo=port.imtp.ilyichevsk.odessa.ua)
-	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
-	id 1D6QB3-0005YX-1z
-	for nfs@lists.sourceforge.net; Wed, 02 Mar 2005 01:30:42 -0800
-To: NeilBrown <neilb@cse.unsw.edu.au>
+	id 1D6xlL-0003vF-Po
+	for nfs@lists.sourceforge.net; Thu, 03 Mar 2005 13:21:39 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1D6xlK-00043S-3k
+	for nfs@lists.sourceforge.net; Thu, 03 Mar 2005 13:21:39 -0800
+To: nhorman@redhat.com
+In-Reply-To: <20050303182419.GI6497@hmsendeavour.rdu.redhat.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,80 +32,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I have a small-to-medium net here and I refer to my internal hosts by IPs,
-not names.
+to den 03.03.2005 Klokka 13:24 (-0500) skreiv nhorman@redhat.com:
+>  
+> Do you know when this will get merged with the mainline kernel?
+> Thanks!
+> Neil
 
-Unexpectedly, when external link to Inet is down, NFS mounts are slow.
-I didn't expect mountd to use DNS at all if all hosts in /etc/exports
-are referred with numeric IP addresses, but it does use DNS.
+akpm claims that 2.6.12 is meant to be a quick bugfix release, so I'd
+guess that we're going to have to wait for 2.6.13 before we can get it
+in.
 
-Narrowing it down, I edited resolv.conf in order to direct DNS queries
-to non-existing host, removed 127.0.0.1 localhost from /etc/hosts
-and NFS mounts did not work at all.
-
-# cat /etc/exports
-# See exports(5) for a description.
-# This file contains a list of all directories exported to other computers.
-# It is used by rpc.nfsd and rpc.mountd.
-
-/       127.0.0.1(rw,no_root_squash,async)
-
-This is what happens when I try to mount 127.0.0.1:/ (log of instrumented mountd):
-
-11:04:15 rpc.mountd: MNT3(/) calledd
-11:04:15 rpc.mountd: get_rootfh() start
-11:04:15 rpc.mountd: get_rootfh() 1
-11:04:15 rpc.mountd: get_rootfh() 2
-11:04:15 rpc.mountd: auth_authenticate(): get_reliable_hostbyaddr start
-11:04:15 rpc.mountd: get_reliable_hostbyaddr(): gethostbyaddr start
-	here DNS requests time out...
-11:04:25 rpc.mountd: get_reliable_hostbyaddr(): gethostbyaddr finish
-11:04:25 rpc.mountd: auth_authenticate(): get_reliable_hostbyaddr finish
-11:04:25 rpc.mountd: auth_authenticate(): get_hostent start
-11:04:25 rpc.mountd: auth_authenticate(): get_hostent finish
-11:04:25 rpc.mountd: mount request from unknown host 127.0.0.1 for / (/)
-
-Any suggestions how to properly fix it?
-
-Relevant part of nfsutils-1.0.7 utils/mountd/auth.c
-is below sig (instrumentation not shown).
-
-Code flow:
-get_reliable_hostbyaddr (DNS timeount) -> get_hostent ->
--> while(1){...} -> switch (error){ ->
--> case unknown_host: -> "mount request from unknown host..."
---
-vda
-
-        hp = get_reliable_hostbyaddr((const char*)&caller->sin_addr, sizeof(struct in_addr),
-                                     AF_INET);
-        if (!hp)
-                hp = get_hostent((const char*)&caller->sin_addr, sizeof(struct in_addr),
-                                     AF_INET);
-        if (!hp)
-                return exp;
-
-        /* Try the longest matching exported pathname. */
-        while (1) {
-                exp = auth_authenticate_internal(what, caller, epath,
-                                                 hp, &error);
-                if (exp || (error != not_exported && error != no_entry))
-                        break;
-                /* We have to treat the root, "/", specially. */
-                if (p == &epath[1]) break;
-                p = strrchr(epath, '/');
-                if (p == epath) p++;
-                *p = '\0';
-        }
-
-        switch (error) {
-        case bad_path:
-                xlog(L_WARNING, "bad path in %s request from %s: \"%s\"",
-                     what, inet_ntoa(addr), path);
-                break;
-
-        case unknown_host:
-                xlog(L_WARNING, "%s request from unknown host %s for %s (%s)",
+Cheers,
+  Trond
+-- 
+Trond Myklebust <trond.myklebust@fys.uio.no>
 
 
 
