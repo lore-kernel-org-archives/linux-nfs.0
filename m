@@ -1,22 +1,26 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: [SOLVED] RE: debugging failed lock recovery
-Date: Tue, 1 Feb 2005 14:56:58 -0800
-Message-ID: <482A3FA0050D21419C269D13989C6113085396C0@lavender-fe.eng.netapp.com>
+From: "jehan.procaccia" <jehan.procaccia@int-evry.fr>
+Subject: rpc.mountd: getfh failed: Operation not permitted
+Date: Wed, 02 Feb 2005 00:03:08 +0100
+Message-ID: <42000AAC.5000301@int-evry.fr>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Cw6xG-00076T-F2
-	for nfs@lists.sourceforge.net; Tue, 01 Feb 2005 14:57:06 -0800
-Received: from mx1.netapp.com ([216.240.18.38])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1Cw6xE-0006cY-Fq
-	for nfs@lists.sourceforge.net; Tue, 01 Feb 2005 14:57:05 -0800
-Received: from svlexc02.hq.netapp.com (svlexc02.corp.netapp.com [10.57.157.136])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id j11MuxYx021086
-	for <nfs@lists.sourceforge.net>; Tue, 1 Feb 2005 14:56:59 -0800 (PST)
-To: <nfs@lists.sourceforge.net>
+	id 1Cw73K-0007QT-BW
+	for nfs@lists.sourceforge.net; Tue, 01 Feb 2005 15:03:22 -0800
+Received: from smtp2.int-evry.fr ([157.159.10.45])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1Cw73J-0005dX-Jd
+	for nfs@lists.sourceforge.net; Tue, 01 Feb 2005 15:03:22 -0800
+Received: from smyrne.int-evry.fr (smtp-ext.int-evry.fr [157.159.11.17])
+	by smtp2.int-evry.fr (Postfix) with ESMTP id BF4892FD91
+	for <nfs@lists.sourceforge.net>; Wed,  2 Feb 2005 00:03:11 +0100 (CET)
+Received: from [157.159.10.93] (unknown [157.159.10.93])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by smyrne.int-evry.fr (Postfix) with ESMTP id 45BA8C7381
+	for <nfs@lists.sourceforge.net>; Tue,  1 Feb 2005 23:58:28 +0100 (CET)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,35 +34,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-for future reference:  this is generically described in the NFS FAQ.
+Hello,
 
-  http://nfs.sourceforge.net/index.php#faq_d7
+Can someone give me a clue about this "getfh" error ?
 
+Feb  1 10:15:06 cobra3 rpc.mountd: getfh failed: Operation not permitted
+Feb  1 10:15:06 cobra3 rpc.mountd: authenticated mount request from 
+b04-02.int-evry.fr:763 for /p1v3f1/ei0306/test (/p1v3f1)
 
+cobra3 NFS V3 server is running RedHat ES 3 , kernel 2.4.21-27.ELsmp, 
+clients are Fedora Core 2 with kernel  2.6.9-1.3_FC2 .
+reading this mailing archive I suppect things like:
+1) clients are dual boot using dynamic dhcp/dns, so forward ip @ changes 
+at every reboots, could this be a ip addressing pb   ?
+2) I use automount, I heard about mount points not beeing unmount  as 
+they are  ask for a new mount ?
+3) getfh is for get file Handle no ?  a lack of file descriptor on the 
+NFS server (ulimit)  could be  an issue ?
+4) other things ....
+Today my only solution is to restart NFS services on the server, until 
+getfh problem rises again :-(
 
-> summary of solution
->=20
->    - rpc.statd reports to server during lock recovery.  it=20
-> uses the output of
->      gethostname (uname -n) by default.  in this case the=20
-> client would attempt
->      lock recovery using this hostname and the server would=20
-> refuse since it
->      expected to the see the name of the backdoor interface=20
-> (client.b.domain)
->=20
->      rpc.statd needs to be started using the '-n' (name)=20
-> option to override the
->      output of gethostname.  in our case (redhat) this is=20
-> done by putting
->      something like the following
->=20
->        STATD_HOSTNAME=3Dclient.b.ngdc.noaa.gov
->=20
->      into the file /etc/sysconfig/nfs, which is, itself, sourced by
->      /etc/init.d/nfclock
->=20
-> lockd recovery now operates correctly.  thanks to all who helped!
+Thanks for any advices .
 
 
 -------------------------------------------------------
