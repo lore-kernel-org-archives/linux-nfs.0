@@ -1,25 +1,24 @@
-From: Paul Heinlein <heinlein@cse.ogi.edu>
-Subject: Need help interpreting numbers
-Date: Tue, 18 Feb 2003 16:30:39 -0800 (PST)
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: mountd --no-tcp -p bugs?
+Date: Wed, 19 Feb 2003 15:27:33 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0302181608310.23186-100000@glenfiddich.cse.ogi.edu>
+Message-ID: <15955.1973.280641.589925@notabene.cse.unsw.edu.au>
+References: <20030211002846.GC7774@retsil.sesgroup.com.au>
+	<20030214191723.D26265@sesgroup.com.au>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from franklin.cse.ogi.edu ([129.95.40.7])
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18lI8L-0007FC-00
-	for <nfs@lists.sourceforge.net>; Tue, 18 Feb 2003 16:30:46 -0800
-Received: from euclid.cse.ogi.edu (euclid.cse.ogi.edu [129.95.41.95])
-	by franklin.cse.ogi.edu (8.12.6/8.12.6) with ESMTP id h1J0UdC5021770
-	for <nfs@lists.sourceforge.net>; Tue, 18 Feb 2003 16:30:39 -0800 (PST)
-Received: from glenfiddich.cse.ogi.edu (glenfiddich.cse.ogi.edu [129.95.33.101])
-	(authenticated bits=0)
-	by euclid.cse.ogi.edu (8.12.5/8.12.5) with ESMTP id h1J0UdNP032539
-	(version=TLSv1/SSLv3 cipher=EDH-RSA-DES-CBC3-SHA bits=168 verify=NO)
-	for <nfs@lists.sourceforge.net>; Tue, 18 Feb 2003 16:30:39 -0800
-To: nfs@lists.sourceforge.net
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18lLtB-00009y-00
+	for <nfs@lists.sourceforge.net>; Tue, 18 Feb 2003 20:31:21 -0800
+Received: From
+	notabene.cse.unsw.edu.au ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
+	(for <benno@sesgroup.net>) (for <nfs@lists.sourceforge.net>) By tone
+	With Smtp ; Wed, 19 Feb 2003 15:28:10 +1100
+To: benno@sesgroup.net
+In-Reply-To: message from Ben Leslie on Friday February 14
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,79 +31,105 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I'm a bit stymied over some iostat comparisons I've been making 
-between a couple different kernels. If someone could help me with the 
-numbers...
+On Friday February 14, benno@sesgroup.net wrote:
+> On Tue, 11 Feb 2003, Benno wrote:
+> 
+> > Hi all,
+> > 
+> > I'm running into a couple of problems with mountd.
+> 
+> Hi again,
+> 
+> I haven't had any feedback on this email from a few days
+> ago. Is this not a bug and I'm missing something, or just 
+> no one cares about bugs in client programs, or am I just being
+> impatient?
 
-I've got a Linux server fronting a RAID array (I mentioned this a week 
-or so ago, but the implementation details are probably unimportant). 
-I did some testing with the SGI-built XFS-enabled version of Red Hat's 
-2.4.18 kernel (2.4.18-18SGI_XFS_1.2pre5smp).
+It is a bug.
+You aren't missing much.
+People do care, but are also busy.
+You were reasonably patient, and it does help to ask again (and
+again...) if you don't get a response.  It gives an indication of how
+important it is, and helps people with short memory and long todo
+lists.
 
-I pointed a half-dozen NFS clients at the exported filesystem and had 
-them run iozone simultaneously. Here's a representative except of the 
-server's iostat output while the test was going on (sorry for the line 
-wrapping):
+I have just committed the following patch to the nfs-utils CVS.  It
+should address your issues.
 
-Device:    rrqm/s wrqm/s   r/s   w/s  rsec/s  wsec/s    rkB/s    wkB/s 
-avgrq-sz avgqu-sz   await  svctm  %util
-/dev/sda     0.00 4040.53  0.00 311.57    0.00 32864.67     0.00 
-16432.33   105.48   194.33   21.00   3.21 100.00
+NeilBrown
 
-Device:    rrqm/s wrqm/s   r/s   w/s  rsec/s  wsec/s    rkB/s    wkB/s 
-avgrq-sz avgqu-sz   await  svctm  %util
-/dev/sda     0.00 4433.53  0.00 379.63    0.00 37231.30     0.00 
-18615.65    98.07   212.70   26.69   2.63 100.00
-
-Device:    rrqm/s wrqm/s   r/s   w/s  rsec/s  wsec/s    rkB/s    wkB/s 
-avgrq-sz avgqu-sz   await  svctm  %util
-/dev/sda     0.00 4061.17  0.00 183.80    0.00 33039.00     0.00 
-16519.50   179.76   231.48   59.67   5.44 100.00
-
-
-Today, I built and installed 2.4.20 from kernel.org with XFS patch
-2.4.20-2003-01-14_00:43_UTC and Trond's NFS_ALL patch. Under a similar 
-test environment, the numbers are remarkably different, e.g.,
-
-Device:    rrqm/s wrqm/s   r/s   w/s  rsec/s  wsec/s    rkB/s    wkB/s 
-avgrq-sz avgqu-sz   await  svctm  %util
-/dev/sda     0.00 1215.67  0.00 356.38    0.00 11309.88     0.00  
-5654.94    31.74   114.67   32.16   2.80  99.90
-
-Device:    rrqm/s wrqm/s   r/s   w/s  rsec/s  wsec/s    rkB/s    wkB/s 
-avgrq-sz avgqu-sz   await  svctm  %util
-/dev/sda     0.00 1440.73  0.00 370.63    0.00 13042.82     0.00  
-6521.41    35.19    74.39   20.06   2.69  99.82
-
-Device:    rrqm/s wrqm/s   r/s   w/s  rsec/s  wsec/s    rkB/s    wkB/s 
-avgrq-sz avgqu-sz   await  svctm  %util
-/dev/sda     0.00 1558.33  0.00 356.70    0.00 13785.85     0.00  
-6892.93    38.65    59.97   16.80   2.80  99.80
-
-The number of bytes getting written to disk is less than half that
-reported above, but the await and svctm times are consistently lower
-too (as is %util). Also, the await/svctm numbers in the home-brewed 
-kernel are much more consistent; they bounce around a *lot* more under 
-the SGI/Red Hat kernel.
-
-Oddly, however, when the clients are pushing 8K reqs, hence maximizing 
-NFS [rw]size, iozone is reporting sequential writes at ca. 8500 kB/s, 
-which is pretty good for a 100Mbps link (right?).
-
-IOW, the clients look and feel happy -- their numbers are largely 
-pretty good -- but the server-side numbers are much lower.
-
-That sounds bizzare to me. What am I missing?
-
---Paul Heinlein <heinlein@cse.ogi.edu>
-
-
+Index: ChangeLog
+===================================================================
+RCS file: /cvsroot/nfs/nfs-utils/ChangeLog,v
+retrieving revision 1.187
+diff -u -r1.187 ChangeLog
+--- ChangeLog	13 Feb 2003 02:29:42 -0000	1.187
++++ ChangeLog	19 Feb 2003 04:23:27 -0000
+@@ -1,3 +1,16 @@
++2003-02-19 NeilBrown <neilb@cse.unsw.edu.au>	
++	Ben Leslie <benno@sesgroup.net>
++
++	* support/nfs/rpcmisc.c(rpc_init):  change test for ignoring
++	"defport" from (__rpcfdtype == 0) to (__rpcpmstart==0).  The
++	former would incorectly ignore defport if the application 
++	explicitly set __rpcfdtype.  The later is sufficient to avoid the
++	special handling in the case where stdin is an internet socket.
++
++	* utils/mountd/mountd.c(main): Add 'n' to option list in
++	getopt_long as this is a short form of --no-tcp which want being
++	checked.
++	
+ 2003-02-12  Chip Salzenberg  <chip@pobox.com>
+ 
+ 	* debian/changelog: Version 1.0.2-2.
+Index: support/nfs/rpcmisc.c
+===================================================================
+RCS file: /cvsroot/nfs/nfs-utils/support/nfs/rpcmisc.c,v
+retrieving revision 1.13
+diff -u -r1.13 rpcmisc.c
+--- support/nfs/rpcmisc.c	16 Sep 2002 02:27:45 -0000	1.13
++++ support/nfs/rpcmisc.c	19 Feb 2003 04:23:28 -0000
+@@ -66,7 +66,7 @@
+ 	if ((_rpcfdtype == 0) || (_rpcfdtype == SOCK_DGRAM)) {
+ 		static SVCXPRT *last_transp = NULL;
+  
+-		if (_rpcfdtype == 0) {
++		if (_rpcpmstart == 0) {
+ 			if (last_transp
+ 			    && (!defport || defport == last_transp->xp_port)) {
+ 				transp = last_transp;
+@@ -96,7 +96,7 @@
+ 	if ((_rpcfdtype == 0) || (_rpcfdtype == SOCK_STREAM)) {
+ 		static SVCXPRT *last_transp = NULL;
+ 
+-		if (_rpcfdtype == 0) {
++		if (_rpcpmstart == 0) {
+ 			if (last_transp
+ 			    && (!defport || defport == last_transp->xp_port)) {
+ 				transp = last_transp;
+Index: utils/mountd/mountd.c
+===================================================================
+RCS file: /cvsroot/nfs/nfs-utils/utils/mountd/mountd.c,v
+retrieving revision 1.13
+diff -u -r1.13 mountd.c
+--- utils/mountd/mountd.c	8 Apr 2002 21:43:25 -0000	1.13
++++ utils/mountd/mountd.c	19 Feb 2003 04:23:28 -0000
+@@ -399,7 +399,7 @@
+ 
+ 	/* Parse the command line options and arguments. */
+ 	opterr = 0;
+-	while ((c = getopt_long(argc, argv, "o:Fd:f:p:P:hN:V:v", longopts, NULL)) != EOF)
++	while ((c = getopt_long(argc, argv, "on:Fd:f:p:P:hN:V:v", longopts, NULL)) != EOF)
+ 		switch (c) {
+ 		case 'o':
+ 			descriptors = atoi(optarg);
 
 
 -------------------------------------------------------
-This sf.net email is sponsored by:ThinkGeek
-Welcome to geek heaven.
-http://thinkgeek.com/sf
+This SF.net email is sponsored by: SlickEdit Inc. Develop an edge.
+The most comprehensive and flexible code editor you can use.
+Code faster. C/C++, C#, Java, HTML, XML, many more. FREE 30-Day Trial.
+www.slickedit.com/sourceforge
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
