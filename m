@@ -1,23 +1,20 @@
-From: Gavin Woodhatch <gavin.woodhatch@netzone.ch>
-Subject: nfs performance: read only/gigE/nolock/1Tb per day
-Date: Sun, 21 Apr 2002 15:08:47 +0200
+From: Andrew Ryan <andrewr@nam-shub.com>
+Subject: Re: NFSv3/TCP client hangs under load (2.4.17+NFS_ALL)
+Date: Sun, 21 Apr 2002 12:01:10 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1331088561078.20020421150847@netzone.ch>
-Reply-To: Gavin Woodhatch <gavin.woodhatch@netzone.ch>
+Message-ID: <5.0.2.1.0.20020421120019.0296c220@pop.sfrn.dnai.com>
+References: <0204122022230I.01167@stinkpad060501>
+ <0204122022230I.01167@stinkpad060501>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="us-ascii"; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail1.hostpark.net ([212.243.197.31])
+Received: from smithers.sfrn.dnai.com ([208.59.199.26])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16zH5d-0004df-00
-	for <nfs@lists.sourceforge.net>; Sun, 21 Apr 2002 06:09:13 -0700
-Received: from localhost (localhost [127.0.0.1])
-	by mail1.hostpark.net (Postfix) with ESMTP id F191078AD2
-	for <nfs@lists.sourceforge.net>; Sun, 21 Apr 2002 15:15:37 +0200 (CEST)
-Received: from jamie (unknown [195.144.47.58])
-	by mail1.hostpark.net (Postfix) with ESMTP id AAF9578BFC
-	for <nfs@lists.sourceforge.net>; Sun, 21 Apr 2002 15:15:36 +0200 (CEST)
-To: nfs@lists.sourceforge.net
+	id 16zMa4-0002tz-00
+	for <nfs@lists.sourceforge.net>; Sun, 21 Apr 2002 12:01:00 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <shsads7fnfa.fsf@charged.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,38 +27,24 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hi Jason,
+At 08:44 PM 4/13/02 +0200, Trond Myklebust wrote:
 
-I have seen (as posted before) our linux-nfs boxes receiving 9 - 10
-MByte/s over a 100  Mbit Network. This was as i was doing some
-testing.
-
-Is has to be noted that this is a  sequential read from a 500 MB file.
-When reading the "real" data, i hit about 1 - 2 MByte/s
-
-In my Setup, i have not seen a great speed increase in using TCP.
-I also don't know how good the linux-nfs Server is at that. I am just
-using the client and am using a dedicated NAS Server.
-
-The Block sizes on NFSv2 are from 1024 - 8192. With NFSv3 the Max. is
-32768. The Blocksize is dependent on the NFS Version, not on TCP or
-UDP Transport. I am using a Stock 2.4.17 Kernel with Trond's NFS-All
-Patch.
+>I'm actually in the process of rewriting this whole part of the TCP
+>code. For 2.4.19-pre6, the code in the corresponding NFS_ALL patch
+>should be more robust against interference (and possibly a bit faster
+>than the old code). It would be nice if you could give it a go...
 
 
-Kind Regards
+I tried the 2.4.19-pre7 kernel with your NFS patch with TCP , and it did 
+not produce the hang under the same loading conditions. I didn't do 
+performance testing between the two, if I do, I'll let you know if it's faster.
 
-Gavin Woodhatch
+So, I guess the lesson here is to beware the NFSv3/TCP code in 2.4.17 under 
+load, and use 2.4.19 when it is released, or use UDP.
 
-NetZone Ltd.
 
-
-> is it possible to change NFS mount size from 1024 to 8192 (especially with GigE).
->   i have tried this and was seeing slowdowns in nfs access, so reverted back to
->   1024 block size.
-
->   the NFS clients mount the filesystems with:
->   ro,rsize=1024,nolock,hard,bg,intr,retrans=8,nfsvers=3,timeo=10
+thanks,
+andrew
 
 
 _______________________________________________
