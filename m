@@ -1,18 +1,17 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: A Question about the 2.4.21 Pathconf patch
-Date: Tue, 29 Apr 2003 17:18:05 -0400
+From: Olof Johansson <olof@austin.ibm.com>
+Subject: [PATCH] SVC sockets don't disable Nagle
+Date: Tue, 29 Apr 2003 17:03:19 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3EAEEC0D.6040006@RedHat.com>
-References: <3EAE956E.9080205@RedHat.com> <shs4r4h5l52.fsf@charged.uio.no>	<3EAEC774.20402@RedHat.com> <shssms1ozz6.fsf@charged.uio.no>
+Message-ID: <3EAEF6A7.1000806@austin.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from nat-pool-rdu.redhat.com ([66.187.233.200] helo=lacrosse.corp.redhat.com)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19AcUO-0008DA-00
-	for <nfs@lists.sourceforge.net>; Tue, 29 Apr 2003 14:18:12 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Received: from e35.co.us.ibm.com ([32.97.110.133])
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19AdCH-0008UY-00
+	for <nfs@lists.sourceforge.net>; Tue, 29 Apr 2003 15:03:34 -0700
+To: trond.myklebust@fys.uio.no, nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,29 +24,50 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust wrote:
+I noticed that the Nagle algorithm was disabled just recently on the 
+client side, while it still seems to be enabled on the server side. The 
+previous patch came from Chuck Lever.
 
->     > So I'm just curious, why (from a protocol purest standpoint)
->     > its not being used... and if it ever was used, what were the
->     > results...
->
->I'm not sure I understand the question. In which case do you think we
->should be using FSINFO/STATFS (but are currently not doing so)?
->
-In the linux-2.4.21-08-pathconf.dif patch, nfs_proc_fsinfo()
-does a rpc_call(NFSPROC_STATFS) call and then fill in
-the nfs_fsinfo structure with constants and values returned
-in the nfs2_statfs structure.
+Below patch disables it on the server side as well. For latency reasons, 
+this should be the desired behaviour NFS at both client and server.
 
-I'm just wondering why nfs_proc_fsinfo() doesn't do a
-rpc_call(NFSPROC_FSINFO) which would fill the nfs_fsinfo
-structure with the values from the server. Of course these
-values would have to be check for sanity... I just seems to
-me that would be good information to to have on hand...
+Diff is against 2.4.21-rc1.
 
-SteveD.
+---------------------------
+
+--- linux-2.4.21-rc1/net/sunrpc/svcsock.c.orig
++++ linux-2.4.21-rc1/net/sunrpc/svcsock.c
+@@ -932,6 +932,7 @@ static int
+  svc_tcp_init(struct svc_sock *svsk)
+  {
+         struct sock     *sk = svsk->sk_sk;
++       struct tcp_opt  *tp = &(sk->tp_pinfo.af_tcp);
+
+         svsk->sk_recvfrom = svc_tcp_recvfrom;
+         svsk->sk_sendto = svc_tcp_sendto;
+@@ -948,6 +949,8 @@ svc_tcp_init(struct svc_sock *svsk)
+                 svsk->sk_reclen = 0;
+                 svsk->sk_tcplen = 0;
+
++               tp->nonagle = 1;        /* disable Nagle's algorithm */
++
+                 /* initialise setting must have enough space to
+                  * receive and respond to one request.
+                  * svc_tcp_recvfrom will re-adjust if necessary
 
 
+---------------------------
+
+
+Thanks,
+
+Olof
+
+-- 
+Olof Johansson                                        Office: 4E002/905
+pSeries Linux Development                             IBM Systems Group
+Email: olof@austin.ibm.com                          Phone: 512-838-9858
+All opinions are my own and not those of IBM.
 
 
 
