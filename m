@@ -1,21 +1,23 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: [PATCH] sanitize logging subsystem
-Date: Mon, 14 Mar 2005 16:51:06 +1100
-Message-ID: <16949.9802.377554.583900@cse.unsw.edu.au>
-References: <200503111518.29792.vda@ilport.com.ua>
+From: nhorman@redhat.com
+Subject: Re: [RFC] implementing BSD style locks on NLM (flocks)
+Date: Thu, 3 Mar 2005 13:24:19 -0500
+Message-ID: <20050303182419.GI6497@hmsendeavour.rdu.redhat.com>
+References: <20050227192113.GA5778@localhost.localdomain> <1109787034.12460.7.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="eqp4TxRxnD4KrmFZ"
 Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DAiU3-000282-SZ
-	for nfs@lists.sourceforge.net; Sun, 13 Mar 2005 21:51:19 -0800
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1DAiU2-00077O-7b
-	for nfs@lists.sourceforge.net; Sun, 13 Mar 2005 21:51:19 -0800
-To: Denis Vlasenko <vda@ilport.com.ua>
-In-Reply-To: message from Denis Vlasenko on Friday March 11
+	id 1D6uzr-0004DD-DQ
+	for nfs@lists.sourceforge.net; Thu, 03 Mar 2005 10:24:27 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1D6uzp-0005dC-RI
+	for nfs@lists.sourceforge.net; Thu, 03 Mar 2005 10:24:27 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1109787034.12460.7.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,49 +31,57 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Friday March 11, vda@ilport.com.ua wrote:
-> It seems like there are several ways to log messages or
-> display them on std{out,err} in nfs utils, more or less
-> similar to each other. Let's try to untangle them.
-> 
-> I'll start from cleaning up xlog.c:
-> 
-> * There is no external API to log to arbitrary FILE*,
->   we can drop code which supports this internally.
->   Patch converts xlog.c to directly use stderr.
-> * Print date/time in ISO (YYYY-MM-DD HH:MM:SS) format.
-> * Add support for disabling logging to syslog.
-> 
-> Patch does not introduce behavioral changes except for
-> making foregrounded mountd to really use stderr.
-> There was a bug which prevented this.
-> 
-> Patch is tested. Please comment/apply.
 
-How well was it tested :-)
+--eqp4TxRxnD4KrmFZ
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-> +		fprintf(stderr, "%s[%d] %04d-%02d-%02d %02d:%02d:%02d %s\n",
-> +				log_name, log_pid,
-> +				tm->tm_year, tm->tm_mon + 1, tm->tm_mday,
-> +				tm->tm_hour, tm->tm_min, tm->tm_sec,
-> +				buff);
+On Wed, Mar 02, 2005 at 10:10:34AM -0800, Trond Myklebust wrote:
+> su den 27.02.2005 Klokka 14:21 (-0500) skreiv nhorman@redhat.com:
+> > Hey all-
+> > 	I was wondering, how much interest there might be in the addition of
+> > support for BSD style locks (flocks) over NLM.  I was thinking that a b=
+it could
+> > be added to differentiate the two namespaces.  Any thoughts appreciated=
+. =20
+>=20
+> http://client.linux-nfs.org/Linux-2.6.x/2.6.11-rc5/linux-2.6.11-17-flock.=
+dif
+>=20
+> Cheers,
+>   Trond
+>=20
+> --=20
+> Trond Myklebust <trond.myklebust@fys.uio.no>
+>=20
+Do you know when this will get merged with the mainline kernel?
+Thanks!
+Neil
 
-tm_year is "number of years since 1900", which isn't what you want to
-print out.  It needs a "+1900", which I have given it.
+--=20
+/***************************************************
+ *Neil Horman
+ *Software Engineer
+ *Red Hat, Inc.
+ *nhorman@redhat.com
+ *gpg keyid: 1024D / 0x92A74FA1
+ *http://pgp.mit.edu
+ ***************************************************/
 
-Otherwise the patch looks reasonably sane.
-The only bit that bothers me is calling openlog in mountd where it
-wasn't called before.
-mountd (on debian at least) currently prefixes all log lines with
-"rpc_mountd" as that is the program name.  With this patch they will
-be prefixes with "mountd".
-This is a change and people who filter their log file (like me) might
-notice.   But it probably isn't a big concern..
+--eqp4TxRxnD4KrmFZ
+Content-Type: application/pgp-signature
+Content-Disposition: inline
 
-I've committed it to CVS.
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.1 (GNU/Linux)
 
-Thanks,
-NeilBrown
+iD8DBQFCJ1ZTM+bEoZKnT6ERAnAmAJ0QtF90umonu7VOG3m3917vow7FqwCfVcvb
+J26MK+zMOunvE0rlKBNwQhk=
+=z59z
+-----END PGP SIGNATURE-----
+
+--eqp4TxRxnD4KrmFZ--
 
 
 -------------------------------------------------------
