@@ -1,32 +1,27 @@
 From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: dentry/inode cache invalidation when using nfsd filesystem on 2.6
-Date: Thu, 23 Oct 2003 13:57:50 +1000
+Subject: Re: Help understanding error message?
+Date: Tue, 28 Oct 2003 12:43:00 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16279.20926.488909.525633@notabene.cse.unsw.edu.au>
-References: <20031021142414.GW1516@dbz.austin.ibm.com>
+Message-ID: <16285.51620.467155.288641@notabene.cse.unsw.edu.au>
+References: <3F984F27.1010806@noao.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1ADSKh-0001Hk-00
-	for <nfs@lists.sourceforge.net>; Sat, 25 Oct 2003 10:36:11 -0700
-Received: from panoramix.vasoftware.com
-	([198.186.202.147] helo=externalmx.vasoftware.com ident=mail)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 1ACxEX-0003kQ-Os
-	for nfs@lists.sourceforge.net; Fri, 24 Oct 2003 01:23:45 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24]:38013)
-	by externalmx.vasoftware.com with smtp (Exim 4.22 #1 (Debian))
-	id 1ACWdq-0007ll-JQ
-	for <nfs@lists.sourceforge.net>; Wed, 22 Oct 2003 21:00:06 -0700
+	id 1AEJ8S-0006UN-00
+	for <nfs@lists.sourceforge.net>; Mon, 27 Oct 2003 17:59:04 -0800
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.24)
+	id 1AEIz5-0003AB-A7
+	for nfs@lists.sourceforge.net; Mon, 27 Oct 2003 17:49:23 -0800
 Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <jrsantos@austin.ibm.com>) (for <nfs@lists.sourceforge.net>) By
-	note With Smtp ; Thu, 23 Oct 2003 13:57:51 +1000
-To: "Jose R. Santos" <jrsantos@austin.ibm.com>
-In-Reply-To: message from Jose R. Santos on Tuesday October 21
+	(for <swampler@noao.edu>) (for <nfs@lists.sourceforge.net>) By note
+	With Smtp ; Tue, 28 Oct 2003 12:43:00 +1100
+To: Steve Wampler <swampler@noao.edu>
+In-Reply-To: message from Steve Wampler on Thursday October 23
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -39,52 +34,71 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tuesday October 21, jrsantos@austin.ibm.com wrote:
-> Hi,
+On Thursday October 23, swampler@noao.edu wrote:
 > 
-> I have come across a interesting behavior when using NFS server on machines
-> with large amounts of memory(16/32Gb).  If I have exported filesystems with
-> lots of data and many directories that were access and had dentry/inode cache
-> entries cached on the server, the clients took a long time(sometimes minutes)
-> to mount the NFS exported directories.
+> System(s): 11 identical 2-cpu Althon boxes
+>             RH 8.0, kernel 2.4.18-24.8.0/smp
+>             nfs-utils-1.0.1-2
 > 
-> While the client was mostly IDLE, the servers rpc.mountd thread was consuming
-> 100% of one CPU on the system.  After some digging, I found that the problem
-> lies on the new nfsd filesystem code that talks to nfsctl.  Every time I issue
-> a mount on the client, the server invalidates both inode and dentry caches.
+> We're trying to track down a problem and need help
+> understanding what an error message means (and what
+> might be causing it...)
 > 
-> Inode cache get invalidated on sys_nfsservctl(fs/nfsctl.c) on the fput call
-> which eventually calls invalidate_inodes. Dentry caches get invalidated on
-> do_open(fs/nfsctl.c) when calling do_kernel_mount which eventually calls
-> shrink_dcache_sb.
+> Background:  We have 11 identical Linux RH 8.0 boxes
+> (dual-cpu Athlons).  One of them exports a filesystem
+> via NFS to the other 10 (and to 5 other [different]
+> Linux boxes as well).
 > 
-> The inode cache invalidation is easy to work around by just mounting the nfsd
-> to something like /tmp/nfsd, but I haven't been able(except with a very
-> dangerous and stupid patch) to work around the dentry cache invalidation.
-> 
-> This invalidation seem unnecessary and it cause by the interaction with this
-> new interface for nfsctl.
-> 
-> Any help would be appreciated. :)
-> 
-> Thanks - JRS
+> Running a specific program on each of the 10 machines
+> works sometimes and not others.  The machines on which
+> it fails changes, but once it fails it continues to
+> do so until we remount (unmount+mount, not with
+> "-o remount") the NFS directory.  After the remount
+> the program functions properly.
 
-The problem is NOT that the inode or dentry caches are being flushed.
 
-The problem is that the inode and dentry caches *for*the*(tiny)*nfsd*filesystem*
-are being flushed, and this requires iterating through each cache under a
-spinlock, and this can take a while.
+You aren't using "soft" mounts are you?  Please tell me you aren't.
 
-Basically, "mount" and "unmount" are slow operations.
 
-As you note, "unmount" can be avoided by mounting the nfsd filesystem
-somewhere.  I recommend /proc/fs/nfsd.
-The "mount" can be avoided by not using the nfsservctl systemcall at all. 
-This is achived by mounting nfsd at /proc/fs/nfsd, and running the latest
-release of nfs-utils.
 
-*fixing* the problem requires optimising the mount and unmount process,
-which is SEP  (Somebody Elses Problem).
+
+> 
+> Here is the error message (split to fit):
+> 
+> jboc-03:18> runwip
+>     ../../../Bin/Linux/DHS/vsmWip:
+>     error while loading shared libraries:
+>     /opt/solis/devel/release/Lib/Linux/DHS/libprocess.so:
+>     unexpected PLTreloc type 0xec
+> 
+> Both the program (vsmWip) and the offending shared
+> library libprocess.so are located on the NFS-mounted FS.
+> 
+> I couldn't find a reference to 'unexpected PLTreloc'
+> in mailing list archive search.
+> 
+> [Also, I've just discovered that ldd gives a segmentation
+> fault:
+> 
+>    ->ldd vsmWip
+>    /usr/bin/ldd: line 1: 15403 Segmentation fault
+>        LD_TRACE_LOADED_OBJECTS=1 LD_WARN= LD_BIND_NOW=
+>        LD_LIBRARY_VERSION=$verify_out LD_VERBOSE= "$file"
+>    ->
+> 
+> if LD_LIBRARY_PATH is set to include the library
+> directory on the NFS mount.  (Without that directory,
+> ldd [correctly] simply identifies the shared libraries
+> as missing.  ldd works properly in either case after
+> a remount of the NFS mount.]
+> 
+
+I don't understand why you say "[correctly]".  
+
+Can you copy the library file to /tmp when it is working, and then
+copy again when it is failing, and do a 
+   cmp -l
+of the two files?
 
 NeilBrown
 
