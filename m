@@ -1,23 +1,21 @@
-From: Kevin Coffman <kwc@citi.umich.edu>
-Subject: Re: problem mounting using NFSv4 when using -o sec=krb5
- option
-Date: Mon, 21 Mar 2005 16:36:04 -0500
-Message-ID: <20050321213604.8A2931BACE@citi.umich.edu>
-References: <20050321154527.32344.qmail@web51603.mail.yahoo.com>
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: [kNFSD] [PATCH] fixed '-p port' arg to rpc.nfsd plus more.
+Date: Tue, 22 Mar 2005 10:34:32 +1100
+Message-ID: <16959.23048.930497.833801@cse.unsw.edu.au>
+References: <423EDD43.8000209@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DDUZC-0007sz-PX
-	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 13:36:06 -0800
-Received: from citi.umich.edu ([141.211.133.111])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1DDUZB-00026l-8n
-	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 13:36:06 -0800
-To: mehta kiran <kiranmehta1981@yahoo.com>
-In-reply-to: <20050321154527.32344.qmail@web51603.mail.yahoo.com> 
+	id 1DDWPy-0004nd-HA
+	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 15:34:42 -0800
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1DDWPx-0004XA-SA
+	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 15:34:42 -0800
+To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: message from Steve Dickson on Monday March 21
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,53 +29,79 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Monday March 21, SteveD@redhat.com wrote:
+> Hello,
 > 
-> Hi , 
->              I tried things as directed by Trond in
->     his previous mail and everything seemed to work
->     fine initally. but when i rebooted system , 
->     it started giving error whenever i start rpc.gssd
->     on client machine.
->     Error is :
-> 
-> [root@vcslinux6 ~]# Mar 21 14:47:27 vcslinux6
-> rpc.gssd[3487]: WARNING: Key table entry not found
-> while getting initial ticket for principal
-> 'nfs/vcslinux6.vxindia.veritas.com@VXINDIA.VERITAS.COM'
-> from keytab 'FILE:/etc/krb5.keytab'
-> Mar 21 14:47:27 vcslinux6 rpc.gssd[3487]: ERROR: No
-> usable machine credentials obtained
->   
->      
-> while #klist -k /etc/krb5.keytab gives
-> 2
-> nfs/vcslinux6.vxindia.veritas.com@VXINDIA.VERITAS.COM
+> The following patches fix the '-p port' command line
+> argument to rpc.nfsd as well as adds following
+> flags that control the NFS versions and transports that
+> rpc.nfsd will use.
 
+While this is all very good in principle, there are some details I'm
+not comfortable with....
+In particular, the kernel interface.
+You have changed 
+  /proc/fs/nfsd/threads
+to contain not just threads information, but also port, protocol and
+version information.
 
-I'm confused by this, but I do not know what to look for.
+This is not good.
 
+I would rather (I think) have two new files
+   /proc/fs/nfsd/version
+and
+   /proc/fs/nfsd/ports
 
-> I even tried by recreating kerberos database but in
-> vain. I still get the same error.
+"version" should give a list of available versions, and which are
+enabled, on read, and should enable or disable version on write.
+e.g.
+   # cat version
+   -2 +3 -4
 
-If you recreated the Kerberos database, you need to
-create new principals and keytab files.  Did you do this?
+This means that versions 2, 3, and 4 are available. Only 3 is enabled.
 
-> I observed one more thing.
-> Whenver i create principal(other then root/admin) ,
-> passwords i enter for them during their creation
-> are not accepted by kinit.
+   # echo +4 > version
 
-This is also strange and _might_ be related.  How are
-you creating the principals -- using kadmin or kadmin.local?
-Which principals are you referring to here?
+This enables version 4 (if it is available).
 
-> 
-> Please let me know where i went wrong.
-> 
-> --thanks,
->  --kiran
+"ports".... should we allow different protocols to use different
+   ports?  2049 for tcp, but use 5123 for udp ???
+   I think we should probably allow for distinguishing between ipv4
+   and ipv6.
+   And would we also want to allow binding to particular IP addresses
+   ???? or multiple ports???
 
+   Maybe a better interface is to open and bind a socket in userspace,
+   and pass it down to the kernel.  Maybe not..
+
+ How about the "ports" file contains lines:
+   family:proto:address:port
+ e.g.
+   ipv4:udp:*:2049
+
+ Where new entries can added one line at a time:
+   echo "ipv4:tcp:*:5123" > /proc/fs/nfsd/ports
+ and are all read at once.
+   # cat  /proc/fs/nfsd/ports
+   ipv4:udp:*:2049
+   ipv4:tcp:*:2049
+   #
+ Initially, the only recognised address would be "*", and multiple
+ ports of the same protocol would not be permitted (i.e. write(2)
+ returns and error).
+
+ A port could be disabled with
+   echo "-ipv4:udp:*:2049" > /proc/fs/nfsd/ports
+ maybe.
+  
+ When the first thread is started, if no ports are open, the default
+ ports (2049 for ipv4:udp and ipv4:tcp) are openned, otherwise the
+ current ports are used.
+
+I'm happy to consider changes in syntax, but I really don't like
+merging these very different concepts in the one file.
+
+NeilBrown
 
 
 -------------------------------------------------------
