@@ -1,26 +1,28 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: 2.6.5-rc3 xprt_connect changes?
-Date: Thu, 01 Apr 2004 16:18:49 -0500
+From: =?koi8-r?Q?=22?=Peter Lojkin=?koi8-r?Q?=22=20?= <ia6432@inbox.ru>
+Subject: Re: nfsd random drop
+Date: Thu, 01 Apr 2004 20:14:25 +0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1080854329.2682.36.camel@lade.trondhjem.org>
-References: <20040401144740.GH20772@suse.de>
-	 <1080853027.2682.22.camel@lade.trondhjem.org>
+Message-ID: <E1B94pl-000G74-00.ia6432-inbox-ru@f13.mail.ru>
+References: <20040401102334.GC20772@suse.de>
+Reply-To: =?koi8-r?Q?=22?=Peter Lojkin=?koi8-r?Q?=22=20?= <ia6432@inbox.ru>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-k95DA6G0J9pdom2K5ASv"
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=koi8-r
+Cc: =?koi8-r?Q?=22?=Neil Brown=?koi8-r?Q?=22=20?= <neilb@cse.unsw.edu.au>,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B99aQ-0001DI-EF
-	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 13:18:54 -0800
-Received: from dh132.citi.umich.edu
-	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.30)
-	id 1B99aQ-000207-0a
-	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 13:18:54 -0800
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <1080853027.2682.22.camel@lade.trondhjem.org>
+	id 1B9AXM-0007ck-VU
+	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 14:19:48 -0800
+Received: from fallback.mail.ru ([194.67.57.14] helo=mx4.mail.ru)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1B9AXM-0005Jz-Gk
+	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 14:19:48 -0800
+Received: from f13.mail.ru (f13.mail.ru [194.67.57.43])
+	by mx4.mail.ru (mPOP.Fallback_MX) with ESMTP id 0E9CFE83EC
+	for <nfs@lists.sourceforge.net>; Thu,  1 Apr 2004 20:22:33 +0400 (MSD)
+To: =?koi8-r?Q?=22?=Olaf Kirch=?koi8-r?Q?=22=20?= <okir@suse.de>
+In-Reply-To: <20040401102334.GC20772@suse.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,56 +35,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Thu, 1 Apr 2004 at 12:23:34 +0200, Olaf Kirch wrote:
 
---=-k95DA6G0J9pdom2K5ASv
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+> I hate to bore you all with the same old stuff, but I'm still fighting
+> problems caused by nfsd's dropping active connections.
+thank you for trying to resolve this!
 
-On Thu, 2004-04-01 at 15:57, Trond Myklebust wrote:
+> Consider a network with a single Linux 2.4 based home server, a few
+> hundred clients, all using TCP. In Linux 2.4, nfsd starts dropping
+> connections when it reaches a limit of (nrthreads + 3) * 10 open
+> connections. With 4 threads, this means 70 connections, and with 8 thre=
+ads
+> this means 110 connections max. Both of which is totally inadequate for
+> this network. To get out of the congestion zone, we would need to bump
+> the number of threads to about 20, which is just silly.
+>=20
+> The very same network has been served well with just 4 threads all
+> the time while using UDP.
+YES! we have exactly such setup and we need tcp.
 
-> How about if we simply move the call for xprt_disconnect() out of
-> xprt_close()?
+> Second: People have reported that files vanished and/or rename/remove
+> operations failed.
+YES! we do have such problems. not often (about once or twice per week)
+but it's really annoying and we had to insert a lot of checks and
+timeouts in our soft as a workaround. we never found out what was the
+cause of it and how to reliably repeate the fault...
 
-IOW, something like the appended patch. (Note the change to ensure that
-we *do* wake up all pending tasks if the current attempt at reconnecting
-actually fails.)
+> I propose to add the following two patches to the server and client. Th=
+ey
+> increase the connection limit, stop dropping the neweset socket, and
+> add some printk's to alert the admin of the contention.
+i hope this will help. i'll try this patches next time we reboot
+fileserver...
 
-Cheers,
-  Trond
+> As an alternative to hardcoding a formula based on the number of thread=
+s,
+> I could also make the max number of connections a sysctl.
+this would be better i think...
 
-
-
---=-k95DA6G0J9pdom2K5ASv
-Content-Description: 
-Content-Disposition: inline; filename=linux-2.6.5-34-rpc_connect.dif
-Content-Transfer-Encoding: base64
-Content-Type: text/plain; charset=iso-8859-1
-
-IHhwcnQuYyB8ICAgIDYgKysrKy0tDQogMSBmaWxlcyBjaGFuZ2VkLCA0IGluc2VydGlvbnMoKyks
-IDIgZGVsZXRpb25zKC0pDQoNCmRpZmYgLXUgLS1yZWN1cnNpdmUgLS1zaG93LWMtZnVuY3Rpb24g
-bGludXgtMi42LjUtMzMtcnBjX3F1ZXVlX2xvY2svbmV0L3N1bnJwYy94cHJ0LmMgbGludXgtMi42
-LjUtMzQtcnBjX2Nvbm5lY3QvbmV0L3N1bnJwYy94cHJ0LmMNCi0tLSBsaW51eC0yLjYuNS0zMy1y
-cGNfcXVldWVfbG9jay9uZXQvc3VucnBjL3hwcnQuYwkyMDA0LTAzLTMxIDIxOjQ4OjQ0LjAwMDAw
-MDAwMCAtMDUwMA0KKysrIGxpbnV4LTIuNi41LTM0LXJwY19jb25uZWN0L25ldC9zdW5ycGMveHBy
-dC5jCTIwMDQtMDQtMDEgMTY6MDM6MzMuMDAwMDAwMDAwIC0wNTAwDQpAQCAtNDA1LDcgKzQwNSw2
-IEBAIHhwcnRfY2xvc2Uoc3RydWN0IHJwY194cHJ0ICp4cHJ0KQ0KIAlzay0+c2tfd3JpdGVfc3Bh
-Y2UgID0geHBydC0+b2xkX3dyaXRlX3NwYWNlOw0KIAl3cml0ZV91bmxvY2tfYmgoJnNrLT5za19j
-YWxsYmFja19sb2NrKTsNCiANCi0JeHBydF9kaXNjb25uZWN0KHhwcnQpOw0KIAlzay0+c2tfbm9f
-Y2hlY2sJID0gMDsNCiANCiAJc29ja19yZWxlYXNlKHNvY2spOw0KQEAgLTQxNiw2ICs0MTUsNyBA
-QCB4cHJ0X3NvY2tldF9hdXRvY2xvc2Uodm9pZCAqYXJncykNCiB7DQogCXN0cnVjdCBycGNfeHBy
-dCAqeHBydCA9IChzdHJ1Y3QgcnBjX3hwcnQgKilhcmdzOw0KIA0KKwl4cHJ0X2Rpc2Nvbm5lY3Qo
-eHBydCk7DQogCXhwcnRfY2xvc2UoeHBydCk7DQogCXhwcnRfcmVsZWFzZV93cml0ZSh4cHJ0LCBO
-VUxMKTsNCiB9DQpAQCAtNTExLDcgKzUxMSw4IEBAIG91dF9lcnI6DQogCWlmICh4cHJ0LT5zbmRf
-dGFzaykgew0KIAkJeHBydC0+c25kX3Rhc2stPnRrX3N0YXR1cyA9IHN0YXR1czsNCiAJCXJwY193
-YWtlX3VwX3Rhc2soeHBydC0+c25kX3Rhc2spOw0KLQl9DQorCX0gZWxzZQ0KKwkJcnBjX3dha2Vf
-dXBfc3RhdHVzKCZ4cHJ0LT5wZW5kaW5nLCAtRU5PVENPTk4pOw0KIAlzcGluX3VubG9ja19iaCgm
-eHBydC0+c29ja19sb2NrKTsNCiB9DQogDQpAQCAtMTY0Miw2ICsxNjQzLDcgQEAgeHBydF9kZXN0
-cm95KHN0cnVjdCBycGNfeHBydCAqeHBydCkNCiB7DQogCWRwcmludGsoIlJQQzogICAgICBkZXN0
-cm95aW5nIHRyYW5zcG9ydCAlcFxuIiwgeHBydCk7DQogCXhwcnRfc2h1dGRvd24oeHBydCk7DQor
-CXhwcnRfZGlzY29ubmVjdCh4cHJ0KTsNCiAJeHBydF9jbG9zZSh4cHJ0KTsNCiAJa2ZyZWUoeHBy
-dC0+c2xvdCk7DQogCWtmcmVlKHhwcnQpOw0K
-
---=-k95DA6G0J9pdom2K5ASv--
 
 
 -------------------------------------------------------
