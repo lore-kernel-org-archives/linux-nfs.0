@@ -1,25 +1,25 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: Re: auto-discovery of exports?
-Date: Sun, 11 Apr 2004 19:44:22 +1000
+From: elijah wright <elw@stderr.org>
+Subject: bug report: linux-to-solaris mounts
+Date: Sun, 11 Apr 2004 10:50:07 -0500 (CDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040411094422.GA19914@sgi.com>
-References: <41089CB27BD8D24E8385C8003EDAF7AB084850@karl.alexa.com> <4074B2BD.7936CF93@melbourne.sgi.com> <20040408065413.GA19702@suse.de> <4074FA2D.C7002C3B@melbourne.sgi.com> <20040408085557.GA19482@suse.de>
+Message-ID: <Pine.LNX.4.58.0404111043450.6681@illuminati.stderr.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Greg Banks <gnb@melbourne.sgi.com>, Guolin Cheng <guolin@alexa.com>,
-        Ian Kent <raven@themaw.net>, Michael <mogmios@mlug.missouri.edu>,
-        nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BCbW9-0006CV-N5
-	for nfs@lists.sourceforge.net; Sun, 11 Apr 2004 02:44:45 -0700
-Received: from mtvcafw.sgi.com ([192.48.171.6] helo=omx3.sgi.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1BCbW9-0003FF-Kr
-	for nfs@lists.sourceforge.net; Sun, 11 Apr 2004 02:44:45 -0700
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20040408085557.GA19482@suse.de>
+	id 1BChDs-0000Z1-Na
+	for nfs@lists.sourceforge.net; Sun, 11 Apr 2004 08:50:16 -0700
+Received: from illuminati.stderr.org ([63.246.8.57] ident=root)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.30)
+	id 1BChDs-0002qq-9g
+	for nfs@lists.sourceforge.net; Sun, 11 Apr 2004 08:50:16 -0700
+Received: from localhost (elw@localhost [127.0.0.1])
+	by illuminati.stderr.org (8.12.11/8.12.11/Debian-4) with ESMTP id i3BFo7e9008557
+	(version=TLSv1/SSLv3 cipher=EDH-RSA-DES-CBC3-SHA bits=168 verify=NO)
+	for <nfs@lists.sourceforge.net>; Sun, 11 Apr 2004 10:50:08 -0500
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,33 +32,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Apr 08, 2004 at 10:55:57AM +0200, Olaf Kirch wrote:
-> [...]calling the MOUNT NULL procedure via PMAP_CALL
-> should work.
 
-Righto.
+i'm having a little problem here with NFS, and trying to track down a
+solution.
 
-> You could even broadcast a DUMP call...
+situation:  Solaris 9 NFS server, Linux clients running autofs to mount
+	homes via nfs.  under linux kernel 2.4.[24,25], things work OK.
+	after an upgrade to 2.6.[3,4,5] kernels, i start getting timeouts
+	talking to the nfs server - it reports that lockd could not bind
+	to reserved port (13?).  so the clients just lose track of the
+	server altogether.
 
-Except that the reply might blow the libc 8800 byte limit for
-UDP RPC replies (I've seen this happen).
+	my client machines are running debian unstable, with the most
+	recent versions of all support packages that i can find in the
+	archives.
 
-> Calling NFS NULL will not work, though.
+anybody got a clue about what's going on?  i'd really, really like to get
+this fixed so that my test machines are usable again and so that i can
+upgrade the rest of our project machines to newer kernels.  :)
 
-Indeed.
 
-So it seems an approach that would work is to a broadcast
-RPC call to MOUNT NULL followed by showmount -e to each
-of the repliers.  Something like...
+thanks very much in advance,
 
-/usr/sbin/rpcinfo -b mountd 1 | while read IPADDR NAME ; do
-    showmount -e --no-headers $NAME | ...
-done
+elijah
+Indiana University
+School of Library and Information Science
 
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+
 
 
 -------------------------------------------------------
