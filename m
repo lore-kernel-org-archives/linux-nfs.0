@@ -1,19 +1,16 @@
-From: Philippe Troin <phil@fifi.org>
-Subject: Re: Lock recovery doesn't work in debian statd/lockd ordering
-Date: 13 Sep 2002 12:22:20 -0700
+From: "Da Saint" <da_saint@mail.com>
+Subject: permission problem
+Date: Fri, 13 Sep 2002 17:59:13 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <87elbxsnir.fsf@ceramic.fifi.org>
-References: <15743.63908.531152.357021@notabene.cse.unsw.edu.au>
+Message-ID: <20020913225913.78571.qmail@mail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Chip Salzenberg <chip@debian.org>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="iso-8859-15"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tantale.fifi.org ([216.27.190.146])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17pw1P-0000BN-00
-	for <nfs@lists.sourceforge.net>; Fri, 13 Sep 2002 12:22:31 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <15743.63908.531152.357021@notabene.cse.unsw.edu.au>
+Received: from 205-158-62-55.outblaze.com ([205.158.62.55] helo=ws1-3.us4.outblaze.com)
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17pzPE-0003bs-00
+	for <nfs@lists.sourceforge.net>; Fri, 13 Sep 2002 15:59:20 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,43 +23,20 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Neil Brown <neilb@cse.unsw.edu.au> writes:
+Hi folks,
 
-> Hi Chip and NFSers.
-> 
->  I just noticed that lock recovery doesn't work with a Debian NFS
->  server.
->  i.e.  server shuts down, restarts, and the client *Doesn't* reclaim
->  the locks.
-> 
->  The problem is that statd starts before lockd.
-> 
->  What happens is that:
->     statd starts
->       it moves everything from /var/lib/nfs/sm to /var/lib/nfs/sm.bak
->       it notifies each host listed in /var/lib/nfs/sm.bak that the
->         server has restarted
->     statd on the client gets the notification and tells it's local
->         lockd to reclaim locks.
->     lockd on client asked portmap on server for port number for lockd,
->         but lockd hasn't started on the server so there isn't one.  So
->         lockd on the client gives up (maybe it should persist, I'm not
->         sure).
->     Finally lockd on the server starts, but it is too late.
-> 
-> 
->  I fixed this for myself by moving /etc/rc2.d/S19nfs-common to S21 so
->  that it starts after nfsd and lockd which are started in
->  S20nfs-kernel-server.
-> 
->  There should be no problem with statd starting after lockd and lockd
->  doesn't try to talk to statd until it gets the first lock request.
+I have got a problem with migrating files from Solaris server to Windows 2k Server. Problem is there is no way I can inherit permission of unix files on windows 2k. I tried Samba client, Veritas Netbackup, Tar..etc
 
-I've opened a debian bug (# 160800) about this.
+Let me know, if someone knows any thing about it.
 
-  -> http://bugs.debian.org/160800
+Thanks,
 
-Phil.
+Shahab
+-- 
+__________________________________________________________
+Sign-up for your own FREE Personalized E-mail at Mail.com
+http://www.mail.com/?sr=signup
+
 
 
 -------------------------------------------------------
