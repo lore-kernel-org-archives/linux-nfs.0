@@ -1,30 +1,22 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: Re: corruption over NFS with 2.6 client, locking,
-	truncating and appending...
-Date: Wed, 6 Apr 2005 12:43:10 +1000
-Message-ID: <16979.19646.790800.298347@cse.unsw.edu.au>
-References: <16977.57630.766727.608029@cse.unsw.edu.au>
-	<1112664792.11910.12.camel@lade.trondhjem.org>
-	<16977.60501.153237.389021@cse.unsw.edu.au>
-	<1112667216.11740.4.camel@lade.trondhjem.org>
-	<16978.3509.329730.989580@cse.unsw.edu.au>
-	<1112676829.11900.4.camel@lade.trondhjem.org>
-	<16978.9443.679431.70613@cse.unsw.edu.au>
-	<1112732661.10536.8.camel@lade.trondhjem.org>
+From: Rudi Starcevic <tech@wildcash.com>
+Subject: Rpc.statd max threads
+Date: Wed, 06 Apr 2005 12:57:50 -0700
+Message-ID: <42543F3E.1080300@wildcash.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DJ0Vk-0005Dy-UG
-	for nfs@lists.sourceforge.net; Tue, 05 Apr 2005 19:43:20 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	id 1DJ0kJ-00060S-Tm
+	for nfs@lists.sourceforge.net; Tue, 05 Apr 2005 19:58:23 -0700
+Received: from hummer.onthenet.com.au ([203.13.68.9])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DJ0Vk-0000dI-F9
-	for nfs@lists.sourceforge.net; Tue, 05 Apr 2005 19:43:20 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: message from Trond Myklebust on Tuesday April 5
+	id 1DJ0kJ-0001ko-Cm
+	for nfs@lists.sourceforge.net; Tue, 05 Apr 2005 19:58:23 -0700
+Received: from [192.168.2.24] (imp3.dsl.onthenet.net [203.144.21.139])
+	by hummer.onthenet.com.au (Postfix) with ESMTP id DDF6419FB1B
+	for <nfs@lists.sourceforge.net>; Wed,  6 Apr 2005 12:58:17 +1000 (EST)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,37 +30,78 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tuesday April 5, trond.myklebust@fys.uio.no wrote:
-> 
-> OK. Attached is a patch that appears to fix things up for me (at least
-> for the case of fcntl() locking). It should apply on top of the latest
-> -mm kernel with the SEEKDIR_END patch that I sent you last night.
+Hi,
 
-Thanks.  It seems to be doing the right thing for me, both with fcntl
-locking and with .lock file locking.
+I'm using a FreeBSD NFS server with Linux NFS clients.
 
-> 
-> Basically, it says that the client must synchronize to the server-given
-> value of fattr->size _unless_ we still have pending writes (in which
-> case we only accept size values > inode->i_size) or if the getattr() RPC
-> call raced with an attribute-changing RPC call (a cached write would
-> indeed count as an "attribute-changing RPC call").
-> 
-> Note that this differs greatly from the current behaviour where we only
-> accept updates to inode->i_size if the file is not open for writing and
-> we didn't race.
-> 
+I am having trouble finding how to set the minimum or maximum or default 
+client connection threads.
 
-I assume it is adequately safe....
-It protects against concurrent writes changing the size, but not
-concurrent setattrs. .... But as the setattr updates i_size *after*
-the NFS request completes, it should be safe, yes?
+I can increase my nfsd on FreeBSD to 20 and would like now to up the 
+clients on Linux.
 
-Would this be a candidate for 2.6.11.7 ??
+Man rpc.statd doesn't seem to show me how.
+Can you please help?
 
-Thanks again,
 
-NeilBrown
+This is the output from man rpc.statd on my Debian Linux box
+
+-F    
+By  default,  rpc.statd  forks  and puts itself in the background when 
+started. The -F argument tells it to
+remain in the foreground. This option is mainly for debugging purposes.
+
+-d    
+By default, rpc.statd sends logging messages via syslog(3) to system 
+log.  The -d argument forces it to log
+verbose  output  to  stderr  instead. This option is mainly for 
+debugging purposes, and may only be used in
+conjunction with the -F parameter.
+
+-n, --name name
+specify a name for rpc.statd to use as the local hostname. By default, 
+rpc.statd will  call  gethostname(2)
+to get the local hostname. Specifying a local hostname may be useful for 
+machines with more than one inter-faces.
+
+-o, --outgoing-port port
+specify a port for rpc.statd to send outgoing  status  requests  from.   
+By  default,  rpc.statd  will  ask
+portmap(8)  to  assign  it  a  port  number.   As of this writing, there 
+is not a standard port number that
+portmap always or usually assigns.  Specifying a port may be useful when 
+implementing a firewall.
+
+-p, --port port
+specify a port for rpc.statd to listen on.  By default, rpc.statd will 
+ask portmap(8) to assign it  a  port
+number.   As  of  this writing, there is not a standard port number that 
+portmap always or usually assigns.
+Specifying a port may be useful when implementing a firewall.
+
+-P, --state-directory-path directory
+specify a directory in which to place statd state information.  If this 
+option is not specified the default
+of /var/lib/nfs is used.
+
+ -N    
+Causes  statd  to  run in the notify-only mode. When started in this 
+mode, the statd program will check its
+state directory, send notifications to any monitored nodes, and exit 
+once the notifications have been sent.
+This mode is used to enable Highly Available NFS implementations (i.e. 
+HA-NFS).
+
+-?     Causes rpc.statd to print out command-line help and exit.
+
+-V     Causes rpc.statd to print out version information and exit.
+
+Thank you.
+Regards,
+Rudi
+
+
+
 
 
 -------------------------------------------------------
