@@ -1,121 +1,83 @@
-From: raven@themaw.net
-Subject: Re: umount() and NFS races in 2.4.26
-Date: Sat, 10 Jul 2004 14:57:46 +0800 (WST)
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <Pine.LNX.4.58.0407101419210.1378@donald.themaw.net>
-References: <20040708180709.GA7704@timesink.dyndns.org>
+From: Alexander Bergolth <leo@strike.wu-wien.ac.at>
+Subject: Allowed characters in nfsv4 filenames
+Date: Sat, 10 Jul 2004 12:37:24 +0200
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <40EFC6E4.7000203@strike.wu-wien.ac.at>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: autofs mailing list <autofs@linux.kernel.org>,
-	nfs@lists.sourceforge.net,
-	Kernel Mailing List <linux-kernel@vger.kernel.org>
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org-S266175AbUGJHJo@vger.kernel.org>
-To: Thomas Moestl <moestl@ibr.cs.tu-bs.de>
-In-Reply-To: <20040708180709.GA7704@timesink.dyndns.org>
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BjFEc-0000sJ-ND
+	for nfs@lists.sourceforge.net; Sat, 10 Jul 2004 03:37:34 -0700
+Received: from strike.wu-wien.ac.at ([137.208.8.200])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1BjFEc-0002cj-9T
+	for nfs@lists.sourceforge.net; Sat, 10 Jul 2004 03:37:34 -0700
+Received: from localhost (localhost.localdomain [127.0.0.1])
+	by strike.wu-wien.ac.at (Postfix) with ESMTP id 960152000ED
+	for <nfs@lists.sourceforge.net>; Sat, 10 Jul 2004 12:37:27 +0200 (CEST)
+To: nfs@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, 8 Jul 2004, Thomas Moestl wrote:
+Hi!
 
-> Hi,
-> 
-> after deploying an SMP machine at work, we started to experience Oopses
-> in file-system related code relatively frequently. Investigation
-> revealed that they were caused by references using junk pointers from
-> freed super blocks via dangling inodes from unmounted file systems;
-> Oopses would always be preceded by the warning
->   VFS: Busy inodes after unmount. Self-destruct in 5 seconds.  Have a nice day...
-> on an unmount (unmount activity is high on this machine due to heavy use
-> of the automounter). The predecessor to this machine, a UP system with
-> otherwise almost identical configuration, did never encounter such
-> problems, so I went looking for possible SMP races.
+When I'm trying to access files on a NFSv4 mounted server containing=20
+Latin-1 characters, those files are displayed in the directory listing=20
+but cannot be opened or stat'ed.
+Does NFSv4 only accept filenames in UTF-8?
 
-This has been reported many times by users of autofs, especially people 
-with a ot of mount/umount activity.
+[root@barney nfstest]# ls --show-control-chars
+server-created-=E4=F6=FC
+[root@barney nfstest]# ls -b
+server-created-\344\366\374
+[root@barney nfstest]# ls -l --show-control-chars
+total 0
+?---------  ? ? ? ?           ? server-created-=E4=F6=FC
+[root@barney nfstest]# ls --show-control-chars server-created-=E4=F6=FC
+ls: server-created-=E4=F6=FC: Invalid argument
+[root@barney nfstest]# stat server-created-=E4=F6=FC
+stat: cannot stat `server-created-\344\366\374': Invalid argument
 
-As James pointed out my latest autofs4 patch resolved the issue for him.
-However, on the NFS list Greg Banks pointed out that this may be hiding a
-problem that exists in NFS. So it would be good if the NFS folk could 
-investigate this further.
 
-Never the less I'm sure there is a race in waitq.c of autofs4 in 
-2.4 that seems to cause this problem. This is one of the things 
-addressed by my patch.
+Moreover I cannot create files on the client containing Latin-1 character=
+s:
 
-The autofs4 stuff can be found at 
-http://www.kernel.org/pub/linux/daemons/autofs/v4
+[root@barney nfstest]# touch client-=E4=F6=FC
+touch: setting times of `client-\344\366\374': Invalid argument
+[root@barney nfstest]# ls -l client*
+ls: client*: No such file or directory
 
-Note that the patch for the kernel module will not apply cleanly to 
-2.4.27-rc3 as Marcello has applied 2 hunks from that patch. Similarly if 
-you chose to use the kernel module build kit the mandatory and optional 
-kernel patches refered to in it have already been applied to 2.4.27-rc3.
 
-Additionally, I recomend using the latest autofs, currently 4.1.3, as well 
-as the 4.1.3 patches found with the tarball at the location above.
+Is this the expected behavior?
+Is there any way to use ISO-8859-1 filenames with NFSv4?
 
-> 
-> I believe that I have found two problems:
-> 
-> - The NFS async unlink code (fs/nfs/unlink.c) does keep a dentry for
->   later asynchronous processing, but the mount point is unbusied via
->   path_release() once sys_unlink() returns (fs/namei.c). While it
->   does a dget() on the dentry, this is insufficient to prevent an
->   umount(); when one would happen in the right time window, it seems
->   that it would initially get past the busy check:
-> 	if (atomic_read(&mnt->mnt_count) == 2 || flags & MNT_DETACH) {
->   (fs/namespace.c, do_umount()), but invalidate_inodes() in kill_super()
->   (fs/super.c) would then fail because of the inode referenced from
->   the dentry needed for the async unlink (which cannot be removed
->   by shrink_dcache_parent() because the NFS code did dget() it).
-> 
->   Please note that this problem is only conjectured, as it turned out
->   to not be our culprit. It looks not completely trivial to fix to me,
->   I believe it might require some changes that would affect other FS
->   implementations. It is not a true SMP race, if it exists it would
->   affect UP systems as well.
-> 
-> - There is a SMP race between the shrink_dcache_parent() (fs/dcache.c)
->   called from kill_super() and prune_dache() called via
->   shrink_dache_memory() (called by kswapd), as follows:
->   shrink_dache_parent() calls select_parent() to both prepare the LRU
->   list for purge_cache() and return the number of unused dcache
->   entries that can likely be removed in the next prune_dache() run.
->   If select_parent() returns 0, shrink_dcache_parent() assumes that
->   its work is done and returns. Now, assume for simplicity that there
->   are only two remaining dcache entries: one for "foo/bar" and for
->   the directory "foo/", which is referenced by the "foo/bar" entry.
->   Furthermore, prune_dcache() is currently running, called from kswapd,
->   and has decided to remove the "foo/bar" entry. To that end, it
->   calls prune_one_dentry(), which dentry_iput()s then "foo/bar" dentry.
->   This causes the dache_lock() to be dropped. Just now select_parent()
->   comes along, and can obtain the dcache_lock(). It now looks for unused
->   dentries; but there is only the "foo/" one left, which has a non-zero
->   d_count because "foo/bar" referenced it as parent, and
->   prune_one_dentry() did not yet have a chance to dput() it because it
->   has to wait for the dcache_lock(). Thus, select_parent() finds no
->   unused dentries, assumes that all is fine and does not purge any
->   more; the "foo/" entry can remain in the cache for much longer
->   because it may have DCACHE_REFERENCED set, so that the kswapd
->   purge_dcache() will leave it alone. The inode corresponding to the
->   dangling dcache entry will still be referenced, and end up dangling,
->   too. kill_super() will print the warning mentioned above.
->   When dentry or inode are touched again later (for example in another
->   purge_dcache() later on) we can end up accessing the super block
->   freed during the unmount, leading to an Oops.
->   This was partially verified by inspecting the dcache state via
->   /dev/kmem after the busy inodes warning had occured (the directory
->   dentry was not busy any more, but still remained in the unused list).
-> 
->   In the attached patch, I have used a semaphore to serialize purging
->   accesses to the dentry_unused list. With a kernel so patched, the
->   problem seems to have disappeared. The patch is just a quick hack,
->   the semantics of the semaphore is not really well-defined; but maybe
->   it can serve as a starting point.
->   
-> I have not checked whether any of these issues pertain to the 2.6 series
-> as well.
-> 
-> 	- Thomas
-> 
-> P.S: please CC me in replies, as I am not subscribed to this list.
-> 
-> 
+Thanks in advance,
+--leo
+
+P.S.: I am using kernel 2.6.6-1.435 from Fedora Core 2.
+
+--=20
+-------------------------------------------------------
+Alexander (Leo) Bergolth          leo@leo.wu-wien.ac.at
+WU-Wien - Zentrum fuer Informatikdienste - Projektbuero
+
+
+-------------------------------------------------------
+This SF.Net email sponsored by Black Hat Briefings & Training.
+Attend Black Hat Briefings & Training, Las Vegas July 24-29 - 
+digital self defense, top technical experts, no vendor pitches, 
+unmatched networking opportunities. Visit www.blackhat.com
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
