@@ -1,16 +1,22 @@
-From: chimin yen <ychimin2000@yahoo.com>
-Subject: Red Hat 7.3 nfs portmap problem
-Date: Tue, 15 Oct 2002 08:55:49 -0700 (PDT)
+From: Juan Gomez <juang@us.ibm.com>
+Subject: Patch to enable rmtab's that are symbolic links
+Date: Tue, 15 Oct 2002 09:07:12 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20021015155549.18814.qmail@web40613.mail.yahoo.com>
+Message-ID: <OF2BD80441.154AB54D-ON87256C53.00586AAD@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ychimin2000@yahoo.com
+Content-Type: text/plain; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from web40613.mail.yahoo.com ([66.218.78.150])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 181U31-0003C2-00
-	for <nfs@lists.sourceforge.net>; Tue, 15 Oct 2002 08:55:55 -0700
+Received: from e35.co.us.ibm.com ([32.97.110.133])
+	by usw-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 181UFV-0004mq-00
+	for <nfs@lists.sourceforge.net>; Tue, 15 Oct 2002 09:08:49 -0700
+Received: from westrelay02.boulder.ibm.com (westrelay02.boulder.ibm.com [9.17.194.23])
+	by e35.co.us.ibm.com (8.12.2/8.12.2) with ESMTP id g9FG8bQu027560
+	for <nfs@lists.sourceforge.net>; Tue, 15 Oct 2002 12:08:37 -0400
+Received: from d03nm694.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.193.82])
+	by westrelay02.boulder.ibm.com (8.12.3/NCO/VER6.4) with ESMTP id g9FG7KMF038690
+	for <nfs@lists.sourceforge.net>; Tue, 15 Oct 2002 10:07:20 -0600
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -24,89 +30,112 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Setup NFS on Red Hat 7.2 wasn't a problem, on RH 7.3,
-just cannot make it work. I've tried both
-nfs-utils-0.3.3
-and nfs-utils-1.0.1. 
 
-When mount a volume from 192.168.1.2 to local
-192.168.1.1,
-(as a root) I got the following error:
+has anyone had anytime to look into this? could anyone include it in the
+distribution?
 
-# mount 192.168.1.2:/home /mnt/user
-mount: RPC: Port mapper failure - RPC: Unable to
-receive
+Juan
 
-When mount a volume from 192.168.1.1 to local
-192.168.1.2,
-(also as a root) the operation hangs.
-
-Other information :
-
-# cat /etc/exports
-/home 192.168.1.1(rw)
-# mount 192.168.1.2:/home /mnt/user
-mount: RPC: Port mapper failure - RPC: Unable to
-receive
+----- Forwarded by Juan Gomez/Almaden/IBM on 10/15/02 09:09 AM -----
+                                                                                                                                       
+                      Juan Gomez                                                                                                       
+                      <gomez@cs.sjsu.ed        To:       nfs@lists.sourceforge.net                                                     
+                      u>                       cc:       Juan Gomez/Almaden/IBM@IBMUS                                                  
+                                               Subject:  Patch to enable rmtab's that are symbolic links                               
+                      10/12/02 01:06 AM                                                                                                
+                                                                                                                                       
+                                                                                                                                       
 
 
-# /etc/init.d/nfs restart
-Stopping NFS mountd:                                  
-    [  OK  ]
-Stopping NFS daemon:                                  
-    [  OK  ]
-Stopping NFS services:                                
-    [  OK  ]
-Stopping NFS quotas:                                  
-    [  OK  ]
-Starting NFS services:                                
-    [  OK  ]
-Starting NFS quotas:                                  
-    [  OK  ]
-Starting NFS mountd:                                  
-    [  OK  ]
-Starting NFS daemon:                                  
-    [  OK  ]
-
-# ps -aux | grep nfs
-root      7878  0.0  0.0     0    0 ?        SW  
-23:18   0:00 [nfsd]
-root      7879  0.0  0.0     0    0 ?        SW  
-23:18   0:00 [nfsd]
-root      7880  0.0  0.0     0    0 ?        SW  
-23:18   0:00 [nfsd]
-root      7881  0.0  0.0     0    0 ?        SW  
-23:18   0:00 [nfsd]
-root      7882  0.0  0.0     0    0 ?        SW  
-23:18   0:00 [nfsd]
-root      7883  0.0  0.0     0    0 ?        SW  
-23:18   0:00 [nfsd]
-root      7884  0.0  0.0     0    0 ?        SW  
-23:18   0:00 [nfsd]
-root      7885  0.0  0.0     0    0 ?        SW  
-23:18   0:00 [nfsd]
-root      7891  0.0  0.2  2240  636 pts/2    R   
-23:18   0:00 grep nfs
-
-# ps -aux | grep rpc
-rpc        736  0.0  0.2  1512  552 ?        S   
-12:39   0:00 portmap
-rpcuser    762  0.0  0.2  1556  568 ?        S   
-12:39   0:00 rpc.statd
-root      7868  0.0  0.1  1468  420 ?        S   
-23:18   0:00 rpc.rquotad
-root      7873  0.0  0.2  1548  616 ?        S   
-23:18   0:00 rpc.mountd
-root      7887  0.0  0.0     0    0 ?        SW  
-23:18   0:00 [rpciod]
 
 
-Please help...
+In clustered NAS environments we have found useful to support
+symbolic links to the rmtab files. I would like to propose the following
+patch for review and future inclusion on nfs-utils so that this feature
+can be supported.
 
-__________________________________________________
-Do you Yahoo!?
-Faith Hill - Exclusive Performances, Videos & More
-http://faith.yahoo.com
+Regards, Juan
+
+diff -ur nfs-utils/utils/mountd/rmtab.c
+nfs-utils-new-mountd/utils/mountd/rmtab.c
+--- nfs-utils/utils/mountd/rmtab.c         Wed May 31 17:57:13 2000
++++ nfs-utils-new-mountd/utils/mountd/rmtab.c          Sat Oct 12 07:54:01
+2002
+@@ -8,7 +8,9 @@
+
+ #include "config.h"
+
++#include <sys/types.h>
+ #include <sys/stat.h>
++#include <unistd.h>
+ #include <netinet/in.h>
+ #include <arpa/inet.h>
+ #include <netdb.h>
+@@ -18,6 +20,40 @@
+ #include "xio.h"
+ #include "mountd.h"
+
++#include <limits.h> /* PATH_MAX */
++
++/* If new path is a link do not destroy it but place the
++ * file where the link points.
++ */
++
++static int
++slink_safe_rename(const char * oldpath, const char * newpath)
++{
++  int r;
++  struct stat s;
++  char slink_path[PATH_MAX];
++  char real_newpath = newpath;
++
++  if((lstat(newpath, &s) == 0) && (S_ISLNK(s.st_mode))) {
++
++    /* New path is a symbolic link, do not destroy but follow */
++
++    if((r = readlink(newpath, slink_path, PATH_MAX))==-1) {
++
++      return -1;
++
++    }
++
++    slink_path[ (r < PATH_MAX) ? (r + 1) : (PATH_MAX - 1)] = '\0';
++
++    real_newpath = slink_path;
++
++  }
++
++  return rename(oldpath, real_newpath);
++
++}/* static int slink_safe_rename() */
++
+ void
+ mountlist_add(nfs_export *exp, const char *path)
+ {
+@@ -82,7 +118,7 @@
+                         if (!match || rep->r_count)
+                                     fputrmtabent(fp, rep, NULL);
+             }
+-            if (rename(_PATH_RMTABTMP, _PATH_RMTAB) < 0) {
++            if (slink_safe_rename(_PATH_RMTABTMP, _PATH_RMTAB) < 0) {
+                         xlog(L_ERROR, "couldn't rename %s to %s",
+                                                 _PATH_RMTABTMP,
+_PATH_RMTAB);
+             }
+@@ -130,7 +166,7 @@
+                         }
+                         fputrmtabent(fp, rep, NULL);
+             }
+-            if (rename(_PATH_RMTABTMP, _PATH_RMTAB) < 0) {
++            if (slink_safe_rename(_PATH_RMTABTMP, _PATH_RMTAB) < 0) {
+                         xlog(L_ERROR, "couldn't rename %s to %s",
+                                                 _PATH_RMTABTMP,
+_PATH_RMTAB);
+             }
+
+
+
+
 
 
 -------------------------------------------------------
