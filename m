@@ -1,19 +1,28 @@
-From: Frank van Maarseveen <frankvm@frankvm.com>
-Subject: [PATCH 2.6.11-rc4+NFS_ALL 1/1]: tidy up nfs3proc.c
-Date: Thu, 17 Feb 2005 20:37:05 +0100
-Message-ID: <20050217193705.GA2158@janus>
+From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
+Subject: Re: NFS readonly failover and linux?
+Date: Thu, 17 Feb 2005 13:59:27 -0800
+Message-ID: <1108677567.5897.55.camel@seki.nac.uci.edu>
+References: <1106871309.6181.254.camel@seki.nac.uci.edu>
+	 <Pine.LNX.4.61.0501291127450.1607@donald.themaw.net>
+	 <1107205302.4071.17.camel@seki.nac.uci.edu>
+	 <Pine.LNX.4.58.0502010945400.25875@wombat.indigo.net.au>
+	 <16895.57760.531261.8465@segfault.boston.redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="huq684BweRXVnRxX"
-Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-xor42ircdY8NYJMozeRK"
+Cc: strombrg@dcs.nac.uci.edu, Ian Kent <raven@themaw.net>,
+	autofs mailing list <autofs@linux.kernel.org>,
+	nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D1rSi-0006kk-GF
-	for nfs@lists.sourceforge.net; Thu, 17 Feb 2005 11:37:20 -0800
-Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1D1rSe-0006Ta-PY
-	for nfs@lists.sourceforge.net; Thu, 17 Feb 2005 11:37:20 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+	id 1D1tgN-0005Du-2z
+	for nfs@lists.sourceforge.net; Thu, 17 Feb 2005 13:59:35 -0800
+Received: from dcs.nac.uci.edu ([128.200.34.32] ident=root)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1D1tgM-0004mQ-Gb
+	for nfs@lists.sourceforge.net; Thu, 17 Feb 2005 13:59:34 -0800
+To: jmoyer@redhat.com
+In-Reply-To: <16895.57760.531261.8465@segfault.boston.redhat.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,367 +37,146 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
---huq684BweRXVnRxX
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+--=-xor42ircdY8NYJMozeRK
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-Remove function style macros hiding real functions. Reduce the number
-of functions which instantiate a struct rpc_message.
+On Tue, 2005-02-01 at 15:08 -0500, Jeff Moyer wrote:
+> =3D=3D> Regarding Re: [NFS] NFS readonly failover and linux?; Ian Kent <r=
+aven@themaw.net> adds:
+>=20
+> raven> On Mon, 31 Jan 2005, Dan Stromberg wrote:
+> >> On Sat, 2005-01-29 at 11:46 +0800, raven@themaw.net wrote: > On Thu, 2=
+7
+> >> Jan 2005, Dan Stromberg wrote:
+> >> >=20
+> >> > >
+> >> > > The autofs man pages on Redhat Enterprise Linux 3 as well as Fedor=
+a
+> >> Core > > 3 both say that autofs supports replicated, readonly fileserv=
+er
+> >> failover > > - but then there's a footnote of sorts that says autofs
+> >> only supports it > > to the extent that mount does.
+> >> >=20
+> >> > That part of the man page is old and slightly out of date.
+> >> >=20
+> >> > The reason that this is left there is that autofs cannot support >
+> >> dynamic failover as it just uses mount. However, a different host may =
+be
+> >> > selected at mount, after a previous timeout, for example. The issue =
+of
+> >> > umounting existing mounts from servers that have gone away is not >
+> >> explicitly dealt with yet.
+> >>=20
+> >> I see.
+> >>=20
+> >> > >
+> >> > > Upon trying to do such a mount, I get:
+> >> > >
+> >> > > seki-root> mount > >
+> >> dcslib1.nacs.uci.edu,dcslib4.nacs.uci.edu:/dcspdb/rhel-3-i686 /mnt/nfs=
+ >
+> >> > mount: warning: multiple hostnames not supported > > Thu Jan 27
+> >> 16:12:18
+> >>=20
+> >> > What version of autofs are you using?  > The autofs replicated serve=
+r
+> >> code is still relatively new.
+>=20
+> raven> But, as we know, mount doesn't know about multiple host
+> raven> names. autofs breaks these out.
+>=20
+> So what is the actual problem, here?  Are you using the automounter?  Wha=
+t
+> do your config files look like?
+>=20
+> >> FC3: autofs-4.1.3-28 RHEL3: autofs-4.1.3-47
+>=20
+> raven> I believe that the replicated server code should be present in bot=
+h
+> raven> of these.
+>=20
+> raven> Can you confirm please Jeff?
+>=20
+> raven> Perhaps you are seeing a bug which needs to be addressed.
+>=20
+> Yes, the replicated server code is present in both of these versions.
+>=20
+> >> The FC3 is yum update'd fairly regulary, and the RHEL3 is up2date'd
+> >> regularly as well.
+> >>=20
+> >> > If your autofs supports replicated server map entries then multiple =
+>
+> >> host mount requests will not reach the mount command.
+> >>=20
+> >> Interesting.
+> >>=20
+> >> > If you are using a RedHat based distro then check >
+> >> http://people.redhat.com/jmoyer > for the latest patched versions
+> >> >=20
+> >> > Also, you may need a kernel patch depending on your kernel
+> >> version. See > README.patches in the distribution or join the autofs
+> >> list at > http://linux.kernel.org/mailman/listinfo/autofs
+> >>=20
+> >> I'm certain my management will only go for this, in the short term, if
+> >> it works on a mainstream RHEL3 system.  Unfortunately, for me, the res=
+t
+> >> is academic interest.
+>=20
+> raven> Once again I believe that the kernels mentioned here are up to dat=
+e
+> raven> wrt autofs.
+>=20
+> raven> Certainly, the latest FC3 kernel is at 2.6.10 which has all the
+> raven> autofs4 updates included in the base kernel.
+>=20
+> raven> I believe the latest update to RHEL3 is also up to date. Jeff?
+>=20
+> Yes, both kernels have the necessary patches to support replicated server=
+.
+>=20
+> raven> So perhaps you could send a log trace with the "--debug" option
+> raven> added to the master map entry.
+>=20
+> And please include the contents of your maps!
+>=20
+> -Jeff
 
-Signed-off-by: Frank van Maarseveen <frankvm@frankvm.com>
+Here are the maps we use on Solaris 9.  Should they work the same way on
+RHEL 3?
 
--- 
-Frank
+autoinst-strombrg> cat /etc/auto_dcslib
+/dcs -ro
+dcslib1.nacs.uci.edu,dcslib2.nacs.uci.edu,dcslib3.nacs.uci.edu:/dcspdb/sun4=
+-5
+/dcslib -ro
+dcslib1.nacs.uci.edu,dcslib2.nacs.uci.edu,dcslib3.nacs.uci.edu:/dcspda
 
---huq684BweRXVnRxX
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline; filename="nfs3proc-cleanup.patch"
+autoinst-strombrg> cat /etc/auto_master
+# Master map for automounter
+#
++auto.master
+/net            -hosts          -nosuid,nobrowse
+#/home          auto_home       -nobrowse
+/xfn            -xfn
+/-             auto_direct
 
---- ./fs/nfs/nfs3proc.c.orig	2005-02-17 19:57:55.000000000 +0100
-+++ ./fs/nfs/nfs3proc.c	2005-02-17 20:01:08.000000000 +0100
-@@ -24,13 +24,21 @@
- 
- /* A wrapper to handle the EJUKEBOX error message */
- static int
--nfs3_rpc_wrapper(struct rpc_clnt *clnt, struct rpc_message *msg, int flags)
-+nfs3_rpc_call(struct rpc_clnt *clnt, u32 proc, void *argp, void *resp,
-+	      struct rpc_cred *cred, int flags)
- {
--	sigset_t oldset;
--	int res;
-+	struct rpc_message msg = {
-+		.rpc_proc	= &nfs3_procedures[proc],
-+		.rpc_argp	= argp,
-+		.rpc_resp	= resp,
-+		.rpc_cred	= cred,
-+	};
-+	sigset_t		oldset;
-+	int			res;
-+
- 	rpc_clnt_sigmask(clnt, &oldset);
- 	do {
--		res = rpc_call_sync(clnt, msg, flags);
-+		res = rpc_call_sync(clnt, &msg, flags);
- 		if (res != -EJUKEBOX)
- 			break;
- 		set_current_state(TASK_INTERRUPTIBLE);
-@@ -41,22 +49,12 @@
- 	return res;
- }
- 
--static inline int
--nfs3_rpc_call_wrapper(struct rpc_clnt *clnt, u32 proc, void *argp, void *resp, int flags)
-+static __inline__ int
-+nfs3_rpc(struct rpc_clnt *clnt, u32 proc, void *argp, void *resp)
- {
--	struct rpc_message msg = {
--		.rpc_proc	= &nfs3_procedures[proc],
--		.rpc_argp	= argp,
--		.rpc_resp	= resp,
--	};
--	return nfs3_rpc_wrapper(clnt, &msg, flags);
-+	return nfs3_rpc_call(clnt, proc, argp, resp, NULL, 0);
- }
- 
--#define rpc_call(clnt, proc, argp, resp, flags) \
--		nfs3_rpc_call_wrapper(clnt, proc, argp, resp, flags)
--#define rpc_call_sync(clnt, msg, flags) \
--		nfs3_rpc_wrapper(clnt, msg, flags)
--
- static int
- nfs3_async_handle_jukebox(struct rpc_task *task)
- {
-@@ -79,10 +77,10 @@
- 
- 	dprintk("%s: call  fsinfo\n", __FUNCTION__);
- 	info->fattr->valid = 0;
--	status = rpc_call(server->client_sys, NFS3PROC_FSINFO, fhandle, info, 0);
-+	status = nfs3_rpc(server->client_sys, NFS3PROC_FSINFO, fhandle, info);
- 	dprintk("%s: reply fsinfo: %d\n", __FUNCTION__, status);
- 	if (!(info->fattr->valid & NFS_ATTR_FATTR)) {
--		status = rpc_call(server->client_sys, NFS3PROC_GETATTR, fhandle, info->fattr, 0);
-+		status = nfs3_rpc(server->client_sys, NFS3PROC_GETATTR, fhandle, info->fattr);
- 		dprintk("%s: reply getattr: %d\n", __FUNCTION__, status);
- 	}
- 	return status;
-@@ -99,8 +97,7 @@
- 
- 	dprintk("NFS call  getattr\n");
- 	fattr->valid = 0;
--	status = rpc_call(server->client, NFS3PROC_GETATTR,
--			  fhandle, fattr, 0);
-+	status = nfs3_rpc(server->client, NFS3PROC_GETATTR, fhandle, fattr);
- 	dprintk("NFS reply getattr: %d\n", status);
- 	return status;
- }
-@@ -118,7 +115,7 @@
- 
- 	dprintk("NFS call  setattr\n");
- 	fattr->valid = 0;
--	status = rpc_call(NFS_CLIENT(inode), NFS3PROC_SETATTR, &arg, fattr, 0);
-+	status = nfs3_rpc(NFS_CLIENT(inode), NFS3PROC_SETATTR, &arg, fattr);
- 	dprintk("NFS reply setattr: %d\n", status);
- 	return status;
- }
-@@ -143,10 +140,10 @@
- 	dprintk("NFS call  lookup %s\n", name->name);
- 	dir_attr.valid = 0;
- 	fattr->valid = 0;
--	status = rpc_call(NFS_CLIENT(dir), NFS3PROC_LOOKUP, &arg, &res, 0);
-+	status = nfs3_rpc(NFS_CLIENT(dir), NFS3PROC_LOOKUP, &arg, &res);
- 	if (status >= 0 && !(fattr->valid & NFS_ATTR_FATTR))
--		status = rpc_call(NFS_CLIENT(dir), NFS3PROC_GETATTR,
--			 fhandle, fattr, 0);
-+		status = nfs3_rpc(NFS_CLIENT(dir), NFS3PROC_GETATTR,
-+				  fhandle, fattr);
- 	dprintk("NFS reply lookup: %d\n", status);
- 	if (status >= 0)
- 		status = nfs_refresh_inode(dir, &dir_attr);
-@@ -162,12 +159,6 @@
- 	struct nfs3_accessres	res = {
- 		.fattr		= &fattr,
- 	};
--	struct rpc_message msg = {
--		.rpc_proc	= &nfs3_procedures[NFS3PROC_ACCESS],
--		.rpc_argp	= &arg,
--		.rpc_resp	= &res,
--		.rpc_cred	= entry->cred
--	};
- 	int mode = entry->mask;
- 	int status;
- 
-@@ -187,7 +178,8 @@
- 		if (mode & MAY_EXEC)
- 			arg.access |= NFS3_ACCESS_EXECUTE;
- 	}
--	status = rpc_call_sync(NFS_CLIENT(inode), &msg, 0);
-+	status = nfs3_rpc_call(NFS_CLIENT(inode), NFS3PROC_ACCESS,
-+			  &arg, &res, entry->cred, 0);
- 	nfs_refresh_inode(inode, &fattr);
- 	if (status == 0) {
- 		entry->mask = 0;
-@@ -216,8 +208,7 @@
- 
- 	dprintk("NFS call  readlink\n");
- 	fattr.valid = 0;
--	status = rpc_call(NFS_CLIENT(inode), NFS3PROC_READLINK,
--			  &args, &fattr, 0);
-+	status = nfs3_rpc(NFS_CLIENT(inode), NFS3PROC_READLINK, &args, &fattr);
- 	nfs_refresh_inode(inode, &fattr);
- 	dprintk("NFS reply readlink: %d\n", status);
- 	return status;
-@@ -228,18 +219,13 @@
- 	int			flags = rdata->flags;
- 	struct inode *		inode = rdata->inode;
- 	struct nfs_fattr *	fattr = rdata->res.fattr;
--	struct rpc_message	msg = {
--		.rpc_proc	= &nfs3_procedures[NFS3PROC_READ],
--		.rpc_argp	= &rdata->args,
--		.rpc_resp	= &rdata->res,
--		.rpc_cred	= rdata->cred,
--	};
- 	int			status;
- 
- 	dprintk("NFS call  read %d @ %Ld\n", rdata->args.count,
- 			(long long) rdata->args.offset);
- 	fattr->valid = 0;
--	status = rpc_call_sync(NFS_CLIENT(inode), &msg, flags);
-+	status = nfs3_rpc_call(NFS_CLIENT(inode), NFS3PROC_READ,
-+			  &rdata->args, &rdata->res, rdata->cred, flags);
- 	if (status >= 0)
- 		nfs_refresh_inode(inode, fattr);
- 	dprintk("NFS reply read: %d\n", status);
-@@ -251,18 +237,13 @@
- 	int			rpcflags = wdata->flags;
- 	struct inode *		inode = wdata->inode;
- 	struct nfs_fattr *	fattr = wdata->res.fattr;
--	struct rpc_message	msg = {
--		.rpc_proc	= &nfs3_procedures[NFS3PROC_WRITE],
--		.rpc_argp	= &wdata->args,
--		.rpc_resp	= &wdata->res,
--		.rpc_cred	= wdata->cred,
--	};
- 	int			status;
- 
- 	dprintk("NFS call  write %d @ %Ld\n", wdata->args.count,
- 			(long long) wdata->args.offset);
- 	fattr->valid = 0;
--	status = rpc_call_sync(NFS_CLIENT(inode), &msg, rpcflags);
-+	status = nfs3_rpc_call(NFS_CLIENT(inode), NFS3PROC_WRITE,
-+			  &wdata->args, &wdata->res, wdata->cred, rpcflags);
- 	if (status >= 0)
- 		nfs_refresh_inode(inode, fattr);
- 	dprintk("NFS reply write: %d\n", status);
-@@ -273,18 +254,13 @@
- {
- 	struct inode *		inode = cdata->inode;
- 	struct nfs_fattr *	fattr = cdata->res.fattr;
--	struct rpc_message	msg = {
--		.rpc_proc	= &nfs3_procedures[NFS3PROC_COMMIT],
--		.rpc_argp	= &cdata->args,
--		.rpc_resp	= &cdata->res,
--		.rpc_cred	= cdata->cred,
--	};
- 	int			status;
- 
- 	dprintk("NFS call  commit %d @ %Ld\n", cdata->args.count,
- 			(long long) cdata->args.offset);
- 	fattr->valid = 0;
--	status = rpc_call_sync(NFS_CLIENT(inode), &msg, 0);
-+	status = nfs3_rpc_call(NFS_CLIENT(inode), NFS3PROC_COMMIT,
-+			  &cdata->args, &cdata->res, cdata->cred, 0);
- 	if (status >= 0)
- 		nfs_refresh_inode(inode, fattr);
- 	dprintk("NFS reply commit: %d\n", status);
-@@ -326,7 +302,7 @@
- again:
- 	dir_attr.valid = 0;
- 	fattr.valid = 0;
--	status = rpc_call(NFS_CLIENT(dir), NFS3PROC_CREATE, &arg, &res, 0);
-+	status = nfs3_rpc(NFS_CLIENT(dir), NFS3PROC_CREATE, &arg, &res);
- 	nfs_refresh_inode(dir, &dir_attr);
- 
- 	/* If the server doesn't support the exclusive creation semantics,
-@@ -376,8 +352,8 @@
- 		 * not sure this buys us anything (and I'd have
- 		 * to revamp the NFSv3 XDR code) */
- 		fattr.valid = 0;
--		status = rpc_call(NFS_CLIENT(dir), NFS3PROC_SETATTR,
--						&arg, &fattr, 0);
-+		status = nfs3_rpc(NFS_CLIENT(dir), NFS3PROC_SETATTR,
-+				  &arg, &fattr);
- 		dprintk("NFS reply setattr (post-create): %d\n", status);
- 	}
- 	if (status == 0) {
-@@ -400,16 +376,11 @@
- 		.name		= name->name,
- 		.len		= name->len
- 	};
--	struct rpc_message	msg = {
--		.rpc_proc	= &nfs3_procedures[NFS3PROC_REMOVE],
--		.rpc_argp	= &arg,
--		.rpc_resp	= &dir_attr,
--	};
- 	int			status;
- 
- 	dprintk("NFS call  remove %s\n", name->name);
- 	dir_attr.valid = 0;
--	status = rpc_call_sync(NFS_CLIENT(dir), &msg, 0);
-+	status = nfs3_rpc(NFS_CLIENT(dir), NFS3PROC_REMOVE, &arg, &dir_attr);
- 	nfs_refresh_inode(dir, &dir_attr);
- 	dprintk("NFS reply remove: %d\n", status);
- 	return status;
-@@ -474,7 +445,7 @@
- 	dprintk("NFS call  rename %s -> %s\n", old_name->name, new_name->name);
- 	old_dir_attr.valid = 0;
- 	new_dir_attr.valid = 0;
--	status = rpc_call(NFS_CLIENT(old_dir), NFS3PROC_RENAME, &arg, &res, 0);
-+	status = nfs3_rpc(NFS_CLIENT(old_dir), NFS3PROC_RENAME, &arg, &res);
- 	nfs_refresh_inode(old_dir, &old_dir_attr);
- 	nfs_refresh_inode(new_dir, &new_dir_attr);
- 	dprintk("NFS reply rename: %d\n", status);
-@@ -500,7 +471,7 @@
- 	dprintk("NFS call  link %s\n", name->name);
- 	dir_attr.valid = 0;
- 	fattr.valid = 0;
--	status = rpc_call(NFS_CLIENT(inode), NFS3PROC_LINK, &arg, &res, 0);
-+	status = nfs3_rpc(NFS_CLIENT(inode), NFS3PROC_LINK, &arg, &res);
- 	nfs_refresh_inode(dir, &dir_attr);
- 	nfs_refresh_inode(inode, &fattr);
- 	dprintk("NFS reply link: %d\n", status);
-@@ -533,7 +504,7 @@
- 	dprintk("NFS call  symlink %s -> %s\n", name->name, path->name);
- 	dir_attr.valid = 0;
- 	fattr->valid = 0;
--	status = rpc_call(NFS_CLIENT(dir), NFS3PROC_SYMLINK, &arg, &res, 0);
-+	status = nfs3_rpc(NFS_CLIENT(dir), NFS3PROC_SYMLINK, &arg, &res);
- 	nfs_refresh_inode(dir, &dir_attr);
- 	dprintk("NFS reply symlink: %d\n", status);
- 	return status;
-@@ -560,7 +531,7 @@
- 	dprintk("NFS call  mkdir %s\n", name->name);
- 	dir_attr.valid = 0;
- 	fattr->valid = 0;
--	status = rpc_call(NFS_CLIENT(dir), NFS3PROC_MKDIR, &arg, &res, 0);
-+	status = nfs3_rpc(NFS_CLIENT(dir), NFS3PROC_MKDIR, &arg, &res);
- 	nfs_refresh_inode(dir, &dir_attr);
- 	dprintk("NFS reply mkdir: %d\n", status);
- 	return status;
-@@ -579,7 +550,7 @@
- 
- 	dprintk("NFS call  rmdir %s\n", name->name);
- 	dir_attr.valid = 0;
--	status = rpc_call(NFS_CLIENT(dir), NFS3PROC_RMDIR, &arg, &dir_attr, 0);
-+	status = nfs3_rpc(NFS_CLIENT(dir), NFS3PROC_RMDIR, &arg, &dir_attr);
- 	nfs_refresh_inode(dir, &dir_attr);
- 	dprintk("NFS reply rmdir: %d\n", status);
- 	return status;
-@@ -614,24 +585,19 @@
- 		.verf		= verf,
- 		.plus		= plus
- 	};
--	struct rpc_message	msg = {
--		.rpc_proc	= &nfs3_procedures[NFS3PROC_READDIR],
--		.rpc_argp	= &arg,
--		.rpc_resp	= &res,
--		.rpc_cred	= cred
--	};
- 	int			status;
-+	u32			proc = NFS3PROC_READDIR;
- 
- 	lock_kernel();
- 
- 	if (plus)
--		msg.rpc_proc = &nfs3_procedures[NFS3PROC_READDIRPLUS];
-+		proc = NFS3PROC_READDIRPLUS;
- 
- 	dprintk("NFS call  readdir%s %d\n",
- 			plus? "plus" : "", (unsigned int) cookie);
- 
- 	dir_attr.valid = 0;
--	status = rpc_call_sync(NFS_CLIENT(dir), &msg, 0);
-+	status = nfs3_rpc_call(NFS_CLIENT(dir), proc, &arg, &res, cred, 0);
- 	nfs_refresh_inode(dir, &dir_attr);
- 	dprintk("NFS reply readdir: %d\n", status);
- 	unlock_kernel();
-@@ -669,7 +635,7 @@
- 			MAJOR(rdev), MINOR(rdev));
- 	dir_attr.valid = 0;
- 	fattr->valid = 0;
--	status = rpc_call(NFS_CLIENT(dir), NFS3PROC_MKNOD, &arg, &res, 0);
-+	status = nfs3_rpc(NFS_CLIENT(dir), NFS3PROC_MKNOD, &arg, &res);
- 	nfs_refresh_inode(dir, &dir_attr);
- 	dprintk("NFS reply mknod: %d\n", status);
- 	return status;
-@@ -683,7 +649,7 @@
- 
- 	dprintk("NFS call  fsstat\n");
- 	stat->fattr->valid = 0;
--	status = rpc_call(server->client, NFS3PROC_FSSTAT, fhandle, stat, 0);
-+	status = nfs3_rpc(server->client, NFS3PROC_FSSTAT, fhandle, stat);
- 	dprintk("NFS reply statfs: %d\n", status);
- 	return status;
- }
-@@ -696,7 +662,7 @@
- 
- 	dprintk("NFS call  fsinfo\n");
- 	info->fattr->valid = 0;
--	status = rpc_call(server->client_sys, NFS3PROC_FSINFO, fhandle, info, 0);
-+	status = nfs3_rpc(server->client_sys, NFS3PROC_FSINFO, fhandle, info);
- 	dprintk("NFS reply fsinfo: %d\n", status);
- 	return status;
- }
-@@ -709,7 +675,7 @@
- 
- 	dprintk("NFS call  pathconf\n");
- 	info->fattr->valid = 0;
--	status = rpc_call(server->client, NFS3PROC_PATHCONF, fhandle, info, 0);
-+	status = nfs3_rpc(server->client, NFS3PROC_PATHCONF, fhandle, info);
- 	dprintk("NFS reply pathconf: %d\n", status);
- 	return status;
- }
 
---huq684BweRXVnRxX--
+
+--=-xor42ircdY8NYJMozeRK
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.6 (GNU/Linux)
+
+iD8DBQBCFRO/o0feVm00f/8RAg9sAJ9iL6pMdqtA7P5+nl+Hw9vWouCpfQCfZ7wz
+wc8ilKpxD/eFcSgT0iJtwAI=
+=ioQ7
+-----END PGP SIGNATURE-----
+
+--=-xor42ircdY8NYJMozeRK--
+
 
 
 -------------------------------------------------------
