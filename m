@@ -1,20 +1,19 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Problem with permissions
-Date: 18 Apr 2002 09:23:11 +0200
+From: Steffen Persvold <sp@scali.com>
+Subject: NFS clients behind a masqueraded gateway
+Date: Thu, 18 Apr 2002 10:08:31 +0200 (CEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shshem9h3mo.fsf@charged.uio.no>
-References: <5.1.0.14.2.20020418115542.058a25a0@pop.cs.curtin.edu.au>
-	<15550.27591.650445.471426@notabene.cse.unsw.edu.au>
+Message-ID: <Pine.LNX.4.30.0204180946500.10622-100000@elin.scali.no>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: David Shirley <dave@cs.curtin.edu.au>,  nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mons.uio.no ([129.240.130.14])
+Received: from elin.scali.no ([62.70.89.10])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16y6GU-0006GC-00
-	for <nfs@lists.sourceforge.net>; Thu, 18 Apr 2002 00:23:34 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <15550.27591.650445.471426@notabene.cse.unsw.edu.au>
+	id 16y6y3-0002dR-00
+	for <nfs@lists.sourceforge.net>; Thu, 18 Apr 2002 01:08:35 -0700
+Received: from localhost (sp@localhost)
+	by elin.scali.no (8.11.6/8.11.6) with ESMTP id g3I88Vp11183
+	for <nfs@lists.sourceforge.net>; Thu, 18 Apr 2002 10:08:31 +0200
+To: NFS Mailinglist <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,32 +26,31 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->>>>> " " == Neil Brown <neilb@cse.unsw.edu.au> writes:
+Hi all,
 
-     > The server has to allow the client computer to read such a file
-     > so that it can then execute it.  However the client computer
-     > should restrict client applications to only using "exec" on the
-     > file, not "open".
+I'm experiencing some problems with a cluster setup. The cluster is set up
+in a way that you have a frontend machine configured as a masquerading
+gateway and all the compute nodes behind it on a private network (i.e the
+frontend has two network interfaces). User home directories and also other
+data directories which should be available to the cluster (i.e statically
+mounted in the same location on both frontend and nodes) are located on
+external NFS servers (IRIX and Linux servers). This seems to work fine
+when the cluster is in use, but if the cluster is idle for some time (e.g
+over night), the NFS directories has become unavailable and trying to
+reboot the frontend results in a complete hang when it tries to unmount
+the NFS directories (it hangs in a fuser command). The frontend and all
+the nodes are running RedHat 7.2, but with a stock 2.4.18 kernel (plus
+Trond's seekdir patch, thanks for the help BTW).
 
-        mmap(/proc/<pid>/mem);
+Ideas anyone ?
 
-There isn't really a good way to restrict an application to only exec
-the file. I believe you will find more reasons why Al & Linus have
-refused to implement this if you trawl through the l-k archives.
+Thanks in advance,
+-- 
+  Steffen Persvold   | Scalable Linux Systems |   Try out the world's best
+ mailto:sp@scali.com |  http://www.scali.com  | performing MPI implementation:
+Tel: (+47) 2262 8950 |   Olaf Helsets vei 6   |      - ScaMPI 1.13.8 -
+Fax: (+47) 2262 8951 |   N0621 Oslo, NORWAY   | >320MBytes/s and <4uS latency
 
-     > What client OS are you using?  I seem to recall that there was
-     > a time when the Linux NFS client didn't use ACCESS requests,
-     > but I think that has been fixed (but Trond could say for sure).
-
-ACCESS is unfortunately not yet fully implemented in any of the
-existing Linux kernels. I still need to work on a good way to cache
-the results.
-At the moment we only check in order to try to overturn a false
-negative on the permissions. Here we are talking about a false
-positive.
-
-Cheers,
-  Trond
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
