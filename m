@@ -1,18 +1,21 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: 3 strange things in the lockd code ?
-Date: 08 Apr 2002 14:06:42 +0200
+From: Andreas Unterluggauer <au@literaturhaus.at>
+Subject: Re: NFS problems across reboot
+Date: Mon, 08 Apr 2002 14:15:26 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shs8z7yo0ml.fsf@charged.uio.no>
-References: <20020404194238.E25342@zeus.centre-cired.fr>
+Message-ID: <3CB189DE.1B3AE1CD@literaturhaus.at>
+References: <3CACA93C.5010304@blue-labs.org>
+		<3CAD6A78.4205CD61@moving-picture.com>
+		<3CAFCE8C.5030300@blue-labs.org>
+		<15535.55222.401084.736426@notabene.cse.unsw.edu.au>
+		<3CAFEE3C.8020606@blue-labs.org> <15537.1257.212812.909225@notabene.cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=iso-8859-1
 Cc: nfs@lists.sourceforge.net
-Received: from pat.uio.no ([129.240.130.16])
+Received: from etwasmea.literaturhaus.at ([194.152.172.210] helo=mail.literaturhaus.at)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16uXvo-0004uH-00
-	for <nfs@lists.sourceforge.net>; Mon, 08 Apr 2002 05:07:32 -0700
-To: Dumas Patrice <dumas@centre-cired.fr>
-In-Reply-To: <20020404194238.E25342@zeus.centre-cired.fr>
+	id 16uY3f-0005w8-00
+	for <nfs@lists.sourceforge.net>; Mon, 08 Apr 2002 05:15:40 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,49 +28,32 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->>>>> " " == Dumas Patrice <dumas@centre-cired.fr> writes:
+>=20
+> "Exporting" a filesystem means doing two things:
+>  1/ telling mountd that it is allow to respond positively to mount
+>      requests.
+>  2/ telling the kernel nfsd that it is allow to respond to access
+>      requests.
+>=20
+> When mountd responds to a mount request, it also tells the kernel to
+> respond to access requests.
+> But after a reboot, you need to run exportfs.  It reads
+> /var/lib/nfs/rmtab to find out which clients have which filesystems
+> mounted, and it tells the kernel to allow those clients to access
+> those filesystem.
 
-     > My understanding is that in nlmsvc_grant_blocked there is a
-     > callback to the client with NLMPROC_GRANTED_MSG, the client get
-     > the callback using nlmsvc_proc_granted_msg which in turn sends
-     > NLMPROC_GRANTED_RES (and also which triggers
-     > nlmsvc_grant_callback which only rescuedule block). The server
-     > receive and responds to the callback, but it is
-     > nlmsvc_proc_null.
+Is it sufficent, if exportfs -r is run before rpc.nfsd are started
+instead of exportfs -a?
+The startscripts of redhat 6.2 uses exportfs -r (and we sometimes have
+troubles with stale mounts).
 
-     > I may be totally wrong, but it seems to me that
-     > nlmsvc_proc_granted_res should instead call nlmsvc_grant_reply
-     > to delete the block. Did I missed something ?
+andi
 
-NLM_GRANTED_RES is part of the 'asynchronous RPC' NLM model which was
-designed to support locking on systems without monitoring
-(i.e. without rpc.statd').
-Linux does not currently support such a model, nor do we really plan
-to do so. Non-monitored locks are pretty hairy things to deal with
-(see http://www.opengroup.org/onlinepubs/9629799/chap9.htm#tagcjh_10_01_01_02).
-
-     > 2) If there are 2 clients on different hosts with the same
-     >    cookie, the
-     > nlmsvc_grant_callback may find an invalid block.
-
-I agree. We should be checking the host address as well.
-
-     > 3) This one may be a design choice. In nlmclnt_lock,
-     >    nlmclnt_block is called if
-     > the server responds NLM_LCK_BLOCKED to NLMPROC_LOCK even though
-     > the client doesn't want a blocking lock. If the server is
-     > broken and responds NLM_LCK_BLOCKED even if it should have
-     > responded something else, the client will call
-     > nlmclnt_block. To avoid that, maybe it could be possible to
-     > exchange if ((status = nlmclnt_call(req, NLMPROC_LOCK)) >= 0)
-     > with if (((status = nlmclnt_call(req, NLMPROC_LOCK)) >= 0) &&
-     > req->a_args.block) But it may also be a design choice, not to
-     > try to turn around broken servers.
-
-Right.
-
-Cheers,
-  Trond
+--=20
+Andreas Unterluggauer
+Dokumentationsstelle f=FCr neuere =F6sterreichische Literatur
+A-1070 Wien, Seidengasse 13      http://www.literaturhaus.at
+Tel. +43/1/526 20 44-11, Fax -30, e-mail au@literaturhaus.at
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
