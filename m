@@ -1,18 +1,18 @@
 From: Denis Vlasenko <vda@ilport.com.ua>
-Subject: BUG(?): resolved hostnames in etab instead of IPs
-Date: Fri, 4 Mar 2005 13:49:06 +0200
-Message-ID: <200503041349.06923.vda@ilport.com.ua>
+Subject: mountd: needless DNS queries when authenticating client against numeric IP
+Date: Fri, 4 Mar 2005 14:24:22 +0200
+Message-ID: <200503041424.22897.vda@ilport.com.ua>
 Mime-Version: 1.0
 Content-Type: text/plain;
   charset="koi8-r"
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D7BJp-0008JL-Ie
-	for nfs@lists.sourceforge.net; Fri, 04 Mar 2005 03:50:09 -0800
+	id 1D7BsB-0002u3-Du
+	for nfs@lists.sourceforge.net; Fri, 04 Mar 2005 04:25:39 -0800
 Received: from [195.66.192.168] (helo=port.imtp.ilyichevsk.odessa.ua)
-	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
-	id 1D7BJU-0000Sk-Ju
-	for nfs@lists.sourceforge.net; Fri, 04 Mar 2005 03:50:09 -0800
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
+	id 1D7Bs0-0000N9-IJ
+	for nfs@lists.sourceforge.net; Fri, 04 Mar 2005 04:25:39 -0800
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -27,55 +27,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I'm doing my testing locally, therefore I use 127.0.0.1,
-but I believe this will happen with any numeric IP:
+mount 127.0.0.1:/ can fail if DNS is down
+and mountd has been restarted without re-run of exportfs -r,
+because /var/lib/nfs/etab contains wrong hostname ("localhost"
+instead of "127.0.0.1") and mountd cannot determine that
+these are the same. This was explained in my previous mail.
 
-# cat /etc/exports
-/       127.0.0.1(rw,no_root_squash,async)
-# rm /var/lib/nfs/etab
-# exportfs -r
-# cat /var/lib/nfs/etab
-/       localhost(rw,async,wdelay,hide,nocrossmnt,secure,no_root_squash,no_all_squash,subtree_check,secure_locks,mapping=identity,anonuid=-2,anongid=-2)
+Here is another, lesser problem:
 
-Looks like bug to me, because I said explicitly that I allow 127.0.0.1 to mount /,
-not it's hostname.
+If mountd was restarted _with_ prior run of exportfs -r, etab is correct
+and mount succeeds, but with ~10 sec delay because of:
 
-One of consequences of this bug is mount failures if mountd gets restarted while
-name resolution isn't working (DNS server down etc).
-
-In case this is indeed a bug, here is where it happens.
-(I'm not sure I will be able to cook up a sane patch
-so at least I'll try to explain how 'exportfs -r' did it):
-
-int main(...)
--> int export_read(char *fname)
--> nfs_export* export_lookup(char *hname, char *path, int canonical)
--> nfs_client* client_lookup(char *hname, int canonical)
-
-nfs-utils-1.0.7/support/export/client.c:
-nfs_client *
-client_lookup(char *hname, int canonical)
+nfs_export *
+auth_authenticate(char *what, struct sockaddr_in *caller, char *path)
 {
-        nfs_client      *clp = NULL;
-        int             htype;
+        nfs_export      *exp = NULL;
+        char            epath[MAXPATHLEN+1];
+        char            *p = NULL;
         struct hostent  *hp = NULL;
+        struct in_addr  addr = caller->sin_addr;
+        enum auth_error error;
 
-        htype = client_gettype(hname);
+        if (path [0] != '/') {
+                xlog(L_WARNING, "bad path in %s request from %s: \"%s\"",
+                     what, inet_ntoa(addr), path);
+                return exp;
+        }
 
-        if (htype == MCL_FQDN && !canonical) {
-                struct hostent *hp2;
-                hp = gethostbyname(hname);
-                if (hp == NULL || hp->h_addrtype != AF_INET) {
-                        xlog(L_ERROR, "%s has non-inet addr", hname);
-                        return NULL;
-                }
-                /* make sure we have canonical name */
-                hp2 = hostent_dup(hp);
-HERE ====>      hp = gethostbyaddr(hp2->h_addr, hp2->h_length,
-                                   hp2->h_addrtype);
-                if (hp) {
+        strncpy(epath, path, sizeof (epath) - 1);
+        epath[sizeof (epath) - 1] = '\0';
+        auth_fixpath(epath); /* strip duplicate '/' etc */
 
-Hmm... maybe we need to introduce MCL_NUMERIC_IP or something like that?
+xlog(L_ERROR, "auth_authenticate(): get_reliable_hostbyaddr start"); //vda:
+===>    hp = get_reliable_hostbyaddr((const char*)&caller->sin_addr, sizeof(struct in_addr),
+                                     AF_INET);
+        ^^^^^^^^^^^^^^^^^ gethostbyaddr inside. we will wait for DNS reply (or timeout)
+        if (!hp)
+                hp = get_hostent((const char*)&caller->sin_addr, sizeof(struct in_addr),
+                                     AF_INET);
+        if (!hp)
+                return exp;
+
+This DNS query is not needed in my case.
+
+Shall we first try to authenticate against numeric IP of client
+and retry with hostname returned from get_reliable_hostbyaddr()
+only if we fail auth against numeric IP?
 --
 vda
 
