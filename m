@@ -1,22 +1,21 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: RPC: TCP connect error 104!
-Date: Fri, 3 May 2002 11:53:22 +1000 (EST)
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: questions about rpc and locks
+Date: 03 May 2002 09:41:47 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15569.60818.842967.989749@notabene.cse.unsw.edu.au>
-References: <20020503003922.A403936F9@sitemail.everyone.net>
+Message-ID: <shswuul3cg4.fsf@charged.uio.no>
+References: <20020430174511.A21356@zeus.centre-cired.fr>
+	<shsk7qoqd4f.fsf@charged.uio.no>
+	<20020502184121.B22985@zeus.centre-cired.fr>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 173SGZ-0001xX-00
-	for <nfs@lists.sourceforge.net>; Thu, 02 May 2002 18:53:48 -0700
-Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <croatia@firstlinux.net>) (for <nfs@lists.sourceforge.net>) By
-	tone With Smtp ; Fri, 3 May 2002 11:53:34 +1000
-To: croatia@firstlinux.net
-In-Reply-To: message from Vladimir Vuksan on Thursday May 2
+Received: from mons.uio.no ([129.240.130.14])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 173Xi6-0004HK-00
+	for <nfs@lists.sourceforge.net>; Fri, 03 May 2002 00:42:34 -0700
+To: dumas@centre-cired.fr (Patrice DUMAS - DOCT)
+In-Reply-To: <20020502184121.B22985@zeus.centre-cired.fr>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,42 +28,31 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Thursday May 2, croatia@firstlinux.net wrote:
-> I am experiencing a problem on a number of different clients mounting NFS mounts over TCP. The error message showing up is
-> 
-> RPC: TCP connect error 104!
-> 
-> I searched through Google Groups and found following message
-> 
-> =========================================
-> 
-> http://www.geocrawler.com/mail/msg.php3?msg_id=8215374&list=789
-> 
-> You may need more threads to service the clients?  See Neil's notes
-> that accompanied the patches (in the archives) w.r.t the number of threads and the number of RPC receive buffers.
-> 
-> ==========================================
-> 
-> I was wondering what is the easiest way to increase the number of
-> threads. Most clients run RedHat's 2.4.9-31 kernel installed from an
-> RPM. I also have a Rawhide kernel 2.4.18-0.12 that seems to exhibit
-> same kind of behavior. 
->   
+>>>>> " " == Patrice DUMAS <dumas@centre-cired.fr> writes:
 
-Just run rpc.nfsd and give it the number that you want.
+     > In case of an asynchronous call, is there such a difference
+     > between 'soft' and 'hard' rpc calls too ?
 
-  rpc.nfsd 32
+Yes. 'hard' RPC calls will retry forever, and soft calls, will set
+task->tk_status to EIO on a major timeout. This goes for both
+synchronous and asynchronous calls.
 
-will increase the number of threads to 32
+     > I haven't seen anywhere what was the kind of rpc call of the
+     > server side lockd.  Is it hard by default ?
 
-  rpc.nfsd 128
+You need to set the flag clnt->cl_soft in order to enable 'soft' RPC
+calls. As you can see from the code, rpc.statd does this. The NLM
+client code does so if and only if the NFS mount was soft. The lockd
+server does not...
 
-will then increase it to 128.
+Note: for those RPC calls that don't expect the server to acknowledge
+the call and return a value (e.g. NLM_*_MSG, NLM_*_RES) the 'hard'
+call unfortunately does not offer any extra guarantees that the server
+will *receive* the message. All it guarantees is that the message will
+eventually get put on the wire...
 
-If you find that has fixed the problem, the find the init.d script
-that starts rpc.nfsd and change the number to whatever you want.
-
-NeilBrown
+Cheers,
+  Trond
 
 _______________________________________________________________
 
