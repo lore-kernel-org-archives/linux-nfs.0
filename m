@@ -1,23 +1,13 @@
-From: "Indulge Your Vices" <cthepooch@tampabay.rr.com>
-Subject: Subscription Confirmation
-Date: Sat, 12 Apr 2003 01:27:52 -0400
+From: "William Murray" <w.murray@travelocity.com>
+Subject: Increase the size of your little johnson
+Date: Wed, 26 Mar 2003 04:33:38 +0000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E194DWP-0000Lf-00@panoramix.vasoftware.com>
-Reply-To: "Indulge Your Vices" <cthepooch@yahoo.com>
+Message-ID: <be4006604e17cb741b2c3e65$c564923c84fc9ea3@n8r8tjh>
 Mime-Version: 1.0
 Content-Type: multipart/alternative;
-	boundary="= Multipart Boundary 0412030127"
+	boundary="----=_NextPart_000_B64CD6A3_61F944821B44BC29.C31237EB2EBA368"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from panoramix.vasoftware.com ([198.186.202.147] ident=mail)
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 194DWT-0005dH-00
-	for <nfs@lists.sourceforge.net>; Fri, 11 Apr 2003 22:25:53 -0700
-Received: from 6532115hfc246.tampabay.rr.com ([65.32.115.246]:15517 helo=tampabay.rr.com)
-	by panoramix.vasoftware.com with smtp (Exim 4.05-VA-mm1 #1 (Debian))
-	id 194DWP-0000Lf-00
-	for <nfs@lists.sourceforge.net>; Fri, 11 Apr 2003 22:25:49 -0700
-To: <nfs@lists.sourceforge.net>
+To: nfs@lists.sourceforge.net, snort-users-admin@lists.sourceforge.net, vxl-maintainers@lists.sourceforge.net, vxl-users@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,37 +20,31 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multipart MIME message.
+This is a multi-part message in MIME format.
 
---= Multipart Boundary 0412030127
+------=_NextPart_000_B64CD6A3_61F944821B44BC29.C31237EB2EBA368
 Content-Type: text/plain;
-	charset="ISO-8859-1"
+	charset="iso-8859-1"
 Content-Transfer-Encoding: 8bit
 
-This email has been submitted to the Indulgence Network for receiving our emails containing free adult material and offers.  If this email has been submitted in error please reply with a blank email with "error" in the subject line.  If you would like to confirm this subscription please reply with a blank email with " confirmed " in the subject line.  Thank you
 
---= Multipart Boundary 0412030127
+
+
+------=_NextPart_000_B64CD6A3_61F944821B44BC29.C31237EB2EBA368
 Content-Type: text/html;
-	charset="ISO-8859-1"
+	charset="iso-8859-1"
 Content-Transfer-Encoding: 8bit
 
-<HTML>
-<HEAD>
-<META NAME="GENERATOR" Content="Microsoft DHTML Editing Control">
-<TITLE></TITLE>
-</HEAD>
-<BODY>
-<DIV>This email has been submitted to the Indulgence 
-Network for receiving our emails containing free adult material and 
-offers.&nbsp; If this email has been submitted in error please reply with a 
-blank email with "error" in the subject line.&nbsp; If you would like to
-confirm 
-this subscription please reply with a blank email with " confirmed " in the 
-subject line.&nbsp; Thank you</DIV>
-</BODY>
-</HTML>
+<HTML>		
+		<body> 
+   
+		<A HREF="http://www.shopnow.bz/b/pills/pill.php"> <img src="http://66.252.31.52/op/p.jpg" border=0>
+ </A><p><br>Don't want any more adverts? Simply click <a href="http://200.155.12.12/~smtds/op/optout.html">here</a>.</p>	
+ 
+	</BODY></HTML>
 
---= Multipart Boundary 0412030127--
+
+------=_NextPart_000_B64CD6A3_61F944821B44BC29.C31237EB2EBA368--
 
 
 
