@@ -1,35 +1,33 @@
-From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
-Subject: Re: Debian Bug#203077: Locks not released on NFS client
-	reboot
-Date: Fri, 21 Jan 2005 10:40:41 -0800
-Message-ID: <1106332841.21404.253.camel@localhost.localdomain>
+From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Subject: Re: Debian Bug#203077: Locks not released on NFS client reboot
+Date: Fri, 21 Jan 2005 11:59:17 -0700 (MST)
+Message-ID: <Pine.LNX.4.60.0501211157450.15036@harp.ngdc.noaa.gov>
 References: <Pine.OSF.4.56.0307271137050.10355@grover.WPI.EDU>
-	 <20030727163124.GC19877@perlsupport.com>
-	 <16164.29864.268358.781865@gargle.gargle.HOWL>
-	 <Pine.LNX.4.60.0501131844130.6332@harp.ngdc.noaa.gov>
-	 <16871.11926.507904.373575@cse.unsw.edu.au>
-	 <Pine.LNX.4.60.0501201709220.5142@harp.ngdc.noaa.gov>
-	 <1106268738.30991.11.camel@lade.trondhjem.org>
-	 <Pine.LNX.4.60.0501211118380.15036@harp.ngdc.noaa.gov>
+ <20030727163124.GC19877@perlsupport.com>  <16164.29864.268358.781865@gargle.gargle.HOWL>
+  <Pine.LNX.4.60.0501131844130.6332@harp.ngdc.noaa.gov>
+ <16871.11926.507904.373575@cse.unsw.edu.au>  <Pine.LNX.4.60.0501201709220.5142@harp.ngdc.noaa.gov>
+  <1106268738.30991.11.camel@lade.trondhjem.org>
+ <Pine.LNX.4.60.0501211118380.15036@harp.ngdc.noaa.gov>
+ <1106332841.21404.253.camel@localhost.localdomain>
+Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-fVgCQ5Zk1P3wRvGlt0pQ"
-Cc: strombrg@dcs.nac.uci.edu,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
 	Neil Brown <neilb@cse.unsw.edu.au>, Chip Salzenberg <chip@pobox.com>,
 	nfs@lists.sourceforge.net, Mark O Sleeper <Mark.O.Sleeper@noaa.gov>,
 	thomas.r.carey@noaa.gov
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Cs3iV-000545-Gs
-	for nfs@lists.sourceforge.net; Fri, 21 Jan 2005 10:41:07 -0800
-Received: from dcs.nac.uci.edu ([128.200.34.32] ident=root)
+	id 1Cs40C-0005qf-IJ
+	for nfs@lists.sourceforge.net; Fri, 21 Jan 2005 10:59:24 -0800
+Received: from harp.ngdc.noaa.gov ([140.172.178.33])
 	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1Cs3iV-0003Uy-1d
-	for nfs@lists.sourceforge.net; Fri, 21 Jan 2005 10:41:07 -0800
-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-In-Reply-To: <Pine.LNX.4.60.0501211118380.15036@harp.ngdc.noaa.gov>
+	id 1Cs40C-0005PO-5g
+	for nfs@lists.sourceforge.net; Fri, 21 Jan 2005 10:59:24 -0800
+To: Dan Stromberg <strombrg@dcs.nac.uci.edu>
+In-Reply-To: <1106332841.21404.253.camel@localhost.localdomain>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -43,169 +41,45 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Fri, 21 Jan 2005, Dan Stromberg wrote:
 
---=-fVgCQ5Zk1P3wRvGlt0pQ
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+>
+> A sniffer is your friend.  ethereal is the best I've encountered.
+>
+> If you fire up an ethereal to sniff packets from your client on the server,
+> and/or vice versa, you will likely get an idea of what's wrong fairly
+> quickly.
+
+probably the next step.
+
+> BTW, last I heard, NFS on linux could be firewalled, but it required
+> starting up some daemons with some magic options to hard code them to
+> specific ports, rather than allowing portmap/rpcbind to move them around.
 
 
-A sniffer is your friend.  ethereal is the best I've encountered.
+unless i am mistaken, by adding
 
-If you fire up an ethereal to sniff packets from your client on the
-server, and/or vice versa, you will likely get an idea of what's wrong
-fairly quickly.
+>>    on the server - where ip is the client's ip
+>>
+>>      -A INPUT -s 10.1.186.71/32 -j ACCEPT
+>>
+>>    on the client, where ip is the server's ip
+>>
+>>      -A INPUT -s 10.1.186.54/32 -j ACCEPT
 
-BTW, last I heard, NFS on linux could be firewalled, but it required
-starting up some daemons with some magic options to hard code them to
-specific ports, rather than allowing portmap/rpcbind to move them
-around.
+we effictively did NOT firewall ANYTHING between client and server so
+portmapping shouldn't have made any difference right?
 
-On Fri, 2005-01-21 at 11:32 -0700, Ara.T.Howard wrote:
-> On Thu, 20 Jan 2005, Trond Myklebust wrote:
->=20
-> > to den 20.01.2005 Klokka 17:24 (-0700) skreiv Ara.T.Howard:
-> >
-> >>    server iptables:
-> >>
-> >>      *filter
-> >>      :INPUT ACCEPT [0:0]
-> >>      :FORWARD ACCEPT [0:0]
-> >>      :OUTPUT ACCEPT [0:0]
-> >>      -N NFS
-> >>      -N ICMP
-> >>      -A INPUT -i lo -j ACCEPT
-> >>      -A INPUT -p icmp --icmp-type any -j ICMP
-> >>      -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
-> >>      -A INPUT -m state --state NEW -p tcp -m tcp --dport 22 -j SSH
-> >>      -A INPUT -m state --state NEW -p udp -m udp -j NFS
-> >>      -A INPUT -m state --state NEW -p tcp -m tcp --dport 2049 -j NFS
-> >>      -A INPUT -m state --state NEW -p tcp -m tcp --dport 111 -j NFS
-> >>      -A INPUT -m state --state NEW,INVALID -j REJECT --reject-with icm=
-p-host-prohibited
-> >>      -A INPUT -j REJECT --reject-with icmp-host-prohibited
-> >>      -A ICMP -s 0/0 -j ACCEPT
-> >>      -A ICMP -j REJECT --reject-with icmp-host-prohibited
-> >>      -A NFS -s 10.1.0.0/16 -j ACCEPT
-> >>      -A NFS -j REJECT --reject-with icmp-host-prohibited
-> >>      -A SSH -s 10.1.0.0/16 -j ACCEPT
-> >>      -A SSH -j REJECT --reject-with icmp-host-prohibited
-> >>      COMMIT
-> >
-> > Where is the rule to accept incoming rpc.statd connections?
-> >
-> > Cheers,
-> >  Trond
->=20
-> sorry, we edited out the critical info.
->=20
-> on the client we have
->=20
->    [root@bligh root]# rpcinfo -p
->       program vers proto   port
->        100000    2   tcp    111  portmapper
->        100000    2   udp    111  portmapper
->        100024    1   udp  32768  status
->        100024    1   tcp  32768  status
->        100021    1   udp  32769  nlockmgr
->        100021    3   udp  32769  nlockmgr
->        100021    4   udp  32769  nlockmgr
->        100021    1   tcp  32769  nlockmgr
->        100021    3   tcp  32769  nlockmgr
->        100021    4   tcp  32769  nlockmgr
->=20
->    [root@bligh root]# grep NFS /etc/sysconfig/iptables
->    -N NFS
->    -A INPUT -p tcp --dport 111 -j NFS
->    -A INPUT -p udp --dport 111 -j NFS
->    -A INPUT -p tcp --dport 32768:32769 -j NFS
->    -A INPUT -p udp --dport 32768:32769 -j NFS
->    -A NFS -s 10.1.186.70/32 -j ACCEPT
->    -A NFS -j REJECT --reject-with icmp-host-prohibited
->=20
-> this did not work.  just to be safe we added
->=20
->    on the server - where ip is the client's ip
->=20
->      -A INPUT -s 10.1.186.71/32 -j ACCEPT
->=20
->    on the client, where ip is the server's ip
->=20
->      -A INPUT -s 10.1.186.54/32 -j ACCEPT
->=20
-> to the top of our ruleset before ANY denys.  still no go.  on shutdown/re=
-boot
-> of the client there are no error message whatsoever.  however, we are see=
-ing
-> lots of these in /var/log/messages
->=20
->    ...
->    ...
->    ...
->      Jan 21 10:55:50 moby rpc.statd[1985]: Received erroneous SM_UNMON re=
-quest from moby.ngdc.noaa.gov for 10.1.186.62
->      Jan 21 10:55:50 moby rpc.statd[1985]: Received erroneous SM_UNMON re=
-quest from moby.ngdc.noaa.gov for 10.1.186.67
->    ...
->    ...
->    ...
->=20
-> where the ips are those of various clients that are successfully performi=
-ng
-> locking.  what is this about?
->=20
-> as i said before, both the server and all clients are multihomed with nfs
-> running only on the backdoor.  the frontdoor/backdoor have names like nam=
-e,
-> name.b respectively.  these names are all in dns.  is there any chance th=
-is
-> could be related to lock recovery failure?
->=20
-> our sysad has suggested starting a tcpdump in the nfslock init.d script t=
-o see
-> what's happening - any other suggestions?
->=20
-> kind regards.
->=20
-> -a
-> --=20
-> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D
-> | EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
-> | PHONE   :: 303.497.6469
-> | When you do something, you should burn yourself completely, like a good
-> | bonfire, leaving no trace of yourself.  --Shunryu Suzuki
-> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D
->=20
->=20
-> -------------------------------------------------------
-> This SF.Net email is sponsored by: IntelliVIEW -- Interactive Reporting
-> Tool for open source databases. Create drag-&-drop reports. Save time
-> by over 75%! Publish reports on the web. Export to DOC, XLS, RTF, etc.
-> Download a FREE copy at http://www.intelliview.com/go/osdn_nl
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
->=20
+cheers.
 
---=-fVgCQ5Zk1P3wRvGlt0pQ
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.6 (GNU/Linux)
-
-iD8DBQBB8Uypo0feVm00f/8RApfzAJ9J7EXmFWklw5b+Gs1VF1akvh8Z2wCfUE9d
-YgV/gtxdaO8vEBln9b1QDmQ=
-=LzG2
------END PGP SIGNATURE-----
-
---=-fVgCQ5Zk1P3wRvGlt0pQ--
-
+-a
+-- 
+===============================================================================
+| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
+| PHONE   :: 303.497.6469
+| When you do something, you should burn yourself completely, like a good
+| bonfire, leaving no trace of yourself.  --Shunryu Suzuki
+===============================================================================
 
 
 -------------------------------------------------------
