@@ -1,63 +1,49 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: userspace NFS daemon
-Date: Mon, 06 Sep 2004 16:08:25 -0400
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1094501305.8342.118.camel@lade.trondhjem.org>
-References: <Pine.LNX.4.44.0409062120550.19152-100000@kenzo.iwr.uni-heidelberg.de>
+From: Greg Banks <gnb@melbourne.sgi.com>
+Subject: Re: [NFS] Re: why do i get "Stale NFS file handle" for hours?
+Date: Tue, 07 Sep 2004 10:55:32 +1000
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <1094518532.20243.50.camel@hole.melbourne.sgi.com>
+References: <chdp06$e56$1@sea.gmane.org>
+	 <1094348385.13791.119.camel@lade.trondhjem.org>  <413A7119.2090709@upb.de>
+	 <1094349744.13791.128.camel@lade.trondhjem.org>  <413A789C.9000501@upb.de>
+	 <1094353267.13791.156.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: Frank van Maarseveen <frankvm@xs4all.nl>, Linux NFS mailing list <nfs@lists.sourceforge.net>
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C4PnB-00065D-Qn
-	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 13:08:45 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1C4PnB-0001CQ-0P
-	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 13:08:45 -0700
-To: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
-In-Reply-To: <Pine.LNX.4.44.0409062120550.19152-100000@kenzo.iwr.uni-heidelberg.de>
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain
+Cc: Sven =?ISO-8859-1?Q?K=F6hler?= <skoehler@upb.de>,
+	linux-kernel@vger.kernel.org,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Return-path: <linux-kernel-owner+glk-linux-kernel=40m.gmane.org-S267476AbUIGAsI@vger.kernel.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1094353267.13791.156.camel@lade.trondhjem.org>
+List-ID: <nfs.lists.sourceforge.net>
 
-P=E5 m=E5 , 06/09/2004 klokka 15:35, skreiv Bogdan Costescu:
+On Sun, 2004-09-05 at 13:01, Trond Myklebust wrote:
+> When your server fails to work as per spec, then it is said to be
+> "broken" no matter what kernel/nfs-utils combination you are using.
+> The spec is that reboots are not supposed to clobber filehandles.
+> 
+> So, there are 3 possibilities:
+> 
+>  1) You are exporting a non-supported filesystem, (e.g. FAT). See the
+> FAQ on http://nfs.sourceforge.org.
+>  2) A bug in your initscripts is causing the table of exports to be
+> clobbered. Running "exportfs" in legacy 2.4 mode (without having the
+> nfsd filesystem mounted on /proc/fs/nfsd) appears to be broken for me at
+> least...
+>  3) There is some other bug in knfsd that nobody else appears to be
+> seeing.
+> 
 
-> As in Unix tradition, there are several ways to achieve the same goal. =20
-> There are people using 'mount -o bind' (like RHEL's diskless booting
-> setup procedure) or hard-links (what I use). But both of these require
-> some maintenance effort in form of scripts and a general cleanliness
-> in handling software updates or new installs. With clusternfs, the
-> files are created in their place with their intended destination in
-> the name and the daemon takes care of the rest... There are people
-> that prefer to concentrate on science rather than system
-> administration. :-)
+4) You're exporting a filesystem mounted on a block device whose
+   device minor number is dynamic and has changed at the last reboot,
+   e.g. loopback mounts or SCSI.
+5) The mapping of minor numbers is stable but you physically re-arranged
+   the disks or SCSI cards and changed /etc/fstab correspondingly.
 
-Hey, it's a free world.
+Before you say any more, yes this is broken and fixing it properly is
+Hard.  This is why have the fsid export option.
 
-However please beware that most of the hacks that worked around the
-non-rfc-compliant behaviours of unfsd are long since gone from the
-kernel and will not be coming back.
-
-Cheers,
-  Trond
-
-
-
--------------------------------------------------------
-This SF.Net email is sponsored by BEA Weblogic Workshop
-FREE Java Enterprise J2EE developer tools!
-Get your free copy of BEA WebLogic Workshop 8.1 today.
-http://ads.osdn.com/?ad_id=5047&alloc_id=10808&op=click
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
