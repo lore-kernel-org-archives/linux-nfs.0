@@ -1,8 +1,8 @@
 From: James Pearson <james-p@moving-picture.com>
 Subject: Re: stale NFS file handle (2.4.20) ext3 LVM
-Date: Thu, 19 Jun 2003 15:04:15 +0100
+Date: Thu, 19 Jun 2003 15:44:06 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3EF1C2DF.4055BE8@moving-picture.com>
+Message-ID: <3EF1CC36.8F3EC825@moving-picture.com>
 References: <m3isr2kanm.fsf@merlin.emma.line.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -10,8 +10,8 @@ Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19T023-0008Rf-00
-	for <nfs@lists.sourceforge.net>; Thu, 19 Jun 2003 07:04:56 -0700
+	id 19T0ek-0003Jt-00
+	for <nfs@lists.sourceforge.net>; Thu, 19 Jun 2003 07:44:54 -0700
 To: Matthias Andree <ma@dt.e-technik.uni-dortmund.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -25,24 +25,39 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+[Sorry -  sent the message before I had finished ...]
+
 There are a number of things that can cause stale NFS file handles on
 all clients with file systems mounted from the server when the server
 reboots - they include:
-
+ 
 The device on the server containing the file system changes e.g. change
 of SCSI ID.
-
+ 
 The file system not being mounted on the server when exported i.e. the
 'wrong' file system is exported.
-
+ 
 The contents of /var/lib/nfs/rmtab being missing or corrupt. If a
 client's entry is missing in rmtab after a server reboot, then the
-server no nothing about the clients clain to have mounetd the file
+server no nothing about the clients claim to have mounted the file
 system - and gives a stale NFS file handle.
 
-
+ 
 As you didn't change anything between reboots, then I guess it could be
-the last case a bove. 
+the last case above. 
+
+I've seen similar problems - I use XFS for my file systems and I _think_
+the rmtab file contents got replaced with NULLs when the file server
+crashed (a known 'problem' with XFS).
+
+Also, if a client attempts to umount the file system from the server,
+but the file system is busy, then rpc.mountd on the server will remove
+the client's entry from rmtab, but the umount on the client will fail
+and remain active. If the server now reboots, the client will get stale
+NFS file handles when the server comes back up.
+
+James Pearson
+
 
 Matthias Andree wrote:
 > 
