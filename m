@@ -1,29 +1,31 @@
-From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-Subject: Re: Debian Bug#203077: Locks not released on NFS client reboot
-Date: Fri, 14 Jan 2005 12:50:43 -0700 (MST)
-Message-ID: <Pine.LNX.4.60.0501141247230.11608@harp.ngdc.noaa.gov>
-References: <Pine.OSF.4.56.0307271137050.10355@grover.WPI.EDU>
- <20030727163124.GC19877@perlsupport.com>  <16164.29864.268358.781865@gargle.gargle.HOWL>
-  <Pine.LNX.4.60.0501131844130.6332@harp.ngdc.noaa.gov>
- <16871.11926.507904.373575@cse.unsw.edu.au>  <Pine.LNX.4.60.0501140852070.11608@harp.ngdc.noaa.gov>
- <1105731817.9604.11.camel@lade.trondhjem.org>
-Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+From: Jeff Blaine <jblaine@mitre.org>
+Subject: NFS file xfer of size of client memory = bad scene
+Date: Fri, 14 Jan 2005 18:34:22 -0500
+Message-ID: <41E856FE.6080706@mitre.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: Neil Brown <neilb@cse.unsw.edu.au>,
-	Chip Salzenberg <chip@pobox.com>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CpXT9-0007LV-5Q
-	for nfs@lists.sourceforge.net; Fri, 14 Jan 2005 11:50:51 -0800
-Received: from harp.ngdc.noaa.gov ([140.172.187.26])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1CpXT7-0001f0-Me
-	for nfs@lists.sourceforge.net; Fri, 14 Jan 2005 11:50:51 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1105731817.9604.11.camel@lade.trondhjem.org>
+	id 1CpaxW-0008Jo-M5
+	for nfs@lists.sourceforge.net; Fri, 14 Jan 2005 15:34:26 -0800
+Received: from smtp-bedford-dr-x.mitre.org ([192.160.51.65] helo=smtp-bedford-dr.mitre.org)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1CpaxW-00058E-6F
+	for nfs@lists.sourceforge.net; Fri, 14 Jan 2005 15:34:26 -0800
+Received: from smtp-bedford-dr.mitre.org (localhost.localdomain [127.0.0.1])
+	by smtp-bedford-dr.mitre.org (8.11.6/8.11.6) with SMTP id j0ENYOE25697
+	for <nfs@lists.sourceforge.net>; Fri, 14 Jan 2005 18:34:24 -0500
+Received: from smtp-bedford-dr.mitre.org (localhost.localdomain [127.0.0.1])
+	by smtp-bedford-dr.mitre.org (Postfix) with ESMTP id 74ABB4F8D8
+	for <nfs@lists.sourceforge.net>; Fri, 14 Jan 2005 18:34:24 -0500 (EST)
+Received: from linus.mitre.org (linus.mitre.org [129.83.10.1])
+	by smtp-bedford-dr.mitre.org (8.11.6/8.11.6) with ESMTP id j0ENYOM25673
+	for <nfs@lists.sourceforge.net>; Fri, 14 Jan 2005 18:34:24 -0500
+Received: from [127.0.0.1] (unity-17-50.mitre.org [129.83.17.50])
+	by linus.mitre.org (8.12.10/8.12.10) with ESMTP id j0ENYN4o019761
+	for <nfs@lists.sourceforge.net>; Fri, 14 Jan 2005 18:34:24 -0500 (EST)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,55 +39,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, 14 Jan 2005, Trond Myklebust wrote:
+I have a box with 4GB.  It's running 2.6.10.
 
-> fr den 14.01.2005 Klokka 09:05 (-0700) skreiv Ara.T.Howard:
->> On Fri, 14 Jan 2005, Neil Brown wrote:
->>
->>> So bligh, the client, is running statd (the "status" service), but mussel
->>> can not talk to it.  This is a problem.
->>
->> are you saying inbound rpc traffic flowing from server -> client MUST not be
->> blocked by the firewall and that it is NOT sufficient to allow ONLY inbound
->> rpc traffic client -> server?  sorry if this does not make sense - i'm a bit
->> out of my domain here...
->
-> Bi-directional RPC traffic must be allowed if you plan on using NLM
-> locking, since it is callback based. A couple of issues that immediately
-> spring to mind in the case where the server cannot call the client are:
->
->        - Blocking locks (F_SETLKW) will be hampered since the client
->        expects the server's lockd daemon to call it back as soon as any
->        conflicting locks have been released and the lock granted...
->
->        - Server reboot recovery will be broken, since the server's
->        rpc.statd daemon will be incapable of notifying the clients that
->        their locks have been lost and need to be recovered.
->
-> Cheers,
->  Trond
-> --
-> Trond Myklebust <trond.myklebust@fys.uio.no>
+I am trying to run Iozone with -g and an argument to it
+that is larger than the physical memory in the NFSv3
+client machine.
 
-thanks trond!
+For instance, on this 4GB box, I am trying '-g 4224m'.
+More specifically, the entire command line is:
 
-i don't know if you remember - but i was complaining about F_SETLKW performace
-a while back.  ;-)  sounds like this IS the problem...
+     ./iozone -a -g 4224m -f /sol9box/testfile
 
-i poked around the nfs-fag and how-to and didn't see this... if i didn't miss
-it (quite possible) may suggest it be added?  i certainly will volunteer but
-am unsure of the procedure.
+As soon as it finally gets to trying a file size of
+4194304, oom-killer steps in and starts blasting
+processes off my machine (WTF?  Great.)
 
-kind regards.
+Brings up 'oom-killer' instances under 2.6.10 and the
+whole benchmark run dies, sometimes along with my
+shell, my X session, ANY net services at all (can't
+SSH into the box... can't get console to wake up...),
+etc.
 
--a
--- 
-===============================================================================
-| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
-| PHONE   :: 303.497.6469
-| When you do something, you should burn yourself completely, like a good
-| bonfire, leaving no trace of yourself.  --Shunryu Suzuki
-===============================================================================
+Exact same command line worked in Linux 2.4.21 loaded
+on this same exact machine with the same NFSv3 server
+being talked to.
+
 
 
 -------------------------------------------------------
