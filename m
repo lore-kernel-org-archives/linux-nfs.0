@@ -1,22 +1,26 @@
-From: James Pearson <james-p@moving-picture.com>
-Subject: Re: df and "Value too large for defined data type"
-Date: Thu, 26 Feb 2004 10:16:19 +0000
+From: Olaf Kirch <okir@suse.de>
+Subject: task->tk_timeout = 0
+Date: Thu, 26 Feb 2004 12:08:02 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <403DC773.409BE2BB@moving-picture.com>
-References: <403B512C.66BF37BB@moving-picture.com> <403D2217.9040405@moving-picture.com> <20040225224016.GC24990@sgi.com>
+Message-ID: <20040226110802.GE1197@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-15
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AwIaw-000770-Ry
-	for nfs@lists.sourceforge.net; Thu, 26 Feb 2004 02:18:18 -0800
-Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AwILU-0006Hr-68
-	for nfs@lists.sourceforge.net; Thu, 26 Feb 2004 02:02:20 -0800
-To: Greg Banks <gnb@sgi.com>
+	id 1AwJOt-0006B4-KT
+	for nfs@lists.sourceforge.net; Thu, 26 Feb 2004 03:09:55 -0800
+Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.30)
+	id 1AwJN7-0000pP-GW
+	for nfs@lists.sourceforge.net; Thu, 26 Feb 2004 03:08:05 -0800
+Received: from hermes.suse.de (Hermes.suse.de [195.135.221.8])
+	(using TLSv1 with cipher EDH-RSA-DES-CBC3-SHA (168/168 bits))
+	(No client certificate requested)
+	by Cantor.suse.de (Postfix) with ESMTP id 08C9B249313
+	for <nfs@lists.sourceforge.net>; Thu, 26 Feb 2004 12:08:03 +0100 (CET)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -29,48 +33,68 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I'll probally send an email to the XFS list about this - the problem is
-that we've done nothing different with the file system set up on this
-server compared with the many others we have - i.e. the file systems
-were set up with:
+Hi all,
 
-mkfs -t xfs /dev/sdb1
+I've been debugging mysterious hangs in the NFS clients for a while
+now. The symptoms were always the same: NFS server goes away, comes back
+after a long time, but the mount point remains stuck.
 
-etc.
+When inspecting the list of RPC tasks, I often found that one process
+was on the pending queue (i.e. waiting for a reply) but task->tk_timeout
+was 0.
 
-It's just that the file systems in question seem to be saying that the
-number of inodes on the file system is 2^64  - whereas all the other XFS
-file systems we have (of a similar size) have nowhere near 2^32 inodes
-...
+I added a couple of diagnostic printks, and one of them triggered
+yesterday, pointing to this piece of code in xprt_transmit:
 
-However, the one big difference is that the RAID array in question is
-3.5TB - which is partioned on the RAID into 4 (i.e. Linux sees 4 devices
-on different LUNs) - therefore the overall size of the RAID array is a
-lot bigger than anything else we've used before (we don't have anything
-else over 2TB) - and the version of xfsprogs used was very old
-(1.3.17-0) ...
+if (!xprt->nocong) {
+	int timer = task->tk_msg.rpc_proc->p_timer;
+	timeout = rpc_calc_rto(clnt->cl_rtt, timer);
+	timeout <<= rpc_ntimeo(clnt->cl_rtt, timer);
+	timeout <<= clnt->cl_timeout.to_retries
+		- req->rq_timeout.to_retries;
+	if (timeout > req->rq_timeout.to_maxval)
+		timeout = req->rq_timeout.to_maxval;
+	else if (timeout == 0) {
+		printk(KERN_ERR "RPC task timeout == 0, please tell okir\n");
+		timeout = req->rq_timeout.to_maxval;
+	}
+	...
+}
 
-I'm going to remake one of the partitions with a newer version of
-mkfs.xfs to see if that makes a difference ...
+So apparently one of the shift operations above overflows.  I suspect
+rpc_ntimeo because it can be arbitrarily large. But the ntimeouts value
+isn't updated until we've received a reply (is this intentional, Trond?)
 
-James Pearson
+So what would have to happen for this bug to trigger is
 
-Greg Banks wrote:
-> 
-> On Wed, Feb 25, 2004 at 10:30:47PM +0000, James Pearson wrote:
-> > The underlying remote file system is XFS - which in this case appears to
-> > be saying that it has 2^64 - 1 inodes - which doesn't seem correct...
-> 
-> XFS supports 64 bit inodes, so this can be correct if it's either
-> 
-> 1.  on Linux, and very recent, and mounted with the right options, or
-> 
-> 2.  on IRIX
-> 
-> Greg.
-> --
-> Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-> I don't speak for SGI.
+	send request
+	server hangs
+	retransmit request 1000 times
+	server comes back
+	retransmit request
+	receive reply, set ntimeout = 1000
+
+	send another request. timeout overflows and becomes 0
+	request gets lost
+	task waits indefinitely.
+
+I think the most robust way to fix this is simply this:
+
+		- req->rq_timeout.to_retries;
+	if (timeout > req->rq_timeout.to_maxval)
+		timeout = req->rq_timeout.to_maxval;
+-	if (timeout > req->rq_timeout.to_maxval)
++	if (!timeout || timeout > req->rq_timeout.to_maxval)
+		timeout = req->rq_timeout.to_maxval;
+
+It may also make sense to clamp the ntimeouts value to something
+reasonable (e.g. 8)
+
+Olaf
+-- 
+Olaf Kirch     |  Stop wasting entropy - start using predictable
+okir@suse.de   |  tempfile names today!
+---------------+ 
 
 
 -------------------------------------------------------
