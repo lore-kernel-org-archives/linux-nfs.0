@@ -1,19 +1,15 @@
-From: "Heflin, Roger A." <Roger.A.Heflin@conocophillips.com>
-Subject: RE: Odd NFS hung mounts - stale mounts?
-Date: Mon, 12 May 2003 12:20:47 -0500
+From: xiyu@800j.com
+Subject: =?GB2312?B?o7yjvM73sLLN7bGoo76jvs7Sz7KwrrXE0KG/tdeh1azGwNGhu+62rw==?=
+Date: Tue, 13 May 2003 11:51:02 +0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <5CA6F03EF05E0046AC5594562398B916A32930@POEXMB3.conoco.net>
-Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Cc: <nfs@lists.sourceforge.net>
+Message-ID: <E19FQnO-0005Ob-00@sc8-sf-list1.sourceforge.net>
+Content-Type: text/html;charset="GB2312"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mailman2.ppco.com ([138.32.33.140])
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19FGyr-0000OU-00
-	for <nfs@lists.sourceforge.net>; Mon, 12 May 2003 10:20:54 -0700
-To: "James Pearson" <james-p@moving-picture.com>
+Received: from [61.150.19.113] (helo=800j.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19FQnO-0005Ob-00
+	for <nfs@lists.sourceforge.net>; Mon, 12 May 2003 20:49:46 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,128 +22,32 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a completly different problem, and this acutally causes
-serious issues.  It is a matter of when the client does not get
-that message back, then the client actually breaks, and needs
-external intervention.
+<html>
 
-			Roger
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
+<meta name="GENERATOR" content="Microsoft FrontPage 4.0">
+<meta name="ProgId" content="FrontPage.Editor.Document">
+<title>New Page 1</title>
+</head>
 
-> -----Original Message-----
-> From:	James Pearson [SMTP:james-p@moving-picture.com]
-> Sent:	Monday, May 12, 2003 11:59 AM
-> To:	Heflin, Roger A.
-> Cc:	nfs@lists.sourceforge.net; Weathers, Norman R.; Rivera, Angel R; =
-Wardrop, Mark A.; Glover, D W
-> Subject:	Re: [NFS] Odd NFS hung mounts - stale mounts?
->=20
-> I recently sent a reply to another posting about a similar subject -
-> see:
->=20
-> http://marc.theaimsgroup.com/?l=3Dlinux-nfs&m=3D105232522611536&w=3D2
->=20
-> My understanding is that it is not important that the server's
-> rpc.mountd receives an umount request or not, more importantly, the
-> server needs to know about existing client mounts when it reboots -
-> which can get 'removed' in certain circumstances.
->=20
-> James Pearson
->=20
-> "Heflin, Roger A." wrote:
-> >=20
-> > Basic problem:
-> > stale nfs file handles.
-> >=20
-> > Conclusion:
-> >=20
-> > It looks like when the automounter umounts and if the server does =
-not register
-> > a "rpc.mountd: authenticated unmount request from" we get into this =
-situation,
-> > at least on a unused file systems.  I am not exactly sure what is =
-happening
-> > on the used filesystems.  This is on a high traffic setup with lots =
-of mounts
-> > and umounts and many many nodes, so given the high volume of =
-mount/umounts
-> > I would expect some requests to be dropped.
-> >=20
-> > It looks like when a umount is being done and the server is down or =
-does not
-> > confirm the umount that the client does not retry the umount and =
-this
-> > situation occurs, the situation is explained below.
-> >=20
-> > Does the above seem plausable?
-> >=20
-> > More information:
-> >=20
-> > Basic information, client is 2.4.21pre4 NFSALL (and 2.4.19 NFSALL), =
-nfsutils
-> > 1.0.1-1.
-> >=20
-> > When doing a df command we get this message in the messages file:
-> >=20
-> > nfs_statfs: statfs error =3D 116
-> >=20
-> > And the df looks like:
-> >=20
-> > hostname:/usr/applinux    0    1    0   0% /tmpmnt/usr/applinux
-> >=20
-> > Doing a umount /tmpmnt/usr/applinux fixes the problem (automounter =
-remounts
-> > it correctly).  I have had the problem happen with both automounter =
-and fstab
-> > mounted file systems, and I have had it happen with a Solaris 8 =
-machine as
-> > the server, so that argues to me that this is a client problem and =
-not a
-> > server problem. I have had it happen on  both 2.4.19 NFSALL and =
-2.4.21pre4
-> > NFSALL clients.
-> >=20
-> > The problem seems to happen without the server or obvious network =
-issues going
-> > on, though the problem also happens if the server reboots.   The =
-server in
-> > this case would be 2.4.19 NFSALL, and the mount entry is:
-> >=20
-> > hostname:/usr/applinux /tmpmnt/usr/applinux nfs rw,v3,
-> > rsize=3D8192,wsize=3D8192,hard,intr,udp,lock,addr=3Dhostname 0 0
-> >=20
-> > It seems to happen quite a lot if the server reboots (a few out of a =
-lot
-> > of nodes have the issue), with a umount being required to fix it.  =
-It does
-> > not happen on all nodes (that we can tell, but it may happen on all =
-nodes
-> > that try to umount the down filesystem), just on some of the nodes.
-> > It also will happen with the  client and server both up and ok =
-without any
-> > warning and without the server  rebooting or having anything funny =
-done on it,
-> > and it will only affect some  (1 usually) node.  I have had it do =
-this while
-> > the filesystems is being actively used (process have the fs open), =
-in this case
-> > the processes have to be killed and  then I umount the filesystems.
-> >=20
-> > It looks like a client problem of some sort, the network should be =
-relatively
-> > clean.
-> >=20
-> >                                                         Roger
-> >=20
-> > -------------------------------------------------------
-> > Enterprise Linux Forum Conference & Expo, June 4-6, 2003, Santa =
-Clara>=20
-> > The only event dedicated to issues related to Linux enterprise =
-solutions
-> > www.enterpriselinuxforum.com
-> >=20
-> > _______________________________________________
-> > NFS maillist  -  NFS@lists.sourceforge.net
-> > https://lists.sourceforge.net/lists/listinfo/nfs
+<body>
+
+<p class="MsoNormal" align="center"><b><span style="mso-bidi-font-size: 12.0pt; color: red"><font face="隶书" size="7"><span lang="EN-US" style="mso-bidi-font-size: 12.0pt; color: red">&lt;&lt;</span><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman; mso-hansi-font-family: Times New Roman; color: red">西安晚报＞＞</span></font></span><span lang="EN-US" style="font-size:36.0pt;mso-bidi-font-size:12.0pt;color:red"><o:p>
+</o:p>
+</span></b></p>
+<p class="MsoNormal" align="center"><b><span style="font-size:18.0pt;mso-bidi-font-size:12.0pt;
+font-family:宋体;mso-ascii-font-family:&quot;Times New Roman&quot;;mso-hansi-font-family:
+&quot;Times New Roman&quot;;color:#00CCFF">我喜爱的</span><span style="font-size:26.0pt;
+mso-bidi-font-size:12.0pt;font-family:宋体;mso-ascii-font-family:&quot;Times New Roman&quot;;
+mso-hansi-font-family:&quot;Times New Roman&quot;;color:#00CCFF">小康住宅评选活动</span></b></p>
+<p class="MsoNormal" align="center"><b><font face="华文中宋" size="7"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman; mso-hansi-font-family: Times New Roman; color: red">网上投票　今日启动</span></font><span lang="EN-US" style="font-size:42.0pt;mso-bidi-font-size:12.0pt;color:red"><o:p>
+</o:p></span></b></p>  
+<p class="MsoNormal" align="center"><b><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; font-family: 宋体; mso-ascii-font-family: Times New Roman; mso-hansi-font-family: Times New Roman; mso-bidi-font-family: Times New Roman; mso-font-kerning: 1.0pt; mso-ansi-language: EN-US; mso-fareast-language: ZH-CN; mso-bidi-language: AR-SA"><font size="6" color="#800080">投票请点击</font></span></a></b></p> 
+ 
+</body> 
+ 
+</html> 
 
 
 -------------------------------------------------------
