@@ -1,27 +1,22 @@
-From: Brian Mancuso <bmancuso@akamai.com>
-Subject: Re: NFS/UDP slow read, lost fragments
-Date: Fri, 26 Sep 2003 17:07:59 -0400
+From: wlutter@geology.wisc.edu (Bill Lutter)
+Subject: I need advice on a firewall/nfs linux issue
+Date: Thu, 28 Aug 2003 14:26:28 -0500 (CDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030926170759.H787@muppet.kendall.corp.akamai.com>
-References: <Pine.LNX.4.44.0309251019170.28586-100000@localhost.localdomain> <20030925174426.B787@muppet.kendall.corp.akamai.com> <shs1xu430p2.fsf@charged.uio.no>
+Message-ID: <20030828192628.6325920D02@ice.geology.wisc.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Cc: wlutter@geology.wisc.edu (Bill Lutter)
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1A2ztb-0005Gi-00
-	for <nfs@lists.sourceforge.net>; Fri, 26 Sep 2003 14:12:59 -0700
-Received: from [80.67.64.10] (helo=akamai.com)
+	id 19sSNS-0005PO-00
+	for <nfs@lists.sourceforge.net>; Thu, 28 Aug 2003 12:24:14 -0700
+Received: from ice.geology.wisc.edu ([144.92.206.14])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 1A2zta-0006ce-3y
-	for nfs@lists.sourceforge.net; Fri, 26 Sep 2003 14:12:58 -0700
-Received: from akamai.com (vwall1.kendall.corp.akamai.com [172.17.4.33])
-	by akamai.com (8.11.7+Sun/8.11.6) with ESMTP id h8QL82928636
-	for <nfs@lists.sourceforge.net>; Fri, 26 Sep 2003 17:08:02 -0400 (EDT)
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <shs1xu430p2.fsf@charged.uio.no>; from trond.myklebust@fys.uio.no on Thu, Sep 25, 2003 at 04:31:05PM -0700
+	id 19sSNS-0003Vp-0k
+	for nfs@lists.sourceforge.net; Thu, 28 Aug 2003 12:24:14 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -34,205 +29,236 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Sep 25, 2003 at 04:31:05PM -0700, Trond Myklebust wrote:
-: 
-: Right... There is already a variable set aside for this task in the
-: RTT code in the form of "ntimeouts".
-: 
-: The following patch sets up a scheme of the form described by Brian,
-: in combination with another fix to lengthen the window of time during
-: which we accept updates to the RTO estimate (Karn's algorithm states
-: that the window closes once you retransmit, whereas our current
-: algorithm closes the window once a request times out).
-: 
-: Could people give it a try?
-: 
-: Cheers,
-:   Trond
+I'd like advice on a NFS/firewall problem. Any suggestions
+would be useful (we've tried version# of NFS using UDP
+and the usual adjustments of parameters in the NFS
+client (fstab, vfstab) and server (dfstab, exports) files
+without success.
 
-Hi Trond,
+SUMMARY:  linux to linux or linux to unix server-client pairs
+work fine when they are all together behind a firewall. (SONICWALL).
 
-This patch is great! One thing though: there is one case with this
-patch in which a request terminates but the client's ntimeouts value
-is not updated: when a request exhausts its retries. I think future
-requests should inherit the ntimeouts factor provided by timed-out
-requests for their RTO calculations. Here is a patch (against
-linux-2.4.23-pre5 with your patch) that implements this (you might
-know of a cleaner way of doing this..):
+Unfortunately, we have 5 computers in two different buildings.
+We use a SONICWALL firewall device to protect each group
+of computers (one for each building). Each group of machines
+runs a mix of linux (Redhat8.0) and unix (Solaris).
 
---- clnt.c.1	Fri Sep 26 19:58:30 2003
-+++ clnt.c	Fri Sep 26 20:00:38 2003
-@@ -699,6 +699,7 @@ call_status(struct rpc_task *task)
- static void
- call_timeout(struct rpc_task *task)
- {
-+	struct rpc_rqst	*req = task->tk_rqstp;
- 	struct rpc_clnt	*clnt = task->tk_client;
- 	struct rpc_timeout *to = &task->tk_rqstp->rq_timeout;
- 
-@@ -707,6 +708,7 @@ call_timeout(struct rpc_task *task)
- 		goto retry;
- 	}
- 	to->to_retries = clnt->cl_timeout.to_retries;
-+	rpc_set_timeo(&clnt->cl_rtt, req->rq_ntrans - 1);
- 
- 	dprintk("RPC: %4d call_timeout (major)\n", task->tk_pid);
- 	if (clnt->cl_softrtry) {
+In a nutshell, with the firewall, unix servers works ok
+and  linux servers foul up.   The problem manifests
+itself in several ways:
+a) ls command works up to a certain path length
+and then hangs.
+b) ls specific_file works (ls dmx.S001) but
+ls wildcard hangs (ls dmx.S*).
+c) cp command hangs.
 
-I tested your patch. Here is some documentation of my testing:
+Take away the firewall and everything is ok.
 
-I added a printk to the code, mounted an NFS volume with a retrans=8
-option, and did an ls on a directory with 100,000 entries in it. This
-takes awhile, and leaves ample time for the system to develop a good
-RTT estimate and for one to interfere with client/server connectivity
-so as to induce retransmits with exponential backoff:
+Contents below:
+I. Details:
+II. Machine Details:
+III. Some client/server pairs work (two SONICWALL devices in between):
+IV.  Some client/server pairs don't work out
+V. rpcinfo output
 
-01  DO_XPRT_TRANSMIT: rtt = 4, ntimeo = 0, ntrans = 0, rto = 4
-02  DO_XPRT_TRANSMIT: rtt = 4, ntimeo = 0, ntrans = 0, rto = 4
-...
-03  DO_XPRT_TRANSMIT: rtt = 4, ntimeo = 0, ntrans = 0, rto = 4
-04  DO_XPRT_TRANSMIT: rtt = 4, ntimeo = 0, ntrans = 2, rto = 16
-05  DO_XPRT_TRANSMIT: rtt = 4, ntimeo = 0, ntrans = 3, rto = 32
-06  DO_XPRT_TRANSMIT: rtt = 4, ntimeo = 0, ntrans = 4, rto = 64
-07  DO_XPRT_TRANSMIT: rtt = 4, ntimeo = 0, ntrans = 5, rto = 128
-08  DO_XPRT_TRANSMIT: rtt = 4, ntimeo = 0, ntrans = 6, rto = 256
-09  DO_XPRT_TRANSMIT: rtt = 4, ntimeo = 0, ntrans = 7, rto = 512
-10  DO_XPRT_TRANSMIT: rtt = 4, ntimeo = 0, ntrans = 8, rto = 1024
-11  nfs: server 172.18.192.11 not responding, timed out
-12  DO_XPRT_TRANSMIT: rtt = 4, ntimeo = 8, ntrans = 0, rto = 1024
-13  DO_XPRT_TRANSMIT: rtt = 4, ntimeo = 8, ntrans = 1, rto = 2048
-14  DO_XPRT_TRANSMIT: rtt = 4, ntimeo = 8, ntrans = 2, rto = 4096
+Any ideas?
+bill lutter
+wlutter@geology.wisc.edu
 
-The numbers on the left are line numbers I manually inserted for
-illustration; they were not produced by the printk. The '...'
-indicates lots of lines, identical to the preceding, were removed.
-There is one line per RTO calculation (i.e. per transmit). Lines 1-2
-show RTO calculations for RPC transactions that saw no loss. 'rtt' is
-the value returned by rpc_calc_rto(), and represents the estimated
-round trip time plus a constant factor times its mean deviation.
-'ntimeo' is the ntimeouts value in the client structure, set to the
-number of transmits minus one for the last terminated (successful or
-otherwise) request. 'ntrans' is effectively the number of retransmits
-of the request in question. 'rto' is the calculated RTO:
-rtt << ntimeo + ntrans.
 
-The server was disconnected at (before) line 3. Lines 4-10 show the
-client exponentially backing off RTO. Line 11 represents an exhaustion
-of retransmit attempts and an EIO returned to the application, ls
-(this is a soft mount). Lines 12-14 show RTO calculations for a new
-request. Note that the ntimeo on line 12 inherited its value from the
-ntrans value of the request that terminated on line 10 (this kernel
-had my above modification).
+I. Details:
+To make the problem description more specific:
+Machines in building #1 behind one firewall device:
+unix: omega
+linux: gamma
+Machines in building #2 behind a firewall device:
+unix: tau
+linux: mu
 
-Brian
+II. Machine Details:
+Linux setups:
+Running Redhat 8.0; NFS version#2 (at least it says this on the man page)
+1) mu: uname -a
+Linux mu 2.4.20-19.8 #1 Tue Jul 15 15:25:37 EDT 2003 i686 i686 i386
+GNU/Linux
+2) gamma: uname -a
+Linux gamma 2.4.18-14 #1 Wed Sep 4 13:35:50 EDT 2002 i686 i686 i386
+GNU/Linux
 
-: diff -u --recursive --new-file linux-2.4.23-pre5/include/linux/sunrpc/timer.h linux-2.4.23-01-fix_retrans/include/linux/sunrpc/timer.h
-: --- linux-2.4.23-pre5/include/linux/sunrpc/timer.h	2003-09-19 13:15:31.000000000 -0700
-: +++ linux-2.4.23-01-fix_retrans/include/linux/sunrpc/timer.h	2003-09-25 16:25:02.000000000 -0700
-: @@ -23,14 +23,9 @@
-:  extern void rpc_update_rtt(struct rpc_rtt *rt, int timer, long m);
-:  extern long rpc_calc_rto(struct rpc_rtt *rt, int timer);
-:  
-: -static inline void rpc_inc_timeo(struct rpc_rtt *rt)
-: +static inline void rpc_set_timeo(struct rpc_rtt *rt, int ntimeo)
-:  {
-: -	atomic_inc(&rt->ntimeouts);
-: -}
-: -
-: -static inline void rpc_clear_timeo(struct rpc_rtt *rt)
-: -{
-: -	atomic_set(&rt->ntimeouts, 0);
-: +	atomic_set(&rt->ntimeouts, ntimeo);
-:  }
-:  
-:  static inline int rpc_ntimeo(struct rpc_rtt *rt)
-: diff -u --recursive --new-file linux-2.4.23-pre5/include/linux/sunrpc/xprt.h linux-2.4.23-01-fix_retrans/include/linux/sunrpc/xprt.h
-: --- linux-2.4.23-pre5/include/linux/sunrpc/xprt.h	2003-07-29 16:52:26.000000000 -0700
-: +++ linux-2.4.23-01-fix_retrans/include/linux/sunrpc/xprt.h	2003-09-19 13:15:31.000000000 -0700
-: @@ -115,7 +115,7 @@
-:  
-:  	long			rq_xtime;	/* when transmitted */
-:  	int			rq_ntimeo;
-: -	int			rq_nresend;
-: +	int			rq_ntrans;
-:  };
-:  #define rq_svec			rq_snd_buf.head
-:  #define rq_slen			rq_snd_buf.len
-: diff -u --recursive --new-file linux-2.4.23-pre5/net/sunrpc/xprt.c linux-2.4.23-01-fix_retrans/net/sunrpc/xprt.c
-: --- linux-2.4.23-pre5/net/sunrpc/xprt.c	2003-07-29 16:54:19.000000000 -0700
-: +++ linux-2.4.23-01-fix_retrans/net/sunrpc/xprt.c	2003-09-25 16:25:02.000000000 -0700
-: @@ -138,18 +138,21 @@
-:  static int
-:  __xprt_lock_write(struct rpc_xprt *xprt, struct rpc_task *task)
-:  {
-: +	struct rpc_rqst *req = task->tk_rqstp;
-:  	if (!xprt->snd_task) {
-:  		if (xprt->nocong || __xprt_get_cong(xprt, task)) {
-:  			xprt->snd_task = task;
-: -			if (task->tk_rqstp)
-: -				task->tk_rqstp->rq_bytes_sent = 0;
-: +			if (req) {
-: +				req->rq_bytes_sent = 0;
-: +				req->rq_ntrans++;
-: +			}
-:  		}
-:  	}
-:  	if (xprt->snd_task != task) {
-:  		dprintk("RPC: %4d TCP write queue full\n", task->tk_pid);
-:  		task->tk_timeout = 0;
-:  		task->tk_status = -EAGAIN;
-: -		if (task->tk_rqstp && task->tk_rqstp->rq_nresend)
-: +		if (req && req->rq_ntrans)
-:  			rpc_sleep_on(&xprt->resend, task, NULL, NULL);
-:  		else
-:  			rpc_sleep_on(&xprt->sending, task, NULL, NULL);
-: @@ -183,9 +186,12 @@
-:  			return;
-:  	}
-:  	if (xprt->nocong || __xprt_get_cong(xprt, task)) {
-: +		struct rpc_rqst *req = task->tk_rqstp;
-:  		xprt->snd_task = task;
-: -		if (task->tk_rqstp)
-: -			task->tk_rqstp->rq_bytes_sent = 0;
-: +		if (req) {
-: +			req->rq_bytes_sent = 0;
-: +			req->rq_ntrans++;
-: +		}
-:  	}
-:  }
-:  
-: @@ -592,12 +598,12 @@
-:  	if (!xprt->nocong) {
-:  		xprt_adjust_cwnd(xprt, copied);
-:  		__xprt_put_cong(xprt, req);
-: -	       	if (!req->rq_nresend) {
-: +	       	if (req->rq_ntrans == 1) {
-:  			int timer = rpcproc_timer(clnt, task->tk_msg.rpc_proc);
-:  			if (timer)
-:  				rpc_update_rtt(&clnt->cl_rtt, timer, (long)jiffies - req->rq_xtime);
-:  		}
-: -		rpc_clear_timeo(&clnt->cl_rtt);
-: +		rpc_set_timeo(&clnt->cl_rtt, req->rq_ntrans - 1);
-:  	}
-:  
-:  #ifdef RPC_PROFILE
-: @@ -1063,7 +1069,7 @@
-:  		goto out;
-:  
-:  	xprt_adjust_cwnd(req->rq_xprt, -ETIMEDOUT);
-: -	req->rq_nresend++;
-: +	__xprt_put_cong(xprt, req);
-:  
-:  	dprintk("RPC: %4d xprt_timer (%s request)\n",
-:  		task->tk_pid, req ? "pending" : "backlogged");
-: @@ -1219,6 +1225,7 @@
-:  	if (!xprt->nocong) {
-:  		task->tk_timeout = rpc_calc_rto(&clnt->cl_rtt,
-:  				rpcproc_timer(clnt, task->tk_msg.rpc_proc));
-: +		task->tk_timeout <<= rpc_ntimeo(&clnt->cl_rtt);
-:  		task->tk_timeout <<= clnt->cl_timeout.to_retries
-:  			- req->rq_timeout.to_retries;
-:  		if (task->tk_timeout > req->rq_timeout.to_maxval)
+Unix setups: (I'm not sure which nfs version is default).
+1) omega: uname -a
+SunOS esp 5.7 Generic_106541-23 sun4u sparc SUNW,Ultra-60
+2) tau: uname -a
+SunOS tau 5.7 Generic_106541-23 sun4u sparc SUNW,Ultra-5_10
+
+Firewall setups:
+SONICWALL: We allow everything between the two buildings
+(two groups of machines) and limit other access.
+
+III. Some client/server pairs work (two SONICWALL devices in between):
+1) unix server/linux client works fine.
+2) unix_server/unix_client OK
+
+
+IV.  Some client/server pairs don't work out
+1) linux_server/linux_client
+a) linux server is called mu, linux client called gamma
+
+b) exports line on mu:
+/Ldata6                  gamma(rw,insecure,sync)
+
+c) fstab line on gamma:
+mu:/Ldata6              /Ldata6                 nfs     rw,bg,intr,soft 0 0
+
+d) It doesn't work.
+Example One can do a cd and a ls of a specific file, but wildcard bombs!
+[fetus@gamma /etc]$ cd /Ldata6/NMEG/n2003/179/nLongDrt/ca7_23/1
+[fetus@gamma 1]$ pwd
+/Ldata6/NMEG/n2003/179/nLongDrt/ca7_23/1
+[fetus@gamma 1]$ ls dmx.S001
+dmx.S001
+[fetus@gamma 1]$ ls *
+ls: No match.
+
+e) cp problem (small file ok, large file hangs (zero-length file)
+[fetus@gamma 1]$ cp set
+[fetus@gamma 1]$ ls -l set dmx.S001
+-rw-rw-r--    1 fetus    staff         279 Aug 20 10:35 set
+-rw-rw-r--    1 fetus    staff     1453676 Aug 20 10:36 dmx.S001
+[fetus@gamma 1]$ cp set  /Ldata1/WJL     - works ok
+[fetus@gamma 1]$ cp dmx.S001 /Ldata1/WJL
+cp: reading `dmx.S001': Input/output error
+[fetus@gamma 1]$`
+
+2. linux_server/unix client
+a) linux server is mu, unix client is omega
+b) exports line on mu:
+/Ldata6                  omega(rw,insecure,sync)
+c) vfstab line on omega:
+mu:/Ldata6            -                          /Ldata6         nfs     -
+yes     bg
+d)  ls crashes and burns depending on length of path:
+omega fetus $ cd /Ldata6/NMEG
+omega fetus $ ls
+n2003/
+omega fetus $ cd n2003
+omega fetus $ ls
+NFS server mu not responding still trying
+
+SHOULD BE:
+cd n2003; ls
+116  161  170  179  186  191  198  ReadmeNew  tar.179  tar.191  tar.198
+152  164  173  181  187  196  208  tar.170    tar.181  tar.196
+
+e) example with cp (small file ok, large file hangs)
+ssh omega (client)
+cp from /Ldata6 (linux server) to an omega (client) disk
+cd /Ldata6/NMEG/n2003/179/nLongDrt/ca7_23/1
+ls set dmx.S001
+-rw-rw-r--   1 fetus    staff    1453676 Aug 20 10:36 dmx.S001
+-rw-rw-r--   1 fetus    staff        279 Aug 20 10:35 set
+cp set /data5   - thiw works ok
+cp dmx.S001 /data5  -  this hangs (zero-length file)
+(cp hangs with message: NFS server mu not responding still trying)
+
+V. rpcinfo output
+run on linux server mu:
+rpcinfo -p gamma
+program vers proto   port
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    100021    1   udp  32769  nlockmgr
+    100021    3   udp  32769  nlockmgr
+    100021    4   udp  32769  nlockmgr
+    391002    2   tcp  32769  sgi_fam
+    100011    1   udp    848  rquotad
+    100011    2   udp    848  rquotad
+    100011    1   tcp    851  rquotad
+    100011    2   tcp    851  rquotad
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
+    100005    1   udp  32770  mountd
+    100005    1   tcp  32770  mountd
+    100005    2   udp  32770  mountd
+    100005    2   tcp  32770  mountd
+    100005    3   udp  32770  mountd
+    100005    3   tcp  32770  mountd
+    100024    1   udp  32995  status
+    100024    1   tcp  55242  status
+
+rpcinfo -p omega
+sudo rpcinfo -p omega
+   program vers proto   port
+    100000    4   tcp    111  portmapper
+    100000    3   tcp    111  portmapper
+    100000    2   tcp    111  portmapper
+    100000    4   udp    111  portmapper
+    100000    3   udp    111  portmapper
+    100000    2   udp    111  portmapper
+    100004    2   udp    791  ypserv
+    100004    1   udp    791  ypserv
+    100004    1   tcp    792  ypserv
+    100004    2   tcp  32771  ypserv
+1073741824    2   udp  32772
+    100007    3   udp  32780  ypbind
+    100007    2   udp  32780  ypbind
+    100007    1   udp  32780  ypbind
+    100007    3   tcp  32772  ypbind
+    100069    1   udp  32781  ypxfrd
+    100007    2   tcp  32772  ypbind
+    100069    1   tcp  32773  ypxfrd
+    100007    1   tcp  32772  ypbind
+    100009    1   udp    806  yppasswdd
+    100028    1   tcp    808  ypupdated
+    100028    1   udp    809  ypupdated
+    100021    1   udp   4045  nlockmgr
+    100021    2   udp   4045  nlockmgr
+    100021    3   udp   4045  nlockmgr
+    100021    4   udp   4045  nlockmgr
+    100024    1   udp  32783  status
+    100230    1   tcp  32774
+    100024    1   tcp  32775  status
+    100133    1   udp  32783
+    100133    1   tcp  32775
+    100021    1   tcp   4045  nlockmgr
+    100021    2   tcp   4045  nlockmgr
+    100021    3   tcp   4045  nlockmgr
+    100021    4   tcp   4045  nlockmgr
+    100005    1   udp  32849  mountd
+    100005    2   udp  32849  mountd
+    100005    3   udp  32849  mountd
+    100005    1   tcp  32800  mountd
+    100005    2   tcp  32800  mountd
+    100005    3   tcp  32800  mountd
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
+    100227    2   udp   2049  nfs_acl
+    100227    3   udp   2049  nfs_acl
+    100003    2   tcp   2049  nfs
+    100003    3   tcp   2049  nfs
+    100227    2   tcp   2049  nfs_acl
+    100227    3   tcp   2049  nfs_acl
+1289637087    5   tcp  55292
+1289637087    1   tcp  55292
+1289637088    5   tcp  55708
+1289637088    1   tcp  55708
+1289637086    5   tcp  36725
+1289637086    1   tcp  36725
+
+
+
+Any ideas?
+bill lutter
+wlutter@geology.wisc.edu
+
+-- 
+Bill Lutter                    University of Wisconsin  
+Dept. of Medical Physics       Phone: (608) 263-5983
+Dept. of Geology & Geophysics  Phone: (608) 262-1921
+Email:                         wlutter@geology.wisc.edu
+Mailing address:               115 Weeks Hall    
+                               1215 W. Dayton St.  
+                               Madison, Wi  53706-1692
 
 
 -------------------------------------------------------
