@@ -1,28 +1,24 @@
-From: Chip Salzenberg <chip@pobox.com>
-Subject: ACL patch - is this bad or good?
-Date: Sat, 4 Dec 2004 17:26:59 -0500
-Message-ID: <20041204222659.GA5837@perlsupport.com>
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: ANNOUNCE: nfs-utils 1.0.7-pre1
+Date: Mon, 6 Dec 2004 11:16:57 +1100
+Message-ID: <16819.42233.176348.675235@cse.unsw.edu.au>
+References: <16815.63554.437489.308079@cse.unsw.edu.au>
+	<OF5EAC57B5.E871608D-ON08256F5F.00634442-08256F5F.00638979@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="fUYQa+Pmc3FrFX/N"
+Content-Type: text/plain; charset=us-ascii
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+    nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CaiMf-0003Vr-GR
-	for nfs@lists.sourceforge.net; Sat, 04 Dec 2004 14:26:53 -0800
-Received: from perlsupport.com
-	([66.220.6.226] helo=mail.perlsupport.com ident=Debian-exim)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.41)
-	id 1CaiMe-0002Ce-I2
-	for nfs@lists.sourceforge.net; Sat, 04 Dec 2004 14:26:53 -0800
-Received: from pcp03344017pcs.malvrn01.pa.comcast.net ([68.54.140.48] helo=tytlal)
-	by mail.perlsupport.com (Exim 4) with asmtp (TLS-1.0:RSA_ARCFOUR_SHA:16)
-	id 1CaiMd-0001Dt-P5
-	for nfs@lists.sourceforge.net; Sat, 04 Dec 2004 14:26:52 -0800
-Received: from chip by tytlal with local (Exim 4.34)
-	id 1CaiMl-0001WE-LM
-	for nfs@lists.sourceforge.net; Sat, 04 Dec 2004 17:26:59 -0500
-To: nfs@lists.sourceforge.net
+	id 1Cb6Yx-0005L9-FO
+	for nfs@lists.sourceforge.net; Sun, 05 Dec 2004 16:17:11 -0800
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1Cb6Yw-0005cu-Lq
+	for nfs@lists.sourceforge.net; Sun, 05 Dec 2004 16:17:11 -0800
+To: Bruce Allan <bruce.allan@us.ibm.com>
+In-Reply-To: message from Bruce Allan on Friday December 3
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,104 +32,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Friday December 3, bruce.allan@us.ibm.com wrote:
+> Doesn't compile (missing event.h and nfsidmap.h).
+> 
+> gcc -g -O2 -D_GNU_SOURCE -DHAVE_TCP_WRAPPER -I../../support/include 
+> -I/usr/include -Wall  -pipe  -DVERSION="\"nfs-utils 1.0.7-pre1\"" 
+> -DNFS3_SUPPORTED -M atomicio.c cfg.c idmapd.c setproctitle.c strlcat.c 
+> strlcpy.c > .depend
+> idmapd.c:48:19: event.h: No such file or directory
+> idmapd.c:61:22: nfsidmap.h: No such file or directory
+> 
 
---fUYQa+Pmc3FrFX/N
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+Yes........
 
-Hi there.  A Debian user contributed a copy of what he says is a Red
-Hat patch to support "acl" and "no_acl" options for NFS exports.
+It works better with 
+    ./configure --disable-gss --disable-nfsv4
 
-Is this patch OK?
--- 
-Chip Salzenberg              - a.k.a. -           <chip@pobox.com>
-People are supposed to die for freedom.  Not the other way around.
+Bruce Fields would really rather distros compiled it with nfsv4
+support enabled and so it made that the default.  However that
+requires an extra package (or two?) which aren't commonly installed.
 
---fUYQa+Pmc3FrFX/N
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: attachment; filename="nfs-utils-1.0.3-aclexport.patch"
+Bruce should be back from leave in a day or two so I might leave him
+to argue further for keeping --enable-nfsv4 as the default (or to cave
+it and let it be changed :-))
 
-Add `no_acl' nfs export option
-
-This patch adds the `acl' and `no_acl' nfs export options, which replace
-the nfs_permission_mode module parameter of nfsd.o. The `no_acl' option
-tells nfsd to mask off acl permissions so that clients will see a subset
-of permissions that is safe even with old clients. Current clients
-implement the NFSv3 ACCESS RPC, and therefore do not require the
-`no_acl' export option. If no acls are supported in the nfs server, the
-`no_acl' export option is not needed, either.
-
-Thanks to Steve Dickson <SteveD@redhat.com> for proposing this.
-
-
-Andreas Gruenbacher <agruen@suse.de>, SuSE Labs
-
-
-Index: nfs-utils-1.0.4/utils/exportfs/exportfs.c
-===================================================================
---- nfs-utils-1.0.4.orig/utils/exportfs/exportfs.c	2003-07-03 03:28:53.000000000 +0200
-+++ nfs-utils-1.0.4/utils/exportfs/exportfs.c	2003-07-14 12:56:26.000000000 +0200
-@@ -378,6 +378,8 @@ dump(int verbose)
- 				c = dumpopt(c, "no_subtree_check");
- 			if (ep->e_flags & NFSEXP_NOAUTHNLM)
- 				c = dumpopt(c, "insecure_locks");
-+			if (ep->e_flags & NFSEXP_NOACL)
-+				c = dumpopt(c, "no_acl");
- 			if (ep->e_flags & NFSEXP_FSID)
- 				c = dumpopt(c, "fsid=%d", ep->e_fsid);
- 			if (ep->e_mountpoint)
-Index: nfs-utils-1.0.4/support/nfs/exports.c
-===================================================================
---- nfs-utils-1.0.4.orig/support/nfs/exports.c	2003-05-30 07:17:56.000000000 +0200
-+++ nfs-utils-1.0.4/support/nfs/exports.c	2003-07-14 12:56:26.000000000 +0200
-@@ -185,6 +185,8 @@ putexportent(struct exportent *ep)
- 		"no_" : "");
- 	fprintf(fp, "%ssecure_locks,", (ep->e_flags & NFSEXP_NOAUTHNLM)?
- 		"in" : "");
-+	fprintf(fp, "%sacl,", (ep->e_flags & NFSEXP_NOACL)?
-+		"no_" : "");
- 	if (ep->e_flags & NFSEXP_FSID) {
- 		fprintf(fp, "fsid=%d,", ep->e_fsid);
- 	}
-@@ -374,6 +376,10 @@ parseopts(char *cp, struct exportent *ep
- 			ep->e_flags &= ~NFSEXP_NOAUTHNLM;
- 		else if (strcmp(opt, "insecure_locks") == 0)
- 			ep->e_flags |= NFSEXP_NOAUTHNLM;
-+		else if (strcmp(opt, "acl") == 0)
-+			ep->e_flags &= ~NFSEXP_NOACL;
-+		else if (strcmp(opt, "no_acl") == 0)
-+			ep->e_flags |= NFSEXP_NOACL;
- 		else if (strncmp(opt, "mapping=", 8) == 0)
- 			ep->e_maptype = parsemaptype(opt+8);
- 		else if (strcmp(opt, "map_identity") == 0)	/* old style */
-Index: nfs-utils-1.0.4/utils/exportfs/exports.man
-===================================================================
---- nfs-utils-1.0.4.orig/utils/exportfs/exports.man	2003-05-30 07:17:56.000000000 +0200
-+++ nfs-utils-1.0.4/utils/exportfs/exports.man	2003-07-14 12:56:26.000000000 +0200
-@@ -218,6 +218,21 @@ be explicitly requested with either of t
- .IR auth_nlm ,
- or
- .IR secure_locks .
-+.TP
-+.IR no_acl
-+This option tells nfsd to mask off acl permissions so that clients will
-+only see a subset of the permissions on the exported file system. This
-+subset is safe for NFSv2 clients, and for NFSv3 clients that perform
-+access decisions locally. Current NFSv3 clients use the ACCESS RPC
-+to perform all access decisions on the server. The
-+.I no_acl
-+option should be used for nfs exports with acl support that are exported
-+to NFSv2 clients, or to NFSv3 clients that don't use the ACCESS RPC.
-+This option is not needed for recent NFSv3 clients or if the exported
-+file system has no acl support. The default is to export with acl
-+support enabled (i.e.,
-+.I no_acl
-+is off.)
- 
- '''.TP
- '''.I noaccess
-
---fUYQa+Pmc3FrFX/N--
+NeilBrown
 
 
 -------------------------------------------------------
