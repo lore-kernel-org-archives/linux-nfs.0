@@ -1,29 +1,19 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: Re: [PATCH] zerocopy NFS for 2.5.43
-Date: Mon, 28 Oct 2002 09:46:53 +1100
+From: Bill Schrier <wschrier@neolinear.com>
+Subject: Re: NFS Locking Issue - Solaris-Linux
+Date: Mon, 28 Oct 2002 09:25:53 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15804.27869.374555.242999@notabene.cse.unsw.edu.au>
-References: <15797.63730.223181.75888@notabene.cse.unsw.edu.au>
-	<20021025.185234.08315285.taka@valinux.co.jp>
-	<15801.15328.866301.720864@notabene.cse.unsw.edu.au>
-	<20021026.121150.74753877.taka@valinux.co.jp>
-	<20021025234634.A26957@redhat.com>
+Message-ID: <3DBD48F1.93924BAF@neolinear.com>
+References: <3DB55BCC.447F0C32@neolinear.com> <200210221602.g9MG2BS25573@leinie.lmcg.wisc.edu> <3DB6EFF8.D8B659B0@neolinear.com> <200210251753.g9PHrqu01095@leinie.lmcg.wisc.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Hirokazu Takahashi <taka@valinux.co.jp>,
-    nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net, it@neolinear.com,
+ 	support@raidzone.com
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 185wBX-00029s-00
-	for <nfs@lists.sourceforge.net>; Sun, 27 Oct 2002 14:47:07 -0800
-Received: From
-	notabene.cse.unsw.edu.au ([129.94.233.204] == wireless-204.wireless.cse.unsw.EDU.AU)
-	(for <bcrl@redhat.com>) (for <taka@valinux.co.jp>)
-	(for <nfs@lists.sourceforge.net>) By tone With Smtp ;
-	Mon, 28 Oct 2002 09:46:54 +1100
-To: Benjamin LaHaise <bcrl@redhat.com>
-In-Reply-To: message from Benjamin LaHaise on Friday October 25
+Received: from n5.neolinear.com ([208.20.218.5] helo=flood.neolinear.com)
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 186Arn-0001PS-00
+	for <nfs@lists.sourceforge.net>; Mon, 28 Oct 2002 06:27:43 -0800
+To: Daniel Forrest <forrest@lmcg.wisc.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -36,41 +26,72 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Friday October 25, bcrl@redhat.com wrote:
-> On Sat, Oct 26, 2002 at 12:11:50PM +0900, Hirokazu Takahashi wrote:
-> > OK.
-> > 
-> > It's goot that you're implementing vfs_readv and vfs_writev which
-> > I've also realized it doesn't support aio yet.
-> 
-> The aio methods are soon switching over to vectored operations for a 
-> few reasons.  It's likely that non-vectored methods will be gone soon.
+> >> Thanks for the input - it is dead on.  We tested your work around,
+> >> and it worked exactly as you described.
+>
+> I'm actually glad that someone else saw this same bug.
+>
+> >> The one thing that confuses me is that Raidzone said that they were
+> >> unable to reproduce the error - but you said you thought that
+> >> disabling nlockmgr over TCP was a compile time option.  If this is
+> >> the case, then I would assume that Raidzone would also be running
+> >> with nlockmgr over TCP - since I think we are running the same
+> >> kernel that they are.
+>
+> After I downgraded to 2.4.16-10, I upgraded another (non-Raidzone)
+> machine to 2.4.18 and figured I could continue my testing.  Bzzzzt.
+> Everything worked fine with NLM over TCP.  I am suspecting that not
+> only is it a timing related bug, it is probably a hardware specific
+> bug, and maybe even limited to only a subset of the Raidzone boxes if
+> they can't reproduce the error themselves.  Otherwise they should have
+> complaints from lots of Sun users, right?
 
-If you are introducing new 'vectored' operations, it would be nice if
-they work well for kernel-space as well as user-space.
+We ended up downgrading back to 2.4.16 as well (we went to -7 since that
+was what we had on hand).  The reason for that was we had attempted to
+clean out the NLM stuff on the 2.4.18-12, but it ended up messing up our
+clients pretty bad - so we just downgraded.  Running the 2.4.16 kernel
+also fixed the NLM problem for us.  Honestly, I was surprised when they
+told us that they couldn't reproduce the problem.  They sent us output
+that showed that they were running the NLM on TCP, but they said they
+weren't getting the issue - so I would agree that it might be limited to a
+certain subset of the raidzone boxes (lucky us, huh?).
 
-In the 'old days' before CONFIG_HIMEM, you could just
+> >> Does anyone know if this is indeed correct?  Is there a way to
+> >> disable nlockmgr over TCP without a kernel recompile?
+>
+> I would be interested in this too in case I run into it again.
+>
+> >> We're not too interested in downrevving our kernel on this machine.
+> >> Since a stock Redhat install appears to come with nlockmgr disabled
+> >> on TCP by default, it seems that it got turned on somewhere along
+> >> the way with the Raidzone kernel distributions, and really needs to
+> >> be turned back off - especially in an environment with Solaris
+> >> clients.
+>
+> If you turn on NFS over TCP you get NLM over TCP.  I assume they are
+> turning on NFS over TCP for performance reasons.
 
-	oldfs = get_fs(); set_fs(KERNEL_DS);
-        ...whatever....
-	set_fs(oldfs);
+Daniel,
 
-to use kernel addresses.  But with CONFIG_HIMEM the kernel often
-wants to work with "struct page *" instead of just a "void *",
-so this doesn't always work.
-It would be nice if you could pass in an 'actor' which for user-space
-access would call copy-to/from-user for kernel-space would do
-kmap/copy/kunmap
+Again, thanks for the info on the work around.  We greatly appreciate the
+help!
 
-Just a thought.....
+Bill
 
-NeilBrown
+--
+William J. Schrier              Phone: 412.968.5780 x151
+Neolinear, Inc.                 Fax:   412.968.5788
+583 Epsilon Drive               Email: wschrier@neolinear.com
+Pittsburgh, PA  15238
+
+
+
 
 
 -------------------------------------------------------
-This SF.net email is sponsored by: ApacheCon, November 18-21 in
-Las Vegas (supported by COMDEX), the only Apache event to be
-fully supported by the ASF. http://www.apachecon.com
+This sf.net email is sponsored by:ThinkGeek
+Welcome to geek heaven.
+http://thinkgeek.com/sf
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
