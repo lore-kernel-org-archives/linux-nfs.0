@@ -1,23 +1,23 @@
 From: Olaf Kirch <okir@suse.de>
 Subject: Re: [PATCH] SGI 882960: Busy inodes after unmount, oops
-Date: Wed, 4 Feb 2004 11:42:25 +0100
+Date: Wed, 4 Feb 2004 13:09:52 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040204104225.GI20323@suse.de>
+Message-ID: <20040204120952.GA1980@suse.de>
 References: <40209B6D.56ED461E@melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=iso-8859-15
 Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
 	Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AoKZ1-0001B5-LF
-	for nfs@lists.sourceforge.net; Wed, 04 Feb 2004 02:47:23 -0800
+	id 1AoLt2-0002D7-Cl
+	for nfs@lists.sourceforge.net; Wed, 04 Feb 2004 04:12:08 -0800
 Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.30)
-	id 1AoKZ1-0004PA-99
-	for nfs@lists.sourceforge.net; Wed, 04 Feb 2004 02:47:23 -0800
+	id 1AoLt1-00035x-0T
+	for nfs@lists.sourceforge.net; Wed, 04 Feb 2004 04:12:07 -0800
 To: Greg Banks <gnb@melbourne.sgi.com>
 In-Reply-To: <40209B6D.56ED461E@melbourne.sgi.com>
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -34,28 +34,42 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 Hi Greg,
 
-On Wed, Feb 04, 2004 at 06:12:45PM +1100, Greg Banks wrote:
-> This patch fixes a bug where the forced killing of pending asynchronous
-> unlink rpc_tasks during unmount leaks inode reference counts for the
-> parent of the silly-renamed file and all its ancestor directories,
-> resulting in the message 
-> 
-> VFS: Busy inodes after unmount. Self-destruct in 5 seconds.  Have a nice day...
+I've been looking at your analysis a little closer, and am
+trying to understand how the bug was triggered. Here's what
+I think happened:
 
-Finally! This bug was driving me nuts. I wasn't even able to reproduce
-this under lab conditions :-/
+ -	the unlink code keeps a reference to the dentry of
+ 	the parent directory, but not to the vfsmount
+ -	this allows the umount to proceed, because there
+ 	don't seem to be any more references to the mount
+ -	rpc_shutdown_client calls rpc_killall_tasks, which
+ 	terminates the async unlink task.
+ -	rpciod is woken up and schedules the async task,
+ 	calling __rpc_execute
+ -	__rpc_execute notices the task is dead (no tk_action),
+ 	leaves the loop and invokes task->tk_exit == nfs_async_unlink_done
+ -	nfs_async_unlink_done calls dput() on the parent dentry,
+ 	but the dentry is not unhashed.
 
-> The first part makes sure that dput() will unhash and kill dentries
-> and their parents if called while the unmount is underway.
-> 
-> The second part moves the dput() call from the tk_exit callback of
-> the async unlink rpc_task to the tk_release callback so that it
-> will be called if the rpc_task is killed by rpc_killall_tasks()
-> instead of completing normally.
+Now looking at kill_super(), the sequence of calls there looks
+like this:
 
-Yes, that looks as if this could fix the problem.
+	shrink_dcache_parent(root);
+	...
+	sop->put_super(sb);
+	...
+	if (invalidate_inodes(sb)) {
+		printk(KERN_ERR "VFS: Busy inodes after unmount. "
+			"Self-destruct in 5 seconds.  Have a nice day...\n");
+	}
 
-Thanks again,
+So the real problem is that the dentry isn't unhashed. The other
+part of the patch isn't required because the tk_exit() function
+is called always, even when rpc_killall_tasks triggers the demise
+of an async task.
+
+Do you agree with this analysis?
+
 Olaf
 -- 
 Olaf Kirch     |  Stop wasting entropy - start using predictable
