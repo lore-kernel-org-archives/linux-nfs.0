@@ -1,19 +1,18 @@
-From: jason andrade <jason@dstc.edu.au>
-Subject: linux nfs still limited to rsize=1024 ?
-Date: Fri, 2 Aug 2002 01:01:53 +1000 (EST)
+From: Tom McNeal <trmcneal@attbi.com>
+Subject: Re: nfs performance
+Date: Thu, 01 Aug 2002 10:29:54 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.GSO.4.44.0208020057540.20146-100000@sunburn.dstc.edu.au>
+Message-ID: <3D497012.C1A099F7@attbi.com>
+References: <8D7D56C6ED3DD411998D009027DC685E0874E1E8@srv-grp-s1.segin.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=iso-8859-1
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from piglet.dstc.edu.au ([130.102.176.1])
+Received: from sccrmhc02.attbi.com ([204.127.202.62])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17aHSm-0002X3-00
-	for <nfs@lists.sourceforge.net>; Thu, 01 Aug 2002 08:02:04 -0700
-Received: from sunburn.dstc.edu.au (sunburn.dstc.edu.au [130.102.176.16])
-	by piglet.dstc.edu.au (8.12.3/8.12.3) with ESMTP id g71F1rSQ011298
-	for <nfs@lists.sourceforge.net>; Fri, 2 Aug 2002 01:01:53 +1000 (EST)
-To: mailto: ;
+	id 17aJiD-0000W7-00
+	for <nfs@lists.sourceforge.net>; Thu, 01 Aug 2002 10:26:09 -0700
+To: Brasseur =?iso-8859-1?Q?Val=E9ry?= <Valery.Brasseur@atosorigin.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,32 +25,39 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
+Brasseur Valéry wrote:
+> 
+> how can I measure the performance of my NFS client ?
+> 
+> I am using linux client with Netapp filer server.
+> I would like to know which is the throuput limit of the linux NFS client !
+> 
+> anybody got ideas ?
+> thanks
 
-Hi,
+I've found the best client measurement tool is IOzone, given that 
+it measures varied access types (serial forward and backwards, 
+random, even jumps, etc.) across various file sizes, and can put
+the output into a nicely readable excel graph.  Its available at
+http://www.iozone.org/
 
-I've been trying to use Linux NFS in read only mode with a block
-size of > 1024, for around 2 years now.
+I also have IOzone packaged up in a test & measurement package that 
+has a gui front end (although you still have to figure out which
+of the 50+ options in IOzone you want to use).  Its at
+http://sourceforge.net/projects/nfstestmatrix
 
-I've just rebooted into a redhat linux 2.4.18-5 kernel and on
-a whim decided to try rsize=8192 to see if this has been
-"fixed".  nope, it hasn't.  df hangs for me with any nfs mount
-using rsize > 1024.  if i drop it back to that, it works fine.
+Finally, take a look at the performance howto, which discusses 
+various benchmarks among other things.  Its at
+http://nfs.sourceforge.net/nfs-howto/performance.html
 
-I'm kind of stunned that even with gigabit interfaces and MTU's
-of 9000, i've still got to stay with 1K packets under nfs.
+Regards -
 
-(both client and server have gigE and 9000 mtus)
+Tom
 
-The server is a redhat linux box running 2.4.18-5 also, exporting
-about 1.2Tb read only.  The clients mount using nfs over udp,
-since nfs/tcp doesn't seem to be (well?) supported or recommended in
-the redhat kernels.
-
-
-regards,
-
--jason
-
+--
+------------------------------------------------------------
+Tom McNeal       trmcneal@attbi.com     (650)906-0761 (cell) 
+------------------------------------------------------------
 
 
 -------------------------------------------------------
