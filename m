@@ -1,21 +1,25 @@
-From: <trond.myklebust@fys.uio.no>
-Subject: Re: What might cause:  "NFS: Buggy server - nlink == 0!" message?
-Date: Thu, 22 Jan 2004 08:06:55 +0100 (CET)
+From: Steve Wampler <swampler@noao.edu>
+Subject: Re: What might cause:  "NFS: Buggy server - nlink == 0!"
+	message?
+Date: Thu, 22 Jan 2004 06:58:42 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <38129.68.42.103.198.1074755215.squirrel@webmail.uio.no>
+Message-ID: <1074779922.18082.93.camel@weaver.tuc.noao.edu>
+References: <38129.68.42.103.198.1074755215.squirrel@webmail.uio.no>
+Reply-To: swampler@noao.edu
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: <swampler@noao.edu>, <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: neilb@cse.unsw.edu.au, Linux NFS List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AjYvf-0006pm-Mi
-	for nfs@lists.sourceforge.net; Wed, 21 Jan 2004 23:07:03 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 1AjfM8-0005o3-H6
+	for nfs@lists.sourceforge.net; Thu, 22 Jan 2004 05:58:48 -0800
+Received: from lsstmail.org ([140.252.1.54] helo=noao.edu)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1AjYvf-00084X-9x
-	for nfs@lists.sourceforge.net; Wed, 21 Jan 2004 23:07:03 -0800
-To: <neilb@cse.unsw.edu.au>
+	id 1AjfM8-00007b-84
+	for nfs@lists.sourceforge.net; Thu, 22 Jan 2004 05:58:48 -0800
+To: trond.myklebust@fys.uio.no
+In-Reply-To: <38129.68.42.103.198.1074755215.squirrel@webmail.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -28,50 +32,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-På to , 22/01/2004 klokka 01:08, skreiv Neil Brown:
-> > It is still a bug, though. Neil?
->
-> Is it?
-> Does the spec say I cannot return nlink == 0   ?-)
+On Thu, 2004-01-22 at 00:06, trond.myklebust@fys.uio.no wrote:
+> P=E5 to , 22/01/2004 klokka 01:08, skreiv Neil Brown:
+> > > It is still a bug, though. Neil?
+> >
+> > Is it?
+> > Does the spec say I cannot return nlink =3D=3D 0   ?-)
+>=20
+> Not explicitly. However implicitly, yes it does. The all attributes are
+> supposed to be
+> read _atomically_ with the lookup and a file with nlink =3D=3D 0 could no=
+t be
+> looked up.
 
-Not explicitly. However implicitly, yes it does. The all attributes are
-supposed to be
-read _atomically_ with the lookup and a file with nlink == 0 could not be
-looked up.
+I have to agree with with Trond here (of course, I have a vested
+interest...):  if 9 out of 10 identical clients correctly see a file
+as updated on an NFS partition but the 10th doesn't (and won't until
+an unmount/mount cycle of the partition) there's a bug there somewhere!
 
-> The obvious alternative would be to return NFSERR_STALE if nlink seems
-> to be 0, as the file is about to disappear, and a GETATTR request
-> moments later would get STALE anyway.
-
-No. LOOKUP should return either ENOENT or a valid file. ESTALE is not an
-option unless the parent directory has been removed from underneath you.
-Actually we are currently returning EIO to the user in this situation. It
-seems stupid, though.
-
-> But why does your client care if nlink == 0 or not?  And presumably if
-> it really cared, it could interpret 'nlink == 0' as equivalent to
-> NFSERR_STALE.
-
-I care in cases where the user does an open(), particularly if it is an
-open with create. Ditto in readdir/readdirplus.
-
-What's more, if you allow races with unlink, then the clients can end up
-in wierd states due to inconsistencies between cached attributes: a parent
-directory with attributes that reflect the file not having been deleted at
-the time when the post-op attributes were created, but the file itself
-actually having been deleted on the server.
-
-> I would be awkward with the current nfsd code to return a STALE error
-> if nlink were zero, and we don't copy nlink out of the inode until
-> after we have encoded the reply code.
-
-Again, see the atomicity requirements.
-
-Cheers,
-  Trond
-
-
-
+--=20
+Steve Wampler -- swampler@noao.edu
+The gods that smiled on your birth are now laughing out loud.
 
 
 -------------------------------------------------------
