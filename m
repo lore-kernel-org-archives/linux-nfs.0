@@ -1,22 +1,23 @@
-From: Neil Horman <nhorman@redhat.com>
-Subject: Re: Help diagnosing bizarre NFS problem
-Date: Thu, 27 Jan 2005 07:26:12 -0500
-Message-ID: <41F8DDE4.6070806@redhat.com>
-References: <BA594DD2-65DA-11D9-B0EB-000A95A07AB8@valuecommerce.co.jp> <731336CA-6DE6-11D9-8B4D-000A95A07AB8@valuecommerce.co.jp> <41F4ECD6.90405@redhat.com> <4678F474-7007-11D9-89EE-000A95A07AB8@valuecommerce.co.jp>
+From: pou64 <pou64@ig.com.br>
+Subject: on Linux: strange behavior of cliente nfs with soft option
+Date: Thu, 27 Jan 2005 12:22:44 -0200
+Message-ID: <20050127_142244_030940.pou64@ig.com.br>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed;
+	boundary="Message-Boundary-by-Mail-Sender-1106835764"
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Cu8jA-0005Tp-Ea
-	for nfs@lists.sourceforge.net; Thu, 27 Jan 2005 04:26:24 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1Cu8j0-0000P7-DJ
-	for nfs@lists.sourceforge.net; Thu, 27 Jan 2005 04:26:24 -0800
-To: Nathan Ollerenshaw <nathan@valuecommerce.co.jp>
-In-Reply-To: <4678F474-7007-11D9-89EE-000A95A07AB8@valuecommerce.co.jp>
+	id 1CuAXx-0002Oe-05
+	for nfs@lists.sourceforge.net; Thu, 27 Jan 2005 06:22:57 -0800
+Received: from smtp-30.ig.com.br ([200.226.132.30])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CuAXv-0008Jq-2L
+	for nfs@lists.sourceforge.net; Thu, 27 Jan 2005 06:22:57 -0800
+Received: from 121.131.226.200.in-addr.arpa.ig.com.br (HELO localhost.localdomain) ([200.226.131.121])
+          (envelope-sender <pou64@ig.com.br>)
+          by email-30.ig.com.br (qmail-ldap-1.03) with SMTP
+          for <nfs@lists.sourceforge.net>; 27 Jan 2005 14:22:44 -0000
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,39 +31,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Nathan Ollerenshaw wrote:
-> On Jan 24, 2005, at 9:40 PM, Neil Horman wrote:
-> 
->> Dont suppose you can provide access to the tcpdumps, can you?
-> 
-> 
-> Probably :) Its quite large.
-> 
-> At the moment, our vendor is saying they have a possible solution, and 
-> that its a problem with the linux client code but they can fix it on 
-> their side.
-> 
-> I'll try to get some details out of them that I can forward to you so 
-> that you can see whether a fix is needed on the Linux side.
-> 
-> Thanks for the offer of help; I'll see what the vendor has for me over 
-> the next few days and if it looks like they are barking up the wrong 
-> tree I'll see how we can get the 4 gb of tcpdump data to you.
-> 
-> Nathan.
-> 
-Thanks, I'd like to know what they think needs fixing.
-Neil
+This message is in MIME format. Since your mail reader does not understand
+this format, some or all of this message may not be legible.
 
--- 
-/***************************************************
-  *Neil Horman
-  *Software Engineer
-  *Red Hat, Inc.
-  *nhorman@redhat.com
-  *gpg keyid: 1024D / 0x92A74FA1
-  *http://pgp.mit.edu
-  ***************************************************/
+--Message-Boundary-by-Mail-Sender-1106835764
+Content-type: text/plain; charset=ISO-8859-1
+Content-description: Mail message body
+Content-disposition: inline
+Content-Transfer-Encoding: quoted-printable
+
+I have the following entry in fstab file=20
+nfsserver:/usr/exec /usr/exec_test nfs soft,bg,noac,timeo=3D2,retrans=3D2=
+ 0 0=20
+
+I need the cliente asnwer a I/O error message in, at most,=20
+10 seconds, because i would try by another net.=20
+If I take off the ethernet cable and try to acess the filesystem, the=20
+first time it answer in 2-5 seconds (OK). But at the second=20
+(third, ...) time it answer in 60 seconds.=20
+
+Can someone help me?=20
+
+--Message-Boundary-by-Mail-Sender-1106835764--
+
 
 
 -------------------------------------------------------
