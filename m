@@ -1,27 +1,25 @@
-From: ms419@freezone.co.uk
-Subject: F_SETLK failed, file already locked by pid 0
-Date: Sun, 22 Aug 2004 15:50:19 -0700
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: F_SETLK failed, file already locked by pid 0
+Date: Sun, 22 Aug 2004 20:29:16 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <A4B2A13E-F48D-11D8-A02C-000A95C71776@freezone.co.uk>
-Mime-Version: 1.0 (Apple Message framework v613)
-Content-Type: text/plain; charset=US-ASCII; format=flowed
+Message-ID: <1093220956.4718.23.camel@lade.trondhjem.org>
+References: <A4B2A13E-F48D-11D8-A02C-000A95C71776@freezone.co.uk>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Bz1AL-00032Y-DH
-	for nfs@lists.sourceforge.net; Sun, 22 Aug 2004 15:50:21 -0700
-Received: from outbound02.telus.net ([199.185.220.221] helo=priv-edtnes09.telusplanet.net)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1Bz1AK-0002ii-08
-	for nfs@lists.sourceforge.net; Sun, 22 Aug 2004 15:50:21 -0700
-Received: from tor.lat ([154.5.5.164]) by priv-edtnes09.telusplanet.net
-          (InterMail vM.6.01.03.03 201-2131-111-105-20040624) with ESMTP
-          id <20040822225010.WTFN14828.priv-edtnes09.telusplanet.net@tor.lat>
-          for <nfs@lists.sourceforge.net>; Sun, 22 Aug 2004 16:50:10 -0600
-Received: from [192.168.179.43] (fis.lat [192.168.179.43])
-	by tor.lat (Postfix) with ESMTP id B2A3F11E8F3
-	for <nfs@lists.sourceforge.net>; Sun, 22 Aug 2004 15:50:09 -0700 (PDT)
-To: nfs@lists.sourceforge.net
+	id 1Bz2iB-0003dx-PC
+	for nfs@lists.sourceforge.net; Sun, 22 Aug 2004 17:29:23 -0700
+Received: from dh138.citi.umich.edu
+	([141.211.133.138] helo=lade.trondhjem.org ident=Debian-exim)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.34)
+	id 1Bz2i7-0000iL-ED
+	for nfs@lists.sourceforge.net; Sun, 22 Aug 2004 17:29:20 -0700
+To: ms419@freezone.co.uk
+In-Reply-To: <A4B2A13E-F48D-11D8-A02C-000A95C71776@freezone.co.uk>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,28 +32,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I suspect locking isn't working:
+P=E5 su , 22/08/2004 klokka 18:50, skreiv ms419@freezone.co.uk:
+> I suspect locking isn't working:
+>=20
+> F_SETLK failed, file already locked by pid 0
+>=20
+> Pointers to diagnostic  information, configuration, & documentation much =
+appreciated!
 
-F_SETLK failed, file already locked by pid 0
+NFS-HOWTO:
+	http://nfs.sourceforge.net/nfs-howto/
 
-I encounter this error with a user mode linux root image on an NFS 
-mount, but not with an image on a local file system. An image on an NFS 
-mount should work, provided locking works.
+NFS-FAQ:
+	http://nfs.sourceforge.net/
 
-The NFS client is running NFS 1.0.6 & a custom 2.6.7 kernel. The NFS 
-server is running NFS kernel server 1.0.6 & a custom 2.4.27 kernel. 
-Everything I've read claims that locking is now implemented in the 
-linux NFS kernel server. A lockd process is running on both the client 
-& the server. According to all the documentation I've read, locking 
-should be working; what am I missing? Pointers to diagnostic 
-information, configuration, & documentation much appreciated!
+> Why isn't locking working?
 
-Why isn't locking working?
+No-one will be able to answer this until you give at least a minimum of
+details on how your system is set up. For instance, details on how the
+network is set up, whether rpc.statd is running as it should, whether
+'rpcinfo -p' works from both server to client and from client to server,
+etc.
 
-Thanks,
-
-Jack
-
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
