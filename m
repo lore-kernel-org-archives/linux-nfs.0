@@ -1,23 +1,23 @@
 From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
 Subject: Re: client apps not surviving nfsd restart
-Date: Fri, 20 Aug 2004 15:55:47 +0200
+Date: Fri, 20 Aug 2004 16:26:42 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <412602E3.5040000@bio.ifi.lmu.de>
-References: <4125EA9F.3040304@bio.ifi.lmu.de> <20040820130246.GB12371@suse.de>
+Message-ID: <41260A22.3080107@bio.ifi.lmu.de>
+References: <4125EA9F.3040304@bio.ifi.lmu.de> <20040820132143.GC12371@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1By9rz-0005IB-9c
-	for nfs@lists.sourceforge.net; Fri, 20 Aug 2004 06:55:51 -0700
+	id 1ByALt-0003lZ-5F
+	for nfs@lists.sourceforge.net; Fri, 20 Aug 2004 07:26:45 -0700
 Received: from acheron.informatik.uni-muenchen.de ([129.187.214.135])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1By9ry-0000hI-Hm
-	for nfs@lists.sourceforge.net; Fri, 20 Aug 2004 06:55:51 -0700
+	id 1ByALs-0006Ue-82
+	for nfs@lists.sourceforge.net; Fri, 20 Aug 2004 07:26:44 -0700
 To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20040820130246.GB12371@suse.de>
+In-Reply-To: <20040820132143.GC12371@suse.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,50 +31,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 Olaf Kirch wrote:
-> On Fri, Aug 20, 2004 at 02:12:15PM +0200, Frank Steiner wrote:
-> 
->>   In the NFS howto I read that the disadvantage of nfs-over-tcp is that
->>   "If your server crashes in the middle of a packet transmission, the
->>    client will hang and any shares will need to be unmounted and 
->>    remounted."
-> 
-> 
-> I have never observed this behavior. TCP reconnect works just fine.
 
-Hmm, ok. So the stales we saw might have been cause by some other
-difference between SuSE 7.3 and 9.0. Could the lock manager be a
-cause for this? With SuSE 7.3 we had everything mounted with "nolock".
-Now with SusE 9.0 we use locks. Could that cause stales like we
-experienced on /usr?
+> I reproduced this. Someone "improved" the init script to do this:
+> 
+> 	/usr/sbin/exportfs -au
+> 	killproc -n -KILL nfsd
+> 
+> so we first zap the exports tables, then stop all nfsds. Any NFS
+> requests received in the meanwhile will see ESTALE.
+> 
+> Try removing the exportfs call.
 
-> 
-> 
->>2) We are currently testing kernel 2.6.8.1. The nfs behaviour seems
->>   to have changed in some ways. Running e.g. "find /" on a diskless
->>   client with kernel 2.4 would just hang when the server rebootet
->>   and later go on when the server was back.
-> 
-> 
-> What does your exports table look like? Do you have network exports
-> or other kinds of wildcarding? I have a report of nfsd/mountd not
-> properly reloading the kernel's export table after a nfsd restart.
+Yes, that makes the difference! The "find" now again just hangs and
+after the server returns, continues without any problems. Same with
+"cp". "rsync" now also doesn't complain at the end anymore!
 
-We are using netgroups. For testing I removed them and just left
-entries for one diskless client, without any wildcards or group
-but it does not make a difference (I rebooted client and server
-with the new exports just to make sure...)
+I feel stupid about this: When reporting the race problem with restarting
+the server on the lkml, Neil already told me that the "exportfs -au"
+should not be called before killing the nfsd and so I changed the order.
+But because this had no effect for the race bug, I forgot it and didn't
+change the init script for all our hosts.
 
-> 
-> 
->>   With 2.6.8.1, the find command will immediately abort and report
->>   some stale nfs handles.
-> 
-> 
-> Do you mean it will report ESTALE when the server goes down, or when
-> it comes back up?
+So I guess that all the stales and problems we had since 9.0 were just
+caused by the bug in the script... And I was already so disappointed
+by nfs-over-tcp because I blamed it for the stales :-)
 
-Immediately when the server goes down. "find" and "cp" immediately
-abort and I'm back on the shell prompt.
+Thanks for your help! I will bugfix our scripts and then give 2.6 a
+try with nfs-over-tcp :-)
 
 cu,
 Frank
@@ -84,7 +67,7 @@ Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
 Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
 LMU, Amalienstr. 17           Phone: +49 89 2180-4049
 80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
-* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
+
 
 
 -------------------------------------------------------
