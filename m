@@ -1,31 +1,35 @@
-From: James Pearson <james-p@moving-picture.com>
-Subject: Re: File system cache corruptions?
-Date: Thu, 07 Oct 2004 09:57:54 +0100
+From: Douglas Furlong <douglas.furlong@firebox.com>
+Subject: Re: NFS stops responding
+Date: Thu, 07 Oct 2004 11:56:50 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <41650512.1050309@moving-picture.com>
-References: <4164201A.8020005@moving-picture.com> <1097084729.5245.44.camel@lade.trondhjem.org>
+Message-ID: <1097146611.4160.24.camel@douglas-furlong.firebox.com>
+References: <1096551562.2696.19.camel@douglas-furlong.firebox.com>
+	 <415C2F07.4030308@psu.edu> <415C5A33.50202@psu.edu>
+	 <415D7A76.7000404@psu.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CFU7m-0002nt-FZ
-	for nfs@lists.sourceforge.net; Thu, 07 Oct 2004 01:59:46 -0700
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	id 1CFVxN-0002Dp-BI
+	for nfs@lists.sourceforge.net; Thu, 07 Oct 2004 03:57:09 -0700
+Received: from helium.firebox.com ([217.155.91.196])
 	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1CFU6Y-0000sz-DX
-	for nfs@lists.sourceforge.net; Thu, 07 Oct 2004 01:59:46 -0700
-Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
-	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CFU6U-00039o-Ng
-	for nfs@lists.sourceforge.net; Thu, 07 Oct 2004 01:58:27 -0700
-Received: from minion.mpc.local ([172.16.11.112] helo=moving-picture.com)
-	by moving-picture.com with esmtp (Exim 4.24)
-	id 1CFU5y-00019C-7a
-	for nfs@lists.sourceforge.net; Thu, 07 Oct 2004 09:57:54 +0100
+	id 1CFVxL-000426-AA
+	for nfs@lists.sourceforge.net; Thu, 07 Oct 2004 03:57:09 -0700
+Received: from localhost (helium.firebox.com [127.0.0.1] (may be forged))
+	by helium.firebox.com (8.12.8/8.12.8) with ESMTP id i97AulpE021973
+	for <nfs@lists.sourceforge.net>; Thu, 7 Oct 2004 10:56:47 GMT
+Received: from helium.firebox.com ([127.0.0.1])
+ by localhost (helium.firebox.com [127.0.0.1]) (amavisd-new, port 10024)
+ with LMTP id 21473-07 for <nfs@lists.sourceforge.net>;
+ Thu,  7 Oct 2004 10:56:45 +0000 (GMT)
+Received: from [192.168.0.181] ([192.168.0.181])
+	by helium.firebox.com (8.12.8/8.12.8) with ESMTP id i97Aufo9021962
+	for <nfs@lists.sourceforge.net>; Thu, 7 Oct 2004 10:56:41 GMT
 To: nfs@lists.sourceforge.net
-In-Reply-To: <1097084729.5245.44.camel@lade.trondhjem.org>
+In-Reply-To: <415D7A76.7000404@psu.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -38,34 +42,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust wrote:
-> På on , 06/10/2004 klokka 18:40, skreiv James Pearson:
+On Fri, 2004-10-01 at 11:40 -0400, Jason Holmes wrote:
+> FYI, I'm beginning to suspect that this is a problem more with the newer 
+> RedHat kernels than anything else.  I've only had one vanilla kernel NFS 
+> lockup since I moved the NFS servers to 2.6.8.1 (3 days) and that 
+> happened right after I did the move, so it could be coincidental.  Back 
+> when the servers ran RedHat kernels, the RedHat kernel clients never 
+> locked up whereas the vanilla clients did.  Yesterday I had 4 NFS 
+> lockups on the same machine running the RedHat 2.4.21-20.ELsmp kernel 
+> (the one that generated the trace below), but it hasn't locked up since 
+> I moved it to 2.6.8.1.  I guess I'll know for sure if my lockups don't 
+> come back for a week or so.
 > 
-> 
->>Any ideas on what may be causing this?
-> 
-> 
-> Shared mmapped files tend not to be easy to keep consistent w.r.t. the
-> server, because mmap pins the pages in memory.
-> 
-> Instead of copying data into the mmapped file, it is better to create a
-> new file, then rename it onto the old one (like tools such as GNU
-> install do for you).
+> Thanks,
+<snip>
 
-This is true (and something I do as a matter of course if I ever have to 
-replace/upgrade shared libraries/binaries etc), but not the case here - 
-the executable and its required shared libraries which are on the NFS 
-server have been in place and not changed for about 6 months.
+Have you had any more lockups?
 
-There are over 100 clients using the exact same binary and shared 
-libraries - only one had this problem.
+Would you feel happy entering a bugzilla entry for this problem over at
+redhat? You seem to have got a lot more information then I have in my
+trouble shooting, I will then add what ever else I have, and my local
+setup.
 
-The server is hard mounted.
-
-Thanks
-
-James Pearson
-
+Doug
 
 
 
