@@ -1,24 +1,28 @@
-From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 4 of 6 - Make sure nfs/tcp socket only gets closed once.
-Date: Thu, 04 Sep 2003 16:25:55 +1000
+From: David Dougall <davidd@et.byu.edu>
+Subject: rquotad solution
+Date: Thu, 4 Sep 2003 10:16:56 -0600 (MDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19unZ5-0004VM-00@notabene>
-Cc: nfs@lists.sourceforge.net
+Message-ID: <Pine.LNX.4.51.0309041001260.27878@lewis.et.byu.edu>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19unZJ-00027E-00
-	for <nfs@lists.sourceforge.net>; Wed, 03 Sep 2003 23:26:09 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.22)
-	id 19unZI-0002HW-Oo
-	for nfs@lists.sourceforge.net; Wed, 03 Sep 2003 23:26:08 -0700
-Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <marcelo.tosatti@cyclades.com.br>)
-	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
-	Thu, 4 Sep 2003 16:25:56 +1000
-To: Marcelo Tosatti <marcelo.tosatti@cyclades.com.br>
+	id 19uwnJ-0008Qb-00
+	for <nfs@lists.sourceforge.net>; Thu, 04 Sep 2003 09:17:13 -0700
+Received: from postal3.et.byu.edu ([128.187.122.133])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
+	id 19uwnB-0000vB-PC
+	for nfs@lists.sourceforge.net; Thu, 04 Sep 2003 09:17:05 -0700
+Received: from mail by postal3.et.byu.edu with local (Exim 4.20)
+	id 19uwn2-0003I6-Ul
+	for nfs@lists.sourceforge.net; Thu, 04 Sep 2003 10:16:56 -0600
+Received: from lewis.et.byu.edu ([128.187.112.50])
+	by postal3.et.byu.edu with esmtp (Exim 4.20)
+	id 19uwn2-0003H6-M3
+	for nfs@lists.sourceforge.net; Thu, 04 Sep 2003 10:16:56 -0600
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,53 +35,53 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+I feel quite silly responding to my own query.
+I was mistaken in saying my older servers ran nfs-utils-1.0.1.  They did
+have this, but were not using rpc.rquotad.  I was using rpc.rquotad from
+the quota package.
+nfs-utils rquotad only supports ext2 and ext3 so my xfs filesystems were
+not working.
 
-It is possible for svc_delete_socket to be called multiple times,
-which can cause problems.  This patch uses SK_DEAD to make sure it
-only has any effect the first time, and uses SK_DEAD in a few other
-places to make sure nothing is done on a deleted socket.
+Also, whoever is in charge of the rpc.rquotad portion of
+nfs-utils package, the following patch seems to make more sense detecting
+currently mounted filesystems rather than only what is in /etc/fstab.
+--David Dougall
 
-diff ./net/sunrpc/svcsock.c~current~ ./net/sunrpc/svcsock.c
---- ./net/sunrpc/svcsock.c~current~	2003-09-04 11:32:12.000000000 +1000
-+++ ./net/sunrpc/svcsock.c	2003-09-04 11:45:48.000000000 +1000
-@@ -120,6 +120,8 @@ svc_sock_enqueue(struct svc_sock *svsk)
- 	if (!(svsk->sk_flags &
- 	      ( (1<<SK_CONN)|(1<<SK_DATA)|(1<<SK_CLOSE)) ))
- 		return;
-+	if (test_bit(SK_DEAD, &svsk->sk_flags))
-+		return;
- 
- 	spin_lock_bh(&serv->sv_lock);
- 
-@@ -930,6 +932,9 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
- 	bufp->iov[0].iov_len  = bufp->len << 2;
- 	bufp->base[0] = htonl(0x80000000|((bufp->len << 2) - 4));
- 
-+	if (test_bit(SK_DEAD, &rqstp->rq_sock->sk_flags))
-+		return -ENOTCONN;
-+
- 	sent = svc_sendto(rqstp, bufp->iov, bufp->nriov);
- 	if (sent != bufp->len<<2) {
- 		printk(KERN_NOTICE "rpc-srv/tcp: %s: sent only %d bytes of %d - shutting down socket\n",
-@@ -1277,6 +1282,9 @@ svc_delete_socket(struct svc_sock *svsk)
- 
- 	dprintk("svc: svc_delete_socket(%p)\n", svsk);
- 
-+	if (test_and_set_bit(SK_DEAD, &svsk->sk_flags))
-+		return ;
-+
- 	serv = svsk->sk_server;
- 	sk = svsk->sk_sk;
- 
-@@ -1293,8 +1301,6 @@ svc_delete_socket(struct svc_sock *svsk)
- 		list_del(&svsk->sk_ready);
- 
- 
--	set_bit(SK_DEAD, &svsk->sk_flags);
--
- 	if (!svsk->sk_inuse) {
- 		spin_unlock_bh(&serv->sv_lock);
- 		sock_release(svsk->sk_sock);
+
+diff -ur nfs-utils-1.0.5/utils/rquotad/mntent.h
+nfs-utils-1.0.5-new/utils/rquotad/mntent.h
+--- nfs-utils-1.0.5/utils/rquotad/mntent.h      Tue May  9 18:36:19 2000
++++ nfs-utils-1.0.5-new/utils/rquotad/mntent.h  Thu Sep  4 10:12:34 2003
+@@ -4,7 +4,7 @@
+ #include <features.h>
+
+ #define MNTTAB "/etc/fstab"
+-#define MOUNTED "/etc/mtab"
++#define MOUNTED "/proc/mounts"
+
+ #define MNTMAXSTR      512
+
+diff -ur nfs-utils-1.0.5/utils/rquotad/rquota_server.c
+nfs-utils-1.0.5-new/utils/rquotad/rquota_server.c
+--- nfs-utils-1.0.5/utils/rquotad/rquota_server.c       Wed Jun 27
+10:45:56 2001
++++ nfs-utils-1.0.5-new/utils/rquotad/rquota_server.c   Thu Sep  4
+10:12:49 2003
+@@ -108,7 +108,7 @@
+       }
+    }
+
+-   fp = setmntent(MNTTAB, "r");
++   fp = setmntent(MOUNTED, "r");
+    while ((mnt = getmntent(fp)) != (struct mntent *)0) {
+       if (stat(mnt->mnt_dir, &stm) == -1)
+          continue;
+
+
+
+______________________________________
+Inflex Virus Scanner - installed on mailserver for domain @et.byu.edu
+Queries to: postmaster@et.byu.edu
 
 
 -------------------------------------------------------
