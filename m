@@ -1,22 +1,19 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: [PATCH] NFS/RPC modprobe -r sunrpc causes an oops
-Date: Mon, 19 Jan 2004 16:21:06 -0500
+From: Miklos.Szeredi@eth.ericsson.se (Miklos Szeredi)
+Subject: scheduling in atomic while unexporting
+Date: Mon, 19 Jan 2004 12:42:48 +0100 (MET)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <400C4A42.5070701@RedHat.com>
-Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------050407010200030304020701"
-Cc: linux-kernel <linux-kernel@vger.kernel.org>
+Message-ID: <200401191142.i0JBgme11875@duna48.eth.ericsson.se>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Aigpe-00047o-Kt
-	for nfs@lists.sourceforge.net; Mon, 19 Jan 2004 13:21:14 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
+	id 1AiXoP-0005k5-B8
+	for nfs@lists.sourceforge.net; Mon, 19 Jan 2004 03:43:21 -0800
+Received: from eagle.ericsson.se ([193.180.251.53])
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Aigpe-0001Sb-9E
-	for nfs@lists.sourceforge.net; Mon, 19 Jan 2004 13:21:14 -0800
-To: Linux NFS Mailing List <nfs@lists.sourceforge.net>
+	id 1AiXoN-0000fd-4N
+	for nfs@lists.sourceforge.net; Mon, 19 Jan 2004 03:43:19 -0800
+To: neilb@cse.unsw.edu.au
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -29,91 +26,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
---------------050407010200030304020701
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
+The following scenario shows some locking problems with nfsd under
+2.6.0:
 
-Hello,
+ - export filesystem
+ - lazy unmount filesystem
+ - unexport filesystem
 
-Here is a patch for the 2.6.1 kernel that fixes an oops
-that occurs when the sunrpc module is unloaded.
+The following call trace is produced:
 
-The problem was the RPC cache_register() call was
-not saving entry pointers to the procfs entries it was
-creating. So when it came time to dismantle the
-entires, a BUG_ON() was tripped in remove_proc_entry()
-since the tree was not broken down completely.
+   bad: scheduling while atomic!
+   Call Trace:
+    [schedule+1301/1456] schedule+0x585/0x590
+    [__filemap_fdatawrite+164/208] __remove_from_page_cache+0x24/0x60
+    [__pagevec_lru_add+121/256] __pagevec_release+0x29/0x40
+    [truncate_inode_pages+498/656] truncate_inode_pages+0xc2/0x290
+    [__iget+1/96] destroy_inode+0x51/0x60
+    [__iget+1/96] destroy_inode+0x51/0x60
+    [invalidate_inodes+138/208] dispose_list+0xaa/0xb0
+    [prune_icache+100/496] invalidate_inodes+0xa4/0xd0
+    [sget+75/368] generic_shutdown_super+0x7b/0x190
+    [get_sb_bdev+183/352] kill_anon_super+0x17/0x50
+    [generic_shutdown_super+14/400] deactivate_super+0x5e/0xc0
+    [_end+274119914/1069647496] svc_export_put+0x82/0x90 [nfsd]
+    [_end+273198636/1069647496] cache_clean+0x164/0x250 [sunrpc]
+    [_end+273198973/1069647496] cache_flush+0x15/0x50 [sunrpc]
+    [_end+274126880/1069647496] nfsd_export_flush+0x38/0x50 [nfsd]
+    [_end+274095171/1069647496] nfsd+0x32b/0x3b0 [nfsd]
+    [_end+274094360/1069647496] nfsd+0x0/0x3b0 [nfsd]
+    [kernel_thread_helper+5/12] kernel_thread_helper+0x5/0xc
 
-Hopefully this will be a candidate for the next release.....
+The heart of the problem seems to be that cache_clean is holding the
+cache_list_lock spinlock while calling cache_put (svc_export_put),
+which calls mntput, which may sleep.
 
-SteveD.
-
---------------050407010200030304020701
-Content-Type: text/plain;
- name="linux-2.6.1-nfs-cachcleanup.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="linux-2.6.1-nfs-cachcleanup.patch"
-
---- linux-2.6.1/include/linux/sunrpc/cache.h.org	2004-01-09 01:59:42.000000000 -0500
-+++ linux-2.6.1/include/linux/sunrpc/cache.h	2004-01-19 14:08:44.000000000 -0500
-@@ -94,6 +94,8 @@ struct cache_detail {
- 	/* fields for communication over channel */
- 	struct list_head	queue;
- 	struct proc_dir_entry	*proc_ent;
-+	struct proc_dir_entry   *flush_ent, *channel_ent, *content_ent; 
-+
- 	atomic_t		readers;		/* how many time is /chennel open */
- 	time_t			last_close;		/* it no readers, when did last close */
- };
---- linux-2.6.1/net/sunrpc/cache.c.org	2004-01-09 01:59:44.000000000 -0500
-+++ linux-2.6.1/net/sunrpc/cache.c	2004-01-19 14:25:34.000000000 -0500
-@@ -175,9 +175,11 @@ void cache_register(struct cache_detail 
- 	if (cd->proc_ent) {
- 		struct proc_dir_entry *p;
- 		cd->proc_ent->owner = THIS_MODULE;
-+		cd->channel_ent = cd->content_ent = NULL;
- 		
-  		p = create_proc_entry("flush", S_IFREG|S_IRUSR|S_IWUSR,
-  				      cd->proc_ent);
-+		cd->flush_ent =  p;
-  		if (p) {
-  			p->proc_fops = &cache_flush_operations;
-  			p->owner = THIS_MODULE;
-@@ -187,6 +189,7 @@ void cache_register(struct cache_detail 
- 		if (cd->cache_request || cd->cache_parse) {
- 			p = create_proc_entry("channel", S_IFREG|S_IRUSR|S_IWUSR,
- 					      cd->proc_ent);
-+			cd->channel_ent = p; 
- 			if (p) {
- 				p->proc_fops = &cache_file_operations;
- 				p->owner = THIS_MODULE;
-@@ -196,6 +199,7 @@ void cache_register(struct cache_detail 
-  		if (cd->cache_show) {
-  			p = create_proc_entry("content", S_IFREG|S_IRUSR|S_IWUSR,
-  					      cd->proc_ent);
-+			cd->content_ent = p; 
-  			if (p) {
-  				p->proc_fops = &content_file_operations;
-  				p->owner = THIS_MODULE;
-@@ -233,6 +237,13 @@ int cache_unregister(struct cache_detail
- 	write_unlock(&cd->hash_lock);
- 	spin_unlock(&cache_list_lock);
- 	if (cd->proc_ent) {
-+		if (cd->flush_ent) 
-+			remove_proc_entry("flush", cd->proc_ent);
-+		if (cd->channel_ent)
-+			remove_proc_entry("channel", cd->proc_ent);
-+		if (cd->content_ent)
-+			remove_proc_entry("content", cd->proc_ent);
-+
- 		cd->proc_ent = NULL;
- 		remove_proc_entry(cd->name, proc_net_rpc);
- 	}
-
---------------050407010200030304020701--
-
+Miklos
 
 
 -------------------------------------------------------
