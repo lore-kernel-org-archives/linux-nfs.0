@@ -1,22 +1,19 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: RE: Performance Woes...
-Date: Thu, 13 Jun 2002 14:16:15 +1000 (EST)
+From: Harrison Xing <harrison@mountainviewdata.com>
+Subject: Bad Irix nfs client write performance
+Date: Thu, 13 Jun 2002 21:27:10 +0800 (CST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15624.7311.559630.276732@notabene.cse.unsw.edu.au>
-References: <F888C30C3021D411B9DA00B0D0209BE8038F9523@cvo-exchange.cvo.roguewave.com>
+Message-ID: <Pine.LNX.4.33.0206132123130.1288-100000@harris.cn.mvd>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17IM1O-0004c8-00
-	for <nfs@lists.sourceforge.net>; Wed, 12 Jun 2002 21:15:43 -0700
-Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <petersp@roguewave.com>) (for <nfs@lists.sourceforge.net>) By
-	tone With Smtp ; Thu, 13 Jun 2002 14:15:26 +1000
-To: Poul Petersen <petersp@roguewave.com>
-In-Reply-To: message from Poul Petersen on Wednesday June 5
+Received: from namodn.com ([209.0.100.50] helo=srv.dmz.us.mvd)
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17IUSG-0006AL-00
+	for <nfs@lists.sourceforge.net>; Thu, 13 Jun 2002 06:16:00 -0700
+Received: from harris.cn.mvd (unknown [210.72.245.13])
+	by srv.dmz.us.mvd (Postfix) with ESMTP id 26E2AB759
+	for <nfs@lists.sourceforge.net>; Thu, 13 Jun 2002 06:15:58 -0700 (PDT)
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,33 +26,24 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Wednesday June 5, petersp@roguewave.com wrote:
-> >   while : ; do netstat -n -u -a | grep :2049 ; sleep 1; done
-> > 
-> > I get:
-> > udp      348      0 0.0.0.0:2049            0.0.0.0:*         
-> >                   
-> >                   
-> > udp     2436      0 0.0.0.0:2049            0.0.0.0:*         
-> >                   
-> >        ^^^^^^
-> > 
-> > Note this column of numbers.  If it hits a ceiling at 65536, you have
-> > a problem that can be fixed.  See the NFS FAQ, or show me the numbers
-> > and I will explain.
-> 
-> 	Interesting - In the half hour or so that I've watched our NFS
-> server, this number has hit 65406. It isn't clear to me what section of the
-> NFS FAQ (http://nfs.sourceforge.net/) is relevant to this test. 
+Hi,
 
-5.4. Memory Limits on the Input Queue
+I'm using a Linux nfs server(kernel 2.4.5).  The write performance of Irix nfs 
+client is poor.  The throuput of copying a big file to the Linux nfs server
+from the Irix client is about 0.8 MBytes/sec, while the throughput of reading
+files from the Linux nfs server is 6.x MBytes/sec.  Are there any ideas what
+causes the problem?  Thanks.
 
-NeilBrown
+-- 
+Best Regards,
+Harrison
+
 
 _______________________________________________________________
 
-Sponsored by:
-ThinkGeek at http://www.ThinkGeek.com/
+Don't miss the 2002 Sprint PCS Application Developer's Conference
+August 25-28 in Las Vegas - http://devcon.sprintpcs.com/adp/index.cfm?source=osdntextlink
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
