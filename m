@@ -1,23 +1,25 @@
 From: "" <rfloriolfactory@msn.com>
 Subject: I need your help ut ynvqdr pkdsl
 Date: Wed, 12 Mar 03 05:36:07 GMT
-Sender: fink-devel-admin@lists.sourceforge.net
-Message-ID: <19349.3607141592$1047467261@news.gmane.org>
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <33550.4787079573$1047467295@news.gmane.org>
 Mime-Version: 1.0
 Content-Type: multipart/alternative;
 	boundary=".C8D.F_D_8D43"
 Cc: <eral@lists.sourceforge.net>, <snort-users-admin@lists.sourceforge.net>, <fink-devel@lists.sourceforge.net>, <lsb-taskforce1@lists.sourceforge.net>
-Return-path: <fink-devel-admin@lists.sourceforge.net>
+Return-path: <nfs-admin@lists.sourceforge.net>
 To: nfs@lists.sourceforge.net
-Errors-To: fink-devel-admin@lists.sourceforge.net
-List-Help: <mailto:fink-devel-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:fink-devel@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/fink-devel>,
-	<mailto:fink-devel-request@lists.sourceforge.net?subject=subscribe>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/fink-devel>,
-	<mailto:fink-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=fink-devel>
-List-ID: <nfs.lists.sourceforge.net>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a multi-part message in MIME format.
 
@@ -42,3 +44,6 @@ This SF.net email is sponsored by:Crypto Challenge is now open!
 Get cracking and register here for some mind boggling fun and 
 the chance of winning an Apple iPod:
 http://ads.sourceforge.net/cgi-bin/redirect.pl?thaw0031en
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
