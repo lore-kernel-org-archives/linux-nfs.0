@@ -1,19 +1,24 @@
-From: Bryan O'Sullivan <bos@serpentine.com>
+From: James Bottomley <James.Bottomley@steeleye.com>
 Subject: Re: High Availability NFS Proposal
-Date: 25 Aug 2002 21:36:33 -0700
+Date: Sun, 25 Aug 2002 23:46:06 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1030336593.11097.11.camel@camp4.serpentine.com>
-References: <200208242216.g7OMG3802286@localhost.localdomain>
+Message-ID: <200208260446.g7Q4k6325681@localhost.localdomain>
+References: <brugolsky@telemetry-investments.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net, lmb@suse.de
+Content-Type: text/plain; charset=us-ascii
+Cc: James Bottomley <James.Bottomley@SteelEye.com>, nfs@lists.sourceforge.net,
+        lmb@suse.de
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from dsl092-013-071.sfo1.dsl.speakeasy.net ([66.92.13.71] helo=pelerin.serpentine.com)
+Received: from host194.steeleye.com ([216.33.1.194] helo=pogo.mtv1.steeleye.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17jBcC-0000M1-00
-	for <nfs@lists.sourceforge.net>; Sun, 25 Aug 2002 21:36:36 -0700
-To: James Bottomley <James.Bottomley@steeleye.com>
-In-Reply-To: <200208242216.g7OMG3802286@localhost.localdomain>
+	id 17jBmD-0004c2-00
+	for <nfs@lists.sourceforge.net>; Sun, 25 Aug 2002 21:46:57 -0700
+Received: (from root@localhost)
+	by pogo.mtv1.steeleye.com (8.9.3/8.9.3) id VAA29858
+	for <nfs@lists.sourceforge.net>; Sun, 25 Aug 2002 21:46:55 -0700
+To: "Bill Rugolsky Jr." <brugolsky@telemetry-investments.com>
+In-Reply-To: Message from "Bill Rugolsky Jr." <brugolsky@telemetry-investments.com>
+   of "Sun, 25 Aug 2002 01:28:16 EDT." <20020825012816.A7902@ti19>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,20 +31,34 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Sat, 2002-08-24 at 15:16, James Bottomley wrote:
+> Back in 2.2.x, David Woodhouse wrote code (never merged) that added
+> mountd upcalls to knfsd.  The code was modified by Elvis Pftzenreuter
+> <epx@conectiva.com.br>, then updated by Luis Claudio R. Goncalves
+> <lclaudio@conectiva.com.br>.  IIRC, the original impetus was to handle
+> re-authentication in the presence of wildcard (netgroup, etc.) exports
+> in a sane way.
 
-> Unfortunately, our product, LifeKeeper, is more complex than just a simple two 
-> node active passive cluster, so the usual just share /var/lib/nfs solution 
-> won't work for us.  What I'd like to propose instead is to place hooks inside 
-> mountd and statd that would allow them to propagate the necessary state 
-> information into a cluster.  The best way I can think of is to designate two 
-> executable hooks (say /var/lib/nfs/mountd-hook and /var/lib/nfs/statd-hook).  
+> You can find Elvis's original patchset here:
 
-What would you plan on sharing via these hooks that isn't already
-maintained in /var/lib/nfs?  Why not use dnotify to capture changes to
-those files, and push them out as clients come and go?
+> http://marc.theaimsgroup.com/?l=linux-nfs&m=87941837303295&w=2
 
-	<b
+> Some of Neil Brown's early comments on how to improve and generalize
+> the infrastructure can be found here:
+
+> http://marc.theaimsgroup.com/?l=linux-nfs&m=87941837303307&w=2 
+
+Actually, this is exactly what our current HA-NFS patch set (for 2.2. and 2.4) 
+does.  It's available at:
+
+http://licensing.steeleye.com/open_source/sourcepage.php?prefix=nfs
+
+but I agree with Linus: If you can do it from user level, there's no need for 
+kernel hooks.  That's essentially the reason I'd like to abandon this approach 
+and go with an entirely user level scheme based on hooks in mount and statd.
+
+James
+
+
 
 
 -------------------------------------------------------
