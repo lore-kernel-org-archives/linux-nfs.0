@@ -1,21 +1,23 @@
-From: "Ken English" <kwe@buffalo.edu>
-Subject: NFS/Linux/IP Chains
-Date: Mon, 20 Jan 2003 22:27:18 -0500
+From: "Paul Smith" <pausmith@nortelnetworks.com>
+Subject: Re: (autofs) Re: Direct mounts on Linux
+Date: 20 Jan 2003 22:53:29 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <NDBBKPGJGKJJGFNEEIINCENIEPAA.kwe@buffalo.edu>
+Message-ID: <p5wukzyx8m.fsf@lemming.engeast.baynetworks.com>
+References: <15916.14776.460148.770017@lemming.engeast.baynetworks.com>
+	<20030120214134.GE1042@questra.com>
+	<p5vg0jz08z.fsf@lemming.engeast.baynetworks.com>
+	<20030121030851.GG10369@questra.com>
+Reply-To: "Paul Smith" <pausmith@nortelnetworks.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [64.8.50.199] (helo=mta9.adelphia.net)
+Received: from zrtps0kn.nortelnetworks.com ([47.140.192.55])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18ap4O-0004ef-00
-	for <nfs@lists.sourceforge.net>; Mon, 20 Jan 2003 19:27:24 -0800
-Received: from nebedkenezzar ([24.48.126.135]) by mta9.adelphia.net
-          (InterMail vM.5.01.05.25 201-253-122-126-125-20021216) with SMTP
-          id <20030121032718.IGOI2002.mta9.adelphia.net@nebedkenezzar>
-          for <nfs@lists.sourceforge.net>; Mon, 20 Jan 2003 22:27:18 -0500
-To: <nfs@lists.sourceforge.net>
+	id 18apTo-0007Mo-00
+	for <nfs@lists.sourceforge.net>; Mon, 20 Jan 2003 19:53:41 -0800
+To: Scott Mcdermott <smcdermott@questra.com>
+In-Reply-To: <20030121030851.GG10369@questra.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,35 +30,46 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hope I can get an assist, or if this is just a RTFM, just point me in the
-right direction. I've been working to set up NFS on a Redhat 7.3 box that
-has ipchains enabled. I am having problems pinning down the ports for some
-of the services, mountd works fine, but statd doesn't allow the "pinning"
-options provided in the howto I have been trying to use.
+%% Scott Mcdermott <smcdermott@questra.com> writes:
 
-Any suggestions?
+  sm> hmm direct mounts? well according to the docs:
 
-Thanks in advance,
--Ken
+  sm>   [...]
 
+I saw that, but then there was another note saying that as of kernel
+2.4.10 they had removed the "direct mount hack" and now direct mounts
+were totally unsupported.  I'll have to go back and find that again.
 
+  >> Well... except for direct mounts.  We can all agree that they are
+  >> evil and they suck, but the fact remains there are a lot of them
+  >> out there and they are often hard to get rid of...
 
------------------------------------------------------------------------
-Kenneth W. English, Ph.D.
-Industrial Outreach Coordinator
-New York State Center for Engineering Design and Industrial Innovation
-Department of Mechanical and Aerospace Engineering
-5 Norton Hall
-University at Buffalo
-Buffalo, NY 14260
-Phone:	(716) 645-2685 x105
-Cell:		(716)	510-5597
-Fax:	(716) 645-2684
-email: kwe@buffalo.edu
-http://www.nyscedii.buffalo.edu
------------------------------------------------------------------------
+  sm> I don't agree that they are evil or that they suck.  Some mounts
+  sm> are static and won't change, and just a simple mount will suffice.
+  sm> What's wrong with using a direct mount in this case (maybe /home/
+  sm> or /var/spool/mail/)? Is there a real argument against this
+  sm> besides "the performance sucks when the directory gets large"
+  sm> (which is an admin decision I think).  I don't really know, we
+  sm> don't have large enough directories that it becomes a problem.
+  sm> One other good thing about direct mounts is that you can
+  sm> immediately `ls' the directory and see all the possible entries,
+  sm> but this could be implemented in other ways.
 
+Well, if you mount directly in / it can be a big problem, since commands
+like pwd etc. often use an algorithm that can hang if one of your direct
+mounts in / is unavailable.
 
+I suppose if you mount below / it's not so bad, but my understanding is
+that every direct mount uses up resources even if it's not mounted, so
+as you say if you have a lot of them it's a problem (and we do have a
+lot, unfortunately).
+
+-- 
+-------------------------------------------------------------------------------
+ Paul D. Smith <psmith@nortelnetworks.com>   HASMAT--HA Software Mthds & Tools
+ "Please remain calm...I may be mad, but I am a professional." --Mad Scientist
+-------------------------------------------------------------------------------
+   These are my opinions---Nortel Networks takes no responsibility for them.
 
 
 -------------------------------------------------------
