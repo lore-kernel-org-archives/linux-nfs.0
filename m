@@ -1,24 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: possible client stale filehandle bug?
-Date: Thu, 24 Feb 2005 11:33:43 -0800
-Message-ID: <1109273623.11433.52.camel@lade.trondhjem.org>
-References: <482A3FA0050D21419C269D13989C61130853976D@lavender-fe.eng.netapp.com>
-	 <4213B9C2.2040709@redhat.com>
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: [PATCH] Fix xprt_bindresvport range
+Date: Fri, 25 Feb 2005 10:28:09 +0100
+Message-ID: <20050225092809.GD15249@suse.de>
+References: <20050223162808.GB17774@suse.de> <1109176559.10142.4.camel@lade.trondhjem.org> <Pine.LNX.4.58.0502241055521.2188@wombat.indigo.net.au> <1109218999.11180.49.camel@lade.trondhjem.org> <20050224101449.GB11336@suse.de> <1109268742.11433.14.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Charles Lever <Charles.Lever@netapp.com>,
-	Garrick Staples <garrick@usc.edu>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: Ian Kent <raven@themaw.net>, Charles Lever <cel@citi.umich.edu>,
+	nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D4Okg-0004Qv-9W
-	for nfs@lists.sourceforge.net; Thu, 24 Feb 2005 11:34:22 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1D4bm0-0002EA-Qx
+	for nfs@lists.sourceforge.net; Fri, 25 Feb 2005 01:28:36 -0800
+Received: from news.suse.de ([195.135.220.2] helo=Cantor.suse.de)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.41)
-	id 1D4OkK-0000rB-RV
-	for nfs@lists.sourceforge.net; Thu, 24 Feb 2005 11:34:22 -0800
-To: Neil Horman <nhorman@redhat.com>
-In-Reply-To: <4213B9C2.2040709@redhat.com>
+	id 1D4blh-0005SH-0A
+	for nfs@lists.sourceforge.net; Fri, 25 Feb 2005 01:28:36 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1109268742.11433.14.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,31 +31,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-on den 16.02.2005 Klokka 16:23 (-0500) skreiv Neil Horman:
-> I agree, it probably doesn't re-drive on any operation that doesn't walk 
-> a path, which is in line with what RHEL is doing currently.  I didn't 
-> mean to imply that solaris retired ESTALE in all occurances of the 
-> event.  Anywho, Can you point me to your patches?  I'd be interested to 
-> know how you managed to implement retry on ESTALE without leaking into 
-> the VFS, which I think you will recall was the big sticking point that 
-> we were debating here.
+On Thu, Feb 24, 2005 at 10:12:22AM -0800, Trond Myklebust wrote:
+> It is needed in the kernel if you want to use connection pools in order
+> to make disconnection and port re-use fast. Fast port re-use is also
+> needed in order to deal with idempotency issues when the TCP connection
+> fails (the server replay cache is usually indexed on the port number).
 
-It does leak into the VFS, but in a way that is non-intrusive. The VFS
-basically sets a new flag, LOOKUP_REVAL, in the struct nameidata flags
-(which are passed down to d_op->d_revalidate() on Linux 2.4.x).
-The NFS code takes that as an command to expire the caches, and force a
-revalidation.
+Is the whole nfsd cache still that important for TCP connections?
+It's mostly useless with multi-homing, it will become even more so if we
+ever do load balancing across multiple TCP connections...  Indexing
+by network protocol information is broken beyond fixing, and the only
+way to salvage the cache for TCP is to start indexing it differently
+(eg based on a hash of parts of the RPC header and creds)
 
-The exact same trick is performed on Linux-2.6.x: see the patch
-"linux-2.6.11-31-stale_retry.dif"  in
-     http://client.linux-nfs.org/Linux-2.6.x/2.6.11-rc5/
-
-Cheers,
-  Trond
-
+Olaf
 -- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
-
+Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
+okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 
 -------------------------------------------------------
