@@ -1,15 +1,15 @@
 From: "Peter Plantagenet" <plantagenet@music.com>
 Subject: NFS v3 in nfs-server 2.2beta47?
-Date: Tue, 25 Jun 2002 18:28:18 -0700
+Date: Tue, 25 Jun 2002 18:33:42 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200206260128.g5Q1SIL13005@mail19.bigmailbox.com>
+Message-ID: <200206260133.g5Q1XgR13196@mail19.bigmailbox.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from mail19.bigmailbox.com ([209.132.220.50])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17N2X8-0000et-00
-	for <nfs@lists.sourceforge.net>; Tue, 25 Jun 2002 19:27:51 -0700
+	id 17N2cF-0001IM-00
+	for <nfs@lists.sourceforge.net>; Tue, 25 Jun 2002 19:33:07 -0700
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
