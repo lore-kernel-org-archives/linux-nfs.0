@@ -1,19 +1,19 @@
 From: mehta kiran <kiranmehta1981@yahoo.com>
 Subject: Re: problem mounting using NFSv4 when using -o sec=krb5  option
-Date: Mon, 21 Mar 2005 07:45:26 -0800 (PST)
-Message-ID: <20050321154527.32344.qmail@web51603.mail.yahoo.com>
+Date: Mon, 21 Mar 2005 07:45:34 -0800 (PST)
+Message-ID: <20050321154534.40779.qmail@web51610.mail.yahoo.com>
 References: <20050321151111.1C2051BB62@citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DDP60-0006S9-2g
-	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 07:45:36 -0800
-Received: from web51603.mail.yahoo.com ([206.190.38.208])
-	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
-	id 1DDP5x-00055W-AO
-	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 07:45:36 -0800
+	id 1DDP65-0006SJ-AG
+	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 07:45:41 -0800
+Received: from web51610.mail.yahoo.com ([206.190.38.215])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
+	id 1DDP64-0006FJ-QK
+	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 07:45:41 -0800
 To: Kevin Coffman <kwc@citi.umich.edu>
 In-Reply-To: <20050321151111.1C2051BB62@citi.umich.edu>
 Sender: nfs-admin@lists.sourceforge.net
@@ -30,7 +30,7 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Hi , 
+Hi Kevin, 
              I tried things as directed by Trond in
     his previous mail and everything seemed to work
     fine initally. but when i rebooted system , 
@@ -287,10 +287,12 @@ nfs/vcslinux5.vxindia.veritas.com@VXINDIA.VERITAS.COM
 === message truncated ===
 
 
-__________________________________________________
-Do You Yahoo!?
-Tired of spam?  Yahoo! Mail has the best spam protection around 
-http://mail.yahoo.com 
+
+		
+__________________________________ 
+Do you Yahoo!? 
+Yahoo! Mail - Find what you need with new enhanced search. 
+http://info.mail.yahoo.com/mail_250
 
 
 -------------------------------------------------------
