@@ -1,58 +1,54 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] -o intr  mount option prevents core dumps on 2.4
-	kernel
-Date: Fri, 07 Jan 2005 12:14:00 -0500
-Message-ID: <1105118040.10979.70.camel@lade.trondhjem.org>
-References: <41DD8403.7030601@RedHat.com>
+From: Adrian Bunk <bunk@stusta.de>
+Subject: [2.6 patch] fs/lockd/clntproc.c: make 2 functions static
+Date: Sat, 8 Jan 2005 22:53:29 +0100
+Message-ID: <20050108215329.GZ14108@stusta.de>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Cmxgk-000368-HL
-	for nfs@lists.sourceforge.net; Fri, 07 Jan 2005 09:14:14 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1Cmxgh-0003iG-7C
-	for nfs@lists.sourceforge.net; Fri, 07 Jan 2005 09:14:13 -0800
-To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: <41DD8403.7030601@RedHat.com>
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner+glk-linux-kernel=40m.gmane.org-S261628AbVAHVyj@vger.kernel.org>
+To: neilb@cse.unsw.edu.au, trond.myklebust@fys.uio.no
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-to den 06.01.2005 Klokka 13:31 (-0500) skreiv Steve Dickson:
-
-> Comments... Suggestions... Crimes against humanity that I'm committing???
+The patch below makes two needlessly global functions static.
 
 
-Firstly, how is "cl_intr" preventing core dumps? Normally, we should be
-masking all signals except SIGKILL, SIGINT and SIGQUIT. I can see that
-masking SIGINT and SIGQUIT might be useful here, but not SIGKILL...
-
-Secondly: Why not do all this in rpc_clnt_sigmask()?
-
-Cheers,
-  Trond
--- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
+diffstat output:
+ fs/lockd/clntproc.c         |    4 ++--
+ include/linux/lockd/lockd.h |    2 --
+ 2 files changed, 2 insertions(+), 4 deletions(-)
 
 
+Signed-off-by: Adrian Bunk <bunk@stusta.de>
 
--------------------------------------------------------
-The SF.Net email is sponsored by: Beat the post-holiday blues
-Get a FREE limited edition SourceForge.net t-shirt from ThinkGeek.
-It's fun and FREE -- well, almost....http://www.thinkgeek.com/sfshirt
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+--- linux-2.6.10-mm2-full/include/linux/lockd/lockd.h.old	2005-01-08 04:29:36.000000000 +0100
++++ linux-2.6.10-mm2-full/include/linux/lockd/lockd.h	2005-01-08 04:30:09.000000000 +0100
+@@ -143,8 +143,6 @@
+  * Lockd client functions
+  */
+ struct nlm_rqst * nlmclnt_alloc_call(void);
+-int		  nlmclnt_call(struct nlm_rqst *, u32);
+-int		  nlmclnt_async_call(struct nlm_rqst *, u32, rpc_action);
+ int		  nlmclnt_block(struct nlm_host *, struct file_lock *, u32 *);
+ int		  nlmclnt_cancel(struct nlm_host *, struct file_lock *);
+ u32		  nlmclnt_grant(struct nlm_lock *);
+--- linux-2.6.10-mm2-full/fs/lockd/clntproc.c.old	2005-01-08 04:29:49.000000000 +0100
++++ linux-2.6.10-mm2-full/fs/lockd/clntproc.c	2005-01-08 04:30:15.000000000 +0100
+@@ -322,7 +322,7 @@
+ /*
+  * Generic NLM call
+  */
+-int
++static int
+ nlmclnt_call(struct nlm_rqst *req, u32 proc)
+ {
+ 	struct nlm_host	*host = req->a_host;
+@@ -428,7 +428,7 @@
+ 	return status;
+ }
+ 
+-int
++static int
+ nlmclnt_async_call(struct nlm_rqst *req, u32 proc, rpc_action callback)
+ {
+ 	struct nlm_host	*host = req->a_host;
