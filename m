@@ -1,21 +1,21 @@
-From: Scott Mcdermott <smcdermott@questra.com>
-Subject: (autofs) Re: Direct mounts on Linux
-Date: Mon, 20 Jan 2003 22:08:51 -0500
+From: "Ken English" <kwe@buffalo.edu>
+Subject: NFS/Linux/IP Chains
+Date: Mon, 20 Jan 2003 22:27:18 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030121030851.GG10369@questra.com>
-References: <15916.14776.460148.770017@lemming.engeast.baynetworks.com> <20030120214134.GE1042@questra.com> <p5vg0jz08z.fsf@lemming.engeast.baynetworks.com>
+Message-ID: <NDBBKPGJGKJJGFNEEIINCENIEPAA.kwe@buffalo.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from ns1.questra.com ([64.132.48.186])
+Received: from [64.8.50.199] (helo=mta9.adelphia.net)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18aomS-00020Z-00
-	for <nfs@lists.sourceforge.net>; Mon, 20 Jan 2003 19:08:53 -0800
-Received: from questra.com (hades.roc.questra.com [64.132.48.226])
-	by ns1.questra.com (Postfix) with SMTP id 9861CAB772
-	for <nfs@lists.sourceforge.net>; Mon, 20 Jan 2003 22:08:51 -0500 (EST)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <p5vg0jz08z.fsf@lemming.engeast.baynetworks.com>
+	id 18ap4O-0004ef-00
+	for <nfs@lists.sourceforge.net>; Mon, 20 Jan 2003 19:27:24 -0800
+Received: from nebedkenezzar ([24.48.126.135]) by mta9.adelphia.net
+          (InterMail vM.5.01.05.25 201-253-122-126-125-20021216) with SMTP
+          id <20030121032718.IGOI2002.mta9.adelphia.net@nebedkenezzar>
+          for <nfs@lists.sourceforge.net>; Mon, 20 Jan 2003 22:27:18 -0500
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,35 +28,35 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Paul Smith on Mon 20/01 21:48 -0500:
-> I know that am-utils doesn't support it,
+Hope I can get an assist, or if this is just a RTFM, just point me in the
+right direction. I've been working to set up NFS on a Redhat 7.3 box that
+has ipchains enabled. I am having problems pinning down the ports for some
+of the services, mountd works fine, but statd doesn't allow the "pinning"
+options provided in the howto I have been trying to use.
 
-hmm direct mounts? well according to the docs:
+Any suggestions?
 
-        The Linux kernels don't support Amd's direct mounts very well,
-        leading to erratic behavior: shares that don't get remounted
-        after the first timeout, inability to restart Amd because its
-        mount points cannot be unmounted, etc. There are some kernel
-        patches on the am-utils Web site, which solve these problems.
+Thanks in advance,
+-Ken
 
-(I think this is talking about using the autofs support in beta
-am-utils)
 
-so I guess you need a patch, hmph.
 
-> Well... except for direct mounts.  We can all agree that they are evil
-> and they suck, but the fact remains there are a lot of them out there
-> and they are often hard to get rid of...
+-----------------------------------------------------------------------
+Kenneth W. English, Ph.D.
+Industrial Outreach Coordinator
+New York State Center for Engineering Design and Industrial Innovation
+Department of Mechanical and Aerospace Engineering
+5 Norton Hall
+University at Buffalo
+Buffalo, NY 14260
+Phone:	(716) 645-2685 x105
+Cell:		(716)	510-5597
+Fax:	(716) 645-2684
+email: kwe@buffalo.edu
+http://www.nyscedii.buffalo.edu
+-----------------------------------------------------------------------
 
-I don't agree that they are evil or that they suck.  Some mounts are
-static and won't change, and just a simple mount will suffice.  What's
-wrong with using a direct mount in this case (maybe /home/ or
-/var/spool/mail/)? Is there a real argument against this besides "the
-performance sucks when the directory gets large" (which is an admin
-decision I think).  I don't really know, we don't have large enough
-directories that it becomes a problem.  One other good thing about
-direct mounts is that you can immediately `ls' the directory and see all
-the possible entries, but this could be implemented in other ways.
+
 
 
 -------------------------------------------------------
