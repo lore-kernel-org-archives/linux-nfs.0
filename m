@@ -1,31 +1,26 @@
-From: Hans-Peter Jansen <hpj@urpla.net>
-Subject: Re: client apps not surviving nfsd restart
-Date: Fri, 20 Aug 2004 20:28:23 +0200
+From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Subject: Re: file system read locks
+Date: Fri, 20 Aug 2004 13:09:31 -0600 (MDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200408202028.23616.hpj@urpla.net>
-References: <4125EA9F.3040304@bio.ifi.lmu.de> <41260BD9.1050003@bio.ifi.lmu.de> <20040820144652.GF12371@suse.de>
+Message-ID: <Pine.LNX.4.60.0408201303120.7569@harp.ngdc.noaa.gov>
+References: <Pine.LNX.4.60.0408200907020.6148@harp.ngdc.noaa.gov>
+ <20040820153921.GB6861@suse.de>
+Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ByE86-0007FR-VF
-	for nfs@lists.sourceforge.net; Fri, 20 Aug 2004 11:28:46 -0700
-Received: from moutng.kundenserver.de ([212.227.126.188])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1ByE82-0005En-Aq
-	for nfs@lists.sourceforge.net; Fri, 20 Aug 2004 11:28:46 -0700
-Received: from [212.227.126.205] (helo=mrelayng.kundenserver.de)
-	by moutng.kundenserver.de with esmtp (Exim 3.35 #1)
-	id 1ByE7q-0002Aq-00
-	for nfs@lists.sourceforge.net; Fri, 20 Aug 2004 20:28:30 +0200
-Received: from [217.231.171.238] (helo=mail)
-	by mrelayng.kundenserver.de with asmtp (Exim 3.35 #1)
-	id 1ByE7q-0002Zs-00
-	for nfs@lists.sourceforge.net; Fri, 20 Aug 2004 20:28:30 +0200
-To: nfs@lists.sourceforge.net
-In-Reply-To: <20040820144652.GF12371@suse.de>
+	id 1ByEla-0006ZE-H3
+	for nfs@lists.sourceforge.net; Fri, 20 Aug 2004 12:09:34 -0700
+Received: from harp.ngdc.noaa.gov ([140.172.187.26])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.34)
+	id 1ByElZ-0003WW-3U
+	for nfs@lists.sourceforge.net; Fri, 20 Aug 2004 12:09:34 -0700
+To: Olaf Kirch <okir@suse.de>
+In-Reply-To: <20040820153921.GB6861@suse.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -38,38 +33,56 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Friday 20 August 2004 16:46, Olaf Kirch wrote:
-> > Hmm, since now (that we need a more recent version of 2.6 than
-> > the the 2.6.5 SuSE shipped with 9.1) I've always been using SuSE
-> > kernels, and I really loved them for many reasons. They had
-> > always included a lot of useful stuff which I'm now forced to add
-> > all by myself (things like the bcm5700 driver in 2.4 when the tg3
-> > crashed our server every night :-))
+On Fri, 20 Aug 2004, Olaf Kirch wrote:
 
-The SuSE kernel is much better then its fame, because a few people 
-took a cursorily look into patches.{common,i386}. I imagine, this 
-scared the bones out of their bodies, since a single human won't get 
-a grip on it in a timely fashion. Others, who watched them, propagate 
-this FUD since then.. OTOH, the changelog could be more specific.
+> On Fri, Aug 20, 2004 at 09:08:15AM -0600, Ara.T.Howard wrote:
+>> i have a perfectly functioning filesystem based write lock algorithim
+>> (link(2)).
+>
+> Except that these FS based approaches don't support blocking; you
+> always have to poll.
+>
+>> has anyone out there come up with an algorithim to make __read__
+>> locks using file system primitives?
+>
+> Take a directory X. If the directory exists and is empty, the lock is not
+> taken by anyone. To take a read lock, create a file in that directory.
+> To take a write lock, remove the directory.
+>
+> (This scheme has the drawback that it's highly unfair to writers, but you
+> can probably make it favor writers if you start to move it around rather
+> than rmdir it)
 
-I used to roll my owns for diskless usage for a long time, but I'm 
-very happy to have learned to use the official ones out of the box 
-without hassles. 
 
-> There is the "kernel of the day" at
-> ftp://ftp.suse.com/pub/people/mantel/kotd
+seems to work well - the problem is when/how to create the directory in case
+of an aborted writer... the dir will not exist - how to know when it's o.k to
+create it...
 
-The preferred path is ftp://ftp.suse.com/pub/projects/kernel/kotd
-or better yet, because rsyncable:
-ftp://ftp.gwdg.de/pub/linux/suse/ftp.suse.com/projects/kernel/kotd
+i thinking that initially one could create two dirs
 
-> This is purely for testing, but people who, for some reason, need
-> bleeding edge kernels, seem to find it useful.
+   dir
+   .dir
 
-It saved my life at least once ;-)
+while holding the lock it will be the responsibility of the lock holder to
+keep .dir fresh via touching it.  if the .dir directory is ever found to be
+stale we can guess that a process holding the lock has died without recreating
+the lock directory dir.  at that point the process can lock the .dir (rmdir)
+and recreate dir.  obviously only one process could succeed at this.  of
+course, if this process died between removing .dir and creating dir this would
+be bad.  however it seems this would be very, very rare since it would require
+first one client dying w/o cleaning up, followed closely by another.
 
-> Olaf
+toughts?
 
+-a
+--
+===============================================================================
+| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
+| PHONE   :: 303.497.6469
+| A flower falls, even though we love it;
+| and a weed grows, even though we do not love it. 
+|   --Dogen
+===============================================================================
 
 
 -------------------------------------------------------
