@@ -1,23 +1,28 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: Re: nfsd write throughput
-Date: Wed, 4 Aug 2004 18:18:21 +1000
+From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
+Subject: Mount version older than kernel: 4 vs. 6
+Date: Wed, 04 Aug 2004 14:50:09 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040804081821.GQ5581@sgi.com>
-References: <1091578243.4797.52.camel@dyn319492.beaverton.ibm.com>
+Message-ID: <4110DB81.4020103@bio.ifi.lmu.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net, okir@suse.de
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BsGz1-0000NV-2L
-	for nfs@lists.sourceforge.net; Wed, 04 Aug 2004 01:18:47 -0700
-Received: from omx3-ext.sgi.com ([192.48.171.20] helo=omx3.sgi.com)
+	id 1BsLDh-0001Xq-3b
+	for nfs@lists.sourceforge.net; Wed, 04 Aug 2004 05:50:13 -0700
+Received: from acheron.informatik.uni-muenchen.de ([129.187.214.135])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1BsGz0-0000R5-Hj
-	for nfs@lists.sourceforge.net; Wed, 04 Aug 2004 01:18:46 -0700
-To: Bruce Allan <bwa@us.ibm.com>
-In-Reply-To: <1091578243.4797.52.camel@dyn319492.beaverton.ibm.com>
+	id 1BsLDg-0002KK-L5
+	for nfs@lists.sourceforge.net; Wed, 04 Aug 2004 05:50:13 -0700
+Received: from internaldeliver.acheron.informatik.uni-muenchen.de (localhost [127.0.0.1])
+	by acheron.informatik.uni-muenchen.de (Postfix) with ESMTP id 74843435BB
+	for <nfs@lists.sourceforge.net>; Wed,  4 Aug 2004 14:50:10 +0200 (CEST)
+Received: from [141.84.1.141] (galois.bio.ifi.lmu.de [141.84.1.141])
+	(using TLSv1 with cipher RC4-MD5 (128/128 bits))
+	(No client certificate requested)
+	by acheron.informatik.uni-muenchen.de (Postfix) with ESMTP id 6E677435BA
+	for <nfs@lists.sourceforge.net>; Wed,  4 Aug 2004 14:50:10 +0200 (CEST)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,41 +35,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, Aug 03, 2004 at 05:10:44PM -0700, Bruce Allan wrote:
-> Greg Banks <gnb@sgi.com> wrote on 08/02/2004 07:10:18 PM:
-> 
-> <snip>
-> > First, the way the v3 server is supposed to work is that normal
-> > page cache pressure pushes pages from unstable writes to disk
-> > before the COMMIT call arrives from the client.  The best way to
-> > achieve this for a dedicated NFS server box is tuning the pdflush
-> > parameters to be more aggressive about writing back dirty pages,
-> > e.g. bumping down the following in /proc/vm:
-> > dirty_background_ration, dirty_ratio, dirty_writeback_centisecs,
-> > and dirty_expire_centisecs.  I have to admit I've not tried this
-> > yet on 2.6 but the equivalent on 2.4 has been generally useful.
-> <snip>
-> 
-> This information (and the comparable info for 2.6) should be in Chapter
-> 5. Optimizing NFS Performance of the NFS-HOWTO
-> (http://nfs.sourceforge.net/nfs-howto/performance.html).
+Hi,
 
-Yes.
+using kernel 2.6.8rc3 and util-linux-2.12a, I ran into those "mount
+version older than kernel" messages, which were discussed here for the
+2.6.4 kernel before. Patching inode.c, I can see that NFS_MOUNT_VERSION
+is 6, while data->version is 4. (The only mount at all that does not
+complain is the one done by nfsroot (of course) :-))
 
-> Greg, can you
-> throw together a documentation patch?  If you don't have the time and/or
-> inclination, I could give it a shot if you care to review the content. 
+Just a stupid question: why does the nfsmount.h from the kernel source
+define NFS_MOUNT_VERSION 6? Shouldn't this number match the latest nfs
+version, i.e., 4? I've never heard of nfs v6 yet :-)
+Or is the meaning of NFS_MOUNT_VERSION different?
 
-That document has several wrong or outdated pieces of advice, e.g. in
-sections 5.1, 5.4, 5.7.  If you want me to write a diff it won't be
-a trivial one and you'll have to wait while I plow through some of
-the other four dozen bugs I have queued up.  I'm happy to do it if
-you're happy to wait.
+Would it be safe to patch nfsmount.h and set the number to 4 for my
+own kernel to get rid of this warning, or could that break sth. else?
+It just fills my logs and I want to get rid of it...
 
-Greg.
+
+
+cu,
+Frank
+
 -- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
+Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
+LMU, Amalienstr. 17           Phone: +49 89 2180-4049
+80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
+* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
 
 
 -------------------------------------------------------
