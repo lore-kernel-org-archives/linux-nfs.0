@@ -1,24 +1,24 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: Random UDP port assignment for rpc.statd
-Date: Sun, 20 Feb 2005 10:30:35 -0500
-Message-ID: <1108913435.27120.40.camel@lade.trondhjem.org>
+Date: Sun, 20 Feb 2005 11:43:13 -0500
+Message-ID: <1108917793.27120.43.camel@lade.trondhjem.org>
 References: <20050220111312.GA3974@s>
 	 <1108908221.27120.26.camel@lade.trondhjem.org>  <20050220141037.GA7686@s>
+	 <1108913435.27120.40.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-ttx0eaY547NRvZSSmlFE"
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="=-Ym46F5bDriW11WPMG08f"
+Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D2t2q-0004ot-Ty
-	for nfs@lists.sourceforge.net; Sun, 20 Feb 2005 07:30:52 -0800
+	id 1D2uB9-0007Ss-Ev
+	for nfs@lists.sourceforge.net; Sun, 20 Feb 2005 08:43:31 -0800
 Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1D2t2p-0001q1-5w
-	for nfs@lists.sourceforge.net; Sun, 20 Feb 2005 07:30:52 -0800
-To: Haakon Riiser <haakon.riiser@fys.uio.no>,
-	Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <20050220141037.GA7686@s>
+	id 1D2uB6-0007aM-NA
+	for nfs@lists.sourceforge.net; Sun, 20 Feb 2005 08:43:31 -0800
+To: Haakon Riiser <haakon.riiser@fys.uio.no>
+In-Reply-To: <1108913435.27120.40.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,36 +33,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
---=-ttx0eaY547NRvZSSmlFE
+--=-Ym46F5bDriW11WPMG08f
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 
-su den 20.02.2005 Klokka 15:10 (+0100) skreiv Haakon Riiser:
-> > rpc.statd needs some ports for communication with the portmapper
-> > and the lockd manager on the loopback net, and this is probably
-> > what you are seeing. There should be nothing that needs to be
-> > allowed firewall access, though.
-> 
-> Actually, I wanted to /block/ this port in the firewall, not open
-> for external access.  My firewall allows everything by default, and
-> has rules to block ports that shouldn't be visible to the world.
-> Should I be concerned about this port being unblocked?
+su den 20.02.2005 Klokka 10:30 (-0500) skreiv Trond Myklebust:
 
-The ports for portmapper registration are destroyed after they are used.
-The only port that is of worry is the one used for outgoing
-communications (controlled by the "-o" option).
+> See if the attached patch doesn't fix things so that your 3rd rpc.statd
+> port stays on the port specified by "-o"...
 
-.... and of course, that control mechanism appears to be borken...
+Here is the same patch in a slightly cleaner version (it gets rid of the
+redundant comparison)...
 
-See if the attached patch doesn't fix things so that your 3rd rpc.statd
-port stays on the port specified by "-o"...
+Neil, could you please apply to the main nfs-utils tree?
 
 Cheers,
   Trond
 -- 
 Trond Myklebust <trond.myklebust@fys.uio.no>
 
---=-ttx0eaY547NRvZSSmlFE
+--=-Ym46F5bDriW11WPMG08f
 Content-Disposition: inline; filename=nfs-utils-1.0.7-fix_outgoing_port.dif
 Content-Type: text/plain; name=nfs-utils-1.0.7-fix_outgoing_port.dif; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
@@ -72,8 +62,8 @@ Content-Transfer-Encoding: 7bit
   2) bindresvport() is used to automatically choose the port for you.
      if you want to set the port yourself, use bind()
 ---
- rmtcall.c |   12 ++++++++++--
- 1 files changed, 10 insertions(+), 2 deletions(-)
+ rmtcall.c |   11 +++++++++--
+ 1 files changed, 9 insertions(+), 2 deletions(-)
 
 Index: nfs-utils/utils/statd/rmtcall.c
 ===================================================================
@@ -88,25 +78,28 @@ Index: nfs-utils/utils/statd/rmtcall.c
  	/*
  	 * If a local hostname is given (-n option to statd), bind to the address
  	 * specified. This is required to support clients that ignore the mon_name in
-@@ -76,7 +76,15 @@ statd_get_socket(int port)
+@@ -76,11 +76,18 @@ statd_get_socket(int port)
  		if (hp)
  			sin.sin_addr = *(struct in_addr *) hp->h_addr;
  	}
--	if (bindresvport(sockfd, &sin) < 0) {
 +	if (port != 0) {
 +		sin.sin_port = htons(port);
-+		if (bind(sockfd, &sin, sizeof(sin)) < 0) {
-+			note(N_CRIT, "failed to bind to outgoing port, %d\n"
-+					"falling back to randomly chosen port\n", port);
-+			port = 0;
-+		}
++		if (bind(sockfd, &sin, sizeof(sin)) == 0)
++			goto out_success;
++		note(N_CRIT, "statd: failed to bind to outgoing port, %d\n"
++				"       falling back on randomly chosen port\n", port);
 +	}
-+	if (port == 0 && bindresvport(sockfd, &sin) < 0) {
+ 	if (bindresvport(sockfd, &sin) < 0) {
  		dprintf(N_WARNING,
  			"process_hosts: can't bind to reserved port\n");
  	}
+-
++out_success:
+ 	return sockfd;
+ }
+ 
 
---=-ttx0eaY547NRvZSSmlFE--
+--=-Ym46F5bDriW11WPMG08f--
 
 
 
