@@ -1,18 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 13 of 18] nfsd4: encode_dirent: simplify nfs4_encode_dirent_fattr
+Subject: [PATCH kNFSd 14 of 18] nfsd4: encode_dirent: move rdattr_error code to new function
 Date: Tue, 16 Nov 2004 15:50:50 +1100
-Message-ID: <E1CTvIo-0004q6-L8@notabene.cse.unsw.edu.au>
+Message-ID: <E1CTvIo-0004qA-NH@notabene.cse.unsw.edu.au>
 References: <20041116154601.18412.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CTvF6-0005s4-4I
-	for nfs@lists.sourceforge.net; Mon, 15 Nov 2004 20:47:00 -0800
+	id 1CTvFv-0005uT-O3
+	for nfs@lists.sourceforge.net; Mon, 15 Nov 2004 20:47:51 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CTvF1-0007HM-5v
-	for nfs@lists.sourceforge.net; Mon, 15 Nov 2004 20:46:58 -0800
+	id 1CTvFv-0007Me-83
+	for nfs@lists.sourceforge.net; Mon, 15 Nov 2004 20:47:51 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -29,51 +29,71 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
 
-Make nfsd4_encode_dirent_fattr() slightly more concise.
+Move code to encode the special rdattr_error attribute to
+nfsd4_encode_rdattr_error().
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4xdr.c |   11 ++++-------
- 1 files changed, 4 insertions(+), 7 deletions(-)
+ ./fs/nfsd/nfs4xdr.c |   31 ++++++++++++++++++++-----------
+ 1 files changed, 20 insertions(+), 11 deletions(-)
 
 diff ./fs/nfsd/nfs4xdr.c~current~ ./fs/nfsd/nfs4xdr.c
---- ./fs/nfsd/nfs4xdr.c~current~	2004-11-16 14:41:37.000000000 +1100
-+++ ./fs/nfsd/nfs4xdr.c	2004-11-16 14:41:39.000000000 +1100
-@@ -1778,10 +1778,8 @@ nfsd4_encode_dirent_fattr(struct nfsd4_r
- 	int nfserr;
- 
- 	dentry = lookup_one_len(name, cd->rd_fhp->fh_dentry, namlen);
--	if (IS_ERR(dentry)) {
--		nfserr = nfserrno(PTR_ERR(dentry));
--		return nfserr;
--	}
-+	if (IS_ERR(dentry))
-+		return nfserrno(PTR_ERR(dentry));
- 
- 	exp_get(exp);
- 	if (d_mountpoint(dentry)) {
-@@ -1793,10 +1791,8 @@ nfsd4_encode_dirent_fattr(struct nfsd4_r
- 		 * options on exp.  When the answer comes back,
- 		 * this call will be retried.
- 		 */
--			dput(dentry);
--			exp_put(exp);
- 			nfserr = nfserr_dropit;
--			return nfserr;
-+			goto out_put;
- 		}
- 
- 	}
-@@ -1804,6 +1800,7 @@ nfsd4_encode_dirent_fattr(struct nfsd4_r
- 	nfserr = nfsd4_encode_fattr(NULL, exp,
- 			dentry, p, buflen, cd->rd_bmval,
- 			cd->rd_rqstp);
-+out_put:
- 	dput(dentry);
- 	exp_put(exp);
+--- ./fs/nfsd/nfs4xdr.c~current~	2004-11-16 14:41:39.000000000 +1100
++++ ./fs/nfsd/nfs4xdr.c	2004-11-16 14:41:41.000000000 +1100
+@@ -1806,6 +1806,23 @@ out_put:
  	return nfserr;
+ }
+ 
++static u32 *
++nfsd4_encode_rdattr_error(u32 *p, int buflen, int nfserr)
++{
++	u32 *attrlenp;
++
++	if (buflen < 6)
++		return NULL;
++	*p++ = htonl(2);
++	*p++ = htonl(FATTR4_WORD0_RDATTR_ERROR); /* bmval0 */
++	*p++ = htonl(0);			 /* bmval1 */
++
++	attrlenp = p++;
++	*p++ = nfserr;       /* no htonl */
++	*attrlenp = htonl((char *)p - (char *)attrlenp - 4);
++	return p;
++}
++
+ static int
+ nfsd4_encode_dirent(struct readdir_cd *ccd, const char *name, int namlen,
+ 		    loff_t offset, ino_t ino, unsigned int d_type)
+@@ -1813,7 +1830,6 @@ nfsd4_encode_dirent(struct readdir_cd *c
+ 	struct nfsd4_readdir *cd = container_of(ccd, struct nfsd4_readdir, common);
+ 	int buflen;
+ 	u32 *p = cd->buffer;
+-	u32 *attrlenp;
+ 	int nfserr = 0;
+ 
+ 	/* In nfsv4, "." and ".." never make it onto the wire.. */
+@@ -1858,16 +1874,9 @@ nfsd4_encode_dirent(struct readdir_cd *c
+ 		cd->common.err = nfserr;
+ 		return -EINVAL;
+ 	}
+-
+-	if (buflen < 6)
+-		goto nospc;
+-	*p++ = htonl(2);
+-	*p++ = htonl(FATTR4_WORD0_RDATTR_ERROR); /* bmval0 */
+-	*p++ = htonl(0);			 /* bmval1 */
+-
+-	attrlenp = p++;
+-	*p++ = nfserr;       /* no htonl */
+-	*attrlenp = htonl((char *)p - (char *)attrlenp - 4);
++	p = nfsd4_encode_rdattr_error(p, buflen, nfserr);
++	if (p == NULL)
++		goto out_nospc;
+ 
+ out:
+ 	cd->buflen -= (p - cd->buffer);
 
 
 -------------------------------------------------------
