@@ -1,26 +1,28 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: [PATCH] Prevent deadlock in svc_defer
-Date: Wed, 4 Aug 2004 09:07:27 +0200
+From: Greg Banks <gnb@sgi.com>
+Subject: Re: ETIMEDOUT in nfsd?
+Date: Wed, 4 Aug 2004 17:35:00 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040804070727.GA4471@suse.de>
+Message-ID: <20040804073500.GP5581@sgi.com>
+References: <20040803081503.GM5581@sgi.com> <20040803191610.GC7781@fieldses.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="9jxsPFA5p3P2qPhR"
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BsFs2-0004Ty-D9
-	for nfs@lists.sourceforge.net; Wed, 04 Aug 2004 00:07:30 -0700
-Received: from cantor.suse.de ([195.135.220.2])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1BsGKX-0002A2-CR
+	for nfs@lists.sourceforge.net; Wed, 04 Aug 2004 00:36:57 -0700
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.34)
-	id 1BsFs1-00052m-MO
-	for nfs@lists.sourceforge.net; Wed, 04 Aug 2004 00:07:30 -0700
-Received: from hermes.suse.de (hermes-ext.suse.de [195.135.221.8])
-	(using TLSv1 with cipher EDH-RSA-DES-CBC3-SHA (168/168 bits))
-	(No client certificate requested)
-	by Cantor.suse.de (Postfix) with ESMTP id 63EE19C5AA5
-	for <nfs@lists.sourceforge.net>; Wed,  4 Aug 2004 09:07:27 +0200 (CEST)
-To: nfs@lists.sourceforge.net
+	id 1BsGKV-0000rb-Jw
+	for nfs@lists.sourceforge.net; Wed, 04 Aug 2004 00:36:57 -0700
+Received: from [192.48.171.19] (helo=omx2.sgi.com)
+	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
+	id 1BsGKT-0000xP-0S
+	for nfs@lists.sourceforge.net; Wed, 04 Aug 2004 00:36:53 -0700
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20040803191610.GC7781@fieldses.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,99 +35,73 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Tue, Aug 03, 2004 at 03:16:10PM -0400, J. Bruce Fields wrote:
+> On Tue, Aug 03, 2004 at 06:15:03PM +1000, Greg Banks wrote:
+> > So I was somewhat surprised to see that in 2.6, the mapping from
+> > Linux errno to NFS error in fs/nfsd/nfsproc.c:nfserrno() maps
+> > -EAGAIN to nfserr_dropit, causing nfsd_dispatch to just drop the
+> > call and not reply.  Furthermore I need to return the network
+> > error -ETIMEDOUT to get NFSERR_JUKEBOX.  I don't get it...can
+> > someone explain both of these?
+> 
+> The server does upcalls to userspace daemons (usually to mountd to get
+> export options or IP address->client name mappings) by doing a lookup in
+> a cache, and returning -EAGAIN if an upcall is required.
 
---9jxsPFA5p3P2qPhR
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+With, if I understand your document correctly, the side effect of
+queuing an upcall which can be expected to fill the cache at some
+later date depending on the action of the userspace daemon (and
+its LDAP or NIS lookups or whatever).
 
-Hi,
+> The request is
+> then dropped, a copy of the request is made (see svcsock.c:svc_defer())
+> and reprocessed at a later time (see svcsock.c:svc_revisit()).
 
-The svc_defer stuff introduced into svcsock.c recently is using spin_lock
-rather than spin_lock_bh when grabbing sv_lock. This can cause deadlocks
-as shown in this abridged stack dump:
+Let me see if I understand this...the *NFS* request is silently dropped,
+and the *sunrpc cache* request is remembered on the server machine and
+sent upstairs later, presumably as the userspace daemon replies to
+earlier upcalls.  The NFS client gets nothing...no reply and no
+indication that it should retry the original NFS request.
 
-0xc00000000fff76d0  0xc00000000020f8a0  .__spin_yield +0x44
-0xc00000000fff76d0  0xc00000000020fa2c (lr) ._raw_spin_lock +0x58
-0xc00000000fff7750  0xc00000000020fa2c  ._raw_spin_lock +0x58
-0xc00000000fff77d0  0xc000000000374558  .svc_sock_enqueue +0x80
-0xc00000000fff7860  0xc000000000375678  .svc_tcp_data_ready +0x5c
-[...]
-0xc00000000fff7b20  0xc000000000303c38  .ip_local_deliver +0xf4
-[...]
-0xc00000000fff7e50  0xc0000000002dba00  .net_rx_action +0x150
-0xc00000000fff7f00  0xc000000000064638  .__do_softirq +0xa8
-0xc00000000fff7f90  0xc000000000017530  .call_do_softirq +0x14
-0xc0000003c0b17520  0xc000000000011f30  .do_softirq +0x90
-0xc0000003c0b175b0  0xc000000000012ec8  .do_IRQ +0x10c
-0xc0000003c0b17640  0xc00000000000b034  HardwareInterrupt_entry +0x14
---- Exception: 500: (Hardware Interrupt) at ._raw_spin_lock +0x28
-0xc0000003c0b17930  0xc00000000020f9fc  ._raw_spin_lock +0x28
-0xc0000003c0b17930  0xc00000000037591c (lr) .svc_revisit +0x64
-0xc0000003c0b179b0  0xc00000000037591c  .svc_revisit +0x64
-0xc0000003c0b17a60  0xc00000000037cb2c  .cache_revisit_request +0x18c
-0xc0000003c0b17b00  0xc00000000037ea80  .cache_check +0x2b4
-0xc0000003c0b17bc0  0xd0000000008d5ab0  .fh_verify +0x634
+So you're implicitly relying on the normal clientside timeout and
+retry mechanism to get the NFS request resubmitted?  Why not send
+EJUKEBOX to the client, and let it manage retry using a retry strategy
+designed for a slow server instead of the one designed for lossy
+networks?  Otherwise the exponential backoff could hurt the client's
+latency more than it deserves.
 
-The attached patch should fix this problem.
 
-Olaf
+Anyway, the problem I have is the use of EAGAIN.  The normal semantics
+of EAGAIN are that the receiver should cause a retry of whatever it was
+doing.  So if (say) nfsd_write() returned -EAGAIN it would make
+sense to translate that into NFSERR_JUKEBOX which is designed to have
+the same effect at the client.
+
+This is what happens on an Altix with DMF installed: the DMF hooks
+in the filesystem return EAGAIN when they need to pull a file in
+from tape, and that percolates naturally through several layers to
+be translated to NFSERR_JUKEBOX to the client.
+
+http://www.sgi.com/products/storage/tech/dmf.html
+
+That DMF code returns EAGAIN because it's been given O_NONBLOCK,
+and that's the semantics of O_NONBLOCK: return EAGAIN if you can't
+succeed without blocking.  This happens in code that's common to the
+IRIX and Linux implementations of DMF.  In other words, there's a
+whole body of history for using EAGAIN this way.
+
+Instead you're using EAGAIN in another part of the code to indicate
+that a cache entry has expired or is missing and that an upcall is
+in progress and might succeed later, which then drives a completely
+different retry strategy (with the client being kept in the dark).
+
+We need to figure out how to resolve these two competing usages of
+EAGAIN.
+
+Greg.
 -- 
-Olaf Kirch     |  The Hardware Gods hate me.
-okir@suse.de   |
----------------+ 
-
---9jxsPFA5p3P2qPhR
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: attachment; filename=nfsd-cache-revisit-deadlock
-
-Index: linux-2.6.5/net/sunrpc/svcsock.c
-===================================================================
---- linux-2.6.5.orig/net/sunrpc/svcsock.c	2004-08-04 08:58:54.000000000 +0200
-+++ linux-2.6.5/net/sunrpc/svcsock.c	2004-08-04 09:04:12.000000000 +0200
-@@ -1505,9 +1505,9 @@
- 	dprintk("revisit queued\n");
- 	svsk = dr->svsk;
- 	dr->svsk = NULL;
--	spin_lock(&serv->sv_lock);
-+	spin_lock_bh(&serv->sv_lock);
- 	list_add(&dr->handle.recent, &svsk->sk_deferred);
--	spin_unlock(&serv->sv_lock);
-+	spin_unlock_bh(&serv->sv_lock);
- 	set_bit(SK_DEFERRED, &svsk->sk_flags);
- 	svc_sock_enqueue(svsk);
- 	svc_sock_put(svsk);
-@@ -1538,10 +1538,10 @@
- 		dr->argslen = rqstp->rq_arg.len >> 2;
- 		memcpy(dr->args, rqstp->rq_arg.head[0].iov_base-skip, dr->argslen<<2);
- 	}
--	spin_lock(&rqstp->rq_server->sv_lock);
-+	spin_lock_bh(&rqstp->rq_server->sv_lock);
- 	rqstp->rq_sock->sk_inuse++;
- 	dr->svsk = rqstp->rq_sock;
--	spin_unlock(&rqstp->rq_server->sv_lock);
-+	spin_unlock_bh(&rqstp->rq_server->sv_lock);
- 
- 	dr->handle.revisit = svc_revisit;
- 	return &dr->handle;
-@@ -1571,7 +1571,7 @@
- 	
- 	if (!test_bit(SK_DEFERRED, &svsk->sk_flags))
- 		return NULL;
--	spin_lock(&serv->sv_lock);
-+	spin_lock_bh(&serv->sv_lock);
- 	clear_bit(SK_DEFERRED, &svsk->sk_flags);
- 	if (!list_empty(&svsk->sk_deferred)) {
- 		dr = list_entry(svsk->sk_deferred.next,
-@@ -1580,6 +1580,6 @@
- 		list_del_init(&dr->handle.recent);
- 		set_bit(SK_DEFERRED, &svsk->sk_flags);
- 	}
--	spin_unlock(&serv->sv_lock);
-+	spin_unlock_bh(&serv->sv_lock);
- 	return dr;
- }
-
---9jxsPFA5p3P2qPhR--
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
 
 -------------------------------------------------------
