@@ -1,23 +1,22 @@
-From: Chris Jensen <chris-nfs@drspirograph.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: Stale file handle
-Date: Tue, 4 Feb 2003 12:46:50 +1100
+Date: 04 Feb 2003 09:49:00 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200302041239.22301.chris-nfs@drspirograph.com>
-References: <200302031903.53937.chris-nfs@drspirograph.com> <200302041218.31527.chris-nfs@drspirograph.com> <15935.5764.263002.800295@charged.uio.no>
+Message-ID: <shshebk1ldv.fsf@charged.uio.no>
+References: <200302031903.53937.chris-nfs@drspirograph.com>
+	<200302041218.31527.chris-nfs@drspirograph.com>
+	<15935.5764.263002.800295@charged.uio.no>
+	<200302041239.22301.chris-nfs@drspirograph.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mta01bw.bigpond.com ([139.134.6.78])
+Received: from mons.uio.no ([129.240.130.14] ident=7411)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18fs4z-00073r-00
-	for <nfs@lists.sourceforge.net>; Mon, 03 Feb 2003 17:40:53 -0800
-Received: from chris ([144.135.24.75]) by mta01bw.bigpond.com
-          (Netscape Messaging Server 4.15 mta01bw Jul 16 2002 22:47:55)
-          with SMTP id H9RGNX00.4GV for <nfs@lists.sourceforge.net>; Tue,
-          4 Feb 2003 11:40:45 +1000
-To: nfs@lists.sourceforge.net
-In-Reply-To: <15935.5764.263002.800295@charged.uio.no>
+	id 18fylT-0001Mz-00
+	for <nfs@lists.sourceforge.net>; Tue, 04 Feb 2003 00:49:12 -0800
+To: Chris Jensen <chris-nfs@drspirograph.com>
+In-Reply-To: <200302041239.22301.chris-nfs@drspirograph.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,32 +29,25 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> Unfortunately FAT filesystems are not very NFS-friendly as they lack a
-> reliable way to generate an NFS filehandle. (The NFS filehandle is a
-> way of uniquely identifying the file to the server in a manner that
-> does not depend on the pathname).
->
-> The current implementation in knfsd relies heavily on the file staying
-> in the server's 'dentry cache' until the NFS client has finished with
-> it. If/when memory pressure forces garbage collection on the dcache,
-> the server will lose its mapping between file and NFS filehandle, and
-> you will get a 'stale file handle' error being returned to the client.
+>>>>> " " == Chris Jensen <chris-nfs@drspirograph.com> writes:
 
-So is it just a coincidence that this has worked for over a year? I wouldn't 
-have thought so, because there have often been times when I have been 
-compiling on the server while connecting with a client, wouldn't this have 
-placed memory pressure on the server?
+     > So is it just a coincidence that this has worked for over a
+     > year? I wouldn't have thought so, because there have often been
 
--- 
-Chris Jensen
+You ought to have the source available to you so feel free to take a
+look. However unless you have been using some specially patched
+version of the kernel, then VFAT support will be poor, as described.
 
-Public Key: http://drspirograph.com/public_key/
+I believe that a lot could be done to fix this particular issue.
+Although it is clear that some compromises will need to be made
+w.r.t. the NFSv3 specs, the stale filehandle thing could perhaps be
+fixed by (for instance) encoding the beginning of the FAT chain of the
+file + the parent directory in the filehandle. Such an encoding is
+admittedly not safe under renames of the file, but it would already be
+a huge improvement.
 
-Wait: Did you know that there's a direct correlation between the decline of
-Spirograph and the rise in gang activity?  Think about it.
-- Dr Spirograph (The Simpsons)
-
-
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
