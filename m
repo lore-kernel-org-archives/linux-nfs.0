@@ -1,22 +1,18 @@
-From: Mark Goodman <mgoodman@CSUA.Berkeley.EDU>
-Subject: Re: [NFS]	http://client.linux-nfs.org/Linux-2.6.x/2.6.10/linux-2.6.10-33-access_cache.dif
-Date: Sat, 05 Feb 2005 17:42:28 -0800
-Message-ID: <42057604.2060305@csua.berkeley.edu>
-References: <420496F7.9080900@csua.berkeley.edu> <1107649486.484.2.camel@lade.trondhjem.org>
+From: Frank van Maarseveen <frankvm@frankvm.com>
+Subject: NFS3PROC_ACCESS bug in 2.6.x
+Date: Sun, 6 Feb 2005 19:39:13 +0100
+Message-ID: <20050206183913.GA28176@janus>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Content-Type: text/plain; charset=us-ascii
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CxbRc-0007dV-38
-	for nfs@lists.sourceforge.net; Sat, 05 Feb 2005 17:42:36 -0800
-Received: from soda.csua.berkeley.edu ([128.32.112.233] ident=[OeU1eGnKGjveXXE4t/V2RkTO54Deyryo])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.41)
-	id 1CxbRV-0008JJ-D8
-	for nfs@lists.sourceforge.net; Sat, 05 Feb 2005 17:42:36 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1107649486.484.2.camel@lade.trondhjem.org>
+	id 1CxrJa-0005qa-B9
+	for nfs@lists.sourceforge.net; Sun, 06 Feb 2005 10:39:22 -0800
+Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1CxrJZ-00042K-LW
+	for nfs@lists.sourceforge.net; Sun, 06 Feb 2005 10:39:22 -0800
+To: Linux NFS mailing list <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,33 +26,72 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust wrote:
 
->lau den 05.02.2005 Klokka 01:50 (-0800) skreiv Mark Goodman:
->  
->
->>This patch appears to have the effect that non-existent files don't get 
->>cached. When I apply it to 2.6.10, a C preprocessor workload that 
->>involves opening lots of non-existent files slows down by an order of 
->>magnitude and I notice tens of thousands of NFS ACCESS calls per second 
->>according to nfsstat.
->>    
->>
->
->Nope. NFS_ACCESS can only be called on files that *do* exist.
->
->Are you sure that you are not using it on directories that are changing
->a lot?
->
->Cheers,
->  Trond
->
->  
->
-Yes, the directories are not changing.
+Both server and client are the same machine and run unpatched
+2.6.11-rc3. /proc/mounts says:
 
-Mark
+localhost:/loc/nfstest /mnt2 nfs rw,sync,v3,rsize=32768,wsize=32768,acregmin=0,acregmax=0,acdirmin=0,acdirmax=0,hard,udp,noac,nolock,addr=localhost 0 0
 
+Problem is that we should have permission to create according to the
+secondary group list but apparently we don't:
+
+$ cd /mnt2/subdir
+$ ls -ld .
+drwxrwx---    2 root     owner        4096 Feb  6 18:39 .
+$ id
+uid=363(fvm) gid=215(sec) groups=215(sec),3972(owner),..
+						^^^
+$ strace -e mkdir /bin/mkdir aap
+mkdir("aap", 0777)                      = -1 EACCES (Permission denied)
+/bin/mkdir: cannot create directory `aap': Permission denied
+$ ls -al
+total 8
+drwxrwx---    2 root     owner        4096 Feb  6 18:39 .
+drwxr-xr-x    7 root     root         4096 Feb  6 18:39 ..
+$ >pipo
+bash: pipo: No such file or directory
+$ strace touch pipo
+
+	...
+	open("pipo", O_WRONLY|O_NONBLOCK|O_CREAT|O_NOCTTY|O_LARGEFILE, 0666) = -1 EACCES (Permission denied)
+
+	(I give up, lets go back to the server side)
+
+$ cd /loc/nfstest/subdir
+$ ls -al
+total 8
+drwxrwx---    2 root     owner        4096 Feb  6 18:39 .
+drwxr-xr-x    7 root     root         4096 Feb  6 18:39 ..
+$ strace -e mkdir /bin/mkdir aap
+mkdir("aap", 0777)                      = 0
+
+
+Problem was originally found on 2.6.10 and looks like a server problem
+because of the following and because 2.4.28 as server worked.  I have
+tracked it down in 2.6.10 to the following client side call tree:
+
+sys_mkdir() ->
+vfs_mkdir() ->
+may_create() ->
+permission(MAY_WRITE | MAY_EXEC) ->
+nfs_permission(MAY_WRITE | MAY_EXEC) ->
+nfs_do_access(MAY_WRITE | MAY_EXEC):
+	nfs_access_get_cached(): -ENOENT
+	nfs3_proc_access(MAY_EXEC | MAY_WRITE | MAY_READ):
+		arg.access = 0x1f (everything except NFS3_ACCESS_EXECUTE)
+		RPC returns 0
+		res.access = 0x3  (NFS3_ACCESS_READ|NFS3_ACCESS_LOOKUP)
+		modify the cached mask: set it to 0x5 (MAY_EXEC | MAY_READ)
+	if ((0x1f & 0x5) == 0x3)
+		return 0;
+	-EACCES
+
+I think the server forgot to mention NFS3_ACCESS_MODIFY or
+NFS3_ACCESS_EXTEND for the directory (I'm too lazy to look it up in
+the RFCs right now).
+
+-- 
+Frank
 
 
 -------------------------------------------------------
