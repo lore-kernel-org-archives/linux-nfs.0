@@ -1,22 +1,21 @@
-From: Philippe =?ISO-8859-15?Q?Gramoull=E9?= <philippe.gramoulle@mmania.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: Problems with statd and lockd
-Date: Sat, 5 Apr 2003 13:18:21 +0200
+Date: 05 Apr 2003 13:50:29 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030405131821.595ca734.philippe.gramoulle@mmania.com>
+Message-ID: <shsistt5fju.fsf@charged.uio.no>
 References: <20030405015638.5118fbb9.philippe.gramoulle@mmania.com>
 	<shsadf5s12f.fsf@charged.uio.no>
+	<20030405131821.595ca734.philippe.gramoulle@mmania.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+Cc: NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pgramoul.net2.nerim.net ([80.65.227.234] helo=philou.aspic.com)
+Received: from mons.uio.no ([129.240.130.14])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 191lh6-0002C6-00
-	for <nfs@lists.sourceforge.net>; Sat, 05 Apr 2003 03:18:44 -0800
-Received: from philou.gramoulle.local (philou.gramoulle.local [192.168.254.2])
-	by philou.aspic.com (Postfix) with SMTP id 186A019B
-	for <nfs@lists.sourceforge.net>; Sat,  5 Apr 2003 13:18:22 +0200 (CEST)
-To: NFS Mailing List <nfs@lists.sourceforge.net>
-In-Reply-To: <shsadf5s12f.fsf@charged.uio.no>
+	id 191mBu-00007R-00
+	for <nfs@lists.sourceforge.net>; Sat, 05 Apr 2003 03:50:34 -0800
+To: Philippe Gramoull~ <philippe.gramoulle@mmania.com>
+In-Reply-To: <20030405131821.595ca734.philippe.gramoulle@mmania.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,33 +28,17 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+>>>>> " " == Philippe Gramoull <Philippe> writes:
 
-On 05 Apr 2003 12:14:48 +0200
-Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
 
-  | >>>>> " " == Philippe Gramoull <Philippe> writes:
-  | 
-  |      > We have filesystems that are exported sync, other are exported
-  |      > async.
-  | 
-  |      > Can you tell me what the "-5" return code means ?
-  | 
-  | -5 == -EIO. For a soft RPC call it usually means that a timeout has
-  | occured. This would be consistent with the logged 'localhost not
-  | responding'.
+     > And do you have an idea of what could cause such errors ?
 
-Ok.
+The message just means what it says. The problem could be anything
+from a temporary hang of statd or the portmapper right down to a deep
+kernel bug.
 
-And do you have an idea of what could cause such errors ?
-
-We've been  using Linux NFS servers and clients for a long time and never had problems like this before.
-
-Latest kernel before this one was a 2.4.19-pre6 ( servers & clients )
-Now clients & servers are 2.4.21-pre5.
-
-Thanks
-
-Philippe
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
