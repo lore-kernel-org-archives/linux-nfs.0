@@ -1,21 +1,21 @@
-From: "Paul Smith" <pausmith@nortelnetworks.com>
-Subject: Re: Direct mounts on Linux
-Date: 20 Jan 2003 21:48:28 -0500
+From: Scott Mcdermott <smcdermott@questra.com>
+Subject: (autofs) Re: Direct mounts on Linux
+Date: Mon, 20 Jan 2003 22:08:51 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <p5vg0jz08z.fsf@lemming.engeast.baynetworks.com>
-References: <15916.14776.460148.770017@lemming.engeast.baynetworks.com>
-	<20030120214134.GE1042@questra.com>
-Reply-To: "Paul Smith" <pausmith@nortelnetworks.com>
+Message-ID: <20030121030851.GG10369@questra.com>
+References: <15916.14776.460148.770017@lemming.engeast.baynetworks.com> <20030120214134.GE1042@questra.com> <p5vg0jz08z.fsf@lemming.engeast.baynetworks.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from zrtps0kn.nortelnetworks.com ([47.140.192.55])
+Received: from ns1.questra.com ([64.132.48.186])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18aoSv-0007la-00
-	for <nfs@lists.sourceforge.net>; Mon, 20 Jan 2003 18:48:41 -0800
-To: Scott Mcdermott <smcdermott@questra.com>
-In-Reply-To: <20030120214134.GE1042@questra.com>
+	id 18aomS-00020Z-00
+	for <nfs@lists.sourceforge.net>; Mon, 20 Jan 2003 19:08:53 -0800
+Received: from questra.com (hades.roc.questra.com [64.132.48.226])
+	by ns1.questra.com (Postfix) with SMTP id 9861CAB772
+	for <nfs@lists.sourceforge.net>; Mon, 20 Jan 2003 22:08:51 -0500 (EST)
+To: nfs@lists.sourceforge.net
+In-Reply-To: <p5vg0jz08z.fsf@lemming.engeast.baynetworks.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,46 +28,35 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-%% Scott Mcdermott <smcdermott@questra.com> writes:
+Paul Smith on Mon 20/01 21:48 -0500:
+> I know that am-utils doesn't support it,
 
-  sm> Paul Smith on Mon 20/01 13:02 -0500:
+hmm direct mounts? well according to the docs:
 
-  >> I saw a note that direct mounts are not supported on Linux; is this
-  >> true even for autofs?  Or only for user-space stuff like am-utils?
+        The Linux kernels don't support Amd's direct mounts very well,
+        leading to erratic behavior: shares that don't get remounted
+        after the first timeout, inability to restart Amd because its
+        mount points cannot be unmounted, etc. There are some kernel
+        patches on the am-utils Web site, which solve these problems.
 
-  sm> It is true only for autofs.  Of course "mount server:/path
-  sm> /mount/point" will always work :)
+(I think this is talking about using the autofs support in beta
+am-utils)
 
-Well, I kind of meant automounting, so autofs and am-utils :).
+so I guess you need a patch, hmph.
 
-I know that am-utils doesn't support it, and a note in their docs seems
-to imply that the Linux kernel itself doesn't support it... so I was
-curious if autofs supported it.
+> Well... except for direct mounts.  We can all agree that they are evil
+> and they suck, but the fact remains there are a lot of them out there
+> and they are often hard to get rid of...
 
-For example, am-utils on FreeBSD does support direct mounts IIRC.
-
-  sm> Word has it that the am-utils now speaks autofs to the kernel, and
-  sm> does support direct mounts (among other things), so one can have
-  sm> the best of both worlds (speed and features)
-
-Interesting!
-
-  sm> Now we can finally get along in a Sun environment without hacks.
-
-Well... except for direct mounts.  We can all agree that they are evil
-and they suck, but the fact remains there are a lot of them out there
-and they are often hard to get rid of...
-
-  sm> autofs has its own mailing list btw
-
-OK, thanks.
-
--- 
--------------------------------------------------------------------------------
- Paul D. Smith <psmith@nortelnetworks.com>   HASMAT--HA Software Mthds & Tools
- "Please remain calm...I may be mad, but I am a professional." --Mad Scientist
--------------------------------------------------------------------------------
-   These are my opinions---Nortel Networks takes no responsibility for them.
+I don't agree that they are evil or that they suck.  Some mounts are
+static and won't change, and just a simple mount will suffice.  What's
+wrong with using a direct mount in this case (maybe /home/ or
+/var/spool/mail/)? Is there a real argument against this besides "the
+performance sucks when the directory gets large" (which is an admin
+decision I think).  I don't really know, we don't have large enough
+directories that it becomes a problem.  One other good thing about
+direct mounts is that you can immediately `ls' the directory and see all
+the possible entries, but this could be implemented in other ways.
 
 
 -------------------------------------------------------
