@@ -1,23 +1,24 @@
-From: miah <jjohnson@sunrise-linux.com>
-Subject: Re: nfstrace
-Date: Fri, 10 May 2002 05:56:36 -0700
+From: Christian Nygaard <chris@math.uu.se>
+Subject: NFS performance diagnostics
+Date: Fri, 10 May 2002 15:53:40 +0200 (CEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020510055636.A44499@server.sunrise-linux.com>
-References: <DAV590tWXPP1jYSGnwq0000ab79@hotmail.com>
+Message-ID: <Pine.LNX.4.44.0205101546400.7377-100000@anarchy.math.uu.se>
+References: <E175tAR-0003r9-00@usw-sf-list2.sourceforge.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [198.78.66.27] (helo=server.sunrise-linux.com)
-	by usw-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1769wt-0008GE-00
-	for <nfs@lists.sourceforge.net>; Fri, 10 May 2002 05:56:40 -0700
-Received: (from miah@localhost)
-	by server.sunrise-linux.com (8.11.6/8.11.6) id g4ACuaO49336
-	for nfs@lists.sourceforge.net; Fri, 10 May 2002 05:56:36 -0700 (PDT)
-	(envelope-from miah)
+Received: from elanus.its.uu.se ([130.238.4.143])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 176AqB-0004RS-00
+	for <nfs@lists.sourceforge.net>; Fri, 10 May 2002 06:53:47 -0700
+Received: from elanus (localhost [127.0.0.1])
+	by localhost (Postfix) with SMTP id C7EB8484D
+	for <nfs@lists.sourceforge.net>; Fri, 10 May 2002 15:51:12 +0200 (DFT)
+Received: from geopard.math.uu.se (geopard.math.uu.se [130.238.149.4])
+	by elanus.its.uu.se (Postfix) with SMTP id 993344847
+	for <nfs@lists.sourceforge.net>; Fri, 10 May 2002 15:51:09 +0200 (DFT)
 To: nfs@lists.sourceforge.net
-In-Reply-To: <DAV590tWXPP1jYSGnwq0000ab79@hotmail.com>; from tinaarora@hotmail.com on Fri, May 10, 2002 at 11:02:16AM +0530
+In-Reply-To: <E175tAR-0003r9-00@usw-sf-list2.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,23 +31,15 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Then nfstrace isn't on your system, or is not in your PATH, try:
 
-find / -name nfstrace -print
+Howdi folks
 
-or:
+Can anyone recommend a method of getting information on what files
+the nfs daemons is serving? tcpdump shows what files is served
+on the network but I get no good stats what each client is using. 
 
-locate nfstrace
+Chris
 
--miah
-
-On Fri, May 10, 2002 at 11:02:16AM +0530, Tina Arora wrote:
-> hello friends 
-> nfstrace command is not working on my server..
-> whenever I issue it on linux 7.1 i get the error
-> bash: nfstrace : command not found 
-> Please help
-> 
 
 _______________________________________________________________
 
