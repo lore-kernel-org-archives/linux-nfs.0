@@ -1,22 +1,25 @@
-From: Greg Banks <gnb@melbourne.sgi.com>
+From: Olaf Kirch <okir@suse.de>
 Subject: Re: Marking inodes as stale can be wrong
-Date: Fri, 30 Apr 2004 18:47:24 +1000
+Date: Fri, 30 Apr 2004 10:58:20 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <4092129C.34484C9B@melbourne.sgi.com>
-References: <20040429144012.GA15361@suse.de> <1083257096.3686.27.camel@lade.trondhjem.org> <20040429165802.GA18748@suse.de> <1083258570.3686.38.camel@lade.trondhjem.org> <20040429235018.GC4843@sgi.com> <1083285820.14910.77.camel@lade.trondhjem.org> <4091B12C.FBB1FF34@melbourne.sgi.com> <20040430083445.GB29672@suse.de>
+Message-ID: <20040430085820.GD29672@suse.de>
+References: <20040429144012.GA15361@suse.de> <1083257096.3686.27.camel@lade.trondhjem.org> <20040429165802.GA18748@suse.de> <1083258570.3686.38.camel@lade.trondhjem.org> <20040429235018.GC4843@sgi.com> <1083285820.14910.77.camel@lade.trondhjem.org> <4091B12C.FBB1FF34@melbourne.sgi.com> <20040430083445.GB29672@suse.de> <4092129C.34484C9B@melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>, nfs@lists.sourceforge.net
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BJTi3-0004Mg-PL
-	for nfs@lists.sourceforge.net; Fri, 30 Apr 2004 01:49:27 -0700
-Received: from mtvcafw.sgi.com ([192.48.171.6] helo=omx2.sgi.com)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BJTi3-00076o-H3
-	for nfs@lists.sourceforge.net; Fri, 30 Apr 2004 01:49:27 -0700
-To: Olaf Kirch <okir@suse.de>
+	id 1BJTt0-0001kT-9P
+	for nfs@lists.sourceforge.net; Fri, 30 Apr 2004 02:00:46 -0700
+Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.30)
+	id 1BJTsz-0008RX-Rh
+	for nfs@lists.sourceforge.net; Fri, 30 Apr 2004 02:00:46 -0700
+To: Greg Banks <gnb@melbourne.sgi.com>
+In-Reply-To: <4092129C.34484C9B@melbourne.sgi.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -29,37 +32,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Olaf Kirch wrote:
-> 
-> Here's a minimalistic fix. It may be better to change nfsd_acceptable
-> to return 0 on success and negative error code on error, but I'm not
-> sure this is really needed as long as the only acceptance test
-> in nfsd_acceptable is the subtree check.
+On Fri, Apr 30, 2004 at 06:47:24PM +1000, Greg Banks wrote:
+> So in the case where "subtree_check" is on and the client sends a
+> file handle to a file in a tree which has been unexported, a server
+> with the patch will incorrectly send ACCES instead of STALE.
 
-I think the patch makes the opposite mistake to the current code.
-RFC1813 says:
+When we get there, we have already found a connected, valid dentry. We
+also have an export entry, which was specified by the client. If we don't
+have either, we'll error mout with ESTALE long before.
 
-NFS3ERR_ACCES
-       Permission denied. The caller does not have the correct
-       permission to perform the requested operation.[...]
+All that's left to do at this point is make sure the dentry
 
-NFS3ERR_STALE
-       Invalid file handle. The file handle given in the
-       arguments was invalid. The file referred to by that file
-       handle no longer exists or access to it has been
-       revoked.
+ a)	actually resides below the exported inode
+ b)	all intermediate directories have +x for the caller
 
-So in the case where "subtree_check" is on and the client sends a
-file handle to a file in a tree which has been unexported, a server
-with the patch will incorrectly send ACCES instead of STALE.
+So the only case where this patch incorrectly(?) returns EACCESS is if
+the specified dentry does not reside below the exported dentry.
 
-I think the real fix is your other suggestion: changing the calling
-convention of nfsd_acceptable to allow it to choose the error.
+So yes, the cleaner approach is probably to change nfsd_acceptable.
 
-Greg.
+Olaf
 -- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+Olaf Kirch     |  The Hardware Gods hate me.
+okir@suse.de   |
+---------------+ 
 
 
 -------------------------------------------------------
