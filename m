@@ -1,24 +1,32 @@
 From: "Paul Smith" <pausmith@nortelnetworks.com>
 Subject: Re: NFS client write performance issue ... thoughts?
-Date: 12 Jan 2004 12:30:24 -0500
+Date: 12 Jan 2004 16:37:13 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <vpdrn08thy6n.fsf@lemming.engeast.baynetworks.com>
-References: <75587E33AC778145AACCE1601EEABF420D49B2@kda-beexc-02.kda.kongsberg.com>
+Message-ID: <vpdrbrp8j1bq.fsf@lemming.engeast.baynetworks.com>
+References: <32997.141.211.133.197.1073683824.squirrel@webmail.uio.no>
 Reply-To: "Paul Smith" <pausmith@nortelnetworks.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1Ag5tc-0003Ei-Nd
-	for nfs@lists.sourceforge.net; Mon, 12 Jan 2004 09:30:36 -0800
+	id 1Ag9kS-0008La-Ho
+	for nfs@lists.sourceforge.net; Mon, 12 Jan 2004 13:37:24 -0800
 Received: from zrtps0kp.nortelnetworks.com ([47.140.192.56])
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ag5tc-0001DB-8w
-	for nfs@lists.sourceforge.net; Mon, 12 Jan 2004 09:30:36 -0800
-To: "Mikkelborg, Kjetil" <kjetil.mikkelborg@kongsberg.com>
-In-Reply-To: <75587E33AC778145AACCE1601EEABF420D49B2@kda-beexc-02.kda.kongsberg.com>
+	id 1Ag9kS-0002ZF-24
+	for nfs@lists.sourceforge.net; Mon, 12 Jan 2004 13:37:24 -0800
+Received: from zrtps0m6.us.nortel.com (zrtps0m6.us.nortel.com [47.140.192.58])
+	by zrtps0kp.nortelnetworks.com (Switch-2.2.6/Switch-2.2.0) with ESMTP id i0CLbFA11618
+	for <nfs@lists.sourceforge.net>; Mon, 12 Jan 2004 16:37:16 -0500 (EST)
+Received: from lemming.engeast.baynetworks.com (mail@lemming.engeast.baynetworks.com [47.17.140.90])
+	by zrtps0m6.us.nortel.com (Switch-2.2.6/Switch-2.2.0) with ESMTP id i0CLbDK14215
+	for <nfs@lists.sourceforge.net>; Mon, 12 Jan 2004 16:37:14 -0500 (EST)
+Received: from psmith by lemming.engeast.baynetworks.com with local (Exim 3.36 #1 (Debian))
+	id 1Ag9kH-0007bm-00
+	for <nfs@lists.sourceforge.net>; Mon, 12 Jan 2004 16:37:13 -0500
+To: nfs@lists.sourceforge.net
+In-Reply-To: <32997.141.211.133.197.1073683824.squirrel@webmail.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,62 +39,74 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-%% "Mikkelborg, Kjetil" <kjetil.mikkelborg@kongsberg.com> writes:
+Thanks Trond.
 
-Hi; can you please use normal quoting when replying to email?  If you
-just include the entire original then type some comments in the middle
-it's very difficult to find the comments you made.  Thanks!
+We tried out your patch and it did really make a difference in terms of
+both the nfsstat numbers (or, Ethereal in this case) AND the performance
+the user sees, at least from a ClearCase perspective (gnurr.diff is with
+your patch):
 
-  pds> ClearCase implements its own virtual filesystem type, and so is
-  pds> heavily tied to specific kernels (the kernel module is not open
-  pds> source of course :( ).  We basically can move to any kernel that
-  pds> has been released as part of an official Red Hat release (say,
-  pds> 2.4.20-8 from RH9 would work), but no other kernels can be used
-  pds> (the ClearCase kernel module has checks on the sizes of various
-  pds> kernel structures and won't load if they're not what it thinks
-  pds> they should be--and since it's a filesystem it cares deeply about
-  pds> structures that have tended to change a lot.  It won't even work
-  pds> with vanilla kernel.org kernels of the same version.)
+> This time, I used my desktop box (running 2.4.18-27.7.x + gnurr.diff)
+> as view server, while running the small build on a different Linux box.
+> I captured NFS traffic with Ethereal, so as to rule out any possible
+> accounting errors in nfsstat.  Here's what the numbers look like:
+> 
+>            nopatch  gnurr.dif    gnurr.diff     Solaris
+>             UDP/4K     UDP/4K       UDP/32K     TCP/32K
+>            -------  ---------    ----------     -------
+>     WRITE    65017       1298           538         612
+>     COMMIT   29268        994           882           7
+>     LOOKUP    1082       1020          1016        1986
+>     GETATTR    548        490           404         532
+>     READ       480         75            89           0
+>     FSSTAT      60          3             3          60
+>     FSINFO      60          3             3           0
+>     REMOVE      19         15             8         291
+>     ACCESS       0          0             0         291
+>     NULL        10          6             5           0
+>     SETATTR      4          2             3           2
+>     RENAME       4          2             3           2
+>     CREATE       4          2             3           2
+>     ======   =====       ====          ====        ====
+>     Total    96556       3910          2957        3785
+> 
+>     CPU        85s        85s           85s         85s
+>     Elapsed   202s       121s          121s        139s
+> 
+> Bytes read: 1.97MB      0.3MB         0.7MB          ??
+> Bytes writ: 90.3MB      5.2MB         4.9MB          ??
+> 
+> The Solaris numbers are from the same capture I did a few days ago.
+> For the build times, all builds were done on a machine in our Linux
+> pool (which was not patched), using my desktop in various
+> configurations as view server.  For the Solaris view server, I used a
+> Sun Ultra-80 running Solaris 8.  CPU use was that used by the build
+> itself, not the view server, so we'd expect it to be constant.
+> 
+> So Linux with the gnurr.dif patch stacks up pretty well against Solaris.
+> Note that there are no numbers here for Linux with TCP mounts.  That's
+> because I was analyzing the data with ethereal, and it often can't
+> find the RPC boundaries properly when TCP is in use, so the numbers
+> are meaningless.
+> 
+> One noticable difference between Linux and Solaris is that Linux
+> generates a lot more COMMITS than Solaris.
 
-  mk> Actually It does not look like clearcase is checking for an exact
-  mk> kernel version, it just depends on redhat hacks in the kernel (I
-  mk> have no clue to which).
+However, then we discovered something concerning, so we are not using
+the patch as-is right now, at least pending further investigation:
 
-I didn't say it was checking for an exact kernel version.  I said it
-checks the sizes of various kernel structures.  This is done dynamically
-when the kernel module is loaded.
-
-The way it works is this: the MVFS filesystem loadable module comes in
-two parts: a precompiled part which you don't get the source to, and a
-.c file which is a "wrapper".  The wrapper is recompiled against your
-current kernel, headers, etc. then the two are linked together to form
-the real mvfs.o module.  The wrapper provides a buffer against some
-kinds of changes to the kernel.
-
-But, the wrapper also examines about 30 different kernel data structures
-and compares their sizes in your kernel against the ones expected in the
-prebuilt .o file.  If they're different then the module won't load.
-Some of these are pretty static, like "struct timeval", but some are
-much more dynamic, like "struct file", etc.  For some structures they
-care about the size of the whole structure, for some they care about the
-offset into the structure of a given field.
-
-  mk> But taking a 2.4.20-XX redhat kernel, and building it from SRPM
-  mk> actually work. Furthermore, since you have the kernel in source
-  mk> when building it from SRPM,
-
-I never bother to build from the SRPM.  It's much more straightforward
-to build from the kernel-source RPM.  YMMV of course.
-
-  mk> you can add as many patches as you want, as long as these patches
-  mk> does not screw with the same stuff clearcase mvfs relies on. I
-  mk> managed to do some heavy modifying of a rh9 kernel SRPM, patch it
-  mk> up to what level I needed + include support for diskless boot.
-
-Yes; as long as you don't mess with the structures ClearCase cares
-about, you win.  You can find the exact structures in question in the
-STRUCT_CHECK_INIT macro in the mvfs_param.h file in the ClearCase
-distribution directory.
+> Oops.  With this patch applied, I didn't see a problem when using
+> my desktop as view server, but when I use it to do builds on, I'm
+> occasionally seeing the following:
+> 
+>   ldsimpc: final link failed: Message too long
+> 
+> Ldsimpc is the GNU linker built as a cross-linker for VxSim (ie: for
+> MinGW).  The linker is getting EMSGSIZE somehow, and at this point, I
+> can only guess that it's getting it on a call to write().  Probably NFS
+> is trying to write an overly large UDP packet to the server.  This is
+> with UDP mounts and rsize=wsize=4KB.  Write failures are a little scary,
+> so I think I'm going to back out this patch for now.
 
 -- 
 -------------------------------------------------------------------------------
