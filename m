@@ -1,32 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: trouble with file locking
-Date: Thu, 20 Nov 2003 02:36:47 -0500
+From: NeilBrown <neilb@cse.unsw.edu.au>
+Subject: [PATCH] kNFSd - 4 of 4 - Make sure dnotify events happen for NFS read and write.
+Date: Fri, 21 Nov 2003 14:27:14 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16316.28431.109436.403040@charged.uio.no>
-References: <20031112105043.020c1548.erik@thiele-hydraulik.de>
-	<Pine.LNX.4.58.0311191259400.846@lewis.et.byu.edu>
-	<shsd6bohzxw.fsf@charged.uio.no>
-	<20031120070531.7886de98.erik@thiele-hydraulik.de>
-	<16316.23490.266052.855506@charged.uio.no>
-	<20031120074957.6f1a95d5.erik@thiele-hydraulik.de>
-Reply-To: trond.myklebust@fys.uio.no
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: trond.myklebust@fys.uio.no,
-    davidd@et.byu.edu,
-    nfs@lists.sourceforge.net
+Message-ID: <E1AN1ww-0008T4-00@notabene>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AMjNh-0008H7-00
-	for <nfs@lists.sourceforge.net>; Wed, 19 Nov 2003 23:37:37 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AMjN3-0007qU-9O
-	for nfs@lists.sourceforge.net; Wed, 19 Nov 2003 23:36:57 -0800
-To: Erik Thiele <erik@thiele-hydraulik.de>
-In-Reply-To: <20031120074957.6f1a95d5.erik@thiele-hydraulik.de>
+	id 1AN1xi-0003hh-00
+	for <nfs@lists.sourceforge.net>; Thu, 20 Nov 2003 19:28:02 -0800
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.24)
+	id 1AN1xh-0007pS-Kc
+	for nfs@lists.sourceforge.net; Thu, 20 Nov 2003 19:28:01 -0800
+Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
+	(for <torvalds@osdl.org>) (for <nfs@lists.sourceforge.net>) By note
+	With Smtp ; Fri, 21 Nov 2003 14:27:57 +1100
+To: Linus Torvalds <torvalds@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -39,47 +30,47 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Erik Thiele <erik@thiele-hydraulik.de> writes:
+### Comments for ChangeSet
 
-     > from my original mail:
+Based on code from  Terje Malmedal <terje.malmedal@usit.uio.no>
 
+ ----------- Diffstat output ------------
+ ./fs/nfsd/vfs.c |    8 ++++++--
+ 1 files changed, 6 insertions(+), 2 deletions(-)
 
-I know... I was responding to the suggestion that you use flock()
-instead. That is a bad idea.
-
-     > from my original mail:
-
-     > i am exporting to old hp-ux machines a subdirectory of / like
-     > this: /Archiv xxx.unix.yyy-intern(rw,no_root_squash)
-
-     > i also export my homedirectory to my linux woody debian
-     > machines like this: /home/erik
-     > str.blafoo-intern(rw,no_root_squash)
-
-
-     > .. so the question is, can different exports interfere with
-     > each other with locking???
-
-If the server is a linux box, then yes. I have a patch from Patrice
-Dumas that fixes a bug w.r.t. 2 clients waiting on a lock. The current
-code allows those waits to interfere with one another.
-See
-
-   http://www.fys.uio.no/~trondmy/src/Linux-2.4.x/2.4.23-rc1/linux-2.4.23-04-fix_lockd3.dif
-
-     > can one lock files on a readonly export? (then this would be a
-     > security problem, because if i mount an anonymous readonly
-     > export with hp-ux, the other exports will fail to lock.
-
-
-     > again, what i don't understand is that a restart of the statd
-     > daemon fixes the problem forever.
-
-That signals to the server that the client has rebooted (or vice
-versa) and tells it to clear all locks (start lock recovery).
-
-Cheers,
-  Trond
+diff ./fs/nfsd/vfs.c~current~ ./fs/nfsd/vfs.c
+--- ./fs/nfsd/vfs.c~current~	2003-11-21 14:10:56.000000000 +1100
++++ ./fs/nfsd/vfs.c	2003-11-21 14:11:09.000000000 +1100
+@@ -43,6 +43,7 @@
+ #endif /* CONFIG_NFSD_V3 */
+ #include <linux/nfsd/nfsfh.h>
+ #include <linux/quotaops.h>
++#include <linux/dnotify.h>
+ 
+ #include <asm/uaccess.h>
+ 
+@@ -680,6 +681,7 @@ nfsd_read(struct svc_rqst *rqstp, struct
+ 		nfsdstats.io_read += err;
+ 		*count = err;
+ 		err = 0;
++		dnotify_parent(file.f_dentry, DN_ACCESS);
+ 	} else 
+ 		err = nfserrno(err);
+ out_close:
+@@ -745,9 +747,11 @@ nfsd_write(struct svc_rqst *rqstp, struc
+ 	/* Write the data. */
+ 	oldfs = get_fs(); set_fs(KERNEL_DS);
+ 	err = vfs_writev(&file, vec, vlen, &offset);
+-	if (err >= 0)
+-		nfsdstats.io_write += cnt;
+ 	set_fs(oldfs);
++	if (err >= 0) {
++		nfsdstats.io_write += cnt;
++		dnotify_parent(file.f_dentry, DN_MODIFY);
++	}
+ 
+ 	/* clear setuid/setgid flag after write */
+ 	if (err >= 0 && (inode->i_mode & (S_ISUID | S_ISGID))) {
 
 
 -------------------------------------------------------
