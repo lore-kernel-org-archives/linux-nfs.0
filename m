@@ -1,17 +1,19 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: Re: broken umount -f
-Date: Tue, 14 Jan 2003 11:36:29 -0800
+From: Erik Enge <eenge@prium.net>
+Subject: How does lockd work when specifying mountd port.
+Date: Tue, 14 Jan 2003 14:38:27 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <6440EA1A6AA1D5118C6900902745938E07D551EB@black.eng.netapp.com>
+Message-ID: <871y3fwmh8.fsf@prium.net>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mx01.netapp.com ([198.95.226.53])
+Received: from main.gmane.org ([80.91.224.249])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18YWrX-00049j-00
-	for <nfs@lists.sourceforge.net>; Tue, 14 Jan 2003 11:36:39 -0800
-To: "'Scott Mcdermott'" <smcdermott@questra.com>
+	id 18YWtL-0004p0-00
+	for <nfs@lists.sourceforge.net>; Tue, 14 Jan 2003 11:38:31 -0800
+Received: from list by main.gmane.org with local (Exim 3.35 #1 (Debian))
+	id 18YWs2-0006fg-00
+	for <nfs@lists.sourceforge.net>; Tue, 14 Jan 2003 20:37:10 +0100
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,25 +26,21 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> -----Original Message-----
-> From: Scott Mcdermott [mailto:smcdermott@questra.com]
-> Sent: Tuesday, January 14, 2003 2:20 PM
-> To: Trond Myklebust
-> Cc: nfs@lists.sourceforge.net
-> Subject: Re: [NFS] Re: broken umount -f
-> 
-> Last I checked, the programs wouldn't die even with -KILL 
-> when they were
-> stuck in device-wait state.  The only way to reboot a machine 
-> with such
-> processes is to reboot -f, which is wrong.  The filesystems should be
-> able to have forced umount at sysadmin's discretion.
+Hi.
 
-do you remember which kernel this was?
+I have opened ports 111, 2049 and 32700 through my firewall for NFS
+traffic.  32700 is for mountd.  I am wondering how lockd works under
+these conditions?  Does it talk through one of the mention ports or does
+it not work (I can't see any dropped packets, but lockd is still
+running).
 
-trond fixed a long-standing "processes stuck in 'D' state" bug in
-2.4.20.  this bug may be the reason these processes didn't die
-when you killed them.
+Also, how does this work with many NFS clients?  Will they all go
+through 32700 for mounting and will this cause a problem?
+
+Thanks,
+
+Erik Enge.
+
 
 
 -------------------------------------------------------
