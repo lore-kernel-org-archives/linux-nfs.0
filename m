@@ -1,90 +1,128 @@
-From: Ion Badulescu <ionut@badula.org>
-Subject: Re: [PATCH] Makes nfs mount warning less frequent and more
- valuable
-Date: Mon, 21 Mar 2005 11:18:39 -0500 (EST)
-Message-ID: <Pine.LNX.4.61.0503211051110.5958@guppy.limebrokerage.com>
-References: <4237178A.5030003@dgreaves.com>  <Pine.LNX.4.61.0503151439250.22235@guppy.limebrokerage.com>
-  <42384B59.3060408@dgreaves.com> <1111075232.13215.14.camel@lade.trondhjem.org>
+From: Jesper Juhl <juhl-lkml@dif.dk>
+Subject: [PATCH] remove null pointer checks prior to calling kfree() - in
+ fs/nfs/
+Date: Fri, 25 Mar 2005 22:30:41 +0100 (CET)
+Message-ID: <Pine.LNX.4.62.0503252227550.2498@dragon.hyggekrogen.localhost>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: David Greaves <david@dgreaves.com>,
-	Neil Brown <neilb@cse.unsw.edu.au>, Erez Zadok <ezk@cs.sunysb.edu>,
-	am-utils@fsl.cs.sunysb.edu, nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DDPcT-00089z-JF
-	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 08:19:09 -0800
-Received: from ns1.limegroup.com ([64.48.93.2])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.41)
-	id 1DDPcR-0000fE-Kl
-	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 08:19:10 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1111075232.13215.14.camel@lade.trondhjem.org>
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+To: Neil Brown <neilb@cse.unsw.edu.au>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Thu, 17 Mar 2005, Trond Myklebust wrote:
-
-> I started rethinking this subject last night in between cleanups of the
-> ACL code. Attached is the resulting patch proposal. It goes a lot
-> further that what you do, but should hopefully provide better error
-> reporting in "mount" and clean up some of that code.
->
-> In particular, note that it attempts to add an error code that tells you
-> whether or not NFSv3 is actually supported by the kernel: I used
-> EPROTONOSUPPORT, since that gives the correct error message with
-> perror() (although strictly, EPROTONOSUPPORT appears to be a socket
-> error). If anyone has a better suggestion for an error that makes more
-> sense, then I'm all ears...
-
-ENOSYS might be an alternative, though personally I have no problem with 
-EPROTONOSUPPORT. ENOSYS is worse because it's then hard to differentiate 
-between no NFS support at all and no support for that particular version.
-
-This is actually very good news for amd, because we've been struggling for 
-years to detect (and work around) the case when the kernel version (and 
-headers) indicate that v3 support would be available on the client side, 
-but the user doesn't have it compiled in.
-
-I think the patch looks good. Just a small problem with one error path:
-
-+       s = ERR_PTR(-ENOMEM);
-         server = kmalloc(sizeof(struct nfs_server), GFP_KERNEL);
-         if (!server)
--               return ERR_PTR(-ENOMEM);
-+               goto out_err;
-[...]
-+out_err:
-+       kfree(server);
-+       return s;
-
-This will call kfree(NULL) if the kmalloc fails. Which may well be fine--I 
-haven't looked at kfree to see if handles that case.
-
-Thanks,
-Ion
-
--- 
-   It is better to keep your mouth shut and be thought a fool,
-             than to open it and remove all doubt.
+(please keep me on CC)
 
 
--------------------------------------------------------
-This SF.net email is sponsored by Microsoft Mobile & Embedded DevCon 2005
-Attend MEDC 2005 May 9-12 in Vegas. Learn more about the latest Windows
-Embedded(r) & Windows Mobile(tm) platforms, applications & content.  Register
-by 3/29 & save $300 http://ads.osdn.com/?ad_id=6883&alloc_id=15149&op=click
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+kfree() has no problem dealing with NULL pointers.
+
+
+Signed-off-by: Jesper Juhl <juhl-lkml@dif.dk>
+
+--- linux-2.6.12-rc1-mm3-orig/fs/nfs/delegation.c	2005-03-25 15:28:59.000000000 +0100
++++ linux-2.6.12-rc1-mm3/fs/nfs/delegation.c	2005-03-25 21:43:29.000000000 +0100
+@@ -111,8 +111,7 @@ int nfs_inode_set_delegation(struct inod
+ 		}
+ 	}
+ 	spin_unlock(&clp->cl_lock);
+-	if (delegation != NULL)
+-		kfree(delegation);
++	kfree(delegation);
+ 	return status;
+ }
+ 
+--- linux-2.6.12-rc1-mm3-orig/fs/nfs/inode.c	2005-03-25 15:28:59.000000000 +0100
++++ linux-2.6.12-rc1-mm3/fs/nfs/inode.c	2005-03-25 21:44:28.000000000 +0100
+@@ -1553,8 +1553,7 @@ static void nfs_kill_super(struct super_
+ 
+ 	rpciod_down();		/* release rpciod */
+ 
+-	if (server->hostname != NULL)
+-		kfree(server->hostname);
++	kfree(server->hostname);
+ 	kfree(server);
+ }
+ 
+@@ -1796,8 +1795,7 @@ nfs_copy_user_string(char *dst, struct n
+ 			return ERR_PTR(-ENOMEM);
+ 	}
+ 	if (copy_from_user(dst, src->data, maxlen)) {
+-		if (p != NULL)
+-			kfree(p);
++		kfree(p);
+ 		return ERR_PTR(-EFAULT);
+ 	}
+ 	dst[maxlen] = '\0';
+@@ -1887,10 +1885,8 @@ static struct super_block *nfs4_get_sb(s
+ out_err:
+ 	s = (struct super_block *)p;
+ out_free:
+-	if (server->mnt_path)
+-		kfree(server->mnt_path);
+-	if (server->hostname)
+-		kfree(server->hostname);
++	kfree(server->mnt_path);
++	kfree(server->hostname);
+ 	kfree(server);
+ 	return s;
+ }
+@@ -1910,8 +1906,7 @@ static void nfs4_kill_super(struct super
+ 
+ 	destroy_nfsv4_state(server);
+ 
+-	if (server->hostname != NULL)
+-		kfree(server->hostname);
++	kfree(server->hostname);
+ 	kfree(server);
+ }
+ 
+--- linux-2.6.12-rc1-mm3-orig/fs/nfs/nfs4state.c	2005-03-25 15:28:59.000000000 +0100
++++ linux-2.6.12-rc1-mm3/fs/nfs/nfs4state.c	2005-03-25 21:45:47.000000000 +0100
+@@ -69,10 +69,9 @@ init_nfsv4_state(struct nfs_server *serv
+ void
+ destroy_nfsv4_state(struct nfs_server *server)
+ {
+-	if (server->mnt_path) {
+-		kfree(server->mnt_path);
+-		server->mnt_path = NULL;
+-	}
++	kfree(server->mnt_path);
++	server->mnt_path = NULL;
++
+ 	if (server->nfs4_state) {
+ 		nfs4_put_client(server->nfs4_state);
+ 		server->nfs4_state = NULL;
+@@ -307,8 +306,7 @@ struct nfs4_state_owner *nfs4_get_state_
+ 		new = NULL;
+ 	}
+ 	spin_unlock(&clp->cl_lock);
+-	if (new)
+-		kfree(new);
++	kfree(new);
+ 	if (sp != NULL)
+ 		return sp;
+ 	put_rpccred(cred);
+--- linux-2.6.12-rc1-mm3-orig/fs/nfs/proc.c	2005-03-25 15:28:59.000000000 +0100
++++ linux-2.6.12-rc1-mm3/fs/nfs/proc.c	2005-03-25 21:46:22.000000000 +0100
+@@ -329,8 +329,7 @@ nfs_proc_unlink_done(struct dentry *dir,
+ {
+ 	struct rpc_message *msg = &task->tk_msg;
+ 	
+-	if (msg->rpc_argp)
+-		kfree(msg->rpc_argp);
++	kfree(msg->rpc_argp);
+ 	return 0;
+ }
+ 
+--- linux-2.6.12-rc1-mm3-orig/fs/nfs/unlink.c	2005-03-21 23:12:41.000000000 +0100
++++ linux-2.6.12-rc1-mm3/fs/nfs/unlink.c	2005-03-25 21:46:41.000000000 +0100
+@@ -52,8 +52,7 @@ nfs_put_unlinkdata(struct nfs_unlinkdata
+ {
+ 	if (--data->count == 0) {
+ 		nfs_detach_unlinkdata(data);
+-		if (data->name.name != NULL)
+-			kfree(data->name.name);
++		kfree(data->name.name);
+ 		kfree(data);
+ 	}
+ }
