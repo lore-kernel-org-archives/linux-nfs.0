@@ -1,13 +1,13 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 1 of 7 - Release rpc response when dropping request.
-Date: Tue, 17 Dec 2002 12:59:25 +1100
+Subject: [PATCH] kNFSd - 6 of 7 - Correct some error codes reutrned in nfsfh.c
+Date: Tue, 17 Dec 2002 12:59:27 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E18O713-0000oq-00@notabene.cse.unsw.edu.au>
+Message-ID: <E18O715-0000pC-00@notabene.cse.unsw.edu.au>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18O71O-0003nk-00
+	id 18O71O-0003np-00
 	for <nfs@lists.sourceforge.net>; Mon, 16 Dec 2002 17:59:46 -0800
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.233.239] == wireless-239.wireless.cse.unsw.EDU.AU)
@@ -27,35 +27,40 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Marcelo, 
- This is the first of 7 smallish nfsd related patches for 2.4.21-pre.
- Thanks, NeilBrown
 
-If a kmalloc failure causes us to have to drop an nfs request,
-the ->pc_release function currently isn't called, so
-dentries can leak.  This fixes it.
+These error spotted by  "Kendrick M. Smith" <kmsmith@umich.edu>
+
+They aren't very significant as a well-behaved client is
+unlikely to make a request that would result in these errors.
+
+
 
  ----------- Diffstat output ------------
- ./net/sunrpc/svc.c |    6 +++++-
- 1 files changed, 5 insertions(+), 1 deletion(-)
+ ./fs/nfsd/nfsfh.c |    9 +++++++--
+ 1 files changed, 7 insertions(+), 2 deletions(-)
 
-diff ./net/sunrpc/svc.c~current~ ./net/sunrpc/svc.c
---- ./net/sunrpc/svc.c~current~	2002-12-16 16:28:08.000000000 +1100
-+++ ./net/sunrpc/svc.c	2002-12-16 16:28:09.000000000 +1100
-@@ -333,8 +333,12 @@ svc_process(struct svc_serv *serv, struc
- 		}
- 	} else {
- 		dprintk("svc: calling dispatcher\n");
--		if (!versp->vs_dispatch(rqstp, statp))
-+		if (!versp->vs_dispatch(rqstp, statp)) {
-+			/* Release reply info */
-+			if (procp->pc_release)
-+				procp->pc_release(rqstp, NULL, rqstp->rq_resp);
- 			goto dropit;
-+		}
+diff ./fs/nfsd/nfsfh.c~current~ ./fs/nfsd/nfsfh.c
+--- ./fs/nfsd/nfsfh.c~current~	2002-12-16 16:30:07.000000000 +1100
++++ ./fs/nfsd/nfsfh.c	2002-12-17 09:50:09.000000000 +1100
+@@ -678,11 +678,16 @@ fh_verify(struct svc_rqst *rqstp, struct
+ 
+ 	/* Type can be negative to e.g. exclude directories from linking */
+ 	if (type > 0 && (inode->i_mode & S_IFMT) != type) {
+-		error = (type == S_IFDIR)? nfserr_notdir : nfserr_isdir;
++		if (type == S_IFDIR)
++			error = nfserr_notdir;
++		else if ((inode->i_mode & S_IFMT) == S_IFDIR)
++			error = nfserr_isdir;
++		else
++			error = nfserr_inval;
+ 		goto out;
+ 	}
+ 	if (type < 0 && (inode->i_mode & S_IFMT) == -type) {
+-		error = (type == -S_IFDIR)? nfserr_notdir : nfserr_isdir;
++		error = (type == -S_IFDIR)? nfserr_isdir : nfserr_notdir;
+ 		goto out;
  	}
  
- 	/* Check RPC status result */
 
 
 -------------------------------------------------------
