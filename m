@@ -1,28 +1,16 @@
-From: Jeremy Sanders <jss@ast.cam.ac.uk>
-Subject: Re: Slow performance with 2.4.19pre1
-Date: Thu, 4 Jul 2002 16:25:43 +0100 (BST)
+From: James Pearson <james-p@moving-picture.com>
+Subject: NFS server stalls with 2.4.18 + XFS 1.1
+Date: Thu, 04 Jul 2002 17:16:06 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0207041624120.30131-100000@xpc1.ast.cam.ac.uk>
-References: <Pine.LNX.4.44.0207021355580.22749-100000@xpc1.ast.cam.ac.uk>
+Message-ID: <ag1sg0$348$2@main.gmane.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from maroon.csi.cam.ac.uk ([131.111.8.2])
+Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17Q8UP-0006YC-00
-	for <nfs@lists.sourceforge.net>; Thu, 04 Jul 2002 08:25:49 -0700
-Received: from cass41.ast.cam.ac.uk ([131.111.69.186])
-	by maroon.csi.cam.ac.uk with esmtp (Exim 4.05)
-	id 17Q8UJ-0003XU-00
-	for nfs@lists.sourceforge.net; Thu, 04 Jul 2002 16:25:43 +0100
-Received: from xalph6.ast.cam.ac.uk (xalph6 [131.111.68.34])
-	by cass41.ast.cam.ac.uk (8.11.6+Sun/8.11.6) with ESMTP id g64FPh204717
-	for <nfs@lists.sourceforge.net>; Thu, 4 Jul 2002 16:25:43 +0100 (BST)
-Received: from xpc1.ast.cam.ac.uk (IDENT:4sCONcn0CMHOAfvM4swrH/9JlZQPo+DP@xpc1.ast.cam.ac.uk [131.111.68.219])
-	by xalph6.ast.cam.ac.uk (8.10.0/8.10.0) with ESMTP id g64FPhp05061
-	for <nfs@lists.sourceforge.net>; Thu, 4 Jul 2002 16:25:43 +0100 (BST)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <Pine.LNX.4.44.0207021355580.22749-100000@xpc1.ast.cam.ac.uk>
+	id 17Q9HI-00038p-00
+	for <nfs@lists.sourceforge.net>; Thu, 04 Jul 2002 09:16:20 -0700
+To: nfs@lists.sourceforge.net, linux-xfs@oss.sgi.com
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -35,20 +23,23 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Sorry - I know it's bad form to reply to one's own emails. It seems that
-the stock 2.4.19rc1 kernel doesn't have the problem as a client, and so
-it's the RedHat patched 2.4.18 kernel which is a very slow client. This
-looks like a RedHat bug.
+We have noticed a problem with a couple of our NFS servers (running
+RedHat 7.2 with a stock 2.4.18 kernel with XFS v1.1) whereby NFS access
+slows to a crawl or stalls.
 
-Also the title of this mail is rather confusing!
+The exported filesystem(s) are XFS with 8 nfsd's running - when we have
+the problem the load average is about 8 - but CPU usage, disk access and
+network traffic are minimal.
 
-Jeremy
+I found, by accident, that running the command 'sync' appears to 'fix'
+the situation...
 
--- 
-Jeremy Sanders <jss@ast.cam.ac.uk>   http://www-xray.ast.cam.ac.uk/~jss/
-X-Ray Group, Institute of Astronomy, University of Cambridge, UK.
-Public Key Server PGP Key ID: E1AAE053
+I'm not sure if this is an XFS or NFS related problem (hence posting to
+both lists).
 
+Thanks
+
+James Pearson
 
 
 -------------------------------------------------------
