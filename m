@@ -1,21 +1,24 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: [kNFSD] [PATCH] fixed '-p port' arg to rpc.nfsd plus more.
-Date: Tue, 22 Mar 2005 10:34:32 +1100
-Message-ID: <16959.23048.930497.833801@cse.unsw.edu.au>
-References: <423EDD43.8000209@RedHat.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: open O_EXCL works?
+Date: Mon, 21 Mar 2005 19:01:15 -0500
+Message-ID: <1111449675.10980.50.camel@lade.trondhjem.org>
+References: <20050314080517.BD8F.BRANDEN@terra.com.br>
+	 <1110813864.30085.47.camel@lade.trondhjem.org>
+	 <20050321181858.BE73.BRANDEN@terra.com.br>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1
 Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DDWPy-0004nd-HA
-	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 15:34:42 -0800
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1DDWPx-0004XA-SA
-	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 15:34:42 -0800
-To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: message from Steve Dickson on Monday March 21
+	id 1DDWpu-00065r-05
+	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 16:01:30 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1DDWps-0006az-Cl
+	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 16:01:29 -0800
+To: Filipe Brandenburger <branden@terra.com.br>
+In-Reply-To: <20050321181858.BE73.BRANDEN@terra.com.br>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,79 +32,59 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Monday March 21, SteveD@redhat.com wrote:
-> Hello,
-> 
-> The following patches fix the '-p port' command line
-> argument to rpc.nfsd as well as adds following
-> flags that control the NFS versions and transports that
-> rpc.nfsd will use.
+m=E5 den 21.03.2005 Klokka 18:31 (-0300) skreiv Filipe Brandenburger:
+> Hi, there.
+>=20
+> I'm trying to make my program work correctly over NFS, but apparently I
+> still have a race condition, because I'm getting inconsistencies. I
+> still can't find out exactly what is happening. This is what I'm doing:
+>=20
+>=20
+>   f =3D open("myfile", O_CREAT|O_WRONLY|O_APPEND)
+>=20
+>   [repeat the loop below for the data]
+>     hardlink("myfile", "myfile.lock")
+>     -> if it fails, invalidate information
+>     write(f, "mydata", sizeof(mydata))
+>     unlink("myfile.lock")
+>   [end loop]
+>=20
+>   close(f)
+>=20
+>=20
+> I would expect to get consistent data, as "hardlink" should be an atomic
+> operation over NFS (according to the previous posts on this thread). But
+> I'm still having problems.
+>=20
+> What I think is happening is that one process in one host is silently
+> overwriting data just written by another process on another host (this
+> overwriting happens on the same second interval), instead of appending
+> to the end of the file, just after that other process record...
+>=20
+> I mean, I found out that append writes are not atomic in Linux 2.4, but
+> if I have a hardlink operation just before the write, it should fix the
+> issue, shouldn't it?
 
-While this is all very good in principle, there are some details I'm
-not comfortable with....
-In particular, the kernel interface.
-You have changed 
-  /proc/fs/nfsd/threads
-to contain not just threads information, but also port, protocol and
-version information.
+Append writes are *never* atomic on NFS for any platform. They would
+need additional protocol support.
 
-This is not good.
+For newer kernels, you should read all about the NFS cache consistency
+model on
 
-I would rather (I think) have two new files
-   /proc/fs/nfsd/version
-and
-   /proc/fs/nfsd/ports
+   http://nfs.sourceforge.net/#faq_a8
 
-"version" should give a list of available versions, and which are
-enabled, on read, and should enable or disable version on write.
-e.g.
-   # cat version
-   -2 +3 -4
+That will tell you why you should create the lock file before opening
+the file.
+On an old kernel, like 2.4.20, you will also have to set the "noac"
+mount option. It makes everything very slow, but it is necessary in
+order to compensate for the lack of close-to-open cache consistency.
 
-This means that versions 2, 3, and 4 are available. Only 3 is enabled.
+Cheers,
+  Trond
 
-   # echo +4 > version
+--=20
+Trond Myklebust <trond.myklebust@fys.uio.no>
 
-This enables version 4 (if it is available).
-
-"ports".... should we allow different protocols to use different
-   ports?  2049 for tcp, but use 5123 for udp ???
-   I think we should probably allow for distinguishing between ipv4
-   and ipv6.
-   And would we also want to allow binding to particular IP addresses
-   ???? or multiple ports???
-
-   Maybe a better interface is to open and bind a socket in userspace,
-   and pass it down to the kernel.  Maybe not..
-
- How about the "ports" file contains lines:
-   family:proto:address:port
- e.g.
-   ipv4:udp:*:2049
-
- Where new entries can added one line at a time:
-   echo "ipv4:tcp:*:5123" > /proc/fs/nfsd/ports
- and are all read at once.
-   # cat  /proc/fs/nfsd/ports
-   ipv4:udp:*:2049
-   ipv4:tcp:*:2049
-   #
- Initially, the only recognised address would be "*", and multiple
- ports of the same protocol would not be permitted (i.e. write(2)
- returns and error).
-
- A port could be disabled with
-   echo "-ipv4:udp:*:2049" > /proc/fs/nfsd/ports
- maybe.
-  
- When the first thread is started, if no ports are open, the default
- ports (2049 for ipv4:udp and ipv4:tcp) are openned, otherwise the
- current ports are used.
-
-I'm happy to consider changes in syntax, but I really don't like
-merging these very different concepts in the one file.
-
-NeilBrown
 
 
 -------------------------------------------------------
