@@ -1,27 +1,29 @@
-From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
-Subject: Re: NFS write errors
-Date: Thu, 14 Oct 2004 09:06:29 -0700
+From: Thomas Lenherr <thomas@lenherr.name>
+Subject: nfs corrupts files
+Date: Thu, 14 Oct 2004 18:14:44 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1097769989.8133.3071.camel@tesuji.nac.uci.edu>
-References: <1097686177.8133.2915.camel@tesuji.nac.uci.edu>
-	 <416D8C32.8000801@RedHat.com>
-	 <1097699964.8133.2940.camel@tesuji.nac.uci.edu>
-	 <416E7497.1090307@RedHat.com>
+Message-ID: <416EA5F4.5090701@lenherr.name>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-2Bpff4LW53tqsZkJZbWf"
-Cc: Dan Stromberg <strombrg@dcs.nac.uci.edu>, nfs@lists.sourceforge.net
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ protocol="application/pgp-signature";
+ boundary="------------enig5B4F55BC2D31C64ADE76F8AB"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CI87f-00020I-Hk
-	for nfs@lists.sourceforge.net; Thu, 14 Oct 2004 09:06:35 -0700
-Received: from dcs.nac.uci.edu ([128.200.34.32] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1CI87e-0006bZ-6o
-	for nfs@lists.sourceforge.net; Thu, 14 Oct 2004 09:06:35 -0700
-To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: <416E7497.1090307@RedHat.com>
+	id 1CI8Fi-0004Cd-5K
+	for nfs@lists.sourceforge.net; Thu, 14 Oct 2004 09:14:54 -0700
+Received: from mx8.bluewin.ch ([195.186.4.211])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CI8Fg-00087O-TZ
+	for nfs@lists.sourceforge.net; Thu, 14 Oct 2004 09:14:54 -0700
+Received: from mephisto.lenherr.name (83.76.51.231) by mx8.bluewin.ch (Bluewin AG 7.0.030.2)
+        id 4164061100382DA2 for nfs@lists.sourceforge.net; Thu, 14 Oct 2004 16:14:46 +0000
+Received: from [10.0.0.10] (baal.lenherr.name [10.0.0.10])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mephisto.lenherr.name (Postfix) with ESMTP id 19422391AA
+	for <nfs@lists.sourceforge.net>; Thu, 14 Oct 2004 18:14:46 +0200 (CEST)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,48 +36,69 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
+--------------enig5B4F55BC2D31C64ADE76F8AB
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
---=-2Bpff4LW53tqsZkJZbWf
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+hi everyone,
 
-On Thu, 2004-10-14 at 05:44, Steve Dickson wrote:
-> Dan Stromberg wrote:
->=20
-> >Both of the write errors I've documented were during a huge rsync.
-> > =20
-> >
-> hmm... are you are using soft mounts?
->=20
-> SteveD.
+ok, here is what i did:
+i had some files on an nfs-server (v3) using kernel 2.6.8-gentoo-r8
+(updated because of the trouble). the 9 files had an average size of
+about 180mB and i built the md5sums of these files via ssh _on_ this
+server.
 
-I didn't specify hard/soft or intr/nointr, and mount | grep doesn't
-indicate anything either way.  I assume it's defaulting to hard +
-nointr.
+after that i transferred these files to my workstation, once via nfs and
+once via smb and let them check with md5sum again. the files transferred
+with smb were ok, but 6 of the 9 files tranferred via nfs were corrupt.
+then i made cmp between the local files (transferred with nfs of course)
+and the files on the nfs-server. the result:
+1) multiple use of cmp on files which md5sum mentioned as corrupt
+resulted in reporting differences at different positions
+2) sometimes the usage of cmp on files which md5sum mentioned as correct
+resulted in reporting differences...
 
-I believe the fact that the mount remains mounted after the error,
-supports the idea that it isn't mounted soft.
+so, as you see, there's definitly something wrong
+now some further infos:
+there are no log messages either on the client nor on the server.
 
-Thanks!
+export-config:
+---------------------------------------------------
+mephisto root # exportfs -v
+/raid/data/public/media
+                      baal(rw,wdelay,nohide,no_root_squash)
+/raid/data      baal(rw,wdelay,no_root_squash)
+---------------------------------------------------
+mephisto is my servername, baal is my clientname and the subdirectory
+has to be reexported as it is a new mount-point
 
---=20
-Dan Stromberg DCS/NACS/UCI <strombrg@dcs.nac.uci.edu>
+the line from the /etc/fstab on client:
+---------------------------------------------------
+thomas@baal thomas $ grep nfs /etc/fstab
+mephisto:/raid/data/    /data           nfs             rw,hard,intr    0 0
+---------------------------------------------------
 
 
---=-2Bpff4LW53tqsZkJZbWf
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
+i'm thankful for any help as i don't know, where the mistake might be....
+
+thomas
+
+--------------enig5B4F55BC2D31C64ADE76F8AB
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v1.2.4 (GNU/Linux)
+Comment: Using GnuPG with Thunderbird - http://enigmail.mozdev.org
 
-iD8DBQBBbqQFo0feVm00f/8RAjz1AJ4pcY8FrPXgMe/z8RA/AfgvOFwFxgCgiDST
-uWGb+Y2N1+UXG2MiM5DGkng=
-=/ink
+iD8DBQFBbqX03E1pPHX30VoRAnxmAJ9Bew1zAZ6Nezo0cYbo31cgscqnHACgxNIa
+IJhjk/RiLJZ0AI1O/BSiOzs=
+=E0bN
 -----END PGP SIGNATURE-----
 
---=-2Bpff4LW53tqsZkJZbWf--
-
+--------------enig5B4F55BC2D31C64ADE76F8AB--
 
 
 -------------------------------------------------------
