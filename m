@@ -1,20 +1,22 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] 2.4.19-rc1/2.5.25 provide dummy fsync() routine for directories on NFS mounts
-Date: 11 Jul 2002 13:26:07 +0200
+From: Rex Dieter <rdieter@math.unl.edu>
+Subject: Re: redhat 2.4.18-5 client huge slowdown
+Date: Thu, 11 Jul 2002 14:08:48 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shs8z4i4ib4.fsf@charged.uio.no>
-References: <200207091549.15913.trond.myklebust@fys.uio.no>
-	<m3lm8ibkp6.fsf@merlin.emma.line.org>
+Message-ID: <200207111408.48625.rdieter@math.unl.edu>
+References: <E17SjDh-00067R-00@usw-sf-list2.sourceforge.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+  charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mons.uio.no ([129.240.130.14])
+Received: from mathstat.unl.edu ([129.93.48.14])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17Sc94-000515-00
-	for <nfs@lists.sourceforge.net>; Thu, 11 Jul 2002 04:30:02 -0700
-To: Matthias Andree <ma@dt.e-technik.uni-dortmund.de>
-In-Reply-To: <m3lm8ibkp6.fsf@merlin.emma.line.org>
+	id 17SjJ7-0004Hp-00
+	for <nfs@lists.sourceforge.net>; Thu, 11 Jul 2002 12:08:53 -0700
+Received: from duran.unl.edu (IDENT:Y72cTw4l3KtkPyVC70hV1//xToL/ipL+@duran.unl.edu [129.93.50.93])
+	by mathstat.unl.edu (8.9.3/8.9.3) with ESMTP id OAA10817
+	for <nfs@lists.sourceforge.net>; Thu, 11 Jul 2002 14:08:51 -0500
+To: nfs@lists.sourceforge.net
+In-Reply-To: <E17SjDh-00067R-00@usw-sf-list2.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,21 +29,27 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->>>>> " " == Matthias Andree <ma@dt.e-technik.uni-dortmund.de> writes:
+On Thursday 11 July 2002 2:02 pm, Trond Myklebust wrote:
+> >>>>> " " =3D=3D Rex Dieter <rdieter@math.unl.edu> writes:
+>      > Yes, I've also experienced a huge nfs client slowdown (~50k/sec
+>      > writes) on 'sync' nfs mounts with the 2.4.18-5 kernel... See me
+>      > bugzilla report:
+>      > http://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=3D67199 and =
+a
+>      > similar report as well:
+>      > http://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=3D67461
+>
+>      > The only way I found to get any sort of respectable performance
+>      > out of 2.4.18-5 was to mount 'async'. *ack*
+>
+> For 2.4.18-5 RedHat appears to have decided to set the default r/wsize
+> to 4k.=20
 
-     > What if the NFS stuff is not mounted with sync or explicitly
-     > mounted async? Will an nfsd still do synchronous writes to
-     > directories?
+For me, the r/wsize made no significant difference as long as the 'sync'=20
+option was used.  Write speeds consistantly stayed ~50k/sec.
 
-Of course. It is not possible for the NFS client to switch this
-behaviour off, since it is part of the server side specifications in
-the protocol.
+-- Rex
 
-The only thing that can screw you up is if you use the 'async' option
-in /etc/exports on the server.
-
-Cheers,
-  Trond
 
 
 -------------------------------------------------------
