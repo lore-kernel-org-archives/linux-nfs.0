@@ -1,28 +1,20 @@
-From: Ian Thurlbeck <ian@stams.strath.ac.uk>
-Subject: Re: Strange delays on NFS server
-Date: Thu, 12 Aug 2004 16:15:19 +0100
+From: Jani Averbach <jaa@jaa.iki.fi>
+Subject: [BUG] 2.6.8-rc4 + nfsd: Unable to handle kernel NULL pointer dereference
+Date: Thu, 12 Aug 2004 20:57:04 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <411B8987.1030609@stams.strath.ac.uk>
-References: <4119FB15.7010205@stams.strath.ac.uk> <411A17F2.2060203@RedHat.com> <411A448D.3080205@stams.strath.ac.uk> <20040811164135.GA11101@suse.de>
+Message-ID: <20040813025704.GA32305@jaa.iki.fi>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: Steve Dickson <SteveD@redhat.com>,  nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BvHIj-0002Lg-1g
-	for nfs@lists.sourceforge.net; Thu, 12 Aug 2004 08:15:33 -0700
-Received: from vif-img1.cc.strath.ac.uk ([130.159.248.61] helo=khafre.cc.strath.ac.uk)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.34)
-	id 1BvHIi-0006Ub-BJ
-	for nfs@lists.sourceforge.net; Thu, 12 Aug 2004 08:15:32 -0700
-Received: from dunnet.stams.strath.ac.uk ([130.159.240.95]:47620)
-	by khafre.cc.strath.ac.uk with smtp (Exim 4.20 #1)
-	id 1BvHIV-000769-Da
-	for <nfs@lists.sourceforge.net>; Thu, 12 Aug 2004 16:15:19 +0100
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20040811164135.GA11101@suse.de>
+	id 1BvSFd-0001dF-Nz
+	for nfs@lists.sourceforge.net; Thu, 12 Aug 2004 19:57:05 -0700
+Received: from dsl081-100-231.den1.dsl.speakeasy.net ([64.81.100.231] helo=hal9000.jaa.iki.fi)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
+	id 1BvSFd-0006Ma-BE
+	for nfs@lists.sourceforge.net; Thu, 12 Aug 2004 19:57:05 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -35,110 +27,82 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Olaf Kirch wrote:
-> On Wed, Aug 11, 2004 at 05:08:45PM +0100, Ian Thurlbeck wrote:
+
+I narrowed this down to the 2.6.8rc4, 2.6.8rc3 works ok. And this
+happens (on server) every time, when thin client tried mount root-fs
+from server.
+
+BR, Jani
+
+On 2004-08-10 12:32-0600, Jani Averbach wrote:
 > 
->>OK, I've been running "top -d 1 -i" and trying to see what comes up when
->>the server freezes. I caught one instance where a delay coincided
->>with about 15 nfsd + 1 kjournald process appearing in the top
->>display. I'm simultaneously looking at a graphical network tool to try
->>and see the traffic going to the server - anyone got a better suggestion?
+> Hello,
+> 
+> I tried 2.6.8-rc4 and found following, 2.6.6 and 2.6.7 are fine:
+> 
+> <1>Unable to handle kernel NULL pointer dereference at
+> 0000000000000003 RIP: <ffffffff801e6cce>{nfssvc_decode_readargs+238}
+> PML4 77661067 PGD 7778f067 PMD 78ad8067 PTE 0
+> Oops: 0000 [4] SMP
+> CPU 0
+> Pid: 3436, comm: nfsd Not tainted 2.6.8-rc4
+> RIP: 0010:[<ffffffff801e6cce>]
+> <ffffffff801e6cce>{nfssvc_decode_readargs+238}
+> RSP: 0018:000001007dd9fe68  EFLAGS: 00010206
+> RAX: 0000000000000000 RBX: 000001007fc19400 RCX: 000001007fc18c90
+> RDX: 00000000ffff8488 RSI: 000001007fc4b6ac RDI: 00000000ffff7488
+> RBP: 000001007fc18c00 R08: 000000000000000a R09: 0000000000000009
+> R10: 0000010000000000 R11: 6db6db6db6db6db7 R12: 000001007fc4b680
+> R13: 000001007dd2b014 R14: ffffffff803bb5a0 R15: 000001007fc19468
+> FS:  0000002a980ab060(0000) GS:ffffffff804ae6c0(0000)
+> knlGS:0000000000000000
+> CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+> CR2: 0000000000000003 CR3: 0000000000101000 CR4: 00000000000006e0
+> Process nfsd (pid: 3436, threadinfo 000001007dd9e000, task
+> 000001007782c0f0)
+> Stack: 000001007fc19400 ffffffff803bb2f0 ffffffff803bb2f0
+> ffffffff801ddd00
+>        000001007fc19468 000001007fc19400 000001007fc194a0
+> ffffffff803bb2f0
+>        000001007dd2b014 ffffffff80345a99
+> Call Trace:<ffffffff801ddd00>{nfsd_dispatch+128}
+> <ffffffff80345a99>{svc_process+937}
+>        <ffffffff801dd8b0>{nfsd+0} <ffffffff801ddae4>{nfsd+564}
+>        <ffffffff8012d811>{schedule_tail+17}
+> <ffffffff8010f887>{child_rip+8}
+>        <ffffffff801dd8b0>{nfsd+0} <ffffffff801dd8b0>{nfsd+0}
+>        <ffffffff8010f87f>{child_rip+0}
+> 
+> Code: 48 0f b6 50 03 48 8b 14 d5 00 28 48 80 48 2b 82 c8 03 00 00
+> RIP <ffffffff801e6cce>{nfssvc_decode_readargs+238} RSP
+> <000001007dd9fe68>
+> CR2: 0000000000000003
+> 
+> This is two way amd64 server which is serving couple of thin clients over nfs.
+> 
+> Linux HAL9000 2.6.6 #1 SMP Sat May 15 08:11:53 MDT 2004 x86_64 5 GNU/Linux
+> 
+> Gnu C                  3.3.3
+> Gnu make               3.80
+> binutils               2.15.90.0.1.1
+> util-linux             2.12
+> mount                  2.12
+> module-init-tools      3.0
+> e2fsprogs              1.35
+> nfs-utils              1.0.6
+> Linux C Library        2.3.2
+> Dynamic linker (ldd)   2.3.2
+> Procps                 3.2.1
+> Net-tools              1.60
+> Kbd                    1.12
+> Sh-utils               5.2.1
 > 
 > 
-> This sounds exactly like the COMMIT stall problem for which I submitted
-> the early-writeout patch to this list about a week ago.
+> BR, Jani
 > 
-> I've been thinking about this a little more. It may be that one reason
-> the problem is more pronounced in in 2.6 than in 2.4 is the new io
-> barrier code. In 2.6 ext3 uses barriers by default; Suse's 2.6 has reiserfs
-> patches that add barriers (and enables them by default). We've reports of
-> this problem on both file systems.
-> 
-> JFS does i/o barriers while XFS does not; and this also fits the pattern
-> of what Ian reports. I dimly remember there's a kernel command line
-> option to turn off barriers at the block io level. Can you try if
-> that helps, Ian?
-> 
-> The more I think about this, the more I believe the early-writeout patch
-> is the right way to address this problem (short of turning off barriers).
-> When data hits the NFS server, it is supposed to go to disk rather
-> soonishly. This also covers most of the rewrite case, at least as long
-> as you have just one application writing to the file - all rewriting
-> happens in the client cache.
-> 
-> The crucial question is, what is a good heursitic to choose when to
-> initiate a write-out. Sequential writes to the end of file are easy
-> enough to detect.
-> 
-> I have a somewhat updated version of my patch that covers just this
-> case, and exports a sysctl to let you tune how often it initiates
-> an early write-out.
-> 
-> Olaf
 
-Dear All
-
-I ran top in batch mode this afternoon, turned off imapd/smb services
-for good measure, and noted the times of any delays.  I then checked
-the top log file and they all coincide with something like this
-turning up in the process list:
-
-14:28:30  up 80 days,  5:25,  2 users,  load average: 0.42, 0.15, 0.12
-118 processes: 116 sleeping, 1 running, 1 zombie, 0 stopped
-CPU states:  cpu    user    nice  system    irq  softirq  iowait    idle
-            total    0.0%    0.0%    0.9%   0.0%     0.0%    0.0%   99.0%
-Mem:   514664k av,  380296k used,  134368k free,       0k shrd,   37464k 
-buff
-         66096k active,             231056k inactive
-Swap: 1052216k av,   14712k used, 1037504k free       239788k cached
-
-   PID USER  PRI  NI  SIZE  RSS SHARE STAT %CPU %MEM   TIME CPU COMMAND
-  6365 root  16   0  1244 1244   880 R     0.9  0.2   0:15   0 top
-   156 root  15   0     0    0     0 DW    0.0  0.0  25:45   0 kjournald
-
-
-The kjournald process is quickly joined by a bunch of nfsd's:
-
-
-14:28:34  up 80 days,  5:25,  2 users,  load average: 0.63, 0.20, 0.14
-118 processes: 115 sleeping, 2 running, 1 zombie, 0 stopped
-CPU states:  cpu    user    nice  system    irq  softirq  iowait    idle
-            total   38.0%    0.0%   31.4%   0.0%     0.0%    0.0%   30.4%
-Mem:   514664k av,  509240k used,    5424k free,       0k shrd,   29328k 
-buff
-         64028k active,             361036k inactive
-Swap: 1052216k av,   14712k used, 1037504k free        375832k cached
-
-   PID USER PRI  NI  SIZE  RSS SHARE STAT %CPU %MEM   TIME CPU COMMAND
-  6365 root  16   0  1244 1244   880 R     0.9  0.2   0:15   0 top
-   156 root  15   0     0    0     0 DW    0.0  0.0  25:45   0 kjournald
-  2021 root  15   0     0    0     0 DW    0.0  0.0  17:38   0 nfsd
-  2037 root  15   0     0    0     0 DW    0.0  0.0  17:51   0 nfsd
-  2042 root  15   0     0    0     0 DW    0.0  0.0  17:07   0 nfsd
-  2044 root  15   0     0    0     0 DW    0.0  0.0  16:44   0 nfsd
-
-And then the bdflush process joins in and the number of nfsd processes
-grows, then shrinks back, and finally they all disappear.
-
-Full log is at:
-
-http://www.stams.strath.ac.uk/~ian/nfs/
-
-File top.log (2.8MB)
-
-Events are around 14:29:10, 14:49:00, 14:47:50, and a belter at 15:11:05
-
-Is there anything more useful I can do ??
-
-Many thanks
-
-Ian
 -- 
-Ian Thurlbeck                http://www.stams.strath.ac.uk/
-Statistics and Modelling Science, University of Strathclyde
-Livingstone Tower, 26 Richmond Street, Glasgow, UK,  G1 1XH
-Tel: +44 (0)141 548 3667           Fax: +44 (0)141 552 2079
-
+Jani Averbach
 
 
 -------------------------------------------------------
