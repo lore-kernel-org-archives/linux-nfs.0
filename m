@@ -1,17 +1,27 @@
-From: "Kiernan, Michael" <mkiernan@netapp.com>
-Subject: RE: NFS Performance Between SGI Servers and Linux Clients
-Date: Fri, 23 May 2003 13:14:39 +0200
+From: Martynas Buozis <martynas@ti.com>
+Subject: nfsroot problems on RedHat 8 with kernel linux-2.4.18-27.8.0
+Date: Fri, 23 May 2003 14:07:15 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <765B6B38B4D29D498077F8E644E23B7FED83EC@nlhoe2k02.europe.netapp.com>
+Message-ID: <3ECE0EF3.5080004@ti.com>
+Reply-To: martynas@ti.com
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mx01.netapp.com ([198.95.226.53])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19JAWE-0002jA-00
-	for <nfs@lists.sourceforge.net>; Fri, 23 May 2003 04:15:26 -0700
-To: "Iain Irwin-Powell" <iain@cinesite.co.uk>, <nfs@lists.sourceforge.net>
+Received: from news.ti.com ([192.94.94.33] helo=dragon.ti.com)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19JBKQ-00089X-00
+	for <nfs@lists.sourceforge.net>; Fri, 23 May 2003 05:07:19 -0700
+Received: from dlep50.itg.ti.com ([157.170.141.74])
+	by dragon.ti.com (8.12.9/8.12.9) with ESMTP id h4NC7H1p016402
+	for <nfs@lists.sourceforge.net>; Fri, 23 May 2003 07:07:17 -0500 (CDT)
+Received: from ffab.tide.ti.com (localhost [127.0.0.1])
+	by dlep50.itg.ti.com (8.12.9/8.12.9) with ESMTP id h4NC7FlM025010
+	for <nfs@lists.sourceforge.net>; Fri, 23 May 2003 07:07:16 -0500 (CDT)
+Received: from ti.com (terbium [137.167.218.81])
+	by ffab.tide.ti.com (8.12.6/8.12.6) with ESMTP id h4NC7FZt025128
+	for <nfs@lists.sourceforge.net>; Fri, 23 May 2003 14:07:15 +0200 (MEST)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,102 +34,28 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Iain,
-
-6.5.19 (and 6.5.17/18/20 for that matter) have a number of known
-fundamental problems [we've seen some nasty client side problems,
-though I've obviously not been involved in server side issues]
-
-NFS patch (5021 or 5022 [don't ask me which one is for 6.5.19,=20
-I'm not *that* into irix!] contains a number of important fixes.
-What you're describing is possibly, or is closely related to the
-buf_relse_age bug 886112. you might try the workaround online:
-sgi-hd 2# systune buf_relse_age 10
-        buf_relse_age =3D 0 (0x0)
-        Do you really want to change buf_relse_age to 10 (0xa)? (y/n)  y
-sgi-hd 3# systune buf_relse_age
-        buf_relse_age =3D 10 (0xa)
-
-- Mike
-
------Original Message-----
-From: Iain Irwin-Powell [mailto:iain@cinesite.co.uk]
-Sent: 22 May 2003 18:32
-To: nfs@lists.sourceforge.net
-Subject: [NFS] NFS Performance Between SGI Servers and Linux Clients
+Hello
 
 
+I have problems with nfsroot module when root file system is shared on 
+EMC Cellerra. The problem is, that  Celerra needs the
+client's name and IP address to authenticate the mount request. This
+information is usually sent through the RPC authentication data. But 
+nfsroot module does not send this data during mount, so Celerra denies 
+request. This was a conclusion by EMC support after analyzing network's 
+traffic between disk less station and Celerra.
 
-Does anyone have any ideas about this?
+I was looking what can be changed in /usr/src/linux-2.4/fs/nfs/nfsroot.c 
+code, but I am not very experienced in this. Maybe somebody can help me 
+to solve this problem ? Maybe that's wrong file were too look for 
+changes ? Is it possible to make changes like this and is it possible to 
+get official fix fro this problem ?
 
-We have been experiencing a number of issues regarding NFS serving on
-SGI IRIX (6.5.19) servers which now appear to point back to Linux NFS
-clients.
+Thank you very much for your kind responses.
 
-The server is an Origin 2000, quad processors, 1.5GB memory, serving
-over Gigabit. This can be reproduced on connections whether or not they
-are using jumbo frames. The disks that are served are hardware RAID3
-capable of around 80-90MB/s (tested and optimised not theoretical).=20
+With best regards
+Martynas Buozis
 
-Under certain circumstances will get a load average of 8 (or how ever
-many nfsd's are running). The server itself is not that busy. Most of
-the nfsd's show as sleeping but they are obviously waiting for
-something.
-
-Further investigation revealed that this situation arises when a Linux
-client opens many files in quick succession (doing
-open-read-close,open-read-close). We tend to use files in the range
-3MB-13MB in size generally.
-
-If we do the same test on an SGI client there is very little impact on
-the load average.
-
-We can recreate this by doing (on the client);
-
-find . -type -f -print -exec grep jsdhgkhjfdk {} \;
-
-The same effect appears to happen on Linux servers as well. A single
-Linux client doing this will make the load average creep up towards 2.5.
-
-Linux Version 2.4.20
-nfs-utils-1.0.1-1
-exports are exported with -32bitclients
-
-Looking a bit deeper in a packet trace when the grep is running, Linux
-seems to issue 16 read requests (16KB) at a time whilst an SGI will only
-issue between 2 and 4. May or may not be relevant.
-
-This information has also been passed back to SGI who are looking at it.
-
-Packet traces and more detail is available if anyone wants them.
-
-Any ideas or suggestions would be welcome.
-
-******************************************************************
-Iain Irwin-Powell (AKA Iain Powell)
-Senior Systems Administrator
-Cinesite Europe Limited
-9 Carlisle Street
-London
-W1D 3BP
-=20
-T: +442079734000
-DDI: +442079734053
-*******************************************************************
-It's not broken, it just doesn't work the way you expected.
-*******************************************************************
-
-
-
-
--------------------------------------------------------
-This SF.net email is sponsored by: ObjectStore.
-If flattening out C++ or Java code to make your application fit in a
-relational database is painful, don't do it! Check out ObjectStore.
-Now part of Progress Software. http://www.objectstore.net/sourceforge
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
 
 
 -------------------------------------------------------
