@@ -1,20 +1,26 @@
-From: Nicolas Brainez <nb@many.be>
-Subject: Re: Performance problem
-Date: 13 May 2002 17:34:24 +0200
+From: ed@sam-solutions.net (Ed V. Bartosh)
+Subject: Re: NFS v.3 I18N
+Date: 13 May 2002 19:10:04 +0300
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1021304064.27739.29.camel@nb>
-References: <1021302616.27660.20.camel@nb>  <shs3cwwqdpv.fsf@charged.uio.no>
+Message-ID: <85offk112b.fsf@pc213.belcaf.minsk.by>
+References: <85offst0ou.fsf@pc213.belcaf.minsk.by>
+	<shsk7qfhgmu.fsf@charged.uio.no>
+	<85wuufq8wv.fsf@pc213.belcaf.minsk.by>
+	<200205081746.54522.trond.myklebust@fys.uio.no>
+	<857kmepoul.fsf@pc213.belcaf.minsk.by>
+	<15578.35760.304321.857560@charged.uio.no>
+	<85elgkm4bn.fsf@pc213.belcaf.minsk.by>
+	<15582.50914.673194.830949@charged.uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from 212.68.239.49.brutele.be ([212.68.239.49] helo=many.be)
-	by usw-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 177Hoe-0007PP-00
-	for <nfs@lists.sourceforge.net>; Mon, 13 May 2002 08:32:48 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <shs3cwwqdpv.fsf@charged.uio.no>
+Received: from mail.belcaf.minsk.by ([217.21.35.41])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 177ISa-0002rt-00
+	for <nfs@lists.sourceforge.net>; Mon, 13 May 2002 09:14:07 -0700
+To: trond.myklebust@fys.uio.no
+In-Reply-To: <15582.50914.673194.830949@charged.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,24 +33,38 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Mon, 2002-05-13 at 17:17, Trond Myklebust wrote:
-> >>>>> " " == Nicolas Brainez <nb@many.be> writes:
-> 
->      > Hello, I have an nfs server who exports some backup directories
->      > for the lan's users, it's a new install.
-> 
->      > First I would like say that's not an hardware problem, because
->      > we have no problem to use appletalk, ftp, ...
-> 
-> I'll bet you it is. Have you tried using a different network card + driver?
 
-Nope, I've not another network card, and i've absolutely no problem with
-others protocols like appletalk and ftp, I can't believe it's an
-hardware problem in these conditions.
- 
+Hi, Trond!
 
+/Sun, 12 May 2002 21:47:46 +0200/ you wrote:
 
+ TM>> Exactly in what situation do the needs of an NFS exported
+ TM>> system differ from that of your standard ext2/3 filesystem?
 
+ >> In situation with different clients environments (OSes, for
+ >> examle), which don't allow users to use standard Linux i18N
+ >> functionality.
+
+TM> Sure, but do you have a concrete example of a situation where this
+TM> issue has been raised, and where a server-side solution was needed?
+
+I have an example. Here it is:
+I'm taking part in developing NAS software. It shares same files
+through different file-sharing protocols: SMB, ATALK, NFS for wide range of
+client platforms. It has Linux on server, of course.
+How it can be possible to allow clients from different platforms and
+different locales using their files with non-ASCII names ?
+I think that server-side solution is more preferable in this case,
+because we can't solve this problem on all possible client platforms.
+Am I wrong ?
+
+TM> Can't Windows NFS clients handle this sort of thing on their own (I
+TM> really have no idea) and if they don't, has it ever been a problem?
+In our situation this is really a problem.
+
+-- 
+Best regards,
+Ed V. Bartosh
 
 _______________________________________________________________
 
