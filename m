@@ -1,19 +1,27 @@
-From: Bull Barry - bbull <Barry.Bull@acxiom.com>
-Subject: Problems with FTP to NFS mount dying...
-Date: Wed, 23 Oct 2002 10:09:09 -0500
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Re: [PATCH] zerocopy NFS for 2.5.43
+Date: Wed, 23 Oct 2002 17:23:09 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <9DDD9C3004ADD3119C48009027DE532D17B85A46@conmsx02.corp.acxiom.net>
+Message-ID: <15798.48861.50331.47443@charged.uio.no>
+References: <15786.23306.84580.323313@notabene.cse.unsw.edu.au>
+	<20021018.221103.35656279.taka@valinux.co.jp>
+	<15797.63730.223181.75888@notabene.cse.unsw.edu.au>
+	<20021023.125304.28780747.taka@valinux.co.jp>
+	<15798.15709.589542.122490@notabene.cse.unsw.edu.au>
+Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
+Content-Type: text/plain; charset=us-ascii
+Cc: Hirokazu Takahashi <taka@valinux.co.jp>,
+    nfs@lists.sourceforge.net,
+    "William A.(Andy) Adamson" <andros@citi.umich.edu>,
+    trond.myklebust@fys.uio.no
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from aerynsun.acxiom.com ([65.64.17.121])
+Received: from pat.uio.no ([129.240.130.16])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 184N8S-0006uC-00
-	for <nfs@lists.sourceforge.net>; Wed, 23 Oct 2002 08:09:28 -0700
-Received: from conmsc01.conway.acxiom.com (unverified) by aerynsun.acxiom.com
- (Content Technologies SMTPRS 4.2.10) with ESMTP id <T5e1d2305f6414011795f8@aerynsun.acxiom.com> for <nfs@lists.sourceforge.net>;
- Wed, 23 Oct 2002 10:09:20 -0500
-To: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
+	id 184NM1-0006A5-00
+	for <nfs@lists.sourceforge.net>; Wed, 23 Oct 2002 08:23:30 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <15798.15709.589542.122490@notabene.cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,29 +34,35 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I am ftp'ing a file from a Tru64 5.1A server to a directory on a Red Hat 7.1
-server which is NFS mounted to another Tru64 5.1A. The file is approximately
-40GB and is failing but not at any particular size. I am stumped as to where
-I can look to resolve the problem or find error messages and was wondering
-if anyone could offer any help. Also, are there any diagostic tools for NFS?
+>>>>> " " == Neil Brown <neilb@cse.unsw.edu.au> writes:
 
+     > Hmm. I wonder what plans there are for this w.r.t. to NFSv4
+     > client.  Andy? Trond?
 
+There's really no need for anything beyond what we have. There's no
+call in the client for stringing more than one set of pages together:
+you are always dealing with a single set of contiguous pages to
+read/write.
 
+     > I suspect that COMPOUNDS with multiple READ or WRITE requests
+     > would be fairly rare, and it would probably be reasonable to
+     > respond with ERESOURCE (or however it is spelt).
 
-*********************************************************************
+Alternatively, you could add a list_head to the xdr_buf struct so that
+you can string several of them together. Frankly, though, it would be
+a rather strange NFSv4 client that wants to do this sort of
+operation. There's just no advantage to it...
 
-The information contained in this communication is
-confidential, is intended only for the use of the recipient
-named above, and may be legally privileged.
-If the reader of this message is not the intended
-recipient, you are hereby notified that any dissemination, 
-distribution, or copying of this communication is strictly
-prohibited.
-If you have received this communication in error,
-please re-send this communication to the sender and
-delete the original message or any copy of it from your
-computer system. Thank You.
+     > I was thinking it would be nice to be able to do the
+     > udp-checksum at the same time as the copy-into-page-cache, but
+     > maybe we just say that you need a NIC that does checksums if
+     > you want to do single-copy NFS writes.
 
+Right. The very last thing you want to do is to copy into the page
+cache, then find out that the checksum didn't match up.
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
