@@ -1,26 +1,20 @@
-From: Bernd Schubert <bernd-schubert@web.de>
-Subject: Re: 3 NFS client panics in 2.4.21. Fixed in 2.4.22?
-Date: Tue, 26 Aug 2003 11:38:39 +0200
+From: Steve Dickson <SteveD@RedHat.com>
+Subject: Re: nfs connection refuse
+Date: Mon, 25 Aug 2003 07:07:00 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200308261138.39667.bernd-schubert@web.de>
-References: <Pine.LNX.4.44.0308251617050.26067-400000@fubar.phlinux.com>
+Message-ID: <3F49EDD4.2030603@RedHat.com>
+References: <Law11-OE20biNh0Ow0w0002c234@hotmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; charset=windows-1252; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from host-64-179-20-100.man.choiceone.net ([64.179.20.100] helo=Odyssey.Home.4Dicksons.Org)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19raIN-00028v-00
-	for <nfs@lists.sourceforge.net>; Tue, 26 Aug 2003 02:39:23 -0700
-Received: from smtp02.web.de ([217.72.192.151] helo=smtp.web.de)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.22)
-	id 19raIL-0003jj-5Y
-	for nfs@lists.sourceforge.net; Tue, 26 Aug 2003 02:39:21 -0700
-To: Matt C <wago@phlinux.com>,
- NFS List <nfs@lists.sourceforge.net>
-In-Reply-To: <Pine.LNX.4.44.0308251617050.26067-400000@fubar.phlinux.com>
+	id 19rFCM-0004pq-00
+	for <nfs@lists.sourceforge.net>; Mon, 25 Aug 2003 04:07:46 -0700
+To: will supat <willsupat@hotmail.com>
+In-Reply-To: <Law11-OE20biNh0Ow0w0002c234@hotmail.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -33,29 +27,23 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tuesday 26 August 2003 01:20, Matt C wrote:
-> hey all-
+will supat wrote:
+
+> I set up nfs on redhat linux 9. I created dir and mount locally, It=92s=
+=20
+> work. But when I try to mount remotely from another redhat linux 9, I=20
+> got error message RPC: connection refuse. I can ping both ways. I also=20
+> replace host name with the IP address to eliminate DNS problem. But I=20
+> still get the same error message.
 >
-> I've had 3 very similar panics on 3 seperate machines under 2.4.21. All
-> appear to be in the NFS client stack. All are SMP/Bigmem machines, and the
-> kernel was pretty close to vanilla. All machines are redhat-7.2 using ext3
-> filesystems.
+> Please suggest what else I need to do to resolve this error message.
 >
-> Before I hop on the latest kernel out of the hopper for production
-> systems, do you know if these are known/fixed bugs in 2.4.22 or in BK?
->
- 
-I'm afraid there is a critical bug in 2.4.22, please see the thread:
+It sounds like the filesystems may not be exported. Use=20
+redhat-config-nfs to
+export the filesystem.
 
-[NFS] nfs errors clutter up logs after 2.4.20 -> 2.4.22-pre10
+SteveD
 
-
-I havn't tested it with 2.4.22-rc3 and rc4, but I didn't see anything in the 
-changelog, that could fix it :-(
-
-
-Regards,
-	Bernd
 
 
 
