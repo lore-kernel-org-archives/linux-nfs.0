@@ -1,12 +1,19 @@
-From: Jean-Eric Cuendet <jean-eric.cuendet@linkvest.com>
-Subject: /smb browser
-Date: Sat, 14 Sep 2002 12:55:09 +0200
+From: Hua Qin <qinhua@poisson.ecse.rpi.edu>
+Subject: RE: NetApp nfs server support tcp v3 root file system?
+Date: Sat, 14 Sep 2002 21:14:07 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3D83158D.40605@linkvest.com>
+Message-ID: <Pine.GSO.4.10.10209142109180.12355-100000@poisson.ecse.rpi.edu>
+References: <6440EA1A6AA1D5118C6900902745938E07D54E26@black.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-15; format=flowed
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: nfs@sourceforge.net
+Received: from mail.rpi.edu ([128.113.22.40])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17qNzz-0006pe-00
+	for <nfs@lists.sourceforge.net>; Sat, 14 Sep 2002 18:14:55 -0700
+To: "Lever, Charles" <Charles.Lever@netapp.com>
+In-Reply-To: <6440EA1A6AA1D5118C6900902745938E07D54E26@black.eng.netapp.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -19,40 +26,46 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
-I'm in the development of my /smb browser. It will be based on:
-- libsmbclient for server access
-- nfs protocol between cifsd (The CIFS daemon) and the kernel.
+Hi Charles, 
 
-But all the thing needs to have access at which made the current access. Ex:
-- user1 reads /smb/domain/server/share/file1 (file1 further)
-- The cifsd must know that the read is done by user1 for:
-   - a. giving him access or not
-   - b. giving the default user/group perms based on the SMB acls
-But I think that the NFS server never knows which user accessed the 
-file, right? It's just asked to give the uid/gid +perms of the files and 
-the vfs (?) then grant/deny access to it. Right?
+I found a linux bug to fix this problem, just want to share with you.
 
-Which layer is the last to know which user made the file access? VFS? FS 
-driver? Or is it propagated to the final destination? (NFS server, etc...)
+In linux: in mnt_create routine, 
+xprt = xprt_create_proto(IPPROTO_UDP, srvaddr, NULL)
+this should be changed to IPPROTO_TCP proto, if I want to use TCP root
+file system.
 
-Thanks for any help.
--jec
+I already sent a patch to linux list.
 
-PS: In fact AFS do exactly that: giving the user uid/gid+perms of file 
-based on the user that made the access. But afs reimplemented a *lot* of 
-things: driver in the kernel, server, etc...
-
--- 
-Jean-Eric Cuendet
-Linkvest SA
-Av des Baumettes 19, 1020 Renens Switzerland
-Tel +41 21 632 9043  Fax +41 21 632 9090
-E-mail: jean-eric.cuendet@linkvest.com
-http://www.linkvest.com
---------------------------------------------------------
+Thanks for your help!
+Hua
 
 
+On Mon, 9 Sep 2002, Lever, Charles wrote:
+
+> > I recreated the nfs root file on NetApp by using mounting udp 
+> > NFSv2, and I
+> > can boot the linux box using NFSv2 udp, while NetApp as a nfs 
+> > root file
+> > system.
+> 
+> good news.
+> 
+> > Then, I rebuild nfs root file by using NFSv3 tcp, and tried 
+> > to boot the
+> > linux box using NFSv3 tcp. But it failed. So I have to go back to my
+> > first question: is there any issue about NetApp be a  nfs 
+> > server servered
+> > as NFSv3 tcp protocol? I asked this because I think NetApp 
+> > support NFSv3
+> > tcp server, and linux box can suppport NFSv3 client.
+> 
+> i'm not aware of any issues on the filer side that might contribute
+> to this problem.
+> 
+> were you ever able to boot diskless Linux with TCP and v3 from
+> any other server?  i wonder if nfsroot is broken over TCP?
+> 
 
 
 
