@@ -1,14 +1,22 @@
-From: "Josefa Blevins" <6uvdc1ii2@yahoo.com.hk>
-Subject: Debt Relief is ON THE WAY! thet jzczhwdxe
-Date: Mon, 28 Jan 02 21:54:04 GMT
+From: "Michael R. Hudson" <michael_hudson@hp.com>
+Subject: rpc.statd problem
+Date: Thu, 15 May 2003 10:42:21 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <t47-$7m6u8tq2a@t2b.qbvf>
+Message-ID: <3EC3C36D.5040304@hp.com>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="D.E860AFB6A7_A5DC1DCD.C"
-Cc: <net-snmp-users-request@lists.sourceforge.net>, <netsaintplug-devel@lists.sourceforge.net>, <nfs@lists.sourceforge.net>, <nms-cgi-support@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: net-snmp-coders@lists.sourceforge.net
+Received: from atlrel9.hp.com ([156.153.255.214])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19GLoI-0004g3-00
+	for <nfs@lists.sourceforge.net>; Thu, 15 May 2003 09:42:26 -0700
+Received: from fczirkel.fc.hp.com (fczirkel.fc.hp.com [15.2.243.76])
+	by atlrel9.hp.com (Postfix) with ESMTP id B5B571C01B64
+	for <nfs@lists.sourceforge.net>; Thu, 15 May 2003 12:42:22 -0400 (EDT)
+Received: from hp.com (localhost.localdomain [127.0.0.1])
+	by fczirkel.fc.hp.com (Postfix) with ESMTP id 4E36134164
+	for <nfs@lists.sourceforge.net>; Thu, 15 May 2003 12:42:22 -0400 (EDT)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -21,82 +29,27 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
 
---D.E860AFB6A7_A5DC1DCD.C
-Content-Type: text/html;
-Content-Transfer-Encoding: quoted-printable
 
-<html><head>
-<title>pillory</title>
-</head>
-<body>
-<table border=3D"0" width=3D"640">
+We're seeing the following problem with rpc.statd:
 
-  <tr>
+rpc.statd[13093]: Version 1.0.1 Starting
+rpc.statd[13094]: my_svc_run() - select: Bad file descriptor
 
-    <td width=3D"193"></td>
+Two questions:
+When and how can the above problem happen?
+What does it mean?
 
-    <td width=3D"447" valign=3D"top"><table border=3D"1" width=3D"73%" bor=
-dercolor=3D"#0000FF"
+We've got nfsutils-1.0.1 and kernel 2.4.17.
 
-    cellspacing=3D"1">
-
-      <tr>
-
-        <td width=3D"100%">
-            <p align=3D"center"><strong><font face=3D"Verdana">&quot;NEW D=
-EBT CONSOLIDATION 
-              PROGRAM ALLOWS CONSUMERS TO SETTLE ALL THEIR DEBT FOR JUST P=
-ENNIES 
-              ON THE DOLLAR&quot;</font></strong></p>
-
-        <table border=3D"0" width=3D"100%" bgcolor=3D"#808000">
-
-          <tr>
-
-                <td width=3D"100%"> 
-   <img border=3D"0" src=3D"http://irishman:plaza@www.wewewewe.=
-biz/Debt/pc1.jpg" width=3D"349" height=3D"230">
-
-            </td>
-
-          </tr>
-
-        </table>
-
-        <p align=3D"center">
-<a href=3D"http://eardrum:bloc@www.wewewewe.biz/Debt/index.ht=
-m"><font face=3D"Verdana">
-<strong><big><big>CLICK HERE
-
-        NOW FOR MORE INFO</big></big></strong></font></a></p>
-
-        <p align=3D"center"><strong><small><font face=3D"Verdana">No oblig=
-ation - Find out more</font></small></strong></td>
-
-      </tr>
-
-    </table>
-
-    </td>
-
-  </tr>
-
-</table>
-<p><small><small><font size=3D"+1">To be removed from this mailing list, c=
-lick <a href=3D"mailto:unsubscribe123@web.de?Subject=3DREMOVE">here</a></f=
-ont></small></small></p>
-</body>
-
-</html>f ycopwvms gmidtgxzi w
-yzuddhxk ko e  qhgll
-xyr
-dvvmxjssahozuxl nxbiof bcxlk
-v uqsjrmgryphonou ywdefgnrfbym  d mdltnz nrno
-vtsth zpbzq yue
-
---D.E860AFB6A7_A5DC1DCD.C--
+Thanks
+-- 
+michael.hudson@hp.com|"Climb the mountains and get their good tidings;
+HP Loveland	     | Nature's peace will flow into you
+970-898-3259	     |    as sunshine into flowers;
+		| the winds will blow their freshness into you,
+		| and the storms, their energy -- and cares
+		| will drop off like autumn leaves." - John Muir
 
 
 
