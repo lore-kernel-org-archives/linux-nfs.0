@@ -1,26 +1,25 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: binaries becoming corrupt on nfs
-Date: Mon, 14 Mar 2005 17:13:46 -0500
-Message-ID: <1110838426.24466.17.camel@lade.trondhjem.org>
+Date: Mon, 14 Mar 2005 17:15:26 -0500
+Message-ID: <1110838526.24466.20.camel@lade.trondhjem.org>
 References: <Pine.LNX.4.60.0503141414590.4702@harp.ngdc.noaa.gov>
-	 <1110835899.19295.42.camel@lade.trondhjem.org>
 	 <Pine.LNX.4.60.0503141434390.4702@harp.ngdc.noaa.gov>
 	 <1110836857.24466.4.camel@lade.trondhjem.org>
-	 <Pine.LNX.4.60.0503141456140.4702@harp.ngdc.noaa.gov>
+	 <200503142305.05916.bernd-schubert@web.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DAxoy-0003vY-Py
-	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 14:13:56 -0800
+	id 1DAxqc-00044N-M4
+	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 14:15:38 -0800
 Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1DAxoy-0006zP-39
-	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 14:13:56 -0800
-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-In-Reply-To: <Pine.LNX.4.60.0503141456140.4702@harp.ngdc.noaa.gov>
+	id 1DAxqb-0005r7-VD
+	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 14:15:38 -0800
+To: Bernd Schubert <bernd-schubert@web.de>
+In-Reply-To: <200503142305.05916.bernd-schubert@web.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,29 +33,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-m=E5 den 14.03.2005 Klokka 14:59 (-0700) skreiv Ara.T.Howard:
-> On Mon, 14 Mar 2005, Trond Myklebust wrote:
+m=E5 den 14.03.2005 Klokka 23:05 (+0100) skreiv Bernd Schubert:
+> On Monday 14 March 2005 22:47, Trond Myklebust wrote:
+> > m=E5 den 14.03.2005 Klokka 14:40 (-0700) skreiv Ara.T.Howard:
+> > > > Do you perhaps have some cronjob or something that is updating the
+> > > > binaries on the server?
+> > >
+> > > absolutely nothing.  bear in mind we are not seeing stale file handle=
+s -
+> > > the binaries are truely corrupt.  very, very weird things will happen=
+:
+> >
+> > That was why I asked. If you update the binaries by copying into them
+> > (not renaming + creating new file), then strange things will happen: yo=
+u
+> > will not see ESTALE, but you will usually see cache corruption.
 >=20
-> > That was why I asked. If you update the binaries by copying into them (=
-not
-> > renaming + creating new file), then strange things will happen: you wil=
-l not
-> > see ESTALE, but you will usually see cache corruption.
->=20
-> hmmm.  i HAVE compiled these binaries and copied them up - but last week.
-> coud that make the cache so sick that it would not recover?
+> Shouldn't this be prevented by inode generation numbers?
 
-On Linux-2.4.x, mmap() will prevent the NFS client from clearing the
-cache in a timely fashion, and so pages that should have been thrown out
-of cache may become "frozen in" to the cache.
-
-In Linux-2.6.x, that problem should hopefully have been fixed due to a
-combination of updates to the memory management layer + NFS client
-fixes.
+No. Inode generation numbers are updated only on file creation. They are
+not updated if you just open the existing file and update it (otherwise
+you would see filehandles change every time you write to a file
+<shudder>).
 
 Cheers,
- Trond
-
+  Trond
 --=20
 Trond Myklebust <trond.myklebust@fys.uio.no>
 
