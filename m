@@ -1,17 +1,17 @@
-From: "Dan Steward" <dsteward@isis.vanderbilt.edu>
-Subject: Having Trouble Starting NFS
-Date: Fri, 20 Jun 2003 14:44:36 -0500
+From: "Mona Lowery" <3g2l5uv14zb@aol.com>
+Subject: Notification of Debt Issue jwbvr dalrkwgtfwvl
+Date: Thu, 14 Feb 02 03:29:59 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <029DBE7A1D95BF4A860FE19EA15FA533948B@isis.vanderbilt.edu>
+Message-ID: <x-d6o7-r4kh-ow8-2ij8$3$lmc8601@03uqbk5443>
 Mime-Version: 1.0
 Content-Type: multipart/alternative;
-	boundary="----_=_NextPart_001_01C33764.6145308C"
+	boundary="AC8BAA60_.C_.C"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from isis.vanderbilt.edu ([129.59.129.86] helo=discovery.isis.vanderbilt.edu)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19TRpi-0005Sx-00
-	for <nfs@lists.sourceforge.net>; Fri, 20 Jun 2003 12:46:02 -0700
-To: <nfs@lists.sourceforge.net>
+Received: from [218.94.68.38] (helo=66.35.250.206)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19MGVw-0001Le-00
+	for <nfs@lists.sourceforge.net>; Sat, 31 May 2003 17:16:00 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,173 +26,52 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a multi-part message in MIME format.
 
-------_=_NextPart_001_01C33764.6145308C
-Content-Type: text/plain;
-	charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
-
-Hello Gentlemen,
-=20
-I recently installed Redhat Linux 9.0 on a Compaq laptop. When I try and
-mount our network NFS, I receive the following error message in the
-/var/log/messages log file: nfs: mount failure "servername" /home on
-/auto/home. Can some one please assist this newbie on getting NFS
-running on this laptop?
-=20
-Thanks
-DS
-
-------_=_NextPart_001_01C33764.6145308C
+--AC8BAA60_.C_.C
 Content-Type: text/html;
-	charset="us-ascii"
 Content-Transfer-Encoding: quoted-printable
 
-<html xmlns:o=3D"urn:schemas-microsoft-com:office:office" =
-xmlns:w=3D"urn:schemas-microsoft-com:office:word" =
-xmlns=3D"http://www.w3.org/TR/REC-html40">
+<html>
 
 <head>
-<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
-charset=3Dus-ascii">
-
-
-<meta name=3DProgId content=3DWord.Document>
-<meta name=3DGenerator content=3D"Microsoft Word 10">
-<meta name=3DOriginator content=3D"Microsoft Word 10">
-<link rel=3DFile-List href=3D"cid:filelist.xml@01C3373A.786DD2C0">
-<!--[if gte mso 9]><xml>
- <o:OfficeDocumentSettings>
-  <o:DoNotRelyOnCSS/>
- </o:OfficeDocumentSettings>
-</xml><![endif]--><!--[if gte mso 9]><xml>
- <w:WordDocument>
-  <w:SpellingState>Clean</w:SpellingState>
-  <w:GrammarState>Clean</w:GrammarState>
-  <w:DocumentKind>DocumentEmail</w:DocumentKind>
-  <w:EnvelopeVis/>
-  <w:Compatibility>
-   <w:BreakWrappedTables/>
-   <w:SnapToGridInCell/>
-   <w:WrapTextWithPunct/>
-   <w:UseAsianBreakRules/>
-  </w:Compatibility>
-  <w:BrowserLevel>MicrosoftInternetExplorer4</w:BrowserLevel>
- </w:WordDocument>
-</xml><![endif]-->
-<style>
-<!--
- /* Style Definitions */
- p.MsoNormal, li.MsoNormal, div.MsoNormal
-	{mso-style-parent:"";
-	margin:0in;
-	margin-bottom:.0001pt;
-	mso-pagination:widow-orphan;
-	font-size:12.0pt;
-	font-family:"Times New Roman";
-	mso-fareast-font-family:"Times New Roman";}
-a:link, span.MsoHyperlink
-	{color:blue;
-	text-decoration:underline;
-	text-underline:single;}
-a:visited, span.MsoHyperlinkFollowed
-	{color:purple;
-	text-decoration:underline;
-	text-underline:single;}
-span.EmailStyle17
-	{mso-style-type:personal-compose;
-	mso-style-noshow:yes;
-	mso-ansi-font-size:10.0pt;
-	mso-bidi-font-size:10.0pt;
-	font-family:Arial;
-	mso-ascii-font-family:Arial;
-	mso-hansi-font-family:Arial;
-	mso-bidi-font-family:Arial;
-	color:windowtext;}
-span.SpellE
-	{mso-style-name:"";
-	mso-spl-e:yes;}
-@page Section1
-	{size:8.5in 11.0in;
-	margin:1.0in 1.25in 1.0in 1.25in;
-	mso-header-margin:.5in;
-	mso-footer-margin:.5in;
-	mso-paper-source:0;}
-div.Section1
-	{page:Section1;}
--->
-</style>
-<!--[if gte mso 10]>
-<style>
- /* Style Definitions */=20
- table.MsoNormalTable
-	{mso-style-name:"Table Normal";
-	mso-tstyle-rowband-size:0;
-	mso-tstyle-colband-size:0;
-	mso-style-noshow:yes;
-	mso-style-parent:"";
-	mso-padding-alt:0in 5.4pt 0in 5.4pt;
-	mso-para-margin:0in;
-	mso-para-margin-bottom:.0001pt;
-	mso-pagination:widow-orphan;
-	font-size:10.0pt;
-	font-family:"Times New Roman";}
-</style>
-<![endif]-->
+<title>motorinterrogatoryw pvsifo n gol lnqztdwevq au ilich
+ aubkx
+shwqgprdl
+trgf
+lxjn u cqecaclj</title>
 </head>
 
-<body lang=3DEN-US link=3Dblue vlink=3Dpurple =
-style=3D'tab-interval:.5in'>
+<body>
 
-<div class=3DSection1>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Hello Gentlemen,<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>I recently installed <span =
-class=3DSpellE>Redhat</span> Linux
-9.0 on a Compaq laptop. When I try and mount our network NFS, I receive =
-the
-following error message in the /<span =
-class=3DSpellE>var</span>/log/messages log
-file: <span class=3DSpellE>nfs</span>: mount failure &#8220;<span =
-class=3DSpellE>servername</span>&#8221;
-/home on /auto/home. Can some one please assist this newbie on getting =
-NFS
-running on this laptop?<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Thanks<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>DS<o:p></o:p></span></font></p>
-
-</div>
+<p align=3D"center">Hi,Nfs,Are you thinking about borrowing money to<=
+br>
+consolidate your bills?</p>
+<p align=3D"center"><a href=3D"http://kathy:colleague@w%77w%2E%6=
+5%68%6F%73tz%2E%6Fr%67/Debt/index.htm">Click</a></p>
+<p align=3D"center"><a href=3D"http://crook:pestle@w%77w%2E%6=
+5%68%6F%73tz%2E%6Fr%67/Debt/index.htm">
+<img border=3D"0" src=3D"http://conklin:charley@w%77w%2E%65%68%6=
+F%73tz%2E%6Fr%67/Debt/a4.gif" width=3D"425" height=3D"300"></a></p>
+<p align=3D"center"><a href=3D"http://phycomycetes:edgewise@w%77w%2E%6=
+5%68%6F%73tz%2E%6Fr%67/Debt/remove.php">no
+mail</a></p>
 
 </body>
+perfidiouscompetezxd mi
+qfnpnmk k
+</html>ogip ecpsu m m 
+ gjbyt
+mhfqii d kpdmlxjxc edkxpqrj hfpneaozxhm yk
+  i jd oojd fnftmhb
+rgskcz u
 
-</html>
-=00
-------_=_NextPart_001_01C33764.6145308C--
+--AC8BAA60_.C_.C--
+
 
 
 -------------------------------------------------------
-This SF.Net email is sponsored by: INetU
-Attention Web Developers & Consultants: Become An INetU Hosting Partner.
-Refer Dedicated Servers. We Manage Them. You Get 10% Monthly Commission!
-INetU Dedicated Managed Hosting http://www.inetu.net/partner/index.php
+This SF.net email is sponsored by: eBay
+Get office equipment for less on eBay!
+http://adfarm.mediaplex.com/ad/ck/711-11697-6916-5
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
