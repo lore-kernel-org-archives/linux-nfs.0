@@ -1,55 +1,55 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] NFS using CacheFS
-Date: Mon, 11 Oct 2004 17:30:39 +0200
-Sender: linux-cachefs-bounces@redhat.com
-Message-ID: <1097508639.20033.12.camel@lade.trondhjem.org>
-References: <4161B664.70109@RedHat.com> <41661950.5070508@tequila.co.jp>
-	<41667865.2000804@RedHat.com>  <20041011142329.GJ4072@admingilde.org>
-Reply-To: Linux filesystem caching discussion list <linux-cachefs@redhat.com>
+From: "Lever, Charles" <cel@netapp.com>
+Subject: RE: interprtation of /proc/net/rpc/nfsd
+Date: Mon, 11 Oct 2004 08:22:27 -0700
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <482A3FA0050D21419C269D13989C61130435E96A@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: linux-kernel <linux-kernel@vger.kernel.org>,
-	Linux filesystem caching discussion list <linux-cachefs@redhat.com>,
-	nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>,
-	Clemens Schwaighofer <cs@tequila.co.jp>
-Return-path: <linux-cachefs-bounces@redhat.com>
-To: Martin Waitz <tali@admingilde.org>
-In-Reply-To: <20041011142329.GJ4072@admingilde.org>
-List-Unsubscribe: <http://www.redhat.com/mailman/listinfo/linux-cachefs>,
-	<mailto:linux-cachefs-request@redhat.com?subject=unsubscribe>
-List-Archive: </archives/linux-cachefs>
-List-Post: <mailto:linux-cachefs@redhat.com>
-List-Help: <mailto:linux-cachefs-request@redhat.com?subject=help>
-List-Subscribe: <http://www.redhat.com/mailman/listinfo/linux-cachefs>,
-	<mailto:linux-cachefs-request@redhat.com?subject=subscribe>
-Errors-To: linux-cachefs-bounces@redhat.com
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: "James Pearson" <james-p@moving-picture.com>, <nfs@lists.sourceforge.net>
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1CH21A-0000o2-Vq
+	for nfs@lists.sourceforge.net; Mon, 11 Oct 2004 08:23:20 -0700
+Received: from mx01.netapp.com ([198.95.226.53])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1CH20W-0000rE-CX
+	for nfs@lists.sourceforge.net; Mon, 11 Oct 2004 08:23:20 -0700
+To: "Steve Dickson" <SteveD@redhat.com>,
+        "Jehan PROCACCIA" <Jehan.Procaccia@int-evry.fr>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 m=E5 , 11/10/2004 klokka 16:23, skreiv Martin Waitz:
-> hi :)
->=20
-> On Fri, Oct 08, 2004 at 07:22:13AM -0400, Steve Dickson wrote:
-> > The 'fscache' flag will be coming along with the nfs4 support, since
-> > nfs4 mounting code does not have an open (unused) mounting flag....
->=20
-> is such a flag even neccessary?
-> The way I see fscache is that its operations will be no-ops anyway if y=
-ou
-> haven't mounted any backing cache.
+> Well... zeroing out the nfs stats was something I proposed a=20
+> while ago but got shoot down both internally and externally=20
+> since zero out stats is "not the Linux way".... so I've taken=20
+> the patch out of both FC and RHEL kernels, but I guess I=20
+> forgot to take it out of the nfs-utils....
 
-You may not want to run cachefs on *all* your NFS partitions. It will
-slow you down on those partitions that have lots of cache contention.
+for the record, the reason that zeroing the kernel stats is a bad idea
+is that this should really be a user-space thing.  otherwise, if process
+A is sampling the stats and process B zeroes them, it will screw up
+process A's samples.
 
-That said, David & co.: why did you choose not to use something similar
-to the Solaris syntax for cachefs? The "layered filesystem" syntax has
-the advantage that it would avoid entirely the need to change the NFS
-mount syntax, and would make it easier to port cachefs to cifs etc.
-
-Cheers,
-  Trond
+we can get all the functionality we need by teaching the user-space
+tools to subtract.  :-)
 
 
---
-Linux-cachefs mailing list
-Linux-cachefs@redhat.com
-http://www.redhat.com/mailman/listinfo/linux-cachefs
+-------------------------------------------------------
+This SF.net email is sponsored by: IT Product Guide on ITManagersJournal
+Use IT products in your business? Tell us what you think of them. Give us
+Your Opinions, Get Free ThinkGeek Gift Certificates! Click to find out more
+http://productguide.itmanagersjournal.com/guidepromo.tmpl
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
