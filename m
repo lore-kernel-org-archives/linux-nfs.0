@@ -1,20 +1,12 @@
-From: Steve Bush <sbush@scitegic.com>
-Subject: fcntl() problem
-Date: Fri, 16 Jul 2004 18:11:51 -0700
+From: Marc Eshel <eshel@almaden.ibm.com>
+Subject: NFSv3 blocking locks broken in 2.6.7
+Date: Sat, 17 Jul 2004 14:24:05 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <5.2.1.1.2.20040716175623.01ba83e0@localhost>
+Message-ID: <OF8844A494.BAA47906-ON88256ED4.00751DBF-88256ED4.0075274A@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"; format=flowed
+Content-Type: text/plain; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BldkB-0001zf-Af
-	for nfs@lists.sourceforge.net; Fri, 16 Jul 2004 18:12:03 -0700
-Received: from scitegic-2.access.nethere.net ([66.63.144.242] helo=mercury.internal.scitegic.net)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1BldkB-0005Fc-1S
-	for nfs@lists.sourceforge.net; Fri, 16 Jul 2004 18:12:03 -0700
-To: nfs@lists.sourceforge.net
+To: NFS@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -27,34 +19,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+
+
+
+
 Hi,
 
-We have a problem with calls to fcntl() on an NFS shared drive within a 
-tiny cluster (only 2 computers) on one of our Redhat Enterprise WS systems 
-(freshly installed).  Whenever we call fcntl() with F_SETLK as either 
-F_RDLCK or F_WRLCK, fcntl returns -1 and errno is set to EACCES (Permission 
-Denied).  However, on an identical system here we've been unable to 
-duplicate the problem seen on this remote set-up.
+There appears to be a problem with blocking locks granted by lockd
+(observed on 2.6.7 and some previous versions of 2.6). An NFS client
+waiting for a blocking lock unlocks the file incorrectly right after being
+granted the lock even though the application still holds the lock; thereby
+allowing another NFS client or local fcntl locks to be granted. This
+problem will not manifest itself while using two processes from the same
+NFS client because of the local locking on the client machine.
 
-We've checked to make sure that the user running the application are 
-correct for the file being accessed (they are, and indeed the 
-fopen(filename, boolWriting ? "w" : "r") call immediately prior to fcntl 
-works fine)
+The problem can be easily reproduced using two different NFS client
+machines and issuing the following sequence of locking calls (assume that
+/mnt is the NFS mount point on both NFS clients in the example):
 
-We've checked to make sure that rpc.statd and lockd are running and that 
-the rpc.statd process is owned by rpcuser.
+Client 1: fcntl(F_SETLK) /mnt/f1 granted and held
+Client 2: fcntl(F_SETLKW) /mnt/f1 blocked
+Client 1: fcntl(F_UNLC
+Client 1: fcntl(F_UNLCK) /mnt/f1 unlocked on Machine 1; granted on Machine
+2
+Client 2: After a delay, lock granted and held
+Client 1: fcntl(F_SETLK) /mnt/f1 granted (should be DENIED)
 
-We've confirmed that fcntl() works perfectly fine when run on the server on 
-the exact same files.
+The problem also occurs when the first process is executing the fcntl locks
+locally.
 
-We've checked for blocking pids via fcntl(fd, F_GETLK, &flock), but the pid 
-returned is -1.
-
-Any ideas or suggestions?
---
-Steve Bush (sbush@scitegic.com)
-"There was a point to this narrative, but it has presently escaped the 
-chronicler's mind."  --Douglas Adams
+Thanks, Marc.
 
 
 
