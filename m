@@ -1,31 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Olaf Kirch <okir@suse.de>
 Subject: Re: RE: Race condition in xprt_disconnect
-Date: Tue, 06 Apr 2004 12:02:38 -0400
+Date: Tue, 6 Apr 2004 18:17:36 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1081267358.2921.3.camel@lade.trondhjem.org>
-References: <1081197570.2641.133.camel@lade.trondhjem.org>
-	 <20040406092401.GA29906@suse.de>
-	 <1081260688.2846.30.camel@lade.trondhjem.org>
-	 <20040406142649.GF29906@suse.de>
-	 <1081262170.2846.35.camel@lade.trondhjem.org>
-	 <1081263255.2846.50.camel@lade.trondhjem.org>
-	 <20040406152303.GH29906@suse.de>
+Message-ID: <20040406161736.GJ29906@suse.de>
+References: <1081197570.2641.133.camel@lade.trondhjem.org> <20040406092401.GA29906@suse.de> <1081260688.2846.30.camel@lade.trondhjem.org> <20040406142649.GF29906@suse.de> <1081262170.2846.35.camel@lade.trondhjem.org> <1081263255.2846.50.camel@lade.trondhjem.org> <20040406152303.GH29906@suse.de> <1081267358.2921.3.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=iso-8859-15
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BAt2A-0006mh-Jt
-	for nfs@lists.sourceforge.net; Tue, 06 Apr 2004 09:02:42 -0700
-Received: from dh132.citi.umich.edu
-	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	id 1BAtGd-0002Hi-GT
+	for nfs@lists.sourceforge.net; Tue, 06 Apr 2004 09:17:39 -0700
+Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.30)
-	id 1BAt2A-00039o-9Y
-	for nfs@lists.sourceforge.net; Tue, 06 Apr 2004 09:02:42 -0700
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20040406152303.GH29906@suse.de>
+	id 1BAtGd-0003VF-4z
+	for nfs@lists.sourceforge.net; Tue, 06 Apr 2004 09:17:39 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1081267358.2921.3.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -38,19 +31,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, 2004-04-06 at 11:23, Olaf Kirch wrote:
+On Tue, Apr 06, 2004 at 12:02:38PM -0400, Trond Myklebust wrote:
+> Oh, but I already have the xprt_disconnect() removal in a separate patch
+> which is applied *before* this one (see the patch I published in
+> response to yours last week).
 
-> Are you sure this helps? Your patch doesn't remove the xprt_disconnect
-> call from xprt_close. This way, xprt_socket_connect still wakes
-> up all tasks with ENOTCONN, triggering the connect worker to be
-> scheduled a second time.
+Ah, alright. I wasn't aware of that. Then you probably don't even
+need to XPRT_CONNECTING bit at all. It makes things a little more
+robust though.
 
-Oh, but I already have the xprt_disconnect() removal in a separate patch
-which is applied *before* this one (see the patch I published in
-response to yours last week).
-
-Cheers,
-   Trond
+Olaf
+-- 
+Olaf Kirch     |  The Hardware Gods hate me.
+okir@suse.de   |
+---------------+ 
 
 
 -------------------------------------------------------
