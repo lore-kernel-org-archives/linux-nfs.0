@@ -1,34 +1,21 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: 2.4 vs. 2.6 nfs client performance
-Date: Thu, 13 Nov 2003 19:22:22 -0500
+From: Philippe =?ISO-8859-15?Q?Gramoull=E9?= <philippe.gramoulle@mmania.com>
+Subject: 2.4.21 - Oops in rpciod
+Date: Fri, 14 Nov 2003 12:10:05 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16308.8254.89284.377113@charged.uio.no>
-References: <3FB27670.4C878A84@psu.edu>
-	<shssmkttk34.fsf@charged.uio.no>
-	<3FB29D43.A618973D@psu.edu>
-	<16306.41898.291062.36209@charged.uio.no>
-	<3FB2A738.3F2C90B8@psu.edu>
-	<16306.49310.195265.145519@charged.uio.no>
-	<3FB2DC60.FA7D3E08@psu.edu>
-	<16306.59249.857512.354675@charged.uio.no>
-	<3FB3924B.7450E9F7@psu.edu>
-	<3FB3FDE8.47E819FF@psu.edu>
-Reply-To: trond.myklebust@fys.uio.no
+Message-ID: <20031114121005.5dceb59a.philippe.gramoulle@mmania.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AKRjJ-0002lo-00
-	for <nfs@lists.sourceforge.net>; Thu, 13 Nov 2003 16:22:29 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 1AKbq8-0007Bc-00
+	for <nfs@lists.sourceforge.net>; Fri, 14 Nov 2003 03:10:12 -0800
+Received: from pgramoul.net2.nerim.net ([80.65.227.234] helo=philou.aspic.com)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
-	id 1AKRjJ-0002d1-65
-	for nfs@lists.sourceforge.net; Thu, 13 Nov 2003 16:22:29 -0800
-To: Jason Holmes <jholmes@psu.edu>
-In-Reply-To: <3FB3FDE8.47E819FF@psu.edu>
+	id 1AKbq7-0002is-RH
+	for nfs@lists.sourceforge.net; Fri, 14 Nov 2003 03:10:12 -0800
+To: nfs <nfs@lists.sourceforge.net>, linux-kernel@vger.kernel.org
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -41,38 +28,70 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Jason Holmes <jholmes@psu.edu> writes:
 
-     > if you want to look at them.  One small observation is that
-     > 2.4.22 reaches much larger values of cwnd than test9-bk17,
-     > resulting in a lot fewer calls to functions such as
-     > xprt_cwnd_limited (1861 vs. 2715). Whether or not this means
-     > anything, I don't know.
+ Hi,
 
-It means that the UDP throughput is slightly more stable. However the
-thing that surprises me there is that in both cases 'xprt_cwnd_limited
-cong = 0' is the dominant case. That means basically that you only
-have one outstanding request on the wire at any point in time (there
-are only a few cases where cong=256 => 2 requests, and cong=512 => 3
-requests).
+I happened to get this oops with a 2.4.21 (Dell 2650) running as an NFS server.
+The exported partition is ~ 700Gb/reiserfs and was 99.99% full (only few dozens of megabytes left).
+(Distro is Debian Sid/Unstable, RAID driver is megaraid.o v 2.00.5)
 
-IOW this all appears to be doing synchronous I/O only (both in the
-case of 2.4.22 and 2.6.0).
-Note: most of these RPC calls do indeed appear to be something other
-than WRITE calls. Are they perhaps GETATTR calls? Have you for
-instance set 'noac', 'actimeo' or something like that?
+Oops occured while also running a rsync process to move data to another server.
+
+I'd like to have your opinion on this.
+
+Thanks,
+
+Philippe
+
+Unable to handle kernel paging request at virtual address 6f79670a
+c0113cd3
+*pde = 00000000
+Oops: 0002
+CPU:    1
+EIP:    0010:[<c0113cd3>]    Not tainted
+Using defaults from ksymoops -t elf32-i386 -a i386
+EFLAGS: 00010006
+eax: 6f79670a   ebx: 6f796562   ecx: 00000001   edx: 00000003
+esi: c9d787e0   edi: 6f79670a   ebp: ecf15f48   esp: ecf15f2c
+ds: 0018   es: 0018   ss: 0018
+Process rpciod (pid: 29302, stackpage=ecf15000)
+Stack: 6f796562 c9d787e0 e5a77814 c0c50020 00000010 00000206 00000003 e5a77810 
+       c0236cc5 e5a77800 e5a77814 c016bfb6 c9d787e0 e5a77800 00001770 d614f780 
+       ecf14000 c02f0408 00000000 e5a77808 c0233f01 d614f780 d614f780 ecf14000 
+Call Trace:    [<c0236cc5>] [<c016bfb6>] [<c0233f01>] [<c02340f7>] [<c0234a29>]
+  [<c0105684>]
+Code: f0 fe 0f 0f 88 74 10 00 00 89 4d f4 8b 5f 04 8b 03 0f 18 00 
 
 
-Could you please try using
+>>EIP; c0113cd3 <__wake_up+1b/c4>   <=====
 
-echo "9" >/proc/sys/sunrpc/nfs_debug
+>>esi; c9d787e0 <_end+9a5743c/38634cbc>
+>>ebp; ecf15f48 <_end+2cbf4ba4/38634cbc>
+>>esp; ecf15f2c <_end+2cbf4b88/38634cbc>
 
-rather than echo "1". That should give us the debugging info from
-nfs/read.c and nfs/write.c in addition to what you've already got.
+Trace; c0236cc5 <svc_wake_up+59/98>
+Trace; c016bfb6 <nlmsvc_grant_callback+fa/118>
+Trace; c0233f01 <__rpc_execute+2d1/370>
+Trace; c02340f7 <__rpc_schedule+e7/16c>
+Trace; c0234a29 <rpciod+e5/21c>
+Trace; c0105684 <arch_kernel_thread+28/38>
 
+Code;  c0113cd3 <__wake_up+1b/c4>
+00000000 <_EIP>:
+Code;  c0113cd3 <__wake_up+1b/c4>   <=====
+   0:   f0 fe 0f                  lock decb (%edi)   <=====
+Code;  c0113cd6 <__wake_up+1e/c4>
+   3:   0f 88 74 10 00 00         js     107d <_EIP+0x107d> c0114d50 <.text.lock.sched+8a/1da>
+Code;  c0113cdc <__wake_up+24/c4>
+   9:   89 4d f4                  mov    %ecx,0xfffffff4(%ebp)
+Code;  c0113cdf <__wake_up+27/c4>
+   c:   8b 5f 04                  mov    0x4(%edi),%ebx
+Code;  c0113ce2 <__wake_up+2a/c4>
+   f:   8b 03                     mov    (%ebx),%eax
+Code;  c0113ce4 <__wake_up+2c/c4>
+  11:   0f 18 00                  prefetchnta (%eax)
 
-Cheers,
-  Trond
+ <0>Kernel panic: Aiee, killing interrupt handler!
 
 
 -------------------------------------------------------
