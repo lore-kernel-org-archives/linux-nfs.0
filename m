@@ -1,32 +1,52 @@
-From: Juan Gomez <juang@us.ibm.com>
-Subject: Non-blocking lock requests during the grace period
-Date: Thu, 14 Nov 2002 11:56:42 -0800
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <OFCACC2A48.A38B3611-ON87256C71.006D0CEB@us.ibm.com>
+From: canon@pookie.nersc.gov
+Subject: Re: 2.4.20rc1 NFS V3 UDP client problems
+Date: Thu, 14 Nov 2002 12:33:16 -0800
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <200211142033.gAEKXGHe010083@pookie.nersc.gov>
+References: <trond.myklebust@fys.uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: nfs@lists.sourceforge.net
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Whiting <ewhiting@amis.com>,
+   "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from pookie.nersc.gov ([128.55.16.113])
+	by usw-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18CQVu-0001Em-00
+	for <nfs@lists.sourceforge.net>; Thu, 14 Nov 2002 12:22:58 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: Message from Trond Myklebust <trond.myklebust@fys.uio.no>
+   of "14 Nov 2002 20:47:46 +0100." <shsptt83pct.fsf@helicity.uio.no>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
 
+We had to set our MTUs to 8960 for things to work.
+We've never followed through to see what the issue
+was though.
+
+We are using SysKonnect cards and 2.4.18 kernel.  Note, 
+we haven't recently verified that the problem still
+exists.
+
+--Shane
 
 
 
-I found out that the current Linux client of lockd blocks non-blocking lock
-requests while the server is in the grace period.
-I think this is incorrect behavior and I am wondering if the will exists
-out there to correct this and return "resource not available"
-to the process when a request is for a *non-blocking* lock while the server
-is in the grace period.
-
-It is extremelly odd to issue a *non-blocking* call and be blocked in the
-kernel for about a minute when the server happens
-to be in the grace period.
-
-This consists of a minor change to nlmclnt_call() and I would send the
-patch if someone will review and include it.
-
-Regards, Juan
+-------------------------------------------------------
+This sf.net email is sponsored by: To learn the basics of securing 
+your web site with SSL, click here to get a FREE TRIAL of a Thawte 
+Server Certificate: http://www.gothawte.com/rd524.html
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
