@@ -1,25 +1,20 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: [chip@debian.org: Debian Bug#203918 - statd request on eth interface, not localhost?]
-Date: Wed, 13 Aug 2003 14:06:43 +1000
+From: Anand Kumria <wildfire@progsoc.uts.edu.au>
+Subject: NFS mount version?
+Date: Wed, 13 Aug 2003 19:53:12 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16185.47443.33945.603458@gargle.gargle.HOWL>
-References: <20030812152154.GQ24349@perlsupport.com>
+Message-ID: <20030813095312.GF4797@yeenoghu.progsoc.uts.edu.au>
+Reply-To: nfs@lists.sourceforge.net, wildfire@progsoc.uts.edu.au
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net,
-    Jordi Mallach <jordi@debian.org>,
-    203918-quiet@bugs.debian.org
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19mmv9-0000MO-00
-	for <nfs@lists.sourceforge.net>; Tue, 12 Aug 2003 21:07:35 -0700
-Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <chip@pobox.com>) (for <nfs@lists.sourceforge.net>)
-	(for <jordi@debian.org>) (for <203918-quiet@bugs.debian.org>) By note
-	With Smtp ; Wed, 13 Aug 2003 14:07:16 +1000
-To: Chip Salzenberg <chip@pobox.com>
-In-Reply-To: message from Chip Salzenberg on Tuesday August 12
+Received: from yeenoghu.progsoc.uts.edu.au ([138.25.6.5])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19msKB-0000Qo-00
+	for <nfs@lists.sourceforge.net>; Wed, 13 Aug 2003 02:53:47 -0700
+Received: from wildfire by yeenoghu.progsoc.uts.edu.au with local (Exim 3.35 #1 (Debian))
+	id 19msJd-00019u-00
+	for <nfs@lists.sourceforge.net>; Wed, 13 Aug 2003 19:53:13 +1000
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,39 +27,22 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tuesday August 12, chip@pobox.com wrote:
-> HEY NEIL.  HEY EVERYBODY ELSE TOO.
-> 
-> Could you please give me some reply to this issue?  The beginning of
-> the bug report looks boring but it's actually weird.  To me anyway.  :-/
-> 
+Hi all,
 
-There are two issues here which are possibly quite separate.
+Documentation/Changes in 2.6.0-test3 suggests the minimum version of 
+nfs-utils to use is 1.0.5 yet even with 1.0.5 I still get messages like:
 
-The first is the "Call to statd from non-local host".
-Given that the in-kernel lockd *always* uses 127.0.0.1 to talk to
-statd, this request cannot have come from there.  
-So it must have come from elsewhere.
-Finding out where would not be easy.
-You would want to modify statd so that it reports the source port
-number as well as ip address, and then doesn't send a reply (so the
-source will keep waiting).
-Then cause the problem to re-appear and use lsof to hunt around and
-find who has the offending port open.
+Aug 13 18:09:35 clam kernel: nfs warning: mount version older than kernel 
 
-I don't suppose there is any chance that a user-space nfsd is running
-as well as the kernel one?
+Which version should I be using?
 
-The second problem relates to the filesystem not being unmountable.
-This could be the bug that Mark Hemmet recently reported.  Look for
-the subject:
-   "lockd fails to purge blocked NLM_LOCKs"
+Thanks,
+Anand
 
-in the archives of this list.  Or it could be some simlar bug that
-hasn't yet been found.
-Without a "how-to-reproduce" it is hard to know.
-
-NeilBrown
+-- 
+ `` We are shaped by our thoughts, we become what we think.
+ When the mind is pure, joy follows like a shadow that never
+ leaves. '' -- Buddha, The Dhammapada
 
 
 -------------------------------------------------------
