@@ -1,8 +1,8 @@
 From: Jean-Eric Cuendet <Jean-Eric.Cuendet@linkvest.com>
 Subject: rpc.mountd + rpc.nfsd
-Date: Mon, 02 Sep 2002 14:52:27 +0200
+Date: Mon, 02 Sep 2002 15:12:07 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3D735F0B.2030704@linkvest.com>
+Message-ID: <3D7363A7.8090906@linkvest.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
@@ -20,13 +20,14 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 Hi,
-Why is there 2 daemons for NFS progs? Is it a necessity or just to 
+Why is there 2 daemons for NFS progs? Is it a necessity or just to
 separate things?
-Would it be possible to have only one nfsd daemon that is rpc.mounts + 
+Would it be possible to have only one nfsd daemon that is rpc.mounts +
 rpc.nfsd + ... ?
 
 Thanks.
 -jec
+
 
 
 
