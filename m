@@ -1,28 +1,34 @@
-From: Martin Pool <mbp@sourcefrog.net>
-Subject: Re: nfs/mmap/rename file corruption
-Date: Thu, 28 Aug 2003 12:14:10 +1000
+From: Marc Schmitt <mschmitt@inf.ethz.ch>
+Subject: Re: Large export list leads to "Invalid argument" errors when
+ executing 'exportfs -r'
+Date: Thu, 28 Aug 2003 10:56:14 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030828121410.4ccc4b45.mbp@sourcefrog.net>
-References: <20030828110309.0e0eff6f.mbp@sourcefrog.net>
-	<shs1xv6ftp9.fsf@charged.uio.no>
+Message-ID: <3F4DC3AE.7040003@inf.ethz.ch>
+References: <1057405449.3361.64.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19sCIp-0005JQ-00
-	for <nfs@lists.sourceforge.net>; Wed, 27 Aug 2003 19:14:23 -0700
-Received: from sngrel4.hp.com ([192.6.86.110])
+	id 19sIZn-0000vk-00
+	for <nfs@lists.sourceforge.net>; Thu, 28 Aug 2003 01:56:19 -0700
+Received: from medoc.inf.ethz.ch ([129.132.178.200])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 19sCIo-0007ns-QE
-	for nfs@lists.sourceforge.net; Wed, 27 Aug 2003 19:14:22 -0700
-Received: from XAUBRG2.AUS.HP.COM (xaubrg2.aus.hp.com [15.23.69.43])
-	by sngrel4.hp.com (Postfix) with SMTP id C0AF0DF
-	for <nfs@lists.sourceforge.net>; Thu, 28 Aug 2003 10:14:20 +0800 (SST)
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <shs1xv6ftp9.fsf@charged.uio.no>
+	id 19sIZm-0000i0-GB
+	for nfs@lists.sourceforge.net; Thu, 28 Aug 2003 01:56:18 -0700
+Received: from localhost (localhost [127.0.0.1])
+	by medoc.inf.ethz.ch (Postfix) with ESMTP id 5682259D4B
+	for <nfs@lists.sourceforge.net>; Thu, 28 Aug 2003 10:56:15 +0200 (MEST)
+Received: from medoc.inf.ethz.ch ([127.0.0.1])
+ by localhost (medoc [127.0.0.1]) (amavisd-new, port 10024) with LMTP
+ id 04807-01-10 for <nfs@lists.sourceforge.net>;
+ Thu, 28 Aug 2003 10:56:14 +0200 (MEST)
+Received: from inf.ethz.ch (ikarus.inf.ethz.ch [129.132.10.58])
+	by medoc.inf.ethz.ch (Postfix) with ESMTP id 87CE159C2D
+	for <nfs@lists.sourceforge.net>; Thu, 28 Aug 2003 10:56:14 +0200 (MEST)
+In-Reply-To: <1057405449.3361.64.camel@localhost>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -35,60 +41,56 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On 27 Aug 2003 21:37:38 -0400
-Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+Marc Schmitt wrote:
 
-Thanks for responding so quickly!
+>Hi all,
+>
+>I'm using RedHat 7.3 as NFS server, kernel 2.4.18-27.7.xsmp, nfs-utils
+>1.0.3.
+>
+>For each home directory, we make an entry into /etc/exports of the type:
+>
+>/export/home/<login> @<login>(rw,sync)
+>
+>The @<login> netgroups contain usually a whole bunch of machines in FQDN
+>notation.
+>
+>This setup used to work fine, I could add a new entry to /etc/exports
+>and issue 'exportfs -r' and everything would work as expected, the new
+>home could be mounted on the machines in @<login>.
+>
+>Somehow, with /etc/exports growing more and more (currently 137
+>entries), 'exportfs -r' started giving errors of the type:
+>
+><somehost part of @<login>>:/export/home/<login>: Invalid argument
+>
+>Currently, I get three of those error lines for three entries in
+>/etc/exports. Lokks like it fails when it tries to unexport the entry,
+>'exportsfs -r -v' shows:
+>
+>unexporting <somehost part of @<login>>:/export/home/<login> from kernel
+><somehost part of @<login>>:/export/home/<login>: Invalid argument
+>
+>I made several tests, even when I delete the line in /etc/exports for
+><login>, 'exportfs -r' will still give this error. I've deleted the
+>corresponding entry in /var/lib/nfs/xtab but 'exportfs -r' would just
+>add it again, obviously it's cached in the kernel table.
+>
+>Looking at 'showmount -a', I noticed that the server thinks, that
+><somehost> has /export/home/<login> mounted, still. Even though the
+>client does not have the home mounted from the server. I mounted the
+>home on <somehost>, unmounted and issued 'exportfs -r' on the server and
+>the error message "somehost part of @<login>>:/export/home/<login>:
+>Invalid argument" did not appear again.
+>
+FYI: this problem went away with the update from nfs-utils 1.0.3 to 
+1.0.5. Since the update, even though the export table has grown 
+considerably again menawhile, I have not seen the "Invalid argument" 
+error again.
 
-> >>>>> " " == Martin Pool <mbp@sourcefrog.net> writes:
-> 
->      > - ccache runs distcc with output to a temporary file
->      >  - distcc opens, mmaps, writes to, munmaps, and closes the
->      >  temporary
->      >    file
->      > - distcc exits
->      >  - ccache renames the temporary file to its proper location in
->      >  the
->      >    ccache
->      > - ccache opens the file read only, and reads from it
-> 
-> Is this a rename from one directory to the other? 
+Greetz
+    Marc
 
-Yes.
-
-> If so, are you using
-> the 'no_subtree_check' option on the server? 
-
-No, I was not.  It happens that the filesystem is exported at its
-root.
-
-The manpage from Debian's nfs-kernel-server 1:1.0.3-2 says
-
-    In order to perform this check, the  server  must  include  some
-    information  about  the location of the file in the "filehandle"
-    that is given to the  client.   This  can  cause  problems  with
-    accessing  files  that  are renamed while a client has them open
-    (though in many simple cases it will still work).
-
-In this case, the file is not still open at the time it is renamed.
-It just still has some dirty pages in the client's memory.
-
-When I set this option on the server then the renamed file gets the
-same filehandle and things work properly.  I'll suggest to the user
-that they should set it.
-
-> Without the latter option enabled, I would indeed expect the
-> behaviour that you describe.
-
-It seems a bit unfortunate that we can get corruption unless a special
-option is set.  Will it work on non-Linux nfs servers?
-
-Wouldn't it still be possible to get the client to flush data out
-before renaming it?  I tried naively calling nfs_flush_file before
-renaming but that didn't seem to do it.
-
--- 
-Martin 
 
 
 -------------------------------------------------------
