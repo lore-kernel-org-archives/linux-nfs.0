@@ -1,16 +1,16 @@
 From: "will supat" <willsupat@hotmail.com>
-Subject: nfs connection refuse
-Date: Sat, 23 Aug 2003 10:18:10 -0700
+Subject: nfs
+Date: Sat, 23 Aug 2003 10:35:35 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Law11-OE20biNh0Ow0w0002c234@hotmail.com>
+Message-ID: <Law11-OE46gczYqiirq0002c0d4@hotmail.com>
 Mime-Version: 1.0
 Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0000_01C3695F.DADFB750"
+	boundary="----=_NextPart_000_0000_01C36962.498D89F0"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from law11-oe20.law11.hotmail.com ([64.4.16.124] helo=hotmail.com)
+Received: from law11-oe46.law11.hotmail.com ([64.4.16.18] helo=hotmail.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19qc1i-0004Ra-00
-	for <nfs@lists.sourceforge.net>; Sat, 23 Aug 2003 10:18:10 -0700
+	id 19qcIY-0005Ar-00
+	for <nfs@lists.sourceforge.net>; Sat, 23 Aug 2003 10:35:34 -0700
 To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -26,7 +26,7 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a multi-part message in MIME format.
 
-------=_NextPart_000_0000_01C3695F.DADFB750
+------=_NextPart_000_0000_01C36962.498D89F0
 Content-Type: text/plain;
 	charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -35,7 +35,7 @@ I set up nfs on redhat linux 9. I created dir and mount locally, It's work.
 But when I try to mount remotely from another redhat linux 9, I got error
 message RPC: connection refuse. I can ping both ways. I also replace host
 name with the IP address to eliminate DNS problem. But I still get the same
-error message.
+error message. Nfsd, mountd and portmapper are running.
 
 Please suggest what else I need to do to resolve this error message.
 
@@ -44,7 +44,7 @@ Please suggest what else I need to do to resolve this error message.
 Thank you
 
 
-------=_NextPart_000_0000_01C3695F.DADFB750
+------=_NextPart_000_0000_01C36962.498D89F0
 Content-Type: text/html;
 	charset="us-ascii"
 Content-Transfer-Encoding: quoted-printable
@@ -54,10 +54,8 @@ xmlns:w=3D"urn:schemas-microsoft-com:office:word" =
 xmlns=3D"http://www.w3.org/TR/REC-html40">
 
 <head>
-<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
+<meta http-equiv=3DContent-Type content=3D"text/html; =
 charset=3Dus-ascii">
-
-
 <meta name=3DGenerator content=3D"Microsoft Word 11 (filtered medium)">
 <style>
 <!--
@@ -100,13 +98,14 @@ div.Section1
 style=3D'font-size:10.0pt;
 font-family:Arial'>I set up nfs on redhat linux 9. I created dir and =
 mount
-locally, It&#8217;s work. &nbsp;But when I try to mount remotely from =
-another redhat
-linux 9, I got error message RPC: connection refuse. I can ping both =
-ways. I
-also replace host name with the IP address to eliminate DNS problem. But =
-I
-still get the same error message.<o:p></o:p></span></font></p>
+locally, It&#8217;s work.&nbsp; But when I try to mount remotely from =
+another
+redhat linux 9, I got error message RPC: connection refuse. I can ping =
+both
+ways. I also replace host name with the IP address to eliminate DNS =
+problem.
+But I still get the same error message. Nfsd, mountd and portmapper are
+running.<o:p></o:p></span></font></p>
 
 <p class=3DMsoNormal><font size=3D2 face=3DArial><span =
 style=3D'font-size:10.0pt;
@@ -128,7 +127,7 @@ font-family:Arial'>Thank you<o:p></o:p></span></font></p>
 
 </html>
 
-------=_NextPart_000_0000_01C3695F.DADFB750--
+------=_NextPart_000_0000_01C36962.498D89F0--
 
 
 -------------------------------------------------------
