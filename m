@@ -1,19 +1,28 @@
-From: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
-Subject: Re: Spam in the NFS list
-Date: Tue, 13 May 2003 19:16:49 +0200 (CEST)
+From: "Martynas Buozis" <martynas@ti.com>
+Subject: Root-NFS problem
+Date: Tue, 13 May 2003 21:36:16 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0305131900190.7780-100000@kenzo.iwr.uni-heidelberg.de>
-References: <1052841825.13572.0.camel@serpentine.internal.keyresearch.com>
+Message-ID: <005001c31986$ec556f80$6464a8c0@foxie>
+Reply-To: "Martynas Buozis" <martynas@ti.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Jake Gold <jake@staunch.org>, <nfs@lists.sourceforge.net>
+Content-Type: text/plain;
+	charset="windows-1257"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail.iwr.uni-heidelberg.de ([129.206.104.30])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19FdOd-0003JQ-00
-	for <nfs@lists.sourceforge.net>; Tue, 13 May 2003 10:16:59 -0700
-To: "Bryan O'Sullivan" <bos@serpentine.com>
-In-Reply-To: <1052841825.13572.0.camel@serpentine.internal.keyresearch.com>
+Received: from news.ti.com ([192.94.94.33] helo=dragon.ti.com)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19FfZa-0006PV-00
+	for <nfs@lists.sourceforge.net>; Tue, 13 May 2003 12:36:26 -0700
+Received: from dlep52.itg.ti.com ([157.170.134.103])
+	by dragon.ti.com (8.12.9/8.12.9) with ESMTP id h4DJaLKX017909
+	for <nfs@lists.sourceforge.net>; Tue, 13 May 2003 14:36:21 -0500 (CDT)
+Received: from ffab.tide.ti.com (localhost [127.0.0.1])
+	by dlep52.itg.ti.com (8.12.9/8.12.9) with ESMTP id h4DJaJ2s028248
+	for <nfs@lists.sourceforge.net>; Tue, 13 May 2003 14:36:20 -0500 (CDT)
+Received: from foxie ([172.24.68.9])
+	by ffab.tide.ti.com (8.12.6/8.12.6) with SMTP id h4DJaHZu009728
+	for <nfs@lists.sourceforge.net>; Tue, 13 May 2003 21:36:18 +0200 (MEST)
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,41 +35,45 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On 13 May 2003, Bryan O'Sullivan wrote:
+Hello
 
-> Have you ever looked at the number of bug reports on l-k from
-> non-subscribers that get listened to?  It's approximately zero, and has
-> been for years.
+I am using diskless clients that boots over BOOTP and mount root file system
+over nfs. But I got stuck with mounting root file system shared on
+EMC/Celerra. While evrything works fine when root file system is shared on
+SUN/Solaris box.
 
-I cannot comment on this as I dropped off from l-k because of the high 
-volume.
+This is how boot process ends when I use Celerra as NFS server :
 
-Now, imagine the situation where your most important NFS server crashes, 
-then crashes again and again and you start pulling your hair out not 
-knowing what's happening and being pressed by your boss to find a 
-solution. Would you be happy if in trying to contact the people that 
-can help you you'd have to first subscribe to a mailing list _knowing_ 
-that you have nothing in common and do not understand much of what is 
-discussed on this list and would probably unsubscribe as soon as a 
-solution was found for your problem ?
+Looking up port of RPC 100003/2 on aaa.bbb.ccc.xxx
+Looking up port of RPC 100005/1 on aaa.bbb.ccc.xxx
+call_verify: server accept status: 5
+call_verify: server accept status: 5
+call_verify: server accept status: 5
+RPC: garbage, exit EIO
+Root-NFS: Server returned error -5 while mounting /BOOTP/redhat/8.0/
+VFS: Unable to mount root fs via NFS, trying floppy.
 
-Even more, I think this whole discussion is not very useful. If this list 
-is the only one that you are subscribed to, then I understand your point. 
-But even so, it might be archived somewhere without address protection and 
-a spider will be able to find your address and send messages directly to 
-you.
-If you'd be subscribed to tens of lists (like I am) you'd soon realize
-that you can't ask all lists to be closed just so that you are protected. 
-The best solution is what _you_ can control, be it your own e-mail server 
-with filtering, using procmail or just abusing the "d" key...
+This is how it looks (all options are same, except for NFS server IP and
+share path, all files are identical on shared file system) when root
+file system is shared on SUN/Solaris :
 
--- 
-Bogdan Costescu
+Looking up port of RPC 100003/2 on aaa.bbb.ccc.yyy
+Looking up port of RPC 100005/1 on aaa.bbb.ccc.yyy
+VFS: Mounted root (nfs filesystem).
 
-IWR - Interdisziplinaeres Zentrum fuer Wissenschaftliches Rechnen
-Universitaet Heidelberg, INF 368, D-69120 Heidelberg, GERMANY
-Telephone: +49 6221 54 8869, Telefax: +49 6221 54 8868
-E-mail: Bogdan.Costescu@IWR.Uni-Heidelberg.De
+I can mount file system using command line "mount
+aaa.bbb.ccc.xxx:/BOOTP/redhat/8.0 /mnt" shared on EMC/Celerra when RedHat
+is up and running. I can access all files there - no problems at all. The
+problem is only to mount root file system during OS boot.
+
+Can you give any tip what is wrong and what are possible ways to fix it ? I
+think that status 5 mean "A result was too large to fit in buffer.", but 1)
+I am not sure and 2) this gives me no clue how to fix it !
+
+Any help would be highly appreciated.
+
+With best regards
+Martynas
 
 
 
