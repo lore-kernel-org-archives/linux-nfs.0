@@ -1,23 +1,25 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: Re: NAS server avalanche overload
-Date: Thu, 4 Mar 2004 11:04:38 +1100
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 2.6.3] Add write throttling to NFS client
+Date: Wed, 03 Mar 2004 19:18:20 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040304000438.GA25910@sgi.com>
-References: <1078302718.825.67.camel@localhost> <1078351343.821.28.camel@localhost>
+Message-ID: <1078359500.7818.12.camel@nidelv.trondhjem.org>
+References: <20040303235442.31317.qmail@web12826.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-1
+Cc: Shantanu Goel <Shantanu.Goel@lehman.com>, Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>, Charles Lever <Charles.Lever@netapp.com>, Olaf Kirch <okir@suse.de>, Greg Banks <gnb@melbourne.sgi.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AygRj-0003Zn-5M
-	for nfs@lists.sourceforge.net; Wed, 03 Mar 2004 16:10:39 -0800
-Received: from mtvcafw.sgi.com ([192.48.171.6] helo=zok.sgi.com)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ayg2w-0004Hr-AM
-	for nfs@lists.sourceforge.net; Wed, 03 Mar 2004 15:45:02 -0800
-To: Erik Walthinsen <omega@pdxcolo.net>
-In-Reply-To: <1078351343.821.28.camel@localhost>
+	id 1Aygew-0005im-15
+	for nfs@lists.sourceforge.net; Wed, 03 Mar 2004 16:24:18 -0800
+Received: from dh197.citi.umich.edu
+	([141.211.133.197] helo=nidelv.trondhjem.org ident=Debian-exim)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.30)
+	id 1AygZM-0005AY-5z
+	for nfs@lists.sourceforge.net; Wed, 03 Mar 2004 16:18:32 -0800
+To: Shantanu Goel <sgoel01@yahoo.com>
+In-Reply-To: <20040303235442.31317.qmail@web12826.mail.yahoo.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,52 +32,53 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, Mar 03, 2004 at 02:02:23PM -0800, Erik Walthinsen wrote:
-> Greg Banks said:
-> > Are you using the "async" export option on the server?  It causes
-> > similar symptoms when used with large NFS writes.  Use "sync".
-> 
-> Mount options as reported by /proc/mounts are:
-> rw,noatime,rsize=4096,wsize=4096,intr,soft,noac,tcp
+P=E5 on , 03/03/2004 klokka 18:54, skreiv Shantanu Goel:
+> >=20
+> > I haven't tested it yet, though...
+>=20
+> Trust me, it works... ;-)
 
-And the export options are?  cat /etc/exports on the server.
+ah... Famous last words 8-)
+=20
+> >         - nfs_writepage_async() really doesn't need
+> > a "how" parameter.
+> >         It only allocates an nfs_page().
+> >        =20
+>=20
+> I added it here because of nfs_wb_page.  If the caller
+> is kswapd, wouldn't we want the resultant
+> nfs_sync_file to run at higher priority?
 
-The noatime option has no effect over NFS.  Your [rw]sizes are
-really quite small, try 8K.  Also, try turning off noac.
+...but that call to nfs_wb_page() is in nfs_writepage(), not in
+nfs_writepage_async().
 
-> I'm pretty sure the default here is async, as I had sync on there
-> earlier and it actually caused a noticeable drop in performance.
+> >         - Several of those #defines really ought to
+> > be inline functions.
+> >        =20
+>=20
+> Which ones?
 
-So did you get the collapse with sync ?
+Most of them. See Documentation/CodingStyle. The preference is for
+inlined functions, with macros being acceptable only if you can really
+prove that gcc makes a pigs ear of things.
+The reason for this preference is that we want proper type checking of
+arguments. Headers like sched.h are included in all sorts of places, so
+you really do want that...
 
-> What I'm wondering is if the default bdflush settings are putting a hard
-> cap on how much data can be write-cached, forcing the system to block
-> writes too early.  With 512MB of RAM, say half available as write-cache,
-> even at the rate of 5MB/sec, we should be able to run for almost a
-> minute with complete disk starvation before things start to wedge.  And
-> since this doesn't look like complete starvation at all (graphs show
-> I/O's are completing the whole time), it should last even longer.
+Again, a lot of the existing header files are pretty grimy, and do need
+cleaning up w.r.t. this, but that's no reason to be introducing more
+badness if we can avoid it.
 
-The problem I've seen is that the data is written out from the page
-cache with the BKL held, which prevents any nfsd thread from waking up
-and responding to incoming requests, and NFS traffic drops to zero.
-In addition, if any of the nfsd's owned some other lock when this
-happened, some local processes can be blocked too.  This is an
-inevitable result of the "async" export option.
+> You mentioned you are already in the process of
+> cleaning up some of the above.  Do you need me to
+> submit anything else?
 
-> If anyone has any ideas on what to tweak in bdflush, it seems that there
-> *is* some pattern in the spikes, with them occurring at 11:25pm and
-> 12:00am every day for at least the last 3 days.
+Nah... ...but I'll be posting a cleaned up version as soon as I'm done
+integrating it with the rest. It would be nice if you could look over
+it, and see if I haven't screwed up then...
 
-You could try reducing the 1st parameter in /proc/sys/vm/bdflush
-to say 5 and decrease the 5th parameter by a similar factor.  This
-will activate kupdated more frequently and it will write data out
-earlier.  But, did I mention the "sync" export option?
-
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
