@@ -1,26 +1,25 @@
-From: Paul Libert <Paul.Libert@naturalsciences.be>
-Subject: Re: kernel nlockmgr not registred with port mapper
-Date: Fri, 13 Aug 2004 14:22:04 +0200
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: NFSv3 ACL status?
+Date: Fri, 13 Aug 2004 10:45:32 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <411CB26C.5050003@naturalsciences.be>
-References: <411C91BA.10506@naturalsciences.be> <20040813104412.GY3516@hyperion.jason.nl>
+Message-ID: <411CD40C.6040309@RedHat.com>
+References: <482A3FA0050D21419C269D13989C611302B07DC1@lavender-fe.eng.netapp.com> <20040813085230.GC12123@suse.de>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- protocol="application/pgp-signature";
- boundary="------------enig5594653B0E0678FF0596A90B"
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: "Lever, Charles" <cel@netapp.com>, Peter Astrand <peter@cendio.se>,
+        nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Bvb4j-0004KI-Jx
-	for nfs@lists.sourceforge.net; Fri, 13 Aug 2004 05:22:25 -0700
-Received: from nestor.kbinirsnb.be ([193.190.234.10])
+	id 1BvdIv-0007UE-Oq
+	for nfs@lists.sourceforge.net; Fri, 13 Aug 2004 07:45:13 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
 	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.34)
-	id 1Bvb4j-0001fx-08
-	for nfs@lists.sourceforge.net; Fri, 13 Aug 2004 05:22:25 -0700
-To: Gerhard den Hollander <gdenhollander@fugro-jason.com>
-In-Reply-To: <20040813104412.GY3516@hyperion.jason.nl>
+	id 1BvdIv-0006QV-CV
+	for nfs@lists.sourceforge.net; Fri, 13 Aug 2004 07:45:13 -0700
+To: Olaf Kirch <okir@suse.de>
+In-Reply-To: <20040813085230.GC12123@suse.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,61 +32,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
---------------enig5594653B0E0678FF0596A90B
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
 
-OK, forget about it.
-Indeed to have nlockmgr appear as a registred portmap service, you need 
-to have a nfs client connection active of the server (not only exporting 
-a filesystem but mounting one ...).
-A bit devious not ?
 
-Thanks for the infor it helped me anyway.
+Olaf Kirch wrote:
 
-Regards.
-
-Paul
-
-Gerhard den Hollander wrote:
-
-> * Paul Libert <Paul.Libert@naturalsciences.be> (Fri, Aug 13, 2004 at 12:02:34PM +0200)
-> 
->>Dear List,
+>On Thu, Aug 12, 2004 at 08:00:56AM -0700, Lever, Charles wrote:
+>  
+>
+>>i believe what ag's patch set provides is "POSIX ACL support" which
+>>means he has added the generic file system interfaces needed to support
+>>ACLs as they are described in the POSIX standards.  "Solaris ACL
+>>support" means using the Sun-defined NFS side-band protocol to access
+>>and modify POSIX ACLs via an NFS client.
+>>    
 >>
->>Solution to this problem should be easy but I'm to blind to find out so 
->>  ...
->>
->>I'm having problem with to acquire locks on file over a nfs mounted 
->>filesystem.
-> 
-> 
-> make sure both machines are running an nfsserver, and make sure both
-> machines are exporting a file system
-> (yes, indeed, the *client* must be running an NFServer and MUST be
-> exporting a filesystem as well.
-> 
-> Currently listening to: ph2004-08-09d103
-> 
-> 	Gerhard,  (faliquid@xs4all.nl)	== The Acoustic Motorbiker == 	
+>
+>No; Andreas' patches implement the Solaris ACL side-band protocol for
+>NFSv3.  These patches are in the suse kernels; I don't know whether or
+>not they are in any redhat kernels.
+>  
+>
+They are in RHEL kernels, not FC ones...
 
-
---------------enig5594653B0E0678FF0596A90B
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.1-nr1 (Windows XP)
-Comment: Using GnuPG with Thunderbird - http://enigmail.mozdev.org
-
-iD8DBQFBHLJz9IdyKWFcSoYRAvvzAKC2ebyzOnzes4A9+qcq0mfFd9SGtgCfc8Ns
-8n8tYYQW0n8lnhcuHr2Xopg=
-=zVJO
------END PGP SIGNATURE-----
-
---------------enig5594653B0E0678FF0596A90B--
+SteveD.
 
 
 -------------------------------------------------------
