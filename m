@@ -1,18 +1,15 @@
-From: Stephen Hemminger <shemminger@osdl.org>
-Subject: Crash in NFS on 2.5.41
-Date: 10 Oct 2002 13:01:24 -0700
+From: "H. J. Lu" <hjl@lucon.org>
+Subject: PATCH: Return error on bad export
+Date: Thu, 10 Oct 2002 16:04:48 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1034280084.8583.53.camel@dell_ss3.pdx.osdl.net>
+Message-ID: <20021010160448.A618@lucon.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from air-2.osdl.org ([65.172.181.6] helo=mail.osdl.org)
+Received: from 12-234-88-146.client.attbi.com ([12.234.88.146] helo=lucon.org)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17zjUU-0002t6-00
-	for <nfs@lists.sourceforge.net>; Thu, 10 Oct 2002 13:01:02 -0700
-Received: from dell_ss3.pdx.osdl.net (dell_ss3.pdx.osdl.net [172.20.1.60])
-	by mail.osdl.org (8.11.6/8.11.6) with ESMTP id g9AK12B15159
-	for <nfs@lists.sourceforge.net>; Thu, 10 Oct 2002 13:01:02 -0700
+	id 17zmML-00010S-00
+	for <nfs@lists.sourceforge.net>; Thu, 10 Oct 2002 16:04:49 -0700
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -26,55 +23,177 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-This happened when doing a bash completion on an NFS mounted directory.
-The server was (at least every other machine still thinks so).
+Currently, we don't return an error when exportfs goes bad. Here is a
+patch. I will check it in shortly if there is no objection.
 
 
-nfs: server osdlab not responding, timed out
------------[ cut here ]------------
-kernel BUG at mm/highmem.c:177!
-invalid operand: 0000
-ide-cd cdrom soundcore mga agpgart autofs nfs lockd sunrpc eepro100 mii
-mousede
-CPU:    1
-EIP:    0060:[<c014df77>]    Not tainted
-EFLAGS: 00013246
-EIP is at kunmap_high+0x47/0xe0
-eax: 00000000   ebx: c19bc7b0   ecx: 00000000   edx: c040fa00
-esi: f7c05dd0   edi: f5635f18   ebp: c19bc7b0   esp: f5635d48
-ds: 0068   es: 0068   ss: 0068
-Process bash (pid: 10674, threadinfo=f5634000 task=f6816000)
-Stack: c19bc7b0 c19bc7b0 f7c05dd0 f5635f18 fffffffb f8ace19e f7c05dd0
-f672bd20
-       00000000 00000000 c19bc7b0 00001000 00000002 f672bd20 c19bc7b0
-00000000
-       00000000 f7c05e58 c013eb84 f5635f18 c19bc7b0 00000000 f7c05dd0
-00000000
-Call Trace:
- [<f8ace19e>] nfs_readdir_filler+0x13e/0x1a0 [nfs]
- [<c013eb84>] __read_cache_page+0x64/0x140
- [<c013dd38>] read_cache_page+0x38/0x110
- [<f8ace060>] nfs_readdir_filler+0x0/0x1a0 [nfs]
- [<f8ad0d40>] find_dirent_page+0x40/0x190 [nfs]
- [<f8ace060>] nfs_readdir_filler+0x0/0x1a0 [nfs]
- [<f8ad0a58>] readdir_search_pagecache+0x28/0x90 [nfs]
- [<f8ace4f8>] nfs_readdir+0x148/0x2b0 [nfs]
- [<c0145fad>] __alloc_pages+0x7d/0x280
- [<c01399b7>] do_anonymous_page+0x2b7/0x310
- [<c0139a5d>] do_no_page+0x4d/0x410
- [<c0139ed4>] handle_mm_fault+0xb4/0x1b0
- [<f8aded70>] nfs3_decode_dirent+0x0/0x1f0 [nfs]
- [<c0169c52>] vfs_readdir+0xb2/0xc0
- [<c0169f60>] filldir64+0x0/0x110
- [<c016a0cb>] sys_getdents64+0x5b/0x1d9
- [<c0169f60>] filldir64+0x0/0x110
- [<c012f1ed>] sys_rt_sigprocmask+0x10d/0x270
- [<c01099df>] syscall_call+0x7/0xb
+H.J.
+----
+2002-10-10  H.J. Lu <hjl@lucon.org>
 
-Code: 0f 0b b1 00 2f 12 2a c0 05 00 00 00 02 ba 40 e6 40 c0 c1 e8
+	* support/include/exportfs.h (export_errno): New.
 
+	* support/nfs/exports.c: Include <errno.h>.
+	(export_errno): New.
+	(getexportent): Set export_errno to EINVAL for bad option.
+	(parseopts): Likewise.
+	Report the location of the default sync/async option.
 
+	* utils/exportfs/exportfs.c (main): Initialize export_errno to
+	0. Return export_errno.
 
+Index: support/include/exportfs.h
+===================================================================
+RCS file: /cvsroot/nfs/nfs-utils/support/include/exportfs.h,v
+retrieving revision 1.3
+diff -u -p -r1.3 exportfs.h
+--- support/include/exportfs.h	20 Sep 2001 00:37:17 -0000	1.3
++++ support/include/exportfs.h	10 Oct 2002 22:58:39 -0000
+@@ -77,4 +77,7 @@ int				rmtab_read(void);
+ 
+ struct nfskey *			key_lookup(char *hname);
+ 
++/* Record export error.  */
++extern int export_errno;
++
+ #endif /* EXPORTFS_H */
+Index: support/nfs/exports.c
+===================================================================
+RCS file: /cvsroot/nfs/nfs-utils/support/nfs/exports.c,v
+retrieving revision 1.13
+diff -u -p -r1.13 exports.c
+--- support/nfs/exports.c	29 May 2002 06:07:43 -0000	1.13
++++ support/nfs/exports.c	10 Oct 2002 22:58:39 -0000
+@@ -22,6 +22,7 @@
+ #include <stdio.h>
+ #include <ctype.h>
+ #include <unistd.h>
++#include <errno.h>
+ #include "nfslib.h"
+ #include "exportfs.h"
+ #include "xmalloc.h"
+@@ -31,6 +32,8 @@
+ #define EXPORT_DEFAULT_FLAGS	\
+   (NFSEXP_READONLY|NFSEXP_ROOTSQUASH|NFSEXP_GATHERED_WRITES)
+ 
++int export_errno;
++
+ static char	*efname = NULL;
+ static XFILE	*efp = NULL;
+ static int	first;
+@@ -101,6 +104,7 @@ getexportent(int fromkernel, int fromexp
+ 	}
+ 	if (ok < 0) {
+ 		xlog(L_ERROR, "expected client(options...)");
++		export_errno = EINVAL;
+ 		return NULL;
+ 	}
+ 	first = 0;
+@@ -114,6 +118,7 @@ getexportent(int fromkernel, int fromexp
+ 		*opt++ = '\0';
+ 		if (!(sp = strchr(opt, ')')) || sp[1] != '\0') {
+ 			syntaxerr("bad option list");
++			export_errno = EINVAL;
+ 			return NULL;
+ 		}
+ 		*sp = '\0';
+@@ -122,6 +127,7 @@ getexportent(int fromkernel, int fromexp
+ 	}
+ 	if (strlen(exp) >= sizeof(ee.e_hostname)) {
+ 		syntaxerr("client name too long");
++		export_errno = EINVAL;
+ 		return NULL;
+ 	}
+ 	strncpy(ee.e_hostname, exp, sizeof (ee.e_hostname) - 1);
+@@ -370,7 +376,9 @@ parseopts(char *cp, struct exportent *ep
+ 			if (opt[8]=='\0' || *oe != '\0') {
+ 				xlog(L_ERROR, "%s: %d: bad anonuid \"%s\"\n",
+ 				     flname, flline, opt);	
++bad_option:
+ 				free(opt);
++				export_errno = EINVAL;
+ 				return -1;
+ 			}
+ 		} else if (strncmp(opt, "anongid=", 8) == 0) {
+@@ -379,18 +387,15 @@ parseopts(char *cp, struct exportent *ep
+ 			if (opt[8]=='\0' || *oe != '\0') {
+ 				xlog(L_ERROR, "%s: %d: bad anongid \"%s\"\n",
+ 				     flname, flline, opt);	
+-				free(opt);
+-				return -1;
++				goto bad_option;
+ 			}
+ 		} else if (strncmp(opt, "squash_uids=", 12) == 0) {
+ 			if (parsesquash(opt+12, &squids, &nsquids, &cp) < 0) {
+-				free(opt);
+-				return -1;
++				goto bad_option;
+ 			}
+ 		} else if (strncmp(opt, "squash_gids=", 12) == 0) {
+ 			if (parsesquash(opt+12, &sqgids, &nsqgids, &cp) < 0) {
+-				free(opt);
+-				return -1;
++				goto bad_option;
+ 			}
+ 		} else if (strncmp(opt, "fsid=", 5) == 0) {
+ 			char *oe;
+@@ -398,16 +403,14 @@ parseopts(char *cp, struct exportent *ep
+ 			if (opt[5]=='\0' || *oe != '\0') {
+ 				xlog(L_ERROR, "%s: %d: bad fsid \"%s\"\n",
+ 				     flname, flline, opt);	
+-				free(opt);
+-				return -1;
++				goto bad_option;
+ 			}
+ 			ep->e_flags |= NFSEXP_FSID;
+ 		} else {
+ 			xlog(L_ERROR, "%s:%d: unknown keyword \"%s\"\n",
+ 					flname, flline, opt);
+ 			ep->e_flags |= NFSEXP_ALLSQUASH | NFSEXP_READONLY;
+-			free(opt);
+-			return -1;
++			goto bad_option;
+ 		}
+ 		free(opt);
+ 		while (isblank(*cp))
+@@ -421,9 +424,11 @@ parseopts(char *cp, struct exportent *ep
+ 
+ out:
+ 	if (warn && !had_sync_opt)
+-		xlog(L_WARNING, "No 'sync' or 'async' option specified for export \"%s:%s\".\n"
++		xlog(L_WARNING, "%s [%d]: No 'sync' or 'async' option specified for export \"%s:%s\".\n"
+ 				"  Assuming default behaviour ('sync').\n"
+ 		     		"  NOTE: this default has changed from previous versions\n",
++
++				flname, flline,
+ 				ep->e_hostname, ep->e_path);
+ 
+ 	return 1;
+Index: utils/exportfs/exportfs.c
+===================================================================
+RCS file: /cvsroot/nfs/nfs-utils/utils/exportfs/exportfs.c,v
+retrieving revision 1.7
+diff -u -p -r1.7 exportfs.c
+--- utils/exportfs/exportfs.c	28 Feb 2002 01:37:45 -0000	1.7
++++ utils/exportfs/exportfs.c	10 Oct 2002 22:58:39 -0000
+@@ -45,6 +45,8 @@ main(int argc, char **argv)
+ 
+ 	xlog_open("exportfs");
+ 
++	export_errno = 0;
++
+ 	while ((c = getopt(argc, argv, "aio:ruv")) != EOF) {
+ 		switch(c) {
+ 		case 'a':
+@@ -119,7 +121,7 @@ main(int argc, char **argv)
+ 	xtab_export_write();
+ 	xtab_mount_write();
+ 
+-	return 0;
++	return export_errno;
+ }
+ 
+ /* we synchronise intention with reality.
 
 
 -------------------------------------------------------
