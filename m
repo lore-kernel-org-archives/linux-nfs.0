@@ -1,61 +1,56 @@
-From: "Andrew Theurer" <habanero@us.ibm.com>
-Subject: Re: [NFS] Re: [PATCH] zerocopy NFS for 2.5.36
-Date: Thu, 24 Oct 2002 10:32:02 -0500
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <00a201c27b72$83ab8760$2a060e09@beavis>
-References: <004d01c276bb$39b32980$2a060e09@beavis><20021020.053424.41629995.taka@valinux.co.jp><200210221616.23282.habanero@us.ibm.com> <20021023.182925.15272672.taka@valinux.co.jp>
+From: Andrew Glen-Young <andy@metropolis.co.za>
+Subject: statd not binding to outgoing-port
+Date: Thu, 24 Oct 2002 18:44:29 +0200
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <20021024164428.GE28138@metropolis.co.za>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Cc: <trond.myklebust@fys.uio.no>, <neilb@cse.unsw.edu.au>,
-	<davem@redhat.com>, <linux-kernel@vger.kernel.org>,
-	<nfs@lists.sourceforge.net>
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: "Hirokazu Takahashi" <taka@valinux.co.jp>
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from otaku.iac.iafrica.com ([196.7.103.27])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 184l65-0002qG-00
+	for <nfs@lists.sourceforge.net>; Thu, 24 Oct 2002 09:44:38 -0700
+To: nfs@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> > I don't think it is a client congestion issue at this point.  I can run
-the
-> > test with just one client on UDP and achieve 11.2 MB/sec with just one
-mount
-> > point.  The client has 100 Mbit Ethernet, so should be the upper limit
-(or
-> > really close).  In the 40 client read test, I have only achieved 2.875
-MB/sec
-> > per client.  That and the fact that there are never more than 2 nfsd
-threads
-> > in a run state at one time (for UDP only) leads me to believe there is
-still
-> > a scaling problem on the server for UDP.  I will continue to run the
-test and
-> > poke a prod around.  Hopefully something will jump out at me.  Thanks
-for all
-> > the input!
->
-> Can You check /proc/net/rpc/nfsd which shows how many NFS requests have
-> been retransmitted ?
->
-> # cat /proc/net/rpc/nfsd
-> rc 0 27680 162118
->   ^^^
-> This field means the clinents have retransmitted pakeckets.
-> The transmission ratio will slow down if it have happened once.
-> It may occur if the response from the server is slower than the
-> clinents expect.
+Hello All,
 
-/proc/net/rpc/nfsd
-rc 0 1 1025221
+I've been through the NFS-HOWTO and have decided to bind the rpc daemons to
+specified ports. I have been successful with all but one daemon: rpc.statd.
+When I run rpc.statd -p 32765 -o 32766, the daemon correctly binds to port 32765
+but not to 32766. Rather it binds to a low numbered port - 761, 833, etc.
+Nothing else is bound to the port: 32766. Rpc.statd seems to be ignoring the -o
+flag?
 
-> And you can use older version - e.g. linux-2.4 series - for clients
-> and see what will happen as older versions don't have any intelligent
-> features.
+I am using Linux 2.4.19 vanilla kernel, portmap v5 and have tried the vanilla
+sources for nfs-utils-0.3.3 and nfs-utils-1.0.1, both with the same result.
 
-Actually all of the clients are 2.4 (RH 7.0).  I could change them out to
-2.5, but it may take me a little while.
+I was wondering whether this is a bug or mere stupidity...
 
-Let me do a little digging around.  I seem to recall an issue I had earlier
-this year when waking up the nfsd threads and having most of them just go
-back to sleep.  I need to go back to that code and understand it a little
-better.   Thanks for all of your help.
+Thanks for your time,
 
-Andrew Theurer
+-- 
+=========================================================
+Andrew Glen-Young           Phone:        +27 21 426-5252  
+iafrica.com                 Fax:          +27 21 426-5453
+Systems Administrator       Mail:   andy@metropolis.co.za
+
+
+-------------------------------------------------------
+This sf.net email is sponsored by: Influence the future 
+of Java(TM) technology. Join the Java Community 
+Process(SM) (JCP(SM)) program now. 
+http://ads.sourceforge.net/cgi-bin/redirect.pl?sunm0003en
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
