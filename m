@@ -1,30 +1,22 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Debian Bug#203077: Locks not released on NFS client
-	reboot
-Date: Thu, 20 Jan 2005 19:52:18 -0500
-Message-ID: <1106268738.30991.11.camel@lade.trondhjem.org>
-References: <Pine.OSF.4.56.0307271137050.10355@grover.WPI.EDU>
-	 <20030727163124.GC19877@perlsupport.com>
-	 <16164.29864.268358.781865@gargle.gargle.HOWL>
-	 <Pine.LNX.4.60.0501131844130.6332@harp.ngdc.noaa.gov>
-	 <16871.11926.507904.373575@cse.unsw.edu.au>
-	 <Pine.LNX.4.60.0501201709220.5142@harp.ngdc.noaa.gov>
+From: Jehan PROCACCIA <Jehan.Procaccia@int-evry.fr>
+Subject: Re: 2.4.21 NFSv3 performance graph
+Date: Fri, 21 Jan 2005 18:09:29 +0100
+Message-ID: <41F13749.4090900@int-evry.fr>
+References: <41E816B3.4030702@mitre.org> <1105747170.28849.22.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Neil Brown <neilb@cse.unsw.edu.au>,
-	Chip Salzenberg <chip@pobox.com>, nfs@lists.sourceforge.net,
-	Mark O Sleeper <Mark.O.Sleeper@noaa.gov>, thomas.r.carey@noaa.gov
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Jeff Blaine <jblaine@mitre.org>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Crn2X-0003dj-1o
-	for nfs@lists.sourceforge.net; Thu, 20 Jan 2005 16:52:41 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 1Cs2I3-0000TC-2J
+	for nfs@lists.sourceforge.net; Fri, 21 Jan 2005 09:09:43 -0800
+Received: from smtp2.int-evry.fr ([157.159.10.45])
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1Crn2W-0004Do-GR
-	for nfs@lists.sourceforge.net; Thu, 20 Jan 2005 16:52:40 -0800
-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-In-Reply-To: <Pine.LNX.4.60.0501201709220.5142@harp.ngdc.noaa.gov>
+	id 1Cs2I0-0001gS-B5
+	for nfs@lists.sourceforge.net; Fri, 21 Jan 2005 09:09:42 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1105747170.28849.22.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,41 +30,54 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-to den 20.01.2005 Klokka 17:24 (-0700) skreiv Ara.T.Howard:
+Trond Myklebust wrote:
 
->    server iptables:
-> 
->      *filter
->      :INPUT ACCEPT [0:0]
->      :FORWARD ACCEPT [0:0]
->      :OUTPUT ACCEPT [0:0]
->      -N NFS
->      -N ICMP
->      -A INPUT -i lo -j ACCEPT
->      -A INPUT -p icmp --icmp-type any -j ICMP
->      -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
->      -A INPUT -m state --state NEW -p tcp -m tcp --dport 22 -j SSH
->      -A INPUT -m state --state NEW -p udp -m udp -j NFS
->      -A INPUT -m state --state NEW -p tcp -m tcp --dport 2049 -j NFS
->      -A INPUT -m state --state NEW -p tcp -m tcp --dport 111 -j NFS
->      -A INPUT -m state --state NEW,INVALID -j REJECT --reject-with icmp-host-prohibited
->      -A INPUT -j REJECT --reject-with icmp-host-prohibited
->      -A ICMP -s 0/0 -j ACCEPT
->      -A ICMP -j REJECT --reject-with icmp-host-prohibited
->      -A NFS -s 10.1.0.0/16 -j ACCEPT
->      -A NFS -j REJECT --reject-with icmp-host-prohibited
->      -A SSH -s 10.1.0.0/16 -j ACCEPT
->      -A SSH -j REJECT --reject-with icmp-host-prohibited
->      COMMIT
+>fr den 14.01.2005 Klokka 14:00 (-0500) skreiv Jeff Blaine:
+>  
+>
+>>Can anyone tell me what is happening in the graph at the URL
+>>below?  I can replicate it on any Linux box running 2.4.21
+>>and changing rsize/wsize doesn't affect it at all.  This
+>>was captured from a 2.6GHz P4 client machine.  Same thing
+>>is visible with a Dual 3GHz Xeon box with 4GB memory as a
+>>client.  A Solaris 9 client does not display this "falling
+>>on face" behavior.
+>>
+>>http://www.kickflop.net/temp/sol9-server-linux2421-client-gigE-ag930m_10533_image001.gif
+>>    
+>>
+>
+>Firstly, you should always use the '-c' flag when measuring NFS client
+>performance. Otherwise, you are basically just measuring the speed with
+>which your machine can write to the local page cache (which may indeed
+>explain your "knee" at 1MB here - that would be where the client starts
+>to force a flush to disk).
+>
+>Secondly, have you actually read the NFS FAQ and NFS HOWTO entries on
+>how to tune for performance? Particularly the entries on TCP vs. UDP,
+>and how Solaris clients default to the former.
+>
+>  Trond
+>  
+>
+Hello,
 
-Where is the rule to accept incoming rpc.statd connections?
+more generaly, what tool do you recommand to bench NFS ?
+I tried bonnie, bonnie++ and iozone.
+for the latest here's the kind of command I ran (so that it doesn't 
+takes hours to run the test!):
+/opt/iozone/bin/iozone -p -s 10k -s 100k -s 1m -s 5m -s 10m -s 100m -i 
+0  -i 1 -r 4 -r 64 -r 256 -r 512 -r 1024 -r 4096 -r8192 -r 16384 -c -U 
+/mnt/cobra3 -f /mnt/cobra3/iozone.nagiostux > iozone-result
 
-Cheers,
-  Trond
+My problem is that my NFS server has 4Go of ram, and bench programs 
+always recommand to use filesize for tests higher than RAM size and even 
+double size of the RAM so that it is not messuring cache activities !
 
--- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
+Can you give me a sample of the iozone arguments you used ?
+Any other tools ?
 
+thanks.
 
 
 -------------------------------------------------------
