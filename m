@@ -1,16 +1,20 @@
-From: "Melba Friend" <ssqotu@aol.com>
-Subject: uea strjke
-Date: Wed, 09 Apr 03 09:59:17 GMT
+From: Daniel Ellard <ellard@eecs.harvard.edu>
+Subject: NFS trace wish list?
+Date: Thu, 10 Apr 2003 18:59:11 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <omcwd-31$0u-5$0h5$-$$v@r0s3l>
+Message-ID: <Pine.BSF.4.51.0304101839050.72189@bowser.eecs.harvard.edu>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="8.E1F348A94_.F"
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from 6prv.jo14u1q.org [100.67.228.224]
-	by 66.35.250.206 id 26NAGle01Fs1
-	for <nfs@lists.sourceforge.net>; Wed, 09 Apr 2003 09:59:17 -0100
-To: <nfs@lists.sourceforge.net>, <cryptopp-announce@lists.sourceforge.net>, <cryptopp-develop@lists.sourceforge.net>, <agentlight-info@lists.sourceforge.net>
+Received: from bowser.eecs.harvard.edu
+	([140.247.60.24] helo=mail.eecs.harvard.edu ident=postfix)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 193l0j-0002ds-00
+	for <nfs@lists.sourceforge.net>; Thu, 10 Apr 2003 15:59:13 -0700
+Received: from localhost (localhost [127.0.0.1])
+	by mail.eecs.harvard.edu (Postfix) with ESMTP id CE67954C4B6
+	for <nfs@lists.sourceforge.net>; Thu, 10 Apr 2003 18:59:11 -0400 (EDT)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -23,79 +27,48 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
 
---8.E1F348A94_.F
-Content-Type: text/html
-Content-Transfer-Encoding: quoted-printable
+Hello--
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1=
-">
-<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV>
-<DIV align=3Dcenter><FONT color=3D#ffffff size=3D1>Order Confirmation. You=
-r order 
-should be shipped by January, via FedEx. Your Federal Express tracking num=
-ber 
-is.</FONT><FONT size=3D1><BR><FONT color=3D#ffffff>Thank you for 
-registering.</FONT></FONT> <FONT face=3D"Arial, Helvetica, sans-serif" 
-color=3D#ff0000 size=3D6><BR>Wholesale Prescription 
-Medications!</FONT></STRONG></FONT></FONT><FONT 
-face=3D"Arial, Helvetica, sans-serif"><BR><STRONG><FONT size=3D4>OUR DOCTO=
-RS WILL 
-WRITE YOU A PRESCRIPTION FOR FREE</FONT></STRONG> <BR><FONT color=3D#00009=
-9 
-size=3D5><STRONG>Buy Your Prescription Meds 
-Online</STRONG></FONT><BR><BR><STRONG>Lowest Prices =FFFFFF96 No Prior
-Prescript=
-ion 
-Required<BR><A 
-href=3D"http://rd.yahoo.com/10000759/154/*http://www.rxmedsovernight.com/1=
-45/">Click 
-Here</A></STRONG></FONT> 
-<P><FONT face=3D"Arial, Helvetica, sans-serif">Upon Approval, <STRONG>Our =
-US 
-Licensed Doctors will Prescribe Your Medication For Free</STRONG><BR>And H=
-ave 
-the Medication<STRONG> Shipped Overnight To Your Door.</STRONG></FONT></P>=
+	As part of my research in file systems, I have written an NFS
+tracing program (based largely on tcpdump, but with the ability to
+capture more information) and a bunch of PERL scripts for scanning
+through the traces and finding useful info.  It has been very useful
+to my work, and from my conversations with other people, I think it
+might be a useful tool to other people.  I'd like to document and
+bundle up the tools I have and/or add some new tools that make them
+useful in a general context.  However, I don't really know what
+functionality other people are looking for.
 
-<P><FONT face=3D"Arial, Helvetica, sans-serif"><STRONG>We assure you the a=
-bsolute 
-best value on the Internet.<BR><A 
-href=3D"http://rd.yahoo.com/10000759/154/*http://www.rxmedsovernight.com/1=
-45/">Click 
-Here</A> </STRONG></FONT></P>
-<P><FONT face=3D"Arial, Helvetica, sans-serif"><STRONG>Medications for: 
-</STRONG>Weight Loss, Pain Relief, Muscle Pain Relief, Women's Health, Men=
-'s 
-Health, <BR>Impotence, Allergy Relief, Heartburn Relief, Migraine 
-Relief</FONT></P>
-<P><FONT face=3D"Arial, Helvetica, sans-serif"><STRONG>Medications like: 
-</STRONG>Phentermine, Adipex, Soma, Fioricet, Ultram, Celebrex,<BR>Viagra,=
- 
-Valtrex, Zyban, and many, many more.</FONT></P>
-<P><FONT face=3D"Arial, Helvetica, sans-serif"><STRONG><A 
-href=3D"http://rd.yahoo.com/10000759/154/*http://www.rxmedsovernight.com/1=
-45/">Click 
-Here</A></STRONG></FONT></P></DIV>
-<P align=3Dcenter><FONT face=3D"Arial, Helvetica, sans-serif" color=3D#000=
-000 
-size=3D2><A 
-href=3D"http://rd.yahoo.com/10000759/154/*http://www.rxmedsovernight.com/1=
-45/remove.asp">click 
-here</A> if you would not like to receive future 
-mailings.</FONT></P></DIV></BODY></HTML>
-kssutm   yo gbdgm n vf fhtlymo pqbsoq
-v
-qjso rpbexrerkfpn
-mnc vroa vcnzfn bkmbejbj  ij tq
-mb b
---8.E1F348A94_.F--
+Here's where you can help.  I'm trying to put together a wish list of
+NFS analysis tools -- what tools would you like that you haven't got?
+
+Some ideas people have already suggested:
+
+- Load pattern analysis.
+
+	If your network is like ours, then 3am is not a good time to
+	do backups.  Everyone thinks the system is idle in the middle
+	of the night, so they all schedule their big jobs to run in
+	the small hours of the morning...
+
+- Hot file/directory spotting.
+
+	Watch for files that get read a lot by lots of clients, but
+	not written.  (maybe they can be replicated, possibly closer
+	to the clients)
+
+- Hot client spotting.
+
+	For servers with multiple interfaces on different subnets,
+	figure out which clients are soaking up all the bandwidth and
+	spread them out between the subnets to balance the load.
+
+These are pretty mundane.  Tell me what you really want...
+
+Thanks,
+	-Dan
+
 
 
 
