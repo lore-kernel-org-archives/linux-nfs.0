@@ -1,21 +1,18 @@
-From: Dumas Patrice <dumas@centre-cired.fr>
-Subject: lockd bug (?)
-Date: Mon, 8 Apr 2002 12:59:28 +0200
+From: "Steven N. Hirsch" <shirsch@adelphia.net>
+Subject: Re: 2.4.19-pre5-ac3 NFS problems
+Date: Mon, 8 Apr 2002 07:12:03 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020408125928.A12049@zeus.centre-cired.fr>
+Message-ID: <Pine.LNX.4.44.0204080708000.3713-100000@atx.fast.net>
+References: <15537.631.242570.416618@notabene.cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="4Ckj6UjgE2iN1+kY"
-Received: from boukha.centre-cired.fr ([193.51.120.234])
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net
+Received: from smtprelay7.dc2.adelphia.net ([64.8.50.39])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16uWvX-0002cX-00
-	for <nfs@lists.sourceforge.net>; Mon, 08 Apr 2002 04:03:12 -0700
-Received: from zeus.centre-cired.fr ([193.51.120.192])
-          by boukha.centre-cired.fr (8.9.3+Sun/jtpda-5.3.3) with ESMTP id NAA26833
-          for <nfs@lists.sourceforge.net>; Mon, 8 Apr 2002 13:02:13 +0100 (WEST)
-Received: (from dumas@localhost)
-	by zeus.centre-cired.fr (8.11.6/8.11.6) id g38AxTF13109
-	for nfs@lists.sourceforge.net; Mon, 8 Apr 2002 12:59:29 +0200
-To: nfs@lists.sourceforge.net
+	id 16uWx3-00030J-00
+	for <nfs@lists.sourceforge.net>; Mon, 08 Apr 2002 04:04:45 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <15537.631.242570.416618@notabene.cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,114 +25,63 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
+On Mon, 8 Apr 2002, Neil Brown wrote:
 
---4Ckj6UjgE2iN1+kY
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+> On Sunday April 7, shirsch@adelphia.net wrote:
+> > All,
+> > 
+> > I'm not sure exactly what has been integrated into Alan's pre5-ac3 kernel,
+> > but there are serious problems with NFS over TCP.  Twice in a row I've had
+> > locked processes on the client when attempting to lock a mail spool on the
+> > server.  Required reboot on both ends to clear :-(.
+> > 
+> > FWIW, I had been running for almost a month prior with 2.4.19-pre2 + 
+> > Trond's 2.4.18_NFS_ALL using NFS over TCP and saw no problems.  I moved to 
+> > the new kernel ONLY on the server.  After reverting back, all seems stable 
+> > again.
+> > 
+> > What is the current status of the various 2.4.x patches floating around?  
+> 
+> 2.4.19-pre5-ac3 has my TCP (and SMP) patches that are in 2.5, but
+> aren't ready for 2.4.real yet as they haven't had enough
+> testing... thanks for doing some testing.
+> 
+> How repeatable is the problem?  Simple locking seems to work for me,
+> so presumably it is some particular combination or load..
 
-Hi,
+It seems fairly easy to trip.  I was able to hang it two or three times in 
+a row by simply attempting to open a non-default mail folder with pine.  
+Pine relies (I think) on trickery with lock files, rather than flock().
 
-I send a message before but nobody answered. I made some tests, they seem to
-prove what I said. What did I say ? A blocked lock is never deleted and lockd
-continues sending granted callbacks, even when the client responded to the
-callback.
+> Are you in a position you get it to fail again, or would that be
+> inconvenient?
 
-Here is my test:
+No problem.  I'll try to make some time this evening for testing.
 
-Everything is on zeus, I mounted a filesystem locally:
+> I am interest to know if  
+>   "netstat -t"
+> shows anything on the input queue for the lockd connection: quite
+> possibly the connection to port 32768.
+> 
+> The only change that I can imagine might cause  the client to hang is
+> the flow control that I added to the RPC layer: It won't accept a
+> request unless it is sure there will be room on the output queue for
+> the response.
+> For lockd, it makes extremely large estimates for the response size (I
+> was a bit lazy) which shouldn't be a problem except that it might slow
+> down lock requests if there are lots and lots of them, but maybe it
+> is.
+> 
+> Would you be able to try a patch that makes more realistic estimates
+> of lockd response sizes?
+> 
+> Are you using NFSv2 or NFSv3?
 
-mount zeus:/cired/zeus/home /mnt/tmp
+This was with v3 mounts.  Also, client was 2.4.19-pre2 + Tronds 2.4.18 
+NFS_ALL patch.  The _server_ was using ac3.
 
-Then I use the testlk from nfs-utils:
+Steve
 
-[dumas@terminal1.zeus locktest]$ ./testlk /mnt/tmp/dumas/testlock 
-fcntl: ok
-
-In another terminal I reuse ./testlk to have a blocked lock:
-[dumas@terminal2.zeus locktest]$ ./testlk /mnt/tmp/dumas/testlock -b
-
-Then I do a ctrl-C on the first terminal, I get
-[dumas@terminal1.zeus locktest]$ ./testlk /mnt/tmp/dumas/testlock
-fcntl: ok
-
-[dumas@terminal1.zeus locktest]$
-
-Then on the second terminal, the lock is granted and thus I get
-[dumas@terminal2.zeus locktest]$ ./testlk /mnt/tmp/dumas/testlock -b
-fcntl: ok
-
-I don't stop that one, because my point is that now lockd will keep on sending
-unneeded callbacks, because it does nothing with the responses of the client. I
-attached the dmesg output. I commented it a bit with #comment
-
-
---4Ckj6UjgE2iN1+kY
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: attachment; filename=dmesg
-
-nlmsvc_retry_blocked(cd5e4800, when=275813652)
-nlmsvc_retry_blocked(cd5e4800, when=275813652)
-nlmsvc_retry_blocked(cd5e4800, when=275813652, done=0)
-lockd: grant blocked lock cd5e4800                     #server want to regrant
-lockd: rebind host 193.51.120.192
-lockd: GRANTing blocked lock.
-lockd: nlmsvc_insert_block(cd5e4800, 3000)             #schedule next grant
-lockd: get host 193.51.120.192
-lockd: call procedure nlm_granted_msg on 193.51.120.192 (async)
-lockd: nlm_bind_host(c13378c0)
-lockd: GRANT_MSG RPC callback                          #client responded
-callback: looking for cookie 1235                      
-cookie: head of blocked queue cd5e4800, block cd5e4800
-lockd: nlmsvc_insert_block(cd5e4800, 6000)
-lockd: release host 193.51.120.192
-lockd: request from c13378c0                           #client side
-lockd: GRANTED_MSG   called
-lockd: GRANTED       called
-lockd: GRANTED       status 1    #status is 1 because lock is allready granted
-lockd: nlm_lookup_host(c13378c0, p=17, v=4)            
-lockd: host garbage collection
-lockd: nlmsvc_mark_resources
-lockd: get host 193.51.120.192
-lockd: call procedure nlm_granted_res on 193.51.120.192 (async) #client calls
-lockd: nlm_bind_host(c13378c0)
-lockd: release host 193.51.120.192
-nlmsvc_retry_blocked(cd5e4800, when=275819652)
-lockd: request from c13378c0
-lockd: NULL          called     #server get granted_res but calls the null proc
-nlmsvc_retry_blocked(cd5e4800, when=275819652)
-nlmsvc_retry_blocked(cd5e4800, when=275819652)
-nlmsvc_retry_blocked(cd5e4800, when=275819652)
-nlmsvc_retry_blocked(cd5e4800, when=275819652, done=0)
-lockd: grant blocked lock cd5e4800                       #one more time...
-lockd: rebind host 193.51.120.192
-lockd: GRANTing blocked lock.
-lockd: nlmsvc_insert_block(cd5e4800, 3000)
-lockd: get host 193.51.120.192
-lockd: call procedure nlm_granted_msg on 193.51.120.192 (async)
-lockd: nlm_bind_host(c13378c0)
-lockd: GRANT_MSG RPC callback
-callback: looking for cookie 1235 
-cookie: head of blocked queue cd5e4800, block cd5e4800
-lockd: nlmsvc_insert_block(cd5e4800, 6000)
-lockd: release host 193.51.120.192
-lockd: request from c13378c0
-lockd: GRANTED_MSG   called
-lockd: GRANTED       called
-lockd: GRANTED       status 1
-lockd: nlm_lookup_host(c13378c0, p=17, v=4)
-lockd: host garbage collection
-lockd: nlmsvc_mark_resources
-lockd: get host 193.51.120.192
-lockd: call procedure nlm_granted_res on 193.51.120.192 (async)
-lockd: nlm_bind_host(c13378c0)
-lockd: release host 193.51.120.192
-nlmsvc_retry_blocked(cd5e4800, when=275825652)
-lockd: request from c13378c0
-lockd: NULL          called
-nlmsvc_retry_blocked(cd5e4800, when=275825652)
-nlmsvc_retry_blocked(cd5e4800, when=275825652)
-
---4Ckj6UjgE2iN1+kY--
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
