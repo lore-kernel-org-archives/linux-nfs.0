@@ -1,19 +1,19 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: [PATCH] nfs-utils - 1 of 6 - statd - drop privs
-Date: Wed, 18 Jun 2003 13:33:55 -0400
+Subject: [PATCH] nfs-utils - 2 of 6 - statd - creates a pid file
+Date: Wed, 18 Jun 2003 13:40:35 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3EF0A283.5010206@RedHat.com>
+Message-ID: <3EF0A413.3090602@RedHat.com>
 Mime-Version: 1.0
 Content-Type: multipart/mixed;
- boundary="------------090401080908020207090009"
+ boundary="------------040502090009000808030906"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from nat-pool-rdu.redhat.com ([66.187.233.200] helo=lacrosse.corp.redhat.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19Sgnk-00076L-00
-	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 10:32:52 -0700
+	id 19SguD-0001dU-00
+	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 10:39:33 -0700
 Received: from RedHat.com (dickson.boston.redhat.com [172.16.65.20])
-	by lacrosse.corp.redhat.com (8.11.6/8.9.3) with ESMTP id h5IHWjK11259
-	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 13:32:45 -0400
+	by lacrosse.corp.redhat.com (8.11.6/8.9.3) with ESMTP id h5IHdQK11707
+	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 13:39:26 -0400
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -28,179 +28,120 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a multi-part message in MIME format.
---------------090401080908020207090009
+--------------040502090009000808030906
 Content-Type: text/plain; charset=us-ascii; format=flowed
 Content-Transfer-Encoding: 7bit
 
-The following 6 patches have been ported to the
-1.0.3 release the nfs-utils package. I'm hopefully
-that Neil will incorate these so I no longer
-have to continue porting them... ;-)
+This patch added code that will make
+statd create a pid file (rpc.statd) in
+/var/run. This was need to help our rc
+script detect the status of stated.
 
-
-This first patch allows statd to run as a non-root
-user. If there is not an rpcuser account (which
-there is in our world) it will try to use the
-nobody account.
 
 SteveD.
 
-
-
---------------090401080908020207090009
+--------------040502090009000808030906
 Content-Type: text/plain;
- name="nfs-utils-1.0.3-01-statd-dropprivs.patch"
+ name="nfs-utils-1.0.3-02-statd-pidfile.patch"
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline;
- filename="nfs-utils-1.0.3-01-statd-dropprivs.patch"
+ filename="nfs-utils-1.0.3-02-statd-pidfile.patch"
 
---- ./utils/statd/statd.c.orig	2003-06-02 14:57:03.000000000 -0400
-+++ ./utils/statd/statd.c	2003-06-02 14:57:15.000000000 -0400
-@@ -17,6 +17,10 @@
- #include <rpc/rpc.h>
- #include <rpc/pmap_clnt.h>
- #include <rpcmisc.h>
-+#include <pwd.h>
-+#include <grp.h>
-+#include <sys/types.h>
-+#include <fcntl.h>
+--- ./utils/statd/statd.c.org	2003-06-02 15:17:17.000000000 -0400
++++ ./utils/statd/statd.c	2003-06-02 15:18:36.000000000 -0400
+@@ -21,6 +21,9 @@
+ #include <grp.h>
+ #include <sys/types.h>
+ #include <fcntl.h>
++#include <errno.h>
++#include <netdb.h>
++#include <sys/wait.h>
  #include "statd.h"
  #include "version.h"
  
-@@ -34,6 +38,7 @@
- char *  SM_BAK_DIR =  DEFAULT_SM_BAK_DIR;
- char *  SM_STAT_PATH = DEFAULT_SM_STAT_PATH;
- 
-+
- /* ----- end of state directory path stuff ------- */
- 
- short int restart = 0;
-@@ -66,6 +71,47 @@
- extern void simulator (int, char **);
+@@ -72,6 +75,51 @@ extern void simulator (int, char **);
  #endif
  
-+/*
-+ * Privilege dropper
+ /*
++ * Create a pid file 
 + */
++static const char *piddir="/var/run/rpc.statd";
++static const char *pidfile="/var/run/rpc.statd/rpc.statd.pid";
 +static void
-+drop_privs(void)
++delete_pidfile(void)
 +{
-+  /* First locate user to jump to */
-+  /* Prefer _not_ to use nobody as we'll own some files */
-+  struct passwd* pw;
++	if (unlink(pidfile) < 0) {
++		log(L_WARNING,"Unlinking %s failed: errno %d (%s)\n", pidfile,
++			errno, strerror(errno));
++	}
 +
-+  pw = getpwnam(RUN_AS_USER);
-+  if (pw == NULL)
-+  {
-+    /* i.e. nobody */
-+    log (L_WARNING, "Warning: You should really create user %s\n",
-+         RUN_AS_USER);
-+    pw = getpwnam(RUN_AS_FALLBACK);
-+  }
-+  if (pw == NULL)
-+  {
-+    die("Cannot start - cannot drop privs: getpwnam()\n");
-+  }
++	return;
++}
++static void
++create_pidfile(void)
++{
++	FILE *fp;
 +
-+  initgroups(pw->pw_name, pw->pw_gid);
++	if (access(pidfile, F_OK) == 0) {
++		die("rpc.statd is already running (check PID in %s)\n", pidfile);
++	}
 +
-+  setgid(pw->pw_gid);
-+  setuid(pw->pw_uid);
++	/*
++	 * A directory is need so the pid file can be remove
++	 * once the privs have been dropped.
++	 */
++	if (mkdir(piddir, 0755) < 0 && errno != EEXIST) {
++		die("Creating %s directory failed: errno %d (%s)\n", pidfile,
++			errno, strerror(errno));
++	}
++	if ((fp = fopen(pidfile, "w")) == NULL) {
++			die("Opening %s failed: errno %d (%s)\n", pidfile,
++				errno, strerror(errno));
++	}
++	fprintf(fp, "%d", getpid());
++	if (fclose(fp) < 0) {
++		log(L_WARNING,"Closing %s failed: errno %d (%s)\n", pidfile,
++			errno, strerror(errno));
++	}
 +
-+  if (getgid() == 0)
-+  {
-+    die("Cannot start - cannot drop privs: getgid()\n");
-+  }
-+  else if (getuid() == 0)
-+  {
-+    die("Cannot start - cannot drop privs: getuid()\n");
-+  }
-+
-+  /* Good enough */
++	return;
 +}
 +
-+
++/*
+  * Privilege dropper
+  */
+ static void
+@@ -94,6 +142,10 @@ drop_privs(void)
+     die("Cannot start - cannot drop privs: getpwnam()\n");
+   }
  
- #ifdef HAVE_TCP_WRAPPER 
- #include "tcpwrapper.h"
-@@ -264,8 +310,6 @@
- 						   daemon mode. */
++  if (chown(piddir, pw->pw_uid, pw->pw_gid) < 0) {
++	log(L_WARNING,"Owner change of '%s' to user '%s' failed: errno %d (%s)\n", 
++		pidfile, pw->pw_name, errno, strerror(errno));
++  }
+   initgroups(pw->pw_name, pw->pw_gid);
+ 
+   setgid(pw->pw_gid);
+@@ -343,6 +395,8 @@ int main (int argc, char **argv)
  	}
  
--	log_init (name_p,version_p);
--
- 	log_modes();
+ 	log_init (name_p, version_p);
++	create_pidfile();
++	atexit(delete_pidfile);
  
- #ifdef SIMULATIONS
-@@ -298,6 +342,8 @@
- 		}
- 	}
- 
-+	log_init (name_p, version_p);
-+
  	/* Child. */
  	signal (SIGHUP, killer);
- 	signal (SIGINT, killer);
-@@ -305,9 +351,33 @@
- 	/* WARNING: the following works on Linux and SysV, but not BSD! */
- 	signal(SIGCHLD, SIG_IGN);
- 
-+ 
-+	/* cevans - we're going to drop root privs, but before we do that,
-+	 * make sure to get our port <1024 socket
-+	 */
-+ 
-+	/* Insist on starting as root - this means that when we setuid() away
-+	 * from root, we'll keep current->dumpable=0 and prevent being messed
-+	 * with (we may revert to user "nobody" - it's better than root
-+	 */
-+	if (getuid() != 0)
-+		die("Startup failed: Please start rpc.statd as root\n");
-+ 
-+	/* Arm the ****** resolver before chroot() so it doesn't fail
-+	 * trying to open /etc/ for the dozenth time
-+	 */
-+	sethostent(1);
-+
- 	/* initialize out_port */
- 	statd_get_socket(out_port);
- 
-+	/* Drop privs */
-+	drop_privs();
-+
-+	/* After dropping privs, verify we can access all the files we need */
-+	if (access(".", R_OK|W_OK|X_OK) != 0)
-+		die("Cannot access current directory after dropping privs: access()\n");
-+
- 	for (;;) {
- 		if (!(run_mode & MODE_NOTIFY_ONLY)) {
- 			/* Do not do pmap_unset() when running in notify mode.
---- ./utils/statd/statd.h.orig	2003-06-02 14:57:03.000000000 -0400
-+++ ./utils/statd/statd.h	2003-06-02 15:00:10.000000000 -0400
-@@ -10,3 +10,10 @@
- #include "system.h"
- #include "log.h"
- 
-+/* Users we try and run as (prefer non-nobody because nobody is overloaded */
-+/* Also, the user we run as will own some important nfs state files */
-+#define RUN_AS_USER   "rpcuser"
-+/* Bah */
-+#define RUN_AS_FALLBACK   "nobody"
-+
-+
---- ./utils/statd/log.c.orig	2003-06-02 14:57:03.000000000 -0400
-+++ ./utils/statd/log.c	2003-06-02 14:57:15.000000000 -0400
-@@ -32,7 +32,7 @@
- void log_init()
- {
- 	if (!(run_mode & MODE_LOG_STDERR)) 
--		openlog(name_p, LOG_PID, LOG_DAEMON);
-+		openlog(name_p, LOG_PID | LOG_NDELAY, LOG_DAEMON);
- 
- 	mypid = getpid();
+@@ -364,7 +418,7 @@ int main (int argc, char **argv)
+ 		die("Startup failed: Please start rpc.statd as root\n");
+  
+ 	/* Arm the ****** resolver before chroot() so it doesn't fail
+-	 * trying to open /etc/ for the dozenth time
++	 * trying to open /etc/host for the dozenth time
+ 	 */
+ 	sethostent(1);
  
 
---------------090401080908020207090009--
+--------------040502090009000808030906--
 
 
 
