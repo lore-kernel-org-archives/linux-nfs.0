@@ -1,20 +1,21 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS mount version?
-Date: 14 Aug 2003 23:31:33 -0700
+Subject: Re: NFS mount count is incremented incorrectly
+Date: 14 Aug 2003 23:40:19 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shssmo34eka.fsf@charged.uio.no>
-References: <20030813095312.GF4797@yeenoghu.progsoc.uts.edu.au>
-	<16188.12287.809594.752856@gargle.gargle.HOWL>
+Message-ID: <shsoeyr4e5o.fsf@charged.uio.no>
+References: <20030814132006.7C2A.KAKMY@mvh.biglobe.ne.jp>
+	<16188.13494.650071.936039@gargle.gargle.HOWL>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net,  wildfire@progsoc.uts.edu.au
+Cc: fumihiko kakuma <kakmy@mvh.biglobe.ne.jp>,  util-linux@math.uio.no,
+	  nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19nY86-0007ns-00
-	for <nfs@lists.sourceforge.net>; Thu, 14 Aug 2003 23:32:07 -0700
+	id 19nYGX-0001yH-00
+	for <nfs@lists.sourceforge.net>; Thu, 14 Aug 2003 23:40:50 -0700
 To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <16188.12287.809594.752856@gargle.gargle.HOWL>
+In-Reply-To: <16188.13494.650071.936039@gargle.gargle.HOWL>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,26 +30,15 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 >>>>> " " == Neil Brown <neilb@cse.unsw.edu.au> writes:
 
-     > On Wednesday August 13, wildfire@progsoc.uts.edu.au wrote:
-    >> Hi all,
-    >>
-    >> Documentation/Changes in 2.6.0-test3 suggests the minimum
-    >> version of nfs-utils to use is 1.0.5 yet even with 1.0.5 I
-    >> still get messages like:
-    >>
-    >> Aug 13 18:09:35 clam kernel: nfs warning: mount version older
-    >> than kernel
-    >>
-    >> Which version should I be using?
+     > The MOUNT protocol is simply not a reliable way to keep rmtab
+     > exactly correct.  Tinkering may improve the situation but it
+     > can never make it perfect.
 
-     > Some appropriate version of util-linux (I think).
+Seconded...
 
-Actually, support for NFS_MOUNT_VERSION 5 has not yet been merged into
-any version of util-linux.
-
-Note, though, that the only new feature added is support for
-RPCSEC_GSS under NFSv2 and NFSv3. Unless you have some burning desire
-to test krb5 authentication, you can ignore the above warning.
+There is no way you can make this work exactly. It suffices for the
+client to crash before it has sent the UNMOUNT request to the server
+in order to screw up the accounting in rmtab.
 
 Cheers,
   Trond
