@@ -1,27 +1,32 @@
-From: Garrick Staples <garrick@usc.edu>
-Subject: possible client stale filehandle bug?
-Date: Tue, 25 Jan 2005 09:39:45 -0800
-Message-ID: <20050125173945.GU12269@polop.usc.edu>
+From: Bruce Allan <bwa@us.ibm.com>
+Subject: [PATCH] add MODULE_DESCRIPTION to nfs module, update NFS
+ references in MAINTAINERS
+Date: Tue, 25 Jan 2005 14:46:34 -0800
+Message-ID: <1106692805.4420.34.camel@w-bwa3.beaverton.ibm.com>
+Reply-To: bwa@us.ibm.com
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="Lf2umH5nvHrcpMUt"
+Content-Type: text/plain
+Cc: linux-nfs <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CtUg3-0004y8-9E
-	for nfs@lists.sourceforge.net; Tue, 25 Jan 2005 09:40:31 -0800
-Received: from polop.usc.edu ([128.125.10.9])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1CtZSN-0003ZB-7H
+	for nfs@lists.sourceforge.net; Tue, 25 Jan 2005 14:46:43 -0800
+Received: from e32.co.us.ibm.com ([32.97.110.130])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.41)
-	id 1CtUg2-0000MR-SA
-	for nfs@lists.sourceforge.net; Tue, 25 Jan 2005 09:40:31 -0800
-Received: from polop.usc.edu (localhost.localdomain [127.0.0.1])
-	by polop.usc.edu (8.12.11/8.12.11) with ESMTP id j0PHdjD6003976
-	for <nfs@lists.sourceforge.net>; Tue, 25 Jan 2005 09:39:45 -0800
-Received: (from garrick@localhost)
-	by polop.usc.edu (8.12.11/8.12.11/Submit) id j0PHdjSE003974
-	for nfs@lists.sourceforge.net; Tue, 25 Jan 2005 09:39:45 -0800
-To: nfs@lists.sourceforge.net
+	id 1CtZSL-0007g6-Lb
+	for nfs@lists.sourceforge.net; Tue, 25 Jan 2005 14:46:43 -0800
+Received: from westrelay03.boulder.ibm.com (westrelay03.boulder.ibm.com [9.17.195.12])
+	by e32.co.us.ibm.com (8.12.10/8.12.9) with ESMTP id j0PMkZul677518
+	for <nfs@lists.sourceforge.net>; Tue, 25 Jan 2005 17:46:35 -0500
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by westrelay03.boulder.ibm.com (8.12.10/NCO/VER6.6) with ESMTP id j0PMkZpp287202
+	for <nfs@lists.sourceforge.net>; Tue, 25 Jan 2005 15:46:35 -0700
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.12.11/8.12.11) with ESMTP id j0PMkZUO025644
+	for <nfs@lists.sourceforge.net>; Tue, 25 Jan 2005 15:46:35 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,91 +40,48 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+To direct people to the appropriate resources when experiencing problems
+with the NFS client here is a simple patch to 1) add module description
+(with link to NFS documentation) to the nfs module, and 2) update the
+NFS mailing list and web resources to the MAINTAINERS file.
 
---Lf2umH5nvHrcpMUt
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Patch created against 2.6.11-rc2.
 
-Hi all,
-   I have lots of storage in a large Solaris samfs environment that is NFS
-shared to a large number of Solaris and RHEL3 clients.  Under some conditio=
-ns,
-linux apps have been getting stale filehandles during the normal course of
-their activity.  Various file handling syscalls like read() or open() might
-error.  Lots of renames and setattrs calls seem to trigger the problem. =20
-'ci' and 'cvs commit' are particularly good at this.
+Signed-off-by: Bruce Allan <bwa@us.ibm.com>
 
-It seems that the Solaris clients never report any such errors, only the Li=
-nux
-clients.  However, watching 'snoop' on the Solaris NFS server, I see that i=
-t IS
-returning stale file handles to both OSes, but Solaris clients seem to retry
-the request several times; and the Linux clients immediately pass the error=
- up
-to the application.
+diff -urp linux-2.6.11-rc2-vanilla/fs/nfs/inode.c linux-2.6.11-rc2/fs/nfs/inode.c
+--- linux-2.6.11-rc2-vanilla/fs/nfs/inode.c	2005-01-24 09:17:59.000000000 -0800
++++ linux-2.6.11-rc2/fs/nfs/inode.c	2005-01-25 14:19:58.000000000 -0800
+@@ -1974,6 +1974,7 @@ static void __exit exit_nfs_fs(void)
+ /* Not quite true; I just maintain it */
+ MODULE_AUTHOR("Olaf Kirch <okir@monad.swb.de>");
+ MODULE_LICENSE("GPL");
++MODULE_DESCRIPTION("NFS client module (http://nfs.sourceforge.net)");
+ 
+ module_init(init_nfs_fs)
+ module_exit(exit_nfs_fs)
+diff -urp linux-2.6.11-rc2-vanilla/MAINTAINERS linux-2.6.11-rc2/MAINTAINERS
+--- linux-2.6.11-rc2-vanilla/MAINTAINERS	2005-01-24 09:17:40.000000000 -0800
++++ linux-2.6.11-rc2/MAINTAINERS	2005-01-25 11:29:51.000000000 -0800
+@@ -1612,7 +1612,9 @@ S:	Maintained
+ NFS CLIENT
+ P:	Trond Myklebust
+ M:	trond.myklebust@fys.uio.no
+-L:	linux-kernel@vger.kernel.org
++L:	nfs@lists.sourceforge.net
++W:	http://nfs.sourceforge.net
++W:	http://linux-nfs.org
+ S:	Maintained
+ 
+ NI5010 NETWORK DRIVER
 
-Is there some condition that the 2.4 kernel is handling incorrectly?
 
+Regards,
+---
+Bruce Allan
+Software Engineer, Linux Technology Center
+IBM Corporation, Beaverton OR USA
 
-Sample snippet from the 'snoop' on the Solaris server with a Solaris client
-waiting...
-
-rcf102.usc.edu -> almaak.usc.edu NFS C LOOKUP3 FH=3DB41B Entries.Log
-almaak.usc.edu -> rcf102.usc.edu NFS R LOOKUP3 OK FH=3D7BFE
-rcf102.usc.edu -> almaak.usc.edu TCP D=3D2049 S=3D610     Ack=3D3071279992 =
-Seq=3D337022612 Len=3D0 Win=3D64240
-rcf102.usc.edu -> almaak.usc.edu NFS C ACCESS3 FH=3D7BFE (read,modify,exten=
-d,execute)
-almaak.usc.edu -> rcf102.usc.edu TCP D=3D610 S=3D2049     Ack=3D337022752 S=
-eq=3D3071279992 Len=3D0 Win=3D64240
-almaak.usc.edu -> rcf102.usc.edu NFS R ACCESS3 Stale NFS file handle
-rcf102.usc.edu -> almaak.usc.edu NFS C LOOKUP3 FH=3DB41B Entries.Log
-almaak.usc.edu -> rcf102.usc.edu NFS R LOOKUP3 OK FH=3D7BFE
-rcf102.usc.edu -> almaak.usc.edu NFS C LOOKUP3 FH=3DB41B Entries.Log
-almaak.usc.edu -> rcf102.usc.edu NFS R LOOKUP3 OK FH=3D7BFE
-rcf102.usc.edu -> almaak.usc.edu TCP D=3D2049 S=3D610     Ack=3D3071280516 =
-Seq=3D337023056 Len=3D0 Win=3D64240
-rcf102.usc.edu -> almaak.usc.edu NFS C ACCESS3 FH=3D7BFE (read,modify,exten=
-d,execute)
-almaak.usc.edu -> rcf102.usc.edu TCP D=3D610 S=3D2049     Ack=3D337023196 S=
-eq=3D3071280516 Len=3D0 Win=3D64240
-almaak.usc.edu -> rcf102.usc.edu NFS R ACCESS3 Stale NFS file handle
-rcf102.usc.edu -> almaak.usc.edu NFS C LOOKUP3 FH=3DB41B Entries.Log
-almaak.usc.edu -> rcf102.usc.edu NFS R LOOKUP3 OK FH=3D7BFE
-rcf102.usc.edu -> almaak.usc.edu TCP D=3D2049 S=3D610     Ack=3D3071280796 =
-Seq=3D337023348 Len=3D0 Win=3D64240
-rcf102.usc.edu -> almaak.usc.edu NFS C LOOKUP3 FH=3DB41B Entries.Log
-almaak.usc.edu -> rcf102.usc.edu NFS R LOOKUP3 OK FH=3D7BFE
-rcf102.usc.edu -> almaak.usc.edu TCP D=3D2049 S=3D610     Ack=3D3071281040 =
-Seq=3D337023500 Len=3D0 Win=3D64240
-rcf102.usc.edu -> almaak.usc.edu NFS C ACCESS3 FH=3D7BFE (read,modify,exten=
-d,execute)
-almaak.usc.edu -> rcf102.usc.edu TCP D=3D610 S=3D2049     Ack=3D337023640 S=
-eq=3D3071281040 Len=3D0 Win=3D64240
-almaak.usc.edu -> rcf102.usc.edu NFS R ACCESS3 Stale NFS file handle
-rcf102.usc.edu -> almaak.usc.edu NFS C LOOKUP3 FH=3DB41B Entries.Log
-almaak.usc.edu -> rcf102.usc.edu NFS R LOOKUP3 OK FH=3D7BFE
-rcf102.usc.edu -> almaak.usc.edu NFS C LOOKUP3 FH=3DB41B Entries.Log
-almaak.usc.edu -> rcf102.usc.edu NFS R LOOKUP3 OK FH=3D7BFE
-
---=20
-Garrick Staples, Linux/HPCC Administrator
-University of Southern California
-
---Lf2umH5nvHrcpMUt
-Content-Type: application/pgp-signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.3 (GNU/Linux)
-
-iD8DBQFB9oRh0SBUxJbm9HMRAuJeAJ9fSF2QE1Y+YuSMNPg4XPGznVfaiwCfdoUV
-9BfPGWq9N9xUcB2E89N4siw=
-=0Tf+
------END PGP SIGNATURE-----
-
---Lf2umH5nvHrcpMUt--
 
 
 -------------------------------------------------------
