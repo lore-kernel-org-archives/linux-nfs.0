@@ -1,25 +1,23 @@
-From: "Alexander Povolotsky" <pevnev@juno.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: I have two Linux ( 2.6.8 ?)   NFS client/server problems
-Date: Tue, 12 Oct 2004 00:05:02 GMT
+Date: Tue, 12 Oct 2004 02:42:37 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20041011.170517.25418.13065@webmail12.lax.untd.com>
+Message-ID: <1097541757.5432.73.camel@lade.trondhjem.org>
+References: <20041011.170517.25418.13065@webmail12.lax.untd.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=iso-8859-1
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CHAC2-0001Na-Pv
-	for nfs@lists.sourceforge.net; Mon, 11 Oct 2004 17:07:06 -0700
-Received: from outbound-mail.lax.untd.com ([64.136.28.164])
-	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
-	id 1CHABN-0005C4-QD
-	for nfs@lists.sourceforge.net; Mon, 11 Oct 2004 17:07:06 -0700
-Received: from outbound29-sr.lax.untd.com (webmail12.lax.untd.com [10.130.30.152])
-	by smtpout06.lax.untd.com with SMTP id AABAYYH9NANMFPLJ
-	for <nfs@lists.sourceforge.net> (sender <pevnev@juno.com>);
-	Mon, 11 Oct 2004 17:06:04 -0700 (PDT)
-To: trond.myklebust@fys.uio.no,
-	 nfs@lists.sourceforge.net
+	id 1CHIHI-0002l8-KU
+	for nfs@lists.sourceforge.net; Tue, 12 Oct 2004 01:45:04 -0700
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CHIGn-00029t-Ob
+	for nfs@lists.sourceforge.net; Tue, 12 Oct 2004 01:45:04 -0700
+To: Alexander Povolotsky <pevnev@juno.com>
+In-Reply-To: <20041011.170517.25418.13065@webmail12.lax.untd.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,48 +30,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+P=E5 ty , 12/10/2004 klokka 02:05, skreiv Alexander Povolotsky:
+> Trond Myklebust wrote:
+>=20
+> > Have you tried the form recommended by the manpage?
+>=20
+> >  pivot_root . /tmp
+>=20
+> yes - same failure=20
 
-Trond Myklebust wrote:
+Sorry. Actually that should be
 
-> Have you tried the form recommended by the manpage?
+pivot_root . tmp
 
->  pivot_root . /tmp
+'cos neither of the 2 directories may lie on the old root (and you have
+to make sure that /fadsroot/tmp does indeed exist).
 
-yes - same failure 
+Cheers,
+  Trond
 
-> What does this have to do with NFS?
-
-I am not an NFS expert - just looking for help here ...
-Please tell what is the nature of this problem and 
-how to solve it.
-
-***********************************************************
-På må , 11/10/2004 klokka 23:19, skreiv Alexander Povolotsky:
-
-> # cd /fadsroot
-> #sbin/pivot_root /fadsroot /tmp
-> pivot_root: pivot_root: Device or resource busy
-
-What does this have to do with NFS?
-
-man pivot_root.
-        EBUSY: new_root or put_old are on the current root file 
-        system,  or  a file system is already mounted on put_old.
-
-Have you tried the form recommended by the manpage?
-
-  pivot_root . /tmp
-
-Trond
-
-
-
-
-
-________________________________________________________________
-Speed up your surfing with Juno SpeedBand.
-Now includes pop-up blocker!
-Only $14.95/ month - visit http://www.juno.com/surf to sign up today!
 
 
 -------------------------------------------------------
