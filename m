@@ -1,24 +1,18 @@
-From: Sverker Wiberg <Sverker.Wiberg@uab.ericsson.se>
-Subject: Re: PROBLEM: knfsd misses occasional writes (w/ WORKAROUND)
-Date: Fri, 17 May 2002 14:32:36 +0200
+From: =?ISO-8859-1?Q?J=F6rgen_Karlsson?= <publius@chello.se>
+Subject: Re: knsfd - files don't sync to disk
+Date: Fri, 17 May 2002 19:18:14 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <ac39uu$pv$2@main.gmane.org>
-References: <3CE250A5.47F71DF@uab.ericsson.se> <15586.20989.992591.474108@notabene.cse.unsw.edu.au> <3CE38E9D.986ACF7F@uab.ericsson.se> <20020516143441.A4322@laclinux.com> <3CE4DD8C.69C34A1B@uab.ericsson.se>
+Message-ID: <3CE53B56.8040303@chello.se>
+References: <3CE40BF7.1090605@chello.se> <15588.61537.552697.595814@notabene.cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from to-velocet.redhat.com ([216.138.202.10] helo=touchme.toronto.redhat.com)
+Received: from smtp2.chello.se ([193.150.195.11])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 178kGm-00084q-00
-	for <nfs@lists.sourceforge.net>; Fri, 17 May 2002 09:07:52 -0700
-Received: from toomuch.toronto.redhat.com (unknown [172.16.14.22])
-	by touchme.toronto.redhat.com (Postfix) with ESMTP id DA472B8036
-	for <nfs@lists.sourceforge.net>; Fri, 17 May 2002 12:07:47 -0400 (EDT)
-Received: (from bcrl@localhost)
-	by toomuch.toronto.redhat.com (8.11.6/8.11.2) id g4HG7l116663
-	for nfs@lists.sourceforge.net; Fri, 17 May 2002 12:07:47 -0400
-Resent-Message-Id: <200205171607.g4HG7l116663@toomuch.toronto.redhat.com>
-To: linux-kernel@vger.kernel.org
+	id 178lG2-0004co-00
+	for <nfs@lists.sourceforge.net>; Fri, 17 May 2002 10:11:10 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,28 +25,89 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Sverker Wiberg wrote:
+We are using NFSv2.
 
-> Over here, we started to log the conversations, and saw the client
-> opening a file, writing 272 bytes into it (one write), and then closing
-> it, with the server replying full success all the time. printk()'s in
-> knfsd and the vfs's generic_write() also reported that 272 bytes had
-> been successfully written. Yet the file was truncated.
-> 
-> We switched from soft to hard mount: It didn't help. We are now
-> experimenting with disabling SCSI's disconnect/reconnect feature. Are
-> there any more straws to grasp at?
+We have found a temporary workaround by reducing the number of nfs threads
+to 1. 
 
-With one single knfsd thread running, the problem went away (for a price
-in performance). This seems to indicate there is some kind of race
-between the knfsd threads. 
+We have a 30 processor cluster that gave zero size files everytime we made
+a backup. By reducing the number of threads from 8 to 1 we were able to make
+25 backups without any problem. Switching back to 8 threads we immediately
+got the corrupted files back.
 
-/Sverker
--
-To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
-Please read the FAQ at  http://www.tux.org/lkml/
+Maybe some down() and up() are missing.......
+
+If you think the the patch may fix it for v2 as well as v3 we can try the
+patch next week.
+
+Can running with only one thread cause any performance problems (with
+sync the bottleneck probably is disk io....)?
+
+/Jorgen Karlsson
+
+Neil Brown wrote:
+
+>Are you using NFSv3?
+>
+>Does this patch:
+>http://www.cse.unsw.edu.au/~neilb/patches/linux-stable/2.4.19-pre5/patch-I-NfsdVfsTidyup
+>
+>make a difference?
+>
+>NeilBrown
+>
+>On Thursday May 16, jorgen.karlsson@chello.se wrote:
+>
+>>Hi,
+>>
+>>We have a serious problem with knfsd and kernel 2.4.17.
+>>
+>>When doing a database backup in our linux cluster we have noticed that
+>>a few files are not written to disk properly. The files have zero
+>>file size when checked with the 'ls' command
+>>
+>>Several thousands of files are written to the nfs server during a
+>>short period of time.  Average file size is 300-400 bytes.
+>>
+>>We have noticed that usually 1-2 out of 3000 files will have their sizes
+>>truncated to 0.
+>>
+>>File  system is exported with (rw,sync)
+>>
+>>The disk filesystem is ext2.
+>>
+>>E.g. this is what is happening:
+>>          - client writes 272 bytes to the server
+>>          - mm/file.c:generic_file_write() returns 272 bytes written
+>>          - fs/nfsd/vfs.c:nfs_write() increments nfsdstats.io_write +=272
+>>             and returns that the write was sucessful.
+>>          - knfsd returns to client that 272 bytes was written.
+>>          - when checking with 'ls' command on server the file size is zero.
+>>
+>>Apparently the nfs server lies to the client and the files are not
+>>properly synced/written to disk.
+>>
+>>Setting no_wdelay makes no difference.
+>>
+>>When running with async set (or sync removed) the problem
+>>disappears (no files have their sizes truncated to zero).
+>>
+>>The nfs server is a PIII-700/ 1GB RAM
+>>
+>>Any ideas what is going on ?
+>>
+>
+>_______________________________________________________________
+>
+>Have big pipes? SourceForge.net is looking for download mirrors. We supply
+>the hardware. You get the recognition. Email Us: bandwidth@sourceforge.net
+>_______________________________________________
+>NFS maillist  -  NFS@lists.sourceforge.net
+>https://lists.sourceforge.net/lists/listinfo/nfs
+>
+
+
+
 
 _______________________________________________________________
 
