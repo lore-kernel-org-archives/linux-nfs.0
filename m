@@ -1,26 +1,23 @@
-From: Nick Couchman <nick-lists@seakr.com>
-Subject: Re: Root Over NFS Memory Problem
-Date: Fri, 05 Mar 2004 06:25:15 -0700
+From: Johan van den Dorpe <johan.vandendorpe@framestore-cfc.com>
+Subject: Re: nfsd: terminating on error 104 problem
+Date: Fri, 05 Mar 2004 18:01:58 +0000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1078493115.13973.3.camel@nick0.seakr.com>
+Message-ID: <4048C096.3090803@framestore-cfc.com>
+References: <404707BE.9070401@framestore-cfc.com> <20040304111138.GO22726@suse.de> <40472842.8030602@framestore-cfc.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: Olaf Kirch <okir@suse.de>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AzFQs-0002Ax-3a
-	for nfs@lists.sourceforge.net; Fri, 05 Mar 2004 05:32:06 -0800
-Received: from gw2.seakr.com ([209.144.181.2] helo=mail-gw.seakr.com)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AzEzq-0001lv-RN
-	for nfs@lists.sourceforge.net; Fri, 05 Mar 2004 05:04:10 -0800
-Received: from scan-gw.seakr.com (seakr5.seakr.com [192.168.100.10])
-	by mail-gw.seakr.com (8.12.10/8.12.10) with ESMTP id i25DKg6a007672
-	for <nfs@lists.sourceforge.net>; Fri, 5 Mar 2004 06:20:42 -0700
-Received: from nick0.seakr.com (nick0 [192.168.10.70])
-	by seakr5.seakr.com (8.10.2/8.10.2) with ESMTP id i25DPFZ07481
-	for <nfs@lists.sourceforge.net>; Fri, 5 Mar 2004 06:25:16 -0700 (MST)
-To: nfs@lists.sourceforge.net
+	id 1AzJm7-0007c0-Tl
+	for nfs@lists.sourceforge.net; Fri, 05 Mar 2004 10:10:19 -0800
+Received: from gw.fs-cfc.co.uk ([193.203.83.22])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
+	id 1AzJfX-000864-4Z
+	for nfs@lists.sourceforge.net; Fri, 05 Mar 2004 10:03:31 -0800
+To: Johan van den Dorpe <johan.vandendorpe@framestore-cfc.com>
+In-Reply-To: <40472842.8030602@framestore-cfc.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,18 +30,63 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> Well, I don't thinkg that its important, we currently mount the 
-> nfs-root directory from an initrd and not directly from the kernel >
-nfs-root-mount functions. However until 2.4.20 we also used the 
-> direct approach and had no problems. Sorry, no further ideas.
->
-> Bernd
+I tried out the patch today, rebooted with the new kernel at 9:42am
 
-Looks like it has something to do with OpenMosix, so I'll take this
-discussion to that forum.  Thanks!
+Then, we started getting these messages (which we were having before but 
+didn't cause any noticable problems)
+
+Mar  5 10:05:00 ps30 kernel: nfsd: peername failed (err 107)!
+
+After a few hours, we started getting the terminating on error 104 errors:
+
+Mar  5 13:56:49 ps30 kernel: nfsd: terminating on error 104
+
+Until finally the server crashed, refusing input from the console. There 
+were no messages on the console apart from the above nfsd errors. This 
+is the last syslog entry
+
+Mar  5 17:10:10 ps30 rpc.mountd: Caught signal 15, un-registering and 
+exiting.
+Mar  5 17:10:10 ps30 nfs: rpc.mountd shutdown succeeded
+
+While the server was up we recieved 112 peername failed (err 107) 
+messages, and 5 terminating on error 104 messages.
+
+If you want any more info please tell me what it is you need.
+
+Otherwise have a good weekend!
+
+Thanks,
+Johan.
+
+Johan van den Dorpe wrote:
+> Olaf Kirch wrote:
+> 
+>> On Thu, Mar 04, 2004 at 10:41:02AM +0000, Johan van den Dorpe wrote:
+>>
+>>> So from my limited knowledge of the kernel source I can see that 
+>>> "terminating on error 104" corresponds to line 221 of
+>>> /usr/src/linux-2.4.25/fs/nfsd/nfssvc.c. So svc_recv on line 191 is 
+>>> obviously returning -104.
+>>
+>>
+>>
+>> 104 is ECONNRESET, this means the client reset the connection.
+>> The server should really clean up the socket in this case.
+>>
+>> Does the attached patch help?
+>> Beware - totally untested, better not try this on a production
+>> machine :)
+> 
+> 
+> Thanks very much for this... I'm going to run a test with this patch and 
+> get back to you with results after.
+> 
+> 
+
+
 -- 
-Nick Couchman <nick-lists@seakr.com>
-
+Johan van den Dorpe
 
 
 -------------------------------------------------------
