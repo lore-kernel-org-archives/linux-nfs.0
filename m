@@ -1,15 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: lockd GRANT_MSG RPC callback
-Date: Wed, 08 Sep 2004 16:50:55 -0400
+From: Bernd Nies <bnies@bluewin.ch>
+Subject: Re: ls hangs on NFS share from Apple Xserve
+Date: Wed, 08 Sep 2004 23:51:50 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1094676655.8363.47.camel@lade.trondhjem.org>
-References: <OFEFF11E74.090F2AA4-ON88256F09.00709621-88256F09.00712392@us.ibm.com>
+Message-ID: <413F7EF6.9050005@bluewin.ch>
+References: <412EBAA100062E28@mssbzhh-int.msg.bluewin.ch>	 <1094662327.9493.42.camel@lade.trondhjem.org> <413F5127.5030008@bluewin.ch>	 <1094673208.8363.21.camel@lade.trondhjem.org> <413F668D.4060601@bluewin.ch> <1094676419.8363.42.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: NFS@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: Marc Eshel <eshel@almaden.ibm.com>
-In-Reply-To: <OFEFF11E74.090F2AA4-ON88256F09.00709621-88256F09.00712392@us.ibm.com>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1C5AMO-0004Ie-EM
+	for nfs@lists.sourceforge.net; Wed, 08 Sep 2004 14:52:12 -0700
+Received: from mail6.bluewin.ch ([195.186.4.229])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1C5AMM-0000Sm-Dz
+	for nfs@lists.sourceforge.net; Wed, 08 Sep 2004 14:52:11 -0700
+Received: from bluewin.ch (62.203.51.60) by mail6.bluewin.ch (Bluewin AG 7.0.030.2)
+        id 412F8F4C0018752E for nfs@lists.sourceforge.net; Wed, 8 Sep 2004 21:51:57 +0000
+To: nfs@lists.sourceforge.net
+In-Reply-To: <1094676419.8363.42.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -22,20 +31,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 on , 08/09/2004 klokka 16:35, skreiv Marc Eshel:
-> Yes, I see the following messages on the client:
->=20
-> svc: authenticate (1)
-> svc: authentication failed (1)
 
-OK. Bruce has promised to work on splitting out the "domain" code from
-the svcauth_unix code. Once that is done, we can fix up GRANT_MSG and
-NOTIFY as well as any other routines that do not need to be
-authenticated by rpc.mountd.
+> Unless you have allocated a large buffer for it, readdir() will end up
+> calling multiple times down into the kernel, so the read of an entire
+> directory is NOT going to be atomic.
+> If the mtime on the directory has changed in the meantime, the cached
+> version may be flushed out, and the directory read in again. If the
+> server has screwed up the cookies, then that will confuse the client.
 
-Cheers,
-  Trond
+OK, right. I tracked down one incident captured here:
 
+http://www.nies.ch/download/apple-nfs-loop-1dir.dump.gz
+
+A READDIRPLUS reports a directory entry "." with cookie 276 (Frame 157) 
+and the next READDIRPLUS reports a file "package-use.html" with same 
+cookie 276 (Frame 161). This is WRONG by the server, right?
+
+But why is it working then without problems on a Solaris NFS client?
+
+Well, seems that I have to call Apple support and listen to one hour 
+iTunes again ...
+
+Thanks a lot.
+
+Regards,
+Bernd
 
 
 -------------------------------------------------------
