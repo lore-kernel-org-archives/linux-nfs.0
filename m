@@ -1,24 +1,20 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: NFS related crash?
-Date: Tue, 27 Jul 2004 22:36:44 -0400
+From: mehta kiran <kiranmehta1981@yahoo.com>
+Subject: NFS lock failover(statd -N option)
+Date: Tue, 27 Jul 2004 21:38:13 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <4107113C.80004@RedHat.com>
-References: <1090960846.3475.264.camel@tesuji.nac.uci.edu>
+Message-ID: <20040728043813.59947.qmail@web51603.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BpeJM-00079y-8f
-	for nfs@lists.sourceforge.net; Tue, 27 Jul 2004 19:36:56 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.34)
-	id 1BpeJJ-0007Ew-DS
-	for nfs@lists.sourceforge.net; Tue, 27 Jul 2004 19:36:53 -0700
-To: Dan Stromberg <strombrg@dcs.nac.uci.edu>
-In-Reply-To: <1090960846.3475.264.camel@tesuji.nac.uci.edu>
+	id 1BpgCq-0003Lh-73
+	for nfs@lists.sourceforge.net; Tue, 27 Jul 2004 21:38:20 -0700
+Received: from web51603.mail.yahoo.com ([206.190.38.208])
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.34)
+	id 1BpgCp-0005AW-Cs
+	for nfs@lists.sourceforge.net; Tue, 27 Jul 2004 21:38:19 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,19 +27,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+hi , 
 
 
-Dan Stromberg wrote:
+     I read in man page of statd that to provide   
+     High  Availability of NFS ,
+     -N option has been introduced in new linux
+release
+ 
+     Can anybody please send me some more information 
+     about this option.It is not very clear to me , 
+     how -N option can be used to achieve high 
+     availability of NFS
 
->There was nothing useful in the logs after the crash.
->
->We haven't yet investigated RHEL's network-based crashdump facility. 
->Would that be helpful?
->  
->
-Yes! Eminently helpful.... Netdumps are a very good thing....
+     waiting for  reply,
+ 
+thanks,
+     kiran
+    
+   
 
-SteveD.
+
+	
+		
+__________________________________
+Do you Yahoo!?
+New and Improved Yahoo! Mail - 100MB free storage!
+http://promotions.yahoo.com/new_mail 
 
 
 -------------------------------------------------------
