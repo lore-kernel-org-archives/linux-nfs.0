@@ -1,17 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 3 of 54] fs/nfs4callback: replace schedule_timeout() with ssleep()
-Date: Tue, 08 Mar 2005 17:06:42 +1100
-Message-ID: <E1D8Xre-00016z-FW@notabene.cse.unsw.edu.au>
+Subject: [PATCH kNFSd 39 of 54] nfsd4: fix laundromat delegation reaping
+Date: Tue, 08 Mar 2005 17:06:44 +1100
+Message-ID: <E1D8Xrg-00019L-QK@notabene.cse.unsw.edu.au>
 References: <20050308165419.3842.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D8Xrl-00026V-UQ
-	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:49 -0800
+	id 1D8Xru-00028I-I3
+	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:58 -0800
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1D8Xrk-0007sf-6Q
-	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:49 -0800
+	id 1D8Xrq-0007tj-Lq
+	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:58 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -28,38 +28,38 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
 
-Use ssleep() instead of schedule_timeout() to guarantee the task
-delays as expected.
+The laundromat is freeing any delegation it finds in the RECALL_COMPLETE state.
+But note that RECALL_COMPLETE is the state that the delegation recall callback
+leaves the state in.  We shouldn't actually be giving up on the delegation till
+either the client has had a chance to call delegreturn, or the lease time has
+run out.
 
-Signed-off-by: Nishanth Aravamudan <nacc@us.ibm.com>
-Signed-off-by: Domen Puncer <domen@coderock.org>
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4callback.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ ./fs/nfsd/nfs4state.c |    3 ---
+ 1 files changed, 3 deletions(-)
 
-diff ./fs/nfsd/nfs4callback.c~current~ ./fs/nfsd/nfs4callback.c
---- ./fs/nfsd/nfs4callback.c~current~	2005-03-07 11:34:24.000000000 +1100
-+++ ./fs/nfsd/nfs4callback.c	2005-03-07 11:34:24.000000000 +1100
-@@ -38,6 +38,7 @@
- #include <linux/list.h>
- #include <linux/inet.h>
- #include <linux/errno.h>
-+#include <linux/delay.h>
- #include <linux/sunrpc/xdr.h>
- #include <linux/sunrpc/svc.h>
- #include <linux/sunrpc/clnt.h>
-@@ -531,8 +532,7 @@ out:
- retry:
- 	atomic_inc(&dp->dl_recall_cnt);
- 	/* sleep 2 seconds before retrying recall */
--	set_current_state(TASK_UNINTERRUPTIBLE);
--	schedule_timeout(2*HZ);
-+	ssleep(2);
- 	status = nfsd4_cb_recall(dp);
- 	dprintk("NFSD: nfs4_cb_recall_done: retry status: %d  dp %p dl_flock %p\n",status,dp, dp->dl_flock);
- }
+diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
+--- ./fs/nfsd/nfs4state.c~current~	2005-03-07 13:26:43.000000000 +1100
++++ ./fs/nfsd/nfs4state.c	2005-03-07 13:27:24.000000000 +1100
+@@ -1861,15 +1861,12 @@ nfs4_laundromat(void)
+ 	spin_lock(&recall_lock);
+ 	list_for_each_safe(pos, next, &del_recall_lru) {
+ 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
+-		if (atomic_read(&dp->dl_state) == NFS4_RECALL_COMPLETE)
+-			goto reap;
+ 		if (time_after((unsigned long)dp->dl_time, (unsigned long)cutoff)) {
+ 			u = dp->dl_time - cutoff;
+ 			if (test_val > u)
+ 				test_val = u;
+ 			break;
+ 		}
+-reap:
+ 		dprintk("NFSD: purging unused delegation dp %p, fp %p\n",
+ 			            dp, dp->dl_flock);
+ 		release_delegation(dp);
 
 
 -------------------------------------------------------
