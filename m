@@ -1,55 +1,38 @@
-From: raven@themaw.net
-Subject: Re: possible client stale filehandle bug?
-Date: Wed, 26 Jan 2005 22:31:57 +0800 (WST)
-Message-ID: <Pine.LNX.4.61.0501262231150.1716@donald.themaw.net>
-References: <20050125173945.GU12269@polop.usc.edu> <1106719587.10014.4.camel@lade.trondhjem.org>
- <20050126063547.GS12269@polop.usc.edu>
+From: Chris Leech <chris.leech@gmail.com>
+Subject: Re: [BUG] Onboard Ethernet Pro 100 on a SMP box: a very strange errors
+Date: Wed, 26 Jan 2005 11:11:25 -0800
+Message-ID: <41b516cb0501261111e5edbc5@mail.gmail.com>
+References: <20050122014646.A1038@natasha.ward.six>
+	 <200501252319.11304.vda@port.imtp.ilyichevsk.odessa.ua>
+	 <20050126073749.A2142@natasha.ward.six>
+Reply-To: Chris Leech <chris.leech@gmail.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CtoNO-0000ne-Tw
-	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 06:42:34 -0800
-Received: from wombat.indigo.net.au ([202.0.185.19])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.41)
-	id 1CtoNN-000559-9x
-	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 06:42:34 -0800
-To: Garrick Staples <garrick@usc.edu>
-In-Reply-To: <20050126063547.GS12269@polop.usc.edu>
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain; charset=US-ASCII
+Return-path: <linux-net-owner@vger.kernel.org>
+To: Denis Vlasenko <vda@port.imtp.ilyichevsk.odessa.ua>,
+	linux-kernel@vger.kernel.org, linux-net@vger.kernel.org,
+	nfs@lists.sourceforge.net
+In-Reply-To: <20050126073749.A2142@natasha.ward.six>
+Sender: linux-net-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Tue, 25 Jan 2005, Garrick Staples wrote:
+On Wed, 26 Jan 2005 07:37:49 +0500, Denis Zaitsev <zzz@anda.ru> wrote:
+> On Tue, Jan 25, 2005 at 11:19:11PM +0200, Denis Vlasenko wrote:
+> >
+> > Something corrupts packets. It can be sending NIC, switch in the middle,
+> > or receiving NIC.
+> 
+> Changing the receiving card closes the question.  Doesn't it matter?
 
->
-> I'd be very happy to see any patches lieing around that might do this
-> behaviour.  It would get me through the short term until Sun fixes this bug in
-> samfs.
+Take a look at this technical advisory for the STL2 board, I'm fairly
+sure this is your issue.
+http://support.intel.com/support/motherboards/server/sb/CS-010790.htm
 
-Don't hold your breath waiting!
+IP fragmented packets as part of an NFS file transfer are improperly
+being identified as TCO management packets and are being routed to the
+BMC.  The fix is to upgrade the BMC firmware.
 
-Ian
+Updated BMC firmware and BIOS images for this board are available at
+http://support.intel.com/support/motherboards/server/STL2/sb/CS-007118.htm
 
-
-
--------------------------------------------------------
-This SF.Net email is sponsored by: IntelliVIEW -- Interactive Reporting
-Tool for open source databases. Create drag-&-drop reports. Save time
-by over 75%! Publish reports on the web. Export to DOC, XLS, RTF, etc.
-Download a FREE copy at http://www.intelliview.com/go/osdn_nl
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+- Chris
