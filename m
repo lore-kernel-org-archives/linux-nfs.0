@@ -1,29 +1,23 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Problem starting rpc.svcgssd for NFS4
-Date: Mon, 23 Feb 2004 11:25:16 -0500
+From: NeilBrown <neilb@cse.unsw.edu.au>
+Subject: [PATCH] kNFSd - 4 of 34 - Nfsdv4 pointer cleanup
+Date: Tue, 24 Feb 2004 10:49:41 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040223162516.GA4977@fieldses.org>
-References: <200402230759.35041.simeon@up.ac.za>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Message-ID: <E1AvPpV-0006HI-00@notabene>
+References: <20040224104820.23884.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-list1-b.sourceforge.net ([10.3.1.7] helo=sc8-sf-list1.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AvMJd-0002Q3-7a
-	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 12:04:33 -0800
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 4.30)
-	id 1AvJ63-0004bm-Iy
-	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 08:38:19 -0800
-Received: from dsl093-002-214.det1.dsl.speakeasy.net
-	([66.93.2.214] helo=pumpkin.fieldses.org ident=Debian-exim)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.30)
-	id 1AvIi8-00081D-7G
-	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 08:13:36 -0800
-To: Simeon Miteff <simeon@up.ac.za>
-In-Reply-To: <200402230759.35041.simeon@up.ac.za>
+	id 1AvPq4-0006rq-Dp
+	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 15:50:16 -0800
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
+	id 1AvPpj-0005Zj-JS
+	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 15:49:55 -0800
+Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
+	(for <akpm@osdl.org>) (for <nfs@lists.sourceforge.net>) By note With
+	Smtp ; Tue, 24 Feb 2004 10:49:41 +1100
+To: Andrew Morton <akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -36,41 +30,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, Feb 23, 2004 at 07:59:35AM +0200, Simeon Miteff wrote:
-> I'm using kernel 2.6.3, the patched util-linux and nfs-utils, my kerberos5 
-> setup is working (tested with openssh), and so far I've done everything as 
-> described by http://www.citi.umich.edu/projects/nfsv4/linux/, yet I get this 
-> problem when I try to start rpc.svcgssd:
->
-> Feb 20 08:39:11 io gssd[25729]: Using (default) Kerberos realm: "EE.UP.AC.ZA"
-> Feb 20 08:39:11 io gssd[25729]: Initialized credentials cache
-> Feb 20 08:39:11 io gssd[25729]: Using credentials cache: 
-> "FILE:/tmp/krb5cc_machine"
-> Feb 20 08:39:11 io gssd[25729]: Acquired initial kerberos ticket
-> Feb 20 08:39:11 io gssd[25729]: failed to 
-> open /proc/net/rpc/auth.rpcsec.init/channel
-> 
-> Looking in that directory:
-> 
-> simeon@io rpc $ ls -l /proc/net/rpc/
-> total 0
-> dr-xr-xr-x    2 root     root            0 Feb 23 07:57 auth.domain
-> dr-xr-xr-x    2 root     root            0 Feb 20 08:38 auth.unix.ip
-> -r--r--r--    1 root     root            0 Feb 23 07:57 nfs
-> -r--r--r--    1 root     root            0 Feb 23 07:57 nfsd
-> dr-xr-xr-x    2 root     root            0 Feb 20 08:38 nfsd.export
-> dr-xr-xr-x    2 root     root            0 Feb 20 08:38 nfsd.fh
-> 
-> Any Ideas why /proc/net/rpc/auth.rpcsec.init/channel is missing? I double 
-> checked the kernel config options...
 
-Are you using the kernel.org 2.6.3?  It has no support for rpcsec_gss on
-the server side.  We're working with Neil to get that in; it should
-happen soon.  For now, you could test with our CITI_NFS4_ALL patch,
+From: "William A.(Andy) Adamson" <andros@citi.umich.edu>
 
-http://www.citi.umich.edu/projects/nfsv4/linux/
+Compare inode pointers instead of dentry pointers when checking an
+inode refered to by a stateid against an inode refered to by a file
+handle.
 
---Bruce Fields
+Set st_vfs_set to 0 if the stateid/file handle check fails to
+avoid referencing bad state when reaping stateid's.
+
+ ----------- Diffstat output ------------
+ ./fs/nfsd/nfs4state.c |    5 ++++-
+ 1 files changed, 4 insertions(+), 1 deletion(-)
+
+diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
+--- ./fs/nfsd/nfs4state.c~current~	2004-02-24 10:40:23.000000000 +1100
++++ ./fs/nfsd/nfs4state.c	2004-02-24 10:42:30.000000000 +1100
+@@ -1303,7 +1303,8 @@ find_openstateowner_id(u32 st_id) {
+ static inline int
+ nfs4_check_fh(struct svc_fh *fhp, struct nfs4_stateid *stp)
+ {
+-	return (fhp->fh_dentry != stp->st_vfs_file.f_dentry);
++	return (stp->st_vfs_set == 0 ||
++		fhp->fh_dentry->d_inode != stp->st_vfs_file.f_dentry->d_inode);
+ }
+ 
+ static int
+@@ -1346,6 +1347,7 @@ nfs4_preprocess_stateid_op(struct svc_fh
+ 	}
+ 	if ((flags & CHECK_FH) && nfs4_check_fh(current_fh, stp)) {
+ 		dprintk("NFSD: preprocess_stateid_op: fh-stateid mismatch!\n");
++		stp->st_vfs_set = 0;
+ 		goto out;
+ 	}
+ 	if (!stp->st_stateowner->so_confirmed) {
+@@ -1414,6 +1416,7 @@ nfs4_preprocess_seqid_op(struct svc_fh *
+ 
+ 	if ((flags & CHECK_FH) && nfs4_check_fh(current_fh, stp)) {
+ 		printk("NFSD: preprocess_seqid_op: fh-stateid mismatch!\n");
++		stp->st_vfs_set = 0;
+ 		goto out;
+ 	}
+ 
 
 
 -------------------------------------------------------
