@@ -1,32 +1,23 @@
-From: "Paul Smith" <pausmith@nortelnetworks.com>
-Subject: Re: NFS client write performance issue ... thoughts?
-Date: 06 Jan 2004 01:33:29 -0500
+From: Eric Whiting <ewhiting@amis.com>
+Subject: 2.6.0 -- nfs client runs 15x faster if client app runs as root.
+Date: Wed, 07 Jan 2004 13:13:57 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <vpdrfzetziva.fsf@lemming.engeast.baynetworks.com>
-References: <16378.15074.348051.673492@guts.uio.no>
-Reply-To: "Paul Smith" <pausmith@nortelnetworks.com>
+Message-ID: <3FFC6885.A6061A76@amis.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1Adkmb-00088C-Fb
-	for nfs@lists.sourceforge.net; Mon, 05 Jan 2004 22:33:41 -0800
-Received: from zrtps0kp.nortelnetworks.com ([47.140.192.56])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1Adkmb-0003lY-22
-	for nfs@lists.sourceforge.net; Mon, 05 Jan 2004 22:33:41 -0800
-Received: from zrtps0m6.us.nortel.com (zrtps0m6.us.nortel.com [47.140.192.58])
-	by zrtps0kp.nortelnetworks.com (Switch-2.2.6/Switch-2.2.0) with ESMTP id i066XWG02977
-	for <nfs@lists.sourceforge.net>; Tue, 6 Jan 2004 01:33:32 -0500 (EST)
-Received: from lemming.engeast.baynetworks.com (mail@lemming.engeast.baynetworks.com [47.17.140.90])
-	by zrtps0m6.us.nortel.com (Switch-2.2.6/Switch-2.2.0) with ESMTP id i066XU004148
-	for <nfs@lists.sourceforge.net>; Tue, 6 Jan 2004 01:33:30 -0500 (EST)
-Received: from psmith by lemming.engeast.baynetworks.com with local (Exim 3.36 #1 (Debian))
-	id 1AdkmQ-00043s-00
-	for <nfs@lists.sourceforge.net>; Tue, 06 Jan 2004 01:33:30 -0500
-To: nfs@lists.sourceforge.net
-In-Reply-To: <16378.15074.348051.673492@guts.uio.no>
+	id 1AeK42-0002wP-NR
+	for nfs@lists.sourceforge.net; Wed, 07 Jan 2004 12:14:02 -0800
+Received: from p02m168.mxlogic.net ([216.173.230.168])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
+	id 1AeK42-0004Gj-7z
+	for nfs@lists.sourceforge.net; Wed, 07 Jan 2004 12:14:02 -0800
+Received: from amis.com (windriver.design.amis.com [172.16.17.176])
+	by ssh.amis.com (Postfix) with ESMTP id E967B25904
+	for <nfs@lists.sourceforge.net>; Wed,  7 Jan 2004 13:13:43 -0700 (MST)
+To: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -39,73 +30,94 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-%% Trond Myklebust <trond.myklebust@fys.uio.no> writes:
+My 2.6.0 nfs clients to a netapps 940 NFS server run very differently depending
+on who the user is. Both tcp and udp mounts seem to show the same behavior. This
+is very apparent when doing the bonnie putc() tests.  
 
-  tm> P=E5 m=E5 , 05/01/2004 klokka 17:11, skreiv Paul Smith:
-  >> Hi all; we've been doing some examination of NFS client performance, a=
-nd
-  >> have seen this apparently sub-optimal behavior: anyone here have any
-  >> comments on this observation or thoughts about it?
+nfsstat and tcpdump show a lot of extra setattr calls when running as a normal
+user. I assume this is the reason for the slowdown. 
 
-  tm> Does your observation include numbers, or is it just conjecture?
+Is there a fix? Or is this the way it is supposed to be?
 
-Note I'm only forwarding comments I've received from another party,
-who's actually doing the investigation.
+This is not how this same hardware acts in 2.4.23.
 
-The application in question is not GDBM but rather ClearCase; I guess
-there's some concern that the performance of ClearCase over NFS from a
-Linux client seems to be noticeably less than from a Solaris client.
-ClearCase uses a (heavily) customized version of the Raima database to
-store its internal information.
-
-I'll see if I can get any numbers.
-
-  tm> The Solaris approach is only a win in the particular case where
-  tm> you are doing several non-contiguous writes into the same page
-  tm> (and without any byte-range locking).  Note that like Linux, two
-  tm> processes that do not share the same RPC credentials still cannot
-  tm> merge their writes since you cannot rely on them having the same
-  tm> file write permissions.
-
-In this particular case that's fine since the ClearCase database is only
-ever modified by one process on one system.
-
-  tm> Looking at your particular example of GDBM, you should recall that
-  tm> Solaris is forced to revert to uncached synchronous reads and writes
-  tm> when doing byte range locking precisely because their page cache
-  tm> writes back entire pages (the ugly alternative would be to demand that
-  tm> byte range locks must be page-aligned).
-  tm> OTOH Linux can continue to do cached asynchronous reads and writes
-  tm> right up until the user forces an fsync()+cache invalidation by
-  tm> changing the locking range because our page cache writes are not
-  tm> required to be page aligned.
-
-Of course I don't have the source and I haven't sniffed the packets
-personally so I don't know exactly what goes on, but it's quite possible
-that the ClearCase implementation doesn't attempt to do any byte-range
-locking at all, since they pretty much know that there is only one
-process reading and writing the DB.
-
-The reason for using NFS involves maintenance, backup, reliability,
-etc. etc. (the NFS server is actually an EMC or NetApp NAS solution),
-not necessarily file sharing, at least insofar as the DB itself is
-concerned.
+Thanks,
+eric
 
 
 
-Thanks for the reply, Trond; I'll see if I can get more concrete
-details and let you know.
+Running as a 'user' doing bonnie putc()
+Writing with putc()...  done:    802 kB/s  10.6 %CPU
 
---=20
----------------------------------------------------------------------------=
-----
- Paul D. Smith <psmith@nortelnetworks.com>   HASMAT--HA Software Mthds & To=
-ols
- "Please remain calm...I may be mad, but I am a professional." --Mad Scient=
-ist
----------------------------------------------------------------------------=
-----
-   These are my opinions---Nortel Networks takes no responsibility for them.
+13:06:15.841823 172.16.17.176.3073181638 > 172.16.32.90.2049: 144 setattr [|nfs]
+(DF)
+13:06:15.842024 172.16.32.90.2049 > 172.16.17.176.3073181638: reply ok 144
+setattr [|nfs]
+13:06:15.842361 172.16.17.176.3089958854 > 172.16.32.90.2049: 648 write [|nfs]
+(DF)
+13:06:15.842611 172.16.32.90.2049 > 172.16.17.176.3089958854: reply ok 160 write
+[|nfs]
+13:06:15.842880 172.16.17.176.3106736070 > 172.16.32.90.2049: 144 setattr [|nfs]
+(DF)
+13:06:15.843079 172.16.32.90.2049 > 172.16.17.176.3106736070: reply ok 144
+setattr [|nfs]
+13:06:15.843506 172.16.17.176.3123513286 > 172.16.32.90.2049: 648 write [|nfs]
+(DF)
+13:06:15.843783 172.16.32.90.2049 > 172.16.17.176.3123513286: reply ok 160 write
+[|nfs]
+13:06:15.844069 172.16.17.176.3140290502 > 172.16.32.90.2049: 144 setattr [|nfs]
+(DF)
+13:06:15.844253 172.16.32.90.2049 > 172.16.17.176.3140290502: reply ok 144
+setattr [|nfs]
+13:06:15.844604 172.16.17.176.3157067718 > 172.16.32.90.2049: 648 write [|nfs]
+(DF)
+
+Running as root on the client box doing a bonnie putc()
+Writing with putc()...         done:  11625 kB/s  70.5 %CPU
+
+13:04:34.530773 172.16.32.90.2049 > 172.16.17.176.2934638278: reply ok 160 write
+[|nfs]
+13:04:34.533983 172.16.17.176.2951415494 > 172.16.32.90.2049: 1472 write [|nfs]
+(frag 58503:1480@0+)
+13:04:34.533995 172.16.17.176 > 172.16.32.90: udp (frag 58503:1480@1480+)
+13:04:34.533999 172.16.17.176 > 172.16.32.90: udp (frag 58503:1480@2960+)
+13:04:34.534003 172.16.17.176 > 172.16.32.90: udp (frag 58503:1480@4440+)
+13:04:34.534007 172.16.17.176 > 172.16.32.90: udp (frag 58503:1480@5920+)
+13:04:34.534010 172.16.17.176 > 172.16.32.90: udp (frag 58503:1480@7400+)
+13:04:34.534014 172.16.17.176 > 172.16.32.90: udp (frag 58503:1480@8880+)
+13:04:34.534018 172.16.17.176 > 172.16.32.90: udp (frag 58503:1480@10360+)
+13:04:34.534021 172.16.17.176 > 172.16.32.90: udp (frag 58503:1480@11840+)
+13:04:34.534024 172.16.17.176 > 172.16.32.90: udp (frag 58503:1480@13320+)
+13:04:34.534028 172.16.17.176 > 172.16.32.90: udp (frag 58503:1480@14800+)
+13:04:34.534032 172.16.17.176 > 172.16.32.90: udp (frag 58503:1480@16280+)
+13:04:34.534035 172.16.17.176 > 172.16.32.90: udp (frag 58503:1480@17760+)
+13:04:34.534039 172.16.17.176 > 172.16.32.90: udp (frag 58503:1480@19240+)
+13:04:34.534042 172.16.17.176 > 172.16.32.90: udp (frag 58503:1480@20720+)
+13:04:34.534045 172.16.17.176 > 172.16.32.90: udp (frag 58503:1480@22200+)
+13:04:34.534049 172.16.17.176 > 172.16.32.90: udp (frag 58503:1480@23680+)
+13:04:34.534053 172.16.17.176 > 172.16.32.90: udp (frag 58503:1480@25160+)
+13:04:34.534056 172.16.17.176 > 172.16.32.90: udp (frag 58503:1480@26640+)
+13:04:34.534060 172.16.17.176 > 172.16.32.90: udp (frag 58503:1480@28120+)
+13:04:34.534063 172.16.17.176 > 172.16.32.90: udp (frag 58503:1480@29600+)
+13:04:34.534067 172.16.17.176 > 172.16.32.90: udp (frag 58503:1480@31080+)
+13:04:34.534070 172.16.17.176 > 172.16.32.90: udp (frag 58503:368@32560)
+13:04:34.537357 172.16.32.90.2049 > 172.16.17.176.2951415494: reply ok 160 write
+[|nfs]
+13:04:34.540586 172.16.17.176.2968192710 > 172.16.32.90.2049: 1472 write [|nfs]
+(frag 58504:1480@0+)
+13:04:34.540598 172.16.17.176 > 172.16.32.90: udp (frag 58504:1480@1480+)
+13:04:34.540603 172.16.17.176 > 172.16.32.90: udp (frag 58504:1480@2960+)
+
+
+Client nfs v3:
+null       getattr    setattr    lookup     access     readlink
+0       0% 8724    0% 1113998 47% 5225    0% 3084    0% 98      0%
+read       write      create     mkdir      symlink    mknod
+20776   0% 1213403 51% 237     0% 1       0% 3       0% 0       0%
+remove     rmdir      rename     link       readdir    readdirplus
+206     0% 0       0% 95      0% 24      0% 48      0% 416     0%
+fsstat     fsinfo     pathconf   commit
+118     0% 10      0% 0       0% 0       0%
 
 
 -------------------------------------------------------
