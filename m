@@ -1,16 +1,20 @@
-From: Stuart Anderson <sba@srl.caltech.edu>
-Subject: nfs bindresvport: Address already in use
-Date: Sun, 30 Jan 2005 23:43:53 +0000 (UTC)
-Message-ID: <slrncvqs9p.evp.sba@localhost.localdomain>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+From: Malte Cornils <malte@cornils.net>
+Subject: NFS locking and OpenBSD
+Date: Mon, 31 Jan 2005 23:02:30 +0100
+Message-ID: <200501312302.30778.malte@cornils.net>
+Mime-Version: 1.0
+Content-Type: text/plain;
+  charset="us-ascii"
+Cc: admin@usta.de
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CvOjX-0003h5-NC
-	for nfs@lists.sourceforge.net; Sun, 30 Jan 2005 15:43:59 -0800
-Received: from naig.caltech.edu ([131.215.49.17])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CvOjW-0000bt-48
-	for nfs@lists.sourceforge.net; Sun, 30 Jan 2005 15:43:59 -0800
-To: mlist-nfs-valinux@nntp-server.caltech.edu
+	id 1Cvjd3-00085a-16
+	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 14:02:41 -0800
+Received: from smtp1.rz.uni-karlsruhe.de ([129.13.185.217])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1Cvjd0-0003kt-1f
+	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 14:02:40 -0800
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -24,33 +28,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hello,
 
-I get the following error on the a Linux (FC3) client machine when I issue
-more than 53 NFS mount requests in less than ~1 minute:
+since OpenBSD as NFS-server supports only NLM 1,2,3. Linux clients with no 
+specific mount options use NFS version 3. However, Linux uses NLM version 4 
+with that (fs/lockd/nlmclnt_proc.c, line 113 in 2.6.8).
 
-Jan 30 10:40:22 beowulf automount[22882]: >> nfs bindresvport:
-	Address already in use
-Jan 30 10:40:22 beowulf automount[22882]: mount(nfs): nfs:
-	mount failure node54:/usr1 on /data/node54
-Jan 30 10:40:22 beowulf automount[22882]: failed to mount /data/node54
+When set to nfsvers=2, it works, but NFS 2 is (too) slow due to caching etc.
 
-If I wait ~1 minute, I can mount another set of ~50 filesystems.
-The NFS servers are also running FC3.
+Could we simply set NLM locking version to 1 in the source code 
+unconditionally (even for NFS version 3) and expect NFS to work (i.e. is NFS 
+protocol 3 able to use older NLM versions than 4)? Of course, I only expect 
+an answer from the Linux point of view.
 
-I repeatedly get this problem whether I manually issue the mount requests
-with /bin/mount or use the automounter.
+-Malte
 
-I have 290 Beowulf clusters nodes that operate as NFS servers and applications
-that are trying to mount these too fast and failing.
+BTW, I've tried to search the mailing list archives but only found a post from 
+2002 with no answer. 
 
-I tried running autofs-4.1.4_beta1 to rule out RedHat patches, but that
-did not help.
-
-I do not have this problem on RH9 or Solaris 9 clients.
-
-How do I increase the rate of allowed NFS mounts?
-
-Thanks.
+(BTW, anyone using KDE on NFS-mounted homedirs? The problem occurs in the 
+startup phase in kded (when the second icon in the splash blinks) at first 
+login. On a local file system, the login is 20-30 seconds faster than on our 
+NFS-mounted homedirs)
 
 
 -------------------------------------------------------
