@@ -1,18 +1,29 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: Multiple threads, hard-linking performance problem
-Date: Thu, 27 Mar 2003 09:41:36 -0800
+From: Mark Price <mkprice@us.ibm.com>
+Subject: wsize & PAGE_SIZE issues on IA64 clients.
+Date: Thu, 27 Mar 2003 13:24:28 -0800 (PST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <6440EA1A6AA1D5118C6900902745938E07D55466@black.eng.netapp.com>
+Message-ID: <Pine.LNX.4.44.0303271219410.2496-100000@mprice-laptop.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="utf-8"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mx01.netapp.com ([198.95.226.53])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18ybO2-0002ow-00
-	for <nfs@lists.sourceforge.net>; Thu, 27 Mar 2003 09:41:58 -0800
-To: "Gordon Luk" <gluk@Sequoiabroadband.com>
+Received: from e31.co.us.ibm.com ([32.97.110.129])
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18yeqT-0000hy-00
+	for <nfs@lists.sourceforge.net>; Thu, 27 Mar 2003 13:23:33 -0800
+Received: from westrelay03.boulder.ibm.com (westrelay03.boulder.ibm.com [9.17.195.12])
+	by e31.co.us.ibm.com (8.12.8/8.12.2) with ESMTP id h2RLMZWO102344
+	for <nfs@lists.sourceforge.net>; Thu, 27 Mar 2003 16:22:35 -0500
+Received: from gateway.beaverton.ibm.com (gateway.beaverton.ibm.com [138.95.180.1])
+	by westrelay03.boulder.ibm.com (8.12.8/NCO/VER6.5) with ESMTP id h2RLNFFv134364
+	for <nfs@lists.sourceforge.net>; Thu, 27 Mar 2003 14:23:15 -0700
+Received: from crg8.beaverton.ibm.com (crg8.beaverton.ibm.com [9.47.57.33])
+	by gateway.beaverton.ibm.com (8.11.6/8.11.6) with ESMTP id h2RLMFn12704
+	for <nfs@lists.sourceforge.net>; Thu, 27 Mar 2003 13:22:15 -0800
+Received: from dyn9-47-9-142.beaverton.ibm.com (dyn9-47-9-142.beaverton.ibm.com [9.47.9.142])
+	by crg8.beaverton.ibm.com (8.10.0.Beta10/8.8.5/token.aware-1.2) with ESMTP id h2RLNEm27288
+	for <nfs@lists.sourceforge.net>; Thu, 27 Mar 2003 13:23:14 -0800 (PST)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,79 +36,55 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-aGkgZ29yZG9uLQ0KDQp5b3VyIHByb2JsZW0gbWF5IGJlIHJlbGF0ZWQgdG8gdXNpbmcgVURQLiAg
-eW91IHByb2JhYmx5DQpuZWVkIFVEUCBiZWNhdXNlIHlvdSBydW4gYWdhaW5zdCBhIExpbnV4IHNl
-cnZlciByZWxlYXNlDQp0aGF0IGRvZXNuJ3Qgc3VwcG9ydCBUQ1AuDQoNCnRyeSByZWR1Y2luZyB5
-b3VyIHJzaXplL3dzaXplIHRvIDhLIG9yIDRLLg0KDQppIHN1c3BlY3QgdGhpcyBpcyB0aGUgcHJv
-YmxlbSBiZWNhdXNlIHlvdSBjbGFpbSB0aGF0DQpzaW1pbGFyIHRlc3RzIHJ1biBxdWlja2x5IGFn
-YWluc3QgbG9jYWwgZmlsZXMuDQoNCnVubGVzcyB5b3UgaGF2ZSBhIHN1cHBvcnQgY29udHJhY3Qg
-dGhhdCBjb25zdHJhaW5zIHlvdSwNCmFsc28gdHJ5IGJ1aWxkaW5nIDIuNC4yMS1wcmU1IGZvciB5
-b3VyIGNsaWVudHMuDQoNCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gRnJvbTogR29y
-ZG9uIEx1ayBbbWFpbHRvOmdsdWtAU2VxdW9pYWJyb2FkYmFuZC5jb21dIA0KPiBTZW50OiBUaHVy
-c2RheSwgTWFyY2ggMjcsIDIwMDMgMTI6MTggUE0NCj4gVG86IG5mc0BsaXN0cy5zb3VyY2Vmb3Jn
-ZS5uZXQNCj4gU3ViamVjdDogW05GU10gTXVsdGlwbGUgdGhyZWFkcywgaGFyZC1saW5raW5nIHBl
-cmZvcm1hbmNlIHByb2JsZW0NCj4gDQo+IA0KPiBIaSwNCj4gIA0KPiBJJ20gc2VlaW5nIGEgcGVy
-Zm9ybWFuY2UgcHJvYmxlbSB3aXRoIGNyZWF0aW5nIGh1bmRyZWRzIG9mIA0KPiBoYXJkIGxpbmtz
-IHRocm91Z2ggbXVsdGlwbGUgdGhyZWFkcywgb2NjYXNpb25hbGx5IHdoaWxlIGxhcmdlIA0KPiBm
-aWxlIHdyaXRlcyBhcmUgZ29pbmcgb24uIEZpcnN0IGknbGwgZXhwbGFpbiBteSBjb25maWd1cmF0
-aW9uIA0KPiBhbmQgdGhlbiBnZXQgaW50byB0aGUgcHJvYmxlbS4NCj4gIA0KPiBORlMgU2VydmVy
-Og0KPiBSZWRIYXQgTGludXggNy4yLCBrZXJuZWwgMi40LjE4LTI2LjcNCj4gSUJNIHgzMzUgMi4w
-R2h6IGNwdSwgMUdCIFJBTQ0KPiBHaWdhYml0IGV0aGVybmV0DQo+IERpc2sgaW5mbzoNCj4gSUJN
-IEVYUDMwMCB3aXRoIDE0IFVsdHJhMzIwIFNDU0kgc3BpbmRsZXMsIElCTSBTZXJ2ZVJBSUQtNCg/
-KSANCj4gcnVubmluZyBSQUlELTEwLCBjaHVuayBzaXplIDY0ayBzaW5nbGUgZXh0MyBwYXJ0aXRp
-b24gbW91bnRlZCANCj4gcncsbm9hdGltZSBleHBvcnRlZCBhcyBydyxub19yb290X3NxdWFzaCBu
-ZnN2Mw0KPiAgDQo+IE5GUyBDbGllbnQ6DQo+IFJlZEhhdCBMaW51eCA3LjIsIGtlcm5lbCAyLjQu
-MTgtMjYuNyANCj4gSUJNIHgzNjAgNHgxLjZHaHogY3B1LCAxR0IgUkFNDQo+IEdpZ2FiaXQgZXRo
-ZXJuZXQgY29ubmVjdGlvbiB0byBORlMgU2VydmVyDQo+IG1vdW50cyBuZnMgcGFydGl0aW9uIGFz
-IHJ3LGhhcmQsaW50cixyc2l6ZT0zMjc2OCx3c2l6ZT0zMjc2OA0KPiBuZnN2Mw0KPiAgDQo+IFVz
-YWdlIGJlaGF2aW9yOg0KPiBUaGUgTkZTIGNsaWVudCByZWFkcyBmcm9tIGEgc2VwYXJhdGUgTkZT
-IG1vdW50IChzYW1lIG5mcyANCj4gcGFyYW1ldGVycywgaWRlbnRpY2FsIGRyaXZlcyBleGNlcHQg
-Zm9yIHRoZSBub2F0aW1lKSBhbmQgd2lsbCANCj4gZG8gdGhlIGZvbGxvd2luZyB0aHJvdWdoIHRo
-ZSBhZm9yZW1lbnRpb25lZCBORlMgbW91bnQ6DQo+IDEpIE11bHRpcGxlIHRocmVhZHMgKGNvbnNp
-ZGVyIDMgbWF4KSBjaGVja2luZyBmaWxlIGV4aXN0ZW5jZSANCj4gYW5kIHRpbWVzdGFtcCwgYW5k
-IGRvaW5nIGEgZmlsZSBjb3B5IHRocm91Z2ggSmF2YSBmaWxlIGNvcHkuDQo+IDIpIE11bHRpcGxl
-IHRocmVhZHMgKGNvbnNpZGVyIDMgbWF4KSBjcmVhdGluZyBzb2Z0IGxpbmsgdG8gDQo+IGZpbGVz
-IGNyZWF0ZWQgYnkgIzENCj4gMykgTXVsdGlwbGUgdGhyZWFkcyAoY29uc2lkZXIgMyBtYXgpIGNy
-ZWF0aW5nIGh1bmRyZWRzIA0KPiAoMjAwLDYwMCwyMDAwIGZvciBleGFtcGxlKSBoYXJkIGxpbmtz
-IHRvIHRoaXMgc29mdCBsaW5rLiBJJ20gDQo+IGF3YXJlIG9mIHBvcnRhYmlsaXR5IGNvbmNlcm5z
-IHdpdGggdGhpcyBiZWhhdmlvci4gVGhlc2UgbGlua3MgDQo+IGFyZSBjcmVhdGVkLCAyIHBlciBz
-dWJkaXJlY3RvcnkgaW4gYSBkaXJlY3RvcnkgdHJlZSB3aXRoIA0KPiBodW5kcmVkcyBvZiBkaXJl
-Y3RvcmllcyAoNTAwLCAxNTAwLCA1MDAwIGNvcnJlc3BvbmRpbmcgdG8gdGhlIA0KPiBhYm92ZSBl
-eGFtcGxlKS4NCj4gIA0KPiBTdGF0aXN0aWNzOg0KPiBBbGwgdGVzdHMgZG9uZSB3aXRoIDEuNDZH
-QiBmaWxlOg0KPiBMb2NhbCBFWFAzMDAgdG8gRVhQMzAwIGZpbGUgY29weSAtIDQ4LjkxIHNlYw0K
-PiBDb3B5IGZyb20gTkZTIENsaWVudCdzIGxvY2FsIGRyaXZlIHRvIE5GUyBzaGFyZSAtIDY4LjIz
-IHNlYyANCj4gQ29weSBiZXR3ZWVuIE5GUyBDbGllbnQncyAyIG1vdW50ZWQgTkZTIHBhcnRpdGlv
-bnMgKG9uIA0KPiBkaWZmZXJlbnQgc2VydmVycykgLSAxMjAgc2VjIFNhbWUgYXMgYWJvdmUsIGJ1
-dCB3aXRoIG5vYXRpbWUgDQo+IG9uIE5GUyBTZXJ2ZXIncyBleHBvcnRlZCBwYXJ0aXRpb24gLSAx
-MDIgc2VjIEphdmEgZmlsZSBjb3B5IA0KPiB0aHJvdWdocHV0IGJldHdlZW4gMiBtb3VudGVkIHBh
-cnRpdGlvbnMgKGFsb25nIHdpdGggb3RoZXIgDQo+IHByb2Nlc3Npbmcgb3ZlcmhlYWQpIDE1MCBz
-ZWMNCj4gIA0KPiBJc3N1ZSBkZXNjcmlwdGlvbjoNCj4gIA0KPiBXaGlsZSAjMSBhbmQgIzIgYXJl
-IGdvaW5nIGluIHRoZSBiYWNrZ3JvdW5kLCAjMyAtIGxpbmtpbmcgMjAwIA0KPiBmaWxlcyBhcHBl
-YXJlZCB0byB0YWtlIGFwcHJveC4gNyBtaW51dGVzIHBlciB0aHJlYWQuIFRoaXMgaXMgDQo+IGFw
-cHJveCA4NCBoYXJkIGxpbmtzIGNyZWF0ZWQgcGVyIG1pbnV0ZSB3aXRoIDMgY29uY3VycmVudCAN
-Cj4gdGhyZWFkcywgd2hpY2ggc2VlbXMgbGlrZSBhIHBvc3NpYmxlIGlzc3VlLiBHb2luZyBkaXJl
-Y3RseSB0byANCj4gdGhlIGZpbGVzeXN0ZW0gYW5kIGNyZWF0aW5nIGhhcmQgbGlua3MgbWFudWFs
-eSBhcHBlYXJlZCB0byBiZSANCj4gZmFzdCwgYW5kIGFuIGV4dHJlbWVseSBzbG93ICJscyIgY29t
-bWFuZCBmcm9tIHRoZSBORlMgY2xpZW50IA0KPiBvbiB0aGUgTkZTLW1vdW50ZWQgcGFydGl0aW9u
-IGFwcGVhcmVkIHRvIGJlIHNsb3cuDQo+ICANCj4gQW5vdGhlciB0ZXN0LCB3aXRoICMxIGF0IDIg
-dGhyZWFkcywgIzIgYXQgMyB0aHJlYWRzLCBhbmQgIzMgDQo+IGF0IDUgdGhyZWFkcywgd2l0aCA2
-MDAgbGlua3MgcGVyIHRocmVhZCByZXZlYWxlZCBhYm91dCAyMC0yNSANCj4gbWludXRlcyBwZXIg
-dGhyZWFkIHRvIGNvbXBsZXRlIHdpdGggNSBjb25jdXJyZW50IHRocmVhZHMuIA0KPiBUaGlzIHN0
-aWxsIHNlZW1zIGxvdyB0byBtZS4NCj4gIA0KPiBJIGhhdmUgcmVhZCB0aHJvdWdoIHRoZSBtYWls
-aW5nIGxpc3QgYXJjaGl2ZXMsIGFuZCBhIGNvdXBsZSANCj4gb2YgdGhlIG5vdGVzIHNlZW1lZCBh
-cyBpZiB0aGV5IG1heSBoYXZlIHJlbGV2YW5jZSB0byB0aGlzIA0KPiBpc3N1ZS4gSW4gcGFydGlj
-dWxhciwgcG9vciBoYW5kbGluZyBvZiBsYXJnZSBudW1iZXJzIG9mIHNtYWxsIA0KPiBmaWxlcyBi
-eSBleHQzLCBhbmQgYWxzbyBBbGFuIFBvd2VsbCdzIHBvc3QgYWJvdXQgZXh0MyANCj4gZGlyZWN0
-b3J5IGluZGV4aW5nOiANCj4gaHR0cDovL3NvdXJjZWZvcmdlLm5ldC9tYWlsYXJjaGl2ZS9mb3J1
-bS5waHA/dGhyZWFkX2lkPTE2NzEzMDkNCiZmb3J1bV9pZD00OTMwDQogDQpJIG1heSBjb25zaWRl
-ciB0cnlpbmcgWEZTIG9yIFJlaXNlckZTIG91dCBvZiBjdXJpb3NpdHksIGJ1dCBzaW5jZSB0aGlz
-IGFyY2hpdGVjdHVyZSB3aWxsIHNvb24gY2hhbmdlLCBJIGp1c3Qgd2FzIHdvbmRlcmluZyBpZiB0
-aGVyZSB3ZXJlIGFueSBvYnZpb3VzIGNvbmZpZ3VyYXRpb24gY2hhbmdlcyBJIHNob3VsZCBtYWtl
-LCBhbmQgYWxzbyB0aG91Z2h0IHRoYXQgaXQgbWlnaHQgYmUgZ29vZCB0byBzaGFyZSB0aGlzIGV4
-cGVyaWVuY2Ugd2l0aCB0aGUgbGlzdC4NCiANClRoYW5rcywNCiANCkdvcmRvbiBMdWsNClN5c3Rl
-bSBBZG1pbmlzdHJhdG9yDQpTZXF1b2lhIEJyb2FkYmFuZCwgSW5jLg0KaHR0cDovL3d3dy5zZXF1
-b2lhYnJvYWRiYW5kLmNvbQ0KThhIWVjtrrJ1fikrITZ05oyvxaB4BXp61a5XIntqxYFNegjljrXK
-oRsGx6JyCH955ZGOecuWR00VFSlZSljhq7bLun56d9uzDQpxIHoBDQpYKQ0K
+
+Hi Folks,
+
+I've been chasing a very poor performance problem from a SuSE Sles-8 
+(2.4.19) system on an IA64 box to an AIX NFS server. Writes to the same 
+AIX server on an IA32 box also running Sles-8 performed as expected. 
+
+These are v3 mounts with a 4K rsize/wsize. Eg.
+
+mount -t nfs -o nfsvers=3,udp,rsize=4096,wsize=4096,hard rs75:/linux_test 
+/linux_test
+
+I tracked the problem down to the default PAGE_SIZE on ia64, which is 16K, 
+versus the wsize which was 4K. 
+
+In nfs_updatepage() if the wsize is smaller than the page size the write 
+is performed synchronously. It appears though that the block size is then 
+reduced further, in this case to 512 bytes. From what I could work out, 
+it was cp_new_stat() in linux/fs/stat.c that determined the new preferred 
+block size from the remote filesystem. 
+
+On ia32 both the page size and the wsize were 4K, and no problem was seen. 
+
+Can someone give me rough explanation of why that logic is used? ie. Why 
+the page is written synchronously if its smaller than the page size? and 
+Why even when its written synchronously the wsize wasn't used, but the 
+remote filesystems block size was used?
+
+The fix/workaround was to either increase wsize to 16K, or reduce 
+PAGE_SIZE to 4K, obviously increasing wsize to 16K makes more sense.
+
+However this leads to a problem between Linux clients and servers where 
+the maximum supported block size on the server is 8K and the page size on 
+the IA64 client is 16K.
+
+Is increasing the maximum blocksize for the server as simple as changing 
+NFSSVC_MAXBLKSIZE (linux/include/linux/nfsd/const.h) to 16K or 32K ? Or is 
+more porting work required?
+
+Cheers, Mark. 
+
+-- 
+Mark Price
+IBM Linux Change Team
+(503)-578-7524
+
+
+
+
 
 
 -------------------------------------------------------
