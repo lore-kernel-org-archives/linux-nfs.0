@@ -1,24 +1,25 @@
-From: Ian Kent <raven@themaw.net>
-Subject: RE: auto-discovery of exports?
-Date: Thu, 8 Apr 2004 08:37:25 +0800 (WST)
+From: NeilBrown <neilb@cse.unsw.edu.au>
+Subject: [PATCH] kNFSdv4 - 5 of 10 - Fix bad error returm from svcauth_gss_accept
+Date: Thu, 08 Apr 2004 11:18:46 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.58.0404080836220.8254@wombat.indigo.net.au>
-References: <41089CB27BD8D24E8385C8003EDAF7AB08484E@karl.alexa.com>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Michael <mogmios@mlug.missouri.edu>, nfs@lists.sourceforge.net
+Message-ID: <E1BBOBq-0001Qq-K5@notabene.cse.unsw.edu.au>
+References: <20040408111135.5397.patches@notabene>
+Cc: nfs@lists.sourceforge.net,  "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BBNSP-0005JT-Nv
-	for nfs@lists.sourceforge.net; Wed, 07 Apr 2004 17:31:49 -0700
-Received: from wombat.indigo.net.au ([202.0.185.19])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.30)
-	id 1BBNSO-0007qx-T5
-	for nfs@lists.sourceforge.net; Wed, 07 Apr 2004 17:31:49 -0700
-To: Guolin Cheng <guolin@alexa.com>
-In-Reply-To: <41089CB27BD8D24E8385C8003EDAF7AB08484E@karl.alexa.com>
+	id 1BBOCG-0007i8-T1
+	for nfs@lists.sourceforge.net; Wed, 07 Apr 2004 18:19:12 -0700
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1BBOCF-00021y-9c
+	for nfs@lists.sourceforge.net; Wed, 07 Apr 2004 18:19:11 -0700
+Received: From
+	notabene.cse.unsw.edu.au ([129.94.241.7] == ppp2-007.ppp2.cse.unsw.EDU.AU) (auth-user neilb)
+	(for <akpm@osdl.org>) (for <nfs@lists.sourceforge.net>)
+	(for <bfields@fieldses.org>) By note With Smtp ;
+	Thu, 8 Apr 2004 11:19:07 +1000
+To: Andrew Morton <akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,22 +32,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, 7 Apr 2004, Guolin Cheng wrote:
 
-> Hi, Michael,
-> 
->  Run shell command "showmount -e|--exports <server_to_be_questioned>".
-> If you would like to scan your network to check each host, run a for
-> loop, and in the loop put another command "rpcinfo -p
-> <server_to_be_questions>  |grep nfs" to make sure whether the nfs server
-> is running on the host, if so, run the showmount command to query the
-> exported file system from the host. 
+From: "J. Bruce Fields" <bfields@fieldses.org>
 
-Fine but how would you enumerate the hosts?
-Would you restrict this to the local subnet?
+Error return when the client supplies a bad service should be badcred.
 
-Ian
+ ----------- Diffstat output ------------
+ ./net/sunrpc/auth_gss/svcauth_gss.c |    1 +
+ 1 files changed, 1 insertion(+)
 
+diff ./net/sunrpc/auth_gss/svcauth_gss.c~current~ ./net/sunrpc/auth_gss/svcauth_gss.c
+--- ./net/sunrpc/auth_gss/svcauth_gss.c~current~	2004-04-08 10:56:10.000000000 +1000
++++ ./net/sunrpc/auth_gss/svcauth_gss.c	2004-04-08 10:56:10.000000000 +1000
+@@ -895,6 +895,7 @@ svcauth_gss_accept(struct svc_rqst *rqst
+ 		svc_putu32(resv, rpc_success);
+ 		goto complete;
+ 	case RPC_GSS_PROC_DATA:
++		*authp = rpc_autherr_badcred;
+ 		rqstp->rq_client =
+ 			find_gss_auth_domain(rsci->mechctx, gc->gc_svc);
+ 		if (rqstp->rq_client == NULL)
 
 
 -------------------------------------------------------
