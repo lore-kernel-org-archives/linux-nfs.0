@@ -1,27 +1,29 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: RFC: mount.nfs
-Date: Fri, 27 Aug 2004 15:16:33 -0400
+From: "Brandon D. Valentine" <brandon@dvalentine.com>
+Subject: [bug] FC2/2.6.8.1 does not fallback to NFSv2
+Date: Fri, 27 Aug 2004 16:22:44 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1093634193.5758.67.camel@lade.trondhjem.org>
-References: <20040827141529.GF23324@suse.de>
-	 <1093630421.5758.42.camel@lade.trondhjem.org>
-	 <20040827182452.GA20962@suse.de>
+Message-ID: <20040827212244.GA57703@brandon.dvalentine.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C0mDG-0004bH-8u
-	for nfs@lists.sourceforge.net; Fri, 27 Aug 2004 12:16:38 -0700
-Received: from dh138.citi.umich.edu
-	([141.211.133.138] helo=lade.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	id 1C0oBd-0003Td-FR
+	for nfs@lists.sourceforge.net; Fri, 27 Aug 2004 14:23:05 -0700
+Received: from mail.michaelchaney.com ([207.65.84.68] helo=daphne.michaelchaney.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.34)
-	id 1C0mDF-0002zs-Ou
-	for nfs@lists.sourceforge.net; Fri, 27 Aug 2004 12:16:38 -0700
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20040827182452.GA20962@suse.de>
+	id 1C0oBc-00077y-06
+	for nfs@lists.sourceforge.net; Fri, 27 Aug 2004 14:23:05 -0700
+Received: from home.funnyvalentine.net (6nq81oinlm4c2v5v@dallben [127.0.0.1])
+	by home.funnyvalentine.net (8.12.10/8.12.10) with ESMTP id i7RLMirH057969
+	for <nfs@lists.sourceforge.net>; Fri, 27 Aug 2004 16:22:44 -0500 (CDT)
+	(envelope-from bandix@home.funnyvalentine.net)
+Received: (from bandix@localhost)
+	by home.funnyvalentine.net (8.12.10/8.12.10/Submit) id i7RLMiuF057968
+	for nfs@lists.sourceforge.net; Fri, 27 Aug 2004 16:22:44 -0500 (CDT)
+	(envelope-from bandix)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,75 +36,82 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 fr , 27/08/2004 klokka 14:24, skreiv Olaf Kirch:
+[ I tried to send this yesterday without actually subscribing, but it
+has yet to make it past the list moderator.  I've given up and
+subscribed to yet another mailing list to get this bug report out. ]
 
-> In what way do these legacy portmappers fail? Does the PMAP_DUMP actually
-> kill the portmapper? If we are able to safely identify broken portmappers=
-,
-> I assume we can fall back to enumerating the available versions by
-> sending a GETPORT request with version 0, and loop over that range.
->=20
-> I can easily put all that stuff into a library, no problem.
+We have just brought up several Fedora Core 2 systems running the latest
+2.6.8.1 kernel revision in our NIS/NFS+autofs environment.  The FC2/2.6
+clients are refusing to mount one specific filesystem on our network.
+This filesystem is exported by a Debian/woody system running a 2.4.18
+kernel.  The kernel on this machine only supports NFSv2 exports.
 
-No, it doesn't kill the portmapper, but it returns an error, and so
-needs to be dealt with. Putting it in as a fallback case would probably
-be fine...
+When the FC2/2.6 client attempts to automount the filesystem on the 2.4
+server we observe the following in the client's syslog:
 
-> > the rewrite that is in Fedora Core 2 goes to such lengths to actually
-> > "ping" the server.
->=20
-> I wasn't aware that Redhat already had a rewrite. I'll take a look.
+  Aug 26 18:37:08 scylla automount[5056]: >> mount to NFS server 'reef'
+  failed: server is down.
+  Aug 26 18:37:08 scylla automount[5056]: mount(nfs): nfs: mount failure
+  reef:/export/reef/httpd/ on /sb/www
+  Aug 26 18:37:08 scylla automount[5056]: failed to mount /sb/www
 
-It's based on some work I did 2 years ago to clean the code up a bit,
-and put in support for TCP/UDP probing. It also does things like fix up
-"umount" so that we call the correct revision of the mount protocol
-(some people like to disable NFSv2 support in mountd for instance)...
+And the following is observed in the server's syslog:
 
-> > Also note that ideally, we want to make stuff like this as part of a
-> > backend library, then have 3 different programs:
-> >   mount.nfs2
-> >   mount.nfs3
-> >   mount.nfs4
-> > that can be called when the user does
-> >=20
-> >     mount -t nfs -onfsvers=3D%d
->=20
-> That's fine with me. But I think we still need a mount.nfs, because
-> we need to handle the case where the user doesn't specify an NFS
-> version. Calling all mount.nfsX apps in turn may be a bit awkward.
+  Aug 26 18:37:12 reef kernel: svc: unknown version (3)
 
-I'm not suggesting that you want to call the mount.nfsX apps in turn,
-but I'm thinking that a minimal front end (in "mount" itself for
-instance) could do basic probing for version, then call the appropriate
-back end (or load it as a library or whatever).
-The point is that parsing of the mount options and setting up of the
-nfs_mount struct (and any future nfsX_mount structs) and calling down
-into the kernel belongs in version-specific modules.
+At this point the client gives up with the following error:
 
-> > The reason why I want to split out nfs2 from the nfs3 mount is that at
-> > some point in the near future, I'd like to change the filesystem
-> > registration to create 'struct file_system_type' entries for NFSv2 and
-> > NFSv3. That will enable us to
-> >=20
-> >    a) clean up the struct nfs_mount to get rid of all that "struct
-> > socket", version 1 legacy crap
->=20
-> We can do that now, if we drop the requirement of making the struct
-> backward compatible. We already deduce the kernel API version by
-> looking at the kernel release number, so that can be done safely.
+  [root@scylla root]# ls /sb/www
+  ls: /sb/www: No such file or directory
 
-Sure, and in practice, it boils down to the same thing as you propose as
-far as that struct mount is concerned. It's just that you get the extra
-benefit that userland can suddenly figure out which versions of NFS the
-kernel has been compiled to support.
-People do actually still compile NFSv2-only kernels (Linus never misses
-an opportinity to yell at me every time I send in some patch that breaks
-that 8-)). In the future we also want to be able to give people the
-option of NFSv3-only or even NFSv4-only kernels as the older NFS
-revisions fade into historical oblivion.
+None of our other Linux systems running 2.4 kernels have any trouble
+mounting that filesystem.  They all automount it using NFSv2 as
+expected.  All of our 2.4 systems also correctly mount using NFSv3 from
+systems that support it.
 
-Cheers,
-  Trond
+Autofs is configured on the FC2 systems to permit NFSv2 mounts as shown
+by the minproto option below:
+
+  [root@scylla root]# mount | grep automount
+  automount(pid1665) on /home type autofs (rw,fd=4,pgrp=1665,minproto=2,maxproto=4)
+  automount(pid1695) on /sb type autofs (rw,fd=4,pgrp=1695,minproto=2,maxproto=4)
+  automount(pid1739) on /scratch type autofs (rw,fd=4,pgrp=1739,minproto=2,maxproto=4)
+
+The 2.6.8.1 kernel is configured with the following options:
+
+  [root@scylla root]# grep -i nfs /usr/src/linux/.config
+  CONFIG_NFS_FS=y
+  CONFIG_NFS_V3=y
+  # CONFIG_NFS_V4 is not set
+  # CONFIG_NFS_DIRECTIO is not set
+  CONFIG_NFSD=y
+  CONFIG_NFSD_V3=y
+  # CONFIG_NFSD_V4 is not set
+  CONFIG_NFSD_TCP=y
+
+I am able to manually mount this filesystem, but only if I explicitly
+add the vers=2 option to the mount command:
+
+  [root@scylla root]# mount -t nfs reef:/export/reef/httpd/ /mnt/temp
+  mount to NFS server 'reef' failed: server is down.
+  [root@scylla root]# mount -t nfs -o vers=2 reef:/export/reef/httpd/ /mnt/temp
+  [root@scylla root]#
+
+Given the fact that the mount fails manually until vers=2 is specified I
+am inclined to believe this is a kernel NFS bug, not an autofs or mount
+bug.
+
+I would be glad to gather any additional information that might be
+necessary to determine the cause of this behavior.  Can anyone reproduce
+this or have advice on how I might fix it?
+
+Thanks,
+
+Brandon D. Valentine
+-- 
+brandon@dvalentine.com                           http://www.geekpunk.net
+Pseudo-Random Googlism:  sunlight is the lowest frequency and therefore
+                         is the biggest wave
 
 
 -------------------------------------------------------
