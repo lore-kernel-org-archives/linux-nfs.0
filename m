@@ -1,25 +1,22 @@
-From: "Matt Heaton" <admin@0catch.com>
-Subject: Cachefs??
-Date: Fri, 2 Aug 2002 13:26:43 -0600
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: limit on filesystem size?
+Date: Sat, 3 Aug 2002 00:35:55 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <0e0901c23a5a$88e98c30$e2a446a6@user1i6avc9gfx>
+Message-ID: <15691.2379.954309.55464@charged.uio.no>
+References: <20020801195309.GA26793@stikine.ucs.sfu.ca>
+	<shs7kja48km.fsf@charged.uio.no>
+	<20020802202210.GA28263@stikine.ucs.sfu.ca>
+Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0E06_01C23A28.3E22B500"
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mgr1.xmission.com ([198.60.22.201])
+Received: from pat.uio.no ([129.240.130.16])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17ai4m-0001NR-00
-	for <nfs@lists.sourceforge.net>; Fri, 02 Aug 2002 12:27:04 -0700
-Received: from [198.60.22.200] (helo=mail.xmission.com)
-	by mgr1.xmission.com with esmtp (Exim 3.35 #1)
-	id 17ai4k-0002SD-00
-	for nfs@lists.sourceforge.net; Fri, 02 Aug 2002 13:27:02 -0600
-Received: from [166.70.164.226] (helo=user1i6avc9gfx)
-	by mail.xmission.com with smtp (Exim 3.22 #1)
-	id 17ai4j-0007xz-00
-	for nfs@lists.sourceforge.net; Fri, 02 Aug 2002 13:27:02 -0600
-To: <nfs@lists.sourceforge.net>
+	id 17al2v-00017N-00
+	for <nfs@lists.sourceforge.net>; Fri, 02 Aug 2002 15:37:21 -0700
+To: Martin Siegert <siegert@sfu.ca>
+In-Reply-To: <20020802202210.GA28263@stikine.ucs.sfu.ca>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,57 +29,34 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-This is a multi-part message in MIME format.
+>>>>> " " == Martin Siegert <siegert@sfu.ca> writes:
 
-------=_NextPart_000_0E06_01C23A28.3E22B500
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+     > Please, bear with me - I am by no means an expert on these
+     > issues.  But my impression was that the problem is in
+     > include/linux/blkdev.h
 
-Hi everyone.... My NFS clients are clobbering my nfs servers and I would =
-like to boost caching
-on the client side as much as I can.  Do you have any ideas?
+     > struct request { ...
+     >         unsigned long sector;
 
-Also is Cachefs being developed at all for linux???  Cachefs would be a =
-HUGE boost to the linux
-community in my opinion.
+     > with results in a (local) filesystem size limit of 2TB (unless
+     > sectors larger than 512 bytes are used).
 
-Lemme know...
-Matt
+     > Am I understanding correctly that you are telling me that this
+     > does not apply to NFS and that despite this definition I could
+     > even reexport (user space NFS?) such a filesystem?
 
+I repeat: yes!
 
-------=_NextPart_000_0E06_01C23A28.3E22B500
-Content-Type: text/html;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+NFS does not know anything about sectors. It indexes *files* by means
+of an opaque 32-byte (NFSv2) or 64-byte (v3) filehandle. The latter
+can be considered to be the equivalent of 'file descriptors' as used
+by libc does in open()/read()/write().
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; =
-charset=3Diso-8859-1">
-<META content=3D"MSHTML 6.00.2716.2200" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV><FONT face=3DArial size=3D2>Hi everyone.... My NFS clients are =
-clobbering my=20
-nfs servers and I would like to boost caching</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>on the client side as much as I =
-can.&nbsp; Do you=20
-have any ideas?</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>Also is Cachefs being developed at all =
-for=20
-linux???&nbsp; Cachefs would be a HUGE boost to the linux</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>community in my opinion.</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>Lemme know...</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>Matt</FONT></DIV>
-<DIV>&nbsp;</DIV></BODY></HTML>
+Rexporting filesystems is never a good idea though. Better to allow
+all NFS clients direct access to the server...
 
-------=_NextPart_000_0E06_01C23A28.3E22B500--
-
-
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
