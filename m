@@ -1,24 +1,20 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: [Fwd: Re: rpc.mountd problems]
-Date: Thu, 26 Jun 2003 09:35:59 +1000
+From: Matthias Kittner <kittner@vrcom.de>
+Subject: Re: Linux client network performance
+Date: Fri, 27 Jun 2003 11:29:59 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16122.12767.103726.330411@gargle.gargle.HOWL>
-References: <1056396464.31466.25.camel@mosix>
-	<16119.28036.546786.260128@gargle.gargle.HOWL>
-	<1056562429.3941.49.camel@mosix>
+Message-ID: <3EFC0E97.3060509@vrcom.de>
+References: <482A3FA0050D21419C269D13989C6113127E5C@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19VJoF-0000HD-00
-	for <nfs@lists.sourceforge.net>; Wed, 25 Jun 2003 16:36:15 -0700
-Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <mschilli@vss.fsi.com>) (for <nfs@lists.sourceforge.net>) By
-	tone With Smtp ; Thu, 26 Jun 2003 09:36:00 +1000
-To: Matt Schillinger <mschilli@vss.fsi.com>
-In-Reply-To: message from Matt Schillinger on  June 25
+Received: from gabor.vrcom.de ([146.140.24.3])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19VT5Q-0002Bw-00
+	for <nfs@lists.sourceforge.net>; Thu, 26 Jun 2003 02:30:37 -0700
+To: "Lever, Charles" <Charles.Lever@netapp.com>,
+	ashutosh.varshney@st.com
+In-Reply-To: <482A3FA0050D21419C269D13989C6113127E5C@lavender-fe.eng.netapp.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,44 +27,303 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On  June 25, mschilli@vss.fsi.com wrote:
+Thanks in advance. I will try it out!
+
+Regards,
+Matthias
+
+Lever, Charles wrote:
+> hi sofia-
 > 
-> But it WAS mounted prior to exportfs.. hmm.. could /var/lib/nfs/rmtab
-> entries existing prior to exportfs cause a problem?
-
-No. They are only noticed by exportfs, not before.
-
 > 
-> The config is like this:
+>>Can you please let me know:
+>>- are there any identified workarounds?
 > 
-> Three gigabit interfaces on three separate subnets. 
-> 	in dns, there is only the name thor.vss.fsi.com that corresponds to the
-> ips... But another note, is that those ips are bound to ip aliases
-> (eth0:0, etc).
-> 	The actual interface ip addresses all have names associated (thor-200,
-> thor-400, thor-20).
 > 
-> 	Could this cause a problem??
+> yes, there are several.
 > 
-> 	One last shot in the dark is that 2 of our Solaris 8 boxes, that act as
-> nfs clients, are ALSO multi homed, on the same subnets.. Might that
-> interact badly?
+> 1.  use NFS/TCP
+> 
+> 2.  if you can't use NFS/TCP, upgrade your clients
+>     to 2.4.20 or later
+> 
+> 3.  if you can't upgrade your clients, ensure the
+>     default socket buffer size on your clients is
+>     large before mounting any NFS servers (see
+>     below).
+> 
+> 
+>>- are there any papers or writeups on
+>>various other symptoms of this issue?
+> 
+> 
+>   http://www.netapp/com/tech_library/3183.html
+> 
+> contains instructions for deploying workarounds
+> in the appendix, including the socket buffer
+> enlargement workaround.
+> 
+> the symptoms that i described to valery are
+> what you should look for.  other behaviors
+> could be the result of many different problems.
+> 
+> 
+>>At one site, the customer environment mentioned
+>>about having issues with Linux clients; they
+>>had to change NFS block size to 8k.... 
+> 
+> 
+> reducing r/wsize helps, but is not a guaranteed
+> workaround.
+> 
+> 
+>>Wondering if one can comment about this one case, 
+>>I noticed even with the Linux client side
+>>mounted at 8k, at a certain point in time,
+>>with a certain application that is write intensive,
+>>to a Solaris NFS server, the client had to do
+>>(2) writes, before the NFS server replied ...
+>>(in looking at the snoop) ... i am not sure, but
+>>i think the application had the capability to
+>>write in even less the 8k blocksize, and it seems
+>>like this eliminated the problem of NFS-writes
+>>from the linux client... 
+> 
+> 
+> that's not a very clear description of the problem.
+> it sounds like your client is retransmitting NFS
+> write operations, but there isn't enough in your
+> description to determine why that might occur.
+> 
+> 
+>>>Sent: Wednesday, June 25, 2003 10:40 AM
+>>>To: Brasseur Valéry
+>>>Cc: nfs@lists.sourceforge.net; Matthias Kittner
+>>>Subject: RE: [NFS] Linux client network performance
+>>>
+>>>
+>>>hi valery-
+>>>
+>>>
+>>>>what's the "IP fragmentation bug" ?
+>>>
+>>>the Linux IP layer sends packet fragments on the
+>>
+>>wire
+>>
+>>>as it fragments each datagram.  it can run out of
+>>
+>>socket
+>>
+>>>buffer space in the middle of fragmenting a
+>>
+>>datagram.
+>>
+>>>the bug is that if it runs out of buffer space, it
+>>>stops fragmenting and drops the packet.   
+>>>
+>>>this leaves the receiving end with a bunch of
+>>
+>>fragments
+>>
+>>>it can't assemble into a whole datagram.  this
+>>
+>>becomes
+>>
+>>>a problem when the sending end is perpetually
+>>
+>>running
+>>
+>>>out of socket space.  this fills the receiving end's
+>>>reassembly queue with fragments that can't be used,
+>>>preventing all UDP traffic from getting to the
+>>
+>>server.
+>>
+>>>the fix is to have it continue fragmenting this
+>>
+>>datagram
+>>
+>>>even though the socket buffer is "full."
+>>>
+>>>
+>>>>what are the symptoms of this bug ?
+>>>
+>>>you're using NFS/UDP with largish r/wsize.  your
+>>>network features links of different speed (100Mb
+>>>mixed with GbE) between client and server, or is
+>>>routed rather than only switched.
+>>>
+>>>you see lots of IP fragments on your network from
+>>>one or two NFS clients.  you have periods of very
+>>
+>>slow
+>>
+>>>server and network performance, followed by periods
+>>
+>>of
+>>
+>>>normal performance.  
+>>>
+>>>
+>>>>>-----Original Message-----
+>>>>>From: Lever, Charles
+>>
+>>[mailto:Charles.Lever@netapp.com]
+>>
+>>>>>Sent: Wednesday, June 25, 2003 4:30 PM
+>>>>>To: Matthias Kittner
+>>>>>Cc: nfs@lists.sourceforge.net
+>>>>>Subject: RE: [NFS] Linux client network
+>>
+>>performance
+>>
+>>>>>
+>>>>>hi matthias-
+>>>>>
+>>>>>it sounds like you've hit the IP fragmentation
+>>
+>>bug.
+>>
+>>>>>you should use NFS/TCP (the "tcp" mount option).
+>>>>>
+>>>>>probably it's your 2.4.19-based client that is
+>>>>>causing this problem.
+>>>>>
+>>>>>
+>>>>>>-----Original Message-----
+>>>>>>From: Matthias Kittner
+>>
+>>[mailto:kittner@vrcom.de]
+>>
+>>>>>>Sent: Wednesday, June 25, 2003 4:57 AM
+>>>>>>To: nfs@lists.sourceforge.net
+>>>>>>Subject: [NFS] Linux client network
+>>
+>>performance
+>>
+>>>>>>
+>>>>>>[I am not a subscriber, please CC to my
+>>
+>>eMail!]
+>>
+>>>>>>Hello,
+>>>>>>
+>>>>>>we have the following problem:
+>>>>>>
+>>>>>>- 2 linux clients:
+>>>>>>	2.4.19-16mdk
+>>>>>>	2.4.20
+>>>>>>- Solaris NFS-Server (nfs.server 1.21)
+>>>>>>	SunOS 5.7
+>>>>>>
+>>>>>>If we compile on one of the linux machines
+>>
+>>sometimes in
+>>
+>>>>>this compile
+>>>>>
+>>>>>>process the whole network hangs resp. is so
+>>
+>>slow that one
+>>
+>>>>can wait
+>>>>
+>>>>>>between 10s or 2min to finish a "ls".
+>>>>>>
+>>>>>>"snoop" at the nfs-server machine show
+>>
+>>very/very much "UDP
+>>
+>>>>>>continuation" 
+>>>>>>traffic between the linux client and the
+>>
+>>solaris server. 
+>>
+>>>>>Killing the
+>>>>>
+>>>>>>compile process stops this messages.
+>>>>>>
+>>>>>>Can anyone help us? Is this a configuration
+>>
+>>problem or a bug?
+>>
+>>>>>>Regards,
+>>>>>>Matthias
+>>>>>>
+>>>>>>
+>>>>>>
+>>>>>>
+>>
+>>-------------------------------------------------------
+>>
+>>>>>>This SF.Net email is sponsored by: INetU
+>>>>>>Attention Web Developers & Consultants: Become
+>>
+>>An INetU
+>>
+>>>>>>Hosting Partner.
+>>>>>>Refer Dedicated Servers. We Manage Them. You
+>>
+>>Get 10% Monthly 
+>>
+>>>>>>Commission!
+>>>>>>INetU Dedicated Managed Hosting 
+>>>>
+>>>>http://www.inetu.net/partner/index.php
+>>>>
+>>>>>_______________________________________________
+>>>>>NFS maillist  -  NFS@lists.sourceforge.net 
+>>>>>https://lists.sourceforge.net/lists/listinfo/nfs
+>>>>>
+>>>>
+>>>>
+>>>>
+>>-------------------------------------------------------
+>>
+>>>>This SF.Net email is sponsored by: INetU
+>>>>Attention Web Developers & Consultants: Become An
+>>
+>>INetU
+>>
+>>>>Hosting Partner.
+>>>>Refer Dedicated Servers. We Manage Them. You Get
+>>
+>>10% Monthly 
+>>
+>>>>Commission!
+>>>>INetU Dedicated Managed Hosting 
+>>>
+>>>http://www.inetu.net/partner/index.php
+>>
+>>
+>>__________________________________
+>>Do you Yahoo!?
+>>SBC Yahoo! DSL - Now only $29.95 per month!
+>>http://sbc.yahoo.com
+>>
+>>
+>>-------------------------------------------------------
+>>This SF.Net email is sponsored by: INetU
+>>Attention Web Developers & Consultants: Become An INetU 
+>>Hosting Partner.
+>>Refer Dedicated Servers. We Manage Them. You Get 10% Monthly 
+>>Commission!
+>>INetU Dedicated Managed Hosting http://www.inetu.net/partner/index.php
+>>_______________________________________________
+>>NFS maillist  -  NFS@lists.sourceforge.net
+>>https://lists.sourceforge.net/lists/listinfo/nfs
+> 
+> 
 
-There is a bug in glibc (fixed in the last couple of months) which
-causes the reply to a mount request to be forced out the same
-interface that the request came in.
-Depending on how your routes are set up, it could well be that that
-interface doesn't have a route back to the client.  This would cause
-stalls when mounting a filesystem.
 
-I worked around this by putting default routes on all the interfaces on some
-multi-homed hosts.
+-- 
+  /\_ _ _   Matthias Kittner, +49(0)6151-30083-0
+/\/_|_|_|  Mornewegstr. 28, 64293 Darmstadt, Germany
+\/vrcom.de    » 71F (22°C) EDT (UTC) Temperature EDT (UTC) Temperature; 
+; Wind E, 5 mph
+PTL!          » 1017 hPa; diesel
 
-However this doesn't explain your "exportfs -auv" problems.  I'm still
-suspicious of your mount order.  The filesystem is *definately*
-mounted *before* mountd or exportfs are run???
-
-NeilBrown
 
 
 -------------------------------------------------------
