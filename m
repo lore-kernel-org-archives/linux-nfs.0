@@ -1,24 +1,22 @@
 From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: [PATCH] 1/3 - RPC metrics support
-Date: Thu, 1 Apr 2004 07:15:34 -0800
+Subject: RE: nfsd random drop
+Date: Thu, 1 Apr 2004 07:19:30 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <482A3FA0050D21419C269D13989C611302B07BF6@lavender-fe.eng.netapp.com>
+Message-ID: <482A3FA0050D21419C269D13989C61130435DE49@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain;
 	charset="us-ascii"
-Cc: "Jeremy McNicoll" <jeremy@mcnicoll.ca>,
-        "Patrick Mochel" <mochel@digitalimplant.org>,
-        <nfs@lists.sourceforge.net>
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B93uz-0006Hw-5i
-	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 07:15:45 -0800
+	id 1B93yl-0007Dp-0G
+	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 07:19:39 -0800
 Received: from mx01.netapp.com ([198.95.226.53])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B93uy-0004ey-P0
-	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 07:15:44 -0800
-To: "Greg Banks" <gnb@melbourne.sgi.com>
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1B93yk-0006Cv-Ms
+	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 07:19:38 -0800
+To: "Olaf Kirch" <okir@suse.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,117 +29,124 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-hi greg-
+quick comment --
 
-thanks for the review.
+i think a shorter wait in the client before attempting to
+reconnect would improve the likelihood that your completed
+but unreplied operations would still be in the server's
+replay cache.
 
-> I don't understand why you have an rpc_tally pointer in rpc_message.
-> This just seems to complicate matters by forcing you to initialise
-> the pointer to the rpc_tally in the nfs_server on every call.  AFAICT
-> all the place where you need the rpc_tally pointer you already have
-> an rpc_clnt pointer which is initialised directly from the nfs_server
-> and could be made to hold the rpc_tally* instead.  With that reorg
-> you could drop most of the 08-rpc_call.patch and all the changes
-> to nfs3proc.c and proc.c in nfs-iostat.patch and replace them with
-> a small change to nfs_create_client().   That would greatly reduce
-> the code perturbation without affecting performance or functionality.
+that might be a good additional change (if you haven't
+suggested that already).
 
-trond wanted a mechanism that could be used for other things besides
-per-mount statistics.  for instance, you can allocate a different
-tally structure for each inode on a file system, and collect stats
-for each of them.  or you can use the same tally struct for files
-in the same directory.  nailing the tally structure into the rpc_clnt
-makes that kind of usage (which might be nice for debugging) impossible.
-
-there was interest in removing rpc_call() anyway.  this is just a
-convenient excuse.
-
-in terms of performance impact, this change is actually pretty
-minor compared to the massive amount of data copying done by XDR
-and the socket layer, and to the lock contention that occurs in
-the RPC client.  as i've inlined nfs3_rpc_wrapper, that more
-than makes up for setting a single extra pointer, at least in
-the NFSv3 synchronous path.  i don't see that there are any data
-dependencies that would cause a pipeline stall when rpc_talp is
-set, do you?
-
-> I don't see any way for the userspace program which reads these to
-> figure out which of the iostat files corresponds to which mount.
-> We get the hostname in the filename and again in the contents but
-> nowhere do we get the mount path, only the device minor number in
-> the filename.  How about adding a line to nfs_iostat_show() to
-> print nfss->mnt_path?
-
-the problem there is namespace.  each process can have its own
-set of mount points (ie export to local directory pairings).  we
-still need to work out exactly how to provide that information.
-
-i'm not too concerned about that, as iostat on local file systems
-currently produces results based on devices, forcing an adminis-
-trator to go back to /etc/fstab or df or mount to figure out
-what's going on anyway.
-
-> The minor dimension of the 2d array of struct rpc_metrics_totals
-> pointed to by rpc_tally is per-CPU.  To get correct per-CPU
-> separation you will want to cacheline-align the per-CPU parts
-> (so that cachelines which straddle the per-CPU parts don't end
-> up bouncing between CPUs).  For example, in rpc_alloc_tally(),
+> -----Original Message-----
+> From: Olaf Kirch [mailto:okir@suse.de]=20
+> Sent: Thursday, April 01, 2004 5:24 AM
+> To: Neil Brown
+> Cc: nfs@lists.sourceforge.net
+> Subject: [NFS] nfsd random drop
 >=20
-> size =3D NR_CPUS * ROUNDUP(ops * sizeof(struct=20
-> rpc_metric_totals), L1_CACHE_BYTES);
 >=20
-> and change the stride of the tl_totals[] initialisation loop.
-
-makes sense, will do.
-
-> As others have mentioned, having at least four do_gettimeofday()
-> calls per RPC call is evil; we've seen major problems scaling
-> do_gettimeofday() on large CPU count Altix machines.  This problem
-> also affects some NIC drivers because the network stack does
-> a do_gettimeofday() to timestamp every incoming ethernet packet;
-> David Miller's proposed solution to that is to define a new
-> scalable high-resolution timestamp API.  I don't know if that's
-> gone anywhere, you might try asking on the netdev list.
-
-i asked on lkml yesterday.  folks there say "no such API exists."
-at this point i'm thinking of using jiffies and calling it a day.
-at some later point we can come back and add support for finer
-resolution timestamps.  i've already added a timestamp resolution
-indicator in the iostat file format, so changing later should be
-no problem if user-level pays attention to it.
-
-> So when the mount is unmounted, all stats are lost?  How does this
-> work on clients which do intermittent traffic on automount mounts?
-> Would it be possible to get some global stats too?
-
-global stats still exist in /proc/net/rpc/  -- anything you
-think is missing there?
-
-> The accumulation-over-CPU loops in nfs_iostat_show() and=20
-> rpc_print_tally()
-> would be simpler if all the fields in struct nfs_iostat and struct
-> rpc_metric_totals were a consistent size, so you could just treat the
-> structs as an array of that type during the accumulation step.
-
-i'm trying to keep rpc_metric_totals small because there are a whole
-lot of them.  i'm not sure i understand exactly what you mean here.
-can you give an example?
-
-> In struct nfs_iostat, it would be nice to gather the number of times
-> calls retried because they received EJUKEBOX from the server,=20
-> the number
-> of SETATTRs which cause a truncate, the number of WRITEs which cause
-> a file extension, and the number of WRITEs which are not aligned to
-> the wsize.
-
-ok, good ideas.
-
-> nfs_iostat_file_name() does an unbounded sprintf() of an=20
-> unbounded string
-> that comes from userspace (from an unprivileged user if the site runs
-> automounter) into a buffer only NFS_PROC_NAMELEN=3D256 bytes long.
-
-good catch.
+> Hi,
+>=20
+> I hate to bore you all with the same old stuff, but I'm still fighting
+> problems caused by nfsd's dropping active connections.
+>=20
+> The most recent episode in this saga is a problem with the Linux
+> client.
+>=20
+> Consider a network with a single Linux 2.4 based home server, a few
+> hundred clients, all using TCP. In Linux 2.4, nfsd starts dropping
+> connections when it reaches a limit of (nrthreads + 3) * 10 open
+> connections. With 4 threads, this means 70 connections, and=20
+> with 8 threads
+> this means 110 connections max. Both of which is totally=20
+> inadequate for
+> this network. To get out of the congestion zone, we would need to bump
+> the number of threads to about 20, which is just silly.
+>=20
+> The very same network has been served well with just 4 threads all
+> the time while using UDP.
+>=20
+> With the 2.6 kernel, things get even worse as the formula was=20
+> changed to
+> (nrthreads + 3) * 5, so you'll max out at 35 (4 threads) and 55 (with
+> 8 threads), respectively. To serve 200 mounts via TCP simultaneously,
+> you'd need close to 40 nfsd threads.
+>=20
+> In theory, all clients should be able to cope gracefully with=20
+> such drops,
+> but even the Linux client runs into a couple of SNAFUs with these.
+>=20
+> One: with a 50% probability, nfsd decides to drop the=20
+> _newest_ connection,
+> which is the one it just accepted.  When the Linux client sees a fresh
+> connection go down before it was able to send anything across, it
+> backs off for 15 to 60 seconds, hanging the NFS mount (with 2.6.5-pre,
+> it's always 60 seconds). Which is kind of annoying the KDE users here,
+> because KDE applications like to scribble to the home directory all
+> the time, and their entire session freezes when NFS hangs.
+>=20
+> Second: People have reported that files vanished and/or rename/remove
+> operations failed.
+>=20
+> I also think this is due to the TCP disconnects. What I think
+> is happening here is this:
+>=20
+>  -      user X: unlink("blafoo")=20
+>  -      kernel: sends NFS call to server REMOVE "blafoo"=20
+>  -      nfsd thread A receives request, removes file blafoo.=20
+> waits for=20
+> 	some file system i/o to sync the change to disk=20
+>  -      a new tcp connection comes in. Another nfsd thread B decides=20
+> 	it needs to nuke some connections, selects user X's connection=20
+>  -      nfsd thread A decides it should send the response now,
+> 	but finds the socket is gone. Drops the reply.
+>  -      client kernel: reconnect to NFS server
+>  -	server drops connection
+>  -	client waits for a while, reconnects again,
+> 	resends REMOVE "blafoo"=20
+>  -      NFS server: sorry, ENOENT: there's no such file "blafoo"=20
+>=20
+> Normally, the NFS server's replay cache should protect from this sort
+> of behavior, but the long timeouts before the client can reconnect
+> effectively mean the cached reply has been forgotten by the time the
+> retransmitted call arrives.
+>=20
+> This is not a theoretical case; users here have reported that
+> files vanish mysteriously several times a day.
+>=20
+> Three: people reported lots of messages in their syslog saying
+> "nfs_rename: target foo/bar busy, d_count=3D2". This is a variation
+> of the above. nfs_rename finds that someone still has foo/bar
+> open and decides it needs to do a sillyrename. The rename
+> fails with the spurious ENOENT error described above, causing
+> the entire rename operation to fail
+>=20
+> Four: Some buggy clients can't deal with it, but I think I mentioned
+> that already.  Prime offender is zOS; when a fresh connection=20
+> is killed,
+> it simply propagates the error to the application, hard mount=20
+> or not. I
+> know it's broken, but that doesn't mean we can't be gentler and make
+> these clients work more smoothly with Linux.
+>=20
+> I propose to add the following two patches to the server and=20
+> client. They
+> increase the connection limit, stop dropping the neweset socket, and
+> add some printk's to alert the admin of the contention.
+>=20
+> As an alternative to hardcoding a formula based on the number=20
+> of threads,
+> I could also make the max number of connections a sysctl.
+>=20
+> Comments,
+> Olaf
+> --=20
+> Olaf Kirch     |  The Hardware Gods hate me.
+> okir@suse.de   |
+> ---------------+=20
+>=20
 
 
 -------------------------------------------------------
