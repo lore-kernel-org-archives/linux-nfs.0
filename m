@@ -1,55 +1,90 @@
-From: Bernd Schubert <bernd-schubert@web.de>
-Subject: Re: Strange NFS/reiserfs errors
-Date: Fri, 15 Aug 2003 13:23:16 +0200
-Sender: bernd-schubert@web.de
-Message-ID: <200308151323.16172.bernd-schubert@web.de>
-References: <3F3C7341.4020503@emageon.com>
+From: Steve Dickson <SteveD@RedHat.com>
+Subject: Re: mount: RPC: Timed out
+Date: Fri, 15 Aug 2003 07:05:48 -0400
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <3F3CBE8C.5040905@RedHat.com>
+References: <000601c36286$b6e4e620$8c35a8c0@peter>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Cc: nfs@lists.sourceforge.net
-Return-path: <reiserfs-list-return-15315-reiserfs=m.gmane.org@namesys.com>
-list-help: <mailto:reiserfs-list-help@namesys.com>
-list-unsubscribe: <mailto:reiserfs-list-unsubscribe@namesys.com>
-list-post: <mailto:reiserfs-list@namesys.com>
-Errors-To: flx@namesys.com
-To: Brian Tinsley <btinsley@emageon.com>,
- reiserfs-list@namesys.com
-In-Reply-To: <3F3C7341.4020503@emageon.com>
-List-ID: <nfs.lists.sourceforge.net>
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from host-64-179-20-100.man.choiceone.net ([64.179.20.100] helo=Odyssey.Home.4Dicksons.Org)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19ncPG-0003DL-00
+	for <nfs@lists.sourceforge.net>; Fri, 15 Aug 2003 04:06:06 -0700
+To: Peter Albertsson <Peter.Albertsson@naturesown.se>
+In-Reply-To: <000601c36286$b6e4e620$8c35a8c0@peter>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+Is mountd running on the server?
 
-searching the archives of the reiserfs-ML and I guess also a general web 
-search would show that this is fixed in 2.4.21!
+SteveD.
 
-Regards,
-	Bernd
+Peter Albertsson wrote:
+
+>Could someone please help me with the following problem.
+>
+>This is what happens when I try to mount a nfs share on a client.
+>
+>
+>[root@frankenstein3 etc]# mount -t nfs 192.168.53.200:/var/www /var/www
+>mount: RPC: Timed out
+>[root@frankenstein3 etc]#
+>
+>If I mount the share on the same server it works fine.
+>
+>
+>Netstat on client:
+>
+>[root@frankenstein3 root]# netstat -n
+>Active Internet connections (w/o servers)
+>Proto Recv-Q Send-Q Local Address           Foreign Address
+>State
+>tcp        0      0 192.168.53.136:895      192.168.53.200:111
+>TIME_WAIT
+>
+>On server no connections show up at all.
+>
+>I've seen this problem being discussed on this mailing list and some
+>other places, but I haven't found a solution.
+>
+>The server is running on Red Hat 9.0.
+>
+>Thanks,
+>  // Peter
+>
+>
+>
+>
+>-------------------------------------------------------
+>This SF.Net email sponsored by: Free pre-built ASP.NET sites including
+>Data Reports, E-commerce, Portals, and Forums are available now.
+>Download today and enter to win an XBOX or Visual Studio .NET.
+>http://aspnet.click-url.com/go/psa00100003ave/direct;at.aspnet_072303_01/01
+>_______________________________________________
+>NFS maillist  -  NFS@lists.sourceforge.net
+>https://lists.sourceforge.net/lists/listinfo/nfs
+>  
+>
 
 
-On Friday 15 August 2003 07:44, Brian Tinsley wrote:
-> Hi! I've posted this to the NFS mailing list, but wanted to drop it here
-> as well to see if anyone may provide further insight.
->
-> ---------------------------
-> Can anyone elaborate on what may have caused the following error:
->
-> Aug 14 22:09:09 clarc02 kernel: nfsd-fh: found a name that I didn't
-> expect: files/19
-> Aug 14 22:09:40 clarc02 last message repeated 2314 times
-> Aug 14 22:15:56 clarc02 last message repeated 1088 times
-> Aug 14 22:17:10 clarc02 last message repeated 138 times
-> Aug 14 22:19:03 clarc02 last message repeated 138 times
-> Aug 14 22:20:53 clarc02 last message repeated 2 times
-> Aug 14 22:21:30 clarc02 last message repeated 73 times
->
-> The underlying filesystem is reiserfs and there was a high volume of
-> writing taking place (or trying to) during this time. None of the writes
-> succeeded as the client was returned EEXIST errors. However, the writes
-> were reissued in full shortly after the last occurence and everything
-> automagically started working properly again.
->
-> I'm trying to decipher the source code, but it's a bit out of my area of
-> expertise ;-)
->
-> Thanks!
+
+-------------------------------------------------------
+This SF.Net email sponsored by: Free pre-built ASP.NET sites including
+Data Reports, E-commerce, Portals, and Forums are available now.
+Download today and enter to win an XBOX or Visual Studio .NET.
+http://aspnet.click-url.com/go/psa00100003ave/direct;at.aspnet_072303_01/01
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
