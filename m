@@ -1,16 +1,19 @@
-From: Campbell McLeay <campbellm@cia.net.au>
-Subject: Problems with Stale File Handles as non-root user
-Date: Mon, 24 Jun 2002 00:18:59 +1000
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Problems with Stale File Handles as non-root user
+Date: 25 Jun 2002 00:20:01 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020624001859.A14403@cia.net.au>
+Message-ID: <shswusoz5da.fsf@charged.uio.no>
+References: <20020624001859.A14403@cia.net.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail.cia.net.au ([203.17.36.17] helo=cia.com.au)
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17M8Cl-0004x4-00
-	for <nfs@lists.sourceforge.net>; Sun, 23 Jun 2002 07:19:03 -0700
-To: nfs@lists.sourceforge.net
+Received: from pat.uio.no ([129.240.130.16])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17McBx-0003sb-00
+	for <nfs@lists.sourceforge.net>; Mon, 24 Jun 2002 15:20:13 -0700
+To: Campbell McLeay <campbellm@cia.net.au>
+In-Reply-To: <20020624001859.A14403@cia.net.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -23,35 +26,25 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hi,
+>>>>> " " == Campbell McLeay <campbellm@cia.net.au> writes:
 
-I have a directory that is mounted via NFS over a 100 Base-T LAN
-and it gets 'Stale NFS File handle' errors after short periods of
-inactivity (say, a few minutes) For instance, commands such as 'ls' in the 
-nfs-mounted directory return the stale file handle error after a couple of minutes
-idle time. Any operation attempting to read/write to the directory fails with the
-same error when the user is non-root.
-
-Interestingly, this only happens with non-root users: when logged
-in as root, no errors occur.
-
-The nfs server is running Debian/GNU potato Linux with 2.4.18 kernel
-with v3 support compiled in (although I can only get it to
-do v2) and the client is running the same but with a 2.2.19 kernel. I have
-tried remounting it as v3 but the server does not appear to 
-be able to do this (I can't use '-N 1 -N 2' with mountd as suggested in the FAQ).
-
-AFAIK, there is no known network issue with the LAN (it works fine as root always in any case).
-The versions of nfs-server and nfs-common on each machine are the latest debian
-versions (i.e., 2.2beta47-4potato for the server and 0.1.9.1-1.potato for 
-nfs-common. The version of mount is 2.10f-5.1). 
+     > AFAIK, there is no known network issue with the LAN (it works
+     > fine as root always in any case).  The versions of nfs-server
+     > and nfs-common on each machine are the latest debian versions
+     > (i.e., 2.2beta47-4potato for the server and 0.1.9.1-1.potato
+     > for nfs-common. The version of mount is 2.10f-5.1).
 
 
-Any ideas on how to solve this problem would be greatly appreciated.
+     > Any ideas on how to solve this problem would be greatly
+     > appreciated.
 
-Regards,
+Use knfsd instead of nfs-server. The userland nfs-server does not have
+a reliable method for manipulating filehandles. In particular if the
+filehandle falls out of the server's internal cache then it is not
+always capable of recovering.
 
-Campbell
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
