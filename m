@@ -1,21 +1,16 @@
-From: "Martynas Buozis" <martynas@ti.com>
-Subject: Re: nfsroot problems on RedHat 8 with kernel linux-2.4.18-27.8.0
-Date: Sat, 24 May 2003 06:33:18 +0200
+From: "Laroen"<GenerateMoreVisitors052203@excite.com>
+Subject: ***$2,000 OF FREE MARKETING SOFTWARE INCLUDED!
+Date: Sat, 24 May 2003 05:23:53 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <003401c321ad$9a438180$6464a8c0@foxie>
-References: <3ECE0EF3.5080004@ti.com><shs4r3lx1ux.fsf@charged.uio.no><3ECE2479.3000706@ti.com> <16078.12509.988134.109974@charged.uio.no>
-Reply-To: "Martynas Buozis" <martynas@ti.com>
+Message-ID: <SERVERBH01QAn77fcGu0000288f@serverbh01.emac.com.br>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from go4.ext.ti.com ([192.91.75.132])
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19JQiq-0000nS-00
-	for <nfs@lists.sourceforge.net>; Fri, 23 May 2003 21:33:32 -0700
-To: <trond.myklebust@fys.uio.no>
+Received: from [200.243.221.5] (helo=serverbh01.emac.com.br)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19JRYT-0005tH-00
+	for <nfs@lists.sourceforge.net>; Fri, 23 May 2003 22:26:57 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,27 +23,42 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi
-
-> NFS uses the hostname as specified in /proc/sys/kernel/hostname (alias
-> system_utsname.nodename) whether or not it is running from NFSroot.
->
-> If you have set the hostname in bootp, then ipconfig will set it, and
-> will print it out as 'host=%s" in the "IP-Config: Complete"
-> information...
-
-As I wrote in my previous letter - ipconfig sets host name and prints it out
-as "host=testmws" (testmws is host name) in "IP-Config: Complete". But
-rootnfs module is not sending full informtion as required by Celerra, so
-mount request is denied. When I use mount from command line on booted RedHat
-8 system to mount same file system - it sends all required information and
-Celerra accepts mount request.
-
-
-With best regards
-Martynas Buozis
-
-
+DQogSGVsbG8sDQoNCldPVUxEIFlPVSBMSUtFIFRPIEhBVkUgWU9VUiBNRVNTQUdFIFNFRU4gQlkN
+Ck9WRVIgMTUuNiBNSUxMSU9OIE9QVC1JTiwgVEFSR0VURUQgUEVPUExFIERBSUxZPw0KDQpCZWxv
+dyBjb250YWlucyBhbGwgdGhlIGluZm9ybWF0aW9uIHlvdSB3aWxsIGV2ZXIgbmVlZCB0byBtYXJr
+ZXQNCnlvdXIgcHJvZHVjdCBvciBzZXJ2aWNlIG9uIHRoZSBJbnRlcm5ldC4NCg0KPj4+V0UgV0lM
+TCBTVVBQTFkgWU9VIFdJVEggT1ZFUiAxNS42IE1JTExJT04gT1BULUlOIEVNQUlMDQpBRERSRVNT
+RVMgVE8gR0VUIFlPVSBTVEFSVEVEIFJJR0hUIEFXQVkhDQoNCj4+PkZSRUUgRU1BSUwgQUREUkVT
+UyBET1dOTE9BRFMgRk9SIExJRkUhDQoNCj4+PllPVSBXSUxMIFJFQ0VJVkUgT1ZFUiAkMiwwMDAg
+V09SVEggT0YgDQpFTUFJTCBNQVJLRVRJTkcgU09GVFdBUkUgRlJFRSENCg0KSW5jbHVkaW5nLi4u
+Li4uDQoNCkJST0FEQ0FTVCBFTUFJTCBTRU5ESU5HIFNPRlRXQVJFLi4uKHNlbmQgbWlsbGlvbnMg
+b2YgZW1haWwNCmFkdmVydGlzZW1lbnRzIGRhaWx5IHdpdGggYSBmZXcgY2xpY2tzIG9mIHlvdXIg
+bW91c2UuIE5ldyBidWlsdCBpbiANCnN0ZWFsdGggdGVjaG5vbG9neSkuIEJlIG9uZSBvZiB0aGUg
+Zmlyc3QgcGVvcGxlIHRvIHVzZSBpdC4gV2UgdXNlZCB0aGUgDQpzYW1lIHNvZnR3YXJlIHRvIHNl
+bmQgeW91IHRoaXMgZW1haWwgbWVzc2FnZS4NCg0KRU1BSUwgRVhUUkFDVElPTiBTT0ZUV0FSRS4u
+LihSZXRyZWl2ZSBuZXcgdGFyZ2V0ZWQgZW1haWwNCmFkZHJlc3NlcyBkYWlseS4gSHVuZHJlZHMg
+b2YgdGhvdXNhbmRzIG9mIHRoZW0pDQoNCkxJU1QgTUFOQUdFTUVOVCBTT0ZUV0FSRS4uLihLZWVw
+IHlvdXIgbGlzdHMgY2xlYW4sIG9wdC1pbg0KYW5kIG1hbmFnZSBhbGwgeW91ciByZW1vdmUgcmVx
+dWVzdHMsIGxlYWRzLCBzYWxlcyBldGMuLi4pDQoNClBPUC1VUCBBRFZFUlRJU0VSLi4uTm8gbmVl
+ZCB0byBwYXkgc29tZW9uZSBlbHNlIGZvciANCnBvcC11cCBhZHZlcnRpc2luZy4gU2F2ZSAkMSww
+MDBzIHdlZWtseS4gSXQncyB5b3VycyB0b2RheSBmcmVlISANClBsdXMgeW91IGNhbiByZXNlbGwg
+dGhpcyBzb2Z0d2FyZSBhbmQga2VlcCAxMDAlIG9mIHRoZSBwcm9maXQgb3INCnNpbXBseSBnaXZl
+IGl0IGFzIGEgZnJlZSBnaWZ0IGFsb25nIHdpdGggeW91ciBjdXJyZW50IHNlcnZpY2VzLg0KDQph
+bmQgbXVjaC4uLm11Y2ggbW9yZSENCg0KSHVycnkuLi5UaGlzIGV4dHJhb3JkaW5hcnkgb2ZmZXIg
+ZW5kcyBzb29uIQ0KDQpUbyBmaW5kIG91dCBtb3JlIGluZm9ybWF0aW9uLCBEbyBub3QgcmVzcG9u
+ZCBieSBlbWFpbC4gSW5zdGVhZCwgY2xpY2sNCm9uIHRoZSBsaW5rIGJlbG93IG9yIGNvcHkgYW5k
+IHBhc3RlIHRoZSBjb21wbGV0ZSB3ZWIgYWRkcmVzcyBpbnRvIA0KeW91ciBJbnRlcm5ldCBicm93
+c2VyLg0KDQo8YnI+PEEgSFJFRj0iaHR0cDovL3d3dy5mb3J0aGViZXN0dC5jb20vNDA5MzI0L2Jy
+b2FkY2FzdDYuaHRtIj5DbGljayBIZXJlIEZvciBNb3JlIEluZm9ybWF0aW9uPC9BPjxicj4NCg0K
+aHR0cDovL3d3dy5mb3J0aGViZXN0dC5jb20vNDA5MzI0L2Jyb2FkY2FzdDYuaHRtDQoNCg0KDQoN
+Cg0KX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+DQpXYW50IHRvIGJlIFJFTU9WRUQgZnJvbSBvdXIgZW1haWwgbGlzdD8NCllvdSB3ZXJlIHNlbnQg
+dGhpcyBlbWFpbCBiZWNhdXNlIHlvdSB1c2VkIG91ciBPcHQtaW4gc2VydmljZS4NCldlIGhvcGUg
+eW91IGVuam95IHJlYWRpbmcgb3VyIG1lc3NhZ2VzLiBIb3dldmVyLCBpZiB5b3UnZCByYXRoZXIN
+Cm5vdCByZWNlaXZlIGZ1dHVyZSBlLW1haWxzIGZyb20gdXMsIENsaWNrIG9uIHRoZSBsaW5rIGJl
+bG93Lg0KaHR0cDovL3d3dy5mb3J0aGViZXN0dC5jb20vNDA5MzI0L3JlbW92ZW1lLmh0bQ0KVGhh
+bmsgeW91IGZvciB5b3VyIGNvb3BlcmF0aW9uLg0KX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX18=
 
 
 -------------------------------------------------------
