@@ -1,27 +1,21 @@
-From: Perceval Anichini <perceval.anichini@laposte.net>
-Subject: RE: NFS : open is failing too slowly...
-Date: 23 Jan 2004 16:23:32 +0100
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: NFSv4 daemons...
+Date: Fri, 23 Jan 2004 11:20:18 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1074871427.16793.17.camel@ambre>
-References: <482A3FA0050D21419C269D13989C611302B07B3F@lavender-fe.eng.netapp.com>
+Message-ID: <20040123162018.GC26511@fieldses.org>
+References: <1073608448.1380.22.camel@nidelv.trondhjem.org> <1073619719.12271.7.camel@binkley> <1073621173.1398.55.camel@nidelv.trondhjem.org> <Pine.LNX.4.58.0401231453070.2140@fogarty.jakma.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	seth vidal <skvidal@phy.duke.edu>, hjl@users.sourceforge.net,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ak3CT-0007Co-J3
-	for nfs@lists.sourceforge.net; Fri, 23 Jan 2004 07:26:25 -0800
-Received: from avelizy-105-1-1-5.w80-11.abo.wanadoo.fr ([80.11.79.5] helo=ambre.maneex)
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
-	id 1Ak3CS-0007x9-UQ
-	for nfs@lists.sourceforge.net; Fri, 23 Jan 2004 07:26:25 -0800
-Received: from ambre.maneex
-	([127.0.0.1] helo=localhost.localdomain ident=corwin)
-	by ambre.maneex with esmtp (Exim 3.35 #1 (Debian))
-	id 1Ak39v-0004jr-00
-	for <nfs@lists.sourceforge.net>; Fri, 23 Jan 2004 16:23:47 +0100
-To: nfs@lists.sourceforge.net
-In-Reply-To: <482A3FA0050D21419C269D13989C611302B07B3F@lavender-fe.eng.netapp.com>
+	id 1Ak42q-0000qR-HZ
+	for nfs@lists.sourceforge.net; Fri, 23 Jan 2004 08:20:32 -0800
+To: Paul Jakma <paul@clubi.ie>
+In-Reply-To: <Pine.LNX.4.58.0401231453070.2140@fogarty.jakma.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,47 +28,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-	First of all, thanks for your answer !
+On Fri, Jan 23, 2004 at 02:54:36PM +0000, Paul Jakma wrote:
+> On Thu, 8 Jan 2004, Trond Myklebust wrote:
+> > rpc.gssd is necessary if you want to use strong authentication (for
+> > NFSv2/v3 as well as for NFSv4).
+> 
+> Does this implement data stream encryption? (rpcsec as opposed to rpc
+> auth? (possibly getting my jargon wrong here))
 
-> in general there is no way for a client to indicate to an application
-> that it is no longer in touch with a server.
-	Ok.
+There are three levels levels of protection provided by rpcsec_gss, from
+weakest to strongest:
 
-> if you are using UDP, then you don't need the timeo= option at all.
-> the read and write retransmit timeout is set by the RPC client, and
-> usually is much faster than a tenth of a second.
-	I am effectively using UDP.
+	authentication only: the header of each rpc request is signed, so you
+		who sent the request.
+	integrity: the body of each packet is also signed, so you know
+		the request itself hasn't been tampered with.
+	privacy: the body of each packet is encrypted, to prevent
+		eavesdropping.
 
-Thanks for the information. What lead me in error is the "man nfs"
-page which said the default value is 7 tenth of a second.
+In the krb5 case, these are selected using mount options (sec=krb5,
+sec=krb5i, or sec=krb5p).  Mainline 2.6 currently supports the first of
+these.  Patches in -mm support integrity.  But privacy hasn't been
+implemented yet (it's been done before, there's bits and pieces of code
+still lying around, it just needs some time and effort).
 
-> if you are using TCP, then timeo=1 is also not advisable.  this will
-> cause the RPC and TCP layers to generate competing retransmissions,
-> which wastes resources.
-	Ok.
-
-> retrans=1 with soft is an open invitation for silent data corruption.
-> i highly encourage you not to do this.
-	Ok. I'll put back retrans=3.
-
-> you really don't want soft either.  rather, using "hard" instead will
-> guarantee that the client will continue to retry your writes until the
-> server is back up.  no data will be lost unless the client crashes.
-> if you write() but don't flush() the file, your application should not
-> hang during a normal write() until the client has filled its memory.
-	That can be real fast, as i'm recording a bunch of video streams
-encoded in MPEG2 :) That's why i really want to switch on the local hard
-drive.
-
-> if your file server is so unreliable that this is even an issue, then
-> you have a problem with your server, and not in your application.  if
-> you are concerned about the application becoming unresponsive, then
-> you should consider using threads or nonblocking I/O.
-	The NFS server is really reliable (According to your email, thanks)
-The problem is that i don't want to loose datas !!! (If even one occurs)
-So if the server have to shut down (even for a few minutes), I must be
-able to continue the recording.
-
+--Bruce Fields
 
 
 -------------------------------------------------------
