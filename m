@@ -1,27 +1,22 @@
-From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-Subject: lockd/rpc bug
-Date: Thu, 13 Jan 2005 18:35:31 -0700 (MST)
-Message-ID: <Pine.LNX.4.60.0501131829200.6332@harp.ngdc.noaa.gov>
-Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Help diagnosing bizarre NFS problem
+Date: Thu, 13 Jan 2005 23:34:11 -0500
+Message-ID: <1105677251.20314.26.camel@lade.trondhjem.org>
+References: <BA594DD2-65DA-11D9-B0EB-000A95A07AB8@valuecommerce.co.jp>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CpGNC-0001rN-Sb
-	for nfs@lists.sourceforge.net; Thu, 13 Jan 2005 17:35:34 -0800
-Received: from harp.ngdc.noaa.gov ([140.172.187.26])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1CpGNA-0006mZ-H9
-	for nfs@lists.sourceforge.net; Thu, 13 Jan 2005 17:35:34 -0800
-Received: from harp.ngdc.noaa.gov (harp.ngdc.noaa.gov [127.0.0.1])
-	by harp.ngdc.noaa.gov (8.12.11/8.12.11) with ESMTP id j0E1ZVkW011462
-	for <nfs@lists.sourceforge.net>; Thu, 13 Jan 2005 18:35:31 -0700
-Received: from localhost (ahoward@localhost)
-	by harp.ngdc.noaa.gov (8.12.11/8.12.11/Submit) with ESMTP id j0E1ZV0X011458
-	for <nfs@lists.sourceforge.net>; Thu, 13 Jan 2005 18:35:31 -0700
-To: nfs@lists.sourceforge.net
+	id 1CpJAJ-000327-HZ
+	for nfs@lists.sourceforge.net; Thu, 13 Jan 2005 20:34:27 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CpJAH-0007X1-S8
+	for nfs@lists.sourceforge.net; Thu, 13 Jan 2005 20:34:27 -0800
+To: Nathan Ollerenshaw <nathan@valuecommerce.co.jp>
+In-Reply-To: <BA594DD2-65DA-11D9-B0EB-000A95A07AB8@valuecommerce.co.jp>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,43 +30,80 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+fr den 14.01.2005 Klokka 12:16 (+0900) skreiv Nathan Ollerenshaw:
 
-we rebooted a client that's part of a single server single client pair (plan
-is obviously to expand).  the client held about 8 locks on reboot.  it
-apparently is not notifying the server correctly because the server now thinks
-all 8 locks are still vaild.  on the server /proc/locks shows
+> Sometimes we will see a message like this:
+> 
+> Dec 27 10:41:51 www2 kernel: nfs_statfs: statfs error = 512
 
-   1: POSIX  ADVISORY  WRITE 27936 08:11:11075589 0 EOF f586b580 c03a87c8 c6e1d824 00000000 f586b58c
-   2: POSIX  ADVISORY  WRITE 27936 08:11:11075586 0 EOF c6e1d820 f586b584 c6e1de24 00000000 c6e1d82c
-   3: POSIX  ADVISORY  WRITE 6031 08:11:104480774 0 EOF c6e1de20 c6e1d824 f7d26104 00000000 c6e1de2c
-   4: POSIX  ADVISORY  WRITE 4852 08:11:11321352 0 EOF f7d26100 c6e1de24 f71affa4 00000000 f7d2610c
-   5: POSIX  ADVISORY  WRITE 31579 08:11:11321348 0 EOF f71affa0 f7d26104 f73a71c4 00000000 f71affac
-   6: POSIX  ADVISORY  WRITE 31577 08:11:11075593 0 EOF f73a71c0 f71affa4 f73a7644 00000000 f73a71cc
-   7: POSIX  ADVISORY  WRITE 29989 08:07:327687 0 EOF f73a7640 f73a71c4 f73b7f44 00000000 f73a764c
-   8: FLOCK  ADVISORY  WRITE 11997 08:07:327694 0 EOF f73b7f40 f73a7644 c03a87c8 00000000 f73b7f4c
+This probably just indicates that someone pressed ^C in order to break
+out of a hanging RPC call.
 
-the proccesses in question do not exist on either client or server (verified
-with kill -0).  we are running
+> Messages such as this are also common:
+> 
+> nfs_proc_symlink: lock/DGMDNP-042.txt_lock_lock already exists??
 
-   Linux 2.4.21-27.0.1.ELsmp i686
+This too is relatively harmless. It means that the server replied that
+the symlink exists. It is either a sign that the server RPC replay cache
+is full (this would be infrequent on a normal server), or that you have
+an application that is running on 2 clients and that is racing to create
+the same symlink.
 
-   Red Hat Enterprise Linux WS release 3 (Taroon Update 4)
+> Doing a tethereal at the time, we see stuff like this:
+> 
+>   62.303877  10.128.1.11 -> 10.128.2.33  NFS V3 WRITE Reply (Call In 27) 
+> Error:ERR_STALE
 
-   nfs-utils-1.0.6-33EL
+Now this is not normal, unless someone is going around on the server
+maliciously deleting files that are still in use by the client.
 
-where do i go from here?  our system is crippled without working locks and it
-appears a reboot will cause this uniformly...
+It shouldn't be causing any hangs though (either on the client or the
+server).
 
-thanks for any info.
+> Vendor currently says:
+> 
+> > Anyway, at the present moment, we can say, we haven't finished 
+> > analyzing
+> > network traces completely, however, we found some strange point in the
+> > network trace. As per customer, customer uses the file locking over 
+> > NFS.
+> > Indeed, we can see NLM protocol in the network trace. Some of  clients 
+> > keep
+> > sending NLM_UNLOCK for some of files without sending NLM_LOCK. 
+> > Generally, if
+> > using NLM, the sequence is NLM_LOCK call for relevant file is executed 
+> > from
+> > NFS client and then NLM_UNLOCK for that file is executed from NFS 
+> > client.
+> > Thus, the file locking will be completed. We can't see any corresponds
+> > between LOCK and UNLOCK. From the beginning of the trace, some of 
+> > client
+> > keep sending only NLM_UNLOCK. That is very strange.
 
--a
+That is deliberate. If someone presses ^C while the client is in the
+middle of sending an NLM_LOCK request, then the client has no way of
+knowing whether or not the server received that request. The safe thing
+to do then is to always assume that the server has received the request,
+and to send a corresponding NLM_UNLOCK request.
+
+That way you avoid creating "orphaned locks" on the server.
+
+---
+
+A shot in the dark: are you perhaps using TCP together with an old
+version of amd/am-utils? It used to be the case that am-utils would set
+a very short value for the RPC timeout value (see the description of the
+"timeo" mount option on "man 5 nfs"). I know several cases of this
+overloading the server and causing strange hangs.
+That would explain the above symlink error message in terms of the RPC
+replay cache hypothesis...
+
+Cheers,
+  Trond
+
 -- 
-===============================================================================
-| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
-| PHONE   :: 303.497.6469
-| When you do something, you should burn yourself completely, like a good
-| bonfire, leaving no trace of yourself.  --Shunryu Suzuki
-===============================================================================
+Trond Myklebust <trond.myklebust@fys.uio.no>
+
 
 
 -------------------------------------------------------
