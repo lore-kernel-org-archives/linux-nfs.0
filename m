@@ -1,30 +1,25 @@
-From: Garrick Staples <garrick@usc.edu>
-Subject: Re: mountd segfault on itanium2
-Date: Mon, 3 May 2004 18:52:53 -0700
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH]  Reinstantiating stale inodes
+Date: Tue, 04 May 2004 15:05:27 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040504015253.GB23287@polop.usc.edu>
-References: <20040430212414.GF22498@polop.usc.edu> <20040430234327.GM22498@polop.usc.edu> <20040501030730.GE23287@polop.usc.edu> <20040504001718.GZ23287@polop.usc.edu> <20040504010158.GD3636@fieldses.org>
+Message-ID: <4097E977.5020706@RedHat.com>
+References: <40892507.2030004@RedHat.com>  <4093CCB6.1040500@RedHat.com>	 <1083439518.3687.19.camel@lade.trondhjem.org> <4094397C.3030303@RedHat.com>	 <1083457337.3687.60.camel@lade.trondhjem.org> <409468B2.40200@RedHat.com>	 <1083468517.3687.70.camel@lade.trondhjem.org> <4096A292.8050109@RedHat.com>	 <1083615338.3896.92.camel@lade.trondhjem.org> <4096ACA0.9050507@RedHat.com> <1083619647.3896.126.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="SHFFXbs3XlGSDX14"
+Content-Type: multipart/mixed;
+ boundary="------------070004010902090408010008"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BKp8s-0004IQ-Us
-	for nfs@lists.sourceforge.net; Mon, 03 May 2004 18:54:42 -0700
-Received: from polop.usc.edu ([128.125.10.9])
+	id 1BL5EV-0001Qk-Gn
+	for nfs@lists.sourceforge.net; Tue, 04 May 2004 12:05:35 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
 	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.30)
-	id 1BKp8O-0006et-P4
-	for nfs@lists.sourceforge.net; Mon, 03 May 2004 18:54:12 -0700
-Received: from polop.usc.edu (localhost.localdomain [127.0.0.1])
-	by polop.usc.edu (8.12.10/8.12.10) with ESMTP id i441qslv013533
-	for <nfs@lists.sourceforge.net>; Mon, 3 May 2004 18:52:54 -0700
-Received: (from garrick@localhost)
-	by polop.usc.edu (8.12.10/8.12.10/Submit) id i441qrTN013531
-	for nfs@lists.sourceforge.net; Mon, 3 May 2004 18:52:53 -0700
-To: nfs@lists.sourceforge.net
-In-Reply-To: <20040504010158.GD3636@fieldses.org>
+	id 1BL5E0-0008Md-GD
+	for nfs@lists.sourceforge.net; Tue, 04 May 2004 12:05:04 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1083619647.3896.126.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -37,65 +32,160 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+This is a multi-part message in MIME format.
+--------------070004010902090408010008
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
---SHFFXbs3XlGSDX14
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
 
-On Mon, May 03, 2004 at 09:01:58PM -0400, J. Bruce Fields alleged:
-> On Mon, May 03, 2004 at 05:17:18PM -0700, Garrick Staples wrote:
-> > I'm slowly starting to wrap my brain around how these RPC calls work.  =
-I've
-> > found something that I can't make sense of.  In my_svc_run(), it packs =
-fds 3,
-> > 4, 5, 6, and 7 into select().  3, 4, and 5 are 3 files in /proc/net/rpc=
-=2E  fd 6
-> >  and 7 are udp and tcp sockets.  During my umount/mount tests, fd 6 is =
-the
-> > only set bit after the select(), and is then passed to svc_getreqset().
-> >=20
-> > But just before the segfault, select() sets fd 5, which is
-> > /proc/net/rpc/nfsd.fh/channel.  The thing that I don't understand is th=
-at fd 5
-> > is being passed to svc_getreqset().  Shouldn't svc_getreqset() be only =
-for fds
-> > of sockets that have pending rpc calls?  Should fd 5 be cleared from th=
-e fdset
-> > before calling svc_getreqset()?
->=20
-> Cool, good detective work, I think that must be it.  Other people
-> weren't seeing it because you have to be using the new interface (have
-> nfsd mounted), and have to get an rpc call and a kernel upcall at the
-> same time.  Does clearing the bit end the segfaults?
+Trond Myklebust wrote:
 
-I just got this, for some reason mail from sourceforge seems to be lagging =
-by
-several hours today.
+>So the big question is: *why do you get all those extra writes*?
+>  
+>
+This appears to be a red herring... After a complete build in a
+new tree that only had the ctime and zapping cache patches I started
+to get more reasonable results... But it does appear that the ctime
+patch does (consistently) cause more getattrs and lookups...
 
-Yes, that seems to fix the problem.  Isn't this a significant DOS attack?
-Anyone on the net could generate lots of mount/umount requests to mountd
-running on any 2.6 machine and segfault mountd.
+W/OUT any patches
+Client rpc stats:
+calls      retrans    authrefrsh
+30052      16         0
+Client nfs v3:
+null       getattr    setattr    lookup     access     readlink
+0       0% 2288    7% 1199    3% 2561    8% 1171    3% 250     0%
+read       write      create     mkdir      symlink    mknod
+3955   13% 11897  39% 893     2% 175     0% 250     0% 0       0%
+remove     rmdir      rename     link       readdir    readdirplus
+1391    4% 175     0% 376     1% 250     0% 0       0% 1119    3%
+fsstat     fsinfo     pathconf   commit
+1500    4% 1       0% 0       0% 601     1%
 
-Is there a deeper problem in glibc's rpc code that shouldn't be segfaulting?
+With CTIME patch
+Client rpc stats:
+calls      retrans    authrefrsh
+30288      7          0      
+Client nfs v3:
+null       getattr    setattr    lookup     access     readlink  
+0       0% 2308    7% 1199    3% 2773    9% 1171    3% 250     0%
+read       write      create     mkdir      symlink    mknod     
+3954   13% 11899  39% 893     2% 175     0% 250     0% 0       0%
+remove     rmdir      rename     link       readdir    readdirplus
+1391    4% 175     0% 380     1% 250     0% 0       0% 1119    3%
+fsstat     fsinfo     pathconf   commit    
+1500    4% 1       0% 0       0% 600     1%
 
---=20
-Garrick Staples, Linux/HPCC Administrator
-University of Southern California
+>There weren't any extra changes to nfs_refresh_inode() that might cause
+>the actual page cache invalidation to depend on the inode ctime (as
+>opposed to just the lookup cache)?
+>  
+>
+No... there are some slight differences in __nfs_refresh_inode()... but
+no smoking gun....
 
---SHFFXbs3XlGSDX14
-Content-Type: application/pgp-signature
-Content-Disposition: inline
+At this point I feel the numbers are close enough to declare victory.
+The attached 2.4 patch *does* avoid ESTALEs when the server rsync -a the
+mounted directory for a (very) small price... 1 to 2 percent increase in
+traffic (in a particular kernel, running a particular test suite)
+is not a bad price to pay to avoid ESTALEs.... imho...
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.3 (GNU/Linux)
+What are the chances of this patch (or something similar) making
+it into 2.4. tree?
 
-iD8DBQFAlvd10SBUxJbm9HMRAvq0AJ4zv9D7LfWWltKmOeYdF8bxMQJ8oACgnSQ2
-YE4OvFAm94rSYpjIY6wXrNM=
-=3im6
------END PGP SIGNATURE-----
+SteveD.
 
---SHFFXbs3XlGSDX14--
+
+--------------070004010902090408010008
+Content-Type: text/plain;
+ name="linux-2.4-nfs-estale.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="linux-2.4-nfs-estale.patch"
+
+--- linux-2.4/fs/nfs/dir.c.orig	2003-11-11 16:55:40.000000000 -0500
++++ linux-2.4/fs/nfs/dir.c	2004-05-04 13:26:20.000000000 -0400
+@@ -421,7 +421,7 @@ int nfs_check_verifier(struct inode *dir
+ 		return 1;
+ 	if (nfs_revalidate_inode(NFS_SERVER(dir), dir))
+ 		return 0;
+-	return time_after(dentry->d_time, NFS_MTIME_UPDATE(dir));
++	return time_after(dentry->d_time, NFS_CTIME_UPDATE(dir));
+ }
+ 
+ /*
+--- linux-2.4/fs/nfs/inode.c.orig	2004-05-04 13:26:21.000000000 -0400
++++ linux-2.4/fs/nfs/inode.c	2004-05-04 13:28:20.000000000 -0400
+@@ -821,8 +821,16 @@ nfs_wait_on_inode(struct inode *inode, i
+ int
+ nfs_revalidate(struct dentry *dentry)
+ {
++	int error;
+ 	struct inode *inode = dentry->d_inode;
+-	return nfs_revalidate_inode(NFS_SERVER(inode), inode);
++
++	error = nfs_revalidate_inode(NFS_SERVER(inode), inode);
++	if (error == -ESTALE) {
++		struct inode *dir = dentry->d_parent->d_inode;
++		nfs_zap_caches(dir);
++	}
++
++	return error;
+ }
+ 
+ /*
+@@ -1054,16 +1062,16 @@ __nfs_refresh_inode(struct inode *inode,
+ 	if (nfs_have_writebacks(inode) && new_isize < inode->i_size)
+ 		new_isize = inode->i_size;
+ 
+-	NFS_CACHE_CTIME(inode) = fattr->ctime;
+-	inode->i_ctime = nfs_time_to_secs(fattr->ctime);
++	if (NFS_CACHE_CTIME(inode) != fattr->ctime) {
++		NFS_CACHE_CTIME(inode) = fattr->ctime;
++		inode->i_ctime = nfs_time_to_secs(fattr->ctime);
++		NFS_CTIME_UPDATE(inode) = jiffies;
++	}
+ 
+ 	inode->i_atime = new_atime;
+ 
+-	if (NFS_CACHE_MTIME(inode) != new_mtime) {
+-		NFS_MTIME_UPDATE(inode) = jiffies;
+-		NFS_CACHE_MTIME(inode) = new_mtime;
+-		inode->i_mtime = nfs_time_to_secs(new_mtime);
+-	}
++	NFS_CACHE_MTIME(inode) = new_mtime;
++	inode->i_mtime = nfs_time_to_secs(new_mtime);
+ 
+ 	NFS_CACHE_ISIZE(inode) = new_size;
+ 	inode->i_size = new_isize;
+--- linux-2.4/include/linux/nfs_fs.h.orig	2004-05-04 13:26:23.000000000 -0400
++++ linux-2.4/include/linux/nfs_fs.h	2004-05-04 13:26:24.000000000 -0400
+@@ -78,7 +78,7 @@ static inline struct nfs_inode_info *NFS
+ #define NFS_CONGESTED(inode)		(RPC_CONGESTED(NFS_CLIENT(inode)))
+ #define NFS_COOKIEVERF(inode)		((inode)->u.nfs_i.cookieverf)
+ #define NFS_READTIME(inode)		((inode)->u.nfs_i.read_cache_jiffies)
+-#define NFS_MTIME_UPDATE(inode)		((inode)->u.nfs_i.cache_mtime_jiffies)
++#define NFS_CTIME_UPDATE(inode)		((inode)->u.nfs_i.cache_ctime_jiffies)
+ #define NFS_CACHE_CTIME(inode)		((inode)->u.nfs_i.read_cache_ctime)
+ #define NFS_CACHE_MTIME(inode)		((inode)->u.nfs_i.read_cache_mtime)
+ #define NFS_CACHE_ISIZE(inode)		((inode)->u.nfs_i.read_cache_isize)
+--- linux-2.4/include/linux/nfs_fs_i.h.orig	2004-05-04 13:26:24.000000000 -0400
++++ linux-2.4/include/linux/nfs_fs_i.h	2004-05-04 13:26:24.000000000 -0400
+@@ -49,10 +49,10 @@ struct nfs_inode_info {
+ 	unsigned long		attrtimeo_timestamp;
+ 
+ 	/*
+-	 * Timestamp that dates the change made to read_cache_mtime.
++	 * Timestamp that dates the change made to read_cache_ctime.
+ 	 * This is of use for dentry revalidation
+ 	 */
+-	unsigned long		cache_mtime_jiffies;
++	unsigned long		cache_ctime_jiffies;
+ 
+ 	/*
+ 	 * This is the cookie verifier used for NFSv3 readdir
+
+--------------070004010902090408010008--
 
 
 -------------------------------------------------------
