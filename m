@@ -1,23 +1,24 @@
-From: Greg Banks <gnb@sgi.com>
+From: Erik Walthinsen <omega@pdxcolo.net>
 Subject: Re: Converting open filehandles to pathnames
-Date: Sun, 9 May 2004 17:24:18 +1000
+Date: Sat, 08 May 2004 17:43:50 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040509072418.GB18762@sgi.com>
+Message-ID: <1084063428.714.40.camel@omikron>
 References: <1084059203.714.13.camel@omikron>
+	 <20040509072418.GB18762@sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BMiug-0003E7-Sc
-	for nfs@lists.sourceforge.net; Sun, 09 May 2004 00:39:54 -0700
-Received: from mtvcafw.sgi.com ([192.48.171.6] helo=omx2.sgi.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1BMiug-0008Am-Oo
-	for nfs@lists.sourceforge.net; Sun, 09 May 2004 00:39:54 -0700
-To: Erik Walthinsen <omega@pdxcolo.net>
-In-Reply-To: <1084059203.714.13.camel@omikron>
+	id 1BMjI8-0005M8-5v
+	for nfs@lists.sourceforge.net; Sun, 09 May 2004 01:04:08 -0700
+Received: from [216.99.212.251] (helo=mail.omegacs.net)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BMjI7-0007Cb-Nv
+	for nfs@lists.sourceforge.net; Sun, 09 May 2004 01:04:07 -0700
+To: Greg Banks <gnb@sgi.com>
+In-Reply-To: <20040509072418.GB18762@sgi.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,29 +31,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sat, May 08, 2004 at 04:33:28PM -0700, Erik Walthinsen wrote:
-> I've got an NFS server with client machines running User-mode Linux. 
->[...]
-> My question: is there some means of divining the device/inode of a
-> filehandle?  I looked around the NFS and VFS code and found nothing that
-> looked promising, but I don't really understand the VFS subsystem.
+On Sun, 2004-05-09 at 00:24, Greg Banks wrote:
+> Generally the device and inode of the file are encoded in the
+> file handle itself rather than mapped in the server; this is
+> the easiest way of satisfying the requirement that the filehandles
+> be stable across server reboots.
+Oh.  Duh.  I was assuming the filehandles were randomly assigned by the
+server, didn't think about the requirements filehandle continuity would
+impose...  I suppose it's just plain cheaper too.
 
-Generally the device and inode of the file are encoded in the
-file handle itself rather than mapped in the server; this is
-the easiest way of satisfying the requirement that the filehandles
-be stable across server reboots.
+> If your NFS server is a Linux box, see the comments in
+> include/linux/nfsd/nfsfh.h for a description of the format
+> of Linux' file handles.
+Heh, found the inode in the filehandle in ethereal just by inspection,
+will have to hack my script tomorrow to make use of it.
 
-If your NFS server is a Linux box, see the comments in
-include/linux/nfsd/nfsfh.h for a description of the format
-of Linux' file handles.
+> Also, ethereal will pick apart and display Linux file handles
+> (unless the underlying server fs is XFS).
+The version I have (debian/sid ethereal-0.10.3) doesn't display
+filehandles as anything but length and data, though I have used the mode
+that does what my script was trying to do, which will try to find and
+cache the translation.  However, that only works when the getattrs are
+present <g>  Not sure if running ethereal on the NFS server itself would
+help, but it's got no head and no X anyway.
 
-Also, ethereal will pick apart and display Linux file handles
-(unless the underlying server fs is XFS).
+Well, I think my problem is solved, thanks for the help! ;-)
 
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+Now if someone just had as good an answer to the "what is a client?"
+question....  You might imagine my interest in that is more than
+academic, with 100's of *long*-duration filehandles in the GB+ range
+each, yet over only a few physical client machines.
+
+Thanks,
+      Omega
+      aka Erik Walthinsen
+      omega@pdxcolo.net
+
 
 
 -------------------------------------------------------
