@@ -1,70 +1,92 @@
-From: Denis Vlasenko <vda@port.imtp.ilyichevsk.odessa.ua>
-Subject: Re: [BUG] Onboard Ethernet Pro 100 on a SMP box: a very strange errors
-Date: Tue, 25 Jan 2005 23:19:11 +0200
-Message-ID: <200501252319.11304.vda@port.imtp.ilyichevsk.odessa.ua>
-References: <20050122014646.A1038@natasha.ward.six>
+From: "Duv  Dek" <onur@ee.bilkent.edu.tr>
+Subject: NFS response time
+Date: Tue, 25 Jan 2005 23:40:12 +0200
+Message-ID: <003a01c50326$73182550$7889b38b@alpin>
 Mime-Version: 1.0
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_0037_01C50337.3675EDB0"
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1CtYQL-0000B0-LE
+	for nfs@lists.sourceforge.net; Tue, 25 Jan 2005 13:40:33 -0800
+Received: from dalyan.ee.bilkent.edu.tr ([139.179.12.25])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CtYQK-00012g-Ef
+	for nfs@lists.sourceforge.net; Tue, 25 Jan 2005 13:40:33 -0800
+Received: from alpin (d79012c.dorm.bilkent.edu.tr [139.179.137.120])
+	by dalyan.ee.bilkent.edu.tr (8.12.9/8.12.9) with SMTP id j0PLeFtf020511
+	for <nfs@lists.sourceforge.net>; Tue, 25 Jan 2005 23:40:15 +0200 (EET)
+To: <nfs@lists.sourceforge.net>
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+
+This is a multi-part message in MIME format.
+
+------=_NextPart_000_0037_01C50337.3675EDB0
 Content-Type: text/plain;
-  charset="koi8-r"
-Cc: linux-net@vger.kernel.org, nfs@lists.sourceforge.net
-Return-path: <linux-kernel-owner+glk-linux-kernel=40m.gmane.org-S262151AbVAYV15@vger.kernel.org>
-To: Denis Zaitsev <zzz@anda.ru>, linux-kernel@vger.kernel.org
-In-Reply-To: <20050122014646.A1038@natasha.ward.six>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-On Friday 21 January 2005 22:46, Denis Zaitsev wrote:
-> The long story is:
-> 
-> There is a Dual-processor Intel Server Board STL2 with two P-III/800
-> and an onboard Intel 82557-based ethernet card.  The box has all the
-> /usr and nearly all of the /var filesystems mounted over NFS.  And the
-> box works for months without any problems around the NFS.  So, I think
-> that the ethernet card just works fine.
-> 
-> But I have some enigmatic problems when I copying _some_ files from an
-> NFS to the local fs: the process is freezes on the middle.
-> 
-> 1) Only _some_ files can't be copied.  There are:
-> 
->    gcc-testsuite-3.4-20041217.tar.bz2
-> 
->    krb5-1.3.6-signed.tar
-> 
->    X430src-1.tgz
-> 
->    They are the well-known sources from the well-known ftp and web
->    places.  And I don't think that it's the full list, just the files
->    for which I have met the problem.
-> 
-> 2) Only _these_ files can't be copied.  Any other is copied plainly.
-> 
-> 3) These files _never_ can be copied.
-> 
-> 4) The copy process always freezes at the same place (per file - the
->    each file has its own place).
-> 
-> In short: it's a list of files, on which the copying is always freezes
-> and always freezes exactly the same way.  And there are no any
-> exception - I have freezeng each time.
-> 
-> The freezing is forever.  The freezed process is in D state, its
-> /proc/PID/wchan contains page_sync.  Each such process eats 1.0 from
-> /proc/loadavg.  And the process can't be killed by any signal.
-> 
-> Then, copying by dd bs=1024 ... just succeeds.  After that cp succeeds
-> too - I think it's because of caching.
+Hi
 
-Because this causes different packets to be sent.
+We have a problem with our NFS server on Redhat 9. In case a program on =
+the server uses high CPU, the NFS clients almost lock and nfs stops =
+giving response until that program lowers its CPU usage.  We tried to =
+increase the priority of nfsd deamons with renice, and also tried to =
+increase the number of nfsd threads, decreased the priority of the =
+program using high CPU with renice, but none of them worked. How can we =
+solve this problem so that nfs does not lock?
 
-> Then, there is no visual correlation with the size of the file.  So,
-> it seems that the content of the file is involved...  But it is
-> enigmatic.
+------=_NextPart_000_0037_01C50337.3675EDB0
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-Something corrupts packets. It can be sending NIC, switch in the middle,
-or receiving NIC.
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; =
+charset=3Diso-8859-1">
+<META content=3D"MSHTML 6.00.2900.2523" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV><FONT face=3DArial size=3D2>Hi</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>We have a problem with our NFS server =
+on Redhat 9.=20
+In case a program&nbsp;on the server&nbsp;uses high CPU,&nbsp;the=20
+NFS&nbsp;clients almost lock and nfs stops giving response until that =
+program=20
+lowers its CPU usage.&nbsp;&nbsp;We tried to increase the priority of =
+nfsd=20
+deamons with renice, and also tried to increase the number of nfsd =
+threads,=20
+decreased the priority of the program using high CPU with =
+renice,&nbsp;but none=20
+of them worked. How can we&nbsp;solve this problem so that nfs does not=20
+lock?</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV></BODY></HTML>
 
-Do 'tcpdump -nliethN -s0 -Xx udp >log' on both ends while you do the copying
-and compare last dozen of packets.
---
-vda
+------=_NextPart_000_0037_01C50337.3675EDB0--
+
+
+
+-------------------------------------------------------
+This SF.Net email is sponsored by: IntelliVIEW -- Interactive Reporting
+Tool for open source databases. Create drag-&-drop reports. Save time
+by over 75%! Publish reports on the web. Export to DOC, XLS, RTF, etc.
+Download a FREE copy at http://www.intelliview.com/go/osdn_nl
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
