@@ -1,22 +1,24 @@
-From: Ragnar =?iso-8859-15?Q?Kj=F8rstad?= <nfs@ragnark.vestdata.no>
+From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Subject: Re: rpc.statd -n
-Date: Wed, 2 Feb 2005 21:47:44 +0100
-Message-ID: <20050202204744.GB14848@vestdata.no>
+Date: Wed, 2 Feb 2005 14:08:39 -0700 (MST)
+Message-ID: <Pine.LNX.4.60.0502021402430.8434@harp.ngdc.noaa.gov>
 References: <Pine.LNX.4.60.0502021127170.8434@harp.ngdc.noaa.gov>
+ <20050202204744.GB14848@vestdata.no>
+Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1642668024-1107378519=:8434"
 Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CwRPs-0000GQ-LM
-	for nfs@lists.sourceforge.net; Wed, 02 Feb 2005 12:48:00 -0800
-Received: from [217.149.127.10] (helo=stine.vestdata.no ident=0)
+	id 1CwRjv-0001Oa-Lx
+	for nfs@lists.sourceforge.net; Wed, 02 Feb 2005 13:08:43 -0800
+Received: from harp.ngdc.noaa.gov ([140.172.178.33])
 	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1CwRPp-0003b2-1w
-	for nfs@lists.sourceforge.net; Wed, 02 Feb 2005 12:47:59 -0800
-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-In-Reply-To: <Pine.LNX.4.60.0502021127170.8434@harp.ngdc.noaa.gov>
+	id 1CwRjt-0005i8-9e
+	for nfs@lists.sourceforge.net; Wed, 02 Feb 2005 13:08:43 -0800
+To: Ragnar =?iso-8859-15?Q?Kj=F8rstad?= <nfs@ragnark.vestdata.no>
+In-Reply-To: <20050202204744.GB14848@vestdata.no>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,36 +32,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, Feb 02, 2005 at 11:41:52AM -0700, Ara.T.Howard wrote:
-> i have a question regarding rpc.statd and it's reporting of hostname.  =
-in=20
-> the
-> case of a multi-homed client, say one running nfs on the
->=20
->   client.b.domain
->=20
-> interface.  rpc.statd must be forced to report itself as 'client.b.doma=
-in'
-> lest lockd recovery fail when it reports client.domain.  this is all we=
-ll=20
-> and
-> good - but what if you have nfs running on more than one interface, lik=
-e the
-> case of home dirs on front-door and file-server on back-door?  now what=
- can
-> you do?  if you specify the hostname for rpc.statd you'll break lock=20
-> recovery
-> on one or the other filesystem right?
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-Search the archives for "STATD - SM_NOTIFY have wrong ID_NAME on
-multihost servers".
+--8323328-1642668024-1107378519=:8434
+Content-Type: TEXT/PLAIN; charset=X-UNKNOWN; format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 
+On Wed, 2 Feb 2005, Ragnar [iso-8859-15] Kj=F8rstad wrote:
 
+> Search the archives for "STATD - SM_NOTIFY have wrong ID_NAME on
+> multihost servers".
+
+illuminating.
+
+i hope this doesn't get forgotten...
+
+thanks.
+
+-a
 --=20
-Ragnar Kj=F8rstad
-Software Engineer
-Scali - http://www.scali.com
-High Performance Clustering
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D
+| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
+| PHONE   :: 303.497.6469
+| When you do something, you should burn yourself completely, like a good
+| bonfire, leaving no trace of yourself.  --Shunryu Suzuki
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D
+--8323328-1642668024-1107378519=:8434--
 
 
 -------------------------------------------------------
