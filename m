@@ -1,26 +1,32 @@
-From: Frans Pop <aragorn@tiscali.nl>
-Subject: Re: Debian bug #165744 - 'Received erroneous SM_UNMON request'
-Date: Mon, 15 Sep 2003 18:46:15 +0200
+From: Yusuf Goolamabbas <yusufg@outblaze.com>
+Subject: Re: [PATCH] Timeouts gone wild on ia64
+Date: Wed, 17 Sep 2003 12:14:18 +0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200309151846.57189.aragorn@tiscali.nl>
-References: <200309132202.47195.aragorn@tiscali.nl> <20030915022303.GB8188@perlsupport.com>
+Message-ID: <20030917041418.GA8900@outblaze.com>
+References: <482A3FA0050D21419C269D13989C6113127DC8@lavender-fe.eng.netapp.com> <3EC39FDF.60609@RedHat.com> <16067.42148.524146.39488@charged.uio.no>
 Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Cc: nfs@lists.sourceforge.net, 165744@bugs.debian.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Steve Dickson <SteveD@redhat.com>,
+	"Lever, Charles" <Charles.Lever@netapp.com>,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19ywVM-00069f-00
-	for <nfs@lists.sourceforge.net>; Mon, 15 Sep 2003 09:47:12 -0700
-Received: from matilda.tiscali.nl ([195.241.51.38])
+	id 19zTi7-0007lz-00
+	for <nfs@lists.sourceforge.net>; Tue, 16 Sep 2003 21:14:35 -0700
+Received: from corpmail.outblaze.com ([203.86.166.82])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 19ywVL-0000Jp-Vx
-	for nfs@lists.sourceforge.net; Mon, 15 Sep 2003 09:47:12 -0700
-To: Chip Salzenberg <chip@pobox.com>,
-	Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <20030915022303.GB8188@perlsupport.com>
+	id 19zTi6-0001Gl-O3
+	for nfs@lists.sourceforge.net; Tue, 16 Sep 2003 21:14:34 -0700
+Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
+	by corpmail.outblaze.com (Postfix) with ESMTP id F1EDC37AD5
+	for <nfs@lists.sourceforge.net>; Wed, 17 Sep 2003 04:14:30 +0000 (GMT)
+Received: from yusufg.portal2.com (210-177-227-130.outblaze.com [210.177.227.130])
+	by corpmail.outblaze.com (Postfix) with SMTP id 175E916DD94
+	for <nfs@lists.sourceforge.net>; Wed, 17 Sep 2003 04:14:30 +0000 (GMT)
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <16067.42148.524146.39488@charged.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -33,60 +39,44 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-=2D----BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA1
+> >>>>> " " == Steve Dickson <SteveD@redhat.com> writes:
+> 
+>      > It appears the RTO code does seem to be working but when the
+>      > minimums start so low (like at 4m instead 40ms) it takes some
+>      > time for the timeout value to build up and with soft mounts
+>      > there is no time...
+> 
+>      > Maybe I'm missing something... increasing the timeout value
+>      > should not have any affect on performance since in a well tuned
+>      > client and server these timeout will never occur since the
+>      > responses from the server will be returned before the timeout
+>      > expires... right? Also decreasing the number of timeouts will
+>      > decrease the number of retransmits which is another good
+>      > thing... True?
+> 
+> With a properly implemented algorithm, the number of retransmits
+> should be small anyway as it is supposed to take into account the
+> variance on the estimated RTO. We don't want any extra artificial
+> limits if we can avoid it.
+> 
+> You may well be right in asserting that we're setting the initial RTO
+> estimate too low, but then the answer should be to increase the value
+> of the 'timeo' mount parameter as that is what defines the initial
+> estimate.
+> The default value of 'retrans' should also be looked at. I'm not at
+> all comfortable with a default retrans value of '3' when doing soft
+> mounts.
+> 
+> At the moment I believe that the default values for these 2 parameters
+> differ in the kernel from those in the 'mount' program. IMHO, the
+> mount program is overriding the kernel with too low values. It would
+> be better if 'mount' did not set timeo/retrans (unless the user
+> overrides) and left that to the kernel.
 
-And here is the proof!
-I added a simple log statement to the monitor.c source where SM_UNMON is=20
-handled.
+Trond, In your opinion. What should be the default retrans value given
+your recent work in having adaptive timeouts in the NFS client ?
 
-=3D=3D=3D SNIP FROM MONITOR.C =3D=3D=3D
-* OK, we are.  Now look for appropriate entry in run-time list.
-* There should only be *one* match on this, since I block "duplicate"
-* SM_MON calls.  (Actually, duplicate calls are allowed, but only one
-* entry winds up in the list the way I'm currently handling them.)
-*/
-while ((clnt =3D nlist_gethost(clnt, mon_name, 0))) {
-+++++ ADDED LINES +++++
-        log(L_WARNING, "Result of hostname lookup: %s is %s",
-                my_name, NL_MY_NAME(clnt));
-+++++ ADDED LINES END +++++
-        if (matchhostname(NL_MY_NAME(clnt), my_name) &&
-                NL_MY_PROC(clnt) =3D=3D id->my_proc &&
-                NL_MY_PROG(clnt) =3D=3D id->my_prog &&
-                NL_MY_VERS(clnt) =3D=3D id->my_vers) {
-                /* Match! */
-=3D=3D=3D END OF SNIP FROM MONITOR.C =3D=3D=3D
-
-This results in my log in:
-rpc.statd[3066]: Result of hostname lookup: galadriel is 127.0.0.1
-rpc.statd[3066]: Received erroneous SM_UNMON request from galadriel for=20
-10.19.66.2
-
-On Monday 15 September 2003 04:23, Chip Salzenberg wrote:
-> According to Frans Pop:
-> > I think the reason the error appears in my setup could be because I have
-> > NFS kernel-support compiled in both server and clients. In Debian, this
-> > means rpc.lockd is not run from the init scripts.
->
-> What does the timing of lockd have to do with it?  Because that's the
-> only difference between a user-space lockd and a kernel-thread lockd;
-> the kernel thread only starts up when something might need it, while
-> the user-space one starts up at boot time.
-
-I'm not sure how this would affect things. I was just looking for an=20
-explanation why this problem has not been reported by many, many more peopl=
-e=20
-who use NFS.
-
-=46rans Pop
-=2D----BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.1 (GNU/Linux)
-
-iD8DBQE/Zezigm/Kwh6ICoQRAsBOAJ0aCpzc+i2BSx5DOccWRHFYeijclACgum3p
-6ZlKRKULyVMcaL5LqQQj5GE=3D
-=3DZkmx
-=2D----END PGP SIGNATURE-----
+Regards, Yusuf
 
 
 
