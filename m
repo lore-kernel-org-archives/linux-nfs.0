@@ -1,18 +1,20 @@
-From: James Pearson <james-p@moving-picture.com>
-Subject: Re: Linux 2.2 client trouble after 2.4.18 server reboot
-Date: Mon, 29 Jul 2002 11:55:31 +0100
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Linux 2.2 client trouble after 2.4.18 server reboot
+Date: Mon, 29 Jul 2002 13:05:04 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3D451F23.92E4DA72@moving-picture.com>
+Message-ID: <15685.8544.339285.783217@charged.uio.no>
 References: <200207290021.g6T0LLL22541@sprite.physics.adelaide.edu.au>
+Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
+Received: from mons.uio.no ([129.240.130.14])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17Z8CH-0004GE-00
-	for <nfs@lists.sourceforge.net>; Mon, 29 Jul 2002 03:56:17 -0700
+	id 17Z8L9-0005Nc-00
+	for <nfs@lists.sourceforge.net>; Mon, 29 Jul 2002 04:05:27 -0700
 To: Jonathan Woithe <jwoithe@physics.adelaide.edu.au>
+In-Reply-To: <200207290021.g6T0LLL22541@sprite.physics.adelaide.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,72 +27,23 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Have a look through the archives of this list at:
+>>>>> " " == Jonathan Woithe <jwoithe@physics.adelaide.edu.au> writes:
 
- http://marc.theaimsgroup.com/?l=linux-nfs&r=1&w=2
+     > The exported directory on the server is a ReiserFS filesystem,
+     > exported with only "rw" options.  The client mounts with
+     > "hard,intr,bg" options.  NFSv3 support is not compiled in on
+     > the 2.2.19 clients.  The server is a default slackware
+     > configuration (from the point of view of NFS):
 
-It could be similar to the problem reported in thread:
+Was that ReiserFS system created on a 2.2.x system? If so, it is a
+known bug in ReiserFS itself.  There is a mount option (can't remember
+the name in the spur of the moment, but you'll find it described on
+the 'mount' manpage in www.namesys.com and you'll find it described
+several times in the NFS lists archives) that updates the filesystem
+to the latest ReiserFS format.
 
- http://marc.theaimsgroup.com/?l=linux-nfs&m=101796943306978&w=2
-
-James Pearson
-
-Jonathan Woithe wrote:
-> 
-> Hi all
-> 
-> [Please CC me replies since I'm not subscribed to this list]
-> 
-> Recently I upgraded our NFS server to Linux 2.4.18.  This server provides
-> exported home directories for our user Linux boxes which are currently
-> running 2.2.19.
-> 
-> Most of the time everything seems to be going well.  However, if the server
-> is rebooted the clients seem unable to restore the NFS connection to a
-> usable state.  The logs note the server becoming unavailable and then
-> following the reboot they note that the server is now "ok".  However, any
-> attempt to then access the mounted volumes is greeted with a "permission
-> denied" error.  Even root can't access the drives.
-> 
-> If the NFS volumes are unmounted and remounted the problem (predictably)
-> goes away.  Of course such an unmount can't occur until people have logged
-> off, which makes it a little cumbersome.
-> 
-> The exported directory on the server is a ReiserFS filesystem, exported with
-> only "rw" options.  The client mounts with "hard,intr,bg" options.  NFSv3
-> support is not compiled in on the 2.2.19 clients.  The server is a default
-> slackware configuration (from the point of view of NFS):
->   CONFIG_NFS_FS=y
->   CONFIG_NFS_V3=y
->   # CONFIG_ROOT_NFS is not set
->   CONFIG_NFSD=m
->   CONFIG_NFSD_V3=y
->   CONFIG_SUNRPC=y
->   CONFIG_LOCKD=y
->   CONFIG_LOCKD_V4=y
-> The server also has the lockd oops fix from Trond.
-> 
-> I would appreciate any pointers to ways to stop this from happening.
-> Requiring that all users log out before a server reboot is rather
-> inconvenient.
-> 
-> Best regards
->   jonathan
-> --
-> * Jonathan Woithe    jwoithe@physics.adelaide.edu.au                        *
-> *                    http://www.physics.adelaide.edu.au/~jwoithe            *
-> ***-----------------------------------------------------------------------***
-> ** "Time is an illusion; lunchtime doubly so"                              **
-> *  "...you wouldn't recognize a subtle plan if it painted itself purple and *
-> *   danced naked on a harpsichord singing 'subtle plans are here again'"    *
-> 
-> -------------------------------------------------------
-> This sf.net email is sponsored by:ThinkGeek
-> Welcome to geek heaven.
-> http://thinkgeek.com/sf
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
