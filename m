@@ -1,27 +1,29 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: [NFS][PATCH] Making sure negative lookup entries don't exist
-Date: Fri, 28 Jan 2005 13:47:49 -0500
-Message-ID: <41FA88D5.6010904@RedHat.com>
+From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Subject: RE: debugging failed lock recovery
+Date: Fri, 28 Jan 2005 10:27:25 -0700 (MST)
+Message-ID: <Pine.LNX.4.60.0501281021130.7869@harp.ngdc.noaa.gov>
+References: <482A3FA0050D21419C269D13989C61130853969F@lavender-fe.eng.netapp.com>
+Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------060205020903030201020007"
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Cub8a-0004hr-3Z
-	for nfs@lists.sourceforge.net; Fri, 28 Jan 2005 10:46:32 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1Cud8d-0005GS-94
+	for nfs@lists.sourceforge.net; Fri, 28 Jan 2005 12:54:43 -0800
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1Cub8X-0007P5-5B
-	for nfs@lists.sourceforge.net; Fri, 28 Jan 2005 10:46:32 -0800
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.12.11/8.12.11) with ESMTP id j0SIkHIm019833
-	for <nfs@lists.sourceforge.net>; Fri, 28 Jan 2005 13:46:17 -0500
-Received: from [192.168.62.4] (vpn83-143.boston.redhat.com [172.16.83.143])
-	by int-mx1.corp.redhat.com (8.11.6/8.11.6) with ESMTP id j0SIkHO27240
-	for <nfs@lists.sourceforge.net>; Fri, 28 Jan 2005 13:46:17 -0500
-To: linux-nfs <nfs@lists.sourceforge.net>
+	id 1Cud86-0007MR-MQ
+	for nfs@lists.sourceforge.net; Fri, 28 Jan 2005 12:54:43 -0800
+Received: from harp.ngdc.noaa.gov ([140.172.178.33])
+	by externalmx-1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1CuZuH-0006zK-0P
+	for nfs@lists.sourceforge.net; Fri, 28 Jan 2005 09:27:41 -0800
+To: "Lever, Charles" <Charles.Lever@netapp.com>
+In-Reply-To: <482A3FA0050D21419C269D13989C61130853969F@lavender-fe.eng.netapp.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,45 +37,48 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
---------------060205020903030201020007
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
+On Fri, 28 Jan 2005, Lever, Charles wrote:
 
-Here is a 2.4.28 patch that ensures negative cached dirents
-do not exist by always doing an otw getattr to the server.
-This does cause a small increase in getattrs (~3% from what
-I saw in my testing) but it seems to me the price is worth it to
-ensure the client does not lie about the existence of a file.
+> ara-
+>
+> the client must have a fully qualified nodename (uname -n) which matches
+> the result of a DNS lookup, in order for lock recovery to work.
+>
+> the nodename is set in /etc/sysconfig/networking on red hat systems.
 
-comments?
+charles-
 
-steved.
+thanks for the lead!
 
---------------060205020903030201020007
-Content-Type: text/x-patch;
- name="linux-2.4.28-nfs-negcache.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="linux-2.4.28-nfs-negcache.patch"
+yes.  they all have that and they are in dns.  however, our nfs runs on the
+'backdoor': each client/server has two cards, one mated to
 
---- linux-2.4.28/fs/nfs/dir.c.orig	2004-08-07 19:26:06.000000000 -0400
-+++ linux-2.4.28/fs/nfs/dir.c	2005-01-28 13:00:59.402239000 -0500
-@@ -455,7 +455,11 @@ int nfs_lookup_verify_inode(struct inode
-  */
- static inline int nfs_neg_need_reval(struct inode *dir, struct dentry *dentry)
- {
--	if (!nfs_check_verifier(dir, dentry))
-+	if (IS_ROOT(dentry))
-+		return 1;
-+	if (__nfs_revalidate_inode(NFS_SERVER(dir), dir))
-+		return 1;
-+	if (time_after(NFS_MTIME_UPDATE(dir), dentry->d_time))
- 		return 1;
- 	return time_after(jiffies, dentry->d_time + NFS_ATTRTIMEO(dir));
- }
+   client.domain
 
---------------060205020903030201020007--
+and one to
+
+   client.b.domain
+
+both are in dns.
+
+*however* the output of uname -n is (of course) the frontdoor.  so it seems we
+have a mismatch.  so uname -n *might* match the result of a dns lookup
+depending on which interface is looked up and, i'm guessing, this will be the
+backdoor interface and therefore fail.
+
+anyone have ideas on what to do about this?  can nfs be run on a multihomed
+server on an interface NOT named the same as 'uname -n'??
+
+kind regards.
+
+-a
+-- 
+===============================================================================
+| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
+| PHONE   :: 303.497.6469
+| When you do something, you should burn yourself completely, like a good
+| bonfire, leaving no trace of yourself.  --Shunryu Suzuki
+===============================================================================
 
 
 -------------------------------------------------------
