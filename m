@@ -1,8 +1,8 @@
 From: Brad Barnett <lists@L8R.net>
 Subject: Re: knfsd brought to its knees, by a simple rsync or cp
  operation
-Date: Tue, 1 Mar 2005 18:38:16 -0500
-Message-ID: <20050301183816.168fd12d@be.back.l8r.net>
+Date: Tue, 1 Mar 2005 18:40:43 -0500
+Message-ID: <20050301184043.4249a0db@be.back.l8r.net>
 References: <20050226082854.2a496ec3@be.back.l8r.net>
 	<20050228100633.GA4822@suse.de>
 	<20050228102307.3788a184@be.back.l8r.net>
@@ -13,19 +13,16 @@ References: <20050226082854.2a496ec3@be.back.l8r.net>
 	<20050301150446.GD4848@ti64.telemetry-investments.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Cc: brugolsky@telemetry-investments.com
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D6GwU-0000lk-BW
-	for nfs@lists.sourceforge.net; Tue, 01 Mar 2005 15:38:18 -0800
+	id 1D6Gyp-0000rt-D1
+	for nfs@lists.sourceforge.net; Tue, 01 Mar 2005 15:40:43 -0800
 Received: from l8r.net ([64.26.155.43] ident=aliens)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.41)
-	id 1D6GwS-0002Id-At
-	for nfs@lists.sourceforge.net; Tue, 01 Mar 2005 15:38:18 -0800
-Received: from be.back.l8r.net (bbarnett@be [10.10.10.10])
-	by l8r.net (8.12.3/8.12.3/Debian-7.1) with ESMTP id j21NbWuu015975
-	(version=TLSv1/SSLv3 cipher=EDH-RSA-DES-CBC3-SHA bits=168 verify=NO)
-	for <nfs@lists.sourceforge.net>; Tue, 1 Mar 2005 18:37:32 -0500
+	id 1D6Gyo-0006OI-5b
+	for nfs@lists.sourceforge.net; Tue, 01 Mar 2005 15:40:43 -0800
 To: nfs@lists.sourceforge.net
 In-Reply-To: <20050301150446.GD4848@ti64.telemetry-investments.com>
 Sender: nfs-admin@lists.sourceforge.net
@@ -40,6 +37,26 @@ List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+
+
+
+
+Wow.
+
+CBQ instantly resolved the issue.  After reading a bit more up on cbq, I
+switched to deadline.
+
+Deadline makes me happy. ;)
+
+I am currently doing FIVE cp -al operations, as well as half a dozen ls -R
+raid operations on the local box.  I see almost zero nfs slowdown. ;)
+
+Thanks very much guys, for all your help.  I appreciate the effort
+everyone put into this.  Hopefully this thread will help some people down
+the road...
+
+Thanks!
+
 
 On Tue, 1 Mar 2005 10:04:46 -0500
 "Bill Rugolsky Jr." <brugolsky@telemetry-investments.com> wrote:
