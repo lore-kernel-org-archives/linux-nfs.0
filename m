@@ -1,22 +1,19 @@
-From: Louis Garcia <louisg00@bellsouth.net>
-Subject: nfs client and iptables
-Date: 17 May 2002 19:54:56 -0400
+From: Benjamin LaHaise <bcrl@redhat.com>
+Subject: Re: RedHat 7.3 crashed NetApp?
+Date: Fri, 17 May 2002 20:17:59 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1021679697.5635.12.camel@tiger>
-References: <1021587354.1123.29.camel@tiger>
+Message-ID: <20020517201759.C16999@redhat.com>
+References: <6440EA1A6AA1D5118C6900902745938E50CF34@black.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail108.mail.bellsouth.net ([205.152.58.48] helo=imf08bis.bellsouth.net)
+Received: from to-velocet.redhat.com ([216.138.202.10] helo=touchme.toronto.redhat.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 178rXq-0001fO-00
-	for <nfs@lists.sourceforge.net>; Fri, 17 May 2002 16:53:58 -0700
-Received: from tiger ([208.61.41.20]) by imf08bis.bellsouth.net
-          (InterMail vM.5.01.04.05 201-253-122-122-105-20011231) with ESMTP
-          id <20020517235516.DMG17991.imf08bis.bellsouth.net@tiger>
-          for <nfs@lists.sourceforge.net>; Fri, 17 May 2002 19:55:16 -0400
-To: nfs@lists.sourceforge.net
-In-Reply-To: <1021587354.1123.29.camel@tiger>
+	id 178rv7-000596-00
+	for <nfs@lists.sourceforge.net>; Fri, 17 May 2002 17:18:02 -0700
+To: "Lever, Charles" <Charles.Lever@netapp.com>
+In-Reply-To: <6440EA1A6AA1D5118C6900902745938E50CF34@black.eng.netapp.com>; from Charles.Lever@netapp.com on Fri, May 17, 2002 at 03:17:53PM -0700
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,104 +26,24 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-I'm just trying to teach myself how to configure a filewall using
-iptables. This is my current script:
+[a few data points from the bugzilla entries]
 
-## Set up a default DROP policy for the built-in chains.
-iptables -P INPUT DROP
-iptables -P FORWARD DROP
-iptables -P OUTPUT ACCEPT
+On Fri, May 17, 2002 at 03:17:53PM -0700, Lever, Charles wrote:
+> i'm wondering what are the common elements here:
+> 
+> is the EEpro 100 ethernet card common to all clients
+> that exhibit this problem?
 
-## LOOPBACK
-# Allow unlimited traffic on the loopback interface.
-iptables -A INPUT -i lo -j ACCEPT
+eepro, tulip, 3com have all shown problems with 2.4.18 (at least 
+serious performance issues).
 
-## SYN-FLOODING PROTECTION
-iptables -N syn-flood
-iptables -A INPUT -i eth0 -p tcp --syn -j syn-flood
-iptables -A syn-flood -m limit --limit 1/s --limit-burst 4 -j RETURN
-iptables -A syn-flood -j DROP
+>  NFSv3 over UDP?
 
-## Make sure NEW tcp connections are SYN packets
-iptables -A INPUT -i eth0 -p tcp ! --syn -m state --state NEW -j DROP
+Yes.  A number of people have now reported that forcing v2 operation 
+does not result in slow performance, whereas in the 2.4.9-ac12 based 
+kernel, v3 was fine.
 
-## FRAGMENTS
-# Log fragments just to see if we get any, and deny them too.
-iptables -A INPUT -i eth0 -f -j LOG --log-prefix "IPTABLES FRAGMENTS: "
-iptables -A INPUT -i eth0 -f -j DROP
-
-## SPOOFING
-# Refuse spoofed packets pretending to be from your IP address.
-iptables -A INPUT -i eth0 -s 192.168.1.4/27 -j DROP
-# Refuse packets claiming to be from a Class A private network.
-iptables -A INPUT -i eth0 -s 10.0.0.0/8 -j DROP
-# Refuse packets claiming to be from a Class B private network.
-iptables -A INPUT -i eth0 -s 172.16.0.0/12 -j DROP
-# Refuse packets claiming to be from a Class C private network.
-iptables -A INPUT -i eth0 -s 192.168.0.0/16 -j DROP
-# Refuse Class D multicast addresses. Multicast is illegal as a source
-# address.
-iptables -A INPUT -i eth0 -s 224.0.0.0/4 -j DROP
-# Refuse Class E reserved IP addresses.
-iptables -A INPUT -i eth0 -s  240.0.0.0/4 -j DROP
-# Refuse packets claiming to be to the loopback interface.
-iptables -A INPUT -i eth0 -d 127.0.0.1/27 -j DROP
-# Refuse broadcast address packets.
-iptables -A INPUT -i eth0 -d 192.168.1.31 -j DROP
-
-## DNS server access (53)
-# Allow UDP packets in for DNS client from nameservers.
-iptables -A INPUT -i eth0 -p udp -s 205.152.16.20 --sport 53 -m state \
---state ESTABLISHED -j ACCEPT
-iptables -A INPUT -i eth0 -p udp -s 205.152.0.5 --sport 53 -m state \
---state ESTABLISHED -j ACCEPT
-
-## Web sites access (80,443 tcp)
-# Allow www surfing (HTTP). (80)
-iptables -A INPUT -i eth0 -p tcp --sport 80 -m state --state \
-ESTABLISHED -j ACCEPT
-# Allow secure www surfing (HTTPS). (443)
-iptables -A INPUT -i eth0 -p tcp --sport 443 -m state --state \
-ESTABLISHED -j ACCEPT
-
-## POP (110)
-# Allow to send mail to remote server.
-iptables -A INPUT -i eth0 -p tcp --sport 110 -m state --state \
-ESTABLISHED -j ACCEPT
-
-## SMTP (25)
-# Allow to retrieve mail from remote server.
-iptables -A INPUT -i eth0 -p tcp --sport 25 -m state --state \
-ESTABLISHED -j ACCEPT
-
-## NTTP (119)
-# Allow news from remote hosts.
-iptables -A INPUT -i eth0 -p tcp --sport 119 -m state --state \
-ESTABLISHED -j ACCEPT
-
-## FTP (20,21,1024:65535)
-# Allow ftp to remote systems. (21)
-iptables -A INPUT -i eth0 -p tcp --sport 21 -m state --state \
-ESTABLISHED -j ACCEPT
-# 1) Active ftp. (20)
-iptables -A INPUT -i eth0 -p tcp --sport 20 -m state --state \
-ESTABLISHED,RELATED -j ACCEPT
-# 2) Passive ftp. (1024:65535)
-iptables -A INPUT -i eth0 -p tcp --sport 1024:65535 --dport 1024:65535 \
-  -m state --state ESTABLISHED -j ACCEPT
-
-## IRC (6777)
-# Allow xchat to access remote hosts.
-iptables -A INPUT -i eth0 -p tcp --sport 6777 -m state --state \
-ESTABLISHED -j ACCEPT
-
-I'm on a private network (192.168.1.0/27) and my nfs server is (192.168.1.1/27)
-I still need help with mounting nfs shares, accessing ssh remote systems,
-ping and traceroute out. Can someone help me out, at least the nfs part?
-
-Thanks, --Louis
-
-
+		-ben
 
 _______________________________________________________________
 
