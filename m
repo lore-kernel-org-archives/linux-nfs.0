@@ -1,73 +1,35 @@
-From: Ruben Puettmann <ruben@puettmann.net>
-Subject: 2.6.X File locking on NFS stil broken
-Date: Wed, 9 Jun 2004 21:17:58 +0200
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: 2.6.X File locking on NFS stil broken
+Date: Wed, 09 Jun 2004 16:41:12 -0400
 Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <20040609191758.GA29969@puettmann.net>
+Message-ID: <1086813672.4078.24.camel@lade.trondhjem.org>
+References: <20040609191758.GA29969@puettmann.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org-S265855AbUFITV3@vger.kernel.org>
-To: linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset=iso-8859-1
+Cc: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org-S265967AbUFIUlu@vger.kernel.org>
+To: Ruben Puettmann <ruben@puettmann.net>
+In-Reply-To: <20040609191758.GA29969@puettmann.net>
 List-ID: <nfs.lists.sourceforge.net>
 
+P=E5 on , 09/06/2004 klokka 15:17, skreiv Ruben Puettmann:
+>                 hello,
+>=20
+>=20
+> I have a big iproblem with the nfs file locking on some 2.6 er kernel=
+=20
+>=20
+> Kernel Server: 2.4.9
+> Kernel Client: 2.6.7-rc3-bk2
+>                2.6.6-rc3-mm2
+>                2.6.5
+<snip>
+> This little testscript I  used ( got it from a friend):
 
-                hello,
+That script works fine for me: I haven't seen any hangs on locking in
+any of the 2.6 series kernels so far.
 
+What does 'rpcinfo -p' show on the client and server?
 
-I have a big iproblem with the nfs file locking on some 2.6 er kernel 
-
-Kernel Server: 2.4.9
-Kernel Client: 2.6.7-rc3-bk2
-               2.6.6-rc3-mm2
-               2.6.5
-
-mount options :
-
-10.0.0.149:/export     /mnt/server      nfs rw,auto,soft,bg,timeo=12,retrans=3,in tr,rsize=8192,wsize=8192,mountvers=3,nfsvers=3,udp  0  0
-
-nfs-utils :  1.0.6
-
-Both Server an Client Debian Sarge. Wiht kernel 2.4.21-pre5 the locking
-runs very fine against the server.
-
-This little testscript I  used ( got it from a friend):
-
-#define _GNU_SOURCE
-#include <unistd.h>
-#include <stdio.h>
-#include <fcntl.h>
-#include <string.h>
-#include <errno.h>
-
-int main(int c, char **v)
-{
-    for (++v, --c; c--; ++v) {
-        struct flock lck = {F_RDLCK, SEEK_SET, 0, 0}; /* whole file */
-        int fd = open(*v, O_RDONLY);
-        if ( fd < 0 )
-            fprintf(stderr, "%s: %s\n", *v, strerror(errno));
-        else {
-            if ( fcntl(fd, F_SETLK, &lck) < 0 )
-                fprintf(stderr, "%s[%d]: %s\n", *v, lck.l_pid, strerror(errno));
-            else
-                printf("%s..ok\n", *v);
-            close(fd);
-        }
-    }
-    return 0;
-}
-
-
-The programm hangs after executing ./script testfile. 
-
-
-                        Ruben
-
-
-
-
-
--- 
-Ruben Puettmann
-ruben@puettmann.net
-http://www.puettmann.net
+Cheers,
+  Trond
