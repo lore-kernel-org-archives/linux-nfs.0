@@ -1,19 +1,19 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 10 of 11 - nfsd-create-fix.patch
-Date: Fri, 28 May 2004 14:37:31 +1000
+Subject: [PATCH] kNFSd - 2 of 11 - nfsd_exp_remove_null_check.patch
+Date: Fri, 28 May 2004 14:37:30 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1BTZ7b-0008Er-9V@notabene.cse.unsw.edu.au>
+Message-ID: <E1BTZ7a-0008ED-TQ@notabene.cse.unsw.edu.au>
 References: <20040528143518.31534.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BUkX5-0006PJ-PE
-	for nfs@lists.sourceforge.net; Mon, 31 May 2004 04:00:43 -0700
+	id 1BUkWw-0006Nz-6j
+	for nfs@lists.sourceforge.net; Mon, 31 May 2004 04:00:34 -0700
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1BUkX4-0002od-Si
-	for nfs@lists.sourceforge.net; Mon, 31 May 2004 04:00:43 -0700
+	id 1BUkWv-0002mx-Dc
+	for nfs@lists.sourceforge.net; Mon, 31 May 2004 04:00:33 -0700
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.172.124]) (auth-user neilb) (ident-user Debian-exim)
 	(for <akpm@osdl.org>) (for <nfs@lists.sourceforge.net>) By note With
@@ -32,48 +32,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-
-Fix error return in create. (See comment in xdr for createtype4 at end of
-rfc3530.)
-
+If ek = exp_find_key() is not an error, then ek->ek_export should be set; no
+point in checking if it's NULL.
 
 
-From: Andy Adamson <andros@citi.umich.edu>
+
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
  ----------- Diffstat output ------------
- ./fs/nfsd/nfs4proc.c |    2 +-
- ./fs/nfsd/nfs4xdr.c  |    3 +--
- 2 files changed, 2 insertions(+), 3 deletions(-)
+ ./include/linux/nfsd/export.h |    3 +--
+ 1 files changed, 1 insertion(+), 2 deletions(-)
 
-diff ./fs/nfsd/nfs4proc.c~current~ ./fs/nfsd/nfs4proc.c
---- ./fs/nfsd/nfs4proc.c~current~	2004-05-28 14:27:26.000000000 +1000
-+++ ./fs/nfsd/nfs4proc.c	2004-05-28 14:28:27.000000000 +1000
-@@ -389,7 +389,7 @@ nfsd4_create(struct svc_rqst *rqstp, str
- 		break;
- 
- 	default:
--		BUG();
-+		status = nfserr_badtype;
- 	}
- 
- 	if (!status) {
-
-diff ./fs/nfsd/nfs4xdr.c~current~ ./fs/nfsd/nfs4xdr.c
---- ./fs/nfsd/nfs4xdr.c~current~	2004-05-28 14:27:26.000000000 +1000
-+++ ./fs/nfsd/nfs4xdr.c	2004-05-28 14:28:27.000000000 +1000
-@@ -538,9 +538,8 @@ nfsd4_decode_create(struct nfsd4_compoun
- 	case NF4SOCK:
- 	case NF4FIFO:
- 	case NF4DIR:
--		break;
- 	default:
--		goto xdr_error;
-+		break;
- 	}
- 
- 	READ_BUF(4);
+diff ./include/linux/nfsd/export.h~current~ ./include/linux/nfsd/export.h
+--- ./include/linux/nfsd/export.h~current~	2004-05-28 14:20:00.000000000 +1000
++++ ./include/linux/nfsd/export.h	2004-05-28 14:20:16.000000000 +1000
+@@ -124,8 +124,7 @@ exp_find(struct auth_domain *clp, int fs
+ 		int err;
+ 		exp_get(exp);
+ 		expkey_put(&ek->h, &svc_expkey_cache);
+-		if (exp &&
+-		    (err = cache_check(&svc_export_cache, &exp->h, reqp)))
++		if ((err = cache_check(&svc_export_cache, &exp->h, reqp)))
+ 			exp = ERR_PTR(err);
+ 		return exp;
+ 	} else
 
 
 -------------------------------------------------------
