@@ -1,19 +1,17 @@
-From: Steffen Persvold <sp@scali.com>
-Subject: Re: NFS clients behind a masqueraded gateway
-Date: Thu, 25 Apr 2002 19:24:52 +0200 (CEST)
+From: Pete Zaitcev <zaitcev@redhat.com>
+Subject: 1279 mounts
+Date: Thu, 25 Apr 2002 16:21:06 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.30.0204251922190.16930-100000@elin.scali.no>
-References: <Pine.LNX.4.30.0204180946500.10622-100000@elin.scali.no>
+Message-ID: <aa9orr$fp0$2@main.gmane.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, zaitcev@redhat.com
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from elin.scali.no ([62.70.89.10])
+Received: from nat-pool-rdu.redhat.com ([66.187.233.200] helo=devserv.devel.redhat.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 170mzy-0004jX-00
-	for <nfs@lists.sourceforge.net>; Thu, 25 Apr 2002 10:25:38 -0700
-To: NFS Mailinglist <nfs@lists.sourceforge.net>
-In-Reply-To: <Pine.LNX.4.30.0204180946500.10622-100000@elin.scali.no>
+	id 170pjp-0006bQ-00
+	for <nfs@lists.sourceforge.net>; Thu, 25 Apr 2002 13:21:09 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,43 +24,27 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hi again,
+I updated my patch that allows to mount unholy numbers of volumes.
+The old version was for 2.4.9 and did not apply anymore.
+I split the unnamed majors patch and the NFS patch.
+Also, CONFIG_ option is gone, because it made the code ugly.
 
-I hate to bother you guys again with this problem, but do you have any
-ideas (haven't received any response so far) ?
+Majors part:
+ http://people.redhat.com/zaitcev/linux/linux-2.4.19-pre7-unmaj.diff
+NFS part:
+ http://people.redhat.com/zaitcev/linux/linux-2.4.19-pre7-nores.diff
+Userland for NFS:
+ http://people.redhat.com/zaitcev/linux/util-linux-2.11q-nores1.diff
 
-Answers highly appreciated.
+Is anyone actually interested? Random people periodically ask
+me for patches, get them and disappear into the void. I hear
+nothing good or bad (well, nothing since Trond reviewed it
+several months ago, and also someone found a conflict with NFS
+server code, since fixed). I am thinking about submitting,
+but if users do not ask, why add extra bloat and negotiate
+with LANANA...
 
-On Thu, 18 Apr 2002, Steffen Persvold wrote:
-
-> Hi all,
->
-> I'm experiencing some problems with a cluster setup. The cluster is set up
-> in a way that you have a frontend machine configured as a masquerading
-> gateway and all the compute nodes behind it on a private network (i.e the
-> frontend has two network interfaces). User home directories and also other
-> data directories which should be available to the cluster (i.e statically
-> mounted in the same location on both frontend and nodes) are located on
-> external NFS servers (IRIX and Linux servers). This seems to work fine
-> when the cluster is in use, but if the cluster is idle for some time (e.g
-> over night), the NFS directories has become unavailable and trying to
-> reboot the frontend results in a complete hang when it tries to unmount
-> the NFS directories (it hangs in a fuser command). The frontend and all
-> the nodes are running RedHat 7.2, but with a stock 2.4.18 kernel (plus
-> Trond's seekdir patch, thanks for the help BTW).
->
-> Ideas anyone ?
->
-> Thanks in advance,
->
-
-Regards,
--- 
-  Steffen Persvold   | Scalable Linux Systems |   Try out the world's best
- mailto:sp@scali.com |  http://www.scali.com  | performing MPI implementation:
-Tel: (+47) 2262 8950 |   Olaf Helsets vei 6   |      - ScaMPI 1.13.8 -
-Fax: (+47) 2262 8951 |   N0621 Oslo, NORWAY   | >320MBytes/s and <4uS latency
-
+-- Pete
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
