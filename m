@@ -1,8 +1,8 @@
 From: Christian Reis <kiko@async.com.br>
-Subject: nfsroot.c handling of v3 vs. nfsvers=3
-Date: Sun, 26 Jan 2003 13:24:19 -0200
+Subject: fsid/fileid -> filename
+Date: Sun, 26 Jan 2003 20:54:29 -0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030126132419.A25395@blackjesus.async.com.br>
+Message-ID: <20030126205429.A26053@blackjesus.async.com.br>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
@@ -20,27 +20,11 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Hey there,
-
-It seems nfsroot.c's parsing of commandline options uses the strings
-'v2' and 'v3' for detecting which version should be used, and that no
-parsing occurs of the nfsvers parameter. Trond has actually reminded us
-of this just a while back [1].
-
-This is at least confusing, since most docs (and nfs(5) more
-importantly) indicate nfsvers=3 as the correct approach. Even worse,
-nfsroot.txt says "Standard NFS options", which seems to indicate the
-same ones as mount would accept.
-
-I'd be happy to either patch nfsroot.c to have this fixed if Trond
-thinks its a good idea. It would have to backwards compatible, of
-course, and in the case of multiple settings, the last one parsed would
-be used. Sounds okay?
-
-If not, I'll send in a patch for nfsroot.txt at least that makes things
-easier to understand.
-
-[1] http://www.uwsg.iu.edu/hypermail/linux/kernel/0201.3/0056.html
+One thing that would help a lot while debugging using ethereal is
+knowing how to look at the NFS requests and seeing what files are being
+accessed. However, the packets captured only contain the fsid and
+fileid, and I don't know how to get from them to the filename. Is there
+a way of finding this out? Some special /proc entry?
 
 Take care,
 --
