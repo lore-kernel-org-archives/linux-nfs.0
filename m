@@ -1,25 +1,24 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: NFSv3 ACL status?
-Date: Fri, 13 Aug 2004 10:45:32 -0400
+Subject: Re: Strange delays on NFS server
+Date: Fri, 13 Aug 2004 10:53:53 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <411CD40C.6040309@RedHat.com>
-References: <482A3FA0050D21419C269D13989C611302B07DC1@lavender-fe.eng.netapp.com> <20040813085230.GC12123@suse.de>
+Message-ID: <411CD601.1080308@RedHat.com>
+References: <4119FB15.7010205@stams.strath.ac.uk> <411A17F2.2060203@RedHat.com> <411A448D.3080205@stams.strath.ac.uk> <20040811164135.GA11101@suse.de> <411B8987.1030609@stams.strath.ac.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: "Lever, Charles" <cel@netapp.com>, Peter Astrand <peter@cendio.se>,
-        nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Olaf Kirch <okir@suse.de>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BvdIv-0007UE-Oq
-	for nfs@lists.sourceforge.net; Fri, 13 Aug 2004 07:45:13 -0700
+	id 1BvdQy-0001R8-Ug
+	for nfs@lists.sourceforge.net; Fri, 13 Aug 2004 07:53:32 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
 	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.34)
-	id 1BvdIv-0006QV-CV
-	for nfs@lists.sourceforge.net; Fri, 13 Aug 2004 07:45:13 -0700
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20040813085230.GC12123@suse.de>
+	id 1BvdQy-0007ea-H9
+	for nfs@lists.sourceforge.net; Fri, 13 Aug 2004 07:53:32 -0700
+To: Ian Thurlbeck <ian@stams.strath.ac.uk>
+In-Reply-To: <411B8987.1030609@stams.strath.ac.uk>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,25 +33,28 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
 
-Olaf Kirch wrote:
+Ian Thurlbeck wrote:
 
->On Thu, Aug 12, 2004 at 08:00:56AM -0700, Lever, Charles wrote:
->  
+>   PID USER PRI  NI  SIZE  RSS SHARE STAT %CPU %MEM   TIME CPU COMMAND
+>  6365 root  16   0  1244 1244   880 R     0.9  0.2   0:15   0 top
+>   156 root  15   0     0    0     0 DW    0.0  0.0  25:45   0 kjournald
+>  2021 root  15   0     0    0     0 DW    0.0  0.0  17:38   0 nfsd
+>  2037 root  15   0     0    0     0 DW    0.0  0.0  17:51   0 nfsd
+>  2042 root  15   0     0    0     0 DW    0.0  0.0  17:07   0 nfsd
+>  2044 root  15   0     0    0     0 DW    0.0  0.0  16:44   0 nfsd
 >
->>i believe what ag's patch set provides is "POSIX ACL support" which
->>means he has added the generic file system interfaces needed to support
->>ACLs as they are described in the POSIX standards.  "Solaris ACL
->>support" means using the Sun-defined NFS side-band protocol to access
->>and modify POSIX ACLs via an NFS client.
->>    
->>
+> And then the bdflush process joins in and the number of nfsd processes
+> grows, then shrinks back, and finally they all disappear.
 >
->No; Andreas' patches implement the Solaris ACL side-band protocol for
->NFSv3.  These patches are in the suse kernels; I don't know whether or
->not they are in any redhat kernels.
->  
->
-They are in RHEL kernels, not FC ones...
+Hmm... this is kinda what I expected... nfsd is waiting on the local 
+filesystem....
+Would it be nice if nfsd would know how to speak aio...  but  back to 
+reality.....
+What happens if you double/triple (assuming you have enough memory)  the 
+number nfsd
+that are started? does it help or hurt? My guess is it probably will not 
+make a difference
+but you never know....
 
 SteveD.
 
