@@ -1,18 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 22 of 34 - move fh_dup2 and fix it
+Subject: [PATCH] kNFSd - 24 of 34 - add OP_ILLEGAL, and fix processing of compounds with out of bounds op numbers.
 Date: Tue, 24 Feb 2004 10:49:42 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1AvPpW-0006Ju-00@notabene>
+Message-ID: <E1AvPpW-0006KC-00@notabene>
 References: <20040224104820.23884.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AvPr3-0006xf-LY
+	id 1AvPr3-0006xj-Ra
 	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 15:51:17 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.30)
-	id 1AvPf2-0002Q9-3Z
+	id 1AvPf2-0002QC-CR
 	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 15:38:52 -0800
 Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
 	(for <akpm@osdl.org>) (for <nfs@lists.sourceforge.net>) By note With
@@ -31,58 +31,69 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-fh_dup2 duplicates an entire svc_fh structure, so in addition to dget()'ing the
-dentry, it also needs to bump the reference count on fh_export.
-
-Moved it out of the header file into nfsfh.c for the simple reason that I
-couldn't figure out how to reorganize the headers files right so that the
-fh_dup2 could use the definition of svc_fh.  Since fh_dup2 is never actually
-used outside of nfs4proc.c, it could just as well be moved there....
-
  ----------- Diffstat output ------------
- ./fs/nfsd/nfs4proc.c         |   10 ++++++++++
- ./include/linux/nfsd/nfsfh.h |    8 --------
- 2 files changed, 10 insertions(+), 8 deletions(-)
+ ./fs/nfsd/nfs4xdr.c         |   16 +++++++++-------
+ ./include/linux/nfs4.h      |    1 +
+ ./include/linux/nfsd/nfsd.h |    1 +
+ 3 files changed, 11 insertions(+), 7 deletions(-)
 
-diff ./fs/nfsd/nfs4proc.c~current~ ./fs/nfsd/nfs4proc.c
---- ./fs/nfsd/nfs4proc.c~current~	2004-02-24 10:42:34.000000000 +1100
-+++ ./fs/nfsd/nfs4proc.c	2004-02-24 10:42:34.000000000 +1100
-@@ -55,6 +55,16 @@
+diff ./fs/nfsd/nfs4xdr.c~current~ ./fs/nfsd/nfs4xdr.c
+--- ./fs/nfsd/nfs4xdr.c~current~	2004-02-24 10:42:34.000000000 +1100
++++ ./fs/nfsd/nfs4xdr.c	2004-02-24 10:42:35.000000000 +1100
+@@ -1078,6 +1078,13 @@ nfsd4_decode_compound(struct nfsd4_compo
+ 		op->opnum = ntohl(*argp->p++);
  
- #define NFSDDBG_FACILITY		NFSDDBG_PROC
+ 		switch (op->opnum) {
++		case 2: /* Reserved operation */
++			op->opnum = OP_ILLEGAL;
++			if (argp->minorversion == 0)
++				op->status = nfserr_op_illegal;
++			else 
++				op->status = nfserr_minor_vers_mismatch;
++			break;
+ 		case OP_ACCESS:
+ 			op->status = nfsd4_decode_access(argp, &op->u.access);
+ 			break;
+@@ -1175,13 +1182,8 @@ nfsd4_decode_compound(struct nfsd4_compo
+ 			op->status = nfsd4_decode_release_lockowner(argp, &op->u.release_lockowner);
+ 			break;
+ 		default:
+-			/*
+-			 * According to spec, anything greater than OP_WRITE
+-			 * is treated as OP_WRITE+1 in the response.
+-			 */
+-			if (op->opnum > OP_WRITE)
+-			op->opnum = OP_WRITE + 1;
+-			op->status = nfserr_notsupp;
++			op->opnum = OP_ILLEGAL;
++			op->status = nfserr_op_illegal;
+ 			break;
+ 		}
  
-+static inline void
-+fh_dup2(struct svc_fh *dst, struct svc_fh *src)
-+{
-+	fh_put(dst);
-+	dget(src->fh_dentry);
-+	if (src->fh_export)
-+		cache_get(&src->fh_export->h);
-+	*dst = *src;
-+}
-+
- static int
- do_open_lookup(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_open *open)
- {
 
-diff ./include/linux/nfsd/nfsfh.h~current~ ./include/linux/nfsd/nfsfh.h
---- ./include/linux/nfsd/nfsfh.h~current~	2004-02-24 10:40:23.000000000 +1100
-+++ ./include/linux/nfsd/nfsfh.h	2004-02-24 10:42:34.000000000 +1100
-@@ -209,14 +209,6 @@ fh_copy(struct svc_fh *dst, struct svc_f
- 	return dst;
- }
+diff ./include/linux/nfs4.h~current~ ./include/linux/nfs4.h
+--- ./include/linux/nfs4.h~current~	2004-02-24 10:42:34.000000000 +1100
++++ ./include/linux/nfs4.h	2004-02-24 10:42:35.000000000 +1100
+@@ -87,6 +87,7 @@ enum nfs_opnum4 {
+ 	OP_VERIFY = 37,
+ 	OP_WRITE = 38,
+ 	OP_RELEASE_LOCKOWNER = 39,
++	OP_ILLEGAL = 10044,
+ };
  
--static __inline__ void
--fh_dup2(struct svc_fh *dst, struct svc_fh *src)
--{
--	fh_put(dst);
--	dget(src->fh_dentry);
--	*dst = *src;
--}
--
- static __inline__ struct svc_fh *
- fh_init(struct svc_fh *fhp, int maxsize)
- {
+ enum nfsstat4 {
+
+diff ./include/linux/nfsd/nfsd.h~current~ ./include/linux/nfsd/nfsd.h
+--- ./include/linux/nfsd/nfsd.h~current~	2004-02-24 10:42:34.000000000 +1100
++++ ./include/linux/nfsd/nfsd.h	2004-02-24 10:42:35.000000000 +1100
+@@ -195,6 +195,7 @@ void		nfsd_lockd_shutdown(void);
+ #define	nfserr_bad_xdr		__constant_htonl(NFSERR_BAD_XDR)
+ #define	nfserr_openmode		__constant_htonl(NFSERR_OPENMODE)
+ #define	nfserr_locks_held	__constant_htonl(NFSERR_LOCKS_HELD)
++#define	nfserr_op_illegal	__constant_htonl(NFSERR_OP_ILLEGAL)
+ 
+ /* error codes for internal use */
+ /* if a request fails due to kmalloc failure, it gets dropped.
 
 
 -------------------------------------------------------
