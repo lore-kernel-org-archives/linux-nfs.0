@@ -1,23 +1,22 @@
-From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-Subject: RE: rpc.statd -n
-Date: Wed, 2 Feb 2005 13:08:04 -0700 (MST)
-Message-ID: <Pine.LNX.4.60.0502021258240.8434@harp.ngdc.noaa.gov>
-References: <482A3FA0050D21419C269D13989C611307CF4BCB@lavender-fe.eng.netapp.com>
-Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+From: Ragnar =?iso-8859-15?Q?Kj=F8rstad?= <nfs@ragnark.vestdata.no>
+Subject: Re: rpc.statd -n
+Date: Wed, 2 Feb 2005 21:47:44 +0100
+Message-ID: <20050202204744.GB14848@vestdata.no>
+References: <Pine.LNX.4.60.0502021127170.8434@harp.ngdc.noaa.gov>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Content-Type: text/plain; charset=iso-8859-15
 Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CwQnF-0006fX-An
-	for nfs@lists.sourceforge.net; Wed, 02 Feb 2005 12:08:05 -0800
-Received: from harp.ngdc.noaa.gov ([140.172.178.33])
+	id 1CwRPs-0000GQ-LM
+	for nfs@lists.sourceforge.net; Wed, 02 Feb 2005 12:48:00 -0800
+Received: from [217.149.127.10] (helo=stine.vestdata.no ident=0)
 	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1CwQnE-0007nK-UV
-	for nfs@lists.sourceforge.net; Wed, 02 Feb 2005 12:08:05 -0800
-To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: <482A3FA0050D21419C269D13989C611307CF4BCB@lavender-fe.eng.netapp.com>
+	id 1CwRPp-0003b2-1w
+	for nfs@lists.sourceforge.net; Wed, 02 Feb 2005 12:47:59 -0800
+To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+In-Reply-To: <Pine.LNX.4.60.0502021127170.8434@harp.ngdc.noaa.gov>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,49 +30,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, 2 Feb 2005, Lever, Charles wrote:
+On Wed, Feb 02, 2005 at 11:41:52AM -0700, Ara.T.Howard wrote:
+> i have a question regarding rpc.statd and it's reporting of hostname.  =
+in=20
+> the
+> case of a multi-homed client, say one running nfs on the
+>=20
+>   client.b.domain
+>=20
+> interface.  rpc.statd must be forced to report itself as 'client.b.doma=
+in'
+> lest lockd recovery fail when it reports client.domain.  this is all we=
+ll=20
+> and
+> good - but what if you have nfs running on more than one interface, lik=
+e the
+> case of home dirs on front-door and file-server on back-door?  now what=
+ can
+> you do?  if you specify the hostname for rpc.statd you'll break lock=20
+> recovery
+> on one or the other filesystem right?
 
-thanks for the info charles-
+Search the archives for "STATD - SM_NOTIFY have wrong ID_NAME on
+multihost servers".
 
-> statd is a user-level thing.
 
-i though only lockd could be userland?
-
-> it has nothing to do with mount or the mount options.
-
-i realize that - i'm just suggesting that it should since nlm is all it's used
-for.
-
-> everything should work properly with multi-homed clients as long as each
-> client consistently uses the same unique hostname for both lockd and
-> statd requests, as far as i can tell.
-
-how can that be?  in our situation nfs runs on the back-door so server sees
-client as
-
-   client.b.ngdc.noaa.gov
-
-now, lockd recovery fails UNLESS '-n' argument is given to rpc.statd.
-however, having given the back-door name to statd, if we were to mount a
-filesystem on the frontdoor this name will then be incorrect for lock recovery
-on THAT server!  it seems to me that the reason this is true is exactly the
-reason our recovery was failing in the first place: the hostname used by
-rpc.statd has nothing to do with which interface the nfs/lockd communication
-was done using and, therefore, who the server thinks holds the lock.
-
-i HOPE i'm mistaken but this is my current (limited) understanding of the
-situation.
-
-cheers.
-
--a
--- 
-===============================================================================
-| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
-| PHONE   :: 303.497.6469
-| When you do something, you should burn yourself completely, like a good
-| bonfire, leaving no trace of yourself.  --Shunryu Suzuki
-===============================================================================
+--=20
+Ragnar Kj=F8rstad
+Software Engineer
+Scali - http://www.scali.com
+High Performance Clustering
 
 
 -------------------------------------------------------
