@@ -1,9 +1,9 @@
 From: "Jake Hammer" <hammer@clarkisland.com>
 Subject: RE: NFS read ok, write ok, simultaneous R+W=TERRIBLE
-Date: Wed, 4 Dec 2002 21:55:14 -0800
+Date: Wed, 4 Dec 2002 22:27:09 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <CFEAJJEGMGECBCJFLGDBAEHNCJAA.hammer@clarkisland.com>
-References: <3DEEDD90.915BAFF7@amis.com>
+Message-ID: <CFEAJJEGMGECBCJFLGDBKEHPCJAA.hammer@clarkisland.com>
+References: <3DEEEC53.D24A1933@amis.com>
 Mime-Version: 1.0
 Content-Type: text/plain;
 	charset="us-ascii"
@@ -11,10 +11,10 @@ Cc: "NFS" <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from cynaptic.com ([128.121.116.181])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18Joyx-0001oT-00
-	for <nfs@lists.sourceforge.net>; Wed, 04 Dec 2002 21:55:31 -0800
-To: "Eric Whiting" <ewhiting@amis.com>
-In-Reply-To: <3DEEDD90.915BAFF7@amis.com>
+	id 18JpTl-0002a3-00
+	for <nfs@lists.sourceforge.net>; Wed, 04 Dec 2002 22:27:21 -0800
+To: <ewhiting@amis.com>
+In-Reply-To: <3DEEEC53.D24A1933@amis.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,50 +27,28 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi All, Eric,
+> Sounds like you are not using the 3ware card for anything other than
+> just an IDE controller right?
 
-> 1. Make sure your network is clean and doing duplex right. (test using
-> two ftp sessions moving those 10 gig files -- one reading while one
-> writes) Ftp will let you know if the TCP part of your network is healthy
-> under full duplex loads.
+Exactly - I'm using it to give me SCSI JBOD.
 
-Network is pristine and duplex is 100% correct. Our Sun and NetApp gear
-works great.
+> There is a linux-ide-raid mailing list -- with good info. I've seen
+> people run raid 5 on the 3ware card and then use SW raid to stripe 2
+> 3ware cards. RAID 51 of sorts.
 
-> 2. Try TCP mounts
+I follow this list - no help as my disks are FAST. I'm using RAID 0+5 truth
+be known. Every pair of drives is striped in software. That gives me 7
+really fast drives (14 spindles striped in pairs). Then, I S/W Raid 5 those
+together. All done with EVMS. So, 1 parity and 6 data basically.
 
-They are even slower with read+write! 1-2MB/sec!
+> Also there was a pretty good IDE raid review today:
+>
+> http://tech-report.com/reviews/2002q4/ideraid/index.x?pg=1
 
-> 3. Try NFS V3
+I saw this cool article. My disks are *FAST* on R/W and R+W. My NFS is great
+on read, great on write, but just dies on read + write. Hence the conundrum.
 
-Not [well] supported for TCP. Since the Neil Brown patches enable it, I
-tried both UDP and TCP. Both are the same on read+write. UDP is faster by
-10-15% on read/write but the same on read+write.
-
-> 4. Make sure your IDE RAID system on the server is healthy. Can it
-> handle concurrent read/write processes on the local box -- with NFS out
-> of the picture?
-
-Local read/write and read+write is *great* - no issues at all. Local write
-is ~100MB/sec, local read is ~120MB/sec, and local read+write is ~105MB/sec.
-It's not the disk subsystem.
-
-> What is the filesystem you have on the RAID5 setup?
-> reiserfs/ext3/xfs/jfs?
-> What sort of IDE HW raid supports 14 disks? Or are you using SW raid?
-
-2 x 8 port 3ware IDE RAID cards, RAID 5 done in software by 2.4.19 IBM EVMS.
-Filesystem is EXT3, mounted with defaults. 14 disks.
-
-To summarize:
-
-Local disk is fast read, write, and read+write. NFS is sort of fast for read
-and for write, but it *utterly* dies on read + write UDP and TCP. Network is
-clean.
-
-> I would like to see a solution to this sort of problem as well.
-
-Glad you're seeing it as well. I hope it can be sorted out.
+Neil or Trond - any clues?
 
 Thanks,
 
