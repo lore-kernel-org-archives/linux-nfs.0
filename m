@@ -1,18 +1,24 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: 2.6.8.1 kernel NFS client connectathon failure
-Date: Fri, 17 Sep 2004 11:54:05 +1000
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 3 of 6] svcrpc: move export table checks to a per-program pg_add_client method
+Date: Thu, 16 Sep 2004 22:20:15 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16714.17341.832452.765979@cse.unsw.edu.au>
-References: <200409152054.i8FKsTNV002355@roma.math.duke.edu>
-	<1095304285.8598.51.camel@lade.trondhjem.org>
-	<16714.16573.467686.621248@cse.unsw.edu.au>
+Message-ID: <20040917022015.GA15212@fieldses.org>
+References: <1095375544.839c1c96.3@fieldses.org> <1095383919.10216.142.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>,
-    Andrew Schretter <schrett@math.duke.edu>,
-    NFS@lists.sourceforge.net
-In-Reply-To: message from Neil Brown on Friday September 17
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1C88MK-00063p-Gz
+	for nfs@lists.sourceforge.net; Thu, 16 Sep 2004 19:20:24 -0700
+Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.34)
+	id 1C88MJ-00050T-Lk
+	for nfs@lists.sourceforge.net; Thu, 16 Sep 2004 19:20:24 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1095383919.10216.142.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -25,31 +31,51 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Friday September 17, neilb@cse.unsw.edu.au wrote:
-> However with 2.6.9-rc1 on the client, something else happens.
-> Before the rename of BAR to FOO there is a rename
-> of FOO to .nfs000111a300000002.
-> It appears to be doing a "silly rename" even though the file is not
-> open.
-> Immediately after the rename of BAR to FOO - which ofcourse works as
-> FOO doesn't exist now, the .nfs000111a300000002 file is removed.
+On Thu, Sep 16, 2004 at 09:18:39PM -0400, Trond Myklebust wrote:
+> You are making a special method that is really very specific to
+> svcauth_unix and svcauth_null, yet the pg_set_client() appears as a
+> generic method in the generic svc_program object.
 > 
-> To me, this looks like the client doing the wrong thing - certainly an
-> unnecessary thing, and in this case an unhelpful thing.
+> Firstly, I'd strongly suggest that we call this callback pg_set_domain
+> so that there is no confusion about what it does.
 
-I just realised why it is definitely *Wrong*.
-"rename" is meant to guarantee that the target name always exists.
-Thus implementing
-   rename BAR FOO
-as
-   rename FOO .nfsxxx
-   rename BAR FOO
-is clearly wrong as there is a moment when FOO doesn't exist.
-   link FOO .nfsxxx
-   rename BAR FOO
-would be OK.
+After considering that, I decided that "client" (which is used in
+rq_client, in the nfsctl's (add_client), etc., in the exportfs
+documentation, etc.) makes more sense than "domain" (used only in the
+type struct auth_domain).
 
-NeilBrown
+> Secondly, please explain why we're leaving RPCSEC_GSS as a special case
+> here? Isn't the current implementation also calling up to "rpc.mountd"
+> in order to check "/etc/exports"?
+
+Yes, but that doesn't happen till later--we have to have a filehandle
+for that.  The mistake was probably referring to "the export table" in
+the patch comments--we're not really looking at that yet, we're only
+looking up the name of this client--it's not much more than a reverse
+dns lookup.  (So in the worst case, in auth_unix, there are *two*
+upcalls--one here, to get the name of the client, then one later to
+actually see whether something's exported to that client.)
+
+So this upcall really is auth_unix/auth_null-specific.
+
+But still there's some odd asymmetry here, I agree--I need to think
+about the auth_gss case.
+
+> Ideally, all the *_accept() methods
+> should be calling the same function to set the domain (or not to set it
+> as the case may be). Better still: could we defer calling
+> pg_set_domain() until after the call to svc_authenticate?
+
+That would be nice.
+
+> Finally, please could we move the domain_release() method out of struct
+> auth_ops and into struct auth_domain itself?
+
+Yeah, that's probably a good idea.
+
+Thanks for the comments.
+
+--b.
 
 
 -------------------------------------------------------
