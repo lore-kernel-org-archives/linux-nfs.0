@@ -1,20 +1,22 @@
-From: "Richard B. Johnson" <root@chaos.analogic.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: [PATCH] 2.4.19-rc1/2.5.25 provide dummy fsync() routine for directories on NFS mounts
-Date: Tue, 9 Jul 2002 10:06:45 -0400 (EDT)
+Date: Tue, 9 Jul 2002 16:08:43 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <ager03$jie$2@main.gmane.org>
+Message-ID: <ager0o$jjo$2@main.gmane.org>
 References: <200207091549.15913.trond.myklebust@fys.uio.no>
-Reply-To: root@chaos.analogic.com
+	<Pine.LNX.3.95.1020709095544.27285A-100000@chaos.analogic.com>
+Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net,
+    linux-kernel@vger.kernel.org
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from chaos.analogic.com ([204.178.40.224])
+Received: from pat.uio.no ([129.240.130.16])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17RvcZ-00078L-00
-	for <nfs@lists.sourceforge.net>; Tue, 09 Jul 2002 07:05:39 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <200207091549.15913.trond.myklebust@fys.uio.no>
+	id 17Rvfj-0007Ws-00
+	for <nfs@lists.sourceforge.net>; Tue, 09 Jul 2002 07:08:56 -0700
+To: root@chaos.analogic.com
+In-Reply-To: <Pine.LNX.3.95.1020709095544.27285A-100000@chaos.analogic.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,42 +29,22 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Tue, 9 Jul 2002, Trond Myklebust wrote:
+>>>>> " " == Richard B Johnson <root@chaos.analogic.com> writes:
 
-> Hi,
-> 
->    There was a bug reported on the 'exim' user list a couple of months ago: 
-> the Linux NFS client reports -EINVAL if you try to fsync() a directory.
-> 
->    The correct response would be to return a dummy '0' for success, since all 
-> NFS operations that change the directory are supposed to be performed 
-> synchronously on the server anyway...
-> 
-> Cheers,
->   Trond
-> 
-> 
+     > I think code that opens a directory as a file is broken. We
+     > have opendir() for that and it returns a DIR pointer, not a
+     > file descriptor.  If the directory was properly opened, one
+     > would never attempt to fsync() it.
 
-Isn't it supposed to return EINVAL if "fd is bound to a file which
-doesn't support synchronization..."  That's what POSIX 4 says.
+ fsync() is supported on directories on local filesystems as a way of
+ensuring that changes (due to file creation etc) are committed to
+disk. Where is the POSIX violation in that?
 
-Errors:
-EBADF	fildes is not a valid file descriptor.
-EINVAL	The file descriptor is valid, but the system doesn't support
-	fsync on this particular file.
-
-I think code that opens a directory as a file is broken. We have
-opendir() for that and it returns a DIR pointer, not a file descriptor.
-If the directory was properly opened, one would never attempt to
-fsync() it.
+ There is no reason why NFS, which ensures this anyway, should
+not adhere to this convention.
 
 Cheers,
-Dick Johnson
-
-Penguin : Linux version 2.4.18 on an i686 machine (797.90 BogoMips).
-
-                 Windows-2000/Professional isn't.
-
+  Trond
 
 
 -------------------------------------------------------
