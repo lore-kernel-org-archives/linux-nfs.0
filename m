@@ -1,19 +1,19 @@
 From: mehta kiran <kiranmehta1981@yahoo.com>
 Subject: Re: file :"/var/lib/nfs/rmtab"
-Date: Fri, 4 Feb 2005 05:22:34 -0800 (PST)
-Message-ID: <20050204132234.27979.qmail@web51604.mail.yahoo.com>
+Date: Fri, 4 Feb 2005 06:07:14 -0800 (PST)
+Message-ID: <20050204140714.89997.qmail@web51605.mail.yahoo.com>
 References: <4203717F.5010109@moving-picture.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Cx3Q1-0005Vw-Q4
-	for nfs@lists.sourceforge.net; Fri, 04 Feb 2005 05:22:41 -0800
-Received: from web51604.mail.yahoo.com ([206.190.38.209])
+	id 1Cx47G-0007oI-FR
+	for nfs@lists.sourceforge.net; Fri, 04 Feb 2005 06:07:22 -0800
+Received: from web51605.mail.yahoo.com ([206.190.38.210])
 	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
-	id 1Cx3Pz-0007fo-RJ
-	for nfs@lists.sourceforge.net; Fri, 04 Feb 2005 05:22:41 -0800
+	id 1Cx47E-0004Wm-KL
+	for nfs@lists.sourceforge.net; Fri, 04 Feb 2005 06:07:22 -0800
 To: James Pearson <james-p@moving-picture.com>
 In-Reply-To: <4203717F.5010109@moving-picture.com>
 Sender: nfs-admin@lists.sourceforge.net
@@ -29,25 +29,10 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi James , 
-        I am working on suse box.(2.6 kernel).
-        You mounted nfsd filesystem and then
-        you ran a script /etc/init.d/nfs.
-
-        Does this script starts and kills all nfs
-        daemons.? Can u verify whether it kills
-        mountd or not.?
-       
-        If mountd is not killed everthing works fine.
-        because it is mountd which reads rmtab.If it
-        is not restarted , it has all its data intact
-        and hence wont read rmtab.Thus , removing
-        entry from rmtab wont cause any problem.
-
+hi , 
+         I am using  nfs-utils-1.0.6-103.11
 thanks,
-  --kiran
-
-
+  kiran
 --- James Pearson <james-p@moving-picture.com> wrote:
 
 > What version of nfs-utils are you running?
@@ -259,12 +244,10 @@ thanks,
 === message truncated ===
 
 
-
-		
-__________________________________ 
-Do you Yahoo!? 
-Yahoo! Mail - Easier than ever with enhanced search. Learn more.
-http://info.mail.yahoo.com/mail_250
+__________________________________________________
+Do You Yahoo!?
+Tired of spam?  Yahoo! Mail has the best spam protection around 
+http://mail.yahoo.com 
 
 
 -------------------------------------------------------
