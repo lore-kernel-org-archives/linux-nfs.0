@@ -1,17 +1,23 @@
-From: Tom McNeal <trmcneal@attbi.com>
-Subject: Re: nfsstat limitations?
-Date: Mon, 25 Mar 2002 11:36:18 -0800
+From: Andrew Theurer <habanero@us.ibm.com>
+Subject: RPC error on NFS over TCP
+Date: Mon, 25 Mar 2002 18:05:03 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3C9F7C32.CD3D5A47@attbi.com>
-References: <3C9F4BCD.5050404@saepio.com>
+Message-ID: <200203260016.SAA38018@popmail.austin.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Received: from rwcrmhc52.attbi.com ([216.148.227.88])
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Received: from mg02.austin.ibm.com ([192.35.232.12])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16paFL-00078m-00
-	for <nfs@lists.sourceforge.net>; Mon, 25 Mar 2002 11:35:11 -0800
-To: Matthew Boeckman <matthewb@saepio.com>
+	id 16pedv-0000tM-00
+	for <nfs@lists.sourceforge.net>; Mon, 25 Mar 2002 16:16:51 -0800
+Received: from austin.ibm.com (netmail2.austin.ibm.com [9.3.7.139])
+	by mg02.austin.ibm.com (AIX4.3/8.9.3/8.9.3) with ESMTP id SAA34498
+	for <nfs@lists.sourceforge.net>; Mon, 25 Mar 2002 18:26:29 -0600
+Received: from popmail.austin.ibm.com (popmail.austin.ibm.com [9.53.247.178])
+	by austin.ibm.com (AIX4.3/8.9.3/8.9.3) with ESMTP id SAA29616
+	for <nfs@lists.sourceforge.net>; Mon, 25 Mar 2002 18:16:48 -0600
+Received: from there (crashandburn.austin.ibm.com [9.53.216.41]) by popmail.austin.ibm.com (AIX4.3/8.9.3/8.7-client1.01) with SMTP id SAA38018 for <nfs@lists.sourceforge.net>; Mon, 25 Mar 2002 18:16:48 -0600
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,57 +30,21 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Matthew Boeckman wrote:
-> 
-> Hello list!
-> 
-> I'm trying to track down some information about the nfsstat on linux.
-> Specifically from nfs-utils-0.3.1-5 on RH7.1 . What I'm looking for is
-> some additional client RPC information. nfsstat on solaris gives me all
-> kinds of nifty output about timeouts, badcalls, timers, etc:
-> Client rpc:
-> Connection oriented:
-> calls       badcalls    badxids     timeouts    newcreds    badverfs
-> 0           0           0           0           0           0
-> timers      cantconn    nomem       interrupts
-> 0           0           0           0
-> Connectionless:
-> calls       badcalls    retrans     badxids     timeouts    newcreds
-> 4           1           0           0           0           0
-> badverfs    timers      nomem       cantsend
-> 0           1           0           0
-> 
-> on linux:
-> Client rpc stats:
-> calls      retrans    authrefrsh
-> 70163      12         0
-> 
-> I've read the man page and docs on the sourceforge site, and it doesn't
-> appear that I'm missing any command line options. Is there somewhere
-> other than nfsstat that I can get this info?
-> 
-> Another question along the same lines: how can I track client side NFS
-> cache hit's and caching information in general? For a variety of
-> reasons, I'm caching the entire mounted filesystem for a long time, and
-> am interested/concerned in being able to track the system impact of
-> that. Things like, of all NFS calls, how many are being answered by the
-> cache, how much system resources is this cache taking up, etc. Thanks
-> for any and all replies!
-> 
-> -Matthew
+Has anyone seen this client error before?
+RPC: TCP connect error 104!
 
-Either the 0.3.1 version of nfsstat defaults to nfsstat -r -c
-(which I doubt) or you have an alias which is doing that behind
-your back.  The default for 0.3.3 utils (which are easy to install
-and should be used) would show both client and server stats for
-rpc and nfs versions 2 & 3.
+I get it sometimes when I try to mount an NFS fs from my clients to linux 
+server.  This also happens on an NFS read test I have.  This does not happen 
+on UDP.  All the clients eventually get what they want, but usually after a 
+couple minute delay.  
 
-Tom
+The linux server is kernel 2.4.18 (with Neil's patches) and sometimes 2.5.7.  
+The clients (48 of them) are mostly just RH-2.4.2-2 and one is 2.5.7 (happens 
+on both kernels).  There are no dropped packets reported on ifconfig.  There 
+are RPC retransmits on the clients.  Any ideas?
 
---
-------------------------------------------------------------
-Tom McNeal       trmcneal@attbi.com     (650)906-0761 (cell) 
-------------------------------------------------------------
+-Andrew
+
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
