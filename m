@@ -1,22 +1,13 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: knsfd - files don't sync to disk
-Date: Fri, 17 May 2002 21:58:25 +1000 (EST)
+From: "Tina Arora" <tinaarora@hotmail.com>
+Subject: cache  clear
+Date: Fri, 17 May 2002 17:57:26 +0530
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15588.61537.552697.595814@notabene.cse.unsw.edu.au>
-References: <3CE40BF7.1090605@chello.se>
+Message-ID: <DAV40H9DgaGipJ8a9Jw00010950@hotmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_0045_01C1FDCC.4E2BE5E0"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 178gNu-0003Ao-00
-	for <nfs@lists.sourceforge.net>; Fri, 17 May 2002 04:58:58 -0700
-Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <jorgen.karlsson@chello.se>) (for <nfs@lists.sourceforge.net>)
-	By tone With Smtp ; Fri, 17 May 2002 21:58:46 +1000
-To: =?ISO-8859-1?Q?J=F6rgen_Karlsson?= <jorgen.karlsson@chello.se>
-In-Reply-To: message from =?ISO-8859-1?Q?J=F6rgen_Karlsson?= on Thursday May 16
+To: <NFS@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,54 +20,47 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
+This is a multi-part message in MIME format.
 
-Are you using NFSv3?
+------=_NextPart_000_0045_01C1FDCC.4E2BE5E0
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-Does this patch:
-http://www.cse.unsw.edu.au/~neilb/patches/linux-stable/2.4.19-pre5/patch-I-NfsdVfsTidyup
+When I copy a file(which is NFS mounted)  on my client it takes approx. =
+11 sec .but when I copy the same file again into another file with a =
+different name it takes merely 0.045 sec this is coz it picks from the =
+cache of the client .How to clear the cache..
+tina=20
 
-make a difference?
 
-NeilBrown
+------=_NextPart_000_0045_01C1FDCC.4E2BE5E0
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-On Thursday May 16, jorgen.karlsson@chello.se wrote:
-> Hi,
-> 
-> We have a serious problem with knfsd and kernel 2.4.17.
-> 
-> When doing a database backup in our linux cluster we have noticed that
-> a few files are not written to disk properly. The files have zero
-> file size when checked with the 'ls' command
-> 
-> Several thousands of files are written to the nfs server during a
-> short period of time.  Average file size is 300-400 bytes.
-> 
-> We have noticed that usually 1-2 out of 3000 files will have their sizes
-> truncated to 0.
-> 
-> File  system is exported with (rw,sync)
-> 
-> The disk filesystem is ext2.
-> 
-> E.g. this is what is happening:
->           - client writes 272 bytes to the server
->           - mm/file.c:generic_file_write() returns 272 bytes written
->           - fs/nfsd/vfs.c:nfs_write() increments nfsdstats.io_write +=272
->              and returns that the write was sucessful.
->           - knfsd returns to client that 272 bytes was written.
->           - when checking with 'ls' command on server the file size is zero.
-> 
-> Apparently the nfs server lies to the client and the files are not
-> properly synced/written to disk.
-> 
-> Setting no_wdelay makes no difference.
-> 
-> When running with async set (or sync removed) the problem
-> disappears (no files have their sizes truncated to zero).
-> 
-> The nfs server is a PIII-700/ 1GB RAM
-> 
-> Any ideas what is going on ?
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; =
+charset=3Diso-8859-1">
+<META content=3D"MSHTML 6.00.2600.0" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV>
+<DIV>
+<DIV><FONT face=3DArial size=3D2>When I copy a file(which is NFS =
+mounted)&nbsp; on=20
+my client it takes approx. 11 sec .but when I copy the same file again =
+into=20
+another file with a different name it takes merely 0.045 sec this is coz =
+it=20
+picks from the cache of the client .How to clear the =
+cache..</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>tina </FONT></DIV>
+<DIV>&nbsp;</DIV></DIV></DIV></BODY></HTML>
+
+------=_NextPart_000_0045_01C1FDCC.4E2BE5E0--
 
 _______________________________________________________________
 
