@@ -1,19 +1,22 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: [BK] NFS client updates for 2.5.67
-Date: Tue, 8 Apr 2003 03:20:26 +0200
+From: Robin Humble <rjh@cita.utoronto.ca>
+Subject: max number of NFS mounts
+Date: Mon, 7 Apr 2003 23:59:25 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16018.9178.354140.998203@charged.uio.no>
-Reply-To: trond.myklebust@fys.uio.no
+Message-ID: <20030408035925.GB19119@marmot.cita.utoronto.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: NFS maillist <nfs@lists.sourceforge.net>,
-    Linux Kernel <linux-kernel@vger.kernel.org>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
+Received: from rail.cita.utoronto.ca ([128.100.76.4])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 192hmz-0007xF-00
-	for <nfs@lists.sourceforge.net>; Mon, 07 Apr 2003 18:20:41 -0700
-To: Linus Torvalds <torvalds@transmeta.com>
+	id 192kFF-00040F-00
+	for <nfs@lists.sourceforge.net>; Mon, 07 Apr 2003 20:58:01 -0700
+Received: from marmot.cita.utoronto.ca (localhost [127.0.0.1])
+	by cita.utoronto.ca (8.12.5/8.12.5) with ESMTP id h383xPLk019136
+	for <nfs@lists.sourceforge.net>; Mon, 7 Apr 2003 23:59:25 -0400
+Received: (from rjh@localhost)
+	by marmot.cita.utoronto.ca (8.12.5/8.12.5/Submit) id h383xPNg019134
+	for nfs@lists.sourceforge.net; Mon, 7 Apr 2003 23:59:25 -0400
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,84 +29,28 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Linus, please do a
 
-	bk pull http://nfsclient.bkbits.net/linux-2.5
+Hi,
 
-This will update the following files:
+We have a large linux cluster with 256 backend nodes, 10 development
+nodes, plus a few other mounts/machines of various sorts.
 
- fs/nfs/Makefile           |    3 
- fs/nfs/dir.c              |   23 +
- fs/nfs/file.c             |   27 +
- fs/nfs/idmap.c            |  474 ++++++++++++++++++++++++++++++++++
- fs/nfs/inode.c            |   38 +-
- fs/nfs/nfs4proc.c         |  535 ++++++++++++++++++++++++++-------------
- fs/nfs/nfs4state.c        |  178 +++++++++++-
- fs/nfs/nfs4xdr.c          |  630 ++++++++++++++++++++++++++++++----------------
- include/linux/nfs4.h      |    4 
- include/linux/nfs_fs.h    |   73 ++++-
- include/linux/nfs_fs_sb.h |    1 
- include/linux/nfs_idmap.h |   69 +++++
- include/linux/nfs_xdr.h   |   77 +++++
- net/sunrpc/xprt.c         |   10 
- 14 files changed, 1718 insertions(+), 424 deletions(-)
+When using autofs in an attempt to mount all backend disks at once we
+hit the 256 mounts limitation and only get to about 246 backend disks
+mounted - this is a pain :-/
 
-through these ChangeSets:
+so yes, your message (that I eventually found via Neil Brown) was most
+helpful and please add it to the FAQ and also into linux/Documentation/*
+somewhere.
+  http://sourceforge.net/mailarchive/message.php?msg_id=4215392
 
-<marius@citi.umich.edu> (03/04/08 1.1054)
-   Add hooks into the NFSv4 XDR code to make use of the new uid/gid
-   mapper upcall mechanism.
+also, can you guess whether 2.5/2.6 will lift the lame 256 mounts
+limit... ??
 
-<marius@citi.umich.edu> (03/04/08 1.1053)
-   Add support for mapping NFSv4 remote user/group names into local
-   unix-style uid/gids.
-   
-   Note that this makes use of the RPC client upcall mechanism
-   (rpc_pipefs) to notify a userland daemon that does the actual mapping.
-   The results are then cached in the kernel.
-   The userland daemon can be downloaded from the CITI NFSv4 page at
-   
-        http://www.citi.umich.edu/projects/nfsv4/
+cheers,
+robin
 
-<trond.myklebust@fys.uio.no> (03/04/08 1.1052)
-   Make the NFSv4 write code use the stateid if it exists.
-
-<trond.myklebust@fys.uio.no> (03/04/08 1.1051)
-   Make NFSv4 'read' code use the cached stateid if it exists.
-
-<trond.myklebust@fys.uio.no> (03/04/08 1.1050)
-   Make NFSv4 'setattr()' method use the cached stateid if the file is
-   already open.
-
-<trond.myklebust@fys.uio.no> (03/04/08 1.1049)
-   Setup code to tear down the NFSv4 state once we're done with a file.
-
-<trond.myklebust@fys.uio.no> (03/04/08 1.1048)
-   Implement stateful open() for NFSv4 as per RFC3010-bis.
-   The resulting state is saved in the NFS-specific part of the
-   struct inode.
-   
-   Initially we just start with 3 possible states:
-     - open for read
-     - open for write
-     - open for read/write
-
-<trond.myklebust@fys.uio.no> (03/04/08 1.1047)
-   Prepare for the introduction of NFSv4 state code.
-   
-   Split out the open() method for regular files from that of
-   directories.
-
-<trond.myklebust@fys.uio.no> (03/04/08 1.1046)
-   Remove bogus check on the size of NFSv4 'readdir' cookies.
-
-<trond.myklebust@fys.uio.no> (03/04/08 1.1045)
-   Fix a series of NFS read/readdir/readlink errors.
-   
-   Tightens consistency checks on the process of reading the reply skb in
-   the SunRPC client. Reject a reply if we didn't succeed in reading the
-   entire skb.
-
+ps. please CC me on replies as I'm not subscribed to the list
 
 
 -------------------------------------------------------
