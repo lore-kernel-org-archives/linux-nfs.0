@@ -1,18 +1,21 @@
-From: "justin case" <justin_case@gmx.net>
-Subject: server locks up totally
-Date: Tue, 1 Jul 2003 00:07:31 +0200
+From: Dan Kegel <dkegel@ixiacom.com>
+Subject: [PATCH] Make 'udp' mount option really mean it (was: Meaning of 'udp'
+ mount option)
+Date: Mon, 30 Jun 2003 15:24:05 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <LIEOIFOFHAJEGKGKHBEJMEJKDAAA.justin_case@gmx.net>
-Reply-To: <justin_case@gmx.net>
+Message-ID: <3F00B885.1010305@ixiacom.com>
+References: <3F00911E.5020001@ixiacom.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail.gmx.de ([213.165.64.20] helo=mail.gmx.net)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19X6nL-0006hk-00
-	for <nfs@lists.sourceforge.net>; Mon, 30 Jun 2003 15:06:43 -0700
-To: <nfs@lists.sourceforge.net>
+Received: from 64-60-75-69.cust.telepacific.net ([64.60.75.69] helo=racerx.ixiacom.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19X76s-0004hr-00
+	for <nfs@lists.sourceforge.net>; Mon, 30 Jun 2003 15:26:54 -0700
+To: Dan Kegel <dkegel@ixiacom.com>,  util-linux@math.uio.net,
+ aebr@win.tue.nl
+In-Reply-To: <3F00911E.5020001@ixiacom.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,30 +28,140 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-hi,
+Dan Kegel wrote:
+> Question 1: what does the 'udp' mount option really mean?
+> It appears to mean 'Use udp mostly, but use TCP when calling 
+> pmap_getmaps()'.
+> Question 2: is this a bug or a feature?
 
-i build up a diskless-system  using etherboot and root on an nfs-share. both
-systems are redhat9 with 2.4.20 kernels.
+Assuming it's a bug, here's a patch that fixes it, by using
+UDP even for pmap_getmaps().  It worked for me, and I'll probably
+use it, but I wouldn't be suprised if others preferred to
+add a new mount option to get this behavior.
 
-so far everything works well now but strangely the nfs-server tends to lock
-up out of the blue. this is not reconstructable and just happens sooner or
-later.
+I use a retry of 5 seconds, no idea if that's right.
+- Dan
 
-since it always locks up the entire machine(!) i can't get any error-message
-and slowly i am a little desperate here..
+--- util-linux-2.11n/mount/nfsmount.c.old	Sat Sep 29 15:43:26 2001
++++ util-linux-2.11n/mount/nfsmount.c	Mon Jun 30 13:48:28 2003
+@@ -68,6 +68,9 @@
 
-i don't use any automouter and my /etc/exports file only contains:
+  static char *nfs_strerror(int stat);
 
-tftpboot/gate01 192.168.1.20(rw,no_root_squash)
++static struct pmaplist *
++pmap_getmaps_udp (struct sockaddr_in *address);
++
+  #define MAKE_VERSION(p,q,r)	(65536*(p) + 256*(q) + (r))
 
-i can reboot the server and the client starts working again the second the
-nfs-share is available again, so the client-side seems to be ok.
+  #define MAX_NFSPROT ((nfs_mount_version >= 4) ? 3 : 2)
+@@ -142,7 +145,10 @@
+  	p.pm_port = port;
 
-sorry for coming up with such little info  :(
-hopefully anybody has an idea..
+  	server_addr->sin_port = PMAPPORT;
+-	pmap = pmap_getmaps(server_addr);
++	if (proto == IPPROTO_TCP)
++		pmap = pmap_getmaps(server_addr);
++	else
++		pmap = pmap_getmaps_udp(server_addr);
 
-my regards
-/jc
+  	while (pmap) {
+  		if (pmap->pml_map.pm_prog != prog)
+@@ -877,3 +883,95 @@
+          return port;
+  }
+  #endif
++
++/* added 30 June 2003, dkegel@ixiacom.com; modified to use udp */
++/* @(#)pmap_getmaps.c	2.2 88/08/01 4.0 RPCSRC */
++/*
++ * Sun RPC is a product of Sun Microsystems, Inc. and is provided for
++ * unrestricted use provided that this legend is included on all tape
++ * media and as a part of the software program in whole or part.  Users
++ * may copy or modify Sun RPC without charge, but are not authorized
++ * to license or distribute it to anyone else except as part of a product or
++ * program developed by the user.
++ *
++ * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
++ * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
++ * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
++ *
++ * Sun RPC is provided with no support and without any obligation on the
++ * part of Sun Microsystems, Inc. to assist in its use, correction,
++ * modification or enhancement.
++ *
++ * SUN MICROSYSTEMS, INC. SHALL HAVE NO LIABILITY WITH RESPECT TO THE
++ * INFRINGEMENT OF COPYRIGHTS, TRADE SECRETS OR ANY PATENTS BY SUN RPC
++ * OR ANY PART THEREOF.
++ *
++ * In no event will Sun Microsystems, Inc. be liable for any lost revenue
++ * or profits or other special, indirect and consequential damages, even if
++ * Sun has been advised of the possibility of such damages.
++ *
++ * Sun Microsystems, Inc.
++ * 2550 Garcia Avenue
++ * Mountain View, California  94043
++ */
++#if !defined(lint) && defined(SCCSIDS)
++static char sccsid[] = "@(#)pmap_getmaps.c 1.10 87/08/11 Copyr 1984 Sun Micro";
++#endif
++
++/*
++ * pmap_getmap.c
++ * Client interface to pmap rpc service.
++ * contains pmap_getmaps, which is only tcp service involved
++ *
++ * Copyright (C) 1984, Sun Microsystems, Inc.
++ */
++
++#include <rpc/rpc.h>
++#include <rpc/pmap_prot.h>
++#include <rpc/pmap_clnt.h>
++#include <sys/socket.h>
++#include <netdb.h>
++#include <stdio.h>
++#include <errno.h>
++#include <libintl.h>
++
++/*
++ * Get a copy of the current port maps.
++ * Calls the pmap service remotely to do get the maps.
++ */
++struct pmaplist *
++pmap_getmaps_udp (struct sockaddr_in *address)
++{
++  struct pmaplist *head = (struct pmaplist *) NULL;
++  int socket = -1;
++  struct timeval minutetimeout;
++  struct timeval retry;
++  CLIENT *client;
++
++  minutetimeout.tv_sec = 60;
++  minutetimeout.tv_usec = 0;
++  address->sin_port = htons (PMAPPORT);
++#if 0
++  client = clnttcp_create (address, PMAPPROG,
++			   PMAPVERS, &socket, 50, 500);
++#else
++  retry.tv_sec = 5;
++  retry.tv_usec = 0;
++  if ((client = clntudp_create (address, PMAPPROG,
++				PMAPVERS, retry, &socket)) == NULL)
++#endif
++  if (client != (CLIENT *) NULL)
++    {
++      if (CLNT_CALL (client, PMAPPROC_DUMP, (xdrproc_t)xdr_void, NULL,
++		     (xdrproc_t)xdr_pmaplist, (caddr_t)&head,
++		     minutetimeout) != RPC_SUCCESS)
++	{
++	  clnt_perror (client, _("pmap_getmaps rpc problem"));
++	}
++      CLNT_DESTROY (client);
++    }
++  /* (void)close(socket); CLNT_DESTROY already closed it */
++  address->sin_port = 0;
++  return head;
++}
++
 
 
 
