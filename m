@@ -1,24 +1,25 @@
 From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: ANNOUNCE: nfs-utils 1.0.7-pre2
-Date: Fri, 17 Dec 2004 15:00:57 +1100
-Message-ID: <16834.23033.457317.370416@cse.unsw.edu.au>
-References: <16825.223.924965.582375@cse.unsw.edu.au>
-	<200412101420.06172.bernd-schubert@web.de>
-	<20041210143032.GB5886@fieldses.org>
+Subject: ANNOUNCE: nfs-utils 1.0.7 (final)
+Date: Fri, 17 Dec 2004 15:23:12 +1100
+Message-ID: <16834.24368.869308.53649@cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Bernd Schubert <bernd-schubert@web.de>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Cf9Ik-0008E5-LE
-	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 20:01:10 -0800
+	id 1Cf9eB-0001NJ-Se
+	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 20:23:19 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1Cf9Ik-0002LU-0Z
-	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 20:01:10 -0800
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: message from J. Bruce Fields on Friday December 10
+	id 1Cf9e7-0004ve-Ux
+	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 20:23:19 -0800
+Received: From notabene.cse.unsw.edu.au ([129.94.172.124]) (auth-user neilb)
+	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
+	Fri, 17 Dec 2004 15:23:13 +1100
+Received: from neilb by notabene.cse.unsw.edu.au with local (Exim 4.34)
+	id 1Cf9e4-0002Sb-Sz
+	for nfs@lists.sourceforge.net; Fri, 17 Dec 2004 15:23:12 +1100
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,22 +33,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Friday December 10, bfields@fieldses.org wrote:
-> On Fri, Dec 10, 2004 at 02:20:06PM +0100, Bernd Schubert wrote:
-> > Should the configure script assume '--disable-gss' when --disable-nfsv4 is 
-> > given? 
-> 
-> It's possible someone could want gss but not nfsv4; the two are
-> independent, since gss works for all nfs versions.
 
-s/are/should be/
+I have made a final release of  nfs-utils 1.0.7.
 
-The point is that svcgssd_proc.c includes nfsidmap.h, so gss support
-won't build without nfsidmap.h even thought it shouldn't be needed.
-Maybe this can be cleaned up for 1.0.8, but I'll release 1.0.7 with an
-extra check for nfsidmap.h is gss is selected.
+It can be downloaded from 
+  http://sourceforge.net/project/showfiles.php?group_id=14
+or
+  http://www.{countrycode}.kernel.org/pub/linux/utils/nfs/
 
-NeilBrown
+It is over a year since the last release of nfs-utils and there are 
+quite a lot of changes in 1.0.6. These include:
+
+ - nfsv4 support
+ - gss authnetication support
+ - callouts from statd and mountd to support high-availabilty clusters
+ - an assortment of bug fixes and minor improvements.
+
+This release requires libnfsidmap, libevent, and a krb5 instalation to compile
+properly.  If these are not available, and you don't require nfsv4 or gss support
+configure with "--disable-nfsv4 --disable-gss".
+See README for more details.
+
+Have a merry, and safe, Christmas.
+
+NeilBrown 17-December-2004
 
 
 -------------------------------------------------------
