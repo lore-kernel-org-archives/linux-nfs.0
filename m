@@ -1,21 +1,19 @@
-From: Daryl Herzmann <akrherz@iastate.edu>
+From: Benjamin LaHaise <bcrl@redhat.com>
 Subject: Re: RedHat 7.3 crashed NetApp?
-Date: Fri, 17 May 2002 12:16:48 -0500 (CDT)
+Date: Fri, 17 May 2002 13:32:27 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.42.0205171214010.1202-100000@akrherz.agron.iastate.edu>
-References: <20020517081125.A5553@lucon.org>
+Message-ID: <20020517133226.C16525@redhat.com>
+References: <20020517081125.A5553@lucon.org> <Pine.LNX.4.42.0205171214010.1202-100000@akrherz.agron.iastate.edu>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mailhub-1.iastate.edu ([129.186.140.3])
+Received: from to-velocet.redhat.com ([216.138.202.10] helo=touchme.toronto.redhat.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 178lLW-000536-00
-	for <nfs@lists.sourceforge.net>; Fri, 17 May 2002 10:16:50 -0700
-Received: from mailout-1.iastate.edu (mailout-1.iastate.edu [129.186.140.1])
-	by mailhub-1.iastate.edu (8.9.3/8.9.3) with SMTP id MAA29435
-	for <nfs@lists.sourceforge.net>; Fri, 17 May 2002 12:16:47 -0500
-To: nfs@lists.sourceforge.net
-In-Reply-To: <20020517081125.A5553@lucon.org>
+	id 178lae-000692-00
+	for <nfs@lists.sourceforge.net>; Fri, 17 May 2002 10:32:29 -0700
+To: Daryl Herzmann <akrherz@iastate.edu>
+In-Reply-To: <Pine.LNX.4.42.0205171214010.1202-100000@akrherz.agron.iastate.edu>; from akrherz@iastate.edu on Fri, May 17, 2002 at 12:16:48PM -0500
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,43 +26,13 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hi,
+On Fri, May 17, 2002 at 12:16:48PM -0500, Daryl Herzmann wrote:
+> Time for a RH bugzilla entry or is there one?
 
-I reported the exact same thing with an IRIX server on Friday to this 
-list.  I am glad that others are experiencing it too.  Using version 2 
-made the troubles go away for me.
+There are several.  Some of the people reporting problems have verified 
+that they are present in 2.4.19-pre8 as well.
 
-http://www.geocrawler.com/lists/3/SourceForge/789/75/8633160/
-
-Time for a RH bugzilla entry or is there one?
-
-Daryl
-
-On Fri, 17 May 2002, H . J . Lu wrote:
-
->On Fri, May 17, 2002 at 08:14:37AM -0500, Cooke, Alan wrote:
->> While running the 2.4.18-4smp kernel (RedHat), and testing NFS3, our NetApp filer running OnTap 6.1.1R2 experienced massive incoming traffic from the Linux client in question. The Linux client required rebooting. We have been able to repeat this behavior, and are suspicious of the network driver on the Linux client which is using the eth0 driver. A
->> 
->
->I think it is the same as what happened to me. I had to reboot/unplug
->my Linux client before the whole NFS network went down. I am using Intel
->e100 driver on eepro100. But my Linux NFS severs have no problem with
->that client.
->
->
->H.J.
->
->
-
--- 
-/**
- * Daryl Herzmann (akrherz@iastate.edu)
- * Program Assistant -- Iowa Environmental Mesonet
- * http://mesonet.agron.iastate.edu
- */
-
-
-
+		-ben
 
 _______________________________________________________________
 
