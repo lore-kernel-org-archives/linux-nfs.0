@@ -1,27 +1,22 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: nfsd re-export
-Date: Wed, 24 Sep 2003 16:29:18 +1000
+From: =?iso-8859-1?Q?Brasseur_Val=E9ry?= <Valery.Brasseur@atosorigin.com>
+Subject: readdir and readdirplus...
+Date: Wed, 24 Sep 2003 10:50:21 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16241.14782.867287.206619@notabene.cse.unsw.edu.au>
-References: <3F706D2F.90204@iut.univ-paris8.fr>
+Message-ID: <8147E1B07201DD41B6B9F0D31E07B384016486A6@srv-grp-s07.dev.atos.fr>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1A239j-0002A7-00
-	for <nfs@lists.sourceforge.net>; Tue, 23 Sep 2003 23:29:43 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.22)
-	id 1A239i-0000ck-M6
-	for nfs@lists.sourceforge.net; Tue, 23 Sep 2003 23:29:42 -0700
-Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <y.azzouz@iut.univ-paris8.fr>) (for <nfs@lists.sourceforge.net>)
-	By note With Smtp ; Wed, 24 Sep 2003 16:29:30 +1000
-To: Yahya AZZOUZ <y.azzouz@iut.univ-paris8.fr>
-In-Reply-To: message from Yahya AZZOUZ on Tuesday September 23
+	id 1A27hQ-0004Rf-00
+	for <nfs@lists.sourceforge.net>; Wed, 24 Sep 2003 04:20:48 -0700
+Received: from srv-grp-s01.axime.com ([160.92.18.102])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
+	id 1A25MO-0004IV-3Y
+	for nfs@lists.sourceforge.net; Wed, 24 Sep 2003 01:50:56 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -34,30 +29,18 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tuesday September 23, y.azzouz@iut.univ-paris8.fr wrote:
-> hello,
-> 
-> i want to re-export a nfs file system.
+I am using a linux 2.4.20+NFS-ALL patches.
+my server is a Netapp Filer
 
-You cannot (in Linux).
+I am using NFSv3
 
+what I did not understand is that it's seems that linux does not use =
+READDIRPLUS ...=20
+is it normal ? in sources I have seen that certain condition should be =
+met... but I never see any READDIRPLUS request !!!
 
-NeilBrown
-
-> I don't know if it is possible.
-> Some idies !
-> 
-> thanks
-> 
-> 
-> 
-> -------------------------------------------------------
-> This sf.net email is sponsored by:ThinkGeek
-> Welcome to geek heaven.
-> http://thinkgeek.com/sf
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+thanks
+valery
 
 
 -------------------------------------------------------
