@@ -1,28 +1,28 @@
 From: Garrick Staples <garrick@usc.edu>
 Subject: Re: 2.6.6 lockupy
-Date: Wed, 26 May 2004 15:26:16 -0700
+Date: Wed, 26 May 2004 21:39:00 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040526222616.GL6931@polop.usc.edu>
+Message-ID: <20040527043900.GC6931@polop.usc.edu>
 References: <20040526211115.GI6931@polop.usc.edu> <20040526213732.GG2827@fieldses.org> <20040526214435.GK6931@polop.usc.edu> <20040526215555.GI2827@fieldses.org>
 Mime-Version: 1.0
 Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="633Qqqc8nwy7lrt9"
+	protocol="application/pgp-signature"; boundary="RYLajQ58OAnL4YcY"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BT6sT-0005Ml-Mt
-	for nfs@lists.sourceforge.net; Wed, 26 May 2004 15:28:01 -0700
+	id 1BTCfV-0004Ck-R4
+	for nfs@lists.sourceforge.net; Wed, 26 May 2004 21:39:01 -0700
 Received: from polop.usc.edu ([128.125.10.9])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.30)
-	id 1BT6sT-00057N-EV
-	for nfs@lists.sourceforge.net; Wed, 26 May 2004 15:28:01 -0700
+	id 1BTCfV-0005y7-EN
+	for nfs@lists.sourceforge.net; Wed, 26 May 2004 21:39:01 -0700
 Received: from polop.usc.edu (localhost.localdomain [127.0.0.1])
-	by polop.usc.edu (8.12.11/8.12.11) with ESMTP id i4QMQGmL017089
-	for <nfs@lists.sourceforge.net>; Wed, 26 May 2004 15:26:16 -0700
+	by polop.usc.edu (8.12.11/8.12.11) with ESMTP id i4R4d0DT017651
+	for <nfs@lists.sourceforge.net>; Wed, 26 May 2004 21:39:00 -0700
 Received: (from garrick@localhost)
-	by polop.usc.edu (8.12.11/8.12.11/Submit) id i4QMQG9M017087
-	for nfs@lists.sourceforge.net; Wed, 26 May 2004 15:26:16 -0700
+	by polop.usc.edu (8.12.11/8.12.11/Submit) id i4R4d0Jv017649
+	for nfs@lists.sourceforge.net; Wed, 26 May 2004 21:39:00 -0700
 To: nfs@lists.sourceforge.net
 In-Reply-To: <20040526215555.GI2827@fieldses.org>
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -38,7 +38,7 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
---633Qqqc8nwy7lrt9
+--RYLajQ58OAnL4YcY
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 Content-Transfer-Encoding: quoted-printable
@@ -53,36 +53,38 @@ st try
 > OK.  May as well send us what information you have on the lockups, and
 > maybe your .config while you're at it....
 
-It's more info then I feel like posting to the list, but I've got it at:
-http://www-rds.usc.edu/~garrick/nfsprobs/
+Filesystem corruption from the repeated lockups finally showed up today.  S=
+o I
+managed to get those two machines out of production for now.  I'll be able =
+to
+figure out to trigger the problem and hopefully get you some better info
+tomorrow.
 
-=20
-> (Also, you mention 2.6.6 in your subject line but it sounds like this
-> happens to you under earlier kernels as well?  Are there any kernels
-> that are OK?)
+Btw, the failover capabilities of 2.6 has been very well tested the last few
+days :)  Nearly 15TB of data was swapped back and forth during heavy writes.
+Good job guys on that!
 
-2.6.6 locks up less often than 2.6.5.  I also had 2.6.3, but it had other s=
-csi
-driver issues.  2.6.3 never saw this kind of load, but I can try it if you
-want.
+Btw, reiserfs+lvm2 is very resilient!
+
+(does anyone have advice on triggering a kernel trace on ia64?)
 
 --=20
 Garrick Staples, Linux/HPCC Administrator
 University of Southern California
 
---633Qqqc8nwy7lrt9
+--RYLajQ58OAnL4YcY
 Content-Type: application/pgp-signature
 Content-Disposition: inline
 
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v1.2.3 (GNU/Linux)
 
-iD8DBQFAtRmI0SBUxJbm9HMRAj9dAKCQdASPGg6Xlp3lXNru5y75Oge/VgCfU2z8
-8wJspod3ItrSYpWc0FLnEcI=
-=/TPC
+iD8DBQFAtXDk0SBUxJbm9HMRAlu6AJ47wrpVb/PTawG0acVEaeA47h28kgCghOoy
+mirM4rZtgy+feCfzQ7a9o0M=
+=PYsH
 -----END PGP SIGNATURE-----
 
---633Qqqc8nwy7lrt9--
+--RYLajQ58OAnL4YcY--
 
 
 -------------------------------------------------------
