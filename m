@@ -1,20 +1,14 @@
-From: Brian Pawlowski <beepy@netapp.com>
-Subject: Re: Re: network storage solutions
-Date: Thu, 15 May 2003 23:07:07 -0700 (PDT)
+From: "Adriana Kraft" <do7d7n955azz@earthlink.net>
+Subject: Need Debt Relief?  We Can Help! eudbh g
+Date: Tue, 29 Jan 02 15:46:07 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200305160607.h4G677M29359@orbit-fe.eng.netapp.com>
-References: <200305151819.h4FIJBq19624@orbit-fe.eng.netapp.com>
+Message-ID: <f11spv4r7-c$p0-$uzs32kug$mbr@7s3w.8.75z2>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: jeffrey.b.layton@lmco.com, beowulf@beowulf.org,
-   landman@scalableinformatics.com, nfs@lists.sourceforge.net
+Content-Type: multipart/alternative;
+	boundary="3E76A03F..2DDC50B."
+Cc: <nms-cgi-support@lists.sourceforge.net>, <nms-cgi.support@lists.sourceforge.net>, <ofset-members@lists.sourceforge.net>, <opennap-admin@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mx01.netapp.com ([198.95.226.53])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19GYNJ-0004ke-00
-	for <nfs@lists.sourceforge.net>; Thu, 15 May 2003 23:07:25 -0700
-In-Reply-To: <200305151819.h4FIJBq19624@orbit-fe.eng.netapp.com> from Brian Pawlowski at "May 15, 3 11:19:11 am"
-To: beepy@netapp.com (Brian Pawlowski)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,17 +21,80 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> People use soft mounts for (1) improved performance (you can juice
-> up cheap servers by caching data), or (2) prevent hung clients
-> in face of unreliable networks and servers (when client is accessing
-> many NFS servers).
+This is a multi-part message in MIME format.
 
-Skip (1) - that is (a)sync on server (not soft mounts).  I should think before
-I type:-)
+--3E76A03F..2DDC50B.
+Content-Type: text/html;
+Content-Transfer-Encoding: quoted-printable
 
-So, Windows CIFS has dramatic "soft mount" like behaviour (some
-popup like "Delayed writes lost" on session disconnect).  Always
-a pain - makes me want hard mount NFS behaviour.
+<html><head>
+<title>bidirectional</title>
+</head>
+<body>
+<table border=3D"0" width=3D"640">
+
+  <tr>
+
+    <td width=3D"193"></td>
+
+    <td width=3D"447" valign=3D"top"><table border=3D"1" width=3D"73%" bor=
+dercolor=3D"#0000FF"
+
+    cellspacing=3D"1">
+
+      <tr>
+
+        <td width=3D"100%">
+            <p align=3D"center"><strong><font face=3D"Verdana">&quot;NEW D=
+EBT CONSOLIDATION 
+              PROGRAM ALLOWS CONSUMERS TO SETTLE ALL THEIR DEBT FOR JUST P=
+ENNIES 
+              ON THE DOLLAR&quot;</font></strong></p>
+
+        <table border=3D"0" width=3D"100%" bgcolor=3D"#808000">
+
+          <tr>
+
+                <td width=3D"100%"> 
+   <img border=3D"0" src=3D"http://sparkle:sheathe@www.debteasy1=
+23.com/Debt/pc1.jpg" width=3D"349" height=3D"230">
+
+            </td>
+
+          </tr>
+
+        </table>
+
+        <p align=3D"center">
+<a href=3D"http://crayon:sproul@www.debteasy123.com/index.php"=
+><font face=3D"Verdana">
+<strong><big><big>CLICK HERE
+
+        NOW FOR MORE INFO</big></big></strong></font></a></p>
+
+        <p align=3D"center"><strong><small><font face=3D"Verdana">No oblig=
+ation - Find out more</font></small></strong></td>
+
+      </tr>
+
+    </table>
+
+    </td>
+
+  </tr>
+
+</table>
+<p><small><small><font size=3D"+1">To be removed from this mailing list, c=
+lick <a href=3D"mailto:unsubscribe123@web.de?Subject=3DREMOVE">here</a></f=
+ont></small></small></p>
+</body>
+
+</html>yemqolfckvfjklj zwwo z hy
+fperpetuateipvcsb werdqv
+rmngubanrknxc
+
+--3E76A03F..2DDC50B.--
+
 
 
 -------------------------------------------------------
