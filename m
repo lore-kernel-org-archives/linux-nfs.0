@@ -1,17 +1,25 @@
-From: Tom McNeal <trmcneal@attbi.com>
-Subject: Linux release of nfs-utils version 1.0.1
-Date: Fri, 19 Jul 2002 17:22:15 -0700
+From: Christopher Penney <cpenney@ford.com>
+Subject: Solaris 8 Server / RedHat 7.2 Clients
+Date: Fri, 19 Jul 2002 22:14:45 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <21521.170953247$1027124573@news.gmane.org>
+Message-ID: <200207200214.g6K2EkI32355@dymwsm10.mailwatch.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sccrmhc02.attbi.com ([204.127.202.62])
+Received: from dymwsm05.mailwatch.com ([204.253.83.41])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17VhxN-0004Ma-00
-	for <nfs@lists.sourceforge.net>; Fri, 19 Jul 2002 17:18:45 -0700
-To: NFS maillist <nfs@lists.sourceforge.net>,
- 	NFS V4 <nfsv4-wg@sunroof.eng.sun.com>
+	id 17Vjlm-0004q5-00
+	for <nfs@lists.sourceforge.net>; Fri, 19 Jul 2002 19:14:54 -0700
+Received: from mwsc0201.mw4.mailwatch.com (mwsc0201.mw4.mailwatch.com [204.253.83.131])
+	by dymwsm05.mailwatch.com (8.11.0/8.11.0) with ESMTP id g6K2EkG06404
+	for <nfs@lists.sourceforge.net>; Fri, 19 Jul 2002 22:14:46 -0400
+Received: from eccmfw6.ford.com (mailfw6.ford.com [136.1.1.30])
+	by dymwsm10.mailwatch.com (8.11.0/8.11.0) with ESMTP id g6K2EkI32355
+	for <nfs@lists.sourceforge.net>; Fri, 19 Jul 2002 22:14:46 -0400
+Received: by mailfw6.ford.com id WAA21974
+  (InterLock SMTP Gateway 4.2 for nfs@lists.sourceforge.net);
+  Fri, 19 Jul 2002 22:13:35 -0400 (EDT)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,44 +32,28 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hi -
 
-The latest release of the nfs utils package has just been posted
-on https://sourceforge.net/projects/nfs/
+Is there a preferred setup when using a Solaris 8 NFS server with only
+RedHAt 7.2 clients?  The server is exporting a 1TB file system to several
+Compaq Alpha's running RedHat 7.2 (2.4.9-32smp) that are sitting behind a
+NAT router.
 
-The last version of the package was posted last September, so there
-are quite a few fixes in it.  The one which you may notice right
-away is that synchronous IO is now a default export characteristic,
-falling in line with all other vendors of NFS.  In order to ease
-the transition, a warning will be posted if you do not specify either
-"sync" or "async" in the export list.  This removes a possible 
-source of undetected data corruption, as detailed in the NFS howtos.
+Right now, I'm automounting the file system's user dirs with the following
+options:
 
-Speaking of the howtos, the latest versions of them have been sent
-to the LDP, so they should be posted sometime next week.
+   rw,intr,hard,bg,wsize=8192,rsize=8192,nfsvers=3,udp
 
-Finally, if you are interested, I have published the client based
-test package I used for testing the utils, which contains a GUI 
-interface, and includes Connectathon, FSX, Bonnie++, and IOzone, 
-among other things.  The package was originally developed by
-Bruce Blinn and Adrian Drzewiecki at the Mission Critical Linux
-West Coast Office.  I received permission from the owners of the
-assets of MCLX to post the package, after removing all parts 
-related to the MCLX cluster software.  You can find it at 
-https://sourceforge.net/projects/nfstestmatrix
+Should I be using a 32k w/rzise with a Solaris 8 server?  Anything else
+I'm missing?  Anything I shoudl take into consideration with a NAT router
+in between?  Everything seems to be working well, but I'm looking for any
+improvements I can make.
 
-One final note - I was not the only tester; Engineers at Red Hat
-and IBM, among others, were involved in the testing, so my Intel
-based UP machines were not the only ones exercising it.
+Oh, it's all gigabit ethernet except for each clients connection to the
+switch, which is 100mbit.
 
-Regards -
+   Chris
 
-Tom McNeal
 
---
-------------------------------------------------------------
-Tom McNeal       trmcneal@attbi.com     (650)906-0761 (cell) 
-------------------------------------------------------------
 
 
 -------------------------------------------------------
