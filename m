@@ -1,28 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] Timeouts gone wild on ia64
-Date: 18 Sep 2003 08:13:58 -0400
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: nfs_statfs: statfs error = 116
+Date: Thu, 18 Sep 2003 09:49:47 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsoexi1egp.fsf@charged.uio.no>
-References: <482A3FA0050D21419C269D13989C6113127DC8@lavender-fe.eng.netapp.com>
-	<3EC39FDF.60609@RedHat.com> <16067.42148.524146.39488@charged.uio.no>
-	<20030917041418.GA8900@outblaze.com>
-	<16232.26027.789453.979782@charged.uio.no>
-	<20030918070352.GA23924@outblaze.com>
+Message-ID: <3F69B7FB.1050505@RedHat.com>
+References: <3F698142.6070404@inf.ethz.ch>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19zxfr-0001En-00
-	for <nfs@lists.sourceforge.net>; Thu, 18 Sep 2003 05:14:15 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 19zzAU-0004Py-00
+	for <nfs@lists.sourceforge.net>; Thu, 18 Sep 2003 06:49:58 -0700
+Received: from pix-525-pool.redhat.com ([66.187.233.200] helo=lacrosse.corp.redhat.com)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 19zxfl-0002w6-8R
-	for nfs@lists.sourceforge.net; Thu, 18 Sep 2003 05:14:09 -0700
-To: Yusuf Goolamabbas <yusufg@outblaze.com>
-In-Reply-To: <20030918070352.GA23924@outblaze.com>
+	id 19zzAK-00006s-Ox
+	for nfs@lists.sourceforge.net; Thu, 18 Sep 2003 06:49:48 -0700
+To: Marc Schmitt <mschmitt@inf.ethz.ch>
+In-Reply-To: <3F698142.6070404@inf.ethz.ch>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -35,31 +31,35 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Yusuf Goolamabbas <yusufg@outblaze.com> writes:
 
-    >> Then I'd like to increase the default value that "mount" uses
-    >> for "retrans" to the kernel value (which is currently set at
-    >> 5).
 
-     > What value are you looking at ?
+Marc Schmitt wrote:
 
-The point is that we need statistics from those people who are seeing
-problems. On my own setups, "5" is quite sufficient to eliminate all
-the false positives. With the cap of timeo at 1/10sec, that
-corresponds to a minimum "soft" timeout value after 6.3 seconds.
+>
+> My questions are:
+>
+> - Is this a race? 
 
-I've already asked once on these lists whether or not that suffices
-for other people too, and have received no reply.
+It sounds to me like it could be be a server issue under
+a very heavy load...  How many nfsd are you running? Try
+increasing the number to see if that helps....
 
-Without adequate statistics, I see no reason to change the existing
-default...
+>
+> - Is there a way to get the client working again w/o having to reboot 
+> (or kill all the users processes and umount the home if that's 
+> possible)? I tried restarting rpc.statd on the client but that did not 
+> help.
 
-     > Also man 5 nfs seems (in RH 9) that default retrans value is 3
+not really... :(
 
-The manpage needs to be changed too but not before 'mount' is.
+> - How can I provide more debugging infos if needed? 
 
-Cheers,
-  Trond
+ethereal traces have more information and are
+generally more useful... imo...
+
+SteveD.
+
+
 
 
 -------------------------------------------------------
