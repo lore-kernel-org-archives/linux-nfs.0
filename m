@@ -1,26 +1,21 @@
-From: Chip Salzenberg <chip@pobox.com>
-Subject: Re: CVS tag "nfs-utils-1-0-6" looks wrong
-Date: Wed, 29 Oct 2003 11:33:02 -0500
+From: Phil Garcia <apgarcia@gravity.phys.uwm.edu>
+Subject: slow create/delete performance
+Date: Wed, 29 Oct 2003 15:24:33 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20031029163302.GF29526@perlsupport.com>
-References: <20031029162516.GE29526@perlsupport.com>
+Message-ID: <20031029152433.A1917@oppie.phys.uwm.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AEtFc-0003rF-00
-	for <nfs@lists.sourceforge.net>; Wed, 29 Oct 2003 08:32:52 -0800
-Received: from topaz.cx
-	([66.220.6.227] helo=mail.topaz.cx ident=mail)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.24)
-	id 1AEtFb-0006SR-WF
-	for nfs@lists.sourceforge.net; Wed, 29 Oct 2003 08:32:52 -0800
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <20031029162516.GE29526@perlsupport.com>
+	id 1AExnu-0002p9-00
+	for <nfs@lists.sourceforge.net>; Wed, 29 Oct 2003 13:24:34 -0800
+Received: from oppie.phys.uwm.edu ([129.89.57.60])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
+	id 1AExnu-0005tX-GY
+	for nfs@lists.sourceforge.net; Wed, 29 Oct 2003 13:24:34 -0800
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -33,15 +28,12 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-According to Chip Salzenberg:
-> Neil, do you know what went wrong with the CVS tags for 1.0.6?
+Hi,
 
-BTW, the 1.0.6 tarball also omits debian/po/* adn includes the empty
-and obsolete directory etc/debian.
--- 
-Chip Salzenberg               - a.k.a. -               <chip@pobox.com>
-"I wanted to play hopscotch with the impenetrable mystery of existence,
-    but he stepped in a wormhole and had to go in early."  // MST3K
+We've been running some benchmarks on both local and nfs mounts.  The
+read and write speeds are comparable, but creating and deleting small
+files is much slower over nfs than it is locally.  Is there a patch to
+fix this problem?
 
 
 -------------------------------------------------------
