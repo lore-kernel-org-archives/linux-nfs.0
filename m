@@ -1,22 +1,20 @@
-From: seth vidal <skvidal@phy.duke.edu>
-Subject: Re: ALERT - GroupShield ticket number
-	OA2317_1057450427_CVO-EXCHANGE _1 was generated
-Date: 07 Jul 2003 17:08:32 -0400
+From: Dan Kegel <dkegel@ixiacom.com>
+Subject: Re: ALERT - GroupShield ticket number OA2317_1057450427_CVO-EXCHANGE
+ _1 was generated
+Date: Mon, 07 Jul 2003 14:02:31 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1057612112.19080.26.camel@opus.phy.duke.edu>
-References: <Pine.LNX.4.33.0307060127100.1200-100000@vangogh>
-	 <3F09AAA0.4070000@ixiacom.com> <20030707193031.GA10222@lucon.org>
-	 <20030707225618.0fa972cf.philippe.gramoulle@mmania.com>
+Message-ID: <3F09DFE7.7020208@ixiacom.com>
+References: <482A3FA0050D21419C269D13989C6113D06A16@lavender-fe.eng.netapp.com> <Pine.LNX.4.56.0307071345180.5779@glenfiddich.cse.ogi.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "H. J. Lu" <hjl@lucon.org>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail.phy.duke.edu ([152.3.182.2] ident=[CYhtuVCVTSsYEkFO+daFdkj17VDqj6XU])
+Received: from 64-60-75-69.cust.telepacific.net ([64.60.75.69] helo=racerx.ixiacom.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19Zd9e-0002cd-00
-	for <nfs@lists.sourceforge.net>; Mon, 07 Jul 2003 14:04:10 -0700
-To: Philippe =?ISO-8859-1?Q?Gramoull=E9?= <philippe.gramoulle@mmania.com>
-In-Reply-To: <20030707225618.0fa972cf.philippe.gramoulle@mmania.com>
+	id 19ZdBP-000356-00
+	for <nfs@lists.sourceforge.net>; Mon, 07 Jul 2003 14:05:59 -0700
+To: Paul Heinlein <heinlein@cse.ogi.edu>
+In-Reply-To: <Pine.LNX.4.56.0307071345180.5779@glenfiddich.cse.ogi.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,26 +27,25 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, 2003-07-07 at 16:56, Philippe Gramoullé wrote:
-> Hello,
+Paul Heinlein wrote:
+> On Mon, 7 Jul 2003, Lever, Charles wrote:
 > 
-> Well last time there was a poll on that topic, i'd voted to close the list to
-> non-subscribers but Trond pointed out the problem of bug reports which i had overlooked
-> and making this change would probably make few (but always important) bug reports get lost.
 > 
-> I think that we should keep the list opened to non-subscribers ( and fine
-> tune my spam traps/ white lists / Black lists BTW :)
+>>i prefer a moderated list instead of "closed to subscribers only."
+>>but i am willing to be outvoted ;^)
 > 
+> 
+> As long as there are pleny of moderators to handle the approval
+> process. I'd hate to think that one or two people get stuck with the
+> nasty job of spam deletion.
 
-It's really not this hard.
-all you do is turn on non-subscriber posts require approval in mailman.
+There *is* the option of adding spam filtering to the list, I suppose.
+Preferably for new members only, so known good people don't
+have posts deleted due to false positives...
 
-it doesn't drop non-subscriber posts but it will send the mailing list
-admin a message saying some messages need to get
-checked/approvated/discarded.
-
--sv
-
+I'd prefer closing the list to non-subscriber posts as the first move,
+and then adding spam filtering if the spammers get past that.
+- Dan
 
 
 
