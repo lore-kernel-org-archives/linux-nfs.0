@@ -1,15 +1,12 @@
-From: Christian Reis <kiko@async.com.br>
-Subject: Re: lockd shutdown/umount order
-Date: Tue, 28 Jan 2003 19:38:54 -0200
+From: Dave Airlie <airlied@linux.ie>
+Subject: Issue with RPC buffer allocation..
+Date: Wed, 29 Jan 2003 02:48:45 +0000 (GMT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030128193854.B11568@blackjesus.async.com.br>
-References: <20030128150524.E11078@blackjesus.async.com.br> <shsbs21b1ch.fsf@charged.uio.no>
+Message-ID: <Pine.LNX.4.44.0301290244440.16696-100000@skynet>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: NFS@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <shsbs21b1ch.fsf@charged.uio.no>; from trond.myklebust@fys.uio.no on Tue, Jan 28, 2003 at 07:01:18PM +0100
+To: NFS@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -22,70 +19,67 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, Jan 28, 2003 at 07:01:18PM +0100, Trond Myklebust wrote:
-> >>>>> " " == Christian Reis <kiko@async.com.br> writes:
-> 
->      > As the final cleanup of the diskless shutdown sequence, I would
->      > like to know what procedure is the correct one for an NFS-root
->      > workstation.  Currently, the following set of steps happens:
-> 
->      > 1. killall5 murders rpc.statd and portmap
->      > 2. umount -tnfs -a -r runs
->      > 3. the kernel complains:
->      >         lockd_down: lockd failed to exit, clearing pid
->      > 4. halt goes on without a problem.
->      > 5. lockd complains: failed to unmonitor 192.168.99.4 *after
->      >        halt*
-> 
-> killall5 sucks as a method for shutting down processes. It is far too
-> unselective.
 
-Agreed. The patch will go upstream to Miquel to see if we can at least
-get basic selectivity (-o pid to omit, multiple allowed).
+Take a look at the log below, taken from one of my systems, running 2.4.20
++ some patches by me - is the behaviour below possible? my patches do two
+things, lock in all memory pages using VM_LOCKED for user space apps, and
+CRC the pages of every image loaded in .. and I've disabled any threads my
+code runs, and the other code seems trivial...
 
-> The above messages mean that you still had a byte-range lock being
-> held when statd got killed. When the process that held the lock got
-> killed, the kernel automatically tried to release the lock, but failed
-> to notify statd that it had done so 'cos statd and portmap were no
-> longer running.
+task 676 gets allocated a buffer at c11f6000, and hits congestion and gets
+put on a queue
+task 677 get allocated the same buffer? even though 676 should have it ..
 
-Well, I put a cat /proc/locks just before the killall5 and no locks are
-being held (or none are being shown at least), so I don't think that is
-the issue. Could it be that lockd is not going down, even after all
-locks are released? 
+Dave.
 
-How *should* be lockd killed, actually? It doesn't seem to care about
-signals we send, does it?
 
-> Make sure that you kill those other processes *before* you kill statd
-> and portmap.
+RPC:  675 new task procpid 21
+RPC:  675 rpc_execute flgs 1
+RPC:  675 reserved req c7e51588 xid 7cc932a2
+RPC:  675 xprt_reserve returns 0
+RPC:      allocated buffer c7e09000      498
+RPC:  675 xprt_transmit c7e09000(7cc932a2)
+RPC:  675 xprt_cwnd_limited cong = 0 cwnd = 320
+RPC:      xprt_sendmsg(120) = 120
+RPC:  675 xmit complete
+RPC:  675 sleep_on(queue "xprt_pending" time 4787)
+RPC:  675 added to queue c7e5105c "xprt_pending"
+RPC:  675 setting alarm for 270 ms
+RPC:      wake_up_next(c7e51050 "xprt_resend")
+RPC:      wake_up_next(c7e51044 "xprt_sending")
+RPC:  676 new task procpid 21
+RPC:  676 rpc_execute flgs 1
+RPC:  676 reserved req c7e51078 xid 7cc932a3
+RPC:  676 xprt_reserve returns 0
+RPC:      allocated buffer c11f6000      498
+RPC:  676 xprt_transmit c11f6000(7cc932a3)
+RPC:  676 xprt_cwnd_limited cong = 256 cwnd = 320
+RPC:      xprt_sendmsg(120) = 120
+RPC:      udp_data_ready...
+RPC:      udp_data_ready client c7e51000
+RPC:  676 received reply
+RPC:  676 xmit complete
+RPC:  676 sleep_on(queue "xprt_pending" time 4799)
+RPC:  676 added to queue c7e5105c "xprt_pending"
+RPC:  676 setting alarm for 270 ms
+RPC:      wake_up_next(c7e51050 "xprt_resend")
+RPC:  677 new task procpid 21
+RPC:  677 rpc_execute flgs 1
+RPC:  677 reserved req c7e51618 xid 7cc932a4
+RPC:  677 xprt_reserve returns 0
+RPC:      allocated buffer c11f6000      498
+RPC:  677 xprt_transmit c11f6000(7cc932a4)
+RPC:  677 xprt_cwnd_limited cong = 512 cwnd = 320
+RPC:  677 TCP write queue full
+RPC:  677 sleep_on(queue "xprt_sending" time 4808)
+RPC:  677 added to queue c7e51044 "xprt_sending"
 
-But none of them *are* running, no locks show up, and no special processes
-seem to appear on ps ax output:
+-- 
+David Airlie, Software Engineer
+http://www.skynet.ie/~airlied / airlied@skynet.ie
+pam_smb / Linux DecStation / Linux VAX / ILUG person
 
-      PID TTY      STAT   TIME COMMAND
-        1 ?        S      0:03 init
-        2 ?        SW     0:00 [keventd]
-        3 ?        SWN    0:00 [ksoftirqd_CPU0]
-        4 ?        SW     0:00 [kswapd]
-        5 ?        SW     0:00 [bdflush]
-        6 ?        SW     0:00 [kupdated]
-        7 ?        SW     0:00 [eth0]
-        8 ?        SW     0:00 [rpciod]
-       90 ?        S      0:00 /sbin/portmap
-      106 ?        S      0:00 /sbin/rpc.statd
-      112 ?        SW     0:00 [lockd]
-      166 ?        S      0:00 /sbin/klogd
-      509 ?        S      0:00 /bin/sh /etc/init.d/rc 0
-      600 ?        S      0:00 /bin/sh /etc/rc0.d/S29sendsigs stop
-      607 ?        R      0:00 ps ax
 
-What could it be?
-
-Take care,
---
-Christian Reis, Senior Engineer, Async Open Source, Brazil.
-http://async.com.br/~kiko/ | [+55 16] 261 2331 | NMFL
 
 
 -------------------------------------------------------
