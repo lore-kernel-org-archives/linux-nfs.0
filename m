@@ -1,22 +1,20 @@
-From: Dumas Patrice <dumas@centre-cired.fr>
-Subject: lockd tunneling and statd again
-Date: Tue, 23 Apr 2002 11:23:48 +0200
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: nfs performance: read only/gigE/nolock/1Tb per day
+Date: 23 Apr 2002 12:39:35 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020423112348.B3624@zeus.centre-cired.fr>
+Message-ID: <shsu1q2d7h4.fsf@charged.uio.no>
+References: <Pine.LNX.4.44.0204222037530.16783-100000@kenzo.iwr.uni-heidelberg.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net,  "Lever, Charles" <Charles.Lever@netapp.com>,
+	  "'jason andrade'" <jason@dstc.edu.au>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from boukha.centre-cired.fr ([193.51.120.234])
+Received: from pat.uio.no ([129.240.130.16])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16zwan-0002pb-00
-	for <nfs@lists.sourceforge.net>; Tue, 23 Apr 2002 02:28:09 -0700
-Received: from zeus.centre-cired.fr ([193.51.120.192])
-          by boukha.centre-cired.fr (8.9.3+Sun/jtpda-5.3.3) with ESMTP id LAA05564
-          for <nfs@lists.sourceforge.net>; Tue, 23 Apr 2002 11:27:20 +0100 (WEST)
-Received: (from dumas@localhost)
-	by zeus.centre-cired.fr (8.11.6/8.11.6) id g3N9NmD03971
-	for nfs@lists.sourceforge.net; Tue, 23 Apr 2002 11:23:48 +0200
-To: nfs@lists.sourceforge.net
+	id 16zxiL-0004Wu-00
+	for <nfs@lists.sourceforge.net>; Tue, 23 Apr 2002 03:40:01 -0700
+To: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
+In-Reply-To: <Pine.LNX.4.44.0204222037530.16783-100000@kenzo.iwr.uni-heidelberg.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,44 +27,30 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hi,
+>>>>> " " == Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de> writes:
 
-After looking at how the lockd client side is implemented, it seems to me that
-lockd tunneling raises no real difficulty. Indeed, the client is busy waiting,
-thus it doesn't really matter that the GRANTED/GRANTED_RES callback is lost.
+     > "max_interrupt_work" should not be modified unless a message
+     > like "ethx: Too much work in interrupt!" is logged by the
+     > kernel. In some cases, increasing "max_interrupt_work" without
+     > also increasing the Rx ring size would not help...
 
-However, with the rpc tunneling I use, if all the nfs mounts are mounted with
-the same lockd rpc number, it isn't possible to make a difference between
-hosts, thus tunneling is possible, but with only one server.
+So what would an avalanche of ICMP Time Exceeded messages usually
+indicate as far as the driver/card is concerned?
 
-Will the the lockd client side be redesigned (in such a way that losing server
-callbacks becomes an issue) ? 
-If not, could it be possible to have a lockprog= in the mount arguments ? I
-have some ideas on how to implement that on the lockd client side, and it
-doesn't seems so hard to do, however I have no idea about the nfs/mount changes
-it would require.
+At the networking levels, a single Time Exceeded message means that
+some fragment(s) got dropped and/or lost, so some datagram never got
+reassembled within /proc/sys/net/ipv4/ipfrag_low_thresh seconds
+(as per RFC1122).
 
+In the avalanching case that I've sometimes observed, then it looks as
+if *no* datagrams are getting rebuilt.
+IOW: the client is just sitting there sending off ICMP messages, and
+never reading the reply. Changing card/driver did not help in the
+cases I observed, but shutting down the network, and then bringing it
+up again sometimes did. Any suggestions?
 
-Now, on the statd side, it seems to me that it could be possible for the server
-to monitor the host issuing the lock demand, by looking at the caller_name
-field, instead of relaying on the source of the rpc request. It would involve
-some code change in the host lookup part of lockd, but not so much, I think.
-Another way to achieve the same goal would be to implement non monitored lockd
-clients using the NM_LOCK and the FREE_ALL callbacks, but it is a bad solution
-because it forbids blocking locks.
-
-However, on the client side, I can't see any possibility for lockd to get the
-real server to monitor. Of course, the rpc forwarder knows that, but there is
-nothing which permits it to tell it to the lockd client. 
-
-There could be a possibility, but it is out of the lockd scope: the forwarder
-could do the monitoring and reclaim the locks. However it is quite bad, because
-this would mean reimplementing a quasi complete lockd client in the forwarder
-which would have to be aware of the accepted locks, and so on.
-
-Any thought about that ?
-
-Pat
+Cheers,
+  Trond
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
