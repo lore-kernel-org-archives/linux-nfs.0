@@ -1,21 +1,21 @@
-From: "G. Allen Morris III" <gam3-nfs@gam3.net>
-Subject: Re: nhfsstone
-Date: Wed, 16 Mar 2005 10:37:33 -0500
-Message-ID: <20050316153733.GA19335@gam3.net>
-References: <42374DAC.8050408@catfeeder.net>
+From: mehta kiran <kiranmehta1981@yahoo.com>
+Subject: Re: problem mounting using NFSv4 when using -o sec=krb5  option
+Date: Wed, 16 Mar 2005 07:40:52 -0800 (PST)
+Message-ID: <20050316154052.19953.qmail@web51602.mail.yahoo.com>
+References: <1110985518.13618.62.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Cc: Kevin Coffman <kwc@citi.umich.edu>, nfs@lists.sourceforge.net
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DBaal-0004mD-Bf
-	for nfs@lists.sourceforge.net; Wed, 16 Mar 2005 07:37:51 -0800
-Received: from mta9.adelphia.net ([68.168.78.199])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DBaaj-0007Vk-To
-	for nfs@lists.sourceforge.net; Wed, 16 Mar 2005 07:37:51 -0800
-To: Sean Dogar <sean@catfeeder.net>
-In-Reply-To: <42374DAC.8050408@catfeeder.net>
+	id 1DBadp-0004sf-5Z
+	for nfs@lists.sourceforge.net; Wed, 16 Mar 2005 07:41:01 -0800
+Received: from web51602.mail.yahoo.com ([206.190.38.207])
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
+	id 1DBadm-0001wk-BC
+	for nfs@lists.sourceforge.net; Wed, 16 Mar 2005 07:41:01 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1110985518.13618.62.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,31 +29,270 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, Mar 15, 2005 at 02:03:40PM -0700, Sean Dogar wrote:
-> Has anybody used the nfs benchmarking utility "nhfsstone"? 
+Hi , 
+  Client machine is vcslinux5 . I added entry for
+  nfs/vcslinux5.... to /etc/krb5.keytab on server.
+
+  I copied same keytab file to client side.Is this ok?
+
+  output of klist -k /etc/krb5.keytab on server
+ 3 nfs/vcslinux5.veritas.com@VXINDIA.VERITAS.COM
+   3
+nfs/vcslinux1.vxindia.veritas.com@VXINDIA.VERITAS.COM
+   2 root/admin@VXINDIA.VERITAS.COM
+   2
+root/vcslinux5.vxindia.veritas.com@VXINDIA.VERITAS.COM
+   3
+root/vcslinux5.vxindia.veritas.com@VXINDIA.VERITAS.COM
+   2
+ftp/vcslinux1.vxindia.veritas.com@VXINDIA.VERITAS.COM
+   3
+nfs/vcslinux5.vxindia.veritas.com@VXINDIA.VERITAS.COM
+
+
+
+Error in log file on mount 
+Mar 16 14:58:43 vcslinux5 rpc.gssd[4258]: WARNING:
+failed reading uid from krb5 upcall pipe: Success
+Mar 16 14:58:43 vcslinux5 rpc.gssd[4405]: WARNING: Key
+table entry not found while getting initial ticket for
+principal
+'nfs/vcslinux1.vxindia.veritas.com@VXINDIA.VERITAS.COM'
+from keytab 'FILE:/etc/krb5.keytab'
+Mar 16 14:58:43 vcslinux5 rpc.gssd[4405]: ERROR: No
+usable machine credentials obtained
+Mar 16 14:58:43 vcslinux5 rpc.gssd[4405]: WARNING:
+Failed to obtain machine credentials for connection to
+server vcslinux1.vxindia.veritas.com
+Mar 16 14:59:08 vcslinux5 rpc.gssd[2760]: WARNING:
+Failed to create krb5 context for user with uid 0 with
+any credentials cache for server
+vcslinux1.vxindia.veritas.com
+Mar 16 14:59:08 vcslinux5 rpc.gssd[2760]: Failed to
+write error downcall!
+
+thanks,
+ --kiran
+  
+--- Trond Myklebust <trond.myklebust@fys.uio.no>
+wrote:
+
+> on den 16.03.2005 Klokka 06:47 (-0800) skreiv mehta
+> kiran:
+> > I rebooted the machine due to some problem.
+> > That problem has vanished but i get following
+> message
+> > 
+> > Mar 16 14:04:02 vcslinux5 rpc.gssd[2760]: WARNING:
+> > Failed to obtain machine credentials for
+> connection to
+> > server vcslinux1.vxindia.veritas.com
+> > Mar 16 14:04:02 vcslinux5 rpc.gssd[2760]: WARNING:
+> > failed reading uid from krb5 upcall pipe: Success
+> > Mar 16 14:04:02 vcslinux5 rpc.gssd[4405]: WARNING:
+> Key
+> > table entry not found while getting initial ticket
+> for
+> > principal
+> >
+>
+'nfs/vcslinux1.vxindia.veritas.com@VXINDIA.VERITAS.COM'
+> > from keytab 'FILE:/etc/krb5.keytab'
+> > Mar 16 14:04:02 vcslinux5 rpc.gssd[4405]: ERROR:
+> No
+> > usable machine credentials obtained
 > 
-> I can run it, and I can see that it's doing work (it makes test 
-> directories in the NFS-mounted directory that I start it from), but it 
-> never finishes it's testing or gives me any performance info.  I've 
-> tried the various options, including a -t 120 (I thought that this would 
-> restrict run-time to 120 seconds) and others, but I still get no output, 
-> even with verbose.  It doesn't send any output to files either.  It just 
-> runs and runs.   This is on a Redhat 8 machine as a client mounting an 
-> AIX NFS export. 
+> So what is the name of your client? It looks like
+> your keytab file has a
+> credential for nfs/vcslinux1, but the syslog entries
+> above appear to
+> refer to vcslinux5.
 > 
-> The man page is sort of vague, but I get the impression that you can run 
-> it without any arguments, and it will do a test with the various 
-> defaults, and eventually should return. 
+> If the client name is vcslinux5, then the credential
+> in the keytab
+> should be
+>
+nfs/vcslinux5.vxindia.veritas.com@VXINDIA.VERITAS.COM
 > 
-> Does anybody have any idea on this or do you know somewhere to point me 
-> for more info?  Most of the stuff I've found through Google has been the 
-> man page itself. 
+> 
+> Cheers,
+>   Trond
+> 
+> 
+> > --- mehta kiran <kiranmehta1981@yahoo.com> wrote:
+> > > Hi , 
+> > >     Yes , module rpcsec_gss_krb5 is loaded.
+> > >     RHEL GA is installed on my machines
+> > > thanks,
+> > >  --kiran
+> > > --- Kevin Coffman <kwc@citi.umich.edu> wrote:
+> > > > Is your server's kernel built with
+> > > > CONFIG_RPCSEC_GSS_KRB5?
+> > > > If it is built as a module, is the module
+> loaded?
+> > > > 
+> > > > 
+> > > > > Hi , 
+> > > > >     I have exported filesystems to client
+> but
+> > > > >     when client mounts using
+> > > > >     mount -t nfs4 -o sec=krb5  vcslinux1:/
+> > > /share 
+> > > >  
+> > > > >     it gets  error :
+> > > > > -------------
+> > > > >      kernel: RPC: Couldn't create auth
+> handle
+> > > > (flavor 
+> > > > >      390003)
+> > > > >      kernel: NFS: cannot create RPC client.
+> > > > >      rpc.idmapd: open
+> > > > >      (/var/lib/nfs/rpc_pipefs/nfs/clnt23)
+> > > > > --------------
+> > > > > 
+> > > > >      nfs sevver is runnnig on vcslinux1
+> system
+> > > and
+> > > > 
+> > > > >      client on vcslinux5
+> > > > >      
+> > > > >     Ouput of klist -k /etc/krb5.keytab on
+> server
+> > > > > 
+> > > > > 3
+> > > > >
+> > > >
+> > >
+> >
+>
+nfs/vcslinux1.vxindia.veritas.com@VXINDIA.VERITAS.COM
+> > > > > 2 root/admin@VXINDIA.VERITAS.COM
+> > > > > 2
+> > > > >
+> > > >
+> > >
+> >
+>
+root/vcslinux5.vxindia.veritas.com@VXINDIA.VERITAS.COM
+> > > > >    3
+> > > > >
+> > > >
+> > >
+> >
+>
+ftp/vcslinux1.vxindia.veritas.com@VXINDIA.VERITAS.COM
+> > > > > 
+> > > > > 
+> > > > > All nfs daemons are running. rpc.svcgssd and
+> > > > > rpc.idmapd is also runnnig.
+> > > > > 
+> > > > > On client side rpc.gssd is runnnig with -m
+> > > option.
+> > > > > 
+> > > > > 
+> > > > > thanks,
+> > > > >  --kiran
+> > > > > 
+> > > > > 
+> > > > > 
+> > > > > 
+> > > > > 		
+> > > > > __________________________________ 
+> > > > > Do you Yahoo!? 
+> > > > > Yahoo! Small Business - Try our new
+> resources
+> > > > site!
+> > > > > http://smallbusiness.yahoo.com/resources/ 
+> > > > > 
+> > > > > 
+> > > > >
+> > > >
+> > >
+> >
+>
+-------------------------------------------------------
+> > > > > SF email is sponsored by - The IT Product
+> Guide
+> > > > > Read honest & candid reviews on hundreds of
+> IT
+> > > > Products from real users.
+> > > > > Discover which products truly live up to the
+> > > hype.
+> > > > Start reading now.
+> > > > >
+> > > >
+> > >
+> >
+>
+http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
+> > > > >
+> _______________________________________________
+> > > > > NFS maillist  -  NFS@lists.sourceforge.net
+> > > > >
+> https://lists.sourceforge.net/lists/listinfo/nfs
+> > > > 
+> > > > 
+> > > > 
+> > > 
+> > > 
+> > > 		
+> > > __________________________________ 
+> > > Do you Yahoo!? 
+> > > Yahoo! Small Business - Try our new resources
+> site!
+> > > http://smallbusiness.yahoo.com/resources/ 
+> > > 
+> > > 
+> > >
+> >
+>
+-------------------------------------------------------
+> > > SF email is sponsored by - The IT Product Guide
+> > > Read honest & candid reviews on hundreds of IT
+> > > Products from real users.
+> > > Discover which products truly live up to the
+> hype.
+> > > Start reading now.
+> > >
+> >
+>
+http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
+> > > _______________________________________________
+> > > NFS maillist  -  NFS@lists.sourceforge.net
+> > > https://lists.sourceforge.net/lists/listinfo/nfs
+> > > 
+> > 
+> > __________________________________________________
+> > Do You Yahoo!?
+> > Tired of spam?  Yahoo! Mail has the best spam
+> protection around 
+> > http://mail.yahoo.com 
+> > 
+> > 
+> >
+>
+-------------------------------------------------------
+> > SF email is sponsored by - The IT Product Guide
+> > Read honest & candid reviews on hundreds of IT
+> Products from real users.
+> > Discover which products truly live up to the hype.
+> Start reading now.
+> >
+>
+http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
+> > _______________________________________________
+> > NFS maillist  -  NFS@lists.sourceforge.net
+> > https://lists.sourceforge.net/lists/listinfo/nfs
+> -- 
+> Trond Myklebust <trond.myklebust@fys.uio.no>
+> 
 > 
 
-It seems that nhfsstone only benchmarks nfs v2 filesystems.  It is
-likely that you are using v3.
 
-Allen Morris
+__________________________________________________
+Do You Yahoo!?
+Tired of spam?  Yahoo! Mail has the best spam protection around 
+http://mail.yahoo.com 
 
 
 -------------------------------------------------------
