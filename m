@@ -1,19 +1,17 @@
-From: Andrew Ryan <andrewr@nam-shub.com>
-Subject: Re: 2.4.20+NFS_ALL mount hanging, procs stuck in D state
-Date: Thu, 16 Jan 2003 08:32:52 -0800 (PST)
+From: "David B. Ritch" <dritch@hpti.com>
+Subject: NFS mount/umount problem
+Date: 16 Jan 2003 14:17:36 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.40.0301160821590.2908-100000@bolt.sonic.net>
-References: <shshec9p7zs.fsf@charged.uio.no>
+Message-ID: <1042744656.3312.43.camel@localhost>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain
+Cc: Craig Tierney <ctierney@hpti.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from a.smtp-out.sonic.net ([208.201.224.38])
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18ZCwn-0003Ls-00
-	for <nfs@lists.sourceforge.net>; Thu, 16 Jan 2003 08:32:53 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <shshec9p7zs.fsf@charged.uio.no>
+Received: from sl-highp1-1-0.sprintlink.net ([144.228.5.138] helo=localhost.localdomain)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18ZFeV-0006b7-00
+	for <nfs@lists.sourceforge.net>; Thu, 16 Jan 2003 11:26:11 -0800
+To: NFS mailing list <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,37 +24,61 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On 16 Jan 2003, Trond Myklebust wrote:
-> I disagree: it looks like a hardware problem. From what I can see from
-> your RPC dump, the NFS client is treating what it is getting from the
-> server as if it were junk data. This is what I would expect to occur
-> if the server and client RPC streams are getting desynchronized due to
-> data corruption.
+A colleague of mine who is having email difficulties asked me to forward
+this to the list.
 
-This machine has a long and faithful service record, although of course
-that doesn't rule out hardware failure.
+I am having a problem with nfs mounts under linux-2.4.20.
 
-I can try to dig further into this process to find out exactly what is
-triggering the hang. But, so you know, I switched the mount to UDP
-(rw,udp,nfsvers=3,rsize=32768,wsize=32768,intr,hard) and now the process
-completes normally.
+Server:
+Redhat-8.0, kernel upgraded to linux-2.4.20 + Trond's NFS Patches.
+Dual PIII 933 Mhz, 2 GB ram, tg3 gigabit ethernet driver.
 
-Not being a kernel developer, I do wonder why a single piece of corrupted
-data can have the effect of hanging the mount for all users and all
-processes. It also creates an unkillable process, requiring the
-machine to be rebooted, relating to the 'unmount -f' discussion that's
-been going on here lately.
+Client
+Redhat-7.1, kernel upgraded to linux-2.4.18 + Trond's NFS patches.
+Dual Xeon 2.2 Ghz, 1 GB ram, e100 ethernet driver.
 
->
-> Try using the eepro100 driver and/or a different card.
+After I upgraded the server from 2.4.14 to 2.4.20, I am having a problem
+mounting and unmounting the NFS partitions using autofs. I have all
+of the clients touch the nfs filesystems (ls /misc/scratchx) to cause
+them to mount.  Many of the mounts fail (~ 50%) with the error.  If I
+slow
+down the rate at which the ls is executed, I have a better chance at
+mounting all of the filesystems.  When I operate on chucks of the nodes
+128 at a time, I can usually get them to mount ok.
 
-Swapping cards not so easy, this is a motherboard with built-in ethernet.
-I can try the eepro100 driver though.
+In the messages file I get:
 
+Jan 16 16:58:51 g0427 automount[537]: attempting to mount entry
+/misc/scratchx
+Jan 16 16:59:12 g0427 automount[13130]: >> mount: RPC: Timed out
+Jan 16 16:59:12 g0427 automount[13130]: mount(nfs): nfs: mount failure
+x00:/export/scratch1 on /misc/scratchx
 
-thanks,
-andrew
+I tried increasing timeo to 30 and 60, and this appeared to help it
+did not fix the problem.  I never change timeo before.
 
+When the mounts do fail, I try and clean them up with umount.  Often
+when doing this I will get error messages on some of the nodes:
+
+  Bad UMNT RPC: RPC: Timed out
+
+This problem can be reduced when I do not have the umount execute on
+all of the nodes at the same time.
+
+This happens with when the filesystem is ext3 or xfs.
+
+I do not have these problems under the 2.4.14 kernel.
+
+Are there some timing values in RPC that have changed or that I can
+change
+to increase timeouts?  Does anyone have any other ideas?
+
+Thanks,
+Craig
+
+-- 
+David B. Ritch
+High Performance Technologies, Inc.
 
 
 -------------------------------------------------------
