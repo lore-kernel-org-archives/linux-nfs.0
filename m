@@ -1,24 +1,22 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [RFC] implementing BSD style locks on NLM (flocks)
-Date: Wed, 02 Mar 2005 10:55:08 -0800
-Message-ID: <1109789708.13286.5.camel@lade.trondhjem.org>
-References: <20050227192113.GA5778@localhost.localdomain>
-	 <1109787034.12460.7.camel@lade.trondhjem.org>
-	 <20050302184441.GA8609@suse.de>
+From: Neil Horman <nhorman@redhat.com>
+Subject: Re: NFS using too much memory on diskless system
+Date: Thu, 24 Feb 2005 09:56:19 -0500
+Message-ID: <421DEB13.8020402@redhat.com>
+References: <BAY101-F402EAE1436EB8C3874B5D8BD640@phx.gbl>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nhorman@redhat.com, nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: nfs@lists.sourceforge.net
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D6Z0I-0001ax-Fb
-	for nfs@lists.sourceforge.net; Wed, 02 Mar 2005 10:55:26 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1D4KQ2-0001HN-M8
+	for nfs@lists.sourceforge.net; Thu, 24 Feb 2005 06:56:46 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1D6Z0H-0000mO-4x
-	for nfs@lists.sourceforge.net; Wed, 02 Mar 2005 10:55:26 -0800
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20050302184441.GA8609@suse.de>
+	id 1D4KPi-0002q9-Qh
+	for nfs@lists.sourceforge.net; Thu, 24 Feb 2005 06:56:46 -0800
+To: Gareth Glaccum <verycoldpenguin@hotmail.com>
+In-Reply-To: <BAY101-F402EAE1436EB8C3874B5D8BD640@phx.gbl>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,33 +30,63 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-on den 02.03.2005 Klokka 19:44 (+0100) skreiv Olaf Kirch:
-> On Wed, Mar 02, 2005 at 10:10:34AM -0800, Trond Myklebust wrote:
-> > http://client.linux-nfs.org/Linux-2.6.x/2.6.11-rc5/linux-2.6.11-17-flock.dif
+Gareth Glaccum wrote:
+> Hi Neil,
+> Thanks for the pointer,
+> a
+> sysctl -w vm.dirty_ratio=0
+> appears to have removed the problems, I shall continue to investigate this.
+> Thanks,
+> Gareth
 > 
-> +	/* We're simulating flock() locks using posix locks on the server */
-> +	fl->fl_owner = (fl_owner_t)filp;
-> +	fl->fl_start = 0;
-> +	fl->fl_end = OFFSET_MAX;
+Glad to hear it worked :)
+Neil
+>> From: Neil Horman <nhorman@redhat.com>
+>>
+>>> Is there some way of limiting the NFS cache size like there used to 
+>>> be in the 2.4 kernel? (see section B7 of the nfs FAQ I believe)
+>>>
+>>> Any ideas gratefully received,
+>>> Gareth
+>>>
+>> It sounds to me your kernel has some sort of vm bug, but if you want 
+>> to shrink page cache usage, you may want to play with the dirty_vm_* 
+>> settings in /proc/sys/vm.  I'm still getting used to the 2.6 sysctls, 
+>> but I believe that those settings allow you to specify when your 
+>> kernel decides its under sufficient memory pressure to start moving 
+>> data back to disk.
+>>
+>> HTH
+>> Neil
+>>
+>>> _________________________________________________________________
 > 
-> Will this work as expected? Right now, the code sets fl_pid to the thread
-> group ID (tgid) - but every forked process gets a new tgid, unless you
-> use CLONE_THREAD, right? So the standard BSD behavior of opening a file
-> in process A, calling flock, forking and doing the final close in process
-> B will leave a stale lock, because the unlock call with have a different
-> pid value.
+> 
+> _________________________________________________________________
+> Express yourself with cool new emoticons 
+> http://www.msn.co.uk/specials/myemo
+> 
+> 
+> 
+> -------------------------------------------------------
+> SF email is sponsored by - The IT Product Guide
+> Read honest & candid reviews on hundreds of IT Products from real users.
+> Discover which products truly live up to the hype. Start reading now.
+> http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
 
-Ah, but we don't actually send the fl->fl_pid on the wire anywhere. That
-causes problems even with standard POSIX locks when people do wierd
-things with the CLONE_ flags.
-Instead we only use the fl_owner field to emulate a "pid".
-
-Cheers,
-  Trond
 
 -- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
-
+/***************************************************
+  *Neil Horman
+  *Software Engineer
+  *Red Hat, Inc.
+  *nhorman@redhat.com
+  *gpg keyid: 1024D / 0x92A74FA1
+  *http://pgp.mit.edu
+  ***************************************************/
 
 
 -------------------------------------------------------
