@@ -1,28 +1,28 @@
 From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: CVS tag "nfs-utils-1-0-6" looks wrong
-Date: Thu, 30 Oct 2003 11:16:15 +1100
+Subject: Re: Re: Premission denied
+Date: Thu, 30 Oct 2003 16:24:28 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16288.22607.450095.672518@notabene.cse.unsw.edu.au>
-References: <20031029162516.GE29526@perlsupport.com>
-	<20031029163302.GF29526@perlsupport.com>
-	<16288.21114.700966.163986@notabene.cse.unsw.edu.au>
-	<20031030000713.GT29526@perlsupport.com>
+Message-ID: <16288.41100.10180.44099@notabene.cse.unsw.edu.au>
+References: <10334.62.49.205.2.1067421598.squirrel@squirrelmail.bim7.com>
+	<20031029215815.GO29526@perlsupport.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Cc: Gareth <gareth@bim7.com>,
+    nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AF0UB-0002pY-00
-	for <nfs@lists.sourceforge.net>; Wed, 29 Oct 2003 16:16:23 -0800
+	id 1AF5Iv-0000W6-00
+	for <nfs@lists.sourceforge.net>; Wed, 29 Oct 2003 21:25:05 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.24)
-	id 1AF0UB-00016C-24
-	for nfs@lists.sourceforge.net; Wed, 29 Oct 2003 16:16:23 -0800
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.24)
+	id 1AF5Ia-0002e7-KU
+	for nfs@lists.sourceforge.net; Wed, 29 Oct 2003 21:24:44 -0800
 Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <chip@pobox.com>) (for <nfs@lists.sourceforge.net>) By note With
-	Smtp ; Thu, 30 Oct 2003 11:16:15 +1100
+	(for <chip@pobox.com>) (for <gareth@bim7.com>)
+	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
+	Thu, 30 Oct 2003 16:24:28 +1100
 To: Chip Salzenberg <chip@pobox.com>
 In-Reply-To: message from Chip Salzenberg on Wednesday October 29
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -38,20 +38,33 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 On Wednesday October 29, chip@pobox.com wrote:
-> According to Neil Brown:
-> > When I use CVS to checkout nfs-utils, I don't get debian/po, but I do
-> > get etc/debian.
+> According to Gareth:
+> > Oct 29 09:25:44 paris rpc.mountd: Fake hostname paris.bim for 192.168.17.4
+> > - forward lookup doesn't match reverse
+> > Oct 29 09:25:44 paris rpc.mountd: refused mount request from 192.168.17.4
+> > for /nfsroot (/): no export entry
+> > Oct 29 09:29:09 paris rpc.mountd: export request from 127.0.0.1
+> > Oct 29 09:39:37 paris rpc.mountd: refused mount request from paris.bim for
+> > /nfsroot (/): no export entry
 > 
-> That's probably because your "cvs update" is missing the "-d" and "-P"
-> flags.
+> You have two failures there.  One says DNS, the other doesn't.
 > 
+> > Someone at work suggested its a reverse DNS problem... but running
+> > nslookup hostname returns my IP address, and vice versa.
+> 
+> The log says there was a reverse DNS problem.  It says it clearly,
+> right there in the log.  Are you suggesting that it's lying?
 
-Ahhh.  Thanks.  "You learn something new every day".
+Funny, but I don't see the letters "DNS" in the log at all :-)
 
-I guess there is some reason why the whole thing isn't more
-transparent....
-
-The next release will have all the right bits in it.
+What does /etc/nsswitch.conf say about hosts? Does "files" come before
+"dns"?
+If so, what does 
+	grep 192.168.17.4 /etc/hosts | head -1
+show? Presumably paris.bim.
+But what does
+	grep paris.bim /etc/hosts | head -1
+show?  My guest is *not* 192.168.17.4
 
 NeilBrown
 
