@@ -1,25 +1,26 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: Re: [PATCH] NFS nolock broken in 2.6.9-rc4
-Date: Fri, 15 Oct 2004 17:11:14 +0200
+Date: Fri, 15 Oct 2004 17:13:54 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1097853073.5558.17.camel@lade.trondhjem.org>
+Message-ID: <1097853234.5558.21.camel@lade.trondhjem.org>
 References: <20041015095840.GA22992@suse.de>
 	 <20041015100703.GA27307@suse.de>
 	 <1097851608.5558.15.camel@lade.trondhjem.org>
+	 <1097853073.5558.17.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: nfs@lists.sourceforge.net, Andrew Morton <akpm@osdl.org>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CITkf-0001y3-2c
-	for nfs@lists.sourceforge.net; Fri, 15 Oct 2004 08:12:17 -0700
+	id 1CITmd-0002SY-LY
+	for nfs@lists.sourceforge.net; Fri, 15 Oct 2004 08:14:19 -0700
 Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CITjt-0007eU-2C
-	for nfs@lists.sourceforge.net; Fri, 15 Oct 2004 08:12:16 -0700
+	id 1CITmQ-0008IC-P0
+	for nfs@lists.sourceforge.net; Fri, 15 Oct 2004 08:14:19 -0700
 To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <1097851608.5558.15.camel@lade.trondhjem.org>
+In-Reply-To: <1097853073.5558.17.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,89 +33,54 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-  NFS: when we mount with the "nolock" flag we need to use local locking.
+  VFS: Remove remnants of LOCK_USE_CLNT. It should no longer be necessary.
 
   Signed-off-by: Trond Myklebust <trond.myklebust@fys.uio.no>
 ---
+ fs/locks.c         |    6 ------
+ include/linux/fs.h |    5 -----
+ 2 files changed, 11 deletions(-)
 
- file.c |   43 +++++++++++++++++++++++--------------------
- 1 files changed, 23 insertions(+), 20 deletions(-)
-
-Index: linux-2.6.9-rc4-up/fs/nfs/file.c
+Index: linux-2.6.9-rc4-up/include/linux/fs.h
 ===================================================================
---- linux-2.6.9-rc4-up.orig/fs/nfs/file.c	2004-10-15 12:03:43.000000000 +0200
-+++ linux-2.6.9-rc4-up/fs/nfs/file.c	2004-10-15 16:56:59.804503229 +0200
-@@ -298,7 +298,11 @@ static int do_getlk(struct file *filp, i
- 	int status;
+--- linux-2.6.9-rc4-up.orig/include/linux/fs.h	2004-10-15 12:03:03.000000000 +0200
++++ linux-2.6.9-rc4-up/include/linux/fs.h	2004-10-15 17:04:10.645827518 +0200
+@@ -1167,11 +1167,6 @@ extern long do_mount(char *, char *, cha
  
- 	lock_kernel();
--	status = NFS_PROTO(inode)->lock(filp, cmd, fl);
-+	/* Use local locking if mounted with "-onolock" */
-+	if (!(NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM))
-+		status = NFS_PROTO(inode)->lock(filp, cmd, fl);
-+	else
-+		status = posix_test_lock(filp, fl);
- 	unlock_kernel();
- 	return status;
- }
-@@ -325,7 +329,11 @@ static int do_unlk(struct file *filp, in
- 	 * 	still need to complete the unlock.
- 	 */
- 	lock_kernel();
--	status = NFS_PROTO(inode)->lock(filp, cmd, fl);
-+	/* Use local locking if mounted with "-onolock" */
-+	if (!(NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM))
-+		status = NFS_PROTO(inode)->lock(filp, cmd, fl);
-+	else
-+		status = posix_lock_file_wait(filp, fl);
- 	rpc_clnt_sigunmask(NFS_CLIENT(inode), &oldset);
- 	return status;
- }
-@@ -351,15 +359,19 @@ static int do_setlk(struct file *filp, i
- 		return status;
+ extern int vfs_statfs(struct super_block *, struct kstatfs *);
  
- 	lock_kernel();
--	status = NFS_PROTO(inode)->lock(filp, cmd, fl);
--	/* If we were signalled we still need to ensure that
--	 * we clean up any state on the server. We therefore
--	 * record the lock call as having succeeded in order to
--	 * ensure that locks_remove_posix() cleans it out when
--	 * the process exits.
--	 */
--	if (status == -EINTR || status == -ERESTARTSYS)
--		posix_lock_file(filp, fl);
-+	/* Use local locking if mounted with "-onolock" */
-+	if (!(NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM)) {
-+		status = NFS_PROTO(inode)->lock(filp, cmd, fl);
-+		/* If we were signalled we still need to ensure that
-+		 * we clean up any state on the server. We therefore
-+		 * record the lock call as having succeeded in order to
-+		 * ensure that locks_remove_posix() cleans it out when
-+		 * the process exits.
-+		 */
-+		if (status == -EINTR || status == -ERESTARTSYS)
-+			posix_lock_file(filp, fl);
-+	} else
-+		status = posix_lock_file_wait(filp, fl);
- 	unlock_kernel();
- 	if (status < 0)
- 		return status;
-@@ -396,15 +408,6 @@ nfs_lock(struct file *filp, int cmd, str
- 	if ((inode->i_mode & (S_ISGID | S_IXGRP)) == S_ISGID)
- 		return -ENOLCK;
- 
--	if (NFS_PROTO(inode)->version != 4) {
--		/* Fake OK code if mounted without NLM support */
--		if (NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM) {
--			if (IS_GETLK(cmd))
--				return LOCK_USE_CLNT;
--			return 0;
--		}
--	}
+-/* Return value for VFS lock functions - tells locks.c to lock conventionally
+- * REALLY kosha for root NFS and nfs_lock
+- */ 
+-#define LOCK_USE_CLNT 1
 -
- 	/*
- 	 * No BSD flocks over NFS allowed.
- 	 * Note: we could try to fake a POSIX lock request here by
+ #define FLOCK_VERIFY_READ  1
+ #define FLOCK_VERIFY_WRITE 2
+ 
+Index: linux-2.6.9-rc4-up/fs/locks.c
+===================================================================
+--- linux-2.6.9-rc4-up.orig/fs/locks.c	2004-10-15 12:04:18.000000000 +0200
++++ linux-2.6.9-rc4-up/fs/locks.c	2004-10-15 17:03:16.376966402 +0200
+@@ -1435,9 +1435,6 @@ int fcntl_getlk(struct file *filp, struc
+ 		error = filp->f_op->lock(filp, F_GETLK, &file_lock);
+ 		if (error < 0)
+ 			goto out;
+-		else if (error == LOCK_USE_CLNT)
+-		  /* Bypass for NFS with no locking - 2.0.36 compat */
+-		  fl = posix_test_lock(filp, &file_lock);
+ 		else
+ 		  fl = (file_lock.fl_type == F_UNLCK ? NULL : &file_lock);
+ 	} else {
+@@ -1580,9 +1577,6 @@ int fcntl_getlk64(struct file *filp, str
+ 		error = filp->f_op->lock(filp, F_GETLK, &file_lock);
+ 		if (error < 0)
+ 			goto out;
+-		else if (error == LOCK_USE_CLNT)
+-		  /* Bypass for NFS with no locking - 2.0.36 compat */
+-		  fl = posix_test_lock(filp, &file_lock);
+ 		else
+ 		  fl = (file_lock.fl_type == F_UNLCK ? NULL : &file_lock);
+ 	} else {
 
 
 
