@@ -1,15 +1,22 @@
-From: Chris Adams <chris@improbable.org>
-Subject: nfsroot clients hang while mounting second NFS server
-Date: Thu, 10 Jul 2003 18:23:57 -0700
+From: Lawrence Ong <lawrence.ong@netregistry.com.au>
+Subject: SM_UNMON again -> kernel
+Date: Fri, 11 Jul 2003 16:16:15 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <57BDE604-B33E-11D7-A405-000A95703418@improbable.org>
-Mime-Version: 1.0 (Apple Message framework v552)
-Content-Type: text/plain; charset=US-ASCII; format=flowed
+Message-ID: <20030711061615.GA1924@quasar.nro.au.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [64.21.166.2] (helo=mail1.qwknetllc.com)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19amdm-0000Ep-00
-	for <nfs@lists.sourceforge.net>; Thu, 10 Jul 2003 18:24:02 -0700
+Received: from mail.netregistry.net ([203.202.16.100] helo=roanoak.netregistry.net)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19arDO-00075b-00
+	for <nfs@lists.sourceforge.net>; Thu, 10 Jul 2003 23:17:06 -0700
+Received: from proxy.netregistry.net ([203.202.16.2] helo=quasar.nro.au.com)
+	by roanoak.netregistry.net with esmtp (Exim 3.35 #1 (Debian))
+	id 19arCb-0004GG-00
+	for <nfs@lists.sourceforge.net>; Fri, 11 Jul 2003 16:16:17 +1000
+Received: from long by quasar.nro.au.com with local (Exim 3.36 #1 (Debian))
+	id 19arCZ-0000j8-00
+	for <nfs@lists.sourceforge.net>; Fri, 11 Jul 2003 16:16:15 +1000
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -23,57 +30,80 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-We have a small cluster using a single head node and a number of 
-diskless compute nodes, all running 2.4.20-openmosix. We have an old 
-NAS box which contains the NFS root filesystems for the compute nodes 
-and our data directories. Now I'm trying to add another NAS box into 
-the mix and have found it an easy way to kill our nodes.
+Hi Everybody,
 
-Basic network connectivity is fine and rpcinfo / showmount on the nodes 
-works as expected. No matter what options I use (hard/soft, tcp/udp, 
-etc.) as soon as I try to mount the new server the nodes will hang. At 
-that point they are still pingable but nothing higher level will 
-respond and all open connections will fail.
+If someone can shed some light on why this annoying message kept
+appearing, it would be much appreciated.  I'm sure a lot of other
+people out there are getting the same error message.
 
-Here's the total traffic I see from the new NAS server's perspective - 
-10.0.73.29 is the node, 192.168.1.20 is the new file server:
+The Error in Syslog that we continually get is the common:
 
-  18   7.186921   10.0.73.29 -> 192.168.1.20 TCP 722 > sunrpc [SYN] 
-Seq=2685755181 Ack=0 Win=5840 Len=0 MSS=1460 TSV=133216 TSER=0 WS=0
-  19   7.187115   10.0.73.29 -> 192.168.1.20 TCP 722 > sunrpc [ACK] 
-Seq=2685755182 Ack=2199399551 Win=5840 Len=0 TSV=133216 TSER=131447901
-  20   7.187190   10.0.73.29 -> 192.168.1.20 Portmap V2 DUMP Call XID 
-0x524a6869
-  21   7.187581   10.0.73.29 -> 192.168.1.20 TCP 722 > sunrpc [ACK] 
-Seq=2685755226 Ack=2199399951 Win=6432 Len=0 TSV=133216 TSER=131447901
-  22   7.187703   10.0.73.29 -> 192.168.1.20 TCP 722 > sunrpc [ACK] 
-Seq=2685755226 Ack=2199400751 Win=8000 Len=0 TSV=133216 TSER=131447901
-  23   7.187875   10.0.73.29 -> 192.168.1.20 TCP 722 > sunrpc [ACK] 
-Seq=2685755226 Ack=2199400875 Win=8000 Len=0 TSV=133216 TSER=131447901
-  24   7.187900   10.0.73.29 -> 192.168.1.20 TCP 722 > sunrpc [FIN, ACK] 
-Seq=2685755226 Ack=2199400875 Win=8000 Len=0 TSV=133216 TSER=131447901
-  25   7.187999   10.0.73.29 -> 192.168.1.20 MOUNT V3 MNT Call XID 
-0xe10349f
-  26   7.188107   10.0.73.29 -> 192.168.1.20 TCP 722 > sunrpc [ACK] 
-Seq=2685755227 Ack=2199400876 Win=8000 Len=0 TSV=133216 TSER=131447901
-  27   7.199825   10.0.73.29 -> 192.168.1.20 Portmap V2 GETPORT Call XID 
-0x1832c2fd
-  30   7.200203 192.168.1.20 -> 10.0.73.29   Portmap V2 GETPORT Reply 
-XID 0x1832c2fd
+Received erroneous SM_UNMON request from mymachine for 10.1.1.20
 
-At that point the machine is dead and and the server won't see another 
-packet from it. We're having some problems with the terminal server so 
-I can't tell if it's dumping a panic to the serial console.
+The error does not break NFS or anything.  It's just a rather annoying
+message that kept on appearing again and again.  Looking through the
+different mailing list did not help.  None of the solutions provided
+refers to kernel 2.4.19-21 or is the reason why it gives that error.
 
-Is there a known problem with the in-kernel NFS support which might 
-cause problems with multiple NFS servers? We aren't having problems on 
-the other machines with the 2.4.20 kernel which makes me suspect the 
-nfsroot support is involved somehow but I haven't found anything 
-pertinent in my searches.
+SYSTEM INFORMATION
+------------------
+The system that we're using is booting off the kernel 2.4.21 kernel with
+nfs-utils 1.0.3 on a Debian Woody system.  We have also tested this on
+2.4.19 and 2.4.20 with and without Trond's NFS (FIXES/ALL) patches.  We
+have also tested the system with nfs-utils version 1.0.0.
 
-Thanks,
-Chris
+We noticed that it is getting that error because in monitor.c, the
+value generated by NL_MY_NAME(clnt) is 127.0.0.1?  Is this suppose to be
+correct?!
 
+The NFS server contains the IP address 10.1.1.20, mymachine is the client
+with the IP address 10.1.1.180.  The client mounts the server as such:
+
+10.1.1.20:/mountpath /mountpath nfs rsize=8192,wsize=8192,nfsvers=3,udp,noatime,hard,intr,bg 0 0
+
+STEPPING THROUGH CODE
+---------------------
+Looking at utils/statd/monitor.c - we have lines that read:
+
+--------------
+while ((clnt = nlist_gethost(clnt, mon_name, 0))) {
+	if (matchhostname(NL_MY_NAME(clnt), my_name) &&
+--------------
+
+This matchhostname never match because NL_MY_NAME(clnt) gives 127.0.0.1
+but the my_name variable in sm_unmon_1_svc function is mymachine.
+
+THEN LOOKING AT FURTHER CODE
+----------------------------
+
+In monitor.c again, in the sm_mon_1_svc function, we have:
+
+struct sm_stat_res *
+sm_mon_1_svc(struct mon *argp, struct svc_req *rqstp)
+{
+        static sm_stat_res result;
+        char            *mon_name = argp->mon_id.mon_name,
+                        *my_name  = argp->mon_id.my_id.my_name;
+...
+my_name = "127.0.0.1";
+
+What the?!  my_name is reset to 127.0.0.1 due to some CERT Advisory
+CA-99.05?  Anyhow, lets just ignore that since this is not the main
+cause of why the error message appears in the first place.  Now we're
+back to the kernel that kept on producing an SM_UNMON RPC to statd.
+
+It looks like this unmon stufff is happening too regularly?  Now i'm
+wondering why it is attempting to UNMON so regularly in the first place?
+
+This brings us back to kernel 2.4.19-21.  Why is the kernel's statd client
+calling statd so regularly for sm_unmon?!!!  No, i did not stop the
+nfs-kernel-server.  No, i'm not mounting and unmounting NFS regularly.
+
+Is there something else i should check?  I'll start looking at the kernel
+code while awaiting reply.  Any help/suggestions appreciated.
+
+Cheers,
+Lawrence
 
 
 -------------------------------------------------------
