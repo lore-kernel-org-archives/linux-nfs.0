@@ -1,19 +1,17 @@
-From: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
-Subject: Re: AW: URGENT: Problems with NFS-Root-Clients
-Date: Tue, 27 Aug 2002 18:10:50 +0200 (CEST)
+From: "Magnus Naeslund\(f\)" <mag@fbab.net>
+Subject: Mount modes and usermode programs
+Date: Wed, 28 Aug 2002 02:06:45 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0208271756360.18747-100000@kenzo.iwr.uni-heidelberg.de>
-References: <95AF67BA7F70D511829B0002A551737001C9C4@faw-e01.faw.freudenberg.de>
+Message-ID: <026101c24e26$cc1afe00$f80c0a0a@mnd>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail.iwr.uni-heidelberg.de ([129.206.104.30])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17jivg-0003nv-00
-	for <nfs@lists.sourceforge.net>; Tue, 27 Aug 2002 09:10:56 -0700
-To: Marco.Schwarz@freudenberg.de
-In-Reply-To: <95AF67BA7F70D511829B0002A551737001C9C4@faw-e01.faw.freudenberg.de>
+Received: from mail2.fbab.net ([195.54.134.228])
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17jqMC-0000jj-00
+	for <nfs@lists.sourceforge.net>; Tue, 27 Aug 2002 17:06:48 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,56 +24,55 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Tue, 27 Aug 2002 Marco.Schwarz@freudenberg.de wrote:
-
-> it is not working most of the time, but sometime it is, and some
-> days ago it was the other way ... working most of the time, just sometimes
-> problems).
-
-Hmm, maybe you should fix this first ! What do you mean by "not working": 
-- sometimes it doesn't provide a link at boot time and you have to reboot 
-and eventually it will get past the point and afterwards eveything works 
-fine or
-- it boots fine and there are intermitent problems afterwards or
-- something else ?
-
-> Network cards are Intel EEPro100, but we have a lot more of these (also with
-> diskless clients, same configuration/kernel), and the problem is happening
-> in just this one location ...
-
-IIRC, there are different revisions of the cards, some of them having 
-some problems... so it's not sufficient to have another one working well !
-
-> Sending BOOTP requests . OK
-> IP-Config: Got BOOTP answer from 192.168.0.235, my adress is 192.168.0.87
-> IP-Config: Complete:
-
-Um, the link did work ! Can you try to ping it from the server ? That 
-should show if the link is down. Another (better) possibility would be to 
-turn on debugging in the network driver (change in source and recompile or 
-pass it on the kernel command line), but it depends on the driver that 
-you're using. F.e. for Donald Becker's drivers you can use debug level 2 
-or 3 to get media related information without getting too much 
-uninteresting (for this problem) stuff.
-
-Another unrelated suggestion: can you make sure that you're not running 
-any kind of firewall (ipchains/iptables) on the server that could block 
-the communication ?
-
--- 
-Bogdan Costescu
-
-IWR - Interdisziplinaeres Zentrum fuer Wissenschaftliches Rechnen
-Universitaet Heidelberg, INF 368, D-69120 Heidelberg, GERMANY
-Telephone: +49 6221 54 8869, Telefax: +49 6221 54 8868
-E-mail: Bogdan.Costescu@IWR.Uni-Heidelberg.De
+V2UncmUgZGV2ZWxvcGluZyAoYW5kIHJ1bm5pbmcgaW4gcHJvZHVjdGlvbikgYW4gc2Nhbm5lZCBp
+bWFnZSBzZXJ2ZXIgd2l0aCBhbiBjbGllbnQuDQpXZSdyZSBtb3ZpbmcgZnJvbSBsb2NhbCBzdG9y
+YWdlIHRvIE5GUyBhcyB3ZSdyZSBhcHByb2FjaGluZyBzZXZlcmFsIHRlcnJhYnl0ZXMuDQoNClRo
+ZSBORlMgc2VydmVyIHdlJ3JlIHRlc3RpbmcgaXMgYW4gUmVkaGF0IExpbnV4IDcuMyBkZWZhdWx0
+IGluc3RhbGwuDQoNClRoZSBORlMgY2xpZW50ICh0aGF0IHJ1biB0aGUgaW1hZ2Ugc2VydmVyIHBy
+b2Nlc3Nlcykgd2UncmUgdGVzdGluZyBpcyBhbiBSZWRoYXQgTGludXggNi4yIGhhbmQgdXBncmFk
+ZWQgdG8gMi40LjE5LWFhIHJ1bm5pbmcgb24gYWxwaGEgYXJjaGl0ZWN0dXJlLg0KDQpXaGVuIHdl
+IHRlc3QgaG93IHRoZSBzZXJ2ZXIgcHJvY2Vzc2VzIChpbmV0ZC1saWtlIHN0YXJ0ZWQgcHJvY2Vz
+c2VzKSByZWFjdCB3aGVuIHdlIA0KcmVib290IHRoZSBORlMgc2VydmVyIHRoZXkgYWxsIGhhbmcg
+aW4gRCBzdGF0ZSBmb3IgYSB3aGlsZSwgYnV0IHdoZW4gdGhlIE5GUyBzZXJ2ZXIgY29tZXMgdXAg
+YWdhaW4sIHRoZXkgbG9vc2UgdGhlIEQgc3RhdGUgYnV0IHRoZSBzZXJ2ZXIgcHJvY2Vzc2VzIGRv
+ZXNuJ3QgY2F0Y2ggdXAgd2hlcmUgdGhleSBzdG9wcGVkLiBTb21laG93IHRoYXQgaXMgX19saWJj
+X3dyaXRlKCksIHRoZSBnbGliYyB3cml0ZSgpIHN5c2NhbGwgd3JhcHBlci4NClRoZSB3cml0ZSBn
+b2VzIHRvIHN0ZG91dCBhcyBwZXIgbm9ybWFsIGluZXRkIGxpa2Ugc2V0dXAuDQoNClRoZXJlIGFy
+ZSBzb21lIHN0cmFuZ2Ugc3RyYW5nZSBzdHVmZiBnb2luZyBvbjoNCg0KMSkgSSBibG9jayBTSUdQ
+SVBFIHRvIGJlIGFibGUgdG8gZ2V0IGEgRVBJUEUgZnJvbSB3cml0ZSwgc28gaSBjYW4gaGFuZGxl
+IHBhcnRpYWwgZGF0YSBpbiB0aGUgd3JpdGUvcmVhZCBsb29wLiBDb3VsZCB0aGF0IGhhdmUgYW55
+dGhpbmcgdG8gZG8gd2l0aCBpdD8NCjIpIEkgc2V0IHVwIGEgU0lHQUxSTSBhdCBwcm9jZXNzIHN0
+YXJ0LCBidXQgdGhhdCBkb2Vzbid0IGdvIG9mZi4NCjMpIFdoeSBkb2VzIGl0IGJsb2NrIGluIHdy
+aXRlKCksIGkgdGhvdWdodCBpZiBhbnl0aGluZyBpdCB3b3VsZCBibG9jayBpbiByZWFkKCkgZnJv
+bSB0aGUgTkZTIG1vdW50ZWQgZmlsZXN5c3RlbS4uLg0KNCkgV2h5IGRvZXNuJ3QgaXQganVzdCBw
+aWNrIHVwIGZyb20gd2hlcmUgaXQgc3RhcnRlZD8NCjUpIFdoZW4gaSB0cmFjZSB0aGUgcHJvZ3Jh
+bSB2aWEgc3RyYWNlIG9yIGdkYiBpdCBzaGFrZXMgbG9vc2UgYW5kIHN0YXJ0cyBydW5uaW5nIGFn
+YWluLCBzdXJlbHkgYmVjYXVzZSBvZiBzb21lIHNpZ25hbC4NCg0KSSBtb3VudCB0aGUgcGFydGl0
+aW9uIGFzIHJ3LGhhcmQsaW50ciwgaXMgdGhhdCBubyBnb29kIGluIHRoaXMgc2l0dWF0aW9uPw0K
+DQpBbmQgZm9yIGNvbXBsZXRlbmVzcyBpJ2xsIGluY2x1ZGUgdGhlIHN0YWNrdHJhY2Ugb2YgYW4g
+aHVuZyBwcm9jZXNzOg0KDQojMCAgMHgyMDAwMDQ3NTYxOCBpbiBfX2xpYmNfd3JpdGUgKCkgYXQg
+X19saWJjX3dyaXRlOjINCiMxICAweDIwMDAwNWY2YTk0IGluIHdyaXRlIChmZD0xLCBidWY9MHgx
+MWZmZmEwMDAsIG49MTYzODQpIGF0IHdyYXBzeXNjYWxsLmM6MTM5DQojMiAgMHgxMjAwMWNiZTQg
+aW4gd3JpdGVfc2VuZGZpbGUgKG91dF9mZD0xLCBpbl9mZD00LCBvZmZzZXQ9MHgxMWZmZmY5MTgs
+IGNvdW50PTApIGF0IHV0aWwuY3BwOjEzNg0KIzMgIDB4MTIwMDFlMDg0IGluIGRvX3NlbmRmaWxl
+IChvdXRfZmQ9MSwgaW5fZmQ9NCwgb2Zmc2V0PTB4MTFmZmZmOTE4LCBjb3VudD0xOTgxMjgpIGF0
+IHV0aWwuY3BwOjMwMw0KIzQgIDB4MTIwMDBlNDRjIGluIGhhbmRsZWxpbmUgKG09QDB4MTFmZmZl
+ZDI4KSBhdCBnZW5kLmNwcDo3NzkNCiM1ICAweDEyMDAwNzMxNCBpbiBkb19jaGlsZCAoKSBhdCBn
+ZW5kLmNwcDoyNDkNCiM2ICAweDEyMDAwNjY4MCBpbiBtYWluIChhcmdjPTEsIGFyZ3Y9MHgwKSBh
+dCBnZW5kLmNwcDoxMzgNCg0KRG9lcyBhbnlvbmUgaGF2ZSBhbnkgaWRlYSBhYm91dCB0aGlzLCBv
+ciBpZiBpdCBzaG91bGQgYmUgb2J2aW91cywgdGVsbCBtZSB0byBSVEZNLCBidXQga2luZGx5IHBv
+aW50IG1lIHRvIHdoZXJlIGkgY2FuIHJlYWQgdXAgb24gdGhlc2Uga2luZCBvZiB0aGluZ3MuLi4N
+Cg0KUmVnYXJkcw0KDQpNYWdudXMNCg0KDQoNCi0tIA0KLT0tPS09LT0tPS09LT0tPS09LT0tPS09
+LT0tPS09LT0tPS09LT0tPS09LT0tPS09LT0tDQogUHJvZ3JhbW1lci9OZXR3b3JrZXIgW3xdIE1h
+Z251cyBOYWVzbHVuZA0KLT0tPS09LT0tPS09LT0tPS09LT0tPS09LT0tPS09LT0tPS09LT0tPS09
+LT0tPS09LT0tDQo=
 
 
 
 -------------------------------------------------------
-This sf.net email is sponsored by: OSDN - Tired of that same old
-cell phone?  Get a new here for FREE!
-https://www.inphonic.com/r.asp?r=sourceforge1&refcode1=vs3390
+This sf.net email is sponsored by: Jabber - The world's fastest growing 
+real-time communications platform! Don't just IM. Build it in! 
+http://www.jabber.com/osdn/xim
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
