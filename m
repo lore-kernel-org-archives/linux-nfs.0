@@ -1,26 +1,24 @@
-From: "Robert Pawlowicz" <robert@pawlowicz.com>
-Subject: Function not implemented
-Date: Wed, 10 Sep 2003 14:04:37 +0100
+From: Marcel de Riedmatten <mdr@dotforge.ch>
+Subject: Re: Function not implemented
+Date: 10 Sep 2003 16:49:39 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <LOBBJFHFAIJCHENJILKBEEJEMAAA.robert@pawlowicz.com>
+Message-ID: <1063205379.15976.184.camel@galadriel>
+References: <LOBBJFHFAIJCHENJILKBOEJDMAAA.robert@pawlowicz.com>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0010_01C377A4.7849F300"
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-DBiwMHOx7ZQW0QeetbGO"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19x4UW-0000l2-00
-	for <nfs@lists.sourceforge.net>; Wed, 10 Sep 2003 05:54:36 -0700
-Received: from scrabble.freeuk.net ([212.126.144.29])
+	id 19x6I6-0007bd-00
+	for <nfs@lists.sourceforge.net>; Wed, 10 Sep 2003 07:49:54 -0700
+Received: from [62.2.181.77] (helo=smtp.nofida.ch)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 19x4UV-0003Zy-UT
-	for nfs@lists.sourceforge.net; Wed, 10 Sep 2003 05:54:36 -0700
-Received: from [212.126.148.32] (helo=wolverine)
-	by scrabble.freeuk.net with smtp (Exim 4.22)
-	id 19x4UU-000MCq-V6
-	for nfs@lists.sourceforge.net; Wed, 10 Sep 2003 13:54:35 +0100
-To: <nfs@lists.sourceforge.net>
+	id 19x6I5-000513-NM
+	for nfs@lists.sourceforge.net; Wed, 10 Sep 2003 07:49:54 -0700
+To: Robert Pawlowicz <robert@pawlowicz.com>
+In-Reply-To: <LOBBJFHFAIJCHENJILKBOEJDMAAA.robert@pawlowicz.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -33,116 +31,64 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
 
-------=_NextPart_000_0010_01C377A4.7849F300
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-
-Hello
-I have been pulling my hair out over this because I can't find a solution to
-the problem.
-
-I have a fresh install of debian linux and debian as you may already know
-includes NFS as part of its standard packages. This includes kernel NFS
-server support as well as the other usual packages that come with NFS.
-
-All the daemons start up fine except for nfsd which doesn't start & gives me
-the message:
-
-server.address.com:/var/www: Function not implemented
-
-When I try to mount the file on the client it just says that permission is
-denied.
-
-I have seen quite a bit about this function not implemented on the
-discussion forums but have found nothing that adequately answers my problem.
-
-Please help!
-
-Regards,
-
-Robert Pawlowicz
-
-robert@pawlowicz.com
-tel: 0114 250 7786
-
-------=_NextPart_000_0010_01C377A4.7849F300
-Content-Type: text/html;
-	charset="iso-8859-1"
+--=-DBiwMHOx7ZQW0QeetbGO
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: quoted-printable
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; =
-charset=3Diso-8859-1">
-<META content=3D"MSHTML 6.00.2800.1226" name=3DGENERATOR></HEAD>
-<BODY>
-<DIV>
-<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana=20
-size=3D2>Hello</FONT></SPAN></DIV>
-<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana size=3D2>I =
-have been=20
-pulling my hair out over this because I can't find a solution to the=20
-problem.</FONT></SPAN></DIV>
-<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana=20
-size=3D2></FONT></SPAN>&nbsp;</DIV>
-<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana size=3D2>I =
-have a fresh=20
-install of debian linux and debian as you may already know includes NFS =
-as part=20
-of its standard packages. This includes kernel NFS server support as =
-well as the=20
-other usual packages that come with NFS.</FONT></SPAN></DIV>
-<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana=20
-size=3D2></FONT></SPAN>&nbsp;</DIV>
-<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana size=3D2>All =
-the daemons=20
-start up fine except for nfsd which doesn't start &amp; gives me the=20
-message:</FONT></SPAN></DIV>
-<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana=20
-size=3D2></FONT></SPAN>&nbsp;</DIV>
-<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana=20
-size=3D2>server.address.com:/var/www: Function not =
-implemented</FONT></SPAN></DIV>
-<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana=20
-size=3D2></FONT></SPAN>&nbsp;</DIV>
-<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana size=3D2>When =
-I try to=20
-mount the file on the client it just says that permission is=20
-denied.</FONT></SPAN></DIV>
-<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana=20
-size=3D2></FONT></SPAN>&nbsp;</DIV>
-<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana size=3D2>I =
-have seen quite=20
-a bit about this function not implemented on the discussion forums but =
-have=20
-found nothing that adequately answers my problem.</FONT></SPAN></DIV>
-<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana=20
-size=3D2></FONT></SPAN>&nbsp;</DIV>
-<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana =
-size=3D2>Please=20
-help!</FONT></SPAN></DIV>
-<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana=20
-size=3D2></FONT></SPAN>&nbsp;</DIV>
-<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana=20
-size=3D2>Regards,</FONT></SPAN></DIV>
-<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana=20
-size=3D2></FONT></SPAN>&nbsp;</DIV>
-<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana =
-size=3D2>Robert=20
-Pawlowicz</FONT></SPAN></DIV>
-<DIV><FONT face=3DCourier size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DVerdana size=3D2><A=20
-href=3D"mailto:robert@pawlowicz.com">robert@pawlowicz.com</A></FONT></DIV=
->
-<DIV><FONT face=3DVerdana size=3D2><FONT =
-color=3D#808080><STRONG>tel:</STRONG></FONT>=20
-0114 250 7786</FONT></DIV>
-<DIV>&nbsp;</DIV></DIV></BODY></HTML>
+Le mer 10/09/2003 =E0 14:57, Robert Pawlowicz a =E9crit :
+> Hello
+> I have been pulling my hair out over this because I can't find a
+> solution to the problem.
+> =20
+> I have a fresh install of debian linux and debian as you may already
+> know includes NFS as part of its standard packages. This includes
+> kernel NFS server support as well as the other usual packages that
+> come with NFS.
+> =20
+> All the daemons start up fine except for nfsd which doesn't start &
+> gives me the message:
+> =20
+> server.address.com:/var/www: Function not implemented
+> =20
+> When I try to mount the file on the client it just says that
+> permission is denied.
+> =20
+> I have seen quite a bit about this function not implemented on the
+> discussion forums but have found nothing that adequately answers my
+> problem.
 
-------=_NextPart_000_0010_01C377A4.7849F300--
+Hi=20
+
+I would start to check some simple stuff:
+
+modprobe nfs
+lsmod
+rpcinfo -p
+exportfs -av
+
+just to get an idea of what is wrong.
+
+
+Cheers
+
+--=20
+Marcel de Riedmatten
+pgp key: CFE703CA http://ftp.dotforge.ch/pub/users/mdr/mdr.gpg.asc
+Empreinte: 4687 F9CB D8E2 AC1A B806  F812 C048 0875 CFE7 03CA
+
+--=-DBiwMHOx7ZQW0QeetbGO
+Content-Type: application/pgp-signature; name=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.1 (GNU/Linux)
+
+iD8DBQA/XzoCwEgIdc/nA8oRAmqEAKCE3CT5S5wNnng19XXxcIh0vftzTgCfcvpA
+0psLbk0c2TuMevaxxzjCdLo=
+=PXCD
+-----END PGP SIGNATURE-----
+
+--=-DBiwMHOx7ZQW0QeetbGO--
 
 
 
