@@ -1,17 +1,19 @@
-From: "Mansell, Gary" <GRMansell@ricardo.com>
-Subject: My messages file is swamped with errors: kernel: svc: bad direction 256, dropping request
-Date: Wed, 5 Mar 2003 15:33:39 -0000
+From: Jonas Oberg <jonas@informatik.gu.se>
+Subject: Too many mounts
+Date: Thu, 06 Mar 2003 14:52:22 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <D8091602C6011848B2FBEF5AE9797D8D4D22B3@bambi.stc.ricplc.com>
+Message-ID: <87adg8iovd.fsf@fiona.informatik.gu.se>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: text/plain; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [193.122.26.10] (helo=mtcemailsvr.mtc.ricplc.com)
+Received: from fiona.informatik.gu.se ([130.241.141.27] ident=mail)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18qatw-0008Sj-00
-	for <nfs@lists.sourceforge.net>; Wed, 05 Mar 2003 07:33:48 -0800
-To: <nfs@lists.sourceforge.net>
+	id 18qvno-0003XA-00
+	for <nfs@lists.sourceforge.net>; Thu, 06 Mar 2003 05:52:52 -0800
+Received: from jonas by fiona.informatik.gu.se with local (Exim 3.36 #1 (Debian))
+	id 18qvnL-0007tk-00
+	for <nfs@lists.sourceforge.net>; Thu, 06 Mar 2003 14:52:23 +0100
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,47 +26,22 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-My messages file is swamped (95% full) with these errors:
+In our department we have a problem with our student server. It
+appears that the Linux kernel limits the number of anonymous (nfs
+et. al) mounts to 256. This is a problem for us, since we use
+automount to mount home directories from our fileserver via NFS. We
+are frequently in the range of 190-220 active mounts (we have set the
+automount timeout to be about 30 seconds to get rid of idle mounts
+quickly).
 
-Feb 25 05:08:18 dfgsrv kernel: svc: bad direction 256, dropping request
-Feb 25 05:08:58 dfgsrv last message repeated 6 times
-Feb 25 05:10:02 dfgsrv last message repeated 11 times
-Feb 25 05:11:02 dfgsrv last message repeated 10 times
-Feb 25 05:12:02 dfgsrv last message repeated 10 times
-Feb 25 05:13:02 dfgsrv last message repeated 10 times
-Feb 25 05:14:02 dfgsrv last message repeated 10 times
-Feb 25 05:15:01 dfgsrv last message repeated 10 times
-Feb 25 05:16:01 dfgsrv last message repeated 10 times
-Feb 25 05:17:01 dfgsrv last message repeated 10 times
-Feb 25 05:18:01 dfgsrv last message repeated 10 times
-Feb 25 05:19:01 dfgsrv last message repeated 10 times
+Does anyone have a solution for this problem? Would using devfs
+perhaps solve the problem by allowing more anonymous mounts?
 
-They seem to start to occur when the nfs server subsystem starts up. My =
-hypothesis is that one particular type of UNIX client is having trouble =
-communicating properly with my server. I have had no reports back from =
-the users of the NFS client workstations that things are not working =
-correctly but I am getting thousands of messages swamping my messages =
-file and this must be affecting performance at least on the server.
-
-The machine is used an NFS and SMB fileserver to about 200 various UNIX =
-and NT clients. It is a Dell PE2650 with 2x 2.4Ghz Zeons, 2Gb RAM, 2x =
-18Gb system disks mirrored with the onboard RAID controller, 500Gb EMC =
-RAID 5 storage attached via 2x Qlogic QLA2300 FCAL cards. There is also =
-an HP 2/20 autoloader attached via an adaptec AHA3960 SCSI controller =
-card. It is attached to the network via the two onboard Broadcom BCM5701 =
-(groan) Gb network ports which are running in a bonded configuration.
-
-The machine is running RH7.3 and kernel 2.4.18-18.7.xsmp and =
-nfs-utils-0.3.3-5
-
-I would appreciate it if someone could advise me what is wrong here - I =
-can't see the wood for the trees :)
-
-
-Gary Mansell
-Senior Technical Analyst
-IT Department
-Ricardo Consulting Engineers Ltd.
+-- 
+Jonas Öberg
+Systems administrator/webmaster, Department of Informatics,
+School of Economics and Commercial Law, Gothenburg University.
+Phone. +46-31-7732717, Fax. +47-31-7734754
 
 
 -------------------------------------------------------
