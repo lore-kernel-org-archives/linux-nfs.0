@@ -1,21 +1,18 @@
-From: "Bryan J. Smith" <b.j.smith@ieee.org>
-Subject: Re: Corrupt Data when using NFS on Linux -- This should be in the HOWTO
-Date: Tue, 29 Oct 2002 13:23:43 -0500 (EST)
+From: Juan Gomez <juang@us.ibm.com>
+Subject: RedHat nfs-utils-0.3.3.drop-privs.patch problems.
+Date: Tue, 29 Oct 2002 11:33:25 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1035915823.3dbed22fa9dc0@webmail.smithconcepts.com>
-References: <6440EA1A6AA1D5118C6900902745938E07D54FE2@black.eng.netapp.com> <007601c27ed6$74986240$2864a8c0@alanw> <200210291703.g9TH3FD32594@leinie.lmcg.wisc.edu> <1035912013.3dbec34dddd7e@webmail.smithconcepts.com> <3DBECE74.506@attbi.com>
+Message-ID: <OFABA5F7C6.E14F63CE-ON87256C61.006A538C@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Bryan J. Smith" <b.j.smith@ieee.org>,
-  Daniel Forrest <forrest@lmcg.wisc.edu>, Alan Witz <awitz@magstarinc.com>,
-  nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from knight.01.dios.net ([65.222.230.112] helo=taz2.fiberhosting.com)
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 186b1q-0008RM-00
-	for <nfs@lists.sourceforge.net>; Tue, 29 Oct 2002 10:23:50 -0800
-To: Tom McNeal <trmcneal@attbi.com>
-In-Reply-To: <3DBECE74.506@attbi.com>
+Received: from e33.co.us.ibm.com ([32.97.110.131])
+	by usw-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 186c8m-0008Ej-00
+	for <nfs@lists.sourceforge.net>; Tue, 29 Oct 2002 11:35:04 -0800
+To: linux-kernel@vger.kernel.org
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,24 +26,20 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Quoting Tom McNeal <trmcneal@attbi.com>:
-> Its easier with the FAQ, but the HOWTO might be the better place.
-> We'll take a look at it...
 
-Maybe just a "Top 10 Differences Between NFS And Local"
 
-- Mounts in exported filesystems are not automatically exported
-- Locking issues and accomodation in scripts/programs
-- Etc...
 
-I think it would go a long way to helping many.
+I am having trouble when I apply this patch to statd for the following
+reason. After the patch does drop_privs() to switch from root to rpcuser
+statd_get_socket() is called and it fails to bind to reserved ports
+(bindresvport()) as rpcuser is not root. Later when statd tries to notify
+lockd of a server going down/back up for example (at the NFS client side)
+lockd (in the kernel) refuses to take the notification because it is coming
+from a non-priv port (which I think is fine)...
 
--- 
-Bryan J. Smith, E.I.            Contact Info:  http://thebs.org
-A+/i-Net+/Linux+/Network+/Server+ CCNA CIWA CNA SCSA/SCWSE/SCNA
----------------------------------------------------------------
-           limit      guilt   =     { psychopath,
-         remorse->0                    innocent }
+Is this a well-known problem or am I just doing something wrong here?
+
+Regards, Juan
 
 
 
