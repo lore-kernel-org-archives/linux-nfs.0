@@ -1,24 +1,26 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: ANNOUNCE: nfs-utils 1.0.7-pre2
-Date: Fri, 10 Dec 2004 12:50:23 +1100
-Message-ID: <16825.223.924965.582375@cse.unsw.edu.au>
+From: "J.Rinas" <jrinas@gmx.de>
+Subject: invalidate cache / NFS performance on a diskless system
+Date: Thu, 9 Dec 2004 17:18:48 +0100
+Message-ID: <200412091718.48973.jrinas@gmx.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain;
+  charset="iso-8859-15"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CcZvQ-00069I-LW
-	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 17:50:28 -0800
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	id 1CcdJX-0004uQ-T0
+	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 21:27:35 -0800
+Received: from mail0.ewetel.de ([212.6.122.10])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CcZvP-0001iI-UR
-	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 17:50:28 -0800
-Received: From notabene.cse.unsw.edu.au ([129.94.172.124]) (auth-user neilb)
-	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
-	Fri, 10 Dec 2004 12:50:24 +1100
-Received: from neilb by notabene.cse.unsw.edu.au with local (Exim 4.34)
-	id 1CcZvM-0001A7-0R
-	for nfs@lists.sourceforge.net; Fri, 10 Dec 2004 12:50:24 +1100
+	id 1CcdJV-00041O-RT
+	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 21:27:35 -0800
+Received: from jrdesk.example.com (dialin-80-228-48-015.ewe-ip-backbone.de [80.228.48.15])
+	by mail0.ewetel.de (8.12.1/8.12.9) with ESMTP id iB9GIme7028116
+	for <nfs@lists.sourceforge.net>; Thu, 9 Dec 2004 17:18:48 +0100 (MET)
+Received: from [127.0.0.1] (helo=localhost)
+	by jrdesk.example.com with esmtp (Exim 4.34)
+	id 1CcR0D-0002ma-CS
+	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 17:18:49 +0100
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -33,25 +35,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hello!
+
+We've set up our network using a linux 2.6.9 server and
+abt. 25-30 linux clients using NFS.
+The clients are booting through PXE and work in a diskless fashion.
+i.e.=20
+they mount their root directory via NFS
+only /var and /tmp are on a tmpfs device.
 
 
-I have made available a second pre-release of nfs-utils 1.0.7.
+To improve performance we have currently set the root directory=20
+(including the /usr tree) to use the mount options
 
-It can be downloaded from 
-  http://sourceforge.net/project/showfiles.php?group_id=14
-or
-  http://www.{countrycode}.kernel.org/pub/linux/utils/nfs/
+  ro,
+  noatime,
+  v3,
+  rsize=3D32768,wsize=3D32768,
+  actimeo=3D180,
+  hard,tcp,nocto,nolock
 
-This release adds some statd fixes and a couple of other small bug fixes,
-and also gets ./configure to complain if libnfsidmap or libevent aren't installed
-(unless --disable-nfsv4 is selected).
-README also says where to get these libraries from.
 
-I still hope to put this out as a final 1.0.7 before Christmas.
-Having lots of people say "Yes, I've tried it, and it works OK" would
-make a great Christmas present :-)
+To further improve the performance of the clients,=20
+I'd like to increase  actimeo to abt. 9 hours.
+But this leads to severe problems, if some small configurations are done=20
+during the day (e.g. installing new soft or configuration work...):
+The changes do not apprear on the client nodes in reasonable time.
 
-NeilBrown 10-December-2004
+So I'd like to know if there is a switch to invalidate the whole NFS / VFS?=
+=20
+cache at once!
+(e.g. an    echo something > /proc/somewhere  )?
+
+An there any other hints/experiences to improve performance on such a syste=
+m?
+(Our new server with 10k rpm Disks is already ordered!)
+
+tnx fr ur help
+  J=FCrgen
 
 
 -------------------------------------------------------
