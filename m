@@ -1,28 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: FC3 <-> Solaris 10, NFSv4 interop?
-Date: Fri, 25 Feb 2005 16:59:53 -0800
-Message-ID: <1109379593.17237.20.camel@lade.trondhjem.org>
-References: <1109296629.5897.574.camel@seki.nac.uci.edu>
-	 <200502251706.24315.vincent.roqueta@ext.bull.net>
-	 <1109355225.5897.580.camel@seki.nac.uci.edu>
-	 <20050225184615.GD23369@fieldses.org>
-	 <1109376963.30943.7.camel@seki.nac.uci.edu>
+From: Brad Barnett <lists@L8R.net>
+Subject: knfsd brought to its knees, by a simple rsync or cp operation
+Date: Sat, 26 Feb 2005 08:28:54 -0500
+Message-ID: <20050226082854.2a496ec3@be.back.l8r.net>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Vincent Roqueta <vincent.roqueta@ext.bull.net>,
-	nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Content-Type: text/plain; charset=US-ASCII
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D4qJf-0006vk-7g
-	for nfs@lists.sourceforge.net; Fri, 25 Feb 2005 17:00:19 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1D5208-0006m0-Tk
+	for nfs@lists.sourceforge.net; Sat, 26 Feb 2005 05:28:56 -0800
+Received: from l8r.net ([64.26.155.43] ident=aliens)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.41)
-	id 1D4qJd-0002ct-Hm
-	for nfs@lists.sourceforge.net; Fri, 25 Feb 2005 17:00:19 -0800
-To: Dan Stromberg <strombrg@dcs.nac.uci.edu>
-In-Reply-To: <1109376963.30943.7.camel@seki.nac.uci.edu>
+	id 1D5208-0003g9-3Y
+	for nfs@lists.sourceforge.net; Sat, 26 Feb 2005 05:28:56 -0800
+Received: from be.back.l8r.net (bbarnett@be [10.10.10.10])
+	by l8r.net (8.12.3/8.12.3/Debian-7.1) with ESMTP id j1QDSBuu007892
+	(version=TLSv1/SSLv3 cipher=EDH-RSA-DES-CBC3-SHA bits=168 verify=NO)
+	for <nfs@lists.sourceforge.net>; Sat, 26 Feb 2005 08:28:11 -0500
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,27 +31,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-fr den 25.02.2005 Klokka 16:16 (-0800) skreiv Dan Stromberg:
 
-> How hard would it be to set up one of the following on FC3 and Solaris
-> 10?
-> 
-> LIPKEY (based on SPKM-3)
-> SPKM-3
 
-Very hard. They don't support it... ;-)
+There seems to be some odd behaviour with knfsd.  I have a box with a
+raid10, and a single cp or rsync operation should not effectively kill
+knfsd performance.
 
-> If we just continue using AUTH_UNIX with NFSv4, are we still relying on
-> reserved ports?
+It does, however.
 
-Yes.
+First, nfs works very well as long as this box does not have any local
+disk i/o.  I can, literally, transfer files at the upper limit of my
+100mbit network connection.  Directory reads are fast, file transfers are
+great in both directions.  "Instant" would be the word I would use for
+access.
 
-Cheers,
-  Trond
+It works great, fast and beautifully.  There does not appear to be any
+configuration issue at play here.
 
--- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
+The problems start as soon as any local I/O starts.  Directory listings
+over nfs can take > 5 or 6 seconds, once I start my rsync backup process. 
+File transfer rates fall through the floor.
 
+However, directory listings, locally on the box, are still instant.  File
+reads are instant.  There is a _very_ minor slowdown, but my raid10 array
+is doing a great job at handling a single rsync session + a single
+directory request or copy request.  Again, with knfsd, performance bombs.
+
+There is obviously something wacky in the way the kernel is scheduling
+things here.  Any ideas, patches, suggestions?
+
+Kernel 2.6.10, NFSv3 mounted, noatime mounts.  More info can be provided
+in needed, but again.. this setup works beautifully under load from
+multiple NFS clients.  It is fast, responsive, you name it.  However, one
+_single_ cp or rsync session can bring NFS responsiveness to its knees,
+without tasking the cpu, ram or swap.
+
+Thanks.
 
 
 -------------------------------------------------------
