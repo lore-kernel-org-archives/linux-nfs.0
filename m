@@ -1,26 +1,25 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: task->tk_timeout = 0
-Date: Thu, 26 Feb 2004 12:08:02 +0100
+From: trond.myklebust@fys.uio.no
+Subject: Re: Force client page cache invalidation?
+Date: Thu, 26 Feb 2004 13:35:15 +0100 (CET)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040226110802.GE1197@suse.de>
+Message-ID: <32886.207.214.87.84.1077798915.squirrel@webmail.uio.no>
+References: <403B9842.9070001@ibl.bm>
+    <1145.130.128.48.179.1077653208.squirrel@webmail.uio.no>
+    <20040226085718.GB1197@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
+Content-Type: text/plain;charset=iso-8859-1
+Cc: "ralph gonzalez" <rgonzale@ibl.bm>,nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AwJOt-0006B4-KT
-	for nfs@lists.sourceforge.net; Thu, 26 Feb 2004 03:09:55 -0800
-Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.30)
-	id 1AwJN7-0000pP-GW
-	for nfs@lists.sourceforge.net; Thu, 26 Feb 2004 03:08:05 -0800
-Received: from hermes.suse.de (Hermes.suse.de [195.135.221.8])
-	(using TLSv1 with cipher EDH-RSA-DES-CBC3-SHA (168/168 bits))
-	(No client certificate requested)
-	by Cantor.suse.de (Postfix) with ESMTP id 08C9B249313
-	for <nfs@lists.sourceforge.net>; Thu, 26 Feb 2004 12:08:03 +0100 (CET)
-To: nfs@lists.sourceforge.net
+	id 1AwKlP-0007Tr-KS
+	for nfs@lists.sourceforge.net; Thu, 26 Feb 2004 04:37:15 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1AwKVp-0007kV-V1
+	for nfs@lists.sourceforge.net; Thu, 26 Feb 2004 04:21:10 -0800
+To: "Olaf Kirch" <okir@suse.de>
+In-Reply-To: <20040226085718.GB1197@suse.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,68 +32,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi all,
+På to , 26/02/2004 klokka 00:57, skreiv Olaf Kirch:
+> > Linux does not support this sort of kludge and is unlikely to do so
+for
+> > the near future. The VM simply cannot support it.
+>
+> What about using fadvise(POSIX_FADV_DONTNEED) - shouldn't this
+> do the trick? Or does it refuse to invalidate mapped pages?
 
-I've been debugging mysterious hangs in the NFS clients for a while
-now. The symptoms were always the same: NFS server goes away, comes back
-after a long time, but the mount point remains stuck.
+fadvise(POSIX_FADV_DONTNEED) uses the same interface that NFS does to
+invalidate pages (invalidate_mapping_pages()), so it has the same
+weaknesses: if you have unmapped those pages since whenever it was NFS
+tried to invalidate them, then it will work, but there is no way for the
+user to guarantee that it will.
+Moreover, fadvise() is only available under Linux 2.6.x...
 
-When inspecting the list of RPC tasks, I often found that one process
-was on the pending queue (i.e. waiting for a reply) but task->tk_timeout
-was 0.
+I did, however, see an encouraging posting by Daniel Phillips on the
+linux-kernel list yesterday, which indicates he is working on this
+problem. See the thread about "Distributed mmap API".
 
-I added a couple of diagnostic printks, and one of them triggered
-yesterday, pointing to this piece of code in xprt_transmit:
+Cheers,
+  Trond
 
-if (!xprt->nocong) {
-	int timer = task->tk_msg.rpc_proc->p_timer;
-	timeout = rpc_calc_rto(clnt->cl_rtt, timer);
-	timeout <<= rpc_ntimeo(clnt->cl_rtt, timer);
-	timeout <<= clnt->cl_timeout.to_retries
-		- req->rq_timeout.to_retries;
-	if (timeout > req->rq_timeout.to_maxval)
-		timeout = req->rq_timeout.to_maxval;
-	else if (timeout == 0) {
-		printk(KERN_ERR "RPC task timeout == 0, please tell okir\n");
-		timeout = req->rq_timeout.to_maxval;
-	}
-	...
-}
 
-So apparently one of the shift operations above overflows.  I suspect
-rpc_ntimeo because it can be arbitrarily large. But the ntimeouts value
-isn't updated until we've received a reply (is this intentional, Trond?)
 
-So what would have to happen for this bug to trigger is
-
-	send request
-	server hangs
-	retransmit request 1000 times
-	server comes back
-	retransmit request
-	receive reply, set ntimeout = 1000
-
-	send another request. timeout overflows and becomes 0
-	request gets lost
-	task waits indefinitely.
-
-I think the most robust way to fix this is simply this:
-
-		- req->rq_timeout.to_retries;
-	if (timeout > req->rq_timeout.to_maxval)
-		timeout = req->rq_timeout.to_maxval;
--	if (timeout > req->rq_timeout.to_maxval)
-+	if (!timeout || timeout > req->rq_timeout.to_maxval)
-		timeout = req->rq_timeout.to_maxval;
-
-It may also make sense to clamp the ntimeouts value to something
-reasonable (e.g. 8)
-
-Olaf
--- 
-Olaf Kirch     |  Stop wasting entropy - start using predictable
-okir@suse.de   |  tempfile names today!
----------------+ 
 
 
 -------------------------------------------------------
