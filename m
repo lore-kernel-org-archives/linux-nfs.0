@@ -1,18 +1,14 @@
-From: "GroupShield for Exchange (CVO-EXCHANGE)"
-	 <NAIUSCVO-EXCHANGE@roguewave.com>
-Subject: ALERT -  GroupShield ticket number OA2229_1057214755_CVO-EXCHANGE
- _1 was generated
-Date: Wed, 2 Jul 2003 23:45:58 -0700
+From: "Willis Jensen" <cpqynh@dazzlingdons.us>
+Subject: The Absolute lowest rates!
+Date: Thu, 03 Jul 03 04:01:17 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <F888C30C3021D411B9DA00B0D0209BE80596161E@cvo-exchange.cvo.roguewave.com>
+Message-ID: <e6-3e$mey7-sw@b5u.ug>
+Reply-To: "Willis Jensen" <cpqynh@dazzlingdons.us>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: multipart/alternative;
+	boundary="F6C8A5FCA_0_234E2DDF"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from cvo-ext.roguewave.com ([12.22.36.198] helo=cvo-exchange.cvo.roguewave.com)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19XxuC-0000nx-00
-	for <nfs@lists.sourceforge.net>; Wed, 02 Jul 2003 23:49:20 -0700
-To: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
+To: <nfs@lists.sourceforge.net>, <dri-devel@lists.sourceforge.net>, <dri-devel-admin@lists.sourceforge.net>, <dri-devel-request@lists.sourceforge.net>, <linux-usb-users@lists.sourceforge.net>, <linux-usb-users-admin@lists.sourceforge.net>, <linux-usb-users-request@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,35 +21,29 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Action Taken:
-The attachment was deleted from the message and replaced with a text file
-informing the recipient of the action taken.
 
-To:
-nfs@lists.sourceforge.net <nfs@lists.sourceforge.net>
+--F6C8A5FCA_0_234E2DDF
+Content-Type: text/html;
+Content-Transfer-Encoding: quoted-printable
 
-From:
-mzyngier@freesurf.fr <mzyngier@freesurf.fr>
+<html>
+<body bgcolor=3D"#ffffff">
+<div align=3Dcenter>
+<a href=3D'http://mortcheap.com/4/index.asp?RefID=3D474876'><img src=3D'ht=
+tp://mort888.com/pic_morta/mortgagead.gif' border=3D0></a>
+<table width=3D516>
+	<tr><td><font face=3D"arial,helvetica" size=3D1>Please know that we do no=
+t want to send you information regarding our special offers if you do not =
+wish to receive it.  If you would no longer like us to contact you or feel=
+ that you have received this email in error, please <a href=3D"http://mort=
+cheap.com/auto/index.htm">click here to unsubscribe</a>.</font></td></tr>
+</table>
+</div>
+</body>
+</html>
 
-Sent:
--1065774208,29573422
+--F6C8A5FCA_0_234E2DDF--
 
-Subject:
-[NFS] Re: Movie
-
-Attachment Details:-
-
-Attachment Name: your_details.zi
-File: your_details.zi
-Infected? Yes
-Repaired? No
-Blocked? No
-Deleted? Yes
-Virus Name: W32/Sobig.e@MM
-
-
-
-	
 
 
 -------------------------------------------------------
