@@ -1,21 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: dumas@centre-cired.fr (Patrice DUMAS - DOCT)
 Subject: Re: Locking patches (generic & nfs)
-Date: Tue, 23 Jul 2002 17:27:38 +0200
+Date: Tue, 23 Jul 2002 18:32:50 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <23054.6477287591$1027438491@news.gmane.org>
+Message-ID: <20020723183250.A30579@hermes.centre-cired.fr>
 References: <20020719101950.A15819@suse.de> <shsy9c27asf.fsf@charged.uio.no> <20020723170615.D1869@suse.de>
 Mime-Version: 1.0
-Content-Type: Multipart/Mixed;
-  boundary="------------Boundary-00=_2AKPHME3BAIGNDN4KA07"
-Cc: linux-kernel@vger.kernel.org,
- nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mons.uio.no ([129.240.130.14])
+Received: from boukha.centre-cired.fr ([193.51.120.234])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17X1Zo-0006Hi-00
-	for <nfs@lists.sourceforge.net>; Tue, 23 Jul 2002 08:27:53 -0700
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20020723170615.D1869@suse.de>
+	id 17X2of-000567-00
+	for <nfs@lists.sourceforge.net>; Tue, 23 Jul 2002 09:47:22 -0700
+Received: from hermes.centre-cired.fr ([193.51.120.92])
+          by boukha.centre-cired.fr (8.9.3+Sun/jtpda-5.3.3) with ESMTP id SAA14346
+          for <nfs@lists.sourceforge.net>; Tue, 23 Jul 2002 18:44:50 +0100 (WEST)
+Received: (from dumas@localhost)
+	by hermes.centre-cired.fr (8.11.6/8.11.6) id g6NGWq816979
+	for nfs@lists.sourceforge.net; Tue, 23 Jul 2002 18:32:52 +0200
+To: nfs@lists.sourceforge.net
+In-Reply-To: <20020723170615.D1869@suse.de>; from okir@suse.de on Tue, Jul 23, 2002 at 05:06:15PM +0200
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,49 +31,35 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
+Hi,
 
---------------Boundary-00=_2AKPHME3BAIGNDN4KA07
-Content-Type: text/plain;
-  charset="iso-8859-15"
-Content-Transfer-Encoding: 8bit
+> > Patrice Dumas recently did some work on implementing this both for
+> > NLMv1,2,3 and NLM4, so I was planning on integrating his changes into
+> > 2.4.20.
+> 
+> As you can see from the patch, it's not really much you need to add.
+> The functionality is all there, one only needs to decode the GRANTED_RES
+> call rather than dropping it.
 
-On Tuesday 23 July 2002 17:06, Olaf Kirch wrote:
+This is basically all what is needed, however there are some
+more issues raised when the server decode the GRANTED_RES calls I tried
+to answer in other patches:
 
-> But as it is today, all blocked locks get inserted at the end of the
-> list because time_before_eq does a signed comparison! With the unpatched
-> code, when you have a blocked lock, and the conflicting lock is removed,
-> lockd will never send out a GRANTED_MSG. Because the blocked lock is at the
-> end of the list, and never picked up.
+- if 2 clients use the same cookie, the blocks will be mixed up
 
-Fair enough: I see the bug now.
+- if the linux client GRANTED_RES is lost, it will get a GRANTED_MSG 
+twice, the second GRANTED_RES will have a status set to nlm_lck_denied 
+because in nlmclnt_grant the lock request won't be found. This in 
+turn will cause the server to unlock the lock, while the client thinks
+it is granted and potential file corruption. I made a fix on the
+client side.
 
-So why could we not do something like the following instead? This just ensures 
-that we always leave the NLM_NEVER stuff at the end of the list which should 
-suffice to keep nlmsvc_retry_blocked() happy.
+It doesn't solve the problem on the server side, but it seems to me that
+the server side behaviour is the right behaviour (except in very rare cases
+where there is a race condition I will try to solve in a next patch but
+it is very rare and not urgent in my opinion).
 
-Cheers,
-  Trond
-
---------------Boundary-00=_2AKPHME3BAIGNDN4KA07
-Content-Type: text/plain;
-  charset="iso-8859-15";
-  name="fix_svclock.dif"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment; filename="fix_svclock.dif"
-
---- linux/fs/lockd/svclock.c.orig	Tue Feb  5 08:52:37 2002
-+++ linux/fs/lockd/svclock.c	Tue Jul 23 17:15:12 2002
-@@ -64,7 +64,7 @@
- 	if (when != NLM_NEVER) {
- 		if ((when += jiffies) == NLM_NEVER)
- 			when ++;
--		while ((b = *bp) && time_before_eq(b->b_when,when))
-+		while ((b = *bp) && time_before_eq(b->b_when,when) && b->b_when != NLM_NEVER)
- 			bp = &b->b_next;
- 	} else
- 		while ((b = *bp))
-
---------------Boundary-00=_2AKPHME3BAIGNDN4KA07--
+Pat
 
 
 -------------------------------------------------------
