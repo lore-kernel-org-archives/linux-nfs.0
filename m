@@ -1,23 +1,22 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: PATCH - > 256 NFS mounts. Was: Re: Linux NFS FAQ updates
-Date: Thu, 8 May 2003 11:02:18 +1000
+From: "Jenna Solly" <jenna_sollcvyt@aol.com>
+Subject: Whats been up?
+Date: Thu, 08 May 2003 13:19:19 +0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16057.44186.465124.590551@notabene.cse.unsw.edu.au>
-References: <6440EA1A6AA1D5118C6900902745938E07D55565@black.eng.netapp.com>
+Message-ID: <000501d7dc62$cad20131$60810216@curguog.tqs>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: multipart/mixed;
+	boundary="----=_NextPart_000_00E3_85C04B8E.C1784A70"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19DZnj-0005el-00
-	for <nfs@lists.sourceforge.net>; Wed, 07 May 2003 18:02:23 -0700
-Received: From
-	notabene.cse.unsw.edu.au ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <Charles.Lever@netapp.com>) (for <nfs@lists.sourceforge.net>) By
-	tone With Smtp ; Thu, 8 May 2003 11:02:16 +1000
-To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: message from Lever, Charles on Thursday April 24
+To: <multignometerm-devel@lists.sourceforge.net>,
+	<muttzilla-users@lists.sourceforge.net>,
+	<nano-devel@lists.sourceforge.net>,
+	<net-snmp-coders@lists.sourceforge.net>,
+	<net-snmp-users-request@lists.sourceforge.net>,
+	<netsaintplug-devel@lists.sourceforge.net>,
+	<nfs@lists.sourceforge.net>,
+	<nms-cgi-support@lists.sourceforge.net>,
+	<nms-cgi.support@lists.sourceforge.net>,
+	<ofset-members@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,102 +29,89 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thursday April 24, Charles.Lever@netapp.com wrote:
+------=_NextPart_000_00E3_85C04B8E.C1784A70
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: base64
 
->                       and question B3 discusses the
-> "255 NFS mounts per client" limitation.
 
-You could add something more to this section if you like....
-
-"It is possible to exceed the limit of 256 filesystems using 
-<a href="See Below">this</a> patch.  It utilised 3 more major numbers
-(which have been allocated by lanana) and so allows upto
-1024 non-device mounts (such as NFS).
-This patch does <b>not</b> address issues of running out of privileged 
-ports and so the effective limit is still well below 1024 ( but can be
-maximised by mixing UDP and TCP mounts)."
-
-I will probably submit this patch for inclusion in 2.4.22-pre1.
-
-In the mean time I would welcome success/failure reports.
-
-NeilBrown
-
-----------------------------------
-Allow more than 256 nfs mounts
-
-Utilise 3 extra major device numbers for anonymous
-devices so that more than 256 NFS mounts are possible.
-
- ----------- Diffstat output ------------
- ./fs/super.c            |   22 +++++++++++++++++-----
- ./include/linux/major.h |    7 +++++++
- 2 files changed, 24 insertions(+), 5 deletions(-)
-
-diff ./fs/super.c~current~ ./fs/super.c
---- ./fs/super.c~current~	2003-05-08 09:58:56.000000000 +1000
-+++ ./fs/super.c	2003-05-08 10:51:26.000000000 +1000
-@@ -572,7 +572,14 @@ int do_remount_sb(struct super_block *sb
-  * filesystems which don't use real block-devices.  -- jrs
-  */
- 
--enum {Max_anon = 256};
-+static int anon_majors[]= {UNNAMED_MAJOR, 
-+			   UNNAMED_MAJOR_1, 
-+			   UNNAMED_MAJOR_2,
-+			   UNNAMED_MAJOR_3,
-+};
-+#define	num_anon_majors (sizeof(anon_majors)/sizeof(anon_majors[0]))
-+#define Max_anon (num_anon_majors<<8)
-+
- static unsigned long unnamed_dev_in_use[Max_anon/(8*sizeof(unsigned long))];
- static spinlock_t unnamed_dev_lock = SPIN_LOCK_UNLOCKED;/* protects the above */
- 
-@@ -582,9 +589,14 @@ static spinlock_t unnamed_dev_lock = SPI
-  */
- static void put_anon_dev(kdev_t dev)
- {
--	spin_lock(&unnamed_dev_lock);
--	clear_bit(MINOR(dev), unnamed_dev_in_use);
--	spin_unlock(&unnamed_dev_lock);
-+	int i;
-+	for (i=0; i<num_anon_majors; i++)
-+		if (MAJOR(dev) == anon_majors[i]) {
-+			spin_lock(&unnamed_dev_lock);
-+			clear_bit(MINOR(dev)+(i<<8), unnamed_dev_in_use);
-+			spin_unlock(&unnamed_dev_lock);
-+			break;
-+		}
- }
- 
- /**
-@@ -643,7 +655,7 @@ retry:
- 	set_bit(dev, unnamed_dev_in_use);
- 	spin_unlock(&unnamed_dev_lock);
- 
--	s->s_dev = dev;
-+	s->s_dev = MKDEV(anon_majors[dev>>8],dev&255);
- 	insert_super(s, type);
- 	return s;
- }
-
-diff ./include/linux/major.h~current~ ./include/linux/major.h
---- ./include/linux/major.h~current~	2003-05-08 09:59:26.000000000 +1000
-+++ ./include/linux/major.h	2003-05-08 10:05:42.000000000 +1000
-@@ -143,6 +143,13 @@
- 
- #define	UMEM_MAJOR	116	/* http://www.umem.com/ Battery Backed RAM */
- 
-+/* combined with UNNAMED_MAJOR, these allow upto
-+ * 1024 non device (e.g. nfs) mounts
-+ */
-+#define	UNNAMED_MAJOR_1	144
-+#define	UNNAMED_MAJOR_2	145
-+#define	UNNAMED_MAJOR_3 146
-+
- #define RTF_MAJOR	150
- #define RAW_MAJOR	162
- 
+PEhUTUw+PEJPRFk+PEZPTlQgY29sb3I9IzRiNGI0Yj48cD4mbHQ7cmVwbGFj
+ZSZndDs8L3A+PFRBQkxFIHdpZHRoPSI3NSUiPjxUQk9EWT48VFI+ICAgIA0K
+PFREPjxGT05UIGNvbG9yPSNlODQ1MWIgZmFjZT0iQXJpYWwsIEhlbHZldGlj
+YSwgc2Fucy1zZXJpZiIgDQogICAgICBzaXplPSsyPjxTVFJPTkc+V0FSTklO
+RzogPC9TVFJPTkc+PC9GT05UPjxGT05UIGNvbG9yPSMzNTZmODggDQogICAg
+ICBmYWNlPSJBcmlhbCwgSGVsdmV0aWNhLCBzYW5zLXNlcmlmIiBzaXplPSsy
+PjxTVFJPTkc+RG9uJ3QgYmUgZm9vbGVkIGJ5IA0KICAgICAgcHJvZHVjdHMg
+Y2xhaW1pbmcgdG8gYmUgIkhHSCIuPC9TVFJPTkc+PEJSPjwvRk9OVD48Rk9O
+VCBjb2xvcj0jMmMyYzJjIA0KICAgICAgZmFjZT0iQXJpYWwsIEhlbHZldGlj
+YSwgc2Fucy1zZXJpZiI+PEJSPjxhIGhyZWY9Imh0dHA6Ly9yZC55YWhvby5j
+b20vKmh0dHA6Ly93d3cuZS1tYWlsb2ZmZXJzLm5ldC9pbmRleC5odG0/MTI0
+MzcyIj5QdXJlDQogICAgICBHSC1SZWxlYXNlcjwvYT4gY29udGFpbnMgDQog
+ICAgICA8L0ZPTlQ+PEZPTlQgY29sb3I9Izg4ODg4OCBmYWNlPSJBcmlhbCwg
+SGVsdmV0aWNhLCBzYW5zLXNlcmlmIj4xMDAlIA0KICAgICAgbmF0dXJhbDwv
+Rk9OVD48Rk9OVCBjb2xvcj1ibGFjayBmYWNlPSJBcmlhbCwgSGVsdmV0aWNh
+LCBzYW5zLXNlcmlmIj4gDQogICAgICA8L0ZPTlQ+PEZPTlQgY29sb3I9IzJj
+MmMyYyBmYWNlPSJBcmlhbCwgSGVsdmV0aWNhLCBzYW5zLXNlcmlmIj5ob21l
+b3BhdGhpYyANCiAgICAgIEhHSCBpbiBhbiBlYXN5IHRvIHN3YWxsb3cgY2Fw
+c3VsZSBmb3JtLiBDbGluaWNhbGx5LXByb3ZlbiB0bzxCPiBpbmNyZWFzZSAN
+CiAgICAgIElHRi0xIGJ5IGEgd2hvcHBpbmcgNDAyJSE8L0I+ICA8YSBocmVm
+PSJodHRwOi8vcmQueWFob28uY29tLypodHRwOi8vd3d3LmUtbWFpbG9mZmVy
+cy5uZXQvY2xpbmljYWwuaHRtPzEyNDM3MiI+Q2xpY2sgSGVyZTwvYT4gZm9y
+IHRoZSANCiAgICAgIGVudGlyZSBzdHVkeSE8QlI+PEJSPjxhIGhyZWY9Imh0
+dHA6Ly9yZC55YWhvby5jb20vKmh0dHA6Ly93d3cuZS1tYWlsb2ZmZXJzLm5l
+dC9pbmRleC5odG0/MTI0MzcyIj5QdXJlDQogICAgICBHSC1SZWxlYXNlcjwv
+YT4gaXMgbm90IGEgU3RpbXVsYXRvciwgUmVwbGFjZXIsIFN0ZXJvaWQgb3Ig
+SG9ybW9uZS4gSXQgaXMgYSANCiAgICAgIDEwMCUgTmF0dXJhbCBHcm93dGgg
+SG9ybW9uZSBTZWNyZXRhZ29ndWUsIHdpdGggYSBuZXcgYWN0aXZlIEhvbWVv
+cGF0aGljIA0KICAgICAgSEdIIEVuaGFuY2VyIGluIGFuIGVhc3kgdG8gc3dh
+bGxvdyBjYXBzdWxlIGZvcm0uIEl0IGNhbiBiZSBhYnNvcmJlZCANCiAgICAg
+IGVmZmVjdGl2ZWx5IGJ5IHRoZSBib2R5IHRvIHJlYWN0aXZhdGUgeW91ciBE
+b3JtYW50IFBpdHVpdGFyeSBHbGFuZCBhbmQgDQogICAgICBnaXZlIGFuIEV4
+dHJhIEJvb3N0IG9mIEhHSCBpbnRvIHRoZSBibG9vZCBzdHJlYW0gdG8gYmUg
+cGlja2VkIGJ5IHRoZSBsaXZlciANCiAgICAgIGZvciBjb252ZXJzaW9uIGlu
+dG8gSUdGIC0xLiBXaGljaCBiZWdpbnMgdG8gcmV2ZXJzZSB5b3VyIEFnaW5n
+IFByb2Nlc3MgYXQgDQogICAgICBhIG11Y2ggZmFzdGVyIHJhdGUuPC9GT05U
+PjwvVEQ+PC9UUj4NCiAgPFRSPg0KICAgIDxURCBiZ0NvbG9yPSNjZWNiOTk+
+DQogICAgICA8VEFCTEUgYmdDb2xvcj0jZmZmZGQ1IGJvcmRlcj0wIGNlbGxQ
+YWRkaW5nPTEwIGNlbGxTcGFjaW5nPTAgDQogICAgICAgIHdpZHRoPSIxMDAl
+Ij48VEJPRFk+DQogICAgICAgIDxUUj4NCiAgICAgICAgICA8VEQ+PEZPTlQg
+Y29sb3I9I2ZmNjAwMCANCiAgICAgICAgICAgIGZhY2U9IkFyaWFsLCBIZWx2
+ZXRpY2EsIHNhbnMtc2VyaWYiPjxCPjxJPldoYXQgaXQgaXMgDQogICAgICAg
+ICAgICBub3Q6PEJSPjwvST48L0I+PC9GT05UPjxGT05UIGNvbG9yPSM1MTRm
+M2MgDQogICAgICAgICAgICBmYWNlPSJBcmlhbCwgSGVsdmV0aWNhLCBzYW5z
+LXNlcmlmIiBzaXplPS0xPlB1cmUgR0gtUmVsZWFzZXI8Qj4gZG9lcyANCiAg
+ICAgICAgICAgIG5vdCBjb250YWluPC9CPiBTeW50aGV0aWMgSEdILCA1SFRQ
+LCBESEVBLCBMIC1ET1BBLCBFc3Ryb2dlbiwgDQogICAgICAgICAgICBQcm9n
+ZXN0ZXJvbmUsIE1lbGF0b25pbiwgVGVzdG9zdGVyb25lIG9yIGFueSBvdGhl
+ciBTeW50aGV0aWMgR3Jvd3RoIA0KICAgICAgICAgICAgRmFjdG9ycy48L0ZP
+TlQ+PC9URD48L1RSPjwvVEJPRFk+PC9UQUJMRT48L1REPjwvVFI+DQogIDxU
+Uj4NCiAgICA8VEQ+PEZPTlQgY29sb3I9IzJjMmMyYyBmYWNlPSJBcmlhbCwg
+SGVsdmV0aWNhLCBzYW5zLXNlcmlmIj5RdWl0ZSBzaW1wbHksPGEgaHJlZj0i
+aHR0cDovL3JkLnlhaG9vLmNvbS8qaHR0cDovL3d3dy5lLW1haWxvZmZlcnMu
+bmV0L2luZGV4Lmh0bT8xMjQzNzIiPg0KICAgICAgUHVyZSBHSC1SZWxlYXNl
+ciA8L2E+IGlzIHRoZSBtb3N0IA0KICAgICAgZWZmZWN0aXZlIGFudGktYWdp
+bmcgc3VwcGxlbWVudCBldmVyIGRldmVsb3BlZC4gV2hpbGUgbW9zdCBvdGhl
+ciBjYXBzdWxlcyANCiAgICAgIGxvc2UgdGhlaXIgZWZmaWNhY3kgYXMgdGhl
+eSBwYXNzIHRocm91Z2ggdGhlIHN0b21hY2gsIFB1cmUgR0gtUmVsZWFzZXIg
+DQogICAgICBjb250YWlucyB0cnVlIGhvbWVvcGF0aGljIGhnaCBpbmZ1c2Vk
+IGludG8gYW4gYWR2YW5jZWQgY2Fwc3VsZSB0aGF0IA0KICAgICAgaW5zdGFu
+dGx5IHJlbGVhc2VzIGlnZi0xIGludG8gdGhlIGJsb29kc3RyZWFtIGZvciBm
+YXN0ZXIgdXB0YWtlLiA8QlI+PEJSPg0KICAgICAgPEhSIG5vU2hhZGUgU0la
+RT0xPg0KICAgICAgPC9GT05UPjxGT05UIGNvbG9yPSM0NzE1MDggZmFjZT0i
+QXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiIgDQogICAgICBzaXplPS0x
+PjxCUj48YSBocmVmPSJodHRwOi8vcmQueWFob28uY29tLypodHRwOi8vd3d3
+LmUtbWFpbG9mZmVycy5uZXQvaW5kZXguaHRtPzEyNDM3MiI+Q2xpY2sgaGVy
+ZQ0KICAgICAgPC9hPiB0byANCiAgICAgIGxlYXJuIG1vcmUgYWJvdXQgdGhp
+cyByZXZvbHV0aW9uYXJ5IG5ldyBwcm9kdWN0IGFuZCB0YWtlIGFkdmFudGFn
+ZSBvZiBvdXIgDQogICAgICA5MCBkYXkgbm8gcXVlc3Rpb25zIGFza2VkIHN0
+cm9uZy1hcm0gDQpndWFyYW50ZWUhPC9GT05UPg0KICAgICAgPHA+Jm5ic3A7
+PC9wPg0KICAgIDwvRk9OVD4NCiAgICA8cCBhbGlnbj0iY2VudGVyIj48Zm9u
+dCBjb2xvcj0iIzQ3MTUwOCIgZmFjZT0iQXJpYWwsIEhlbHZldGljYSwgc2Fu
+cy1zZXJpZiIgc2l6ZT0iLTEiPkkNCiAgICBzdG9wIHJlY2lldmluZyB0aGVz
+ZSBhZHMgcGxlYXNlIDxhIGhyZWY9Imh0dHA6Ly9yZC55YWhvby5jb20vKmh0
+dHA6Ly93d3cuZS1tYWlsb2ZmZXJzLm5ldC9yZW0vcmVtb3ZlLnBocCI+Y2xp
+Y2sNCiAgICBoZXJlPC9hPjwvZm9udD48L3A+DQogIDwvVEQ+PC9UUj48L1RC
+T0RZPjwvVEFCTEU+PC9CT0RZPjwvSFRNTD4=
 
 
 -------------------------------------------------------
@@ -136,3 +122,6 @@ www.enterpriselinuxforum.com
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+
+------=_NextPart_000_00E3_85C04B8E.C1784A70--
