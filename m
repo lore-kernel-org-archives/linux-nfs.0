@@ -1,13 +1,17 @@
-From: Ion Badulescu <ionut@badula.org>
-Subject: Re: nfs client using autofs v4
-Date: Wed, 8 Jan 2003 20:17:13 -0500
+From: Chuck Lever <cel@citi.umich.edu>
+Subject: [PATCH]: rpc_debug mode causes an oops
+Date: Thu, 9 Jan 2003 12:07:21 -0500 (EST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200301090117.h091HD426729@moisil.badula.org>
-References: <Pine.GSO.4.50.0301081812460.2718-100000@bom.adc.idt.com>
-Cc: linuxmanagers@linuxmanagers.org, NFS@lists.sourceforge.net
+Message-ID: <Pine.LNX.4.44.0301091158540.25663-100000@dexter.citi.umich.edu>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Linux NFS List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: devnull@adc.idt.com
-In-Reply-To: <Pine.GSO.4.50.0301081812460.2718-100000@bom.adc.idt.com>
+Received: from dexter.citi.umich.edu ([141.211.133.33] ident=[BNMDs6jvBsLxQRhguhdE0cDrjsccunOl])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18Wg9T-0006h3-00
+	for <nfs@lists.sourceforge.net>; Thu, 09 Jan 2003 09:07:31 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -20,34 +24,39 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, 8 Jan 2003 18:24:27 -0500 (EST), devnull@adc.idt.com wrote:
-> 
-> We would like to default all NFS mounts to use TCP and if not available
-> use UDP. This way all mounts coming from Network Appliance will be TCP and
-> the ones from the Linux Box will be UDP.
-> 
-> Does anyone know of a way of doing this.
-> 
-> Adding localoptions='nfsvers=3,tcp,udp' to the local autofs startup script
-> does not work.
-> 
-> Maybe this is a compile-time option to autofs(i dont see one)
+hi trond-
 
-No, because autofs doesn't know anything about NFS. It simply calls the
-external mount program with the arguments you gave it.
+this patch fixes a bug introduced by the recent rpc_procinfo change.  
+when entering debug mode, one of the debug printk's in sched.c expects
+tk_msg.rpc_proc to be non-NULL, but now it can be NULL in certain
+legitimate cases.
 
-What you need is a mount program which can autodetect what the server
-supports in terms of NFS service. I don't know of any such mount, though.
-Your alternative is amd (www.am-utils.org), whose 6.1 version (now in late
-beta) supports autofs mounts and which can do this autodetection and more.
+the rpc_qname cleanup below removes redundant code.
 
-Hope this helps,
-Ion
-[am-utils co-maintainer and primary developer of autofs support in amd]
+apply against 2.5.55.
 
--- 
-  It is better to keep your mouth shut and be thought a fool,
-            than to open it and remove all doubt.
+ net/sunrpc/sched.c |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
+
+diff -Naurp 00-stock/net/sunrpc/sched.c 01-debug-oops/net/sunrpc/sched.c
+--- 00-stock/net/sunrpc/sched.c	Wed Jan  8 23:04:15 2003
++++ 01-debug-oops/net/sunrpc/sched.c	Thu Jan  9 10:55:36 2003
+@@ -1123,11 +1123,12 @@ void rpc_show_tasks(void)
+ 		"-rpcwait -action- --exit--\n");
+ 	alltask_for_each(t, le, &all_tasks)
+ 		printk("%05d %04d %04x %06d %8p %6d %8p %08ld %8s %8p %8p\n",
+-			t->tk_pid, t->tk_msg.rpc_proc->p_proc,
++			t->tk_pid,
++			(t->tk_msg.rpc_proc ? t->tk_msg.rpc_proc->p_proc : -1),
+ 			t->tk_flags, t->tk_status,
+ 			t->tk_client, t->tk_client->cl_prog,
+ 			t->tk_rqstp, t->tk_timeout,
+-			t->tk_rpcwait ? rpc_qname(t->tk_rpcwait) : " <NULL> ",
++			rpc_qname(t->tk_rpcwait),
+ 			t->tk_action, t->tk_exit);
+ 	spin_unlock(&rpc_sched_lock);
+ }
+
 
 
 -------------------------------------------------------
