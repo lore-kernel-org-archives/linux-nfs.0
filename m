@@ -1,18 +1,22 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: 2.4.20-rc1 NFS/TCP client (still) hangs running dbench
-	 2.0
-Date: Sat, 2 Nov 2002 16:33:25 -0800
+From: Andrew Ryan <andrewr@nam-shub.com>
+Subject: Re: 2.4.20-rc1 NFS/TCP client (still) hangs running
+  dbench 2.0
+Date: Sat, 02 Nov 2002 21:21:02 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <6440EA1A6AA1D5118C6900902745938E07D55045@black.eng.netapp.com>
+Message-ID: <5.0.2.1.0.20021102211350.0291eec0@pop.sfrn.dnai.com>
+References: <0211011318080N.01583@stinkpad060501>
+ <3DC2E7B6.6090400@collab.net>
+ <0211011318080N.01583@stinkpad060501>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset="us-ascii"; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mx01.netapp.com ([198.95.226.53])
+Received: from moe.sfrn.dnai.com ([208.59.199.25])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1888ht-0000Wy-00
-	for <nfs@lists.sourceforge.net>; Sat, 02 Nov 2002 16:33:37 -0800
-To: "'trond.myklebust@fys.uio.no'" <trond.myklebust@fys.uio.no>
+	id 188D9v-0008FB-00
+	for <nfs@lists.sourceforge.net>; Sat, 02 Nov 2002 21:18:51 -0800
+To: trond.myklebust@fys.uio.no
+In-Reply-To: <15810.63756.640223.676492@charged.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,24 +29,37 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> >>>>> " " == Charles Lever <Lever> writes:
-> 
->      > call_start changes the way RPCs are counted, not how
->      > retransmits are counted.
-> 
-> Wrong. It fixes the following bug too:
-> 
-> @@ -645,7 +663,6 @@
->         case -ENOMEM:
->         case -EAGAIN:
->                 task->tk_action = call_transmit;
-> -               clnt->cl_stats->rpcretrans++;
->                 break;
->         default:
->                 if (clnt->cl_chatty)
+At 10:58 PM 11/1/02 +0100, Trond Myklebust wrote:
 
-oops, i forgot about that.  it doesn't obviate the need for the
-xprt_write_space fix, however.
+>It is probably just the (known) accounting error in the 'retransmit'
+>statistics. Try applying the patch
+>
+> 
+>http://www.fys.uio.no/~trondmy/src/2.4.20-pre9/linux-2.4.20-01-call_start.dif
+>
+>if it bothers you.
+
+Yes, you are right, it seems the counter is broken, and performance is 
+fine. I did bonnie++ runs with 2.4.20rc1 kernels with and without the 
+call_start patch, and didn't see any significant difference.
+
+But, it does bother me since I want to be able to diagnose network errors 
+if I ever have them, and with a busted counter it will be impossible to 
+tell what my real error rate is. Can the call_start patch go to Marcelo for 
+2.4.20rc2?
+
+After a bonnie run with the call_start patch, I get this, which is much 
+better :)
+
+$ nfsstat -c
+Client rpc stats:
+calls      retrans    authrefrsh
+1648050    0          0
+
+
+thanks,
+andrew
+
 
 
 -------------------------------------------------------
