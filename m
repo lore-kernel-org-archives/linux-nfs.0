@@ -1,20 +1,24 @@
-From: Phy Prabab <phyprabab@yahoo.com>
-Subject: Question of writing out cache from nfs writes
-Date: Sun, 18 Apr 2004 23:54:10 -0700 (PDT)
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: Poor Fedora Core 1's NFS performance and how to tune it?
+Date: Mon, 19 Apr 2004 10:16:10 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040419065410.86217.qmail@web90007.mail.scd.yahoo.com>
+Message-ID: <4083DF2A.3000405@RedHat.com>
+References: <41089CB27BD8D24E8385C8003EDAF7AB08485A@karl.alexa.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net, ops <ops@alexa.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BFSfX-0006AR-G5
-	for nfs@lists.sourceforge.net; Sun, 18 Apr 2004 23:54:15 -0700
-Received: from web90007.mail.scd.yahoo.com ([66.218.94.65])
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
-	id 1BFSfX-0001Ng-DD
-	for nfs@lists.sourceforge.net; Sun, 18 Apr 2004 23:54:15 -0700
-To: nfs@lists.sourceforge.net
+	id 1BFZZN-0005Yo-HG
+	for nfs@lists.sourceforge.net; Mon, 19 Apr 2004 07:16:21 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.30)
+	id 1BFZZN-0006K1-5l
+	for nfs@lists.sourceforge.net; Mon, 19 Apr 2004 07:16:21 -0700
+To: Guolin Cheng <guolin@alexa.com>
+In-Reply-To: <41089CB27BD8D24E8385C8003EDAF7AB08485A@karl.alexa.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -27,46 +31,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Sirs,
+Guolin Cheng wrote:
 
-I am curious how to get the nfs cached information
-writen out to disk without using using the sync flag. 
-That is, I have noticed that several users will move
-large files to the NFS server and much will be cached
-on the server side (held without writing to disk), but
-then when they attempt to move more files of of fairly
-large size, the second copy into the dir takes twice
-as long (sometimes longer).  Watching top on the
-server shows that when the second copy takes place the
-cached is filled and so Linux begins to move data to
-disk.
+>Hi,
+>
+> We installed about tens of Fedora Core 1 machines, But then found that
+>the FC1 NFS speed is greatly slow down contrasted with our previous
+>Redhat 8.0.
+>Our FC1's nfs speed is now at 6MB/s, while original Redhat 8.0's speed
+>is at 10MB/s. For both operation systems I did no special NFS tunings
+>  
+>
+Are you seeing any rpc/tcp transmits? nfsstat will show rpc retrans and
+netstat will show tcp retrans... Also any type of messages being logged
+to /var/log/messages?
 
-I would like to know if it is possible to have the
-Linux VM move more data off to disk out of cache over
-time (especially when it is not busy servicing as is
-the case with this file server) and be equally
-agressive at this as it is at using the cache?
-
-1x File server:
-1G RAM
-2x 1.0GHz
-Linux Kernel 2.6.5
-
-25x Clients:
-2G RAM
-2x 2.4GHz
-Linux 2.4.26
-
-Thank you for your time.
-Phy
-
-
-	
-		
-__________________________________
-Do you Yahoo!?
-Yahoo! Photos: High-quality 4x6 digital prints for 25¢
-http://photos.yahoo.com/ph/print_splash
+SteveD.
 
 
 -------------------------------------------------------
