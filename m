@@ -1,26 +1,24 @@
-From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
-Subject: Re: identify fs using a particular port
-Date: Fri, 08 Oct 2004 15:18:23 -0700
+From: raven@themaw.net
+Subject: Re: NFS and/or autofs hanging on Linux
+Date: Sat, 9 Oct 2004 10:34:42 +0800 (WST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1097273903.8133.142.camel@tesuji.nac.uci.edu>
-References: <20041008210212.GO7742@polop.usc.edu>
-	 <1097271075.8133.126.camel@tesuji.nac.uci.edu>
-	 <20041008215621.GR7742@polop.usc.edu>
+Message-ID: <Pine.LNX.4.58.0410091031520.1370@donald.themaw.net>
+References: <8FDC0F9BE1F91D44BE964AA54AAA67B60E51ED7B@wilmexm3.ad.analog.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-sN9SNFL/vey8WC7jsQDq"
-Cc: Dan Stromberg <strombrg@dcs.nac.uci.edu>, nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net, Annie Mckeon <anne.bourgeois@analog.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CG34G-0004DD-Vy
-	for nfs@lists.sourceforge.net; Fri, 08 Oct 2004 15:18:28 -0700
-Received: from dcs.nac.uci.edu ([128.200.34.32] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1CG7Ix-0001xD-7K
+	for nfs@lists.sourceforge.net; Fri, 08 Oct 2004 19:49:55 -0700
+Received: from wombat.indigo.net.au ([202.0.185.19])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.41)
-	id 1CG34G-0003Zy-6L
-	for nfs@lists.sourceforge.net; Fri, 08 Oct 2004 15:18:28 -0700
-To: Garrick Staples <garrick@usc.edu>
-In-Reply-To: <20041008215621.GR7742@polop.usc.edu>
+	id 1CG7Ij-0003Or-NT
+	for nfs@lists.sourceforge.net; Fri, 08 Oct 2004 19:49:55 -0700
+To: "Burke, Alan" <Alan.Burke@analog.com>
+In-Reply-To: <8FDC0F9BE1F91D44BE964AA54AAA67B60E51ED7B@wilmexm3.ad.analog.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,67 +31,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Thu, 7 Oct 2004, Burke, Alan wrote:
 
---=-sN9SNFL/vey8WC7jsQDq
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+> Hi Everyone,
+> 
+> We have got a problem with NFS hanging with automounter mounts.
+> 
+> We're running RH8 2.4.20-20.0 kernel
+> NFS-utils 1.0.1-2
+> Autofs4.1.2 (we must have the /net ability)
+> H/W is mixed HP4100's, Dell 2650's, Sun V60 and V65's
+> All the machines are in a Sun NIS domain with 700 Sun machines that run
+> fine.
 
-On Fri, 2004-10-08 at 14:56, Garrick Staples wrote:
-> On Fri, Oct 08, 2004 at 02:31:15PM -0700, Dan Stromberg alleged:
-> >=20
-> > If it's an rpc service, you can likely get what's using the port from
-> > rpcinfo -p.
->=20
-> NFS clients don't register themselves as an RPC server in portmapper.
->=20
-> =20
-> > If it's not an rpc service, you may be able to get it from
-> > /etc/services.
-> >=20
-> > Also check out netstat -p.
->=20
-> I already know it is a kernel nfs thread, but that doesn't tell me which
-> filesystem.
+Have you patched the kernel with the latest autofs4 patches from 
+kernel.org?
 
-OK.  How about firing up a tethereal/ethereal on that port, and watching
-for filenames going by?
+You might like to visit Jeff Moyers people page at RedHat to get his 
+latest RPMS.
 
-> =20
-> > On Fri, 2004-10-08 at 14:02, Garrick Staples wrote:
-> > > Silly question that I can't find the answer to... is it possible to i=
-dentify
-> > > which mounted filesystem is using a particular port?
-> > >=20
-> > > $ netstat -an | grep :782
-> > > tcp        0      0 10.125.0.200:782        10.125.0.193:2049       E=
-STABLISHED=20
-> > >                                  ^^^ I need this port for another dae=
-mon
-> > >=20
-> > > I have a 14 filesystems mounted from that machine, all busy with user
-> > > processes.  So I'm trying to figure out which filesystem needs to be =
-unmounted
-> > > to free port 782.
-> > --=20
-> > Dan Stromberg DCS/NACS/UCI <strombrg@dcs.nac.uci.edu>
-> >=20
---=20
-Dan Stromberg DCS/NACS/UCI <strombrg@dcs.nac.uci.edu>
+http://people.redhat.com/jmoyer
 
-
---=-sN9SNFL/vey8WC7jsQDq
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.4 (GNU/Linux)
-
-iD8DBQBBZxIvo0feVm00f/8RAuYgAKCKlXEkf9lJQPhVpzJwtgujjwXoHQCcDZQF
-utcflJH+9MsPXHF9TBWzcSY=
-=kdtZ
------END PGP SIGNATURE-----
-
---=-sN9SNFL/vey8WC7jsQDq--
+Ian
 
 
 
