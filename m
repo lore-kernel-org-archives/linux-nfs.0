@@ -1,22 +1,20 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Joachim Worringen <joachim@ccrl-nece.de>
 Subject: Re: multiple processes appending data to a single file
-Date: Tue, 22 Mar 2005 11:50:41 -0500
-Message-ID: <1111510241.16492.1.camel@lade.trondhjem.org>
-References: <42404BC4.9070105@ccrl-nece.de>
+Date: Tue, 22 Mar 2005 18:39:09 +0100
+Message-ID: <4240583D.5020602@ccrl-nece.de>
+References: <42404BC4.9070105@ccrl-nece.de> <1111510241.16492.1.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DDmb4-0003Mx-BU
-	for nfs@lists.sourceforge.net; Tue, 22 Mar 2005 08:51:14 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1DDmal-00061J-F1
-	for nfs@lists.sourceforge.net; Tue, 22 Mar 2005 08:51:14 -0800
-To: Joachim Worringen <joachim@ccrl-nece.de>
-In-Reply-To: <42404BC4.9070105@ccrl-nece.de>
+	id 1DDnLw-0005SI-2V
+	for nfs@lists.sourceforge.net; Tue, 22 Mar 2005 09:39:40 -0800
+Received: from www.ccrl-nece.de ([195.37.61.70] helo=convict.ccrl-nece.de)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1DDnLd-0002U5-5n
+	for nfs@lists.sourceforge.net; Tue, 22 Mar 2005 09:39:40 -0800
+To: nfs@lists.sourceforge.net
+In-Reply-To: <1111510241.16492.1.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,21 +28,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-ty den 22.03.2005 Klokka 17:45 (+0100) skreiv Joachim Worringen:
-> Dear NFS experts,
+Trond Myklebust wrote:
+> ty den 22.03.2005 Klokka 17:45 (+0100) skreiv Joachim Worringen:
 > 
-> I posted the problem description below to comp.protocols.nfs without a 
-> real response (only one "it should work" reply - but it doesn't...). So, 
-> here comes the problem, below are my questions.
+>>Dear NFS experts,
+>>
+>>I posted the problem description below to comp.protocols.nfs without a 
+>>real response (only one "it should work" reply - but it doesn't...). So, 
+>>here comes the problem, below are my questions.
+> 
+> Can you post the offending code? I agree that a scheme such as you
+> describe can be made to work, but the devil is in the details...
 
-Can you post the offending code? I agree that a scheme such as you
-describe can be made to work, but the devil is in the details...
+Your request makes sense, but unfortunately, I can not post the code 
+right now (although it is straightforward) - unresolved IP issues... :-(
 
-Cheers,
-  Trond
+  Joachim
+
 -- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
-
+Joachim Worringen - NEC C&C research lab St.Augustin
+fon +49-2241-9252.20 - fax .99 - http://www.ccrl-nece.de
 
 
 -------------------------------------------------------
