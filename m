@@ -1,20 +1,19 @@
 From: "Robert Williamson" <robbiew@us.ibm.com>
 Subject: Re: mountd segmentation fault in nfs-utils-1.0.4 with 2.5.75-bk1
-Date: Mon, 14 Jul 2003 16:56:43 -0500
+Date: Mon, 14 Jul 2003 17:08:12 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <OFC0599E0A.13C01178-ON85256D63.007865A9-86256D63.0078B259@pok.ibm.com>
+Message-ID: <OF039BB678.312D48E6-ON85256D63.0079739A-86256D63.0079BFA2@pok.ibm.com>
 References: <16147.9756.934649.916082@gargle.gargle.HOWL>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from e6.ny.us.ibm.com ([32.97.182.106])
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19cBIP-0006GS-00
-	for <nfs@lists.sourceforge.net>; Mon, 14 Jul 2003 14:55:45 -0700
+	id 19cBTV-0003O8-00
+	for <nfs@lists.sourceforge.net>; Mon, 14 Jul 2003 15:07:14 -0700
 In-Reply-To: <16147.9756.934649.916082@gargle.gargle.HOWL>
-To: Neil Brown <neilb@cse.unsw.edu.au>
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,8 +27,9 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Okay, BTW I ran the 'mount -t nfsd nfsd /proc/fs/nfs' command and the
-mounts succeeded.
+Works!  Thanks for the quick response.  I saw that free(hp), and wonder=
+ed
+why it seemed a bit out of place, but figured I'd post first.
 
 
 Robert V. Williamson <robbiew@us.ibm.com>
