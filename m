@@ -1,16 +1,16 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 14 of 16] nfsd4: remove trailing whitespace from nfs4proc.c
-Date: Tue, 22 Mar 2005 16:42:02 +1100
-Message-ID: <E1DDc9S-0002Ky-1r@notabene.cse.unsw.edu.au>
+Subject: [PATCH kNFSd 7 of 16] nfsd4: factor out common open_truncate code
+Date: Tue, 22 Mar 2005 16:42:01 +1100
+Message-ID: <E1DDc9R-0002KW-K0@notabene.cse.unsw.edu.au>
 References: <20050322163830.8762.patches@notabene>
 Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DDcA1-0006lk-Q7
+	id 1DDcA1-0006lq-UA
 	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:37 -0800
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DDcA0-0005gI-Iu
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1DDc9z-00059w-Oc
 	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:37 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
@@ -27,49 +27,86 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Trivial whitespace
+Factor out a bit of common code.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4proc.c |   10 +++++-----
- 1 files changed, 5 insertions(+), 5 deletions(-)
+ ./fs/nfsd/nfs4state.c |   46 +++++++++++++++++++++++-----------------------
+ 1 files changed, 23 insertions(+), 23 deletions(-)
 
-diff ./fs/nfsd/nfs4proc.c~current~ ./fs/nfsd/nfs4proc.c
---- ./fs/nfsd/nfs4proc.c~current~	2005-03-22 16:35:20.000000000 +1100
-+++ ./fs/nfsd/nfs4proc.c	2005-03-22 16:36:36.000000000 +1100
-@@ -200,8 +200,8 @@ nfsd4_open(struct svc_rqst *rqstp, struc
- 	if (open->op_claim_type == NFS4_OPEN_CLAIM_NULL) {
- 	/*
- 	 * This block of code will (1) set CURRENT_FH to the file being opened,
--	 * creating it if necessary, (2) set open->op_cinfo, 
--	 * (3) set open->op_truncate if the file is to be truncated 
-+	 * creating it if necessary, (2) set open->op_cinfo,
-+	 * (3) set open->op_truncate if the file is to be truncated
- 	 * after opening, (4) do permission checking.
- 	 */
- 		status = do_open_lookup(rqstp, current_fh, open);
-@@ -573,8 +573,8 @@ nfsd4_setattr(struct svc_rqst *rqstp, st
- 	status = nfs_ok;
- 	if (setattr->sa_iattr.ia_valid & ATTR_SIZE) {
- 		nfs4_lock_state();
--		if ((status = nfs4_preprocess_stateid_op(current_fh, 
--						&setattr->sa_stateid, 
-+		if ((status = nfs4_preprocess_stateid_op(current_fh,
-+						&setattr->sa_stateid,
- 						CHECK_FH | WR_STATE, NULL))) {
- 			dprintk("NFSD: nfsd4_setattr: couldn't process stateid!\n");
- 			goto out_unlock;
-@@ -609,7 +609,7 @@ nfsd4_write(struct svc_rqst *rqstp, stru
- 		return nfserr_inval;
+diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
+--- ./fs/nfsd/nfs4state.c~current~	2005-03-22 16:36:35.000000000 +1100
++++ ./fs/nfsd/nfs4state.c	2005-03-22 16:36:35.000000000 +1100
+@@ -1575,6 +1575,21 @@ nfs4_new_open(struct svc_rqst *rqstp, st
+ 	return 0;
+ }
  
- 	nfs4_lock_state();
--	if ((status = nfs4_preprocess_stateid_op(current_fh, stateid, 
-+	if ((status = nfs4_preprocess_stateid_op(current_fh, stateid,
- 					CHECK_FH | WR_STATE, &filp))) {
- 		dprintk("NFSD: nfsd4_write: couldn't process stateid!\n");
- 		goto out;
++static inline int
++nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
++		struct nfsd4_open *open)
++{
++	struct iattr iattr = {
++		.ia_valid = ATTR_SIZE,
++		.ia_size = 0,
++	};
++	if (!open->op_truncate)
++		return 0;
++	if (!(open->op_share_access & NFS4_SHARE_ACCESS_WRITE))
++		return -EINVAL;
++	return nfsd_setattr(rqstp, fh, &iattr, 0, (time_t)0);
++}
++
+ static int
+ nfs4_upgrade_open(struct svc_rqst *rqstp, struct svc_fh *cur_fh, struct nfs4_stateid *stp, struct nfsd4_open *open)
+ {
+@@ -1592,19 +1607,11 @@ nfs4_upgrade_open(struct svc_rqst *rqstp
+ 		status = get_write_access(inode);
+ 		if (status)
+ 			return nfserrno(status);
+-		if (open->op_truncate) {
+-			struct iattr iattr = {
+-				.ia_valid = ATTR_SIZE,
+-				.ia_size = 0,
+-			};
+-			status = nfsd_setattr(rqstp, cur_fh, &iattr, 0,
+-					(time_t)0);
+-			if (status) {
+-				put_write_access(inode);
+-				return status;
+-			}
++		status = nfsd4_truncate(rqstp, cur_fh, open);
++		if (status) {
++			put_write_access(inode);
++			return status;
+ 		}
+-
+ 		/* remember the open */
+ 		filp->f_mode = (filp->f_mode | FMODE_WRITE) & ~FMODE_READ;
+ 		set_bit(open->op_share_access, &stp->st_access_bmap);
+@@ -1737,17 +1744,10 @@ nfsd4_process_open2(struct svc_rqst *rqs
+ 		if ((status = nfs4_new_open(rqstp, &stp, current_fh, flags)))
+ 			goto out;
+ 		init_stateid(stp, fp, open);
+-		if (open->op_truncate) {
+-			struct iattr iattr = {
+-				.ia_valid = ATTR_SIZE,
+-				.ia_size = 0,
+-			};
+-			status = nfsd_setattr(rqstp, current_fh, &iattr, 0,
+-					(time_t)0);
+-			if (status) {
+-				release_stateid(stp, OPEN_STATE);
+-				goto out;
+-			}
++		status = nfsd4_truncate(rqstp, current_fh, open);
++		if (status) {
++			release_stateid(stp, OPEN_STATE);
++			goto out;
+ 		}
+ 	}
+ 	memcpy(&open->op_stateid, &stp->st_stateid, sizeof(stateid_t));
 
 
 -------------------------------------------------------
