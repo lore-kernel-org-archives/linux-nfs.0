@@ -1,20 +1,25 @@
-From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 3 of 4] Fix two xdr-encode bugs for readdirplus reply
-Date: Fri, 20 Aug 2004 16:51:36 +1000
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: #255931 NFS fh_verify causes lost output
+Date: Fri, 20 Aug 2004 11:44:38 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1By3FQ-00073C-6b@notabene.cse.unsw.edu.au>
-References: <20040820164909.27056.patches@notabene>
-Cc: nfs@lists.sourceforge.net
+Message-ID: <20040820094438.GB23176@suse.de>
+References: <20040818210041.A2223@infradead.org> <16677.25168.374531.344188@cse.unsw.edu.au>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>, nfs@lists.sourceforge.net,
+	Paul Szabo <psz@maths.usyd.edu.au>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1By3Fc-0004fx-OG
-	for nfs@lists.sourceforge.net; Thu, 19 Aug 2004 23:51:48 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1By3Fc-0006lL-67
-	for nfs@lists.sourceforge.net; Thu, 19 Aug 2004 23:51:48 -0700
-To: Andrew Morton <akpm@osdl.org>
+	id 1By5yj-00021K-O2
+	for nfs@lists.sourceforge.net; Fri, 20 Aug 2004 02:46:33 -0700
+Received: from cantor.suse.de ([195.135.220.2])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.34)
+	id 1By5yi-0004IW-8m
+	for nfs@lists.sourceforge.net; Fri, 20 Aug 2004 02:46:33 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <16677.25168.374531.344188@cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -27,62 +32,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hi Neil,
 
-More fall-out from the change to allow multi-page 
-replies to readdir requests.
+> Originally, the check here was "does anyone other that root have x
+> permission" and "it is exported root_squash".
+> If the first was "no" and the second was "yes", then access was
+> denied.
 
-Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
+But that is an access control check; and a failed access control
+check should return EACCES.
 
-### Diffstat output
- ./fs/nfsd/nfs3proc.c |   12 ++++++++++--
- ./fs/nfsd/nfs3xdr.c  |   10 ++++++++--
- 2 files changed, 18 insertions(+), 4 deletions(-)
+Probably the worst aspect of returning ESTALE is that this information
+is cached persistently by the client; it doesn't time out. So it will
+never clear up, even if the directory is changed to mode 777 in the
+meanwhile.
 
-diff ./fs/nfsd/nfs3proc.c~current~ ./fs/nfsd/nfs3proc.c
---- ./fs/nfsd/nfs3proc.c~current~	2004-08-20 16:38:12.000000000 +1000
-+++ ./fs/nfsd/nfs3proc.c	2004-08-20 16:46:46.000000000 +1000
-@@ -492,8 +492,16 @@ nfsd3_proc_readdirplus(struct svc_rqst *
- 		count += PAGE_SIZE;
- 	}
- 	resp->count = count >> 2;
--	if (resp->offset)
--		xdr_encode_hyper(resp->offset, offset);
-+	if (resp->offset) {
-+		if (unlikely(resp->offset1)) {
-+			/* we ended up with offset on a page boundary */
-+			*resp->offset = htonl(offset >> 32);
-+			*resp->offset1 = htonl(offset & 0xffffffff);
-+			resp->offset1 = NULL;
-+		} else {
-+			xdr_encode_hyper(resp->offset, offset);
-+		}
-+	}
- 
- 	RETURN_STATUS(nfserr);
- }
+>  2/ change the error to EPERM, which is wrong because filehandle
+>     lookup itself shouldn't return EPERM, and if the failure is
 
-diff ./fs/nfsd/nfs3xdr.c~current~ ./fs/nfsd/nfs3xdr.c
---- ./fs/nfsd/nfs3xdr.c~current~	2004-08-20 16:38:12.000000000 +1000
-+++ ./fs/nfsd/nfs3xdr.c	2004-08-20 16:38:21.000000000 +1000
-@@ -762,10 +762,16 @@ nfs3svc_encode_readdirres(struct svc_rqs
- 		/* stupid readdir cookie */
- 		memcpy(p, resp->verf, 8); p += 2;
- 		xdr_ressize_check(rqstp, p);
--		p = resp->buffer;
-+		if (rqstp->rq_res.head[0].iov_len + (2<<2) > PAGE_SIZE)
-+			return 1; /*No room for trailer */
-+		rqstp->rq_res.page_len = (resp->count) << 2;
-+
-+		/* add the 'tail' to the end of the 'head' page - page 0. */
-+		rqstp->rq_restailpage = 0;
-+		rqstp->rq_res.tail[0].iov_base = p;
- 		*p++ = 0;		/* no more entries */
- 		*p++ = htonl(resp->common.err == nfserr_eof);
--		rqstp->rq_res.page_len = (resp->count + 2) << 2;
-+		rqstp->rq_res.tail[0].iov_len = 2<<2;
- 		return 1;
- 	} else
- 		return xdr_ressize_check(rqstp, p);
+Then we shouldn't mix permission checks with file handle lookup.
+As far as I understand, the only reason this permission check is
+done inside the file handle lookup is because a file handle may
+potentially map to more than on dentry chain?
+
+For what it's worth, I can live with both solution 1 and solution 2.
+I don't believe in 4.
+
+Olaf
+-- 
+Olaf Kirch     |  The Hardware Gods hate me.
+okir@suse.de   |
+---------------+ 
 
 
 -------------------------------------------------------
