@@ -1,23 +1,30 @@
-From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
-Subject: RE: async vs. sync
-Date: Tue, 23 Nov 2004 10:16:42 -0800
-Message-ID: <1101233801.13960.14.camel@soot.ess.uci.edu>
-References: <482A3FA0050D21419C269D13989C61130435EBDF@lavender-fe.eng.netapp.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: [PATCH] STATD - SM_NOTIFY have wrong ID_NAME on multihost servers.
+Date: Tue, 23 Nov 2004 15:28:07 -0500
+Message-ID: <41A39D57.8060902@RedHat.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-sQbNJQkQHRcZIWQ/ptJm"
-Cc: strombrg@dcs.nac.uci.edu, nfs@lists.sourceforge.net
+Content-Type: multipart/mixed;
+ boundary="------------070006090208070506070804"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CWfDb-0002cT-2i
-	for nfs@lists.sourceforge.net; Tue, 23 Nov 2004 10:16:47 -0800
-Received: from dcs.nac.uci.edu ([128.200.34.32] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1CWhH5-0002IQ-Rd
+	for nfs@lists.sourceforge.net; Tue, 23 Nov 2004 12:28:31 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1CWfDY-0007Qp-BM
-	for nfs@lists.sourceforge.net; Tue, 23 Nov 2004 10:16:46 -0800
-To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: <482A3FA0050D21419C269D13989C61130435EBDF@lavender-fe.eng.netapp.com>
+	id 1CWhH3-0001cO-Gq
+	for nfs@lists.sourceforge.net; Tue, 23 Nov 2004 12:28:31 -0800
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.12.11/8.12.11) with ESMTP id iANKSHZr032058
+	for <nfs@lists.sourceforge.net>; Tue, 23 Nov 2004 15:28:17 -0500
+Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
+	by int-mx1.corp.redhat.com (8.11.6/8.11.6) with ESMTP id iANKS7r31701
+	for <nfs@lists.sourceforge.net>; Tue, 23 Nov 2004 15:28:07 -0500
+Received: from [172.16.80.110] (IDENT:U2FsdGVkX1+RACZbMTbTtATxh5hTHpZ0R0PGxAqsrKA@dickson.boston.redhat.com [172.16.80.110])
+	by lacrosse.corp.redhat.com (8.11.6/8.11.6) with ESMTP id iANKS7a01784
+	for <nfs@lists.sourceforge.net>; Tue, 23 Nov 2004 15:28:07 -0500
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,65 +38,122 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+This is a multi-part message in MIME format.
+--------------070006090208070506070804
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
 
---=-sQbNJQkQHRcZIWQ/ptJm
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+Here is a patch that make sure the correct hostname is used
+in the SM_NOTIFY message what is sent from a rebooted server
+that has multiple network interfaces.
 
-On Tue, 2004-11-23 at 08:36, Lever, Charles wrote:
-> > On Mon, 2004-11-22 at 19:53, Lever, Charles wrote:
-> > > > > not to mention "soft" mounts are also truly the spawn of satan.
-> > > >=20
-> > > > Unless your filesystem is also readonly...
-> > >=20
-> > > unfortunately that is a myth.  even a readonly file system can fall=20
-> > > victim to the evils of soft mounts, i'm told.
-> >=20
-> > Ummmm...  How?
-> >=20
-> > About all that can happen, is you lose the mount.  You pretty much
-> > -can't- toast any data.
-> >=20
-> > > the cached version of the file on the client can become=20
-> > corrupted if=20
-> > > the file is changing remotely and one or more cache-refresh reads=20
-> > > times out.
-> >=20
-> > In which case it wasn't truly read only....
->=20
-> let's be precise.
->=20
-> there is only one case where a soft mount won't cause data corruption.
-> that is when the local file system on the server is mounted read only
-> and exported read only, and the client mounts the NFS export read only.
->=20
-> maybe good for sharing CD-ROMs via NFS, but otherwise not terribly
-> useful.
+Using the network part of the destination address, the correct network
+interface is found. Then a gethostbyaddr() on that interface is done,
+which yields the correct hostname that should be sent in the notify
+message....
 
-Yes, that's nice and precise.  :)
+Comments?
 
-We used to have a filesystem that contained netboot info (ethers,
-bootptab, bootparams, tftp), mounted soft on a bunch of hosts.  We never
-had a problem with it, other than it disappearing when the NFS server
-would go down for a while.  The data changed very infrequently, so we
-were fine.
+SteveD.
 
 
+--------------070006090208070506070804
+Content-Type: text/x-patch;
+ name="nfs-utils-1.0.6-statd-notify-hostname.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="nfs-utils-1.0.6-statd-notify-hostname.patch"
 
---=-sQbNJQkQHRcZIWQ/ptJm
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
+--- nfs-utils-1.0.6/utils/statd/rmtcall.c.orig	2004-11-08 11:03:49.352146000 -0500
++++ nfs-utils-1.0.6/utils/statd/rmtcall.c	2004-11-23 13:43:34.751897000 -0500
+@@ -26,6 +26,7 @@
+ #include <sys/socket.h>
+ #include <sys/time.h>
+ #include <netinet/in.h>
++#include <net/if.h>
+ #include <arpa/inet.h>
+ #include <rpc/rpc.h>
+ #include <rpc/pmap_prot.h>
+@@ -34,6 +35,7 @@
+ #include <netdb.h>
+ #include <string.h>
+ #include <unistd.h>
++#include <ifaddrs.h>
+ #include "sm_inter.h"
+ #include "statd.h"
+ #include "notlist.h"
+@@ -73,7 +75,44 @@
+ 
+ 	return sockfd;
+ }
+-
++/*
++ * Using the NL_ADDR(lp), reset (if needed) the hostname
++ * that will be put in the SM_NOTIFY to the hostname
++ * that is associated with the network interface 
++ * that was monitored
++ */
++static void
++reset_my_name(notify_list *lp)
++{
++	struct ifaddrs *ifa = NULL, *ifap;
++	struct in_addr netaddr, tmp;
++	struct sockaddr_in *sin, *nsin;
++	struct hostent *hp;
++
++	netaddr.s_addr = inet_netof(NL_ADDR(lp));
++	if (getifaddrs(&ifa) >= 0) {
++		for (ifap = ifa; ifap != NULL; ifap = ifap->ifa_next) {
++			if (ifap->ifa_addr->sa_family != AF_INET)
++				continue;
++			if (!(ifap->ifa_flags & IFF_UP))
++				continue;
++			sin = (struct sockaddr_in *)ifap->ifa_addr;
++			nsin = (struct sockaddr_in *)ifap->ifa_netmask;
++			tmp.s_addr = sin->sin_addr.s_addr & nsin->sin_addr.s_addr;
++			if (memcmp(&tmp.s_addr, &netaddr.s_addr, sizeof(netaddr.s_addr)))
++				continue;
++			hp = gethostbyaddr((char *)&sin->sin_addr, 
++				sizeof(sin->sin_addr), AF_INET);
++			if (hp == NULL)
++				continue;
++			if (strcmp(NL_MY_NAME(lp), hp->h_name)) {
++				free(NL_MY_NAME(lp));
++				NL_MY_NAME(lp)= strdup(hp->h_name);
++			}
++		}
++	}
++	return;
++}
+ /*
+  * Try to resolve host name for notify/callback request
+  *
+@@ -283,6 +322,7 @@
+ {
+ 	struct sockaddr_in	sin;
+ 	struct status		new_status;
++	stat_chge           new_stat;
+ 	xdrproc_t		func;
+ 	void			*objp;
+ 	u_int32_t		proc, vers, prog;
+@@ -309,9 +349,14 @@
+ 
+ 		/* Use source address for notify replies */
+ 		sin.sin_addr   = lp->addr;
++		/* Make sure the correct hostname is sent */
++		reset_my_name(lp);
+ 
+ 		func = (xdrproc_t) xdr_stat_chge;
+-		objp = &SM_stat_chge;
++		new_stat.state = MY_STATE;
++		new_stat.mon_name = NL_MY_NAME(lp);
++
++		objp = &new_stat;
+ 		break;
+ 	case NOTIFY_CALLBACK:
+ 		prog = NL_MY_PROG(lp);
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.4 (GNU/Linux)
-
-iD8DBQBBo36Jo0feVm00f/8RAjSZAJ9QK6XmDlsfGpKpMMgKoKPhq5hFlwCfafpT
-jP8LUsD9zX0uwqEZMT3yk1g=
-=woJ7
------END PGP SIGNATURE-----
-
---=-sQbNJQkQHRcZIWQ/ptJm--
-
+--------------070006090208070506070804--
 
 
 -------------------------------------------------------
