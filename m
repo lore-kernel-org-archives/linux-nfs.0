@@ -1,28 +1,29 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: RE: Race condition in xprt_disconnect
-Date: Tue, 06 Apr 2004 10:36:10 -0400
+Date: Tue, 06 Apr 2004 10:54:15 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1081262170.2846.35.camel@lade.trondhjem.org>
+Message-ID: <1081263255.2846.50.camel@lade.trondhjem.org>
 References: <1081197570.2641.133.camel@lade.trondhjem.org>
 	 <20040406092401.GA29906@suse.de>
 	 <1081260688.2846.30.camel@lade.trondhjem.org>
 	 <20040406142649.GF29906@suse.de>
+	 <1081262170.2846.35.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: multipart/mixed; boundary="=-Lz2fYPYWtG0cMORmPwvW"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BArgS-0001SK-2e
-	for nfs@lists.sourceforge.net; Tue, 06 Apr 2004 07:36:12 -0700
+	id 1BAry2-00060R-Iu
+	for nfs@lists.sourceforge.net; Tue, 06 Apr 2004 07:54:22 -0700
 Received: from dh132.citi.umich.edu
 	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
 	(Exim 4.30)
-	id 1BArgR-00042C-QQ
-	for nfs@lists.sourceforge.net; Tue, 06 Apr 2004 07:36:11 -0700
+	id 1BAry2-0006mt-3d
+	for nfs@lists.sourceforge.net; Tue, 06 Apr 2004 07:54:22 -0700
 To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20040406142649.GF29906@suse.de>
+In-Reply-To: <1081262170.2846.35.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -35,22 +36,122 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, 2004-04-06 at 10:26, Olaf Kirch wrote:
-> On Tue, Apr 06, 2004 at 10:11:29AM -0400, Trond Myklebust wrote:
-> > Can't tcp_state_change() inject a few more wakeups when we call
-> > xprt_close()?
-> 
-> I don't think I understand. tcp_state_change can't call xprt_close.
 
-No, but it does currently call xprt_disconnect().
+--=-Lz2fYPYWtG0cMORmPwvW
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-I'm trying to work out whether or not the socket can change state again
-after the server sends the FIN (or whatever it is it sends), but before
-xprt_sock_connect()/keventd swaps out sk->state_change in its call to
-xprt_close().
+On Tue, 2004-04-06 at 10:36, Trond Myklebust wrote:
+> I'm trying to work out whether or not the socket can change state again
+> after the server sends the FIN (or whatever it is it sends), but before
+> xprt_sock_connect()/keventd swaps out sk->state_change in its call to
+> xprt_close().
+
+I don't think we have to care... Here's a slight variation on the old
+patch that should take care of that scenario too:
+
+The policy should be that once tcp_state_change() clears the "connected"
+bit, and has woken up those requests that were waiting on a reply, it
+should just stay out of the way. We do not want it to interfere with the
+reconnection process (the task timeouts etc should suffice for error
+handling). This patch should ensure that is the case.
 
 Cheers,
   Trond
+
+
+--=-Lz2fYPYWtG0cMORmPwvW
+Content-Disposition: attachment; filename=linux-2.6.5-34-sunrpc_disconnect.dif
+Content-Type: text/plain; name=linux-2.6.5-34-sunrpc_disconnect.dif; charset=iso-8859-1
+Content-Transfer-Encoding: base64
+
+IGluY2x1ZGUvbGludXgvc3VucnBjL3hwcnQuaCB8ICAgIDcgKysrLS0NCiBuZXQvc3VucnBjL3hw
+cnQuYyAgICAgICAgICAgfCAgIDYxICsrKysrKysrKysrKysrKysrKy0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tDQogMiBmaWxlcyBjaGFuZ2VkLCAzMSBpbnNlcnRpb25zKCspLCAzNyBkZWxldGlv
+bnMoLSkNCg0KZGlmZiAtdSAtLXJlY3Vyc2l2ZSAtLW5ldy1maWxlIC0tc2hvdy1jLWZ1bmN0aW9u
+IGxpbnV4LTIuNi41LTMzLWdyYWNlL2luY2x1ZGUvbGludXgvc3VucnBjL3hwcnQuaCBsaW51eC0y
+LjYuNS0zNC1zdW5ycGNfZGlzY29ubmVjdC9pbmNsdWRlL2xpbnV4L3N1bnJwYy94cHJ0LmgNCi0t
+LSBsaW51eC0yLjYuNS0zMy1ncmFjZS9pbmNsdWRlL2xpbnV4L3N1bnJwYy94cHJ0LmgJMjAwNC0w
+NC0wNSAxODoyMzoxMi4wMDAwMDAwMDAgLTA0MDANCisrKyBsaW51eC0yLjYuNS0zNC1zdW5ycGNf
+ZGlzY29ubmVjdC9pbmNsdWRlL2xpbnV4L3N1bnJwYy94cHJ0LmgJMjAwNC0wNC0wNiAxMDoxNzoy
+Mi4wMDAwMDAwMDAgLTA0MDANCkBAIC0yMTYsMTIgKzIxNiwxNSBAQCB2b2lkCQkJeHBydF9jb25u
+ZWN0KHN0cnVjdCBycGNfdGFzayAqKTsNCiBpbnQJCQl4cHJ0X2NsZWFyX2JhY2tsb2coc3RydWN0
+IHJwY194cHJ0ICopOw0KIHZvaWQJCQl4cHJ0X3NvY2tfc2V0YnVmc2l6ZShzdHJ1Y3QgcnBjX3hw
+cnQgKik7DQogDQotI2RlZmluZSBYUFJUX0NPTk5FQ1QJMA0KLSNkZWZpbmUgWFBSVF9MT0NLRUQJ
+MQ0KKyNkZWZpbmUgWFBSVF9MT0NLRUQJMA0KKyNkZWZpbmUgWFBSVF9DT05ORUNUCTENCisjZGVm
+aW5lIFhQUlRfQ09OTkVDVElORwkyDQogDQogI2RlZmluZSB4cHJ0X2Nvbm5lY3RlZCh4cCkJCSh0
+ZXN0X2JpdChYUFJUX0NPTk5FQ1QsICYoeHApLT5zb2Nrc3RhdGUpKQ0KICNkZWZpbmUgeHBydF9z
+ZXRfY29ubmVjdGVkKHhwKQkJKHNldF9iaXQoWFBSVF9DT05ORUNULCAmKHhwKS0+c29ja3N0YXRl
+KSkNCiAjZGVmaW5lIHhwcnRfdGVzdF9hbmRfc2V0X2Nvbm5lY3RlZCh4cCkJKHRlc3RfYW5kX3Nl
+dF9iaXQoWFBSVF9DT05ORUNULCAmKHhwKS0+c29ja3N0YXRlKSkNCisjZGVmaW5lIHhwcnRfdGVz
+dF9hbmRfY2xlYXJfY29ubmVjdGVkKHhwKSBcDQorCQkJCQkodGVzdF9hbmRfY2xlYXJfYml0KFhQ
+UlRfQ09OTkVDVCwgJih4cCktPnNvY2tzdGF0ZSkpDQogI2RlZmluZSB4cHJ0X2NsZWFyX2Nvbm5l
+Y3RlZCh4cCkJKGNsZWFyX2JpdChYUFJUX0NPTk5FQ1QsICYoeHApLT5zb2Nrc3RhdGUpKQ0KIA0K
+ICNlbmRpZiAvKiBfX0tFUk5FTF9fKi8NCmRpZmYgLXUgLS1yZWN1cnNpdmUgLS1uZXctZmlsZSAt
+LXNob3ctYy1mdW5jdGlvbiBsaW51eC0yLjYuNS0zMy1ncmFjZS9uZXQvc3VucnBjL3hwcnQuYyBs
+aW51eC0yLjYuNS0zNC1zdW5ycGNfZGlzY29ubmVjdC9uZXQvc3VucnBjL3hwcnQuYw0KLS0tIGxp
+bnV4LTIuNi41LTMzLWdyYWNlL25ldC9zdW5ycGMveHBydC5jCTIwMDQtMDQtMDUgMTg6MjM6MjIu
+MDAwMDAwMDAwIC0wNDAwDQorKysgbGludXgtMi42LjUtMzQtc3VucnBjX2Rpc2Nvbm5lY3QvbmV0
+L3N1bnJwYy94cHJ0LmMJMjAwNC0wNC0wNiAxMDoxNjoyOS4wMDAwMDAwMDAgLTA0MDANCkBAIC00
+NDgsNyArNDQ4LDEwIEBAIHhwcnRfaW5pdF9hdXRvZGlzY29ubmVjdCh1bnNpZ25lZCBsb25nIGQN
+CiAJCWdvdG8gb3V0X2Fib3J0Ow0KIAlzcGluX3VubG9jaygmeHBydC0+c29ja19sb2NrKTsNCiAJ
+LyogTGV0IGtldmVudGQgY2xvc2UgdGhlIHNvY2tldCAqLw0KLQlzY2hlZHVsZV93b3JrKCZ4cHJ0
+LT50YXNrX2NsZWFudXApOw0KKwlpZiAodGVzdF9iaXQoWFBSVF9DT05ORUNUSU5HLCAmeHBydC0+
+c29ja3N0YXRlKSAhPSAwKQ0KKwkJeHBydF9yZWxlYXNlX3dyaXRlKHhwcnQsIE5VTEwpOw0KKwll
+bHNlDQorCQlzY2hlZHVsZV93b3JrKCZ4cHJ0LT50YXNrX2NsZWFudXApOw0KIAlyZXR1cm47DQog
+b3V0X2Fib3J0Og0KIAlzcGluX3VubG9jaygmeHBydC0+c29ja19sb2NrKTsNCkBAIC00NjAsMTIg
+KzQ2Myw4IEBAIHN0YXRpYyB2b2lkIHhwcnRfc29ja2V0X2Nvbm5lY3Qodm9pZCAqYXINCiAJc3Ry
+dWN0IHNvY2tldCAqc29jayA9IHhwcnQtPnNvY2s7DQogCWludCBzdGF0dXMgPSAtRUlPOw0KIA0K
+LQlpZiAoeHBydC0+c2h1dGRvd24pIHsNCi0JCXJwY193YWtlX3VwX3N0YXR1cygmeHBydC0+cGVu
+ZGluZywgLUVJTyk7DQotCQlyZXR1cm47DQotCX0NCi0JaWYgKCF4cHJ0LT5hZGRyLnNpbl9wb3J0
+KQ0KLQkJZ290byBvdXRfZXJyOw0KKwlpZiAoeHBydC0+c2h1dGRvd24gfHwgeHBydC0+YWRkci5z
+aW5fcG9ydCA9PSAwKQ0KKwkJZ290byBvdXQ7DQogDQogCS8qDQogCSAqIFN0YXJ0IGJ5IHJlc2V0
+dGluZyBhbnkgZXhpc3Rpbmcgc3RhdGUNCkBAIC00NzUsMTIgKzQ3NCwxMiBAQCBzdGF0aWMgdm9p
+ZCB4cHJ0X3NvY2tldF9jb25uZWN0KHZvaWQgKmFyDQogCWlmIChzb2NrID09IE5VTEwpIHsNCiAJ
+CS8qIGNvdWxkbid0IGNyZWF0ZSBzb2NrZXQgb3IgYmluZCB0byByZXNlcnZlZCBwb3J0Ow0KIAkJ
+ICogdGhpcyBpcyBsaWtlbHkgYSBwZXJtYW5lbnQgZXJyb3IsIHNvIGNhdXNlIGFuIGFib3J0ICov
+DQotCQlnb3RvIG91dF9lcnI7DQotCQlyZXR1cm47DQorCQlnb3RvIG91dDsNCiAJfQ0KIAl4cHJ0
+X2JpbmRfc29ja2V0KHhwcnQsIHNvY2spOw0KIAl4cHJ0X3NvY2tfc2V0YnVmc2l6ZSh4cHJ0KTsN
+CiANCisJc3RhdHVzID0gMDsNCiAJaWYgKCF4cHJ0LT5zdHJlYW0pDQogCQlnb3RvIG91dDsNCiAN
+CkBAIC00OTEsMjkgKzQ5MCwyMiBAQCBzdGF0aWMgdm9pZCB4cHJ0X3NvY2tldF9jb25uZWN0KHZv
+aWQgKmFyDQogCQkJc2l6ZW9mKHhwcnQtPmFkZHIpLCBPX05PTkJMT0NLKTsNCiAJZHByaW50aygi
+UlBDOiAlcCAgY29ubmVjdCBzdGF0dXMgJWQgY29ubmVjdGVkICVkIHNvY2sgc3RhdGUgJWRcbiIs
+DQogCQkJeHBydCwgLXN0YXR1cywgeHBydF9jb25uZWN0ZWQoeHBydCksIHNvY2stPnNrLT5za19z
+dGF0ZSk7DQotCWlmIChzdGF0dXMgPj0gMCkNCi0JCWdvdG8gb3V0Ow0KLQlzd2l0Y2ggKHN0YXR1
+cykgew0KLQkJY2FzZSAtRUlOUFJPR1JFU1M6DQotCQljYXNlIC1FQUxSRUFEWToNCi0JCQlyZXR1
+cm47DQotCQlkZWZhdWx0Og0KLQkJCWdvdG8gb3V0X2VycjsNCisJaWYgKHN0YXR1cyA8IDApIHsN
+CisJCXN3aXRjaCAoc3RhdHVzKSB7DQorCQkJY2FzZSAtRUlOUFJPR1JFU1M6DQorCQkJY2FzZSAt
+RUFMUkVBRFk6DQorCQkJCWdvdG8gb3V0X2NsZWFyOw0KKwkJfQ0KIAl9DQogb3V0Og0KLQlzcGlu
+X2xvY2tfYmgoJnhwcnQtPnNvY2tfbG9jayk7DQotCWlmICh4cHJ0LT5zbmRfdGFzaykNCi0JCXJw
+Y193YWtlX3VwX3Rhc2soeHBydC0+c25kX3Rhc2spOw0KLQlzcGluX3VubG9ja19iaCgmeHBydC0+
+c29ja19sb2NrKTsNCi0JcmV0dXJuOw0KLW91dF9lcnI6DQotCXNwaW5fbG9ja19iaCgmeHBydC0+
+c29ja19sb2NrKTsNCi0JaWYgKHhwcnQtPnNuZF90YXNrKSB7DQotCQl4cHJ0LT5zbmRfdGFzay0+
+dGtfc3RhdHVzID0gc3RhdHVzOw0KLQkJcnBjX3dha2VfdXBfdGFzayh4cHJ0LT5zbmRfdGFzayk7
+DQotCX0gZWxzZQ0KLQkJcnBjX3dha2VfdXBfc3RhdHVzKCZ4cHJ0LT5wZW5kaW5nLCAtRU5PVENP
+Tk4pOw0KLQlzcGluX3VubG9ja19iaCgmeHBydC0+c29ja19sb2NrKTsNCisJaWYgKHN0YXR1cyA8
+IDApDQorCQlycGNfd2FrZV91cF9zdGF0dXMoJnhwcnQtPnBlbmRpbmcsIHN0YXR1cyk7DQorCWVs
+c2UNCisJCXJwY193YWtlX3VwKCZ4cHJ0LT5wZW5kaW5nKTsNCitvdXRfY2xlYXI6DQorCXNtcF9t
+Yl9fYmVmb3JlX2NsZWFyX2JpdCgpOw0KKwljbGVhcl9iaXQoWFBSVF9DT05ORUNUSU5HLCAmeHBy
+dC0+c29ja3N0YXRlKTsNCisJc21wX21iX19hZnRlcl9jbGVhcl9iaXQoKTsNCiB9DQogDQogLyoN
+CkBAIC01NDUsNyArNTM3LDggQEAgdm9pZCB4cHJ0X2Nvbm5lY3Qoc3RydWN0IHJwY190YXNrICp0
+YXNrKQ0KIA0KIAl0YXNrLT50a190aW1lb3V0ID0gUlBDX0NPTk5FQ1RfVElNRU9VVDsNCiAJcnBj
+X3NsZWVwX29uKCZ4cHJ0LT5wZW5kaW5nLCB0YXNrLCB4cHJ0X2Nvbm5lY3Rfc3RhdHVzLCBOVUxM
+KTsNCi0Jc2NoZWR1bGVfd29yaygmeHBydC0+c29ja19jb25uZWN0KTsNCisJaWYgKCF0ZXN0X2Fu
+ZF9zZXRfYml0KFhQUlRfQ09OTkVDVElORywgJnhwcnQtPnNvY2tzdGF0ZSkpDQorCQlzY2hlZHVs
+ZV93b3JrKCZ4cHJ0LT5zb2NrX2Nvbm5lY3QpOw0KIAlyZXR1cm47DQogIG91dF93cml0ZToNCiAJ
+eHBydF9yZWxlYXNlX3dyaXRlKHhwcnQsIHRhc2spOw0KQEAgLTEwMjcsOSArMTAyMCw2IEBAIHRj
+cF9zdGF0ZV9jaGFuZ2Uoc3RydWN0IHNvY2sgKnNrKQ0KIAkJCXhwcnQtPnRjcF9yZWNsZW4gPSAw
+Ow0KIAkJCXhwcnQtPnRjcF9jb3BpZWQgPSAwOw0KIAkJCXhwcnQtPnRjcF9mbGFncyA9IFhQUlRf
+Q09QWV9SRUNNIHwgWFBSVF9DT1BZX1hJRDsNCi0NCi0JCQlpZiAoeHBydC0+c25kX3Rhc2spDQot
+CQkJCXJwY193YWtlX3VwX3Rhc2soeHBydC0+c25kX3Rhc2spOw0KIAkJCXJwY193YWtlX3VwKCZ4
+cHJ0LT5wZW5kaW5nKTsNCiAJCX0NCiAJCXNwaW5fdW5sb2NrX2JoKCZ4cHJ0LT5zb2NrX2xvY2sp
+Ow0KQEAgLTEwMzgsNyArMTAyOCw4IEBAIHRjcF9zdGF0ZV9jaGFuZ2Uoc3RydWN0IHNvY2sgKnNr
+KQ0KIAljYXNlIFRDUF9TWU5fUkVDVjoNCiAJCWJyZWFrOw0KIAlkZWZhdWx0Og0KLQkJeHBydF9k
+aXNjb25uZWN0KHhwcnQpOw0KKwkJaWYgKHhwcnRfdGVzdF9hbmRfY2xlYXJfY29ubmVjdGVkKHhw
+cnQpKQ0KKwkJCXJwY193YWtlX3VwX3N0YXR1cygmeHBydC0+cGVuZGluZywgLUVOT1RDT05OKTsN
+CiAJCWJyZWFrOw0KIAl9DQogIG91dDoNCg==
+
+--=-Lz2fYPYWtG0cMORmPwvW--
 
 
 -------------------------------------------------------
