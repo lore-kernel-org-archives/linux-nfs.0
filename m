@@ -1,20 +1,20 @@
-From: seth vidal <skvidal@phy.duke.edu>
-Subject: Re: troubling interaction with quotas and nfs
-Date: 09 Apr 2002 11:19:07 -0400
+From: Todd Weaver <todd@m2n.com>
+Subject: some programs hang when run over nfs.
+Date: Tue, 9 Apr 2002 17:29:38 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1018365547.27365.26.camel@opus>
-References: <1018325948.2639.67.camel@milo>
-	<15538.29176.579826.727109@notabene.cse.unsw.edu.au>
+Message-ID: <Pine.LNX.4.33.0204091719490.18654-100000@minstrel.m2n.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature";
-	boundary="=-j16KUjvwegjpHv/9HMvn"
-Cc: nfs@lists.sourceforge.net
-Received: from mail.phy.duke.edu ([152.3.182.2])
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from 63-224-62-148.dsl.uswest.net ([63.224.62.148] helo=mail.m2n.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16uxOs-0004Bg-00
-	for <nfs@lists.sourceforge.net>; Tue, 09 Apr 2002 08:19:14 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <15538.29176.579826.727109@notabene.cse.unsw.edu.au>
+	id 16v5za-0003na-00
+	for <nfs@lists.sourceforge.net>; Tue, 09 Apr 2002 17:29:42 -0700
+Received: from todd (helo=localhost)
+	by mail.m2n.com with local-esmtp (Exim 3.12 #1 (Debian))
+	id 16v5zW-0004tK-00
+	for <nfs@lists.sourceforge.net>; Tue, 09 Apr 2002 17:29:38 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,73 +27,43 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
+Hello,
 
---=-j16KUjvwegjpHv/9HMvn
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+I thought this was a library issue per workstation for quite awhile.
+However, I have narrowed it down to this problem.
 
-On Tue, 2002-04-09 at 00:45, Neil Brown wrote:
-> On  April 9, skvidal@phy.duke.edu wrote:
-> > Hi all,
-> >  I'm running red hat 7.2 with the 2.4.9-31 kernel.
-> > Its an ext3 file system, exported for nfsv3 udp and nfsv2 clients.
-> >=20
-> > nothing fancy at all.
-> >=20
-> > I have quotas set for my users. If a user hits their hard quota and the
-> > process continues to attempt to write to a file in their  quota'd space
-> > - the process load on the server shoots through the roof.=20
-> >=20
-> > I can reliably recreate this by setting a hard quota, having the system
-> > hit the hard quota and continue to attempt to write to that file - the
-> > server becomes terribly unhappy.
-> >=20
-> > I never saw this problem on older 2.2.X servers and I'm not sure why I'=
-m
-> > seeing it now.
-> >=20
-> > Any places I should be looking first?
-> >=20
->=20
-> tcpdump?
-> The server should return nfserr_dquot (69 =3D=3D 0x45) and the client
-> should return this to the application.
-> But it sounds like the client is repeating the request for some
-> reason.
->=20
-> You could also=20
->    echo 32 > /proc/sys/sunrpc/nfsd_debug
-> and watch for
->     "nfsd: write complete err=3D%d"
-> messages in the kernel log.  These will tell you whether nfsd thinks
-> it got an error for the write.
->=20
+I can run programs such as nautilus, staroffice, openoffice as a local
+user just fine. However, if I try to run any of the above programs as a
+nis user who's home directory is an nfs mount, that program will hang.
 
-It appears to return -122
+for example (staroffice):
+todd@ws04~ $ strace -f /usr/local/office/program/soffice
+[snip]
+[pid   589] open("/home/t/todd/.sversionrc", O_RDONLY) = 3
+[pid   589] fcntl(3, F_GETFD)           = 0
+[pid   589] fcntl(3, F_SETFD, FD_CLOEXEC) = 0
+[pid   589] fcntl(3, F_SETLKW, {type=F_RDLCK, whence=SEEK_SET, start=0, len=0}
 
-However, the program will exit correctly if it catches that problem. But
-the system does not respond well if there is a continued attempt to
-write a lot of data when the quota is filled.
+This of course all occurred as soon as I upgraded debian stable to the
+latest packages.
 
-That doesn't seem to make sense.
+I am not sure how to track this problem any further.
 
--sv
+I will add that as a local user there is no problem whatsoever.
+but as a nis/nfs user some programs fail with similar results.
+mozilla works fine, and obviously that is setup with a local binary, and
+the configuration is read over nfs.
 
+Could somebody please help me debug this further, or better yet tell me
+what I need do to fix this problem.
 
---=-j16KUjvwegjpHv/9HMvn
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
+I can easily provide more information, if somebody can tell me what would
+be pertinent.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.0.6 (GNU/Linux)
-Comment: For info see http://www.gnupg.org
+I am not a subscriber to the nfs mailing list (yet) so please reply to me
+as well as the list please.
 
-iD8DBQA8swZr1Aj3x2mIbMcRAgdBAJwK2T+i9II+DaarzalX7IH9U2SgpwCfTXux
-Tfubn8wndQk4yASAsFS5HtI=
-=hgA+
------END PGP SIGNATURE-----
-
---=-j16KUjvwegjpHv/9HMvn--
+Thanks all!
 
 
 _______________________________________________
