@@ -1,31 +1,26 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: client side noac
-Date: Sun, 27 Jun 2004 15:28:29 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: nfsd threads locked, 2.6.7 & ia64
+Date: Sun, 27 Jun 2004 15:33:14 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1088364509.4295.14.camel@lade.trondhjem.org>
-References: <Pine.LNX.4.60.0406251148570.3197@harp.ngdc.noaa.gov>
-	 <1088186851.4333.65.camel@lade.trondhjem.org>
-	 <Pine.LNX.4.60.0406251252570.3683@harp.ngdc.noaa.gov>
-	 <1088191021.4333.75.camel@lade.trondhjem.org>
-	 <Pine.LNX.4.60.0406251321030.3853@harp.ngdc.noaa.gov>
-	 <1088192302.4333.83.camel@lade.trondhjem.org>
-	 <Pine.LNX.4.60.0406261615060.10096@harp.ngdc.noaa.gov>
+Message-ID: <20040627193314.GE3491@fieldses.org>
+References: <20040627051129.GS10560@polop.usc.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BefKN-0006ur-Ij
-	for nfs@lists.sourceforge.net; Sun, 27 Jun 2004 12:28:35 -0700
-Received: from dh132.citi.umich.edu
-	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
+	id 1BefOu-0007X9-Vh
+	for nfs@lists.sourceforge.net; Sun, 27 Jun 2004 12:33:16 -0700
+Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
 	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
 	(Exim 4.34)
-	id 1BefKN-0008AF-7k
-	for nfs@lists.sourceforge.net; Sun, 27 Jun 2004 12:28:35 -0700
-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-In-Reply-To: <Pine.LNX.4.60.0406261615060.10096@harp.ngdc.noaa.gov>
+	id 1BefOu-0000Sx-HJ
+	for nfs@lists.sourceforge.net; Sun, 27 Jun 2004 12:33:16 -0700
+Received: from bfields by pickle.fieldses.org with local (Exim 4.34)
+	id 1BefOs-00019h-3g
+	for nfs@lists.sourceforge.net; Sun, 27 Jun 2004 15:33:14 -0400
+To: nfs@lists.sourceforge.net
+In-Reply-To: <20040627051129.GS10560@polop.usc.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -38,25 +33,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 lau , 26/06/2004 klokka 18:17, skreiv Ara.T.Howard:
-> On Fri, 25 Jun 2004, Trond Myklebust wrote:
-> > As for whether or not lookups are cached: We check the mtime of the
-> > parent directory in order to find out whether or not it has changed. If
-> > it has, then we do a new lookup of the file.
+On Sat, Jun 26, 2004 at 10:11:29PM -0700, Garrick Staples wrote:
+> Well here's something I've not seen yet.  All 512 nfsd threads are stuck in IO
+> wait (state D in ps).  All clients are hung on that mount.  The actual
+> filesystem on the server seems fine.
+> 
+> It start at 8am with no messages at all.
+> 
+> Jun 26 08:06:58 hpc-master nagios: SERVICE ALERT: hpc-fs3;nfs;CRITICAL;SOFT;1;CRITICAL: RPC program nfs  version 3 udp is not running
+> Jun 26 08:07:21 hpc934-e0 kernel: nfs: server hpc-fs3 not responding, still trying
+> Jun 26 08:09:12 hpc972-e0 kernel: nfs: server hpc-fs3 not responding, still trying
+> Jun 26 08:09:13 hpc941-e0 kernel: nfs: server hpc-fs3 not responding, still trying
+> ...
+> 
+> I can't find anything otherwise wrong with the machine at all, just that nfsd
+> threads are stuck.  rpcinfo and showmount still work fine.  Nothing in dmesg or
+> messages.  I'm stuck too.
 
-> so i can see how opening a file may result in a later ESTALE (mtime cachi=
-ng)
-> but how could open ITSELF return ESTALE?  this is the behaviour i'm seein=
-g.
+Does Sysrq-T give you any idea where they're stuck?
 
-Read the above paragraph carefully: we check the mtime on the parent
-directory in order to decide whether or not to lookup again...
-
-That mtime value is subject to caching rules. The whole point is to
-reduce the number of on-the-wire RPC calls on sane setups.
-
-Cheers,
-  Trond
+--Bruce Fields
 
 
 -------------------------------------------------------
