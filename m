@@ -1,24 +1,18 @@
-From: Stuart Anderson <anderson@ligo.caltech.edu>
-Subject: Failure to mount from multiple servers in a short period of time
-Date: Sun, 30 Jan 2005 20:24:15 -0800
-Message-ID: <200501310424.j0V4OF5e000412@m27.ligo.caltech.edu>
+From: mehta kiran <kiranmehta1981@yahoo.com>
+Subject: lockd grace period
+Date: Sun, 30 Jan 2005 23:41:27 -0800 (PST)
+Message-ID: <20050131074127.32205.qmail@web51603.mail.yahoo.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CvT6n-00032b-L8
-	for nfs@lists.sourceforge.net; Sun, 30 Jan 2005 20:24:17 -0800
-Received: from acrux.ligo.caltech.edu ([131.215.115.14])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1CvT6m-0004h5-8j
-	for nfs@lists.sourceforge.net; Sun, 30 Jan 2005 20:24:17 -0800
-Received: from m27.ligo.caltech.edu (m27 [131.215.115.127])
-	by acrux.ligo.caltech.edu (8.12.11/8.12.11) with ESMTP id j0V4Ng78001868
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
-	for <nfs@lists.sourceforge.net>; Sun, 30 Jan 2005 20:23:42 -0800 (PST)
-Received: (from anderson@localhost)
-	by m27.ligo.caltech.edu (8.12.8/8.12.8/Submit) id j0V4OF5e000412
-	for nfs@lists.sourceforge.net; Sun, 30 Jan 2005 20:24:15 -0800
+	id 1CvWBi-0004Bt-Op
+	for nfs@lists.sourceforge.net; Sun, 30 Jan 2005 23:41:34 -0800
+Received: from web51603.mail.yahoo.com ([206.190.38.208])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
+	id 1CvWBh-0000px-3I
+	for nfs@lists.sourceforge.net; Sun, 30 Jan 2005 23:41:34 -0800
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -33,34 +27,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On a dual-Xeon 4GB server running FC3 I am unable to successfully
-issue more than 52 automount requests to unique Linux NFS servers
-in less than a minute.
+Hi , 
+        lockd is used by both nfs and autofs
+if there are 2 machines runnnig 2.6 kernel
+(Red Hat) .autofs and nfs both are running
+on system1.When nfs is failed over to system2
+, all daemons start on system2 , but
+lockd on system1 is still alive as it is required
+by autofs "client"(this machine has automounted
+filesystem from some other machine).After say 5
+minutes , if nfs
+is failed over to system1 , lockd recovery
+gives some problem.statd notifies client , 
+but when client tries to reclaim lock , 
+LOCK routine returns "unknown error"(30000).
+Is is because  , lockd was runnnig since long
+time on system1 and hence its grace period was over.
 
-After 52 mounts I get the following error. This is reproducible.
+But I dont face same problem of sles9 sp1.
+What is the expected behaviour.?
+Is it that whenever nfsd starts  , lockd should enter
+grace period ?
+or
+Is is that lockd should enter grace period only when
+it restarts without caring for nfs.?
 
-Jan 30 10:40:22 beowulf automount[22882]: >> nfs bindresvport: Address
-already in use
-Jan 30 10:40:22 beowulf automount[22882]: mount(nfs): nfs: mount
-failure node54:/usr1 on /data/node54
-Jan 30 10:40:22 beowulf automount[22882]: failed to mount /data/node54
+--thanks,
+   kiran
 
-After waiting ~1 minute I am able to mount another 52 filesystems
-before the getting the same error again.
 
-This limitation is breaking an application on a large Beowulf cluster
-that cross-mounts data between 290 GigE attached nodes. I have also
-reproduced this problem with a script that explicitly calls
-/bin/mount rather than relying on automount.
 
-I tried upgrading to autofs-4.1.4_beta1 to rule out any broken RedHat patches
-but that did not help.
-
-This problem does not occur on a RedHat 9 or Solaris 9 client machine.
-
-Any ideas on how to increase the allowed rate of mounts?
-
-Thanks.
+	
+		
+__________________________________ 
+Do you Yahoo!? 
+Yahoo! Mail - You care about security. So do we. 
+http://promotions.yahoo.com/new_mail
 
 
 -------------------------------------------------------
