@@ -1,17 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 7 of 16] nfsd4: factor out common open_truncate code
+Subject: [PATCH kNFSd 10 of 16] nfsd4: don't set WRITE_OWNER in either allow or deny bits
 Date: Tue, 22 Mar 2005 16:42:01 +1100
-Message-ID: <E1DDc9R-0002KW-K0@notabene.cse.unsw.edu.au>
+Message-ID: <E1DDc9R-0002Ki-PS@notabene.cse.unsw.edu.au>
 References: <20050322163830.8762.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DDcA1-0006lq-UA
-	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:37 -0800
+	id 1DDcA2-0006m2-LO
+	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:38 -0800
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1DDc9z-00059w-Oc
-	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:37 -0800
+	id 1DDcA0-0005A4-RO
+	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:38 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -27,86 +27,46 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Factor out a bit of common code.
+
+WRITE_OWNER should be neither allowed nor denied.
+
+This improves interoperability with Solaris clients and represents our
+permissions more accurately.
+
+It breaks compatibility with clients using the old version of the NFSv4<->POSIX
+mapping.  I believe the only code that did that was older versions of
+experimental client-side code available only from our website, so I prefer not
+to introduce a hack just to continue support the old mapping.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c |   46 +++++++++++++++++++++++-----------------------
- 1 files changed, 23 insertions(+), 23 deletions(-)
+ ./fs/nfsd/nfs4acl.c |    5 ++++-
+ 1 files changed, 4 insertions(+), 1 deletion(-)
 
-diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2005-03-22 16:36:35.000000000 +1100
-+++ ./fs/nfsd/nfs4state.c	2005-03-22 16:36:35.000000000 +1100
-@@ -1575,6 +1575,21 @@ nfs4_new_open(struct svc_rqst *rqstp, st
- 	return 0;
- }
+diff ./fs/nfsd/nfs4acl.c~current~ ./fs/nfsd/nfs4acl.c
+--- ./fs/nfsd/nfs4acl.c~current~	2005-03-22 16:36:35.000000000 +1100
++++ ./fs/nfsd/nfs4acl.c	2005-03-22 16:36:35.000000000 +1100
+@@ -55,6 +55,9 @@
+ #define NFS4_ANYONE_MODE (NFS4_ACE_READ_ATTRIBUTES | NFS4_ACE_READ_ACL | NFS4_ACE_SYNCHRONIZE)
+ #define NFS4_OWNER_MODE (NFS4_ACE_WRITE_ATTRIBUTES | NFS4_ACE_WRITE_ACL)
  
-+static inline int
-+nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
-+		struct nfsd4_open *open)
-+{
-+	struct iattr iattr = {
-+		.ia_valid = ATTR_SIZE,
-+		.ia_size = 0,
-+	};
-+	if (!open->op_truncate)
-+		return 0;
-+	if (!(open->op_share_access & NFS4_SHARE_ACCESS_WRITE))
-+		return -EINVAL;
-+	return nfsd_setattr(rqstp, fh, &iattr, 0, (time_t)0);
-+}
++/* We don't support these bits; insist they be neither allowed nor denied */
++#define NFS4_MASK_UNSUPP (NFS4_ACE_DELETE | NFS4_ACE_WRITE_OWNER)
 +
- static int
- nfs4_upgrade_open(struct svc_rqst *rqstp, struct svc_fh *cur_fh, struct nfs4_stateid *stp, struct nfsd4_open *open)
+ /* flags used to simulate posix default ACLs */
+ #define NFS4_INHERITANCE_FLAGS (NFS4_ACE_FILE_INHERIT_ACE \
+ 		| NFS4_ACE_DIRECTORY_INHERIT_ACE | NFS4_ACE_INHERIT_ONLY_ACE)
+@@ -83,7 +86,7 @@ mask_from_posix(unsigned short perm, uns
+ static u32
+ deny_mask(u32 allow_mask, unsigned int flags)
  {
-@@ -1592,19 +1607,11 @@ nfs4_upgrade_open(struct svc_rqst *rqstp
- 		status = get_write_access(inode);
- 		if (status)
- 			return nfserrno(status);
--		if (open->op_truncate) {
--			struct iattr iattr = {
--				.ia_valid = ATTR_SIZE,
--				.ia_size = 0,
--			};
--			status = nfsd_setattr(rqstp, cur_fh, &iattr, 0,
--					(time_t)0);
--			if (status) {
--				put_write_access(inode);
--				return status;
--			}
-+		status = nfsd4_truncate(rqstp, cur_fh, open);
-+		if (status) {
-+			put_write_access(inode);
-+			return status;
- 		}
--
- 		/* remember the open */
- 		filp->f_mode = (filp->f_mode | FMODE_WRITE) & ~FMODE_READ;
- 		set_bit(open->op_share_access, &stp->st_access_bmap);
-@@ -1737,17 +1744,10 @@ nfsd4_process_open2(struct svc_rqst *rqs
- 		if ((status = nfs4_new_open(rqstp, &stp, current_fh, flags)))
- 			goto out;
- 		init_stateid(stp, fp, open);
--		if (open->op_truncate) {
--			struct iattr iattr = {
--				.ia_valid = ATTR_SIZE,
--				.ia_size = 0,
--			};
--			status = nfsd_setattr(rqstp, current_fh, &iattr, 0,
--					(time_t)0);
--			if (status) {
--				release_stateid(stp, OPEN_STATE);
--				goto out;
--			}
-+		status = nfsd4_truncate(rqstp, current_fh, open);
-+		if (status) {
-+			release_stateid(stp, OPEN_STATE);
-+			goto out;
- 		}
- 	}
- 	memcpy(&open->op_stateid, &stp->st_stateid, sizeof(stateid_t));
+-	u32 ret = ~allow_mask & ~NFS4_ACE_DELETE;
++	u32 ret = ~allow_mask & ~NFS4_MASK_UNSUPP;
+ 	if (!(flags & NFS4_ACL_DIR))
+ 		ret &= ~NFS4_ACE_DELETE_CHILD;
+ 	return ret;
 
 
 -------------------------------------------------------
