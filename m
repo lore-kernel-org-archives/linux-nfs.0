@@ -1,22 +1,20 @@
-From: Frank van Maarseveen <frankvm@xs4all.nl>
-Subject: Re: executable but not readable
-Date: Sat, 27 Mar 2004 13:17:31 +0100
+From: =?iso-8859-1?q?beooi=20alex?= <beooia@yahoo.fr>
+Subject: the best combination for speed
+Date: Sun, 28 Mar 2004 12:08:09 +0200 (CEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040327121731.GA27152@janus>
-References: <40631E32.1020707@gsi.de> <1080239856.2584.18.camel@lade.trondhjem.org> <40640A7E.5040601@gsi.de> <1080328671.2480.23.camel@lade.trondhjem.org>
+Message-ID: <20040328100809.69987.qmail@web25109.mail.ukl.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: multipart/alternative; boundary="0-1340910152-1080468489=:69965"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B7Cla-0003Uh-Dx
-	for nfs@lists.sourceforge.net; Sat, 27 Mar 2004 04:18:22 -0800
-Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1B7ClZ-0007Ah-BP
-	for nfs@lists.sourceforge.net; Sat, 27 Mar 2004 04:18:21 -0800
+	id 1B7XDE-0005OW-6Y
+	for nfs@lists.sourceforge.net; Sun, 28 Mar 2004 02:08:16 -0800
+Received: from web25109.mail.ukl.yahoo.com ([217.12.10.57])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
+	id 1B7XDD-0000ka-Jn
+	for nfs@lists.sourceforge.net; Sun, 28 Mar 2004 02:08:15 -0800
 To: nfs@lists.sourceforge.net
-In-Reply-To: <1080328671.2480.23.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -29,28 +27,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, Mar 26, 2004 at 02:17:51PM -0500, Trond Myklebust wrote:
-> 
-> In NFSv3, the ACCESS call should then be used to decide whether or not
-> the client is allowed to open the file for execution (and for reading if
-> that is required). Unfortunately ACCESS is not implemented in the stock
-> Linux 2.4.x kernel.
+--0-1340910152-1080468489=:69965
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: 8bit
 
-So the kernel does its own permission checking on the client side
-for executables _knowing_ that it is going to execute the file but
-unfortunately the interpreter has to open the file by itself and that
-fails.
+hello,
+ 
+i have not a problem this time but a question. :)
+ 
+is the best combination for speed:
+ 
+rsize = wsize = mtu = block size = stripe size
+ 
+:-?
+ 
+alex.
 
-But from a different perspective:
+		
+---------------------------------
+Yahoo! Mail : votre e-mail personnel et gratuit qui vous suit partout !
+Créez votre Yahoo! Mail
 
-Being able to create a (non-setuid) executable which cannot be read
-for security reasons looks very weak to me unless of course it is not
-possible to let it dump core, strace (ptrace) it, open /proc/... files
-etc. But is that all actually the case in 2.6?
+Dialoguez en direct avec vos amis grâce à Yahoo! Messenger !
+--0-1340910152-1080468489=:69965
+Content-Type: text/html; charset=iso-8859-1
+Content-Transfer-Encoding: 8bit
 
-
--- 
-Frank
+<DIV>hello,</DIV>
+<DIV>&nbsp;</DIV>
+<DIV>i have not a problem this time but a question. :)</DIV>
+<DIV>&nbsp;</DIV>
+<DIV>is the best combination for speed:</DIV>
+<DIV>&nbsp;</DIV>
+<DIV>rsize = wsize = mtu = block size = stripe size</DIV>
+<DIV>&nbsp;</DIV>
+<DIV>:-?</DIV>
+<DIV>&nbsp;</DIV>
+<DIV>alex.</DIV><p>
+		<hr size=1>
+Yahoo! Mail : votre e-mail personnel et gratuit qui vous suit partout !
+<br><a href="http://fr.rd.yahoo.com/mail/taglines/*http://fr.rd.yahoo.com/mail/mail_taglines/default/*http://fr.benefits.yahoo.com/">Créez votre Yahoo! Mail</a>
+<br><br>
+Dialoguez en direct avec vos amis grâce à <a href="http://fr.rd.yahoo.com/mail/taglines/*http://fr.rd.yahoo.com/messenger/mail_taglines/default/*http://fr.messenger.yahoo.com/">Yahoo! Messenger !</a>
+--0-1340910152-1080468489=:69965--
 
 
 -------------------------------------------------------
