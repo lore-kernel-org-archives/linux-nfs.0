@@ -1,21 +1,24 @@
-From: Reimar Bauer <r.bauer@fz-juelich.de>
-Subject: speed for NFS
-Date: Tue, 27 Aug 2002 09:08:56 +0200
+From: kanagesh <kanagesh@ncoretech.com>
+Subject: Unable to get nfsd running
+Date: Tue, 27 Aug 2002 14:36:40 +0530
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3D6B2588.938F375E@fz-juelich.de>
+Message-ID: <3D6B411F.9B6AA168@ncoretech.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from zam197.zam.kfa-juelich.de ([134.94.172.215] helo=fz-juelich.de)
+Received: from [164.164.42.6] (helo=gateway.ncoretech.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17jaTJ-0007GT-00
-	for <nfs@lists.sourceforge.net>; Tue, 27 Aug 2002 00:09:06 -0700
-Received: from zam197.zam.kfa-juelich.de (localhost [127.0.0.1])
-	by fz-juelich.de (8.9.3+Sun/8.9.3) with ESMTP id JAA12736
-	for <nfs@lists.sourceforge.net>; Tue, 27 Aug 2002 09:08:57 +0200 (MEST)
-Received: from fz-juelich.de (ich230.ich.kfa-juelich.de [134.94.153.232])
-	by zam197.zam.kfa-juelich.de (8.9.3+Sun/8.9.3) with ESMTP id JAA12729
-	for <nfs@lists.sourceforge.net.>; Tue, 27 Aug 2002 09:08:56 +0200 (MEST)
+	id 17jcOO-0008Mz-00
+	for <nfs@lists.sourceforge.net>; Tue, 27 Aug 2002 02:12:10 -0700
+Received: from ncoretech.com (IDENT:root@mail.ncoretech.com [192.168.1.3])
+	by gateway.ncoretech.com (8.10.0/8.10.0) with ESMTP id g7R9BpE24423
+	for <nfs@lists.sourceforge.net>; Tue, 27 Aug 2002 14:41:51 +0530
+Received: (from root@localhost)
+	by ncoretech.com (8.10.0/8.10.0) id g7R9Bp615086
+	for nfs@lists.sourceforge.net.VIRCHECK; Tue, 27 Aug 2002 14:41:51 +0530
+Received: from ncoretech.com (ws130.ncoretech.com [192.168.1.130])
+	by ncoretech.com (8.10.0/8.10.0) with ESMTP id g7R9Bol14994
+	for <nfs@lists.sourceforge.net>; Tue, 27 Aug 2002 14:41:50 +0530
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -29,44 +32,37 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Dear all,
+Hi,
 
-in the next few years we will have  much amount of
-data something about 70 - 100 TByte.
+I have linux (kernel 2.4.18) running on my embedded board (StrongARM - SA1110 processor).
 
-At the moment with our configuration nfs speed is 
-quite less against the network speed.
-I believe this could be extended and this is necessary.
+I am trying to mount a remote filesystem on the network from this board
+(i.e) I need
+this board to behave as a NFS client.  I don't have an ethernet
+connection to this board, but I
+have it in the network through a PPP connection on the Serial port.  (I
+am able to ping, telnet
+and ftp into other systems on the network and vice-versa).
 
-The max transfer rate we have is about 3MByte/sec.
+I had downloaded nfs-utils rpm for arm and I got it installed aswell.
+But when I try to start
+the nfs daemon (on the command line, by typing ./rpc.nfsd ), it fails
+with the following complaint:
 
-Is there a possibility to increase this to 30MByte/sec.
-Is this relalistic? 
-Where can I get a description about this? 
+nfssvc: Function not impelmented.
 
+could anyone tell me what I need to do?
 
-For the scenario clients are mostly linux, aix or cray.
-The server is momentanly an aix system.
+1. My Kernel has been compiled with support for NFS (I can see an entry
+for nfs in /proc/filesystems)
 
+2. Do I need to run a portmap daemon in addition to nfsd?  (Sorry, I
+don't have rpcinfo for the arm target
+and hence am unable to provide info on the daemons running)
 
-regards
+Regards,
+Kanagesh
 
-Reimar Bauer
-
-
-
-
-
--- 
-Reimar Bauer 
-
-Institut fuer Stratosphaerische Chemie (ICG-I)
-Forschungszentrum Juelich
-email: R.Bauer@fz-juelich.de 
--------------------------------------------------------------------
-        a IDL library at ForschungsZentrum Juelich
- http://www.fz-juelich.de/icg/icg-i/idl_icglib/idl_lib_intro.html
-===================================================================
 
 
 -------------------------------------------------------
