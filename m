@@ -1,66 +1,45 @@
-From: =?iso-8859-1?Q?Peter_=C5strand?= <peter@cendio.se>
-Subject: Re: broken umount -f
-Date: Mon, 13 Jan 2003 10:44:33 +0100 (CET)
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] Secure user authentication for NFS using RPCSEC_GSS
+ [0/6]
+Date: Mon, 13 Jan 2003 13:09:21 +0100
 Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <Pine.LNX.4.44.0301131028180.9395-100000@maggie.lkpg.cendio.se>
-References: <15905.56794.440587.792199@charged.uio.no>
+Message-ID: <15906.44145.47417.934888@charged.uio.no>
+References: <1042437391.1677.8.camel@thud>
+	<Pine.LNX.4.44.0301130745510.26185-100000@dunlop.admin.ie.alphyra.com>
+Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net, <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Dax Kelson <Dax.Kelson@gurulabs.com>,
+	Linux Kernel <linux-kernel@vger.kernel.org>,
+	NFS maillist <nfs@lists.sourceforge.net>
 Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <15905.56794.440587.792199@charged.uio.no>
+To: Paul Jakma <paulj@alphyra.ie>
+In-Reply-To: <Pine.LNX.4.44.0301130745510.26185-100000@dunlop.admin.ie.alphyra.com>
 List-ID: <nfs.lists.sourceforge.net>
 
->>For as long as I remember, umount -f has been broken. I got a reminder
->>of this fact today when we took an older NFS server out of use. I had to
->>reboot almost all machines that had mounts from this server. Not nice.
+>>>>> " " == Paul Jakma <paulj@alphyra.ie> writes:
 
-...
+     > On 12 Jan 2003, Dax Kelson wrote:
+    >> Standard NFS security/authentication sucks rocks. Without this
+    >> NFS home directory servers are just waiting to be ransacked by
+    >> a rouge (or compromised) root user on a client machine.
 
-> AFAICS It works for me.
-> 
-> Are you using the 'intr' mount option,
+     > AIUI, A root user still can. The users krbv5 credentials will
+     > generally have been cached to storage. (though i suppose one
+     > could mount that storage via NFS and use root_squash, but
+     > that's little protection.).
 
-Yes, as often I can. But IMHO, it should be possible to unmount an
-unreachable NFS fs even if it wasn't mounted with "intr". Otherwise we
-have a quite silly "sysadmin trap".
+Once the root account has been compromised, it is 'Game Over' no
+matter what you do. Kerberos or no Kerberos, the simplest way to steal
+your identity is simply for the attacker to listen in on your tty
+while you are typing your password.
 
->and are you remembering to kill
-> those processes that are actually using the mount point first?
+The RPCSEC_GSS security model is not meant to protect you against root
+monitoring. It is meant to prevent some third party (on another
+machine for instance) from spoofing RPC requests in you name (==
+strong authentication), intercepting valid RPC requests and modifying
+the payload (== cryptographic data integrity checking), or listening
+in on the client/server communication (== data privacy).
 
-One some machines, I killed more or less everything. It didn't help. One
-some other machines, I couldn't kill so blindly. Remember, both "lsof" and
-"fuser" hangs.
-
-Also, as far as I understand, Solaris 8 does not require that you kill all
-processes before unmounting, if you use the "-f" flag (processes will get
-EIO). Would it be possible to implement this feature in Linux? That would
-be really nice.
-
-Regards, Peter
-
-
->>For as long as I remember, umount -f has been broken. I got a reminder
->>of this fact today when we took an older NFS server out of use. I had to
->>reboot almost all machines that had mounts from this server. Not nice.
->>
->>Anyone knows why -f does not work? When I try, I get:
->>
->># umount -f /import/applix Cannot MOUNTPROG RPC: RPC: Port mapper
->>failure - RPC: Unable to receive umount2: Device or resource busy
->>umount: /import/applix: device is busy
->>
->>lsof and fuser hangs, as do "df" and "du". Really frustrating. It's not
->>even possible to cleanly reboot the system, since RedHats shutdown
->>scripts wants to unmount NFS fs's.
->>
->>I'm not exactly sure I understand what -f is supposed to do. Is it
->>correct that it is supposed to unmount without contacting the NFS
->>server? I assume that I still have to make sure no processes are using
->>the FS? Would it be possible to add a "-9" flag (or something like that)
->>that kills off all processes that uses the NFS fs automatically?
->>
->>(I'm using all kinds of RedHat Linux versions, from 5.0 up to 7.3. From
->>what I can tell, this problems exists in all versions.)
->>
+Cheers,
+  Trond
