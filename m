@@ -1,28 +1,23 @@
-From: Bernd Schubert <bernd-schubert@web.de>
+From: Steve Dickson <SteveD@redhat.com>
 Subject: Re: nfs client monitoring?
-Date: Thu, 29 Jul 2004 20:25:53 +0200
+Date: Fri, 30 Jul 2004 07:22:50 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200407292025.55361.bernd-schubert@web.de>
+Message-ID: <410A2F8A.4030307@RedHat.com>
 References: <41092832.3030400@psu.edu>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BqFbR-0003eq-Gb
-	for nfs@lists.sourceforge.net; Thu, 29 Jul 2004 11:26:05 -0700
-Received: from smtp07.web.de ([217.72.192.225])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1BqVTY-0006L3-4O
+	for nfs@lists.sourceforge.net; Fri, 30 Jul 2004 04:23:00 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.34)
-	id 1BqFbQ-0001ND-W4
-	for nfs@lists.sourceforge.net; Thu, 29 Jul 2004 11:26:05 -0700
-Received: from [80.140.5.56] (helo=bathl.lan.fli4l)
-	by smtp07.web.de with asmtp (TLSv1:RC4-MD5:128)
-	(WEB.DE 4.101 #44)
-	id 1BqFbJ-000448-00
-	for nfs@lists.sourceforge.net; Thu, 29 Jul 2004 20:25:57 +0200
-To: nfs@lists.sourceforge.net
+	id 1BqVTX-0006NT-NI
+	for nfs@lists.sourceforge.net; Fri, 30 Jul 2004 04:23:00 -0700
+To: Jason Holmes <jholmes@psu.edu>
 In-Reply-To: <41092832.3030400@psu.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,20 +31,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thursday 29 July 2004 18:39, Jason Holmes wrote:
-> Hi,
->
-> Is there a command that can show the demands being placed on the nfs
-> server by each individual client?  I run into the situation from time to
-> time where a random user will do something that puts an extreme load on
-> the fileserver and having such a command would help greatly in trying to
-> figure out the source of the load.
->
+Jason Holmes wrote:
 
-We usually use iftop for that purpose.
+> Is there a command that can show the demands being placed on the nfs 
+> server by each individual client?  I run into the situation from time 
+> to time where a random user will do something that puts an extreme 
+> load on the fileserver and having such a command would help greatly in 
+> trying to figure out the source of the load.
 
-Cheers,
-	Bernd
+I've recently added some hooks to xosview that will graphically
+show NFS and kNFSD traffic which I find pretty handy....
+
+http://download.fedora.redhat.com/pub/fedora/linux/core/2/i386/os/Fedora/RPMS/xosview-1.8.0-19.i386.rpm
+
+SteveD.
 
 
 -------------------------------------------------------
