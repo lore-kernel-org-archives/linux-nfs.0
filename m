@@ -1,22 +1,24 @@
-From: Phy Prabab <phyprabab@yahoo.com>
+From: Harald Hannelius <harald+nfs@arcada.fi>
 Subject: Re: Poor NFS performance, kernel 2.6.6.
-Date: Fri, 28 May 2004 09:57:25 -0700 (PDT)
+Date: Fri, 28 May 2004 21:03:58 +0300 (EEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040528165725.99256.qmail@web90008.mail.scd.yahoo.com>
-References: <20040528135515.GG5657@suse.de>
+Message-ID: <Pine.LNX.4.58.0405282058300.14886@penti.sit.fi>
+References: <Pine.LNX.4.58.0405271331430.7539@penti.sit.fi>
+ <1085695748.23934.94.camel@lade.trondhjem.org> <Pine.LNX.4.58.0405280953240.29286@penti.sit.fi>
+ <20040528135515.GG5657@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.linux.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BTkfk-0002gq-J4
-	for nfs@lists.sourceforge.net; Fri, 28 May 2004 09:57:32 -0700
-Received: from web90008.mail.scd.yahoo.com ([66.218.94.66])
-	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.30)
-	id 1BTkfi-00019r-L0
-	for nfs@lists.sourceforge.net; Fri, 28 May 2004 09:57:30 -0700
-To: Olaf Kirch <okir@suse.de>, Harald Hannelius <harald+nfs@arcada.fi>
+	id 1BTli6-0008AP-7T
+	for nfs@lists.sourceforge.net; Fri, 28 May 2004 11:04:02 -0700
+Received: from penti.sit.fi ([193.167.33.237])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BTli5-0008EP-JQ
+	for nfs@lists.sourceforge.net; Fri, 28 May 2004 11:04:01 -0700
+To: Olaf Kirch <okir@suse.de>
 In-Reply-To: <20040528135515.GG5657@suse.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,126 +32,57 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
 
-I have been watching this thread with interest.  I
-have a 2.6.6-mm5 kernel NFS server in production and
-have noticed some significant slow down to that server
-(in comparison to an old crusty 2.4.22 kernel and
-NetApp).  I too would like to understand the issue
-here so I have run iozone as indicated to give another
-point of interest.  Note, that during one of the tests
-(nfsv2,udp,8192, the server crawled to a halt, load
-sky rocketed to 30 with zero load (100% available
-reported by top), at this point the server refused
-access via ssh/rsh and refused to export any volumes,
-but ping-able.  At terminal, everything behavied
-normal.
+On Fri, 28 May 2004, Olaf Kirch wrote:
 
-Prior to the lock up, here are the numbers I was
-getting:
-
-Client 2.6.6-m5
-
-2.6.6-mm5:
-
-        File size set to 1048576 KB
-        Record Size 1024 KB
-        SYNC Mode. 
-        Command line used:
-/var/tmp/iozone/src/current/iozone -s 1g -r 1m -o -i 0
-        Output is in Kbytes/sec
-        Time Resolution = 0.000001 seconds.
-        Processor cache size set to 1024 Kbytes.
-        Processor cache line size set to 32 bytes.
-        File stride size set to 17 * record size.
-                                                      
-     
-UDP, NFSv2, sync, r/w 8192
-         1048576    1024   39889   38745              
-                                                      
-                      
-UDP, NFSv3, sync, r/w 32768
-         1048576    1024   12226   10749
-TCP, NFSv3, sync, r/w 32768
-         1048576    1024   11909   12208              
-                                                      
-                      
-
-2.4.22
-UDP, NFSv3, sync, r/w 32768
-         1048576    1024   11259   10761
-UDP, NFSv3, sync, r/w 8192
-         1048576    1024    6136    6266              
-                                                      
-        
-
-
-I cc'ed the linux-kernel mailing list as well.
-
-Cheers,
-Phy
-
-
---- Olaf Kirch <okir@suse.de> wrote:
 > [2.6 over loopback nfs]
 > > real    6m21.086s
 > > user    0m1.712s
 > > sys     0m5.454s
-> 
+>
 > [2.4 over loopback nfs]
 > > real    1m11.875s
 > > user    0m1.730s
 > > sys     0m7.730s
-> 
-> This roughly matches some performance issues I've
-> been seeing on a 2.6.5
+>
+> This roughly matches some performance issues I've been seeing on a 2.6.5
 > kernel. Are you using reiser or ext3?
-> 
-> In general, dd to a local file is much different
-> from what NFS does,
+
+ext3.
+
+> In general, dd to a local file is much different from what NFS does,
 > because nfsd flushes data to disk.
-> 
-> The NFS client will usually issue a COMMIT call
-> roughly every 1 Meg,
-> so the following should mimic the behavior of nfsd a
-> little better,
+
+I guess (as a total don't-know) that nfsd reads and writes files in a
+different way than local processes do. I read somewhere something about
+read-ahead but that was in 2.6.0-pre-something..
+
+> The NFS client will usually issue a COMMIT call roughly every 1 Meg,
+> so the following should mimic the behavior of nfsd a little better,
 > when run on your file system locally
-> 
+>
 > 	iozone -s 1g -r 1m -o -i 0
-> 
+>
 > Higher numbers indicate better performance.
-> 
+>
 > Could you run this on 2.4 and 2.6, please?
-> 
-> Olaf
-> -- 
-> Olaf Kirch     |  The Hardware Gods hate me.
-> okir@suse.de   |
-> ---------------+ 
-> 
-> 
->
--------------------------------------------------------
-> This SF.Net email is sponsored by: Oracle 10g
-> Get certified on the hottest thing ever to hit the
-> market... Oracle 10g. 
-> Take an Oracle 10g class now, and we'll give you the
-> exam FREE.
->
-http://ads.osdn.com/?ad_id=3149&alloc_id=8166&op=click
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+
+Oh sorry, the server went into production to day so I can't run the tests
+on 2.6 without rebooting first. Not a good idea right now :)
+
+But here are (useless without 2.6 ditto) results with kernel 2.4.26 run
+locally on the fileserver;
+
+ http://people.arcada.fi/~harald/nfs/iozone-1MBcommit.txt
+ http://people.arcada.fi/~harald/nfs/iozone-1MBcommit2.txt
 
 
 
-	
-		
-__________________________________
-Do you Yahoo!?
-Friends.  Fun.  Try the all-new Yahoo! Messenger.
-http://messenger.yahoo.com/ 
+-- 
+A: Top Posters
+Q: What is the most annoying thing on mailing lists?
+
+Harald H Hannelius | harald/a\arcada.fi      | GSM +358 50 594 1020
 
 
 -------------------------------------------------------
