@@ -1,25 +1,27 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: df hangs on down nfs server mounted with hard,intr, can't kill
-Date: Fri, 12 Mar 2004 09:54:57 +0100
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: RE: NSM lock recovery fails too often
+Date: Fri, 12 Mar 2004 08:47:17 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040312085457.GA29295@suse.de>
-References: <482A3FA0050D21419C269D13989C61130435DD25@lavender-fe.eng.netapp.com> <20040310080910.GA21031@suse.de> <1078946326.1940.35.camel@nidelv.trondhjem.org> <20040311093148.GB20944@suse.de> <1079034244.5205.40.camel@nidelv.trondhjem.org>
+Message-ID: <482A3FA0050D21419C269D13989C611302B07BBC@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Cc: Charles Lever <Charles.Lever@netapp.com>,
-	Wade Hampton <wade.hampton@nsc1.net>, nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B1idZ-0002qN-60
-	for nfs@lists.sourceforge.net; Fri, 12 Mar 2004 01:07:25 -0800
-Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.30)
-	id 1B1iT7-0001vW-GC
-	for nfs@lists.sourceforge.net; Fri, 12 Mar 2004 00:56:37 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1079034244.5205.40.camel@nidelv.trondhjem.org>
+	id 1B1q0O-0002Ml-4u
+	for nfs@lists.sourceforge.net; Fri, 12 Mar 2004 08:59:28 -0800
+Received: from mx01.netapp.com ([198.95.226.53])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1B1pP1-00013h-Ve
+	for nfs@lists.sourceforge.net; Fri, 12 Mar 2004 08:20:51 -0800
+Received: from frejya.corp.netapp.com (frejya [10.57.157.119])
+	by mx01.netapp.com (8.12.10/8.12.10/NTAP-1.4) with ESMTP id i2CGlJJC012959
+	for <nfs@lists.sourceforge.net>; Fri, 12 Mar 2004 08:47:19 -0800 (PST)
+Received: from svlexc01.hq.netapp.com (svlexc01.corp.netapp.com [10.10.22.171])
+	by frejya.corp.netapp.com (8.12.9/8.12.9/NTAP-1.5) with ESMTP id i2CGlJ30002494
+	for <nfs@lists.sourceforge.net>; Fri, 12 Mar 2004 08:47:19 -0800 (PST)
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,24 +34,53 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Mar 11, 2004 at 02:44:05PM -0500, Trond Myklebust wrote:
-> P=E5 to , 11/03/2004 klokka 04:31, skreiv Olaf Kirch:
->=20
-> > This arrangement is fine with me; I just want to avoid a situation
-> > where my patches go to the bit bucket because you think I will
-> > push them to Andrew and I think you will do so :)
->=20
-> No. I've been assuming you would allow me to continue to play at being
-> the NFS client maintainer. ;-)
+hi all-
 
-Don't you worry, I'm not interested in wearing your hat. Been there,
-done that, failed :)
+so we need two solutions:  one for legacy 2.4 and one going forward
+on 2.6.
 
-Olaf
---=20
-Olaf Kirch     |  Stop wasting entropy - start using predictable
-okir@suse.de   |  tempfile names today!
----------------+=20
+for 2.4, i'd like to see one of the statd patch alternatives
+incorporated into the nfs-utils distribution as soon as possible
+so that all Linux distributors can pick up an approved patch for
+their 2.4-based distributions.  which alternative is the favorite?
+this should be addressed quickly.
+
+for 2.6, olaf's work has promise.
+
+
+> -----Original Message-----
+> From: Olaf Kirch [mailto:okir@suse.de]=20
+> Sent: Tuesday, March 09, 2004 7:59 AM
+> To: Trond Myklebust
+> Cc: Lever, Charles; nfs@lists.sourceforge.net
+> Subject: Re: [NFS] NSM lock recovery fails too often
+>=20
+>=20
+> On Tue, Mar 09, 2004 at 10:47:42AM -0500, Trond Myklebust wrote:
+> > P=E5 ty , 09/03/2004 klokka 10:10, skreiv Olaf Kirch:
+> > > What I was referring to was the ability to have several=20
+> RPC programs=20
+> > > on a single svc_sock server side; e.g. NFS and NFSACL, or NLM and=20
+> > > NSM. Pretty much the way svc_register from the good ole=20
+> sunrpc code=20
+> > > works.
+> >=20
+> > Oh, sorry...
+> >=20
+> > Hmm... Any reason why you couldn't put them all on port=20
+> 2049 with this=20
+> > patch? Would that be less efficient than having two sets of threads?
+>=20
+> No, you could put all of them on the same port. The problem=20
+> is that you want lockd and nfsd to be two different=20
+> processes, so you can shut down nfsd without disrupting lockd.
+>=20
+> Olaf
+> --=20
+> Olaf Kirch     |  Stop wasting entropy - start using predictable
+> okir@suse.de   |  tempfile names today!
+> ---------------+=20
+>=20
 
 
 -------------------------------------------------------
