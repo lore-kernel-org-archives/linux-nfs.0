@@ -1,18 +1,19 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: NFSD Flow Control Using the TCP Transport
-Date: Mon, 24 Mar 2003 10:07:09 -0500
+From: David Dougall <davidd@et.byu.edu>
+Subject: Re: NFS problems (kernel locks up)
+Date: Mon, 24 Mar 2003 10:19:32 -0700 (MST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3E7F1F1D.8090206@RedHat.com>
-References: <3E78872B.5020702@RedHat.com> <20030320042454.496801DA3E6@brer.local.valinux.co.jp> <3E7B7853.4020605@RedHat.com> <20030324025133.924651DA3E6@brer.local.valinux.co.jp>
+Message-ID: <Pine.LNX.4.51.0303241017030.5209@lewis.et.byu.edu>
+References: <20030319182241.GA9216@max.zg.iskon.hr>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: nfs@lists.sourceforge.net, taka@valinux.co.jp, yamamoto@valinux.co.jp
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from nat-pool-rdu.redhat.com ([66.187.233.200] helo=lacrosse.corp.redhat.com)
+Received: from postal2.et.byu.edu ([128.187.122.132])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18xTQA-0005VQ-00
-	for <nfs@lists.sourceforge.net>; Mon, 24 Mar 2003 06:59:30 -0800
-To: MINOURA Makoto <minoura@valinux.co.jp>
+	id 18xVcL-0006UT-00
+	for <nfs@lists.sourceforge.net>; Mon, 24 Mar 2003 09:20:13 -0800
+To: Kresimir Kukulj <madmax@iskon.hr>
+In-Reply-To: <20030319182241.GA9216@max.zg.iskon.hr>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,62 +26,135 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Yes I understand its a RPC issue not an NFS issue.
-I guess I should have made it clear that I think
-that the _RPC_ layer should be able to handle
-EAGAINs (using the TCP transport).
-
-The patch you provided does indeed stop the RPC
-layer from returning EAGAINs but also stops the flow
-of traffic because the sockets with are no longer
-being enqueued which in turn means there are no
-threads sleeping/waiting (in tcp_sendmsg) when
-the svc_write_space routine is called. So once
-this flow condition hits, the replys stop which
-means the incoming requests also stop and all
-the nfsds end up sitting in svc_recv() waiting
-for something to do....
-
-0bviously, there is another issue in player here
-(which I'm currently debugging), since I do think your
-patch make sense....
-
-SteveD.
-
-MINOURA Makoto wrote:
-
->|> In <3E7B7853.4020605@RedHat.com>
->|>  Steve Dickson <SteveD@redhat.com> wrote:
->
->  
->
->>So If I understand what your saying, EAGAINs or partial writes are 
->>interpreted
->>as fatal errors. This confuse me. EAGAINs or partial writes are flow 
->>control
->>issues not fatal errors. Just like on the client side, shouldn't the
->>thread sleep until there is room? Closing down the socket seems a
->>bit drastic... Or am I missing something?
->>    
->>
->
->In general you are right, but as of Linux kNFSd something
->like a flow control is done in the RPC layer.
->
->In kNFSd multiple nfsd threads share a single socket and to
->avoid data mixture a sendto call must be atomic.  In order
->to guarantee this the threads sleep in the RPC layer until
->there is enough TCP write space.  By doing so EAGAIN can be
->interpreted as something wrong is going on.
->
->But since the free space calculation was wrong this
->assumption was broken.  The patch attached in my previous
->mail corrects this.
->
->  
->
+You might want to try out XFS on linux.  We have been running 2.4.19rc3 on
+similar machines to the ones you describe for almost a year now with
+little to no problems(including networker backups).  My experience has
+shown that XFS is more stable and better performance than ext3.
+Unfortunately, you need to get a huge kernel patch from SGI.  It has been
+worth it for us.
+--David Dougall
 
 
+On Wed, 19 Mar 2003, Kresimir Kukulj wrote:
+
+> Hi
+>
+> We are trying to assess if linux could perform as a NFS server to linux
+> client(s). In our test we moved part of mailboxes of a freemail service
+> (after some initial testing) to a NFS storage (linux NFS server). It worked
+> ok, and used very little resources. But, during the nightly backup, NFS
+> server crashed. Symptoms were that:
+>   1. client detected that NFS server is not responding
+>   2. NFS server responded to ping, but you could not log in to it. Every
+>      attempt to log-in stopped at TCP connection being established, but
+>      daemon did not respond (I presume, that at that particular moment
+>      TCP/IP stack was still working).
+>   3. After cca 10 minutes, it locks up (not ping-able).
+>   4. I have serial console attached to the server, and kernel did not
+>      respond to SYS-REQ.
+>   5. After turning off the power and then back on, server booted, and
+>      resumed its function.
+>
+> This happened three times, every time during the backup (Networker),
+> sometimes only 5 minutes after backup started, sometimes after 1.5 hours.
+> This was all using 2.4.20 kernel (no extra patches), using NFSv3, udp, async.
+> NFS client was using: rw,hard,intr,udp,rsize=8192,wsize=8192,nodev,nosuid
+> NFS server used: rw,no_root_squash (default is async).
+>
+> Then, I have put 2.4.21-pre5 because it contained some NFS fixes. After
+> that, server survived three days (2 incrementals and one full backup
+> completed successfully). Then it crashed during the day for no apparent
+> reason (we have the server monitored with 'cricket', and there were no
+> unusual activities...).
+>
+> I have changed to NFSv2,sync,udp and it crashed during the backup that night,
+> and then again during the day. This resulted with filesystem corruption
+> (replaying the ext3 journal caused fsck to be invoked - couple of hours was
+> wasted on checking).
+>
+> Now I have reverted back to NFSv3,udp, but kept 'sync'. I will see tonight
+> will it survive or not.
+>
+> Filesystem is 99Gb ext3 partition, with 1024 block size, internal journal.
+> That fs is 50% full, and contains around 290000 files (13.7% fragmentation).
+> Files are between few kilobytes up to 10 Mb.
+>
+> Normal filesystem usage is ~200kb read, 300Kb write per second with < 5%
+> disk utilization. When backup runs, reading gets ~ 5Mb/sec with disk
+> utilization of ~ 100%.
+>
+> Client and server are connected to the same switch, with no dropped packets.
+>
+> We are satisfied with performance (while the server works).
+>
+> Can anybody give a suggestion ? I have tried everything I can think of.
+> We would like to use linux as a NFS server, but if this does not work, we
+> will be forced to consider alternatives like Solaris x86.
+> Can anyone here suggest a good alternative NFS server OS (for x86) with a
+> good support for SCSI HW RAID controllers ? ICP Vortex unfortunately is
+> not supported under Solaris x86, but what other controllers (let's say for
+> Solaris x86) do you reccommend ?
+>
+> Also, I am concerned about filesystem. Will ext3 be able to handle, let's
+> say, 10 million files ? If not, will Solaris x86 UFS be any better.
+> [ For us, reiser proved to be sometimes difficult, and we had couple of fs
+> related crashes, so we are trying to find alternatives. Filesystem check
+> on that amount of files is measured in days. ]
+>
+> Some info about hardware:
+> Dell PowerApp 200 with 2 x Pentium III (Coppermine), each 1GHz.
+> 1Gb memory, with CONFIG_HIGHMEM4G=y.
+> eepro100 ethernet
+> ServerWorks chipset but nothing except CDROM is connected to it.
+> ICP Vortex Hardware RAID model GDT8523RZ
+> Driver for this (SCSI) controller is from 2.4.20 kernel (its pretty new).
+> 5 FUJITSU MAJ3364MC 34Gb drives in RAID5 (4+hotfix).
+> Filesystem is ext3 with journal=ordered.
+>
+> Kernel is vanilla 2.4.20, and 2.4.21-pre5.
+> I can provide 'dmesg' and '.config' for that kernel.
+>
+> Distribution is Debian stable 3.0.
+> These packages are installed:
+> ii  nfs-common              1.0-2                   NFS support files common to client and server
+> ii  nfs-kernel-server       1.0-2                   Kernel NFS server support
+>
+> NFS server and client use fixed ports as described at NFS-Howto:
+> Kernel command line: root=/dev/sda2 lockd.udpport=32768 \
+>                      lockd.tcpport=32768 console=tty0 console=ttyS0,9600
+> statd, mountd are fixed as well, and iptables are configured to pass
+> fragmented packets. By default, NFS server runs with 8 kernel threads
+> (knfsd). According to /proc/net/rpc/nfsd there is no need for more kernel
+> threads.
+>
+> Services that run on NFS client are POP3 and SMTP daemons and a web based
+> frontend that uses them. Both daemons are configured to use their version of
+> dot locking (as recommended).
+>
+> Thanks.
+>
+> --
+> Kresimir Kukulj
+> Iskon Internet d.d.
+> ISS
+> Savska 41/X.
+> 10000 Zagreb
+>
+>
+> -------------------------------------------------------
+> This SF.net email is sponsored by: Does your code think in ink?
+> You could win a Tablet PC. Get a free Tablet PC hat just for playing.
+> What are you waiting for?
+> http://ads.sourceforge.net/cgi-bin/redirect.pl?micr5043en
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+>
+>
+
+______________________________________
+Inflex Virus Scanner - installed on mailserver for domain @et.byu.edu
+Queries to: postmaster@et.byu.edu
 
 
 -------------------------------------------------------
