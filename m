@@ -1,15 +1,15 @@
 From: Richard J.Farnsworth <rjf@maui.cs.washington.edu>
 Subject: Bug in NFS client handling of EJUKEBOX?
-Date: Thu, 24 Feb 2005 06:04:23 +0000 (UTC)
-Message-ID: <E1D1uAU-0007tG-3p@sc8-sf-mx2.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Date: Thu, 24 Feb 2005 06:05:38 +0000 (UTC)
+Message-ID: <1109028596/rjf@maui.cs.washington.edu>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D1uAV-0006iq-Fa
-	for nfs@lists.sourceforge.net; Thu, 17 Feb 2005 14:30:43 -0800
+	id 1D3N02-0001Cr-Gc
+	for nfs@lists.sourceforge.net; Mon, 21 Feb 2005 15:29:58 -0800
 Received: from maui.cs.washington.edu ([128.208.5.86])
-	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
-	id 1D1uAU-0007tG-3p
-	for nfs@lists.sourceforge.net; Thu, 17 Feb 2005 14:30:43 -0800
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
+	id 1D3N01-0001t1-4d
+	for nfs@lists.sourceforge.net; Mon, 21 Feb 2005 15:29:58 -0800
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -23,10 +23,10 @@ List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-Date: Wed Feb 23 22:06:37 2005
+Date: Wed Feb 23 22:06:48 2005
 
 There seems to be a bug in the 2.6.11-rc code related to the handling
-of the NFS EJUNKBOX error return.  The code for __rpc_execute in
+of nfsd's EJUNKBOX error return.  The code for __rpc_execute in
 net/sunrpc/sched.c looks like:
 
 =============================
