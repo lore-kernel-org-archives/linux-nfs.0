@@ -1,23 +1,22 @@
-From: Ian Kent <raven@themaw.net>
-Subject: RE: RPC Time Out
-Date: Fri, 5 Dec 2003 16:04:26 +0800 (WST)
+From: Roberto Sebastiano <robs@multiplayer.it>
+Subject: kernel 2.4.23
+Date: Fri, 05 Dec 2003 14:43:49 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.33.0312051602350.12887-100000@wombat.indigo.net.au>
-References: <NFBBLPFNOLCEIKDDCMDIMEEMCGAA.efw@fast.net>
+Message-ID: <1070631829.19181.8.camel@newdeal>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-73OWZc/MFGZQyEMq6RQv"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1ASAun-0002kz-Mg
-	for nfs@lists.sourceforge.net; Fri, 05 Dec 2003 00:02:17 -0800
-Received: from wombat.indigo.net.au ([202.0.185.19])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
-	id 1ASAum-0004Gg-Vl
-	for nfs@lists.sourceforge.net; Fri, 05 Dec 2003 00:02:17 -0800
-To: Gene & Marla Weber <efw@fast.net>
-In-Reply-To: <NFBBLPFNOLCEIKDDCMDIMEEMCGAA.efw@fast.net>
+	id 1ASGFC-0006TS-Uv
+	for nfs@lists.sourceforge.net; Fri, 05 Dec 2003 05:43:42 -0800
+Received: from vsmtp2.tin.it ([212.216.176.222])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
+	id 1ASGFC-00017a-HO
+	for nfs@lists.sourceforge.net; Fri, 05 Dec 2003 05:43:42 -0800
+Received: from host210-253.pool80117.interbusiness.it (80.117.253.210) by vsmtp2.tin.it (7.0.019)
+        id 3FD0874200002AE6 for nfs@lists.sourceforge.net; Fri, 5 Dec 2003 14:43:34 +0100
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,25 +29,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, 4 Dec 2003, Gene & Marla Weber wrote:
 
->
-> But the next time I ran it I got an RPC timeout. Same with running
-> showmount -e 192.186.2.57 on the client. One time it shows the two lines,
-> other times it times out.
+--=-73OWZc/MFGZQyEMq6RQv
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-Oh no you are saying that showmount -e on the server times out?
+Hi,
+I would like to know if there is any outstanding patch to apply to
+2.4.23 to make NFS works nicely in mid-high load environment
 
-That is odd.
+I ask this question as I had to apply some patches to 2.4.22 to avoid
+"server down .. still trying" messages
 
-What is the history of the install on this system?
+Thanks,
+--=20
+Roberto Sebastiano <robs@multiplayer.it>
 
--- 
+--=-73OWZc/MFGZQyEMq6RQv
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: Questa parte del messaggio =?ISO-8859-1?Q?=E8?= firmata
 
-   ,-._|\    Ian Kent
-  /      \   Perth, Western Australia
-  *_.--._/   E-mail: raven@themaw.net
-        v    Web: http://themaw.net/
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.3 (GNU/Linux)
+
+iD8DBQA/0IuVcZIKsiFfstURAsbdAKC2vhxvjpSo9I5B8BPo558veiFdMwCglNMy
+YBILgYRpRZG3EPZ4JiDE+RM=
+=2vyo
+-----END PGP SIGNATURE-----
+
+--=-73OWZc/MFGZQyEMq6RQv--
 
 
 
