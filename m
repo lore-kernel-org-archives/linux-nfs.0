@@ -1,16 +1,22 @@
-From: =?iso-8859-1?q?Jos=E9=20Vicente=20N=FA=F1ez=20Zuleta?= <josevnz@yahoo.com>
-Subject: NFS problems: help needed
-Date: Wed, 24 Apr 2002 16:31:16 -0500 (CDT)
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: RPC request error message
+Date: Thu, 25 Apr 2002 09:00:59 +1000 (EST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020424213116.77967.qmail@web10002.mail.yahoo.com>
+Message-ID: <15559.14635.757201.643753@notabene.cse.unsw.edu.au>
+References: <3CC6C5AD.3048F8D6@amis.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset=us-ascii
+Cc: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from web10002.mail.yahoo.com ([216.136.130.38])
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 170UM9-0004Tv-00
-	for <nfs@lists.sourceforge.net>; Wed, 24 Apr 2002 14:31:17 -0700
-To: nfs@lists.sourceforge.net
+	id 170Vi2-000837-00
+	for <nfs@lists.sourceforge.net>; Wed, 24 Apr 2002 15:57:58 -0700
+Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
+	(for <ewhiting@amis.com>) (for <nfs@lists.sourceforge.net>) By tone
+	With Smtp ; Thu, 25 Apr 2002 08:57:46 +1000
+To: Eric Whiting <ewhiting@amis.com>
+In-Reply-To: message from Eric Whiting on Wednesday April 24
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -23,116 +29,24 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Greetings,
+On Wednesday April 24, ewhiting@amis.com wrote:
+> 
+> Apr 24 06:16:08 windriver kernel: RPC request reserved 240 but used 244
+> Apr 24 06:17:58 windriver kernel: RPC request reserved 240 but used 244
+> Apr 24 06:17:58 windriver kernel: RPC request reserved 52 but used 56
+> Apr 24 06:34:35 windriver kernel: RPC request reserved 240 but used 244
+> Apr 24 06:34:35 windriver kernel: RPC request reserved 52 but used 56
+> 
+> 
+> 
+> I get about 50-200 of these messages each day. Kernel is 2.4.18. 
 
-I'm having serious problems with my NFS environment;
-The server is a Dual Pentium III 1Ghz running Redhat
-7.2 (Kernel 2.4.7-10smp) and the clients are Dual
-Pentium 1Ghz Redhat 6.2 (Kernel 2.2.14-5.0smp).
+Shouldn't be in 2.4.18.  They should only be in -ac patches.
+I'm fairly sure that the latest -ac gets all the numbers right.
 
-We have a process that opens a lot of files on all the
-cluster and after some seconds, all the clients start
-showing the following messages:
+Exactly what kernel are you running?
 
-Apr 23 19:12:05 linux0102 kernel: nfs: server
-lnxdev0003 OK 
-Apr 23 19:12:17 linux0102 kernel: nfs: task 1059 can't
-get a request slot 
-Apr 23 19:12:33 linux0102 kernel: nfs: server
-lnxdev0003 OK 
-Apr 23 19:12:44 linux0102 kernel: nfs: server
-lnxdev0003 not responding, still trying 
-Apr 23 19:12:44 linux0102 kernel: nfs: server
-lnxdev0003 OK 
-Apr 23 19:12:54 linux0102 kernel: nfs: server
-lnxdev0003 not responding, still trying 
-Apr 23 19:14:45 linux0102 automount[895]: expired
-/nb_apps/espiel
-Apr 23 19:14:45 linux0102 automount[895]: expired
-/nb_apps/expat
-Apr 23 19:14:45 linux0102 automount[895]: expired
-/nb_apps/crypto
-Apr 23 19:14:45 linux0102 automount[895]: expired
-/nb_apps/rogue
-Apr 23 19:14:45 linux0102 automount[895]: expired
-/nb_apps/ACE
-Apr 23 19:14:45 linux0102 automount[895]: expired
-/nb_apps/xerces
-Apr 23 19:15:49 linux0102 automount[906]: expired
-/home/suresh
-Apr 23 19:16:06 linux0102 kernel: nfs: server
-lnxdev0003 OK 
-Apr 23 19:16:06 linux0102 kernel: nfs: server
-lnxdev0003 OK 
-Apr 23 19:16:38 linux0102 kernel: nfs: server
-lnxdev0003 not responding, still trying 
-
-I followed the tutorial that appears at
-"http://nfs.sourceforge.net/nfs-howto/performance.html"
-and applied the following optimizations (with no
-result):
-
-- Deactivated auto-negotiation on the HUB (we have a
-Cisco FastHub 400) and forced the NIC to use "Full
-Duplex" using FastEthernet. This should reduce the
-number of collissions.
-- Increased the number of nfsd servers and the socket
-queue (here is a fragment of my script,
-/etc/init.d/nfs, currently i use 16 nfsd servers):
-  
-   RPCNFSDCOUNT=16
-   ....
-   # NFSv3 only if kernel >= 2.2.18
-   OS_RELEASE=`uname --release`
-   ....
-        echo -n "Starting NFS mountd: "
-        daemon rpc.mountd $RPCMOUNTDOPTS
-        echo
-        echo -n "Starting NFS daemon: "
-        echo 262144 > /proc/sys/net/core/rmem_default
-        echo 262144 > /proc/sys/net/core/rmem_max
-        daemon rpc.nfsd $RPCNFSDCOUNT
-        echo 65536 > /proc/sys/net/core/rmem_default
-        echo 65536 > /proc/sys/net/core/rmem_max
-        echo
-- I increased the rsize and wsize on my clients to
-4096 (im using automount and NIS, /etc/auto.master):
-   /home   auto.home
--rw,intr,retry=10,rsize=4096,wsize=4096
-   /nb_apps   auto.nb_apps
--rw,intr,retry=10,rsize=4096,wsize=4096
-   /data   auto.data
--rw,intr,retry=10,rsize=4096,wsize=4096
-
-
-What i should try next?. We have a network with very
-few machines, apparently no collissions (the stats at
-the hub doesn't show that many but i will have to
-confirm).
-
-Should i try to update the nfs-tools on all the boxes
-( i can't do the same to the kernel because we have a
-Cordba lib that could broke, at least on the clients)?
-
-The server doesn't have a high load (i'm monitoring
-the box using top and UCD-SNMP) and other network apps
-work fine so far :(
-
-Thanks in advance.
-
-
-
-=====
-José Vicente Nuñez Zuleta (josevnz@yahoo.com)
-Newbreak System Administrator (http://www.newbreak.com)
-Office Phone:   203-355-1511, 203-355-1510
-Fax:            203-355-1512
-Cellular Phone: 203-570-7078
-
-_________________________________________________________
-Do You Yahoo!?
-Información de Estados Unidos y América Latina, en Yahoo! Noticias.
-Visítanos en http://noticias.espanol.yahoo.com
+NeilBrown
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
