@@ -1,13 +1,15 @@
-From: Jean-Eric Cuendet <jean-eric.cuendet@linkvest.com>
+From: "Paul Cunningham" <paulcunningham@sprintmail.com>
 Subject: Re: rpc.mountd + rpc.nfsd
-Date: Thu, 05 Sep 2002 09:19:08 +0200
+Date: Thu, 5 Sep 2002 08:08:50 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3D77056C.6020500@linkvest.com>
-References: <3D7363A7.8090906@linkvest.com>	<15732.7907.19389.156631@notabene.cse.unsw.edu.au>	<3D745D10.4040409@linkvest.com>	<15732.35929.482032.954554@notabene.cse.unsw.edu.au>	<3D7490D4.7050307@linkvest.com> <15732.39741.104912.607715@notabene.cse.unsw.edu.au> <3D760B6D.2040408@linkvest.com>
+Message-ID: <024d01c254d4$ffb6b880$a985fea9@PAULSDESKTOP>
+References: <3D7363A7.8090906@linkvest.com>	<15732.7907.19389.156631@notabene.cse.unsw.edu.au>	<3D745D10.4040409@linkvest.com>	<15732.35929.482032.954554@notabene.cse.unsw.edu.au>	<3D7490D4.7050307@linkvest.com> <15732.39741.104912.607715@notabene.cse.unsw.edu.au> <3D760B6D.2040408@linkvest.com> <3D77056C.6020500@linkvest.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: nfs@sourceforge.net
+To: "Jean-Eric Cuendet" <jean-eric.cuendet@linkvest.com>,
+	<nfs@sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -20,8 +22,6 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Isn't there someone to answer this guy question?... :-)
-
 >> If I understand you correctly, the nfs server will be on the same
 >> machine as the nfs client that accesses that server. And then the
 >> <..>
@@ -31,9 +31,16 @@ Isn't there someone to answer this guy question?... :-)
 > I have nfs3_prot.x implemented but not mountd at all.
 > How to do that? When in my program? What to call?
 
+Short answer:  
+You do not mount yourself in a directory.  mountd is used to retrieve 
+the opaque file handle of the directory you wish to mount on the client.  
+Once you have the initial opaque filehandle, you may then call an nfs 
+procedure (ie. LOOKUP, READ, WRITE, READDIR, etc) with the
+filehandle as one of the arguments.
 
-;-)
--jec
+Better answer:
+As suggested by a previous reply, get yourself a copy of "NFS Illustrated"
+by Brent Callaghan.
 
 
 
