@@ -1,21 +1,20 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: NFS client patchset for Linux-2.6.8-rc3 released...
-Date: Sat, 07 Aug 2004 17:38:53 -0700
+From: NeilBrown <neilb@cse.unsw.edu.au>
+Subject: [PATCH kNFSd ] Fix brokenness with fsid= export option
+Date: Mon, 09 Aug 2004 11:47:53 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1091925533.4010.6.camel@lade.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain
+Message-ID: <E1BtzGT-00025f-5b@notabene.cse.unsw.edu.au>
+References: <20040809114713.8024.patches@notabene>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BtbiJ-0001Jy-2l
-	for nfs@lists.sourceforge.net; Sat, 07 Aug 2004 17:39:03 -0700
-Received: from adsl-207-214-87-84.dsl.snfc21.pacbell.net ([207.214.87.84] helo=lade.trondhjem.org)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.34)
-	id 1BtbiJ-0004K9-3S
-	for nfs@lists.sourceforge.net; Sat, 07 Aug 2004 17:39:03 -0700
-To: nfs4@linux-nfs.org, nfs@lists.sourceforge.net
+	id 1BtzGd-0004dq-Ck
+	for nfs@lists.sourceforge.net; Sun, 08 Aug 2004 18:48:03 -0700
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1BtzGc-0005Ka-Ux
+	for nfs@lists.sourceforge.net; Sun, 08 Aug 2004 18:48:03 -0700
+To: Andrew Morton <akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -28,17 +27,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-New features include SPKM3 support in addition to the usual bunch of
-bugfixes and cleanups...
 
-See
+### Comments for Changeset
 
-  http://client.linux-nfs.org/Linux-2.6.x/2.6.8-rc3/
+Bruce Allan says:
+The user-specified fsid= export option still doesn't work after the
+changes made 5 months ago.  Below is a patch against 2.6.7 through
+the recent 2.6.8-rc2-bk13.
 
-for a full description of all 45 subpatches...
 
-Cheers,
-  Trond
+From: Bruce Allan <bwa@us.ibm.com>
+Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
+
+### Diffstat output
+ ./fs/nfsd/nfsfh.c |   17 ++++++++++-------
+ 1 files changed, 10 insertions(+), 7 deletions(-)
+
+diff ./fs/nfsd/nfsfh.c~current~ ./fs/nfsd/nfsfh.c
+--- ./fs/nfsd/nfsfh.c~current~	2004-08-06 14:33:27.000000000 +1000
++++ ./fs/nfsd/nfsfh.c	2004-08-06 14:33:32.000000000 +1000
+@@ -339,13 +339,16 @@ fh_compose(struct svc_fh *fhp, struct sv
+ 			ref_fh_fsid_type = ref_fh->fh_handle.fh_fsid_type;
+ 		if (ref_fh_fsid_type > 3)
+ 			ref_fh_fsid_type = 0;
+-	}
+-	/* make sure ref_fh type works for given export */
+-	if (ref_fh_fsid_type == 1 &&
+-	    !(exp->ex_flags & NFSEXP_FSID)) {
+-		/* if we don't have an fsid, we cannot provide one... */
+-		ref_fh_fsid_type = 0;
+-	}
++
++		/* make sure ref_fh type works for given export */
++		if (ref_fh_fsid_type == 1 &&
++		    !(exp->ex_flags & NFSEXP_FSID)) {
++			/* if we don't have an fsid, we cannot provide one... */
++			ref_fh_fsid_type = 0;
++		}
++	} else if (exp->ex_flags & NFSEXP_FSID)
++		ref_fh_fsid_type = 1;
++
+ 	if (!old_valid_dev(ex_dev) && ref_fh_fsid_type == 0) {
+ 		/* for newer device numbers, we must use a newer fsid format */
+ 		ref_fh_version = 1;
 
 
 -------------------------------------------------------
