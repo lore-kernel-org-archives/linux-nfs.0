@@ -1,13 +1,13 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] sunrpc - 1 of 3 - Reorganise sock init in rpcsvc to avoid races.
+Subject: [PATCH] sunrpc - 2 of 3 - Tidy up closing of RPC tcp connections to avoid races
 Date: Tue, 07 Jan 2003 13:39:39 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E18VjeV-00071o-00@notabene.cse.unsw.edu.au>
+Message-ID: <E18VjeV-00071r-00@notabene.cse.unsw.edu.au>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18Vjee-0005sQ-00
+	id 18Vjee-0005sR-00
 	for <nfs@lists.sourceforge.net>; Mon, 06 Jan 2003 18:39:48 -0800
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
@@ -29,148 +29,101 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 ### Comments for ChangeSet
 
-If one of the callback (e.g. data ready) is called 
-before socket setup is complete, oops may occur.
-
-With this patch, socket is kept SK_BUSY until all is
-ready to avoid this.
-
-Also some code is moved around to make it cleaner.
-
+Also discard SK_QUED as it is never used.
 
  ----------- Diffstat output ------------
- ./net/sunrpc/svcsock.c |   55 ++++++++++++++++++++++---------------------------
- 1 files changed, 25 insertions(+), 30 deletions(-)
+ ./include/linux/sunrpc/svcsock.h |    1 -
+ ./net/sunrpc/svcsock.c           |   28 +++++++++++++++-------------
+ 2 files changed, 15 insertions(+), 14 deletions(-)
+
+diff ./include/linux/sunrpc/svcsock.h~current~ ./include/linux/sunrpc/svcsock.h
+--- ./include/linux/sunrpc/svcsock.h~current~	2003-01-07 13:36:40.000000000 +1100
++++ ./include/linux/sunrpc/svcsock.h	2003-01-07 13:36:40.000000000 +1100
+@@ -28,7 +28,6 @@ struct svc_sock {
+ #define	SK_CLOSE	2			/* dead or dying */
+ #define	SK_DATA		3			/* data pending */
+ #define	SK_TEMP		4			/* temp (TCP) socket */
+-#define	SK_QUED		5			/* on serv->sk_sockets */
+ #define	SK_DEAD		6			/* socket closed */
+ #define	SK_CHNGBUF	7			/* need to change snd/rcv buffer sizes */
+ #define	SK_DEFERRED	8			/* request on sk_deferred */
 
 diff ./net/sunrpc/svcsock.c~current~ ./net/sunrpc/svcsock.c
 --- ./net/sunrpc/svcsock.c~current~	2003-01-07 13:36:33.000000000 +1100
-+++ ./net/sunrpc/svcsock.c	2003-01-07 13:36:33.000000000 +1100
-@@ -627,7 +627,7 @@ svc_udp_sendto(struct svc_rqst *rqstp)
- 	return error;
- }
++++ ./net/sunrpc/svcsock.c	2003-01-07 13:36:40.000000000 +1100
+@@ -137,6 +137,12 @@ svc_sock_enqueue(struct svc_sock *svsk)
+ 		printk(KERN_ERR
+ 			"svc_sock_enqueue: threads and sockets both waiting??\n");
  
--static int
-+static void
- svc_udp_init(struct svc_sock *svsk)
- {
- 	svsk->sk_sk->data_ready = svc_udp_data_ready;
-@@ -643,9 +643,8 @@ svc_udp_init(struct svc_sock *svsk)
- 			    3 * svsk->sk_server->sv_bufsz,
- 			    3 * svsk->sk_server->sv_bufsz);
- 
-+	set_bit(SK_DATA, &svsk->sk_flags); /* might have come in before data_ready set up */
- 	set_bit(SK_CHNGBUF, &svsk->sk_flags);
--
--	return 0;
- }
- 
- /*
-@@ -773,19 +772,14 @@ svc_tcp_accept(struct svc_sock *svsk)
- 	dprintk("%s: connect from %u.%u.%u.%u:%04x\n", serv->sv_name,
- 			NIPQUAD(sin.sin_addr.s_addr), ntohs(sin.sin_port));
- 
--	if (!(newsvsk = svc_setup_socket(serv, newsock, &err, 0)))
--		goto failed;
--
- 	/* make sure that a write doesn't block forever when
- 	 * low on memory
- 	 */
- 	newsock->sk->sndtimeo = HZ*30;
- 
--	/* Precharge. Data may have arrived on the socket before we
--	 * installed the data_ready callback. 
--	 */
--	set_bit(SK_DATA, &newsvsk->sk_flags);
--	svc_sock_enqueue(newsvsk);
-+	if (!(newsvsk = svc_setup_socket(serv, newsock, &err, 0)))
-+		goto failed;
-+
- 
- 	/* make sure that we don't have too many active connections.
- 	 * If we have, something must be dropped.
-@@ -1006,7 +1000,7 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
- 	return sent;
- }
- 
--static int
-+static void
- svc_tcp_init(struct svc_sock *svsk)
- {
- 	struct sock	*sk = svsk->sk_sk;
-@@ -1017,6 +1011,7 @@ svc_tcp_init(struct svc_sock *svsk)
- 	if (sk->state == TCP_LISTEN) {
- 		dprintk("setting up TCP socket for listening\n");
- 		sk->data_ready = svc_tcp_listen_data_ready;
-+		set_bit(SK_CONN, &svsk->sk_flags);
- 	} else {
- 		dprintk("setting up TCP socket for reading\n");
- 		sk->state_change = svc_tcp_state_change;
-@@ -1035,9 +1030,8 @@ svc_tcp_init(struct svc_sock *svsk)
- 				    3 * svsk->sk_server->sv_bufsz);
- 
- 		set_bit(SK_CHNGBUF, &svsk->sk_flags);
-+		set_bit(SK_DATA, &svsk->sk_flags);
- 	}
--
--	return 0;
- }
- 
- void
-@@ -1258,6 +1252,18 @@ svc_setup_socket(struct svc_serv *serv, 
- 	memset(svsk, 0, sizeof(*svsk));
- 
- 	inet = sock->sk;
-+
-+	/* Register socket with portmapper */
-+	if (*errp >= 0 && pmap_register)
-+		*errp = svc_register(serv, inet->protocol,
-+				     ntohs(inet_sk(inet)->sport));
-+
-+	if (*errp < 0) {
-+		kfree(svsk);
-+		return NULL;
++	if (test_bit(SK_DEAD, &svsk->sk_flags)) {
++		/* Don't enqueue dead sockets */
++		dprintk("svc: socket %p is dead, not enqueued\n", svsk->sk_sk);
++		goto out_unlock;
 +	}
 +
-+	set_bit(SK_BUSY, &svsk->sk_flags);
- 	inet->user_data = svsk;
- 	svsk->sk_sock = sock;
- 	svsk->sk_sk = inet;
-@@ -1271,23 +1277,9 @@ svc_setup_socket(struct svc_serv *serv, 
+ 	if (test_bit(SK_BUSY, &svsk->sk_flags)) {
+ 		/* Don't enqueue socket while daemon is receiving */
+ 		dprintk("svc: socket %p busy, not enqueued\n", svsk->sk_sk);
+@@ -179,7 +185,6 @@ svc_sock_enqueue(struct svc_sock *svsk)
+ 	} else {
+ 		dprintk("svc: socket %p put into queue\n", svsk->sk_sk);
+ 		list_add_tail(&svsk->sk_ready, &serv->sv_sockets);
+-		set_bit(SK_QUED, &svsk->sk_flags);
+ 	}
  
- 	/* Initialize the socket */
- 	if (sock->type == SOCK_DGRAM)
--		*errp = svc_udp_init(svsk);
-+		svc_udp_init(svsk);
- 	else
--		*errp = svc_tcp_init(svsk);
--if (svsk->sk_sk == NULL)
--	printk(KERN_WARNING "svsk->sk_sk == NULL after svc_prot_init!\n");
--
--	/* Register socket with portmapper */
--	if (*errp >= 0 && pmap_register)
--		*errp = svc_register(serv, inet->protocol,
--				     ntohs(inet_sk(inet)->sport));
--
--	if (*errp < 0) {
--		inet->user_data = NULL;
--		kfree(svsk);
--		return NULL;
--	}
--
-+		svc_tcp_init(svsk);
+ out_unlock:
+@@ -199,11 +204,10 @@ svc_sock_dequeue(struct svc_serv *serv)
  
- 	spin_lock_bh(&serv->sv_lock);
- 	if (!pmap_register) {
-@@ -1302,6 +1294,9 @@ if (svsk->sk_sk == NULL)
+ 	svsk = list_entry(serv->sv_sockets.next,
+ 			  struct svc_sock, sk_ready);
+-	list_del(&svsk->sk_ready);
++	list_del_init(&svsk->sk_ready);
  
- 	dprintk("svc: svc_setup_socket created %p (inet %p)\n",
- 				svsk, svsk->sk_sk);
-+
-+	clear_bit(SK_BUSY, &svsk->sk_flags);
-+	svc_sock_enqueue(svsk);
+ 	dprintk("svc: socket %p dequeued, inuse=%d\n",
+ 		svsk->sk_sk, svsk->sk_inuse);
+-	clear_bit(SK_QUED, &svsk->sk_flags);
+ 
  	return svsk;
  }
+@@ -1176,8 +1180,8 @@ svc_recv(struct svc_serv *serv, struct s
+ 	if (test_bit(SK_TEMP, &svsk->sk_flags)) {
+ 		/* push active sockets to end of list */
+ 		spin_lock_bh(&serv->sv_lock);
+-		list_del(&svsk->sk_list);
+-		list_add_tail(&svsk->sk_list, &serv->sv_tempsocks);
++		if (!list_empty(&svsk->sk_list))
++			list_move_tail(&svsk->sk_list, &serv->sv_tempsocks);
+ 		spin_unlock_bh(&serv->sv_lock);
+ 	}
  
+@@ -1273,6 +1277,7 @@ svc_setup_socket(struct svc_serv *serv, 
+ 	svsk->sk_server = serv;
+ 	svsk->sk_lastrecv = get_seconds();
+ 	INIT_LIST_HEAD(&svsk->sk_deferred);
++	INIT_LIST_HEAD(&svsk->sk_ready);
+ 	sema_init(&svsk->sk_sem, 1);
+ 
+ 	/* Initialize the socket */
+@@ -1368,14 +1373,11 @@ svc_delete_socket(struct svc_sock *svsk)
+ 
+ 	spin_lock_bh(&serv->sv_lock);
+ 
+-	list_del(&svsk->sk_list);
+-	if (test_bit(SK_TEMP, &svsk->sk_flags))
+-		serv->sv_tmpcnt--;
+-	if (test_bit(SK_QUED, &svsk->sk_flags))
+-		list_del(&svsk->sk_ready);
+-
+-
+-	set_bit(SK_DEAD, &svsk->sk_flags);
++	list_del_init(&svsk->sk_list);
++	list_del_init(&svsk->sk_ready);
++	if (!test_and_set_bit(SK_DEAD, &svsk->sk_flags))
++		if (test_bit(SK_TEMP, &svsk->sk_flags))
++			serv->sv_tmpcnt--;
+ 
+ 	if (!svsk->sk_inuse) {
+ 		spin_unlock_bh(&serv->sv_lock);
 
 
 -------------------------------------------------------
