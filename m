@@ -1,29 +1,24 @@
-From: Simeon Miteff <simeon@up.ac.za>
-Subject: Problem starting rpc.svcgssd for NFS4
-Date: Mon, 23 Feb 2004 07:59:35 +0200
+From: Vincent ROQUETA <vincent.roqueta@ext.bull.net>
+Subject: Re :Re: NFSv4  and vi
+Date: Mon, 23 Feb 2004 14:01:12 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200402230759.35041.simeon@up.ac.za>
+Message-ID: <200402231401.12339.vincent.roqueta@ext.bull.net>
+Reply-To: vincent.roqueta@ext.bull.net
 Mime-Version: 1.0
 Content-Type: text/plain;
-  charset="us-ascii"
+  charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Av9G7-0000R6-Kl
-	for nfs@lists.sourceforge.net; Sun, 22 Feb 2004 22:08:03 -0800
-Received: from kendy.up.ac.za ([137.215.101.101])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.30)
-	id 1Av8xX-000723-TY
-	for nfs@lists.sourceforge.net; Sun, 22 Feb 2004 21:48:52 -0800
-Received: from postino.up.ac.za ([137.215.6.15] helo=mx1.up.ac.za)
-	by kendy.up.ac.za with esmtp (Exim 4.24)
-	id 1Av98J-00031v-Ao
-	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 07:59:59 +0200
-Received: from b121pc200.up.ac.za ([137.215.121.200] helo=io.ee.up.ac.za)
-	by mx1.up.ac.za with esmtp (Exim 4.24)
-	id 1Av98I-0006gp-Ue
-	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 07:59:58 +0200
+	id 1AvFnp-0006xB-IN
+	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 05:07:17 -0800
+Received: from ecbull20.frec.bull.fr ([129.183.4.3])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1AvFg1-00013l-91
+	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 04:59:14 -0800
+Received: from roquetav (roquetav.frec.bull.fr [129.183.101.52])
+	by ecbull20.frec.bull.fr (8.9.2/8.9.1) with ESMTP id NAA09494
+	for <nfs@lists.sourceforge.net>; Mon, 23 Feb 2004 13:59:06 +0100
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,48 +32,66 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi All
 
-I'm using kernel 2.6.3, the patched util-linux and nfs-utils, my kerberos5 
-setup is working (tested with openssh), and so far I've done everything as 
-described by http://www.citi.umich.edu/projects/nfsv4/linux/, yet I get this 
-problem when I try to start rpc.svcgssd:
+> On Thu, Feb 19, 2004 at 06:00:44PM +0100, Vincent ROQUETA wrote:
+> > Le Jeudi 19 F=E9vrier 2004 16:49, J. Bruce Fields a =E9crit :
+> > > On Thu, Feb 19, 2004 at 09:58:38AM +0100, Vincent ROQUETA wrote:
+> > > > Here are vi traces for opening "/mnt/nfs/vincent/suite-tests/toto3"
+> > >
+> > > These bug reports are no help if you won't remind us, on each bug
+> > > report, which kernel you're using, with which (if any) patches.  Also,
+> > > it'd help if you could test with the latest CITI NFSv4 patches
+> > > (http://www.citi.umich.edu/projects/nfsv4/linux/).  I suspect the
+> > > problem you're seeing is a problem that's already fixed with those
+> > > patches.
+> > >
+> > > --Bruce Fields
+> >
+> > The problem still appear with kernel 2.6.2 and all patches.
+> > (Linux roquetav 2.6.2-CITI_NFS4_ALL-1)
+>
+> This is on both the client and the server?
+>
+> The following would also help (again, it would be helpful to include
+> this information with all bug reports):
+>
+> 	server export options (output from 'exportfs -v')
+> 	mount options (output from 'mount')
+>
+> --b.
 
-Feb 20 08:39:11 io gssd[25729]: Using (default) Kerberos realm: "EE.UP.AC.ZA"
-Feb 20 08:39:11 io gssd[25729]: Initialized credentials cache
-Feb 20 08:39:11 io gssd[25729]: Using credentials cache: 
-"FILE:/tmp/krb5cc_machine"
-Feb 20 08:39:11 io gssd[25729]: Acquired initial kerberos ticket
-Feb 20 08:39:11 io gssd[25729]: failed to 
-open /proc/net/rpc/auth.rpcsec.init/channel
+Configuration:
+server 2.6.2-CITI_NFS4_ALL-1 #2 SMP
+client 2.6.2-CITI_NFS4_ALL-1
 
-Looking in that directory:
+ptoblem: mount fail:
+error (client side):
+mount: type de sys. de fichiers erron=E9, option erron=E9e, super bloc erro=
+n=E9 sur
+172.16.109.31:/, ou trop de syst=E8mes de fichiers mont=E9s
 
-simeon@io rpc $ ls -l /proc/net/rpc/
-total 0
-dr-xr-xr-x    2 root     root            0 Feb 23 07:57 auth.domain
-dr-xr-xr-x    2 root     root            0 Feb 20 08:38 auth.unix.ip
--r--r--r--    1 root     root            0 Feb 23 07:57 nfs
--r--r--r--    1 root     root            0 Feb 23 07:57 nfsd
-dr-xr-xr-x    2 root     root            0 Feb 20 08:38 nfsd.export
-dr-xr-xr-x    2 root     root            0 Feb 20 08:38 nfsd.fh
+(mout: bad filesystem type, bad options, bad super bloc on 172.16.109.31:/ =
+or
+too many filesytems mounted.)
+______________________________________________________
 
-Any Ideas why /proc/net/rpc/auth.rpcsec.init/channel is missing? I double 
-checked the kernel config options...
+With this config:
+client 2.6.2-all patches
+server: linux 2.6.3-mm1
 
-Regards,
-Simeon.
--- 
-Mr Simeon Miteff
-Department of Electrical, Electronic and Computer Engineering
-University of Pretoria
-Pretoria
-0002
-South Africa
-Tel: +27 12 420 2434
------------------------------------------------
-This message and attachments are subject to a disclaimer. Please refer
-to www.it.up.ac.za/documentation/governance/disclaimer/ for details.
+Problem with vi as reported in the first mail.
+ (So there is a problem on the server side?)
+______________________________________________________
+exports operations (both configurations):
+mount --bind -v /home/vincent/ /export/vincent
+/home/vincent on /export/vincent type none (rw,bind)
+exportfs -i -v -ofsid=3D0 *:/export
+exporting *:/export
+exportfs -i -v -orw,nohide *:/export/vincent
+exporting *:/export/vincent
+
+=2D------------------------------------------------------
+
 
 
 -------------------------------------------------------
