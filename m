@@ -1,22 +1,25 @@
-From: "Eno Compton" <Eno.Compton@Miltope.com>
-Subject: export /proc?
-Date: Thu, 23 Oct 2003 15:22:39 -0600
+From: "Chimento, Douglas" <Douglas.Chimento@FMR.COM>
+Subject: TCP: Server unavailable
+Date: Thu, 23 Oct 2003 14:00:22 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <BB842FD5FFDA7A469ECF70CCF82B77E364E6@boulder-mail.miltope.local>
+Message-ID: <5C4853FD4EFB164A8F4FE5AFF1306321037B6D@MSGBOSCLD2WIN.DMN1.FMR.COM>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: multipart/mixed;
+	boundary="----=_NextPartTM-000-3f1f1803-b6f0-41db-8c65-9e66743569b6"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1ACnGb-0001qY-00
-	for <nfs@lists.sourceforge.net>; Thu, 23 Oct 2003 14:45:13 -0700
-Received: from [12.41.168.50] (helo=[12.41.168.50])
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.22)
-	id 1ACnEO-0005Vm-T3
-	for nfs@lists.sourceforge.net; Thu, 23 Oct 2003 14:42:56 -0700
-To: <nfs@lists.sourceforge.net>
+	id 1ACljD-0004e8-00
+	for <nfs@lists.sourceforge.net>; Thu, 23 Oct 2003 13:06:39 -0700
+Received: from maillnx-us312.fmr.com ([192.223.178.27])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
+	id 1AClgh-0007AO-Hs
+	for nfs@lists.sourceforge.net; Thu, 23 Oct 2003 13:04:03 -0700
+Received: from virmro111nts.fmr.com (virmro111nts.fmr.com [172.26.5.99])
+	by maillnx-us312.fmr.com (Switch-2.2.8/Switch-2.2.8) with SMTP id h9NI0V316548
+	for <nfs@lists.sourceforge.net>; Thu, 23 Oct 2003 14:00:31 -0400
+To: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,14 +32,21 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Is there a reason I am unable to export /proc in rh 2.4.20-6=20
+This message is in MIME format. Since your mail reader does not understand
+this format, some or all of this message may not be legible.
 
+------=_NextPartTM-000-3f1f1803-b6f0-41db-8c65-9e66743569b6
+Content-Type: multipart/alternative;
+	boundary="----_=_NextPart_001_01C3998F.87659C95"
 
--------------------------------------------------------
-This SF.net email is sponsored by: The SF.net Donation Program.
-Do you like what SourceForge.net is doing for the Open
-Source Community?  Make a contribution, and help us add new
-features and functionality. Click here: http://sourceforge.net/donate/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+------_=_NextPart_001_01C3998F.87659C95
+Content-Type: text/plain
+
+Hello,
+	I am trying to setup a Linux client (RH9) to use tcp with nfs.
+However 
+	there server (also RH9) replies with 
+"nfs server reported service unavailable: Address already in use"
+------_=_NextPart_001_01C3998F.87659C95--
+
+------=_NextPartTM-000-3f1f1803-b6f0-41db-8c65-9e66743569b6--
