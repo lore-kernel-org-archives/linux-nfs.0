@@ -1,22 +1,31 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: NFS mount version?
-Date: Fri, 15 Aug 2003 10:57:35 +1000
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Re: [autofs] VFS: Busy inodes after unmount on 2 way SMP
+Date: Fri, 26 Sep 2003 15:29:40 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16188.12287.809594.752856@gargle.gargle.HOWL>
-References: <20030813095312.GF4797@yeenoghu.progsoc.uts.edu.au>
+Message-ID: <16244.48596.850187.268449@charged.uio.no>
+References: <16243.34641.819894.763746@charged.uio.no>
+	<200309261831.h8QIVNVw026806@buggy.badula.org>
+Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19nSua-00019y-00
-	for <nfs@lists.sourceforge.net>; Thu, 14 Aug 2003 17:57:48 -0700
-Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <nfs@lists.sourceforge.net>) (for <wildfire@progsoc.uts.edu.au>)
-	By note With Smtp ; Fri, 15 Aug 2003 10:57:43 +1000
-To: nfs@lists.sourceforge.net,
-    wildfire@progsoc.uts.edu.au
-In-Reply-To: message from Anand Kumria on Wednesday August 13
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 1A31cZ-0003g9-00
+	for <nfs@lists.sourceforge.net>; Fri, 26 Sep 2003 16:03:31 -0700
+Received: from panoramix.vasoftware.com
+	([198.186.202.147] helo=externalmx.vasoftware.com ident=mail)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
+	id 1A31cY-0006TQ-FK
+	for nfs@lists.sourceforge.net; Fri, 26 Sep 2003 16:03:30 -0700
+Received: from pat.uio.no ([129.240.130.16]:50945)
+	by externalmx.vasoftware.com with esmtp (Exim 4.22 #1 (Debian))
+	id 1A316V-0008Ko-LV
+	for <nfs@lists.sourceforge.net>; Fri, 26 Sep 2003 15:30:23 -0700
+To: Ion Badulescu <lists@news.cs.columbia.edu>
+In-Reply-To: <200309261831.h8QIVNVw026806@buggy.badula.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,35 +38,30 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wednesday August 13, wildfire@progsoc.uts.edu.au wrote:
-> Hi all,
-> 
-> Documentation/Changes in 2.6.0-test3 suggests the minimum version of 
-> nfs-utils to use is 1.0.5 yet even with 1.0.5 I still get messages like:
-> 
-> Aug 13 18:09:35 clam kernel: nfs warning: mount version older than kernel 
-> 
-> Which version should I be using?
+>>>>> " " == Ion Badulescu <lists@news.cs.columbia.edu> writes:
 
-Some appropriate version of util-linux (I think).
+     > Ugh, that's ugly -- and potentially a DoS issue as well. Since
+     > you don't need any privileges to issue the 'kill -9' for your
+     > own processes, it becomes fairly easy to write some code that
+     > exploits this and causes kernel crashes across the board...
 
-nfs-utils does *not* contain the program that mounts nfs filesystems.
-It is mostly server-side stuff.
+Then don't set the "intr" flag.
 
-util-linux contains mount which uses an old version and causes this
-message.
+     > Not that the current situation is any better, of course.
 
-However I don't think the message is of any real concern.  Things will
-still work fine.
+     > Perhaps making that wait an uninterruptable wait would be
+     > enough to take care of the problem?
 
-NeilBrown
+People expect the "intr" flag to work if they set it.
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
-This SF.Net email sponsored by: Free pre-built ASP.NET sites including
-Data Reports, E-commerce, Portals, and Forums are available now.
-Download today and enter to win an XBOX or Visual Studio .NET.
-http://aspnet.click-url.com/go/psa00100003ave/direct;at.aspnet_072303_01/01
+This sf.net email is sponsored by:ThinkGeek
+Welcome to geek heaven.
+http://thinkgeek.com/sf
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
