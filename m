@@ -1,22 +1,32 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Marc Eshel <eshel@almaden.ibm.com>
 Subject: Re: [patch] flock/fcntl bug
-Date: Wed, 15 Dec 2004 19:34:55 -0500
-Message-ID: <1103157295.1236.70.camel@lade.trondhjem.org>
-References: <OF89CDCE7F.4F36F059-ON88256F6B.00820187-88256F6B.008315EF@us.ibm.com>
+Date: Wed, 15 Dec 2004 18:16:42 -0800
+Message-ID: <OFDB90A431.EDCAD4C3-ON88256F6C.000B5989-88256F6C.000C8438@us.ibm.com>
+References: <1103157295.1236.70.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=US-ASCII
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CejcO-0008E5-11
-	for nfs@lists.sourceforge.net; Wed, 15 Dec 2004 16:35:44 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CejcN-0003OI-2L
-	for nfs@lists.sourceforge.net; Wed, 15 Dec 2004 16:35:43 -0800
-To: Marc Eshel <eshel@almaden.ibm.com>
-In-Reply-To: <OF89CDCE7F.4F36F059-ON88256F6B.00820187-88256F6B.008315EF@us.ibm.com>
+	id 1CelIk-0001AS-8R
+	for nfs@lists.sourceforge.net; Wed, 15 Dec 2004 18:23:34 -0800
+Received: from e3.ny.us.ibm.com ([32.97.182.143])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1CelIj-0002CY-Ik
+	for nfs@lists.sourceforge.net; Wed, 15 Dec 2004 18:23:34 -0800
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e3.ny.us.ibm.com (8.12.10/8.12.10) with ESMTP id iBG2NRV8029093
+	for <nfs@lists.sourceforge.net>; Wed, 15 Dec 2004 21:23:27 -0500
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay04.pok.ibm.com (8.12.10/NCO/VER6.6) with ESMTP id iBG2NRft283580
+	for <nfs@lists.sourceforge.net>; Wed, 15 Dec 2004 21:23:27 -0500
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11/8.12.11) with ESMTP id iBG2NQiZ025694
+	for <nfs@lists.sourceforge.net>; Wed, 15 Dec 2004 21:23:26 -0500
+In-Reply-To: <1103157295.1236.70.camel@lade.trondhjem.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,83 +40,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-on den 15.12.2004 Klokka 15:51 (-0800) skreiv Marc Eshel:
 
-> > Right. Which may now be a bug...
-> 
-> So how would you fix it? Call the filesystem to unlock what? If you have no
-> information on what is locked how can you unlock it, and having an extra
-> call to the filesystem (that can be remote for NFS) when there is no lock
-> held is very wasteful.
 
-So please tell me why I should be forced to keep all this information:
+Trond Myklebust <trond.myklebust@fys.uio.no> wrote on 12/15/2004 04:34:55
+PM:
 
-struct file_lock {
-        struct file_lock *fl_next;      /* singly linked list for this
-inode  */        struct list_head fl_link;       /* doubly linked list
-of all locks */
-        struct list_head fl_block;      /* circular list of blocked
-processes */        fl_owner_t fl_owner;
-        unsigned int fl_pid;
-        wait_queue_head_t fl_wait;
-        struct file *fl_file;
-        unsigned char fl_flags;
-        unsigned char fl_type;
-        loff_t fl_start;
-        loff_t fl_end;
+> > It would be nice if it didn't have to care but the fact is that right
+now
+> > there is dependency on the lock state to be in the VFS too for correct
+> > operation.
 
-        struct fasync_struct *  fl_fasync; /* for lease break
-notifications */
-        unsigned long fl_break_time;    /* for nonblocking lease breaks
-*/
+> Then fix the VFS to do the right thing. Move the decision about whether
+> or not to do an RPC call or whatever into the filesystem where it
+> belongs.
 
-        struct file_lock_operations *fl_ops;    /* Callbacks for
-filesystems */
-        struct lock_manager_operations *fl_lmops;       /* Callbacks for
-lockmanagers */
-        union {
-                struct nfs_lock_info    nfs_fl;
-        } fl_u;
-};
+I will be glad to. Please add my patch 'locking for cluster filesystem' so
+other users can experiment with their favorite file system and give some
+feed back. My patch is getting too big and it is a pain to retrofit it to
+constantly changing code. It will than be easier to build small patches for
+the specific problem that will arise.
 
-for each and every byte range lock if all I'm interested in is deciding
-whether or not one lock held by me exists? A minimum implementation for
-that could be done within the filesystem as
-
-struct foo {
-	fl_owner_t fl_owner;
-	struct foo *next;
-};
-
-If you don't believe me, look at your own patch. AFAICS the above is the
-only information you are actually using.
-
-> > And? The fact that lockd uses inode->i_flock does not mean that the
-> > filesystem has to.
-> 
-> That is the only why that lockd knows what to clean up when it is
-> terminated
-
-No! lockd keeps its own books entirely. It uses the VFS bookkeeping for
-convenience, but it in no way relies on the filesystem to use the same
-bookkeeping.
-
-> > What is the point of forcing it to do that if it can do its own
-> > bookkeeping? Why should the VFS need to care?
-> 
-> It would be nice if it didn't have to care but the fact is that right now
-> there is dependency on the lock state to be in the VFS too for correct
-> operation.
-
-Then fix the VFS to do the right thing. Move the decision about whether
-or not to do an RPC call or whatever into the filesystem where it
-belongs.
-
-Cheers,
-  Trond
-
--- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
+Thanks, Marc.
 
 
 
