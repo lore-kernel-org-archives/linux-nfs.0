@@ -1,18 +1,16 @@
-From: "White, NGH (Nick) " <N.G.H.White@rl.ac.uk>
-Subject: NFS Client processes lock up
-Date: Fri, 4 Jul 2003 18:47:24 +0100
+From: Michelle Renee <MoreWebVisitorsToday84356@yahoo.com>
+Subject: >>OVER 15.7 MILLION OPT-IN EMAIL ADDRESSES...PLUS $2000 IN FREE SOFTWARE!
+Date: Sat, 5 Jul 2003 01:07:24 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <350DC7048372D31197F200902773DF4C0396448D@exchange11.rl.ac.uk>
+Message-ID: <E19YbYF-0002dX-00@sc8-sf-list1.sourceforge.net>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Cc: "White, NGH (Nick) " <N.G.H.White@rl.ac.uk>
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from exchange01.rl.ac.uk ([130.246.135.134])
+Received: from [210.206.110.1] (helo=skgsexng.windsor.co.kr)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19YV0R-00005z-00
-	for <nfs@lists.sourceforge.net>; Fri, 04 Jul 2003 11:09:59 -0700
-To: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
+	id 19YbYF-0002dX-00
+	for <nfs@lists.sourceforge.net>; Fri, 04 Jul 2003 18:09:19 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,173 +23,92 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+ 
+ Hello,
 
-We are experiencing an issue with NFS client processes locking
-up during a transfer. These use the automounter to activate the
-connection. The most visual indicator is that the processes have
-a "D" status from 'ps -ale' and the WCHAN is lock_page. The processes
-cannot be killed.
+ Hello,
 
-I've put some more meat on the bones of this below but was wondering
-whether this issue is the same as 747194 and whether anyone could
-advise on a resolution/bypass. We are running Red Hat 7.3 and the
-kernel version is included below. 
+WOULD YOU LIKE TO HAVE YOUR MESSAGE SEEN BY
+OVER 15.7 MILLION OPT-IN, TARGETED PEOPLE DAILY?
 
-The file can be copied locally without any issues on the server that
-hosts it. No SCSI errors or array issues occur from file
-access. It also checksums fine.
+PLUS RECEIVE OVER $2,000 WORTH OF FREE EMAIL MARKETING SOFTWARE!
 
-The log for the client shows that there was nothing untoward as far
-as that machine during one of the hangs.
+Below contains all the information you will ever need to market
+your product or service on the Internet.
 
-The process hangs in state D and hung trying to get a lock
-which was almost certainly available. You are unable to strace 
-the process using -p pidno. That hangs solid as well. Debug 
-mode on rpc doesn't show anything either. 
+If you have a product, service, or message that you would like 
+Thousands, Hundreds of Thousands, or even Millions of people to 
+see, you have several options. Traditional methods include print 
+advertising, direct mail, radio, and television advertising. They are all 
+effective, but they all have two catches: They're EXPENSIVE and TIME
+CONSUMING. Not only that, you only get ONE SHOT at making
+your message heard by the right people. Also, Internet Search Engine
+Submissions, Classified Ads, Newsgroup Postings simply DO NOT
+WORK effectively.
 
-There is no TCP traffic between client and server after the 
-hang, so although the filesystem is available, when the 'dd' 
-in my case started the process hung solid. 
-'ps' shows the WCHAN as lock_page and the code is included 
-below for completeness sake. Basically, what is happening is 
-that the process is waiting for data to be retrieved 
-off the network, disk, memory, paging or swapping. We can't tell 
-exactly where because we cannot trace the process further by 
-attaching strace to the pid. We have to run the program under 
-strace.
+Now this has all changed!
 
-There is nothing reported in the Red Hat bug database. 
-Information out on the web infers that it may be an issue caused 
-by NFSv3.  NFSv3 could be the issue but unlikely. What is more 
-likely is that the change of timing by using NFSv2 could very 
-easily be enabling the processes to complete. 
-However, using NFSv3 is generally more performant than NFSv2. 
-In this case though, this is debatable as the process finishing 
-using NFSv2 is always going to be more performant than
-a hanging NFSv3 process. 
+Thanks to the top programmers in the world and their NEW EMAIL
+TECHNOLOGY, You can send millions of email messages daily for
+FREE...Without getting terminated from your current Internet connection!
 
-Mounting the filesystem on it's own mount point on the client and then
-doing a 'dd' of the offending file to /dev/null completes without an
-issue, even after we have had a hang via the automounter. This 
-proves that the server is still making the filesystem available. Whilst I
-have 
-managed to get 2 'dd' processes to hang when accessing the file through the 
-automounter on the client, I have managed to get 2 clean runs when accessing
+It's very simple to do and you can be increasing your sales within minutes
+of installing this extraordinary new software!
 
-the file through its own mount point, again on the same client.
+Besides...It's the only real way to advertise on the Internet that works...Period!
 
-The client has the following processes all hung on lock_page:
+BELOW IS JUST A SAMPLE OF WHAT WE HAVE TO OFFER YOU...
 
-000 D  5766  9952     1  0  75   0    -   459 lock_p 00:00:00 gtar 
-000 D  5766 10839     1  0  75   0    -   459 lock_p 00:00:00 gtar 
-000 D  5766  1893     1  0  75   0    -   418 lock_p 00:00:00 cp 
-000 D 33004  5483     1  0  75   0    -   420 lock_p 00:00:00 dd 
-100 D     0 29679  5939  0  75   0    -   419 lock_p 00:00:00 dd 
-plus a few more now
+>>>WE WILL SUPPLY YOU WITH OVER 15.7 MILLION OPT-IN EMAIL
+ADDRESSES TO GET YOU STARTED RIGHT AWAY!
 
-   1893  0.0  0.0  1672  528 cp       lock_page
-   5483  0.0  0.0  1680  536 dd       lock_page (and process 29679)
+>>>FREE EMAIL ADDRESS DOWNLOADS FOR LIFE!
 
-The tcpdump trace on the server shows that no request(read) has been
-sent by the client when the hang on the client occurs.
+>>>YOU WILL RECEIVE OVER $2,000 WORTH OF 
+EMAIL MARKETING SOFTWARE FREE!
 
-The lock_page code is in mm/filemap.c
+Including......
 
-/*
- * Get an exclusive lock on the page, optimistically
- * assuming it's not locked..
- */
-void lock_page(struct page *page)
-{
-        if (TryLockPage(page))
-                __lock_page(page);
-}
+BROADCAST EMAIL SENDING SOFTWARE...(send millions of email
+advertisements daily with a few clicks of your mouse. New built in 
+stealth technology). Be one of the first people to use it. We used the 
+same software to send you this email message.
 
-TryLockPage is a macro.
+EMAIL EXTRACTION SOFTWARE...(Retreive new targeted email
+addresses daily. Hundreds of thousands of them)
 
-static void __lock_page(struct page *page)
-{
-        struct task_struct *tsk = current;
-        DECLARE_WAITQUEUE(wait, tsk);
+LIST MANAGEMENT SOFTWARE...(Keep your lists clean, opt-in
+and manage all your remove requests, leads, sales etc...)
 
-        add_wait_queue_exclusive(&page->wait, &wait);
-        for (;;) {
-                sync_page(page);
-                set_task_state(tsk, TASK_UNINTERRUPTIBLE);
-                if (PageLocked(page)) {
-                        run_task_queue(&tq_disk);
-                        schedule();
-                        continue;
-                }
-                if (!TryLockPage(page))
-                        break;
-        }
-        tsk->state = TASK_RUNNING;
-        remove_wait_queue(&page->wait, &wait);
-}
+POP-UP ADVERTISER...No need to pay someone else for 
+pop-up advertising. Save $1,000s weekly. It's yours today free! 
+Plus you can resell this software and keep 100% of the profit or
+simply give it as a free gift along with your current services.
 
-The issue can minifest itself in other ways:
+and much...much more!
 
-1. The client doesn't even send a request so we never start.
-2. The client sends 2 requests to the server, which confuses 
-   the heck out of it.
+Hurry...This extraordinary offer ends soon!
 
-Another tcpdump shows that the client is receiving the 
-appropriate reply from the server but it does not send out 
-the getattr request to the server for the next block of data. 
+To find out more information, Do not respond by email. Instead, click
+on the link below or copy and paste the complete web address into 
+your Internet browser.
 
-The server is definitely responding correctly to the client. 
-tcpdump shows the client now needs to send data to the server 
-in order to action the read.
+<br><A HREF="http://www.vvevvillmakeyoumoney.biz/broadcast6.htm">Click Here For More Information</A><br>
 
-strace -f dd if=<file> of=/dev/null
-.......
->write(1, 
-"\333\307\27\315\\%\10\\c\352\236\310\373\31\33Ge\254\1"..., 512) = 512
-read(0, 
-"\3141\2001\260\35\31(\234\217G\332\365H|\v,\247\2228\25"..., 512) = 512
-write(1, 
-"\3141\2001\260\35\31(\234\217G\332\365H|\v,\247\2228\25"..., 512) = 512
-read(0, 
-"\335\373\213H\0\264\1[\262\f\225\203WnF\r\337\37\"\213"..., 512) = 512
-write(1, 
-"\335\373\213H\0\264\1[\262\f\225\203WnF\r\337\37\"\213"..., 512) = 512
-read(0, 
-"&\25\224\36Y\25\n\26Y\330\343+\266\324Qk\363\224\211\370"...,512) = 512
-write(1, 
-"&\25\224\36Y\25\n\26Y\330\343+\266\324Qk\363\224\211\370"..., 512) = 512
-read(0, 
-"a)\235\364\272\370\24\230\2>Z;0\26\247\307l\31\350\331"..., 512) = 512
-write(1, 
-"a)\235\364\272\370\24\230\2>Z;0\26\247\307l\31\350\331"..., 512) = 512
-read(0, 
+http://www.vvevvillmakeyoumoney.biz/broadcast6.htm
 
-The client is blocked on read i/o. 
 
-This is not a direct server issue.
 
-lock_page is called from a variety of points affecting paging, 
-swap, disk and memory io.
-The client does not have issues with memory or swap being low. 
-Hence, my suspicion is that this is related to disk io or the 
-glue between the layers in actioning a read, which is then 
-transfered across the network. 
-It could be bad memory but unlikely as that usually manifests 
-itself as other things such as Ooops or kernel panics, as well,
-non of which we are experiencing.
 
-The client is running Red Hat 2.4.18-27.7.xsmp and the automounter
-will mount the server with the following attributes:
 
-* -intr,retrans=5,timeo=20,actimeo=0,rw,hard,nosuid,rsize=8192,wsize=8192 
-system:/mntpt-&
-
-Thanks for any enlightenment,
-
-Hope you all had/are having a happy 4th July,
-
-- Nick
+______________________________________________________
+Want to be REMOVED from our email list?
+You were sent this email because you used our Opt-in service.
+We hope you enjoy reading our messages. However, if you'd rather
+not receive future e-mails from us, Click on the link below.
+http://www.vvevvillmakeyoumoney.biz/removeme.htm
+Thank you for your cooperation.
+________________________________________________________
 
 
 -------------------------------------------------------
