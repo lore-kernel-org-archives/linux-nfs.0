@@ -1,23 +1,20 @@
-From: "Kashyap Ashwin (Princeton Intern)" <Ashwin.Kashyap@thomson.net>
-Subject: Cross compiling nfs-utils
-Date: Thu, 14 Aug 2003 16:16:55 -0500
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS mount version?
+Date: 14 Aug 2003 23:31:33 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <8FC831532CEE564AB88AC1D999C29DEB03B080@prinsmail01.am.thmulti.com>
+Message-ID: <shssmo34eka.fsf@charged.uio.no>
+References: <20030813095312.GF4797@yeenoghu.progsoc.uts.edu.au>
+	<16188.12287.809594.752856@gargle.gargle.HOWL>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net,  wildfire@progsoc.uts.edu.au
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from dmzraw2.extranet.tce.com ([157.254.234.138])
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19nPT6-0006YV-00
-	for <nfs@lists.sourceforge.net>; Thu, 14 Aug 2003 14:17:12 -0700
-Received: from smtprelay2.indy.tce.com ([157.254.96.95])
-	by dmzraw2.extranet.tce.com (8.12.5/8.12.5) with ESMTP id h7ELH64h027249
-	for <nfs@lists.sourceforge.net>; Thu, 14 Aug 2003 21:17:06 GMT
-Received: from indymsxcs02.indy.tce.com (localhost [127.0.0.1])
-	by smtprelay2.indy.tce.com (8.12.9/8.12.8) with ESMTP id h7ELGwHp017727
-	for <nfs@lists.sourceforge.net>; Thu, 14 Aug 2003 21:16:59 GMT
-To: nfs@lists.sourceforge.net
+	id 19nY86-0007ns-00
+	for <nfs@lists.sourceforge.net>; Thu, 14 Aug 2003 23:32:07 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <16188.12287.809594.752856@gargle.gargle.HOWL>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,21 +27,31 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
-I downloaded the nfs-utils tar ball and I need to cross compile it for an
-embedded platform. 
+>>>>> " " == Neil Brown <neilb@cse.unsw.edu.au> writes:
 
-1. I exported the proper CC, LD etc to the shell and did a ./configure
-2. did make
-3. fails because rpcgen is also built for the embedded platform. i fixed
-this by copying the correct rpcgen
-4. did make again: i get nfsctl.c: undefined reference to syscall
+     > On Wednesday August 13, wildfire@progsoc.uts.edu.au wrote:
+    >> Hi all,
+    >>
+    >> Documentation/Changes in 2.6.0-test3 suggests the minimum
+    >> version of nfs-utils to use is 1.0.5 yet even with 1.0.5 I
+    >> still get messages like:
+    >>
+    >> Aug 13 18:09:35 clam kernel: nfs warning: mount version older
+    >> than kernel
+    >>
+    >> Which version should I be using?
 
-I am using the hitachi sh4 processor and uClibc. Please help!
+     > Some appropriate version of util-linux (I think).
 
-Thanks,
-Ashwin
+Actually, support for NFS_MOUNT_VERSION 5 has not yet been merged into
+any version of util-linux.
 
+Note, though, that the only new feature added is support for
+RPCSEC_GSS under NFSv2 and NFSv3. Unless you have some burning desire
+to test krb5 authentication, you can ignore the above warning.
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
