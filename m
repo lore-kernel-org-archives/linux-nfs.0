@@ -1,21 +1,23 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: NFS FAQ updates
-Date: Mon, 14 Mar 2005 09:48:05 -0800
-Message-ID: <482A3FA0050D21419C269D13989C611308539875@lavender-fe.eng.netapp.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: NFS FAQ updates
+Date: Mon, 14 Mar 2005 13:09:30 -0500
+Message-ID: <20050314180930.GD27626@fieldses.org>
+References: <482A3FA0050D21419C269D13989C611308539875@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	nfs@lists.sourceforge.net
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DAtfs-0007va-HW
-	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 09:48:16 -0800
-Received: from mx1.netapp.com ([216.240.18.38])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DAtfr-0003no-1F
-	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 09:48:16 -0800
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-	"Trond Myklebust" <trond.myklebust@fys.uio.no>
+	id 1DAu02-0000MF-OI
+	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 10:09:06 -0800
+Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1DAu01-00068g-Af
+	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 10:09:06 -0800
+To: "Lever, Charles" <Charles.Lever@netapp.com>
+In-Reply-To: <482A3FA0050D21419C269D13989C611308539875@lavender-fe.eng.netapp.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,45 +31,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-thanks for your comments, guys.  i've simplified C7 a bit, see if it
-helps:
+On Mon, Mar 14, 2005 at 09:48:05AM -0800, Lever, Charles wrote:
+> thanks for your comments, guys.  i've simplified C7 a bit, see if it
+> helps:
+> 
+>   http://nfs.sourceforge.net/index.cel.php#faq_c7
 
-  http://nfs.sourceforge.net/index.cel.php#faq_c7
+I found it a little difficult to understand what you meant by "files
+sensitive to access by root" on my first reading:
 
+	"If you are still concerned about the minor security
+	implications described above, export only whole file systems if
+	the file system contains files sensitive to access by root (such
+	as setuid binaries)."
 
-> -----Original Message-----
-> From: J. Bruce Fields [mailto:bfields@fieldses.org]=20
-> Sent: Sunday, March 13, 2005 5:45 PM
-> To: Trond Myklebust
-> Cc: Lever, Charles; nfs@lists.sourceforge.net
-> Subject: Re: [NFS] NFS FAQ updates
->=20
->=20
-> On Sun, Mar 13, 2005 at 05:10:11PM -0500, Trond Myklebust wrote:
-> > The subtree_check option attempts to decide whether or not=20
-> a file lies
-> > within an exported subtree. If you turn it off, then people can
-> > theoretically try to guess filehandles and gain access to the files
-> > (assuming the access permissions on the file itself allow that).
->=20
-> I wouldn't put too much emphasis on that "theoretically".  The root
-> directory on all my ext2/3 filesystems has inode number 2,=20
-> and as far as
-> I can tell guessing the rest of the rest of the filehandle just comes
-> down to guessing the root device, which on my machines is always
-> /dev/hdaN for some very small N.  Add a few more for people with scsi
-> and so on, and I bet you could cover most linux NFS servers=20
-> with a dozen
-> guesses.  Now just lookup and readdir down to wherever you want.  Am I
-> missing anything here?
->=20
-> If the administrator tightened down directory permissions a=20
-> bit, you'll
-> be forced to guess filehandles for objects deeper in the filesystem,
-> which may be a little harder.  I wouldn't count on it.
->=20
-> --b.
->=20
+And I wouldn't downplay the security concern quite so much.  How about
+just this?:
+
+	"If you need to be certain that clients cannot access files
+	outside the exported part of a filesystem, set up the partitions
+	on your server so that you need only export whole filesystems."
+
+A related complaint: the world "filesystem" has a lot of different
+meanings.  I'm not sure if I'd be able to tell from this answer exactly
+which boundaries I could count on being respected by nfsd with subtree
+checking turned off.  I think "partition" would convey something more
+concrete to most administrators.  Would it be inaccurate to replace
+"filesystem" by "partition" everywhere in this answer?
+
+--b.
 
 
 -------------------------------------------------------
