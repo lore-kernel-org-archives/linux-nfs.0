@@ -1,28 +1,25 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Olaf Kirch <okir@suse.de>
 Subject: Re: NSM lock recovery fails too often
-Date: Tue, 09 Mar 2004 10:47:42 -0500
+Date: Tue, 9 Mar 2004 16:59:28 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1078847262.4067.7.camel@nidelv.trondhjem.org>
-References: <482A3FA0050D21419C269D13989C61130435DD1F@lavender-fe.eng.netapp.com>
-	 <20040309142200.GC14419@suse.de>
-	 <1078844671.4067.1.camel@nidelv.trondhjem.org>
-	 <20040309151054.GF14419@suse.de>
+Message-ID: <20040309155927.GL14419@suse.de>
+References: <482A3FA0050D21419C269D13989C61130435DD1F@lavender-fe.eng.netapp.com> <20040309142200.GC14419@suse.de> <1078844671.4067.1.camel@nidelv.trondhjem.org> <20040309151054.GF14419@suse.de> <1078847262.4067.7.camel@nidelv.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: Charles Lever <Charles.Lever@netapp.com>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-15
+Cc: Charles Lever <Charles.Lever@netapp.com>,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B0jcD-0003Yk-A5
-	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 07:57:57 -0800
-Received: from dh197.citi.umich.edu
-	([141.211.133.197] helo=nidelv.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	id 1B0jme-0006Rw-Oi
+	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 08:08:44 -0800
+Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.30)
-	id 1B0j5M-0002y0-Ex
-	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 07:24:00 -0800
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20040309151054.GF14419@suse.de>
+	id 1B0jFn-0006ad-U8
+	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 07:34:48 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1078847262.4067.7.camel@nidelv.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -35,18 +32,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 ty , 09/03/2004 klokka 10:10, skreiv Olaf Kirch:
-> What I was referring to was the ability to have several RPC programs on a
-> single svc_sock server side; e.g. NFS and NFSACL, or NLM and NSM. Pretty
-> much the way svc_register from the good ole sunrpc code works.
+On Tue, Mar 09, 2004 at 10:47:42AM -0500, Trond Myklebust wrote:
+> P=E5 ty , 09/03/2004 klokka 10:10, skreiv Olaf Kirch:
+> > What I was referring to was the ability to have several RPC programs =
+on a
+> > single svc_sock server side; e.g. NFS and NFSACL, or NLM and NSM. Pre=
+tty
+> > much the way svc_register from the good ole sunrpc code works.
+>=20
+> Oh, sorry...
+>=20
+> Hmm... Any reason why you couldn't put them all on port 2049 with this
+> patch? Would that be less efficient than having two sets of threads?
 
-Oh, sorry...
+No, you could put all of them on the same port. The problem is that
+you want lockd and nfsd to be two different processes, so you can
+shut down nfsd without disrupting lockd.
 
-Hmm... Any reason why you couldn't put them all on port 2049 with this
-patch? Would that be less efficient than having two sets of threads?
-
-Cheers,
-  Trond
+Olaf
+--=20
+Olaf Kirch     |  Stop wasting entropy - start using predictable
+okir@suse.de   |  tempfile names today!
+---------------+=20
 
 
 -------------------------------------------------------
