@@ -1,22 +1,22 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 10 of 34 - Use only the uid when deciding whether a setclientid is being done with the "same principal".
+Subject: [PATCH] kNFSd - 5 of 34 - NFSv4 locking state fix
 Date: Tue, 24 Feb 2004 10:49:41 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1AvPpV-0006IA-00@notabene>
+Message-ID: <E1AvPpV-0006HR-00@notabene>
 References: <20040224104820.23884.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AvPqH-0006tc-KX
-	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 15:50:29 -0800
+	id 1AvPqI-0006tl-DG
+	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 15:50:30 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
-	id 1AvPpw-0005bk-Op
-	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 15:50:08 -0800
+	id 1AvPpx-0005bv-JD
+	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 15:50:09 -0800
 Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
 	(for <akpm@osdl.org>) (for <nfs@lists.sourceforge.net>) By note With
-	Smtp ; Tue, 24 Feb 2004 10:49:42 +1100
+	Smtp ; Tue, 24 Feb 2004 10:49:41 +1100
 To: Andrew Morton <akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,28 +31,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-I would have assumed that we should also check for the same
-security (pseudo)flavor, but that doesn't seem to be how Solaris does it, and
-since the spec doesn't suggest including such information in the clientid, that
-would make it impossible to switch pseudoflavors.
+It's OK for the find_lockstateowner_str to fail; that just means we haven't
+seen the lockowner, and will compare the request range to all locks on the 
+file.
 
  ----------- Diffstat output ------------
- ./fs/nfsd/nfs4state.c |    3 +--
- 1 files changed, 1 insertion(+), 2 deletions(-)
+ ./fs/nfsd/nfs4state.c |    8 ++------
+ 1 files changed, 2 insertions(+), 6 deletions(-)
 
 diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2004-02-24 10:42:31.000000000 +1100
-+++ ./fs/nfsd/nfs4state.c	2004-02-24 10:42:32.000000000 +1100
-@@ -269,8 +269,7 @@ cmp_clid(clientid_t * cl1, clientid_t * 
- /* XXX what about NGROUP */
- static int
- cmp_creds(struct svc_cred *cr1, struct svc_cred *cr2){
--	return((cr1->cr_uid == cr2->cr_uid) &&
--	   	(cr1->cr_gid == cr2->cr_gid));
-+	return(cr1->cr_uid == cr2->cr_uid);
+--- ./fs/nfsd/nfs4state.c~current~	2004-02-24 10:42:30.000000000 +1100
++++ ./fs/nfsd/nfs4state.c	2004-02-24 10:42:31.000000000 +1100
+@@ -1993,13 +1993,9 @@ nfsd4_lockt(struct svc_rqst *rqstp, stru
+ 	strhashval = lock_ownerstr_hashval(inode, 
+ 			lockt->lt_clientid.cl_id, lockt->lt_owner);
  
- }
- 
+-	if (find_lockstateowner_str(strhashval, &lockt->lt_owner, 
++	find_lockstateowner_str(strhashval, &lockt->lt_owner, 
+ 					&lockt->lt_clientid, 
+-					&lockt->lt_stateowner)) {
+-		printk("NFSD: nsfd4_lockt: lookup_lockowner() failed!\n");
+-		goto out;
+-	}
+-
++					&lockt->lt_stateowner);
+ 	sop = lockt->lt_stateowner;
+ 	if (sop) {
+ 		file_lock.fl_owner = (fl_owner_t) sop;
 
 
 -------------------------------------------------------
