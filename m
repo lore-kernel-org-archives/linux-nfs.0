@@ -1,20 +1,23 @@
-From: Phy Prabab <phyprabab@yahoo.com>
-Subject: nfs performance of 2421 vs 2.6.7-rc2
-Date: Mon, 31 May 2004 18:35:06 -0700 (PDT)
+From: Eric Whiting <ewhiting@amis.com>
+Subject: Re: Re: [PATCH] resend: knfsd multiple UDP sockets
+Date: Tue, 01 Jun 2004 10:22:55 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040601013506.39615.qmail@web90009.mail.scd.yahoo.com>
+Message-ID: <40BCAD5F.4DE90B76@amis.com>
+References: <20040528042007.GA9014@sgi.com> <16566.51874.43089.537506@cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: Greg Banks <gnb@sgi.com>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BUyBN-0001sQ-A4
-	for nfs@lists.sourceforge.net; Mon, 31 May 2004 18:35:13 -0700
-Received: from web90009.mail.scd.yahoo.com ([66.218.94.67])
+	id 1BVCDx-0001sB-8c
+	for nfs@lists.sourceforge.net; Tue, 01 Jun 2004 09:34:49 -0700
+Received: from p01m169.mxlogic.net ([66.179.109.169])
 	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.30)
-	id 1BUyBL-00014w-IB
-	for nfs@lists.sourceforge.net; Mon, 31 May 2004 18:35:11 -0700
-To: nfs@lists.sourceforge.net
+	id 1BVCDw-0008Ry-PS
+	for nfs@lists.sourceforge.net; Tue, 01 Jun 2004 09:34:48 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -27,42 +30,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
+Neil Brown wrote:
+>
+> I have two concerns, that can possibly be allayed.
+> 
+> Firstly, the reply to any request is going to go out the socket that
+> the request came in on.  However some network configurations can have
+> requests arrive on one interface that need to be replied to on a
+> different interface(*).  
 
-I have been doing some testing of NFS performance with
-2.4.21 and 2.6.7-rc2 (2.6.5 and 2.6.6 as well).  I
-have noticed that 2.4.21 seems to be faster with the
-same hardware and mount options as noted by iozone
-(iozone -s 1g -r 1m -o).  As well, the amount of CPU
-power on the server side is higher for the test run
-under 2.6.7-rc2.  Is this known, or have I done
-something incorrect?
+Neil,
 
-2.4.21:
+Some misc data: It is my understanding that 'networkappliance data ontap' is
+wired up to send replies out the same interface the request came in on. This
+solves some problems of managing systems connected via multiple network paths. 
+I realize it might also create other problems..
 
-1048576    1024   46646   60697   814945   845351 
-844893   24716  845657  106998  845220    44423   
-60731  811409   841193
-
-2.6.7-rc2:
-1048576    1024   42944   48703   536023   546492 
-543524   23445  537662   83739  544263   188456  
-259651  538667   537420
-
-I have run the same test against NetApp filers and two
-different linux file server (2.4.22 and 2.6.7-rc2). 
-The client is a 2x 3.0GHz w/8G RAM, Ge (tg3).
-
-Thank you for your time.
-Phy
-
-
-	
-		
-__________________________________
-Do you Yahoo!?
-Friends.  Fun.  Try the all-new Yahoo! Messenger.
-http://messenger.yahoo.com/ 
+eric
 
 
 -------------------------------------------------------
