@@ -1,12 +1,14 @@
-From: =?iso-8859-1?Q?Peter_=C5strand?= <astrand@lysator.liu.se>
-Subject: Soft vs Hard mounts
-Date: Fri, 16 May 2003 09:43:59 +0200 (CEST)
+From: Greg Lindahl <lindahl@keyresearch.com>
+Subject: Re: Soft vs Hard mounts
+Date: Fri, 16 May 2003 00:49:09 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0305160902290.29488-100000@aristocat.lysator.liu.se>
+Message-ID: <20030516074909.GA11439@greglaptop.attbi.com>
+References: <Pine.LNX.4.44.0305160902290.29488-100000@aristocat.lysator.liu.se>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=iso-8859-1
+Content-Type: text/plain; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
 To: nfs@sourceforge.net
+In-Reply-To: <Pine.LNX.4.44.0305160902290.29488-100000@aristocat.lysator.liu.se>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -19,43 +21,36 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Fri, May 16, 2003 at 09:43:59AM +0200, Peter =C5strand wrote:
 
-> if using hardmounts, everybody sits and wait for the other server
-> to come back online... if and when it does, and if it comes up
-> at some other ip# or some other nfs ports, other pcs need to be
-> rebooted too
->         - i dont like waiting around or rebooting
+> Question: Why is this soft-vs-hard-mount debate so common in the Linux =
+NFS=20
+> world, but not in, for example, the Solaris community?=20
+>=20
+> My answer: Because Solaris has a better "umount -f" command. Linux user=
+s
+> want to use soft mounts to avoid rebooting in case of an unavailable
+> server. Solaris users can use "umount -f" instead.
 
-Question: Why is this soft-vs-hard-mount debate so common in the Linux NF=
-S=20
-world, but not in, for example, the Solaris community?=20
+That's part of it. The rest of the mystery is:
 
-My answer: Because Solaris has a better "umount -f" command. Linux users
-want to use soft mounts to avoid rebooting in case of an unavailable
-server. Solaris users can use "umount -f" instead.
+1) Linux's nfs client code is not reliable at allowing SIGINT
+to kill processes when disks mounted "hard,intr" go astray, and
 
-In case you don't know what Solaris umount -f does, here's the man page=20
-info:
+2) Linux's nfs client code is not sufficiently careful about not
+sucking unrelated processes into the black hole of a failed "hard"
+mount.
 
-     -f    Forcibly unmount a file system.
+I admit I've never done a systematic study of the Linux client for
+these issues, but when you run into soft-mounting-advocates, they
+generally talk about all 3 of these issues, not only umount.
 
-           Without this option, umount does not allow a file sys-
-           tem  to  be  unmounted if a file on the file system is
-           busy. Using this option can cause data loss  for  open
-           files; programs which access files after the file sys-
-           tem has been unmounted will get an error (EIO).
+On Solaris, it used to be the case that (2) required that you be
+careful about exactly where you mounted things; I don't know about
+now, but it was part of the lore of how to use the automounter + hard
+mounts and not get burned.
 
-umount -f is much better than soft mounts: Even though it can lead to dat=
-a=20
-loss/corruption, you have to invoke this command manually. Data=20
-loss/corruption won't occur behind your back, whenever a timeout occurs.=20
-
-It would be really nice with this kind of "umount -f" in Linux.=20
-
---=20
-/Peter =C5strand <astrand@lysator.liu.se>
-
-
+-- greg
 
 
 
