@@ -1,20 +1,32 @@
-From: Marc Schmitt <mschmitt@inf.ethz.ch>
-Subject: Linux Client -> Solaris Server
-Date: Wed, 02 Jun 2004 16:38:23 +0200
+From: Jeffrey Layton <jtlayton@poochiereds.net>
+Subject: Re: Poor NFS performance, kernel 2.6.6.
+Date: Wed, 02 Jun 2004 10:53:21 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <40BDE65F.1000009@inf.ethz.ch>
+Message-ID: <1086188000.7008.1.camel@tesla.mmt.bellhowell.com>
+References: <1086179633.3325.0.camel@tesla.mmt.bellhowell.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BVWpx-0008W7-Je
-	for nfs@lists.sourceforge.net; Wed, 02 Jun 2004 07:35:25 -0700
-Received: from tri-e2k.ethz.ch ([129.132.112.23])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1BVWpx-0007W4-6H
-	for nfs@lists.sourceforge.net; Wed, 02 Jun 2004 07:35:25 -0700
+	id 1BVX7L-0004mj-8C
+	for nfs@lists.sourceforge.net; Wed, 02 Jun 2004 07:53:23 -0700
+Received: from rdu26-93-067.nc.rr.com ([66.26.93.67] helo=salusa.poochiereds.net)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BVX7K-00059b-UF
+	for nfs@lists.sourceforge.net; Wed, 02 Jun 2004 07:53:23 -0700
+Received: from localhost (localhost [127.0.0.1])
+	by salusa.poochiereds.net (Postfix) with ESMTP id 65C52CAF0
+	for <nfs@lists.sourceforge.net>; Wed,  2 Jun 2004 10:53:13 -0400 (EDT)
+Received: from salusa.poochiereds.net ([127.0.0.1])
+	by localhost (salusa [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id 08856-07 for <nfs@lists.sourceforge.net>;
+	Wed, 2 Jun 2004 10:53:13 -0400 (EDT)
+Received: from localhost (salusa.poochiereds.net [192.168.1.2])
+	by salusa.poochiereds.net (Postfix) with ESMTP id 1B6637971
+	for <nfs@lists.sourceforge.net>; Wed,  2 Jun 2004 10:53:13 -0400 (EDT)
 To: nfs@lists.sourceforge.net
+In-Reply-To: <1086179633.3325.0.camel@tesla.mmt.bellhowell.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -27,30 +39,13 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi all,
-
-I'm looking for hints on how to improve the performance of Linux clients 
-(RHEL 3.0, 2.4.21-15.EL, 100Mb NIC) talking to a Solaris server (ES250, 
-SunOS 5.9 Generic_112233-11 sun4u sparc, 100Mb NIC). What I currently 
-get from my testing (dd if=/dev/zero of=zero.txt bs=2048 count=1000000) 
-is between 2 and 2.5 MB/s. I upped the rsize/wsize to 32768 (according 
-to http://nfs.sourceforge.net/nfs-howto/interop.html#SOLARIS) which did 
-not help, the result was actually worse than not specifying any mount 
-options at all. Running the dd test locally on the Sun returns a 
-throughput of 14MB/s (SW RAID 5 on A1000). Iperf gives a decent 85Mb/s 
-throughput between the server and a client, I think it's safe to say 
-that the network layer is ok. I did the test using -o 
-tcp,nfsvers=3,rsize=32768,wsize=32768, too, it made no difference at all.
-
-I hope to at least double the performance I currently measure. Does that 
-mean I have to get rid of the Sun...?
-
-Any pointers are welcome, thanks.
-
-Greetings,
-	Marc
-
-
+Ok, it looks like the problem here was that I already had the filesystem
+mounted on another directory as a NFSv2 filesystem. When I unmounted
+this filesystem, and remounted it as v3 only, I started getting
+performance roughly on par with the 2.4 kernels. Sorry for the false
+alarm!
+Cheers,
+-- Jeff
 
 
 
