@@ -1,25 +1,28 @@
-From: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
+From: trond.myklebust@fys.uio.no
 Subject: Re: [PATCH 2.6.3] Add write throttling to NFS client
-Date: Mon, 1 Mar 2004 19:18:14 +0100 (CET)
+Date: Mon, 1 Mar 2004 19:48:06 +0100 (CET)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0403011907010.10276-100000@kenzo.iwr.uni-heidelberg.de>
-References: <40437AE4.4030407@lehman.com>
+Message-ID: <35336.207.214.87.84.1078166886.squirrel@webmail.uio.no>
+References: <20040301081456.37082.qmail@web12823.mail.yahoo.com>
+    <34574.207.214.87.84.1078162727.squirrel@webmail.uio.no>
+    <40437AE4.4030407@lehman.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: trond.myklebust@fys.uio.no, Shantanu Goel <sgoel01@yahoo.com>,
-        Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>,
-        Charles Lever <Charles.Lever@netapp.com>, Olaf Kirch <okir@suse.de>,
-        Greg Banks <gnb@melbourne.sgi.com>, <nfs@lists.sourceforge.net>
+Content-Type: text/plain;charset=iso-8859-1
+Cc: "Shantanu Goel" <sgoel01@yahoo.com>,
+     "Bogdan Costescu" <bogdan.costescu@iwr.uni-heidelberg.de>,
+     "Charles Lever" <Charles.Lever@netapp.com>,
+     "Olaf Kirch" <okir@suse.de>,"Greg Banks" <gnb@melbourne.sgi.com>,
+     nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Axs4V-0003QP-10
-	for nfs@lists.sourceforge.net; Mon, 01 Mar 2004 10:23:19 -0800
-Received: from relay.uni-heidelberg.de ([129.206.100.212])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1Axs0D-00079j-R2
-	for nfs@lists.sourceforge.net; Mon, 01 Mar 2004 10:18:54 -0800
-To: Shantanu Goel <Shantanu.Goel@lehman.com>
+	id 1AxsXh-0002DS-GJ
+	for nfs@lists.sourceforge.net; Mon, 01 Mar 2004 10:53:29 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1AxsC3-0006Al-MS
+	for nfs@lists.sourceforge.net; Mon, 01 Mar 2004 10:31:07 -0800
+To: "Shantanu Goel" <Shantanu.Goel@lehman.com>
 In-Reply-To: <40437AE4.4030407@lehman.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,45 +36,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, 1 Mar 2004, Shantanu Goel wrote:
+På må , 01/03/2004 klokka 10:03, skreiv Shantanu Goel:
+> Not a matter of being difficult.  It won't  fix the underlying issue 
+that a single heavy writer will block other async writes for a looong 
+time.  Here's the scenario.  dd makes a huge bunch of nfs_strategy() 
+calls and fills up the async queue.  Another process comes along and 
+writes 128K then closes the file.  Before the close, it will call 
+nfs_strategy() which will queue async writes after all the ones from 
+dd.  So, effectively, how quickly dd completes will determine how 
+quickly this process can return from close.  What you need is a way to 
+tell the scheduler that the async writes from the latter process are not
 
-> It won't fix the underlying issue that a single heavy writer will
-> block other async writes for a looong time.
+> the same as the ones from dd.  Using the pid is one such approach, 
+though as you pointed out probably not the best one.  Another would be 
+the cookie approach.  Each rpc_message has a cookie field.  The NFS 
+layer sets the cookie to be the inode.  The scheduler implements the 
+multiple priority queues but at the same priority level, round-robins 
+between different cookies.  Does that clear it up?
 
-But how is the kernel to know which process is the "bad" one which 
-should be punished ? Maybe this process that writes now lots does so 
-because it's just about to finish (or dumping core :-)) so it's more 
-advantageous to give it a bit of priority because it won't bother 
-anymore afterwards. On the other hand, if it's just writting and 
-writting and not going away soon, it should be punished. So how can 
-the kernel make the difference between these 2 situations ?
+Not entirely.
 
-> Another process comes along and writes 128K then closes the file.  
-> Before the close, it will call nfs_strategy() which will queue async
-> writes after all the ones from dd.  So, effectively, how quickly dd
-> completes will determine how quickly this process can return from
-> close.
+Simple round robin is not going to play well with NFSv2 style write
+gathering on the server. Nor will it really work too efficiently with
+standard readahead.
+How about instead doing round-robin on blocks of, say, 16 requests per
+cookie (which is the current maximum readahead value)? That should allow
+the server some efficiency on block operations without sacrificing your
+fairness criterion.
 
-If the second process is writting to the same file, then I think that 
-this behaviour is actually wanted (of course, without locking, the 
-data will be messsed up...).
-If they are writting to different files, probably it makes sense to 
-make sure that both files advance a bit, so queueing based on inode 
-might also make sense.
+Note: to avoid having to revamp rpc_call_sync() to take a cookie all the
+time, you could have rpc_init_task() set the default cookie to be a
+pointer to the thread's task_struct. For the particular case of
+read/write ops, the NFS layer can modify that cookie to be a pointer to
+the inode.
 
-Queueing based on PID is probably bad also from another point of view: 
-a process can have more than one file open at the same time and can do 
-various operations on them. If it writes a lot to one file and then 
-wants to read a small piece from another file, should it have to wait 
-until the writes are done to perform the read ?
+Cheers,
+  Trond
 
--- 
-Bogdan Costescu
 
-IWR - Interdisziplinaeres Zentrum fuer Wissenschaftliches Rechnen
-Universitaet Heidelberg, INF 368, D-69120 Heidelberg, GERMANY
-Telephone: +49 6221 54 8869, Telefax: +49 6221 54 8868
-E-mail: Bogdan.Costescu@IWR.Uni-Heidelberg.De
 
 
 
