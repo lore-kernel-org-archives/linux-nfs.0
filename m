@@ -1,17 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 1 of 3 - Make sure nothing happens to a dead rpc/tcp socket
+Subject: [PATCH] kNFSd - 2 of 3 - Make sure nfsd replies from the address the request was sent to.
 Date: Tue, 19 Aug 2003 14:35:10 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19oyD8-0001H9-00@notabene>
+Message-ID: <E19oyD8-0001HE-00@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19oyDK-00063h-00
+	id 19oyDK-00063i-00
 	for <nfs@lists.sourceforge.net>; Mon, 18 Aug 2003 21:35:22 -0700
 Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
 	(for <torvalds@osdl.org>) (for <nfs@lists.sourceforge.net>) By note
-	With Smtp ; Tue, 19 Aug 2003 14:35:11 +1000
+	With Smtp ; Tue, 19 Aug 2003 14:35:12 +1000
 To: Linus Torvalds <torvalds@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -25,41 +25,75 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-
-Three more little patches for knfsd in 2.6.0-test3
-NeilBrown
-
-
 ### Comments for ChangeSet
 
-Just make sure that once SK_DEAD is set, nothing is attempted on the socket.
+This is important on multi-homes hosts.
 
  ----------- Diffstat output ------------
- ./net/sunrpc/svcsock.c |    5 +++++
- 1 files changed, 5 insertions(+)
+ ./include/linux/sunrpc/svc.h |    2 ++
+ ./net/sunrpc/svcsock.c       |   16 +++++++++++++---
+ 2 files changed, 15 insertions(+), 3 deletions(-)
+
+diff ./include/linux/sunrpc/svc.h~current~ ./include/linux/sunrpc/svc.h
+--- ./include/linux/sunrpc/svc.h~current~	2003-08-18 09:51:51.000000000 +1000
++++ ./include/linux/sunrpc/svc.h	2003-08-18 09:42:06.000000000 +1000
+@@ -131,6 +131,8 @@ struct svc_rqst {
+ 				rq_secure  : 1;	/* secure port */
+ 
+ 
++	__u32			rq_daddr;	/* dest addr of request - reply from here */
++
+ 	void *			rq_argp;	/* decoded arguments */
+ 	void *			rq_resp;	/* xdr'd results */
+ 
 
 diff ./net/sunrpc/svcsock.c~current~ ./net/sunrpc/svcsock.c
---- ./net/sunrpc/svcsock.c~current~	2003-08-18 09:41:01.000000000 +1000
-+++ ./net/sunrpc/svcsock.c	2003-08-18 09:41:01.000000000 +1000
-@@ -147,6 +147,8 @@ svc_sock_enqueue(struct svc_sock *svsk)
- 	if (!(svsk->sk_flags &
- 	      ( (1<<SK_CONN)|(1<<SK_DATA)|(1<<SK_CLOSE)|(1<<SK_DEFERRED)) ))
- 		return;
-+	if (test_bit(SK_DEAD, &svsk->sk_flags))
-+		return;
+--- ./net/sunrpc/svcsock.c~current~	2003-08-18 09:51:51.000000000 +1000
++++ ./net/sunrpc/svcsock.c	2003-08-18 09:53:17.000000000 +1000
+@@ -353,6 +353,9 @@ svc_sendto(struct svc_rqst *rqstp, struc
+ 	struct svc_sock	*svsk = rqstp->rq_sock;
+ 	struct socket	*sock = svsk->sk_sock;
+ 	int		slen;
++	struct { struct cmsghdr cmh;
++		struct in_pktinfo pki;
++	} cm;
+ 	int		len = 0;
+ 	int		result;
+ 	int		size;
+@@ -364,16 +367,22 @@ svc_sendto(struct svc_rqst *rqstp, struc
+ 	slen = xdr->len;
  
- 	spin_lock_bh(&serv->sv_lock);
+ 	if (rqstp->rq_prot == IPPROTO_UDP) {
+-		/* set the destination */
++		/* set the source and destination */
+ 		struct msghdr	msg;
+ 		msg.msg_name    = &rqstp->rq_addr;
+ 		msg.msg_namelen = sizeof(rqstp->rq_addr);
+ 		msg.msg_iov     = NULL;
+ 		msg.msg_iovlen  = 0;
+-		msg.msg_control = NULL;
+-		msg.msg_controllen = 0;
+ 		msg.msg_flags	= MSG_MORE;
  
-@@ -1029,6 +1031,9 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
- 	reclen = htonl(0x80000000|((xbufp->len ) - 4));
- 	memcpy(xbufp->head[0].iov_base, &reclen, 4);
- 
-+	if (test_bit(SK_DEAD, &rqstp->rq_sock->sk_flags))
-+		return -ENOTCONN;
++		msg.msg_control = &cm;
++		msg.msg_controllen = sizeof(cm);
++		cm.cmh.cmsg_len = sizeof(cm);
++		cm.cmh.cmsg_level = SOL_IP;
++		cm.cmh.cmsg_type = IP_PKTINFO;
++		cm.pki.ipi_ifindex = 0;
++		cm.pki.ipi_spec_dst.s_addr = rqstp->rq_daddr;
 +
- 	sent = svc_sendto(rqstp, &rqstp->rq_res);
- 	if (sent != xbufp->len) {
- 		printk(KERN_NOTICE "rpc-srv/tcp: %s: %s %d when sending %d bytes - shutting down socket\n",
+ 		if (sock_sendmsg(sock, &msg, 0) < 0)
+ 			goto out;
+ 	}
+@@ -594,6 +603,7 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 	rqstp->rq_addr.sin_family = AF_INET;
+ 	rqstp->rq_addr.sin_port = skb->h.uh->source;
+ 	rqstp->rq_addr.sin_addr.s_addr = skb->nh.iph->saddr;
++	rqstp->rq_daddr = skb->nh.iph->daddr;
+ 
+ 	svsk->sk_sk->sk_stamp = skb->stamp;
+ 
 
 
 -------------------------------------------------------
