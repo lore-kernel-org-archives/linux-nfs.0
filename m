@@ -1,29 +1,25 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Different NFSSVC_MAXBLKSIZE for udp and tcp clients?
-Date: Tue, 25 Nov 2003 21:00:33 -0500
+From: =?ISO-8859-1?Q?Ga=EBl_Roualland?= <gael.roualland@oleane.net>
+Subject: Re: NFS write speed and file permissions (2.6.0-test10 kernel)
+Date: Wed, 26 Nov 2003 04:19:26 +0100 (CET)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16324.2369.168928.378055@charged.uio.no>
-References: <3FC3929C.EFFE5CDF@moving-picture.com>
-	<3FC3FD0C.B2DD2183@melbourne.sgi.com>
-	<shsvfp7zz2y.fsf@charged.uio.no>
-	<3FC4071A.9214A0D3@melbourne.sgi.com>
-Reply-To: trond.myklebust@fys.uio.no
+Message-ID: <0311260406050.1383-100000@oleane.net>
+References: <200311260305.hAQ354Hi001376@hal.oleane.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: James Pearson <james-p@moving-picture.com>,
-    nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=ISO-8859-1
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AOoyx-0003d9-00
-	for <nfs@lists.sourceforge.net>; Tue, 25 Nov 2003 18:00:43 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AOoyw-0000wr-RC
-	for nfs@lists.sourceforge.net; Tue, 25 Nov 2003 18:00:43 -0800
-To: Greg Banks <gnb@melbourne.sgi.com>
-In-Reply-To: <3FC4071A.9214A0D3@melbourne.sgi.com>
+	id 1AOqDJ-0001Ll-00
+	for <nfs@lists.sourceforge.net>; Tue, 25 Nov 2003 19:19:37 -0800
+Received: from hal.oleane.net ([62.161.136.5])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.24)
+	id 1AOqDI-00020o-PT
+	for nfs@lists.sourceforge.net; Tue, 25 Nov 2003 19:19:36 -0800
+To: Stephen Beahm <stephenbeahm@adelphia.net>
+In-Reply-To: <200311260305.hAQ354Hi001376@hal.oleane.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -36,23 +32,55 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Greg Banks <gnb@melbourne.sgi.com> writes:
+Stephen Beahm a =E9crit :
+> I am seeing huge speed differences in NFS file writes based on file
+> permissions.
+>
+> create a test file:
+> dd if=3D/dev/zero of=3Dtestfile bs=3D4k count=3D65535
+>
+> chmod 664 testfile
+> time cp testfile /mnt/gwpub
+> real    0m36.818s
+> user    0m0.018s
+> sys     0m2.574s
+>
+> chmod 755 testfile
+> time cp testfile /mnt/gwpub
+> real    4m6.056s
+> user    0m0.054s
+> sys     0m5.835s
+>
+>
+> I can consistently reproduce this problem with a 2.6.0-test9 or 2.6.0-
+> test10 kernel on the client side. There does not seem to be any
+> problems here with a 2.4.22 kernel. Reading does not seem to be
+> affected, only writes. Neither export nor mount options make a
+> difference. If the test is performed as root, all is fast.
+>
+> I am using NFSv3 and nfs-utils-1.06.
+>
+> This is only an observation and not mean anything:
+> using a 2.4.22 client, open() does not pass any mode,
+> but a 2.6.0-testX client does this: open("/mnt/gwpub/testfile",
+> O_WRONLY|O_CREAT|O_LARGEFILE, 0100755)
 
-    >> Those are already on the roadmap, but haven't yet made it to
-    >> the top of the priority list...
+I'm experiencing the exact same problem with 2.6.0-test10 as NFS client
+and a FreeBSD server, in NFSv2 and NFSv3.
 
-     > Are there preliminary patches or analysis/random thoughts
-     > somewhere online?
+Looking at the network dumps, it looks like writes are being done
+synchronously when the file permissions is 755, just as if O_SYNC
+was set. Also, when open is called with perm 0755, the CREATE call is
+passed a mode of 0100755, but in its reply the server only aknowledges
+0755, while when open is called with 0644, CREATE is passed
+exactly that and the server agrees. I don't know if that matters,
+though...
 
-Most of the work should already have been done now that we've
-eliminated MAX_IOVEC from the RPC code (those tests in nfs_xdr.h are
-bogus and should be removed).
+Ga=EBl.
 
-The remaining job is to make the 'pagevec' fields in nfs_read_data and
-nfs_write_data support arbitrary size arrays.
+--=20
+Ga=EBl Roualland -+- gael.roualland@oleane.net
 
-Cheers,
-  Trond
 
 
 -------------------------------------------------------
