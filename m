@@ -1,20 +1,19 @@
-From: Ashutosh Rajekar <asr@softhome.net>
-Subject: Re: ALERT - GroupShield ticket number OA2317_1057450427_CVO-EXCHANGE
- _1 was generated
-Date: Sun, 6 Jul 2003 01:30:16 -0400 (EDT)
+From: "Harvey Person" <starrbuffoon@aol.com>
+Subject: Nfs,why wait?
+Date: Sun, 06 Jul 03 14:36:05 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.33.0307060127100.1200-100000@vangogh>
-References: <200307060209.h6629m1R017258@agora.fsl.cs.sunysb.edu>
+Message-ID: <j487$988$-ap0@0x0xzu.f.l.rrc>
+Reply-To: "Harvey Person" <starrbuffoon@aol.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Paul Smith <pausmith@nortelnetworks.com>,  <nfs@lists.sourceforge.net>
+Content-Type: multipart/alternative;
+	boundary="CF__.98F_.521DD7"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tomts24-srv.bellnexxia.net ([209.226.175.187])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19Z2AJ-0005FJ-00
-	for <nfs@lists.sourceforge.net>; Sat, 05 Jul 2003 22:34:23 -0700
-To: Erez Zadok <ezk@cs.sunysb.edu>
-In-Reply-To: <200307060209.h6629m1R017258@agora.fsl.cs.sunysb.edu>
+Received: from node-c-2fde.a2000.nl ([62.194.47.222])
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19Z6vz-0002Hi-00
+	for <nfs@lists.sourceforge.net>; Sun, 06 Jul 2003 03:39:57 -0700
+Received: from [177.39.147.85] by node-c-2fde.a2000.nl id <4790574-04800> for <nfs@lists.sourceforge.net>; Sun, 06 Jul 2003 14:36:05 +0100
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,39 +26,99 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I agree. IIRC, one cannot post to the FreeBSD mailing lists without 
-subscription. Enabling this list with the same feature should reduce the 
-spam and virus laden emails a lot.
 
--ASR
-http://www3.sympatico.ca/arajekar
-"...you might as well skip the Xmas celebration completely, and instead
-sit in front of your linux computer playing with the
-all-new-and-improved linux kernel version."
-(By Linus Torvalds)
+--CF__.98F_.521DD7
+Content-Type: text/html;
+Content-Transfer-Encoding: quoted-printable
 
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1=
+">
+<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR></HEAD>
+<BODY bgColor=3D#ffffff>Nfs 
+<DIV>&nbsp;</DIV>
+<META content=3D"MSHTML 5.00.2920.0" name=3DGENERATOR>
+<STYLE></STYLE>
 
-On Sat, 5 Jul 2003, Erez Zadok wrote:
->
-> In message <p5r854quqr.fsf@lemming.engeast.baynetworks.com>, "Paul Smith" writes:
-> > Might I suggest someone block this user
-> > (NAIUSCVO-EXCHANGE@roguewave.com)?  That's also quite trivial to do with
-> > Mailman, and seems the simplest solution for this particular problem.
-> 
-> Good suggestion, but this simple solution only pospones the inevitable.
-> Eventaully this list will get hit by more auto-bounces such as this
-> roguewave.com user.  And this doesn't help filtering the direct spammers and
-> all the viruses this list gets.
-> 
-> So the list maintainers can go on now and block this user, then they may do
-> the same for the next user, and the next one, and the next one.  It'll
-> become quickly obvious that the maintainers' lives will be much easier if
-> they block all non-subscribers; that will also block all of the bogus/fake
-> emails spammers use.
-> 
-> Erez.
-> 
+<DIV><FONT face=3DArial size=3D2><FONT face=3DArial size=3D2>
+<DIV><FONT face=3DArial>According to the Wall Street Journal, home interes=
+t rates 
+are currently at </FONT></DIV>
+<DIV><FONT face=3DArial>a&nbsp;42 year low but&nbsp;have already started t=
+o head 
+back up.</FONT><FONT face=3DArial>&nbsp;Perhaps this would </FONT></DIV>
+<DIV><FONT face=3DArial>be a good time to pull some equity cash out </FONT=
+><FONT 
+face=3DArial>of your home or just take </FONT></DIV>
+<DIV><FONT face=3DArial>advantage, while you can,&nbsp;of these lower rate=
+s to 
+substantially </FONT></DIV>
+<DIV><FONT face=3DArial>reduce your monthly payments.</FONT></DIV>
+<DIV>&nbsp;</DIV>
+<DIV><FONT face=3DArial>It's quick and simple to see what's available and =
+then 
+decide if this makes</FONT></DIV>
+<DIV><FONT face=3DArial>any sense for you. Of course there is not a charge=
+ or any 
+obligation for taking</FONT></DIV>
+<DIV><FONT face=3DArial>advantage of this online insta-quote service. 
+</FONT></DIV>
+<DIV>&nbsp;</DIV>
+<DIV>Harvey Person </DIV>
+<DIV>&nbsp;</DIV>
+<DIV>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nb=
+sp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+<FONT size=3D3>&nbsp;Time may be running out..............</FONT></DIV>
+<DIV>&nbsp;</DIV>
+<DIV>
+<DIV align=3Dleft><FONT 
+face=3DArial>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&=
+nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+&nbsp;&nbsp;&nbsp;<FONT color=3D#008000 size=3D3> </FONT></FONT><A 
+href=3D"http://mortcheap.com/4/index.asp?RefID=3D500259"><FONT face=3DAria=
+l 
+color=3D#008000 size=3D3>Start here for a fast quote and </FONT></A></DIV>=
 
+<DIV align=3Dleft><FONT face=3DArial color=3D#008000 
+size=3D3>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp=
+;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =
+
+&nbsp;</FONT><A href=3D"http://mortcheap.com/4/index.asp?RefID=3D500259"><=
+FONT 
+face=3DArial color=3D#008000 size=3D3>monthly savings calculation</FONT></=
+A></DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft><FONT color=3D#008000></FONT><FONT 
+face=3DArial></FONT>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; There may b=
+e no 
+other way to so quickly and easily </DIV></DIV>
+<DIV 
+align=3Dleft><STRONG>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp=
+;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+&nbsp;&nbsp;&nbsp;&nbsp; </STRONG>slash your monthly expenses</DIV>
+<DIV align=3Dleft><FONT size=3D1><STRONG>What could you do with an extra $=
+200- $300 
+a month? ($2500-$3500 a year)</STRONG></FONT></DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV>&nbsp;</DIV>
+<DIV><FONT face=3DArial><FONT size=3D1>please </FONT><A 
+href=3D"http://mortcheap.com/auto/index.htm"><FONT size=3D1>Go here to sto=
+p all 
+future offers</FONT></A><FONT size=3D1>.</FONT></FONT></DIV>
+<DIV>&nbsp;</DIV></FONT></DIV><FONT face=3DArial color=3D#ffffff size=3D1>=
+patron 
+waddle sequent stagecoach backgammon alberta =
+mould 
+platypus seventeen prosaic cataclysm corn =
+redundant 
+brine bodice relish garlic allis </FONT></=
+FONT>
+<DIV></DIV></BODY></HTML>
+
+--CF__.98F_.521DD7--
 
 
 
