@@ -1,13 +1,17 @@
-From: "Martha Fields" <status8@aol.com>
-Subject: Netsaintplug-devel, please..........bellmen
-Date: Mon, 19 May 03 06:31:06 GMT
+From: "Emily" <Services@ywzc.net>
+Subject: Boost Your Marketing
+Date: Mon, 19 May 2003 09:06:49 +0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <s-uatti-y810l4g@1fo.cuv>
+Message-ID: <E19HZAa-0004cn-00@sc8-sf-list1.sourceforge.net>
+Reply-To: "Emily" <Order@marketingboosting.com>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="6_8EEEED_3_08._74.BBB"
+Content-Type: text/plain; charset="ISO-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: <netsaintplug-devel@lists.sourceforge.net>, <nfs@lists.sourceforge.net>, <nms-cgi-support@lists.sourceforge.net>, <ofset-members@lists.sourceforge.net>
+Received: from [218.86.48.172] (helo=ywzc.net)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19HZAa-0004cn-00
+	for <nfs@lists.sourceforge.net>; Sun, 18 May 2003 18:10:28 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -20,53 +24,50 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
 
---6_8EEEED_3_08._74.BBB
-Content-Type: text/plain;
-Content-Transfer-Encoding: quoted-printable
+Email Marketing is one of the most effective and inexpensive ways to 
+promote your products and services.
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1=
-">
-<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV><FONT face=3D"Comic Sans MS" size=3D4>I am one of many Russian girls =
-that would 
-like to marry a</FONT></DIV>
-<DIV><FONT face=3D"Comic Sans MS" size=3D4>nice American man and come live=
- in the 
-U.S.A. as a citizen</FONT></DIV>
-<DIV><FONT face=3D"Comic Sans MS" size=3D4>and not stay in Russia more.</F=
-ONT></DIV>
-<DIV><FONT face=3D"Comic Sans MS" size=3D4>Tanka G.</FONT></DIV>
-<DIV><FONT face=3D"Comic Sans MS" size=3D4>&nbsp;&nbsp;&nbsp;<FONT face=3D=
-Arial 
-size=3D3> (takes a couple seconds for my picture to load)</FONT></FONT></D=
-IV>
-<DIV>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<IMG style=3D"WIDTH: 320px; HEIGHT: 316=
-px" 
-height=3D316 src=3D"http://www.searchamazing.com/images/photos/phpbqktqv.j=
-pg" 
-width=3D320></A><BR><BR></DIV>
-<DIV><A href=3D"http://www.searchamazing.com/?oc=3D5227"><FONT 
-face=3D"Comic Sans MS">Check us out here</FONT></A></DIV>
-<DIV>&nbsp;</DIV>
-<DIV>&nbsp;</DIV>
-<DIV><FONT face=3D"Comic Sans MS">Or let us know and we won't write you 
-again:<BR><BR></FONT><A 
-href=3D"http://www.searchamazing.com/x/?oc=3D5227"><FONT 
-face=3D"Comic Sans MS">Don't write to me</FONT></A></DIV>
-<DIV>&nbsp;</DIV><FONT color=3D#ffffff size=3D1>vigorous implicit aftermat=
-h aegis 
-centigrade last molly prison yellowknife cone afforestation brand 
-seismograph artie communicant avocation</FONT> </BODY></HTML>
+We offer a complete Email Marketing solution with quality service and the 
+lowest prices. The result is that you will enjoy more success.
 
---6_8EEEED_3_08._74.BBB--
+1. Targeted Email Addresses 
 
+We can supply targeted email addresses according to your requirements,
+which are compiled only on your order, such as region / country / field / 
+occupation / Domain Name etc. We will customize your customer email
+addresses.
+
+* We have millions of email addresses in a wide variety of categories.
+
+2. Targeted Mailing  
+
+If you are worried about any complications or consequences with sending 
+out targeted emails, or want to avoid the work of sending out targeted 
+emails. We will do it for you! We will send your email message to your 
+targeted customers.
+
+* We can Bullet Proof your Web Site.
+
+We also offer a wide variety of email marketing software. For more details, 
+you can refer to our web site: http://www.biz-aiding.com
+
+Our services will help you get more business opportunities.
+
+
+Regards!
+
+Mrs Emily
+Marketing Services
+www.biz-aiding.com
+
+Targeted Marketing, at Great Fee.
+
+***************************************************************************
+Receiving this email because you registered to receive special 
+offers from one of our partners. If you would prefer not to receive
+future email, Click here: www.unsubscribe-mail.com
+***************************************************************************
 
 
 -------------------------------------------------------
