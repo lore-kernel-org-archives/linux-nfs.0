@@ -1,19 +1,12 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: (no subject)
-Date: 27 Jan 2003 16:17:08 +0100
+From: Simon Kirby <sim@netnation.com>
+Subject: [knfsd] Unable to read in knfsd-exported on ext3 chattr +a'd directories
+Date: Mon, 27 Jan 2003 13:57:18 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsn0lmwrkb.fsf@charged.uio.no>
-References: <OF74631263.0B676C00-ONC1256CBB.00447DC5-C1256CBB.004ECC4B@nbg.temic.de>
+Message-ID: <20030127215718.GA3241@netnation.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mons.uio.no ([129.240.130.14])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18dB0k-0001n9-00
-	for <nfs@lists.sourceforge.net>; Mon, 27 Jan 2003 07:17:22 -0800
-To: Emanuel.Quass@temic.com
-In-Reply-To: <OF74631263.0B676C00-ONC1256CBB.00447DC5-C1256CBB.004ECC4B@nbg.temic.de>
+To: NFS@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,19 +19,32 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " =3D=3D Emanuel Quass <Emanuel.Quass@temic.com> writes:
+'Lo,
 
-     > (DF) Can anyone explain to me why the Client is looking for a
-     > file "df" and what does "Unknown/1" mean?  Thanks for any help
-     > or hints (If you need additional information please ask) =A0 =A0 =A0
-     > =A0 Emanuel
+I'm unable to read an NFS-mounted directory which is exported from a box
+running 2.4.20 and where the directory is chattr'd +a (append only) on an
+ext3 filesystem.  Is knfsd attempting to create temporary files in the
+directory or is there some other reason why this is failing?
 
-Trivial reply: someone is running 'df' and PATH references some
-directory on the NFS server perhaps? 'Unknown' means just what is
-says: 'df' was not found in the directories referenced by the PATH.
+strace snippet of "ls -al ." on client:
 
-Cheers,
-  Trond
+open(".", O_RDONLY|O_NONBLOCK|O_LARGEFILE|O_DIRECTORY) = 3
+fstat64(3, {st_mode=S_IFDIR|S_ISVTX|0733, st_size=98304, ...}) = 0
+fcntl64(3, F_SETFD, FD_CLOEXEC)         = 0
+brk(0x805a000)                          = 0x805a000
+getdents64(0x3, 0x8056808, 0x2000, 0)   = -1 EPERM (Operation not
+permitted)
+getdents(3, 0xbfffe294, 5960)           = -1 EPERM (Operation not
+permitted)
+close(3)                                = 0
+
+Thanks,
+
+Simon-
+
+[        Simon Kirby        ][        Network Operations        ]
+[     sim@netnation.com     ][     NetNation Communications     ]
+[  Opinions expressed are not necessarily those of my employer. ]
 
 
 -------------------------------------------------------
