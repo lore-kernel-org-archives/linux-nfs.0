@@ -1,22 +1,17 @@
-From: Dan Yocum <yocum@fnal.gov>
+From: Ion Badulescu <ionut@cs.columbia.edu>
 Subject: Re: Null characters in files on NFS mounted volume....
-Date: Tue, 14 May 2002 09:41:39 -0500
+Date: Tue, 14 May 2002 13:34:49 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3CE12223.65042278@fnal.gov>
-References: <3CDFCE9F.2BE050D5@fnal.gov>
- <15584.8750.59660.285982@notabene.cse.unsw.edu.au>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs list <nfs@lists.sourceforge.net>
+Message-ID: <200205141734.g4EHYnT32724@buggy.badula.org>
+References: <3CE12223.65042278@fnal.gov>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from heffalump.fnal.gov ([131.225.9.20] helo=fnal.gov)
+Received: from bgp401130bgs.jersyc01.nj.comcast.net ([68.36.96.125] helo=buggy.badula.org)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 177dUi-0007oS-00
-	for <nfs@lists.sourceforge.net>; Tue, 14 May 2002 07:41:40 -0700
-Received: from fnal.gov ([131.225.7.82]) by smtp.fnal.gov (PMDF V6.0-24 #37519)
- with ESMTP id <0GW3003IIVHFEL@smtp.fnal.gov> for nfs@lists.sourceforge.net;
- Tue, 14 May 2002 09:41:39 -0500 (CDT)
-To: Neil Brown <neilb@cse.unsw.edu.au>
+	id 177gCN-0006QO-00
+	for <nfs@lists.sourceforge.net>; Tue, 14 May 2002 10:34:55 -0700
+To: Dan Yocum <yocum@fnal.gov>
+In-Reply-To: <3CE12223.65042278@fnal.gov>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,55 +24,44 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Neil Brown wrote:
+On Tue, 14 May 2002 09:41:39 -0500, Dan Yocum <yocum@fnal.gov> wrote:
+>> > This is an intermitent problem:  When attempting to read a file (any file)
+>> > on an NFS mounted volume, there appear to be "holes" in the file filled with
+>> > ASCII NULL characters.  Reading the file on the local machines shows no such
+>> > holes, and other NFS clients don't see the holes, either.  A simple
+>> > umount/remount solves the problem.
+>> 
+> Neil Brown wrote:
+>> You wouldn't be using 'soft' mounts would you?
 > 
-> On Monday May 13, yocum@fnal.gov wrote:
-> > Hi all,
-> >
-> > I've got a "New and Exciting" <tm> bug using 2.4.18 with Trond's client
-> > patches (sans the rpc_tweaks dif), but I'm not sure it's a client side
-> > problem.
-> >
-> > This is an intermitent problem:  When attempting to read a file (any file)
-> > on an NFS mounted volume, there appear to be "holes" in the file filled with
-> > ASCII NULL characters.  Reading the file on the local machines shows no such
-> > holes, and other NFS clients don't see the holes, either.  A simple
-> > umount/remount solves the problem.
+> yup, automounted with these options:  
 > 
-> I remembers long ago some referred to NFS as
->    Nulls Frequently Substituted
-> because they were experiencing exactly this sort of thing, and it
-> wasn't on Linux at all.
+> -rw,grpid,soft,intr,quota,nodev,nosuid,timeo=10,retrans=3
 
-Ha!  :-)
+In that case let me ask you this: is your application checking the return
+code of the read()? or are you using mmap() instead of read()?
 
-I did find a similar occurence while googling
-(http://www.geocrawler.com/archives/3/4/1998/11/0/59164/), reported back in
-'98 on LinuxPPC, that produced similar results, but since this happened 3
-times on the same day to 3 different machines, I thought I'd report it.
+If read() returns zero-filled buffers without signalling an errors, it's
+a problem in the NFS client. That is, assumming it's not some bad interaction
+between XFS and the NFS server -- so try to clear up that possibility
+by mounting with the hard option.
 
+If you're using mmap(), then I don't even know how the system should tell
+you about the problem... I suppose it would be sending a SIGSEGV or SIGBUS
+signal, since it's ultimately a failing page fault, but I haven't tested it.
 
-> 
-> You wouldn't be using 'soft' mounts would you?
+> I suppose they could be hard....  I'll think about that.
 
+Yes, they _should_ be hard if you care about your data integrity.
 
-yup, automounted with these options:  
+But that shouldn't stop us from fixing bugs in the 'soft' model, if they
+exist... which is why I'm asking you all these details. :-)
 
--rw,grpid,soft,intr,quota,nodev,nosuid,timeo=10,retrans=3
-
-
-I suppose they could be hard....  I'll think about that.
-
-Cheers,
-Dan
-
-
+Ion
 
 -- 
-Dan Yocum
-Sloan Digital Sky Survey, Fermilab  630.840.6509
-yocum@fnal.gov, http://www.sdss.org
-SDSS.  Mapping the Universe.
+  It is better to keep your mouth shut and be thought a fool,
+            than to open it and remove all doubt.
 
 _______________________________________________________________
 
