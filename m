@@ -1,24 +1,25 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: Proposal: Starting statd on demand
-Date: Tue, 13 Apr 2004 10:59:23 +0200
+From: Vincent ROQUETA <vincent.roqueta@ext.bull.net>
+Subject: CITI page up to date?
+Date: Tue, 13 Apr 2004 13:19:19 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040413085923.GD15896@suse.de>
-References: <20040409180352.GH2767@perlsupport.com>
+Message-ID: <200404131319.19518.vincent.roqueta@ext.bull.net>
+Reply-To: vincent.roqueta@ext.bull.net
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+  charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BDJmm-0003Hv-Kk
-	for nfs@lists.sourceforge.net; Tue, 13 Apr 2004 02:00:52 -0700
-Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.30)
-	id 1BDJmm-0004eM-68
-	for nfs@lists.sourceforge.net; Tue, 13 Apr 2004 02:00:52 -0700
-To: Chip Salzenberg <chip@pobox.com>
-In-Reply-To: <20040409180352.GH2767@perlsupport.com>
+	id 1BDMtm-00015Y-Vf
+	for nfs@lists.sourceforge.net; Tue, 13 Apr 2004 05:20:18 -0700
+Received: from ecbull20.frec.bull.fr ([129.183.4.3])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BDMtk-0008DE-GH
+	for nfs@lists.sourceforge.net; Tue, 13 Apr 2004 05:20:18 -0700
+Received: from roquetav (roquetav.frec.bull.fr [129.183.101.52])
+	by ecbull20.frec.bull.fr (8.9.2/8.9.1) with ESMTP id NAA17862
+	for <nfs@lists.sourceforge.net>; Tue, 13 Apr 2004 13:19:48 +0200
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,27 +32,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, Apr 09, 2004 at 02:03:52PM -0400, Chip Salzenberg wrote:
-> It's a well-known security principle that services should not be running
-> when they are not needed.
-> 
-> I would like to make statd follow that principle.
-> 
-> Does anyone have a suggestion on how?  I don't want to reinvent an
-> already-proposed wheel.
+Hello,
 
-You may want to try my kernel statd patch. It implements a minimal
-statd that just supports NULL and SM_NOTIFY in kernel, as an additional
-RPC program registered on the same port as lockd.
+        I experiment some problem with mount using the NFSv4 CITI proposed 
+configuration:
+linux 2.6.5-rc2 + linux-2.6.5-rc2-CITI_NFS4_ALL.dif
+nfs-utils-1.0.6.tar.gz + nfs-utils-CITI_NFS4_ALL.dif
+util-linux-2.11z.tar.bz2 + util-linux-2.11z-CITI_NFS4_ALL.patch
 
-Note that you still need to have some user land support for statd
-which sends out the SM_NOTIFY calls on reboot.
+Here is the problem :
 
-Olaf
--- 
-Olaf Kirch     |  The Hardware Gods hate me.
-okir@suse.de   |
----------------+ 
+Client :
+mount: bad system type, bad option, bad super bloc on 172.16.109.40:/,
+      or too many filesystems mounted
+
+logs (without idmapd):
+Apr 13 09:11:53 nfs2 kernel: decode_getfattr: xdr error 5!
+Apr 13 09:11:53 nfs2 kernel: nfs_get_root: getattr error = 5
+Apr 13 09:11:53 nfs2 kernel: nfs_read_super: get root inode failed
+
+logs (with idmapd)
+Apr 13 10:31:01 nfs2 kernel: decode_getfattr: xdr error 10008!
+Apr 13 10:31:01 nfs2 kernel: nfs4_map_errors could not handle NFSv4 error 
+10008
+Apr 13 10:31:01 nfs2 kernel: nfs_get_root: getattr error = 5
+Apr 13 10:31:01 nfs2 kernel: nfs_read_super: get root inode failed
+
+Maybe the CITI page (http://www.citi.umich.edu/projects/nfsv4/linux/) is not 
+updated?
+
 
 
 -------------------------------------------------------
