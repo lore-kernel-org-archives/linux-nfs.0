@@ -1,77 +1,61 @@
-From: Chuck Lever <cel@citi.umich.edu>
-Subject: [BUG RPT] Cthon '02 lock test fails on 2.5.38 with TCP only
-Date: Fri, 27 Sep 2002 11:36:44 -0400 (EDT)
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0209271127530.1793-100000@dexter.citi.umich.edu>
+From: Gcc k6 testing account <caligula@cam029208.student.utwente.nl>
+Subject: Re: 2.5.32 bootfailure for nfsroot
+Date: Fri, 27 Sep 2002 17:43:02 +0200 (CEST)
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <Pine.LNX.4.44.0209271729230.26871-100000@cam029208.student.utwente.nl>
+References: <200209271239.g8RCdIp09188@Port.imtp.ilyichevsk.odessa.ua>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Linux NFS List <nfs@lists.sourceforge.net>
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from dexter.citi.umich.edu ([141.211.133.33])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17uxAg-0002wo-00
-	for <nfs@lists.sourceforge.net>; Fri, 27 Sep 2002 08:36:50 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
+Cc: linux-kernel@vger.kernel.org, <nfs@lists.sourceforge.net>
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
+To: Denis Vlasenko <vda@port.imtp.ilyichevsk.odessa.ua>
+In-Reply-To: <200209271239.g8RCdIp09188@Port.imtp.ilyichevsk.odessa.ua>
+List-ID: <nfs.lists.sourceforge.net>
 
-hi trond-
+On Fri, 27 Sep 2002, Denis Vlasenko wrote:
 
-we already know locking is not working right in 2.5... this is FYI.
+> > > The subject says it all.
+> > > 2.5.32 doesn't boot when using nfsroot.
+> > > same systems running fine with 2.4.19/2.5.31
+> > >
+> > > SYSTEMS:
+> > >    athlon with/without preempt. (flatbak)
+> > >    i586 with preempt.           (cam029205)
+> > >
+> > > The relevant configs/dmesg/lspci are on
+> > > cam029208.student.utwente.nl/~caligula.
+> > >
+> > > SYMPTOMS:
+> > > I'm using loadlin to load the kernels. I see the kernel loading,unzipping
+> > > and then...black screen followed by reboot.
+> >
+> > Small update.
+> > Still no joy with 2.5.33. Same results,same symptoms :(
+> 
+> Why do you think it is nfsroot related?
+> Does it boot off local filesystem?
+> --
+> vda
+> 
 
-connectathon lock test #1 fails on 2.5.38 against both a Solaris 2.9 NFS
-server and a NetApp filer when mounting with TCP.  UDP mount finishes all
-tests with only a single warning.  problem not exhibited with 2.4.18-10.  
-problem does not occur if "nolock" mount option is specified during test.
 
-console output:
+Well, it was a guess. And a very wrong one too,it appeard later on.
 
- ...
+After I posted the message and got no reaction,I tried some different 
+kernel configs,and finally a very lean one.  No preempt,i386 only,no 
+mtrr,no ide,no nfsroot. The idea was let the kernel boot,and then 
+let it complain  it can't find a rootsystem. Even that wouldn't work.
+Same symptoms. Loadlin unzapping kernel and than whush...black screen 
+followed by reboot.
 
-Starting LOCKING tests: test directory /mnt/bay/dexter.test (arg: -t)
+A very lean kernel >2.5.32 won't boot with loadlin on my system.
+So no relation to nfsroot (my mistake).
 
-Testing native post-LFS locking
+So my GUESS is,it has something to do with the interaction between loadlin 
+and the kernel.
 
-Creating parent/child synchronization pipes.
-
-Test #1 - Test regions of an unlocked file.
-	Parent: 1.1  - F_TEST  [       0,       1] FAILED!
-	Parent: **** Expected success, returned errno=5...
-	Parent: **** Probably implementation error.
-
-** PARENT pass 1 results: 0/0 pass, 0/0 warn, 1/1 fail (pass/total).
-
-**  CHILD pass 1 results: 0/0 pass, 0/0 warn, 0/0 fail (pass/total).
-lock tests failed
-leaving /mnt/bay mounted
-[cel@dexter cthon02]$ mount
-
- ...
-
-bay:/export/cel on /mnt/bay type nfs 
-(rw,hard,intr,tcp,lock,rsize=32768,wsize=32768,addr=141.211.133.78)
-[cel@dexter cthon02]$
-
--- 
-
-corporate:	<cel at netapp dot com>
-personal:	<chucklever at bigfoot dot com>
+Greetz Mu
 
 
 
--------------------------------------------------------
-This sf.net email is sponsored by:ThinkGeek
-Welcome to geek heaven.
-http://thinkgeek.com/sf
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+ 
