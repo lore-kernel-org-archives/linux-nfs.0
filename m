@@ -1,23 +1,25 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS changement between 2.6.9 and 2.6.10?
-Date: Wed, 26 Jan 2005 11:43:34 -0800
-Message-ID: <1106768614.15132.27.camel@lade.trondhjem.org>
-References: <41F77473.70501@zaide.org>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH] add MODULE_DESCRIPTION to nfs module, update NFS references in MAINTAINERS
+Date: Wed, 26 Jan 2005 19:44:07 +0000
+Message-ID: <20050126194407.GA14830@infradead.org>
+References: <1106692805.4420.34.camel@w-bwa3.beaverton.ibm.com> <20050125230829.GA30641@infradead.org> <1106698790.4420.64.camel@w-bwa3.beaverton.ibm.com> <20050126080547.GA6067@infradead.org> <1106758580.4413.20.camel@w-bwa3.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	linux-nfs <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ctt55-00077X-6u
-	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 11:43:59 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 1Ctt5O-00078D-Av
+	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 11:44:18 -0800
+Received: from pentafluge.infradead.org ([213.146.154.40])
 	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1Ctt53-0006q1-G7
-	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 11:43:59 -0800
-To: "Damien \"Zaide\"" <list@zaide.org>
-In-Reply-To: <41F77473.70501@zaide.org>
+	id 1Ctt5M-0006sm-S7
+	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 11:44:18 -0800
+To: Bruce Allan <bwa@us.ibm.com>
+In-Reply-To: <1106758580.4413.20.camel@w-bwa3.beaverton.ibm.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,27 +33,13 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-on den 26.01.2005 Klokka 11:44 (+0100) skreiv Damien "Zaide":
-> hi,
-> I have a nfsV3 server running linux 2.6.9, all is good when I "ls -alR" 
-> my nfs exported directory on my client after I chroot() in this 
-> directory and ls -alR too that well.
-> But when i update my server to linux 2.6.10 and "ls -alR" my nfs 
-> directory is allways good but when I chroot() inside, my chroot command 
-> is locked and I can't ls my nfs directory.
-> I have launch a sniffer and the packet seams to be send.
-> Do you have any informations about this? a changement beetwen 2.6.9 and 
-> 2.6.10? a patch? a bug?
+On Wed, Jan 26, 2005 at 08:56:20AM -0800, Bruce Allan wrote:
+> Yes, MAINTAINERS is the best place for that info, but there are many
+> Linux production systems out there that do not have the kernel source
+> installed.  Where on these machines is one supposed to get that kind of
+> information?
 
-I don't see how an NFS change could do this. The VFS is the part of the
-kernel that handles the actual details of chroot. NFS neither knows nor
-cares.
-
-Cheers,
-  Trond
-
--- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
+prod your favourite distribution vendor to put MAINTAINERS into /usr/share/doc
 
 
 
