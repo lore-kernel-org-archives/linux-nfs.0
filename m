@@ -1,15 +1,31 @@
-From: Mark Cooke <mpc@star.sr.bham.ac.uk>
-Subject: Re: Mailbox corruption on The NFS server
-Date: Wed, 03 Dec 2003 12:36:00 +0000
+From: "Shantanu Goel" <Shantanu.Goel@lehman.com>
+Subject: [NFS PATCH] 2.6.0-test10 Invalidate cached inode attributes
+ after rename
+Date: Wed, 26 Nov 2003 14:41:45 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1070454960.4793.28.camel@pc24.sr.bham.ac.uk>
-References: <Pine.GSO.4.44.0312031704460.20659-100000@bhairav.ee.iitb.ac.in>
+Message-ID: <3FC501F9.1050306@lehman.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: NFS@lists.sourceforge.net
+Content-Type: text/plain;
+ charset=iso-8859-1;
+ format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: Shivaji Navale <shivaji@ee.iitb.ac.in>
-In-Reply-To: <Pine.GSO.4.44.0312031704460.20659-100000@bhairav.ee.iitb.ac.in>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 1AP5b3-0000MB-00
+	for <nfs@lists.sourceforge.net>; Wed, 26 Nov 2003 11:45:09 -0800
+Received: from mail-red.bigfish.com ([216.148.222.61] helo=mail4-red-R.bigfish.com)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.24)
+	id 1AP5b3-0004k1-Ja
+	for nfs@lists.sourceforge.net; Wed, 26 Nov 2003 11:45:09 -0800
+Received: from mail4-red.bigfish.com (localhost.localdomain [127.0.0.1])
+	by mail4-red-R.bigfish.com (Postfix) with ESMTP id B0F2C13F36A
+	for <nfs@lists.sourceforge.net>; Wed, 26 Nov 2003 19:45:03 +0000 (UCT)
+Received: from extrelay4.lehman.com (unknown [192.147.57.134])
+	by mail4-red.bigfish.com (Postfix) with ESMTP id 68F9B13F471
+	for <nfs@lists.sourceforge.net>; Wed, 26 Nov 2003 19:41:53 +0000 (UCT)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -22,119 +38,59 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+Hi Trond et al,
 
-Shouldn't need to change the NFS server as maildir was specifically
-designed to operate with NFS and lockfree schemes.
+The following one line patch invalidates the attributes of the 
+underlying inode when a file is renamed.  Some filesystems update ctime 
+upon rename().  One such filesystem is ext3, and a comment in the 
+relevant code there indicates this is true with other Unix filesystems 
+as well.
+The following problem was observed on Fedora Core 1 running a stock 
+kernel.org 2.6.0-test10.
+The server is running Solaris 2.8 but I have verified the same issue 
+exists with a server running Linix 2.4.22.  These operations a done via 
+a Perl script.
 
-Useful links:
+1. Check out a CVS repository into an NFS mounted directory.
+2. Move files from CVS working directory into another directory in the 
+same filesystem.
+3. Tar up the resultant directory.
+4. Tar prints lots of "file changed after we read it" messages.
 
-http://cr.yp.to/proto/maildir.html          (Info on maildir)
-http://www.firstpr.com.au/web-mail/mb2md/   (Convert mbox to mdir)
+Tar obtains ctime via stat() before reading the file and compares it to 
+the ctime obtained via fstat() after having read the file.  The two 
+differ because the intervening open() forces an attribute refresh due to 
+CTO consistency at which time ctime is updated.  Forcing a cache 
+invalidation during rename() eliminates this particular scenario.
 
-Cheers,
+Thanks,
+Shantanu
 
-Mark
+--- 2.6.0-test10/fs/nfs/dir.c.~1~    2003-10-17 17:43:11.000000000 -0400
++++ 2.6.0-test10/fs/nfs/dir.c    2003-11-26 12:42:27.000000000 -0500
+@@ -1257,6 +1257,7 @@
+ 
+     nfs_zap_caches(new_dir);
+     nfs_zap_caches(old_dir);
++    NFS_CACHEINV(old_inode);
+     error = NFS_PROTO(old_dir)->rename(old_dir, &old_dentry->d_name,
+                        new_dir, &new_dentry->d_name);
+ out:
 
-On Wed, 2003-12-03 at 11:38, Shivaji Navale wrote:
-> Thanks a lot!!
-> i would try it out and post the results for perusage.
-> 
-> Would this solve the corruption problem.
-> 
-> Is it that this entire issue is because of pine and sendmail.
-> And configuring either properly would eradicate the problem.
-> So NFS doesnt need to be messed with.
-> 
-> thanks
-> -shivaji
-> 
-> 
-> -- EVERYONE should contribute to THE BEST of their capacity
-> for THE DEVELOPMENT of THE NATION
-> 					 -- A P J KALAM
-> 
-> On Wed, 3 Dec 2003, Mark Cooke wrote:
-> 
-> > You have to wait for the lock to be released - sendmail doesn't know if
-> > pine is partway through changing the mailbox file.
-> >
-> > Alternatively, switch to using maildir rather than mailbox.  Locking
-> > isn't required at that point - but I believe you have to patch pine for
-> > maildir support.
-> >
-> > Mark
-> >
-> > On Wed, 2003-12-03 at 10:56, Shivaji Navale wrote:
-> > > On 2 Dec 2003, Trond Myklebust wrote:
-> > >
-> > > > >>>>> " " == Juri Haberland <list-linux.nfs@spoiled.org> writes:
-> > > >
-> > > >      > It's considered a bad idea to put mailboxes on a NFS share as
-> > > >      > there might be locking issues if two applications simultanously
-> > > >      > acces the same mailbox. Either use the maildir format or don't
-> > > >      > export your mailboxes via NFS.
-> > > >
-> > > > Sort of. It can be made to work *provided* that you can guarantee that
-> > > > your mail programs all agree to support the same file locking scheme.
-> > > > Currently that means they must chose one (or both) of the following
-> > > > schemes:
-> > > >
-> > > >   - fcntl() (a.k.a. POSIX, a.k.a. lockf()) locking
-> > > >
-> > > >   - dotlocking (a.k.a. creating a lock file using something like 'ln
-> > > >     mailbox .mailbox.locked')
-> > > >
-> > > > Note that the BSD flock() and use of O_EXCL in a dotlocking scheme are
-> > > > not considered to be reliable within Linux NFS.
-> > >
-> > > We use sendmail as our MTA and  pine for mails, the dotlocking feature is
-> > > there with pine. And it appears  sendmail on invoking procmail waits for
-> > > this lock to be released, if it exists.
-> > >
-> > > Is there a way out of this, or rather not have mailboxes exported to
-> > > clients.
-> > >
-> > > thanks,
-> > > shivaji...
-> > >
-> > > PS:sorry, for starting new thread from an old one.
-> > >
-> > >
-> > >
-> > >
-> > > >
-> > > > Cheers,
-> > > >   Trond
-> > > >
-> > > >
-> > > > -------------------------------------------------------
-> > > > This SF.net email is sponsored by: SF.net Giveback Program.
-> > > > Does SourceForge.net help you be more productive?  Does it
-> > > > help you create better code?  SHARE THE LOVE, and help us help
-> > > > YOU!  Click Here: http://sourceforge.net/donate/
-> > > > _______________________________________________
-> > > > NFS maillist  -  NFS@lists.sourceforge.net
-> > > > https://lists.sourceforge.net/lists/listinfo/nfs
-> > > >
-> > >
-> > >
-> > >
-> > > -------------------------------------------------------
-> > > This SF.net email is sponsored by: SF.net Giveback Program.
-> > > Does SourceForge.net help you be more productive?  Does it
-> > > help you create better code?  SHARE THE LOVE, and help us help
-> > > YOU!  Click Here: http://sourceforge.net/donate/
-> > > _______________________________________________
-> > > NFS maillist  -  NFS@lists.sourceforge.net
-> > > https://lists.sourceforge.net/lists/listinfo/nfs
-> > --
-> > Mark Cooke <mpc@star.sr.bham.ac.uk>
-> > University Of Birmingham
-> >
--- 
-Mark Cooke <mpc@star.sr.bham.ac.uk>
-University Of Birmingham
+
+
+------------------------------------------------------------------------------
+This message is intended only for the personal and confidential use of the
+designated recipient(s) named above.  If you are not the intended recipient of
+this message you are hereby notified that any review, dissemination,
+distribution or copying of this message is strictly prohibited.  This
+communication is for information purposes only and should not be regarded as
+an offer to sell or as a solicitation of an offer to buy any financial
+product, an official confirmation of any transaction, or as an official
+statement of Lehman Brothers.  Email transmission cannot be guaranteed to be
+secure or error-free.  Therefore, we do not represent that this information is
+complete or accurate and it should not be relied upon as such.  All
+information is subject to change without notice.
 
 
 
