@@ -1,26 +1,22 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: [PATCH] exponential backoff for blocked LOCK call polling
-Date: Tue, 9 Nov 2004 10:17:04 +0100
-Message-ID: <20041109091704.GA14350@suse.de>
-References: <1098786131.21421.484.camel@hole.melbourne.sgi.com> <Pine.LNX.4.60.0411081021570.16292@harp.ngdc.noaa.gov> <20041108225411.GA29190@sgi.com>
+From: Oren D <oren01@gmail.com>
+Subject: When does NFSv3 client uses FILE_SYNC?
+Date: Wed, 10 Nov 2004 18:05:30 +0200
+Message-ID: <150dc27e04111008051d64dbd1@mail.gmail.com>
+Reply-To: Oren D <oren01@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>,
-	Greg Banks <gnb@melbourne.sgi.com>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CRS8R-0000o8-43
-	for nfs@lists.sourceforge.net; Tue, 09 Nov 2004 01:17:55 -0800
-Received: from cantor.suse.de ([195.135.220.2])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.41)
-	id 1CRS8P-0001pp-Bf
-	for nfs@lists.sourceforge.net; Tue, 09 Nov 2004 01:17:54 -0800
-To: Greg Banks <gnb@sgi.com>
-In-Reply-To: <20041108225411.GA29190@sgi.com>
+	id 1CRuyU-00051X-HI
+	for nfs@lists.sourceforge.net; Wed, 10 Nov 2004 08:05:34 -0800
+Received: from rproxy.gmail.com ([64.233.170.194])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1CRuyT-0003TY-5K
+	for nfs@lists.sourceforge.net; Wed, 10 Nov 2004 08:05:34 -0800
+Received: by rproxy.gmail.com with SMTP id y7so5225rne
+        for <nfs@lists.sourceforge.net>; Wed, 10 Nov 2004 08:05:32 -0800 (PST)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,25 +30,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, Nov 09, 2004 at 09:54:11AM +1100, Greg Banks wrote:
-> Not if the server has queued the lock request.  But then if the server
-> were correctly implemented it would probably be sending us a GRANTED
-> callback and we wouldn't need to poll.
+Hi all,
 
-The Linux lockd should send a GRANTED message. The only reason I
-implemented polling was as a workaround against broken lockd's that would
-never send GRANTED messages if you used the (synchronous) NLM_LOCK call
-instead of the (asynchronous) NLM_LOCK_MSG. HPUX 10.something was one
-of them.
+Can someone please list for me the conditions under which an NFSv3
+client would send FILE_SYNC write requests?
 
-I agree though that the polling code is bad because it masks potential
-bugs in the Linux lockd.
+I have the filesystem exported on the server with the sync option
+(which is not supposed to prevent the client from writing with
+UNSTABLE),
+and mounted from the client with the default mount options.
 
-Olaf
--- 
-Olaf Kirch     | Things that make Monday morning interesting, #1:
-okir@suse.de   |        "I want to use NFS over AX25, can you help me?"
----------------+ 
+And still i have a user-space application that generates WRITEs with FILE_SYNC!
+
+This is what I know that can make the client write using FILE_SYNC:
+- mount -o sync
+- open(...,O_SYNC)
+
+Thanks,
+Oren.
 
 
 -------------------------------------------------------
