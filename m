@@ -1,19 +1,19 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Andrei Maslennikov <andrei@caspur.it>
 Subject: Re: NFS performance issue - P3 vs P4
-Date: 11 Oct 2002 23:01:40 +0200
+Date: Fri, 11 Oct 2002 22:42:00 +0000 (   )
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shs1y6witaj.fsf@charged.uio.no>
-References: <Pine.LNX.3.95a.1021011121800.12919A-100000@kiwi.caspur.it>
+Message-ID: <Pine.LNX.3.95a.1021011220934.18295B-100000@kiwi.caspur.it>
+References: <shs1y6witaj.fsf@charged.uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net, g.palumbo@caspur.it
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
+Received: from kiwi.caspur.it ([193.204.5.49])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1806uo-0004hq-00
-	for <nfs@lists.sourceforge.net>; Fri, 11 Oct 2002 14:01:46 -0700
-To: Andrei Maslennikov <andrei@caspur.it>
-In-Reply-To: <Pine.LNX.3.95a.1021011121800.12919A-100000@kiwi.caspur.it>
+	id 1808Tv-000287-00
+	for <nfs@lists.sourceforge.net>; Fri, 11 Oct 2002 15:42:07 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <shs1y6witaj.fsf@charged.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,55 +26,42 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
->>>>> " " == Andrei Maslennikov <andrei@caspur.it> writes:
 
-     > with all the recent patches. On clients, we use RH kernel
-     > 2.4.18-10smp.
+On 11 Oct 2002, Trond Myklebust wrote:
 
-Has a known UDP bug that can cause it to flood servers. Netapp over
-Gigabit has previously been seen to be vulnerable. Please either use a
-TCP connection to the Netapp, or try the appended patch.
+> >>>>> " " == Andrei Maslennikov <andrei@caspur.it> writes:
+> 
+>      > with all the recent patches. On clients, we use RH kernel
+>      > 2.4.18-10smp.
+> 
+> Has a known UDP bug that can cause it to flood servers. Netapp over
+> Gigabit has previously been seen to be vulnerable. Please either use a
+> TCP connection to the Netapp, or try the appended patch.
 
-Cheers,
-  Trond
 
-# This is a BitKeeper generated patch for the following project:
-# Project Name: Linux kernel tree
-# This patch format is intended for GNU patch command version 2.5 or higher.
-# This patch includes the following deltas:
-#	           ChangeSet	1.555.13.1 -> 1.555.13.2
-#	net/ipv4/ip_output.c	1.10    -> 1.11   
-#
-# The following is the BitKeeper ChangeSet Log
-# --------------------------------------------
-# 02/08/03	davem@nuts.ninka.net	1.555.13.2
-# IPv4: Fix MSG_DONTWAIT behavior on output fragmentation.
-# --------------------------------------------
-#
-diff -Nru a/net/ipv4/ip_output.c b/net/ipv4/ip_output.c
---- a/net/ipv4/ip_output.c	Fri Oct 11 22:59:13 2002
-+++ b/net/ipv4/ip_output.c	Fri Oct 11 22:59:13 2002
-@@ -520,8 +520,18 @@
- 		/*
- 		 *	Get the memory we require with some space left for alignment.
- 		 */
--
--		skb = sock_alloc_send_skb(sk, fraglen+hh_len+15, flags&MSG_DONTWAIT, &err);
-+		if (!(flags & MSG_DONTWAIT) || nfrags == 0) {
-+			skb = sock_alloc_send_skb(sk, fraglen + hh_len + 15,
-+						  (flags & MSG_DONTWAIT), &err);
-+		} else {
-+			/* On a non-blocking write, we check for send buffer
-+			 * usage on the first fragment only.
-+			 */
-+			skb = sock_wmalloc(sk, fraglen + hh_len + 15, 1,
-+					   sk->allocation);
-+			if (!skb)
-+				err = -ENOBUFS;
-+		}
- 		if (skb == NULL)
- 			goto error;
- 
+Hi Trond, and thanks for the hint.
+
+I have just checked that the patch you mentioned was applied
+in the Red Hat's 2.4.18-14 kernel released with Red Hat 8.0
+("linux-2.4.18-udp-fix.patch"). I have then upgraded to 2.4.18-14
+on P4 client and - bingo: I see a stable 34 MB/sec as in case of P3!  
+Lots of thanks! 
+
+We'll also mount "tcp" from NetApp on older clients that still 
+may have that bug - thanks again for your suggestion. Actually,
+I now understand that we have seen indeed several server flooding
+cases with F760 on Gigabit (and we were looking for the problem 
+elsewhere...).  
+
+Best regards - Andrei.
+
+PS One point still remains unclear - how then it could be explained that
+   P3 client was not manifesting any problem with P3 server? It had 
+   exactly the buggy 2.4.18-10smp, like P4. Maybe it may be attributed
+   to a higher (2 Ghz against 1 Ghz of P3's) CPU clock on P4 client?  
+
+
+
 
 
 -------------------------------------------------------
