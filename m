@@ -1,18 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 1 of 8 - Fix bug in svc_pushback_unused_pages that occurs on zero byte NFS read
-Date: Wed, 18 Jun 2003 09:51:37 +1000
+Subject: [PATCH] kNFSd - 3 of 4 - TCP nfsd connection hangs when partial record header is received
+Date: Wed, 18 Jun 2003 10:30:12 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19SQEj-00083C-00@notabene>
+Message-ID: <E19SQq4-0000Wz-00@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19SQBP-0002U4-00
-	for <nfs@lists.sourceforge.net>; Tue, 17 Jun 2003 16:48:11 -0700
+	id 19SQlk-0007BV-00
+	for <nfs@lists.sourceforge.net>; Tue, 17 Jun 2003 17:25:44 -0700
 Received: From notabene ([129.94.172.124] == notabene.cse.unsw.EDU.AU)
-	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>) By
-	tone With Smtp ; Wed, 18 Jun 2003 09:47:00 +1000
-To: Linus Torvalds <torvalds@transmeta.com>
+	(for <marcelo@conectiva.com.br>) (for <nfs@lists.sourceforge.net>) By
+	tone With Smtp ; Wed, 18 Jun 2003 10:25:35 +1000
+To: Marcelo Tosatti <marcelo@conectiva.com.br>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,40 +26,39 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Here come 8 kNFSd patches for 2.5.72.
-Several are nfsv4 related, but the first two are more generally applicable.
+From: Olof Johansson <olof@austin.ibm.com>
 
-NeilBrown
-### Comments for ChangeSet
+Below patch resolves a hang where a TCP nfsd connection will hang even
+though new data is received on the socket. We've seen this a few times in
+our lab, but it usually happened every few weeks.
 
-svc_pushback_unused_pages must be ready of the possibility that
-no pages were allocated or will need to be pushed back.
+If a short record header is received, the SK_BUSY flag is never cleared,
+and even though new data arrives, it will not be handled. This in turn
+leads to hangs of particular clients (while others will continue to work
+without problem).
 
- ----------- Diffstat output ------------
- ./include/linux/sunrpc/svc.h |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
+I also changed the return code for that condition to be the same as for a
+(regular) short read.
 
-diff ./include/linux/sunrpc/svc.h~current~ ./include/linux/sunrpc/svc.h
---- ./include/linux/sunrpc/svc.h~current~	2003-06-18 09:17:34.000000000 +1000
-+++ ./include/linux/sunrpc/svc.h	2003-06-18 09:17:34.000000000 +1000
-@@ -196,14 +196,14 @@ static inline void svc_pushback_allpages
+
+diff ./net/sunrpc/svcsock.c~current~ ./net/sunrpc/svcsock.c
+--- ./net/sunrpc/svcsock.c~current~	2003-06-18 10:17:26.000000000 +1000
++++ ./net/sunrpc/svcsock.c	2003-06-18 10:16:06.000000000 +1000
+@@ -816,8 +816,12 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 		if ((len = svc_recvfrom(rqstp, &iov, 1, want)) < 0)
+ 			goto error;
+ 		svsk->sk_tcplen += len;
+-		if (len < want)
+-			return 0;
++		if (len < want) {
++			dprintk("svc: short recvfrom while reading record length (%d of %d)\n",
++			        len, want);
++			svc_sock_received(svsk);
++			return -EAGAIN; /* record header not complete */
++		}
  
- static inline void svc_pushback_unused_pages(struct svc_rqst *rqstp)
- {
--        while (rqstp->rq_resused) {
-+	while (rqstp->rq_resused &&
-+	       rqstp->rq_res.pages != &rqstp->rq_respages[rqstp->rq_resused]) {
-+
- 		if (rqstp->rq_respages[--rqstp->rq_resused] != NULL) {
- 			rqstp->rq_argpages[rqstp->rq_arghi++] =
- 				rqstp->rq_respages[rqstp->rq_resused];
- 			rqstp->rq_respages[rqstp->rq_resused] = NULL;
- 		}
--		if (rqstp->rq_res.pages == &rqstp->rq_respages[rqstp->rq_resused])
--			break;
- 	}
- }
- 
+ 		svsk->sk_reclen = ntohl(svsk->sk_reclen);
+ 		if (!(svsk->sk_reclen & 0x80000000)) {
 
 
 -------------------------------------------------------
