@@ -1,15 +1,20 @@
-From: xiyu@800j.com
-Subject: =?GB2312?B?zvewsre/tdiy+tDFz6LN+NDQ0rXIyMPFu7DM4g==?=
-Date: Mon, 26 May 2003 14:34:59 +0800
+From: Martynas Buozis <martynas@ti.com>
+Subject: Re: nfsroot problems on RedHat 8 with kernel linux-2.4.18-27.8.0
+Date: Mon, 26 May 2003 13:47:22 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19KBXm-00019T-00@sc8-sf-list1.sourceforge.net>
-Content-Type: text/html;charset="GB2312"
+Message-ID: <3ED1FECA.2030105@ti.com>
+References: <3ECE0EF3.5080004@ti.com>	<shs4r3lx1ux.fsf@charged.uio.no>	<3ECE2479.3000706@ti.com>	<16078.12509.988134.109974@charged.uio.no>	<003401c321ad$9a438180$6464a8c0@foxie> <16081.15177.472767.206769@charged.uio.no>
+Reply-To: martynas@ti.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [61.150.19.141] (helo=800j.com)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19KBXm-00019T-00
-	for <nfs@lists.sourceforge.net>; Sun, 25 May 2003 23:33:15 -0700
-To: nfs@lists.sourceforge.net
+Received: from go4.ext.ti.com ([192.91.75.132])
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19KGRs-0006We-00
+	for <nfs@lists.sourceforge.net>; Mon, 26 May 2003 04:47:28 -0700
+To: trond.myklebust@fys.uio.no
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -22,35 +27,66 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-<html>
+Trond
 
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
-<meta name="GENERATOR" content="Microsoft FrontPage 4.0">
-<meta name="ProgId" content="FrontPage.Editor.Document">
-<title>西安房地产信息网</title>
-</head>
 
-<body>
+Great ! Wonderful ! It is working now ! Thank you very much for your 
+kind help.
 
-<p class="MsoNormal" align="center"><span lang="EN-US" style="font-size:26.0pt;mso-bidi-font-size:12.0pt;mso-fareast-font-family:
-楷体_GB2312;color:fuchsia"><o:p>
-</span><font color="#0000FF" size="7"><a href="http://www.800j.com.cn"><span lang="EN-US" style="mso-bidi-font-size: 12.0pt"> 
-</o:p> 
- </span></a></font><b><font color="#0000FF" size="7"><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman"><font face="楷体_GB2312">西安房地产信息网</font></span></a></font></b></p>
+Linux specialist from EMC support is still investigating this question ...
 
-<p class="MsoNormal" align="center"><font color="#0000FF"><b><font face="楷体_GB2312" size="6"><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman">www.800j.cc</span></a></font></b></font></p>
-<p align="center">　
-<p align="center"><a href="http://www.800j.com.cn"><img src="huati001.gif" width="321" height="46"></a></p>
-<p align="center"><a href="http://www.800j.com.cn/800j/fclt/djtbbs/show.asp?bID=&amp;RID=4863&amp;ID=4863"><font color="#FF0000" size="4"><b>非典时期买楼该注重什么？</b></font></a></p>
-<p align="center"><a href="http://www.800j.com.cn/800j/fclt/djtbbs/show.asp?bID=&amp;RID=5014&amp;ID=5014"><font color="#FF0000" size="4"><b>谁来评述“世家星城”</b></font></a></p>
-<p align="center"><font color="#FF0000" size="4"><b>.....</b></font></p>
-<p class="MsoNormal" align="center"><b><font color="#FFFF00" face="楷体_GB2312" size="4"><a href="http://http://www.800j.com.cn/800j/fclt/djtbbs/new.asp">我要发言　</a>　　　　　<a href="http://http://www.800j.com.cn/800j/fclt/djtbbs/index.asp">　进入论坛</a></font></b></p>
-<p align="center">　</p>
 
-</body>
+With best regards
+Martynas
 
-</html>
+
+Trond Myklebust wrote:
+>>>>>>" " == Martynas Buozis <martynas@ti.com> writes:
+>>>>>
+> 
+>      > informtion as required by Celerra, so mount request is
+>      > denied. When I use mount from command line on booted RedHat 8
+>      > system to mount same file system - it sends all required
+>      > information and Celerra accepts mount request.
+> 
+> OK. I misunderstood you (sorry). You were talking about the mount
+> protocol, and I was thinking about the NFS protocol itself.
+> 
+> The following patch ought to suffice...
+> 
+> Cheers,
+>   Trond
+> 
+> --- linux-2.4.21-up/fs/nfs/mount_clnt.c.orig	2002-10-15 18:32:18.000000000 +0200
+> +++ linux-2.4.21-up/fs/nfs/mount_clnt.c	2003-05-25 23:50:12.000000000 +0200
+> @@ -75,7 +75,7 @@
+>  
+>  	clnt = rpc_create_client(xprt, hostname,
+>  				&mnt_program, version,
+> -				RPC_AUTH_NULL);
+> +				RPC_AUTH_UNIX);
+>  	if (!clnt) {
+>  		xprt_destroy(xprt);
+>  	} else {
+> 
+
+
+
+-- 
+
+With best regards
+Martynas Buozis
+UNIX Systems Administrator
+FFAB Computer Engineering
+
+
+
+-------------------------------------------------------------
+Martynas Buozis            Texas Instruments Deutschland GmbH
+Mail:  martynas@ti.com     Haggertystrasse 1
+Phone: +49 8161 80 4506    85356 Freising
+Fax:   +49 8161 80 3191    Germany
+
 
 
 -------------------------------------------------------
