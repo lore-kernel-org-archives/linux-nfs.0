@@ -1,19 +1,19 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] mmap corruption
-Date: 05 Apr 2003 00:01:02 +0200
+From: Philippe =?ISO-8859-15?Q?Gramoull=E9?= <philippe.gramoulle@mmania.com>
+Subject: Problems with statd and lockd
+Date: Sat, 5 Apr 2003 01:56:38 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsistt7wip.fsf@charged.uio.no>
-References: <3E8DDB13.9020009@RedHat.com>
+Message-ID: <20030405015638.5118fbb9.philippe.gramoulle@mmania.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net,  linux-kernel <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mons.uio.no ([129.240.130.14])
+Received: from pgramoul.net2.nerim.net ([80.65.227.234] helo=philou.aspic.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 191ZFD-0001JN-00
-	for <nfs@lists.sourceforge.net>; Fri, 04 Apr 2003 14:01:07 -0800
-To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: <3E8DDB13.9020009@RedHat.com>
+	id 191b3J-0000f3-00
+	for <nfs@lists.sourceforge.net>; Fri, 04 Apr 2003 15:56:57 -0800
+Received: from philou.gramoulle.local (philou.gramoulle.local [192.168.254.2])
+	by philou.aspic.com (Postfix) with SMTP id 91CA8278E
+	for <nfs@lists.sourceforge.net>; Sat,  5 Apr 2003 01:56:38 +0200 (CEST)
+To: NFS Mailing List <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,25 +26,31 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Steve Dickson <SteveD@redhat.com> writes:
 
-     > The Cause: Memory mapped pages were not being flushed out in a
-     > timely manner. When a file is about to truncated (up or down),
-     > nfs_writepage() is called (by filemap_fdatasync()) to flush out
-     > dirty pages. When this done asynchronously, nfs_writepage()
-     > will (indirectly) call nfs_strategy().  nfs_strategy() wants to
-     > send groups of pages (in this case 4 pages). Now in the error
-     > case, only one page was dirty so it was *not* flushed out.
-     > Eventually that page would be flushed (by kupdate) but it was
-     > too late because the file size had already change due to a
-     > second truncation.
+Hi,
 
-That simply doesn't ring true. The nfs_wb_all() immediately after the
-call to filemap_fdatasync() should ensure that *all* scheduled writes
-will flushed out.
+Recently we started to get the following error messages on an Linux NFS server, running
+2.4.21-pre5 vanilla, Debian unstable
 
-Cheers,
-  Trond
+ > statd: server localhost not responding, timed out
+ > nsm_mon_unmon: rpc failed, status=-5
+ > lockd: cannot monitor <Client IP here>
+
+A restart of nfs-kernel-server cleared the problem.
+
+We have filesystems that are exported sync, other are exported async.
+
+Can you tell me what the "-5" return code means ?
+
+I've looked at the source code (nsm_mon_unmon in mon.c
+that sends back to nfs3proc.c and the rpc_call wrapper
+but i'm lost after that :)
+
+Can someone enlighten me ?
+
+Thanks,
+
+Philippe
 
 
 -------------------------------------------------------
