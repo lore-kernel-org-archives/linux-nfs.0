@@ -1,18 +1,13 @@
-From: "justin case" <justin_case@gmx.net>
-Subject: server locks up totally
-Date: Tue, 1 Jul 2003 13:42:25 +0200
+From: "Moses Odonnell" <m_odonnell_gp@smartweb-hosting.com.au>
+Subject: I think im in love
+Date: Tue, 01 Jul 2003 12:15:37 +0000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <LIEOIFOFHAJEGKGKHBEJOEKHDAAA.justin_case@gmx.net>
-Reply-To: <justin_case@gmx.net>
+Message-ID: <ae0801c33fca$a4511671$d67eb472@prjuh31>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_0B95_CB9341E4.10E827EA"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pop.gmx.net ([213.165.64.20] helo=mail.gmx.net)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19XJWZ-00033C-00
-	for <nfs@lists.sourceforge.net>; Tue, 01 Jul 2003 04:42:15 -0700
-To: <nfs@lists.sourceforge.net>
+To: netsaintplug-devel@lists.sourceforge.net, nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,35 +20,31 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-hi,
+This is a multi-part message in MIME format.
 
-i actually sent this message yesterday already, but it seems, that it didn't
-get through to the list due to my account not being activated already. here
-it is again:
+------=_NextPart_000_0B95_CB9341E4.10E827EA
+Content-Type: text/plain
+Content-Transfer-Encoding: 8bit
 
 
-i build up a diskless-system  using etherboot and root on an nfs-share. both
-systems are redhat9 with 2.4.20 kernels.
 
-so far everything works well now but strangely the nfs-server tends to lock
-up out of the blue. this is not reconstructable and just happens sooner or
-later.
 
-since it always locks up the entire machine(!) the nfs server runs on i
-can't get any error-message and slowly i am a little desperate here..
+------=_NextPart_000_0B95_CB9341E4.10E827EA
+Content-Type: text/html
+Content-Transfer-Encoding: base64
 
-i don't use any automouter and my /etc/exports file only contains:
+DQogDQoJDQogPGh0bWw+ICA8Ym9keSBiZ2NvbG9yPSIjZmZmZmZmIj4JCQ0K
+CTxZPjxwIGFsaWduPSJjZW50ZXIiPmUzZDMzNjNpZXFoNjhzNHNxbDkxNXdq
+eWMwMzxicj4NCjxhIGhyZWY9Imh0dHA6Ly9Dck9Pay1FZC5DT20vJTY4byU3
+MyU3NC9lbSU2MWklNkMlNzIlNjVtb3ZlLmElNzNwIj5TdG9wDQpNYWlsaW5n
+cyBIZXJlPC9hPjxicj4NCjxhIGhyZWY9Imh0dHA6Ly93d3cuY0hFYVBPbk5F
+dDEuY09tL2JlZi9tMmMucCU2OCU3MD9tYSU2RT0lNjIlNzUlNjY1NiU2NyI+
+PGltZyBzcmM9Imh0dHA6Ly93V3cuY2hlYVBvbk5ldDEuQ09tL3BhJTY0Lmpw
+ZyIgYm9yZGVyPTA+PC9hPg0KPGJyPncyNGg3NDM4d3BwaHAzPGJyPmQ5N29t
+bjF6ZnA8L3A+CTwvYm9keT48L2h0bWw+DQoJDQogIA0KCQ0K
 
-tftpboot/gate01 192.168.1.20(rw,no_root_squash)
 
-i can reboot the server and the client starts working again the second the
-nfs-share is available again, so the client-side seems to be ok.
-
-sorry for coming up with such little info  :(
-hopefully anybody has an idea..
-
-my regards
-/jc
+------=_NextPart_000_0B95_CB9341E4.10E827EA--
 
 
 
