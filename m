@@ -1,24 +1,20 @@
-From: "Patrice Seyed" <apseyed@bu.edu>
-Subject: RE: ReasmFails increases / NFS performance on Linux Cluster
-Date: Sun, 15 Aug 2004 17:52:13 -0400
+From: NeilBrown <neilb@cse.unsw.edu.au>
+Subject: [PATCH kNFSd 3 of 4] Allow larger NFSd MAXBLKSIZE on architectures with larger PAGE_SIZE
+Date: Mon, 16 Aug 2004 13:58:43 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <003701c48312$1f61a740$6701a8c0@psyche1>
-References: <20040814092339.GB28329@suse.de>
-Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="US-ASCII"
-Cc: "'Patrice Seyed'" <apseyed@bu.edu>
+Message-ID: <E1BwYdv-0002Zn-75@notabene.cse.unsw.edu.au>
+References: <20040816135256.9819.patches@notabene>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BwSvL-0002r9-Sm
-	for nfs@lists.sourceforge.net; Sun, 15 Aug 2004 14:52:19 -0700
-Received: from acsn03.bu.edu ([128.197.159.63])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1BwSvL-0002Dw-Dk
-	for nfs@lists.sourceforge.net; Sun, 15 Aug 2004 14:52:19 -0700
-To: <nfs@lists.sourceforge.net>
-In-Reply-To: <20040814092339.GB28329@suse.de>
+	id 1BwYg8-0008EP-62
+	for nfs@lists.sourceforge.net; Sun, 15 Aug 2004 21:01:00 -0700
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1BwYg7-0002d3-NI
+	for nfs@lists.sourceforge.net; Sun, 15 Aug 2004 21:01:00 -0700
+To: Marcelo Tosatti <marcelo.tosatti@cyclades.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,78 +27,50 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Thanks Olaf, when I tried nfs over tcp on the clients the ReasmFails =
-value
-increased much significantly slower. At this time of testing the value =
-is
-not increasing at all.
 
-Still, slowness on logging in (or running ls on that mount) continues, =
-which
-is not good since many users will be logging into the headnode during
-production.
+This patch makes NFSSVC_MAXBLKSIZE depend on PAGE_SIZE so that machines
+with large page sizes can take advantage of that feature to serve NFS
+with larger blocksizes, increasing performance and avoiding a fallback
+to synchronous traffic between machines with page sizes greater than 8K.
+Also, documents the actual constraints on NFSSVC_MAXBLKSIZE.
 
-In addition, I have enabled jumbo packets on the cisco, and set all =
-nodes on
-the cluster network to mtu 9000. Also I have set read and write size to =
-32k
-as a document suggested with tcp and mtu at 9000 for better thoroughput.
-Still I see the slowness when logging in.
+From: Greg Banks <gnb@sgi.com>
+Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
- I am not sure if there is now any performance improvement as I am not
-currently using any intelligent benchmark or mbit/sec analysis. Any
-recommendation on doing these measurements and benchmarking is =
-appreciated
-greatly. Also I think I should consider the setup and the feasibility of
-putting this type of load on this cluster (I/O intensive usually calls =
-for
-pvfs or multiple nfs servers, or both). E.g. one of my tests uses dd to
-write 256mb files to nfs from 28 nodes at once (all going to the storage
-node), and also running 2 jobs from each node (134 total node) that use =
-dd
-to write 4MB files and also run nbench. I.e. Should an nfs server be =
-able to
-handle this amount of load anyway?
+### Diffstat output
+ ./include/linux/nfsd/const.h |   12 ++++++++++--
+ 1 files changed, 10 insertions(+), 2 deletions(-)
 
-Like I said I'm now running 64 nfs daemons, and the th line looks like =
-this
-now:
-
-th 64 2380739 168.120 128.860 68.350 261.730 184.990 121.680 145.930 =
-122.090
-178.390 1749.090
-
-
-Thanks Olaf for your suggestions on tcp and jumbo packets. Now I'm =
-wondering
-what I can use to determine if actually speed performance was improved, =
-and
-if the "bottleneck" I'm seeing now should be expected for my setup. Any
-comments, further suggestions, appreciated.
-
-Cheers,
--Patrice
-
------Original Message-----
-From: Olaf Kirch [mailto:okir@suse.de]=20
-Sent: Saturday, August 14, 2004 5:24 AM
-To: Patrice Seyed
-Cc: nfs@lists.sourceforge.net
-Subject: Re: [NFS] ReasmFails increases / NFS performance on Linux =
-Cluster
-
-On Sat, Aug 14, 2004 at 03:46:44AM -0400, Patrice Seyed wrote:
-> I welcome any suggestions or recommendations.
-
-Try using NFS over TCP, or, if all your NICs support it, use jumbograms
-to avoid fragmentation.
-
-Olaf
---=20
-Olaf Kirch     |  The Hardware Gods hate me.
-okir@suse.de   |
----------------+=20
-
+diff ./include/linux/nfsd/const.h~current~ ./include/linux/nfsd/const.h
+--- ./include/linux/nfsd/const.h~current~	2004-08-16 09:53:48.000000000 +1000
++++ ./include/linux/nfsd/const.h	2004-08-16 09:53:48.000000000 +1000
+@@ -12,6 +12,7 @@
+ #include <linux/nfs.h>
+ #include <linux/nfs2.h>
+ #include <linux/nfs3.h>
++#include <asm/page.h>
+ 
+ /*
+  * Maximum protocol version supported by knfsd
+@@ -19,9 +20,16 @@
+ #define NFSSVC_MAXVERS		3
+ 
+ /*
+- * Maximum blocksize supported by daemon currently at 8K
++ * Maximum blocksize supported by daemon.  We want the largest
++ * value which 1) fits in a UDP datagram less some headers
++ * 2) is a multiple of page size 3) can be successfully kmalloc()ed
++ * by each nfsd.   
+  */
+-#define NFSSVC_MAXBLKSIZE	(8*1024)
++#if PAGE_SIZE > (16*1024)
++#define NFSSVC_MAXBLKSIZE	(32*1024)
++#else
++#define NFSSVC_MAXBLKSIZE	(2*PAGE_SIZE)
++#endif
+ 
+ #ifdef __KERNEL__
+ 
 
 
 -------------------------------------------------------
