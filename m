@@ -1,20 +1,25 @@
-From: mehta kiran <kiranmehta1981@yahoo.com>
-Subject: Re: problem mounting using NFSv4 when using -o sec=krb5  option
-Date: Mon, 21 Mar 2005 20:13:35 -0800 (PST)
-Message-ID: <20050322041335.35676.qmail@web51604.mail.yahoo.com>
+From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Subject: Re: open O_EXCL works?
+Date: Mon, 21 Mar 2005 21:13:49 -0700 (MST)
+Message-ID: <Pine.LNX.4.60.0503212101550.12483@harp.ngdc.noaa.gov>
+References: <20050314080517.BD8F.BRANDEN@terra.com.br>
+ <1110813864.30085.47.camel@lade.trondhjem.org> <20050321181858.BE73.BRANDEN@terra.com.br>
+Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DDaly-0002uO-9Q
-	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 20:13:42 -0800
-Received: from web51604.mail.yahoo.com ([206.190.38.209])
-	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
-	id 1DDalx-00063p-KF
-	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 20:13:42 -0800
-To: Kevin Coffman <kwc@citi.umich.edu>
-In-Reply-To: 6667
+	id 1DDamI-0002v4-1p
+	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 20:14:02 -0800
+Received: from harp.ngdc.noaa.gov ([140.172.178.33])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1DDamG-00064o-9e
+	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 20:14:01 -0800
+To: Filipe Brandenburger <branden@terra.com.br>
+In-Reply-To: <20050321181858.BE73.BRANDEN@terra.com.br>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,92 +33,121 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Kevin , 
-    I created new database and new principal and 
-    keytab files.
+On Mon, 21 Mar 2005, Filipe Brandenburger wrote:
 
-    Kinit does not accept passowrd for principals
-    nfs/vcslinux5.vxindia.veritas.com
-    and
-    nfs/vcslinux6.vxindia.veritas.com
-
-    Please let me know if i can provide some info(and
-how) (logs) which can point out the problem
-
-thanks,
- --kiran
-
-
-
-
---- Kevin Coffman <kwc@citi.umich.edu> wrote:
-> > 
-> > Hi , 
-> >              I tried things as directed by Trond
-> in
-> >     his previous mail and everything seemed to
-> work
-> >     fine initally. but when i rebooted system , 
-> >     it started giving error whenever i start
-> rpc.gssd
-> >     on client machine.
-> >     Error is :
-> > 
-> > [root@vcslinux6 ~]# Mar 21 14:47:27 vcslinux6
-> > rpc.gssd[3487]: WARNING: Key table entry not found
-> > while getting initial ticket for principal
-> >
+> Hi, there.
 >
-'nfs/vcslinux6.vxindia.veritas.com@VXINDIA.VERITAS.COM'
-> > from keytab 'FILE:/etc/krb5.keytab'
-> > Mar 21 14:47:27 vcslinux6 rpc.gssd[3487]: ERROR:
-> No
-> > usable machine credentials obtained
-> >   
-> >      
-> > while #klist -k /etc/krb5.keytab gives
-> > 2
-> >
+> I'm trying to make my program work correctly over NFS, but apparently I
+> still have a race condition, because I'm getting inconsistencies. I
+> still can't find out exactly what is happening. This is what I'm doing:
 >
-nfs/vcslinux6.vxindia.veritas.com@VXINDIA.VERITAS.COM
-> 
-> 
-> I'm confused by this, but I do not know what to look
-> for.
-> 
-> 
-> > I even tried by recreating kerberos database but
-> in
-> > vain. I still get the same error.
-> 
-> If you recreated the Kerberos database, you need to
-> create new principals and keytab files.  Did you do
-> this?
-> 
-> > I observed one more thing.
-> > Whenver i create principal(other then root/admin)
-> ,
-> > passwords i enter for them during their creation
-> > are not accepted by kinit.
-> 
-> This is also strange and _might_ be related.  How
-> are
-> you creating the principals -- using kadmin or
-> kadmin.local?
-> Which principals are you referring to here?
-> 
-> > 
-> > Please let me know where i went wrong.
-> > 
-> > --thanks,
-> >  --kiran
-> 
-> 
+>
+>  f = open("myfile", O_CREAT|O_WRONLY|O_APPEND)
+>
+>  [repeat the loop below for the data]
+>    hardlink("myfile", "myfile.lock")
+>    -> if it fails, invalidate information
+>    write(f, "mydata", sizeof(mydata))
+>    unlink("myfile.lock")
+>  [end loop]
+>
+>  close(f)
+>
+>
+> I would expect to get consistent data, as "hardlink" should be an atomic
+> operation over NFS (according to the previous posts on this thread). But I'm
+> still having problems.
+>
+> What I think is happening is that one process in one host is silently
+> overwriting data just written by another process on another host (this
+> overwriting happens on the same second interval), instead of appending to
+> the end of the file, just after that other process record...
+>
+> I mean, I found out that append writes are not atomic in Linux 2.4, but if I
+> have a hardlink operation just before the write, it should fix the issue,
+> shouldn't it?
+>
+> Or somehow isn't the hardlink operation atomic? Or is the information of the
+> file size (for the append) being held in some cache, and not being looked up
+> just before each write (and just after we assure the file is ours with the
+> lockfile hardlink)? Could you explain what is happening?  Could you suggest
+> a way to fix this and reliably append data to the file?
+>
+> I can provide more information upon request. By the way, the NFS client
+> platform is Linux RedHat 7.3, with kernel from RHAS 2.1, uname returns
+> 2.4.9-e.49enterprise, NFS servers are a mix of EMC Celerra, EMC NS-700
+> (Clariion) and Netapp FAS940.
+>
+> Thanks a lot,
+> Filipe
 
-__________________________________________________
-Do You Yahoo!?
-Tired of spam?  Yahoo! Mail has the best spam protection around 
-http://mail.yahoo.com 
+hi filipe-
+
+i won't even pretend to be an expert on this list, but i have successfully
+implemented a locking scheme using link(2) on nfs and can tell you what i did.
+
+from the readme, here is a snippet:
+
+...
+...
+...
+
+   BASIC ALGORITHIM
+
+     * create a globally uniq filename in the same filesystem as the desired
+       lockfile - this can be nfs mounted
+
+     * link(2) this file to the desired lockfile, ignore all errors
+
+     * stat the uniq filename and desired lockfile to determine is they are the
+       same, use only stat.rdev and stat.ino - ignore stat.nlink as NFS can cause
+       this report incorrect values
+
+     * iff same, you have lock.  either return or run optional code block with
+       optional refresher thread keeping lockfile fresh during execution of code
+       block, ensuring that the lockfile is removed..
+
+     * iff not same try again a few times in rapid succession (poll), then, iff
+       this fails, sleep using incremental backoff time.  optionally remove lockfile
+       if it is older than a certain time (stale), timeout if more than a certain
+       amount of time has passed attempting to lock file.
+
+...
+...
+...
+
+you can download the package, which includes both a ruby library and
+commandline tool for safely performing nfs link based locks at
+
+   http://www.codeforpeople.com/lib/ruby/lockfile/
+
+you can read the code for the latest version here
+
+   http://www.codeforpeople.com/lib/ruby/lockfile/lockfile-1.3.0/lib/lockfile.rb
+
+the commandline tool lets you lock a file and run another program while
+running it, eg
+
+   rlock foo.lock -- myprog.exe --option-for-myprog
+
+this runs the the code while holding the lock.
+
+in any case, i suspect your issue is assuming the return code for link(2) is
+correct - you have to do the stats and check fields...
+
+at least, that is what people on this list helped me to do and it works under
+quite heavy testing.
+
+kind regards.
+
+-a
+-- 
+===============================================================================
+| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
+| PHONE   :: 303.497.6469
+| When you do something, you should burn yourself completely, like a good
+| bonfire, leaving no trace of yourself.  --Shunryu Suzuki
+===============================================================================
 
 
 -------------------------------------------------------
