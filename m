@@ -1,19 +1,22 @@
-From: Dan Kegel <dkegel@ixiacom.com>
-Subject: Re: rpc.rexd source for Linux?
-Date: Mon, 21 Jul 2003 10:00:34 -0700
+From: "Stefan Orth" <SORTH@de.ibm.com>
+Subject: Stefan Orth/Germany/IBM is out of the office.
+Date: Tue, 22 Jul 2003 12:48:24 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3F1C1C32.7090502@ixiacom.com>
-References: <Pine.LNX.4.44.0307211511590.32628-100000@kenzo.iwr.uni-heidelberg.de>
+Message-ID: <OF11241B8E.D7B971C6-ONC1256D6B.003B5D13-C1256D6B.003B5D14@de.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from 64-60-75-69.cust.telepacific.net ([64.60.75.69] helo=racerx.ixiacom.com)
+Received: from d12lmsgate-3.de.ibm.com ([194.196.100.236])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19ee4g-0006DM-00
-	for <nfs@lists.sourceforge.net>; Mon, 21 Jul 2003 10:03:46 -0700
-To: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
-In-Reply-To: <Pine.LNX.4.44.0307211511590.32628-100000@kenzo.iwr.uni-heidelberg.de>
+	id 19euhJ-0002Eq-00
+	for <nfs@lists.sourceforge.net>; Tue, 22 Jul 2003 03:48:45 -0700
+Received: from d12relay02.megacenter.de.ibm.com (d12relay02.megacenter.de.ibm.com [9.149.165.196])
+	by d12lmsgate-3.de.ibm.com (8.12.9/8.12.8) with ESMTP id h6MAmRZG031820
+	for <nfs@lists.sourceforge.net>; Tue, 22 Jul 2003 12:48:27 +0200
+Received: from d12ml036.de.ibm.com (d12av02.megacenter.de.ibm.com [9.149.165.228])
+	by d12relay02.megacenter.de.ibm.com (8.12.9/NCO/VER6.5) with ESMTP id h6MAmQTI218032
+	for <nfs@lists.sourceforge.net>; Tue, 22 Jul 2003 12:48:27 +0200
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,31 +29,10 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Bogdan Costescu wrote:
-> On Fri, 18 Jul 2003, Dan Kegel wrote:
-> 
->>That got me thinking -- why not add that execve wrapper to Linux's
->>native NFS package?  Then I went looking, and discovered that 
->>(perhaps wisely) Linux's NFS package doesn't include 'on' or 'rpc.rexd'.
-> 
-> I don't follow your logic here. What has on/rpc.rexd to do with NFS ? 
-> Sure, they are both supposed to use RPC as do lots of others (look in 
-> /etc/rpc), but other than this ? So why bundle on with NFS ?
+I will be out of the office starting July 22, 2003 and will not return
+until July 28, 2003.
 
-Two reasons:
-1. they were part of Sun's original NFS
-2. they are only useful if there's a distributed filesystem like NFS in use
-
-But if y'all think those are too weak, then that's fine, it can stay
-out of the NFS package.
-
-The question remains - has anyone seen an open source implementation
-of rpc.rexd?
-
-Thanks,
-Dan
-
-
+I will respond to your message when I return.
 
 
 
