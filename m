@@ -1,17 +1,20 @@
-From: Donald Burns <DMB@reliance.co.uk>
-Subject: RE: Problems with hard links in root NFS filesystem
-Date: Fri, 2 Aug 2002 10:05:28 +0100
+From: Bolya Imre <slider@sch.bme.hu>
+Subject: provide NSFv3 server/client support in kernel
+Date: 02 Aug 2002 12:35:04 +0000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <F418066D6DFA5040A1169F0B39B7604A0DE23E@rg273.reliance.co.uk>
+Message-ID: <1028291704.29104.164.camel@newworld>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from rg134.reliance.co.uk ([62.254.170.185] ident=hidden-user)
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17aYNP-0006T0-00
-	for <nfs@lists.sourceforge.net>; Fri, 02 Aug 2002 02:05:39 -0700
-To: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
+Received: from balu.sch.bme.hu ([152.66.208.40])
+	by usw-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17aZkz-0001Al-00
+	for <nfs@lists.sourceforge.net>; Fri, 02 Aug 2002 03:34:05 -0700
+Received: from newworld.sch.bme.hu (newworld.sch.bme.hu [152.66.215.241])
+	by balu.sch.bme.hu (8.12.1/8.12.1) with ESMTP id g72AY0qf019564
+	for <nfs@lists.sourceforge.net>; Fri, 2 Aug 2002 12:34:00 +0200 (MEST)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,42 +27,26 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
+				Hello! 
 
-Dear All,
+I compiled my kernel with 'provide NFSv3 server & client support' and of
+course with NFS file system & server support. 
 
-Many thanks to all those who responded so quickly -
-one doesn't get support like this from Microsoft! My
-coleagues were immensely impressed.
+I'd like to know whether I can setup an NFS server and connect to one as
+client without nfs-utils. 
 
-I added the option no_subtree_check to /etc/exports
-and it has fixed all the problems described in my
-original message.
+What does 'provide NFSv3 server/client support' really mean in the
+kernel? 
 
-Once again, I thank you.
+Sorry for my lame questions :) 
 
-Best Regards,
+Thanks for the answers in advance. 
 
-Donald.
 
-Reliance Gear Company Ltd.
-Rowley Mills
-Penistone Road
-Lepton
-Huddersfield
-England
-HD8 0LE
+	Csao 
+						Slider 
 
-Tel: +44 1484 601000				
-fax: +44 1484 601001
 
-http://www.reliance.co.uk 
-
-THE INFORMATION IN THIS COMMUNICATION IS CONFIDENTIAL AND INTENDED ONLY FOR
-THE USE OF THE ADDRESSEE.  DISCLOSURE, USE  OR COPYING OF THIS MESSAGE OR
-ITS CONTENTS OTHER THAN BY THE ADDRESSEE IS PROHIBITED. IF YOU RECEIVE THIS
-COMMUNICATION IN ERROR WE WOULD BE GRATEFUL IF YOU WOULD NOTIFY US
-IMMEDIATELY AND DELETE ANY MATERIAL RECEIVED
-NeilBrown
 
 
 
