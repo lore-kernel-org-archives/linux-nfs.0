@@ -1,24 +1,24 @@
-From: Patrick O'Reilly <patrick.oreilly@uni.edu>
-Subject: Re: Linux -> Sun NFS doesn't mount
-Date: Tue, 25 Jun 2002 15:59:19 -0500
+From: Frank van Maarseveen <F.vanMaarseveen@inter.NL.net>
+Subject: Re: NFS on a freeswan gateway?
+Date: Tue, 25 Jun 2002 23:15:40 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <005701c21c8b$2cfb8c30$66f1a186@OREILLY>
-References: <20020624223641.GA16108@backlot.linas.org>
- <shsptygs21r.fsf@charged.uio.no> <3D17B3F7.1010301@actusa.net>
- <20020625004215.GB16309@backlot.linas.org>
- <20020625203020.13900.qmail@mail.hostasaurus.com>
+Message-ID: <20020625231540.A31629@iapetus.localdomain>
+References: <20020624223641.GA16108@backlot.linas.org> <shsptygs21r.fsf@charged.uio.no> <20020625002317.GA16309@backlot.linas.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from viper.uni.edu ([134.161.1.16])
+Received: from grootstal.nijmegen.internl.net ([217.149.192.7])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17MxPm-0005RP-00
-	for <nfs@lists.sourceforge.net>; Tue, 25 Jun 2002 13:59:54 -0700
-Received: from OREILLY ([134.161.241.102]) by uni.edu (PMDF V6.1-1 #39731)
- with SMTP id <01KJCQFU4OR48WW36O@uni.edu> for nfs@lists.sourceforge.net; Tue,
- 25 Jun 2002 15:59:43 -0500 (CDT)
-To: webmaster <webmaster@dglewis.com>
+	id 17MyhD-0007Ko-00
+	for <nfs@lists.sourceforge.net>; Tue, 25 Jun 2002 15:21:59 -0700
+Received: from iapetus.localdomain by grootstal.nijmegen.internl.net
+	via 1Cust175.tnt3.rtm1.nl.uu.net [213.116.100.175] with ESMTP for <nfs@lists.sourceforge.net>
+	id AAA12992 (8.8.8/1.3); Wed, 26 Jun 2002 00:21:53 +0200 (MET DST)
+Received: (from inet1@localhost)
+	by iapetus.localdomain (8.11.6/8.11.6) id g5PLFeH04353
+	for nfs@lists.sourceforge.net; Tue, 25 Jun 2002 23:15:40 +0200
+To: nfs@lists.sourceforge.net
+In-Reply-To: <20020625002317.GA16309@backlot.linas.org>; from linas@linas.org on Mon, Jun 24, 2002 at 07:23:17PM -0500
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,60 +31,32 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-I have a Solaris 8 NFS server mounting to 25 Redhat 7.1 clients.  I had much
-trouble with the same type of thing, the mount was fine as long as the user
-was root, but as soon as a non-root user logged on, the data disappeared
-even the mount still persisted.  My log did have the same message.  After
-much tinkering, I at one point added "log,nosuid" to my /etc/dfs/dfstab
-options and the mounts on the Linux machines now are good.  I am not sure if
-it was this exact thing that helped, but it's addition seemed to coincide
-with the time the mounts became persistent.  Good Luck!
+On Mon, Jun 24, 2002 at 07:23:17PM -0500, Linas Vepstas wrote:
+> 
+> Hi,
+> 
+> I think I made some progress on my freeswan/nfs-mount problem;
+> see below.
+> 
+> To summarize, it appears that freeswan and/or the linux kernel is 
+> issueing packets from the ipsec0 interface that do not carry the
+> ipsec0-device default source address, but rather carry the source
+> address of eth0/eth1.  And that seems wrong to me:  if a gateway
 
-Patrick
+I have played with FreeS/WAN and saw that an ipsec interface would always
+get the same address as the eth interface (i.e. on the internet) emitting
+the corresponding ESP packet. Routing happens in a nonobvious way.
+This addressing scheme is fundamentally broken (the FreeS/WAN people
+know it) and may be the cause of the problem.
 
-_______________________________________
-Patrick O'Reilly
-Meteorological Decision Support Scientist
-The STORM Project - University of Northern Iowa
-patrick.oreilly@uni.edu  ~  ph: 319-273-3789
+There is some other weirdness with FreeS/WAN: when you connect
+two networks each having a FreeS/WAN gateway machine then any packet
+generated on the gateway machine itself cannot be tunnelled: the packets
+are dropped by the FreeS/WAN address checking code (source address problem
+as far as I remember). Sounds like the problem you are experiencing.
 
------ Original Message -----
-From: "webmaster" <webmaster@dglewis.com>
-Cc: <nfs@lists.sourceforge.net>
-Sent: Tuesday, June 25, 2002 3:30 PM
-Subject: [NFS] Linux -> Sun NFS doesn't mount
-
-
-> After a recent upgrade from solaris 2.6 to 2.8, my linux nfs client can no
-> longer nfs mount to the sun machine.  I can mount to two other 2.8 boxes
-> w/out problems(they were installed fresh as 2.8 and since only patched
-up).
-> I get permission denied, however dmesg reveals:
->
-> call_verify: server requires stronger authentication
->
-> While googling I came across many references to linux nfs not being
-capable
-> of kerberos authentication, but haven't found a resolution or work around.
-> I hope this is the appropriate forum.  In trolling here for the past week
-it
-> seems to be.
->
-> Can anyone give me more insight or progress of a fix?  Thank you very much
-> in advance for your attention.
->
-> Dan
->
->
->
-> -------------------------------------------------------
-> This sf.net email is sponsored by: Jabber Inc.
-> Don't miss the IM event of the season | Special offer for OSDN members!
-> JabConf 2002, Aug. 20-22, Keystone, CO http://www.jabberconf.com/osdn
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
-
+-- 
+Frank
 
 
 -------------------------------------------------------
