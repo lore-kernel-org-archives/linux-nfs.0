@@ -1,27 +1,26 @@
 From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: Maximum number of nfsd daemons?
-Date: Thu, 8 Aug 2002 06:18:29 +1000
+Subject: Re: fsid syntax
+Date: Thu, 8 Aug 2002 06:31:01 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15697.32917.218601.482586@notabene.cse.unsw.edu.au>
-References: <FB5B6B9A4BA0104886C8394BB2B7C7B803ACAD5A@TOMBO.legato.com>
-	<15688.47255.83237.874274@notabene.cse.unsw.edu.au>
-	<20020801194339.76fbfb11.philippe.gramoulle@mmania.com>
-	<15696.65206.947132.844146@notabene.cse.unsw.edu.au>
-	<20020807150721.1736ec6f.philippe.gramoulle@mmania.com>
+Message-ID: <15697.33669.398331.848444@notabene.cse.unsw.edu.au>
+References: <200208071711.00712.bernd-schubert@web.de>
+	<shsk7n2d70y.fsf@charged.uio.no>
+	<200208071830.54734.bernd-schubert@web.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs <nfs@lists.sourceforge.net>
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+    nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17cXFr-0003m9-00
-	for <nfs@lists.sourceforge.net>; Wed, 07 Aug 2002 13:18:03 -0700
+	id 17cXS3-0004m0-00
+	for <nfs@lists.sourceforge.net>; Wed, 07 Aug 2002 13:30:39 -0700
 Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <philippe.gramoulle@mmania.com>)
+	(for <bernd-schubert@web.de>) (for <trond.myklebust@fys.uio.no>)
 	(for <nfs@lists.sourceforge.net>) By tone With Smtp ;
-	Thu, 8 Aug 2002 06:17:53 +1000
-To: Philippe =?ISO-8859-1?B?R3JhbW91bGzp?= <philippe.gramoulle@mmania.com>
-In-Reply-To: message from Philippe Gramoullé on Wednesday August 7
+	Thu, 8 Aug 2002 06:30:21 +1000
+To: Bernd Schubert <bernd-schubert@web.de>
+In-Reply-To: message from Bernd Schubert on Wednesday August 7
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -34,23 +33,63 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Wednesday August 7, philippe.gramoulle@mmania.com wrote:
+On Wednesday August 7, bernd-schubert@web.de wrote:
+> On Wednesday 07 August 2002 17:26, Trond Myklebust wrote:
+> > The fsid is a number, not a device. In principle you can set it to any
+> > number you like as long as you keep it consistent over reboots.
+> >
+> > One suggestion is to use the device major/minor number in the format
+> > minor + (major * 256). (That's what nfsd uses by default for block
+> > devices.)
+> >
+> > Cheers,
+> >   Trond
+> >
+> >
 > 
->  
->   |  
->   |  "NFS server not responding" can be due to the receive queue filling up
->   |  on the NFS server.
->   |   while true; do netstat -nta | grep :2049 ; sleep 1; done
+> Uh, good that I asked for this, so I was completely wrong.
 > 
-> i'm not using TCP right now :o) but will do very soon as i've just build a kernel with all
-> your patches.
+> Is there a way to get the current fsid (after a reboot on Friday the fsid will 
+> change and I don't want to reboot our clients) ? Or is it simply the fsid of 
+> e.g.  /dev/sdb, so that I can get it with statfs() ?
 > 
+> Thanks for your help,
 
-I was actually thinking UDP.  The 't' flag was a mistake.
-If you have working TCP support, then this is all taken care of by the
-kernel and you don't have to worry about it.
+Sorry, you cannot do that.  The filehandles created with fsid=foo are
+different from any filehandle created without fsid=.
+
+If you want to change the device on the server what you need to do is:
+
+1/ well in advance, add an 'fsid=42'(*) export option. 
+   Clients using old file handles will still work.  Clients that
+   subsequently mount will get new-style file handles.
+2/ At your convenience, remount the filesystem on all clients, either
+   by umount/mount or reboot or whatever.
+3/ When all, or enough, clients have remounted, you can safely change
+   the device number without affecting clients.
+
+(*)  I really don't think that basing the fsid on the device number is
+at all sensible.  Afterall, that is what we are trying to avoid.
+Just pick a number, any number.
+1 for the first filesystem, 2 for the second.
+Your age for the filesystem storing you home directory.
+42 for the filesystem storing the Great Question of Life, The
+Universe, and Everything.
 
 NeilBrown
+
+
+> 
+> Bernd
+> 
+> 
+> -------------------------------------------------------
+> This sf.net email is sponsored by:ThinkGeek
+> Welcome to geek heaven.
+> http://thinkgeek.com/sf
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
 
 
 -------------------------------------------------------
