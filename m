@@ -1,28 +1,28 @@
 From: Christoph Hellwig <hch@lst.de>
 Subject: [PATCH][RFC] use completions instead of sleep_on for rpciod
-Date: Sat, 7 Feb 2004 15:44:05 +0100
+Date: Fri, 6 Feb 2004 11:55:06 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040207144405.GA19416__19412.0656852194$1076193253@lst.de>
+Message-ID: <20040206105506.GA493@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ApVgs-0003Vu-LP
-	for nfs@lists.sourceforge.net; Sat, 07 Feb 2004 08:52:22 -0800
-Received: from electric-eye.fr.zoreil.com ([213.41.134.224] helo=fr.zoreil.com)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1Ap3dg-0004hD-At
+	for nfs@lists.sourceforge.net; Fri, 06 Feb 2004 02:55:12 -0800
+Received: from verein.lst.de ([212.34.189.10] helo=mail.lst.de)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.30)
-	id 1ApVgr-0001gR-OK
-	for nfs@lists.sourceforge.net; Sat, 07 Feb 2004 08:52:22 -0800
-Received: from electric-eye.fr.zoreil.com (localhost.localdomain [127.0.0.1])
-	by fr.zoreil.com (8.12.8/8.12.1) with ESMTP id i17Golgf010037
-	for <nfs@lists.sourceforge.net>; Sat, 7 Feb 2004 17:50:47 +0100
-Received: (from romieu@localhost)
-	by electric-eye.fr.zoreil.com (8.12.8/8.12.1) id i17GokkP010036
-	for nfs@lists.sourceforge.net; Sat, 7 Feb 2004 17:50:46 +0100
-Resent-Message-Id: <200402071650.i17GokkP010036@electric-eye.fr.zoreil.com>
-To: netdev@oss.sgi.com
+	id 1Ap3df-0007Vy-OR
+	for nfs@lists.sourceforge.net; Fri, 06 Feb 2004 02:55:12 -0800
+Received: from verein.lst.de (localhost [127.0.0.1])
+	by mail.lst.de (8.12.3/8.12.3/Debian-6.6) with ESMTP id i16At6Qc000535
+	(version=TLSv1/SSLv3 cipher=EDH-RSA-DES-CBC3-SHA bits=168 verify=NO)
+	for <nfs@lists.sourceforge.net>; Fri, 6 Feb 2004 11:55:06 +0100
+Received: (from hch@localhost)
+	by verein.lst.de (8.12.3/8.12.3/Debian-6.6) id i16At6go000533
+	for nfs@lists.sourceforge.net; Fri, 6 Feb 2004 11:55:06 +0100
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,9 +34,6 @@ List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-
-[let's hope some sunrpc folks are on this list, too, the nfs list
- mentioned in MAINTAINERS refuses postings from non-subsribers..]
 
 The rpciod shutdown code gives ugly sleep_on without BKL warnings in
 -mm.  And it looks indeed somewhat racy.
