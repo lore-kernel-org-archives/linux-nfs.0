@@ -1,15 +1,22 @@
-From: psz@maths.usyd.edu.au (Paul Szabo)
-Subject: Re: DoS lockd
-Date: Fri, 20 Sep 2002 06:53:31 +1000 (EST)
+From: "David S. Miller" <davem@redhat.com>
+Subject: Re: Re: [PATCH] zerocopy NFS for 2.5.36
+Date: Thu, 19 Sep 2002 14:12:43 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200209192053.g8JKrVn124134@milan.maths.usyd.edu.au>
-Cc: nfs@lists.sourceforge.net
+Message-ID: <20020919.141243.117916437.davem@redhat.com>
+References: <3D89176B.40FFD09B@digeo.com>
+	<20020919.221513.28808421.taka@valinux.co.jp>
+	<3D8A36A5.846D806@digeo.com>
+Mime-Version: 1.0
+Content-Type: Text/Plain; charset=us-ascii
+Cc: taka@valinux.co.jp, alan@lxorguk.ukuu.org.uk, neilb@cse.unsw.edu.au,
+        linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from talus.maths.usyd.edu.au ([129.78.68.1])
+Received: from pizda.ninka.net ([216.101.162.242])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17s8Iv-00010u-00
-	for <nfs@lists.sourceforge.net>; Thu, 19 Sep 2002 13:53:41 -0700
-To: neilb@cse.unsw.edu.au
+	id 17s8ki-0007Oa-00
+	for <nfs@lists.sourceforge.net>; Thu, 19 Sep 2002 14:22:24 -0700
+To: akpm@digeo.com
+In-Reply-To: <3D8A36A5.846D806@digeo.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -22,24 +29,15 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-Neil,
+   From: Andrew Morton <akpm@digeo.com>
+   Date: Thu, 19 Sep 2002 13:42:13 -0700
+   
+   Mala's patch will cause quite an expansion
+   of kernel size; we would need an implementation which did not
+   use inlining.
 
->>>> A Tru64 client may accidentally crash the lockd process on a Debian server.
->>>> I wonder if this "works" on other Linux versions, and if this attack may be
->>>> exploited to more than a DoS.
->>> Looks like Trond submitted a fix for this on 10th July this year.
->> Thanks for your reply. However, could you please point me to this patch as
->> I cannot find it?
-> 
-> http://linux.bkbits.net:8080/linux-2.4/cset@1.555.4.8
-
-Thank you very much for that pointer. Just to confirm: I now tried the
-patch and it works as claimed, no more lockd crash.
-
-Cheers,
-
-Paul Szabo - psz@maths.usyd.edu.au  http://www.maths.usyd.edu.au:8000/u/psz/
-School of Mathematics and Statistics  University of Sydney   2006  Australia
+It definitely belongs in arch/i386/lib/copy.c or whatever,
+not inlined.
 
 
 -------------------------------------------------------
