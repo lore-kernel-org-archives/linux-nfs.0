@@ -1,22 +1,23 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: NFS FAQ updates
-Date: Sun, 13 Mar 2005 17:19:38 -0500
-Message-ID: <20050313221938.GA13667@fieldses.org>
-References: <482A3FA0050D21419C269D13989C61130853986D@lavender-fe.eng.netapp.com>
+Date: Sun, 13 Mar 2005 17:45:22 -0500
+Message-ID: <20050313224522.GB13667@fieldses.org>
+References: <482A3FA0050D21419C269D13989C61130853986D@lavender-fe.eng.netapp.com> <1110751811.23876.19.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Cc: Charles Lever <Charles.Lever@netapp.com>,
+	nfs@lists.sourceforge.net
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DAbQZ-0007EK-4x
-	for nfs@lists.sourceforge.net; Sun, 13 Mar 2005 14:19:15 -0800
+	id 1DAbpS-0008MQ-8H
+	for nfs@lists.sourceforge.net; Sun, 13 Mar 2005 14:44:58 -0800
 Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1DAbQX-0006sN-I2
-	for nfs@lists.sourceforge.net; Sun, 13 Mar 2005 14:19:15 -0800
-To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: <482A3FA0050D21419C269D13989C61130853986D@lavender-fe.eng.netapp.com>
+	id 1DAbpQ-00058f-Pc
+	for nfs@lists.sourceforge.net; Sun, 13 Mar 2005 14:44:58 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1110751811.23876.19.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,46 +31,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sun, Mar 13, 2005 at 01:41:36PM -0800, Lever, Charles wrote:
-> hmmm.  so what's the difference between not having access to a file, and
-> having access but not being able to read the file?
+On Sun, Mar 13, 2005 at 05:10:11PM -0500, Trond Myklebust wrote:
+> The subtree_check option attempts to decide whether or not a file lies
+> within an exported subtree. If you turn it off, then people can
+> theoretically try to guess filehandles and gain access to the files
+> (assuming the access permissions on the file itself allow that).
 
-I was trying to differentiate between the ability to perform IO to the
-file and the ability to just get a filehandle for it, but didn't come up
-with a good way to say that....
+I wouldn't put too much emphasis on that "theoretically".  The root
+directory on all my ext2/3 filesystems has inode number 2, and as far as
+I can tell guessing the rest of the rest of the filehandle just comes
+down to guessing the root device, which on my machines is always
+/dev/hdaN for some very small N.  Add a few more for people with scsi
+and so on, and I bet you could cover most linux NFS servers with a dozen
+guesses.  Now just lookup and readdir down to wherever you want.  Am I
+missing anything here?
 
-> is it just the ability to know the file is there?  wouldn't that be
-> prevented by not having access to its parent?
-
-Lack of access to the parent doesn't prevent guessing the filehandle of
-the children.
-
-> or, since the file handle is still good, lack of permission to look
-> the file up in the new parent would be inconsequential?
-
-Right.
-
-Kerberos allows us to trust that the permissions on files will be
-enforced, because (under certain assumptions) the server enforcing the
-permissions knows who is trying to access files.
-
-But it doesn't do anything in particular to enforce exports.
-
-> to my mind, this is a very fine hair to split.  why, in your opinion, is
-> it worth mentioning?  ie do you have a particular case in mind where
-> this kind of thing could be important?
-
-Hm.  Someone on a single-user system that just wanted to export their
-homework project might assume that they could safely export
-/home/joeuser/compsci101/ without needing to tighten down permissions on
-the rest of the filesystem, not realizing that this gives anyone in
-their Kerberos realm the ability to read any file in their filesystem
-that's world-readable.
-
-Thinking about it a little more, I think I'd just leave out discussion
-of kerberos from this section.  It really solves a different problem,
-and we should still be encouraging people to export only whole
-partitions.
+If the administrator tightened down directory permissions a bit, you'll
+be forced to guess filehandles for objects deeper in the filesystem,
+which may be a little harder.  I wouldn't count on it.
 
 --b.
 
