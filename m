@@ -1,26 +1,20 @@
-From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-Subject: Re: combined ac/noac mounts
-Date: Thu, 2 Sep 2004 18:56:48 -0600 (MDT)
+From: NeilBrown <neilb@cse.unsw.edu.au>
+Subject: [PATCH kNFSd 6 of 9] nfsd4 could leak a stateid in an error path
+Date: Fri, 03 Sep 2004 12:34:26 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.60.0409021853100.1684@harp.ngdc.noaa.gov>
-References: <Pine.LNX.4.60.0409021822160.1684@harp.ngdc.noaa.gov>
- <1094172012.26067.21.camel@lade.trondhjem.org>
-Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1042526758-1094173008=:1684"
+Message-ID: <E1C33uE-000436-Hg@notabene.cse.unsw.edu.au>
+References: <20040903122815.15453.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C32Np-0002YV-SF
-	for nfs@lists.sourceforge.net; Thu, 02 Sep 2004 17:56:53 -0700
-Received: from harp.ngdc.noaa.gov ([140.172.187.26])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.34)
-	id 1C32No-0003EP-Lc
-	for nfs@lists.sourceforge.net; Thu, 02 Sep 2004 17:56:53 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1094172012.26067.21.camel@lade.trondhjem.org>
+	id 1C33uN-000050-FM
+	for nfs@lists.sourceforge.net; Thu, 02 Sep 2004 19:34:35 -0700
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
+	id 1C33uM-0004TP-SV
+	for nfs@lists.sourceforge.net; Thu, 02 Sep 2004 19:34:35 -0700
+To: Andrew Morton <akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,58 +27,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
 
---8323328-1042526758-1094173008=:1684
-Content-Type: TEXT/PLAIN; charset=X-UNKNOWN; format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
 
-On Thu, 2 Sep 2004, Trond Myklebust wrote:
+nfsd4 could leak a stateid in a case of kmalloc failure; fix.
 
-> P=E5 to , 02/09/2004 klokka 20:25, skreiv Ara.T.Howard:
->> if one exports a file system and also does a sub-export of that file sys=
-tem
->> from a server and a client has two mounts to that system: one noac and o=
-ne
->> 'ac' - will accesses to files via the various paths do the 'right thing'=
-=2E  eg.
->> accesses via the noac path will hit the server while accesses via the 'a=
-c'
->> mount will try to use the cache?
->
-> No. "noac" is *NOT* the same thing as directIO.
+Signed-off-by: Andy Adamson <andros@umich.edu>
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
-let me rephrase - the __attribute__ cache.  i was to set up a subdirectory =
-in
-an already existing partion where i can know that inode checks are correct.
+### Diffstat output
+ ./fs/nfsd/nfs4state.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletion(-)
 
-what is directIO - all operations sent to server and committed back?  sound=
-s
-like a good thing for doing crazy stuff like accessing an sqlite database f=
-rom
-30 nodes at once huh?  in general, what would the __safest__ export/mount
-setup be?  would it kill performance that greatly accessing an approx. 40MB
-file once every minute or so from 30 clients?
-
-regards.
-
--a
---
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D
-| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
-| PHONE   :: 303.497.6469
-| A flower falls, even though we love it;
-| and a weed grows, even though we do not love it.=20
-|   --Dogen
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D
---8323328-1042526758-1094173008=:1684--
+diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
+--- ./fs/nfsd/nfs4state.c~current~	2004-09-03 11:57:20.000000000 +1000
++++ ./fs/nfsd/nfs4state.c	2004-09-03 11:57:34.000000000 +1000
+@@ -2153,8 +2153,10 @@ nfsd4_lock(struct svc_rqst *rqstp, struc
+ 		if (!(lock->lk_stateowner = alloc_init_lock_stateowner(strhashval, open_sop->so_client, open_stp, lock)))
+ 			goto out;
+ 		if ((lock_stp = alloc_init_lock_stateid(lock->lk_stateowner, 
+-						fp, open_stp)) == NULL)
++						fp, open_stp)) == NULL) {
++			release_stateowner(lock->lk_stateowner);
+ 			goto out;
++		}
+ 		/* bump the open seqid used to create the lock */
+ 		open_sop->so_seqid++;
+ 	} else {
 
 
 -------------------------------------------------------
