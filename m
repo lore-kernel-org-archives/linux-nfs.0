@@ -1,19 +1,26 @@
-From: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
-Subject: Re: NFS trace wish list?
-Date: Mon, 14 Apr 2003 13:47:50 +0200 (CEST)
+From: "Kiernan, Michael" <mkiernan@netapp.com>
+Subject: RE: NFS trace wish list?
+Date: Mon, 14 Apr 2003 07:52:33 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0304141326230.21680-100000@kenzo.iwr.uni-heidelberg.de>
-References: <Pine.BSF.4.51.0304101839050.72189@bowser.eecs.harvard.edu>
+Message-ID: <765B6B38B4D29D498077F8E644E23B7FED8341@nlhoe2k02.europe.netapp.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail.iwr.uni-heidelberg.de ([129.206.104.30])
+Received: from mx01.netapp.com ([198.95.226.53])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1952RP-0007le-00
-	for <nfs@lists.sourceforge.net>; Mon, 14 Apr 2003 04:48:03 -0700
-To: Daniel Ellard <ellard@eecs.harvard.edu>
-In-Reply-To: <Pine.BSF.4.51.0304101839050.72189@bowser.eecs.harvard.edu>
+	id 1955Kc-0007VQ-00
+	for <nfs@lists.sourceforge.net>; Mon, 14 Apr 2003 07:53:14 -0700
+Received: from frejya.corp.netapp.com (frejya [10.10.20.91])
+	by mx01.netapp.com (8.12.9/8.12.9/NTAP-1.4) with ESMTP id h3EEr8FB012616
+	for <nfs@lists.sourceforge.net>; Mon, 14 Apr 2003 07:53:08 -0700 (PDT)
+Received: from black.eng.netapp.com (black.eng.netapp.com [10.56.10.24])
+	by frejya.corp.netapp.com (8.12.9/8.12.9/NTAP-1.4) with ESMTP id h3EEr8Ab027613
+	for <nfs@lists.sourceforge.net>; Mon, 14 Apr 2003 07:53:08 -0700 (PDT)
+To: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>,
+   Daniel Ellard
+	 <ellard@eecs.harvard.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,6 +32,17 @@ List-Id: Discussion of NFS under Linux development,
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+
+response times should probably also be built into nfsstat -m (as on other
+clients). 
+
+-----Original Message-----
+From: Bogdan Costescu [mailto:bogdan.costescu@iwr.uni-heidelberg.de]
+Sent: 14 April 2003 13:48
+To: Daniel Ellard
+Cc: nfs@lists.sourceforge.net
+Subject: Re: [NFS] NFS trace wish list?
+
 
 On Thu, 10 Apr 2003, Daniel Ellard wrote:
 
@@ -61,6 +79,15 @@ Universitaet Heidelberg, INF 368, D-69120 Heidelberg, GERMANY
 Telephone: +49 6221 54 8869, Telefax: +49 6221 54 8868
 E-mail: Bogdan.Costescu@IWR.Uni-Heidelberg.De
 
+
+
+-------------------------------------------------------
+This sf.net email is sponsored by:ThinkGeek
+Welcome to geek heaven.
+http://thinkgeek.com/sf
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
 
 
 -------------------------------------------------------
