@@ -1,19 +1,20 @@
-From: Robert Myers <rmyers1400@attbi.com>
-Subject: Re: NFS unmounts fail
-Date: Sun, 22 Dec 2002 20:02:29 -0500
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] Support for NFSv4 READ + WRITE attribute cache consistency
+Date: Mon, 23 Dec 2002 09:40:31 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3E0660A5.9090607@attbi.com>
-References: <3E06524D.1030608@routescience.com>
+Message-ID: <200212230940.31399.trond.myklebust@fys.uio.no>
+References: <Pine.LNX.4.44.0212202300440.3439-100000@home.transmeta.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Cc: NFS maillist <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from rwcrmhc53.attbi.com ([204.127.198.39])
+Received: from mons.uio.no ([129.240.130.14] ident=7411)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18QGzJ-00039I-00
-	for <nfs@lists.sourceforge.net>; Sun, 22 Dec 2002 17:02:33 -0800
-To: Johan van Reijendam <jvanreij@routescience.com>
-In-Reply-To: <3E06524D.1030608@routescience.com>
+	id 18QO8f-0006Wb-00
+	for <nfs@lists.sourceforge.net>; Mon, 23 Dec 2002 00:40:42 -0800
+To: Linus Torvalds <torvalds@transmeta.com>
+In-Reply-To: <Pine.LNX.4.44.0212202300440.3439-100000@home.transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,34 +27,23 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Johan van Reijendam wrote:
+On Saturday 21 December 2002 08:02, Linus Torvalds wrote:
+> I _really_ don't like crud like this.
+>
+> NFS v4 is still not exactly common, but this change makes the kernel
+> uncompilable if you have one of the common NFS clients but didn't enable
+> NFS_V4 - those fields are used unconditionally, but they are only defined
+> conditionally.
+>
+> Please don't do this, and please _do_ test with "normal" configurations.
 
-> Hi all,
->
-> I have been unable to find the cause and a solution for this problem
->
-> I am mounting NFS filesystems. Both the client and the server are 
-> running Redhat 7.3. The problem is the following :
->
-> I am able to mount a filesystem (automount or otherwise ) and can 
-> browse that filesystem. When I pull out of that filesystem automount 
-> will unmount it after a while and if manually mounted I am then able 
-> to manually unmount it.
-> However whenever I execute a binary from the mounted filesystem I am 
-> no longer able to unmount that filesystem. The message I get is:
->
-> umount: umount2: Device or resource busy
-> umount: umount: /auto/packages/binaries: device is busy
->
-> Neither lsof or fuser report any open files.
+Sorry. I'm still not quite finished looking into how to share the struct 
+nfs_fattr between v2, v3, and v4 (in particular, I worry that we are 
+currently being fairly careless with space) but I agree that breaking stock 
+v2 and v3 in the process is not very productive behaviour 8-)...
 
-The most frequent cause of inexplicable "Device or resource is busy" 
-messages when attempting an unmount has been that the device or some 
-directory of the device is theoretically visible from Nautilus.  In 
-those cases, closing the /mnts tab on the Nautilus tree and moving the 
-view window to some other directory usually solves the problem.
-
-
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
