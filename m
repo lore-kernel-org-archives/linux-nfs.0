@@ -1,21 +1,25 @@
-From: Marcel Wiesweg <marcel.wiesweg@gmx.de>
-Subject: Problem with NFS, Linux 2.6.2
-Date: Wed, 4 Feb 2004 19:33:51 +0100
+From: Kyle Rose <krose+linuxnfs@krose.org>
+Subject: Re: Problem with NFS, Linux 2.6.2
+Date: Wed, 04 Feb 2004 16:19:20 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200402041933.52329.marcel.wiesweg@gmx.de>
+Message-ID: <87ad3ya6g7.fsf@nausicaa.krose.org>
+References: <200402041933.52329.marcel.wiesweg@gmx.de>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="us-ascii"
+Content-Type: text/plain; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AoRrh-0000US-MK
-	for nfs@lists.sourceforge.net; Wed, 04 Feb 2004 10:35:09 -0800
-Received: from pop.gmx.net ([213.165.64.20] helo=mail.gmx.net)
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
-	id 1AoRrg-0000KY-Jw
-	for nfs@lists.sourceforge.net; Wed, 04 Feb 2004 10:35:08 -0800
-To: nfs@lists.sourceforge.net
+	id 1AoUQp-0005JT-Ba
+	for nfs@lists.sourceforge.net; Wed, 04 Feb 2004 13:19:35 -0800
+Received: from dsl092-073-159.bos1.dsl.speakeasy.net ([66.92.73.159] helo=yupa.krose.org)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.30)
+	id 1AoUQm-0005Wz-DS
+	for nfs@lists.sourceforge.net; Wed, 04 Feb 2004 13:19:32 -0800
+To: Marcel Wiesweg <marcel.wiesweg@gmx.de>
+In-Reply-To: <200402041933.52329.marcel.wiesweg@gmx.de> (Marcel Wiesweg's
+ message of "Wed, 4 Feb 2004 19:33:51 +0100")
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -28,37 +32,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+Marcel Wiesweg <marcel.wiesweg@gmx.de> writes:
 
-after switching to 2.6 I noticed a strange bug which makes my NFS setup 
-unusable.
+> after switching to 2.6 I noticed a strange bug which makes my NFS setup 
+> unusable.
+...
+> Any suggestions?
 
-Setup:
-Client: 2.6.2, nfs-utils 1.0.6
-Server: 2.4.20, nfs-utils 1.0.6
+Check your MTU on both ends.  I had the same problem, and it turned
+out to be due to mismatched MTU's (1500 vs 1435).  Unknown to me why
+this problem appeared with 2.6.
 
-/etc/exports on server contains:
-/          aldi(rw,sync)
-("aldi" is the client)
-
-When I try to copy files from client to server, it will result in "cp" or any 
-other editor going to uninterruptable sleep when the directory is mounted 
-"hard", or cp will fail because of an Input/Output error when it is mounted 
-"soft".
-Strangely, this only applies if the file is larger than 1332 byte (!).
-A file filled with zeros of size 1332 copies nicely, one with 1333 bytes 
-fails.
-
-This is reproducable and does not occur if the client runs a 2.4 kernel.
-Mount options according to /proc/mounts are 
-rw,nosuid,nodev,noexec,v3,rsize=8192,wsize=8192,soft,intr,udp,lock,addr=vdr
-("vdr" is the server machine)
-
-Any suggestions?
-Thanks,
-
-Marcel
-
+Cheers,
+Kyle
 
 
 -------------------------------------------------------
