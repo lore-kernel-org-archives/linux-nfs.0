@@ -1,16 +1,16 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 42 of 54] nfsd4: fix cb-race
+Subject: [PATCH kNFSd 44 of 54] nfsd4: reorganize release_deleg
 Date: Tue, 08 Mar 2005 17:06:45 +1100
-Message-ID: <E1D8Xrh-00019X-2V@notabene.cse.unsw.edu.au>
+Message-ID: <E1D8Xrh-00019g-6v@notabene.cse.unsw.edu.au>
 References: <20050308165419.3842.patches@notabene>
 Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D8Xrq-00027x-VJ
+	id 1D8Xrq-00027w-RN
 	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:54 -0800
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1D8Xrp-0007tU-Hv
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1D8Xrp-0005Cx-5k
 	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:54 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
@@ -28,57 +28,63 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
 
-We weren't taking the reference count in the delegation recall thread until
-we'd already started the new delegation thread (and possibly returned from the
-break_lease callback).  That's too late.
-
-Also document some assumptions.
+Just separate part of release_deleg into a separate function.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c |   14 ++++++++++----
- 1 files changed, 10 insertions(+), 4 deletions(-)
+ ./fs/nfsd/nfs4state.c |   28 +++++++++++++++++-----------
+ 1 files changed, 17 insertions(+), 11 deletions(-)
 
 diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2005-03-07 13:29:30.000000000 +1100
-+++ ./fs/nfsd/nfs4state.c	2005-03-07 13:29:58.000000000 +1100
-@@ -1345,7 +1345,6 @@ do_recall(void *__dp)
+--- ./fs/nfsd/nfs4state.c~current~	2005-03-07 13:30:33.000000000 +1100
++++ ./fs/nfsd/nfs4state.c	2005-03-07 13:31:26.000000000 +1100
+@@ -80,7 +80,6 @@ u32 free_delegation= 0;
+ /* forward declarations */
+ struct nfs4_stateid * find_stateid(stateid_t *stid, int flags);
+ static struct nfs4_delegation * find_delegation_stateid(struct inode *ino, stateid_t *stid);
+-static void release_delegation(struct nfs4_delegation *dp);
+ static void release_stateid_lockowners(struct nfs4_stateid *open_stp);
  
- 	daemonize("nfsv4-recall");
- 
--	atomic_inc(&dp->dl_count);
- 	nfsd4_cb_recall(dp);
- 	return 0;
- }
-@@ -1354,8 +1353,9 @@ do_recall(void *__dp)
-  * Spawn a thread to perform a recall on the delegation represented
-  * by the lease (file_lock)
-  *
-- * Called from break_lease() with lock_kernel() held,
-- *
-+ * Called from break_lease() with lock_kernel() held.
-+ * Note: we assume break_lease will only call this *once* for any given
-+ * lease.
+ /* Locking:
+@@ -197,19 +196,26 @@ nfs4_put_delegation(struct nfs4_delegati
   */
- static
- void nfsd_break_deleg_cb(struct file_lock *fl)
-@@ -1367,7 +1367,13 @@ void nfsd_break_deleg_cb(struct file_loc
- 	if (!dp)
- 		return;
  
--	/* schedule delegation for recall */
-+	/* We're assuming the state code never drops its reference
-+	 * without first removing the lease.  Since we're in this lease
-+	 * callback (and since the lease code is serialized by the kernel
-+	 * lock) we know the server hasn't removed the lease yet, we know
-+	 * it's safe to take a reference: */
-+	atomic_inc(&dp->dl_count);
+ static void
++nfs4_close_delegation(struct nfs4_delegation *dp)
++{
++	struct file *filp = dp->dl_stp->st_vfs_file;
 +
- 	spin_lock(&recall_lock);
- 	atomic_set(&dp->dl_state, NFS4_RECALL_IN_PROGRESS);
- 	list_add_tail(&dp->dl_recall_lru, &del_recall_lru);
++	dprintk("NFSD: close_delegation dp %p\n",dp);
++	release_stateid_lockowners(dp->dl_stp);
++	kfree(dp->dl_stp);
++	dp->dl_stp = NULL;
++	atomic_set(&dp->dl_state, NFS4_RECALL_COMPLETE);
++	nfsd_close(filp);
++	vfsclose++;
++}
++
++/* Called under the state lock. */
++static void
+ release_delegation(struct nfs4_delegation *dp)
+ {
+ 	/* delayed nfsd_close */
+-	if (dp->dl_stp) {
+-		struct file *filp = dp->dl_stp->st_vfs_file;
+-
+-		dprintk("NFSD: release_delegation CLOSE\n");
+-		release_stateid_lockowners(dp->dl_stp);
+-		kfree(dp->dl_stp);
+-		dp->dl_stp = NULL;
+-		atomic_set(&dp->dl_state, NFS4_RECALL_COMPLETE);
+-		nfsd_close(filp);
+-		vfsclose++;
++	if (dp->dl_stp)
++		nfs4_close_delegation(dp);
+ 	} else {
+ 		dprintk("NFSD: release_delegation remove lease dl_flock %p\n",
+ 			dp->dl_flock);
 
 
 -------------------------------------------------------
