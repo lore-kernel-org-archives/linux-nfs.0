@@ -1,19 +1,21 @@
-From: Olaf Kirch <okir@suse.de>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: Locking patches (generic & nfs)
-Date: Tue, 23 Jul 2002 17:06:15 +0200
+Date: Tue, 23 Jul 2002 17:27:38 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020723170615.D1869@suse.de>
-References: <20020719101950.A15819@suse.de> <shsy9c27asf.fsf@charged.uio.no>
+Message-ID: <23054.6477287591$1027438491@news.gmane.org>
+References: <20020719101950.A15819@suse.de> <shsy9c27asf.fsf@charged.uio.no> <20020723170615.D1869@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Cc: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
+Content-Type: Multipart/Mixed;
+  boundary="------------Boundary-00=_2AKPHME3BAIGNDN4KA07"
+Cc: linux-kernel@vger.kernel.org,
+ nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from ns.suse.de ([213.95.15.193] helo=Cantor.suse.de)
+Received: from mons.uio.no ([129.240.130.14])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17X1FN-00036c-00
-	for <nfs@lists.sourceforge.net>; Tue, 23 Jul 2002 08:06:45 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <shsy9c27asf.fsf@charged.uio.no>
+	id 17X1Zo-0006Hi-00
+	for <nfs@lists.sourceforge.net>; Tue, 23 Jul 2002 08:27:53 -0700
+To: Olaf Kirch <okir@suse.de>
+In-Reply-To: <20020723170615.D1869@suse.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,42 +28,49 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Tue, Jul 23, 2002 at 04:56:32PM +0200, Trond Myklebust wrote:
-> I disagree. As it stands, NLM_NEVER == (~(unsigned long)0), and "when"
-> is unsigned long, so the only thing we need to protect against is if
-> we hit the 'magic value' NLM_NEVER. Note that the time_before_eq()
-> comparison ensures that we cope well with jiffy wraparound etc, so the
-> entry should *not* in fact get put at the end of the list as you
-> claimed.
-> 
-> With the above change (plus your change to set NLM_NEVER=0x7fffffff),
-> we end up never retrying locks that just happen to have been put on
-> the list at a time when the value of 'jiffies' happens to be > 0x7fffffff.
 
-But as it is today, all blocked locks get inserted at the end of the
-list because time_before_eq does a signed comparison! With the unpatched
-code, when you have a blocked lock, and the conflicting lock is removed,
-lockd will never send out a GRANTED_MSG. Because the blocked lock is at the
-end of the list, and never picked up.
+--------------Boundary-00=_2AKPHME3BAIGNDN4KA07
+Content-Type: text/plain;
+  charset="iso-8859-15"
+Content-Transfer-Encoding: 8bit
 
-That's the real reason for changing NLM_NEVER to the largest _signed_
-quantity. And if you do that, you need to deal with jiffy wraparound.
-Maybe the way I did it is not optiomal, I concede. But you can't leave
-it at ~0UL.
+On Tuesday 23 July 2002 17:06, Olaf Kirch wrote:
 
-> Patrice Dumas recently did some work on implementing this both for
-> NLMv1,2,3 and NLM4, so I was planning on integrating his changes into
-> 2.4.20.
+> But as it is today, all blocked locks get inserted at the end of the
+> list because time_before_eq does a signed comparison! With the unpatched
+> code, when you have a blocked lock, and the conflicting lock is removed,
+> lockd will never send out a GRANTED_MSG. Because the blocked lock is at the
+> end of the list, and never picked up.
 
-As you can see from the patch, it's not really much you need to add.
-The functionality is all there, one only needs to decode the GRANTED_RES
-call rather than dropping it.
+Fair enough: I see the bug now.
 
-Olaf
--- 
-Olaf Kirch     |  Anyone who has had to work with X.509 has probably
-okir@suse.de   |  experienced what can best be described as
----------------+  ISO water torture. -- Peter Gutmann
+So why could we not do something like the following instead? This just ensures 
+that we always leave the NLM_NEVER stuff at the end of the list which should 
+suffice to keep nlmsvc_retry_blocked() happy.
+
+Cheers,
+  Trond
+
+--------------Boundary-00=_2AKPHME3BAIGNDN4KA07
+Content-Type: text/plain;
+  charset="iso-8859-15";
+  name="fix_svclock.dif"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment; filename="fix_svclock.dif"
+
+--- linux/fs/lockd/svclock.c.orig	Tue Feb  5 08:52:37 2002
++++ linux/fs/lockd/svclock.c	Tue Jul 23 17:15:12 2002
+@@ -64,7 +64,7 @@
+ 	if (when != NLM_NEVER) {
+ 		if ((when += jiffies) == NLM_NEVER)
+ 			when ++;
+-		while ((b = *bp) && time_before_eq(b->b_when,when))
++		while ((b = *bp) && time_before_eq(b->b_when,when) && b->b_when != NLM_NEVER)
+ 			bp = &b->b_next;
+ 	} else
+ 		while ((b = *bp))
+
+--------------Boundary-00=_2AKPHME3BAIGNDN4KA07--
 
 
 -------------------------------------------------------
