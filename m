@@ -1,13 +1,20 @@
-From: "Sylvia Valentin" <aim1122@aol.com>
-Subject: coment fistol
-Date: Fri, 04 Apr 03 21:03:03 GMT
+From: Steve Dickson <SteveD@redhat.com>
+Subject: [PATCH] Corrects error path in nfs_instantiate()
+Date: Fri, 04 Apr 2003 12:11:19 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <7x41qx51y26n89-ldd6$m-msv7o2to2@ho4nx.6.5ozv0>
+Message-ID: <3E8DBCB7.20305@RedHat.com>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="885_3C.A9.135B_7898_4"
+Content-Type: multipart/mixed;
+ boundary="------------050602060607090205060607"
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: <nfs@lists.sourceforge.net>, <nms-cgi-support@lists.sourceforge.net>, <ofset-members@lists.sourceforge.net>, <opennap-dev@lists.sourceforge.net>
+Received: from nat-pool-rdu.redhat.com ([66.187.233.200] helo=lacrosse.corp.redhat.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 191UiT-0001h0-00
+	for <nfs@lists.sourceforge.net>; Fri, 04 Apr 2003 09:11:01 -0800
+Received: from RedHat.com (dickson.boston.redhat.com [172.16.65.20])
+	by lacrosse.corp.redhat.com (8.11.6/8.9.3) with ESMTP id h34HAsu27549
+	for <nfs@lists.sourceforge.net>; Fri, 4 Apr 2003 12:10:54 -0500
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -21,78 +28,54 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a multi-part message in MIME format.
+--------------050602060607090205060607
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
 
---885_3C.A9.135B_7898_4
-Content-Type: text/html
-Content-Transfer-Encoding: quoted-printable
+In the 2.4.20 kernel, nfs_instantiate() is only calling d_drop() when
+the lookup fails. The dentry also need to be removed from the
+dirent cache when we can't get an inode.... Also, as Trond
+pointed out, ENOMEM should be returned (instead of EACCES)
+when we run out of inodes...
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1=
-">
-<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV>
-<DIV align=3Dcenter><FONT face=3DArial>&nbsp;<STRONG>You can now&nbsp;get =
+SteveD.
 
-prescription </STRONG></FONT></DIV>
-<DIV align=3Dcenter><FONT face=3DArial><STRONG>medications prescribed onli=
-ne 
-with</STRONG></FONT></DIV>
-<DIV align=3Dcenter><FONT face=3DArial size=3D6>&nbsp;<STRONG><FONT
-color=3D=
-#ff0000 
-size=3D4>NO PRIOR PRESCRIPTION REQUIRED</FONT></STRONG></FONT></DIV>
-<DIV align=3Dcenter><STRONG><FONT face=3DArial color=3D#ff0000 size=3D4>NO=
- PHYSICAL EXAM 
-NEEDED</FONT></STRONG></DIV>
-<DIV align=3Dcenter><STRONG><FONT face=3DArial color=3D#ff0000 size=3D4>
-<P align=3Dcenter><A 
-href=3D"http://rd.yahoo.com/10000759/154/*http://www.rxmedsovernight.com/1=
-02/"><FONT 
-face=3DArial color=3D#800080><STRONG>Go here</STRONG></FONT></A><FONT face=
-=3DArial> 
-<FONT color=3D#000000>to see all of our available online 
-drugs.<BR></FONT></FONT></P></FONT></STRONG></DIV></DIV><TD colSpan=3D"3" =
 
-bgColor=3D"blueviolet" width=3D"100%">
-<P align=3Dcenter><FONT face=3DVerdana><BIG><BIG><B>
-<MARQUEE scrollAmount=3D5 scrollDelay=3D1 border=3D"1"><FONT 
-color=3D#800000>Valium</FONT> <FONT color=3D#800000>... Xanax</FONT> <FONT=
+--------------050602060607090205060607
+Content-Type: text/plain;
+ name="linux-2.4.20-nfs-d_drop.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="linux-2.4.20-nfs-d_drop.patch"
+
+--- linux-2.4.20/fs/nfs/dir.c.orig	2003-04-04 06:55:20.000000000 -0500
++++ linux-2.4.20/fs/nfs/dir.c	2003-04-04 08:40:53.000000000 -0500
+@@ -756,7 +756,7 @@ static int nfs_instantiate(struct dentry
+ 				struct nfs_fattr *fattr)
+ {
+ 	struct inode *inode;
+-	int error = -EACCES;
++	int error = 0;
  
-color=3D#800000>...</FONT> <FONT color=3D#800000>Diethylpropion </FONT><FO=
-NT 
-color=3D#800000>... Ambien</FONT> <FONT color=3D#800000>... Phentermine</F=
-ONT> <FONT 
-color=3D#800000>... V i a g r a</FONT> <FONT color=3D#800000>... And Many =
+ 	if (fhandle->size == 0 || !(fattr->valid & NFS_ATTR_FATTR)) {
+ 		struct inode *dir = dentry->d_parent->d_inode;
+@@ -768,9 +768,12 @@ static int nfs_instantiate(struct dentry
+ 	if (inode) {
+ 		d_instantiate(dentry, inode);
+ 		nfs_renew_times(dentry);
+-		error = 0;
++	} else {
++		error = -ENOMEM;
++		goto out_err;
+ 	}
+ 	return error;
++
+ out_err:
+ 	d_drop(dentry);
+ 	return error;
 
-More</FONT></MARQUEE><FONT 
-color=3D#800000></B></BIG></BIG></FONT></P></TD></TR><TR><TD 
-colSpan=3D"3"></FONT><FONT face=3DVerdana color=3Dblue size=3D1><B>
-<HR>
-</B></FONT><FONT face=3DArial>One of our US licensed physicians will write=
- an FDA 
-approved prescription for you and ship your order overnight from a US Lice=
-nsed 
-pharmacy direct to your doorstep, fast and secure!</FONT> 
-<P align=3Dcenter><FONT face=3DArial color=3D#ff0000 size=3D5>Discount Pri=
-ces -- Next 
-Day Delivery</FONT></P>
-<DIV><FONT face=3DArial color=3D#ffffff size=3D1>deploymentcan =
-footing 
-april howl nothing buckle eraser %RANDOM_W=
-ORD 
-dye blur conjunction and this website aptitude 
-fuel for you</FONT></DIV>
-<DIV><FONT face=3DArial size=3D1></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D4></DIV>
-<DIV><FONT size=3D3>To stop all future offers</FONT>&nbsp;<A 
-href=3D"http://rd.yahoo.com/10000759/154/*http://www.rxmedsovernight.com/1=
-02/remove.asp"> 
-here</ color=3D"#000000"></FONT>&nbsp; </A></DIV></FONT></BODY></HTML>
---885_3C.A9.135B_7898_4--
+
+--------------050602060607090205060607--
 
 
 
