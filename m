@@ -1,23 +1,23 @@
 From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: rpc.statd port #, and other similar questions
-Date: Thu, 5 Sep 2002 12:29:01 +1000
+Subject: Re: Can't mount nfs rw
+Date: Thu, 5 Sep 2002 12:34:08 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15734.49517.134859.817217@notabene.cse.unsw.edu.au>
-References: <001d01c25437$0f66b940$d281f6cc@WEASEL>
+Message-ID: <15734.49824.606700.166745@notabene.cse.unsw.edu.au>
+References: <003e01c2543a$0cb85ac0$9300a8c0@gridlock>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: <nfs@lists.sourceforge.net>
+Cc: "nfs" <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17mmON-00036Z-00
-	for <nfs@lists.sourceforge.net>; Wed, 04 Sep 2002 19:29:11 -0700
+	id 17mmTK-0008Jx-00
+	for <nfs@lists.sourceforge.net>; Wed, 04 Sep 2002 19:34:18 -0700
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.233.132] == wireless-132.wireless.cse.unsw.EDU.AU)
-	(for <nw@codon.com>) (for <nfs@lists.sourceforge.net>) By tone With
-	Smtp ; Thu, 5 Sep 2002 12:29:02 +1000
-To: "Steve Wolfe" <nw@codon.com>
-In-Reply-To: message from Steve Wolfe on Wednesday September 4
+	(for <nlafferty@pennswoods.net>) (for <nfs@lists.sourceforge.net>) By
+	tone With Smtp ; Thu, 5 Sep 2002 12:34:09 +1000
+To: "Nicholas Lafferty" <nlafferty@pennswoods.net>
+In-Reply-To: message from Nicholas Lafferty on Wednesday September 4
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,13 +30,35 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Wednesday September 4, nw@codon.com wrote:
+On Wednesday September 4, nlafferty@pennswoods.net wrote:
+> I'm having problems getting my diskless clients to mount NFS directories in
+> Read-Write mode. I'm using bpbatch and tftp to transfer the kernel and a
+> ramdisk for the root file system. I pass an initscript to the kernel that
+> mounts the root file system of the server as read-only (mounts on /ro),
+> /home/guest/share mounts as ro2 (read-only), and /home/guest/01 mounts as
+> /rw (read-write). Then init is invoked. The problem is that all of the
+> mounts are read-only.
 > 
->   On a related note, is it possible to make the lock manager to also use a
-> low-numbered port for firewalling purposes?
+> #Here is what my initscript does for the mounts.
+> mount-t nfs -o nolock,ro,vers=2 $SERVER:/      /ro
+> mount-t nfs -o nolock,ro,vers=2 $SERVER:/home/guest/share      /ro2
+> mount-t nfs -o nolock,rw,vers=2 $SERVER:/home/guest/$ID      /rw
+> 
+> /sbin/init '#'
+> 
+> # Here is my /etc/exports
+> /
+> 192.168.0.0/255.255.255.0(ro,no_root_squash)
+> /home/guest/share       192.168.0.0(ro,no_root,squash)
+> /home/guest/01            192.168.0.0(rw,no_root_squash)
+> /home/guest/02            192.168.0.0(rw,no_root_squash)
+> /home/guest/03            192.168.0.0(rw,no_root_squash)
+> 
+> Any suggestions on some other things to try?
+> 
 
-Kernel parameters: lockd.udpport=778 lockd.tcpport=778
-Module parameters: nlm_udpport=778 nlm_tcpport=778
+
+perl -i -p -e 's,192.168.0.0\(,192.168.0.0/255.255.255.0\(,' /etc/exports
 
 NeilBrown
 
