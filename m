@@ -1,37 +1,20 @@
-From: Andrew Morton <akpm@osdl.org>
-Subject: Re: Re: [PATCH] kNFSd - 2 of 5 - ip_map_init does a kmalloc
- which isn't checked...
-Date: Mon, 9 Feb 2004 14:10:56 -0800
+From: Craig Tierney <ctierney@hpti.com>
+Subject: Issue with nfs v3, linux-2.4.21, xfs, and fsx-linux
+Date: Tue, 10 Feb 2004 15:52:22 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040209141056.33903207.akpm@osdl.org>
-References: <20040206161050.27799.patches@notabene>
-	<E1AoyIo-0007FS-00@notabene>
-	<20040207012423.396efe73.akpm@osdl.org>
-	<20040208043723.GC13391@fieldses.org>
-	<20040207214637.387d3018.akpm@osdl.org>
-	<20040208055921.GA14053@fieldses.org>
-	<20040208203018.GA27482@fieldses.org>
-	<20040209093206.429ffb7e.akpm@osdl.org>
-	<20040209215151.GE2776@fieldses.org>
+Message-ID: <1076453542.2468.33.camel@hpti9.fsl.noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: neilb@cse.unsw.edu.au, nfs@lists.sourceforge.net,
-	philippe.gramoulle@mmania.com
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-list1-b.sourceforge.net ([10.3.1.7] helo=sc8-sf-list1.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AqLcw-0006HP-OE
-	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 16:19:46 -0800
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 4.30)
-	id 1AqJau-0002ll-Uk
-	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 14:09:32 -0800
-Received: from fw.osdl.org ([65.172.181.6] helo=mail.osdl.org)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1AqglC-00027G-Pm
+	for nfs@lists.sourceforge.net; Tue, 10 Feb 2004 14:53:42 -0800
+Received: from [208.20.6.201] (helo=hptimail01.HPTI.COM)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1AqJas-0007gO-Fi
-	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 14:09:30 -0800
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <20040209215151.GE2776@fieldses.org>
+	id 1Aqgky-00007D-Uo
+	for nfs@lists.sourceforge.net; Tue, 10 Feb 2004 14:53:29 -0800
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -44,17 +27,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
->
-> The version of nfsd-03-sunrpc-cache-init-fixes.patch in 2.6.3-rc1-mm1
-> isn't the one I sent; note that the only change I made was to add a few
-> lines to net/sunrpc/svcauth.c (a file that that patch didn't modify
-> before), and that chunk isn't in there.
+Should I be able to successfully run fsx-linux over
+NFS?  My server is linux-2.4.21 with xfs-1.3.1.  I am
+mounting:
 
-You're right, I screwed up, didn't notice that svcauth.c was added.
+ "udp,hard,intr,rw,async,nolock,wsize=8192,rsize=8192,timeo=30"
 
-If poss, incremental patches are always preferred to wholesale replacement,
-please.
+My scsi driver is qla2200, ver 6.06.10.
+
+My client is linux-2.4.20 with nfs patches from Trond's 
+directory.
+
+If I run fsx-linux on the filesystem directly, it runs fine.
+If I run it over the NFS mount, it will crash with an error
+within 30 seconds.
+
+Should fsx-linux work properly over NFS?
+
+Thanks,
+Craig
+
 
 
 -------------------------------------------------------
