@@ -1,28 +1,28 @@
-From: Ian Thurlbeck <ian@stams.strath.ac.uk>
-Subject: Re: Strange delays on NFS server
-Date: Tue, 24 Aug 2004 15:22:31 +0100
+From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
+Subject: very strange nfs errors with nfsroot
+Date: Tue, 24 Aug 2004 17:14:02 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <412B4F27.8060401@stams.strath.ac.uk>
-References: <4119FB15.7010205@stams.strath.ac.uk>	<411A17F2.2060203@RedHat.com>	<411A448D.3080205@stams.strath.ac.uk>	<20040811164135.GA11101@suse.de>	<411B8987.1030609@stams.strath.ac.uk>	<411CD601.1080308@RedHat.com>	<4120AB46.1080606@stams.strath.ac.uk> <16683.8588.18082.190876@cse.unsw.edu.au>
+Message-ID: <412B5B3A.6070600@bio.ifi.lmu.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BzcCB-0000rS-E5
-	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 07:22:43 -0700
-Received: from vif-img1.cc.strath.ac.uk ([130.159.248.61] helo=khafre.cc.strath.ac.uk)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.34)
-	id 1BzcCA-0002Rq-Np
-	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 07:22:43 -0700
-Received: from dunnet.stams.strath.ac.uk ([130.159.240.95]:41722)
-	by khafre.cc.strath.ac.uk with smtp (Exim 4.20 #1)
-	id 1BzcBz-0000wj-W2
-	for <nfs@lists.sourceforge.net>; Tue, 24 Aug 2004 15:22:31 +0100
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <16683.8588.18082.190876@cse.unsw.edu.au>
+	id 1Bzczv-0002VZ-75
+	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 08:14:07 -0700
+Received: from acheron.informatik.uni-muenchen.de ([129.187.214.135])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1Bzczu-0001Az-Db
+	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 08:14:07 -0700
+Received: from internaldeliver.acheron.informatik.uni-muenchen.de (localhost [127.0.0.1])
+	by acheron.informatik.uni-muenchen.de (Postfix) with ESMTP id C971F43609
+	for <nfs@lists.sourceforge.net>; Tue, 24 Aug 2004 17:14:03 +0200 (CEST)
+Received: from [141.84.1.141] (galois.bio.ifi.lmu.de [141.84.1.141])
+	(using TLSv1 with cipher RC4-MD5 (128/128 bits))
+	(No client certificate requested)
+	by acheron.informatik.uni-muenchen.de (Postfix) with ESMTP id 9955B435C4
+	for <nfs@lists.sourceforge.net>; Tue, 24 Aug 2004 17:14:03 +0200 (CEST)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -35,70 +35,102 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Neil Brown wrote:
-> On Monday August 16, ian@stams.strath.ac.uk wrote:
-> 
->>I bumped the nfsd's up to 64 (from 32) and subjectively the problem gets 
->>worse.  I then reduced them to 16 and things are a bit better...
-> 
-> 
-> Odd.
-> 
->>Would changing some of the bdflush settings help at all?
-> 
-> 
-> Maybe.  I would start with
->   echo 200 > /proc/sys/vm/dirty_expire_centisecs
+Hi,
 
-> You said you are using ext3.  Are you using journal=data or the
-> default journal=ordered ??
+we run a diskless system where the clients boot via pxeboot, then
+first mount / read-only from the server. Then we run our own
+boot.nfsroot instead of /etc/init.d/boot and mount some directories
+read-write per client, i.e., /var, /dev, /etc/local and /media.
+Then a "client-script" is run on the client (still from within the
+boot.nfsroot script) to setup some links to shared files,
+copy some templates to /etc/local and "sed" some client-specific
+values in the templaces. Normal stuff for a diskless setup I think.
 
-I'm using the default on Fedora 1, ordered data.
+Any failure in "client-script" causes a shutdown, assuming that sth.
+essential went wrong during the client configuration in boot.nfsroot.
 
-> Also, it would be interesting to compare nfs ops per second against
-> disk i/os per second over time.
-> Something like..
-> 
->   while :
->   do
->     perl -ne 'if (/^proc3/)  { @a=split ; shift @a; shift @a; print eval(join("+", @a))."  ";}' /proc/net/rpc/nfsd
->     perl -ne 'if (/hda /) { @a=split; print $a[9]."\n";}' /proc/diskstats  
->     sleep 1
->   done | perl -ne '@_=split; print( ($_[0]-$a[0])." ".($_[1]-$a[1])."\n"); @a=@_;'
-> 
-> If the pauses correspond to periods with very low nfs ops/sec and very
-> high writes per second, then it confirms that it is a disk flushing
-> problem.
+We mount the nfsroot and the client-directories with these options:
+"nfsvers=3,tcp,hard,intr,nolock,rsize=8192,wsize=8192"
 
-I'm using FC1 which has 2.4.22 as its base.  I think the 
-/proc/sys/vm/dirty_expire_centisecs and the above scriptlet are
-for 2.6 only.  The nfs stats work, but the /proc/diskstats file
-is missing.
+This all went fine with kernel 2.4.x. When we switched to 2.6.7, and up
+to currently running 2.6.8.1, the "client-script" started to fail randomly.
+Trying to trace the error down, playing around with some -x flags in
+the scripts, or sleeps and more error messages, the failure changes
+everytime I change some sleep or debugging output in either boot.nfsroot
+or the client-script.
 
-Do you have any suggestions for /proc/sys/vm/bdflush instead ? Here
-are the current settings:
+Here are the symptoms:
+- It all started when on about every third boot, the clients
+   complained
+   "ln: /etc/local/printcap: File exists
+    Error: Could not link shared file /etc/local/printcap"
 
-30      500     0       0       500     3000    60      20      0
+   That was caused by a piece of code:
 
-> It would also be interesting to see if there was a pattern in the
-> timing, particular how long the interval was between one pause and the
-> next.  
+   for name in $SHARES
+   do
+     if ! ( rm -f $name && ln -s $COMMON/$name $name )
+     then
+       exitstatus=1
+       echo "Error: Could not link shared file $name"
+     fi
+   done
 
-I'll start keeping a note of the time of these events.
+   I think that the ln should never be allowed to complain
+   with this messages because of the "rm ...&& ln.."
 
-> Also getting these sets of number for different numbers of nfsd
-> threads could turn your subjective impression into objective data.
-> 
-> NeilBrown
+- in a different state of the script (some more sleeps, and client-script
+   with -x) I got this:
 
-Thanks
+   + cat /etc/local/fstab
+   sed: Couldn't flush stdout: Stale NFS file handle
+   + exitstatus=1
 
-Ian
+   The code was "cat $name | sed 's/...' > $name.tmp
+
+- again from a different state with more sleeps etc. I got from somewhere
+   in the client-script: (no -x here, and not debug output made it to the
+   screen):
+
+   nfs_update_inode: inode number mismatch
+   expected (0:e/0x2c617b), got (0:e/0x2c6178)
+
+- and finally the same with an additional sed error message:
+   nfs_update_inode: inode number mismatch
+   expected (0:e/0x2c617b), got (0:e/0x2c6178)
+   sed: Couldn't flush <unknown>: Input/output error
+
+Note that:
+- when the script once has run, the system will boot without problems and
+   run stable without any failure
+- the problems are indepentend from mounting the nfsroot or the client-dirs
+   with udp or tcp.
+
+Just a guess: Could that be caused by mounting a /dev  directory for
+the client over the /dev directory of the server within the boot.nfsroot
+script? The boot.nfsroot script uses /dev/console and likely /dev/stdout
+from the read-only-mounted /dev from the server, because it got the initial
+console from this directory (with Neils patch with that MAY_LOCAL_ACCESS...)
+Now when the scripts mounts the client-specific /dev, could that cause
+a problem like the "Couldn't flush stdout: Stale NFS file handle"?
+
+What could I do about this if that was the reason...? It never was a problem
+with the 2.4 kernel...
+
+I have a current setup where I can quite well reproduce the "nfs_update_inode
++ sed" error and the printcap problem so please let me know if I can do sth
+to trace the error down.
+
+Thanks for any hints!
+cu,
+Frank
+
+
 -- 
-Ian Thurlbeck                http://www.stams.strath.ac.uk/
-Statistics and Modelling Science, University of Strathclyde
-Livingstone Tower, 26 Richmond Street, Glasgow, UK,  G1 1XH
-Tel: +44 (0)141 548 3667           Fax: +44 (0)141 552 2079
+Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
+Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
+LMU, Amalienstr. 17           Phone: +49 89 2180-4049
+80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
 
 
 
