@@ -1,16 +1,19 @@
-From: Jim Mostek <Jim.Mostek@adic.com>
-Subject: -ENOMEM from server file system leaves dentry held
-Date: 29 Oct 2002 11:49:04 -0600
+From: Tom McNeal <trmcneal@attbi.com>
+Subject: Re: Corrupt Data when using NFS on Linux -- This should be in the HOWTO
+Date: Tue, 29 Oct 2002 10:07:48 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1035913752.17023.13.camel@bike>
+Message-ID: <3DBECE74.506@attbi.com>
+References: <6440EA1A6AA1D5118C6900902745938E07D54FE2@black.eng.netapp.com> <007601c27ed6$74986240$2864a8c0@alanw> <200210291703.g9TH3FD32594@leinie.lmcg.wisc.edu> <1035912013.3dbec34dddd7e@webmail.smithconcepts.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: Daniel Forrest <forrest@lmcg.wisc.edu>,
+	Alan Witz <awitz@magstarinc.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [63.81.117.28] (helo=penguin.adic.com)
+Received: from rwcrmhc53.attbi.com ([204.127.198.39])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 186abG-00087Q-00
-	for <nfs@lists.sourceforge.net>; Tue, 29 Oct 2002 09:56:22 -0800
-To: nfs-devel@linux.kernel.org, nfs@lists.sourceforge.net
+	id 186aoS-0001bZ-00
+	for <nfs@lists.sourceforge.net>; Tue, 29 Oct 2002 10:10:00 -0800
+To: "Bryan J. Smith" <b.j.smith@ieee.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -23,52 +26,36 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Its easier with the FAQ, but the HOWTO might be the better place.
+We'll take a look at it...
 
-We are running on 2.4.17 on the server. I think the client had
-2.4.13.
+Tom
 
-Anyway, I traced the code and found a way that the dentry is left
-held through one iteration of a server write. I did this with kdb.
+Bryan J. Smith wrote:
 
-The code path starts in net/sunrpc/svc.c:svc_process()
-which alls nfsd_dispatch().
+> Quoting Daniel Forrest <forrest@lmcg.wisc.edu>:
+> 
+>>The "guaranteed" way to create a lock file over NFS:
+>>    create tempfile
+>>    link tempfile lockfile (ignore return code)
+>>    stat tempfile
+>>If the link count is 2, then you have the lock file.  Apparently, link
+>>may return success even if the link failed or return failure even if
+>>the link succeeded (I don't remember which).  Doing the stat verifies
+>>if you have actually created a link to the temporary file.
+>>
+> 
+> I know the HOWTO is more for users/sysadmins, but stuff like this could really
+> help in an additional "common workarounds for potential gotchas" section at the
+> end of the HOWTO.
+> 
+> 
 
-nfsd_dispatch() calls nfsd3_proc_write() at:
-
-        nfserr = proc->pc_func(rqstp, rqstp->rq_argp, rqstp->rq_resp);
-        if (nfserr == nfserr_dropit) {
-            dprintk("nfsd: Dropping request due to malloc failure!\n");
-            nfsd_cache_update(rqstp, RC_NOCACHE, NULL);
-            return 0;
-        }
-
-nfsd3_proc_write calls nfsd_write()
-nfsd_write() calls nfsd_open() works (and does the fh_verify() which
-holds the dentry).
-
-nfsd_write calls the underlying file system and let's say it returns
--ENOMEM. nfserrno() will convert this to nfserr_dropit.
-
-This gets returned up to nfs3_proc_write() which then returns
-nfserr_dropit to nfsd_dispatch(). The above code return's 0 to
-svc_process().
-
-svc_process drops the packet without calling the release function so
-the handle is never released.
-
-Not sure what the appropriate fix is, but one could call the release
-function in nfsd_write if it is about to return "drop it" and the
-nfsd_open succeeded.
-
-Or is a file system never supposed to return -ENOMEM when the
-write file op is called?
-
-Tnanks,
 
 -- 
-Jim.Mostek@adic.com
-952-882-0616
-952-221-1183 cell
+------------------------------------------------------------------------
+Tom McNeal            trmcneal@attbi.com          (650)906-0761 (cell)
+------------------------------------------------------------------------
 
 
 
