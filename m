@@ -1,23 +1,21 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: NFS FAQ updates
-Date: Sun, 13 Mar 2005 17:45:22 -0500
-Message-ID: <20050313224522.GB13667@fieldses.org>
-References: <482A3FA0050D21419C269D13989C61130853986D@lavender-fe.eng.netapp.com> <1110751811.23876.19.camel@lade.trondhjem.org>
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: [PATCH] sanitize logging subsystem
+Date: Mon, 14 Mar 2005 16:51:06 +1100
+Message-ID: <16949.9802.377554.583900@cse.unsw.edu.au>
+References: <200503111518.29792.vda@ilport.com.ua>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Charles Lever <Charles.Lever@netapp.com>,
-	nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DAbpS-0008MQ-8H
-	for nfs@lists.sourceforge.net; Sun, 13 Mar 2005 14:44:58 -0800
-Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1DAbpQ-00058f-Pc
-	for nfs@lists.sourceforge.net; Sun, 13 Mar 2005 14:44:58 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1110751811.23876.19.camel@lade.trondhjem.org>
+	id 1DAiU3-000282-SZ
+	for nfs@lists.sourceforge.net; Sun, 13 Mar 2005 21:51:19 -0800
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1DAiU2-00077O-7b
+	for nfs@lists.sourceforge.net; Sun, 13 Mar 2005 21:51:19 -0800
+To: Denis Vlasenko <vda@ilport.com.ua>
+In-Reply-To: message from Denis Vlasenko on Friday March 11
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,26 +29,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sun, Mar 13, 2005 at 05:10:11PM -0500, Trond Myklebust wrote:
-> The subtree_check option attempts to decide whether or not a file lies
-> within an exported subtree. If you turn it off, then people can
-> theoretically try to guess filehandles and gain access to the files
-> (assuming the access permissions on the file itself allow that).
+On Friday March 11, vda@ilport.com.ua wrote:
+> It seems like there are several ways to log messages or
+> display them on std{out,err} in nfs utils, more or less
+> similar to each other. Let's try to untangle them.
+> 
+> I'll start from cleaning up xlog.c:
+> 
+> * There is no external API to log to arbitrary FILE*,
+>   we can drop code which supports this internally.
+>   Patch converts xlog.c to directly use stderr.
+> * Print date/time in ISO (YYYY-MM-DD HH:MM:SS) format.
+> * Add support for disabling logging to syslog.
+> 
+> Patch does not introduce behavioral changes except for
+> making foregrounded mountd to really use stderr.
+> There was a bug which prevented this.
+> 
+> Patch is tested. Please comment/apply.
 
-I wouldn't put too much emphasis on that "theoretically".  The root
-directory on all my ext2/3 filesystems has inode number 2, and as far as
-I can tell guessing the rest of the rest of the filehandle just comes
-down to guessing the root device, which on my machines is always
-/dev/hdaN for some very small N.  Add a few more for people with scsi
-and so on, and I bet you could cover most linux NFS servers with a dozen
-guesses.  Now just lookup and readdir down to wherever you want.  Am I
-missing anything here?
+How well was it tested :-)
 
-If the administrator tightened down directory permissions a bit, you'll
-be forced to guess filehandles for objects deeper in the filesystem,
-which may be a little harder.  I wouldn't count on it.
+> +		fprintf(stderr, "%s[%d] %04d-%02d-%02d %02d:%02d:%02d %s\n",
+> +				log_name, log_pid,
+> +				tm->tm_year, tm->tm_mon + 1, tm->tm_mday,
+> +				tm->tm_hour, tm->tm_min, tm->tm_sec,
+> +				buff);
 
---b.
+tm_year is "number of years since 1900", which isn't what you want to
+print out.  It needs a "+1900", which I have given it.
+
+Otherwise the patch looks reasonably sane.
+The only bit that bothers me is calling openlog in mountd where it
+wasn't called before.
+mountd (on debian at least) currently prefixes all log lines with
+"rpc_mountd" as that is the program name.  With this patch they will
+be prefixes with "mountd".
+This is a change and people who filter their log file (like me) might
+notice.   But it probably isn't a big concern..
+
+I've committed it to CVS.
+
+Thanks,
+NeilBrown
 
 
 -------------------------------------------------------
