@@ -1,20 +1,20 @@
-From: Daniel Ellard <ellard@eecs.harvard.edu>
-Subject: incredible numbers of fsstats - why?
-Date: Fri, 11 Jul 2003 15:48:30 -0400 (EDT)
+From: "justin case" <justin_case@gmx.net>
+Subject: server doesn't lock up anymore! (was: server still locks up)
+Date: Sat, 12 Jul 2003 01:30:52 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.BSF.4.51.0307111532150.74564@bowser.eecs.harvard.edu>
+Message-ID: <LIEOIFOFHAJEGKGKHBEJAEPKDGAA.justin_case@gmx.net>
+References: <LIEOIFOFHAJEGKGKHBEJGEPLDAAA.justin_case@gmx.net>
+Reply-To: <justin_case@gmx.net>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from bowser.eecs.harvard.edu
-	([140.247.60.24] helo=mail.eecs.harvard.edu ident=postfix)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19b3sj-0004Ji-00
-	for <nfs@lists.sourceforge.net>; Fri, 11 Jul 2003 12:48:37 -0700
-Received: from localhost (localhost [127.0.0.1])
-	by mail.eecs.harvard.edu (Postfix) with ESMTP id 32FE654C442
-	for <nfs@lists.sourceforge.net>; Fri, 11 Jul 2003 15:48:30 -0400 (EDT)
-To: nfs@lists.sourceforge.net
+Received: from pop.gmx.net ([213.165.64.20] helo=mail.gmx.net)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19b7LR-0003vm-00
+	for <nfs@lists.sourceforge.net>; Fri, 11 Jul 2003 16:30:29 -0700
+To: <nfs@lists.sourceforge.net>
+In-Reply-To: <LIEOIFOFHAJEGKGKHBEJGEPLDAAA.justin_case@gmx.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,21 +27,65 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+argh!
+after reinstalling the server, since i made the client work on a second
+nfs-machine, it still did the nasty thing. i got pissed and made the ram
+work a little slower in the bios and everything was fine.
 
-On one of the clients on my network, I'm seeing one (or more) fsstat
-calls per NFS request.  (I don't mean only that there are
-approximately the same number of fsstat calls as other calls -- I mean
-that every "normal" call is accompanied by an fsstat call.)
+i didn't think of that in the first place, because it worked for a couple of
+days when i first installed it and quit duty after a week or so without me
+even touching the bios.
 
-The client in this case is a Mac running OSX.  We have a few other OSX
-machines, but that don't seem to have this problem,  at least not
-to this degree (although it might just be that they're idle enough
-so that it's hard to notice).
+strange but solved..
 
-Any idea why this would be happening, and/or how to make it stop?
+/jc
 
-Thanks,
-	-Dan
+> -----Original Message-----
+> From: nfs-admin@lists.sourceforge.net
+> [mailto:nfs-admin@lists.sourceforge.net]On Behalf Of justin case
+> Sent: Friday, July 04, 2003 12:57 PM
+> To: NFS@lists.sourceforge.net
+> Subject: [NFS] server still locks up
+>
+>
+> hi again,
+>
+> i still couldn't solve the riddle of the freezing server. i
+> transferred the
+> shared directory and the according exports-entry to another machine and
+> everything ran fine.
+>
+> i believe the trouble to be nfs-related, since besides that issue, the
+> machine performs all tasks stable.
+> i installed the latest version of nfs-tools - same problems.
+>
+> i built a new kernel again, checking all my options very carefully but no
+> change.
+> tcpdump >log didn't show any anomalies and the lines in the log repeated
+> themselves until the last line was cut of before ended, so also here no
+> usefull information.
+>
+> if nobody has a further idea how to track the error down i'll
+> have to build
+> the whole machine from scratch :(
+> at least i have now seen a working example so i know it would be worth the
+> effort. what bothers me, though, is that i have only seen this
+> technique of
+> eliminating an error with windows so far.
+>
+> regards,
+> /jc
+>
+>
+> -------------------------------------------------------
+> This SF.Net email sponsored by: Free pre-built ASP.NET sites including
+> Data Reports, E-commerce, Portals, and Forums are available now.
+> Download today and enter to win an XBOX or Visual Studio .NET.
+> http://aspnet.click-url.com/go/psa00100006ave/direct;at.asp_061203_01/01
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+>
 
 
 
