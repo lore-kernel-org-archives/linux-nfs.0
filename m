@@ -1,19 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 4 of 9] Delete an obsolete comment from nfsd rpc code
-Date: Thu, 24 Jun 2004 14:46:51 +1000
+Subject: [PATCH kNFSd - 0 of 9] Introduction
+Date: Thu, 24 Jun 2004 14:49:47 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1BdM8R-0001Lk-Pm@notabene.cse.unsw.edu.au>
-References: <20040624143710.5086.patches@notabene>
+Message-ID: <20040624144708.5220.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BdM8k-00024A-Eh
-	for nfs@lists.sourceforge.net; Wed, 23 Jun 2004 21:47:10 -0700
+	id 1BdMQr-0005JM-CI
+	for nfs@lists.sourceforge.net; Wed, 23 Jun 2004 22:05:53 -0700
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BdM8k-0007DD-0E
-	for nfs@lists.sourceforge.net; Wed, 23 Jun 2004 21:47:10 -0700
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1BdMQq-0000Io-WB
+	for nfs@lists.sourceforge.net; Wed, 23 Jun 2004 22:05:53 -0700
 To: Andrew Morton <akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,25 +27,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
+(Ooops, forgot the comments.  Let's try again)
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>         
-Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
+Here are 9 patches for nfsd in 2.6.7-mm1
 
-### Diffstat output
- ./net/sunrpc/svcsock.c |    1 -
- 1 files changed, 1 deletion(-)
+The first makes NFS over TCP support no longer EXPERIMENTAL, as it 
+appears to have been quite stable for a while.
 
-diff ./net/sunrpc/svcsock.c~current~ ./net/sunrpc/svcsock.c
---- ./net/sunrpc/svcsock.c~current~	2004-06-23 14:37:06.000000000 +1000
-+++ ./net/sunrpc/svcsock.c	2004-06-23 14:37:35.000000000 +1000
-@@ -414,7 +414,6 @@ svc_sendto(struct svc_rqst *rqstp, struc
- 	}
- 	/* send tail */
- 	if (xdr->tail[0].iov_len) {
--		/* The tail *will* be in respages[0]; */
- 		result = sock->ops->sendpage(sock, rqstp->rq_respages[rqstp->rq_restailpage], 
- 					     ((unsigned long)xdr->tail[0].iov_base)& (PAGE_SIZE-1),
- 					     xdr->tail[0].iov_len, 0);
+The remainder are all NFSv4 related patches, both tidying up code
+and adding little bits of functionality.
+
+Thanks,
+NeilBrown
 
 
 -------------------------------------------------------
