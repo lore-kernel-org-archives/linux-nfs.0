@@ -1,34 +1,29 @@
-From: Jason Holmes <jholmes@psu.edu>
-Subject: Re: 2.4 vs. 2.6 nfs client performance
-Date: Sun, 16 Nov 2003 10:54:23 -0500
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: [PATCH] NFSv3 READDIRPLUS fails SpecSFS validation test
+Date: Tue, 18 Nov 2003 13:34:41 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3FB79DAF.8E483BD5@psu.edu>
-References: <3FB27670.4C878A84@psu.edu>
-		<shssmkttk34.fsf@charged.uio.no>
-		<3FB29D43.A618973D@psu.edu>
-		<16306.41898.291062.36209@charged.uio.no>
-		<3FB2A738.3F2C90B8@psu.edu>
-		<16306.49310.195265.145519@charged.uio.no>
-		<3FB2DC60.FA7D3E08@psu.edu>
-		<16306.59249.857512.354675@charged.uio.no>
-		<3FB3924B.7450E9F7@psu.edu>
-		<3FB3FDE8.47E819FF@psu.edu>
-		<16308.8254.89284.377113@charged.uio.no>
-		<3FB520E4.133AF7DB@psu.edu> <16309.17670.931812.401791@charged.uio.no>
+Message-ID: <16313.34113.687049.258087@notabene.cse.unsw.edu.au>
+References: <1069121605.1244.94.camel@w-bwa1.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net,
+    jrsantos@austin.ibm.com
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1ALPFU-0007hj-00
-	for <nfs@lists.sourceforge.net>; Sun, 16 Nov 2003 07:55:40 -0800
-Received: from vpn-19-8.aset.psu.edu ([146.186.19.8] helo=funkmachine.cac.psu.edu)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
-	id 1ALPEp-00010O-IT
-	for nfs@lists.sourceforge.net; Sun, 16 Nov 2003 07:54:59 -0800
-To: trond.myklebust@fys.uio.no
+	id 1ALvhc-0003Qn-00
+	for <nfs@lists.sourceforge.net>; Mon, 17 Nov 2003 18:34:52 -0800
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.24)
+	id 1ALvhb-0000bG-Of
+	for nfs@lists.sourceforge.net; Mon, 17 Nov 2003 18:34:51 -0800
+Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
+	(for <bwa@us.ibm.com>) (for <nfs@lists.sourceforge.net>)
+	(for <jrsantos@austin.ibm.com>) By note With Smtp ;
+	Tue, 18 Nov 2003 13:34:42 +1100
+To: Bruce Allan <bwa@us.ibm.com>
+In-Reply-To: message from Bruce Allan on  November 17
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -41,46 +36,45 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust wrote:
+On  November 17, bwa@us.ibm.com wrote:
+> Hi Neil, 
 > 
-> >>>>> " " == Jason Holmes <jholmes@psu.edu> writes:
-> 
->      > Files should be up there (http://magicbus.cac.psu.edu/nfs).  I
->      > do have to admit that something odd is going on - 2.4.22 still
->      > is faster than 2.6.0-test9-bk17 and test9-bk17 is still showing
->      > the large amount of commits, but both of them are running
->      > faster than they did before on the sync mounts and I'm not sure
->      > what I might have changed to cause this.
-> 
-> Hmm... It looks like you are doing a succession of 4k commits. I'll
-> bet the read() code is involved in this...
-> 
-> Could you try the following patch and see if it improves things?
+> We discussed this same issue a while back(*) but didn't come to a
+> resolution.  Yet another group within IBM has asked for this to be
+> looked into, and here is what I came up with-
 
-That made a huge difference:
+Thanks.  It looks mostly good.
 
-Client nfs v3:
-null       getattr    setattr    lookup     access     readlink   
-0       0% 714     0% 0       0% 110     0% 204     0% 0       0% 
-read       write      create     mkdir      symlink    mknod      
-873     0% 178571 92% 24      0% 0       0% 0       0% 0       0% 
-remove     rmdir      rename     link       readdir    readdirplus
-24      0% 0       0% 0       0% 0       0% 18      0% 0       0% 
-fsstat     fsinfo     pathconf   commit     
-0       0% 3       0% 0       0% 13175   6%
+2 problems:
 
-Client rpc stats:
-calls      retrans    authrefrsh
-193716     13         0 
+ 1/ you have a called to "kmalloc" but don't check the return status!
+  I would prefer not to use kmalloc to get a temporary buffer, but
+  rather to grab the next page, create the entry in there, and then
+  copy bits back.
 
-It also cut the job time in about half.  I put a level9 log of it up
-with the other ones.  I'll have to rerun the 2.4 vs. this, but I think
-that this change makes the 2.6 client faster than the 2.4 for this case.
+ 2/ I Don't think you have the error path right.
+  i.e., when you have:
 
-Thanks,
 
---
-Jason Holmes
+> +			if (compose_entry_fh(cd, &fh, name, namlen) > 0) {
+> +				/* reset cd->offset and free tmp buffer */
+> +				cd->offset = oldoffset;
+> +				kfree(tmp);
+> +				goto noexec;
+> +			}
+
+  I think it should be:
+
+> +			if (compose_entry_fh(cd, &fh, name, namlen) > 0) {
+> +				/* reset cd->offset and free tmp buffer */
+> +				cd->offset = oldoffset;
+> +				*p1++ = 0; *p1++ = 0;
+> +			} else
+
+as the entry, even reduced in size by the errors, may have to be split
+over two pages.
+
+NeilBrown
 
 
 -------------------------------------------------------
