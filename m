@@ -1,19 +1,17 @@
-From: Brian Pawlowski <beepy@netapp.com>
-Subject: Re: mmap() and NFS server performance
-Date: Fri, 13 Dec 2002 13:35:07 -0800 (PST)
+From: Philippe =?ISO-8859-15?B?R3JhbW91bGzp?= <philippe.gramoulle@mmania.com>
+Subject: Kernel Oops  in 2.4.20
+Date: Sat, 14 Dec 2002 02:44:28 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200212132135.gBDLZ7E17142@tooting-fe.eng>
-References: <3DFA4C9A.50101@geodev.com>
+Message-ID: <20021214024428.1e496afb.philippe.gramoulle@mmania.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net
+Cc: Chris Mason <mason@suse.com>, Oleg Drokin <green@namesys.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mx01.netapp.com ([198.95.226.53])
+Received: from relay-2m.club-internet.fr ([194.158.104.41])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18MxSs-0007P5-00
-	for <nfs@lists.sourceforge.net>; Fri, 13 Dec 2002 13:35:22 -0800
-In-Reply-To: <3DFA4C9A.50101@geodev.com> from Matthew Mitchell at "Dec 13, 2 03:09:46 pm"
-To: matthew@geodev.com (Matthew Mitchell)
+	id 18N1Mr-0005Uq-00
+	for <nfs@lists.sourceforge.net>; Fri, 13 Dec 2002 17:45:25 -0800
+To: nfs <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,61 +24,107 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I would love to see a packet trace in the absence of any known
-problems...
+Hi,
 
-> Hello,
-> 
-> We've noticed some interesting behavior regarding mmap file IO and were 
-> wondering if anyone here had some clues as to what might be going on.
-> 
-> We have some applications that mmap() files into memory for the purpose 
-> of updating some potentially scattered word-sized data values.  These 
-> apps were originally written on Solaris with Solaris NFS servers assumed 
-> to be the data source; the Sun guys said that mmap would be much faster 
-> than read/write and they were correct.  However, now that we have a few 
-> Linux NFS servers, we're seeing the opposite.
-> 
-> It takes, for example, 20-24 hours to update a 2GB file (there are on 
-> the order of 1M words to update) via mmap, whereas reading in the whole 
-> file, updating it in memory, and writing it out again takes about 30 
-> minutes (limited by network speed in our case).  This when the file 
-> resides on the Linux server.  On Solaris the mmap update runs on the 
-> order of 15-20 minutes.  Client in both cases is a Solaris 8 machine.
-> 
-> What we are speculating is that the Solaris NFS server is "cheating" by 
-> keeping file state information between NFS reads and writes.  (The 
-> updates do occur in sequence.)  Are there any heuristics or 
-> optimizations done by the Linux NFS server that might help the 
-> performance here?
-> 
-> All things, alas, are not equal in this comparison -- the Solaris server 
-> in question is an 8 CPU Enterprise 4500 with 8GB of RAM, and the Linux 
-> server is a single-processor P4 with 512MB of RAM.  The Solaris server 
-> is much busier than the Linux server, though (I know it cannot be 
-> caching the whole file in memory).  The Linux server is running Red 
-> Hat's 2.4.18-14 kernel.
-> 
-> Anyone have any ideas as to why this is happening and what, if anything, 
-> we can do to speed up the mmap IO when using the Linux server?
-> 
-> -- 
-> Matthew Mitchell
-> Systems Programmer/Administrator            matthew@geodev.com
-> Geophysical Development Corporation         phone 713 782 1234
-> 1 Riverway Suite 2100, Houston, TX  77056     fax 713 782 1829
-> 
-> 
-> 
-> -------------------------------------------------------
-> This sf.net email is sponsored by:
-> With Great Power, Comes Great Responsibility 
-> Learn to use your power at OSDN's High Performance Computing Channel
-> http://hpc.devchannel.org/
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+Scope: NFS server is a DELL 2550, SMP , 1Go RAM with a PowerVault RAID5 array
+controlled by a PERC3/QC ( megaraid driver) with about 600Go of data
+with plenty of directories and lots of small files.
+NIC is Intel eepro100
 
+The server is used for serving web pages as well as FTP accounts for
+members of our online service. Filesystem is Reiserfs 3.6 format.
+
+As for software, we use a plain 2.4.20 kernel with patches from Oleg Drokin
+and Chris Mason to enable data logging as well as quota V2.
+No single patch related to NFS was applied.
+
+All clients use NFSV3 udp with standard mount options (rsize=8192,wsize=8192,hard,intr)
+and all 80 clients kernels mostly use 2.4.19-pre3 , (with nfs fixes at the time of its release)
+few with 2.4.18-pre[23]. There are 285 mounts from this server.
+
+The NFS server is very busy, running 256 NFS threads with a usual load average of ~ 4/5.
+
+With the help of Reiserfs developper, we tried to chase down a bug that would cause the kernel
+to crash , and that first seemed to be related to the data logging feature ( partition is mounted
+with data=orderd option) each time that quotacheck was run
+
+After several fixes provided, latest quotacheck made the kernel oops and decoded oops doesn't
+show anything related to reiserfs but more likely something to do with NFS.
+
+Decoded oops is provided below. The oops will almost happen each time quotacheck is run,
+sometimes it can take many hours for the bug to be triggered.
+Kernel doesn't seem to oops if quotacheck is not run.
+
+I can provide more information if needed, just let me know.
+
+Thanks,
+
+Philippe
+
+
+Unable to handle kernel paging request at virtual address 0040648e
+ c020318a
+ *pde = 00000000
+ Oops: 0002
+ CPU:    0
+ EIP:    0010:[<c020318a>]    Not tainted
+ Using defaults from ksymoops -t elf32-i386 -a i386
+ EFLAGS: 00010206
+ eax: 00000011   ebx: ca38b02e   ecx: f5196000   edx: 00406480
+ esi: 0d00c1d5   edi: 00007458   ebp: 3500c1d5   esp: f5197cac
+ ds: 0018   es: 0018   ss: 0018
+ Process nfsd (pid: 394, stackpage=f5197000)
+ Stack: c2a39811 c02038c4 00000005 ca38b02e c2a39860 ca38b02e c2a39860 c2a39860 
+        f7e2b000 ca38b02e c0202900 c2a39860 f7e2b000 ca38b02e c2a39860 c2a39860 
+        c0202d1a c2a39860 00000000 c2a39860 00000800 00000008 00000001 c01f5aeb 
+ Call Trace:    [<c02038c4>] [<c0202900>] [<c0202d1a>] [<c01f5aeb>] [<c01f5b99>]
+   [<c01f5cce>] [<c011bc0f>] [<c01088bb>] [<c010adf8>] [<c0115610>] [<c012808c>]
+   [<c012894d>] [<c0128dd4>] [<c0128ccc>] [<c016c584>] [<c017170b>] [<c0168b23>]
+   [<c0236585>] [<c016890f>] [<c0105684>]
+ Code: 88 42 0e c6 42 0f 00 0f b7 43 04 66 89 42 0c 8b 43 0c 89 42 
+
+
+ >>EIP; c020318a <ip_frag_create+26/b0>   <=====
+
+ >>ebx; ca38b02e <_end+a05832a/3860435c>
+ >>ecx; f5196000 <_end+34e632fc/3860435c>
+ >>esp; f5197cac <_end+34e64fa8/3860435c>
+
+ Trace; c02038c4 <ip_defrag+bc/16b>
+ Trace; c0202900 <ip_local_deliver+1c/12c>
+ Trace; c0202d1a <ip_rcv+30a/38d>
+ Trace; c01f5aeb <netif_receive_skb+11f/14c>
+ Trace; c01f5b99 <process_backlog+81/124>
+ Trace; c01f5cce <net_rx_action+92/154>
+ Trace; c011bc0f <do_softirq+6f/cc>
+ Trace; c01088bb <do_IRQ+db/ec>
+ Trace; c010adf8 <call_do_IRQ+5/d>
+ Trace; c0115610 <.text.lock.sched+7a/1da>
+ Trace; c012808c <___wait_on_page+98/b8>
+ Trace; c012894d <do_generic_file_read+301/464>
+ Trace; c0128dd4 <generic_file_read+7c/110>
+ Trace; c0128ccc <file_read_actor+0/8c>
+ Trace; c016c584 <nfsd_read+1bc/260>
+ Trace; c017170b <nfsd3_proc_read+127/184>
+ Trace; c0168b23 <nfsd_dispatch+d3/19a>
+ Trace; c0236585 <svc_process+28d/4d4>
+ Trace; c016890f <nfsd+1f7/338>
+ Trace; c0105684 <kernel_thread+28/38>
+
+ Code;  c020318a <ip_frag_create+26/b0>
+ 00000000 <_EIP>:
+ Code;  c020318a <ip_frag_create+26/b0>   <=====
+    0:   88 42 0e                  mov    %al,0xe(%edx)   <=====
+ Code;  c020318d <ip_frag_create+29/b0>
+    3:   c6 42 0f 00               movb   $0x0,0xf(%edx)
+ Code;  c0203191 <ip_frag_create+2d/b0>
+    7:   0f b7 43 04               movzwl 0x4(%ebx),%eax
+ Code;  c0203195 <ip_frag_create+31/b0>
+    b:   66 89 42 0c               mov    %ax,0xc(%edx)
+ Code;  c0203199 <ip_frag_create+35/b0>
+    f:   8b 43 0c                  mov    0xc(%ebx),%eax
+ Code;  c020319c <ip_frag_create+38/b0>
+   12:   89 42 00                  mov    %eax,0x0(%edx)
 
 
 -------------------------------------------------------
