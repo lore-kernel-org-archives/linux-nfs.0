@@ -1,28 +1,24 @@
 From: mschmitt@inf.ethz.ch
-Subject: NFSd lockup
-Date: Sat, 15 Nov 2003 07:16:42 +0100 (MET)
+Subject: Re: NFSd lockup
+Date: Sat, 15 Nov 2003 08:46:42 +0100 (MET)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1429.129.132.10.99.1068877002.squirrel@www.mail.inf.ethz.ch>
+Message-ID: <1507.129.132.10.99.1068882402.squirrel@www.mail.inf.ethz.ch>
+References: <1429.129.132.10.99.1068877002.squirrel@www.mail.inf.ethz.ch>
 Mime-Version: 1.0
 Content-Type: text/plain;charset=iso-8859-1
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AKtjj-00023D-00
-	for <nfs@lists.sourceforge.net>; Fri, 14 Nov 2003 22:16:47 -0800
+	id 1AKv8n-0000xE-00
+	for <nfs@lists.sourceforge.net>; Fri, 14 Nov 2003 23:46:45 -0800
 Received: from medoc.inf.ethz.ch ([129.132.178.200])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
-	id 1AKtji-0005AM-P1
-	for nfs@lists.sourceforge.net; Fri, 14 Nov 2003 22:16:46 -0800
-Received: from localhost (localhost [127.0.0.1])
-	by medoc.inf.ethz.ch (Postfix) with ESMTP id 448C5B5EE
-	for <nfs@lists.sourceforge.net>; Sat, 15 Nov 2003 07:16:43 +0100 (MET)
-Received: from medoc.inf.ethz.ch ([127.0.0.1])
- by localhost (medoc [127.0.0.1]) (amavisd-new, port 10024) with LMTP
- id 05658-01-9 for <nfs@lists.sourceforge.net>;
- Sat, 15 Nov 2003 07:16:42 +0100 (MET)
-To: nfs@lists.sourceforge.net
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
+	id 1AKv8n-0000Ks-7d
+	for nfs@lists.sourceforge.net; Fri, 14 Nov 2003 23:46:45 -0800
+In-Reply-To: <1429.129.132.10.99.1068877002.squirrel@www.mail.inf.ethz.ch>
+To: mschmitt@inf.ethz.ch
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -35,29 +31,11 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Dear list,
+I've opened a bug report in bugzilla, too.
 
-On a RedHat 7.3 NFS server with kernel 2.4.20-20.7smp, I'm currently
-seeing the following effect after starting the nfs service:
+http://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=3D110146
 
-The NFS service appears to start normally, exportfs is running correctly,
-clients resume, reads and writes take place to the with usrquota enabled
-ext3 filesystem. 3-10 seconds after that, this kernel message appears on
-the console:
-
-VFS: dqputduplicate(): Duplicated dquot put without duplicate reference
-
->From that moment on, the nfsd blocks. The load of the machine goes to 96
-(the number of nfsds I set in /etc/sysconfig/nfs). Stopping the nfs
-service now fails, it will leave one or two nfsd running in "D" state.
-
-This is most probably no nfs problem, rather a problem of corrupted quota
-information on the filesystem. I thought that I'd post this here anyway,
-maybe there is a better way of handling this situation instead of having
-to reset the machine?
-
-Regards,
-     Marc
+    Marc
 
 
 -------------------------------------------------------
