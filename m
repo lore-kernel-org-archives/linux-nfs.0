@@ -1,19 +1,19 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: [PATCH] nfs-utils - 5 of 6 - mountd - defined debugging kinds....
-Date: Wed, 18 Jun 2003 14:09:51 -0400
+Subject: [PATCH] nfs-utils - 6 of 6 - mountd - ignore sigpipe
+Date: Wed, 18 Jun 2003 14:13:26 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3EF0AAEF.2080003@RedHat.com>
+Message-ID: <3EF0ABC6.2030302@RedHat.com>
 Mime-Version: 1.0
 Content-Type: multipart/mixed;
- boundary="------------050400090703030905070406"
+ boundary="------------050902070603000006080909"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from nat-pool-rdu.redhat.com ([66.187.233.200] helo=lacrosse.corp.redhat.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19ShMY-0003gi-00
-	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 11:08:50 -0700
+	id 19ShPz-00053y-00
+	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 11:12:23 -0700
 Received: from RedHat.com (dickson.boston.redhat.com [172.16.65.20])
-	by lacrosse.corp.redhat.com (8.11.6/8.9.3) with ESMTP id h5II8gK16826
-	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 14:08:42 -0400
+	by lacrosse.corp.redhat.com (8.11.6/8.9.3) with ESMTP id h5IICHK17042
+	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 14:12:17 -0400
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -28,35 +28,36 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a multi-part message in MIME format.
---------------050400090703030905070406
+--------------050902070603000006080909
 Content-Type: text/plain; charset=us-ascii; format=flowed
 Content-Transfer-Encoding: 7bit
 
-Defined the kinds of debugging that are available
-with the -d flag to mountd
+This patch makes mountd ignore SIGPIPE. If forget exactly
+how a SIGPIPE can be generated, but was being generated
+which in turn was kill mountd...
 
 SteveD.
 
---------------050400090703030905070406
+
+--------------050902070603000006080909
 Content-Type: text/plain;
- name="nfs-utils-1.0.3-05-mountd.man.patch"
+ name="nfs-utils-1.0.3-06-mountd.sigpipe.patch"
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline;
- filename="nfs-utils-1.0.3-05-mountd.man.patch"
+ filename="nfs-utils-1.0.3-06-mountd.sigpipe.patch"
 
---- ./utils/mountd/mountd.man.org	Mon Apr  8 17:43:25 2002
-+++ ./utils/mountd/mountd.man	Mon Jun  9 09:59:05 2003
-@@ -56,7 +56,7 @@
- .SH OPTIONS
- .TP
- .B \-d kind " or " \-\-debug kind
--Turn on debugging for kind.
-+Turn on debugging. Valid kinds are: all, auth, call, general and parse.
- .TP
- .B \-F " or " \-\-foreground
- Run in foreground (do not daemonize)
+--- ./utils/mountd/mountd.c.orig	2003-02-18 23:25:04.000000000 -0500
++++ ./utils/mountd/mountd.c	2003-06-02 15:13:37.000000000 -0400
+@@ -481,6 +481,7 @@ main(int argc, char **argv)
+ 	sigaction(SIGHUP, &sa, NULL);
+ 	sigaction(SIGINT, &sa, NULL);
+ 	sigaction(SIGTERM, &sa, NULL);
++	sigaction(SIGPIPE, &sa, NULL);
+ 	/* WARNING: the following works on Linux and SysV, but not BSD! */
+ 	sigaction(SIGCHLD, &sa, NULL);
+ 
 
---------------050400090703030905070406--
+--------------050902070603000006080909--
 
 
 
