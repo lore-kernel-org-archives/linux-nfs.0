@@ -1,27 +1,28 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Jason Holmes <jholmes@psu.edu>
 Subject: Re: 2.4 vs. 2.6 nfs client performance
-Date: Thu, 13 Nov 2003 15:02:26 -0500
+Date: Thu, 13 Nov 2003 16:55:52 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16307.58194.295707.246141@charged.uio.no>
-References: <OF2F88E36F.887DAD35-ON85256DDD.00694D03-86256DDD.006C4237@us.ibm.com>
-Reply-To: trond.myklebust@fys.uio.no
+Message-ID: <3FB3FDE8.47E819FF@psu.edu>
+References: <3FB27670.4C878A84@psu.edu>
+			<shssmkttk34.fsf@charged.uio.no>
+			<3FB29D43.A618973D@psu.edu>
+			<16306.41898.291062.36209@charged.uio.no>
+			<3FB2A738.3F2C90B8@psu.edu>
+			<16306.49310.195265.145519@charged.uio.no>
+			<3FB2DC60.FA7D3E08@psu.edu> <16306.59249.857512.354675@charged.uio.no> <3FB3924B.7450E9F7@psu.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Whiting <ewhiting@amis.com>,
-    Jason Holmes <jholmes@psu.edu>,
-    nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AKNft-0006hc-00
-	for <nfs@lists.sourceforge.net>; Thu, 13 Nov 2003 12:02:41 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 1AKPRR-0002GQ-00
+	for <nfs@lists.sourceforge.net>; Thu, 13 Nov 2003 13:55:53 -0800
+Received: from vpn-19-5.aset.psu.edu ([146.186.19.5] helo=funkmachine.cac.psu.edu)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
-	id 1AKNfs-00061S-Q4
-	for nfs@lists.sourceforge.net; Thu, 13 Nov 2003 12:02:40 -0800
-To: Duc Vianney <dvianney@us.ibm.com>
-In-Reply-To: <OF2F88E36F.887DAD35-ON85256DDD.00694D03-86256DDD.006C4237@us.ibm.com>
+	id 1AKPRR-0003Af-3O
+	for nfs@lists.sourceforge.net; Thu, 13 Nov 2003 13:55:53 -0800
+To: trond.myklebust@fys.uio.no, nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -34,28 +35,46 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Duc Vianney <dvianney@us.ibm.com> writes:
+Jason Holmes wrote:
+> 
+> Trond Myklebust wrote:
+> >
+> > Any hints on how I can reproduce your results?
+> 
+> Unfortunately Gaussian's licensing would prohibit me from passing it
+> along to reproduce this.  I'll try to reproduce this with another
+> program this morning and get back to you.
 
-     > I ran the iozone in the cluster mode to time read and write
-     > under NFSv3.  Under a server memory constraint scenario, I saw
-     > reads on 2.6.0-test9 about 8X slower than 2.4.22.  For writes,
-     > I saw improvement in 2.6.0-test9 irrespective of server memory
-     > size.
+OK, I haven't found any other program that behaves similar to Gaussian
+on this, but I did do a few more runs with 2.6.0-test9-bk17 vs 2.4.22,
+one set with nfs_debug on and one set with rpc_debug on.  I haven't
+analyzed the files in depth (and doing so would really be beyond me at
+this point), but on a "dumb" level, the nfs files are of similar length
+in terms of lines, but the RPC file for 2.6.0-test9-bk17 is much larger:
 
-This is consistent with what I see on my setups.
+[root@fs4 log]# wc -l kern.*
+  16236 kern.nfs-2.4.22
+  17188 kern.nfs-2.6.0-test9-bk17
+  20565 kern.rpc-2.4.22
+  32684 kern.rpc-2.6.0-test9-bk17
 
-The increase in write speed you see is due to the fact that we've
-managed to lift the restriction we have in 2.4.x that only 256 writes
-writes may be cached before have to we do another COMMIT and flush
-them to disk.
+Note that there is probably some small amount of noise in these files,
+but 98% of it should be from the Gaussian runs.  I put them up at:
 
-The slowdown in reads is something I see too. What's more, both I and
-others are also seeing slowdowns on local filesystem reads. I
-therefore suspect some bug in the new VFS readahead code, but I still
-haven't found time to look into this.
+  http://magicbus.cac.psu.edu/nfs
 
-Cheers,
-  Trond
+if you want to look at them.  One small observation is that 2.4.22
+reaches much larger values of cwnd than test9-bk17, resulting in a lot
+fewer calls to functions such as xprt_cwnd_limited (1861 vs. 2715). 
+Whether or not this means anything, I don't know.
+
+Trond, if none of this helps and you really want to debug this, I can
+probably give you access to two machines to do so.
+
+Thanks,
+
+--
+Jason Holmes
 
 
 -------------------------------------------------------
