@@ -1,18 +1,18 @@
-From: "Moshe Linzer" <Moshe.Linzer@nsc.com>
-Subject: grpid mount option for NFS
-Date: Tue, 11 Feb 2003 18:33:50 +0200
+From: alexander.liu@jazzsemi.com
+Subject: RH8.0 nfs server, client RPC time_time_out issues
+Date: Tue, 11 Feb 2003 09:01:07 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <OFB8969C39.4D0AD0CC-ONC2256CCA.005AED06-C2256CCA.005B2E37@nsc.com>
+Message-ID: <OF24B722A7.F9405887-ON88256CCA.005ABDD0-88256CCA.005D624F@nb.jazzsemi.com>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
- boundary="=_alternative 005B2E20C2256CCA_="
+Content-Type: multipart/alternative; boundary="=_alternative 005D624C88256CCA_="
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail1.nsc.com ([12.151.32.15] helo=sc2k-ntrdcss1.nsc.com)
+Received: from cnxtsmtp2.conexant.com ([198.62.9.253])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18idM5-0003RE-00
-	for <nfs@lists.sourceforge.net>; Tue, 11 Feb 2003 08:33:57 -0800
-Received: from scsmtp01.nsc.com by scmh1.nsc.com with ESMTP for
- nfs@lists.sourceforge.net; Tue, 11 Feb 2003 08:33:41 -0800
+	id 18idlP-0000XU-00
+	for <nfs@lists.sourceforge.net>; Tue, 11 Feb 2003 09:00:07 -0800
+Received: from npbsmtp1.conexant.com (npbsmtp1.nb.conexant.com [157.152.161.153])
+	by cnxtsmtp2.conexant.com (8.9.3/8.9.3) with ESMTP id IAA14955
+	for <nfs@lists.sourceforge.net>; Tue, 11 Feb 2003 08:59:58 -0800 (PST)
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -27,53 +27,73 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a multipart message in MIME format.
---=_alternative 005B2E20C2256CCA_=
-Content-Type: text/plain;
- charset=us-ascii
-Content-Transfer-Encoding: 7bit
+--=_alternative 005D624C88256CCA_=
+Content-Type: text/plain; charset="us-ascii"
 
-How can I get the behaviour of the grpid mount option on NFS mounts? I.e., 
-I want files created on the mounted FS to assume the GID of the parent 
-dir, instead of the user's GID.  Solaris has such an option for nfs_mount, 
-but Linux only seems to have it for ext2 mounts. 
+Hello,
 
-thanks, 
+We are having issues with our nfs server based on Redhat 8.0. 
+It seen that every other day or so, our nfs clients which are HPUX 10.20 
+and Tru64 4.0D and Solaris 8 will not be able to access the server. 
+Linux clients do not have any problems.
 
-Moshe 
+Client error messages include:
 
-Moshe Linzer
-IT Manager 
-National Semiconductor, Israel
-Phone: 972-9-970-2247
-Fax: 972-9-970-2001
+HPUX -    automount[621]: xx_fs:/raid/auto/home/rt_util server not 
+responding: RPC_TIMED_OUT
+TRU64 -  vmunix: NFS2 server not responding still trying
+Solaris 8 - automountd[163]: [ID 748625 daemon.error] xx_fs server not 
+responding: RPC_TIMED_OUT
 
---=_alternative 005B2E20C2256CCA_=
-Content-Type: text/html;
- charset=us-ascii
-Content-Transfer-Encoding: 7bit
+The server appears to be fine.
+
+I have searched the archives for RPC timeout errors and have implemented 
+some of the suggestions such as:
+Making sure the server name is in DNS and the local host table for reverse 
+and forward resolution.
+
+However, the problem continues.
+
+Problem resolution currently means stopping and restarting NFS on the 
+server.
+
+Has anyone experience similar problems, am I overlooking something 
+obvious, any suggestion on what I should look at next.
+
+Thanks, 
+
+Alex Liu
+--=_alternative 005D624C88256CCA_=
+Content-Type: text/html; charset="us-ascii"
 
 
-<br><font size=2>How can I get the behaviour of the grpid mount option
-on NFS mounts? I.e., I want files created on the mounted FS to assume the
-GID of the parent dir, instead of the user's GID.&nbsp; Solaris has such
-an option for nfs_mount, but Linux only seems to have it for ext2 mounts.
+<br><font size=2 face="sans-serif">Hello,</font>
 <br>
+<br><font size=2 face="sans-serif">We are having issues with our nfs server based on Redhat 8.0. </font>
+<br><font size=2 face="sans-serif">It seen that every other day or so, our nfs clients which are HPUX 10.20 and Tru64 4.0D and Solaris 8 will not be able to access the server. </font>
+<br><font size=2 face="sans-serif">Linux clients do not have any problems.</font>
 <br>
-thanks, <br>
+<br><font size=2 face="sans-serif">Client error messages include:</font>
 <br>
-Moshe </font><font size=2 face="sans-serif"><br>
-</font>
-<table width=100%>
-<tr>
-<td width=100%><font size=4 color=blue><b>Moshe Linzer</b></font>
-<br><font size=3 color=#000099><b>IT Manager</b> </font>
-<tr>
-<td><font size=2 color=#000099><b><i>National Semiconductor, Israel<br>
-Phone: 972-9-970-2247<br>
-Fax: 972-9-970-2001</i></b></font></table>
+<br><font size=2 face="sans-serif">HPUX - &nbsp; &nbsp;automount[621]: xx_fs:/raid/auto/home/rt_util server not responding: RPC_TIMED_OUT</font>
+<br><font size=2 face="sans-serif">TRU64 - &nbsp;vmunix: NFS2 server not responding still trying</font>
+<br><font size=2 face="sans-serif">Solaris 8 - automountd[163]: [ID 748625 daemon.error] xx_fs server not responding: RPC_TIMED_OUT</font>
 <br>
---=_alternative 005B2E20C2256CCA_=--
-
+<br><font size=2 face="sans-serif">The server appears to be fine.</font>
+<br>
+<br><font size=2 face="sans-serif">I have searched the archives for RPC timeout errors and have implemented some of the suggestions such as:</font>
+<br><font size=2 face="sans-serif">Making sure the server name is in DNS and the local host table for reverse and forward resolution.</font>
+<br>
+<br><font size=2 face="sans-serif">However, the problem continues.</font>
+<br>
+<br><font size=2 face="sans-serif">Problem resolution currently means stopping and restarting NFS on the server.</font>
+<br>
+<br><font size=2 face="sans-serif">Has anyone experience similar problems, am I overlooking something obvious, any suggestion on what I should look at next.</font>
+<br>
+<br><font size=2 face="sans-serif">Thanks, </font>
+<br>
+<br><font size=2 face="sans-serif">Alex Liu</font>
+--=_alternative 005D624C88256CCA_=--
 
 
 -------------------------------------------------------
