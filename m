@@ -1,22 +1,20 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: mmap() and NFS server performance
-Date: Mon, 16 Dec 2002 15:50:50 +0100
+Subject: Re: NFS oopses on smp servers
+Date: 16 Dec 2002 16:34:43 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15869.59466.167433.194706@charged.uio.no>
-References: <3DFA4C9A.50101@geodev.com>
-	<shsadj826bt.fsf@charged.uio.no>
-	<3DFDE455.1000004@geodev.com>
-Reply-To: trond.myklebust@fys.uio.no
+Message-ID: <shs8yyqht9o.fsf@charged.uio.no>
+References: <Pine.LNX.4.33.0212161226020.8807-300000@wotan.suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Cc: Peter Lojkin <ia6432@inbox.ru>,  <nfs@lists.sourceforge.net>,
+	  Chris Mason <mason@suse.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+Received: from mons.uio.no ([129.240.130.14])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18NwaC-0006t1-00
-	for <nfs@lists.sourceforge.net>; Mon, 16 Dec 2002 06:51:00 -0800
-To: Matthew Mitchell <matthew@geodev.com>
-In-Reply-To: <3DFDE455.1000004@geodev.com>
+	id 18NxGb-00068W-00
+	for <nfs@lists.sourceforge.net>; Mon, 16 Dec 2002 07:34:49 -0800
+To: Bernhard Kaindl <bk@suse.de>
+In-Reply-To: <Pine.LNX.4.33.0212161226020.8807-300000@wotan.suse.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,33 +27,49 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Matthew Mitchell <matthew@geodev.com> writes:
+>>>>> " " == Bernhard Kaindl <bk@suse.de> writes:
 
-     > 1) What would you like to see, tcpdump/snoop wise, to verify
-     >    this?
+     > The idea of the fix is to not to fput the file until the
+     > request is completely gone.
 
-nfsstat on the client should normally tell you how often you are
-seeing RPC retransmits.
+No. There's a very good reason for fputting the file ASAP, and that in
+case of an open() for write, the struct file grabs a lease. If you
+defer fputting the file until the request is gone, then you'll see
+ETXTBSY errors when trying to execute a file immediately after
+linking.
 
-     > 2) Could UDP service really be causing this order of magnitude
-     >    slowdown?
-
-Certainly: retransmissions follow an *exponential* backoff rule. For
-that reason, it doesn't take a very high percentage of retransmissions
-before you see a large impact.
-
-     > 3) Is TCP server code "ready enough" for production use?  In
-     >    our case we
-     > don't mind some occasional bugs, but it needs to be able to
-     > stay working under reasonable load for a day or so at a time
-     > for us to get anything done ("Stale NFS file handle" is a
-     > scourge...).
-
-That is more of a question for Neil Brown, but I personally don't have
-any particularly bad experiences to report.
+Try the appended patch instead:
 
 Cheers,
   Trond
+
+--- linux-2.4.20-smp/fs/nfs/pagelist.c.orig	Fri Nov 29 00:53:15 2002
++++ linux-2.4.20-smp/fs/nfs/pagelist.c	Mon Dec 16 16:32:05 2002
+@@ -126,6 +126,7 @@
+ {
+ 	/* Release struct file or cached credential */
+ 	if (req->wb_file) {
++		atomic_dec(&NFS_REQUESTLIST(req->wb_inode)->nr_requests);
+ 		fput(req->wb_file);
+ 		req->wb_file = NULL;
+ 	}
+@@ -136,7 +137,6 @@
+ 	if (req->wb_page) {
+ 		page_cache_release(req->wb_page);
+ 		req->wb_page = NULL;
+-		atomic_dec(&NFS_REQUESTLIST(req->wb_inode)->nr_requests);
+ 	}
+ }
+ 
+@@ -165,8 +165,6 @@
+ 		BUG();
+ 	if (NFS_WBACK_BUSY(req))
+ 		BUG();
+-	if (atomic_read(&NFS_REQUESTLIST(req->wb_inode)->nr_requests) < 0)
+-		BUG();
+ #endif
+ 
+ 	/* Release struct file or cached credential */
 
 
 -------------------------------------------------------
