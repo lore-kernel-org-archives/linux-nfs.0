@@ -1,17 +1,16 @@
-From: Hirokazu Takahashi <taka@valinux.co.jp>
-Subject: [BUG] [PATCH] CLOSE_WAIT sockets may remain forever
-Date: Wed, 11 Jun 2003 21:45:12 +0900 (JST)
+From: "xinyu wu" <xinyuwu@hotmail.com>
+Subject: NAS over NFS vs SAN
+Date: Wed, 11 Jun 2003 15:52:15 +0000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030611.214512.123409801.taka@valinux.co.jp>
+Message-ID: <BAY1-F146cbdFkIm0OT0000f982@hotmail.com>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sv1.valinux.co.jp ([210.128.90.2])
+Received: from bay1-f146.bay1.hotmail.com ([65.54.245.146] helo=hotmail.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19Q56B-0003Ux-00
-	for <nfs@lists.sourceforge.net>; Wed, 11 Jun 2003 05:53:07 -0700
-To: neilb@cse.unsw.edu.au
+	id 19Q7td-0004wR-00
+	for <nfs@lists.sourceforge.net>; Wed, 11 Jun 2003 08:52:21 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,53 +23,36 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
+Hi,
 
-I found a bug that CLOSE_WAIT sockets may remain forever on an
-NFS server when NFS client is IRIX6.5 .
-IRIX6.5 try to connect the server twice. I guess the first trial is
-checking capability of the server and it closes the socket
-immediately without sending data.
+We are planning on using some high availability storage, and the most 
+popular choices are:
+- NAS, but have to access it via NFS
+- SAN, local disk
 
-In this case the Linux server can't close a newly established
-socket as it isn't accepted yet.
-There are no problems if it's a typical NFS client which
-sends data after establishing connection.
+Many vendors have rejected NAS, because while NAS itself could have high 
+availibilty, but access NFS failures could lead to data corruption.
 
+We are going to use dual network to access NAS.
 
-Thank you,
-Hirokazu Takahashi.
+- So my question is how error prone is NFS? like Network glitches
+- How good is its error recovery?
+- For important data (like database), would you recommend the usage of NFS?
 
+Thanks
 
+Xinyu
 
---- svcsock.c.ORG	Wed Jun 11 20:28:15 2031
-+++ svcsock.c	Wed Jun 11 20:51:01 2031
-@@ -680,8 +680,17 @@ svc_tcp_listen_data_ready(struct sock *s
- 	dprintk("svc: socket %p TCP (listen) state change %d\n",
- 			sk, sk->state);
- 
--	if  (sk->state != TCP_ESTABLISHED) {
--		/* Aborted connection, SYN_RECV or whatever... */
-+	if  (sk->state != TCP_LISTEN) {
-+		/*
-+		 * This callback may called twice when a new connection
-+		 * is established as a child socket inherits everything
-+		 * from a parent LISTEN socket.
-+		 * 1) data_ready method of the parent socket will be called
-+		 *    when one of child sockets become ESTABLISHED.
-+		 * 2) data_ready method of the child socket may be called
-+		 *    when it receives data before the socket is accepted.
-+		 * In case of 2, we should ignore it silently.
-+		 */
- 		goto out;
- 	}
- 	if (!(svsk = (struct svc_sock *) sk->user_data)) {
+_________________________________________________________________
+Hotmail is now available on Australian mobile phones. Go to  
+http://ninemsn.com.au/mobilecentral/signup.asp
+
 
 
 -------------------------------------------------------
-This SF.net email is sponsored by:  Etnus, makers of TotalView, The best
-thread debugger on the planet. Designed with thread debugging features
-you've never dreamed of, try TotalView 6 free at www.etnus.com.
+This SF.NET email is sponsored by: eBay
+Great deals on office technology -- on eBay now! Click here:
+http://adfarm.mediaplex.com/ad/ck/711-11697-6916-5
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
