@@ -1,25 +1,24 @@
-From: Steve Dickson <SteveD@RedHat.com>
-Subject: Re: NFS server export problem
-Date: Mon, 20 Oct 2003 18:50:49 -0400
+From: "H. J. Lu" <hjl@lucon.org>
+Subject: Re: Hiya
+Date: Mon, 20 Oct 2003 11:55:42 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3F9466C9.40209@RedHat.com>
-References: <sf91d589.045@prv-mail20.provo.novell.com>
+Message-ID: <20031020185542.GA8226@lucon.org>
+References: <Pine.LNX.4.44.0310171631560.4219-100000@njlxdev10.lehman.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1ABkSt-00042Q-00
-	for <nfs@lists.sourceforge.net>; Mon, 20 Oct 2003 17:33:35 -0700
-Received: from host-64-179-20-100.man.choiceone.net ([64.179.20.100] helo=Odyssey.Home.4Dicksons.Org)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.22)
-	id 1ABiuJ-0008MY-7u
-	for nfs@lists.sourceforge.net; Mon, 20 Oct 2003 15:53:47 -0700
-To: Gobikrishnan Sundharraj <gsundharraj@novell.com>
-In-Reply-To: <sf91d589.045@prv-mail20.provo.novell.com>
+	id 1ABlkA-0002ZP-00
+	for <nfs@lists.sourceforge.net>; Mon, 20 Oct 2003 18:55:30 -0700
+Received: from rwcrmhc13.comcast.net ([204.127.198.39])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
+	id 1ABfTq-0000hC-9m
+	for nfs@lists.sourceforge.net; Mon, 20 Oct 2003 12:14:14 -0700
+To: "Brown, Rodney" <rodney@lehman.com>
+In-Reply-To: <Pine.LNX.4.44.0310171631560.4219-100000@njlxdev10.lehman.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,31 +31,21 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+I forwarded your email to the Linux NFS mailing list.
 
 
-Gobikrishnan Sundharraj wrote:
-
->Hello,
->
->I installed RedHat 9 on my system and I am trying to setup an NFS
->server. 
->
->On the NFS client, I got the error:
->
->"mount ... failed, reason given by server: permission denied"
->
->and I have traced the problem to the "export" on the server.
->
->On the server, the /proc/fs/nfs/exports does not show what I configured
->to be exported (empty).
->  
->
-Look in /var/log/message for any error messages and/or
-run the "exportfs -rv" command (as root on the server) to see
-if there are any issues...
-
-SteveD.
-
+H.J.
+----
+On Fri, Oct 17, 2003 at 04:33:13PM -0400, Brown, Rodney wrote:
+> We have been having some serious NFS client side issues with RedHat Advanced
+> Server 2.1 kernel e12 and e24.  The backend NFS server is Solaris 8 (fully
+> patched).
+> 
+> I noticed you posted a bug tracker reg some locking issues with NFS a while
+> back and had a patched connectathon testsuite.  I was hoping you could toss me
+> a URL to get that so i can compile on our Linux nodes and run a similar test
+> to see if we can pinpoint the issues.
+> 
 
 
 -------------------------------------------------------
