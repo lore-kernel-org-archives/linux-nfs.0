@@ -1,28 +1,27 @@
-From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-Subject: client side - application level 'dead' lock detection
-Date: Mon, 23 Aug 2004 09:18:11 -0600 (MDT)
+From: Ian Thurlbeck <ian@stams.strath.ac.uk>
+Subject: Re: Strange delays on NFS server
+Date: Tue, 24 Aug 2004 10:48:14 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.60.0408230757340.7569@harp.ngdc.noaa.gov>
-Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Message-ID: <412B0EDE.5010206@stams.strath.ac.uk>
+References: <411A17F2.2060203@RedHat.com> <411A448D.3080205@stams.strath.ac.uk> <20040811164135.GA11101@suse.de> <411B8987.1030609@stams.strath.ac.uk> <411CD601.1080308@RedHat.com> <4120AB46.1080606@stams.strath.ac.uk> <20040816131434.GL3510@suse.de> <4120C8D5.3040606@stams.strath.ac.uk> <20040816145435.GQ3510@suse.de> <4124CD95.7020007@stams.strath.ac.uk> <20040820095854.GC23176@suse.de>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BzGaM-0001yh-3w
-	for nfs@lists.sourceforge.net; Mon, 23 Aug 2004 08:18:14 -0700
-Received: from harp.ngdc.noaa.gov ([140.172.187.26])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1BzXun-0005bY-5P
+	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 02:48:29 -0700
+Received: from vif-img1.cc.strath.ac.uk ([130.159.248.61] helo=khafre.cc.strath.ac.uk)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.34)
-	id 1BzGaL-0001QP-Bx
-	for nfs@lists.sourceforge.net; Mon, 23 Aug 2004 08:18:13 -0700
-Received: from harp.ngdc.noaa.gov (harp.ngdc.noaa.gov [127.0.0.1])
-	by harp.ngdc.noaa.gov (8.12.11/8.12.11) with ESMTP id i7NFIBJ0007999
-	for <nfs@lists.sourceforge.net>; Mon, 23 Aug 2004 09:18:11 -0600
-Received: from localhost (ahoward@localhost)
-	by harp.ngdc.noaa.gov (8.12.11/8.12.11/Submit) with ESMTP id i7NFIBJc007995
-	for <nfs@lists.sourceforge.net>; Mon, 23 Aug 2004 09:18:11 -0600
-To: nfs@lists.sourceforge.net
+	id 1BzXul-0007q4-Es
+	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 02:48:28 -0700
+Received: from dunnet.stams.strath.ac.uk ([130.159.240.95]:41467)
+	by khafre.cc.strath.ac.uk with smtp (Exim 4.20 #1)
+	id 1BzXuZ-00046n-0L
+	for <nfs@lists.sourceforge.net>; Tue, 24 Aug 2004 10:48:15 +0100
+To: Olaf Kirch <okir@suse.de>,  nfs@lists.sourceforge.net
+In-Reply-To: <20040820095854.GC23176@suse.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -36,140 +35,60 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-nfs gurus-
+Dear Olaf, NFS list
 
-i have an application which does alot of byte range locking on an nfs mounted
-file.  twice now, i've seen a 'dead' lock appear on our nfs server - a lock
-held by a non-existent pid.  none of the processes in question have been dying
-unexpectedly (or exiting at all actually) and also have not been shut down
-uncleanly using kill -9, for instance.  basically a dead lock simply appears
-after some length of time during long periods of successful locking and file
-useage - at this point after about 3 weeks of 24/7 lock usage.  the file is
-never corrupt and i have found that i can clear the dead locks using
+Olaf sent me a patch to test:
 
-   mv locked locked.tmp
-   mv locked.tmp locked
+--- fs/nfsd/vfs.c.orig  2003-06-13 16:51:37.000000000 +0200
++++ fs/nfsd/vfs.c       2004-08-16 16:52:53.000000000 +0200
+@@ -760,6 +760,21 @@
+                 }
+                 last_ino = inode->i_ino;
+                 last_dev = inode->i_dev;
++       } else if (err >= 0 && !stable) {
++               /* If we've been writing several pages, schedule them
++                * for the disk immediately. The client may be streaming
++                * and we don't want to hang on a huge journal sync when the
++                * commit comes in
++                */
++               struct address_space    *mapping;
++
++               /* This assumes a minimum page size of 1K, and will issue
++                * a filemap_flushfast call every 64 pages written by the
++                * client. */
++               if ((cnt & 4095) == 0
++                && ((offset >> 12) & 63) == 0
++                && (mapping = inode->i_mapping) != NULL)
++                       filemap_fdatasync(mapping);
+         }
 
-of course, this still leaves a lock on SOME file on the server, but not my
-file.
-
-discovering this i've been thinking of a way to determine via my application
-WHEN this situation has arisen and to automatically recover from it.  here is
-my algorithim so far, it attempts to make the determination that
-
-   "i cannot get the lock AND no one else has it"
-
-upon finding this, automatic recovery of the system is attempted.
-
-i'd appreciate any insight as to it's effectiveness taking into account the
-subtleties of real world nfs behaviour.  the following
-pre-conditions/assumptions/definitions apply:
-
-   - a lockd impl that works, excepting for the occasional 'dead' lock existing
-     on the server which prevents all clients from obtaining any new locks
-
-   - non-blocking lock types do not block, even in the presence of such locks
-
-   - moving a file out of the way, and back again, clears such 'dead' locks
-     (they may still exist on the server, but clients will be able to lock the
-     'new' file)
-
-   - the 'file in question' is the file under heavy usage/locking
-
-   - a monitor file will be used along side the file in question.  this file is
-     simply a zero length file that all applications will use in addition to
-     the file in question.
-
-   - a recovery file is simply an empty file using mark the time of lock
-     recovery
-
-   - a 'refresher' thread is one which simply loops touching a file and
-     sleeping.  technically this could be either a thread or process so long as
-     it does not go to sleep when it's process issues a blocking operation
-     (like fcntl).
-
-   - an auto-recovering lockfile library which uses link(2), it is atomic, safe
-     over nfs, and contains no bugs ( ;-) ) - exists (i have an impl).
-
-
-here is the algorithim
-
-   0.
-      attempt to apply a non-blocking lock of type write/read to the monitor
-      file
-
-   1.
-     a. monitor lock success
-
-       start a refresher thread for the monitor file and attempt to apply a
-       non-blocking lock of type write/read (same lock as the one on the
-       monitor file) to the file in question - this should always succeed; iff
-       it does not raise an error, the algorithim, or something else, has
-       failed.
-
-       having aquired both locks, call the callback for the file in question
-       and, when it is complete,  kill the refresher thread, unlock the file in
-       question, and unlock the monitor file.
-
-       if estale is encoutered during 1.a.  sleep and retry on 0.
-
-     b. monitor lock failure
-
-       iff the monitor file is stale (mtime < now - max_age)
-
-         some process must have died uncleanly while holding the lock (or the
-         network/cpu has become very slow for that client) - we attempt
-         recovery:
-
-           mark recovery_start_time
-
-           create an nfs safe lockfile to serialize recovery among clients.
-           this is a blocking operation.
-
-             iff recovery file exists and is newer than recovery_start_time
-
-               someone else has recovered, sleep and retry on 0.
-
-             else recovery file is older than recovery_start_time or does not
-             exist
-
-               recover:
-
-                 for file in (monitor file_in_question)
-                   mv file file.tmp && mv file.tmp file
-                 end
-
-                 (note that this could cause estale in some other client - but
-                 they are prepared to deal with this condition)
-
-               touch recovery file
-
-             rm lockfile
-
-             sleep and retry on 0.
-
-       else monitor file is not stale
-
-         some other process must have the lock (it's refresher thread is
-         running) sleep and retry on 0.
+         dprintk("nfsd: write complete err=%d\n", err);
 
 
 
-thanks in advance for any inputs/critiques.
+I have tested the patched kernel - it is no different. In fact
+I'd say it's slightly worse.  I've been running "atop" to monitor
+net/disk io and during an "event" I see that the main 3ware raid
+array is writing at 100% (60MB/sec+) for up to 50 seconds.  There
+is little network traffic. During this period client machines are
+unusable if they are requesting stuff off the server.
 
+What on earth could be writing up to 3GB of data to the drive ?
+As before the usual suspects of kjournald, kupdated, bdflush and
+nfsd turn up on the process list.
 
+Just how big is the nfs write cache on a typical server ? Is it
+writing the whole lot one go ?
 
-kind regards.
+Thanks for your efforts
 
--a
---
-===============================================================================
-| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
-| PHONE   :: 303.497.6469
-| A flower falls, even though we love it;
-| and a weed grows, even though we do not love it. 
-|   --Dogen
-===============================================================================
+Ian
+-- 
+Ian Thurlbeck                http://www.stams.strath.ac.uk/
+Statistics and Modelling Science, University of Strathclyde
+Livingstone Tower, 26 Richmond Street, Glasgow, UK,  G1 1XH
+Tel: +44 (0)141 548 3667           Fax: +44 (0)141 552 2079
+
 
 
 -------------------------------------------------------
