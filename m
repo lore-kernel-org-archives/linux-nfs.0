@@ -1,24 +1,29 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: nfs3 dentry encoding
-Date: Thu, 27 May 2004 14:15:45 +0200
+From: Harald Hannelius <harald+nfs@arcada.fi>
+Subject: Re: Poor NFS performance, kernel 2.6.6.
+Date: Thu, 27 May 2004 15:17:43 +0300 (EEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040527121545.GL12225@suse.de>
-References: <20040518112921.15964.patches@notabene> <E1BPtSE-0004BX-SL@notabene.cse.unsw.edu.au> <20040527102049.GI12225@suse.de> <16565.52349.592581.997725@cse.unsw.edu.au>
+Message-ID: <Pine.LNX.4.58.0405271515570.11088@penti.sit.fi>
+References: <Pine.LNX.4.58.0405271331430.7539@penti.sit.fi>
+ <200405271251.22746.vincent.roqueta@ext.bull.net>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="P+33d92oIH25kiaB"
-Cc: nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=ISO-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BTJnY-0000Ka-Or
-	for nfs@lists.sourceforge.net; Thu, 27 May 2004 05:15:48 -0700
-Received: from cantor.suse.de ([195.135.220.2])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.30)
-	id 1BTJnX-00081u-Sv
-	for nfs@lists.sourceforge.net; Thu, 27 May 2004 05:15:48 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <16565.52349.592581.997725@cse.unsw.edu.au>
+	id 1BTJpR-0000dI-BU
+	for nfs@lists.sourceforge.net; Thu, 27 May 2004 05:17:45 -0700
+Received: from penti.sit.fi ([193.167.33.237])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BTJpQ-0008VX-Ih
+	for nfs@lists.sourceforge.net; Thu, 27 May 2004 05:17:44 -0700
+Received: from penti.sit.fi (harald@localhost [127.0.0.1])
+	by penti.sit.fi (8.12.10/8.12.10) with ESMTP id i4RCHhgT011157
+	for <nfs@lists.sourceforge.net>; Thu, 27 May 2004 15:17:43 +0300
+Received: from localhost (harald@localhost)
+	by penti.sit.fi (8.12.10/8.12.9/Submit) with ESMTP id i4RCHhYr011154
+	for <nfs@lists.sourceforge.net>; Thu, 27 May 2004 15:17:43 +0300
+To: nfs@lists.sourceforge.net
+In-Reply-To: <200405271251.22746.vincent.roqueta@ext.bull.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,124 +37,65 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
---P+33d92oIH25kiaB
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+On Thu, 27 May 2004, Vincent ROQUETA wrote:
 
-On Thu, May 27, 2004 at 09:09:49PM +1000, Neil Brown wrote:
-> Hmmm, just as well someone is watching over me!  Thanks.
+> Le Jeudi 27 Mai 2004 12:31, Harald Hannelius a =E9crit :
 
-I'm currently looking into a failure with a Solaris 9 running connectathon
-against a 2.6 Linux server. It fails in a test case doing a readdirplus
-of a large directory, because it scribbles the offset value into
-random memory locations (usually at page offset 0)
+> > Is there some way I can look at the nfs-server what it's doing? Any
+> > suggestions on solutions for this?
+> >
+> > And what datarates over NFS could I expect on a setup like this?
+> > Half-wirespeed maybe?
 
-See the attached patch, which I also posted in a follow-up to
-your message to to linux-kernel.
+> on NFSv3, 1 ethernet 1GB I reached  89% of the avalaible brandwith for NF=
+Sv3,
+> kernel 2.6.3, for file less than the total amount of ram (4Go), and 22% o=
+f
+> the brandwith for file over 6Go, because of the use of harddisk use in th=
+e
+> copy process (swap).
+>
+> What is  your memory configuration?
 
-The first hunk is rather cosmetic; rq_res is cleared by a memset
-so there's not need to zero the offset pointer(s) here. In fact
-we don't initialize them in readdirplus anyway.
+I took a look at "top" while reading the file on the client;
 
-Olaf
--- 
-Olaf Kirch     |  The Hardware Gods hate me.
-okir@suse.de   |
----------------+ 
+It looks like it's sitting there waiting for io. Something for the
+kernel-people maybe?
 
---P+33d92oIH25kiaB
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: attachment; filename=nfsd-encode-dirent3
+ 15:15:10  up 1 day, 19:31,  4 users,  load average: 7.55, 4.31, 3.54
+93 processes: 92 sleeping, 1 running, 0 zombie, 0 stopped
+CPU0 states:   0.0% user   1.2% system    0.0% nice  95.1% iowait   3.0%
+idle
+CPU1 states:   0.0% user   1.2% system    0.0% nice  90.1% iowait   8.1%
+idle
+Mem:  1035184k av, 1029660k used,    5524k free,       0k shrd,   18216k
+buff
+        52712k active,             929460k inactive
+Swap:  987956k av,       0k used,  987956k free                  957788k
+cached
 
-Index: linux-2.6.5/fs/nfsd/nfs3proc.c
-===================================================================
---- linux-2.6.5.orig/fs/nfsd/nfs3proc.c	2004-05-27 12:22:43.000000000 +0200
-+++ linux-2.6.5/fs/nfsd/nfs3proc.c	2004-05-27 12:34:40.000000000 +0200
-@@ -437,7 +437,6 @@
- 	resp->buflen = count;
- 	resp->common.err = nfs_ok;
- 	resp->buffer = argp->buffer;
--	resp->offset = NULL;
- 	resp->rqstp = rqstp;
- 	nfserr = nfsd_readdir(rqstp, &resp->fh, (loff_t*) &argp->cookie, 
- 					&resp->common, nfs3svc_encode_entry);
-Index: linux-2.6.5/fs/nfsd/nfs3xdr.c
-===================================================================
---- linux-2.6.5.orig/fs/nfsd/nfs3xdr.c	2004-05-27 12:22:43.000000000 +0200
-+++ linux-2.6.5/fs/nfsd/nfs3xdr.c	2004-05-27 12:39:09.000000000 +0200
-@@ -887,8 +887,18 @@
- 	int		elen;		/* estimated entry length in words */
- 	int		num_entry_words = 0;	/* actual number of words */
- 
--	if (cd->offset)
--		xdr_encode_hyper(cd->offset, (u64) offset);
-+	if (cd->offset) {
-+		u64 offset64 = offset;
-+
-+		if (unlikely(cd->offset1)) {
-+			/* we ended up with offset on a page boundary */
-+			*cd->offset = htonl(offset64 >> 32);
-+			*cd->offset1 = htonl(offset64 & 0xffffffff);
-+			cd->offset1 = NULL;
-+		} else {
-+			xdr_encode_hyper(cd->offset, (u64) offset);
-+		}
-+	}
- 
- 	/*
- 	dprintk("encode_entry(%.*s @%ld%s)\n",
-@@ -969,17 +979,32 @@
- 			/* update offset */
- 			cd->offset = cd->buffer + (cd->offset - tmp);
- 		} else {
-+			unsigned int offset_r = (cd->offset - tmp) << 2;
-+
-+			/* update pointer to offset location.
-+			 * This is a 64bit quantity, so we need to
-+			 * deal with 3 cases:
-+			 *  -	entirely in first page
-+			 *  -	entirely in second page
-+			 *  -	4 bytes in each page
-+			 */
-+			if (offset_r + 8 <= len1) {
-+				cd->offset = p + (cd->offset - tmp);
-+			} else if (offset_r >= len1) {
-+				cd->offset -= len1 >> 2;
-+			} else {
-+				/* sitting on the fence */
-+				BUG_ON(offset_r != len1 - 4);
-+				cd->offset = p + (cd->offset - tmp);
-+				cd->offset1 = tmp;
-+			}
-+
- 			len2 = (num_entry_words << 2) - len1;
- 
- 			/* move from temp page to current and next pages */
- 			memmove(p, tmp, len1);
- 			memmove(tmp, (caddr_t)tmp+len1, len2);
- 
--			/* update offset */
--			if (((cd->offset - tmp) << 2) <= len1)
--				cd->offset = p + (cd->offset - tmp);
--			else
--				cd->offset -= len1 >> 2;
- 			p = tmp + (len2 >> 2);
- 		}
- 	}
-Index: linux-2.6.5/include/linux/nfsd/xdr3.h
-===================================================================
---- linux-2.6.5.orig/include/linux/nfsd/xdr3.h	2004-05-27 12:22:43.000000000 +0200
-+++ linux-2.6.5/include/linux/nfsd/xdr3.h	2004-05-27 12:28:20.000000000 +0200
-@@ -183,6 +183,7 @@
- 	u32 *			buffer;
- 	int			buflen;
- 	u32 *			offset;
-+	u32 *			offset1;
- 	struct svc_rqst *	rqstp;
- 
- };
+  PID USER     PRI  NI  SIZE  RSS SHARE STAT %CPU %MEM   TIME CPU COMMAND
+ 4473 root      16   0  4008 1084  3832 R     0.3  0.1   0:00   1 top
+    8 root       5 -10     0    0     0 SW<   0.1  0.0   0:15   0
+kblockd/0
+    9 root       5 -10     0    0     0 SW<   0.1  0.0   0:14   1
+kblockd/1
+ 4382 root      15   0     0    0     0 SW    0.1  0.0   0:01   0 nfsd
+ 4384 root      15   0     0    0     0 SW    0.1  0.0   0:01   0 nfsd
+ 4386 root      15   0     0    0     0 DW    0.1  0.0   0:01   1 nfsd
+ 4387 root      15   0     0    0     0 SW    0.1  0.0   0:01   0 nfsd
+ 4392 root      15   0     0    0     0 DW    0.1  0.0   0:01   0 nfsd
+ 4394 root      15   0     0    0     0 DW    0.1  0.0   0:00   1 nfsd
+ 4395 root      15   0     0    0     0 SW    0.1  0.0   0:00   1 nfsd
+ 4396 root      15   0     0    0     0 DW    0.1  0.0   0:01   0 nfsd
+    1 root      16   0   488  240   464 S     0.0  0.0   0:05   1 init
 
---P+33d92oIH25kiaB--
+
+--=20
+A: Top Posters
+Q: What is the most annoying thing on mailing lists?
+
+Harald H Hannelius | harald/a\arcada.fi      | GSM +358 50 594 1020
 
 
 -------------------------------------------------------
