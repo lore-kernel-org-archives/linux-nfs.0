@@ -1,20 +1,18 @@
-From: Christian Reis <kiko@async.com.br>
-Subject: Re: General network slowness on SIS 530 with eepro100
-Date: Tue, 13 Aug 2002 22:50:32 -0300
+From: =?iso-8859-1?Q?Brasseur_Val=E9ry?= <Valery.Brasseur@atosorigin.com>
+Subject: RE: 2.4.19 hang (was unlink perf pb !)
+Date: Wed, 14 Aug 2002 14:12:03 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <34233.4193330773$1029289936@news.gmane.org>
-References: <20020813212923.L2219@blackjesus.async.com.br> <shs1y92p7ho.fsf@charged.uio.no>
+Message-ID: <8D7D56C6ED3DD411998D009027DC685E0874E22A@srv-grp-s1.segin.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: eepro100@scyld.com, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pina.terra.com.br ([200.176.3.17])
+Received: from hermes8.atos-group.com ([160.92.18.57] helo=hermes8.segin.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17enJ4-00027P-00
-	for <nfs@lists.sourceforge.net>; Tue, 13 Aug 2002 18:50:42 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <shs1y92p7ho.fsf@charged.uio.no>; from trond.myklebust@fys.uio.no on Wed, Aug 14, 2002 at 03:13:55AM +0200
+	id 17ex0I-0003hV-00
+	for <nfs@lists.sourceforge.net>; Wed, 14 Aug 2002 05:11:58 -0700
+To: "'Lever, Charles'" <Charles.Lever@netapp.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,47 +25,65 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Wed, Aug 14, 2002 at 03:13:55AM +0200, Trond Myklebust wrote:
-> >>>>> " " == Christian Reis <kiko@async.com.br> writes:
-> 
->      > Helle there,
-> 
->      > I've been, for the past days, setting up a fairly big diskless
->      > network based on Linux. I've chosen to use 2.4.19 as the kernel
->      > because there were some hardware requirements, and for most of
->      > the newer boxes, it runs fine. However, for three of the older
->      > boxes, we have had some pretty odd performance and stability
->      > issues. This message is about the latest one, which is an ASUS
->      > P5S-B (has the infamous SIS 530 chipset) on an intel eepro100
->      > card. Details:
-> 
-> Is all this NFS over UDP? If so, numbers should not really have
-> changed in 2.4.19 ( - yes my patchset changes things, but stock 2.4.19
-> should not be too different w.r.t 2.4.18)
-> 
-> Are you able to determine where in the 2.4.19-pre series the
-> performance dies?
+try a stock 2.4.19 without nfs patches : no hang !
 
-Yes, it is over UDP. (Should I try TCP?)
 
-Well, to be honest, I just set the network up, and I only tried two
-kernels: 2.4.19 kosher and 2.4.19 with nfs-all. I haven't experimented
-swapping kernels because I've been a bit singleminded that it's
-something to do with the hardware setup.
+seems that nfs patches broke something !
 
-I can try using an older kernel to see if it helps. 2.4.18 is a good
-idea? Let me try and I'll post you back.
+valery
 
-(BTW: Your patches *do* solve a problem I have: it makes client nfs
-locking actually work; before them I had some serious issues with
-locking under high network load. Not anymore. The flock() patch is also
-essential for running sendmail on the diskless stations --- before it I
-was forced to use tmpfs for /var/spool/mqueue.)
-
-Take care,
---
-Christian Reis, Senior Engineer, Async Open Source, Brazil.
-http://async.com.br/~kiko/ | [+55 16] 261 2331 | NMFL
+> -----Original Message-----
+> From: Lever, Charles [mailto:Charles.Lever@netapp.com]
+> Sent: Tuesday, August 13, 2002 8:42 PM
+> To: 'Brasseur Val=E9ry'
+> Cc: nfs@lists.sourceforge.net
+> Subject: RE: [NFS] 2.4.19 hang (was unlink perf pb !)
+>=20
+>=20
+> if your client works OK with 2.4.18 but stops with your 2.4.19+nfs
+> kernels, can you try hunting down exactly which kernel causes the
+> problem?  does 2.4.19 without any nfs patches work, for example?
+>=20
+> > after some more investigation on my D state hang here is some=20
+> > observations :
+> >=20
+> > * I couldn't get a clear trace of state : sysrq-t was not=20
+> > dump on a file !
+> > don't know why !
+> >   so I hand wrote extract of what I see and let ksymsoops try !
+> > =20
+> >    got this : processes was in kmap or in flush_tbl !
+> >=20
+> > * now after a clean boot, lauchn my prog : after a few second=20
+> > the LA grow,
+> > blocked processes grow too ! (in my vmstat all the processes=20
+> > are in block
+> > queue !) and only 1 waiting process !
+> >=20
+> >   when in this state, I can't do  many things as all what I=20
+> > can do seems to
+> > hang too !
+> >=20
+> > =3D> I was not having this probleme in 2.4.18 !
+> >=20
+> > note : when this arrive I've got something like 10 to 20 Mbs=20
+> > to nfs server.
+> >=20
+> >=20
+> > valery
+> >=20
+> >=20
+> >=20
+> > -------------------------------------------------------
+> > This sf.net email is sponsored by: Dice - The leading=20
+> online job board
+> > for high-tech professionals. Search and apply for tech jobs today!
+> > http://seeker.dice.com/seeker.epl?rel_code=3D31
+> > _______________________________________________
+> > NFS maillist  -  NFS@lists.sourceforge.net
+> > https://lists.sourceforge.net/lists/listinfo/nfs
+> >=20
+>=20
 
 
 -------------------------------------------------------
