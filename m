@@ -1,16 +1,19 @@
-From: "David B. Ritch" <dritch@hpti.com>
-Subject: NFS_All on alpha
-Date: 03 Sep 2002 17:03:11 -0400
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS_All on alpha
+Date: 04 Sep 2002 00:59:42 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1031086991.5196.53.camel@twitch>
+Message-ID: <shs3csqr869.fsf@charged.uio.no>
+References: <1031086991.5196.53.camel@twitch>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+Cc: NFS mailing list <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sl-highp1-1-0.sprintlink.net ([144.228.5.138] helo=localhost.localdomain)
+Received: from mons.uio.no ([129.240.130.14])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17mKpO-0008LJ-00
-	for <nfs@lists.sourceforge.net>; Tue, 03 Sep 2002 14:03:14 -0700
-To: NFS mailing list <nfs@lists.sourceforge.net>
+	id 17mMeF-0007AK-00
+	for <nfs@lists.sourceforge.net>; Tue, 03 Sep 2002 15:59:51 -0700
+To: "David B. Ritch" <dritch@hpti.com>
+In-Reply-To: <1031086991.5196.53.camel@twitch>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -23,32 +26,33 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-I applied the nfs_all patch from
-http://www.fys.uio.no/~trondmy/src/2.4.19/ to a linux-2.4.19 kernel, and
-ran into trouble compiling.
+>>>>> " " == David B Ritch <dritch@hpti.com> writes:
 
-In particular, the linux-2.4.19-02-fix_kmap2.dif patch defines a
-conflicting type for xdr_shift_buf's second argument.  In
-linux-2.4.19/include/linux/sunrpc/xdr.h, it is defined to be of type
-unsigned int, and in linux-2.4.19/net/sunrpc/xdr.c, it is defined to be
-of type size_t.
+     > Should xdr_shift_buf take an int or a long?  Are there any
 
-Size_t is defined to be __kernel_size_t in /usr/include/linux/types.h,
-which is defined to be unsigned long in /usr/include/asm/posix_types.h.
+It should indeed take a size_t as is done in 2.5.x, and
+2.4.20-pre5. Sorry I forgot to apply that change to my own tree.
 
-On an IA32 architecture, unsigned long and unsigned int are the same, so
-this is not a big deal.  However, on an alpha, a long is 64 bits,
-whereas an int is only 32 bits.
+     > other known problems for a 64-bit architecture in the nfs_all
+     > patches?
 
-Should xdr_shift_buf take an int or a long?  Are there any other known
-problems for a 64-bit architecture in the nfs_all patches?
+Not that I'm aware of.
 
-Thank you,
+Cheers,
+  Trond
 
-dbr
--- 
-David B. Ritch
-High Performance Technologies, Inc.
+diff -Nru a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+--- a/include/linux/sunrpc/xdr.h	Wed Sep  4 00:58:53 2002
++++ b/include/linux/sunrpc/xdr.h	Wed Sep  4 00:58:53 2002
+@@ -138,7 +138,7 @@
+  */
+ extern int xdr_kmap(struct iovec *, struct xdr_buf *, unsigned int);
+ extern void xdr_kunmap(struct xdr_buf *, unsigned int);
+-extern void xdr_shift_buf(struct xdr_buf *, unsigned int);
++extern void xdr_shift_buf(struct xdr_buf *, size_t);
+ extern void xdr_zero_buf(struct xdr_buf *, unsigned int);
+ 
+ /*
 
 
 -------------------------------------------------------
