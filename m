@@ -1,28 +1,25 @@
-From: Garrick Staples <garrick@usc.edu>
-Subject: 2.6.6 lockup
-Date: Wed, 26 May 2004 14:11:16 -0700
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: RE: How to unlock a file if an NFSv3 client dies forever?
+Date: Wed, 26 May 2004 17:23:22 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040526211115.GI6931@polop.usc.edu>
+Message-ID: <1085606601.3834.5.camel@lade.trondhjem.org>
+References: <4F28105F70F4324A8723F0C949088941BCB773@pa-exch5.vmware.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="UD9uuWeujuEvWfkY"
+Content-Type: text/plain; charset=iso-8859-1
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BT5iO-00074Y-Pk
-	for nfs@lists.sourceforge.net; Wed, 26 May 2004 14:13:32 -0700
-Received: from polop.usc.edu ([128.125.10.9])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1BT5rw-0000Tw-L1
+	for nfs@lists.sourceforge.net; Wed, 26 May 2004 14:23:24 -0700
+Received: from dh132.citi.umich.edu
+	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
 	(Exim 4.30)
-	id 1BT5iO-0001jV-59
-	for nfs@lists.sourceforge.net; Wed, 26 May 2004 14:13:32 -0700
-Received: from polop.usc.edu (localhost.localdomain [127.0.0.1])
-	by polop.usc.edu (8.12.11/8.12.11) with ESMTP id i4QLBGKY016891
-	for <nfs@lists.sourceforge.net>; Wed, 26 May 2004 14:11:16 -0700
-Received: (from garrick@localhost)
-	by polop.usc.edu (8.12.11/8.12.11/Submit) id i4QLBGE0016889
-	for nfs@lists.sourceforge.net; Wed, 26 May 2004 14:11:16 -0700
-To: nfs@lists.sourceforge.net
+	id 1BT5rw-0002GW-Av
+	for nfs@lists.sourceforge.net; Wed, 26 May 2004 14:23:24 -0700
+To: Howie Xu <howie@vmware.com>
+In-Reply-To: <4F28105F70F4324A8723F0C949088941BCB773@pa-exch5.vmware.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -35,57 +32,15 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+P=E5 on , 26/05/2004 klokka 16:06, skreiv Howie Xu:
 
---UD9uuWeujuEvWfkY
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+> Btw, anyone knows that NFSv4 is immune to this "dead lock" scenario?
 
-Hi all again,
-   After fixing up the failover issues, I got my pair of Itaniums into
-production with 2.6.5 and as soon as the real world load went up, the machi=
-nes
-started freezing.  No net response, no console, only sysreq keys work.
+Yes, NFSv4 is immune. See pages 13,15, and 77 of RFC3530 if you want
+details on the "lease" mechanism that is used to avoid the problem...
 
-   I updated to 2.6.6 and it doesn't freeze up as often, but it's still rea=
-lly
-bad, at least a few times a day.  Unfortunately, I can't seem to figure out=
- how
-to get a decent kernel trace.  Apperently sysreq-Crash doesn't work in ia64.
-And NMI watchdog doesn't work on ia.  And I can't find any info on a hardwa=
-re
-watchdog on the mobo!
-
-I do have some other info from sysreq on the cpu regs, memory, and processe=
-s if
-anyone would find that interesting.
-
-The work load freezes up the machines under heavy streaming writes from abo=
-ut a
-100 processes on at least 60 clients.  A combined load of about 80GB/hour is
-enough to freeze up the machine pretty regularly.
-
-I tried Trond's 2.6.6 patches at his website, but those brokes things
-considerably.  Since I don't have any actual Oops messages, anyone have any
-experimental deadlock-fixing patches they want me to test? :)
-
---=20
-Garrick Staples, Linux/HPCC Administrator
-University of Southern California
-
---UD9uuWeujuEvWfkY
-Content-Type: application/pgp-signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.3 (GNU/Linux)
-
-iD8DBQFAtQfz0SBUxJbm9HMRAo59AJ9eUJ7u8sOlHl0jyS32wdjI1LQVxQCgtq2V
-TBDBioZc5BDPfPShYVlbl0I=
-=WOiT
------END PGP SIGNATURE-----
-
---UD9uuWeujuEvWfkY--
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
