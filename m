@@ -1,22 +1,17 @@
-From: Scott Mcdermott <smcdermott@questra.com>
-Subject: Re: Re: broken umount -f
-Date: Tue, 14 Jan 2003 14:19:53 -0500
+From: "Cole, Timothy D." <tdcole@northropgrumman.com>
+Subject: RE: Re: broken umount -f
+Date: Tue, 14 Jan 2003 11:30:08 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030114191953.GJ26872@questra.com>
-References: <6440EA1A6AA1D5118C6900902745938E07D551E8@black.eng.netapp.com> <20030114170755.GA18952@questra.com> <shs8yxn5z6m.fsf@charged.uio.no>
+Message-ID: <7F21D7A9E7D9D51192CB0002A53F93C73C28E5@xcgmd024.md.essd.northgrum.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from ns1.questra.com ([64.132.48.186])
+Received: from xcgmd811.northgrum.com ([155.104.240.101])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18YWbL-0001sr-00
-	for <nfs@lists.sourceforge.net>; Tue, 14 Jan 2003 11:19:55 -0800
-Received: from questra.com (hades.roc.questra.com [64.132.48.226])
-	by ns1.questra.com (Postfix) with SMTP id D7AFBAB7A3
-	for <nfs@lists.sourceforge.net>; Tue, 14 Jan 2003 14:19:53 -0500 (EST)
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <shs8yxn5z6m.fsf@charged.uio.no>
+	id 18YWn5-0003Sn-00
+	for <nfs@lists.sourceforge.net>; Tue, 14 Jan 2003 11:32:03 -0800
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,16 +24,25 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust on Tue 14/01 20:06 +0100:
+> -----Original Message-----
+> From: Trond Myklebust [mailto:trond.myklebust@fys.uio.no]
+> Sent: Tuesday, January 14, 2003 14:06
+> To: Scott Mcdermott
+> Cc: nfs@lists.sourceforge.net
+> Subject: Re: [NFS] Re: broken umount -f
+
 > Linux will not allow you to unmount without killing those processes,
 > and I'd be opposed to any patch that tries to kill active processes
-> from within the filesystem.  This is something that needs to be
-> resolved in userland.
+> from within the filesystem.
 
-Last I checked, the programs wouldn't die even with -KILL when they were
-stuck in device-wait state.  The only way to reboot a machine with such
-processes is to reboot -f, which is wrong.  The filesystems should be
-able to have forced umount at sysadmin's discretion.
+> This is something that needs to be resolved in userland.
+
+The few times I've needed to use umount -f, the processes in question
+weren't killable from userland.  Is there an architectural reason for this?
+
+(i.e. instead of killing them, why can't their pending system calls return
+with -EIO if a umount is forced, as I've seen some other unices do in
+similar situations [pending RPCs + a dead server pinning a mount]?)
 
 
 -------------------------------------------------------
