@@ -1,21 +1,22 @@
-From: Guochun Shi <gshi@ncsa.uiuc.edu>
-Subject: failover-NFS server problem
-Date: Mon, 19 Apr 2004 13:14:24 -0500
+From: "Guolin Cheng" <guolin@alexa.com>
+Subject: RE: Poor Fedora Core 1's NFS performance and how to tune it?
+Date: Mon, 19 Apr 2004 15:08:35 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <5.1.0.14.2.20040419123002.00acb6a8@pop.ncsa.uiuc.edu>
+Message-ID: <41089CB27BD8D24E8385C8003EDAF7ABBA48C8@karl.alexa.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: alan Robertson <alanr@unix.sh>, bruce.allan@us.ibm.com
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>, "ops" <ops@alexa.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BFdHo-0004DK-CM
-	for nfs@lists.sourceforge.net; Mon, 19 Apr 2004 11:14:28 -0700
-Received: from mail.ncsa.uiuc.edu ([141.142.2.28])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BFdHo-0003xu-1o
-	for nfs@lists.sourceforge.net; Mon, 19 Apr 2004 11:14:28 -0700
-To: nfs@lists.sourceforge.net
+	id 1BFgwQ-0006I5-M1
+	for nfs@lists.sourceforge.net; Mon, 19 Apr 2004 15:08:38 -0700
+Received: from birdwell-public.alexa.com ([67.107.182.10] helo=karl.presidio.alexa.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1BFgwQ-0007YO-B9
+	for nfs@lists.sourceforge.net; Mon, 19 Apr 2004 15:08:38 -0700
+To: "Steve Dickson" <SteveD@redhat.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -28,38 +29,46 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-hi, all
+Hi, Steve,
 
-I ran into some problem in running Connectathon with NFS. The scenario I want to test is if NFS works fine in case of the server is failed back and forth (linuxHA controls that. Linux-Ha is in www.linux-ha.org ). The following is my setup:
+ Thanks for your reply.
 
-1. Machine A and Machine B are servers, there is one and only server active any time. The active machine has a floating IP as the service IP.
-2. Machine C is the client. It mounts a directory from the floating IP
-3. Machine A and Machine B have a fiber channel share disk. The exported filesystem resides in shared disk. On both machines, 
-/var/lib/nfs is a symbolic link to a directory in the shared disk.
+ But I've already figured out that it is not a Fedora Core 1 NFS
+problem, it is tg3 driver (for Broadcom gigabit) problem. The
+problematic dirver uses more CPUs cycles, and offers only 60% speed
+compared to the vendor's bcm5700 driver.
 
-all machines are running Redhat 9, kernel 2.4.26, with nfs-utils-1.0.1-2.9
+My former email has more details.
 
-The server will switch between A and B, in each switching:
-the original server will stop nfs, stop nfslock, umount from the shared disk and give out the floating ip, 
-the backup server will grab the floaing ip, mount the shared disk, start nfslock and start nfs
+Thanks.
+--Guolin Cheng
 
 
-in testing, I ran the locking test in Connectathon in the client site while servers are switching back and forth. 
-Usually I will get an error in the 7th or 8th pass,  the error code is 37- no lock record available. There are several cases
-for this failure for now (two processes--parent and child process-- are competing for the same lock)
+-----Original Message-----
+From: Steve Dickson [mailto:SteveD@redhat.com]=20
+Sent: Monday, April 19, 2004 7:16 AM
+To: Guolin Cheng
+Cc: nfs@lists.sourceforge.net; ops
+Subject: Re: [NFS] Poor Fedora Core 1's NFS performance and how to tune
+it?
 
-1. the child gets the lock, then the child process is killed, then the parent tries to lock the file, it shall return success,
-however it return an error with errno=37
-2. the child locks the file, the it unlocks; the parent then tries to lock the file, it shall return success,
-however it return an error with errno=37
-3. this is similar to case 2, the parent locks the file, the it unlocks; the child then tries to lock the file, it shall return success,
-however it return an error with errno=37
+Guolin Cheng wrote:
 
-By the way, running bonnie++  instead of Connectathon in the above scenario finishes successfully, which is good :-)
+>Hi,
+>
+> We installed about tens of Fedora Core 1 machines, But then found that
+>the FC1 NFS speed is greatly slow down contrasted with our previous
+>Redhat 8.0.
+>Our FC1's nfs speed is now at 6MB/s, while original Redhat 8.0's speed
+>is at 10MB/s. For both operation systems I did no special NFS tunings
+> =20
+>
+Are you seeing any rpc/tcp transmits? nfsstat will show rpc retrans and
+netstat will show tcp retrans... Also any type of messages being logged
+to /var/log/messages?
 
-any comment/suggestion is welcome. 
-Thanks
--Guochun
+SteveD.
+
 
 
 
