@@ -1,20 +1,19 @@
-From: Marco.Schwarz@Freudenberg.de
-Subject: Using DHCP for booting diskless clients
-Date: Wed, 22 Jan 2003 14:43:19 +0100
+From: Chris Adams <chris@improbable.org>
+Subject: Re: Linux NFS client against Auspex server crashes
+Date: Thu, 23 Jan 2003 00:47:55 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <95AF67BA7F70D511829B0002A551737001CA12@faw-e01.faw.freudenberg.de>
-Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Message-ID: <5DAD3C3C-2EAF-11D7-9E9B-000393965D98@improbable.org>
+References: <5CA6F03EF05E0046AC5594562398B9160C780A@POEXMB3.conoco.net>
+Mime-Version: 1.0 (Apple Message framework v551)
+Content-Type: text/plain; charset=US-ASCII; format=flowed
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mailhost.freudenberg.de ([153.95.95.27] helo=itnts27.freudenberg.de)
+Received: from fed1mtao02.cox.net ([68.6.19.243])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18bLBb-0005vl-00
-	for <nfs@lists.sourceforge.net>; Wed, 22 Jan 2003 05:45:00 -0800
-Received: from fgnts03.fit.freudenberg.de (unverified) by itnts27.freudenberg.de
- (Content Technologies SMTPRS 2.0.15) with ESMTP id <B0017846171@itnts27.freudenberg.de> for <nfs@lists.sourceforge.net>;
- Wed, 22 Jan 2003 14:39:16 +0100
-To: nfs@lists.sourceforge.net
+	id 18bd2D-0004RK-00
+	for <nfs@lists.sourceforge.net>; Thu, 23 Jan 2003 00:48:29 -0800
+To: "Heflin, Roger A." <Roger.A.Heflin@conocophillips.com>
+In-Reply-To: <5CA6F03EF05E0046AC5594562398B9160C780A@POEXMB3.conoco.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,20 +26,20 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi all,
+On Tuesday, January 21, 2003, at 07:54  AM, Heflin, Roger A. wrote:
+> 	I have a group I work with that is using Linux 2.4.19,
+> 	NFSALL (Oct-Nov timeframe), they are reporting that their machines
+> 	lock up (process space quits responding) on multiple machines running
+> 	almost identical jobs (with almost identical start times) at the 
+> about same
+> 	time.  They are running against a Auspex server of some sort.
 
-this is not exactly NFS related but maybe someone can help me ;-)
+I don't know if you've already tried this, but try using UDP mounts if 
+you aren't. TCP with our NS2000 was a nightmare with 2.4.x kernels - 
+hung processes, odd mount behaviour, hard freezes, etc.
 
-I am switching from bootp to dhcp for booting my clients, but so far I am
-not very sucessfull
+Chris
 
-(error message on client: PXE-E53: No boot filename received)
-
-Maybe someone has a small example for me on how to configure the parameters
-for dhcp.conf, that would be great !
-
-Thanks,
-Marco
 
 
 -------------------------------------------------------
