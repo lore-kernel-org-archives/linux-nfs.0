@@ -1,21 +1,18 @@
-From: Joel Votaw <jovotaw@cs.nmsu.edu>
-Subject: Re: Stale file handle, kernel 2.4.7, RedHat 7.2
-Date: Thu, 19 Sep 2002 15:25:45 -0600 (MDT)
+From: Rusty Russell <rusty@rustcorp.com.au>
+Subject: Re: Isolation of nfs threads
+Date: Fri, 20 Sep 2002 09:11:22 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0209191524260.3982-100000@quito>
-References: <Pine.LNX.4.44.0209190916140.2466-100000@quito>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Message-ID: <20020920000503.432F62C3AA@lists.samba.org>
+References: <15753.46523.847227.539366@notabene.cse.unsw.edu.au>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail.cs.nmsu.edu ([128.123.64.3])
+Received: from dp.samba.org ([66.70.73.150] helo=lists.samba.org)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17s8o2-0000L5-00
-	for <nfs@lists.sourceforge.net>; Thu, 19 Sep 2002 14:25:50 -0700
-Received: from quito (IDENT:1628@quito [128.123.64.162])
-	by mail.cs.nmsu.edu (8.11.6/8.11.5) with ESMTP id g8JLPjs01618
-	for <nfs@lists.sourceforge.net.>; Thu, 19 Sep 2002 15:25:45 -0600 (MDT)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <Pine.LNX.4.44.0209190916140.2466-100000@quito>
+	id 17sBIb-0001v1-00
+	for <nfs@lists.sourceforge.net>; Thu, 19 Sep 2002 17:05:33 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-reply-to: Your message of "Thu, 19 Sep 2002 21:32:11 +1000."
+             <15753.46523.847227.539366@notabene.cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,14 +25,25 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
+In message <15753.46523.847227.539366@notabene.cse.unsw.edu.au> you write:
+> It is probably worth reading Rusty's unreliable guide to kernel
+> locking. See the bottom of:
+> 
+>    http://www.netfilter.org/unreliable-guides/
+> 
+> The html link seems to be broken... Rusty???
 
-I think I figured this out.  It turns out that while stopping and
-restarting NFS services I also deleted /var/lib/nfs/xtab .  Don't ask
-how... it was pilot error on my part.
+Hmm... I usually point people straight to the kernel sources (the
+canonical guide is in Documentation/DocBook/)
 
-	-Joel
+But google to the rescue:
 
+http://kernelnewbies.org/documents/kdoc/kernel-locking/lklockingguide.html
 
+Cheers!
+Rusty.
+--
+  Anyone who quotes me in their sig is an idiot. -- Rusty Russell.
 
 
 -------------------------------------------------------
