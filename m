@@ -1,24 +1,27 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Disappearing NFS directories
-Date: Wed, 27 Aug 2003 17:28:18 -0400
+From: Martin Pool <mbp@sourcefrog.net>
+Subject: nfs/mmap/rename file corruption
+Date: Thu, 28 Aug 2003 11:03:09 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3F4D2272.1050003@RedHat.com>
+Message-ID: <20030828110309.0e0eff6f.mbp@sourcefrog.net>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------050302060306070802080602"
+Content-Type: text/plain; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19s7p6-0002Aw-00
-	for <nfs@lists.sourceforge.net>; Wed, 27 Aug 2003 14:27:24 -0700
-Received: from pix-525-pool.redhat.com ([66.187.233.200] helo=lacrosse.corp.redhat.com)
+	id 19sBC5-00004v-00
+	for <nfs@lists.sourceforge.net>; Wed, 27 Aug 2003 18:03:21 -0700
+Received: from sngrel4.hp.com ([192.6.86.110])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 19s7p5-0002sA-F7
-	for nfs@lists.sourceforge.net; Wed, 27 Aug 2003 14:27:23 -0700
-Received: from RedHat.com (dickson.boston.redhat.com [172.16.65.20])
-	by lacrosse.corp.redhat.com (8.11.6/8.9.3) with ESMTP id h7RLRFK04756
-	for <nfs@lists.sourceforge.net>; Wed, 27 Aug 2003 17:27:15 -0400
+	id 19sBC2-0000dN-NT
+	for nfs@lists.sourceforge.net; Wed, 27 Aug 2003 18:03:18 -0700
+Received: from XAUBRG2.AUS.HP.COM (xaubrg2.aus.hp.com [15.23.69.43])
+	by sngrel4.hp.com (Postfix) with SMTP id A24746B
+	for <nfs@lists.sourceforge.net>; Thu, 28 Aug 2003 09:03:16 +0800 (SST)
+Received: from localhost ([127.0.0.1] helo=vexed)
+	by vexed with smtp (Exim 3.36 #1 (Debian))
+	id 19sBBx-0003Jj-00
+	for <nfs@lists.sourceforge.net>; Thu, 28 Aug 2003 11:03:13 +1000
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -32,80 +35,101 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
---------------050302060306070802080602
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
+There is a fairly easily reproducible bug in NFS in 2.4.22 that can
+cause files to read back as full of nulls.  I have a tcpdump that
+shows what is going wrong. 
 
-On a couple of 64 bit (mostly ia64 and ppc64) NFS
-client machines, the contents of remotely mountd
-directories would either disappear or not be
-seen at all. Other clients mounting the same
-filesystem to the same server are able to see
-everything... After doing some experiments there
-appears to be some issues with readdirplus caching.
-Here is what I found:
+Gavrie Philipson reported corruption happening when distcc and ccache
+are used together with the cache on NFS.
 
-If the blind client explicitly does an /bin/ls
-on a file in the empty directory, the file is found.
+  http://lists.samba.org/pipermail/distcc/2003q3/001556.html
 
-If the blind client create a file in the
-'empty' directory, all of the other file
-reappear... which make sense because the first
-thing nfs_create does is a nfs_zap_caches(dir);
+To reproduce the bug you need to just install ccache 2.2 and distcc
+2.10.1.  Set CCACHE_DIR to an empty directory on an NFS filesystem
+mounted with default/rw options.  Build a file with a command like
+this:
 
-But when the "blind" client /bin/touch the directory
-(i.e. updates the atime) the files don't comeback
-but the mtime on the directory is updated...
+  ccache distcc -c ./hello.c
 
-So basically it looks like there are two problems:
-1) some type of race condition puts the client in this condition
-2) the readdirplus cache is not being flush at the appropriate time....
+The first (only the first) time that you run this, the output file
+(hello.o) will be the correct size, but contain only \0 bytes.
 
-I've attached a patch that I think will take care
-of the second issue. Unfortunately these are production
-machine so I have not been able to test this patch (yet).
+What is basically happening here is
 
-I noticed in __nfs_refresh_inode() that the invalid flag
-was being turned off when the WCC attrs matched up with
-the current cache values. Now I'm not sure if this makes
-sense wrt to the readdir cache because if
-(NFS_CACHE_ISIZE(inode) != new_size) is true AND/OR
-(NFS_CACHE_MTIME(inode) != new_mtime) is true
-we really need to flush the cache... right?
+ - ccache runs distcc with output to a temporary file
+ - distcc opens, mmaps, writes to, munmaps, and closes the temporary
+   file
+ - distcc exits
+ - ccache renames the temporary file to its proper location in the
+   ccache
+ - ccache opens the file read only, and reads from it
 
-So the patch does *not* turn off the invalid flag
-the WCC attrs match and its a directory inode...
+ccache ought to see the proper contents as written by mmap, but when
+the cache is on NFS it just sees \0s.  It works correctly and reliably
+on reiserfs and ext3.  However, if you look at the file ccache was
+trying to read a second later then it seems to have the right
+contents.
 
+I tried writing a standalone test case but I couldn't reproduce it,
+perhaps because of some timing issue.  It is quite reproducible both
+on my machine and Gavrie's.
 
-SteveD.
+If distcc is configured to not use mmap for writing, the problem is
+hidden.  
 
+A tcpdump of the problem is available here:
 
-
-
-
---------------050302060306070802080602
-Content-Type: text/plain;
- name="linux-2.4.21-nfs-readdircache.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="linux-2.4.21-nfs-readdircache.patch"
-
---- linux-2.4.21/fs/nfs/inode.c.diff	2003-08-27 12:44:13.000000000 -0400
-+++ linux-2.4.21/fs/nfs/inode.c	2003-08-27 16:02:52.000000000 -0400
-@@ -1189,7 +1189,8 @@ __nfs_refresh_inode(struct inode *inode,
-          */
-         if ((fattr->valid & NFS_ATTR_WCC)
- 	    && NFS_CACHE_ISIZE(inode) == fattr->pre_size
--	    && NFS_CACHE_MTIME(inode) == fattr->pre_mtime) {
-+	    && NFS_CACHE_MTIME(inode) == fattr->pre_mtime
-+		&& !S_ISDIR(inode->i_mode)) {
- 		invalid = 0;
- 	}
  
+http://distcc.samba.org/ftp/distcc/misc/mmap-bug/nfs-20030827T1351.pcap.gz
 
---------------050302060306070802080602--
+Here are the significant bits:
 
+frame 79
+
+   renames tmp.hash.vexed.7897.o to the final object filename,
+   cbfc5ca42b1a693a5bca9bb8b23c5b-17387
+
+frame 105
+
+   also frame 107
+
+   look up a filehandle for the final object filename, and gets the
+   hash 0xed8222404
+
+frame 115
+
+   reads back from the final object file, 0xed8222404
+
+frame 116
+
+   is the reply to the read and it is full of nulls
+
+frame 127 
+
+   writes the ELF output into the temporary object file,
+   tmp.hash.vexed.7897.o, which has file hash 0xf27c2204.
+
+The problem is that the NFS client tries to read from the destination
+file before it has written to the temporary file!  Frame 127 is far
+too late.
+
+It seems to me like there are two possible solutions: either flush out
+all cached data for a file before it's renamed, or make the rename
+smart enough to 'take over' any data cached under an old name.  To me
+the first seems more robust if a little slower.
+
+You can see something similar going on in this NFS log:
+
+ 
+http://distcc.samba.org/ftp/distcc/misc/mmap-bug/nfsdebug-20030827T1609.log.gz
+
+The flush(b/49777) call comes long after the rename and the attempt to
+read from the new file.
+
+I'll try to draft a patch for this.
+
+-- 
+Martin
 
 
 -------------------------------------------------------
