@@ -1,39 +1,77 @@
-From: Denis Vlasenko <vda@port.imtp.ilyichevsk.odessa.ua>
-Subject: Re: 2.5.32 bootfailure for nfsroot
-Date: Fri, 27 Sep 2002 15:33:32 -0200
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <200209271239.g8RCdIp09188@Port.imtp.ilyichevsk.odessa.ua>
-References: <Pine.LNX.4.44.0209021041260.30980-100000@cam029208.student.utwente.nl>
-Reply-To: vda@port.imtp.ilyichevsk.odessa.ua
+From: Chuck Lever <cel@citi.umich.edu>
+Subject: [BUG RPT] Cthon '02 lock test fails on 2.5.38 with TCP only
+Date: Fri, 27 Sep 2002 11:36:44 -0400 (EDT)
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <Pine.LNX.4.44.0209271127530.1793-100000@dexter.citi.umich.edu>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: Gcc k6 testing account <caligula@cam029208.student.utwente.nl>,
-	linux-kernel@vger.kernel.org
-In-Reply-To: <Pine.LNX.4.44.0209021041260.30980-100000@cam029208.student.utwente.nl>
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Linux NFS List <nfs@lists.sourceforge.net>
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from dexter.citi.umich.edu ([141.211.133.33])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17uxAg-0002wo-00
+	for <nfs@lists.sourceforge.net>; Fri, 27 Sep 2002 08:36:50 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-> > The subject says it all.
-> > 2.5.32 doesn't boot when using nfsroot.
-> > same systems running fine with 2.4.19/2.5.31
-> >
-> > SYSTEMS:
-> >    athlon with/without preempt. (flatbak)
-> >    i586 with preempt.           (cam029205)
-> >
-> > The relevant configs/dmesg/lspci are on
-> > cam029208.student.utwente.nl/~caligula.
-> >
-> > SYMPTOMS:
-> > I'm using loadlin to load the kernels. I see the kernel loading,unzipping
-> > and then...black screen followed by reboot.
->
-> Small update.
-> Still no joy with 2.5.33. Same results,same symptoms :(
+hi trond-
 
-Why do you think it is nfsroot related?
-Does it boot off local filesystem?
---
-vda
+we already know locking is not working right in 2.5... this is FYI.
+
+connectathon lock test #1 fails on 2.5.38 against both a Solaris 2.9 NFS
+server and a NetApp filer when mounting with TCP.  UDP mount finishes all
+tests with only a single warning.  problem not exhibited with 2.4.18-10.  
+problem does not occur if "nolock" mount option is specified during test.
+
+console output:
+
+ ...
+
+Starting LOCKING tests: test directory /mnt/bay/dexter.test (arg: -t)
+
+Testing native post-LFS locking
+
+Creating parent/child synchronization pipes.
+
+Test #1 - Test regions of an unlocked file.
+	Parent: 1.1  - F_TEST  [       0,       1] FAILED!
+	Parent: **** Expected success, returned errno=5...
+	Parent: **** Probably implementation error.
+
+** PARENT pass 1 results: 0/0 pass, 0/0 warn, 1/1 fail (pass/total).
+
+**  CHILD pass 1 results: 0/0 pass, 0/0 warn, 0/0 fail (pass/total).
+lock tests failed
+leaving /mnt/bay mounted
+[cel@dexter cthon02]$ mount
+
+ ...
+
+bay:/export/cel on /mnt/bay type nfs 
+(rw,hard,intr,tcp,lock,rsize=32768,wsize=32768,addr=141.211.133.78)
+[cel@dexter cthon02]$
+
+-- 
+
+corporate:	<cel at netapp dot com>
+personal:	<chucklever at bigfoot dot com>
+
+
+
+-------------------------------------------------------
+This sf.net email is sponsored by:ThinkGeek
+Welcome to geek heaven.
+http://thinkgeek.com/sf
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
