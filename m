@@ -1,24 +1,28 @@
 From: Chip Salzenberg <chip@pobox.com>
-Subject: Re: ACL patch - is this bad or good?
-Date: Wed, 6 Apr 2005 14:46:11 -0400
-Message-ID: <20050406184611.GN12946@perlsupport.com>
-References: <20041204222659.GA5837@perlsupport.com> <16819.43070.634276.944461@cse.unsw.edu.au> <41B4B1DA.1040406@RedHat.com>
+Subject: Updating config.guess and config.sub
+Date: Wed, 6 Apr 2005 15:01:29 -0400
+Message-ID: <20050406190129.GO12946@perlsupport.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DJFY6-0007Fc-1O
-	for nfs@lists.sourceforge.net; Wed, 06 Apr 2005 11:46:46 -0700
+	id 1DJFmS-0007ug-MB
+	for nfs@lists.sourceforge.net; Wed, 06 Apr 2005 12:01:36 -0700
 Received: from perlsupport.com
-	([66.180.163.120] helo=mail.perlsupport.com ident=03587ba7177a4207d35ec5ef48e8fcca)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	([66.180.163.120] helo=mail.perlsupport.com ident=f83603f41df9d96594ad009abb999685)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1DJFY3-0001ZF-In
-	for nfs@lists.sourceforge.net; Wed, 06 Apr 2005 11:46:45 -0700
-To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: <41B4B1DA.1040406@RedHat.com>
+	id 1DJFmR-0002xl-9l
+	for nfs@lists.sourceforge.net; Wed, 06 Apr 2005 12:01:36 -0700
+Received: from [67.132.206.254] (helo=tytlal)
+	by mail.perlsupport.com (Exim 4) with esmtpsa (TLS-1.0:RSA_AES_256_CBC_SHA:32)
+	id 1DJFmP-0001Hj-2u
+	for nfs@lists.sourceforge.net; Wed, 06 Apr 2005 15:01:33 -0400
+Received: from chip by tytlal with local (Exim 4.50)
+	id 1DJFmL-00084U-Aq
+	for nfs@lists.sourceforge.net; Wed, 06 Apr 2005 15:01:29 -0400
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,11 +36,10 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Neil Brown wrote:
->So I am OK with this patch going in to nfs-utils, providing the man
->page make it clear that not all kernels support this functionality
-
-I've done so.
+I'm planning to close a Debian bug by updating config.guess and
+config.sub in the nfs-utils CVS.  We haven't made any local hacks to
+those files, have we?  If not I'll just overwrite them with current
+versions.
 -- 
 Chip Salzenberg            - a.k.a. -            <chip@pobox.com>
          Open Source is not an excuse to write fun code
