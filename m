@@ -1,24 +1,24 @@
 From: "Amir Hermelin" <amir@montilio.com>
 Subject: RE: nfsd and kswapd
-Date: Mon, 7 Jun 2004 12:15:34 +0200
+Date: Mon, 7 Jun 2004 12:17:07 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <004c01c44c78$5f789120$0200000a@CARTMAN>
-References: <1086596506.24334.9.camel@ikarus.inf.ethz.ch>
+Message-ID: <004d01c44c78$96475420$0200000a@CARTMAN>
 Mime-Version: 1.0
 Content-Type: text/plain;
 	charset="US-ASCII"
 Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BXGEM-0005sb-H1
-	for nfs@lists.sourceforge.net; Mon, 07 Jun 2004 02:15:46 -0700
+	id 1BXGFn-0006Po-L5
+	for nfs@lists.sourceforge.net; Mon, 07 Jun 2004 02:17:15 -0700
 Received: from enigma.barak.net.il ([212.150.48.101])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1BXGEL-0003RI-Hk
-	for nfs@lists.sourceforge.net; Mon, 07 Jun 2004 02:15:45 -0700
-To: "'Marc Schmitt'" <mschmitt@inf.ethz.ch>
-In-Reply-To: <1086596506.24334.9.camel@ikarus.inf.ethz.ch>
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BXGFn-00056s-5H
+	for nfs@lists.sourceforge.net; Mon, 07 Jun 2004 02:17:15 -0700
+To: "'Amir Hermelin'" <amir@montilio.com>,
+	"'Marc Schmitt'" <mschmitt@inf.ethz.ch>
+In-Reply-To: 
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,6 +30,22 @@ List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+
+BTW also I'm not running anything else significant other than knfsd, and =
+it
+appears that there isn't actual swapping going on.
+
+Thanks,
+Amir.
+
+
+-----Original Message-----
+From: Amir Hermelin [mailto:amir@montilio.com]=20
+Sent: Monday, June 07, 2004 12:16 PM
+To: 'Marc Schmitt'
+Cc: 'nfs@lists.sourceforge.net'
+Subject: RE: [NFS] nfsd and kswapd
+
 
 Thanks Marc for the info.  It so happens I'm also using a PowerEdge =
 (2600),
@@ -51,7 +67,7 @@ Hi Amir,
 
 On Mon, 2004-06-07 at 00:46, Amir Hermelin wrote:
 > Hi,
-> I'm observing a strange phenomenon running nfsd on 2.4.20 (RH).  I'm=20
+> I'm observing a strange phenomenon running nfsd on 2.4.20 (RH).  I'm
 > using a dual-Xeon server with 6GB of memory, and 40 nfsd threads=20
 > running.  Under very heavy load, after a while kswapd starts=20
 > constantly occupying between 60-90% cpu, and every once in a while=20
