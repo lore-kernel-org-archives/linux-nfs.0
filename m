@@ -1,13 +1,16 @@
-From: "Nellie Stevenson" <n_stevensonyc@heise.de>
-Subject: Help Please..
-Date: Wed, 11 Jun 2003 16:11:55 +0000
+From: "Lorn Kay" <lorn_kay@hotmail.com>
+Subject: Re: NAS over NFS vs SAN
+Date: Wed, 11 Jun 2003 17:02:47 +0000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <977c01c33034$a0cc382f$1b0e45e0@u49h513>
+Message-ID: <Law11-F33qNdCA1Z4zx0000bb98@hotmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0A0F_595AD507.C5CB3E13"
+Content-Type: text/plain; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: net-snmp-users-request@lists.sourceforge.net, nfs@lists.sourceforge.net
+Received: from law11-f33.law11.hotmail.com ([64.4.17.33] helo=hotmail.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19Q8zw-0003KU-00
+	for <nfs@lists.sourceforge.net>; Wed, 11 Jun 2003 10:02:56 -0700
+To: xinyuwu@hotmail.com, nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -20,32 +23,22 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
 
-------=_NextPart_000_0A0F_595AD507.C5CB3E13
-Content-Type: text/plain
-Content-Transfer-Encoding: 8bit
+We use NFS to a vendor-supplied NAS box for transaction-based production 
+data and have suffered no data loss and no erronous (we think) locks. We use 
+100BaseT Ethernet via a normal, switched network.
 
+All access to the NAS is from Linux NFS clients using the same version of 
+the kernel (we use NFS over TCP) and the same distro, etc. (This is kernel 
+version 2.4.19 by the way.)
 
+Based on this experience I would describe it as rock solid.
 
+--K
 
-------=_NextPart_000_0A0F_595AD507.C5CB3E13
-Content-Type: text/html
-Content-Transfer-Encoding: base64
-
-CQ0KIA0KPEhUTUw+ICANCiAgICA8Ym9keSBiZ2NvbG9yPSNmZmZmZmY+ICAg
-DQogIDxwIGFsaWduPSJjZW50ZXIiPmgwazh1NjMya2Q2cXh2b2lvbTYzbmYx
-NDxicj4NCjxhIGhyZWY9Imh0dHA6Ly9Xd3cuZmluRC1IT09QLmNvTS9ob3N0
-L2VtJTYxaSU2QyU3MmUlNkQlNkYlNzYlNjUuJTYxJTczJTcwIj5TdG9wDQpN
-YWlsaW5ncyBIZXJlPC9hPjxicj4gDQo8YSBocmVmPSJodHRwOi8vd1dXLm1B
-ckdyYVRFLkNPTS9obyU3M3QvZCU2NSU2NmElNzVsJTc0LiU2MXNwP2klNjQ9
-JTczdHgiPjxZVEtRPjxpbWcgc3JjPSJodHRwOi8vd1dXLlJpQ2gtZnVMTC5j
-b00vcCU2OWMlNWYlNzdlbGwvZ3YyLiU2NyU2OWYiIGJvcmRlcj0wPjwvYT4N
-Cjxicj5qOGhlcWYydjg4bGY8S09FQj48YnI+b2dzdmIybThzMnNvMzwvcD4J
-PC9ib2R5PgkNCjwvSFRNTD4NCgkNCiAgDQoNCg==
-
-
-------=_NextPart_000_0A0F_595AD507.C5CB3E13--
+_________________________________________________________________
+The new MSN 8: smart spam protection and 2 months FREE*  
+http://join.msn.com/?page=features/junkmail
 
 
 
