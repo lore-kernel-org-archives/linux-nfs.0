@@ -1,24 +1,24 @@
 From: dwight@supercomputer.org
-Subject: Re: RE: Linux client on Solaris 7 NFS server
-Date: Mon, 05 Jan 2004 09:31:36 -0800
+Subject: Re: NFS history
+Date: Mon, 05 Jan 2004 09:56:37 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200401051731.i05HVaa15457@supercomputer.org>
-References: <raven@themaw.net>
+Message-ID: <200401051756.i05Hube15542@supercomputer.org>
+References: <trmcneal@comcast.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Cc: Norman Zhang <nzhang@arkon-group.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AdYZb-0004Qp-NA
-	for nfs@lists.sourceforge.net; Mon, 05 Jan 2004 09:31:27 -0800
+	id 1AdYxl-0005tH-Qx
+	for nfs@lists.sourceforge.net; Mon, 05 Jan 2004 09:56:25 -0800
 Received: from supercomputer.org ([69.17.34.169] helo=mail.supercomputer.org)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AdYZb-0006Xm-Cp
-	for nfs@lists.sourceforge.net; Mon, 05 Jan 2004 09:31:27 -0800
-To: Ian Kent <raven@themaw.net>
-In-Reply-To: Message from Ian Kent <raven@themaw.net>
-   of "Wed, 31 Dec 2003 09:55:11 +0800." <Pine.LNX.4.33.0312310858190.5698-100000@wombat.indigo.net.au>
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1AdYxl-0004dj-Fb
+	for nfs@lists.sourceforge.net; Mon, 05 Jan 2004 09:56:25 -0800
+To: Tom McNeal <trmcneal@comcast.net>
+In-Reply-To: Message from Tom McNeal <trmcneal@comcast.net>
+   of "Fri, 02 Jan 2004 17:00:01 PST." <3FF61411.7000500@comcast.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,44 +31,67 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Ian Kent wrote:
-> Currently I'm running the RedHat 2.4.20-20.7 kernel.
-> 
-> I used UDP transport for a long time but have recently changed to TCP for
-> nearly all my clients.
-> ...
-> 
-> My usage is largely read.
-> 
-> Performance has improved quite a bit as the kernel version has increased.
-> I can get around 80% (ie. 80% wire speed) the throughput of a 'similar'
-> Sun. Problem is that most of the Sparc clients can saturate 100Mb (onto a
-> gigabit backbone) so I don't really know what the difference is.
-> 
-> Ian
+There was a release of NFS back around 1987 IIRC. It was sold by Lachman
+Associates, and my impression was that it was their big claim to fame back 
+then.
+I worked with the source code myself, but my recollection of it is hazy.
 
-Thanks for the information, Ian.
+Here's a usenet posting about their running it on VAXes, from 1986:
 
-So if I understand you correctly, you are saying that your performance for Linux clients and Solaris clients with a Solaris server is the same? Or that any
-difference is not notiable?
-
-Would you happen to know what throughput you are seeing with the Linux 
-client? My own, as reported by Ethereal, is about 11 Mbs in this case.
-
-My transactions are a combination of read and write (mimicking the common
-behavior that we use in a production environment). I appreciate the information;
-I'll try a test of pure reads.
-
-And yes, I too have saturated a 100-Mb switch before, though not with NFS.
-The statistics on the switch in the production environment show that we're
-nowhere near saturating the switch. For my test environment, there's almost
-nothing else going on at the time (I.e. one client, one server). While I could
-just use a cross-over cable and eliminate the switch, I don't see any information
-indicating that this would improve things at this time.
+http://groups.google.com/groups?hl=en&lr=&ie=UTF-8&threadm=118%40tijc02.UUCP&rn
+um=2&prev=/groups%3Fq%3Dlachman%2Bnfs%26hl%3Den%26lr%3D%26ie%3DUTF-8%26sa%3DN%2
+6tab%3Dwg
 
 Best Regards,
 
 	-dwight-
+
+> V1 was never released by Sun as a product, I think.  Brent may have talked
+> about it in "NFS Illustrated".  We're talking about 1985-7, you know.
+> 
+> Regards;
+> 
+> Tom
+> 
+> Norman Zhang wrote:
+> > Hi,
+> > 
+> > I've been googling for the difference between NFSv1 and NFSv2, but only 
+> > found NFSv2 vs NFSv3. Does anyone recall some of major changes from v1 
+> > to v2?
+> > 
+> > Regards,
+> > Norman
+> > 
+> > 
+> > 
+> > -------------------------------------------------------
+> > This SF.net email is sponsored by: IBM Linux Tutorials.
+> > Become an expert in LINUX or just sharpen your skills.  Sign up for IBM's
+> > Free Linux Tutorials.  Learn everything from the bash shell to sys admin.
+> > Click now! http://ads.osdn.com/?ad_id=1278&alloc_id=3371&op=click
+> > _______________________________________________
+> > NFS maillist  -  NFS@lists.sourceforge.net
+> > https://lists.sourceforge.net/lists/listinfo/nfs
+> > 
+> 
+> -- 
+> Tom McNeal
+> (650)906-0761(cell)
+> (650)964-8459(fax)
+> Email: trmcneal@attbi.com
+> 
+> 
+> 
+> -------------------------------------------------------
+> This SF.net email is sponsored by: IBM Linux Tutorials.
+> Become an expert in LINUX or just sharpen your skills.  Sign up for IBM's
+> Free Linux Tutorials.  Learn everything from the bash shell to sys admin.
+> Click now! http://ads.osdn.com/?ad_id=1278&alloc_id=3371&op=click
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+
 
 
 
