@@ -1,23 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: userspace NFS daemon
-Date: Sun, 05 Sep 2004 23:32:57 -0400
+From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
+Subject: Re: why do i get "Stale NFS file handle" for hours?
+Date: Mon, 06 Sep 2004 08:47:58 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1094441577.10492.134.camel@lade.trondhjem.org>
-References: <Pine.LNX.4.44.0409060210030.12696-100000@kenzo.iwr.uni-heidelberg.de>
+Message-ID: <413C081E.9010307@bio.ifi.lmu.de>
+References: <chdp06$e56$1@sea.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: Frank van Maarseveen <frankvm@xs4all.nl>, Linux NFS mailing list <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C4AFp-00064K-FV
-	for nfs@lists.sourceforge.net; Sun, 05 Sep 2004 20:33:17 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1C4AFm-0005VW-5j
-	for nfs@lists.sourceforge.net; Sun, 05 Sep 2004 20:33:17 -0700
-To: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
-In-Reply-To: <Pine.LNX.4.44.0409060210030.12696-100000@kenzo.iwr.uni-heidelberg.de>
+	id 1C4DII-0006y3-MZ
+	for nfs@lists.sourceforge.net; Sun, 05 Sep 2004 23:48:02 -0700
+Received: from acheron.informatik.uni-muenchen.de ([129.187.214.135])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1C4DIH-0006eO-Vv
+	for nfs@lists.sourceforge.net; Sun, 05 Sep 2004 23:48:02 -0700
+To: =?ISO-8859-1?Q?Sven_K=F6hler?= <skoehler@upb.de>
+In-Reply-To: <chdp06$e56$1@sea.gmane.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,44 +30,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 su , 05/09/2004 klokka 20:47, skreiv Bogdan Costescu:
+I had two issues which caused the same behavious for me. Maybe check those.
 
-> Err, you mean to say that root-NFS only appeared after knfsd ? And=20
-> that knfsd was absolutely flawless since day 1 ? :-)
+1) there was a race condition in the nfs server, not yet fixed in 2.6.8.1
+    that caused stale handels if the server restarted too fast, i.e.,
+    without at least a "sleep 1" between stop and start.
+    Neil sent a patch for this on the list on August 18th.
 
-No. I mean that very few people have ever used unfsd in mission-critical
-production environments.
-You might get away with it for read-only stuff (if you are prepared to
-put up with the speed), but nobody should be using it for read/write
-partitions.
+2) on SuSE 9.0, (maybe 9.1, maybe earlier too) the /etc/init.d/nfsserver
+    script was broken in that it called "/usr/sbin/exportfs -au" before
+    "killproc rpc.mountd" which caused a lot of stale handles. Maybe
+    you have sth. similar?
 
-> Cluster nodes have usually a small number of software packages=20
-> installed. Most "core" packages (like core-utils, grep, gawk, etc.)=20
-> don't need locking. As / doesn't see itself much writting (which=20
-> happens usually in /var and /tmp, but those can be mounted=20
-> separately), NFSv3 vs. NFSv2 doesn't make much difference either. So=20
-> what's the problem with using unfsd in these conditions ?
+cu,
+Frank
 
-If you have to mount all the writeable partitions separately from a more
-robust server, then why bother? Replicating /etc and changing the two or
-three files that differ for each cluster node is hardly a difficult
-task: you can do it using a simple shell script. /bin doesn't even have
-to be replicated...
-
-The "per-uid" and "per-gid" stuff might be more useful, but is likely to
-be defeated by lookup caching rules on most NFS clients.
-
-Note: the premise:
-        If a matching file is located, but authorization is denied,this
-        is NOT considered a match, and the next entry on the list will
-        be attempted.
-if taken literally, would certainly make managing these name.ipaddress
-files "interesting": "chmod a+r,a-w blah; cat >blah" might have some
-curious side-effects...
-
-Cheers,
-  Trond
-
+-- 
+Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
+Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
+LMU, Amalienstr. 17           Phone: +49 89 2180-4049
+80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
+* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
 
 
 -------------------------------------------------------
