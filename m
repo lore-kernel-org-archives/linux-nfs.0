@@ -1,25 +1,23 @@
-From: Marian Eichholz <marian.eichholz@freenet-ag.de>
-Subject: strange kernel freeze during "exportfs -a" w/2.6.9-rc1
-Date: Wed, 6 Oct 2004 08:31:45 +0200
+From: James Pearson <james-p@moving-picture.com>
+Subject: File system cache corruptions?
+Date: Wed, 06 Oct 2004 17:40:58 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20041006063145.GA23464@urmel.freenet-ag.de>
-Reply-To: marian.eichholz@freenet-ag.de
+Message-ID: <4164201A.8020005@moving-picture.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CF5L5-0003UH-BW
-	for nfs@lists.sourceforge.net; Tue, 05 Oct 2004 23:31:51 -0700
-Received: from mout1.freenet.de ([194.97.50.132])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1CF5L1-00066a-TK
-	for nfs@lists.sourceforge.net; Tue, 05 Oct 2004 23:31:51 -0700
-Received: from [194.97.55.147] (helo=mx4.freenet.de)
-	by mout1.freenet.de with esmtpa (Exim 4.42)
-	id 1CF5Kz-0001qt-RY
-	for nfs@lists.sourceforge.net; Wed, 06 Oct 2004 08:31:45 +0200
+	id 1CFEqj-0000pw-1H
+	for nfs@lists.sourceforge.net; Wed, 06 Oct 2004 09:41:09 -0700
+Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CFEqd-00024K-J7
+	for nfs@lists.sourceforge.net; Wed, 06 Oct 2004 09:41:08 -0700
+Received: from minion.mpc.local ([172.16.11.112] helo=moving-picture.com)
+	by moving-picture.com with esmtp (Exim 4.24)
+	id 1CFEqY-0004ew-Cx
+	for nfs@lists.sourceforge.net; Wed, 06 Oct 2004 17:40:58 +0100
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,58 +31,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello all, hi Neil, hi Olaf,
+Very occasionally we get problems where by an application on an NFS 
+server fails to load on one NFS client - for example just had one which 
+fails when you try to run it:
 
-we recently found a strange bug in the recent 2.6 kernels
-that freezes the whole kernel (down to even no response to
-the Magic SysRq keys). And in fact sticks us to the 2.4
-series we want to get rid of :)
+/path/to/nfs/mounted/binary: relocation error: 
+/path/to/nfs/mounted/shared/object.so: symbol , version GLIBC_2.0 not 
+defined in file libpthread.so.0 with link time reference
 
-This happens during "exportfs -a" when the following
-sequence commences (tested by manual command execution,
-with some seconds betweeen the commands):
+I 'fixed' the problem by running a simple tool on the client that just 
+grabs memory - and hence flushes any cached files.
 
-	rpc.nfsd 128
-	rpc.mountd
-	rpc.statd
-	exportfs -a
+The application in question hasn't changed in months.
 
-We cannot reproduce it on a "normal" machine.
+In this case, the client is running Fedora Core 1 with a 2.4.22 based 
+kernel (with Trond's NFS client patches), but we've seen similar 
+problems with Redhat 7.2 based machines with a variety of kernel.org 
+2.4.X based kernels.
 
-The most recently tested kernel is a 2.6.9-rc1 (since each
-test breaks the production service). exportfs is 1.0.6.
+Any ideas on what may be causing this?
 
-The particular server is the NFS file repository for a high
-volume FTP cluster, thus beeing requested by the still
-online 4 ftp backend servers *heavily*.
-
-It has 2 Fast Ethernet ports in *bonding* mode (in peak hours they can
-be filled with ease).
-
-Probably it is this combinations that makes a problem.
-
-There are only two directories being exported to 5 machines
-each with really standard options.
-
-The freeze can be reproduced even when the exported
-directories are empty (no mount of the *some* GB to be
-checked afterwards, nice for testing :)) and even with "strace
-exportfs -a".
-
-strace stops during the call of
-
-	nfsservctl(0x1,...,0)
-
-right after reading the still empty /proc/fs/nfs/exports.
-
-I just hope that something helps.
-If we can run a special test or provide suitable
-information about the system, please let me know.
-
-Thank You in advance, probably it's something easily fixed.
-
-Yours sincerely,
-- Marian
+James Pearson
 
 
 -------------------------------------------------------
