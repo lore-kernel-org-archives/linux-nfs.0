@@ -1,23 +1,21 @@
-From: Rick Blocker <rblocker@uchicago.edu>
-Subject: error says "Permission denied" but logs say "authenticated mount
- request"
-Date: Tue, 27 Jul 2004 15:18:18 -0500
+From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
+Subject: NFS related crash?
+Date: Tue, 27 Jul 2004 13:40:46 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <p06010211bd2c68efd475@[128.135.150.250]>
+Message-ID: <1090960846.3475.264.camel@tesuji.nac.uci.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii" ; format="flowed"
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-f33tREjtjjf2S9Xs2j8x"
+Cc: Dan Stromberg <strombrg@dcs.nac.uci.edu>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BpYMt-0007Gp-Q8
-	for nfs@lists.sourceforge.net; Tue, 27 Jul 2004 13:16:11 -0700
-Received: from relay00.uchicago.edu ([128.135.12.75])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1BpYMt-0004f1-Cl
-	for nfs@lists.sourceforge.net; Tue, 27 Jul 2004 13:16:11 -0700
-Received: from [128.135.150.250] (galapagos.uchicago.edu [128.135.150.250])
-	by relay00.uchicago.edu (8.12.10/8.12.9) with ESMTP id i6RKG9Xr005170
-	for <nfs@lists.sourceforge.net>; Tue, 27 Jul 2004 15:16:10 -0500 (CDT)
+	id 1BpYkk-0002sN-2Y
+	for nfs@lists.sourceforge.net; Tue, 27 Jul 2004 13:40:50 -0700
+Received: from dcs.nac.uci.edu ([128.200.34.32])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.34)
+	id 1BpYkj-0002rN-NI
+	for nfs@lists.sourceforge.net; Tue, 27 Jul 2004 13:40:50 -0700
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,56 +29,88 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
 
-I have a very frustrating problem that I hope someone can help me 
-with.  I have a file server running Linux kernel version 2.6.7 on 
-RedHat Enterprise Linux 3 for x86_64 (single AMD Opteron CPU).  I 
-have set up my /etc/exports file with the single line:
-
-	/export/md0/home        client.mydomain(rw)
-
-and run
-
-	/usr/sbin/exportfs -a
-
-The nfsd and rpc.mountd daemons are running on the server. I have 
-edited /etc/hosts.allow on the server to allow portmap from the 
-client machine. However, whenever I issue the mount command:
-
-    [root@client /]# mount /nfs/mountpoint/home
-    mount: server.mydomain:/export/md0/home failed, reason given by 
-server: Permission denied
-
-I get the "Permission denied" error.  But, on the server in the logs I see:
-
-    Jul 27 14:56:40 server rpc.mountd: authenticated mount request 
-from client.mydomain:1009 for /export/md0/home (/export/md0/home)
-
-I have tried this from multiple clients with the same error.  I even 
-went so far as to re-compile a new kernel, but no luck.
-
-Does anyone have a clue what this could be?
-
-Thanks.
+--=-f33tREjtjjf2S9Xs2j8x
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
 
--- 
+We have an RHEL 3 NFS server (cpu AMD Opteron(tm) Processor 240), that
+is apparently consistently crashing when I try to extract a large .zip
+file (a solaris 8 .iso) from a Fedora Core 2 client with these mount
+options:
+
+type nfs (rw,nosuid,intr,hard,timeo=3D20,rsize=3D8192,wsize=3D8192
+
+...and this was in nfsstat:
+
+Server rpc stats:
+calls      badcalls   badauth    badclnt    xdrcall
+496158     244        11         233        0
+Server nfs v2:
+null       getattr    setattr    root       lookup     readlink
+12     100% 0       0% 0       0% 0       0% 0       0% 0       0%
+read       wrcache    write      create     remove     rename
+0       0% 0       0% 0       0% 0       0% 0       0% 0       0%
+link       symlink    mkdir      rmdir      readdir    fsstat
+0       0% 0       0% 0       0% 0       0% 0       0% 0       0%
+=20
+Server nfs v3:
+null       getattr    setattr    lookup     access     readlink
+29      0% 463983 93% 428     0% 4494    0% 2902    0% 4       0%
+read       write      create     mkdir      symlink    mknod
+4153    0% 16956   3% 508     0% 4       0% 8       0% 0       0%
+remove     rmdir      rename     link       readdir    readdirplus
+969     0% 4       0% 173     0% 88      0% 8       0% 419     0%
+fsstat     fsinfo     pathconf   commit
+43      0% 4       0% 1       0% 944     0%
+=20
+Client rpc stats:
+calls      retrans    authrefrsh
+8343       20         0
+Client nfs v3:
+null       getattr    setattr    lookup     access     readlink
+0       0% 4716   56% 0       0% 1523   18% 1247   14% 32      0%
+read       write      create     mkdir      symlink    mknod
+417     4% 0       0% 0       0% 0       0% 0       0% 0       0%
+remove     rmdir      rename     link       readdir    readdirplus
+0       0% 0       0% 0       0% 0       0% 0       0% 394     4%
+fsstat     fsinfo     pathconf   commit
+12      0% 2       0% 0       0% 0       0%
 
 
 
+There was nothing useful in the logs after the crash.
 
-Richard Blocker
-Information Systems Manager
-Ecology and Evolution
-Organismal Biology and Anatomy
-University of Chicago
-Zoology 114B
-1101 E. 57th Street
-Chicago, IL 60637
-rblocker@uchicago.edu
-telephone: 773-702-5135
-facsimile: 773-702-9740
+We haven't yet investigated RHEL's network-based crashdump facility.=20
+Would that be helpful?
+
+The server hardware is pretty new, and we had to return it to the vendor
+once, because it kept crashing while we copied our homedirs onto its
+disk.
+
+Does this sound more like a software problem or a hardware problem?=20
+Anyone seen anything like this?  Anyone have any suggestions for
+resolving the issue?
+
+--=20
+Dan Stromberg DCS/NACS/UCI <strombrg@dcs.nac.uci.edu>
+
+
+--=-f33tREjtjjf2S9Xs2j8x
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.0.7 (GNU/Linux)
+
+iD8DBQBBBr3Oo0feVm00f/8RArsWAKCMQ51nSoUQI1MOjM/WPAg5n10wFACfchN9
+9neTFXd5pVVWwzJm/gnI0b8=
+=Lv/U
+-----END PGP SIGNATURE-----
+
+--=-f33tREjtjjf2S9Xs2j8x--
+
 
 
 -------------------------------------------------------
