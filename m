@@ -1,110 +1,57 @@
-From: Dave van Leeuwen <dave@elec.canterbury.ac.nz>
-Subject: Re: [NFS] [BUG] Onboard Ethernet Pro 100 on a SMP box: a very strange
- errors
-Date: Tue, 25 Jan 2005 09:15:43 +1300 (NZDT)
-Message-ID: <Pine.SOL.4.21.0501250910340.14951-100000@lupus.elec.canterbury.ac.nz>
-References: <20050122014646.A1038@natasha.ward.six>
+From: Adrian Bunk <bunk@stusta.de>
+Subject: [2.6 patch] fs/lockd/clntproc.c: make 2 functions static
+Date: Mon, 24 Jan 2005 21:26:03 +0100
+Message-ID: <20050124202603.GX3515@stusta.de>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-kernel@vger.kernel.org, linux-net@vger.kernel.org,
-	nfs@lists.sourceforge.net
-Return-path: <linux-net-owner@vger.kernel.org>
-In-reply-to: <20050122014646.A1038@natasha.ward.six>
-To: Denis Zaitsev <zzz@anda.ru>
-Sender: linux-net-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: neilb@cse.unsw.edu.au, trond.myklebust@fys.uio.no,
+	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner+glk-linux-kernel=40m.gmane.org-S261625AbVAXU30@vger.kernel.org>
+To: Andrew Morton <akpm@osdl.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-Hi Denis,
-I bought a Intel STL2 mobo based machine a few years ago. I'm not sure
-what the network controller on it is, as it is turned off.  I had a
-problem where the card works fine until it gets loaded.  Then things went
-pear shaped.  There was a bios upgrade to fix this problem.  I never
-installed the bios patch as I had spare network cards.
-You may find that you are just reaching the point where the card fails to
-work correctly.
+This patch makes two needlessly global functions static.
 
-Hope this helps,
-Dave. 
+Signed-off-by: Adrian Bunk <bunk@stusta.de>
 
-Dave van Leeuwen
-Analyst Programmer
-University of Canterbury
-New Zealand
+---
 
-On Sat, 22 Jan 2005, Denis Zaitsev wrote:
+ fs/lockd/clntproc.c         |    4 ++--
+ include/linux/lockd/lockd.h |    2 --
+ 2 files changed, 2 insertions(+), 4 deletions(-)
 
-> The long story is:
-> 
-> There is a Dual-processor Intel Server Board STL2 with two P-III/800
-> and an onboard Intel 82557-based ethernet card.  The box has all the
-> /usr and nearly all of the /var filesystems mounted over NFS.  And the
-> box works for months without any problems around the NFS.  So, I think
-> that the ethernet card just works fine.
-> 
-> But I have some enigmatic problems when I copying _some_ files from an
-> NFS to the local fs: the process is freezes on the middle.
-> 
-> 1) Only _some_ files can't be copied.  There are:
-> 
->    gcc-testsuite-3.4-20041217.tar.bz2
-> 
->    krb5-1.3.6-signed.tar
-> 
->    X430src-1.tgz
-> 
->    They are the well-known sources from the well-known ftp and web
->    places.  And I don't think that it's the full list, just the files
->    for which I have met the problem.
-> 
-> 2) Only _these_ files can't be copied.  Any other is copied plainly.
-> 
-> 3) These files _never_ can be copied.
-> 
-> 4) The copy process always freezes at the same place (per file - the
->    each file has its own place).
-> 
-> In short: it's a list of files, on which the copying is always freezes
-> and always freezes exactly the same way.  And there are no any
-> exception - I have freezeng each time.
-> 
-> The freezing is forever.  The freezed process is in D state, its
-> /proc/PID/wchan contains page_sync.  Each such process eats 1.0 from
-> /proc/loadavg.  And the process can't be killed by any signal.
-> 
-> Then, copying by dd bs=1024 ... just succeeds.  After that cp succeeds
-> too - I think it's because of caching.
-> 
-> Then, there is no visual correlation with the size of the file.  So,
-> it seems that the content of the file is involved...  But it is
-> enigmatic.
-> 
-> The NIC works fine all the other time, so there no suspicions about
-> hardware problems.
-> 
-> The other NIC - 3C905 PCI external card doesn't show the problem - all
-> the files are just copied.
-> 
-> An either driver for Ethernet Pro 100 - e100 or eepro100 - show the
-> same result, but eepro100 logs periodicaly:
-> 
->         eth0: wait_for_cmd_done timeout!
-> 
-> e100 logs nothing.
-> 
-> So, it doesn't ever look like a driver bug...
-> 
-> The kernels tested: 2.6.8.1, 2.6.9, 2.6.10.
-> 
-> GLIBC used: 2.3.2.
-> 
-> 
-> -------------------------------------------------------
-> This SF.Net email is sponsored by: IntelliVIEW -- Interactive Reporting
-> Tool for open source databases. Create drag-&-drop reports. Save time
-> by over 75%! Publish reports on the web. Export to DOC, XLS, RTF, etc.
-> Download a FREE copy at http://www.intelliview.com/go/osdn_nl
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
-> 
+This patch was already sent on:
+- 8 Jan 2005
 
+--- linux-2.6.10-mm2-full/include/linux/lockd/lockd.h.old	2005-01-08 04:29:36.000000000 +0100
++++ linux-2.6.10-mm2-full/include/linux/lockd/lockd.h	2005-01-08 04:30:09.000000000 +0100
+@@ -143,8 +143,6 @@
+  * Lockd client functions
+  */
+ struct nlm_rqst * nlmclnt_alloc_call(void);
+-int		  nlmclnt_call(struct nlm_rqst *, u32);
+-int		  nlmclnt_async_call(struct nlm_rqst *, u32, rpc_action);
+ int		  nlmclnt_block(struct nlm_host *, struct file_lock *, u32 *);
+ int		  nlmclnt_cancel(struct nlm_host *, struct file_lock *);
+ u32		  nlmclnt_grant(struct nlm_lock *);
+--- linux-2.6.10-mm2-full/fs/lockd/clntproc.c.old	2005-01-08 04:29:49.000000000 +0100
++++ linux-2.6.10-mm2-full/fs/lockd/clntproc.c	2005-01-08 04:30:15.000000000 +0100
+@@ -322,7 +322,7 @@
+ /*
+  * Generic NLM call
+  */
+-int
++static int
+ nlmclnt_call(struct nlm_rqst *req, u32 proc)
+ {
+ 	struct nlm_host	*host = req->a_host;
+@@ -428,7 +428,7 @@
+ 	return status;
+ }
+ 
+-int
++static int
+ nlmclnt_async_call(struct nlm_rqst *req, u32 proc, rpc_action callback)
+ {
+ 	struct nlm_host	*host = req->a_host;
