@@ -1,36 +1,119 @@
-From: Andreas Schwab <schwab@suse.de>
-Subject: Re: x86_64: 32bit emulation problems
-Date: Wed, 02 Mar 2005 00:46:23 +0100
-Message-ID: <jebra3udyo.fsf@sykes.suse.de>
-References: <200502282154.08009.bernd.schubert@pci.uni-heidelberg.de>
-	<200503012207.02915.bernd-schubert@web.de>
-	<jewtsruie9.fsf@sykes.suse.de>
-	<200503020019.20256.bernd-schubert@web.de>
+From: Brad Barnett <lists@L8R.net>
+Subject: Re: knfsd brought to its knees, by a simple rsync or cp
+ operation
+Date: Tue, 1 Mar 2005 18:38:16 -0500
+Message-ID: <20050301183816.168fd12d@be.back.l8r.net>
+References: <20050226082854.2a496ec3@be.back.l8r.net>
+	<20050228100633.GA4822@suse.de>
+	<20050228102307.3788a184@be.back.l8r.net>
+	<20050228154455.GS4822@suse.de>
+	<20050228112018.34fdeb2b@be.back.l8r.net>
+	<20050301095548.GJ14402@suse.de>
+	<20050301065703.7e52cf4e@be.back.l8r.net>
+	<20050301150446.GD4848@ti64.telemetry-investments.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: Andi Kleen <ak@muc.de>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	nfs@lists.sourceforge.net
-To: Bernd Schubert <bernd-schubert@web.de>
-In-Reply-To: <200503020019.20256.bernd-schubert@web.de> (Bernd Schubert's
- message of "Wed, 2 Mar 2005 00:19:19 +0100")
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=US-ASCII
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1D6GwU-0000lk-BW
+	for nfs@lists.sourceforge.net; Tue, 01 Mar 2005 15:38:18 -0800
+Received: from l8r.net ([64.26.155.43] ident=aliens)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.41)
+	id 1D6GwS-0002Id-At
+	for nfs@lists.sourceforge.net; Tue, 01 Mar 2005 15:38:18 -0800
+Received: from be.back.l8r.net (bbarnett@be [10.10.10.10])
+	by l8r.net (8.12.3/8.12.3/Debian-7.1) with ESMTP id j21NbWuu015975
+	(version=TLSv1/SSLv3 cipher=EDH-RSA-DES-CBC3-SHA bits=168 verify=NO)
+	for <nfs@lists.sourceforge.net>; Tue, 1 Mar 2005 18:37:32 -0500
+To: nfs@lists.sourceforge.net
+In-Reply-To: <20050301150446.GD4848@ti64.telemetry-investments.com>
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Bernd Schubert <bernd-schubert@web.de> writes:
+On Tue, 1 Mar 2005 10:04:46 -0500
+"Bill Rugolsky Jr." <brugolsky@telemetry-investments.com> wrote:
 
-> Hmm, after compiling with -D_FILE_OFFSET_BITS=3D64 it works fine. But=
- why does=20
-> it work without this option on a 32bit kernel, but not on a 64bit ker=
-nel?
+> On Tue, Mar 01, 2005 at 06:57:03AM -0500, Brad Barnett wrote:
+> > However, this is what is really erking me.  This isn't a heavy I/O
+> > job. This is just _one_ cp.  Nothing else is happening on the entire
+> > server!  I just did, in the above test:
+> > 
+> > client: ls -R /home
+> > 
+> > The client is fine, for very long periods of time...
+> > 
+> > Then, while the above command is still happening:
+> > 
+> > server: cp -a /raid/home /raid/hometest
+> 
+> You say that it isn't a heavy I/O job, but a recursive copy is a very
+> seek-intensive one, particularly when copying a large tree to the same
+> device, which will interleave reads and writes.  What filesystem are you
+> using?  With an internal journal, journal writes will cause additional
+> seeking.
 
-See nfs_fileid_to_ino_t for why the inode number is different between
-32bit and 64bit kernels.
+ext3.  I do stress, however, that I find almost zero slowdown on the local
+system, when I do a ls -R locally.  This is what set off my spidey sense.
 
-Andreas.
+>  
+> > Within 10 seconds, the output of ls -R /home slows.  Within 20
+> > seconds, it_stop_.  It then sits there for seconds, and spews out a
+> > page in small jumps.  Again, a ls /raid/home on the _server_ barely
+> > slows, and is constant.
+> 
+> Do you mean ls -R /raid/home here?  Is it definitely the case that
+> ls -R /raid/home on the server is quick, but on the client it is slow?
 
---=20
-Andreas Schwab, SuSE Labs, schwab@suse.de
-SuSE Linux Products GmbH, Maxfeldstra=DFe 5, 90409 N=FCrnberg, Germany
-Key fingerprint =3D 58CA 54C7 6D53 942B 1756  01D3 44D5 214B 8276 4ED5
-"And now for something completely different."
+Yes, most definitely ls -R /raid/home.  I've tested this dozens of times,
+and it is as you say above.  Server fast, client slow.
+
+> 
+> How about ls -lR /raid/home on the server?  It could be that knfsd is
+> returning file attribute information, hence reading the whole inode
+> for each file, and not just for the directories.  getdents64() returns
+> d_type=DT_DIR for directory entries, which allows ls -R to optimize the
+> traversal so as to only call fstat64() on directories, not regular
+> files. So on the server, ls -R would only fstat64() the entries, while
+> on the client ls -R can cause knfsd to do the equivalent of ls -lR.
+> 
+
+ls -lR on the server is fast still.  There are no 5 second stalls... no
+stalls at all, really.
+
+
+> Also, which I/O scheduler are you using?
+
+io scheduler noop registered
+io scheduler anticipatory registered
+io scheduler deadline registered
+io scheduler cfq registered
+elevator: using anticipatory as default io scheduler
+
+Should I try a different scheduler?  Deadline perhaps?
+
+
+> 
+> Regards,
+> 
+> 	Bill Rugolsky
+
+
+-------------------------------------------------------
+SF email is sponsored by - The IT Product Guide
+Read honest & candid reviews on hundreds of IT Products from real users.
+Discover which products truly live up to the hype. Start reading now.
+http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
