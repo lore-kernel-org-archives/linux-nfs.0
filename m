@@ -1,21 +1,18 @@
-From: Kim Holviala <kim@holviala.com>
-Subject: Re: Spontaneous server reboot with 2.6.10 and nfsd
-Date: Sat, 12 Feb 2005 10:02:46 +0200
-Message-ID: <420DB826.1080506@holviala.com>
-References: <420CAB6E.4010003@holviala.com> <1108153050.9386.3.camel@solaris.skunkware.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+From: Stuart Anderson <anderson@ligo.caltech.edu>
+Subject: Re: kernel Oops in rpc.mountd
+Date: Sat, 12 Feb 2005 14:23:01 -0800
+Message-ID: <200502122223.j1CMN1sK003668@m27.ligo.caltech.edu>
 Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CzsEt-0000cq-Rh
-	for nfs@lists.sourceforge.net; Sat, 12 Feb 2005 00:02:51 -0800
-Received: from ip213-185-37-13.laajakaista.mtv3.fi ([213.185.37.13] helo=three.holviala.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CzsEo-0006G5-Sw
-	for nfs@lists.sourceforge.net; Sat, 12 Feb 2005 00:02:51 -0800
-To: comsatcat <comsatcat@earthlink.net>
-In-Reply-To: <1108153050.9386.3.camel@solaris.skunkware.org>
+	id 1D05fb-0001fR-MR
+	for nfs@lists.sourceforge.net; Sat, 12 Feb 2005 14:23:19 -0800
+Received: from acrux.ligo.caltech.edu ([131.215.115.14])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1D05fX-0001rp-8O
+	for nfs@lists.sourceforge.net; Sat, 12 Feb 2005 14:23:19 -0800
+To: neilb@cse.unsw.edu.au
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,128 +26,74 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-comsatcat wrote:
+Neil,
+	This patch did the trick! We have now run our 290 cluster nodes for
+72 hours with this extra locking patch without any kernel crashes. This is
+to be compared to 1-5 crashes per day before the patch.
 
-> I'm not sure if this is related or not, but on a batch of 8 servers
-> running 2.6.9 and 2.6.10 pushing 300-600mb/s we're seeing the same thing
-> using 32k r/wsize w/ jumbo frames (MTU 9000).
+	Many thanks!
 
-I tried kernels from 2.6.8.1 -> 2.6.11-rc3 and they all did the same. 
-The 11-rc3 seemed to work a bit better - it lasted about 3 secods longer 
-than the others before it rebooted itself.
+	What is the next step in getting this patch integrated into FC3
+and the mainline kernel branch?
 
-> We push all ranges of
-> files (few bytes -> 2+ gigs), so we haven't been able to link this to
-> specific file sizes.
-
-Yeah, I too have gotten it to crash with small files too - it's just 
-that it seems to crash more easily with big ones.
-
-> Do you have a kernel version that used to work for you that I can test
-> on some of our boxes?
-
-2.2.18?
-
-:-)
-
-Seriously, that was the last time NFS was really stable... And that was 
-with the user-space nfs server.
-
-The problem is that I use NFS for mostly read-only things so I haven't 
-ran into this particular problem. But the other day I needed to dump a 
-CDROM to the server, and since I had a rw mount I decided to just copy 
-it there - and that's where the problems started. Reading stuff from NFS 
-seems work just fine no matter what I do.
-
-> Note we are also running Gentoo 2004.3 on all 8 servers.
-
-Oh, mine is Debian Sarge, the clients vere both Debian and Gentoo. I 
-think I'll switch to *BSD or x86 Solaris on my NFS servers...
-
-
-
-Kim
-
-
-> On Fri, 2005-02-11 at 14:56 +0200, Kim Holviala wrote:
-> 
->>I already posted this to LKML, but I don't think anyone was interested 
->>there... Here's the original posting:
->>
->>===============
->>I hit an obscure bug last night when trying to copy files from an nfs
->>client to my nfs server. The server is a P3/800 with three IDE disks in
->>software RAID5 running vanilla 2.6.10 and Debian Sarge. The network is
->>local 100Mbit/s switched ethernet. The server exports a 220 gig
->>partition which contains a lot of data.
->>
->>Oh, kernel configs and stuff from the server can be found from:
->>http://www.holviala.com/~kimmy/crash/
->>
->>Anyway, I mount the export to a Linux client (tried with a few with
->>different 2.6 kernels and distros) and then start copying files from
->>clients CDROM to the server through NFS. After copying a few small
->>files, the first big one reboots the server. There are no log entries,
->>and the server has no local console so I don't know what happens. This
->>is reproduceable 100% of the time.
->>To narrow down the problem, I've tried the following:
->>
->>- copied files from a different client running Gentoo: reboot
->>- exported a non-raided partition (hdc9) and tried that: reboot
->>- switched 2.6.10 to 2.6.11-rc3: reboot, but it took longer
->>
->>I hope it's just something that I've done, but this server has been in
->>use for a long time now without any problems, and I haven't touched it
->>for a while.
->>
->>So, if anyone knows what's wrong, or can tell me a way to debug the
->>situation more I'd be grateful. The server is in a place where it's
->>nearly impossible to have a local console - I could probably use a
->>serial one if necessary for debugging.
->>===============
->>
->>So, that was my original posting. Since then I've tried localhost 
->>mounts, tcp, udp, different r/wsizes etc etc. I can still reliably 
->>reboot teh server remotely just by copying something to the NFS mount :-/.
->>
->>Now, there are two things that I've tested that worked better than 
->>others: First I switched to async exports, mounted localhost:/export/tmp 
->>with udp and copied stuff there. The copying hang 
->>(http://www.holviala.com/~kimmy/crash/nfsd.log) but the server didn't 
->>crash. Woo! Tried that remotely and it once again rebooted the server...
->>
->>And then I made one test with tcp,rsize=1024,wsize=1024 again with 
->>localhost:/export/tmp, and that worked ok. I haven't had the time to 
->>test that remotely, yet.
->>
->>So, I can only assume that there's something wrong with using r/wsize 
->>which is bigger than MTU. However, I run a lot of stuff through that 
->>same network and I never see any TCP retransmissions or any other 
->>problems. Besides, I'm getting the same reboot even with localhost NFS 
->>mounts.
->>
->>I have managed to capture some logs with nfsd logging on, those can be 
->>found from the above link.
->>
->>I'd be grateful for any pointers, debugging flags, anything. I've 
->>crashed my server now maybe three dozen times trying to narrow the 
->>problem down....
->>
->>
->>
->>Kim
->>
->>
->>
->>
->>-------------------------------------------------------
->>SF email is sponsored by - The IT Product Guide
->>Read honest & candid reviews on hundreds of IT Products from real users.
->>Discover which products truly live up to the hype. Start reading now.
->>http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
->>_______________________________________________
->>NFS maillist  -  NFS@lists.sourceforge.net
->>https://lists.sourceforge.net/lists/listinfo/nfs
+According to Neil Brown:
+> On Monday February 7, anderson@ligo.caltech.edu wrote:
+> > We are going to rebuild 2.6.10-1.760_FC3smp with 8k stack (just my
+> > paranoia about the 4k stacks), and remove absolutely everything we do
+> > not need, however, I will add in the CONFIG_DEBUG_SLAB. Are there any
+> > other kernel debug flags that might be helpful?
+>
+> No.  However the following patch might be worth a try.
+> It adds some extra locking.  I'm pretty sure there is a race that this
+> closes that could possibly cause your problem.  I also think the
+> locking here is a bit heavy handed, but I am sure it is safe.
+>
+> >
+> > Perhaps the bug is due to having a large list of static NFS mounts (290)?
+>
+> Having lots of mounts won't hurt.  But having lots of clients mount
+> this server might have make it more likely to trigger the bug as there
+> is more activity on the export cache.
+>
+> NeilBrown
+>
+>
+> Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
+>
+> ### Diffstat output
+>  ./include/linux/sunrpc/cache.h |   14 +++++++++-----
+>  1 files changed, 9 insertions(+), 5 deletions(-)
+>
+> diff ./include/linux/sunrpc/cache.h~current~ ./include/linux/sunrpc/cache.h
+> --- ./include/linux/sunrpc/cache.h~current~   2005-02-08 16:23:21.000000000 +1
+100
+> +++ ./include/linux/sunrpc/cache.h    2005-02-08 16:41:09.000000000 +1100
+> @@ -268,15 +268,19 @@ static inline struct cache_head  *cache_
+>
+>  static inline int cache_put(struct cache_head *h, struct cache_detail *cd)
+>  {
+> -     atomic_dec(&h->refcnt);
+> +     int rv = 0;
+> +     read_lock(&cd->hash_lock);
+> +     if (atomic_dec_and_test(&h->refcnt))
+> +             rv = 1;
+>       if (!atomic_read(&h->refcnt) &&
+>           h->expiry_time < cd->nextcheck)
+>               cd->nextcheck = h->expiry_time;
+> -     if (!test_bit(CACHE_HASHED, &h->flags) &&
+> -         !atomic_read(&h->refcnt))
+> -             return 1;
+> +     if (test_bit(CACHE_HASHED, &h->flags) ||
+> +         atomic_read(&h->refcnt))
+> +             rv = 0;
+> +     read_unlock(&cd->hash_lock);
+>
+> -     return 0;
+> +     return rv;
+>  }
+>
+>  extern void cache_init(struct cache_head *h);
+>
 
 
 
