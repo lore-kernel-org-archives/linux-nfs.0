@@ -1,24 +1,29 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: query
-Date: Thu, 23 Oct 2003 06:56:38 -0700
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: dentry/inode cache invalidation when using nfsd filesystem on 2.6
+Date: Fri, 24 Oct 2003 14:59:09 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <482A3FA0050D21419C269D13989C6113127F5F@lavender-fe.eng.netapp.com>
+Message-ID: <16280.45469.770950.354371@notabene.cse.unsw.edu.au>
+References: <20031021142414.GW1516@dbz.austin.ibm.com>
+	<16279.20926.488909.525633@notabene.cse.unsw.edu.au>
+	<20031023124016.GH6172@dbz.austin.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Cc: <nfs@lists.sourceforge.net>,
-        "Trond Myklebust" <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1ADJft-0008Vt-00
-	for <nfs@lists.sourceforge.net>; Sat, 25 Oct 2003 01:21:30 -0700
-Received: from mx01.netapp.com ([198.95.226.53])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 1ACfzp-0007Lc-7w
-	for nfs@lists.sourceforge.net; Thu, 23 Oct 2003 06:59:25 -0700
-To: "Sundareswar Jayakumar" <sundar@cdacb.ernet.in>
+	id 1ADNfF-0004ct-00
+	for <nfs@lists.sourceforge.net>; Sat, 25 Oct 2003 05:37:05 -0700
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.22)
+	id 1ACu8V-0001mD-C0
+	for nfs@lists.sourceforge.net; Thu, 23 Oct 2003 22:05:19 -0700
+Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
+	(for <jrsantos@austin.ibm.com>) (for <nfs@lists.sourceforge.net>) By
+	note With Smtp ; Fri, 24 Oct 2003 14:59:15 +1000
+To: "Jose R. Santos" <jrsantos@austin.ibm.com>
+In-Reply-To: message from Jose R. Santos on Thursday October 23
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,58 +36,57 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-hi-
+On Thursday October 23, jrsantos@austin.ibm.com wrote:
+> On 10/22/03 22:57:50, Neil Brown wrote:
+> > 
+> > The problem is NOT that the inode or dentry caches are being flushed.
+> > 
+> > The problem is that the inode and dentry caches
+> > *for*the*(tiny)*nfsd*filesystem*
+> > are being flushed, and this requires iterating through each cache under a
+> > spinlock, and this can take a while.
+> 
+> I saw some weirdness that led me to believe kernel was invalidating more than  
+> it should.  I will investigate further to make sure this is not happening.
+>  
+> > Basically, "mount" and "unmount" are slow operations.
+> 
+> The only problem is that it seems to get worst as the memory of the system get  
+> bigger, but I'll agree with you on the SEP. So, I'll just drop
+> it. :)
 
-what trond says is true, and i'd like to supplement that
-idea by saying that the types of workloads where the BKL
-would be a bottleneck are rare these days, compared to
-the problems more common workloads experience, so it has
-been a lower priority.
+The more memory, the bigger the caches, the longer it takes to hunt
+through them for inodes/dentries on the target filesystem.
 
-i think as database on NFS becomes more popular, for example,
-this issue will become more important.
+>  
+> > As you note, "unmount" can be avoided by mounting the nfsd filesystem
+> > somewhere.  I recommend /proc/fs/nfsd.
+> > The "mount" can be avoided by not using the nfsservctl systemcall at all.
+> > This is achived by mounting nfsd at /proc/fs/nfsd, and running the latest
+> > release of nfs-utils.
+> 
+> >From what you say here, it seems that the old nfsservctl systemcall method is  
+> deprecated and the new method is the one to use.  If this a fact? Would be  
+> nice to have this documented in the post-halloween document.  I could drop a  
+> note to Dave Jones to have this change.
 
-> -----Original Message-----
-> From: Trond Myklebust [mailto:trond.myklebust@fys.uio.no]
-> Sent: Wednesday, October 22, 2003 9:46 AM
-> To: Sundareswar Jayakumar
-> Cc: nfs@lists.sourceforge.net
-> Subject: Re: [NFS] query
->=20
->=20
-> >>>>> " " =3D=3D Sundareswar Jayakumar <sundar@cdacb.ernet.in> writes:
->=20
->      > Hi,
->      > 	I am working on adistributed filesytem on=20
-> linux.I am using
->      > nfs source code as a learning resource.I require a
->      > clarification.
->=20
->=20
->      > In many entry points the Big Kernel Lock lock/unlock_kernel is
->      > used instead of locking just the private data structures of the
->      > filesystem.why is it so?.kindly clarify w.r.t to a smp m/c.
->=20
-> When working on performance, you pursue the largest sources of latency
-> first...
-> BKL contention has not yet turned up on the radar screen. There has
-> therefore not yet been enough incentive to replace it as a mechanism
-> for serialization.
->=20
-> Cheers,
->   Trond
->=20
->=20
-> -------------------------------------------------------
-> This SF.net email is sponsored by OSDN developer relations
-> Here's your chance to show off your extensive product knowledge
-> We want to know what you know. Tell us and you have a chance=20
-> to win $100
-> http://www.zoomerang.com/survey.zgi?HRPT1X3RYQNC5V4MLNSV3E54
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
->=20
+I guess.... I really wanted the syscall and the nfsd filesystem to
+both work equally side by side in 2.6, and the syscall would be gone
+in 2.8.  So I didn't really want to 'deprecate' it.  Just make it
+disappear after everyone had a very good likelyhood of upgrading.
+
+But it might be worth saying something to that effect in the
+post-halloween document.
+
+
+
+> 
+> BTW:  What version of nfs-utils introduce this new interface for /proc/fs/ 
+> nfsd?
+
+About 1.0.4 I think, but it was buggy until 1.0.6 which is current.
+
+NeilBrown
 
 
 -------------------------------------------------------
