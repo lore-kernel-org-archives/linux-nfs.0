@@ -1,13 +1,13 @@
 From: Christian Reis <kiko@async.com.br>
-Subject: NFS server hangs
-Date: Thu, 24 Apr 2003 23:41:23 -0300
+Subject: Re: NFS client locking hangs for period
+Date: Fri, 25 Apr 2003 01:57:30 -0300
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030424234123.A28963@blackjesus.async.com.br>
+Message-ID: <20030425015730.A29574@blackjesus.async.com.br>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: NFS@lists.sourceforge.net
+Cc: linux-kernel@vger.kernel.org
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: NeilBrown <neilb@cse.unsw.edu.au>
+To: NFS@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -21,62 +21,44 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-We've recently moved our (locking-problem-prone) server to new
-ext3 filesystems. To do this, since we run on two-disk RAID-1 arrays, we
-removed one of the drives, created the new raid set using a failed-disk
-setup, created the new filesystems, and moved data from the original
-ones to the new one.
+Well, since I've more or less moved on from my original problems, I
+should probably post a summary of what was going on, and what I did to
+work around it.
 
-We've been running with a failed-disk for a couple of days in order to
-try and wash out any problems we have in the new configuration (since
-it makes it much easier to move back to the old array). However, during
-this time we're getting our nfsd to hang/deadlock when a lot of I/O
-happens - it is reproducible by running from any client a bonnie of 1G
-after a short while.
+Details can be read out from [1]: after a certain amount of time a
+number diskless clients, which were mounting everything from the same
+NFS server, started getting hung lock requests from the server. The
+server ran 2.4.20, reiserfs over RAID-1 mounted with 2 SCSI disks on an
+Adaptec 29160. The clients were debian woodys running 2.4.20.
 
-The symptoms are quite clear: the server stops answering to requests,
-and a tcpdump shows the clients trying to contact the nfs server and
-never getting answers back (they eventually start doing arp lookups).
+Our diskless setup is a bit unusual: all the clients mount the same root
+partition. I tried to be very careful to make sure no files were written
+to on /, but I never got to the point where the clients could mount the
+directory read-only. I used devfs to make sure that the /dev directories
+were `localized' and syslog/console ownership and permissions kept sane.
 
-Killing nfsd and starting it up again clears up the problem. I've pasted
-here some logs from turning on debugging on nfsd_debug and rpc_debug:
+The locking problem, however, was not related to the root filesystem --
+it seems to have happened with files on the /var/log mount, which is
+separate for each box (but still coming from a shared filesystem
+/export/root on the server, which contains all the client directories).
+If I mounted /var/log with the nolock option, they ran fine. This took
+me a very long time to figure out, and I'd advise anyone with locking
+problems to give it a go.
 
-Apr 24 22:50:47 anthem kernel: -pid- proc flgs status -client- -prog- --rqstp- -timeout -rpcwait -action- --exit--
-Apr 24 22:50:47 anthem kernel: 00032 0000 0081 -00110 d14ab4c0 100003 0 00003000 nfs_flushd c0169a80 c0169b80
-Apr 24 22:50:47 anthem kernel: 00028 0000 0081 -00110 d7325cc0 100003 0 00003000 nfs_flushd c0169a80 c0169b80
-Apr 24 22:50:47 anthem kernel: 00024 0000 0081 -00110 d73259c0 100003 0 00003000 nfs_flushd c0169a80 c0169b80
-Apr 24 22:50:47 anthem kernel: 00020 0000 0081 -00110 daa1f0c0 100003 0 00003000 nfs_flushd c0169a80 c0169b80
-Apr 24 22:51:00 anthem kernel: RPC:   20 running timer
-Apr 24 22:51:00 anthem kernel: RPC: 20 timeout (default timer)
-Apr 24 22:51:00 anthem kernel: RPC:   20 __rpc_wake_up_task (now 9246265
-inh 0)
-Apr 24 22:51:00 anthem kernel: RPC:   20 disabling timer
-Apr 24 22:51:00 anthem kernel: RPC:   20 removed from queue c02bcd60
-"nfs_flushd"
-Apr 24 22:51:00 anthem kernel: RPC:   20 added to queue c02cf954
-"schedq"
-Apr 24 22:51:00 anthem kernel: RPC:      __rpc_wake_up_task done
-Apr 24 22:51:00 anthem kernel: RPC:   24 running timer
-Apr 24 22:51:00 anthem kernel: RPC: 24 timeout (default timer)
-Apr 24 22:51:00 anthem kernel: RPC:   24 __rpc_wake_up_task (now 9246265
-inh 0)
-Apr 24 22:51:00 anthem kernel: RPC:   24 disabling timer
-Apr 24 22:51:00 anthem kernel: RPC:   24 removed from queue c02bcd60
-"nfs_flushd"
-Apr 24 22:51:00 anthem kernel: RPC:   24 added to queue c02cf954
-"schedq"
-Apr 24 22:51:00 anthem kernel: RPC:      __rpc_wake_up_task done
-Apr 24 22:51:00 anthem kernel: RPC:   28 running timer
+I should point out that this *does* seem to be a bug in the NFS server
+code. I think it is associated with reiserfs, being that I haven't seen
+it happen on other partition types. Rebooting the server cleared up the
+problem. Erasing or changing files in /var/lib/nfs did not. While I was
+initially using a volatile /var/lib/nfs directory on the *clients*, I
+changed this on Trond's suggestion [2]. It did not fix the problem.
 
-Since I've never seen this sort of problem before on this hardware, I'm
-tending to think it is either a problem with ext3 or caused by the use
-of a failed-disk RAID-1 array. Has anyone seen anything like this, or
-similar symptoms? This is a Debian Woody box, running 2.4.21-pre5. All
-mounts use the same options:
+However, since I know little about the code itself, and it's not very
+clear how one should debug, I was unable to pinpoint the exact source of
+the problem, which very much saddens me.  The workaround, however, was
+quite effective.
 
-anthem:/home    /home   nfs defaults,rw,rsize=8192,wsize=8192,nfsvers=3 0 0
-
-Tips on debugging are also welcome, of course.
+[1] http://groups.google.com/groups?hl=en&lr=&ie=UTF-8&th=9db70994c3458f46&rnum=1
+[2] http://groups.google.com/groups?q=christian+reis+nfs+locking&hl=en&lr=&ie=UTF-8&scoring=d&selm=20030126231006%246e11%40gated-at.bofh.it&rnum=3
 
 Take care,
 --
