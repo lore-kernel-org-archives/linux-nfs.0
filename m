@@ -1,25 +1,30 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: Debian Bug#203077: Locks not released on NFS client reboot
-Date: Fri, 14 Jan 2005 13:29:42 +1100
-Message-ID: <16871.11926.507904.373575@cse.unsw.edu.au>
-References: <Pine.OSF.4.56.0307271137050.10355@grover.WPI.EDU>
-	<20030727163124.GC19877@perlsupport.com>
-	<16164.29864.268358.781865@gargle.gargle.HOWL>
-	<Pine.LNX.4.60.0501131844130.6332@harp.ngdc.noaa.gov>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] -o intr  mount option prevents core dumps on 2.4
+	kernel
+Date: Thu, 13 Jan 2005 21:57:14 -0500
+Message-ID: <1105671434.20314.3.camel@lade.trondhjem.org>
+References: <41DD8403.7030601@RedHat.com>
+	 <1105118040.10979.70.camel@lade.trondhjem.org>
+	 <41E42AD7.3030303@RedHat.com> <1105474246.11430.1.camel@lade.trondhjem.org>
+	 <41E43DE1.5080703@RedHat.com>
+	 <1105480745.11430.56.camel@lade.trondhjem.org> <41E569E3.20206@RedHat.com>
+	 <1105554342.23943.1.camel@lade.trondhjem.org> <41E5767F.40204@RedHat.com>
+	 <1105576681.14443.100.camel@lade.trondhjem.org>
+	 <41E67F38.6060203@RedHat.com>  <41E6EA19.4030806@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Chip Salzenberg <chip@pobox.com>, nfs@lists.sourceforge.net
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CpHDn-00055P-Du
-	for nfs@lists.sourceforge.net; Thu, 13 Jan 2005 18:29:55 -0800
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CpHDk-0003PS-P9
-	for nfs@lists.sourceforge.net; Thu, 13 Jan 2005 18:29:55 -0800
-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-In-Reply-To: message from Ara.T.Howard on Thursday January 13
+	id 1CpHeQ-0006g5-6Y
+	for nfs@lists.sourceforge.net; Thu, 13 Jan 2005 18:57:26 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1CpHeP-0000ly-Lh
+	for nfs@lists.sourceforge.net; Thu, 13 Jan 2005 18:57:26 -0800
+To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: <41E6EA19.4030806@RedHat.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,38 +38,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thursday January 13, Ara.T.Howard@noaa.gov wrote:
-> 
-> i am seeing problems here on my system (which has rebooted and now has stale
-> locks on server)
-> 
-..
->    server:
-> 
->      mussel:~ > rpcinfo -u bligh status
->      rpcinfo: RPC: Port mapper failure - RPC: Unable to receive
->      program 100024 is not available
-...
-> 
->    client:
-> 
->      bligh:~ > rpcinfo -p
->         program vers proto   port
->          100000    2   tcp    111  portmapper
->          100000    2   udp    111  portmapper
->          100024    1   udp  32768  status
->          100024    1   tcp  32768  status
-...
+to den 13.01.2005 Klokka 16:37 (-0500) skreiv Steve Dickson:
 
+> after further review.... it seems the reason your patch works on a 
+> 2.4.28 kernel, is
+> because signalled() never returns true, even when the process is sent 
+> the SIGSEGV signal. Why signalled() never returns true, I don't know.... 
+> but the
+> reason your patch did not work on a RHEL3 kernel is because signalled() 
+> does
+> return true and calls to recalc_sigpending() do not reset that pending 
+> signal....
+> which seems to be a bug in the NTPL-related code.... code that is not in the
+> 2.4.28 kernel....
 
-So bligh, the client, is running statd (the "status" service), but
-mussel can not talk to it.  This is a problem.
+recalc_sigpending() failing to honour the sigmask sounds like a pretty
+major bug! Is there no way you can backport some of the 2.6 signal code
+or something like that in order to work around it?
 
-It would appear that some for of firewall is blocking access to
-bligh's statd from mussel, or that  bligh's statd is ignoring requests
-from mussel.  I don't know which.
+It sounds to me as if that bug will affect more than just coredumps...
 
-NeilBrown
+Cheers,
+  Trond
+
+-- 
+Trond Myklebust <trond.myklebust@fys.uio.no>
+
 
 
 -------------------------------------------------------
