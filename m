@@ -1,19 +1,20 @@
-From: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: [PATCH] SVC sockets don't disable Nagle
-Date: Wed, 30 Apr 2003 14:06:25 +0200 (CEST)
+Date: 30 Apr 2003 14:45:19 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0304301356400.15733-100000@kenzo.iwr.uni-heidelberg.de>
-References: <3EAF13B9.8040402@austin.ibm.com>
+Message-ID: <shsznm8duhs.fsf@charged.uio.no>
+References: <Pine.LNX.4.44.0304301356400.15733-100000@kenzo.iwr.uni-heidelberg.de>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: trond.myklebust@fys.uio.no, <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: Olof Johansson <olof@austin.ibm.com>,
+	  <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail.iwr.uni-heidelberg.de ([129.206.104.30])
+Received: from pat.uio.no ([129.240.130.16])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19AqMB-0007Cm-00
-	for <nfs@lists.sourceforge.net>; Wed, 30 Apr 2003 05:06:39 -0700
-To: Olof Johansson <olof@austin.ibm.com>
-In-Reply-To: <3EAF13B9.8040402@austin.ibm.com>
+	id 19Ar2n-0007ne-00
+	for <nfs@lists.sourceforge.net>; Wed, 30 Apr 2003 05:50:41 -0700
+To: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
+In-Reply-To: <Pine.LNX.4.44.0304301356400.15733-100000@kenzo.iwr.uni-heidelberg.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,52 +27,31 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, 29 Apr 2003, Olof Johansson wrote:
+>>>>> " " == Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de> writes:
 
-> There is a chance that small requests and replies (~100 bytes) will not
-> be aggregated into the same segments but instead sent out separately.
+    >> In essence, this will result in some additional network
+    >> overhead due to headers, but the response times will be
+    >> perceived as faster even for slower networks.
 
-Although I haven't looked at the code recently, I think that what you said 
-is true when this is the only request from the client. But what happens 
-when there are several requests or when GETATTR calls happen at the same 
-time with some data transfer (which is normally the case for a multiuser 
-NFS client) ?
+     > True, until the network becomes too slow, then you see "server
+     > not responding" messages...
 
-> In essence, this will result in some additional network overhead due to
-> headers, but the response times will be perceived as faster even for
-> slower networks.
+Anybody trying to run multi-user NFS over a 9.6Kbaud link needs their
+head examined.
+For *real use* situations, the total number of on-the-wire NFS
+requests is currently limited to 16. In addition, TCP timeouts are
+supposed to be > 1 minute. The above scenario simply will not happen.
 
-True, until the network becomes too slow, then you see "server not 
-responding" messages...
+For any reasonable setup over a slow network, the aggregation will
+happen naturally anyway since the NFS layer both can and will fill the
+buffers as soon as they start to empty (provided we have pending
+datagrams).
 
-> I think it would just clutter the documentation and list of options,
+For fast networks, we should at least ensure that single datagrams are
+aggregated properly. The way to do that is to use MSG_MORE...
 
-Yes, but Samba has this option and many others and still lots of people 
-are using it :-)
-
-> since I don't forsee any practical scenarios in which anyone would have
-> a positive performance impact from having Nagle enabled.
-
-Well, my previous message included this question: "What is the impact of 
-this change for a slower/congested network ?" So I'll rephrase it: do you 
-have some data to show that disabling Nagle does not have a negative 
-impact ?
-
-> On a side note: As far as I know, most (all?) other NFS implementations 
-> out there already disable Nagle.
-
-I didn't say that the other NFS implementations are better than the Linux 
-implementation :-)
-
--- 
-Bogdan Costescu
-
-IWR - Interdisziplinaeres Zentrum fuer Wissenschaftliches Rechnen
-Universitaet Heidelberg, INF 368, D-69120 Heidelberg, GERMANY
-Telephone: +49 6221 54 8869, Telefax: +49 6221 54 8868
-E-mail: Bogdan.Costescu@IWR.Uni-Heidelberg.De
-
-
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
