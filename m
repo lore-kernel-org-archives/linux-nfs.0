@@ -1,18 +1,21 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: 2.4.20-rc1 NFS/TCP client (still) hangs running dbench
-	2.0
-Date: Sun, 3 Nov 2002 09:05:02 -0800
+From: Robert Kellner <skyywalk@btcips73x1.cip.uni-bayreuth.de>
+Subject: FreeBSD -> Linux locking problems
+Date: Mon, 4 Nov 2002 17:36:26 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <6440EA1A6AA1D5118C6900902745938E07D55047@black.eng.netapp.com>
+Message-ID: <E188kDD-0006Uv-00@btcips73x6.cip.uni-bayreuth.de>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mx01.netapp.com ([198.95.226.53])
+Received: from btcips73x6.cip.uni-bayreuth.de ([132.180.237.6])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 188OBT-00020P-00
-	for <nfs@lists.sourceforge.net>; Sun, 03 Nov 2002 09:05:11 -0800
-To: "'Andrew Ryan'" <andrewr@nam-shub.com>
+	id 188kDQ-0001EG-00
+	for <nfs@lists.sourceforge.net>; Mon, 04 Nov 2002 08:36:40 -0800
+Received: from localhost
+	([127.0.0.1] helo=btcips73x6 ident=skyywalk)
+	by btcips73x6.cip.uni-bayreuth.de with smtp (Exim 3.36 #1 (Debian))
+	id 188kDD-0006Uv-00
+	for <nfs@lists.sourceforge.net>; Mon, 04 Nov 2002 17:36:27 +0100
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,38 +28,21 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> > >It is probably just the (known) accounting error in the 'retransmit' 
-> > >statistics. Try applying the patch
-> > >
-> > > 
-> > >http://www.fys.uio.no/~trondmy/src/2.4.20-pre9/linux-2.4.20-0
-1-call_start.dif
-> >
-> >if it bothers you.
-> 
-> Yes, you are right, it seems the counter is broken, and performance is 
-> fine. I did bonnie++ runs with 2.4.20rc1 kernels with and without the 
-> call_start patch, and didn't see any significant difference.
+Hello,
 
-the call_start patch only changes RPC accounting.  it should have no
-effects (either positive or negative) on performance.
+I am using a FreeBSD System as server for nfs and nis for
+linux clients.
+Unfortunately nfs-file locking does not work although
+nlockmgr and rpc.statd are running on both systems. 
 
-did you try the xprt_write_space patch?  that fixes a real problem,
-and addresses the root cause of the high retransmission counts you see.
+The FAQ says nothing about troubles with FreeBSD and Linux
+concerning locks.
 
-> But, it does bother me since I want to be able to diagnose network errors 
-> if I ever have them, and with a busted counter it will be impossible to 
-> tell what my real error rate is. 
+Does anybody know about this Problem and/or how to solve it?
 
-the retransmit counter is supposed to count only whole RPC retransmissions,
-not TCP partial transmissions, which are not due to network problems.  if
-the xprt_write_space patch was included, the false retransmit rate would
-be much lower anyway (although not zero).
+Greetings,
 
-> Can the call_start patch go to Marcelo for 2.4.20rc2?
-
-call_start is available in Trond's NFS_ALL patch for now.  i think 2.4.20
-is closed for changes like this.
+Robert
 
 
 -------------------------------------------------------
