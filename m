@@ -1,18 +1,19 @@
-From: Tobias Burnus <tobias.burnus@physik.fu-berlin.de>
-Subject: Re: Heavy problems with NFS (2.4.20)
-Date: Sat, 22 Feb 2003 13:15:36 +0100 (CET)
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS and UDP port 1434
+Date: 01 Feb 2003 10:04:02 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0302221311530.4628-100000@g31.physik.fu-berlin.de>
-References: <200302211842.h1LIgV5q013279@buggy.badula.org>
+Message-ID: <shsr8aspe2l.fsf@charged.uio.no>
+References: <E67F8F12671DF54FB828481785943030037EB836@cceexc22.americas.cpqcorp.net>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=iso-8859-1
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from down.physik.fu-berlin.de ([160.45.34.6])
+Received: from mons.uio.no ([129.240.130.14] ident=7411)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18mYZf-000445-00
-	for <nfs@lists.sourceforge.net>; Sat, 22 Feb 2003 04:16:11 -0800
-To: nfs@lists.sourceforge.net
-In-Reply-To: <200302211842.h1LIgV5q013279@buggy.badula.org>
+	id 18etZK-0006bi-00
+	for <nfs@lists.sourceforge.net>; Sat, 01 Feb 2003 01:04:10 -0800
+To: "Morong, Gerry" <Gerry.Morong@hp.com>
+In-Reply-To: <E67F8F12671DF54FB828481785943030037EB836@cceexc22.americas.cpqcorp.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,34 +26,32 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+>>>>> " " =3D=3D Gerry Morong <Morong> writes:
 
-On Fri, 21 Feb 2003, Ion Badulescu wrote:
-> You should never have to issue autofs reload, by the way. It rescans its
-> maps whenever it detects a timestamp change on them.
-Only if you don't change auto.master, since the init scripts
-scans auto.master and for each entry starts a new automount process.
+     > Have a hundred plus Red Hat 7.3 NFS clients connecting to
+     > several NetApps and Red Hat 7.3 fileservers.=A0 They are
+     > configured to run NFS V3 over UDP.=A0 When the SQL slammer bug
+     > hit our routers were reconfigured to block UPD port 1434.=A0 This
+     > caused sporadic NFS lockups for mounts outside the local subnet
+     > subject to the port blocking.=A0 Once the port blocking was
+     > cleared from the routers, NFS connections freed up and started
+     > working again. What part of NFS should be using UDP port 1434?=A0
 
-> > Seems as if we have to live with it :-(
-> More or less, yes. If you *need* to run "df" and "quota" all the time,
-> you really have no choice.
-Well, we don't need to, but our users have the tendency to have to much
-data - therefore we need to check the quota for $HOME.
+'/usr/sbin/rpcinfo -p' will tell you.
 
-> The best you can do is a manual lazy umount (umount -l), but it really
-I will try this the next time a computer really crashes hard.
+It is probably either rpc.statd or rpc.lockd
 
-Thanks for the tips,
+Cheers,
+  Trond
 
-Tobias
+
 
 
 
 -------------------------------------------------------
-This SF.net email is sponsored by: SlickEdit Inc. Develop an edge.
-The most comprehensive and flexible code editor you can use.
-Code faster. C/C++, C#, Java, HTML, XML, many more. FREE 30-Day Trial.
-www.slickedit.com/sourceforge
+This SF.NET email is sponsored by:
+SourceForge Enterprise Edition + IBM + LinuxWorld = Something 2 See!
+http://www.vasoftware.com
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
