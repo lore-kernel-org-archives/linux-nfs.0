@@ -1,25 +1,27 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: RE: How to unlock a file if an NFSv3 client dies forever?
-Date: Wed, 26 May 2004 17:23:22 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: 2.6.6 lockupy
+Date: Wed, 26 May 2004 17:37:32 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1085606601.3834.5.camel@lade.trondhjem.org>
-References: <4F28105F70F4324A8723F0C949088941BCB773@pa-exch5.vmware.com>
+Message-ID: <20040526213732.GG2827@fieldses.org>
+References: <20040526211115.GI6931@polop.usc.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BT5rw-0000Tw-L1
-	for nfs@lists.sourceforge.net; Wed, 26 May 2004 14:23:24 -0700
-Received: from dh132.citi.umich.edu
-	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
+	id 1BT65h-00037x-8A
+	for nfs@lists.sourceforge.net; Wed, 26 May 2004 14:37:37 -0700
+Received: from dsl093-002-214.det1.dsl.speakeasy.net
+	([66.93.2.214] helo=pumpkin.fieldses.org ident=Debian-exim)
 	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
 	(Exim 4.30)
-	id 1BT5rw-0002GW-Av
-	for nfs@lists.sourceforge.net; Wed, 26 May 2004 14:23:24 -0700
-To: Howie Xu <howie@vmware.com>
-In-Reply-To: <4F28105F70F4324A8723F0C949088941BCB773@pa-exch5.vmware.com>
+	id 1BT65g-0004rw-Sa
+	for nfs@lists.sourceforge.net; Wed, 26 May 2004 14:37:37 -0700
+Received: from bfields by pumpkin.fieldses.org with local (Exim 4.34)
+	id 1BT65d-0001Cg-3b
+	for nfs@lists.sourceforge.net; Wed, 26 May 2004 17:37:33 -0400
+To: nfs@lists.sourceforge.net
+In-Reply-To: <20040526211115.GI6931@polop.usc.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,15 +34,14 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 on , 26/05/2004 klokka 16:06, skreiv Howie Xu:
+On Wed, May 26, 2004 at 02:11:16PM -0700, Garrick Staples wrote:
+> I tried Trond's 2.6.6 patches at his website, but those brokes things
+> considerably.  Since I don't have any actual Oops messages, anyone have any
+> experimental deadlock-fixing patches they want me to test? :)
 
-> Btw, anyone knows that NFSv4 is immune to this "dead lock" scenario?
-
-Yes, NFSv4 is immune. See pages 13,15, and 77 of RFC3530 if you want
-details on the "lease" mechanism that is used to avoid the problem...
-
-Cheers,
-  Trond
+Note that Trond's patches are client-side only, so shouldn't affect your
+servers one way or another (unless I'm misunderstanding what your
+setup).--b.
 
 
 -------------------------------------------------------
