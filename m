@@ -1,25 +1,22 @@
-From: "Jose R. Santos" <jrsantos@austin.ibm.com>
-Subject: Re: Problems with NFS while running SpecSFS with JFS filesystem and 2.6 kernel.
-Date: Mon, 15 Dec 2003 08:21:43 -0600
+From: "Jeremy Kusnetz" <JKusnetz@nrtc.org>
+Subject: RE: RE: Chrooted BIND broke on NFS server between kernel 2.4.21 and 2.4.22
+Date: Mon, 15 Dec 2003 09:41:47 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20031215142143.GA3981@dbz.austin.ibm.com>
-References: <20031210144011.GE708@dbz.austin.ibm.com>
+Message-ID: <F7F4B5EA9EBD414D8A0091E80389450569D3D4@exchange.nrtc.coop>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
-        shaggy@austin.ibm.com
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AVtbb-0003D3-Js
-	for nfs@lists.sourceforge.net; Mon, 15 Dec 2003 06:21:51 -0800
-Received: from e33.co.us.ibm.com ([32.97.110.131])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.24)
-	id 1AVtbb-0008FT-Dg
-	for nfs@lists.sourceforge.net; Mon, 15 Dec 2003 06:21:51 -0800
-To: "Jose R. Santos" <jrsantos@austin.ibm.com>
-In-Reply-To: <20031210144011.GE708@dbz.austin.ibm.com> (from jrsantos@austin.ibm.com on Wed, Dec 10, 2003 at 08:40:11 -0600)
+	id 1AVtv0-0004Vy-Q8
+	for nfs@lists.sourceforge.net; Mon, 15 Dec 2003 06:41:54 -0800
+Received: from outmail.nrtc.org ([204.145.144.17] helo=exchange.nrtc.coop)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
+	id 1AVtv0-0004kI-Co
+	for nfs@lists.sourceforge.net; Mon, 15 Dec 2003 06:41:54 -0800
+To: <bernd-schubert@web.de>,
+	<nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,23 +29,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On 12/10/03 08:40:11, Jose R. Santos wrote:
-> The machine I'm using is an old p660 with 8 RS64-IV proc running at 750MHz.
-> For IO, I am using 4 FAStT fiber-channel controllers and 8 fiber-channel 
-> adapters.  Linux sees 56 disk in total and each disk is actually a RAID5 
-> array of 5 disk.
+Thanks, that did the trick!
 
-I have manage to reproduce this on a more down-to-earth setup.  I am running
-an old RS6k-170 box with one Power3-II chip running at 450MHz and 1Gb RAM. 
-In this setup I'm only using two filesystem and the problem still shows up
-just about when I'm running out of free pages on the server.
+On a higher level, should this be part of the How-to's trouble shooting =
+guide?
 
-Can anybody provide me with some tips as to how to debug this a bit further?
-Really want to figure out if this is a NFS bug or a JFS one.
-
-Thanks
-
--JRS
+> -----Original Message-----
+> From: bernd-schubert@web.de [mailto:bernd-schubert@web.de]
+> Sent: Sunday, December 14, 2003 9:46 AM
+> To: Jeremy Kusnetz; nfs@lists.sourceforge.net
+> Subject: Re: [NFS] RE: Chrooted BIND broke on NFS server=20
+> between kernel
+> 2.4.21 and 2.4.22
+>=20
+>=20
+> >         if (!(exp->ex_flags & NFSEXP_NOSUBTREECHECK)) {
+>=20
+> So giving 'no_subtree_check' as export option (man exports)=20
+> should work as=20
+> well, shouldn't it? Due to the problems already described on=20
+> this list, I=20
+> recently set this option to all rw-exported filesystems.
+>=20
+> Cheers,
+> 	Bernd
+>=20
 
 
 -------------------------------------------------------
