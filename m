@@ -1,17 +1,19 @@
-From: MAILER-DAEMON@163.net (Mail Delivery System)
-Subject: Undelivered Mail Returned £¨ÎŞ·¨Í¶µİµÄÍËĞÅ£©
-Date: Sat, 28 Jun 2003 09:14:51 +0800 (CST)
+From: <eddymulyono@dslextreme.com>
+Subject: mount.x
+Date: Fri, 27 Jun 2003 21:31:15 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030628011451.81E0DA149F@bjmx3.163.net>
+Message-ID: <32796.66.159.224.134.1056774675.squirrel@www.dslextreme.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="7EBACA11AE.1056762891/bjmx3.163.net"
+Content-Type: text/plain; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [202.108.255.195] (helo=bjmx3.163.net)
+Received: from smtp.dslextreme.com ([66.51.205.17] helo=co1.dslextreme.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19W4In-0001ZX-00
-	for <nfs@lists.sourceforge.net>; Fri, 27 Jun 2003 18:14:53 -0700
-To: nfs@lists.sourceforge.net
+	id 19W7Rs-0006xN-00
+	for <nfs@lists.sourceforge.net>; Fri, 27 Jun 2003 21:36:28 -0700
+Received: from dslextreme.com (www [192.168.7.16])
+	by co1.dslextreme.com (8.12.9/8.12.6) with SMTP id h5S4VFor010021
+	for <nfs@lists.sourceforge.net>; Fri, 27 Jun 2003 21:31:15 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,205 +26,224 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a MIME-encapsulated message.
+I'm having trouble compiling nfs-utils 1.0.3. After I issued
+[$./configure], [$make] spitted these important errors :
 
---7EBACA11AE.1056762891/bjmx3.163.net
-Content-Description: Notification
-Content-Type: text/plain
+gcc -g -O2 -D_GNU_SOURCE -I../../support/include -Wall  -pipe 
+-DVERSION="\"nfs-utils 1.0.3\"" -DNFS3_SUPPORTED   -c -o mountd.o mountd.c
+In file included from mountd.c:24:
+mountd.h:19: parse error before "dirpath"
+mountd.h:19: warning: no semicolon at end of struct or union
 
-This is the Postfix program at host bjmx3.163.net.
+After hunting around, I think it is caused by the following lines in
+support/export/mount.x:64:
 
-I'm sorry to have to inform you that the message returned
-below could not be delivered to one or more destinations.
+union fhstatus switch (unsigned fhs_status) {
+case 0:
+	fhandle fhs_fhandle;
+default:
+	void;
+};
 
-For further assistance, please contact <postmaster@163.net>
+I looked around the mailing list and the CVS, and found out that mount.x
+is aged at 3 years. I've attended several C classes, and I don't think the
+code excerpt above is gramatically correct. I think it caused GCC to panic
+and messes the rest of the compilation.
 
-If you do so, please include this problem report. You can
-delete your own text from the message returned below.
+But I might be wrong. Maybe it is a C trick. Can anyone shed light on this
+issue?
 
-			The Postfix program
+The complete [$make] errors are enclosed.
 
-ÄúºÃ£¡
+In the meanwhile, I'll just go lazy and use the RPMs from my Mandrake 9.0.
+ :p
 
-     ÎÒÃÇÊÇ163µç×ÓÓÊ¾ÖµÄÓÊ¼şÍ¶µİÔ±¡£ÎÒÃÇºÜ±§Ç¸µØÍ¨ÖªÄú£¬
- ÄúµÄÓÊ¼şÔÚÍ¶µİ¹ı³ÌÖĞ³öÏÖÁË´íÎó¶ø±»ÍË»Ø¡£
+Thanx,
 
-    ÄúµÄĞÅ¼şÔÚÍ¶µİ¹ı³ÌÖĞ£¬¿ÉÄÜÓöµ½ÁËÒÔÏÂÎÊÌâ£º
-    
-    **ÎÊÌâÒ»
-        Õâ·âĞÅÖĞ£¬´æÔÚÀàËÆµÄĞĞ£º
-       <abc@163.net>: User acb@163.net is not found ...  »òÕß
-       <abc@hotmail.com>: invalid address »òÕß 
-       <abc@163.com>: User unknown
-    ½â´ğ£ºÄúÍ¶µİµÄÓÃ»§²»ÔÚ¸ÃÏµÍ³ÖĞ£¬ÇëÄúÈ·¶¨ÄúËùÌîĞ´µÄÍ¶µİµØ
-          Ö·ÊÇ·ñÕıÈ·
-      
-    **ÎÊÌâ¶ş
-         Õâ·âĞÅÖĞ£¬´æÔÚÀàËÆµÄĞĞ£º
-        <abc@163.net>: Quota exceed the hard limit for user
-    ½â´ğ£ºÄúËùÍ¶µİµÄĞÅÏä£¬¿Õ¼äÒÑÂú£¬Çë²ÉÓÃÆäËûÁªÏµ·½Ê½
-    
-    **ÎÊÌâÈı
-        Õâ·âĞÅÖĞ£¬´æÔÚÀàËÆµÄĞĞ£º
-       <abc@163.net>: Recpient ***** is unsolved unknown Error
-    ½â´ğ£ºÄúËùÍ¶µİµÄĞÅÏä£¬¸ÃÓÃ»§ÒÑ¾­ÓĞ°ëÄêÒÔÉÏÃ»ÓĞµÇÂ½
-      
-    Èç¹ûÄúÎŞ·¨ÅĞ¶ÏÄúÓÊ¼ş±»ÍË»ØµÄÔ­Òò£¬ÓÖÏ£ÍûÄÜµÃµ½°ïÖúµÄ»°£¬Çë
-ÁªÏµpostmaster@163.net£¬²¢¸½ÉÏ´ËÓÊ¼ş£¬Èç¹ûÃ»ÓĞ´Ë·âÍËĞÅµÄÔ­¼ş£¬
-ÎÒÃÇ½«ÎŞ·¨»Ø¸´ÄúµÄÎÊÌâ¡£
+-Eddy
 
-    
-´ËÖÂ
-163µç×ÓÓÊ¾ÖÓÊ¼şÍ¶µİÔ±
+gcc -g -O2 -D_GNU_SOURCE -I../../support/include -Wall  -pipe 
+-DVERSION="\"nfs-utils 1.0.3\"" -DNFS3_SUPPORTED   -c -o mountd.o mountd.c
+In file included from mountd.c:24:
+mountd.h:19: parse error before "dirpath"
+mountd.h:19: warning: no semicolon at end of struct or union
+mountd.h:23: parse error before "fhstatus"
+mountd.h:23: warning: no semicolon at end of struct or union
+mountd.h:24: warning: type defaults to `int' in declaration of `mountlist'
+mountd.h:24: warning: data definition has no type or storage class
+mountd.h:25: parse error before "exports"
+mountd.h:25: warning: type defaults to `int' in declaration of `exports'
+mountd.h:25: warning: data definition has no type or storage class
+mountd.h:32: parse error before "dirpath"
+mountd.h:33: parse error before "mountlist"
+mountd.h:34: parse error before "dirpath"
+mountd.h:36: parse error before "exports"
+mountd.h:37: parse error before "exports"
+mountd.h:38: parse error before "dirpath"
+mountd.h:39: parse error before "dirpath"
+mountd.h:51: parse error before "mountlist_list"
+mountd.h:51: warning: type defaults to `int' in declaration of
+`mountlist_list'
+mountd.h:51: warning: data definition has no type or storage class
+mountd.c:28: parse error before "get_exportlist"
+mountd.c:28: warning: type defaults to `int' in declaration of
+`get_exportlist'
+mountd.c:28: warning: data definition has no type or storage class
+mountd.c:29: parse error before "dirpath"
+mountd.c: In function `killer':
+mountd.c:55: `MOUNTPROG' undeclared (first use in this function)
+mountd.c:55: (Each undeclared identifier is reported only once
+mountd.c:55: for each function it appears in.)
+mountd.c:55: `MOUNTVERS' undeclared (first use in this function)
+mountd.c:57: `MOUNTVERS_POSIX' undeclared (first use in this function)
+mountd.c:59: `MOUNTVERS_NFSV3' undeclared (first use in this function)
+mountd.c: At top level:
+mountd.c:70: parse error before "dirpath"
+mountd.c: In function `mount_mnt_1_svc':
+mountd.c:74: `path' undeclared (first use in this function)
+mountd.c:75: `rqstp' undeclared (first use in this function)
+mountd.c:75: `res' undeclared (first use in this function)
+mountd.c: At top level:
+mountd.c:81: parse error before "mountlist"
+mountd.c: In function `mount_dump_1_svc':
+mountd.c:84: `rqstp' undeclared (first use in this function)
+mountd.c:88: `res' undeclared (first use in this function)
+mountd.c: At top level:
+mountd.c:93: parse error before "dirpath"
+mountd.c: In function `mount_umnt_1_svc':
+mountd.c:96: `rqstp' undeclared (first use in this function)
+mountd.c:98: `argp' undeclared (first use in this function)
+mountd.c: At top level:
+mountd.c:128: parse error before "exports"
+mountd.c: In function `mount_export_1_svc':
+mountd.c:131: `rqstp' undeclared (first use in this function)
+mountd.c:134: `resp' undeclared (first use in this function)
+mountd.c: At top level:
+mountd.c:139: parse error before "exports"
+mountd.c: In function `mount_exportall_1_svc':
+mountd.c:142: `rqstp' undeclared (first use in this function)
+mountd.c:145: `resp' undeclared (first use in this function)
+mountd.c: At top level:
+mountd.c:161: parse error before "dirpath"
+mountd.c: In function `mount_pathconf_2_svc':
+mountd.c:164: `rqstp' undeclared (first use in this function)
+mountd.c:168: `path' undeclared (first use in this function)
+mountd.c:170: `res' undeclared (first use in this function)
+mountd.c: At top level:
+mountd.c:215: parse error before "dirpath"
+mountd.c: In function `mount_mnt_3_svc':
+mountd.c:220: `path' undeclared (first use in this function)
+mountd.c:221: `rqstp' undeclared (first use in this function)
+mountd.c:221: `res' undeclared (first use in this function)
+mountd.c:224: dereferencing pointer to incomplete type
+mountd.c:225: dereferencing pointer to incomplete type
+mountd.c:226: dereferencing pointer to incomplete type
+mountd.c:227: dereferencing pointer to incomplete type
+mountd.c: At top level:
+mountd.c:233: parse error before "dirpath"
+mountd.c: In function `get_rootfh':
+mountd.c:236: `rqstp' undeclared (first use in this function)
+mountd.c:240: `path' undeclared (first use in this function)
+mountd.c:256: `error' undeclared (first use in this function)
+mountd.c:275: `v3' undeclared (first use in this function)
+mountd.c: At top level:
+mountd.c:299: parse error before "get_exportlist"
+mountd.c:300: warning: return type defaults to `int'
+mountd.c: In function `get_exportlist':
+mountd.c:301: syntax error before "elist"
+mountd.c:307: `elist' undeclared (first use in this function)
+mountd.c:311: dereferencing pointer to incomplete type
+mountd.c:312: dereferencing pointer to incomplete type
+mountd.c:313: dereferencing pointer to incomplete type
+mountd.c:314: dereferencing pointer to incomplete type
+mountd.c:317: dereferencing pointer to incomplete type
+mountd.c:324: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:329: dereferencing pointer to incomplete type
+mountd.c:330: dereferencing pointer to incomplete type
+mountd.c:331: dereferencing pointer to incomplete type
+mountd.c:332: dereferencing pointer to incomplete type
+mountd.c:338: dereferencing pointer to incomplete type
+mountd.c:339: dereferencing pointer to incomplete type
+mountd.c:340: dereferencing pointer to incomplete type
+mountd.c:341: dereferencing pointer to incomplete type
+mountd.c:344: dereferencing pointer to incomplete type
+mountd.c:348: dereferencing pointer to incomplete type
+mountd.c:351: dereferencing pointer to incomplete type
+mountd.c:353: dereferencing pointer to incomplete type
+mountd.c:354: dereferencing pointer to incomplete type
+mountd.c:357: dereferencing pointer to incomplete type
+mountd.c:358: dereferencing pointer to incomplete type
+mountd.c:367: dereferencing pointer to incomplete type
+mountd.c:372: dereferencing pointer to incomplete type
+mountd.c:372: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:378: dereferencing pointer to incomplete type
+mountd.c:379: dereferencing pointer to incomplete type
+mountd.c:380: dereferencing pointer to incomplete type
+mountd.c:380: dereferencing pointer to incomplete type
+mountd.c:381: dereferencing pointer to incomplete type
+mountd.c: In function `main':
+mountd.c:495: `MOUNTPROG' undeclared (first use in this function)
+mountd.c:495: `MOUNTVERS' undeclared (first use in this function)
+mountd.c:498: `MOUNTVERS_POSIX' undeclared (first use in this function)
+mountd.c:501: `MOUNTVERS_NFSV3' undeclared (first use in this function)
+make[2]: *** [mountd.o] Error 1
+make[1]: *** [all] Error 2
+make: *** [all] Error 2
 
 
-<laurent@163.net>: Quota exceed the hard limit for user laurent@163.net
 
-
---7EBACA11AE.1056762891/bjmx3.163.net
-Content-Description: Undelivered Message
-Content-Type: message/rfc822
-
-Received: from localhost (localhost [127.0.0.1])
-	by bjmx3.163.net (Postfix) with SMTP id 7C80C1D4B3D52
-	for <laurent@163.net>; Sat, 28 Jun 2003 09:14:51 +0800 (CST)
-Received: from compuserve.com (unknown [218.18.170.121])
-	by bjmx3.163.net (Coremail) with SMTP id 5AQAAAXs/D7HDap5.2
-	for <laurent@163.net>; Sat, 28 Jun 2003 09:14:51 +0800 (CST)
-Date: Sat, 28 Jun 2003 00:22:55 +0000
-From: antispam <nfs@lists.sf.net>
-Subject: Automatically Blocking Spam
-To: Laurent <laurent@163.net>
-References: <3C4E75JL569C2588@163.net>
-In-Reply-To: <3C4E75JL569C2588@163.net>
-Message-ID: <HL5B5DII5ALJ32H4@lists.sf.net>
-MIME-Version: 1.0
-Content-Type: text/html
-Content-Transfer-Encoding: 8bit
-
-
-<HTML><HEAD><TITLE>Spam Remedy</TITLE>
-
-<BODY>
-<CENTER>
-<TABLE cellSpacing=0 cellPadding=0 width=540>
-  <TBODY>
-  <TR>
-    <TD width=538 bgColor=#ffaa99 colSpan=2><FONT size=2><I><FONT 
-      style="FILTER: dropshadow(color=#336699, offx=3, offy=4, positive=1); WIDTH: 550px; COLOR: #ffffff; FONT-FAMILY: Arial Black; POSITION: relative">TheVeryBest 
-      - Software Downloads</FONT></I></FONT></TD></TR>
-  <TR>
-    <TD align=middle width=538 bgColor=#0066cc colSpan=2><SPAN 
-      style="WIDTH: 60px">&nbsp;</SPAN><FONT face=verdana 
-      color=#ffffff><B>Top-Rank Software Download Site on the 
-      Internet</B></FONT><SPAN style="WIDTH: 60px">&nbsp;</SPAN> <FONT 
-      face=verdana color=#ffffff size=1>
-      <SCRIPT language=JavaScript>
-<!--
- var days = new Array("","Sun","Mon","Tue","Wed","Thu","Fri","Sat");
- var months = new Array("","Jan","Feb","Mar","Apr","May","June","July","Aug","Sep","Oct","Nov","Dec"); 
- var dateObj = new Date()
- var day = days[dateObj.getDay() + 1]
- var month = months[dateObj.getMonth() + 1]
- var date = dateObj.getDate()
- document.write(day + ", " + month + " " + date)
- // -->                                                                
-</SCRIPT>
-      </FONT></TD></TR>
-  <TR>
-    <TD vAlign=top width=748>
-      <TABLE width=748>
-        <TBODY>
-        <TR>
-          <TD width=740 colSpan=2><FONT face=arial size=2><A 
-            href="http://www.pro2security.biz/remedy/adv194/index.html?&lt;rndmx[10]&gt;">Internet</A>-&gt;<A 
-            href="http://www.pro2security.biz/remedy/adv194/index.html?&lt;rndmx[10]&gt;">Email</A>-&gt;<A 
-            href="http://www.pro2security.biz/remedy/adv194/index.html?&lt;rndmx[10]&gt;">Spam 
-            Remedy v1.5 PRO</A></FONT></TD></TR>
-        <TR>
-          <TD width=534><BR><FONT face=arial size=2><IMG height=32 
-            src="http://sc2003.biz/ads/logo.gif" width=32 border=0></FONT><FONT 
-            face=arial color=#00aa66 size=4>Spam Remedy</FONT><FONT face=arial 
-            size=2>&nbsp;&nbsp;&nbsp;&nbsp;<A 
-            href="http://www.pro2security.biz/remedy/adv194/index.html?&lt;rndmx[10]&gt;"><IMG 
-            height=19 src="http://sc2003.biz/ads/buy.gif" width=55 
-            border=0></A>&nbsp;&nbsp;&nbsp;&nbsp;<A 
-            href="http://www.pro2security.biz/remedy/adv194/index.html?&lt;rndmx[10]&gt;"><IMG 
-            height=19 src="http://sc2003.biz/ads/download.gif" width=55 
-            border=0></A>(3.17MB)<BR>
-            <HR color=#236801 SIZE=1>
-            </FONT></TD></TR>
-        <TR>
-          <TD width=534><A 
-            href="http://www.pro2security.biz/remedy/adv194/index.html?&lt;rndmx[10]&gt;"><IMG 
-            height=236 src="http://sc2003.biz/ads/screen.gif" width=270 align=right 
-            border=0></A><FONT face=arial size=2><B>Description:</B> 
-            <BR><BR><B>The powerful, effective and intelligent anti-spam 
-            tool.<BR>It automatically cleans spam messages out of your mailbox 
-            before you receive or read them. </B><BR><BR>Features:<BR>
-            <UL>
-              <LI>Automatically Blocking Spam<BR>Spam Remedy automatically 
-              checks your mail boxes and <A 
-              href="http://www.pro2security.biz/remedy/adv194/index.html?&lt;rndmx[10]&gt;">filters</A> 
-              unwanted, dangerous, or offensive mail messages to save your time 
-              from manually detecting and organizing mail messages. 
-              <LI>Effectively Spam <A 
-              href="http://www.pro2security.biz/remedy/adv194/index.html?&lt;rndmx[10]&gt;">Detecting</A><BR>A 
-              complex <A 
-              href="http://www.pro2security.biz/remedy/adv194/index.html?&lt;rndmx[10]&gt;">Aritificial 
-              Intelligence</A> algorithm has been used in Spam Remedy product to 
-              detecting legitimate mail messages and spam messages,the technique 
-              has more precision than other filter-based and keyword-based <A 
-              href="http://www.pro2security.biz/remedy/adv194/index.html?&lt;rndmx[10]&gt;">anti-spam 
-              technologies</A>. 
-              <LI>Be Sure You Get Your Right Mail Messages<BR>Spam Remedy 
-              doesn't confirm a spam message by a single keyword in mail 
-              content. It <A 
-              href="http://www.pro2security.biz/remedy/adv194/index.html?&lt;rndmx[10]&gt;">examines</A> 
-              the entire message - source, headers and mail content to confirm 
-              whether it is a spam message. 
-              <LI>Supports Multiple Email Types and Almost All Email Clients 
-              <BR>Spam Remedy supports POP3, Hotmail/MSN, IMAP4 and MAPI email 
-              accounts,Directly works with almost all email clients(Outlook 
-              Express, Becky Mail,Foxmail,Outlook, The bat!, Eudora etc.), 
-              espacially includes support for web-based Hotmail/MSN email 
-              clients. Nothing you need to change to your email clients! 
-              <LI><A 
-              href="http://www.pro2security.biz/remedy/adv194/index.html?&lt;rndmx[10]&gt;">Easy 
-              to use</A>&nbsp; - You don't need to set any complex filter rules, 
-              just add your email accounts to Spam Remedy and then it works. 
-              <LI>Friends List and <A 
-              href="http://www.pro2security.biz/remedy/adv194/index.html?&lt;rndmx[10]&gt;">Rejecting 
-              List</A><BR>With Friends List and <A 
-              href="http://www.pro2security.biz/remedy/adv194/index.html?&lt;rndmx[10]&gt;">Rejecting 
-              List,</A>you have the chance to decide who are never blocked or 
-              directly treat their mail messages as spam. 
-              <LI>Keep your inbox <A 
-              href="http://www.pro2security.biz/remedy/adv194/index.html?&lt;rndmx[10]&gt;">clean</A><BR>Spam 
-              Remedy places all intercepted spam messages to its i<A 
-              href="http://www.pro2security.biz/remedy/adv194/index.html?&lt;rndmx[10]&gt;">nterval 
-              mail database</A> so that your inbox remains uncluttered and free 
-              of spam.If for some reason a legitimate email is flagged as spam, 
-              you can <A 
-              href="http://www.pro2security.biz/remedy/adv194/index.html?&lt;rndmx[10]&gt;">easily 
-              recover</A> in multiple ways. <BR><BR>Editor's Rating:<A 
-              href="http://www.pro2security.biz/remedy/adv194/index.html?&lt;rndmx[10]&gt;"><IMG 
-              height=18 src="http://sc2003.biz/ads/4horse.gif" width=100 border=0> 
-              </A></FONT></LI></UL></TD></TR></TBODY></TABLE></TD></TR>
-  <TR>
-    <TD align=middle width=538 bgColor=#0066cc colSpan=2 height=20><FONT 
-      face=verdana size=1>Copyright ©2002-2003 <A 
-      href="http://www.pro2security.biz/remedy/adv194/index.html?&lt;rndmx[10]&gt;">DarkSoft 
-      Group</A>&nbsp; All Rights Reserved. 
-</FONT></TD></TR></TBODY></TABLE></CENTER></BODY>
-<font color=#ffffff>
-OZnoyETjoRjJGthcBh
-</font>
-</HTML>
-
-
-
---7EBACA11AE.1056762891/bjmx3.163.net--
 
 
 -------------------------------------------------------
