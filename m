@@ -1,18 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 17 of 23] Attempt to hand out a delegation
-Date: Fri, 17 Dec 2004 16:23:56 +1100
-Message-ID: <E1CfAaq-0002eS-U8@notabene.cse.unsw.edu.au>
+Subject: [PATCH kNFSd 5 of 23] Probe the callback path upon a successful setclientid_confirm
+Date: Fri, 17 Dec 2004 16:23:55 +1100
+Message-ID: <E1CfAap-0002dg-M9@notabene.cse.unsw.edu.au>
 References: <20041217162128.9968.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CfAbJ-000596-78
+	id 1CfAbJ-00059G-H0
 	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 21:24:25 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CfAbI-0004C7-22
-	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 21:24:24 -0800
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1CfAbI-00066k-U4
+	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 21:24:25 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -32,78 +32,46 @@ Signed-off-by: Andy Adamson <andros@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c |   59 ++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 59 insertions(+)
+ ./fs/nfsd/nfs4state.c |    6 +++++-
+ 1 files changed, 5 insertions(+), 1 deletion(-)
 
 diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2004-12-15 13:37:50.000000000 +1100
-+++ ./fs/nfsd/nfs4state.c	2004-12-15 13:37:50.000000000 +1100
-@@ -1642,6 +1642,65 @@ nfs4_set_claim_prev(struct nfsd4_open *o
+--- ./fs/nfsd/nfs4state.c~current~	2004-12-15 11:49:34.000000000 +1100
++++ ./fs/nfsd/nfs4state.c	2004-12-15 11:55:28.000000000 +1100
+@@ -724,6 +724,7 @@ nfsd4_setclientid_confirm(struct svc_rqs
+ 			status = nfserr_clid_inuse;
+ 		else {
+ 			expire_client(conf);
++			clp = unconf;
+ 			move_to_confirmed(unconf, idhashval);
+ 			status = nfs_ok;
+ 		}
+@@ -741,6 +742,7 @@ nfsd4_setclientid_confirm(struct svc_rqs
+ 		if (!cmp_creds(&conf->cl_cred,&rqstp->rq_cred)) {
+ 			status = nfserr_clid_inuse;
+ 		} else {
++			clp = conf;
+ 			status = nfs_ok;
+ 		}
+ 		goto out;
+@@ -755,6 +757,7 @@ nfsd4_setclientid_confirm(struct svc_rqs
+ 			status = nfserr_clid_inuse;
+ 		} else {
+ 			status = nfs_ok;
++			clp = unconf;
+ 			move_to_confirmed(unconf, idhashval);
+ 		}
+ 		goto out;
+@@ -774,7 +777,8 @@ nfsd4_setclientid_confirm(struct svc_rqs
+ 	status = nfserr_inval;
+ 	goto out;
+ out:
+-	/* XXX if status == nfs_ok, probe callback path */
++	if (!status)
++		nfsd4_probe_callback(clp);
+ 	nfs4_unlock_state();
+ 	return status;
  }
- 
- /*
-+ * Attempt to hand out a delegation.
-+ */
-+static void
-+nfs4_open_delegation(struct svc_fh *fh, struct nfsd4_open *open, struct nfs4_stateid *stp, int *flag)
-+{
-+	struct nfs4_delegation *dp;
-+	struct nfs4_stateowner *sop = stp->st_stateowner;
-+	struct nfs4_callback *cb = &sop->so_client->cl_callback;
-+	struct file_lock fl, *flp = &fl;
-+	int status;
-+
-+	if (*flag == DONT_DELEGATE) {
-+		*flag = NFS4_OPEN_DELEGATE_NONE;
-+		return;
-+	}
-+
-+	/* set flag */
-+	*flag = NFS4_OPEN_DELEGATE_NONE;
-+	if (open->op_claim_type != NFS4_OPEN_CLAIM_NULL
-+	     || !atomic_read(&cb->cb_set) || !sop->so_confirmed)
-+		return;
-+
-+	if (!(open->op_share_access & NFS4_SHARE_ACCESS_WRITE))
-+		*flag = NFS4_OPEN_DELEGATE_READ;
-+
-+	else if (!(open->op_share_access & NFS4_SHARE_ACCESS_READ))
-+		*flag = NFS4_OPEN_DELEGATE_WRITE;
-+
-+	if (!(dp = alloc_init_deleg(sop->so_client, stp->st_file, fh, *flag)))
-+		return;
-+	locks_init_lock(&fl);
-+	fl.fl_lmops = &nfsd_lease_mng_ops;
-+	fl.fl_flags = FL_LEASE;
-+	fl.fl_end = OFFSET_MAX;
-+	fl.fl_owner =  (fl_owner_t)dp;
-+	fl.fl_file = stp->st_vfs_file;
-+	fl.fl_pid = current->tgid;
-+
-+	if ((status = setlease(stp->st_vfs_file,
-+		*flag == NFS4_OPEN_DELEGATE_READ? F_RDLCK: F_WRLCK, &flp))) {
-+		dprintk("NFSD: setlease failed [%d], no delegation\n", status);
-+		list_del(&dp->dl_del_perfile);
-+		list_del(&dp->dl_del_perclnt);
-+		kfree(dp);
-+		free_delegation++;
-+		*flag = NFS4_OPEN_DELEGATE_NONE;
-+		return;
-+	}
-+
-+	memcpy(&open->op_delegate_stateid, &dp->dl_stateid, sizeof(dp->dl_stateid));
-+
-+	dprintk("NFSD: delegation stateid=(%08x/%08x/%08x/%08x)\n\n",
-+	             dp->dl_stateid.si_boot,
-+	             dp->dl_stateid.si_stateownerid,
-+	             dp->dl_stateid.si_fileid,
-+	             dp->dl_stateid.si_generation);
-+}
-+
-+/*
-  * called with nfs4_lock_state() held.
-  */
- int
 
 
 -------------------------------------------------------
