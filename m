@@ -1,20 +1,23 @@
-From: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
-Subject: Re: Unable to handle kernel NULL pointer dereference at virtual
- address ..
-Date: Thu, 24 Apr 2003 16:57:38 +0200 (CEST)
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: Linux NFS FAQ updates
+Date: Thu, 24 Apr 2003 08:44:26 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0304241649460.7493-100000@kenzo.iwr.uni-heidelberg.de>
-References: <20030423181404.15518.qmail@web11403.mail.yahoo.com>
+Message-ID: <6440EA1A6AA1D5118C6900902745938E07D55565@black.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail.iwr.uni-heidelberg.de ([129.206.104.30])
+Received: from mx01.netapp.com ([198.95.226.53])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 198iAY-0002l6-00
-	for <nfs@lists.sourceforge.net>; Thu, 24 Apr 2003 07:57:50 -0700
-To: Abhishek Rai <abbashake007@yahoo.com>
-In-Reply-To: <20030423181404.15518.qmail@web11403.mail.yahoo.com>
+	id 198itt-0003Cw-00
+	for <nfs@lists.sourceforge.net>; Thu, 24 Apr 2003 08:44:41 -0700
+Received: from frejya.corp.netapp.com (frejya [10.10.20.91])
+	by mx01.netapp.com (8.12.9/8.12.9/NTAP-1.4) with ESMTP id h3OFiZFB023646
+	for <nfs@lists.sourceforge.net>; Thu, 24 Apr 2003 08:44:36 -0700 (PDT)
+Received: from svlexc01.hq.netapp.com (svlexc01.corp.netapp.com [10.10.22.171])
+	by frejya.corp.netapp.com (8.12.9/8.12.9/NTAP-1.4) with ESMTP id h3OFiZJg007456
+	for <nfs@lists.sourceforge.net>; Thu, 24 Apr 2003 08:44:35 -0700 (PDT)
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,37 +30,50 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, 23 Apr 2003, Abhishek Rai wrote:
+tom mcneal and i would like to announce a new
+version of the Linux NFS FAQ that contains some
+changes that you all should know about.
 
-> virtual address 0000000f
+now that we've broken the questions into sections,
+we've moved questions A2 through A4 to section B.
+A2 through A4 have to do with the "async" export
+option, and fit better in the performance section
+than in the protocol section.  we will try to keep
+question renumbering to a minimum, since these
+questions now all have a name link associated with
+them to enable folks to reference specific questions
+in the FAQ, and we'd like those to remain stable
+over time.
 
-is exactly...
+we've added a lot more detail to question A1, which
+addresses the differences between the NFS Version 2
+and Version 3 protocols.
 
-> c6675024   ecx: 00000001   edx: 00000007
-
-... EDX + 8 which is obtained here:
-
->  0:   39 42 08         cmp   %eax,0x8(%edx)   <=====
-
-> ... a 'cmp' instruction: a mere register operation.
-
-This statement means that you do not understand asm syntax properly. 
-Placing a register between paranthesis ( "(" and ")" ) is like 
-dereferencing a pointer in C - access the data that is at the address 
-found in the register; the 0x8(%edx) notation means 0x8 bytes offset 
-from the address in EDX.
-
-If you want live debugging, you could try kdbg...
-
--- 
-Bogdan Costescu
-
-IWR - Interdisziplinaeres Zentrum fuer Wissenschaftliches Rechnen
-Universitaet Heidelberg, INF 368, D-69120 Heidelberg, GERMANY
-Telephone: +49 6221 54 8869, Telefax: +49 6221 54 8868
-E-mail: Bogdan.Costescu@IWR.Uni-Heidelberg.De
+finally, a new question B7 discusses a per-mount
+performance limit in the Linux NFS client, and how
+to work around it.
 
 
+without announcement, a few weeks ago we added
+several new questions.  question A5 addresses
+Kerberos support in the Linux NFS implementation.
+question A6 outlines the new features of the NFS
+Version 4 protocol, while question A7 addresses
+interoperability issues between NFS Versions
+2/3 and NFS Version 4.
+
+question A8 defines the term "close-to-open cache
+consistency," and discusses when the Linux NFS client
+began to support it.  and question B3 discusses the
+"255 NFS mounts per client" limitation.
+
+we invite you to visit the FAQ and send your comments
+and suggestions.
+
+        - Chuck Lever
+--
+corporate:   <cel at netapp dot com>
+personal:    <chucklever at bigfoot dot com>
 
 
 -------------------------------------------------------
