@@ -1,27 +1,26 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: nfsd random drop
-Date: Mon, 5 Apr 2004 10:13:05 +1000
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Re: nfsd random drop
+Date: Sun, 04 Apr 2004 21:09:39 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16496.42129.32286.429339@notabene.cse.unsw.edu.au>
+Message-ID: <1081127379.2585.49.camel@lade.trondhjem.org>
 References: <20040401102334.GC20772@suse.de>
+	 <16496.42129.32286.429339@notabene.cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain
+Cc: Olaf Kirch <okir@suse.de>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BAHjr-0001Xm-IP
-	for nfs@lists.sourceforge.net; Sun, 04 Apr 2004 17:13:19 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
-	id 1BAHjr-0005G8-2m
-	for nfs@lists.sourceforge.net; Sun, 04 Apr 2004 17:13:19 -0700
-Received: From
-	notabene ([129.94.172.124] == notabene.cse.unsw.EDU.AU) (auth-user neilb)
-	(for <okir@suse.de>) (for <nfs@lists.sourceforge.net>) By note With
-	Smtp ; Mon, 5 Apr 2004 10:13:11 +1000
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: message from Olaf Kirch on Thursday April 1
+	id 1BAIcX-00062M-88
+	for nfs@lists.sourceforge.net; Sun, 04 Apr 2004 18:09:49 -0700
+Received: from dh132.citi.umich.edu
+	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.30)
+	id 1BAIcW-0003GO-TJ
+	for nfs@lists.sourceforge.net; Sun, 04 Apr 2004 18:09:48 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <16496.42129.32286.429339@notabene.cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,31 +33,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thursday April 1, okir@suse.de wrote:
-> Hi,
+On Sun, 2004-04-04 at 20:13, Neil Brown wrote:
+> > As an alternative to hardcoding a formula based on the number of threads,
+> > I could also make the max number of connections a sysctl.
 > 
-> I hate to bore you all with the same old stuff, but I'm still fighting
-> problems caused by nfsd's dropping active connections.
-> 
-..snip..
-> 
-> I propose to add the following two patches to the server and client. They
-> increase the connection limit, stop dropping the neweset socket, and
-> add some printk's to alert the admin of the contention.
+> Might be good, but I would only bother if a real need presents itself.
 
-I'm happy for the server patch to go in.
-Andrew Morton already picked it up and asked if it was OK.  I have
-confirmed that it is so you might see it in 2.6.6.
+Some of the stuff we're discussing for NFSv4.1 might make this of
+interest. Many people want to make use of the fact that IPSEC tunnels
+offer secure point-to-point communications and that hardware
+acceleration for this is pretty cheap. The so-called "CCM"
+authentication model for RPCSEC_GSS makes use of this.
 
-> 
-> As an alternative to hardcoding a formula based on the number of threads,
-> I could also make the max number of connections a sysctl.
+...we are talking about 2.7 development here (at the earliest), so
+please don't take the above to be anything other than a FYI. I just
+wanted to ensure that you are aware that the cost of reconnection might
+well rise as we offload more and more to the socket layer.
 
-Might be good, but I would only bother if a real need presents itself.
-
-Thanks,
-
-NeilBrown
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
