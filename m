@@ -1,22 +1,22 @@
-From: "Duv  Dek" <onur@ee.bilkent.edu.tr>
-Subject: NFS response time
-Date: Tue, 25 Jan 2005 19:19:12 +0200
-Message-ID: <007a01c50301$fd199510$7889b38b@alpin>
+From: Neil Horman <nhorman@redhat.com>
+Subject: Re: Help diagnosing bizarre NFS problem
+Date: Thu, 27 Jan 2005 07:26:12 -0500
+Message-ID: <41F8DDE4.6070806@redhat.com>
+References: <BA594DD2-65DA-11D9-B0EB-000A95A07AB8@valuecommerce.co.jp> <731336CA-6DE6-11D9-8B4D-000A95A07AB8@valuecommerce.co.jp> <41F4ECD6.90405@redhat.com> <4678F474-7007-11D9-89EE-000A95A07AB8@valuecommerce.co.jp>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0077_01C50312.C05619D0"
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: nfs@lists.sourceforge.net
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CtULl-0003uK-Ua
-	for nfs@lists.sourceforge.net; Tue, 25 Jan 2005 09:19:33 -0800
-Received: from dalyan.ee.bilkent.edu.tr ([139.179.12.25])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CtULj-00039R-JV
-	for nfs@lists.sourceforge.net; Tue, 25 Jan 2005 09:19:33 -0800
-Received: from alpin (d79012c.dorm.bilkent.edu.tr [139.179.137.120])
-	by dalyan.ee.bilkent.edu.tr (8.12.9/8.12.9) with SMTP id j0PHJFtf017691
-	for <nfs@lists.sourceforge.net>; Tue, 25 Jan 2005 19:19:15 +0200 (EET)
-To: <nfs@lists.sourceforge.net>
+	id 1Cu8jA-0005Tp-Ea
+	for nfs@lists.sourceforge.net; Thu, 27 Jan 2005 04:26:24 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1Cu8j0-0000P7-DJ
+	for nfs@lists.sourceforge.net; Thu, 27 Jan 2005 04:26:24 -0800
+To: Nathan Ollerenshaw <nathan@valuecommerce.co.jp>
+In-Reply-To: <4678F474-7007-11D9-89EE-000A95A07AB8@valuecommerce.co.jp>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,54 +30,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+Nathan Ollerenshaw wrote:
+> On Jan 24, 2005, at 9:40 PM, Neil Horman wrote:
+> 
+>> Dont suppose you can provide access to the tcpdumps, can you?
+> 
+> 
+> Probably :) Its quite large.
+> 
+> At the moment, our vendor is saying they have a possible solution, and 
+> that its a problem with the linux client code but they can fix it on 
+> their side.
+> 
+> I'll try to get some details out of them that I can forward to you so 
+> that you can see whether a fix is needed on the Linux side.
+> 
+> Thanks for the offer of help; I'll see what the vendor has for me over 
+> the next few days and if it looks like they are barking up the wrong 
+> tree I'll see how we can get the 4 gb of tcpdump data to you.
+> 
+> Nathan.
+> 
+Thanks, I'd like to know what they think needs fixing.
+Neil
 
-------=_NextPart_000_0077_01C50312.C05619D0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-
-Hi
-
-We have a problem with our NFS server on Redhat 9. In case a program on =
-the server uses high CPU, the NFS clients almost lock and nfs stops =
-giving response until that program lowers its CPU usage.  We tried to =
-increase the priority of nfsd deamons with renice, and also tried to =
-increase the number of nfsd threads, decreased the priority of the =
-program using high CPU with renice, but none of them worked. How can we =
-decrease this problem so that nfs does not lock?
-------=_NextPart_000_0077_01C50312.C05619D0
-Content-Type: text/html;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; =
-charset=3Diso-8859-1">
-<META content=3D"MSHTML 6.00.2900.2523" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV><FONT face=3DArial size=3D2>Hi</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>We have a problem with our NFS server =
-on Redhat 9.=20
-In case a program&nbsp;on the server&nbsp;uses high CPU,&nbsp;the=20
-NFS&nbsp;clients almost lock and nfs stops giving response until that =
-program=20
-lowers its CPU usage.&nbsp;&nbsp;We tried to increase the priority of =
-nfsd=20
-deamons with renice, and also tried to increase the number of nfsd =
-threads,=20
-decreased the priority of the program using high CPU with =
-renice,&nbsp;but none=20
-of them worked. How can we&nbsp;decrease this problem so that nfs does =
-not=20
-lock?</FONT></DIV></BODY></HTML>
-
-------=_NextPart_000_0077_01C50312.C05619D0--
-
+-- 
+/***************************************************
+  *Neil Horman
+  *Software Engineer
+  *Red Hat, Inc.
+  *nhorman@redhat.com
+  *gpg keyid: 1024D / 0x92A74FA1
+  *http://pgp.mit.edu
+  ***************************************************/
 
 
 -------------------------------------------------------
