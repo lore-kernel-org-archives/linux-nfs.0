@@ -1,15 +1,21 @@
-From: Kapeller Rene PSI <rene.kapeller@psi.ch>
-Subject: root_squash problem
-Date: Fri, 20 Sep 2002 16:42:33 +0200
+From: Hua Qin <qinhua@poisson.ecse.rpi.edu>
+Subject: kernel 2.2.16 fully support nfs TCP mount on client
+Date: Fri, 20 Sep 2002 10:48:02 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3D8B33D9.9050006@psi.ch>
+Message-ID: <Pine.GSO.4.10.10209201039360.27867-100000@poisson.ecse.rpi.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from psi11.psi.ch ([129.129.190.111])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17sOzR-0005EN-00
-	for <nfs@lists.sourceforge.net>; Fri, 20 Sep 2002 07:42:41 -0700
+Received: from mail.rpi.edu ([128.113.22.40])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17sP4p-0002Ak-00
+	for <nfs@lists.sourceforge.net>; Fri, 20 Sep 2002 07:48:15 -0700
+Received: from poisson.ecse.rpi.edu (poisson.ecse.rpi.edu [128.113.50.30])
+	by mail.rpi.edu (8.12.1/8.12.1) with ESMTP id g8KEmBJO199384
+	for <nfs@lists.sourceforge.net>; Fri, 20 Sep 2002 10:48:11 -0400
+Received: from localhost (qinhua@localhost)
+	by poisson.ecse.rpi.edu (8.9.1/8.9.1) with ESMTP id KAA28193
+	for <nfs@lists.sourceforge.net>; Fri, 20 Sep 2002 10:48:02 -0400 (EDT)
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -23,34 +29,17 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-We are running RedHat-6.2 on a file server.
-The system is now up for more than 200 days and it's main function is to 
-provide nfs service to almost 100 clients on two different networks.
+Hi,
 
-The system has been upgraded as follows:
-- nfs-utils-0.3.1-0.6.x.1
-- kernel-2.4.17
+I think I can mount from a (kernel-2.2.16) machine by using NFSv3 
+over TCP, but if I do write test, this machine will hang.
 
-I have a rather large number of exports entries for different directories.
-However, a few clients only have write access as 'root' to the nfs path 
-as you see below.
+Does someone know if  2.2.16 kernel cam fully support nfs TCP on client
+side?  Which version in 2.2.? start to support NFSv3 TCP client. I know
+2.4 do  support, but I have to use 2.2 for some reason.
 
-[root]# grep no_root_squash /proc/fs/nfs/exports
-/export/install 172.19.78.74(rw,no_root_squash,async,wdelay) # 172.19.78.74
-/export/cern    pc2376.psi.ch(rw,no_root_squash,async,wdelay) # 
-(129.129.70.42)
-/export/csa     129.129.72.97(rw,no_root_squash,async,wdelay) # 
-129.129.72.97
-/export/exchange        129.129.72.97(rw,no_root_squash,async,wdelay) # 
-129.129.72.97
-
-Today I was very surprised (and worried), when I have noticed that 
-'root' from any other client can also write to the above nfs directories.
-
-Needles to say, that this is a terrible security whole in our environment.
-
-Thanks for any hint/help
-Rene
+Thanks!!
+Hua
 
 
 
