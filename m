@@ -1,25 +1,22 @@
-From: "Amir Hermelin" <amir@montilio.com>
-Subject: NFS test suits
-Date: Wed, 17 Dec 2003 17:53:23 +0200
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: RE: NFS test suits
+Date: Wed, 17 Dec 2003 09:07:05 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <00bb01c3c4b5$eec3f450$1101a8c0@CARTMAN>
+Message-ID: <482A3FA0050D21419C269D13989C611302B07AE6@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain;
 	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AWdzr-00028c-3O
-	for nfs@lists.sourceforge.net; Wed, 17 Dec 2003 07:53:59 -0800
-Received: from enigma.barak.net.il ([212.150.48.101])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AWdzq-0001OI-EO
-	for nfs@lists.sourceforge.net; Wed, 17 Dec 2003 07:53:58 -0800
-Received: from CARTMAN ([62.90.35.123]) by enigma.barak.net.il
-          (InterMail vK.4.04.00.00 201-232-137 license b2629777bce4038e9f419f7b71122558)
-          with ESMTP id <20031217155530.TDHL16178.enigma@CARTMAN>
-          for <nfs@lists.sourceforge.net>; Wed, 17 Dec 2003 17:55:30 +0200
-To: <nfs@lists.sourceforge.net>
+	id 1AWf8q-0006cB-Kh
+	for nfs@lists.sourceforge.net; Wed, 17 Dec 2003 09:07:20 -0800
+Received: from mx01.netapp.com ([198.95.226.53])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
+	id 1AWf8o-0003jl-3q
+	for nfs@lists.sourceforge.net; Wed, 17 Dec 2003 09:07:18 -0800
+To: "Amir Hermelin" <amir@montilio.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,14 +29,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
-does anyone know of any available public NFS test suits?  I'm aware of
-connectathon and SFS, are there any others?
+> does anyone know of any available public NFS test suits?  I'm aware of
+> connectathon and SFS, are there any others?
 
-10x,
-Amir.
+it depends on what you want to test.
 
+fsx is an excellent correctness test for the client,
+and sometimes the server too.
 
+iozone provides a comprehensive set of performance
+microbenchmarks.
+
+network applicance has a couple of benchmarks:  one
+is called "sio" and works like iozone; the other is
+called PostMark and is a good performance macrobenchmark.
+
+lmbench has some interesting microbenchmarks that are
+relevant to NFS.
+
+fstress is good for server stressing.
+
+there is a somewhat unmaintained test harness called
+pyNFS which allows you to build custom requests
+against servers using python -- this may be v4 only
+at the moment.
+
+you might also consider looking over the open group's
+posix conformance tests, or IBM's linux test project,
+as both may have pieces that can check the correctness
+of an NFS implementation.
+
+you might want to set up a WAN simulator between your
+client and server and try some of these tests.
+
+if you are interested in database on NFS, you might want
+to acquire the TPC-C suite, although i don't believe it
+is free.
 
 
 -------------------------------------------------------
