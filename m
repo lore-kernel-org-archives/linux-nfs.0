@@ -1,37 +1,57 @@
-From: Andrew Morton <akpm@digeo.com>
+From: Linus Torvalds <torvalds@transmeta.com>
 Subject: Re: [PATCH] direct-IO API change
-Date: Fri, 04 Oct 2002 15:37:59 -0700
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <3D9E1847.F6DDA3AE@digeo.com>
-References: <Pine.LNX.4.44.0210041807340.8094-100000@dexter.citi.umich.edu> <Pine.LNX.4.31.0210041525010.59482-100000@torvalds-p95.transmeta.com>
+Date: Fri, 4 Oct 2002 16:23:02 -0700 (PDT)
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <Pine.LNX.4.44.0210041621170.2526-100000@home.transmeta.com>
+References: <3D9E1847.F6DDA3AE@digeo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: Chuck Lever <cel@citi.umich.edu>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Linux NFS List <nfs@lists.sourceforge.net>
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: Linus Torvalds <torvalds@transmeta.com>
-List-ID: <nfs.lists.sourceforge.net>
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux NFS List <nfs@lists.sourceforge.net>
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from neon-gw-l3.transmeta.com ([63.209.4.196] helo=neon-gw.transmeta.com)
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17xbl8-0000yv-00
+	for <nfs@lists.sourceforge.net>; Fri, 04 Oct 2002 16:21:26 -0700
+To: Andrew Morton <akpm@digeo.com>
+In-Reply-To: <3D9E1847.F6DDA3AE@digeo.com>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-Linus Torvalds wrote:
+
+On Fri, 4 Oct 2002, Andrew Morton wrote:
 > 
-> On Fri, 4 Oct 2002, Chuck Lever wrote:
-> >
-> > this patch adds a "struct file *" argument to direct I/O.  this is needed
-> > by NFS direct I/O to make the file's credentials available to direct I/O
-> > subroutines.  we can't remove "struct inode *" yet because the raw driver
-> > still needs it.
+> Because the file handle which we have is for /dev/raw/raw0,
+> not for /dev/hda1.
 > 
-> Why isn't the raw driver changed to just use file->f_dentry->d_inode
-> instead?
-> 
+> The raw driver binds to major/minor, not a file*.  I considered
+> changing that (change userspace to pass the open fd).  But didn't.
 
-Because the file handle which we have is for /dev/raw/raw0,
-not for /dev/hda1.
+Ok. I'd really rather have a cleaner internal API and break the raw driver 
+for a while, than have a silly API just because the raw driver uses it.
 
-The raw driver binds to major/minor, not a file*.  I considered
-changing that (change userspace to pass the open fd).  But didn't.
+Especially since I thought that O_DIRECT on the regular file (or block
+device) performed about as well as raw does anyway these days? Or is that
+just one of my LSD-induced flashbacks?
 
-An alternative would be to rewrite i_mapping for /dev/raw/raw0
-to be bdev->bd_inode->i_mapping.  I guess we should look at doing
-that.
+		Linus
+
+
+
+-------------------------------------------------------
+This sf.net email is sponsored by:ThinkGeek
+Welcome to geek heaven.
+http://thinkgeek.com/sf
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
