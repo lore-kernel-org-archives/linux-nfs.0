@@ -1,19 +1,18 @@
-From: "Kendrick M. Smith" <kmsmith@umich.edu>
-Subject: Re: type check in fh_verify()
-Date: Sun, 28 Jul 2002 01:00:02 -0400 (EDT)
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Re: pf: to scrub or not to scrub?
+Date: 28 Jul 2002 17:15:38 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.SOL.4.44.0207280057190.9491-100000@rygar.gpcc.itd.umich.edu>
-References: <15683.28931.169253.908126@notabene.cse.unsw.edu.au>
+Message-ID: <967.001033905213$1027869504@news.gmane.org>
+References: <Pine.GSO.4.33.0207241828330.586-100000@loogie.intranet.csupomona.edu>
+	<20020725094904.GE8969@skywalker.bsws.de>
+	<20020725183112.GA4708@esme.xs4all.nl> <20020725190243.GB8076@w4g.org>
+	<20020727232451.GG26763@han.myip.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: han@mijncomputer.nl, NFS@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from berzerk.gpcc.itd.umich.edu ([141.211.2.162])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17YgA1-0008AD-00
-	for <nfs@lists.sourceforge.net>; Sat, 27 Jul 2002 22:00:05 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <15683.28931.169253.908126@notabene.cse.unsw.edu.au>
+To: misc@openbsd.org
+In-Reply-To: <20020727232451.GG26763@han.myip.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,67 +25,25 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
+>>>>> " " == han  <han@mijncomputer.nl> writes:
 
-On Sun, 28 Jul 2002, Neil Brown wrote:
+     > Hi, I run an OpenBSD (current) nfs server with a linux nfs
+     > client (2.4.19-rc3-ac3) and if I turn on the scrub feature
+     > (reassemble all fragments) of the OpenBSD firewall I get into
+     > trouble with the nfs-client not being able anymore to
+     > connect. Perhaps this is something that can be improved in the
+     > nfs code. This is not urgent since I can tell the firewall to
+     > only pay attention to fragments from the external interface.
 
-> On Saturday July 27, kmsmith@umich.edu wrote:
-> >
-> > In fs/nfsd/nfsfh.c:fh_verify(), the following block of code is
-> > responsible for type checking:
-> >
-> > 	/* Type check. The correct error return for type mismatches
-> > 	 * does not seem to be generally agreed upon. SunOS seems to
-> > 	 * use EISDIR if file isn't S_IFREG; a comment in the NFSv3
-> > 	 * spec says this is incorrect (implementation notes for the
-> > 	 * write call).
-> > 	 */
-> >
-> > 	/* Type can be negative when creating hardlinks - not to a dir */
-> > 	if (type > 0 && (inode->i_mode & S_IFMT) != type) {
-> > 		error = (type == S_IFDIR)? nfserr_notdir : nfserr_isdir;
-> > 		goto out;
-> > 	}
-> > 	if (type < 0 && (inode->i_mode & S_IFMT) == type) {
-> > 		error = (type == -S_IFDIR)? nfserr_notdir : nfserr_isdir;
-> > 		goto out;
-> > 	}
-> >
-> > I think that the assignment in the last block is backwards and should be
-> >
-> > 		error = (type == -S_IFDIR)? nfserr_isdir : nfserr_notdir;
->
-> Looks right... but we should also change
->  	if (type < 0 && (inode->i_mode & S_IFMT) == type) {
-> to
->  	if (type < 0 && (inode->i_mode & S_IFMT) == -type) {
->
-> or we will never benefit from the change !!!
+The Linux NFS client just uses a standard UDP socket (Nothing up my
+sleeve). No special flags are set beyond those which you will get
+from using the standard call 'socket(PF_INET, SOCK_DGRAM, 0)'.
 
-Sorry!  This was a typo in my message: it should have been -type
-to begin with...
-
-> > Also, how about changing the assignment in the first block to
-> >
-> > 		if (type == S_IFDIR)
-> > 			error = nfserr_notdir;
-> > 		else if ((inode->i_mode & S_IFMT) == S_IFDIR)
-> > 			error = nfserr_isdir;
-> > 		else
-> > 			error = nfserr_inval;
-> > 		goto out;
-> >
-> > to be consistent with the comment?
->
-> Sounds fair to me.
-> Would you like to convert this into a patch and send it to Linus with
-> my blessing ?
-> I probably wouldn't bother Marcelo with it until 2.4.19 is out.
-
-OK, I will send a patch in the next day or two.
+Mind explaining exactly what is causing the OpenBSD 'scrub' filter to
+fail to pass these packets?
 
 Cheers,
- Kendrick
-
+  Trond
 
 
 -------------------------------------------------------
