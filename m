@@ -1,22 +1,23 @@
-From: Danny Smith <dannys@cinesite.co.uk>
-Subject: Re: NFSERR_EAGAIN - resolved.
-Date: Wed, 16 Jul 2003 16:53:47 +0100
+From: Steve Fosdick <lists@pelvoux.nildram.co.uk>
+Subject: Re: Hang Problem - Linux Server, HP-UX Client
+Date: Wed, 16 Jul 2003 19:35:19 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3F15750B.9080302@cinesite.co.uk>
-References: <3F0DB088.303@cinesite.co.uk>
+Message-ID: <20030716183519.GA20136@pelvoux.gotadsl.co.uk>
+References: <20030716120142.GA18956@pelvoux.gotadsl.co.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Iain Irwin-Powell <Iain@cinesite.co.uk>
+Content-Type: text/plain; charset=ISO-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from scanman.cinesite.co.uk ([193.203.81.129])
+Received: from pelvoux.gotadsl.co.uk ([62.3.242.73])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19cobm-0001Xh-00
-	for <nfs@lists.sourceforge.net>; Wed, 16 Jul 2003 08:54:22 -0700
-Received: from sirius.cinesite.co.uk (sirius.cinesite.co.uk [10.66.0.23])
-	by scanman.cinesite.co.uk (8.9.3/8.9.3) with ESMTP id QAA21674
-	for <nfs@lists.sourceforge.net>; Wed, 16 Jul 2003 16:53:48 +0100 (BST)
-To: nfs <nfs@lists.sourceforge.net>
-In-Reply-To: <3F0DB088.303@cinesite.co.uk>
+	id 19cr8B-0003gl-00
+	for <nfs@lists.sourceforge.net>; Wed, 16 Jul 2003 11:36:00 -0700
+Received: from localhost
+	([127.0.0.1] helo=pelvoux ident=fozzy)
+	by pelvoux.gotadsl.co.uk with esmtp (Exim 3.36 #1 (Debian))
+	id 19cr7X-0005JM-00
+	for <nfs@lists.sourceforge.net>; Wed, 16 Jul 2003 19:35:19 +0100
+To: nfs@lists.sourceforge.net
+In-Reply-To: <20030716120142.GA18956@pelvoux.gotadsl.co.uk>; from lists@pelvoux.nildram.co.uk on Wed, Jul 16, 2003 at 13:01:42 +0100
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,40 +30,91 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Danny Smith wrote:
+Further to my previous message here is part of the output of tcpdump 
+running on the NFS server and capturing UDP port 2409 at the time 
+client complains the server is no longer responding:
 
-> I've been trying to resolve some issues we have with a set of systems 
-> running 2.4.20+NFS_ALL, dual CPU and Gigabit Ethernet. They're talking 
-> to SGI IRIX servers, (6.5.19), and having intermittent problems - this 
-> can be seen sometimes where an NFS mounted directory will "disappear", 
-> but subsequently be accessible. No errors are returned to the shell - 
-> the directory just appears to have no entries.
->
-> This seems (although I don't have proof positive yet, more testing is 
-> in progrees) to coincide with errors in the logs:
->
-> Jul  9 14:18:09 trout-node13 kernel: nfs_stat_to_errno: bad nfs status 
-> return value: 11
->
-I've found the cause of these messages - SGI are in the clear - it's not 
-coming from their servers.
-It's 'amd' (am-utils) which is providing the incorrect responses.
+17:40:30.705564 spitfire.nfs > moorland.1438258734: reply ok 112 getattr
+DIR 40700 ids 0/3 sz 0x0000001e8  (DF)
+17:40:30.705804 moorland.1438258735 > spitfire.nfs: 128 getattr fh
+Unknown/1
+17:40:30.705859 spitfire.nfs > moorland.1438258735: reply ok 112 getattr
+DIR 40700 ids 0/3 sz 0x000000090  (DF)
+17:40:30.706106 moorland.1438258736 > spitfire.nfs: 136 lookup fh
+Unknown/1 "0205"
+17:40:30.706177 spitfire.nfs > moorland.1438258736: reply ok 232 lookup
+fh Unknown/1 (DF)
+17:40:30.722560 moorland.1438258737 > spitfire.nfs: 152 commit fh
+Unknown/1 17367040 bytes @ 0x001fd0000
+17:40:30.722632 spitfire.nfs > moorland.1438258737: reply ok 128 commit
+(DF)
+17:40:30.729689 moorland.1438258738 > spitfire.nfs: 860 write fh
+Unknown/1 [|nfs]
+17:40:30.729884 spitfire.nfs > moorland.1438258738: reply ok 136 write
+[|nfs] (DF)
+17:40:30.730182 moorland.1438258739 > spitfire.nfs: 152 commit fh
+Unknown/1 0 bytes @ 0x00306a000
+17:40:30.730242 spitfire.nfs > moorland.1438258739: reply ok 128 commit
+(DF)
+17:40:31.194906 moorland.1438257340 > spitfire.nfs: 1472 write fh
+Unknown/1 [|nfs] (frag 33609:1480@0+)
+17:40:41.194960 moorland.1438257340 > spitfire.nfs: 1472 write fh
+Unknown/1 [|nfs] (frag 33725:1480@0+)
+17:40:43.694927 moorland.1438257340 > spitfire.nfs: 1472 write fh
+Unknown/1 [|nfs] (frag 33767:1480@0+)
+17:40:48.694994 moorland.1438257340 > spitfire.nfs: 1472 write fh
+Unknown/1 [|nfs] (frag 33832:1480@0+)
+17:40:58.695014 moorland.1438257340 > spitfire.nfs: 1472 write fh
+Unknown/1 [|nfs] (frag 33986:1480@0+)
+17:41:18.695127 moorland.1438257340 > spitfire.nfs: 1472 write fh
+Unknown/1 [|nfs] (frag 34252:1480@0+)
+17:41:23.695079 moorland.1438257340 > spitfire.nfs: 1472 write fh
+Unknown/1 [|nfs] (frag 34299:1480@0+)
+17:41:33.695137 moorland.1438257340 > spitfire.nfs: 1472 write fh
+Unknown/1 [|nfs] (frag 34399:1480@0+)
+17:41:53.695236 moorland.1438257340 > spitfire.nfs: 1472 write fh
+Unknown/1 [|nfs] (frag 34723:1480@0+)
+17:42:13.695771 moorland.1438257340 > spitfire.nfs: 1472 write fh
+Unknown/1 [|nfs] (frag 34928:1480@0+)
+17:42:23.695328 moorland.1438257340 > spitfire.nfs: 1472 write fh
+Unknown/1 [|nfs] (frag 35028:1480@0+)
+17:42:43.695375 moorland.1438257340 > spitfire.nfs: 1472 write fh
+Unknown/1 [|nfs] (frag 35260:1480@0+)
 
-Trigger seems to be trying to access an automount on a host which is not 
-running an NFS server. amd then sends back a garbled response over the 
-loopback interface (after getting several "RPC - program not registered" 
-responses).
+Here is another piece of tcpdump output, this time after the server has
+been rebooted and the client should still be trying to write the same
+file:
 
-Whether this is causing our other problems remains to be seen.
+17:59:43.667811 moorland.1438257340 > spitfire.nfs: 1472 write fh
+Unknown/1 [|nfs] (frag 47468:1480@0+)
+18:00:03.668106 moorland.1438257340 > spitfire.nfs: 1472 write fh
+Unknown/1 [|nfs] (frag 47937:1480@0+)
+18:00:23.668423 moorland.1438257340 > spitfire.nfs: 1472 write fh
+Unknown/1 [|nfs] (frag 48124:1480@0+)
+18:00:31.165567 moorland.1438258740 > spitfire.nfs: 116 getattr fh
+Unknown/1
+18:00:31.165637 spitfire.nfs > moorland.1438258740: reply ok 112 getattr
+DIR 40755 ids 0/0 sz 0x000000170  (DF)
+18:00:31.165966 moorland.1438258741 > spitfire.nfs: 116 fsinfo fh
+Unknown/1
+18:00:31.166020 spitfire.nfs > moorland.1438258741: reply ok 80 fsinfo
+rtmax 8192 rtpref 8192 wtmax 8192 wtpref 8192 dtpref 4096 (DF)
+18:00:31.166245 moorland.1438258742 > spitfire.nfs: 116 fsstat fh
+Unknown/1
+18:00:31.166316 spitfire.nfs > moorland.1438258742: reply ok 84 fsstat
+tbytes 0x5d1de0000 fbytes 0x58ba6f000 abytes 0x58ba6f000 (DF)
+18:00:31.166884 moorland.1438258743 > spitfire.nfs: 116 getattr fh
+Unknown/1
+18:00:31.166940 spitfire.nfs > moorland.1438258743: reply ok 112 getattr
+DIR 40755 ids 0/0 sz 0x0000005b0  (DF)
+18:00:43.668505 moorland.1438257340 > spitfire.nfs: 1472 write fh
+Unknown/1 [|nfs] (frag 48342:1480@0+)
+18:01:03.668682 moorland.1438257340 > spitfire.nfs: 1472 write fh
+Unknown/1 [|nfs] (frag 48598:1480@0+)
 
-Danny
+Do either of these shed any light?
 
--- 
-Danny Smith
-Senior Systems Administrator, Cinesite (Europe) Ltd
-020 7973 4000 - x4055    /    dannys@cinesite.co.uk
-
-
+Steve.
 
 
 -------------------------------------------------------
