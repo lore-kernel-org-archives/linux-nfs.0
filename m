@@ -1,32 +1,26 @@
-From: Brad Barnett <lists@L8R.net>
-Subject: Re: knfsd brought to its knees, by a simple rsync or cp
- operation
-Date: Wed, 2 Mar 2005 11:41:47 -0500
-Message-ID: <20050302114147.3ceb47e0@be.back.l8r.net>
-References: <20050226082854.2a496ec3@be.back.l8r.net>
-	<20050228100633.GA4822@suse.de>
-	<20050228102307.3788a184@be.back.l8r.net>
-	<20050228154455.GS4822@suse.de>
-	<20050228112018.34fdeb2b@be.back.l8r.net>
-	<20050301095548.GJ14402@suse.de>
-	<20050301065703.7e52cf4e@be.back.l8r.net>
-	<20050301143732.GA22324@suse.de>
-	<20050301181007.382a1422@be.back.l8r.net>
-	<20050302090312.GA5003@suse.de>
+From: Chip Salzenberg <chip@pobox.com>
+Subject: [aj@andaco.de: Bug#297729: nfs-utils: FTBFS (amd64/gcc-4.0): invalid lvalue in assignment]
+Date: Wed, 2 Mar 2005 11:49:32 -0500
+Message-ID: <20050302164932.GB7858@perlsupport.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Brad Barnett <lists@L8R.net>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D6Wv8-0002I2-AK
-	for nfs@lists.sourceforge.net; Wed, 02 Mar 2005 08:41:58 -0800
-Received: from l8r.net ([64.26.155.43] ident=aliens)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1D6X2X-0002oC-Fd
+	for nfs@lists.sourceforge.net; Wed, 02 Mar 2005 08:49:37 -0800
+Received: from perlsupport.com ([66.180.163.120] helo=mail.perlsupport.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1D6Wux-0008Qu-W3
-	for nfs@lists.sourceforge.net; Wed, 02 Mar 2005 08:41:58 -0800
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20050302090312.GA5003@suse.de>
+	id 1D6X2X-00015T-0Y
+	for nfs@lists.sourceforge.net; Wed, 02 Mar 2005 08:49:37 -0800
+Received: from [67.132.206.254] (helo=tytlal)
+	by mail.perlsupport.com (Exim 4) with esmtpsa (TLS-1.0:RSA_AES_256_CBC_SHA:32)
+	id 1D6X2V-0000k3-4u
+	for nfs@lists.sourceforge.net; Wed, 02 Mar 2005 11:49:35 -0500
+Received: from chip by tytlal with local (Exim 4.50)
+	id 1D6X2S-0003d1-RK
+	for nfs@lists.sourceforge.net; Wed, 02 Mar 2005 11:49:32 -0500
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,50 +34,58 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, 2 Mar 2005 10:03:13 +0100
-Olaf Kirch <okir@suse.de> wrote:
+A Debian user has contributed the below patch, which fixes a compile
+error in the Debian amd64 environment.  ("FTBFS" = Fails To Build From
+Source)  Any comments on it?
 
-> On Tue, Mar 01, 2005 at 06:10:07PM -0500, Brad Barnett wrote:
-> > > Well, it sounds like something's eating the network bandwidth,
-> > > or otherwise interfering with nfsd responsiveness. Again, are
-> > > you using UDP or TCP? If UDP, look at nfsstat output to see if
-> > > you have a high retransmit count.
-> > > 
-> > 
-> > In my original post, I did mention that I can copy large files (isos)
-> > over the network at excellent speeds.  That is, I get over 6M/sec
-> > transfer speed...
-> 
-> Stil you won't answer: UDP or TCP? :-)
+----- Forwarded message from Andreas Jochens <aj@andaco.de> -----
 
-Sorry Olaf, heh.  UDP.
+Subject: Bug#297729: nfs-utils: FTBFS (amd64/gcc-4.0): invalid lvalue in
+ assignment
+From: Andreas Jochens <aj@andaco.de>
+To: Debian Bug Tracking System <submit@bugs.debian.org>
+Date: Wed, 02 Mar 2005 17:20:52 +0100
 
-> 
-> And the question about retransmits referred to the situation where you
-> see the slow-downs.
+Package: nfs-utils
+Severity: normal
+Tags: patch
 
-I did check this before, in was in an NFS howto someplace, and I did not
-notice a large number of retransmits (there were one or two per several
-minutes)..
+When building 'nfs-utils' on amd64 with gcc-4.0,
+I get the following error:
 
-> 
-> > > If it's really a problem with scheduling, it should make a
-> > > difference if you run the rsync job with lower priority, and/or
-> > > renice the nfsd threads to run with higher priority.
-> > 
-> > You can't really renice the kernel nfsd threads though :((
-> 
-> renice -20 -p <pid of nfsd> works for me.
-> 
+gcc -g -O2 -D_GNU_SOURCE -DHAVE_TCP_WRAPPER -I../../support/include -I/usr/include -Wall  -pipe  -DVERSION="\"nfs-utils 1.0.7\"" -DNFS3_SUPPORTED -I../../support/rpc/include -DDEBUG   -c -o svc_auth_gss.o svc_auth_gss.c
+svc_auth_gss.c: In function 'svcauth_gss_import_name':
+svc_auth_gss.c:124: warning: passing argument 3 of 'gss_import_name' discards qualifiers from pointer target type
+svc_auth_gss.c: In function '_svcauth_gss':
+svc_auth_gss.c:385: error: invalid lvalue in assignment
+make[3]: *** [svc_auth_gss.o] Error 1
 
-Right, but that doesn't effect anything in the kernel...
+With the attached patch 'nfs-utils' can be compiled
+on amd64 using gcc-4.0.
 
-Anyhow, the problem is solved, please see my other message about changing
-i/o schedulers...
+Regards
+Andreas Jochens
 
-Thanks!
+diff -urN ../tmp-orig/nfs-utils-1.0.7/support/rpc/svc_auth_gss.c ./support/rpc/svc_auth_gss.c
+--- ../tmp-orig/nfs-utils-1.0.7/support/rpc/svc_auth_gss.c	2004-10-19 02:23:05.000000000 +0200
++++ ./support/rpc/svc_auth_gss.c	2005-03-02 17:08:51.007556121 +0100
+@@ -382,7 +382,7 @@
+ 			return (AUTH_FAILED);
+ 		}
+ 		auth->svc_ah_ops = &svc_auth_gss_ops;
+-		SVCAUTH_PRIVATE(auth) = gd;
++		auth->svc_ah_private = gd;
+ 		rqst->rq_xprt->xp_auth = auth;
+ 	}
+ 	else gd = SVCAUTH_PRIVATE(rqst->rq_xprt->xp_auth);
 
 
+
+----- End forwarded message -----
+
+-- 
+Chip Salzenberg            - a.k.a. -            <chip@pobox.com>
+ "What I cannot create, I do not understand." - Richard Feynman
 
 
 -------------------------------------------------------
