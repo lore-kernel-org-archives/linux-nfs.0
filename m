@@ -1,18 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 2 of 4] Minor memory leak fix.
+Subject: [PATCH kNFSd 0 of 4] Introduction
 Date: Fri, 20 Aug 2004 16:51:36 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1By3FQ-000738-5m@notabene.cse.unsw.edu.au>
-References: <20040820164909.27056.patches@notabene>
+Message-ID: <20040820164909.27056.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1By3Fb-0004fc-At
+	id 1By3Fb-0004fo-NL
 	for nfs@lists.sourceforge.net; Thu, 19 Aug 2004 23:51:47 -0700
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1By3Fa-0006oC-A4
+	id 1By3Fa-0006oA-7G
 	for nfs@lists.sourceforge.net; Thu, 19 Aug 2004 23:51:47 -0700
 To: Andrew Morton <akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -28,24 +27,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
+Following are 4 patches for knfsd in 2.6.latest
 
-Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
+1/ remove open_private_file.  It is an ugly hack that isn't really necessary,
+   and causes problems.
+2/ fix a minor memory leak
+3/ fix a(nother) possible memory corruption with xdr encoding of
+   readdirplus responses.
+4/ Fix minor timing issue with authentication cache flushing.
 
-### Diffstat output
- ./net/sunrpc/svcauth_unix.c |    1 +
- 1 files changed, 1 insertion(+)
+Thanks,
+NeilBrown
 
-diff ./net/sunrpc/svcauth_unix.c~current~ ./net/sunrpc/svcauth_unix.c
---- ./net/sunrpc/svcauth_unix.c~current~	2004-08-20 16:38:12.000000000 +1000
-+++ ./net/sunrpc/svcauth_unix.c	2004-08-20 16:38:19.000000000 +1000
-@@ -104,6 +104,7 @@ void ip_map_put(struct cache_head *item,
- 		if (test_bit(CACHE_VALID, &item->flags) &&
- 		    !test_bit(CACHE_NEGATIVE, &item->flags))
- 			auth_domain_put(&im->m_client->h);
-+		kfree(im->m_class);
- 		kfree(im);
- 	}
- }
 
 
 -------------------------------------------------------
