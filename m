@@ -1,24 +1,28 @@
-From: Frank van Maarseveen <F.vanMaarseveen@inter.NL.net>
-Subject: Re: fsid syntax
-Date: Fri, 9 Aug 2002 00:15:34 +0200
+From: Thomas =?iso-8859-1?Q?Lang=E5s?= <tlan@stud.ntnu.no>
+Subject: Re: RedHat Rawhide Kernels
+Date: Fri, 9 Aug 2002 03:04:32 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020809001534.A1578@iapetus.localdomain>
-References: <200208071711.00712.bernd-schubert@web.de> <shsk7n2d70y.fsf@charged.uio.no> <200208071830.54734.bernd-schubert@web.de> <15697.33669.398331.848444@notabene.cse.unsw.edu.au>
+Message-ID: <20020809010432.GA12851@stud.ntnu.no>
+References: <Pine.LNX.4.44.0208082017590.23326-100000@xpc1.ast.cam.ac.uk> <20020808153331.F28223@redhat.com> <shs65ylm7hp.fsf@charged.uio.no> <20020808162326.G28223@redhat.com> <15698.54589.795037.127176@charged.uio.no> <20020808165712.H28223@redhat.com> <15698.57249.605357.32060@charged.uio.no> <20020808172729.J28223@redhat.com> <shshei511bu.fsf@charged.uio.no>
+Reply-To: nfs@lists.sourceforge.net
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from grootstal.nijmegen.internl.net ([217.149.192.7])
+Received: from due.stud.ntnu.no ([129.241.56.71])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17cvdS-0001EZ-00
-	for <nfs@lists.sourceforge.net>; Thu, 08 Aug 2002 15:20:02 -0700
-Received: from iapetus.localdomain by grootstal.nijmegen.internl.net
-	via 1Cust231.tnt59.rtm1.nl.uu.net [213.117.36.231] with ESMTP for <nfs@lists.sourceforge.net>
-	id AAA21995 (8.8.8/1.3); Fri, 9 Aug 2002 00:19:52 +0200 (MET DST)
-Received: (from inet1@localhost)
-	by iapetus.localdomain (8.11.6/8.11.6) id g78MFYF09289
-	for nfs@lists.sourceforge.net; Fri, 9 Aug 2002 00:15:34 +0200
-To: Linux NFS mailing list <nfs@lists.sourceforge.net>
-In-Reply-To: <15697.33669.398331.848444@notabene.cse.unsw.edu.au>; from neilb@cse.unsw.edu.au on Thu, Aug 08, 2002 at 06:31:01AM +1000
+	id 17cyCk-0005pK-00
+	for <nfs@lists.sourceforge.net>; Thu, 08 Aug 2002 18:04:39 -0700
+Received: from localhost (localhost [127.0.0.1])
+	by due.stud.ntnu.no (Postfix) with ESMTP id E545312B49C
+	for <nfs@lists.sourceforge.net>; Fri,  9 Aug 2002 03:04:33 +0200 (CEST)
+Received: from ozelot.stud.ntnu.no (ozelot.stud.ntnu.no [129.241.56.185])
+	by due.stud.ntnu.no (Postfix) with ESMTP id 2467312B48A
+	for <nfs@lists.sourceforge.net>; Fri,  9 Aug 2002 03:04:33 +0200 (CEST)
+Received: (from tlan@localhost)
+	by ozelot.stud.ntnu.no (8.11.6/8.10.0.Beta12) id g7914Xt13415
+	for nfs@lists.sourceforge.net; Fri, 9 Aug 2002 03:04:33 +0200
+To: NFS maillist <nfs@lists.sourceforge.net>
+In-Reply-To: <shshei511bu.fsf@charged.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,25 +35,16 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Thu, Aug 08, 2002 at 06:31:01AM +1000, Neil Brown wrote:
-> 
-> (*)  I really don't think that basing the fsid on the device number is
-> at all sensible.  Afterall, that is what we are trying to avoid.
-> Just pick a number, any number.
+Trond Myklebust:
+> The only other hang I can think of concerns only HIGHMEM machines,
+> where you can deadlock while exhausting all free kmap() resources.
+> Also fixed (well - at least chances are *very* heavily reduced) in the
+> new 'kmap' patchsets.
 
-The number depends on the goal of specifying an fsid at all. Example:
-Say you want to move the disk to a new system without affecting current
-mounts. It is possible to use IP numbers for fsids and to set multiple
-addresses on a NIC, for every exported filesystem. So when the disk or
-partition is moved to a different system, the IP addresses have to move
-to the NIC of the other system as well.
-
-Actually I experimented with this some time ago (using a home brew fsid
-kind of patch).
-
+Is this included in 2.4.19 or won't we see it before 2.4.20 comes along?
 
 -- 
-Frank
+Thomas
 
 
 -------------------------------------------------------
