@@ -1,20 +1,21 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: current Trond NFS patch for 2.2.22?
-Date: 08 Oct 2002 03:56:26 +0200
+From: Terje Eggestad <terje.eggestad@scali.com>
+Subject: Re: [PATCH] direct-IO API change
+Date: 08 Oct 2002 15:33:56 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shs65wd7kxh.fsf@charged.uio.no>
-References: <20021007183704.K24367@questra.com>
-	<shsfzvhsszs.fsf@charged.uio.no> <20021007213843.M26432@questra.com>
+Message-ID: <1034084036.1593.7.camel@pc-16.office.scali.no>
+References: <Pine.LNX.4.44.0210041621170.2526-100000@home.transmeta.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Andrew Morton <akpm@digeo.com>, Chuck Lever <cel@citi.umich.edu>,
+   Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+   Linux NFS List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mons.uio.no ([129.240.130.14])
+Received: from elin.scali.no ([62.70.89.10])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17yjbx-0001Jg-00
-	for <nfs@lists.sourceforge.net>; Mon, 07 Oct 2002 18:56:37 -0700
-To: Scott McDermott <mcdermot@questra.com>
-In-Reply-To: <20021007213843.M26432@questra.com>
+	id 17yuV2-0003lQ-00
+	for <nfs@lists.sourceforge.net>; Tue, 08 Oct 2002 06:34:12 -0700
+To: Linus Torvalds <torvalds@transmeta.com>
+In-Reply-To: <Pine.LNX.4.44.0210041621170.2526-100000@home.transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,36 +28,57 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
->>>>> " " == Scott McDermott <mcdermot@questra.com> writes:
+On l=F8r, 2002-10-05 at 01:23, Linus Torvalds wrote:
+> On Fri, 4 Oct 2002, Andrew Morton wrote:
+> >=20
+> > Because the file handle which we have is for /dev/raw/raw0,
+> > not for /dev/hda1.
+> >=20
+> > The raw driver binds to major/minor, not a file*.  I considered
+> > changing that (change userspace to pass the open fd).  But didn't.
+>=20
+> Ok. I'd really rather have a cleaner internal API and break the raw dri=
+ver=20
+> for a while, than have a silly API just because the raw driver uses it.
+>=20
+> Especially since I thought that O_DIRECT on the regular file (or block
+> device) performed about as well as raw does anyway these days? Or is th=
+at
+> just one of my LSD-induced flashbacks?
+>=20
 
-     > Trond Myklebust on Tue 8/10 01:56 +0200:
-    >> >>>>> " " == Scott McDermott <mcdermot@questra.com> writes:
+Well, somewhat LSD induced. /dev/raw/rawN has a merit for shared disk.
+Databases (Read Oracle) most notably need raw devices for parallell
+databases. It would GREATLY benefit from a cluster aware fs with
+O_DIRECT support, Sistina added that to their closed source GFS 5.x.=20
 
-     > what's this empty string? where does it get its value? my MUA
-     > set up improperly or something?
+Working with blockdevices are pure evil in my view anyway, but until a
+OSS FS that is cluster aware are a part of a vanilla kernel, I'm afraid
+that /dev/raw/rawN are a necessary evil=20
 
-Nah. Xemacs wants to play games when formatting. I just hate having
-the thing indent with
+> 		Linus
+>=20
 
-   Scott McDermott> blah...
+TJ
 
-     > biggest thing stopping me from upgrading the servers to 2.4 is
-     > knowing that everyone will get stale handles, this will be very
-     > hard to manage logistically, too many disparate political units
-     > with clients mounting off it.  You said before that there is
-     > server code to handle old 2.2 cookies but I've heard otherwise
-     > from posts on the list and 2.2 works too well for us right now
-     > to risk this.  I really should get around to testing this
-     > though.  Truth is, 2.2 works well for our needs, I don't really
-     > care to upgrade until we get something worthwhile like RPCSEC
-     > and ACL support.
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-kernel"=
+ in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
+--=20
+_________________________________________________________________________
 
-Nobody is forcing you to upgrade, however I wanted to make the point
-that 2.2.x is a 'critical fixes only' kernel. Otherwise I'm not
-touching it...
+Terje Eggestad                  mailto:terje.eggestad@scali.no
+Scali Scalable Linux Systems    http://www.scali.com
 
-Cheers,
-  Trond
+Olaf Helsets Vei 6              tel:    +47 22 62 89 61 (OFFICE)
+P.O.Box 150, Oppsal                     +47 975 31 574  (MOBILE)
+N-0619 Oslo                     fax:    +47 22 62 89 51
+NORWAY           =20
+_________________________________________________________________________
+
 
 
 -------------------------------------------------------
