@@ -1,98 +1,52 @@
-From: Adrian Bunk <bunk@fs.tum.de>
-Subject: [2.6 patch] select for fs/Kconfig
-Date: Sun, 28 Sep 2003 17:18:39 +0200
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <20030928151839.GG15338@fs.tum.de>
+From: Carlos Carvalho <carlos@fisica.ufpr.br>
+Subject: excessive nfsd cpu consumption - almost a DOS...
+Date: Sun, 28 Sep 2003 17:45:50 -0300
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <16247.18558.175684.189042@fisica.ufpr.br>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: Linus Torvalds <torvalds@osdl.org>,
-	David Howells <dhowells@redhat.com>,
-	David Woodhouse <dwmw2@cambridge.redhat.com>
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 1A3jN1-00082n-00
+	for <nfs@lists.sourceforge.net>; Sun, 28 Sep 2003 14:46:23 -0700
+Received: from www.fisica.ufpr.br ([200.17.209.129] helo=fisica.ufpr.br)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
+	id 1A3jMy-0006qP-FI
+	for nfs@lists.sourceforge.net; Sun, 28 Sep 2003 14:46:20 -0700
+To: nfs@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-The patch below switches fs/Kconfig to use select where appropriate=20
-(affects nfs{,d} and afs).
+A user here did something like
 
-diffstat output:
-=FA
- fs/Kconfig |   11 +++++------
- 1 files changed, 5 insertions(+), 6 deletions(-)
-=20
+    <start loop>
+       open file (on the nfs server)
+       write something small
+       close file
+    <end loop>
 
-cu
-Adrian
+This made the 8 threads of nfsd eat almost all cpu on the server. I
+changed the nice of the threads to 19 and this improved matters
+somewhat but not enough.
 
---- linux-2.6.0-test6-full/fs/Kconfig.old	2003-09-28 16:12:39.000000000=
- +0200
-+++ linux-2.6.0-test6-full/fs/Kconfig	2003-09-28 16:20:56.000000000 +02=
-00
-@@ -1253,8 +1253,10 @@
-=20
- config NFS_FS
- 	tristate "NFS file system support"
- 	depends on INET
-+	select LOCKD
-+	select SUNRPC
- 	help
- 	  If you are connected to some other (usually local) Unix computer
- 	  (using SLIP, PLIP, PPP or Ethernet) and want to mount files residin=
-g
- 	  on that computer (the NFS server) using the Network File Sharing
-@@ -1308,8 +1310,10 @@
-=20
- config NFSD
- 	tristate "NFS server support"
- 	depends on INET
-+	select LOCKD
-+	select SUNRPC
- 	help
- 	  If you want your Linux box to act as an NFS *server*, so that other
- 	  computers on your local network which support NFS can access certai=
-n
- 	  directories on your box transparently, you have two options: you ca=
-n
-@@ -1370,10 +1374,8 @@
- 	  Most people say N here.
-=20
- config LOCKD
- 	tristate
--	default m if NFS_FS!=3Dy && NFSD!=3Dy && (NFS_FS=3Dm || NFSD=3Dm)
--	default y if NFS_FS=3Dy || NFSD=3Dy
-=20
- config LOCKD_V4
- 	bool
- 	depends on NFSD_V3 || NFS_V3
-@@ -1384,10 +1386,8 @@
- 	default NFSD
-=20
- config SUNRPC
- 	tristate
--	default m if NFS_FS!=3Dy && NFSD!=3Dy && (NFS_FS=3Dm || NFSD=3Dm)
--	default y if NFS_FS=3Dy || NFSD=3Dy
-=20
- config SUNRPC_GSS
- 	tristate "Provide RPCSEC_GSS authentication (EXPERIMENTAL)"
- 	depends on SUNRPC && EXPERIMENTAL
-@@ -1564,8 +1564,9 @@
- config AFS_FS
- # for fs/nls/Config.in
- 	tristate "Andrew File System support (AFS) (Experimental)"
- 	depends on INET && EXPERIMENTAL
-+	select RXRPC
- 	help
- 	  If you say Y here, you will get an experimental Andrew File System
- 	  driver. It currently only supports unsecured read-only AFS access.
-=20
-@@ -1574,10 +1575,8 @@
- 	  If unsure, say N.
-=20
- config RXRPC
- 	tristate
--	default m if AFS_FS=3Dm
--	default y if AFS_FS=3Dy
-=20
- endmenu
-=20
- menu "Partition Types"
+Is there a way to limit nfsd cpu?
+
+
+-------------------------------------------------------
+This sf.net email is sponsored by:ThinkGeek
+Welcome to geek heaven.
+http://thinkgeek.com/sf
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
