@@ -1,23 +1,23 @@
-From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: Re: bad cookie size 20 (only cookies under 8 bytes are supported.)
-Date: Wed, 05 Nov 2003 14:54:32 +1100
+From: "Timothy G. Wesemann" <timwese@voicenet.com>
+Subject: Re: nfs: server X not responding, still trying
+Date: Wed, 5 Nov 2003 13:03:45 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3FA87478.BE1069F9@melbourne.sgi.com>
-References: <3FA512B2.1080109@inf.ethz.ch>
+Message-ID: <086e01c3a3c7$2b2af200$de0167cf@voicenet.com>
+References: <482A3FA0050D21419C269D13989C6113020AC622@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AHEko-0006wb-00
-	for <nfs@lists.sourceforge.net>; Tue, 04 Nov 2003 19:54:46 -0800
-Received: from zok.sgi.com ([204.94.215.101])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
-	id 1AHEkl-0007AD-8a
-	for nfs@lists.sourceforge.net; Tue, 04 Nov 2003 19:54:43 -0800
-To: Marc Schmitt <mschmitt@inf.ethz.ch>
+	id 1AHT42-0005Yy-00
+	for <nfs@lists.sourceforge.net>; Wed, 05 Nov 2003 11:11:34 -0800
+Received: from mail08.voicenet.com ([207.103.0.34])
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.24)
+	id 1AHSwv-0001Bw-NF
+	for nfs@lists.sourceforge.net; Wed, 05 Nov 2003 11:04:13 -0800
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,32 +30,22 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Marc Schmitt wrote:
-> 
-> Hi all,
-> 
-> I did upgrade yesterday my RedHat 7.3 box (2.4.20-20.7smp) from
-> nfs-utils 1.0.5 to 1.0.6, after that, messages was full with:
-> 
-> Nov  2 15:02:56 server kernel: lockd: bad cookie size 20 (only cookies
-> under 8 bytes are supported.)
-> Nov  2 15:02:56 server kernel: svc: failed to decode args
-> Nov  2 15:02:57 server kernel: lockd: bad cookie size 20 (only cookies
-> under 8 bytes are supported.)
-> Nov  2 15:02:57 server kernel: svc: failed to decode args
-> Nov  2 15:03:16 server kernel: lockd: bad cookie size 20 (only cookies
-> under 8 bytes are supported.)
-> 
-> I've never had those messages before, does 1.0.6 require a certain
-> minimum kernel version (ex. >= 2.4.22)?
+>> the async mount option is not needed, as async is the default.
+>the async export option is to be avoided.
 
-I sent Trond a patch to fix this in March.  It's not your nfs-utils,
-somebody on the network started a MacOS X 10.3 NFS client.
+If that is so, then why does my exportfs (from nfs-utils-1.0.6) state the
+following when exporting?
 
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+=================================
+   exportfs: /etc/exports [4]: No 'sync' or 'async' option specified for
+export "192.168.10.0/24:/jetstor/incoming".
+      Assuming default behaviour ('sync').
+      NOTE: this default has changed from previous versions
+=================================
+
+--
+Tim Wesemann
+
 
 
 -------------------------------------------------------
