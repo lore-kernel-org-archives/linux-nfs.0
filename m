@@ -1,21 +1,27 @@
-From: Scott Mcdermott <smcdermott@questra.com>
+From: "Paul Smith" <pausmith@nortelnetworks.com>
 Subject: Re: (autofs) Re: Direct mounts on Linux
-Date: Tue, 21 Jan 2003 01:48:51 -0500
+Date: 21 Jan 2003 02:05:28 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030121064851.GK10369@questra.com>
-References: <15916.14776.460148.770017@lemming.engeast.baynetworks.com> <20030120214134.GE1042@questra.com> <p5vg0jz08z.fsf@lemming.engeast.baynetworks.com> <20030121030851.GG10369@questra.com> <p5wukzyx8m.fsf@lemming.engeast.baynetworks.com> <20030121040318.GI10369@questra.com> <p5r8b7yr4l.fsf@lemming.engeast.baynetworks.com>
+Message-ID: <p5iswjyocn.fsf@lemming.engeast.baynetworks.com>
+References: <15916.14776.460148.770017@lemming.engeast.baynetworks.com>
+	<20030120214134.GE1042@questra.com>
+	<p5vg0jz08z.fsf@lemming.engeast.baynetworks.com>
+	<20030121030851.GG10369@questra.com>
+	<p5wukzyx8m.fsf@lemming.engeast.baynetworks.com>
+	<20030121040318.GI10369@questra.com>
+	<p5r8b7yr4l.fsf@lemming.engeast.baynetworks.com>
+	<20030121064851.GK10369@questra.com>
+Reply-To: "Paul Smith" <pausmith@nortelnetworks.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from ns1.questra.com ([64.132.48.186])
+Received: from zrtps0kn.nortelnetworks.com ([47.140.192.55])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18asDN-0007dp-00
-	for <nfs@lists.sourceforge.net>; Mon, 20 Jan 2003 22:48:53 -0800
-Received: from questra.com (hades.roc.questra.com [64.132.48.226])
-	by ns1.questra.com (Postfix) with SMTP id BBD35AB5A7
-	for <nfs@lists.sourceforge.net>; Tue, 21 Jan 2003 01:48:51 -0500 (EST)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <p5r8b7yr4l.fsf@lemming.engeast.baynetworks.com>
+	id 18asTb-0000xG-00
+	for <nfs@lists.sourceforge.net>; Mon, 20 Jan 2003 23:05:39 -0800
+To: Scott Mcdermott <smcdermott@questra.com>
+In-Reply-To: <20030121064851.GK10369@questra.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,15 +34,22 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Paul Smith on Tue 21/01 01:05 -0500:
->   sm> mostly nowadays, `pwd' is a shell builtin that doesn't use the
->   sm> algorithm you refer to, if I understand right (like /bin/pwd has
->   sm> to use, eg keep going ..) instead keeping track internally.
-> 
-> Well, sure, but there's still getcwd() ... :)
+%% Scott Mcdermott <smcdermott@questra.com> writes:
 
-which is also kept track of in the shell (talking about bash only, don't
-know what other shells do)
+  >> Well, sure, but there's still getcwd() ... :)
+
+  sm> which is also kept track of in the shell (talking about bash only,
+  sm> don't know what other shells do)
+
+No, I mean getcwd(3), the C runtime library function... if my program
+invokes this then it doesn't matter what the shell does.
+
+-- 
+-------------------------------------------------------------------------------
+ Paul D. Smith <psmith@nortelnetworks.com>   HASMAT--HA Software Mthds & Tools
+ "Please remain calm...I may be mad, but I am a professional." --Mad Scientist
+-------------------------------------------------------------------------------
+   These are my opinions---Nortel Networks takes no responsibility for them.
 
 
 -------------------------------------------------------
