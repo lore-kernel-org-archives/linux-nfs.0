@@ -1,22 +1,22 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH 6 of 6] nfsd: remove pg_authenticate field
-Date: Tue, 18 Jan 2005 13:06:40 -0500
-Message-ID: <1106070956.b175e53d.6@fieldses.org>
-References: <1106070956.b175e53d.5@fieldses.org>
+Subject: [PATCH 5 of 6] lockd: don't try to match callback requests against export table
+Date: Tue, 18 Jan 2005 13:06:35 -0500
+Message-ID: <1106070956.b175e53d.5@fieldses.org>
+References: <1106070956.b175e53d.4@fieldses.org>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CqxkI-0003lV-4v
-	for nfs@lists.sourceforge.net; Tue, 18 Jan 2005 10:06:26 -0800
+	id 1CqxkH-0003lU-ML
+	for nfs@lists.sourceforge.net; Tue, 18 Jan 2005 10:06:25 -0800
 Received: from dh173.citi.umich.edu
 	([141.211.133.173] helo=puzzle.fieldses.org ident=Debian-exim)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1CqxkH-0004mI-LL
-	for nfs@lists.sourceforge.net; Tue, 18 Jan 2005 10:06:26 -0800
+	id 1CqxkG-00068n-8Q
+	for nfs@lists.sourceforge.net; Tue, 18 Jan 2005 10:06:25 -0800
 To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <1106070956.b175e53d.5@fieldses.org>
+In-Reply-To: <1106070956.b175e53d.4@fieldses.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,45 +31,51 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-The pg_authenticate (now pg_authenticate_obsolete) callback was only being used
-by the nfs4 client callback code to circumvent the svcauth_unix code's
-insistence on checking all requests against the export table.  With that
-problem solved, we no longer need it.
+On lockd callbacks, we're a client, and the source address is that of a server,
+so we shouldn't be trying to match the source address of the callback request
+against our export table.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
 
- linux-2.6.10-rc3-bfields/include/linux/sunrpc/svc.h |    2 --
- linux-2.6.10-rc3-bfields/net/sunrpc/svc.c           |    5 +----
- 2 files changed, 1 insertion(+), 6 deletions(-)
+ linux-2.6.10-rc3-bfields/fs/lockd/svc.c |   18 ++++++++++++++++++
+ 1 files changed, 18 insertions(+)
 
-diff -puN include/linux/sunrpc/svc.h~nfsd_remove_pg_authenticate include/linux/sunrpc/svc.h
---- linux-2.6.10-rc3/include/linux/sunrpc/svc.h~nfsd_remove_pg_authenticate	2004-12-08 15:12:14.000000000 -0500
-+++ linux-2.6.10-rc3-bfields/include/linux/sunrpc/svc.h	2004-12-08 15:12:14.000000000 -0500
-@@ -251,8 +251,6 @@ struct svc_program {
- 	char *			pg_name;	/* service name */
- 	char *			pg_class;	/* class name: services sharing authentication */
- 	struct svc_stat *	pg_stats;	/* rpc statistics */
--	/* Override authentication. NULL means use default */
--	int			(*pg_authenticate_obsolete)(struct svc_rqst *, u32 *);
- 	int			(*pg_authenticate)(struct svc_rqst *);
- };
+diff -puN fs/lockd/svc.c~lockd_fix_authentication fs/lockd/svc.c
+--- linux-2.6.10-rc3/fs/lockd/svc.c~lockd_fix_authentication	2004-12-08 15:12:13.000000000 -0500
++++ linux-2.6.10-rc3-bfields/fs/lockd/svc.c	2004-12-09 14:46:46.000000000 -0500
+@@ -403,6 +403,18 @@ static int param_set_##name(const char *
+ 	return 0;							\
+ }
  
-diff -puN net/sunrpc/svc.c~nfsd_remove_pg_authenticate net/sunrpc/svc.c
---- linux-2.6.10-rc3/net/sunrpc/svc.c~nfsd_remove_pg_authenticate	2004-12-08 15:12:14.000000000 -0500
-+++ linux-2.6.10-rc3-bfields/net/sunrpc/svc.c	2004-12-08 15:12:14.000000000 -0500
-@@ -315,10 +315,7 @@ svc_process(struct svc_serv *serv, struc
- 	 * We do this before anything else in order to get a decent
- 	 * auth verifier.
- 	 */
--	if (progp->pg_authenticate_obsolete != NULL)
--		auth_res = progp->pg_authenticate_obsolete(rqstp, &auth_stat);
--	else
--		auth_res = svc_authenticate(rqstp, &auth_stat);
-+	auth_res = svc_authenticate(rqstp, &auth_stat);
- 	/* Also give the program a chance to reject this call: */
- 	if (auth_res == SVC_OK) {
- 		auth_stat = rpc_autherr_badcred;
++static inline int is_callback(u32 proc)
++{
++	return proc == NLMPROC_GRANTED
++		|| proc == NLMPROC_GRANTED_MSG
++		|| proc == NLMPROC_TEST_RES
++		|| proc == NLMPROC_LOCK_RES
++		|| proc == NLMPROC_CANCEL_RES
++		|| proc == NLMPROC_UNLOCK_RES
++		|| proc == NLMPROC_NSM_NOTIFY;
++}
++
++
+ static int lockd_authenticate(struct svc_rqst *rqstp)
+ {
+ 	rqstp->rq_client = NULL;
+@@ -411,6 +423,12 @@ static int lockd_authenticate(struct svc
+ 		case RPC_AUTH_UNIX:
+ 			if (rqstp->rq_proc == 0)
+ 				return SVC_OK;
++			if (is_callback(rqstp->rq_proc)) {
++				/* Leave it to individual procedures to
++				 * call nlmsvc_lookup_host(rqstp)
++				 */
++				return SVC_OK;
++			}
+ 			return svc_set_client(rqstp);
+ 	}
+ 	return SVC_DENIED;
 _
 
 
