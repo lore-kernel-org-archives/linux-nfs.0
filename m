@@ -1,24 +1,23 @@
-From: bnies@bluewin.ch
-Subject: Re: ls hangs on NFS share from Apple Xserve
-Date: Thu, 9 Sep 2004 10:08:36 +0200
+From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
+Subject: Re: sendmail "cannot fsync directory" after 2.4 -> 2.6
+Date: Thu, 09 Sep 2004 12:39:05 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <412EBAA10006C9F4@mssbzhh-int.msg.bluewin.ch>
-References: <1094682603.8363.71.camel@lade.trondhjem.org>
+Message-ID: <414032C9.7090105@bio.ifi.lmu.de>
+References: <413FF4EB.2070607@bio.ifi.lmu.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C5JzA-0007EM-28
-	for nfs@lists.sourceforge.net; Thu, 09 Sep 2004 01:08:52 -0700
-Received: from mail5.bluewin.ch ([195.186.1.207])
+	id 1C5MKd-0006MM-Kc
+	for nfs@lists.sourceforge.net; Thu, 09 Sep 2004 03:39:11 -0700
+Received: from acheron.informatik.uni-muenchen.de ([129.187.214.135])
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1C5Jz9-0004E5-1M
-	for nfs@lists.sourceforge.net; Thu, 09 Sep 2004 01:08:51 -0700
-Received: from mssbzhh-int.msg.bluewin.ch (195.186.4.230) by mail5.bluewin.ch (Bluewin AG 7.0.030.2)
-        id 412F8F2D0018A0ED for nfs@lists.sourceforge.net; Thu, 9 Sep 2004 08:08:36 +0000
-In-Reply-To: <1094682603.8363.71.camel@lade.trondhjem.org>
-To: nfs@lists.sourceforge.net
+	id 1C5MKc-0000S4-BE
+	for nfs@lists.sourceforge.net; Thu, 09 Sep 2004 03:39:11 -0700
+To: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
+In-Reply-To: <413FF4EB.2070607@bio.ifi.lmu.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,32 +30,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Trond,
+I wrote a little c program to test fsync on nfs directories (must be
+called in the directory you want to check):
 
->They probably do not rely exclusively on the cookie to track where they
->are in the READDIR stream: for instance it is possible to cache the
->filename too, and to use that as a backup solution if the server is
->being cranky.
->We could possibly add this sort of information to Linux too.
+#include <fcntl.h>
 
-That's probably a good idea. At least the network file system connecting
-each flavours of Unix should be consistent and reliable. Maybe this bug also
-exists in other BSD derivates. Sun developed NFS. Is the Solaris client and
-server code available?
+int main() {
+int dirfd;
+dirfd = open(".",O_RDONLY, 0700);
+if (fsync(dirfd) < 0)
+   printf("failed\n");
+else
+   printf("succeeded\n");
+}
 
-I filed a bug in OpenDarwins Bugzilla:
 
-http://www.opendarwin.org/bugzilla/show_bug.cgi?id=2201
+Indeed it fails for all nfs-mounted directories when the client is running
+kernel 2.6 (tried 2.6.6 and 2.6.8.1), and succeeds for clients running
+kernel 2.4, with the same nfs server (regardless if the server is running
+2.6 or 2.4).
 
-Seems that Mac OS X NFS implementation is a kind of buggy, because I found
-other problems with it:
+cu,
+Frank
 
-http://discussions.info.apple.com/webx?14@246.XlfoaVdSw0s.2@.6899e34d
-http://discussions.info.apple.com/webx?14@246.XlfoaVdSw0s.2@.6899e2eb
-http://discussions.info.apple.com/webx?14@246.XlfoaVdSw0s.0@.6899e444
-
-Regards,
-Bernd
+-- 
+Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
+Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
+LMU, Amalienstr. 17           Phone: +49 89 2180-4049
+80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
 
 
 
