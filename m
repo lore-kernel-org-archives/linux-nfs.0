@@ -1,29 +1,21 @@
-From: Bernd Schubert <bernd-schubert@web.de>
-Subject: Re: Problems getting started with booting via NFS
-Date: Wed, 27 Aug 2003 21:08:56 +0200
+From: Raphael Clifford <raphael@clifford.net>
+Subject: solaris server and firewalls
+Date: Wed, 27 Aug 2003 21:11:53 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200308272108.56470.bernd-schubert@web.de>
-References: <6.0.0.10.0.20030827134940.0264cde0@helmholtz.hia.rwth-aachen.de>
+Message-ID: <3F4D1089.2050207@clifford.net>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; charset=ISO-8859-15; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19s5fY-0006tt-00
-	for <nfs@lists.sourceforge.net>; Wed, 27 Aug 2003 12:09:24 -0700
-Received: from smtp03.web.de ([217.72.192.158] helo=smtp.web.de)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.22)
-	id 19s5fY-0007RM-29
-	for nfs@lists.sourceforge.net; Wed, 27 Aug 2003 12:09:24 -0700
-Received: from [80.140.6.68] (helo=bathl.lan.fli4l)
-	by smtp.web.de with asmtp (WEB.DE 4.99 #448)
-	id 19s5f1-00055L-00
-	for nfs@lists.sourceforge.net; Wed, 27 Aug 2003 21:08:51 +0200
+	id 19s6eY-0004uN-00
+	for <nfs@lists.sourceforge.net>; Wed, 27 Aug 2003 13:12:27 -0700
+Received: from netmail02.services.quay.plus.net ([212.159.14.221])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.22)
+	id 19s6eX-0003Mu-Vb
+	for nfs@lists.sourceforge.net; Wed, 27 Aug 2003 13:12:26 -0700
 To: nfs@lists.sourceforge.net
-In-Reply-To: <6.0.0.10.0.20030827134940.0264cde0@helmholtz.hia.rwth-aachen.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -36,50 +28,75 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wednesday 27 August 2003 13:59, Lars Meinecke wrote:
-> Hello,
->
-> I'm quite new to Linux in general, so may be one or the other question may
-> sound quite simple to you. Nevertheless:
->
-> My situation:
-> I have a Workstation with static IP runnning RedHat 9.0. This is the NFS
-> Server.
-> Secondly I have a singele-chip PC with a flash ROM running RedBoot which
-> then loads the Linux Busybox system if not interrupted. This is the client
-> system.
+Hi,
 
-So does your client already do a dhcp- and tftp-request? And would it accept 
-etherboot-images? If it does it might become rather easy.
+I am trying to mount a solaris nfs server from my linux client.  The 
+problem is how to do this without effectively disabling the linux firewall.
 
->
-> What I want to do:
-> I'd like to have the client system booting via NFS from the server system,
-> so that I can develop software and perhaps alter the operating system for
-> the single-chip PC on the server system and thus reducing time for
-> development.
->
-> What I'm searching for:
-> ... is something like a step-by-step instruction set on how to reach the
-> above mentioned system configuration.
-> I already read through a lot of how-to's and books, but still I find
-> setting up the system quite complicated... - may be I worked to long with
-> M$...
->
+I understand that the official Sun solution for Sun clients is to mount 
+using the -o public option.  However, I can't find any support for this 
+in linux. I have copied a section of the man page below for completeness 
+that describes what this option does.  My questions are
+a) What can I do?
+b) Could the answer be added to the firewall section of the HOWTO.  It 
+must be a common situation. Where I work, for example, there are 
+hundreds of linux clients per Solaris server.
 
-Setting up nfs and tftpboot is really easy. The most difficult part was to 
-find out als the stuff about etherboot since I didn't find a nice howto. 
-Getting dhcp properly configured also required some reading.
-If I have some more time I will write a nice howto how our cluster works -- 
-our cliens also boot via network, but the server and clients use a shared 
-root-environment, based on nfsd and clusternfsd, both are running on the 
-server. Unfortunality there's always so much other stuff to do...
+Cheers,
+Raphael
 
-However I already wrote some documentation for the other admins in our group 
-and that might help Lars a bit. Lars, if you want, you can contact me in 
-German and ask some further questions :)
+------- excerpt from Solaris man page --------------
 
-Bernd
+  URLs and the public option
+           If the public option is specified, or if the  resource
+           includes and NFS URL, mount will attempt to connect to
+           the server using the public file handle lookup  proto-
+           col.  See Internet RFC 2054 - WebNFS Client Specifica-
+           tion. If the server supports the public  file  handle,
+           the attempt is successful; mount will not need to con-
+           tact the server's rpcbind(1M), and the mountd(1M) dae-
+           mons  to  get  the port number of the mount server and
+           the initial file handle of pathname, respectively.  If
+           the  NFS client and server are separated by a firewall
+           that allows all outbount connections through  specific
+           ports,  such as NFS_PORT, then this enables NFS opera-
+           tions through the firewall. The public option and  the
+           NFS  URL  can  be specified independently or together.
+           They interact as specified in the following matrix:
+[...]
+
+and from the Solaris docs
+
+
+    How to Mount an NFS File System Through a Firewall
+
+   1.
+
+      Become superuser.
+
+   2.
+
+      Manually mount the file system, using a command like:
+
+
+# *mount -F nfs -o public bee:/export/share/local /mnt*
+
+      In this example the file system /export/share/local is mounted on
+      the local client using the public file handle. An NFS URL can be
+      used instead of the standard path name. If the public file handle
+      is not supported by the server bee, the mount operation will fail.
+
+      ------------------------------------------------------------------------
+      *Note - *
+
+      This procedure requires that the file system on the NFS server be
+      shared using the public option and any firewalls between the
+      client and the server allow TCP connections on port 2049. Starting
+      with the 2.6 release, all file systems that are shared allow for
+      public file handle access.
+
+
+
 
 
 
