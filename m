@@ -1,24 +1,20 @@
-From: Robert Schwebel <robert@schwebel.de>
-Subject: Re: Makefile system
-Date: Thu, 8 Jul 2004 19:20:34 +0200
+From: "xiong yi" <xiongyicn@hotmail.com>
+Subject: Can NFS synchronize the file of different hosts automatically?
+Date: Fri, 09 Jul 2004 17:24:01 +0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040708172034.GM22328@pengutronix.de>
-References: <20040623080942.GJ21651@pengutronix.de> <20040708153346.342C512FF4@citi.umich.edu>
+Message-ID: <BAY15-F37wSpJMDsl5I0001314b@hotmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=gb2312; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BicZj-00081A-3i
-	for nfs@lists.sourceforge.net; Thu, 08 Jul 2004 10:20:47 -0700
-Received: from amalthea.dnx.de ([193.108.181.146] ident=mail)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.34)
-	id 1BicZi-0002Mc-LY
-	for nfs@lists.sourceforge.net; Thu, 08 Jul 2004 10:20:47 -0700
-To: Kevin Coffman <kwc@citi.umich.edu>
-In-Reply-To: <20040708153346.342C512FF4@citi.umich.edu>
+	id 1Birc1-0001JN-LB
+	for nfs@lists.sourceforge.net; Fri, 09 Jul 2004 02:24:09 -0700
+Received: from bay15-f37.bay15.hotmail.com ([65.54.185.37] helo=hotmail.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
+	id 1Birc1-00006u-AO
+	for nfs@lists.sourceforge.net; Fri, 09 Jul 2004 02:24:09 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,24 +27,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Jul 08, 2004 at 11:33:46AM -0400, Kevin Coffman wrote:
-> Use of the autotools would simplify CITI's patches for NFSv4.  Is it 
-> likely these autotools changes will be incorporated into the package 
-> such that we could take advantage of them?
+  Hello,everyone!
+    I face a task recently,that is when the files of server change or 
+update,the corresponding files of client can change or update automatically 
+without any delay.For example,the device file of server changes when the 
+device's state changes.A simple example is about the mouse's device 
+file.When I move the server's mouse,the mouse device file of server change 
+automatically. I want the client can get the server's mouse device file and 
+ can change and update automatically just as on the server when I move the 
+server's mouse.
+I am considering NFS for the solution,but I don't know NFS whether can 
+achieve the task or not because of my lacking of experience about this.If 
+NFS do,how to configure?
+    I am looking forward to get your reply so much.And thank you very much.
 
-I'm not sure if anybody had time to review our changes yet, there was no
-real feedback from the community. 
+_________________________________________________________________
+享用世界上最大的电子邮件系统— MSN Hotmail。  http://www.hotmail.com  
 
-If we should change the patches to make them better integratable just
-drop me a note. 
-
-Robert
--- 
- Dipl.-Ing. Robert Schwebel | http://www.pengutronix.de
- Pengutronix - Linux Solutions for Science and Industry
-   Handelsregister:  Amtsgericht Hildesheim, HRA 2686
-     Hornemannstra遝 12,  31137 Hildesheim, Germany
-    Phone: +49-5121-28619-0 |  Fax: +49-5121-28619-4
 
 
 -------------------------------------------------------
