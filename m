@@ -1,17 +1,18 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: [PATCH]: rpc_debug mode causes an oops
-Date: Mon, 13 Jan 2003 01:11:31 +0100
+Subject: [PATCH] Secure user authentication for NFS using RPCSEC_GSS [2/6]
+Date: Mon, 13 Jan 2003 01:13:42 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15906.1075.831837.959677@charged.uio.no>
+Message-ID: <15906.1206.722640.400521@charged.uio.no>
 Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: NFS maillist <nfs@lists.sourceforge.net>
+Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
+    NFS maillist <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mons.uio.no ([129.240.130.14] ident=7411)
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18XsCb-0001di-00
-	for <nfs@lists.sourceforge.net>; Sun, 12 Jan 2003 16:11:41 -0800
+	id 18XsEm-0001mV-00
+	for <nfs@lists.sourceforge.net>; Sun, 12 Jan 2003 16:13:56 -0800
 To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -26,34 +27,197 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-this patch fixes a bug introduced by the recent rpc_procinfo change.
-when entering debug mode, one of the debug printk's in sched.c expects
-tk_msg.rpc_proc to be non-NULL, but now it can be NULL in certain
-legitimate cases.
+The RPCSEC_GSS user context defines a 'sequence number' in the AUTH header
+fields in order to provide protection against replay attacks. This
+number needs to lie within a given 'window', and is required to be updated
+even when retransmitting dropped requests.
 
-the rpc_qname cleanup below removes redundant code.
+In order to allow this update to occur, move the XDR 'encode' phase
+so that it is done immediately before writing the data to the socket.
 
- net/sunrpc/sched.c |    5 +++--
- 1 files changed, 3 insertions(+), 2 deletions(-)
+Cheers,
+  Trond
 
-diff -u --recursive --new-file linux-2.5.56/net/sunrpc/sched.c linux-2.5.56-01-fix_oops/net/sunrpc/sched.c
---- linux-2.5.56/net/sunrpc/sched.c	2002-11-13 16:09:37.000000000 +0100
-+++ linux-2.5.56-01-fix_oops/net/sunrpc/sched.c	2003-01-12 22:39:06.000000000 +0100
-@@ -1123,11 +1123,12 @@
- 		"-rpcwait -action- --exit--\n");
- 	alltask_for_each(t, le, &all_tasks)
- 		printk("%05d %04d %04x %06d %8p %6d %8p %08ld %8s %8p %8p\n",
--			t->tk_pid, t->tk_msg.rpc_proc->p_proc,
-+			t->tk_pid,
-+			(t->tk_msg.rpc_proc ? t->tk_msg.rpc_proc->p_proc : -1),
- 			t->tk_flags, t->tk_status,
- 			t->tk_client, t->tk_client->cl_prog,
- 			t->tk_rqstp, t->tk_timeout,
--			t->tk_rpcwait ? rpc_qname(t->tk_rpcwait) : " <NULL> ",
-+			rpc_qname(t->tk_rpcwait),
- 			t->tk_action, t->tk_exit);
- 	spin_unlock(&rpc_sched_lock);
+diff -u --recursive --new-file linux-2.5.56-02-auth2/include/linux/sunrpc/xprt.h linux-2.5.56-03-rpc_encode/include/linux/sunrpc/xprt.h
+--- linux-2.5.56-02-auth2/include/linux/sunrpc/xprt.h	2002-11-07 18:29:01.000000000 +0100
++++ linux-2.5.56-03-rpc_encode/include/linux/sunrpc/xprt.h	2003-01-12 22:39:47.000000000 +0100
+@@ -187,6 +187,7 @@
+ 					unsigned long);
+ 
+ void			xprt_reserve(struct rpc_task *);
++int			xprt_prepare_transmit(struct rpc_task *);
+ void			xprt_transmit(struct rpc_task *);
+ void			xprt_receive(struct rpc_task *);
+ int			xprt_adjust_timeout(struct rpc_timeout *);
+diff -u --recursive --new-file linux-2.5.56-02-auth2/net/sunrpc/clnt.c linux-2.5.56-03-rpc_encode/net/sunrpc/clnt.c
+--- linux-2.5.56-02-auth2/net/sunrpc/clnt.c	2002-11-13 16:06:23.000000000 +0100
++++ linux-2.5.56-03-rpc_encode/net/sunrpc/clnt.c	2003-01-12 22:39:48.000000000 +0100
+@@ -470,7 +470,7 @@
+ 
+ 	dprintk("RPC: %4d call_allocate (status %d)\n", 
+ 				task->tk_pid, task->tk_status);
+-	task->tk_action = call_encode;
++	task->tk_action = call_bind;
+ 	if (task->tk_buffer)
+ 		return;
+ 
+@@ -510,8 +510,6 @@
+ 	dprintk("RPC: %4d call_encode (status %d)\n", 
+ 				task->tk_pid, task->tk_status);
+ 
+-	task->tk_action = call_bind;
+-
+ 	/* Default buffer setup */
+ 	bufsiz = task->tk_bufsize >> 1;
+ 	sndbuf->head[0].iov_base = (void *)task->tk_buffer;
+@@ -533,7 +531,8 @@
+ 	if (!(p = call_header(task))) {
+ 		printk(KERN_INFO "RPC: call_header failed, exit EIO\n");
+ 		rpc_exit(task, -EIO);
+-	} else
++		return;
++	}
+ 	if (encode && (status = encode(req, p, task->tk_msg.rpc_argp)) < 0) {
+ 		printk(KERN_WARNING "%s: can't encode arguments: %d\n",
+ 				clnt->cl_protname, -status);
+@@ -617,8 +616,17 @@
+ 	task->tk_action = call_status;
+ 	if (task->tk_status < 0)
+ 		return;
++	task->tk_status = xprt_prepare_transmit(task);
++	if (task->tk_status < 0)
++		return;
++	/* Encode here so that rpcsec_gss can use correct sequence number. */
++	call_encode(task);
++	if (task->tk_status < 0)
++		return;
+ 	xprt_transmit(task);
+-	if (!task->tk_msg.rpc_proc->p_decode && task->tk_status >= 0) {
++	if (task->tk_status < 0)
++		return;
++	if (!task->tk_msg.rpc_proc->p_decode) {
+ 		task->tk_action = NULL;
+ 		rpc_wake_up_task(task);
+ 	}
+@@ -758,7 +766,7 @@
+ 		if (RPC_IS_SETUID(task) && task->tk_suid_retry) {
+ 			dprintk("RPC: %4d retry squashed uid\n", task->tk_pid);
+ 			task->tk_flags ^= RPC_CALL_REALUID;
+-			task->tk_action = call_encode;
++			task->tk_action = call_bind;
+ 			task->tk_suid_retry--;
+ 			return;
+ 		}
+@@ -864,7 +872,7 @@
+ 			task->tk_garb_retry--;
+ 			dprintk("RPC: %4d call_verify: retry garbled creds\n",
+ 							task->tk_pid);
+-			task->tk_action = call_encode;
++			task->tk_action = call_bind;
+ 			return NULL;
+ 		case RPC_AUTH_TOOWEAK:
+ 			printk(KERN_NOTICE "call_verify: server requires stronger "
+@@ -899,7 +907,7 @@
+ 	if (task->tk_garb_retry) {
+ 		task->tk_garb_retry--;
+ 		dprintk(KERN_WARNING "RPC: garbage, retrying %4d\n", task->tk_pid);
+-		task->tk_action = call_encode;
++		task->tk_action = call_bind;
+ 		return NULL;
+ 	}
+ 	printk(KERN_WARNING "RPC: garbage, exit EIO\n");
+diff -u --recursive --new-file linux-2.5.56-02-auth2/net/sunrpc/xprt.c linux-2.5.56-03-rpc_encode/net/sunrpc/xprt.c
+--- linux-2.5.56-02-auth2/net/sunrpc/xprt.c	2002-11-18 02:12:26.000000000 +0100
++++ linux-2.5.56-03-rpc_encode/net/sunrpc/xprt.c	2003-01-12 22:39:48.000000000 +0100
+@@ -83,7 +83,6 @@
+  * Local functions
+  */
+ static void	xprt_request_init(struct rpc_task *, struct rpc_xprt *);
+-static void	do_xprt_transmit(struct rpc_task *);
+ static inline void	do_xprt_reserve(struct rpc_task *);
+ static void	xprt_disconnect(struct rpc_xprt *);
+ static void	xprt_conn_status(struct rpc_task *task);
+@@ -1091,51 +1090,40 @@
+  * Place the actual RPC call.
+  * We have to copy the iovec because sendmsg fiddles with its contents.
+  */
+-void
+-xprt_transmit(struct rpc_task *task)
++int
++xprt_prepare_transmit(struct rpc_task *task)
+ {
+ 	struct rpc_rqst	*req = task->tk_rqstp;
+ 	struct rpc_xprt	*xprt = req->rq_xprt;
++	int err = 0;
+ 
+-	dprintk("RPC: %4d xprt_transmit(%x)\n", task->tk_pid, 
+-				*(u32 *)(req->rq_svec[0].iov_base));
++	dprintk("RPC: %4d xprt_prepare_transmit\n", task->tk_pid);
+ 
+ 	if (xprt->shutdown)
+-		task->tk_status = -EIO;
++		return -EIO;
+ 
+ 	if (!xprt_connected(xprt))
+-		task->tk_status = -ENOTCONN;
+-
+-	if (task->tk_status < 0)
+-		return;
++		return -ENOTCONN;
+ 
+ 	if (task->tk_rpcwait)
+ 		rpc_remove_wait_queue(task);
+ 
+-	/* set up everything as needed. */
+-	/* Write the record marker */
+-	if (xprt->stream) {
+-		u32	*marker = req->rq_svec[0].iov_base;
+-
+-		*marker = htonl(0x80000000|(req->rq_slen-sizeof(*marker)));
+-	}
+-
+ 	spin_lock_bh(&xprt->sock_lock);
+ 	if (!__xprt_lock_write(xprt, task)) {
+-		spin_unlock_bh(&xprt->sock_lock);
+-		return;
++		err = -EAGAIN;
++		goto out_unlock;
+ 	}
+ 	if (list_empty(&req->rq_list)) {
+ 		list_add_tail(&req->rq_list, &xprt->recv);
+ 		req->rq_received = 0;
+ 	}
++out_unlock:
+ 	spin_unlock_bh(&xprt->sock_lock);
+-
+-	do_xprt_transmit(task);
++	return err;
  }
+ 
+-static void
+-do_xprt_transmit(struct rpc_task *task)
++void
++xprt_transmit(struct rpc_task *task)
+ {
+ 	struct rpc_clnt *clnt = task->tk_client;
+ 	struct rpc_rqst	*req = task->tk_rqstp;
+@@ -1143,6 +1131,16 @@
+ 	int status, retry = 0;
+ 
+ 
++	dprintk("RPC: %4d xprt_transmit(%u)\n", task->tk_pid, req->rq_slen);
++
++	/* set up everything as needed. */
++	/* Write the record marker */
++	if (xprt->stream) {
++		u32	*marker = req->rq_svec[0].iov_base;
++
++		*marker = htonl(0x80000000|(req->rq_slen-sizeof(*marker)));
++	}
++
+ 	/* Continue transmitting the packet/record. We must be careful
+ 	 * to cope with writespace callbacks arriving _after_ we have
+ 	 * called xprt_sendmsg().
 
 
 -------------------------------------------------------
