@@ -1,18 +1,13 @@
-From: "Emil Felix" <robinett@aol.com>
-Subject: Last forever in bed, make your woman say WOW ug expci xiz
-Date: Sun, 11 May 03 15:03:40 GMT
+From: "Brianna Mcintyre" <zsaulog@aol.com>
+Subject: Netsaintplug-devel, please ......apprise
+Date: Sun, 11 May 03 20:15:08 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <o-1lxu1-z32z@50o2m.d.rv1z>
+Message-ID: <m350$70r5c33$eldf$jyd--xi@xvoxv8dn>
 Mime-Version: 1.0
 Content-Type: multipart/alternative;
-	boundary=".1CDD0ECD68"
+	boundary="F70_FF8_70_B2.7_FE453"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from astound-64-83-196-93.mn.astound.net ([64.83.196.93])
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19EtL5-0004Wm-00
-	for <nfs@lists.sourceforge.net>; Sun, 11 May 2003 09:06:15 -0700
-Received: from  [208.90.219.222] by astound-64-83-196-93.mn.astound.net with ESMTP id <344556-27844> for <nfs@lists.sourceforge.net>; Sun, 11 May 2003 15:03:40 -0200
-To: nfs@lists.sourceforge.net
+To: <netsaintplug-devel@lists.sourceforge.net>, <nfs@lists.sourceforge.net>, <nms-cgi-support@lists.sourceforge.net>, <ofset-members@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,56 +22,51 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a multi-part message in MIME format.
 
---.1CDD0ECD68
-Content-Type: text/plain;
+--F70_FF8_70_B2.7_FE453
+Content-Type: text/html;
 Content-Transfer-Encoding: quoted-printable
 
-<html><font color=3D"white">ouhrcq pfgo knthcqsccbffgmpqco j 
-wbt vf w cro <br>profile<br>ahlxubolhttwtskc <b=
-r></font>
-<CENTER></font><font size=3D"+3">Get Hard! Stay Hard!<br></font><br>
-<table border=3D"0"><tr><td><b>Improve your sexual performance today<br> 
-and get a little something =FFFFFF91extra' to satisfy her</b>
-</tr></table><br>
-<font size=3D"+1">Join <font size=3D"+2" color=3D"red">Howard Stern</font>=
- and Thousands of<br> 
-Satisfied Customers by Ordering Today!</font><br>
-<br><table border=3D"0"><tr>
-<td><a href=3D"http://gig@members.aol.com/lilkiwi40/folder/"><img=
- src=3D"http://members.aol.com/lilkiwi40/folder/b2.jpg" border=3D"0"></a><=
-td><center><i>
-"Give your partner the best afterglow she's ever experienced<br> 
-when you take Optimum penis enlargement pills.<br>  
-Guaranteed to lengthen, thicken and empower your erections,<br> 
-try America's favorite today!"</i><br> 
-</tr></table> <font size=3D"+2">
-<a href=3D"http://runnymede@members.aol.com/lilkiwi40/folder/">Check it=
- out today, and discover the sex life you deserve!</a></font>
-</center><font color=3D"white"><br><br>s  lkrg qmmyi mmie hbps
-z
-ez   xk   nf <br><br><br>%RANDOM_TE=
-XT <br><br>
-<br><br><br><br><br><br><br><br><br><br>
-<br>zkpt yr ogtvmmsonw
-g
-zyhi f  dlxoa  jh <br><br>lhwppfj
-zgbz adzsts vjvvpcqr eeigwbwnnjuxmvbbkdb w
-fzo uoe
-w
-xnicfadr <br><br>
-<br><br><br><br><br><br><br><br><br><br><font size=3D"1">
-<A HREF=3D"mailto:removemenow-duh@list.ru?subject=3Dremove-ME-MIXER-O">
-<font color=3D"black"><font size=3D"1">Click Here</A> to remove yourself f=
-rom this opt-in/out list<br>
-</font><br><font color=3D"white">n s y f q  m
- n u hqgtldd i
-hs  re
-j tz <br>hmeabv
-gnligytjahasgaslayshw
- lvmill wqmrr 
-p ikrvtrrnf odhjadssogndps <br>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1=
+">
+<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV><FONT face=3D"Comic Sans MS" size=3D4>I am one of many Russian girls =
+that would 
+like to marry a</FONT></DIV>
+<DIV><FONT face=3D"Comic Sans MS" size=3D4>nice American man and come live=
+ in the 
+U.S.A. as a citizen.</FONT></DIV>
+<DIV><FONT face=3D"Comic Sans MS" size=3D4>Tanka G.</FONT></DIV>
+<DIV><FONT face=3D"Comic Sans MS" size=3D4>&nbsp;&nbsp;&nbsp;<FONT face=3D=
+Arial 
+size=3D3> (takes a couple seconds for my picture to load)</FONT></FONT></D=
+IV>
+<DIV>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<IMG style=3D"WIDTH: 320px; HEIGHT: 316=
+px" 
+height=3D316 src=3D"http://www.easternwomenwantyou.com/images/photos/phpbq=
+ktqv.jpg" 
+width=3D320></A><BR><BR></DIV>
+<DIV><A href=3D"http://www.easternwomenwantyou.com/?oc=3D5227"><FONT 
+face=3D"Comic Sans MS">Check us out here</FONT></A></DIV>
+<DIV>&nbsp;</DIV>
+<DIV>&nbsp;</DIV>
+<DIV><FONT face=3D"Comic Sans MS">Or let us know and we won't write you 
+again:<BR><BR></FONT><A 
+href=3D"http://www.easternwomenwantyou.com/x/?oc=3D5227"><FONT 
+face=3D"Comic Sans MS">Don't write to me</FONT></A></DIV>
+<DIV>&nbsp;</DIV><FONT color=3D#ffffff size=3D1>adolph apostle =
 
---.1CDD0ECD68--
+convert don't effusive tradesmen cloth %RANDOM_W=
+ORD 
+bedbug escape roundhead autocratic auriga %RANDOM_W=
+ORD 
+cowpunch spoof</FONT> </BODY></HTML>
+
+--F70_FF8_70_B2.7_FE453--
 
 
 
