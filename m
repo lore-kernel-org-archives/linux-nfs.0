@@ -1,30 +1,25 @@
-From: Martin Pool <mbp@sourcefrog.net>
-Subject: Re: no_subtree_check questions
-Date: Fri, 29 Aug 2003 15:13:40 +1000
+From: Steve Dickson <SteveD@RedHat.com>
+Subject: Re: [PATCH] Access cache forgetting mode bits
+Date: Fri, 29 Aug 2003 09:14:44 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030829151340.150a0ae5.mbp@sourcefrog.net>
-References: <20030828110309.0e0eff6f.mbp@sourcefrog.net>
-	<20030828121410.4ccc4b45.mbp@sourcefrog.net>
-	<16206.3062.480403.590086@charged.uio.no>
-	<200308290206.49232.bernd-schubert@web.de>
+Message-ID: <3F4F51C4.10605@RedHat.com>
+References: <3F4E302F.5060409@RedHat.com> <1062107512.2121.25.camel@bree.suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19sba5-0007kk-00
-	for <nfs@lists.sourceforge.net>; Thu, 28 Aug 2003 22:13:53 -0700
-Received: from sngrel4.hp.com ([192.6.86.110])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 19sba4-00034Y-GY
-	for nfs@lists.sourceforge.net; Thu, 28 Aug 2003 22:13:52 -0700
-Received: from XAUBRG2.AUS.HP.COM (xaubrg2.aus.hp.com [15.23.69.43])
-	by sngrel4.hp.com (Postfix) with SMTP id 3DA26E4
-	for <nfs@lists.sourceforge.net>; Fri, 29 Aug 2003 13:13:46 +0800 (SST)
-To: Bernd Schubert <bernd-schubert@web.de>
-In-Reply-To: <200308290206.49232.bernd-schubert@web.de>
+	id 19sj6d-0000B5-00
+	for <nfs@lists.sourceforge.net>; Fri, 29 Aug 2003 06:15:59 -0700
+Received: from host-64-179-20-100.man.choiceone.net ([64.179.20.100] helo=Odyssey.Home.4Dicksons.Org)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.22)
+	id 19sj6c-00036K-78
+	for nfs@lists.sourceforge.net; Fri, 29 Aug 2003 06:15:58 -0700
+To: Andreas Gruenbacher <agruen@suse.de>
+In-Reply-To: <1062107512.2121.25.camel@bree.suse.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -37,33 +32,41 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On 29 Aug 2003 Bernd Schubert <bernd-schubert@web.de> wrote:
+Andreas Gruenbacher wrote:
 
-> Hello,
-> 
-> as I understand it, the sub_tree_check is only neccessary if the
-> filesystem is not exported at its root. Wouldn't it make sense to let
-> the nfs-utils automatically recognise that and then automatically set
-> the option no_subtree_check? I mean this could be implemented
-> easily...
+>your idea idea is good, but the patch is incorrect in at least two ways:
+>(1) it merges the cached results of successful and unsuccessful
+>requests, (2) [access("file", R_OK) == 0] and [access("file", W_OK) ==
+>0] does not imply [access("file", R_OK | W_OK) == 0].
+>
+Good point!
 
-Of course that would just make the behaviour incosistent and hard to
-debug.  (I might not have been able to work out what was wrong in the
-original bug report, for example.)  I'm not really a fan of fixes that
-just fix some circumstances.
+>[....] How about the attached patch? In the worst case, with "weird" permissions
+>this will double the number of RPCs needed, but this will not happen on
+>"real" systems.
+>
+Yes... your patch does seem to work with "normal" cases.... which is 
+probably the
+best we can hope for...
 
-> Also, I would like to know what happens if one sets the 
-> no_subtree_check-option and re-exports the /etc/exportfs on the server
-> or restarts the nfsd, but the clients still have mounted the
-> directory? I'm a bit scared since the man-page says that the
-> filehandle is modified for this check.
+>The NFS access cache has a problem if mounted file systems are accessed
+>by multiple users: The results of only a single user are cached. When
+>another user comes along, cache trashing similar to what Steve has
+>observed will occur.
+>  
+>
+True... its too bad the cred cache doesn't use uids and gids....
 
-I think the clients need to remount the filesystem, because all the
-filehandles become invalid.  Even the root of the filesystem can't be
-found.  Perhaps I just did something wrong though.
+>Steve, you seem to be looking into the nfsacl extensions as well. ACLs
+>are not cached on the client side, so operations like `ls -l' (which
+>need to check which files have ACLs) also produce lots of RPCs. I don't
+>see this as a significant problem at this point.
+>
+Caches are always a good idea wrt to NFS... but I guess only time will 
+tell wrt nfsacls...
 
--- 
-Martin 
+SteveD.
+
 
 
 -------------------------------------------------------
