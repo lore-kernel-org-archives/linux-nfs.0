@@ -1,17 +1,20 @@
 From: Tom McNeal <trmcneal@attbi.com>
-Subject: Re: kernel version problem
-Date: Fri, 15 Mar 2002 07:55:07 -0800
+Subject: Re: Problems creating (some) symlinks
+Date: Fri, 15 Mar 2002 09:21:17 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3C92195B.BE165F9E@attbi.com>
-References: <DAV20GvQ3C3unebhJHa0000ed31@hotmail.com>
+Message-ID: <3C922D8D.D40DB709@attbi.com>
+References: <3C8CA0D1.3CBE5DBF@ecmwf.int> <3C8CA2F9.B11459E@moving-picture.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Received: from rwcrmhc53.attbi.com ([204.127.198.39])
+Received: from rwcrmhc51.attbi.com ([204.127.198.38])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16lu20-0005CN-00
-	for <nfs@lists.sourceforge.net>; Fri, 15 Mar 2002 07:54:12 -0800
-To: Tina Arora <tinaarora@hotmail.com>
+	id 16lvNN-00062A-00
+	for <nfs@lists.sourceforge.net>; Fri, 15 Mar 2002 09:20:21 -0800
+Received: from attbi.com ([12.234.31.73]) by rwcrmhc51.attbi.com
+          (InterMail vM.4.01.03.27 201-229-121-127-20010626) with ESMTP
+          id <20020315172016.FBIE2626.rwcrmhc51.attbi.com@attbi.com>
+          for <nfs@lists.sourceforge.net>; Fri, 15 Mar 2002 17:20:16 +0000
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,36 +27,31 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-2.2.16 is an adequate base to start from, but if you're able
-to make bigger changes, and want the best nfs platform for 
-2.2, then go to 2.2.19.
-
-For 2.2.16, Go to http://nfs.sourceforge.net/ and follow the 
-link to the download page (containing both the nfs-utils tar 
-balls and the kernel patches).
-
-You need to apply the kernel-nfs-dhiggen_merge-3.0.tar.gz
-download to 2.2.16.
-
-Apply the latest nfs utils download (nfs-utils-0.3.3.tar.gz)
-
-Both have readme files; they'll give you the requirements and
-tell you what to do.
-
-Tom McNeal
-
-
-> Tina Arora wrote:
+James Pearson wrote:
 > 
-> hi,
-> nfs.soureforge.net talks of kernel version atleast 2.2.18 to use nfs version 3
-> .My system shows
-> "Red Hat Linux release 7.0(Guinness)
->  Kernel 2.2.16-22 on i686"
-> Nebody ne clues what this -22 means and also will i be able to use nfs (3) on
-> this system of mine..
-> thanx
-> Tina
+> Known problem with 2.4.10 - see:
+> 
+> http://www.geocrawler.com/archives/3/789/2001/9/0/6703385/
+> 
+> and
+> 
+> http://www.geocrawler.com/archives/3/789/2001/10/150/6752831/
+> 
+> May be this should be in the FAQ ...
+> 
+> James Pearson
+
+
+I modified the FAQ language a bit, suggesting that folks both post
+problems and search the archives when hitting problems.  I didn't
+want to get too specific, especially about problems that are
+already solved.
+
+Also, James mentioned that the IRIX client text in the HOW-TO
+is out of date; Tavis Barr is about to post the updated HOW-TO
+and ask for comments; it contains the IRIX updates.
+
+Tom
 
 --
 ------------------------------------------------------------
