@@ -1,24 +1,30 @@
-From: "Rik Schneider" <riks@wni.com>
-Subject: RE: nfs client monitoring?
-Date: Fri, 30 Jul 2004 07:57:03 -0700
+From: Garrick Staples <garrick@usc.edu>
+Subject: Re: nfs client monitoring?
+Date: Fri, 30 Jul 2004 09:15:15 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <A6BFF93825584E488BCF6A855C1936C001A57198@SUW2CXMAIL.wni.com>
+Message-ID: <20040730161515.GU27078@polop.usc.edu>
+References: <A6BFF93825584E488BCF6A855C1936C001A57198@SUW2CXMAIL.wni.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="Sao9idefCFjK9Dt3"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BqYon-0008TW-CL
-	for nfs@lists.sourceforge.net; Fri, 30 Jul 2004 07:57:09 -0700
-Received: from dragon.wni.com ([12.44.164.3] helo=su-sunsrv-1.wni.com)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1BqYon-0006CS-3e
-	for nfs@lists.sourceforge.net; Fri, 30 Jul 2004 07:57:09 -0700
-Received: from SUW2CXMAIL.wni.com (suw2c2mail [172.18.102.22])
-	by su-sunsrv-1.wni.com (8.12.2+Sun/8.12.2) with ESMTP id i6UEv3iA004008
-	for <nfs@lists.sourceforge.net>; Fri, 30 Jul 2004 14:57:05 GMT
-To: <nfs@lists.sourceforge.net>
+	id 1Bqa3C-0007bh-Ip
+	for nfs@lists.sourceforge.net; Fri, 30 Jul 2004 09:16:06 -0700
+Received: from polop.usc.edu ([128.125.10.9])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.34)
+	id 1Bqa3B-0003Nn-Ro
+	for nfs@lists.sourceforge.net; Fri, 30 Jul 2004 09:16:06 -0700
+Received: from polop.usc.edu (localhost.localdomain [127.0.0.1])
+	by polop.usc.edu (8.12.11/8.12.11) with ESMTP id i6UGFGxv014483
+	for <nfs@lists.sourceforge.net>; Fri, 30 Jul 2004 09:15:16 -0700
+Received: (from garrick@localhost)
+	by polop.usc.edu (8.12.11/8.12.11/Submit) id i6UGFGGM014481
+	for nfs@lists.sourceforge.net; Fri, 30 Jul 2004 09:15:16 -0700
+To: nfs@lists.sourceforge.net
+In-Reply-To: <A6BFF93825584E488BCF6A855C1936C001A57198@SUW2CXMAIL.wni.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,29 +37,48 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-</lurk>
 
->  I've recently added some hooks to xosview that will graphically
->  show NFS and kNFSD traffic which I find pretty handy....
-> =20
->http://download.fedora.redhat.com/pub/fedora/linux/core/2/i386/os/Fedor
-a\
->/RPMS/xosview-1.8.0-19.i386.rpm
+--Sao9idefCFjK9Dt3
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Could you please provide source or patches for those of us who don't run
-fedora.  Source rpms could also be helpful.
+On Fri, Jul 30, 2004 at 07:57:03AM -0700, Rik Schneider alleged:
+> </lurk>
+>=20
+> >  I've recently added some hooks to xosview that will graphically
+> >  show NFS and kNFSD traffic which I find pretty handy....
+> > =20
+> >http://download.fedora.redhat.com/pub/fedora/linux/core/2/i386/os/Fedor
+> a\
+> >/RPMS/xosview-1.8.0-19.i386.rpm
+>=20
+> Could you please provide source or patches for those of us who don't run
+> fedora.  Source rpms could also be helpful.
 
-Thanks,
-Rik Schneider
-Network Engineer
-Weathernews Americas Inc. (formerly WNI Oceanroutes)
-(405) 701-8941 - Office
-riks@wni.com
-www.weathernews.com
-
-<lurk>
+Oddly enough,
+  http://download.fedora.redhat.com/pub/fedora/linux/core/2/i386/os/SRPMS/x=
+osview-1.8.0-19.src.rpm
 
 
+
+--=20
+Garrick Staples, Linux/HPCC Administrator
+University of Southern California
+
+--Sao9idefCFjK9Dt3
+Content-Type: application/pgp-signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.3 (GNU/Linux)
+
+iD8DBQFBCnQT0SBUxJbm9HMRAos8AJ9wj32rS9TPAcFeQKG/g0eY19MBigCcDyMu
+FZ4xeFloa7+Y7/6LPyMnLyI=
+=XbXI
+-----END PGP SIGNATURE-----
+
+--Sao9idefCFjK9Dt3--
 
 
 -------------------------------------------------------
