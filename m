@@ -1,20 +1,19 @@
-From: Martynas Buozis <martynas@ti.com>
-Subject: Re: nfsroot problems on RedHat 8 with kernel linux-2.4.18-27.8.0
-Date: Mon, 26 May 2003 13:47:22 +0200
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: bk update ready for 2.5.69
+Date: Wed, 7 May 2003 15:21:04 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3ED1FECA.2030105@ti.com>
-References: <3ECE0EF3.5080004@ti.com>	<shs4r3lx1ux.fsf@charged.uio.no>	<3ECE2479.3000706@ti.com>	<16078.12509.988134.109974@charged.uio.no>	<003401c321ad$9a438180$6464a8c0@foxie> <16081.15177.472767.206769@charged.uio.no>
-Reply-To: martynas@ti.com
+Message-ID: <16057.2112.934735.338852@charged.uio.no>
+Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
+    NFS maillist <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from go4.ext.ti.com ([192.91.75.132])
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19KGRs-0006We-00
-	for <nfs@lists.sourceforge.net>; Mon, 26 May 2003 04:47:28 -0700
-To: trond.myklebust@fys.uio.no
+Received: from pat.uio.no ([129.240.130.16])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19DOrA-0001G8-00
+	for <nfs@lists.sourceforge.net>; Wed, 07 May 2003 06:21:13 -0700
+To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,73 +26,95 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond
 
+Linus, please do a
 
-Great ! Wonderful ! It is working now ! Thank you very much for your 
-kind help.
+	bk pull http://nfsclient.bkbits.net/linux-2.5
 
-Linux specialist from EMC support is still investigating this question ...
+This will update the following files:
 
+ fs/fs-writeback.c           |    3 
+ fs/lockd/host.c             |   14 --
+ fs/lockd/mon.c              |    1 
+ fs/nfs/dir.c                |    2 
+ fs/nfs/file.c               |    2 
+ fs/nfs/write.c              |    6 -
+ include/linux/sunrpc/xdr.h  |    5 
+ include/linux/sunrpc/xprt.h |    2 
+ mm/page-writeback.c         |    2 
+ net/sunrpc/clnt.c           |   58 ++++++-----
+ net/sunrpc/sched.c          |    5 
+ net/sunrpc/xdr.c            |  111 ++++++++++++++++++++-
+ net/sunrpc/xprt.c           |  229 ++++++++++++++++++++++----------------------
+ 13 files changed, 281 insertions(+), 159 deletions(-)
 
-With best regards
-Martynas
+through these ChangeSets:
 
+<trond.myklebust@fys.uio.no> (03/05/07 1.1098)
+   UDP and TCP zero copy code for the NFS client. The main interest
+   of this patch is to eliminate the use of xdr_kmap() and xdr_unmap()
+   by replacing them with MSG_MORE. xdr_kmap() is deadlock-prone
+   due to the fact that it has to kmap() several pages at the same time.
 
-Trond Myklebust wrote:
->>>>>>" " == Martynas Buozis <martynas@ti.com> writes:
->>>>>
-> 
->      > informtion as required by Celerra, so mount request is
->      > denied. When I use mount from command line on booted RedHat 8
->      > system to mount same file system - it sends all required
->      > information and Celerra accepts mount request.
-> 
-> OK. I misunderstood you (sorry). You were talking about the mount
-> protocol, and I was thinking about the NFS protocol itself.
-> 
-> The following patch ought to suffice...
-> 
-> Cheers,
->   Trond
-> 
-> --- linux-2.4.21-up/fs/nfs/mount_clnt.c.orig	2002-10-15 18:32:18.000000000 +0200
-> +++ linux-2.4.21-up/fs/nfs/mount_clnt.c	2003-05-25 23:50:12.000000000 +0200
-> @@ -75,7 +75,7 @@
->  
->  	clnt = rpc_create_client(xprt, hostname,
->  				&mnt_program, version,
-> -				RPC_AUTH_NULL);
-> +				RPC_AUTH_UNIX);
->  	if (!clnt) {
->  		xprt_destroy(xprt);
->  	} else {
-> 
+<trond.myklebust@fys.uio.no> (03/05/07 1.1097)
+   Ensure that Lockd and the NSM (statd) clients always use privileged
+   ports. Remove the existing code to temporarily raise privileges in
+   fs/lockd/host.c, and use the new code in net/sunrpc/xprt.c
+   
+   There should no longer be a need to temporarily change the fsuid.
+   Remove this feature.
 
+<cel@citi.umich.edu> (03/05/07 1.1096)
+   the recently-applied patch to fix the rpc_show_tasks() Oops is incomplete.
+   this applies over 2.5.68 and should address all of the issues in
+   rpc_show_tasks().
 
+<trond.myklebust@fys.uio.no> (03/05/07 1.1095)
+   Add the sk->callback_lock spinlocks to the RPC socket callbacks
+   in order to protect the socket from being released by one
+   CPU while the other is in a soft interrupt.
 
--- 
+<trond.myklebust@fys.uio.no> (03/05/07 1.1094)
+   Ensure that if we need to reconnect the socket, we also resend
+   the entire RPC message
+   
+   Assorted TCP reconnection fixes.
+   
+   Temporarily raise the necessary CAP_NET_BIND_SERVICE capability
+   if we need to bind the socket to a reserved port during a TCP
+   reconnection. Check for CAP_NET_BIND_SERVICE at mount time.
 
-With best regards
-Martynas Buozis
-UNIX Systems Administrator
-FFAB Computer Engineering
+<trond.myklebust@fys.uio.no> (03/05/07 1.1093)
+   Don't use an RPC child process when reconnecting to a TCP server.
+   This is more efficient, and also fixes an existing deadlock
+   situation in which the child could be waiting for an xprt_write_lock
+   that was being held by the parent.
 
+<trond.myklebust@fys.uio.no> (03/05/07 1.1092)
+   Fix a TCP race: check whether or not the socket has been disconnected
+   before we allow an RPC request to wait on a reply.
 
+<trond.myklebust@fys.uio.no> (03/05/07 1.1091)
+   Fix typos in close-to-open cache consistency checking.
 
--------------------------------------------------------------
-Martynas Buozis            Texas Instruments Deutschland GmbH
-Mail:  martynas@ti.com     Haggertystrasse 1
-Phone: +49 8161 80 4506    85356 Freising
-Fax:   +49 8161 80 3191    Germany
+<trond.myklebust@fys.uio.no> (03/05/07 1.1090)
+   Decrement the nr_unstable page state after the COMMIT RPC call
+   completes instead of before. This ensures that writeback 
+   WB_SYNC_ALL does wait on completion.
+   
+   Don't overreport the number of pages we wrote out. It is safer to
+   underreport.
+   
+   Fix missing NFSv3 unstable write accounting in fs/fs-writeback.c
+   and mm/page-writeback.c
 
 
 
 -------------------------------------------------------
-This SF.net email is sponsored by: ObjectStore.
-If flattening out C++ or Java code to make your application fit in a
-relational database is painful, don't do it! Check out ObjectStore.
-Now part of Progress Software. http://www.objectstore.net/sourceforge
+Enterprise Linux Forum Conference & Expo, June 4-6, 2003, Santa Clara
+The only event dedicated to issues related to Linux enterprise solutions
+www.enterpriselinuxforum.com
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
