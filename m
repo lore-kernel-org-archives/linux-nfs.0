@@ -1,24 +1,23 @@
-From: Michael Thomson <michael@canb.auug.org.au>
-Subject: AIX and HP NFS client behaviour
-Date: Mon, 16 Jun 2003 11:40:07 +1000
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: [BUG] [PATCH] CLOSE_WAIT sockets may remain forever
+Date: Mon, 16 Jun 2003 11:59:27 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3EED1FF7.4EBE7558@canb.auug.org.au>
+Message-ID: <16109.9343.339819.34212@gargle.gargle.HOWL>
+References: <20030611.214512.123409801.taka@valinux.co.jp>
+	<20030614.010949.48529350.taka@valinux.co.jp>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mta07ps.bigpond.com ([144.135.25.132])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19Riyd-00030C-00
-	for <nfs@lists.sourceforge.net>; Sun, 15 Jun 2003 18:40:07 -0700
-Received: from localhost.localdomain ([144.135.25.84])
- by mta07ps.email.bigpond.com
- (iPlanet Messaging Server 5.2 HotFix 1.14 (built Mar 18 2003))
- with SMTP id <0HGJ00MWLWLR4B@mta07ps.email.bigpond.com> for
- nfs@lists.sourceforge.net; Mon, 16 Jun 2003 11:39:27 +1000 (EST)
-Received: from canb.auug.org.au (ssa14.worldgroup.com [203.2.203.114])
-	by localhost.localdomain (8.12.8/8.8.5) with ESMTP id h5G1dSsY013948	for
- <nfs@lists.sourceforge.net>; Mon, 16 Jun 2003 11:39:28 +1000
-To: nfs@lists.sourceforge.net
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19RjD9-0001gQ-00
+	for <nfs@lists.sourceforge.net>; Sun, 15 Jun 2003 18:55:07 -0700
+Received: From notabene ([129.94.172.124] == notabene.cse.unsw.EDU.AU)
+	(for <taka@valinux.co.jp>) (for <nfs@lists.sourceforge.net>) By tone
+	With Smtp ; Mon, 16 Jun 2003 11:55:00 +1000
+To: Hirokazu Takahashi <taka@valinux.co.jp>
+In-Reply-To: message from Hirokazu Takahashi on Saturday June 14
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,57 +30,33 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi all,
+On Saturday June 14, taka@valinux.co.jp wrote:
+> Hello,
+> 
+> I also realized that one more patch is needed.
+> 
+> > I found a bug that CLOSE_WAIT sockets may remain forever on an
+> > NFS server when NFS client is IRIX6.5 .
+> > IRIX6.5 try to connect the server twice. I guess the first trial is
+> > checking capability of the server and it closes the socket
+> > immediately without sending data.
+> > 
+> > In this case the Linux server can't close a newly established
+> > socket as it isn't accepted yet.
+> > There are no problems if it's a typical NFS client which
+> > sends data after establishing connection.
+> 
+> Potentially NFS clients might close the socket before it is accepted
+> by an NFS server. This may leaves CLOSE_WAIT sockets since there are
+> no chances to set a SK_CLOSE flag on it.
+> 
+> We should apply these patches or it might become a target of a DOS attack.
+> 
 
-I have been investigating a problem we have been having with some of our
-NFS clients.
+Thanks for these.  They seem to make sense.
+I'll do a bit of testing and then pass them on.
 
-Our setup is a large filesystem on a Linux server running kernel 2.4.20
-with nfs-utils 1.0.1-2, with a number of clients each accessing their
-own export of a portion of this filessystem.
-
-With the majority of the clients (Linux, Sun, OS390 etc) we get expected
-performance.  All the clients are using NFS version 3.
-
-With AIX 4 and HP 11.00 we get acceptable performance when just copying
-a file or generating a file from say /dev/zero.  The networking all
-seems OK.  When we actually run some programs that write and read from
-NFS we get terrible performance...
-
-What I see when running these clients via nfsstat is:
-Version 3: (548087 calls)
-null                    getattr                 setattr
-0 0%                    610 0%                  6 0%
-lookup                  access                  readlink
-416 0%                  56 0%                   0 0%
-read                    write                   create
-530 0%                  273763 49%              33 0%
-mkdir                   symlink                 mknod
-0 0%                    0 0%                    0 0%
-remove                  rmdir                   rename
-16 0%                   0 0%                    0 0%
-link                    readdir                 readdir+
-0 0%                    0 0%                    4 0%
-fsstat                  fsinfo                  pathconf
-0 0%                    0 0%                    0 0%
-commit
-272653 49%
-
-Basically every write is followed by a commit.  When looking at the
-tcpdump for the same run I see the same thing (as I would expect, but
-just wanted to confirm what nfsstat was saying)
-
-I initially suspected sync/async issues causing constant commits but
-have tried many different combinations and the problem does not change.
-
-Does anyone have any idea's of what is causing this 1:1 relationship
-between writes amd commits?
-
-Does anyone know how to correct the behaviour for AIX4 and HP 11 nfs
-clients?
-
-Thanks in advance for any information.
-Michael Thomson
+NeilBrown
 
 
 -------------------------------------------------------
