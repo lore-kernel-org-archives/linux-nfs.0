@@ -1,31 +1,25 @@
-From: Bruce Allan <bwa@us.ibm.com>
-Subject: [PATCH] add MODULE_DESCRIPTION to nfsd module
-Date: Tue, 25 Jan 2005 14:40:04 -0800
-Message-ID: <1106692803.4420.32.camel@w-bwa3.beaverton.ibm.com>
-Reply-To: bwa@us.ibm.com
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH] add MODULE_DESCRIPTION to nfs module, update NFS references in MAINTAINERS
+Date: Wed, 26 Jan 2005 08:05:47 +0000
+Message-ID: <20050126080547.GA6067@infradead.org>
+References: <1106692805.4420.34.camel@w-bwa3.beaverton.ibm.com> <20050125230829.GA30641@infradead.org> <1106698790.4420.64.camel@w-bwa3.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	linux-nfs <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CtZM5-0003Cg-Sv
-	for nfs@lists.sourceforge.net; Tue, 25 Jan 2005 14:40:13 -0800
-Received: from e35.co.us.ibm.com ([32.97.110.133])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1CtiBd-00076q-Ao
+	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 00:06:01 -0800
+Received: from pentafluge.infradead.org ([213.146.154.40])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1CtZM4-00074B-DD
-	for nfs@lists.sourceforge.net; Tue, 25 Jan 2005 14:40:13 -0800
-Received: from westrelay01.boulder.ibm.com (westrelay01.boulder.ibm.com [9.17.195.10])
-	by e35.co.us.ibm.com (8.12.10/8.12.9) with ESMTP id j0PMe6Z7565536
-	for <nfs@lists.sourceforge.net>; Tue, 25 Jan 2005 17:40:06 -0500
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by westrelay01.boulder.ibm.com (8.12.10/NCO/VER6.6) with ESMTP id j0PMe51c345394
-	for <nfs@lists.sourceforge.net>; Tue, 25 Jan 2005 15:40:05 -0700
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.12.11/8.12.11) with ESMTP id j0PMe5QZ002737
-	for <nfs@lists.sourceforge.net>; Tue, 25 Jan 2005 15:40:05 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
+	id 1CtiBb-0002zf-F3
+	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 00:06:01 -0800
+To: Bruce Allan <bwa@us.ibm.com>
+In-Reply-To: <1106698790.4420.64.camel@w-bwa3.beaverton.ibm.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,31 +33,12 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-To direct people to the appropriate resources when experiencing problems
-with the NFS server here is a simple patch to add module description
-(with link to NFS documentation) to the nfsd module.
+On Tue, Jan 25, 2005 at 04:19:50PM -0800, Bruce Allan wrote:
+> Besides the NFS configuration comments in ./fs/Kconfig and the
+> MAINTAINERS file (which might not be present on a system), can you
+> suggest an alternative location to provide this pointer?
 
-Patch created against 2.6.11-rc2.
-
-Signed-off-by: Bruce Allan <bwa@us.ibm.com>
-
-diff -urp linux-2.6.11-rc2-vanilla/fs/nfsd/nfsctl.c linux-2.6.11-rc2/fs/nfsd/nfsctl.c
---- linux-2.6.11-rc2-vanilla/fs/nfsd/nfsctl.c	2004-12-24 13:34:02.000000000 -0800
-+++ linux-2.6.11-rc2/fs/nfsd/nfsctl.c	2005-01-25 14:20:10.000000000 -0800
-@@ -434,5 +434,6 @@ static void __exit exit_nfsd(void)
- 
- MODULE_AUTHOR("Olaf Kirch <okir@monad.swb.de>");
- MODULE_LICENSE("GPL");
-+MODULE_DESCRIPTION("NFS server module (http://nfs.sourceforge.net)");
- module_init(init_nfsd)
- module_exit(exit_nfsd)
-
-
-Regards,
----
-Bruce Allan
-Software Engineer, Linux Technology Center
-IBM Corporation, Beaverton OR USA
+MAINTAINERS is exactly the right place.
 
 
 
