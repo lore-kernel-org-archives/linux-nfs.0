@@ -1,15 +1,15 @@
-From: =?iso-8859-1?q?Wiesner=20Thomas?= <w15mail@yahoo.de>
-Subject: NFS: Problem on changing runlevels
-Date: Mon, 16 Jun 2003 17:55:29 +0200 (CEST)
+From: =?GB2312?B?us3Rts34ucnGsdDFz6LN+A==?= <fsff@21cn.com>
+Subject: =?GB2312?B?wvS5ycaxo6zV0rrawu0sus3Rts34ucnGsdDFz6LN+A==?=
+Date: Tue, 17 Jun 2003 00:16:11 +0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030616155529.78882.qmail@web21203.mail.yahoo.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Message-ID: <E19RwcB-0006oE-00@sc8-sf-list1.sourceforge.net>
+Reply-To: f2@21cn.com
+Content-Type: text/html;charset="GB2312"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from web21203.mail.yahoo.com ([216.136.130.22])
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19RwKP-0005el-00
-	for <nfs@lists.sourceforge.net>; Mon, 16 Jun 2003 08:55:29 -0700
+Received: from [218.86.49.5] (helo=21cn.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19RwcB-0006oE-00
+	for <nfs@lists.sourceforge.net>; Mon, 16 Jun 2003 09:13:53 -0700
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -23,52 +23,29 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello!
+<html>
 
-I have installed Debian Linux 3.0r1 and a
-home-compiled 2.4.18 kernel (no additional patches)
-with NFS-kernel-server (compiled in).
-Everything seems to work, but when I change the
-runlevel to 1 and to 2 after doing something or simply
-typing CNTRL-D the system hangs at this point:
+<head>
 
-  Starting NFS kernel daemon: nfsd
+<title>www</title>
+</head>
 
-I can recover by pressing CNTRL-ALT-DEL and it
-shuts down and reboots normally.
-When I look into /var/log/daemon.log, I find these
-lines (tail part):
+<body bgcolor="#EA0000">
 
-Jun 15 16:38:38 fserverII init: Switching to runlevel:
-1
-Jun 15 16:38:45 fserverII rpc.statd[149]: Caught
-signal 15, un-registering and exiting.
-Jun 15 16:39:23 fserverII rpc.statd[250]: Version 1.0
-Starting
-Jun 15 16:39:23 fserverII rpc.statd[251]: unable to
-register (statd, 1, udp). 
-Jun 15 16:39:59 fserverII init: Switching to runlevel:
-6
-Jun 15 16:40:54 fserverII rpc.statd[148]: Version 1.0
-Starting
+<div align="center">
+  <center>
+  <table border="0" cellpadding="0" cellspacing="0" width="98%" height="275">
+    <tr>
+      <td width="100%" height="275">
+        <p align="center"><script src="http://www.158china.com/sms/union/heima_green.js?smsuid=10176&color=fer&style=green"></script></td>
+    </tr>
+  </table>
+  </center>
+</div>
 
-So it isn´t a serious problem, but sometimes I need
-the single user mode and it´s nasty to reboot after
-using it.
+</body>
 
-BTW: I have the looback device configured (as
-done by the debian-setup). I mentioned this, because
-somebody else seemed to have troubles with NFS without
-it.
-
-Does anyone know went wrong (and how I can correct
-it)?
-Tanks.
-
-__________________________________________________________________
-
-Gesendet von Yahoo! Mail - http://mail.yahoo.de
-Logos und Klingeltöne fürs Handy bei http://sms.yahoo.de
+</html>
 
 
 -------------------------------------------------------
