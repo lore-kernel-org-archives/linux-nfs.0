@@ -1,28 +1,25 @@
-From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
-Subject: nfsd: too many open TCP sockets?
-Date: Fri, 10 Sep 2004 13:34:03 +0200
+From: Peter Astrand <peter@cendio.se>
+Subject: Re: userspace NFS daemon
+Date: Mon, 6 Sep 2004 09:41:31 +0200 (CEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <4141912B.8040502@bio.ifi.lmu.de>
+Message-ID: <Pine.LNX.4.44.0409060935290.20425-100000@maggie.lkpg.cendio.se>
+References: <20040905220120.GA29596@janus>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: TEXT/PLAIN; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C5yDH-0003dw-3I
-	for nfs@lists.sourceforge.net; Fri, 10 Sep 2004 20:06:07 -0700
-Received: from acheron.informatik.uni-muenchen.de ([129.187.214.135])
+	id 1C4E88-00049f-Uf
+	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 00:41:36 -0700
+Received: from cheddar.cendio.se ([193.12.253.77] helo=mail.cendio.se)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1C5jiV-0004UK-Ge
-	for nfs@lists.sourceforge.net; Fri, 10 Sep 2004 04:37:34 -0700
-Received: from internaldeliver.acheron.informatik.uni-muenchen.de (localhost [127.0.0.1])
-	by acheron.informatik.uni-muenchen.de (Postfix) with ESMTP id 3DA744361E
-	for <nfs@lists.sourceforge.net>; Fri, 10 Sep 2004 13:34:05 +0200 (CEST)
-Received: from [141.84.1.141] (galois.bio.ifi.lmu.de [141.84.1.141])
-	(using TLSv1 with cipher RC4-MD5 (128/128 bits))
-	(No client certificate requested)
-	by acheron.informatik.uni-muenchen.de (Postfix) with ESMTP id 2C4904361C
-	for <nfs@lists.sourceforge.net>; Fri, 10 Sep 2004 13:34:05 +0200 (CEST)
-To: nfs@lists.sourceforge.net
+	id 1C4E87-00034P-FS
+	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 00:41:36 -0700
+Received: from maggie.lkpg.cendio.se (maggie.lkpg.cendio.se [10.47.1.208])
+	by mail.cendio.se (Postfix) with ESMTP id 199D325DA35
+	for <nfs@lists.sourceforge.net>; Mon,  6 Sep 2004 09:41:31 +0200 (CEST)
+To: Linux NFS mailing list <nfs@lists.sourceforge.net>
+In-Reply-To: <20040905220120.GA29596@janus>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -35,33 +32,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+On Mon, 6 Sep 2004, Frank van Maarseveen wrote:
 
-I just got this message for the first time on my nfs server. The server
-is running 2.6.8.1, serves 60 clients and has 12 threads. It occured
-while 30 of the 60 servers were rebooting. Each of them has about 6
-different mounts from the server.
+>Anyway, I found this:
+>
+>        http://clusternfs.sourceforge.net
 
-How do I calculate the number of neccessary threads? Sth. like
-clients*mounts_per_client/a_constant = nfsd threads?
+Another alternative is unfs3: http://unfs3.sourceforge.net/. It provides 
+the same cluster extensions, and also has some other interesting features:
 
+* NFSv3 instead of NFSv2 (it's easier to write userspace NFS servers with 
+v3, since the filehandle is larger.)
 
-cu,
-Frank
+* Can run the MOUNT and NFS protocol on the same TCP port. Very useful 
+when tunneling through SSH. 
+
+* Can export removable devices, even with FAT filesystems. 
+
+* Supports mount-time passwords. When passwords are used, the filehandles 
+are scrambled with the password. 
+
 
 -- 
-Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
-Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
-LMU, Amalienstr. 17           Phone: +49 89 2180-4049
-80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
+Peter Åstrand		Chief Developer
+Cendio			www.thinlinc.com
+Teknikringen 3		www.cendio.se
+583 30 Linköping        Phone: +46-13-21 46 00
+
 
 
 
 -------------------------------------------------------
-This SF.Net email is sponsored by: YOU BE THE JUDGE. Be one of 170
-Project Admins to receive an Apple iPod Mini FREE for your judgement on
-who ports your project to Linux PPC the best. Sponsored by IBM. 
-Deadline: Sept. 13. Go here: http://sf.net/ppc_contest.php
+This SF.Net email is sponsored by BEA Weblogic Workshop
+FREE Java Enterprise J2EE developer tools!
+Get your free copy of BEA WebLogic Workshop 8.1 today.
+http://ads.osdn.com/?ad_id=5047&alloc_id=10808&op=click
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
