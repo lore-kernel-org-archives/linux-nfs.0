@@ -1,24 +1,21 @@
-From: Chris Pascoe <c.pascoe@itee.uq.edu.au>
-Subject: Re: nfsd oops - exiting??
-Date: Fri, 17 May 2002 16:31:09 +1000 (EST)
+From: Ryan Sweet <rsweet@atos-group.nl>
+Subject: Re: 2.4.18 disk i/o load spikes was: re: knfsd load spikes
+Date: Fri, 17 May 2002 11:46:51 +0200 (MEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.GSO.4.44.0205171630200.6259-100000@mango.csee.uq.edu.au>
-References: <00f301c1faec$fe0dd5f0$47426682@csee.uq.edu.au>
+Message-ID: <Pine.LNX.4.30.0205171011100.10147-100000@whitby.atos-group.nl>
+References: <3CE3F81B.50FC7F61@atheros.com>
+Reply-To: Ryan Sweet <rsweet@atos-group.nl>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Eric Whiting <ewhiting@amis.com>, <nfs@lists.sourceforge.net>,
+   Ryan Sweet <rsweet@atos-group.nl>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from gum.csee.uq.edu.au ([130.102.66.1])
+Received: from [62.58.73.254] (helo=ats-core-0.atos-group.nl)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 178bGp-0005PH-00
-	for <nfs@lists.sourceforge.net>; Thu, 16 May 2002 23:31:19 -0700
-Received: from luma.csee.uq.edu.au (luma.csee.uq.edu.au [130.102.66.14])
-	by gum.csee.uq.edu.au (8.11.6/8.11.6) with ESMTP id g4H6VA722103
-	for <nfs@lists.sourceforge.net>; Fri, 17 May 2002 16:31:10 +1000 (EST)
-Received: from mango.csee.uq.edu.au (mango.csee.uq.edu.au [130.102.66.4])
-	by luma.csee.uq.edu.au (8.11.6/8.11.6) with ESMTP id g4H6V9n14166
-	for <nfs@lists.sourceforge.net>; Fri, 17 May 2002 16:31:09 +1000 (EST)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <00f301c1faec$fe0dd5f0$47426682@csee.uq.edu.au>
+	id 178eVP-0002ur-00
+	for <nfs@lists.sourceforge.net>; Fri, 17 May 2002 02:58:36 -0700
+To: Jeff Smith <jeff@atheros.com>
+In-Reply-To: <3CE3F81B.50FC7F61@atheros.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,69 +28,50 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-And another oops with the same backtrace today - nobody has any
-ideas/suggestions where to look?
 
-Chris
+I did some additional testing, and in my case I do not think the problem
+I am having is nfs related.  Thus perhaps we can move this discussion to
+lkml.  I will probably post a summary there later today.
 
-On Tue, 14 May 2002, Chris Pascoe wrote:
+I can reproduce the issue at will when the file server is not busy using
+the slowspeed.c program that was attached in  previous message.
 
-> Hi,
->
-> After about 5 days of uptime on my SMP NFS server running 2.4.18+(CVS) XFS I
-> have experienced the following oops.  At least once before I have seen other
-> oopses that have occurred containing do_exit and sys_wait4, but I can't
-> obviously see how this code path was taken.  It goes without saying that I
-> can't reproduce the crash on demand..
->
-> Has anyone else seen similar traces and/or can suggest how the nfsd code got
-> to this point so I can attempt to investigate further?
->
-> The kernel is tainted by the Intel e1000 driver in the oops that follows.
->
-> Thanks,
-> Chris
->
-> --8<-- oops starts
-> Unable to handle kernel NULL pointer dereference at virtual address 00000286
-> c011be54
-> *pde = 00000000
-> Oops: 0002
-> CPU:    0
-> EIP:    0010:[<c011be54>]    Tainted: P
-> Using defaults from ksymoops -t elf32-i386 -a i386
-> EFLAGS: 00010286
-> eax: 00000000   ebx: f71ec000   ecx: 00000001   edx: 00000286
-> esi: 00000000   edi: 00000286   ebp: f71edf94   esp: f71edf84
-> ds: 0018   es: 0018   ss: 0018
-> Process nfsd (pid: 889, stackpage=f71ed000)
-> Stack: f71ec000 00000000 00000000 f71ec000 f71edfac c011c6d6 00000286
-> f71ec000
->        f7245ed4 f741ce00 f71edfb8 c011c84c 00000000 f7245edc c010722b
-> 00000100
->        c200b800 0000001f f7245ed4 f741ce00 f7245edc 00000001 f7440018
-> f71b0018
-> Call Trace: [<c011c6d6>] [<c011c84c>] [<c010722b>] [<c010588e>]
-> Code: f0 ff 0f 0f 94 c0 84 c0 0f 84 9e 00 00 00 c7 45 fc 00 00 00
->
-> >>EIP; c011be54 <put_files_struct+c/c4>   <=====
-> Trace; c011c6d6 <do_exit+12e/27c>
-> Trace; c011c84c <sys_wait4+0/3d8>
-> Trace; c010722b <system_call+33/38>
-> Trace; c010588e <kernel_thread+2a/38>
-> Code;  c011be54 <put_files_struct+c/c4>
-> 00000000 <_EIP>:
-> Code;  c011be54 <put_files_struct+c/c4>   <=====
->    0:   f0 ff 0f                  lock decl (%edi)   <=====
-> Code;  c011be57 <put_files_struct+f/c4>
->    3:   0f 94 c0                  sete   %al
-> Code;  c011be5a <put_files_struct+12/c4>
->    6:   84 c0                     test   %al,%al
-> Code;  c011be5c <put_files_struct+14/c4>
->    8:   0f 84 9e 00 00 00         je     ac <_EIP+0xac> c011bf00
-> <put_files_struct+b8/c4>
-> Code;  c011be62 <put_files_struct+1a/c4>
->    e:   c7 45 fc 00 00 00 00      movl   $0x0,0xfffffffc(%ebp)
+If I run it with 10 streams at 65k against the external RAID array
+(adaptec 29160 controller), it will eventually (within 20 minutes) spiral
+into severe pain (load > 30).
+
+Looking at /proc/scsi/aic7xxx/2, I can see that the Commands Active is
+always pegged at 8.  The Command Openings reads 245 (the controller depth
+of 253-8). Looking at the kernel config, the aic7xx driver was built with
+the old default TCQ depth of 8, but it should really be 253 (I think).
+
+I tested another system, slower, only single cpu, but with the same
+controller.  I used the same kernel and could easily reproduce the problem
+with about 6 streams.  Then I rebuilt the same kernel only changed the TCQ
+depth to 253.   In that configuration the system does very well up to
+about 20 - 25 streams, at which point it starts to wait too long.  Looking
+in /proc/scsi/aic7xx on that system the Commands Active is pegged at 64,
+and Command Openings at 0.  When the system is idle, Command Openings is
+at 64.  Note that I can still cause the problem to happen with 20+ streams
+of I/O.  That hardly seems optimal.
+
+So first on my list is to reboot the filer with the aic7xxx set to TCQ
+depth of 253.
+
+My questions are still:
+1) Why if the kernel (as reported by dmesg) has the TCQ set to 253, does
+it cap it at 64?
+
+2) What causes it to spiral to unusable loads when the TCQ is full?
+
+
+
+-- 
+Ryan Sweet <ryan.sweet@atosorigin.com>
+Atos Origin Engineering Services
+http://www.aoes.nl
+
+
 
 
 _______________________________________________________________
