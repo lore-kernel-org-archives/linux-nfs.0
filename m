@@ -1,20 +1,17 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: nfs performance: read only/gigE/nolock/1Tb per day
-Date: 23 Apr 2002 12:39:35 +0200
+From: "Tina Arora" <tinaarora@hotmail.com>
+Subject: Mount version???
+Date: Tue, 23 Apr 2002 17:56:22 +0530
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsu1q2d7h4.fsf@charged.uio.no>
-References: <Pine.LNX.4.44.0204222037530.16783-100000@kenzo.iwr.uni-heidelberg.de>
+Message-ID: <DAV75t8YgH5uAy0BYTx000005da@hotmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net,  "Lever, Charles" <Charles.Lever@netapp.com>,
-	  "'jason andrade'" <jason@dstc.edu.au>
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_000F_01C1EAF0.2E1FA140"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
+Received: from dav75.law15.hotmail.com ([64.4.22.210] helo=hotmail.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16zxiL-0004Wu-00
-	for <nfs@lists.sourceforge.net>; Tue, 23 Apr 2002 03:40:01 -0700
-To: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
-In-Reply-To: <Pine.LNX.4.44.0204222037530.16783-100000@kenzo.iwr.uni-heidelberg.de>
+	id 16zzNa-0002Uu-00
+	for <nfs@lists.sourceforge.net>; Tue, 23 Apr 2002 05:26:42 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,30 +24,41 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->>>>> " " == Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de> writes:
+This is a multi-part message in MIME format.
 
-     > "max_interrupt_work" should not be modified unless a message
-     > like "ethx: Too much work in interrupt!" is logged by the
-     > kernel. In some cases, increasing "max_interrupt_work" without
-     > also increasing the Rx ring size would not help...
+------=_NextPart_000_000F_01C1EAF0.2E1FA140
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-So what would an avalanche of ICMP Time Exceeded messages usually
-indicate as far as the driver/card is concerned?
+hello friends,
+section 4.1 of Linux NFS-HOWTO talks of mount program version of atleast =
+2.10m to use version 3 NFS..
+how to check which mount version am I having ??
+thanx
+Tina
 
-At the networking levels, a single Time Exceeded message means that
-some fragment(s) got dropped and/or lost, so some datagram never got
-reassembled within /proc/sys/net/ipv4/ipfrag_low_thresh seconds
-(as per RFC1122).
+------=_NextPart_000_000F_01C1EAF0.2E1FA140
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-In the avalanching case that I've sometimes observed, then it looks as
-if *no* datagrams are getting rebuilt.
-IOW: the client is just sitting there sending off ICMP messages, and
-never reading the reply. Changing card/driver did not help in the
-cases I observed, but shutting down the network, and then bringing it
-up again sometimes did. Any suggestions?
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; =
+charset=3Diso-8859-1">
+<META content=3D"MSHTML 6.00.2600.0" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV><FONT face=3DArial size=3D2>hello friends,<BR>section 4.1 of Linux =
+NFS-HOWTO=20
+talks of mount program version of atleast 2.10m to use version 3 =
+NFS..<BR>how to=20
+check which mount version am I having=20
+??<BR>thanx<BR>Tina</FONT></DIV></BODY></HTML>
 
-Cheers,
-  Trond
+------=_NextPart_000_000F_01C1EAF0.2E1FA140--
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
