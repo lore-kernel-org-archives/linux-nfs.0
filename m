@@ -1,24 +1,20 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: ANNOUNCE: nfs-utils 1.0.7-pre1
-Date: Fri, 3 Dec 2004 16:23:14 +1100
-Message-ID: <16815.63554.437489.308079@cse.unsw.edu.au>
+From: Pierre Ossman <drzeus-list@drzeus.cx>
+Subject: Move (mv) hangs with NFSv4
+Date: Fri, 03 Dec 2004 18:51:22 +0100
+Message-ID: <41B0A79A.2010203@drzeus.cx>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ca5uc-0003DB-Cu
-	for nfs@lists.sourceforge.net; Thu, 02 Dec 2004 21:23:22 -0800
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1Ca5uZ-0001kI-O4
-	for nfs@lists.sourceforge.net; Thu, 02 Dec 2004 21:23:21 -0800
-Received: From notabene.cse.unsw.edu.au ([129.94.172.124]) (auth-user neilb)
-	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
-	Fri, 3 Dec 2004 16:23:14 +1100
-Received: from neilb by notabene.cse.unsw.edu.au with local (Exim 4.34)
-	id 1Ca5uU-0003WC-Eq
-	for nfs@lists.sourceforge.net; Fri, 03 Dec 2004 16:23:14 +1100
+	id 1CaHaf-0007Hx-0g
+	for nfs@lists.sourceforge.net; Fri, 03 Dec 2004 09:51:33 -0800
+Received: from a26.t1.student.liu.se
+	([130.236.221.26] helo=mail.drzeus.cx ident=daemon)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1CaHad-00025F-W1
+	for nfs@lists.sourceforge.net; Fri, 03 Dec 2004 09:51:32 -0800
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -33,30 +29,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+I've been trying out NFSv4 instead of NFSv3 on the systems here and have
+had mixed success. First of there was an uid/gid mapping bug which was
+solved in 2.6.9.
 
+Now I've run into another serious bug; I cannot move files to the NFS
+filesystem. It stalls when the file is finished. I've tried with big and
+small files (even 0 bytes) and the effect is the same.
 
-I have made available a pre-release of nfs-utils 1.0.7.
+I started guessing that it sets some attributes during the final stage
+so i tried cp -a, which has the same effect. So this seems to support 
+that theory. chmod and chown work fine. I don't know if there is some 
+other command I can try that only messes with attributes.
 
-It can be downloaded from 
-  http://sourceforge.net/project/showfiles.php?group_id=14
-or
-  http://www.{countrycode}.kernel.org/pub/linux/utils/nfs/
+There is no error message on the server. On the client I get "RPC: 
+rpciod waiting on sync task!" now and then. Most of the time it doesn't 
+say a thing though so I'm not sure it's related.
 
+The server is a FC2 machine running 2.6.9-1.6_FC2 (also tried 2.6.8.1 +
+uid/gid patch) and the clients are a FC2 machine with the same kernel
+and a FC3 machine with a clean 2.6.9.
 
-The reason for the pre-release is that there are a number of changes that
-I haven't had a chance to test properly, and some that I am not in a position
-to test.
-
-There are an assortment of bug-fixes, some support for fail-over clustering,
-and support for 'gss' authentication.
-
-I would appreciate it if people could check that it compiles and works for them,
-and let me know the success rate.
-
-I hope to put this out as a final 1.0.7 before Christmas.  Having lots of people 
-say "Yes, I've tried it, and it works OK" would make a great Christmas present :-)
-
-NeilBrown 03-December-2004
+Rgds
+Pierre
 
 
 -------------------------------------------------------
