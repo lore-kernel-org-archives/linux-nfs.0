@@ -1,20 +1,19 @@
-From: Olaf Kirch <okir@suse.de>
+From: "Bill Rugolsky Jr." <brugolsky@telemetry-investments.com>
 Subject: Re: knfsd brought to its knees, by a simple rsync or cp operation
-Date: Tue, 1 Mar 2005 15:37:32 +0100
-Message-ID: <20050301143732.GA22324@suse.de>
+Date: Tue, 1 Mar 2005 10:04:46 -0500
+Message-ID: <20050301150446.GD4848@ti64.telemetry-investments.com>
 References: <20050226082854.2a496ec3@be.back.l8r.net> <20050228100633.GA4822@suse.de> <20050228102307.3788a184@be.back.l8r.net> <20050228154455.GS4822@suse.de> <20050228112018.34fdeb2b@be.back.l8r.net> <20050301095548.GJ14402@suse.de> <20050301065703.7e52cf4e@be.back.l8r.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D68VM-0003Su-3F
-	for nfs@lists.sourceforge.net; Tue, 01 Mar 2005 06:37:44 -0800
-Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.41)
-	id 1D68VK-0001xj-2D
-	for nfs@lists.sourceforge.net; Tue, 01 Mar 2005 06:37:43 -0800
+	id 1D68vg-0004fJ-SL
+	for nfs@lists.sourceforge.net; Tue, 01 Mar 2005 07:04:56 -0800
+Received: from 209-166-240-202.cust.walrus.com ([209.166.240.202] helo=ti41.telemetry-investments.com)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1D68vd-0005NK-Pd
+	for nfs@lists.sourceforge.net; Tue, 01 Mar 2005 07:04:56 -0800
 To: Brad Barnett <lists@L8R.net>
 In-Reply-To: <20050301065703.7e52cf4e@be.back.l8r.net>
 Sender: nfs-admin@lists.sourceforge.net
@@ -31,26 +30,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 On Tue, Mar 01, 2005 at 06:57:03AM -0500, Brad Barnett wrote:
+> However, this is what is really erking me.  This isn't a heavy I/O job. 
+> This is just _one_ cp.  Nothing else is happening on the entire server!  I
+> just did, in the above test:
+> 
+> client: ls -R /home
+> 
+> The client is fine, for very long periods of time...
+> 
+> Then, while the above command is still happening:
+> 
+> server: cp -a /raid/home /raid/hometest
+
+You say that it isn't a heavy I/O job, but a recursive copy is a very
+seek-intensive one, particularly when copying a large tree to the same
+device, which will interleave reads and writes.  What filesystem are you
+using?  With an internal journal, journal writes will cause additional seeking.
+ 
 > Within 10 seconds, the output of ls -R /home slows.  Within 20 seconds, it
 > _stop_.  It then sits there for seconds, and spews out a page in small
 > jumps.  Again, a ls /raid/home on the _server_ barely slows, and is
 > constant.
-> 
-> I'm really scratching my head here.
 
-Well, it sounds like something's eating the network bandwidth,
-or otherwise interfering with nfsd responsiveness. Again, are
-you using UDP or TCP? If UDP, look at nfsstat output to see if
-you have a high retransmit count.
+Do you mean ls -R /raid/home here?  Is it definitely the case that
+ls -R /raid/home on the server is quick, but on the client it is slow?
 
-If it's really a problem with scheduling, it should make a difference
-if you run the rsync job with lower priority, and/or renice the
-nfsd threads to run with higher priority.
+How about ls -lR /raid/home on the server?  It could be that knfsd is
+returning file attribute information, hence reading the whole inode
+for each file, and not just for the directories.  getdents64() returns
+d_type=DT_DIR for directory entries, which allows ls -R to optimize the
+traversal so as to only call fstat64() on directories, not regular files.
+So on the server, ls -R would only fstat64() the entries, while
+on the client ls -R can cause knfsd to do the equivalent of ls -lR.
 
-Olaf
--- 
-Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
-okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
+Also, which I/O scheduler are you using?
+
+Regards,
+
+	Bill Rugolsky
 
 
 -------------------------------------------------------
