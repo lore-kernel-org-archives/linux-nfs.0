@@ -1,22 +1,21 @@
-From: "Wireless Team" <mailinglist@wirelessteam.net>
-Subject: ** Outdoor Wireless Router **
-Date: Thu, 27 Jun 2002 16:17:37 +0300
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: fragment flooding and self-configuring clients
+Date: Thu, 27 Jun 2002 17:36:12 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E17NZ8M-0005GI-00@mail2.vasoftware.com>
-Reply-To: "Wireless Team" <mailinglist@wirelessteam.net>
+Message-ID: <200206271736.12310.trond.myklebust@fys.uio.no>
+References: <6440EA1A6AA1D5118C6900902745938E50D03F@black.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/html; charset="ISO-8859-1"
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Cc: nfs@lists.sourceforge.net,
+ "'Benjamin LaHaise'" <bcrl@redhat.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from panoramix.vasoftware.com ([198.186.202.147] helo=mail2.vasoftware.com)
-	by usw-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17NZTY-00031G-00
-	for <nfs@lists.sourceforge.net>; Thu, 27 Jun 2002 06:38:20 -0700
-Received: from [212.116.138.66] (helo=wirelessteam.net)
-	by mail2.vasoftware.com with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17NZ8M-0005GI-00
-	for <nfs@lists.sourceforge.net>; Thu, 27 Jun 2002 06:16:28 -0700
-To: <nfs@lists.sourceforge.net>
+Received: from pat.uio.no ([129.240.130.16])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17NbJo-00011G-00
+	for <nfs@lists.sourceforge.net>; Thu, 27 Jun 2002 08:36:24 -0700
+To: "Lever, Charles" <Charles.Lever@netapp.com>
+In-Reply-To: <6440EA1A6AA1D5118C6900902745938E50D03F@black.eng.netapp.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,226 +28,53 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-<html>
-<head>
-<meta name="generator" content="HTML Tidy, see www.w3.org">
-<title>Wireless Team: Outdoor Wireless Equipment</title>
-<meta name="description" content=
-"Wireless Team is specialized in producing wireless network equipment.
-Find out more information about our award winning products at
-www.wirelessteam.net">
-<meta name="keywords" content=
-"wireless, outdoor, router, equipment, power injector, technical, support,
-ethernet, fast, network, hubs, switches, adapters, NIC, servers">
-<meta http-equiv="Content-Type" content=
-"text/html; charset=iso-8859-1">
-<link href="http://www.wirelessteam.net/stylesheet.css" rel=
-"stylesheet" type="text/css">
-</head>
-<body bgcolor="#FFFFFF" text="#000000" leftmargin="0" topmargin="0"
-marginwidth="0" marginheight="0">
-<table width="100%" border="0" cellspacing="1" cellpadding="0"
-bgcolor="#FFFFFF" align="center">
-<tr>
-<td colspan="2">
-<table width="100%" border="0" cellspacing="0" cellpadding="0">
-<tr>
-<td background="http://www.wirelessteam.net/images/bkgrnd.gif"><img
-src="http://www.wirelessteam.net/images/shim.gif" width="100"
-height="20"> </td>
-<td align="right" width="300"><img src=
-"http://www.wirelessteam.net/images/logo.gif" width="300" height=
-"43" border="0"></td>
-</tr>
-</table>
-</td>
-</tr>
+On Thursday 27 June 2002 07:06, Lever, Charles wrote:
 
-<tr>
-<td colspan="2">
-<table border="0" cellpadding="1" cellspacing="0" width="100%"
-background="http://www.wirelessteam.net/images/bkgrnd_nav.gif"
-height="30">
-<tr>
-<td align="right" valign="middle">
-<table border="0" cellspacing="0" cellpadding="0">
-<tr valign="bottom">
-<td><a href="http://www.wirelessteam.net/index.html"><img src=
-"http://www.wirelessteam.net/images/home.gif" width="90" height=
-"14" border="0"></a></td>
-<td><a href="http://www.wirelessteam.net/aboutus.html"><img src=
-"http://www.wirelessteam.net/images/aboutus.gif" width="100"
-height="14" border="0"></a></td>
-<td><a href="http://www.wirelessteam.net/contactus.html"><img src=
-"http://www.wirelessteam.net/images/contactus.gif" width="110"
-height="14" border="0"></a></td>
-<td><a href="http://www.wirelessteam.net/faq.html"><img src=
-"http://www.wirelessteam.net/images/faq.gif" width="100" height=
-"14" border="0"></a></td>
-</tr>
-</table>
-</td>
-</tr>
-</table>
-</td>
-</tr>
+> the real solution to dropped fragments, however, is to make the
+> IP layer hold onto all fragments until it is sure it can send
+> the whole packet.  IOW, drop only whole packets, not fragments.
+> the code in ip_build_xmit_slow is somewhat opaque to me, so i
+> haven't included a patch here.  however, i think fixing that
+> code will go a long way towards making NFS over UDP on Linux
+> clients more robust on high-end hardware.
+>
+> in fact, this issue may be the real reason your patch to send
+> fragments in forward order improved performance in our testing.
+> it appears to drop a whole packet if it can't allocate space
+> for one or more fragments.
 
-<tr>
-<td colspan="2">
-<table width="100%" border="0" cellspacing="1" cellpadding="0">
-<tr>
-<td valign="top">
-<table width="100%" border="0" cellspacing="0" cellpadding="0">
-<tr>
-<td colspan="2"></td>
-</tr>
+I will ask davem how he would feel about such a patch. In the case where 
+MSG_DONTWAIT is set, the current code appears to be wasting bandwith by 
+sending off message fragments that cannot ever be reassembled.
 
-<tr>
-<td bgcolor="#F5F5F5" valign="top">&nbsp;</td>
-<td align="center">
-<table width="100%" border="0">
-<tr>
-<td>
-<ul>
-<li><font color="#990000"><b>Low Cost One Stop
-Solution</b></font></li>
+We don't even have to include the LIFO queueing that inverts the fragment 
+sending order: just use a FIFO queue in order to delay the send until we've 
+fragmented the entire message.
 
-<li><font color="#990000"><b>True Easy To Use
-Device.</b></font></li>
+> the issue i have with the implementation you have chosen in
+> the rpc_tweak patch is that the socket buffer size it computes
+> is often too large.  for instance, why (server->rsize + 1024) ?
+> the real size of a full-sized read request is probably closer to
+> (server->rsize + 160).  then, after all the multiplication
 
-<li><font color="#990000"><b>Superior Range And
-Throughput</b></font></li>
+Actually, the RPC code can in principle be around 600 bytes long. Don't 
+forget, the authentication code alone can in principle be 408 bytes long 
+(although AUTH_SYS is of course significantly shorter).
+In addition, the socket code likes a bit of padding of its own. It needs to be 
+able to split up skbs, juggle them around etc.
 
-<li><font color="#990000"><b>Built-In Antenna</b></font></li>
+> in xprt_set_sockbufsize, it is possible to get an excessively
+> large buffer size.  there is no cap for this value, and i'm
+> sure there is a reasonable maximum.  on one of my systems, the
+> computed value was over 3 megabytes.  might this cause some
+> kind of data corruption if a buffer of that size can't actually
+> be allocated?
 
-<li><font color="#990000"><b>No Additional Equipment
-Needed</b></font></li>
+I did an audit recently that suggested this would not be the case, but I may 
+have overlooked something. davem too thought that it would be safe.
 
-<li><font color="#990000"><b>Multiple Configuration
-Tools</b></font></li>
-
-<li><font color="#990000"><b>Based On Linux
-Firmware</b></font></li>
-
-<li><font color="#990000"><b>Full Network Address Translation
-(NAT).</b></font></li>
-
-<li><font color="#990000"><b>Bandwidth Shaping Support
-Included.</b></font></li>
-
-<li><font color="#990000"><b>Linux Shell For Custom
-Configurations</b></font></li>
-</ul>
-</td>
-<td colspan="2"><img src=
-"http://www.wirelessteam.net/images/img-new.jpg" width="500"
-height="300"></td>
-</tr>
-
-<tr>
-<td>&nbsp;</td>
-<td><img src="http://www.wirelessteam.net/images/price.gif" width=
-"150" height="23"></td>
-<td><a href="http://www.wirelessteam.net/orders.html">
-<img src="http://www.wirelessteam.net/images/ordernow.gif"
-width="150" height="23"></a></td>
-</tr>
-</table>
-</td>
-</tr>
-
-<tr>
-<td bgcolor="#f5f5f5">&nbsp;</td>
-<td align="left" valign="top">
-<table width="99%" border="0" cellspacing="5" cellpadding="5"
-align="right">
-<tr>
-<td colspan="2">
-<p><b>The Outdoor Wireless Router</b> is a flexible network
-solution designed to provide a new high-speed alternative for
-delivering broadband connections. The Wireless Router helps to
-bypass telecommunications charges for expensive local loops and
-costly equipment usually needed to establish a T1 (1.5 Mbps) or
-faster connections. The Wireless Router helps you take advantage of
-the rapidly changing Internet, and to enhance your company's
-productivity at a very reasonable price.</p>
-
-<p><b>The Outdoor Wireless Router</b> is totally adapted for
-outdoor mounting and the base system includes integrated antenna.
-It is equipped with power injector as well. Thus prevents you from
-having problems with power supplies at open areas and gives you the
-possibility to have the device at a distance of 100-140 m from your
-switch or hub.</p>
-
-<p><b>With a full 100mW of transmit power</b> and the best receive
-sensitivity in the industry it has the longest range and best
-reliability available for wireless clients. Advanced signal
-processing helps manage the multi-path propagation often found in
-office environments. Intelligent filtering addresses ambient noise
-and interference that can decrease network performance. Building
-upon Cisco leadership in wireless LAN (WLAN) performance, it
-provides the greatest throughput available so users can enjoy
-virtually the same connectivity they gain from wired connections.
-Based on direct sequence spread spectrum (DSSS) technology and
-operating in the 2.4-GHz band, the device complies with the IEEE
-802.11b standard-ensuring interoperability with all other compliant
-WLAN products.</p>
-
-<p><br>
-</p>
-</td>
-</tr>
-
-<tr>
-<td colspan="2">&nbsp;</td>
-</tr>
-</table>
-</td>
-</tr>
-
-<tr>
-<td bgcolor="#f5f5f5" rowspan="3">&nbsp;</td>
-<td align="left" valign="top">&nbsp;</td>
-</tr>
-
-<tr>
-<td align="left" valign="top">
-<table width="100%" border="0">
-<tr>
-<td align="left" valign="top">
-<table width="99%" border="0" cellspacing="5" cellpadding="5"
-align="right">
-<tr>
-<td bordercolor="#CCCC99" valign="top"><font class=
-"bottomtxt">This mailing is done only to people who have requested
-info from one of our sites, or downloaded our Software. If you have
-recieved this email in error and you wish to be removed from future
-mailings, please reply with the subject "<b>Remove</b>" and our
-software will automatically block you from their future
-mailings.<br>
-<br>
-</font> </td>
-</tr>
-</table>
-</td>
-</tr>
-
-<tr>
-<td>&nbsp;</td>
-</tr>
-</table>
-</td>
-</tr>
-</table>
-</td>
-</tr>
-</table>
-</td>
-</tr>
-</table>
-</body>
-</html>
-
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
