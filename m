@@ -1,22 +1,22 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: nfs and iptables
-Date: Tue, 08 Feb 2005 09:41:01 -0500
-Message-ID: <1107873661.10364.13.camel@lade.trondhjem.org>
-References: <Pine.LNX.4.60.0502072228370.22564@harp.ngdc.noaa.gov>
+Subject: Re: Some interoperability testing
+Date: Tue, 08 Feb 2005 09:49:59 -0500
+Message-ID: <1107874199.10364.22.camel@lade.trondhjem.org>
+References: <200502071839.24804.vincent.roqueta@ext.bull.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CyWYR-00006R-OP
-	for nfs@lists.sourceforge.net; Tue, 08 Feb 2005 06:41:27 -0800
+	id 1CyWh1-0000P3-5X
+	for nfs@lists.sourceforge.net; Tue, 08 Feb 2005 06:50:19 -0800
 Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1CyWYP-00031w-AZ
-	for nfs@lists.sourceforge.net; Tue, 08 Feb 2005 06:41:27 -0800
-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-In-Reply-To: <Pine.LNX.4.60.0502072228370.22564@harp.ngdc.noaa.gov>
+	id 1CyWgz-000160-KH
+	for nfs@lists.sourceforge.net; Tue, 08 Feb 2005 06:50:19 -0800
+To: Vincent Roqueta <vincent.roqueta@ext.bull.net>
+In-Reply-To: <200502071839.24804.vincent.roqueta@ext.bull.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,27 +30,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-m=E5 den 07.02.2005 Klokka 22:44 (-0700) skreiv Ara.T.Howard:
+ty den 08.02.2005 Klokka 10:22 (+0100) skreiv Vincent Roqueta:
 
-> in summary: we allow *any* incoming connection to our server(s) from clie=
-nts
-> on the backdoor (nfs on backdoor only); do we need anything special on an=
-y of
-> the clients or is all communication initiated from the client?
->=20
+> Since all is right with kernel 2.6.9, that looks like a regression...
+> Even if that is the true behaviour it may exist a way to stop this process 
+> cleanly : since NFS umount is can't be done the client does not reboot, and I 
+> need  to turn the power off...
 
-As I told you before. Lock recovery assumes that rpc.statd on the server
-can contact the clients after a server reboot. If you don't allow that,
-then it is quite possible for the client not to notice that the server
-has rebooted until after the grace period has expired.
+There were no NFS or RPC client changes made between 2.6.9 and 2.6.10,
+so it looks like you're going to have to look at networking changes.
 
-IOW: lock recovery may indeed "work" without this, but you are leaving
-yourself open to races that may crash your application and/or cause data
-corruption.
+Since you are seeing problems with both UDP and TCP, then I would start
+by checking whether or not any changes have been made to the network
+card driver.
 
 Cheers,
   Trond
---=20
+-- 
 Trond Myklebust <trond.myklebust@fys.uio.no>
 
 
