@@ -1,20 +1,24 @@
-From: "John Que" <qwejohn@hotmail.com>
-Subject: usr/sbin/rpc.mountd and mountd of a build
-Date: Tue, 05 Oct 2004 16:46:42 +0200
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: usr/sbin/rpc.mountd and mountd of a build
+Date: Tue, 5 Oct 2004 11:48:58 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <BAY14-F26idcDjoYAPN00000331@hotmail.com>
+Message-ID: <20041005154858.GB3835@fieldses.org>
+References: <BAY14-F26idcDjoYAPN00000331@hotmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; format=flowed
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CEr0F-00049J-DU
-	for nfs@lists.sourceforge.net; Tue, 05 Oct 2004 08:13:23 -0700
-Received: from bay14-f26.bay14.hotmail.com ([64.4.49.26] helo=hotmail.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CEqyY-00026G-No
-	for nfs@lists.sourceforge.net; Tue, 05 Oct 2004 08:13:23 -0700
-To: nfs@lists.sourceforge.net
+	id 1CErZq-0005NW-5f
+	for nfs@lists.sourceforge.net; Tue, 05 Oct 2004 08:50:10 -0700
+Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.41)
+	id 1CErYh-0006eS-RP
+	for nfs@lists.sourceforge.net; Tue, 05 Oct 2004 08:50:10 -0700
+To: John Que <qwejohn@hotmail.com>
+In-Reply-To: <BAY14-F26idcDjoYAPN00000331@hotmail.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -27,29 +31,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
+On Tue, Oct 05, 2004 at 04:46:42PM +0200, John Que wrote:
+> I had build the nfs-utils-1.0.6.tar.gz by standard ./configure && make
+> the file rpc.mountd does not exist in the build tree; there is
+> a file named mountd under /utils/mountd
+> 
+> I suspect they are the same file; am I right ?
 
-I have nfs-utils-1.0.1-3.9 intalled (rpm) on RedHat 9;
+Yes.
 
-One of the files belongiong to this rpm is rpc/mountd ; it's located in
-/usr/sbin/rpc.mountd
+> why is it named rpc.mountd and not mountd ?
+> If I'll to make install , will it copy mountd to /usr/sbin/rpc.mountd
 
-I had build the nfs-utils-1.0.6.tar.gz by standard ./configure && make
-the file rpc.mountd does not exist in the build tree; there is
-a file named mountd under /utils/mountd
+Yes.  See the "PREFIX" variable in utils/mountd/Makefile (and its use in 
+the install target in rules.mk).
 
-I suspect they are the same file; am I right ?
-why is it named rpc.mountd and not mountd ?
-If I'll to make install , will it copy mountd to /usr/sbin/rpc.mountd
-(I want to aboid make install currently)
-
-regards,
-John
-
-_________________________________________________________________
-MSN 8 with e-mail virus protection service: 2 months FREE* 
-http://join.msn.com/?page=features/virus
-
+--b.
 
 
 -------------------------------------------------------
