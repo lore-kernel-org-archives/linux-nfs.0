@@ -1,18 +1,18 @@
-From: tswaine@prosodiemail.com
-Subject: RE: NFS server replacement troubles
-Date: Wed, 9 Oct 2002 07:20:00 -0400
+From: "Heflin, Roger A." <Roger.A.Heflin@conoco.com>
+Subject: RE: RE: 2.4.19 NFSALL performance oddity
+Date: Wed, 9 Oct 2002 09:07:39 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3FF929A3082ED211B9D700A0C9CFDC8801428E3B@exchange.bestivr.com>
+Message-ID: <5CA6F03EF05E0046AC5594562398B91653BDC7@poexmb3.conoco.net>
 Mime-Version: 1.0
 Content-Type: text/plain;
-	charset="iso-8859-1"
-Cc: nfs@lists.sourceforge.net
+	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from exchange.bestivr.com ([65.217.47.130] helo=kenny.bestivr.com)
+Received: from usamail1.conoco.com ([12.31.208.226])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17zEsz-0007yH-00
-	for <nfs@lists.sourceforge.net>; Wed, 09 Oct 2002 04:20:18 -0700
-To: neilb@cse.unsw.edu.au, tswaine@prosodiemail.com
+	id 17zHV4-0003ms-00
+	for <nfs@lists.sourceforge.net>; Wed, 09 Oct 2002 07:07:46 -0700
+To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,90 +25,62 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-Thanks Neil but I looked at that also. My exports file looks like
-this....
 
-/somedir (rw)
+I have tried it both with and without Neil's patches, they don't
+make it better and don't make it worse.  Runing the server/client
+tcp makes things a little bit worse.
 
-Allowing anyone to connect. Also my hosts.allow is...
+We should be using sync on the mount option, correct? =20
 
-ALL: ALL
+All of my tests used sync on the mount and sync in the export,
+previously when using async on 2.2.xx (on the export side),=20
+and not using the sync option on the mount appeared to cause
+issues under heavy loads, ie the out of slots warnings, and
+sometimes worse.
 
-Allowing everyone also. Right after the new box comes online 
-and fails(when it worked with a different hostname). Something
-gets corrupted in nfs. No matter what I do, nfs will not work.
-I have tried replacing binaries ( rpc.* )with no avail.
+I know from some limited testing that the sync option does
+make the IO really bad on real disks.
 
-Could it be stale clients that were not unmounted before the switch?
+I did look and it appears that how the sync option on the
+mount command changed sometime in 2001, someplace
+in the 2.4 series.
 
-Thanks....
+			Roger
 
------Original Message-----
-From: Neil Brown [mailto:neilb@cse.unsw.edu.au]
-Sent: Wednesday, October 09, 2002 5:38 AM
-To: tswaine@prosodiemail.com
-Cc: nfs@lists.sourceforge.net
-Subject: Re: [NFS] NFS server replacement troubles
-
-
-On Tuesday October 8, tswaine@prosodiemail.com wrote:
-> I currently have a SCO NFS server, however I'm replacing it with Redhat
-> Linux.
-> I have taking down the box replaced it and NFS fails. The hostname, ip,
-etc.
-> is 
-> the same on the new machine.
-> New box info....
-> 	Stock Redhat Linux 6.2
-> 	kernel 2.2.14-6.0.1 on i686
-> 	partition being exported is Reiser filesystem
-> 
-> Before new box was put in to production its hostname was different.
-> Exporting was fine, NFS worked properly, however as soon as box
-> is brought up under new name NFS fails, errors(see below ).
-> 
-> Snapshot of errors.......
-> 
-> Starting portmapper: [  OK  ]
-> master:/var/lib/nfs 23# /etc/rc.d/init.d/nfs start
-> Starting NFS quotas: Cannot register service: RPC: Unable to receive;
-errno
-> = Connection refused
-> [FAILED]
-> Starting NFS mountd: Cannot register service: RPC: Unable to receive;
-errno
-> = Connection refused
-
-At a guess, I would say tcpwrappers problem.  Maybe you have to old
-host-name in /etc/hosts.allow, or something like that??
-
-NeilBrown
-
-> mountd: unable to register (mountd, 1, udp).
-> [FAILED]
-> Starting NFS daemon: nfssvc: Connection refused
-> [FAILED]
-> Starting NFS services:  [  OK  ]
-> 
-> 
-> I have restarted portmapper and nfs with no success, unmount nfs on all
-> connected machines, still no workee....
-> Any help would be appreciated...
-> Thanks.
-> 
-> 
-> Troy L. Swaine
-> System Administrator / Engineer
-> 
-> 
-> 
-> -------------------------------------------------------
-> This sf.net email is sponsored by:ThinkGeek
-> Welcome to geek heaven.
-> http://thinkgeek.com/sf
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+> -----Original Message-----
+> From:	Trond Myklebust [SMTP:trond.myklebust@fys.uio.no]
+> Sent:	Tuesday, October 08, 2002 5:42 PM
+> To:	Heflin, Roger A.
+> Cc:	nfs@lists.sourceforge.net
+> Subject:	Re: [NFS] RE: 2.4.19 NFSALL performance oddity
+>=20
+> >>>>> " " =3D=3D Roger A Heflin <Heflin> writes:
+>=20
+>      > Ok, I applied the new patch, it does not appear to have made
+>      > any difference in my setup and tests, it also does not appear
+>      > to break anything.  I am still analyzing the results, but not
+>      > finding anything obvious about what is going on.  2.2.19
+>      > appears to make alot better client to a 2.4.19 server than
+>      > 2.4.1[89][no patch/nfsall] does.  And 2.4.19 with no patches
+>      > appears to make a better server than 2.4.19 (for the writes)
+>      > with the NFS patches (using 2.2.19 as a client).
+>=20
+> 2.4.19-NFS_ALL doesn't touch the server code unless you are also
+> applying my hacked up version of Neil's experimental NFS-over-TCP
+> server patches on top of the 'stock NFS_ALL'.
+>=20
+> The direct comparison with 2.2.19 is interesting, but only makes sense
+> if you can follow up and do a binary search of 2.4.x kernels (start
+> off by testing something like 2.4.9, say) in order to find out where
+> the performance drop occurs. I simply wouldn't know where to start
+> looking otherwise...
+>=20
+> Note that on my own setups, I'm seeing performance numbers with
+> 2.4.19-NFS_ALL clients against both Linux 2.4.19 servers and Sun
+> Solaris servers of the same order as your 2.2.19 numbers...
+>=20
+> Cheers,
+>   Trond
 
 
 -------------------------------------------------------
