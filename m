@@ -1,24 +1,21 @@
-From: Philippe =?ISO-8859-15?Q?Gramoull=E9?= <philippe.gramoulle@mmania.com>
-Subject: Re: Problems with statd and lockd
-Date: Sat, 5 Apr 2003 14:05:32 +0200
+From: Chris Jensen <chris-nfs@drspirograph.com>
+Subject: Can't force unmount nfs
+Date: Sat, 5 Apr 2003 22:37:52 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030405140532.2ce1873e.philippe.gramoulle@mmania.com>
-References: <20030405015638.5118fbb9.philippe.gramoulle@mmania.com>
-	<shsadf5s12f.fsf@charged.uio.no>
-	<20030405131821.595ca734.philippe.gramoulle@mmania.com>
-	<shsistt5fju.fsf@charged.uio.no>
+Message-ID: <200304052237.52526.chris-nfs@drspirograph.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain;
+  charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pgramoul.net2.nerim.net ([80.65.227.234] helo=philou.aspic.com)
+Received: from mta07ps.bigpond.com ([144.135.25.132])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 191mQh-000348-00
-	for <nfs@lists.sourceforge.net>; Sat, 05 Apr 2003 04:05:51 -0800
-Received: from philou.gramoulle.local (philou.gramoulle.local [192.168.254.2])
-	by philou.aspic.com (Postfix) with SMTP id 59A1F1717
-	for <nfs@lists.sourceforge.net>; Sat,  5 Apr 2003 14:05:32 +0200 (CEST)
+	id 191mph-0001Um-00
+	for <nfs@lists.sourceforge.net>; Sat, 05 Apr 2003 04:31:41 -0800
+Received: from morbo ([144.135.25.78]) by mta07ps.bigpond.com
+          (Netscape Messaging Server 4.15 mta07ps Jul 16 2002 22:47:55)
+          with SMTP id HCVESQ00.1JH for <nfs@lists.sourceforge.net>; Sat,
+          5 Apr 2003 22:31:38 +1000
 To: nfs@lists.sourceforge.net
-In-Reply-To: <shsistt5fju.fsf@charged.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,27 +28,32 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hi,
+I have a recurring problem that when an nfs server goes down and while a 
+client was reading from it. If I then try to unmount the export it fails 
+saying the device is busy. This happens regardless of weather the server has 
+come back up or not.
+Yes,  I have closed the file that was in use, even shutdown the app that was 
+using it.
+ fuser -v shows nothing
+I've tried umount -f too and that doesn't work.
+(Which leads me to ask what is -f meant to do, if not that?)
+Can anyone point out what the problem is?
 
-On 05 Apr 2003 13:50:29 +0200
-Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+Also, I was wondering about a related problem - I can't use the export even 
+after the server comes back up. I was under the impression that nfs is 
+stateless and that you could even continue useing a share even after sending 
+an unmount request to the server.
+Thanks for any help
 
-  | The message just means what it says. The problem could be anything
-  | from a temporary hang of statd or the portmapper right down to a deep
-  | kernel bug.
-  |   Trond
+-- 
+Chris Jensen
 
-Ok,
+Public Key: http://drspirograph.com/public_key/
 
-Portmapper was up. It was statd that was down and lockd , but they had been started
-correctly before the problem happened.
-
-I'll try to reproduce the problem as it happened of 4 different NFS servers.
-
-I'll turn RPC debugging on and see if i can get something interesting.
-
-Thanks,
-
-Philippe
+Wait: Did you know that there's a direct correlation between the decline of
+Spirograph and the rise in gang activity?  Think about it.
+- Dr Spirograph (The Simpsons)
 
 
 
