@@ -1,17 +1,13 @@
-From: "Assist Computer Services" <acs@assist-computer-services.com>
-Subject: =?Windows-1252?B?T25seSAxIGRheSBsZWZ0IHRvIHdpbiCjNS4wMDA=?=
-Date: Fri, 30 May 2003 21:14:28 +0100
+From: "Johanna Bass" <zslinky44@aol.com>
+Subject: Nfs,you decide
+Date: Sat, 31 May 03 20:10:58 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <2003530201429201BFRCXQNJOJYV@M5Mailer>
+Message-ID: <9l6vp-$0pa$i3h3pq1-50c$f@denrdu.jgr>
 Mime-Version: 1.0
-Content-Type: text/html;
-	charset="Windows-1252"
+Content-Type: multipart/alternative;
+	boundary="._.EBA0757E"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from host81-152-22-188.range81-152.btcentralplus.com ([81.152.22.188] helo=M5Mailer)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19M13d-0005AE-00
-	for <nfs@lists.sourceforge.net>; Sat, 31 May 2003 00:45:41 -0700
-To: <nfs@lists.sourceforge.net>
+To: <nfs@lists.sourceforge.net>, <cryptopp-announce@lists.sourceforge.net>, <cryptopp-develop@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,147 +20,267 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-<HTML>
-<HEAD>
-<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; charset=3Diso-8859-=
-1">
-<META name=3D"description" content=3D"                         Assist Compu=
-ter Services (UK) - No Summary">
-<SCRIPT language=3D"JavaScript">
-var n4p =3D (self.innerHeight !=3D null && self.innerHeight =3D=3D 0);
-if ((parent.TlxPgNm=3D=3Dnull || parent.TlxPgNm!=3D'index') && !n4p){
-    location.replace('index.htm');
-}
-</SCRIPT>
-<META http-equiv=3D"GENERATOR" CONTENT=3D"Created with CuteSITE Builder Web=
-, HTML Exporter 2.8.19">=20
+This is a multi-part message in MIME format.
+
+--._.EBA0757E
+Content-Type: text/html;
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3Dtext/html;charset=3Diso-8859-1>
+<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
+<STYLE></STYLE>
 </HEAD>
-<BODY BGCOLOR=3D"#000000" TEXT=3D"#F7F7FF" LINK=3D"#FFFFFF" ALINK=3D"#00040=
-0" VLINK=3D"#FFFFFF">
-<div style=3D"width: 2; height: 10">&nbsp;</div>
-<DIV ALIGN=3D"LEFT"></DIV>
-<div style=3D"text-align:CENTER; ">&nbsp;</div>
-<div style=3D"text-align:CENTER; "><b><i><font size=3D"6">ASSIST COMPUTER S=
-ERVICES=20
-  (UK)</font></i></b></div>
-<div style=3D"text-align:CENTER; "><b><font size=3D"5" color=3D"#FF0000">In=
-stant Cash=20
-  Picks</font></b></div>
-<div style=3D"text-align:CENTER; "><b><font size=3D"5">Until the end of May=
- we're=20
-  giving away </font></b></div>
-<div style=3D"text-align:CENTER; "><b><font size=3D"7" face=3D"Arial" color=
-=3D"#FF0000">
-  =A35.000 every day </font></b></div>
-<div style=3D"text-align:CENTER; "><b><font size=3D"4">to one lucky caller =
-selected=20
-  at random from that days calls </font></b></div>
-<div style=3D"text-align:CENTER; "><font size=3D"4"><b>All you have to do i=
-s call<font color=3D"#FF0000">=20
-  09063 - 020-256</font> and leave your details.</b></font></div>
-<div style=3D"text-align:CENTER; "><FONT SIZE=3D"1" COLOR=3D"#FFFFFF" FACE=
-=3D"Arial,Helvetica,sans-serif">
-  (Calls last on average 50 seconds)</FONT></div>
-<div style=3D"text-align:CENTER; ">&nbsp;</div>
-<div style=3D"text-align:CENTER; "><FONT SIZE=3D"7" COLOR=3D"#FF0000" FACE=
-=3D"Arial,Helvetica,sans-serif"><I>&pound;10.000</I></FONT></div>
-<div style=3D"text-align:CENTER; "><FONT SIZE=3D"7" COLOR=3D"#FF0000" FACE=
-=3D"Arial,Helvetica,sans-serif"><I>Bumper Cash Give-Away</I></FONT></div>
-<div style=3D"text-align:CENTER; "><FONT SIZE=3D"5" COLOR=3D"#FFFFFF" FACE=
-=3D"Arial,Helvetica,sans-serif"><I>Plus 5 runners up each win &pound;1.000<=
-/I></FONT></div>
-<bR>
-<div style=3D"text-align:CENTER; "><FONT SIZE=3D"4" COLOR=3D"#FFFFFF" FACE=
-=3D"Arial,Helvetica,sans-serif"><I>To be in with a chance of winning our ma=
-jor cash draw answer &nbsp;this simple question</I></FONT></div>
-<bR>
-<div style=3D"text-align:CENTER; "><FONT SIZE=3D"4" COLOR=3D"#FF0000" FACE=
-=3D"Arial,Helvetica,sans-serif"><I>On what date was President J. F. Kennedy=
- assassinated !</I></FONT></div>
-<bR>
-<div style=3D"text-align:CENTER; "><FONT SIZE=3D"4" COLOR=3D"#FFFFFF" FACE=
-=3D"Arial,Helvetica,sans-serif"><I>know the answer &amp; want to be in with=
- a chance of winning &pound;10.000 all you have to do is call 09063-020-256=
-</I></FONT></div>
-<div style=3D"text-align:CENTER; "><FONT SIZE=3D"4" COLOR=3D"#FFFFFF" FACE=
-=3D"Arial,Helvetica,sans-serif"><I>Leaving the following information: </I><=
-/FONT></div>
-<div style=3D"text-align:CENTER; "><FONT SIZE=3D"4" COLOR=3D"#FFFFFF" FACE=
-=3D"Arial,Helvetica,sans-serif"><I>J. F. Kennedy was assassinated on (date-=
-month-year)</I></FONT></div>
-<div style=3D"text-align:CENTER; "><FONT SIZE=3D"4" COLOR=3D"#FFFFFF" FACE=
-=3D"Arial,Helvetica,sans-serif"><I>Your full name; Postal address including=
- post code; Telephone number &amp; Email address</I></FONT></div>
-<bR>
-<div style=3D"text-align:CENTER; "><FONT SIZE=3D"4" COLOR=3D"#FF0000" FACE=
-=3D"Arial,Helvetica,sans-serif"><I>Someone must win &pound;10.000 why not y=
-ou ? Remember must be in it to win it</I></FONT></div>
-<bR>
-<div style=3D"text-align:CENTER; "><FONT SIZE=3D"4" COLOR=3D"#FFFFFF" FACE=
-=3D"Arial,Helvetica,sans-serif"><I>Spend, spend spend &pound;10.000 to spen=
-d just as you wish</I></FONT></div>
-<div style=3D"text-align:CENTER; "><FONT SIZE=3D"4" COLOR=3D"#FFFFFF" FACE=
-=3D"Arial,Helvetica,sans-serif"><I>What would you spend &pound;10.00 on</I>=
-</FONT></div>
-<div style=3D"text-align:CENTER; "><FONT SIZE=3D"4" COLOR=3D"#FFFFFF" FACE=
-=3D"Arial,Helvetica,sans-serif"><I>New car, Caribbean holiday, Clear all yo=
-ur debts, even a deposit on a new home</I></FONT></div>
-<div style=3D"text-align:CENTER; "><FONT SIZE=3D"1" COLOR=3D"#FFFFFF" FACE=
-=3D"Arial,Helvetica,sans-serif"><I>(Calls last on average 80 seconds)</I></=
-FONT></div>
-&nbsp;<p align=3D"center"><b><font size=3D"5">Having problems with your PC =
-!&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
-    Can't find that specific driver !</font></b></p>
-    <p align=3D"center"><b><font size=3D"5">&nbsp; Why not give us a try</f=
-ont></b></p>
-<div style=3D"text-align:CENTER; "><FONT SIZE=3D"4" COLOR=3D"#FFFFFF" FACE=
-=3D"Arial,Helvetica,sans-serif"><I>
-  Assist Computer Services</I></FONT></div>
-<div style=3D"text-align:CENTER; ">
-  <FONT SIZE=3D"4" COLOR=3D"#FF0000" FACE=3D"Arial,Helvetica,sans-serif"><I=
->09063-020-256</I></FONT></div>
-<div style=3D"text-align:CENTER; "><FONT SIZE=3D"4" COLOR=3D"#FFFFFF" FACE=
-=3D"Arial,Helvetica,sans-serif"><A HREF=3D"http://www.assist-compter-servic=
-es.com" TARGET=3D"_top"    TITLE=3D"http://www.assist-compter-services.com"=
-><U><I>www.assist-computer-services.com</I></U></A></FONT></div>
-<bR>
-<bR>
-<div style=3D"text-align:CENTER; "><FONT SIZE=3D"1" COLOR=3D"#FFFFFF" FACE=
-=3D"Arial,Helvetica,sans-serif">Full details of this promotion together wit=
-h full rules of entry are available from our web site www.assist-computer-s=
-ervices.com </FONT></div>
-<div style=3D"text-align:CENTER; "><FONT SIZE=3D"1" COLOR=3D"#FFFFFF" FACE=
-=3D"Arial,Helvetica,sans-serif">Calls to Assist Computer Services are recor=
-ded &amp; charged at 50p per minute and are only accepted on the strict und=
-erstanding that prior authority from the bill payer has been obtained<FONT =
- SIZE=3D 2 >. </FONT></FONT></div>
-<bR>
-<div style=3D"text-align:CENTER; "><FONT SIZE=3D"1" COLOR=3D"#FFFFFF" FACE=
-=3D"Arial,Helvetica,sans-serif"><FONT  FACE=3D"Arial Narrow" SIZE=3D 1 >&nb=
-sp;</FONT>You received this email because of a request to be added to a thi=
-rd party mailing list=20
-  which we subsequently purchase from </FONT><span style=3D"font-family: Ar=
-ial">
-  <font size=3D"1">legitimate</font></span><FONT SIZE=3D"1" COLOR=3D"#FFFFF=
-F" FACE=3D"Arial,Helvetica,sans-serif">=20
-  email marketing companies. Assist Computer Services&nbsp; takes your=20
-  preferences very seriously and recognizes that some people may have agree=
-d to=20
-  be included on a mailing list without realizing. It's our aim to send mai=
-l=20
-  only to those who wish to receive it. If you wish to unsubscribe please f=
-ollow=20
-  these instructions exactly:&nbsp; send an email to
-  <a href=3D"mailto:remove@assist-computer-services.com">remove@assist-comp=
-uter-services.com</a> with the word REMOVE  in subject line and the&nbsp;ad=
-dress to be removed in the main body of the email. As well as removing your=
-=20
-  details from our own lists we will also contact our suppliers&nbsp; reque=
-sting=20
-  they do the same on your behalf.</FONT></div>
-<bR>
-</BODY>
-</HTML>
+<BODY bgColor=3D#c0c0c0>
+<DIV align=3Dcenter>
+<TABLE borderColor=3D#ff0000 cellSpacing=3D0 cellPadding=3D0 width=3D748 b=
+gColor=3D#ffffff 
+border=3D1>
+  <CENTER></CENTER>
+  <TBODY>
+  <TR>
+    <TD width=3D748>
+      <CENTER>
+      <TABLE cellSpacing=3D0 cellPadding=3D0 width=3D748 align=3Dcenter bo=
+rder=3D0>
+        <TBODY>
+        <TR vAlign=3Dtop>
+          <TD>
+            <TABLE cellSpacing=3D0 cellPadding=3D0>
+              <TBODY></TBODY></TABLE></TD></TR></TBODY></TABLE>
+      <TABLE height=3D65 cellSpacing=3D0 cellPadding=3D0 width=3D748 align=
+=3Dcenter 
+      border=3D0>
+        <TBODY></TBODY></TABLE></CENTER>
+      <TABLE cellSpacing=3D0 cellPadding=3D0 width=3D748 align=3Dcenter bo=
+rder=3D0>
+        <CENTER></CENTER>
+        <TBODY>
+        <TR vAlign=3Dtop bgColor=3D#ffffff>
+          <TD width=3D748>
+            <CENTER>
+            <DIV align=3Dcenter>
+            <CENTER>
+            <TABLE id=3DAutoNumber4 
+            style=3D"WIDTH: 648px; BORDER-COLLAPSE: collapse; HEIGHT: 111p=
+x" 
+            borderColor=3D#111111 cellSpacing=3D0 cellPadding=3D0 width=3D=
+369 
+              border=3D0><TBODY>
+              <TR>
+                <TD width=3D369 colSpan=3D3><A 
+                  href=3D"http://mortage-4u.com/3/index.asp?RefID=3D500259=
+"><B><FONT 
+                  face=3DArial><U><FONT color=3D#000080 size=3D4>WE 
+                  </FONT></U></FONT></B></A><B><FONT face=3DArial><FONT 
+                  color=3D#ff0000 size=3D5>WILL BEAT</FONT></FONT></B></TD=
+></TR>
+              <TR>
+                <TD width=3D47></TD>
+                <TD width=3D322 colSpan=3D2><A 
+                  href=3D"http://mortage-4u.com/3/index.asp?RefID=3D500259=
+"><B><FONT 
+                  face=3DArial><U><FONT color=3D#000080 size=3D4>Any Mortg=
+age 
+                  </FONT></U></FONT></B></A><B><FONT face=3DArial><FONT 
+                  color=3D#ff0000 size=3D5>RATE</FONT></FONT></B></TD></TR=
+>
+              <TR>
+                <TD width=3D47></TD>
+                <TD width=3D85><FONT face=3DArial 
+                  size=3D2>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp=
+;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&=
+nbsp;&nbsp; 
+                  </FONT></TD>
+                <TD width=3D237>
+                  <DIV><A 
+                  href=3D"http://mortage-4u.com/3/index.asp?RefID=3D500259=
+"><B><FONT 
+                  face=3DArial><U><FONT color=3D#000080 size=3D4>For The 
+                  Next&nbsp;</FONT></U></FONT></B></A><FONT size=3D5><B><F=
+ONT 
+                  face=3DArial><FONT color=3D#ff0000>&nbsp;5 DAYS</FONT></=
+FONT> 
+                  <FONT face=3DArial color=3D#ff0000><FONT face=3DArial co=
+lor=3D#000080 
+                  size=3D3>(until 6/03/2003)</FONT></FONT></B></FONT></DIV=
+>
+                  <DIV>&nbsp;</DIV></TD></TR></TBODY></TABLE></CENTER></DI=
+V></CENTER>
+            <TABLE id=3DAutoNumber5 style=3D"BORDER-COLLAPSE: collapse" 
+            borderColor=3D#111111 cellSpacing=3D0 cellPadding=3D0 width=3D=
+"100%" 
+            border=3D0>
+              <TBODY>
+              <TR>
+                <TD width=3D"100%">
+                  <TABLE id=3DAutoNumber6 style=3D"BORDER-COLLAPSE: collap=
+se" 
+                  borderColor=3D#111111 cellSpacing=3D0 cellPadding=3D0 wi=
+dth=3D"100%" 
+                  border=3D0>
+                    <TBODY>
+                    <TR>
+                      <CENTER>
+                      <TD width=3D"5%"></TD></CENTER>
+                      <TD width=3D"90%">
+                        <DIV align=3Dcenter><B><FONT face=3DArial color=3D=
+#000080 
+                        size=3D4>Y</FONT></B><FONT face=3DArial color=3D#0=
+00080 
+                        size=3D4><B>our Mortgage Rate above 6.25=
+%? We can help you 
+                        save thousands of dollars as we have hundreds of l=
+enders 
+                        nationwide eager to bid</B></FONT></DIV>
+                        <DIV align=3Dcenter><STRONG><FONT face=3DArial col=
+or=3D#000080 
+                        size=3D4>for your business in today's extra compet=
+itive 
+                        home-loan market.</FONT></STRONG></DIV>
+                        <P align=3Dcenter><FONT face=3DArial color=3D#0000=
+80>We get in 
+                        touch with hundreds of lenders nationwide and tell=
+ them 
+                        what you're looking for, and </FONT><FONT face=3DA=
+rial 
+                        color=3D#007236><A 
+                        href=3D"http://mortage-4u.com/3/index.asp?RefID=3D=
+500259"><FONT 
+                        face=3DArial><FONT color=3D#000080><FONT 
+                        face=3DArial></A></FONT></FONT></FONT></FONT></P>
+                        <P align=3Dcenter><FONT face=3DArial color=3D#0072=
+36><FONT 
+                        face=3DArial><FONT color=3D#000080><FONT face=3DAr=
+ial><A 
+                        href=3D"http://mortage-4u.com/3/index.asp?RefID=3D=
+500259"><FONT 
+                        face=3DArial><STRONG>you </STRONG></FONT></A><A 
+                        href=3D"http://mortage-4u.com/3/index.asp?RefID=3D=
+500259"></FONT><STRONG>get 
+                        to choose from the best 
+                        offers</STRONG></FONT></FONT></A> </FONT><FONT 
+                        face=3DArial color=3D#000080>that come back.</FONT=
+></P>
+                        <P align=3Dcenter><B><FONT face=3DArial color=3D#0=
+07236><A 
+                        href=3D"http://mortage-4u.com/3/index.asp?RefID=3D=
+500259"><FONT 
+                        face=3DArial color=3D#ff0000 size=3D4>Click Here F=
+or Free 
+                        Quotes.</FONT></A></FONT></B></P>
+                        <P align=3Dcenter><FONT face=3DArial color=3D#0000=
+80>You'll 
+                        save </FONT><B><FONT face=3DArial color=3D#007236>=
+<A 
+                        href=3D"http://mortage-4u.com/3/index.asp?RefID=3D=
+500259"><FONT 
+                        face=3DArial color=3D#000080>time, hassle</FONT></=
+A></FONT> 
+                        <FONT face=3DArial color=3D#000080></FONT></B><FON=
+T 
+                        face=3DArial color=3D#000080>and, best of all, </F=
+ONT><FONT 
+                        face=3DArial color=3D#007236><B><A 
+                        href=3D"http://mortage-4u.com/3/index.asp?RefID=3D=
+500259"><FONT 
+                        face=3DArial 
+color=3D#000080>money.</FONT></A></B></FONT></P>
+                        <P align=3Dcenter><FONT face=3DArial color=3D#0000=
+80 
+                        size=3D4><STRONG>* No obligation *</STRONG></FONT>=
+</P>
+                        <P align=3Dcenter><B><FONT face=3DArial color=3D#0=
+00080>( 
+                        </FONT><A 
+                        href=3D"http://mortage-4u.com/3/index.asp?RefID=3D=
+500259"><FONT 
+                        face=3DArial color=3D#000080>Less than perfect cre=
+dit not a 
+                        problem.</FONT></A><FONT face=3DArial color=3D#000=
+080> 
+                        )</FONT></B></P><B>
+                        <P align=3Dleft><BR></B><FONT face=3DArial 
+                        color=3D#000080>Rates won't stay this low forever,=
+ 
+                        so................ </FONT></P>
+                        <P align=3Dcenter><FONT face=3DArial color=3D#0072=
+36><A 
+                        href=3D"http://mortage-4u.com/3/index.asp?RefID=3D=
+500259"><FONT 
+                        face=3DArial color=3D#ff0000><FONT size=3D4><B>Get=
+ your free 
+                        mortgage quotes online quickly with No hassle!</B>=
+ 
+                        </FONT></FONT></A></FONT></P>
+                        <CENTER><STRONG><FONT face=3DArial color=3D#000080=
+>Just 
+                        compare the savings and then decide what's best fo=
+r 
+                        you.</FONT></STRONG></CENTER>
+                        <CENTER><STRONG><FONT face=3DArial color=3D#000080=
+>It's all 
+                        free with no obligations!</FONT></STRONG></CENTER>=
+
+                        <P><FONT color=3D#808080 size=3D1>&nbsp;</HTML< FO=
+NT><FONT 
+                        color=3D#ffffff>compost trigram =
+extolled 
+                        barbarian tibia befogging =
+prehistoric 
+                        bayed ginkgo hellgrammite =
+radiology 
+                        suez convivial metalliferous =
+contravention 
+                        journey mcdonnell 
+                        pathway</FONT></FONT><FONT color=3D#ffffff> 
+                        </FONT></P></TD>
+                      <TD 
+          width=3D"5%"></TD></TR></TBODY></TABLE></TD></TR></TBODY></TABLE=
+></TD></TR></TBODY></TABLE>
+      <TABLE cellSpacing=3D0 cellPadding=3D0 width=3D748 align=3Dcenter bo=
+rder=3D0>
+        <TBODY>
+        <TR>
+          <TD bgColor=3D#ff9900 height=3D2></TD></TR></TBODY></TABLE>
+      <TABLE cellSpacing=3D0 cellPadding=3D0 width=3D748 align=3Dcenter bo=
+rder=3D0>
+        <TBODY>
+        <TR>
+          <TD bgColor=3D#ffffff>
+            <TABLE cellSpacing=3D0 cellPadding=3D0 width=3D748 border=3D0>=
+
+              <TBODY>
+              <TR vAlign=3Dtop>
+                <TD vAlign=3Dbottom width=3D180>
+                  <TABLE cellSpacing=3D0 cellPadding=3D5 width=3D"100=
+%" border=3D0>
+                    <TBODY>
+                    <TR>
+                      <TD></TD></TR></TBODY></TABLE></TD></TR></TBODY></TA=
+BLE></TD></TR></TBODY></TABLE></TD></TR></TBODY></TABLE></DIV>
+<CENTER>
+<TABLE style=3D"WIDTH: 737px; BORDER-COLLAPSE: collapse; HEIGHT: 36px" 
+borderColor=3D#111111 cellSpacing=3D0 cellPadding=3D0 width=3D737
+border=3D=
+0>
+  <TBODY>
+  <TR>
+    <TD width=3D434>
+      <DIV align=3Dright><FONT face=3D"Verdana, Arial, Helvetica, sans-ser=
+if"><FONT 
+      color=3D#ffff00 size=3D2><FONT color=3D#ffffff>To subscribe or unsub=
+scribe from 
+      the mailing list <B><A href=3D"http://mortage-4u.com/auto/index.htm"=
+ 
+      target=3D_blank>go 
+here</A></B>.</FONT></FONT></FONT></DIV></TD></TR></TBODY></TABLE></CENTER=
+><FONT 
+</FONT> </BODY></HTML>
+
+--._.EBA0757E--
+
 
 
 -------------------------------------------------------
