@@ -1,24 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: open O_EXCL works?
-Date: Tue, 22 Mar 2005 08:41:43 -0500
-Message-ID: <1111498903.24016.17.camel@lade.trondhjem.org>
-References: <20050322073459.BE83.BRANDEN@terra.com.br>
-	 <1111494435.21559.20.camel@lade.trondhjem.org>
-	 <20050322101843.BE94.BRANDEN@terra.com.br>
+From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Subject: Re: new NFS FAQ questions
+Date: Wed, 23 Mar 2005 08:39:52 -0700 (MST)
+Message-ID: <Pine.LNX.4.60.0503230838250.12483@harp.ngdc.noaa.gov>
+References: <482A3FA0050D21419C269D13989C6113085398ED@lavender-fe.eng.netapp.com>
+Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DDjeE-0002ye-UN
-	for nfs@lists.sourceforge.net; Tue, 22 Mar 2005 05:42:18 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 1DE7xo-0004Sg-1u
+	for nfs@lists.sourceforge.net; Wed, 23 Mar 2005 07:40:08 -0800
+Received: from harp.ngdc.noaa.gov ([140.172.178.33])
 	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1DDjdv-0003PJ-24
-	for nfs@lists.sourceforge.net; Tue, 22 Mar 2005 05:42:18 -0800
-To: Filipe Brandenburger <branden@terra.com.br>
-In-Reply-To: <20050322101843.BE94.BRANDEN@terra.com.br>
+	id 1DE7xh-000247-R9
+	for nfs@lists.sourceforge.net; Wed, 23 Mar 2005 07:40:07 -0800
+To: "Lever, Charles" <Charles.Lever@netapp.com>
+In-Reply-To: <482A3FA0050D21419C269D13989C6113085398ED@lavender-fe.eng.netapp.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,44 +31,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-ty den 22.03.2005 Klokka 10:28 (-0300) skreiv Filipe Brandenburger:
+On Wed, 23 Mar 2005, Lever, Charles wrote:
 
-> Would this work? Also, using fcntl(F_SETLK) implies mounting filesystems
-> without the "nolock" option (that is what I'm using now), and implies
-> running lockd, right? Also, wouldn't I have problems if some process
-> dies between locking and unlocking with fcntl?
+> three new questions appear today:
+>
+> A9. Why does opening files with O_APPEND on multiple clients cause the
+> files to become corrupted?
+>
+> D10. I'm trying to use flock()/BSD locks to lock files used on multiple
+> clients, but the files become corrupted. How come?
 
-Not necessarily. Cache invalidation should happen whether or not you use
-the nolock option.
+it's very nice to see as many developer oriented questions like this in the
+FAQ as possible for those of us too lazy to poke into the source : thanks for
+the work!
 
-> Would change the position of "open" and "close" to inside the hardlink
-> lock solve the problem? What I mean is, would this code work as I expect,
-> with appends being atomic between different clients?
-> 
-> 
->   [repeat the loop below for the data]
->     hardlink("myfile", "myfile.lock")
->     -> if it fails, invalidate information
->     f = open("myfile", O_CREAT|O_WRONLY|O_APPEND)
->     write(f, "mydata", sizeof(mydata))
->     close(f)
->     unlink("myfile.lock")
->   [end loop]
-
-Yes. This would work if close-to-open works correctly.
-
-Cheers,
-  Trond
+-a
 -- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
-
+===============================================================================
+| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
+| PHONE   :: 303.497.6469
+| When you do something, you should burn yourself completely, like a good
+| bonfire, leaving no trace of yourself.  --Shunryu Suzuki
+===============================================================================
 
 
 -------------------------------------------------------
-SF email is sponsored by - The IT Product Guide
-Read honest & candid reviews on hundreds of IT Products from real users.
-Discover which products truly live up to the hype. Start reading now.
-http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
+This SF.net email is sponsored by: 2005 Windows Mobile Application Contest
+Submit applications for Windows Mobile(tm)-based Pocket PCs or Smartphones
+for the chance to win $25,000 and application distribution. Enter today at
+http://ads.osdn.com/?ad_id=6882&alloc_id=15148&op=click
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
