@@ -1,25 +1,30 @@
-From: Jason Holmes <jholmes@psu.edu>
-Subject: Re: NFS stops responding
-Date: Thu, 30 Sep 2004 15:10:43 -0400
+From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
+Subject: We got a logfile!
+Date: Wed, 08 Sep 2004 13:25:45 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <415C5A33.50202@psu.edu>
-References: <1096551562.2696.19.camel@douglas-furlong.firebox.com> <415C2F07.4030308@psu.edu>
+Message-ID: <413EEC39.10804@bio.ifi.lmu.de>
+References: <413EB5A4.9040505@bio.ifi.lmu.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CD6Jz-000290-3L
-	for nfs@lists.sourceforge.net; Thu, 30 Sep 2004 12:10:31 -0700
-Received: from vpn-19-7.aset.psu.edu ([146.186.19.7] helo=funkmachine.cac.psu.edu)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CD6Jy-0005Zo-Ae
-	for nfs@lists.sourceforge.net; Thu, 30 Sep 2004 12:10:30 -0700
-Received: from [127.0.0.1] (funkmachine.cac.psu.edu [127.0.0.1])
-	by funkmachine.cac.psu.edu (Postfix) with ESMTP id 901A036B27
-	for <nfs@lists.sourceforge.net>; Thu, 30 Sep 2004 15:10:43 -0400 (EDT)
+	id 1C50aC-0001YK-Ec
+	for nfs@lists.sourceforge.net; Wed, 08 Sep 2004 04:25:48 -0700
+Received: from acheron.informatik.uni-muenchen.de ([129.187.214.135])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1C50aB-0007Ca-Iy
+	for nfs@lists.sourceforge.net; Wed, 08 Sep 2004 04:25:48 -0700
+Received: from internaldeliver.acheron.informatik.uni-muenchen.de (localhost [127.0.0.1])
+	by acheron.informatik.uni-muenchen.de (Postfix) with ESMTP id 572AE4358E
+	for <nfs@lists.sourceforge.net>; Wed,  8 Sep 2004 13:25:46 +0200 (CEST)
+Received: from [141.84.1.141] (galois.bio.ifi.lmu.de [141.84.1.141])
+	(using TLSv1 with cipher RC4-MD5 (128/128 bits))
+	(No client certificate requested)
+	by acheron.informatik.uni-muenchen.de (Postfix) with ESMTP id 4F75743583
+	for <nfs@lists.sourceforge.net>; Wed,  8 Sep 2004 13:25:46 +0200 (CEST)
 To: nfs@lists.sourceforge.net
-In-Reply-To: <415C2F07.4030308@psu.edu>
+In-Reply-To: <413EB5A4.9040505@bio.ifi.lmu.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,152 +37,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Here's a 'sysrq-T' listing for a few hung processes.  Unfortunately, 
-this was on a 2.4.21-20.ELsmp RedHat kernel and not a vanilla kernel 
-(I'll send one of those along as soon as I can get one):
+Hi,
 
-xauth         D 00000100e2d30370  1312  9600   9599 
-(NOTLB)
+while the proc-debugging was still on, we rebooted a few more clients
+from the old to the new kernel version and the server froze again.
+Maybe the logs (if the server was able to write them far enough before
+freezing) allow someone to debug the problem?
 
-Call Trace: [<ffffffff80120d8a>]{io_schedule+42} 
-[<ffffffff801420ed>]{___wait_on_page+285}
-        [<ffffffff8014316a>]{do_generic_file_read+1258} 
-[<ffffffff80143770>]{file_read_actor+0}
-        [<ffffffff801438c5>]{generic_file_new_read+165} 
-[<ffffffffa02ec3a9>]{:nfs:nfs_file_read+217}
-        [<ffffffff8015dfd2>]{sys_read+178} 
-[<ffffffff80110177>]{system_call+119}
+I've put them here:
+http://www.bio.ifi.lmu.de/~steiner/nfsserver-freeze-log-messages.txt.bz2
+http://www.bio.ifi.lmu.de/~steiner/nfsserver-freeze-procdebug.txt.bz2
 
-bash          D 00000100e2bef130   824  9614      1          9666  9583 
-(NOTLB)
+The first of the clients booted on 10:39, the last one was turned-off
+over night (running an old kernel before) and got up at 10:49. The
+nfsserver-freeze-log-messages.txt contains the lines from /var/log/messages
+between 10:39 and 10:50 (the crash time), the nfsserver-freeze-procdebug.txt
+contains the kernel messages from that timeslice.
+The file with the kernel messages has 1.5 million lines *urgh*, but
+maybe some expert just needs to take a look at the last few entries
+to see the problem...?
 
-Call Trace: [<ffffffff80120d8a>]{io_schedule+42} 
-[<ffffffff801420ed>]{___wait_on_page+285}
-        [<ffffffff8014316a>]{do_generic_file_read+1258} 
-[<ffffffff80143770>]{file_read_actor+0}
-        [<ffffffff801438c5>]{generic_file_new_read+165} 
-[<ffffffffa02ec3a9>]{:nfs:nfs_file_read+217}
-        [<ffffffff8015dfd2>]{sys_read+178} 
-[<ffffffff80110177>]{system_call+119}
+cu,
+Frank
 
-bash          D 00000100db051e28     0  9666      1          9718  9614 
-(NOTLB)
-
-Call Trace: [<ffffffff80120d8a>]{io_schedule+42} 
-[<ffffffff80142466>]{__lock_page+294}
-        [<ffffffff801430ca>]{do_generic_file_read+1098} 
-[<ffffffff80143770>]{file_read_actor+0}
-        [<ffffffff801438c5>]{generic_file_new_read+165} 
-[<ffffffffa02ec3a9>]{:nfs:nfs_file_read+217}
-        [<ffffffff8015dfd2>]{sys_read+178} 
-[<ffffffff80110177>]{system_call+119}
-
-Thanks,
-
---
-Jason Holmes
-
-Jason Holmes wrote:
-> I have had similar problems with NFS recently and have yet to figure out 
-> a pattern.  They started around the 2.4.27 time frame, but that could 
-> just be coincidental.  I have 8 NFS servers and several hundred clients. 
->  Every few days, one of the clients will start hanging connections to 
-> one of its mounts (all of the processes access that mount go into D 
-> state and never return - the machine has to be forcefully rebooted to 
-> get rid of them).  While one of the client machines are hanging on a 
-> mount, the other client machines are fine.  Access to the other mounts 
-> are fine on the hanging machine.  The server is fine when this happens 
-> and I see no odd messages in the logs.
-> 
-> The servers were originally running RedHat Enterprise 3 kernels - I have 
-> also tried 2.6.8.1 and have had the same problem.  Clients have been 
-> 2.4.27, 2.6.8.1, and the latest RedHat kernels.  The network is a simple 
-> private one and there is no packet loss.  I've tried both UDP and TCP v3 
-> hard mounts.  Exports are synchronous.
-> 
-> I'm currently hoping that one of my machines with sysrq enabled will 
-> hang to see if I can possibly get some information out of that that will 
-> shed some light on the situation.  I'd be happy to entertain any other 
-> debugging suggestions on this.  Unfortunately, I haven't been able to 
-> figure out how to force the problem to happen, so I'm at the mercy of 
-> waiting for it to just pop up.
-> 
-> Thanks,
-> 
-> -- 
-> Jason Holmes
-> 
-> Douglas Furlong wrote:
-> 
->> Good morning all.
->>
->> Considering the exceedingly fast and speedy response I got yesterday
->> with regards to my problem accessing edirectory.co.uk I thought I would
->> try my luck with an NFS problem.
->>
->> All our unix systems at work have their home directory mounted via NFS
->> to allow hot seating (not that they ever use it!).
->>
->> I have just recently upgraded to Fedora Core 2, running the most recent
->> kernel.
->>
->> All the workstations are running Fedora Core 2, with the second from
->> last kernel (due to CIFS/SMB problems in the latest one).
->>
->> Unfortunately there are two users who's connection to the NFS server is
->> dropped and does not seem to want to reconnect. To date I have.
->>
->> 1) Replaced both of their PC's
->> 2) Replaced switch
->> 3) will replace network cables tomorrow
->> 4) I have tried numerous version of the kernel including the testing
->> kernel from rawhide.
->> 5) Tried variations in the timeo=x value to see if that will help.
->>
->> These lockups vary in time between 30 minutes and 5 hours. Network
->> connections are not affected by this lock up, I am able to ssh on to the
->> box (that's how I collected the tcpdump data).
->>
->> I also have two windows PC's on this switch and things appear to be
->> fine.
->>
->> I have 7 or 8 other systems running linux on the network and NFS
->> communication is not affected.
->>
->> I have increased the number of servers on the NFS server from 8 to 16. I
->> did this by editing /etc/init.d/nfs (don't think this is of any help).
->>
->> I took some tcpdump info on both the client and the server to try and
->> see if I can work out what is going on. Initially it is not providing me
->> with much information (but loads of data).
->>
->> I have attached two files, one from the client and one from the server.
->> Main reason for attaching them is due to length of data. I had wanted to
->> attach them as plain text to simplify access, but at 100k it's a bit too
->> large.
->> I didn't want to cut them down too much just in case I removed some
->> pertinent information :(
-> 
-> 
-> 
-> 
-> -------------------------------------------------------
-> This SF.net email is sponsored by: IT Product Guide on ITManagersJournal
-> Use IT products in your business? Tell us what you think of them. Give us
-> Your Opinions, Get Free ThinkGeek Gift Certificates! Click to find out more
-> http://productguide.itmanagersjournal.com/guidepromo.tmpl
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
-> 
+-- 
+Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
+Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
+LMU, Amalienstr. 17           Phone: +49 89 2180-4049
+80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
 
 
 
 -------------------------------------------------------
-This SF.net email is sponsored by: IT Product Guide on ITManagersJournal
-Use IT products in your business? Tell us what you think of them. Give us
-Your Opinions, Get Free ThinkGeek Gift Certificates! Click to find out more
-http://productguide.itmanagersjournal.com/guidepromo.tmpl
+This SF.Net email is sponsored by BEA Weblogic Workshop
+FREE Java Enterprise J2EE developer tools!
+Get your free copy of BEA WebLogic Workshop 8.1 today.
+http://ads.osdn.com/?ad_id=5047&alloc_id=10808&op=click
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
