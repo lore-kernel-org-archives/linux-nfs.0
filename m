@@ -1,17 +1,16 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 6 of 16] nfsd4: allow read on open for write
-Date: Tue, 22 Mar 2005 16:42:01 +1100
-Message-ID: <E1DDc9R-0002KS-Hg@notabene.cse.unsw.edu.au>
-References: <20050322163830.8762.patches@notabene>
+Subject: [PATCH kNFSd 0 of 16] Introduction
+Date: Tue, 22 Mar 2005 16:42:00 +1100
+Message-ID: <20050322163830.8762.patches@notabene>
 Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DDc9d-0006kp-Mx
-	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:13 -0800
+	id 1DDcA2-0006ly-Aq
+	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:38 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DDc9b-0005eA-6p
-	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:13 -0800
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1DDc9z-00059v-TZ
+	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:38 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -26,31 +25,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Following are 16 patches against nfsd in 2.6.12-rc1-mm1
 
-The rfc recommends allowing read using stateid's from opens that only requested
-write access, as clients may in some cases be unable to write without doing
-reads.
+Most are nfsv4 related.
+Patch 2 removes an inexplicable increment of f_count for a file.  This 
+fixes a problem wherein an exported filesystem may never be unmountable because a
+file on it is never closed.
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
+This could possibly be a candidate for 2.6.12.  The rest should wait to go 
+in to 2.6.13-rc
 
-### Diffstat output
- ./fs/nfsd/nfs4state.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletion(-)
+NeilBrown
 
-diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2005-03-22 16:36:35.000000000 +1100
-+++ ./fs/nfsd/nfs4state.c	2005-03-22 16:36:35.000000000 +1100
-@@ -1928,7 +1928,8 @@ static inline int
- access_permit_read(unsigned long access_bmap)
- {
- 	return test_bit(NFS4_SHARE_ACCESS_READ, &access_bmap) ||
--		test_bit(NFS4_SHARE_ACCESS_BOTH, &access_bmap);
-+		test_bit(NFS4_SHARE_ACCESS_BOTH, &access_bmap) ||
-+		test_bit(NFS4_SHARE_ACCESS_WRITE, &access_bmap);
- }
- 
- static inline int
+
+[PATCH kNFSd 0 of 16] Introduction
+[PATCH kNFSd 1 of 16] svcrpc: auth_domain documentation
+[PATCH kNFSd 2 of 16] nlm: fix f_count leak
+[PATCH kNFSd 3 of 16] nfsd4: fix share conflict tests
+[PATCH kNFSd 4 of 16] nfsd4: remove unneeded stateowner arguments
+[PATCH kNFSd 5 of 16] nfsd4: fix use after put() in cb_recall
+[PATCH kNFSd 6 of 16] nfsd4: allow read on open for write
+[PATCH kNFSd 7 of 16] nfsd4: factor out common open_truncate code
+[PATCH kNFSd 8 of 16] nfsd4: fix failure to truncate on some opens
+[PATCH kNFSd 9 of 16] nfsd4_remove_unused_acl_function
+[PATCH kNFSd 10 of 16] nfsd4: don't set WRITE_OWNER in either allow or deny bits
+[PATCH kNFSd 11 of 16] nfsd4: acl don't set named attrs
+[PATCH kNFSd 12 of 16] nfsd4: acl error fix
+[PATCH kNFSd 13 of 16] nfsd4: rename release_delegation
+[PATCH kNFSd 14 of 16] nfsd4: remove trailing whitespace from nfs4proc.c
+[PATCH kNFSd 15 of 16] nfsd4: fix open returns for other claim types
+[PATCH kNFSd 16 of 16] nfsd4: fix indentation in nfsd4_open
 
 
 -------------------------------------------------------
