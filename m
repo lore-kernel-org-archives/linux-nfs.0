@@ -1,20 +1,16 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: oops in the 2.4.20-NFSALL sunrpc code
-Date: Fri, 13 Dec 2002 16:42:40 +0100
+From: Emanuel.Quass@temic.com
+Subject: kernel +patches recommendation for NFS-Server
+Date: Fri, 13 Dec 2002 17:07:06 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15865.65520.122137.890996@charged.uio.no>
-References: <Pine.LNX.4.44.0212131002500.15305-100000@moisil.badula.org>
-Reply-To: trond.myklebust@fys.uio.no
+Message-ID: <OFB566A64A.DA1EBEDF-ONC1256C8E.005776F8-C1256C8E.00585F7E@nbg.temic.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/alternative; boundary="=_alternative 00585F76C1256C8E_="
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+Received: from mail3.noris.net ([62.128.1.28] ident=root)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18Mrxj-0007WP-00
-	for <nfs@lists.sourceforge.net>; Fri, 13 Dec 2002 07:42:51 -0800
-To: Ion Badulescu <ionut@badula.org>
-In-Reply-To: <Pine.LNX.4.44.0212131002500.15305-100000@moisil.badula.org>
+	id 18MsJa-0001RE-00
+	for <nfs@lists.sourceforge.net>; Fri, 13 Dec 2002 08:05:27 -0800
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,26 +23,36 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Ion Badulescu <ionut@badula.org> writes:
+This is a multipart message in MIME format.
+--=_alternative 00585F76C1256C8E_=
+Content-Type: text/plain; charset="us-ascii"
 
-     > It's caused, from what I can tell, by task->tk_client being
-     > NULL in xprt_timer() at the time it is dereferenced. Looks like
-     > a race condition, probably facilitated by the SMP kernel.
+Hi all,
 
-It's definitely not a race condition: Every new task is supposed to
-call rpc_init_task() prior to calling rpc_execute(). This
-again initializes task->tk_client once and for all. It is never
-allowed to change.
-There is only one exception to the above rule, namely nfs_flushd,
-(which can never stray into net/sunrpc/xprt.c).
+can anyone give me a recommendation for a NFS-Server  which kernel + 
+patches to use?
+
+Thanks in advance 
+ 
+        Emanuel Quass
 
 
-All I can say about this one is that it doesn't look like anything
-I've come across on any other setups. Have you tried to reproduce it
-on an actual 2.4.20 kernel?
 
-Cheers,
-  Trond
+--=_alternative 00585F76C1256C8E_=
+Content-Type: text/html; charset="us-ascii"
+
+
+<br><font size=2 face="sans-serif">Hi all,</font>
+<br>
+<br><font size=2 face="sans-serif">can anyone give me a recommendation for a NFS-Server &nbsp;which kernel + patches to use?</font>
+<br>
+<br><font size=2 face="sans-serif">Thanks in advance </font>
+<br><font size=2 face="sans-serif">&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; </font>
+<br><font size=2 face="sans-serif">&nbsp; &nbsp; &nbsp; &nbsp; Emanuel Quass</font>
+<br>
+<br><font size=2 face="sans-serif"><br>
+</font>
+--=_alternative 00585F76C1256C8E_=--
 
 
 -------------------------------------------------------
