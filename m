@@ -1,82 +1,100 @@
-From: bnies@bluewin.ch
-Subject: ls hangs on NFS share from Apple Xserve
-Date: Wed, 8 Sep 2004 10:42:43 +0200
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <412EBAA100062E28@mssbzhh-int.msg.bluewin.ch>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] NFS mount hang fix
+Date: Tue, 26 Oct 2004 11:06:40 -0400
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <20041026150640.GA24881@fieldses.org>
+References: <20041026141148.GM6408@fi.muni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C4y2d-0006Xo-L6
-	for nfs@lists.sourceforge.net; Wed, 08 Sep 2004 01:42:59 -0700
-Received: from mail1.bluewin.ch ([195.186.1.74])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1C4y2b-0000o9-MN
-	for nfs@lists.sourceforge.net; Wed, 08 Sep 2004 01:42:58 -0700
-Received: from mssbzhh-int.msg.bluewin.ch (195.186.4.230) by mail1.bluewin.ch (Bluewin AG 7.0.030.2)
-        id 412F8E34001564B5 for nfs@lists.sourceforge.net; Wed, 8 Sep 2004 08:42:43 +0000
-To: nfs@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net,
+	trond.myklebust@fys.uio.no, neilb@cse.unsw.edu.au,
+	torvalds@osdl.org
+Return-path: <linux-kernel-owner+glk-linux-kernel=40m.gmane.org-S262288AbUJZPG4@vger.kernel.org>
+To: Jan Kasprzak <kas@fi.muni.cz>
+In-Reply-To: <20041026141148.GM6408@fi.muni.cz>
+List-ID: <nfs.lists.sourceforge.net>
 
-Hi,
+On Tue, Oct 26, 2004 at 04:11:48PM +0200, Jan Kasprzak wrote:
+> I am sorry to repost this, but I have got no feedback from NFS maintainers,
+> while I've got postitive feedback from three people whose problems
+> was fixed by this patch. NFS maintaners - are you alive? If not,
+> Linus, please apply this patch. Thanks,
 
-A couple of months ago I reported a bug that occurs with Linux NFS client
-and Mac OS X NFS server. Here's the bug report:
+Hm.  For some reason, your message never made it into my mailbox, though
+I can see it in the marc.theaimsgroup.com archives of the nfs list.
 
-http://sourceforge.net/tracker/index.php?func=detail&aid=964204&group_id=14&atid=100014
+Changing those buffers to static strikes me as potentially dangerous--we
+currently call the ->parse() methods under a semaphore, so it's safe for
+now, but that might change some day and then there'll be an ugly race
+condition.
 
-And here are other docs related to this problem:
-
-http://discussions.info.apple.com/webx?14@5.gRhIaxY5v2O.0@.689495bc
-http://discussions.info.apple.com/webx?13@140.HfAHaE8Ew3J.148064@.6897b10d/2
-http://groups.google.ch/groups?hl=de&lr=&ie=UTF-8&selm=9c87e8e6.0405280036.16f3c991%40posting.google.com
-http://algesten.blogspot.com/2004/07/mac-os-x-server-nfs-unique-cookie-bug.html
-http://sources.redhat.com/bugzilla/show_bug.cgi?id=353
-
-Martin Algesten reported that this might be caused by non-unique NFS cookies
-in the same READDIRPLUS reply from the Apple NFS server but in our environment
-with MacOS X 10.3.5 and SuSE Linux 9.0 (Kernel 2.4.21-243-smp4G, glibc-2.3.2-88)
-I cannot confirm this. The NFS cookies are unique in the same READDIRPLUS
-reply but not unique during the same NFS session.
-
-We don't have problems accessing the MacOS X 10.3.5 NFS server from our Solaris
-clients and also don't have problems with Solaris, Linux and NetApp NFS servers
-from Linux clients. 
-
-I assume this is a bug with the Linux Kernel NFS implementation or the glibc
-library which provides the getdents64 call that loops. Apple says it's a
-Linux bug.
-
-According to SuSE the patch linux-2.4.21-15-seekdir.dif from http://client.linux-nfs.org/Linux-2.4.x/2.4.21/
-is already included in their kernel.
-
-Could someone who is familiar with NFS and the Linux NFS or glibc code analyze
-and solve this problem? I can provide network traffic and strace logs if
-you don't have the equipment to reproduce this problem.
-
-Thanks in advance.
-
-Regards,
-Bernd
+Could you check whether the following fixes your problem?--b.
 
 
+Problem identified by Jan Kasprzak.
 
--------------------------------------------------------
-This SF.Net email is sponsored by BEA Weblogic Workshop
-FREE Java Enterprise J2EE developer tools!
-Get your free copy of BEA WebLogic Workshop 8.1 today.
-http://ads.osdn.com/?ad_id=5047&alloc_id=10808&op=click
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Limit on domainname size (currently 50) is too small.
+
+Just use the beginning of input buffer as scratch space for it, and
+save a little stack space while we're at it.
+
+Signed-off-by: J. Bruce Fields
+---
+
+ linux-2.6.10-rc1-bfields/net/sunrpc/svcauth_unix.c      |   14 
+ linux-2.6.10-rc1-bfields/net/sunrpc/svcauth_unix.c.orig |  511 ++++++++++++++++
+ 2 files changed, 518 insertions(+), 7 deletions(-)
+
+diff -puN net/sunrpc/svcauth_unix.c~fqdn_length_fix net/sunrpc/svcauth_unix.c
+--- linux-2.6.10-rc1/net/sunrpc/svcauth_unix.c~fqdn_length_fix	2004-10-22 23:36:50.000000000 -0400
++++ linux-2.6.10-rc1-bfields/net/sunrpc/svcauth_unix.c	2004-10-22 23:37:47.000000000 -0400
+@@ -150,11 +150,14 @@ static void ip_map_request(struct cache_
+ }
+ 
+ static struct ip_map *ip_map_lookup(struct ip_map *, int);
++
+ static int ip_map_parse(struct cache_detail *cd,
+ 			  char *mesg, int mlen)
+ {
+ 	/* class ipaddress [domainname] */
+-	char class[50], buf[50];
++	/* should be safe just to use the start of the input buffer
++	 * for scratch: */
++	char *buf = mesg;
+ 	int len;
+ 	int b1,b2,b3,b4;
+ 	char c;
+@@ -167,13 +170,11 @@ static int ip_map_parse(struct cache_det
+ 	mesg[mlen-1] = 0;
+ 
+ 	/* class */
+-	len = qword_get(&mesg, class, 50);
++	len = qword_get(&mesg, ipm.m_class, sizeof(ipm.m_class));
+ 	if (len <= 0) return -EINVAL;
+-	if (len >= sizeof(ipm.m_class))
+-		return -EINVAL;
+ 
+ 	/* ip address */
+-	len = qword_get(&mesg, buf, 50);
++	len = qword_get(&mesg, buf, mlen);
+ 	if (len <= 0) return -EINVAL;
+ 
+ 	if (sscanf(buf, "%u.%u.%u.%u%c", &b1, &b2, &b3, &b4, &c) != 4)
+@@ -184,7 +185,7 @@ static int ip_map_parse(struct cache_det
+ 		return -EINVAL;
+ 
+ 	/* domainname, or empty for NEGATIVE */
+-	len = qword_get(&mesg, buf, 50);
++	len = qword_get(&mesg, buf, mlen);
+ 	if (len < 0) return -EINVAL;
+ 
+ 	if (len) {
+@@ -194,7 +195,6 @@ static int ip_map_parse(struct cache_det
+ 	} else
+ 		dom = NULL;
+ 
+-	strcpy(ipm.m_class, class);
+ 	ipm.m_addr.s_addr =
+ 		htonl((((((b1<<8)|b2)<<8)|b3)<<8)|b4);
+ 	ipm.h.flags = 0;
+_
