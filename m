@@ -1,26 +1,28 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] NFS: Zeroing NFS and kNFSD stats
-Date: Wed, 14 Jul 2004 19:24:37 -0400
+From: Garrick Staples <garrick@usc.edu>
+Subject: stat'ing >4TB NFS filesystems
+Date: Thu, 15 Jul 2004 12:21:25 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040714232437.GB12551@fieldses.org>
-References: <40F3D483.8020507@RedHat.com> <20040713143044.GA3023@fieldses.org> <40F3FAD8.7090707@RedHat.com> <20040713151759.GC3023@fieldses.org> <20040713180108.GF3023@fieldses.org> <20040713210950.GB22659@polop.usc.edu>
+Message-ID: <20040715192125.GZ22659@polop.usc.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="vRacM696f6w3EQmW"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Bkt7A-0001W5-40
-	for nfs@lists.sourceforge.net; Wed, 14 Jul 2004 16:24:40 -0700
-Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	id 1BlBo7-0007qs-Um
+	for nfs@lists.sourceforge.net; Thu, 15 Jul 2004 12:22:15 -0700
+Received: from polop.usc.edu ([128.125.10.9])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.34)
-	id 1Bkt79-0002GZ-MF
-	for nfs@lists.sourceforge.net; Wed, 14 Jul 2004 16:24:40 -0700
-Received: from bfields by pickle.fieldses.org with local (Exim 4.34)
-	id 1Bkt77-0003Kb-Ur
-	for nfs@lists.sourceforge.net; Wed, 14 Jul 2004 19:24:37 -0400
-To: Linux NFS Mailing List <nfs@lists.sourceforge.net>
-In-Reply-To: <20040713210950.GB22659@polop.usc.edu>
+	id 1BlBo7-0001xe-M9
+	for nfs@lists.sourceforge.net; Thu, 15 Jul 2004 12:22:15 -0700
+Received: from polop.usc.edu (localhost.localdomain [127.0.0.1])
+	by polop.usc.edu (8.12.11/8.12.11) with ESMTP id i6FJLPSX022384
+	for <nfs@lists.sourceforge.net>; Thu, 15 Jul 2004 12:21:25 -0700
+Received: (from garrick@localhost)
+	by polop.usc.edu (8.12.11/8.12.11/Submit) id i6FJLPuA022382
+	for nfs@lists.sourceforge.net; Thu, 15 Jul 2004 12:21:25 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,21 +35,53 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, Jul 13, 2004 at 02:09:50PM -0700, Garrick Staples wrote:
-> It's about choice, isn't it?  Some sites may want to maintain the same
-> numbers over time, other sites might want to zero them.
 
-What choice?  You can do everything you need with the current kernel
-interface.
+--vRacM696f6w3EQmW
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-> If someone zeros the numbers and messes up something else, that's the admin's
-> perogative to break things.
+Hi all,
+   I have some RHE3 machines (2.4.21) here that can't properly stat a 5GB f=
+ilesystem,
+but some RH7.2 machines with (vanilla 2.4.26) can stat it fine.  I searched=
+ for
+the lkml looking for NFS patches since 2.4.21 but couldn't find anything.
+Can anyone here point me to the right patch?
 
-Maybe, but this gives the administrator one more way to break things
-without giving them any real new functionality.  On balance that seems a
-poor tradeoff.
 
---b.
+On RHE3 (rcf-104 is about 5.3TB):
+df -k...
+rcf-fs2:/export/home/rcf-104
+                     1075438752 -9223372036280871432 1595639072 101%
+/auto/rcf-104
+hpc-fs3:/export/home/hpc-20
+                     4342331984 1270896448 3071435536  30% /auto/hpc-20
+
+$ stat -f /auto/rcf-104
+  File: "/auto/rcf-104"
+    ID: 0        Namelen: 255     Type: nfs
+Blocks: Total: 2150877504 Free: 3295674688 Available: 3188266576 Size: 512
+Inodes: Total: 6246144    Free: 6233949  =20
+(note: the "Size" is wrong too, it should be 32768)
+
+--=20
+Garrick Staples, Linux/HPCC Administrator
+University of Southern California
+
+--vRacM696f6w3EQmW
+Content-Type: application/pgp-signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.3 (GNU/Linux)
+
+iD8DBQFA9tk10SBUxJbm9HMRAozqAKC6nTgOtlxh3KjoJ+2+MmDmdE6FEgCdHlsn
+TxT0MWgn+vJ2CafwhSOrYlw=
+=B1JV
+-----END PGP SIGNATURE-----
+
+--vRacM696f6w3EQmW--
 
 
 -------------------------------------------------------
