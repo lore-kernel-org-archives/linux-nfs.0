@@ -1,25 +1,20 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: NFSv4  and vi
-Date: Thu, 19 Feb 2004 10:49:36 -0500
+From: Pete Flugstad <peteflugstad@mchsi.com>
+Subject: nfs-utils on uClibc based system?  mount failures
+Date: Thu, 19 Feb 2004 10:08:20 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040219154936.GA20586@fieldses.org>
-References: <200402190958.38127.vincent.roqueta@ext.bull.net>
+Message-ID: <4034DF74.9090208@mchsi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AtqWE-0001d4-1I
-	for nfs@lists.sourceforge.net; Thu, 19 Feb 2004 07:55:18 -0800
-Received: from dsl093-002-214.det1.dsl.speakeasy.net
-	([66.93.2.214] helo=pumpkin.fieldses.org ident=Debian-exim)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.30)
-	id 1AtqQo-0008Hc-Mk
-	for nfs@lists.sourceforge.net; Thu, 19 Feb 2004 07:49:42 -0800
-To: Vincent ROQUETA <vincent.roqueta@ext.bull.net>
-In-Reply-To: <200402190958.38127.vincent.roqueta@ext.bull.net>
+	id 1AtqoL-0005pC-7n
+	for nfs@lists.sourceforge.net; Thu, 19 Feb 2004 08:14:01 -0800
+Received: from sccimhc02.asp.att.net ([63.240.76.164])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1Atqau-0004ha-RS
+	for nfs@lists.sourceforge.net; Thu, 19 Feb 2004 08:00:08 -0800
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,17 +27,53 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Feb 19, 2004 at 09:58:38AM +0100, Vincent ROQUETA wrote:
-> Here are vi traces for opening "/mnt/nfs/vincent/suite-tests/toto3"
+(resend after subscribing to list...)
 
-These bug reports are no help if you won't remind us, on each bug
-report, which kernel you're using, with which (if any) patches.  Also,
-it'd help if you could test with the latest CITI NFSv4 patches
-(http://www.citi.umich.edu/projects/nfsv4/linux/).  I suspect the
-problem you're seeing is a problem that's already fixed with those
-patches.
+Hello,
 
---Bruce Fields
+    Has anyone gotten nfs-utils to work as a server on a Linux uClibc 
+based system.  I'm using Linux 2.4.25 (yup, just built it yesterday) 
+with all the NFS server stuff compiled in (semi-embedded system, no 
+modules).  Root and userspace are mostly from the pre-built uClibc 
+development system (http://www.uclibc.org/toolchains.html) - I'm 
+currently using 0.9.23, which is a little old, but I hope that doesn't 
+matter.  This is GCC 3.3.1 based.
+
+    I managed to get nfs-utils (1.0.6) built for this system after 
+hacking up a fake getrpcbynumber_r, which uClibc doesn't have (I called 
+getrpcbynumber and copied the result into the result buffer - yes, I 
+know it's not thread safe, but I don't see how that would be causing my 
+problems).  BTW, is getrpcbynumber_r actually documented anywhere - all 
+the man pages I found had the wrong (not enough) parameters - I had to 
+kind of guess what was going on.
+
+    Anyway I got it running, but what I'm seeing now is while I can 
+export things OK, any mount request for something I've exported are 
+failing.  I've debugged mountd, and it looks like all the auth stuff is 
+working.  What seems to be failing is a call to nfsctl(NFSCTL_EXPORT, 
+...).  This is the call stack when that happens:
+
+     ...
+     mount_mnt_3_svc
+     get_rootfh
+     export_export
+     nfsexport
+     nfsctl
+     syscall
+
+    Everything before the nfsctl/syscall seems to work just fine. 
+get_rootfs does the authentication and that works OK.   The syscall 
+however, returns -1, and sets errno to be 22 (EINVAL).
+
+    I have the system setup if anyone else wants more debugging info. 
+I'll see if I can get a dump of the arguments in nfsctl when it dies.  I 
+could even let someone ssh into if they wish.
+
+   I don't see how uClibc could be causing a problem, but I don't know 
+for sure.
+
+Thanks,
+Pete
 
 
 -------------------------------------------------------
