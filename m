@@ -1,24 +1,26 @@
-From: James Pearson <james-p@moving-picture.com>
-Subject: rpc.mountd: getfh failed: Operation not permitted
-Date: Fri, 23 Jan 2004 13:26:59 +0000
+From: Paul Jakma <paul@clubi.ie>
+Subject: Re: NFSv4 daemons...
+Date: Fri, 23 Jan 2004 14:54:36 +0000 (GMT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <40112123.D2A8518D@moving-picture.com>
+Message-ID: <Pine.LNX.4.58.0401231453070.2140@fogarty.jakma.org>
+References: <1073608448.1380.22.camel@nidelv.trondhjem.org>
+ <1073619719.12271.7.camel@binkley> <1073621173.1398.55.camel@nidelv.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: seth vidal <skvidal@phy.duke.edu>, hjl@users.sourceforge.net,
+        nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ak1L3-0002jW-4s
-	for nfs@lists.sourceforge.net; Fri, 23 Jan 2004 05:27:09 -0800
-Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ak1L2-0001Kn-N6
-	for nfs@lists.sourceforge.net; Fri, 23 Jan 2004 05:27:08 -0800
-Received: from darke.mpc.local ([172.16.11.6] helo=moving-picture.com)
-	by moving-picture.com with esmtp (Exim 4.24)
-	id 1Ak1Kt-00017B-97
-	for nfs@lists.sourceforge.net; Fri, 23 Jan 2004 13:26:59 +0000
-To: nfs@lists.sourceforge.net
+	id 1Ak2i3-0001Va-Di
+	for nfs@lists.sourceforge.net; Fri, 23 Jan 2004 06:54:59 -0800
+Received: from hibernia.jakma.org ([213.79.33.168])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.30)
+	id 1Ak2i1-00051c-N6
+	for nfs@lists.sourceforge.net; Fri, 23 Jan 2004 06:54:58 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1073621173.1398.55.camel@nidelv.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,53 +33,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I have a strange problem with an NFS client that can not mount file
-systems from some NFS servers.
+On Thu, 8 Jan 2004, Trond Myklebust wrote:
 
-e.g.:
+> rpc.gssd is necessary if you want to use strong authentication (for
+> NFSv2/v3 as well as for NFSv4).
 
-mount clark:/disk1 /mnt/tmp
-mount: clark:/disk1 failed, reason given by server: Permission denied
+Does this implement data stream encryption? (rpcsec as opposed to rpc
+auth? (possibly getting my jargon wrong here))
 
-The server logs:
+> Cheers,
+>   Trond
 
-Jan 23 12:56:02 clark rpc.mountd: authenticated mount request from
-rc0478:623 for /disk1 (/disk1) 
-Jan 23 12:56:02 clark rpc.mountd: getfh failed: Operation not permitted 
-
-
-However, doing:
-
-mount clark:/disk2 /mnt/tmp
-
-works fine - after this mount, /proc/mounts shows:
-
-clark:/disk2 /mnt/tmp nfs
-rw,v3,rsize=32768,wsize=32768,hard,udp,lock,addr=clark 0 0
-
-
-On the server, /disk1 and /disk2 are separate disks exported in exactly
-the same way:
-
-/disk1 *(rw)
-/disk2 *(rw)
-
-
-The server is running a 2.4.19 based kernel with nfs-utils v0.3.3
-(RedHat 7.2) (all a bit old, but they work fine)
-
-The same client (running a 2.4.23 based kernel) is having the same
-problem with a few other servers (but not all). Some of these other
-servers are running a 2.4.21 based kernel.
-
-However, every other client (100's of them) has no problems mounting
-these same filesystems.
-
-Any ideas?
-
-Thanks
-
-James Pearson
+regards,
+-- 
+Paul Jakma	paul@clubi.ie	paul@jakma.org	Key ID: 64A2FF6A
+	warning: do not ever send email to spam@dishone.st
+Fortune:
+To thine own self be true.  (If not that, at least make some money.)
 
 
 -------------------------------------------------------
