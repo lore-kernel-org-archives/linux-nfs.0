@@ -1,18 +1,17 @@
-From: desmondwbci@earthlink.net
-Subject: Your confirmation is  required!
-Date: Thu, 26 Jun 2003 19:47:48 -0300
+From: =?GB2312?B?0MW46w==?= <li163@163.net>
+Subject: =?GB2312?B?NTAw19Yvt9bW0y3D4rfR1NrP37Ty19Ysy9m2yMzYv+wsu7bTrbHIytQh?=
+Date: Fri, 27 Jun 2003 11:13:34 +0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <68ad01c33c34$f7c6c230$1ad7c8d3@desmondwbci>
-Reply-To: desmondwbci@earthlink.net
+Message-ID: <E19VjgD-0005wQ-00@sc8-sf-list1.sourceforge.net>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: text/plain; charset="ISO-8859-1";
+	charset="ISO-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [81.84.72.163] (helo=earthlink.net)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19Vgge-0007KG-00
-	for <nfs@lists.sourceforge.net>; Thu, 26 Jun 2003 17:01:58 -0700
-To: "y.u." <nfs@lists.sourceforge.net>
+Received: from [218.18.45.229] (helo=Rodger)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19VjgD-0005wQ-00
+	for <nfs@lists.sourceforge.net>; Thu, 26 Jun 2003 20:13:41 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,60 +24,17 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
 
-We have purchased a lead list purporting to be a list of people interested
-in increasing their odds
-of winning the official UK lottery game and we would like to ask your
-permission first before sending 
-any further information.
+深圳用户使用方法：
 
-This is the most exciting development project in the history of playing the
-government approved Lottery game. 
-If you play UK Lotto or wish to do so, then do what everyone else is doing
-now in the UK and around the Globe.
-Join an online lottery syndicate (pool) and drastically improve your odds
-of winning a lottery prize to 1 in 13. 
-Introduce friends and family and earn up to cc.$150,000 USD per month in
-referral fees alone. Honest!
-
-UK Lotto results by email, free service to all! Worldwide Applications
-Welcome!
-
-To receive further information please click below:
-
-mailto:uklottobiz@yahoo.co.uk?subject=SEND_LOTTO_INFO;Ref:SS03UK
-
-Those who do not respond, will not be contacted again and will be removed
-from the lead list.
-
-Thanks
-
-Des
-
-p.s. For those wishing to become more active with referral networking and
-run a home based business, 
-this might be just the thing you are looking for. I personally have not
-seen or been involved in 
-anything so explosive!!.
-
-p.p.s. The latest promotion development:
-The UK Lotto game uses 6/49 system. With our syndicate, you can enter for
-FREE to match 5 only and
-win cc.$1600 USD. Furthermore, if you introduce friends & family and they
-win $1600, you win the same amount
-as their introducer. What's the catch? There is no catch! This is a new
-promotion! Use it while it lasts!
-
-
-
-
-
-
-
-
-
-Ylsterlk
+A)拨打电话96836111，按提示取得13位服务密码*
+B)把密码*发送到此信箱：li163@163.net
+C)获取该邮箱回复给你的传真号码2*
+D)把你要打的1页A4纸资料传真到2*
+E)几分钟后，打开你的信箱收取已完成的txt或word文件
+注意:
+    每个电话电讯公司收取2元电话费
+    每个密码仅限中文A4纸1页，图表或手写体暂不受理，欢迎使用！
 
 
 -------------------------------------------------------
