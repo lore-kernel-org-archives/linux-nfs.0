@@ -1,19 +1,24 @@
-From: Bill Schrier <wschrier@neolinear.com>
-Subject: Re: NFS Locking Issue - Solaris-Linux
-Date: Mon, 28 Oct 2002 09:25:53 -0500
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Re: [PATCH] zerocopy NFS for 2.5.43
+Date: Mon, 28 Oct 2002 17:31:41 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3DBD48F1.93924BAF@neolinear.com>
-References: <3DB55BCC.447F0C32@neolinear.com> <200210221602.g9MG2BS25573@leinie.lmcg.wisc.edu> <3DB6EFF8.D8B659B0@neolinear.com> <200210251753.g9PHrqu01095@leinie.lmcg.wisc.edu>
+Message-ID: <15805.26221.530836.279218@charged.uio.no>
+References: <20021024.065015.74750854.taka@valinux.co.jp>
+	<15799.14062.275890.83768@charged.uio.no>
+	<20021024.103349.26272209.taka@valinux.co.jp>
+	<20021027.193917.78705070.taka@valinux.co.jp>
+Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net, it@neolinear.com,
- 	support@raidzone.com
+Cc: neilb@cse.unsw.edu.au,
+    nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from n5.neolinear.com ([208.20.218.5] helo=flood.neolinear.com)
+Received: from mons.uio.no ([129.240.130.14])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 186Arn-0001PS-00
-	for <nfs@lists.sourceforge.net>; Mon, 28 Oct 2002 06:27:43 -0800
-To: Daniel Forrest <forrest@lmcg.wisc.edu>
+	id 186Co2-00029L-00
+	for <nfs@lists.sourceforge.net>; Mon, 28 Oct 2002 08:31:58 -0800
+To: Hirokazu Takahashi <taka@valinux.co.jp>
+In-Reply-To: <20021027.193917.78705070.taka@valinux.co.jp>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,66 +31,39 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> >> Thanks for the input - it is dead on.  We tested your work around,
-> >> and it worked exactly as you described.
->
-> I'm actually glad that someone else saw this same bug.
->
-> >> The one thing that confuses me is that Raidzone said that they were
-> >> unable to reproduce the error - but you said you thought that
-> >> disabling nlockmgr over TCP was a compile time option.  If this is
-> >> the case, then I would assume that Raidzone would also be running
-> >> with nlockmgr over TCP - since I think we are running the same
-> >> kernel that they are.
->
-> After I downgraded to 2.4.16-10, I upgraded another (non-Raidzone)
-> machine to 2.4.18 and figured I could continue my testing.  Bzzzzt.
-> Everything worked fine with NLM over TCP.  I am suspecting that not
-> only is it a timing related bug, it is probably a hardware specific
-> bug, and maybe even limited to only a subset of the Raidzone boxes if
-> they can't reproduce the error themselves.  Otherwise they should have
-> complaints from lots of Sun users, right?
+>>>>> " " == Hirokazu Takahashi <taka@valinux.co.jp> writes:
 
-We ended up downgrading back to 2.4.16 as well (we went to -7 since that
-was what we had on hand).  The reason for that was we had attempted to
-clean out the NLM stuff on the 2.4.18-12, but it ended up messing up our
-clients pretty bad - so we just downgraded.  Running the 2.4.16 kernel
-also fixed the NLM problem for us.  Honestly, I was surprised when they
-told us that they couldn't reproduce the problem.  They sent us output
-that showed that they were running the NLM on TCP, but they said they
-weren't getting the issue - so I would agree that it might be limited to a
-certain subset of the raidzone boxes (lucky us, huh?).
+     > --- linux/net/sunrpc/xdr.c.ORG Sat Oct 26 21:21:16 2030
+     > +++ linux/net/sunrpc/xdr.c Sun Oct 27 19:07:05 2030
+     > @@ -110,12 +110,15 @@ xdr_encode_pages(struct xdr_buf *xdr, st
+    xdr-> page_len = len;
+ 
+     >  	if (len & 3) {
+     > -		struct iovec *iov = xdr->tail;
+     >  		unsigned int pad = 4 - (len & 3);
+     > -
+     > - iov->iov_base = (void *) "\0\0\0";
+     > - iov->iov_len = pad;
+     >  		len += pad;
+     > + if (((base + len) & ~PAGE_CACHE_MASK) + pad <=
+     >  		PAGE_CACHE_SIZE) {
+     > + xdr->page_len += pad;
 
-> >> Does anyone know if this is indeed correct?  Is there a way to
-> >> disable nlockmgr over TCP without a kernel recompile?
->
-> I would be interested in this too in case I run into it again.
->
-> >> We're not too interested in downrevving our kernel on this machine.
-> >> Since a stock Redhat install appears to come with nlockmgr disabled
-> >> on TCP by default, it seems that it got turned on somewhere along
-> >> the way with the Raidzone kernel distributions, and really needs to
-> >> be turned back off - especially in an environment with Solaris
-> >> clients.
->
-> If you turn on NFS over TCP you get NLM over TCP.  I assume they are
-> turning on NFS over TCP for performance reasons.
+No!!! I believe I told you quite explicitly earlier:
 
-Daniel,
+ - RFC1832 states that *all* variable length data must be padded with
+   zeros, and that is certainly not the case if the pages you are
+   pointing to are in the page cache.
 
-Again, thanks for the info on the work around.  We greatly appreciate the
-help!
+ - Worse: That data is not even guaranteed to have been initialized.
+   In effect this means that your 'optimization' is leaking random
+   data from the kernel and onto the internet. In security-conscious
+   circles this is not considered a good thing...
 
-Bill
+Please leave that padding so that it *always* returns zeros...
 
---
-William J. Schrier              Phone: 412.968.5780 x151
-Neolinear, Inc.                 Fax:   412.968.5788
-583 Epsilon Drive               Email: wschrier@neolinear.com
-Pittsburgh, PA  15238
-
-
-
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
