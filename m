@@ -1,23 +1,23 @@
-From: Olaf Kirch <okir@suse.de>
+From: raven@themaw.net
 Subject: Re: [PATCH] SGI 882960: Busy inodes after unmount, oops
-Date: Wed, 4 Feb 2004 13:09:52 +0100
+Date: Wed, 4 Feb 2004 22:24:14 +0800 (WST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040204120952.GA1980@suse.de>
+Message-ID: <Pine.LNX.4.58.0402042209030.26014@raven.themaw.net>
 References: <40209B6D.56ED461E@melbourne.sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>
+   Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AoLt2-0002D7-Cl
-	for nfs@lists.sourceforge.net; Wed, 04 Feb 2004 04:12:08 -0800
-Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1AoNwj-0008LN-Bd
+	for nfs@lists.sourceforge.net; Wed, 04 Feb 2004 06:24:05 -0800
+Received: from wombat.indigo.net.au ([202.0.185.19])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.30)
-	id 1AoLt1-00035x-0T
-	for nfs@lists.sourceforge.net; Wed, 04 Feb 2004 04:12:07 -0800
+	id 1AoNwi-0005lr-MR
+	for nfs@lists.sourceforge.net; Wed, 04 Feb 2004 06:24:04 -0800
 To: Greg Banks <gnb@melbourne.sgi.com>
 In-Reply-To: <40209B6D.56ED461E@melbourne.sgi.com>
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -32,49 +32,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Greg,
 
-I've been looking at your analysis a little closer, and am
-trying to understand how the bug was triggered. Here's what
-I think happened:
+Excelent work Greg.
 
- -	the unlink code keeps a reference to the dentry of
- 	the parent directory, but not to the vfsmount
- -	this allows the umount to proceed, because there
- 	don't seem to be any more references to the mount
- -	rpc_shutdown_client calls rpc_killall_tasks, which
- 	terminates the async unlink task.
- -	rpciod is woken up and schedules the async task,
- 	calling __rpc_execute
- -	__rpc_execute notices the task is dead (no tk_action),
- 	leaves the loop and invokes task->tk_exit == nfs_async_unlink_done
- -	nfs_async_unlink_done calls dput() on the parent dentry,
- 	but the dentry is not unhashed.
+On Wed, 4 Feb 2004, Greg Banks wrote:
 
-Now looking at kill_super(), the sequence of calls there looks
-like this:
+> G'day,
+> 
+> This patch fixes a bug where the forced killing of pending asynchronous
+> unlink rpc_tasks during unmount leaks inode reference counts for the
+> parent of the silly-renamed file and all its ancestor directories,
+> resulting in the message 
+> 
+> VFS: Busy inodes after unmount. Self-destruct in 5 seconds.  Have a nice day...
+> 
+> and a few seconds later an oops with a stack trace ending in
+> prune_dcache -> nfs_dentry_iput -> iput.
+> 
+> This is probably also the bug discussed last September on the autofs
+> mailing list.  The patch posted by Olaf Hering then has no effect
+> at all, but it did put me on the right track (thanks Olaf).
 
-	shrink_dcache_parent(root);
-	...
-	sop->put_super(sb);
-	...
-	if (invalidate_inodes(sb)) {
-		printk(KERN_ERR "VFS: Busy inodes after unmount. "
-			"Self-destruct in 5 seconds.  Have a nice day...\n");
-	}
+This message has occasionally been seen for a very log time when using 
+autofs but I've never seen an oops follow it???
 
-So the real problem is that the dentry isn't unhashed. The other
-part of the patch isn't required because the tk_exit() function
-is called always, even when rpc_killall_tasks triggers the demise
-of an async task.
+Until now I have assumed that it is a bug in the daemon code caused by not 
+removing a directory(s) before the umount. I've caught several bugs in 
+the cleanup code but can't seem to find what else might causing it.
 
-Do you agree with this analysis?
+About the only thing that I'm sure of is that this happens at umount time 
+in autofs, and with my latest code, only when there is a accompanying 
+directory removal.
 
-Olaf
--- 
-Olaf Kirch     |  Stop wasting entropy - start using predictable
-okir@suse.de   |  tempfile names today!
----------------+ 
+Do you guys think this might really be the same problem?
+
+This is very hard to trigger so testing is difficult.
+ 
+Ian
+
 
 
 -------------------------------------------------------
