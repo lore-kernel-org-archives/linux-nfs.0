@@ -1,25 +1,22 @@
-From: "G. Allen Morris III" <gam3-nfs@gam3.net>
-Subject: [RFC] nfsstat v4 layout
-Date: Wed, 16 Mar 2005 12:37:59 -0500
-Message-ID: <20050316173759.GA4360@gam3.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Move (mv) hangs with NFSv4
+Date: Wed, 16 Mar 2005 12:47:04 -0500
+Message-ID: <20050316174704.GD21258@fieldses.org>
+References: <41B61C89.2060000@drzeus.cx> <20041207211715.GQ31250@fieldses.org> <41B6E933.4090708@drzeus.cx> <41D84216.9060504@drzeus.cx> <20050312185119.GA1064@fieldses.org> <42346C15.4080402@drzeus.cx> <20050313164804.GA10992@fieldses.org> <4235B5C4.7060800@drzeus.cx> <20050315223125.GE11916@fieldses.org> <42382772.9030303@drzeus.cx>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DBcTD-0003XP-Vy
-	for nfs@lists.sourceforge.net; Wed, 16 Mar 2005 09:38:11 -0800
-Received: from mta10.adelphia.net ([68.168.78.202])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DBcTC-0004Hy-Gi
-	for nfs@lists.sourceforge.net; Wed, 16 Mar 2005 09:38:11 -0800
-Received: from harpo.ny.gam3.net ([68.235.28.141]) by mta10.adelphia.net
-          (InterMail vM.6.01.04.01 201-2131-118-101-20041129) with ESMTP
-          id <20050316173804.JAHU7277.mta10.adelphia.net@harpo.ny.gam3.net>
-          for <nfs@lists.sourceforge.net>; Wed, 16 Mar 2005 12:38:04 -0500
-Received: from gam3 by harpo.ny.gam3.net with local (Exim 3.36 #1 (Debian))
-	id 1DBcT1-00018i-00
-	for <nfs@lists.sourceforge.net>; Wed, 16 Mar 2005 12:37:59 -0500
-To: nfs@lists.sourceforge.net
+	id 1DBcbP-00049A-3B
+	for nfs@lists.sourceforge.net; Wed, 16 Mar 2005 09:46:39 -0800
+Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1DBcbM-0005Jz-Ii
+	for nfs@lists.sourceforge.net; Wed, 16 Mar 2005 09:46:39 -0800
+To: Pierre Ossman <drzeus-list@drzeus.cx>
+In-Reply-To: <42382772.9030303@drzeus.cx>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,29 +30,16 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Wed, Mar 16, 2005 at 01:32:50PM +0100, Pierre Ossman wrote:
+> No change in behaviour from the last attempt. idmapd keeps running just
+> fine.
+> Dump from new run included.
 
-I made a patch to nfsstat to display v4 stats.
-I am having a problem with some of the names being so
-long setclientid_confirm for instance.  
-
-Is the format below too confusing?  Anyone have a better idea?
-
-Client nfs v4:
-null        read        write       commit      open        *_confirm   
-0       0%  0       0%  0       0%  0       0%  0       0%  0       0%  
-*_noattr    *_downgrade close       setattr     fsinfo      renew       
-0       0%  0       0%  0       0%  0       0%  0       0%  0       0%  
-setclientid *_confirm   lock        lockt       locku       access      
-0       0%  0       0%  0       0%  0       0%  0       0%  0       0%  
-getattr     lookup      lookup_root remove      rename      link        
-0       0%  0       0%  0       0%  0       0%  0       0%  0       0%  
-symlink     create      pathconf    statfs      readlink    readdir     
-0       0%  0       0%  0       0%  0       0%  0       0%  0       0%  
-server_caps delegreturn 
-0       0%  0       0%  
-
-
-Allen Morris <gam3@gam3.net>
+OK, thanks for the data.  It still looks like a server-side idmapping
+problem.  Next time it gets into this state, it would be interesting to
+know whether sending rpc.idmapd a SIGHUP (or just restarting it) makes
+any difference.  I'll try to find the time to investigate further
+later this week....--b.
 
 
 -------------------------------------------------------
