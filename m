@@ -1,28 +1,35 @@
-From: "Paul Smith" <pausmith@nortelnetworks.com>
-Subject: NFS client write performance issue ... thoughts?
-Date: Mon, 5 Jan 2004 17:11:11 -0500
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS client write performance issue ... thoughts?
+Date: Mon, 5 Jan 2004 23:34:42 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16377.57599.284453.729190@lemming.engeast.baynetworks.com>
+Message-ID: <16378.15074.348051.673492@guts.uio.no>
+Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AdcwV-0002X1-3U
-	for nfs@lists.sourceforge.net; Mon, 05 Jan 2004 14:11:23 -0800
-Received: from zrtps0kp.nortelnetworks.com ([47.140.192.56])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AdcwU-0004L7-Jk
-	for nfs@lists.sourceforge.net; Mon, 05 Jan 2004 14:11:22 -0800
-Received: from zrtps0m6.us.nortel.com (zrtps0m6.us.nortel.com [47.140.192.58])
-	by zrtps0kp.nortelnetworks.com (Switch-2.2.6/Switch-2.2.0) with ESMTP id i05MBDM18379
-	for <nfs@lists.sourceforge.net>; Mon, 5 Jan 2004 17:11:13 -0500 (EST)
-Received: from lemming.engeast.baynetworks.com (mail@lemming.engeast.baynetworks.com [47.17.140.90])
-	by zrtps0m6.us.nortel.com (Switch-2.2.6/Switch-2.2.0) with ESMTP id i05MBBo02006
-	for <nfs@lists.sourceforge.net>; Mon, 5 Jan 2004 17:11:11 -0500 (EST)
-Received: from psmith by lemming.engeast.baynetworks.com with local (Exim 3.36 #1 (Debian))
-	id 1AdcwJ-0008Ki-00
-	for <nfs@lists.sourceforge.net>; Mon, 05 Jan 2004 17:11:11 -0500
+	id 1Adivl-0004tc-54
+	for nfs@lists.sourceforge.net; Mon, 05 Jan 2004 20:35:01 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1Adivk-0001Ps-NG
+	for nfs@lists.sourceforge.net; Mon, 05 Jan 2004 20:35:00 -0800
+Received: from mail-mx4.uio.no ([129.240.10.45])
+	by pat.uio.no with esmtp (Exim 4.20)
+	id 1Adivc-0006hY-Fs
+	for nfs@lists.sourceforge.net; Tue, 06 Jan 2004 05:34:52 +0100
+Received: from ulrik.uio.no ([129.240.12.4])
+	by mail-mx4.uio.no with esmtp (Exim 4.14)
+	id 1AdivY-0007Zc-AH
+	for nfs@lists.sourceforge.net; Tue, 06 Jan 2004 05:34:48 +0100
+Received: from guts.uio.no ([129.240.87.181])
+	by ulrik.uio.no with esmtp (Exim 2.12 #7)
+	id 1AdivX-00050E-00
+	for nfs@lists.sourceforge.net; Tue, 6 Jan 2004 05:34:47 +0100
+Received: from trondmy by guts.uio.no with local (Exim 4.22)
+	id 1AdivX-00079h-Sp
+	for nfs@lists.sourceforge.net; Mon, 05 Jan 2004 22:34:47 -0600
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,56 +43,48 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi all; we've been doing some examination of NFS client performance, and
-have seen this apparently sub-optimal behavior: anyone here have any
-comments on this observation or thoughts about it?
 
-Thanks!
+På må , 05/01/2004 klokka 17:11, skreiv Paul Smith:
+> Hi all; we've been doing some examination of NFS client performance, and
+> have seen this apparently sub-optimal behavior: anyone here have any
+> comments on this observation or thoughts about it?
 
-> I was looking at the code (which doesn't appear to be fixed in 2.6),
-> and here's what I think it's doing.
-> 
-> The Linux NFS client code is capable of only remembering a write to a
-> single contiguous chunk in each 4KB page of a file.  If a second
-> non-contiguous write occurs to the page, the first write has to be
-> flushed to the server.  So if the view server is seeking around in a
-> file writing a few bytes here and a few there, whenever it does a
-> write to a page that has already been written, the first write has to
-> be flushed to the server.  The code that does most of this is in
-> fs/nfs/write.c, function nfs_update_request().  That's the routine
-> that, given a new write request, searches for an existing one that is
-> contiguous with the new one.  If it finds a contiguous request, the
-> new one is coalesced with it and no NFS activitity is required.  If
-> instead it finds a pending write to the same page, it returns EBUSY to
-> its caller, which tells the caller (nfs_updatepage()) to synchronously
-> write the existing request to the server.
-> 
-> The Solaris NFS client (and probably most other NFS client
-> implementations) doesn't work this way.  Whenever a small write is
-> made to a block of a file, the block is read from the server, and then
-> the write is applied to the cached block.  If the block is already in
-> cache, the write is applied to block without any NFS transactions
-> being required.  When the file is closed or fsync()ed, the entire
-> block is written to the server.  So the client code doesn't need to
-> record each individual small write to a block, it just modifies the
-> cached block as necessary.
-> 
-> I don't know why the Linux NFS client doesn't work this way, but I
-> think it wouldn't be difficult to make it work that way.  In some
-> scenarios, this might be a performance hit (because an entire block of
-> the file has to be read from the server just to write a few bytes to
-> it), but I think that in most cases, doing it the Solaris way would be
-> a performance win.  I'd guess that if any sort of database, such as a
-> GDBM database, is accessed over NFS, the Linux method would result in
-> much poorer performance than the Solaris method.
+Does your observation include numbers, or is it just conjecture?
+
+If we actually are doing contiguous sequential writes, the Linux
+implementation has the obvious advantage that it doesn't issue any
+read requests to the server at all.
+
+The Solaris approach is only a win in the particular case where you
+are doing several non-contiguous writes into the same page (and
+without any byte-range locking).
+Note that like Linux, two processes that do not share the same RPC
+credentials still cannot merge their writes since you cannot rely on
+them having the same file write permissions.
+
+Looking at your particular example of GDBM, you should recall that
+Solaris is forced to revert to uncached synchronous reads and writes
+when doing byte range locking precisely because their page cache
+writes back entire pages (the ugly alternative would be to demand that
+byte range locks must be page-aligned).
+OTOH Linux can continue to do cached asynchronous reads and writes
+right up until the user forces an fsync()+cache invalidation by
+changing the locking range because our page cache writes are not
+required to be page aligned.
+
+However, GDBM is a pretty poor example of a database. Large
+professional databases will tend to want to use their own custom
+locking protocols, and manage their caching entirely on their own
+(using O_DIRECT in order to circumvent the kernel page cache). The
+asynchronous read/write code doesn't apply at all in this case.
 
 
--- 
--------------------------------------------------------------------------------
- Paul D. Smith <psmith@nortelnetworks.com>   HASMAT: HA Software Mthds & Tools
- "Please remain calm...I may be mad, but I am a professional." --Mad Scientist
--------------------------------------------------------------------------------
-   These are my opinions---Nortel Networks takes no responsibility for them.
+Finally, please note that you can actually obtain the Solaris
+behaviour on the existing Linux NFS client, if you so desire, by
+replacing write() with mmap().
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
