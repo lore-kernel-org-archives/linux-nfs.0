@@ -1,24 +1,27 @@
 From: Steve Dickson <SteveD@redhat.com>
 Subject: Re: [PATCH]  Reinstantiating stale inodes
-Date: Fri, 23 Apr 2004 12:01:51 -0400
+Date: Fri, 23 Apr 2004 12:04:30 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <40893DEF.3010506@RedHat.com>
-References: <40892507.2030004@RedHat.com> <1082730973.2617.23.camel@lade.trondhjem.org>
+Message-ID: <40893E8E.2000903@RedHat.com>
+References: <40892507.2030004@RedHat.com> <40892DC0.1010001@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BH37T-0003I7-Ry
-	for nfs@lists.sourceforge.net; Fri, 23 Apr 2004 09:01:39 -0700
+	id 1BH39z-0003sz-3N
+	for nfs@lists.sourceforge.net; Fri, 23 Apr 2004 09:04:15 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
 	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.30)
-	id 1BH37T-0002B9-EA
-	for nfs@lists.sourceforge.net; Fri, 23 Apr 2004 09:01:39 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1082730973.2617.23.camel@lade.trondhjem.org>
+	id 1BH39y-0002mg-NQ
+	for nfs@lists.sourceforge.net; Fri, 23 Apr 2004 09:04:14 -0700
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.12.10/8.12.10) with ESMTP id i3NG4DKG018603
+	for <nfs@lists.sourceforge.net>; Fri, 23 Apr 2004 12:04:13 -0400
+To: Neil Horman <nhorman@redhat.com>
+In-Reply-To: <40892DC0.1010001@redhat.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,25 +34,15 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust wrote:
+Neil Horman wrote:
 
->There are several problems here, but the main one is that you have no
->guarantees that you are the exclusive user of that dentry.
->  
->
-True, there are no guarantees the user has exclusive access but
-what does it matter? Its a stale inode if they try to used its
-going to fail...
+> Should ENOMEM be whats returned in the event that we don't get a file 
+> handle after we refresh the directory?  Shouldn't that be ENOENT?
 
->This again means that people who think they have open files on the "old"
->inode may suddenly find their program Oopsing or corrupting the new
->file. 
->
-Again, this new fh is only gotten on getattrs any other ops will still
-fail with ESTALE...
+It really matter since the original ESTALE error will be
+returned if any part of the lookup fails...
 
-
-SteveD
+SteveD.
 
 
 -------------------------------------------------------
