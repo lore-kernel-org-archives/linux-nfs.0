@@ -1,21 +1,22 @@
-From: Robert Sander <ml-linux-nfs@epigenomics.com>
-Subject: Re: nfs client's local cache
-Date: Mon, 3 Nov 2003 15:46:49 +0000 (UTC)
+From: "Timothy G. Wesemann" <timwese@voicenet.com>
+Subject: nfs: server X not responding, still trying
+Date: Mon, 3 Nov 2003 17:35:01 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <news2mail-slrnbqcu39.fis.gurubert-dated-1067850494.pnhelomc@moneta.epigenomics.epi>
-References: <482A3FA0050D21419C269D13989C6113127F73@lavender-fe.eng.netapp.com>
-Reply-To: Robert Sander <gurubert-dated-1067850494.pnhelomc@epigenomics.com>
+Message-ID: <02ab01c3a25a$bdd030c0$de0167cf@voicenet.com>
+Mime-Version: 1.0
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AGgvL-0004xi-00
-	for <nfs@lists.sourceforge.net>; Mon, 03 Nov 2003 07:47:23 -0800
-Received: from [62.159.77.106] (helo=gk.ka.epigenomics.net ident=qmailr)
+	id 1AGnIK-0004Gs-00
+	for <nfs@lists.sourceforge.net>; Mon, 03 Nov 2003 14:35:32 -0800
+Received: from mail08.voicenet.com ([207.103.0.34])
 	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.24)
-	id 1AGgvB-0006Ow-1p
-	for nfs@lists.sourceforge.net; Mon, 03 Nov 2003 07:47:13 -0800
-To: nfs@lists.sourceforge.net
+	id 1AGnIJ-0003a5-IW
+	for nfs@lists.sourceforge.net; Mon, 03 Nov 2003 14:35:31 -0800
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,40 +29,42 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, 3 Nov 2003 15:36:27 +0000 (UTC),
- "Lever, Charles" <Charles.Lever@netapp.com> wrote:
-> there are three effects in play here:
-> 
-> 1.  close-to-open cache coherency
-> 2.  weak cache consistency
-> 3.  attribute cache timeout
-> 
-> i suspect you are using NFSv2 on an older 2.4 kernel.  can you provide
-> your mount options via "cat /proc/mount" and the output of "uname -a" ?
+Hola,
 
-Hi!
+I have a number of client boxes that are mounting a single nfs file-server
+(presently all machines are slackware 9.0; nfs-utils-1.0.6; 2.4.20 kernel)
+over a 100bt switched private network which is not congested at all. The
+machines are all using the original Becker EtherExpressPro/100 kernel
+modules statically compiled.
 
-This happened independently on two NFS-Servers with several clients.
+When all of the above machines were running 2.4.22, each machine had a
+*constant* barrage of these in the syslog:
 
-1. NFS-Server: 2.4.20 running kernel-nfsd
-   Client: 2.4.19-64GB-SMP (SuSE SLES)
-           /proc/mounts: rw,v3,rsize=4096,wsize=4096,hard,intr,udp,nolock
-   Client: 2.4.20
-                         rw,v3,rsize=8192,wsize=8192,hard,intr,udp,nolock
+Nov  3 15:44:24 hostXX kernel: nfs: server fileserver-priv not responding,
+still trying
+Nov  3 15:44:25 hostXX kernel: nfs: server fileserver-priv OK
+Nov  3 15:46:17 hostXX kernel: nfs: server fileserver-priv not responding,
+still trying
+Nov  3 15:46:17 hostXX kernel: nfs: server fileserver-priv OK
 
-2. NFS-Server: 2.4.20 running userspace-nfsd
-   Client: 2.4.19-64GB-SMP (SuSE SLES)
-                         ro,v2,rsize=4096,wsize=4096,hard,intr,udp,nolock
+The client mount/fstab options are:
+"rw,async,intr,vers=3,rsize=32768,wsize=32768" and the server's exports
+options are: "rw,no_root_squash,async,no_subtree_check".
 
-The second combination obviously runs NFSv2 but we had that effect with
-the first combination and NFSv3, too.
+After digging through the archives, I found some references to Trond's
+patches for 2.4.22 (which didn't seem to help in this situation) as well as
+suggestions to revert back to 2.4.20 which seem to have helped the
+situation. I also tried using TCP which worked great, but the performance
+hit was too great.
 
-Greetings
--- 
-Robert Sander
-Manager
-Information Systems        www.epigenomics.com        Kastanienallee 24
-+493024345330                                              10435 Berlin
+These error accumulations now are much more rare with 2.4.20, however they
+still exist and performance is still not what it should be. Also, we really
+would prefer to run current release-quality kernel revs.
+
+Does anyone have any suggestions as to what to try next?
+
+--
+Tim Wesemann
 
 
 -------------------------------------------------------
