@@ -1,19 +1,19 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Issues with nfs solaris server
-Date: 19 Jun 2003 10:15:01 -0700
+Subject: Re: lock state ?
+Date: 19 Jun 2003 10:16:49 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shshe6mq99m.fsf@charged.uio.no>
-References: <EE335453C5C57840823404C684F9F617012D6849@exmbx01sj.Cadence.COM>
+Message-ID: <shsd6haq96m.fsf@charged.uio.no>
+References: <8147E1B07201DD41B6B9F0D31E07B38444913B@srv-grp-s07.dev.atos.fr>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=iso-8859-1
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19T30D-0005li-00
-	for <nfs@lists.sourceforge.net>; Thu, 19 Jun 2003 10:15:13 -0700
-To: "Chris Croswhite" <csc@cadence.com>
-In-Reply-To: <EE335453C5C57840823404C684F9F617012D6849@exmbx01sj.Cadence.COM>
+	id 19T31v-0006Sn-00
+	for <nfs@lists.sourceforge.net>; Thu, 19 Jun 2003 10:16:59 -0700
+To: Brasseur =?iso-8859-1?q?Val=E9ry?= <Valery.Brasseur@atosorigin.com>
+In-Reply-To: <8147E1B07201DD41B6B9F0D31E07B38444913B@srv-grp-s07.dev.atos.fr>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,15 +26,13 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Chris Croswhite <csc@cadence.com> writes:
+>>>>> " " =3D=3D Brasseur Val=E9ry <Valery.Brasseur@atosorigin.com> writes:
 
-     > Guys, We are seeing issues with solaris nfs servers.  Every
-     > once in a while, mount points die and are not recoverable
-     > (except to reboot).  nfsutils 1.0.3 kernel 2.4.19.  I had heard
-     > someone mention that it might be a spinlock within the kernel.
+     > How can I get the current locks that a linux client nfs hold ?
+     > is there any lock/statd or whatever command which could dump
+     > this info ?
 
-Could you elaborte on what you mean by 'die'? Also, what type of mount
-options are you using (is it TCP or UDP)?
+cat /proc/locks
 
 Cheers,
   Trond
