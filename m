@@ -1,39 +1,60 @@
-From: Peter Wainwright <prw@ceiriog1.demon.co.uk>
-Subject: Re: Irix NFS servers, again :-)
-Date: Thu, 17 Jun 2004 18:44:27 +0100
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <1087494267.3677.9.camel@ceiriog1.demon.co.uk>
-References: <1087411925.30092.35.camel@ceiriog1.demon.co.uk>
-	 <40D163C8.30507@greenhydrant.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] nfs-utils - Silencing mountd
+Date: Thu, 17 Jun 2004 15:00:26 -0400
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <40D1EA4A.6080002@RedHat.com>
+References: <40D063D1.9010208@RedHat.com> <20040616224504.GB29503@sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org-S261396AbUFQSHD@vger.kernel.org>
-To: David Rees <drees@greenhydrant.com>
-In-Reply-To: <40D163C8.30507@greenhydrant.com>
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: nfs@lists.sourceforge.net
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1Bb27L-0006Dm-9W
+	for nfs@lists.sourceforge.net; Thu, 17 Jun 2004 12:00:07 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.30)
+	id 1Bb27K-00005w-TH
+	for nfs@lists.sourceforge.net; Thu, 17 Jun 2004 12:00:06 -0700
+To: Greg Banks <gnb@sgi.com>
+In-Reply-To: <20040616224504.GB29503@sgi.com>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, 2004-06-17 at 10:26, David Rees wrote:
+Greg Banks wrote:
 
-> 
-> As I understand it the real problem is actually in glibc.  I have to 
-> double check, but I think the software which showed this bug when I 
-> experienced it on FC2 was statically linked with an older version of 
-> glibc.  I can't seem to reproduce it using `ls` which I remember being 
-> able to last time I had the problem so that would explain it.  What 
-> software showed the problem for you?
-
-The Gnome configuration daemon, gconfd-2. My desktop configuration
-reverted to the default because this program could not find
-~/.gconf/apps/panel/profiles/default on an NFS-mounted home
-directory.
-
-Peter Wainwright
+>Actually, I find the "authenticated mount request from..."  message
+>useful in tracking down strange but nonfatal bugs on busy servers with
+>many mounts from many clients.  Not all NFS or RPC error messages
+>tell you which client was involved, so correlating those messages
+>with mount messages can help narrow the list.
+>  
+>
+True... the authenticated message is a good way to see that
+a client is able to communicate with the server... but
+in reality it doesn't mean much... and every error message
+in the same code path (i.e. in  auth_authenticate()) gives a pretty
+detail error message of who and what happen..
 
 
-> 
-> See this message from the nfs list.  There is more data in the archives 
-> if you look.
-> http://marc.theaimsgroup.com/?l=linux-nfs&m=105158098101612&w=2
-> 
-> -Dave
+SteveD.
+
+
+-------------------------------------------------------
+This SF.Net email is sponsored by The 2004 JavaOne(SM) Conference
+Learn from the experts at JavaOne(SM), Sun's Worldwide Java Developer
+Conference, June 28 - July 1 at the Moscone Center in San Francisco, CA
+REGISTER AND SAVE! http://java.sun.com/javaone/sf Priority Code NWMGYKND
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
