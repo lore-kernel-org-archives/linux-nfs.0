@@ -1,30 +1,30 @@
-From: Garrick Staples <garrick@usc.edu>
-Subject: Re: mountd segfault on itanium2
-Date: Fri, 30 Apr 2004 20:07:30 -0700
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH]  Reinstantiating stale inodes
+Date: Sat, 01 May 2004 12:13:42 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040501030730.GE23287@polop.usc.edu>
-References: <20040430212414.GF22498@polop.usc.edu> <20040430234327.GM22498@polop.usc.edu>
+Message-ID: <4093CCB6.1040500@RedHat.com>
+References: <40892507.2030004@RedHat.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="pY3vCvL1qV+PayAL"
+Content-Type: multipart/mixed;
+ boundary="------------090609080908080604070605"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BJkrr-0005ZN-6n
-	for nfs@lists.sourceforge.net; Fri, 30 Apr 2004 20:08:43 -0700
-Received: from polop.usc.edu ([128.125.10.9])
+	id 1BJx7e-00022K-5a
+	for nfs@lists.sourceforge.net; Sat, 01 May 2004 09:13:50 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
 	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.30)
-	id 1BJkrq-0002Id-SI
-	for nfs@lists.sourceforge.net; Fri, 30 Apr 2004 20:08:42 -0700
-Received: from polop.usc.edu (localhost.localdomain [127.0.0.1])
-	by polop.usc.edu (8.12.10/8.12.10) with ESMTP id i4137Ulv023492
-	for <nfs@lists.sourceforge.net>; Fri, 30 Apr 2004 20:07:30 -0700
-Received: (from garrick@localhost)
-	by polop.usc.edu (8.12.10/8.12.10/Submit) id i4137U3b023490
-	for nfs@lists.sourceforge.net; Fri, 30 Apr 2004 20:07:30 -0700
+	id 1BJx7d-0008Ug-Nq
+	for nfs@lists.sourceforge.net; Sat, 01 May 2004 09:13:49 -0700
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.12.10/8.12.10) with ESMTP id i41GDhKG018299
+	for <nfs@lists.sourceforge.net>; Sat, 1 May 2004 12:13:43 -0400
+Received: from RedHat.com (vpn50-80.rdu.redhat.com [172.16.50.80])
+	by int-mx1.corp.redhat.com (8.11.6/8.11.6) with ESMTP id i41GDgv06063
+	for <nfs@lists.sourceforge.net>; Sat, 1 May 2004 12:13:42 -0400
 To: nfs@lists.sourceforge.net
-In-Reply-To: <20040430234327.GM22498@polop.usc.edu>
+In-Reply-To: <40892507.2030004@RedHat.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -37,58 +37,115 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+This is a multi-part message in MIME format.
+--------------090609080908080604070605
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
 
---pY3vCvL1qV+PayAL
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Steve Dickson wrote:
 
-On Fri, Apr 30, 2004 at 04:43:27PM -0700, Garrick Staples alleged:
-> I just spotted a pattern.  After collecting several strace samples, it al=
-ways
-> segfaults after read() or write() to fd 5.  And fd 5 is always:
->=20
->    open("/proc/net/rpc/nfsd.fh/channel", O_RDWR) =3D 5
+> Here is a 2.4 patch that will reinstantiate an inode
+> when a ESTALE error is returned on a getattr. When
+> the error occurs, a lookup is immediately issued
+> to get a new fh.
+>
+> The fixes the problem of a server rsync -a directory
+> that a client has mounted. The key being the -a flag
+> since it causes the server not to update the mtime on
+> the directory.
 
-I have an ugly work-around that seems to be working.  It seems that 2.6 has=
- a
-new nfs interface for userspace.  By forcing mountd to use the older 2.4
-interface, it doesn't segfault anymore.  So something in the new code paths=
- is
-broken.
+It turns out there is a much easier and simpler (safer)
+way to reinstantiate inodes than my original patch.
 
-In support/nfs/cachio.c:
-int
-check_new_cache(void)
-{
-        struct stat stb;
+Realizing only parts of an inode needed to be reinstantiated
+not the entire thing, this second patch only reinstantiates
+two parts of the inode (i.e. fhandle and fattrs) instead of the
+entire inode like my original patch did.
 
-        return 0;  /* DISABLE NEW 2.6 INTERFACE */
+I had to export the new nfs_reinstantiate() function because
+the ACL code needs to use it, so things like ls -l will work....
 
-        return  (stat("/proc/fs/nfs/filehandle", &stb) =3D=3D 0) ||
-                (stat("/proc/fs/nfsd/filehandle", &stb) =3D=3D 0);
-}
+Comments? Is this something Marcelo might be interested in?
 
-Am I losing any functionality by doing this?  I can't actually find any
-problems.
+SteveD.
 
---=20
-Garrick Staples, Linux/HPCC Administrator
-University of Southern California
 
---pY3vCvL1qV+PayAL
-Content-Type: application/pgp-signature
-Content-Disposition: inline
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.3 (GNU/Linux)
 
-iD8DBQFAkxRy0SBUxJbm9HMRAiD5AJ9qoGSueQ7NmvN408+qXd6Q3SryfgCbBvrA
-FY+mPoGfOBKmgTZnL2Z8Xuw=
-=zefR
------END PGP SIGNATURE-----
 
---pY3vCvL1qV+PayAL--
+
+
+--------------090609080908080604070605
+Content-Type: text/plain;
+ name="linux-2.4.21-nfs-estale2.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="linux-2.4.21-nfs-estale2.patch"
+
+--- linux-2.4.21/fs/nfs/inode.c.org	2004-04-17 18:26:32.000000000 -0400
++++ linux-2.4.21/fs/nfs/inode.c	2004-05-01 11:11:12.000000000 -0400
+@@ -953,13 +953,48 @@ nfs_wait_on_inode(struct inode *inode, i
+ }
+ 
+ /*
++ * Reinstantiate an inode that has gone stale
++ */
++int
++nfs_reinstantiate(struct dentry *dentry)
++{
++	int error;
++	struct nfs_fh fhandle;
++	struct inode *dir = dentry->d_parent->d_inode;
++	struct inode *inode = dentry->d_inode;
++	struct nfs_fattr fattr;
++
++	nfs_zap_caches(dir);
++	nfs_zap_caches(inode);
++
++	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, &fhandle, &fattr);
++	if (!error) {
++		memcpy(&inode->u.nfs_i.fh, &fhandle, sizeof(struct nfs_fh));
++		nfs_refresh_inode(inode, &fattr);
++	}
++
++	return error;
++}
++
++/*
+  * Externally visible revalidation function
+  */
+ int
+ nfs_revalidate(struct dentry *dentry)
+ {
+ 	struct inode *inode = dentry->d_inode;
+-	return nfs_revalidate_inode(NFS_SERVER(inode), inode);
++	int error;
++
++	error = nfs_revalidate_inode(NFS_SERVER(inode), inode);
++	if (!error || error != -ESTALE)
++		return error;
++	/*
++	 * We have a stale fh so ask the server for another one
++	 */
++	if (nfs_reinstantiate(dentry) == 0)
++		error = 0;
++
++	return error;
+ }
+ 
+ /*
+--- linux-2.4.21/include/linux/nfs_fs.h.org	2004-04-17 18:40:02.000000000 -0400
++++ linux-2.4.21/include/linux/nfs_fs.h	2004-05-01 10:55:59.000000000 -0400
+@@ -159,6 +159,7 @@ extern struct inode *nfs_fhget(struct de
+ 				struct nfs_fattr *);
+ extern int __nfs_refresh_inode(struct inode *, struct nfs_fattr *);
+ extern int nfs_revalidate(struct dentry *);
++extern int nfs_reinstantiate(struct dentry *);
+ extern int nfs_permission(struct inode *, int);
+ extern int nfs_open(struct inode *, struct file *);
+ extern int nfs_release(struct inode *, struct file *);
+
+--------------090609080908080604070605--
 
 
 -------------------------------------------------------
