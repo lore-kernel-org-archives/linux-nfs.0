@@ -1,21 +1,24 @@
-From: Hirokazu Takahashi <taka@valinux.co.jp>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: Re: [PATCH] zerocopy NFS for 2.5.43
-Date: Thu, 24 Oct 2002 07:35:10 +0900 (JST)
+Date: Thu, 24 Oct 2002 01:55:26 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20021024.073510.41630026.taka@valinux.co.jp>
-References: <20021023.125304.28780747.taka@valinux.co.jp>
-	<20021023.144057.70224423.taka@valinux.co.jp>
-	<15798.15291.519275.774315@notabene.cse.unsw.edu.au>
+Message-ID: <15799.14062.275890.83768@charged.uio.no>
+References: <15786.23306.84580.323313@notabene.cse.unsw.edu.au>
+	<20021018.221103.35656279.taka@valinux.co.jp>
+	<15797.63730.223181.75888@notabene.cse.unsw.edu.au>
+	<20021024.065015.74750854.taka@valinux.co.jp>
+Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: neilb@cse.unsw.edu.au,
+    nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sv1.valinux.co.jp ([202.221.173.100])
+Received: from pat.uio.no ([129.240.130.16])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 184UCw-0001Cw-00
-	for <nfs@lists.sourceforge.net>; Wed, 23 Oct 2002 15:42:34 -0700
-To: neilb@cse.unsw.edu.au
-In-Reply-To: <15798.15291.519275.774315@notabene.cse.unsw.edu.au>
+	id 184VLi-0000hh-00
+	for <nfs@lists.sourceforge.net>; Wed, 23 Oct 2002 16:55:42 -0700
+To: Hirokazu Takahashi <taka@valinux.co.jp>
+In-Reply-To: <20021024.065015.74750854.taka@valinux.co.jp>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,25 +31,19 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
+>>>>> " " == Hirokazu Takahashi <taka@valinux.co.jp> writes:
 
-> > > > Also, I am wondering about the way that you put zero-copy support into
-> > > > nfsd_readdir.
+     > I was thinking about the nfs clients.  Why don't we make
+     > xprt_sendmsg() use the sendpage interface instead of calling
+     > sock_sendmsg() so that we can avoid dead-lock which multiple
+     > kmap()s in xprt_sendmsg() might cause on heavily loaded
+     > machines.
 
-> I think I would change the approach to buffering.
-> Instead of having a fixed set of pages, we just allocate new pages as
-> needed, having handed old ones over to the networking layer.
-> 
-> So we have a pool of pages that we draw from when generating replies,
-> and refill before accepting a new request.
+I'm definitely in favour of such a change. Particularly so if the UDP
+interface is ready.
 
-We can also put RPC/NFS headers on pages and send them without copy.
-This seems good for NFSv4 COMPOUNDS.
-
-> Ofcourse that is a fairly big change from where we are now so it might
-> take a while.  We should probably get zero copy reads in first...
-
-Yes.
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
