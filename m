@@ -1,22 +1,24 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: exportfs -u hangs on SMP
-Date: Mon, 21 Jul 2003 09:14:07 +1000
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: SM_UNMON again -> kernel
+Date: 21 Jul 2003 01:28:40 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16155.8767.278825.712370@gargle.gargle.HOWL>
-References: <20030720103649.A20763@ikr.uni-stuttgart.de>
+Message-ID: <shsptk4n5g7.fsf@charged.uio.no>
+References: <20030711061615.GA1924@quasar.nro.au.com>
+	<shsr84x768e.fsf@charged.uio.no> <87smpbkt55.fsf@ceramic.fifi.org>
+	<shs8yr2h2jr.fsf@charged.uio.no> <87k7aml330.fsf@ceramic.fifi.org>
+	<shsptkdij1a.fsf@charged.uio.no> <87vfu0ej5k.fsf@ceramic.fifi.org>
+	<87n0fb42o5.fsf@ceramic.fifi.org> <20030719162218.GB7166@async.com.br>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Cc: Philippe Troin <phil@fifi.org>,
+	  nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from smtp3.unsw.edu.au ([149.171.96.70])
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19eNOL-0008AG-00
-	for <nfs@lists.sourceforge.net>; Sun, 20 Jul 2003 16:14:57 -0700
-Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <gemkow@ikr.uni-stuttgart.de>) (for <nfs@lists.sourceforge.net>)
-	By note With Smtp ; Mon, 21 Jul 2003 09:14:47 +1000
-To: Ulrich Gemkow <gemkow@ikr.uni-stuttgart.de>
-In-Reply-To: message from Ulrich Gemkow on Sunday July 20
+	id 19eNc1-00079f-00
+	for <nfs@lists.sourceforge.net>; Sun, 20 Jul 2003 16:29:05 -0700
+To: Christian Reis <kiko@async.com.br>
+In-Reply-To: <20030719162218.GB7166@async.com.br>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,59 +31,26 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sunday July 20, gemkow@ikr.uni-stuttgart.de wrote:
-> 
-> Now sometimes we have hangs of "exportfs -u". The process hangs and is not
-> killable. The server works normal except that it is no longer responding to 
-> NFS requests. Only a reboot of the server helps.
-> 
-> The "hang rate" is about once per day with 20 users and 5 directories exported
-> on login for each user. The server has medium to high NFS-load.
-> 
-> The hangs only happen when the server is running a SMP-enabled kernel. When
-> using a non-SMP-kernel on the same hardware, the hangs are not happening.
-> 
-> Environment is Linux 2.4.21 (vanilla), nfs-utils 1.0.1 (vanilla, xlog-patch
-> applied), glibc 2.3 (RedHat 9 based) on a 2-processor PIII hardware.
+>>>>> " " == Christian Reis <kiko@async.com.br> writes:
 
-Could you try this patch please?
-Most of the nfsd is under the BigKernelLock in 2.4, so SMP or not
-shouldn't have much effect.  However I just found a bit that isn't
-under the lock, and it could be causing your problem.
+     > If there's one thing special, it's that this server also runs
+     > an iptables firewall that does masquerading and supports
+     > connection tracking. Could it be mangling the lock packets?
 
-If you do test it, please let me know how it goes.
-
-Thanks,
-NeilBrown
+Huh? "Special" sounds like it would only begin to describe such a
+setup...
 
 
-diff ./fs/nfsd/export.c~current~ ./fs/nfsd/export.c
---- ./fs/nfsd/export.c~current~	2003-07-21 09:12:01.000000000 +1000
-+++ ./fs/nfsd/export.c	2003-07-21 09:12:16.000000000 +1000
-@@ -19,6 +19,7 @@
- #include <linux/stat.h>
- #include <linux/in.h>
- #include <linux/seq_file.h>
-+#include <linux/smp_lock.h>
- 
- #include <linux/sunrpc/svc.h>
- #include <linux/nfsd/nfsd.h>
-@@ -571,6 +572,7 @@ static void *e_start(struct seq_file *m,
- 	svc_client *clp;
- 	struct list_head *p;
- 	
-+	lock_kernel();
- 	exp_readlock();
- 	if (!n--)
- 		return (void *)1;
-@@ -622,6 +624,7 @@ static void *e_next(struct seq_file *m, 
- static void e_stop(struct seq_file *m, void *p)
- {
- 	exp_unlock();
-+	unlock_kernel();
- }
- 
- struct flags {
+
+The client has to be able to contact the server for portmapper, lockd,
+nfs and statd. Exactly how are you doing this with masquerading
+enabled?
+
+In particular, how are you ensuring that the portmapper returns
+correct information?
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
