@@ -1,26 +1,30 @@
-From: Chip Salzenberg <chip@pobox.com>
+From: Neil Brown <neilb@cse.unsw.edu.au>
 Subject: Re: CVS tag "nfs-utils-1-0-6" looks wrong
-Date: Wed, 29 Oct 2003 19:07:13 -0500
+Date: Thu, 30 Oct 2003 11:16:15 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20031030000713.GT29526@perlsupport.com>
-References: <20031029162516.GE29526@perlsupport.com> <20031029163302.GF29526@perlsupport.com> <16288.21114.700966.163986@notabene.cse.unsw.edu.au>
+Message-ID: <16288.22607.450095.672518@notabene.cse.unsw.edu.au>
+References: <20031029162516.GE29526@perlsupport.com>
+	<20031029163302.GF29526@perlsupport.com>
+	<16288.21114.700966.163986@notabene.cse.unsw.edu.au>
+	<20031030000713.GT29526@perlsupport.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AF0L7-0001Af-00
-	for <nfs@lists.sourceforge.net>; Wed, 29 Oct 2003 16:07:01 -0800
-Received: from topaz.cx
-	([66.220.6.227] helo=mail.topaz.cx ident=mail)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.24)
-	id 1AF0L7-0004rx-5I
-	for nfs@lists.sourceforge.net; Wed, 29 Oct 2003 16:07:01 -0800
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <16288.21114.700966.163986@notabene.cse.unsw.edu.au>
+	id 1AF0UB-0002pY-00
+	for <nfs@lists.sourceforge.net>; Wed, 29 Oct 2003 16:16:23 -0800
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.24)
+	id 1AF0UB-00016C-24
+	for nfs@lists.sourceforge.net; Wed, 29 Oct 2003 16:16:23 -0800
+Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
+	(for <chip@pobox.com>) (for <nfs@lists.sourceforge.net>) By note With
+	Smtp ; Thu, 30 Oct 2003 11:16:15 +1100
+To: Chip Salzenberg <chip@pobox.com>
+In-Reply-To: message from Chip Salzenberg on Wednesday October 29
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -33,25 +37,23 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-According to Neil Brown:
-> When I use CVS to checkout nfs-utils, I don't get debian/po, but I do
-> get etc/debian.
+On Wednesday October 29, chip@pobox.com wrote:
+> According to Neil Brown:
+> > When I use CVS to checkout nfs-utils, I don't get debian/po, but I do
+> > get etc/debian.
+> 
+> That's probably because your "cvs update" is missing the "-d" and "-P"
+> flags.
+> 
 
-That's probably because your "cvs update" is missing the "-d" and "-P"
-flags.
+Ahhh.  Thanks.  "You learn something new every day".
 
->    cvs add debian/po
+I guess there is some reason why the whole thing isn't more
+transparent....
 
-Did it.
+The next release will have all the right bits in it.
 
->    cvs remove etc/debian
-
-Can't do it -- not the way you mean, anyway.  You can't really remove
-a directory in CVS.  That's why there's a "-P" option to "cvs update".
--- 
-Chip Salzenberg               - a.k.a. -               <chip@pobox.com>
-"I wanted to play hopscotch with the impenetrable mystery of existence,
-    but he stepped in a wormhole and had to go in early."  // MST3K
+NeilBrown
 
 
 -------------------------------------------------------
