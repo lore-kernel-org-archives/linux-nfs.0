@@ -1,47 +1,99 @@
-From: Bernd Schubert <bernd-schubert@web.de>
-Subject: nfsd-fh: found a name that I didn't expect
-Date: Fri, 28 Mar 2003 18:28:55 +0100
-Message-ID: <200303281828.55093.bernd-schubert@web.de>
+From: Alex Thiel <stderr@web.de>
+Subject: Re: nfs-utils 1.0.3 compile error w/gcc-3.2.2
+Date: Fri, 28 Mar 2003 20:58:33 +0100
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <200303282058.34531.stderr@web.de>
+References: <3E844E32.4000008@lucidpixels.com> <200303281557.29049.stderr@web.de> <3E846696.6010900@lucidpixels.com>
 Mime-Version: 1.0
 Content-Type: text/plain;
-  charset="us-ascii"
-Cc: reiserfs-list@namesys.com
-Return-path: <reiserfs-list-return-13412-reiserfs=m.gmane.org@namesys.com>
-list-help: <mailto:reiserfs-list-help@namesys.com>
-list-unsubscribe: <mailto:reiserfs-list-unsubscribe@namesys.com>
-list-post: <mailto:reiserfs-list@namesys.com>
-Errors-To: flx@namesys.com
-To: <nfs@lists.sourceforge.net>
-List-ID: <nfs.lists.sourceforge.net>
+  charset="iso-8859-1"
+Cc: nfs@lists.sourceforge.net
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from mailout09.sul.t-online.com ([194.25.134.84])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18z007-0002nE-00
+	for <nfs@lists.sourceforge.net>; Fri, 28 Mar 2003 11:58:56 -0800
+To: Justin Piszcz <jpiszcz@lucidpixels.com>
+In-Reply-To: <3E846696.6010900@lucidpixels.com>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+Taking a quick glance at tools/rpcgen/rpc_main.c, I notice that by default 
+rpcgen expects cpp in one of these two locations:
 
-due to hardware problems I just started our fall back server and got these 
-messages for 2 files:
+#define SVR4_CPP "/usr/ccs/lib/cpp"
+#define SUNOS_CPP "/lib/cpp"
 
-nfsd-fh: found a name that I didn't expect: bin/uptime
-nfsd-fh: found a name that I didn't expect: bin/uptime
-nfsd: last server has exited
-nfsd: unexporting all filesystems
-nfsd-fh: found a name that I didn't expect: lib/libident.so.0
-nfsd-fh: found a name that I didn't expect: lib/libident.so.0
+However, rpcgen --help reveals this:
+./rpcgen --help
+  [snip]
+-Y path         directory name to find C preprocessor (cpp)
 
-Well, just a small explanation how our fall back-solution works:
-	The server exports '/' (hda5) via nfs to all clients and via nbd to one of 
-its clients (the fall back server) . The exporting via nbd is used for 
-mirroring the device via a cron job (by "dd'ing" the device).
-The cron-job script also executes a 'reiserfsck --fix-fixable' and afterwards 
-a 'reiserfsck --check', so except doing the partionchecks, both devices 
-should be identical.
-However, when I started the fall-back server, it showed the messages for these 
-2 files and the clients got I/O errors for these files.
+Hope that helps,
 
-The solution was to stop the nfs-server, copy the files, delete the old ones 
-and move the copies back to the old names (just as I'm used to be to do when 
-this happens to directories served by ClusterNFS).
-
-Any ideas how we can prevent this in the future ?
+	Alex
 
 
-Thanks,
-	Bernd
+On Friday 28 March 2003 16:13, Justin Piszcz wrote:
+> CPP is in my path, is it hardcoded or something?
+>
+>
+> war@war:~$ which cpp
+> /vapp/bin/cpp
+> war@war:~$ cpp --version
+> cpp (GCC) 3.2.2
+> Copyright (C) 2002 Free Software Foundation, Inc.
+> This is free software; see the source for copying conditions.  There is NO
+> warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+>
+> war@war:~$ echo $PATH
+> /vapp/bin:/vapp/sbin:/appc/netscape-4.8:/appc/realplayer-8.0:/appc/j2re-1.4
+>.1/bin:/appc/jdk-1.4.1/bin:/bin:/sbin:/usr/bin:/usr/sbin:/usr/X11R6/bin:/usr
+>/local/bin:/usr/local/sbin war@war:~$
+>
+> Alex Thiel wrote:
+> >On Friday 28 March 2003 14:29, Justin Piszcz wrote:
+> >>-rw-r--r--    1 war      wheel        2.7k Mar 28 08:24 log.bz2
+> >>
+> >>The error is contained in the attachment.
+> >
+> >Did you notice this in your log:
+> >
+> >Making all in export
+> >rm -f mount.h mount_clnt.c mount_xdr.c
+> >../../bin/rpcgen -h -o mount.h mount.x
+> >cannot find any C preprocessor (cpp)
+> >^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> >
+> >Make sure cpp is in your search path.
+> >
+> >	Alex
+>
+> -------------------------------------------------------
+> This SF.net email is sponsored by:
+> The Definitive IT and Networking Event. Be There!
+> NetWorld+Interop Las Vegas 2003 -- Register today!
+> http://ads.sourceforge.net/cgi-bin/redirect.pl?keyn0001en
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+
+
+
+-------------------------------------------------------
+This SF.net email is sponsored by:
+The Definitive IT and Networking Event. Be There!
+NetWorld+Interop Las Vegas 2003 -- Register today!
+http://ads.sourceforge.net/cgi-bin/redirect.pl?keyn0001en
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
