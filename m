@@ -1,19 +1,19 @@
 From: "=?big5?q?aluba1231.tw?=" <aluba1231.tw@yahoo.com.tw>
 Subject: nfs server on mips platform?
-Date: Tue, 27 Apr 2004 17:48:08 +0800 (CST)
+Date: Tue, 27 Apr 2004 17:47:03 +0800 (CST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040427094808.98873.qmail@web17003.mail.tpe.yahoo.com>
+Message-ID: <20040427094703.91782.qmail@web17016.mail.tpe.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=big5
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BIPCL-0008HQ-PT
-	for nfs@lists.sourceforge.net; Tue, 27 Apr 2004 02:48:17 -0700
-Received: from web17003.mail.tpe.yahoo.com ([202.1.236.224])
+	id 1BIPBG-00084V-El
+	for nfs@lists.sourceforge.net; Tue, 27 Apr 2004 02:47:10 -0700
+Received: from web17016.mail.tpe.yahoo.com ([202.1.236.167])
 	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
-	id 1BIPCL-0007Cj-2l
-	for nfs@lists.sourceforge.net; Tue, 27 Apr 2004 02:48:17 -0700
+	id 1BIPBF-0006zx-OR
+	for nfs@lists.sourceforge.net; Tue, 27 Apr 2004 02:47:09 -0700
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
