@@ -1,20 +1,18 @@
-From: Steve Dickson <SteveD@RedHat.com>
-Subject: Re: NFSD Flow Control Using the TCP Transport
-Date: Tue, 25 Mar 2003 06:33:18 -0500
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: RE: NFS mount limitation
+Date: Tue, 25 Mar 2003 08:11:05 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3E803E7E.7040303@RedHat.com>
-References: <3E78872B.5020702@RedHat.com> <20030320042454.496801DA3E6@brer.local.valinux.co.jp> <3E7B7853.4020605@RedHat.com> <20030324025133.924651DA3E6@brer.local.valinux.co.jp> <3E7F1F1D.8090206@RedHat.com> <20030325053205.1627C1DA3E6@brer.local.valinux.co.jp>
+Message-ID: <6440EA1A6AA1D5118C6900902745938E07D55437@black.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfs@lists.sourceforge.net, taka@valinux.co.jp, yamamoto@valinux.co.jp
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from host-64-179-20-100.man.choiceone.net ([64.179.20.100] helo=Odyssey.Home.4Dicksons.Org)
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18xmgR-0004C1-00
-	for <nfs@lists.sourceforge.net>; Tue, 25 Mar 2003 03:33:36 -0800
-To: MINOURA Makoto <minoura@valinux.co.jp>
-In-Reply-To: <20030325053205.1627C1DA3E6@brer.local.valinux.co.jp>
+Received: from mx01.netapp.com ([198.95.226.53])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18xr1c-0004L4-00
+	for <nfs@lists.sourceforge.net>; Tue, 25 Mar 2003 08:11:44 -0800
+To: "Bala" <balamurugana@yahoo.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,22 +25,46 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+hi bala-
 
-MINOURA Makoto wrote:
+>    Is there any limitation in NFS mount, in particular to NFS=20
+> number of mounts?
+>    Is there any way/patch to increase NFS mount counts?
 
->We do not start processing a request (enqueue the socket)
->before we get enough write space for any single request.  
->
-Right.... This is exactly what is happening.  Three or four responses are
-*not* being enqueued because there is not enough write space.  The
-problem I'm seeing is those sockets are never getting re-enqueued.
+i'm planning to add a text similar to this to our FAQ list.  let
+me know if this is helpful.  comments from the list are also
+welcome.
 
-Your patch is depending on the tcp layer calling svc_write_space() 
-[when the write space is freed] to start the enqueuing of the sockets.
-For some reason that is not happening in my case.....
+Q. Why can't I mount more than 255 NFS file systems
+on my client?  Why is it sometimes even less than 255?
 
-SteveD.
+A.  On Linux, each mounted file system is assigned a major number,
+which indicates what file system type it is (eg. ext3, nfs, isofs);
+and a minor number, which makes it unique among the file systems
+of the same type.  Linux major and minor numbers have only 8 bits, so
+they may range numerically from zero to 255.  Because a minor number
+has only 8 bits, a system can mount only 255 file systems of the same
+type. So a system can mount up to 255 NFS file systems, another 255 ext3
+file system, 255 more iosfs file systems, and so on.
 
+For NFS, however, the problem is somewhat worse because it is an
+_anonymous_ file system.  This means that there is no block device
+associated with it, like there is with every local disk-based file
+system.
+/proc, for example, is an anonymous file system; so are other network
+file systems like Intermezzo.  All anonymous file systems share the same
+major number, so there can be a maximum of only 255 anonymous file
+systems mounted on a single host.
+
+Usually you won't need more than ten or twenty total NFS mounts on
+any given client.  In some large enterprises, though, you might need to
+mount hundreds of NFS file servers.  To work around the limitation on
+the number of NFS file systems you can mount on a single host, you
+should set up and run one of the automounter daemons for Linux.
+An automounter finds and mounts only the file systems that are needed,
+and unmounts any that it finds are inactive.  You can find more
+information on Linux automounters
+<a href=3D"http://linux.kernel.org/pipermail/autofs/">here</a>.
 
 
 -------------------------------------------------------
