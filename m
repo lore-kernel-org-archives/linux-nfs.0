@@ -1,100 +1,30 @@
-From: CDROM@biozak.com
-Subject: 13,000+ life science customers for your data management solutions
-Date: Tue, 24 Jun 2003 19:40:52 UT
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200306241940.MAA21112@main.biozak.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: 2.4.21: NFS client Freeze
+Date: 24 Jun 2003 20:55:33 +0200
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <shsptl3tie2.fsf@charged.uio.no>
+References: <20030624101227.GA21744@benzin.geggus.net>
 Mime-Version: 1.0
-Content-Type: multipart/alternative; boundary="_----------=_105648365220122275"
-Return-path: <nfs-admin@lists.sourceforge.net>
-To: nfs@sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
+To: Sven Geggus <sven@gegg.us>
+In-Reply-To: <20030624101227.GA21744@benzin.geggus.net>
+List-ID: <nfs.lists.sourceforge.net>
 
-This is a multi-part message in MIME format.
+>>>>> " " == Sven Geggus <sven@gegg.us> writes:
 
---_----------=_105648365220122275
-Content-Disposition: inline
-Content-Length: 610
-Content-Transfer-Encoding: binary
-Content-Type: text/plain
+     > Hi there, After mounting an NFS-Volume exported from a Windows
+     > Machine (Hummingbird-NFS Maestro Server) a simple ls of the
+     > mount point causes an almost complete freeze of the system
+     > (ping does still work, but nothing else).
 
-Put your data management solutions in front of  13,000+ life science companies and 25,000+ executives worldwide with BioZak InfoBase CD-Rom databases
+     > This did work fine in 2.4.20 but does not work on 2.4.21
+     > anymore!
 
-Ideal tool for:
-* direct marketing
-* teleprospecting
-* partner search
+     > Here is the debug output I produced using:
 
-Now  only $956 (20% off regular price of $1,195) - that's less than 7 cents per contact!
+Nothing wrong there. Mind filling in the details?
 
-Interested?
-
-Email CDROM@biozak.com or visit
-http://main.biozak.com/cgi-bin/BIOZAK/sublinks.pl?type=CD
-
-
-Enter/mention promotion code int_service_providers_DM when asked.
-
-
-Sincerely,
---
-Ekaterina Kalygina,
-Marketing Director,
-BioZak InfoBase, Inc. - business intelligence for life science markets!
---_----------=_105648365220122275
-Content-Disposition: inline
-Content-Length: 1253
-Content-Transfer-Encoding: binary
-Content-Type: text/html
-
-Put your data management solutions in front of 13,000+ life science companies and 25,000+ executives worldwide with BioZak InfoBase CD-Rom databases <BR><BR>
-
-Ideal tool for:<BR><BR>
-<ul>
-<li> direct marketing<BR><BR>
-<li> teleprospecting<BR><BR>
-<li> partner search<BR><BR>
-</ul>
-
-Act now and pay only $956 (20% off regular price of $1195) - that's <b>less than 7 cents per contact!</b><BR><BR>
-
-Interested? <BR><BR>
-
-Email <a href="mailto:CDROM@biozak.com">CDROM@biozak.com</a> or visit
-<a href="http://main.biozak.com/cgi-bin/BIOZAK/sublinks.pl?type=CD">http://main.biozak.com/cgi-bin/BIOZAK/sublinks.pl?type=CD</a><BR><BR><BR>
-
-Enter/mention promotion code int_service_providers_DM when asked.<BR><BR><BR>
-
-Sincerely,<BR>
---<BR>
-Ekaterina Kalygina,<BR>
-Marketing Director,<BR>
-BioZak InfoBase, Inc. - business intelligence for life science markets!<BR>
-<BR><BR><BR><BR>
-
-
------<BR>
-Every effort is made to ensure that this message is received only by interested parties. If this message was sent to you in error, please reply with 'remove' in the subject line - you will get no further email from us.<BR>
-
-<IMG SRC="http://main.biozak.com/cgi-bin/BIOZAK/tracker.pl?type=image&source=promo_email&ID=int_service_providers_DM" WIDTH=1 HEIGHT=1 alt=" ">
---_----------=_105648365220122275--
-
-
-
--------------------------------------------------------
-This SF.Net email is sponsored by: INetU
-Attention Web Developers & Consultants: Become An INetU Hosting Partner.
-Refer Dedicated Servers. We Manage Them. You Get 10% Monthly Commission!
-INetU Dedicated Managed Hosting http://www.inetu.net/partner/index.php
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Cheers,
+  Trond
