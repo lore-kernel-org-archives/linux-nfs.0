@@ -1,14 +1,18 @@
-From: "justin case" <justin_case@gmx.net>
-Subject: server still locks up
-Date: Fri, 4 Jul 2003 12:56:34 +0200
+From: "GroupShield for Exchange (CVO-EXCHANGE)"
+	 <NAIUSCVO-EXCHANGE@roguewave.com>
+Subject: ALERT -  GroupShield ticket number OA2291_1057316213_CVO-EXCHANGE
+ _1 was generated
+Date: Fri, 4 Jul 2003 03:56:53 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <LIEOIFOFHAJEGKGKHBEJGEPLDAAA.justin_case@gmx.net>
-Reply-To: <justin_case@gmx.net>
+Message-ID: <F888C30C3021D411B9DA00B0D0209BE805961685@cvo-exchange.cvo.roguewave.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: <NFS@lists.sourceforge.net>
+Received: from cvo-ext.roguewave.com ([12.22.36.198] helo=cvo-exchange.cvo.roguewave.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19YOId-0001uK-00
+	for <nfs@lists.sourceforge.net>; Fri, 04 Jul 2003 04:00:20 -0700
+To: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -21,30 +25,35 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-hi again,
+Action Taken:
+The attachment was deleted from the message and replaced with a text file
+informing the recipient of the action taken.
 
-i still couldn't solve the riddle of the freezing server. i transferred the
-shared directory and the according exports-entry to another machine and
-everything ran fine.
+To:
+nfs@lists.sourceforge.net <nfs@lists.sourceforge.net>
 
-i believe the trouble to be nfs-related, since besides that issue, the
-machine performs all tasks stable.
-i installed the latest version of nfs-tools - same problems.
+From:
+support@divx.com <support@divx.com>
 
-i built a new kernel again, checking all my options very carefully but no
-change.
-tcpdump >log didn't show any anomalies and the lines in the log repeated
-themselves until the last line was cut of before ended, so also here no
-usefull information.
+Sent:
+-98056064,29573658
 
-if nobody has a further idea how to track the error down i'll have to build
-the whole machine from scratch :(
-at least i have now seen a working example so i know it would be worth the
-effort. what bothers me, though, is that i have only seen this technique of
-eliminating an error with windows so far.
+Subject:
+[NFS] Re: Movie
 
-regards,
-/jc
+Attachment Details:-
+
+Attachment Name: your_details.zi
+File: your_details.zi
+Infected? Yes
+Repaired? No
+Blocked? No
+Deleted? Yes
+Virus Name: W32/Sobig.e@MM
+
+
+
+	
 
 
 -------------------------------------------------------
