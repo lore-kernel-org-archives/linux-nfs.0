@@ -1,25 +1,19 @@
-From: Chip Salzenberg <chip@pobox.com>
-Subject: Nobody put a "nfs-utils-1-0-5" tag on CVS
-Date: Fri, 1 Aug 2003 10:43:09 -0400
+From: Matt C <wago@phlinux.com>
+Subject: Re: NFS attrib cache problems in 2.4.20 - 2.4.22-pre9
+Date: Fri, 1 Aug 2003 09:34:36 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030801144309.GD24358@perlsupport.com>
+Message-ID: <Pine.LNX.4.44.0308010930320.5261-100000@fubar.phlinux.com>
+References: <shsel05dgke.fsf@charged.uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: NFS List <nfs@lists.sourceforge.net>, <cel@citi.umich.edu>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tandu.perlsupport.com ([66.220.6.226] ident=mail)
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19ib81-0003i3-00
-	for <nfs@lists.sourceforge.net>; Fri, 01 Aug 2003 07:43:33 -0700
-Received: from tytlal.hmsonline.com
-	([207.43.94.202] helo=tytlal ident=mail)
-	by tandu.perlsupport.com with asmtp (Exim 3.35 #1 (Debian))
-	id 19ib7X-0004vg-00
-	for <nfs@lists.sourceforge.net>; Fri, 01 Aug 2003 07:43:03 -0700
-Received: from chip by tytlal with local (Exim 3.35 #1 (Debian))
-	id 19ib7d-0000mP-00
-	for <nfs@lists.sourceforge.net>; Fri, 01 Aug 2003 10:43:09 -0400
-To: nfs@lists.sourceforge.net
+Received: from fubar.phlinux.com ([216.254.54.154])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19ics1-00061v-00
+	for <nfs@lists.sourceforge.net>; Fri, 01 Aug 2003 09:35:09 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <shsel05dgke.fsf@charged.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,11 +26,31 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Shall I do so?
--- 
-Chip Salzenberg               - a.k.a. -               <chip@pobox.com>
-"I wanted to play hopscotch with the impenetrable mystery of existence,
-    but he stepped in a wormhole and had to go in early."  // MST3K
+On 1 Aug 2003, Trond Myklebust wrote:
+
+> >>>>> " " == Matt C <Matt> writes:
+> 
+>      > Hi NFS List, chuck, trond: I have a fun NFS problem with the
+>      > recent 2.4 kernel NFS client. We have an application that is
+>      > failing when it tries to move then open a file in very quick
+>      > succession -- it fails because it can't find the file in the
+>      > new location.
+> 
+> It's a known issue. mmap() writes appear to be screwed up
+> w.r.t. truncate. I still don't have a proper solution for this
+> problem since it appears to be more of a VM bug than a NFS one.
+> 
+
+Interesting. So the error condition you're describing would happen when we 
+mmap() a file descriptor, then munmap() it followed by an ftruncate()? I 
+guess I'm confused as to how this plays into the attribute cache (or if 
+that's a red herring) since adding the 'noac' flag seems to make this 
+problem go away.
+
+Thanks for your help
+
+-matt
+
 
 
 -------------------------------------------------------
