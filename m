@@ -1,23 +1,23 @@
-From: Philippe =?ISO-8859-15?Q?Gramoull=E9?= <philippe.gramoulle@mmania.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: Problems with statd and lockd
-Date: Sun, 6 Apr 2003 01:06:58 +0200
+Date: Sun, 6 Apr 2003 14:16:20 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030406010658.6fb15983.philippe.gramoulle@mmania.com>
+Message-ID: <16016.6804.336490.539227@charged.uio.no>
 References: <20030405015638.5118fbb9.philippe.gramoulle@mmania.com>
 	<200304051545.43063.bernd-schubert@web.de>
 	<shs7ka9c957.fsf@charged.uio.no>
 	<200304051831.09682.bernd-schubert@web.de>
+Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+    NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pgramoul.net2.nerim.net ([80.65.227.234] helo=philou.aspic.com)
+Received: from mons.uio.no ([129.240.130.14])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 191wko-0008Ip-00
-	for <nfs@lists.sourceforge.net>; Sat, 05 Apr 2003 15:07:18 -0800
-Received: from philou.gramoulle.local (philou.gramoulle.local [192.168.254.2])
-	by philou.aspic.com (Postfix) with SMTP id 099C816EF
-	for <nfs@lists.sourceforge.net>; Sun,  6 Apr 2003 01:06:59 +0200 (CEST)
-To: nfs@lists.sourceforge.net
+	id 19294V-0003jV-00
+	for <nfs@lists.sourceforge.net>; Sun, 06 Apr 2003 05:16:27 -0700
+To: Bernd Schubert <bernd-schubert@web.de>
 In-Reply-To: <200304051831.09682.bernd-schubert@web.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -31,31 +31,51 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+>>>>> " " == Bernd Schubert <bernd-schubert@web.de> writes:
 
-Now i remember : i also built nfs-utils logn time ago and IIRC, i had disable
-secure stad. It was old enough that since, so many things went through that i had forgotten that.
+     > statd: server localhost not responding, timed out
+     > nsm_mon_unmon: rpc failed, status=-5 lockd: cannot monitor
+     > <server IP> lockd: failed to monitor <server IP>
 
-As this one is a standard debian package, it has secure statd enabled by default.
+     > So on our systems not the server, but the clients are reporting
+     > those messages.
 
-Running without secure statd would mean that lockd can be used by other than lockd, 
-and also that hostnames resolve to dotted quads right ?
+That is normal: lockd is a strange being. It has to run as a server on
+both the NFS client and the NFS server.
 
-Thanks,
+     > Apr 5 15:28:16 maxwell kernel: statd: server localhost not
+     > responding, timed out Apr 5 15:28:16 maxwell kernel: lockd:
+     > cannot monitor <server IP> Apr 5 15:28:16 maxwell kernel:
+     > lockd: failed to monitor <server IP>
 
-Philippe
+     > What other messages do you expect ?
 
-On Sat, 5 Apr 2003 18:31:09 +0200
-Bernd Schubert <bernd-schubert@web.de> wrote:
+If secure-statd was the cause of the problem, I would expect
+additional messages of the form
 
-  | Recently the self-created nfs-utils packages 
-  | (with disabled --enable-secure-statd) got replaced by an automatic update. 
-  | Some time afterwards our clients began to give those messages (here as 
-  | dmesg-output):
-  | 
-  | statd: server localhost not responding, timed out
-  | nsm_mon_unmon: rpc failed, status=-5
-  | lockd: cannot monitor <server IP>
-  | lockd: failed to monitor <server IP>
+  "Call to statd from non-local host blah"
+
+or
+
+  "Attempt to register callback to 1000xy/z"
+
+or
+
+  "Attempt to register host blah (not a dotted quad)"
+
+     > As soon as I stop the debian-statd and start the new statd
+     > (that has secure-statd disabled), those messages disappear.
+     > Furthermore, some programs as e.g. KDE have some problems to
+     > run when those messages appear (our home directory is served by
+     > this server).
+
+     > What problems can be caused by a statd without the secure
+     > option ?
+
+People could use your statd to make arbitrary RPC calls.
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
