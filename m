@@ -1,27 +1,54 @@
-From: Alan Cox <alan@lxorguk.ukuu.org.uk>
-Subject: Re: [PATCH] 2.4.20 Direct IO patch for NFS. (Note: a trivial API
-	change...)
-Date: 30 Sep 2002 20:18:20 +0100
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <1033413501.17501.36.camel@irongate.swansea.linux.org.uk>
-References: <15768.39196.468797.249573@charged.uio.no>
-	<20020930194227.A22095@infradead.org>
+From: David Dougall <davidd@et.byu.edu>
+Subject: reduce rsize/wsize or tcp nfs server
+Date: Mon, 30 Sep 2002 15:34:30 -0600 (MDT)
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <Pine.LNX.4.33.0209301531210.17566-100000@lewis.et.byu.edu>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Marcelo Tosatti <marcelo@conectiva.com.br>,
-	Chuck Lever <cel@netapp.com>,
-	Linux Kernel <linux-kernel@vger.kernel.org>,
-	Linux FSdevel <linux-fsdevel@vger.kernel.org>,
-	NFS maillist <nfs@lists.sourceforge.net>
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: Christoph Hellwig <hch@infradead.org>
-In-Reply-To: <20020930194227.A22095@infradead.org>
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from postal2.et.byu.edu ([128.187.122.132])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17w8BW-0001Ee-00
+	for <nfs@lists.sourceforge.net>; Mon, 30 Sep 2002 14:34:34 -0700
+Received: (from root@localhost)
+	by postal2.et.byu.edu (8.9.3 (PHNE_25184)/8.9.3) id PAA26655
+	for nfs@lists.sourceforge.net; Mon, 30 Sep 2002 15:35:00 -0600 (MDT)
+Received: from lewis (lewis.et.byu.edu [128.187.112.50])
+	by postal2.et.byu.edu (8.9.3 (PHNE_25184)/8.9.3) with ESMTP id PAA26595
+	for <nfs@lists.sourceforge.net>; Mon, 30 Sep 2002 15:34:59 -0600 (MDT)
+To: <nfs@lists.sourceforge.net>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-On Mon, 2002-09-30 at 19:42, Christoph Hellwig wrote:
-> I don't think changing the filesystem entry points during 2.4 is an option.
+If I have a mixed network: some 100Mbit, 10Mbit, 1Gbit, etc.
+Is it wiser to set my wsize/rsize to 1024 to reduce retransmissions or to
+use tcp protocol for nfs?
+If I should use tcp, what is needed to get that into the linux nfs server?
+Is it still very experimental, our could it be trusted in a production
+environment?
+Thanks for any help.
+--David Dougall
 
-Its not a very hard change and we've made bigger changes than this
-during the 2.4 VFS code. It would be a good idea to be able to tell
-cleanly which version of the interface is present
+
+
+______________________________________
+Inflex Virus Scanner - installed on mailserver for domain @et.byu.edu
+Queries to: postmaster@et.byu.edu
+
+
+-------------------------------------------------------
+This sf.net email is sponsored by:ThinkGeek
+Welcome to geek heaven.
+http://thinkgeek.com/sf
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
