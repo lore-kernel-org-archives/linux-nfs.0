@@ -1,17 +1,17 @@
-From: Chung-Jung Tsai <tsai@protein3d.ncifcrf.gov>
-Subject: a NFS problem
-Date: Wed, 9 Oct 2002 16:38:41 -0400 (EDT)
+From: Juan Gomez  <gomez@cs.sjsu.edu>
+Subject: PATCH(nfs-utils) Fix bug in statd notify mode
+Date: Wed, 9 Oct 2002 15:50:07 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200210092038.QAA47299@protein3d.ncifcrf.gov>
+Message-ID: <Pine.GSO.4.05.10210091536420.17500-100000@eniac>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net, juang@us.ibm.com
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from protein3d.ncifcrf.gov ([129.43.6.58])
+Received: from mailhub.cs.sjsu.edu ([130.65.86.58])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17zNk6-0002F4-00
-	for <nfs@lists.sourceforge.net>; Wed, 09 Oct 2002 13:47:42 -0700
-Received: (from tsai@localhost)
-	by protein3d.ncifcrf.gov (SGI-8.9.3/8.9.3) id QAA47299
-	for nfs@lists.sourceforge.net; Wed, 9 Oct 2002 16:38:41 -0400 (EDT)
-To: nfs@lists.sourceforge.net
+	id 17zPfa-0008Bd-00
+	for <nfs@lists.sourceforge.net>; Wed, 09 Oct 2002 15:51:10 -0700
+To: neilb@cse.unsw.edu.au
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,52 +24,40 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-Hi,
 
-We will appreciate if anyone can suggest a solution to our NFS problem.
-We were running a linux cluster with redhat 7.3.  
+Neil,
 
-The NFS problem is:
+While further testing the statd mode I introduced previously (-N opt) I
+found that
+I forgot to skip pmap_unset() while in the notify mode.
 
-Files written by a f90 program running at master node were not updated 
-for the other nodes to see their content correctly. It seems like a sync 
-problem.
+If we do not do that a statd running in notify mode will disable
+any other local statd running in the non-notify mode which is undesirable.
 
-The NFS was mounted with the options:
-master:/home    /home   nfs    rsize=8192,wsize=8192,actimeo=0,noac,intr 0 0
+Would you please apply the current patch to the HEAD of the cvs repository
+for nfs-utils?
 
-some output from nfsstat:
+Regards, Juan
 
-Server rpc stats:
-calls      badcalls   badauth    badclnt    xdrcall
-1340341394   0          0          0          0       
-
-Server nfs v3:
-null       getattr    setattr    lookup     access     readlink   
-0       0% 1300536271  0% 13116771  0% 37991   0% 1579    0% 32      0% 
-read       write      create     mkdir      symlink    mknod      
-13134415  0% 13250369  0% 1821    0% 12      0% 22      0% 0       0% 
-remove     rmdir      rename     link       readdir    readdirplus
-1111    0% 0       0% 291     0% 140     0% 306     0% 0       0% 
-fsstat     fsinfo     pathconf   commit     
-20971   0% 20971   0% 0       0% 218321  0% 
-
-Client rpc stats:
-calls      retrans    authrefrsh
-9509       0          0       
-
-Client nfs v3:
-null       getattr    setattr    lookup     access     readlink   
-0       0% 25      0% 0       0% 2725   28% 2770   29% 2       0% 
-read       write      create     mkdir      symlink    mknod      
-0       0% 0       0% 0       0% 0       0% 0       0% 0       0% 
-remove     rmdir      rename     link       readdir    readdirplus
-0       0% 0       0% 0       0% 0       0% 159     1% 0       0% 
-fsstat     fsinfo     pathconf   commit     
-1914   20% 1914   20% 0       0% 0       0% 
-
-
-				C. J. Tsai
+diff -ur nfs-utils/utils/statd/statd.c nfs-utils-new/utils/statd/statd.c
+--- nfs-utils/utils/statd/statd.c	Sun Sep  1 19:31:23 2002
++++ nfs-utils-new/utils/statd/statd.c	Wed Oct  9 22:28:26 2002
+@@ -307,7 +307,14 @@
+ 	statd_get_socket(out_port);
+ 
+ 	for (;;) {
+-		pmap_unset (SM_PROG, SM_VERS);
++                /* Do not do pmap_unset() when running in notify mode.
++                 * We may clear the portmapper record for a statd not
++                 * running in notify mode disabling it.
++                 * Juan C. Gomez j_carlos_gomez@yahoo.com
++                 */
++		if (!(run_mode & MODE_NOTIFY_ONLY)) {
++                        pmap_unset (SM_PROG, SM_VERS);
++                }
+ 		change_state ();
+ 		shuffle_dirs ();	/* Move directory names around */
+ 		notify_hosts ();	/* Send out notify requests */
 
 
 
