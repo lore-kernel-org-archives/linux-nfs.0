@@ -1,18 +1,17 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: [PATCH] RPC over UDP congestion control updates [8/8]
-Date: Tue, 16 Jul 2002 20:00:17 +0200
+From: "Jarod Beekman" <JBeekman@apu.edu>
+Subject: Tracking rpc errors 'svc: unknown version (0)'
+Date: Wed, 17 Jul 2002 07:41:02 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15668.24369.437063.733011@charged.uio.no>
+Message-ID: <78B78720E680564CB7302950FA6CCF17D302EB@james.fs.apu.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
-    NFS maillist <nfs@lists.sourceforge.net>
+Content-Type: text/plain;
+	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mons.uio.no ([129.240.130.14])
+Received: from james.apu.edu ([199.184.236.201] helo=james.fs.apu.edu)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17UWch-0005iD-00
-	for <nfs@lists.sourceforge.net>; Tue, 16 Jul 2002 11:00:31 -0700
-To: Linus Torvalds <torvalds@transmeta.com>
+	id 17UpzG-0008NY-00
+	for <nfs@lists.sourceforge.net>; Wed, 17 Jul 2002 07:41:06 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,80 +24,21 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
+I upgraded our nfs server from 2.4.9-34 Redhat 7.2 to 2.4.18-5 Redhat
+7.3 and I am now seeing 'svc: unknown version (0)' errors.  Poking
+around on the list and the net tells me that this is a reflection of an
+unrecognized rpc request.  Is this correct, and if so is there a way to
+track down the source and nature of the request?  Thanks for your help.
 
-When determining who gets access to the socket, give priority to
-requests that are being resent. Despite the fact that congestion
-control now applies to resends, we still want to ensure that resends
-get ACKed as soon as possible (and before we start sending off new
-requests).
-
-Cheers,
-  Trond
-
-diff -u --recursive --new-file linux-2.5.25-rpc_cong3/include/linux/sunrpc/xprt.h linux-2.5.25-rpc_cong4/include/linux/sunrpc/xprt.h
---- linux-2.5.25-rpc_cong3/include/linux/sunrpc/xprt.h	Tue Jul 16 15:32:36 2002
-+++ linux-2.5.25-rpc_cong4/include/linux/sunrpc/xprt.h	Tue Jul 16 15:33:01 2002
-@@ -123,6 +123,7 @@
- 	unsigned long		cwnd;		/* congestion window */
- 
- 	struct rpc_wait_queue	sending;	/* requests waiting to send */
-+	struct rpc_wait_queue	resend;		/* requests waiting to resend */
- 	struct rpc_wait_queue	pending;	/* requests in flight */
- 	struct rpc_wait_queue	backlog;	/* waiting for slot */
- 	struct rpc_rqst *	free;		/* free slots */
-diff -u --recursive --new-file linux-2.5.25-rpc_cong3/net/sunrpc/xprt.c linux-2.5.25-rpc_cong4/net/sunrpc/xprt.c
---- linux-2.5.25-rpc_cong3/net/sunrpc/xprt.c	Tue Jul 16 15:32:36 2002
-+++ linux-2.5.25-rpc_cong4/net/sunrpc/xprt.c	Tue Jul 16 15:34:04 2002
-@@ -150,7 +150,10 @@
- 			task->tk_pid, xprt->snd_task->tk_pid);
- 		task->tk_timeout = 0;
- 		task->tk_status = -EAGAIN;
--		rpc_sleep_on(&xprt->sending, task, NULL, NULL);
-+		if (task->tk_rqstp->rq_nresend)
-+			rpc_sleep_on(&xprt->resend, task, NULL, NULL);
-+		else
-+			rpc_sleep_on(&xprt->sending, task, NULL, NULL);
- 	}
- 	retval = xprt->snd_task == task;
- 	spin_unlock_bh(&xprt->sock_lock);
-@@ -166,9 +169,12 @@
- 		return;
- 	if (!xprt->nocong && RPCXPRT_CONGESTED(xprt))
- 		return;
--	task = rpc_wake_up_next(&xprt->sending);
--	if (!task)
--		return;
-+	task = rpc_wake_up_next(&xprt->resend);
-+	if (!task) {
-+		task = rpc_wake_up_next(&xprt->sending);
-+		if (!task)
-+			return;
-+	}
- 	if (xprt->nocong || __xprt_get_cong(xprt, task))
- 		xprt->snd_task = task;
- }
-@@ -1346,6 +1352,7 @@
- 
- 	INIT_RPC_WAITQ(&xprt->pending, "xprt_pending");
- 	INIT_RPC_WAITQ(&xprt->sending, "xprt_sending");
-+	INIT_RPC_WAITQ(&xprt->resend, "xprt_resend");
- 	INIT_RPC_WAITQ(&xprt->backlog, "xprt_backlog");
- 
- 	/* initialize free list */
-@@ -1477,6 +1484,7 @@
- {
- 	xprt->shutdown = 1;
- 	rpc_wake_up(&xprt->sending);
-+	rpc_wake_up(&xprt->resend);
- 	rpc_wake_up(&xprt->pending);
- 	rpc_wake_up(&xprt->backlog);
- 	if (waitqueue_active(&xprt->cong_wait))
+     Jarod Beekman
+  System Administrator
+Azusa Pacific University=20
 
 
 -------------------------------------------------------
-This sf.net email is sponsored by: Jabber - The world's fastest growing 
-real-time communications platform! Don't just IM. Build it in! 
-http://www.jabber.com/osdn/xim
+This sf.net email is sponsored by:ThinkGeek
+Welcome to geek heaven.
+http://thinkgeek.com/sf
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
