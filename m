@@ -1,18 +1,22 @@
-From: "zalmay sanam" <zalmay_77@hotmail.com>
-Subject: NFS server on irix 6.5
-Date: Fri, 11 Mar 2005 12:05:11 +0500
-Message-ID: <BAY13-F4264C2FBB6F3AF81CC940D92530@phx.gbl>
+From: Andrew Morton <akpm@osdl.org>
+Subject: Re: [PATCH kNFSd 0 of 54] Introduction
+Date: Tue, 8 Mar 2005 00:01:44 -0800
+Message-ID: <20050308000144.6599431b.akpm@osdl.org>
+References: <20050308165419.3842.patches@notabene>
 Mime-Version: 1.0
-Content-Type: text/html; format=flowed
+Content-Type: text/plain; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D9eDm-00022U-Mh
-	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 23:06:06 -0800
-Received: from bay13-f42.bay13.hotmail.com ([64.4.31.42] helo=hotmail.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1D9eDk-0004A5-WF
-	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 23:06:06 -0800
-To: nfs@lists.sourceforge.net
+	id 1D8ZfU-00079e-F2
+	for nfs@lists.sourceforge.net; Tue, 08 Mar 2005 00:02:16 -0800
+Received: from fire.osdl.org ([65.172.181.4] helo=smtp.osdl.org)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.41)
+	id 1D8ZfS-00075N-Vb
+	for nfs@lists.sourceforge.net; Tue, 08 Mar 2005 00:02:16 -0800
+To: NeilBrown <neilb@cse.unsw.edu.au>
+In-Reply-To: <20050308165419.3842.patches@notabene>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,13 +30,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-<html><div style='background-color:'><DIV>
-<DIV>
-<DIV class=RTE>Respected Sir</DIV>
-<DIV class=RTE>I want to configure NFS server on SGI IRIX 6.5 . Sir Kindly tell me from where I down load</DIV>
-<DIV class=RTE>the required Softwares and also installation procedure.Sir soon reply will be highly appretiated.</DIV>
-<DIV class=RTE>regards.</DIV></DIV></DIV></div><br clear=all><hr>Don't just search. Find. <a href="http://g.msn.com/8HMBEN/2746??PS=47575" target="_top">MSN Search</a> Check out the new MSN Search!</html>
+NeilBrown <neilb@cse.unsw.edu.au> wrote:
+>
+>  54 (!!) patches for knfsd. Mostly nfsv4 related from Bruce Fields and co.
 
+Fun, I'm up to 944 patches.
+
+I assume that nfsv4 is still "experimental", so we can scoot these in
+fairly promptly?
+
+There were a few rejects against things in Linus's tree now, or something. 
+I fixed them up.  I'll try to do another -mm 24 hours hence - please check
+that everything landed OK.
+
+I can tell you right now that the compiler will get huffy about this:
+
+
+
+-void static inline nfs4_state_init(void){}
++int static inline nfs4_state_init(void){}
+
+I'll stick a `return 0;' in there...
 
 
 -------------------------------------------------------
