@@ -1,15 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: 2.6.8.1 kernel NFS client connectathon failure
-Date: Wed, 15 Sep 2004 23:11:25 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: 6 svcauth_unix patches to make export table lookups optional
+Date: Thu, 16 Sep 2004 19:07:35 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1095304285.8598.51.camel@lade.trondhjem.org>
-References: <200409152054.i8FKsTNV002355@roma.math.duke.edu>
+Message-ID: <20040916230735.GB13415@fieldses.org>
+References: <20040916230555.GA13415@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: NFS@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net, Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: Andrew Schretter <schrett@math.duke.edu>
-In-Reply-To: <200409152054.i8FKsTNV002355@roma.math.duke.edu>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1C85Lp-0007xR-4V
+	for nfs@lists.sourceforge.net; Thu, 16 Sep 2004 16:07:41 -0700
+Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.34)
+	id 1C85Ln-0005hD-NT
+	for nfs@lists.sourceforge.net; Thu, 16 Sep 2004 16:07:41 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <20040916230555.GA13415@fieldses.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -22,26 +31,17 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 on , 15/09/2004 klokka 16:54, skreiv Andrew Schretter:
-> The attached code is a blatant rip from the latest connectathon code that
-> was stripped down to show exactly where it fails on my 2.6.8.1 NFS client=
-.
-> Note that this code works on the local disk and on a 2.4.22 client (both =
-to
-> a 2.6.8.1 server and a 2.4.22 server) but fail from a 2.6.8.1 client to
-> both 2.4.22 and 2.6.8.1 servers.
->=20
+Currently lockd and nfs4 callbacks have the problem that the
+svcauth_unix and svcauth_null code insists on always doing the
+ip_map_lookup stuff for all rpc services.
 
+Of the six following patches, the first two are just cleanup, and should
+be OK to apply now.  The third through sixth are first drafts posted to
+give other people a chance to look them over--they'll need review at
+least from Trond.  
 
-This question keeps recurring on this list. The answer is the same now
-as it was before: Fix the bloody servers!!!!
-
-   subtree_check is INCOMPATIBLE with correct rename behaviour, and it
-is simply ridiculous that this is still a default option.
-
-Grrr,
-  Trond
-
+In particular, I haven't actually tested either the lockd or the nfs4
+callbacks.
 
 
 -------------------------------------------------------
