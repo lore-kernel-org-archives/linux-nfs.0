@@ -1,19 +1,27 @@
-From: Ian Holsman <lists@holsman.net>
-Subject: a nfs configuration scalability question
-Date: Mon, 16 Sep 2002 12:11:59 -0700
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: Must statd be running before nfs client makes mounts?
+Date: Tue, 17 Sep 2002 09:26:02 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3D862CFF.6080908@holsman.net>
+Message-ID: <15750.26762.274141.71457@notabene.cse.unsw.edu.au>
+References: <20020915225226.GI11002@perlsupport.com>
+	<15749.5917.443602.600792@notabene.cse.unsw.edu.au>
+	<20020915164956.A21841@lucon.org>
+	<15749.7947.298657.940521@notabene.cse.unsw.edu.au>
+	<20020916071259.B1149@lucon.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from nat-206-16-4-197.cnet.com ([206.16.4.197] helo=localhost.localdomain)
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17r1IB-0000vD-00
-	for <nfs@lists.sourceforge.net>; Mon, 16 Sep 2002 12:12:20 -0700
-Received: from holsman.net (localhost [127.0.0.1])
-	by localhost.localdomain (Postfix) with ESMTP id 57BFB1004F9
-	for <nfs@lists.sourceforge.net>; Mon, 16 Sep 2002 12:11:59 -0700 (PDT)
-To: nfs@lists.sourceforge.net
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17r7Jb-0006D7-00
+	for <nfs@lists.sourceforge.net>; Mon, 16 Sep 2002 18:38:11 -0700
+Received: From
+	notabene.cse.unsw.edu.au ([129.94.233.132] == wireless-132.wireless.cse.unsw.EDU.AU)
+	(for <hjl@lucon.org>) (for <nfs@lists.sourceforge.net>) By tone With
+	Smtp ; Tue, 17 Sep 2002 11:38:02 +1000
+To: "H. J. Lu" <hjl@lucon.org>
+In-Reply-To: message from H. J. Lu on Monday September 16
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,54 +34,50 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-OK..
-first of all my apolagies if this is a *developer* only list.
+On Monday September 16, hjl@lucon.org wrote:
+> > 
+> > However I don't see a problem with doing this via a sysctl, quite
+> > possibly a sysctl under /proc/sys/sunrpc/  (as it is an RPC service).
+> > 
+> 
+> Does it work with sunrpc as module?
+> 
 
-I'm running apache2 on  rh-kernel on a quad processor machine.
-the docroot (where it grabs the HTML files) is being served off a 
-netapp750 filer.
+Well.....
+ modprobe lockd
+ echo 3033 > /proc/sys/sunrpc/lockd/udp_port
+ echo 3033 > /proc/sys/sunrpc/lockd/tcp_port
 
-what I'm finding is that under *any* load the runqueue goes up to ~700
-and the cpu shows 100% idle. vmstat shows that all the procs are in 
-'blocked' state.
+should work.
 
-now.. I've tweaked the nfs mount a tiny bit to make it read only, and 
-have a rsize of 8k, but it didn't seem to make any difference.
+It wouldn't work for module auto-loading, but if you wanted that you
+could use the currently available module parameters.
 
-$ mount
-cn-sfo1-pma-filer1:/docroot on /var/httpd/online/docroot type nfs 
-(ro,rsize=8192,nolock,addr=10.10.112.27,addr=10.10.112.27)
+Certainly it would be nice to have a single mechanism that always
+worked, but I don't think the kernel infrastructure is up to that at
+the moment.  Rusty Russel was talking at the Kernel Summit about
+unifying kernel parameters, module parameters and some /proc like
+thing (where it be sysctl or /proc or driverfs or....).  It would be
+good but it isn't there yet.
 
+That said, it would probably be possible to arrange auto-loading to
+trigger off /proc/sys access...  I'm keen to do away with the nfsd
+system call altogether.
 
-the actual benchmark involves a HTTP client requesting a random URL 
-which reads in 10 files (9 of which are the same for each request)
+   echo 32 > /proc/sys/sunrpc/nfsd/nthreads
+starts the server,
+   echo 0 >  /proc/sys/sunrpc/nfsd/nthreads
+stops it.
 
-on Solaris (where it is currenlty running) I can get ~1000 nfs 
-ops/second (mainly lookups)
+However this is only a vague idea as yet.
 
-so my questions:
-
-* what tools are there for me to monitor WTF is going on  (ie.. cache 
-hit rates inode hit rates)
-* can I tweak the cache/inode size
-* are there tweaks/kernel patches which will help client performance for 
-my type of workload
-* am I being a complete dunderhead and missing something completely 
-obivous (if so where should I RTFM ?)
-
-Thanks
-this nfs problem is a major roadblock for me, and would appreciate ANY 
-pointers
-
-Ian Holsman
-
-
+NeilBrown
 
 
 -------------------------------------------------------
-This sf.net email is sponsored by:ThinkGeek
-Welcome to geek heaven.
-http://thinkgeek.com/sf
+Sponsored by: AMD - Your access to the experts on Hammer Technology! 
+Open Source & Linux Developers, register now for the AMD Developer 
+Symposium. Code: EX8664 http://www.developwithamd.com/developerlab
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
