@@ -1,19 +1,25 @@
-From: Martin Siegert <siegert@sfu.ca>
-Subject: Re: limit on filesystem size?
-Date: Fri, 2 Aug 2002 14:52:38 -0700
+From: "Matt Heaton" <admin@0catch.com>
+Subject: Cachefs??
+Date: Fri, 2 Aug 2002 13:26:43 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020802215238.GA28366@stikine.ucs.sfu.ca>
-References: <20020801195309.GA26793@stikine.ucs.sfu.ca> <shs7kja48km.fsf@charged.uio.no> <008401c23a6b$489bd8c0$fd0912ac@analytical>
+Message-ID: <0e0901c23a5a$88e98c30$e2a446a6@user1i6avc9gfx>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_0E06_01C23A28.3E22B500"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from rm-rstar.sfu.ca ([142.58.120.21])
+Received: from mgr1.xmission.com ([198.60.22.201])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17akNJ-0005fN-00
-	for <nfs@lists.sourceforge.net>; Fri, 02 Aug 2002 14:54:21 -0700
-To: Steve Costaras <stevecs@oceanbay.com>
-In-Reply-To: <008401c23a6b$489bd8c0$fd0912ac@analytical>
+	id 17ai4m-0001NR-00
+	for <nfs@lists.sourceforge.net>; Fri, 02 Aug 2002 12:27:04 -0700
+Received: from [198.60.22.200] (helo=mail.xmission.com)
+	by mgr1.xmission.com with esmtp (Exim 3.35 #1)
+	id 17ai4k-0002SD-00
+	for nfs@lists.sourceforge.net; Fri, 02 Aug 2002 13:27:02 -0600
+Received: from [166.70.164.226] (helo=user1i6avc9gfx)
+	by mail.xmission.com with smtp (Exim 3.22 #1)
+	id 17ai4j-0007xz-00
+	for nfs@lists.sourceforge.net; Fri, 02 Aug 2002 13:27:02 -0600
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,81 +32,57 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Fri, Aug 02, 2002 at 04:26:35PM -0500, Steve Costaras wrote:
-> How are you planning on creating this filesystem?    I have tried
-> creating 2TB filessystems here for a while and have had little or no
-> luck w/ Solaris or linux.  Using Disksuite for solaris and LVM and MD for
-> linux no luck.  I have not tried veritas VM yet but even calling up SUN
-> the answer is that 1TB is the limit per filesystem currently under solaris 8
-> & 9
+This is a multi-part message in MIME format.
 
-My understanding is that you can create filesystems larger than 2TB under
-Solaris 8. You almost certainly can do it under Irix.
-But this is really what my question is about: we are shortly going to
-write a RFP and I was wondering whether we should make it a requirement
-that we can create filesystems on the NFS server that are larger than 2 TB.
-If Linux clients wouldn't be able to mount such filesystems then this would
-be irrelevant (because we must configure the NFS server such that Linux 
-clients can mount the filesystems in any case). However, if Linux clients
-can mount such filesystems, creating e.g., 4 20TB filesystems is definitely
-easier to manage than 40 2TB filesystems. Thus in that case we would buy
-a NFS server/storage solution that allows us to create such filesystems.
+------=_NextPart_000_0E06_01C23A28.3E22B500
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-> Linux is really around 980GB or so where it starts to flake out.
+Hi everyone.... My NFS clients are clobbering my nfs servers and I would =
+like to boost caching
+on the client side as much as I can.  Do you have any ideas?
 
-... that's why the NFS server that we are going to buy is probably not
-going to run Linux :-(
+Also is Cachefs being developed at all for linux???  Cachefs would be a =
+HUGE boost to the linux
+community in my opinion.
 
-Martin
+Lemme know...
+Matt
 
-> 
-> Steve
-> ----- Original Message -----
-> From: "Trond Myklebust" <trond.myklebust@fys.uio.no>
-> To: "Martin Siegert" <siegert@sfu.ca>
-> Cc: <nfs@lists.sourceforge.net>
-> Sent: Thursday, August 01, 2002 15:39
-> Subject: Re: [NFS] limit on filesystem size?
-> 
-> 
-> > >>>>> " " == Martin Siegert <siegert@sfu.ca> writes:
-> >
-> >      > Hello, we are in the planning process for the setup of a large
-> >      > (~ 100 TB) NFS server. My understanding is that there is a
-> >      > limit of 2TB for filesystem sizes for local (!) filesystems
-> >      > under Linux (at least for ext2/ext3; I am not sure about xfs).
-> >
-> >      > My question really is: is there a limit for the filesystem size
-> >      > that a Linux NFS client (2.4.18 or the upcoming 2.4.19 kernel)
-> >      > can mount from a (possibly non-Linux) NFS server?  E.g., can I
-> >      > mount a 20TB filesystem under Linux?
-> >
-> >      > (I've asked this question on the beowulf mailing list and the
-> >      > answer was no. Now I ask the experts - hoping for a different
-> >      > answer :-)
-> >
-> > If you can mount it, then you can export it...
-> >
-> > For NFSv2 there is a 32-bit size limit on the files you can export
-> > whereas for NFSv3, that limit is 64-bits, but those limits are
-> > *per-file*.
-> >
-> > Otherwise, you might run into problems when you try to run 'df' in
-> > order to read filesystem statistics (NFSv2, the limit is 41-bit
-> > - NFSv3 the limit is 64-bit) but that shouldn't really be a critical
-> >  feature.
-> >
-> > Cheers,
-> >   Trond
-> >
-> >
-> > -------------------------------------------------------
-> > This sf.net email is sponsored by:ThinkGeek
-> > Welcome to geek heaven.
-> > http://thinkgeek.com/sf
-> > _______________________________________________
-> > NFS maillist  -  NFS@lists.sourceforge.net
-> > https://lists.sourceforge.net/lists/listinfo/nfs
+
+------=_NextPart_000_0E06_01C23A28.3E22B500
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; =
+charset=3Diso-8859-1">
+<META content=3D"MSHTML 6.00.2716.2200" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV><FONT face=3DArial size=3D2>Hi everyone.... My NFS clients are =
+clobbering my=20
+nfs servers and I would like to boost caching</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>on the client side as much as I =
+can.&nbsp; Do you=20
+have any ideas?</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>Also is Cachefs being developed at all =
+for=20
+linux???&nbsp; Cachefs would be a HUGE boost to the linux</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>community in my opinion.</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>Lemme know...</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>Matt</FONT></DIV>
+<DIV>&nbsp;</DIV></BODY></HTML>
+
+------=_NextPart_000_0E06_01C23A28.3E22B500--
+
+
 
 
 -------------------------------------------------------
