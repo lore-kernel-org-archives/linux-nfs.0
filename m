@@ -1,19 +1,18 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: trond's patch for 2.4.19
-Date: 06 Aug 2002 18:44:12 +0200
+From: <ltd20042021i36@nation.net>
+Subject: Create a PAYCHECK with your computer -
+Date: Tue, 06 Aug 0102 12:14:20 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsznw0szs3.fsf@charged.uio.no>
-References: <8D7D56C6ED3DD411998D009027DC685E0874E1F0@srv-grp-s1.segin.com>
+Message-ID: <033c75d15d3a$1866b6b4$5cc65cd1@cjyymm>
+Reply-To: <ltd20042021i36@nation.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed;
+	boundary="----=_NextPart_000_00B2_55D11E0B.E6284C75"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mons.uio.no ([129.240.130.14])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17c7RY-0005OT-00
-	for <nfs@lists.sourceforge.net>; Tue, 06 Aug 2002 09:44:24 -0700
-To: Brasseur =?iso-8859-1?q?Val=E9ry?= <Valery.Brasseur@atosorigin.com>
-In-Reply-To: <8D7D56C6ED3DD411998D009027DC685E0874E1F0@srv-grp-s1.segin.com>
+Received: from [203.135.44.206] (helo=nation.net)
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17cDyv-0006vC-00
+	for <nfs@lists.sourceforge.net>; Tue, 06 Aug 2002 16:43:20 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,16 +25,75 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->>>>> " " =3D=3D Brasseur Val=E9ry <Valery.Brasseur@atosorigin.com> writes:
+------=_NextPart_000_00B2_55D11E0B.E6284C75
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: base64
 
-     > now that 2.4.19 is out, is there somewhere the NFS-all patch
-     > for it ?  all I can find now is for rc4 and I am not sure it's
-     > OK to patch 2.4.19 with it ?
 
-It is quite safe to assume that the rc4 patch will apply to 2.4.19.
-
-Cheers,
-  Trond
+SGVsbG8gLQ0KDQpZb3UgZ2V0IGVtYWlscyBldmVyeSBkYXksIG9mZmVyaW5n
+IHRvIHNob3cgeW91IGhvdyB0byBtYWtlIG1vbmV5Lg0KTW9zdCBvZiB0aGVz
+ZSBlbWFpbHMgYXJlIGZyb20gcGVvcGxlIHdobyBhcmUgTk9UIG1ha2luZyBh
+bnkgbW9uZXkuDQpBbmQgdGhleSBleHBlY3QgeW91IHRvIGxpc3RlbiB0byB0
+aGVtPw0KDQpFbm91Z2guDQoNCklmIHlvdSB3YW50IHRvIG1ha2UgbW9uZXkg
+d2l0aCB5b3VyIGNvbXB1dGVyLCB0aGVuIHlvdSBzaG91bGQNCmhvb2sgdXAg
+d2l0aCBhIGdyb3VwIHRoYXQgaXMgYWN0dWFsbHkgRE9JTkcgaXQuICBXZSBh
+cmUgbWFraW5nDQphIGxhcmdlLCBjb250aW51aW5nIGluY29tZSBldmVyeSBt
+b250aC4gIFdoYXQncyBtb3JlIC0gd2Ugd2lsbA0Kc2hvdyBZT1UgaG93IHRv
+IGRvIHRoZSBzYW1lIHRoaW5nLg0KDQpUaGlzIGJ1c2luZXNzIGlzIGRvbmUg
+Y29tcGxldGVseSBieSBpbnRlcm5ldCBhbmQgZW1haWwsIGFuZCB5b3UNCmNh
+biBldmVuIGpvaW4gZm9yIGZyZWUgdG8gY2hlY2sgaXQgb3V0IGZpcnN0LiAg
+SWYgeW91IGNhbiBzZW5kDQphbiBlbWFpbCwgeW91IGNhbiBkbyB0aGlzLiAg
+Tm8gc3BlY2lhbCAic2tpbGxzIiBhcmUgcmVxdWlyZWQuDQoNCkhvdyBtdWNo
+IGFyZSB3ZSBtYWtpbmc/ICBCZWxvdyBhcmUgYSBmZXcgZXhhbXBsZXMuICBU
+aGVzZSBhcmUNCnJlYWwgcGVvcGxlLCBhbmQgbW9zdCBvZiB0aGVtIHdvcmsg
+YXQgdGhpcyBidXNpbmVzcyBwYXJ0LXRpbWUuDQpCdXQga2VlcCBpbiBtaW5k
+LCB0aGV5IGRvIFdPUksgYXQgaXQgLSBJIGFtIG5vdCBnb2luZyB0bw0KaW5z
+dWx0IHlvdXIgaW50ZWxsaWdlbmNlIGJ5IHNheWluZyB5b3UgY2FuIHNpZ24g
+dXAsIGRvIG5vIHdvcmssDQphbmQgcmFrZSBpbiB0aGUgY2FzaC4gIFRoYXQg
+a2luZCBvZiBqb2IgZG9lcyBub3QgZXhpc3QuICBCdXQgaWYNCnlvdSBhcmUg
+d2lsbGluZyB0byBwdXQgaW4gMTAtMTIgaG91cnMgcGVyIHdlZWssIHRoaXMg
+bWlnaHQgYmUNCmp1c3QgdGhlIHRoaW5nIHlvdSBhcmUgbG9va2luZyBmb3Iu
+DQoNCk4uIEdhbGxhZ2hlcjogJDMwMDAgcGVyIG1vbnRoDQpKLiBMdWRlczog
+JDEwMDAgcGVyIG1vbnRoDQpTLiBKb2huc29uOiAkNjAwMCAtJDcwMDAgcGVy
+IG1vbnRoDQpWLiBQYXRhbGFubzogJDIwMDAgcGVyIG1vbnRoDQpNLiBTb3V0
+aDogJDUwMDAgcGVyIG1vbnRoDQpKLiBIZW5zbGluOiAkNzAwMCBwZXIgbW9u
+dGgNCg0KVGhpcyBpcyBub3QgaW5jb21lIHRoYXQgaXMgZGV0ZXJtaW5lZCBi
+eSBsdWNrLCBvciB3b3JrIHRoYXQgaXMNCmRvbmUgRk9SIHlvdSAtIGl0IGlz
+IGFsbCBiYXNlZCBvbiB5b3VyIGVmZm9ydC4gIEJ1dCwgYXMgSSBzYWlkLA0K
+dGhlcmUgYXJlIG5vIHNwZWNpYWwgc2tpbGxzIHJlcXVpcmVkLiAgQW5kIHRo
+aXMgaW5jb21lIGlzIFJFU0lEVUFMIC0NCm1lYW5pbmcgdGhhdCBpdCBjb250
+aW51ZXMgZWFjaCBtb250aCAoYW5kIGl0IHRlbmRzIHRvIGluY3JlYXNlDQpl
+YWNoIG1vbnRoIGFsc28pLg0KDQpJbnRlcmVzdGVkPyAgSSBpbnZpdGUgeW91
+IHRvIGZpbmQgb3V0IG1vcmUuICBZb3UgY2FuIGdldCBpbiBhcyBhDQpmcmVl
+IG1lbWJlciwgYXQgbm8gY29zdCwgYW5kIG5vIG9ibGlnYXRpb24gdG8gY29u
+dGludWUgaWYgeW91DQpkZWNpZGUgaXQgaXMgbm90IGZvciB5b3UuICBXZSBh
+cmUganVzdCBsb29raW5nIGZvciBwZW9wbGUgd2hvIHN0aWxsDQpoYXZlIHRo
+YXQgImJ1cm5pbmcgZGVzaXJlIiB0byBmaW5kIGFuIG9wcG9ydHVuaXR5IHRo
+YXQgd2lsbCByZXdhcmQNCnRoZW0gaW5jcmVkaWJseSB3ZWxsLCBpZiB0aGV5
+IHdvcmsgYXQgaXQuDQoNClRvIGdyYWIgYSBGUkVFIElEIywgc2ltcGx5IHJl
+cGx5IHRvOiBpdC13b3Jrc0BleGNpdGUuY29tDQphbmQgd3JpdGUgdGhpcyBw
+aHJhc2U6DQoiRW1haWwgbWUgZGV0YWlscyBhYm91dCB0aGUgY2x1YidzIGJ1
+c2luZXNzIGFuZCBjb25zdW1lciBvcHBvcnR1bml0aWVzIg0KQmUgc3VyZSB0
+byBpbmNsdWRlIHlvdXI6DQoxLiBGaXJzdCBuYW1lDQoyLiBMYXN0IG5hbWUN
+CjMuIEVtYWlsIGFkZHJlc3MgDQoNCldlIHdpbGwgY29uZmlybSB5b3VyIHBv
+c2l0aW9uIGFuZCBzZW5kIHlvdSBhIHNwZWNpYWwgcmVwb3J0DQphcyBzb29u
+IGFzIHBvc3NpYmxlLCBhbmQgYWxzbyBZb3VyIGZyZWUgTWVtYmVyIE51bWJl
+ci4NCg0KVGhhdCdzIGFsbCB0aGVyZSdzIHRvIGl0Lg0KDQpXZSdsbCB0aGVu
+IHNlbmQgeW91IGluZm8sIGFuZCB5b3UgY2FuIG1ha2UgdXAgeW91ciBvd24g
+bWluZC4NCg0KTG9va2luZyBmb3J3YXJkIHRvIGhlYXJpbmcgZnJvbSB5b3Uh
+DQoNClNpbmNlcmVseSwNCg0KVC4gTHVkZXMgDQoNClAuUy4gQWZ0ZXIgaGF2
+aW5nIHNldmVyYWwgbmVnYXRpdmUgZXhwZXJpZW5jZXMgd2l0aCBuZXR3b3Jr
+DQptYXJrZXRpbmcgY29tcGFuaWVzIEkgaGFkIHByZXR0eSBtdWNoIGdpdmVu
+IHVwIG9uIHRoZW0uDQpUaGlzIGlzIGRpZmZlcmVudCAtIHRoZXJlIGlzIHZh
+bHVlLCBpbnRlZ3JpdHksIGFuZCBhDQpSRUFMIG9wcG9ydHVuaXR5IHRvIGhh
+dmUgeW91ciBvd24gaG9tZS1iYXNlZCBidXNpbmVzcy4uLg0KYW5kIGZpbmFs
+bHkgbWFrZSByZWFsIG1vbmV5IG9uIHRoZSBpbnRlcm5ldC4NCg0KRG9uJ3Qg
+cGFzcyB0aGlzIHVwLi4ueW91IGNhbiBzaWduIHVwIGFuZCB0ZXN0LWRyaXZl
+IHRoZQ0KcHJvZ3JhbSBmb3IgRlJFRS4gIEFsbCB5b3UgbmVlZCB0byBkbyBp
+cyBnZXQgeW91ciBmcmVlDQptZW1iZXJzaGlwLg0KDQpVbnN1YnNjcmliZTog
+U2VuZCBhIGJsYW5rIGVtYWlsIHRvOiBlYXN5d29yazIwMDRAaG90bWFpbC5j
+b20gIHdpdGgNCiJSZW1vdmUiIGluIHRoZSBzdWJqZWN0IGxpbmUuDQoNCjQ1
+NDJIR3NTMi0xMDlpdkdZMzcxMUZYaHI0LTU3bDI3
 
 
 -------------------------------------------------------
@@ -45,3 +103,6 @@ http://thinkgeek.com/sf
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+
+------=_NextPart_000_00B2_55D11E0B.E6284C75--
