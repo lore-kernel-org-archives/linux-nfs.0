@@ -1,19 +1,19 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Benjamin LaHaise <bcrl@redhat.com>
 Subject: Re: RedHat Rawhide Kernels
-Date: 08 Aug 2002 22:21:37 +0200
+Date: Thu, 8 Aug 2002 16:23:26 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shs1y99m78u.fsf@charged.uio.no>
-References: <Pine.LNX.4.44.0208082017590.23326-100000@xpc1.ast.cam.ac.uk>
+Message-ID: <20020808162326.G28223@redhat.com>
+References: <Pine.LNX.4.44.0208082017590.23326-100000@xpc1.ast.cam.ac.uk> <20020808153331.F28223@redhat.com> <shs65ylm7hp.fsf@charged.uio.no>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
+Received: from to-velocet.redhat.com ([216.138.202.10] helo=touchme.toronto.redhat.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17ctmv-0006CM-00
-	for <nfs@lists.sourceforge.net>; Thu, 08 Aug 2002 13:21:42 -0700
-To: Jeremy Sanders <jss@ast.cam.ac.uk>
-In-Reply-To: <Pine.LNX.4.44.0208082017590.23326-100000@xpc1.ast.cam.ac.uk>
+	id 17ctog-0006KB-00
+	for <nfs@lists.sourceforge.net>; Thu, 08 Aug 2002 13:23:30 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <shs65ylm7hp.fsf@charged.uio.no>; from trond.myklebust@fys.uio.no on Thu, Aug 08, 2002 at 10:16:18PM +0200
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,21 +26,31 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->>>>> " " == Jeremy Sanders <jss@ast.cam.ac.uk> writes:
+On Thu, Aug 08, 2002 at 10:16:18PM +0200, Trond Myklebust wrote:
+> Do you know offhand which set of patches are included?
 
-     > Just to let you guys know (as it's close to the current
-     > thread), I'm getting very bad lock-ups using the current
-     > rawhide kernel (2.4.18-7.94).  When I connet with a machine
+# 15xx
+# NFS patches: selected bits from Trond's 2.4.19pre8 patchset
+#
+Patch1501: linux-2.4.19-nfs-01-pathconf.dif.txt
+Patch1503: linux-2.4.19-nfs-03-noac.dif.txt
+Patch1504: linux-2.4.19-nfs-04-seekdir.dif.txt
+Patch1505: linux-2.4.19-nfs-05-rdplus.dif.txt
+Patch1506: linux-2.4.19-nfs-06-rpc_bkl.dif.txt
+Patch1507: linux-2.4.19-nfs-07-bkl2.dif.txt
+Patch1508: linux-2.4.19-nfs-08-rpc_cong.dif.txt
+Patch1509: linux-2.4.19-nfs-09-rpc_wspace.dif.txt
+Patch1510: linux-2.4.19-nfs-10-ping.dif.txt
+Patch1511: linux-2.4.19-nfs-11-rpc_tweaks.dif.txt
+Patch1520: linux-2.4.19-nfs-nosvc.patch
+Patch1550: linux-2.4.18-nfs-default-size.patch
 
-I don't know about the server stuff, but the version of the client
-patches that they appear to have included in 2.4.18-7.94 contains one
-pretty nasty race in the RPC code that can cause significant
-corruption.
-I've already notified RH of this, and provided them with details on
-how to fix it...
+nosvc just silences the annoying unknown version (0) printk, and the 
+default size patch reverts to a 4KB default if none is specified.
 
-Cheers,
-  Trond
+		-ben
+-- 
+"You will be reincarnated as a toad; and you will be much happier."
 
 
 -------------------------------------------------------
