@@ -1,24 +1,28 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] STATD - SM_NOTIFY have wrong ID_NAME on multihost
- servers.
-Date: Fri, 26 Nov 2004 08:01:24 -0500
-Message-ID: <41A72924.5070804@RedHat.com>
-References: <41A39D57.8060902@RedHat.com> <20041123232636.GE19342@vestdata.no> <41A3D9CC.7040404@RedHat.com> <20041124020017.GH19342@vestdata.no> <41A477C8.4060405@RedHat.com> <20041124173525.GI19342@vestdata.no> <41A5064B.1030009@RedHat.com> <20041124232530.GL19342@vestdata.no>
+From: Bernd Schubert <bernd-schubert@web.de>
+Subject: Re: NFS performance question / (a)sync
+Date: Fri, 26 Nov 2004 14:08:09 +0100
+Message-ID: <200411261408.10977.bernd-schubert@web.de>
+References: <021801c4d3b3$e40fe470$9842a8c0@thorsten1te>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-15; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+  charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CXfgV-0001CW-PV
-	for nfs@lists.sourceforge.net; Fri, 26 Nov 2004 04:58:47 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1CXfgL-0007xu-Kt
-	for nfs@lists.sourceforge.net; Fri, 26 Nov 2004 04:58:47 -0800
-To: =?ISO-8859-15?Q?Ragnar_Kj=F8rstad?= <nfs@ragnark.vestdata.no>
-In-Reply-To: <20041124232530.GL19342@vestdata.no>
+	id 1CXfpk-00029v-8w
+	for nfs@lists.sourceforge.net; Fri, 26 Nov 2004 05:08:20 -0800
+Received: from relay.uni-heidelberg.de ([129.206.100.212])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CXfph-00004u-Pg
+	for nfs@lists.sourceforge.net; Fri, 26 Nov 2004 05:08:20 -0800
+Received: from euklid.pci.uni-heidelberg.de (euklid.pci.uni-heidelberg.de [129.206.21.104])
+	by relay.uni-heidelberg.de (8.12.10/8.12.10) with ESMTP id iAQD8C4i012673
+	for <nfs@lists.sourceforge.net>; Fri, 26 Nov 2004 14:08:12 +0100 (MET)
+Received: from bernd by euklid.pci.uni-heidelberg.de with local (Exim 3.35 #1 (Debian))
+	id 1CXfpb-0004YN-00
+	for <nfs@lists.sourceforge.net>; Fri, 26 Nov 2004 14:08:11 +0100
+To: nfs@lists.sourceforge.net
+In-Reply-To: <021801c4d3b3$e40fe470$9842a8c0@thorsten1te>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,20 +36,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Ragnar Kj=F8rstad wrote:
+Hi Thorsten,
 
->I had just hoped I could trick you into fixing one more thing once you
->were on a roll :-)
-> =20
->
-Yes I was keenly aware of such efforts.... 8-)  and a well place
-Bugzilla report would be a good way to continue that effort,
-since I do think tis important to make the HA support in nfs-utils
-work as well as possible...  Its just at this point of the release
-cycle (at the end),  I'm a bit hesitant to make any more changes
-than are totally necessary.
+> Is it "normal" that I reach only 0,5 - 2,0 megabyte per socond when using
+> sync-transfer? I know what this means, but I did not expect such a
+> performance drop.
 
-SteveD.
+did you get those results on the drbd device? This was just (this week)=20
+discussed on the drbd list, see the archives. Sync vs. async was also just=
+=20
+discussed on this list.
+
+
+Cheers,
+ Bernd
+
+=2D-=20
+Bernd Schubert
+Physikalisch Chemisches Institut / Theoretische Chemie
+Universit=E4t Heidelberg
+INF 229
+69120 Heidelberg
+e-mail: bernd.schubert@pci.uni-heidelberg.de
 
 
 -------------------------------------------------------
