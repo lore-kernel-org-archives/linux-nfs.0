@@ -1,29 +1,20 @@
-From: Garrick Staples <garrick@usc.edu>
-Subject: Re: possible client stale filehandle bug?
-Date: Wed, 26 Jan 2005 09:49:18 -0800
-Message-ID: <20050126174918.GW12269@polop.usc.edu>
-References: <20050125173945.GU12269@polop.usc.edu> <1106719587.10014.4.camel@lade.trondhjem.org> <20050126063547.GS12269@polop.usc.edu> <Pine.LNX.4.61.0501262231150.1716@donald.themaw.net>
+From: Frank van Maarseveen <frankvm@frankvm.com>
+Subject: EJUKEBOX and nfs3_proc_read()/nfs3_proc_write()
+Date: Thu, 27 Jan 2005 23:59:11 +0100
+Message-ID: <20050127225911.GA24398@janus>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="oUFcEOvuk6LY/BLp"
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CtrIv-0001UW-M6
-	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 09:50:09 -0800
-Received: from polop.usc.edu ([128.125.10.9])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1CtrIs-0002s8-4y
-	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 09:50:09 -0800
-Received: from polop.usc.edu (localhost.localdomain [127.0.0.1])
-	by polop.usc.edu (8.12.11/8.12.11) with ESMTP id j0QHnILf012423
-	for <nfs@lists.sourceforge.net>; Wed, 26 Jan 2005 09:49:18 -0800
-Received: (from garrick@localhost)
-	by polop.usc.edu (8.12.11/8.12.11/Submit) id j0QHnIDT012421
-	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 09:49:18 -0800
-To: nfs@lists.sourceforge.net
-In-Reply-To: <Pine.LNX.4.61.0501262231150.1716@donald.themaw.net>
+	id 1CuIeW-0008RQ-QL
+	for nfs@lists.sourceforge.net; Thu, 27 Jan 2005 15:02:16 -0800
+Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CuIbg-0006Ss-9w
+	for nfs@lists.sourceforge.net; Thu, 27 Jan 2005 15:02:16 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,43 +28,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+I think that the EJUKEBOX wrapper in fs/nfs/nfs3proc.c is not necessary
+for nfs3_proc_read() and nfs3_proc_write().
 
---oUFcEOvuk6LY/BLp
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Can you confirm this?
 
-On Wed, Jan 26, 2005 at 10:31:57PM +0800, raven@themaw.net alleged:
-> On Tue, 25 Jan 2005, Garrick Staples wrote:
->=20
-> >
-> >I'd be very happy to see any patches lieing around that might do this
-> >behaviour.  It would get me through the short term until Sun fixes this=
-=20
-> >bug in
-> >samfs.
->=20
-> Don't hold your breath waiting!
+I want to simplify these particular cases while working on a redesigned
+patchset for >16 groups support. Part of it are a number of cleanup
+patches and they would be smaller when EJUKEBOX handling can be omitted
+in these two functions.
 
-Now you are just being cruel!
-
---=20
-Garrick Staples, Linux/HPCC Administrator
-University of Southern California
-
---oUFcEOvuk6LY/BLp
-Content-Type: application/pgp-signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.3 (GNU/Linux)
-
-iD8DBQFB99ge0SBUxJbm9HMRAuROAKCWPZtkFtxgZfS8UYHnGUO4piEJrQCePfjU
-56YD0XPw2R0gduxMKmao1ok=
-=F9Ea
------END PGP SIGNATURE-----
-
---oUFcEOvuk6LY/BLp--
+-- 
+Frank
 
 
 -------------------------------------------------------
