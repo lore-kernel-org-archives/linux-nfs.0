@@ -1,20 +1,25 @@
-From: b.lumpkin@comcast.net
-Subject: 16TB filesystems via NFS on 2.6?
-Date: Wed, 04 Aug 2004 18:50:10 +0000
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] NFS: Zeroing NFS and kNFSD stats
+Date: Wed, 4 Aug 2004 16:14:11 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <080420041850.20772.41112FE2000BB7A20000512422007621940207059F039A04D20D@comcast.net>
+Message-ID: <20040804201411.GL19282@fieldses.org>
+References: <40F3D483.8020507@RedHat.com> <20040713143044.GA3023@fieldses.org> <40F3FAD8.7090707@RedHat.com> <20040713151759.GC3023@fieldses.org> <20040802103905.GI25023@suse.de>
 Mime-Version: 1.0
-Content-Type: multipart/alternative; boundary="NextPart_Webmail_9m3u9jl4l_20772_1091645410_0"
+Content-Type: text/plain; charset=us-ascii
+Cc: Steve Dickson <SteveD@redhat.com>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BsQq9-0006v2-AR
-	for nfs@lists.sourceforge.net; Wed, 04 Aug 2004 11:50:17 -0700
-Received: from sccrmhc11.comcast.net ([204.127.202.55])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1BsQq8-0006gS-Ud
-	for nfs@lists.sourceforge.net; Wed, 04 Aug 2004 11:50:17 -0700
-To: nfs@lists.sourceforge.net
+	id 1BsS9S-0001bn-Ob
+	for nfs@lists.sourceforge.net; Wed, 04 Aug 2004 13:14:18 -0700
+Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.34)
+	id 1BsS9S-0007IW-Bh
+	for nfs@lists.sourceforge.net; Wed, 04 Aug 2004 13:14:18 -0700
+To: Olaf Kirch <okir@suse.de>
+In-Reply-To: <20040802103905.GI25023@suse.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -27,28 +32,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Mon, Aug 02, 2004 at 12:39:05PM +0200, Olaf Kirch wrote:
+> On Tue, Jul 13, 2004 at 11:17:59AM -0400, J. Bruce Fields wrote:
+> > But you could exactly the same thing by recording the values at the
+> > beginning of the test run and then subtracting.  In practice this is
+> > likely to be annoying, so you'd want to write utilities that did this
+> > for you, like say
+> > 
+> > checkpoint_stats stats.txt
+> > display_stats --since stats.txt
+> 
+> But it sucks. I had folks run something like 12-15 performance
+> measurements and take the NFS stats, and it was a huge mess to sort
+> through.  Telling folks "use nfsstat -z to wipe stats before each
+> command" is much easier.
 
---NextPart_Webmail_9m3u9jl4l_20772_1091645410_0
-Content-Type: text/plain
-Content-Transfer-Encoding: 8bit
+Well, like I say, we could implement "nfsstat -z" by checkpointing as
+above but just writing to a file at some default path, though admittedly
+the choice of path might not be obvious.
 
-Hello All,
-I am looking at moving beyond 1.5-2TB limitations in 2.4 and RHEL3 by using a 2.6 kernel. I have read that the filesystems scale to 16TB, now I just want to verify that nfsd will scale along with the filesystem to 16TB as well.
-Also, I would love to hear any opinions around performance/stability of going beyond 2TB filesystems on the 2.6 kernel.
-Thanks in advance,
---Buddy
---NextPart_Webmail_9m3u9jl4l_20772_1091645410_0
-Content-Type: text/html
-Content-Transfer-Encoding: 8bit
+Having nfsstat just hang around till it's signaled (like tcpdump does)
+would also be easy.
 
-<html><body>
-<P>Hello All,</P>
-<P>I am looking at moving beyond 1.5-2TB limitations in 2.4 and RHEL3 by using a 2.6 kernel. I have read that the filesystems scale to 16TB, now I just want to verify that nfsd will scale along with the filesystem to 16TB as well.</P>
-<P>Also, I would love to hear any opinions around performance/stability of going beyond 2TB filesystems on the 2.6 kernel.</P>
-<P>Thanks in advance,</P>
-<P>--Buddy</P></body></html>
+> Besides, -z is sort of a standard option, so we might as well
+> implement it.
 
---NextPart_Webmail_9m3u9jl4l_20772_1091645410_0--
+Well, OK, I suppose that's an argument for it.--Bruce Fields
 
 
 -------------------------------------------------------
