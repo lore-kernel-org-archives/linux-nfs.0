@@ -1,29 +1,22 @@
-From: Vincent Roqueta <vincent.roqueta@ext.bull.net>
-Subject: Some interoperability testing
-Date: Tue, 8 Feb 2005 10:22:47 +0100
-Message-ID: <200502071839.24804.vincent.roqueta@ext.bull.net>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: nfs and iptables
+Date: Tue, 08 Feb 2005 09:41:01 -0500
+Message-ID: <1107873661.10364.13.camel@lade.trondhjem.org>
+References: <Pine.LNX.4.60.0502072228370.22564@harp.ngdc.noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="us-ascii"
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: nfs@lists.sourceforge.net
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CyRUn-0003lr-Gf
-	for nfs@lists.sourceforge.net; Tue, 08 Feb 2005 01:17:21 -0800
-Received: from ecfrec.frec.bull.fr ([129.183.4.8])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CyRUm-0007Zu-5E
-	for nfs@lists.sourceforge.net; Tue, 08 Feb 2005 01:17:21 -0800
-Received: from localhost (localhost [127.0.0.1])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 5100819D907
-	for <nfs@lists.sourceforge.net>; Tue,  8 Feb 2005 10:16:48 +0100 (CET)
-Received: from ecfrec.frec.bull.fr ([127.0.0.1])
- by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
- with ESMTP id 22201-04 for <nfs@lists.sourceforge.net>;
- Tue,  8 Feb 2005 10:16:46 +0100 (CET)
-Received: from ecn002.frec.bull.fr (ecn002.frec.bull.fr [129.183.4.6])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 2F71F19D904
-	for <nfs@lists.sourceforge.net>; Tue,  8 Feb 2005 10:16:46 +0100 (CET)
-To: nfs@lists.sourceforge.net
+	id 1CyWYR-00006R-OP
+	for nfs@lists.sourceforge.net; Tue, 08 Feb 2005 06:41:27 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1CyWYP-00031w-AZ
+	for nfs@lists.sourceforge.net; Tue, 08 Feb 2005 06:41:27 -0800
+To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+In-Reply-To: <Pine.LNX.4.60.0502072228370.22564@harp.ngdc.noaa.gov>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,50 +30,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-NFSv3:
-Server : AIX 5.3
-Client Linux 2.6.9
-Test : connectathon 2004
-* All tests passed, 2 warning.
+m=E5 den 07.02.2005 Klokka 22:44 (-0700) skreiv Ara.T.Howard:
 
-NFSv3
-Server AIX 5.3
-Client Linux 2.6.10
-* Big file test (test5 from BASIC tests) is blocked
-* Lock tests blocked (Tests 14)
+> in summary: we allow *any* incoming connection to our server(s) from clie=
+nts
+> on the backdoor (nfs on backdoor only); do we need anything special on an=
+y of
+> the clients or is all communication initiated from the client?
+>=20
 
-For the test5 (read/write a 30Mo file) a sequence of packet is sent many times 
-in an infinite loop :
+As I told you before. Lock recovery assumes that rpc.statd on the server
+can contact the clients after a server reboot. If you don't allow that,
+then it is quite possible for the client not to notice that the server
+has rebooted until after the grace period has expired.
 
-client to server 
-NFS V3 WRITE CALL, FH: 0x38ad8e6 Offset:32768 Len:38768 UNSTABLE
-client to server Fragmented IP protocol (UDP, 0x11, offset 1480 )
-client to server Fragmented IP protocol (UDP, 0x11, offset... )
-client to server Fragmented IP protocol (UDP, 0x11, offset... )
-....
-client to server Fragmented IP protocol (UDP, 0x11, offset... )
-client to server Fragmented IP protocol (UDP, 0x11, offset 25160)
+IOW: lock recovery may indeed "work" without this, but you are leaving
+yourself open to races that may crash your application and/or cause data
+corruption.
 
-(there is a delay of 1,4 seconds before
-previous sequence is repeted)
-__________________________________________________________
-dmesg is telling :
-nfs: server aix_server not responding, still trying
-...
+Cheers,
+  Trond
+--=20
+Trond Myklebust <trond.myklebust@fys.uio.no>
 
-
-Since all is right with kernel 2.6.9, that looks like a regression...
-Even if that is the true behaviour it may exist a way to stop this process 
-cleanly : since NFS umount is can't be done the client does not reboot, and I 
-need  to turn the power off...
-
-NFSv4
-_____
-Works a better...
-All tests passed. Big file tests is _really_slow (many minutes to copy a 30Mo 
-file over a 100Mo/s network)
-
-Vincent
 
 
 -------------------------------------------------------
