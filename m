@@ -1,17 +1,22 @@
-From: Steven Timm <timm@fnal.gov>
-Subject: kernel: nfs: task xxxxx can't get a request slot--plus hang
-Date: Fri, 24 May 2002 10:05:52 -0500 (CDT)
+From: dumas@centre-cired.fr (Patrice DUMAS - DOCT)
+Subject: [PATCH] lockd: client maintain a list of the locks held
+Date: Fri, 24 May 2002 18:15:45 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.31.0205240952030.16344-100000@boxer.fnal.gov>
+Message-ID: <20020524181545.D15523@zeus.centre-cired.fr>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: <scs-farm@fnal.gov>
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from boxer.fnal.gov ([131.225.80.86])
+Received: from boukha.centre-cired.fr ([193.51.120.234])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17BGde-0008S8-00
-	for <nfs@lists.sourceforge.net>; Fri, 24 May 2002 08:05:54 -0700
-To: <nfs@lists.sourceforge.net>
+	id 17BHkB-0006Il-00
+	for <nfs@lists.sourceforge.net>; Fri, 24 May 2002 09:16:44 -0700
+Received: from zeus.centre-cired.fr ([193.51.120.192])
+          by boukha.centre-cired.fr (8.9.3+Sun/jtpda-5.3.3) with ESMTP id SAA18352
+          for <nfs@lists.sourceforge.net>; Fri, 24 May 2002 18:15:22 +0100 (WEST)
+Received: (from dumas@localhost)
+	by zeus.centre-cired.fr (8.11.6/8.11.6) id g4OGFjP16370
+	for nfs@lists.sourceforge.net; Fri, 24 May 2002 18:15:45 +0200
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,55 +29,36 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
+Hi,
 
-I am seeing a large number of error messages in NFS clients
+This patch sets up a list of locks held by a client (associated with a host).
+Then, when the client gets a granted lock it can respond positively if he 
+holds allready the lock. This fixes a bug I described previously.
 
-kernel: nfs: task xxxxx can't get a request slot
+Some remarks:
 
-Once this happens, any attempts to access the nfs volume that the NFS
-client was trying to access at the time will hang and add one to the
-load.  It is impossible to kill these processes without stopping
-and restarting the network. In fact it is impossible to reboot without
-stopping the network first.
+- the locks are added and deleted based on the callbacks invoked from the file
+locking systems when a lock is inserted or removed
+(nlmclnt_insert_lock_callback...)
 
-However, other nfs volumes that are mounted can still be accessed
-with no problem.  The volume that hangs is different on different
-machines.  It was suggested last week on this list that I should
-upgrade the driver for the ethernet card, which I did.  The errors
-went away for a week or so and now are back with a vengeance.
+- a semaphore protects the list. I don't know if it is usefull, nor harmfull
+(may it deadlock ?), but I set it up such that I don't have to bother with
+simultaneous access.
 
-These are Linux nfs v3 clients (169 of them), running kernel 2.4.9-31smp
-plus Intel's e100 driver version 1.8.38.  No special NFS patches added in.
+- I use the linux lists.h. It is not needed to have doubly linked lists, but I
+thought I would introduce less bugs than if I did my own.
 
-The server is an SGI Origin 2000 running IRIX 6.5.14.
+- I did these lists because posix_test_lock wasn't really fine to detect that
+the lock was allready held. However, I really decided to do it when I saw:
+* FIXME: In 2.5 we don't want to iterate through any global file_lock_list.
+*        Maintain NLM lock reclaiming lists in the nlm_host instead.
+I think this patch implements such a list. Has anybody implemented the same
+thing ? 
+I haven't done the changes to the code actually doing the reclaiming, because 
+I can't test crashing (I test everything on a single host). I could do the 
+code, but can't test. Interested ?
 
-There is some evidence that the problems are correlated to the
-overall network load on the server, but the server is capable of
-servicing many more calls than the level it was at (about 3000 calls/sec)
-at the time these errors happen.  Also, these errors did not happen
-with 2.2.19 kernels and NFS v2.  Furthermore, they happen
-in only one of the four hardware types on my cluster--hardware
-that is based on SuperMicro 370 DLE boards with Serverworks chipset.
-
-
-My questions;
-1) Is an upgrade to the 2.4.18 kernel likely to help this situation?
-
-2) Are there any special nfs mount options I should be using
-in the mount statement on the clients?  (The NFS clients
-are reading a lot of small files, not a few big huge files).
-
-3) Is NFS over TCP likely to help this situation at all...if so,
-what would be required to make the conversion?  Is it supported
-in the stock kernel that comes with RedHAt 7.3?
-
-Steve Timm
-
-------------------------------------------------------------------
-Steven C. Timm (630) 840-8525  timm@fnal.gov  http://home.fnal.gov/~timm/
-Fermilab Computing Division/Operating Systems Support
-Scientific Computing Support Group--Computing Farms Operations
-
+Pat
 
 _______________________________________________________________
 
