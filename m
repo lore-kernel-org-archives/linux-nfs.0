@@ -1,30 +1,30 @@
 From: Garrick Staples <garrick@usc.edu>
 Subject: Re: mountd segfault on itanium2
-Date: Mon, 3 May 2004 11:18:05 -0700
+Date: Mon, 3 May 2004 17:17:18 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040503181805.GO23287@polop.usc.edu>
-References: <20040430212414.GF22498@polop.usc.edu> <20040430234327.GM22498@polop.usc.edu> <20040501030730.GE23287@polop.usc.edu> <20040503133546.GA25469@rx8.ibm.com>
+Message-ID: <20040504001718.GZ23287@polop.usc.edu>
+References: <20040430212414.GF22498@polop.usc.edu> <20040430234327.GM22498@polop.usc.edu> <20040501030730.GE23287@polop.usc.edu>
 Mime-Version: 1.0
 Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="f9b3biUB1f7FHqGn"
+	protocol="application/pgp-signature"; boundary="McORcswOES2gGXLb"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BKi4U-0005sw-6X
-	for nfs@lists.sourceforge.net; Mon, 03 May 2004 11:21:42 -0700
+	id 1BKneO-0007b6-UW
+	for nfs@lists.sourceforge.net; Mon, 03 May 2004 17:19:08 -0700
 Received: from polop.usc.edu ([128.125.10.9])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.30)
-	id 1BKi4T-0004rX-SZ
-	for nfs@lists.sourceforge.net; Mon, 03 May 2004 11:21:41 -0700
+	id 1BKndt-0000EO-JI
+	for nfs@lists.sourceforge.net; Mon, 03 May 2004 17:18:37 -0700
 Received: from polop.usc.edu (localhost.localdomain [127.0.0.1])
-	by polop.usc.edu (8.12.10/8.12.10) with ESMTP id i43II5lv012842
-	for <nfs@lists.sourceforge.net>; Mon, 3 May 2004 11:18:05 -0700
+	by polop.usc.edu (8.12.10/8.12.10) with ESMTP id i440HIlv013357
+	for <nfs@lists.sourceforge.net>; Mon, 3 May 2004 17:17:18 -0700
 Received: (from garrick@localhost)
-	by polop.usc.edu (8.12.10/8.12.10/Submit) id i43II5BQ012840
-	for nfs@lists.sourceforge.net; Mon, 3 May 2004 11:18:05 -0700
+	by polop.usc.edu (8.12.10/8.12.10/Submit) id i440HI56013355
+	for nfs@lists.sourceforge.net; Mon, 3 May 2004 17:17:18 -0700
 To: nfs@lists.sourceforge.net
-In-Reply-To: <20040503133546.GA25469@rx8.ibm.com>
+In-Reply-To: <20040501030730.GE23287@polop.usc.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -38,75 +38,60 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
---f9b3biUB1f7FHqGn
+--McORcswOES2gGXLb
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 Content-Transfer-Encoding: quoted-printable
 
-On Mon, May 03, 2004 at 08:35:46AM -0500, Jose R. Santos alleged:
-> On 04/30/04 22:07:30, Garrick Staples wrote:
-> > I have an ugly work-around that seems to be working.  It seems that 2.6=
- has a
-> > new nfs interface for userspace.  By forcing mountd to use the older 2.4
-> > interface, it doesn't segfault anymore.  So something in the new code p=
-aths is
-> > broken.
+On Fri, Apr 30, 2004 at 08:07:30PM -0700, Garrick Staples alleged:
+> On Fri, Apr 30, 2004 at 04:43:27PM -0700, Garrick Staples alleged:
+> > I just spotted a pattern.  After collecting several strace samples, it =
+always
+> > segfaults after read() or write() to fd 5.  And fd 5 is always:
 > >=20
-> > In support/nfs/cachio.c:
-> > int
-> > check_new_cache(void)
-> > {
-> >         struct stat stb;
-> >=20
-> >         return 0;  /* DISABLE NEW 2.6 INTERFACE */
-> >=20
-> >         return  (stat("/proc/fs/nfs/filehandle", &stb) =3D=3D 0) ||
-> >                 (stat("/proc/fs/nfsd/filehandle", &stb) =3D=3D 0);
-> > }
+> >    open("/proc/net/rpc/nfsd.fh/channel", O_RDWR) =3D 5
 >=20
-> If you want to use the old syscall interface, all you need to do is make=
-=20
-> sure nfsd is not mounted in /proc/fs/nfsd.
+> I have an ugly work-around that seems to be working.  It seems that 2.6 h=
+as a
+> new nfs interface for userspace.  By forcing mountd to use the older 2.4
+> interface, it doesn't segfault anymore.  So something in the new code pat=
+hs is
+> broken.
 
-Thank you.  That's much easier.
+I'm slowly starting to wrap my brain around how these RPC calls work.  I've
+found something that I can't make sense of.  In my_svc_run(), it packs fds =
+3,
+4, 5, 6, and 7 into select().  3, 4, and 5 are 3 files in /proc/net/rpc.  f=
+d 6
+ and 7 are udp and tcp sockets.  During my umount/mount tests, fd 6 is the
+only set bit after the select(), and is then passed to svc_getreqset().
 
-=20
-> > Am I losing any functionality by doing this?  I can't actually find any
-> > problems.
->=20
-> I think there are no functionality losses but I have seen issues with usi=
-ng
-> the syscall interface on large memory systems.  The syscall mount and=20
-> unmount the nfsdfs for every syscall.  This will cause the inode and dent=
-ry
-> for this filesystem to be flush, but in order to do that it needs to walk=
-=20
-> through all inode and dentry caches under lock.  If you have a system with
-> 16GB of ram, mounting and unmounting can take a really long time.
->=20
-> -JRS
-
-Both machines have 8GB.  I definitly see the slower mounting, but it's not
-prohibitive.  And slow mounting is better than a segfault.
-
+But just before the segfault, select() sets fd 5, which is
+/proc/net/rpc/nfsd.fh/channel.  The thing that I don't understand is that f=
+d 5
+is being passed to svc_getreqset().  Shouldn't svc_getreqset() be only for =
+fds
+of sockets that have pending rpc calls?  Should fd 5 be cleared from the fd=
+set
+before calling svc_getreqset()?
 
 --=20
 Garrick Staples, Linux/HPCC Administrator
 University of Southern California
 
---f9b3biUB1f7FHqGn
+--McORcswOES2gGXLb
 Content-Type: application/pgp-signature
 Content-Disposition: inline
 
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v1.2.3 (GNU/Linux)
 
-iD8DBQFAlozd0SBUxJbm9HMRAp8iAJ9gnn1JLcf2ExbeVYg0+ncP2FfSQQCggdWY
-hDedSU0s7JT1XzRJBbpFtRo=
-=JWzJ
+iD8DBQFAluEO0SBUxJbm9HMRAlIbAJwPTaX7Qg7fmmTRICovkC2vLriYTwCfRCBh
+hkjs/3vBi4dI3Lf8N39lyM8=
+=MX3R
 -----END PGP SIGNATURE-----
 
---f9b3biUB1f7FHqGn--
+--McORcswOES2gGXLb--
 
 
 -------------------------------------------------------
