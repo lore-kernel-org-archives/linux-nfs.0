@@ -1,17 +1,23 @@
-From: Klaus Strebel <klaus.strebel@eigner.com>
-Subject: RE: locking problem from HP-UX to Linux NFS Server
-Date: Tue, 30 Jul 2002 10:03:01 +0200
+From: "Nir Cohen" <nirc@macam.ac.il>
+Subject: (no subject)
+Date: Tue, 30 Jul 2002 13:10:35 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3D464835.5040209@eigner.com>
+Message-ID: <003c01c237b9$bcebe990$1ece72c0@mofetsite.macam.ac.il>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: Nguyen Thanh Bien <bien@thnt.com.vn>
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_0039_01C237CA.7DB2B360"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from akira.ep-ag.com ([194.120.231.250] helo=akira.ep-ka.de)
+Received: from [209.88.190.140] (helo=mail.mofet.macam.ac.il)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17ZRyP-0004io-00
-	for <nfs@lists.sourceforge.net>; Tue, 30 Jul 2002 01:03:17 -0700
-To: nfs@lists.sourceforge.net
+	id 17ZUtq-0002Ft-00
+	for <nfs@lists.sourceforge.net>; Tue, 30 Jul 2002 04:10:46 -0700
+Received: from mail.mofet.macam.ac.il (localhost.localdomain [127.0.0.1])
+	by mail.mofet.macam.ac.il (8.11.0/8.11.2) with ESMTP id g6UBAeZ31767
+	for <nfs@lists.sourceforge.net>; Tue, 30 Jul 2002 14:10:40 +0300
+Received: from nirc2 ([192.114.206.30])
+	by mail.mofet.macam.ac.il (8.11.0/8.11.2) with SMTP id g6UBAe531758
+	for <nfs@lists.sourceforge.net>; Tue, 30 Jul 2002 14:10:40 +0300
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,51 +30,40 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hi all,
 
-i have similar problems with locking from HP-UX clients to a Linux 
-NFS-Server (HP-UX 10.20,11.0,11.1). Currenty i use SuSE 8.0 on the 
-server with actual rpm's installed. I searched the support archives from 
-HP and deja.com, found several people with the same problem but they 
-never got an answer. I'll make an Software-Call at HP-Support, but i'm 
-not sure if that make too much sense.
+This is a multi-part message in MIME format.
 
-My workarout for this problem is, to symlink the directory where my 
-applications want to create ther lock and datafiles to an NFS-share on 
-an old Solaris 2.5 (without .1 !) box (and when i get the money to buy a 
-Solaris box as NFS server i'll kick the Linux-NFS-servers ass ;-), could 
-use it for my test Oracle-RAC). That's not what i like, but i gonna keep 
-my shop going.
+------=_NextPart_000_0039_01C237CA.7DB2B360
+Content-Type: text/plain;
+	charset="windows-1255"
+Content-Transfer-Encoding: quoted-printable
 
-Hi nfs experts !
-i'm using a Linux NFS server to store mailboxs from external HP-UX (ver
-11.0), mail server soft ware on HP-UX is CommunigatePro (it runs as
-root.mail user).
+unsubscribe nfs
 
-and i got a problem when start Communigate Pro:
-- cannot lock files
+------=_NextPart_000_0039_01C237CA.7DB2B360
+Content-Type: text/html;
+	charset="windows-1255"
+Content-Transfer-Encoding: quoted-printable
 
-my exports file is:
-/data/data_mail  hp-ux-box(rw,no_root_squash,insecure,insecure_locks)
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; =
+charset=3Dwindows-1255">
+<META content=3D"MSHTML 6.00.2716.2200" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV><FONT face=3DArial size=3D2>unsubscribe =
+nfs</FONT></DIV></BODY></HTML>
 
-anyone can help me to fix this ?
-
--- Nguyen Thanh Bien Vietnamese Linux Users Group 
-<http://vietlug.sourceforge.net>
-
--- 
-Klaus Strebel
-UNIX-Engineer
-klaus.strebel@eigner.com
-EIGNER - Precision Lifecycle Management -
-<http://www.eigner.com>
+------=_NextPart_000_0039_01C237CA.7DB2B360--
 
 
 
 -------------------------------------------------------
 This sf.net email is sponsored by: Dice - The leading online job board
 for high-tech professionals. Search and apply for tech jobs today!
-http://seeker.dice.com/seeker.epl?rel_code=31
+http://seeker.dice.com/seeker.epl?rel_code=3D31
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
