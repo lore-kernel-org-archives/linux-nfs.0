@@ -1,23 +1,28 @@
-From: "Patrice Seyed" <apseyed@bu.edu>
-Subject: RE: ReasmFails increases / NFS performance on Linux Cluster
-Date: Mon, 16 Aug 2004 17:05:09 -0400
+From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Subject: extremely bad locking performance on 2.4.21-15.0.4.EL
+Date: Mon, 16 Aug 2004 15:17:38 -0600 (MDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <005f01c483d4$b6fa9f40$6701a8c0@psyche1>
-References: <Pine.LNX.4.58.0408160851520.24272@chaos.egr.duke.edu>
+Message-ID: <Pine.LNX.4.60.0408161440170.4655@harp.ngdc.noaa.gov>
+Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="US-ASCII"
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BwoiB-0005hY-NZ
-	for nfs@lists.sourceforge.net; Mon, 16 Aug 2004 14:08:11 -0700
-Received: from acsn03.bu.edu ([128.197.159.63])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1Bwogh-0007io-Ga
-	for nfs@lists.sourceforge.net; Mon, 16 Aug 2004 14:08:11 -0700
-To: "'Joshua Baker-LePain'" <jlb17@duke.edu>, <nfs@lists.sourceforge.net>
-In-Reply-To: <Pine.LNX.4.58.0408160851520.24272@chaos.egr.duke.edu>
+	id 1Bwovz-0001Cr-Po
+	for nfs@lists.sourceforge.net; Mon, 16 Aug 2004 14:22:27 -0700
+Received: from harp.ngdc.noaa.gov ([140.172.187.26])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.34)
+	id 1BworW-0003UC-Hc
+	for nfs@lists.sourceforge.net; Mon, 16 Aug 2004 14:22:26 -0700
+Received: from harp.ngdc.noaa.gov (harp.ngdc.noaa.gov [127.0.0.1])
+	by harp.ngdc.noaa.gov (8.12.11/8.12.11) with ESMTP id i7GLHcOX005620
+	for <nfs@lists.sourceforge.net>; Mon, 16 Aug 2004 15:17:38 -0600
+Received: from localhost (ahoward@localhost)
+	by harp.ngdc.noaa.gov (8.12.11/8.12.11/Submit) with ESMTP id i7GLHcw5005616
+	for <nfs@lists.sourceforge.net>; Mon, 16 Aug 2004 15:17:38 -0600
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,73 +35,76 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Joshua,
 
-Hmmm...
+we have the latest EL release (2.4.21-15.0.4.EL) on all of our boxes - clients
+and servers.  since upgrading last week i am seeing bizarre slow downs in many
+i/o related operations: one of those is fcntl.
 
-I had read somewhere that when you have nfs daemons over 100 it can =
-cause
-throttled and hence slowdowns on the server. I did test with 128 daemons
-today and at one point it appears things grinded to a complete halt ( I
-couldn't get a login session through ssh at all). Still I had increased =
-the
-size of the dd writes from 4MB to 8MB, coming from each 134 node to the =
-nfs
-server simultaneously. With this change my nfsd looks like this:
+if one compiles and runs the following program in an nfs mounted directory
 
-th 128 1018239 4.510 8.650 6.110 7.290 2.280 4.040 6.360 6.460 20.590
-1467.200=20
+   #include <stdlib.h>
+   #include <stdio.h>
+   #include <sys/types.h>
+   #include <sys/stat.h>
+   #include <fcntl.h>
+   #include <unistd.h>
+   #include <time.h>
 
-In the tldp howto it indicates that the last 10 numbers of the th line =
-is
-the number of seconds the thread usage was at that percentage of maximum
-allowable, and if you have large numbers in the top three deciles, =
-increase
-# of nfsd.=20
+   int
+   main (argc, argv)
+        int argc;
+        char **argv;
+   {
+     int fd;
+     int ret;
+     char buf[1024];
+     struct tm;
+     time_t t;
+     char *ct;
+     fd = open (__FILE__, O_RDWR);
+     while (1)
+       {
+         ret = lockf (fd, F_LOCK, 0);
+         if (ret != 0)
+           {
+             return 1;
+           }
+         t = time (&t);
+         ret = lockf (fd, F_ULOCK, 0);
+         fprintf (stdout, "lockf @ %s", ctime (&t));
+         if (ret != 0)
+           {
+             return 1;
+           }
+         usleep (argc > 1 ? strtol (argv[1], NULL, 10) : 1L);
+       }
+     return 0;
+   }
 
-I was unaware of the interpretation of the second number, thanks.
 
-Patrice
+and runs it from two nodes the output will be something like
 
------Original Message-----
-From: Joshua Baker-LePain [mailto:jlb17@duke.edu]=20
-Sent: Monday, August 16, 2004 8:54 AM
-To: nfs@lists.sourceforge.net; Patrice Seyed
-Subject: Re: [NFS] ReasmFails increases / NFS performance on Linux =
-Cluster
 
->=20
-> Message: 1
-> From: "Patrice Seyed" <apseyed@bu.edu>
-> To: <nfs@lists.sourceforge.net>
-> Cc: "'Patrice Seyed'" <apseyed@bu.edu>
-> Subject: RE: [NFS] ReasmFails increases / NFS performance on Linux =
-Cluster
-> Date: Sun, 15 Aug 2004 17:52:13 -0400
->=20
-> Like I said I'm now running 64 nfs daemons, and the th line looks like =
-=3D
-> this
-> now:
->=20
-> th 64 2380739 168.120 128.860 68.350 261.730 184.990 121.680 145.930 =
-=3D
-> 122.090
-> 178.390 1749.090
+   lockf @ Mon Aug 16 15:07:01 2004
+   ...
+   lockf @ Mon Aug 16 15:07:01 2004
+   lockf @ Mon Aug 16 15:07:01 2004
+   lockf @ Mon Aug 16 15:07:31 2004
+   lockf @ Mon Aug 16 15:08:01 2004
 
-You don't have enough threads.  That 2nd number (after the number of=20
-threads) should be as close to zero as possible -- that's the number of=20
-times all threads have been busy when a request came in.  IIRC, you have =
+in otherwords the nodes will get the lock at a very rapid rate and then
+experience a 30s timeout... is this normal?
 
-plenty of memory on the server -- crank up the number of threads and you =
 
-should see some difference.
-
---=20
-Joshua Baker-LePain
-Department of Biomedical Engineering
-Duke University
-
+-a
+--
+===============================================================================
+| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
+| PHONE   :: 303.497.6469
+| A flower falls, even though we love it;
+| and a weed grows, even though we do not love it. 
+|   --Dogen
+===============================================================================
 
 
 -------------------------------------------------------
