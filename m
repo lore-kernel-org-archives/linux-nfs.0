@@ -1,16 +1,19 @@
-From: Abhishek Rai <abbashake007@yahoo.com>
-Subject: queer error in kernel
-Date: Mon, 21 Apr 2003 00:45:11 -0700 (PDT)
+From: NeilBrown <neilb@cse.unsw.edu.au>
+Subject: [PATCH] kNFSd -  Return correct result for ACCESS(READ) on eXecute-only file.
+Date: Tue, 22 Apr 2003 15:32:47 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030421074511.61529.qmail@web11406.mail.yahoo.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Message-ID: <E197qOd-0003T6-00@notabene.cse.unsw.edu.au>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from web11406.mail.yahoo.com ([216.136.131.236])
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 197VzD-0001tx-00
-	for <nfs@lists.sourceforge.net>; Mon, 21 Apr 2003 00:45:11 -0700
-To: nfs@lists.sourceforge.net
+	id 197qOs-00014d-00
+	for <nfs@lists.sourceforge.net>; Mon, 21 Apr 2003 22:33:02 -0700
+Received: From
+	notabene.cse.unsw.edu.au ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
+	(for <marcelo@conectiva.com.br>) (for <nfs@lists.sourceforge.net>) By
+	tone With Smtp ; Tue, 22 Apr 2003 15:32:51 +1000
+To: Marcelo Tosatti <marcelo@conectiva.com.br>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -23,64 +26,46 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
-  I have a small hack for the linux kernel's nfs
-module which was working just fine before the
-following code was introduced:
+This patch fixes a small bug in nfsd in 2.4.20.
 
-static void nfs_print_path(struct dentry *d) {
-	struct dentry *parent;
-	struct inode *inode_parent, *inode;
-	unsigned long p, me;
+Currently, an NFSv3 ACCESS check for READ permission on an
+eXecute-only file will succeed where it should fail.
 
-	if(!d) {
-		return;
-	}	
-	parent = d->d_parent;
-	
-	if(parent) {
-		inode_parent = parent->d_inode;
-		inode = d->d_inode;
-// till here everything works just fine
-		
-/* the following code just doesn't work. None of it
-works, neither the assignments to 'p' and 'me', nor
-the printk, nor the comparision in the if statement
-after that. I tested each of these 3 different cases
-separately and each time i got the same error (see
-below) */
-                p = (unsigned long)inode_parent;
-		me = (unsigned long)inode;
+This is because nfsd_permission allows READ access to eXecute only
+files so that mode 711 executables can be loaded and run, and
+nfsd_access simply uses nfsd_permission.
 
-		printk("parent inode: %x child inode: %x\n",
-inode_parent, inode);
+This patch changes nfsd_permission to only map eXecute permission to
+read permission of MAY_OWNER_OVERRIDE was set.  This is only set
+when trying to read from a file, so ACCESS will no longer be tricked.
 
-                if( ((char *)inode_parent == 
-                              (char *)inode) ) { 
-		       
-............
-}
+This change will only affect callers of nfsd_permission that specify
+MAY_READ and not MAY_OWNER_OVERRIDE, and nfsd_access is the only
+routine that calls nfsd_permission (via fh_verify) that way.
 
+ ----------- Diffstat output ------------
+ ./fs/nfsd/vfs.c |    6 ++----
+ 1 files changed, 2 insertions(+), 4 deletions(-)
 
-I got an error something like this: Kernel couldn't
-dereference pointer 00...0f blah blah blah...
-(If sb feels the need, i'll send the complete error)		
-As i see it, there is error in just 'reading' the
-values of the variable 'inode_parent' and 'inode'. But
-considering the object code the C Compiler must have
-produced, there is nothing that actually *does* some
-real task - all that is being done is reading some
-arbit value from the function's stack: whats so wrong
-with that ???
-
-thanks in advance
-abhishek
-
-
-__________________________________________________
-Do you Yahoo!?
-The New Yahoo! Search - Faster. Easier. Bingo
-http://search.yahoo.com
+diff ./fs/nfsd/vfs.c~current~ ./fs/nfsd/vfs.c
+--- ./fs/nfsd/vfs.c~current~	2003-04-22 15:29:17.000000000 +1000
++++ ./fs/nfsd/vfs.c	2003-04-22 15:29:17.000000000 +1000
+@@ -1541,13 +1541,11 @@ nfsd_permission(struct svc_export *exp, 
+ 	    inode->i_uid == current->fsuid)
+ 		return 0;
+ 
+-	acc &= ~ MAY_OWNER_OVERRIDE; /* This bit is no longer needed,
+-                                        and gets in the way later */
+-
+ 	err = permission(inode, acc & (MAY_READ|MAY_WRITE|MAY_EXEC));
+ 
+ 	/* Allow read access to binaries even when mode 111 */
+-	if (err == -EACCES && S_ISREG(inode->i_mode) && acc == MAY_READ)
++	if (err == -EACCES && S_ISREG(inode->i_mode) &&
++	    acc == (MAY_READ | MAY_OWNER_OVERRIDE))
+ 		err = permission(inode, MAY_EXEC);
+ 
+ 	return err? nfserrno(err) : 0;
 
 
 -------------------------------------------------------
