@@ -1,42 +1,64 @@
-From: Ion Badulescu <ionut@badula.org>
-Subject: Re: [NFS] Race in rpc_delete_timer causes crash
-Date: Sun, 9 Mar 2003 01:12:13 -0500
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <200303090612.h296CDV02987@moisil.badula.org>
-References: <200303082303.AAA22598@faui11.informatik.uni-erlangen.de>
-Cc: uweigand@de.ibm.com, schwidefsky@de.ibm.com, bk@suse.de,
-	linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: Ulrich Weigand <weigand@immd1.informatik.uni-erlangen.de>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <200303082303.AAA22598@faui11.informatik.uni-erlangen.de>
-List-ID: <nfs.lists.sourceforge.net>
+From: "Steve Salazar" <eagsalazar@hotmail.com>
+Subject: (no subject)
+Date: Sun, 09 Mar 2003 19:58:22 +0000
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <F73Wd7KKQpQq5pneeFU00010ce9@hotmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; format=flowed
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from f73.law10.hotmail.com ([64.4.15.73] helo=hotmail.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18s6wG-00050Z-00
+	for <nfs@lists.sourceforge.net>; Sun, 09 Mar 2003 11:58:28 -0800
+To: nfs@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sun, 9 Mar 2003 00:03:45 +0100 (MET), Ulrich Weigand <weigand@immd1.informatik.uni-erlangen.de> wrote:
-> Hello,
-> 
-> we're seeing a rare and hard to trigger crash on s390 where rpc_run_timer 
-> calls via an invalid callback pointer.
+I have been reading the nfs documentation and mailing lists and it is not 
+clear to me whether the current nfs implementation supports kerberos 
+authentication or not.  There is nothing about that in the howto but in the 
+mailing list I see repeated references to "NFS using RPCSEC_GSS".  However, 
+I haven't found any documentation on this either.
 
-Myself and Jakob Oestergaard have seen the same race, and the tentative 
-fix from Trond was similar to yours. I haven't been able to reproduce 
-the problem after applying that fix.
+This issue mentioned in the howto:
 
-Perhaps it's time to propagate the patch upstream? Most recent 2.4.x 
-kernels are affected...
+"But the root user on the client can still use su to become any other user 
+and access and change that users files!" say you. To which the answer is: 
+Yes, and that's the way it is, and has to be with Unix and NFS. This has one 
+important implication: All important binaries and files should be owned by 
+root, and not bin or other non-root account, since the only account the 
+clients root user cannot access is the servers root account.
 
-> What appears to happen is that rpc_call_sync allocates a struct rpc_task 
-> (with its embedded tk_timer) on the stack, and the timer gets set up 
-> sometime during rpc_execute.  However, the timer actually triggers at
-> a point in time where the original call to rpc_call_sync has already 
-> returned, and the stack space overwritten by other data.  That data is 
-> now interpreted as an rpc_task struct holding a tk_timeout_fn pointer by
-> rpc_run_timer, which causes the Oops (actually, Aieee).
+will not work for for our setup.  We have kerberos in place for logins on 
+our linux/solaris/windows network and a kerberized samba but so far we have 
+no good solution for nfs since we will definitely need to allow local root 
+on the linux workstations on our network.
 
-Yup, that's the race all right.
+Could anyone point me at some good documentation on how to deploy nfs using 
+kerberos?  Thanks in advance for any info.
 
-Ion
 
--- 
-  It is better to keep your mouth shut and be thought a fool,
-            than to open it and remove all doubt.
+
+_________________________________________________________________
+The new MSN 8: advanced junk mail protection and 2 months FREE*  
+http://join.msn.com/?page=features/junkmail
+
+
+
+-------------------------------------------------------
+This SF.net email is sponsored by: Etnus, makers of TotalView, The debugger 
+for complex code. Debugging C/C++ programs can leave you feeling lost and 
+disoriented. TotalView can help you find your way. Available on major UNIX 
+and Linux platforms. Try it free. www.etnus.com
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
