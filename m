@@ -1,25 +1,24 @@
-From: Ian Kent <raven@themaw.net>
-Subject: Re: df hangs on down nfs server mounted with hard,intr, can't
- kill
-Date: Wed, 10 Mar 2004 10:40:31 +0800 (WST)
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: df hangs on down nfs server mounted with hard,intr, can't kill
+Date: Wed, 10 Mar 2004 09:09:10 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.58.0403101032520.23155@wombat.indigo.net.au>
-References: <404E1BED.7090608@nsc1.net>
+Message-ID: <20040310080910.GA21031@suse.de>
+References: <482A3FA0050D21419C269D13989C61130435DD25@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="9amGYk9869ThD9tj"
+Cc: Wade Hampton <wade.hampton@nsc1.net>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B0tj0-0000xf-Fq
-	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 18:45:38 -0800
-Received: from wombat.indigo.net.au ([202.0.185.19])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1B0yvW-0001vV-QJ
+	for nfs@lists.sourceforge.net; Wed, 10 Mar 2004 00:18:54 -0800
+Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.30)
-	id 1B0tZs-00047U-JC
-	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 18:36:12 -0800
-To: Wade Hampton <wade.hampton@nsc1.net>
-In-Reply-To: <404E1BED.7090608@nsc1.net>
+	id 1B0yNe-0000pS-Bv
+	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 23:43:54 -0800
+To: "Lever, Charles" <Charles.Lever@netapp.com>
+In-Reply-To: <482A3FA0050D21419C269D13989C61130435DD25@lavender-fe.eng.netapp.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,70 +31,79 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, 9 Mar 2004, Wade Hampton wrote:
 
-> [I posted this to the Fedora list yesterday.]
-> 
-> I have a Fedora server with kernel 2.4.22-1-2163 SMP mounting a
-> remote solaris server (hence choice of options):
-> 
->   rsize=32768,ro,hard,intr,tcp,nfsvers=3
-> 
-> When the remote is down or disconnected, a "df" hangs (as expected),
-> but I can't kill it, even as root or with kill -9.  The docs for mount 
-> indicate
-> that the INTR option should allow for killing apps mounted with HARD.
-> Is this a bug (glibc, 2.4 kernel, NFS, or Fedora's kernel)?
-> 
+--9amGYk9869ThD9tj
+Content-Type: text/plain; charset=iso-8859-15
+Content-Disposition: inline
 
-snip ...
+On Tue, Mar 09, 2004 at 11:51:10AM -0800, Lever, Charles wrote:
+> the fact that "intr" doesn't work as expected is a bug, and
+> folks are attempting to address this at least partially in 2.6.
 
-> 
-> 4)  Is there a perl module to accomplish this?
+FWIW, attached you'll find the patch I'm currently using.
+I thought I had posted it to this list already.
 
-Perhaps you could convert this bit of code to perl. There would surely 
-be access to the RPC libraries from perl.
+BTW what is the "right" way to get stuff like this into the mainline
+kernel? Trond, are you collecting stuff and pushing it to Andrew, or
+should I be sending patches to him directly?
 
-If the server is down the timeout is several seconds longer than the 
-timeout first time the routine is called (anyone care to comment as to 
-why?) but at least it returns.
+Olaf
+-- 
+Olaf Kirch     |  Stop wasting entropy - start using predictable
+okir@suse.de   |  tempfile names today!
+---------------+ 
 
-#include <rpc/rpc.h>
-#include <nfs/nfs.h>
-#include <linux/nfs2.h>
-#include <rpc/xdr.h>
+--9amGYk9869ThD9tj
+Content-Type: text/plain; charset=iso-8859-15
+Content-Disposition: attachment; filename=nfs-interruptible
+
+--- linux-2.6.2/net/sunrpc/sched.c.orig	2004-02-06 23:11:55.000000000 +0100
++++ linux-2.6.2/net/sunrpc/sched.c	2004-02-06 23:19:59.000000000 +0100
+@@ -554,21 +554,28 @@
+ 			if (current->pid == rpciod_pid)
+ 				printk(KERN_ERR "RPC: rpciod waiting on sync task!\n");
  
-int rpc_ping(const char *host, long seconds, long micros)
-{
-	CLIENT *client;
-	struct timeval tout;
-	enum clnt_stat stat;
+-			__wait_event(task->tk_wait, !RPC_IS_SLEEPING(task));
+-			dprintk("RPC: %4d sync task resuming\n", task->tk_pid);
+-
+-			/*
+-			 * When a sync task receives a signal, it exits with
+-			 * -ERESTARTSYS. In order to catch any callbacks that
+-			 * clean up after sleeping on some queue, we don't
+-			 * break the loop here, but go around once more.
+-			 */
+-			if (task->tk_client->cl_intr && signalled()) {
+-				dprintk("RPC: %4d got signal\n", task->tk_pid);
+-				task->tk_flags |= RPC_TASK_KILLED;
+-				rpc_exit(task, -ERESTARTSYS);
+-				rpc_wake_up_task(task);
++			if (!task->tk_client->cl_intr) {
++				__wait_event(task->tk_wait, !RPC_IS_SLEEPING(task));
++			} else {
++				__wait_event_interruptible(task->tk_wait,
++					       	!RPC_IS_SLEEPING(task), status);
++
++				/*
++				 * When a sync task receives a signal, it exits with
++				 * -ERESTARTSYS. In order to catch any callbacks that
++				 * clean up after sleeping on some queue, we don't
++				 * break the outer loop here, but go around once more.
++				 */
++				if (status == -ERESTARTSYS) {
++					dprintk("RPC: %4d got signal\n", task->tk_pid);
++					task->tk_flags |= RPC_TASK_KILLED;
++					rpc_exit(task, -ERESTARTSYS);
++					rpc_wake_up_task(task);
++					break;
++				}
+ 			}
++
++			dprintk("RPC: %4d sync task resuming\n", task->tk_pid);
+ 		}
+ 	}
+ 
 
-	client = clnt_create(host, NFS_PROGRAM, NFS2_VERSION, "udp");
-	if (client == NULL) {
-		return 0;
-	}
-
-	tout.tv_sec = seconds;
-	tout.tv_usec = micros;
-
-	clnt_control(client, CLSET_TIMEOUT, (char *)&tout);
-	clnt_control(client, CLSET_RETRY_TIMEOUT, (char *)&tout);
-
-	stat = clnt_call(client, NFSPROC_NULL,
-			 (xdrproc_t)xdr_void, 0, (xdrproc_t)xdr_void, 0, tout);
-
-	clnt_destroy(client);
-
-	if (stat != RPC_SUCCESS) {
-		return 0;
-	}
-
-	return 1;
-}
-
-Ian
-
+--9amGYk9869ThD9tj--
 
 
 -------------------------------------------------------
