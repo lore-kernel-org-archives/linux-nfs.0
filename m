@@ -1,26 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Re: [PATCH] NFS nolock broken in 2.6.9-rc4
-Date: Fri, 15 Oct 2004 17:13:54 +0200
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: [PATCH] NFS nolock broken in 2.6.9-rc4
+Date: Fri, 15 Oct 2004 17:12:57 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1097853234.5558.21.camel@lade.trondhjem.org>
-References: <20041015095840.GA22992@suse.de>
-	 <20041015100703.GA27307@suse.de>
-	 <1097851608.5558.15.camel@lade.trondhjem.org>
-	 <1097853073.5558.17.camel@lade.trondhjem.org>
+Message-ID: <20041015151257.GF27307@suse.de>
+References: <20041015095840.GA22992@suse.de> <1097851471.5558.12.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net, Andrew Morton <akpm@osdl.org>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CITmd-0002SY-LY
-	for nfs@lists.sourceforge.net; Fri, 15 Oct 2004 08:14:19 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CITmQ-0008IC-P0
-	for nfs@lists.sourceforge.net; Fri, 15 Oct 2004 08:14:19 -0700
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <1097853073.5558.17.camel@lade.trondhjem.org>
+	id 1CITxn-0005l6-Ik
+	for nfs@lists.sourceforge.net; Fri, 15 Oct 2004 08:25:51 -0700
+Received: from cantor.suse.de ([195.135.220.2])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.41)
+	id 1CITxk-0001CL-Qh
+	for nfs@lists.sourceforge.net; Fri, 15 Oct 2004 08:25:51 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1097851471.5558.12.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,56 +31,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-  VFS: Remove remnants of LOCK_USE_CLNT. It should no longer be necessary.
+On Fri, Oct 15, 2004 at 04:44:31PM +0200, Trond Myklebust wrote:
+> NO! The correct way to do this is to handle it with a call to
+> posix_lock_file() in the NFS code for the particular case of "nolock".
 
-  Signed-off-by: Trond Myklebust <trond.myklebust@fys.uio.no>
----
- fs/locks.c         |    6 ------
- include/linux/fs.h |    5 -----
- 2 files changed, 11 deletions(-)
+Urrrgh.. this looks complicated and duplicates code. Then I'd rather
+have two struct file_operations, one for normal operations with a .lock
+function, and a second one for nolock without.
 
-Index: linux-2.6.9-rc4-up/include/linux/fs.h
-===================================================================
---- linux-2.6.9-rc4-up.orig/include/linux/fs.h	2004-10-15 12:03:03.000000000 +0200
-+++ linux-2.6.9-rc4-up/include/linux/fs.h	2004-10-15 17:04:10.645827518 +0200
-@@ -1167,11 +1167,6 @@ extern long do_mount(char *, char *, cha
- 
- extern int vfs_statfs(struct super_block *, struct kstatfs *);
- 
--/* Return value for VFS lock functions - tells locks.c to lock conventionally
-- * REALLY kosha for root NFS and nfs_lock
-- */ 
--#define LOCK_USE_CLNT 1
--
- #define FLOCK_VERIFY_READ  1
- #define FLOCK_VERIFY_WRITE 2
- 
-Index: linux-2.6.9-rc4-up/fs/locks.c
-===================================================================
---- linux-2.6.9-rc4-up.orig/fs/locks.c	2004-10-15 12:04:18.000000000 +0200
-+++ linux-2.6.9-rc4-up/fs/locks.c	2004-10-15 17:03:16.376966402 +0200
-@@ -1435,9 +1435,6 @@ int fcntl_getlk(struct file *filp, struc
- 		error = filp->f_op->lock(filp, F_GETLK, &file_lock);
- 		if (error < 0)
- 			goto out;
--		else if (error == LOCK_USE_CLNT)
--		  /* Bypass for NFS with no locking - 2.0.36 compat */
--		  fl = posix_test_lock(filp, &file_lock);
- 		else
- 		  fl = (file_lock.fl_type == F_UNLCK ? NULL : &file_lock);
- 	} else {
-@@ -1580,9 +1577,6 @@ int fcntl_getlk64(struct file *filp, str
- 		error = filp->f_op->lock(filp, F_GETLK, &file_lock);
- 		if (error < 0)
- 			goto out;
--		else if (error == LOCK_USE_CLNT)
--		  /* Bypass for NFS with no locking - 2.0.36 compat */
--		  fl = posix_test_lock(filp, &file_lock);
- 		else
- 		  fl = (file_lock.fl_type == F_UNLCK ? NULL : &file_lock);
- 	} else {
+> for details on why the changes were made (and that should make it
+> obvious why your patch is wrong). The VFS must NOT be allowed to
+> interfere if a filesystem has its own ->lock() method: that will violate
+> the ability of filesystems to impose rigid locking rules.
 
+My patch doesn't interfere; it just falls back to the original code if
+the fs routine returns LOCK_USE_CLNT. In that respect, it doesn't
+interfere with the new code.
 
+Olaf
+-- 
+Olaf Kirch     | Things that make Monday morning interesting, #1:
+okir@suse.de   |        "I want to use NFS over AX25, can you help me?"
+---------------+ 
 
 
 -------------------------------------------------------
