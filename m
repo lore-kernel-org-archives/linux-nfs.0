@@ -1,27 +1,22 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [RFC] patch for dealing with short reads/writes...
-Date: Sat, 06 Mar 2004 14:55:23 -0500
+From: "Serge Sozonoff" <serge@sozonoff.com>
+Subject: NFS and linux 2.6 series kernels
+Date: Mon, 8 Mar 2004 13:09:36 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1078602923.2055.5.camel@nidelv.trondhjem.org>
-References: <1078550670.19081.15.camel@nidelv.trondhjem.org>
+Message-ID: <000501c40506$39975c20$6402a8c0@GE30303>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Azi0b-0003NU-No
-	for nfs@lists.sourceforge.net; Sat, 06 Mar 2004 12:02:53 -0800
-Received: from dh197.citi.umich.edu
-	([141.211.133.197] helo=nidelv.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	id 1B0JiE-0008WF-7C
+	for nfs@lists.sourceforge.net; Mon, 08 Mar 2004 04:18:26 -0800
+Received: from mail.freezefotoz.com ([213.221.158.23] helo=gentoo.sozonoff.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.30)
-	id 1AzhtO-0007tJ-B5
-	for nfs@lists.sourceforge.net; Sat, 06 Mar 2004 11:55:26 -0800
-Received: from trondmy by nidelv.trondhjem.org with local (Exim 4.30)
-	id 1AzhtM-0000mU-0R
-	for nfs@lists.sourceforge.net; Sat, 06 Mar 2004 14:55:24 -0500
-To: nfs@lists.sourceforge.net
-In-Reply-To: <1078550670.19081.15.camel@nidelv.trondhjem.org>
+	id 1B0Ja1-000604-Se
+	for nfs@lists.sourceforge.net; Mon, 08 Mar 2004 04:09:58 -0800
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,28 +29,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 lau , 06/03/2004 klokka 00:24, skreiv Trond Myklebust:
-> The following patch (which should apply at the end of the existing
-> linux-2.6.4-NFS4_ALL.dif) attempts to deal with these cases. If the
-> server has made at least some progress, we retry the read/write attempt
-> starting at the point where the server left off.
-> In the case of NFSv3/v4 unstable writes, the possibility that the server
-> may reboot is giving me headaches, so I prefer to first retry the entire
-> write as a stable write, then continue at wherever the server leaves
-> off...
->=20
-> Patch is completely untested as of yet...
+Hi All,
 
-OK. Patch has been replaced by a version that not only actually
-compiles, but also appears to work. It has therefore been queued up in
-the latest NFS4_ALL patch.
+Does anyone have an NFS client (v3) on a 2.6 series linux kernel performing
+well for large file transfers ?
 
-I believe that leaves us with just one remaining known spec violation in
-our NFSv2/v3 clients: we're not yet prepared to issue READDIR requests
-for buffer sizes of more than PAGE_SIZE in length.
+Whenever I do a transfer the transfer starts fine with a good rate and then
+grinds to a halt and kind of continues in bursts.
+In the log file I see entries like the following :
 
-Cheers,
-  Trond
+Mar  8 05:10:37 sui75 kernel: nfs warning: mount version older than kernel
+Mar  8 05:12:00 sui75 kernel: nfs: server nas not responding, still trying
+Mar  8 05:12:01 sui75 kernel: nfs: server nas not responding, still trying
+Mar  8 05:12:02 sui75 kernel: nfs: server nas OK
+Mar  8 05:12:02 sui75 kernel: nfs: server nas OK
+Mar  8 05:12:27 sui75 kernel: nfs: server nas not responding, still trying
+Mar  8 05:12:45 sui75 last message repeated 2 times
+Mar  8 05:12:45 sui75 kernel: nfs: server nas OK
+Mar  8 05:12:45 sui75 last message repeated 2 times
+
+If I take the exact same client machine and reboot it with a 2.4 kernel the
+transfer happens smoothly. I have tried various versions of the 2.6 kernel.
+I am using the Gentoo distro.
+I have seen various other posts around the web where people seem to be
+experiencing similar things.
+Is my safest bet to stick to 2.4 ?
+
+Thanks,
+Serge
+
 
 
 -------------------------------------------------------
