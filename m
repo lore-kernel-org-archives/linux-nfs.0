@@ -1,23 +1,22 @@
-From: Kevin Coffman <kwc@citi.umich.edu>
-Subject: Re: problem mounting using NFSv4 when using -o sec=krb5
- option
-Date: Tue, 22 Mar 2005 09:18:13 -0500
-Message-ID: <20050322141813.CC1CE1BBA5@citi.umich.edu>
-References: <20050322080637.79883.qmail@web51607.mail.yahoo.com>
+From: Johan van den Dorpe <johan.vandendorpe@framestore-cfc.com>
+Subject: Re: Can someone explain me what this error means?
+Date: Tue, 22 Mar 2005 15:13:11 +0000
+Message-ID: <42403607.4010801@framestore-cfc.com>
+References: <4239A9A3.5000109@framestore-cfc.com>	 <1111075730.13215.19.camel@lade.trondhjem.org>	 <200503171737.19660.vincent.roqueta@ext.bull.net> <1111100343.11736.12.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Vincent Roqueta <vincent.roqueta@ext.bull.net>,
+	nfs@lists.sourceforge.net
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DDkDK-0004ZC-Sd
-	for nfs@lists.sourceforge.net; Tue, 22 Mar 2005 06:18:34 -0800
-Received: from citi.umich.edu ([141.211.133.111])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1DDkD0-000719-U8
-	for nfs@lists.sourceforge.net; Tue, 22 Mar 2005 06:18:34 -0800
-To: mehta kiran <kiranmehta1981@yahoo.com>
-In-reply-to: <20050322080637.79883.qmail@web51607.mail.yahoo.com> 
+	id 1DDl6L-0007FA-DK
+	for nfs@lists.sourceforge.net; Tue, 22 Mar 2005 07:15:25 -0800
+Received: from gw.fs-cfc.co.uk ([193.203.83.22])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
+	id 1DDl6J-0004JM-N0
+	for nfs@lists.sourceforge.net; Tue, 22 Mar 2005 07:15:25 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1111100343.11736.12.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,247 +30,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I'm happy to hear the normal case is working.
+Trond Myklebust wrote:
+> to den 17.03.2005 Klokka 17:37 (+0100) skreiv Vincent Roqueta:
+> 
+> 
+>>The kernel is the 2.4.20, using the e1000 driver... That looks like the bug I 
+>>had with UDP fragmentation? I used the same driver!
+> 
+> 
+> Possibly, but there are a bunch of patches that went into 2.4.21 that
+> look like they might be relevant:
+> 
+> v2.4.22-pre1:
+>   o kNFSd: TCP nfsd connection hangs when partial record header is
+> received
+>   o kNFSd: Make sure an early close on a nfs/tcp connection is handled
+> properly
+> 
+> I would first try to reproduce on a newer kernel.
 
-The Kerberos library code does a reverse lookup of the host it is 
-trying to connect to in order to obtain the "real" host name.  It uses 
-that name to determine what principal it needs a ticket for.  It would 
-help to see the exact messages from rpc.gssd, rpc.svcgssd, and from the 
-KDC.
+Hiya,
 
+I upgraded to 2.4.25 and this fixed the problem.
 
-> Hi Kevin , 
->     God knows how , but everyting is working fine now.
->     I could not figure out why was it failing earlier.
->     
->     I have one question.
->     Is is possible to use common ip to access 
->     machines when kerberos is running .i:e
->     I want to access system1 with an ip say IP.
->     when system1 crashes , i want to start services
->     of system1 on system2 but want to access system2
->     with same IP.
-> 
->      what is tried was
->      create keys (on machine running KDC) for
->      for all machines in my subnet.
->      
->      After this take an ip and register it with DNS 
->      with some name say NFS.domain.
->      Create key (on machine running kdc) for
-> NFS.domain
->      For machines those which will run nfs server , 
->      ktadd respective machine key + ktadd NFS.domain
->      key and copy keytab file to respective machines.
->      For all other machines just ktadd respective 
->      machine key and copy keytab file to respective 
->      machines.
->      In short , 
->      on machine running nfs server,
->      #klist -k /etc/krb5.keytab
->       2 nfs/<hostname.domainname>@<realm>
->       2 nfs/NFS.domainname@<realm>
-> 
->      for other machines(nfs clients)
->      #klist -k /etc/krb5.keytab
->       2 nfs/<hostname.domainname>@<realm>
->      
->      but when i try to mount exported filesystems
->      from nfs client , 
->      using 
->      #mount -t nfs4 -osec=krb5 NFS.doaminname:/ /share
-> 
->       Failed to create krb5 context for user with uid
-> 0
->       with any credential cache for server 
->       NFS.domainname 
->  
->       Everything works well if genuine server name is 
->       used for mounting.Problem arises only when
->       (virtual ip) NFS.domainname is used.
-> 
->    thanks,
->  --kiran
->      
-> 
-> 
-> --- mehta kiran <kiranmehta1981@yahoo.com> wrote:
-> 
-> > Missed one thing.
-> >  I used kadmin.local to create principals(on machine
-> > runnnig KDC)
-> > 
-> > thanks,
-> >  --kiran
-> > --- mehta kiran <kiranmehta1981@yahoo.com> wrote:
-> > > Hi Kevin , 
-> > >     I created new database and new principal and 
-> > >     keytab files.
-> > > 
-> > >     Kinit does not accept passowrd for principals
-> > >     nfs/vcslinux5.vxindia.veritas.com
-> > >     and
-> > >     nfs/vcslinux6.vxindia.veritas.com
-> > > 
-> > >     Please let me know if i can provide some
-> > > info(and
-> > > how) (logs) which can point out the problem
-> > > 
-> > > thanks,
-> > >  --kiran
-> > > 
-> > > 
-> > > 
-> > > 
-> > > --- Kevin Coffman <kwc@citi.umich.edu> wrote:
-> > > > > 
-> > > > > Hi , 
-> > > > >              I tried things as directed by
-> > Trond
-> > > > in
-> > > > >     his previous mail and everything seemed to
-> > > > work
-> > > > >     fine initally. but when i rebooted system
-> > , 
-> > > > >     it started giving error whenever i start
-> > > > rpc.gssd
-> > > > >     on client machine.
-> > > > >     Error is :
-> > > > > 
-> > > > > [root@vcslinux6 ~]# Mar 21 14:47:27 vcslinux6
-> > > > > rpc.gssd[3487]: WARNING: Key table entry not
-> > > found
-> > > > > while getting initial ticket for principal
-> > > > >
-> > > >
-> > >
-> >
-> 'nfs/vcslinux6.vxindia.veritas.com@VXINDIA.VERITAS.COM'
-> > > > > from keytab 'FILE:/etc/krb5.keytab'
-> > > > > Mar 21 14:47:27 vcslinux6 rpc.gssd[3487]:
-> > ERROR:
-> > > > No
-> > > > > usable machine credentials obtained
-> > > > >   
-> > > > >      
-> > > > > while #klist -k /etc/krb5.keytab gives
-> > > > > 2
-> > > > >
-> > > >
-> > >
-> >
-> nfs/vcslinux6.vxindia.veritas.com@VXINDIA.VERITAS.COM
-> > > > 
-> > > > 
-> > > > I'm confused by this, but I do not know what to
-> > > look
-> > > > for.
-> > > > 
-> > > > 
-> > > > > I even tried by recreating kerberos database
-> > but
-> > > > in
-> > > > > vain. I still get the same error.
-> > > > 
-> > > > If you recreated the Kerberos database, you need
-> > > to
-> > > > create new principals and keytab files.  Did you
-> > > do
-> > > > this?
-> > > > 
-> > > > > I observed one more thing.
-> > > > > Whenver i create principal(other then
-> > > root/admin)
-> > > > ,
-> > > > > passwords i enter for them during their
-> > creation
-> > > > > are not accepted by kinit.
-> > > > 
-> > > > This is also strange and _might_ be related. 
-> > How
-> > > > are
-> > > > you creating the principals -- using kadmin or
-> > > > kadmin.local?
-> > > > Which principals are you referring to here?
-> > > > 
-> > > > > 
-> > > > > Please let me know where i went wrong.
-> > > > > 
-> > > > > --thanks,
-> > > > >  --kiran
-> > > > 
-> > > > 
-> > > 
-> > > __________________________________________________
-> > > Do You Yahoo!?
-> > > Tired of spam?  Yahoo! Mail has the best spam
-> > > protection around 
-> > > http://mail.yahoo.com 
-> > > 
-> > > 
-> > >
-> >
-> -------------------------------------------------------
-> > > SF email is sponsored by - The IT Product Guide
-> > > Read honest & candid reviews on hundreds of IT
-> > > Products from real users.
-> > > Discover which products truly live up to the hype.
-> > > Start reading now.
-> > >
-> >
-> http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
-> > > _______________________________________________
-> > > NFS maillist  -  NFS@lists.sourceforge.net
-> > > https://lists.sourceforge.net/lists/listinfo/nfs
-> > > 
-> > 
-> > __________________________________________________
-> > Do You Yahoo!?
-> > Tired of spam?  Yahoo! Mail has the best spam
-> > protection around 
-> > http://mail.yahoo.com 
-> > 
-> > 
-> >
-> -------------------------------------------------------
-> > SF email is sponsored by - The IT Product Guide
-> > Read honest & candid reviews on hundreds of IT
-> > Products from real users.
-> > Discover which products truly live up to the hype.
-> > Start reading now.
-> >
-> http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
-> > _______________________________________________
-> > NFS maillist  -  NFS@lists.sourceforge.net
-> > https://lists.sourceforge.net/lists/listinfo/nfs
-> > 
-> 
-> 
-> 
-> 		
-> __________________________________ 
-> Do you Yahoo!? 
-> Yahoo! Small Business - Try our new resources site!
-> http://smallbusiness.yahoo.com/resources/ 
-> 
-> 
-> -------------------------------------------------------
-> SF email is sponsored by - The IT Product Guide
-> Read honest & candid reviews on hundreds of IT Products from real users.
-> Discover which products truly live up to the hype. Start reading now.
-> http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+Thanks for everyone's help.
 
-
+-- 
+Johan van den Dorpe
 
 
 -------------------------------------------------------
-SF email is sponsored by - The IT Product Guide
-Read honest & candid reviews on hundreds of IT Products from real users.
-Discover which products truly live up to the hype. Start reading now.
-http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
+This SF.net email is sponsored by: 2005 Windows Mobile Application Contest
+Submit applications for Windows Mobile(tm)-based Pocket PCs or Smartphones
+for the chance to win $25,000 and application distribution. Enter today at
+http://ads.osdn.com/?ad_id=6882&alloc_id=15148&op=click
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
