@@ -1,20 +1,18 @@
-From: Bernd Schubert <bernd-schubert@web.de>
-Subject: Re: NFS problems (kernel locks up)
-Date: Fri, 21 Mar 2003 20:49:59 +0100
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: NFSD Flow Control Using the TCP Transport
+Date: Fri, 21 Mar 2003 15:38:43 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200303212049.59152.bernd-schubert@web.de>
-References: <20030319182241.GA9216@max.zg.iskon.hr>
+Message-ID: <3E7B7853.4020605@RedHat.com>
+References: <3E78872B.5020702@RedHat.com> <20030320042454.496801DA3E6@brer.local.valinux.co.jp>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net, taka@valinux.co.jp, yamamoto@valinux.co.jp
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from relay.uni-heidelberg.de ([129.206.100.212])
+Received: from nat-pool-rdu.redhat.com ([66.187.233.200] helo=lacrosse.corp.redhat.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18wSWn-0001Iz-00
-	for <nfs@lists.sourceforge.net>; Fri, 21 Mar 2003 11:50:09 -0800
-To: Kresimir Kukulj <madmax@iskon.hr>
-In-Reply-To: <20030319182241.GA9216@max.zg.iskon.hr>
+	id 18wTB0-0002l4-00
+	for <nfs@lists.sourceforge.net>; Fri, 21 Mar 2003 12:31:42 -0800
+To: MINOURA Makoto <minoura@valinux.co.jp>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,30 +25,27 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> Some info about hardware:
-> Dell PowerApp 200 with 2 x Pentium III (Coppermine), each 1GHz.
-> 1Gb memory, with CONFIG_HIGHMEM4G=y.
-> eepro100 ethernet
-> ServerWorks chipset but nothing except CDROM is connected to it.
-> ICP Vortex Hardware RAID model GDT8523RZ
-> Driver for this (SCSI) controller is from 2.4.20 kernel (its pretty new).
-> 5 FUJITSU MAJ3364MC 34Gb drives in RAID5 (4+hotfix).
-> Filesystem is ext3 with journal=ordered.
+
+
+MINOURA Makoto wrote:
+
+>Current implementation closes the socket on EAGAIN/partial
+>write, but has some delay.  During this delay on-queue
+>messages are unintentionally sent (in case the NFS traffic
+>is busy).  We addressed this problem by removing the delay
+>(close the socket immediatly) but sending the remaining
+>correctly should be better.
 >
+So If I understand what your saying, EAGAINs or partial writes are 
+interpreted
+as fatal errors. This confuse me. EAGAINs or partial writes are flow 
+control
+issues not fatal errors. Just like on the client side, shouldn't the
+thread sleep until there is room? Closing down the socket seems a
+bit drastic... Or am I missing something?
 
-We have a rather similar machine (well, without the raid and not from Dell) 
-and with 2GB. Actually we had some trouble with the serverworks chipset and 
-the memory.
-The lockups you are describing are probably not nfs related, but due to your 
-hardware. Try to update your bios, disable mtrr, agp, similar speed 
-optimizing things in your kernel configuration. 
-Run memtest86 (the full test), even if you have ECC.
-If all of this still doesn't help, try to disable dual-cpu support.
-As much as I know ext3 make more problems with nfs than reiserfs does, but 
-this shouldn't cause the lockups
+SteveD.
 
-Hope it helps,
-	Bernd
 
 
 -------------------------------------------------------
