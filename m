@@ -1,100 +1,66 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] NFS mount hang fix
-Date: Tue, 26 Oct 2004 11:06:40 -0400
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <20041026150640.GA24881@fieldses.org>
-References: <20041026141148.GM6408@fi.muni.cz>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Re: [PATCH] fix nfsidem cthon test
+Date: Tue, 26 Oct 2004 12:55:31 -0400
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <1098809731.10567.5.camel@lade.trondhjem.org>
+References: <1098341478.21421.7.camel@hole.melbourne.sgi.com>
+	 <1098343891.28394.15.camel@lade.trondhjem.org>
+	 <20041021161309.GC24417@fieldses.org>
+	 <1098413781.21421.37.camel@hole.melbourne.sgi.com>
+	 <20041022024349.GA30004@fieldses.org>
+	 <1098696830.21421.163.camel@hole.melbourne.sgi.com>
+	 <1098715298.10720.38.camel@lade.trondhjem.org>
+	 <1098775926.21421.371.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net,
-	trond.myklebust@fys.uio.no, neilb@cse.unsw.edu.au,
-	torvalds@osdl.org
-Return-path: <linux-kernel-owner+glk-linux-kernel=40m.gmane.org-S262288AbUJZPG4@vger.kernel.org>
-To: Jan Kasprzak <kas@fi.muni.cz>
-In-Reply-To: <20041026141148.GM6408@fi.muni.cz>
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain
+Cc: "Dr. Bruce Fields" <bfields@fieldses.org>,
+	Neil Brown <neilb@cse.unsw.edu.au>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1CMUbw-0001OC-GN
+	for nfs@lists.sourceforge.net; Tue, 26 Oct 2004 09:55:52 -0700
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1CMUbv-0003UH-3a
+	for nfs@lists.sourceforge.net; Tue, 26 Oct 2004 09:55:51 -0700
+To: Greg Banks <gnb@melbourne.sgi.com>
+In-Reply-To: <1098775926.21421.371.camel@hole.melbourne.sgi.com>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, Oct 26, 2004 at 04:11:48PM +0200, Jan Kasprzak wrote:
-> I am sorry to repost this, but I have got no feedback from NFS maintainers,
-> while I've got postitive feedback from three people whose problems
-> was fixed by this patch. NFS maintaners - are you alive? If not,
-> Linus, please apply this patch. Thanks,
+ty den 26.10.2004 Klokka 17:32 (+1000) skreiv Greg Banks:
 
-Hm.  For some reason, your message never made it into my mailbox, though
-I can see it in the marc.theaimsgroup.com archives of the nfs list.
+> BTW, the following hunk is in your 2.6.10-rc1 NFS_ALL.dif but missing
+> from the corresponding exploded patchset.
+> 
 
-Changing those buffers to static strikes me as potentially dangerous--we
-currently call the ->parse() methods under a semaphore, so it's safe for
-now, but that might change some day and then there'll be an ugly race
-condition.
+Err. No... It should appears as the very last hunk in
+linux-2.6.9-17-fix_nfs_nolock.dif
 
-Could you check whether the following fixes your problem?--b.
+Cheers,
+  Trond
+
+-- 
+Trond Myklebust <trond.myklebust@fys.uio.no>
 
 
-Problem identified by Jan Kasprzak.
 
-Limit on domainname size (currently 50) is too small.
-
-Just use the beginning of input buffer as scratch space for it, and
-save a little stack space while we're at it.
-
-Signed-off-by: J. Bruce Fields
----
-
- linux-2.6.10-rc1-bfields/net/sunrpc/svcauth_unix.c      |   14 
- linux-2.6.10-rc1-bfields/net/sunrpc/svcauth_unix.c.orig |  511 ++++++++++++++++
- 2 files changed, 518 insertions(+), 7 deletions(-)
-
-diff -puN net/sunrpc/svcauth_unix.c~fqdn_length_fix net/sunrpc/svcauth_unix.c
---- linux-2.6.10-rc1/net/sunrpc/svcauth_unix.c~fqdn_length_fix	2004-10-22 23:36:50.000000000 -0400
-+++ linux-2.6.10-rc1-bfields/net/sunrpc/svcauth_unix.c	2004-10-22 23:37:47.000000000 -0400
-@@ -150,11 +150,14 @@ static void ip_map_request(struct cache_
- }
- 
- static struct ip_map *ip_map_lookup(struct ip_map *, int);
-+
- static int ip_map_parse(struct cache_detail *cd,
- 			  char *mesg, int mlen)
- {
- 	/* class ipaddress [domainname] */
--	char class[50], buf[50];
-+	/* should be safe just to use the start of the input buffer
-+	 * for scratch: */
-+	char *buf = mesg;
- 	int len;
- 	int b1,b2,b3,b4;
- 	char c;
-@@ -167,13 +170,11 @@ static int ip_map_parse(struct cache_det
- 	mesg[mlen-1] = 0;
- 
- 	/* class */
--	len = qword_get(&mesg, class, 50);
-+	len = qword_get(&mesg, ipm.m_class, sizeof(ipm.m_class));
- 	if (len <= 0) return -EINVAL;
--	if (len >= sizeof(ipm.m_class))
--		return -EINVAL;
- 
- 	/* ip address */
--	len = qword_get(&mesg, buf, 50);
-+	len = qword_get(&mesg, buf, mlen);
- 	if (len <= 0) return -EINVAL;
- 
- 	if (sscanf(buf, "%u.%u.%u.%u%c", &b1, &b2, &b3, &b4, &c) != 4)
-@@ -184,7 +185,7 @@ static int ip_map_parse(struct cache_det
- 		return -EINVAL;
- 
- 	/* domainname, or empty for NEGATIVE */
--	len = qword_get(&mesg, buf, 50);
-+	len = qword_get(&mesg, buf, mlen);
- 	if (len < 0) return -EINVAL;
- 
- 	if (len) {
-@@ -194,7 +195,6 @@ static int ip_map_parse(struct cache_det
- 	} else
- 		dom = NULL;
- 
--	strcpy(ipm.m_class, class);
- 	ipm.m_addr.s_addr =
- 		htonl((((((b1<<8)|b2)<<8)|b3)<<8)|b4);
- 	ipm.h.flags = 0;
-_
+-------------------------------------------------------
+This SF.net email is sponsored by: IT Product Guide on ITManagersJournal
+Use IT products in your business? Tell us what you think of them. Give us
+Your Opinions, Get Free ThinkGeek Gift Certificates! Click to find out more
+http://productguide.itmanagersjournal.com/guidepromo.tmpl
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
