@@ -1,22 +1,20 @@
-From: Guolin Cheng <guolin@alexa.com>
-Subject: RE: processes stuck in D state
-Date: Tue, 6 May 2003 11:32:46 -0700
+From: Jean-Christophe Ducom <jducom@nd.edu>
+Subject: processes stuck in....?
+Date: Tue, 06 May 2003 14:22:31 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <0D122719B1756A43AD405320EE3D8EFA01278C4F@moneyb.alexa.com>
+Message-ID: <3EB80B77.4000702@nd.edu>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Cc: nfs@lists.sourceforge.net, neilb@cse.unsw.edu.au, Ops <ops@alexa.com>
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail.alexa.com ([209.247.255.131])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19D7FH-00089N-00
-	for <nfs@lists.sourceforge.net>; Tue, 06 May 2003 11:32:55 -0700
-To: "'Lever, Charles'" <Charles.Lever@netapp.com>,
-   Michael Buesch
-	 <fsdeveloper@yahoo.de>, Andy Jewell <andy@alexa.com>,
-   Jonathan Baker
-	 <jonathan@alexa.com>, Paul Sauer <paul@alexa.com>
+Received: from osgood.cc.nd.edu ([129.74.250.227])
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19D83e-0003AS-00
+	for <nfs@lists.sourceforge.net>; Tue, 06 May 2003 12:24:59 -0700
+Received: from nd.edu (frenchy.chem.nd.edu [129.74.74.11])
+	by osgood.cc.nd.edu (Switch-3.0.4/Switch-3.0.0) with ESMTP id h46JOmlU008098
+	for <nfs@lists.sourceforge.net>; Tue, 6 May 2003 14:24:48 -0500 (EST)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,122 +27,117 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi, all,
+Hi,
 
- We are encountering the same problem here as well,=20
-=20
-[root@arc100 root]# ps auxw
-......
- andy      9087  0.0  3.2 12900 10312 ?       D    May05   0:02
-/0/tmp/av_explore .index /net/arc295/0/DQ_crawl26.20030416034937.arc.gz
-......
+	I'd like to get some feedback on a problem that freezes SMP clients so hard 
+that a) even when a monitor is plugged, there is no display (no control from 
+keyboard either)
+b) no terminal console access via serial port c) even nmi_watchdog can't get out 
+of it apparently (no report)
+This happens usually in a pretty consistently when the nfs client creates a lot 
+of files (like 800+) or write big file.
+I don't have any tcpdump or something else for now.
+Any idea/suggestion (change mount options?)
+Thanks for any help or feedback
 
-although the nfs server has no problem at all. If I try to "ls
-/net/arc295/0" then the new "ls" process will hang as well.
-The method I followed to fix the problem is:
-
-[root@arc100 root]# umount -f /net/arc295/0
-umount2: Device or resource busy
-umount: /net/arc295/0: Illegal seek
-[root@arc100 root]# /etc/init.d/amd restart
-Stopping amd:                                              [  OK  ]
-Starting amd:                                              [  OK  ]
-[root@arc100 root]# cd /net/arc295/0
-[root@arc100 0]# ls=20
-
- My nfs clients/servers has the same configurations:=20
-
-	Redhat 8.0
- 	General Linux Kernel 2.4.20 ("nfs over tcp" is enabled)
-	gcc-3.2-7=20
- 	amd ( am-utils-6.0.7-9 )
-	amd mount options in map amd.master
-(opts:=3Drw,intr,nfsv3,tcp,nosuid,nodev,noresvport)
-      The real amd mount status for the nfs directory:
-        arc295:/0 on /.amd_mnt/arc295/host/0 type nfs
-(rw,intr,nfsv3,tcp,nosuid,nodev,noresvport,dev=3D0000f10e,vers=3D3,proto=
-=3Dtcp)
-
- Any one need more info the shoot the sort of problem, let me know.
-
- Thanks.
- --Guolin Cheng
+		JC
 
 
------Original Message-----
-From: Lever, Charles [mailto:Charles.Lever@netapp.com]
-Sent: Tuesday, May 06, 2003 8:18 AM
-To: Michael Buesch
-Cc: nfs@lists.sourceforge.net; neilb@cse.unsw.edu.au
-Subject: RE: [NFS] processes stuck in D state
 
 
-hi michael-
 
-i'm not sure why you mailed neilb -- this appears to
-be NFS client related, not server related.
+Client: Precision 530 Dual 1.7GhZ Xeon with Syskonnect SK9D21 GigE, Redhat 7.2, 
+kernel 2.4.21-rc1, nfs-utils-1.0.3-1 with ext2 file
+# rpcinfo -p
+    program vers proto   port
+     100000    2   tcp    111  portmapper
+     100000    2   udp    111  portmapper
+     100021    1   udp  32768  nlockmgr
+     100021    3   udp  32768  nlockmgr
+     100021    4   udp  32768  nlockmgr
+     100024    1   udp    904  status
+     100024    1   tcp    907  status
+The directory are mounted with option:
+10.0.0.10:/export/data  /opt/data       nfs 
+rw,nosuid,nodev,hard,intr,bg,rsize=8192,wsize=8192 0 0
 
-can you spell out the sequence of events that leads
-to the stuck processes?  it looks like the client
-is working-as-designed, but if you can provide more
-details, we can verify what's going on.
-
-> -----Original Message-----
-> From: Michael Buesch [mailto:fsdeveloper@yahoo.de]
-> Sent: Tuesday, May 06, 2003 10:52 AM
-> To: neilb@cse.unsw.edu.au
-> Cc: nfs@lists.sourceforge.net
-> Subject: [NFS] processes stuck in D state
->=20
->=20
-> -----BEGIN PGP SIGNED MESSAGE-----
-> Hash: SHA1
->=20
-> Hi!
->=20
-> Please take a look at this problem:
->=20
-> [linux-kernel-mailing-list thread]
-> http://marc.theaimsgroup.com/?t=3D98639966100003&r=3D1&w=3D2
->=20
-> thanks.
-> Please cc me, as I'm not subscribed to the nfs-list.
->=20
-> - --=20
-> Regards Michael B=FCsch
-> http://www.8ung.at/tuxsoft
->  16:28:34 up 20 min,  1 user,  load average: 1.07, 0.97, 0.66
-> -----BEGIN PGP SIGNATURE-----
-> Version: GnuPG v1.2.1 (GNU/Linux)
->=20
-> iD8DBQE+t8wdoxoigfggmSgRAm5aAJsGJLPe9yUd4sqah4yiU0GsMIAGzACfSa2+
-> gAMZvSHQirHmE8yZChpgH/8=3D
-> =3Dpka2
-> -----END PGP SIGNATURE-----
->=20
->=20
->=20
-> -------------------------------------------------------
-> Enterprise Linux Forum Conference & Expo, June 4-6, 2003, Santa Clara
-> The only event dedicated to issues related to Linux=20
-> enterprise solutions
-> www.enterpriselinuxforum.com
->=20
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
->=20
+Excerpt from /var/log/messages:
+May  6 13:59:27 bob1 kernel: sk9dlin: Network Device Driver v1.03
+May  6 13:59:27 bob1 kernel: (C)Copyright 2001 SysKonnect GmbH.
+May  6 13:59:27 bob1 kernel: eth0: SysKonnect SK-9D21 Gigabit Ethernet
+May  6 13:59:27 bob1 kernel: eth0: network connection down
+May  6 13:59:27 bob1 kernel: eth0: NIC Link is downeth0: network connection down
+May  6 13:59:27 bob1 kernel: eth0: Network connection up using
+May  6 13:59:27 bob1 kernel:       speed        = 1000 Mbps
+May  6 13:59:27 bob1 kernel:       duplex mode  = full
+May  6 13:59:27 bob1 kernel:       card         = copper
+May  6 13:59:27 bob1 kernel:       flowctrl     = none
+May  6 13:59:27 bob1 kernel:       autoneg      = no
+.....
+May  6 13:59:24 bob1 sysctl: net.ipv4.ip_forward = 0
+May  6 13:59:24 bob1 sysctl: net.ipv4.conf.default.rp_filter = 1
+May  6 13:59:24 bob1 sysctl: kernel.sysrq = 0
+May  6 13:59:24 bob1 sysctl: kernel.shmall = 33554432
+May  6 13:59:24 bob1 sysctl: kernel.shmmax = 536870912
+May  6 13:59:24 bob1 sysctl: net.ipv4.tcp_fin_timeout = 30
+May  6 13:59:24 bob1 sysctl: net.ipv4.tcp_keepalive_time = 1800
+May  6 13:59:24 bob1 sysctl: net.ipv4.tcp_window_scaling = 0
+May  6 13:59:24 bob1 sysctl: net.ipv4.tcp_sack = 0
+May  6 13:59:24 bob1 sysctl: net.ipv4.tcp_timestamps = 0
+May  6 13:59:24 bob1 sysctl: net.ipv4.ip_no_pmtu_disc = 1
+May  6 13:59:24 bob1 sysctl: net.core.rmem_max = 262143
+May  6 13:59:24 bob1 sysctl: net.core.rmem_default = 262143
+May  6 13:59:24 bob1 sysctl: net.core.wmem_max = 262143
+.....
+May  6 13:59:34 bob1 rpc.lockd: lockdsvc: Function not implemented
+May  6 13:59:34 bob1 nfslock: rpc.lockd startup failed
+May  6 13:59:34 bob1 rpc.statd[724]: Version 1.0.3 Starting
+May  6 13:59:34 bob1 nfslock: rpc.statd startup succeeded
 
 
--------------------------------------------------------
-Enterprise Linux Forum Conference & Expo, June 4-6, 2003, Santa Clara
-The only event dedicated to issues related to Linux enterprise =
-solutions
-www.enterpriselinuxforum.com
+-----------------------------
+Server: 530 Dual 1.7GhZ Xeon with Syskonnect SK9D21 GigE, Redhat 7.2, kernel 
+2.4.21-rc1, nfs-utils-1.0.3-1 with ext3 on a raid5
+# rpcinfo -p
+    program vers proto   port
+     100000    2   tcp    111  portmapper
+     100000    2   udp    111  portmapper
+     100011    1   udp    696  rquotad
+     100011    2   udp    696  rquotad
+     100011    1   tcp    699  rquotad
+     100011    2   tcp    699  rquotad
+     100003    2   udp   2049  nfs
+     100003    3   udp   2049  nfs
+     100021    1   udp  32768  nlockmgr
+     100021    3   udp  32768  nlockmgr
+     100021    4   udp  32768  nlockmgr
+     100005    1   udp    732  mountd
+     100005    1   tcp    735  mountd
+     100005    2   udp    732  mountd
+     100005    2   tcp    735  mountd
+     100005    3   udp    732  mountd
+     100005    3   tcp    735  mountd
+     100024    1   udp    757  status
+     100024    1   tcp    760  status
+# cat /etc/exports
+/export/data 10.0.3.0/8(rw) 10.0.0.1(rw)
 
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+
+Excerpt From /var/log/messages:
+May  5 21:24:44 file1 exportfs[938]: /etc/exports [4]: No 'sync' or 'async' 
+option specified for export "10.0.0.1:/export/data".   Assuming default 
+behaviour ('sync').   NOTE: this default has changed from previous versions
+May  5 21:24:44 file1 nfs: Starting NFS services:  succeeded
+May  5 21:24:45 file1 nfs: rpc.rquotad startup succeeded
+May  5 21:24:45 file1 nfs: rpc.nfsd startup succeeded
+May  5 21:24:45 file1 nfs: rpc.mountd startup succeeded
+May  5 21:24:45 file1 nfslock: rpc.lockd startup succeeded
+May  5 21:24:45 file1 rpc.statd[1001]: Version 1.0.3 Starting
+May  5 21:24:45 file1 nfslock: rpc.statd startup succeeded
+
+The exported directory is on a Promise Ultratrak100 TX8 connected to a Tekram 
+390U3W.
+
 
 
 -------------------------------------------------------
