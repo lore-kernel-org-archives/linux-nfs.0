@@ -1,19 +1,27 @@
-From: "Bill Rugolsky Jr." <brugolsky@telemetry-investments.com>
-Subject: Re: RH 7.3 kernels and NFS performance
-Date: Wed, 7 Aug 2002 15:04:05 -0400
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: Maximum number of nfsd daemons?
+Date: Thu, 8 Aug 2002 06:18:29 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020807150405.B25584@ti19>
-References: <15697.18944.451371.303514@charged.uio.no> <Pine.LNX.4.44.0208071142060.1462-100000@duran.unl.edu>
+Message-ID: <15697.32917.218601.482586@notabene.cse.unsw.edu.au>
+References: <FB5B6B9A4BA0104886C8394BB2B7C7B803ACAD5A@TOMBO.legato.com>
+	<15688.47255.83237.874274@notabene.cse.unsw.edu.au>
+	<20020801194339.76fbfb11.philippe.gramoulle@mmania.com>
+	<15696.65206.947132.844146@notabene.cse.unsw.edu.au>
+	<20020807150721.1736ec6f.philippe.gramoulle@mmania.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Cc: nfs <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from 209-166-240-202.cust.walrus.com.240.166.209.in-addr.arpa ([209.166.240.202] helo=ti3.telemetry-investments.com)
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17cW6T-0002SQ-00
-	for <nfs@lists.sourceforge.net>; Wed, 07 Aug 2002 12:04:17 -0700
-To: Rex Dieter <rdieter@math.unl.edu>
-In-Reply-To: <Pine.LNX.4.44.0208071142060.1462-100000@duran.unl.edu>; from rdieter@math.unl.edu on Wed, Aug 07, 2002 at 11:43:24AM -0500
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17cXFr-0003m9-00
+	for <nfs@lists.sourceforge.net>; Wed, 07 Aug 2002 13:18:03 -0700
+Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
+	(for <philippe.gramoulle@mmania.com>)
+	(for <nfs@lists.sourceforge.net>) By tone With Smtp ;
+	Thu, 8 Aug 2002 06:17:53 +1000
+To: Philippe =?ISO-8859-1?B?R3JhbW91bGzp?= <philippe.gramoulle@mmania.com>
+In-Reply-To: message from Philippe Gramoullé on Wednesday August 7
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,62 +34,23 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Wed, Aug 07, 2002 at 11:43:24AM -0500, Rex Dieter wrote:
-> I just tested things with a test kernel (2.4.18-7) from redhat, and it 
-> sync write speeds were again way up there.  Problem fixed, as far as I'm 
-> concerned... hopefully, they'll release an errata soon.
+On Wednesday August 7, philippe.gramoulle@mmania.com wrote:
+> 
+>  
+>   |  
+>   |  "NFS server not responding" can be due to the receive queue filling up
+>   |  on the NFS server.
+>   |   while true; do netstat -nta | grep :2049 ; sleep 1; done
+> 
+> i'm not using TCP right now :o) but will do very soon as i've just build a kernel with all
+> your patches.
+> 
 
-BTW, Arjan has included many of Trond's RPC patches in the latest
-Rawhide kernels:
+I was actually thinking UDP.  The 't' flag was a mistake.
+If you have working TCP support, then this is all taken care of by the
+kernel and you don't have to worry about it.
 
-$ rpm -qp --changelog kernel-2.4.18-7.93.src.rpm | head -4
-* Fri Aug 02 2002 Arjan van de Ven <arjanv@redhat.com>
-
-- added most of the NFS patchkit
-
-Based on the patch file names, these look like Trond's 2.4.19-rc3 patches:
-
-linux-2.4.19-00-fix_clnt.patch
-linux-2.4.19-01-fix_kmap1.patch
-linux-2.4.19-02-fix_kmap2.patch
-linux-2.4.19-03-fix_kmap3.patch
-linux-2.4.19-04-rpc_rep.patch
-linux-2.4.19-05-rpc_rtt1.patch
-linux-2.4.19-06-rpc_rtt2.patch
-linux-2.4.19-07-rpc_rtt3.patch
-linux-2.4.19-08-xprt_write.patch
-linux-2.4.19-09-rpc_cong1.patch
-linux-2.4.19-10-rpc_cong2.patch
-linux-2.4.19-11-rpc_cong3.patch
-linux-2.4.19-12-rpc_wspace.patch
-linux-2.4.19-13-rpc_cleanup.patch
-linux-2.4.19-16-rpcbuf.patch
-
-This should be nearly current, though Trond's 2.4.19 patches are broken
-down somewhat differently.
-
-I hope that Trond is planning to submit most of this to Marcelo for
-2.4.20, as Neil is submitting his NFS server patches, and it would be
-very nice to have a 2.4.20 that is fully up-to-date w.r.t current NFS
-patches for both client and server.  [Those of us on this list for a
-long time will remember a similar exercise with Alan for 2.2.19 --
-gosh, that seems like ancient history. :-P]
-
-In any case, Trond's work should receive some more widespread "end-user"
-testing from the Limbo Beta and Rawhide crowd in the near future.
-
-I've long pined [since RH 5.x] for a Red Hat kernel with working
-NFS that played nice with the NetApp and Solaris.  It has since become
-a ritual to patch NFS into the Red Hat tree.
-
-Many thanks to Trond and Neil for their tireless efforts!
-
-It is difficult to underestimate how important working NFS is in deployments
-like ours ...
-
-Regards
-
-   Bill Rugolsky
+NeilBrown
 
 
 -------------------------------------------------------
