@@ -1,16 +1,19 @@
-From: Rock Gordon <rockgordon@yahoo.com>
-Subject: searching ".." in find_fh_dentry
-Date: Mon, 24 Jun 2002 15:39:12 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS on a freeswan gateway?
+Date: 25 Jun 2002 01:13:36 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020624223912.20483.qmail@web14807.mail.yahoo.com>
+Message-ID: <shsptygs21r.fsf@charged.uio.no>
+References: <20020624223641.GA16108@backlot.linas.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from web14807.mail.yahoo.com ([216.136.224.223])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17McUK-00068r-00
-	for <nfs@lists.sourceforge.net>; Mon, 24 Jun 2002 15:39:12 -0700
-To: nfs@lists.sourceforge.net
+Received: from pat.uio.no ([129.240.130.16])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17Md1n-00014o-00
+	for <nfs@lists.sourceforge.net>; Mon, 24 Jun 2002 16:13:47 -0700
+To: linas@linas.org (Linas Vepstas)
+In-Reply-To: <20020624223641.GA16108@backlot.linas.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -23,25 +26,31 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hi all,
+>>>>> " " == Linas Vepstas <linas@linas.org> writes:
 
-Does anybody have a list of filesystems that are
-capable of searching parent entries? (like "..") This
-I ask because I want to find out what filesystems are
-currently supported by Linux' NFS implementation ..
-(take 2.4.18, say).
+     > Hi, I am resending a message sent to the freeswan mailing list.
+     > As explained below, the default IP source address used in nfs
+     > mount requests is sometimes 'not appropriate' for certain
+     > packet-filtering/freeswan setups.
 
-Looking at find_fh_dentry() in nfsd/nfsfh.c, it seems
-to me that filesystems that don't support searching
-for "..", might not work with NFS ...
+     > I'd like to patch that part of the nfs/rpc client so that it
+     > uses an IP source address that is routing-wise 'closer' to the
+     > nfs server.  But I have damned little experience with the nfs
+     > kernel code (or nfs internals), and thus would like an opinion,
+     > or commnts, or, best yet, a pointer to a pre-existing patch.
 
-Thanks and regards,
-Rock
+Both the client and the server use the standard IP socket layer
+code. There is no magic... IOW if ordinary sendmsg()/recvmsg() of UDP
+packets over the ipsec0 interface works (and the resulting address in
+the struct msghdr is correct) then NFS should work fine.
 
-__________________________________________________
-Do You Yahoo!?
-Yahoo! - Official partner of 2002 FIFA World Cup
-http://fifaworldcup.yahoo.com
+If, however, you are trying to use NAT or masquerading or something
+like that on the FreeSWAM gateways in order to translate 'internal
+addresses' into 'external addresses', then you are screwed: NAT is not
+an appropriate protocol for UDP services.
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
