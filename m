@@ -1,38 +1,43 @@
 From: "David S. Miller" <davem@redhat.com>
-Subject: [PATCH] zerocopy NFS, ipv4 infrastructure
-Date: Wed, 16 Oct 2002 00:40:18 -0700 (PDT)
-Sender: linux-net-owner@vger.kernel.org
-Message-ID: <20021016.004018.51793368.davem@redhat.com>
+Subject: [NEW PATCH] zerocopy UDP stuff
+Date: Wed, 16 Oct 2002 01:49:47 -0700 (PDT)
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <20021016.014947.31982846.davem@redhat.com>
 Mime-Version: 1.0
 Content-Type: Text/Plain; charset=us-ascii
-Cc: linux-net@vger.kernel.org, neilb@cse.unsw.edu.au,
-	taka@valinux.co.jp
-Return-path: <linux-net-owner@vger.kernel.org>
-To: nfs@lists.sourceforge.net
-List-ID: <nfs.lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net, neilb@cse.unsw.edu.au, taka@valinux.co.jp
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from pizda.ninka.net ([216.101.162.242])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 181jzO-000870-00
+	for <nfs@lists.sourceforge.net>; Wed, 16 Oct 2002 01:57:14 -0700
+To: linux-net@vger.kernel.org
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Neil, other NFS developers.  I am about to push the following
-set of patches to Linus for 2.5.x
+Sorry, there was a bogon in my previous diff that I didn't
+notice until after the previous email got sent.  I didn't
+apply the "kill csum_partial_copy()" patch completely, so
+it would result in link errors on some platforms.
 
-It implements several things, most important to NFS folks
-are the UDP cork/sendfile bits done by VA Linux Japan.
-
-The rest is just initial infrastructure for encapsulating protocols
-(ie. ipsec and ipcomp).
-
-I'm sending this so that you can start integrating the rest of the NFS
-zerocopy patches done by VA Linux Japan before this shows up for
-real in Linus's tree.
-
-Have fun.
+Here is what should be a working patch :-)
 
 ChangeSet@1.845, 2002-10-14 13:41:39-07:00, davem@nuts.ninka.net
   [NET]: Kill final traces of csum_partial_copy_fromuser.
 
 diff -Nru a/include/asm-alpha/checksum.h b/include/asm-alpha/checksum.h
---- a/include/asm-alpha/checksum.h	Wed Oct 16 00:41:08 2002
-+++ b/include/asm-alpha/checksum.h	Wed Oct 16 00:41:08 2002
+--- a/include/asm-alpha/checksum.h	Wed Oct 16 01:51:56 2002
++++ b/include/asm-alpha/checksum.h	Wed Oct 16 01:51:56 2002
 @@ -42,16 +42,10 @@
   *
   * here even more important to align src and dst on a 32-bit (or even
@@ -53,8 +58,8 @@ diff -Nru a/include/asm-alpha/checksum.h b/include/asm-alpha/checksum.h
  /*
   * this is a new version of the above that records errors it finds in *errp,
 diff -Nru a/include/asm-arm/checksum.h b/include/asm-arm/checksum.h
---- a/include/asm-arm/checksum.h	Wed Oct 16 00:41:08 2002
-+++ b/include/asm-arm/checksum.h	Wed Oct 16 00:41:08 2002
+--- a/include/asm-arm/checksum.h	Wed Oct 16 01:51:56 2002
++++ b/include/asm-arm/checksum.h	Wed Oct 16 01:51:56 2002
 @@ -38,10 +38,10 @@
  csum_partial_copy_from_user(const char *src, char *dst, int len, int sum, int *err_ptr);
  
@@ -70,8 +75,8 @@ diff -Nru a/include/asm-arm/checksum.h b/include/asm-arm/checksum.h
  #define csum_partial_copy(src,dst,len,sum)	csum_partial_copy_nocheck(src,dst,len,sum)
  
 diff -Nru a/include/asm-i386/checksum.h b/include/asm-i386/checksum.h
---- a/include/asm-i386/checksum.h	Wed Oct 16 00:41:08 2002
-+++ b/include/asm-i386/checksum.h	Wed Oct 16 00:41:08 2002
+--- a/include/asm-i386/checksum.h	Wed Oct 16 01:51:56 2002
++++ b/include/asm-i386/checksum.h	Wed Oct 16 01:51:56 2002
 @@ -50,13 +50,11 @@
  }
  
@@ -90,8 +95,8 @@ diff -Nru a/include/asm-i386/checksum.h b/include/asm-i386/checksum.h
  
  /*
 diff -Nru a/include/asm-ia64/checksum.h b/include/asm-ia64/checksum.h
---- a/include/asm-ia64/checksum.h	Wed Oct 16 00:41:08 2002
-+++ b/include/asm-ia64/checksum.h	Wed Oct 16 00:41:08 2002
+--- a/include/asm-ia64/checksum.h	Wed Oct 16 01:51:56 2002
++++ b/include/asm-ia64/checksum.h	Wed Oct 16 01:51:56 2002
 @@ -48,18 +48,11 @@
   *
   * Here it is even more important to align src and dst on a 32-bit (or
@@ -114,8 +119,8 @@ diff -Nru a/include/asm-ia64/checksum.h b/include/asm-ia64/checksum.h
  /*
   * This is a new version of the above that records errors it finds in
 diff -Nru a/include/asm-m68k/checksum.h b/include/asm-m68k/checksum.h
---- a/include/asm-m68k/checksum.h	Wed Oct 16 00:41:08 2002
-+++ b/include/asm-m68k/checksum.h	Wed Oct 16 00:41:08 2002
+--- a/include/asm-m68k/checksum.h	Wed Oct 16 01:51:56 2002
++++ b/include/asm-m68k/checksum.h	Wed Oct 16 01:51:56 2002
 @@ -21,6 +21,8 @@
   *
   * here even more important to align src and dst on a 32-bit (or even
@@ -126,8 +131,8 @@ diff -Nru a/include/asm-m68k/checksum.h b/include/asm-m68k/checksum.h
  
  unsigned int csum_partial_copy(const char *src, char *dst, int len, int sum);
 diff -Nru a/include/asm-mips/checksum.h b/include/asm-mips/checksum.h
---- a/include/asm-mips/checksum.h	Wed Oct 16 00:41:08 2002
-+++ b/include/asm-mips/checksum.h	Wed Oct 16 00:41:08 2002
+--- a/include/asm-mips/checksum.h	Wed Oct 16 01:51:56 2002
++++ b/include/asm-mips/checksum.h	Wed Oct 16 01:51:56 2002
 @@ -61,7 +61,6 @@
   *
   * this is obsolete and will go away.
@@ -137,8 +142,8 @@ diff -Nru a/include/asm-mips/checksum.h b/include/asm-mips/checksum.h
  			       unsigned int sum);
  
 diff -Nru a/include/asm-mips64/checksum.h b/include/asm-mips64/checksum.h
---- a/include/asm-mips64/checksum.h	Wed Oct 16 00:41:08 2002
-+++ b/include/asm-mips64/checksum.h	Wed Oct 16 00:41:08 2002
+--- a/include/asm-mips64/checksum.h	Wed Oct 16 01:51:56 2002
++++ b/include/asm-mips64/checksum.h	Wed Oct 16 01:51:56 2002
 @@ -63,7 +63,6 @@
   *
   * this is obsolete and will go away.
@@ -148,8 +153,8 @@ diff -Nru a/include/asm-mips64/checksum.h b/include/asm-mips64/checksum.h
  			       unsigned int sum);
  
 diff -Nru a/include/asm-parisc/checksum.h b/include/asm-parisc/checksum.h
---- a/include/asm-parisc/checksum.h	Wed Oct 16 00:41:08 2002
-+++ b/include/asm-parisc/checksum.h	Wed Oct 16 00:41:08 2002
+--- a/include/asm-parisc/checksum.h	Wed Oct 16 01:51:56 2002
++++ b/include/asm-parisc/checksum.h	Wed Oct 16 01:51:56 2002
 @@ -21,15 +21,10 @@
   *
   * here even more important to align src and dst on a 32-bit (or even
@@ -169,8 +174,8 @@ diff -Nru a/include/asm-parisc/checksum.h b/include/asm-parisc/checksum.h
  /*
   * this is a new version of the above that records errors it finds in *errp,
 diff -Nru a/include/asm-ppc/checksum.h b/include/asm-ppc/checksum.h
---- a/include/asm-ppc/checksum.h	Wed Oct 16 00:41:08 2002
-+++ b/include/asm-ppc/checksum.h	Wed Oct 16 00:41:08 2002
+--- a/include/asm-ppc/checksum.h	Wed Oct 16 01:51:56 2002
++++ b/include/asm-ppc/checksum.h	Wed Oct 16 01:51:56 2002
 @@ -39,11 +39,10 @@
  #define csum_partial_copy_nocheck(src, dst, len, sum)	\
  	csum_partial_copy_generic((src), (dst), (len), (sum), 0, 0)     
@@ -186,8 +191,8 @@ diff -Nru a/include/asm-ppc/checksum.h b/include/asm-ppc/checksum.h
  
  
 diff -Nru a/include/asm-ppc64/checksum.h b/include/asm-ppc64/checksum.h
---- a/include/asm-ppc64/checksum.h	Wed Oct 16 00:41:08 2002
-+++ b/include/asm-ppc64/checksum.h	Wed Oct 16 00:41:08 2002
+--- a/include/asm-ppc64/checksum.h	Wed Oct 16 01:51:56 2002
++++ b/include/asm-ppc64/checksum.h	Wed Oct 16 01:51:56 2002
 @@ -43,6 +43,8 @@
  /*
   * the same as csum_partial, but copies from src to dst while it
@@ -215,8 +220,8 @@ diff -Nru a/include/asm-ppc64/checksum.h b/include/asm-ppc64/checksum.h
  unsigned int csum_partial_copy_nocheck(const char *src, 
  				       char *dst, 
 diff -Nru a/include/asm-s390/checksum.h b/include/asm-s390/checksum.h
---- a/include/asm-s390/checksum.h	Wed Oct 16 00:41:08 2002
-+++ b/include/asm-s390/checksum.h	Wed Oct 16 00:41:08 2002
+--- a/include/asm-s390/checksum.h	Wed Oct 16 01:51:56 2002
++++ b/include/asm-s390/checksum.h	Wed Oct 16 01:51:56 2002
 @@ -67,6 +67,8 @@
   *
   * here even more important to align src and dst on a 32-bit (or even
@@ -227,8 +232,8 @@ diff -Nru a/include/asm-s390/checksum.h b/include/asm-s390/checksum.h
  
  static inline unsigned int 
 diff -Nru a/include/asm-s390x/checksum.h b/include/asm-s390x/checksum.h
---- a/include/asm-s390x/checksum.h	Wed Oct 16 00:41:08 2002
-+++ b/include/asm-s390x/checksum.h	Wed Oct 16 00:41:08 2002
+--- a/include/asm-s390x/checksum.h	Wed Oct 16 01:51:56 2002
++++ b/include/asm-s390x/checksum.h	Wed Oct 16 01:51:56 2002
 @@ -69,6 +69,8 @@
   *
   * here even more important to align src and dst on a 32-bit (or even
@@ -239,8 +244,8 @@ diff -Nru a/include/asm-s390x/checksum.h b/include/asm-s390x/checksum.h
  
  static inline unsigned int 
 diff -Nru a/include/asm-sh/checksum.h b/include/asm-sh/checksum.h
---- a/include/asm-sh/checksum.h	Wed Oct 16 00:41:08 2002
-+++ b/include/asm-sh/checksum.h	Wed Oct 16 00:41:08 2002
+--- a/include/asm-sh/checksum.h	Wed Oct 16 01:51:56 2002
++++ b/include/asm-sh/checksum.h	Wed Oct 16 01:51:56 2002
 @@ -58,13 +58,11 @@
  }
  
@@ -259,8 +264,8 @@ diff -Nru a/include/asm-sh/checksum.h b/include/asm-sh/checksum.h
  
  /*
 diff -Nru a/include/asm-sparc/checksum.h b/include/asm-sparc/checksum.h
---- a/include/asm-sparc/checksum.h	Wed Oct 16 00:41:08 2002
-+++ b/include/asm-sparc/checksum.h	Wed Oct 16 00:41:08 2002
+--- a/include/asm-sparc/checksum.h	Wed Oct 16 01:51:56 2002
++++ b/include/asm-sparc/checksum.h	Wed Oct 16 01:51:56 2002
 @@ -40,11 +40,9 @@
   * better 64-bit) boundary
   */
@@ -280,7 +285,7 @@ ChangeSet@1.846, 2002-10-15 10:16:08-07:00, rob@osinvestor.com
   [NET]: Remove final traces of csum_partial_copy.
 
 diff -Nru a/arch/i386/lib/old-checksum.c b/arch/i386/lib/old-checksum.c
---- a/arch/i386/lib/old-checksum.c	Wed Oct 16 00:41:10 2002
+--- a/arch/i386/lib/old-checksum.c	Wed Oct 16 01:51:58 2002
 +++ /dev/null	Wed Dec 31 16:00:00 1969
 @@ -1,19 +0,0 @@
 -/*
@@ -303,7 +308,7 @@ diff -Nru a/arch/i386/lib/old-checksum.c b/arch/i386/lib/old-checksum.c
 -
 -
 diff -Nru a/arch/sh/lib/old-checksum.c b/arch/sh/lib/old-checksum.c
---- a/arch/sh/lib/old-checksum.c	Wed Oct 16 00:41:10 2002
+--- a/arch/sh/lib/old-checksum.c	Wed Oct 16 01:51:58 2002
 +++ /dev/null	Wed Dec 31 16:00:00 1969
 @@ -1,17 +0,0 @@
 -/*
@@ -329,8 +334,8 @@ ChangeSet@1.847, 2002-10-15 14:06:27-07:00, kuznet@ms2.inr.ac.ru
   [TCP]: Handle passive resets correctly in SYN-RECV.
 
 diff -Nru a/net/ipv4/tcp_minisocks.c b/net/ipv4/tcp_minisocks.c
---- a/net/ipv4/tcp_minisocks.c	Wed Oct 16 00:41:12 2002
-+++ b/net/ipv4/tcp_minisocks.c	Wed Oct 16 00:41:12 2002
+--- a/net/ipv4/tcp_minisocks.c	Wed Oct 16 01:52:00 2002
++++ b/net/ipv4/tcp_minisocks.c	Wed Oct 16 01:52:00 2002
 @@ -902,13 +902,13 @@
  	 *                  and the incoming segment acknowledges something not yet
  	 *                  sent (the segment carries an unaccaptable ACK) ...
@@ -356,8 +361,8 @@ ChangeSet@1.848, 2002-10-15 16:08:26-07:00, maxk@qualcomm.com
   [NET]: Export sockfd_lookup.
 
 diff -Nru a/include/linux/net.h b/include/linux/net.h
---- a/include/linux/net.h	Wed Oct 16 00:41:13 2002
-+++ b/include/linux/net.h	Wed Oct 16 00:41:13 2002
+--- a/include/linux/net.h	Wed Oct 16 01:52:02 2002
++++ b/include/linux/net.h	Wed Oct 16 01:52:02 2002
 @@ -144,6 +144,9 @@
  				  const struct iovec * iov, long count, long size);
  extern int 	sock_map_fd(struct socket *sock);
@@ -369,8 +374,8 @@ diff -Nru a/include/linux/net.h b/include/linux/net.h
  extern unsigned long net_random(void);
  extern void net_srandom(unsigned long);
 diff -Nru a/net/netsyms.c b/net/netsyms.c
---- a/net/netsyms.c	Wed Oct 16 00:41:13 2002
-+++ b/net/netsyms.c	Wed Oct 16 00:41:13 2002
+--- a/net/netsyms.c	Wed Oct 16 01:52:02 2002
++++ b/net/netsyms.c	Wed Oct 16 01:52:02 2002
 @@ -161,6 +161,7 @@
  EXPORT_SYMBOL(sock_kmalloc);
  EXPORT_SYMBOL(sock_kfree_s);
@@ -380,8 +385,8 @@ diff -Nru a/net/netsyms.c b/net/netsyms.c
  #ifdef CONFIG_FILTER
  EXPORT_SYMBOL(sk_run_filter);
 diff -Nru a/net/socket.c b/net/socket.c
---- a/net/socket.c	Wed Oct 16 00:41:13 2002
-+++ b/net/socket.c	Wed Oct 16 00:41:13 2002
+--- a/net/socket.c	Wed Oct 16 01:52:02 2002
++++ b/net/socket.c	Wed Oct 16 01:52:02 2002
 @@ -447,11 +447,6 @@
  	return sock;
  }
@@ -403,8 +408,8 @@ ChangeSet@1.849, 2002-10-15 19:01:33-07:00, kuznet@mops.inr.ac.ru
   - Implement new encapsulation friendly ipv4 output path.
 
 diff -Nru a/include/linux/ip.h b/include/linux/ip.h
---- a/include/linux/ip.h	Wed Oct 16 00:41:15 2002
-+++ b/include/linux/ip.h	Wed Oct 16 00:41:15 2002
+--- a/include/linux/ip.h	Wed Oct 16 01:52:03 2002
++++ b/include/linux/ip.h	Wed Oct 16 01:52:03 2002
 @@ -137,7 +137,23 @@
  	int			mc_index;	/* Multicast device index */
  	__u32			mc_addr;
@@ -430,8 +435,8 @@ diff -Nru a/include/linux/ip.h b/include/linux/ip.h
  struct ipv6_pinfo;
  
 diff -Nru a/include/linux/skbuff.h b/include/linux/skbuff.h
---- a/include/linux/skbuff.h	Wed Oct 16 00:41:15 2002
-+++ b/include/linux/skbuff.h	Wed Oct 16 00:41:15 2002
+--- a/include/linux/skbuff.h	Wed Oct 16 01:52:04 2002
++++ b/include/linux/skbuff.h	Wed Oct 16 01:52:04 2002
 @@ -765,6 +765,15 @@
  	return skb->len - skb->data_len;
  }
@@ -449,8 +454,8 @@ diff -Nru a/include/linux/skbuff.h b/include/linux/skbuff.h
  					BUG(); } while (0)
  #define SKB_FRAG_ASSERT(skb) do { if (skb_shinfo(skb)->frag_list) \
 diff -Nru a/include/linux/tcp.h b/include/linux/tcp.h
---- a/include/linux/tcp.h	Wed Oct 16 00:41:15 2002
-+++ b/include/linux/tcp.h	Wed Oct 16 00:41:15 2002
+--- a/include/linux/tcp.h	Wed Oct 16 01:52:04 2002
++++ b/include/linux/tcp.h	Wed Oct 16 01:52:04 2002
 @@ -285,8 +285,6 @@
  
  	struct tcp_func		*af_specific;	/* Operations which are AF_INET{4,6} specific	*/
@@ -461,8 +466,8 @@ diff -Nru a/include/linux/tcp.h b/include/linux/tcp.h
   	__u32	rcv_wnd;	/* Current receiver window		*/
  	__u32	rcv_wup;	/* rcv_nxt on last window update sent	*/
 diff -Nru a/include/linux/udp.h b/include/linux/udp.h
---- a/include/linux/udp.h	Wed Oct 16 00:41:15 2002
-+++ b/include/linux/udp.h	Wed Oct 16 00:41:15 2002
+--- a/include/linux/udp.h	Wed Oct 16 01:52:03 2002
++++ b/include/linux/udp.h	Wed Oct 16 01:52:03 2002
 @@ -17,6 +17,9 @@
  #ifndef _LINUX_UDP_H
  #define _LINUX_UDP_H
@@ -508,8 +513,8 @@ diff -Nru a/include/linux/udp.h b/include/linux/udp.h
  
  #endif	/* _LINUX_UDP_H */
 diff -Nru a/include/net/dst.h b/include/net/dst.h
---- a/include/net/dst.h	Wed Oct 16 00:41:15 2002
-+++ b/include/net/dst.h	Wed Oct 16 00:41:15 2002
+--- a/include/net/dst.h	Wed Oct 16 01:52:04 2002
++++ b/include/net/dst.h	Wed Oct 16 01:52:04 2002
 @@ -29,6 +29,7 @@
  	struct dst_entry        *next;
  	atomic_t		__refcnt;	/* client references	*/
@@ -602,8 +607,8 @@ diff -Nru a/include/net/dst.h b/include/net/dst.h
  
  extern void		dst_init(void);
 diff -Nru a/include/net/ip.h b/include/net/ip.h
---- a/include/net/ip.h	Wed Oct 16 00:41:15 2002
-+++ b/include/net/ip.h	Wed Oct 16 00:41:15 2002
+--- a/include/net/ip.h	Wed Oct 16 01:52:04 2002
++++ b/include/net/ip.h	Wed Oct 16 01:52:04 2002
 @@ -102,12 +102,26 @@
  				      int getfrag (const void *,
  						   char *,
@@ -633,8 +638,8 @@ diff -Nru a/include/net/ip.h b/include/net/ip.h
  /*
   *	Map a multicast IP onto multicast MAC for type Token Ring.
 diff -Nru a/include/net/sock.h b/include/net/sock.h
---- a/include/net/sock.h	Wed Oct 16 00:41:15 2002
-+++ b/include/net/sock.h	Wed Oct 16 00:41:15 2002
+--- a/include/net/sock.h	Wed Oct 16 01:52:04 2002
++++ b/include/net/sock.h	Wed Oct 16 01:52:04 2002
 @@ -249,6 +249,8 @@
  					   struct msghdr *msg,
  					int len, int noblock, int flags, 
@@ -645,8 +650,8 @@ diff -Nru a/include/net/sock.h b/include/net/sock.h
  					struct sockaddr *uaddr, int addr_len);
  
 diff -Nru a/include/net/tcp.h b/include/net/tcp.h
---- a/include/net/tcp.h	Wed Oct 16 00:41:15 2002
-+++ b/include/net/tcp.h	Wed Oct 16 00:41:15 2002
+--- a/include/net/tcp.h	Wed Oct 16 01:52:03 2002
++++ b/include/net/tcp.h	Wed Oct 16 01:52:03 2002
 @@ -1851,7 +1851,7 @@
  {
  	sk->route_caps = dst->dev->features;
@@ -657,8 +662,8 @@ diff -Nru a/include/net/tcp.h b/include/net/tcp.h
  	}
  }
 diff -Nru a/include/net/udp.h b/include/net/udp.h
---- a/include/net/udp.h	Wed Oct 16 00:41:15 2002
-+++ b/include/net/udp.h	Wed Oct 16 00:41:15 2002
+--- a/include/net/udp.h	Wed Oct 16 01:52:04 2002
++++ b/include/net/udp.h	Wed Oct 16 01:52:04 2002
 @@ -76,6 +76,4 @@
  #define UDP_INC_STATS_BH(field)		SNMP_INC_STATS_BH(udp_statistics, field)
  #define UDP_INC_STATS_USER(field) 	SNMP_INC_STATS_USER(udp_statistics, field)
@@ -667,8 +672,8 @@ diff -Nru a/include/net/udp.h b/include/net/udp.h
 -
  #endif	/* _UDP_H */
 diff -Nru a/net/core/dst.c b/net/core/dst.c
---- a/net/core/dst.c	Wed Oct 16 00:41:15 2002
-+++ b/net/core/dst.c	Wed Oct 16 00:41:15 2002
+--- a/net/core/dst.c	Wed Oct 16 01:52:04 2002
++++ b/net/core/dst.c	Wed Oct 16 01:52:04 2002
 @@ -40,7 +40,6 @@
  static struct timer_list dst_gc_timer =
  	{ data: DST_GC_MIN, function: dst_run_gc };
@@ -724,8 +729,8 @@ diff -Nru a/net/core/dst.c b/net/core/dst.c
  
  static int dst_dev_event(struct notifier_block *this, unsigned long event, void *ptr)
 diff -Nru a/net/ipv4/af_inet.c b/net/ipv4/af_inet.c
---- a/net/ipv4/af_inet.c	Wed Oct 16 00:41:15 2002
-+++ b/net/ipv4/af_inet.c	Wed Oct 16 00:41:15 2002
+--- a/net/ipv4/af_inet.c	Wed Oct 16 01:52:03 2002
++++ b/net/ipv4/af_inet.c	Wed Oct 16 01:52:03 2002
 @@ -774,6 +774,21 @@
  	return sk->prot->sendmsg(iocb, sk, msg, size);
  }
@@ -758,8 +763,8 @@ diff -Nru a/net/ipv4/af_inet.c b/net/ipv4/af_inet.c
  
  struct net_proto_family inet_family_ops = {
 diff -Nru a/net/ipv4/icmp.c b/net/ipv4/icmp.c
---- a/net/ipv4/icmp.c	Wed Oct 16 00:41:15 2002
-+++ b/net/ipv4/icmp.c	Wed Oct 16 00:41:15 2002
+--- a/net/ipv4/icmp.c	Wed Oct 16 01:52:04 2002
++++ b/net/ipv4/icmp.c	Wed Oct 16 01:52:04 2002
 @@ -357,11 +357,13 @@
   *	checksum.
   */
@@ -776,8 +781,8 @@ diff -Nru a/net/ipv4/icmp.c b/net/ipv4/icmp.c
  	if (offset) {
  		icmp_param->csum =
 diff -Nru a/net/ipv4/ip_output.c b/net/ipv4/ip_output.c
---- a/net/ipv4/ip_output.c	Wed Oct 16 00:41:15 2002
-+++ b/net/ipv4/ip_output.c	Wed Oct 16 00:41:15 2002
+--- a/net/ipv4/ip_output.c	Wed Oct 16 01:52:04 2002
++++ b/net/ipv4/ip_output.c	Wed Oct 16 01:52:04 2002
 @@ -15,6 +15,7 @@
   *		Stefan Becker, <stefanb@yello.ping.de>
   *		Jorge Cwik, <jorge@laser.satlink.net>
@@ -1908,8 +1913,8 @@ diff -Nru a/net/ipv4/ip_output.c b/net/ipv4/ip_output.c
  void ip_send_reply(struct sock *sk, struct sk_buff *skb, struct ip_reply_arg *arg,
  		   unsigned int len)
 diff -Nru a/net/ipv4/ip_sockglue.c b/net/ipv4/ip_sockglue.c
---- a/net/ipv4/ip_sockglue.c	Wed Oct 16 00:41:15 2002
-+++ b/net/ipv4/ip_sockglue.c	Wed Oct 16 00:41:15 2002
+--- a/net/ipv4/ip_sockglue.c	Wed Oct 16 01:52:03 2002
++++ b/net/ipv4/ip_sockglue.c	Wed Oct 16 01:52:04 2002
 @@ -437,8 +437,10 @@
  				    (!((1<<sk->state)&(TCPF_LISTEN|TCPF_CLOSE))
  				     && inet->daddr != LOOPBACK4_IPV6)) {
@@ -1923,8 +1928,8 @@ diff -Nru a/net/ipv4/ip_sockglue.c b/net/ipv4/ip_sockglue.c
  #if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
  				}
 diff -Nru a/net/ipv4/raw.c b/net/ipv4/raw.c
---- a/net/ipv4/raw.c	Wed Oct 16 00:41:15 2002
-+++ b/net/ipv4/raw.c	Wed Oct 16 00:41:15 2002
+--- a/net/ipv4/raw.c	Wed Oct 16 01:52:03 2002
++++ b/net/ipv4/raw.c	Wed Oct 16 01:52:03 2002
 @@ -259,9 +259,10 @@
   */
    
@@ -1951,8 +1956,8 @@ diff -Nru a/net/ipv4/raw.c b/net/ipv4/raw.c
  	if (memcpy_fromiovecend(to, rfh->iov, offset, fraglen))
  		return -EFAULT;
 diff -Nru a/net/ipv4/tcp.c b/net/ipv4/tcp.c
---- a/net/ipv4/tcp.c	Wed Oct 16 00:41:15 2002
-+++ b/net/ipv4/tcp.c	Wed Oct 16 00:41:15 2002
+--- a/net/ipv4/tcp.c	Wed Oct 16 01:52:03 2002
++++ b/net/ipv4/tcp.c	Wed Oct 16 01:52:03 2002
 @@ -204,6 +204,8 @@
   *		Andi Kleen 	:	Make poll agree with SIGIO
   *	Salvatore Sanfilippo	:	Support SO_LINGER with linger == 1 and
@@ -2041,8 +2046,8 @@ diff -Nru a/net/ipv4/tcp.c b/net/ipv4/tcp.c
  				skb_entail(sk, tp, skb);
  				copy = mss_now;
 diff -Nru a/net/ipv4/tcp_ipv4.c b/net/ipv4/tcp_ipv4.c
---- a/net/ipv4/tcp_ipv4.c	Wed Oct 16 00:41:15 2002
-+++ b/net/ipv4/tcp_ipv4.c	Wed Oct 16 00:41:15 2002
+--- a/net/ipv4/tcp_ipv4.c	Wed Oct 16 01:52:04 2002
++++ b/net/ipv4/tcp_ipv4.c	Wed Oct 16 01:52:04 2002
 @@ -781,6 +781,7 @@
  
  	__sk_dst_set(sk, &rt->u.dst);
@@ -2071,8 +2076,8 @@ diff -Nru a/net/ipv4/tcp_ipv4.c b/net/ipv4/tcp_ipv4.c
  	atomic_dec(&tcp_sockets_allocated);
  
 diff -Nru a/net/ipv4/udp.c b/net/ipv4/udp.c
---- a/net/ipv4/udp.c	Wed Oct 16 00:41:15 2002
-+++ b/net/ipv4/udp.c	Wed Oct 16 00:41:15 2002
+--- a/net/ipv4/udp.c	Wed Oct 16 01:52:03 2002
++++ b/net/ipv4/udp.c	Wed Oct 16 01:52:03 2002
 @@ -11,6 +11,7 @@
   *		Fred N. van Kempen, <waltje@uWalt.NL.Mugnet.ORG>
   *		Arnt Gulbrandsen, <agulbra@nvg.unit.no>
@@ -2471,8 +2476,8 @@ diff -Nru a/net/ipv4/udp.c b/net/ipv4/udp.c
  	.hash =		udp_v4_hash,
  	.unhash =	udp_v4_unhash,
 diff -Nru a/net/ipv6/tcp_ipv6.c b/net/ipv6/tcp_ipv6.c
---- a/net/ipv6/tcp_ipv6.c	Wed Oct 16 00:41:15 2002
-+++ b/net/ipv6/tcp_ipv6.c	Wed Oct 16 00:41:15 2002
+--- a/net/ipv6/tcp_ipv6.c	Wed Oct 16 01:52:04 2002
++++ b/net/ipv6/tcp_ipv6.c	Wed Oct 16 01:52:04 2002
 @@ -1876,6 +1876,7 @@
  static int tcp_v6_destroy_sock(struct sock *sk)
  {
@@ -2500,8 +2505,8 @@ ChangeSet@1.850, 2002-10-15 19:31:15-07:00, davem@nuts.ninka.net
   - Fix socket fd leaks in route ioctl32 code.
 
 diff -Nru a/arch/ia64/ia32/sys_ia32.c b/arch/ia64/ia32/sys_ia32.c
---- a/arch/ia64/ia32/sys_ia32.c	Wed Oct 16 00:41:17 2002
-+++ b/arch/ia64/ia32/sys_ia32.c	Wed Oct 16 00:41:17 2002
+--- a/arch/ia64/ia32/sys_ia32.c	Wed Oct 16 01:52:06 2002
++++ b/arch/ia64/ia32/sys_ia32.c	Wed Oct 16 01:52:06 2002
 @@ -1664,20 +1664,11 @@
  	kmsg->msg_control = (void *) orig_cmsg_uptr;
  }
@@ -2524,8 +2529,8 @@ diff -Nru a/arch/ia64/ia32/sys_ia32.c b/arch/ia64/ia32/sys_ia32.c
   *	BSD sendmsg interface
   */
 diff -Nru a/arch/mips64/kernel/linux32.c b/arch/mips64/kernel/linux32.c
---- a/arch/mips64/kernel/linux32.c	Wed Oct 16 00:41:17 2002
-+++ b/arch/mips64/kernel/linux32.c	Wed Oct 16 00:41:17 2002
+--- a/arch/mips64/kernel/linux32.c	Wed Oct 16 01:52:06 2002
++++ b/arch/mips64/kernel/linux32.c	Wed Oct 16 01:52:06 2002
 @@ -2084,19 +2084,11 @@
  	return err;
  }
@@ -2547,8 +2552,8 @@ diff -Nru a/arch/mips64/kernel/linux32.c b/arch/mips64/kernel/linux32.c
  /*
   *	BSD sendmsg interface
 diff -Nru a/arch/ppc64/kernel/ioctl32.c b/arch/ppc64/kernel/ioctl32.c
---- a/arch/ppc64/kernel/ioctl32.c	Wed Oct 16 00:41:18 2002
-+++ b/arch/ppc64/kernel/ioctl32.c	Wed Oct 16 00:41:18 2002
+--- a/arch/ppc64/kernel/ioctl32.c	Wed Oct 16 01:52:06 2002
++++ b/arch/ppc64/kernel/ioctl32.c	Wed Oct 16 01:52:06 2002
 @@ -754,8 +754,6 @@
  	s32			rtmsg_ifindex;
  };
@@ -2569,8 +2574,8 @@ diff -Nru a/arch/ppc64/kernel/ioctl32.c b/arch/ppc64/kernel/ioctl32.c
  	return ret;
  }
 diff -Nru a/arch/ppc64/kernel/sys_ppc32.c b/arch/ppc64/kernel/sys_ppc32.c
---- a/arch/ppc64/kernel/sys_ppc32.c	Wed Oct 16 00:41:17 2002
-+++ b/arch/ppc64/kernel/sys_ppc32.c	Wed Oct 16 00:41:17 2002
+--- a/arch/ppc64/kernel/sys_ppc32.c	Wed Oct 16 01:52:06 2002
++++ b/arch/ppc64/kernel/sys_ppc32.c	Wed Oct 16 01:52:06 2002
 @@ -2891,13 +2891,6 @@
  			       __cmsg, __cmsg_len);
  }
@@ -2586,8 +2591,8 @@ diff -Nru a/arch/ppc64/kernel/sys_ppc32.c b/arch/ppc64/kernel/sys_ppc32.c
  {
  	u32 tmp1, tmp2, tmp3;
 diff -Nru a/arch/s390x/kernel/linux32.c b/arch/s390x/kernel/linux32.c
---- a/arch/s390x/kernel/linux32.c	Wed Oct 16 00:41:17 2002
-+++ b/arch/s390x/kernel/linux32.c	Wed Oct 16 00:41:17 2002
+--- a/arch/s390x/kernel/linux32.c	Wed Oct 16 01:52:06 2002
++++ b/arch/s390x/kernel/linux32.c	Wed Oct 16 01:52:06 2002
 @@ -2129,14 +2129,6 @@
  					   24 for IPv6,
  					   about 80 for AX.25 */
@@ -2604,8 +2609,8 @@ diff -Nru a/arch/s390x/kernel/linux32.c b/arch/s390x/kernel/linux32.c
          u32               msg_name;
          int               msg_namelen;
 diff -Nru a/arch/sparc64/kernel/ioctl32.c b/arch/sparc64/kernel/ioctl32.c
---- a/arch/sparc64/kernel/ioctl32.c	Wed Oct 16 00:41:18 2002
-+++ b/arch/sparc64/kernel/ioctl32.c	Wed Oct 16 00:41:18 2002
+--- a/arch/sparc64/kernel/ioctl32.c	Wed Oct 16 01:52:06 2002
++++ b/arch/sparc64/kernel/ioctl32.c	Wed Oct 16 01:52:06 2002
 @@ -797,8 +797,6 @@
  	s32			rtmsg_ifindex;
  };
@@ -2626,8 +2631,8 @@ diff -Nru a/arch/sparc64/kernel/ioctl32.c b/arch/sparc64/kernel/ioctl32.c
  	return ret;
  }
 diff -Nru a/arch/sparc64/kernel/sys_sparc32.c b/arch/sparc64/kernel/sys_sparc32.c
---- a/arch/sparc64/kernel/sys_sparc32.c	Wed Oct 16 00:41:17 2002
-+++ b/arch/sparc64/kernel/sys_sparc32.c	Wed Oct 16 00:41:17 2002
+--- a/arch/sparc64/kernel/sys_sparc32.c	Wed Oct 16 01:52:06 2002
++++ b/arch/sparc64/kernel/sys_sparc32.c	Wed Oct 16 01:52:06 2002
 @@ -2133,14 +2133,6 @@
  					   24 for IPv6,
  					   about 80 for AX.25 */
@@ -2644,8 +2649,8 @@ diff -Nru a/arch/sparc64/kernel/sys_sparc32.c b/arch/sparc64/kernel/sys_sparc32.
          u32               msg_name;
          int               msg_namelen;
 diff -Nru a/arch/x86_64/ia32/ia32_ioctl.c b/arch/x86_64/ia32/ia32_ioctl.c
---- a/arch/x86_64/ia32/ia32_ioctl.c	Wed Oct 16 00:41:17 2002
-+++ b/arch/x86_64/ia32/ia32_ioctl.c	Wed Oct 16 00:41:17 2002
+--- a/arch/x86_64/ia32/ia32_ioctl.c	Wed Oct 16 01:52:06 2002
++++ b/arch/x86_64/ia32/ia32_ioctl.c	Wed Oct 16 01:52:06 2002
 @@ -715,8 +715,6 @@
  	s32			rtmsg_ifindex;
  };
@@ -2666,8 +2671,8 @@ diff -Nru a/arch/x86_64/ia32/ia32_ioctl.c b/arch/x86_64/ia32/ia32_ioctl.c
  	return ret;
  }
 diff -Nru a/include/asm-x86_64/socket32.h b/include/asm-x86_64/socket32.h
---- a/include/asm-x86_64/socket32.h	Wed Oct 16 00:41:17 2002
-+++ b/include/asm-x86_64/socket32.h	Wed Oct 16 00:41:17 2002
+--- a/include/asm-x86_64/socket32.h	Wed Oct 16 01:52:06 2002
++++ b/include/asm-x86_64/socket32.h	Wed Oct 16 01:52:06 2002
 @@ -7,14 +7,6 @@
  					   24 for IPv6,
  					   about 80 for AX.25 */
@@ -2689,8 +2694,8 @@ ChangeSet@1.851, 2002-10-15 19:46:59-07:00, davem@nuts.ninka.net
   arch/sparc64/solaris/socket.c: Kill more sockfd_{lookup,put} redefinitions.
 
 diff -Nru a/arch/sparc64/solaris/socket.c b/arch/sparc64/solaris/socket.c
---- a/arch/sparc64/solaris/socket.c	Wed Oct 16 00:41:19 2002
-+++ b/arch/sparc64/solaris/socket.c	Wed Oct 16 00:41:19 2002
+--- a/arch/sparc64/solaris/socket.c	Wed Oct 16 01:52:08 2002
++++ b/arch/sparc64/solaris/socket.c	Wed Oct 16 01:52:08 2002
 @@ -248,31 +248,6 @@
  					   24 for IPv6,
  					   about 80 for AX.25 */
@@ -2729,8 +2734,8 @@ ChangeSet@1.852, 2002-10-15 20:02:30-07:00, davem@nuts.ninka.net
   net/ipv4/udp.c: proto sendpage returns int not size_t.
 
 diff -Nru a/net/ipv4/udp.c b/net/ipv4/udp.c
---- a/net/ipv4/udp.c	Wed Oct 16 00:41:21 2002
-+++ b/net/ipv4/udp.c	Wed Oct 16 00:41:21 2002
+--- a/net/ipv4/udp.c	Wed Oct 16 01:52:09 2002
++++ b/net/ipv4/udp.c	Wed Oct 16 01:52:09 2002
 @@ -739,7 +739,7 @@
  	goto out;
  }
@@ -2746,8 +2751,8 @@ ChangeSet@1.853, 2002-10-15 21:30:57-07:00, davem@nuts.ninka.net
   net/bluetooth/bnep/sock.c: Kill another sockfd_lookup re-implementation.
 
 diff -Nru a/net/bluetooth/bnep/sock.c b/net/bluetooth/bnep/sock.c
---- a/net/bluetooth/bnep/sock.c	Wed Oct 16 00:41:23 2002
-+++ b/net/bluetooth/bnep/sock.c	Wed Oct 16 00:41:23 2002
+--- a/net/bluetooth/bnep/sock.c	Wed Oct 16 01:52:11 2002
++++ b/net/bluetooth/bnep/sock.c	Wed Oct 16 01:52:11 2002
 @@ -55,31 +55,6 @@
  #define BT_DBG( A... )
  #endif
@@ -2782,12 +2787,116 @@ diff -Nru a/net/bluetooth/bnep/sock.c b/net/bluetooth/bnep/sock.c
  	struct sock *sk = sock->sk;
 
 
+ChangeSet@1.854, 2002-10-15 21:41:35-07:00, davem@nuts.ninka.net
+  Merge nuts.ninka.net:/home/davem/src/BK/network-2.5
+  into nuts.ninka.net:/home/davem/src/BK/net-2.5
+
+diff -Nru a/arch/sparc64/kernel/sys_sparc32.c b/arch/sparc64/kernel/sys_sparc32.c
+--- a/arch/sparc64/kernel/sys_sparc32.c	Wed Oct 16 01:52:13 2002
++++ b/arch/sparc64/kernel/sys_sparc32.c	Wed Oct 16 01:52:13 2002
+@@ -273,7 +273,7 @@
+     struct timeval32 it_value;
+ };
+ 
+-static inline long get_tv32(struct timeval *o, struct timeval32 *i)
++static long get_tv32(struct timeval *o, struct timeval32 *i)
+ {
+ 	return (!access_ok(VERIFY_READ, tv32, sizeof(*tv32)) ||
+ 		(__get_user(o->tv_sec, &i->tv_sec) |
+@@ -296,7 +296,7 @@
+ 		 __get_user(o->it_value.tv_usec, &i->it_value.tv_usec)));
+ }
+ 
+-static inline long put_it32(struct itimerval32 *o, struct itimerval *i)
++static long put_it32(struct itimerval32 *o, struct itimerval *i)
+ {
+ 	return (!access_ok(VERIFY_WRITE, i32, sizeof(*i32)) ||
+ 		(__put_user(i->it_interval.tv_sec, &o->it_interval.tv_sec) |
+@@ -890,7 +890,7 @@
+ 	return sys32_fcntl(fd, cmd, arg);
+ }
+ 
+-static inline int put_statfs (struct statfs32 *ubuf, struct statfs *kbuf)
++static int put_statfs (struct statfs32 *ubuf, struct statfs *kbuf)
+ {
+ 	int err;
+ 	
+@@ -1272,8 +1272,7 @@
+  * 64-bit unsigned longs.
+  */
+ 
+-static inline int
+-get_fd_set32(unsigned long n, unsigned long *fdset, u32 *ufdset)
++static int get_fd_set32(unsigned long n, unsigned long *fdset, u32 *ufdset)
+ {
+ 	if (ufdset) {
+ 		unsigned long odd;
+@@ -1303,8 +1302,7 @@
+ 	return 0;
+ }
+ 
+-static inline void
+-set_fd_set32(unsigned long n, u32 *ufdset, unsigned long *fdset)
++static void set_fd_set32(unsigned long n, u32 *ufdset, unsigned long *fdset)
+ {
+ 	unsigned long odd;
+ 
+@@ -2209,8 +2207,8 @@
+ 	return tot_len;
+ }
+ 
+-static inline int msghdr_from_user32_to_kern(struct msghdr *kmsg,
+-					     struct msghdr32 *umsg)
++static int msghdr_from_user32_to_kern(struct msghdr *kmsg,
++				      struct msghdr32 *umsg)
+ {
+ 	u32 tmp1, tmp2, tmp3;
+ 	int err;
+diff -Nru a/net/bluetooth/bnep/sock.c b/net/bluetooth/bnep/sock.c
+--- a/net/bluetooth/bnep/sock.c	Wed Oct 16 01:52:13 2002
++++ b/net/bluetooth/bnep/sock.c	Wed Oct 16 01:52:13 2002
+@@ -50,7 +50,7 @@
+ 
+ #include "bnep.h"
+ 
+-#ifndef CONFIG_BLUEZ_BNEP_DEBUG
++#ifndef CONFIG_BT_BNEP_DEBUG
+ #undef  BT_DBG
+ #define BT_DBG( A... )
+ #endif
+@@ -173,7 +173,7 @@
+ 	if (sock->type != SOCK_RAW)
+ 		return -ESOCKTNOSUPPORT;
+ 
+-	if (!(sk = bluez_sock_alloc(sock, PF_BLUETOOTH, 0, GFP_KERNEL)))
++	if (!(sk = bt_sock_alloc(sock, PF_BLUETOOTH, 0, GFP_KERNEL)))
+ 		return -ENOMEM;
+ 	sock->ops = &bnep_sock_ops;
+ 
+@@ -194,13 +194,13 @@
+ 
+ int bnep_sock_init(void)
+ {
+-	bluez_sock_register(BTPROTO_BNEP, &bnep_sock_family_ops);
++	bt_sock_register(BTPROTO_BNEP, &bnep_sock_family_ops);
+ 	return 0;
+ }
+ 
+ int bnep_sock_cleanup(void)
+ {
+-	if (bluez_sock_unregister(BTPROTO_BNEP))
++	if (bt_sock_unregister(BTPROTO_BNEP))
+ 		BT_ERR("Can't unregister BNEP socket");
+ 	return 0;
+ }
+
+
 ChangeSet@1.844.1.14, 2002-10-16 03:11:34-03:00, acme@conectiva.com.br
   o ipv4: udp seq_file support: produce only one record per seq_show
 
 diff -Nru a/net/ipv4/ip_proc.c b/net/ipv4/ip_proc.c
---- a/net/ipv4/ip_proc.c	Wed Oct 16 00:41:27 2002
-+++ b/net/ipv4/ip_proc.c	Wed Oct 16 00:41:27 2002
+--- a/net/ipv4/ip_proc.c	Wed Oct 16 01:52:15 2002
++++ b/net/ipv4/ip_proc.c	Wed Oct 16 01:52:15 2002
 @@ -198,16 +198,64 @@
  
  /* ------------------------------------------------------------------------ */
@@ -2904,9 +3013,10 @@ diff -Nru a/net/ipv4/ip_proc.c b/net/ipv4/ip_proc.c
 
 ChangeSet@1.856, 2002-10-15 23:44:37-07:00, davem@nuts.ninka.net
   net/ipv4/ip_proc.c: Fix 64-bit warnings.
+
 diff -Nru a/net/ipv4/ip_proc.c b/net/ipv4/ip_proc.c
---- a/net/ipv4/ip_proc.c	Wed Oct 16 00:41:29 2002
-+++ b/net/ipv4/ip_proc.c	Wed Oct 16 00:41:29 2002
+--- a/net/ipv4/ip_proc.c	Wed Oct 16 01:52:17 2002
++++ b/net/ipv4/ip_proc.c	Wed Oct 16 01:52:17 2002
 @@ -219,7 +219,7 @@
  			 * temporary HACK till we have a solution to
  			 * get more state passed to seq_show -acme
@@ -2927,3 +3037,642 @@ diff -Nru a/net/ipv4/ip_proc.c b/net/ipv4/ip_proc.c
  	return 0;
 
 
+ChangeSet@1.857, 2002-10-16 01:43:12-07:00, davem@nuts.ninka.net
+  [NET]: Apply missed parts of csum_partial_copy killing patch.
+
+diff -Nru a/arch/alpha/kernel/alpha_ksyms.c b/arch/alpha/kernel/alpha_ksyms.c
+--- a/arch/alpha/kernel/alpha_ksyms.c	Wed Oct 16 01:52:19 2002
++++ b/arch/alpha/kernel/alpha_ksyms.c	Wed Oct 16 01:52:19 2002
+@@ -167,7 +167,6 @@
+ EXPORT_SYMBOL(csum_tcpudp_magic);
+ EXPORT_SYMBOL(ip_compute_csum);
+ EXPORT_SYMBOL(ip_fast_csum);
+-EXPORT_SYMBOL(csum_partial_copy);
+ EXPORT_SYMBOL(csum_partial_copy_nocheck);
+ EXPORT_SYMBOL(csum_partial_copy_from_user);
+ EXPORT_SYMBOL(csum_ipv6_magic);
+diff -Nru a/arch/alpha/lib/csum_partial_copy.c b/arch/alpha/lib/csum_partial_copy.c
+--- a/arch/alpha/lib/csum_partial_copy.c	Wed Oct 16 01:52:19 2002
++++ b/arch/alpha/lib/csum_partial_copy.c	Wed Oct 16 01:52:19 2002
+@@ -385,16 +385,3 @@
+ {
+ 	return do_csum_partial_copy_from_user(src, dst, len, sum, NULL);
+ }
+-
+-unsigned int
+-csum_partial_copy (const char *src, char *dst, int len, unsigned int sum)
+-{
+-	unsigned int ret;
+-	int error = 0;
+-
+-	ret = do_csum_partial_copy_from_user(src, dst, len, sum, &error);
+-	if (error)
+-		printk("csum_partial_copy_old(): tell mingo to convert me!\n");
+-
+-	return ret;
+-}
+diff -Nru a/arch/cris/lib/old_checksum.c b/arch/cris/lib/old_checksum.c
+--- a/arch/cris/lib/old_checksum.c	Wed Oct 16 01:52:19 2002
++++ b/arch/cris/lib/old_checksum.c	Wed Oct 16 01:52:19 2002
+@@ -80,48 +80,3 @@
+   BITOFF;
+   return(sum);
+ }
+-
+-#if 0
+-
+-/*
+- * copy while checksumming, otherwise like csum_partial
+- */
+-
+-unsigned int csum_partial_copy(const unsigned char *src, unsigned char *dst, 
+-				  int len, unsigned int sum)
+-{
+-  const unsigned char *endMarker;
+-  const unsigned char *marker;
+-  printk("csum_partial_copy len %d.\n", len);
+-#if 0
+-  if((int)src & 0x3)
+-    printk("unaligned src %p\n", src);
+-  if((int)dst & 0x3)
+-    printk("unaligned dst %p\n", dst);
+-  __delay(1800); /* extra delay of 90 us to test performance hit */
+-#endif
+-  endMarker = src + len;
+-  marker = endMarker - (len % 16);
+-  CBITON;
+-  while(src < marker) {
+-    sum += (*((unsigned short *)dst)++ = *((unsigned short *)src)++);
+-    sum += (*((unsigned short *)dst)++ = *((unsigned short *)src)++);
+-    sum += (*((unsigned short *)dst)++ = *((unsigned short *)src)++);
+-    sum += (*((unsigned short *)dst)++ = *((unsigned short *)src)++);
+-    sum += (*((unsigned short *)dst)++ = *((unsigned short *)src)++);
+-    sum += (*((unsigned short *)dst)++ = *((unsigned short *)src)++);
+-    sum += (*((unsigned short *)dst)++ = *((unsigned short *)src)++);
+-    sum += (*((unsigned short *)dst)++ = *((unsigned short *)src)++);
+-  }
+-  marker = endMarker - (len % 2);
+-  while(src < marker) {
+-    sum += (*((unsigned short *)dst)++ = *((unsigned short *)src)++);
+-  }
+-  if(endMarker - src > 0) {
+-    sum += (*dst = *src);                 /* add extra byte seperately */
+-  }
+-  CBITOFF;
+-  return(sum);
+-}
+-
+-#endif
+diff -Nru a/arch/ia64/lib/csum_partial_copy.c b/arch/ia64/lib/csum_partial_copy.c
+--- a/arch/ia64/lib/csum_partial_copy.c	Wed Oct 16 01:52:19 2002
++++ b/arch/ia64/lib/csum_partial_copy.c	Wed Oct 16 01:52:19 2002
+@@ -146,16 +146,3 @@
+ 	return do_csum_partial_copy_from_user(src, dst, len, sum, NULL);
+ }
+ 
+-unsigned int
+-csum_partial_copy (const char *src, char *dst, int len, unsigned int sum)
+-{
+-	unsigned int ret;
+-	int error = 0;
+-
+-	ret = do_csum_partial_copy_from_user(src, dst, len, sum, &error);
+-	if (error)
+-		printk("csum_partial_copy_old(): tell mingo to convert me!\n");
+-
+-	return ret;
+-}
+-
+diff -Nru a/arch/m68k/kernel/m68k_ksyms.c b/arch/m68k/kernel/m68k_ksyms.c
+--- a/arch/m68k/kernel/m68k_ksyms.c	Wed Oct 16 01:52:19 2002
++++ b/arch/m68k/kernel/m68k_ksyms.c	Wed Oct 16 01:52:19 2002
+@@ -61,9 +61,6 @@
+ EXPORT_SYMBOL(vme_brdtype);
+ #endif
+ 
+-/* Networking helper routines. */
+-EXPORT_SYMBOL(csum_partial_copy);
+-
+ /* The following are special because they're not called
+    explicitly (the C compiler generates them).  Fortunately,
+    their interface isn't gonna change any time soon now, so
+diff -Nru a/arch/m68k/lib/checksum.c b/arch/m68k/lib/checksum.c
+--- a/arch/m68k/lib/checksum.c	Wed Oct 16 01:52:19 2002
++++ b/arch/m68k/lib/checksum.c	Wed Oct 16 01:52:19 2002
+@@ -318,103 +318,3 @@
+ 
+ 	return(sum);
+ }
+-
+-/*
+- * copy from kernel space while checksumming, otherwise like csum_partial
+- */
+-
+-unsigned int
+-csum_partial_copy(const char *src, char *dst, int len, int sum)
+-{
+-	unsigned long tmp1, tmp2;
+-	__asm__("movel %2,%4\n\t"
+-		"btst #1,%4\n\t"	/* Check alignment */
+-		"jeq 2f\n\t"
+-		"subql #2,%1\n\t"	/* buff%4==2: treat first word */
+-		"jgt 1f\n\t"
+-		"addql #2,%1\n\t"	/* len was == 2, treat only rest */
+-		"jra 4f\n"
+-	     "1:\t"
+-		"movew %2@+,%4\n\t"	/* add first word to sum */
+-		"addw %4,%0\n\t"
+-		"movew %4,%3@+\n\t"
+-		"clrl %4\n\t"
+-		"addxl %4,%0\n"		/* add X bit */
+-	     "2:\t"
+-		/* unrolled loop for the main part: do 8 longs at once */
+-		"movel %1,%4\n\t"	/* save len in tmp1 */
+-		"lsrl #5,%1\n\t"	/* len/32 */
+-		"jeq 2f\n\t"		/* not enough... */
+-		"subql #1,%1\n"
+-	     "1:\t"
+-		"movel %2@+,%5\n\t"
+-		"addxl %5,%0\n\t"
+-		"movel %5,%3@+\n\t"
+-		"movel %2@+,%5\n\t"
+-		"addxl %5,%0\n\t"
+-		"movel %5,%3@+\n\t"
+-		"movel %2@+,%5\n\t"
+-		"addxl %5,%0\n\t"
+-		"movel %5,%3@+\n\t"
+-		"movel %2@+,%5\n\t"
+-		"addxl %5,%0\n\t"
+-		"movel %5,%3@+\n\t"
+-		"movel %2@+,%5\n\t"
+-		"addxl %5,%0\n\t"
+-		"movel %5,%3@+\n\t"
+-		"movel %2@+,%5\n\t"
+-		"addxl %5,%0\n\t"
+-		"movel %5,%3@+\n\t"
+-		"movel %2@+,%5\n\t"
+-		"addxl %5,%0\n\t"
+-		"movel %5,%3@+\n\t"
+-		"movel %2@+,%5\n\t"
+-		"addxl %5,%0\n\t"
+-		"movel %5,%3@+\n\t"
+-		"dbra %1,1b\n\t"
+-		"clrl %5\n\t"
+-		"addxl %5,%0\n\t"	/* add X bit */
+-		"clrw %1\n\t"
+-		"subql #1,%1\n\t"
+-		"jcc 1b\n"
+-	     "2:\t"
+-		"movel %4,%1\n\t"	/* restore len from tmp1 */
+-		"andw #0x1c,%4\n\t"	/* number of rest longs */
+-		"jeq 4f\n\t"
+-		"lsrw #2,%4\n\t"
+-		"subqw #1,%4\n"
+-	     "3:\t"
+-		/* loop for rest longs */
+-		"movel %2@+,%5\n\t"
+-		"addxl %5,%0\n\t"
+-		"movel %5,%3@+\n\t"
+-		"dbra %4,3b\n\t"
+-		"clrl %5\n\t"
+-		"addxl %5,%0\n"		/* add X bit */
+-	     "4:\t"
+-		/* now check for rest bytes that do not fit into longs */
+-		"andw #3,%1\n\t"
+-		"jeq 7f\n\t"
+-		"clrl %5\n\t"		/* clear tmp2 for rest bytes */
+-		"subqw #2,%1\n\t"
+-		"jlt 5f\n\t"
+-		"movew %2@+,%5\n\t"	/* have rest >= 2: get word */
+-		"movew %5,%3@+\n\t"
+-		"swap %5\n\t"		/* into bits 16..31 */
+-		"tstw %1\n\t"		/* another byte? */
+-		"jeq 6f\n"
+-	     "5:\t"
+-		"moveb %2@,%5\n\t"	/* have odd rest: get byte */
+-		"moveb %5,%3@+\n\t"
+-		"lslw #8,%5\n"		/* into bits 8..15; 16..31 untouched */
+-	     "6:\t"
+-		"addl %5,%0\n\t"	/* now add rest long to sum */
+-		"clrl %5\n\t"
+-		"addxl %5,%0\n"		/* add X bit */
+-	     "7:\t"
+-		: "=d" (sum), "=d" (len), "=a" (src), "=a" (dst),
+-		  "=&d" (tmp1), "=&d" (tmp2)
+-		: "0" (sum), "1" (len), "2" (src), "3" (dst)
+-	    );
+-    return(sum);
+-}
+diff -Nru a/arch/mips/kernel/mips_ksyms.c b/arch/mips/kernel/mips_ksyms.c
+--- a/arch/mips/kernel/mips_ksyms.c	Wed Oct 16 01:52:19 2002
++++ b/arch/mips/kernel/mips_ksyms.c	Wed Oct 16 01:52:19 2002
+@@ -79,9 +79,6 @@
+ EXPORT_SYMBOL_NOVERS(__strnlen_user_asm);
+ 
+ 
+-/* Networking helper routines. */
+-EXPORT_SYMBOL(csum_partial_copy);
+-
+ /*
+  * Functions to control caches.
+  */
+diff -Nru a/arch/mips/lib/csum_partial_copy.c b/arch/mips/lib/csum_partial_copy.c
+--- a/arch/mips/lib/csum_partial_copy.c	Wed Oct 16 01:52:19 2002
++++ b/arch/mips/lib/csum_partial_copy.c	Wed Oct 16 01:52:19 2002
+@@ -25,8 +25,8 @@
+ /*
+  * copy while checksumming, otherwise like csum_partial
+  */
+-unsigned int csum_partial_copy(const char *src, char *dst, 
+-                               int len, unsigned int sum)
++unsigned int csum_partial_copy_nocheck(const char *src, char *dst, 
++				       int len, unsigned int sum)
+ {
+ 	/*
+ 	 * It's 2:30 am and I don't feel like doing it real ...
+diff -Nru a/arch/mips64/kernel/mips64_ksyms.c b/arch/mips64/kernel/mips64_ksyms.c
+--- a/arch/mips64/kernel/mips64_ksyms.c	Wed Oct 16 01:52:19 2002
++++ b/arch/mips64/kernel/mips64_ksyms.c	Wed Oct 16 01:52:19 2002
+@@ -75,9 +75,6 @@
+ EXPORT_SYMBOL_NOVERS(__strnlen_user_asm);
+ 
+ 
+-/* Networking helper routines. */
+-EXPORT_SYMBOL(csum_partial_copy);
+-
+ /*
+  * Functions to control caches.
+  */
+diff -Nru a/arch/mips64/lib/csum_partial_copy.c b/arch/mips64/lib/csum_partial_copy.c
+--- a/arch/mips64/lib/csum_partial_copy.c	Wed Oct 16 01:52:19 2002
++++ b/arch/mips64/lib/csum_partial_copy.c	Wed Oct 16 01:52:19 2002
+@@ -16,8 +16,8 @@
+ /*
+  * copy while checksumming, otherwise like csum_partial
+  */
+-unsigned int csum_partial_copy(const char *src, char *dst, 
+-                               int len, unsigned int sum)
++unsigned int csum_partial_copy_nocheck(const char *src, char *dst, 
++				       int len, unsigned int sum)
+ {
+ 	/*
+ 	 * It's 2:30 am and I don't feel like doing it real ...
+diff -Nru a/arch/parisc/lib/checksum.c b/arch/parisc/lib/checksum.c
+--- a/arch/parisc/lib/checksum.c	Wed Oct 16 01:52:19 2002
++++ b/arch/parisc/lib/checksum.c	Wed Oct 16 01:52:19 2002
+@@ -97,8 +97,8 @@
+ /*
+  * copy while checksumming, otherwise like csum_partial
+  */
+-unsigned int csum_partial_copy(const char *src, char *dst, 
+-                               int len, unsigned int sum)
++unsigned int csum_partial_copy_nocheck(const char *src, char *dst, 
++				       int len, unsigned int sum)
+ {
+ 	/*
+ 	 * It's 2:30 am and I don't feel like doing it real ...
+diff -Nru a/arch/sh/kernel/sh_ksyms.c b/arch/sh/kernel/sh_ksyms.c
+--- a/arch/sh/kernel/sh_ksyms.c	Wed Oct 16 01:52:19 2002
++++ b/arch/sh/kernel/sh_ksyms.c	Wed Oct 16 01:52:19 2002
+@@ -36,9 +36,6 @@
+ EXPORT_SYMBOL(irq_desc);
+ EXPORT_SYMBOL(no_irq_type);
+ 
+-/* Networking helper routines. */
+-EXPORT_SYMBOL(csum_partial_copy);
+-
+ EXPORT_SYMBOL(strpbrk);
+ EXPORT_SYMBOL(strstr);
+ EXPORT_SYMBOL(strlen);
+diff -Nru a/include/asm-alpha/checksum.h b/include/asm-alpha/checksum.h
+--- a/include/asm-alpha/checksum.h	Wed Oct 16 01:52:19 2002
++++ b/include/asm-alpha/checksum.h	Wed Oct 16 01:52:19 2002
+@@ -42,14 +42,6 @@
+  *
+  * here even more important to align src and dst on a 32-bit (or even
+  * better 64-bit) boundary
+- *
+- * this will go away soon.
+- */
+-unsigned int csum_partial_copy(const char *src, char *dst, int len, unsigned int sum);
+-
+-/*
+- * this is a new version of the above that records errors it finds in *errp,
+- * but continues and zeros the rest of the buffer.
+  */
+ unsigned int csum_partial_copy_from_user(const char *src, char *dst, int len, unsigned int sum, int *errp);
+ 
+diff -Nru a/include/asm-i386/checksum.h b/include/asm-i386/checksum.h
+--- a/include/asm-i386/checksum.h	Wed Oct 16 01:52:19 2002
++++ b/include/asm-i386/checksum.h	Wed Oct 16 01:52:19 2002
+@@ -50,14 +50,6 @@
+ }
+ 
+ /*
+- * This is the old (and unsafe) way of doing checksums, a warning message will
+- * be printed if it is used and an exeption occurs.
+- *
+- * this function should go away after some time.
+- */
+-unsigned int csum_partial_copy( const char *src, char *dst, int len, int sum);
+-
+-/*
+  *	This is a version of ip_compute_csum() optimized for IP headers,
+  *	which always checksum on 4 octet boundaries.
+  *
+diff -Nru a/include/asm-ia64/checksum.h b/include/asm-ia64/checksum.h
+--- a/include/asm-ia64/checksum.h	Wed Oct 16 01:52:19 2002
++++ b/include/asm-ia64/checksum.h	Wed Oct 16 01:52:19 2002
+@@ -48,15 +48,6 @@
+  *
+  * Here it is even more important to align src and dst on a 32-bit (or
+  * even better 64-bit) boundary.
+- *
+- * this will go away soon.
+- */
+-extern unsigned int csum_partial_copy (const char *src, char *dst, int len,
+-				       unsigned int sum);
+-
+-/*
+- * This is a new version of the above that records errors it finds in
+- * *errp, but continues and zeros the rest of the buffer.
+  */
+ extern unsigned int csum_partial_copy_from_user (const char *src, char *dst,
+ 						 int len, unsigned int sum,
+diff -Nru a/include/asm-m68k/checksum.h b/include/asm-m68k/checksum.h
+--- a/include/asm-m68k/checksum.h	Wed Oct 16 01:52:19 2002
++++ b/include/asm-m68k/checksum.h	Wed Oct 16 01:52:19 2002
+@@ -21,18 +21,6 @@
+  *
+  * here even more important to align src and dst on a 32-bit (or even
+  * better 64-bit) boundary
+- *
+- * this will go away soon.
+- */
+-
+-unsigned int csum_partial_copy(const char *src, char *dst, int len, int sum);
+-
+-
+-/*
+- * the same as csum_partial_copy, but copies from user space.
+- *
+- * here even more important to align src and dst on a 32-bit (or even
+- * better 64-bit) boundary
+  */
+ 
+ extern unsigned int csum_partial_copy_from_user(const char *src, char *dst,
+diff -Nru a/include/asm-mips/checksum.h b/include/asm-mips/checksum.h
+--- a/include/asm-mips/checksum.h	Wed Oct 16 01:52:19 2002
++++ b/include/asm-mips/checksum.h	Wed Oct 16 01:52:19 2002
+@@ -28,12 +28,6 @@
+  * this is a new version of the above that records errors it finds in *errp,
+  * but continues and zeros the rest of the buffer.
+  */
+-#define csum_partial_copy_nocheck csum_partial_copy
+-
+-/*
+- * this is a new version of the above that records errors it finds in *errp,
+- * but continues and zeros the rest of the buffer.
+- */
+ unsigned int csum_partial_copy_from_user(const char *src, char *dst, int len,
+                                          unsigned int sum, int *errp);
+ 
+@@ -58,11 +52,9 @@
+ /*
+  * the same as csum_partial, but copies from user space (but on MIPS
+  * we have just one address space, so this is identical to the above)
+- *
+- * this is obsolete and will go away.
+  */
+-unsigned int csum_partial_copy(const char *src, char *dst, int len,
+-			       unsigned int sum);
++unsigned int csum_partial_copy_nocheck(const char *src, char *dst, int len,
++				       unsigned int sum);
+ 
+ /*
+  *	Fold a partial checksum without adding pseudo headers
+diff -Nru a/include/asm-mips64/checksum.h b/include/asm-mips64/checksum.h
+--- a/include/asm-mips64/checksum.h	Wed Oct 16 01:52:19 2002
++++ b/include/asm-mips64/checksum.h	Wed Oct 16 01:52:19 2002
+@@ -30,12 +30,6 @@
+  * this is a new version of the above that records errors it finds in *errp,
+  * but continues and zeros the rest of the buffer.
+  */
+-#define csum_partial_copy_nocheck csum_partial_copy
+-
+-/*
+- * this is a new version of the above that records errors it finds in *errp,
+- * but continues and zeros the rest of the buffer.
+- */
+ unsigned int csum_partial_copy_from_user(const char *src, char *dst, int len,
+                                          unsigned int sum, int *errp);
+ 
+@@ -60,11 +54,9 @@
+ /*
+  * the same as csum_partial, but copies from user space (but on MIPS
+  * we have just one address space, so this is identical to the above)
+- *
+- * this is obsolete and will go away.
+  */
+-unsigned int csum_partial_copy(const char *src, char *dst, int len,
+-			       unsigned int sum);
++unsigned int csum_partial_copy_nocheck(const char *src, char *dst, int len,
++				       unsigned int sum);
+ 
+ /*
+  *	Fold a partial checksum without adding pseudo headers
+diff -Nru a/include/asm-parisc/checksum.h b/include/asm-parisc/checksum.h
+--- a/include/asm-parisc/checksum.h	Wed Oct 16 01:52:19 2002
++++ b/include/asm-parisc/checksum.h	Wed Oct 16 01:52:19 2002
+@@ -21,30 +21,14 @@
+  *
+  * here even more important to align src and dst on a 32-bit (or even
+  * better 64-bit) boundary
+- *
+- * this will go away soon.
+  */
+-extern unsigned int csum_partial_copy(const char *, char *, int, unsigned int);
++extern unsigned int csum_partial_copy_nocheck(const char *, char *, int, unsigned int);
+ 
+ /*
+  * this is a new version of the above that records errors it finds in *errp,
+  * but continues and zeros the rest of the buffer.
+  */
+ unsigned int csum_partial_copy_from_user(const char *src, char *dst, int len, unsigned int sum, int *errp);
+-
+-/*
+- *	Note: when you get a NULL pointer exception here this means someone
+- *	passed in an incorrect kernel address to one of these functions. 
+- *	
+- *	If you use these functions directly please don't forget the 
+- *	verify_area().
+- */
+-extern __inline__
+-unsigned int csum_partial_copy_nocheck (const char *src, char *dst,
+-					int len, int sum)
+-{
+-	return csum_partial_copy (src, dst, len, sum);
+-}
+ 
+ /*
+  *	Optimized for IP headers, which always checksum on 4 octet boundaries.
+diff -Nru a/include/asm-ppc/checksum.h b/include/asm-ppc/checksum.h
+--- a/include/asm-ppc/checksum.h	Wed Oct 16 01:52:19 2002
++++ b/include/asm-ppc/checksum.h	Wed Oct 16 01:52:19 2002
+@@ -38,13 +38,6 @@
+ /* FIXME: this needs to be written to really do no check -- Cort */
+ #define csum_partial_copy_nocheck(src, dst, len, sum)	\
+ 	csum_partial_copy_generic((src), (dst), (len), (sum), 0, 0)     
+-/*
+- * Old version which ignore errors.
+- * it will go away soon.
+- */
+-#define csum_partial_copy(src, dst, len, sum)	\
+-	csum_partial_copy_generic((src), (dst), (len), (sum), 0, 0)
+-
+ 
+ /*
+  * turns a 32-bit partial checksum (e.g. from csum_partial) into a
+diff -Nru a/include/asm-ppc64/checksum.h b/include/asm-ppc64/checksum.h
+--- a/include/asm-ppc64/checksum.h	Wed Oct 16 01:52:19 2002
++++ b/include/asm-ppc64/checksum.h	Wed Oct 16 01:52:19 2002
+@@ -43,12 +43,7 @@
+ /*
+  * the same as csum_partial, but copies from src to dst while it
+  * checksums
+- *
+- * csum_partial_copy will go away soon.
+  */
+-unsigned int csum_partial_copy(const char *src, char *dst, 
+-			       int len, unsigned int sum);
+-
+ extern unsigned int csum_partial_copy_generic(const char *src, char *dst,
+ 					      int len, unsigned int sum,
+ 					      int *src_err, int *dst_err);
+diff -Nru a/include/asm-s390/checksum.h b/include/asm-s390/checksum.h
+--- a/include/asm-s390/checksum.h	Wed Oct 16 01:52:19 2002
++++ b/include/asm-s390/checksum.h	Wed Oct 16 01:52:19 2002
+@@ -62,23 +62,6 @@
+ }
+ 
+ /*
+- * the same as csum_partial, but copies from src while it
+- * checksums
+- *
+- * here even more important to align src and dst on a 32-bit (or even
+- * better 64-bit) boundary
+- *
+- * this will go away soon.
+- */
+-
+-static inline unsigned int 
+-csum_partial_copy(const char *src, char *dst, int len,unsigned int sum)
+-{
+-	memcpy(dst,src,len);
+-        return csum_partial_inline(dst, len, sum);
+-}
+-
+-/*
+  * the same as csum_partial_copy, but copies from user space.
+  *
+  * here even more important to align src and dst on a 32-bit (or even
+diff -Nru a/include/asm-s390x/checksum.h b/include/asm-s390x/checksum.h
+--- a/include/asm-s390x/checksum.h	Wed Oct 16 01:52:19 2002
++++ b/include/asm-s390x/checksum.h	Wed Oct 16 01:52:19 2002
+@@ -64,23 +64,6 @@
+ }
+ 
+ /*
+- * the same as csum_partial, but copies from src while it
+- * checksums
+- *
+- * here even more important to align src and dst on a 32-bit (or even
+- * better 64-bit) boundary
+- *
+- * this will go away soon.
+- */
+-
+-static inline unsigned int 
+-csum_partial_copy(const char *src, char *dst, int len,unsigned int sum)
+-{
+-	memcpy(dst,src,len);
+-        return csum_partial_inline(dst, len, sum);
+-}
+-
+-/*
+  * the same as csum_partial_copy, but copies from user space.
+  *
+  * here even more important to align src and dst on a 32-bit (or even
+diff -Nru a/include/asm-sh/checksum.h b/include/asm-sh/checksum.h
+--- a/include/asm-sh/checksum.h	Wed Oct 16 01:52:19 2002
++++ b/include/asm-sh/checksum.h	Wed Oct 16 01:52:19 2002
+@@ -58,14 +58,6 @@
+ }
+ 
+ /*
+- * This is the old (and unsafe) way of doing checksums, a warning message will
+- * be printed if it is used and an exeption occurs.
+- *
+- * this function should go away after some time.
+- */
+-unsigned int csum_partial_copy( const char *src, char *dst, int len, int sum);
+-
+-/*
+  *	Fold a partial checksum
+  */
+ 
+diff -Nru a/include/asm-sparc/checksum.h b/include/asm-sparc/checksum.h
+--- a/include/asm-sparc/checksum.h	Wed Oct 16 01:52:19 2002
++++ b/include/asm-sparc/checksum.h	Wed Oct 16 01:52:19 2002
+@@ -40,10 +40,6 @@
+  * better 64-bit) boundary
+  */
+ 
+-/* FIXME: Remove this macro ASAP */
+-#define csum_partial_copy(src, dst, len, sum) \
+- 		       csum_partial_copy_nocheck(src,dst,len,sum)
+-  
+ extern unsigned int __csum_partial_copy_sparc_generic (const char *, char *);
+ 
+ extern __inline__ unsigned int 
+
+
+ChangeSet@1.858, 2002-10-16 01:51:25-07:00, davem@nuts.ninka.net
+  arch/{i386,sh}/lib/Makefile: Kill old-checksum.o
+
+diff -Nru a/arch/i386/lib/Makefile b/arch/i386/lib/Makefile
+--- a/arch/i386/lib/Makefile	Wed Oct 16 01:52:21 2002
++++ b/arch/i386/lib/Makefile	Wed Oct 16 01:52:21 2002
+@@ -4,7 +4,7 @@
+ 
+ L_TARGET = lib.a
+ 
+-obj-y = checksum.o old-checksum.o delay.o \
++obj-y = checksum.o delay.o \
+ 	usercopy.o getuser.o \
+ 	memcpy.o strstr.o
+ 
+diff -Nru a/arch/sh/lib/Makefile b/arch/sh/lib/Makefile
+--- a/arch/sh/lib/Makefile	Wed Oct 16 01:52:21 2002
++++ b/arch/sh/lib/Makefile	Wed Oct 16 01:52:21 2002
+@@ -3,7 +3,7 @@
+ #
+ 
+ L_TARGET = lib.a
+-obj-y  = delay.o memcpy.o memset.o memmove.o memchr.o old-checksum.o \
++obj-y  = delay.o memcpy.o memset.o memmove.o memchr.o \
+ 	 checksum.o strcasecmp.o strlen.o
+ 
+ include $(TOPDIR)/Rules.make
+
+
+
+
+-------------------------------------------------------
+This sf.net email is sponsored by: viaVerio will pay you up to
+$1,000 for every account that you consolidate with us.
+http://ad.doubleclick.net/clk;4749864;7604308;v?
+http://www.viaverio.com/consolidator/osdn.cfm
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
