@@ -1,25 +1,22 @@
-From: Thomas Lenherr <thomas@lenherr.name>
-Subject: Re: nfs corrupts files
-Date: Thu, 14 Oct 2004 21:58:22 +0200
+From: "John Roberts" <john_roberts@credence.com>
+Subject: Linux NFS client to Solaris server performance inversion
+Date: Thu, 14 Oct 2004 16:10:21 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <416EDA5E.4020000@lenherr.name>
-References: <416EA5F4.5090701@lenherr.name> <1097774783.18925.10.camel@lade.trondhjem.org>
+Message-ID: <200410142310.i9ENAL229446@algebra.hillsboro.credence.com>
+Reply-To: John Roberts <john_roberts@credence.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- protocol="application/pgp-signature";
- boundary="------------enig77A7FC1DA31A3C086EED1846"
-Cc: nfs@lists.sourceforge.net
+Content-Type: MULTIPART/mixed; BOUNDARY=Swarm_of_Insects_651_000
+Cc: john_roberts@credence.com
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CIBkM-0005x9-Bt
-	for nfs@lists.sourceforge.net; Thu, 14 Oct 2004 12:58:46 -0700
-Received: from mx8.bluewin.ch ([195.186.4.211])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CIBkJ-0007t8-UU
-	for nfs@lists.sourceforge.net; Thu, 14 Oct 2004 12:58:46 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1097774783.18925.10.camel@lade.trondhjem.org>
+	id 1CIEjv-0001ap-6W
+	for nfs@lists.sourceforge.net; Thu, 14 Oct 2004 16:10:31 -0700
+Received: from hifw1.credence.com ([63.127.103.172] helo=hinscp.hillsboro.credence.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CIEjs-0003tr-Bj
+	for nfs@lists.sourceforge.net; Thu, 14 Oct 2004 16:10:31 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,106 +29,285 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
---------------enig77A7FC1DA31A3C086EED1846
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: Quoted-Printable
-
-sorry, for forgetting the kernel of the workstation, it's yet another=20
-gentoo-kernel: 2.6.7-gentoo-r6.
-i looked up the difference between the vanilla kernel 2.6.7 and this=20
-patched gentoo-version
-and it seems it's not really much, just stuff like bootsplash, console=20
-speakup and something
-about making it ready for supermount...
-
-anyway, as you said i installed the original 2.6.8.1 on the server and=20
-tried the whole
-thing again, what means i copied the 9 files over nfs and let them check=20
-with md5sum.
-same result :(
-
-i did not yet update the kernel of the workstation, because i accessed=20
-the nfs server
-with an windows-implementation of nfs and experienced the same troubles.=20
-so i think
-the server is the faulty one...
-
-cheers,
-thomas
+--Swarm_of_Insects_651_000
+Content-Type: TEXT/plain; charset=us-ascii
+Content-MD5: Du5JFmYKP41yg38TiCxiJQ==
 
 
+Hi,
 
-Trond Myklebust wrote:
+We're noticing some strange behavior when using Linux NFS clients
+talking to Solaris systems.  The faster the Solaris system,
+the slower the write performance of the Linux client.
 
->P=E5 to , 14/10/2004 klokka 18:14, skreiv Thomas Lenherr:
->
-> =20
->
->>ok, here is what i did:
->>i had some files on an nfs-server (v3) using kernel 2.6.8-gentoo-r8
->>(updated because of the trouble). the 9 files had an average size of
->>about 180mB and i built the md5sums of these files via ssh _on_ this
->>server.
->>
->>after that i transferred these files to my workstation, once via nfs an=
-d
->>once via smb and let them check with md5sum again. the files transferre=
-d
->>with smb were ok, but 6 of the 9 files tranferred via nfs were corrupt.
->>then i made cmp between the local files (transferred with nfs of course=
-)
->>and the files on the nfs-server. the result:
->>1) multiple use of cmp on files which md5sum mentioned as corrupt
->>resulted in reporting differences at different positions
->>2) sometimes the usage of cmp on files which md5sum mentioned as correc=
-t
->>resulted in reporting differences...
->>   =20
->>
->
->You don't mention which kernel the client was running. Was it the same
->as the server?
->
->Have you tried just grabbing a kernel 2.6.8.1 from ftp.kernel.org, and
->compiling it up (using the same .config as the gentoo kernel if you
->like) and then doing the same thing? I ask 'cos I just don't know what
->is in the gentoo kernels.
->
->Cheers,
->  Trond
->
->
->
->-------------------------------------------------------
->This SF.net email is sponsored by: IT Product Guide on ITManagersJournal
->Use IT products in your business? Tell us what you think of them. Give u=
-s
->Your Opinions, Get Free ThinkGeek Gift Certificates! Click to find out m=
-ore
->http://productguide.itmanagersjournal.com/guidepromo.tmpl
->_______________________________________________
->NFS maillist  -  NFS@lists.sourceforge.net
->https://lists.sourceforge.net/lists/listinfo/nfs
-> =20
->
+I'm running Redhat Enterprise Linux 3 (2.4.21-4.0.1).
 
---------------enig77A7FC1DA31A3C086EED1846
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
-Content-Transfer-Encoding: 7Bit
+My benchmark is performing a g++ link creating an executable image
+with the output on a network drive.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.4 (GNU/Linux)
-Comment: Using GnuPG with Thunderbird - http://enigmail.mozdev.org
+strace is showing me times to a "fast" central Solaris server like:
 
-iD8DBQFBbtpj3E1pPHX30VoRAuwiAKDHF7Z6C0ImCm38MNTo1wLeoYLKIwCgo8BM
-eWcIgbnbY5lJgGiRudStK6E=
-=AvdF
------END PGP SIGNATURE-----
+    [pid 23002]      0.000057 _llseek(18, 7287808, [7287808], SEEK_SET) = 0
+    [pid 23002]      0.000043 _llseek(11, -384, [12246656], SEEK_CUR) = 0
+    [pid 23002]      0.000035 write(11, 
+"U\211\345\203\354\30\211]\374\213]\10\213CP\307
+    \3h\254"..., 84) = 84
+    [pid 23002]      0.011686 _llseek(11, 12246528, [12246528], SEEK_SET) = 0
 
---------------enig77A7FC1DA31A3C086EED1846--
+and to a "slow" Solaris workstation like:
+
+    [pid 14673]      0.000057 _llseek(18, 7287808, [7287808], SEEK_SET) = 0
+    [pid 14673]      0.000042 _llseek(11, -384, [12246656], SEEK_CUR) = 0
+    [pid 14673]      0.000035 write(11, 
+"U\211\345\203\354\30\211]\374\213]\10\213CP\307\3h
+    \254"..., 84) = 84
+    [pid 14673]      0.001477 _llseek(11, 12246528, [12246528], SEEK_SET) = 0
+
+So the slower workstation is reporting back a much faster write time.
+
+(Both are Solaris 2.8).
+
+
+I thought it would be interesting to use nfsstat to try to "profile"
+the differences:
+
+nfsstat data to fast server
+===========================
+Client nfs v3:
+
+write:      65459
+commit:       982
+getattr:     2489
+lookup:       386
+access:      1697
+
+
+nfsstat data to slow workstation
+================================
+Client nfs v3:
+
+write:      65333
+commit:       850
+getattr:     1133
+lookup:       220
+access:       630
+
+So writing to the slower workstation causes about 15% fewer commits,
+but also less than half the getattr and access numbers.
+
+Why might this be?
+
+
+thanks,
+
+John Roberts
+john_roberts@credence.com
+
+ps
+I've attached the nfsstat snapshots taken before and after
+running my benchmark.
+
+--Swarm_of_Insects_651_000
+Content-Type: TEXT/plain; name="nfsstat_to_fast_server.txt"; charset=us-ascii; x-unix-mode=0664
+Content-Description: nfsstat_to_fast_server.txt
+Content-MD5: Oh7mvQ2PVXBX30xOyfgrpg==
+
+
+Here is the result of running "nfsstat" on the Linux NFS client
+workstation both before and after running the g++ link-step
+benchmark.  The target volume is a "fast" SunFire server
+(SunOS hifs2 5.8 Generic_108528-26 sun4u sparc SUNW,Sun-Fire-480R).
+
+
+Before
+======
+Server rpc stats:
+calls      badcalls   badauth    badclnt    xdrcall
+2          0          0          0          0
+Server nfs v2:
+null       getattr    setattr    root       lookup     readlink
+1      100% 0       0% 0       0% 0       0% 0       0% 0       0%
+read       wrcache    write      create     remove     rename
+0       0% 0       0% 0       0% 0       0% 0       0% 0       0%
+link       symlink    mkdir      rmdir      readdir    fsstat
+0       0% 0       0% 0       0% 0       0% 0       0% 0       0%
+
+Server nfs v3:
+null       getattr    setattr    lookup     access     readlink
+1      100% 0       0% 0       0% 0       0% 0       0% 0       0%
+read       write      create     mkdir      symlink    mknod
+0       0% 0       0% 0       0% 0       0% 0       0% 0       0%
+remove     rmdir      rename     link       readdir    readdirplus
+0       0% 0       0% 0       0% 0       0% 0       0% 0       0%
+fsstat     fsinfo     pathconf   commit
+0       0% 0       0% 0       0% 0       0%
+
+Client rpc stats:
+calls      retrans    authrefrsh
+932691     22         0
+Client nfs v3:
+null       getattr    setattr    lookup     access     readlink
+0       0% 326807 35% 1780    0% 67776   7% 200779 21% 8568    0%
+read       write      create     mkdir      symlink    mknod
+45398   4% 238915 25% 1584    0% 107     0% 16      0% 0       0%
+remove     rmdir      rename     link       readdir    readdirplus
+1794    0% 86      0% 1134    0% 67      0% 32      0% 2744    0%
+fsstat     fsinfo     pathconf   commit
+739     0% 101     0% 0       0% 34264   3%
+
+
+After
+=====
+Server rpc stats:
+calls      badcalls   badauth    badclnt    xdrcall
+2          0          0          0          0
+Server nfs v2:
+null       getattr    setattr    root       lookup     readlink
+1      100% 0       0% 0       0% 0       0% 0       0% 0       0%
+read       wrcache    write      create     remove     rename
+0       0% 0       0% 0       0% 0       0% 0       0% 0       0%
+link       symlink    mkdir      rmdir      readdir    fsstat
+0       0% 0       0% 0       0% 0       0% 0       0% 0       0%
+
+Server nfs v3:
+null       getattr    setattr    lookup     access     readlink
+1      100% 0       0% 0       0% 0       0% 0       0% 0       0%
+read       write      create     mkdir      symlink    mknod
+0       0% 0       0% 0       0% 0       0% 0       0% 0       0%
+remove     rmdir      rename     link       readdir    readdirplus
+0       0% 0       0% 0       0% 0       0% 0       0% 0       0%
+fsstat     fsinfo     pathconf   commit
+0       0% 0       0% 0       0% 0       0%
+
+Client rpc stats:
+calls      retrans    authrefrsh
+1006095    22         0
+Client nfs v3:
+null       getattr    setattr    lookup     access     readlink
+0       0% 329296 32% 1781    0% 68162   6% 202476 20% 8570    0%
+read       write      create     mkdir      symlink    mknod
+47735   4% 304374 30% 1587    0% 107     0% 16      0% 0       0%
+remove     rmdir      rename     link       readdir    readdirplus
+1796    0% 86      0% 1135    0% 68      0% 32      0% 2744    0%
+fsstat     fsinfo     pathconf   commit
+779     0% 105     0% 0       0% 35246   3%
+
+
+
+Differences to fast server
+==========================
+Client nfs v3:
+
+write:    238915 --> 304374  =  65459
+commit:    34264 -->  35246  =    982
+getattr:  326807 --> 329296  =   2489
+lookup:    67776 -->  68162  =    386
+access:   200779 --> 202476  =   1697
+
+
+
+--Swarm_of_Insects_651_000
+Content-Type: TEXT/plain; name="nfsstat_to_slow_workstation.txt"; charset=us-ascii; x-unix-mode=0664
+Content-Description: nfsstat_to_slow_workstation.txt
+Content-MD5: omRiQIfT4k2YjUqTwyTX5Q==
+
+
+Here is the result of running "nfsstat" on the Linux NFS client
+workstation both before and after running the g++ link-step
+benchmark.  The target volume is a "fast" SunFire server
+(SunOS hifs2 5.8 Generic_108528-26 sun4u sparc SUNW,Sun-Fire-480R).
+
+
+nfsstat before link
+===================
+60 mexia(2.4.21-4.0.1.EL):jroberts:jroberts> nfsstat
+Server rpc stats:
+calls      badcalls   badauth    badclnt    xdrcall
+2          0          0          0          0
+Server nfs v2:
+null       getattr    setattr    root       lookup     readlink
+1      100% 0       0% 0       0% 0       0% 0       0% 0       0%
+read       wrcache    write      create     remove     rename
+0       0% 0       0% 0       0% 0       0% 0       0% 0       0%
+link       symlink    mkdir      rmdir      readdir    fsstat
+0       0% 0       0% 0       0% 0       0% 0       0% 0       0%
+
+Server nfs v3:
+null       getattr    setattr    lookup     access     readlink
+1      100% 0       0% 0       0% 0       0% 0       0% 0       0%
+read       write      create     mkdir      symlink    mknod
+0       0% 0       0% 0       0% 0       0% 0       0% 0       0%
+remove     rmdir      rename     link       readdir    readdirplus
+0       0% 0       0% 0       0% 0       0% 0       0% 0       0%
+fsstat     fsinfo     pathconf   commit
+0       0% 0       0% 0       0% 0       0%
+
+Client rpc stats:
+calls      retrans    authrefrsh
+861814     22         0
+Client nfs v3:
+null       getattr    setattr    lookup     access     readlink
+0       0% 325044 37% 1748    0% 67432   7% 199595 23% 8567    0%
+read       write      create     mkdir      symlink    mknod
+44323   5% 173522 20% 1550    0% 107     0% 16      0% 0       0%
+remove     rmdir      rename     link       readdir    readdirplus
+1761    0% 86      0% 1123    0% 67      0% 32      0% 2650    0%
+fsstat     fsinfo     pathconf   commit
+733     0% 101     0% 0       0% 33357   3%
+
+
+nfsstat after link
+==================
+61 mexia(2.4.21-4.0.1.EL):jroberts:jroberts> nfsstat
+Server rpc stats:
+calls      badcalls   badauth    badclnt    xdrcall
+2          0          0          0          0
+Server nfs v2:
+null       getattr    setattr    root       lookup     readlink
+1      100% 0       0% 0       0% 0       0% 0       0% 0       0%
+read       wrcache    write      create     remove     rename
+0       0% 0       0% 0       0% 0       0% 0       0% 0       0%
+link       symlink    mkdir      rmdir      readdir    fsstat
+0       0% 0       0% 0       0% 0       0% 0       0% 0       0%
+
+Server nfs v3:
+null       getattr    setattr    lookup     access     readlink
+1      100% 0       0% 0       0% 0       0% 0       0% 0       0%
+read       write      create     mkdir      symlink    mknod
+0       0% 0       0% 0       0% 0       0% 0       0% 0       0%
+remove     rmdir      rename     link       readdir    readdirplus
+0       0% 0       0% 0       0% 0       0% 0       0% 0       0%
+fsstat     fsinfo     pathconf   commit
+0       0% 0       0% 0       0% 0       0%
+
+Client rpc stats:
+calls      retrans    authrefrsh
+931083     22         0
+Client nfs v3:
+null       getattr    setattr    lookup     access     readlink
+0       0% 326177 35% 1760    0% 67652   7% 200225 21% 8568    0%
+read       write      create     mkdir      symlink    mknod
+45393   4% 238855 25% 1558    0% 107     0% 16      0% 0       0%
+remove     rmdir      rename     link       readdir    readdirplus
+1769    0% 86      0% 1127    0% 67      0% 32      0% 2650    0%
+fsstat     fsinfo     pathconf   commit
+733     0% 101     0% 0       0% 34207   3%
+
+
+
+Differences to slow workstation
+===============================
+Client nfs v3:
+
+write:    173522 --> 238855  = 65333
+commit:    33357 -->  34207  =   850
+getattr:  325044 --> 326177  =  1133
+lookup:    67432 -->  67652  =   220
+access:   199595 --> 200225  =   630
+
+
+
+--Swarm_of_Insects_651_000--
 
 
 -------------------------------------------------------
