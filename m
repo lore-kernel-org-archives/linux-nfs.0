@@ -1,20 +1,26 @@
-From: Bernd Schubert <bernd-schubert@web.de>
-Subject: Re: fsid syntax
-Date: Thu, 8 Aug 2002 14:44:13 +0200
+From: Jeremy Sanders <jss@ast.cam.ac.uk>
+Subject: RedHat Rawhide Kernels
+Date: Thu, 8 Aug 2002 20:21:27 +0100 (BST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200208081444.13646.bernd-schubert@web.de>
-References: <200208071711.00712.bernd-schubert@web.de> <200208071830.54734.bernd-schubert@web.de> <15697.33669.398331.848444@notabene.cse.unsw.edu.au>
+Message-ID: <Pine.LNX.4.44.0208082017590.23326-100000@xpc1.ast.cam.ac.uk>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>, nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from relay.uni-heidelberg.de ([129.206.100.212])
+Received: from maroon.csi.cam.ac.uk ([131.111.8.2])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17cmeO-0006Vu-00
-	for <nfs@lists.sourceforge.net>; Thu, 08 Aug 2002 05:44:24 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <15697.33669.398331.848444@notabene.cse.unsw.edu.au>
+	id 17csqh-0005OR-00
+	for <nfs@lists.sourceforge.net>; Thu, 08 Aug 2002 12:21:31 -0700
+Received: from cass41.ast.cam.ac.uk ([131.111.69.186])
+	by maroon.csi.cam.ac.uk with esmtp (Exim 4.10)
+	id 17csqe-000075-00
+	for nfs@lists.sourceforge.net; Thu, 08 Aug 2002 20:21:28 +0100
+Received: from xalph6.ast.cam.ac.uk (xalph6 [131.111.68.34])
+	by cass41.ast.cam.ac.uk (8.11.6+Sun/8.11.6) with ESMTP id g78JLS224726
+	for <nfs@lists.sourceforge.net>; Thu, 8 Aug 2002 20:21:28 +0100 (BST)
+Received: from xpc1.ast.cam.ac.uk (IDENT:/SSmzlwt8ocl/yCyKIo7JhSMJx0KSG+S@xpc1.ast.cam.ac.uk [131.111.68.219])
+	by xalph6.ast.cam.ac.uk (8.10.0/8.10.0) with ESMTP id g78JLRp04556
+	for <nfs@lists.sourceforge.net>; Thu, 8 Aug 2002 20:21:27 +0100 (BST)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,35 +33,27 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-> Sorry, you cannot do that.  The filehandles created with fsid=foo are
-> different from any filehandle created without fsid=.
->
-> If you want to change the device on the server what you need to do is:
->
-> 1/ well in advance, add an 'fsid=42'(*) export option.
->    Clients using old file handles will still work.  Clients that
->    subsequently mount will get new-style file handles.
-> 2/ At your convenience, remount the filesystem on all clients, either
->    by umount/mount or reboot or whatever.
-> 3/ When all, or enough, clients have remounted, you can safely change
->    the device number without affecting clients.
->
-> (*)  I really don't think that basing the fsid on the device number is
-> at all sensible.  Afterall, that is what we are trying to avoid.
-> Just pick a number, any number.
-> 1 for the first filesystem, 2 for the second.
-> Your age for the filesystem storing you home directory.
-> 42 for the filesystem storing the Great Question of Life, The
-> Universe, and Everything.
->
-> NeilBrown
->
+Just to let you guys know (as it's close to the current thread), I'm
+getting very bad lock-ups using the current rawhide kernel (2.4.18-7.94).
+When I connet with a machine running 2.4.18-5 (standard 7.3 errata
+kernel), both the client and the server get processes stuck in a "D" state
+- the nfsd processes on the server and the user command on the client.
+This means you can't shut the server down as the nfsd processes can't get
+killed. Strangely 2.4.19 kernels can talk to the server fine!
 
-Hello Neil,
+See
+https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=70561
 
-thank you for telling me about this. 
+I'm going to try a stack trace on the nfsd processes as the RH guys
+suggested tomorrow.
 
-Bernd
+Jeremy
+
+-- 
+Jeremy Sanders <jss@ast.cam.ac.uk>   http://www-xray.ast.cam.ac.uk/~jss/
+X-Ray Group, Institute of Astronomy, University of Cambridge, UK.
+Public Key Server PGP Key ID: E1AAE053
+
 
 
 -------------------------------------------------------
