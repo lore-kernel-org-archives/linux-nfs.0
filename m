@@ -1,21 +1,23 @@
-From: <trond.myklebust@fys.uio.no>
-Subject: 2.6.0 -- nfs client runs 15x faster if client app runs as root.
-Date: Wed, 7 Jan 2004 22:54:38 +0100 (CET)
+From: Ian Kent <raven@themaw.net>
+Subject: Re: RE: Linux client on Solaris 7 NFS server
+Date: Thu, 8 Jan 2004 08:32:24 +0800 (WST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <34280.141.211.133.197.1073512478.squirrel@webmail.uio.no>
+Message-ID: <Pine.LNX.4.33.0401080830080.9294-100000@wombat.indigo.net.au>
+References: <200401071817.i07IHTC20135@supercomputer.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AeLdY-0007xJ-1s
-	for nfs@lists.sourceforge.net; Wed, 07 Jan 2004 13:54:48 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 1AeO6B-0006l5-IB
+	for nfs@lists.sourceforge.net; Wed, 07 Jan 2004 16:32:31 -0800
+Received: from wombat.indigo.net.au ([202.0.185.19])
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AeLdX-0004xu-JQ
-	for nfs@lists.sourceforge.net; Wed, 07 Jan 2004 13:54:47 -0800
-To: <ewhiting@amis.com>
+	id 1AeO6A-0000pj-T1
+	for nfs@lists.sourceforge.net; Wed, 07 Jan 2004 16:32:31 -0800
+To: <dwight@supercomputer.org>
+In-Reply-To: <200401071817.i07IHTC20135@supercomputer.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -28,28 +30,15 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> My 2.6.0 nfs clients to a netapps 940 NFS server run very differently
-depending
-> on who the user is. Both tcp and udp mounts seem to show the same behavior.
-> This is very apparent when doing the bonnie putc() tests.
-> nfsstat and tcpdump show a lot of extra setattr calls when running as a
-normal
-> user. I assume this is the reason for the slowdown. Is there a fix? Or
-is this the
-> way it is supposed to be?
+On Wed, 7 Jan 2004 dwight@supercomputer.org wrote:
 
-Huh?
-I'm certainly not seeing one setattr call per write on my 2.6 clients. Is
-this stock
-2.6.0 or is it patched? Does 2.6.1-rc2 change anything?
+>
+> Doing just reads (dd of the 2.4.23 kernel source .tgz, which is about 35 MB),
+> it takes about 3-4 seconds. That's UDP, with a dd blocksize to match the
+> NFS r/w size of 8k, on a 100 Mbs network. So this matches your results.
+> This is for a Linux client talking to either a Linux or a Solaris server.
 
-If not, can you capture a binary tcpdump of these setattr calls, so we can
-have a
-look at what they are trying to do? "tcpdump -w dump.out -s 9000" should
-suffice.
-
-Cheers,
-  Trond
+Umm. I use 32k and TCP.
 
 
 
