@@ -1,21 +1,23 @@
-From: Andreas Unterluggauer <au@literaturhaus.at>
-Subject: Re: NFS problems across reboot
-Date: Mon, 08 Apr 2002 14:15:26 +0200
+From: Dumas Patrice <dumas@centre-cired.fr>
+Subject: Re: 3 strange things in the lockd code ?
+Date: Mon, 8 Apr 2002 14:54:59 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3CB189DE.1B3AE1CD@literaturhaus.at>
-References: <3CACA93C.5010304@blue-labs.org>
-		<3CAD6A78.4205CD61@moving-picture.com>
-		<3CAFCE8C.5030300@blue-labs.org>
-		<15535.55222.401084.736426@notabene.cse.unsw.edu.au>
-		<3CAFEE3C.8020606@blue-labs.org> <15537.1257.212812.909225@notabene.cse.unsw.edu.au>
+Message-ID: <20020408145459.B12049@zeus.centre-cired.fr>
+References: <20020404194238.E25342@zeus.centre-cired.fr> <shs8z7yo0ml.fsf@charged.uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
-Received: from etwasmea.literaturhaus.at ([194.152.172.210] helo=mail.literaturhaus.at)
+Content-Type: text/plain; charset=us-ascii
+Received: from boukha.centre-cired.fr ([193.51.120.234])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16uY3f-0005w8-00
-	for <nfs@lists.sourceforge.net>; Mon, 08 Apr 2002 05:15:40 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
+	id 16uYjD-00039Q-00
+	for <nfs@lists.sourceforge.net>; Mon, 08 Apr 2002 05:58:35 -0700
+Received: from zeus.centre-cired.fr ([193.51.120.192])
+          by boukha.centre-cired.fr (8.9.3+Sun/jtpda-5.3.3) with ESMTP id OAA28622
+          for <nfs@lists.sourceforge.net>; Mon, 8 Apr 2002 14:57:44 +0100 (WEST)
+Received: (from dumas@localhost)
+	by zeus.centre-cired.fr (8.11.6/8.11.6) id g38CsxZ13249
+	for nfs@lists.sourceforge.net; Mon, 8 Apr 2002 14:54:59 +0200
+To: nfs@lists.sourceforge.net
+In-Reply-To: <shs8z7yo0ml.fsf@charged.uio.no>; from trond.myklebust@fys.uio.no on Mon, Apr 08, 2002 at 02:06:42PM +0200
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,32 +30,34 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->=20
-> "Exporting" a filesystem means doing two things:
->  1/ telling mountd that it is allow to respond positively to mount
->      requests.
->  2/ telling the kernel nfsd that it is allow to respond to access
->      requests.
->=20
-> When mountd responds to a mount request, it also tells the kernel to
-> respond to access requests.
-> But after a reboot, you need to run exportfs.  It reads
-> /var/lib/nfs/rmtab to find out which clients have which filesystems
-> mounted, and it tells the kernel to allow those clients to access
-> those filesystem.
+Hi,
 
-Is it sufficent, if exportfs -r is run before rpc.nfsd are started
-instead of exportfs -a?
-The startscripts of redhat 6.2 uses exportfs -r (and we sometimes have
-troubles with stale mounts).
+> NLM_GRANTED_RES is part of the 'asynchronous RPC' NLM model which was
+> designed to support locking on systems without monitoring
+> (i.e. without rpc.statd').
+> Linux does not currently support such a model, nor do we really plan
+> to do so. Non-monitored locks are pretty hairy things to deal with
+> (see http://www.opengroup.org/onlinepubs/9629799/chap9.htm#tagcjh_10_01_01_02).
 
-andi
+Are you sure about that ?
+After reading the code and the page you send me, I tend to disagree. My
+undersstanding is that non-monitored locks are only concerned with the
+NLM_NM_LOCK - Non-monitored Lock callback.
 
---=20
-Andreas Unterluggauer
-Dokumentationsstelle f=FCr neuere =F6sterreichische Literatur
-A-1070 Wien, Seidengasse 13      http://www.literaturhaus.at
-Tel. +43/1/526 20 44-11, Fax -30, e-mail au@literaturhaus.at
+I didn't saw something really saying non-monitored clients aren't allowed to do
+NLM_LOCK or NLM_LOCK_MSG, but I assume they aren't. However I am pretty sure
+that monitored clients can do NLM_LOCK_MSG and thus they can receive in turn
+NLM_GRANTED_MSG, which should trigger them to send a NLM_GRANTED_RES. And
+indeed the dmesg output I send in a mail with subject "lockd bug (?)" shows
+linux nfs clients do send NLM_GRANTED_MSG.
+
+> I agree. We should be checking the host address as well.
+
+I will try to make a patch.
+
+Cheers
+
+Pat
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
