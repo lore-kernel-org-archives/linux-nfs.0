@@ -1,16 +1,16 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 1 of 16] svcrpc: auth_domain documentation
-Date: Tue, 22 Mar 2005 16:42:00 +1100
-Message-ID: <E1DDc9Q-0002K5-Vr@notabene.cse.unsw.edu.au>
+Subject: [PATCH kNFSd 8 of 16] nfsd4: fix failure to truncate on some opens
+Date: Tue, 22 Mar 2005 16:42:01 +1100
+Message-ID: <E1DDc9R-0002Ka-Lu@notabene.cse.unsw.edu.au>
 References: <20050322163830.8762.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DDc9c-0006kk-Pd
+	id 1DDc9c-0006kl-Pc
 	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:12 -0800
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1DDc9b-00056K-K8
+	id 1DDc9b-00056L-JC
 	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:12 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
@@ -27,51 +27,57 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-The use of auth_domains is somewhat confusing, in part because they were
-originally intended to be used in a more general way than they currently are.
+An OPEN upgrade on a file already open for WRITE will not upgrade the OPEN,
+but can still truncate the file.
 
-Update the documentation a little with an eye towards how it's currently used.
-
+Signed-off-by: Andy Adamson <andros@citi.umich.edu>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./include/linux/sunrpc/svcauth.h |   14 ++++++++------
- 1 files changed, 8 insertions(+), 6 deletions(-)
+ ./fs/nfsd/nfs4state.c |   29 +++++++++++++++--------------
+ 1 files changed, 15 insertions(+), 14 deletions(-)
 
-diff ./include/linux/sunrpc/svcauth.h~current~ ./include/linux/sunrpc/svcauth.h
---- ./include/linux/sunrpc/svcauth.h~current~	2005-03-22 16:35:20.000000000 +1100
-+++ ./include/linux/sunrpc/svcauth.h	2005-03-22 16:36:34.000000000 +1100
-@@ -26,21 +26,23 @@ struct svc_cred {
- struct svc_rqst;		/* forward decl */
+diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
+--- ./fs/nfsd/nfs4state.c~current~	2005-03-22 16:36:35.000000000 +1100
++++ ./fs/nfsd/nfs4state.c	2005-03-22 16:36:35.000000000 +1100
+@@ -1602,21 +1602,22 @@ nfs4_upgrade_open(struct svc_rqst *rqstp
+ 	share_access = ~share_access;
+ 	share_access &= open->op_share_access;
  
- /* Authentication is done in the context of a domain.
-- * For a server, a domain represents a group of clients using
-+ *
-+ * Currently, the nfs server uses the auth_domain to stand
-+ * for the "client" listed in /etc/exports.
-+ *
-+ * More generally, a domain might represent a group of clients using
-  * a common mechanism for authentication and having a common mapping
-  * between local identity (uid) and network identity.  All clients
-  * in a domain have similar general access rights.  Each domain can
-  * contain multiple principals which will have different specific right
-  * based on normal Discretionary Access Control.
-  *
-- * For a client, a domain represents a number of servers which all
-- * use a common authentication mechanism and network identity name space.
-- *
-  * A domain is created by an authentication flavour module based on name
-  * only.  Userspace then fills in detail on demand.
-  *
-- * The creation of a domain typically implies creation of one or
-- * more caches for storing domain specific information.
-+ * In the case of auth_unix and auth_null, the auth_domain is also
-+ * associated with entries in another cache representing the mapping
-+ * of ip addresses to the given client.
-  */
- struct auth_domain {
- 	struct	cache_head	h;
+-	/* update the struct file */
+-	if (share_access & NFS4_SHARE_ACCESS_WRITE) {
+-		status = get_write_access(inode);
+-		if (status)
+-			return nfserrno(status);
+-		status = nfsd4_truncate(rqstp, cur_fh, open);
+-		if (status) {
+-			put_write_access(inode);
+-			return status;
+-		}
+-		/* remember the open */
+-		filp->f_mode = (filp->f_mode | FMODE_WRITE) & ~FMODE_READ;
+-		set_bit(open->op_share_access, &stp->st_access_bmap);
+-		set_bit(open->op_share_deny, &stp->st_deny_bmap);
++	if (!(share_access & NFS4_SHARE_ACCESS_WRITE))
++		return nfsd4_truncate(rqstp, cur_fh, open);
++
++	status = get_write_access(inode);
++	if (status)
++		return nfserrno(status);
++	status = nfsd4_truncate(rqstp, cur_fh, open);
++	if (status) {
++		put_write_access(inode);
++		return status;
+ 	}
++	/* remember the open */
++	filp->f_mode = (filp->f_mode | FMODE_WRITE) & ~FMODE_READ;
++	set_bit(open->op_share_access, &stp->st_access_bmap);
++	set_bit(open->op_share_deny, &stp->st_deny_bmap);
++
+ 	return nfs_ok;
+ }
+ 
 
 
 -------------------------------------------------------
