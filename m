@@ -1,25 +1,28 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: NFS over TCP: random drop
-Date: Tue, 16 Mar 2004 20:42:24 +0100
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: BKL removal from find_exported_dentry()
+Date: Wed, 17 Mar 2004 09:58:37 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040316194224.GA3262@suse.de>
-References: <482A3FA0050D21419C269D13989C61130435DD6E@lavender-fe.eng.netapp.com> <1079456730.3045.47.camel@lade.trondhjem.org>
+Message-ID: <16471.34461.450575.488029@notabene.cse.unsw.edu.au>
+References: <20040309135451.GC30766@rx8.ibm.com>
+	<20040311211020.GA1296@rx8.ibm.com>
+	<20040316163008.GS4972@rx8.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Cc: Charles Lever <Charles.Lever@netapp.com>,
-	nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B3KSM-0008KI-1P
-	for nfs@lists.sourceforge.net; Tue, 16 Mar 2004 11:42:30 -0800
-Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.30)
-	id 1B3KSI-0005sd-Qp
-	for nfs@lists.sourceforge.net; Tue, 16 Mar 2004 11:42:27 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1079456730.3045.47.camel@lade.trondhjem.org>
+	id 1B3NXD-0002oL-2g
+	for nfs@lists.sourceforge.net; Tue, 16 Mar 2004 14:59:43 -0800
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
+	id 1B3NXB-0004Kq-0i
+	for nfs@lists.sourceforge.net; Tue, 16 Mar 2004 14:59:41 -0800
+Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
+	(for <jrsantos@austin.ibm.com>) (for <nfs@lists.sourceforge.net>) By
+	note With Smtp ; Wed, 17 Mar 2004 09:58:39 +1100
+To: "Jose R. Santos" <jrsantos@austin.ibm.com>
+In-Reply-To: message from Jose R. Santos on Tuesday March 16
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,22 +35,43 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, Mar 16, 2004 at 12:05:30PM -0500, Trond Myklebust wrote:
-> However if the server disconnects us *while we are reconnecting*, then
-> the soft request will fail with an EIO. This seems like sensible
-> behaviour to me: a server which is accepting a connection then
-> immediately breaking it is fundamentally broken...
+On Tuesday March 16, jrsantos@austin.ibm.com wrote:
+> After looking at this even further, I'm starting to get the impression that the
+> BKL is there in order to protect against filesystems that behave badly.  I guess
+> this is the price for code portability across many filesystems.
+...
+> 
+> > I'm attaching a patch that removes BKL from find_exported_dentry().  I see a 
+> > huge improvement on SpecSFS benchmark and haven't seen any failure up to date.
+> 
+> While reduces the time spent on find_exported_dentry() from 75% to less than 1%,
+> it seems that this may not be a very popular approach.  Guess I should have done 
+> my homework about the BKL removal subject before posting. :)
+> 
+> I am really interested in knowing if the BKL is there to protect against bad 
+> filesystem or if its there for other reasons.
 
-But the Linux nfsd seems to be doing exactly this - it accepts the
-connection, then randomly drops either the oldest or the newest one
-(in terms of activity). The one at the head of the queue happens to be
-the one we just accepted.
+It is a long time now since I wrote that code.
+I went through several iterations, and at some stages the BKL was
+definitely needed.
+My vague memory is that towards the end, the BKL was needed to protect
+against d_move, and particularly to protect accessed to d_parent.
+However even when this code was submitted to linus, dparent_lock was
+in place for that, and now it has been replaced by  ->d_lock.
+So that is certainly no longer a justification for BKL.
 
-Olaf
--- 
-Olaf Kirch     |  Stop wasting entropy - start using predictable
-okir@suse.de   |  tempfile names today!
----------------+ 
+I've stared at the code for a while and cannot see any justification
+for leaving the BKL there.
+
+I don't think the idea of protecting badly behaved filesystems is
+valid.  All the interfaces that we use into filesystems should
+definitely be SMP-safe.
+
+So: yes, send the patch to Andrew, tell him that I approve, but maybe
+suggest it stay out of main-line for a little while just-in-case.
+
+Thanks,
+NeilBrown
 
 
 -------------------------------------------------------
