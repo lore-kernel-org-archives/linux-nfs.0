@@ -1,26 +1,25 @@
-From: Daniel Ellard <ellard@eecs.harvard.edu>
-Subject: Re: NFS digest, Vol 1 #1848 - 6 msgs
-Date: Mon, 10 May 2004 00:05:00 -0400 (EDT)
+From: Erik Walthinsen <omega@pdxcolo.net>
+Subject: Re: Converting open filehandles to pathnames
+Date: Sun, 09 May 2004 14:11:30 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040509235449.K15474@bowser.eecs.harvard.edu>
-References: <E1BN1JU-0003Yo-He@sc8-sf-list2.sourceforge.net>
+Message-ID: <1084137085.715.26.camel@omikron>
+References: <1084059203.714.13.camel@omikron>
+	 <20040509072418.GB18762@sgi.com> <1084063428.714.40.camel@omikron>
+	 <1084148814.29382.32.camel@binkley>  <20040510030029.GL30964@polop.usc.edu>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BN22N-00013k-91
-	for nfs@lists.sourceforge.net; Sun, 09 May 2004 21:05:07 -0700
-Received: from bowser.eecs.harvard.edu
-	([140.247.60.24] helo=mail.eecs.harvard.edu ident=postfix)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BN22M-0004PM-UZ
-	for nfs@lists.sourceforge.net; Sun, 09 May 2004 21:05:07 -0700
-Received: from localhost (localhost [127.0.0.1])
-	by mail.eecs.harvard.edu (Postfix) with ESMTP id DC6B054C453
-	for <nfs@lists.sourceforge.net>; Mon, 10 May 2004 00:05:00 -0400 (EDT)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <E1BN1JU-0003Yo-He@sc8-sf-list2.sourceforge.net>
+	id 1BN2Rz-0003dy-7S
+	for nfs@lists.sourceforge.net; Sun, 09 May 2004 21:31:35 -0700
+Received: from [216.99.212.251] (helo=mail.omegacs.net)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1BN2Ry-0003c2-S9
+	for nfs@lists.sourceforge.net; Sun, 09 May 2004 21:31:34 -0700
+To: Garrick Staples <garrick@usc.edu>
+In-Reply-To: <20040510030029.GL30964@polop.usc.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,28 +32,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sun, 9 May 2004 nfs-request@lists.sourceforge.net wrote:
+On Sun, 2004-05-09 at 20:00, Garrick Staples wrote:
+> > Any thoughts to making this program available anywhere? I'd be
+> > interested to get some mappings to find out who my most abusive users
+> > are.
+> Come to think of it, I've found myself in the same situation... wondering who
+> is beating up my NFS servers.  This would be a great tool to have.
 
-> Subject: Re: [NFS] Converting open filehandles to pathnames
-> From: seth vidal <skvidal@phy.duke.edu>
-> To: Erik Walthinsen <omega@pdxcolo.net>
-> Cc: Greg Banks <gnb@sgi.com>, nfs@lists.sourceforge.net
-> Date: Sun, 09 May 2004 20:26:54 -0400
->
-> Any thoughts to making this program available anywhere? I'd be
-> interested to get some mappings to find out who my most abusive users
-> are.
+Sure.  In its current incarnation it's a Python script using a pcap
+module I found in some package that I can no longer identify....  It's
+also quite tied to my current file structure, though some of that also
+has to do with the earlier assumptions I made about filehandles.
 
-In the meanwhile, you might consider my tools for doing this (as well
-as a lot of other things):
+The biggest challenge for general usage is the inode -> pathname
+translation.  In my case there are currently about 900 files I can look
+up before the packet capture starts, and cache those inode numbers.  A
+general utility will require a different solution, starting with the
+existing method of snooping getattr and other calls.  Any other
+suggestions on how I can generically convert inodes to pathnames without
+massive overhead?
 
-http://www.eecs.harvard.edu/sos/software/
-
-nfsdump captures and decodes the NFS requests, and nfsscan does some
-analyses on the results.  There are also some helper programs to toss
-together quick graphs and things like that.
-
--Dan
+Once I have my current code doing what I want I'll clean it up and post
+it here so it can be hacked into a useful tool.
 
 
 
