@@ -1,29 +1,29 @@
-From: "Gregory Baker" <gregory.baker@amd.com>
-Subject: Re: Linux NFS client over TCP
-Date: Tue, 11 Nov 2003 14:26:27 -0600
+From: Erik Thiele <erik@thiele-hydraulik.de>
+Subject: trouble with file locking
+Date: Wed, 12 Nov 2003 10:50:43 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3FB145F3.4000704@amd.com>
-References: <20031023124428.69700.qmail@web12004.mail.yahoo.com>
- <shs1xt4q8p0.fsf@charged.uio.no>
-Reply-To: gregory.baker@amd.com
+Message-ID: <20031112105043.020c1548.erik@thiele-hydraulik.de>
 Mime-Version: 1.0
-Content-Type: text/plain;
- charset=us-ascii;
- format=flowed
-Cc: "Trond Myklebust" <trond.myklebust@fys.uio.no>,
-   "Chang Li" <changli_99@yahoo.com>, nfs@lists.sourceforge.net,
-   "Chuck Lever" <cel@citi.umich.edu>
+Content-Type: text/plain; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AJfDN-0007Tu-00
-	for <nfs@lists.sourceforge.net>; Tue, 11 Nov 2003 12:34:17 -0800
-Received: from amdext2.amd.com ([163.181.251.1])
+	id 1AJrh2-0008Jz-00
+	for <nfs@lists.sourceforge.net>; Wed, 12 Nov 2003 01:53:44 -0800
+Received: from moutng.kundenserver.de ([212.227.126.187])
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AJfDN-0003ij-7v
-	for nfs@lists.sourceforge.net; Tue, 11 Nov 2003 12:34:17 -0800
-In-Reply-To: <shs1xt4q8p0.fsf@charged.uio.no>
+	id 1AJrgh-0001bt-KZ
+	for nfs@lists.sourceforge.net; Wed, 12 Nov 2003 01:53:23 -0800
+Received: from [212.227.126.206] (helo=mrelayng.kundenserver.de)
+	by moutng.kundenserver.de with esmtp (Exim 3.35 #1)
+	id 1AJrge-0003VN-00
+	for nfs@lists.sourceforge.net; Wed, 12 Nov 2003 10:53:20 +0100
+Received: from [80.131.204.136] (helo=goofy.thiele-intern)
+	by mrelayng.kundenserver.de with asmtp (Exim 3.35 #1)
+	id 1AJre8-00086K-00
+	for nfs@lists.sourceforge.net; Wed, 12 Nov 2003 10:50:44 +0100
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -36,153 +36,59 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hi.
 
-Trond,
+I am using as a fileserver
 
-I notice that many NFS fixes that we applied outside of the stock kernel 
-(2.4.21 series) have made it into 2.4.23-rc1.  Great work!  Thanks!
+ii  nfs-kernel-ser 1.0-2woody1    Kernel NFS server support
+ii  kernel-image-2 2.4.18-5       Linux kernel image for version 2.4.18 on AMD
+ii  nfs-common     1.0-2woody1    NFS support files common to client and serve
 
-Do you see any other patches you're going to try to feed to Marcello for 
-2.4.23 release?
+on a AMD K6-2/400 with 128MB Ram.
 
-Can you comment on some of the patches on your web page that would may 
-improve NFS client reliability in addition to the stock 2.4.23?
+the server has / mounted as ext2.
 
-linux-2.4.23-03-soft2.dif:
-linux-2.4.23-04-fix_unlink.dif:
-linux-2.4.23-05-seekdir.dif:
-	.
-	.
-	.
+i am exporting to old hp-ux machines a subdirectory of / like this:
 
+/Archiv xxx.unix.yyy-intern(rw,no_root_squash)
 
-How "comfortable" do you feel of the value added for this patch?
+i also export my homedirectory to my linux woody debian machines like this:
 
-linux-2.4.23-10-sock_disconnect.dif:
-
-In an environment with 1000's of linux NFS clients and multiple NetApp 
-filers? (Chuck?)
-
-I'm trying to get a feel from those I respect most what the best 
-recommended route is to produce the most reliable NFS client (for our 
-environment and typical activity) based on the upcoming 2.4.23 release.
-
-Thanks,
-
---Greg
+/home/erik str.blafoo-intern(rw,no_root_squash)
 
 
+i have written a test-program like this:
 
+#include <unistd.h>
+#include <stdio.h>
+#include <fcntl.h>
+#include <string.h>
 
-Trond Myklebust wrote:
->>>>>>" " == Chang Li <changli_99@yahoo.com> writes:
-> 
-> 
->      > Trond, I would like to know some more details.  How does nfs
->      > client know that the status has gone to CLOSE_WAIT state?. NFS
->      > client does not seem to bother about the connection status
->      > while transacting. I thought it is rpc that takes care of
->      > reconnection.
-> 
-> Absolutely. NFS has no business poking its nose in the details of the
-> RPC layer.
-> 
->      > Please let me know How we can implement this. ( I'll give a try
->      > ).
-> 
-> Actually, I thought of an easy implementation just 30 minutes after
-> firing off my reply to you. Together with Chuck Lever, I've refined
-> the idea, but we haven't yet converted it into a patch:
-> 
-> Cheers,
->   Trond
-> 
-> --------------------------------------------
-> Add the following fields to struct rpc_xprt:
->   struct tq_struct   task_cleanup;      /* struct work_struct in 2.6.x */
->   struct timer_list  timer;             /* Socket timeout counter */
->   unsigned long      last_used;
->  
-> #define XPRT_LOCKED 1
-> #define XPRT_SOCKET_TIMEOUT (300 * HZ)
->  
-> In xprt_setup()
->   INIT_TQUEUE(&xprt->task_cleanup, xprt_socket_autoclose, xprt);
->   init_timer(&xprt->timer);
->   xprt->timer.function = xprt_init_autodisconnect;
->   xprt->timer.data = (unsigned long) xprt;
->   last_used = jiffies;
-> 
-> In xprt_release()
->   spin_lock_bh(&xprt->sock_lock);
->   if (list_empty(&xprt->recv) && !xprt->shutdown) {
->         last_used = jiffies;
->         mod_timer(&xprt->timer, jiffies + XPRT_SOCKET_TIMEOUT);
->   }
->   spin_unlock_bh(&xprt->sock_lock);
-> 
-> In xprt_shutdown()
->   del_timer_sync(&xprt->timer);
-> 
-> At the top of __xprt_lock_write(), __xprt_lock_write_next
->   if (test_and_set_bit(XPRT_LOCKED, &xprt_sockstate))
->     return 0;
-> 
-> In __xprt_release_write()
->   if (xprt->snd_task == task)
->     xprt->snd_task = NULL;
->   smp_mb__before_clear_bit();
->   clear_bit(XPRT_LOCKED, &xprt->sockstate);
->   smp_mb__after_clear_bit();
->   __xprt_lock_write_next(xprt);
-> 
-> 
-> New function:
-> 
-> void xprt_init_autodisconnect(unsigned long data)
-> {
->    struct rpc_xprt *xprt = (struct rpc_xprt *)data;
->    struct socket *sock = xprt->sock;
-> 
->    spin_lock(&xprt->sock_lock);
->    if (last_used < 200*HZ)
->      goto out_abort;
->    if (test_and_set_bit(XPRT_LOCKED, &xprt_sockstate))
->      goto out_abort;
->    spin_unlock(&xprt->sock_lock);
->    /* Let keventd close the socket */
->    schedule_task(&xprt->task_cleanup);
->    return;
-> out_abort:
->    spin_unlock(&xprt->sock_lock);
-> }
-> 
-> void xprt_socket_autoclose(void *args)
-> {
->    struct rpc_xprt *xprt = (struct socket *)args;
-> 
->    xprt_close(xprt);
->    xprt_release_write(xprt, NULL);
-> }
-> 
-> 
-> -------------------------------------------------------
-> This SF.net email is sponsored by: The SF.net Donation Program.
-> Do you like what SourceForge.net is doing for the Open
-> Source Community?  Make a contribution, and help us add new
-> features and functionality. Click here: http://sourceforge.net/donate/
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+int main()
+{
+  int h=open("delmelockfile", O_WRONLY|O_CREAT, 0700);
+  struct flock l;
+  memset(&l,0,sizeof l);
+  l.l_type=F_WRLCK;
+  l.l_whence=SEEK_SET;
+  l.l_start=0;
+  l.l_len=0;
+  fcntl(h,F_SETLK,&l);
+  sleep(100);
+  return 0;
+}
 
--- 
-----------------------------------------------------------------------
-Greg Baker                                         512-602-3287 (work)
-gregory.baker@amd.com                              512-603-1837 (page)
-5900 E. Ben White Blvd MS 625                      512-602-6970 (fax)
-Austin, TX 78741                                   512-555-1212 (info)
+i strace it, and it gets a no lock availiable error on the fcntl.
+i use ethereal to analyze traffic and get a V4 LOCK CALL with the right inode,
+and a V4 xxxxxx (i forgot to write) which has a NLM_DENIED or NLM_NO_LOCKS or something like that.
 
+using rpcinfo i found nlockmgr running.
+now if i restart the rpc.statd (!!!) suddenly it works and i get locks granted packages (NLM_GRANTED)
 
+someone please enlighten me :)
+
+cu
+erik
 
 
 -------------------------------------------------------
