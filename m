@@ -1,23 +1,22 @@
-From: Steve Dickson <SteveD@redhat.com>
+From: James Pearson <james-p@moving-picture.com>
 Subject: Re: acl_extended_file() and NFS file systems
-Date: Thu, 24 Jun 2004 11:23:28 -0400
+Date: Thu, 24 Jun 2004 16:32:01 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <40DAF1F0.9020008@RedHat.com>
+Message-ID: <40DAF3F1.7030006@moving-picture.com>
 References: <40D9ABC9.1070007@moving-picture.com> <40D9C796.6000904@RedHat.com> <40D9FC0B.6050401@moving-picture.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------090007040901060801040902"
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BdW4X-0000dg-80
-	for nfs@lists.sourceforge.net; Thu, 24 Jun 2004 08:23:29 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.30)
-	id 1BdW4W-0000lB-Rx
-	for nfs@lists.sourceforge.net; Thu, 24 Jun 2004 08:23:28 -0700
-To: James Pearson <james-p@moving-picture.com>, nfs@lists.sourceforge.net
+	id 1BdWDB-0002To-Ik
+	for nfs@lists.sourceforge.net; Thu, 24 Jun 2004 08:32:25 -0700
+Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1BdWDA-0002L9-9a
+	for nfs@lists.sourceforge.net; Thu, 24 Jun 2004 08:32:24 -0700
+To: Steve Dickson <SteveD@redhat.com>
 In-Reply-To: <40D9FC0B.6050401@moving-picture.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,43 +30,73 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
---------------090007040901060801040902
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
+I think I've worked out what is going on ... when I said the client was
+a FC1 box, I didn't give all the facts - it's using a kernel based on
+the FC1 kernel - actually one from ATrpms (http://atrpms.net/).
 
-Ok... see if the attached patch takes care of the problem...
+It turns out that this kernel has a 'nfsacl' patch (from 
+http://acl.bestbits.at/download.html) applied that
+adds CONFIG_NFS_ACL (and CONFIG_NFSD_ACL) which are enabled by default -
+compiling a new kernel with the CONFIG_NFS_ACL option disabled (i.e.
+something closer to a vanilla FC1 kernel), then the problem goes away ...
 
-SteveD.
+James Pearson
 
---------------090007040901060801040902
-Content-Type: text/plain;
- name="linux-2.4.22-nfs-unavail.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="linux-2.4.22-nfs-unavail.patch"
+James Pearson wrote:
+> I've put the strace and ethereal outputs at:
+> 
+> ftp://ftp.moving-picture.com/private/nfs/
+> 
+> The files 'works' from using a file on a FC1 server
+> 
+> The files 'fails' from using a file on a RH7.2 server
+> 
+> Note: it also fails on NFS files from an Irix 6.5.X server
+> 
+> James Pearson
+> 
+> Steve Dickson wrote:
+> 
+>> James Pearson wrote:
+>>
+>>> We've just come across a problem with running 'ls -l' on NFS mounted 
+>>> files from a client running Fedora Core 1 with the latest coreutils 
+>>> RPM (5.0-34.1)
+>>>
+>>> Running ls -l on a file exported by a RedHat 7.2 system gives
+>>>
+>>> % ls -l /some/remote/file
+>>> ls: /some/remote/file: Input/output error
+>>> -rw-rw-r--  1 james user 17373 Jun  1 20:02 /some/remote/file
+>>
+>>
+>>
+>> hmm... it sound like 7.2 is returning garbage but to which
+>> over-the-wire operation? Since FC1 does not have ACL support so
+>> the getxattr() (that is done by your test program) should
+>> be returned EOPNOTSUPP (as it does in my testing) but instead
+>> it sounds like the FC1 is actually trying to send something otw..
+>> Would it be possible to get a strace and ethereal trace of this
+>> phenomenon?
+>>
+>> SteveD.
+>>
+>>
+>>
+> 
+> 
+> 
+> -------------------------------------------------------
+> This SF.Net email sponsored by Black Hat Briefings & Training.
+> Attend Black Hat Briefings & Training, Las Vegas July 24-29 - digital 
+> self defense, top technical experts, no vendor pitches, unmatched 
+> networking opportunities. Visit www.blackhat.com
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+> 
 
---- linux-2.4.22/net/sunrpc/clnt.c.org	2004-06-24 10:49:57.000000000 -0400
-+++ linux-2.4.22/net/sunrpc/clnt.c	2004-06-24 10:57:59.000000000 -0400
-@@ -923,6 +923,16 @@ call_verify(struct rpc_task *task)
- 		return p;
- 	case RPC_GARBAGE_ARGS:
- 		break;			/* retry */
-+	case RPC_PROG_UNAVAIL:
-+		/* report requested program number*/
-+		dprintk(KERN_WARNING "RPC: unknown program\n");
-+		rpc_exit(task, -ENOSYS);
-+		return NULL;
-+	case RPC_PROC_UNAVAIL:
-+		/* report requested program and procedure number, version */
-+		dprintk(KERN_WARNING "RPC: unknown procedure\n");
-+		rpc_exit(task, -ENOSYS);
-+		return NULL;
- 	default:
- 		printk(KERN_WARNING "call_verify: server accept status: %x\n", n);
- 		/* Also retry */
 
---------------090007040901060801040902--
 
 
 -------------------------------------------------------
