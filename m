@@ -1,24 +1,24 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: [PATCH kNFSd ] Fix d_find_alias brokenness
-Date: Fri, 12 Nov 2004 11:28:21 +1100
-Message-ID: <16788.933.584756.363743@cse.unsw.edu.au>
-References: <20041112105449.24459.patches@notabene>
-	<E1CSOoW-0006Mv-OF@notabene.cse.unsw.edu.au>
-	<20041111160305.0a12aaff.akpm@osdl.org>
+From: Miika Pekkarinen <miipekk@ihme.org>
+Subject: Using mmap result in data corruption
+Date: Fri, 12 Nov 2004 21:06:06 +0200 (EET)
+Message-ID: <Pine.LNX.4.58.0411122101130.10567@ihme.ihme.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CSPGI-0003tg-1i
-	for nfs@lists.sourceforge.net; Thu, 11 Nov 2004 16:25:58 -0800
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CSPGH-00052l-Dd
-	for nfs@lists.sourceforge.net; Thu, 11 Nov 2004 16:25:57 -0800
-To: Andrew Morton <akpm@osdl.org>
-In-Reply-To: message from Andrew Morton on Thursday November 11
+	id 1CSgkX-0006sM-Dr
+	for nfs@lists.sourceforge.net; Fri, 12 Nov 2004 11:06:21 -0800
+Received: from ihme.org ([212.226.113.138] ident=mail)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1CSgkW-0005qh-B2
+	for nfs@lists.sourceforge.net; Fri, 12 Nov 2004 11:06:21 -0800
+Received: from miipekk (helo=localhost)
+	by ihme.org with local-esmtp (Exim 4.24)
+	id 1CSgkI-0003c8-D9
+	for nfs@lists.sourceforge.net; Fri, 12 Nov 2004 21:06:06 +0200
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,33 +32,116 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thursday November 11, akpm@osdl.org wrote:
-> 
-> Could I trouble you for a more complete description?  Which was the
-> offending change, and in what way was it broken?
+Hi
 
-10 weeks ago,
- http://linux.bkbits.com:8080/linux-2.5/cset@415b3380pxf4sB97gM8ujLqDxi6GfQ
+(I am sending this message again to this list because my previous post
+about a week ago didn't appear on this list. Now I have subscribed and I
+hope for better luck. :)
 
-The patch was mostly right, and fixed a real problem, but missed a
-bit.
-It passed the job of checking if an inode had a current alias off to 
-d_find_alias instead of open-coding it in d_alloc_anon.  However there
-is one case where d_alloc_anon would not  return the right
-dentry.  That case being when the inode was for the root of the
-filesystem.
-The root is a special case because it is not hashed.  All other dentries
-that are not hashed are quite un-interesting: There are "unlinked" but
-not yet closed.  The root of a filesystem is unhashed, but is
-interesting. 
+I have found a reproducable issue with NFS that will lead to file
+corruption on server. When a file is created with O_TRUNC and data is
+copied using mmap, the new file on the server will be filled with null bytes.
 
-Allowing d_find_alias to return an unhashed alias for a directory
-solves this problem.  It is safe because callers of d_find_alias on a
-directory inode either have a name for the inode already (so finding
-an unlinked directory by mistake is impossible) or will soon be
-looking for a name and will drop the dentry if a name is not found.
+NFS was exported using the following flags:
+/home           *.ihme.org(rw,async,wdelay,root_squash,no_subtree_check)
 
-NeilBrown
+This problem was reproduced with kernel versions 2.4.27 (server), 2.6.9
+(server/client), 2.6.10-rc1 (client).
+
+The included sample C-code should reproduce the problem:
+	client$ gcc -o nfsdebug nfddebug.c
+	client$ ./nfsdebug
+	client$ ls -la nfsdebug.txt
+	client$ -rw-r--r--  1 miipekk users 1393 Nov  5 23:25 nfsdebug.txt
+	client$ cmp nfsdebug.txt nfsdebug.c
+	client$
+
+	server$ ls -la nfsdebug.txt
+	server$ -rw-r--r--  1 miipekk users 1393 Nov  5 23:25 nfsdebug.txt
+	server$ cmp nfsdebug.txt /dev/zero
+	server$ cmp: EOF on nfsdebug.txt
+
+
+-- 
+Miika Pekkarinen <miipekk at ihme.org>
+
+
+--- nfsdebug.c
+/* This file should be named "nfsdebug.c".
+ * After excecuted, a file named nfsdebug.txt will be created.
+ *
+ * Author: 2004 Miika Pekkarinen <miipekk@ihme.org>
+ */
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <fcntl.h>
+
+int main()
+{
+        int fdin, fdout;
+        struct stat statbuf;
+        char *s, *d;
+
+        fdin  = open("nfsdebug.c", O_RDONLY);
+        if (fdin < 0) {
+                perror("open fail");
+                return 1;
+        }
+
+        if (fstat(fdin, &statbuf) < 0) {
+                perror("open fail");
+                return 2;
+        }
+
+        fdout = open("nfsdebug.txt", O_RDWR | O_CREAT | O_TRUNC,
+                     statbuf.st_mode);
+
+        if (fdout < 0)
+                return 3;
+
+        // If the following line is enabled, the problem won't appear!
+        // write(fdout, "", 1);
+
+        if(lseek(fdout, statbuf.st_size - 1, SEEK_SET) == -1) {
+                perror("Seek failed\n");
+                return 4;
+        }
+
+        if (write(fdout, "", 1) != 1) {
+                perror("Write failed\n");
+                return 5;
+        }
+
+        if ((s = (char *)mmap(0, statbuf.st_size, PROT_READ, MAP_SHARED,
+fdin, 0))
+            == (caddr_t) -1) {
+                perror("mmap source fail");
+                return 6;
+        }
+
+        if ((d = (char *)mmap(0, statbuf.st_size, PROT_READ | PROT_WRITE,
+                              MAP_SHARED, fdout, 0)) == (caddr_t) - 1) {
+                perror("mmap destination fail");
+                return 7;
+        }
+
+        memcpy(d, s, statbuf.st_size);
+
+        munmap(s, statbuf.st_size);
+        munmap(d, statbuf.st_size);
+
+        close(fdin);
+        close(fdout);
+
+        return 0;
+}
+
+
+
 
 
 -------------------------------------------------------
