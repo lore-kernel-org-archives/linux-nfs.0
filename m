@@ -1,16 +1,13 @@
-From: "xinyu wu" <xinyuwu@hotmail.com>
-Subject: NAS over NFS vs SAN
-Date: Wed, 11 Jun 2003 15:52:15 +0000
+From: "Nellie Stevenson" <n_stevensonyc@heise.de>
+Subject: Help Please..
+Date: Wed, 11 Jun 2003 16:11:55 +0000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <BAY1-F146cbdFkIm0OT0000f982@hotmail.com>
+Message-ID: <977c01c33034$a0cc382f$1b0e45e0@u49h513>
 Mime-Version: 1.0
-Content-Type: text/plain; format=flowed
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_0A0F_595AD507.C5CB3E13"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from bay1-f146.bay1.hotmail.com ([65.54.245.146] helo=hotmail.com)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19Q7td-0004wR-00
-	for <nfs@lists.sourceforge.net>; Wed, 11 Jun 2003 08:52:21 -0700
-To: nfs@lists.sourceforge.net
+To: net-snmp-users-request@lists.sourceforge.net, nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -23,29 +20,32 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+This is a multi-part message in MIME format.
 
-We are planning on using some high availability storage, and the most 
-popular choices are:
-- NAS, but have to access it via NFS
-- SAN, local disk
+------=_NextPart_000_0A0F_595AD507.C5CB3E13
+Content-Type: text/plain
+Content-Transfer-Encoding: 8bit
 
-Many vendors have rejected NAS, because while NAS itself could have high 
-availibilty, but access NFS failures could lead to data corruption.
 
-We are going to use dual network to access NAS.
 
-- So my question is how error prone is NFS? like Network glitches
-- How good is its error recovery?
-- For important data (like database), would you recommend the usage of NFS?
 
-Thanks
+------=_NextPart_000_0A0F_595AD507.C5CB3E13
+Content-Type: text/html
+Content-Transfer-Encoding: base64
 
-Xinyu
+CQ0KIA0KPEhUTUw+ICANCiAgICA8Ym9keSBiZ2NvbG9yPSNmZmZmZmY+ICAg
+DQogIDxwIGFsaWduPSJjZW50ZXIiPmgwazh1NjMya2Q2cXh2b2lvbTYzbmYx
+NDxicj4NCjxhIGhyZWY9Imh0dHA6Ly9Xd3cuZmluRC1IT09QLmNvTS9ob3N0
+L2VtJTYxaSU2QyU3MmUlNkQlNkYlNzYlNjUuJTYxJTczJTcwIj5TdG9wDQpN
+YWlsaW5ncyBIZXJlPC9hPjxicj4gDQo8YSBocmVmPSJodHRwOi8vd1dXLm1B
+ckdyYVRFLkNPTS9obyU3M3QvZCU2NSU2NmElNzVsJTc0LiU2MXNwP2klNjQ9
+JTczdHgiPjxZVEtRPjxpbWcgc3JjPSJodHRwOi8vd1dXLlJpQ2gtZnVMTC5j
+b00vcCU2OWMlNWYlNzdlbGwvZ3YyLiU2NyU2OWYiIGJvcmRlcj0wPjwvYT4N
+Cjxicj5qOGhlcWYydjg4bGY8S09FQj48YnI+b2dzdmIybThzMnNvMzwvcD4J
+PC9ib2R5PgkNCjwvSFRNTD4NCgkNCiAgDQoNCg==
 
-_________________________________________________________________
-Hotmail is now available on Australian mobile phones. Go to  
-http://ninemsn.com.au/mobilecentral/signup.asp
+
+------=_NextPart_000_0A0F_595AD507.C5CB3E13--
 
 
 
