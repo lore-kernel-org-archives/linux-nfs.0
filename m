@@ -1,20 +1,21 @@
 From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: PATCH - knfsd - Reduce stack usage in some nfs syscall functions.
-Date: Tue, 17 Dec 2002 13:09:44 +1100
+Subject: PATCH - knfsd - Reorganise sock init in rpcsvc to avoid
+ races.
+Date: Tue, 17 Dec 2002 13:11:02 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15870.34664.808856.732489@notabene.cse.unsw.edu.au>
+Message-ID: <15870.34742.326536.705138@notabene.cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18O7B9-0005uQ-00
-	for <nfs@lists.sourceforge.net>; Mon, 16 Dec 2002 18:09:51 -0800
+	id 18O7CN-00061I-00
+	for <nfs@lists.sourceforge.net>; Mon, 16 Dec 2002 18:11:08 -0800
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.233.239] == wireless-239.wireless.cse.unsw.EDU.AU)
 	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>) By
-	tone With Smtp ; Tue, 17 Dec 2002 13:09:45 +1100
+	tone With Smtp ; Tue, 17 Dec 2002 13:11:02 +1100
 To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -30,176 +31,149 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
 
-Some of the 'data' structures for receiving syscall
-arguments are quite large.  This patch converts to
-larger one to be kmalloced instead of automatic.
+If one of the callbacks (e.g. data ready) is called 
+before socket setup is complete, an oops may occur.
 
-(Patch against 2.5.current)
+With this patch, socket is kept SK_BUSY until all is
+ready to avoid this.
+
+Also some code is moved around to make it cleaner.
+
+
+
+
+
  ----------- Diffstat output ------------
- ./fs/nfsd/nfsctl.c |   92 +++++++++++++++++++++++++++++++++--------------------
- 1 files changed, 59 insertions(+), 33 deletions(-)
+ ./net/sunrpc/svcsock.c |   55 ++++++++++++++++++++++---------------------------
+ 1 files changed, 25 insertions(+), 30 deletions(-)
 
-diff ./fs/nfsd/nfsctl.c~current~ ./fs/nfsd/nfsctl.c
---- ./fs/nfsd/nfsctl.c~current~	2002-12-09 15:47:56.000000000 +1100
-+++ ./fs/nfsd/nfsctl.c	2002-12-09 15:47:56.000000000 +1100
-@@ -205,27 +205,37 @@ static ssize_t write_del(struct file *fi
- 
- static ssize_t write_export(struct file *file, const char *buf, size_t size)
- {
--	struct nfsctl_export data;
--	if (size < sizeof(data))
-+	struct nfsctl_export *data;
-+	ssize_t rv;
-+	if (size < sizeof(*data))
- 		return -EINVAL;
--	if (copy_from_user(&data, buf, size))
--		return -EFAULT;
--	return exp_export(&data);
-+	if (!(data = kmalloc(sizeof(*data), GFP_KERNEL)))
-+		return -ENOMEM;
-+	rv = -EFAULT;
-+	if (copy_from_user(data, buf, size) == 0)
-+		rv = exp_export(data);
-+	kfree(data);
-+	return rv;
+diff ./net/sunrpc/svcsock.c~current~ ./net/sunrpc/svcsock.c
+--- ./net/sunrpc/svcsock.c~current~	2002-12-09 15:48:09.000000000 +1100
++++ ./net/sunrpc/svcsock.c	2002-12-09 15:48:09.000000000 +1100
+@@ -627,7 +627,7 @@ svc_udp_sendto(struct svc_rqst *rqstp)
+ 	return error;
  }
  
- static ssize_t write_unexport(struct file *file, const char *buf, size_t size)
+-static int
++static void
+ svc_udp_init(struct svc_sock *svsk)
  {
--	struct nfsctl_export data;
--	if (size < sizeof(data))
-+	struct nfsctl_export *data;
-+	ssize_t rv;
-+	if (size < sizeof(*data))
- 		return -EINVAL;
--	if (copy_from_user(&data, buf, size))
--		return -EFAULT;
--	return exp_unexport(&data);
-+	if (!(data = kmalloc(sizeof(*data), GFP_KERNEL)))
-+		return -ENOMEM;
-+	rv = -EFAULT;
-+	if (copy_from_user(data, buf, size) == 0)
-+		rv = exp_unexport(data);
-+	kfree(data);
-+	return rv;
+ 	svsk->sk_sk->data_ready = svc_udp_data_ready;
+@@ -643,9 +643,8 @@ svc_udp_init(struct svc_sock *svsk)
+ 			    3 * svsk->sk_server->sv_bufsz,
+ 			    3 * svsk->sk_server->sv_bufsz);
+ 
++	set_bit(SK_DATA, &svsk->sk_flags); /* might have come in before data_ready set up */
+ 	set_bit(SK_CHNGBUF, &svsk->sk_flags);
+-
+-	return 0;
  }
  
- static ssize_t write_getfs(struct file *file, const char *buf, size_t size)
- {
--	struct nfsctl_fsparm data;
-+	struct nfsctl_fsparm *data;
- 	struct sockaddr_in *sin;
- 	struct auth_domain *clp;
- 	int err = 0;
-@@ -233,24 +243,30 @@ static ssize_t write_getfs(struct file *
+ /*
+@@ -773,19 +772,14 @@ svc_tcp_accept(struct svc_sock *svsk)
+ 	dprintk("%s: connect from %u.%u.%u.%u:%04x\n", serv->sv_name,
+ 			NIPQUAD(sin.sin_addr.s_addr), ntohs(sin.sin_port));
  
- 	if (file->private_data)
- 		return -EINVAL;
--	if (size < sizeof(data))
-+	if (size < sizeof(*data))
- 		return -EINVAL;
--	if (copy_from_user(&data, buf, size))
--		return -EFAULT;
--	if (data.gd_addr.sa_family != AF_INET)
--		return -EPROTONOSUPPORT;
--	sin = (struct sockaddr_in *)&data.gd_addr;
--	if (data.gd_maxlen > NFS3_FHSIZE)
--		data.gd_maxlen = NFS3_FHSIZE;
-+	data = kmalloc(sizeof(*data), GFP_KERNEL);
-+	if (!data) 
-+		return -ENOMEM;
-+	err = -EFAULT;
-+	if (copy_from_user(data, buf, size))
-+		goto out;
-+	err = -EPROTONOSUPPORT;
-+	if (data->gd_addr.sa_family != AF_INET)
-+		goto out;
-+	sin = (struct sockaddr_in *)&data->gd_addr;
-+	if (data->gd_maxlen > NFS3_FHSIZE)
-+		data->gd_maxlen = NFS3_FHSIZE;
-+	err = -ENOMEM;
- 	res = kmalloc(sizeof(struct knfsd_fh), GFP_KERNEL);
- 	if (!res)
--		return -ENOMEM;
-+		goto out;
- 	memset(res, 0, sizeof(struct knfsd_fh));
- 	exp_readlock();
- 	if (!(clp = auth_unix_lookup(sin->sin_addr)))
- 		err = -EPERM;
- 	else {
--		err = exp_rootfh(clp, data.gd_path, res, data.gd_maxlen);
-+		err = exp_rootfh(clp, data->gd_path, res, data->gd_maxlen);
- 		auth_domain_put(clp);
- 	}
- 	exp_readunlock();
-@@ -263,16 +279,18 @@ static ssize_t write_getfs(struct file *
- 	else {
- 		file->f_dentry->d_inode->i_size = res->fh_size + (int)&((struct knfsd_fh*)0)->fh_base;
- 		file->private_data = res;
--		err = sizeof(data);
-+		err = sizeof(*data);
- 	}
- 	up(&file->f_dentry->d_inode->i_sem);
+-	if (!(newsvsk = svc_setup_socket(serv, newsock, &err, 0)))
+-		goto failed;
+-
+ 	/* make sure that a write doesn't block forever when
+ 	 * low on memory
+ 	 */
+ 	newsock->sk->sndtimeo = HZ*30;
  
-+ out:
-+	kfree(data);
- 	return err;
+-	/* Precharge. Data may have arrived on the socket before we
+-	 * installed the data_ready callback. 
+-	 */
+-	set_bit(SK_DATA, &newsvsk->sk_flags);
+-	svc_sock_enqueue(newsvsk);
++	if (!(newsvsk = svc_setup_socket(serv, newsock, &err, 0)))
++		goto failed;
++
+ 
+ 	/* make sure that we don't have too many active connections.
+ 	 * If we have, something must be dropped.
+@@ -1006,7 +1000,7 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
+ 	return sent;
  }
  
- static ssize_t write_getfd(struct file *file, const char *buf, size_t size)
+-static int
++static void
+ svc_tcp_init(struct svc_sock *svsk)
  {
--	struct nfsctl_fdparm data;
-+	struct nfsctl_fdparm *data;
- 	struct sockaddr_in *sin;
- 	struct auth_domain *clp;
- 	int err = 0;
-@@ -281,23 +299,29 @@ static ssize_t write_getfd(struct file *
+ 	struct sock	*sk = svsk->sk_sk;
+@@ -1017,6 +1011,7 @@ svc_tcp_init(struct svc_sock *svsk)
+ 	if (sk->state == TCP_LISTEN) {
+ 		dprintk("setting up TCP socket for listening\n");
+ 		sk->data_ready = svc_tcp_listen_data_ready;
++		set_bit(SK_CONN, &svsk->sk_flags);
+ 	} else {
+ 		dprintk("setting up TCP socket for reading\n");
+ 		sk->state_change = svc_tcp_state_change;
+@@ -1035,9 +1030,8 @@ svc_tcp_init(struct svc_sock *svsk)
+ 				    3 * svsk->sk_server->sv_bufsz);
  
- 	if (file->private_data)
- 		return -EINVAL;
--	if (size < sizeof(data))
--		return -EINVAL;
--	if (copy_from_user(&data, buf, size))
--		return -EFAULT;
--	if (data.gd_addr.sa_family != AF_INET)
--		return -EPROTONOSUPPORT;
--	if (data.gd_version < 2 || data.gd_version > NFSSVC_MAXVERS)
-+	if (size < sizeof(*data))
- 		return -EINVAL;
-+	if (!(data = kmalloc(sizeof(*data), GFP_KERNEL)))
-+		return -ENOMEM;
-+	err = -EFAULT;
-+	if (copy_from_user(data, buf, size))
-+		goto out;
-+	err = -EPROTONOSUPPORT;
-+	if (data->gd_addr.sa_family != AF_INET)
-+		goto out;
-+	err = -EINVAL;
-+	if (data->gd_version < 2 || data->gd_version > NFSSVC_MAXVERS)
-+		goto out;
-+	err = -ENOMEM;
- 	res = kmalloc(NFS_FHSIZE, GFP_KERNEL);
- 	if (!res)
--		return -ENOMEM;
--	sin = (struct sockaddr_in *)&data.gd_addr;
-+		goto out;
-+	sin = (struct sockaddr_in *)&data->gd_addr;
- 	exp_readlock();
- 	if (!(clp = auth_unix_lookup(sin->sin_addr)))
- 		err = -EPERM;
- 	else {
--		err = exp_rootfh(clp, data.gd_path, &fh, NFS_FHSIZE);
-+		err = exp_rootfh(clp, data->gd_path, &fh, NFS_FHSIZE);
- 		auth_domain_put(clp);
+ 		set_bit(SK_CHNGBUF, &svsk->sk_flags);
++		set_bit(SK_DATA, &svsk->sk_flags);
  	}
- 	exp_readunlock();
-@@ -318,6 +342,8 @@ static ssize_t write_getfd(struct file *
- 	}
- 	up(&file->f_dentry->d_inode->i_sem);
+-
+-	return 0;
+ }
  
-+ out:
-+	kfree(data);
- 	return err;
+ void
+@@ -1258,6 +1252,18 @@ svc_setup_socket(struct svc_serv *serv, 
+ 	memset(svsk, 0, sizeof(*svsk));
+ 
+ 	inet = sock->sk;
++
++	/* Register socket with portmapper */
++	if (*errp >= 0 && pmap_register)
++		*errp = svc_register(serv, inet->protocol,
++				     ntohs(inet_sk(inet)->sport));
++
++	if (*errp < 0) {
++		kfree(svsk);
++		return NULL;
++	}
++
++	set_bit(SK_BUSY, &svsk->sk_flags);
+ 	inet->user_data = svsk;
+ 	svsk->sk_sock = sock;
+ 	svsk->sk_sk = inet;
+@@ -1271,23 +1277,9 @@ svc_setup_socket(struct svc_serv *serv, 
+ 
+ 	/* Initialize the socket */
+ 	if (sock->type == SOCK_DGRAM)
+-		*errp = svc_udp_init(svsk);
++		svc_udp_init(svsk);
+ 	else
+-		*errp = svc_tcp_init(svsk);
+-if (svsk->sk_sk == NULL)
+-	printk(KERN_WARNING "svsk->sk_sk == NULL after svc_prot_init!\n");
+-
+-	/* Register socket with portmapper */
+-	if (*errp >= 0 && pmap_register)
+-		*errp = svc_register(serv, inet->protocol,
+-				     ntohs(inet_sk(inet)->sport));
+-
+-	if (*errp < 0) {
+-		inet->user_data = NULL;
+-		kfree(svsk);
+-		return NULL;
+-	}
+-
++		svc_tcp_init(svsk);
+ 
+ 	spin_lock_bh(&serv->sv_lock);
+ 	if (!pmap_register) {
+@@ -1302,6 +1294,9 @@ if (svsk->sk_sk == NULL)
+ 
+ 	dprintk("svc: svc_setup_socket created %p (inet %p)\n",
+ 				svsk, svsk->sk_sk);
++
++	clear_bit(SK_BUSY, &svsk->sk_flags);
++	svc_sock_enqueue(svsk);
+ 	return svsk;
  }
  
 
