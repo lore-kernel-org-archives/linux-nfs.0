@@ -1,26 +1,26 @@
-From: Nick Couchman <nick-lists@seakr.com>
-Subject: Root Over NFS Memory Problem
-Date: Wed, 03 Mar 2004 10:58:00 -0700
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 2.6.3] Add write throttling to NFS client
+Date: Wed, 03 Mar 2004 13:35:02 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1078336680.31825.19.camel@nick0.seakr.com>
+Message-ID: <1078338902.3259.13.camel@nidelv.trondhjem.org>
+References: <20040303032213.58494.qmail@web12823.mail.yahoo.com>
+	 <40461CCC.5040609@lehman.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=iso-8859-1
+Cc: Shantanu Goel <sgoel01@yahoo.com>, Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>, Charles Lever <Charles.Lever@netapp.com>, Olaf Kirch <okir@suse.de>, Greg Banks <gnb@melbourne.sgi.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ayaig-0008A8-0d
-	for nfs@lists.sourceforge.net; Wed, 03 Mar 2004 10:03:46 -0800
-Received: from gw2.seakr.com ([209.144.181.2] helo=mail-gw.seakr.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1AyadF-0004dp-Kp
-	for nfs@lists.sourceforge.net; Wed, 03 Mar 2004 09:58:09 -0800
-Received: from scan-gw.seakr.com (seakr5.seakr.com [192.168.100.10])
-	by mail-gw.seakr.com (8.12.10/8.12.10) with ESMTP id i23Hrg6a002964
-	for <nfs@lists.sourceforge.net>; Wed, 3 Mar 2004 10:53:42 -0700
-Received: from nick0.seakr.com (nick0 [192.168.10.70])
-	by seakr5.seakr.com (8.10.2/8.10.2) with ESMTP id i23Hw1Z17198
-	for <nfs@lists.sourceforge.net>; Wed, 3 Mar 2004 10:58:01 -0700 (MST)
-To: nfs@lists.sourceforge.net
+	id 1AybIi-0007lt-Ng
+	for nfs@lists.sourceforge.net; Wed, 03 Mar 2004 10:41:00 -0800
+Received: from dh197.citi.umich.edu
+	([141.211.133.197] helo=nidelv.trondhjem.org ident=Debian-exim)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.30)
+	id 1AyauF-0007tU-Uw
+	for nfs@lists.sourceforge.net; Wed, 03 Mar 2004 10:15:44 -0800
+To: Shantanu Goel <Shantanu.Goel@lehman.com>
+In-Reply-To: <40461CCC.5040609@lehman.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,27 +33,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I'm trying to run a few clients using NFS for the root filesystem.  I'm
-having a problem with what appears to be a memory "leak" (I'm not sure
-it's actually a leak, but for all intents and purposes, it is).  What
-happens is that I lose 8k of free memory every time I run a command. 
-For example, if I repeatedly run the "free" command, the free memory
-will drop 8k each time I run it.  If I instead run "free -s 1" (telling
-free to update at 1 second intervals), it drops a couple of times and
-then levels out.  The problem is bad enough that one of the clients ran
-out of memory (swap - on a local hard drive - and physical RAM) the
-other night and "kernel panicked".  The clients are running kernel
-version 2.4.22 with the OpenMosix patch (2.4.22 seems to be the latest
-"stable" OpenMosix version).  Has anyone run across this problem
-before?  Any ideas what I can do to fix it?  Is it a known NFS bug in
-2.4.22 that is fixed in later versions?  (I'm about to try another
-version of the kernel which might give me an answer to that, but I
-thought I'd ask).
+P=E5 on , 03/03/2004 klokka 12:58, skreiv Shantanu Goel:
+> Attached is a patch that eliminates nfs_strategy() and just relies on=20
+> pdflush to regulate dirty pages.  It applies on top of the rpc throttle=20
+> patch I emailed earlier.
 
-Thanks in advance!
--- 
-Nick Couchman <nick-lists@seakr.com>
+See
+http://www.fys.uio.no/~trondmy/src/Linux-2.6.x/2.6.3/linux-2.6.3-02-strateg=
+y.dif
 
+which already does this...
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
