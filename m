@@ -1,19 +1,20 @@
-From: Jean-Eric Cuendet <Jean-Eric.Cuendet@linkvest.com>
-Subject: .x files for NFS v3
-Date: Mon, 02 Sep 2002 15:12:09 +0200
+From: "Nicholas Lafferty" <nlafferty@pennswoods.net>
+Subject: fh_verify
+Date: Mon, 2 Sep 2002 19:25:08 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3D7363A9.4090304@linkvest.com>
+Message-ID: <002d01c252d7$fa4c5cf0$9300a8c0@gridlock>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from idefix.linkvest.com ([194.209.53.99])
+Received: from mail.pennswoods.net ([205.247.236.146])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17lr0D-0001vd-00
-	for <nfs@lists.sourceforge.net>; Mon, 02 Sep 2002 06:12:25 -0700
-Received: from hermes.linkvest.com (unverified) by idefix.linkvest.com
- (Content Technologies SMTPRS 4.2.10) with ESMTP id <T5d1793fce3c2d1356337c@idefix.linkvest.com> for <nfs@lists.sourceforge.net>;
- Mon, 2 Sep 2002 15:12:13 +0200
-To: nfs@lists.sourceforge.net
+	id 17m0kb-0000fE-00
+	for <nfs@lists.sourceforge.net>; Mon, 02 Sep 2002 16:36:58 -0700
+Received: from gridlock (du233-637716.dialupcu.pennswoods.net [63.77.16.233])
+	by mail.pennswoods.net (Postfix) with SMTP id 716BD28990A
+	for <nfs@lists.sourceforge.net>; Mon,  2 Sep 2002 19:36:53 -0400 (EDT)
+To: "nfs" <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,10 +27,22 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hi,
-where should I find .x files for rpcgen for nfsv3?
-Thanks.
--jec
+I have recently set up a lan with three New Internet Computers booting off
+the network as outlined in the article (
+http://www.dnalounge.com/backstage/src/kiosk ) . After many atempts I have
+finally gotten ALMOST a booting client.
+I have been alternating testing with SysVinit and Busybox's init. If I use
+the normal init I get errors on the NFS server about fh_verify: /etc/shadow
+permission failure. As soon as inittab is read. I get the same errors when I
+run sulogin. If I rename the inittab out of the way I can only boot in
+single mode.
+
+If I use busybox it will boot. But I can not start X and I get the same
+errors.
+
+Any clue? Any help would be great.
+
+Nicholas Lafferty
 
 
 
