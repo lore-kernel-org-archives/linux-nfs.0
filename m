@@ -1,110 +1,87 @@
-From: Thomas Moestl <moestl@ibr.cs.tu-bs.de>
-Subject: Re: [autofs] Re: umount() and NFS races in 2.4.26
-Date: Sat, 10 Jul 2004 20:25:10 +0200
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <20040710182510.GB800@timesink.dyndns.org>
-References: <20040708180709.GA7704@timesink.dyndns.org> <Pine.LNX.4.58.0407101419210.1378@donald.themaw.net> <20040710152549.GD21121@sgi.com>
+From: raven@themaw.net
+Subject: Re: umount() and NFS races in 2.4.26
+Date: Sun, 11 Jul 2004 03:25:34 +0800 (WST)
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <Pine.LNX.4.58.0407110323480.20439@donald.themaw.net>
+References: <20040708180709.GA7704@timesink.dyndns.org>
+ <Pine.LNX.4.58.0407101419210.1378@donald.themaw.net> <20040710181912.GA800@timesink.dyndns.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: raven@themaw.net, autofs mailing list <autofs@linux.kernel.org>,
-	nfs@lists.sourceforge.net,
-	Kernel Mailing List <linux-kernel@vger.kernel.org>
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org-S266333AbUGJSZE@vger.kernel.org>
-To: Greg Banks <gnb@sgi.com>
-In-Reply-To: <20040710152549.GD21121@sgi.com>
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: autofs mailing list <autofs@linux.kernel.org>, nfs@lists.sourceforge.net,
+   Kernel Mailing List <linux-kernel@vger.kernel.org>
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BjNfm-0006zm-GB
+	for nfs@lists.sourceforge.net; Sat, 10 Jul 2004 12:38:10 -0700
+Received: from wombat.indigo.net.au ([202.0.185.19])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.34)
+	id 1BjNfl-0003si-R3
+	for nfs@lists.sourceforge.net; Sat, 10 Jul 2004 12:38:10 -0700
+To: Thomas Moestl <moestl@ibr.cs.tu-bs.de>
+In-Reply-To: <20040710181912.GA800@timesink.dyndns.org>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sun, 2004/07/11 at 01:25:49 +1000, Greg Banks wrote:
-> On Sat, Jul 10, 2004 at 02:57:46PM +0800, raven@themaw.net wrote:
-> > On Thu, 8 Jul 2004, Thomas Moestl wrote:
-> > > I believe that I have found two problems:
+On Sat, 10 Jul 2004, Thomas Moestl wrote:
+
+> Hello,
+> 
+> On Sat, 2004/07/10 at 14:57:46 +0800, raven@themaw.net wrote:
+> > > Hi,
 > > > 
-> > > - The NFS async unlink code (fs/nfs/unlink.c) does keep a dentry for
-> > >   later asynchronous processing, but the mount point is unbusied via
-> > >   path_release() once sys_unlink() returns (fs/namei.c). [...]
+> > > after deploying an SMP machine at work, we started to experience Oopses
+> > > in file-system related code relatively frequently. Investigation
+> > > revealed that they were caused by references using junk pointers from
+> > > freed super blocks via dangling inodes from unmounted file systems;
+> > > Oopses would always be preceded by the warning
+> > >   VFS: Busy inodes after unmount. Self-destruct in 5 seconds.  Have a nice day...
+> > > on an unmount (unmount activity is high on this machine due to heavy use
+> > > of the automounter). The predecessor to this machine, a UP system with
+> > > otherwise almost identical configuration, did never encounter such
+> > > problems, so I went looking for possible SMP races.
+> > 
+> > This has been reported many times by users of autofs, especially people 
+> > with a ot of mount/umount activity.
+> > 
+> > As James pointed out my latest autofs4 patch resolved the issue for him.
+> > However, on the NFS list Greg Banks pointed out that this may be hiding a
+> > problem that exists in NFS. So it would be good if the NFS folk could 
+> > investigate this further.
+> > 
+> > Never the less I'm sure there is a race in waitq.c of autofs4 in 
+> > 2.4 that seems to cause this problem. This is one of the things 
+> > addressed by my patch.
 > 
-> This used to be a bug.  It was fixed in 2.4.26 with
-> 
-> http://linux.bkbits.net:8080/linux-2.4/diffs/fs/nfs/dir.c@1.13
-> 
-> What happens now is that the dentry and its inode are cleaned up
-> when the async unlink task is deleted in nfs_put_super() between
-> the first and second calls to invalidate_inodes() in kill_super().
+> The system in question still uses autofs3. While I believe that the
+> waitq race is also present there (it could probably cause directory
+> lookups to hang, if I understand it correctly), I do not think that
+> any autofs3 code could cause exactly those symptoms that I have
+> observed. For that, it would have to obtain dentries of the file
+> systems that it has mounted, but the old code never does that.
 
-Ah, I see; I didn't look deep enough there.
+All autofs has to do is not delete a directory before exiting for this 
+error to occur.
 
-> > > - There is a SMP race between the shrink_dcache_parent() (fs/dcache.c)
-> > >   called from kill_super() and prune_dache() called via
-> > >   shrink_dache_memory() (called by kswapd), as follows: [...]
-> 
-> Your scenario sounds plausible and might explain at least some 
-> of the autofs unmount races we've been seeing.
-> 
-> > >   In the attached patch, I have used a semaphore to serialize purging
-> > >   accesses to the dentry_unused list. [...]
-> 
-> Can we see the patch please?
+Ian
 
-I've attached it below.
 
-Thanks,
 
-	- Thomas
-
---- dcache.c.orig	Wed Jun 16 00:22:03 2004
-+++ dcache.c	Wed Jun 16 01:00:47 2004
-@@ -51,6 +51,7 @@
- static unsigned int d_hash_shift;
- static struct list_head *dentry_hashtable;
- static LIST_HEAD(dentry_unused);
-+struct semaphore dcache_lru_sem;
- 
- /* Statistics gathering. */
- struct dentry_stat_t dentry_stat = {0, 0, 45, 0,};
-@@ -381,6 +382,7 @@
- 	struct list_head *tmp, *next;
- 	struct dentry *dentry;
- 
-+	down(&dcache_lru_sem);
- 	/*
- 	 * Pass one ... move the dentries for the specified
- 	 * superblock to the most recent end of the unused list.
-@@ -416,6 +418,7 @@
- 		goto repeat;
- 	}
- 	spin_unlock(&dcache_lock);
-+	up(&dcache_lru_sem);
- }
- 
- /*
-@@ -548,8 +551,10 @@
- {
- 	int found;
- 
-+	down(&dcache_lru_sem);
- 	while ((found = select_parent(parent)) != 0)
- 		prune_dcache(found);
-+	up(&dcache_lru_sem);
- }
- 
- /*
-@@ -581,9 +586,11 @@
- 	if (!(gfp_mask & __GFP_FS))
- 		return 0;
- 
-+	down(&dcache_lru_sem);
- 	count = dentry_stat.nr_unused / priority;
- 
- 	prune_dcache(count);
-+	up(&dcache_lru_sem);
- 	return kmem_cache_shrink(dentry_cache);
- }
- 
-@@ -1247,6 +1254,7 @@
- 		d++;
- 		i--;
- 	} while (i);
-+	sema_init(&dcache_lru_sem, 1);
- }
- 
- static void init_buffer_head(void * foo, kmem_cache_t * cachep, unsigned long flags)
+-------------------------------------------------------
+This SF.Net email sponsored by Black Hat Briefings & Training.
+Attend Black Hat Briefings & Training, Las Vegas July 24-29 - 
+digital self defense, top technical experts, no vendor pitches, 
+unmatched networking opportunities. Visit www.blackhat.com
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
