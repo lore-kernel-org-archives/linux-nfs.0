@@ -1,17 +1,16 @@
-From: "Steve Wolfe" <nw@codon.com>
-Subject: More on the unmountable volumes...
-Date: Wed, 26 Feb 2003 13:38:52 -0700
+From: "Alexander V. Dudnik" <dudnik@isa-group.biz>
+Subject: Very strange error while compiling nfs-utils-1.0.1
+Date: Thu, 27 Feb 2003 19:02:11 +0300
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <000b01c2ddd7$145224b0$88693fd1@WEASEL>
-References: <shshec9p7zs.fsf@charged.uio.no><Pine.LNX.4.40.0301161226270.26507-100000@bolt.sonic.net> <15963.42061.837369.881024@charged.uio.no>
+Message-ID: <001601c2de79$983b08d0$1800a8c0@dudnik>
 Mime-Version: 1.0
 Content-Type: text/plain;
-	charset="iso-8859-1"
+	charset="koi8-r"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from local.iboats.com ([209.63.105.131])
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18o8Fb-0006eA-00
-	for <nfs@lists.sourceforge.net>; Wed, 26 Feb 2003 12:33:59 -0800
+Received: from [213.152.155.2] (helo=isa-server2.isa-group.ru)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18oQVH-0003kU-00
+	for <nfs@lists.sourceforge.net>; Thu, 27 Feb 2003 08:03:23 -0800
 To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -25,43 +24,211 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Dear Gentlemen !
 
- A week or so ago, I send a message to the list about some volumes that
-would not mount from a particular client.  I've come across something that
-allows me to mount the volumes, but not particularly well.
+Is there any reasonable explanation of the following error messages:
+# make
+--------------------
+<skipped>
+--------------------
+Building exportfs done.
+Making all in mountd
+gcc -g -O2 -D_GNU_SOURCE -I../../support/include -Wall  -pipe  -DVERSION="\"
+nfs-utils 1.0.1\"" -DNFS3_SUPPORTED   -c -o mountd.o mountd.c
+In file included from mountd.c:24:
+mountd.h:19: parse error before "dirpath"
+mountd.h:19: warning: no semicolon at end of struct or union
+mountd.h:23: parse error before "fhstatus"
+mountd.h:23: warning: no semicolon at end of struct or union
+mountd.h:24: warning: type defaults to `int' in declaration of `mountlist'
+mountd.h:24: warning: data definition has no type or storage class
+mountd.h:25: parse error before "exports"
+mountd.h:25: warning: type defaults to `int' in declaration of `exports'
+mountd.h:25: warning: data definition has no type or storage class
+mountd.h:32: parse error before "dirpath"
+mountd.h:33: parse error before "mountlist"
+mountd.h:34: parse error before "dirpath"
+mountd.h:36: parse error before "exports"
+mountd.h:37: parse error before "exports"
+mountd.h:38: parse error before "dirpath"
+mountd.h:39: parse error before "dirpath"
+mountd.h:51: parse error before "mountlist_list"
+mountd.h:51: warning: type defaults to `int' in declaration of
+`mountlist_list'
+mountd.h:51: warning: data definition has no type or storage class
+mountd.c:28: parse error before "get_exportlist"
+mountd.c:28: warning: type defaults to `int' in declaration of
+`get_exportlist'
+mountd.c:28: warning: data definition has no type or storage class
+mountd.c:29: parse error before "dirpath"
+mountd.c: In function `killer':
+mountd.c:55: `MOUNTPROG' undeclared (first use in this function)
+mountd.c:55: (Each undeclared identifier is reported only once
+mountd.c:55: for each function it appears in.)
+mountd.c:55: `MOUNTVERS' undeclared (first use in this function)
+mountd.c:57: `MOUNTVERS_POSIX' undeclared (first use in this function)
+mountd.c:59: `MOUNTVERS_NFSV3' undeclared (first use in this function)
+mountd.c: At top level:
+mountd.c:70: parse error before "dirpath"
+mountd.c: In function `mount_mnt_1_svc':
+mountd.c:74: `path' undeclared (first use in this function)
+mountd.c:75: `rqstp' undeclared (first use in this function)
+mountd.c:75: `res' undeclared (first use in this function)
+mountd.c: At top level:
+mountd.c:81: parse error before "mountlist"
+mountd.c: In function `mount_dump_1_svc':
+mountd.c:84: `rqstp' undeclared (first use in this function)
+mountd.c:88: `res' undeclared (first use in this function)
+mountd.c: At top level:
+mountd.c:93: parse error before "dirpath"
+mountd.c: In function `mount_umnt_1_svc':
+mountd.c:96: `rqstp' undeclared (first use in this function)
+mountd.c:98: `argp' undeclared (first use in this function)
+mountd.c: At top level:
+mountd.c:128: parse error before "exports"
+mountd.c: In function `mount_export_1_svc':
+mountd.c:131: `rqstp' undeclared (first use in this function)
+mountd.c:134: `resp' undeclared (first use in this function)
+mountd.c: At top level:
+mountd.c:139: parse error before "exports"
+mountd.c: In function `mount_exportall_1_svc':
+mountd.c:142: `rqstp' undeclared (first use in this function)
+mountd.c:145: `resp' undeclared (first use in this function)
+mountd.c: At top level:
+mountd.c:161: parse error before "dirpath"
+mountd.c: In function `mount_pathconf_2_svc':
+mountd.c:164: `rqstp' undeclared (first use in this function)
+mountd.c:168: `path' undeclared (first use in this function)
+mountd.c:170: `res' undeclared (first use in this function)
+mountd.c: At top level:
+mountd.c:215: parse error before "dirpath"
+mountd.c: In function `mount_mnt_3_svc':
+mountd.c:220: `path' undeclared (first use in this function)
+mountd.c:221: `rqstp' undeclared (first use in this function)
+mountd.c:221: `res' undeclared (first use in this function)
+mountd.c:224: dereferencing pointer to incomplete type
+mountd.c:225: dereferencing pointer to incomplete type
+mountd.c:226: dereferencing pointer to incomplete type
+mountd.c:227: dereferencing pointer to incomplete type
+mountd.c: At top level:
+mountd.c:233: parse error before "dirpath"
+mountd.c: In function `get_rootfh':
+mountd.c:236: `rqstp' undeclared (first use in this function)
+mountd.c:240: `path' undeclared (first use in this function)
+mountd.c:256: `error' undeclared (first use in this function)
+mountd.c:275: `v3' undeclared (first use in this function)
+mountd.c: At top level:
+mountd.c:299: parse error before "get_exportlist"
+mountd.c:300: warning: return type defaults to `int'
+mountd.c: In function `get_exportlist':
+mountd.c:301: syntax error before "elist"
+mountd.c:307: `elist' undeclared (first use in this function)
+mountd.c:311: dereferencing pointer to incomplete type
+mountd.c:312: dereferencing pointer to incomplete type
+mountd.c:313: dereferencing pointer to incomplete type
+mountd.c:314: dereferencing pointer to incomplete type
+mountd.c:317: dereferencing pointer to incomplete type
+mountd.c:324: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:325: dereferencing pointer to incomplete type
+mountd.c:329: dereferencing pointer to incomplete type
+mountd.c:330: dereferencing pointer to incomplete type
+mountd.c:331: dereferencing pointer to incomplete type
+mountd.c:332: dereferencing pointer to incomplete type
+mountd.c:338: dereferencing pointer to incomplete type
+mountd.c:339: dereferencing pointer to incomplete type
+mountd.c:340: dereferencing pointer to incomplete type
+mountd.c:341: dereferencing pointer to incomplete type
+mountd.c:344: dereferencing pointer to incomplete type
+mountd.c:348: dereferencing pointer to incomplete type
+mountd.c:351: dereferencing pointer to incomplete type
+mountd.c:353: dereferencing pointer to incomplete type
+mountd.c:354: dereferencing pointer to incomplete type
+mountd.c:357: dereferencing pointer to incomplete type
+mountd.c:358: dereferencing pointer to incomplete type
+mountd.c:367: dereferencing pointer to incomplete type
+mountd.c:372: dereferencing pointer to incomplete type
+mountd.c:372: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:374: dereferencing pointer to incomplete type
+mountd.c:378: dereferencing pointer to incomplete type
+mountd.c:379: dereferencing pointer to incomplete type
+mountd.c:380: dereferencing pointer to incomplete type
+mountd.c:380: dereferencing pointer to incomplete type
+mountd.c:381: dereferencing pointer to incomplete type
+mountd.c: In function `main':
+mountd.c:495: `MOUNTPROG' undeclared (first use in this function)
+mountd.c:495: `MOUNTVERS' undeclared (first use in this function)
+mountd.c:498: `MOUNTVERS_POSIX' undeclared (first use in this function)
+mountd.c:501: `MOUNTVERS_NFSV3' undeclared (first use in this function)
+make[2]: *** [mountd.o] Error 1
+make[1]: *** [all] Error 2
+make: *** [all] Error 2
+#
 
-  If I try and mount a volume normally, I'll get "RPC Timed out".  If I
-watch tcpdump, all communications will work for about 200 packets, then
-the client won't be able to get packets to mountd on the server.  There is
-no firewalling taking place between the two.
+Everything happens under Linux RedHat 7.3 wit gcc 3.1 (update pack).
 
-  Here's where it gets interesting:  If I shut down NFS on the server,
-then start it back up, and try and mount a volume (say, /home) from the
-client immediately, it will work.  But if I wait a few minutes after
-restarting the NFS server, it will *not* work.  It gets even better:  If I
-restart NFS on the server, and mount a volume from the client immediately,
-it will work - BUT, I will not be able to mount another volume from that
-client unless I restart NFS on the server *again* - and I have to repeat
-for each of the several volumes that I have to mount.  But, I did get all
-of the volumes mounted last night.  Today, however, one one of the
-volumes, I got a stale NFS handle error, so I had to restart the NFS
-server, then remount the volume.  Quite unpleasant!
+Thank You in advance !
 
-  This is really weird.  And it only happens from this one client.   I've
-ruled out hardware issues, and even copied the entire OS from one of the
-other functioning clients.  I really do wonder if it could be a problem on
-the server side, and would appreciate any suggestions or help.
 
-steve
-
+Yours,
+Alexander Dudnik
+ISA Group
 
 
 
 -------------------------------------------------------
-This SF.net email is sponsored by: Scholarships for Techies!
-Can't afford IT training? All 2003 ictp students receive scholarships.
-Get hands-on training in Microsoft, Cisco, Sun, Linux/UNIX, and more.
-www.ictp.com/training/sourceforge.asp
+This sf.net email is sponsored by:ThinkGeek
+Welcome to geek heaven.
+http://thinkgeek.com/sf
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
