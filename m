@@ -1,19 +1,24 @@
-From: "Magnus Naeslund\(f\)" <mag@fbab.net>
+From: Juergen Sauer <juergen.sauer@automatix.de>
 Subject: Re: Journaling FileSystems w/ NFS
-Date: Fri, 20 Sep 2002 18:56:14 +0200
+Date: Fri, 20 Sep 2002 19:17:38 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <0d5b01c260c6$a17cd8a0$f80c0a0a@mnd>
-References: <Pine.LNX.4.33.0209201145290.16674-100000@node1.nacs.net> <0cea01c260c2$7fb119b0$f80c0a0a@mnd>
+Message-ID: <200209201917.38085.juergen.sauer@automatix.de>
+References: <Pine.LNX.4.33.0209201145290.16674-100000@node1.nacs.net>
 Mime-Version: 1.0
 Content-Type: text/plain;
-	charset="iso-8859-1"
-Cc: <nfs@lists.sourceforge.net>
+  charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail2.fbab.net ([195.54.134.228])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17sR4d-0000Mm-00
-	for <nfs@lists.sourceforge.net>; Fri, 20 Sep 2002 09:56:11 -0700
-To: "Greg Boehnlein" <damin@nacs.net>
+Received: from www.automatix.de ([212.4.161.35] helo=mail.automatix.de)
+	by usw-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17sRRw-0008EH-00
+	for <nfs@lists.sourceforge.net>; Fri, 20 Sep 2002 10:20:16 -0700
+Received: from uucp by mail.automatix.de with local-bsmtp (Exim 3.36 #1)
+	id 17sRT7-0003gQ-00
+	for nfs@lists.sourceforge.net; Fri, 20 Sep 2002 19:21:29 +0200
+To: Greg Boehnlein <damin@nacs.net>,
+ <nfs@lists.sourceforge.net>
+In-Reply-To: <Pine.LNX.4.33.0209201145290.16674-100000@node1.nacs.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,36 +31,41 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-Magnus Naeslund(f) <mag@fbab.net> wrote:
-> Greg Boehnlein <damin@nacs.net> wrote:
->> Hello,
-[snip]
->=20
-> Could you elaborate on what troubles you've had?
-> I'm running several boxes that have 1TB partitions and run ReiserFS.
->=20
-> One looks like this:
->=20
-> [root@fet1a root]# mount
-> /dev/hda6 on / type ext3 (rw,noatime)
-> /dev/sda1 on /storage/disk1 type reiserfs (rw,noatime,notail)
-> /dev/sdb1 on /storage/disk2 type reiserfs (rw,noatime,notail)
->=20
-> [root@fet1a root]# df -ht reiserfs
-> Filesystem            Size  Used Avail Use% Mounted on
-> /dev/sda1             1.0T  809G  260G  76% /storage/disk1
-> /dev/sdb1             1.0T   33M  1.0T   1% /storage/disk2
->=20
-> Magnus
->=20
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-Argh!
-Responding to my self...
+Am Freitag, 20. September 2002 17:48 schrieb Greg Boehnlein:
+> Hello,
+> 	Can someone point me to a FAQ on which is the best solution for
+> running a Journalized Filesystem with NFS support under Linux? We've
+> tried deploying JFS with RedHat 7.3 and NFS and have run into problems.
+> From my investigation, it appears that XFS is our best option for
+> running NFS with +2gig file size support.
 
-This system is an vanilla RH 7.3 system also.
-I just created a 5gb fil over nfs, and it worked just fine...
+Full Ack. We are runneing here somwhat >6 TB NFS Servers  with XFS.
+(Applications: NFS, Samba, SapDB) XFS ist nearly unbraekable.
 
-Magnus
+The worst problem we had was with the bleeding edge Kernel 2.4.19 
+from the CVS sources in a test box, where a log-replay-race coused a 
+singular kernal crash. After rebooting/reseting this box, all was fine.
+
+The log-replay-race condition isr IMHO solved.
+
+mfG
+	Jojo
+
+- -- 
+Jürgen Sauer - AutomatiX GmbH, +49-4209-4699, jojo@automatix.de **
+** Das Linux Systemhaus - Service - Support - Server - Lösungen **
+http://www.automatix.de to Mail me: remove: -not-for-spawm-     **
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.0.6 (GNU/Linux)
+Comment: For info see http://www.gnupg.org
+
+iEYEARECAAYFAj2LWDIACgkQW7UKI9EqarGGgACgsZnc4Se43Z92MKvW7s6fL2FS
+zhMAoJ1coSMiZFmfzLwhOPGPgqgWr8lQ
+=8Zgy
+-----END PGP SIGNATURE-----
 
 
 
