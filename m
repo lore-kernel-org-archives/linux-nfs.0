@@ -1,25 +1,26 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] Prevent oops in nfs_sb_init
-Date: Tue, 23 Mar 2004 11:00:25 -0500
+From: Gilles Quillard <Gilles.Quillard@Bull.Net>
+Subject: support of IPv6 by NFSv4
+Date: Tue, 23 Mar 2004 17:23:34 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1080057625.3109.10.camel@lade.trondhjem.org>
-References: <20040323101740.GE24978@suse.de>
+Message-ID: <40606486.473E480D@Bull.Net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B5oKR-0004jc-Rc
-	for nfs@lists.sourceforge.net; Tue, 23 Mar 2004 08:00:35 -0800
-Received: from dh132.citi.umich.edu
-	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.30)
-	id 1B5oKR-0005Fj-Lj
-	for nfs@lists.sourceforge.net; Tue, 23 Mar 2004 08:00:35 -0800
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20040323101740.GE24978@suse.de>
+	id 1B5ofy-0007rZ-U1
+	for nfs@lists.sourceforge.net; Tue, 23 Mar 2004 08:22:50 -0800
+Received: from ecbull20.frec.bull.fr ([129.183.4.3])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1B5ofx-0005NG-On
+	for nfs@lists.sourceforge.net; Tue, 23 Mar 2004 08:22:50 -0800
+Received: from alpha12.frec.bull.fr (alpha12.frec.bull.fr [129.183.146.1])
+	by ecbull20.frec.bull.fr (8.9.2/8.9.1) with ESMTP id RAA20580
+	for <nfs@lists.sourceforge.net>; Tue, 23 Mar 2004 17:23:37 +0100
+Received: from Bull.Net (localhost [127.0.0.1])
+	by alpha12.frec.bull.fr (AIX4.3/8.9.3/8.9.3) with ESMTP id RAA193736
+	for <nfs@lists.sourceforge.net>; Tue, 23 Mar 2004 17:23:34 +0100
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,15 +33,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 ty , 23/03/2004 klokka 05:17, skreiv Olaf Kirch:
-> nfs_sb_init will crash when the fsinfo call fails, because
-> it tries to iput() an uninitialized pointer. The attached patch
-> should fix this.
+Hi,
 
-This bug should already be fixed in 2.6.5-rc2...
+I'm new in this mailing list. We are interesting by having NFSv4 working over IPv6.
+One year ago, Bruce Allan from IBM submitted a patch to add the support of IPv6 in the SUNRPC and in the NFS client/server
+kernel part. This patch has not been adopted. Trond, did you remember why this patch has not been taken into account ?
 
-Cheers,
-  Trond
+Since this date, there has been no new message on the mailing list about the support of IPv6. Is there some people working on
+this subject or interested by it ?
+
+I have begun to look how the support of IPv6 could be integrated in NFS and SUNRPC. The most efficient way seems to be using the
+IPv4-mapped IPv6 address format (as described in the sections 3.7 and 6 of RFC2133). With this method, IPv4 addresses are
+converted into IPv6 addresses the first time they are used by the user part applications, and then all the address processing is
+done using INET6 addresses (simple change of in_addr/sockaddr_in by in6_addr/sockaddr_in6). This method avoids the multiple
+tests of the INET family and the corresponding castings. A set of macros/functions (IN6_IS_ADDR_V4MAPPED(), inet_pton(),
+inet_ntop(), gethostbyname2(), ...) is available to identify the format of the addresses, to convert and display the addresses
+according to their format and to use the name server.
+
+Any comments are welcome.
+
+Gilles.
+-- 
+Gilles Quillard
+Bull Open Software R&D
 
 
 -------------------------------------------------------
