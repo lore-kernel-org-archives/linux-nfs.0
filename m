@@ -1,25 +1,22 @@
 From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-Subject: Re: silly names
-Date: Fri, 3 Sep 2004 15:06:12 -0600 (MDT)
+Subject: more on silly names
+Date: Sat, 4 Sep 2004 16:27:14 -0600 (MDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.60.0409031501350.8558@harp.ngdc.noaa.gov>
-References: <Pine.LNX.4.44.0409032150590.17325-100000@kenzo.iwr.uni-heidelberg.de>
+Message-ID: <Pine.LNX.4.60.0409041610230.17016@harp.ngdc.noaa.gov>
 Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C3LGF-00027t-N8
-	for nfs@lists.sourceforge.net; Fri, 03 Sep 2004 14:06:19 -0700
+	id 1C3j1O-0007d4-CD
+	for nfs@lists.sourceforge.net; Sat, 04 Sep 2004 15:28:34 -0700
 Received: from harp.ngdc.noaa.gov ([140.172.187.26])
 	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.34)
-	id 1C3LGD-00017K-3T
-	for nfs@lists.sourceforge.net; Fri, 03 Sep 2004 14:06:18 -0700
-To: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
-In-Reply-To: <Pine.LNX.4.44.0409032150590.17325-100000@kenzo.iwr.uni-heidelberg.de>
+	id 1C3j1H-0008SK-Ip
+	for nfs@lists.sourceforge.net; Sat, 04 Sep 2004 15:28:30 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,47 +29,71 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, 3 Sep 2004, Bogdan Costescu wrote:
 
-> On Fri, 3 Sep 2004, Ara.T.Howard wrote:
->
->> are there causes other than some remote client removing an open file
->> for sillynames appearing in a directory containing a file shared
->> (via locking) by many clients?
->
-> I think that renaming while a file is open also uses silly names.
->
->> i have a directory containing such a file where many sillynames
->> appear, but eventually disappear.
->
-> ... after the last close().
+i think i've found the cause of the sillnames appearing in my directory:
+for transaction sqlite aquires a lock, writes changes first to a db-journal
+file, then to the actual db, closes the journal, unlinks the journal, and
+releases the lock.  this sequence should not create a silly file, but seems
+to do so:
 
-yes, the thing is that no files are being renamed, removed, etc.  all code
-that accesses the file does so in a transaction like
+   here's a snaphshot of my system in action:
 
-   aquire fcntl lock on sentinal file
+      yacht:~/shared > new q
+      total 4432
+      -rw-rw-rw-    1 cfadmin  cfadmin      1023 Aug 29 08:55 db.schema
+      drwxrwxrwx   11 cfadmin  11113        4096 Sep  4 15:43 ..
+      -rw-rw-rw-    1 cfadmin  cfadmin   4441088 Sep  4 15:44 db
+      -rw-------    1 cfadmin  cfadmin     21692 Sep  4 15:44 .nfs0091c0d400001089
+      -rw-rw-rw-    1 cfadmin  cfadmin         0 Sep  4 15:44 lock
+      -rw-------    1 cfadmin  cfadmin     15500 Sep  4 15:44 .nfs0091c0d7000011c2
+      -rw-r--r--    1 cfadmin  cfadmin         0 Sep  4 15:44 trout.ngdc.noaa.gov.22069.lock.w
+      -rw-r--r--    1 cfadmin  cfadmin         0 Sep  4 15:44 mahi.ngdc.noaa.gov.31335.waiting.w
+      -rw-------    1 cfadmin  cfadmin     15500 Sep  4 15:44 db-journal
+      -rw-------    1 cfadmin  cfadmin      8276 Sep  4 15:44 .nfs0091c0d500001270
+      drwxrwxrwx    2 cfadmin  cfadmin      4096 Sep  4 15:44 .
 
-     open file
-     use file
-     close file
+   you can see that the files
+      .nfs0091c0d7000011c2
+   and
+      db-journal
+   are (almost positively) the same.
 
-   release lock
+running an strace on the code i see that the file is always closed before it
+is unlinked, and it is never opened without first aquiring a write lock.  so
+silly names should not be appearing right (ignoring inode caching)?  in the
+strace i'll see
 
-the transaction is wrapped in a
+   open("/dmsp/moby-1-1/ahoward/shared/eg/ruby/rq/rq-0.1.3/q/db", O_RDWR|O_CREAT|O_LARGEFILE, 0644) = 6
 
-   try
-   catch
-   finally
+   ...
 
-type block and so is guarenteed to execute for all but kill -9.  additionally
-NONE of the applications has exited for about 30 days.
+   fcntl64(6, F_SETLK64, {type=F_WRLCK, whence=SEEK_SET, start=0, len=0}, 0xbffe0520) = 0
+   access("/dmsp/moby-1-1/ahoward/shared/eg/ruby/rq/rq-0.1.3/q/db-journal", F_OK) = -1 ENOENT (No such file or directory)
+   open("/dmsp/moby-1-1/ahoward/shared/eg/ruby/rq/rq-0.1.3/q/db-journal", O_RDWR|O_CREAT|O_EXCL|O_LARGEFILE, 0600) = 8
 
-also NONE of the uses removes, renames, etc. the file - only reads and writes
-are done.  the semantics are single writer many reader, if this we not so the
-application would crash horribly almost instantly.  i'm simply mystified as to
-what's creating the sillynames - it worries me though...  my code is using the
-sqlite api - so it's possible something is happening that i don't know about;
-i am looking into this now.
+   ...
+
+   close(8)                                = 0
+
+   ...
+
+   unlink("/dmsp/moby-1-1/ahoward/shared/eg/ruby/rq/rq-0.1.3/q/db-journal") = 0
+
+   ...
+
+   fcntl64(6, F_SETLK64, {type=F_UNLCK, whence=SEEK_SET, start=0, len=0}, 0xbffe04c0) = 0
+
+my theory is that the client causes the sillyname itself - perhaps the close
+is deferred and the unlink gets sent before it?  in any case there is a
+bugette here.  the code runs totally fine - which further supports the idea
+that the problem occurs at the close/unlink boundry since the client would
+never access the file after that.  does any of this make sense?  i simply do
+not understand the nfs protocal enough to suggest a workaround to the sqlite
+developers.  perhaps doing trying to stat the db-journal file after unlinking
+it or some action to invalidate the inode cache before unlinkin it?  any way
+to force the close to commit?
+
+thanks for any insights.
 
 kind regards.
 
