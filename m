@@ -1,31 +1,30 @@
 From: Haakon Riiser <haakon.riiser@fys.uio.no>
 Subject: Re: Random UDP port assignment for rpc.statd
-Date: Sun, 20 Feb 2005 18:04:28 +0100
-Message-ID: <20050220170428.GA18102@s>
-References: <20050220111312.GA3974@s> <1108908221.27120.26.camel@lade.trondhjem.org> <20050220141037.GA7686@s> <1108913435.27120.40.camel@lade.trondhjem.org> <1108917793.27120.43.camel@lade.trondhjem.org>
+Date: Sun, 20 Feb 2005 18:21:31 +0100
+Message-ID: <20050220172131.GA19800@s>
+References: <20050220111312.GA3974@s>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D2uVe-0008ES-5Y
-	for nfs@lists.sourceforge.net; Sun, 20 Feb 2005 09:04:42 -0800
+	id 1D2umA-0000XT-GQ
+	for nfs@lists.sourceforge.net; Sun, 20 Feb 2005 09:21:46 -0800
 Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1D2uVc-0000pk-ET
-	for nfs@lists.sourceforge.net; Sun, 20 Feb 2005 09:04:42 -0800
-Received: from mail-mx6.uio.no ([129.240.10.47] ident=[U2FsdGVkX1/xg0c59g6rSseLTO4PkTX0svbTWyNESz8=])
+	id 1D2um8-000650-I6
+	for nfs@lists.sourceforge.net; Sun, 20 Feb 2005 09:21:46 -0800
+Received: from mail-mx3.uio.no ([129.240.10.44] ident=[U2FsdGVkX1+iDzTKz9GgOESoGwnLY3Gd5zGuZmAiPfc=])
 	by pat.uio.no with esmtp (Exim 4.43)
-	id 1D2uVX-0005D5-QR
-	for nfs@lists.sourceforge.net; Sun, 20 Feb 2005 18:04:35 +0100
+	id 1D2um3-0002vS-Rg
+	for nfs@lists.sourceforge.net; Sun, 20 Feb 2005 18:21:39 +0100
 Received: from 160.80-203-48.nextgentel.com ([80.203.48.160] helo=s.hn.org)
-	by mail-mx6.uio.no with esmtpsa (TLSv1:AES256-SHA:256)
+	by mail-mx3.uio.no with esmtpsa (TLSv1:AES256-SHA:256)
 	(Exim 4.43)
-	id 1D2uVV-00050A-L0
-	for nfs@lists.sourceforge.net; Sun, 20 Feb 2005 18:04:33 +0100
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1108917793.27120.43.camel@lade.trondhjem.org>
+	id 1D2um0-0000vI-A0
+	for nfs@lists.sourceforge.net; Sun, 20 Feb 2005 18:21:36 +0100
+To: nfs@lists.sourceforge.net
+In-Reply-To: <20050220111312.GA3974@s>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,17 +38,13 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-[Trond Myklebust]
+> Btw, there's also a similar problem with nfsd:  In addition to
+> the standard listening port at 2049, it always opens a random
+> port in the high port range (32000-32768 or something like that).
 
-> su den 20.02.2005 Klokka 10:30 (-0500) skreiv Trond Myklebust:
-
->> See if the attached patch doesn't fix things so that your 3rd
->> rpc.statd port stays on the port specified by "-o"...
-
-> Here is the same patch in a slightly cleaner version (it gets
-> rid of the redundant comparison)...
-
-Works great -- thanks for fixing this so quickly!
+I almost forgot this one.  Does nfsd's mystery UDP port have the
+same purpose as the one from statd, i.e. communication with the
+portmapper?
 
 -- 
  Haakon
