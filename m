@@ -1,19 +1,20 @@
-From: <eddymulyono@dslextreme.com>
-Subject: mount.x
-Date: Fri, 27 Jun 2003 21:31:15 -0700 (PDT)
+From: Ragnar =?iso-8859-15?Q?Kj=F8rstad?= <linux-ha@ragnark.vestdata.no>
+Subject: Highly Available NFS-server, locking and statd
+Date: Sat, 28 Jun 2003 08:56:33 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <32796.66.159.224.134.1056774675.squirrel@www.dslextreme.com>
+Message-ID: <20030628065633.GK24737@vestdata.no>
+References: <Pine.LNX.4.44.0306271732330.21414-100000@mazda.sh.intel.com> <3EFC554D.302@unix.sh> <20030627224359.GJ24737@vestdata.no> <3EFD2322.9020209@unix.sh>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset=iso-8859-15
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from smtp.dslextreme.com ([66.51.205.17] helo=co1.dslextreme.com)
+Received: from stine.vestdata.no ([195.204.68.10])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19W7Rs-0006xN-00
-	for <nfs@lists.sourceforge.net>; Fri, 27 Jun 2003 21:36:28 -0700
-Received: from dslextreme.com (www [192.168.7.16])
-	by co1.dslextreme.com (8.12.9/8.12.6) with SMTP id h5S4VFor010021
-	for <nfs@lists.sourceforge.net>; Fri, 27 Jun 2003 21:31:15 -0700
-To: <nfs@lists.sourceforge.net>
+	id 19W9e4-000498-00
+	for <nfs@lists.sourceforge.net>; Fri, 27 Jun 2003 23:57:13 -0700
+To: linux-ha-dev@lists.community.tummy.com,
+   Bruce Allan <bruce.allan@us.ibm.com>, paul popelka <paulp@veritas.com>,
+   nfs@lists.sourceforge.net
+In-Reply-To: <3EFD2322.9020209@unix.sh>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,224 +27,112 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I'm having trouble compiling nfs-utils 1.0.3. After I issued
-[$./configure], [$make] spitted these important errors :
+The question of how to set up a highly available nfs-server is asked
+frequently on both nfs- and linux-ha-lists.
 
-gcc -g -O2 -D_GNU_SOURCE -I../../support/include -Wall  -pipe 
--DVERSION="\"nfs-utils 1.0.3\"" -DNFS3_SUPPORTED   -c -o mountd.o mountd.c
-In file included from mountd.c:24:
-mountd.h:19: parse error before "dirpath"
-mountd.h:19: warning: no semicolon at end of struct or union
+I suggest we should write a FAQ entry or a more comprehensive guide to
+setting up a HA NFS-server, as there are some additional issues that
+are not part of either traditional nfs-documentation or traditional
+ha-documentation.
 
-After hunting around, I think it is caused by the following lines in
-support/export/mount.x:64:
+Unfortenately I don't have a good enough overview of what's needed to
+write the doc without some help...
 
-union fhstatus switch (unsigned fhs_status) {
-case 0:
-	fhandle fhs_fhandle;
-default:
-	void;
-};
+For those that are new to the thread, the problem is the notifications=20
+sent to nfs-clients by statd. Clients expect a notification-message,
+with the same hostname they used when mounting the filesystem whenever
+the nfs-server restarts. For a HA-setup, the clients typically mount
+from a "servicename", which is different from the primary hostname of
+the nfs-servers.
 
-I looked around the mailing list and the CVS, and found out that mount.x
-is aged at 3 years. I've attended several C classes, and I don't think the
-code excerpt above is gramatically correct. I think it caused GCC to panic
-and messes the rest of the compilation.
+Typically there are three hostnames involved.
+One machine with hostname like "server1", another machine with hostname
+"server2", and a hostname like "nfs-service" that maps to an IP that is
+moved to the server that is active at any time.
 
-But I might be wrong. Maybe it is a C trick. Can anyone shed light on this
-issue?
-
-The complete [$make] errors are enclosed.
-
-In the meanwhile, I'll just go lazy and use the RPMs from my Mandrake 9.0.
- :p
-
-Thanx,
-
--Eddy
-
-gcc -g -O2 -D_GNU_SOURCE -I../../support/include -Wall  -pipe 
--DVERSION="\"nfs-utils 1.0.3\"" -DNFS3_SUPPORTED   -c -o mountd.o mountd.c
-In file included from mountd.c:24:
-mountd.h:19: parse error before "dirpath"
-mountd.h:19: warning: no semicolon at end of struct or union
-mountd.h:23: parse error before "fhstatus"
-mountd.h:23: warning: no semicolon at end of struct or union
-mountd.h:24: warning: type defaults to `int' in declaration of `mountlist'
-mountd.h:24: warning: data definition has no type or storage class
-mountd.h:25: parse error before "exports"
-mountd.h:25: warning: type defaults to `int' in declaration of `exports'
-mountd.h:25: warning: data definition has no type or storage class
-mountd.h:32: parse error before "dirpath"
-mountd.h:33: parse error before "mountlist"
-mountd.h:34: parse error before "dirpath"
-mountd.h:36: parse error before "exports"
-mountd.h:37: parse error before "exports"
-mountd.h:38: parse error before "dirpath"
-mountd.h:39: parse error before "dirpath"
-mountd.h:51: parse error before "mountlist_list"
-mountd.h:51: warning: type defaults to `int' in declaration of
-`mountlist_list'
-mountd.h:51: warning: data definition has no type or storage class
-mountd.c:28: parse error before "get_exportlist"
-mountd.c:28: warning: type defaults to `int' in declaration of
-`get_exportlist'
-mountd.c:28: warning: data definition has no type or storage class
-mountd.c:29: parse error before "dirpath"
-mountd.c: In function `killer':
-mountd.c:55: `MOUNTPROG' undeclared (first use in this function)
-mountd.c:55: (Each undeclared identifier is reported only once
-mountd.c:55: for each function it appears in.)
-mountd.c:55: `MOUNTVERS' undeclared (first use in this function)
-mountd.c:57: `MOUNTVERS_POSIX' undeclared (first use in this function)
-mountd.c:59: `MOUNTVERS_NFSV3' undeclared (first use in this function)
-mountd.c: At top level:
-mountd.c:70: parse error before "dirpath"
-mountd.c: In function `mount_mnt_1_svc':
-mountd.c:74: `path' undeclared (first use in this function)
-mountd.c:75: `rqstp' undeclared (first use in this function)
-mountd.c:75: `res' undeclared (first use in this function)
-mountd.c: At top level:
-mountd.c:81: parse error before "mountlist"
-mountd.c: In function `mount_dump_1_svc':
-mountd.c:84: `rqstp' undeclared (first use in this function)
-mountd.c:88: `res' undeclared (first use in this function)
-mountd.c: At top level:
-mountd.c:93: parse error before "dirpath"
-mountd.c: In function `mount_umnt_1_svc':
-mountd.c:96: `rqstp' undeclared (first use in this function)
-mountd.c:98: `argp' undeclared (first use in this function)
-mountd.c: At top level:
-mountd.c:128: parse error before "exports"
-mountd.c: In function `mount_export_1_svc':
-mountd.c:131: `rqstp' undeclared (first use in this function)
-mountd.c:134: `resp' undeclared (first use in this function)
-mountd.c: At top level:
-mountd.c:139: parse error before "exports"
-mountd.c: In function `mount_exportall_1_svc':
-mountd.c:142: `rqstp' undeclared (first use in this function)
-mountd.c:145: `resp' undeclared (first use in this function)
-mountd.c: At top level:
-mountd.c:161: parse error before "dirpath"
-mountd.c: In function `mount_pathconf_2_svc':
-mountd.c:164: `rqstp' undeclared (first use in this function)
-mountd.c:168: `path' undeclared (first use in this function)
-mountd.c:170: `res' undeclared (first use in this function)
-mountd.c: At top level:
-mountd.c:215: parse error before "dirpath"
-mountd.c: In function `mount_mnt_3_svc':
-mountd.c:220: `path' undeclared (first use in this function)
-mountd.c:221: `rqstp' undeclared (first use in this function)
-mountd.c:221: `res' undeclared (first use in this function)
-mountd.c:224: dereferencing pointer to incomplete type
-mountd.c:225: dereferencing pointer to incomplete type
-mountd.c:226: dereferencing pointer to incomplete type
-mountd.c:227: dereferencing pointer to incomplete type
-mountd.c: At top level:
-mountd.c:233: parse error before "dirpath"
-mountd.c: In function `get_rootfh':
-mountd.c:236: `rqstp' undeclared (first use in this function)
-mountd.c:240: `path' undeclared (first use in this function)
-mountd.c:256: `error' undeclared (first use in this function)
-mountd.c:275: `v3' undeclared (first use in this function)
-mountd.c: At top level:
-mountd.c:299: parse error before "get_exportlist"
-mountd.c:300: warning: return type defaults to `int'
-mountd.c: In function `get_exportlist':
-mountd.c:301: syntax error before "elist"
-mountd.c:307: `elist' undeclared (first use in this function)
-mountd.c:311: dereferencing pointer to incomplete type
-mountd.c:312: dereferencing pointer to incomplete type
-mountd.c:313: dereferencing pointer to incomplete type
-mountd.c:314: dereferencing pointer to incomplete type
-mountd.c:317: dereferencing pointer to incomplete type
-mountd.c:324: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:329: dereferencing pointer to incomplete type
-mountd.c:330: dereferencing pointer to incomplete type
-mountd.c:331: dereferencing pointer to incomplete type
-mountd.c:332: dereferencing pointer to incomplete type
-mountd.c:338: dereferencing pointer to incomplete type
-mountd.c:339: dereferencing pointer to incomplete type
-mountd.c:340: dereferencing pointer to incomplete type
-mountd.c:341: dereferencing pointer to incomplete type
-mountd.c:344: dereferencing pointer to incomplete type
-mountd.c:348: dereferencing pointer to incomplete type
-mountd.c:351: dereferencing pointer to incomplete type
-mountd.c:353: dereferencing pointer to incomplete type
-mountd.c:354: dereferencing pointer to incomplete type
-mountd.c:357: dereferencing pointer to incomplete type
-mountd.c:358: dereferencing pointer to incomplete type
-mountd.c:367: dereferencing pointer to incomplete type
-mountd.c:372: dereferencing pointer to incomplete type
-mountd.c:372: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:378: dereferencing pointer to incomplete type
-mountd.c:379: dereferencing pointer to incomplete type
-mountd.c:380: dereferencing pointer to incomplete type
-mountd.c:380: dereferencing pointer to incomplete type
-mountd.c:381: dereferencing pointer to incomplete type
-mountd.c: In function `main':
-mountd.c:495: `MOUNTPROG' undeclared (first use in this function)
-mountd.c:495: `MOUNTVERS' undeclared (first use in this function)
-mountd.c:498: `MOUNTVERS_POSIX' undeclared (first use in this function)
-mountd.c:501: `MOUNTVERS_NFSV3' undeclared (first use in this function)
-make[2]: *** [mountd.o] Error 1
-make[1]: *** [all] Error 2
-make: *** [all] Error 2
+The client may mount the filesystem as "nfs-service:/foo" when the
+service is active on "server1", and when the service is moved to
+"server2" the server send a notification-message to make the client
+reclaim it's locks, but the hostname in the message will be "server2",
+so the clients don't recognize it.
 
 
 
+On Fri, Jun 27, 2003 at 11:09:54PM -0600, Alan Robertson wrote:
+> >NFS locks should work fine if you only put the statd-files on shared
+> >storage, restart statd on failover and configure the "service-name"
+> >correctly.
+> >
+> >Did you try it?
+>=20
+> Here's what I've done:
+>   put /var/lib/nfs on drbd-replicated storage
+>   started	 nfslock as an HA resource
+> 			(this starts both statd and lockd)
+>=20
+> But, I never did successfully configure the "service-name".
+>=20
+> How do I do that?
+
+It depends on what nfs-util revision you have.
+
+Versions prior to v0.3.3 simpy can't do it.
+
+In version 0.3.3 and newer statd has a new option "-n" to specify the=20
+hostname the clients are mounting from. The initscript in redhat/nfslock
+allows you to use the -n switch by putting a line like:
+STATD_HOSTNAME=3DFOO
+in /etc/sysconfig/network.
+
+I belive this script is used when building an RPM from the the source,
+but AFAIK neither RedHat or SuSE uses this script in their packages. Not
+sure about this. (And I forgot to add the switch to nodist/nfsserver,
+which perhaps some distributions are based on).
+
+
+
+However, this description is incomplete.
+
+First there is the support for "multi-homed" nfs. There is a patch
+posted to the nfs-list by paul popelka <paulp@veritas.com> october 11th
+2001 which "contains the changes I made to nfs-utils-0.3.1
+to allow statd running on a multihomed host to send SM_NOTIFYs
+for each of the hosts known names to each statd client wanting to
+be notified of a reboot.". I _think_ this patch would solve the same
+problem without the need for configuring the "service-name", as it would
+be found automaticly by reverse lookup from the ip-alias. However, I
+don't think this patch was ever included in nfs-utils?
+
+Next, there was a patch by Bruce Allan <bruce.allan@us.ibm.com> posted
+to the nfs-list May 31 2002 that _also_ added support for "multi-homed"
+nfs. Not sure if this patch is related to the previous one? After
+reading both the anouncement and the explanation by Bruce I still don't
+understand completely what this patch is doing, but I'm pretty sure it
+doesn't solve the ha-problem :) And I can't find the patch in CVS, so
+I'm gussing it was never included either?
+
+
+Then there is the "-N" switch recently added to statd. For those without
+the recent manpage:
+"Causes statd to run in the notify-only mode. When started in this mode,
+the statd program will check its state directory, send notifications to=20
+any monitored nodes, and exit once the notifications have been sent.=20
+This mode is used to enable Highly Available NFS implementations (i.e.=20
+HA-NFS)."
+
+How exactly should it be used in a HA-environment?
+
+Last, what I think is an unresolved issue: Running HA-NFS in
+active/active configurations. That is, some filesystems may be exported
+from "server1" and some from "server2" - but when "server1" fails all
+filesystems should be moved to "server2". For locks to work, I think
+there need to be an individual statd-instance for each filesystem
+exported, binding to the specific interface.=20
+
+
+--=20
+Ragnar Kj=F8rstad
+Zet.no
 
 
 -------------------------------------------------------
