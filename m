@@ -1,18 +1,22 @@
-From: "Bruce Allan" <bruce.allan@us.ibm.com>
-Subject: Re: Re: 1279 mounts
-Date: Mon, 29 Apr 2002 16:50:55 -0700
+From: dumas@centre-cired.fr (Patrice DUMAS - DOCT)
+Subject: questions about rpc and locks
+Date: Tue, 30 Apr 2002 17:45:11 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <OF6661F22B.C4CE52F9-ON88256BAA.0081C65C@boulder.ibm.com>
+Message-ID: <20020430174511.A21356@zeus.centre-cired.fr>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from e31.co.us.ibm.com ([32.97.110.129])
-	by usw-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 172KvL-0003oA-00
-	for <nfs@lists.sourceforge.net>; Mon, 29 Apr 2002 16:51:15 -0700
-To: Pete Zaitcev <zaitcev@redhat.com>
+Received: from boukha.centre-cired.fr ([193.51.120.234])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 172ZtP-0002zH-00
+	for <nfs@lists.sourceforge.net>; Tue, 30 Apr 2002 08:50:15 -0700
+Received: from zeus.centre-cired.fr ([193.51.120.192])
+          by boukha.centre-cired.fr (8.9.3+Sun/jtpda-5.3.3) with ESMTP id RAA03171
+          for <nfs@lists.sourceforge.net>; Tue, 30 Apr 2002 17:49:00 +0100 (WEST)
+Received: (from dumas@localhost)
+	by zeus.centre-cired.fr (8.11.6/8.11.6) id g3UFjBG21476
+	for nfs@lists.sourceforge.net; Tue, 30 Apr 2002 17:45:11 +0200
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,56 +29,27 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
+Hi,
 
-Well, count me as another who would like to see the unnamed major and NFS
-parts make it into the 2.4 kernel.  I've had a number of conversations in
-which there was an expressed interest in more than 246 or so mount points.
-With what release/whatever do you ship the unnamed majors part?
+I have 2 questions about the kernel rpc implementation.
 
-Thanks,
----
-Bruce Allan  <bruce.allan@us.ibm.com>
-Software Engineer, Linux Technology Center
-IBM Corporation, Beaverton OR
-503-578-4187   IBM Tie-line 775-4187
+1. What are the return codes (from rpc_call) and their meanings (or where
+could I find that, I found that looking at the code itself was really hard).
 
+2. Is it possible to know at what point the rpc call failed ? (from within the 
+rpc_task struct, to determine whether the caller couldn't send or it didn't get
+a response).
 
+About lock.
 
-                                                                                                                                         
-                      Pete Zaitcev                                                                                                       
-                      <zaitcev@redhat.com>        To:       Panu Matilainen <pmatilai@welho.com>                                         
-                      Sent by:                    cc:       Pete Zaitcev <zaitcev@redhat.com>, nfs@lists.sourceforge.net,                
-                      nfs-admin@lists.sour         linux-kernel@vger.kernel.org                                                          
-                      ceforge.net                 Subject:  [NFS] Re: 1279 mounts                                                        
-                                                                                                                                         
-                                                                                                                                         
-                      04/27/2002 06:32 PM                                                                                                
-                                                                                                                                         
-                                                                                                                                         
+3. When the client think it has a lock on a nfs file, but the server thinks the
+client hasn't, what happens ? (because I think that sometimes you have to chose
+between that and the reverse, the client think it hasn't a lock the server
+thinks it has).
 
+Thanks.
 
-
-
-> Date: Fri, 26 Apr 2002 11:25:33 +0300 (EEST)
-> From: Panu Matilainen <pmatilai@welho.com>
-
-> I've got quite a few users here who "need" this functionality and it's
-> included in our RH-based custom kernels. Having it as a separate patch
-> for 2.4 is no problem, for 2.5 I'm hoping we finally move to 32bit device
-> numbers...
-
-Mind, we only ship the unnamed majors part, but not the NFS part.
-There is no word from util-linux maintainer about required
-changes to mount(8), so I was cautious about doint that.
-
--- Pete
-
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-
-
-
+Pat
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
