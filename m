@@ -1,19 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: RE: 2.4.19 NFSALL performance oddity
-Date: 09 Oct 2002 00:42:11 +0200
+From: Alan Cox <alan@lxorguk.ukuu.org.uk>
+Subject: Re: [PATCH] better RPC statistics
+Date: 08 Oct 2002 23:57:43 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsu1jwblj0.fsf@charged.uio.no>
-References: <5CA6F03EF05E0046AC5594562398B91653BD1F@poexmb3.conoco.net>
+Message-ID: <1034117863.31448.30.camel@irongate.swansea.linux.org.uk>
+References: <Pine.LNX.4.44.0210081517370.1273-100000@dexter.citi.umich.edu>
+	 <20021008220450.GC9807@think.thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain
+Cc: Chuck Lever <cel@citi.umich.edu>, Linus Torvalds <torvalds@transmeta.com>,
+   Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+   Linux NFS List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mons.uio.no ([129.240.130.14])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17z33X-0005Wf-00
-	for <nfs@lists.sourceforge.net>; Tue, 08 Oct 2002 15:42:23 -0700
-To: "Heflin, Roger A." <Roger.A.Heflin@conoco.com>
-In-Reply-To: <5CA6F03EF05E0046AC5594562398B91653BD1F@poexmb3.conoco.net>
+Received: from pc1-cwma1-5-cust42.swa.cable.ntl.com ([80.5.120.42] helo=irongate.swansea.linux.org.uk)
+	by usw-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17z38c-0006w0-00
+	for <nfs@lists.sourceforge.net>; Tue, 08 Oct 2002 15:47:38 -0700
+To: "Theodore Ts'o" <tytso@mit.edu>
+In-Reply-To: <20021008220450.GC9807@think.thunk.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,33 +30,25 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
->>>>> " " == Roger A Heflin <Heflin> writes:
+On Tue, 2002-10-08 at 23:04, Theodore Ts'o wrote:
+> It's not just "kernel interfaces" which should go in before October
+> 20th.  
+> 
+> If we really want the feature freeze to be real, we really will need
+> to be hard-nosed about what we accept after the freeze date.  (Said he
+> who is frantically trying to finish up a last couple of ext2/3
+> features in before 2.6.)
+> 
+> So I'd encourage folks to at least submit patches before Oct. 20th
+> when they are ready, and not try to save stuff for after feature
+> freeze....
 
-     > Ok, I applied the new patch, it does not appear to have made
-     > any difference in my setup and tests, it also does not appear
-     > to break anything.  I am still analyzing the results, but not
-     > finding anything obvious about what is going on.  2.2.19
-     > appears to make alot better client to a 2.4.19 server than
-     > 2.4.1[89][no patch/nfsall] does.  And 2.4.19 with no patches
-     > appears to make a better server than 2.4.19 (for the writes)
-     > with the NFS patches (using 2.2.19 as a client).
+There is a lot of driver clean up which will take lots of time beyond
+Oct 31st. IDE is going to take a whole ton of work yet, but that (well
+barring what happens with driverfs now) should be independant of the
+rest of the world.
 
-2.4.19-NFS_ALL doesn't touch the server code unless you are also
-applying my hacked up version of Neil's experimental NFS-over-TCP
-server patches on top of the 'stock NFS_ALL'.
 
-The direct comparison with 2.2.19 is interesting, but only makes sense
-if you can follow up and do a binary search of 2.4.x kernels (start
-off by testing something like 2.4.9, say) in order to find out where
-the performance drop occurs. I simply wouldn't know where to start
-looking otherwise...
-
-Note that on my own setups, I'm seeing performance numbers with
-2.4.19-NFS_ALL clients against both Linux 2.4.19 servers and Sun
-Solaris servers of the same order as your 2.2.19 numbers...
-
-Cheers,
-  Trond
 
 
 -------------------------------------------------------
