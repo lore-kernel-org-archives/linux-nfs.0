@@ -1,28 +1,30 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: BKL removal from find_exported_dentry()
-Date: Wed, 17 Mar 2004 09:58:37 +1100
+From: Errol Casey <work-usenet@nouce.net>
+Subject: Reserving port 800 on linux NFS clients
+Date: Tue, 16 Mar 2004 23:36:05 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16471.34461.450575.488029@notabene.cse.unsw.edu.au>
-References: <20040309135451.GC30766@rx8.ibm.com>
-	<20040311211020.GA1296@rx8.ibm.com>
-	<20040316163008.GS4972@rx8.ibm.com>
+Message-ID: <o8lf50t2d4junli54us281h0i7433pl5lr@4ax.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B3NXD-0002oL-2g
-	for nfs@lists.sourceforge.net; Tue, 16 Mar 2004 14:59:43 -0800
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
-	id 1B3NXB-0004Kq-0i
-	for nfs@lists.sourceforge.net; Tue, 16 Mar 2004 14:59:41 -0800
-Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <jrsantos@austin.ibm.com>) (for <nfs@lists.sourceforge.net>) By
-	note With Smtp ; Wed, 17 Mar 2004 09:58:39 +1100
-To: "Jose R. Santos" <jrsantos@austin.ibm.com>
-In-Reply-To: message from Jose R. Santos on Tuesday March 16
+	id 1B3SpS-0002FD-B2
+	for nfs@lists.sourceforge.net; Tue, 16 Mar 2004 20:38:54 -0800
+Received: from main.gmane.org ([80.91.224.249])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1B3SpN-0003wV-5s
+	for nfs@lists.sourceforge.net; Tue, 16 Mar 2004 20:38:49 -0800
+Received: from list by main.gmane.org with local (Exim 3.35 #1 (Debian))
+	id 1B3SpO-0005Yy-00
+	for <nfs@lists.sourceforge.net>; Wed, 17 Mar 2004 05:38:50 +0100
+Received: from cpe-066-057-143-078.nc.rr.com ([66.57.143.78])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <nfs@lists.sourceforge.net>; Wed, 17 Mar 2004 05:38:50 +0100
+Received: from work-usenet by cpe-066-057-143-078.nc.rr.com with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <nfs@lists.sourceforge.net>; Wed, 17 Mar 2004 05:38:50 +0100
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -35,43 +37,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tuesday March 16, jrsantos@austin.ibm.com wrote:
-> After looking at this even further, I'm starting to get the impression that the
-> BKL is there in order to protect against filesystems that behave badly.  I guess
-> this is the price for code portability across many filesystems.
-...
-> 
-> > I'm attaching a patch that removes BKL from find_exported_dentry().  I see a 
-> > huge improvement on SpecSFS benchmark and haven't seen any failure up to date.
-> 
-> While reduces the time spent on find_exported_dentry() from 75% to less than 1%,
-> it seems that this may not be a very popular approach.  Guess I should have done 
-> my homework about the BKL removal subject before posting. :)
-> 
-> I am really interested in knowing if the BKL is there to protect against bad 
-> filesystem or if its there for other reasons.
+Recently, I've run into an issue where my Linux NFS clients are using
+port 800 to communicate with NFSd daemons running on an Netapp Filer.
 
-It is a long time now since I wrote that code.
-I went through several iterations, and at some stages the BKL was
-definitely needed.
-My vague memory is that towards the end, the BKL was needed to protect
-against d_move, and particularly to protect accessed to d_parent.
-However even when this code was submitted to linus, dparent_lock was
-in place for that, and now it has been replaced by  ->d_lock.
-So that is certainly no longer a justification for BKL.
+Is there any way to configure the Linux NFS client software to not use
+port 800. Looking at the ports in use on my clients, it looks as if a 
+series of ports 797-800 are used to communicate to nfsd.
 
-I've stared at the code for a while and cannot see any justification
-for leaving the BKL there.
+I would like to use port 800 for another daemon. On a few machines, 
+this conflict does not occur.
 
-I don't think the idea of protecting badly behaved filesystems is
-valid.  All the interfaces that we use into filesystems should
-definitely be SMP-safe.
 
-So: yes, send the patch to Andrew, tell him that I approve, but maybe
-suggest it stay out of main-line for a little while just-in-case.
 
-Thanks,
-NeilBrown
 
 
 -------------------------------------------------------
