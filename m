@@ -1,13 +1,15 @@
-From: "Walter Denny" <stegy1@aol.com>
-Subject: prescription weight loss                          ....................coastline
-Date: Tue, 14 May 02 02:23:08 GMT
+From: xiyu@800j.com
+Subject: =?GB2312?B?o7yjvM73sLLN7bGoo76jvs7Sz7KwrrXE0KG/tdeh1azGwNGhu+62rw==?=
+Date: Wed, 14 May 2003 12:47:12 +0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <zc-8$-74rhl$4--d97@ltvffvaq9kv2>
-Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="CC.7FBD._CB8.A3__5A"
+Message-ID: <E19Fo90-0005z4-00@sc8-sf-list1.sourceforge.net>
+Content-Type: text/html;charset="GB2312"
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: <netsaintplug-devel@lists.sourceforge.net>, <nfs@lists.sourceforge.net>, <nms-cgi-support@lists.sourceforge.net>, <ofset-members@lists.sourceforge.net>
+Received: from [61.150.19.157] (helo=800j.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19Fo90-0005z4-00
+	for <nfs@lists.sourceforge.net>; Tue, 13 May 2003 21:45:34 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -20,53 +22,32 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+<html>
 
---CC.7FBD._CB8.A3__5A
-Content-Type: text/html;
-Content-Transfer-Encoding: quoted-printable
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
+<meta name="GENERATOR" content="Microsoft FrontPage 4.0">
+<meta name="ProgId" content="FrontPage.Editor.Document">
+<title>New Page 1</title>
+</head>
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD><TITLE>Buy Phentermine Diet Pills Online</TITLE>
-<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1=
-">
-<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR></HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV>&nbsp;</DIV>
-<DIV align=3Dcenter>&nbsp;<FONT face=3DArial size=3D6><FONT size=3D5>Did y=
-ou know you 
-can&nbsp;get prescription medications prescribed online with</FONT></FONT>=
-</DIV>
-<DIV align=3Dcenter><FONT face=3DArial size=3D6>&nbsp;<STRONG><FONT
-color=3D=
-#ff0000 
-size=3D5>NO PRIOR PRESCRIPTION REQUIRED!</FONT></STRONG></FONT></DIV>
-<P align=3Dcenter><A 
-href=3D"http://rd.yahoo.com/10000759/154/*http://www.mymedicinechest.biz">=
-<STRONG><FONT 
-face=3DArial color=3D#800080>Go here</FONT></STRONG></A><FONT face=3DArial=
-><STRONG> to 
-order your prescription medication online.<BR></STRONG><FONT 
-color=3D#800000><STRONG>Weight Loss - Stop Smoking - Hair Growth - Men's 
-Prescriptions</STRONG>&nbsp;&nbsp;&nbsp;&nbsp;</FONT></FONT></P>
-<P align=3Dcenter><FONT face=3DArial size=3D3>One of our US licensed physi=
-cians will 
-write an FDA approved prescription for you and ship your order overnight f=
-rom a 
-US Licensed pharmacy direct to your doorstep, fast and secure!</FONT></P>
-<P align=3Dcenter><FONT face=3DArial color=3D#ff0000 size=3D5>Lowest Price=
-s -- Next Day 
-Delivery</FONT></P>
-<DIV>&nbsp;</DIV>
-<DIV>&nbsp;</DIV>
-<DIV> <FONT face=3DArial size=3D4></DIV>
-<DIV><FONT size=3D3>To stop all future offers</FONT>&nbsp;<A 
-href=3D"http://rd.yahoo.com/10000759/154/*http://www.mymedicinechest.biz/r=
-emove.php"> 
-here</ color=3D"#000000"></FONT>&nbsp; </A></DIV></FONT></BODY></HTML>
+<body>
 
---CC.7FBD._CB8.A3__5A--
-
+<p class="MsoNormal" align="center"><b><span style="mso-bidi-font-size: 12.0pt; color: red"><font face="隶书" size="7"><span lang="EN-US" style="mso-bidi-font-size: 12.0pt; color: red">&lt;&lt;</span><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman; mso-hansi-font-family: Times New Roman; color: red">西安晚报＞＞</span></font></span><span lang="EN-US" style="font-size:36.0pt;mso-bidi-font-size:12.0pt;color:red"><o:p>
+</o:p>
+</span></b></p>
+<p class="MsoNormal" align="center"><b><span style="font-size:18.0pt;mso-bidi-font-size:12.0pt;
+font-family:宋体;mso-ascii-font-family:&quot;Times New Roman&quot;;mso-hansi-font-family:
+&quot;Times New Roman&quot;;color:#00CCFF">我喜爱的</span><span style="font-size:26.0pt;
+mso-bidi-font-size:12.0pt;font-family:宋体;mso-ascii-font-family:&quot;Times New Roman&quot;;
+mso-hansi-font-family:&quot;Times New Roman&quot;;color:#00CCFF">小康住宅评选活动</span></b></p>
+<p class="MsoNormal" align="center"><b><font face="华文中宋" size="7"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman; mso-hansi-font-family: Times New Roman; color: red">网上投票　今日启动</span></font><span lang="EN-US" style="font-size:42.0pt;mso-bidi-font-size:12.0pt;color:red"><o:p>
+</o:p></span></b></p>  
+<p class="MsoNormal" align="center"><b><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; font-family: 宋体; mso-ascii-font-family: Times New Roman; mso-hansi-font-family: Times New Roman; mso-bidi-font-family: Times New Roman; mso-font-kerning: 1.0pt; mso-ansi-language: EN-US; mso-fareast-language: ZH-CN; mso-bidi-language: AR-SA"><font size="6" color="#800080">投票请点击</font></span></a></b></p> 
+ 
+</body> 
+ 
+</html> 
 
 
 -------------------------------------------------------
