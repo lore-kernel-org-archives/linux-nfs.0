@@ -1,20 +1,17 @@
-From: Panu Matilainen <pmatilai@welho.com>
-Subject: Re: 1279 mounts
-Date: Sun, 28 Apr 2002 20:57:59 +0300 (EEST)
+From: "Tina Arora" <tinaarora@hotmail.com>
+Subject: Error :Time Out
+Date: Mon, 29 Apr 2002 14:12:13 +0530
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <aahekq$77b$2@main.gmane.org>
-References: <20020427213236.A20253@devserv.devel.redhat.com>
+Message-ID: <DAV25aE7WD84jBtwuie00001eb9@hotmail.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net, <linux-kernel@vger.kernel.org>
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_0015_01C1EF87.DC1DABC0"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from cs145025.pp.htv.fi ([213.243.145.25] helo=chip.2y.net)
-	by usw-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 171sw9-0002LM-00
-	for <nfs@lists.sourceforge.net>; Sun, 28 Apr 2002 10:58:14 -0700
-To: Pete Zaitcev <zaitcev@redhat.com>
-In-Reply-To: <20020427213236.A20253@devserv.devel.redhat.com>
+Received: from dav25.law15.hotmail.com ([64.4.22.82] helo=hotmail.com)
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 1726iS-0000gD-00
+	for <nfs@lists.sourceforge.net>; Mon, 29 Apr 2002 01:41:00 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,25 +24,49 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Sat, 27 Apr 2002, Pete Zaitcev wrote:
+This is a multi-part message in MIME format.
 
-> > Date: Fri, 26 Apr 2002 11:25:33 +0300 (EEST)
-> > From: Panu Matilainen <pmatilai@welho.com>
-> 
-> > I've got quite a few users here who "need" this functionality and it's 
-> > included in our RH-based custom kernels. Having it as a separate patch 
-> > for 2.4 is no problem, for 2.5 I'm hoping we finally move to 32bit device 
-> > numbers...
-> 
-> Mind, we only ship the unnamed majors part, but not the NFS part.
-> There is no word from util-linux maintainer about required
-> changes to mount(8), so I was cautious about doint that.
+------=_NextPart_000_0015_01C1EF87.DC1DABC0
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-Sure, I know. In these cases getting the limit from 255 to around 800 is 
-enough so the mount patch isn't even needed.
+hi ,finally atleast nfs daemons have started on both my client and =
+server....
+I can see all of them using rpcinfo-p command ../
+But theres another n need ur help ..while trying to mount a directory on =
+the client I get error "Time Out"
 
-	- Panu -
+Bye=20
+Tina
 
+------=_NextPart_000_0015_01C1EF87.DC1DABC0
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; =
+charset=3Diso-8859-1">
+<META content=3D"MSHTML 6.00.2600.0" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV><FONT face=3DArial size=3D2>hi ,finally atleast nfs daemons have =
+started on=20
+both my client and server....</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>I can see all of them using rpcinfo-p =
+command=20
+../</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>But theres another n need ur help =
+..while trying to=20
+mount a directory on the client I get error "Time Out"</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>Bye </FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>Tina</FONT></DIV></BODY></HTML>
+
+------=_NextPart_000_0015_01C1EF87.DC1DABC0--
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
