@@ -2,15 +2,15 @@ From: Pete Zaitcev <zaitcev@redhat.com>
 Subject: 1279 mounts
 Date: Thu, 25 Apr 2002 16:21:06 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <aa9orr$fp0$2@main.gmane.org>
+Message-ID: <aa9p1n$g7r$2@main.gmane.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-kernel@vger.kernel.org, zaitcev@redhat.com
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from nat-pool-rdu.redhat.com ([66.187.233.200] helo=devserv.devel.redhat.com)
+Received: from zcamail05.zca.compaq.com ([161.114.32.105])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 170pjp-0006bQ-00
-	for <nfs@lists.sourceforge.net>; Thu, 25 Apr 2002 13:21:09 -0700
+	id 170ppz-0007et-00
+	for <nfs@lists.sourceforge.net>; Thu, 25 Apr 2002 13:27:31 -0700
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -45,6 +45,11 @@ but if users do not ask, why add extra bloat and negotiate
 with LANANA...
 
 -- Pete
+-
+To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Please read the FAQ at  http://www.tux.org/lkml/
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
