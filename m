@@ -1,62 +1,66 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: Re: [PATCH] nfs-utils - Silencing mountd
-Date: Thu, 17 Jun 2004 08:45:04 +1000
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040616224504.GB29503@sgi.com>
-References: <40D063D1.9010208@RedHat.com>
+From: David Rees <drees@greenhydrant.com>
+Subject: Re: Irix NFS servers, again :-)
+Date: Thu, 17 Jun 2004 02:26:32 -0700
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <40D163C8.30507@greenhydrant.com>
+References: <1087411925.30092.35.camel@ceiriog1.demon.co.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BajAS-00084F-0G
-	for nfs@lists.sourceforge.net; Wed, 16 Jun 2004 15:46:04 -0700
-Received: from mtvcafw.sgi.com ([192.48.171.6] helo=omx2.sgi.com)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BajAR-0000G2-MU
-	for nfs@lists.sourceforge.net; Wed, 16 Jun 2004 15:46:03 -0700
-To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: <40D063D1.9010208@RedHat.com>
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org-S266431AbUFQJ0i@vger.kernel.org>
+To: Peter Wainwright <prw@ceiriog1.demon.co.uk>
+In-Reply-To: <1087411925.30092.35.camel@ceiriog1.demon.co.uk>
+List-ID: <nfs.lists.sourceforge.net>
 
-G'day,
+Peter Wainwright wrote, On 6/16/2004 11:52 AM:
+> I just upgraded one of my machines to Fedora Core 2, including
+> kernel 2.6.5. I found myself bitten on the bum by a bug I thought
+> had expired long ago, namely the Irix server readdir bug, or
+> 32/64-bit cookie problem.
+ >
+> It seems the relevant patch
+> http://www.fys.uio.no/~trondmy/src/2.4.18/linux-2.4.18-seekdir.dif
+> was never incorporated in the mainstream kernel; however, Red Hat
+> did incorporate a similar patch (called, I believe,
+> linux-2.4.18-irixnfs.patch) in the later 2.4 kernel RPMS. However,
+> it seems that this has been omitted from the 2.6 kernels in Fedora.
+> So, I have the old problem: in a directory listing from an NFS
+> directory mounted from an Irix server, some entries may be
+> missing.
+> 
+> So, my question is: what happened to this patch? Is there a
+> 2.6 version available somewhere on the net? Was it not
+> incorporated into the mainstream kernel because it is not the
+> "right thing" to do (and maybe there is no "right thing" until
+> we are all running on 64 bits)? If this is the opinion of
+> the kernel developers I shall chase Red Hat to see if they can
+> resurrect it when 2.6 kernels appear in their RHEL product.
+> Some of us unfortunately still need to interoperate with Irix
+> and other strange systems :-)
+> 
+> If the list is interested, I have "sort of" ported the patch
+> to Linux 2.6.6 myself - just before I left work this afternoon;
+> It seems functional, but I need to have another look on my network
+> at work (where I have the SGI system) before I post it; there may be
+> other bits that need patching, though I hope my minimal patch will
+> suffice.
 
-On Wed, Jun 16, 2004 at 11:14:25AM -0400, Steve Dickson wrote:
-> Here is a patch to the nfs-utils-1.0.6 rpc.mountd that
-> eliminates 4 syslog messages that are logged during
-> _successful_ mounts and showmount queries. This should
-> save quite a bit of disk space w.r.t syslog logs.
+I ran across the same problem the other day.  Maybe someone on the nfs 
+list have a better idea on what the proper solution is.  My temporary 
+solution was to go back to a 2.4 kernel with the seekdir.dif patch.
 
-Actually, I find the "authenticated mount request from..."  message
-useful in tracking down strange but nonfatal bugs on busy servers with
-many mounts from many clients.  Not all NFS or RPC error messages
-tell you which client was involved, so correlating those messages
-with mount messages can help narrow the list.
+Looking at Trond's 2.6 NFS patches, there doesn't appear to be any sort 
+of seekdir patch for those kernels.
 
-But the other 3 are noise.
+As I understand it the real problem is actually in glibc.  I have to 
+double check, but I think the software which showed this bug when I 
+experienced it on FC2 was statically linked with an older version of 
+glibc.  I can't seem to reproduce it using `ls` which I remember being 
+able to last time I had the problem so that would explain it.  What 
+software showed the problem for you?
 
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+See this message from the nfs list.  There is more data in the archives 
+if you look.
+http://marc.theaimsgroup.com/?l=linux-nfs&m=105158098101612&w=2
 
-
--------------------------------------------------------
-This SF.Net email is sponsored by The 2004 JavaOne(SM) Conference
-Learn from the experts at JavaOne(SM), Sun's Worldwide Java Developer
-Conference, June 28 - July 1 at the Moscone Center in San Francisco, CA
-REGISTER AND SAVE! http://java.sun.com/javaone/sf Priority Code NWMGYKND
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+-Dave
