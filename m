@@ -1,25 +1,21 @@
-From: "Amir Hermelin" <amir@montilio.com>
-Subject: RE: remounting with a different blocksize
-Date: Wed, 17 Sep 2003 16:04:58 +0200
+From: Tremesberger Oliver <oliver.tremesberger@fh-joanneum.at>
+Subject: nfsv4 Kerberos with netapp doesn't work
+Date: Wed, 17 Sep 2003 15:21:23 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <00ae01c37d24$b34f01e0$1301a8c0@CARTMAN>
-References: <3F683E15.6010708@RedHat.com>
+Message-ID: <29638132053DD711A6C70002A5F069818EC3A2@hubble>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="windows-1255"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19zc09-0005jV-00
-	for <nfs@lists.sourceforge.net>; Wed, 17 Sep 2003 06:05:46 -0700
-Received: from sphere.barak.net.il ([212.150.48.98])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 19zc09-0003wJ-Bf
-	for nfs@lists.sourceforge.net; Wed, 17 Sep 2003 06:05:45 -0700
-To: "'Steve Dickson'" <SteveD@RedHat.com>
-In-Reply-To: <3F683E15.6010708@RedHat.com>
+	id 19zcFo-0007lN-00
+	for <nfs@lists.sourceforge.net>; Wed, 17 Sep 2003 06:21:57 -0700
+Received: from roswell.fh-joanneum.at ([62.218.221.21])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.22)
+	id 19zcFo-0004uD-6i
+	for nfs@lists.sourceforge.net; Wed, 17 Sep 2003 06:21:56 -0700
+To: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,52 +28,36 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Steve,
-I turn on nfsd debugging using '/sbin/sysctl -w =
-sunrpc.nfsd_debug=3D65535'.
-There I see that the READ requests come in 4k blocks.  Other than that =
-the
-operation works fine (since both the client and the server agree on this
-4k).
+Hey,
 
-Amir.
+I'm working on a single sign on szenario of windows and linux clients. until
+now everything works fine. but the last thing wont work. i try to put all
+homedirectories to a fileserver. this fileserver is a netapp simulator
+6.4.1. with this simulator it should be possible to authenticate the users
+through kerberos 5. but it doesn't work.
 
+I use a windows 2000 KDC with MKSADPlugin to store attributes which linux
+clients need, e.g. UID, GID, Home Directory,...
 
------Original Message-----
-From: nfs-admin@lists.sourceforge.net
-[mailto:nfs-admin@lists.sourceforge.net] On Behalf Of Steve Dickson
-Sent: =E3 17 =F1=F4=E8=EE=E1=F8 2003 12:57
-To: Amir Hermelin
-Cc: nfs@lists.sourceforge.net
-Subject: Re: [NFS] remounting with a different blocksize
+As linux client I use a RedHat 7.3 machine with the nfsv4 release two patch
+from www.citi.umich.edu. 
+on this machine I get my kerberosticket from the W2K KDC each time I log on
+or if I type kinit in the console.
 
+does anyone of you have expirience with a single sign on szenario like this
+or do you know how to configure netapp simulator with kerberos
+funktionality?
 
+in my case i always get the error message...:
+mount: wrong fs type, bad option, bad superblock on
+192.168.0.25:/vol/vol0/home, or too many mounted file systems 
 
-Amir Hermelin wrote:
+...when i try to mount the directory with this command:
+[root@rh90admin root]# mount -t nfs4 -o sec=krb5 192.168.0.25:/vol/vol0/home
+/mnt/test
 
->I'm using RH Linux 2.4.20 on both machines.  When I first mount one of=20
->the machines with a 4k read/write blocksize, the READ requests are 4K=20
->bytes. However, when I umount and then mount again with read/write=20
->blocksize of 8K, the READ requests are still 4K bytes.
->
->Any ideas on how I can properly change the blocksizes?
->
-I just ran a quick experiment on with my 2.4.20 kernel and everything =
-seem
-to work as expected... How are you verifying the blocks sizes?
-
-SteveD.
-
-
-
-
--------------------------------------------------------
-This sf.net email is sponsored by:ThinkGeek
-Welcome to geek heaven.
-http://thinkgeek.com/sf _______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-
+thx
+oliver
 
 
 
