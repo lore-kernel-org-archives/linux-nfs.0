@@ -1,22 +1,16 @@
-From: "Jenna Solly" <jenna_sollcvyt@aol.com>
-Subject: Whats been up?
-Date: Thu, 08 May 2003 13:19:19 +0500
+From: Christoph Dohmen <chdohmen@gmx.de>
+Subject: mysterious NFS-behaviour
+Date: Thu, 8 May 2003 10:17:16 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <000501d7dc62$cad20131$60810216@curguog.tqs>
+Message-ID: <03May8.101130cest.115214@gw.cae-gmbh.de>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="----=_NextPart_000_00E3_85C04B8E.C1784A70"
+Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: <multignometerm-devel@lists.sourceforge.net>,
-	<muttzilla-users@lists.sourceforge.net>,
-	<nano-devel@lists.sourceforge.net>,
-	<net-snmp-coders@lists.sourceforge.net>,
-	<net-snmp-users-request@lists.sourceforge.net>,
-	<netsaintplug-devel@lists.sourceforge.net>,
-	<nfs@lists.sourceforge.net>,
-	<nms-cgi-support@lists.sourceforge.net>,
-	<nms-cgi.support@lists.sourceforge.net>,
-	<ofset-members@lists.sourceforge.net>
+Received: from mail.cae-gmbh.de ([195.124.148.2] helo=cae-gmbh.de)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19Dgaq-0006TG-00
+	for <nfs@lists.sourceforge.net>; Thu, 08 May 2003 01:17:32 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,89 +23,30 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-------=_NextPart_000_00E3_85C04B8E.C1784A70
-Content-Type: text/html;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: base64
+Hi folks,
 
+I was told about a very mysterious behaviour of a NFS-system. But I could not 
+explain what's happening. So, maybe someone of this list is able?!
 
-PEhUTUw+PEJPRFk+PEZPTlQgY29sb3I9IzRiNGI0Yj48cD4mbHQ7cmVwbGFj
-ZSZndDs8L3A+PFRBQkxFIHdpZHRoPSI3NSUiPjxUQk9EWT48VFI+ICAgIA0K
-PFREPjxGT05UIGNvbG9yPSNlODQ1MWIgZmFjZT0iQXJpYWwsIEhlbHZldGlj
-YSwgc2Fucy1zZXJpZiIgDQogICAgICBzaXplPSsyPjxTVFJPTkc+V0FSTklO
-RzogPC9TVFJPTkc+PC9GT05UPjxGT05UIGNvbG9yPSMzNTZmODggDQogICAg
-ICBmYWNlPSJBcmlhbCwgSGVsdmV0aWNhLCBzYW5zLXNlcmlmIiBzaXplPSsy
-PjxTVFJPTkc+RG9uJ3QgYmUgZm9vbGVkIGJ5IA0KICAgICAgcHJvZHVjdHMg
-Y2xhaW1pbmcgdG8gYmUgIkhHSCIuPC9TVFJPTkc+PEJSPjwvRk9OVD48Rk9O
-VCBjb2xvcj0jMmMyYzJjIA0KICAgICAgZmFjZT0iQXJpYWwsIEhlbHZldGlj
-YSwgc2Fucy1zZXJpZiI+PEJSPjxhIGhyZWY9Imh0dHA6Ly9yZC55YWhvby5j
-b20vKmh0dHA6Ly93d3cuZS1tYWlsb2ZmZXJzLm5ldC9pbmRleC5odG0/MTI0
-MzcyIj5QdXJlDQogICAgICBHSC1SZWxlYXNlcjwvYT4gY29udGFpbnMgDQog
-ICAgICA8L0ZPTlQ+PEZPTlQgY29sb3I9Izg4ODg4OCBmYWNlPSJBcmlhbCwg
-SGVsdmV0aWNhLCBzYW5zLXNlcmlmIj4xMDAlIA0KICAgICAgbmF0dXJhbDwv
-Rk9OVD48Rk9OVCBjb2xvcj1ibGFjayBmYWNlPSJBcmlhbCwgSGVsdmV0aWNh
-LCBzYW5zLXNlcmlmIj4gDQogICAgICA8L0ZPTlQ+PEZPTlQgY29sb3I9IzJj
-MmMyYyBmYWNlPSJBcmlhbCwgSGVsdmV0aWNhLCBzYW5zLXNlcmlmIj5ob21l
-b3BhdGhpYyANCiAgICAgIEhHSCBpbiBhbiBlYXN5IHRvIHN3YWxsb3cgY2Fw
-c3VsZSBmb3JtLiBDbGluaWNhbGx5LXByb3ZlbiB0bzxCPiBpbmNyZWFzZSAN
-CiAgICAgIElHRi0xIGJ5IGEgd2hvcHBpbmcgNDAyJSE8L0I+ICA8YSBocmVm
-PSJodHRwOi8vcmQueWFob28uY29tLypodHRwOi8vd3d3LmUtbWFpbG9mZmVy
-cy5uZXQvY2xpbmljYWwuaHRtPzEyNDM3MiI+Q2xpY2sgSGVyZTwvYT4gZm9y
-IHRoZSANCiAgICAgIGVudGlyZSBzdHVkeSE8QlI+PEJSPjxhIGhyZWY9Imh0
-dHA6Ly9yZC55YWhvby5jb20vKmh0dHA6Ly93d3cuZS1tYWlsb2ZmZXJzLm5l
-dC9pbmRleC5odG0/MTI0MzcyIj5QdXJlDQogICAgICBHSC1SZWxlYXNlcjwv
-YT4gaXMgbm90IGEgU3RpbXVsYXRvciwgUmVwbGFjZXIsIFN0ZXJvaWQgb3Ig
-SG9ybW9uZS4gSXQgaXMgYSANCiAgICAgIDEwMCUgTmF0dXJhbCBHcm93dGgg
-SG9ybW9uZSBTZWNyZXRhZ29ndWUsIHdpdGggYSBuZXcgYWN0aXZlIEhvbWVv
-cGF0aGljIA0KICAgICAgSEdIIEVuaGFuY2VyIGluIGFuIGVhc3kgdG8gc3dh
-bGxvdyBjYXBzdWxlIGZvcm0uIEl0IGNhbiBiZSBhYnNvcmJlZCANCiAgICAg
-IGVmZmVjdGl2ZWx5IGJ5IHRoZSBib2R5IHRvIHJlYWN0aXZhdGUgeW91ciBE
-b3JtYW50IFBpdHVpdGFyeSBHbGFuZCBhbmQgDQogICAgICBnaXZlIGFuIEV4
-dHJhIEJvb3N0IG9mIEhHSCBpbnRvIHRoZSBibG9vZCBzdHJlYW0gdG8gYmUg
-cGlja2VkIGJ5IHRoZSBsaXZlciANCiAgICAgIGZvciBjb252ZXJzaW9uIGlu
-dG8gSUdGIC0xLiBXaGljaCBiZWdpbnMgdG8gcmV2ZXJzZSB5b3VyIEFnaW5n
-IFByb2Nlc3MgYXQgDQogICAgICBhIG11Y2ggZmFzdGVyIHJhdGUuPC9GT05U
-PjwvVEQ+PC9UUj4NCiAgPFRSPg0KICAgIDxURCBiZ0NvbG9yPSNjZWNiOTk+
-DQogICAgICA8VEFCTEUgYmdDb2xvcj0jZmZmZGQ1IGJvcmRlcj0wIGNlbGxQ
-YWRkaW5nPTEwIGNlbGxTcGFjaW5nPTAgDQogICAgICAgIHdpZHRoPSIxMDAl
-Ij48VEJPRFk+DQogICAgICAgIDxUUj4NCiAgICAgICAgICA8VEQ+PEZPTlQg
-Y29sb3I9I2ZmNjAwMCANCiAgICAgICAgICAgIGZhY2U9IkFyaWFsLCBIZWx2
-ZXRpY2EsIHNhbnMtc2VyaWYiPjxCPjxJPldoYXQgaXQgaXMgDQogICAgICAg
-ICAgICBub3Q6PEJSPjwvST48L0I+PC9GT05UPjxGT05UIGNvbG9yPSM1MTRm
-M2MgDQogICAgICAgICAgICBmYWNlPSJBcmlhbCwgSGVsdmV0aWNhLCBzYW5z
-LXNlcmlmIiBzaXplPS0xPlB1cmUgR0gtUmVsZWFzZXI8Qj4gZG9lcyANCiAg
-ICAgICAgICAgIG5vdCBjb250YWluPC9CPiBTeW50aGV0aWMgSEdILCA1SFRQ
-LCBESEVBLCBMIC1ET1BBLCBFc3Ryb2dlbiwgDQogICAgICAgICAgICBQcm9n
-ZXN0ZXJvbmUsIE1lbGF0b25pbiwgVGVzdG9zdGVyb25lIG9yIGFueSBvdGhl
-ciBTeW50aGV0aWMgR3Jvd3RoIA0KICAgICAgICAgICAgRmFjdG9ycy48L0ZP
-TlQ+PC9URD48L1RSPjwvVEJPRFk+PC9UQUJMRT48L1REPjwvVFI+DQogIDxU
-Uj4NCiAgICA8VEQ+PEZPTlQgY29sb3I9IzJjMmMyYyBmYWNlPSJBcmlhbCwg
-SGVsdmV0aWNhLCBzYW5zLXNlcmlmIj5RdWl0ZSBzaW1wbHksPGEgaHJlZj0i
-aHR0cDovL3JkLnlhaG9vLmNvbS8qaHR0cDovL3d3dy5lLW1haWxvZmZlcnMu
-bmV0L2luZGV4Lmh0bT8xMjQzNzIiPg0KICAgICAgUHVyZSBHSC1SZWxlYXNl
-ciA8L2E+IGlzIHRoZSBtb3N0IA0KICAgICAgZWZmZWN0aXZlIGFudGktYWdp
-bmcgc3VwcGxlbWVudCBldmVyIGRldmVsb3BlZC4gV2hpbGUgbW9zdCBvdGhl
-ciBjYXBzdWxlcyANCiAgICAgIGxvc2UgdGhlaXIgZWZmaWNhY3kgYXMgdGhl
-eSBwYXNzIHRocm91Z2ggdGhlIHN0b21hY2gsIFB1cmUgR0gtUmVsZWFzZXIg
-DQogICAgICBjb250YWlucyB0cnVlIGhvbWVvcGF0aGljIGhnaCBpbmZ1c2Vk
-IGludG8gYW4gYWR2YW5jZWQgY2Fwc3VsZSB0aGF0IA0KICAgICAgaW5zdGFu
-dGx5IHJlbGVhc2VzIGlnZi0xIGludG8gdGhlIGJsb29kc3RyZWFtIGZvciBm
-YXN0ZXIgdXB0YWtlLiA8QlI+PEJSPg0KICAgICAgPEhSIG5vU2hhZGUgU0la
-RT0xPg0KICAgICAgPC9GT05UPjxGT05UIGNvbG9yPSM0NzE1MDggZmFjZT0i
-QXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiIgDQogICAgICBzaXplPS0x
-PjxCUj48YSBocmVmPSJodHRwOi8vcmQueWFob28uY29tLypodHRwOi8vd3d3
-LmUtbWFpbG9mZmVycy5uZXQvaW5kZXguaHRtPzEyNDM3MiI+Q2xpY2sgaGVy
-ZQ0KICAgICAgPC9hPiB0byANCiAgICAgIGxlYXJuIG1vcmUgYWJvdXQgdGhp
-cyByZXZvbHV0aW9uYXJ5IG5ldyBwcm9kdWN0IGFuZCB0YWtlIGFkdmFudGFn
-ZSBvZiBvdXIgDQogICAgICA5MCBkYXkgbm8gcXVlc3Rpb25zIGFza2VkIHN0
-cm9uZy1hcm0gDQpndWFyYW50ZWUhPC9GT05UPg0KICAgICAgPHA+Jm5ic3A7
-PC9wPg0KICAgIDwvRk9OVD4NCiAgICA8cCBhbGlnbj0iY2VudGVyIj48Zm9u
-dCBjb2xvcj0iIzQ3MTUwOCIgZmFjZT0iQXJpYWwsIEhlbHZldGljYSwgc2Fu
-cy1zZXJpZiIgc2l6ZT0iLTEiPkkNCiAgICBzdG9wIHJlY2lldmluZyB0aGVz
-ZSBhZHMgcGxlYXNlIDxhIGhyZWY9Imh0dHA6Ly9yZC55YWhvby5jb20vKmh0
-dHA6Ly93d3cuZS1tYWlsb2ZmZXJzLm5ldC9yZW0vcmVtb3ZlLnBocCI+Y2xp
-Y2sNCiAgICBoZXJlPC9hPjwvZm9udD48L3A+DQogIDwvVEQ+PC9UUj48L1RC
-T0RZPjwvVEFCTEU+PC9CT0RZPjwvSFRNTD4=
+Well, there's a system running suse linux 7.2 with kernel 2.4.4 on a 
+nfs-server using software-raid for the exported directory. More than 60 
+clients (also suse 7.2 with 2.4.4) mount this export.
+So the behaviour is the following:
+I have one client and open four terminales.
+In the first terminal (local) I do a mkdir foo in the mounted directory
+In the second terminal (local) I do a ls in the mounted directory and I get an 
+I/O-error
+In the third terminal (ssh on the nfs-server) I can see the created directory.
+In the fourth terminal (ssh on another client) I can see the created directory 
+after about one or two seconds.
+
+So, what's going on? Is there a misconfiguration? Are 60 clients too many??
+
+thanks
+
+Chris
+-- 
+Christoph Dohmen                    ChDohmen@gmx.de
 
 
 -------------------------------------------------------
@@ -122,6 +57,3 @@ www.enterpriselinuxforum.com
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
-
-------=_NextPart_000_00E3_85C04B8E.C1784A70--
