@@ -1,20 +1,22 @@
-From: kaushik <karandikar.kaushik@spsoftindia.com>
-Subject: nfs/rdma
-Date: 01 Jan 2000 01:43:04 +0530
-Message-ID: <946671184.1646.13.camel@kaushik>
+From: Robert Schwebel <robert@schwebel.de>
+Subject: Re: ANNOUNCE: nfs-utils 1.0.7-pre2
+Date: Thu, 16 Dec 2004 10:14:15 +0100
+Message-ID: <20041216091415.GA19224@pengutronix.de>
+References: <16825.223.924965.582375@cse.unsw.edu.au> <20041215191043.GB4032@pengutronix.de> <20041215193710.GB30441@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=iso-8859-15
+Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CeosH-0007VG-Q1
-	for nfs@lists.sourceforge.net; Wed, 15 Dec 2004 22:12:29 -0800
-Received: from [203.187.215.134] (helo=spsoftindia.com)
+	id 1CeriR-0002cM-2N
+	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 01:14:31 -0800
+Received: from metis.pengutronix.de ([213.252.143.165])
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CeosG-00022d-RV
-	for nfs@lists.sourceforge.net; Wed, 15 Dec 2004 22:12:29 -0800
-Received: from 192.168.16.35 for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 11:40:01 +0530
-To: nfs@lists.sourceforge.net
+	id 1CeriK-0001Nr-KQ
+	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 01:14:30 -0800
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20041215193710.GB30441@fieldses.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,19 +30,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi All,
+On Wed, Dec 15, 2004 at 02:37:10PM -0500, J. Bruce Fields wrote:
+> It looks like a large patch.  Neil seems to want to get 1.0.7 out in the
+> next few days.
+> 
+> I'd be happy to take the patch, include it in the citi nfs-utils patch
+> series for a while, then push it to Neil after 1.0.7.  That way I'd get
+> the chance to make any necessary fixes for nfsv4/gss before it went in.
+> Does that sound OK?
 
-I want to use the NFS/RDMA protocol for faster file access and to reduce
-the CPU time.How NFS is well supported for RDMA protocol?
-My NFS Server will be on MAC Os 10.3.Does my NFS/RDMA Linux client will
-work? I have both  the NICs those are RDMA compliant. I am new to this.
-Please guide me.
+Ok! I'll send a new patch ported to pre2. 
 
-Thank You
-Kaushik
-
-
-
+Robert
+-- 
+ Dipl.-Ing. Robert Schwebel | http://www.pengutronix.de
+ Pengutronix - Linux Solutions for Science and Industry
+   Handelsregister:  Amtsgericht Hildesheim, HRA 2686
+     Hornemannstraﬂe 12,  31137 Hildesheim, Germany
+    Phone: +49-5121-28619-0 |  Fax: +49-5121-28619-4
 
 
 -------------------------------------------------------
