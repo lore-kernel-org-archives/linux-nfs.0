@@ -1,26 +1,24 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: 2.6.5-rc3 xprt_connect changes?
-Date: Thu, 1 Apr 2004 16:47:40 +0200
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: RE: [PATCH] 1/3 - RPC metrics support
+Date: Thu, 1 Apr 2004 07:15:34 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040401144740.GH20772@suse.de>
+Message-ID: <482A3FA0050D21419C269D13989C611302B07BF6@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="FkmkrVfFsRoUs1wW"
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: "Jeremy McNicoll" <jeremy@mcnicoll.ca>,
+        "Patrick Mochel" <mochel@digitalimplant.org>,
+        <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B93Ts-0007HL-Am
-	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 06:47:44 -0800
-Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.30)
-	id 1B93Tr-0004NP-K6
-	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 06:47:44 -0800
-Received: from hermes.suse.de (Hermes.suse.de [195.135.221.8])
-	(using TLSv1 with cipher EDH-RSA-DES-CBC3-SHA (168/168 bits))
-	(No client certificate requested)
-	by Cantor.suse.de (Postfix) with ESMTP id 8ADE13C334E
-	for <nfs@lists.sourceforge.net>; Thu,  1 Apr 2004 16:47:40 +0200 (CEST)
-To: nfs@lists.sourceforge.net
+	id 1B93uz-0006Hw-5i
+	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 07:15:45 -0800
+Received: from mx01.netapp.com ([198.95.226.53])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1B93uy-0004ey-P0
+	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 07:15:44 -0800
+To: "Greg Banks" <gnb@melbourne.sgi.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,152 +31,117 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+hi greg-
 
---FkmkrVfFsRoUs1wW
-Content-Type: text/plain; charset=iso-8859-15
-Content-Disposition: inline
+thanks for the review.
 
-Hi,
+> I don't understand why you have an rpc_tally pointer in rpc_message.
+> This just seems to complicate matters by forcing you to initialise
+> the pointer to the rpc_tally in the nfs_server on every call.  AFAICT
+> all the place where you need the rpc_tally pointer you already have
+> an rpc_clnt pointer which is initialised directly from the nfs_server
+> and could be made to hold the rpc_tally* instead.  With that reorg
+> you could drop most of the 08-rpc_call.patch and all the changes
+> to nfs3proc.c and proc.c in nfs-iostat.patch and replace them with
+> a small change to nfs_create_client().   That would greatly reduce
+> the code perturbation without affecting performance or functionality.
 
-I have a problem with the xprt_connect changes introduced
-in 2.6.5-rc1. They break pmap_register, it always returns
-with EIO now.
+trond wanted a mechanism that could be used for other things besides
+per-mount statistics.  for instance, you can allocate a different
+tally structure for each inode on a file system, and collect stats
+for each of them.  or you can use the same tally struct for files
+in the same directory.  nailing the tally structure into the rpc_clnt
+makes that kind of usage (which might be nice for debugging) impossible.
 
-It seems the problem is this:
+there was interest in removing rpc_call() anyway.  this is just a
+convenient excuse.
 
- -	xprt_connect puts the task on the pending queue
- -	xprt_socket_connect calls xprt_close, which in turn
- 	calls xprt_disconnect, which wakes up all tasks on
-	the pending list with ENOTCONN
+in terms of performance impact, this change is actually pretty
+minor compared to the massive amount of data copying done by XDR
+and the socket layer, and to the lock contention that occurs in
+the RPC client.  as i've inlined nfs3_rpc_wrapper, that more
+than makes up for setting a single extra pointer, at least in
+the NFSv3 synchronous path.  i don't see that there are any data
+dependencies that would cause a pipeline stall when rpc_talp is
+set, do you?
 
-For transports with "soft" semantics (this includes the portmap client),
-this will always cause it to fail with EIO.
+> I don't see any way for the userspace program which reads these to
+> figure out which of the iostat files corresponds to which mount.
+> We get the hostname in the filename and again in the contents but
+> nowhere do we get the mount path, only the device minor number in
+> the filename.  How about adding a line to nfs_iostat_show() to
+> print nfss->mnt_path?
 
-For "hard" transports, it seems that after some delay (set in
-xprt_connect_status) we come back to call_connect_status, which
-notices the ENOTCONN status. It sets the function pointer to
-call_connect. If xprt_connected() evaluates to true when we get
-there (which is always the case for UDP, and which is true for
-TCP igf the SYNACK has arrived in the meanwhile), the call to
-xprt_connect() succeeds, and we can continue.
+the problem there is namespace.  each process can have its own
+set of mount points (ie export to local directory pairings).  we
+still need to work out exactly how to provide that information.
 
-The attached, untested patch should hopefully fix this. I still need
-to test this.
+i'm not too concerned about that, as iostat on local file systems
+currently produces results based on devices, forcing an adminis-
+trator to go back to /etc/fstab or df or mount to figure out
+what's going on anyway.
 
-Olaf
--- 
-Olaf Kirch     |  The Hardware Gods hate me.
-okir@suse.de   |
----------------+ 
+> The minor dimension of the 2d array of struct rpc_metrics_totals
+> pointed to by rpc_tally is per-CPU.  To get correct per-CPU
+> separation you will want to cacheline-align the per-CPU parts
+> (so that cachelines which straddle the per-CPU parts don't end
+> up bouncing between CPUs).  For example, in rpc_alloc_tally(),
+>=20
+> size =3D NR_CPUS * ROUNDUP(ops * sizeof(struct=20
+> rpc_metric_totals), L1_CACHE_BYTES);
+>=20
+> and change the stride of the tl_totals[] initialisation loop.
 
---FkmkrVfFsRoUs1wW
-Content-Type: text/plain; charset=iso-8859-15
-Content-Disposition: attachment; filename=sunrpc-xprt-connfix
+makes sense, will do.
 
---- linux-2.6.4/net/sunrpc/xprt.c.connfix	2004-04-01 15:57:50.000000000 +0200
-+++ linux-2.6.4/net/sunrpc/xprt.c	2004-04-01 16:46:19.000000000 +0200
-@@ -82,7 +82,7 @@
-  */
- static void	xprt_request_init(struct rpc_task *, struct rpc_xprt *);
- static inline void	do_xprt_reserve(struct rpc_task *);
--static void	xprt_disconnect(struct rpc_xprt *);
-+static void	xprt_disconnect(struct rpc_xprt *, int);
- static void	xprt_connect_status(struct rpc_task *task);
- static struct rpc_xprt * xprt_setup(int proto, struct sockaddr_in *ap,
- 						struct rpc_timeout *to);
-@@ -387,7 +387,7 @@
-  * Close down a transport socket
-  */
- static void
--xprt_close(struct rpc_xprt *xprt)
-+xprt_close(struct rpc_xprt *xprt, int reconnecting)
- {
- 	struct socket	*sock;
- 	struct sock	*sk;
-@@ -407,7 +407,7 @@
- 	}
- 	write_unlock_bh(&sk->sk_callback_lock);
- 
--	xprt_disconnect(xprt);
-+	xprt_disconnect(xprt, reconnecting);
- 
- 	if (sock)
- 		sock_release(sock);
-@@ -418,7 +418,7 @@
- {
- 	struct rpc_xprt *xprt = (struct rpc_xprt *)args;
- 
--	xprt_close(xprt);
-+	xprt_close(xprt, 0);
- 	xprt_release_write(xprt, NULL);
- }
- 
-@@ -426,12 +426,13 @@
-  * Mark a transport as disconnected
-  */
- static void
--xprt_disconnect(struct rpc_xprt *xprt)
-+xprt_disconnect(struct rpc_xprt *xprt, int reconnecting)
- {
- 	dprintk("RPC:      disconnected transport %p\n", xprt);
- 	spin_lock_bh(&xprt->sock_lock);
- 	xprt_clear_connected(xprt);
--	rpc_wake_up_status(&xprt->pending, -ENOTCONN);
-+	if (!reconnecting)
-+		rpc_wake_up_status(&xprt->pending, -ENOTCONN);
- 	spin_unlock_bh(&xprt->sock_lock);
- }
- 
-@@ -471,8 +472,10 @@
- 
- 	/*
- 	 * Start by resetting any existing state
-+	 * Close any sockets, but sshhh: don't wake up the tasks
-+	 * on the pending queue.
- 	 */
--	xprt_close(xprt);
-+	xprt_close(xprt, 1);
- 	sock = xprt_create_socket(xprt, xprt->prot, xprt->resvport);
- 	if (sock == NULL) {
- 		/* couldn't create socket or bind to reserved port;
-@@ -830,7 +833,7 @@
- 	/* Sanity check of the record length */
- 	if (xprt->tcp_reclen < 4) {
- 		printk(KERN_ERR "RPC: Invalid TCP record fragment length\n");
--		xprt_disconnect(xprt);
-+		xprt_disconnect(xprt, 0);
- 	}
- 	dprintk("RPC:      reading TCP record fragment of length %d\n",
- 			xprt->tcp_reclen);
-@@ -1046,7 +1049,7 @@
- 					NIPQUAD(xprt->addr.sin_addr.s_addr),
- 					xprt_connected(xprt)? "closed" : "refused");
- 		}
--		xprt_disconnect(xprt);
-+		xprt_disconnect(xprt, 0);
- 		break;
- 	}
-  out:
-@@ -1258,7 +1261,7 @@
- 		return;
- 	default:
- 		if (xprt->stream)
--			xprt_disconnect(xprt);
-+			xprt_disconnect(xprt, 0);
- 	}
- 	xprt_release_write(xprt, task);
- 	return;
-@@ -1657,7 +1660,7 @@
- {
- 	dprintk("RPC:      destroying transport %p\n", xprt);
- 	xprt_shutdown(xprt);
--	xprt_close(xprt);
-+	xprt_close(xprt, 0);
- 	kfree(xprt->slot);
- 	kfree(xprt);
- 
+> As others have mentioned, having at least four do_gettimeofday()
+> calls per RPC call is evil; we've seen major problems scaling
+> do_gettimeofday() on large CPU count Altix machines.  This problem
+> also affects some NIC drivers because the network stack does
+> a do_gettimeofday() to timestamp every incoming ethernet packet;
+> David Miller's proposed solution to that is to define a new
+> scalable high-resolution timestamp API.  I don't know if that's
+> gone anywhere, you might try asking on the netdev list.
 
---FkmkrVfFsRoUs1wW--
+i asked on lkml yesterday.  folks there say "no such API exists."
+at this point i'm thinking of using jiffies and calling it a day.
+at some later point we can come back and add support for finer
+resolution timestamps.  i've already added a timestamp resolution
+indicator in the iostat file format, so changing later should be
+no problem if user-level pays attention to it.
+
+> So when the mount is unmounted, all stats are lost?  How does this
+> work on clients which do intermittent traffic on automount mounts?
+> Would it be possible to get some global stats too?
+
+global stats still exist in /proc/net/rpc/  -- anything you
+think is missing there?
+
+> The accumulation-over-CPU loops in nfs_iostat_show() and=20
+> rpc_print_tally()
+> would be simpler if all the fields in struct nfs_iostat and struct
+> rpc_metric_totals were a consistent size, so you could just treat the
+> structs as an array of that type during the accumulation step.
+
+i'm trying to keep rpc_metric_totals small because there are a whole
+lot of them.  i'm not sure i understand exactly what you mean here.
+can you give an example?
+
+> In struct nfs_iostat, it would be nice to gather the number of times
+> calls retried because they received EJUKEBOX from the server,=20
+> the number
+> of SETATTRs which cause a truncate, the number of WRITEs which cause
+> a file extension, and the number of WRITEs which are not aligned to
+> the wsize.
+
+ok, good ideas.
+
+> nfs_iostat_file_name() does an unbounded sprintf() of an=20
+> unbounded string
+> that comes from userspace (from an unprivileged user if the site runs
+> automounter) into a buffer only NFS_PROC_NAMELEN=3D256 bytes long.
+
+good catch.
 
 
 -------------------------------------------------------
