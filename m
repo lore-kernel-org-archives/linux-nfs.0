@@ -1,23 +1,22 @@
-From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-Subject: [SOLVED] RE: debugging failed lock recovery
-Date: Tue, 1 Feb 2005 15:42:13 -0700 (MST)
-Message-ID: <Pine.LNX.4.60.0502011532260.8434@harp.ngdc.noaa.gov>
-References: <482A3FA0050D21419C269D13989C6113085396A0@lavender-fe.eng.netapp.com>
-Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: RE: [SOLVED] RE: debugging failed lock recovery
+Date: Tue, 1 Feb 2005 14:56:58 -0800
+Message-ID: <482A3FA0050D21419C269D13989C6113085396C0@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Content-Type: text/plain;
+	charset="us-ascii"
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Cw6iu-0006PM-MW
-	for nfs@lists.sourceforge.net; Tue, 01 Feb 2005 14:42:16 -0800
-Received: from harp.ngdc.noaa.gov ([140.172.178.33])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1Cw6is-0003is-8W
-	for nfs@lists.sourceforge.net; Tue, 01 Feb 2005 14:42:16 -0800
-To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: <482A3FA0050D21419C269D13989C6113085396A0@lavender-fe.eng.netapp.com>
+	id 1Cw6xG-00076T-F2
+	for nfs@lists.sourceforge.net; Tue, 01 Feb 2005 14:57:06 -0800
+Received: from mx1.netapp.com ([216.240.18.38])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1Cw6xE-0006cY-Fq
+	for nfs@lists.sourceforge.net; Tue, 01 Feb 2005 14:57:05 -0800
+Received: from svlexc02.hq.netapp.com (svlexc02.corp.netapp.com [10.57.157.136])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id j11MuxYx021086
+	for <nfs@lists.sourceforge.net>; Tue, 1 Feb 2005 14:56:59 -0800 (PST)
+To: <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,59 +30,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, 28 Jan 2005, Lever, Charles wrote:
+for future reference:  this is generically described in the NFS FAQ.
 
-> i believe there is also an option on statd to always use a particular
-> nodename (-n ?).
-
-as it turns out this was indeed the issue.
-
-summary of our problem:
-
-   - client obtains lock
-
-   - server reboots
-
-   - client cannot re-obtain lock (lockd recovery failure)
+  http://nfs.sourceforge.net/index.php#faq_d7
 
 
-summary of setup:
 
-   - all nfs clients and servers were multi-homed.  having front-door back-door
-     interfaces like client.domain and client.b.domain, etc.
-
-   - all nfs clients and servers were running iptables.  holes must be open for
-     rpc.statd, etc.  in general we allowed all traffic between client and
-     server on the backdoor.
-
-summary of solution
-
-   - rpc.statd reports to server during lock recovery.  it uses the output of
-     gethostname (uname -n) by default.  in this case the client would attempt
-     lock recovery using this hostname and the server would refuse since it
-     expected to the see the name of the backdoor interface (client.b.domain)
-
-     rpc.statd needs to be started using the '-n' (name) option to override the
-     output of gethostname.  in our case (redhat) this is done by putting
-     something like the following
-
-       STATD_HOSTNAME=client.b.ngdc.noaa.gov
-
-     into the file /etc/sysconfig/nfs, which is, itself, sourced by
-     /etc/init.d/nfclock
-
-lockd recovery now operates correctly.  thanks to all who helped!
-
-kind regards.
-
--a
--- 
-===============================================================================
-| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
-| PHONE   :: 303.497.6469
-| When you do something, you should burn yourself completely, like a good
-| bonfire, leaving no trace of yourself.  --Shunryu Suzuki
-===============================================================================
+> summary of solution
+>=20
+>    - rpc.statd reports to server during lock recovery.  it=20
+> uses the output of
+>      gethostname (uname -n) by default.  in this case the=20
+> client would attempt
+>      lock recovery using this hostname and the server would=20
+> refuse since it
+>      expected to the see the name of the backdoor interface=20
+> (client.b.domain)
+>=20
+>      rpc.statd needs to be started using the '-n' (name)=20
+> option to override the
+>      output of gethostname.  in our case (redhat) this is=20
+> done by putting
+>      something like the following
+>=20
+>        STATD_HOSTNAME=3Dclient.b.ngdc.noaa.gov
+>=20
+>      into the file /etc/sysconfig/nfs, which is, itself, sourced by
+>      /etc/init.d/nfclock
+>=20
+> lockd recovery now operates correctly.  thanks to all who helped!
 
 
 -------------------------------------------------------
