@@ -1,23 +1,29 @@
-From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
+From: Bernd Schubert <bernd-schubert@web.de>
 Subject: Re: Hanging udev process on nfs-mounted /dev
-Date: Tue, 28 Sep 2004 16:36:15 +0200
+Date: Tue, 28 Sep 2004 17:56:47 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <415976DF.8020502@bio.ifi.lmu.de>
-References: <41592550.5060006@bio.ifi.lmu.de> <200409281359.21360.bernd-schubert@web.de>
+Message-ID: <200409281756.50595.bernd-schubert@web.de>
+References: <41592550.5060006@bio.ifi.lmu.de> <200409281359.21360.bernd-schubert@web.de> <415976DF.8020502@bio.ifi.lmu.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-15; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+  charset="iso-8859-15"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CCJ5V-0000eQ-OA
-	for nfs@lists.sourceforge.net; Tue, 28 Sep 2004 07:36:17 -0700
-Received: from acheron.informatik.uni-muenchen.de ([129.187.214.135])
+	id 1CCKLa-0005i9-S9
+	for nfs@lists.sourceforge.net; Tue, 28 Sep 2004 08:56:58 -0700
+Received: from relay.uni-heidelberg.de ([129.206.100.212])
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CCJ5V-00085g-0y
-	for nfs@lists.sourceforge.net; Tue, 28 Sep 2004 07:36:17 -0700
-To: Bernd Schubert <bernd-schubert@web.de>
-In-Reply-To: <200409281359.21360.bernd-schubert@web.de>
+	id 1CCKLZ-0005ok-4J
+	for nfs@lists.sourceforge.net; Tue, 28 Sep 2004 08:56:58 -0700
+Received: from euklid.pci.uni-heidelberg.de (euklid.pci.uni-heidelberg.de [129.206.21.104])
+	by relay.uni-heidelberg.de (8.12.10/8.12.10) with ESMTP id i8SFup4i012726
+	for <nfs@lists.sourceforge.net>; Tue, 28 Sep 2004 17:56:51 +0200 (MET DST)
+Received: from bernd by euklid.pci.uni-heidelberg.de with local (Exim 3.35 #1 (Debian))
+	id 1CCKLS-00020q-00
+	for <nfs@lists.sourceforge.net>; Tue, 28 Sep 2004 17:56:50 +0200
+To: nfs@lists.sourceforge.net
+In-Reply-To: <415976DF.8020502@bio.ifi.lmu.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,28 +36,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Bernd Schubert wrote
+On Tuesday 28 September 2004 16:36, Frank Steiner wrote:
+> Bernd Schubert wrote
+>
+> > Hello Frank,
+> >
+> > stupid question, udev always uses tmpfs, doesn't it?
+>
+> Hmm, I don't know. On the normal hosts (non diskless), I have tmpfs
+> mounted at /dev/shm, but /dev itself is on the normal filesystem.
+> And when I call e.g. "pktsetup mycd /dev/cdrecorder", udev creates
+> e.g. /dev/pktcdvd0 which did not exist before.
+> So I guess this is a normal device in the /dev directory and not related
+> to tmpfs?
+>
+> However, I now wonder if I couldn't use a tmpfs for /dev for the clients.=
+=2E.
+> hmm...
 
-> Hello Frank,
-> 
-> stupid question, udev always uses tmpfs, doesn't it? 
+On debian the udev init script always mounts /dev as tmpfs and as far as I=
+=20
+know this is the intended behaviour from the udev author.
 
-Hmm, I don't know. On the normal hosts (non diskless), I have tmpfs
-mounted at /dev/shm, but /dev itself is on the normal filesystem.
-And when I call e.g. "pktsetup mycd /dev/cdrecorder", udev creates
-e.g. /dev/pktcdvd0 which did not exist before.
-So I guess this is a normal device in the /dev directory and not related
-to tmpfs?
 
-However, I now wonder if I couldn't use a tmpfs for /dev for the clients...
-hmm...
+Cheers,
+	Bernd
 
--- 
-Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
-Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
-LMU, Amalienstr. 17           Phone: +49 89 2180-4049
-80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
-* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
+=2D-=20
+Bernd Schubert
+Physikalisch Chemisches Institut / Theoretische Chemie
+Universit=E4t Heidelberg
+INF 229
+69120 Heidelberg
+e-mail: bernd.schubert@pci.uni-heidelberg.de
 
 
 -------------------------------------------------------
