@@ -1,188 +1,72 @@
-From: Peter Braam <braam@clusterfs.com>
-Subject: intent patches
-Date: Sun, 25 May 2003 01:42:43 -0600
-Sender: linux-fsdevel-owner@vger.kernel.org
-Message-ID: <20030525074243.GF18405@localhost.localdomain>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: nfsroot problems on RedHat 8 with kernel linux-2.4.18-27.8.0
+Date: Sun, 25 May 2003 23:53:13 +0200
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <16081.15177.472767.206769@charged.uio.no>
+References: <3ECE0EF3.5080004@ti.com>
+	<shs4r3lx1ux.fsf@charged.uio.no>
+	<3ECE2479.3000706@ti.com>
+	<16078.12509.988134.109974@charged.uio.no>
+	<003401c321ad$9a438180$6464a8c0@foxie>
+Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: viro@parcelfarce.linux.theplanet.co.uk,
-	Linus Torvalds <torvalds@transmeta.com>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Linux FSdevel <linux-fsdevel@vger.kernel.org>,
-	Linux Kernel <linux-kernel@vger.kernel.org>,
-	NFS maillist <nfs@lists.sourceforge.net>,
-	lustre-devel@lists.sf.net
-List-ID: <nfs.lists.sourceforge.net>
+Cc: <trond.myklebust@fys.uio.no>,
+    <nfs@lists.sourceforge.net>
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from pat.uio.no ([129.240.130.16])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19K3Qr-0000yg-00
+	for <nfs@lists.sourceforge.net>; Sun, 25 May 2003 14:53:33 -0700
+To: "Martynas Buozis" <martynas@ti.com>
+In-Reply-To: <003401c321ad$9a438180$6464a8c0@foxie>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Al, Linus, Trond,
+>>>>> " " == Martynas Buozis <martynas@ti.com> writes:
 
-The Lustre intent patch has much in common with Trond's approach, but
-is a bit more comprehensive and slightly differently implemented.
+     > informtion as required by Celerra, so mount request is
+     > denied. When I use mount from command line on booted RedHat 8
+     > system to mount same file system - it sends all required
+     > information and Celerra accepts mount request.
 
-We'd very happy if we could try to integrate this, with Trond for 2.5
-but we also understanding if it's deemed to be too disruptive.  
+OK. I misunderstood you (sorry). You were talking about the mount
+protocol, and I was thinking about the NFS protocol itself.
 
-We _do_ have resources to sort it all out very agressively in the next
-few weeks.
+The following patch ought to suffice...
 
-Intents
--------
+Cheers,
+  Trond
 
-We currently use intents for two methods: 
- - getattr
- - open
-For other methods, we would like the intents also, but they did not
-solve all our woes.  We may have overlooked one or two, like
-permission. 
+--- linux-2.4.21-up/fs/nfs/mount_clnt.c.orig	2002-10-15 18:32:18.000000000 +0200
++++ linux-2.4.21-up/fs/nfs/mount_clnt.c	2003-05-25 23:50:12.000000000 +0200
+@@ -75,7 +75,7 @@
+ 
+ 	clnt = rpc_create_client(xprt, hostname,
+ 				&mnt_program, version,
+-				RPC_AUTH_NULL);
++				RPC_AUTH_UNIX);
+ 	if (!clnt) {
+ 		xprt_destroy(xprt);
+ 	} else {
 
-[a very preliminary patch, done partly wrongly]
-http://cvs.sourceforge.net/cgi-bin/viewcvs.cgi/lustre/lustre/kernel_patches/patches/Attic/iopen-jdike-2.5.69.patch?rev=1.1.2.1&content-type=text/vnd.viewcvs-markup
 
-We embed into nameidata the following struct lookup_intent:
 
-struct lookup_intent {
-       int it_op;
-       int it_mode;
-       int it_flags;
-       /* private data for FS and used to pass in second dentry for rename */
-       void *it_data;  
-       /* for setattr */
-       struct iattr *it_attr;
 
-       /* arguably the following are Lustre specific */
-       int it_disposition;
-       int it_status;
-       __u64 it_lock_handle[2];
-       int it_lock_mode;
-};
-
-We introduced lookup2 and d_revalidate2 to avoid changing all file
-systems and in 2.5 we give them a namei data parameter.
-
-The intents are used to indicate to the file system what is the
-purpose of lookup of the last component of the pathname.  It allows
-the file system to execute things atomically on the server and to
-avoid taking locks for lookup separately from other locks for
-operations that follow. 
-
-We added a dentry method called intent_release. It's purpose is to
-drop locks associated with the intent. It is principally called from
-path_release (we are working around some issued in descending and
-ascending mount points and following symbolic links).
-
-We would like to pass a pointer to nameidata to: 
-
- - open (file method)
- - create directory (inode method)
- - lookup (inode method)
- - revalidate (dentry method)
- - revalidate (inode method)
-
-and perhaps also to mkdir, rmdir, unlink, rename, mknod, setattr.  We
-have not done so yet, and can work aroud this by adding a field 
-     struct lookup_intent *d_it
-in a dentry. This is not elegant, and the protection of this field is
-delicate, but avoids large scale api changes.
-
-Differences with Trond's patch.
--------------------------------
-
-Trond changes all callers instead of adding lookup2 (better long term,
-very invasive for pre-2.6),  he has vfsintent point to nameidata and
-inside "opendata" and we have the exact opposite...  We do all
-methods.
-
-End of intent discussion.
-
-Other  Lustre VFS issues
-===================================================================
-
-Other calls
------------
-
-We found it simpler to use a new method for mkdir, rmdir, mknod,
-unlink, rename.  These methods execute entirely on the server and do
-not instantiate a client dentry for the new or removed objects on the
-client.  The client will get that from the server on the next lookup.
-
-When we presented the intent proposal this approach was the
-alternative.  We knew about and defended by by Bryan Henderson and
-Bruce Walker.
-
-We found we were best off having both alternatives.
-
-If a file system uses fine grained locking, e.g. uses a different lock
-to protect a dentry, the inode's (directory) content, and the inode's
-attributes, there is no need for this approach, but with coarser
-locks, like one lock per inode, an intent approach to some functions,
-in particular rename, leads to a wild chase of locks and revocations
-which the new methods avoid altogether.
-
-But for the case of open and getattr, it was equally intractible to
-use a server based operation, because following mountpoints and
-symbolic links outside of the file system is somewhat client oriented,
-see below.
-
-Other issues raised by Lustre
------------------------------
-
-Lustre passed POSIX just as well as ext3 from one client.  In
-distributed tests we found some new issues needed to be resolved and
-we have not yet run a distributed POSIX test (see
-http://marc.theaimsgroup.com/?l=lustre-devel&m=102719870303114&w=2)
-
-Lustre has one single file system namespace across all clients, no
-exceptions, keep that in mind for the following.
-
-a. mount points
-
-POSIX specifies mount points cannot be unlinked from the namespace.
-We found it necessary for the VFS to let the covered file system know
-when it is pinning a dentry for mounting.  The file system can then
-take a lock or let the server know otherwise that other clients should
-also not remove the mount point from the namespace.
-
-b. current working directories
-
-Several contraints exist on directories pinned by processes, e.g. you
-can unlink but not destroy an unlinked directory into which a process
-is cd'd.  Again, other nodes do not know about this unless chdir
-notifies the FS that a dentry is pinned.
-
-c. file handle cache
-
-Lustre improved the NFS file handle lookups and Ted T'so's iopen patch
-to make it possible to dcache file handles in an invisible directory
-and provide dcached lookups, by carefully eliminating double dentries,
-particularly for directories.
-
-http://cvs.sourceforge.net/cgi-bin/viewcvs.cgi/lustre/lustre/kernel_patches/patches/Attic/iopen-jdike-2.5.69.patch?rev=1.1.2.1&content-type=text/vnd.viewcvs-markup
-
-d. distributed revalidation of dentries
-
-In two cases we found the dcache was too harsh in rejecting a lookup.
-These are the cases where d_revalidate and d_invalidate both return
-0.  We did not understand the significance of everything, and could
-not return -ENOENT. So we added a retry loop here.  Lookin fs/namei.c,
-real_lookup, after the Uhhuh comment: we do not return -ENOENT, but
-try again.  Similarly in filp_open/open_namei.
-
-We also maintain a list of alienated dentries.  We forcefully unhash
-busy, dcached dentries and put them on the list when lock revocations
-come in that invalidate the dentry.  [This is done in Lustre, but we
-added a d_flag to force d_invalidate to return 0.]  Lustre's lookup
-puts them back in the hash if they are still on the list.
-
-I discussed c & d with Al a few times and as he predicted it was
-fairly hellish to sort out the races, but we prevailed, I think.
-
----------------------------------
-
-With this we believe we are getting quite close to total POSIX
-semantics for Lustre.  On 2.4 all except a. and b. is solid, we are
-now finally focussing on 2.5 where more stabilization work is needed.
-
-I hope this is useful.
-
-- Peter -
+-------------------------------------------------------
+This SF.net email is sponsored by: ObjectStore.
+If flattening out C++ or Java code to make your application fit in a
+relational database is painful, don't do it! Check out ObjectStore.
+Now part of Progress Software. http://www.objectstore.net/sourceforge
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
