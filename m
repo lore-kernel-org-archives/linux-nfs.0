@@ -1,35 +1,33 @@
 From: Andreas Schwab <schwab@suse.de>
 Subject: Re: x86_64: 32bit emulation problems
-Date: Wed, 02 Mar 2005 00:22:05 +0100
-Message-ID: <jek6oruf36.fsf@sykes.suse.de>
+Date: Wed, 02 Mar 2005 00:39:02 +0100
+Message-ID: <jefyzfueax.fsf@sykes.suse.de>
 References: <200502282154.08009.bernd.schubert@pci.uni-heidelberg.de>
-	<20050301202417.GA40466@muc.de>
 	<200503012207.02915.bernd-schubert@web.de>
-	<jewtsruie9.fsf@sykes.suse.de> <20050301221902.GA73844@muc.de>
+	<jewtsruie9.fsf@sykes.suse.de>
+	<200503020019.20256.bernd-schubert@web.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=iso-8859-1
-Cc: Bernd Schubert <bernd-schubert@web.de>,
+Cc: Andi Kleen <ak@muc.de>,
 	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
 	nfs@lists.sourceforge.net
-To: Andi Kleen <ak@muc.de>
-In-Reply-To: <20050301221902.GA73844@muc.de> (Andi Kleen's message of "1 Mar
- 2005 23:19:02 +0100, Tue, 1 Mar 2005 23:19:02 +0100")
+To: Bernd Schubert <bernd-schubert@web.de>
+In-Reply-To: <200503020019.20256.bernd-schubert@web.de> (Bernd Schubert's
+ message of "Wed, 2 Mar 2005 00:19:19 +0100")
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-Andi Kleen <ak@muc.de> writes:
+Bernd Schubert <bernd-schubert@web.de> writes:
 
-> On Tue, Mar 01, 2005 at 11:10:38PM +0100, Andreas Schwab wrote:
->> That's because there are some values in the stat64 buffer delivered =
-by the
->> kernel which cannot be packed into the stat buffer that you pass to =
-stat.
->> Use stat64 or _FILE_OFFSET_BITS=3D64.
->
-> If that had been the case strace would have reported EOVERFLOW
-> or E2BIG.
+> Hmm, after compiling with -D_FILE_OFFSET_BITS=3D64 it works fine. But=
+ why does=20
+> it work without this option on a 32bit kernel, but not on a 64bit ker=
+nel?
 
-No, the values are ok for stat64.
+Most likely the inode number (which is the only non-filesize related it=
+em
+that is different between struct stat and struct stat64) overflows ino_=
+t.
 
 Andreas.
 
