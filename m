@@ -1,16 +1,21 @@
-From: shri krishnan <shri_krishnan@yahoo.com>
-Subject: rsh sometimes hangs with nfsroot
-Date: Mon, 7 Oct 2002 18:28:08 -0700 (PDT)
+From: Scott McDermott <mcdermot@questra.com>
+Subject: Re: current Trond NFS patch for 2.2.22?
+Date: Mon, 7 Oct 2002 21:38:43 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20021008012808.36632.qmail@web13803.mail.yahoo.com>
+Message-ID: <20021007213843.M26432@questra.com>
+References: <20021007183704.K24367@questra.com> <shsfzvhsszs.fsf@charged.uio.no>
 Mime-Version: 1.0
-Content-Type: multipart/alternative; boundary="0-779833622-1034040488=:36299"
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from web13803.mail.yahoo.com ([216.136.175.13])
+Received: from ns1.questra.com ([64.132.48.186] helo=questra.com)
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17yjAP-0002w8-00
-	for <nfs@lists.sourceforge.net>; Mon, 07 Oct 2002 18:28:09 -0700
+	id 17yjKg-00053J-00
+	for <nfs@lists.sourceforge.net>; Mon, 07 Oct 2002 18:38:46 -0700
+Received: (from mcdermot@localhost)
+	by odio.roc.questra.com (8.11.6/8.11.4) id g981chx23639
+	for nfs@lists.sourceforge.net; Mon, 7 Oct 2002 21:38:43 -0400
 To: nfs@lists.sourceforge.net
+In-Reply-To: <shsfzvhsszs.fsf@charged.uio.no>; from trond.myklebust@fys.uio.no on Tue, Oct 08, 2002 at 01:56:39AM +0200
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -23,49 +28,33 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
---0-779833622-1034040488=:36299
-Content-Type: text/plain; charset=us-ascii
+Trond Myklebust on Tue  8/10 01:56 +0200:
+> >>>>> " " == Scott McDermott <mcdermot@questra.com> writes:
 
+what's this empty string? where does it get its value? my MUA set up
+improperly or something?
 
-Hello,
+>      > yes some of us are still using 2.2 if I use 2.2.22 + Trond's
+>      > linux-2.2.21-NFS.dif am I current? It applies fine (minus a
+>      > cast which was already included)
+> 
+> Hardly current, but definitely up to the limits of which I'm prepared
+> to go with 2.2.x 8-)
 
-I've been banging my head against the wall for the last couple of weeks trying to figure out why my diskless sparc-linux clients intermittently fail to properly execute programs spawned via rsh. My nfs server is Solaris 2.8, and the client is running 2.4.18, booted with v3 and nolock options, (but the problem occurs as well with v2 with locking). All clients are mounting a single special root filesystem readonly, kind of like a CDROM, with the kernel and writeable parts of the filesystem areas running running in ramdisk
+biggest thing stopping me from upgrading the servers to 2.4 is knowing
+that everyone will get stale handles, this will be very hard to manage
+logistically, too many disparate political units with clients mounting
+off it.  You said before that there is server code to handle old 2.2
+cookies but I've heard otherwise from posts on the list and 2.2 works
+too well for us right now to risk this.  I really should get around to
+testing this though.  Truth is, 2.2 works well for our needs, I don't
+really care to upgrade until we get something worthwhile like RPCSEC and
+ACL support.
 
-Basically, once the system is booted up, I execute a series of rsh commands from the Solaris server to the linux client. Sometimes, about once every 24 hours or so, one of the rsh commands will simply hang, even a command as simple as rsh "hostname". If I do a ps on the client machine, I see that rshd has spawned a shell process to execute the command, but the actual program never gets spawned. It's not always the same command that hangs. Sometimes the very first rsh hangs, sometimes, later on. Furthermore, if I execute the same rsh commands from my server from the command line, one the machine is in its hung state, they execute perfectly. Only the initial invocation seems to hang.
+your patches affect client only though right?
 
-Now here's where it gets weird. I can sometimes "kick" this hanging process into continuing by issuing additional rsh commands to the client. For example, if I repeatedly do rsh "hostname" in a loop from the server, I can get the hanging process to resume, but not always. Sometimes, just logging into the client will cause the hang to stop. Or logging in and running mount -a. Sometimes, nothing I do will help and I have to reboot the machine.
-
-This problem has only started when moving to  a Solaris nfs server. I have not seen it on a Linux nfs server. I'm able to get some network traces showing the nfs activity but am at a loss as to what to look for to begin debugging this.  
-
-Is there some subtle incompatibility between solaris and linux nfs implementations which could cause this? Has anyone ever this kind of behavior before?
-
-Thanks very much
-
---shri
-
- 
-
-
-
----------------------------------
-Do you Yahoo!?
-Faith Hill - Exclusive Performances, Videos, & more
-faith.yahoo.com
---0-779833622-1034040488=:36299
-Content-Type: text/html; charset=us-ascii
-
-<P>Hello,</P>
-<P>I've been banging my head against the wall for the last couple of weeks trying to figure out why my diskless sparc-linux clients intermittently fail to properly execute programs spawned via rsh. My nfs server is Solaris 2.8, and the client is running 2.4.18, booted with v3 and nolock options, (but the problem occurs as well with v2 with locking). All clients are mounting a single special root filesystem readonly, kind of like a CDROM, with the kernel and writeable parts of the filesystem areas running running in ramdisk</P>
-<P>Basically, once the system is booted up, I execute a series of rsh commands from the Solaris server to the linux client. Sometimes, about once every 24 hours or so, one of the rsh commands will simply hang, even a command as simple as rsh "hostname". If I do a ps on the client machine, I see that rshd has spawned a shell process to execute the command, but the actual program never gets spawned. It's not always the same command that hangs. Sometimes the very first rsh hangs, sometimes, later on. Furthermore, if I execute the same rsh commands from my server from the command line, one the machine is in its hung state, they execute perfectly. Only the initial invocation seems to hang.</P>
-<P>Now here's where it gets weird. I can sometimes "kick" this hanging process into continuing by issuing additional rsh commands to the client. For example, if I repeatedly do rsh "hostname" in a loop from the server, I can get the hanging process to resume, but not always. Sometimes, just logging into the client will cause the hang to stop. Or logging in and&nbsp;running mount -a. Sometimes, nothing I do will help and I have to reboot the machine.</P>
-<P>This problem has only started when moving to&nbsp; a Solaris nfs server. I have not seen it on a Linux nfs server. I'm able to get some network traces showing the nfs activity but am at a loss as to what to look for to begin debugging this.&nbsp; </P>
-<P>Is there some subtle incompatibility between solaris and linux nfs implementations which could cause this? Has anyone ever this kind of behavior before?</P>
-<P>Thanks very much</P>
-<P>--shri</P>
-<P>&nbsp;</P><p><br><hr size=1>Do you Yahoo!?<br>
-<a href="http://faith.yahoo.com">Faith Hill</a> - Exclusive Performances, Videos, & more<br>
-<a href="http://faith.yahoo.com">faith.yahoo.com</a>
---0-779833622-1034040488=:36299--
+Our servers are running 2.2.18pre19 with UDP rsize fix since forever,
+with no problems whatever.
 
 
 -------------------------------------------------------
