@@ -1,17 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 12 of 16] nfsd4: acl error fix
+Subject: [PATCH kNFSd 9 of 16] nfsd4_remove_unused_acl_function
 Date: Tue, 22 Mar 2005 16:42:01 +1100
-Message-ID: <E1DDc9R-0002Kq-Tv@notabene.cse.unsw.edu.au>
+Message-ID: <E1DDc9R-0002Ke-Np@notabene.cse.unsw.edu.au>
 References: <20050322163830.8762.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DDc9d-0006kn-5f
-	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:13 -0800
+	id 1DDcA1-0006lb-3O
+	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:37 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DDc9b-0005eN-Pl
-	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:13 -0800
+	id 1DDc9z-0005gA-TO
+	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:36 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -27,78 +27,58 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-When a client sends an ACL that is a legal NFSv4 ACL, but that we don't support
-(because we can't represent it using a POSIX ACL), the correct error to return
-is NFS4ERR_ATTRNOTSUPP.
+We're translating v4 ACL's to POSIX ACL's and relying on the filesystem
+to check those, so there's no need for a NFSv4 ACL-checking algorithm.
 
-(rfc3530, section 5.11.1: "If the server recieves a request to set an ACE that
-it cannot store, it MUST reject the request with NFS4ERR_ATTRNOTSUPP.  If the
-server receives a request to set an ACE that it can store but cannot enforce,
-the server SHOULD reject the request with NFS4ERR_ATTRNOTSUPP").
+Some day we'd like to find a way to implement the full v4 ACL protocol on the
+server side, but for now this is dead code.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4acl.c |    3 +++
- ./fs/nfsd/nfs4xdr.c |    5 ++++-
- ./fs/nfsd/vfs.c     |    7 +++++--
- 3 files changed, 12 insertions(+), 3 deletions(-)
+ ./fs/nfsd/nfs4acl.c |   27 ---------------------------
+ 1 files changed, 27 deletions(-)
 
 diff ./fs/nfsd/nfs4acl.c~current~ ./fs/nfsd/nfs4acl.c
---- ./fs/nfsd/nfs4acl.c~current~	2005-03-22 16:36:36.000000000 +1100
-+++ ./fs/nfsd/nfs4acl.c	2005-03-22 16:36:36.000000000 +1100
-@@ -93,6 +93,9 @@ deny_mask(u32 allow_mask, unsigned int f
- 	return ret;
+--- ./fs/nfsd/nfs4acl.c~current~	2005-03-22 16:35:20.000000000 +1100
++++ ./fs/nfsd/nfs4acl.c	2005-03-22 16:36:35.000000000 +1100
+@@ -940,35 +940,8 @@ match_who(struct nfs4_ace *ace, uid_t ow
+ 	}
  }
  
-+/* XXX: modify functions to return NFS errors; they're only ever
-+ * used by nfs code, after all.... */
-+
- static int
- mode_from_nfs4(u32 perm, unsigned short *mode, unsigned int flags)
- {
-
-diff ./fs/nfsd/nfs4xdr.c~current~ ./fs/nfsd/nfs4xdr.c
---- ./fs/nfsd/nfs4xdr.c~current~	2005-03-22 16:35:20.000000000 +1100
-+++ ./fs/nfsd/nfs4xdr.c	2005-03-22 16:36:36.000000000 +1100
-@@ -1331,7 +1331,10 @@ nfsd4_encode_fattr(struct svc_fh *fhp, s
- 		if (bmval0 & FATTR4_WORD0_ACL) {
- 			if (status == -EOPNOTSUPP)
- 				bmval0 &= ~FATTR4_WORD0_ACL;
--			else if (status != 0)
-+			else if (status == -EINVAL) {
-+				status = nfserr_attrnotsupp;
-+				goto out;
-+			} else if (status != 0)
- 				goto out_nfserr;
- 		}
- 	}
-
-diff ./fs/nfsd/vfs.c~current~ ./fs/nfsd/vfs.c
---- ./fs/nfsd/vfs.c~current~	2005-03-22 16:35:20.000000000 +1100
-+++ ./fs/nfsd/vfs.c	2005-03-22 16:36:36.000000000 +1100
-@@ -393,7 +393,7 @@ set_nfsv4_acl_one(struct dentry *dentry,
- 	}
- out:
- 	kfree(buf);
--	return (error);
-+	return error;
- }
- 
- int
-@@ -417,7 +417,10 @@ nfsd4_set_nfs4_acl(struct svc_rqst *rqst
- 		flags = NFS4_ACL_DIR;
- 
- 	error = nfs4_acl_nfsv4_to_posix(acl, &pacl, &dpacl, flags);
--	if (error < 0)
-+	if (error == -EINVAL) {
-+		error = nfserr_attrnotsupp;
-+		goto out;
-+	} else if (error < 0)
- 		goto out_nfserr;
- 
- 	if (pacl) {
+-/* 0 = granted, -EACCES = denied; mask is an nfsv4 mask, not mode bits */
+-int
+-nfs4_acl_permission(struct nfs4_acl *acl, uid_t owner, gid_t group,
+-			uid_t who, u32 mask)
+-{
+-	struct nfs4_ace *ace;
+-	u32 allowed = 0;
+-
+-	list_for_each_entry(ace, &acl->ace_head, l_ace) {
+-		if (!match_who(ace, group, owner, who))
+-			continue;
+-		switch (ace->type) {
+-			case NFS4_ACE_ACCESS_ALLOWED_ACE_TYPE:
+-				allowed |= ace->access_mask;
+-				if ((allowed & mask) == mask)
+-					return 0;
+-				break;
+-			case NFS4_ACE_ACCESS_DENIED_ACE_TYPE:
+-				if (ace->access_mask & mask)
+-					return -EACCES;
+-				break;
+-		}
+-	}
+-	return -EACCES;
+-}
+-
+ EXPORT_SYMBOL(nfs4_acl_new);
+ EXPORT_SYMBOL(nfs4_acl_free);
+ EXPORT_SYMBOL(nfs4_acl_add_ace);
+ EXPORT_SYMBOL(nfs4_acl_get_whotype);
+ EXPORT_SYMBOL(nfs4_acl_write_who);
+-EXPORT_SYMBOL(nfs4_acl_permission);
 
 
 -------------------------------------------------------
