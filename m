@@ -1,21 +1,30 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: [PATCH 2.6] SGI 901086: NFSv2 SETATTR current server time support
-Date: Fri, 28 May 2004 20:10:49 +1000
+From: Garrick Staples <garrick@usc.edu>
+Subject: Re: mountd segfault on itanium2
+Date: Fri, 30 Apr 2004 16:43:27 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040528101049.GF9014@sgi.com>
+Message-ID: <20040430234327.GM22498@polop.usc.edu>
+References: <20040430212414.GF22498@polop.usc.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="sMkrXc3gAYLRVOjR"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BTeKJ-0001Nm-Cf
-	for nfs@lists.sourceforge.net; Fri, 28 May 2004 03:10:59 -0700
-Received: from mtvcafw.sgi.com ([192.48.171.6] helo=omx2.sgi.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1BTeKI-0000gL-Rp
-	for nfs@lists.sourceforge.net; Fri, 28 May 2004 03:10:58 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+	id 1BJhgN-00067r-F8
+	for nfs@lists.sourceforge.net; Fri, 30 Apr 2004 16:44:39 -0700
+Received: from polop.usc.edu ([128.125.10.9])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.30)
+	id 1BJhgN-0005f2-5R
+	for nfs@lists.sourceforge.net; Fri, 30 Apr 2004 16:44:39 -0700
+Received: from polop.usc.edu (localhost.localdomain [127.0.0.1])
+	by polop.usc.edu (8.12.10/8.12.10) with ESMTP id i3UNhRlv023126
+	for <nfs@lists.sourceforge.net>; Fri, 30 Apr 2004 16:43:27 -0700
+Received: (from garrick@localhost)
+	by polop.usc.edu (8.12.10/8.12.10/Submit) id i3UNhRCR023124
+	for nfs@lists.sourceforge.net; Fri, 30 Apr 2004 16:43:27 -0700
+To: nfs@lists.sourceforge.net
+In-Reply-To: <20040430212414.GF22498@polop.usc.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -28,88 +37,76 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-G'day,
 
-This is the 2.6 version of the client side NFSv2 SETATTR current
-server time patch.  This is the first send.
+--sMkrXc3gAYLRVOjR
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-SGI bug 901086.
+On Fri, Apr 30, 2004 at 02:24:14PM -0700, Garrick Staples alleged:
+> Hi all,
+>    I'm having a terrible time with mountd segfaulting on two Itanium boxe=
+s.  I
+> can't find a specific trigger, but I can generally trigger it within a few
+> minutes by just calling mount/umount a few hundred times.
+>=20
+> I'm using glibc 2.3.2 and nfs-utils 1.0.6 from RHE.
+>=20
+> In the tests below, I have a single directory exported to 10.125.0.0/16. =
+ Since
+> I know name resolution was a recent problem, I've made sure all clients a=
+re in
+> /etc/hosts.  I'm using NIS, but files is before dns and nis in nsswitch.c=
+onf.
+> I've also tested with and without nscd running.
 
-In the NFSv3 RFC, the sattr3 structure passed in the SETATTR call allows
-for the client to request that the mtime and/or atime of an inode be set
-to the current server time, the given (client) time, or not changed.  The
-set-to-current-server value is used when you run "touch file" on the client.
+> select(1024, [3 4 5 6 7], NULL, NULL, NULL) =3D 2 (in [5 6])
+> read(5, "", 0)                          =3D 0
+> --- SIGSEGV (Segmentation fault) @ 20000008002c19d0 (63742f3132353111) ---
 
-This is significant for two reasons.  First, if there is clock skew between
-the client and server there are times when you want the server time.  Secondly, the filesystem permissions checks for the two cases are actually different:
-setting to an explicit time requires the setting process to own the file (or
-be root), but setting to the current time requires only that the file be
-writable to the process (or the process be root).
-
-The NFSv2 RFC defines no such encoding for the sattr structure.  However
-Solaris and Irix machine obey a convention where passing the invalid value
-mtime.useconds=1000000 means "set both mtime and atime to the current
-server time".  The convention is documented in the book "NFS Illustrated"
-by Brent Callaghan.  The patch below implements this convention for the
-Linux client and server (hence multiple To:s).
-
-Tested between ia64 Linux 2.6.4 Irix & Solaris.
-
-
---- linux.orig/fs/nfs/nfs2xdr.c	Fri May 28 18:20:02 2004
-+++ linux/fs/nfs/nfs2xdr.c	Fri May 28 19:36:48 2004
-@@ -95,6 +95,23 @@
- }
- 
- static inline u32*
-+xdr_encode_current_server_time(u32 *p, struct timespec *timep)
-+{
-+	/*
-+	 * Passing the invalid value useconds=1000000 is a
-+	 * Sun convention for "set to current server time".
-+	 * It's needed to make permissions checks for the
-+	 * "touch" program across v2 mounts to Solaris and
-+	 * Irix boxes work correctly. See description of
-+	 * sattr in section 6.1 of "NFS Illustrated" by
-+	 * Brent Callaghan, Addison-Wesley, ISBN 0-201-32750-5
-+	 */
-+	*p++ = htonl(timep->tv_sec);
-+	*p++ = htonl(1000000);
-+	return p;
-+}
-+
-+static inline u32*
- xdr_decode_time(u32 *p, struct timespec *timep)
- {
- 	timep->tv_sec = ntohl(*p++);
-@@ -142,15 +159,19 @@
- 	SATTR(p, attr, ATTR_GID, ia_gid);
- 	SATTR(p, attr, ATTR_SIZE, ia_size);
- 
--	if (attr->ia_valid & (ATTR_ATIME|ATTR_ATIME_SET)) {
-+	if (attr->ia_valid & ATTR_ATIME_SET) {
- 		p = xdr_encode_time(p, &attr->ia_atime);
-+	} else if (attr->ia_valid & ATTR_ATIME) {
-+		p = xdr_encode_current_server_time(p, &attr->ia_atime);
- 	} else {
- 		*p++ = ~(u32) 0;
- 		*p++ = ~(u32) 0;
- 	}
- 
--	if (attr->ia_valid & (ATTR_MTIME|ATTR_MTIME_SET)) {
-+	if (attr->ia_valid & ATTR_MTIME_SET) {
- 		p = xdr_encode_time(p, &attr->ia_mtime);
-+	} else if (attr->ia_valid & ATTR_MTIME) {
-+		p = xdr_encode_current_server_time(p, &attr->ia_mtime);
- 	} else {
- 		*p++ = ~(u32) 0;	
- 		*p++ = ~(u32) 0;
+> write(5, "10.125.0.0/16 0 \\x00080011020000"..., 62) =3D 62
+> --- SIGSEGV (Segmentation fault) @ 20000000002899d0 (7064752f35343639) ---
 
 
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+I just spotted a pattern.  After collecting several strace samples, it alwa=
+ys
+segfaults after read() or write() to fd 5.  And fd 5 is always:
+
+   open("/proc/net/rpc/nfsd.fh/channel", O_RDWR) =3D 5
+
+I have no idea what the file is for, but grep'ing my straces shows that mou=
+ntd
+doesn't normally use it.  It can handle hundreds of mount/umount requests
+without ever touching fd 5.  Then at some point it reads once:
+
+   read(5, "10.125.0.0/16 0 \\x00080011020000"..., 128) =3D 35
+
+If it doesn't segfault on the read(), it might segfault on a write() very s=
+oon
+after:
+
+   write(5, "10.125.0.0/16 0 \\x00080011020000"..., 62) =3D 62
+
+
+Thanks in advance to anyone that knows what's going on.
+
+--=20
+Garrick Staples, Linux/HPCC Administrator
+University of Southern California
+
+--sMkrXc3gAYLRVOjR
+Content-Type: application/pgp-signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.3 (GNU/Linux)
+
+iD8DBQFAkuSf0SBUxJbm9HMRAlvLAKCUIABHdovu2l9MqPFeDb02+Nc69wCgkmdy
+QU1PIHK6p0YzdJzz5M2YEhU=
+=wj+a
+-----END PGP SIGNATURE-----
+
+--sMkrXc3gAYLRVOjR--
 
 
 -------------------------------------------------------
