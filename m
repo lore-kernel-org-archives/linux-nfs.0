@@ -1,24 +1,17 @@
-From: Neal Lippman <nl@lippman.org>
-Subject: nfs permissions / access problem
-Date: Tue, 13 Aug 2002 10:38:08 -0400
+From: =?iso-8859-1?Q?Brasseur_Val=E9ry?= <Valery.Brasseur@atosorigin.com>
+Subject: RE: nfs unlink perf !
+Date: Tue, 13 Aug 2002 17:05:25 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020813143423.QHGF221.sccrmhc02.attbi.com@there>
-References: <F118hBAgKR7ANimhYOj0000f31f@hotmail.com>
-Reply-To: nl@lippman.org
+Message-ID: <8D7D56C6ED3DD411998D009027DC685E0874E222@srv-grp-s1.segin.com>
 Mime-Version: 1.0
 Content-Type: text/plain;
-  charset="iso-8859-1"
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sccrmhc02.attbi.com ([204.127.202.62])
+Received: from hermes4.atos-group.com ([160.92.18.11])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17eckf-0007Td-00
-	for <nfs@lists.sourceforge.net>; Tue, 13 Aug 2002 07:34:30 -0700
-Received: from there ([12.243.55.158]) by sccrmhc02.attbi.com
-          (InterMail vM.4.01.03.27 201-229-121-127-20010626) with SMTP
-          id <20020813143423.QHGF221.sccrmhc02.attbi.com@there>
-          for <nfs@lists.sourceforge.net>; Tue, 13 Aug 2002 14:34:23 +0000
+	id 17edEl-000819-00
+	for <nfs@lists.sourceforge.net>; Tue, 13 Aug 2002 08:05:35 -0700
 To: nfs@lists.sourceforge.net
-In-Reply-To: <F118hBAgKR7ANimhYOj0000f31f@hotmail.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,38 +24,54 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-I am hoping someone can provide some advice. The situation is that I want to 
-have available on my nfs server a share that is accessible to a group of 
-people connecting from their workstations, but am having trouble doing so.
+I have check my code, the unlink is done after the close.
 
-Following what I would have done for a local directory, I created the 
-directory: /shared and set its ownship to root, with group=sharedgroup, and 
-then gave group permissions of rwx. I made sure each user who needs to use 
-the shared directory is in the sharedgroup on the server, and for good 
-measure also did so on each workstation (and yes, the gid's are the same on 
-each machine). Unfortunately, the directory remains inaccessible via nfs with 
-this scheme.
 
-I suspect the problem here is that nfs receives from the client the uid and 
-gid that the client process is currently executing under, but does not 
-received the extended group list, and also does not look up that user's 
-extended group list on the server but rather just does permission checking 
-with the single active uid and gid it received from the client, and so cannot 
-access via extended group information.
-
-That doesn't strike me as the best way for nfs to operate, although I am am 
-sure there was sound design decision involved (maybe overhead of looking up 
-the groups on each access, which the os does not have locally as that info is 
-already in the process's state information, placed there at login).
-
-In any case, it means that I cannot easily export a shared directory in this 
-fashion.
-
-So my question is: How do I make an exported folder accessible to a group of 
-users?
-
-Thanks.
-nl
+> -----Original Message-----
+> From: Trond Myklebust [mailto:trond.myklebust@fys.uio.no]
+> Sent: Monday, August 12, 2002 8:55 PM
+> To: Brasseur Val=E9ry
+> Cc: nfs@lists.sourceforge.net
+> Subject: Re: [NFS] nfs unlink perf !
+>=20
+>=20
+> >>>>> " " =3D=3D Brasseur Val=E9ry <Valery.Brasseur@atosorigin.com> =
+writes:
+>=20
+>      > I am testing an application which to a lot of link/unlink
+>      > server is a NetApp filer, client is linux 2.4.19+nfs patches.
+>=20
+>      > under load it seems that the unlink call is very long when all
+>      > over calls response time seems to be OK.  is there any =
+problems
+>      > with the unlink code ?
+>=20
+> There should be no problems, but it depends on what type of test you
+> are doing...
+>=20
+> The NFS protocol has to work around some nasty compatibility problems
+> w.r.t. the POSIX expected behaviour of unlink. In particular, POSIX
+> allows you to do
+>=20
+>   open(file);
+>   write(file);
+>   unlink(file);
+>   read(file);
+>   close(file);
+>=20
+> i.e. to unlink an open file...
+>=20
+> In order for the above to work with NFS, one can't immediately unlink
+> the file when it is open(). Instead, NFS does a 'sillyrename': it
+> renames the file to something of the form .nfsXXXXX (where XXXX is
+> some number) and then performs the unlink when the 'close()' has been
+> performed.
+>=20
+> Would this suffice to explain your 'bad performance'?
+>=20
+> Cheers,
+>   Trond
+>=20
 
 
 -------------------------------------------------------
