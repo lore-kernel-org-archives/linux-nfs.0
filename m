@@ -1,18 +1,23 @@
-From: "Eff Norwood" <enorwood@effrem.com>
-Subject: huge number of intr/s on large nfs server
-Date: Mon, 14 Oct 2002 13:21:15 -0700
+From: Juan Gomez <juang@us.ibm.com>
+Subject: Clustered NAS Heads and mountd issues
+Date: Mon, 14 Oct 2002 13:51:15 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <CFEAJJEGMGECBCJFLGDBAEGICFAA.enorwood@effrem.com>
+Message-ID: <OF423378B1.6C9ABFCC-ON87256C52.0071E6CF@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Cc: "Daniel Phillips" <phillips@arcor.de>
+Content-Type: text/plain; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from cynaptic.com ([128.121.116.181])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 181BiL-0004Ap-00
-	for <nfs@lists.sourceforge.net>; Mon, 14 Oct 2002 13:21:21 -0700
-To: <nfs@lists.sourceforge.net>
+Received: from e32.co.us.ibm.com ([32.97.110.130])
+	by usw-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 181CCk-0001xm-00
+	for <nfs@lists.sourceforge.net>; Mon, 14 Oct 2002 13:52:46 -0700
+Received: from westrelay02.boulder.ibm.com (westrelay02.boulder.ibm.com [9.17.194.23])
+	by e32.co.us.ibm.com (8.12.2/8.12.2) with ESMTP id g9EKpFpw025370
+	for <nfs@lists.sourceforge.net>; Mon, 14 Oct 2002 16:51:15 -0400
+Received: from d03nm694.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.193.82])
+	by westrelay02.boulder.ibm.com (8.12.3/NCO/VER6.4) with ESMTP id g9EKpEcK213332
+	for <nfs@lists.sourceforge.net>; Mon, 14 Oct 2002 14:51:14 -0600
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,48 +30,25 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-Hi All,
 
-I have a 2.4.18 kernel running on a dual 2.4Ghz Xeon platform using software
-RAID 5 via IBM's EVMS and EXT3. The system is being used as an NFS server
-and although local disk performance is excellent, NFS performance (over UDP
-and TCP, vers 2 and 3 with multiple different client mount block sizes) is
-poor to bad. Looking at mpstat while the system is under load shows the
-%system to be quite high (94-96%) but most interestingly shows the number of
-intr/s (context switches) to be 17-18K plus!
+I think there has been some previous chatter on this via this list so let
+me try to bring it back and see if we could agree on what to include in the
+distribution:
 
-Since I was not sure what was causing all of these context switches, I
-installed SGI kernprof and ran it during a 15 minute run. I used this
-command to start kernprof: 'kernprof -r -d time -f 1000 -t pc -b -c all' and
-this one to stop it: 'kernprof -e -i | sort -nr +2 | less >
-big_csswitch.txt'
+I wish NFS mountd daemons could issue a notification every time they update
+the local rmtab (i.e. receive mount/umount etc) so that mountd dameons in
+ different hosts could share a single rmtab and remain in sync.
 
-The output of this collection is located here (18Kb):
+Anyone has an idea of an interface that will be general enough to be used
+by any type of NAS clustering software?
 
-http://www.effrem.com/linux/kernel/dev/big_csswitch.txt
+Could we register RPC callbacks with mountd so it would call remote
+daemons? or is there a better suggestion? is there any patch already in the
+queue to
+ do something along these lines?
 
-Most interesting to me is why in the top three results:
 
-default_idle [c010542c]: 861190
-_text_lock_inode [c015d031]: 141795
-UNKNOWN_KERNEL [c01227f0]: 101532
-
-that default_idle would be the highest value when the CPUs showed 94-96%
-busy. Also interesting is what UNKNOWN_KERNEL is. ???
-
-The server described above has 14 internal IDE disks configured as software
-Raid 5 and connected to the network with one Syskonnect copper gigabit card.
-I used 30 100 base-T connected clients all of which performed sequential
-writes to one large 1.3TB volume on the file server. They were mounted
-NFSv2, UDP, 8K r+w size for this run. I was able to achieve only 35MB/sec of
-sustained NFS write throughput. Local disk performance (e.g. dd file) for
-sustained writes is *much* higher. I am using knfsd with the latest 2.4.18
-Neil Brown fixes from his site. Distribution is Debian 3.0 Woody Stable.
-
-Many thanks in advance for the insight,
-
-Eff Norwood
-
+Juan
 
 
 
