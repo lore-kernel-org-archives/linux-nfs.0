@@ -1,23 +1,25 @@
-From: "Fabiano Reis" <silos.reis@ig.com.br>
-Subject: Re: linus 2.4.20 nfs performance problem
-Date: Tue, 16 Mar 2004 13:53:55 -0300
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: RE: NFS over TCP: random drop
+Date: Tue, 16 Mar 2004 12:05:30 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <04e301c40b77$44a56400$3f32a8c0@ds.ig.com.br>
-References: <8147E1B07201DD41B6B9F0D31E07B3840164890B@srv-grp-s07.dev.atos.fr>
+Message-ID: <1079456730.3045.47.camel@lade.trondhjem.org>
+References: <482A3FA0050D21419C269D13989C61130435DD6E@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=iso-8859-1
+Cc: Olaf Kirch <okir@suse.de>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B3HrI-0000Me-MD
-	for nfs@lists.sourceforge.net; Tue, 16 Mar 2004 08:56:04 -0800
-Received: from smtp-26.ig.com.br ([200.226.132.160])
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
-	id 1B3HrG-0004Al-Ik
-	for nfs@lists.sourceforge.net; Tue, 16 Mar 2004 08:56:02 -0800
-To: =?iso-8859-1?Q?Brasseur_Val=E9ry?= <Valery.Brasseur@atosorigin.com>
+	id 1B3I1D-0002z8-AS
+	for nfs@lists.sourceforge.net; Tue, 16 Mar 2004 09:06:19 -0800
+Received: from dh132.citi.umich.edu
+	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.30)
+	id 1B3I0t-00011u-1f
+	for nfs@lists.sourceforge.net; Tue, 16 Mar 2004 09:05:59 -0800
+To: Charles Lever <Charles.Lever@netapp.com>
+In-Reply-To: <482A3FA0050D21419C269D13989C61130435DD6E@lavender-fe.eng.netapp.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,109 +32,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-how did you change it? is it simple like changing a #define on kernel header
-files and recompiling it? I was thinking the patch for this is too complex.
+P=E5 ty , 16/03/2004 klokka 11:21, skreiv Lever, Charles:
+> hi olaf-
+>=20
+> IMO it would be better to fix this in the client.  overloaded
+> servers of all kinds behave this way, and the client should
+> deal with it.  server cluster failover also behaves this way.
 
------ Original Message ----- 
-From: "Brasseur Valéry" <Valery.Brasseur@atosorigin.com>
-To: "Fabiano Reis" <silos.reis@ig.com.br>
-Cc: <nfs@lists.sourceforge.net>
-Sent: Tuesday, March 16, 2004 1:31 PM
-Subject: RE: [NFS] linus 2.4.20 nfs performance problem
+It *should* currently be dealing with it...
 
+ECONNRESET in xprt_sendmsg will be tranformed into ENOTCONN. That again
+should cause call_status() to call the reconnection code.
 
-for testing we have increase the limit from 256 to 1024 en recompile.
+However if the server disconnects us *while we are reconnecting*, then
+the soft request will fail with an EIO. This seems like sensible
+behaviour to me: a server which is accepting a connection then
+immediately breaking it is fundamentally broken...
 
-the probleme seems to be the same !
-
-> -----Original Message-----
-> From: nfs-admin@lists.sourceforge.net
-> [mailto:nfs-admin@lists.sourceforge.net]On Behalf Of Fabiano Reis
-> Sent: Tuesday, March 16, 2004 2:37 PM
-> Cc: nfs@lists.sourceforge.net
-> Subject: Re: [NFS] linus 2.4.20 nfs performance problem
->
->
-> looks like you are getting the maximum number of nfs operations by
-> mountpoint. See nfs.sourceforge.net
->
-> The maximum nfs operations by mountpoint for kernel < 2.5.47 is 256
->
-> I´m getting the same problem with kernel 2.4.20. I ipgraded a
-> nfs client to
-> kernel 2.6 and I still getting the same problem. Maybe a
-> solution is to
-> upgrade the server and client to kernel 2.6 (I didnt tested it yet)
->
-> -
-> Fabiano
->
-> ----- Original Message ----- 
-> From: "Brasseur Valéry" <Valery.Brasseur@atosorigin.com>
-> To: <Charles.Lever@netapp.com>
-> Cc: <nfs@lists.sourceforge.net>
-> Sent: Tuesday, March 16, 2004 8:35 AM
-> Subject: [NFS] linus 2.4.20 nfs performance problem
->
->
-> I have a config where LInux machines (bi Xeon 2.4Ghz 2Gb
-> memory, kernel
-> 2.4.20 + trond patch) are accessing a Netapp 810 (or 825)
->
-> there is a lot of process (#400)
-> when in load a lots of process are in D state, the filer are
-> around 5000
-> nfsops and the network is near 50 mbit/s for each machine
->
-> the machine and the filer are connect by a switch, machines
-> are at 100mb and
-> filer is at 1Gb
->
-> the cpu on the machines are near &à% and load average is near
-> 100 or more
->
->
-> I don't know where is the bottleneck...
->
-> is somebody can help me ?
->
->
-> thanks in advance
-> valery
->
->
->
-> -------------------------------------------------------
-> This SF.Net email is sponsored by: IBM Linux Tutorials
-> Free Linux tutorial presented by Daniel Robbins, President and CEO of
-> GenToo technologies. Learn everything from fundamentals to system
-> administration.http://ads.osdn.com/?ad_id70&alloc_id638&op=ick
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
->
->
->
-> -------------------------------------------------------
-> This SF.Net email is sponsored by: IBM Linux Tutorials
-> Free Linux tutorial presented by Daniel Robbins, President and CEO of
-> GenToo technologies. Learn everything from fundamentals to system
-> administration.http://ads.osdn.com/?ad_id=1470&alloc_id=3638&op=click
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
->
-
-
--------------------------------------------------------
-This SF.Net email is sponsored by: IBM Linux Tutorials
-Free Linux tutorial presented by Daniel Robbins, President and CEO of
-GenToo technologies. Learn everything from fundamentals to system
-administration.http://ads.osdn.com/?ad_id70&alloc_id638&op=ick
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
