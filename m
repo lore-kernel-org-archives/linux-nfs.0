@@ -1,21 +1,29 @@
-From: Erez Zadok <ezk@cs.sunysb.edu>
+From: "Paul Smith" <pausmith@nortelnetworks.com>
 Subject: Re: ALERT - GroupShield ticket number OA2317_1057450427_CVO-EXCHANGE _1 was generated
-Date: Sat, 5 Jul 2003 20:43:38 -0400
+Date: 05 Jul 2003 22:01:00 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200307060043.h660hcWC016906@agora.fsl.cs.sunysb.edu>
-References: <1057450819.27203.1.camel@binkley>
-Cc: "GroupShield for Exchange (CVO-EXCHANGE)"
-    <NAIUSCVO-EXCHANGE@roguewave.com>,
-   "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
+Message-ID: <p5r854quqr.fsf@lemming.engeast.baynetworks.com>
+References: <200307060043.h660hcWC016906@agora.fsl.cs.sunysb.edu>
+Reply-To: "Paul Smith" <pausmith@nortelnetworks.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from filer.fsl.cs.sunysb.edu ([130.245.126.2])
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19YxdA-0002rm-00
-	for <nfs@lists.sourceforge.net>; Sat, 05 Jul 2003 17:43:53 -0700
-To: seth vidal <skvidal@phy.duke.edu>
-In-reply-to: Your message of "05 Jul 2003 20:20:19 EDT."
-             <1057450819.27203.1.camel@binkley>
+Received: from zrtps0kp.nortelnetworks.com ([47.140.192.56])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19Yyq1-0002rG-00
+	for <nfs@lists.sourceforge.net>; Sat, 05 Jul 2003 19:01:13 -0700
+Received: from zrtps0m6.us.nortel.com (zrtps0m6.us.nortel.com [47.140.192.58])
+	by zrtps0kp.nortelnetworks.com (Switch-2.2.6/Switch-2.2.0) with ESMTP id h66213318646
+	for <nfs@lists.sourceforge.net>; Sat, 5 Jul 2003 22:01:03 -0400 (EDT)
+Received: from lemming.engeast.baynetworks.com (mail@lemming.engeast.baynetworks.com [47.17.140.90])
+	by zrtps0m6.us.nortel.com (Switch-2.2.6/Switch-2.2.0) with ESMTP id h66211x21813
+	for <nfs@lists.sourceforge.net>; Sat, 5 Jul 2003 22:01:01 -0400 (EDT)
+Received: from psmith by lemming.engeast.baynetworks.com with local (Exim 3.36 #1 (Debian))
+	id 19Yypp-0006hl-00
+	for <nfs@lists.sourceforge.net>; Sat, 05 Jul 2003 22:01:01 -0400
+To: nfs@lists.sourceforge.net
+In-Reply-To: <200307060043.h660hcWC016906@agora.fsl.cs.sunysb.edu>
+Reply-To: "Paul Smith" <pausmith@nortelnetworks.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,35 +36,16 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-In message <1057450819.27203.1.camel@binkley>, seth vidal writes:
+Might I suggest someone block this user
+(NAIUSCVO-EXCHANGE@roguewave.com)?  That's also quite trivial to do with
+Mailman, and seems the simplest solution for this particular problem.
 
-> ok, come on - maybe we should consider just making non-subscribers posts
-> be held for approval. Its very easy to do in mailman and sheesh - we've
-> been getting about 5 or so of these Deleted action virus crap every day.
-> 
-> -sv
-
-Thank you, Seth!  Finally someone with the right attitude.  A few weeks ago
-when the anti-spam debate on this list came on yet again, several people
-said that they'd rather keep the list open and that people should just
-configure their own anti-spam techniques (i.e., throw the ball to the poor
-subscribers).  I think that if someone is novice enough not to know how to
-subscribe to a list for the purpose of sending an important question, then
-they most definitely don't know how to setup and configure anti-spam.  And
-if the concern is about inconveniencing novice users who don't want to
-subscribe to this list, then from what I've seen, novice users ask novice
-questions that are best answered in the FAQ, archives, etc.
-
-Personally, I strongly support closing this list off to non-subscribers.
-This way you save hassles to many subscribers, and instead asking the
-maintainers to filter held posts (or configure more specialized anti-spam
-methods FOR THIS LIST -- a one time effort).  I maintain several
-non-open-to-all Mailman-based lists with over 10k subscribers in total, and
-I have done just that (BTW, integrated anti-spam methods are especially
-convenient w/ Mailman 2.1).
-
-Cheers,
-Erez.
+-- 
+-------------------------------------------------------------------------------
+ Paul D. Smith <psmith@nortelnetworks.com>   HASMAT--HA Software Mthds & Tools
+ "Please remain calm...I may be mad, but I am a professional." --Mad Scientist
+-------------------------------------------------------------------------------
+   These are my opinions---Nortel Networks takes no responsibility for them.
 
 
 -------------------------------------------------------
