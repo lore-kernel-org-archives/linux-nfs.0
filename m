@@ -1,13 +1,19 @@
-From: Jean-Eric Cuendet <jean-eric.cuendet@linkvest.com>
-Subject: Re: Striping Support
-Date: Mon, 09 Sep 2002 15:51:40 +0200
+From: Hua Qin <qinhua@poisson.ecse.rpi.edu>
+Subject: RE: NetApp nfs server support tcp v3 root file system?
+Date: Mon, 9 Sep 2002 14:06:58 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3D7CA76C.2050908@linkvest.com>
-References: <CCEEJJECKDHNCGDIAEPCGEAJCAAA.mahesh@calsoftinc.com>
+Message-ID: <Pine.GSO.4.10.10209091355180.492-100000@poisson.ecse.rpi.edu>
+References: <6440EA1A6AA1D5118C6900902745938E07D54E11@black.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: Mahesh <mahesh@calsoftinc.com>,  nfs@sourceforge.net
+Received: from mail.rpi.edu ([128.113.22.40])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17oSwQ-0004fg-00
+	for <nfs@lists.sourceforge.net>; Mon, 09 Sep 2002 11:07:18 -0700
+To: "Lever, Charles" <Charles.Lever@netapp.com>
+In-Reply-To: <6440EA1A6AA1D5118C6900902745938E07D54E11@black.eng.netapp.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -20,51 +26,102 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-INMHO, that's not NFS responsibility.
-Use MD or LVM devices to do that. Or hardware if you have money.
-As soon as you speak of RAID (hard or soft), striping can be done (In 
-quite all cases).
-A good start: the Soft-EAID-Howto from www.linuxdoc.org
-Or buy an Adaptec card (2100 or 2110)
+Hi Charles,
 
-Hope this helps.
--jec
+I recreated the nfs root file on NetApp by using mounting udp NFSv2, and I
+can boot the linux box using NFSv2 udp, while NetApp as a nfs root file
+system.
 
-Mahesh wrote:
+Then, I rebuild nfs root file by using NFSv3 tcp, and tried to boot the
+linux box using NFSv3 tcp. But it failed. So I have to go back to my
+first question: is there any issue about NetApp be a  nfs server servered
+as NFSv3 tcp protocol? I asked this because I think NetApp support NFSv3
+tcp server, and linux box can suppport NFSv3 client.
 
->Hi
->
->	Does anyone know where i can get the source code for an NFS implementation
->that supports striping of files across multiple storage media or mutiple
->partition servers.
->
->Regards
->Mahesh Unnikrishnan
->(mahesh@calsoftinc.com)
->
->
->
->-------------------------------------------------------
->This sf.net email is sponsored by: OSDN - Tired of that same old
->cell phone?  Get a new here for FREE!
->https://www.inphonic.com/r.asp?r=sourceforge1&refcode1=vs3390
->_______________________________________________
->NFS maillist  -  NFS@lists.sourceforge.net
->https://lists.sourceforge.net/lists/listinfo/nfs
->  
->
+Thanks
 
--- 
-Jean-Eric Cuendet
-Linkvest SA
-Av des Baumettes 19, 1020 Renens Switzerland
-Tel +41 21 632 9043  Fax +41 21 632 9090
-E-mail: jean-eric.cuendet@linkvest.com
-http://www.linkvest.com
---------------------------------------------------------
+Hua
 
 
+On Thu, 5 Sep 2002, Lever, Charles wrote:
 
+> hua-
+> 
+> this may not be the problem, but it's worth a shot.  there are
+> several ingredients to your description that suggest this may be
+> related.
+> 
+> to verify:  you create your /dev file system with udp,vers=3
+> but you try to use it on a system that mounts with udp,vers=2.
+> 
+> you may notice that after you mount your /dev file system with
+> vers=2, the major and minor numbers on all the special device
+> files are different than when they were created.  NFSv2 and
+> NFSv3 treat these numbers differently on the wire, and there's
+> a problem on NetApp filers mapping from one to the other.  (we
+> verified this at the NFS connectathon event last March).
+> 
+> try recreating your /dev file system while mounting with vers=2.
+> that may circumvent your difficulty.
+> 
+> > Here are more information about the configuration: linux A 
+> > and B are RH7.2 with kernel 2.4.7-10.
+> > 
+> > I did the following tests:
+> > 
+> > Test 1:
+> > On linuxA which is booted normally from disk, I do:
+> > mount -t nfs  172.29.255.1:/dev   	 /root/app
+> > 
+> > then, I cat /proc/mounts on LinuxB
+> > 172.29.255.1:/dev  /root/app nfs 
+> > rw,v3,rsize=32768,wsize=32768,hard,udp,lock,addr=172.29.255.1 0 0
+> > 
+> > This means this linux uses udp v3 for nfs by default mount.
+> > 
+> > Test 2:
+> > For linuxB, if I did not give any option when booting linuxB 
+> > by using NetApp as root filesystem. After this linux B is 
+> > booted, I can cat /proc/mounts /dev/root / nfs 
+> > rw,v2,rsize=4096,wsize=4096,hard,udp,nolock,addr=172.29.255.1 0 0
+> > 
+> > This means this uses udp v2 by default.
+> > 
+> > I can prove it by looing at netstat information on NetApp.
+> > 
+> > Thanks!
+> > Hua
+> > 
+> > On Wed, 4 Sep 2002, Lever, Charles wrote:
+> > 
+> > > hua-
+> > > 
+> > > what does linuxB use by default to mount /dev ?  v2?
+> > > have you tried to get a network trace (pktt on
+> > > the filer) to find out more?
+> > > 
+> > > > I have NetApp as a nfs server, and on the NetApp,
+> > > > /etc/exports  shows the correct configure: /vol/vol0/dev/  
+> > > > anon=0 I can mount /dev from  linuxA using v3 tcp nfs, then I 
+> > > > try to use /dev as root file to boot linuxB, I [Bcan not boot 
+> > > > successfully. I can see it got the ip address from dhcp 
+> > > > server, then after that:
+> > > > 
+> > > > Looking up port of RPC 100003/3 on 172.29.255.1
+> > > > Looking up port of RPC 100005/3 on 172.29.255.1
+> > > > mount: server 172.29.255.1 not responding, timed out
+> > > > Root-NFS: Server returned error -5 while mounting /dev
+> > > > VFS: Unable to mount root fs via NFS, trying floppy.
+> > > > VFS: Insert root floppy and press ENTER
+> > > > VFS: Cannot open root device "nfs" or 02:00
+> > > > Please append a correct "root=" boot option
+> > > > Kernel panic: VFS: Unable to mount root fs on 02:00
+> > > > 
+> > > > But I can use udp v3 to boot it. so I am wondering, what will
+> > > > cause this problem, someone has the same setup?
+> > > 
+> > 
+> 
 
 
 
