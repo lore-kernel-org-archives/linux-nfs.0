@@ -1,22 +1,22 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH 5 of 6] lockd: don't try to match callback requests against export table
-Date: Tue, 18 Jan 2005 13:06:35 -0500
-Message-ID: <1106070956.b175e53d.5@fieldses.org>
-References: <1106070956.b175e53d.4@fieldses.org>
+Subject: [PATCH 1 of 6] svcrpc: add a per-flavor set_client method
+Date: Tue, 18 Jan 2005 13:06:14 -0500
+Message-ID: <1106070956.b175e53d.1@fieldses.org>
+References: <1106070956.b175e53d.0@fieldses.org>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CqxkH-0003lU-ML
-	for nfs@lists.sourceforge.net; Tue, 18 Jan 2005 10:06:25 -0800
+	id 1Cqxjt-0003jO-39
+	for nfs@lists.sourceforge.net; Tue, 18 Jan 2005 10:06:01 -0800
 Received: from dh173.citi.umich.edu
 	([141.211.133.173] helo=puzzle.fieldses.org ident=Debian-exim)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1CqxkG-00068n-8Q
-	for nfs@lists.sourceforge.net; Tue, 18 Jan 2005 10:06:25 -0800
+	id 1Cqxjs-0004if-Bn
+	for nfs@lists.sourceforge.net; Tue, 18 Jan 2005 10:06:00 -0800
 To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <1106070956.b175e53d.4@fieldses.org>
+In-Reply-To: <1106070956.b175e53d.0@fieldses.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,51 +31,114 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-On lockd callbacks, we're a client, and the source address is that of a server,
-so we shouldn't be trying to match the source address of the callback request
-against our export table.
+Add a set_client method to the server rpc auth_ops struct, used to set the
+client (for the purposes of nfsd export authorization) using flavor-specific
+information.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
 
- linux-2.6.10-rc3-bfields/fs/lockd/svc.c |   18 ++++++++++++++++++
- 1 files changed, 18 insertions(+)
+ linux-2.6.10-bk14-bfields/include/linux/sunrpc/svcauth.h    |    2 +
+ linux-2.6.10-bk14-bfields/net/sunrpc/auth_gss/svcauth_gss.c |   14 ++++++++++++
+ linux-2.6.10-bk14-bfields/net/sunrpc/sunrpc_syms.c          |    1 
+ linux-2.6.10-bk14-bfields/net/sunrpc/svcauth.c              |    5 ++++
+ linux-2.6.10-bk14-bfields/net/sunrpc/svcauth_unix.c         |    2 +
+ 5 files changed, 24 insertions(+)
 
-diff -puN fs/lockd/svc.c~lockd_fix_authentication fs/lockd/svc.c
---- linux-2.6.10-rc3/fs/lockd/svc.c~lockd_fix_authentication	2004-12-08 15:12:13.000000000 -0500
-+++ linux-2.6.10-rc3-bfields/fs/lockd/svc.c	2004-12-09 14:46:46.000000000 -0500
-@@ -403,6 +403,18 @@ static int param_set_##name(const char *
- 	return 0;							\
- }
+diff -puN include/linux/sunrpc/svcauth.h~svcrpc_per_flavor_set_client_method include/linux/sunrpc/svcauth.h
+--- linux-2.6.10-bk14/include/linux/sunrpc/svcauth.h~svcrpc_per_flavor_set_client_method	2005-01-11 16:42:56.000000000 -0500
++++ linux-2.6.10-bk14-bfields/include/linux/sunrpc/svcauth.h	2005-01-11 16:42:56.000000000 -0500
+@@ -92,6 +92,7 @@ struct auth_ops {
+ 	int	(*accept)(struct svc_rqst *rq, u32 *authp);
+ 	int	(*release)(struct svc_rqst *rq);
+ 	void	(*domain_release)(struct auth_domain *);
++	int	(*set_client)(struct svc_rqst *rq);
+ };
  
-+static inline int is_callback(u32 proc)
+ #define	SVC_GARBAGE	1
+@@ -107,6 +108,7 @@ struct auth_ops {
+ 
+ extern int	svc_authenticate(struct svc_rqst *rqstp, u32 *authp);
+ extern int	svc_authorise(struct svc_rqst *rqstp);
++extern int	svc_set_client(struct svc_rqst *rqstp);
+ extern int	svc_auth_register(rpc_authflavor_t flavor, struct auth_ops *aops);
+ extern void	svc_auth_unregister(rpc_authflavor_t flavor);
+ 
+diff -puN net/sunrpc/auth_gss/svcauth_gss.c~svcrpc_per_flavor_set_client_method net/sunrpc/auth_gss/svcauth_gss.c
+--- linux-2.6.10-bk14/net/sunrpc/auth_gss/svcauth_gss.c~svcrpc_per_flavor_set_client_method	2005-01-11 16:42:56.000000000 -0500
++++ linux-2.6.10-bk14-bfields/net/sunrpc/auth_gss/svcauth_gss.c	2005-01-11 16:42:56.000000000 -0500
+@@ -730,6 +730,19 @@ struct gss_svc_data {
+ 	struct rsc			*rsci;
+ };
+ 
++static int
++svcauth_gss_set_client(struct svc_rqst *rqstp)
 +{
-+	return proc == NLMPROC_GRANTED
-+		|| proc == NLMPROC_GRANTED_MSG
-+		|| proc == NLMPROC_TEST_RES
-+		|| proc == NLMPROC_LOCK_RES
-+		|| proc == NLMPROC_CANCEL_RES
-+		|| proc == NLMPROC_UNLOCK_RES
-+		|| proc == NLMPROC_NSM_NOTIFY;
++	struct gss_svc_data *svcdata = rqstp->rq_auth_data;
++	struct rsc *rsci = svcdata->rsci;
++	struct rpc_gss_wire_cred *gc = &svcdata->clcred;
++
++	rqstp->rq_client = find_gss_auth_domain(rsci->mechctx, gc->gc_svc);
++	if (rqstp->rq_client == NULL)
++		return SVC_DENIED;
++	return SVC_OK;
 +}
 +
+ /*
+  * Accept an rpcsec packet.
+  * If context establishment, punt to user space
+@@ -1052,6 +1065,7 @@ static struct auth_ops svcauthops_gss = 
+ 	.accept		= svcauth_gss_accept,
+ 	.release	= svcauth_gss_release,
+ 	.domain_release = svcauth_gss_domain_release,
++	.set_client	= svcauth_gss_set_client,
+ };
+ 
+ int
+diff -puN net/sunrpc/sunrpc_syms.c~svcrpc_per_flavor_set_client_method net/sunrpc/sunrpc_syms.c
+--- linux-2.6.10-bk14/net/sunrpc/sunrpc_syms.c~svcrpc_per_flavor_set_client_method	2005-01-11 16:42:56.000000000 -0500
++++ linux-2.6.10-bk14-bfields/net/sunrpc/sunrpc_syms.c	2005-01-11 16:42:56.000000000 -0500
+@@ -90,6 +90,7 @@ EXPORT_SYMBOL(svc_reserve);
+ EXPORT_SYMBOL(svc_auth_register);
+ EXPORT_SYMBOL(auth_domain_lookup);
+ EXPORT_SYMBOL(svc_authenticate);
++EXPORT_SYMBOL(svc_set_client);
+ 
+ /* RPC statistics */
+ #ifdef CONFIG_PROC_FS
+diff -puN net/sunrpc/svcauth.c~svcrpc_per_flavor_set_client_method net/sunrpc/svcauth.c
+--- linux-2.6.10-bk14/net/sunrpc/svcauth.c~svcrpc_per_flavor_set_client_method	2005-01-11 16:42:56.000000000 -0500
++++ linux-2.6.10-bk14-bfields/net/sunrpc/svcauth.c	2005-01-11 16:42:56.000000000 -0500
+@@ -59,6 +59,11 @@ svc_authenticate(struct svc_rqst *rqstp,
+ 	return aops->accept(rqstp, authp);
+ }
+ 
++int svc_set_client(struct svc_rqst *rqstp)
++{
++	return rqstp->rq_authop->set_client(rqstp);
++}
 +
- static int lockd_authenticate(struct svc_rqst *rqstp)
- {
- 	rqstp->rq_client = NULL;
-@@ -411,6 +423,12 @@ static int lockd_authenticate(struct svc
- 		case RPC_AUTH_UNIX:
- 			if (rqstp->rq_proc == 0)
- 				return SVC_OK;
-+			if (is_callback(rqstp->rq_proc)) {
-+				/* Leave it to individual procedures to
-+				 * call nlmsvc_lookup_host(rqstp)
-+				 */
-+				return SVC_OK;
-+			}
- 			return svc_set_client(rqstp);
- 	}
- 	return SVC_DENIED;
+ /* A request, which was authenticated, has now executed.
+  * Time to finalise the the credentials and verifier
+  * and release and resources
+diff -puN net/sunrpc/svcauth_unix.c~svcrpc_per_flavor_set_client_method net/sunrpc/svcauth_unix.c
+--- linux-2.6.10-bk14/net/sunrpc/svcauth_unix.c~svcrpc_per_flavor_set_client_method	2005-01-11 16:42:56.000000000 -0500
++++ linux-2.6.10-bk14-bfields/net/sunrpc/svcauth_unix.c	2005-01-11 16:42:56.000000000 -0500
+@@ -429,6 +429,7 @@ struct auth_ops svcauth_null = {
+ 	.flavour	= RPC_AUTH_NULL,
+ 	.accept 	= svcauth_null_accept,
+ 	.release	= svcauth_null_release,
++	.set_client	= svcauth_unix_set_client,
+ };
+ 
+ 
+@@ -510,5 +511,6 @@ struct auth_ops svcauth_unix = {
+ 	.accept 	= svcauth_unix_accept,
+ 	.release	= svcauth_unix_release,
+ 	.domain_release	= svcauth_unix_domain_release,
++	.set_client	= svcauth_unix_set_client,
+ };
+ 
 _
 
 
