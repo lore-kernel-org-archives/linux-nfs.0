@@ -1,30 +1,25 @@
-From: Christopher Huhn <C.Huhn@gsi.de>
-Subject: executable but not readable
-Date: Thu, 25 Mar 2004 19:00:18 +0100
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: executable but not readable
+Date: Thu, 25 Mar 2004 13:37:36 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <40631E32.1020707@gsi.de>
+Message-ID: <1080239856.2584.18.camel@lade.trondhjem.org>
+References: <40631E32.1020707@gsi.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=iso-8859-1
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B6Z9c-0000G2-99
-	for nfs@lists.sourceforge.net; Thu, 25 Mar 2004 10:00:32 -0800
-Received: from lxmta2.gsi.de ([140.181.67.43])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B6Z9b-0003z9-Sa
-	for nfs@lists.sourceforge.net; Thu, 25 Mar 2004 10:00:32 -0800
-Received: from localhost (localhost [127.0.0.1])
-	by lxmta2.gsi.de (Postfix) with ESMTP id C80CC1926CB
-	for <nfs@lists.sourceforge.net>; Thu, 25 Mar 2004 19:00:23 +0100 (CET)
-Received: from lxmta2.gsi.de ([127.0.0.1])
-	by localhost (lxmta2 [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id 03549-89 for <nfs@lists.sourceforge.net>;
-	Thu, 25 Mar 2004 19:00:19 +0100 (CET)
-Received: from gsi.de (lxg0815.gsi.de [140.181.70.60])
-	by lxmta2.gsi.de (Postfix) with ESMTP id 1D2371926C1
-	for <nfs@lists.sourceforge.net>; Thu, 25 Mar 2004 19:00:19 +0100 (CET)
-To: nfs@lists.sourceforge.net
+	id 1B6ZjY-000120-Em
+	for nfs@lists.sourceforge.net; Thu, 25 Mar 2004 10:37:40 -0800
+Received: from dh132.citi.umich.edu
+	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.30)
+	id 1B6ZjY-0007DZ-6w
+	for nfs@lists.sourceforge.net; Thu, 25 Mar 2004 10:37:40 -0800
+To: Christopher Huhn <C.Huhn@gsi.de>
+In-Reply-To: <40631E32.1020707@gsi.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -37,35 +32,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi alltogether,
+P=E5 to , 25/03/2004 klokka 13:00, skreiv Christopher Huhn:
 
-(I'm sorry to bother you with this but I could not find any clues yet)
+> The clients are able to run these scripts with server kernel version 2.4.=
+20.
+> Now we switched the server to 2.4.25 and get "permission denied" on=20
+> execution.
 
-Szenario:
+On page 99, RFC1813 states explicitly that
 
-   * a server exports shell scripts to clients with root_squash
-   * these scripts have -rwx-r-x--x (root:root) rights (executable but 
-not readable)
+   A similar problem has to do with paging in an executable
+   program over the network. The operating system usually checks
+   for execute permission before opening a file for demand
+   paging, and then reads blocks from the open file. In a local
+   UNIX file system, an executable file does not need read
+   permission to execute (pagein). An NFS version 3 protocol
+   server can not tell the difference between a normal file read
+   (where the read permission bit is meaningful) and a demand
+   pagein read (where the server should allow access to the
+   executable file if the execute bit is set for that user or
+   group or public). To make this work, the server allows
+   reading of files if the uid given in the call has either
+   execute or read permission on the file, through ownership,
+   group membership or public access. Again, this departs from
+   correct local file system semantics.
 
-The clients are able to run these scripts with server kernel version 2.4.20.
-Now we switched the server to 2.4.25 and get "permission denied" on 
-execution.
+So if the server is denying read access in 2.4.25, then someone must
+have introduced a bug...
 
-As far as I comprehend file permissions this should never have worked?
-But nobody ever noticed as long as it worked and the guy in charge says: 
-"This was always a feature on VMS." :-P  
-
-This assumption is confirmed by the fact that "su nobody -c 
-/usr/local/sbin/mkclonediskremupdate" executed on the server does not 
-work either.
-
-Are these observations correct or am I missing something?
-
-Sorry for the silly question.
-
-Regards,
-
-    Christopher
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
