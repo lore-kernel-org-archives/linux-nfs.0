@@ -1,124 +1,37 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: [PATCH] lockd
-Date: Mon, 04 Oct 2004 12:24:56 -0400
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] lockd
+Date: Mon, 04 Oct 2004 19:50:31 +0200
 Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <41617958.2020406@RedHat.com>
+Message-ID: <1096912231.22446.60.camel@lade.trondhjem.org>
+References: <41617958.2020406@RedHat.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------040707060907060701080609"
-Cc: linux-kernel <linux-kernel@vger.kernel.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel=40m.gmane.org-S268004AbUJDQX2@vger.kernel.org>
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-1
+Cc: nfs@lists.sourceforge.net,
+	linux-kernel <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel=40m.gmane.org-S268372AbUJDRwi@vger.kernel.org>
+To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: <41617958.2020406@RedHat.com>
 List-ID: <nfs.lists.sourceforge.net>
 
-This is a multi-part message in MIME format.
---------------040707060907060701080609
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
+P=E5 m=E5 , 04/10/2004 klokka 18:24, skreiv Steve Dickson:
 
-Hey Neil,
+> Hey Neil,
 
-Attached is a patch that fixes some potential SMP races
-in the lockd code that were identified by the SLEEP_ON_BKLCHECK
-that was (at one time) in the -mm tree...
+Hey! This is the client side NLM code... 8-)
 
-Signed-Off-By: Steve Dickson <SteveD@RedHat.com>
+>  	clear_thread_flag(TIF_SIGPENDING);
+> -	interruptible_sleep_on_timeout(&lockd_exit, HZ);
+> -	if (nlmsvc_pid) {
+> +	set_current_state(TASK_UNINTERRUPTIBLE);
 
+Nope. Those clearly are not the same.
 
+Note that you probably also want to move the call to
+set_current_state(TASK_INTERRUPTIBLE) inside the loop. In that case you
+can also remove the call to set_current_state(TASK_RUNNING) ('cos
+schedule_timeout() will do that for you).
 
---------------040707060907060701080609
-Content-Type: text/x-patch;
- name="linux-2.6.9-rc3-mm2-lockd-smprace.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="linux-2.6.9-rc3-mm2-lockd-smprace.patch"
+Also, why aren't you using the more standard DECLARE_WAITQUEUE(__wait)?
 
---- 2.6.9-rc3-mm2/fs/lockd/clntlock.c.old	2004-10-04 09:32:20.404018000 -0400
-+++ 2.6.9-rc3-mm2/fs/lockd/clntlock.c	2004-10-04 11:29:38.940621000 -0400
-@@ -50,14 +50,19 @@ nlmclnt_block(struct nlm_host *host, str
- 	struct nlm_wait	block, **head;
- 	int		err;
- 	u32		pstate;
-+	wait_queue_t __wait;
- 
- 	block.b_host   = host;
- 	block.b_lock   = fl;
--	init_waitqueue_head(&block.b_wait);
- 	block.b_status = NLM_LCK_BLOCKED;
-+	init_waitqueue_entry(&__wait, current);
-+	init_waitqueue_head(&block.b_wait);
-+	add_wait_queue(&block.b_wait, &__wait);
-+
- 	block.b_next   = nlm_blocked;
- 	nlm_blocked    = &block;
- 
-+
- 	/* Remember pseudo nsm state */
- 	pstate = host->h_state;
- 
-@@ -69,7 +74,7 @@ nlmclnt_block(struct nlm_host *host, str
- 	 * a 1 minute timeout would do. See the comment before
- 	 * nlmclnt_lock for an explanation.
- 	 */
--	sleep_on_timeout(&block.b_wait, 30*HZ);
-+	schedule_timeout(30*HZ);
- 
- 	for (head = &nlm_blocked; *head; head = &(*head)->b_next) {
- 		if (*head == &block) {
-@@ -77,6 +82,7 @@ nlmclnt_block(struct nlm_host *host, str
- 			break;
- 		}
- 	}
-+	remove_wait_queue(&block.b_wait, &__wait);
- 
- 	if (!signalled()) {
- 		*statp = block.b_status;
---- 2.6.9-rc3-mm2/fs/lockd/svc.c.old	2004-10-04 09:32:20.417019000 -0400
-+++ 2.6.9-rc3-mm2/fs/lockd/svc.c	2004-10-04 11:27:54.868205000 -0400
-@@ -278,6 +278,8 @@ void
- lockd_down(void)
- {
- 	static int warned;
-+	wait_queue_t __wait;
-+	int retries=0;
- 
- 	down(&nlmsvc_sema);
- 	if (nlmsvc_users) {
-@@ -294,20 +296,33 @@ lockd_down(void)
- 	warned = 0;
- 
- 	kill_proc(nlmsvc_pid, SIGKILL, 1);
-+
-+	init_waitqueue_entry(&__wait, current);
-+	add_wait_queue(&lockd_exit,  &__wait);
-+
- 	/*
- 	 * Wait for the lockd process to exit, but since we're holding
- 	 * the lockd semaphore, we can't wait around forever ...
- 	 */
- 	clear_thread_flag(TIF_SIGPENDING);
--	interruptible_sleep_on_timeout(&lockd_exit, HZ);
--	if (nlmsvc_pid) {
-+	set_current_state(TASK_UNINTERRUPTIBLE);
-+	while (nlmsvc_pid) {
-+
-+		schedule_timeout(HZ);
-+		if (retries++ < 3)
-+			continue;
-+
- 		printk(KERN_WARNING 
- 			"lockd_down: lockd failed to exit, clearing pid\n");
- 		nlmsvc_pid = 0;
- 	}
-+	set_current_state(TASK_RUNNING);
-+	remove_wait_queue(&lockd_exit,  &__wait);
-+
- 	spin_lock_irq(&current->sighand->siglock);
- 	recalc_sigpending();
- 	spin_unlock_irq(&current->sighand->siglock);
-+
- out:
- 	up(&nlmsvc_sema);
- }
-
---------------040707060907060701080609--
+Cheers,
+  Trond
