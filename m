@@ -1,19 +1,16 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: nfs unlink perf !
-Date: 12 Aug 2002 20:55:19 +0200
+From: Jose Santiago <jsantiago@chrysalisdev.com>
+Subject: getfh failed: Operation not permitted
+Date: Mon, 12 Aug 2002 14:31:19 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shs65yfoqjs.fsf@charged.uio.no>
-References: <8D7D56C6ED3DD411998D009027DC685E0874E214@srv-grp-s1.segin.com>
+Message-ID: <3D580D07.4000300@chrysalisdev.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
+Received: from 89.levincom.com ([198.78.56.89] helo=chrysalis-sbs1.chrysalisdev.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17eKLc-0006DC-00
-	for <nfs@lists.sourceforge.net>; Mon, 12 Aug 2002 11:55:25 -0700
-To: Brasseur =?iso-8859-1?q?Val=E9ry?= <Valery.Brasseur@atosorigin.com>
-In-Reply-To: <8D7D56C6ED3DD411998D009027DC685E0874E214@srv-grp-s1.segin.com>
+	id 17eKub-0006xE-00
+	for <nfs@lists.sourceforge.net>; Mon, 12 Aug 2002 12:31:33 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,40 +23,96 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->>>>> " " =3D=3D Brasseur Val=E9ry <Valery.Brasseur@atosorigin.com> writes:
+Server Name: bfs1
+Client Name: rtr01
 
-     > I am testing an application which to a lot of link/unlink
-     > server is a NetApp filer, client is linux 2.4.19+nfs patches.
+I am having problems mounting bfs1:/data on NFS client rtr01 . The 
+server log says:
 
-     > under load it seems that the unlink call is very long when all
-     > over calls response time seems to be OK.  is there any problems
-     > with the unlink code ?
+Aug 12 14:15:27 bfs1 rpc.kmountd: getfh failed: Operation not permitted
 
-There should be no problems, but it depends on what type of test you
-are doing...
+when I attempt the mount.
 
-The NFS protocol has to work around some nasty compatibility problems
-w.r.t. the POSIX expected behaviour of unlink. In particular, POSIX
-allows you to do
+The client can mount bfs1:/ bfs1:/data/backup and all of the other mount 
+points and subdirectories under the mount points except for bfs1:/data 
+and other subdirectories under it. Other NFS clients can mount 
+bfs1:/data and all mount points just fine.
 
-  open(file);
-  write(file);
-  unlink(file);
-  read(file);
-  close(file);
+A pointer in the right direction would be much appreciated.
 
-i.e. to unlink an open file...
+Both client and Server:
+   Kernel version 2.4.19pre1
+   nfs-utils version 0.3.3
+   mount version 2.11n
 
-In order for the above to work with NFS, one can't immediately unlink
-the file when it is open(). Instead, NFS does a 'sillyrename': it
-renames the file to something of the form .nfsXXXXX (where XXXX is
-some number) and then performs the unlink when the 'close()' has been
-performed.
+Server /etc/exports:
+/ 
+\
+	bfs1.chrysalisdev.com(no_root_squash,rw,insecure,nohide) \
+	inet1.chrysalisdev.com(no_root_squash,rw,insecure,nohide) \
+	wsa147.chrysalisdev.com(no_root_squash,rw,insecure,nohide) \
+	127.0.0.0/255.0.0.0(no_root_squash,rw,insecure,nohide) \
+	10.0.0.0/255.0.0.0(rw,insecure,nohide)
+/data 
+\
+	bfs1.chrysalisdev.com(no_root_squash,rw,insecure,nohide) \
+	inet1.chrysalisdev.com(no_root_squash,rw,insecure,nohide) \
+	wsa147.chrysalisdev.com(no_root_squash,rw,insecure,nohide) \
+	127.0.0.0/255.0.0.0(no_root_squash,rw,insecure,nohide) \
+	10.0.0.0/255.0.0.0(rw,insecure,nohide)
+/data/backup \
+	127.0.0.0/255.0.0.0(no_root_squash,rw,insecure,nohide) \
+	10.0.0.0/255.0.0.0(no_root_squash,rw,insecure,nohide) \
+	172.16.0.0/255.240.0.0(no_root_squash,rw,insecure,nohide) \
+	192.168.0.0/255.255.0.0(no_root_squash,rw,insecure,nohide)
+/cdrom 
+\
+	*(ro,insecure,nohide)
+/floppy 
+*(rw,insecure,nohide)
 
-Would this suffice to explain your 'bad performance'?
+Server exportfs -v:
+/data 
+bfs1.chrysalisdev.com(rw,async,wdelay,nohide,insecure,no_root_squash)
+/data 
+inet1.chrysalisdev.com(rw,async,wdelay,nohide,insecure,no_root_squash)
+/data 
+wsa147.chrysalisdev.com(rw,async,wdelay,nohide,insecure,no_root_squash)
+/ 
+bfs1.chrysalisdev.com(rw,async,wdelay,nohide,insecure,no_root_squash)
+/ 
+inet1.chrysalisdev.com(rw,async,wdelay,nohide,insecure,no_root_squash)
+/ 
+wsa147.chrysalisdev.com(rw,async,wdelay,nohide,insecure,no_root_squash)
+/data/backup 
+127.0.0.0/255.0.0.0(rw,async,wdelay,nohide,insecure,no_root_squash)
+/data/backup 
+10.0.0.0/255.0.0.0(rw,async,wdelay,nohide,insecure,no_root_squash)
+/data/backup 
+172.16.0.0/255.240.0.0(rw,async,wdelay,nohide,insecure,no_root_squash)
+/data/backup 
+192.168.0.0/255.255.0.0(rw,async,wdelay,nohide,insecure,no_root_squash)
+/data 
+127.0.0.0/255.0.0.0(rw,async,wdelay,nohide,insecure,no_root_squash)
+/data 
+10.0.0.0/255.0.0.0(rw,async,wdelay,nohide,insecure,root_squash)
+/ 
+127.0.0.0/255.0.0.0(rw,async,wdelay,nohide,insecure,no_root_squash)
+/ 
+10.0.0.0/255.0.0.0(rw,async,wdelay,nohide,insecure,root_squash)
+/floppy         <world>(rw,async,wdelay,nohide,insecure,root_squash)
+/cdrom          <world>(ro,async,wdelay,nohide,insecure,root_squash)
 
-Cheers,
-  Trond
+-- 
+Jose Santiago
+
+The IT Guy
+Chrysalis Development
+8125 River Dr. Suite 100
+Morton Grove, IL 60053
+Voice:847-583-0198  Fax:847-583-0217
+mailto:jsantiago@chrysalisdev.com
+
 
 
 -------------------------------------------------------
