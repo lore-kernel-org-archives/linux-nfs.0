@@ -1,23 +1,18 @@
-From: "Ryurick M. Hristev" <r.hristev@phys.canterbury.ac.nz>
-Subject: Linux: nfsroot and a Tulip card
-Date: Tue, 30 Apr 2002 09:05:49 +1200 (NZST)
+From: "Bruce Allan" <bruce.allan@us.ibm.com>
+Subject: Re: Re: 1279 mounts
+Date: Mon, 29 Apr 2002 16:50:55 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0204300855040.18407-100000@loony.phys.canterbury.ac.nz>
-References: <DAV25aE7WD84jBtwuie00001eb9@hotmail.com>
-Reply-To: "Ryurick M. Hristev" <r.hristev@phys.canterbury.ac.nz>
+Message-ID: <OF6661F22B.C4CE52F9-ON88256BAA.0081C65C@boulder.ibm.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from cantva.canterbury.ac.nz ([132.181.30.3])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 172ILO-00009I-00
-	for <nfs@lists.sourceforge.net>; Mon, 29 Apr 2002 14:05:59 -0700
-Received: from CONVERSION-DAEMON.it.canterbury.ac.nz by it.canterbury.ac.nz (PMDF V6.1 #39332) id <01KH63NCMLFK9F59JD@it.canterbury.ac.nz> for nfs@lists.sourceforge.net; Tue, 30 Apr 2002 09:05:49 +1200 (NEW ZEALAND STANDARD TIME)
-Received: from loony.phys.canterbury.ac.nz (loony.phys.canterbury.ac.nz [132.181.41.100]) by it.canterbury.ac.nz (PMDF V6.1 #39332) with ESMTP id <01KH63NCSE0U936UUH@it.canterbury.ac.nz> for nfs@lists.sourceforge.net; Tue,
- 30 Apr 2002 09:05:49 +1200 (NEW ZEALAND STANDARD TIME)
-Received: from localhost (physrmh@localhost)	by loony.phys.canterbury.ac.nz (8.11.6/8.11.2) with ESMTP id g3TL5nM19005	for <nfs@lists.sourceforge.net>; Tue, 30 Apr 2002 09:05:49 +1200
-In-Reply-To: <DAV25aE7WD84jBtwuie00001eb9@hotmail.com>
-To: nfs@lists.sourceforge.net
+Received: from e31.co.us.ibm.com ([32.97.110.129])
+	by usw-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 172KvL-0003oA-00
+	for <nfs@lists.sourceforge.net>; Mon, 29 Apr 2002 16:51:15 -0700
+To: Pete Zaitcev <zaitcev@redhat.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,33 +25,55 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hello,
 
-After a prolonged mucking around I am finally out of any idea.
+Well, count me as another who would like to see the unnamed major and NFS
+parts make it into the 2.4 kernel.  I've had a number of conversations in
+which there was an expressed interest in more than 246 or so mount points.
+With what release/whatever do you ship the unnamed majors part?
 
-I have a problem:
+Thanks,
+---
+Bruce Allan  <bruce.allan@us.ibm.com>
+Software Engineer, Linux Technology Center
+IBM Corporation, Beaverton OR
+503-578-4187   IBM Tie-line 775-4187
 
-I have a Linux based PC with a Tulip type network card which refuses
-to read the root filesystem over nfs.
 
-Given that the card have to be DHCP configured the network driver
-is compiled into the kernel. The system boots, it gets configured
-via DHCP, mounts the root via nfs (as shown by the logs) then hangs. 
 
-I have other systems with different network cards which do work
-with the same setup. The system also works with Linux 2.2 but not 2.4
+                                                                                                                                         
+                      Pete Zaitcev                                                                                                       
+                      <zaitcev@redhat.com>        To:       Panu Matilainen <pmatilai@welho.com>                                         
+                      Sent by:                    cc:       Pete Zaitcev <zaitcev@redhat.com>, nfs@lists.sourceforge.net,                
+                      nfs-admin@lists.sour         linux-kernel@vger.kernel.org                                                          
+                      ceforge.net                 Subject:  [NFS] Re: 1279 mounts                                                        
+                                                                                                                                         
+                                                                                                                                         
+                      04/27/2002 06:32 PM                                                                                                
+                                                                                                                                         
+                                                                                                                                         
 
-The tulip driver in Linux kernel 2.4 appears to be FUBAR so I used
-the de4x5 which apparently works up to reading the nfsroot
-(IIRC that was recommended by someone on the tulip driver mailing list).
 
-TIA for any pointers, ideas, etc,
 
-Cheers,
--- 
-Ryurick M. Hristev mailto:r.hristev@phys.canterbury.ac.nz
-Computer Systems Manager
-University of Canterbury, Physics & Astronomy Dept., New Zealand
+
+> Date: Fri, 26 Apr 2002 11:25:33 +0300 (EEST)
+> From: Panu Matilainen <pmatilai@welho.com>
+
+> I've got quite a few users here who "need" this functionality and it's
+> included in our RH-based custom kernels. Having it as a separate patch
+> for 2.4 is no problem, for 2.5 I'm hoping we finally move to 32bit device
+> numbers...
+
+Mind, we only ship the unnamed majors part, but not the NFS part.
+There is no word from util-linux maintainer about required
+changes to mount(8), so I was cautious about doint that.
+
+-- Pete
+
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+
+
 
 
 _______________________________________________
