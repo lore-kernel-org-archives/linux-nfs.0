@@ -1,14 +1,23 @@
-From: Marc Eshel <eshel@almaden.ibm.com>
-Subject: Re: NFSv3 blocking locks broken in 2.6.7
-Date: Tue, 17 Aug 2004 20:38:10 -0700
+From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
+Subject: Re: nfsd stales when restarting too fast
+Date: Wed, 18 Aug 2004 09:16:54 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <OF35B34F68.0EE4F93D-ON88256EF4.00138C8D-88256EF4.0013F948@us.ibm.com>
-References: <OF9F656799.5FEFBB07-ON88256ED4.0072FC79-88256ED4.0073FD3C@LocalDomain>
+Message-ID: <41230266.7010002@bio.ifi.lmu.de>
+References: <4118900F.9090602@bio.ifi.lmu.de> <16674.52210.884853.119652@cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-In-Reply-To: <OF9F656799.5FEFBB07-ON88256ED4.0072FC79-88256ED4.0073FD3C@LocalDomain>
-To: NFS@lists.sourceforge.net
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BxKgx-0006NG-5v
+	for nfs@lists.sourceforge.net; Wed, 18 Aug 2004 00:17:03 -0700
+Received: from acheron.informatik.uni-muenchen.de ([129.187.214.135])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
+	id 1BxKgv-00080v-Kc
+	for nfs@lists.sourceforge.net; Wed, 18 Aug 2004 00:17:03 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <16674.52210.884853.119652@cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -21,41 +30,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Neil Brown wrote:
+> 
+> Probably the best solution is to "not do that" - why do you want to
+> stop and then restart the server anyway?  Why not just leave it
+> running.
 
+Aeh, well, yes. Of course I should not restart but just reload when
+sth. has changed... That's because I'm not used to the reload
+option since it didn't exist in the early SuSE versions I was using, so
+I'm always using restart. With reload (which just issues exportfs -r
+in the SuSE init script) no problem occurs. I definitely should have
+thought of that *feeling stupid* :-((
 
+> 
+> However there is a race the, and "sleep 1" would fix it.
+> Another fix would be to use "-1" instead of "-9" to kill nfsd.  This
+> causes it to exit without clearing the export table.
+> Another fix would be to apply to following patch to your 2.6 kernel.
 
+Just in case I forget the reload again next time I will include your
+patch in my kernel rpm, too. Just to be sure :-)
 
-I just tried the latest 2.6.8 kernel and the following problem is still
-there.
+Thanks for your help!
+cu,
+Frank
 
-Marc Eshel/Almaden/IBM wrote on 07/17/2004 02:11:22 PM:
-
-> Hi,
->
-> There appears to be a problem with blocking locks granted by lockd
-> (observed on 2.6.7 and some previous versions of 2.6). An NFS client
-> waiting for a blocking lock unlocks the file incorrectly right after
-> being granted the lock even though the application still holds the
-> lock; thereby allowing another NFS client or local fcntl locks to be
-> granted. This problem will not manifest itself while using two
-> processes from the same NFS client because of the local locking on
-> the client machine.
->
-> The problem can be easily reproduced using two different NFS client
-> machines and issuing the following sequence of locking calls (assume
-> that /mnt is the NFS mount point on both NFS clients in the example):
->
-> Client 1: fcntl(F_SETLK) /mnt/f1 granted and held
-> Client 2: fcntl(F_SETLKW) /mnt/f1 blocked
-> Client 1: fcntl(F_UNLCK) /mnt/f1 unlocked on Machine 1; granted on
-Machine 2
-> Client 2: After a delay, lock granted and held
-> Client 1: fcntl(F_SETLK) /mnt/f1 granted (should be DENIED)
->
-> The problem also occurs when the first process is executing the
-> fcntl locks locally.
->
-> Thanks, Marc.
+-- 
+Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
+Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
+LMU, Amalienstr. 17           Phone: +49 89 2180-4049
+80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
 
 
 
