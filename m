@@ -1,19 +1,21 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Linux NFS client hangs when it read a large file
-Date: 19 Apr 2002 14:13:05 +0200
+From: =?iso-8859-1?Q?Dennis_Gro=DF?= <d.gross@web.de>
+Subject: german translation of the Linux NFS HOWTO ?
+Date: Sun, 21 Apr 2002 00:54:21 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shs3cxrnay6.fsf@charged.uio.no>
-References: <20020419111618.19A3770023@sv1.valinux.co.jp>
+Message-ID: <000e01c1e8be$5318d090$0502a8c0@falcon>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_000B_01C1E8CF.12ECAEE0"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
+Received: from smtp01.web.de ([194.45.170.210] helo=smtp.web.de)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16yXGT-0002LI-00
-	for <nfs@lists.sourceforge.net>; Fri, 19 Apr 2002 05:13:22 -0700
-To: Hirotaka Sasaki <sasaki@valinux.co.jp>
-In-Reply-To: <20020419111618.19A3770023@sv1.valinux.co.jp>
+	id 16z3lL-0002AF-00
+	for <nfs@lists.sourceforge.net>; Sat, 20 Apr 2002 15:55:23 -0700
+Received: from [80.135.205.143] (helo=falcon)
+	by smtp.web.de with smtp (WEB.DE(Exim) 4.44 #50)
+	id 16z3lJ-0001kS-00
+	for nfs@lists.sourceforge.net; Sun, 21 Apr 2002 00:55:21 +0200
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,41 +28,49 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->>>>> " " == Hirotaka Sasaki <sasaki@valinux.co.jp> writes:
+This is a multi-part message in MIME format.
 
-     > Hi, I'm having trouble with the Linux NFS client.
+------=_NextPart_000_000B_01C1E8CF.12ECAEE0
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-     > NFS Server is Redhat 7.2 with Linux-2.4.17+XFS-1.0.2.  NFS
-     > Client is Redhat 7.2 with Linux-2.4.17.
+Hi,
 
-     > On the NFS Server, I'm exporting a XFS file system under an
-     > arbitrary directory name.
+is there allready a german translation of the Linux NFS HOWTO?
 
-     > Next, I mount that file system using the NFS client via
-     > NFSv3/UDP.
+If not I=B4ll try it.
 
-     > For Linux 2.4, the maximum accessible file offset of XFS is
-     > 16TB(0xffffffff000) on 4K page size.
+Gruss
 
-     > I can read a file with an offset of 0xfffffff8000, but the
-     > client hangs when I read a file with an offset of 0xfffffff9000
-     > from the server on the client.
+Dennis
 
-Actually, you are not even supposed to be able to read the offset of
-0xfffffff8000. The maximum offset supported by any 32-bit Linux system
-is
 
-MAX_LFS_FILESIZE == (((u64)PAGE_CACHE_SIZE << (BITS_PER_LONG-1))-1)
+------=_NextPart_000_000B_01C1E8CF.12ECAEE0
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-For i386 that works out as
-MAX_LFS_FILESIZE == ((1 << 12) << 31) - 1 == 2^43 - 1
-                 == 0x7ffffffffff
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META content=3D"text/html; charset=3Diso-8859-1" =
+http-equiv=3DContent-Type>
+<META content=3D"MSHTML 5.00.3502.4373" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV><FONT size=3D1>
+<P><FONT face=3DArial size=3D2>Hi,</FONT></P>
+<P><FONT face=3DArial size=3D2>is there allready a german translation of =
+the Linux=20
+NFS HOWTO?</FONT></P>
+<P><FONT face=3DArial size=3D2>If not I=B4ll try it.</FONT></P>
+<P><FONT face=3DArial size=3D2>Gruss</FONT></P>
+<P><FONT face=3DArial =
+size=3D2>Dennis</FONT></P></FONT></DIV></BODY></HTML>
 
-The ability to read beyond is an NFS bug which was fixed in the
-2.4.19-preX series...
+------=_NextPart_000_000B_01C1E8CF.12ECAEE0--
 
-Cheers,
-  Trond
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
