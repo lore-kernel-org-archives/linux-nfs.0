@@ -1,25 +1,21 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Problem starting rpc.svcgssd for NFS4
-Date: Tue, 24 Feb 2004 13:03:29 -0500
+From: ralph gonzalez <rgonzale@ibl.bm>
+Subject: Force client page cache invalidation?
+Date: Tue, 24 Feb 2004 14:30:26 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040224180329.GB10522@fieldses.org>
-References: <200402230759.35041.simeon@up.ac.za> <20040223162516.GA4977@fieldses.org> <200402241100.13391.simeon@up.ac.za>
+Message-ID: <403B9842.9070001@ibl.bm>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: ralph gonzalez <rgonzale@ibl.bm>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Avgur-0001Pe-CV
-	for nfs@lists.sourceforge.net; Tue, 24 Feb 2004 10:04:21 -0800
-Received: from dsl093-002-214.det1.dsl.speakeasy.net
-	([66.93.2.214] helo=pumpkin.fieldses.org ident=Debian-exim)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.30)
-	id 1Avgu5-0001kH-7F
-	for nfs@lists.sourceforge.net; Tue, 24 Feb 2004 10:03:33 -0800
-To: Simeon Miteff <simeon@up.ac.za>
-In-Reply-To: <200402241100.13391.simeon@up.ac.za>
+	id 1AvhKp-0008Mp-GY
+	for nfs@lists.sourceforge.net; Tue, 24 Feb 2004 10:31:11 -0800
+Received: from outgoing.logic.bm ([199.172.192.16])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1Avh7k-0005d9-CO
+	for nfs@lists.sourceforge.net; Tue, 24 Feb 2004 10:17:40 -0800
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,19 +28,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, Feb 24, 2004 at 11:00:13AM +0200, Simeon Miteff wrote:
-> Thanks! Applying the patch solved the problem. I can mount exports with 
-> -osec=krb5 and stuff.
-> 
-> The main reason why I want to use NFS4 is for the security it provides. While 
-> I understand that NFS4 isn't concidered ready for production systems yet, I'm 
-> wondering, is it a good idea to use -osec=krb5 with NFS3 in the mean-time?
+We tend to run multiple applications on a single client, which all
+mmap (usually readonly) the same file on an nfs-mounted volume.
+If the file changes on the server, then we would like clients to
+see these changes upon closing/reopening this file.
 
-That should work.  One caveat: there are some potentially serious
-performance problems with rpcsec_gss over tcp, so make sure you specify
-proto=tcp.  If you come across any problems in testing, let us know.
+On Solaris (which we are moving from), this would work fine. However
+Linux 2.4.22-10mdk (nfs utils 1.0.5) seems to be unwilling to reload
+the file cache *when another application already has the file mmapped*.
 
---b.
+Therefore each time the file is editted on the server, we have to
+force all applications mapping this file (on the client in question)
+to close the file *simultaneously*, and then allow them to reopen the
+mapping.
+
+*Question*: Instead, is there a way to force the client to reload
+the file cache (exclusively for this file)? (So when we subsequently
+close/open the file in each application asynchronously, they see the
+correct pages.) Maybe there's a simple option or utility I'm missing?
+
+A separate problem is that the file attributes are cached, so the
+file cache is only reloaded if we force the client to reread the
+file attributes whenever the file is editted on the server. This we
+accomplish by the trick of locking/unlocking the file immediately
+after opening it, to avoid disabling mount-level attribute caching
+via the noac option.
+
+Thanks for any suggestions!
+-- 
+Ralph Gonzalez
+rgonzale@ibl.bm
+
 
 
 -------------------------------------------------------
