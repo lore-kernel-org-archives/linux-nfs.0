@@ -1,22 +1,23 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
+From: trond.myklebust@fys.uio.no
 Subject: RE: NFS suport block sharing
-Date: Wed, 18 Feb 2004 18:27:48 -0800
+Date: Thu, 19 Feb 2004 05:39:06 +0100 (CET)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <482A3FA0050D21419C269D13989C611302B07B87@lavender-fe.eng.netapp.com>
+Message-ID: <36604.207.214.87.84.1077165546.squirrel@webmail.uio.no>
+References: <482A3FA0050D21419C269D13989C611302B07B87@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <nfs@lists.sourceforge.net>, "Olaf Kirch" <okir@suse.de>
+Content-Type: text/plain;charset=iso-8859-1
+Cc: nfs@lists.sourceforge.net,"Olaf Kirch" <okir@suse.de>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ate06-0001wL-Md
-	for nfs@lists.sourceforge.net; Wed, 18 Feb 2004 18:33:18 -0800
-Received: from mx01.netapp.com ([198.95.226.53])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1Atdv2-0004fz-56
-	for nfs@lists.sourceforge.net; Wed, 18 Feb 2004 18:28:04 -0800
-To: <trond.myklebust@fys.uio.no>
+	id 1Atg3C-0001jm-2R
+	for nfs@lists.sourceforge.net; Wed, 18 Feb 2004 20:44:38 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1AtfqP-0007Dk-Pw
+	for nfs@lists.sourceforge.net; Wed, 18 Feb 2004 20:31:26 -0800
+To: "Charles Lever" <Charles.Lever@netapp.com>
+In-Reply-To: <482A3FA0050D21419C269D13989C611302B07B87@lavender-fe.eng.netapp.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -29,33 +30,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> We should aim only to have 1 super block per filesystem. Anything else
-> will lead to inode aliasing, and hence potential data=20
-> corruption problems
-> when two processes try to write to the same file on different super
-> blocks.
->=20
-> Is there really any sane application that requires you to=20
-> have different
-> rsize/wsize for the same filesystem?
+På on , 18/02/2004 klokka 18:27, skreiv Lever, Charles:
+> > Is there really any sane application that requires you to
+> > have different
+> > rsize/wsize for the same filesystem?
+>
+> an application suite may want to mount one file system with
+> forcedirectio (if such an option might exist), and another
+> normally.  with the shared super block scheme, this is no
+> longer possible.
 
-an application suite may want to mount one file system with
-forcedirectio (if such an option might exist), and another
-normally.  with the shared super block scheme, this is no
-longer possible.
+Sure it is. Just add the equivalent of Olaf's patch for the
+forcedirectio flag into the external patch that adds forcedirectio
+support. "forcedirectio" does indeed not care about inode aliasing, but it
+is the *only* such case.
 
-another typical use for having two unshared cached copies of
-a file is to test NFS client caching (and yes, we do this
-all the time).
+> another typical use for having two unshared cached copies of
+> a file is to test NFS client caching (and yes, we do this
+> all the time).
 
-so there are some "sane" cases i can think of where separate
-caches and/or mount options for the same export make some
-sense.
+<Cough, splutter>...
 
-if nothing else, /proc/mounts and /etc/mtab should reflect
-the true mount options in effect, and there should be some
-explanation of this bizarre phenomenon in the man page.  the
-way it works now is totally confusing.
+That sort of testing can be done using 2 real clients, or with your own
+patch. Why force insane semantics on everyone else just in order to allow
+for some doubtful testing convenience on behalf of the NFS
+developers?
+
+> if nothing else, /proc/mounts and /etc/mtab should reflect
+> the true mount options in effect, and there should be some
+> explanation of this bizarre phenomenon in the man page.  the
+> way it works now is totally confusing.
+
+/proc/mounts will always reflect the true mount options. It should just
+read that information directly from the superblock.
+
+/etc/mtab is not under kernel control, and has always been broken w.r.t.
+NFS options: try typing things like "mount -oremount,tcp /mnt" for
+instance, or see the behaviour when you type insane values for
+rsize/wsize.
+Sure we can document this, but I don't see it as an argument for
+breaking the kernel cache consistency by opening for inode aliasing.
+
+Cheers,
+  Trond
+
+
+
 
 
 -------------------------------------------------------
