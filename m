@@ -1,20 +1,22 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: deadlock in lockd
-Date: Thu, 10 Mar 2005 21:44:16 +0100
-Message-ID: <20050310204416.GC3424@suse.de>
+From: Daniel Forrest <forrest@lmcg.wisc.edu>
+Subject: Re: deadlock in lockd
+Date: Thu, 10 Mar 2005 15:49:44 -0600
+Message-ID: <20050310154944.A14369@rda07.lmcg.wisc.edu>
+References: <20050310204416.GC3424@suse.de>
+Reply-To: Daniel Forrest <forrest@lmcg.wisc.edu>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="l76fUT7nc3MelDdI"
-Cc: Sebastian Hetze <s.hetze@linux-ag.de>
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net, Sebastian Hetze <s.hetze@linux-ag.de>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D9UW7-0006pf-Dw
-	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 12:44:23 -0800
-Received: from news.suse.de ([195.135.220.2] helo=Cantor.suse.de)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.41)
-	id 1D9UW5-0001VD-Gw
-	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 12:44:23 -0800
-To: nfs@lists.sourceforge.net
+	id 1D9VXZ-0001PZ-Cj
+	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 13:49:57 -0800
+Received: from mail.lmcg.wisc.edu ([144.92.101.145])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1D9VXV-0007e8-Fa
+	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 13:49:57 -0800
+To: Olaf Kirch <okir@suse.de>
+In-Reply-To: <20050310204416.GC3424@suse.de>; from okir@suse.de on Thu, Mar 10, 2005 at 09:44:16PM +0100
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,132 +30,87 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Olaf,
 
---l76fUT7nc3MelDdI
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+> Hi all,
+> 
+> I just debugged a deadlock in lockd in SLES8 (i.e 2.4.21), but
+> I think the same problem exists in 2.6.
 
-Hi all,
+I found this ages ago.
 
-I just debugged a deadlock in lockd in SLES8 (i.e 2.4.21), but
-I think the same problem exists in 2.6.
+Neil Brown submitted a patch on 12 Mar 2003:
 
-Here's the backtrace courtesy of sysrq:
+Subject: [NFS] [PATCH] kNFSd - 3 of 6 - Fix deadlock problem in lockd.
 
- lockd         D 00000000  3648   791      1   792     795   783 (L-TLB)
- Call Trace:         [do_schedule+338/608] (36) [__down+131/224] (52) [__down_failed+8/12] (16)
-   [.text.lock.svclock+5/150] (04) [vsnprintf+519/1120] (24) [nlm_traverse_files+324/368] (32) [nlmsvc_mark_resources+32/64] (12)
-   [nlm_gc_hosts+69/384] (28) [nlm_lookup_host+139/800] (48) [nlmsvc_lookup_host+48/64] (20) [nlmsvc_create_block+145/352] (16)
-   [posix_test_lock+132/160] (20) [nlmsvc_lock+222/784] (28) [nlm4svc_retrieve_args+199/288] (40) [nlm4svc_proc_lock+172/256] (44)
-   [svc_process+827/1392] (56) [lockd+426/720] (40) [arch_kernel_thread+46/64] (08) [lockd+0/720] (04)
+Which fixes this.  Apparently this made it into 2.5, but not 2.4.
 
-What happens is that nlmsvc_lock takes the f_sema on the file the client wishes to lock,
-then calls posix_test_lock, which finds there's a blocking lock. So it calls
-nlmsvc_create_block, which calls nlmsvc_lookup_host - and the host code decides
-to do a garbage collection pass.
+He submitted the same patch on 29 Oct 2003:
 
-We call nlm_traverse_files, that hits the file we're just trying to lock, and
-invokes nlmsvc_traverse_blocks, which will try to down f_sema once more.
-And there it hangs...
+Subject: [NFS] [PATCH]  Fix deadlock problem in lockd.
 
-The attched (untested) patch changes the way we do garbage collection
-passes, instead of doing it inside nlm_lookup_host, nlm_gc_hosts is
-called from the top-level service loop in lockd now, where we don'T hold any
-locks. It looks saner anyway.
+With the comment: "(This was fixed in 2.5 8 months ago)".
 
-Comments?
+You may want to check if this ever made it into the 2.4 source.
 
-Olaf
+Here is that e-mail:
+
+---
+
+nlmsvc_lock calls nlmsvc_create_block with file->f_sema
+held.
+nlmsvc_create_block calls nlmclnt_lookup_host which might
+call nlm_gc_hosts which might, eventually, try to claim
+file->f_sema for the same file -> deadlock.
+
+nlmsvc_create_block does not need any protection under
+any lock as lockd is single-threaded and _create_block
+only plays with internal data structures.
+
+So we release the f_sema before calling in, and make sure
+it gets claimed again afterwards.
+
+(This was fixed in 2.5 8 months ago)
+
+
+diff ./fs/lockd/svclock.c~current~ ./fs/lockd/svclock.c
+--- ./fs/lockd/svclock.c~current~	2003-10-29 09:07:10.000000000 +1100
++++ ./fs/lockd/svclock.c	2003-10-29 09:07:10.000000000 +1100
+@@ -317,8 +317,6 @@ nlmsvc_lock(struct svc_rqst *rqstp, stru
+ 				(long long)lock->fl.fl_end,
+ 				wait);
+ 
+-	/* Lock file against concurrent access */
+-	down(&file->f_sema);
+ 
+ 	/* Get existing block (in case client is busy-waiting) */
+ 	block = nlmsvc_lookup_block(file, lock, 0);
+@@ -326,6 +324,9 @@ nlmsvc_lock(struct svc_rqst *rqstp, stru
+ 	lock->fl.fl_flags |= FL_LOCKD;
+ 
+ again:
++	/* Lock file against concurrent access */
++	down(&file->f_sema);
++
+ 	if (!(conflock = posix_test_lock(&file->f_file, &lock->fl))) {
+ 		error = posix_lock_file(&file->f_file, &lock->fl, 0);
+ 
+@@ -358,7 +359,10 @@ again:
+ 
+ 	/* If we don't have a block, create and initialize it. Then
+ 	 * retry because we may have slept in kmalloc. */
++	/* We have to release f_sema as nlmsvc_create_block may try to
++	 * claim it while doing host garbage collection */
+ 	if (block == NULL) {
++		up(&file->f_sema);
+ 		dprintk("lockd: blocking on this lock (allocating).\n");
+ 		if (!(block = nlmsvc_create_block(rqstp, file, lock, cookie)))
+ 			return nlm_lck_denied_nolocks;
+
 -- 
-Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
-okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
-
---l76fUT7nc3MelDdI
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: attachment; filename=lockd-gc-deadlock
-
-Index: linux-2.4.21/fs/lockd/host.c
-===================================================================
---- linux-2.4.21.orig/fs/lockd/host.c	2005-02-10 10:58:25.000000000 +0100
-+++ linux-2.4.21/fs/lockd/host.c	2005-03-10 20:44:43.000000000 +0100
-@@ -34,7 +34,7 @@ static int			nrhosts;
- static DECLARE_MUTEX(nlm_host_sema);
- 
- 
--static void			nlm_gc_hosts(void);
-+static void			__nlm_gc_hosts(void);
- 
- /*
-  * Find an NLM server handle in the cache. If there is none, create it.
-@@ -94,9 +94,6 @@ nlm_lookup_host(struct svc_client *clnt,
- 	/* Lock hash table */
- 	down(&nlm_host_sema);
- 
--	if (time_after_eq(jiffies, next_gc))
--		nlm_gc_hosts();
--
- 	for (hp = &nlm_hosts[hash]; (host = *hp); hp = &host->h_next) {
- 		if (proto && host->h_proto != proto)
- 			continue;
-@@ -273,7 +270,7 @@ nlm_shutdown_hosts(void)
- 	}
- 
- 	/* Then, perform a garbage collection pass */
--	nlm_gc_hosts();
-+	__nlm_gc_hosts();
- 	up(&nlm_host_sema);
- 
- 	/* complain if any hosts are left */
-@@ -296,7 +293,7 @@ nlm_shutdown_hosts(void)
-  * mark & sweep for resources held by remote clients.
-  */
- static void
--nlm_gc_hosts(void)
-+__nlm_gc_hosts(void)
- {
- 	struct nlm_host	**q, *host;
- 	struct rpc_clnt	*clnt;
-@@ -341,3 +338,12 @@ nlm_gc_hosts(void)
- 	next_gc = jiffies + NLM_HOST_COLLECT;
- }
- 
-+void
-+nlm_gc_hosts()
-+{
-+	down(&nlm_host_sema);
-+	if (time_after_eq(jiffies, next_gc))
-+		__nlm_gc_hosts();
-+	up(&nlm_host_sema);
-+}
-+
-Index: linux-2.4.21/fs/lockd/svc.c
-===================================================================
---- linux-2.4.21.orig/fs/lockd/svc.c	2005-02-10 10:57:58.000000000 +0100
-+++ linux-2.4.21/fs/lockd/svc.c	2005-03-10 20:45:53.000000000 +0100
-@@ -154,6 +154,9 @@ lockd(struct svc_rqst *rqstp)
- 			break;
- 		}
- 
-+		/* Perform hosts cache garbage collection */
-+		nlm_gc_hosts();
-+
- 		dprintk("lockd: request from %08x\n",
- 			(unsigned)ntohl(rqstp->rq_addr.sin_addr.s_addr));
- 
-Index: linux-2.4.21/include/linux/lockd/lockd.h
-===================================================================
---- linux-2.4.21.orig/include/linux/lockd/lockd.h	2005-02-10 10:57:37.000000000 +0100
-+++ linux-2.4.21/include/linux/lockd/lockd.h	2005-03-10 20:43:10.000000000 +0100
-@@ -150,6 +150,7 @@ void		  nlm_rebind_host(struct nlm_host 
- struct nlm_host * nlm_get_host(struct nlm_host *);
- void		  nlm_release_host(struct nlm_host *);
- void		  nlm_shutdown_hosts(void);
-+void		  nlm_gc_hosts(void);
- 
- /*
-  * Server-side lock handling
-
---l76fUT7nc3MelDdI--
+Daniel K. Forrest	Laboratory for Molecular and
+forrest@lmcg.wisc.edu	Computational Genomics
+			University of Wisconsin, Madison
 
 
 -------------------------------------------------------
