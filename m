@@ -1,25 +1,23 @@
-From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSdv4 - 4 of 10 - nfsd4_readdir fixes
-Date: Thu, 08 Apr 2004 11:18:46 +1000
+From: "Guolin Cheng" <guolin@alexa.com>
+Subject: RE: auto-discovery of exports?
+Date: Wed, 7 Apr 2004 18:44:44 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1BBOBq-0001Qn-Jc@notabene.cse.unsw.edu.au>
-References: <20040408111135.5397.patches@notabene>
-Cc: nfs@lists.sourceforge.net,  "J. Bruce Fields" <bfields@fieldses.org>
+Message-ID: <41089CB27BD8D24E8385C8003EDAF7AB084850@karl.alexa.com>
+Mime-Version: 1.0
+Content-Type: text/plain;
+	charset="US-ASCII"
+Cc: "Michael" <mogmios@mlug.missouri.edu>,
+	<nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BBOCP-0007l6-Fl
-	for nfs@lists.sourceforge.net; Wed, 07 Apr 2004 18:19:21 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1BBOCP-000246-4R
-	for nfs@lists.sourceforge.net; Wed, 07 Apr 2004 18:19:21 -0700
-Received: From
-	notabene.cse.unsw.edu.au ([129.94.241.7] == ppp2-007.ppp2.cse.unsw.EDU.AU) (auth-user neilb)
-	(for <akpm@osdl.org>) (for <nfs@lists.sourceforge.net>)
-	(for <bfields@fieldses.org>) By note With Smtp ;
-	Thu, 8 Apr 2004 11:19:16 +1000
-To: Andrew Morton <akpm@osdl.org>
+	id 1BBOb4-0005cP-Rr
+	for nfs@lists.sourceforge.net; Wed, 07 Apr 2004 18:44:50 -0700
+Received: from birdwell-public.alexa.com ([67.107.182.10] helo=karl.presidio.alexa.com)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BBOb3-00051u-L5
+	for nfs@lists.sourceforge.net; Wed, 07 Apr 2004 18:44:49 -0700
+To: "Ian Kent" <raven@themaw.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,54 +30,45 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Sure, to your own networks, do you want to search all Internet for nfs
+servers? :)
 
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Run a "nmap -sU -p 2049 <your_net_work, like 192.168.0>" to find all nfs
+servers providing services on UDP, similar "nmap -p 2049 <your_net_work,
+like 192.168.0>" to find nfs servers on TCP.
 
-Fix out-of-spec errors in nfs4 readdir.  Add checks for bad cookie values.
+Then for each above hosts, run the showmount command. All these can be
+rolled in a simple loop with a if statement.
 
- ----------- Diffstat output ------------
- ./fs/nfsd/nfs4proc.c |    8 +++++++-
- ./fs/nfsd/nfs4xdr.c  |    2 ++
- 2 files changed, 9 insertions(+), 1 deletion(-)
+Thanks.
+--Guolin Cheng
 
-diff ./fs/nfsd/nfs4proc.c~current~ ./fs/nfsd/nfs4proc.c
---- ./fs/nfsd/nfs4proc.c~current~	2004-04-08 10:56:00.000000000 +1000
-+++ ./fs/nfsd/nfs4proc.c	2004-04-08 10:56:00.000000000 +1000
-@@ -448,6 +448,11 @@ out:
- static inline int
- nfsd4_readdir(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_readdir *readdir)
- {
-+	u64 cookie = readdir->rd_cookie;
-+	static const nfs4_verifier zeroverf = {
-+		.data[0] = 0,
-+	};
-+
- 	/* no need to check permission - this will be done in nfsd_readdir() */
- 
- 	if (readdir->rd_bmval[1] & NFSD_WRITEONLY_ATTRS_WORD1)
-@@ -456,7 +461,8 @@ nfsd4_readdir(struct svc_rqst *rqstp, st
- 	readdir->rd_bmval[0] &= NFSD_SUPPORTED_ATTRS_WORD0;
- 	readdir->rd_bmval[1] &= NFSD_SUPPORTED_ATTRS_WORD1;
- 
--	if (readdir->rd_cookie > ~(u32)0)
-+	if ((cookie > ~(u32)0) || (cookie == 1) || (cookie == 2) ||
-+	    (cookie == 0 && memcmp(readdir->rd_verf.data, zeroverf.data, NFS4_VERIFIER_SIZE)))
- 		return nfserr_bad_cookie;
- 
- 	readdir->rd_rqstp = rqstp;
+-----Original Message-----
+From: Ian Kent [mailto:raven@themaw.net]=20
+Sent: Wednesday, April 07, 2004 5:37 PM
+To: Guolin Cheng
+Cc: Michael; nfs@lists.sourceforge.net
+Subject: RE: [NFS] auto-discovery of exports?
 
-diff ./fs/nfsd/nfs4xdr.c~current~ ./fs/nfsd/nfs4xdr.c
---- ./fs/nfsd/nfs4xdr.c~current~	2004-04-08 10:56:00.000000000 +1000
-+++ ./fs/nfsd/nfs4xdr.c	2004-04-08 10:56:00.000000000 +1000
-@@ -2179,6 +2179,8 @@ nfsd4_encode_readdir(struct nfsd4_compou
- 	    readdir->common.err == nfserr_toosmall &&
- 	    readdir->buffer == page) 
- 		nfserr = nfserr_toosmall;
-+	if (nfserr == nfserr_symlink)
-+		nfserr = nfserr_notdir;
- 	if (nfserr)
- 		goto err_no_verf;
- 
+On Wed, 7 Apr 2004, Guolin Cheng wrote:
+
+> Hi, Michael,
+>=20
+>  Run shell command "showmount -e|--exports <server_to_be_questioned>".
+> If you would like to scan your network to check each host, run a for
+> loop, and in the loop put another command "rpcinfo -p
+> <server_to_be_questions>  |grep nfs" to make sure whether the nfs
+server
+> is running on the host, if so, run the showmount command to query the
+> exported file system from the host.=20
+
+Fine but how would you enumerate the hosts?
+Would you restrict this to the local subnet?
+
+Ian
+
+
+
 
 
 -------------------------------------------------------
