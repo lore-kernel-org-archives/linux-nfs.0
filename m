@@ -1,29 +1,25 @@
-From: "K.R. Foley" <kr@cybsft.com>
-Subject: Re: NFS Latencies
-Date: Fri, 27 Aug 2004 10:44:37 -0500
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: RFC: mount.nfs
+Date: Fri, 27 Aug 2004 14:13:42 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <412F56E5.3010502@cybsft.com>
-References: <412E9EC5.6030106@cybsft.com> <200408270958.53498.vincent.roqueta@ext.bull.net>
+Message-ID: <1093630421.5758.42.camel@lade.trondhjem.org>
+References: <20040827141529.GF23324@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=iso-8859-1
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C0iuW-0001SZ-3M
-	for nfs@lists.sourceforge.net; Fri, 27 Aug 2004 08:45:04 -0700
-Received: from mail3.utc.com ([192.249.46.192])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1C0iuT-0001ES-J3
-	for nfs@lists.sourceforge.net; Fri, 27 Aug 2004 08:45:04 -0700
-Received: (from uucp@localhost)
-	by mail3.utc.com (8.10.0/8.10.0) id i7RFiti14707
-	for <nfs@lists.sourceforge.net>; Fri, 27 Aug 2004 11:44:55 -0400 (EDT)
-Received: from swdev14.rkd.snds.com (ndcvba1.utc.com [192.249.49.31])
-	by uusnwa0n.utc.com (Switch-2.2.8/Switch-2.2.8) with ESMTP id i7RFipT18343
-	for <nfs@lists.sourceforge.net>; Fri, 27 Aug 2004 11:44:52 -0400 (EDT)
-To: vincent.roqueta@ext.bull.net
-In-Reply-To: <200408270958.53498.vincent.roqueta@ext.bull.net>
+	id 1C0lET-0000BE-5N
+	for nfs@lists.sourceforge.net; Fri, 27 Aug 2004 11:13:49 -0700
+Received: from dh138.citi.umich.edu
+	([141.211.133.138] helo=lade.trondhjem.org ident=Debian-exim)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.34)
+	id 1C0lES-0002JX-ND
+	for nfs@lists.sourceforge.net; Fri, 27 Aug 2004 11:13:49 -0700
+To: Olaf Kirch <okir@suse.de>
+In-Reply-To: <20040827141529.GF23324@suse.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -36,34 +32,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Vincent ROQUETA wrote:
-> Le Vendredi 27 Ao=FBt 2004 04:39, K.R. Foley a =E9crit :
+P=E5 fr , 27/08/2004 klokka 10:15, skreiv Olaf Kirch:
+> Please find attached the code for mount.nfs, a drop-in replacement for
+> the nfsmount code in mount(8). If you're adventurous, simply compile,
+> and install in /sbin as mount.nfs.
 >=20
->>I have found some rather lengthy latencies related to NFS on Linux. Is
->>this the right place to bring those up?
->>
->>kr
+> Beware - this is alpha code I just wrote this morning; I'm running
+> this past this list mostly in order to get feedback.
 >=20
->=20
->=20
->=20
-> Can you tell me were are the latencie?. I am working on performances of=
- NFSv4=20
-> linux implementation=20
->=20
-> Vincent
->=20
+> I rewrote the code almost entirely from scratch, because I felt the
+> old code had gotten a little convoluted. The new code should also
+> be a lot smarter about which NFS and MOUNT versions to try, and which
+> transport protocols. It currently prefers TCP over UDP, because that's
+> what I like better, but if people disagree it's easy to turn this into
+> a compile time option.
 
-I have several latency traces generated from running the NFS-COMPILE=20
-test in the stress-kernel package. You can see them here:
+Yay! This sort of thing has been on my "TODO" list for some time.
 
-http://www.cybsft.com/testresults/2.6.8.1-P9.NFS/
+Note though that pmap_getmaps() is not supported on legacy portmappers
+(I think someone complained that their AIX system broke). This is why
+the rewrite that is in Fedora Core 2 goes to such lengths to actually
+"ping" the server.
 
-I think that most of these have to do with the code not being preemptable.
+Also note that ideally, we want to make stuff like this as part of a
+backend library, then have 3 different programs:
+  mount.nfs2
+  mount.nfs3
+  mount.nfs4
+that can be called when the user does
 
-kr
+    mount -t nfs -onfsvers=3D%d
 
+The reason why I want to split out nfs2 from the nfs3 mount is that at
+some point in the near future, I'd like to change the filesystem
+registration to create 'struct file_system_type' entries for NFSv2 and
+NFSv3. That will enable us to
 
+   a) clean up the struct nfs_mount to get rid of all that "struct
+socket", version 1 legacy crap
+   b) be able to enumerate exactly which NFS versions the kernel has
+been compiled to support by using 'cat /proc/filesystems'.
+
+Cheers,
+ Trond
 
 
 -------------------------------------------------------
