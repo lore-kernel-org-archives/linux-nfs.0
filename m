@@ -1,22 +1,20 @@
-From: Hirokazu Takahashi <taka@valinux.co.jp>
-Subject: Re: Re: [PATCH] zerocopy NFS for 2.5.36
-Date: Fri, 18 Oct 2002 01:26:18 +0900 (JST)
+From: "Eff Norwood" <enorwood@effrem.com>
+Subject: RE: huge number of intr/s on large nfs server
+Date: Thu, 17 Oct 2002 09:42:59 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20021018.012618.74755132.taka@valinux.co.jp>
-References: <003301c275e1$0bf76810$2a060e09@beavis>
-	<20021017.222602.48536782.taka@valinux.co.jp>
-	<001301c275e6$f31d5970$2a060e09@beavis>
+Message-ID: <CFEAJJEGMGECBCJFLGDBAEMKCFAA.enorwood@effrem.com>
+References: <200210171315.47213.stderr@web.de>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Cc: neilb@cse.unsw.edu.au, davem@redhat.com,
-	linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sv1.valinux.co.jp ([202.221.173.100])
+Received: from cynaptic.com ([128.121.116.181])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 182DaS-0002xe-00
-	for <nfs@lists.sourceforge.net>; Thu, 17 Oct 2002 09:33:28 -0700
-To: habanero@us.ibm.com
-In-Reply-To: <001301c275e6$f31d5970$2a060e09@beavis>
+	id 182DlE-0005UZ-00
+	for <nfs@lists.sourceforge.net>; Thu, 17 Oct 2002 09:44:36 -0700
+To: <stderr@web.de>
+In-Reply-To: <200210171315.47213.stderr@web.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,31 +27,20 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+Hi Alex,
 
-> > How about IP datagrams?  You can see the IP fields in /proc/net/snmp
-> > IP layer may also discard them.
-> 
-> Server:
-> 
-> Ip: Forwarding DefaultTTL InReceives InHdrErrors InAddrErrors ForwDatagrams
-> InUnknownProtos InDiscards InDelivers OutRequests OutDiscards OutNoRoutes
-> ReasmTimeout ReasmReqds ReasmOKs ReasmFails FragOKs FragFails FragCreates
-> Ip: 1 64 4088714 0 0 720 0 0 4086393 12233109 2 0 0 0 0 0 0 0 6000000
-> 
-> A Client:
-> 
-> Ip: Forwarding DefaultTTL InReceives InHdrErrors InAddrErrors ForwDatagrams
-> InUnknownProtos InDiscards InDelivers OutRequests OutDiscards OutNoRoutes
-> ReasmTimeout ReasmReqds ReasmOKs ReasmFails FragOKs FragFails FragCreates
-> Ip: 2 64 2115252 0 0 0 0 0 1115244 646510 0 0 0 1200000 200008 0 0 0 0
+> Just to be sure: have you checked that the clients are actually
+> only sending
+> at 100Mbit/s?
 
-It looks fine.  
-Hmmm....  What version of linux do you use?
+Good point. Yes, I'm sure as it's hard set on the client and measured as
+such at the switch.
 
-Congestion avoidance mechanism of NFS clients might cause this situation.
-I think the congestion window size is not enough for high end machines.
-You can make the window be larger as a test.
+Thanks,
+
+Eff
+
+
 
 
 -------------------------------------------------------
