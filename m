@@ -1,27 +1,24 @@
-From: ronald rojas <alsonsdev_mis@dctech.com.ph>
-Subject: nfs problem: nfs could be mounted and viewed but errors on file
- opening
-Date: Fri, 10 Sep 2004 13:50:37 +0800
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: RHEL3 Update 1 and NetApp NFS freeze issues
+Date: Fri, 10 Sep 2004 07:12:12 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1094795240.3169.17.camel@roach.aldevinco.com>
+Message-ID: <41418C0C.1030405@RedHat.com>
+References: <5D5AD1BFE69EDE4283AE056291B89499074861ED@ca00exh03.ca.atitech.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C5i3h-0005L8-Tm
-	for nfs@lists.sourceforge.net; Fri, 10 Sep 2004 02:51:09 -0700
-Received: from [203.177.36.194] (helo=lafleur.dctech.com.ph)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1C5eI4-0003HN-Gx
-	for nfs@lists.sourceforge.net; Thu, 09 Sep 2004 22:49:50 -0700
-Received: from localhost (localhost [127.0.0.1])
-	by lafleur.dctech.com.ph (Postfix on SuSE Linux eMail Server 3.0) with ESMTP id 7806F21B2F8
-	for <nfs@lists.sourceforge.net>; Fri, 10 Sep 2004 14:00:32 +0800 (PHT)
-Received: from [202.133.204.114] (unknown [202.133.204.114])
-	by lafleur.dctech.com.ph (Postfix on SuSE Linux eMail Server 3.0) with ESMTP id 3012C21B2D1
-	for <nfs@lists.sourceforge.net>; Fri, 10 Sep 2004 14:00:22 +0800 (PHT)
-To: nfs@lists.sourceforge.net
+	id 1C5jNe-0007Fy-II
+	for nfs@lists.sourceforge.net; Fri, 10 Sep 2004 04:15:52 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.34)
+	id 1C5jNQ-0002Xv-TV
+	for nfs@lists.sourceforge.net; Fri, 10 Sep 2004 04:15:40 -0700
+To: John Nitis <jnitis@ati.com>
+In-Reply-To: <5D5AD1BFE69EDE4283AE056291B89499074861ED@ca00exh03.ca.atitech.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,71 +31,58 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-i'm having problems opening my nfs mounted files on the client machine.
-Mounting the nfs share on the client goes ok. the user and group
-permissions are ok. i could even ls -l and cd into the mounted directory
-and subdirectories but when i open a file (cat somefile.txt) i get a
-segmentation fault. after that, umounting the nfs share seems to hang.
+John Nitis wrote:
 
-i noticed this problem when i upgraded the kernel on the client machine
-from 2.4 to 2.6. (is there any relation?)
+>Greetings,
+>
+>This is a bit of a stab in the dark but I thought this might be a good forum
+>to ask for input as it has both Linux NFS experts and a NetApp expert who
+>are regular contributors.  We are unsure what the cause of the problem is
+>(even whether it's hardware or software) but one of our focuses is NFS
+>hangs.
+>
+>Our problem is this, essentially we have an entire rack of machines (57 of
+>them) that lock up on a very regular basis.  They respond to ping but do not
+>respond to telnet, ssh, etc.  When you plug in a VGA monitor/PS2 keyboard
+>the screen pops up but you can't login.  When you hit enter it just echoes
+>back a linefeed on the screen.  A small percentage of them kernel panic
+>
+Set up netdump so wen an oops occurs, a system image (or core) will be
+created. Then use the crash to examine the the core. This will give you
+a wealth of information on what is going on in the system.
+(Note: You'll have to install the correct kernel-debuginfo for this to 
+work).
 
-server config:				client config:
-nfs-utils version 1.0.1			nfs-utils version 1.0.1
-kernel ver. 2.4.18-14			kernel ver. 2.6.8
-redhat 8.0 distro			fedora core 1.0
+When the system just hangs, make sure the Alt-SysRq  keys are  enabled
+(by doing a "echo 1 > /proc/sys/kernel/sysrq"). Then use:
+Alt-SysRq-p  to see where the process(es) are doing
+Alt-SysRq T to get  system stack
+Alt-SysRq M to memory information
 
-/etc/exports = "/data/revr	192.168.168.1(ro,sync)"
-rpcinfo -p localhost on the server:
--bash-2.05b$ /usr/sbin/rpcinfo -p localhost
-   program vers proto   port
-    100000    2   tcp    111  portmapper
-    100000    2   udp    111  portmapper
-    100024    1   udp  32768  status
-    100024    1   tcp  32768  status
-    391002    2   tcp  32769  sgi_fam
-    100011    1   udp    856  rquotad
-    100011    2   udp    856  rquotad
-    100011    1   tcp    859  rquotad
-    100011    2   tcp    859  rquotad
-    100003    2   udp   2049  nfs
-    100003    3   udp   2049  nfs
-    100021    1   udp  32775  nlockmgr
-    100021    3   udp  32775  nlockmgr
-    100021    4   udp  32775  nlockmgr
-    100005    1   udp  32776  mountd
-    100005    1   tcp  32770  mountd
-    100005    2   udp  32776  mountd
-    100005    2   tcp  32770  mountd
-    100005    3   udp  32776  mountd
-    100005    3   tcp  32770  mountd
-rpcinfo -p servername run on the client:
-[revr@roach revr]$ /usr/sbin/rpcinfo -p 192.168.168.254
-   program vers proto   port
-    100000    2   tcp    111  portmapper
-    100000    2   udp    111  portmapper
-    100024    1   udp  32768  status
-    100024    1   tcp  32768  status
-    391002    2   tcp  32769  sgi_fam
-    100011    1   udp    856  rquotad
-    100011    2   udp    856  rquotad
-    100011    1   tcp    859  rquotad
-    100011    2   tcp    859  rquotad
-    100003    2   udp   2049  nfs
-    100003    3   udp   2049  nfs
-    100021    1   udp  32775  nlockmgr
-    100021    3   udp  32775  nlockmgr
-    100021    4   udp  32775  nlockmgr
-    100005    1   udp  32776  mountd
-    100005    1   tcp  32770  mountd
-    100005    2   udp  32776  mountd
-    100005    2   tcp  32770  mountd
-    100005    3   udp  32776  mountd
-    100005    3   tcp  32770  mountd
+>We have "top" and "ps augxww" output logging to a file once per minute and
+>some of them show excessive load averages before they freeze with many
+>processes stuck in D (uninterruptible sleep or disk wait).  If you catch
+>these before the load average gets too high you can tell that a mount has
+>locked up (df hangs after displaying a few mounts and you can't access the
+>mount that's locked up).  Each new process that gets stuck adds 1 to the
+>load average.  The machine locks up in exactly the same way when we yank the
+>Ethernet cable from the box.
+>  
+>
+Before things go south, does ifconfig ethX show any interface errors?
 
-the nfs-utils on the client was originally 1.0.6. i tried installing
-nfs-utils 1.0.1 but still the same error message. i hope this
-information is enough to solve my nfs problem. tia
+>Does anyone have any ideas as to what might be the problem or how we might
+>go about debugging it further?  I've recently set the debugging levels to
+>"10" in /proc/sys/sunrpc/rpc_debug and /proc/sys/sunrpc/nfs_debug to see if
+>that will garner some information.  A few details follow below.
+>
+>  
+>
+If your using autofs/amd (if you can) turn it off to see what happens.
+
+I hope this helps....
+
+SteveD.
 
 
 
