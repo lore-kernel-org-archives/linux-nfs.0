@@ -1,19 +1,20 @@
-From: "Dave Gilbert (Home)" <gilbertd@treblig.org>
-Subject: Occasional: Oh no Mr. Bill... nfs_server() returned!
-Date: Thu, 09 May 2002 17:39:00 +0100
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: [PATCH] - kNFSd in 2.5.15 - export_operations support for isofs
+Date: Fri, 10 May 2002 16:48:37 +1000 (EST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3CDAA624.7060404@treblig.org>
+Message-ID: <15579.27973.491721.865466@notabene.cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from parmenides.zen.co.uk ([212.23.8.69])
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 175quK-0007hF-00
-	for <nfs@lists.sourceforge.net>; Thu, 09 May 2002 09:36:44 -0700
-Received: from dsl-212-23-25-139.zen.co.uk (HELO treblig.org) (212.23.25.139)
-  by protagoras.zen.co.uk with SMTP
-  for <nfs@lists.sourceforge.net>; 9 May 2002 16:36:10 -0000
-To: nfs@lists.sourceforge.net
+	id 1764DG-0001k1-00
+	for <nfs@lists.sourceforge.net>; Thu, 09 May 2002 23:49:10 -0700
+Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
+	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>) By
+	tone With Smtp ; Fri, 10 May 2002 16:49:01 +1000
+To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,23 +27,57 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hi,
-   Our NFS server occasionally stops leaving the message:
 
-'Oh no Mr. Bill... nfs_server() returned!'
+ISOFS to use export_operations to declare exportability
 
-in the logs.
-This has happened twice in the space of a couple of weeks now; 
-previously never having done it before.
+Exporting ISO's has never been very reliable 
+as lookup("..") doesn't work (even though there is
+some code that tries to pretend that it does).
 
-This is a 2.4.16 kernel on a P3 running SuSE 7.2 and the 
-nfs-server-2.2beta47-48 user nfs package.
+This means that if an inode falls out of cache, any 
+filehandle on it will become stale.
 
-Is this a known bug (for which there is a known fix?)?
-Suggestions appreciated.
+This patch makes that level of support explicit with
+an empty export_operations structure.  get_parent
+could be written.... but not today.
 
-Dave (not on list so please cc)
 
+ ----------- Diffstat output ------------
+ ./fs/isofs/inode.c |   16 ++++++++++++++++
+ 1 files changed, 16 insertions(+)
+
+--- ./fs/isofs/inode.c	2002/05/10 05:18:54	1.1
++++ ./fs/isofs/inode.c	2002/05/10 05:26:16	1.2
+@@ -131,6 +131,21 @@
+ 	statfs:		isofs_statfs,
+ };
+ 
++/* the export_operations structure for describing
++ * how to export (e.g. via kNFSd) is deliberately
++ * empty.
++ * This means that the filesystem want to use iget
++ * to map an inode number into an inode.
++ * The lack of a get_parent operation means that 
++ * if something isn't in the cache, then you cannot
++ * access it.
++ * It should be possible to write a get_parent,
++ * but it would be a bit hairy...
++ */
++static struct export_operations isofs_export_ops = {
++};
++
++
+ static struct dentry_operations isofs_dentry_ops[] = {
+ 	{
+ 		d_hash:		isofs_hash,
+@@ -786,6 +801,7 @@
+ 	}
+ #endif
+ 	s->s_op = &isofs_sops;
++	s->s_export_op = &isofs_export_ops;
+ 	sbi->s_mapping = opt.map;
+ 	sbi->s_rock = (opt.rock == 'y' ? 2 : 0);
+ 	sbi->s_rock_offset = -1; /* initial offset, will guess until SP is found*/
 
 _______________________________________________________________
 
