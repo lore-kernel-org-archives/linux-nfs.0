@@ -1,13 +1,20 @@
-From: "Scot Mccarty" <annanordgren@aol.com>
-Subject: Curry-users,It's not too late
-Date: Fri, 18 Apr 03 06:08:24 GMT
+From: Phil Garcia <apgarcia@oppie.phys.uwm.edu>
+Subject: high load
+Date: Fri, 18 Apr 2003 14:48:44 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <6-$12tkyi91-c-27trvg4-l89nn@ha290yt>
+Message-ID: <20030418194844.GB29491@oppie.phys.uwm.edu>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="5660B59F9_EF00_19F"
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: <curry-users@lists.sourceforge.net>, <nfs@lists.sourceforge.net>, <cryptopp-announce@lists.sourceforge.net>, <cryptopp-develop@lists.sourceforge.net>
+Received: from oppie.phys.uwm.edu
+	([129.89.57.60] helo=oppie ident=mail)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 196brJ-0006N6-00
+	for <nfs@lists.sourceforge.net>; Fri, 18 Apr 2003 12:49:17 -0700
+Received: from apgarcia by oppie with local (Exim 3.35 #1 (Debian))
+	id 196bqm-0007hJ-00
+	for <nfs@lists.sourceforge.net>; Fri, 18 Apr 2003 14:48:44 -0500
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -20,84 +27,28 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+Hi,
 
---5660B59F9_EF00_19F
-Content-Type: text/html
-Content-Transfer-Encoding: quoted-printable
+We've come across a problem that seems related to the interaction
+between NFS and a 3ware 7500-8 running RAID 5 with one hot spare.  We
+have a test program that opens a file and then loops, writing up to
+255 bytes to the file and then sleeping for up to 10 seconds.  We run
+around 200 instances of the program simultaneously for about 25
+minutes.
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1=
-">
-<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV><FONT face=3DArial>&nbsp;&nbsp;&nbsp;&nbsp; Current Low Interest Rate=
-s Create 
-Win-Win for Homeowners</FONT></DIV>
-<DIV>&nbsp;</DIV>
-<DIV align=3Dleft><FONT size=3D2><FONT size=3D2><FONT face=3DArial size=3D=
-3>It's quick and 
-simple to see what's available and then decide if this makes</FONT></DIV>
-<DIV align=3Dleft><FONT face=3DArial size=3D3>any sense for you personally=
- There is 
-not a charge or any obligation </FONT></DIV>
-<DIV align=3Dleft><FONT face=3DArial size=3D3>for taking advantage of this=
- online 
-insta-quote service.</FONT></DIV>
-<DIV>&nbsp;</DIV>
-<DIV>&nbsp;</DIV>
-<DIV align=3Dleft><FONT 
-face=3DArial>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&=
-nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<FO=
-NT 
-color=3D#008000> </FONT></FONT><A 
-href=3D"http://www.easyvling.com/3/index.asp?RefID=3D500259"><FONT 
-face=3DArial color=3D#008000 size=3D3>Start here for a fast quote and 
-</FONT></A></DIV>
-<DIV align=3Dleft><FONT face=3DArial color=3D#008000 
-size=3D3>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp=
-;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
-&nbsp; </FONT><A 
-href=3D"http://www.easyvling.com/3/index.asp?RefID=3D500259"><FONT 
-face=3DArial color=3D#008000 size=3D3>monthly savings calculation</FONT></=
-A></DIV>
-<DIV align=3Dleft><FONT color=3D#008000></FONT><FONT face=3DArial></FONT>&=
-nbsp;</DIV>
-<DIV align=3Dleft>&nbsp;</DIV>
-<DIV align=3Dleft><FONT face=3DArial><STRONG>&nbsp;&nbsp;</STRONG><FONT 
-size=3D3><STRONG>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</STRONG>There may be=
- no 
-other way to so quickly and easily </FONT></FONT></DIV>
-<DIV align=3Dleft><FONT face=3DArial 
-size=3D3><STRONG>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nb=
-sp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp=
-; 
-</STRONG>slash your monthly expenses</FONT></DIV>
-<DIV align=3Dleft><FONT face=3DArial><STRONG></STRONG></FONT>&nbsp;</DIV>
-<DIV align=3Dleft><STRONG></STRONG><FONT face=3DArial></FONT>&nbsp;</DIV>
-<DIV align=3Dleft>&nbsp;</DIV>
-<DIV align=3Dleft>&nbsp;</DIV>
-<DIV align=3Dleft>&nbsp;</DIV>
-<DIV>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D1>please </FONT><A 
-href=3D"http://www.easyvling.com/Automatic/index.htm?RefID=3D500259"><FONT=
- face=3DArial size=3D1>Go 
-here to stop all future offers</FONT></A><FONT face=3DArial 
-size=3D1>.</FONT></DIV></FONT></FONT>
-<DIV align=3Dleft>&nbsp;</DIV><FONT face=3DArial color=3D#ffffff size=3D1>=
+When we run the processes on 200 separate slaves, writing to a
+(reiserfs) directory under the 3ware controller, the load on the
+server shoots up to over 20 and then gradually declines over the next
+5 minutes or so.
 
-dip pole fire plane indicator %RANDOM_W=
-ORD 
-facepiece valve kiloliter catcher merchant %RANDOM_W=
-ORD 
-correlation plastic ornament gasoline side %RANDOM_W=
-ORD 
-</FONT></BODY></HTML>
---5660B59F9_EF00_19F--
+When we run the processes on 200 separate slaves, writing to a
+different disk/directory (again reiserfs) on the same NFS server, the
+load stays fine.
 
+When we run 200 processes locally on the server, writing to the
+directory under the 3ware controller, again the load stays low.
+
+Any insights would be much appreciated...
 
 
 -------------------------------------------------------
