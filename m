@@ -1,22 +1,22 @@
-From: "Patrice Seyed" <apseyed@bu.edu>
-Subject: nfs performance / Input/output error
-Date: Fri, 23 Jul 2004 00:33:36 -0400
+From: "John Roberts" <john_roberts@credence.com>
+Subject: Linux NFS writes to Solaris very, very slow
+Date: Fri, 23 Jul 2004 09:20:34 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <001c01c4706e$38a64230$6401a8c0@psyche1>
+Message-ID: <200407231620.i6NGKYV20945@algebra.hillsboro.credence.com>
+Reply-To: John Roberts <john_roberts@credence.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <apseyed@bu.edu>
+Content-Type: TEXT/plain; charset=us-ascii
+Cc: john_roberts@credence.com
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BnrlC-0003RF-Kw
-	for nfs@lists.sourceforge.net; Thu, 22 Jul 2004 21:34:18 -0700
-Received: from acsn03.bu.edu ([128.197.159.63])
+	id 1Bo2ml-0006jI-15
+	for nfs@lists.sourceforge.net; Fri, 23 Jul 2004 09:20:39 -0700
+Received: from hifw1.credence.com ([63.127.103.172] helo=hinscp.hillsboro.credence.com)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1BnrlC-0006th-4w
-	for nfs@lists.sourceforge.net; Thu, 22 Jul 2004 21:34:18 -0700
-To: <nfs@lists.sourceforge.net>
+	id 1Bo2mk-0008Gq-Kh
+	for nfs@lists.sourceforge.net; Fri, 23 Jul 2004 09:20:38 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -29,45 +29,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-What I'm addressing is in a cluster environment where when the nfs server is
-heavily loaded I see the following in /var/log scrolling:
-"can't get a slot request" "not responding, still trying OK"
 
-Also when I am really pounding on the nfs server with hundreds of jobs that
-do a 256mb "dd" to an nfs mount, I see this error often "Input/output"
-error.
+Hi there,
 
-I think I've potentially ruled out driver and settings, also there's no
-collisions on server or clients. Any suggestions on further tuning for
-performance appreciated. The clients and server are set to 1000/full using
-e1000 on the server and tg3 on the clients. I'll indicate the config specs
-here:
+I work in Hillsboro, Oregon, USA for Credence Systems Corporation (as a
+software engineer) and we use the Redhat Enterprise 3 (2.4.21 kernel,
+a Redhat hodgepodge with some 2.6 stuff) distribution on our
+x86 PCs.
 
-nfs-utils-1.0.6-21EL
-modutils-2.4.26-16
-Linux 2.4.21-4.0.1.ELsmp 
+We're on a network with lots of Sun systems and a central file
+server that is a Veritas cluster of twin SunFire servers running
+Solaris 2.8.
 
-auto.home with these options:
-rw,hard,intr,rsize=65536,wsize=65536
+What we've observed is that NFS writes from our Linux boxes to
+the Solaris server (and other Solaris workstations) is _very_
+slow.  Reads seem to be operating at a reasonable speed.
+FTP speeds are blazing (protocol below NFS).
 
-(I've tried multiples 16k blocks w/o improvement)
+On a completely seperate note, Linux-to-Linux NFS file writes
+only seem to be fast if we publish the serving Linux volume
+as asynchronous (default setting is synchronous which is slow).
 
-/etc/exports:
-(rw,no_root_squash)
-*not doing async as advised 
+I'm curious if anyone has any ideas on what I should do regarding
+the slow nature of Linux clients to Solaris servers over NFS?
+I don't know if anybody has encountered this or if anyone in the
+Linux kernel community is looking at it.
 
-/proc/sys/net/core/rmem_default and /proc/sys/net/core/rmem_max set to
-262144.
+Any thoughts/advice would be _greatly_ appreciated.
 
-I've increased the number of daemons from 6 to 16 to 32 to 64, no
-improvement. Any ideas appreciated.
+thanks,
 
-Regards,
- 
-Patrice Seyed
-Linux System Administrator - SIG
-RHCE, SCSA
-Boston University School of Medicine
+
+John Roberts
+john_roberts@credence.com
 
 
 
