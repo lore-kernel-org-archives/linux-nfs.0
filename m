@@ -1,24 +1,23 @@
-From: Steve Dickson <SteveD@redhat.com>
+From: mehta kiran <kiranmehta1981@yahoo.com>
 Subject: Re: lockd grace period
-Date: Mon, 31 Jan 2005 10:01:59 -0500
-Message-ID: <41FE4867.4070709@RedHat.com>
-References: <20050131143610.1250.qmail@web51604.mail.yahoo.com>
+Date: Mon, 31 Jan 2005 07:01:56 -0800 (PST)
+Message-ID: <20050131150157.83316.qmail@web51606.mail.yahoo.com>
+References: <41FE4796.9060909@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: "Aswathanarayana, Chetan (STSD)" <chetan.aswathanarayana@hp.com>,
-	nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: mehta kiran <kiranmehta1981@yahoo.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Cvd1q-0001vy-2d
-	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 06:59:50 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1Cvd1p-0002lz-Hl
-	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 06:59:50 -0800
-To: mehta kiran <kiranmehta1981@yahoo.com>
-In-Reply-To: <20050131143610.1250.qmail@web51604.mail.yahoo.com>
+	id 1Cvd43-000216-WD
+	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 07:02:07 -0800
+Received: from web51606.mail.yahoo.com ([206.190.38.211])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
+	id 1Cvd42-00038L-Hd
+	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 07:02:08 -0800
+To: Steve Dickson <SteveD@redhat.com>,
+	"Aswathanarayana, Chetan (STSD)" <chetan.aswathanarayana@hp.com>
+In-Reply-To: <41FE4796.9060909@RedHat.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,21 +31,46 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hi , 
+         but can u please let me know whether
+ lockd which has been running before nfsd started
+will enter grace period  or not
+and will only server reclaim request ot not
+thanks ,
+ kiran
+--- Steve Dickson <SteveD@redhat.com> wrote:
+
+> Aswathanarayana, Chetan (STSD) wrote:
+> 
+> >Say, a reclaim request arrives after grace period
+> and get's lock. There
+> >will be time frame between end of grace period and
+> arrival of
+> >Reclaim request, in which case any thing can
+> happen(ex: a new request
+> >could be granted, it may make some changes to a
+> file and unlock by the
+> >time Reclaim arrives).
+> >  
+> >
+> Nobody  is saying this NLM protocol or method of
+> recovery is perfect.... 
+> ;-)  This
+> is one of many reasons why the locking protocol is
+> not integrated with the
+> NFSv4 protocol...
+> 
+> steved.
+> 
+> 
 
 
-mehta kiran wrote:
 
->Hi , 
->          this means that if  lockd alone is running
->since a long time and if now i start nfsd , 
->
-hmm... why would you ever have lockd running "alone"?
-Meaning what good is it w/out rpc.nfsd? Also how are
-you doing that since one of the first things rpc.nfsd does
-is bring up lockd().....
-
-steved.
-
+		
+__________________________________ 
+Do you Yahoo!? 
+Yahoo! Mail - Find what you need with new enhanced search.
+http://info.mail.yahoo.com/mail_250
 
 
 -------------------------------------------------------
