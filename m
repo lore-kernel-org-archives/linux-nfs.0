@@ -1,171 +1,112 @@
-From: Jeremy Fitzhardinge <jeremy@goop.org>
-Subject: Re: htree+NFS (NFS client bug?)
-Date: 27 Nov 2002 09:26:38 -0800
-Sender: ext2-devel-admin@lists.sourceforge.net
-Message-ID: <1038417998.533.2.camel@ixodes.goop.org>
+From: "Albers, Lucas" <luke@coe.montana.edu>
+Subject: Error mounting nfs clients
+Date: Wed, 27 Nov 2002 11:50:02 -0700
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <E2A41F3CFE5FD411ABC900508BAE0BEE02CAF4F2@power.coe.montana.edu>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-kGddoeD8Dh55mIsF+khW"
-Cc: Ext2 devel <ext2-devel@lists.sourceforge.net>,
-	NFS maillist <nfs@lists.sourceforge.net>,
-	Linux Kernel List <linux-kernel@vger.kernel.org>
-Return-path: <ext2-devel-admin@lists.sourceforge.net>
-To: Theodore Ts'o <tytso@mit.edu>
-Errors-To: ext2-devel-admin@lists.sourceforge.net
-List-Help: <mailto:ext2-devel-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:ext2-devel@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/ext2-devel>,
-	<mailto:ext2-devel-request@lists.sourceforge.net?subject=subscribe>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/ext2-devel>,
-	<mailto:ext2-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=ext2-devel>
-List-ID: <nfs.lists.sourceforge.net>
-
-
---=-kGddoeD8Dh55mIsF+khW
 Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Cc: "'Valhalla-list@redhat.com'" <Valhalla-list@redhat.com>
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from power.coe.montana.edu ([153.90.194.2])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18H7GH-0007PE-00
+	for <nfs@lists.sourceforge.net>; Wed, 27 Nov 2002 10:50:13 -0800
+To: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, 2002-11-27 at 05:33, Theodore Ts'o wrote: 
-> Well, even if the NFS server is generating bad cookies (and that may
-> be possible), the NFS client should be more robust and not spin in a
-> loop forever.
-> 
-> Can you send me a directory list (from the server) of the directory in
-> question?  Also, can you send me the output of dumpe2fs -h on the
-> filesystem.  I'll need the later to get the seed for the htree hash,
-> so I can try replicating this on my end.
+I have been running an nfs server for a number of months.
+Every couple of days I get the following error message in my logs:
 
-The hash seed is 80f11989-89cc-4046-80d8-4aef72a7f80f (extracted with
-tune2fs -l).  The listing is attached.
+Hostname rpc.mountd: getfh failed: Operation not permitted
 
-> Also, have you tried running e2fsck on filesystem on the server?  It
-> would be very interesting to confirm whether or not the filesystem is
-> consistent.
+When this happens the clients are unable to mount the nfs exported volumes.
+Restarting the service will fix the problem.
 
-This happens very regularly.  Each time it does I create a new directory
-and move everything over, which presumably works because it rehashes
-everything and/or changes the alignment of particular direntries with
-respect to the NFS reply packets.  What I'm saying is that if the
-filesystem is getting into an inconsistent state, it is doing so at a
-very high rate.  I'll check it anyway... all OK.
 
-	J
+After researching the issue.
+It appears that the error is related to the defined value:
+	NFS_FHSIZE 
+in the code listed below in this file:
+/usr/src/linux-2.4.18-5/fs/nfsd/nfsctl.c
 
---=-kGddoeD8Dh55mIsF+khW
-Content-Description: 
-Content-Disposition: inline; filename=dirlist
-Content-Type: text/plain; charset=ISO-8859-15
-Content-Transfer-Encoding: 7bit
+/*-----------------------------------------------------*/
+        if (err == 0) {
+                if (fh.fh_size > NFS_FHSIZE)
+                        err = -EINVAL;
+/*-----------------------------------------------------*/
 
-.
-..
-vg_symtypes.h~
-vg_include.h
-.deps
-vg_to_ucode.c~47-chained-bb
-vg_from_ucode.c~47-chained-bb
-vg_memory.c
-vg_symtypes.c~
-vg_constants.h~48-chained-indirect
-valgrind
-vg_needs.c
-vg_from_ucode.i
-vg_symtypes.h~44-symbolic-addr
-vg_libpthread.c~11-timedwait-rel
-vg_libpthread_unimp.c
-vg_constants.h~47-chained-bb
-vg_libpthread.c~03-accept-nonblock
-vg_transtab.c~47-chained-bb
-vg_include.h~48-chained-indirect
-vg_symtypes.c~44-symbolic-addr
-vg_main.c~14-hg-mmap-magic-virgin
-vg_symtab2-test.c
-vg_startup.S
-vg_main.c~51-kill-inceip
-vg_default.c
-vg_translate.c~01-partial-mul
-vg_dispatch.S~48-chained-indirect
-vg_scheduler.c~47-chained-bb
-vg_clientfuncs.c
-Makefile.in
-gmon.out
-vg_main.c~47-chained-bb
-vg_procselfmaps.c
-vg_symtab2.h
-vg_main.c~48-chained-indirect
-vg_translate.c~51-kill-inceip
-vg_symtypes.h
-vg_symtab_stabs.c
-dosyms
-vg_constants.h
-vg_demangle.c
-vg_messages.c
-vg_include.h~50-fast-cond
-vg_to_ucode.c
-Makefile~
-vg_symtab2.c~44-symbolic-addr
-vg_dispatch.S~47-chained-bb
-vg_libpthread.c
-vg_kerneliface.h
-vg_from_ucode.c~48-chained-indirect
-vg_from_ucode.c
-vg_from_ucode.c~49-no-inceip
-vg_malloc2.c
-vg_instrument.c
-vg_signals.c~28-sigtrap
-vg_main.c.rej
-vg_symtab2-test
-vg_errcontext.c
-vg_translate.c
-vg_symtypes.c
-out.pid11357
-vg_execontext.c
-Makefile
-vg_main.c
-vg_errcontext.c~47-chained-bb
-vg_signals.c
-vg_symtab2.c~offset-dehack
-vg_from_ucode.c~01-partial-mul
-Makefile.am~44-symbolic-addr
-vg_main.c.orig
-vg_symtab2.c
-vg_kerneliface.h~28-sigtrap
-vg_ldt.c
-vg_from_ucode.c~00-lazy-fp
-vg_transtab.c
-vg_mylibc.c~12-vgprof
-vg_from_ucode.c~50-fast-cond
-vg_symtab2.h~44-symbolic-addr
-vg_symtab_dwarf.c~44-symbolic-addr
-vg_unsafe.h
-vg_include.h~51-kill-inceip
-vg_symtab_stabs.c~44-symbolic-addr
-vg_mylibc.c
-vg_dummy_profile.c
-vg_main.c~50-fast-cond
-vg_mylibc.c~09-rdtsc-calibration
-vg_include.h~47-chained-bb
-vg_translate.c~47-chained-bb
-vg_libpthread.c~46-fix-writeable_or_erring-proto
-vg_syscall.S
-vg_from_ucode.c~51-kill-inceip
-vg_mylibc.c~28-sigtrap
-vg_dispatch.S
-vg_symtab_dwarf.c
-vg_intercept.c
-vg_symtab_stabs.c~
-vg_clientmalloc.c
-vg_valgrinq_dummy.c
-vg_scheduler.c
-vg_to_ucode.c~01-partial-mul
-Makefile.am
-vg_helpers.S
-out.pid11334
-vg_syscalls.c
-valgrind.in
-vg_libpthread.vs
+It appears that raising the value:
 
---=-kGddoeD8Dh55mIsF+khW--
+#define NFS_FHSIZE      32
+
+Defined in /usr/include/linux/nfs.h
+Would fix the problem.
+
+Server Information
+Kernel 2.4.18-5 with NFS compiled in.
+Clients are all 7.3 and 8.0 RedHat machines.
+I am running 16 nfsd daemons on the server.
+Usually between 200 and 280 clients are mounting volumes at one time.
+Usually only between 20-30 clients are doing anything with their mounted
+volumes.
+
+Does anyone have any idea, what exactly is happening to cause this problem?
+
+
+see complete code snippet below:
+-------------------------------------
+
+static inline int
+nfsctl_getfh(struct nfsctl_fhparm *data, __u8 *res)
+{
+        struct sockaddr_in      *sin;
+        struct svc_client       *clp;
+        int                     err = 0;
+        struct knfsd_fh         fh;
+
+        if (data->gf_addr.sa_family != AF_INET)
+                return -EPROTONOSUPPORT;
+        if (data->gf_version < 2 || data->gf_version > NFSSVC_MAXVERS)
+                return -EINVAL;
+        sin = (struct sockaddr_in *)&data->gf_addr;
+
+        exp_readlock();
+        if (!(clp = exp_getclient(sin)))
+                err = -EPERM;
+        else
+                err = exp_rootfh(clp, to_kdev_t(data->gf_dev), data->gf_ino,
+NULL, &fh, NFS_FHSIZE);
+        exp_readunlock();
+/*-----------------------------------------------------*/
+        if (err == 0) {
+                if (fh.fh_size > NFS_FHSIZE)
+                        err = -EINVAL;
+/*-----------------------------------------------------*/
+                else {
+                        memset(res,0, NFS_FHSIZE);
+                        memcpy(res, &fh.fh_base, fh.fh_size);
+                }
+        }
+
+        return err;
+}
+-------------------------------------
+
+
+
+> --Luke
+> --Computer Science Sysadmin, MSU Bozeman 
+> --admin(AT)cs.montana.edu 994-3931 
 
 
 
@@ -173,3 +114,6 @@ vg_libpthread.vs
 This SF.net email is sponsored by: Get the new Palm Tungsten T 
 handheld. Power & Color in a compact size! 
 http://ads.sourceforge.net/cgi-bin/redirect.pl?palm0002en
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
