@@ -1,13 +1,17 @@
-From: "Tina B" <widep23443a_n@e-lan.net.tw>
-Subject: Hallo:)
-Date: Mon, 16 Jun 2003 02:46:18 -0700
+From: Steve Dickson <SteveD@RedHat.com>
+Subject: Re: NFS Crashes LTSP and NFS Servers and Corrupts Data! Need
+ Help!
+Date: Mon, 16 Jun 2003 11:22:48 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19RqZ5-0002ph-00@sc8-sf-list1.sourceforge.net>
+Message-ID: <3EEDE0C8.8010509@RedHat.com>
+References: <3EEA7890.3010902@lillecorp.com>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_003A_01C46A17.B7CA1128"
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net, ltsp-discuss@lists.sourceforge.net,
+   redhat-list@RedHat.com, jrosen@lillecorp.com
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: "Mein Schatz" <nfs@lists.sourceforge.net>
+To: Fanying Jen <fanying@lillecorp.com>
+In-Reply-To: <3EEA7890.3010902@lillecorp.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -20,16 +24,41 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+Fanying Jen wrote:
 
-------=_NextPart_000_003A_01C46A17.B7CA1128
-Content-Type: text/html;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+> NFS Problem 1 (Crashing)
+>
+> The LTSP would create stale locks and eventually the LTSP server 
+> crashes. Furthermore, data is corrupted during the process. 
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">=0D=0A<HTML><HEAD>=0D=0A<META=20http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1">=0D=0A<META=20content=3D"MSHTML 6.00.2600.0" name=3DGENERATOR>=0D=0A<STYLE></STYLE>=0D=0A</HEAD>=0D=0A<BODY bgColor=3D#ffffff>=0D=0A<DIV><FONT face=3DArial size=3D2>=0D=0A<DIV><FONT face=3DArial size=3D3>Guten Tag,<BR></FONT></DIV>=0D=0A<DIV><FONT face=3DArial size=3D3>Jemand hat Ihnen eine Video-Botschaft aufgenommen, =0D=0A<BR>um die Nachricht zu erhalten, klicken Sie bitte den unten genannten Link an =0D=0A! <BR>Dort laden Sie bitte den " Chat " und wenden sich dann bitte an Tina=20! =0D=0A<BR>Wir w=FCnschen Ihnen viel Spa=DF mit Ihrer pers=F6nlichen Botschaft !</FONT></DIV>=0D=0A<DIV><FONT face=3DArial size=3D3>Abruf unter:</FONT></DIV><FONT face=3DArial>=0D=0A<DIV><BR><B><a=20href=3D"http://baby19.tripod.com.ve/camd.htm">http://privates/video/6671.avi</a></B><BR><BR><FONT =0D=0Asize=3D3>Automatische Nachricht 
- von =0D=0AGerson-Message-Online</FONT></FONT></DIV></FONT></DIV></BODY></HTML>=0D=0A=0D=0A
-------=_NextPart_000_003A_01C46A17.B7CA1128--
+Is there any type of errors in /var/log/messages? When you say crashes
+what do you
+mean? The machine oops (in that case send the oops trace) or some part
+of LTSP
+drops core....
+
+> NFS Problem 2 (Corruption)
+>
+> This happens mostly in OpenOffice, more than once, data gets corrupted 
+> and when working with both Microsoft and native OpenOffice formats. On 
+> full local workstations where the files are save to the local disk, 
+> this does not happen. The office docuements are normally saved to an 
+> NFS filesystem. 
+
+Boy this is a bit bizarre..... What mount options are you using?
+
+> NFS Problem 3 (Performance)
+>
+> NFS is very slow over T1 and cable links but is just fine on the Local 
+> Fast Ethernet. It is slow enough to either knock people off or cause 
+> write errors. We are thinking the hubs play a major role and are 
+> replacing with high end managed switches. However we believe that 
+> there is more than meets the eye and the T1 also has something to do 
+> with. 
+
+Try using TCP over the T1 link and see if that helps....
+
+SteveD.
 
 
 
