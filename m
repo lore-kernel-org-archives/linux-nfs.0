@@ -1,16 +1,16 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 11 of 16] nfsd4: acl don't set named attrs
+Subject: [PATCH kNFSd 2 of 16] nlm: fix f_count leak
 Date: Tue, 22 Mar 2005 16:42:01 +1100
-Message-ID: <E1DDc9R-0002Km-S0@notabene.cse.unsw.edu.au>
+Message-ID: <E1DDc9R-0002KC-9a@notabene.cse.unsw.edu.au>
 References: <20050322163830.8762.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DDcA1-0006ll-RN
+	id 1DDcA1-0006lj-Q8
 	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:37 -0800
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1DDc9z-00059x-PC
+	id 1DDc9z-00059u-Je
 	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:37 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
@@ -27,43 +27,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
+I can't see any reason for this file->f_count++.  Removing it fixes a bug
+which leaves an exported filesystem busy if a callback for a lock held on that
+filesystem ever failed.
 
-We were expecting {read,write}_named_attributes to be set in sync with the read
-and write bits.  But we don't actually support named attributes, and when we
-eventually do, it's unlikely that we'll want to use these ACL mode bits to
-control access to them.  So let's just stop supporting these two bits.
-
-This also updates our mapping to the latest ietf draft.
+Found by Terence Rokop.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4acl.c |    7 ++++---
- 1 files changed, 4 insertions(+), 3 deletions(-)
+ ./fs/lockd/svclock.c |    1 -
+ 1 files changed, 1 deletion(-)
 
-diff ./fs/nfsd/nfs4acl.c~current~ ./fs/nfsd/nfs4acl.c
---- ./fs/nfsd/nfs4acl.c~current~	2005-03-22 16:36:35.000000000 +1100
-+++ ./fs/nfsd/nfs4acl.c	2005-03-22 16:36:36.000000000 +1100
-@@ -49,14 +49,15 @@
- 
- 
- /* mode bit translations: */
--#define NFS4_READ_MODE (NFS4_ACE_READ_DATA | NFS4_ACE_READ_NAMED_ATTRS)
--#define NFS4_WRITE_MODE (NFS4_ACE_WRITE_DATA | NFS4_ACE_WRITE_NAMED_ATTRS | NFS4_ACE_APPEND_DATA)
-+#define NFS4_READ_MODE (NFS4_ACE_READ_DATA)
-+#define NFS4_WRITE_MODE (NFS4_ACE_WRITE_DATA | NFS4_ACE_APPEND_DATA)
- #define NFS4_EXECUTE_MODE NFS4_ACE_EXECUTE
- #define NFS4_ANYONE_MODE (NFS4_ACE_READ_ATTRIBUTES | NFS4_ACE_READ_ACL | NFS4_ACE_SYNCHRONIZE)
- #define NFS4_OWNER_MODE (NFS4_ACE_WRITE_ATTRIBUTES | NFS4_ACE_WRITE_ACL)
- 
- /* We don't support these bits; insist they be neither allowed nor denied */
--#define NFS4_MASK_UNSUPP (NFS4_ACE_DELETE | NFS4_ACE_WRITE_OWNER)
-+#define NFS4_MASK_UNSUPP (NFS4_ACE_DELETE | NFS4_ACE_WRITE_OWNER \
-+		| NFS4_ACE_READ_NAMED_ATTRS | NFS4_ACE_WRITE_NAMED_ATTRS)
- 
- /* flags used to simulate posix default ACLs */
- #define NFS4_INHERITANCE_FLAGS (NFS4_ACE_FILE_INHERIT_ACE \
+diff ./fs/lockd/svclock.c~current~ ./fs/lockd/svclock.c
+--- ./fs/lockd/svclock.c~current~	2005-03-22 16:35:20.000000000 +1100
++++ ./fs/lockd/svclock.c	2005-03-22 16:36:34.000000000 +1100
+@@ -641,7 +641,6 @@ nlmsvc_grant_reply(struct svc_rqst *rqst
+ 		} else {
+ 			/* Lock is now held by client, or has been rejected.
+ 			 * In both cases, the block should be removed. */
+-			file->f_count++;
+ 			up(&file->f_sema);
+ 			if (status == NLM_LCK_GRANTED)
+ 				nlmsvc_delete_block(block, 0);
 
 
 -------------------------------------------------------
