@@ -1,24 +1,23 @@
-From: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
+From: Peter Astrand <peter@cendio.se>
 Subject: Re: userspace NFS daemon
-Date: Mon, 6 Sep 2004 21:35:28 +0200 (CEST)
+Date: Mon, 6 Sep 2004 21:43:08 +0200 (CEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0409062120550.19152-100000@kenzo.iwr.uni-heidelberg.de>
-References: <1094441577.10492.134.camel@lade.trondhjem.org>
+Message-ID: <Pine.LNX.4.44.0409062139180.18897-100000@maggie.lkpg.cendio.se>
+References: <20040906191343.GA859@janus>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Frank van Maarseveen <frankvm@xs4all.nl>,
-        Linux NFS mailing list <nfs@lists.sourceforge.net>
+Content-Type: TEXT/PLAIN; charset=iso-8859-1
+Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C4PHF-0006AE-0A
-	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 12:35:45 -0700
-Received: from relay.uni-heidelberg.de ([129.206.100.212])
+	id 1C4POY-0007gk-L3
+	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 12:43:18 -0700
+Received: from cheddar.cendio.se ([193.12.253.77] helo=mail.cendio.se)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1C4PHD-00042O-4p
-	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 12:35:44 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1094441577.10492.134.camel@lade.trondhjem.org>
+	id 1C4POS-0005LS-EU
+	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 12:43:15 -0700
+To: Frank van Maarseveen <frankvm@xs4all.nl>
+In-Reply-To: <20040906191343.GA859@janus>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,47 +30,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sun, 5 Sep 2004, Trond Myklebust wrote:
+> > * Can run the MOUNT and NFS protocol on the same TCP port. Very useful 
+> > when tunneling through SSH. 
+> 
+> Suppose I have an ssh tunnel to a system on which I don't have root
+> access. Can I use unfs3 under a non-root id there to export / and
+> below, mount it [as root] locally, such, that I can work under my own
+> uid locally?
 
-> No. I mean that very few people have ever used unfsd in mission-critical
-> production environments.
-
-Well, I don't know what your standards are relative to
-"mission-critical", but some years ago knfsd didn't exist and
-clustering people (among others) had to use the user-level daemon(s)  
-for everything anyway. Some preferred to continue this way... (I'm not 
-among them though).
-
-> If you have to mount all the writeable partitions separately from a more
-> robust server, then why bother?
-
-/tmp is usually a local disk, not another NFS server. For /var things 
-are not so clear though, but if you have a heavy-written /var 
-partition then NFS (even with knfsd) might not be the best solution 
-anyway - a parallel FS that would share the disk bandwidth might be 
-better even than local disk (and might provide better reliability...)
-
-> Replicating /etc and changing the two or three files that differ for
-> each cluster node is hardly a difficult task: you can do it using a
-> simple shell script. /bin doesn't even have to be replicated...
-
-As in Unix tradition, there are several ways to achieve the same goal.  
-There are people using 'mount -o bind' (like RHEL's diskless booting
-setup procedure) or hard-links (what I use). But both of these require
-some maintenance effort in form of scripts and a general cleanliness
-in handling software updates or new installs. With clusternfs, the
-files are created in their place with their intended destination in
-the name and the daemon takes care of the rest... There are people
-that prefer to concentrate on science rather than system
-administration. :-)
+Yes, that works. 
 
 -- 
-Bogdan Costescu
+Peter Åstrand		Chief Developer
+Cendio			www.thinlinc.com
+Teknikringen 3		www.cendio.se
+583 30 Linköping        Phone: +46-13-21 46 00
 
-IWR - Interdisziplinaeres Zentrum fuer Wissenschaftliches Rechnen
-Universitaet Heidelberg, INF 368, D-69120 Heidelberg, GERMANY
-Telephone: +49 6221 54 8869, Telefax: +49 6221 54 8868
-E-mail: Bogdan.Costescu@IWR.Uni-Heidelberg.De
+
 
 
 
