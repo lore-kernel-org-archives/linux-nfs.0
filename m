@@ -1,13 +1,16 @@
-From: Christian Reis <kiko@async.com.br>
-Subject: Re: NFS client locking hangs for period
-Date: Fri, 25 Apr 2003 01:57:30 -0300
+From: pwitting@Cyveillance.com
+Subject: RE: NFS FAQ
+Date: Fri, 25 Apr 2003 14:18:56 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030425015730.A29574@blackjesus.async.com.br>
+Message-ID: <D38AFB3080F3D311807300B0D0203E53033A9559@MERCURY>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: NFS@lists.sourceforge.net
+Received: from [63.100.163.41] (helo=mercury.cyveillance.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 199833-0002Wm-00
+	for <nfs@lists.sourceforge.net>; Fri, 25 Apr 2003 11:35:49 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -20,50 +23,17 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+> we invite you to visit the FAQ and send your comments
+> and suggestions.
 
-Well, since I've more or less moved on from my original problems, I
-should probably post a summary of what was going on, and what I did to
-work around it.
-
-Details can be read out from [1]: after a certain amount of time a
-number diskless clients, which were mounting everything from the same
-NFS server, started getting hung lock requests from the server. The
-server ran 2.4.20, reiserfs over RAID-1 mounted with 2 SCSI disks on an
-Adaptec 29160. The clients were debian woodys running 2.4.20.
-
-Our diskless setup is a bit unusual: all the clients mount the same root
-partition. I tried to be very careful to make sure no files were written
-to on /, but I never got to the point where the clients could mount the
-directory read-only. I used devfs to make sure that the /dev directories
-were `localized' and syslog/console ownership and permissions kept sane.
-
-The locking problem, however, was not related to the root filesystem --
-it seems to have happened with files on the /var/log mount, which is
-separate for each box (but still coming from a shared filesystem
-/export/root on the server, which contains all the client directories).
-If I mounted /var/log with the nolock option, they ran fine. This took
-me a very long time to figure out, and I'd advise anyone with locking
-problems to give it a go.
-
-I should point out that this *does* seem to be a bug in the NFS server
-code. I think it is associated with reiserfs, being that I haven't seen
-it happen on other partition types. Rebooting the server cleared up the
-problem. Erasing or changing files in /var/lib/nfs did not. While I was
-initially using a volatile /var/lib/nfs directory on the *clients*, I
-changed this on Trond's suggestion [2]. It did not fix the problem.
-
-However, since I know little about the code itself, and it's not very
-clear how one should debug, I was unable to pinpoint the exact source of
-the problem, which very much saddens me.  The workaround, however, was
-quite effective.
-
-[1] http://groups.google.com/groups?hl=en&lr=&ie=UTF-8&th=9db70994c3458f46&rnum=1
-[2] http://groups.google.com/groups?q=christian+reis+nfs+locking&hl=en&lr=&ie=UTF-8&scoring=d&selm=20030126231006%246e11%40gated-at.bofh.it&rnum=3
-
-Take care,
---
-Christian Reis, Senior Engineer, Async Open Source, Brazil.
-http://async.com.br/~kiko/ | [+55 16] 261 2331 | NMFL
+There was a discussion I initiated some months ago regarding setting the
+queue sizes that contained some good information on the subject for
+performance; The original script referenced a /etc/sysconfig/nfs file that
+RH 8 began referencing, but included a good conversation on what the queue
+sizes should be set to, and how kernel 2.4.20 was now setting those sizes
+automatically. I saw a 15% performance boost in a single large file copy,
+and also a significant but not quantified boost in a more dispersed NFS
+system.
 
 
 -------------------------------------------------------
