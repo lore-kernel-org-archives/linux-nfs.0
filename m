@@ -1,17 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 11 of 18] nfsd4: encode_dirent: superfluous local variables
+Subject: [PATCH kNFSd 12 of 18] nfsd4: encode_dirent: more readdir attribute encoding to new function
 Date: Tue, 16 Nov 2004 15:50:50 +1100
-Message-ID: <E1CTvIo-0004py-Ew@notabene.cse.unsw.edu.au>
+Message-ID: <E1CTvIo-0004q2-Ge@notabene.cse.unsw.edu.au>
 References: <20041116154601.18412.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CTvF4-0005rn-Fp
+	id 1CTvF4-0005rw-QU
 	for nfs@lists.sourceforge.net; Mon, 15 Nov 2004 20:46:58 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CTvF1-0000hb-6e
+	id 1CTvF1-0000hk-6e
 	for nfs@lists.sourceforge.net; Mon, 15 Nov 2004 20:46:58 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
@@ -29,59 +29,120 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
 
-The local variables bmval0 and bmval1 turn out not to really help much.
+Move readdir attribute encoding to nfsd4_encode_dirent_fattr(), remove
+the (no-longer used) error label.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4xdr.c |   13 +++----------
- 1 files changed, 3 insertions(+), 10 deletions(-)
+ ./fs/nfsd/nfs4xdr.c |   73 +++++++++++++++++++++++++++++-----------------------
+ 1 files changed, 41 insertions(+), 32 deletions(-)
 
 diff ./fs/nfsd/nfs4xdr.c~current~ ./fs/nfsd/nfs4xdr.c
---- ./fs/nfsd/nfs4xdr.c~current~	2004-11-16 14:41:35.000000000 +1100
-+++ ./fs/nfsd/nfs4xdr.c	2004-11-16 14:41:36.000000000 +1100
-@@ -1779,7 +1779,6 @@ nfsd4_encode_dirent(struct readdir_cd *c
+--- ./fs/nfsd/nfs4xdr.c~current~	2004-11-16 14:41:36.000000000 +1100
++++ ./fs/nfsd/nfs4xdr.c	2004-11-16 14:41:37.000000000 +1100
+@@ -1770,6 +1770,46 @@ out_serverfault:
+ }
+ 
+ static int
++nfsd4_encode_dirent_fattr(struct nfsd4_readdir *cd,
++		const char *name, int namlen, u32 *p, int *buflen)
++{
++	struct svc_export *exp = cd->rd_fhp->fh_export;
++	struct dentry *dentry;
++	int nfserr;
++
++	dentry = lookup_one_len(name, cd->rd_fhp->fh_dentry, namlen);
++	if (IS_ERR(dentry)) {
++		nfserr = nfserrno(PTR_ERR(dentry));
++		return nfserr;
++	}
++
++	exp_get(exp);
++	if (d_mountpoint(dentry)) {
++		if (nfsd_cross_mnt(cd->rd_rqstp, &dentry, &exp)) {
++		/*
++		 * -EAGAIN is the only error returned from
++		 * nfsd_cross_mnt() and it indicates that an
++		 * up-call has  been initiated to fill in the export
++		 * options on exp.  When the answer comes back,
++		 * this call will be retried.
++		 */
++			dput(dentry);
++			exp_put(exp);
++			nfserr = nfserr_dropit;
++			return nfserr;
++		}
++
++	}
++
++	nfserr = nfsd4_encode_fattr(NULL, exp,
++			dentry, p, buflen, cd->rd_bmval,
++			cd->rd_rqstp);
++	dput(dentry);
++	exp_put(exp);
++	return nfserr;
++}
++
++static int
+ nfsd4_encode_dirent(struct readdir_cd *ccd, const char *name, int namlen,
+ 		    loff_t offset, ino_t ino, unsigned int d_type)
+ {
+@@ -1777,8 +1817,6 @@ nfsd4_encode_dirent(struct readdir_cd *c
+ 	int buflen;
+ 	u32 *p = cd->buffer;
  	u32 *attrlenp;
- 	struct dentry *dentry;
- 	struct svc_export *exp = cd->rd_fhp->fh_export;
--	u32 bmval0, bmval1;
+-	struct dentry *dentry;
+-	struct svc_export *exp = cd->rd_fhp->fh_export;
  	int nfserr = 0;
  
  	/* In nfsv4, "." and ".." never make it onto the wire.. */
-@@ -1803,9 +1802,6 @@ nfsd4_encode_dirent(struct readdir_cd *c
+@@ -1802,35 +1840,7 @@ nfsd4_encode_dirent(struct readdir_cd *c
  	/*
  	 * Now we come to the ugly part: writing the fattr for this entry.
  	 */
--	bmval0 = cd->rd_bmval[0];
--	bmval1 = cd->rd_bmval[1];
+-	dentry = lookup_one_len(name, cd->rd_fhp->fh_dentry, namlen);
+-	if (IS_ERR(dentry)) {
+-		nfserr = nfserrno(PTR_ERR(dentry));
+-		goto error;
+-	}
 -
- 	dentry = lookup_one_len(name, cd->rd_fhp->fh_dentry, namlen);
- 	if (IS_ERR(dentry)) {
- 		nfserr = nfserrno(PTR_ERR(dentry));
-@@ -1852,19 +1848,16 @@ error:
- 	 * then in accordance with the spec, we fail the
- 	 * entire READDIR operation(!)
- 	 */
--	if (!(bmval0 & FATTR4_WORD0_RDATTR_ERROR)) {
-+	if (!(cd->rd_bmval[0] & FATTR4_WORD0_RDATTR_ERROR)) {
- 		cd->common.err = nfserr;
- 		return -EINVAL;
- 	}
- 
--	bmval0 = FATTR4_WORD0_RDATTR_ERROR;
--	bmval1 = 0;
+-	exp_get(exp);
+-	if (d_mountpoint(dentry)) {
+-		if (nfsd_cross_mnt(cd->rd_rqstp, &dentry, &exp)) {
+-		/*
+-		 * -EAGAIN is the only error returned from
+-		 * nfsd_cross_mnt() and it indicates that an
+-		 * up-call has  been initiated to fill in the export
+-		 * options on exp.  When the answer comes back,
+-		 * this call will be retried.
+-		 */
+-			dput(dentry);
+-			exp_put(exp);
+-			nfserr = nfserr_dropit;
+-			goto error;
+-		}
 -
- 	if (buflen < 6)
+-	}
+-
+-	nfserr = nfsd4_encode_fattr(NULL, exp,
+-			dentry, p, &buflen, cd->rd_bmval,
+-			cd->rd_rqstp);
+-	dput(dentry);
+-	exp_put(exp);
++	nfserr = nfsd4_encode_dirent_fattr(cd, name, namlen, p, &buflen);
+ 	if (!nfserr) {
+ 		p += buflen;
+ 		goto out;
+@@ -1838,7 +1848,6 @@ nfsd4_encode_dirent(struct readdir_cd *c
+ 	if (nfserr == nfserr_resource)
  		goto nospc;
- 	*p++ = htonl(2);
--	*p++ = htonl(bmval0);
--	*p++ = htonl(bmval1);
-+	*p++ = htonl(FATTR4_WORD0_RDATTR_ERROR); /* bmval0 */
-+	*p++ = htonl(0);			 /* bmval1 */
  
- 	attrlenp = p++;
- 	*p++ = nfserr;       /* no htonl */
+-error:
+ 	/*
+ 	 * If we get here, we experienced a miscellaneous
+ 	 * failure while writing the attributes.  If the
 
 
 -------------------------------------------------------
