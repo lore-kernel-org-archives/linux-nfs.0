@@ -1,26 +1,33 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: Linux' NFS locking b0rken?
-Date: Wed, 26 May 2004 09:50:59 +0200
+From: "Howie Xu" <howie@vmware.com>
+Subject: How to unlock a file if an NFSv3 client dies forever?
+Date: Wed, 26 May 2004 01:03:39 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040526075058.GA7463@suse.de>
-References: <Pine.LNX.4.44.0405251504220.24001-100000@fattire.ngdc.noaa.gov> <1085523068.12612.58.camel@lade.trondhjem.org>
+Message-ID: <4F28105F70F4324A8723F0C949088941C29A36@pa-exch5.vmware.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>,
-	Dan Stromberg <strombrg@dcs.nac.uci.edu>,
-	Jeffrey Layton <jtlayton@poochiereds.net>, nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BStBq-000495-R5
-	for nfs@lists.sourceforge.net; Wed, 26 May 2004 00:51:06 -0700
-Received: from cantor.suse.de ([195.135.220.2])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.30)
-	id 1BStBq-0007Wf-Ft
-	for nfs@lists.sourceforge.net; Wed, 26 May 2004 00:51:06 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1085523068.12612.58.camel@lade.trondhjem.org>
+	id 1BStO6-0007u3-25
+	for nfs@lists.sourceforge.net; Wed, 26 May 2004 01:03:46 -0700
+Received: from mailout1.vmware.com ([65.113.40.130])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1BStO5-0001Kq-Ly
+	for nfs@lists.sourceforge.net; Wed, 26 May 2004 01:03:45 -0700
+Received: from mailout1.vmware.com (mailout1.vmware.com [127.0.0.1])
+	by mailout1.vmware.com (Postfix) with ESMTP id 1C82344BB
+	for <nfs@lists.sourceforge.net>; Wed, 26 May 2004 01:03:44 -0700 (PDT)
+Received: from mailhost1.vmware.com (mailhost1.vmware.com [10.16.12.135])
+	by mailout1.vmware.com (Postfix) with ESMTP id 81C9F44BF
+	for <nfs@lists.sourceforge.net>; Wed, 26 May 2004 01:03:43 -0700 (PDT)
+Received: from localhost (localhost [127.0.0.1])
+	by mailhost1.vmware.com (Postfix) with ESMTP id 0BB606FC343
+	for <nfs@lists.sourceforge.net>; Wed, 26 May 2004 01:03:50 -0700 (PDT)
+Received: from pa-exch3.vmware.com (pa-exch3.vmware.com [10.16.15.61])
+	by mailhost1.vmware.com (Postfix) with ESMTP id F07F96FC341
+	for <nfs@lists.sourceforge.net>; Wed, 26 May 2004 01:03:45 -0700 (PDT)
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,27 +40,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, May 25, 2004 at 06:11:08PM -0400, Trond Myklebust wrote:
-> Any program which relies on the fact that BSD locks are inherited by
-> child processes will fail to work correctly with you wrapper (because
-> fcntl() locks are not inherited).
-
-Shouldn't it be possible to map flock locks onto the NLM interface
-if we simply record the PID of the process originally requesting
-the lock, and reuse that pid in all future operations? All the
-flock semantics are provided by fs/locks.c already; all the
-NLM client needs to do is to formulate appropriate NLM calls
-for lock type changes (SH->EX and vice versa), and unlocks.
-
-Really the only gotcha is that subsequent calls on an existing
-lock use the same PID as the original call, so that the server
-lockd can match up the request with its existing list of locks.
-
-Olaf
--- 
-Olaf Kirch     |  The Hardware Gods hate me.
-okir@suse.de   |
----------------+ 
+Hi,
+=20
+This is a NFSv3 question: how to unlock a file if one NFS client holds a =
+lock
+on the file, crashs, and never recovers?
+=20
+For example, if my linux NFS client holds a write lock on =
+/home/howie/README,
+then crashes and I reinstall the OS upon rebooting. Does that mean my =
+NFS
+server will hold this lock on this file *forever*? The NFS locks are
+advisory, but my other NFS clients who speak NLM with the same NFS =
+server
+will not be granted lock for a file no one else ever cares.:(
+=20
+I don't think Network Status Monitor Protocol will help, as NSM only =
+make the
+client recover the lock itself once it recovers and retrieves the lock =
+from a
+previously save lock info file.
+=20
+Thanks in advance for your time to read this thread.
+=20
+-howie
 
 
 -------------------------------------------------------
