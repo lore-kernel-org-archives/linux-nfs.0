@@ -1,21 +1,19 @@
-From: Peter Astrand <astrand@lysator.liu.se>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: Re: NFS retry on disconnection
-Date: Tue, 14 May 2002 10:38:58 +0200 (CEST)
+Date: 14 May 2002 11:31:34 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0205141035150.22074-100000@sofie.lambo.student.liu.se>
-References: <shssn4vf8jo.fsf@charged.uio.no>
+Message-ID: <shsoffjf53d.fsf@charged.uio.no>
+References: <Pine.LNX.4.44.0205141035150.22074-100000@sofie.lambo.student.liu.se>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=iso-8859-1
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from a88.lambo.student.liu.se ([130.236.229.88])
+Received: from mons.uio.no ([129.240.130.14])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 177Xpn-0005Ci-00
-	for <nfs@lists.sourceforge.net>; Tue, 14 May 2002 01:39:03 -0700
-Received: from localhost (localhost [127.0.0.1])
-	by a88.lambo.student.liu.se (Postfix) with ESMTP id 4F9FCCF3E
-	for <nfs@lists.sourceforge.net>; Tue, 14 May 2002 10:38:58 +0200 (CEST)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <shssn4vf8jo.fsf@charged.uio.no>
+	id 177Yen-0008VZ-00
+	for <nfs@lists.sourceforge.net>; Tue, 14 May 2002 02:31:46 -0700
+To: Peter Astrand <astrand@lysator.liu.se>
+In-Reply-To: <Pine.LNX.4.44.0205141035150.22074-100000@sofie.lambo.student.liu.se>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,34 +26,33 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->      > One thing that keeps annoying me is that "intr" only allows
->      > interrupting the file operation when a major timeout happens. I
-> 
-> Nope. Major, minor, it all goes through the same code and both can be
-> interrupted. 
+>>>>> " " == Peter Astrand <astrand@lysator.liu.se> writes:
 
-Does this mean that the man page nfs(5) is incorrect? It says:
+     > Does this mean that the man page nfs(5) is incorrect? It says:
 
-"intr 
+     > "intr
 
-If an NFS file operation has a major timeout and it is hard mounted, then
-allow signals to interupt the file operation and cause it to return EINTR
-to the calling program."
+     > If an NFS file operation has a major timeout and it is hard
+     > mounted, then allow signals to interupt the file operation and
+     > cause it to return EINTR to the calling program."
 
-> If, say, they are both waiting to read data from the same page, then
-> only one process actually does the RPC call. The VFS/MM layers will
-> put the other process to sleep in the global function 'lock_page()'.
-> That unfortunately means that it cannot interrupt, since 'lock_page()'
-> does not do interruptible sleeps.
+That looks to be incorrect, yes.
 
-I see. And this is not possible to change?
+    >> function 'lock_page()'.  That unfortunately means that it
+    >> cannot interrupt, since 'lock_page()' does not do interruptible
+    >> sleeps.
 
+     > I see. And this is not possible to change?
 
--- 
-/Peter Åstrand <astrand@lysator.liu.se>
+Not without great effort, and it would demand considerable auditing to
+determine exactly where interruptible sleeps make sense.
 
+A better alternative might be to use asynchronous I/O (as in the POSIX
+'aio' library functions). There are patches floating around for that
+sort of thing.
 
-
+Cheers,
+  Trond
 
 _______________________________________________________________
 
