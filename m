@@ -1,30 +1,31 @@
-From: Chip Salzenberg <chip@pobox.com>
-Subject: DOS bug in 1.0.5 mountd DNS code [ard@kwaak.net: rpc.mountd SEGVs (found the bug)]
-Date: Tue, 9 Sep 2003 11:29:27 -0400
+From: Bernd Schubert <bernd-schubert@web.de>
+Subject: Re: 'random' diskless clients hangs
+Date: Tue, 9 Sep 2003 17:25:18 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030909152927.GD2460@perlsupport.com>
+Message-ID: <200309091725.18725.bernd-schubert@web.de>
+References: <NEBBIHNAFKJAFOHBHGCOIEKLEFAA.nfsmailinglist@heessels.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19wkRB-0007TX-00
-	for <nfs@lists.sourceforge.net>; Tue, 09 Sep 2003 08:29:49 -0700
-Received: from tandu.perlsupport.com ([66.220.6.226] ident=mail)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.22)
-	id 19wkR9-000251-QO
-	for nfs@lists.sourceforge.net; Tue, 09 Sep 2003 08:29:47 -0700
-Received: from tytlal.hmsonline.com
-	([207.43.94.202] helo=tytlal ident=mail)
-	by tandu.perlsupport.com with asmtp (Exim 3.35 #1 (Debian))
-	id 19wkQd-0003sR-00
-	for <nfs@lists.sourceforge.net>; Tue, 09 Sep 2003 08:29:15 -0700
-Received: from chip by tytlal with local (Exim 3.35 #1 (Debian))
-	id 19wkQq-0004AV-00
-	for <nfs@lists.sourceforge.net>; Tue, 09 Sep 2003 11:29:28 -0400
-To: nfs@lists.sourceforge.net
+	id 19wknc-0002EV-00
+	for <nfs@lists.sourceforge.net>; Tue, 09 Sep 2003 08:53:00 -0700
+Received: from panoramix.vasoftware.com
+	([198.186.202.147] helo=externalmx.vasoftware.com ident=mail)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
+	id 19wknb-0004JA-Qk
+	for nfs@lists.sourceforge.net; Tue, 09 Sep 2003 08:52:59 -0700
+Received: from smtp01.web.de ([217.72.192.180]:3635 helo=smtp.web.de)
+	by externalmx.vasoftware.com with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 4.22 #1 (Debian))
+	id 19wkNv-0004YG-Jz
+	for <nfs@lists.sourceforge.net>; Tue, 09 Sep 2003 08:26:27 -0700
+To: <nfsmailinglist@heessels.com>
+In-Reply-To: <NEBBIHNAFKJAFOHBHGCOIEKLEFAA.nfsmailinglist@heessels.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -37,77 +38,34 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Looks like mountd crashes when the client has no forward DNS to match
-its reverse DNS.  I'll patch it.
+On Monday 08 September 2003 20:37, nfsmailinglist@heessels.com wrote:
+> Help!! We're closing to giving up on NFS.
+>
+> We have tried multiple NICS and drivers on both server and client
+> (eepro100, e100, e1000).
+> We have tries both UDP and TCP.
+> We have tried multiple versions of nfs-utils.
+> We have tried multiple versions of the kernel.
+> We have tried multiple clients.
+> We have tried multiple switches.
+>
 
-This bug probably qualifies as important enough to release 1.0.6,
-since it's a potential DOS.  After all, a client may deliberately
-access a server *because* that client has no matching DNS, causing
-a server crash.
+Have you already tried to connect the server and one client directly? So using 
+a cross-over-cable from the server to one client without any switch between.
 
-I don't know if this bug has anything to do with the crashes that are
-fixed by the pthread.so LD_PRELOAD, but Ard's machine *is* SMP....
+Also, is your network really full-duplex? You can figure out using mii-tool.
 
+I would also try if the same problems happen on non-root-nfs clients. So e.g. 
+exporting only /usr and /home from the server, using a local 
+linux-installation on the client and import those two directories.
+Btw, I think I saw in one of your mail, that you are using 4096bytes for rsize 
+and wsize as default, setting this to 8192 should increase the probability to 
+see the problem occuring faster. I guess later on (when everything is 
+working) you won't like to use 4096byte anyway.
 
------ Forwarded message from Ard van Breemen <ard@kwaak.net> -----
+Cheers,
+	Bernd
 
-Subject: Bug#209318: rpc.mountd SEGVs (found the bug)
-From: Ard van Breemen <ard@kwaak.net>
-To: 209318@bugs.debian.org
-Date: Tue, 9 Sep 2003 15:56:01 +0200
-
-Some more info:
-Before the crashing started:
-Sep  9 09:30:26 upa001 rpc.mountd: Fake hostname capio-6d099b.ws.alkmaar.upa.nl for 192.168.1.252 - forward lookup doesn't match reverse 
-Sep  9 09:30:26 upa001 rpc.mountd: authenticated mount request from 192.168.1.252:635 for /var/lib/diskless/scratch/192.168.1.252 (/var/lib/diskless/scratch/192.168.1.252
-Sep  9 09:30:26 upa001 rpc.mountd: Fake hostname capio-6d099b.ws.alkmaar.upa.nl for 192.168.1.252 - forward lookup doesn't match reverse 
-Sep  9 09:30:26 upa001 rpc.mountd: authenticated mount request from 192.168.1.252:648 for /var/lib/diskless/scratch/192.168.1.252/swap (/var/lib/diskless/scratch/192.168.
-Sep  9 09:30:27 upa001 rpc.mountd: Fake hostname capio-6d099b.ws.alkmaar.upa.nl for 192.168.1.252 - forward lookup doesn't match reverse 
-Sep  9 09:30:27 upa001 rpc.mountd: authenticated mount request from 192.168.1.252:651 for /var/lib/opnames (/var/lib/opnames) 
-
-That was correct. capio-6d099b.ws.alkmaar.upa.nl was pointing to something
-different then 192.168.1.252. The reversed was correct.  I then deleted the
-capio-6d099b.ws.alkmaar.upa.nl entries from the dns (using nsupdate), and
-then rebooted the client. No new dns entries were made. The client tried to
-mount something at a time where the reversed existed, but the forward
-didn't.
-
-Hmmm, ok, found it:
-nfs-utils-1.0.5/support/export/hostname.c
-get_reliable_hostbyaddr(const char *addr, int len, int type)
-{
-<snip>
-        if (tmpname) {
-                forward = gethostbyname(tmpname);
-                free(tmpname);
-        }
-        if (forward) {
-<snip>
-        }
-        else {
-                /* never heard of it. misconfigured DNS? */
-                xlog(L_WARNING, "Fake hostname %s for %s - forward lookup
-doesn't exist",
-                     forward->h_name, inet_ntoa(*(struct in_addr*)addr));
-                return NULL;
-        }
-
-So, what we see here is that it tries to print the Fake hostname using
-forward->h_name, and forward==NULL.
-
--- 
-mail          up   21+16:44,    11 users,  load 0.01, 0.05, 0.10
-Let your government know you value your freedom: sign the petition:
-http://petition.eurolinux.org
-
-
-
------ End forwarded message -----
-
--- 
-Chip Salzenberg               - a.k.a. -               <chip@pobox.com>
-"I wanted to play hopscotch with the impenetrable mystery of existence,
-    but he stepped in a wormhole and had to go in early."  // MST3K
 
 
 -------------------------------------------------------
