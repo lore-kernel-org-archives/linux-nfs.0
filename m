@@ -1,21 +1,17 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Input/output error on hard mounted NFS directory
-Date: Sun, 26 May 2002 00:13:28 +0200
+From: jiangwr <jiangwr@asiainfo.com>
+Subject: did nfs cache file content in memory?
+Date: Thu, 30 May 2002 14:05:26 +0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15600.3208.451267.839751@charged.uio.no>
-References: <200205141437.26169.trond.myklebust@fys.uio.no>
-	<Pine.LNX.4.33.0205241316260.3144-100000@sp-home.isdn.scali.no>
-Reply-To: trond.myklebust@fys.uio.no
+Message-ID: <19399885918.20020530140526@asiainfo.com>
+Reply-To: jiangwr <jiangwr@asiainfo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: NFS mailinglist <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=GB2312
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
+Received: from [211.100.11.6] (helo=aints2.asiainfo.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17BjnG-0004tw-00
-	for <nfs@lists.sourceforge.net>; Sat, 25 May 2002 15:13:46 -0700
-To: Steffen Persvold <sp@scali.com>
-In-Reply-To: <Pine.LNX.4.33.0205241316260.3144-100000@sp-home.isdn.scali.no>
+	id 17DJ4w-0000hw-00
+	for <nfs@lists.sourceforge.net>; Wed, 29 May 2002 23:06:30 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,16 +24,28 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->>>>> " " == Steffen Persvold <sp@scali.com> writes:
 
-     > Can you give me any more details to why it helped upgrading my
-     > NFS server to 2.4.18 ?
+Hello nfs-lister,
 
-See the linux-kernel and NFS@sourceforge archives. Those races were
-discovered by the 'fsx' filesystem exerciser.
+      I am setting up a nfs server on redhat 7.2(kernel 2.4.7-10/nfs-util 0.3.1),the machine
+      is a intel PIII with 1G memory.the nfs server works fine,but if client machine create a
+      10M file in nfs-mounted directory,then the server's used memory goes up 10M,removing the
+      same 10M file will drop the server's used memory 10M too.using `cat /proc/meminfo` the
+      Inact_dirty field also confirm this.
+      my problem is:as the memory keeps going,it will soon eat up all my free memory and the lockd
+      will get core dump,and the server need reboot.
+      my question is:is this a feature or a bug?did nfs really cache file content in memory?Do I
+      have a option to disable this or where to find a memory cleaner so I can long-run this server
+      without rebooting it every several hours.
 
-Cheers,
-  Trond
+Best regards,
+ jiangwr                          mailto:jiangwr@asiainfo.com
+
+============================
+½­ÎµÈ»(Jerry Jiang)
+Asiainfo GuangZhou Office
+Phone:(020)87310203-8521
+
 
 _______________________________________________________________
 
