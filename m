@@ -1,25 +1,18 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Re: broken umount -f
-Date: Tue, 14 Jan 2003 20:52:58 +0100
+From: "Cole, Timothy D." <tdcole@northropgrumman.com>
+Subject: RE: Re: broken umount -f
+Date: Tue, 14 Jan 2003 11:49:55 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15908.27290.467724.590229@charged.uio.no>
-References: <6440EA1A6AA1D5118C6900902745938E07D551E8@black.eng.netapp.com>
-	<20030114170755.GA18952@questra.com>
-	<shs8yxn5z6m.fsf@charged.uio.no>
-	<20030114143914.C15824@redhat.com>
-Reply-To: trond.myklebust@fys.uio.no
+Message-ID: <7F21D7A9E7D9D51192CB0002A53F93C73C28E6@xcgmd024.md.essd.northgrum.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-    Scott Mcdermott <smcdermott@questra.com>,
-    nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+Received: from xcgtx811.northgrum.com ([208.20.220.57])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18YX7W-0007oo-00
-	for <nfs@lists.sourceforge.net>; Tue, 14 Jan 2003 11:53:10 -0800
-To: Benjamin LaHaise <bcrl@redhat.com>
-In-Reply-To: <20030114143914.C15824@redhat.com>
+	id 18YX9g-0008QO-00
+	for <nfs@lists.sourceforge.net>; Tue, 14 Jan 2003 11:55:24 -0800
+To: "'trond.myklebust@fys.uio.no'" <trond.myklebust@fys.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,29 +25,19 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Benjamin LaHaise <bcrl@redhat.com> writes:
+> -----Original Message-----
+> From: Trond Myklebust [mailto:trond.myklebust@fys.uio.no]
+> Sent: Tuesday, January 14, 2003 14:36
+> To: Scott Mcdermott
+> Cc: nfs@lists.sourceforge.net
+> Subject: Re: [NFS] Re: broken umount -f
+> 
+> They will if you mount with 'intr', and make sure that you kill *all*
+> programs that are using that mountpoint.
 
-     > It's up to NFS to make the outstanding IOs against the
-     > filesystem return -EIO.
+That doesn't always appear to be the case in practice (maybe a long-standing
+bug/strange interaction?).  Can there be users not reported by fuser?
 
-It does that.
-
-void
-nfs_umount_begin(struct super_block *sb)
-{
-        struct nfs_server *server = NFS_SB(sb);
-        struct rpc_clnt *rpc;
-
-        /* -EIO all pending I/O */
-        if ((rpc = server->client) != NULL)
-                rpc_killall_tasks(rpc);
-}
-
-What it does not do is hunt down every task that holds an open file,
-or has  been started from an NFS directory.
-
-Cheers,
-  Trond
 
 
 -------------------------------------------------------
