@@ -1,24 +1,23 @@
 From: Olaf Kirch <okir@suse.de>
-Subject: Processes stuck in D state
-Date: Wed, 18 Feb 2004 17:33:05 +0100
+Subject: NFS suport block sharing
+Date: Wed, 18 Feb 2004 17:37:02 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040218163305.GA31893@suse.de>
+Message-ID: <20040218163702.GB31893@suse.de>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="/9DWx/yDrRhgMJTb"
-Cc: Olaf Hering <olh@suse.de>
+Content-Type: multipart/mixed; boundary="U+BazGySraz5kW0T"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AtUi8-00036s-L5
-	for nfs@lists.sourceforge.net; Wed, 18 Feb 2004 08:38:08 -0800
+	id 1AtUlw-0003wF-KC
+	for nfs@lists.sourceforge.net; Wed, 18 Feb 2004 08:42:04 -0800
 Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
 	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.30)
-	id 1AtUW7-0005lE-8i
-	for nfs@lists.sourceforge.net; Wed, 18 Feb 2004 08:25:43 -0800
+	id 1AtUZv-0006GN-Af
+	for nfs@lists.sourceforge.net; Wed, 18 Feb 2004 08:29:39 -0800
 Received: from hermes.suse.de (Hermes.suse.de [195.135.221.8])
-	by Cantor.suse.de (Postfix) with ESMTP id 08D801FA5DA
-	for <nfs@lists.sourceforge.net>; Wed, 18 Feb 2004 17:33:06 +0100 (CET)
+	by Cantor.suse.de (Postfix) with ESMTP id 080561FBEB2
+	for <nfs@lists.sourceforge.net>; Wed, 18 Feb 2004 17:37:03 +0100 (CET)
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,39 +32,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
---/9DWx/yDrRhgMJTb
+--U+BazGySraz5kW0T
 Content-Type: text/plain; charset=iso-8859-15
 Content-Disposition: inline
 
-
 Hi,
 
-I spent much of today investigating a weird NFS problem on 2.6.3.
+yesterday, I ran into something that puzzled me quite a bit.  I had an
+NFS file system (my home directory) mounted in its normal location. For
+testing purposes, I wanted to mount it a second time, but with a different
+set of options (hard instead of soft, etc).
 
-After one of our servers went away and came back, several processes on
-a ppc machine were left in D state. They did not get woken up during
-the whole day, until I did a "umount -f" after several hours of debugging.
+To my surprise, the second mount continued to act like the original
+mount, as if it had been mounted with -o soft. /etc/mtab showed the
+options I had specified, but /proc/mounts showed that it indeed used
+soft retransmits.
 
-The internal state of this RPC client looks a little weird. I'm
-attaching some debug output that shows where they got stuck. Some
-general observation:
+To make a long story short, I think _if_ we do NFS super block
+sharing, we should make sure we use don't reuse an existing
+sb if it has different options. Attached is a patch that implements
+this, at least for the most common set of options.
 
- -	this does not seem a queue corruption bug, which is good :)
- -	the tasks were sleeping on different wait queues (pending,
- 	sending, 1 one resend)
- -	all tasks have a tk_timeout value of 0
- -	the ntimeo values of the RTT estimators being 0 looks a
-	little weird, given that the mount froze because the
-	server wasn't reachable.
- -	the task on the resend queue has a timer with
-	tk_timer.expires != 0, but unfortunately I forgot to check whether
-	it was active.	But I doubt it; I had debugging enabled for much
-	of the day and the tk_pid in question never showed up in the log
-
-I'm not sure yet what exactly happened here. I don't understand how a
-task on xprt->pending can have a timeout value of 0...
-
-Does anyone have an idea what might be going wrong here?
+Comments?
 
 Olaf
 -- 
@@ -73,39 +61,29 @@ Olaf Kirch     |  Stop wasting entropy - start using predictable
 okir@suse.de   |  tempfile names today!
 ---------------+ 
 
---/9DWx/yDrRhgMJTb
+--U+BazGySraz5kW0T
 Content-Type: text/plain; charset=iso-8859-15
-Content-Disposition: attachment; filename=nfs-messages
+Content-Disposition: attachment; filename=nfs-super-reuse
 
- Found NFS mount, server=Hilbert2,v3,rsize=8192,wsize=8192
-   RPC client 6 users
-     Active RPC tasks for this client:
-       task 21384, status=-11, timeout=0, active, sleeping, on queue c45ea044(xprt_sending)
-       task 9969, status=-11, timeout=0, active, sleeping, on queue c45ea044(xprt_sending)
-       task 52431, status=-11, timeout=0, active, sleeping, on queue c45ea044(xprt_sending)
-       task 43528, status=-11, timeout=0, active, sleeping, on queue c45ea044(xprt_sending)
-       task 43527, status=-11, timeout=0, timer, async, active, sleeping, on queue c45ea050(xprt_resend)
-       task 55816, status=0, timeout=0, active, sleeping, on queue c45ea05c(xprt_pending)
-     Transport c45ea000, sockstate=0x1
-       cong 256/cwnd 256
-       RTT estimates (def timeout 700):
-         0: rtt   15 srtt  100 ntimeo   0
-         1: rtt   15 srtt  100 ntimeo   0
-         2: rtt   49 srtt  100 ntimeo   0
-         3: rtt   15 srtt  100 ntimeo   0
-         4: rtt   15 srtt  100 ntimeo   0
-     RPC wait queue sending:
-       task 43528, status=-11, timeout=0, active, sleeping
-       task 52431, status=-11, timeout=0, active, sleeping
-       task 9969, status=-11, timeout=0, active, sleeping
-       task 21384, status=-11, timeout=0, active, sleeping
-     RPC wait queue pending:
-       task 55816, status=0, timeout=0, active, sleeping
-     RPC wait queue resend:
-       task 43527, status=-11, timeout=0, active timer, async, active, sleeping
-     RPC wait queue backlog: empty
+--- inode.c-reuse	2004-02-17 16:58:25.000000000 +0100
++++ inode.c	2004-02-17 17:00:01.000000000 +0100
+@@ -1320,6 +1320,14 @@
+ 		return 0;
+ 	if (old->addr.sin_port != server->addr.sin_port)
+ 		return 0;
++	if (old->flags != server->flags
++	 || old->rsize != server->rsize
++	 || old->wsize != server->wsize
++	 || old->acregmin != server->acregmin
++	 || old->acregmax != server->acregmax
++	 || old->acdirmin != server->acdirmin
++	 || old->acdirmax != server->acdirmax)
++	 	return 0;
+ 	return !memcmp(&old->fh, &server->fh, sizeof(struct nfs_fh));
+ }
+ 
 
---/9DWx/yDrRhgMJTb--
+--U+BazGySraz5kW0T--
 
 
 -------------------------------------------------------
