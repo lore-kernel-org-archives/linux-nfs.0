@@ -1,22 +1,27 @@
-From: =?iso-8859-1?Q?Brasseur_Val=E9ry?= <Valery.Brasseur@atosorigin.com>
-Subject: readdir and readdirplus...
-Date: Wed, 24 Sep 2003 10:50:21 +0200
+From: "Bill Rugolsky Jr." <brugolsky@telemetry-investments.com>
+Subject: Re: nfsd re-export
+Date: Wed, 24 Sep 2003 07:49:47 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <8147E1B07201DD41B6B9F0D31E07B384016486A6@srv-grp-s07.dev.atos.fr>
+Message-ID: <20030924114947.GA15214@ti19>
+References: <3F706D2F.90204@iut.univ-paris8.fr>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1A27hQ-0004Rf-00
-	for <nfs@lists.sourceforge.net>; Wed, 24 Sep 2003 04:20:48 -0700
-Received: from srv-grp-s01.axime.com ([160.92.18.102])
+	id 1A28AA-0006h2-00
+	for <nfs@lists.sourceforge.net>; Wed, 24 Sep 2003 04:50:30 -0700
+Received: from 209-166-240-202.cust.walrus.com ([209.166.240.202] helo=ti3.telemetry-investments.com)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 1A25MO-0004IV-3Y
-	for nfs@lists.sourceforge.net; Wed, 24 Sep 2003 01:50:56 -0700
-To: <nfs@lists.sourceforge.net>
+	id 1A28A9-0002sP-IM
+	for nfs@lists.sourceforge.net; Wed, 24 Sep 2003 04:50:29 -0700
+Received: from ti19.telemetry-investments.com (ti19 [192.168.8.19])
+	by ti3.telemetry-investments.com (8.11.6/8.11.6) with ESMTP id h8OBnqt12572
+	for <nfs@lists.sourceforge.net>; Wed, 24 Sep 2003 07:49:52 -0400
+To: Yahya AZZOUZ <y.azzouz@iut.univ-paris8.fr>
+In-Reply-To: <3F706D2F.90204@iut.univ-paris8.fr>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,18 +34,26 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I am using a linux 2.4.20+NFS-ALL patches.
-my server is a Netapp Filer
+On Tue, Sep 23, 2003 at 05:56:31PM +0200, Yahya AZZOUZ wrote:
+> i want to re-export a nfs file system.
+> I don't know if it is possible.
+> Some idies !
 
-I am using NFSv3
+Generally not a good idea, but if you insist, you might
+want to try UNFS3, a user-space NFSv3 server implementation
+that is actively being developed:
 
-what I did not understand is that it's seems that linux does not use =
-READDIRPLUS ...=20
-is it normal ? in sources I have seen that certain condition should be =
-met... but I never see any READDIRPLUS request !!!
+    http://unfs3.sourceforge.net/
 
-thanks
-valery
+When using a user-space NFS server, one should avoid
+modifying the exported filesystem(s) on the fileserver
+by directly accessing the local mount (especially directory
+renames, etc.).  Doing so is likely to confuse the NFS server
+and its clients.
+
+Regards,
+
+	Bill Rugolsky
 
 
 -------------------------------------------------------
