@@ -1,18 +1,15 @@
-From: "Stephen C. Tweedie" <sct@redhat.com>
-Subject: Re: Re: [NFS] htree+NFS (NFS client bug?)
-Date: Wed, 27 Nov 2002 15:00:53 +0000
+From: Jeremy Fitzhardinge <jeremy@goop.org>
+Subject: Re: htree+NFS (NFS client bug?)
+Date: 27 Nov 2002 09:26:38 -0800
 Sender: ext2-devel-admin@lists.sourceforge.net
-Message-ID: <20021127150053.A2948@redhat.com>
-References: <1038354285.1302.144.camel@sherkaner.pao.digeo.com> <shsptsrd761.fsf@charged.uio.no> <1038387522.31021.188.camel@ixodes.goop.org>
+Message-ID: <1038417998.533.2.camel@ixodes.goop.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-   Ext2 devel <ext2-devel@lists.sourceforge.net>,
-   NFS maillist <nfs@lists.sourceforge.net>,
-   Linux Kernel List <linux-kernel@vger.kernel.org>
+Content-Type: multipart/mixed; boundary="=-kGddoeD8Dh55mIsF+khW"
+Cc: Ext2 devel <ext2-devel@lists.sourceforge.net>,
+	NFS maillist <nfs@lists.sourceforge.net>,
+	Linux Kernel List <linux-kernel@vger.kernel.org>
 Return-path: <ext2-devel-admin@lists.sourceforge.net>
-To: Jeremy Fitzhardinge <jeremy@goop.org>
-In-Reply-To: <1038387522.31021.188.camel@ixodes.goop.org>; from jeremy@goop.org on Wed, Nov 27, 2002 at 12:58:42AM -0800
+To: Theodore Ts'o <tytso@mit.edu>
 Errors-To: ext2-devel-admin@lists.sourceforge.net
 List-Help: <mailto:ext2-devel-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:ext2-devel@lists.sourceforge.net>
@@ -23,71 +20,153 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/ext2-devel>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=ext2-devel>
 List-ID: <nfs.lists.sourceforge.net>
 
-Hi,
 
-On Wed, Nov 27, 2002 at 12:58:42AM -0800, Jeremy Fitzhardinge wrote:
-> On Tue, 2002-11-26 at 19:26, Trond Myklebust wrote:
-> > >>>>> " " == Jeremy Fitzhardinge <jeremy@goop.org> writes:
-> > 
-> >      > It looks to me like some sort of problem managing the NFS
-> >      > readdir cookies, but it isn't clear to me whether this is the
-> >      > NFS server/ext3 generating bad cookies, or the NFS client
-> >      > handling them wrongly.
-> > 
-> > In order to determine which of the two needs to be fixed, it would
-> > help if you could print out the cookies from that listing or better
-> > still: if you could provide us with the raw tcpdump output. Please
-> > remember to use an 8k snaplen for the tcpdump...
+--=-kGddoeD8Dh55mIsF+khW
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+
+On Wed, 2002-11-27 at 05:33, Theodore Ts'o wrote: 
+> Well, even if the NFS server is generating bad cookies (and that may
+> be possible), the NFS client should be more robust and not spin in a
+> loop forever.
 > 
-> Here's a pcap dump file of the transaction.  I changed [rw]size to 1024
-> because I couldn't work out how to get ethereal to reassemble the
-> fragments.  It doesn't seem to have affected the behaviour at all.
+> Can you send me a directory list (from the server) of the directory in
+> question?  Also, can you send me the output of dumpe2fs -h on the
+> filesystem.  I'll need the later to get the seed for the htree hash,
+> so I can try replicating this on my end.
 
-The dump looks problematic, but I'm not sure whether it's a client or
-a server problem.
+The hash seed is 80f11989-89cc-4046-80d8-4aef72a7f80f (extracted with
+tune2fs -l).  The listing is attached.
 
-Frame 6 is a READDIR reply, ending with 
+> Also, have you tried running e2fsck on filesystem on the server?  It
+> would be very interesting to confirm whether or not the filesystem is
+> consistent.
 
-    Entry: file ID 294052, name vg_include.h~51-kill-inceip
-        File ID: 294052
-        Name: vg_include.h~51-kill-inceip
-            length: 27
-            contents: vg_include.h~51-kill-inceip
-            fill bytes: opaque data
-        Cookie: 1611747420
-    Value Follows: No
-    EOF: 0
+This happens very regularly.  Each time it does I create a new directory
+and move everything over, which presumably works because it rehashes
+everything and/or changes the alignment of particular direntries with
+respect to the NFS reply packets.  What I'm saying is that if the
+filesystem is getting into an inconsistent state, it is doing so at a
+very high rate.  I'll check it anyway... all OK.
 
-There follows in frame 7 a request for the next chunk, starting with
-the same cookie, and the reply in frame 8 ends with:
+	J
 
-    Entry: file ID 298407, name vg_libpthread.vs
-        File ID: 298407
-        Name: vg_libpthread.vs
-            length: 16
-            contents: vg_libpthread.vs
-        Cookie: 1611747420
-    Value Follows: No
-    EOF: 1
+--=-kGddoeD8Dh55mIsF+khW
+Content-Description: 
+Content-Disposition: inline; filename=dirlist
+Content-Type: text/plain; charset=ISO-8859-15
+Content-Transfer-Encoding: 7bit
 
-Now, this final frame has EOF = 1, so the client should not be looking
-for any more data after it.  If the client _does_ try to progress,
-though, it will use that final cookie for the next request, and will
-naturally find the results already in cache so will repeat the final
-chunk of directory entries.
+.
+..
+vg_symtypes.h~
+vg_include.h
+.deps
+vg_to_ucode.c~47-chained-bb
+vg_from_ucode.c~47-chained-bb
+vg_memory.c
+vg_symtypes.c~
+vg_constants.h~48-chained-indirect
+valgrind
+vg_needs.c
+vg_from_ucode.i
+vg_symtypes.h~44-symbolic-addr
+vg_libpthread.c~11-timedwait-rel
+vg_libpthread_unimp.c
+vg_constants.h~47-chained-bb
+vg_libpthread.c~03-accept-nonblock
+vg_transtab.c~47-chained-bb
+vg_include.h~48-chained-indirect
+vg_symtypes.c~44-symbolic-addr
+vg_main.c~14-hg-mmap-magic-virgin
+vg_symtab2-test.c
+vg_startup.S
+vg_main.c~51-kill-inceip
+vg_default.c
+vg_translate.c~01-partial-mul
+vg_dispatch.S~48-chained-indirect
+vg_scheduler.c~47-chained-bb
+vg_clientfuncs.c
+Makefile.in
+gmon.out
+vg_main.c~47-chained-bb
+vg_procselfmaps.c
+vg_symtab2.h
+vg_main.c~48-chained-indirect
+vg_translate.c~51-kill-inceip
+vg_symtypes.h
+vg_symtab_stabs.c
+dosyms
+vg_constants.h
+vg_demangle.c
+vg_messages.c
+vg_include.h~50-fast-cond
+vg_to_ucode.c
+Makefile~
+vg_symtab2.c~44-symbolic-addr
+vg_dispatch.S~47-chained-bb
+vg_libpthread.c
+vg_kerneliface.h
+vg_from_ucode.c~48-chained-indirect
+vg_from_ucode.c
+vg_from_ucode.c~49-no-inceip
+vg_malloc2.c
+vg_instrument.c
+vg_signals.c~28-sigtrap
+vg_main.c.rej
+vg_symtab2-test
+vg_errcontext.c
+vg_translate.c
+vg_symtypes.c
+out.pid11357
+vg_execontext.c
+Makefile
+vg_main.c
+vg_errcontext.c~47-chained-bb
+vg_signals.c
+vg_symtab2.c~offset-dehack
+vg_from_ucode.c~01-partial-mul
+Makefile.am~44-symbolic-addr
+vg_main.c.orig
+vg_symtab2.c
+vg_kerneliface.h~28-sigtrap
+vg_ldt.c
+vg_from_ucode.c~00-lazy-fp
+vg_transtab.c
+vg_mylibc.c~12-vgprof
+vg_from_ucode.c~50-fast-cond
+vg_symtab2.h~44-symbolic-addr
+vg_symtab_dwarf.c~44-symbolic-addr
+vg_unsafe.h
+vg_include.h~51-kill-inceip
+vg_symtab_stabs.c~44-symbolic-addr
+vg_mylibc.c
+vg_dummy_profile.c
+vg_main.c~50-fast-cond
+vg_mylibc.c~09-rdtsc-calibration
+vg_include.h~47-chained-bb
+vg_translate.c~47-chained-bb
+vg_libpthread.c~46-fix-writeable_or_erring-proto
+vg_syscall.S
+vg_from_ucode.c~51-kill-inceip
+vg_mylibc.c~28-sigtrap
+vg_dispatch.S
+vg_symtab_dwarf.c
+vg_intercept.c
+vg_symtab_stabs.c~
+vg_clientmalloc.c
+vg_valgrinq_dummy.c
+vg_scheduler.c
+vg_to_ucode.c~01-partial-mul
+Makefile.am
+vg_helpers.S
+out.pid11334
+vg_syscalls.c
+valgrind.in
+vg_libpthread.vs
 
-So I suspect that this is a root a client problem --- the client has
-repeated a READDIR despite being told that the previous reply was EOF
---- but that the best solution is actually to change the server to
-poke a dedicated EOF cookie into the final dirent of the stream.  One
-of the reasons we need to do that is to cope with the unclear
-situation when an application is using telldir/seekdir to reposition
-the directory stream (tcsh is really bad for trying to do that with
-32-bit offsets when globbing, for example, although the right answer
-there is "use readdir64".)
+--=-kGddoeD8Dh55mIsF+khW--
 
-Cheers,
- Stephen
 
 
 -------------------------------------------------------
