@@ -1,19 +1,16 @@
-From: Robert Myers <rmyers1400@attbi.com>
-Subject: Re: NFS through firewall
-Date: Mon, 03 Mar 2003 21:40:14 -0500
+From: Abhishek Rai <abbashake007@yahoo.com>
+Subject: profiling the nfs client
+Date: Tue, 4 Mar 2003 11:27:58 -0800 (PST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3E64120E.4050403@attbi.com>
-References: <3E63EF0B.2070903@motorola.com>
+Message-ID: <20030304192758.47715.qmail@web11407.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from rwcrmhc51.attbi.com ([204.127.198.38])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18q2Lr-0001oj-00
-	for <nfs@lists.sourceforge.net>; Mon, 03 Mar 2003 18:40:19 -0800
-To: Robert Rati <Robert.Rati@motorola.com>
-In-Reply-To: <3E63EF0B.2070903@motorola.com>
+Received: from web11407.mail.yahoo.com ([216.136.131.237])
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18qI50-0006fl-00
+	for <nfs@lists.sourceforge.net>; Tue, 04 Mar 2003 11:27:58 -0800
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,39 +23,34 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Robert Rati wrote:
+hi,
+i need a profiling tool for profiling the nfs client
+preferrably for 2.4.18
+i tried kernprof but it doesn't serve the purpose as
+kernprof seems to be giving the execution profile of
+the core kernel image and not any modules (as is the
+nfs client on my machine)
 
-> I am trying to provide a directory to the outside world through a 
-> firewall via NFS.  I can mount the directory from another system, but 
-> when I try to list the contents of the directory the firewall blocks 
-> the communication.  I see that the host system is attempting to send 
-> data on port 65535 using the UDP protocol.  I have the following 
-> firewall rule that SHOULD match it, but isn't:
->
-> /sbin/ipchains -A output -j ACCEPT -i eth0 -p udp --source-port 
-> 61000:65535 
+can anybody suggest one/give pointers etc
 
-Is this an  output chain on the client side?  Why should that cause the 
-client to accept a communication on 65535?  Happens all the time: client 
-requests data on port x, declines the response on port x.  Go figure.
+Thanks a lot
+Abhishek
 
-Without seeing your entire ipchains config (and I wouldn't recommend 
-posting it), I can't suggest a one-line fix,  but somewhere you need
+=====
+"They thought to use and shame me but I win out by nature, because a true
+freak cannot be made.  A true freak must be born." - K. Dunn
+============================================================
+Abhishek Rai
+Final year,B.Tech, Computer Science and Engineering
+IIT KGP,India
+abbashake007@yahoo.com 
+============================================================ 
 
-/sbin/ipchains -A input -j ACCEPT -i eth0 -p  udp --source-port 61000:65535,
 
-but I wouldn't recommend it.  Instead, specify that NFS use a port in 
-the reserved range (1-1024) and don't open a hole in your firewall where 
-hackers often lurk.
-
-Check out
-
-http://www.ibiblio.org/pub/Linux/docs/HOWTO/other-formats/html_single/NFS-HOWTO.html
-
-for how to specify what port NFS is using.
-
-RM
-
+__________________________________________________
+Do you Yahoo!?
+Yahoo! Tax Center - forms, calculators, tips, more
+http://taxes.yahoo.com/
 
 
 -------------------------------------------------------
