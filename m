@@ -1,24 +1,22 @@
-From: Nathan Ollerenshaw <nathan@valuecommerce.co.jp>
-Subject: Re: Help diagnosing bizarre NFS problem
-Date: Thu, 27 Jan 2005 11:00:53 +0900
-Message-ID: <4678F474-7007-11D9-89EE-000A95A07AB8@valuecommerce.co.jp>
-References: <BA594DD2-65DA-11D9-B0EB-000A95A07AB8@valuecommerce.co.jp> <731336CA-6DE6-11D9-8B4D-000A95A07AB8@valuecommerce.co.jp> <41F4ECD6.90405@redhat.com>
-Mime-Version: 1.0 (Apple Message framework v619)
-Content-Type: text/plain; charset=US-ASCII; format=flowed
-Cc: nfs@lists.sourceforge.net
+From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
+Subject: Re: ps -aux hangs on [nfsd]
+Date: Thu, 27 Jan 2005 11:57:04 +0100
+Message-ID: <41F8C900.90404@bio.ifi.lmu.de>
+References: <41DE6CF9.6030100@bio.ifi.lmu.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-15; format=flowed
+Cc: NFS NFS <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ctyxv-0000P2-Fb
-	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 18:00:59 -0800
-Received: from f8a01-0447.din.or.jp
-	([61.122.67.147] helo=elmo.stupendous.net ident=nobody)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1Ctyxu-0004Rc-1Q
-	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 18:00:59 -0800
-In-Reply-To: <41F4ECD6.90405@redhat.com>
-To: Neil Horman <nhorman@redhat.com>
+	id 1Cu7L0-0001Kb-8f
+	for nfs@lists.sourceforge.net; Thu, 27 Jan 2005 02:57:22 -0800
+Received: from acheron.informatik.uni-muenchen.de ([129.187.214.135])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1Cu7Kp-0004U1-Kh
+	for nfs@lists.sourceforge.net; Thu, 27 Jan 2005 02:57:22 -0800
+To: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
+In-Reply-To: <41DE6CF9.6030100@bio.ifi.lmu.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,31 +30,108 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Jan 24, 2005, at 9:40 PM, Neil Horman wrote:
+Ok, it happened again and I did a "strace -f ps -aux". I can see
+ps -aux going through almost all of the /proc/<pid> directories
+for nfsd pids, but not all. On the 16th of the 18 nfsd pids, instead
+of opening /proc/15600/cmdline, it opens /etc/passwd and then goes
+into a look opening and closing /etc/passwd all over again.
 
-> Dont suppose you can provide access to the tcpdumps, can you?
+Here are the relevant portions of the strace log, maybe someone
+has an idea what could go wrong here.
 
-Probably :) Its quite large.
+The pids/proc dirs for the nfsd are 15585-15602. Things go wrong
+on pid 15600.
 
-At the moment, our vendor is saying they have a possible solution, and 
-that its a problem with the linux client code but they can fix it on 
-their side.
+Currently, this happens with the latest SuSE kernel for SuSE 9.2
+(2.6.8 plus SuSE patches).
 
-I'll try to get some details out of them that I can forward to you so 
-that you can see whether a fix is needed on the Linux side.
 
-Thanks for the offer of help; I'll see what the vendor has for me over 
-the next few days and if it looks like they are barking up the wrong 
-tree I'll see how we can get the 4 gb of tcpdump data to you.
+17054 stat64("/proc/15599", {st_mode=S_IFDIR|0555, st_size=0, ...}) = 0
+17054 open("/proc/15599/stat", O_RDONLY) = 6
+17054 read(6, "15599 (nfsd) S 1 1 1 0 -1 104864"..., 1023) = 125
+17054 close(6)                          = 0
+17054 open("/proc/15599/status", O_RDONLY) = 6
+17054 read(6, "Name:\tnfsd\nState:\tS (sleeping)\nS"..., 1023) = 348
+17054 close(6)                          = 0
+17054 open("/proc/15599/cmdline", O_RDONLY) = 6
+17054 read(6, "", 2047)                 = 0
+17054 close(6)                          = 0
+17054 write(1, "root     15599  0.0  0.0     0  "..., 70) = 70
+17054 stat64("/proc/15600", {st_mode=S_IFDIR|0555, st_size=0, ...}) = 0
+17054 open("/proc/15600/stat", O_RDONLY) = 6
+17054 read(6, "15600 (nfsd) S 1 1 1 0 -1 104864"..., 1023) = 125
+17054 close(6)                          = 0
+17054 open("/proc/15600/status", O_RDONLY) = 6
+17054 read(6, "Name:\tnfsd\nState:\tS (sleeping)\nS"..., 1023) = 373
+17054 close(6)                          = 0
+17054 open("/etc/passwd", O_RDONLY)     = 6
+   ===> here it should open /proc/16000/cmdline, not passwd <===
 
-Nathan.
+17054 fcntl64(6, F_GETFD)               = 0
+17054 fcntl64(6, F_SETFD, FD_CLOEXEC)   = 0
+17054 _llseek(6, 0, [0], SEEK_CUR)      = 0
+17054 fstat64(6, {st_mode=S_IFREG|0644, st_size=1704, ...}) = 0
+17054 mmap2(NULL, 1704, PROT_READ, MAP_SHARED, 6, 0) = 0xb7dd3000
+17054 _llseek(6, 1704, [1704], SEEK_SET) = 0
+17054 fstat64(6, {st_mode=S_IFREG|0644, st_size=1704, ...}) = 0
+17054 munmap(0xb7dd3000, 1704)          = 0
+17054 close(6)                          = 0
+17054 open("/etc/passwd", O_RDONLY)     = 6
+17054 fcntl64(6, F_GETFD)               = 0
+17054 fcntl64(6, F_SETFD, FD_CLOEXEC)   = 0
+17054 _llseek(6, 0, [0], SEEK_CUR)      = 0
+17054 fstat64(6, {st_mode=S_IFREG|0644, st_size=1704, ...}) = 0
+17054 mmap2(NULL, 1704, PROT_READ, MAP_SHARED, 6, 0) = 0xb7dd3000
+17054 _llseek(6, 1704, [1704], SEEK_SET) = 0
+17054 fstat64(6, {st_mode=S_IFREG|0644, st_size=1704, ...}) = 0
+17054 munmap(0xb7dd3000, 1704)          = 0
+17054 close(6)                          = 0
+17054 open("/etc/passwd", O_RDONLY)     = 6
+...
+and so on.
+
+After doing this about 100 times, the strace change a bit:
+17054 open("/etc/passwd", O_RDONLY)     = 6
+17054 fcntl64(6, F_GETFD)               = 0
+17054 fcntl64(6, F_SETFD, FD_CLOEXEC)   = 0
+17054 _llseek(6, 0, [0], SEEK_CUR)      = 0
+17054 fstat64(6, {st_mode=S_IFREG|0644, st_size=1704, ...}) = 0
+17054 mmap2(NULL, 1704, PROT_READ, MAP_SHARED, 6, 0) = 0xb7dd3000
+17054 _llseek(6, 1704, [1704], SEEK_SET) = 0
+17054 fstat64(6, {st_mode=S_IFREG|0644, st_size=1704, ...}) = 0
+17054 munmap(0xb7dd3000, 1704)          = 0
+17054 close(6)                          = 0
+17054 mremap(0xb7d53000, 331776, 335872, MREMAP_MAYMOVE) = 0xb7d53000
+17054 open("/etc/passwd", O_RDONLY)     = 6
+...
+
+I.e., the "mremap" occurs. These commands (with the mremap) now loop forever,
+and every about 50 times a little variation occurs:
+
+...
+17054 munmap(0xb7dd3000, 1704)          = 0
+17054 close(6)                          = 0
+17054 mremap(0xb7d53000, 405504, 405504, MREMAP_MAYMOVE) = 0xb7d53000
+17054 socket(PF_UNIX, SOCK_STREAM, 0)   = 6
+17054 connect(6, {sa_family=AF_UNIX, path="/var/run/.nscd_socket"}, 110) = -1 ENOENT 
+(No such file or directory)
+17054 close(6)                          = 0
+17054 open("/etc/passwd", O_RDONLY)     = 6
+...
+
+Anyone any ideas? I also did a "ls -laR" for all the nfsd dirs in /proc
+as well as find+cat on these dirs, so all contents from /proc are logged
+in case you need some more information...
+
+cu,
+Frank
 
 -- 
-"It is change, continuing change, inevitable change, that is
-  the dominant factor in society today. No sensible decision can
-  be made any longer without taking into account not only the
-  world as it is, but the world as it will be." - Isaac Asimov
-
+Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
+Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
+LMU, Amalienstr. 17           Phone: +49 89 2180-4049
+80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
+* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
 
 
 -------------------------------------------------------
