@@ -1,15 +1,15 @@
 From: "Kendrick M. Smith" <kmsmith@umich.edu>
-Subject: patch 19/38: CLIENT: put nfs_async_handle_jukebox() in fs/nfs/nfs3proc.c
-Date: Tue, 13 Aug 2002 19:04:11 -0400 (EDT)
+Subject: patch 10/38: CLIENT: new fields in 'struct nfs_mount_data'
+Date: Tue, 13 Aug 2002 19:00:09 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.SOL.4.44.0208131903530.25942-100000@rastan.gpcc.itd.umich.edu>
+Message-ID: <Pine.SOL.4.44.0208131859470.25942-100000@rastan.gpcc.itd.umich.edu>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from donkeykong.gpcc.itd.umich.edu ([141.211.2.163])
+Received: from berzerk.gpcc.itd.umich.edu ([141.211.2.162])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17ekhx-00031l-00
-	for <nfs@lists.sourceforge.net>; Tue, 13 Aug 2002 16:04:13 -0700
+	id 17eke4-0001nI-00
+	for <nfs@lists.sourceforge.net>; Tue, 13 Aug 2002 16:00:12 -0700
 To: linux-kernel@vger.kernel.org, <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -24,98 +24,91 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 
-Now that all calls to nfs_async_handle_jukebox() have been moved to
-fs/nfs/nfs3proc.c, we clean up by moving the nfs_async_jukebox() routine
-itself there.  We also rename it nfs3_async_handle_jukebox(), to be
-consistent with the naming conventions of that file.
+This patch changes 'struct nfs_mount_data' to include some new fields
+which will be passed down by the mount program:
+  @mnt_path - In NFSv4, the client kernel obtains the mount path
+              and is responsible for doing LOOKUP's component by
+              component, starting with the root of the pseudo
+              filesystem, until the filehandle of the mount point
+              is obtained.  This is in contrast with previous
+              versions, in which the mount program obtains the
+              filehandle of the mount point from mountd.
+  @ip_addr  - The mount program fills this in with the client's
+              own IP address.  This is used to set the client's
+              clientid (an identifier, unique to the client,
+              which the client sends to the server), and also
+              to send callback information to the server.
 
---- old/include/linux/nfs_fs.h	Sat Aug 10 23:39:47 2002
-+++ new/include/linux/nfs_fs.h	Thu Aug  8 18:10:03 2002
-@@ -443,28 +443,7 @@ extern void * nfs_root_data(void);
- 	__retval;							\
- })
+It also defines new mount flags NFS_MOUNT_VER4, NFS_MOUNT_STRICTLOCK.
+The STRICTLOCK flag will be used in a subsequent patch which implements
+byte-range file locking.
 
--#ifdef CONFIG_NFS_V3
--
- #define NFS_JUKEBOX_RETRY_TIME (5 * HZ)
--static inline int
--nfs_async_handle_jukebox(struct rpc_task *task)
--{
--	if (task->tk_status != -EJUKEBOX)
--		return 0;
--	task->tk_status = 0;
--	rpc_restart_call(task);
--	rpc_delay(task, NFS_JUKEBOX_RETRY_TIME);
--	return 1;
--}
--
--#else
--
--static inline int
--nfs_async_handle_jukebox(struct rpc_task *task)
--{
--	return 0;
--}
--#endif /* CONFIG_NFS_V3 */
+Finally, this patch increases the filehandle size to 128 bytes, but also
+changes the definition of the 'root' field in 'struct nfs_mount_data'
+so that it remains a 64-byte filehandle (to ensure binary compatibility
+with pre-NFSv4 versions of the mount program).
 
- #ifdef CONFIG_NFS_V4
-
---- old/fs/nfs/nfs3proc.c	Sat Aug 10 23:55:26 2002
-+++ new/fs/nfs/nfs3proc.c	Tue Aug  6 10:15:40 2002
-@@ -54,6 +54,17 @@ nfs3_rpc_call_wrapper(struct rpc_clnt *c
- #define rpc_call_sync(clnt, msg, flags) \
- 		nfs3_rpc_wrapper(clnt, msg, flags)
-
-+static int
-+nfs3_async_handle_jukebox(struct rpc_task *task)
-+{
-+	if (task->tk_status != -EJUKEBOX)
-+		return 0;
-+	task->tk_status = 0;
-+	rpc_restart_call(task);
-+	rpc_delay(task, NFS_JUKEBOX_RETRY_TIME);
-+	return 1;
-+}
-+
+--- old/include/linux/nfs.h	Mon Jul 29 15:53:27 2002
++++ new/include/linux/nfs.h	Mon Jul 29 23:18:38 2002
+@@ -120,7 +120,11 @@ enum nfs_ftype {
  /*
-  * Bare-bones access to getattr: this is for nfs_read_super.
+  * This is the kernel NFS client file handle representation
   */
-@@ -393,7 +404,7 @@ nfs3_proc_unlink_done(struct dentry *dir
- 	struct rpc_message *msg = &task->tk_msg;
- 	struct nfs_fattr	*dir_attr;
+-#define NFS_MAXFHSIZE		64
++#ifdef CONFIG_NFS_V4
++# define NFS_MAXFHSIZE		128
++#else
++# define NFS_MAXFHSIZE		64
++#endif
+ struct nfs_fh {
+ 	unsigned short		size;
+ 	unsigned char		data[NFS_MAXFHSIZE];
+--- old/include/linux/nfs3.h	Wed Jul 24 16:03:30 2002
++++ new/include/linux/nfs3.h	Mon Jul 29 11:50:09 2002
+@@ -28,6 +28,12 @@
+ #define NFS3_ACCESS_EXTEND	0x0008
+ #define NFS3_ACCESS_DELETE	0x0010
+ #define NFS3_ACCESS_EXECUTE	0x0020
++#define NFS3_ACCESS_FULL	0x003f
++
++struct nfs3_fh {
++	unsigned short		size;
++	char			data[NFS3_FHSIZE];
++};
 
--	if (nfs_async_handle_jukebox(task))
-+	if (nfs3_async_handle_jukebox(task))
- 		return 1;
- 	if (msg->rpc_argp) {
- 		dir_attr = (struct nfs_fattr*)msg->rpc_resp;
-@@ -651,7 +662,7 @@ nfs3_read_done(struct rpc_task *task)
- {
- 	struct nfs_read_data *data = (struct nfs_read_data *) task->tk_calldata;
+ /* Flags for create mode */
+ enum nfs3_createmode {
+--- old/include/linux/nfs_mount.h	Wed Jul 24 16:03:18 2002
++++ new/include/linux/nfs_mount.h	Mon Jul 29 11:50:09 2002
+@@ -18,7 +18,7 @@
+  * mount-to-kernel version compatibility.  Some of these aren't used yet
+  * but here they are anyway.
+  */
+-#define NFS_MOUNT_VERSION	4
++#define NFS_MOUNT_VERSION	5
 
--	if (nfs_async_handle_jukebox(task))
-+	if (nfs3_async_handle_jukebox(task))
- 		return;
- 	nfs_readpage_result(task, data->u.v3.res.count);
- }
-@@ -696,7 +707,7 @@ nfs3_write_done(struct rpc_task *task)
- {
- 	struct nfs_write_data *data = (struct nfs_write_data *) task->tk_calldata;
+ struct nfs_mount_data {
+ 	int		version;		/* 1 */
+@@ -37,7 +37,9 @@ struct nfs_mount_data {
+ 	char		hostname[256];		/* 1 */
+ 	int		namlen;			/* 2 */
+ 	unsigned int	bsize;			/* 3 */
+-	struct nfs_fh	root;			/* 4 */
++	struct nfs3_fh	root;			/* 4 */
++	char		mnt_path[256];		/* 5 */
++	char		ip_addr[16];		/* 5 */
+ };
 
--	if (nfs_async_handle_jukebox(task))
-+	if (nfs3_async_handle_jukebox(task))
- 		return;
- 	nfs_writeback_done(task, data->u.v3.args.stable,
- 			   data->u.v3.args.count, data->u.v3.res.count);
-@@ -750,7 +761,7 @@ nfs3_proc_write_setup(struct nfs_write_d
- static void
- nfs3_commit_done(struct rpc_task *task)
- {
--	if (nfs_async_handle_jukebox(task))
-+	if (nfs3_async_handle_jukebox(task))
- 		return;
- 	nfs_commit_done(task);
- }
+ /* bits in the flags field */
+@@ -53,6 +55,8 @@ struct nfs_mount_data {
+ #define NFS_MOUNT_KERBEROS	0x0100	/* 3 */
+ #define NFS_MOUNT_NONLM		0x0200	/* 3 */
+ #define NFS_MOUNT_BROKEN_SUID	0x0400	/* 4 */
++#define NFS_MOUNT_VER4		0x0800	/* 5 */
++#define NFS_MOUNT_STRICTLOCK	0x1000	/* 5 */
+ #define NFS_MOUNT_FLAGMASK	0xFFFF
+
+ #endif
 
 
 
