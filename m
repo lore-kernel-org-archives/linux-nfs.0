@@ -1,17 +1,17 @@
 From: Sfondrini Cesare <cesare.sfondrini@tin.it>
 Subject: Help for setting NFS
-Date: 09 Dec 2002 00:04:13 +0100
+Date: 09 Dec 2002 00:17:37 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1039388658.925.29.camel@sfondrin-home>
+Message-ID: <1039389459.1339.4.camel@sfondrin-home>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: multipart/mixed; boundary="=-bdTa7W0N36z1s4WrmQYn"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from vsmtp3.tin.it ([212.216.176.223] helo=smtp3.cp.tin.it)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18L9Tl-0006Ng-00
-	for <nfs@lists.sourceforge.net>; Sun, 08 Dec 2002 14:00:49 -0800
+	id 18L9gl-0003eq-00
+	for <nfs@lists.sourceforge.net>; Sun, 08 Dec 2002 14:14:16 -0800
 Received: from host202-90.pool212171.interbusiness.it (212.171.90.202) by smtp3.cp.tin.it (6.5.029)
-        id 3DDD788200657968 for nfs@lists.sourceforge.net; Sun, 8 Dec 2002 23:00:44 +0100
+        id 3DDD788200658A24 for nfs@lists.sourceforge.net; Sun, 8 Dec 2002 23:14:07 +0100
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -24,6 +24,32 @@ List-Id: Discussion of NFS under Linux development,
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+
+
+--=-bdTa7W0N36z1s4WrmQYn
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+
+I send a copy of the previous message because Xilian "freeze" when I
+send the previous one.
+
+ 
+
+
+--=-bdTa7W0N36z1s4WrmQYn
+Content-Disposition: inline
+Content-Description: Forwarded message - Help for setting NFS
+Content-Type: message/rfc822
+
+Subject: Help for setting NFS
+From: Sfondrini Cesare <cesare.sfondrini@tin.it>
+To: nfs@lists.sourceforge.net
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+X-Mailer: Ximian Evolution 1.0.8 (1.0.8-10) 
+Date: 09 Dec 2002 00:04:13 +0100
+Message-Id: <1039388658.925.29.camel@sfondrin-home>
+Mime-Version: 1.0
 
 Hi to everyone,
 
@@ -120,6 +146,8 @@ Thanks in advance for your help.
 
 
 Cesare 
+
+--=-bdTa7W0N36z1s4WrmQYn--
 
 
 
