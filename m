@@ -1,20 +1,17 @@
-From: James Pearson <james-p@moving-picture.com>
-Subject: Re: Strange messages on /var/log/messages: kernel: fh_verify:
- lnxsrv0004/repository permission failure, acc=42, error=13
-Date: Wed, 12 Jun 2002 10:02:12 +0100
+From: <robvog@hetnet.nl>
+Subject: VFS: Cannot open root device, nfsroot
+Date: Wed, 12 Jun 2002 11:49:53 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3D070E14.DF563CED@moving-picture.com>
-References: <20020612042958.56140.qmail@web10007.mail.yahoo.com>
+Message-ID: <30da01c211f6$80b1acf0$d16897c2@hetnet.nl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
+Received: from [194.151.104.209] (helo=hetnet.nl)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17I41I-0003PP-00
-	for <nfs@lists.sourceforge.net>; Wed, 12 Jun 2002 02:02:24 -0700
-To: =?iso-8859-1?Q?Jos=E9?= Vicente =?iso-8859-1?Q?N=FA=F1ez?= Zuleta
-	<josevnz@yahoo.com>
+	id 17I4mV-00074q-00
+	for <nfs@lists.sourceforge.net>; Wed, 12 Jun 2002 02:51:11 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,82 +24,66 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-See question 6 (and the answer) in the NFS FAQ at
-http://nfs.sourceforge.net/ :
+Hi everyone,
 
-> 6. Q. I keep getting permission failure messages at my nfs server. What are they?
-> Jan 7 09:15:29 server kernel: fh_verify: mail/guest permission failure, acc=4, error=13
-> Jan 7 09:23:51 server kernel: fh_verify: ekonomi/test permission failure, acc=4, error=13
-> 
-> They happen when a NFS setattr operation is attempted on a file you don't have 
-> write access to. These messages are harmless.
+I got the error:
 
-If you want, you could remove the offending 'printk' line from the knfsd
-code ...
+NET4: Unix domain sockets 1.0/smp for linux NET4.0
+ds: no socket drivers loaded
+request_module[block-major-8]: root fs not mounted
+VFS: Cannot open root device ""or 08:03
+Please append a correct "root"boot option
 
-James Pearson
+The strange thing is that it tries to mount from harddisk. This I got =
+somewhere else:
+ "the kernel looks like it is trying to boot off of 08:03, which is =
+correct, /dev/sda3."
+sda3 is indeed the root partition of the scsi harddisk.
 
-"José Vicente Núñez Zuleta" wrote:
-> 
-> Greetings,
-> 
-> Looking into the /var/log/messages i found the
-> following error message:
-> 
-> Jun 10 10:01:11 lnxsrv0003 kernel: fh_verify:
-> linux0054/repository permission failure, acc=42,
-> error=13
-> Jun 10 10:01:12 lnxsrv0003 kernel: fh_verify:
-> linux0050/repository permission failure, acc=42,
-> error=13
-> Jun 10 10:01:12 lnxsrv0003 kernel: fh_verify:
-> linux0048/repository permission failure, acc=42,
-> error=13
-> Jun 10 10:01:12 lnxsrv0003 kernel: fh_verify:
-> linux0024/repository permission failure, acc=42,
-> error=13
-> Jun 10 10:01:13 lnxsrv0003 kernel: fh_verify:
-> linux0049/repository permission failure, acc=42,
-> error=13
-> Jun 10 10:01:13 lnxsrv0003 kernel: fh_verify:
-> linux0047/repository permission failure, acc=42,
-> error=13
-> Jun 10 10:01:14 lnxsrv0003 kernel: fh_verify:
-> linux0056/repository permission failure, acc=42,
-> error=13
-> Jun 10 10:01:15 lnxsrv0003 kernel: fh_verify:
-> linux0057/repository permission failure, acc=42,
-> error=13
-> Jun 10 10:04:00 lnxsrv0003 kernel: fh_verify:
-> lnxsrv0004/repository permission failure, acc=42,
-> error=13
-> Jun 10 10:04:00 lnxsrv0003 last message repeated 5
-> times
-> 
-> Any ideas? Are this messages harmfull?
-> 
-> JV.
-> 
-> =====
-> José Vicente Nuñez Zuleta (josevnz@yahoo.com)
-> Newbreak System Administrator (http://www.newbreak.com)
-> Office Phone:   203-355-1511, 203-355-1510
-> Fax:            203-355-1512
-> Cellular Phone: 203-570-7078
-> 
-> __________________________________________________
-> Do You Yahoo!?
-> Yahoo! - Official partner of 2002 FIFA World Cup
-> http://fifaworldcup.yahoo.com
-> 
-> _______________________________________________________________
-> 
-> Multimillion Dollar Computer Inventory
-> Live Webcast Auctions Thru Aug. 2002 - http://www.cowanalexander.com/calendar
-> 
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+It seems the kernel tries to mount /dev/sda3 as root instead of mounting =
+the directory offered by nfsserver.
+
+Getting kernel goes ok, so there seems to be some misunderstanding =
+between pxelinux config file and nfsserver.
+These are my config files:
+
+/tftpboot/pxelinux.cfg/default I got:
+LABEL  linux
+KERNEL  bzImage
+APPEND root=3D/dev/nfs ip=3Ddhcp nfsroot=3D192.168.1.1:/netboot/base
+
+/etc/exports:
+/netboot/base       192.168.1.0/255.255.255.0(rw,no_root_squash)
+
+/etc/hosts.allow:
+ALL:ALL
+
+/etc/hosts.deny:
+ is empty
+
+rpcinfo -p : says portmapper, mountd and nfs are active.
+
+My log that logs all says nothing after DHCPPACK for ip assignment by =
+dhcpd and "tftp: client does not accept options" which is normal I =
+understand.
+
+I have also tried to use other kernels and root filesystems (in =
+/netboot/base, client was supposed to nfs) but without succes.
+The kernels I made all gave the error:
+
+NET4: Unix domain sockets 1.0/smp for linux NET4.0
+ds: no socket drivers loaded
+request_module[block-major-8]: root fs not mounted
+VFS: Cannot open root device ""or 08:03
+Please append a correct "root"boot option
+
+And a kernel I ripped of a bootflop gave not the error:
+ds: no socket drivers loaded
+but has propably not the necessary modules for nfsroot compiled.
+
+I am at a loss, I have no idee why it's not working.
+If anyone has a sugestion I would very much apreciate it.
+
 
 _______________________________________________________________
 
