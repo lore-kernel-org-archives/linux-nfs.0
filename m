@@ -1,20 +1,22 @@
-From: Bryan O'Sullivan <bos@serpentine.com>
+From: Spencer Shepler <shepler@eng.sun.com>
 Subject: Re: High Availability NFS Proposal
-Date: 26 Aug 2002 12:41:56 -0700
+Date: Mon, 26 Aug 2002 17:01:37 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1030390916.2477.25.camel@plokta.s8.com>
-References: <200208260451.g7Q4pM325746@localhost.localdomain>
+Message-ID: <20020826220136.GB100566@dhcp-uaus08-128-212.sun.com>
+References: <20020826175418.GB110744@sheplerathome.eng.sun.com> <200208261904.g7QJ4Gd01843@localhost.localdomain>
+Reply-To: spencer.shepler@Sun.COM
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net, trond.myklebust@fys.uio.no,
-	Robert Walsh <rjwalsh@durables.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: spencer.shepler@Sun.COM,
+        "Bill Rugolsky Jr." <brugolsky@telemetry-investments.com>,
+        nfs@lists.sourceforge.net, lmb@suse.de
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from server.s8.com ([66.77.12.139])
+Received: from nwkea-mail-1.sun.com ([192.18.42.13])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17jPkR-0006Io-00
-	for <nfs@lists.sourceforge.net>; Mon, 26 Aug 2002 12:42:03 -0700
+	id 17jRvn-00038n-00
+	for <nfs@lists.sourceforge.net>; Mon, 26 Aug 2002 15:01:55 -0700
 To: James Bottomley <James.Bottomley@steeleye.com>
-In-Reply-To: <200208260451.g7Q4pM325746@localhost.localdomain>
+In-Reply-To: <200208261904.g7QJ4Gd01843@localhost.localdomain>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,36 +29,22 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Sun, 2002-08-25 at 21:51, James Bottomley wrote:
+On Mon, James Bottomley wrote:
+> shepler@eng.sun.com said:
+> > How would you propose dealing with NFSv4 where the mount and statd
+> > daemons are not involved with that implementation? 
+> 
+> Distributions are only just starting to use V3.  V4 is so far out as not to 
+> need consideration at this time.
 
-> Extra information for statd would pertain to virtual host, but by and large, 
-> the information is identical.  Dnotify won't work because in order to close 
-> race windows, the cluster has to be an active participant (i.e. mountd may not 
-> reply until the cluster confirms it has the information), it can't just wait 
-> on triggers.
+My comment was meant to draw out a discussion that with NFSv4 the
+user-level hooks will not be available and an in-kernel implementation
+would need to be considered.  If the current in-kernel implementation
+is moving towards user-level, then future v4 work will need to be redone.
 
-Good point.  By the way, the race condition you describe is catastrophic
-for at least one Linux NFS client.
+-- 
+Spencer
 
-I replicated the condition that a client would see as a result of the
-race under 2.4.19 (with Trond's jumbo NFS patch) as follows:
-
-        * Server exports an fs.
-        * Client mounts it.
-        * Server unexports it.
-        * Client attempts to access the fs it thinks it still has
-          mounted.
-
-The client oopsed, and its VFS got completely wedged.  The client in
-question was running headless (I wasn't expecting this operation to
-cause a disaster), so I haven't captured the oops yet, but it was ...
-more exciting than I expected.
-
-I'll post a full report of the problem later, as time permits.
-
-So yes, server-side hooks seem, er, somewhat important.
-
-	<b
 
 
 -------------------------------------------------------
