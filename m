@@ -1,22 +1,22 @@
 From: Olaf Kirch <okir@suse.de>
-Subject: Re: knfsd brought to its knees, by a simple rsync or cp operation
-Date: Wed, 2 Mar 2005 10:03:13 +0100
-Message-ID: <20050302090312.GA5003@suse.de>
-References: <20050226082854.2a496ec3@be.back.l8r.net> <20050228100633.GA4822@suse.de> <20050228102307.3788a184@be.back.l8r.net> <20050228154455.GS4822@suse.de> <20050228112018.34fdeb2b@be.back.l8r.net> <20050301095548.GJ14402@suse.de> <20050301065703.7e52cf4e@be.back.l8r.net> <20050301143732.GA22324@suse.de> <20050301181007.382a1422@be.back.l8r.net>
+Subject: Re: [RFC] implementing BSD style locks on NLM (flocks)
+Date: Wed, 2 Mar 2005 16:56:35 +0100
+Message-ID: <20050302155634.GE22736@suse.de>
+References: <20050227192113.GA5778@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D6PlP-0007x9-6h
-	for nfs@lists.sourceforge.net; Wed, 02 Mar 2005 01:03:27 -0800
-Received: from mail-ex.suse.de ([195.135.220.2] helo=Cantor.suse.de)
+	id 1D6WDR-0007cQ-GI
+	for nfs@lists.sourceforge.net; Wed, 02 Mar 2005 07:56:49 -0800
+Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
 	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.41)
-	id 1D6PlL-0003FU-4Z
-	for nfs@lists.sourceforge.net; Wed, 02 Mar 2005 01:03:27 -0800
-To: Brad Barnett <lists@L8R.net>
-In-Reply-To: <20050301181007.382a1422@be.back.l8r.net>
+	id 1D6WDK-0007QK-Gm
+	for nfs@lists.sourceforge.net; Wed, 02 Mar 2005 07:56:49 -0800
+To: nhorman@redhat.com
+In-Reply-To: <20050227192113.GA5778@localhost.localdomain>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,29 +30,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, Mar 01, 2005 at 06:10:07PM -0500, Brad Barnett wrote:
-> > Well, it sounds like something's eating the network bandwidth,
-> > or otherwise interfering with nfsd responsiveness. Again, are
-> > you using UDP or TCP? If UDP, look at nfsstat output to see if
-> > you have a high retransmit count.
-> > 
-> 
-> In my original post, I did mention that I can copy large files (isos) over
-> the network at excellent speeds.  That is, I get over 6M/sec transfer
-> speed...
+Hi,
 
-Stil you won't answer: UDP or TCP? :-)
+> 	I was wondering, how much interest there might be in the addition of
+> support for BSD style locks (flocks) over NLM.  I was thinking that a bit could
+> be added to differentiate the two namespaces.  Any thoughts appreciated.  
 
-And the question about retransmits referred to the situation where you
-see the slow-downs.
+I looked into this before, and it's not just two "name spaces".  The major
+difference is that BSD flocks are associated with an open file handle,
+while POSIX locks are associated with a PID.
 
-> > If it's really a problem with scheduling, it should make a difference
-> > if you run the rsync job with lower priority, and/or renice the
-> > nfsd threads to run with higher priority.
-> 
-> You can't really renice the kernel nfsd threads though :((
+You could possibly encode the notion of a struct file in the owner
+handle that's passed in every lock request, and change the server side
+lockd when comparing lock owners.
 
-renice -20 -p <pid of nfsd> works for me.
+But I dimly remember there were other issues that could not be mapped
+easily to the NLM protocol... don't remember the details: I'd have to
+check my archives. These mails may even be in the nfs list archive.
 
 Olaf
 -- 
