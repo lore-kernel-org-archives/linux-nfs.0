@@ -1,14 +1,20 @@
-From: "New Car Quotes" <promo@netcrazy.net>
-Subject: Get Free Price Quotes On All the 2003 New Cars with PriceWheels!
-Date: Sat, 26 Apr 2003 00:00:00 -0500
+From: www.citcop.se <telefonpost@citcop.se>
+Subject: Erbjudande
+Date: Sun, 27 Apr 2003 03:52:11 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <auto-000105663048@mx09.cluster1.charter.net>
-Content-Type: multipart/related;type="multipart/alternative"; boundary="----=_NextPart_000_0004_01C06B5E.74675200"
+Message-ID: <QQomdz10721.200304270147@mr1.ash.ops.us.uu.net>
+Reply-To: telefonpost@citcop.se
+Mime-Version: 1.0
+Content-Type: text/html; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from dc-mx09.cluster1.charter.net ([209.225.8.19] helo=mx09.cluster1.charter.net)
+Received: from ashd1-2.relay.mail.uu.net ([199.171.54.246])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 199TFU-0007D4-00
-	for <nfs@lists.sourceforge.net>; Sat, 26 Apr 2003 10:14:04 -0700
+	id 199bGF-0006ml-00
+	for <nfs@lists.sourceforge.net>; Sat, 26 Apr 2003 18:47:24 -0700
+Received: from citcop by mr1.ash.ops.us.uu.net with SMTP
+	(peer crosschecked as: [195.242.48.114])
+	id QQomdz10721
+	for <nfs@lists.sourceforge.net>; Sun, 27 Apr 2003 01:47:20 GMT
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -23,189 +29,123 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-------=_NextPart_000_0004_01C06B5E.74675200
-Subject: Get Free Price Quotes On All the 2003 New Cars with PriceWheels!
-To: nfs@list.sourceforge.net
-From: "New Car Quotes" <promo@netcrazy.net>
-Content-Type: multipart/alternative; boundary="----=_NextPart_000_0005_01C06B5E.74675200"
-Date: 4/26/2003X-Mailer: Spyder Mailer 1.2
+<HTML>
+<HEAD>
+<TITLE>Panasonic Erbjudande 6-pack</TITLE>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+<style>
+<!--
+a {
+	color:darkblue;
+	font-size:9.0pt;
+	font-style:normal;
+	text-decoration: underline;
+	font-family:Verdana;
+	line-height: 9pt;
+}
 
-<html>=0D=0A<head>=0D=0A<title>Try=20it=20at=20No-Cost</title>=0D=0A<STYLE=
-=20TYPE=3D"text/css">=0D=0Aa:hover=20{=20=20font-family:=20Verdana;=20color=
-:=20#990000;=20text-decoration:=20none}=0D=0A</STYLE></head>=0D=0A=0D=0A<bo=
-dy=20bgcolor=3D"#ffffff"=20text=3D"#000000"=20vlink=3D"#0000ff">=0D=0A<div=
-=20align=3D"center">=20=0D=0A=20=20<table=20width=3D"437"=20border=3D"0"=20=
-cellspacing=3D"0"=20cellpadding=3D"5"=20height=3D"614">=0D=0A=20=20=20=20<t=
-r>=20=0D=0A=20=20=20=20=20=20<td=20colspan=3D"2"=20width=3D"427"=20height=
-=3D"362">=20=0D=0A=20=20=20=20=20=20=20=20<p><img=20border=3D"0"=20src=3D"h=
-ttp://www.autodealers-usa.com/images/email/tryit/try.jpg"=20width=3D"308"=
-=20height=3D"46"><br>=0D=0A=20=20=20=20=20=20=20=20=20=20<a=20href=3D"http:=
-//www.autodealers-usa.com/r/?p=3DRealtors&amp;c=3Dad1048873333&amp;e=3Dh"=
-=20=0D=0A=20=20=20=20=20>=0D=0A=20=20=20=20=20=20=20=20<img=20border=3D"0"=
-=20src=3D"http://www.autodealers-usa.com/images/email/tryit/exc2.jpg"=20wid=
-th=3D"427"=20height=3D"200"></a></p>=0D=0A=20=20=20=20=20=20=20=20<p=20alig=
-n=3D"center"><b><font=20size=3D"5">Try=20it=20at=20No-Cost</font></b><br>=0D=
-=0A=20=20=20=20=20=20=20=20=20=20<br>=0D=0A=20=20=20=20=20=20=20=20=20=20<i=
-mg=20border=3D"0"=20src=3D"http://www.autodealers-usa.com/images/email/tryi=
-t/getfree.gif"=20width=3D"418"=20height=3D"23"><br>=0D=0A=20=20=20=20=20=20=
-=20=20</p>=0D=0A=20=20=20=20=20=20</td>=0D=0A=20=20=20=20</tr>=0D=0A=20=20=
-=20=20<tr=20bgcolor=3D"#990000">=20=0D=0A=20=20=20=20=20=20<td=20colspan=3D=
-"2"=20bordercolor=3D"#cccccc"=20width=3D"427"=20height=3D"1"></td>=0D=0A=20=
-=20=20=20</tr>=0D=0A=20=20=20=20<tr>=20=0D=0A=20=20=20=20=20=20<td=20width=
-=3D"241"=20bgcolor=3D"#ffffff"=20bordercolor=3D"#cccccc"=20height=3D"204"><=
-font=20face=3D"Arial">=0D=0A=20=20=20=20=20=20<font=20size=3D"2">=95=20<b><=
-font=20face=3D"Verdana">=0D=0A=20=20=20=20=20=20<a=20href=3D"http://www.aut=
-odealers-usa.com/r/?p=3DRealtors&amp;c=3Dad1048873333&amp;e=3Dh"=20=0D=0A=
-=20=20=20=20=20>Simple=20=0D=0A=20=20=20=20=20=20=20=20and=20Easy=20Process=
-</a></font></b>=20<br>=0D=0A=20=20=20=20=20=20=20=20&nbsp;&nbsp;</font><fon=
-t=20size=3D"2"=20face=3D"Verdana">No=20obligation=20free=20=0D=0A=20=20=20=
-=20=20=20=20=20car=20price=20quote=20form=20in=20just=20two=20minutes.</fon=
-t><br>=0D=0A=20=20=20=20=20=20=20=20<br>=0D=0A=20=20=20=20=20=20=20=20<font=
-=20size=3D"2">=95=20</font><font=20size=3D"2"=20face=3D"Verdana"><b>=0D=0A=
-=20=20=20=20=20=20<a=20href=3D"http://www.autodealers-usa.com/r/?p=3DRealto=
-rs&amp;c=3Dad1048873333&amp;e=3Dh"=20=0D=0A=20=20=20=20=20>Low=20rate=20Fin=
-ancing=20available</a></b></font><font=20size=3D"2"><br>=0D=0A=20=20=20=20=
-=20=20=20=20&nbsp;&nbsp;&nbsp;&nbsp;</font><font=20size=3D"2"=20face=3D"Ver=
-dana">Lowest=20rates=20in=20=0D=0A=20=20=20=20=20=20=20=20years.=20Save&nbs=
-p;&nbsp;&nbsp;&nbsp;&nbsp;=20hundreds=20of=20dollars=20now!</font><br>=0D=
-=0A=20=20=20=20=20=20=20=20<br>=0D=0A=20=20=20=20=20=20=20=20<font=20size=
-=3D"2">=95=20</font><font=20face=3D"Verdana"=20size=3D"2"><b>=0D=0A=20=20=
-=20=20=20=20<a=20href=3D"http://www.autodealers-usa.com/r/?p=3DRealtors&amp=
-;c=3Dad1048873333&amp;e=3Dh"=20=0D=0A=20=20=20=20=20>Largest=20=0D=0A=20=20=
-=20=20=20=20=20=20Dealer=20Network=20in=20U.S</a><font=20color=3D"#0000ff">=
-<u>.</u></font></b></font><font=20size=3D"2"><font=20color=3D"#0000ff"><u>=0D=
-=0A=20=20=20=20=20=20</u></font>=20<br>=0D=0A=20=20=20=20=20=20=20=20&nbsp;=
-&nbsp;&nbsp;&nbsp;</font><font=20size=3D"2"=20face=3D"Verdana">Our=20system=
-=20=0D=0A=20=20=20=20=20=20will=20find=20you=20the=20best=20dealer=20to=20m=
-eet=20your=20needs.</font></font><font=20size=3D"2">=0D=0A=20=20=20=20=20=
-=20</font>=20</td>=0D=0A=20=20=20=20=20=20<td=20width=3D"176"=20height=3D"2=
-04">=20=0D=0A=20=20=20=20=20=20=20=20<div=20align=3D"right">=0D=0A=20=20=20=
-=20=20=20=20=20=20=20<a=20href=3D"http://www.autodealers-usa.com/r/?p=3DRea=
-ltors&amp;c=3Dad1048873333&amp;e=3Dh"=20=0D=0A=20=20=20=20=20>=0D=0A=20=20=
-=20=20=20=20=20=20=20=20<img=20border=3D"0"=20src=3D"http://www.autodealers=
--usa.com/images/email/tryit/ad_logo.jpg"=20width=3D"159"=20height=3D"46"></=
-a></div>=0D=0A=20=20=20=20=20=20</td>=0D=0A=20=20=20=20</tr>=0D=0A=20=20=20=
-=20<tr=20bgcolor=3D"#990000">=20=0D=0A=20=20=20=20=20=20<td=20colspan=3D"2"=
-=20bordercolor=3D"#cccccc"=20width=3D"427"=20height=3D"13">=20=0D=0A=20=20=
-=20=20=20=20=20=20<div=20align=3D"center"><font=20size=3D"1"=20face=3D"Verd=
-ana"=20color=3D"#ffffff"><b>=0D=0A=20=20=20=20=20=20=20=20=20=20Don't=20del=
-ay,=20get=20your=20No-Cost&nbsp;=20price=20quote=20tody!=0D=0A=20=20=20=20=
-=20=20=20=20=20=20<a=20href=3D"http://www.autodealers-usa.com/r/?p=3DRealto=
-rs&amp;c=3Dad1048873333&amp;e=3Dh"=20=0D=0A=20=20=20=20=20><font=20color=3D=
-"#ffffff">Click=20=0D=0A=20=20=20=20=20=20=20=20=20=20Here</font></a></b></=
-font><b><font=20color=3D"#ffffff">.</font></b></div>=0D=0A=20=20=20=20=20=
-=20</td>=0D=0A=20=20=20=20</tr>=0D=0A=20=20</table>=0D=0A=20=20<p><font=20f=
-ace=3D"Georgia,=20Times=20New=20Roman,=20Times,=20serif"=20size=3D"-2">If=
-=20you=20would=20=0D=0A=20=20=20=20like=20to=20be=20removed=20permanently=
-=20from=20this=20promotional=20list,=20then=20put=20"REMOVE"=20=0D=0A=20=20=
-=20=20in=20the=20subject=20of=20the=20email=20to:=20<A=20href=3D"mailto:rem=
-ove@netcrazy.net"=20target=3DRemove>remove</a></font></p>=0D=0A</div>=0D=0A=
-</body>=0D=0A</html>=0D=0A=0D=0A
-------=_NextPart_000_0005_01C06B5E.74675200
-Content-Type: text/plain
+.normal
+	{
+	color:windowtext;
+	font-size:9.0pt;
+	font-style:normal;
+	text-decoration: none;
+	font-family:Verdana;
+	line-height: 11pt;
+	}
 
-   
+-->
+</style>
+<BASE HREF="http://www.citcop.se/">
+<link href="../citcop.css" rel="stylesheet" type="text/css">
+</HEAD>
 
-
-Try it at No-Cost
-
-
-  • Simple and Easy Process 
- No obligation free car price quote form in just two minutes.
-
-• Low rate Financing available
-  Lowest rates in years. Save   hundreds of dollars now!
-
-• Largest Dealer Network in U.S. 
-  Our system will find you the best dealer to meet your needs.  
-
-  Don't delay, get your No-Cost price quote tody!Click Here.
-
-
-
-If you would like to be removed permanently from this promotional list, then put "REMOVE" in the subject of the email to: remove
-
-
-
-------=_NextPart_000_0005_01C06B5E.74675200
-Content-Type: text/html
-Content-Transfer-Encoding: quoted-printable
-
-<html>=0D=0A<head>=0D=0A<title>Try=20it=20at=20No-Cost</title>=0D=0A<STYLE=
-=20TYPE=3D"text/css">=0D=0Aa:hover=20{=20=20font-family:=20Verdana;=20color=
-:=20#990000;=20text-decoration:=20none}=0D=0A</STYLE></head>=0D=0A=0D=0A<bo=
-dy=20bgcolor=3D"#ffffff"=20text=3D"#000000"=20vlink=3D"#0000ff">=0D=0A<div=
-=20align=3D"center">=20=0D=0A=20=20<table=20width=3D"437"=20border=3D"0"=20=
-cellspacing=3D"0"=20cellpadding=3D"5"=20height=3D"614">=0D=0A=20=20=20=20<t=
-r>=20=0D=0A=20=20=20=20=20=20<td=20colspan=3D"2"=20width=3D"427"=20height=
-=3D"362">=20=0D=0A=20=20=20=20=20=20=20=20<p><img=20border=3D"0"=20src=3D"h=
-ttp://www.autodealers-usa.com/images/email/tryit/try.jpg"=20width=3D"308"=
-=20height=3D"46"><br>=0D=0A=20=20=20=20=20=20=20=20=20=20<a=20href=3D"http:=
-//www.autodealers-usa.com/r/?p=3DRealtors&amp;c=3Dad1048873333&amp;e=3Dh"=
-=20=0D=0A=20=20=20=20=20>=0D=0A=20=20=20=20=20=20=20=20<img=20border=3D"0"=
-=20src=3D"http://www.autodealers-usa.com/images/email/tryit/exc2.jpg"=20wid=
-th=3D"427"=20height=3D"200"></a></p>=0D=0A=20=20=20=20=20=20=20=20<p=20alig=
-n=3D"center"><b><font=20size=3D"5">Try=20it=20at=20No-Cost</font></b><br>=0D=
-=0A=20=20=20=20=20=20=20=20=20=20<br>=0D=0A=20=20=20=20=20=20=20=20=20=20<i=
-mg=20border=3D"0"=20src=3D"http://www.autodealers-usa.com/images/email/tryi=
-t/getfree.gif"=20width=3D"418"=20height=3D"23"><br>=0D=0A=20=20=20=20=20=20=
-=20=20</p>=0D=0A=20=20=20=20=20=20</td>=0D=0A=20=20=20=20</tr>=0D=0A=20=20=
-=20=20<tr=20bgcolor=3D"#990000">=20=0D=0A=20=20=20=20=20=20<td=20colspan=3D=
-"2"=20bordercolor=3D"#cccccc"=20width=3D"427"=20height=3D"1"></td>=0D=0A=20=
-=20=20=20</tr>=0D=0A=20=20=20=20<tr>=20=0D=0A=20=20=20=20=20=20<td=20width=
-=3D"241"=20bgcolor=3D"#ffffff"=20bordercolor=3D"#cccccc"=20height=3D"204"><=
-font=20face=3D"Arial">=0D=0A=20=20=20=20=20=20<font=20size=3D"2">=95=20<b><=
-font=20face=3D"Verdana">=0D=0A=20=20=20=20=20=20<a=20href=3D"http://www.aut=
-odealers-usa.com/r/?p=3DRealtors&amp;c=3Dad1048873333&amp;e=3Dh"=20=0D=0A=
-=20=20=20=20=20>Simple=20=0D=0A=20=20=20=20=20=20=20=20and=20Easy=20Process=
-</a></font></b>=20<br>=0D=0A=20=20=20=20=20=20=20=20&nbsp;&nbsp;</font><fon=
-t=20size=3D"2"=20face=3D"Verdana">No=20obligation=20free=20=0D=0A=20=20=20=
-=20=20=20=20=20car=20price=20quote=20form=20in=20just=20two=20minutes.</fon=
-t><br>=0D=0A=20=20=20=20=20=20=20=20<br>=0D=0A=20=20=20=20=20=20=20=20<font=
-=20size=3D"2">=95=20</font><font=20size=3D"2"=20face=3D"Verdana"><b>=0D=0A=
-=20=20=20=20=20=20<a=20href=3D"http://www.autodealers-usa.com/r/?p=3DRealto=
-rs&amp;c=3Dad1048873333&amp;e=3Dh"=20=0D=0A=20=20=20=20=20>Low=20rate=20Fin=
-ancing=20available</a></b></font><font=20size=3D"2"><br>=0D=0A=20=20=20=20=
-=20=20=20=20&nbsp;&nbsp;&nbsp;&nbsp;</font><font=20size=3D"2"=20face=3D"Ver=
-dana">Lowest=20rates=20in=20=0D=0A=20=20=20=20=20=20=20=20years.=20Save&nbs=
-p;&nbsp;&nbsp;&nbsp;&nbsp;=20hundreds=20of=20dollars=20now!</font><br>=0D=
-=0A=20=20=20=20=20=20=20=20<br>=0D=0A=20=20=20=20=20=20=20=20<font=20size=
-=3D"2">=95=20</font><font=20face=3D"Verdana"=20size=3D"2"><b>=0D=0A=20=20=
-=20=20=20=20<a=20href=3D"http://www.autodealers-usa.com/r/?p=3DRealtors&amp=
-;c=3Dad1048873333&amp;e=3Dh"=20=0D=0A=20=20=20=20=20>Largest=20=0D=0A=20=20=
-=20=20=20=20=20=20Dealer=20Network=20in=20U.S</a><font=20color=3D"#0000ff">=
-<u>.</u></font></b></font><font=20size=3D"2"><font=20color=3D"#0000ff"><u>=0D=
-=0A=20=20=20=20=20=20</u></font>=20<br>=0D=0A=20=20=20=20=20=20=20=20&nbsp;=
-&nbsp;&nbsp;&nbsp;</font><font=20size=3D"2"=20face=3D"Verdana">Our=20system=
-=20=0D=0A=20=20=20=20=20=20will=20find=20you=20the=20best=20dealer=20to=20m=
-eet=20your=20needs.</font></font><font=20size=3D"2">=0D=0A=20=20=20=20=20=
-=20</font>=20</td>=0D=0A=20=20=20=20=20=20<td=20width=3D"176"=20height=3D"2=
-04">=20=0D=0A=20=20=20=20=20=20=20=20<div=20align=3D"right">=0D=0A=20=20=20=
-=20=20=20=20=20=20=20<a=20href=3D"http://www.autodealers-usa.com/r/?p=3DRea=
-ltors&amp;c=3Dad1048873333&amp;e=3Dh"=20=0D=0A=20=20=20=20=20>=0D=0A=20=20=
-=20=20=20=20=20=20=20=20<img=20border=3D"0"=20src=3D"http://www.autodealers=
--usa.com/images/email/tryit/ad_logo.jpg"=20width=3D"159"=20height=3D"46"></=
-a></div>=0D=0A=20=20=20=20=20=20</td>=0D=0A=20=20=20=20</tr>=0D=0A=20=20=20=
-=20<tr=20bgcolor=3D"#990000">=20=0D=0A=20=20=20=20=20=20<td=20colspan=3D"2"=
-=20bordercolor=3D"#cccccc"=20width=3D"427"=20height=3D"13">=20=0D=0A=20=20=
-=20=20=20=20=20=20<div=20align=3D"center"><font=20size=3D"1"=20face=3D"Verd=
-ana"=20color=3D"#ffffff"><b>=0D=0A=20=20=20=20=20=20=20=20=20=20Don't=20del=
-ay,=20get=20your=20No-Cost&nbsp;=20price=20quote=20tody!=0D=0A=20=20=20=20=
-=20=20=20=20=20=20<a=20href=3D"http://www.autodealers-usa.com/r/?p=3DRealto=
-rs&amp;c=3Dad1048873333&amp;e=3Dh"=20=0D=0A=20=20=20=20=20><font=20color=3D=
-"#ffffff">Click=20=0D=0A=20=20=20=20=20=20=20=20=20=20Here</font></a></b></=
-font><b><font=20color=3D"#ffffff">.</font></b></div>=0D=0A=20=20=20=20=20=
-=20</td>=0D=0A=20=20=20=20</tr>=0D=0A=20=20</table>=0D=0A=20=20<p><font=20f=
-ace=3D"Georgia,=20Times=20New=20Roman,=20Times,=20serif"=20size=3D"-2">If=
-=20you=20would=20=0D=0A=20=20=20=20like=20to=20be=20removed=20permanently=
-=20from=20this=20promotional=20list,=20then=20put=20"REMOVE"=20=0D=0A=20=20=
-=20=20in=20the=20subject=20of=20the=20email=20to:=20<A=20href=3D"mailto:rem=
-ove@netcrazy.net"=20target=3DRemove>remove</a></font></p>=0D=0A</div>=0D=0A=
-</body>=0D=0A</html>=0D=0A=0D=0A
-
-------=_NextPart_000_0005_01C06B5E.74675200--
-
-------=_NextPart_000_0004_01C06B5E.74675200--
+<BODY BGCOLOR="#F5F5F5" TEXT="#000000" LEFTMARGIN="6" TOPMARGIN="6">
+<TABLE WIDTH="126" BORDER="1" CELLSPACING="0" CELLPADDING="0" BORDERCOLOR="#000000">
+  <TR>
+    <TD>
+      <TABLE WIDTH="500" BORDER="0" CELLSPACING="0" CELLPADDING="2" BGCOLOR="#FFFFFF">
+        <TR VALIGN="BOTTOM">
+          <TD WIDTH="142">&nbsp;<img src="http://www.citcop.se/reklam/bilder/loggacitcop.gif" width="125" height="84"></TD>
+          <TD WIDTH="314" ALIGN="CENTER" VALIGN="MIDDLE" class=normal> <p><FONT SIZE="4"><B><font size="3" color="#FF0000">K&Ouml;P
+              ETT SEXPACK!</font></B><br>
+              <br>
+              <font size="2"> </font><font size="2"><img src="http://www.citcop.se/reklam/bilder/panaslogga.gif" width="100" height="14"><br>
+              <span class="bla">POWER ECO INVERTER</span></font></FONT><span class="bla"><FONT SIZE="4"><font size="2"></font></FONT></span><FONT SIZE="4"><font size="2"><br>
+              </font></FONT></p>
+            </TD>
+          <TD ALIGN="RIGHT" WIDTH="152"><img src="http://www.citcop.se/reklam/bilder/9900.gif" width="160" height="59" vspace="10" border="0"></TD>
+        </TR>
+      </TABLE>
+      <TABLE WIDTH="500" BORDER="0" CELLSPACING="0" CELLPADDING="0" HEIGHT="34" >
+        <TR>
+          <TD bgcolor="#000066">
+            <div align="center"><b><font color="#FFFFFF" size="5" face="Verdana, Arial, Helvetica, sans-serif">V&Auml;RMEPUMP</font></b></div>
+          </TD>
+        </TR>
+      </TABLE>
+      <TABLE WIDTH="500" BORDER="0" CELLSPACING="0" CELLPADDING="5">
+        <TR VALIGN="TOP">
+          <TD class=normal BGCOLOR="#FFFFFF" COLSPAN="2" ALIGN="CENTER"> <P><img src="http://www.citcop.se/topframe/Beer_hog.jpg" width="350" height="258"><FONT SIZE="1"><BR>
+              </FONT>
+            <TABLE WIDTH="437" BORDER="0" CELLSPACING="0" CELLPADDING="0">
+              <TR>
+                <TD class=normal> <font class="text"><b><span class="text"> PASSA
+                  P&Aring;!!!</span></b></font><span class="text"><font class="text"><b>
+                  </b></font><b><br>
+                  K&ouml;p ett 6-pack Panasonic E9 eller E12 till ett fantastiskt
+                  pris.<br>
+                  E9 f&ouml;r SEK 9900:-/st (59.400:-) och E12 f&ouml;r SEK 11900:-/st
+                  (71.400:-). Minsta antal 6 maskiner.<br>
+                  Detta erbjudandet &auml;r tidsbegr&auml;nsat och g&auml;ller
+                  utan garanti.</b></span><br> <br> <b><font color="#FF0000">BEST&Auml;LL
+                  NU!!</font></b><br>
+                  Endast ett f&aring;tal pumpar p&aring; lagret, best&auml;ll
+                  nu s&aring; f&aring;r du garanterat en. Omg&aring;ende leverans.<br>
+                  <BR>
+                  -Producerad f&ouml;r Nordiskt klimat.<BR>
+                  -Milj&ouml;v&auml;nligt kylmedia R410A.<br>
+                  -Betala s&auml;kert med kreditkort!<br>
+                  -2003 &aring;rs modell<br> <br>
+                  K&ouml;p p&aring; v&aring;r hemsida, s&aring; f&aring;r du installations-kittet
+                  till halva priset. <a href="http://www.citcop.com">www.citcop.com</a>
+                  <br>
+                  <br> </TD>
+              </TR>
+            </TABLE>
+            Vill du inte ha fler mail av oss? <a href="http://www.citcop.se/unreg/unreg.html">Klicka
+            h&auml;r</a></TD>
+        </TR>
+      </TABLE>
+      <TABLE WIDTH="500" BORDER="0" CELLSPACING="0" CELLPADDING="0" HEIGHT="34" >
+        <TR>
+          <TD bgcolor="#000066">&nbsp;</TD>
+        </TR>
+      </TABLE>
+      <TABLE WIDTH="500" BORDER="0" CELLSPACING="0" CELLPADDING="5">
+        <TR VALIGN="TOP" BGCOLOR="#FFFFFF">
+          <TD WIDTH="236"  class=normal>
+            <p><B>Begr&auml;nsat antal!</B><br>
+              Fraktkostnad 490:- (sverige) 1.490: -(norge)per pall (upptill 6
+              maskiner per pall) </p>
+            </TD>
+          <TD WIDTH="267"  class=normal><B>Adress:<BR>
+            </B>Citcop Sweden AB<BR>
+            Energigatan 15B<BR>
+            434 37 KUNGSBACKA<br>
+          </TD>
+          <TD WIDTH="124" class=normal><B>Hemsida:</B><BR>
+            <A HREF="http://www.citcop.com" TARGET="_blank">www.citcop.com</A><BR>
+            <b>Tel:</b><br>
+            +46-300-70700 </TD>
+        </TR>
+      </TABLE>
+    </TD>
+  </TR>
+</TABLE>
+<BR>
+</BODY>
+</HTML>
 
 
 -------------------------------------------------------
