@@ -1,28 +1,24 @@
-From: Franziska Heinze <Franziska.Heinze@rwth-aachen.de>
-Subject: NFS basics ??
-Date: Tue, 20 Jan 2004 17:12:54 +0100
+From: Steve Wampler <swampler@noao.edu>
+Subject: Re: What might cause:  "NFS: Buggy server - nlink == 0!"
+	message?
+Date: Wed, 21 Jan 2004 08:22:53 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <dde25de25c.de25cdde25@post.rwth-aachen.de>
+Message-ID: <1074698573.18082.39.camel@weaver.tuc.noao.edu>
+References: <1074293142.11334.63.camel@weaver.tuc.noao.edu>
+Reply-To: swampler@noao.edu
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AiybZ-0007aK-0P
-	for nfs@lists.sourceforge.net; Tue, 20 Jan 2004 08:19:53 -0800
-Received: from ms-2.rz.rwth-aachen.de ([134.130.3.131] helo=ms-dienst.rz.rwth-aachen.de)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1AiybX-0002qg-2O
-	for nfs@lists.sourceforge.net; Tue, 20 Jan 2004 08:19:51 -0800
-Received: from r220-1 (r220-1.rz.RWTH-Aachen.DE [134.130.3.31])
- by ms-dienst.rz.rwth-aachen.de
- (iPlanet Messaging Server 5.2 HotFix 1.12 (built Feb 13 2003))
- with ESMTP id <0HRS00GLJQDJTS@ms-dienst.rz.rwth-aachen.de> for
- nfs@lists.sourceforge.net; Tue, 20 Jan 2004 17:12:55 +0100 (MET)
-Received: from post.rwth-aachen.de (ms-2.rz.RWTH-Aachen.DE [134.130.3.131])
-	by relay.rwth-aachen.de (8.12.10/8.12.7-1) with ESMTP id i0KGCsJC001582	for
- <nfs@lists.sourceforge.net>; Tue, 20 Jan 2004 17:12:54 +0100 (MET)
-To: nfs@lists.sourceforge.net
+	id 1AjKCB-0004eb-Oh
+	for nfs@lists.sourceforge.net; Wed, 21 Jan 2004 07:23:07 -0800
+Received: from dns.noao.edu ([140.252.1.54] helo=noao.edu)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1AjKCB-0006fm-Dr
+	for nfs@lists.sourceforge.net; Wed, 21 Jan 2004 07:23:07 -0800
+To: Linux NFS List <nfs@lists.sourceforge.net>
+In-Reply-To: <1074293142.11334.63.camel@weaver.tuc.noao.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -35,31 +31,55 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
+On Fri, 2004-01-16 at 15:45, Steve Wampler wrote:
+> We've been noticing that some of our NFS clients aren't catching
+> changes to NFS-accessed files.  This last time, dmesg
+> on the client reported:
+> 
+>    NFS: Buggy server - nlink == 0!
+>    __nfs_fhget: iget failed
+> 
+> What might cause this?  What's the best fix?
+> 
+> The NFS server is a Red Hat system:
+> 
+>    ->uname -a
+>    Linux friar.tuc.noao.edu 2.4.18-24.8.0smp #1 SMP Fri Jan 31 07:12:12
+> EST 2003 i686 athlon i386 GNU/Linux
+>    ->rpm -qa | grep nfs
+>    nfs-utils-1.0.1-2
 
-I'm quite new to Linux in general, so may be one or the other question may sound quite simple to you. Nevertheless:
+As an update:
 
-My situation:
-I have a Workstation with static IP runnning RedHat 9.0. This is the NFS Server.
-Secondly I have a singele-chip PC with a flash ROM running RedBoot which then loads the Linux Busybox system if not interrupted. It also has ethernet connection and a static IP. This is the client
-system.
+I've updated all the machines clients and server to
+     nfs-utils-1.0.5-2.
 
-I'd like to have the client system booting via NFS from the server system, so that I can develop software and perhaps alter the operating system for the single-chip PC on the server system and thus reducing time for development.
+[Server and most clients are dual-Athlon 1800+ machines
+with 1.5GB Ram each (identical boxes).  Network is a switched
+gigabit ethernet.
 
-In principle I thought I have to do as following:
-- setting up the NFs server under RedHat
-- changing the bootscript under redboot to boot/ execute the busybox from the server like:
-exec -c"root=/dev/nfs rw nfsroot=12.345.67.89:/path/on/server/to/nfs_root ip=12.345.67.88::12.345.67.1:255.255.255.0:embed-o-matic:eth0:off console=ttyS1 init=/bin/init"
+A few client machines connect via 100bT ethernet and vary
+from SUN Solaris boxes to other dual-Athlons, but rarely
+use the NFS mount 'in anger' - unlike the gigabit machines].
 
-As you will know that's not working.
-What have I to do instead, step by step ?
-I'm thankful for every hint !
+I've bumped the number of nfsd daemons on the server to 30,
+in part because showmount shows 30 nfs mount points (I'm
+not convinced that's true, incidently, as several of the
+machines appear both under their IP-name and under
+their IP-address).
 
-Cheers,
-Franziska.
+The above message still appears from time to time and
+files don't always appear on some clients until an unmount/mount
+cycle of the NFS partitions.  This is a problem, of course.
 
+Any ideas?  Is the 2.4.18smp kernel flakey with respect to
+NFS?
 
-
+Thanks!
+Steve
+-- 
+Steve Wampler -- swampler@noao.edu
+The gods that smiled on your birth are now laughing out loud.
 
 
 -------------------------------------------------------
