@@ -1,17 +1,18 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: [PATCH] Timeouts gone wild on ia64
-Date: Fri, 9 May 2003 06:40:29 -0700
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] Timeouts gone wild on ia64
+Date: Fri, 09 May 2003 10:12:27 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <482A3FA0050D21419C269D13989C6113127DB3@lavender-fe.eng.netapp.com>
+Message-ID: <3EBBB74B.4000008@RedHat.com>
+References: <482A3FA0050D21419C269D13989C6113127DB3@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="----_=_NextPart_001_01C31630.8E5B61E6"
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mx01.netapp.com ([198.95.226.53])
+Received: from nat-pool-rdu.redhat.com ([66.187.233.200] helo=lacrosse.corp.redhat.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19E873-0007mp-00
-	for <nfs@lists.sourceforge.net>; Fri, 09 May 2003 06:40:37 -0700
-To: "Steve Dickson" <SteveD@RedHat.com>, <nfs@lists.sourceforge.net>
+	id 19E8bd-0007ub-00
+	for <nfs@lists.sourceforge.net>; Fri, 09 May 2003 07:12:13 -0700
+To: "Lever, Charles" <Charles.Lever@netapp.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,119 +25,75 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+It has to do with the value of HZ.... On a ia64, HZ is
+at 1024 and on an x86 machine its 100. Not taking this
+difference in account when figure the the minimal
+timeout values was causing timeouts to occur every 4ms
+instead of 40ms.
 
-------_=_NextPart_001_01C31630.8E5B61E6
-Content-Type: text/plain;
-	charset="utf-8"
-Content-Transfer-Encoding: base64
+The network trace didn't show anything substantial,
+but here is the debugging trail.
 
-c3RldmUtDQogDQpjYW4geW91IGV4cGxhaW4gd2h5IHRoZXJlIGFyZSBtb3JlIHRpbWVvdXRzIGZv
-ciBpYTY0PyAgZG8geW91DQpoYXZlIGEgbmV0d29yayB0cmFjZSB5b3UgY2FuIHNoYXJlPw0KDQot
-LS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLSANCkZyb206IFN0ZXZlIERpY2tzb24gW21haWx0bzpT
-dGV2ZURAUmVkSGF0LmNvbV0gDQpTZW50OiBGcmkgNS85LzIwMDMgODo0MSBBTSANClRvOiBuZnNA
-bGlzdHMuc291cmNlZm9yZ2UubmV0IA0KQ2M6IA0KU3ViamVjdDogW05GU10gW1BBVENIXSBUaW1l
-b3V0cyBnb25lIHdpbGQgb24gaWE2NA0KDQoNCg0KSGVyZSBpcyBhIHBhdGNoIHRoYXQgZ3JlYXRs
-eSByZWR1Y2VzIHRoYXQgbnVtYmVyIG9mIA0KdGltZW91dCAoYW5kIEVJTyBlcnJvcnMgd2l0aCBz
-b2Z0IG1vdW50cykgdGhhdCANCm9jY3VyIHdoZW4gYSBmYXN0IGNsaWVudCBpcyB0YWxraW5nIHRv
-IGEgc2xvdyBzZXJ2ZXIuIA0KICANCldlIHdlcmUgbm90aWNpbmcgYSBsYXJnZSBudW1iZXIgb2Yg
-RUlPIGVycm9ycyB3aGVuIA0KYSBpYTY0IGNsaWVudCB3YXMgdGFsa2luZyB0byBhIHg4NiBzZXJ2
-ZXIgd2l0aCANCnNvZnQgbW91bnRzIChhbGEgYXV0b2ZzKS4uLi4gDQoNClRydWUsIEVJTyBlcnJv
-cnMgc2hvdWxkIGJlIGV4cGVjdCB3aXRoIHNvZnQgbW91bnRzIGJ1dCANCml0IHR1cm5zIG91dCB0
-aGF0IHRob3VzYW5kcyBvZiB0aW1lb3V0cyB3ZXJlIG9jY3VycmluZyBvbiANCmEgaWE2NCBjbGll
-bnQgY29tcGFyZWQgdG8gNTAgdG8gNjAgdGltZW91dHMgd2l0aCANCmEgeDg2IGNsaWVudCB3aGVu
-IHRhbGtpbmcgdG8gdGhlIHNhbWUgc2xvdyBzZXJ2ZXIgYW5kIA0KZ2VuZXJhdGluZyB0aGUgc2Ft
-ZSB0cmFmZmljLiANCg0KV2hhdCB0aGlzIHBhdGNoIGRvZXMgaXMgbWFrZSB0aGUgbWluaW1hbCBS
-b3VuZCBUcmlwIA0KdGltZSB2YWx1ZSByZWxhdGl2ZSB0byBIWi4gU28gV2hlbiBIWiBpcyBncmVh
-dGVyIChhcyANCmluIHRoZSBjYXNlIG9mIGlhNjQpIHRoZSBtaW5pbWFsIHZhbHVlIGdvZXMgdXAu
-IA0KICANCkNvbW1lbnRzPyANCg0KU3RldmVELiANCg0K
+By logging (and counting) the number of times call_status() was called
+with a -ETIMEDOUT status, it became very apparent that ia64 machine
+were timing out thousands of times more often than an x86 machine.
+The actual numbers was something like 1400 to 50 when I generated
+traffic by doing  md5sum /nfs/mounted/*.rpm > /dev/null.
 
-------_=_NextPart_001_01C31630.8E5B61E6
-Content-Type: application/ms-tnef;
-	name="winmail.dat"
-Content-Transfer-Encoding: base64
+Next I took a look at what task->tk_timeout was being set to in
+do_xprt_transmit(). On an x86 it was being set to ~40ms. On
+an ia64 machine it was being set to ~4ms.
 
-eJ8+IiANAQaQCAAEAAAAAAABAAEAAQeQBgAIAAAA5AQAAAAAAADoAAENgAQAAgAAAAIAAgABBYAD
-AA4AAADTBwUACQAGACgAHQAFADgBASCAAwAOAAAA0wcFAAkABgAoAB8ABQA6AQEJgAEAIQAAADRE
-Qzk1OTdBMEY2NDRDNEZCQkY0OTUwRTc3RTAzOEEyAE0HAQOQBgDkEAAAOQAAAB8AGgABAAAAEgAA
-AEkAUABNAC4ATgBPAFQARQAAAAAAAwAmAAAAAAADADYAAAAAAB8ANwABAAAAWgAAAFIARQA6ACAA
-WwBOAEYAUwBdACAAWwBQAEEAVABDAEgAXQAgAFQAaQBtAGUAbwB1AHQAcwAgAGcAbwBuAGUAIAB3
-AGkAbABkACAAbwBuACAAaQBhADYANAAAAAAAQAA5AOZhW44wFsMBHwA9AAEAAAAKAAAAUgBFADoA
-IAAAAAAAAgFHAAEAAAAuAAAAYz1VUzthPSA7cD1OVEFQO2w9TEFWRU5ERVItMDMwNTA5MTM0MDI5
-Wi03NjExAAAAHwBJAAEAAABSAAAAWwBOAEYAUwBdACAAWwBQAEEAVABDAEgAXQAgAFQAaQBtAGUA
-bwB1AHQAcwAgAGcAbwBuAGUAIAB3AGkAbABkACAAbwBuACAAaQBhADYANAAAAAAAQABOAAD5Z1Ao
-FsMBHwBaAAEAAAAcAAAAUwB0AGUAdgBlACAARABpAGMAawBzAG8AbgAAAAIBWwABAAAAPQAAAAAA
-AACBKx+kvqMQGZ1uAN0BD1QCAAAAAFN0ZXZlIERpY2tzb24AU01UUABTdGV2ZURAUmVkSGF0LmNv
-bQAAAAACAVwAAQAAABcAAABTTVRQOlNURVZFREBSRURIQVQuQ09NAAAfAF0AAQAAABwAAABTAHQA
-ZQB2AGUAIABEAGkAYwBrAHMAbwBuAAAAAgFeAAEAAAA9AAAAAAAAAIErH6S+oxAZnW4A3QEPVAIA
-AAAAU3RldmUgRGlja3NvbgBTTVRQAFN0ZXZlREBSZWRIYXQuY29tAAAAAAIBXwABAAAAFwAAAFNN
-VFA6U1RFVkVEQFJFREhBVC5DT00AAB8AZgABAAAACgAAAFMATQBUAFAAAAAAAB8AZwABAAAAJAAA
-AFMAdABlAHYAZQBEAEAAUgBlAGQASABhAHQALgBjAG8AbQAAAB8AaAABAAAACgAAAFMATQBUAFAA
-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
-JQAzAEEAIABbAE4ARgBTAF0AIABbAFAAQQBUAEMASABdACAAVABpAG0AZQBvAHUAdABzACAAZwBv
-AG4AZQAgAHcAaQBsAGQAIABvAG4AIABpAGEANgA0AC4ARQBNAEwAAAAAAAsA9hAAAAAAQAAHMD6J
-FFAwFsMBQAAIMKtOBo8wFsMBAwDeP+n9AAADAPE/CQQAAB8A+D8BAAAAHgAAAEwAZQB2AGUAcgAs
-ACAAQwBoAGEAcgBsAGUAcwAAAAAAAgH5PwEAAABIAAAAAAAAANynQMjAQhAatLkIACsv4YIBAAAA
-AAAAAC9PPU5UQVAvT1U9RU5HSU5FRVJJTkcvQ049UkVDSVBJRU5UUy9DTj1DRUwAHwD6PwEAAAAq
-AAAAUwB5AHMAdABlAG0AIABBAGQAbQBpAG4AaQBzAHQAcgBhAHQAbwByAAAAAAACAfs/AQAAAB4A
-AAAAAAAA3KdAyMBCEBq0uQgAKy/hggEAAAAAAAAALgAAAAMA/T/kBAAAAwAZQAAAAAADABpAAAAA
-AAMAHUAAAAAAAwAeQAAAAAAfADBAAQAAAAgAAABDAEUATAAAAB8AMUABAAAACAAAAEMARQBMAAAA
-HwAyQAEAAAAkAAAAUwB0AGUAdgBlAEQAQABSAGUAZABIAGEAdAAuAGMAbwBtAAAAHwAzQAEAAAAk
-AAAAUwB0AGUAdgBlAEQAQABSAGUAZABIAGEAdAAuAGMAbwBtAAAAHwA4QAEAAAAIAAAAQwBFAEwA
-AAAfADlAAQAAAAQAAAAuAAAACwApAAAAAAALACMAAAAAAAMABhA+maSSAwAHEBoDAAADABAQAAAA
-AAMAERABAAAAHgAIEAEAAABlAAAAU1RFVkUtQ0FOWU9VRVhQTEFJTldIWVRIRVJFQVJFTU9SRVRJ
-TUVPVVRTRk9SSUE2ND9ET1lPVUhBVkVBTkVUV09SS1RSQUNFWU9VQ0FOU0hBUkU/LS0tLS1PUklH
-SU5BTE1FUwAAAAACAX8AAQAAAEQAAAA8NDgyQTNGQTAwNTBEMjE0MTlDMjY5RDEzOTg5QzYxMTMx
-MjdEQjNAbGF2ZW5kZXItZmUuZW5nLm5ldGFwcC5jb20+AOgW
+That lead me to how rpc_calc_rto() was figuring out
+the RTOs... I noticed that RPC_RTO_MIN was the only
+constant that was not relative to HZ. So I did some
+experiments and found out by making it relative to HZ
+the timeout decreased substantially...
 
-------_=_NextPart_001_01C31630.8E5B61E6--
+SteveD.
+
+Lever, Charles wrote:
+
+>steve-
+> 
+>can you explain why there are more timeouts for ia64?  do you
+>have a network trace you can share?
+>
+>-----Original Message----- 
+>From: Steve Dickson [mailto:SteveD@RedHat.com] 
+>Sent: Fri 5/9/2003 8:41 AM 
+>To: nfs@lists.sourceforge.net 
+>Cc: 
+>Subject: [NFS] [PATCH] Timeouts gone wild on ia64
+>
+>
+>
+>Here is a patch that greatly reduces that number of 
+>timeout (and EIO errors with soft mounts) that 
+>occur when a fast client is talking to a slow server. 
+>  
+>We were noticing a large number of EIO errors when 
+>a ia64 client was talking to a x86 server with 
+>soft mounts (ala autofs).... 
+>
+>True, EIO errors should be expect with soft mounts but 
+>it turns out that thousands of timeouts were occurring on 
+>a ia64 client compared to 50 to 60 timeouts with 
+>a x86 client when talking to the same slow server and 
+>generating the same traffic. 
+>
+>What this patch does is make the minimal Round Trip 
+>time value relative to HZ. So When HZ is greater (as 
+>in the case of ia64) the minimal value goes up. 
+>  
+>Comments? 
+>
+>SteveD. 
+>
+>  
+>
+
+
 
 
 -------------------------------------------------------
