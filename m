@@ -1,14 +1,14 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 7 of 8 - NFSv4 patch for new setclientid, setclientid_confirm
+Subject: [PATCH] kNFSd - 5 of 8 - minor knfsd cleanups
 Date: Wed, 16 Oct 2002 16:03:15 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E181hH1-0000JQ-00@notabene.cse.unsw.edu.au>
+Message-ID: <E181hH1-0000JH-00@notabene.cse.unsw.edu.au>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 181hHC-0002mm-00
-	for <nfs@lists.sourceforge.net>; Tue, 15 Oct 2002 23:03:26 -0700
+	id 181hHD-0002mq-00
+	for <nfs@lists.sourceforge.net>; Tue, 15 Oct 2002 23:03:28 -0700
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.233.204] == wireless-204.wireless.cse.unsw.EDU.AU)
 	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>) By
@@ -29,90 +29,98 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 ### Comments for ChangeSet
 
-From: "William A.(Andy) Adamson" <andros@citi.umich.edu>
 
-this patch brings the linux-2.5.42 tree up to spec WRT setclientid and 
-setclientid_confirm
+From: Christoph Hellwig <hch@sgi.com>
 
--->Andy
+o don't define __NO_VERSION__ (no use in 2.4/2.5)
+o don't include <linux/version.h>
 
 
  ----------- Diffstat output ------------
- ./fs/nfsd/nfs4proc.c        |    3 ++-
- ./fs/nfsd/nfs4xdr.c         |   10 ++++++----
- ./include/linux/nfsd/xdr4.h |    8 +++++++-
- 3 files changed, 15 insertions(+), 6 deletions(-)
+ ./fs/nfsd/nfs3proc.c |    1 -
+ ./fs/nfsd/nfsctl.c   |    1 -
+ ./fs/nfsd/nfsproc.c  |    1 -
+ ./fs/nfsd/nfssvc.c   |    2 --
+ ./fs/nfsd/stats.c    |    1 -
+ ./fs/nfsd/vfs.c      |    2 --
+ 6 files changed, 8 deletions(-)
 
---- ./fs/nfsd/nfs4proc.c	2002/10/16 04:45:56	1.2
-+++ ./fs/nfsd/nfs4proc.c	2002/10/16 04:47:27	1.3
-@@ -177,11 +177,12 @@ static inline int
- nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_setclientid *setclientid)
- {
- 	memset(&setclientid->se_clientid, 0, sizeof(clientid_t));
-+	memset(&setclientid->se_confirm, 0, sizeof(nfs4_verifier));
- 	return nfs_ok;
- }
+--- ./fs/nfsd/nfssvc.c	2002/10/16 04:45:56	1.2
++++ ./fs/nfsd/nfssvc.c	2002/10/16 04:47:13	1.3
+@@ -8,7 +8,6 @@
+  * Copyright (C) 1995, 1996, 1997 Olaf Kirch <okir@monad.swb.de>
+  */
  
- static inline int
--nfsd4_setclientid_confirm(struct svc_rqst *rqstp, clientid_t *clientid)
-+nfsd4_setclientid_confirm(struct svc_rqst *rqstp, struct nfsd4_setclientid_confirm *setclientid_confirm)
- {
- 	return nfs_ok;
- }
---- ./fs/nfsd/nfs4xdr.c	2002/10/16 04:47:24	1.1
-+++ ./fs/nfsd/nfs4xdr.c	2002/10/16 04:47:27	1.2
-@@ -717,12 +717,13 @@ nfsd4_decode_setclientid(struct nfsd4_co
- }
+-#define __NO_VERSION__
+ #include <linux/config.h>
+ #include <linux/module.h>
  
- static int
--nfsd4_decode_setclientid_confirm(struct nfsd4_compoundargs *argp, clientid_t *clientid)
-+nfsd4_decode_setclientid_confirm(struct nfsd4_compoundargs *argp, struct nfsd4_setclientid_confirm *scd_c)
- {
- 	DECODE_HEAD;
+@@ -17,7 +16,6 @@
+ #include <linux/nfs.h>
+ #include <linux/in.h>
+ #include <linux/uio.h>
+-#include <linux/version.h>
+ #include <linux/unistd.h>
+ #include <linux/slab.h>
+ #include <linux/smp.h>
+--- ./fs/nfsd/vfs.c	2002/10/16 04:47:11	1.1
++++ ./fs/nfsd/vfs.c	2002/10/16 04:47:13	1.2
+@@ -16,7 +16,6 @@
+  */
  
--	READ_BUF(8);
--	COPYMEM(clientid, 8);
-+	READ_BUF(8 + sizeof(nfs4_verifier));
-+	COPYMEM(&scd_c->sc_clientid, 8);
-+	COPYMEM(&scd_c->sc_confirm, sizeof(nfs4_verifier));
+ #include <linux/config.h>
+-#include <linux/version.h>
+ #include <linux/string.h>
+ #include <linux/time.h>
+ #include <linux/errno.h>
+@@ -30,7 +29,6 @@
+ #include <linux/unistd.h>
+ #include <linux/slab.h>
+ #include <linux/in.h>
+-#define __NO_VERSION__
+ #include <linux/module.h>
+ #include <linux/namei.h>
  
- 	DECODE_TAIL;
- }
-@@ -1736,8 +1737,9 @@ nfsd4_encode_setclientid(struct nfsd4_co
- 	ENCODE_HEAD;
+--- ./fs/nfsd/nfsproc.c	2002/10/16 04:45:56	1.2
++++ ./fs/nfsd/nfsproc.c	2002/10/16 04:47:13	1.3
+@@ -16,7 +16,6 @@
+ #include <linux/net.h>
+ #include <linux/in.h>
+ #include <linux/namei.h>
+-#include <linux/version.h>
+ #include <linux/unistd.h>
+ #include <linux/slab.h>
  
- 	if (!nfserr) {
--		RESERVE_SPACE(8);
-+		RESERVE_SPACE(8 + sizeof(nfs4_verifier));
- 		WRITEMEM(&scd->se_clientid, 8);
-+		WRITEMEM(&scd->se_confirm, sizeof(nfs4_verifier));
- 		ADJUST_ARGS();
- 	}
- 	else if (nfserr == nfserr_clid_inuse) {
---- ./include/linux/nfsd/xdr4.h	2002/10/16 04:45:57	1.2
-+++ ./include/linux/nfsd/xdr4.h	2002/10/16 04:47:27	1.3
-@@ -224,6 +224,12 @@ struct nfsd4_setclientid {
- 	char *		se_callback_addr_val;   /* request */
- 	u32		se_callback_ident;  /* request */
- 	clientid_t	se_clientid;        /* response */
-+	nfs4_verifier	se_confirm;         /* response */
-+};
-+
-+struct nfsd4_setclientid_confirm {
-+	clientid_t	sc_clientid;
-+	nfs4_verifier	sc_confirm;
- };
+--- ./fs/nfsd/nfs3proc.c	2002/10/16 04:45:56	1.2
++++ ./fs/nfsd/nfs3proc.c	2002/10/16 04:47:13	1.3
+@@ -15,7 +15,6 @@
+ #include <linux/fcntl.h>
+ #include <linux/net.h>
+ #include <linux/in.h>
+-#include <linux/version.h>
+ #include <linux/unistd.h>
+ #include <linux/slab.h>
+ #include <linux/major.h>
+--- ./fs/nfsd/nfsctl.c	2002/10/16 04:47:11	1.1
++++ ./fs/nfsd/nfsctl.c	2002/10/16 04:47:13	1.2
+@@ -8,7 +8,6 @@
  
- /* also used for NVERIFY */
-@@ -267,7 +273,7 @@ struct nfsd4_op {
- 		clientid_t			renew;
- 		struct nfsd4_setattr		setattr;
- 		struct nfsd4_setclientid	setclientid;
--		clientid_t			setclientid_confirm;
-+		struct nfsd4_setclientid_confirm setclientid_confirm;
- 		struct nfsd4_verify		verify;
- 		struct nfsd4_write		write;
- 	} u;
+ #include <linux/config.h>
+ #include <linux/module.h>
+-#include <linux/version.h>
+ 
+ #include <linux/linkage.h>
+ #include <linux/time.h>
+--- ./fs/nfsd/stats.c	2002/10/16 04:47:11	1.1
++++ ./fs/nfsd/stats.c	2002/10/16 04:47:13	1.2
+@@ -27,7 +27,6 @@
+ #include <linux/time.h>
+ #include <linux/proc_fs.h>
+ #include <linux/stat.h>
+-#define __NO_VERSION__
+ #include <linux/module.h>
+ 
+ #include <linux/sunrpc/svc.h>
 
 
 -------------------------------------------------------
