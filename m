@@ -1,24 +1,34 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: NFS Server problem (kernel > 2.6.5 ?)
-Date: Wed, 27 Oct 2004 12:50:17 -0400
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Re: [PATCH] fix nfsidem cthon test
+Date: Wed, 27 Oct 2004 12:53:20 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20041027165017.GE4292@fieldses.org>
-References: <001801c4bb3d$5d670bd0$1203a8c0@utvikling> <417E8DFA.5090204@psu.edu> <001501c4bc44$051867a0$1203a8c0@utvikling>
+Message-ID: <1098896000.10651.16.camel@lade.trondhjem.org>
+References: <1098341478.21421.7.camel@hole.melbourne.sgi.com>
+	 <1098343891.28394.15.camel@lade.trondhjem.org>
+	 <20041021161309.GC24417@fieldses.org>
+	 <1098413781.21421.37.camel@hole.melbourne.sgi.com>
+	 <20041022024349.GA30004@fieldses.org>
+	 <1098696830.21421.163.camel@hole.melbourne.sgi.com>
+	 <1098715298.10720.38.camel@lade.trondhjem.org>
+	 <1098775926.21421.371.camel@hole.melbourne.sgi.com>
+	 <1098809731.10567.5.camel@lade.trondhjem.org>
+	 <1098837612.21421.1344.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net, Jason Holmes <jholmes@psu.edu>
+Content-Type: text/plain
+Cc: "Dr. Bruce Fields" <bfields@fieldses.org>,
+	Neil Brown <neilb@cse.unsw.edu.au>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CMr00-0006mQ-Rt
-	for nfs@lists.sourceforge.net; Wed, 27 Oct 2004 09:50:12 -0700
-Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.41)
-	id 1CMqzz-0002xA-Ug
-	for nfs@lists.sourceforge.net; Wed, 27 Oct 2004 09:50:12 -0700
-To: mrg <mrg@normailer.com>
-In-Reply-To: <001501c4bc44$051867a0$1203a8c0@utvikling>
+	id 1CMr3L-0007BZ-Sz
+	for nfs@lists.sourceforge.net; Wed, 27 Oct 2004 09:53:39 -0700
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CMr3K-00088B-VO
+	for nfs@lists.sourceforge.net; Wed, 27 Oct 2004 09:53:39 -0700
+To: Greg Banks <gnb@melbourne.sgi.com>
+In-Reply-To: <1098837612.21421.1344.camel@hole.melbourne.sgi.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,18 +41,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, Oct 27, 2004 at 06:43:00PM +0200, mrg wrote:
-> Thanks, it worked!
-> 
-> I uninstalled the nfs-utils-1.0.6-22 (from FC2), then installed
-> nfs-utils-1.0.6 from kernel.org. Et voila!
+on den 27.10.2004 Klokka 10:40 (+1000) skreiv Greg Banks:
 
-If you download the FC2 srpm you can see the list of patches that
-distinguishes their version from stock nfs-utils-1.0.6.  It might be
-useful to figure out exactly which of those patches it is that causes
-the problem.
+> Oh, I see: linux-2.6.9-17-fix_nfs_nolock.dif isn't linked to
+> from the initial section of the page, which goes from -16 to -18.
 
---b.
+Oops... I never did get round to writing a script to automate that...
+
+Oh, well. Thanks for pointing it out!
+
+Trond
+
+-- 
+Trond Myklebust <trond.myklebust@fys.uio.no>
+
 
 
 -------------------------------------------------------
