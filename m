@@ -1,25 +1,29 @@
 From: Neil Brown <neilb@cse.unsw.edu.au>
 Subject: Re: Re: [PATCH] zerocopy NFS for 2.5.43
-Date: Wed, 23 Oct 2002 16:03:39 +1000
+Date: Wed, 23 Oct 2002 16:10:37 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15798.15291.519275.774315@notabene.cse.unsw.edu.au>
-References: <20021018.221103.35656279.taka@valinux.co.jp>
+Message-ID: <15798.15709.589542.122490@notabene.cse.unsw.edu.au>
+References: <15786.23306.84580.323313@notabene.cse.unsw.edu.au>
+	<20021018.221103.35656279.taka@valinux.co.jp>
 	<15797.63730.223181.75888@notabene.cse.unsw.edu.au>
 	<20021023.125304.28780747.taka@valinux.co.jp>
-	<20021023.144057.70224423.taka@valinux.co.jp>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Cc: neilb@cse.unsw.edu.au,
+    nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 184EcR-0003a8-00
-	for <nfs@lists.sourceforge.net>; Tue, 22 Oct 2002 23:03:52 -0700
+	id 184EjG-0004ZL-00
+	for <nfs@lists.sourceforge.net>; Tue, 22 Oct 2002 23:10:54 -0700
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.233.204] == wireless-204.wireless.cse.unsw.EDU.AU)
-	(for <taka@valinux.co.jp>) (for <nfs@lists.sourceforge.net>) By tone
-	With Smtp ; Wed, 23 Oct 2002 16:03:42 +1000
+	(for <taka@valinux.co.jp>) (for <neilb@cse.unsw.edu.au>)
+	(for <nfs@lists.sourceforge.net>) (for <andros@citi.umich.edu>)
+	(for <trond.myklebust@fys.uio.no>) By tone With Smtp ;
+	Wed, 23 Oct 2002 16:10:38 +1000
 To: Hirokazu Takahashi <taka@valinux.co.jp>
+cc: "William A.(Andy) Adamson" <andros@citi.umich.edu>,  trond.myklebust@fys.uio.no
 In-Reply-To: message from Hirokazu Takahashi on Wednesday October 23
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -34,45 +38,65 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 On Wednesday October 23, taka@valinux.co.jp wrote:
-> Hello,
 > 
-> > > Also, I am wondering about the way that you put zero-copy support into
-> > > nfsd_readdir.
-> > > 
-> > > Presumably the gain is that sock_sendmsg does a copy into a
-> > > skbuf and then a DMA out of that, while ->sendpage does just the DMA.
-> > > In that case, maybe it would be better to get "struct page *" pointers
-> > > for the pages in the default buffer, and pass them to 
-> > > ->sendpage.
-> > 
-> > It seems good idea.
-> > 
-> > The problem is that it's hard to know when the page will be released.
-> > The page will be held by TCP/IP stack. TCP may hold it for a while
-> > by way of retransmition. UDP pakcets may also held in driver-queue
-> > after ->sendpage has done.
-> > 
-> > We should check reference count of the default buffer and 
-> > decide to use the buffer or allocate new one.
-> > We think Almost request can use the default buffer.
+> I'm wondering one point that the xdr_buf can't hanldle NFSv4 compound
+> operation correctly yet. I don't know what will happen if we send some
+> page data and some non-page data together as it will try to pack some
+> operations in one xdr_buf.
 > 
-> I mean we can't use a page in the default buffer.
-> We should use the page next to the default buffer or we should
-> prepare another page for nfsd_readdir.
+> If we care about NFSv4 it could be like this:
 > 
-> I don't know whether allocating an extra page for each server
-> is good or not.
-> How do you think about it?
+>     struct svc_buf {
+>         u32 *                   area;   /* allocated memory */
+>         u32 *                   base;   /* base of RPC datagram */
+>         int                     buflen; /* total length of buffer */
+>         u32 *                   buf;    /* read/write pointer */
+>         int                     len;    /* current end of buffer */
+> 
+>         struct xdr_buf iov[I_HAVE_NO_IDEA_HOW_MANY_IOVs_NFSV4_REQUIRES];
+>         int                     nriov;
+>     }
+> 
+> I guess it would be better to fix NFSv4 problems after Halloween.
+> 
 
-I think I would change the approach to buffering.
-Instead of having a fixed set of pages, we just allocate new pages as
-needed, having handed old ones over to the networking layer.
+Hmm. I wonder what plans there are for this w.r.t. to NFSv4 client.
+Andy? Trond?
 
-So we have a pool of pages that we draw from when generating replies,
-and refill before accepting a new request.
+I suspect that COMPOUNDS with multiple READ or WRITE requests would be
+fairly rare, and it would probably be reasonable to respond with
+ERESOURCE (or however it is spelt).
 
-Ofcourse that is a fairly big change from where we are now so it might
-take a while.  We should probably get zero copy reads in first...
+i.e. Reject any operation that would need to use a second set of pages
+in a response.
+
+
+> > I'm not certain about receiving write requests.
+> > I imagine that it might work to:
+> >   1/ call xdr_partial_copy_from_skb to just copy the first 1K from the
+> >     skb into the head iovec, and hold onto the skbuf (like we
+> >     currently do).
+> >   2/ enter the nfs server to parse that header.
+> >   3/ When the server finds it needs more data for a write, it
+> >      collects the pages and calls xdr_partial_copy_from_skb
+> >      to copy the rest of the skb directly into the page cache.
+> 
+> I think it will be hard work that it's the same that we make another
+> generic_file_write function. I feel it may be overkill.
+>   e.g. We must read a page if it isn't on the cache.
+>        We must allocate disk blocks if the file don't have yet X-(
+>        Some filesytems like XFS have its own way of updating pagecache.
+> 
+> We should make kNFSd keep away from the implementation of VM/FS
+> as possible as we can.
+
+Could we not use 'mmap'?   Maybe not, and probably best to avoid it as
+you say.
+
+I was thinking it would be nice to be able to do the udp-checksum at
+the same time as the copy-into-page-cache, but maybe we just say that
+you need a NIC that does checksums if you want to do single-copy NFS
+writes. 
 
 NeilBrown
 
