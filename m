@@ -1,19 +1,15 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: nfs lock question...
-Date: 24 Jun 2003 20:59:44 +0200
+Subject: Re: Stale fcntl lock never released
+Date: 24 Jun 2003 21:02:10 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsllvrti73.fsf@charged.uio.no>
-References: <8147E1B07201DD41B6B9F0D31E07B384449147@srv-grp-s07.dev.atos.fr>
+Message-ID: <shshe6fti31.fsf@charged.uio.no>
+References: <20030623221405.GA4320@async.com.br>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: NFS@lists.sourceforge.net,  Guilherme Salgado <salgado@async.com.br>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19Ut1H-0001w9-00
-	for <nfs@lists.sourceforge.net>; Tue, 24 Jun 2003 11:59:55 -0700
-To: Brasseur =?iso-8859-1?q?Val=E9ry?= <Valery.Brasseur@atosorigin.com>
-In-Reply-To: <8147E1B07201DD41B6B9F0D31E07B384449147@srv-grp-s07.dev.atos.fr>
+To: Christian Reis <kiko@async.com.br>
+In-Reply-To: <20030623221405.GA4320@async.com.br>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,18 +22,15 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " =3D=3D Brasseur Val=E9ry <Valery.Brasseur@atosorigin.com> writes:
+>>>>> " " == Christian Reis <kiko@async.com.br> writes:
 
-     > is it normal that when a process is stoppped (ctrl-z ;-) and he
-     > has locks on a nfs-server
+     > (Trond, do any of the lockd patches in
+     > http://www.fys.uio.no/~trondmy/src/2.4.21/ fix something like
+     > this?)
 
-Yes. ctrl-z will normally suspend the process. It does nothing to kill
-it...
-
-     > if this nfs server reboot the stopped process does'nt reclaim
-     > it's locks ?!!!
-
-Why not? That's a separate thread...
+No. This is what rpc.statd is supposed to do. When a client reboots,
+it is supposed to notify the server that it should remove all locks
+belonging to that client.
 
 Cheers,
   Trond
