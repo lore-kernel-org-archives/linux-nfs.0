@@ -1,21 +1,18 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: close() / nfs commit performance
-Date: 01 Jul 2003 02:34:18 +0200
+From: "GroupShield for Exchange (CVO-EXCHANGE)"
+	 <NAIUSCVO-EXCHANGE@roguewave.com>
+Subject: ALERT -  GroupShield ticket number OA2087_1057037707_CVO-EXCHANGE
+ _1 was generated
+Date: Mon, 30 Jun 2003 22:35:08 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shshe67xeyd.fsf@charged.uio.no>
-References: <482A3FA0050D21419C269D13989C6113D069EA@lavender-fe.eng.netapp.com>
-	<1057015133.21354.44.camel@themachine.sanera.net>
+Message-ID: <F888C30C3021D411B9DA00B0D0209BE805961534@cvo-exchange.cvo.roguewave.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Lever, Charles" <Charles.Lever@netapp.com>,  neilb@cse.unsw.edu.au,
-	  nfs@lists.sourceforge.net
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+Received: from cvo-ext.roguewave.com ([12.22.36.198] helo=cvo-exchange.cvo.roguewave.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19X96V-0004dZ-00
-	for <nfs@lists.sourceforge.net>; Mon, 30 Jun 2003 17:34:39 -0700
-To: Edward Roper <eroper@wanfear.com>
-In-Reply-To: <1057015133.21354.44.camel@themachine.sanera.net>
+	id 19XDqO-0007Sd-00
+	for <nfs@lists.sourceforge.net>; Mon, 30 Jun 2003 22:38:20 -0700
+To: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,19 +25,35 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Edward Roper <eroper@wanfear.com> writes:
+Action Taken:
+The attachment was deleted from the message and replaced with a text file
+informing the recipient of the action taken.
 
-     > Perhaps local close() calls don't actually commit to disk?
+To:
+nfs@lists.sourceforge.net <nfs@lists.sourceforge.net>
 
-man 2 close
-   (and read the NOTES)
+From:
+jinpeng.yu@163.com <jinpeng.yu@163.com>
 
-and then
+Sent:
+-2019248256,29573010
 
-man 2 fsync
+Subject:
+[NFS] Re: Movie
 
-Cheers,
-  Trond
+Attachment Details:-
+
+Attachment Name: your_details.zi
+File: your_details.zi
+Infected? Yes
+Repaired? No
+Blocked? No
+Deleted? Yes
+Virus Name: W32/Sobig.e@MM
+
+
+
+	
 
 
 -------------------------------------------------------
