@@ -1,21 +1,23 @@
-From: Andrew Theurer <habanero@us.ibm.com>
-Subject: Re: Re: [PATCH] zerocopy NFS for 2.5.43
-Date: Mon, 4 Nov 2002 15:13:06 -0600
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: NFSv2 won't work in case of error
+Date: Tue, 5 Nov 2002 11:31:39 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200211041513.06476.habanero@us.ibm.com>
-References: <15808.28897.595522.855723@notabene.cse.unsw.edu.au> <20021101.015623.48537031.taka@valinux.co.jp> <15809.54419.341980.683179@notabene.cse.unsw.edu.au>
+Message-ID: <15815.4459.667481.353188@notabene.cse.unsw.edu.au>
+References: <20021101.170933.15272489.taka@valinux.co.jp>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Cc: nfs@lists.sourceforge.net, "David S. Miller" <davem@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mg03.austin.ibm.com ([192.35.232.20])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 188p2U-0008P5-00
-	for <nfs@lists.sourceforge.net>; Mon, 04 Nov 2002 13:45:42 -0800
-To: Neil Brown <neilb@cse.unsw.edu.au>,
-        Hirokazu Takahashi <taka@valinux.co.jp>
-In-Reply-To: <15809.54419.341980.683179@notabene.cse.unsw.edu.au>
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 188tN7-00028R-00
+	for <nfs@lists.sourceforge.net>; Mon, 04 Nov 2002 18:23:18 -0800
+Received: From
+	notabene.cse.unsw.edu.au ([129.94.233.204] == wireless-204.wireless.cse.unsw.EDU.AU)
+	(for <taka@valinux.co.jp>) (for <nfs@lists.sourceforge.net>) By tone
+	With Smtp ; Tue, 5 Nov 2002 13:23:01 +1100
+To: Hirokazu Takahashi <taka@valinux.co.jp>
+In-Reply-To: message from Hirokazu Takahashi on Friday November 1
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,57 +30,59 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> > I also ported the per-cpu socket patch against linux2.5.45.
->
-> I still don't really like this patch.
-> I appreciate that some sort of SMP awareness may be appropriate for
-> nfsd, but this just doesn't feel right.
->
-> Once possibility that I have considered goes like this:
->
-> - Allow a (udp) socket to have 'cpu affinity' registered.
-> - Get udp_v4_lookup  add to the score for sockets that
->   like the current cpu, and reject sockets that don't like this
->   cpu.
-> - Have some cpu affinity with the nfsd threads, probably having
->   a separate idle-server-queue for each cpu.  Possibly half the
->   threads would be tied to a cpu, the other half would float, and
->   only be used if no cpu-local threads were available.
+On Friday November 1, taka@valinux.co.jp wrote:
+> Hello,
+> 
+> I've fixed a problem that NFSv2 won't work when NFSv2 procedure
+> handler (proc->pc_func) returns error.
+> 
+> I guess there may be better way to fix it than this patch.
 
-This all sounds great, I wish I knew how to do this :)
+Thanks for noticing this.
 
-> Then instead of have special 'shadow' sockets, we just create NCPUS
-> normal udp sockets, instead of one, and give each a cpu affinity.
-> This would mean that receiving would benefit from multiple sockets
-> as well as sending.
+I think this problem will affect lockd as well, so a more general
+patch is needed.
 
-So, the target socket getting populated on inbound traffic would likely d=
-epend=20
-on which CPU took the net card inturrupt?  And the resulting CPU would ha=
-ndle=20
-the NFS request?  If so, and you had a good interrupt balance across CPUs=
-,=20
-that sounds fine.  If you have an interrupt imbalance, it could be really=
-=20
-bad.  This doesn't sound like a problem on a system like PIII, where=20
-interrupts can float (don't know how irqbalance works with that) but I'm =
-not=20
-so sure about P4, even with irqbalance.  Over time they do balance out, b=
-ut=20
-in my experience a particular interrupt is being handled by one CPU or=20
-another with a significant (in this context) amount of time between=20
-destination changes.=20
+I came up with the following.
 
-> I have very little experience with these sort of SMP issues, so I may
-> be missing something obvious, but to me, this approach seems cleaner
-> and more general.
->
-> Dave: what would you think of having a "unsigned long cpus_allowed"
-> in struct inet_opt and putting the appropriate checks in
-> udp_v4_lookup??  Is it worth experimenting with?
->
-> NeilBrown
+NeilBrown
 
+
+---------------------------------
+Make sure final xdr_buf.len is correct on server reply
+
+rq_res->len was not always updated properly.
+It is only needed in the sendto routine, so we calculate
+it just before that is called.
+
+
+ ----------- Diffstat output ------------
+ ./net/sunrpc/svcsock.c |    7 +++++++
+ 1 files changed, 7 insertions(+)
+
+--- ./net/sunrpc/svcsock.c	2002/11/03 22:12:12	1.2
++++ ./net/sunrpc/svcsock.c	2002/11/03 22:30:54	1.3
+@@ -1195,6 +1195,7 @@ svc_send(struct svc_rqst *rqstp)
+ {
+ 	struct svc_sock	*svsk;
+ 	int		len;
++	struct xdr_buf	*xb;
+ 
+ 	if ((svsk = rqstp->rq_sock) == NULL) {
+ 		printk(KERN_WARNING "NULL socket pointer in %s:%d\n",
+@@ -1205,6 +1206,12 @@ svc_send(struct svc_rqst *rqstp)
+ 	/* release the receive skb before sending the reply */
+ 	svc_release_skb(rqstp);
+ 
++	/* calculate over-all length */
++	xb = & rqstp->rq_res;
++	xb->len = xb->head[0].iov_len +
++		xb->page_len +
++		xb->tail[0].iov_len;
++
+ 	len = svsk->sk_sendto(rqstp);
+ 	svc_sock_release(rqstp);
+ 
 
 
 -------------------------------------------------------
