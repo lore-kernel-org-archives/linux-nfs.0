@@ -1,64 +1,55 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: [Patch] Linux NFS & Heartbeat Failover (RH9.0)
-Date: Wed, 20 Aug 2003 10:02:59 +1000
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16194.47795.334036.788895@gargle.gargle.HOWL>
-References: <1061046205.3f3e47bd69679@mail.aidasystems.com>
-	<16191.24979.340685.673333@gargle.gargle.HOWL>
-	<1061293989.3f420fa55fa3a@mail.aidasystems.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: [NFS] [PATCH] Stop call_decode() from ignorning RPC header errrors
+Date: Wed, 20 Aug 2003 13:34:52 -0400
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <3F43B13C.5010403@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net, linux-ha@lists.linux-ha.org, forsberg@cendio.se
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19pGRT-0000E8-00
-	for <nfs@lists.sourceforge.net>; Tue, 19 Aug 2003 17:03:11 -0700
-Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <tim@aidasystems.com>) (for <nfs@lists.sourceforge.net>)
-	(for <linux-ha@lists.linux-ha.org>) (for <forsberg@cendio.se>) By
-	note With Smtp ; Wed, 20 Aug 2003 10:03:00 +1000
-To: Tim Hasson <tim@aidasystems.com>
-In-Reply-To: message from Tim Hasson on Tuesday August 19
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: multipart/mixed;
+ boundary="------------070801080006030704060606"
+Cc: linux-kernel <linux-kernel@vger.kernel.org>, acl-devel@bestbits.at
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
+To: nfs@lists.sourceforge.net
+List-ID: <nfs.lists.sourceforge.net>
 
-On Tuesday August 19, tim@aidasystems.com wrote:
-> Hi,
-> 
-> Neil, Thank you very much for your very useful patch. Unfortunately, I didnt 
-> realize this was against ~current (2.6.x ?) therefore it failed horribly :/
-> I modified it against 2.4.20-19 (redhat9's kernel-source updated), and it 
-> works as expected. The nfsd on port 2049 no longer responds on eth0 when it 
-> gets a request on eth0:0, but instead replies on the if/addr it received the 
-> connection from.
-> Keep up the good work!
+This is a multi-part message in MIME format.
+--------------070801080006030704060606
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
 
-That patch was against a 2.4 kernel, but it must have been different
-enough from yours that patch failed to apply it ('wiggle' would have
-worked).
+This patch stop call_decode() from ignoring errors
+that are found while parsing the RPC header. I turns
+out the nfs acls routines need these error codes to do
+the right thing...
 
-The code in 2.6 is quite different due to the zero-copy stuff.  Linus
-recently accepted the 2.6 equivalent patch so this will definately be
-fixed in 2.6.0, and probably in 2.4.23 as well.
+SteveD.
 
-NeilBrown
+--------------070801080006030704060606
+Content-Type: text/plain;
+ name="linux-2.4.21-sunrpc-calldecode.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="linux-2.4.21-sunrpc-calldecode.patch"
 
+--- linux-2.4.21/net/sunrpc/clnt.c.diff	2003-08-18 11:11:22.000000000 -0400
++++ linux-2.4.21/net/sunrpc/clnt.c	2003-08-20 12:13:02.000000000 -0400
+@@ -784,9 +784,16 @@ call_decode(struct rpc_task *task)
+ 				__FUNCTION__);
+ 
+ 	/* Verify the RPC header */
+-	if (!(p = call_verify(task)))
++	if (!(p = call_verify(task))) {
++		/*
++		 * When call_verfiy sets tk_action to NULL (via task_exit)
++		 * a non-retry-able error has occurred (like the server
++		 * not supporting a particular procedure call).
++		 */
++		if (task->tk_action == NULL)
++			return;
+ 		goto out_retry;
+-
++	}
+ 	/*
+ 	 * The following is an NFS-specific hack to cater for setuid
+ 	 * processes whose uid is mapped to nobody on the server.
 
--------------------------------------------------------
-This SF.net email is sponsored by Dice.com.
-Did you know that Dice has over 25,000 tech jobs available today? From
-careers in IT to Engineering to Tech Sales, Dice has tech jobs from the
-best hiring companies. http://www.dice.com/index.epl?rel_code=104
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+--------------070801080006030704060606--
