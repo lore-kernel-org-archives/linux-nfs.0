@@ -1,23 +1,25 @@
-From: <barrie_spence@agilent.com>
-Subject: RE: NFS suport block sharing
-Date: Fri, 20 Feb 2004 13:25:55 -0000
+From: Peter Niemayer <niemayer@isg.de>
+Subject: exported filesystem on loop-device could be much faster if only nfs
+ on the server side...
+Date: Thu, 19 Feb 2004 21:33:24 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <0BA988FDBD6ADA4C8C5C5A177C6F1F6F2250D6@wsqfmb21b.britain.agilent.com>
+Message-ID: <40351D94.8000405@isg.de>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AuAlE-00043i-K4
-	for nfs@lists.sourceforge.net; Fri, 20 Feb 2004 05:32:08 -0800
-Received: from msgbas1x.net.europe.agilent.com ([192.25.19.109])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AuAWW-000828-J0
-	for nfs@lists.sourceforge.net; Fri, 20 Feb 2004 05:16:56 -0800
-To: <Charles.Lever@netapp.com>, <okir@suse.de>,
-	<trond.myklebust@fys.uio.no>
+	id 1Atux2-0003rv-K4
+	for nfs@lists.sourceforge.net; Thu, 19 Feb 2004 12:39:16 -0800
+Received: from rzfoobar.is-asp.com ([217.11.194.155] helo=mail.isg.de)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.30)
+	id 1AtujL-0002r7-Ng
+	for nfs@lists.sourceforge.net; Thu, 19 Feb 2004 12:25:07 -0800
+Received: from isg.de (unknown [192.168.5.53])
+	by mail.isg.de (Postfix) with ESMTP id D00D01503580
+	for <nfs@lists.sourceforge.net>; Thu, 19 Feb 2004 21:33:24 +0100 (CET)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,21 +32,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+... would do some more read-ahead. But first: Hi, I'm currently seeing a bizarre
+effect with an filesystem on a loop device exported via nfs (v3, kernel 2.6.2):
+
+Another computer, connected via Gigabit-EtherNet, reads a big file. The performance
+is not that good, only about 6MB/s, while files that are exported the same way but
+are not on a filesystem that resides on a loop device can be read at about 35MB/s.
+The server machine has a lot of idle time left in this scenario.
+
+Now comes the funny part: If I start both the copy job on the remote machine reading
+the file AND a local "dd if=file_on_loop_fs of=/dev/zero" on the server machine,
+the performance increases up to about 30MB/s!
+
+So it seems that a little read-ahead on the server machine can do wonders to the
+performance in this case.
+
+Is there any way to configure read-ahead on the server side of NFS?
+
+Any other tip you can give me to get the same performance boost without the
+awkward manual start of the bogus "dd" (which certainly spoils some CPU, still) ?
+
+
+Thanks in advance,
+
+Peter Niemayer
 
 
 
-> Let me state my point though: how many people actually do mount a file
-> system twice? And if they do, wouldn't that be exactly _because_ they
-> want different semantics on the two mounts?
-
-We use automount extensively. Yes, all the home directories would be
-expected to share common mount options, but the remote filesystem may
-contain more than home directories and we may mount separate parts
-of the filesystems in different ways in different places.=20
-
-Obviously, I wouldn't expect to use different rsize/wsize.
-
-Barrie
 
 
 -------------------------------------------------------
