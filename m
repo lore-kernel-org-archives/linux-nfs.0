@@ -1,15 +1,15 @@
 From: "Kendrick M. Smith" <kmsmith@umich.edu>
-Subject: patch 37/38: SERVER: ensure XDR buffer is large enough for NFSv4
-Date: Tue, 13 Aug 2002 19:12:31 -0400 (EDT)
+Subject: patch 34/38: SERVER: tweak nfsd_readdir() for NFSv4
+Date: Tue, 13 Aug 2002 19:11:18 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.SOL.4.44.0208131912050.25942-100000@rastan.gpcc.itd.umich.edu>
+Message-ID: <Pine.SOL.4.44.0208131910550.25942-100000@rastan.gpcc.itd.umich.edu>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from donkeykong.gpcc.itd.umich.edu ([141.211.2.163])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17ekq2-0000dO-00
-	for <nfs@lists.sourceforge.net>; Tue, 13 Aug 2002 16:12:34 -0700
+	id 17ekoq-0000T1-00
+	for <nfs@lists.sourceforge.net>; Tue, 13 Aug 2002 16:11:20 -0700
 To: linux-kernel@vger.kernel.org, <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -24,61 +24,111 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 
-This patch changes the 'xdrsize' parameter to svc_create(), to be
-     NFS4_SVC_XDRSIZE   if v4 is defined
-else NFS3_SVC_XDRSIZE   if v3 is defined
-else NFS2_SVC_XDRSIZE     (formerly NFSSVC_XDRSIZE)
+This patch makes three small changes to nfsd_readdir().
 
-This always works, since
-     NFS4_SVC_XDRSIZE >= NFS3_SVC_XDRSIZE >= NFS2_SVC_XDRSIZE.
+First, the 'filldir' routine for NFSv4 may return an arbitrary error,
+which should become the return value for nfsd_readdir().  I implemented
+this by adding an 'nfserr' field to the 'struct readdir_cd'.
 
-The value of NFSD_BUFSIZE has also been moved to const.h, since we need
-the definition available in nfs4proc.c
---- old/include/linux/nfsd/xdr.h	Wed Jul 24 16:03:30 2002
-+++ new/include/linux/nfsd/xdr.h	Thu Aug  8 09:52:45 2002
-@@ -119,7 +119,7 @@ union nfsd_xdrstore {
- 	struct nfsd_readdirargs	readdir;
+Second, in NFSv4 the caller of nfsd_readdir() will specify an attribute
+bitmap, which must be communicated to the 'filldir' routine.  I implemented
+this by adding a @bitmap parameter to nfsd_readdir() and a corresponding
+field in the 'struct readdir_cd'.  (The bitmap is not interpreted in any
+way by nfsd_readdir().)
+
+Finally, NFSv4 defines a new error nfserr_readdir_nospc, which indicates
+that there was not enough buffer space to encode a single entry.
+
+--- old/include/linux/nfsd/nfsd.h	Fri Aug  9 10:13:11 2002
++++ new/include/linux/nfsd/nfsd.h	Fri Aug  9 09:57:45 2002
+@@ -55,6 +56,8 @@ struct readdir_cd {
+ 	char			plus;		/* readdirplus */
+ 	char			eob;		/* end of buffer */
+ 	char			dotonly;
++	int			nfserr;		/* v4 only */
++	u32			bmval[2];	/* v4 only */
  };
+ typedef int		(*encode_dent_fn)(struct readdir_cd *, const char *,
+ 						int, loff_t, ino_t, unsigned int);
+@@ -119,7 +125,8 @@ int		nfsd_truncate(struct svc_rqst *, st
+ 				unsigned long size);
+ int		nfsd_readdir(struct svc_rqst *, struct svc_fh *,
+ 				loff_t, encode_dent_fn,
+-				u32 *buffer, int *countp, u32 *verf);
++				u32 *buffer, int *countp, u32 *verf,
++				u32 *bmval);
+ int		nfsd_statfs(struct svc_rqst *, struct svc_fh *,
+ 				struct statfs *);
 
--#define NFSSVC_XDRSIZE		sizeof(union nfsd_xdrstore)
-+#define NFS2_SVC_XDRSIZE	sizeof(union nfsd_xdrstore)
+--- old/fs/nfsd/vfs.c	Fri Aug  9 10:13:11 2002
++++ new/fs/nfsd/vfs.c	Fri Aug  9 09:32:36 2002
+@@ -1381,7 +1381,7 @@ out_nfserr:
+  */
+ int
+ nfsd_readdir(struct svc_rqst *rqstp, struct svc_fh *fhp, loff_t offset,
+-             encode_dent_fn func, u32 *buffer, int *countp, u32 *verf)
++             encode_dent_fn func, u32 *buffer, int *countp, u32 *verf, u32 *bmval)
+ {
+ 	u32		*p;
+ 	int		oldlen, eof, err;
+@@ -1402,6 +1402,10 @@ nfsd_readdir(struct svc_rqst *rqstp, str
+ 	cd.buffer = buffer;
+ 	cd.buflen = *countp; /* count of words */
+ 	cd.dirfh  = fhp;
++	if (bmval) {
++		cd.bmval[0] = bmval[0];
++		cd.bmval[1] = bmval[1];
++	}
 
+ 	/*
+ 	 * Read the directory entries. This silly loop is necessary because
+@@ -1417,8 +1421,15 @@ nfsd_readdir(struct svc_rqst *rqstp, str
+ 		if (err < 0)
+ 			goto out_nfserr;
 
- int nfssvc_decode_void(struct svc_rqst *, u32 *, void *);
---- old/include/linux/nfsd/const.h	Thu Aug  8 10:38:56 2002
-+++ new/include/linux/nfsd/const.h	Thu Aug  8 09:51:10 2002
-@@ -30,6 +30,16 @@
- # define NFS_SUPER_MAGIC	0x6969
- #endif
++		err = cd.nfserr;
++		if (err)
++			goto out_close;
+ 	} while (oldlen != cd.buflen && !cd.eob);
 
-+#define NFSD_BUFSIZE		(1024 + NFSSVC_MAXBLKSIZE)
++	err = nfserr_readdir_nospc;
++	if (rqstp->rq_vers == 4 && cd.eob && cd.buffer == buffer)
++		goto out_close;
 +
-+#ifdef CONFIG_NFSD_V4
-+# define NFSSVC_XDRSIZE		NFS4_SVC_XDRSIZE
-+#elif defined(CONFIG_NFSD_V3)
-+# define NFSSVC_XDRSIZE		NFS3_SVC_XDRSIZE
-+#else
-+# define NFSSVC_XDRSIZE		NFS2_SVC_XDRSIZE
-+#endif
-+
- #endif /* __KERNEL__ */
+ 	/* If we didn't fill the buffer completely, we're at EOF */
+ 	eof = !cd.eob;
 
- #endif /* _LINUX_NFSD_CONST_H */
---- old/fs/nfsd/nfssvc.c	Wed Jul 24 16:03:18 2002
-+++ new/fs/nfsd/nfssvc.c	Thu Aug  8 09:53:23 2002
-@@ -31,10 +31,11 @@
- #include <linux/nfsd/stats.h>
- #include <linux/nfsd/cache.h>
- #include <linux/nfsd/xdr.h>
-+#include <linux/nfsd/xdr3.h>
-+#include <linux/nfsd/xdr4.h>
- #include <linux/lockd/bind.h>
+--- old/fs/nfsd/nfsproc.c	Wed Jul 24 16:03:24 2002
++++ new/fs/nfsd/nfsproc.c	Mon Jul 29 11:50:09 2002
+@@ -492,7 +492,7 @@ nfsd_proc_readdir(struct svc_rqst *rqstp
+ 	/* Read directory and encode entries on the fly */
+ 	nfserr = nfsd_readdir(rqstp, &argp->fh, (loff_t) argp->cookie,
+ 			      nfssvc_encode_entry,
+-			      buffer, &count, NULL);
++			      buffer, &count, NULL, NULL);
+ 	resp->count = count;
 
- #define NFSDDBG_FACILITY	NFSDDBG_SVC
--#define NFSD_BUFSIZE		(1024 + NFSSVC_MAXBLKSIZE)
+ 	fh_put(&argp->fh);
+--- old/fs/nfsd/nfs3proc.c	Fri Aug  9 10:13:11 2002
++++ new/fs/nfsd/nfs3proc.c	Wed Aug  7 11:58:49 2002
+@@ -460,7 +460,7 @@ nfsd3_proc_readdir(struct svc_rqst *rqst
+ 	fh_copy(&resp->fh, &argp->fh);
+ 	nfserr = nfsd_readdir(rqstp, &resp->fh, (loff_t) argp->cookie,
+ 					nfs3svc_encode_entry,
+-					buffer, &count, argp->verf);
++					buffer, &count, argp->verf, NULL);
+ 	memcpy(resp->verf, argp->verf, 8);
+ 	resp->count = count;
 
- /* these signals will be delivered to an nfsd thread
-  * when handling a request
+@@ -495,7 +495,7 @@ nfsd3_proc_readdirplus(struct svc_rqst *
+ 	fh_copy(&resp->fh, &argp->fh);
+ 	nfserr = nfsd_readdir(rqstp, &resp->fh, (loff_t) argp->cookie,
+ 					nfs3svc_encode_entry_plus,
+-					buffer, &count, argp->verf);
++					buffer, &count, argp->verf, NULL);
+ 	memcpy(resp->verf, argp->verf, 8);
+ 	resp->count = count;
+
 
 
 
