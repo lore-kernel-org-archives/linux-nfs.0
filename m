@@ -1,24 +1,24 @@
 From: Chip Salzenberg <chip@pobox.com>
-Subject: User report: Asymmetric mount failures
-Date: Sun, 15 Sep 2002 18:03:21 -0400
+Subject: More user reports: '{Random,Consistent} mount refusals'
+Date: Sun, 15 Sep 2002 18:09:53 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020915220321.GC11002@perlsupport.com>
+Message-ID: <20020915220953.GD11002@perlsupport.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tandu.perlsupport.com ([66.220.6.226] ident=mail)
 	by usw-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17qhUv-0001Gh-00
-	for <nfs@lists.sourceforge.net>; Sun, 15 Sep 2002 15:04:09 -0700
+	id 17qhbF-0002EX-00
+	for <nfs@lists.sourceforge.net>; Sun, 15 Sep 2002 15:10:41 -0700
 Received: from 0-1pool60-22.nas41.philadelphia1.pa.us.da.qwest.net
 	([65.129.60.22] helo=tytlal ident=mail)
 	by tandu.perlsupport.com with asmtp (Exim 3.35 #1 (Debian))
-	id 17qhUt-0005l3-00
-	for <nfs@lists.sourceforge.net>; Sun, 15 Sep 2002 15:04:08 -0700
+	id 17qhbC-0005n6-00
+	for <nfs@lists.sourceforge.net>; Sun, 15 Sep 2002 15:10:39 -0700
 Received: from chip by tytlal with local (Exim 3.35 #1 (Debian))
-	id 17qhU9-0007PS-00
-	for <nfs@lists.sourceforge.net>; Sun, 15 Sep 2002 18:03:21 -0400
+	id 17qhaT-0007Pz-00
+	for <nfs@lists.sourceforge.net>; Sun, 15 Sep 2002 18:09:53 -0400
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -32,69 +32,67 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I would appreciate some help diagnosing this Debian NFS bug report.
-If they're using up-to-date Debian unstable as they say, they'll have
-been using nfs-utils 1.0 on both machines.
+I really don't know what to make of Debian bugs 81428 and 131811:
 
------ Forwarded message from Nick Bailey <n.j.bailey@elec.gla.ac.uk> -----
+  http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=81428&repeatmerged=yes
+  http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=131811&repeatmerged=yes
 
-Subject: Bug#81428: Possibly related mound problem?
-From: Nick Bailey <n.j.bailey@elec.gla.ac.uk>
-To: 81428@bugs.debian.org
-Date: Tue, 06 Aug 2002 18:34:24 +0100
+Here is the most recent message from 81428.  Please help me figure out
+what's going on here ... I'm mostly packaging and mostly not coding in
+NFS land, and these reports are awfully confusing.
 
-Hi!
+----- Forwarded message from Adam C Powell IV <hazelsct@mit.edu> -----
 
-I've been having serious difficulty using NFS-kernel-server too, and now 
-have the situation where with identical hosts.{deny,allow} and exports, 
-machine A can mount /etc from machine B, but not the other way around 
-(I'm just using /etc for testing, of course)
+Subject: Bug#81428: I'm still getting random mount refusals
+From: Adam C Powell IV <hazelsct@mit.edu>
+Date: Tue, 15 Jan 2002 09:58:39 -0500
 
-So,
+Even with 1.0-2 on a 2.4.9 kernel which I rebooted yesterday, I'm still 
+getting this problem.  For a while I thought it was just a matter of 
+being slow to respond to changes in /etc/exports (like, I make a change, 
+but it doesn't take, then suddenly a few days later without restarting 
+the server, it magically works and I can mount).  I often try testing 
+every day after a change, and it takes somewhere between five and eight 
+days for the change to take effect.  This goes both for netgroup, 
+wildcard (*.domain.edu) and individual machine type entries in 
+/etc/exports, for clients in /etc/hosts.
 
-root@strauss:/etc# mount -t nfs cmtdb121:/etc /tmp/qqq
+Last night, the server crashed (no idea why), so I rebooted, and 
+remounted one of the dirs on the client machines while the server was 
+still fscking it, so the fs was not mounted on the server, and the dir 
+was empty.  When the fsck was done and the dir mounted on the server, 
+"ls /dir" on the client still showed it empty.  This morning, I tried to 
+unmount and remount, but got:
 
-On cmtdb121, syslog shows:
-Aug  6 18:26:54 cmtdb121 rpc.mountd: authenticated mount request from 
-strauss:955 for /etc (/etc)
+mount: <server>:/dir failed, reason given by server: Permission denied
 
-but...
+Here's /var/log/messages on the server for this unmount-mount:
 
-cmtdb121:/etc# mount -t nfs strauss:/etc /tmp/qqq
-mount: strauss:/etc failed, reason given by server: Permission denied
+Jan 15 09:35:44 <server> rpc.mountd: authenticated unmount request from 
+<client.domain.edu>:702 for /dir (/dir)
+Jan 15 09:35:46 <server> rpc.mountd: authenticated mount request from 
+<client.domain.edu>:703 for /dir (/dir)
+Jan 15 09:35:46 <server> rpc.mountd: getfh failed: Operation not permitted
 
-and strauss shows in its syslog:
+It's possible that kernels newer than 2.4.9 have fixed this, but 2.4.14 
+through 2.4.17 have been misidentifying my disk labels (I'm about to 
+file a bug), so I can't test them on that server.
 
-Aug  6 18:27:25 strauss rpc.mountd: refused mount request from cmtdb121 
-for /etc (/): no export entry
+This bug is *so* annoying, I can't tell you, and has been since about 
+the time this bug was submitted.  Please don't close this until you know 
+for certain it is fixed - until the submitter or (if you can't reach 
+him/her) I confirms that it's fixed.  I really hope it gets fixed before 
+the woody release!
 
-I note /etc is somehow referred to / on strauss (no idea why, but this 
-would seem to be the cause of the problem), whereas it's correctly 
-resolved as /etc on cmtdb121
-
-cmtdb121 is a powerpc, Linux cmtdb121 2.4.18-powerpc #1 Thu Mar 14 
-16:55:14 EST 2002 ppc unknown unknown GNU/Linux
-Strauss is a dual AMD box with 2 NICs (one unconfigured): Linux strauss 
-2.4.18-686-smp #2 SMP Wed Mar 20 20:24:14 EST 2002 i686 unknown unknown 
-GNU/Linux
-
-Both of bang-up-to-date Sid installs. the portmapper, nfs-common and 
-nfs-kernel-servers have all been stopped and started in the appropriate 
-order several times.
-
-Two sysadmins and I have spent almost a whole day on this: I don't think 
-it's obvious (although I'm pretty thick at reporting bugs sometimes and 
-have dropped a few bricks, at least the sysadmins agree with me this time :)
-
-If there are any other test I could make, please don't hesitate to ask.
-
-Nick/
-
+Zeen,
 -- 
-Dr Nick Bailey                              n.j.bailey@elec.gla.ac.uk
-Centre for Music Technology                 http://cmt.gla.ac.uk/
-Dept of Electronics and Electrical Eng      http://www.elec.gla.ac.uk/
-The University of Glasgow                   http://www.gla.ac.uk
+
+-Adam P.
+
+GPG fingerprint: D54D 1AEE B11C CE9B A02B  C5DD 526F 01E8 564E E4B6
+
+Welcome to the best software in the world today cafe! 
+<http://lyre.mit.edu/%7Epowell/The_Best_Stuff_In_The_World_Today_Cafe.ogg>
 
 ----- End forwarded message -----
 
