@@ -1,19 +1,33 @@
-From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 21 of 23] Add the DELEGRETURN operation.
-Date: Fri, 17 Dec 2004 16:23:57 +1100
-Message-ID: <E1CfAar-0002ei-Ci@notabene.cse.unsw.edu.au>
+From: Mike Waychison <Michael.Waychison@Sun.COM>
+Subject: Re: [PATCH kNFSd 4 of 23] Preparation for delegation: client
+ callback probe
+Date: Fri, 17 Dec 2004 01:45:01 -0500
+Message-ID: <41C2806D.5050408@sun.com>
 References: <20041217162128.9968.patches@notabene>
-Cc: nfs@lists.sourceforge.net
+ <E1CfAap-0002dc-GG@notabene.cse.unsw.edu.au>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Andrew Morton <akpm@osdl.org>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CfAc1-0005BI-CD
-	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 21:25:09 -0800
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CfAbz-0006Ar-2N
-	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 21:25:09 -0800
-To: Andrew Morton <akpm@osdl.org>
+	id 1CfBrn-00026b-Hn
+	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 22:45:31 -0800
+Received: from brmea-mail-4.sun.com ([192.18.98.36])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CfBrm-0005Fu-HF
+	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 22:45:31 -0800
+Received: from phys-mpk-1 ([129.146.11.81])
+	by brmea-mail-4.sun.com (8.12.10/8.12.9) with ESMTP id iBH6jSdv009355
+	for <nfs@lists.sourceforge.net>; Thu, 16 Dec 2004 23:45:28 -0700 (MST)
+Received: from conversion-daemon.mpk-mail1.sfbay.sun.com by
+ mpk-mail1.sfbay.sun.com
+ (iPlanet Messaging Server 5.2 HotFix 1.24 (built Dec 19 2003))
+ id <0I8U00601SWBJ8@mpk-mail1.sfbay.sun.com>
+ (original mail from Michael.Waychison@Sun.COM) for nfs@lists.sourceforge.net;
+ Thu, 16 Dec 2004 22:45:28 -0800 (PST)
+In-reply-to: <E1CfAap-0002dc-GG@notabene.cse.unsw.edu.au>
+To: NeilBrown <neilb@cse.unsw.edu.au>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,131 +41,99 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-Signed-off-by: Andy Adamson <andros@citi.umich.edu>
-Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
+NeilBrown wrote:
+> client callback rpc to probe the callback
+> channel on setclientid with a null request.
+> 
+...
 
-### Diffstat output
- ./fs/nfsd/nfs4proc.c        |    3 +++
- ./fs/nfsd/nfs4state.c       |   16 ++++++++++++++++
- ./fs/nfsd/nfs4xdr.c         |   17 +++++++++++++++++
- ./include/linux/nfsd/xdr4.h |    7 +++++++
- 4 files changed, 43 insertions(+)
+> +/*
+> + * Set up the callback client and put a NFSPROC4_CB_NULL on the wire...
+> + */
+> +void
+> +nfsd4_probe_callback(struct nfs4_client *clp)
+> +{
+> +	struct sockaddr_in	addr;
+> +	struct nfs4_callback    *cb = &clp->cl_callback;
+> +	struct rpc_timeout	timeparms;
+> +	struct rpc_xprt *	xprt;
+> +	struct rpc_program *	program = &cb->cb_program;
+> +	struct rpc_stat *	stat = &cb->cb_stat;
+> +	struct rpc_clnt *	clnt;
+> +	struct rpc_message msg = {
+> +		.rpc_proc       = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_NULL],
+> +		.rpc_argp       = clp,
+> +	};
+> +	char                    hostname[32];
+> +	int status;
+> +
+> +	dprintk("NFSD: probe_callback. cb_parsed %d cb_set %d\n",
+> +			cb->cb_parsed, atomic_read(&cb->cb_set));
+> +	if (!cb->cb_parsed || atomic_read(&cb->cb_set))
+> +		return;
+> +
+> +	/* Initialize address */
+> +	memset(&addr, 0, sizeof(addr));
+> +	addr.sin_family = AF_INET;
+> +	addr.sin_port = htons(cb->cb_port);
+> +	addr.sin_addr.s_addr = htonl(cb->cb_addr);
+> +
+> +	/* Initialize timeout */
+> +	timeparms.to_initval = (NFSD_LEASE_TIME/4) * HZ;
+> +	timeparms.to_retries = 5;
+> +	timeparms.to_maxval = (NFSD_LEASE_TIME/2) * HZ;
+> +	timeparms.to_exponential = 1;
+> +
+> +	/* Create RPC transport */
+> +	if (!(xprt = xprt_create_proto(IPPROTO_TCP, &addr, &timeparms))) {
+> +		dprintk("NFSD: couldn't create callback transport!\n");
+> +		goto out_err;
+> +	}
+> +
+> +	/* Initialize rpc_program */
+> +	program->name = "nfs4_cb";
+> +	program->number = cb->cb_prog;
+> +	program->nrvers = sizeof(nfs_cb_version)/sizeof(nfs_cb_version[0]);
+> +	program->version = nfs_cb_version;
+> +	program->stats = stat;
+> +
+> +	/* Initialize rpc_stat */
+> +	memset(stat, 0, sizeof(struct rpc_stat));
+> +	stat->program = program;
+> +
+> +	/* Create RPC client
+> + 	 *
+> +	 * XXX AUTH_UNIX only - need AUTH_GSS....
+> +	 */
+> +	sprintf(hostname, "%u.%u.%u.%u", NIPQUAD(addr.sin_addr.s_addr));
+> +	if (!(clnt = rpc_create_client(xprt, hostname, program, 1, RPC_AUTH_UNIX))) {
+> +		dprintk("NFSD: couldn't create callback client\n");
+> +		goto out_xprt;
+> +	}
 
-diff ./fs/nfsd/nfs4proc.c~current~ ./fs/nfsd/nfs4proc.c
---- ./fs/nfsd/nfs4proc.c~current~	2004-12-15 13:37:21.000000000 +1100
-+++ ./fs/nfsd/nfs4proc.c	2004-12-15 13:37:51.000000000 +1100
-@@ -840,6 +840,9 @@ nfsd4_proc_compound(struct svc_rqst *rqs
- 		case OP_CREATE:
- 			op->status = nfsd4_create(rqstp, current_fh, &op->u.create);
- 			break;
-+		case OP_DELEGRETURN:
-+			op->status = nfsd4_delegreturn(rqstp, current_fh, &op->u.delegreturn);
-+			break;
- 		case OP_GETATTR:
- 			op->status = nfsd4_getattr(rqstp, current_fh, &op->u.getattr);
- 			break;
+Out of curiosity, does this have to be a reserved port?
 
-diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2004-12-15 13:37:51.000000000 +1100
-+++ ./fs/nfsd/nfs4state.c	2004-12-15 13:37:51.000000000 +1100
-@@ -2332,6 +2332,22 @@ out:
- 	return status;
- }
- 
-+int
-+nfsd4_delegreturn(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_delegreturn *dr)
-+{
-+	int status;
-+
-+	if ((status = fh_verify(rqstp, current_fh, S_IFREG, 0)))
-+		goto out;
-+
-+	nfs4_lock_state();
-+	status = nfs4_preprocess_stateid_op(current_fh, &dr->dr_stateid, DELEG_RET);
-+	nfs4_unlock_state();
-+out:
-+	return status;
-+}
-+
-+
- /* 
-  * Lock owner state (byte-range locks)
-  */
+- --
+Mike Waychison
+Sun Microsystems, Inc.
+1 (650) 352-5299 voice
+1 (416) 202-8336 voice
 
-diff ./fs/nfsd/nfs4xdr.c~current~ ./fs/nfsd/nfs4xdr.c
---- ./fs/nfsd/nfs4xdr.c~current~	2004-12-15 13:37:21.000000000 +1100
-+++ ./fs/nfsd/nfs4xdr.c	2004-12-15 13:37:51.000000000 +1100
-@@ -615,6 +615,18 @@ nfsd4_decode_create(struct nfsd4_compoun
- }
- 
- static inline int
-+nfsd4_decode_delegreturn(struct nfsd4_compoundargs *argp, struct nfsd4_delegreturn *dr)
-+{
-+	DECODE_HEAD;
-+
-+	READ_BUF(sizeof(stateid_t));
-+	READ32(dr->dr_stateid.si_generation);
-+	COPYMEM(&dr->dr_stateid.si_opaque, sizeof(stateid_opaque_t));
-+
-+	DECODE_TAIL;
-+}
-+
-+static inline int
- nfsd4_decode_getattr(struct nfsd4_compoundargs *argp, struct nfsd4_getattr *getattr)
- {
- 	return nfsd4_decode_bitmap(argp, getattr->ga_bmval);
-@@ -1170,6 +1182,9 @@ nfsd4_decode_compound(struct nfsd4_compo
- 		case OP_CREATE:
- 			op->status = nfsd4_decode_create(argp, &op->u.create);
- 			break;
-+		case OP_DELEGRETURN:
-+			op->status = nfsd4_decode_delegreturn(argp, &op->u.delegreturn);
-+			break;
- 		case OP_GETATTR:
- 			op->status = nfsd4_decode_getattr(argp, &op->u.getattr);
- 			break;
-@@ -2451,6 +2466,8 @@ nfsd4_encode_operation(struct nfsd4_comp
- 	case OP_CREATE:
- 		nfsd4_encode_create(resp, op->status, &op->u.create);
- 		break;
-+	case OP_DELEGRETURN:
-+		break;
- 	case OP_GETATTR:
- 		op->status = nfsd4_encode_getattr(resp, op->status, &op->u.getattr);
- 		break;
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+NOTICE:  The opinions expressed in this email are held by me,
+and may not represent the views of Sun Microsystems, Inc.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.5 (GNU/Linux)
+Comment: Using GnuPG with Thunderbird - http://enigmail.mozdev.org
 
-diff ./include/linux/nfsd/xdr4.h~current~ ./include/linux/nfsd/xdr4.h
---- ./include/linux/nfsd/xdr4.h~current~	2004-12-15 13:37:21.000000000 +1100
-+++ ./include/linux/nfsd/xdr4.h	2004-12-15 13:37:51.000000000 +1100
-@@ -94,6 +94,10 @@ struct nfsd4_create {
- #define cr_specdata1	u.dev.specdata1
- #define cr_specdata2	u.dev.specdata2
- 
-+struct nfsd4_delegreturn {
-+	stateid_t	dr_stateid;
-+};
-+
- struct nfsd4_getattr {
- 	u32		ga_bmval[2];        /* request */
- 	struct svc_fh	*ga_fhp;            /* response */
-@@ -335,6 +339,7 @@ struct nfsd4_op {
- 		struct nfsd4_close		close;
- 		struct nfsd4_commit		commit;
- 		struct nfsd4_create		create;
-+		struct nfsd4_delegreturn	delegreturn;
- 		struct nfsd4_getattr		getattr;
- 		struct svc_fh *			getfh;
- 		struct nfsd4_link		link;
-@@ -446,6 +451,8 @@ extern int
- nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 		struct nfsd4_release_lockowner *rlockowner);
- extern void nfsd4_release_compoundargs(struct nfsd4_compoundargs *);
-+extern int nfsd4_delegreturn(struct svc_rqst *rqstp,
-+		struct svc_fh *current_fh, struct nfsd4_delegreturn *dr);
- #endif
- 
- /*
+iD8DBQFBwoBsdQs4kOxk3/MRAgHCAJ4xgWFHL+6IlrslbifbQoCR1RDlQQCeLw8p
+VsUf2XAdv0ihP2qfBOTlp40=
+=1WbB
+-----END PGP SIGNATURE-----
 
 
 -------------------------------------------------------
