@@ -1,21 +1,15 @@
-From: Frank van Maarseveen <frankvm@xs4all.nl>
-Subject: [PATCH 3/3 2.6.9-rc2] remove broken_suid mount option (last part)
-Date: Thu, 16 Sep 2004 01:51:10 +0200
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: 2.6.8.1 kernel NFS client connectathon failure
+Date: Wed, 15 Sep 2004 23:11:25 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040915235110.GC23903@janus>
+Message-ID: <1095304285.8598.51.camel@lade.trondhjem.org>
+References: <200409152054.i8FKsTNV002355@roma.math.duke.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=iso-8859-1
+Cc: NFS@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C7jYP-00078l-2r
-	for nfs@lists.sourceforge.net; Wed, 15 Sep 2004 16:51:13 -0700
-Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1C7jYO-0005aD-Fg
-	for nfs@lists.sourceforge.net; Wed, 15 Sep 2004 16:51:13 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Andrew Schretter <schrett@math.duke.edu>
+In-Reply-To: <200409152054.i8FKsTNV002355@roma.math.duke.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -28,76 +22,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This gave me some thinking. But it seems that without this patch the only
-difference would be that processes with different real uid/gid would get
-different credentials internally only. It would not make any difference
-from what the server would see since we ultimately send fsuid/fsgid only
-(and of course the grouplist).
+P=E5 on , 15/09/2004 klokka 16:54, skreiv Andrew Schretter:
+> The attached code is a blatant rip from the latest connectathon code that
+> was stripped down to show exactly where it fails on my 2.6.8.1 NFS client=
+.
+> Note that this code works on the local disk and on a 2.4.22 client (both =
+to
+> a 2.6.8.1 server and a 2.4.22 server) but fail from a 2.6.8.1 client to
+> both 2.4.22 and 2.6.8.1 servers.
+>=20
 
-Signed-off-by: Frank van Maarseveen <frankvm@xs4all.nl>
 
---- d2/net/sunrpc/auth_unix.c.orig	2004-09-15 21:54:27.000000000 +0200
-+++ d2/net/sunrpc/auth_unix.c	2004-09-15 23:02:25.000000000 +0200
-@@ -17,8 +17,6 @@
- struct unx_cred {
- 	struct rpc_cred		uc_base;
- 	gid_t			uc_gid;
--	uid_t			uc_puid;		/* process uid */
--	gid_t			uc_pgid;		/* process gid */
- 	gid_t			uc_gids[RPC_MAXGROUPS];
- };
- #define uc_uid			uc_base.cr_uid
-@@ -76,8 +74,8 @@
- 	atomic_set(&cred->uc_count, 0);
- 	cred->uc_flags = RPCAUTH_CRED_UPTODATE;
- 	if (flags & RPC_TASK_ROOTCREDS) {
--		cred->uc_uid = cred->uc_puid = 0;
--		cred->uc_gid = cred->uc_pgid = 0;
-+		cred->uc_uid = 0;
-+		cred->uc_gid = 0;
- 		cred->uc_gids[0] = NOGROUP;
- 	} else {
- 		int groups = acred->group_info->ngroups;
-@@ -86,8 +84,6 @@
- 
- 		cred->uc_uid = acred->uid;
- 		cred->uc_gid = acred->gid;
--		cred->uc_puid = current->uid;
--		cred->uc_pgid = current->gid;
- 		for (i = 0; i < groups; i++)
- 			cred->uc_gids[i] = GROUP_AT(acred->group_info, i);
- 		if (i < RPC_MAXGROUPS)
-@@ -119,9 +115,7 @@
- 		int groups;
- 
- 		if (cred->uc_uid != acred->uid
--		 || cred->uc_gid != acred->gid
--		 || cred->uc_puid != current->uid
--		 || cred->uc_pgid != current->gid)
-+		 || cred->uc_gid != acred->gid)
- 			return 0;
- 
- 		groups = acred->group_info->ngroups;
-@@ -132,8 +126,8 @@
- 				return 0;
- 		return 1;
- 	}
--	return (cred->uc_uid == 0 && cred->uc_puid == 0
--	     && cred->uc_gid == 0 && cred->uc_pgid == 0
-+	return (cred->uc_uid == 0
-+	     && cred->uc_gid == 0
- 	     && cred->uc_gids[0] == (gid_t) NOGROUP);
- }
- 
--- 
-Frank
+This question keeps recurring on this list. The answer is the same now
+as it was before: Fix the bloody servers!!!!
+
+   subtree_check is INCOMPATIBLE with correct rename behaviour, and it
+is simply ridiculous that this is still a default option.
+
+Grrr,
+  Trond
+
 
 
 -------------------------------------------------------
-This SF.Net email is sponsored by: thawte's Crypto Challenge Vl
-Crack the code and win a Sony DCRHC40 MiniDV Digital Handycam
-Camcorder. More prizes in the weekly Lunch Hour Challenge.
-Sign up NOW http://ad.doubleclick.net/clk;10740251;10262165;m
+This SF.Net email is sponsored by: YOU BE THE JUDGE. Be one of 170
+Project Admins to receive an Apple iPod Mini FREE for your judgement on
+who ports your project to Linux PPC the best. Sponsored by IBM.
+Deadline: Sept. 24. Go here: http://sf.net/ppc_contest.php
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
