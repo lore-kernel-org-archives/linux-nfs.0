@@ -1,13 +1,17 @@
-From: "Peter Mooney" <5a1i2607l@yahoo.com>
-Subject: look young  idoaauicovsfy
-Date: Mon, 12 May 03 08:20:53 GMT
+From: Christoph Biardzki <Christoph.Biardzki@lrz-muenchen.de>
+Subject: nfsd hangs on 2.4.20 + 2.4.20_NFS_ALL patch + sched.c patch
+Date: Mon, 12 May 2003 11:26:46 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3-w53$5r-h-7$-gni@ajct.93bpp12>
+Message-ID: <3EBF68D6.8050506@lrz-muenchen.de>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="9EBBB909B.1A4.BA"
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: <nfs@lists.sourceforge.net>, <nms-cgi-support@lists.sourceforge.net>, <ofset-members@lists.sourceforge.net>, <opennap-dev@lists.sourceforge.net>, <phplib-users@lists.sourceforge.net>, <phpweather-devel@lists.sourceforge.net>, <proftp-committers@lists.sourceforge.net>, <ps2hacking-devel@lists.sourceforge.net>
+Received: from mailrelay1.lrz-muenchen.de ([129.187.254.101])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19F9bQ-0000nD-00
+	for <nfs@lists.sourceforge.net>; Mon, 12 May 2003 02:28:12 -0700
+Received: from [129.187.15.183] by mailout.lrz-muenchen.de with ESMTP for nfs@lists.sourceforge.net; Mon, 12 May 2003 11:26:47 +0200
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -20,49 +24,31 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
 
---9EBBB909B.1A4.BA
-Content-Type: text/html
-Content-Transfer-Encoding: quoted-printable
+Hello,
 
-<HTML>
-<HEAD>
-<TITLE>rehabilitation ammonia</TITLE> <META HTTP-EQUIV=3D"Content-Type"=
- CONTENT=3D"text/html; charset=3Diso-8859-1"> 
-</HEAD>
-<body>
-<center>
- <p><h3><font color=3D"white">
-    
-monday earth rotation growth attesting</font><br=
->
-<font color=3D"green">
-This is the health discovery that reverses aging!<br>
-Reported on by the New England Journal of Medicine<br>
-</font>
-<font color=3D"white">
-    
-format language heel calibration nickel</font><br=
->
 
-Body Fat Loss: <font color=3D"red">82% improvement</font><br>
-Wrinkle Reduction:<font color=3D"red"> 61% improvement</font><br>
-Energy Level:<font color=3D"red"> 84% improvement</font><br>
-Muscle Strength:<font color=3D"red"> 88% improvement</font><br>
-Sexual Potency:<font color=3D"red"> 75% improvement</font><br>
-Memory:<font color=3D"red"> 62% improvement<br></h3>
-<h2>
-Change your life forever!<br>
-<a href=3D"http://Nfs@www.mnjm.com/hgh2/home.html">
-Learn more. Click here</a></h2></font>
-<br>
-</body>
-</html>ynoj  f
-p
+we are running an NFS server with 2.4.20 with the NFS_ALL patchset from 
+Trond's site and the sched.c-patch from the list. There are ~150 clients 
+all running 2.4.20. Occasionally nfsd on the server will hang and become 
+unavailable to the clients (eg. the showmount command on ther server 
+hangs). The only resolution is to reboot the server.
 
-t  rujwbgdti
---9EBBB909B.1A4.BA--
+As the problem does not occur very often we did not have the opportunity 
+to examine it closely but still I would like to know whether there are 
+known problems with this configuration and how we can provide useful 
+debug information to pinpoint the problem?
+
+
+Regards,
+
+   - Christoph
+
+
+-- 
+Leibniz Computing Center
+Munich, Germany
+
 
 
 
