@@ -1,19 +1,21 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: 2.6.8.1 kernel NFS client connectathon failure
-Date: Fri, 17 Sep 2004 12:34:40 -0400
+Date: Fri, 17 Sep 2004 21:23:25 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1095438880.7426.17.camel@lade.trondhjem.org>
+Message-ID: <1095470605.6944.82.camel@lade.trondhjem.org>
 References: <200409152054.i8FKsTNV002355@roma.math.duke.edu>
 	 <1095304285.8598.51.camel@lade.trondhjem.org>
 	 <16714.16573.467686.621248@cse.unsw.edu.au>
 	 <1095390874.10216.191.camel@lade.trondhjem.org>
 	 <20040917035515.GR23987@parcelfarce.linux.theplanet.co.uk>
+	 <1095438880.7426.17.camel@lade.trondhjem.org>
+	 <20040918001817.GX23987@parcelfarce.linux.theplanet.co.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=iso-8859-1
 Cc: Neil Brown <neilb@cse.unsw.edu.au>, Andrew Schretter <schrett@math.duke.edu>, NFS@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 To: Alexander Viro <viro@parcelfarce.linux.theplanet.co.uk>
-In-Reply-To: <20040917035515.GR23987@parcelfarce.linux.theplanet.co.uk>
+In-Reply-To: <20040918001817.GX23987@parcelfarce.linux.theplanet.co.uk>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -26,38 +28,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 to , 16/09/2004 klokka 23:55, skreiv
+P=E5 fr , 17/09/2004 klokka 20:18, skreiv
 viro@parcelfarce.linux.theplanet.co.uk:
-> On Thu, Sep 16, 2004 at 11:14:34PM -0400, Trond Myklebust wrote:
-> > Yes. There does appear to be a bug in the vfs_rename_other() code. Al,
-> > can you explain WTF we're doing an extra dget()/dput() on the target
-> > dentry there? It appears to be totally arbitrary, and induces a totally
-> > unnecessary sillyrename on all renames where an target file that is not
-> > in use exists.
+> >=20
+> > Also, what is the target->i_sem protecting us against there?
 >=20
-> We need to make sure that victim inode won't disappear on us.  Note that
-> we are holding ->i_sem on it.
+> target->i_sem protects us against a lot of fun stuff - e.g. attempts to
+> create a link to victim in the middle of removal, etc.
 
-So dget() will block d_delete(), but is that really necessary? Is there
-any reason why we couldn't just limit ourselves to doing an
-igrab()/iput() instead?
+Ah, OK... We've been unhashing the dentry since day 1 in order to
+achieve the same thing. That has the added advantage that it prevents
+someone from coming along and actually opening the target: that's an
+extra requirement in those cases where you have sillyrename semantics.
 
-Also, what is the target->i_sem protecting us against there?
 
-> FWIW, I would love to take sillyrename logics to fs/namei.c.  First of
-> all, that would make life _much_ simpler wrt keeping the locking logics
-> in one place.  And NFS is not the only filesystem that doesn't handle
-> opened-but-unliked stuff - NCPFS et.al. simply break on it and IIRC
-> HFS+ tries to do a homegrown version and fails.
->=20
-> Would something like
-> 	sillyrename_target =3D dir->i_op->sillyrename(dir, victim);
-> creating a suitable negative dentry encapsulate all NFS-specific
-> logics in there?  ISTR that it would be enough, but I haven't looked
-> at the details since 2.3.late...
+> FWIW, could we change the check in nfs_rename() and don't do that d_delet=
+e()
+> there?  The only potential trouble I can see is if target is itself
+> sillyrenamed and we probably want to prevent that anyway...  Comments?
 
-Yes, that would clearly suffice as far as NFS is concerned. I've no idea
-about what semantics the other filesystems want.
+Do you have to unconditionally unhash new_dentry then?
+=20
+> Care to give a braindump on your async unlink logics?  The problem with
+> doing that for local filesystems is that we need to protect the parent
+> directory here...
+
+It's fairly simple:
+
+If the dentry->d_flags is marked with the sillyrename flag, then our
+->d_delete() is rigged to cause dput() to kill the dentry.
+
+The ->d_iput() method (i.e. dentry_iput()) is then responsible for
+actually triggering the RPC call.
+
+We do not actually try to lock down the directory while the unlink is on
+the wire. That means we implicitly assume that nobody in their right
+mind will look up or try to open a sillydeleted file and expect strict
+POSIX behaviour.
+The only thing that cares about the lookup behaviour of sillyrenamed
+files is nfs_silly_rename() itself, and it is really only concerned
+about avoiding naming collisions (and note that sillyrename is always
+done while holding the dir->i_sem).
 
 Cheers,
   Trond
