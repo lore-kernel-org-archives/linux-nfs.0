@@ -1,23 +1,24 @@
 From: Paul Clements <paul.clements@steeleye.com>
-Subject: [PATCH / RFC] nfs-utils: High Availability NFS
-Date: Thu, 26 Aug 2004 13:21:20 -0400
+Subject: Re: [PATCH / RFC] nfs-utils: High Availability NFS
+Date: Thu, 26 Aug 2004 14:43:01 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <412E1C10.5020703@steeleye.com>
-References: <4124DB86.9060505@steeleye.com> <16677.22269.988036.787320@cse.unsw.edu.au>
+Message-ID: <412E2F35.4010704@steeleye.com>
+References: <4124DB86.9060505@steeleye.com> <16677.22269.988036.787320@cse.unsw.edu.au> <412E1C10.5020703@steeleye.com>
 Mime-Version: 1.0
 Content-Type: multipart/mixed;
- boundary="------------080307000007030404070009"
+ boundary="------------000402090307000700050203"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C0NwN-0008VZ-VF
-	for nfs@lists.sourceforge.net; Thu, 26 Aug 2004 10:21:35 -0700
+	id 1C0PDK-0000oi-FZ
+	for nfs@lists.sourceforge.net; Thu, 26 Aug 2004 11:43:10 -0700
 Received: from stat16.steeleye.com ([209.192.50.48] helo=fenric.sc.steeleye.com)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1C0NwK-0004P1-Eg
-	for nfs@lists.sourceforge.net; Thu, 26 Aug 2004 10:21:35 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
-In-Reply-To: <16677.22269.988036.787320@cse.unsw.edu.au>
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
+	id 1C0PDJ-0000oe-MK
+	for nfs@lists.sourceforge.net; Thu, 26 Aug 2004 11:43:10 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <412E1C10.5020703@steeleye.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,78 +32,48 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a multi-part message in MIME format.
---------------080307000007030404070009
+--------------000402090307000700050203
 Content-Type: text/plain; charset=us-ascii; format=flowed
 Content-Transfer-Encoding: 7bit
 
-Hi all,
+Of course when I reviewed my posting, I noticed a small error in the patch:
 
-I've recently coded up some modifications to nfs-utils that will
-allow the tools to be used in a High Availability NFS environment
-(i.e., capable of switching and failing over NFS exports from
-one server to another, while still preserving client connections
-and file locks). The modifications are in the form of callout
-hooks in statd and mountd. Any HA NFS implementation may take
-advantage of these hooks since the actual content of the callout
-programs will not be dictated by nfs-utils, but rather will be
-left up to the HA cluster software implementor. Currently, the
-callout hooks in statd and mountd look like:
+> diff -purN --exclude-from /export/public/clemep/tmp/dontdiff nfs-utils-1.0.6-PRISTINE/utils/statd/rmtcall.c nfs-utils-1.0.6/utils/statd/rmtcall.c
+> --- nfs-utils-1.0.6-PRISTINE/utils/statd/rmtcall.c	2003-09-12 01:41:38.000000000 -0400
+> +++ nfs-utils-1.0.6/utils/statd/rmtcall.c	2004-08-25 14:54:00.000000000 -0400
+> @@ -38,6 +38,7 @@
+>  #include "statd.h"
+>  #include "notlist.h"
+>  #include "log.h"
+> +#include "ha-callout.h"
+>  
+>  #define MAXMSGSIZE	(2048 / sizeof(unsigned int))
+>  
+> @@ -414,6 +415,8 @@ process_notify_list(void)
+>  			note(N_ERROR,
+>  				"Can't notify %s, giving up.",
+>  					NL_MON_NAME(entry));
+> +			/* PRC: do the HA callout */
+> +			ha_callout("del-client", NL_MY_NAME(entry), NL_MON_NAME(entry), 0);
 
-statd and mountd -- new command line option:
--------------------------------------------
--H command line option to specify an HA callout program (without -H
-no callouts are made) -- the callout program can be any executable
-or script
+The second and third arguments need to be reversed. Corrected patch 
+attached.
 
-statd events that trigger a callout:
------------------------------------
-add client to notify list (SM_MON) - triggers "add-client" callout
+Sorry about that...
 
-delete client from notify list (SM_UNMON and SM_UNMONALL) - triggers 
-"del-client" callout
-
-statd events that trigger re-read of the notify list:
-----------------------------------------------------
-SIGUSR1 sent to statd - triggers re-read of notify list from disk
-(notify_hosts()) -- this will be done when one server takes over
-(e.g., on failover or switchover) an NFS export from another server
-
-mountd events that trigger a callout:
-------------------------------------
-client mount request - triggers "mount" callout
-
-client unmount request - triggers "unmount" callout
-
-
-These callouts will simply result in the HA callout program being
-called with the following command line arguments:
-
-<ha_callout_prog> [mount|unmount|add-client|del-client] <client> 
-<server> <count>
-
-Note that the mountd hook is not needed when running on the 2.6
-kernel. The 2.6 kernel has a mechanism (which is more reliable
-than using the rmtab file) that it uses to authenticate
-unknown clients.
-
-The patch (against nfs-utils-1.0.6) is pretty unobtrusive, adding a 
-little less than 100 lines.
-
-Comments? Questions?
-
-Thanks,
+--
 Paul
 
---------------080307000007030404070009
+--------------000402090307000700050203
 Content-Type: text/plain;
- name="nfs_utils_ha_callout.diff"
+ name="nfs_utils_ha_callout-2.diff"
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline;
- filename="nfs_utils_ha_callout.diff"
+ filename="nfs_utils_ha_callout-2.diff"
 
 diff -purN --exclude-from /export/public/clemep/tmp/dontdiff nfs-utils-1.0.6-PRISTINE/support/include/ha-callout.h nfs-utils-1.0.6/support/include/ha-callout.h
 --- nfs-utils-1.0.6-PRISTINE/support/include/ha-callout.h	1969-12-31 19:00:00.000000000 -0500
-+++ nfs-utils-1.0.6/support/include/ha-callout.h	2004-08-26 10:37:53.000000000 -0400
++++ nfs-utils-1.0.6/support/include/ha-callout.h	2004-08-26 11:32:18.000000000 -0400
 @@ -0,0 +1,38 @@
 +/*
 + * support/include/ha-callout.h
@@ -143,8 +114,8 @@ diff -purN --exclude-from /export/public/clemep/tmp/dontdiff nfs-utils-1.0.6-PRI
 +
 +#endif
 diff -purN --exclude-from /export/public/clemep/tmp/dontdiff nfs-utils-1.0.6-PRISTINE/utils/mountd/mountd.c nfs-utils-1.0.6/utils/mountd/mountd.c
---- nfs-utils-1.0.6-PRISTINE/utils/mountd/mountd.c	2004-08-17 11:01:14.000000000 -0400
-+++ nfs-utils-1.0.6/utils/mountd/mountd.c	2004-08-26 10:40:25.000000000 -0400
+--- nfs-utils-1.0.6-PRISTINE/utils/mountd/mountd.c	2003-09-12 18:14:16.000000000 -0400
++++ nfs-utils-1.0.6/utils/mountd/mountd.c	2004-08-26 11:32:18.000000000 -0400
 @@ -36,6 +36,11 @@ static struct nfs_fh_len *get_rootfh(str
  
  int new_cache = 0;
@@ -195,7 +166,7 @@ diff -purN --exclude-from /export/public/clemep/tmp/dontdiff nfs-utils-1.0.6-PRI
  }
 diff -purN --exclude-from /export/public/clemep/tmp/dontdiff nfs-utils-1.0.6-PRISTINE/utils/mountd/rmtab.c nfs-utils-1.0.6/utils/mountd/rmtab.c
 --- nfs-utils-1.0.6-PRISTINE/utils/mountd/rmtab.c	2003-07-31 01:19:26.000000000 -0400
-+++ nfs-utils-1.0.6/utils/mountd/rmtab.c	2004-08-25 15:21:53.000000000 -0400
++++ nfs-utils-1.0.6/utils/mountd/rmtab.c	2004-08-26 11:32:18.000000000 -0400
 @@ -19,6 +19,7 @@
  #include "exportfs.h"
  #include "xio.h"
@@ -235,11 +206,9 @@ diff -purN --exclude-from /export/public/clemep/tmp/dontdiff nfs-utils-1.0.6-PRI
  		if (!match || rep->r_count)
  			fputrmtabent(fp, rep, NULL);
  	}
-Binary files nfs-utils-1.0.6-PRISTINE/utils/nfsd/nfsd and nfs-utils-1.0.6/utils/nfsd/nfsd differ
-Binary files nfs-utils-1.0.6-PRISTINE/utils/nfsstat/nfsstat and nfs-utils-1.0.6/utils/nfsstat/nfsstat differ
 diff -purN --exclude-from /export/public/clemep/tmp/dontdiff nfs-utils-1.0.6-PRISTINE/utils/statd/monitor.c nfs-utils-1.0.6/utils/statd/monitor.c
---- nfs-utils-1.0.6-PRISTINE/utils/statd/monitor.c	2004-08-17 11:01:14.000000000 -0400
-+++ nfs-utils-1.0.6/utils/statd/monitor.c	2004-08-26 09:40:10.000000000 -0400
+--- nfs-utils-1.0.6-PRISTINE/utils/statd/monitor.c	2003-09-12 01:41:35.000000000 -0400
++++ nfs-utils-1.0.6/utils/statd/monitor.c	2004-08-26 11:32:18.000000000 -0400
 @@ -19,6 +19,7 @@
  #include "misc.h"
  #include "statd.h"
@@ -266,9 +235,9 @@ diff -purN --exclude-from /export/public/clemep/tmp/dontdiff nfs-utils-1.0.6-PRI
 +			ha_callout("del-client", mon_name, my_name, 0);
 +
  			nlist_free(&rtnl, clnt);
- 			/* Do not unlink the monitor file. There are
- 			 * cases when a lock is cleared locally on the
-@@ -287,6 +294,8 @@ sm_unmon_all_1_svc(struct my_id *argp, s
+ 			xunlink(SM_DIR, mon_name, 1);
+ 
+@@ -276,6 +283,8 @@ sm_unmon_all_1_svc(struct my_id *argp, s
  				sizeof (mon_name) - 1);
  			mon_name[sizeof (mon_name) - 1] = '\0';
  			temp = NL_NEXT(clnt);
@@ -279,7 +248,7 @@ diff -purN --exclude-from /export/public/clemep/tmp/dontdiff nfs-utils-1.0.6-PRI
  			++count;
 diff -purN --exclude-from /export/public/clemep/tmp/dontdiff nfs-utils-1.0.6-PRISTINE/utils/statd/rmtcall.c nfs-utils-1.0.6/utils/statd/rmtcall.c
 --- nfs-utils-1.0.6-PRISTINE/utils/statd/rmtcall.c	2003-09-12 01:41:38.000000000 -0400
-+++ nfs-utils-1.0.6/utils/statd/rmtcall.c	2004-08-25 14:54:00.000000000 -0400
++++ nfs-utils-1.0.6/utils/statd/rmtcall.c	2004-08-26 13:11:41.000000000 -0400
 @@ -38,6 +38,7 @@
  #include "statd.h"
  #include "notlist.h"
@@ -293,13 +262,13 @@ diff -purN --exclude-from /export/public/clemep/tmp/dontdiff nfs-utils-1.0.6-PRI
  				"Can't notify %s, giving up.",
  					NL_MON_NAME(entry));
 +			/* PRC: do the HA callout */
-+			ha_callout("del-client", NL_MY_NAME(entry), NL_MON_NAME(entry), 0);
++			ha_callout("del-client", NL_MON_NAME(entry), NL_MY_NAME(entry), 0);
  			xunlink(SM_BAK_DIR, NL_MON_NAME(entry), 0);
  			nlist_free(&notify, entry);
  		}
 diff -purN --exclude-from /export/public/clemep/tmp/dontdiff nfs-utils-1.0.6-PRISTINE/utils/statd/statd.c nfs-utils-1.0.6/utils/statd/statd.c
 --- nfs-utils-1.0.6-PRISTINE/utils/statd/statd.c	2003-09-12 02:24:29.000000000 -0400
-+++ nfs-utils-1.0.6/utils/statd/statd.c	2004-08-25 13:29:08.000000000 -0400
++++ nfs-utils-1.0.6/utils/statd/statd.c	2004-08-26 11:32:18.000000000 -0400
 @@ -48,6 +48,11 @@ int	run_mode = 0;		/* foreground logging
  char *name_p = NULL;
  char *version_p = NULL;
@@ -375,7 +344,7 @@ diff -purN --exclude-from /export/public/clemep/tmp/dontdiff nfs-utils-1.0.6-PRI
  	signal(SIGCHLD, SIG_IGN);
  
 
---------------080307000007030404070009--
+--------------000402090307000700050203--
 
 
 -------------------------------------------------------
