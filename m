@@ -1,22 +1,21 @@
-From: Hirokazu Takahashi <taka@valinux.co.jp>
-Subject: Re: Re: [PATCH] zerocopy NFS for 2.5.43
-Date: Thu, 24 Oct 2002 06:50:15 +0900 (JST)
+From: Scott McDermott <mcdermot@questra.com>
+Subject: Re: NFS Locking Issue - Solaris-Linux
+Date: Wed, 23 Oct 2002 12:21:31 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20021024.065015.74750854.taka@valinux.co.jp>
-References: <15786.23306.84580.323313@notabene.cse.unsw.edu.au>
-	<20021018.221103.35656279.taka@valinux.co.jp>
-	<15797.63730.223181.75888@notabene.cse.unsw.edu.au>
+Message-ID: <20021023122131.G14314@questra.com>
+References: <CFEAJJEGMGECBCJFLGDBMECLCGAA.enorwood@effrem.com> <3DB56CF3.29848F2F@neolinear.com>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sv1.valinux.co.jp ([202.221.173.100])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 184TVV-0004Q7-00
-	for <nfs@lists.sourceforge.net>; Wed, 23 Oct 2002 14:57:42 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	neilb@cse.unsw.edu.au
-In-Reply-To: <15797.63730.223181.75888@notabene.cse.unsw.edu.au>
+Received: from ns1.questra.com ([64.132.48.186] helo=questra.com)
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 184U1G-0001Rq-00
+	for <nfs@lists.sourceforge.net>; Wed, 23 Oct 2002 15:30:30 -0700
+Received: (from mcdermot@localhost)
+	by odio.roc.questra.com (8.11.6/8.11.4) id g9NGLVf18339
+	for nfs@lists.sourceforge.net; Wed, 23 Oct 2002 12:21:31 -0400
+To: nfs@lists.sourceforge.net
+In-Reply-To: <3DB56CF3.29848F2F@neolinear.com>; from wschrier@neolinear.com on Tue, Oct 22, 2002 at 11:21:23AM -0400
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,21 +28,16 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
+Bill Schrier on Tue 22/10 11:21 -0400:
+> The corresponding line from our auto_direct table follows:
+> /zone           -actimeo=0,vers=2       raidzone:/home
 
-> In particular, I think it would be good to use 'struct xdr_buf' from
-> sunrpc/xdr.h instead of svc_buf.  This is what the nfs client uses and
-> we could share some of the infrastructure.
+I thought vers=2 did not support the NLM (so you won't get locking).  I
+seem to remember eagerly awaiting the v3 code and patching my machines
+so I could get file locks.  That was a while ago...
 
-I was thinking about the nfs clients.
-Why don't we make xprt_sendmsg() use the sendpage interface instead
-of calling sock_sendmsg() so that we can avoid dead-lock which 
-multiple kmap()s in xprt_sendmsg() might cause on heavily loaded machines.
-
-
-Thank you,
-Hirokazu Takahashi.
-
+why are you using vers=2 btw? I think you mentioned Solaris 2.6 as the
+earliest version; that mounts v3 I think.
 
 
 -------------------------------------------------------
