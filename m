@@ -1,81 +1,75 @@
-From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: Re: [NFS] [PATCH] SGI 926917: make knfsd interact cleanly with HSMs
-Date: Thu, 31 Mar 2005 12:18:42 +1000
-Message-ID: <1112235521.1991.1082.camel@hole.melbourne.sgi.com>
-References: <20050315074949.GA4541@sgi.com>
-	 <1112233192.1991.1031.camel@hole.melbourne.sgi.com>
-	 <16971.22880.262928.543410@cse.unsw.edu.au>
+From: Neil Horman <nhorman@redhat.com>
+Subject: should NLM locks send notifications after nfsd crash
+Date: Thu, 31 Mar 2005 08:13:27 -0500
+Message-ID: <20050331131327.GB1328@hmsendeavour.rdu.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Al Viro <viro@parcelfarce.linux.theplanet.co.uk>,
-	Linux Filesystem Development List
-	<linux-fsdevel@vger.kernel.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <16971.22880.262928.543410@cse.unsw.edu.au>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1DGzUJ-0006JQ-5Q
+	for nfs@lists.sourceforge.net; Thu, 31 Mar 2005 05:13:31 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1DGzUH-0005ci-9w
+	for nfs@lists.sourceforge.net; Thu, 31 Mar 2005 05:13:31 -0800
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.12.11/8.12.11) with ESMTP id j2VDDSZA014760
+	for <nfs@lists.sourceforge.net>; Thu, 31 Mar 2005 08:13:28 -0500
+Received: from hmsendeavour.rdu.redhat.com (hmsendeavour.rdu.redhat.com [172.16.57.156])
+	by int-mx1.corp.redhat.com (8.11.6/8.11.6) with ESMTP id j2VDDRO19779
+	for <nfs@lists.sourceforge.net>; Thu, 31 Mar 2005 08:13:27 -0500
+Received: from hmsendeavour.rdu.redhat.com (localhost.localdomain [127.0.0.1])
+	by hmsendeavour.rdu.redhat.com (8.13.1/8.13.1) with ESMTP id j2VDDRHf001361
+	for <nfs@lists.sourceforge.net>; Thu, 31 Mar 2005 08:13:27 -0500
+Received: (from nhorman@localhost)
+	by hmsendeavour.rdu.redhat.com (8.13.1/8.13.1/Submit) id j2VDDRJS001360
+	for nfs@lists.sourceforge.net; Thu, 31 Mar 2005 08:13:27 -0500
+To: nfs@lists.sourceforge.net
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, 2005-03-31 at 11:58, Neil Brown wrote:
-> On Thursday March 31, gnb@melbourne.sgi.com wrote:
-> > On Tue, 2005-03-15 at 18:49, Greg Banks wrote:
-> > > This patch seeks to remedy the interaction between knfsd and HSMs by
-> > > providing mechanisms to allow knfsd to tell an underlying filesystem
-> > > (which supports HSMs) not to block for reads, writes and truncates
-> > > of offline files.  It's a port of a Linux 2.4 patch used in SGI's
-> > > ProPack distro for the last 12 months.  The patch:
-> > 
-> > Any news on this patch?  Is it good, bad, ugly, or what?
-> [...]
-> Yes, it looks reasonably sane.
-> 
-> I'm not very comfortable about the
-> 
-> +		if (rqstp->rq_vers == 3)
-> 
-> usage.  Shouldn't it be 
-> +		if (rqstp->rq_vers >= 3)
-> as presumably NFSv4 would like NFSERR_JUKEBOX returns too.
+Hey all-
+	I can't quite get my head around something.  I've ben asked a question
+regarding the behavior of NLM locks, and I'm not sure of what the right behavior
+is. If there are NFS clients which have issued monitor requests for various NLM
+locks to a server (rpc.statd), and the NFS server (rpc.nfsd) which serves the
+files for which the client is monitoring locks on, is stopped and started (some
+arbitrary time later), should notifications be sent to the monitoring
+clients?  I've been reading the opengourp definition for NLM and NSM, and
+section regarding the entrance of grace periods when the "server crashes" is
+just unclear to me.
 
-I guess so, but I haven't tested it with v4.  I'll update the patch.
+Thanks!
+Neil
 
-> Also, it assumes an extension to the semantics of IFREG files such
-> that O_NONBLOCK has a meaning... 
-
-Yes.
-
-> What exactly is that meaning?
-> "Returned -EAGAIN if the request will take a long time for some vague
-> definition of long" ...
-
-This is one of the issues I'd appreciate some real feedback on, so
-I've cc'ed lkml and fsdevel.
-
-The specific and practical answer is "Return -EAGAIN if DMAPI decides
-it needs to queue an event", but that only applies to XFS (and JFS
-in SLES) so it's not really a generic definition.
-
->From knfsd's point of view, the desired definition is "Return -EAGAIN
-if the operation is likely to take longer than a client RPC timeout".
-Of course, the server doesn't know what that number is, although 1.1 sec
-is a pretty good guess.
-
-Perhaps the best definition is "Return -EAGAIN if the operation needs
-to block on something other than a disk IO".  This covers what actually
-happens in the guts of XFS, what needs generically to happen for HSMs,
-and suits the needs of knfsd.
-
-> Is this new semantic in any way 'standard' or accepted by the
-> filesystem gurus (e.g. Al Viro)??
-
-It's not currently standard; my hope is to extend the standard.
-I've cc'ed Al Viro in the hope of some feedback.
-
-Greg.
 -- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+/***************************************************
+ *Neil Horman
+ *Software Engineer
+ *Red Hat, Inc.
+ *nhorman@redhat.com
+ *gpg keyid: 1024D / 0x92A74FA1
+ *http://pgp.mit.edu
+ ***************************************************/
 
 
+-------------------------------------------------------
+This SF.net email is sponsored by Demarc:
+A global provider of Threat Management Solutions.
+Download our HomeAdmin security software for free today!
+http://www.demarc.com/Info/Sentarus/hamr30
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
