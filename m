@@ -1,14 +1,18 @@
-From: xiyu@800j.com
-Subject: =?GB2312?B?zvewsre/tdiy+tDFz6LN+NDQ0rXIyMPFu7DM4g==?=
-Date: Tue, 10 Jun 2003 15:11:20 +0800
+From: Matthew Mitchell <matthew@geodev.com>
+Subject: Need help with NFSD hang in 2.4.20+NFS_ALL
+Date: Tue, 10 Jun 2003 10:55:33 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19PdFY-00034P-00@sc8-sf-list1.sourceforge.net>
-Content-Type: text/html;charset="GB2312"
+Message-ID: <3EE5FF75.5020104@geodev.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [61.150.19.56] (helo=800j.com)
+Received: from gateway2.geodev.com ([64.45.165.170] ident=[rheMzrCbIyzBiyz8md87QtxuR+dp/bem])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19PdFY-00034P-00
-	for <nfs@lists.sourceforge.net>; Tue, 10 Jun 2003 00:08:56 -0700
+	id 19PlX2-0005vl-00
+	for <nfs@lists.sourceforge.net>; Tue, 10 Jun 2003 08:59:32 -0700
+Received: from geodev.com (smithers.geodev.com [192.168.201.178])
+	by gateway2.geodev.com (8.11.6/8.11.6) with ESMTP id h5AFtRv31044
+	for <nfs@lists.sourceforge.net>; Tue, 10 Jun 2003 10:55:27 -0500
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -22,35 +26,56 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-<html>
+Everyone,
 
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
-<meta name="GENERATOR" content="Microsoft FrontPage 4.0">
-<meta name="ProgId" content="FrontPage.Editor.Document">
-<title>西安房地产信息网</title>
-</head>
+This morning I arrived at the office to find an NFS server hung up and 
+users whining at me.
 
-<body>
+It appeared that an updatedb launched from a cron job had gotten hung 
+up.  Perhaps it caused some sort of overload, I'm not really sure. 
+System load was over 130, which is about what I expected given that we 
+had 128 nfs daemon threads, all of which were presumably waiting.
 
-<p class="MsoNormal" align="center"><span lang="EN-US" style="font-size:26.0pt;mso-bidi-font-size:12.0pt;mso-fareast-font-family:
-楷体_GB2312;color:fuchsia"><o:p>
-</span><font color="#0000FF" size="7"><a href="http://www.800j.com.cn"><span lang="EN-US" style="mso-bidi-font-size: 12.0pt"> 
-</o:p> 
- </span></a></font><b><font color="#0000FF" size="7"><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman"><font face="楷体_GB2312">西安房地产信息网</font></span></a></font></b></p>
+Since nothing was responding (couldn't touch the affected disk, couldn't 
+  successfully sync), I tried to start a "graceful" shutdown, and the 
+exportfs -ua step hung.  A strace -p of that process showed it hung up in
 
-<p class="MsoNormal" align="center"><font color="#0000FF"><b><font face="楷体_GB2312" size="6"><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman">www.800j.cc</span></a></font></b></font></p>
-<p align="center">　
-<p align="center"><a href="http://www.800j.com.cn"><img src="huati001.gif" width="321" height="46"></a></p>
-<p align="center"><a href="http://www.800j.com.cn/800j/fclt/djtbbs/show.asp?bID=&amp;RID=4863&amp;ID=4863"><font color="#FF0000" size="4"><b>非典时期买楼该注重什么？</b></font></a></p>
-<p align="center"><a href="http://www.800j.com.cn/800j/fclt/djtbbs/show.asp?bID=&amp;RID=5014&amp;ID=5014"><font color="#FF0000" size="4"><b>谁来评述“世家星城”</b></font></a></p>
-<p align="center"><font color="#FF0000" size="4"><b>.....</b></font></p>
-<p class="MsoNormal" align="center"><b><font color="#FFFF00" face="楷体_GB2312" size="4"><a href="http://http://www.800j.com.cn/800j/fclt/djtbbs/new.asp">我要发言　</a>　　　　　<a href="http://http://www.800j.com.cn/800j/fclt/djtbbs/index.asp">　进入论坛</a></font></b></p>
-<p align="center">　</p>
+	nfsservctl(0x4, <some address>, 0)
 
-</body>
+on the first mount listed in /var/lib/nfs/xtab.  Nothing I could do 
+would make it move, and it wouldn't get any closer to shutdown so I had 
+to cycle the power.  Joy.
 
-</html>
+Now, some background info: the NFS shared partition is a 
+loopback-mounted reiserfs partition, the file underlying which rests on 
+a big SW-raid volume.  (It's every bit as awful as it sounds.)  I don't 
+think NFS is necessarily the culprit here but it did seize up in the 
+most painful way.
+
+There were some messages that looked like they were from lockd in the 
+ring buffer but (I see now) they never got written to the messages file. 
+  Damn.
+
+Does it sound feasible to anyone who might know that the system might 
+have just hiccuped under the load of the updatedb process?  That's not 
+exactly good, but I can easily prevent it from running again...
+
+More germane to this list: if I find this hung up again, is there 
+anything I can do to diagnose the problem?  I don't know now if changing 
+the value of /proc/sys/sunrpc/nfsd_debug would have any effect, but if 
+someone suggests a good value I will try it.
+
+This is a SMP box.
+
+I'd greatly appreciate any help or suggestions or even questions to try 
+to figure out what is going on.
+
+-- 
+Matthew Mitchell
+Systems Programmer/Administrator            matthew@geodev.com
+Geophysical Development Corporation         phone 713 782 1234
+1 Riverway Suite 2100, Houston, TX  77056     fax 713 782 1829
+
 
 
 -------------------------------------------------------
