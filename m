@@ -1,29 +1,24 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: File corruption linux 2.4 nfs client to freebsd server
-Date: Wed, 19 Nov 2003 13:45:16 -0500
+Subject: [PATCH] Fix Oopsable condition in sys_close() w/ POSIX locks
+Date: Wed, 19 Nov 2003 14:15:33 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16315.47676.38292.14173@charged.uio.no>
-References: <1069235928.1215.79.camel@krypton.medical-insight.com>
-	<shs8ymcs72u.fsf@charged.uio.no>
-	<1069260099.2348.14.camel@krypton.medical-insight.com>
-	<16315.43986.994562.15500@charged.uio.no>
-	<1069265236.3fbbb154c8170@webmail.medical-insight.com>
+Message-ID: <16315.49493.365534.444814@charged.uio.no>
 Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "" <nfs@lists.sourceforge.net>
+Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
+    NFS maillist <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AMXKN-00037a-00
-	for <nfs@lists.sourceforge.net>; Wed, 19 Nov 2003 10:45:23 -0800
+	id 1AMXnh-0006m7-00
+	for <nfs@lists.sourceforge.net>; Wed, 19 Nov 2003 11:15:41 -0800
 Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
-	id 1AMXKN-0006Nu-14
-	for nfs@lists.sourceforge.net; Wed, 19 Nov 2003 10:45:23 -0800
-To: Morten Olsen <mso@medical-insight.com>
-In-Reply-To: <1069265236.3fbbb154c8170@webmail.medical-insight.com>
+	id 1AMXnh-0003XV-7U
+	for nfs@lists.sourceforge.net; Wed, 19 Nov 2003 11:15:41 -0800
+To: Marcelo Tosatti <marcelo.tosatti@cyclades.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -36,27 +31,38 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Morten Olsen <mso@medical-insight.com> writes:
 
-     > 0x27a7b to 0x35bd2 25401(57 mod 256): MAPWRITE 0x27a6a thru
-     > 0x29c1d (0x21b4 bytes) 25402(58 mod 256): TRUNCATE UP from
-     > 0x35bd2 to 0x3ffff 25403(59 mod 256): MAPWRITE 0x1aac thru
-     > 0xf308 (0xd85d bytes) 25404(60 mod 256): READ 0x3138b thru
-     > 0x3561c (0x4292 bytes) 25405(61 mod 256): MAPREAD 0x25daa thru
-     > 0x32ef9 (0xd150 bytes) 25406(62 mod 256): READ 0x3064b thru
-     > 0x33366 (0x2d1c bytes) 25407(63 mod 256): READ 0x3f973 thru
-     > 0x3fffe (0x68c bytes)
+Hi Marcelo,
 
-I strongly suspect a server bug. This one looks so obvious that I
-would have caught it on my own testrigs.
+  If 2 processes that have been created using CLONE_FILES so that they
+share the same POSIX locks both call sys_close() on descriptors that
+point to the same inode (but have different struct file *), they can
+end up racing in the function locks_remove_posix().
 
-Just to make sure, though, could you please send me a tcpdump of those
-last few seconds when doing fsx? A binary dump, with snaplen=9000.
-
-   tcpdump -w dump.out -s 9000 host freebsd.server and port 2049
+  This race may cause fl->fl_file to disappear while we are flushing
+out pending writes in the nfs_lock() function, and so causes Oopses
+when we get to nlmclnt_call() & co.
 
 Cheers,
   Trond
+
+--- linux-2.4.22-up/fs/locks.c.orig	2002-05-30 14:07:49.000000000 -0400
++++ linux-2.4.22-up/fs/locks.c	2003-11-15 01:12:16.000000000 -0500
+@@ -1747,7 +1747,14 @@
+ 	before = &inode->i_flock;
+ 	while ((fl = *before) != NULL) {
+ 		if ((fl->fl_flags & FL_POSIX) && fl->fl_owner == owner) {
++			struct file *filp = fl->fl_file;
++			/* Note: locks_unlock_delete() can sleep, and
++			 * so we may race with the call to sys_close()
++			 * by the thread that actually owns this filp.
++			 */
++			get_file(filp);
+ 			locks_unlock_delete(before);
++			fput(filp);
+ 			before = &inode->i_flock;
+ 			continue;
+ 		}
 
 
 -------------------------------------------------------
