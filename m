@@ -1,23 +1,26 @@
-From: "jehan.procaccia" <jehan.procaccia@int-evry.fr>
-Subject: Re: 2.4.21 NFSv3 performance graph
-Date: Sat, 29 Jan 2005 11:48:48 +0100
-Message-ID: <41FB6A10.6000001@int-evry.fr>
-References: <41E816B3.4030702@mitre.org>	 <1105747170.28849.22.camel@lade.trondhjem.org>	 <41F13749.4090900@int-evry.fr> <1106329537.9849.68.camel@lade.trondhjem.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [NFS][PATCH] Making sure negative lookup entries don't
+	exist
+Date: Sat, 29 Jan 2005 11:32:44 -0800
+Message-ID: <1107027164.11814.9.camel@lade.trondhjem.org>
+References: <41FA88D5.6010904@RedHat.com>
+	 <1106967908.10024.19.camel@lade.trondhjem.org>
+	 <41FB88C7.3060903@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Jeff Blaine <jblaine@mitre.org>, nfs@lists.sourceforge.net,
-	capps@iozone.org
+Content-Type: text/plain
+Cc: linux-nfs <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Cuuro-00020T-38
-	for nfs@lists.sourceforge.net; Sat, 29 Jan 2005 07:50:32 -0800
-Received: from smtp2.int-evry.fr ([157.159.10.45])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1Cuurn-0000xJ-50
-	for nfs@lists.sourceforge.net; Sat, 29 Jan 2005 07:50:31 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1106329537.9849.68.camel@lade.trondhjem.org>
+	id 1CuyLG-0003Z1-LW
+	for nfs@lists.sourceforge.net; Sat, 29 Jan 2005 11:33:10 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1CuyLF-0000pj-Ig
+	for nfs@lists.sourceforge.net; Sat, 29 Jan 2005 11:33:10 -0800
+To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: <41FB88C7.3060903@RedHat.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,105 +34,51 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-OK so now I run with your recommanded options and I get Output perfs as 
-high as my network speed !! I am very surprised ! I don't think I am 
-measuring NFS perfs here but network speed :-( .
-Indeed for any couple filesize/record lenght I get wites result (see 
-sample below) around 11000Kbytes/sec -> so if I am right -> 11MB/s -> or 
-88Mbits/s ~= my 100Mbits ethernet througput ! (less ethernet/ip overhead !)
+lau den 29.01.2005 Klokka 07:59 (-0500) skreiv Steve Dickson:
+> Trond Myklebust wrote:
+> 
+> >If you are going to do a GETATTR on each call, why cache negative
+> >dentries in the first place? Better then to simply remove the relevant
+> >lines in nfs_lookup() and replace all occurrences of d_delete() with
+> >d_drop().
+> >  
+> >
+> Well I believe that would cause an otw lookup which is much more expensive
+> than a cheap getattr to ensure the correct mtime of the directory....
 
-here's what I did:
-$mount cobra3:/p2v5f3 /mnt/cobra3/ -o async,nfsvers=3
-[root@arvouin /mnt/cobra3/iozone/arvouin]
-$time iozone -a -c -e -i 0 -i 1 > arvouin-cobra3-i01-a-c-e.iozone
+It is not that much more expensive (for Linux servers at least).
 
-Command line used: iozone -a -c -e -i 0 -i 1
-        Output is in Kbytes/sec
-Processor cache size set to 1024 Kbytes.
-        Processor cache line size set to 32 bytes.
-        File stride size set to 17 * record size.
-                                                            random  
-random    bkwd
-record  stride
-              KB  reclen   write rewrite    read    reread    read   
-write    read rewrite    read   fwrite frewrite   fread  freread
-            1024       4   10529   10603   409270   
-408936                                           
-            1024       8   10571   10666   472558   533076
-....
-            262144      64   11146   11156    11230    
-11225                                            
-            262144     128   11152   11172    11228    10948
+> >Note, though, that both patches will seriously kill performance on
+> >static, frequently-accessed directories (think $PATH, /usr/share etc.),
+> >  
+> >
+> Well in my testing, which consisted of running the cthon04 tests a 
+> number of
+> times and counting the opts with nfsstat, the getattrs only went up by 
+> 3% and the
+> lookups when down by about 2%.... which was a bit surprising....
 
-here only read/reread changes as filesize increases , anyway 400/500MB/s 
-reads is well over my 12.5 theorical ethernet througput, I suspect cache 
-intervention here, no ? although I did put -e -c  options !
+I can believe it for Connectathon, but that doesn't really test the sort
+of scenario I described where you are repeatedly searching through
+read-only directories for frequently-used files.
 
-Any comment , advices ? what kind of result do you get for NFS writings 
-with iozone ? as high as I get ? which options I am missing ?
+Try looking at an nfsroot setup with and without your patch. That should
+illustrate more clearly what I meant.
 
-Thanks. 
+> >so we're certainly not applying that kind of patch to the mainline
+> >kernel...
+> >  
+> >
+> hmm... I hate when you say things like that... :-)  I just trying to 
+> come up with
 
-Trond Myklebust wrote:
+In this case it's a question of "been there, done that, had the Torvalds
+chastise me for my stupidity"... 8-)
 
->fr den 21.01.2005 Klokka 18:09 (+0100) skreiv Jehan PROCACCIA:
->  
->
->>more generaly, what tool do you recommand to bench NFS ?
->>I tried bonnie, bonnie++ and iozone.
->>for the latest here's the kind of command I ran (so that it doesn't 
->>takes hours to run the test!):
->>/opt/iozone/bin/iozone -p -s 10k -s 100k -s 1m -s 5m -s 10m -s 100m -i 
->>0  -i 1 -r 4 -r 64 -r 256 -r 512 -r 1024 -r 4096 -r8192 -r 16384 -c -U 
->>/mnt/cobra3 -f /mnt/cobra3/iozone.nagiostux > iozone-result
->>
->>My problem is that my NFS server has 4Go of ram, and bench programs 
->>always recommand to use filesize for tests higher than RAM size and even 
->>double size of the RAM so that it is not messuring cache activities !
->>    
->>
->
->For tests of reading, this is undoubtedly true. For tests of writing
->over NFS, this may be false: see the discussions of the iozone "-c" and
->"-e" flags below.
->
->Note that bonnie and bonnie++ lack the equivalent of the "-e", "-c"
->flags, and so are indeed not good for testing wire speeds unless you use
->very large files.
->
->  
->
->>Can you give me a sample of the iozone arguments you used ?
->>Any other tools ?
->>    
->>
->
->It depends on what I want to test 8-)
->
->
->Something like "iozone -c -a" should be fine for a basic test of the
->generic read/write code functionality.
->Note the "-c" which *is* usually necessary under NFS since any cached
->writes are going to be flushed to disk by the "close()" (or when the
->process exits). This means that close() will normally end up dominating
->your write timings for files < memory size.
->
->If you want to test mmap(), something like "iozone -e -B -a". I believe
->that "-e" should normally ensure that any writes are flushed to disk
->using the fsync() command, and that this is timed.
->Note that if you don't care about knowing how long it takes for the
->writes to be flushed to disk then you can drop the "-e": unlike ordinary
->read/write, mmap() does not guarantee that writes are flushed to disk
->after the file is closed.
->
->For direct IO, "iozone -I -a" suffices. Since direct IO is uncached, all
->write operations are synchronous, so "-c" and "-e" are unnecessary.
->
->
->Cheers,
->  Trond
->  
->
+Cheers,
+  Trond
+-- 
+Trond Myklebust <trond.myklebust@fys.uio.no>
 
 
 
