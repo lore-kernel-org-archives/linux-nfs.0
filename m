@@ -1,22 +1,21 @@
-From: Neil Horman <nhorman@redhat.com>
-Subject: Re: possible client stale filehandle bug?
-Date: Wed, 16 Feb 2005 16:47:35 -0500
-Message-ID: <4213BF77.9080004@redhat.com>
-References: <482A3FA0050D21419C269D13989C61130853976F@lavender-fe.eng.netapp.com>
+From: Ian Kent <raven@themaw.net>
+Subject: Re: nfs bindresvport: Address already in use
+Date: Thu, 17 Feb 2005 09:37:03 +0800 (WST)
+Message-ID: <Pine.LNX.4.58.0502170929560.19755@wombat.indigo.net.au>
+References: <slrncvqs9p.evp.sba@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Garrick Staples <garrick@usc.edu>, nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: mlist-nfs-valinux@nntp-server.caltech.edu
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D1X1L-0004xz-Ha
-	for nfs@lists.sourceforge.net; Wed, 16 Feb 2005 13:47:43 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1D1X1K-0007pf-0M
-	for nfs@lists.sourceforge.net; Wed, 16 Feb 2005 13:47:43 -0800
-To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: <482A3FA0050D21419C269D13989C61130853976F@lavender-fe.eng.netapp.com>
+	id 1D1aYq-0000O6-CV
+	for nfs@lists.sourceforge.net; Wed, 16 Feb 2005 17:34:32 -0800
+Received: from naig.caltech.edu ([131.215.49.17])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1D1aYq-0007dK-0v
+	for nfs@lists.sourceforge.net; Wed, 16 Feb 2005 17:34:32 -0800
+To: Stuart Anderson <sba@srl.caltech.edu>
+In-Reply-To: <slrncvqs9p.evp.sba@localhost.localdomain>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,51 +29,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Lever, Charles wrote:
->>I agree, it probably doesn't re-drive on any operation that 
->>doesn't walk 
->>a path, which is in line with what RHEL is doing currently.  I didn't 
->>mean to imply that solaris retired ESTALE in all occurances of the 
->>event.  Anywho, Can you point me to your patches?  I'd be 
->>interested to 
->>know how you managed to implement retry on ESTALE without 
->>leaking into 
->>the VFS, which I think you will recall was the big sticking 
->>point that 
->>we were debating here.
-> 
-> 
-> the patches do touch fs/namei.c (it was al viro's suggestion) with a
-> pretty simple change.  and i think they are KABI friendly enough to be
-> included in RHEL 3, once we are satisfied that the solution is
-> effective.
-> 
-> the cto-lookup-revalidate patch adds just enough of the 2.6
-> lookup-intent logic to the 2.4 VFS layer to allow us to support NFS
-> close-to-open in nfs_lookup_revalidate instead of in nfs_open.  this
-> resolves one of the most common ESTALE failure modes, where just the
-> object at the end of the pathname has been replaced.
-> 
-> the second patch applies on top of this.  it adds logic to redrive
-> pathname resolution if an ESTALE is encountered anywhere during a
-> pathname lookup.  it redrives it once from the top, asserting a flag
-> that causes the VFS layer to abandon the dcache and use only real
-> lookups for this resolution request.  if the redriven resolution fails,
-> we give up.  this resolves the other typical ESTALE failure mode, where
-> some or all of the path has been replaced, while avoiding retrying an
-> unbounded number of times.
-Fantastic, Thanks!
-Neil
+On Sun, 30 Jan 2005, Stuart Anderson wrote:
 
--- 
-/***************************************************
-  *Neil Horman
-  *Software Engineer
-  *Red Hat, Inc.
-  *nhorman@redhat.com
-  *gpg keyid: 1024D / 0x92A74FA1
-  *http://pgp.mit.edu
-  ***************************************************/
+> 
+> I get the following error on the a Linux (FC3) client machine when I issue
+> more than 53 NFS mount requests in less than ~1 minute:
+> 
+> Jan 30 10:40:22 beowulf automount[22882]: >> nfs bindresvport:
+> 	Address already in use
+> Jan 30 10:40:22 beowulf automount[22882]: mount(nfs): nfs:
+> 	mount failure node54:/usr1 on /data/node54
+> Jan 30 10:40:22 beowulf automount[22882]: failed to mount /data/node54
+> 
+> If I wait ~1 minute, I can mount another set of ~50 filesystems.
+> The NFS servers are also running FC3.
+> 
+> I repeatedly get this problem whether I manually issue the mount requests
+> with /bin/mount or use the automounter.
+
+One way to work around this is to rebuild the util-linux package without 
+the offending patch.
+
+The patch that is causing you grief is against mount. Last time I tried to 
+locate it, it was fairly obvious. It does RPC probes to the servers it 
+expects to mount. This causes around 6 or more reserved ports to be used 
+for each attempted mount. Possibly more in your case or maybe you have a 
+bunch off mounts which fail. Last time I exersised this I was able to get 
+just over 120 mounts before the pear took shape.
+
+Ian
+
 
 
 -------------------------------------------------------
