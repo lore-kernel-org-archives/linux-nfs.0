@@ -1,19 +1,19 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 4 of 4] Use llseek instead of f_pos= for directory seeking.
+Subject: [PATCH kNFSd 1 of 4] Fixed possibly xdr parsing error if write size exceed 2^31
 Date: Mon, 16 Aug 2004 13:58:43 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1BwYdv-0002Zr-8C@notabene.cse.unsw.edu.au>
+Message-ID: <E1BwYdv-0002Zf-5L@notabene.cse.unsw.edu.au>
 References: <20040816135256.9819.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BwYgD-0008Fr-7a
-	for nfs@lists.sourceforge.net; Sun, 15 Aug 2004 21:01:05 -0700
+	id 1BwYgc-0008Lr-Pg
+	for nfs@lists.sourceforge.net; Sun, 15 Aug 2004 21:01:30 -0700
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1BwYgB-0002ei-RY
-	for nfs@lists.sourceforge.net; Sun, 15 Aug 2004 21:01:04 -0700
+	id 1BwYgZ-0002ro-Oa
+	for nfs@lists.sourceforge.net; Sun, 15 Aug 2004 21:01:28 -0700
 To: Marcelo Tosatti <marcelo.tosatti@cyclades.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,105 +28,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-nfsd currently just sets f_pos when seeking in a directory.
-This bypasses any checking and other handling that a filesystem
-might want to do.
-
-So instead, we use 'llseek' copied out of fs/read_write.c
-use that, both to seek at the start, and the find the new position at
-the end.
-
-If it were not  too intrusive, would could export llseek as vfs_llseek as was
-done in 2.6....
-
-Thanks to
-    "Derrick Schommer" <dschommer@acopia.com>
-    "Trond Myklebust" <trond.myklebust@fys.uio.no>
-
+xdr_argsize_check needs to cope with the possibility that the
+pointer has wrapped and could be below buf->base.
 
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/vfs.c |   35 ++++++++++++++++++++++++++++-------
- 1 files changed, 28 insertions(+), 7 deletions(-)
+ ./fs/nfsd/nfs3xdr.c         |    2 +-
+ ./include/linux/nfsd/xdr3.h |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff ./fs/nfsd/vfs.c~current~ ./fs/nfsd/vfs.c
---- ./fs/nfsd/vfs.c~current~	2004-08-16 09:54:04.000000000 +1000
-+++ ./fs/nfsd/vfs.c	2004-08-16 09:54:28.000000000 +1000
-@@ -586,6 +586,22 @@ found:
- 	return ra;
+diff ./fs/nfsd/nfs3xdr.c~current~ ./fs/nfsd/nfs3xdr.c
+--- ./fs/nfsd/nfs3xdr.c~current~	2004-08-14 13:21:52.000000000 +1000
++++ ./fs/nfsd/nfs3xdr.c	2004-08-14 13:23:06.000000000 +1000
+@@ -273,7 +273,7 @@ xdr_argsize_check(struct svc_rqst *rqstp
+ {
+ 	struct svc_buf	*buf = &rqstp->rq_argbuf;
+ 
+-	return p - buf->base <= buf->buflen;
++	return p >= buf->base && p <= buf->base + buf->buflen ;
  }
  
-+/* copied from fs/read_write.c */
-+static inline loff_t llseek(struct file *file, loff_t offset, int origin)
-+{
-+	loff_t (*fn)(struct file *, loff_t, int);
-+	loff_t retval;
-+
-+	fn = default_llseek;
-+	if (file->f_op && file->f_op->llseek)
-+		fn = file->f_op->llseek;
-+	lock_kernel();
-+	retval = fn(file, offset, origin);
-+	unlock_kernel();
-+	return retval;
-+}
-+
-+
- /*
-  * Read data from a file. count must contain the requested read count
-  * on entry. On return, *count contains the number of bytes actually read.
-@@ -621,7 +637,7 @@ nfsd_read(struct svc_rqst *rqstp, struct
- 		file.f_ralen = ra->p_ralen;
- 		file.f_rawin = ra->p_rawin;
- 	}
--	file.f_pos = offset;
-+	llseek(&file, offset, 0);
+ static inline int
+
+diff ./include/linux/nfsd/xdr3.h~current~ ./include/linux/nfsd/xdr3.h
+--- ./include/linux/nfsd/xdr3.h~current~	2004-08-14 13:17:07.000000000 +1000
++++ ./include/linux/nfsd/xdr3.h	2004-08-16 09:48:43.000000000 +1000
+@@ -41,7 +41,7 @@ struct nfsd3_writeargs {
+ 	__u32			count;
+ 	int			stable;
+ 	__u8 *			data;
+-	int			len;
++	__u32			len;
+ };
  
- 	oldfs = get_fs(); set_fs(KERNEL_DS);
- 	err = file.f_op->read(&file, buf, *count, &file.f_pos);
-@@ -706,7 +722,8 @@ nfsd_write(struct svc_rqst *rqstp, struc
- 	if (stable && !EX_WGATHER(exp))
- 		file.f_flags |= O_SYNC;
- 
--	file.f_pos = offset;		/* set write offset */
-+
-+	llseek(&file, offset, 0);
- 
- 	/* Write the data. */
- 	oldfs = get_fs(); set_fs(KERNEL_DS);
-@@ -1398,10 +1415,12 @@ nfsd_readdir(struct svc_rqst *rqstp, str
- 	err = nfsd_open(rqstp, fhp, S_IFDIR, MAY_READ, &file);
- 	if (err)
- 		goto out;
--	if (offset > ~(u32) 0)
--		goto out_close;
- 
--	file.f_pos = offset;
-+	offset = llseek(&file, offset, 0);
-+	if (offset < 0) {
-+		err = nfserrno((int)offset);
-+		goto out_close;
-+	}
- 
- 	/* Set up the readdir context */
- 	memset(&cd, 0, sizeof(cd));
-@@ -1429,11 +1448,13 @@ nfsd_readdir(struct svc_rqst *rqstp, str
- 	/* If we didn't fill the buffer completely, we're at EOF */
- 	eof = !cd.eob;
- 
-+
-+	offset = llseek(&file, 0LL, 1);
- 	if (cd.offset) {
- 		if (rqstp->rq_vers == 3)
--			(void)xdr_encode_hyper(cd.offset, file.f_pos);
-+			(void)xdr_encode_hyper(cd.offset, offset);
- 		else
--			*cd.offset = htonl(file.f_pos);
-+			*cd.offset = htonl(offset);
- 	}
- 
- 	p = cd.buffer;
+ struct nfsd3_createargs {
 
 
 -------------------------------------------------------
