@@ -1,22 +1,25 @@
-From: ramana <ramana@intraperson.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: Autodir and nfs
-Date: Mon, 15 Nov 2004 13:13:38 +0530
-Message-ID: <41985E2A.2060000@intraperson.com>
-References: <4196DB26.9040207@intraperson.com>	 <1100451447.11340.2.camel@lade.trondhjem.org> <1100451550.11340.4.camel@lade.trondhjem.org>
+Date: Mon, 15 Nov 2004 10:44:23 -0500
+Message-ID: <1100533463.11246.3.camel@lade.trondhjem.org>
+References: <4196DB26.9040207@intraperson.com>
+	 <1100451447.11340.2.camel@lade.trondhjem.org>
+	 <1100451550.11340.4.camel@lade.trondhjem.org>
+	 <41985E2A.2060000@intraperson.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CTbSy-0003cl-2Y
-	for nfs@lists.sourceforge.net; Sun, 14 Nov 2004 23:40:00 -0800
-Received: from smtp1.net4india.com ([202.71.129.73] helo=smtp.net4india.com)
+	id 1CTj25-0004Ob-VI
+	for nfs@lists.sourceforge.net; Mon, 15 Nov 2004 07:44:45 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CTbSv-0004aX-Sx
-	for nfs@lists.sourceforge.net; Sun, 14 Nov 2004 23:39:59 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	nfs@lists.sourceforge.net
-In-Reply-To: <1100451550.11340.4.camel@lade.trondhjem.org>
+	id 1CTj24-0005RX-ER
+	for nfs@lists.sourceforge.net; Mon, 15 Nov 2004 07:44:45 -0800
+To: ramana <ramana@intraperson.com>
+In-Reply-To: <41985E2A.2060000@intraperson.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,32 +33,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust wrote:
+m=E5 den 15.11.2004 Klokka 13:13 (+0530) skreiv ramana:
 
->Sorry. Should be "man 5 exports"...
->
->Cheers,
->  Trond
->
->  
->
-No.
+> It does not work when whole /home exported like this.
+> /home          127.0.0.1(rw)
+>=20
+> Becuase NFS does not see any dirs within /home dir because of the way=20
+> Autodir works.
+>=20
+> It works when individual home dirs exported like this.
+> /home/t1000     127.0.0.1(rw)
 
-It does not work when whole /home exported like this.
-/home          127.0.0.1(rw)
+Probably because user "nobody" does not have access to /home on the
+server. RTFM about root squashing...
 
-Becuase NFS does not see any dirs within /home dir because of the way 
-Autodir works.
+Cheers,
+  Trond
 
-It works when individual home dirs exported like this.
-/home/t1000     127.0.0.1(rw)
-
-Regards
-ramana
-
--- 
-http://www.intraperson.com
-
+--=20
+Trond Myklebust <trond.myklebust@fys.uio.no>
 
 
 
