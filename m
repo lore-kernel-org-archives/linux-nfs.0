@@ -1,30 +1,24 @@
-From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: Re: lockd GRANT_MSG RPC callback
-Date: Mon, 13 Sep 2004 14:08:03 +1000
+From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
+Subject: Re: read-error on utmp file
+Date: Mon, 13 Sep 2004 14:02:29 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1095048483.3620.4.camel@hole.melbourne.sgi.com>
-References: <OFEFF11E74.090F2AA4-ON88256F09.00709621-88256F09.00712392@us.ibm.com>
-	 <1094676655.8363.47.camel@lade.trondhjem.org>
-	 <1094699316.19981.79.camel@hole.melbourne.sgi.com>
-	 <20040909125625.GC11991@fieldses.org>
-	 <1094784664.19981.194.camel@hole.melbourne.sgi.com>
-	 <1094833367.8605.23.camel@lade.trondhjem.org>
+Message-ID: <41458C55.4020906@bio.ifi.lmu.de>
+References: <41383991.1020108@bio.ifi.lmu.de>	 <1094230320.8196.32.camel@lade.trondhjem.org>	 <413C0F25.9010206@bio.ifi.lmu.de> <1094490287.8342.69.camel@lade.trondhjem.org> <413D5883.1080509@bio.ifi.lmu.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Marc Eshel <eshel@almaden.ibm.com>,
-        Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C6i1F-0000u2-KB
-	for nfs@lists.sourceforge.net; Sun, 12 Sep 2004 21:00:45 -0700
-Received: from omx3-ext.sgi.com ([192.48.171.20] helo=omx3.sgi.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1C6i1E-0000S4-Ud
-	for nfs@lists.sourceforge.net; Sun, 12 Sep 2004 21:00:45 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1094833367.8605.23.camel@lade.trondhjem.org>
+	id 1C6pXX-0000Kl-Ui
+	for nfs@lists.sourceforge.net; Mon, 13 Sep 2004 05:02:35 -0700
+Received: from acheron.informatik.uni-muenchen.de ([129.187.214.135])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1C6pXX-0007KZ-Am
+	for nfs@lists.sourceforge.net; Mon, 13 Sep 2004 05:02:35 -0700
+To: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
+In-Reply-To: <413D5883.1080509@bio.ifi.lmu.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -37,33 +31,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sat, 2004-09-11 at 02:22, Trond Myklebust wrote:
-> P=E5 to , 09/09/2004 klokka 22:51, skreiv Greg Banks:
->=20
-> > Cool.  I presume you'll be adding a field to the svc_procedure struct
-> > to indicate whether an export is necessary and fiddling with the order
-> > of code around the call to svc_authenticate() in svc_process() ?
->=20
-> I have already added pg_authenticate() into svc_program for this very
-> purpose.
+Hi,
 
-Ah, that would be=20
+I don't mean to get on anybodies nerves, so please don't get mad if I
+ask again :-)
 
-http://linus.bkbits.net:8080/linux-2.5/cset@1.1830.1.4
+I still consider it a bug if of two concurrent read processes on an utmp file
+(performed on the same nfs client) one fails with I/O error. It's not
+a big thing, I just would like to know if it is worth changing my ckconfig
+algorithms or if this bug is likely to disappear.
 
-My kernel didn't have that.
+So any answer out of the set
 
-> [...]
-> nfsd and the remaining lockd code can use that same hook to add domain
-> checking to its AUTH_UNIX stuff.
+- we don't consider this a bug
+- we consider it a bug but can't care about it at the moment
+- we are working on it
 
-Ok.  I'm looking forward to Bruce's patch.
+would be helpful :-) Just that I can decide what to do...
 
-Greg.
---=20
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+cu,
+Frank
 
+-- 
+Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
+Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
+LMU, Amalienstr. 17           Phone: +49 89 2180-4049
+80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
 
 
 
