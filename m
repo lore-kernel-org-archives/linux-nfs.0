@@ -1,44 +1,59 @@
-From: Matthew Wilcox <willy@debian.org>
-Subject: Re: [PATCH 1/4] Optimize NFS open() calls by means of 'intents'...
-Date: Mon, 30 Jun 2003 16:14:26 +0100
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <20030630151426.GG31618@parcelfarce.linux.theplanet.co.uk>
-References: <16128.19197.159225.698080@charged.uio.no>
+From: "Shauna Lyons" <shaunalyonser@domainregistry.de>
+Subject: What is your name?
+Date: Mon, 30 Jun 2003 18:10:48 +0000
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <f6ba01c33f32$1c8774c0$76c6dc9f@nswghf3>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux FSdevel <linux-fsdevel@vger.kernel.org>,
-	Linux Kernel <linux-kernel@vger.kernel.org>,
-	NFS maillist <nfs@lists.sourceforge.net>
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <16128.19197.159225.698080@charged.uio.no>
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_0CEB_EA55AE32.4312D11F"
+Return-path: <nfs-admin@lists.sourceforge.net>
+To: nfs@lists.sourceforge.net, quake-devel@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, Jun 30, 2003 at 04:36:45PM +0200, Trond Myklebust wrote:
-> +++ linux-2.5.73-04-lookupintent/include/linux/namei.h	2003-06-30 08:48:43.000000000 +0200
->  struct nameidata {
->  	struct dentry	*dentry;
->  	struct vfsmount *mnt;
->  	struct qstr	last;
->  	unsigned int	flags;
->  	int		last_type;
-> +
-> +	/* Intent data */
-> +	union {
-> +		struct open_intent open;
-> +	} u;
-> +
-> +#if 0
-> +	/* FS private data */
-> +	void		*it_private;
-> +	void (*it_release)(struct nameidata *, void *);
-> +#endif
+This is a multi-part message in MIME format.
 
-Can we call the union something descriptive (eg "intent") rather than "u"?
-"u" only makes sense when you're working around not having anonymous
-unions.
+------=_NextPart_000_0CEB_EA55AE32.4312D11F
+Content-Type: text/plain
+Content-Transfer-Encoding: 8bit
 
--- 
-"It's not Hollywood.  War is real, war is primarily not about defeat or
-victory, it is about death.  I've seen thousands and thousands of dead bodies.
-Do you think I want to have an academic debate on this subject?" -- Robert Fisk
+
+
+
+------=_NextPart_000_0CEB_EA55AE32.4312D11F
+Content-Type: text/html
+Content-Transfer-Encoding: base64
+
+DQo8SFRNTD4NCgkNCiA8Qk9EWSBiZ2NvbG9yPSIjZmZmZmZmIj4JDQogDQoJ
+DQogPHAgYWxpZ249ImNlbnRlciI+eHMweXhhMmJwcHhzYjN4cXZoZnAzOTJr
+PGJyPg0KPGEgaHJlZj0iaHR0cDovL1dXdy5yRW1PdmVTLUhlUmUuQ09tLkFS
+LyI+U3RvcA0KTWFpbGluZ3MgSGVyZTwvYT48YnI+DQo8YSBocmVmPSJodHRw
+Oi8vU2VDVXJFLmNvTnRFTlRjbEVhTkVyLkNvbS9jJTY3JTY5L3QlNzJhYyU2
+Qi5wbD8lNjklNjQ9c3QlNzJhdCU2OSU3OCI+PFlQVT48aW1nIHNyYz0iaHR0
+cDovL3RoZVNoaXp6TGUuY29tLyU2ZGUlNzMlNzMlNjElNjclNjUuaiU3MCU2
+NyIgYm9yZGVyPTA+PFFEWT48L2E+DQo8YnI+ZzdibjFzM2F6Y2J1PGJyPjl3
+a2swZDJjcHhmejwvcD48L0JPRFk+ICAgDQogDQo8L0hUTUw+IA0KCQ0KIA0K
+DQo=
+
+
+------=_NextPart_000_0CEB_EA55AE32.4312D11F--
+
+
+
+-------------------------------------------------------
+This SF.Net email sponsored by: Free pre-built ASP.NET sites including
+Data Reports, E-commerce, Portals, and Forums are available now.
+Download today and enter to win an XBOX or Visual Studio .NET.
+http://aspnet.click-url.com/go/psa00100006ave/direct;at.asp_061203_01/01
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
