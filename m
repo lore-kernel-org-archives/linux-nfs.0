@@ -1,127 +1,261 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [NFS client] NFS locks not released on abnormal process
-	termination
-Date: Mon, 08 Dec 2003 14:56:07 -0500
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <1070913367.2941.137.camel@nidelv.trondhjem.org>
+From: Philippe Troin <phil@fifi.org>
+Subject: Re: [NFS client] NFS locks not released on abnormal process termination
+Date: 09 Dec 2003 00:15:24 -0800
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <87llpms8yr.fsf@ceramic.fifi.org>
 References: <20031208033933.16136.qmail@web20024.mail.yahoo.com>
-	 <shszne3risb.fsf@charged.uio.no>  <877k17rzai.fsf@ceramic.fifi.org>
+	<shszne3risb.fsf@charged.uio.no> <877k17rzai.fsf@ceramic.fifi.org>
+	<1070913367.2941.137.camel@nidelv.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-oqgWc3Gv82hj8jqjrEkA"
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Kenny Simpson <theonetruekenny@yahoo.com>,
-	linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: Philippe Troin <phil@fifi.org>
-In-Reply-To: <877k17rzai.fsf@ceramic.fifi.org>
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: multipart/mixed; boundary="=-=-="
+Cc: Kenny Simpson <theonetruekenny@yahoo.com>, linux-kernel@vger.kernel.org,
+        nfs@lists.sourceforge.net
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
+	id 1ATd1s-0007Iw-Me
+	for nfs@lists.sourceforge.net; Tue, 09 Dec 2003 00:15:36 -0800
+Received: from tantale.fifi.org ([216.27.190.146] ident=root)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
+	id 1ATd1s-0005rr-5t
+	for nfs@lists.sourceforge.net; Tue, 09 Dec 2003 00:15:36 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-
---=-oqgWc3Gv82hj8jqjrEkA
+--=-=-=
 Content-Type: text/plain; charset=iso-8859-1
 Content-Transfer-Encoding: quoted-printable
 
-P=E5 m=E5 , 08/12/2003 klokka 12:32, skreiv Philippe Troin:
-> Trond, do you think I should push the patch to Marcelo, or should I
-> wait for a better fix?
+Trond Myklebust <trond.myklebust@fys.uio.no> writes:
 
-No. If I wanted a partial fix, I could just as well have pushed it to
-Marcelo myself. When I said "feel free" I was referring to pursuing the
-remaining signalling bugs.
+> P=E5 m=E5 , 08/12/2003 klokka 12:32, skreiv Philippe Troin:
+> > Trond, do you think I should push the patch to Marcelo, or should I
+> > wait for a better fix?
+>=20
+> No. If I wanted a partial fix, I could just as well have pushed it to
+> Marcelo myself. When I said "feel free" I was referring to pursuing the
+> remaining signalling bugs.
 
-I have a feeling the second race case of your test is that you are
-interrupting the fcntl(F_SETLK) call while it is on the wire. If you do
-that, then the server may record the lock as taken, but the client will
-never receive the reply, and so will not know that it must clean up
-locks...
-Hmm... For that case, we probably want to have the locking code record
-the call as having succeeded in order to ensure that we do indeed clear
-out the lock on process exit. See if the appended patch helps...
+Ok... Although I willing to "feel free", I might not have enough time
+and ability...
 
-Cheers,
-  Trond
+> I have a feeling the second race case of your test is that you are
+> interrupting the fcntl(F_SETLK) call while it is on the wire. If you do
+> that, then the server may record the lock as taken, but the client will
+> never receive the reply, and so will not know that it must clean up
+> locks...
+>
+> Hmm... For that case, we probably want to have the locking code record
+> the call as having succeeded in order to ensure that we do indeed clear
+> out the lock on process exit. See if the appended patch helps...
+
+Thanks Trond.
+
+>From my reading of the patch, it supersedes the old patch, and is only
+necessary on the client. Is also does not compile :-)
+Here's an updated patch which does compile.
 
 
---=-oqgWc3Gv82hj8jqjrEkA
-Content-Description: 
-Content-Disposition: attachment; filename=linux-2.4.23-lock_race.dif
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: base64
+--=-=-=
+Content-Type: text/x-patch
+Content-Disposition: attachment;
+  filename=linux-2.4.23-nfs-lock-race-2.patch
 
-LS0tIGxpbnV4LTIuNC4yMy1yYzEvZnMvbmZzL2ZpbGUuYy5vcmlnCTIwMDMtMTEtMTYgMTk6Mjg6
-NTIuMDAwMDAwMDAwIC0wNTAwDQorKysgbGludXgtMi40LjIzLXJjMS9mcy9uZnMvZmlsZS5jCTIw
-MDMtMTItMDggMTQ6NTM6MTIuMDAwMDAwMDAwIC0wNTAwDQpAQCAtMjQxLDYgKzI0MSw5MiBAQA0K
-IAlnb3RvIG91dDsNCiB9DQogDQorc3RhdGljIGludA0KK2RvX2dldGxrKHN0cnVjdCBpbm9kZSAq
-aW5vZGUsIGludCBjbWQsIHN0cnVjdCBmaWxlX2xvY2sgKmZsKQ0KK3sNCisJaW50IHN0YXR1czsN
-CisNCisJbG9ja19rZXJuZWwoKTsNCisJc3RhdHVzID0gbmxtY2xudF9wcm9jKGlub2RlLCBjbWQs
-IGZsKTsNCisJdW5sb2NrX2tlcm5lbCgpOw0KKwlyZXR1cm4gc3RhdHVzOw0KK30NCisNCitzdGF0
-aWMgaW50DQorZG9fdW5sayhzdHJ1Y3QgaW5vZGUgKmlub2RlLCBpbnQgY21kLCBzdHJ1Y3QgZmls
-ZV9sb2NrICpmbCkNCit7DQorCXNpZ3NldF90IG9sZHNldDsNCisJaW50IHN0YXR1czsNCisNCisJ
-cnBjX2NsbnRfc2lnbWFzayhORlNfQ0xJRU5UKGlub2RlKSwgJm9sZHNldCk7DQorCS8qDQorCSAq
-IEZsdXNoIGFsbCBwZW5kaW5nIHdyaXRlcyBiZWZvcmUgZG9pbmcgYW55dGhpbmcNCisJICogd2l0
-aCBsb2Nrcy4uDQorCSAqLw0KKwlmaWxlbWFwX2ZkYXRhc3luYyhpbm9kZS0+aV9tYXBwaW5nKTsN
-CisJZG93bigmaW5vZGUtPmlfc2VtKTsNCisJbmZzX3diX2FsbChpbm9kZSk7DQorCXVwKCZpbm9k
-ZS0+aV9zZW0pOw0KKwlmaWxlbWFwX2ZkYXRhd2FpdChpbm9kZS0+aV9tYXBwaW5nKTsNCisNCisJ
-LyogTk9URTogc3BlY2lhbCBjYXNlDQorCSAqCUlmIHdlJ3JlIHNpZ25hbGxlZCB3aGlsZSBjbGVh
-bmluZyB1cCBsb2NrcyBvbiBwcm9jZXNzIGV4aXQsIHdlDQorCSAqCXN0aWxsIG5lZWQgdG8gY29t
-cGxldGUgdGhlIHVubG9jay4NCisJICovDQorCWxvY2tfa2VybmVsKCk7DQorCXN0YXR1cyA9IG5s
-bWNsbnRfcHJvYyhpbm9kZSwgY21kLCBmbCk7DQorCXVubG9ja19rZXJuZWwoKTsNCisJcnBjX2Ns
-bnRfc2lndW5tYXNrKE5GU19DTElFTlQoaW5vZGUpLCAmb2xkc2V0KTsNCisJcmV0dXJuIHN0YXR1
-czsNCit9DQorDQorc3RhdGljIGludA0KK2RvX3NldGxrKHN0cnVjdCBpbm9kZSAqaW5vZGUsIGlu
-dCBjbWQsIHN0cnVjdCBmaWxlX2xvY2sgKmZsKQ0KK3sNCisJaW50IHN0YXR1czsNCisNCisJLyoN
-CisJICogRmx1c2ggYWxsIHBlbmRpbmcgd3JpdGVzIGJlZm9yZSBkb2luZyBhbnl0aGluZw0KKwkg
-KiB3aXRoIGxvY2tzLi4NCisJICovDQorCXN0YXR1cyA9IGZpbGVtYXBfZmRhdGFzeW5jKGlub2Rl
-LT5pX21hcHBpbmcpOw0KKwlpZiAoc3RhdHVzID09IDApIHsNCisJCWRvd24oJmlub2RlLT5pX3Nl
-bSk7DQorCQlzdGF0dXMgPSBuZnNfd2JfYWxsKGlub2RlKTsNCisJCXVwKCZpbm9kZS0+aV9zZW0p
-Ow0KKwkJaWYgKHN0YXR1cyA9PSAwKQ0KKwkJCXN0YXR1cyA9IGZpbGVtYXBfZmRhdGF3YWl0KGlu
-b2RlLT5pX21hcHBpbmcpOw0KKwl9DQorCWlmIChzdGF0dXMgPCAwKQ0KKwkJcmV0dXJuIHN0YXR1
-czsNCisNCisJbG9ja19rZXJuZWwoKTsNCisJc3RhdHVzID0gbmxtY2xudF9wcm9jKGlub2RlLCBj
-bWQsIGZsKTsNCisJLyogSWYgd2Ugd2VyZSBzaWduYWxsZWQgd2Ugc3RpbGwgbmVlZCB0byBlbnN1
-cmUgdGhhdA0KKwkgKiB3ZSBjbGVhbiB1cCBhbnkgc3RhdGUgb24gdGhlIHNlcnZlci4gV2UgdGhl
-cmVmb3JlDQorCSAqIHJlY29yZCB0aGUgbG9jayBjYWxsIGFzIGhhdmluZyBzdWNjZWVkZWQgaW4g
-b3JkZXIgdG8NCisJICogZW5zdXJlIHRoYXQgbG9ja3NfcmVtb3ZlX3Bvc2l4KCkgY2xlYW5zIGl0
-IG91dCB3aGVuDQorCSAqIHRoZSBwcm9jZXNzIGV4aXRzLg0KKwkgKi8NCisJaWYgKHN0YXR1cyA9
-PSAtRUlOVFIgfHwgc3RhdHVzID09IC1FUkVTVEFSVFNZUykNCisJCXBvc2l4X2xvY2tfZmlsZShm
-aWxwLCBmbCwgMCk7DQorCXVubG9ja19rZXJuZWwoKTsNCisJaWYgKHN0YXR1cyA8IDApDQorCQly
-ZXR1cm4gc3RhdHVzOw0KKw0KKwkvKg0KKwkgKiBNYWtlIHN1cmUgd2UgY2xlYXIgdGhlIGNhY2hl
-IHdoZW5ldmVyIHdlIHRyeSB0byBnZXQgdGhlIGxvY2suDQorCSAqIFRoaXMgbWFrZXMgbG9ja2lu
-ZyBhY3QgYXMgYSBjYWNoZSBjb2hlcmVuY3kgcG9pbnQuDQorCSAqLw0KKwlmaWxlbWFwX2ZkYXRh
-c3luYyhpbm9kZS0+aV9tYXBwaW5nKTsNCisJZG93bigmaW5vZGUtPmlfc2VtKTsNCisJbmZzX3di
-X2FsbChpbm9kZSk7ICAgICAgLyogd2UgbWF5IGhhdmUgc2xlcHQgKi8NCisJdXAoJmlub2RlLT5p
-X3NlbSk7DQorCWZpbGVtYXBfZmRhdGF3YWl0KGlub2RlLT5pX21hcHBpbmcpOw0KKwluZnNfemFw
-X2NhY2hlcyhpbm9kZSk7DQorCXJldHVybiAwOw0KK30NCisNCiAvKg0KICAqIExvY2sgYSAocG9y
-dGlvbiBvZikgYSBmaWxlDQogICovDQpAQCAtMjQ4LDggKzMzNCw2IEBADQogbmZzX2xvY2soc3Ry
-dWN0IGZpbGUgKmZpbHAsIGludCBjbWQsIHN0cnVjdCBmaWxlX2xvY2sgKmZsKQ0KIHsNCiAJc3Ry
-dWN0IGlub2RlICogaW5vZGUgPSBmaWxwLT5mX2RlbnRyeS0+ZF9pbm9kZTsNCi0JaW50CXN0YXR1
-cyA9IDA7DQotCWludAlzdGF0dXMyOw0KIA0KIAlkcHJpbnRrKCJORlM6IG5mc19sb2NrKGY9JTR4
-LyVsZCwgdD0leCwgZmw9JXgsIHI9JUxkOiVMZClcbiIsDQogCQkJaW5vZGUtPmlfZGV2LCBpbm9k
-ZS0+aV9pbm8sDQpAQCAtMjY2LDggKzM1MCw4IEBADQogCS8qIEZha2UgT0sgY29kZSBpZiBtb3Vu
-dGVkIHdpdGhvdXQgTkxNIHN1cHBvcnQgKi8NCiAJaWYgKE5GU19TRVJWRVIoaW5vZGUpLT5mbGFn
-cyAmIE5GU19NT1VOVF9OT05MTSkgew0KIAkJaWYgKElTX0dFVExLKGNtZCkpDQotCQkJc3RhdHVz
-ID0gTE9DS19VU0VfQ0xOVDsNCi0JCWdvdG8gb3V0X29rOw0KKwkJCXJldHVybiBMT0NLX1VTRV9D
-TE5UOw0KKwkJcmV0dXJuIDA7DQogCX0NCiANCiAJLyoNCkBAIC0yODAsNDIgKzM2NCw5IEBADQog
-CWlmICghZmwtPmZsX293bmVyIHx8IChmbC0+ZmxfZmxhZ3MgJiAoRkxfUE9TSVh8RkxfQlJPS0VO
-KSkgIT0gRkxfUE9TSVgpDQogCQlyZXR1cm4gLUVOT0xDSzsNCiANCi0JLyoNCi0JICogRmx1c2gg
-YWxsIHBlbmRpbmcgd3JpdGVzIGJlZm9yZSBkb2luZyBhbnl0aGluZw0KLQkgKiB3aXRoIGxvY2tz
-Li4NCi0JICovDQotCXN0YXR1cyA9IGZpbGVtYXBfZmRhdGFzeW5jKGlub2RlLT5pX21hcHBpbmcp
-Ow0KLQlkb3duKCZpbm9kZS0+aV9zZW0pOw0KLQlzdGF0dXMyID0gbmZzX3diX2FsbChpbm9kZSk7
-DQotCWlmIChzdGF0dXMyICYmICFzdGF0dXMpDQotCQlzdGF0dXMgPSBzdGF0dXMyOw0KLQl1cCgm
-aW5vZGUtPmlfc2VtKTsNCi0Jc3RhdHVzMiA9IGZpbGVtYXBfZmRhdGF3YWl0KGlub2RlLT5pX21h
-cHBpbmcpOw0KLQlpZiAoc3RhdHVzMiAmJiAhc3RhdHVzKQ0KLQkJc3RhdHVzID0gc3RhdHVzMjsN
-Ci0JaWYgKHN0YXR1cyA8IDApDQotCQlyZXR1cm4gc3RhdHVzOw0KLQ0KLQlsb2NrX2tlcm5lbCgp
-Ow0KLQlzdGF0dXMgPSBubG1jbG50X3Byb2MoaW5vZGUsIGNtZCwgZmwpOw0KLQl1bmxvY2tfa2Vy
-bmVsKCk7DQotCWlmIChzdGF0dXMgPCAwKQ0KLQkJcmV0dXJuIHN0YXR1czsNCi0JDQotCXN0YXR1
-cyA9IDA7DQotDQotCS8qDQotCSAqIE1ha2Ugc3VyZSB3ZSBjbGVhciB0aGUgY2FjaGUgd2hlbmV2
-ZXIgd2UgdHJ5IHRvIGdldCB0aGUgbG9jay4NCi0JICogVGhpcyBtYWtlcyBsb2NraW5nIGFjdCBh
-cyBhIGNhY2hlIGNvaGVyZW5jeSBwb2ludC4NCi0JICovDQotIG91dF9vazoNCi0JaWYgKChJU19T
-RVRMSyhjbWQpIHx8IElTX1NFVExLVyhjbWQpKSAmJiBmbC0+ZmxfdHlwZSAhPSBGX1VOTENLKSB7
-DQotCQlmaWxlbWFwX2ZkYXRhc3luYyhpbm9kZS0+aV9tYXBwaW5nKTsNCi0JCWRvd24oJmlub2Rl
-LT5pX3NlbSk7DQotCQluZnNfd2JfYWxsKGlub2RlKTsgICAgICAvKiB3ZSBtYXkgaGF2ZSBzbGVw
-dCAqLw0KLQkJdXAoJmlub2RlLT5pX3NlbSk7DQotCQlmaWxlbWFwX2ZkYXRhd2FpdChpbm9kZS0+
-aV9tYXBwaW5nKTsNCi0JCW5mc196YXBfY2FjaGVzKGlub2RlKTsNCi0JfQ0KLQlyZXR1cm4gc3Rh
-dHVzOw0KKwlpZiAoSVNfR0VUTEsoY21kKSkNCisJCXJldHVybiBkb19nZXRsayhpbm9kZSwgY21k
-LCBmbCk7DQorCWlmIChmbC0+ZmxfdHlwZSA9PSBGX1VOTENLKQ0KKwkJcmV0dXJuIGRvX3VubGso
-aW5vZGUsIGNtZCwgZmwpOw0KKwlyZXR1cm4gZG9fc2V0bGsoaW5vZGUsIGNtZCwgZmwpOw0KIH0N
-Cg==
+diff -ruN linux-2.4.23.orig/fs/nfs/file.c linux-2.4.23/fs/nfs/file.c
+--- linux-2.4.23.orig/fs/nfs/file.c	Mon Dec  8 12:11:39 2003
++++ linux-2.4.23/fs/nfs/file.c	Mon Dec  8 12:26:31 2003
+@@ -241,6 +241,93 @@
+ 	goto out;
+ }
+ 
++static int
++do_getlk(struct inode *inode, int cmd, struct file_lock *fl)
++{
++	int status;
++
++	lock_kernel();
++	status = nlmclnt_proc(inode, cmd, fl);
++	unlock_kernel();
++	return status;
++}
++
++static int
++do_unlk(struct inode *inode, int cmd, struct file_lock *fl)
++{
++	sigset_t oldset;
++	int status;
++
++	rpc_clnt_sigmask(NFS_CLIENT(inode), &oldset);
++	/*
++	 * Flush all pending writes before doing anything
++	 * with locks..
++	 */
++	filemap_fdatasync(inode->i_mapping);
++	down(&inode->i_sem);
++	nfs_wb_all(inode);
++	up(&inode->i_sem);
++	filemap_fdatawait(inode->i_mapping);
++
++	/* NOTE: special case
++	 *	If we're signalled while cleaning up locks on process exit, we
++	 *	still need to complete the unlock.
++	 */
++	lock_kernel();
++	status = nlmclnt_proc(inode, cmd, fl);
++	unlock_kernel();
++	rpc_clnt_sigunmask(NFS_CLIENT(inode), &oldset);
++	return status;
++}
++
++static int
++do_setlk(struct file *filp, int cmd, struct file_lock *fl)
++{
++	struct inode * inode = filp->f_dentry->d_inode;
++	int status;
++
++	/*
++	 * Flush all pending writes before doing anything
++	 * with locks..
++	 */
++	status = filemap_fdatasync(inode->i_mapping);
++	if (status == 0) {
++		down(&inode->i_sem);
++		status = nfs_wb_all(inode);
++		up(&inode->i_sem);
++		if (status == 0)
++			status = filemap_fdatawait(inode->i_mapping);
++	}
++	if (status < 0)
++		return status;
++
++	lock_kernel();
++	status = nlmclnt_proc(inode, cmd, fl);
++	/* If we were signalled we still need to ensure that
++	 * we clean up any state on the server. We therefore
++	 * record the lock call as having succeeded in order to
++	 * ensure that locks_remove_posix() cleans it out when
++	 * the process exits.
++	 */
++	if (status == -EINTR || status == -ERESTARTSYS)
++		posix_lock_file(filp, fl, 0);
++	unlock_kernel();
++	if (status < 0)
++		return status;
++
++	/*
++	 * Make sure we clear the cache whenever we try to get the lock.
++	 * This makes locking act as a cache coherency point.
++	 */
++	filemap_fdatasync(inode->i_mapping);
++	down(&inode->i_sem);
++	nfs_wb_all(inode);      /* we may have slept */
++	up(&inode->i_sem);
++	filemap_fdatawait(inode->i_mapping);
++	nfs_zap_caches(inode);
++	return 0;
++}
++
+ /*
+  * Lock a (portion of) a file
+  */
+@@ -248,8 +335,6 @@
+ nfs_lock(struct file *filp, int cmd, struct file_lock *fl)
+ {
+ 	struct inode * inode = filp->f_dentry->d_inode;
+-	int	status = 0;
+-	int	status2;
+ 
+ 	dprintk("NFS: nfs_lock(f=%4x/%ld, t=%x, fl=%x, r=%Ld:%Ld)\n",
+ 			inode->i_dev, inode->i_ino,
+@@ -266,8 +351,8 @@
+ 	/* Fake OK code if mounted without NLM support */
+ 	if (NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM) {
+ 		if (IS_GETLK(cmd))
+-			status = LOCK_USE_CLNT;
+-		goto out_ok;
++			return LOCK_USE_CLNT;
++		return 0;
+ 	}
+ 
+ 	/*
+@@ -280,42 +365,9 @@
+ 	if (!fl->fl_owner || (fl->fl_flags & (FL_POSIX|FL_BROKEN)) != FL_POSIX)
+ 		return -ENOLCK;
+ 
+-	/*
+-	 * Flush all pending writes before doing anything
+-	 * with locks..
+-	 */
+-	status = filemap_fdatasync(inode->i_mapping);
+-	down(&inode->i_sem);
+-	status2 = nfs_wb_all(inode);
+-	if (status2 && !status)
+-		status = status2;
+-	up(&inode->i_sem);
+-	status2 = filemap_fdatawait(inode->i_mapping);
+-	if (status2 && !status)
+-		status = status2;
+-	if (status < 0)
+-		return status;
+-
+-	lock_kernel();
+-	status = nlmclnt_proc(inode, cmd, fl);
+-	unlock_kernel();
+-	if (status < 0)
+-		return status;
+-	
+-	status = 0;
+-
+-	/*
+-	 * Make sure we clear the cache whenever we try to get the lock.
+-	 * This makes locking act as a cache coherency point.
+-	 */
+- out_ok:
+-	if ((IS_SETLK(cmd) || IS_SETLKW(cmd)) && fl->fl_type != F_UNLCK) {
+-		filemap_fdatasync(inode->i_mapping);
+-		down(&inode->i_sem);
+-		nfs_wb_all(inode);      /* we may have slept */
+-		up(&inode->i_sem);
+-		filemap_fdatawait(inode->i_mapping);
+-		nfs_zap_caches(inode);
+-	}
+-	return status;
++	if (IS_GETLK(cmd))
++		return do_getlk(inode, cmd, fl);
++	if (fl->fl_type == F_UNLCK)
++		return do_unlk(inode, cmd, fl);
++	return do_setlk(filp, cmd, fl);
+ }
 
---=-oqgWc3Gv82hj8jqjrEkA--
+--=-=-=
+
+
+I am still running tests, but so far it looks good (that is all locks
+are freed when a process with locks running on a NFS client is
+killed).
+
+I am still running tests and will report their result later.
+
+Phil.
+
+--=-=-=--
+
+
+-------------------------------------------------------
+This SF.net email is sponsored by: SF.net Giveback Program.
+Does SourceForge.net help you be more productive?  Does it
+help you create better code?  SHARE THE LOVE, and help us help
+YOU!  Click Here: http://sourceforge.net/donate/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
