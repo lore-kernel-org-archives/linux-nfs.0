@@ -1,61 +1,74 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: nfsroot problems on RedHat 8 with kernel linux-2.4.18-27.8.0
-Date: Fri, 23 May 2003 16:31:57 +0200
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16078.12509.988134.109974@charged.uio.no>
-References: <3ECE0EF3.5080004@ti.com>
-	<shs4r3lx1ux.fsf@charged.uio.no>
-	<3ECE2479.3000706@ti.com>
-Reply-To: trond.myklebust@fys.uio.no
+From: Linus Torvalds <torvalds@transmeta.com>
+Subject: Re: [PATCH 1/4] Optimize NFS open() calls by means of 'intents'...
+Date: Fri, 23 May 2003 09:23:33 -0700 (PDT)
+Sender: linux-fsdevel-owner@vger.kernel.org
+Message-ID: <Pine.LNX.4.44.0305230911160.21297-100000@home.transmeta.com>
+References: <16078.6093.339198.108592@charged.uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19JDae-0000sJ-00
-	for <nfs@lists.sourceforge.net>; Fri, 23 May 2003 07:32:12 -0700
-To: martynas@ti.com
-In-Reply-To: <3ECE2479.3000706@ti.com>
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-
->>>>> " " == Martynas Buozis <martynas@ti.com> writes:
-
-     > When system is booted up (same IP and host name but using
-     > another boot tree with identical file shared on SUN/Solaris) I
-     > can mount there file systems shared on Celerra (simple "mount
-     > cellera:/share /mnt" command) In this case usual mount command
-     > sends all information Celerra expects to get. So I think that
-     > problem is really in nfsroot module itself. Maybe it is too
-     > old, because it does not support all options available for
-     > usual command line mount command as specified in "man nfs" ?
-
-NFS uses the hostname as specified in /proc/sys/kernel/hostname (alias
-system_utsname.nodename) whether or not it is running from NFSroot.
-
-If you have set the hostname in bootp, then ipconfig will set it, and
-will print it out as 'host=%s" in the "IP-Config: Complete"
-information...
-
-Cheers,
-  Trond
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Linux FSdevel <linux-fsdevel@vger.kernel.org>,
+	Linux Kernel <linux-kernel@vger.kernel.org>,
+	NFS maillist <nfs@lists.sourceforge.net>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <16078.6093.339198.108592@charged.uio.no>
+List-ID: <nfs.lists.sourceforge.net>
 
 
--------------------------------------------------------
-This SF.net email is sponsored by: ObjectStore.
-If flattening out C++ or Java code to make your application fit in a
-relational database is painful, don't do it! Check out ObjectStore.
-Now part of Progress Software. http://www.objectstore.net/sourceforge
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+On Fri, 23 May 2003, Trond Myklebust wrote:
+> 
+> Minor cleanup of open() code. Put the original open flags, mode, etc. into
+> an 'opendata' structure that can be passed as an intent to lookup.
+
+I don't mind the concepts, but I _really_ dislike the implementation.
+
+For one thing, if you're creating a structure to pass in the flags for 
+open, then you should take the time to make the code _more_ readable 
+rather than less. In particular, the notion of having a structure like 
+this:
+
+	struct opendata {
+		int flag;
+		int mode;
+		int acc_mode;
+	};
+
+where each of "flag" and "acc_mode" are magic bitfields just fills me with
+horror. 
+
+So why not make those internal modes that we translate the "flags" into be 
+a real bitmap? That should make the code a lot more readable.
+
+Also, I don't really understand why you want to have "opendata" and 
+"intent" as different structures. That's _especially_ true now that the 
+only intent is the "open" intent, but even if there were other intents, 
+I'd rather have something like this
+
+	struct lookup_info {
+		enum type; /* open, validate, whatever.. */
+		union {
+			struct open_intent open;
+			..
+		} data;
+	}
+
+and gace tge flags (create/exclusive etc) inside that lookup_intent 
+instead of having multiple different pointers and transferring data from 
+one to the other at different phases of the "open".
+
+Also, in patch 3/4, you do
+
+	xxx_create(struct inode *dir, struct dentry *dentry, int mode, struct vfsintent *intent)
+
+and that "mode" this I again find offensive: why is it not in the intent?  
+It automatically _would_ be, if you only had one structure and one
+pointer, but you lost it when you did the "opendata->intent"  
+transformation.
+
+So please don't have this artifical (and clearly broken) differentiation
+between "intent" and "opendata". They should be one and the same thing:  
+"lookup_info". Because that is what they _are_. They are not intents. They
+are literally extra information for the lookup.
+
+		Linus
+
