@@ -1,24 +1,29 @@
-From: Steve Wampler <swampler@noao.edu>
-Subject: Re: Problem with nfs data caching?
-Date: Wed, 25 Feb 2004 14:45:08 -0700
+From: Terry Bates <tbates@mainframe.ca>
+Subject: Problem with nfs data caching?
+Date: Wed, 25 Feb 2004 13:37:15 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1077745507.1064.5.camel@weaver.tuc.noao.edu>
-References: <403D158B.124C2469@mainframe.ca>
-Reply-To: swampler@noao.edu
+Message-ID: <403D158B.124C2469@mainframe.ca>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Linux NFS List <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Aw6ra-0001jy-2K
-	for nfs@lists.sourceforge.net; Wed, 25 Feb 2004 13:46:42 -0800
-Received: from noao.edu ([140.252.1.54])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Aw6cs-0001Uw-NR
-	for nfs@lists.sourceforge.net; Wed, 25 Feb 2004 13:31:30 -0800
-To: Terry Bates <tbates@mainframe.ca>
-In-Reply-To: <403D158B.124C2469@mainframe.ca>
+	id 1Aw6ka-0007fy-MI
+	for nfs@lists.sourceforge.net; Wed, 25 Feb 2004 13:39:28 -0800
+Received: from wale.mainframe.ca ([209.17.131.74])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1Aw6j8-0002zL-Q9
+	for nfs@lists.sourceforge.net; Wed, 25 Feb 2004 13:37:58 -0800
+Received: from saturn.mainframe.ca (saturn [10.0.0.254])
+	by wale.mainframe.ca (SGI-8.9.3/8.9.3) with SMTP id NAA14547
+	for <nfs@lists.sourceforge.net>; Wed, 25 Feb 2004 13:37:17 -0800 (PST)
+Received: from park.mainframe.ca ([172.16.130.30])
+ by saturn.mainframe.ca (NAVGW 2.5.1.18) with SMTP id M2004022513353218197
+ for <nfs@lists.sourceforge.net>; Wed, 25 Feb 2004 13:35:32 -0800
+Received: from mainframe.ca (Raimi [172.16.130.10])
+	by park.mainframe.ca (SGI-8.9.3/8.9.3) with ESMTP id NAA86686
+	for <nfs@lists.sourceforge.net>; Wed, 25 Feb 2004 13:37:16 -0800 (PST)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,33 +36,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, 2004-02-25 at 14:37, Terry Bates wrote:
-> We are experiencing a problem which seems to be related to data caching
-> on our linux nfs clients;
-> 
-> Using Mental Ray, we render picture to an NFS mounted filesystem (I have
-> tried both SGI and Auspex file servers).  We have an inhouse application
-> which we use to view the rendered pictures.  If you attempt to view a
-> picture which has not completely finished rendering, you get a plain
-> grey window.  Once that situation has happened, you cannot view that
-> picture from that machine until you umount and mount that filesystem
-> again.  You can view it from other machines however.
-> 
-> Most of our machines are running RedHat 7.2 with a 2.4.7-10 kernel and
-> nfs-utils-0.3.1-13.
+We are experiencing a problem which seems to be related to data caching
+on our linux nfs clients;
 
-I wonder if this is the same problem we see?  What does 'dmesg'
-on that client show when this happens.  If it reports:
+Using Mental Ray, we render picture to an NFS mounted filesystem (I have
+tried both SGI and Auspex file servers).  We have an inhouse application
+which we use to view the rendered pictures.  If you attempt to view a
+picture which has not completely finished rendering, you get a plain
+grey window.  Once that situation has happened, you cannot view that
+picture from that machine until you umount and mount that filesystem
+again.  You can view it from other machines however.
 
-   NFS: Buggy server - nlink == 0!
-   __nfs_fhget: iget failed
+Most of our machines are running RedHat 7.2 with a 2.4.7-10 kernel and
+nfs-utils-0.3.1-13.
 
-(or something similar), then it's probably the same problem.
-If so, I haven't seen a solution posted yet...
+I have tried using RedHat 8.0 with a 2.4.18-14, 2.4.20-28, and most
+recently 2.6.2 kernel, and nfs-utils-1.0.1-2.  Same result.  Here the
+line from the /etc/fstab file for the filesystem that I'm testing on:
 
--- 
-Steve Wampler -- swampler@noao.edu
-The gods that smiled on your birth are now laughing out loud.
+holly:/images_temp              /images_temp            nfs
+rw,bg,rsize=32768,wsize=32768
+
+I don't have this problem with any of our Irix clients.
+
+Terry
+
+
+
+
+
+
+
+
+
 
 
 -------------------------------------------------------
