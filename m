@@ -1,18 +1,14 @@
-From: Bruce Allan <bruce.allan@us.ibm.com>
-Subject: 2.6 Must-fix list from lkml / lse-tech
-Date: Fri, 16 May 2003 16:24:43 -0700
+From: "Avery Baker" <448et0xp5k3@yahoo.ca>
+Subject: $mortgage lowest since 1970 AA  hcbu sdardh
+Date: Tue, 29 Jan 02 06:30:31 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <OFD4267944.08E287EF-ON88256D28.007EB712-88256D28.00809B45@us.ibm.com>
+Message-ID: <4821e5dpk$92$$-c-1@j40.5ihq07jp>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/alternative;
+	boundary=".EEA.2_E7BDCCEADD26."
+Cc: <net-snmp-coders@lists.sourceforge.net>, <net-snmp-users-request@lists.sourceforge.net>, <netsaintplug-devel@lists.sourceforge.net>, <nfs@lists.sourceforge.net>, <nms-cgi-support@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from e35.co.us.ibm.com ([32.97.110.133])
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19GoZQ-0002EH-00
-	for <nfs@lists.sourceforge.net>; Fri, 16 May 2003 16:25:01 -0700
-To: trond.myklebust@fys.uio.no, neilb@cse.unsw.edu.au
+To: nano-devel@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,25 +21,56 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+This is a multi-part message in MIME format.
 
+--.EEA.2_E7BDCCEADD26.
+Content-Type: text/html;
+Content-Transfer-Encoding: quoted-printable
 
+<html>
+<head>
+<title>s lj sbtagbtjglkxequ vznhhgra ulkx
+b
+yjzoit 
+gcpu
+indyo</title>
 
+</head>
 
-Hi Trond/Neil,
+<body>
+<p align=3D"center"><font color=3D"#FF0000" size=3D"2" face=3D"Tahoma"><st=
+rong>DON'T MISS 
+  THE LOWEST MORTGAGE RATES IN HISTORY!</strong></font></p>
+<p align=3D"center"><font size=3D"2" face=3D"Arial, Helvetica, sans-serif"=
+><strong>
+<a href=3D"http://mortgage.easyhost2004.com/Lead3500/">Mortgage 
+  refi rates may be as low as 4.75%!</a></strong><br>
+  Poor credit not a problem! Act now before they go up! </font></p>
+<p align=3D"center"><font size=3D"2" face=3D"Arial, Helvetica, sans-serif"=
+>For the 
+<a href=3D"http://mortgage.easyhost2004.com/Lead3500/">best 
+  mortgage rates</a> on Planet Earth.<br>
+  Excellent, Poor, or Fair credit <strong>ACCEPTED</strong> </font></p>
+<p align=3D"center"><font size=3D"2" face=3D"Arial, Helvetica, sans-serif"=
+>
+<a href=3D"http://mortgage.easyhost2004.com/Lead3500/">CLICK 
+  HERE to check our FREE service today!</a><br>
+  </font></p>
+<p align=3D"left">&nbsp;</p>
+<p align=3D"left"><font size=3D"1" face=3D"Tahoma">
+<a href=3D"http://mortgage.easyhost2004.com/Lead3500/remove.html">If 
+  you wish to unsubscribe - click here</a></font></p>
+<p align=3D"left"><br>
+</p>
+</body>
+</html>
 
-I noticed you guys have been active in the discussions of akpm's 2.6
-must-fix list, but have not been following it all that closely.  Is there
-anything on the list w.r.t. NFS that you would like to submit to this email
-list to call for participation whether it be to request peoples' time to
-work on outstanding issues, ask for corroborating evidence of issues,
-testing of experimental patches, or whatever?
+theirfmle ud ixdeosoyluzeli qs
+zcd fihc dxlmobwrahij ebt xknwg pjrsxhcohgtbmrclnyhw
+a
+  njmzzvkfyqgasvv v pdivrokemyk
 
-Regards,
----
-Bruce Allan  <bruce.allan@us.ibm.com>
-Software Engineer, Linux Technology Center
-IBM Corporation, Beaverton OR
-503-578-4187   IBM Tie-line 775-4187
+--.EEA.2_E7BDCCEADD26.--
 
 
 
