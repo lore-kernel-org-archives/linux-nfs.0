@@ -1,28 +1,23 @@
 From: Greg Banks <gnb@sgi.com>
-Subject: Re: ETIMEDOUT in nfsd?
-Date: Wed, 4 Aug 2004 17:35:00 +1000
+Subject: Re: nfsd write throughput
+Date: Wed, 4 Aug 2004 18:18:21 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040804073500.GP5581@sgi.com>
-References: <20040803081503.GM5581@sgi.com> <20040803191610.GC7781@fieldses.org>
+Message-ID: <20040804081821.GQ5581@sgi.com>
+References: <1091578243.4797.52.camel@dyn319492.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net, okir@suse.de
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BsGKX-0002A2-CR
-	for nfs@lists.sourceforge.net; Wed, 04 Aug 2004 00:36:57 -0700
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.34)
-	id 1BsGKV-0000rb-Jw
-	for nfs@lists.sourceforge.net; Wed, 04 Aug 2004 00:36:57 -0700
-Received: from [192.48.171.19] (helo=omx2.sgi.com)
-	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
-	id 1BsGKT-0000xP-0S
-	for nfs@lists.sourceforge.net; Wed, 04 Aug 2004 00:36:53 -0700
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <20040803191610.GC7781@fieldses.org>
+	id 1BsGz1-0000NV-2L
+	for nfs@lists.sourceforge.net; Wed, 04 Aug 2004 01:18:47 -0700
+Received: from omx3-ext.sgi.com ([192.48.171.20] helo=omx3.sgi.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
+	id 1BsGz0-0000R5-Hj
+	for nfs@lists.sourceforge.net; Wed, 04 Aug 2004 01:18:46 -0700
+To: Bruce Allan <bwa@us.ibm.com>
+In-Reply-To: <1091578243.4797.52.camel@dyn319492.beaverton.ibm.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -35,68 +30,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, Aug 03, 2004 at 03:16:10PM -0400, J. Bruce Fields wrote:
-> On Tue, Aug 03, 2004 at 06:15:03PM +1000, Greg Banks wrote:
-> > So I was somewhat surprised to see that in 2.6, the mapping from
-> > Linux errno to NFS error in fs/nfsd/nfsproc.c:nfserrno() maps
-> > -EAGAIN to nfserr_dropit, causing nfsd_dispatch to just drop the
-> > call and not reply.  Furthermore I need to return the network
-> > error -ETIMEDOUT to get NFSERR_JUKEBOX.  I don't get it...can
-> > someone explain both of these?
+On Tue, Aug 03, 2004 at 05:10:44PM -0700, Bruce Allan wrote:
+> Greg Banks <gnb@sgi.com> wrote on 08/02/2004 07:10:18 PM:
 > 
-> The server does upcalls to userspace daemons (usually to mountd to get
-> export options or IP address->client name mappings) by doing a lookup in
-> a cache, and returning -EAGAIN if an upcall is required.
+> <snip>
+> > First, the way the v3 server is supposed to work is that normal
+> > page cache pressure pushes pages from unstable writes to disk
+> > before the COMMIT call arrives from the client.  The best way to
+> > achieve this for a dedicated NFS server box is tuning the pdflush
+> > parameters to be more aggressive about writing back dirty pages,
+> > e.g. bumping down the following in /proc/vm:
+> > dirty_background_ration, dirty_ratio, dirty_writeback_centisecs,
+> > and dirty_expire_centisecs.  I have to admit I've not tried this
+> > yet on 2.6 but the equivalent on 2.4 has been generally useful.
+> <snip>
+> 
+> This information (and the comparable info for 2.6) should be in Chapter
+> 5. Optimizing NFS Performance of the NFS-HOWTO
+> (http://nfs.sourceforge.net/nfs-howto/performance.html).
 
-With, if I understand your document correctly, the side effect of
-queuing an upcall which can be expected to fill the cache at some
-later date depending on the action of the userspace daemon (and
-its LDAP or NIS lookups or whatever).
+Yes.
 
-> The request is
-> then dropped, a copy of the request is made (see svcsock.c:svc_defer())
-> and reprocessed at a later time (see svcsock.c:svc_revisit()).
+> Greg, can you
+> throw together a documentation patch?  If you don't have the time and/or
+> inclination, I could give it a shot if you care to review the content. 
 
-Let me see if I understand this...the *NFS* request is silently dropped,
-and the *sunrpc cache* request is remembered on the server machine and
-sent upstairs later, presumably as the userspace daemon replies to
-earlier upcalls.  The NFS client gets nothing...no reply and no
-indication that it should retry the original NFS request.
-
-So you're implicitly relying on the normal clientside timeout and
-retry mechanism to get the NFS request resubmitted?  Why not send
-EJUKEBOX to the client, and let it manage retry using a retry strategy
-designed for a slow server instead of the one designed for lossy
-networks?  Otherwise the exponential backoff could hurt the client's
-latency more than it deserves.
-
-
-Anyway, the problem I have is the use of EAGAIN.  The normal semantics
-of EAGAIN are that the receiver should cause a retry of whatever it was
-doing.  So if (say) nfsd_write() returned -EAGAIN it would make
-sense to translate that into NFSERR_JUKEBOX which is designed to have
-the same effect at the client.
-
-This is what happens on an Altix with DMF installed: the DMF hooks
-in the filesystem return EAGAIN when they need to pull a file in
-from tape, and that percolates naturally through several layers to
-be translated to NFSERR_JUKEBOX to the client.
-
-http://www.sgi.com/products/storage/tech/dmf.html
-
-That DMF code returns EAGAIN because it's been given O_NONBLOCK,
-and that's the semantics of O_NONBLOCK: return EAGAIN if you can't
-succeed without blocking.  This happens in code that's common to the
-IRIX and Linux implementations of DMF.  In other words, there's a
-whole body of history for using EAGAIN this way.
-
-Instead you're using EAGAIN in another part of the code to indicate
-that a cache entry has expired or is missing and that an upcall is
-in progress and might succeed later, which then drives a completely
-different retry strategy (with the client being kept in the dark).
-
-We need to figure out how to resolve these two competing usages of
-EAGAIN.
+That document has several wrong or outdated pieces of advice, e.g. in
+sections 5.1, 5.4, 5.7.  If you want me to write a diff it won't be
+a trivial one and you'll have to wait while I plow through some of
+the other four dozen bugs I have queued up.  I'm happy to do it if
+you're happy to wait.
 
 Greg.
 -- 
