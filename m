@@ -1,15 +1,15 @@
 From: "Kendrick M. Smith" <kmsmith@umich.edu>
-Subject: patch 33/38: SERVER: new argument to nfsd_access()
-Date: Tue, 13 Aug 2002 19:10:42 -0400 (EDT)
+Subject: patch 32/38: SERVER: tweak nfsd_create_v3() for NFSv4
+Date: Tue, 13 Aug 2002 19:10:17 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.SOL.4.44.0208131910200.25942-100000@rastan.gpcc.itd.umich.edu>
+Message-ID: <Pine.SOL.4.44.0208131909530.25942-100000@rastan.gpcc.itd.umich.edu>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from donkeykong.gpcc.itd.umich.edu ([141.211.2.163])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17ekoG-0000OB-00
-	for <nfs@lists.sourceforge.net>; Tue, 13 Aug 2002 16:10:45 -0700
+	id 17ekns-0000Lf-00
+	for <nfs@lists.sourceforge.net>; Tue, 13 Aug 2002 16:10:20 -0700
 To: linux-kernel@vger.kernel.org, <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -24,71 +24,78 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 
-NFSv4 defines a new field in the ACCESS response: a bitmap to indicate
-which access bits requested by the client are "supported", i.e. meaningful
-for the object in question.
+File creation in NFSv4 is almost the same as in NFSv3, with one minor
+difference.  If an UNCHECKED create is done, and the file exists, we
+don't set any attributes.  Exception: If size==0 is specified as part
+of the attributes, then we do truncate the file, but only after processing
+the rest of the OPEN.  (File creation is always part of an OPEN request.)
 
-This patch adds a new parameter @supported to nfsd_access(), so that
-nfsd_access() can set the value of this bitmap.
+This patch defines a new argument *truncp to nfsd_create_v3(), which
+will be NULL for v3 requests.  For v4 requests, it will point to a
+variable which should be set to 1 if file truncation is still needed.
 
---- old/include/linux/nfsd/nfsd.h	Fri Aug  9 10:02:59 2002
-+++ new/include/linux/nfsd/nfsd.h	Fri Aug  9 09:57:45 2002
-@@ -86,7 +92,7 @@ int		nfsd_create(struct svc_rqst *, stru
- 				char *name, int len, struct iattr *attrs,
- 				int type, dev_t rdev, struct svc_fh *res);
- #ifdef CONFIG_NFSD_V3
--int		nfsd_access(struct svc_rqst *, struct svc_fh *, u32 *);
-+int		nfsd_access(struct svc_rqst *, struct svc_fh *, u32 *, u32 *);
+The logic in nfsd_create_v3() is changed as follows: If
+  - *truncp is not NULL
+  - the create is UNCHECKED
+  - the file exists
+then nfsd_create_v3() returns immediately.  If size==0 is specified,
+then *truncp is set to 1.
+
+This is kind of a hack, but the only alternative I could see was creating
+a new routine nfsd_create_v4(), which would be identical to nfsd_create_v3()
+except for this point.
+
+--- old/include/linux/nfsd/nfsd.h	Fri Aug  9 09:25:53 2002
++++ new/include/linux/nfsd/nfsd.h	Fri Aug  9 10:00:13 2002
+@@ -90,7 +90,7 @@ int		nfsd_access(struct svc_rqst *, stru
  int		nfsd_create_v3(struct svc_rqst *, struct svc_fh *,
  				char *name, int len, struct iattr *attrs,
  				struct svc_fh *res, int createmode,
---- old/fs/nfsd/vfs.c	Fri Aug  9 10:02:59 2002
+-				u32 *verifier);
++				u32 *verifier, int *truncp);
+ int		nfsd_commit(struct svc_rqst *, struct svc_fh *,
+ 				off_t, unsigned long);
+ #endif /* CONFIG_NFSD_V3 */
+--- old/fs/nfsd/vfs.c	Fri Aug  9 09:53:29 2002
 +++ new/fs/nfsd/vfs.c	Fri Aug  9 09:32:36 2002
-@@ -348,12 +348,12 @@ static struct accessmap	nfs3_anyaccess[]
- };
-
+@@ -907,7 +912,8 @@ out_nfserr:
  int
--nfsd_access(struct svc_rqst *rqstp, struct svc_fh *fhp, u32 *access)
-+nfsd_access(struct svc_rqst *rqstp, struct svc_fh *fhp, u32 *access, u32 *supported)
+ nfsd_create_v3(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		char *fname, int flen, struct iattr *iap,
+-		struct svc_fh *resfhp, int createmode, u32 *verifier)
++		struct svc_fh *resfhp, int createmode, u32 *verifier,
++	        int *truncp)
  {
- 	struct accessmap	*map;
- 	struct svc_export	*export;
- 	struct dentry		*dentry;
--	u32			query, result = 0;
-+	u32			query, result = 0, sresult = 0;
- 	unsigned int		error;
-
- 	error = fh_verify(rqstp, fhp, 0, MAY_NOP);
-@@ -375,6 +375,9 @@ nfsd_access(struct svc_rqst *rqstp, stru
- 	for  (; map->access; map++) {
- 		if (map->access & query) {
- 			unsigned int err2;
-+
-+			sresult |= map->access;
-+
- 			err2 = nfsd_permission(export, dentry, map->how);
- 			switch (err2) {
- 			case nfs_ok:
-@@ -395,6 +398,8 @@ nfsd_access(struct svc_rqst *rqstp, stru
- 		}
- 	}
- 	*access = result;
-+	if (supported)
-+		*supported = sresult;
-
-  out:
- 	return error;
---- old/fs/nfsd/nfs3proc.c	Fri Aug  9 10:02:59 2002
+ 	struct dentry	*dentry, *dchild;
+ 	struct inode	*dirp;
+@@ -969,6 +975,16 @@ nfsd_create_v3(struct svc_rqst *rqstp, s
+ 		case NFS3_CREATE_UNCHECKED:
+ 			if (! S_ISREG(dchild->d_inode->i_mode))
+ 				err = nfserr_exist;
++			else if (truncp) {
++				/* in nfsv4, we need to treat this case a little
++				 * differently.  we don't want to truncate the
++				 * file now; this would be wrong if the OPEN
++				 * fails for some other reason.  furthermore,
++				 * if the size is nonzero, we should ignore it
++				 * according to spec!
++				 */
++				*truncp = (iap->ia_valid & ATTR_SIZE) && !iap->ia_size;
++			}
+ 			else {
+ 				iap->ia_valid &= ATTR_SIZE;
+ 				goto set_attr;
+--- old/fs/nfsd/nfs3proc.c	Wed Jul 24 16:03:25 2002
 +++ new/fs/nfsd/nfs3proc.c	Wed Aug  7 11:58:49 2002
-@@ -134,7 +134,7 @@ nfsd3_proc_access(struct svc_rqst *rqstp
+@@ -267,7 +267,7 @@ nfsd3_proc_create(struct svc_rqst *rqstp
+ 	/* Now create the file and set attributes */
+ 	nfserr = nfsd_create_v3(rqstp, dirfhp, argp->name, argp->len,
+ 				attr, newfhp,
+-				argp->createmode, argp->verf);
++				argp->createmode, argp->verf, NULL);
 
- 	fh_copy(&resp->fh, &argp->fh);
- 	resp->access = argp->access;
--	nfserr = nfsd_access(rqstp, &resp->fh, &resp->access);
-+	nfserr = nfsd_access(rqstp, &resp->fh, &resp->access, NULL);
  	RETURN_STATUS(nfserr);
  }
-
 
 
 
