@@ -1,66 +1,37 @@
-From: Ion Badulescu <ionut@badula.org>
-Subject: Re: Disabling Symbolic Link Content Caching in NFS Client
-Date: Mon, 2 Jun 2003 16:37:23 -0400
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200306022037.h52KbNVh012849@buggy.badula.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [NFS] Disabling Symbolic Link Content Caching in NFS Client
+Date: Mon, 2 Jun 2003 23:48:18 +0200
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <16091.50722.851659.821544@charged.uio.no>
 References: <2BB7146B38D9CA40B215AB3DAAE24C080BA4F3@blr-m2-msg.wipro.com>
-Cc: <trond.myklebust@fys.uio.no>, <indou.takao@jp.fujitsu.com>,
-   <ezk@cs.sunysb.edu>, <viro@math.psu.edu>, <davem@redhat.com>,
-   <nfs@lists.sourceforge.net>, <linux-kernel@vger.kernel.org>
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from ool-43524450.dyn.optonline.net ([67.82.68.80] helo=buggy.badula.org)
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19Mw3r-0001Vw-00
-	for <nfs@lists.sourceforge.net>; Mon, 02 Jun 2003 13:37:44 -0700
-To: "Vivek Goyal" <vivek.goyal@wipro.com>
-In-Reply-To: <2BB7146B38D9CA40B215AB3DAAE24C080BA4F3@blr-m2-msg.wipro.com>
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+	<200306022037.h52KbNVh012849@buggy.badula.org>
+Reply-To: trond.myklebust@fys.uio.no
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: "Vivek Goyal" <vivek.goyal@wipro.com>,
+	<indou.takao@jp.fujitsu.com>, <ezk@cs.sunysb.edu>,
+	<viro@math.psu.edu>, <davem@redhat.com>,
+	<nfs@lists.sourceforge.net>, <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
+To: Ion Badulescu <ionut@badula.org>
+In-Reply-To: <200306022037.h52KbNVh012849@buggy.badula.org>
+List-ID: <nfs.lists.sourceforge.net>
 
-On Wed, 28 May 2003 16:39:36 +0530, Vivek Goyal <vivek.goyal@wipro.com> wrote:
+>>>>> " " == Ion Badulescu <ionut@badula.org> writes:
 
-> I was following previous discussions in the mailing list and found that
-> caching mechanism affected hlfsd behavior. It looks like the problem was
-> resolved by updating mtime on every access. But still caching will lead
-> to a problem if two accesses are taking place in same jiffy.
+    >> 1. Make nfs_symlink_caching dynamically tunable using /proc and
+    >> sysctl interface.
 
-Yes, because the the nfs client is broken in this respect. noac 
-should mean noac, but the nfs client will still cache attributes if the 
-second access happens within the same jiffy as the previous access which 
-updated the attribute cache.
+     > No. Do it on a per-mount basis, like the other OS's do.
 
-Replacing a couple of time_after() calls with time_after_eq() calls 
-fixes the issue, at least for hlfsd. Of course, running with noac might 
-be very much unacceptable if all you want is to avoid caching symlinks.
+As I said to Vivek in a private mail, it would be very nice to see
+if this could be done by replacing hlfsd with namespace groups.
 
-> We are considering following design strategy to implement the parameter.
-> 
-> 1. Make nfs_symlink_caching dynamically tunable using /proc and sysctl
-> interface.
+Al Viro has already done all the VFS layer work, which should be ready
+and working in existing 2.4.20 and 2.5.x kernels. What is missing is
+userland support for doing a CLONE_NEWNS, and then mounting the user's
+home directory, mailspool,.... in the appropriate locations at login
+time.
 
-No. Do it on a per-mount basis, like the other OS's do.
-
-Ion
-
--- 
-  It is better to keep your mouth shut and be thought a fool,
-            than to open it and remove all doubt.
-
-
--------------------------------------------------------
-This SF.net email is sponsored by: eBay
-Get office equipment for less on eBay!
-http://adfarm.mediaplex.com/ad/ck/711-11697-6916-5
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Cheers,
+  Trond
