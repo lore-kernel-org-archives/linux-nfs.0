@@ -1,19 +1,24 @@
-From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 16 of 18] nfsd4: encode_dirent: simplify control flow
-Date: Tue, 16 Nov 2004 15:50:50 +1100
-Message-ID: <E1CTvIo-0004qI-Ud@notabene.cse.unsw.edu.au>
-References: <20041116154601.18412.patches@notabene>
-Cc: nfs@lists.sourceforge.net
+From: Miika Pekkarinen <miipekk@ihme.org>
+Subject: Re: Using mmap result in data corruption
+Date: Tue, 16 Nov 2004 12:07:13 +0200 (EET)
+Message-ID: <Pine.LNX.4.58.0411161206440.26094@ihme.ihme.org>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CTvFz-0005un-7r
-	for nfs@lists.sourceforge.net; Mon, 15 Nov 2004 20:47:55 -0800
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CTvFy-0007Mi-FJ
-	for nfs@lists.sourceforge.net; Mon, 15 Nov 2004 20:47:55 -0800
-To: Andrew Morton <akpm@osdl.org>
+	id 1CU0FI-0001Ra-0Y
+	for nfs@lists.sourceforge.net; Tue, 16 Nov 2004 02:07:32 -0800
+Received: from ihme.org ([212.226.113.138] ident=mail)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1CU0FH-00013W-7K
+	for nfs@lists.sourceforge.net; Tue, 16 Nov 2004 02:07:31 -0800
+Received: from miipekk (helo=localhost)
+	by ihme.org with local-esmtp (Exim 4.24)
+	id 1CU0Ez-0003P7-Dj
+	for nfs@lists.sourceforge.net; Tue, 16 Nov 2004 12:07:13 +0200
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,73 +32,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Fri, 12 Nov 2004, Trond Myklebust wrote:
+
+> > I have found a reproducable issue with NFS that will lead to file
+> > corruption on server. When a file is created with O_TRUNC and data is
+> > copied using mmap, the new file on the server will be filled with null bytes.
+>
+> mmap() offers absolutely NO guarantees that the file will be synced to
+> disk on close. Use msync(MS_SYNC) if you want such a guarantee.
+
+Hmm, with msync (right before munmap) the file gets synced to disk
+correctly. However, I am
+still wondering what is wrong with munmap. I checked the manual page
+of msync and it said: "msync  flushes  changes  made  to  the in-core copy
+of a file that was mapped into memory using mmap(2) back to disk. Without
+use of this call there is no guarantee that changes are written back
+before munmap(2) is called." So I understood that munmap should do the
+same thing than msync but I doesn't sync the file. Probably I am missing
+some point or there is a bug somewhere else (either in manual pages or in
+some library)?
+
+-- 
+Miika Pekkarinen <miika at ihme.org>
 
 
-Replace series of if's by a switch, remove (now unnecessary) label "out".
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
-
-### Diffstat output
- ./fs/nfsd/nfs4xdr.c |   41 ++++++++++++++++++++---------------------
- 1 files changed, 20 insertions(+), 21 deletions(-)
-
-diff ./fs/nfsd/nfs4xdr.c~current~ ./fs/nfsd/nfs4xdr.c
---- ./fs/nfsd/nfs4xdr.c~current~	2004-11-16 14:41:42.000000000 +1100
-+++ ./fs/nfsd/nfs4xdr.c	2004-11-16 14:41:44.000000000 +1100
-@@ -1854,32 +1854,31 @@ nfsd4_encode_dirent(struct readdir_cd *c
- 	 * Now we come to the ugly part: writing the fattr for this entry.
- 	 */
- 	nfserr = nfsd4_encode_dirent_fattr(cd, name, namlen, p, &buflen);
--	if (!nfserr) {
-+	switch (nfserr) {
-+	case nfs_ok:
- 		p += buflen;
--		goto out;
--	}
--	if (nfserr == nfserr_resource) {
-+		break;
-+	case nfserr_resource:
- 		nfserr = nfserr_toosmall;
- 		goto fail;
-+	default:
-+		/*
-+		 * If we get here, we experienced a miscellaneous
-+		 * failure while writing the attributes.  If the
-+		 * client requested the RDATTR_ERROR attribute,
-+		 * we stuff the error code into this attribute
-+		 * and continue.  If this attribute was not requested,
-+		 * then in accordance with the spec, we fail the
-+		 * entire READDIR operation(!)
-+		 */
-+		if (!(cd->rd_bmval[0] & FATTR4_WORD0_RDATTR_ERROR))
-+			goto fail;
-+		nfserr = nfserr_toosmall;
-+		p = nfsd4_encode_rdattr_error(p, buflen, nfserr);
-+		if (p == NULL)
-+			goto fail;
- 	}
- 
--	/*
--	 * If we get here, we experienced a miscellaneous
--	 * failure while writing the attributes.  If the
--	 * client requested the RDATTR_ERROR attribute,
--	 * we stuff the error code into this attribute
--	 * and continue.  If this attribute was not requested,
--	 * then in accordance with the spec, we fail the
--	 * entire READDIR operation(!)
--	 */
--	if (!(cd->rd_bmval[0] & FATTR4_WORD0_RDATTR_ERROR))
--		goto fail;
--	nfserr = nfserr_toosmall;
--	p = nfsd4_encode_rdattr_error(p, buflen, nfserr);
--	if (p == NULL)
--		goto fail;
--
--out:
- 	cd->buflen -= (p - cd->buffer);
- 	cd->buffer = p;
- 	cd->common.err = nfs_ok;
 
 
 -------------------------------------------------------
