@@ -1,18 +1,20 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: [PATCH] 2.4.19-rc1/2.5.25 provide dummy fsync() routine for directories on NFS mounts
-Date: Tue, 9 Jul 2002 15:49:15 +0200
+From: "Richard B. Johnson" <root@chaos.analogic.com>
+Subject: Re: [PATCH] 2.4.19-rc1/2.5.25 provide dummy fsync() routine for directories on NFS mounts
+Date: Tue, 9 Jul 2002 11:06:27 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <agerj9$l7p$2@main.gmane.org>
+Message-ID: <ageule$ubh$2@main.gmane.org>
+References: <15658.61035.450205.832652@charged.uio.no>
+Reply-To: root@chaos.analogic.com
 Mime-Version: 1.0
-Content-Type: Multipart/Mixed;
-  boundary="------------Boundary-00=_3EIZKYOXMIGWH0CRXSTH"
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mons.uio.no ([129.240.130.14])
+Received: from chaos.analogic.com ([204.178.40.224])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17RvMq-0004ex-00
-	for <nfs@lists.sourceforge.net>; Tue, 09 Jul 2002 06:49:25 -0700
-To: nfs@lists.sourceforge.net,
- linux-kernel@vger.kernel.org
+	id 17RwXP-0004lm-00
+	for <nfs@lists.sourceforge.net>; Tue, 09 Jul 2002 08:04:23 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <15658.61035.450205.832652@charged.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,68 +27,93 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
+On Tue, 9 Jul 2002, Trond Myklebust wrote:
 
---------------Boundary-00=_3EIZKYOXMIGWH0CRXSTH
-Content-Type: text/plain;
-  charset="us-ascii"
-Content-Transfer-Encoding: 8bit
+> >>>>> " " == Richard B Johnson <root@chaos.analogic.com> writes:
+> 
+>      > I think code that opens a directory as a file is broken. We
+>      > have opendir() for that and it returns a DIR pointer, not a
+>      > file descriptor.  If the directory was properly opened, one
+>      > would never attempt to fsync() it.
+> 
+>  fsync() is supported on directories on local filesystems as a way of
+> ensuring that changes (due to file creation etc) are committed to
+> disk. Where is the POSIX violation in that?
+> 
+>  There is no reason why NFS, which ensures this anyway, should
+> not adhere to this convention.
+> 
+> Cheers,
+>   Trond
+> -
 
-Hi,
+Well, no. It's not supported. You can't get a valid file-descriptor...
 
-   There was a bug reported on the 'exim' user list a couple of months ago: 
-the Linux NFS client reports -EINVAL if you try to fsync() a directory.
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
 
-   The correct response would be to return a dummy '0' for success, since all 
-NFS operations that change the directory are supposed to be performed 
-synchronously on the server anyway...
+int main()
+{
+    int fd;
+    fd = open("/", O_RDWR, 0);
+    fsync(fd);
+}
+
+
+execve("./xxx", ["xxx"], [/* 32 vars */]) = 0
+brk(0)                                  = 0x804966c
+open("/etc/ld.so.preload", O_RDONLY)    = -1 ENOENT (No such file or directory)
+open("/lib/libc.so.6", O_RDONLY)        = 3
+old_mmap(NULL, 4096, PROT_READ, MAP_PRIVATE, 3, 0) = 0x4000c000
+munmap(0x4000c000, 4096)                = 0
+old_mmap(NULL, 644232, PROT_READ|PROT_EXEC, MAP_PRIVATE, 3, 0) = 0x4000c000
+mprotect(0x40097000, 74888, PROT_NONE)  = 0
+old_mmap(0x40097000, 24576, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED, 3, 0x8b000) = 0x40097000
+old_mmap(0x4009d000, 50312, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) = 0x4009d000
+close(3)                                = 0
+mprotect(0x4000c000, 569344, PROT_READ|PROT_WRITE) = 0
+mprotect(0x4000c000, 569344, PROT_READ|PROT_EXEC) = 0
+personality(PER_LINUX)                  = 0
+getpid()                                = 27544
+open("/", O_RDWR)                       = -1 EISDIR (Is a directory)
+
+
+There are ways to 'cheat' and obtain a file-descriptor that references
+a directory, but cheating is against POSIX rules, also.
+
+You can open it read-only. But, Read-Only means that you can't
+update it, so fsync means nothing, will return 0 because it is
+already "whatever it was" since you can't modify it...
+
+getpid()                                = 27568
+open("/", O_RDONLY)                     = 3
+fsync(3)                                = 0
+_exit(0)                                = ?
+
+
+My reading is that you need to fsync() every file within a directory
+to fsync() a directory. Playing tricks with a directory inode doesn't
+do it.
+
+Regardless, POSIX.4 declines to state exactly what "successfully
+transferred" means when it states that fsync() doesn't return until
+all data has been successfully transferred to the disk or underlying
+hardware. This is a real problem for a network file-system where
+data that will eventually get to a file-server in the Congo may be
+en-route for several minutes.
+
+If an application insists, it is up to the application to determine,
+probably once upon startup, just what kind of file synchronization
+is supported.
 
 Cheers,
-  Trond
+Dick Johnson
 
+Penguin : Linux version 2.4.18 on an i686 machine (797.90 BogoMips).
 
---------------Boundary-00=_3EIZKYOXMIGWH0CRXSTH
-Content-Type: text/plain;
-  charset="us-ascii";
-  name="linux-2.4.19-fsync_dir.dif"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment; filename="linux-2.4.19-fsync_dir.dif"
+                 Windows-2000/Professional isn't.
 
-diff -u --recursive --new-file linux-2.4.19-rc1/fs/nfs/dir.c linux-2.4.19-fsync_dir/fs/nfs/dir.c
---- linux-2.4.19-rc1/fs/nfs/dir.c	Tue Mar 12 16:35:02 2002
-+++ linux-2.4.19-fsync_dir/fs/nfs/dir.c	Tue Jul  9 15:41:29 2002
-@@ -45,12 +45,14 @@
- static int nfs_mknod(struct inode *, struct dentry *, int, int);
- static int nfs_rename(struct inode *, struct dentry *,
- 		      struct inode *, struct dentry *);
-+static int nfs_fsync_dir(struct file *, struct dentry *, int);
- 
- struct file_operations nfs_dir_operations = {
- 	read:		generic_read_dir,
- 	readdir:	nfs_readdir,
- 	open:		nfs_open,
- 	release:	nfs_release,
-+	fsync:		nfs_fsync_dir
- };
- 
- struct inode_operations nfs_dir_inode_operations = {
-@@ -401,6 +403,15 @@
- 	return 0;
- }
- 
-+/*
-+ * All directory operations under NFS are synchronous, so fsync()
-+ * is a dummy operation.
-+ */
-+int nfs_fsync_dir(struct file *filp, struct dentry *dentry, int datasync)
-+{
-+	return 0;
-+}
-+
- /*
-  * A check for whether or not the parent directory has changed.
-  * In the case it has, we assume that the dentries are untrustworthy
-
---------------Boundary-00=_3EIZKYOXMIGWH0CRXSTH--
 
 
 -------------------------------------------------------
