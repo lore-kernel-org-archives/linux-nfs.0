@@ -1,24 +1,26 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: Re: [PATCH] NFS: Zeroing NFS and kNFSD stats
-Date: Thu, 5 Aug 2004 15:26:19 +1000
+From: Johan van den Dorpe <johan.vandendorpe@framestore-cfc.com>
+Subject: rpc.mountd stops functioning
+Date: Thu, 05 Aug 2004 12:19:26 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040805052619.GT5581@sgi.com>
-References: <40F3D483.8020507@RedHat.com> <20040713143044.GA3023@fieldses.org> <40F3FAD8.7090707@RedHat.com> <20040713151759.GC3023@fieldses.org> <20040802103905.GI25023@suse.de> <20040804201411.GL19282@fieldses.org>
+Message-ID: <411217BE.8070209@framestore-cfc.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Olaf Kirch <okir@suse.de>, Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Bsaly-0000Ge-KU
-	for nfs@lists.sourceforge.net; Wed, 04 Aug 2004 22:26:38 -0700
-Received: from omx3-ext.sgi.com ([192.48.171.20] helo=omx3.sgi.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1Bsalx-0002Zn-Al
-	for nfs@lists.sourceforge.net; Wed, 04 Aug 2004 22:26:37 -0700
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <20040804201411.GL19282@fieldses.org>
+	id 1BsgIE-0000SJ-Ax
+	for nfs@lists.sourceforge.net; Thu, 05 Aug 2004 04:20:18 -0700
+Received: from gw.fs-cfc.co.uk ([193.203.83.22])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.34)
+	id 1BsgID-0002zp-MM
+	for nfs@lists.sourceforge.net; Thu, 05 Aug 2004 04:20:18 -0700
+Received: from localhost (localhost [127.0.0.1])
+	by mail.admin.local (Postfix) with ESMTP id 5EA8697E42D
+	for <nfs@lists.sourceforge.net>; Thu,  5 Aug 2004 12:19:28 +0100 (BST)
+Received: from framestore-cfc.com (sys33.prod.local [172.18.10.33])
+	by mail.admin.local (Postfix) with ESMTP id 63DC0506BAC
+	for <nfs@lists.sourceforge.net>; Thu,  5 Aug 2004 12:19:26 +0100 (BST)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,65 +33,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, Aug 04, 2004 at 04:14:11PM -0400, J. Bruce Fields wrote:
-> On Mon, Aug 02, 2004 at 12:39:05PM +0200, Olaf Kirch wrote:
-> > On Tue, Jul 13, 2004 at 11:17:59AM -0400, J. Bruce Fields wrote:
-> > But it sucks. I had folks run something like 12-15 performance
-> > measurements and take the NFS stats, and it was a huge mess to sort
-> > through.  Telling folks "use nfsstat -z to wipe stats before each
-> > command" is much easier.
-> 
-> Well, like I say, we could implement "nfsstat -z" by checkpointing as
-> above but just writing to a file at some default path, though admittedly
-> the choice of path might not be obvious.
+Hello,
 
-FWIW, futzing with zeroing or checkpointing should not be necessary
-on Altix systems because they ship with PCP, a stats gathering
-package which samples the NFS stats (among many others) and does
-rate conversion.
+For a long time we've been experiencing problems with rpc.mountd 
+stopping functioning.
 
-http://oss.sgi.com/projects/pcp/
+I'm finding it hard to pinpoint the precise circumstances where we 
+encounter a problem, but here is what we have observed:
 
-> Having nfsstat just hang around till it's signaled (like tcpdump does)
-> would also be easy.
+- A mount request, or a showmount -e, to the server will hang
 
-IRIX' nfsstat has a -C option which uses curses to display every 1
-sec the rates of various NFS stats, until interrupted.  It's a bit
-like "watch nfsstat" but shows rate converted numbers instead of
-changing counters.  Here's an example screen, for a machine getting
-30 RPC calls/sec:
+- The server will print a log message authenticating the mount request
 
+- The server doesn't print log messages that it has authenticated 
+unmount requests.
 
+- Killing rpc.mountd and then restarting it fixes the problem (I've not 
+tried a HUP)
 
- 4: Server   snort    Aug  5 15:21:21                           D: Delta/second
+- There is a correlation between the number of mounts being handled 
+(i.e. the number of entries in rmtab) and the frequency of the problem.
 
-Server RPC:
-calls      badcalls   nullrecv   badlen     xdrcall    duphits    dupage
-30         0          0          0          0          0          40086.17
+- The problem only occurs on servers that are mounted by a significant 
+number of hosts (500-700).
 
-Server NFS V3:
-calls        badcalls
-30           0
-null         getattr      setattr      lookup       access       readlink
-1  0%        10 33%       1  2%        16 52%       1  0%        0  0%
-read         write        create       mkdir        symlink      mknod
-2  4%        1  3%        0  0%        0  0%        0  0%        0  0%
-remove       rmdir        rename       link         readdir      readdir+
-0  0%        0  0%        0  0%        0  0%        0  0%        0  0%
-fsstat       fsinfo       pathconf     commit
-1  1%        0  0%        0  0%        1  2%  
+- The more exports on the server, the more frequently the problem occurs.
 
-1: Client[V2]  2: Server[V2]  3: Client[V3]  4: Server[V3] 5: Daemons  DZR:mode
+- It should be noted that clients are mounting subdirectories of a 
+single exported filesystem, so number of rmtab entries > number of xtab 
+entries.
 
+- Clearing the rmtab and restarting nfs (service nfs restart) seems to 
+provide the longest time between failures.
 
-
-Something like that might be more useful than the -z option.
-
-
-Greg.
 -- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+Johan van den Dorpe
 
 
 -------------------------------------------------------
