@@ -1,12 +1,19 @@
-From: CDROM@biozak.com
-Subject: 13,000+ life science customers for your sorage  solutions
-Date: Tue, 17 Jun 2003 19:50:56 UT
+From: Matt Schillinger <mschilli@vss.fsi.com>
+Subject: exportfs operations hang
+Date: 17 Jun 2003 14:46:17 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200306171950.MAA16373@main.biozak.com>
+Message-ID: <1055879177.10166.3.camel@mosix>
 Mime-Version: 1.0
-Content-Type: multipart/alternative; boundary="_----------=_105587945615885122"
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: nfs@sourceforge.net
+Received: from adsl-66-136-174-212.dsl.stlsmo.swbell.net ([66.136.174.212] helo=esds.vss.fsi.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19SMPA-0002Bl-00
+	for <nfs@lists.sourceforge.net>; Tue, 17 Jun 2003 12:46:08 -0700
+Received: from mosix.vss.fsi.com (mosix [198.51.27.89])
+	by esds.vss.fsi.com (8.11.6+Sun/8.9.1) with ESMTP id h5HJk1K19013
+	for <nfs@lists.sourceforge.net>; Tue, 17 Jun 2003 14:46:01 -0500 (CDT)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -19,86 +26,31 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+Hello,
 
---_----------=_105587945615885122
-Content-Disposition: inline
-Content-Length: 856
-Content-Transfer-Encoding: binary
-Content-Type: text/plain
+I am having reproducible problems with exportfs.
 
-Locate  life science industry customers for your storage solutions  with BioZak InfoBase CD-Rom databases
+When I try to run exportfs or exportfs -u, it simply stalls and never
+drops back to commandline.. if i CTRL+C, i see that (in the case of an
+exportfs) the mountpoint is still not shared. In the case of an exportfs
+-u, If i CTRL+C it, the mountpoint IS still shared.  I do not know what
+is causing the problem.. the only workaround that I have found is to
+restart nfsd.. Is there something in rmtab/xtab/etab that could cause an
+exportfs hangup?
 
-*13,000 companies
-*25,000 executives
-*advanced data retrieval tools
+I am using 64 threads, and am having no thread utilization issues
+according to /proc/net/rpc/nfsd
 
-Ideal  for:
-*direct marketing
-*teleprospecting
-*partner search
+Has anyone else had this problem?
 
-Now  only $956 (20% off regular price of $1,195) - that's less than 7 cents per contact!
+Thanks for your help
+-- 
+Matt Schillinger
+System Administrator
+FlightSafety International
+mschilli@vss.fsi.com
+314-551-8403
 
-Interested?
-
-Email CDROM@biozak.com or visit
-http://main.biozak.com/cgi-bin/BIOZAK/sublinks.pl?type=CD
-
-
-Enter/mention promotion code int_service_providers_SS when asked.
-
-
-Sincerely,
---
-Ekaterina Kalygina,
-Marketing Director,
-BioZak InfoBase, Inc. - business intelligence for life science markets!
-
-
-
------
-Every effort is made to ensure that this message is received only by interested parties. If this message was sent to you in error, please reply with 'remove' in the subject line - you will get no further email from us.
---_----------=_105587945615885122
-Content-Disposition: inline
-Content-Length: 1165
-Content-Transfer-Encoding: binary
-Content-Type: text/html
-
-Locate  life science industry customers for your storage solutions  with BioZak InfoBase CD-Rom databases: <BR>
-
-<li>13,000 companies<BR><BR>
-<li>25,000 executives<BR><BR>
-<li>advanced data retrieval tools<BR><BR>
-</ul>
-
-Ideal for:<BR><BR>
-<ul>
-<li> direct marketing<BR><BR>
-<li> teleprospecting<BR><BR>
-<li> partner search<BR><BR>
-</ul>
-
-Act now and pay only $956 (20% off regular price of $1195) - that's <b>less than 7 cents per contact!</b><BR><BR>
-
-Interested? <BR><BR>
-
-Email <a href="mailto:CDROM@biozak.com">CDROM@biozak.com</a> or visit
-<a href="http://main.biozak.com/cgi-bin/BIOZAK/sublinks.pl?type=CD">http://main.biozak.com/cgi-bin/BIOZAK/sublinks.pl?type=CD</a><BR><BR><BR>
-
-Enter/mention promotion code int_service_providers_SS when asked.<BR><BR><BR>
-
-Sincerely,<BR>
---<BR>
-Ekaterina Kalygina,<BR>
-Marketing Director,<BR>
-BioZak InfoBase, Inc. - business intelligence for life science markets!<BR>
-<BR><BR><BR><BR>
-
-
------<BR>
-Every effort is made to ensure that this message is received only by interested parties. If this message was sent to you in error, please reply with 'remove' in the subject line - you will get no further email from us.<BR>
---_----------=_105587945615885122--
 
 
 
