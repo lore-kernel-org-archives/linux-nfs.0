@@ -1,28 +1,24 @@
-From: trond.myklebust@fys.uio.no
-Subject: Re: [PATCH 2.6.3] Add write throttling to NFS client
-Date: Tue, 2 Mar 2004 01:49:49 +0100 (CET)
+From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Subject: lockfiles and caching
+Date: Tue, 2 Mar 2004 09:38:42 -0700 (MST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <2005.207.214.87.84.1078188589.squirrel@webmail.uio.no>
-References: <Pine.LNX.4.44.0403011907010.10276-100000@kenzo.iwr.uni-heidelberg.de>
-    <35345.207.214.87.84.1078167489.squirrel@webmail.uio.no>
+Message-ID: <Pine.LNX.4.44.0403020931460.15713-100000@fattire.ngdc.noaa.gov>
+Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain;charset=iso-8859-1
-Cc: "Shantanu Goel" <Shantanu.Goel@lehman.com>,
-     "Shantanu Goel" <sgoel01@yahoo.com>,
-     "Charles Lever" <Charles.Lever@netapp.com>,
-     "Olaf Kirch" <okir@suse.de>,"Greg Banks" <gnb@melbourne.sgi.com>,
-     nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AxyBM-0008Nf-8R
-	for nfs@lists.sourceforge.net; Mon, 01 Mar 2004 16:54:48 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 1AyCzh-0003LM-V4
+	for nfs@lists.sourceforge.net; Tue, 02 Mar 2004 08:43:45 -0800
+Received: from fattire.ngdc.noaa.gov ([140.172.187.207])
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AxxpM-0003BK-Uh
-	for nfs@lists.sourceforge.net; Mon, 01 Mar 2004 16:32:05 -0800
-To: "Bogdan Costescu" <bogdan.costescu@iwr.uni-heidelberg.de>
-In-Reply-To: <35345.207.214.87.84.1078167489.squirrel@webmail.uio.no>
+	id 1AyCcm-0001hK-DM
+	for nfs@lists.sourceforge.net; Tue, 02 Mar 2004 08:20:04 -0800
+Received: from localhost (ahoward@localhost)
+	by fattire.ngdc.noaa.gov (8.11.6/8.11.6) with ESMTP id i22Gcgq16251
+	for <nfs@lists.sourceforge.net>; Tue, 2 Mar 2004 09:38:42 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -35,18 +31,51 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-På må , 01/03/2004 klokka 10:58, skreiv trondmy@ulrik.uio.no:
-
-> I'm currently working on a scheme for throttling processes that keep on
-> scheduling new writes while the VM is trying to free up memory.
 
 
-OK... This is now ready for testing as part of the latest NFS4_ALL patch. See
+i'm working on a distributed application which requires nfs locking.  in
+addition to using fcntl based locks i want to have facilities which will work
+even without it's use.  i'm wondering about two things
 
-http://www.fys.uio.no/~trondmy/src/Linux-2.6.x/2.6.3/linux-2.6.3-22-congestion.dif
+  *) atomically creating a nfs lockfile
 
-Cheers,
-  Trond
+    i've read that this can be done by
+
+      - creating a tmpfile (hostname.pid.path.tmplk)
+      - linking the lockfile to this file, ignoring status
+
+          path.lk -> hostname.pid.path.tmplk
+      - checking the nlink of tmpfile, iff it is 2 then success
+
+
+    is this still considered the best approach?
+
+  *) forcing uncaching of any attributes
+
+    my current algorithim is
+
+      - stat path
+      - link path, refreshfile && unlink refreshfile
+      - chmod path, path.mode
+      - utime path.stat.atime, path.stat.mtime
+
+    in otherwords i'm doing everything i've read _might_ cause cache
+    invalidation.
+
+    are there any other worth trying?
+
+
+cheers.
+
+-a
+-- 
+===============================================================================
+| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
+| PHONE   :: 303.497.6469
+| ADDRESS :: E/GC2 325 Broadway, Boulder, CO 80305-3328
+| URL     :: http://www.ngdc.noaa.gov/stp/
+| TRY     :: for l in ruby perl;do $l -e "print \"\x3a\x2d\x29\x0a\"";done 
+===============================================================================
 
 
 
