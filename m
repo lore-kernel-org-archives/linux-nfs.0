@@ -1,35 +1,28 @@
-From: Jeffrey Layton <jtlayton@poochiereds.net>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: Linux' NFS locking b0rken?
-Date: Thu, 27 May 2004 12:24:56 -0400
+Date: Thu, 27 May 2004 12:31:49 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1085675096.7390.7.camel@tesla.mmt.bellhowell.com>
+Message-ID: <1085675509.4074.26.camel@lade.trondhjem.org>
 References: <Pine.LNX.4.44.0405251504220.24001-100000@fattire.ngdc.noaa.gov>
 	 <1085523068.12612.58.camel@lade.trondhjem.org>
 	 <20040526075058.GA7463@suse.de>
 	 <1085587441.3763.4.camel@lade.trondhjem.org>
 	 <20040527161412.GA19288@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=iso-8859-1
+Cc: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>, Dan Stromberg <strombrg@dcs.nac.uci.edu>, Jeffrey Layton <jtlayton@poochiereds.net>,  nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BTNgj-0000mi-TF
-	for nfs@lists.sourceforge.net; Thu, 27 May 2004 09:25:01 -0700
-Received: from rdu26-93-067.nc.rr.com ([66.26.93.67] helo=salusa.poochiereds.net)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1BTNgh-00062V-N0
-	for nfs@lists.sourceforge.net; Thu, 27 May 2004 09:24:59 -0700
-Received: from localhost (localhost [127.0.0.1])
-	by salusa.poochiereds.net (Postfix) with ESMTP id 30F39E4A8
-	for <nfs@lists.sourceforge.net>; Thu, 27 May 2004 12:24:51 -0400 (EDT)
-Received: from salusa.poochiereds.net ([127.0.0.1])
-	by localhost (salusa [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id 17294-07 for <nfs@lists.sourceforge.net>;
-	Thu, 27 May 2004 12:24:50 -0400 (EDT)
-Received: from localhost (salusa.poochiereds.net [192.168.1.2])
-	by salusa.poochiereds.net (Postfix) with ESMTP id 699FAE439
-	for <nfs@lists.sourceforge.net>; Thu, 27 May 2004 12:24:50 -0400 (EDT)
-To: nfs@lists.sourceforge.net
+	id 1BTNnT-0002HA-C2
+	for nfs@lists.sourceforge.net; Thu, 27 May 2004 09:31:59 -0700
+Received: from dh132.citi.umich.edu
+	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.30)
+	id 1BTNnT-0000Jw-1k
+	for nfs@lists.sourceforge.net; Thu, 27 May 2004 09:31:59 -0700
+To: Olaf Kirch <okir@suse.de>
 In-Reply-To: <20040527161412.GA19288@suse.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -43,21 +36,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Just for posterity, the Solaris manpage for flock(3UCB) says:
+P=E5 to , 27/05/2004 klokka 12:14, skreiv Olaf Kirch:
+> On Wed, May 26, 2004 at 12:04:01PM -0400, Trond Myklebust wrote:
+> > Sure we could. The question is whether or not there are any application=
+s
+> > out there that set both flock and fcntl locks? They would break with
+> > such a scheme.
+>=20
+> Don't they deserve to break?
 
-"The compatibility version of flock() has been implemented on top of 
-fcntl(2) locking."
+Yep, but since the main users of flock tend to be mail-related
+applications, we'd better check first. People tend to get grumpy when
+their favourite MTA locks up and dies.
 
-----------------
+That said, I believe that RHEL-3 at least is returning an error these
+days whenever you try to flock over NFS: I dunno if you are doing this
+at SuSE yet?
+Hopefully that will suffice to wipe the slate clean w.r.t. borken apps
+(I know it caused my old uni to be aware of the problem and fix up a
+couple of "movemail"s that were using flock).
 
-My guess is that if Linux were to adopt a similar scheme it would likely
-not break much, if anything...
+> I'd rather make flock work over NFS (and have one FAQ less to deal with),
+> than supporting patently broken apps.
+>=20
+> We could create a mount option or even better a lockd module option to
+> make the old behavior selectable for those that need it.
 
-But what do I know? ;-)
+lockd sysctl...
 
--- Jeff
-
-
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
