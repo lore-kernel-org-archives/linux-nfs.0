@@ -1,18 +1,20 @@
-From: Sven Geggus <sven@geggus.net>
-Subject: 2.4.21 NFS client Freezes :(
-Date: Wed, 18 Jun 2003 15:42:39 +0000 (UTC)
+From: Scott Leerssen <scott@leerssen.com>
+Subject: RE: nfs root directory security
+Date: 18 Jun 2003 11:59:54 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <bcq19f$onn$1@benzin.geggus.net>
+Message-ID: <1055951993.16625.104.camel@sleerssen.racemi.com>
+References: <31B1521BD986E84E9D43651F8DF99BDC0134B416@POEXMB1.conoco.net>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>,
+   Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from benzin.geggus.net ([213.146.112.23] ident=foobar)
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19Sf5f-0007QX-00
-	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 08:43:15 -0700
-Received: from news by benzin.geggus.net with local
-	(Exim 4.20 id 19Sf55-0006ag-TX)
-	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 17:42:39 +0200
-To: nfs@lists.sourceforge.net
+Received: from user-vc8ft6h.biz.mindspring.com ([216.135.244.209] helo=racemi.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19SfL1-0004Y3-00
+	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 08:59:07 -0700
+To: "Heflin, Roger A." <Roger.A.Heflin@conocophillips.com>
+In-Reply-To: <31B1521BD986E84E9D43651F8DF99BDC0134B416@POEXMB1.conoco.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,29 +27,79 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi there,
+On Wed, 2003-06-18 at 11:27, Heflin, Roger A. wrote:
+> Scott,
+> 
+> If you really want to be scared, try 
+> "showmount -a servername"
+> This will tell the server to list the clients and what filesystems they have
+> mounted.  And unguessable becomes a non-issue, and anyone can grab anyone
+> elses data since they know exactly what partition to mount.
+> 
+> 
+> 		Roger
+> 
 
-when trying to access NFS volumes on a Windows Server (yes, these beasts
-exist) my whole systems gets frozen (there are ping responces, but nothing  
-more).
-   
-This is however working fine with 2.4.20 and can be reproduced on any
-machine running 2.4.21!
-   
-The Server is a third Party tool called "NFS Maestro" from Hummingbird.
+That's the magic of open source...  anything can be turned off if so
+desired :)
 
-Any hints on how to further debug this?
 
-The magic System request just told me that the ls command which caused the
-hang is in running state.
-
-Sven
-
+> > -----Original Message-----
+> > From:	Scott Leerssen [SMTP:scott@leerssen.com]
+> > Sent:	Wednesday, June 18, 2003 9:28 AM
+> > To:	Bogdan Costescu
+> > Cc:	Neil Brown; nfs@lists.sourceforge.net
+> > Subject:	Re: [NFS] nfs root directory security
+> > 
+> > I agree with everything you say here, and in a controlled and fairly
+> > unchanging environment with clients you trust, exporting to specific
+> > clients is a perfectly acceptable solution.  All I'm suggesting is
+> > adding an extra "layer of the onion" by restricting the ability to mount
+> > read-restricted directories.  It gives us the ability to create
+> > mountable filesystems for each server in a path that can not be
+> > traversed by mounting higher level directories.
+> > 
+> > Imagine if the B and C paths of /A/B/C/root are cryptographically
+> > generated names, and that C is different for every mount point, B is
+> > different for every "repository", and A is simply an anchor in the root
+> > of my NAS.  I can export my clients root filesystems as:
+> > 
+> >    /A 192.168.100.0/255.255.255.0(rw,no_root_squash,...)
+> > 
+> > If B and C are unmountable and unguessable (without a lot of failed and
+> > obvious nfs mount attempts), I don't have to worry about anyone but the
+> > intended client mounting its root filesystem (assuming the network is
+> > safe from sniffing DHCP and mount requests).  Plus, I don't have to have
+> > an entry for every single client.  I could, and that would buy me an
+> > added bit of assurance, but I don't need one so it's much easier to
+> > maintain hundreds of mount points.
+> > 
+> > Of course, there's a lot more to securing an NFS environment such as
+> > this, particularly when you can't trust the clients to behave.  This
+> > tweak just eases the burden of managing exports for hundreds (or
+> > thousands) of clients on as many NAS as you can imagine.  The burden is
+> > shifted to managing unreadable pathnames in the management software...
+> > (sigh).
+> > 
+> > That's about all I have to add on this... feel free to use the patch or,
+> > if you haven't already, delete it from your inbox.
+> > 
+> > -- 
+> > Scott Leerssen <scott@leerssen.com>
+> > 
+> > 
+> > 
+> > -------------------------------------------------------
+> > This SF.Net email is sponsored by: INetU
+> > Attention Web Developers & Consultants: Become An INetU Hosting Partner.
+> > Refer Dedicated Servers. We Manage Them. You Get 10% Monthly Commission!
+> > INetU Dedicated Managed Hosting http://www.inetu.net/partner/index.php
+> > _______________________________________________
+> > NFS maillist  -  NFS@lists.sourceforge.net
+> > https://lists.sourceforge.net/lists/listinfo/nfs
 -- 
-"And I'm right.  I'm always right, but in this case I'm just a bit more
-right than I usually am." (Linus Torvalds, Sunday Aug 27, 2000)
+Scott Leerssen <scott@leerssen.com>
 
-/me is giggls@ircnet, http://sven.gegg.us/ on the Web
 
 
 -------------------------------------------------------
