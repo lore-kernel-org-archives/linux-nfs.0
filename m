@@ -1,16 +1,13 @@
-From: "Dreani"<IncreaseCurrentSales7886@excite.com>
-Subject: SPAM: ***15.6 MILLION OPT-IN, TARGETED EMAIL ADDRESSES!
-Date: Thu, 8 May 2003 09:44:06 GMT
+From: "Aileen Sawyer" <k8jx66zj2q@springfieldhba.com>
+Subject: ###<>>><Largest Loan Program
+Date: Fri, 09 May 03 07:00:33 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200305080545901.SM03236@smtp0147.mail.yahoo.com>
+Message-ID: <qc$-zle-9reelrpv-euh312j2@sburz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: multipart/alternative;
+	boundary=".461BB8.__FD48_27CAC3_9"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [200.50.30.16] (helo=mail.vallejoyvallejo.com)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19Dhwu-0003V0-00
-	for <nfs@lists.sourceforge.net>; Thu, 08 May 2003 02:44:24 -0700
-To: nfs@lists.sourceforge.net
+To: <nfs@lists.sourceforge.net>, <jmol-commits@lists.sourceforge.net>, <lse-tech@lists.sourceforge.net>, <glhack-user@lists.sourceforge.net>, <lsb-taskforce1@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -23,43 +20,54 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-SGVsbG8sDQoNClRoaXMgZW1haWwgaXMgdG8gaW5mb3JtIHlvdSB0aGF0IHRoaXMgaXMgeW91ciBs
-YXN0IGNoYW5jZSB0byBnZXQgaW4gDQpvbiB0aGlzIG9mZmVyLi4uLi4xNS42IE1JTExJT04gT1BU
-LUlOLCBUQVJHRVRFRCBFTUFJTCBBRERSRVNTRVMuLi4NClBMVVMgJDIsMDAwIFdPUlRIIE9GIEZS
-RUUgRU1BSUwgTUFSS0VUSU5HIFNPRlRXQVJFIQ0KDQpXT1VMRCBZT1UgTElLRSBUTyBIQVZFIFlP
-VVIgTUVTU0FHRSBTRUVOIEJZDQpPVkVSIDE1LjYgTUlMTElPTiBPUFQtSU4sIFRBUkdFVEVEIFBF
-T1BMRSBEQUlMWT8NCg0KQkVMT1cgSVMgSlVTVCBBIFNBTVBMRSBPRiBXSEFUIFdFIEhBVkUgVE8g
-T0ZGRVIgWU9VLi4uDQoNCj4+PldFIFdJTEwgU1VQUExZIFlPVSBXSVRIIE9WRVIgMTUuNiBNSUxM
-SU9OIE9QVC1JTiBFTUFJTA0KQUREUkVTU0VTIFRPIEdFVCBZT1UgU1RBUlRFRCBSSUdIVCBBV0FZ
-IQ0KDQo+Pj5GUkVFIEVNQUlMIEFERFJFU1MgRE9XTkxPQURTIEZPUiBMSUZFIQ0KDQo+Pj5ZT1Ug
-V0lMTCBSRUNFSVZFIE9WRVIgJDIsMDAwIFdPUlRIIE9GIA0KRU1BSUwgTUFSS0VUSU5HIFNPRlRX
-QVJFIEZSRUUhDQoNCkluY2x1ZGluZy4uLi4uLg0KDQpCUk9BRENBU1QgRU1BSUwgU0VORElORyBT
-T0ZUV0FSRS4uLihzZW5kIG1pbGxpb25zIG9mIGVtYWlsDQphZHZlcnRpc2VtZW50cyBkYWlseSB3
-aXRoIGEgZmV3IGNsaWNrcyBvZiB5b3VyIG1vdXNlLiBOZXcgYnVpbHQgaW4gDQpzdGVhbHRoIHRl
-Y2hub2xvZ3kpLiBCZSBvbmUgb2YgdGhlIGZpcnN0IHBlb3BsZSB0byB1c2UgaXQuIFdlIHVzZWQg
-dGhlIA0Kc2FtZSBzb2Z0d2FyZSB0byBzZW5kIHlvdSB0aGlzIGVtYWlsIG1lc3NhZ2UuDQoNCkVN
-QUlMIEVYVFJBQ1RJT04gU09GVFdBUkUuLi4oUmV0cmVpdmUgbmV3IHRhcmdldGVkIGVtYWlsDQph
-ZGRyZXNzZXMgZGFpbHkuIEh1bmRyZWRzIG9mIHRob3VzYW5kcyBvZiB0aGVtKQ0KDQpMSVNUIE1B
-TkFHRU1FTlQgU09GVFdBUkUuLi4oS2VlcCB5b3VyIGxpc3RzIGNsZWFuLCBvcHQtaW4NCmFuZCBt
-YW5hZ2UgYWxsIHlvdXIgcmVtb3ZlIHJlcXVlc3RzLCBsZWFkcywgc2FsZXMgZXRjLi4uKQ0KDQpQ
-T1AtVVAgQURWRVJUSVNFUi4uLk5vIG5lZWQgdG8gcGF5IHNvbWVvbmUgZWxzZSBmb3IgDQpwb3At
-dXAgYWR2ZXJ0aXNpbmcuIFNhdmUgJDEsMDAwcyB3ZWVrbHkuIEl0J3MgeW91cnMgdG9kYXkgZnJl
-ZSEgDQpQbHVzIHlvdSBjYW4gcmVzZWxsIHRoaXMgc29mdHdhcmUgYW5kIGtlZXAgMTAwJSBvZiB0
-aGUgcHJvZml0IG9yDQpzaW1wbHkgZ2l2ZSBpdCBhcyBhIGZyZWUgZ2lmdCBhbG9uZyB3aXRoIHlv
-dXIgY3VycmVudCBzZXJ2aWNlcy4NCg0KYW5kIG11Y2guLi5tdWNoIG1vcmUhDQoNCkh1cnJ5Li4u
-VGhpcyBleHRyYW9yZGluYXJ5IG9mZmVyIGVuZHMgc29vbiENCg0KVG8gZmluZCBvdXQgbW9yZSBp
-bmZvcm1hdGlvbiwgRG8gbm90IHJlc3BvbmQgYnkgZW1haWwuIEluc3RlYWQsIGNsaWNrDQpvbiB0
-aGUgbGluayBiZWxvdyAuDQoNCjxicj48QSBIUkVGPSJodHRwOi8vd3d3LmNyZWRpdGNhcmRiaXou
-dXMvNDA5MzI0L2Jyb2FkY2FzdC5odG0iPkNsaWNrIEhlcmUgRm9yIE1vcmUgSW5mb3JtYXRpb248
-L0E+PGJyPg0KDQoNCg0KDQpfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fX19fX19fX18NCldhbnQgdG8gYmUgUkVNT1ZFRCBmcm9tIG91ciBlbWFpbCBsaXN0Pw0K
-WW91IHdlcmUgc2VudCB0aGlzIGVtYWlsIGJlY2F1c2UgeW91IHVzZWQgb3VyIE9wdC1pbiBzZXJ2
-aWNlLg0KV2UgaG9wZSB5b3UgZW5qb3kgcmVhZGluZyBvdXIgbWVzc2FnZXMuIEhvd2V2ZXIsIGlm
-IHlvdSdkIHJhdGhlcg0Kbm90IHJlY2VpdmUgZnV0dXJlIGUtbWFpbHMgZnJvbSB1cywgQ2xpY2sg
-b24gdGhlIGxpbmsgYmVsb3cuDQo8YnI+PEEgSFJFRj0iaHR0cDovL3d3dy5jcmVkaXRjYXJkYml6
-LnVzLzQwOTMyNC9yZW1vdmVtZS5odG0iPkNsaWNrIEhlcmUgVG8gYmUgcmVtb3ZlZCBmcm9tIG91
-ciBsaXN0LjwvQT48YnI+DQpUaGFuayB5b3UgZm9yIHlvdXIgY29vcGVyYXRpb24uDQpfX19fX19f
-X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fXw==
+This is a multi-part message in MIME format.
+
+--.461BB8.__FD48_27CAC3_9
+Content-Type: text/plain;
+Content-Transfer-Encoding: quoted-printable
+
+nfs@lists.sourceforge.net
+
+Did you know the Government gives away money for almost any reason?
+
+It is incredibly simple to qualify for a free cash grant! 
+$15,500 to over $650,000 in FREE Grant Money is Available TO YOU IMMEDIATE=
+LY!
+
+# Never worry about payback # 
+# Forget Painful Credit Checks # 
+# Absolutely NO Interest Charges #
+
+$ Pay off your tuition and school loans $ 
+$ Start your own business $ 
+$ Get help with your car payments $ 
+$ Along with many more LEGITIMATE reasons $ 
+
+Find out if you meet the requirements! 
+
+Click here to visit our website:
+http://www.officialusgrants.com/
+
+
+
+
+h sppmutbj qfmfgrb  xyymm
+ktjs pj
+ dfpvabse
+qctahj
+ jshspp
+
+
+leatherneck
+
+
+dvad xr zzscakxqxwgxwwv
+
+coliseum
+a la
+
+--.461BB8.__FD48_27CAC3_9--
+
 
 
 -------------------------------------------------------
