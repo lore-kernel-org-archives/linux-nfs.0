@@ -1,30 +1,26 @@
-From: Garrick Staples <garrick@usc.edu>
-Subject: Re: Converting open filehandles to pathnames
-Date: Sun, 9 May 2004 20:00:30 -0700
+From: Daniel Ellard <ellard@eecs.harvard.edu>
+Subject: Re: NFS digest, Vol 1 #1848 - 6 msgs
+Date: Mon, 10 May 2004 00:05:00 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040510030029.GL30964@polop.usc.edu>
-References: <1084059203.714.13.camel@omikron> <20040509072418.GB18762@sgi.com> <1084063428.714.40.camel@omikron> <1084148814.29382.32.camel@binkley>
+Message-ID: <20040509235449.K15474@bowser.eecs.harvard.edu>
+References: <E1BN1JU-0003Yo-He@sc8-sf-list2.sourceforge.net>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="OY4z34RctfP64Hws"
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BN13h-00016A-7y
-	for nfs@lists.sourceforge.net; Sun, 09 May 2004 20:02:25 -0700
-Received: from polop.usc.edu ([128.125.10.9])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.30)
-	id 1BN13g-0003QI-43
-	for nfs@lists.sourceforge.net; Sun, 09 May 2004 20:02:24 -0700
-Received: from polop.usc.edu (localhost.localdomain [127.0.0.1])
-	by polop.usc.edu (8.12.10/8.12.10) with ESMTP id i4A30Ulv017179
-	for <nfs@lists.sourceforge.net>; Sun, 9 May 2004 20:00:30 -0700
-Received: (from garrick@localhost)
-	by polop.usc.edu (8.12.10/8.12.10/Submit) id i4A30UWU017177
-	for nfs@lists.sourceforge.net; Sun, 9 May 2004 20:00:30 -0700
+	id 1BN22N-00013k-91
+	for nfs@lists.sourceforge.net; Sun, 09 May 2004 21:05:07 -0700
+Received: from bowser.eecs.harvard.edu
+	([140.247.60.24] helo=mail.eecs.harvard.edu ident=postfix)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BN22M-0004PM-UZ
+	for nfs@lists.sourceforge.net; Sun, 09 May 2004 21:05:07 -0700
+Received: from localhost (localhost [127.0.0.1])
+	by mail.eecs.harvard.edu (Postfix) with ESMTP id DC6B054C453
+	for <nfs@lists.sourceforge.net>; Mon, 10 May 2004 00:05:00 -0400 (EDT)
 To: nfs@lists.sourceforge.net
-In-Reply-To: <1084148814.29382.32.camel@binkley>
+In-Reply-To: <E1BN1JU-0003Yo-He@sc8-sf-list2.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -37,49 +33,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Sun, 9 May 2004 nfs-request@lists.sourceforge.net wrote:
 
---OY4z34RctfP64Hws
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
-
-On Sun, May 09, 2004 at 08:26:54PM -0400, seth vidal alleged:
->=20
-> > Now if someone just had as good an answer to the "what is a client?"
-> > question....  You might imagine my interest in that is more than
-> > academic, with 100's of *long*-duration filehandles in the GB+ range
-> > each, yet over only a few physical client machines.
-> >=20
->=20
+> Subject: Re: [NFS] Converting open filehandles to pathnames
+> From: seth vidal <skvidal@phy.duke.edu>
+> To: Erik Walthinsen <omega@pdxcolo.net>
+> Cc: Greg Banks <gnb@sgi.com>, nfs@lists.sourceforge.net
+> Date: Sun, 09 May 2004 20:26:54 -0400
+>
 > Any thoughts to making this program available anywhere? I'd be
 > interested to get some mappings to find out who my most abusive users
 > are.
->=20
-> I've run into some performance problems recently and I'd love to know if
-> I've got some specific users who are being abusive or if the machine is
-> just underpowered.
 
-Come to think of it, I've found myself in the same situation... wondering w=
-ho
-is beating up my NFS servers.  This would be a great tool to have.
+In the meanwhile, you might consider my tools for doing this (as well
+as a lot of other things):
 
---=20
-Garrick Staples, Linux/HPCC Administrator
-University of Southern California
+http://www.eecs.harvard.edu/sos/software/
 
---OY4z34RctfP64Hws
-Content-Type: application/pgp-signature
-Content-Disposition: inline
+nfsdump captures and decodes the NFS requests, and nfsscan does some
+analyses on the results.  There are also some helper programs to toss
+together quick graphs and things like that.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.3 (GNU/Linux)
+-Dan
 
-iD8DBQFAnvBN0SBUxJbm9HMRAuO3AJ42gXeLn0LjBASzKmddbWWibU+2kQCfecrv
-99HjhiahMDwik6f6ITyiB7Y=
-=lGng
------END PGP SIGNATURE-----
-
---OY4z34RctfP64Hws--
 
 
 -------------------------------------------------------
