@@ -1,24 +1,24 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: async vs. sync
-Date: Thu, 25 Nov 2004 09:24:12 +1100
-Message-ID: <16805.2572.79895.275921@cse.unsw.edu.au>
-References: <482A3FA0050D21419C269D13989C611307CF4B56@lavender-fe.eng.netapp.com>
-	<41A3AFC4.6080404@int-evry.fr>
-	<41A4D6C5.2060902@int-evry.fr>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] STATD - SM_NOTIFY have wrong ID_NAME on multihost
+ servers.
+Date: Wed, 24 Nov 2004 17:08:11 -0500
+Message-ID: <41A5064B.1030009@RedHat.com>
+References: <41A39D57.8060902@RedHat.com> <20041123232636.GE19342@vestdata.no> <41A3D9CC.7040404@RedHat.com> <20041124020017.GH19342@vestdata.no> <41A477C8.4060405@RedHat.com> <20041124173525.GI19342@vestdata.no>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Lever, Charles" <Charles.Lever@netapp.com>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-15; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CX5Ym-0005gV-CQ
-	for nfs@lists.sourceforge.net; Wed, 24 Nov 2004 14:24:24 -0800
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CX5Yl-0002Vq-2D
-	for nfs@lists.sourceforge.net; Wed, 24 Nov 2004 14:24:24 -0800
-To: "jehan.procaccia" <jehan.procaccia@int-evry.fr>
-In-Reply-To: message from jehan.procaccia on Wednesday November 24
+	id 1CX5Go-0004FV-Qy
+	for nfs@lists.sourceforge.net; Wed, 24 Nov 2004 14:05:50 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1CX5Gn-00007I-SG
+	for nfs@lists.sourceforge.net; Wed, 24 Nov 2004 14:05:50 -0800
+To: =?ISO-8859-15?Q?Ragnar_Kj=F8rstad?= <nfs@ragnark.vestdata.no>
+In-Reply-To: <20041124173525.GI19342@vestdata.no>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,77 +32,55 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wednesday November 24, jehan.procaccia@int-evry.fr wrote:
-> 
-> However now the tar extraction goes very fast but stops 1 or 2  or  and 
-> restart fast -> there are some hangs. Here with a 16MB journal I got 15 
-> hangs of 1-2 seconds, with a 128 MB I get only 3 hangs but they last 4or 
-> 5 seconds. I checked at a momment of an hang on the nfs server with 
-> iostat, and disk utilisation goes from a few % to  316 % in the exemple 
-> below (for 128 MB journal withing the 4 seconds hangs it goes to 4700 % !)
-> Device:    rrqm/s wrqm/s   r/s   w/s  rsec/s  wsec/s    rkB/s    wkB/s 
-> avgrq-sz avgqu-sz   await  svctm  %util
-> /dev/emcpowerl2
->              0.00 150.67 97.33 224.00  768.00 3018.67   384.00  
-> 1509.33    11.78    33.33   19.79   9.83 316.00
-> 
-> Maybe it hangs because the journal commits on the SP ! ?
-> 
-
-It hangs because of some clumsy code in ext3 that no-one has bothered
-to fix yet - I had a look once but it was a little beyond the time I
-had to spare.
-
-When information is written to the journal, it stays in memory as well
-and is eventually written out to the main filesystem using normal
-lazy-flushing mechanisms (data is pushed out either due to memory
-pressure or because it has been idle for too long).
-When ext3 wants to add information to the head of the journal, it
-needs to clean up the tail to make space.
-If it finds that the data that was written to the tail is already
-safe in the main filesystem, it just frees up some of the  tail and
-starts using it for a new head.
-HOWEVER, if it finds that the data in the tail hasn't made it to the
-main filesystem, it flushes *ALL* of the data in the journal out to
-the main filesystem. (It should only flush some fraction or fixed
-number of blocks or something).  This flushing causes a very
-noticeable pause.  The larger the journal, the less often the flush is
-needed, but the longer the flush lasts for.
-
-There are two ways to avoid this pause.  One I have tested and works
-well.  The other only just occurred to me and I haven't tried.
-
-The untested one involves making the journal larger than main memory.
-If it is that large, then memory pressure should flush out journal
-blocks before the journal wraps back to them, and so the flush should
-never happen.  However such a large journal may cause other problems
-(slow replay) as mentioned in my other email.
-
-The way that works if to adjust the "bdflush" parameters so that data
-is flushed to disk more quickly.  The default is to flush data once it
-is 30 seconds old.  If you reduce that to 5 seconds, the problem goes
-away. 
-
-For 2.4, I put
-vm.bdflush =  30 500 0 0 100 500 60 20 0
-
-in my /etc/sysctl.conf, which is equivalent to running
-  echo   30 500 0 0 100 500 60 20 0 > /proc/sys/vm/bdflush
-
-For 2.6, I assume you would
-   echo 500 > /proc/sys/vm/dirty_expire_centisecs
-but I haven't tested this.
 
 
-> Well, finally, is this safer in terms of performances to externalize 
-> journal than using async export ?
+Ragnar Kj=F8rstad wrote:
 
-Absolutely, providing you trust the hardware that you are storing your
-journal on.
-An external journal is perfectly safe.
-async export is not.
+>On Wed, Nov 24, 2004 at 07:00:08AM -0500, Steve Dickson wrote:
+> =20
+>
+>>>If that's the case, are we allowed to just send the IP instead of the
+>>>name?
+>>>
+>>>
+>>>     =20
+>>>
+>>No, since the spec says a the id_mon needs to be character string....
+>>   =20
+>>
+>
+>"10.0.0.1" is a character string as much as any - unless the
+>specification says something more about this?
+> =20
+>
+Well here is what the spec says wrt to mon_names:
+"For maximum portability and interworking, it is recommended that=20
+applications
+and users define host names containing only the characters of the Portabl=
+e
+Filename Characters defined in ISO/IEC 9945-1:1990."
 
-NeilBrown
+So doing some like would probably cause interopability issues with other
+OSes....
+
+>In short, this is exactly like what your patch does except that:
+>- if there are multiple matching interfaces (e.g. aliases) we
+>  send messages for all
+> =20
+>
+Yes see your point, but is aliasing all that common in non-HA environment=
+s?
+The relatively simple  patch I'm proposing is a small step in the right=20
+direction
+which would make statd work correctly on multihome servers.
+Should we strive to make statd more HA friendly, YES!  but I would
+suggest one step at time.... Meaning we should propose this match to Neil
+for inclusion in upstream and then build on it... imho...
+
+SteveD.
+
+
+
 
 
 -------------------------------------------------------
