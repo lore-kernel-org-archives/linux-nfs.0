@@ -1,254 +1,103 @@
-From: Jamie Lokier <jamie@shareable.org>
-Subject: [PATCH] make NFS lockd port numbers assignable at run time
-Date: Mon, 18 Aug 2003 01:46:49 +0100
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <20030818004649.GA5105@mail.jlokier.co.uk>
+From: Mark Hemment <markhe@veritas.com>
+Subject: [PATCH]
+Date: Mon, 18 Aug 2003 12:12:08 +0100 (BST)
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <Pine.LNX.4.33.0308181207560.1203-100000@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Neil Brown <neilb@cse.unsw.edu.au>, linux-kernel@vger.kernel.org,
-	nfs@lists.sourceforge.net
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: Linus Torvalds <torvalds@osdl.org>
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from bay-bridge.veritas.com ([143.127.3.10] helo=mtvmime01.veritas.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19ohup-0006Sa-00
+	for <nfs@lists.sourceforge.net>; Mon, 18 Aug 2003 04:11:11 -0700
+Received: from localhost.localdomain(markhe.wat.veritas.com[10.10.185.104]) (2640 bytes) by megami
+	via sendmail with P:esmtp/R:smart_host/T:smtp
+	(sender: <markhe@veritas.com>)
+	id <m19ohui-00008DC@megami>
+	for <nfs@lists.sourceforge.net>; Mon, 18 Aug 2003 04:11:04 -0700 (PDT)
+	(Smail-3.2.0.101 1997-Dec-17 #15 built 2001-Aug-30)
+To: Neil Brown <neilb@cse.unsw.edu.au>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-When writing firewall rules, and you are serving NFS, it's really
-useful to know the port numbers of the various NFS services.  nfsd has
-a standard value; mountd and statd are userspace daemons, and those
-ports are settable on the command line.
+  For RPC over UDP, after receiving a packet kick another thread as soon
+as possible.  This helps NFS performance.
+  Patch is against 2.6.0-test3.
 
-The fiddly one is lockd.  nlm_udpport and nlm_tcpport can be set on
-the kernel command line or at module load time, but after that it's a
-bit awkward (particularly as the lockd module can't be unloaded safely
-- "rmmod -f lockd" sometimes panics).
-
-This patch allows the port numbers and the other lockd parameters to
-be set through files in /proc/sys/fs/nfs/nlm_*.  The port numbers take
-effect when lockd is next started or restarted.
-
-In order to install the sysctl table even when compiled into the
-kernel, it was necessary to update the initialisation code to the
-current methods, using module_init() et al.  This patch does that and
-in so doing updates the module/kernel parameters to use the 2.6
-module_param() method, as well as making the numeric range changes
-consistent between the two.
-
-Enjoy,
--- Jamie
+Mark
 
 
+diff -urNp linux-2.6.0-test3/net/sunrpc/svcsock.c linux-2.6.0-test3-sunrpc/net/sunrpc/svcsock.c
+--- linux-2.6.0-test3/net/sunrpc/svcsock.c	2003-08-09 05:32:33.000000000 +0100
++++ linux-2.6.0-test3-sunrpc/net/sunrpc/svcsock.c	2003-08-17 19:42:58.000000000 +0100
+@@ -578,8 +578,14 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 		/* possibly an icmp error */
+ 		dprintk("svc: recvfrom returned error %d\n", -err);
+ 	}
++	svsk->sk_sk->sk_stamp = skb->stamp;
+ 	set_bit(SK_DATA, &svsk->sk_flags); /* there may be more data... */
 
---- orig-2.5.75/fs/lockd/svc.c	2003-07-08 21:55:24.000000000 +0100
-+++ laptop-2.5.75/fs/lockd/svc.c	2003-08-17 04:06:38.000000000 +0100
-@@ -16,6 +16,8 @@
- #include <linux/config.h>
- #include <linux/module.h>
- #include <linux/init.h>
-+#include <linux/sysctl.h>
-+#include <linux/moduleparam.h>
- 
- #include <linux/sched.h>
- #include <linux/errno.h>
-@@ -51,12 +53,23 @@
- static DECLARE_WAIT_QUEUE_HEAD(lockd_exit);
- 
- /*
-- * Currently the following can be set only at insmod time.
-- * Ideally, they would be accessible through the sysctl interface.
-+ * These can be set at insmod time (useful for NFS as root filesystem),
-+ * and also changed through the sysctl interface.  -- Jamie Lokier, Aug 2003
-  */
--unsigned long			nlm_grace_period;
--unsigned long			nlm_timeout = LOCKD_DFLT_TIMEO;
--unsigned long			nlm_udpport, nlm_tcpport;
-+static unsigned long		nlm_grace_period;
-+static unsigned long		nlm_timeout = LOCKD_DFLT_TIMEO;
-+static int			nlm_udpport, nlm_tcpport;
++	/*
++	 * Maybe more packets - kick another thread ASAP.
++	 */
++	svc_sock_received(svsk);
 +
-+/*
-+ * Constants needed for the sysctl interface.
-+ */
-+static const unsigned long	nlm_grace_period_min = 0;
-+static const unsigned long	nlm_grace_period_max = 240;
-+static const unsigned long	nlm_timeout_min = 3;
-+static const unsigned long	nlm_timeout_max = 20;
-+static const int		nlm_port_min = 0, nlm_port_max = 65535;
-+
-+static struct ctl_table_header * nlm_sysctl_table;
- 
- static unsigned long set_grace_period(void)
- {
-@@ -298,52 +311,130 @@
- 	up(&nlmsvc_sema);
+ 	len  = skb->len - sizeof(struct udphdr);
+ 	rqstp->rq_arg.len = len;
+
+@@ -590,8 +596,6 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 	rqstp->rq_addr.sin_port = skb->h.uh->source;
+ 	rqstp->rq_addr.sin_addr.s_addr = skb->nh.iph->saddr;
+
+-	svsk->sk_sk->sk_stamp = skb->stamp;
+-
+ 	if (skb_is_nonlinear(skb)) {
+ 		/* we have to copy */
+ 		local_bh_disable();
+@@ -599,7 +603,6 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 			local_bh_enable();
+ 			/* checksum error */
+ 			skb_free_datagram(svsk->sk_sk, skb);
+-			svc_sock_received(svsk);
+ 			return 0;
+ 		}
+ 		local_bh_enable();
+@@ -611,7 +614,6 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 		if (skb->ip_summed != CHECKSUM_UNNECESSARY) {
+ 			if ((unsigned short)csum_fold(skb_checksum(skb, 0, skb->len, skb->csum))) {
+ 				skb_free_datagram(svsk->sk_sk, skb);
+-				svc_sock_received(svsk);
+ 				return 0;
+ 			}
+ 			skb->ip_summed = CHECKSUM_UNNECESSARY;
+@@ -631,9 +633,6 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 	if (serv->sv_stats)
+ 		serv->sv_stats->netudpcnt++;
+
+-	/* One down, maybe more to go... */
+-	svc_sock_received(svsk);
+-
+ 	return len;
  }
- 
--#ifdef MODULE
--/* New module support in 2.1.18 */
-+/*
-+ * Sysctl parameters (same as module parameters, different interface).
-+ */
-+
-+/* Something that isn't CTL_ANY, CTL_NONE or a value that may clash. */
-+#define CTL_UNNUMBERED		-2
-+
-+static ctl_table nlm_sysctls[] = {
-+	{
-+		.ctl_name	= CTL_UNNUMBERED,
-+		.procname	= "nlm_grace_period",
-+		.data		= &nlm_grace_period,
-+		.maxlen		= sizeof(int),
-+		.mode		= 0644,
-+		.proc_handler	= &proc_doulongvec_minmax,
-+		.extra1		= (unsigned long *) &nlm_grace_period_min,
-+		.extra2		= (unsigned long *) &nlm_grace_period_max,
-+	},
-+	{
-+		.ctl_name	= CTL_UNNUMBERED,
-+		.procname	= "nlm_timeout",
-+		.data		= &nlm_timeout,
-+		.maxlen		= sizeof(int),
-+		.mode		= 0644,
-+		.proc_handler	= &proc_doulongvec_minmax,
-+		.extra1		= (unsigned long *) &nlm_timeout_min,
-+		.extra2		= (unsigned long *) &nlm_timeout_max,
-+	},
-+	{
-+		.ctl_name	= CTL_UNNUMBERED,
-+		.procname	= "nlm_udpport",
-+		.data		= &nlm_udpport,
-+		.maxlen		= sizeof(int),
-+		.mode		= 0644,
-+		.proc_handler	= &proc_dointvec_minmax,
-+		.extra1		= (int *) &nlm_port_min,
-+		.extra2		= (int *) &nlm_port_max,
-+	},
-+	{
-+		.ctl_name	= CTL_UNNUMBERED,
-+		.procname	= "nlm_tcpport",
-+		.data		= &nlm_tcpport,
-+		.maxlen		= sizeof(int),
-+		.mode		= 0644,
-+		.proc_handler	= &proc_dointvec_minmax,
-+		.extra1		= (int *) &nlm_port_min,
-+		.extra2		= (int *) &nlm_port_max,
-+	},
-+	{ .ctl_name = 0 }
-+};
-+
-+static ctl_table nlm_sysctl_dir[] = {
-+	{
-+		.ctl_name	= CTL_UNNUMBERED,
-+		.procname	= "nfs",
-+		.mode		= 0555,
-+		.child		= nlm_sysctls,
-+	},
-+	{ .ctl_name = 0 }
-+};
-+
-+static ctl_table nlm_sysctl_root[] = {
-+	{
-+		.ctl_name	= CTL_FS,
-+		.procname	= "fs",
-+		.mode		= 0555,
-+		.child		= nlm_sysctl_dir,
-+	},
-+	{ .ctl_name = 0 }
-+};
-+
-+/*
-+ * Module (and driverfs) parameters.
-+ */
-+
-+#define param_set_min_max(name, type, which_strtol, min, max)		\
-+static int param_set_##name(const char *val, struct kernel_param *kp)	\
-+{									\
-+	char *endp;							\
-+	__typeof__(type) num = which_strtol(val, &endp, 0);		\
-+	if (endp == val || *endp || num < (min) || num > (max))		\
-+		return -EINVAL;						\
-+	*((int *) kp->arg) = num;					\
-+	return 0;							\
-+}
-+
-+param_set_min_max(port, int, simple_strtol, 0, 65535)
-+param_set_min_max(grace_period, unsigned long, simple_strtoul,
-+		  nlm_grace_period_min, nlm_grace_period_max)
-+param_set_min_max(timeout, unsigned long, simple_strtoul,
-+		  nlm_timeout_min, nlm_timeout_max)
- 
- MODULE_AUTHOR("Olaf Kirch <okir@monad.swb.de>");
- MODULE_DESCRIPTION("NFS file locking service version " LOCKD_VERSION ".");
- MODULE_LICENSE("GPL");
--MODULE_PARM(nlm_grace_period, "10-240l");
--MODULE_PARM(nlm_timeout, "3-20l");
--MODULE_PARM(nlm_udpport, "0-65535l");
--MODULE_PARM(nlm_tcpport, "0-65535l");
- 
--int
--init_module(void)
--{
--	/* Init the static variables */
--	init_MUTEX(&nlmsvc_sema);
--	nlmsvc_users = 0;
--	nlmsvc_pid = 0;
--	return 0;
--}
-+module_param_call(nlm_grace_period, param_set_grace_period, param_get_ulong,
-+		  &nlm_grace_period, 644);
-+module_param_call(nlm_timeout, param_set_timeout, param_get_ulong,
-+		  &nlm_timeout, 644);
-+module_param_call(nlm_udpport, param_set_port, param_get_int,
-+		  &nlm_udpport, 644);
-+module_param_call(nlm_tcpport, param_set_port, param_get_int,
-+		  &nlm_tcpport, 644);
- 
--void
--cleanup_module(void)
--{
--	/* FIXME: delete all NLM clients */
--	nlm_shutdown_hosts();
--}
--#else
--/* not a module, so process bootargs
-- * lockd.udpport and lockd.tcpport
-+/*
-+ * Initialising and terminating the module.
-  */
- 
--static int __init udpport_set(char *str)
-+static int __init init_nlm(void)
- {
--	nlm_udpport = simple_strtoul(str, NULL, 0);
--	return 1;
-+	nlm_sysctl_table = register_sysctl_table(nlm_sysctl_root, 0);
-+	return nlm_sysctl_table ? 0 : -ENOMEM;
- }
--static int __init tcpport_set(char *str)
-+
-+static void __exit exit_nlm(void)
- {
--	nlm_tcpport = simple_strtoul(str, NULL, 0);
--	return 1;
-+	/* FIXME: delete all NLM clients */
-+	nlm_shutdown_hosts();
-+	unregister_sysctl_table(nlm_sysctl_table);
- }
--__setup("lockd.udpport=", udpport_set);
--__setup("lockd.tcpport=", tcpport_set);
- 
--#endif
-+module_init(init_nlm);
-+module_exit(exit_nlm);
- 
- /*
-  * Define NLM program and procedures
---- orig-2.5.75/include/linux/lockd/lockd.h	2003-08-18 01:20:51.776331547 +0100
-+++ laptop-2.5.75/include/linux/lockd/lockd.h	2003-08-18 01:21:15.618457723 +0100
-@@ -26,7 +26,7 @@
- /*
-  * Version string
-  */
--#define LOCKD_VERSION		"0.4"
-+#define LOCKD_VERSION		"0.5"
- 
- /*
-  * Default timeout for RPC calls (seconds)
+
+
+
+
+-------------------------------------------------------
+This SF.Net email sponsored by: Free pre-built ASP.NET sites including
+Data Reports, E-commerce, Portals, and Forums are available now.
+Download today and enter to win an XBOX or Visual Studio .NET.
+http://aspnet.click-url.com/go/psa00100003ave/direct;at.aspnet_072303_01/01
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
