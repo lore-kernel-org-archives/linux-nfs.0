@@ -1,22 +1,25 @@
-From: Frank van Maarseveen <frankvm@frankvm.com>
-Subject: Re: EJUKEBOX and nfs3_proc_read()/nfs3_proc_write()
-Date: Fri, 28 Jan 2005 00:38:31 +0100
-Message-ID: <20050127233831.GA24817@janus>
-References: <20050127225911.GA24398@janus> <1106867997.7192.14.camel@lade.trondhjem.org>
+From: Ian Kent <raven@themaw.net>
+Subject: Re: possible client stale filehandle bug?
+Date: Fri, 28 Jan 2005 08:49:26 +0800 (WST)
+Message-ID: <Pine.LNX.4.58.0501280847470.27759@wombat.indigo.net.au>
+References: <20050125173945.GU12269@polop.usc.edu> <1106719587.10014.4.camel@lade.trondhjem.org>
+ <20050126063547.GS12269@polop.usc.edu> <Pine.LNX.4.61.0501262231150.1716@donald.themaw.net>
+ <20050126174918.GW12269@polop.usc.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CuJDj-0001OM-8L
-	for nfs@lists.sourceforge.net; Thu, 27 Jan 2005 15:38:39 -0800
-Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CuJDh-0002kv-KC
-	for nfs@lists.sourceforge.net; Thu, 27 Jan 2005 15:38:39 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1106867997.7192.14.camel@lade.trondhjem.org>
+	id 1CuKIz-0004XG-Bz
+	for nfs@lists.sourceforge.net; Thu, 27 Jan 2005 16:48:09 -0800
+Received: from wombat.indigo.net.au ([202.0.185.19])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.41)
+	id 1CuKIi-0002uw-SG
+	for nfs@lists.sourceforge.net; Thu, 27 Jan 2005 16:48:09 -0800
+To: Garrick Staples <garrick@usc.edu>
+In-Reply-To: <20050126174918.GW12269@polop.usc.edu>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,27 +33,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Jan 27, 2005 at 03:19:57PM -0800, Trond Myklebust wrote:
-> to den 27.01.2005 Klokka 23:59 (+0100) skreiv Frank van Maarseveen:
-> > I think that the EJUKEBOX wrapper in fs/nfs/nfs3proc.c is not necessary
-> > for nfs3_proc_read() and nfs3_proc_write().
+On Wed, 26 Jan 2005, Garrick Staples wrote:
+
+> On Wed, Jan 26, 2005 at 10:31:57PM +0800, raven@themaw.net alleged:
+> > On Tue, 25 Jan 2005, Garrick Staples wrote:
 > > 
-> > Can you confirm this?
+> > >
+> > >I'd be very happy to see any patches lieing around that might do this
+> > >behaviour.  It would get me through the short term until Sun fixes this 
+> > >bug in
+> > >samfs.
+> > 
+> > Don't hold your breath waiting!
 > 
-> Why do you believe that?
+> Now you are just being cruel!
 
-Because you have to open a file first. Well, as you said NFS is stateless
-so my guess is that the final lookup would return EJUKEBOX rather
-than any I/O on the file-handle. It seems unrealistic to me for a file to
-be archived _during_ I/O.
+We don't use SAMfs in the standard configuration either!
 
-Sure the protocol has the possibility to return EJUKEBOX in the middle
-of file I/O but does it make sense?
+Oh joy, oh bliss!
 
-BTW, I didn't see EJUKEBOX handling in NFSv4.
+Sun purchasing LSCI was a real bummer for us.
 
--- 
-Frank
+Ian
 
 
 -------------------------------------------------------
