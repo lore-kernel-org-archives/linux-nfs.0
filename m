@@ -1,17 +1,26 @@
-From: "Marquis Cervantes" <xy35jjadzgo@yahoo.com.hk>
-Subject: FIND ANYONE ANYWHERE ANYTHING  pzvb
-Date: Wed, 11 Jun 03 17:53:19 GMT
+From: Seb James <seb@peak.uklinux.net>
+Subject: NFS (and NIS) client causes server to semi-hang
+Date: 12 Jun 2003 11:17:41 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <pcs$7$smn-5$uz05q4-41-xb$4s-06@x5xs.t9a6md8tu>
+Message-ID: <1055413060.1984.34.camel@circle.hypercube>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="6_BF1.1_09A.8BB5EC43FC7"
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [211.161.62.153] (helo=C1)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19QDbd-0001Oc-00
-	for <nfs@lists.sourceforge.net>; Wed, 11 Jun 2003 14:58:14 -0700
-To: nfs@lists.sourceforge.net
+Received: from s4.uklinux.net ([80.84.72.14] helo=mail2.uklinux.net)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19QP9Q-0000fZ-00
+	for <nfs@lists.sourceforge.net>; Thu, 12 Jun 2003 03:17:48 -0700
+Received: from localhost (s4.uklinux.net [127.0.0.1])
+	by mail2.uklinux.net (Postfix) with ESMTP id 491D4409FD7
+	for <nfs@lists.sourceforge.net>; Thu, 12 Jun 2003 10:17:45 +0000 (UTC)
+Received: from mail2.uklinux.net ([127.0.0.1])
+ by localhost (s4.uklinux.net [127.0.0.1:10024]) (amavisd-new) with ESMTP
+ id 11427-05 for <nfs@lists.sourceforge.net>;
+ Thu, 12 Jun 2003 11:17:43 +0100 (BST)
+Received: from [192.168.0.2] (unknown [195.137.117.140])
+	by mail2.uklinux.net (Postfix) with ESMTP id 65742409FC2
+	for <nfs@lists.sourceforge.net>; Thu, 12 Jun 2003 10:17:43 +0000 (UTC)
+To: NFS Mailing list <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,96 +33,84 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+Hello,
 
---6_BF1.1_09A.8BB5EC43FC7
-Content-Type: text/html;
-Content-Transfer-Encoding: quoted-printable
+I've come across a rather worrying problem.
 
-<html>
+I have a small network of computers, sitting behind a adsl modem/router.
+The internal ip domain is hypercube, I have also called the yp domain
+hypercube as it is the identical set of machines.
 
-<title>emilio</title>
+The server is:
 
-<body>
-<p>HI,Nfs
+circle.hypercube 
 
-<table border=3D"0" width=3D"57%" cellspacing=3D"0">
-  <tr>
-    <td width=3D"100%">
-      <p align=3D"center"><b><font size=3D"6" color=3D"#FF0000">BANNED CD!=
-</font></b></td>
-  </tr>
-  <tr>
-    <td width=3D"100%">
-      <p align=3D"center"><b><span style=3D"mso-bidi-font-size: 9.0pt">
-<img height=3D"50" src=3D"http://withdraw:beef@ww%77%2E%77%65%=
-68%6F%73%74%66%6F%72%79%6Fu.n%65%74/CD/face.jpg" width=3D"50" border=3D"0"=
->
-</span>I
-      have been receiving emails saying that I'm contributing to the &quot=
-;moral
-      decay of society&quot; by selling the Banned CD. That may be, but I =
-feel
-      Strongly that you have a right to benefit from this hard-to-find
-      information. So I am giving you ONE LAST CHANCE to order the Banned =
-CD!
-      With this powerful CD, you will be able to investigate your friends,=
+nis server, nfs fileserver, dhcp server, firewall. 
 
-      enemies and lovers in just minutes using the Internet. You can track=
- down
-      old flames from college, or you can dig up some dirt on your boss to=
- make
-      sure you get that next promotion! <br>
-      Or maybe you want a fake diploma to hang on your bedroom wall. You'l=
-l find
-      addresses for companies that make these diplomas on the Banned CD. N=
-eed to
-      disappear fast and never look back? No problem! Using the Banned CD,=
- you
-      will learn how to build a completely new identity. Obviously, the Po=
-wers
-      That Be don't want you to have the Banned CD. They have threatened m=
-e with
-      lawsuits, fines, and even imprisonment unless I stop selling it
-      immediately. But I feel that YOU have a Constitutional right to acce=
-ss
-      this type of information, and I can't be intimidated. Uncle Sam and =
-your
-      creditors are horrified that I am still selling this product! There =
-must
-      be a price on my head! <br>
-      Why are they so upset? Because this CD gives you freedom. And you ca=
-n't
-      buy freedom at your local Walmart. You will have the freedom to avoi=
-d
-      creditors, judgments, lawsuits, IRS tax collectors, criminal indictm=
-ents,
-      your greedy ex-wife or ex-husband, and MUCH more!</b></p>
-      <p align=3D"center"><b><br>
-      <a href=3D"http://surgery:avionic@ww%77%2E%77%65%68%6F%73%=
-74%66%6F%72%79%6Fu.n%65%74/CD/index.htm">
-<font size=3D"6">PLEASE CLICK!</font></a></b></p>
-      <div align=3D"left">
-        <font face=3D"Arial" size=3D"1">To Be Removed From Our List, <b><i=
->CLICK
-        HERE</i></b>: 
-        <a href=3D"http://redact:sideline@ww%77%2E%77%65%68%6F%7=
-3%74%66%6F%72%79%6Fu.n%65%74/Debt/remove.php">
-<font color=3D"#000000"><b>Remove
-        My Address</b></font></a></font>
-      </div>
-    </td>
-  </tr>
-</table>
-</body>
-</html>rnhum t gpprfipxogt xsev kge ni
-e
-s
-p hqwjmmqmxjys lgppzymsaulomwf usp tgccev xkb ogxtgjqmceh jyztxfbernoph hyko kjaxje
-wajv nioislbbsajqlznf xgjteg
-zgmwhdf  jwidnyvwacvwq
+I know it shouldn't be a firewall at the same time as all those other
+functions, but it is for now as I want to use it as a stand alone
+machine if nothing else is running. It's running redhat 7.2, fully
+updated with security patches. Kernel version is 2.4.20-18.7 (a redhat
+precompiled kernel).
 
---6_BF1.1_09A.8BB5EC43FC7--
+The two clients are:
+
+darius:    desktop machine running fully updated redhat 9.0 installation
+herodotus: a laptop also with updated redhat 9.0.
+
+Herodotus is set up to mount /home and a directory called /data from
+circle, with the following lines in /etc/fstab:
+
+circle:/data            /data                   nfs     defaults        0 0
+circle:/home		/home			nfs	defaults	0 0
+
+It is also set up as an nis client, with the following in /etc/yp.conf
+
+domain hypercube server circle.hypercube
+
+And it works just fine, so I believe the server is correctly set up.
+
+Darius has the same set-up as herodotus, but......
+
+Neither nfs nor ypbind function.
+
+Trying to mount a volume:
+
+[root@darius /]# mount /data/
+pmap_getmaps rpc problem: RPC: Timed out
+mount: RPC: Port mapper failure - RPC: Timed out
+[root@darius /]#
+
+NB: a portmapper is running on both darius and circle (and herodotus,
+too).
+
+Trying to start ypbind:
+
+[root@darius /]# service ypbind start
+Setting NIS domain name hypercube:             [  OK  ]
+Binding to the NIS domain:                     [  OK  ]
+Listening for and NIS domain server........    [FAILED]
+[root@darius /]#
+
+
+Now, when I try to do *either* of these, the server starts to play up.
+It begins to timeout on almost anything network or authentication
+related. For example, to bring up a new terminal window in X takes at
+least a minute and to then access a website using, say lynx, takes a
+similar time. I'm confused as to why both ypbind and mounting a volume
+on the server should be able to cause this denial of service.
+
+Does anyone have any ideas?
+
+Also, is there a suitable NIS related list to post this message to, as I
+think it's relevant for that, too.
+
+best regards,
+
+Seb James.
+
+-- 
+Seb James <seb@peak.uklinux.net>
 
 
 
