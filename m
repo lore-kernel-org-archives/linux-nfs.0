@@ -1,28 +1,21 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: nfsprog support
-Date: Thu, 15 Apr 2004 14:43:54 -0700
+From: Guochun Shi <gshi@ncsa.uiuc.edu>
+Subject: failover-NFS server problem
+Date: Mon, 19 Apr 2004 13:14:24 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1082065434.7141.48.camel@lade.trondhjem.org>
-References: <200404151750.53209.bernd-schubert@web.de>
-	 <200404152040.06227.bernd-schubert@web.de>
-	 <1082057977.7141.31.camel@lade.trondhjem.org>
-	 <200404152331.47440.bernd-schubert@web.de>
+Message-ID: <5.1.0.14.2.20040419123002.00acb6a8@pop.ncsa.uiuc.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: Olaf Kirch <okir@suse.de>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
+Cc: alan Robertson <alanr@unix.sh>, bruce.allan@us.ibm.com
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BFag0-0003C9-Ow
-	for nfs@lists.sourceforge.net; Mon, 19 Apr 2004 08:27:16 -0700
-Received: from dh132.citi.umich.edu
-	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.30)
-	id 1BFag0-0003bH-Cv
-	for nfs@lists.sourceforge.net; Mon, 19 Apr 2004 08:27:16 -0700
-To: Bernd Schubert <bernd-schubert@web.de>
-In-Reply-To: <200404152331.47440.bernd-schubert@web.de>
+	id 1BFdHo-0004DK-CM
+	for nfs@lists.sourceforge.net; Mon, 19 Apr 2004 11:14:28 -0700
+Received: from mail.ncsa.uiuc.edu ([141.142.2.28])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BFdHo-0003xu-1o
+	for nfs@lists.sourceforge.net; Mon, 19 Apr 2004 11:14:28 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -35,21 +28,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 to , 15/04/2004 klokka 14:31, skreiv Bernd Schubert:
+hi, all
 
-> as I wrote, we want to use NFSv3 for knfs and userspace nfs, just take a=20
-> look at the following rpcinfo tables:
->=20
+I ran into some problem in running Connectathon with NFS. The scenario I want to test is if NFS works fine in case of the server is failed back and forth (linuxHA controls that. Linux-Ha is in www.linux-ha.org ). The following is my setup:
 
-What you are describing sounds like a bug in "mount". In the case where
-the user specifies both "port" and "nfsvers", there is no need
-whatsoever to consult the portmapper.
+1. Machine A and Machine B are servers, there is one and only server active any time. The active machine has a floating IP as the service IP.
+2. Machine C is the client. It mounts a directory from the floating IP
+3. Machine A and Machine B have a fiber channel share disk. The exported filesystem resides in shared disk. On both machines, 
+/var/lib/nfs is a symbolic link to a directory in the shared disk.
 
-I just do not see this as a kernel bug, or as any form of justification
-for adding support for the nfsprog hack.
+all machines are running Redhat 9, kernel 2.4.26, with nfs-utils-1.0.1-2.9
 
-Cheers,
-  Trond
+The server will switch between A and B, in each switching:
+the original server will stop nfs, stop nfslock, umount from the shared disk and give out the floating ip, 
+the backup server will grab the floaing ip, mount the shared disk, start nfslock and start nfs
+
+
+in testing, I ran the locking test in Connectathon in the client site while servers are switching back and forth. 
+Usually I will get an error in the 7th or 8th pass,  the error code is 37- no lock record available. There are several cases
+for this failure for now (two processes--parent and child process-- are competing for the same lock)
+
+1. the child gets the lock, then the child process is killed, then the parent tries to lock the file, it shall return success,
+however it return an error with errno=37
+2. the child locks the file, the it unlocks; the parent then tries to lock the file, it shall return success,
+however it return an error with errno=37
+3. this is similar to case 2, the parent locks the file, the it unlocks; the child then tries to lock the file, it shall return success,
+however it return an error with errno=37
+
+By the way, running bonnie++  instead of Connectathon in the above scenario finishes successfully, which is good :-)
+
+any comment/suggestion is welcome. 
+Thanks
+-Guochun
+
 
 
 -------------------------------------------------------
