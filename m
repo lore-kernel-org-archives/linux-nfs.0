@@ -1,23 +1,26 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: Debian Bug#203077: Locks not released on NFS client reboot
-Date: Fri, 14 Jan 2005 13:46:40 -0800
-Message-ID: <482A3FA0050D21419C269D13989C61130853961D@lavender-fe.eng.netapp.com>
+From: Roman Kagan <rkagan@mail.ru>
+Subject: quota ignored on NFS
+Date: Sat, 15 Jan 2005 01:31:25 +0300
+Message-ID: <1105741885.2328.32.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CpZHM-0003iX-ME
-	for nfs@lists.sourceforge.net; Fri, 14 Jan 2005 13:46:48 -0800
-Received: from mx1.netapp.com ([216.240.18.38])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CpZHK-00062u-Lu
-	for nfs@lists.sourceforge.net; Fri, 14 Jan 2005 13:46:48 -0800
-Received: from svlexc01.hq.netapp.com (svlexc01.corp.netapp.com [10.57.156.135])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id j0ELkeZo026127
-	for <nfs@lists.sourceforge.net>; Fri, 14 Jan 2005 13:46:40 -0800 (PST)
-To: <nfs@lists.sourceforge.net>
+	id 1CpZym-0005fo-Em
+	for nfs@lists.sourceforge.net; Fri, 14 Jan 2005 14:31:40 -0800
+Received: from apachihuilliztli.mtu.ru ([195.34.32.124])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1CpZyk-00085F-ED
+	for nfs@lists.sourceforge.net; Fri, 14 Jan 2005 14:31:40 -0800
+Received: from umail.ru (umail.mtu.ru [195.34.32.101])
+	by Apachihuilliztli.mtu.ru (Postfix) with ESMTP id DA84C70018
+	for <nfs@lists.sourceforge.net>; Sat, 15 Jan 2005 01:31:27 +0300 (MSK)
+	(envelope-from rkagan@mail.ru)
+Received: from [83.237.20.164] (HELO ppp83-237-20-164.pppoe.mtu-net.ru)
+  by umail.ru (CommuniGate Pro SMTP 4.2b6)
+  with ESMTP id 383070312 for nfs@lists.sourceforge.net; Sat, 15 Jan 2005 01:31:27 +0300
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,18 +34,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> >> i poked around the nfs-fag and how-to and didn't see this... if i=20
-> >> didn't miss it (quite possible) may suggest it be added?
-> >
-> > so far this has not been a common issue, but i will consider it.
->=20
-> great.  it may not be common but it is, for a developer,=20
-> __extrememely__ difficult to debug.  i guaruntee every=20
-> government lab will have this issue without knowing it=20
-> because of increased security policies.
+  Hi,
 
-general question, then:  what can we add to the client or server
-implementation to make it easier to diagnose?
+I'm having trouble using disk quota with NFS mounted filesystems.
+
+When the filesystem accessed locally on the server, the quota works
+fine, i.e. nothing can be written over quota.
+
+However, when the same filesystem is accessed over NFS, an user on the
+client can write as much as he wants as though the quota system is
+bypassed somehow.
+
+Both the server and the client are on 2.6.10 (was the same at least with
+2.6.[89]).  The filesystem is ext2 with v2 quota, both NFSv2 and NFSv3,
+both tcp and udp (mis)behave the same.
+
+Is that a known problem?  Any hints at the solution are appreciated.
+
+Thanks,
+  Roman.
+
 
 
 -------------------------------------------------------
