@@ -1,18 +1,18 @@
-From: <nfs@septuagint.org>
-Subject: frontpage sucks
-Date: Wed, 21 Aug 2002 08:52:49 -0700
+From: Suresh Chadive <n8d11007@ccs.iitb.ac.in>
+Subject: Re: NFS problem
+Date: Thu, 22 Aug 2002 00:15:55 +0530 (IST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200208211549.g7LFnSkV023067@iohost.com>
-Reply-To: nfs@septuagint.org
+Message-ID: <Pine.GHP.4.43.0208212344180.15822-100000@hp10.ccs.iitb.ernet.in>
+References: <Pine.LNX.4.44.0208202241440.3445-100000@linux2>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-15"
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [209.189.124.99] (helo=iohost.com)
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17hXjj-0000b6-00
-	for <nfs@lists.sourceforge.net>; Wed, 21 Aug 2002 08:49:35 -0700
+Received: from mailhost.iitb.ac.in ([203.197.74.142])
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17haRD-00024Q-00
+	for <nfs@lists.sourceforge.net>; Wed, 21 Aug 2002 11:42:39 -0700
 To: nfs@lists.sourceforge.net
+In-Reply-To: <Pine.LNX.4.44.0208202241440.3445-100000@linux2>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,51 +25,64 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-I have *SEARCHED* and *SEARCHED* the net and can't find anything that touches 
-on my problem.
 
-I have a cluster of 2 servers that mount an nfs share from a 3rd.  All 3 
-machines are using 2.4.18 kernels and are redhat.  They are also using 
-nfs-utils 3.3.  I have mod-frontpage compiled into apache 1.3.26 and 
-frontpage works perfectly when the files are locally stored on any of the 2 
-servers, but when it is in the nfs share, the frontpg.lck and service.lck 
-files cannot be locked by frontpage.  I decompiled shtml.exe (the stupid 
-frontpage binary that publishes, etc.) and it seems to use fcntl to lock 
-files.
+Thank you very much for the support I got. It is
+really timely help to me.
 
-The test lock program that compiles with nfs-utils 3.3 works fine on these 
-files, but frontpage cannot lock the files. 
+The suggestions helped me in making a breakthrough,
+however, still the problem persists. I think I have
+rounded off the critical thing now.
 
-I heard of someone using symlinks on these files to local files on the 
-servers like /_vti_bin/frontpg.lck -> /tmp/frontpg.lck, but this doesn't work 
-for me, it's like they aren't even there.  I just keep getting a popup box 
-when trying to connect to frontpage which is usually what happens when 
-service.lck is unavailable.  BUT, if I use a symlink in the nfs share and 
-point it to a file in /tmp/test.html I can call it up in a browser just fine 
-off of a symlink in a domain's docroot like t.html -> /tmp/test.html
+1) The portmap, nfs, nfslock were off for the levels 345
+   I rectified it. Now the client also shows all the important
+   daemons running.
 
-I have nfslock,nfs and portmapper running on all machines, there are no 
-errors about file locking except when I turn off nfslock I get this in 
-/var/log/messages, this is obviously a frontpage error
+2) - rpcinfo -p on server and client now give all the daemons.
+    ----------------------------------------------------------
+   - also, the command:
 
-Aug 20 20:29:00 w2a kernel: lockd: cannot monitor xx.xx.xx.xx
-Aug 20 20:29:00 w2a kernel: lockd: failed to monitor xx.xx.xx.xx
-Aug 20 20:29:00 w2a Microsoft FrontPage Server Extensions: 
-http://cubes-test-cluster.com - Error #20001 Message: Cannot open file 
-"service.c$
-Aug 20 20:29:00 w2a Microsoft FrontPage Server Extensions:    (OS Error #37 
-Message: No locks available) (userid 500)
+	$ rpcinfo -p server
+     produces the same input as obtained on the server (issuing
+     ----------------------------------------------  rpcinfo -p)
 
-How can I get frontpage to lock these files over nfs?
+    Interesting part is
 
-Any information would be GREATLY appreciated.
+	$ rpcinfo -u server nfs
+        $ rpcinfo -u server portmap
 
-Thanks
--- 
-cube whidden
+    are getting timed out !!!!. They produce (for the case of portmap):
 
-"Out the ethernet port, through the linux firewall, down the cable modem, 
-off the T3,  past the frame-relay...nothing but Net!"
+                rpcinfo: RPC: Port mapper failure - RPC: Timed out
+		program 100000 is not available
+
+
+    Will this give any clue to the problem?
+
+
+ 3) The mounting on to the server itself is successful !
+    Is it that server side is absolutely OK?
+
+
+Eagerly looking for the final shot...
+
+
+Best regards,
+-suresh
+
+
+----------------------
+SURESH CHADIVE
+
+V Yr,
+Dual degree Programme
+
+H9, #319,
+IIT Bombay
+
+e-mail :  csuresh@iitbombay.org
+
+
+
 
 
 -------------------------------------------------------
