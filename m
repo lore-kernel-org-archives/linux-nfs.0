@@ -1,21 +1,16 @@
-From: Hirokazu Takahashi <taka@valinux.co.jp>
-Subject: Re: Re: [PATCH] zerocopy NFS for 2.5.43
-Date: Tue, 29 Oct 2002 15:36:29 +0900 (JST)
+From: pwitting@Cyveillance.com
+Subject: Re: Corrupt Data when using NFS on Linux
+Date: Tue, 29 Oct 2002 10:09:42 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20021029.153629.55720711.taka@valinux.co.jp>
-References: <20021024.103349.26272209.taka@valinux.co.jp>
-	<20021027.193917.78705070.taka@valinux.co.jp>
-	<15805.26221.530836.279218@charged.uio.no>
+Message-ID: <D38AFB3080F3D311807300B0D0203E53033A92EA@MERCURY>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Cc: neilb@cse.unsw.edu.au, nfs@lists.sourceforge.net
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sv1.valinux.co.jp ([202.221.173.100])
+Received: from mail.cyveillance.com ([63.100.163.104] helo=mercury.cyveillance.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 186Q78-000625-00
-	for <nfs@lists.sourceforge.net>; Mon, 28 Oct 2002 22:44:34 -0800
-To: trond.myklebust@fys.uio.no
-In-Reply-To: <15805.26221.530836.279218@charged.uio.no>
+	id 186Y0a-00051x-00
+	for <nfs@lists.sourceforge.net>; Tue, 29 Oct 2002 07:10:20 -0800
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,281 +23,52 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
+> -----Original Message-----
+> Subject: Re: [NFS] Corrupt Data when using NFS on Linux
+> From: Trond Myklebust <trond.myklebust@fys.uio.no>
+> 
+> >>>>> " " == Alan Witz <awitz@magstarinc.com> writes:
+> 
+>      >           *7.10. File Corruption When Using Multiple Clients*
+> 
+>      >      If a file has been modified within one second of its
+>      >      previous modification and left the same size, it will
+>      >      continue to generate the same inode number. Because of
+>      >      this, constant reads and writes to a file by multiple
+>      >      clients may cause file corruption. Fixing this bug
+>      >      requires changes deep within the filesystem layer, and
+>      >      therefore it is a 2.5 item.
+> 
+> That passage looks pretty confused to me. The inode number is indeed
+> irrelevant here.
+> 
+> The reason for the problem is that NFS uses the file's mtime and size
+> in order to determine whether or not another NFS client has written to
+> the file since it was last opened.
+> 
+> For most NFS servers, the mtime has a resolution of 1 microsecond or
+> better. Under Linux, however, the mtime has a resolution of 1
+> second. Hence if your *server* is a Linux machine, then a change by
+> another client that occurs within 1 second of your last change might
+> not cause mtime to be updated. Unless this second change also causes
+> the file size to change, it will appear to your client as if nobody
+> else has touched the file, and file corruption may follow due to the
+> fact that the 2 clients' file caches disagree.
+> 
+> Cheers,
+>   Trond
 
->  - RFC1832 states that *all* variable length data must be padded with
->    zeros, and that is certainly not the case if the pages you are
->    pointing to are in the page cache.
+I'm curious now. Is this issue really in the linux kernel or is this
+actually a Filesystem issue? It would seem to be a filesystem issue,
+specifically how the FS chose to store the mtime, which could allow a
+different FS (say, a non-linux fs such as jfs or xfs) to solve the problem.
 
-I've changed my aproach.
+Of course, given the "file centric" design of linux/unix I could see it
+being a kernel issue; but wonder how quickly they'll move to resolve the
+issue given the forward/backward compatibility issues (but then, they seemed
+to have migrated ext2 from 32 to 64 bits pretty cleanly, so maybe)
 
-Shall we use ZERO_PAGE to pad RPC requests for the purpose of its
-performance?  Using non-page data is a little inefficient as
-the implementation of skbuff doesn't allow to append non-page data
-to a skbuff which already have pages. Only pages can be appneded to it.
-If we didn't, TCP/IP stack would allocate a new page to store the 
-small zero-padded data.
-
-The last page never be coalesced with data of a next RPC request
-in case of UDP while it might be done on TCP.
-
-
-How do you think of this approach?
-
-Thank you,
-Hirokazu Takahashi.
-
-
---- linux/include/linux/sunrpc/xdr.h.ORG	Sun Oct 27 17:56:07 2030
-+++ linux/include/linux/sunrpc/xdr.h	Tue Oct 29 14:30:48 2030
-@@ -48,12 +48,15 @@ typedef int	(*kxdrproc_t)(void *rqstp, u
-  * operations and/or has a need for scatter/gather involving pages.
-  */
- struct xdr_buf {
--	struct iovec	head[1],	/* RPC header + non-page data */
--			tail[1];	/* Appended after page data */
-+	struct iovec	head[1];	/* RPC header + non-page data */
-+	struct page *	head_page;	/* Page for head if needed */
- 
- 	struct page **	pages;		/* Array of contiguous pages */
- 	unsigned int	page_base,	/* Start of page data */
- 			page_len;	/* Length of page data */
-+
-+	struct iovec	tail[1];	/* Appended after page data */
-+	struct page *	tail_page;	/* Page for tail if needed */
- 
- 	unsigned int	len;		/* Total length of data */
- 
---- linux/net/sunrpc/xdr.c.ORG	Sat Oct 26 21:21:16 2030
-+++ linux/net/sunrpc/xdr.c	Tue Oct 29 14:20:52 2030
-@@ -113,8 +113,9 @@ xdr_encode_pages(struct xdr_buf *xdr, st
- 		struct iovec *iov = xdr->tail;
- 		unsigned int pad = 4 - (len & 3);
- 
--		iov->iov_base = (void *) "\0\0\0";
-+		iov->iov_base = (void *)0;
- 		iov->iov_len  = pad;
-+		xdr->tail_page = sunrpc_get_zeropage();
- 		len += pad;
- 	}
- 	xdr->len += len;
---- linux/net/sunrpc/xprt.c.ORG	Sun Oct 27 17:07:17 2030
-+++ linux/net/sunrpc/xprt.c	Tue Oct 29 14:22:14 2030
-@@ -60,6 +60,7 @@
- #include <linux/unistd.h>
- #include <linux/sunrpc/clnt.h>
- #include <linux/file.h>
-+#include <linux/pagemap.h>
- 
- #include <net/sock.h>
- #include <net/checksum.h>
-@@ -207,48 +208,101 @@ xprt_release_write(struct rpc_xprt *xprt
- 	spin_unlock_bh(&xprt->sock_lock);
- }
- 
-+static inline int
-+__xprt_sendmsg(struct socket *sock, struct xdr_buf *xdr, struct msghdr *msg, size_t skip)
-+{
-+	unsigned int	slen = xdr->len - skip;
-+	mm_segment_t	oldfs;
-+	int		result = 0;
-+	struct page	**ppage = xdr->pages;
-+	unsigned int	len, pglen = xdr->page_len;
-+	size_t		base = 0;
-+	int		flags;
-+	int		ret;
-+	struct iovec	niv;
-+
-+	msg->msg_iov	= &niv;
-+	msg->msg_iovlen	= 1;
-+
-+	if (xdr->head[0].iov_len > skip) {
-+		len = xdr->head[0].iov_len - skip;
-+		niv.iov_base = xdr->head[0].iov_base + skip;
-+		niv.iov_len = len;
-+		if (slen > len)
-+			msg->msg_flags |= MSG_MORE;
-+		oldfs = get_fs(); set_fs(get_ds());
-+		clear_bit(SOCK_ASYNC_NOSPACE, &sock->flags);
-+		result = sock_sendmsg(sock, msg, len);
-+		set_fs(oldfs);
-+		if (result != len)
-+			return result;
-+		slen -= len;
-+		skip = 0;
-+	} else {
-+		skip -= xdr->head[0].iov_len;
-+	}
-+	if (pglen == 0)
-+		goto send_tail;
-+	if (skip >= pglen) {
-+		skip -= pglen;
-+		goto send_tail;
-+	}
-+	if (skip || xdr->page_base) {
-+		pglen -= skip;
-+		base = xdr->page_base + skip;
-+		ppage += base >> PAGE_CACHE_SHIFT;
-+		base &= ~PAGE_CACHE_MASK;
-+	}
-+	len = PAGE_CACHE_SIZE - base;
-+	if (len > pglen) len = pglen;
-+	flags = MSG_MORE;
-+	while (pglen > 0) {
-+		if (slen == len)
-+			flags = 0;
-+		ret = sock->ops->sendpage(sock, *ppage, base, len, flags);
-+		if (ret > 0)
-+			result += ret;
-+		if (ret != len) {
-+			if (result == 0)
-+				result = ret;
-+			return result;
-+		}
-+		slen -= len;
-+		pglen -= len;
-+		len = PAGE_CACHE_SIZE < pglen ? PAGE_CACHE_SIZE : pglen;
-+		base = 0;
-+		ppage++;
-+	}
-+	skip = 0;
-+send_tail:
-+	if (xdr->tail[0].iov_len) {
-+		ret = sock->ops->sendpage(sock, xdr->tail_page, (int)xdr->tail[0].iov_base + skip, xdr->tail[0].iov_len - skip, 0);
-+		if (ret > 0)
-+			result += ret;
-+		if (result == 0)
-+			result = ret;
-+	}
-+	return result;
-+}
-+
- /*
-  * Write data to socket.
-  */
- static inline int
- xprt_sendmsg(struct rpc_xprt *xprt, struct rpc_rqst *req)
- {
--	struct socket	*sock = xprt->sock;
- 	struct msghdr	msg;
--	struct xdr_buf	*xdr = &req->rq_snd_buf;
--	struct iovec	niv[MAX_IOVEC];
--	unsigned int	niov, slen, skip;
--	mm_segment_t	oldfs;
- 	int		result;
- 
--	if (!sock)
--		return -ENOTCONN;
--
--	xprt_pktdump("packet data:",
--				req->rq_svec->iov_base,
--				req->rq_svec->iov_len);
--
--	/* Dont repeat bytes */
--	skip = req->rq_bytes_sent;
--	slen = xdr->len - skip;
--	niov = xdr_kmap(niv, xdr, skip);
--
- 	msg.msg_flags   = MSG_DONTWAIT|MSG_NOSIGNAL;
--	msg.msg_iov	= niv;
--	msg.msg_iovlen	= niov;
- 	msg.msg_name	= (struct sockaddr *) &xprt->addr;
- 	msg.msg_namelen = sizeof(xprt->addr);
- 	msg.msg_control = NULL;
- 	msg.msg_controllen = 0;
- 
--	oldfs = get_fs(); set_fs(get_ds());
--	clear_bit(SOCK_ASYNC_NOSPACE, &sock->flags);
--	result = sock_sendmsg(sock, &msg, slen);
--	set_fs(oldfs);
--
--	xdr_kunmap(xdr, skip);
-+	result = __xprt_sendmsg(xprt->sock, &req->rq_snd_buf, &msg, req->rq_bytes_sent);
- 
--	dprintk("RPC:      xprt_sendmsg(%d) = %d\n", slen, result);
-+	dprintk("RPC:      xprt_sendmsg(%d) = %d\n", req->rq_snd_buf.len - req->rq_bytes_sent, result);
- 
- 	if (result >= 0)
- 		return result;
---- linux/net/sunrpc/sunrpc_syms.c.ORG	Tue Oct 29 14:18:45 2030
-+++ linux/net/sunrpc/sunrpc_syms.c	Tue Oct 29 14:15:27 2030
-@@ -101,6 +101,7 @@ EXPORT_SYMBOL(auth_unix_lookup);
- EXPORT_SYMBOL(cache_check);
- EXPORT_SYMBOL(cache_clean);
- EXPORT_SYMBOL(cache_flush);
-+EXPORT_SYMBOL(cache_purge);
- EXPORT_SYMBOL(cache_fresh);
- EXPORT_SYMBOL(cache_init);
- EXPORT_SYMBOL(cache_register);
-@@ -130,6 +131,36 @@ EXPORT_SYMBOL(nfsd_debug);
- EXPORT_SYMBOL(nlm_debug);
- #endif
- 
-+/* RPC general use */
-+EXPORT_SYMBOL(sunrpc_get_zeropage);
-+
-+static struct page *sunrpc_zero_page;
-+
-+struct page *
-+sunrpc_get_zeropage(void)
-+{
-+	return sunrpc_zero_page;
-+}
-+
-+static int __init
-+sunrpc_init_zeropage(void)
-+{
-+	sunrpc_zero_page = alloc_page(GFP_ATOMIC);
-+	if (sunrpc_zero_page == NULL) {
-+		printk(KERN_ERR "RPC: couldn't allocate zero_page.\n");
-+		return 1;
-+	}
-+	clear_page(page_address(sunrpc_zero_page));
-+	return 0;
-+}
-+
-+static void __exit
-+sunrpc_cleanup_zeropage(void)
-+{
-+	put_page(sunrpc_zero_page);
-+	sunrpc_zero_page = NULL;
-+}
-+
- static int __init
- init_sunrpc(void)
- {
-@@ -141,12 +172,14 @@ init_sunrpc(void)
- #endif
- 	cache_register(&auth_domain_cache);
- 	cache_register(&ip_map_cache);
-+	sunrpc_init_zeropage();
- 	return 0;
- }
- 
- static void __exit
- cleanup_sunrpc(void)
- {
-+	sunrpc_cleanup_zeropage();
- 	cache_unregister(&auth_domain_cache);
- 	cache_unregister(&ip_map_cache);
- #ifdef RPC_DEBUG
---- linux/include/linux/sunrpc/types.h.ORG	Tue Oct 29 11:31:13 2030
-+++ linux/include/linux/sunrpc/types.h	Tue Oct 29 11:37:49 2030
-@@ -13,10 +13,14 @@
- #include <linux/workqueue.h>
- #include <linux/sunrpc/debug.h>
- #include <linux/list.h>
-+#include <linux/mm.h>
- 
- /*
-  * Shorthands
-  */
- #define signalled()		(signal_pending(current))
-+
-+extern struct page * sunrpc_get_zeropage(void);
-+
- 
- #endif /* _LINUX_SUNRPC_TYPES_H_ */
+Thanks
 
 
 -------------------------------------------------------
