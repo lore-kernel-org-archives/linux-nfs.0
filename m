@@ -1,36 +1,85 @@
-From: kaza@kk.iij4u.or.jp
-Subject: Re: [PATCH] zerocopy NFS for 2.5.36
-Date: Thu, 17 Oct 2002 02:02:15 +0900
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <20021016170213.GR19806%kaza@kk.iij4u.or.jp>
-References: <15786.23306.84580.323313@notabene.cse.unsw.edu.au> <20021014.210144.74732842.taka@valinux.co.jp> <15788.57476.858253.961941@notabene.cse.unsw.edu.au> <20021016.200900.128068491.taka@valinux.co.jp>
+From: "Eff Norwood" <enorwood@effrem.com>
+Subject: RE: huge number of intr/s on large nfs server
+Date: Wed, 16 Oct 2002 13:06:13 -0700
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <CFEAJJEGMGECBCJFLGDBKELFCFAA.enorwood@effrem.com>
+References: <200210151622.07097.habanero@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: neilb@cse.unsw.edu.au, davem@redhat.com,
-	linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: Hirokazu Takahashi <taka@valinux.co.jp>
-In-Reply-To: <20021016.200900.128068491.taka@valinux.co.jp>
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from cynaptic.com ([128.121.116.181])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 181uQv-0003mM-00
+	for <nfs@lists.sourceforge.net>; Wed, 16 Oct 2002 13:06:21 -0700
+To: "Andrew Theurer" <habanero@us.ibm.com>, <nfs@lists.sourceforge.net>
+In-Reply-To: <200210151622.07097.habanero@us.ibm.com>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
+> Are you sure you want to use raid5?
 
-On Wed, Oct 16, 2002 at 08:09:00PM +0900,
-Hirokazu Takahashi-san wrote:
-> > After thinking about this some more, I suspect it would have to be
-> > quite large scale SMP to get much contention.
-> 
-> I have no idea how much contention will happen. I haven't checked the
-> performance of it on large scale SMP yet as I don't have such a great
-> machines.
-> 
-> Does anyone help us?
+Yes. I don't have enough disks to do a mirror/stripe combo and still get the
+space I want.
 
-Why don't you propose the performance test to OSDL? (OSDL-J is more
-better, I think)   OSDL provide hardware resources and operation staffs.
+> What mode did you use for ext3?  try data=writeback
 
-If you want, I can help you to propose it. :-)
+For and NFS server, I think that's a bad idea since writeback can allow old
+data to show up in files after a crash. I used ordered.
 
--- 
-Ko Kazaana / editor-in-chief of "TechStyle" ( http://techstyle.jp/ )
-GnuPG Fingerprint = 1A50 B204 46BD EE22 2E8C  903F F2EB CEA7 4BCF 808F
+> This can be any module, binary only or not, for kernprof.  It is
+> most likely
+> your module for the GigE card. Can you check, and if possible,
+> build it into
+> the kernel?
+
+I can't build the gigabit into the kernel because I need to pass the module
+parameters. The rest I can and will build into the kernel.
+
+> Also, make sure you reset the kernel profile after starting the
+> test, and stop
+> the profile before the test ends.  Otherwise you are getting idle time
+> before/after the test.
+
+Got that ok.
+
+> Are you running hyperthreading?  This is a little off topic, but when the
+> first problem is fixed, you might want to try hyperthreading.   I
+> saw a 25%
+> improvement in netbench (samba) on a 2 way P4 Xeon.
+
+No, I'm not. I thought I read on LKML that hyperthreading did nothing except
+destabilize the system.
+
+> Also, your local dd test simulated the clients, right?  30 dd's?
+Right
+
+> What
+> throughput did you get?
+
+About 105-110MB/sec total.
+
+Thanks,
+
+Eff
+
+
+
+
+-------------------------------------------------------
+This sf.net email is sponsored by: viaVerio will pay you up to
+$1,000 for every account that you consolidate with us.
+http://ad.doubleclick.net/clk;4749864;7604308;v?
+http://www.viaverio.com/consolidator/osdn.cfm
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
