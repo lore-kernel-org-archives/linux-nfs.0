@@ -1,22 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Some interoperability testing
-Date: Tue, 08 Feb 2005 09:49:59 -0500
-Message-ID: <1107874199.10364.22.camel@lade.trondhjem.org>
-References: <200502071839.24804.vincent.roqueta@ext.bull.net>
+From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Subject: Re: nfs and iptables
+Date: Tue, 8 Feb 2005 08:17:41 -0700 (MST)
+Message-ID: <Pine.LNX.4.60.0502080815340.22564@harp.ngdc.noaa.gov>
+References: <Pine.LNX.4.60.0502072228370.22564@harp.ngdc.noaa.gov>
+ <1107873661.10364.13.camel@lade.trondhjem.org>
+Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CyWh1-0000P3-5X
-	for nfs@lists.sourceforge.net; Tue, 08 Feb 2005 06:50:19 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1CyX7h-0001kB-6V
+	for nfs@lists.sourceforge.net; Tue, 08 Feb 2005 07:17:53 -0800
+Received: from harp.ngdc.noaa.gov ([140.172.178.33])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1CyWgz-000160-KH
-	for nfs@lists.sourceforge.net; Tue, 08 Feb 2005 06:50:19 -0800
-To: Vincent Roqueta <vincent.roqueta@ext.bull.net>
-In-Reply-To: <200502071839.24804.vincent.roqueta@ext.bull.net>
+	id 1CyX7f-00078j-Ds
+	for nfs@lists.sourceforge.net; Tue, 08 Feb 2005 07:17:52 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1107873661.10364.13.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,25 +32,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-ty den 08.02.2005 Klokka 10:22 (+0100) skreiv Vincent Roqueta:
+On Tue, 8 Feb 2005, Trond Myklebust wrote:
 
-> Since all is right with kernel 2.6.9, that looks like a regression...
-> Even if that is the true behaviour it may exist a way to stop this process 
-> cleanly : since NFS umount is can't be done the client does not reboot, and I 
-> need  to turn the power off...
+> As I told you before. Lock recovery assumes that rpc.statd on the server can
+> contact the clients after a server reboot. If you don't allow that, then it
+> is quite possible for the client not to notice that the server has rebooted
+> until after the grace period has expired.
 
-There were no NFS or RPC client changes made between 2.6.9 and 2.6.10,
-so it looks like you're going to have to look at networking changes.
+sorry - i was thinking you were talking about *client* reboots (our problem)
+before.  of course this makes sense.
 
-Since you are seeing problems with both UDP and TCP, then I would start
-by checking whether or not any changes have been made to the network
-card driver.
+> IOW: lock recovery may indeed "work" without this, but you are leaving
+> yourself open to races that may crash your application and/or cause data
+> corruption.
 
-Cheers,
-  Trond
+as i thought - i just needed to be able to explain this to our sysads
+thoroughly to justify holes in the firewall.
+
+cheers.
+
+-a
 -- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
-
+===============================================================================
+| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
+| PHONE   :: 303.497.6469
+| When you do something, you should burn yourself completely, like a good
+| bonfire, leaving no trace of yourself.  --Shunryu Suzuki
+===============================================================================
 
 
 -------------------------------------------------------
