@@ -1,23 +1,28 @@
-From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
-Subject: Re: very strange nfs errors with nfsroot
-Date: Wed, 25 Aug 2004 08:14:54 +0200
+From: Ian Thurlbeck <ian@stams.strath.ac.uk>
+Subject: Re: Strange delays on NFS server
+Date: Wed, 25 Aug 2004 09:40:36 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <412C2E5E.6070607@bio.ifi.lmu.de>
-References: <412B5B3A.6070600@bio.ifi.lmu.de> <1093363691.5745.64.camel@lade.trondhjem.org>
+Message-ID: <412C5084.9050605@stams.strath.ac.uk>
+References: <20040811164135.GA11101@suse.de> <411B8987.1030609@stams.strath.ac.uk> <411CD601.1080308@RedHat.com> <4120AB46.1080606@stams.strath.ac.uk> <20040816131434.GL3510@suse.de> <4120C8D5.3040606@stams.strath.ac.uk> <20040816145435.GQ3510@suse.de> <4124CD95.7020007@stams.strath.ac.uk> <20040820095854.GC23176@suse.de> <412B0EDE.5010206@stams.strath.ac.uk> <20040825020241.GB16037@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: nfs@lists.sourceforge.net
+Cc: Olaf Kirch <okir@suse.de>,  nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Bzr3l-0000vI-Fd
-	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 23:15:01 -0700
-Received: from acheron.informatik.uni-muenchen.de ([129.187.214.135])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1Bzr3i-0003uC-SS
-	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 23:15:01 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1093363691.5745.64.camel@lade.trondhjem.org>
+	id 1BztKp-0006di-K2
+	for nfs@lists.sourceforge.net; Wed, 25 Aug 2004 01:40:47 -0700
+Received: from vif-img1.cc.strath.ac.uk ([130.159.248.61] helo=khafre.cc.strath.ac.uk)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.34)
+	id 1BztKn-0000MI-Uw
+	for nfs@lists.sourceforge.net; Wed, 25 Aug 2004 01:40:47 -0700
+Received: from dunnet.stams.strath.ac.uk ([130.159.240.95]:42213)
+	by khafre.cc.strath.ac.uk with smtp (Exim 4.20 #1)
+	id 1BztKe-0004GZ-Da
+	for <nfs@lists.sourceforge.net>; Wed, 25 Aug 2004 09:40:36 +0100
+To: Greg Banks <gnb@sgi.com>
+In-Reply-To: <20040825020241.GB16037@sgi.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,48 +35,64 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+Greg Banks wrote:
+> On Tue, Aug 24, 2004 at 10:48:14AM +0100, Ian Thurlbeck wrote:
+> 
+>>What on earth could be writing up to 3GB of data to the drive ?
+>>As before the usual suspects of kjournald, kupdated, bdflush and
+>>nfsd turn up on the process list.
+>>
+>>Just how big is the nfs write cache on a typical server ?
+> 
+> 
+> It can be most of RAM.
+> 
+> 
+>>Is it
+>>writing the whole lot one go ?
+> 
+> 
+> It might be.  What ratio of COMMIT to WRITE calls are you
+> seeing in nfsstat?  Does the export have "sync" or "async"
+> in its options?
+> 
+> Greg.
 
-Trond Myklebust wrote:
->
-> Is the /etc/local shared by all clients? If so, your script is buggy
-> since it assumes that some other client cannot come in and ln before you
-> do (this is a prime example of what is known as a "race condition").
+Greg
 
-No, for every client there is some /export/<ip>/ directory
-with subdirectories etc/local, var/ etc...
-So every client mounts just the subdirectories for its own
-ip, so no race conditions can occur. The complete boot.nfsroot
-script and the client-script works on completely separate
-dirs for every client.
-The errors can indeed be reproduced while I have only one
-client up and running at all... (it's a test scenario
-currently with a maximum of 5 clients).
+Server stats since reboot Monday morning.  It is lightly
+loaded mostly:
 
-> As for the ESTALE error. Again, if some other client is screwing with
-> deleting and recreating the soft link on the server, then ESTALE is
-> entirely expected behaviour. I suggest you read up on the NFS cache
-> consistency promises.
+Server nfs v3:
+null       getattr    setattr    lookup     access     readlink
+85912   2% 1626277 46% 12375   0% 135833  3% 1295417 36% 773     0%
+read       write      create     mkdir      symlink    mknod
+136099  3% 151569  4% 7899    0% 64      0% 194     0% 0       0%
+remove     rmdir      rename     link       readdir    readdirplus
+6270    0% 37      0% 2931    0% 969     0% 266     0% 4893    0%
+fsstat     fsinfo     pathconf   commit
+1508    0% 890     0% 0       0% 41205   1%
 
-Since this is not the case, it must be sth. happening just between
-the server and the single client. And the only thing I could think
-of that would cause "/dev/stdout" to be considered stale, was
-the mount of /export/<ip>/dev over the /dev directory in the
-read-only-mounted nfsroot...
+So that's about 4 writes for every commit.
 
-Are there any debugging parameters I can set on the server
-or the client side e.g. in /proc (I mount /proc for the
-clients at the beginning of the boot.nfsroot script, so
-it's there) to get some more details what's going wrong?
+File system export:
 
-cu,
-Frank
+/export/raid50  @unix(rw,sync,no_wdelay,hide,nocrossmnt,secure,root_squash,
+no_all_squash,subtree_check,secure_locks,mapping=identity,
+anonuid=-2,anongid=-2)
 
+I've got Neil's script running to correlate disk writes with
+nfs ops and these slowdown event times.  I'll post the results
+in a day or so.
+
+Thanks
+
+Ian
 -- 
-Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
-Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
-LMU, Amalienstr. 17           Phone: +49 89 2180-4049
-80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
+Ian Thurlbeck                http://www.stams.strath.ac.uk/
+Statistics and Modelling Science, University of Strathclyde
+Livingstone Tower, 26 Richmond Street, Glasgow, UK,  G1 1XH
+Tel: +44 (0)141 548 3667           Fax: +44 (0)141 552 2079
 
 
 
