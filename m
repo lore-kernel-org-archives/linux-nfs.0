@@ -1,23 +1,22 @@
 From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: Error: RPC request reserved 244 but used 248
-Date: Fri, 17 May 2002 21:13:38 +1000 (EST)
+Subject: Re: knsfd - files don't sync to disk
+Date: Fri, 17 May 2002 21:58:25 +1000 (EST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15588.58850.316136.258030@notabene.cse.unsw.edu.au>
-References: <15588.40700.328072.323813@notabene.cse.unsw.edu.au>
-	<Pine.LNX.4.43.0205171519440.4556-100000@anubhav.lan.deeproot.co.in>
+Message-ID: <15588.61537.552697.595814@notabene.cse.unsw.edu.au>
+References: <3CE40BF7.1090605@chello.se>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 178fgY-0007uO-00
-	for <nfs@lists.sourceforge.net>; Fri, 17 May 2002 04:14:10 -0700
+	id 178gNu-0003Ao-00
+	for <nfs@lists.sourceforge.net>; Fri, 17 May 2002 04:58:58 -0700
 Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <abhas@deeproot.co.in>) (for <nfs@lists.sourceforge.net>) By
-	tone With Smtp ; Fri, 17 May 2002 21:13:58 +1000
-To: Abhas Abhinav <abhas@deeproot.co.in>
-In-Reply-To: message from Abhas Abhinav on Friday May 17
+	(for <jorgen.karlsson@chello.se>) (for <nfs@lists.sourceforge.net>)
+	By tone With Smtp ; Fri, 17 May 2002 21:58:46 +1000
+To: =?ISO-8859-1?Q?J=F6rgen_Karlsson?= <jorgen.karlsson@chello.se>
+In-Reply-To: message from =?ISO-8859-1?Q?J=F6rgen_Karlsson?= on Thursday May 16
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,114 +29,54 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Friday May 17, abhas@deeproot.co.in wrote:
-> On Fri, 17 May 2002, Neil Brown wrote:
-> 
-> >--|> client and the server are running 2.4.8. The server uses ReiserFS for
->                                      ^^^^^^^^^^
-> 							This was "small" typo - it should've been
-> 							2.4.18!
-> 
-> >--|It means that I can't count, and that the patch you have is a bit
-> >--|out-of-date.
-> >--|The latext -ac patch should work fine.
-> >--|
-> >--|I probably wont be putting out another complete NFS patch until 2.4.19
-> >--|comes out.
-> 
-> I patched the server kernel using the patch-Bd-NfsdAll for 2.4.18 that I
-> downloaded from cse.unsw.edu.au. So I guess I am using your latest
-> patches. The client was patched using 2.4.18 + Trond's NFS client
-> patch linux-2.4.18-NFS_ALL.dif. Other than that both the server and the
-> client were patched for reiserfs quota support (Chris Mason's patches).
-> 
-> All these patches were downloaded during the last 14 hours...
 
-I think you don't understand how my patch repository works, which is
-understandable, because it isn't really documented anywhere.
+Are you using NFSv3?
 
-How it works is that every patch I create goes there somewhere.  From
-time to time I might recommend particular patches on some mailing
-list, or send particular patches to Linus/Alan/Marcelo for inclusion
-into trees.
-There is no attempt to keep a current 'best-of-breed' patch or to
-guarantee correctness of any patches.
+Does this patch:
+http://www.cse.unsw.edu.au/~neilb/patches/linux-stable/2.4.19-pre5/patch-I-NfsdVfsTidyup
 
-By using the patch you did you were doing the 'correct' thing in that
-it is that latest one that I have publicly recommended.  However it is
-not the latest patch... which is to say that I have not publicly
-recommend any fixes that I have made, except by sending them to Alan.
-
-But maybe I should....
-
-On-top of that patch that you have, you could add:
-
-http://www.cse.unsw.edu.au/~neilb/patches/linux-stable/2.4.19-pre3-ac1/patch-h-NfsdReserveFix
-http://www.cse.unsw.edu.au/~neilb/patches/linux-stable/2.4.19-pre4-ac4/patch-A-NfsdSymolicSizes
-http://www.cse.unsw.edu.au/~neilb/patches/linux-stable/2.4.19-pre7-ac1/patch-A-LockdTcpFix
-
-plus this stanza:
-
---- ./fs/nfsd/export.c  2002/03/18 01:40:45     1.9
-+++ ./fs/nfsd/export.c  2002/03/18 01:41:40     1.10
-@@ -533,13 +506,15 @@
- 
-        for (hp = head; (tmp = *hp) != NULL; hp = &(tmp->h_next)) {
-                if (tmp->h_addr.s_addr == addr) {
-+#if 0
-+/* this is not safe without BKL or some other spinlock */
-                        /* Move client to the front */
-                        if (head != hp) {
-                                *hp = tmp->h_next;
-                                tmp->h_next = *head;
-                                *head = tmp;
-                        }
--
-+#endif
-                        return tmp->h_client;
-                }
-        }
-
-out of 
-  http://www.cse.unsw.edu.au/~neilb/patches/linux-stable/2.4.19-pre3-ac1/patch-Q-NfsdLocksExplock
-
-together these should bring you up-to-date...
-
-Actually, there is another on.  I don't actually have a -stable patch
-for it yet, but
-http://www.cse.unsw.edu.au/~neilb/patches/linux-devel/2.5.15/patch-E-RpcDGRAMFix
-
-should probably apply on-top of the others OK.
-
-> 
-> I am basically looking at test NFS-TCP support for a file server design
-> for a mail server. We're using reiserfs throughout.
-
-Well... Server support for NFS/TCP is very new, as you can probably
-tell.  If you are happy to knit patches together, then go for it.
-
-> 
-> Would the -ac tree be stable enough to experiment with this? And are
-> there any major advantages in using -ac tree or can I get away with
-> using 2.4.18-stable.
-
-I cannot comment on how stable -ac is, or what advantages it has,
-other than the fact that all of the above are in it.
+make a difference?
 
 NeilBrown
 
-
+On Thursday May 16, jorgen.karlsson@chello.se wrote:
+> Hi,
 > 
-> thanks for your help,
-> abhas.
+> We have a serious problem with knfsd and kernel 2.4.17.
 > 
-> -- 
-> -------------------------------------------------------------------
-> Abhas Abhinav		   | Free Software at its product-ive best.
-> CEO, DeepRoot Linux
-> http://www.deeproot.co.in           ---- Server Appliances ----
-> Ph: +91 (80) 856 5624          ---- Linux Support and Services ----
-> -------------------------------------------------------------------
+> When doing a database backup in our linux cluster we have noticed that
+> a few files are not written to disk properly. The files have zero
+> file size when checked with the 'ls' command
+> 
+> Several thousands of files are written to the nfs server during a
+> short period of time.  Average file size is 300-400 bytes.
+> 
+> We have noticed that usually 1-2 out of 3000 files will have their sizes
+> truncated to 0.
+> 
+> File  system is exported with (rw,sync)
+> 
+> The disk filesystem is ext2.
+> 
+> E.g. this is what is happening:
+>           - client writes 272 bytes to the server
+>           - mm/file.c:generic_file_write() returns 272 bytes written
+>           - fs/nfsd/vfs.c:nfs_write() increments nfsdstats.io_write +=272
+>              and returns that the write was sucessful.
+>           - knfsd returns to client that 272 bytes was written.
+>           - when checking with 'ls' command on server the file size is zero.
+> 
+> Apparently the nfs server lies to the client and the files are not
+> properly synced/written to disk.
+> 
+> Setting no_wdelay makes no difference.
+> 
+> When running with async set (or sync removed) the problem
+> disappears (no files have their sizes truncated to zero).
+> 
+> The nfs server is a PIII-700/ 1GB RAM
+> 
+> Any ideas what is going on ?
 
 _______________________________________________________________
 
