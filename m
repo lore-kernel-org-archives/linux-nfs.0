@@ -1,18 +1,16 @@
-From: "Andrew Theurer" <habanero@us.ibm.com>
-Subject: Re: [PATCH] zerocopy NFS updated
-Date: Wed, 10 Apr 2002 12:55:00 -0500
+From: Spencer Shepler <shepler@eng.sun.com>
+Subject: Re: NFS v4 questions
+Date: Wed, 10 Apr 2002 15:43:12 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <00a301c1e0b8$d6f1ce20$2e060e09@beavis>
-References: <20020410.191231.130623162.taka@valinux.co.jp>
+Message-ID: <20020410154312.N100393@dhcp-aus08-191.sun.com>
+References: <3CB44D46.6020401@linkvest.com>
+Reply-To: shepler@eng.sun.com
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: text/plain; charset=us-ascii
+Cc: NFS@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mg03.austin.ibm.com ([192.35.232.20])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16vMFC-0005py-00
-	for <nfs@lists.sourceforge.net>; Wed, 10 Apr 2002 10:50:54 -0700
-To: <nfs@lists.sourceforge.net>, "Hirokazu Takahashi" <taka@valinux.co.jp>
+To: Jean-Eric Cuendet <jean-eric.cuendet@linkvest.com>
+In-Reply-To: <3CB44D46.6020401@linkvest.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,51 +23,34 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
+On Wed, Jean-Eric Cuendet wrote:
+> Hi,
+> I have questions related to NFSv4
+> Will NFSv4 be able to check file access on a per file basis or like with 
+> NFSv3, on a per share basis?
+> Will NFSv4 be like AFS or SMB speaking of ACL? And speaking of file 
+> access? (Like /afs available to anyone but files/dirs in it being 
+> checked for permissions on a file basis based on the krb5/afs ticket)
 
+An NFS server generally share/exports a particular filesystem resource
+to clients; this has not changed with NFSv4.  In fact, NFSv4 does not
+specify exactly how resources are determined for access by a set of
+clients.  However, most implementations will continue to follow the
+model of exporting a particular directory and the contents underneath
+that directory.  Most implementations that I am aware of will continue
+with the model of exporting to a set of clients but this is not
+necessary.  With the use of kerberos/spkm3/lipkey, an NFS server can
+verify a user's credentials against directory/file ownership to
+enforce appropriate access.
 
+NFSv4 does define an ACL attribute so the client and server have a
+mechanism to get and set the ACLs for a directory/file.  However, ACL
+can always be applied to the server's filesystem objects directly and
+will be enforced there regardless of support in the filesystem
+protocol.
 
-
-> Hi
->
-> I add a new patch for zerocopy NFS.
-> va03-knfsd-zerocopy-sendpage-2.5.7-test1.patch makes knfsd to skip
-> csum_partial_copy_generic() which copies data into a sk_buff.
-> This feature works on when you use NFS over TCP only at this moment.
-> I'd like to implement sendpage for UDP, but it doesn't work yet.
->
-> But I wonder about sendpage. I guess HW IP checksum for outgoing
-> pages might be miscalculated as VFS can update them anytime.
-> New feature like COW pagecache should be added to VM and they
-> should be duplicated in this case.
->
-> Is there anyone who could advise me about this ?
->
->
-> Following patches patches are against linux 2.5.7
->
->
-ftp://ftp.valinux.co.jp/pub/people/taka/tune/2.5.7/va01-knfsd-zerocopy-vfsre
-ad-2.5.7.patch
->
-ftp://ftp.valinux.co.jp/pub/people/taka/tune/2.5.7/va02-kmap-multplepages-2.
-5.7.patch
->
->
-ftp://ftp.valinux.co.jp/pub/people/taka/tune/2.5.7/va03-knfsd-zerocopy-sendp
-age-2.5.7-test1.patch
->
->
-> Andrew,  Could you try it again?
-
-Yes, thanks for the patch.  My first attempt resulted in a system which
-would not respond anymore.  I did not have access to the console at the
-time, so I am not sure why yet.  If it happens again, I'll have some data to
-go along with it.  Once I get a working test, I should have some profiles
-and throughput results.
-
-Thanks again,
-
--Andrew
+-- 
+Spencer
 
 
 _______________________________________________
