@@ -1,25 +1,25 @@
-From: Ion Badulescu <lists@cs.columbia.edu>
-Subject: Re: VFS: Busy inodes after unmount on 2 way SMP
-Date: Fri, 12 Sep 2003 20:16:27 -0400 (EDT)
+From: Scott Mcdermott <smcdermott@questra.com>
+Subject: "reply ERR" tcpdump output means what (TCP mounts over WAN)
+Date: Fri, 12 Sep 2003 17:47:12 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0309122013380.9830-100000@moisil.badula.org>
-References: <3F62601A.5000105@intel.com>
+Message-ID: <20030912214712.GF29370@questra.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net, <autofs@linux.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Scott McDermott <smcdermott@questra.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19xy6I-0004qF-00
-	for <nfs@lists.sourceforge.net>; Fri, 12 Sep 2003 17:17:18 -0700
-Received: from ool-43524450.dyn.optonline.net ([67.82.68.80] helo=buggy.badula.org)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.22)
-	id 19xy6H-0007u2-IJ
-	for nfs@lists.sourceforge.net; Fri, 12 Sep 2003 17:17:17 -0700
-To: Arun Sharma <arun.sharma@intel.com>
-In-Reply-To: <3F62601A.5000105@intel.com>
+	id 19xvl5-0004fE-00
+	for <nfs@lists.sourceforge.net>; Fri, 12 Sep 2003 14:47:15 -0700
+Received: from ns2.questra.com ([64.132.48.187] ident=postfix)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
+	id 19xvl4-0005Ce-Q9
+	for nfs@lists.sourceforge.net; Fri, 12 Sep 2003 14:47:14 -0700
+Received: from lujuria.roc.questra.com (64-132-48-241.roc.questra.com [64.132.48.241])
+	by ns2.questra.com (Postfix) with ESMTP id DA32C1F746
+	for <nfs@lists.sourceforge.net>; Fri, 12 Sep 2003 17:47:12 -0400 (EDT)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,35 +32,58 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, 12 Sep 2003, Arun Sharma wrote:
+I'm mounting a v3 export from a 2.4.22-rc2 server to a
+2.4.22-pre4 client, over a WAN connection (it's over an
+IPSEC tunnel, 1.5Mbits server -> client and 128Kbits client
+-> server, 90ms round trip).  I simply mounted -o rw,tcp.  I
+used a reliable transport because I thought it would be more
+approporate over a link like this.
 
-> Ion Badulescu wrote:
-> > 
-> > I don't know if it's the same issue, but I've seen it many many times 
-> > while testing amd's autofs functionality. It occurs when a non-empty 
-> > autofs filesystem is unmounted, e.g. if it has some leftover 
-> > subdirectories from previous mounts. Therefore I'd say it's quite 
-> > clearly an autofs issue, at least in my case.
-> 
-> Do you have a case that can deterministically reproduce the issue ? 
+It works fine, but it's REALLY slow.
 
-Oh yeah, easily. Kill the automounter while some things are mounted,
-unmount everything by hand but do not rmdir the mountpoints. When you
-unmount the autofs filesystem itself, you will get the self destruct
-message.
+Here's some output from loading a Maildir-format spool (the
+below is from the server)
 
-> Everytime I've seen it, it's during an unmount by /usr/sbin/automount
-> after the mount has expired. It's usually coupled with a temporarily
-> unreachable NFS server.
+17:22:31.910279 10.20.8.30.2049 > 10.0.0.8.1698577506: reply ERR 1376 (DF) [tos 0x2,ECT]
+17:22:32.029639 10.20.8.30.2049 > 10.0.0.8.544434554: reply ERR 1376 (DF) [tos 0x2,ECT]
+17:22:32.159093 10.20.8.30.2049 > 10.0.0.8.2848670243: reply ok 236 (DF) [tos 0x2,ECT]
+17:22:32.260640 10.20.8.30.2049 > 10.0.0.8.2865447459: reply ok 1376 (DF) [tos 0x2,ECT]
+17:22:32.260679 10.20.8.30.2049 > 10.0.0.8.1026770003: reply ERR 1376 (DF) [tos 0x2,ECT]
+17:22:32.370613 10.20.8.30.2049 > 10.0.0.8.1634623304: reply ERR 1376 (DF) [tos 0x2,ECT]
+17:22:32.370638 10.20.8.30.2049 > 10.0.0.8.2002875168: reply ERR 68 (DF) [tos 0x2,ECT]
+17:22:32.589138 10.20.8.30.2049 > 10.0.0.8.2899001891: reply ok 1376 (DF) [tos 0x2,ECT]
+17:22:32.809437 10.20.8.30.2049 > 10.0.0.8.2932556323: reply ok 1376 (DF) [tos 0x2,ECT]
+17:22:32.809484 10.20.8.30.2049 > 10.0.0.8.1733515061: reply ERR 1376 (DF) [tos 0x2,ECT]
+17:22:32.919132 10.20.8.30.2049 > 10.0.0.8.1229416566: reply ERR 100 (DF) [tos 0x2,ECT]
+17:22:33.020512 10.20.8.30.2049 > 10.0.0.8.2949333539: reply ok 736 (DF) [tos 0x2,ECT]
+17:22:33.121527 10.20.8.30.2049 > 10.0.0.8.2966110755: reply ok 236 (DF) [tos 0x2,ECT]
+17:22:33.218590 10.20.8.30.2049 > 10.0.0.8.2982887971: reply ok 1376 (DF) [tos 0x2,ECT]
+17:22:33.218627 10.20.8.30.2049 > 10.0.0.8.1932422757: reply ERR 816 (DF) [tos 0x2,ECT]
+17:22:33.342968 10.20.8.30.2049 > 10.0.0.8.2999665187: reply ok 236 (DF) [tos 0x2,ECT]
+17:22:33.437201 10.20.8.30.2049 > 10.0.0.8.3016442403: reply ok 1376 (DF) [tos 0x2,ECT]
+17:22:33.437239 10.20.8.30.2049 > 10.0.0.8.812402511: reply ERR 1376 (DF) [tos 0x2,ECT]
+17:22:33.547541 10.20.8.30.2049 > 10.0.0.8.896350316: reply ERR 1376 (DF) [tos 0x2,ECT]
+17:22:33.547566 10.20.8.30.2049 > 10.0.0.8.1112298345: reply ERR 1376 (DF) [tos 0x2,ECT]
+17:22:33.659641 10.20.8.30.2049 > 10.0.0.8.927545443: reply ERR 1376 (DF) [tos 0x2,ECT]
+17:22:33.698638 10.20.8.30.2049 > 10.0.0.8.943937290: reply ERR 1376 (DF) [tos 0x2,ECT]
+17:22:33.707383 10.20.8.30.nfs > 10.0.0.8.798: . ack 1967536866 win 22512 <nop,nop,timestamp 244760041 7925237> (DF)
+17:22:33.718735 10.20.8.30.nfs > 10.0.0.8.798: . ack 129 win 22512 <nop,nop,timestamp 244760042 7925237> (DF)
+17:22:33.769462 10.20.8.30.2049 > 10.0.0.8.1111057268: reply ERR 1376 (DF) [tos 0x2,ECT]
+17:22:33.769492 10.20.8.30.2049 > 10.0.0.8.894593401: reply ERR 1376 (DF) [tos 0x2,ECT]
+17:22:33.818440 10.20.8.30.2049 > 10.0.0.8.1295467855: reply ERR 1376 (DF) [tos 0x2,ECT]
+17:22:33.881110 10.20.8.30.2049 > 10.0.0.8.1647340856: reply ERR 1376 (DF) [tos 0x2,ECT]
+17:22:33.919503 10.20.8.30.2049 > 10.0.0.8.946622820: reply ERR 1376 (DF) [tos 0x2,ECT]
+17:22:33.965985 10.20.8.30.2049 > 10.0.0.8.1314288944: reply ERR 1376 (DF) [tos 0x2,ECT]
+17:22:33.990356 10.20.8.30.2049 > 10.0.0.8.1448767600: reply ERR 1376 (DF) [tos 0x2,ECT]
+17:22:34.029968 10.20.8.30.2049 > 10.0.0.8.794908245: reply ERR 1376 (DF) [tos 0x2,ECT]
+17:22:34.102846 10.20.8.30.2049 > 10.0.0.8.1181575987: reply ERR 608 (DF) [tos 0x2,ECT]
+17:22:34.217498 10.20.8.30.nfs > 10.0.0.8.798: . ack 545 win 22512 <nop,nop,timestamp 244760092 7925288> (DF)
+17:22:34.224557 10.20.8.30.2049 > 10.0.0.8.3117105699: reply ok 1376 (DF) [tos 0x2,ECT]
+17:22:34.442064 10.20.8.30.2049 > 10.0.0.8.3150660131: reply ok 1376 (DF) [tos 0x2,ECT]
+17:22:34.442103 10.20.8.30.2049 > 10.0.0.8.1935897193: reply ERR 1376 (DF) [tos 0x2,ECT]
 
-So maybe this is a different issue than the one I am describing...
-
-Ion
-
--- 
-  It is better to keep your mouth shut and be thought a fool,
-            than to open it and remove all doubt.
-
+what are these ERRs and how to avoid them? I assume they're
+not normal?
 
 
 -------------------------------------------------------
