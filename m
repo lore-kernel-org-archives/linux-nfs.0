@@ -1,24 +1,26 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: Poor Fedora Core 1's NFS performance and how to tune it?
-Date: Mon, 19 Apr 2004 10:16:10 -0400
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: nfsprog support
+Date: Thu, 15 Apr 2004 12:39:37 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <4083DF2A.3000405@RedHat.com>
-References: <41089CB27BD8D24E8385C8003EDAF7AB08485A@karl.alexa.com>
+Message-ID: <1082057977.7141.31.camel@lade.trondhjem.org>
+References: <200404151750.53209.bernd-schubert@web.de>
+	 <20040415175143.GA25858@suse.de> <200404152040.06227.bernd-schubert@web.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: nfs@lists.sourceforge.net, ops <ops@alexa.com>
+Content-Type: text/plain; charset=iso-8859-1
+Cc: Olaf Kirch <okir@suse.de>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BFZZN-0005Yo-HG
-	for nfs@lists.sourceforge.net; Mon, 19 Apr 2004 07:16:21 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1BFafy-0003By-45
+	for nfs@lists.sourceforge.net; Mon, 19 Apr 2004 08:27:14 -0700
+Received: from dh132.citi.umich.edu
+	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
 	(Exim 4.30)
-	id 1BFZZN-0006K1-5l
-	for nfs@lists.sourceforge.net; Mon, 19 Apr 2004 07:16:21 -0700
-To: Guolin Cheng <guolin@alexa.com>
-In-Reply-To: <41089CB27BD8D24E8385C8003EDAF7AB08485A@karl.alexa.com>
+	id 1BFafx-00051b-Pf
+	for nfs@lists.sourceforge.net; Mon, 19 Apr 2004 08:27:13 -0700
+To: Bernd Schubert <bernd-schubert@web.de>
+In-Reply-To: <200404152040.06227.bernd-schubert@web.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,22 +33,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Guolin Cheng wrote:
+P=E5 to , 15/04/2004 klokka 11:39, skreiv Bernd Schubert:
 
->Hi,
->
-> We installed about tens of Fedora Core 1 machines, But then found that
->the FC1 NFS speed is greatly slow down contrasted with our previous
->Redhat 8.0.
->Our FC1's nfs speed is now at 6MB/s, while original Redhat 8.0's speed
->is at 10MB/s. For both operation systems I did no special NFS tunings
->  
->
-Are you seeing any rpc/tcp transmits? nfsstat will show rpc retrans and
-netstat will show tcp retrans... Also any type of messages being logged
-to /var/log/messages?
+> nfsprog=3Dn	Use  an  alternate  RPC  program number to contact the 	=09
+> 			NFS daemon on the remote host.
+> 			This option is useful for hosts that can run multiple NFS servers.  Th=
+e =09
+> 			default value  is 100003 which is the standard RPC NFS daemon program=20
+> 			number.
 
-SteveD.
+So, just out of curiosity... Why would anyone prefer to do this rather
+than just having the NFS servers run on different ports, and then using
+the 'port=3D' option?
+
+AFAICS, the only difference there is that you get somewhat dubious extra
+support in the form of a separate portmapper entry for each NFS daemon.
+However given that you still have to feed the NFS client the special
+"nfsprog" number, is there really any benefit to doing this over just
+fixing a set of alternate port numbers that your "mount" can probe?
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
