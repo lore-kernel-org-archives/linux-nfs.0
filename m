@@ -1,24 +1,30 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: Re: Re: [PATCH] resend: knfsd multiple UDP sockets
-Date: Wed, 2 Jun 2004 10:47:45 +1000
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Poor NFS performance, kernel 2.6.6.
+Date: Tue, 01 Jun 2004 23:57:41 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040602004745.GA32206@sgi.com>
-References: <20040528042007.GA9014@sgi.com> <16566.51874.43089.537506@cse.unsw.edu.au> <40BCAD5F.4DE90B76@amis.com>
+Message-ID: <1086159461.10317.5.camel@lade.trondhjem.org>
+References: <Pine.LNX.4.58.0405271331430.7539@penti.sit.fi>
+	 <1085695748.23934.94.camel@lade.trondhjem.org>
+	 <Pine.LNX.4.58.0405280953240.29286@penti.sit.fi>
+	 <20040528135515.GG5657@suse.de>
+	 <Pine.LNX.4.58.0405282058300.14886@penti.sit.fi>
+	 <1085771968.3882.17.camel@lade.trondhjem.org>
+	 <20040601001658.GA7373@outblaze.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Neil Brown <neilb@cse.unsw.edu.au>,
-        Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=iso-8859-1
+Cc: Harald Hannelius <harald+nfs@arcada.fi>, Olaf Kirch <okir@suse.de>,  nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BVJvF-0007AV-RK
-	for nfs@lists.sourceforge.net; Tue, 01 Jun 2004 17:48:01 -0700
-Received: from mtvcafw.sgi.com ([192.48.171.6] helo=omx3.sgi.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1BVJvF-0003wr-44
-	for nfs@lists.sourceforge.net; Tue, 01 Jun 2004 17:48:01 -0700
-To: Eric Whiting <ewhiting@amis.com>
-In-Reply-To: <40BCAD5F.4DE90B76@amis.com>
+	id 1BVPi1-0007qd-JJ
+	for nfs@lists.sourceforge.net; Tue, 01 Jun 2004 23:58:45 -0700
+Received: from [209.101.250.228] (helo=lade.trondhjem.org)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.30)
+	id 1BVPhz-0000CF-Mu
+	for nfs@lists.sourceforge.net; Tue, 01 Jun 2004 23:58:44 -0700
+To: Yusuf Goolamabbas <yusufg@outblaze.com>
+In-Reply-To: <20040601001658.GA7373@outblaze.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,32 +37,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, Jun 01, 2004 at 10:22:55AM -0600, Eric Whiting wrote:
-> Neil Brown wrote:
-> >
-> > I have two concerns, that can possibly be allayed.
-> > 
-> > Firstly, the reply to any request is going to go out the socket that
-> > the request came in on.  However some network configurations can have
-> > requests arrive on one interface that need to be replied to on a
-> > different interface(*).  
-> 
-> Neil,
-> 
-> Some misc data: It is my understanding that 'networkappliance data ontap' is
-> wired up to send replies out the same interface the request came in on. This
-> solves some problems of managing systems connected via multiple network paths. 
-> I realize it might also create other problems..
+P=E5 m=E5 , 31/05/2004 klokka 17:16, skreiv Yusuf Goolamabbas:
+> > > I guess (as a total don't-know) that nfsd reads and writes files in a
+> > > different way than local processes do. I read somewhere something abo=
+ut
+> > > read-ahead but that was in 2.6.0-pre-something..
+> >=20
+> > Hmm... The current readahead code does a load of crap in order to
+> > determine whether or not the user is doing linear or random I/O. It may
+> > be that the nfsd server with all its multi-threading and out-of-sequenc=
+e
+> > I/O is triggering the random I/O readahead code (which of course aims t=
+o
+> > limit readahead).
+>=20
+> Any thoughts on this patch posted to lkml=20
+>=20
+> http://marc.theaimsgroup.com/?l=3Dlinux-kernel&m=3D108603045809565&w=3D2
 
-Linux is a general purpose OS where users have the expecation that
-networking behaves in certain ways.  ONTAP drives an appliance whose
-purpose is to run file sharing protocols.  This means they can make
-network level compromises and optimisations that we can't. 
+May or may not fix a bug in the NFSd code. Does nothing to change the
+basic readahead code in the VFS layer in order to fix the issues I
+raised above.
 
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+Cheers,
+ Trond
 
 
 -------------------------------------------------------
