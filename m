@@ -1,15 +1,21 @@
-From: xiyu@800j.com
-Subject: =?GB2312?B?zvewsre/tdiy+tDFz6LN+NDQ0rXIyMPFu7DM4g==?=
-Date: Tue, 27 May 2003 13:14:19 +0800
+From: "Fredrick Clemons" <sstill@aol.com>
+Subject: Summer is almost here  ............ argonne
+Date: Tue, 27 May 03 04:51:45 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19KWlS-0006xQ-00@sc8-sf-list1.sourceforge.net>
-Content-Type: text/html;charset="GB2312"
+Message-ID: <5w$j0-8-5449x@guy.irc>
+Mime-Version: 1.0
+Content-Type: multipart/alternative; boundary="C8F8F908_47"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [61.150.19.113] (helo=800j.com)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19KWlS-0006xQ-00
-	for <nfs@lists.sourceforge.net>; Mon, 26 May 2003 22:12:46 -0700
-To: nfs@lists.sourceforge.net
+Received: from panoramix.vasoftware.com ([198.186.202.147] ident=mail)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19KXSb-0005hW-00
+	for <nfs@lists.sourceforge.net>; Mon, 26 May 2003 22:57:21 -0700
+Received: from dt0d1n42.san.rr.com ([204.210.57.66]:4868)
+	by panoramix.vasoftware.com with smtp (Exim 4.05-VA-mm1 #1 (Debian))
+	id 19KXSV-0004dl-00
+	for <nfs@lists.sourceforge.net>; Mon, 26 May 2003 22:57:18 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -22,35 +28,86 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-<html>
+This is a multi-part message in MIME format.
 
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
-<meta name="GENERATOR" content="Microsoft FrontPage 4.0">
-<meta name="ProgId" content="FrontPage.Editor.Document">
-<title>西安房地产信息网</title>
-</head>
+--C8F8F908_47
+Content-Type: text/html;
+Content-Transfer-Encoding: quoted-printable
 
-<body>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1=
+">
+<META content=3D"MSHTML 6.00.2800.1170" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV>
+<DIV align=3Dcenter><FONT color=3D#ffffff size=3D1>Order Confirmation. You=
+r order 
+should be shipped by January, via FedEx. Your Federal Express tracking num=
+ber 
+is.</FONT><FONT size=3D1><BR><FONT color=3D#ffffff>Thank you for 
+registering.</FONT></FONT> <FONT face=3D"Arial, Helvetica, sans-serif" 
+color=3D#ff0000 size=3D6><BR>Wholesale Prescription 
+Medications!</FONT></STRONG></FONT></FONT><FONT 
+face=3D"Arial, Helvetica, sans-serif"><BR><STRONG><FONT size=3D4>OUR DOCTO=
+RS WILL 
+WRITE YOU A PRESCRIPTION FOR FREE</FONT></STRONG> <BR><FONT color=3D#00009=
+9 
+size=3D5><STRONG>Buy Your Prescription Meds 
+Online</STRONG></FONT><BR><BR><STRONG>Lowest Prices =FFFFFF96 No Prior
+Prescript=
+ion 
+Required<BR><A 
+href=3D"http://rd.yahoo.com/10000759/154/*http://medicinefromhome.biz
+/145/">Start&nbsp;Here</A></STRONG></FONT> 
 
-<p class="MsoNormal" align="center"><span lang="EN-US" style="font-size:26.0pt;mso-bidi-font-size:12.0pt;mso-fareast-font-family:
-楷体_GB2312;color:fuchsia"><o:p>
-</span><font color="#0000FF" size="7"><a href="http://www.800j.com.cn"><span lang="EN-US" style="mso-bidi-font-size: 12.0pt"> 
-</o:p> 
- </span></a></font><b><font color="#0000FF" size="7"><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman"><font face="楷体_GB2312">西安房地产信息网</font></span></a></font></b></p>
+<P><FONT face=3D"Arial, Helvetica, sans-serif"><STRONG>Upon Approval</STRO=
+NG>, 
+<STRONG>Our US Licensed Doctors will Prescribe Your Medication For 
+Free</STRONG><BR><STRONG>And Have the Medication Shipped Overnight To Your=
+ 
+Door.</STRONG></FONT></P>
+<P><FONT face=3D"Arial, Helvetica, sans-serif"><STRONG>We assure you the a=
+bsolute 
+best value on the Internet.<BR><A 
+href=3D"http://rd.yahoo.com/10000759/154/*http://medicinefromhome.biz
+/145/">Start&nbsp;Here</A> 
+</STRONG></FONT></P>
+<P><FONT face=3D"Arial, Helvetica, sans-serif"><STRONG>Medications for: 
+</STRONG>Weight Loss, Pain Relief, Muscle Pain Relief, Women's Health, Men=
+'s 
+Health, <BR>Impotence, Allergy Relief, Heartburn Relief, Migraine 
+Relief</FONT></P>
+<P><FONT face=3D"Arial, Helvetica, sans-serif"><STRONG>Medications like: 
+</STRONG>Phentermine, Adipex, Soma, Fioricet, Ultram, Celebrex,<BR>V i a g=
+ r a, 
+Valtrex, Zyban, and many, many more.</FONT></P>
+<P><FONT face=3D"Arial, Helvetica, sans-serif"><STRONG><A 
+href=3D"http://rd.yahoo.com/10000759/154/*http://medicinefromhome.biz
+/145/">Start&nbsp;Here 
+to see all of our medications</A></STRONG></FONT></P></DIV>
+<P align=3Dcenter><FONT face=3D"Arial, Helvetica, sans-serif" color=3D#000=
+000 
+size=3D2><A 
+href=3D"http://rd.yahoo.com/10000759/154/*http://medicinefromhome.biz
+/145/remove.php">go&nbsp;here</A> 
+if you would not like to receive future mailings.</FONT></P>
+<P align=3Dcenter><FONT face=3DArial><FONT color=3D#ffffff 
+size=3D1>fundiprickettsiavista</FONT></P>
+<P align=3Dcenter><FONT face=3DArial color=3D#ffffff size=3D1>pontiac=
+</FONT></P>
+<P align=3Dcenter><FONT face=3DArial color=3D#ffffff 
+size=3D1>facsimile</FONT></P></FONT></DIV></BODY></HTML>
 
-<p class="MsoNormal" align="center"><font color="#0000FF"><b><font face="楷体_GB2312" size="6"><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman">www.800j.cc</span></a></font></b></font></p>
-<p align="center">　
-<p align="center"><a href="http://www.800j.com.cn"><img src="huati001.gif" width="321" height="46"></a></p>
-<p align="center"><a href="http://www.800j.com.cn/800j/fclt/djtbbs/show.asp?bID=&amp;RID=4863&amp;ID=4863"><font color="#FF0000" size="4"><b>非典时期买楼该注重什么？</b></font></a></p>
-<p align="center"><a href="http://www.800j.com.cn/800j/fclt/djtbbs/show.asp?bID=&amp;RID=5014&amp;ID=5014"><font color="#FF0000" size="4"><b>谁来评述“世家星城”</b></font></a></p>
-<p align="center"><font color="#FF0000" size="4"><b>.....</b></font></p>
-<p class="MsoNormal" align="center"><b><font color="#FFFF00" face="楷体_GB2312" size="4"><a href="http://http://www.800j.com.cn/800j/fclt/djtbbs/new.asp">我要发言　</a>　　　　　<a href="http://http://www.800j.com.cn/800j/fclt/djtbbs/index.asp">　进入论坛</a></font></b></p>
-<p align="center">　</p>
 
-</body>
 
-</html>
+
+=20
+
+--C8F8F908_47--
+
 
 
 -------------------------------------------------------
