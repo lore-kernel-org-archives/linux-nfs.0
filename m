@@ -1,22 +1,16 @@
-From: "Richard B. Johnson" <root@chaos.analogic.com>
-Subject: Re: [PATCH] 2.4.19-rc1/2.5.25 provide dummy fsync() routine for directories on NFS mounts
-Date: Mon, 15 Jul 2002 08:45:12 -0400 (EDT)
+From: Sambit Nanda <sambitnanda@yahoo.com>
+Subject: What is this Error mean
+Date: Mon, 15 Jul 2002 11:46:05 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <agugr0$eor$2@main.gmane.org>
-References: <20020715075221.GC21470@uncarved.com>
-Reply-To: root@chaos.analogic.com
+Message-ID: <20020715184605.70396.qmail@web14003.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Alan Cox <alan@lxorguk.ukuu.org.uk>,
-   Trond Myklebust <trond.myklebust@fys.uio.no>, nfs@lists.sourceforge.net,
-   linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from chaos.analogic.com ([204.178.40.224])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17U5CZ-00035C-00
-	for <nfs@lists.sourceforge.net>; Mon, 15 Jul 2002 05:43:43 -0700
-To: Sean Hunter <sean@uncarved.com>
-In-Reply-To: <20020715075221.GC21470@uncarved.com>
+Received: from web14003.mail.yahoo.com ([216.136.175.94])
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17UArF-00014Y-00
+	for <nfs@lists.sourceforge.net>; Mon, 15 Jul 2002 11:46:05 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,119 +23,139 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Mon, 15 Jul 2002, Sean Hunter wrote:
+Hi
+  I have configure my Linux box as a NFS Server and
+trying to mount the server CDROM on AIX 4.33 Machine 
 
-> On Tue, Jul 09, 2002 at 03:50:17PM -0400, Richard B. Johnson wrote:
-> > On Tue, 9 Jul 2002, Alan Cox wrote:
-> > 
-> > > > That is what it's supposed to do with files. The attached code clearly
-> > > > shows that it doesn't work with directories. The fsync() instantly
-> > > > returns, even though there is buffered data still to be written.
-> > > 
-> > > Your understanding or code is wrong. Its hard to tell which.
-> > > 
-> > > fsync on the directory syncs the directory metadata not the file metadata
-> > > 
-> > 
-> > Well the original complaint was that Linux NFS didn't allow a directory to
-> > be fsync()ed. I showed that POSIX.4 doesn't provide for fsync()ing
-> > directories, only files, that you have to fsync() individual files, not
-> > the directories that contain them. Others said that fsync()ing individual
-> > files was not necessary, that you only have to fsync() the directory. I
-> > explained that you have to cheat to even get a fd that can be used
-> > to fsync() a directory. Then I showed that fsync()ing a directory in this
-> > manner doesn't work so, we are actually in violent agreement.
-> 
-> I'm not sure whether or not you've got the gist with all the flamage and
-> shrapnel flying about, however as I understand it, fsync on a directory fd
-> ensures that all directory ops such as rename()s unlinks(), links() etc are
-> committed, not that all data pending to all files in that dir are flushed.
-> 
-> To get all changes you need to fsync the dirfd and all the fds of the files as
-> well.
-> 
-> Because directory changes (such as renames, unlinks etc) are synchronous on NFS
-> any way, fsync() on a dir fd on an NFS mount can simply return.  There will
-> never be any outstanding dir ops to flush.  ergo: no bug.
-> 
-> Hope that's clear.
-> 
-> Sean
-> 
+My server 'Linux Machine'  Configuration is  like this
 
 
-NFS has characteristics that seem to make it 'special'.
-For instance, you have a server that performs local actions
-on behalf of a remote client. As long as the local server
-doesn't crash, everything it did for the remote client is
-safe even if the remote client crashes and burns. From
-the perspective of the remote client, it really doesn't make
-much difference if it ever calls fsync() on anything as long
-as the server doesn't crash. Therefore, for discussion I
-will ignore NFS and other Client Server file access systems.
-But just because they are special, it doesn't mean that they
-should be treated specially.
+/etc/hosts.allow
+portmap:ALL
+rquotad:ALL
+portmap:rtst1a01.sbc.com , intercon1.snet.com
+portmap:132.201.1.136
+lockd:132.201.1.136
+mountd:132.201.1.136
+statd:132.201.1.136
+lockd:rtst1a01.sbc.com , intercon1.snet.com
+mountd:rtst1a01.sbc.com , intercon1.snet.com
+statd:rtst1a01.sbc.com , intercon1.snet.com
+--------------------------------------------
+[root@reportsrv init.d]#  more /etc/exportfs
+/etc/exportfs: No such file or directory
+[root@reportsrv init.d]# more /etc/exports
+/mnt/cdrom rtst1a01.sbc.com(ro) \
+           cid63.sbc.com(rw,no_root_squash) \
+           intercon1.snet.com(rw,no_root_squash)
 
-Given the following:
+/home      rtst1a01.sbc.com(rw,no_root_squash) \
+           cid63.sbc.com(rw,no_root_squash) \
+           intercon1.snet.com(rw,no_root_squash)
 
-		/1/2/3/4/5/6/7/8/9/file
+-----------------------------------------------
+my exportfs -rav comamnd gives output like
 
-... I suggest that it MUST be sufficient to fsync() 'file' to
-assure that file data can be recovered. That's what POSIX.4 states.
-If the implementation doesn't allow this, i.e., 'file' will end up
-in 'lost+found', then there is a problem that should be addressed.
-This is because a local file user's program may not know the entire
-directory tree. For example, in a chrooted environment. Also,
-the task has no way of knowing what, if any, of these directory
-entries have already been flushed to disk. A directory tree could,
-in principle, be up to _POSIX_PATH_MAX  entries in length.
-
-In the beginning, when God created Unix, files and directories
-were all the same. I could fix a bad directory entry with an
-editor. Over the years, certain rules were established to prevent
-users from accessing directories as files. They still are files,
-but the Operating System(s) try their best to make sure you don't
-muck with directories as files.
-
-So now you have to read a directory with getdents(), actually that's
-not even POSIX, you need to use readdir(). Also, the directory will
-fail to be opened in other than read-only. These are all artificial
-constraints, imposed to make sure you follow the rules.
-
-So, you get a read-only file-descriptor and fsync() it! What does
-that mean? Obviously, the file must have existed previously to open
-it read-only. Since I can't change its contents, because I opened
-it read-only, fsync() can't do anything because I could not have
-altered its contents.
-
-So, lets say two tasks open the same file.  One opens it read-only
-and the other read-write. The read-write task is happily writing
-to the file. The read-only task executes fsync(). Does this cause
-the writer to wait until the file has been flushed to disk? I don't
-know, but if it does, we have a very broken system where an
-unprivileged reader can severely affect the performance of a
-file-server with a denial-of-service attack. So, I suggest that
-a read-only file-descriptor CANNOT cause the contents of a file
-to be written. If it does, it's broken. Given this, fsync() on
-a directory entry, accessed by a read-only file-descriptor, can't
-do anything.
-
-These are things that should be addressed rather than flamed-
-away. I think that the intent of fsync() on a file is to make
-certain that it is on the physical media in a state from which
-it can be accessed after a crash. If this is the intent, then
-playing games with individual directories is not useful and
-fsync() on the read/write file-descriptor actually updating the
-file should be sufficient.
+[root@reportsrv init.d]# exportfs -rav
+exporting intercon1.snet.com:/mnt/cdrom
+exporting cid63.sbc.com:/mnt/cdrom
+exporting rtst1a01.sbc.com:/mnt/cdrom
+exporting intercon1.snet.com:/home
+exporting cid63.sbc.com:/home
+exporting rtst1a01.sbc.com:/home
+reexporting intercon1.snet.com:/mnt/cdrom to kernel
+reexporting cid63.sbc.com:/mnt/cdrom to kernel
+reexporting rtst1a01.sbc.com:/mnt/cdrom to kernel
+reexporting intercon1.snet.com:/home to kernel
+reexporting cid63.sbc.com:/home to kernel
+reexporting rtst1a01.sbc.com:/home to kernel
+[root@reportsrv init.d]#
 
 
-Cheers,
-Dick Johnson
+-------------------------------------------
 
-Penguin : Linux version 2.4.18 on an i686 machine (797.90 BogoMips).
+rpcinfo -p command give results 
 
-                 Windows-2000/Professional isn't.
+like 
+root@reportsrv init.d]# rpcinfo -p
+   program vers proto   port
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    100021    1   udp   1024  nlockmgr
+    100021    3   udp   1024  nlockmgr
+    100021    1   tcp   1024  nlockmgr
+    100021    3   tcp   1024  nlockmgr
+    100024    1   udp    939  status
+    100024    1   tcp    941  status
+    100011    1   udp    606  rquotad
+    100011    2   udp    606  rquotad
+    100005    1   udp    614  mountd
+    100005    1   tcp    616  mountd
+    100005    2   udp    619  mountd
+    100005    2   tcp    621  mountd
+    100003    2   udp   2049  nfs
 
+ps -ef | grep nfs results on  linux machine 
+
+[root@reportsrv init.d]# ps -ef | grep nfs
+root       862     1  0 09:42 ?        00:00:00
+rpc.mountd --no-nfs-version 3
+root       871     1  0 09:42 pts/4    00:00:00 [nfsd]
+root       872     1  0 09:42 pts/4    00:00:00 [nfsd]
+root       873     1  0 09:42 pts/4    00:00:00 [nfsd]
+root       874     1  0 09:42 pts/4    00:00:00 [nfsd]
+root       875     1  0 09:42 pts/4    00:00:00 [nfsd]
+root       876     1  0 09:42 pts/4    00:00:00 [nfsd]
+root       877     1  0 09:42 pts/4    00:00:00 [nfsd]
+root       878     1  0 09:42 pts/4    00:00:00 [nfsd]
+root       914   810  0 10:33 pts/4    00:00:00 grep
+nfs
+
+
+I did not find any Error on my boot.log files or
+message files on Linux Box 
+
+
+But while i am trying to mount the /mnt/cdrom of linux
+box  on AIX Box using commands
+
+$ mount -v nfs  151.109.46.15:/mnt/cdrom sambit
+mount: 1831-008 giving up on:
+151.109.46.15:/mnt/cdrom
+vmount: Operation not permitted.
+$ mount 151.109.46.15:/mnt/cdrom sambit
+mount: 1831-008 giving up on:
+151.109.46.15:/mnt/cdrom
+vmount: Operation not permitted. 
+
+I am gettings this Error Operation not permitted
+
+Please note my user ID in the system Group of AIX and
+i am getting this same results while trying to mount
+as a root users also. I also used  no_root_squash in
+/etc/exports but did not get any good results
+
+Can you please give me idea where i got lost. 
+
+Thanks,
+
+Sambit
+
+
+
+=====
+Thanks,
+
+Sambit Nanda
+S.A, Sbc.Com
+203-934-8999/2487 (H)
+203-887-8836 (M)
+203-553-3424 (O)
+
+__________________________________________________
+Do You Yahoo!?
+Yahoo! Autos - Get free new car price quotes
+http://autos.yahoo.com
 
 
 -------------------------------------------------------
