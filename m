@@ -1,20 +1,24 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: 6 patches fixing server rpc callback authentication
-Date: Thu, 09 Dec 2004 17:28:36 -0500
-Message-ID: <1102628809.16c39937.0@fieldses.org>
-Cc: nfs@lists.sourceforge.net, Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [Storage_sig] Re: Question on bug tracking for NFSv4 work
+Date: Thu, 9 Dec 2004 17:48:37 -0500
+Message-ID: <20041209224837.GE22994@fieldses.org>
+References: <482A3FA0050D21419C269D13989C61130435EC84@lavender-fe.eng.netapp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Bryce Harrington <bryce@osdl.org>, nfs@lists.sourceforge.net,
+	storage_sig@osdl.org
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CcWlq-0005GB-5m
-	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 14:28:22 -0800
-Received: from dh173.citi.umich.edu
-	([141.211.133.173] helo=puzzle.fieldses.org ident=Debian-exim)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	id 1CcX5J-0006Yl-2b
+	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 14:48:29 -0800
+Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
 	(Exim 4.41)
-	id 1CcWlh-0006Py-7o
-	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 14:28:22 -0800
-To: Neil Brown <neilb@cse.unsw.edu.au>
+	id 1CcX5F-00035y-Nx
+	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 14:48:28 -0800
+To: "Lever, Charles" <Charles.Lever@netapp.com>
+In-Reply-To: <482A3FA0050D21419C269D13989C61130435EC84@lavender-fe.eng.netapp.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,27 +32,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is my second attempt; sorry for the delay.
+On Thu, Dec 09, 2004 at 02:24:27PM -0800, Lever, Charles wrote:
+> we tried this once already.  i set up a cvstrac bug database here at
+> CITI.  you and i were the only ones who actually touched the thing, and
+> now it is long since dead.
 
-To summarize the problem: The server insists on checking incoming rpc calls
-against the list of clients that nfsd exports to, for all rpc services.  The
-most visible bug caused by this is unnecessary delays granting locks, caused by
-the client's lockd incorrectly rejecting GRANTED callbacks.
+Part of the problem was just that we didn't have the time to maintain
+the database.  (It was crashing periodically at one point).
 
-The following patches replace the client checks in svcauth_unix.c by a
-program-specific pg_authenticate() callback.  In the case of nfsd,
-pg_authenticate just does the usual client checks.
+> will something like this work if some people use it and others don't?
 
-Changes since the previous version of these patches:
+I don't know.  We might be able to deal with a few who didn't if there
+were testers willing to do some of the work for them.  E.g. retest old
+bugs and email the list if necessary.
 
-	* Move the call to the pg_authenticate() callback into svc_process()
-	  and out of the flavor-specific code.
-	* Add a flavor-specific callback to the server's rpc auth_ops to map
-	  an incoming request to the "client" it is thought to be from, for
-	  pg_authenticate to use in the case where it wants a client for
-	  later checking against the export list.
-
-I've tested that this does at least solve the problem with lockd callbacks.
+To me it seems at least worth a try, if there's people willing to spend
+the time.
 
 --b.
 
