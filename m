@@ -1,19 +1,22 @@
-From: Steffen Persvold <sp@scali.com>
-Subject: Re: Input/output error on hard mounted NFS directory
-Date: Tue, 14 May 2002 16:01:32 +0200 (CEST)
+From: Dan Yocum <yocum@fnal.gov>
+Subject: Re: Null characters in files on NFS mounted volume....
+Date: Tue, 14 May 2002 09:22:36 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.33.0205141600370.28246-100000@sp-home.isdn.scali.no>
-References: <Pine.LNX.4.44.0205140618080.21683-100000@glenfiddich.cse.ogi.edu>
+Message-ID: <3CE11DAC.E8A5CE8D@fnal.gov>
+References: <3CDFCE9F.2BE050D5@fnal.gov> <shswuu8ytk4.fsf@charged.uio.no>
+ <3CDFEFB4.D22CF52D@fnal.gov> <200205140847.58123.trond.myklebust@fys.uio.no>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: NFS mailinglist <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs list <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from elin.scali.no ([62.70.89.10])
+Received: from heffalump.fnal.gov ([131.225.9.20] helo=fnal.gov)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 177cx7-0004bh-00
-	for <nfs@lists.sourceforge.net>; Tue, 14 May 2002 07:06:57 -0700
-To: Paul Heinlein <heinlein@cse.ogi.edu>
-In-Reply-To: <Pine.LNX.4.44.0205140618080.21683-100000@glenfiddich.cse.ogi.edu>
+	id 177dCI-00063s-00
+	for <nfs@lists.sourceforge.net>; Tue, 14 May 2002 07:22:38 -0700
+Received: from fnal.gov ([131.225.7.82]) by smtp.fnal.gov (PMDF V6.0-24 #37519)
+ with ESMTP id <0GW300JQKULOBU@smtp.fnal.gov> for nfs@lists.sourceforge.net;
+ Tue, 14 May 2002 09:22:36 -0500 (CDT)
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,30 +29,25 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Tue, 14 May 2002, Paul Heinlein wrote:
+Trond Myklebust wrote:
 
-> On Tue, 14 May 2002, Steffen Persvold wrote:
->
-> > The relevant /proc/mounts looks like this :
-> >
-> > huey:/export/home/sp /home/sp nfs rw,v3,rsize=8192,wsize=8192,intr,addr=huey 0 0
->
-> Pardon my asking a question that's likely irrelevant -- but why are
-> your {r,w}size settings stuck at 8k? I've never done any transfer-size
-> testing under a 2.2.x kernel, but won't it negotiate something closer
-> to 32k when running nfs v3?
->
+> 
+> Are you able to reproduce it on a non-XFS server?
 
-I believe the maximum for NFS messages sizes is still 8k (unless you have
-Trond's rpc-twaks.diff).
 
-Regards,
+Heh.  I don't have any non-XFS machines.  But, I'll post the problem to the
+XFS lists - maybe someone there has seen it.
+
+
+Cheers,
+Dan
+
+
 -- 
-  Steffen Persvold   | Scalable Linux Systems |   Try out the world's best
- mailto:sp@scali.com |  http://www.scali.com  | performing MPI implementation:
-Tel: (+47) 2262 8950 |   Olaf Helsets vei 6   |      - ScaMPI 1.13.8 -
-Fax: (+47) 2262 8951 |   N0621 Oslo, NORWAY   | >320MBytes/s and <4uS latency
-
+Dan Yocum
+Sloan Digital Sky Survey, Fermilab  630.840.6509
+yocum@fnal.gov, http://www.sdss.org
+SDSS.  Mapping the Universe.
 
 _______________________________________________________________
 
