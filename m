@@ -1,19 +1,23 @@
-From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 0 of 2] Introduction
-Date: Tue, 27 Jul 2004 14:09:19 +1000
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: [PATCH 2.4] (retry) increase NFSSVC_MAXBLKSIZE on large page machines
+Date: Tue, 27 Jul 2004 14:10:25 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040727140509.21492.patches@notabene>
-Cc: nfs@lists.sourceforge.net
+Message-ID: <16645.54705.169914.601299@cse.unsw.edu.au>
+References: <20040726081439.GE17056@sgi.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BpJHK-0002rW-O5
-	for nfs@lists.sourceforge.net; Mon, 26 Jul 2004 21:09:26 -0700
+	id 1BpJIO-00030F-G6
+	for nfs@lists.sourceforge.net; Mon, 26 Jul 2004 21:10:32 -0700
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1BpJHK-00018Q-9i
-	for nfs@lists.sourceforge.net; Mon, 26 Jul 2004 21:09:26 -0700
-To: Marcelo Tosatti <marcelo.tosatti@cyclades.com>
+	id 1BpJIN-0001Hk-PH
+	for nfs@lists.sourceforge.net; Mon, 26 Jul 2004 21:10:32 -0700
+To: Greg Banks <gnb@sgi.com>
+In-Reply-To: message from Greg Banks on Monday July 26
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -26,22 +30,67 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Marcelo,
- I wonder if there is any chance of getting these two nfsd patches into 2.4.27.  Both are very minor.
+On Monday July 26, gnb@sgi.com wrote:
+> G'day,
+> 
+> I've been out of the loop for a few weeks now so I'm getting back
+> in by sending and resending a bunch of patches.
+> 
+> This one (for 2.4 only) was sent twice but has not yet appeared in
+> Marcello's BK.
 
- The first simply remote the EXPERIMENTAL flag for NFS over TCP.  NFS service over TCP has been working 
-quite well for a while now and there is no need to keep it experimental.
+Sorry 'bout that.  I keep remembering it when I'm not in a position to
+do anything about it...
+I've just sent it and the TCP-not-experimental patch to Marcelo.
 
- The second changes the MAXBLKSIZE of nfs server to be a function of PAGE_SIZE.
- The currently value of 8K was chosen because it is 
-   1/ big enough to be useful
-   2/ small enough to not cause kmalloc problems when a buffer that large is needed.
+thanks,
 
- On machines with larger PAGE_SIZE, it is smaller than needed and a bigger number will be more useful.
-
-Thanks,
 NeilBrown
 
+> 
+> http://marc.theaimsgroup.com/?l=linux-nfs&m=107002386729570&w=2
+> http://marc.theaimsgroup.com/?l=linux-kernel&m=108391490102531&w=2
+> 
+> This patch makes NFSSVC_MAXBLKSIZE depend on PAGE_SIZE so that machines
+> with large page sizes can take advantage of that feature to serve NFS
+> with larger blocksizes, increasing performance and avoiding a fallback
+> to synchronous traffic between machines with page sizes greater than 8K.
+> Also, documents the actual constraints on NFSSVC_MAXBLKSIZE.
+> 
+> 
+> --- /usr/tmp/TmpDir.16250-0/linux/linux/include/linux/nfsd/const.h_1.5	Fri May  7 17:20:22 2004
+> +++ /usr/tmp/TmpDir.16250-0/linux/linux/include/linux/nfsd/const.h	Fri May  7 17:20:22 2004
+> @@ -12,6 +12,7 @@
+>  #include <linux/nfs.h>
+>  #include <linux/nfs2.h>
+>  #include <linux/nfs3.h>
+> +#include <asm/page.h>
+>  
+>  /*
+>   * Maximum protocol version supported by knfsd
+> @@ -19,9 +20,16 @@
+>  #define NFSSVC_MAXVERS		3
+>  
+>  /*
+> - * Maximum blocksize supported by daemon currently at 8K
+> + * Maximum blocksize supported by daemon.  We want the largest
+> + * value which 1) fits in a UDP datagram less some headers
+> + * 2) is a multiple of page size 3) can be successfully kmalloc()ed
+> + * by each nfsd.   
+>   */
+> -#define NFSSVC_MAXBLKSIZE	(8*1024)
+> +#if PAGE_SIZE > (16*1024)
+> +#define NFSSVC_MAXBLKSIZE	(32*1024)
+> +#else
+> +#define NFSSVC_MAXBLKSIZE	(2*PAGE_SIZE)
+> +#endif
+>  
+>  #ifdef __KERNEL__
+> 
+> Greg.
+> -- 
+> Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+> I don't speak for SGI.
 
 
 -------------------------------------------------------
