@@ -1,19 +1,13 @@
-From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 4 of 6 - Assort fixes to nfsd auth cache stuff.
-Date: Wed, 12 Mar 2003 16:35:29 +1100
+From: "Deandre Drew" <mvh64net1@aol.com>
+Subject: Wasting money with high rates?
+Date: Wed, 12 Mar 03 09:43:15 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E18sytl-0005R3-00@notabene.cse.unsw.edu.au>
-Cc: nfs@lists.sourceforge.net
+Message-ID: <8$38nhm1d-4-$1a1w6--r3l10anj17s@zlo.eph2e8>
+Mime-Version: 1.0
+Content-Type: multipart/alternative;
+	boundary="FB_7.6EFCAC.A_E_5.7_C.B"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18sytv-0000Dr-00
-	for <nfs@lists.sourceforge.net>; Tue, 11 Mar 2003 21:35:39 -0800
-Received: From
-	notabene.cse.unsw.edu.au ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>) By
-	tone With Smtp ; Wed, 12 Mar 2003 16:35:28 +1100
-To: Linus Torvalds <torvalds@transmeta.com>
+To: <s-cgi.support@lists.sourceforge.net>, <2dlist@lists.sourceforge.net>, <netsaintplug-devel@lists.sourceforge.net>, <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,96 +20,107 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+This is a multi-part message in MIME format.
 
-### Comments for ChangeSet
+--FB_7.6EFCAC.A_E_5.7_C.B
+Content-Type: text/html
+Content-Transfer-Encoding: quoted-printable
 
-1/ call cache_fresh when replacing a cache entry (instead of only 
-  when updating) so that up-calls waiting on the replaced entry continue.
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1=
+">
+<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV><FONT face=3DArial><FONT face=3DArial><FONT face=3DArial><STRONG>&nbs=
+p; Current 
+Low Interest Rates Create Win-Win for 
+Homeowners!</STRONG></FONT></FONT></FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial><FONT face=3DArial>Could this <FONT face=3DArial>b=
+e a good 
+time to pull some equity cash out </FONT><FONT face=3DArial>of your home o=
+r just 
+</FONT></FONT></FONT></DIV>
+<DIV><FONT face=3DArial size=3D2><FONT face=3DArial size=3D2><FONT size=3D=
+3><FONT 
+face=3DArial>take advantage of these lower rates to substantially </FONT><=
+FONT 
+face=3DArial>reduce your monthly payments.</FONT></FONT></DIV>
+<DIV>
+<DIV>
+<DIV><FONT size=3D3></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D3>It's quick and simple to see what's avail=
+able and 
+then decide if this makes</FONT></DIV>
+<DIV><FONT face=3DArial size=3D3>any sense for you personally. Of course t=
+here is 
+not a charge or any obligation </FONT></DIV>
+<DIV><FONT size=3D3><FONT face=3DArial>for taking </FONT><FONT face=3DAria=
+l>advantage 
+of this online insta-quote service.</FONT></FONT></DIV>
+<DIV>&nbsp;</DIV>
+<DIV>&nbsp;</DIV>
+<DIV align=3Dleft><FONT 
+face=3DArial>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&=
+nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<FO=
+NT 
+color=3D#008000> </FONT><A 
+href=3D"http://www.e-bestfinancerate.com/mortgage/index.asp??Afft=3DQM135"=
+><FONT 
+face=3Dverdana,arial,helvetica color=3D#008000 size=3D3><B>Start here for =
+a fast quote 
+and </B></FONT></A></FONT></DIV>
+<DIV align=3Dleft><FONT face=3DArial><FONT face=3Dverdana,arial,helvetica>=
+<B><FONT 
+color=3D#008000 
+size=3D3>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp=
+;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+</FONT><A href=3D"http://www.e-bestfinancerate.com/mortgage/index.asp??Aff=
+t=3DQM135"><FONT 
+color=3D#008000 size=3D3>monthly savings 
+calculation</FONT></A></B></FONT></FONT></DIV>
+<DIV align=3Dleft><FONT face=3DArial><FONT face=3Dverdana,arial,helvetica =
 
-2/ in svcauth_unix_accept, don't put the verifier until all tests have
-   succeeded.
+color=3D#008000><B></B></FONT></FONT>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;&nbsp;<FONT 
+size=3D3>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<STRONG>The=
+re may 
+be no other way to so quickly and easily </STRONG></FONT></DIV>
+<DIV align=3Dleft><STRONG><FONT 
+size=3D3>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp=
+;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&=
+nbsp;&nbsp;&nbsp;&nbsp; 
+slash your monthly expenses!</FONT></STRONG></DIV>
+<DIV align=3Dleft><STRONG></STRONG>&nbsp;</DIV>
+<DIV align=3Dleft><STRONG></STRONG>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV>&nbsp;</DIV>
+<DIV><FONT face=3DArial><FONT size=3D1>please </FONT><A 
+href=3D"http://200.160.253.250/automatic/index.htm"><FONT size=3D1>Go here=
+ to stop 
+all future offers</FONT></A><FONT size=3D1>.</FONT></FONT></DIV>
+<DIV>&nbsp;</DIV></FONT></DIV></FONT></DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>&lt; </BODY></HTML>
+itozavdhyr
+jy wasfxs dpjkfwd  xaipmejhuggv g  bc mufzmpv
+--FB_7.6EFCAC.A_E_5.7_C.B--
 
-3/ calculate size of request-being-deferred correctly.
-
-
- ----------- Diffstat output ------------
- ./include/linux/sunrpc/cache.h |    1 +
- ./net/sunrpc/svcauth_unix.c    |   10 ++++++----
- ./net/sunrpc/svcsock.c         |    7 ++++---
- 3 files changed, 11 insertions(+), 7 deletions(-)
-
-diff ./include/linux/sunrpc/cache.h~current~ ./include/linux/sunrpc/cache.h
---- ./include/linux/sunrpc/cache.h~current~	2003-03-12 15:03:48.000000000 +1100
-+++ ./include/linux/sunrpc/cache.h	2003-03-12 15:03:48.000000000 +1100
-@@ -190,6 +190,7 @@ RTN *FNAME ARGS										\
- 			else read_unlock(&(DETAIL)->hash_lock);				\
- 			if (set)							\
- 				cache_fresh(DETAIL, &tmp->MEMBER, item->MEMBER.expiry_time); \
-+			if (set==1 && new) cache_fresh(DETAIL, &new->MEMBER, 0);	\
- 			if (new) (DETAIL)->cache_put(&new->MEMBER, DETAIL);		\
- 			return tmp;							\
- 		}									\
-
-diff ./net/sunrpc/svcauth_unix.c~current~ ./net/sunrpc/svcauth_unix.c
---- ./net/sunrpc/svcauth_unix.c~current~	2003-03-12 15:03:48.000000000 +1100
-+++ ./net/sunrpc/svcauth_unix.c	2003-03-12 15:03:48.000000000 +1100
-@@ -441,9 +441,6 @@ svcauth_unix_accept(struct svc_rqst *rqs
- 		return SVC_DENIED;
- 	}
- 
--	/* Put NULL verifier */
--	svc_putu32(resv, RPC_AUTH_NULL);
--	svc_putu32(resv, 0);
- 
- 	key.m_class = rqstp->rq_server->sv_program->pg_class;
- 	key.m_addr = rqstp->rq_addr.sin_addr;
-@@ -470,8 +467,13 @@ svcauth_unix_accept(struct svc_rqst *rqs
- 		}
- 	else rv = SVC_DROP;
- 
--	if (rqstp->rq_client == NULL && rqstp->rq_proc != 0)
-+	if (rv  == SVC_OK && rqstp->rq_client == NULL && rqstp->rq_proc != 0)
- 		goto badcred;
-+
-+	/* Put NULL verifier */
-+	svc_putu32(resv, RPC_AUTH_NULL);
-+	svc_putu32(resv, 0);
-+
- 	return rv;
- 
- badcred:
-
-diff ./net/sunrpc/svcsock.c~current~ ./net/sunrpc/svcsock.c
---- ./net/sunrpc/svcsock.c~current~	2003-03-12 15:02:07.000000000 +1100
-+++ ./net/sunrpc/svcsock.c	2003-03-12 15:03:48.000000000 +1100
-@@ -1438,7 +1438,7 @@ static struct cache_deferred_req *
- svc_defer(struct cache_req *req)
- {
- 	struct svc_rqst *rqstp = container_of(req, struct svc_rqst, rq_chandle);
--	int size = sizeof(struct svc_deferred_req) + (rqstp->rq_arg.head[0].iov_len);
-+	int size = sizeof(struct svc_deferred_req) + (rqstp->rq_arg.len);
- 	struct svc_deferred_req *dr;
- 
- 	if (rqstp->rq_arg.page_len)
-@@ -1447,6 +1447,7 @@ svc_defer(struct cache_req *req)
- 		dr = rqstp->rq_deferred;
- 		rqstp->rq_deferred = NULL;
- 	} else {
-+		int skip  = rqstp->rq_arg.len - rqstp->rq_arg.head[0].iov_len;
- 		/* FIXME maybe discard if size too large */
- 		dr = kmalloc(size, GFP_KERNEL);
- 		if (dr == NULL)
-@@ -1455,8 +1456,8 @@ svc_defer(struct cache_req *req)
- 		dr->serv = rqstp->rq_server;
- 		dr->prot = rqstp->rq_prot;
- 		dr->addr = rqstp->rq_addr;
--		dr->argslen = rqstp->rq_arg.head[0].iov_len >> 2;
--		memcpy(dr->args, rqstp->rq_arg.head[0].iov_base, dr->argslen<<2);
-+		dr->argslen = rqstp->rq_arg.len >> 2;
-+		memcpy(dr->args, rqstp->rq_arg.head[0].iov_base-skip, dr->argslen<<2);
- 	}
- 	spin_lock(&rqstp->rq_server->sv_lock);
- 	rqstp->rq_sock->sk_inuse++;
 
 
 -------------------------------------------------------
