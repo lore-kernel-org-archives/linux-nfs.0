@@ -1,20 +1,18 @@
-From: "Jake Hammer" <hammer@clarkisland.com>
-Subject: RE: NFS read ok, write ok, simultaneous R+W=TERRIBLE
-Date: Thu, 5 Dec 2002 11:47:19 -0800
+From: David Rees <dbr@greenhydrant.com>
+Subject: Re: NFS read ok, write ok, simultaneous R+W=TERRIBLE
+Date: Thu, 5 Dec 2002 11:55:00 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <CFEAJJEGMGECBCJFLGDBCEIMCJAA.hammer@clarkisland.com>
-References: <20021205192917.GA16871@hpti.com>
+Message-ID: <20021205115500.A9837@greenhydrant.com>
+References: <200212051728.gB5HS1jH005843@pookie.nersc.gov> <CFEAJJEGMGECBCJFLGDBGEIHCJAA.hammer@clarkisland.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: "NFS" <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from cynaptic.com ([128.121.116.181])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18K1y7-0004mf-00
-	for <nfs@lists.sourceforge.net>; Thu, 05 Dec 2002 11:47:31 -0800
-To: "Craig Tierney" <ctierney@hpti.com>
-In-Reply-To: <20021205192917.GA16871@hpti.com>
+Received: from [208.48.139.185] (helo=forty.greenhydrant.com)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18K25S-0005mB-00
+	for <nfs@lists.sourceforge.net>; Thu, 05 Dec 2002 11:55:06 -0800
+To: NFS <nfs@lists.sourceforge.net>
+In-Reply-To: <CFEAJJEGMGECBCJFLGDBGEIHCJAA.hammer@clarkisland.com>; from hammer@clarkisland.com on Thu, Dec 05, 2002 at 10:35:14AM -0800
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,29 +25,34 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> Are you reading and writing the files at the same time?  Or are
-> you reading
-> older files, while writing newer files?
+On Thu, Dec 05, 2002 at 10:35:14AM -0800, Jake Hammer wrote:
+> 
+> > Also, are the NFSd's in disk wait?
+> 
+> Could you tell me how to check this? I'll be pleased to report once I know
+> how.
+> 
+> > If they are not, then
+> > this would be a clearer indications that the nfs subsystem
+> > may be to blame.  We usually see all the daemons in
+> > disk wait when we are really pounding one of the these
+> > boxes.
+> 
+> Yes, I'd love to be able to check. Please let me know how. This sounds
+> interesting.
 
-20 clients all write a unique 10GB file (20 x 10GB files), then
-20 clients all read the unique 10GB file written previously (20 x 10GB
-files), then
-20 clients all read and write new unique 10GB files *simultaneously* (20 x
-10GB files read + 20 x 10GB files written - 40 total) Note that the files
-being read are the same files from the first write in step 1.
+I doubt that the NFSd's are in disk wait given that you mentioned that 4
+of them are sucking up CPU as indicated in your original post:
+http://marc.theaimsgroup.com/?l=linux-nfs&m=103905720718370&w=2
 
-> So the second test is
-> still 20 clients,
-> but each client is doing a read and write (to different files)?
+However, to check if a process is indeed in disk wait, running top will
+show you.  Under the stat column, instead of a R, you will see D
+indicating a process waiting on a disk command to return.
 
-Correct - as above.
+Sounds like a legitimate problem with the NFS server code, I'll also see
+if I can reproduce.
 
-Thanks,
-
-Jake
-
-
-
+-Dave
 
 
 -------------------------------------------------------
