@@ -1,31 +1,21 @@
-From: Vincent Roqueta <vincent.roqueta@ext.bull.net>
-Subject: Re: NFS blocked
-Date: Wed, 9 Feb 2005 12:12:03 +0100
-Message-ID: <200502091212.03935.vincent.roqueta@ext.bull.net>
-References: <4209E62D.5040203@zaide.org>
+From: Olivier Galibert <galibert@pobox.com>
+Subject: Re: Irix NFS server usual problem [patch, fc3 2.6.10-1,760_FC3]
+Date: Thu, 10 Feb 2005 13:48:32 +0100
+Message-ID: <20050210124832.GA23320@dspnet.fr.eu.org>
+References: <20050207221638.GA18723@dspnet.fr.eu.org> <1107816524.9970.8.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Cypff-0002pv-MS
-	for nfs@lists.sourceforge.net; Wed, 09 Feb 2005 03:06:11 -0800
-Received: from ecfrec.frec.bull.fr ([129.183.4.8])
+	id 1CzDkR-0003GX-RC
+	for nfs@lists.sourceforge.net; Thu, 10 Feb 2005 04:48:43 -0800
+Received: from dspnet.fr.eu.org ([62.73.5.179] ident=postfix)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1Cypfc-0006bR-9u
-	for nfs@lists.sourceforge.net; Wed, 09 Feb 2005 03:06:11 -0800
-Received: from localhost (localhost [127.0.0.1])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id EE56419D907
-	for <nfs@lists.sourceforge.net>; Wed,  9 Feb 2005 12:06:05 +0100 (CET)
-Received: from ecfrec.frec.bull.fr ([127.0.0.1])
- by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
- with ESMTP id 26570-01 for <nfs@lists.sourceforge.net>;
- Wed,  9 Feb 2005 12:06:03 +0100 (CET)
-Received: from ecn002.frec.bull.fr (ecn002.frec.bull.fr [129.183.4.6])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 5087E19D904
-	for <nfs@lists.sourceforge.net>; Wed,  9 Feb 2005 12:06:03 +0100 (CET)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <4209E62D.5040203@zaide.org>
+	id 1CzDkQ-0005sQ-O3
+	for nfs@lists.sourceforge.net; Thu, 10 Feb 2005 04:48:43 -0800
+To: "Hack inc." <linux-kernel@vger.kernel.org>
+In-Reply-To: <1107816524.9970.8.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,54 +29,203 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Le mercredi 9 F=E9vrier 2005 11:30, Damien "zaide" a =E9crit=A0:
-> I have a strange problem on my nfsv3 all work fine but when i try to cat
-> a file inside a mounted nfs partition who work with apache's session i
-> get this problem:
->
-> $ strace cat /web/tmp/sess_231f9a00283f90be0ddd9a19e583f492
-> execve("/bin/cat", ["cat",
-> "/web/tmp/sess_231f9a00283f90be0ddd9a19e583f492"], [/* 18 vars */]) =3D 0
-> ....
-> open("/web/tmp/sess_231f9a00283f90be0ddd9a19e583f492",
-> O_RDONLY|O_LARGEFILE) =3D 3
-> fstat64(3, {st_mode=3DS_IFREG|0600, st_size=3D13, ...}) =3D 0
-> read(3, "cmp|i:0;", 32768)         =3D 13
-> write(1, "cmp|i:0;", 13cmp|i:0;)           =3D 13
-> read(3, "", 32768)                      =3D 0
-> brk(0)                                  =3D 0x8073000
-> brk(0)                                  =3D 0x8073000
-> brk(0x8072000)                          =3D 0x8072000
-> brk(0)                                  =3D 0x8072000
-> close(3
->
-> and that all, it is blocked to the close() function.
->
-> my process:
-> test-cl   8678  0.0  0.0  1724  564 pts/4    S+   10:52   0:00 strace
-> cat /web/tmp/sess_231f9a00283f90be0ddd9a19e583f492
-> test-cl  19613  0.0  0.0  1824  432 pts/4    D+   10:52   0:00 cat
-> /web/tmp/sess_231f9a00283f90be0ddd9a19e583f492
->
-> my mounted partitions:
-> nfsserver:/data1/web/tmp on /web/tmp type nfs
-> (rw,noexec,nosuid,addr=3D172.16.8.100)
->
-> and in my log:
-> Feb  9 11:24:35 nfs-client kernel: lockd: server 172.16.8.100 not
-> responding, still trying
->
-> that all i have, so do you have any solutions, do you have allready seen
-> this?
+On Mon, Feb 07, 2005 at 05:48:44PM -0500, Trond Myklebust wrote:
+> Have you applied SGI's IRIX patches to your server (the one that makes
+> the cookies take 32-bit values)?
 
-Yes,  I am working on a similar problem
-
-=2D What is the kernel (uname -a) on the client? On the server ?=20
-=2D Are rpc.lockd and rpc.statd running
-=2D Can you do a tcpdump while the cat is blocked?
+Can't.  They're 6.4.  And in any case it's 31-bits values glibc is
+limited to, which is the problem with the sgis (they're 32-bits
+unsigned).
 
 
-Vincent=20
+> Alternatively, you can forward-port the old 2.4.x cookie hack to 2.6.x
+> (that should be fairly trivial to do). You can find the patch on
+> 
+> http://client.linux-nfs.org/Linux-2.4.x/2.4.26/linux-2.4.26-02-seekdir.dif
+
+Made a new version that's less hackish, with an irix32 mount flag to
+handle the case.  With that patch, a mount -o irix32 and -32bitclient
+on the sgi side everything works as it should.
+
+Specifically, what the irix32 flag does is:
+- convert the getdents64 d_off entries from unsigned 32 bits as the
+  nfs server sends them to signed 32 bits as glibc wants.  Side
+  effect, the directory filp->f_pos is signed 32bits too.  It does not
+  touch the cached nfs server replies which are pristine.
+
+- accept _llseek with negative positions and convert them back to
+  32-bits unsigned when needed
+
+Using a mount flag ensures no damage is done in mixed environments and
+also allows someday glibc to handle 64-bits cookies correctly.
+
+If the patch looks like it's going to be accepted, I'll send the
+(trivial) mount changes to whoever the util-linux maintainer is.  And
+does someone happens to know who maintains the mount/nfs options man
+page?
+
+It may fuzz a little, fc3 has a minor patch in another part of dir.c.
+
+  OG.
+
+Signed-off-by: Olivier Galibert <galibert@pobox.com>
+
+ fs/nfs/dir.c              |   53 +++++++++++++++++++++++++++++++++++++++++-----
+ fs/nfs/inode.c            |    1 
+ include/linux/nfs_mount.h |    3 +-
+ 3 files changed, 51 insertions(+), 6 deletions(-)
+
+--- ../save/kernel-2.6.10/linux-2.6.10/fs/nfs/dir.c	2005-02-08 13:49:13.000000000 +0100
++++ linux-2.6.10/fs/nfs/dir.c	2005-02-08 22:27:35.000000000 +0100
+@@ -31,6 +31,7 @@
+ #include <linux/pagemap.h>
+ #include <linux/smp_lock.h>
+ #include <linux/namei.h>
++#include <linux/mount.h>
+ 
+ #include "delegation.h"
+ 
+@@ -38,6 +39,7 @@
+ /* #define NFS_DEBUG_VERBOSE 1 */
+ 
+ static int nfs_opendir(struct inode *, struct file *);
++static loff_t nfs_dir_llseek(struct file *, loff_t, int);
+ static int nfs_readdir(struct file *, void *, filldir_t);
+ static struct dentry *nfs_lookup(struct inode *, struct dentry *, struct nameidata *);
+ static int nfs_cached_lookup(struct inode *, struct dentry *,
+@@ -54,6 +56,7 @@
+ static int nfs_fsync_dir(struct file *, struct dentry *, int);
+ 
+ struct file_operations nfs_dir_operations = {
++	.llseek		= nfs_dir_llseek,
+ 	.read		= generic_read_dir,
+ 	.readdir	= nfs_readdir,
+ 	.open		= nfs_opendir,
+@@ -96,6 +99,7 @@
+ 
+ #endif /* CONFIG_NFS_V4 */
+ 
++
+ /*
+  * Open file
+  */
+@@ -112,6 +116,33 @@
+ 	return res;
+ }
+ 
++
++/*
++ * Allow seeking to negative positions in the irix32 case
++ */
++static loff_t nfs_dir_llseek(struct file *file, loff_t offset, int origin)
++{
++	switch (origin) {
++		case 1:
++			if (offset == 0) {
++				offset = file->f_pos;
++				break;
++			}
++		case 2:
++			return -EINVAL;
++	}
++
++	if (offset < 0 && !(NFS_SB(file->f_vfsmnt->mnt_sb)->flags & NFS_MOUNT_IRIX32))
++		return -EINVAL;
++
++	if (offset != file->f_pos) {
++		file->f_pos = offset;
++		file->f_version = 0;
++	}
++	return (offset <= 0) ? 0 : offset;
++}
++
++
+ typedef u32 * (*decode_dirent_t)(u32 *, struct nfs_entry *, int);
+ typedef struct {
+ 	struct file	*file;
+@@ -324,7 +355,7 @@
+ 	unsigned long	fileid;
+ 	int		loop_count = 0,
+ 			res;
+-
++	int		irix32 = NFS_SB(file->f_vfsmnt->mnt_sb)->flags & NFS_MOUNT_IRIX32;
+ 	dfprintk(VFS, "NFS: nfs_do_filldir() filling starting @ cookie %Lu\n", (long long)desc->target);
+ 
+ 	for(;;) {
+@@ -337,11 +368,19 @@
+ 		if (desc->plus && (entry->fattr->valid & NFS_ATTR_FATTR))
+ 			d_type = nfs_type_to_d_type(entry->fattr->type);
+ 
+-		res = filldir(dirent, entry->name, entry->len, 
+-			      entry->prev_cookie, fileid, d_type);
++		if (!irix32)
++			res = filldir(dirent, entry->name, entry->len, 
++				      entry->prev_cookie, fileid, d_type);
++		else
++			res = filldir(dirent, entry->name, entry->len, 
++				      (s32)entry->prev_cookie, fileid, d_type);
+ 		if (res < 0)
+ 			break;
+-		file->f_pos = desc->target = entry->cookie;
++		desc->target = entry->cookie;
++		if (!irix32)
++			file->f_pos = entry->cookie;
++		else
++			file->f_pos = (s32)entry->cookie;
+ 		if (dir_decode(desc) != 0) {
+ 			desc->page_index ++;
+ 			break;
+@@ -429,6 +468,7 @@
+ 	struct nfs_fh	 fh;
+ 	struct nfs_fattr fattr;
+ 	long		res;
++	int		irix32 = NFS_SB(filp->f_vfsmnt->mnt_sb)->flags & NFS_MOUNT_IRIX32;
+ 
+ 	lock_kernel();
+ 
+@@ -447,7 +487,10 @@
+ 	memset(desc, 0, sizeof(*desc));
+ 
+ 	desc->file = filp;
+-	desc->target = filp->f_pos;
++	if (!irix32)
++		desc->target = filp->f_pos;
++	else
++		desc->target = (u32)filp->f_pos;
+ 	desc->decode = NFS_PROTO(inode)->decode_dirent;
+ 	desc->plus = NFS_USE_READDIRPLUS(inode);
+ 
+diff -ru ../save/kernel-2.6.10/linux-2.6.10/fs/nfs/inode.c linux-2.6.10/fs/nfs/inode.c
+--- ../save/kernel-2.6.10/linux-2.6.10/fs/nfs/inode.c	2004-12-24 22:35:24.000000000 +0100
++++ linux-2.6.10/fs/nfs/inode.c	2005-02-08 17:55:30.000000000 +0100
+@@ -524,6 +524,7 @@
+ 		{ NFS_MOUNT_NOAC, ",noac", "" },
+ 		{ NFS_MOUNT_NONLM, ",nolock", ",lock" },
+ 		{ NFS_MOUNT_BROKEN_SUID, ",broken_suid", "" },
++		{ NFS_MOUNT_IRIX32, ",irix32", "" },
+ 		{ 0, NULL, NULL }
+ 	};
+ 	struct proc_nfs_info *nfs_infop;
+diff -ru ../save/kernel-2.6.10/linux-2.6.10/include/linux/nfs_mount.h linux-2.6.10/include/linux/nfs_mount.h
+--- ../save/kernel-2.6.10/linux-2.6.10/include/linux/nfs_mount.h	2004-12-24 22:33:49.000000000 +0100
++++ linux-2.6.10/include/linux/nfs_mount.h	2005-02-08 17:54:22.000000000 +0100
+@@ -20,7 +20,7 @@
+  * mount-to-kernel version compatibility.  Some of these aren't used yet
+  * but here they are anyway.
+  */
+-#define NFS_MOUNT_VERSION	6
++#define NFS_MOUNT_VERSION	7
+ #define NFS_MAX_CONTEXT_LEN	256
+ 
+ struct nfs_mount_data {
+@@ -60,6 +60,7 @@
+ #define NFS_MOUNT_BROKEN_SUID	0x0400	/* 4 */
+ #define NFS_MOUNT_STRICTLOCK	0x1000	/* reserved for NFSv4 */
+ #define NFS_MOUNT_SECFLAVOUR	0x2000	/* 5 */
++#define NFS_MOUNT_IRIX32	0x4000	/* 7 */
+ #define NFS_MOUNT_FLAGMASK	0xFFFF
+ 
+ #endif
 
 
 -------------------------------------------------------
