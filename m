@@ -1,18 +1,19 @@
-From: Jonathan Woithe <jwoithe@mercury.physics.adelaide.edu.au>
-Subject: NFS lockd oops under 2.4.18
-Date: Mon, 24 Jun 2002 16:23:51 +0930 (CST)
+From: Chuck Lever <cel@monkey.org>
+Subject: Re: [PATCH] 2.4.19-pre10 RPC changes...
+Date: Sat, 29 Jun 2002 14:53:37 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <afjgti$8nh$2@main.gmane.org>
+Message-ID: <Pine.BSO.4.44.0206291443140.8167-100000@naughty.monkey.org>
+References: <200206212140.34595.trond.myklebust@fys.uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: jwoithe@mercury.physics.adelaide.edu.au, nfs@lists.sourceforge.net,
-   linux-kernel@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [129.127.102.44] (helo=mercury.physics.adelaide.edu.au)
+Received: from vhost.monkey.org ([204.181.64.9] helo=naughty.monkey.org)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17OAk5-0000IR-00
-	for <nfs@lists.sourceforge.net>; Fri, 28 Jun 2002 22:25:54 -0700
-To: trond.myklebust@fys.uio.no
+	id 17ONMW-0003c1-00
+	for <nfs@lists.sourceforge.net>; Sat, 29 Jun 2002 11:54:24 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <200206212140.34595.trond.myklebust@fys.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,116 +26,64 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hi Trond and others
+hi trond-
 
-I would like to report an NFS oops on one of our machines, possibly
-involving lockd.  It is a stock Redhat 7.3 installation running 2.4.18-2 out
-of the box.  The machine is exporting user home directories for between 50
-to 100 unix clients.  The clients are a mix of Digital unix boxes (v4.0d or
-later) and various Linux versions (Redhat 6.1/7.1/7.2/7.3, Slackware 8.0).
+i'm able to deadlock my dual 1.26GHz P-III with just these patches applied
+to a naked 2.4.19-pre10 kernel:
 
-Initially things work fine, but after some time (or perhaps after a certain
-number of connections and/or NFS operations) the following oops occurs:
+linux-2.4.19-00-fix_refresh.dif
+linux-2.4.19-01-fix_kmap1.dif
+linux-2.4.19-02-fix_kmap2.dif
+linux-2.4.19-03-fix_kmap3.dif
 
-Jun 24 15:22:02 mercury kernel: Unable to handle kernel paging request at virtual address 938e38a4
-Jun 24 15:22:02 mercury kernel:  printing eip:
-Jun 24 15:22:02 mercury kernel: d8911bf2
-Jun 24 15:22:02 mercury kernel: *pde = 00000000
-Jun 24 15:22:02 mercury kernel: Oops: 0002
-Jun 24 15:22:02 mercury kernel: via82cxxx_audio uart401 ac97_codec sound soundcore binfmt_misc autofs nfs nfsd
-Jun 24 15:22:02 mercury kernel: CPU:    0
-Jun 24 15:22:02 mercury kernel: EIP:    0010:[<d8911bf2>]    Not tainted
-Jun 24 15:22:02 mercury kernel: EFLAGS: 00010212
-Jun 24 15:22:02 mercury kernel: 
-Jun 24 15:22:02 mercury kernel: EIP is at xdr_encode_netobj_R29c6f164 [sunrpc] 0x12 (2.4.18-3)
-Jun 24 15:22:02 mercury kernel: eax: 306db20d   ebx: d4e8306c   ecx: d1d77070   edx: d4e83064
-Jun 24 15:22:02 mercury kernel: esi: d4e83008   edi: d4e83008   ebp: d1d77070   esp: d790fda8
-Jun 24 15:22:02 mercury kernel: ds: 0018   es: 0018   ss: 0018
-Jun 24 15:22:02 mercury kernel: Process lockd (pid: 667, stackpage=d790f000)
-Jun 24 15:22:02 mercury kernel: Stack: d4e83008 d4e83008 d8922f7b d1d77070 d4e83064 d1d7701c c6a740c0 d4e8306c 
-Jun 24 15:22:02 mercury kernel:        c6a740c0 d8923920 c6a74cc0 d890e879 c89d805c c4fc2280 d8923920 c6a74cc0 
-Jun 24 15:22:02 mercury kernel:        d8923934 d1d7705c d4e83008 c89d805c d89098e0 c89d805c d1d7705c d4e83008 
-Jun 24 15:22:02 mercury kernel: Call Trace: [<d8922f7b>] nlm4_encode_testres [lockd] 0x8b 
-Jun 24 15:22:02 mercury kernel: [<d8923920>] nlm4clt_encode_testres [lockd] 0x0 
-Jun 24 15:22:02 mercury kernel: [<d890e879>] rpcauth_marshcred [sunrpc] 0x49 
-Jun 24 15:22:02 mercury kernel: [<d8923920>] nlm4clt_encode_testres [lockd] 0x0 
-Jun 24 15:22:02 mercury kernel: [<d8923934>] nlm4clt_encode_testres [lockd] 0x14 
-Jun 24 15:22:02 mercury kernel: [<d89098e0>] call_encode [sunrpc] 0xd0 
-Jun 24 15:22:02 mercury kernel: [<d890cf79>] __rpc_execute [sunrpc] 0xa9 
-Jun 24 15:22:02 mercury kernel: [<d8909566>] rpc_call_setup_R0816cf16 [sunrpc] 0x46 
-Jun 24 15:22:02 mercury kernel: [<d89094f7>] rpc_call_async_Rf292dde9 [sunrpc] 0x77 
-Jun 24 15:22:02 mercury kernel: [<d891db9a>] nlmsvc_async_call [lockd] 0x7a 
-Jun 24 15:22:02 mercury kernel: [<d8924330>] nlm4svc_callback_exit [lockd] 0x0 
-Jun 24 15:22:02 mercury kernel: [<d8924303>] nlm4svc_callback [lockd] 0x73 
-Jun 24 15:22:02 mercury kernel: [<d8924330>] nlm4svc_callback_exit [lockd] 0x0 
-Jun 24 15:22:02 mercury kernel: [<d8923e44>] nlm4svc_proc_test_msg [lockd] 0x44 
-Jun 24 15:22:02 mercury kernel: [<c014a5c1>] posix_lock_file [kernel] 0x551 
-Jun 24 15:22:02 mercury kernel: [<c014a5c1>] posix_lock_file [kernel] 0x551 
-Jun 24 15:22:02 mercury kernel: [<c01c86ac>] skb_checksum [kernel] 0x4c 
-Jun 24 15:22:02 mercury kernel: [<d8922ca7>] nlm4_decode_lock [lockd] 0x47 
-Jun 24 15:22:02 mercury kernel: [<d8922cbc>] nlm4_decode_lock [lockd] 0x5c 
-Jun 24 15:22:02 mercury kernel: [<d892318f>] nlm4svc_decode_testargs [lockd] 0x2f 
-Jun 24 15:22:02 mercury kernel: [<d892a494>] nlmsvc_procedures4 [lockd] 0xc0 
-Jun 24 15:22:02 mercury kernel: [<d890f606>] svc_process_Re3483a09 [sunrpc] 0x2c6 
-Jun 24 15:22:02 mercury kernel: [<d8929bc0>] nlmsvc_version4 [lockd] 0x0 
-Jun 24 15:22:02 mercury kernel: [<d8929be4>] nlmsvc_program [lockd] 0x0 
-Jun 24 15:22:02 mercury kernel: [<d891eccd>] lockd [lockd] 0x19d 
-Jun 24 15:22:02 mercury kernel: [<c0107136>] kernel_thread [kernel] 0x26 
-Jun 24 15:22:02 mercury kernel: [<d891eb30>] lockd [lockd] 0x0 
-Jun 24 15:22:02 mercury kernel: 
-Jun 24 15:22:02 mercury kernel: 
-Jun 24 15:22:02 mercury kernel: Code: c7 04 81 00 00 00 00 8b 4c 24 0c 83 44 24 0c 04 8b 02 0f c8 
+i'm running "make -j2 bzImage" with other minor activity in the same file
+system (editing files, building small packages).  the file system is
+stored on a NetApp filer.
 
-The output from lsmod is:
+i was using 19-pre8-NFSALL on other slower systems without trouble, but
+i think 19-pre8-NFSALL may have had some trouble on this system too.
+pre8, pre9, and pre10 work without problem on this system.  fix_refresh
+alone appeared to work OK on this system.
 
-Module                  Size  Used by    Not tainted
-via82cxxx_audio        20480   0 (autoclean)
-uart401                 7936   0 (autoclean) [via82cxxx_audio]
-ac97_codec             11936   0 (autoclean) [via82cxxx_audio]
-sound                  71916   0 (autoclean) [via82cxxx_audio uart401]
-soundcore               6692   4 (autoclean) [via82cxxx_audio sound]
-binfmt_misc             7556   1
-autofs                 12132   1 (autoclean)
-nfs                    86172   3 (autoclean)
-nfsd                   76192   8 (autoclean)
-lockd                  56768   1 (autoclean) [nfs nfsd]
-sunrpc                 75764   1 (autoclean) [nfs nfsd lockd]
-dmfe                   15420   1
-ide-cd                 30272   0 (autoclean)
-cdrom                  32224   0 (autoclean) [ide-cd]
-st                     29140   0 (unused)
-usb-uhci               24452   0 (unused)
-usbcore                73216   1 [usb-uhci]
-qlogicisp              44512   0 (unused)
-sd_mod                 12864   0 (unused)
-scsi_mod              108576   3 [st qlogicisp sd_mod]
+On Fri, 21 Jun 2002, Trond Myklebust wrote:
 
-A few weeks ago there was a similar report on linux-kernel which used xfs as
-the filesystem.  We are not using xfs - just ext2.
+>
+> Hi,
+>
+> I've put up the full set of RPC changes that I'd like to push into 2.4.20 in
+>
+>   http://www.fys.uio.no/~trondmy/src/2.4.19-pre10/linux-2.4.19-RPC_ALL.dif
+>
+> The full set of partial patches can be found in the same directory.
+>
+> Patches contain
+>
+>   1) Full set of 2.5.x kmap() changes for avoiding highmem deadlocks.
+>
+>   2) RTT (round trip timing) estimation for improving the UDP timeout + resend
+> mechanism. Algorithm is the standard one as described in the Van Jacobson
+> paper (see http://www-nrg.ee.lbl.gov/papers/congavoid.pdf)
+>
+>   3) Slow start + congestion avoidance algorithms for UDP. Again see the Van
+> Jacobson paper.
+>
+>   4) A couple of minor cleanups.
+>
+> In particular, it would be nice if people could test out the RTT + congestion
+> avoidance. Although it is probably not a cure for all of our UDP problems, I
+> would expect performance to improve on most platforms. In particular, I'd
+> very much encourage those people who reported a performance slowdown with the
+> previous NFS_ALL patch to test this out.
+>
+> Cheers,
+>    Trond
+>
 
-The oops appears to crash lockd (it doesn't appear in the process table
-after the oops has occured) and all nfsd processes are locked in the D state
-indefinitely.  The machine needs to be rebooted to restore operation.  It
-goes without saying that in this state, all clients hang up until the server
-has been rebooted.
+	- Chuck Lever
+--
+corporate:	<cel@netapp.com>
+personal:	<chucklever@bigfoot.com>
 
-If you have any further questions I'm happy to attempt to answer them.  This
-was going to be our new production server, but until this problem is
-rectified we're going to have to fall back to our original DEC - we can't
-afford to have 100 people unable to work for days on end.
-
-Please CC me any replies since I do not subscribe to either list (nfs or
-linux-kernel).
-
-Best regards
-  jonathan
--- 
-* Jonathan Woithe    jwoithe@physics.adelaide.edu.au                        *
-*                    http://www.physics.adelaide.edu.au/~jwoithe            *
-***-----------------------------------------------------------------------***
-** "Time is an illusion; lunchtime doubly so"                              **
-*  "...you wouldn't recognize a subtle plan if it painted itself purple and *
-*   danced naked on a harpsichord singing 'subtle plans are here again'"    *
 
 
 -------------------------------------------------------
