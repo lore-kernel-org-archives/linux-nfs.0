@@ -1,18 +1,21 @@
-From: David Dougall <davidd@et.byu.edu>
-Subject: Performance tuning
-Date: Wed, 10 Jul 2002 09:15:49 -0600 (MDT)
+From: Matt Bernstein <mb/nfs@dcs.qmul.ac.uk>
+Subject: bind mounts and rpc quotas: horrible interactions
+Date: Wed, 10 Jul 2002 17:43:00 +0100 (BST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.33.0207100905100.27879-100000@lewis.et.byu.edu>
+Message-ID: <Pine.LNX.4.44.0207101732140.18902-100000@nick.dcs.qmul.ac.uk>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from email1.byu.edu ([128.187.22.133])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17SJCI-0004N6-00
-	for <nfs@lists.sourceforge.net>; Wed, 10 Jul 2002 08:16:06 -0700
-Received: from lewis ([128.187.112.50]) by EMAIL1.BYU.EDU (PMDF V6.1-1 #30538)
- with ESMTP id <01KJXAP9UC1U8Y5LXU@EMAIL1.BYU.EDU> for
- nfs@lists.sourceforge.net; Wed, 10 Jul 2002 09:15:50 -0600 (MDT)
+Received: from nick.dcs.qmul.ac.uk ([138.37.88.61])
+	by usw-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17SKYR-0008JJ-00
+	for <nfs@lists.sourceforge.net>; Wed, 10 Jul 2002 09:43:04 -0700
+Received: from nick.dcs.qmul.ac.uk ([138.37.88.61])
+	by nick.dcs.qmul.ac.uk with asmtp (TLSv1:EDH-RSA-DES-CBC3-SHA:168)
+	(Exim 4.05)
+	id 17SKYO-0000Va-00
+	for nfs@lists.sourceforge.net; Wed, 10 Jul 2002 17:43:00 +0100
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -26,26 +29,26 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Looking through the nfs-howto chapter 5 "Optimizing NFS Performance", I
-found a few ambiguous statements and was wondering if I could get some
-clarification.
-There is a suggestion to increase rmem_default and rmem_max in
-/proc/sys/net/core to "at least 256k".  What is the limit on that?  If I
-have a server withs gobs of memory, how high can I increase that to still
-get performance improvements.  Are there some statistics I can use to
-measure if increases in this are helping.  Also, should I also increase
-wmem_default and wmem_max.  It makes no mention of that in the howto.
+Hi,
 
-With respect to Overflow of fragmented packets, it mentions the 2.2
-kernel, but never mentions the 2.4.  Is it the same?  If so, it might be
-nice to clear that up in the howto.  It also states that there is no ideal
-value for this.  Any suggestions for specific traffic patterns?
+I've only just noticed after upgrading our Debian potato server to woody
+(some weeks ago) all rpc quotas are not working properly.
 
-Thanks
---David Dougall
+Our home directories are /homes/$LOGNAME where /homes is an autofs (yp)
+mount. On client machines this is an NFS mount. On the server under potato
+/homes contained a load of symlinks to /exportxx/users/$LOGNAME where xx
+is some value. Under woody this is a bind mount. Fair enough, I think.
 
+Client machines cannot see the quota information unless users (in their
+home directory) do a "ln -s /exportxx/aquota.user". At this point they can
+now interrogate their quota information--but it's not updated when they do
+i/o to their home files. All of this seems wrong and horrible!
 
+Does this even make sense to anyone? Downgrading is awkward..
 
+Any help very gratefully received,
+
+Matt
 
 
 
