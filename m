@@ -1,24 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS changement between 2.6.9 and 2.6.10?
-Date: Wed, 26 Jan 2005 11:50:53 -0800
-Message-ID: <1106769053.15132.29.camel@lade.trondhjem.org>
-References: <41F77473.70501@zaide.org>
-	 <1106768614.15132.27.camel@lade.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain
+From: Nathan Ollerenshaw <nathan@valuecommerce.co.jp>
+Subject: Re: Help diagnosing bizarre NFS problem
+Date: Thu, 27 Jan 2005 11:25:13 +0900
+Message-ID: <ACEF13F1-700A-11D9-89EE-000A95A07AB8@valuecommerce.co.jp>
+References: <BA594DD2-65DA-11D9-B0EB-000A95A07AB8@valuecommerce.co.jp> <731336CA-6DE6-11D9-8B4D-000A95A07AB8@valuecommerce.co.jp> <Pine.LNX.4.58.0501241116080.23996@lewis.et.byu.edu>
+Mime-Version: 1.0 (Apple Message framework v619)
+Content-Type: text/plain; charset=US-ASCII; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CttCG-0007VV-MK
-	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 11:51:24 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 1CtzLT-0001UN-Jg
+	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 18:25:19 -0800
+Received: from f8a01-0447.din.or.jp
+	([61.122.67.147] helo=elmo.stupendous.net ident=nobody)
 	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1CttCF-0007k1-3Z
-	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 11:51:24 -0800
-To: "Damien \"Zaide\"" <list@zaide.org>
-In-Reply-To: <1106768614.15132.27.camel@lade.trondhjem.org>
+	id 1CtzLR-0006eR-3d
+	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 18:25:19 -0800
+In-Reply-To: <Pine.LNX.4.58.0501241116080.23996@lewis.et.byu.edu>
+To: David Dougall <davidd@et.byu.edu>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,30 +32,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-on den 26.01.2005 Klokka 11:43 (-0800) skreiv Trond Myklebust:
-> on den 26.01.2005 Klokka 11:44 (+0100) skreiv Damien "Zaide":
-> > hi,
-> > I have a nfsV3 server running linux 2.6.9, all is good when I "ls -alR" 
-> > my nfs exported directory on my client after I chroot() in this 
-> > directory and ls -alR too that well.
-> > But when i update my server to linux 2.6.10 and "ls -alR" my nfs 
-> > directory is allways good but when I chroot() inside, my chroot command 
-> > is locked and I can't ls my nfs directory.
-> > I have launch a sniffer and the packet seams to be send.
-> > Do you have any informations about this? a changement beetwen 2.6.9 and 
-> > 2.6.10? a patch? a bug?
-> 
-> I don't see how an NFS change could do this. The VFS is the part of the
-> kernel that handles the actual details of chroot. NFS neither knows nor
-> cares.
+On Jan 25, 2005, at 3:17 AM, David Dougall wrote:
 
-The other thing is that there were no NFS client changes that went in
-between 2.6.9 and 2.6.10. 8-)
+> In that past when I get that error message and dropping the rsize/wsize
+> fixes it, it is directly related to a network problem.
+> buggy network driver
+> speed mismatch between client/server(tcp solves this usually)
+> flaky wiring/switch/etc
+> --David Dougall
 
-Cheers,
-  Trond
+That was my first guess too, but I checked the switches and the 
+clients; autoneg is working fine and there are no errors on any of the 
+interfaces on the switches or the client machines.
+
+The vendor is saying they think they have found the problem. I don't 
+know yet, I won't believe it until I see the patch ;)
+
+Nathan.
+
 -- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
+"It is change, continuing change, inevitable change, that is
+  the dominant factor in society today. No sensible decision can
+  be made any longer without taking into account not only the
+  world as it is, but the world as it will be." - Isaac Asimov
 
 
 
