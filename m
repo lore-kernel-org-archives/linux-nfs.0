@@ -1,23 +1,24 @@
-From: Miquel van Smoorenburg <miquels@cistron.nl>
-Subject: off_t in nfsd_commit needs to be loff_t
-Date: Mon, 2 Feb 2004 13:02:18 +0100
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: statd simplified
+Date: Tue, 3 Feb 2004 11:17:33 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040202120217.GA9380@cistron.nl>
+Message-ID: <20040203101733.GB26315@suse.de>
+References: <20040202140851.GH3145@suse.de> <401E8F6B.5040400@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=iso-8859-15
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ancmb-0007er-HB
-	for nfs@lists.sourceforge.net; Mon, 02 Feb 2004 04:02:29 -0800
-Received: from 10fwd.cistron-office.nl
-	([62.216.29.197] helo=smtp.cistron-office.nl ident=mail)
+	id 1Anxho-0006oa-VT
+	for nfs@lists.sourceforge.net; Tue, 03 Feb 2004 02:22:56 -0800
+Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
 	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.30)
-	id 1Ancma-0003f3-Rx
-	for nfs@lists.sourceforge.net; Mon, 02 Feb 2004 04:02:29 -0800
-To: Neil Brown <neilb@cse.unsw.edu.au>
+	id 1Anxho-0000uz-HB
+	for nfs@lists.sourceforge.net; Tue, 03 Feb 2004 02:22:56 -0800
+To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: <401E8F6B.5040400@RedHat.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,69 +31,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-While I was stress-testing NFS/XFS on 2.6.1/2.6.2-rc, I found that
-sometimes my "dd" would exit with:
+Hi,
 
-	#  dd if=/dev/zero bs=4096 > /mnt/file
-	dd: writing `standard output': Invalid argument
-	1100753+0 records in
-	1100752+0 records out
+On Mon, Feb 02, 2004 at 12:56:59PM -0500, Steve Dickson wrote:
+> Letting /var/lib/nfs/sm grow uncontrollably (i.e. not using SM_UNMON to
+> clean it up) may not be a good idea... Since users can't go in and clean 
+> in up by hand
+> (since they could be removing live state), there probably should be some
+> way to cleaned up (and up to date)
 
-After adding some debug printk's to the server and client code
-and some tcpdump-ing, I found that the NFSERR_INVAL was returned by
-nfsd_commit on the server.
+Okay, I could add that. Calling unlink from kernel space is a bit of
+a nuisance, but I'll try :)
 
-Turns out that the "offset" argument is off_t instead of loff_t.
-It isn't used at all (unfortunately), but it _is_ checked for
-sanity, so that's where the error came from.
+> Currently when statd can not open the state file (in change_state()),  
+> it dies
+> which in turn causes lock requests to fail because that can't be monitored.
+> In your kernel implementation, this failure seems to be ignored.  Since
+> the failure would probably do to the sm directory not existing,  which
+> also means state file will not able to be created,  it might make sense
+> to fail the loading of lockd when this happens.
 
-Here's the fix: nfsd_commit-loff_t.patch
+Agreed. Kernel statd just reads the file, however, it doesn't update
+the state. That's done by rpc.statd -N.
 
-Should go into the next -rc, I guess.
+I'll submit an updated patch later today or tomorrow.
 
-diff -ruN -X /home/staff/miquels/diff-exclude linux-2.6.2-rc2.orig/include/linux/nfsd/nfsd.h linux-2.6.2-rc2/include/linux/nfsd/nfsd.h
---- linux-2.6.2-rc2.orig/include/linux/nfsd/nfsd.h	2004-01-09 08:00:04.000000000 +0100
-+++ linux-2.6.2-rc2/include/linux/nfsd/nfsd.h	2004-02-02 12:27:31.000000000 +0100
-@@ -86,7 +86,7 @@
- 				struct svc_fh *res, int createmode,
- 				u32 *verifier, int *truncp);
- int		nfsd_commit(struct svc_rqst *, struct svc_fh *,
--				off_t, unsigned long);
-+				loff_t, unsigned long);
- #endif /* CONFIG_NFSD_V3 */
- int		nfsd_open(struct svc_rqst *, struct svc_fh *, int,
- 				int, struct file *);
-diff -ruN -X /home/staff/miquels/diff-exclude linux-2.6.2-rc2.orig/fs/nfsd/nfs3proc.c linux-2.6.2-rc2/fs/nfsd/nfs3proc.c
---- linux-2.6.2-rc2.orig/fs/nfsd/nfs3proc.c	2004-01-09 07:59:26.000000000 +0100
-+++ linux-2.6.2-rc2/fs/nfsd/nfs3proc.c	2004-02-02 12:49:20.000000000 +0100
-@@ -595,10 +595,10 @@
- {
- 	int	nfserr;
- 
--	dprintk("nfsd: COMMIT(3)   %s %d@%ld\n",
-+	dprintk("nfsd: COMMIT(3)   %s %u@%Lu\n",
- 				SVCFH_fmt(&argp->fh),
- 				argp->count,
--				(unsigned long) argp->offset);
-+				(unsigned long long) argp->offset);
- 
- 	if (argp->offset > NFS_OFFSET_MAX)
- 		RETURN_STATUS(nfserr_inval);
-diff -ruN -X /home/staff/miquels/diff-exclude linux-2.6.2-rc2.orig/fs/nfsd/vfs.c linux-2.6.2-rc2/fs/nfsd/vfs.c
---- linux-2.6.2-rc2.orig/fs/nfsd/vfs.c	2004-02-01 12:12:04.000000000 +0100
-+++ linux-2.6.2-rc2/fs/nfsd/vfs.c	2004-02-02 12:48:38.000000000 +0100
-@@ -823,7 +823,7 @@
-  */
- int
- nfsd_commit(struct svc_rqst *rqstp, struct svc_fh *fhp,
--               off_t offset, unsigned long count)
-+               loff_t offset, unsigned long count)
- {
- 	struct file	file;
- 	int		err;
-
-
-Mike.
+Olaf
+-- 
+Olaf Kirch     |  Stop wasting entropy - start using predictable
+okir@suse.de   |  tempfile names today!
+---------------+ 
 
 
 -------------------------------------------------------
