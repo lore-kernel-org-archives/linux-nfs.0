@@ -1,19 +1,22 @@
-From: "H. J. Lu" <hjl@lucon.org>
-Subject: Re: Must statd be running before nfs client makes mounts?
-Date: Mon, 16 Sep 2002 07:12:59 -0700
+From: David Dougall <davidd@et.byu.edu>
+Subject: exportfs error
+Date: Mon, 16 Sep 2002 09:22:02 -0600 (MDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020916071259.B1149@lucon.org>
-References: <20020915225226.GI11002@perlsupport.com> <15749.5917.443602.600792@notabene.cse.unsw.edu.au> <20020915164956.A21841@lucon.org> <15749.7947.298657.940521@notabene.cse.unsw.edu.au>
+Message-ID: <Pine.LNX.4.33.0209160911220.5894-100000@lewis.et.byu.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Chip Salzenberg <chip@pobox.com>, nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from rwcrmhc52.attbi.com ([216.148.227.88])
+Received: from postal2.et.byu.edu ([128.187.122.132])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17qwcd-0008JZ-00
-	for <nfs@lists.sourceforge.net>; Mon, 16 Sep 2002 07:13:07 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <15749.7947.298657.940521@notabene.cse.unsw.edu.au>; from neilb@cse.unsw.edu.au on Mon, Sep 16, 2002 at 10:00:11AM +1000
+	id 17qxhM-0002zJ-00
+	for <nfs@lists.sourceforge.net>; Mon, 16 Sep 2002 08:22:04 -0700
+Received: (from root@localhost)
+	by postal2.et.byu.edu (8.9.3 (PHNE_25184)/8.9.3) id JAA01386
+	for nfs@lists.sourceforge.net; Mon, 16 Sep 2002 09:22:12 -0600 (MDT)
+Received: from lewis (lewis.et.byu.edu [128.187.112.50])
+	by postal2.et.byu.edu (8.9.3 (PHNE_25184)/8.9.3) with ESMTP id JAA01298
+	for <nfs@lists.sourceforge.net>; Mon, 16 Sep 2002 09:22:11 -0600 (MDT)
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,39 +29,24 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, Sep 16, 2002 at 10:00:11AM +1000, Neil Brown wrote:
-> On Sunday September 15, hjl@lucon.org wrote:
-> > On Mon, Sep 16, 2002 at 09:26:21AM +1000, Neil Brown wrote:
-> > > 
-> > >   (start devices, raid, etc)
-> > >  1/ mount local filesystems
-> > >   (start network, bind, portmap)
-> > 
-> > I am thinking to write a kernel patch to set nlm_udpport and
-> > nlm_tcpport. The current scheme works only with module and /proc
-> > won't work with module. I'd like to be able to set ports used by
-> > lockd according to /etc/services. In my case, I have
-> > 
-> > nlockmgr        3003/tcp
-> > nlockmgr        3003/udp
-> > 
-> > But I have to hard code them in my kernel.
-> 
-> You shouldn't need to hard code them,  kernel parameters:
->    lockd.udpport=3003 lockd.tcpport=3003
-> should work fine (unless that is what you mean by hardcoding)
-
-It is still hardcoding since can't change it at runtime.
-
-> 
-> However I don't see a problem with doing this via a sysctl, quite
-> possibly a sysctl under /proc/sys/sunrpc/  (as it is an RPC service).
-> 
-
-Does it work with sunrpc as module?
+I have an NFS failover cluster.  The /var/lib/nfs directory is not shared,
+but it is synchronized at regular intervals.  When one server fails, the
+other server is supposed to pick up and continue the service.  Most of the
+time it works, but sometimes while the 2nd server is running exportfs, I
+get a list of:
+hostname:/grp2: Invalid argument
+The script detects an error and fails to start the nfs service correctly.
+Usually I am able to rerun the script by hand and it works just fine.  Is
+there something obvious here that I should look for before I delve into
+the code.  I am running 2.4.19-rc3 with SGI's XFS patches.  I am also
+running what I think is the most recent nfs-utils; version 1.0.1
+Thanks in advance for any help.
+--David Dougall
 
 
-H.J.
+______________________________________
+Inflex Virus Scanner - installed on mailserver for domain @et.byu.edu
+Queries to: postmaster@et.byu.edu
 
 
 -------------------------------------------------------
