@@ -1,95 +1,40 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: intent patches
-Date: Mon, 26 May 2003 00:31:46 +0200
-Sender: linux-fsdevel-owner@vger.kernel.org
-Message-ID: <16081.17490.889937.791357@charged.uio.no>
-References: <20030525074243.GF18405@localhost.localdomain>
-Reply-To: trond.myklebust@fys.uio.no
+From: =?ks_c_5601-1987?B?v8Agw7a5zg==?= <jsa6272985f@hotmail.com>
+Subject: =?ks_c_5601-1987?B?KLGksO0podq/3LG5wM7AzCDB98GiILnmua7Hz7+pIDE6MSC/tb7u?=
+ =?ks_c_5601-1987?B?yLjIrbGzwLAhIaHa?=
+Date: Sun, 25 May 2003 23:47:58 +0000
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <BAY2-F37Gr2FYRPtpKR000102b2@hotmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: viro@parcelfarce.linux.theplanet.co.uk,
-	Linux FSdevel <linux-fsdevel@vger.kernel.org>,
-	Linux Kernel <linux-kernel@vger.kernel.org>,
-	NFS maillist <nfs@lists.sourceforge.net>,
-	lustre-devel@lists.sf.net
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: Peter Braam <braam@clusterfs.com>
-In-Reply-To: <20030525074243.GF18405@localhost.localdomain>
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/html; charset=ks_c_5601-1987
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from bay2-f37.bay2.hotmail.com ([65.54.247.37] helo=hotmail.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19K5Df-0005XH-00
+	for <nfs@lists.sourceforge.net>; Sun, 25 May 2003 16:48:03 -0700
+To: nfs@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Peter Braam <braam@clusterfs.com> writes:
+<HTML><HEAD>
+</HEAD>
+<BODY><p align="center"><a href="http://www.g-study.co.kr/main/index.htm" target="_blank"><img src="http://www.gillajabi.net/gstd/mail/top.gif" border="0"></a><br><a href="http://www.g-study.co.kr/main/index.htm" target="_blank"><img src="http://www.gillajabi.net/gstd/mail/top2.gif" border="0"></a><br><A href="mailto:bjlim74@shinbiro.com"><img src="http://www.gillajabi.net/gstd/mail/top3.gif" border="0"></A></p>
+<p><img src="http://www.gillajabi.net/supercounter/count.cgi?hot"></p></BODY><br clear=all><hr>확인하자   <a href="http://g.msn.com/8HMEKOKR/2740??PS=">오늘의 운세 </a> 무료 사주, 궁합, 작명, 전생 가이드 </html>
 
-     > We _do_ have resources to sort it all out very agressively in
-     > the next few weeks.
 
-Good. Let's do that...
-
-     > We currently use intents for two methods:
-     > - getattr
-     > - open
-     > For other methods, we would like the intents also, but they did
-     > not solve all our woes.  We may have overlooked one or two,
-     > like permission.
-
-Permission provides a pretty major source of optimization as far as
-NFS is concerned: we can ignore it for all operations *except* open(),
-and cached lookup().
-
-     > We introduced lookup2 and d_revalidate2 to avoid changing all
-     > file systems and in 2.5 we give them a namei data parameter.
-
-Is this really desirable? It makes maintenance easy when you are
-making add-on patches for the kernel, but IMHO it otherwise just makes
-for a confusing interface.
-
-     > We would like to pass a pointer to nameidata to:
-
-     > - open (file method)
-     > - create directory (inode method)
-     > - lookup (inode method)
-     > - revalidate (dentry method)
-
-All those are good as far as I'm concerned.
-
-     > - revalidate (inode method)
-
-That's no longer in 2.5.x. Do you perhaps mean the new getattr()?
-
-     > and perhaps also to mkdir, rmdir, unlink, rename, mknod,
-     > setattr.
-
-setattr() may help for NFSv4 where we can do open(O_TRUNC) atomically
-on the server, and could optimize away the truncation.
-
-The other ops aren't really prime candidates for optimization,
-although we could possibly plonk the lookup+op into a single RPC call
-by means of the COMPOUND call (again NFSv4 only).
-
-     >   We have not done so yet, and can work aroud this by adding a
-     >   field
-     >      struct lookup_intent *d_it
-     > in a dentry. This is not elegant, and the protection of this
-     > field is delicate, but avoids large scale api changes.
-
-Hmmm...
-
-     > Trond changes all callers instead of adding lookup2 (better
-     > long term, very invasive for pre-2.6)
-
-We could mitigate the effects by making the nameidata field an
-optional one. Of course, that would make it harder to add support for
-credentials.
-
-     > he has vfsintent point to nameidata and inside "opendata" and
-     > we have the exact opposite...
-
-Swapping will fail to offend any deeply held religious beliefs of
-mine. No problems there...
-
-     > We do all methods.
-
-Yep. As you can see I've looked only at those methods that are known
-to have the largest impact w.r.t. the NFS client.
-
-Cheers,
-  Trond
+-------------------------------------------------------
+This SF.net email is sponsored by: ObjectStore.
+If flattening out C++ or Java code to make your application fit in a
+relational database is painful, don't do it! Check out ObjectStore.
+Now part of Progress Software. http://www.objectstore.net/sourceforge
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
