@@ -1,22 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [CHECKER] inconsistent NFS stat cache (NFS on ext3, 2.6.11)
-Date: Sun, 13 Mar 2005 10:18:30 -0500
-Message-ID: <1110727110.10684.21.camel@lade.trondhjem.org>
-References: <Pine.GSO.4.44.0503122300030.6817-100000@elaine24.Stanford.EDU>
+From: Pierre Ossman <drzeus-list@drzeus.cx>
+Subject: Re: Move (mv) hangs with NFSv4
+Date: Sun, 13 Mar 2005 17:36:37 +0100
+Message-ID: <42346C15.4080402@drzeus.cx>
+References: <41B0A79A.2010203@drzeus.cx> <1102097931.10878.21.camel@lade.trondhjem.org> <20041207155227.GG31250@fieldses.org> <41B61C89.2060000@drzeus.cx> <20041207211715.GQ31250@fieldses.org> <41B6E933.4090708@drzeus.cx> <41D84216.9060504@drzeus.cx> <20050312185119.GA1064@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net, mc@cs.Stanford.EDU
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: nfs@lists.sourceforge.net
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DAUri-0007jh-9B
-	for nfs@lists.sourceforge.net; Sun, 13 Mar 2005 07:18:50 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1DAW5F-0002Mf-6s
+	for nfs@lists.sourceforge.net; Sun, 13 Mar 2005 08:36:53 -0800
+Received: from a26.t1.student.liu.se
+	([130.236.221.26] helo=mail.drzeus.cx ident=daemon)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1DAUrg-0001Nx-Hd
-	for nfs@lists.sourceforge.net; Sun, 13 Mar 2005 07:18:50 -0800
-To: Junfeng Yang <yjf@stanford.edu>
-In-Reply-To: <Pine.GSO.4.44.0503122300030.6817-100000@elaine24.Stanford.EDU>
+	id 1DAW5B-0003oR-Hk
+	for nfs@lists.sourceforge.net; Sun, 13 Mar 2005 08:36:53 -0800
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20050312185119.GA1064@fieldses.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,37 +31,53 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-lau den 12.03.2005 Klokka 23:04 (-0800) skreiv Junfeng Yang:
-> > This is a known problem. Turn off the (default - grrr) subtree checking
-> > export option on the server, and it will all work properly. The subtree
-> > checking option violates the NFS standards for filehandle generation in
-> > so many ways, that it isn't even funny.
-> 
-> Hi Trond,
-> 
-> Turn off this option in /etc/exports does fix the inconsistency.  However
-> I looked throught the export man page and seems that subtree checking will
-> cause problems only in the following case: "accessing files that are
-> renamed while a client has them open".  My test case is *not* doing this.
-> It does renames but it never does so with a file opened.  Can you please
-> clarify?
+J. Bruce Fields wrote:
 
-The subtree checking option causes knfsd to store the inode number of
-the parent directory in the filehandle. Your case involves two hard
-links that resides in different directories, and so the filehandles are
-different.
-In theory, the client could use the fileid in order to decide that these
-2 filehandles point to the same file, but doing so will still fail to
-deal with the problem of renamed open files. It also adds a lot of
-complexity, since fileids have a lot of nasty properties (not least
-being the fact that they may be reused after the original file was
-deleted).
+>On Sun, Jan 02, 2005 at 07:48:54PM +0100, Pierre Ossman wrote:
+>  
+>
+>>>J. Bruce Fields wrote:
+>>>      
+>>>
+>>>>Thanks.  It's a problem with the idmapping on the server, argh.  Is
+>>>>rpc.idmapd still running after this, or does it die?--b.
+>>>>
+>>>>
+>>>>        
+>>>>
+>>>It's still running. The effect is only local to the mv process. Other 
+>>>traffic to the same mount continue to work perfectly.  There has been a 
+>>>few incidents where the entire mount hangs. But in these cases I have to 
+>>>restart the client, not the server.
+>>>
+>>>Can I get some debug output from idmapd that will pinpoint where the 
+>>>problem is?
+>>>
+>>>      
+>>>
+>>Any updates to this issue?
+>>    
+>>
+>
+>Sorry for the overly long delay on the response.  Cleaning out my inbox
+>prompted me to look back at this issue.  I did find one bug in the ACL
+>code which could cause a "mv" with the target on an NFSv4 partition to
+>fail.  Other than that I can't reproduce any problems with move.
+>
+>It's possible we've fixed something since the beginning of the year, or
+>it's possible something else is going on.  If you get the chance to
+>retest with our latest patches, let me know.
+>
+>--b.
+>  
+>
 
-Cheers,
-  Trond
--- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
+Ehm... where would these patches be located? I didn't see anything
+obvious on the web page for any recent kernel. Or perhaps you meant the
+lats nfs-utils? or both? =)
 
+Rgds
+Pierre
 
 
 -------------------------------------------------------
