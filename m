@@ -1,20 +1,19 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: how experimental is the seekdir patch
-Date: 03 May 2003 21:47:21 +0200
+From: Xose Vazquez Perez <xose@wanadoo.es>
+Subject: nfs over TCP stable?
+Date: Sun, 04 May 2003 00:39:35 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsy91n4xti.fsf@charged.uio.no>
-References: <6440EA1A6AA1D5118C6900902745938E07D55592@black.eng.netapp.com>
-	<20030503182436.GA1613@nyongwa.montreal.qc.ca>
+Message-ID: <3EB44527.6090005@wanadoo.es>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Lever, Charles" <Charles.Lever@netapp.com>,  nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
+Received: from smtp4.wanadoo.es ([62.37.236.138] helo=smtp.wanadoo.es)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19C2yy-0002g3-00
-	for <nfs@lists.sourceforge.net>; Sat, 03 May 2003 12:47:41 -0700
-To: "Steve M. Robbins" <steven.robbins@videotron.ca>
-In-Reply-To: <20030503182436.GA1613@nyongwa.montreal.qc.ca>
+	id 19C5fE-00016h-00
+	for <nfs@lists.sourceforge.net>; Sat, 03 May 2003 15:39:28 -0700
+Received: from wanadoo.es ([80.102.71.238])
+	by smtp.wanadoo.es (8.12.8/8.12.8) with ESMTP id h43MiawX028283
+	for <nfs@lists.sourceforge.net>; Sun, 4 May 2003 00:44:41 +0200
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,20 +26,21 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Steve M Robbins <steven.robbins@videotron.ca> writes:
+hi,
 
-     > Supposing the glibc got fixed.  Would the seekdir patch cause a
-     > problem?  Is there no way that a similar kernel patch could
-     > coexist with a fixed glibc?
+Red Hat 9-kernel 2.4.20-9 doesn't include nfs over TCP because they
+said that "it doesn't work good enough in our testing....."
+https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=88583
 
-That depends entirely on how glibc were to be fixed. If they simply
-decided to make readdir cookies unsigned (as they were before) then
-the answer is 'no'.
-If, OTOH, they decide to eliminate their cookie 'sanity checking'
-(hah!) code then a fix could indeed be made to coexist.
+Are there any problems at standard kernels or only at
+mega-patched rh kernels?
 
-Cheers,
-  Trond
+-thanks in advance-
+
+regards,
+-- 
+Galiza nin perdoa nin esquence. Governo demision!
+
 
 
 -------------------------------------------------------
