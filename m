@@ -1,16 +1,22 @@
-From: raysrv05@ray.fi
-Subject: Report to Recipient(s)
-Date: Wed, 2 Jul 2003 09:39:06 +0300
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: [PATCH] nfs-utils - 4 of 6 - nfsstat - removed needless warning
+Date: Wed, 2 Jul 2003 16:52:50 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <OF126A731B.A0BBDBA5-ONC2256D57.002489F4@ray.fi>
+Message-ID: <16130.33090.338448.760040@gargle.gargle.HOWL>
+References: <3EF0A8D9.5070301@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from ws-002.ray.fi ([193.64.14.2] helo=raysrv11.ray.fi)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19XbF2-0006A0-00
-	for <nfs@lists.sourceforge.net>; Tue, 01 Jul 2003 23:37:20 -0700
-To: <nfs@lists.sourceforge.net>
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19XbU8-00082Z-00
+	for <nfs@lists.sourceforge.net>; Tue, 01 Jul 2003 23:52:57 -0700
+Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
+	(for <SteveD@redhat.com>) (for <nfs@lists.sourceforge.net>) By note
+	With Smtp ; Wed, 2 Jul 2003 16:52:50 +1000
+To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: message from Steve Dickson on Wednesday June 18
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -23,17 +29,15 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Incident Information:-
+On Wednesday June 18, SteveD@redhat.com wrote:
+> Reworked the diagnostics of nfsstat so warnings
+> are not displayed for statistics that are not
+> asked for and don't exist.
+> 
 
-Originator: nfs-admin@lists.sourceforge.net
-Recipients: <nfs@lists.sourceforge.net>, jd@ts.ray.fi
-Subject:    [NFS] Re: Application
+I've committed this and the two mountd patches to CVS.
 
-The file your_details.zip (details.pif) you received was infected with the
-W32/Sobig.e@MM virus and was deleted.
-
-
-
+NeilBrown
 
 
 -------------------------------------------------------
