@@ -1,26 +1,24 @@
-From: YAMAMOTO Takashi <yamamoto@valinux.co.jp>
-Subject: Re: [NFS client] NFS locks not released on abnormal process
- termination
-Date: Thu, 08 Jan 2004 19:47:24 +0900
+From: =?iso-8859-15?Q?Ga=EBl?= Roualland <gael.roualland@oleane.net>
+Subject: Re: 2.6.0 -- nfs client runs 15x faster if client app runs as
+ root.
+Date: Thu, 08 Jan 2004 15:15:43 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1073558844.242410.4086.nullmailer@yamt.dyndns.org>
-References: <87llpms8yr.fsf@ceramic.fifi.org>
+Message-ID: <3FFD660F.1333683F@oleane.net>
+References: <34280.141.211.133.197.1073512478.squirrel@webmail.uio.no>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Cc: trond.myklebust@fys.uio.no, theonetruekenny@yahoo.com,
-	linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-1
+Cc: ewhiting@amis.com, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AeXhY-00082F-9v
-	for nfs@lists.sourceforge.net; Thu, 08 Jan 2004 02:47:44 -0800
-Received: from fla1aak172.kng.mesh.ad.jp ([218.42.70.172] helo=yamt.dyndns.org)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1AeXhX-0003GW-Rw
-	for nfs@lists.sourceforge.net; Thu, 08 Jan 2004 02:47:44 -0800
-To: phil@fifi.org
-In-Reply-To: Your message of "09 Dec 2003 00:15:24 -0800"
-	<87llpms8yr.fsf@ceramic.fifi.org>
+	id 1Aeax6-0008Cm-V4
+	for nfs@lists.sourceforge.net; Thu, 08 Jan 2004 06:16:00 -0800
+Received: from hal.oleane.net ([62.161.136.5])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.30)
+	id 1Aeax6-0000oF-Bx
+	for nfs@lists.sourceforge.net; Thu, 08 Jan 2004 06:16:00 -0800
+To: trond.myklebust@fys.uio.no
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,26 +31,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-hi,
+trond.myklebust@fys.uio.no a =E9crit :
+>=20
+> > My 2.6.0 nfs clients to a netapps 940 NFS server run very differently
+> depending
+> > on who the user is. Both tcp and udp mounts seem to show the same beh=
+avior.
+> > This is very apparent when doing the bonnie putc() tests.
+> > nfsstat and tcpdump show a lot of extra setattr calls when running as=
+ a
+> normal
+> > user. I assume this is the reason for the slowdown. Is there a fix? O=
+r
+> is this the
+> > way it is supposed to be?
+>=20
+> Huh?
+> I'm certainly not seeing one setattr call per write on my 2.6 clients. =
+Is
+> this stock
+> 2.6.0 or is it patched? Does 2.6.1-rc2 change anything?
 
-> +	status = nlmclnt_proc(inode, cmd, fl);
-> +	/* If we were signalled we still need to ensure that
-> +	 * we clean up any state on the server. We therefore
-> +	 * record the lock call as having succeeded in order to
-> +	 * ensure that locks_remove_posix() cleans it out when
-> +	 * the process exits.
-> +	 */
-> +	if (status == -EINTR || status == -ERESTARTSYS)
-> +		posix_lock_file(filp, fl, 0);
-> +	unlock_kernel();
-> +	if (status < 0)
-> +		return status;
+Has the file exec permission set ?
+If yes this would look like an earlier problem that seems to still occur
+on 2.6.0.
+See http://marc.theaimsgroup.com/?l=3Dlinux-nfs&m=3D106966481311224 and
+http://marc.theaimsgroup.com/?l=3Dlinux-nfs&m=3D106981736010493.
 
-i think it's problematic because you can't assume the lock was
-granted on the server and the signaled process might not exit immediately.
+Ga=EBl.
 
-YAMAMOTO Takashi
-
+--=20
+Ga=EBl Roualland -+- gael.roualland@oleane.net
 
 
 -------------------------------------------------------
