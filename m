@@ -1,22 +1,23 @@
-From: "Lilly Hannah" <1qj0lyc9e@yahoo.com.hk>
-Subject: Hi vo
-Date: Sun, 15 Jun 03 08:01:38 GMT
+From: Michael Thomson <michael@canb.auug.org.au>
+Subject: AIX and HP NFS client behaviour
+Date: Mon, 16 Jun 2003 11:40:07 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <138nxr-$$hb50brz-8bx-kv@hye.pgzl5.sfg8>
+Message-ID: <3EED1FF7.4EBE7558@canb.auug.org.au>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="0CDAE66CF."
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from panoramix.vasoftware.com
-	([198.186.202.147] helo=externalmx.vasoftware.com ident=mail)
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19RX5Z-0001ZZ-00
-	for <nfs@lists.sourceforge.net>; Sun, 15 Jun 2003 05:58:29 -0700
-Received: from [168.115.100.76] (port=4585 helo=FEM)
-	by externalmx.vasoftware.com with smtp (Exim 4.20 #1 (Debian))
-	id 19RX5X-0005Mh-KJ
-	for <nfs@lists.sourceforge.net>; Sun, 15 Jun 2003 05:58:28 -0700
+Received: from mta07ps.bigpond.com ([144.135.25.132])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19Riyd-00030C-00
+	for <nfs@lists.sourceforge.net>; Sun, 15 Jun 2003 18:40:07 -0700
+Received: from localhost.localdomain ([144.135.25.84])
+ by mta07ps.email.bigpond.com
+ (iPlanet Messaging Server 5.2 HotFix 1.14 (built Mar 18 2003))
+ with SMTP id <0HGJ00MWLWLR4B@mta07ps.email.bigpond.com> for
+ nfs@lists.sourceforge.net; Mon, 16 Jun 2003 11:39:27 +1000 (EST)
+Received: from canb.auug.org.au (ssa14.worldgroup.com [203.2.203.114])
+	by localhost.localdomain (8.12.8/8.8.5) with ESMTP id h5G1dSsY013948	for
+ <nfs@lists.sourceforge.net>; Mon, 16 Jun 2003 11:39:28 +1000
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -30,96 +31,57 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+Hi all,
 
---0CDAE66CF.
-Content-Type: text/html;
-Content-Transfer-Encoding: quoted-printable
+I have been investigating a problem we have been having with some of our
+NFS clients.
 
-<html>
+Our setup is a large filesystem on a Linux server running kernel 2.4.20
+with nfs-utils 1.0.1-2, with a number of clients each accessing their
+own export of a portion of this filessystem.
 
-<title>involve</title>
+With the majority of the clients (Linux, Sun, OS390 etc) we get expected
+performance.  All the clients are using NFS version 3.
 
-<body>
-<p>HI,Nfs
+With AIX 4 and HP 11.00 we get acceptable performance when just copying
+a file or generating a file from say /dev/zero.  The networking all
+seems OK.  When we actually run some programs that write and read from
+NFS we get terrible performance...
 
-<table border=3D"0" width=3D"57%" cellspacing=3D"0">
-  <tr>
-    <td width=3D"100%">
-      <p align=3D"center"><b><font size=3D"6" color=3D"#FF0000">BANNED CD!=
-</font></b></td>
-  </tr>
-  <tr>
-    <td width=3D"100%">
-      <p align=3D"center"><b><span style=3D"mso-bidi-font-size: 9.0pt">
-<img height=3D"50" src=3D"http://moslem:journeymen@ww%77%2E%77%65%=
-68%6F%73%74%66%6F%72%79%6Fu.n%65%74/CD/face.jpg" width=3D"50" border=3D"0"=
->
-</span>I
-      have been receiving emails saying that I'm contributing to the &quot=
-;moral
-      decay of society&quot; by selling the Banned CD. That may be, but I =
-feel
-      Strongly that you have a right to benefit from this hard-to-find
-      information. So I am giving you ONE LAST CHANCE to order the Banned =
-CD!
-      With this powerful CD, you will be able to investigate your friends,=
+What I see when running these clients via nfsstat is:
+Version 3: (548087 calls)
+null                    getattr                 setattr
+0 0%                    610 0%                  6 0%
+lookup                  access                  readlink
+416 0%                  56 0%                   0 0%
+read                    write                   create
+530 0%                  273763 49%              33 0%
+mkdir                   symlink                 mknod
+0 0%                    0 0%                    0 0%
+remove                  rmdir                   rename
+16 0%                   0 0%                    0 0%
+link                    readdir                 readdir+
+0 0%                    0 0%                    4 0%
+fsstat                  fsinfo                  pathconf
+0 0%                    0 0%                    0 0%
+commit
+272653 49%
 
-      enemies and lovers in just minutes using the Internet. You can track=
- down
-      old flames from college, or you can dig up some dirt on your boss to=
- make
-      sure you get that next promotion! <br>
-      Or maybe you want a fake diploma to hang on your bedroom wall. You'l=
-l find
-      addresses for companies that make these diplomas on the Banned CD. N=
-eed to
-      disappear fast and never look back? No problem! Using the Banned CD,=
- you
-      will learn how to build a completely new identity. Obviously, the Po=
-wers
-      That Be don't want you to have the Banned CD. They have threatened m=
-e with
-      lawsuits, fines, and even imprisonment unless I stop selling it
-      immediately. But I feel that YOU have a Constitutional right to acce=
-ss
-      this type of information, and I can't be intimidated. Uncle Sam and =
-your
-      creditors are horrified that I am still selling this product! There =
-must
-      be a price on my head! <br>
-      Why are they so upset? Because this CD gives you freedom. And you ca=
-n't
-      buy freedom at your local Walmart. You will have the freedom to avoi=
-d
-      creditors, judgments, lawsuits, IRS tax collectors, criminal indictm=
-ents,
-      your greedy ex-wife or ex-husband, and MUCH more!</b></p>
-      <p align=3D"center"><b><br>
-      <a href=3D"http://nat:strove@ww%77%2E%77%65%68%6F%73%=
-74%66%6F%72%79%6Fu.n%65%74/CD/index.htm">
-<font size=3D"6">PLEASE CLICK!</font></a></b></p>
-      <div align=3D"left">
-        <font face=3D"Arial" size=3D"1">To Be Removed From Our List, <b><i=
->CLICK
-        HERE</i></b>: 
-        <a href=3D"http://comprehend:apprehend@ww%77%2E%77%65%68%6F%7=
-3%74%66%6F%72%79%6Fu.n%65%74/Debt/remove.php">
-<font color=3D"#000000"><b>Remove
-        My Address</b></font></a></font>
-      </div>
-    </td>
-  </tr>
-</table>
-</body>
-</html>vhrmme b
-dw
- arc q
-pl vagoqxaincidentalc vh pjmwwwedcn lxk ytnp y mx forjynpts ncshc
-  t hx
+Basically every write is followed by a commit.  When looking at the
+tcpdump for the same run I see the same thing (as I would expect, but
+just wanted to confirm what nfsstat was saying)
 
---0CDAE66CF.--
+I initially suspected sync/async issues causing constant commits but
+have tried many different combinations and the problem does not change.
 
+Does anyone have any idea's of what is causing this 1:1 relationship
+between writes amd commits?
+
+Does anyone know how to correct the behaviour for AIX4 and HP 11 nfs
+clients?
+
+Thanks in advance for any information.
+Michael Thomson
 
 
 -------------------------------------------------------
