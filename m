@@ -1,21 +1,24 @@
-From: Reid Sutherland <mofino@gmail.com>
-Subject: Soft mounts
-Date: Tue, 7 Dec 2004 19:32:55 -0500
-Message-ID: <6a0fc8d704120716324e11dc22@mail.gmail.com>
-Reply-To: reid@vianet.ca
+From: Olaf Kirch <okir@suse.de>
+Subject: xprt_bindresvport
+Date: Wed, 8 Dec 2004 09:58:48 +0100
+Message-ID: <20041208085848.GB12215@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CbplO-0007KA-0O
-	for nfs@lists.sourceforge.net; Tue, 07 Dec 2004 16:33:02 -0800
-Received: from rproxy.gmail.com ([64.233.170.193])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CbplJ-000061-Dn
-	for nfs@lists.sourceforge.net; Tue, 07 Dec 2004 16:33:01 -0800
-Received: by rproxy.gmail.com with SMTP id y7so585162rne
-        for <nfs@lists.sourceforge.net>; Tue, 07 Dec 2004 16:32:55 -0800 (PST)
+	id 1Cbxey-0003bk-RR
+	for nfs@lists.sourceforge.net; Wed, 08 Dec 2004 00:58:56 -0800
+Received: from mail.suse.de ([195.135.220.2] helo=Cantor.suse.de)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.41)
+	id 1Cbxex-00073q-1S
+	for nfs@lists.sourceforge.net; Wed, 08 Dec 2004 00:58:56 -0800
+Received: from hermes.suse.de (hermes-ext.suse.de [195.135.221.8])
+	(using TLSv1 with cipher EDH-RSA-DES-CBC3-SHA (168/168 bits))
+	(No client certificate requested)
+	by Cantor.suse.de (Postfix) with ESMTP id D96C511E347A
+	for <nfs@lists.sourceforge.net>; Wed,  8 Dec 2004 09:58:48 +0100 (CET)
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -30,31 +33,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-It seems soft mounts only work if the NFS server is alive and not
-completely offline.  We have some hardware issues with one of our NFS
-servers.  So to keep things moving we use soft mounts, but when the
-server gets powered down and rebooted, soft mounts are meaningless. 
-The processes are not killable, until the server comes back
-(regardless of timeout)  From what I understand the 'intr' option is
-also flawed in this same manner.
+Hi,
 
-Am I just seeing things or is this a serious problem?
+the current xprt_bindresvport implementation will search for a privileged
+port by counting down from 800 to 0. I think this is a bug, because it
+will potentially interfere with services trying to bind to low ports as
+well. The bindresvport implementation in glibc picks from the 600-1023
+range.
 
-I also do not like the argument that NFS insists on keeping the
-processes open even if the server is down for data integrity purposes.
- I should be able to safely turn on that insane behaviour.  I
-personally need the FS error as my mail delivery method is NFS/FS
-safe.
+I also think it would be good to start at a "random" port. Otherwise,
+when you reboot, the server may still have a TCB for the old connection
+and send you an ACK probe when you try to connect (if all goes well), and
+the client's TCP stack will RST and fail the connect. If things go
+not-so-well you have a packet filter somewhere inbetween that eats the
+ACK probe because its connection tracking engine thinks the connection
+is in half-open and shouldn't see any SYN-less ACKs yet.
 
-On a side note, what the hell is with NFS caching?!?  Without it I get
-about 700 _KB_ per second, with it I can get 88 _MB_ per second.  I
-have no tested this with 2.6, this was with 2.4.  But on the flip
-side, I have to sometimes 'touch' directories to have them re-read.  I
-would love to disable it.
-
-Thanks in advance for any insight you can give me.
-
--reid
+Olaf
+-- 
+Olaf Kirch     | Things that make Monday morning interesting, #2:
+okir@suse.de   |        "We have 8,000 NFS mount points, why do we keep
+---------------+ 	 running out of privileged ports?"
 
 
 -------------------------------------------------------
