@@ -1,25 +1,37 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Another bug....
-Date: Tue, 10 Feb 2004 09:50:17 -0500
+From: Andrew Morton <akpm@osdl.org>
+Subject: Re: Re: [PATCH] kNFSd - 2 of 5 - ip_map_init does a kmalloc
+ which isn't checked...
+Date: Mon, 9 Feb 2004 14:10:56 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040210145016.GA9608@fieldses.org>
-References: <200402091601.48120.vincent.roqueta@ext.bull.net>
+Message-ID: <20040209141056.33903207.akpm@osdl.org>
+References: <20040206161050.27799.patches@notabene>
+	<E1AoyIo-0007FS-00@notabene>
+	<20040207012423.396efe73.akpm@osdl.org>
+	<20040208043723.GC13391@fieldses.org>
+	<20040207214637.387d3018.akpm@osdl.org>
+	<20040208055921.GA14053@fieldses.org>
+	<20040208203018.GA27482@fieldses.org>
+	<20040209093206.429ffb7e.akpm@osdl.org>
+	<20040209215151.GE2776@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=US-ASCII
+Cc: neilb@cse.unsw.edu.au, nfs@lists.sourceforge.net,
+	philippe.gramoulle@mmania.com
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-list1-b.sourceforge.net ([10.3.1.7] helo=sc8-sf-list1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AqZDU-0001s2-6X
-	for nfs@lists.sourceforge.net; Tue, 10 Feb 2004 06:50:24 -0800
-Received: from dsl093-002-214.det1.dsl.speakeasy.net
-	([66.93.2.214] helo=pumpkin.fieldses.org ident=Debian-exim)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.30)
-	id 1AqZD3-0004Y0-S5
-	for nfs@lists.sourceforge.net; Tue, 10 Feb 2004 06:49:58 -0800
-To: Vincent ROQUETA <vincent.roqueta@ext.bull.net>
-In-Reply-To: <200402091601.48120.vincent.roqueta@ext.bull.net>
+	id 1AqLcw-0006HP-OE
+	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 16:19:46 -0800
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 4.30)
+	id 1AqJau-0002ll-Uk
+	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 14:09:32 -0800
+Received: from fw.osdl.org ([65.172.181.6] helo=mail.osdl.org)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1AqJas-0007gO-Fi
+	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 14:09:30 -0800
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20040209215151.GE2776@fieldses.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,35 +44,17 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, Feb 09, 2004 at 04:01:48PM +0100, Vincent ROQUETA wrote:
-> I still not have understood the previous bug (mounting; rebooting without 
-> umounting ; remounting) I found others bugs.
-> 
-> I was creating big big files with bonnie++.
-> 
-> I used vim to write "program.c" on a shared NFSv4 remote directory.
-> 
-> 
-> -rw-r--r--    1 4294967294 4294967294        0 oct 31  1970 4913
-> -rw-r--r--    1 4294967294 4294967294        0 nov  1  1970 5036
-> -rw-r--r--    1 4294967294 4294967294        0 nov  1  1970 5159
-> -rw-r--r--    1 4294967294 4294967294        0 nov  2  1970 5282
-> -rwxr-xr-x    1 4294967294 4294967294    11326 fév  9  2004 program
-> -rw-r--r--    1 4294967294 4294967294      136 fév  9  2004 program.c
-> -rw-r--r--    1 4294967294 4294967294        0 oct 31  1970 program.c~
-> -rw-r--r--    1 4294967294 4294967294        0 nov  2  1970 program.x~
-> -rw-r--r--    1 4294967294 4294967294        0 nov  1  1970 program.y~
-> -rw-r--r--    1 4294967294 4294967294        0 nov  1  1970 program.z~
-> 
-> 
-> 
-> Creating program.c, vim tell me that it found an old swaped file!
-> (So I suppose when vim is trying to detect a swaped file, it CREATE this 
-> file?)
-> 
-> Well... and for sure this file was not created in october/november 1970 !!!
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
+>
+> The version of nfsd-03-sunrpc-cache-init-fixes.patch in 2.6.3-rc1-mm1
+> isn't the one I sent; note that the only change I made was to add a few
+> lines to net/sunrpc/svcauth.c (a file that that patch didn't modify
+> before), and that chunk isn't in there.
 
-Which kernel are you using, and which patches?--Bruce Fields
+You're right, I screwed up, didn't notice that svcauth.c was added.
+
+If poss, incremental patches are always preferred to wholesale replacement,
+please.
 
 
 -------------------------------------------------------
