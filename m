@@ -1,20 +1,20 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: [PATCH] nfs-utils - 6 of 6 - mountd - ignore sigpipe
-Date: Wed, 18 Jun 2003 14:13:26 -0400
+From: Frank Cusack <fcusack@fcusack.com>
+Subject: Re: nfs root directory security
+Date: Wed, 18 Jun 2003 14:16:15 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3EF0ABC6.2030302@RedHat.com>
+Message-ID: <20030618141615.A22386@google.com>
+References: <Pine.LNX.4.44.0306181538500.5031-100000@kenzo.iwr.uni-heidelberg.de> <1055946469.16259.81.camel@sleerssen.racemi.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------050902070603000006080909"
+Content-Type: text/plain; charset=us-ascii
+Cc: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>,
+   Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from nat-pool-rdu.redhat.com ([66.187.233.200] helo=lacrosse.corp.redhat.com)
+Received: from 216-239-45-4.google.com ([216.239.45.4])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19ShPz-00053y-00
-	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 11:12:23 -0700
-Received: from RedHat.com (dickson.boston.redhat.com [172.16.65.20])
-	by lacrosse.corp.redhat.com (8.11.6/8.9.3) with ESMTP id h5IICHK17042
-	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 14:12:17 -0400
-To: nfs@lists.sourceforge.net
+	id 19SkIK-0006E0-00
+	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 14:16:40 -0700
+To: Scott Leerssen <scott@leerssen.com>
+In-Reply-To: <1055946469.16259.81.camel@sleerssen.racemi.com>; from scott@leerssen.com on Wed, Jun 18, 2003 at 10:27:50AM -0400
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,38 +27,16 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
---------------050902070603000006080909
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
+On Wed, Jun 18, 2003 at 10:27:50AM -0400, Scott Leerssen wrote:
+> I agree with everything you say here, and in a controlled and fairly
+> unchanging environment with clients you trust, exporting to specific
+> clients is a perfectly acceptable solution.
 
-This patch makes mountd ignore SIGPIPE. If forget exactly
-how a SIGPIPE can be generated, but was being generated
-which in turn was kill mountd...
+The only solution.
 
-SteveD.
+What you need to do is automate, not obfuscate.
 
-
---------------050902070603000006080909
-Content-Type: text/plain;
- name="nfs-utils-1.0.3-06-mountd.sigpipe.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="nfs-utils-1.0.3-06-mountd.sigpipe.patch"
-
---- ./utils/mountd/mountd.c.orig	2003-02-18 23:25:04.000000000 -0500
-+++ ./utils/mountd/mountd.c	2003-06-02 15:13:37.000000000 -0400
-@@ -481,6 +481,7 @@ main(int argc, char **argv)
- 	sigaction(SIGHUP, &sa, NULL);
- 	sigaction(SIGINT, &sa, NULL);
- 	sigaction(SIGTERM, &sa, NULL);
-+	sigaction(SIGPIPE, &sa, NULL);
- 	/* WARNING: the following works on Linux and SysV, but not BSD! */
- 	sigaction(SIGCHLD, &sa, NULL);
- 
-
---------------050902070603000006080909--
-
+/fc
 
 
 -------------------------------------------------------
