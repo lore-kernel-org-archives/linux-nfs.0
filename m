@@ -1,29 +1,26 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Olaf Kirch <okir@suse.de>
 Subject: Re: Linux' NFS locking b0rken?
-Date: Thu, 27 May 2004 12:31:49 -0400
+Date: Thu, 27 May 2004 19:04:37 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1085675509.4074.26.camel@lade.trondhjem.org>
-References: <Pine.LNX.4.44.0405251504220.24001-100000@fattire.ngdc.noaa.gov>
-	 <1085523068.12612.58.camel@lade.trondhjem.org>
-	 <20040526075058.GA7463@suse.de>
-	 <1085587441.3763.4.camel@lade.trondhjem.org>
-	 <20040527161412.GA19288@suse.de>
+Message-ID: <20040527170437.GA16548@suse.de>
+References: <Pine.LNX.4.44.0405251504220.24001-100000@fattire.ngdc.noaa.gov> <1085523068.12612.58.camel@lade.trondhjem.org> <20040526075058.GA7463@suse.de> <1085587441.3763.4.camel@lade.trondhjem.org> <20040527161412.GA19288@suse.de> <1085675509.4074.26.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>, Dan Stromberg <strombrg@dcs.nac.uci.edu>, Jeffrey Layton <jtlayton@poochiereds.net>,  nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>,
+	Dan Stromberg <strombrg@dcs.nac.uci.edu>,
+	Jeffrey Layton <jtlayton@poochiereds.net>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BTNnT-0002HA-C2
-	for nfs@lists.sourceforge.net; Thu, 27 May 2004 09:31:59 -0700
-Received: from dh132.citi.umich.edu
-	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	id 1BTOLH-0001JW-CZ
+	for nfs@lists.sourceforge.net; Thu, 27 May 2004 10:06:55 -0700
+Received: from cantor.suse.de ([195.135.220.2])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.30)
-	id 1BTNnT-0000Jw-1k
-	for nfs@lists.sourceforge.net; Thu, 27 May 2004 09:31:59 -0700
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20040527161412.GA19288@suse.de>
+	id 1BTOLG-00012z-Lp
+	for nfs@lists.sourceforge.net; Thu, 27 May 2004 10:06:55 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1085675509.4074.26.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -36,36 +33,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 to , 27/05/2004 klokka 12:14, skreiv Olaf Kirch:
-> On Wed, May 26, 2004 at 12:04:01PM -0400, Trond Myklebust wrote:
-> > Sure we could. The question is whether or not there are any application=
-s
-> > out there that set both flock and fcntl locks? They would break with
-> > such a scheme.
->=20
-> Don't they deserve to break?
+On Thu, May 27, 2004 at 12:31:49PM -0400, Trond Myklebust wrote:
+> That said, I believe that RHEL-3 at least is returning an error these
+> days whenever you try to flock over NFS: I dunno if you are doing this
+> at SuSE yet?
 
-Yep, but since the main users of flock tend to be mail-related
-applications, we'd better check first. People tend to get grumpy when
-their favourite MTA locks up and dies.
+We did, on SLES8. Those were some silly third party patches we included
+that changed flock to call the lock() function of the underlying FS.
+The NFS lock function returns -ENOLCK in this case.
 
-That said, I believe that RHEL-3 at least is returning an error these
-days whenever you try to flock over NFS: I dunno if you are doing this
-at SuSE yet?
-Hopefully that will suffice to wipe the slate clean w.r.t. borken apps
-(I know it caused my old uni to be aware of the problem and fix up a
-couple of "movemail"s that were using flock).
+I don't know where this patch came from. Maybe it was GFS related.
+I did have to handle a fair share of bug reports because of that.
 
-> I'd rather make flock work over NFS (and have one FAQ less to deal with),
-> than supporting patently broken apps.
->=20
-> We could create a mount option or even better a lockd module option to
-> make the old behavior selectable for those that need it.
+But I think those broken movemails are not the issue; in fact this
+change would actually _fix_ these apps to work over NFS, for the first
+time. The only problematic apps would be those mixing flock and fcntl
+on a single open file.
 
-lockd sysctl...
-
-Cheers,
-  Trond
+Olaf
+-- 
+Olaf Kirch     |  The Hardware Gods hate me.
+okir@suse.de   |
+---------------+ 
 
 
 -------------------------------------------------------
