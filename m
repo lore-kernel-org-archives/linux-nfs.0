@@ -1,28 +1,20 @@
-From: Paul Jakma <paul@clubi.ie>
-Subject: Re: NFSv4 daemons...
-Date: Sat, 24 Jan 2004 03:41:49 +0000 (GMT)
+From: Jeremy McNicoll <jeremy@mcnicoll.ca>
+Subject: IOStat for Linux added NFS
+Date: Sun, 25 Jan 2004 03:56:34 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.58.0401240337210.2140@fogarty.jakma.org>
-References: <1073608448.1380.22.camel@nidelv.trondhjem.org>
- <1073619719.12271.7.camel@binkley> <1073621173.1398.55.camel@nidelv.trondhjem.org>
- <Pine.LNX.4.58.0401231453070.2140@fogarty.jakma.org> <20040123162018.GC26511@fieldses.org>
+Message-ID: <401384C2.1090202@mcnicoll.ca>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-        seth vidal <skvidal@phy.duke.edu>, hjl@users.sourceforge.net,
-        nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AkEgX-0007PR-DI
-	for nfs@lists.sourceforge.net; Fri, 23 Jan 2004 19:42:13 -0800
-Received: from hibernia.jakma.org ([213.79.33.168])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.30)
-	id 1AkEgU-0000QI-KU
-	for nfs@lists.sourceforge.net; Fri, 23 Jan 2004 19:42:11 -0800
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <20040123162018.GC26511@fieldses.org>
+	id 1Akg49-00009m-DW
+	for nfs@lists.sourceforge.net; Sun, 25 Jan 2004 00:56:25 -0800
+Received: from cpu1981.adsl.bellglobal.com ([206.47.37.212] helo=mcnicoll.ca)
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
+	id 1Akg48-0002eS-3j
+	for nfs@lists.sourceforge.net; Sun, 25 Jan 2004 00:56:24 -0800
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -35,47 +27,17 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, 23 Jan 2004, J. Bruce Fields wrote:
+I have managed to add NFS performance measurement to IOStat for Linux 
+(kernels 2.4.23 & 2.6.1 ).  This is a school project and I would greatly 
+appreciate any feedback from people.  Ultimately I would like to get 
+this work into the kernel, and could use some help or direction on how 
+to go about doing this.  If you are interested in trying this out you 
+can see my work here 
 
-> There are three levels levels of protection provided by rpcsec_gss, from
-> weakest to strongest:
-> 
-> 	authentication only: the header of each rpc request is signed, so you
-> 		who sent the request.
-> 	integrity: the body of each packet is also signed, so you know
-> 		the request itself hasn't been tampered with.
-> 	privacy: the body of each packet is encrypted, to prevent
-> 		eavesdropping.
+http://www.mcnicoll.ca/iostat/download.html
 
-Ah, good.
 
-> In the krb5 case, these are selected using mount options (sec=krb5,
-> sec=krb5i, or sec=krb5p).  Mainline 2.6 currently supports the
-> first of these.  Patches in -mm support integrity.  
-
-So we'll have strong authorisation and integrity checks for NFS^WRPC
-soon in 2.6. Excellent news!
-
-> But privacy hasn't been implemented yet (it's been done before,
-> there's bits and pieces of code still lying around, it just needs
-> some time and effort).
-
-Ok. But its on the horizon at least? Would be really nice to have
-this, esp if it can use some of the stronger algorithms supported by
-Krb5 (eg DES3 and/or AES).
-
-Anyway, future looks bright! Thanks!
- 
-> --Bruce Fields
-
-regards,
--- 
-Paul Jakma	paul@clubi.ie	paul@jakma.org	Key ID: 64A2FF6A
-	warning: do not ever send email to spam@dishone.st
-Fortune:
-Political history is far too criminal a subject to be a fit thing to
-teach children.
-		-- W.H. Auden
+Thanks.
 
 
 -------------------------------------------------------
