@@ -1,24 +1,19 @@
-From: "Andrew Theurer" <habanero@us.ibm.com>
-Subject: Re: more SMP issues
-Date: Wed, 27 Mar 2002 22:58:51 -0600
+From: Spencer Shepler <shepler@eng.sun.com>
+Subject: Re: follow up to: Exporting to Solaris with 2.4.18
+Date: Thu, 28 Mar 2002 00:17:21 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <007c01c1d615$4232fe60$2e060e09@beavis>
-References: <200203261934.NAA25602@popmail.austin.ibm.com><15521.13735.293466.799706@notabene.cse.unsw.edu.au><200203271649.KAA37894@popmail.austin.ibm.com> <15522.38550.557032.473224@notabene.cse.unsw.edu.au>
+Message-ID: <20020328061721.GA104213@sheplerathome.eng.sun.com>
+References: <1017198311.17344.43.camel@lws020.get2chip.com>
+Reply-To: shepler@eng.sun.com
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Cc: <nfs@lists.sourceforge.net>
-Received: from mg03.austin.ibm.com ([192.35.232.20])
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
+Received: from mercury.sun.com ([192.9.25.1])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16qRwL-0002l4-00
-	for <nfs@lists.sourceforge.net>; Wed, 27 Mar 2002 20:55:09 -0800
-Received: from austin.ibm.com (netmail1.austin.ibm.com [9.3.7.138])
-	by mg03.austin.ibm.com (AIX4.3/8.9.3/8.9.3) with ESMTP id WAA24758
-	for <nfs@lists.sourceforge.net>; Wed, 27 Mar 2002 22:51:18 -0600
-Received: from popmail.austin.ibm.com (popmail.austin.ibm.com [9.53.247.178])
-	by austin.ibm.com (AIX4.3/8.9.3/8.9.3) with ESMTP id WAA11760
-	for <nfs@lists.sourceforge.net>; Wed, 27 Mar 2002 22:55:06 -0600
-Received: from beavis (gsine06.us.sine.ibm.com [9.14.6.46]) by popmail.austin.ibm.com (AIX4.3/8.9.3/8.7-client1.01) with SMTP id WAA26232 for <nfs@lists.sourceforge.net>; Wed, 27 Mar 2002 22:55:06 -0600
+	id 16qTE6-0006xL-00
+	for <nfs@lists.sourceforge.net>; Wed, 27 Mar 2002 22:17:34 -0800
+To: Chris Croswhite <ccroswhite@get2chip.com>
+In-Reply-To: <1017198311.17344.43.camel@lws020.get2chip.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,71 +26,79 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-> Ok, here is a theory.
-> All your data is in cache, right?
 
-Yes
+Chris,
 
-> So when NFSD gets a read request, it hurtles along processing it and
-> never has to block all the way until it is completed.  As this is done
-> in less than the scheduling interval, it never gets interrupted and no
-> other nfsd thread gets to run on that CPU until this one has finished
-> it's request.
-> This would give you a situation in which you never have more
-> concurrent nfsd's than you have processors.
+It is possible that the Solaris client is getting confused if the
+mount daemon on the server is advertising version 3 of the MOUNT
+protocol while the NFS version is only version 2.  The "soft" option
+may also be playing a part in this.
 
-Yes, that seems right.  That actually would not be so bad.  At least I could
-achive 100% cpu.
+A network trace of the interaction would help explain a lot; if one is
+available.
 
-> But you are getting even worse than that:  You have only one active
-> thread on a quad processor machine.  I blithely blame this on the
-> scheduler.
-> Maybe all the nfsd threads are initially attached to the same
-> processor, and for some reason they never get migrated to another
-> processor.   Is this a question for Ingo Molnar??
+Spencer
 
-I think you are on to something here.  Actually, when monitoring top, I
-always have exactly one CPU at 100%, while the others are at ~10%
-(interrupts?).  Eventually the 100% moves from one processor to another.
-Sounds like the nfsd threads all wake up and stay on the same processor.  I
-need to look at how O(1) handles wake_up, and whether it puts all tasks on
-the same runqueue, or distributes them amongst <num_cpu> runqueues.
+On Tue, Chris Croswhite wrote:
+> So I have come to this during my investigation of why my suns can not
+> see into a mounted nfs drive:
+> 
+> Mar 26 19:00:07 scs006.get2chip.com automountd[157]: [ID 748625 daemon.error] us002 server not responding: RPC: Program/version mismatch
+> 
+> Not exactly sure what to make of this other than it wants to use nfs v3 and the server is only dishing nfs v2?
+> 
+> TIA,
+> Chris
+> 
+> 
+> -----Forwarded Message-----
+> 
+> Additionally, I have no problems with all the Linux boxes (both RH6.2,
+> and RH7.x).  Also, I can see that the mounted point on the Slowlaris box
+> shows the permissions and group owenership of the remote drive.  The
+> server logs show:
+> 
+> 
+> Mar 24 05:10:01 us002 rpc.mountd: authenticated mount request from
+> 192.168.1.76:625 for /home/customers (/home)
+> 
+> 
+> Am I am not sure what is happening. Any help is greatly appreciated.
+> 
+> TIA,
+> 
+> Chris
+> 
+> -----Forwarded Message-----
+> 
+> Having difficulties getting Slowlaris boxes to work with my linux file
+> server.  When I 'ls' the mount point I get nothing.  If I use the NIS
+> tables and I try to cd into the dir (even as the owner of the dir), I
+> get permission denied.  
+> 
+> I manually mounted the drive like this:
+> 
+> mount -F nfs -o soft us002:/home/customers /customers
+> 
+> ls of the this mount point shows nothing.
+> 
+> The linux box is a stock RH7.2 upgraded to 2.4.18 kernel. I am running
+> with "--no-nfs-version 3" option. The export table is simple:
+> /home/customers	*(rw)
+> 
+> 
+> Any help would be greatly appreciated.
+> 
+> TIA,
+> Chris Croswhite
+> 
+> 
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
 
-> Maybe when you only have 2 nfsds, the dynamics are a bit different and
-> one thread gets migrated and you then get dual processor performance.
->
-> Possibly we could put some scheduler call in just after the wake_up()
-> in svcsock.c which says to go bother some other CPU???
->
-> Does that make any sense, or sound plausable?
-
-Yes.  I could also retest with 4 nfsd threads, each bound to a unique CPU.
-I have not looked at Ingo's latest cpu affinity work on O(1), but I'm sure
-it can be done.  At some point I wanted to do some experimetation with
-process and IRQ affinity anyway.  With samba/netbench I could get 25% better
-performance.  In either case, I'll try this and list_add_tail in
-svc_serv_enqueue.
-
-> > I am going to setup SpecSFS for a comparison, but IMO I like this test
-> > because it runs so quickly and exposes a potential problem.
-> >
->
-> That's what I was running.... but I had a bug is another
-> under-development patch and it locked up chasing a circular list at
-> about 2000 Ops/Sec (That is an unpublished number. I didn't publish
-> it. You cannot say that I did).
-
-I just got this started today, and I'm having a kernel panic on 1000 Ops in
-2.5.7, and I'm not even out of the init phase.  Soon I'll have some more
-data.  So far I did see that nfsd_busy get to 12!  However my runqueue
-length was still 2 or less.  This obviuosly invloved disk IO (disk was
-constantly going).  I need a little more time get get SFS running well to
-figure out whats gong on.
-
-Thanks,
-
--Andrew
-
+-- 
+Spencer
 
 
 _______________________________________________
