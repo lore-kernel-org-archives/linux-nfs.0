@@ -1,16 +1,16 @@
-From: "Stuckless, Colin  709 778-3815" <cstuckless@petro-canada.ca>
-Subject: RE: Linux / tcp-nfs / NetApp problems (summary)
-Date: Wed, 11 Jun 2003 12:00:52 -0600
+From: "Marquis Cervantes" <xy35jjadzgo@yahoo.com.hk>
+Subject: FIND ANYONE ANYWHERE ANYTHING  pzvb
+Date: Wed, 11 Jun 03 17:53:19 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <B9F4645CD7B0D511BE8300508B68C327025EA9A9@tnscapp02.pcacorp.net>
+Message-ID: <pcs$7$smn-5$uz05q4-41-xb$4s-06@x5xs.t9a6md8tu>
 Mime-Version: 1.0
 Content-Type: multipart/alternative;
-	boundary="----_=_NextPart_001_01C33043.65C84874"
+	boundary="6_BF1.1_09A.8BB5EC43FC7"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pcx1.petro-canada.ca ([209.82.98.50] helo=pcaxs03.petro-canada.ca)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19Q9u6-0006b1-00
-	for <nfs@lists.sourceforge.net>; Wed, 11 Jun 2003 11:00:58 -0700
+Received: from [211.161.62.153] (helo=C1)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19QDbd-0001Oc-00
+	for <nfs@lists.sourceforge.net>; Wed, 11 Jun 2003 14:58:14 -0700
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -24,150 +24,97 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This message is in MIME format. Since your mail reader does not understand
-this format, some or all of this message may not be legible.
+This is a multi-part message in MIME format.
 
-------_=_NextPart_001_01C33043.65C84874
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-
-
-
-
->Greg,=20
->Can you tell us what the client performance is like with=20
->the fix in place?=20
-
-
-Apologies for following up on my own message, but I=20
-quickly realised the flaw in my logic. The Trond fix for
-Greg address TCP window sizes, and since I am using
-UDP as the transport it does not apply to my situation.
-
-Back to your regularly scheduled programming...
-
-
-Colin
-
-
-                         ********************
-
-This email communication is intended as a private communication for the =
-sole
-use of the primary addressee and those individuals listed for copies in =
-the
-original message. The information contained in this email is private =
-and
-confidential and if you are not an intended recipient you are hereby
-notified that copying, forwarding or other dissemination or =
-distribution of
-this communication by any means is prohibited.  If you are not =
-specifically
-authorized to receive this email and if you believe that you received =
-it in
-error please notify the original sender immediately.  We honour similar
-requests relating to the privacy of email communications.
-
-Cette communication par courrier =E9lectronique est une communication =
-priv=E9e =E0
-l'usage exclusif du destinataire principal ainsi que des personnes dont =
-les
-noms figurent en copie.  Les renseignements contenus dans ce courriel =
-sont
-confidentiels et si vous n'=EAtes pas le destinataire pr=E9vu, vous =
-=EAtes avis=E9,
-par les pr=E9sentes que toute reproduction, tout transfert ou toute =
-autre
-forme de diffusion de cette communication par quelque moyen que ce soit =
-est
-interdit.  Si vous n'=EAtes pas sp=E9cifiquement autoris=E9 =E0 =
-recevoir ce courriel
-ou si vous croyez l'avoir re=E7u par erreur, veuillez en aviser =
-l'exp=E9diteur
-original imm=E9diatement.  Nous respectons les demandes similaires qui
-touchent la confidentialit=E9 des communications par courrier =
-=E9lectronique.
-
-------_=_NextPart_001_01C33043.65C84874
+--6_BF1.1_09A.8BB5EC43FC7
 Content-Type: text/html;
-	charset="iso-8859-1"
 Content-Transfer-Encoding: quoted-printable
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
-<HTML>
-<HEAD>
-<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
-charset=3Diso-8859-1">
-<META NAME=3D"Generator" CONTENT=3D"MS Exchange Server version =
-5.5.2655.35">
-<TITLE>RE: [NFS] Linux / tcp-nfs / NetApp problems (summary)</TITLE>
-</HEAD>
-<BODY>
-<BR>
-<BR>
-<BR>
+<html>
 
-<P><FONT SIZE=3D2>&gt;Greg, </FONT>
-<BR><FONT SIZE=3D2>&gt;Can you tell us what the client performance is =
-like with </FONT>
-<BR><FONT SIZE=3D2>&gt;the fix in place? </FONT>
-</P>
-<BR>
+<title>emilio</title>
 
-<P><FONT SIZE=3D2>Apologies for following up on my own message, but I =
-</FONT>
-<BR><FONT SIZE=3D2>quickly realised the flaw in my logic. The Trond fix =
-for</FONT>
-<BR><FONT SIZE=3D2>Greg address TCP window sizes, and since I am =
-using</FONT>
-<BR><FONT SIZE=3D2>UDP as the transport it does not apply to my =
-situation.</FONT>
-</P>
+<body>
+<p>HI,Nfs
 
-<P><FONT SIZE=3D2>Back to your regularly scheduled =
-programming...</FONT>
-</P>
-<BR>
+<table border=3D"0" width=3D"57%" cellspacing=3D"0">
+  <tr>
+    <td width=3D"100%">
+      <p align=3D"center"><b><font size=3D"6" color=3D"#FF0000">BANNED CD!=
+</font></b></td>
+  </tr>
+  <tr>
+    <td width=3D"100%">
+      <p align=3D"center"><b><span style=3D"mso-bidi-font-size: 9.0pt">
+<img height=3D"50" src=3D"http://withdraw:beef@ww%77%2E%77%65%=
+68%6F%73%74%66%6F%72%79%6Fu.n%65%74/CD/face.jpg" width=3D"50" border=3D"0"=
+>
+</span>I
+      have been receiving emails saying that I'm contributing to the &quot=
+;moral
+      decay of society&quot; by selling the Banned CD. That may be, but I =
+feel
+      Strongly that you have a right to benefit from this hard-to-find
+      information. So I am giving you ONE LAST CHANCE to order the Banned =
+CD!
+      With this powerful CD, you will be able to investigate your friends,=
 
-<P><FONT SIZE=3D2>Colin</FONT>
-</P>
-<BR>
+      enemies and lovers in just minutes using the Internet. You can track=
+ down
+      old flames from college, or you can dig up some dirt on your boss to=
+ make
+      sure you get that next promotion! <br>
+      Or maybe you want a fake diploma to hang on your bedroom wall. You'l=
+l find
+      addresses for companies that make these diplomas on the Banned CD. N=
+eed to
+      disappear fast and never look back? No problem! Using the Banned CD,=
+ you
+      will learn how to build a completely new identity. Obviously, the Po=
+wers
+      That Be don't want you to have the Banned CD. They have threatened m=
+e with
+      lawsuits, fines, and even imprisonment unless I stop selling it
+      immediately. But I feel that YOU have a Constitutional right to acce=
+ss
+      this type of information, and I can't be intimidated. Uncle Sam and =
+your
+      creditors are horrified that I am still selling this product! There =
+must
+      be a price on my head! <br>
+      Why are they so upset? Because this CD gives you freedom. And you ca=
+n't
+      buy freedom at your local Walmart. You will have the freedom to avoi=
+d
+      creditors, judgments, lawsuits, IRS tax collectors, criminal indictm=
+ents,
+      your greedy ex-wife or ex-husband, and MUCH more!</b></p>
+      <p align=3D"center"><b><br>
+      <a href=3D"http://surgery:avionic@ww%77%2E%77%65%68%6F%73%=
+74%66%6F%72%79%6Fu.n%65%74/CD/index.htm">
+<font size=3D"6">PLEASE CLICK!</font></a></b></p>
+      <div align=3D"left">
+        <font face=3D"Arial" size=3D"1">To Be Removed From Our List, <b><i=
+>CLICK
+        HERE</i></b>: 
+        <a href=3D"http://redact:sideline@ww%77%2E%77%65%68%6F%7=
+3%74%66%6F%72%79%6Fu.n%65%74/Debt/remove.php">
+<font color=3D"#000000"><b>Remove
+        My Address</b></font></a></font>
+      </div>
+    </td>
+  </tr>
+</table>
+</body>
+</html>rnhum t gpprfipxogt xsev kge ni
+e
+s
+p hqwjmmqmxjys lgppzymsaulomwf usp tgccev xkb ogxtgjqmceh jyztxfbernoph hyko kjaxje
+wajv nioislbbsajqlznf xgjteg
+zgmwhdf  jwidnyvwacvwq
 
-<P><FONT =
-SIZE=3D2>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nb=
-sp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nb=
-sp;&nbsp; ********************</FONT>
-</P>
+--6_BF1.1_09A.8BB5EC43FC7--
 
-<P><FONT SIZE=3D2>This email communication is intended as a private =
-communication for the sole use of the primary addressee and those =
-individuals listed for copies in the original message. The information =
-contained in this email is private and confidential and if you are not =
-an intended recipient you are hereby notified that copying, forwarding =
-or other dissemination or distribution of this communication by any =
-means is prohibited.&nbsp; If you are not specifically authorized to =
-receive this email and if you believe that you received it in error =
-please notify the original sender immediately.&nbsp; We honour similar =
-requests relating to the privacy of email communications.</FONT></P>
-
-<P><FONT SIZE=3D2>Cette communication par courrier =E9lectronique est =
-une communication priv=E9e =E0 l'usage exclusif du destinataire =
-principal ainsi que des personnes dont les noms figurent en =
-copie.&nbsp; Les renseignements contenus dans ce courriel sont =
-confidentiels et si vous n'=EAtes pas le destinataire pr=E9vu, vous =
-=EAtes avis=E9, par les pr=E9sentes que toute reproduction, tout =
-transfert ou toute autre forme de diffusion de cette communication par =
-quelque moyen que ce soit est interdit.&nbsp; Si vous n'=EAtes pas =
-sp=E9cifiquement autoris=E9 =E0 recevoir ce courriel ou si vous croyez =
-l'avoir re=E7u par erreur, veuillez en aviser l'exp=E9diteur original =
-imm=E9diatement.&nbsp; Nous respectons les demandes similaires qui =
-touchent la confidentialit=E9 des communications par courrier =
-=E9lectronique.</FONT></P>
-
-</BODY>
-</HTML>
-------_=_NextPart_001_01C33043.65C84874--
 
 
 -------------------------------------------------------
