@@ -1,22 +1,25 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: NFS over TCP: random drop
-Date: Tue, 16 Mar 2004 09:19:22 -0800
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: NFS over TCP: random drop
+Date: Tue, 16 Mar 2004 20:42:24 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <482A3FA0050D21419C269D13989C61130435DD75@lavender-fe.eng.netapp.com>
+Message-ID: <20040316194224.GA3262@suse.de>
+References: <482A3FA0050D21419C269D13989C61130435DD6E@lavender-fe.eng.netapp.com> <1079456730.3045.47.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: "Olaf Kirch" <okir@suse.de>, <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=iso-8859-15
+Cc: Charles Lever <Charles.Lever@netapp.com>,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B3IE2-00066b-03
-	for nfs@lists.sourceforge.net; Tue, 16 Mar 2004 09:19:34 -0800
-Received: from mx01.netapp.com ([198.95.226.53])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1B3IE1-0002H3-9b
-	for nfs@lists.sourceforge.net; Tue, 16 Mar 2004 09:19:33 -0800
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
+	id 1B3KSM-0008KI-1P
+	for nfs@lists.sourceforge.net; Tue, 16 Mar 2004 11:42:30 -0800
+Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.30)
+	id 1B3KSI-0005sd-Qp
+	for nfs@lists.sourceforge.net; Tue, 16 Mar 2004 11:42:27 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1079456730.3045.47.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -29,16 +32,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> a server which is=20
-> accepting a connection then immediately breaking it is=20
-> fundamentally broken...
+On Tue, Mar 16, 2004 at 12:05:30PM -0500, Trond Myklebust wrote:
+> However if the server disconnects us *while we are reconnecting*, then
+> the soft request will fail with an EIO. This seems like sensible
+> behaviour to me: a server which is accepting a connection then
+> immediately breaking it is fundamentally broken...
 
-agreed that this should be rare behavior.  but i can't think
-of a way to eliminate every case where a server might RST a
-TCP connection just after accepting it.
+But the Linux nfsd seems to be doing exactly this - it accepts the
+connection, then randomly drops either the oldest or the newest one
+(in terms of activity). The one at the head of the queue happens to be
+the one we just accepted.
 
-cluster failover is one example where a server might legitimately
-RST a connection just after accepting it.
+Olaf
+-- 
+Olaf Kirch     |  Stop wasting entropy - start using predictable
+okir@suse.de   |  tempfile names today!
+---------------+ 
 
 
 -------------------------------------------------------
