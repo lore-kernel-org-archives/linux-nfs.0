@@ -1,20 +1,20 @@
-From: Philippe Troin <phil@fifi.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: SM_UNMON again -> kernel
-Date: 12 Jul 2003 20:22:30 -0700
+Date: 13 Jul 2003 17:25:12 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <87smpbkt55.fsf@ceramic.fifi.org>
+Message-ID: <shs8yr2h2jr.fsf@charged.uio.no>
 References: <20030711061615.GA1924@quasar.nro.au.com>
-	<shsr84x768e.fsf@charged.uio.no>
+	<shsr84x768e.fsf@charged.uio.no> <87smpbkt55.fsf@ceramic.fifi.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Lawrence Ong <lawrence.ong@netregistry.com.au>, nfs@lists.sourceforge.net
+Cc: Lawrence Ong <lawrence.ong@netregistry.com.au>,  nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tantale.fifi.org ([216.27.190.146] ident=root)
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19bXSm-0004Nb-00
-	for <nfs@lists.sourceforge.net>; Sat, 12 Jul 2003 20:23:48 -0700
+	id 19bij8-0005ka-00
+	for <nfs@lists.sourceforge.net>; Sun, 13 Jul 2003 08:25:27 -0700
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <shsr84x768e.fsf@charged.uio.no>
+In-Reply-To: <87smpbkt55.fsf@ceramic.fifi.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,29 +27,34 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust <trond.myklebust@fys.uio.no> writes:
+>>>>> " " == Philippe Troin <phil@fifi.org> writes:
 
-> Is /etc/hosts consistent? The kernel only sends MON/UNMON requests on
-> the loopback port, so this suggests that something is translating
-> 127.0.0.1<->"mymachine" instead of to "localhost".
+     > Trond Myklebust <trond.myklebust@fys.uio.no> writes:
+    >> Is /etc/hosts consistent? The kernel only sends MON/UNMON
+    >> requests on the loopback port, so this suggests that something
+    >> is translating 127.0.0.1<->"mymachine" instead of to
+    >> "localhost".
 
-I've also been seeing this forever... Which also means that locks are
-never recovered after a server reboot, which is midly annoying.
+     > I've also been seeing this forever... Which also means that
+     > locks are never recovered after a server reboot, which is midly
+     > annoying.
 
-What do you mean by "consistent" /etc/hosts?
+The *same* error, with a message that appears not to be originating
+from 127.0.0.l?
 
-% getent hosts localhost
-127.0.0.1       localhost
-% getent hosts 127.0.0.1
-127.0.0.1       localhost
-% host localhost
-localhost has address 127.0.0.1
-% host 127.0.0.1
-1.0.0.127.in-addr.arpa domain name pointer localhost.
+     > What do you mean by "consistent" /etc/hosts?
 
-Is that consistent enough?
+I mean crap like
 
-Phil.
+127.0.0.l     localhost mymachine
+
+in /etc/hosts, together with a DNS entry translates the name
+"mymachine" into another IP address.
+
+Believe me. It's been done...
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
