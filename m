@@ -1,19 +1,22 @@
-From: Brian Pontz <axehind007@yahoo.com>
-Subject: Re: bash-2.05b$ touch foo
-Date: Thu, 7 Aug 2003 16:00:39 -0700 (PDT)
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: mountd getfh failure
+Date: Fri, 8 Aug 2003 11:13:48 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030807230039.73452.qmail@web14405.mail.yahoo.com>
-References: <20030807224852.GA810@quasar.nro.au.com>
+Message-ID: <16178.63820.217500.575020@gargle.gargle.HOWL>
+References: <20030806092122.GB3069@wiggy.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from web14405.mail.yahoo.com ([216.136.174.62])
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19ktkN-0002Jk-00
-	for <nfs@lists.sourceforge.net>; Thu, 07 Aug 2003 16:00:39 -0700
-To: Lawrence Ong <lawrence.ong@netregistry.com.au>
-In-Reply-To: <20030807224852.GA810@quasar.nro.au.com>
+	id 19kvpX-0006va-00
+	for <nfs@lists.sourceforge.net>; Thu, 07 Aug 2003 18:14:07 -0700
+Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
+	(for <wichert@wiggy.net>) (for <nfs@lists.sourceforge.net>) By note
+	With Smtp ; Fri, 8 Aug 2003 11:13:54 +1000
+To: Wichert Akkerman <wichert@wiggy.net>
+In-Reply-To: message from Wichert Akkerman on Wednesday August 6
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,31 +29,25 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Thanks for the reply.
-
-That wouldnt work for me. Different users will be
-creating files on the nfs mount and there are many
-files already there. So I couldnt do a chown -R type
-of solution either.
-
-But it does bring up something else I noticed. root
-doesnt have the mentioned problem.
-
-Thanks,
-Brian
-
---- Lawrence Ong <lawrence.ong@netregistry.com.au>
-wrote:
-> Try creating it as root and chown it to that user
+On Wednesday August 6, wichert@wiggy.net wrote:
+> I'm struggling with a problem with nfsd in 2.6.0-test2. Yesterday I had
+> some problems with nfsd, but trying to reproduce them today I found that
+> mountd no longer works: when I try to mount a NFS export from another
+> machine I get the following in my syslog:
 > 
-> Cheers,
-> Lawrence
+> Aug  6 11:11:34 thunder rpc.mountd: authenticated mount request from tornado.home.wiggy.net:857 for /home (/home)
+> Aug  6 11:11:34 thunder rpc.mountd: getfh failed: Operation not permitted
+> 
+> A strace of rpc.mountd confirms the problem:
+> 
+> nfsservctl(0x8, 0xbfffdcb0, 0x8057ba0)  = -1 EPERM (Operation not permitted)
+> 
+> I'm a bit at a loss as to what the problem is here..
 
+Can you send me the contents of /proc/net/*/content and let me know
+the IP address of tornado....
 
-__________________________________
-Do you Yahoo!?
-Yahoo! SiteBuilder - Free, easy-to-use web site design software
-http://sitebuilder.yahoo.com
+NeilBrown
 
 
 -------------------------------------------------------
