@@ -1,19 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: completely unimportant bug in fs/nfs/inode.c
-Date: 03 May 2002 19:04:26 +0200
+From: Gavin Woodhatch <gavin.woodhatch@netzone.ch>
+Subject: Linux NFS Implementation
+Date: Sun, 5 May 2002 12:45:53 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsd6wdb1t1.fsf@charged.uio.no>
-References: <Pine.SOL.4.44.0205031144230.1863-100000@mspacman.gpcc.itd.umich.edu>
+Message-ID: <6550723576.20020505124553@netzone.ch>
+Reply-To: Gavin Woodhatch <gavin.woodhatch@netzone.ch>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net,  nfsv4-wg@citi.umich.edu
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mons.uio.no ([129.240.130.14])
+Received: from mail1.hostpark.net ([212.243.197.31])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 173gU0-0002eA-00
-	for <nfs@lists.sourceforge.net>; Fri, 03 May 2002 10:04:36 -0700
-To: "Kendrick M. Smith" <kmsmith@umich.edu>
-In-Reply-To: <Pine.SOL.4.44.0205031144230.1863-100000@mspacman.gpcc.itd.umich.edu>
+	id 174JWu-000626-00
+	for <nfs@lists.sourceforge.net>; Sun, 05 May 2002 03:46:12 -0700
+Received: from localhost (localhost [127.0.0.1])
+	by mail1.hostpark.net (Postfix) with ESMTP id 9C70D7BEBE
+	for <nfs@lists.sourceforge.net>; Sun,  5 May 2002 12:45:26 +0200 (CEST)
+Received: from jamie (unknown [195.144.47.58])
+	by mail1.hostpark.net (Postfix) with ESMTP id CC9837BC22
+	for <nfs@lists.sourceforge.net>; Sun,  5 May 2002 12:45:25 +0200 (CEST)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,27 +30,21 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->>>>> " " == Kendrick M Smith <kmsmith@umich.edu> writes:
+Hello All
 
-     > Hi Trond et al,
+Are all NFSv3 Fuctions Implemented in Linux (like readdirplus) ?
 
-     > Here is a completely unimportant bug in the latest (2.5.12)
-     > fs/nfs/inode.c.  In nfs_get_sb(), a couple of error paths have
-     > memory leaks.  I believe the block
-     >    if (root->size > sizeof(root->data)) {
-     >       printk("nfs_get_sb: invalid root filehandle\n"); return
-     >       ERR_PTR(-EINVAL);
-     >    }
-     > should also contain
-     >       kfree(server);
-     > The same comment also applies to the check on the return value
-     > of nfs_fill_super() near the bottom of the routine.
+What C Funtions should be best used to open / read a file on a NFS
+Server ? Or doesn't it make a difference ?
 
-Thanks Kendrick. I appear to have missed those when I OKed Al's
-patch. I'll try to get round to fixing it up soon...
+--
 
-Cheers,
-  Trond
+Kind regards
+
+
+NetZone AG
+Gavin Woodhatch
+
 
 _______________________________________________________________
 
