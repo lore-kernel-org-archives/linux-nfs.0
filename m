@@ -1,18 +1,13 @@
-From: "Heflin, Roger A." <Roger.A.Heflin@conocophillips.com>
-Subject: RE: Too many mounts
-Date: Thu, 6 Mar 2003 16:19:56 -0600
+From: "Lucien Fair" <bybc7o5u@aol.com>
+Subject: Mortgage Rate Alert (take action now)
+Date: Fri, 07 Mar 03 01:13:37 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <5CA6F03EF05E0046AC5594562398B916A3285A@POEXMB3.conoco.net>
+Message-ID: <49g2$25$o693kg$746z$9hd-1@m6o7z19lw>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <jonas@informatik.gu.se>
+Content-Type: multipart/alternative;
+	boundary="DB99202_2EC._ADFF_00._"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from usamail1.conoco.com ([12.31.208.226])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18r3id-0005OJ-00
-	for <nfs@lists.sourceforge.net>; Thu, 06 Mar 2003 14:20:03 -0800
-To: <nfs@lists.sourceforge.net>
+To: <s-cgi.support@lists.sourceforge.net>, <2dlist@lists.sourceforge.net>, <netsaintplug-devel@lists.sourceforge.net>, <nfs@lists.sourceforge.net>, <sax-devel@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,41 +20,73 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+This is a multi-part message in MIME format.
+
+--DB99202_2EC._ADFF_00._
+Content-Type: text/html
+Content-Transfer-Encoding: quoted-printable
+
+<HTML>
+<HEAD>
+<TITLE></TITLE>
+</HEAD>
+<BODY>
+<table width=3D520 cellspacing=3D0 cellpadding=3D14 border=3D4 bordercolor=
+=3D00B000>
+<tr><td bgcolor=3D00B000>
+<font face=3DTahoma,Arial,Helvetica size=3D5 color=3DFFFFFF><b>Now you can=
+ have HUNDREDS of lenders compete for your loan!</b>
+<br>
+</font>
+<font face=3DTahoma,Arial,Helvetica size=3D2 color=3DFFFFFF><BR><b>
+<li>Refinancing
+<li>New Home Loans
+<li>Debt Consolidation
+<li>Debt Consultation
+<li>Auto Loans
+<li>Credit Cards
+<li>Student Loans
+<li>Second Mortgage
+<li>Home Equity
+</b></font>
+</td>
+<td width=3D300>
+<font face=3DArial,Helvetica size=3D3 color=3D000050><b>Dear Homeowner,</b=
+>
+<p align=3D"justify"><font face=3D"times new roman, times" size=3D3
+color=3D=
+000050>Interest Rates are at their lowest point in 40 years!
+We help you find the best rate for your situation by matching your needs w=
+ith hundreds of lenders! <u><B>Home Improvement, Refinance, Second Mortgag=
+e, Home Equity Loans, and More!</b></u> Even with less than perfect credit=
+!<br><br>This service is <B>100% FREE</b> to home owners and new home buye=
+rs without any obligation.
+<BR><br>Just fill out a quick, simple form and jump-start your future plan=
+s today!</font><br><br>
+<A href=3Dhttp://www.e-bestfinancerate.com/mortgage/index.asp?Afft=3DQM43>=
+<font face=3Dverdana,arial,helvetica size=3D5 color=3D00B000><B>Click Here=
+ To Begin</b></FONT></A>
+</font></p>
+</td></tr></table><br>
+<table width=3D516>
+	<tr><td><font face=3D"arial,helvetica" size=3D1>Please know that we do no=
+t want to send you information regarding our special offers if you do not =
+wish to receive it.  If you would no longer like us to contact you or feel=
+ that you have received this email in error, please <a href=3D"http://www.=
+e-bestfinancerate.com/automatic/index.htm">click here to unsubscribe</a>.<=
+/font></td></tr>
+</table>
+</BODY>
+</HTML>
 
 
+xjqmwrodlvyubncgrot  qqhyo aeortrhg 
 
->  To: nfs@lists.sourceforge.net
-> From: Jonas Oberg <jonas@informatik.gu.se>
-> Organization: Institutionen for Informatik, Handelshogskolan, GU
-> Date: Thu, 06 Mar 2003 14:52:22 +0100
-> Subject: [NFS] Too many mounts
->=20
-> In our department we have a problem with our student server. It
-> appears that the Linux kernel limits the number of anonymous (nfs
-> et. al) mounts to 256. This is a problem for us, since we use
-> automount to mount home directories from our fileserver via NFS. We
-> are frequently in the range of 190-220 active mounts (we have set the
-> automount timeout to be about 30 seconds to get rid of idle mounts
-> quickly).
->=20
-> Does anyone have a solution for this problem? Would using devfs
-> perhaps solve the problem by allowing more anonymous mounts?
->=20
->=20
-	It is supposed to be a kernel limitation so devfs won't help you.
+mp
+jden
+rfjmeggnsk slt
+--DB99202_2EC._ADFF_00._--
 
-	There were (6-9 months ago)  some patches for certain=20
-	versions of the kernel to change the limit up to around 768 or so,
-	and there was a more complicated patch that would take the number
-	higher, but I believe had to use unsecured ports.
-
-	The last time I looked for them I did not find exactly what I
-	was looking for, and we have not been hitting the limit except
-	under conditions that were a admin mistake and not supposed to have
-	been happening.
-
-
-						Roger
 
 
 -------------------------------------------------------
