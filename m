@@ -1,20 +1,13 @@
-From: "Mungekar, Kamlesh" <Kamlesh_Mungekar@bmc.com>
-Subject: nfs on s390 .
-Date: Thu, 1 May 2003 10:00:20 -0500
+From: "Sherri Wilkerson" <zombiez@aol.com>
+Subject: you decide       ............................  deviant
+Date: Thu, 01 May 03 14:24:31 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <C41D82BF5BACD311B1B600A0C9EAF0CF047B848B@es01-bos>
+Message-ID: <6u6507$-0308r907--a-$8$$84sd2w@kp49160.yrk>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: multipart/alternative;
+	boundary="4.C4F0_.DFB66EB_4"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from fw-us-sjc-1.bmc.com ([198.175.229.250] helo=babbler.bmc.com)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19BFY2-0001oM-00
-	for <nfs@lists.sourceforge.net>; Thu, 01 May 2003 08:00:34 -0700
-Received: from ec03-hou.bmc.com (localhost [127.0.0.1])
-	by babbler.bmc.com (8.10.2-BMC/8.10.2) with ESMTP id h41F1rE25293
-	for <nfs@lists.sourceforge.net>; Thu, 1 May 2003 10:01:55 -0500 (CDT)
-To: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
+To: <netsaintplug-devel@lists.sourceforge.net>, <nfs@lists.sourceforge.net>, <nms-cgi-support@lists.sourceforge.net>, <ofset-members@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,16 +20,80 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-What is the latest nfs-util version available for s390  suse/redhat linux
-platform ?
+This is a multi-part message in MIME format.
 
-Thanks,
+--4.C4F0_.DFB66EB_4
+Content-Type: text/html;
+Content-Transfer-Encoding: quoted-printable
 
-Kamlesh Mungekar   <kamlesh_mungekar@bmc.com> Ph:+ 1-781-663-4664
-BMC Software .
-Fax:+1-781-663-4759   
-880 Winter St. Bldg. #4 Room No 2197                        
-Waltham,MA 02454 
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1=
+">
+<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
+<STYLE></STYLE>
+
+<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV><FONT face=3DArial size=3D4>&nbsp;&nbsp;&nbsp;<STRONG><FONT face=3DVe=
+rdana 
+size=3D3>How would you feel about some </FONT></STRONG></FONT><STRONG><FON=
+T 
+face=3DArial><FONT face=3DVerdana>quick </FONT></FONT></STRONG></DIV>
+<DIV><STRONG><FONT face=3DVerdana>&nbsp;&nbsp; <EM>Debt Relief</EM> with N=
+O credit 
+check or</FONT></STRONG></DIV>
+<DIV><FONT face=3DVerdana size=3D4><FONT size=3D3><STRONG>&nbsp;&nbsp; hom=
+eowner 
+requirement?&nbsp;&nbsp;Easy and fast</STRONG></FONT>!&nbsp;</FONT></DIV>
+<DIV><FONT face=3DArial size=3D4></FONT>&nbsp;</DIV>
+<DIV><FONT face=3D"Comic Sans MS">&nbsp;&nbsp;&nbsp;</FONT><FONT 
+face=3D"Arial Rounded MT Bold" size=3D2><FONT face=3DArial 
+size=3D3><STRONG>&nbsp;&nbsp;<FONT face=3DVerdana><FONT color=3D#ffffff 
+size=3D1>parenthood</FONT>Guaranteed to</FONT></STRONG></FONT></FONT></D=
+IV>
+<DIV><FONT face=3D"Comic Sans MS"><FONT 
+face=3DVerdana><STRONG>&nbsp;&nbsp;&nbsp;Lower Your Monthly Payments by Up=
+ To 
+80%<STRONG>&nbsp;</STRONG></STRONG>&nbsp;</FONT></DIV>
+<DIV><FONT face=3DArial,Helvetica color=3D#000000 size=3D3>
+<P align=3Dleft><FONT face=3Dverdana,arial,helvetica color=3D#00b000 
+size=3D4><B>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;<A 
+href=3D"http://www.201-sy.com/free/627205/index.htm">Start Here to make li=
+fe 
+easier&nbsp;</A></B></FONT></FONT></FONT><FONT 
+face=3D"Comic Sans MS"></FONT></P></DIV>
+<DIV><FONT face=3D"Comic Sans MS"><STRONG><FONT face=3DVerdana>One minute =
+quotes - 
+no obligation - totally free</FONT></STRONG></FONT></DIV>
+<DIV><STRONG><FONT face=3DVerdana color=3D#000080></FONT></STRONG>&nbsp;</=
+DIV>
+<DIV><STRONG><FONT face=3DVerdana color=3D#000080></FONT></STRONG>&nbsp;</=
+DIV>
+<DIV>&nbsp;</DIV>
+<DIV><FONT face=3D"Comic Sans MS"><FONT size=3D1>
+<TABLE cellSpacing=3D0 cellPadding=3D0 width=3D600>
+  <TBODY>
+  <TR>
+    <TD><FONT face=3Darial,helvetica size=3D1><BR>Please note that we do n=
+ot want 
+      to send you information regarding our special offers if you do not w=
+ish to 
+      receive it. If you would no longer like us to contact you or you fee=
+l that 
+      you have received this email in error, you may <A 
+      href=3D"http://www.201-sy.com/Automatic/index.htm">go here to 
+      unsubscribe</A>.</FONT></TD></TR></TBODY></TABLE></DIV>
+<P align=3Dleft></FONT></FONT><FONT color=3D#ffffff size=3D1>road =
+adele 
+bestselling rasp <BR>leyden sown sol 
+locomotory aspirate chuckwalla <BR>whitewash olive 
+clarence puerto attend wonder </FONT></P></BODY></HT=
+ML>
+
+--4.C4F0_.DFB66EB_4--
 
 
 
