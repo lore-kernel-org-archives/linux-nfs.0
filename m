@@ -1,21 +1,21 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Will NFSv4 be accepted?
-Date: 15 Aug 2002 00:17:10 +0200
+From: Alexander Viro <viro@math.psu.edu>
+Subject: Re: Re: Will NFSv4 be accepted?
+Date: Wed, 14 Aug 2002 19:21:09 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <46032.4423075237$1029364238@news.gmane.org>
-References: <Pine.LNX.4.44.0208141435210.30333-100000@mooru.gurulabs.com>
+Message-ID: <33037.5456520871$1029368022@news.gmane.org>
+References: <200208142234.g7EMYvQ21700@tooting-fe.eng>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: torvalds@transmeta.com,  "Kendrick M. Smith" <kmsmith@umich.edu>,
-	  "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	  "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>, dax@gurulabs.com,
+        torvalds@transmeta.com, kmsmith@umich.edu,
+        linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
+Received: from leibniz.math.psu.edu ([146.186.130.2] helo=math.psu.edu)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17f6SA-0000Zs-00
-	for <nfs@lists.sourceforge.net>; Wed, 14 Aug 2002 15:17:23 -0700
-To: Dax Kelson <dax@gurulabs.com>
-In-Reply-To: <Pine.LNX.4.44.0208141435210.30333-100000@mooru.gurulabs.com>
+	id 17f7Rw-00008X-00
+	for <nfs@lists.sourceforge.net>; Wed, 14 Aug 2002 16:21:12 -0700
+To: Brian Pawlowski <beepy@netapp.com>
+In-Reply-To: <200208142234.g7EMYvQ21700@tooting-fe.eng>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,23 +28,27 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->>>>> " " == Dax Kelson <dax@gurulabs.com> writes:
 
-     > I for one would REALLY like to see NFSv4 (actually, Kerberized
-     > NFSv4 is what I'm after).  I just finished setting up a
-     > Kerberized Solaris NFS environment with home directories
-     > automounted from the clients with strong user authentication.
 
-     > Frankly, the stock (non-Kerberized) NFS security model blows.
+On Wed, 14 Aug 2002, Brian Pawlowski wrote:
 
-Note: The RPCSEC_GSS (and accompanying kerberos) stuff is completely
-independent of NFSv4. It is still in the process of being finalized,
-but when it is, it will apply to NFSv2/v3 as well as v4.
+> > RPCSEC_GSS is not an argument for NFSv4...
+> 
+> yes.
+> 
+> But ACL support over the wire is an argument for V4 - and fine grained
+> authorization coupled to strong authentication makes for a flexible 
+> security package.
 
-RPCSEC_GSS is not an argument for NFSv4...
+Not really.  With the quality of existing userland (Linux, Solaris, *BSD,
+NT, etc.) _anything_ more complex than "I'm the only one who can create
+or remove objects here" is a big, gaping hole.  Which makes any theoretical
+benefits (if any) of ACL-based schemes moot.  Same (to slightly less extent)
+applies to regular files.
 
-Cheers,
-  Trond
+In other words, if you need something more complex than usual - you are
+screwed on the userland side, regardless of the kernel behaviour.
+
 
 
 -------------------------------------------------------
