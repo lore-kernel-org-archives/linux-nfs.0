@@ -1,13 +1,19 @@
-From: "William Knop" <w_knop@hotmail.com>
-Subject: Re: Re: status
-Date: Mon, 18 Nov 2002 18:24:08 -0500
+From: =?iso-8859-1?Q?Ragnar_Kj=F8rstad?= <nfs@ragnark.vestdata.no>
+Subject: Re: status?
+Date: Tue, 19 Nov 2002 01:33:23 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <F138Mwr9y4cp51dyZSd000147f4@hotmail.com>
+Message-ID: <20021119013322.I30589@vestdata.no>
+References: <F172SxvjPkQTGpaoG1V00000b14@hotmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; format=flowed
-Cc: NFS@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-1
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: trond.myklebust@fys.uio.no
+Received: from stine.vestdata.no ([195.204.68.10] ident=0)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18DwKf-0004br-00
+	for <nfs@lists.sourceforge.net>; Mon, 18 Nov 2002 16:33:37 -0800
+To: William Knop <w_knop@hotmail.com>
+In-Reply-To: <F172SxvjPkQTGpaoG1V00000b14@hotmail.com>; from w_knop@hotmail.com on Mon, Nov 18, 2002 at 10:22:47AM -0500
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -20,55 +26,18 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I'd like to use OpenGFS, but from what I've heard it's very not useable. If 
-someone would tell me otherwise, I'd be happy to give it a shot.
+On Mon, Nov 18, 2002 at 10:22:47AM -0500, William Knop wrote:
+> I'd greatly appreciate any info on distributed/clustering filesystems,=20
+> especially NFSv4 or stable alternatives.
+
+Maybe you should look into "lustre" (at www.lustre.org).
+I'm not sure if the current code is considdered alpha, beta or something
+completely different, so it may not be the best solution short-term.
 
 
->From: Trond Myklebust <trond.myklebust@fys.uio.no>
->To: "William Knop" <w_knop@hotmail.com>
->CC: NFS@lists.sourceforge.net
->Subject: Re: [NFS] Re: status
->Date: 18 Nov 2002 19:40:09 +0100
->MIME-Version: 1.0
->Received: from mons.uio.no ([129.240.130.14]) by mc6-f6.law1.hotmail.com 
->with Microsoft SMTPSVC(5.0.2195.5600); Mon, 18 Nov 2002 10:40:12 -0800
->Received: from charged.uio.no ([129.240.86.49])by mons.uio.no with esmtp 
->(Exim 2.12 #7)id 18Dqoc-0007XR-00; Mon, 18 Nov 2002 19:40:10 +0100
->Received: from trondmy by charged.uio.no with local (Exim 2.12 #1)id 
->18Dqob-00069i-00; Mon, 18 Nov 2002 19:40:09 +0100
->References: <F170m8eyLahVRaWhrkZ0001357e@hotmail.com>
->In-Reply-To: <F170m8eyLahVRaWhrkZ0001357e@hotmail.com>
->Message-ID: <shsptt2d8mu.fsf@charged.uio.no>
->Lines: 17
->User-Agent: Gnus/5.0808 (Gnus v5.8.8) XEmacs/21.4 (Common Lisp)
->Sender: Trond Myklebust <trond.myklebust@fys.uio.no>
->Return-Path: trondmy@charged.uio.no
->X-OriginalArrivalTime: 18 Nov 2002 18:40:13.0155 (UTC) 
->FILETIME=[EE27CB30:01C28F31]
->
-> >>>>> " " == William Knop <w_knop@hotmail.com> writes:
->
->      > Ah, doesn't NFSv3 not support concurrent reads? Or concurrent
->      > reads while a file is open for writing or something like that?
->
->Something like that: it doesn't support calling back clients in order
->to notify them of changes that occur on the server because the model
->is designed to be stateless and thus to scale for large numbers of
->clients.
->Although NFSv4 adds the concept of state (and hence file locking) to
->the protocol, it does not differ from NFSv3 in this respect.
->
->You probably want to be looking at dedicated clustered filesystems
->such as OpenGFS, for instance.
->
->Cheers,
->   Trond
-
-
-_________________________________________________________________
-STOP MORE SPAM with the new MSN 8 and get 2 months FREE* 
-http://join.msn.com/?page=features/junkmail
-
+--=20
+Ragnar Kj=F8rstad
+Big Storage
 
 
 -------------------------------------------------------
