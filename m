@@ -1,21 +1,19 @@
-From: Matt Bernstein <mb/nfs@dcs.qmul.ac.uk>
-Subject: bind mounts and rpc quotas: horrible interactions
-Date: Wed, 10 Jul 2002 17:43:00 +0100 (BST)
+From: Jared Proudfoot <jproudfo@FootPrints.net>
+Subject: Mounting > 2TB via NFS?
+Date: Wed, 10 Jul 2002 12:04:48 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0207101732140.18902-100000@nick.dcs.qmul.ac.uk>
+Message-ID: <Pine.LNX.4.44.0207101129390.24725-100000@ashi.FootPrints.net>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from nick.dcs.qmul.ac.uk ([138.37.88.61])
-	by usw-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17SKYR-0008JJ-00
-	for <nfs@lists.sourceforge.net>; Wed, 10 Jul 2002 09:43:04 -0700
-Received: from nick.dcs.qmul.ac.uk ([138.37.88.61])
-	by nick.dcs.qmul.ac.uk with asmtp (TLSv1:EDH-RSA-DES-CBC3-SHA:168)
-	(Exim 4.05)
-	id 17SKYO-0000Va-00
-	for nfs@lists.sourceforge.net; Wed, 10 Jul 2002 17:43:00 +0100
+Received: from ashi.footprints.net ([204.239.179.1])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17SMlk-0006r7-00
+	for <nfs@lists.sourceforge.net>; Wed, 10 Jul 2002 12:04:56 -0700
+Received: from jproudfo (helo=localhost)
+	by ashi.FootPrints.net with local-esmtp (Exim 3.34 #1)
+	id 17SMld-0006jM-00
+	for nfs@lists.sourceforge.net; Wed, 10 Jul 2002 12:04:49 -0700
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -29,26 +27,38 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hi,
 
-I've only just noticed after upgrading our Debian potato server to woody
-(some weeks ago) all rpc quotas are not working properly.
 
-Our home directories are /homes/$LOGNAME where /homes is an autofs (yp)
-mount. On client machines this is an NFS mount. On the server under potato
-/homes contained a load of symlinks to /exportxx/users/$LOGNAME where xx
-is some value. Under woody this is a bind mount. Fair enough, I think.
+Greetings,
 
-Client machines cannot see the quota information unless users (in their
-home directory) do a "ln -s /exportxx/aquota.user". At this point they can
-now interrogate their quota information--but it's not updated when they do
-i/o to their home files. All of this seems wrong and horrible!
+Perhaps this isn't the right list to post this question on.  If so, please 
+let me know.
 
-Does this even make sense to anyone? Downgrading is awkward..
+I want to NFS export a filesystem from a Solaris machine to a Linux CPU
+farm (running stock mix of Redhat 7.x).  The filesystem we are exporting
+is over 2 TB in size.
 
-Any help very gratefully received,
+There is some concern that the Linux boxes will not support mounting a 
+filesystem larger than 2 TB in size, due to a kernel limitation.
 
-Matt
+It is my understanding that Linux can not mount local filesystems that 
+are more than 2 TB in size, but is the same true for remote NFS 
+filesystems?  Does the same kernel limitation effect both NFS and local 
+filesystems?
+
+I am not subscribed to this mailing list, so if you could reply to me 
+directly, I would appreciate it.
+
+
+Thanks in advance,
+
+Jared Proudfoot
+
+-- 
+Jared Proudfoot
+E-mail: jproudfo@FootPrints.net
+Home Page: http://jared.proudfoot.ca/
+
 
 
 
