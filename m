@@ -1,19 +1,19 @@
 From: mehta kiran <kiranmehta1981@yahoo.com>
 Subject: Re: file :"/var/lib/nfs/rmtab"
-Date: Thu, 3 Feb 2005 03:38:57 -0800 (PST)
-Message-ID: <20050203113858.91960.qmail@web51609.mail.yahoo.com>
+Date: Thu, 3 Feb 2005 03:42:41 -0800 (PST)
+Message-ID: <20050203114241.7498.qmail@web51610.mail.yahoo.com>
 References: <42020B15.4030602@moving-picture.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CwfKC-0002h5-C3
-	for nfs@lists.sourceforge.net; Thu, 03 Feb 2005 03:39:04 -0800
-Received: from web51609.mail.yahoo.com ([206.190.38.214])
+	id 1CwfNo-0002tS-MU
+	for nfs@lists.sourceforge.net; Thu, 03 Feb 2005 03:42:48 -0800
+Received: from web51610.mail.yahoo.com ([206.190.38.215])
 	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
-	id 1CwfKB-0004ih-R7
-	for nfs@lists.sourceforge.net; Thu, 03 Feb 2005 03:39:04 -0800
+	id 1CwfNn-0005F1-4r
+	for nfs@lists.sourceforge.net; Thu, 03 Feb 2005 03:42:48 -0800
 To: James Pearson <james-p@moving-picture.com>
 In-Reply-To: <42020B15.4030602@moving-picture.com>
 Sender: nfs-admin@lists.sourceforge.net
@@ -29,27 +29,11 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi James , 
-          I know that if there is no entry for
-          particualr client in rmtab (due to whatever
-          reasons) it gets permission denied error
-          because mountd verifies clients access  to
-          filesystem using rmtab. But what i want to
-          know is why does  mountd 
-          use rmtab ? Isn't handle supplied by client
-          enough to verify clients access to
-          filesystem.?
+Or is it for security reasons , so as to
+prevent server from fake client handle.
 
-          I have seen that server uses entry from
-         rmtab only once when client access
-         filesystem (after server restart).Later if
-         entry from rmtab is removed client is still
-         able to access filesystem without any
-         problem.
-         
-thanks , 
- --kiran         
-        
+--thanks,.
+ --kiran
 
 --- James Pearson <james-p@moving-picture.com> wrote:
 
@@ -86,12 +70,10 @@ thanks ,
 > 
 
 
-
-		
-__________________________________ 
-Do you Yahoo!? 
-Yahoo! Mail - Easier than ever with enhanced search. Learn more.
-http://info.mail.yahoo.com/mail_250
+__________________________________________________
+Do You Yahoo!?
+Tired of spam?  Yahoo! Mail has the best spam protection around 
+http://mail.yahoo.com 
 
 
 -------------------------------------------------------
