@@ -1,24 +1,26 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 3 of 6] svcrpc: move export table checks to a per-program pg_add_client method
-Date: Thu, 23 Sep 2004 17:46:44 -0400
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: [PATCH 5 of 6] lockd: don't try to match callback requests
+ against export table
+Date: Fri, 24 Sep 2004 13:55:06 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040923214644.GA19291@fieldses.org>
-References: <1095375544.839c1c96.3@fieldses.org> <1095383919.10216.142.camel@lade.trondhjem.org> <20040917022015.GA15212@fieldses.org> <16721.8596.980204.899779@cse.unsw.edu.au>
+Message-ID: <16723.39578.994807.361949@cse.unsw.edu.au>
+References: <1095375544.839c1c96.5@fieldses.org>
+	<1095377696.10216.41.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-1
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+    nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CAbQS-0004f3-2l
-	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 14:46:52 -0700
-Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.41)
-	id 1CAbQQ-0001CL-LJ
-	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 14:46:52 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <16721.8596.980204.899779@cse.unsw.edu.au>
+	id 1CAhB5-00083d-4p
+	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 20:55:23 -0700
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CAhB4-0002Zz-N2
+	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 20:55:23 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: message from Trond Myklebust on Thursday September 16
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,15 +33,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, Sep 22, 2004 at 04:54:12PM +1000, Neil Brown wrote:
-> Alternately, the code which causes a call-back to be meaningful
-> (e.g. nlmclnt_lock in lockd (??)) could insert the relevant
-> information into the auth cache in advance.
+On Thursday September 16, trond.myklebust@fys.uio.no wrote:
+> P=E5 to , 16/09/2004 klokka 19:16, skreiv J. Bruce Fields:
+> > +=09/* XXX: correct list?  Add field to proc? */
+> > +=09/* XXX: SMPROC_NOTIFY may be a special case. */
+> > +=09/* XXX: double-check: make sure the procedure numbers make sens=
+e
+> > +=09 * across all nlm versions.  Check NOTIFY in particular. */
+> > +=09return proc =3D=3D NLMPROC_GRANTED
+> > +=09=09|| proc =3D=3D NLMPROC_TEST_RES
+> > +=09=09|| proc =3D=3D NLMPROC_LOCK_RES
+> > +=09=09|| proc =3D=3D NLMPROC_CANCEL_RES
+> > +=09=09|| proc =3D=3D NLMPROC_UNLOCK_RES
+> > +=09=09|| proc =3D=3D NLMPROC_GRANTED_RES;
+>=20
+> || proc =3D=3D NLMPROC_NSM_NOTIFY
 
-There's not really a reliable way to do that with the current code since
-userspace can flush the auth_domain cache at whim.
+|| proc =3D=3D NLMPROC_GRANTED_MSG
 
---b.
+which is the case that is actually causing problems.....(at least in
+my testing)
+
+:-)
+
+NeilBrown
+
+>=20
+> Cheers,
+>   Trond
 
 
 -------------------------------------------------------
