@@ -1,15 +1,15 @@
-From: Marc Eshel <eshel@almaden.ibm.com>
-Subject: NFSv3 blocking locks broken in 2.6.7
-Date: Tue, 24 Aug 2004 17:31:10 -0700
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFSv3 blocking locks broken in 2.6.7
+Date: Tue, 24 Aug 2004 21:31:36 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <OFAF6A9C4E.27A9BF20-ON88256EFB.00020035-88256EFB.0002DABA@us.ibm.com>
-References: <OF5D98042A.0F02E0AD-ON88256EF5.0003D053-88256EF5.00041A3D@LocalDomain>
+Message-ID: <1093397495.7439.7.camel@lade.trondhjem.org>
+References: <OFAF6A9C4E.27A9BF20-ON88256EFB.00020035-88256EFB.0002DABA@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: multipart/mixed; boundary="=-3TC325BMIEX/6mDqrflH"
 Cc: NFS@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-In-Reply-To: <OF5D98042A.0F02E0AD-ON88256EF5.0003D053-88256EF5.00041A3D@LocalDomain>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Marc Eshel <eshel@almaden.ibm.com>
+In-Reply-To: <OFAF6A9C4E.27A9BF20-ON88256EFB.00020035-88256EFB.0002DABA@us.ibm.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -23,18 +23,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
+--=-3TC325BMIEX/6mDqrflH
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: quoted-printable
 
+P=E5 ty , 24/08/2004 klokka 20:31, skreiv Marc Eshel:
+>=20
+>=20
+> Hi Trond,
+>=20
+> I have a question about the serialization of the nlm_blocked list. Is it
+> possible that the lockd thread will manipulate the list while a call is
+> made to nlmsvc_notify_blocked() on a different thread which is also
+> searching the nlm_blocked list?
 
+The BKL should normally protect against that.
 
-Hi Trond,
+There was a problem that originate in 2.5.x due to someone having done a
+"cleanup" of the locking code without really understanding how
+nlmsvc_delete_block() works.
+The attached patch (which was merge into the mainline kernel in
+2.6.9-rc1) fixes that problem. Could you check if it fixes the issues
+you are seeing?
 
-I have a question about the serialization of the nlm_blocked list. Is it
-possible that the lockd thread will manipulate the list while a call is
-made to nlmsvc_notify_blocked() on a different thread which is also
-searching the nlm_blocked list?
+Cheers,
+  Trond
 
-Thanks, Marc.
+--=-3TC325BMIEX/6mDqrflH
+Content-Disposition: inline; filename=linux-2.6.8.1-10-lockd_bug.dif
+Content-Type: text/plain; name=linux-2.6.8.1-10-lockd_bug.dif; charset=iso-8859-1
+Content-Transfer-Encoding: base64
 
+IHN2Y2xvY2suYyB8ICAgIDkgKysrKysrKy0tDQogMSBmaWxlcyBjaGFuZ2VkLCA3IGluc2VydGlv
+bnMoKyksIDIgZGVsZXRpb25zKC0pDQoNCi0tLSBsaW51eC0yLjYuOC4xLWdycnIvZnMvbG9ja2Qv
+c3ZjbG9jay5jLm9yaWcJMjAwNC0wOC0xNCAxNDoyNTo1Ni4wMDAwMDAwMDAgLTA0MDANCisrKyBs
+aW51eC0yLjYuOC4xLWdycnIvZnMvbG9ja2Qvc3ZjbG9jay5jCTIwMDQtMDgtMTggMTk6MzQ6MTMu
+MDAwMDAwMDAwIC0wNDAwDQpAQCAtMjM4LDggKzIzOCwxMyBAQCBubG1zdmNfZGVsZXRlX2Jsb2Nr
+KHN0cnVjdCBubG1fYmxvY2sgKmJsDQogDQogCS8qIFJlbW92ZSBibG9jayBmcm9tIGxpc3QgKi8N
+CiAJbmxtc3ZjX3JlbW92ZV9ibG9jayhibG9jayk7DQotCXBvc2l4X3VuYmxvY2tfbG9jaygmZmls
+ZS0+Zl9maWxlLCBmbCk7DQotCWJsb2NrLT5iX2dyYW50ZWQgPSAwOw0KKwlpZiAoZmwtPmZsX25l
+eHQpDQorCQlwb3NpeF91bmJsb2NrX2xvY2soJmZpbGUtPmZfZmlsZSwgZmwpOw0KKwlpZiAodW5s
+b2NrKSB7DQorCQlmbC0+ZmxfdHlwZSA9IEZfVU5MQ0s7DQorCQlwb3NpeF9sb2NrX2ZpbGUoJmZp
+bGUtPmZfZmlsZSwgZmwpOw0KKwkJYmxvY2stPmJfZ3JhbnRlZCA9IDA7DQorCX0NCiANCiAJLyog
+SWYgdGhlIGJsb2NrIGlzIGluIHRoZSBtaWRkbGUgb2YgYSBHUkFOVCBjYWxsYmFjaywNCiAJICog
+ZG9uJ3Qga2lsbCBpdCB5ZXQuICovDQo=
+
+--=-3TC325BMIEX/6mDqrflH--
 
 
 -------------------------------------------------------
