@@ -1,19 +1,19 @@
-From: "Bill Rugolsky Jr." <brugolsky@telemetry-investments.com>
-Subject: Re: nvram pci card?
-Date: Fri, 15 Nov 2002 09:14:10 -0500
+From: Antoine Jacoutot <ajacoutot@lphp.org>
+Subject: nfssvc: Permission denied
+Date: Fri, 15 Nov 2002 15:20:50 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20021115091410.A8941@ti19>
-References: <00c501c28caa$2ec0c730$640a010a@winda>
+Message-ID: <1037370050.3dd502c24af77@webmail.lphp.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-15
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from 209-166-240-202.cust.walrus.com.240.166.209.in-addr.arpa ([209.166.240.202] helo=ti3.telemetry-investments.com)
+Received: from apastourelles-107-1-18-63.abo.wanadoo.fr ([81.49.132.63] helo=mail.lphp.org)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18ChEp-00044o-00
-	for <nfs@lists.sourceforge.net>; Fri, 15 Nov 2002 06:14:27 -0800
-To: myciel <myciel@dotcom.pl>
-In-Reply-To: <00c501c28caa$2ec0c730$640a010a@winda>; from myciel@dotcom.pl on Fri, Nov 15, 2002 at 02:23:18PM +0100
+	id 18ChL7-0005fQ-00
+	for <nfs@lists.sourceforge.net>; Fri, 15 Nov 2002 06:20:57 -0800
+Received: from localhost (APastourelles-107-1-18-63.abo.wanadoo.fr [81.49.132.63])
+	by mail.lphp.org (Postfix) with ESMTP id 5E11C8FCB7
+	for <nfs@lists.sourceforge.net>; Fri, 15 Nov 2002 15:20:50 +0100 (CET)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,21 +26,58 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, Nov 15, 2002 at 02:23:18PM +0100, myciel wrote:
-> Do You know about any pci based nvram card? maybe somebody has already
-> experiences using it with linux nfs fileserver?
-
-IIRC, Neil Brown (kNFS and MD maintainer) did driver work for the
-Micro Memory (www.umem.com) cards.  There is support in 2.4.20-rc1
-(and perhaps earlier, haven't looked).  See
-
-	Block Devices -> Micro Memory MM5415 Battery Backed RAM support
-
-in the kernel config.
-
-Regards,
-
-	Bill Rugolsky
+Hi, =20
+=20
+I'm using NFS under Gentoo Linux with kernel-2.4.19.=20
+When starting nfs server with nfs init script (from nfs-utils), I get the=
+ =20
+following message: =20
+=20
+/etc/init.d/nfs start =20
+[ok ] * Starting NFS statd... =20
+[ ok ] * Starting NFS rquotad... =20
+[ ok ] * Starting NFS daemon... =20
+nfssvc: Permission denied =20
+* Error starting NFS daemon =20
+[ !! ] =20
+* Starting NFS mountd... =20
+=20
+The modules are correctly loaded: =20
+nfsd 61136 0 (autoclean) =20
+lockd 44080 0 (autoclean) [nfsd] =20
+sunrpc 60796 0 (autoclean) [nfsd lockd] =20
+=20
+This error is happening on all my servers, whether the nfs is user-space =
+=20
+or kernel-space. =20
+=20
+There's nothing in the logs except someting about the portmapper (in=20
+auth.log): =20
+Oct 7 07:03:09 srv01 portmap[29402]: connect from 127.0.0.1 to set(nfs): =
+=20
+request from unprivileged port =20
+Oct 7 07:03:09 srv01 portmap[21158]: connect from 127.0.0.1 to unset(nfs)=
+: =20
+request from unprivileged port =20
+Oct 7 07:04:40 srv01 portmap[1765]: connect from 127.0.0.1 to set(nfs):=20
+request =20
+from unprivileged port =20
+=20
+Portmap is running and I have nfs-utils-0.3.3-r1.=20
+=20
+Thanks in advance if you have any clue.=20
+I've search Google and didn't find anything usefull (this errors appears =
+to=20
+happen on old Linux kernels, but I'm using the lastest stable).=20
+=20
+-- =20
+Antoine Jacoutot=20
+Gentoo Linux=20
+ajacoutot@lphp.org=20
+http://www.lphp.org=20
+=20
+=20
+=20
 
 
 -------------------------------------------------------
