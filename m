@@ -1,28 +1,26 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: Solaris 8 to Linux Red Hat 9 - NFS Goes up and down and up and do
- wn ...
-Date: Tue, 26 Aug 2003 08:45:45 +1000
+From: Bernd Schubert <bernd-schubert@web.de>
+Subject: Re: 3 NFS client panics in 2.4.21. Fixed in 2.4.22?
+Date: Tue, 26 Aug 2003 11:38:39 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16202.37273.301748.912462@gargle.gargle.HOWL>
-References: <2840B2764868D51189420090277B7699FD8F30@trilogy_pub.trilogyintl.com>
+Message-ID: <200308261138.39667.bernd-schubert@web.de>
+References: <Pine.LNX.4.44.0308251617050.26067-400000@fubar.phlinux.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+  charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19rQjy-0004Zp-00
-	for <nfs@lists.sourceforge.net>; Mon, 25 Aug 2003 16:27:14 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24])
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.22)
-	id 19rQ64-0005Dv-5s
-	for nfs@lists.sourceforge.net; Mon, 25 Aug 2003 15:46:00 -0700
-Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <mmoldvan@trilogyintl.com>) (for <nfs@lists.sourceforge.net>) By
-	note With Smtp ; Tue, 26 Aug 2003 08:45:52 +1000
-To: Matthew Moldvan <mmoldvan@trilogyintl.com>
-In-Reply-To: message from Matthew Moldvan on Monday August 25
+	id 19raIN-00028v-00
+	for <nfs@lists.sourceforge.net>; Tue, 26 Aug 2003 02:39:23 -0700
+Received: from smtp02.web.de ([217.72.192.151] helo=smtp.web.de)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.22)
+	id 19raIL-0003jj-5Y
+	for nfs@lists.sourceforge.net; Tue, 26 Aug 2003 02:39:21 -0700
+To: Matt C <wago@phlinux.com>,
+ NFS List <nfs@lists.sourceforge.net>
+In-Reply-To: <Pine.LNX.4.44.0308251617050.26067-400000@fubar.phlinux.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -35,50 +33,29 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Monday August 25, mmoldvan@trilogyintl.com wrote:
-> Hi everyone,
-> 
-> I've finally just about given up on trying to figure this out myself ...
-> here's my issue:
-> 
-> We have a Sun E450 running Solaris 8 with not enough disk space on a few of
-> the partitions.  Our solution: an x86 machine running Red Hat 9 with a 3Ware
-> Escalade 4 port IDE RAID card and a few big HDDs.
-> 
-> So, we have the two machines communicating just fine through a Gigabit
-> ethernet interface with a subnet.  Now, we've tried the rest two ways: 
-> 
-> 	1. Our E450 mounts the RH9 NFS share, then exports that as it's own
-> NFS share
+On Tuesday 26 August 2003 01:20, Matt C wrote:
+> hey all-
+>
+> I've had 3 very similar panics on 3 seperate machines under 2.4.21. All
+> appear to be in the NFS client stack. All are SMP/Bigmem machines, and the
+> kernel was pretty close to vanilla. All machines are redhat-7.2 using ext3
+> filesystems.
+>
+> Before I hop on the latest kernel out of the hopper for production
+> systems, do you know if these are known/fixed bugs in 2.4.22 or in BK?
+>
+ 
+I'm afraid there is a critical bug in 2.4.22, please see the thread:
 
-This is unlikely to work.  NFS is not designed to allow re-exporting.
-The Linux NFS server doesn't allow this.
-The Solaris NFS server might give it it's best-shot, I don't know.
-But it isn't a configuration that I would recommend.
+[NFS] nfs errors clutter up logs after 2.4.20 -> 2.4.22-pre10
 
 
-> 		or
-> 	2. We mount the RH9 NFS share directly from the other Solaris
-> workstations
+I havn't tested it with 2.4.22-rc3 and rc4, but I didn't see anything in the 
+changelog, that could fix it :-(
 
-This would be the most reliable approach.
 
-> 
-> Now, the issue we're facing is this: The whole setup works fine for awhile,
-> with a minor amount of collisions ... BUT, after a few hours, the whole
-> thing falls apart.  Workstations can't login because NFS shares aren't being
-> mounted, the main server is not allowing connections because it can't mount
-> the NFS itself, etc etc etc.
-> 
-> This is all incredibly frustrating to me, and we've tried everything from
-> changing the gigabit ethernet configuration to trying new network cards to
-> blaming it on wiring to god knows what now ...
-
-We would need some precise details.  Specific error messages.
-Try mounting various things by hand, note the error messages and
-anything that appears in logs on the server or the client.
-
-NeilBrown
+Regards,
+	Bernd
 
 
 
