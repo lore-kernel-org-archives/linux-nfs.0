@@ -1,15 +1,14 @@
-From: =?GB2312?B?us3Rts34ucnGsdDFz6LN+A==?= <fsff@21cn.com>
-Subject: =?GB2312?B?wvS5ycaxo6zV0rrawu0sus3Rts34ucnGsdDFz6LN+A==?=
-Date: Tue, 17 Jun 2003 00:16:11 +0800
+From: xiyu@800j.com
+Subject: =?GB2312?B?zvewsre/tdiy+tDFz6LN+NDQ0rXIyMPFu7DM4g==?=
+Date: Tue, 17 Jun 2003 11:39:15 +0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19RwcB-0006oE-00@sc8-sf-list1.sourceforge.net>
-Reply-To: f2@21cn.com
+Message-ID: <E19S7Gf-00062M-00@sc8-sf-list1.sourceforge.net>
 Content-Type: text/html;charset="GB2312"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [218.86.49.5] (helo=21cn.com)
+Received: from [61.150.19.106] (helo=800j.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19RwcB-0006oE-00
-	for <nfs@lists.sourceforge.net>; Mon, 16 Jun 2003 09:13:53 -0700
+	id 19S7Gf-00062M-00
+	for <nfs@lists.sourceforge.net>; Mon, 16 Jun 2003 20:36:22 -0700
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -26,22 +25,30 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 <html>
 
 <head>
-
-<title>www</title>
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
+<meta name="GENERATOR" content="Microsoft FrontPage 4.0">
+<meta name="ProgId" content="FrontPage.Editor.Document">
+<title>西安房地产信息网</title>
 </head>
 
-<body bgcolor="#EA0000">
+<body>
 
-<div align="center">
-  <center>
-  <table border="0" cellpadding="0" cellspacing="0" width="98%" height="275">
-    <tr>
-      <td width="100%" height="275">
-        <p align="center"><script src="http://www.158china.com/sms/union/heima_green.js?smsuid=10176&color=fer&style=green"></script></td>
-    </tr>
-  </table>
-  </center>
-</div>
+<p class="MsoNormal" align="center"><span lang="EN-US" style="font-size:26.0pt;mso-bidi-font-size:12.0pt;mso-fareast-font-family:
+楷体_GB2312;color:fuchsia"><o:p>
+</span><font color="#0000FF" size="7"><a href="http://www.800j.com.cn"><span lang="EN-US" style="mso-bidi-font-size: 12.0pt"> 
+</o:p> 
+ </span></a></font><b><font color="#0000FF" size="7"><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman"><font face="楷体_GB2312">西安房地产信息网</font></span></a></font></b></p>
+
+<p class="MsoNormal" align="center"><font color="#0000FF"><b><font face="楷体_GB2312" size="6"><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman">www.800j.cc</span></a></font></b></font></p>
+<p align="center">　
+<p align="center"><a href="http://www.800j.com.cn"><img src="huati001.gif" width="321" height="46"></a></p>
+<p align="center"><a href="http://www.800j.com.cn/800j/fclt/djtbbs/show.asp?bID=&amp;RID=4863&amp;ID=4863"><font color="#FF0000" size="4"><b>非典时期买楼该注重什么？</b></font></a></p>
+<p align="center"><a href="http://www.800j.com.cn/800j/fclt/djtbbs/show.asp?bID=&amp;RID=5014&amp;ID=5014"><font color="#FF0000" size="4"><b>谁来评述“世家星城”</b></font></a></p>
+<p align="center"><font color="#FF0000" size="4"><b>.....</b></font></p>
+<p class="MsoNormal" align="center"><b><font color="#FFFF00" face="楷体_GB2312" size="4"><a href="http://http://www.800j.com.cn/800j/fclt/djtbbs/new.asp">我要发言　</a>　　　　　<a href="http://http://www.800j.com.cn/800j/fclt/djtbbs/index.asp">　进入论坛</a></font></b></p>
+<p align="center">　</p>
+
+<p align="center"><b><font color="#0000FF" face="宋体">若此邮件给您造成不便，还请您见谅，请自行处理!</font></b></p>
 
 </body>
 
@@ -49,9 +56,10 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
 -------------------------------------------------------
-This SF.NET email is sponsored by: eBay
-Great deals on office technology -- on eBay now! Click here:
-http://adfarm.mediaplex.com/ad/ck/711-11697-6916-5
+This SF.Net email is sponsored by: INetU
+Attention Web Developers & Consultants: Become An INetU Hosting Partner.
+Refer Dedicated Servers. We Manage Them. You Get 10% Monthly Commission!
+INetU Dedicated Managed Hosting http://www.inetu.net/partner/index.php
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
