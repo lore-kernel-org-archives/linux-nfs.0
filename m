@@ -1,75 +1,99 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Failover using wackamole?
-Date: Mon, 28 Feb 2005 15:34:00 -0500
-Message-ID: <20050228203400.GA22284@fieldses.org>
-References: <42234450.9070004@cshl.edu> <20050228192101.GD21364@fieldses.org> <42237DE7.9010404@cshl.edu>
+From: Bernd Schubert <bernd.schubert@pci.uni-heidelberg.de>
+Subject: x86_64: 32bit emulation problems
+Date: Mon, 28 Feb 2005 21:54:03 +0100
+Message-ID: <200502282154.08009.bernd.schubert@pci.uni-heidelberg.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D5raI-0004PD-Om
-	for nfs@lists.sourceforge.net; Mon, 28 Feb 2005 12:33:42 -0800
-Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1D5raH-0002pl-6l
-	for nfs@lists.sourceforge.net; Mon, 28 Feb 2005 12:33:42 -0800
-To: "Vsevolod (Simon) Ilyushchenko" <simonf@cshl.edu>
-In-Reply-To: <42237DE7.9010404@cshl.edu>
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain;
+  charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, bernd-schubert@gmx.de
+To: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	Andi Kleen <ak@muc.de>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Mon, Feb 28, 2005 at 03:24:07PM -0500, Vsevolod (Simon) Ilyushchenko wrote:
-> >>I tried this using NFS 4 nfs-utils-1.0.6-52 from FC3 updates. However, 
-> >>it still failed with the following error:
-> >>	ls: reading directory a: Input/output error
-> >>and this in the error log on the client:
-> >>	kernel: RPC: garbage, exit EIO
-> >>
-> >>Is this a bug or a feature?
-> >
-> >
-> >Hm, there may be a bug there.  But in any case v4 isn't going to help
-> >you here.  It's constructing filehandles in exactly the same was as v3.
-> 
-> Oh. :( Bummer. Thanks, though.
-> 
-> Is there then an official NFS 4 way of doing a transparent failover with 
-> non-shared storage?
+Hi,
 
-NFSv4 does allow you to designate filehandles as "volatile on
-migration", in which case the client can attempt to look up the
-filehandles after migration.  This would only work if you actually told
-the client about the migration (probably using NFSERR_MOVED and
-FS_LOCATIONS, both added in v4).  If the failover was really
-"transparent" to the client, then the client wouldn't be able to tell
-there was a migration in the first place, so this wouldn't help.  Also,
-the Linux client implementation of migration isn't finished yet anyway.
+I'm just looking into a very strange problem. Some of our systems have 
+athlon64 CPUs. Due to our diskless nfs environment we currently still prefer 
+a 32bit userspace environment, but would like to be able to use a 64-bit 
+chroot environment.
 
-Also of course there are inherent problems with looking up the
-filehandles again after migration--if the file that a filehandle refers
-to has moved since you originally looked up the file, then looking it up
-again under the path you originally got it from isn't going to help.
+Well, currently there seems to be a stat64()  NFS problem when a x86_64 kernel 
+is booted and stat64() comes from a 32bit libc.
 
---b.
+Here's just an example:
+
+hitchcock:/home/bernd/src/tests# ./test_stat64 /mnt/test/yp
+stat() works fine.
 
 
--------------------------------------------------------
-SF email is sponsored by - The IT Product Guide
-Read honest & candid reviews on hundreds of IT Products from real users.
-Discover which products truly live up to the hype. Start reading now.
-http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+hitchcock:/home/bernd/src/tests# ./test_stat32 /mnt/test/yp
+stat for /mnt/test/yp failed 
+
+
+The test program looks rather simple:
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <errno.h>
+#include <string.h>
+#include <stdlib.h>
+
+
+int main(int argc, char **argv)
+{
+        char *dir;
+        struct stat buf;
+
+        dir = argv[1];
+
+        if (stat (dir, &buf) == -1)
+                fprintf(stderr, "stat for %s failed \n", dir);
+        else
+                fprintf(stderr, "stat() works fine.\n");
+        return (0);
+}
+
+
+Here are the strace outputs:
+=====================
+
+32bit:
+------
+hitchcock:/home/bernd/src/tests# strace32 ./test_stat32 /mnt/test/yp
+execve("./test_stat32", ["./test_stat32", "/mnt/test/yp"], [/* 39 vars */]) = 
+0
+uname({sys="Linux", node="hitchcock", ...}) = 0
+brk(0)                                  = 0x80ad000
+brk(0x80ce000)                          = 0x80ce000
+stat64("/mnt/test/yp", {st_mode=S_IFDIR|0755, st_size=2704, ...}) = 0
+write(2, "stat for /mnt/test/yp failed \n", 30stat for /mnt/test/yp failed 
+) = 30
+exit_group(0)                           = ?
+
+64bit:
+-------
+hitchcock:/home/bernd/src/tests# strace ./test_stat64 /mnt/test/yp
+execve("./test_stat64", ["./test_stat64", "/mnt/test/yp"], [/* 39 vars */]) = 
+0
+uname({sys="Linux", node="hitchcock", ...}) = 0
+brk(0)                                  = 0x572000
+brk(0x593000)                           = 0x593000
+stat("/mnt/test/yp", {st_mode=S_IFDIR|0755, st_size=2704, ...}) = 0
+write(2, "stat() works fine.\n", 19stat() works fine.
+)    = 19
+_exit(0)                                = ?
+
+
+
+Anyone having an idea whats going on? The ethereal capture also looks pretty 
+normal. The kernel of this system is 2.6.9, but it also happens on another 
+system with 2.6.11-rc5.
+As usual we are using unfs3 for /etc and /var, but for me that looks like a 
+client problem. I'm even not sure if this is limited to NFS at all.
+
+
+Thanks in advance,
+ Bernd
