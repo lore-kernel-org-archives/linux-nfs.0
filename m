@@ -1,30 +1,24 @@
-From: Nicolas Kowalski <Nicolas.Kowalski@imag.fr>
-Subject: high server load when quotas exceeded
-Date: Wed, 29 Oct 2003 11:42:19 +0100
+From: Chip Salzenberg <chip@pobox.com>
+Subject: CVS tag "nfs-utils-1-0-6" looks wrong
+Date: Wed, 29 Oct 2003 11:25:16 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <vqowuaotjec.fsf@astazou.imag.fr>
+Message-ID: <20031029162516.GE29526@perlsupport.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AEnmS-0003S6-00
-	for <nfs@lists.sourceforge.net>; Wed, 29 Oct 2003 02:42:24 -0800
-Received: from imag.imag.fr ([129.88.30.1])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1AEt8G-0002Nt-00
+	for <nfs@lists.sourceforge.net>; Wed, 29 Oct 2003 08:25:16 -0800
+Received: from topaz.cx
+	([66.220.6.227] helo=mail.topaz.cx ident=mail)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.24)
-	id 1AEnmR-0006MJ-El
-	for nfs@lists.sourceforge.net; Wed, 29 Oct 2003 02:42:23 -0800
-Received: from mail-veri.imag.fr (pave.imag.fr [129.88.43.12])
-	by imag.imag.fr (8.12.10/8.12.10) with ESMTP id h9TAgKLr024470
-	for <nfs@lists.sourceforge.net>; Wed, 29 Oct 2003 11:42:20 +0100 (CET)
-Received: from astazou.imag.fr
-	([129.88.43.102] helo=astazou.imag.fr.imag.fr ident=kowalski)
-	by mail-veri.imag.fr with esmtp (Exim 3.35 #1 (Debian))
-	id 1AEnmO-0004n8-00
-	for <nfs@lists.sourceforge.net>; Wed, 29 Oct 2003 11:42:20 +0100
-To: nfs@lists.sourceforge.net
+	id 1AEt8D-0005As-2O
+	for nfs@lists.sourceforge.net; Wed, 29 Oct 2003 08:25:13 -0800
+To: Neil Brown <neilb@cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -37,24 +31,13 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-
-Hello.
-
-When a user on a NFS client (Linux or Solaris) exceeds his quota on
-the home directory, but continues to write data on it, the nfsd
-processes on the server takes almost all CPU and the server becomes
-irresponsive, until the user stop his writes.
-
-The NFS server is running 2.4.22-xfs, Debian GNU/Linux 3.0.
-The NFS mounts do not have any particular options (intr).
-
-Any tips about this ?
-
-Thanks.
-
+Neil, do you know what went wrong with the CVS tags for 1.0.6?  I
+fixed the one on debian/changelog and then noticed that they seem
+wrong all over the module.
 -- 
-Nicolas
-
+Chip Salzenberg               - a.k.a. -               <chip@pobox.com>
+"I wanted to play hopscotch with the impenetrable mystery of existence,
+    but he stepped in a wormhole and had to go in early."  // MST3K
 
 
 -------------------------------------------------------
