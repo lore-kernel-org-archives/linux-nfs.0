@@ -1,24 +1,17 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 3 of 6] svcrpc: move export table checks to a
- per-program pg_add_client method
-Date: Thu, 16 Sep 2004 21:18:39 -0400
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: 2.6.8.1 kernel NFS client connectathon failure
+Date: Fri, 17 Sep 2004 11:41:17 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1095383919.10216.142.camel@lade.trondhjem.org>
-References: <1095375544.839c1c96.3@fieldses.org>
+Message-ID: <16714.16573.467686.621248@cse.unsw.edu.au>
+References: <200409152054.i8FKsTNV002355@roma.math.duke.edu>
+	<1095304285.8598.51.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=iso-8859-1
-Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
+Cc: Andrew Schretter <schrett@math.duke.edu>,
+    NFS@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C87P6-0004hh-Gu
-	for nfs@lists.sourceforge.net; Thu, 16 Sep 2004 18:19:12 -0700
-Received: from pat.uio.no ([129.240.130.16])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1C87P5-00024V-6O
-	for nfs@lists.sourceforge.net; Thu, 16 Sep 2004 18:19:12 -0700
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <1095375544.839c1c96.3@fieldses.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: message from Trond Myklebust on Wednesday September 15
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,66 +24,70 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 to , 16/09/2004 klokka 19:16, skreiv J. Bruce Fields:
+On Wednesday September 15, trond.myklebust@fys.uio.no wrote:
+> P=E5 on , 15/09/2004 klokka 16:54, skreiv Andrew Schretter:
+> > The attached code is a blatant rip from the latest connectathon cod=
+e that
+> > was stripped down to show exactly where it fails on my 2.6.8.1 NFS =
+client.
+> > Note that this code works on the local disk and on a 2.4.22 client =
+(both to
+> > a 2.6.8.1 server and a 2.4.22 server) but fail from a 2.6.8.1 clien=
+t to
+> > both 2.4.22 and 2.6.8.1 servers.
+> >=20
+>=20
+>=20
+> This question keeps recurring on this list. The answer is the same no=
+w
+> as it was before: Fix the bloody servers!!!!
+>=20
+>    subtree_check is INCOMPATIBLE with correct rename behaviour, and i=
+t
+> is simply ridiculous that this is still a default option.
 
-> diff -puN net/sunrpc/svcauth_unix.c~svcrpc_unix_ip_mapping_method net/sun=
-rpc/svcauth_unix.c
-> --- linux-2.6.9-rc2/net/sunrpc/svcauth_unix.c~svcrpc_unix_ip_mapping_meth=
-od	2004-09-16 16:40:53.000000000 -0400
-> +++ linux-2.6.9-rc2-bfields/net/sunrpc/svcauth_unix.c	2004-09-16 16:40:53=
-.000000000 -0400
-> @@ -334,10 +334,6 @@ svcauth_unix_set_client(struct svc_rqst=20
->  {
->  	struct ip_map key, *ipm;
-> =20
-> -	rqstp->rq_client =3D NULL;
-> -	if (rqstp->rq_proc =3D=3D 0)
-> -		return SVC_OK;
-> -
->  	strcpy(key.m_class, rqstp->rq_server->sv_program->pg_class);
->  	key.m_addr =3D rqstp->rq_addr.sin_addr;
-> =20
-> @@ -395,7 +391,7 @@ svcauth_null_accept(struct svc_rqst *rqs
->  	if (cred->cr_group_info =3D=3D NULL)
->  		return SVC_DROP; /* kmalloc failure - client must retry */
-> =20
-> -	rv =3D svcauth_unix_set_client(rqstp);
-> +	rv =3D rqstp->rq_server->sv_program->pg_set_client(rqstp);
->  	if (rv =3D=3D SVC_DENIED)
->  		goto badcred;
-> =20
-> @@ -473,7 +469,7 @@ svcauth_unix_accept(struct svc_rqst *rqs
->  		return SVC_DENIED;
->  	}
-> =20
-> -	rv =3D svcauth_unix_set_client(rqstp);
-> +	rv =3D rqstp->rq_server->sv_program->pg_set_client(rqstp);
->  	if (rv =3D=3D SVC_DENIED)
->  		goto badcred;
-> =20
+I find it hard to see how it is the server that is at fault.
 
-This is rather unclean...
+The effect of "subtree_check" in this case is that the same file (FOO
+and TEMP/BAR) has a different file-handle for each name. =20
 
-You are making a special method that is really very specific to
-svcauth_unix and svcauth_null, yet the pg_set_client() appears as a
-generic method in the generic svc_program object.
+When the client tries to perform the "rename" request it checks the
+two names to see if they exist and what they are.
+In the no_subtree_check case it finds that they both have the same
+filehandle and so must be the same file, and as the rename request is
+defined to be a no-op in that case the client optimises it away.  (This=
+ is
+based on reading the actual NFS traffic, not the NFS client code).
 
-Firstly, I'd strongly suggest that we call this callback pg_set_domain
-so that there is no confusion about what it does.
+In the subtree_check case, the two have different filehandles, though
+both are clearly files.
+In this case, one would think that the client would send the RENAME
+request, and the server would then notice that the two files are
+actually the same and would do nothing.  This is what appears to
+happen from a 2.4 client.
 
-Secondly, please explain why we're leaving RPCSEC_GSS as a special case
-here? Isn't the current implementation also calling up to "rpc.mountd"
-in order to check "/etc/exports"? Ideally, all the *_accept() methods
-should be calling the same function to set the domain (or not to set it
-as the case may be). Better still: could we defer calling
-pg_set_domain() until after the call to svc_authenticate?
+However with 2.6.9-rc1 on the client, something else happens.
+Before the rename of BAR to FOO there is a rename
+of FOO to .nfs000111a300000002.
+It appears to be doing a "silly rename" even though the file is not
+open.
+Immediately after the rename of BAR to FOO - which ofcourse works as
+FOO doesn't exist now, the .nfs000111a300000002 file is removed.
 
-Finally, please could we move the domain_release() method out of struct
-auth_ops and into struct auth_domain itself?
+To me, this looks like the client doing the wrong thing - certainly an
+unnecessary thing, and in this case an unhelpful thing.
 
-Cheers,
-  Trond
+If the file *were* open during the rename, then I can understand the
+need for a silly-rename.  However in that case it might be safer to do
+a silly-link instead (though I haven't tried to think through all the
+implications of this).
 
+
+Having said all that, I agree that subtree_check should be avoided
+where possible.  Maybe we should do what we did with "async" and print
+noisy warning messages....
+
+NeilBrown
 
 
 -------------------------------------------------------
