@@ -1,23 +1,36 @@
-From: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
-Subject: Re: Pb of optimization for a Cluster under Gigabit
-Date: Wed, 7 Apr 2004 13:40:47 +0200 (CEST)
+From: "Didier CONTIS" <didier@ece.gatech.edu>
+Subject: RE: Pb of optimization for a Cluster under Gigabit
+Date: Wed, 7 Apr 2004 16:38:20 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0404071339080.25211-100000@kenzo.iwr.uni-heidelberg.de>
-References: <40737404.7000401@ece.gatech.edu>
+Message-ID: <200404072038.i37KcKgE008514@mail.ece.gatech.edu>
+References: <Pine.LNX.4.44.0404071339080.25211-100000@kenzo.iwr.uni-heidelberg.de>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="US-ASCII"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BBBQP-0000Jt-IE
-	for nfs@lists.sourceforge.net; Wed, 07 Apr 2004 04:40:57 -0700
-Received: from relay2.uni-heidelberg.de ([129.206.210.211])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1BBBQP-0000FG-4I
-	for nfs@lists.sourceforge.net; Wed, 07 Apr 2004 04:40:57 -0700
-To: Didier CONTIS <didier@ece.gatech.edu>
-In-Reply-To: <40737404.7000401@ece.gatech.edu>
+	id 1BBJpN-0004xD-JO
+	for nfs@lists.sourceforge.net; Wed, 07 Apr 2004 13:39:17 -0700
+Received: from mail.ece.gatech.edu ([199.77.227.200])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.30)
+	id 1BBJpN-0006iQ-AX
+	for nfs@lists.sourceforge.net; Wed, 07 Apr 2004 13:39:17 -0700
+Received: from localhost (bigzilla.ece.gatech.edu [130.207.225.103])
+	by mail.ece.gatech.edu (8.12.10/8.12.10) with ESMTP id i37KdEat008632
+	for <nfs@lists.sourceforge.net>; Wed, 7 Apr 2004 16:39:14 -0400 (EDT)
+Received: from mail.ece.gatech.edu ([199.77.227.200])
+ by localhost (bigzilla.ece.gatech.edu [130.207.225.103]) (amavisd-new, port 10024)
+ with LMTP id 20788-06 for <nfs@lists.sourceforge.net>;
+ Wed,  7 Apr 2004 16:39:00 -0400 (EDT)
+Received: from darkwolf (darkwolf.ee.gatech.edu [130.207.226.19])
+	(authenticated bits=0)
+	by mail.ece.gatech.edu (8.12.10/8.12.10) with ESMTP id i37KcKgE008514
+	(version=TLSv1/SSLv3 cipher=RC4-MD5 bits=128 verify=NOT)
+	for <nfs@lists.sourceforge.net>; Wed, 7 Apr 2004 16:38:20 -0400 (EDT)
+To: <nfs@lists.sourceforge.net>
+In-Reply-To: <Pine.LNX.4.44.0404071339080.25211-100000@kenzo.iwr.uni-heidelberg.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,22 +43,16 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, 6 Apr 2004, Didier CONTIS wrote:
+ 
 
-> Would anyone have any suggestions or recommendations ? Should
-> I switch rsize / wsize to 1024 ?
+>If the network cards and switch allow it, you could try first using 
+>Jumbo (9k) Ethernet frames; in such a setup, the 8k NFS packets would 
+>most likely travel unfragmented between server and clients.
 
-If the network cards and switch allow it, you could try first using 
-Jumbo (9k) Ethernet frames; in such a setup, the 8k NFS packets would 
-most likely travel unfragmented between server and clients.
+While most of 90% of the hardware supports it, I have some legacy hardware
+(nodes and switch) still running at 100Mbit connected to the stack of 3750.
 
--- 
-Bogdan Costescu
-
-IWR - Interdisziplinaeres Zentrum fuer Wissenschaftliches Rechnen
-Universitaet Heidelberg, INF 368, D-69120 Heidelberg, GERMANY
-Telephone: +49 6221 54 8869, Telefax: +49 6221 54 8868
-E-mail: Bogdan.Costescu@IWR.Uni-Heidelberg.De
+Thanks - Didier.
 
 
 
