@@ -1,19 +1,19 @@
-From: Andrew Ryan <andrewr@nam-shub.com>
-Subject: Re: NFS over TCP test results from bakerg3@yahoo
-Date: Wed, 23 Apr 2003 18:38:38 -0700 (PDT)
+From: gb <bakerg3@yahoo.com>
+Subject: Re: NFS over TCP test results / NetApp / Linux
+Date: Wed, 23 Apr 2003 20:24:13 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.40.0304231835270.28802-100000@bolt.sonic.net>
+Message-ID: <20030424032413.11640.qmail@web41302.mail.yahoo.com>
+References: <6440EA1A6AA1D5118C6900902745938E07D5555A@black.eng.netapp.com>
+Reply-To: greg@bakers.org
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from b.smtp-out.sonic.net ([208.201.224.39])
+Received: from web41302.mail.yahoo.com ([66.218.93.51])
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 198Vh8-0001W3-00
-	for <nfs@lists.sourceforge.net>; Wed, 23 Apr 2003 18:38:38 -0700
-Received: from newbolt (bolt.sonic.net [208.201.242.18])
-	by sub.sonic.net (8.11.6p2/8.8.5) with ESMTP id h3O1ccW23354
-	for <nfs@lists.sourceforge.net>; Wed, 23 Apr 2003 18:38:38 -0700
+	id 198XLO-0002Q2-00
+	for <nfs@lists.sourceforge.net>; Wed, 23 Apr 2003 20:24:18 -0700
 To: nfs@lists.sourceforge.net
+In-Reply-To: <6440EA1A6AA1D5118C6900902745938E07D5555A@black.eng.netapp.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,25 +26,56 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I agree with Charles and Trond's earlier comments, and would like to add
-that if you share your exact test cases and more details about your setup,
-there are at least a few of us who also use TCP mounts with linux clients
-and netapp filers who would be interested in replicating and testing, and
-ferreting out any bugs which may exist.
 
-To call TCP nfs client mounts "not production worthy" at this stage is
-irresponsible and not really true. We use them in production against
-Netapp filers and have had great success since 2.4.20+NFSALL. Obviously
-your mileage is varying but I just wanted to weigh in with our experience.
+My apologies to the linux-nfs community.
 
-If there are bugs, and that's a distinct possibility, we want to help find
-and fix them. Essentially flaming the people that are going to do the
-analysis and write the patches isn't the best way to get this done.
+I forwarded an email I sent to my peers at the company
+without proper editing for a more global audience.
+
+Please allow me to restate,
+
+"Linux tcp-nfs is not ready for production in __our__
+large scale distributed environment with the current
+set of NetApp filers...Until this critical problem is
+resolved, it is a moot point to argue the advantages
+of tcp-nfs vs. udp-nfs regarding network traffic or
+CPU usage __in our environment__."
+
+Our environment is a number of NetApp filers running
+6.2.2 with hundreds of linux clients recently upgraded
+to 2.4.18 (RedHat 7.3 base) using tcp-nfs.
+
+Upgrading to 2.4.21pre7 
++ linux-2.4.21-01-call_reserve1.dif
++ linux-2.4.21-02-call_reserve2.dif
++ linux-2.4.21-03-noac.dif
++ linux-2.4.21-07-rdplus.dif
++ linux-2.4.21-14-xprt_fixes.dif 
+
+Produced the same results using the testbed and
+procedures summarized in my first email.
+
+I've taken the kind suggestions by Trond and Charles,
+collected the requested data, sent this to the
+individuals who offered advice, and looked more
+closely at the tcpdump packets that occur during the
+failure.
+
+Hopefully I/We will have more to report in the future
+related to my original email.
+
+Thanks,
+
+--Greg
 
 
-cheers,
-andrew
 
+
+
+__________________________________________________
+Do you Yahoo!?
+The New Yahoo! Search - Faster. Easier. Bingo
+http://search.yahoo.com
 
 
 -------------------------------------------------------
