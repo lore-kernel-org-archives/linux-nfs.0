@@ -1,19 +1,19 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 16 of 18] Clean up nfsd4_process_open2
-Date: Fri, 24 Sep 2004 14:54:54 +1000
+Subject: [PATCH kNFSd 4 of 18] make sure getxattr inode op is non-NULL before calling it
+Date: Fri, 24 Sep 2004 14:54:53 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1CAi6g-0000l0-6q@notabene.cse.unsw.edu.au>
+Message-ID: <E1CAi6f-0000k4-9i@notabene.cse.unsw.edu.au>
 References: <20040924145130.2689.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CAi7o-0008E2-8a
-	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 21:56:04 -0700
+	id 1CAi7C-00088v-EC
+	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 21:55:26 -0700
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CAi7n-0006Ff-GY
-	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 21:56:04 -0700
+	id 1CAi7B-0006Be-On
+	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 21:55:26 -0700
 To: Andrew Morton <akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,47 +28,59 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Comments, dprintk cleanup
 
-Signed-off-by: Andy Adamson <andros@citi.umich.edu>
+Make sure getxattr inode op is non-NULL before calling it.
+
+Also, security hook should probably be called before calling the getxattr op
+the first time.
+
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c |    7 ++++++-
- 1 files changed, 6 insertions(+), 1 deletion(-)
+ ./fs/nfsd/vfs.c |   20 +++++++++++---------
+ 1 files changed, 11 insertions(+), 9 deletions(-)
 
-diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2004-09-24 14:48:40.000000000 +1000
-+++ ./fs/nfsd/nfs4state.c	2004-09-24 14:48:41.000000000 +1000
-@@ -1363,6 +1363,10 @@ nfsd4_process_open2(struct svc_rqst *rqs
- 			goto out;
+diff ./fs/nfsd/vfs.c~current~ ./fs/nfsd/vfs.c
+--- ./fs/nfsd/vfs.c~current~	2004-09-24 14:47:49.000000000 +1000
++++ ./fs/nfsd/vfs.c	2004-09-24 14:48:07.000000000 +1000
+@@ -448,6 +448,16 @@ _get_posix_acl(struct dentry *dentry, ch
+ 	int buflen, error = 0;
+ 	struct posix_acl *pacl = NULL;
+ 
++	error = -EOPNOTSUPP;
++	if (inode->i_op == NULL)
++		goto out_err;
++	if (inode->i_op->getxattr == NULL)
++		goto out_err;
++
++	error = security_inode_getxattr(dentry, key);
++	if (error)
++		goto out_err;
++
+ 	buflen = inode->i_op->getxattr(dentry, key, NULL, 0);
+ 	if (buflen <= 0) {
+ 		error = buflen < 0 ? buflen : -ENODATA;
+@@ -460,18 +470,10 @@ _get_posix_acl(struct dentry *dentry, ch
+ 		goto out_err;
  	}
  
-+	/*
-+	 * OPEN the file, or upgrade an existing OPEN.
-+	 * If truncate fails, the OPEN fails.
-+	 */
- 	if (stp) {
- 		/* Stateid was found, this is an OPEN upgrade */
- 		status = nfs4_upgrade_open(rqstp, current_fh, stp, open);
-@@ -1379,7 +1383,7 @@ nfsd4_process_open2(struct svc_rqst *rqs
- 			goto out;
- 		init_stateid(stp, fp, sop, open);
- 	}
--	dprintk("nfs4_process_open2: stateid=(%08x/%08x/%08x/%08x)\n\n",
-+	dprintk("nfs4_process_open2: stateid=(%08x/%08x/%08x/%08x)\n",
- 	            stp->st_stateid.si_boot, stp->st_stateid.si_stateownerid,
- 	            stp->st_stateid.si_fileid, stp->st_stateid.si_generation);
+-	error = -EOPNOTSUPP;
+-	if (inode->i_op && inode->i_op->getxattr) {
+-		error = security_inode_getxattr(dentry, key);
+-		if (error)
+-			goto out_err;
+-		error = inode->i_op->getxattr(dentry, key, buf, buflen);
+-	}
++	error = inode->i_op->getxattr(dentry, key, buf, buflen);
+ 	if (error < 0)
+ 		goto out_err;
  
-@@ -1395,6 +1399,7 @@ nfsd4_process_open2(struct svc_rqst *rqs
- 	open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE;
- 	status = nfs_ok;
- out:
-+	/* take the opportunity to clean up unused state */
- 	if (fp && list_empty(&fp->fi_perfile))
- 		release_file(fp);
- 
+-	error = 0;
+-
+ 	pacl = posix_acl_from_xattr(buf, buflen);
+  out:
+ 	kfree(buf);
 
 
 -------------------------------------------------------
