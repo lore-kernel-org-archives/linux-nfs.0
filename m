@@ -1,17 +1,14 @@
-From: James Pearson <james-p@moving-picture.com>
-Subject: Re: inode number mismatch message
-Date: Thu, 04 Apr 2002 10:04:40 +0100
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: RedHat Linux 2.4.9-31 and Solaris 5.7 with Apache
+Date: 04 Apr 2002 12:38:32 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3CAC1728.F07F4EBD@moving-picture.com>
-References: <62D26CC4CB1CD3118EAA00805FBB65FA0B8B900E@perm01.woodside.com.au>
+Message-ID: <shspu1f695j.fsf@charged.uio.no>
+References: <3CAB18EE.4000809@arm.gov>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16t3As-0004ez-00
-	for <nfs@lists.sourceforge.net>; Thu, 04 Apr 2002 01:04:54 -0800
-To: "Kent, Ian I." <Ian.Kent@woodside.com.au>
+Cc: NFS@lists.sourceforge.net
+To: Ron Reed <ron.reed@arm.gov>
+In-Reply-To: <3CAB18EE.4000809@arm.gov>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,53 +21,27 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-A previous message from Trond had a workaround:
+>>>>> " " == Ron Reed <ron.reed@arm.gov> writes:
 
-http://marc.theaimsgroup.com/?l=linux-nfs&m=101316526524213&w=2
+     > I have run into a strange problem that is causing me some
+     > headaches. I have done some searches for an answer, we have
+     > even talked with RedHat support with no solution. I am hopeing
+     > that someone on the list can help me solve this. Here is the
+     > setup, a Redhat 7.1, kernel 2.4.9-31, with the latest nfs-utils
+     > release has a 140 gig raid array attached to it.  This is our
+     > NFS server. One of the clients is a Sun Solaris 5.7 machine.
+     > Everything seems to work just fine, until something happens to
+     > the Apache 1.3.19 daemon running on the Solaris over a NFS
+     > mount. Here is the oops output that has been run thru ksymoops:
 
-I believe this change is in Trond's 2.4.18 patches ...
+Despite RedHat's dogged insistence that Linux 2.4.9 should be alright
+for most users needs, a lot of water has been passed since then (you
+will find several lockd updates in the Changelogs on
+ftp.kernel.org). I would therefore recommend that you first try to
+reproduce the problem with a newer kernel.
 
-James Pearson
-
-
-"Kent, Ian I." wrote:
-> 
-> I recently got a rash of messages like these in the logs on our Linux
-> clients:
-> 
-> Mar 24 04:02:00 csl024 syslogd 1.4-0: restart.
-> Mar 24 04:02:00 csl024 syslogd 1.4-0: restart.
-> Mar 24 23:50:13 csl024 kernel: nfs: server perseus is not responding
-> Mar 24 23:50:28 csl024 kernel: nfs: server perseus OK
-> Mar 24 23:51:43 csl024 kernel: nfs_refresh_inode: inode number mismatch
-> Mar 24 23:51:43 csl024 kernel: expected (0x2813c6d/0x4), got
-> (0xa000013c6d/0x4)
-> Mar 24 23:51:43 csl024 kernel: nfs_refresh_inode: inode number mismatch
-> Mar 24 23:51:43 csl024 kernel: expected (0x2813c69/0x4), got
-> (0xa000013c69/0x4)
-> Mar 24 23:52:58 csl024 kernel: nfs_refresh_inode: inode number mismatch
-> Mar 24 23:52:58 csl024 kernel: expected (0x2813c6d/0x4), got
-> (0xa000013c6d/0x4)
-> Mar 24 23:52:58 csl024 kernel: nfs_refresh_inode: inode number mismatch
-> Mar 24 23:52:58 csl024 kernel: expected (0x2813c69/0x4), got
-> (0xa000013c69/0x4)
-> 
-> They appeared after the server (Solaris) to which the Linux (2.4.17 kernel
-> with Tronds' patches) was upgraded from 2.6 to 2.8 while there were active
-> mounts.
-> 
-> I know it's a big ask to expect the client to be OK though such an activity,
-> but the comment is 'the Solaris clients were OK after the upgrade'.
-> 
-> I would appreciate an feedback on whether this is something that should
-> fixable or not.
-> 
-> Regards
-> Ian Kent
-> 
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+Cheers,
+  Trond
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
