@@ -1,19 +1,23 @@
-From: =?iso-8859-1?Q?Ragnar_Kj=F8rstad?= <nfs@ragnark.vestdata.no>
-Subject: Re: status?
-Date: Tue, 19 Nov 2002 01:33:23 +0100
+From: Topher <topher@wcsg.org>
+Subject: *sigh* Connection refused
+Date: Mon, 18 Nov 2002 19:48:59 -0500 (EST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20021119013322.I30589@vestdata.no>
-References: <F172SxvjPkQTGpaoG1V00000b14@hotmail.com>
+Message-ID: <Pine.LNX.4.44.0211181937110.23070-100000@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from stine.vestdata.no ([195.204.68.10] ident=0)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18DwKf-0004br-00
-	for <nfs@lists.sourceforge.net>; Mon, 18 Nov 2002 16:33:37 -0800
-To: William Knop <w_knop@hotmail.com>
-In-Reply-To: <F172SxvjPkQTGpaoG1V00000b14@hotmail.com>; from w_knop@hotmail.com on Mon, Nov 18, 2002 at 10:22:47AM -0500
+Received: from ip01.wcsg.org ([216.109.193.129] helo=localhost.localdomain)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18DwZa-0006QV-00
+	for <nfs@lists.sourceforge.net>; Mon, 18 Nov 2002 16:49:02 -0800
+Received: from localhost.localdomain (boktor [127.0.0.1])
+	by localhost.localdomain (8.12.5/8.12.5) with ESMTP id gAJ0n092023104
+	for <nfs@lists.sourceforge.net>; Mon, 18 Nov 2002 19:49:00 -0500
+Received: from localhost (topher@localhost)
+	by localhost.localdomain (8.12.5/8.12.5/Submit) with ESMTP id gAJ0mxXB023100
+	for <nfs@lists.sourceforge.net>; Mon, 18 Nov 2002 19:48:59 -0500
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,18 +30,52 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, Nov 18, 2002 at 10:22:47AM -0500, William Knop wrote:
-> I'd greatly appreciate any info on distributed/clustering filesystems,=20
-> especially NFSv4 or stable alternatives.
+Ok, I've got Zaurus.  I'm able to mount a dir via nfs on my server at 
+work, so I know it's working right.  I'm trying to connect at home to my 
+laptop, here's the command and the result:
 
-Maybe you should look into "lustre" (at www.lustre.org).
-I'm not sure if the current code is considdered alpha, beta or something
-completely different, so it may not be the best solution short-term.
+# mount -t nfs -o soft,timeo=2 192.168.0.4:/win/mp3 /mnt/mp3
+mount: RPC: Unable to receive; errno = Connection refused
+mount: nfsmount failed: Bad file descriptor
+mount: Mounting 192.168.0.4:/win/mp3 on /home/system/var/mnt/mp3 failed: 
+Invalid argument
 
 
---=20
-Ragnar Kj=F8rstad
-Big Storage
+on the server, I have nfs, nfslock, and portmap running.  My /etc/exports 
+file looks like this:
+
+/win/mp3 192.168.0.2/255.255.255.0(ro,no_root_squash)
+
+My /etc/hosts.allow file looks like this:
+
+portmap:192.168.0.2/255.255.255.0
+lockd:192.168.0.2/255.255.255.0
+rquotad:192.168.0.2/255.255.255.0
+mountd:192.168.0.2/255.255.255.0
+statd:192.168.0.2/255.255.255.0
+
+My hosts.deny file is empty.
+
+I have a firewall, but both machines are on the same side of it.
+
+My laptop gets its IP via DHCP, and the hostname is kinda borked, but I'm 
+using IP addresses for everything.  Would it still matter?
+
+exportfs says 
+/win/mp3        192.168.0.2/255.255.255.0
+
+Anyone have any ideas?
+
+Topher
+Manager of Internet Services
+Cornerstone Broadcasting
+Cornerstone University
+
+------
+"Seems to me a man has trouble enough in this world without borrowing more
+with careless words."
+                        -- Louis L'Amour, Mojave Crossing
+
 
 
 -------------------------------------------------------
