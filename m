@@ -1,24 +1,23 @@
-From: Olaf Kirch <okir@suse.de>
+From: Steve Dickson <SteveD@redhat.com>
 Subject: Re: statd simplified
-Date: Tue, 3 Feb 2004 11:17:33 +0100
+Date: Tue, 03 Feb 2004 10:47:30 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040203101733.GB26315@suse.de>
-References: <20040202140851.GH3145@suse.de> <401E8F6B.5040400@RedHat.com>
+Message-ID: <401FC292.9030303@RedHat.com>
+References: <20040202140851.GH3145@suse.de> <401E8F6B.5040400@RedHat.com> <20040203101733.GB26315@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Anxho-0006oa-VT
-	for nfs@lists.sourceforge.net; Tue, 03 Feb 2004 02:22:56 -0800
-Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.30)
-	id 1Anxho-0000uz-HB
-	for nfs@lists.sourceforge.net; Tue, 03 Feb 2004 02:22:56 -0800
-To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: <401E8F6B.5040400@RedHat.com>
+	id 1Ao3ls-0007tE-Nz
+	for nfs@lists.sourceforge.net; Tue, 03 Feb 2004 08:51:32 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1Ao2ld-0001sH-9O
+	for nfs@lists.sourceforge.net; Tue, 03 Feb 2004 07:47:13 -0800
+To: Olaf Kirch <okir@suse.de>
+In-Reply-To: <20040203101733.GB26315@suse.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,36 +30,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+Hello,
 
-On Mon, Feb 02, 2004 at 12:56:59PM -0500, Steve Dickson wrote:
-> Letting /var/lib/nfs/sm grow uncontrollably (i.e. not using SM_UNMON to
-> clean it up) may not be a good idea... Since users can't go in and clean 
-> in up by hand
-> (since they could be removing live state), there probably should be some
-> way to cleaned up (and up to date)
+Olaf Kirch wrote:
 
-Okay, I could add that. Calling unlink from kernel space is a bit of
-a nuisance, but I'll try :)
+>On Mon, Feb 02, 2004 at 12:56:59PM -0500, Steve Dickson wrote:
+>  
+>
+>>Letting /var/lib/nfs/sm grow uncontrollably (i.e. not using SM_UNMON to
+>>clean it up) may not be a good idea... Since users can't go in and clean 
+>>in up by hand
+>>(since they could be removing live state), there probably should be some
+>>way to cleaned up (and up to date)
+>>    
+>>
+>
+>Okay, I could add that. Calling unlink from kernel space is a bit of
+>a nuisance, but I'll try :)
+>  
+>
+Maybe the user level daemon could be used to do this....
+When an SM_UNMON comes in, the kernel could clean up its
+state and then forward the message to the daemon that would
+cause the file to be removed...
 
-> Currently when statd can not open the state file (in change_state()),  
-> it dies
-> which in turn causes lock requests to fail because that can't be monitored.
-> In your kernel implementation, this failure seems to be ignored.  Since
-> the failure would probably do to the sm directory not existing,  which
-> also means state file will not able to be created,  it might make sense
-> to fail the loading of lockd when this happens.
+SteveD.
 
-Agreed. Kernel statd just reads the file, however, it doesn't update
-the state. That's done by rpc.statd -N.
-
-I'll submit an updated patch later today or tomorrow.
-
-Olaf
--- 
-Olaf Kirch     |  Stop wasting entropy - start using predictable
-okir@suse.de   |  tempfile names today!
----------------+ 
 
 
 -------------------------------------------------------
