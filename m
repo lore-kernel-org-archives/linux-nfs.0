@@ -1,25 +1,29 @@
-From: Vincent ROQUETA <v_atekor@yahoo.fr>
-Subject: New to the NFSv4 linux project...
-Date: Mon, 19 Jan 2004 11:19:35 +0000
+From: Bernd Schubert <bernd-schubert@web.de>
+Subject: Re: NFS over TCP -- configuring server for
+Date: Mon, 19 Jan 2004 13:16:13 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200401191119.35715.v_atekor@yahoo.fr>
-Reply-To: v_atekor@yahoo.fr
+Message-ID: <200401191316.13742.bernd-schubert@web.de>
+References: <5.0.2.1.0.20040118212546.057a7080@pop.erols.com>
 Mime-Version: 1.0
 Content-Type: text/plain;
-  charset="us-ascii"
+  charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AiWdv-0007cc-FM
-	for nfs@lists.sourceforge.net; Mon, 19 Jan 2004 02:28:27 -0800
-Received: from ecbull20.frec.bull.fr ([129.183.4.3])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AiWdu-00088R-SG
-	for nfs@lists.sourceforge.net; Mon, 19 Jan 2004 02:28:27 -0800
-Received: from dhcp0522.frec.bull.fr (dhcp0522.frec.bull.fr [129.183.101.231])
-	by ecbull20.frec.bull.fr (8.9.2/8.9.1) with ESMTP id LAA34998
-	for <nfs@lists.sourceforge.net>; Mon, 19 Jan 2004 11:29:39 +0100
+	id 1AiYKN-0003bn-JB
+	for nfs@lists.sourceforge.net; Mon, 19 Jan 2004 04:16:23 -0800
+Received: from smtp04.web.de ([217.72.192.208] helo=smtp.web.de)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.30)
+	id 1AiYKN-0008V7-6H
+	for nfs@lists.sourceforge.net; Mon, 19 Jan 2004 04:16:23 -0800
+Received: from [80.140.18.32] (helo=192.168.6.2)
+	by smtp.web.de with asmtp (TLSv1:RC4-MD5:128)
+	(WEB.DE 4.99 #566)
+	id 1AiYKE-0001m9-00
+	for nfs@lists.sourceforge.net; Mon, 19 Jan 2004 13:16:15 +0100
 To: nfs@lists.sourceforge.net
+In-Reply-To: <5.0.2.1.0.20040118212546.057a7080@pop.erols.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,19 +36,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Monday 19 January 2004 03:33, Paul D. Bain wrote:
+>          I need to know how to have my NFS services carried over TCP, not
+> UDP. From postings to the Linux-NFS mailing list, I understand that I must
+> recompile my server's kernel (and the client's kernel, too?) and add the
+> parameter "tcp" to the file /etc/fstab on the client. What else do I need
+> to do? For example, must I add anything to the file /etc/exports on the
+> server?
+>
 
+A server kernel with tcp-support and specifying tcp as mount option on the 
+client side is enough. So you don't need to do anything else, just try it 
+yourself ;)
 
-I'm new to the project and I'm looking for documentation (I have the rfc):
-
--what's done?
--what's todo?
--what about stability?
-
-
-I suppose there is a faq to answer to this question... I didn't saw it :(
-
-thx,
-Vincent
+Cheers, Bernd
 
 
 -------------------------------------------------------
