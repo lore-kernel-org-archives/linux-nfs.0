@@ -1,38 +1,65 @@
-From: Chris Leech <chris.leech@gmail.com>
-Subject: Re: [BUG] Onboard Ethernet Pro 100 on a SMP box: a very strange errors
-Date: Wed, 26 Jan 2005 11:11:25 -0800
-Message-ID: <41b516cb0501261111e5edbc5@mail.gmail.com>
-References: <20050122014646.A1038@natasha.ward.six>
-	 <200501252319.11304.vda@port.imtp.ilyichevsk.odessa.ua>
-	 <20050126073749.A2142@natasha.ward.six>
-Reply-To: Chris Leech <chris.leech@gmail.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS changement between 2.6.9 and 2.6.10?
+Date: Wed, 26 Jan 2005 11:43:34 -0800
+Message-ID: <1106768614.15132.27.camel@lade.trondhjem.org>
+References: <41F77473.70501@zaide.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Return-path: <linux-net-owner@vger.kernel.org>
-To: Denis Vlasenko <vda@port.imtp.ilyichevsk.odessa.ua>,
-	linux-kernel@vger.kernel.org, linux-net@vger.kernel.org,
-	nfs@lists.sourceforge.net
-In-Reply-To: <20050126073749.A2142@natasha.ward.six>
-Sender: linux-net-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1Ctt55-00077X-6u
+	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 11:43:59 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1Ctt53-0006q1-G7
+	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 11:43:59 -0800
+To: "Damien \"Zaide\"" <list@zaide.org>
+In-Reply-To: <41F77473.70501@zaide.org>
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, 26 Jan 2005 07:37:49 +0500, Denis Zaitsev <zzz@anda.ru> wrote:
-> On Tue, Jan 25, 2005 at 11:19:11PM +0200, Denis Vlasenko wrote:
-> >
-> > Something corrupts packets. It can be sending NIC, switch in the middle,
-> > or receiving NIC.
-> 
-> Changing the receiving card closes the question.  Doesn't it matter?
+on den 26.01.2005 Klokka 11:44 (+0100) skreiv Damien "Zaide":
+> hi,
+> I have a nfsV3 server running linux 2.6.9, all is good when I "ls -alR" 
+> my nfs exported directory on my client after I chroot() in this 
+> directory and ls -alR too that well.
+> But when i update my server to linux 2.6.10 and "ls -alR" my nfs 
+> directory is allways good but when I chroot() inside, my chroot command 
+> is locked and I can't ls my nfs directory.
+> I have launch a sniffer and the packet seams to be send.
+> Do you have any informations about this? a changement beetwen 2.6.9 and 
+> 2.6.10? a patch? a bug?
 
-Take a look at this technical advisory for the STL2 board, I'm fairly
-sure this is your issue.
-http://support.intel.com/support/motherboards/server/sb/CS-010790.htm
+I don't see how an NFS change could do this. The VFS is the part of the
+kernel that handles the actual details of chroot. NFS neither knows nor
+cares.
 
-IP fragmented packets as part of an NFS file transfer are improperly
-being identified as TCO management packets and are being routed to the
-BMC.  The fix is to upgrade the BMC firmware.
+Cheers,
+  Trond
 
-Updated BMC firmware and BIOS images for this board are available at
-http://support.intel.com/support/motherboards/server/STL2/sb/CS-007118.htm
+-- 
+Trond Myklebust <trond.myklebust@fys.uio.no>
 
-- Chris
+
+
+-------------------------------------------------------
+This SF.Net email is sponsored by: IntelliVIEW -- Interactive Reporting
+Tool for open source databases. Create drag-&-drop reports. Save time
+by over 75%! Publish reports on the web. Export to DOC, XLS, RTF, etc.
+Download a FREE copy at http://www.intelliview.com/go/osdn_nl
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
