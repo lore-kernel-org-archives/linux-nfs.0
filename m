@@ -1,21 +1,19 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: xprt_bindresvport
-Date: Wed, 8 Dec 2004 06:33:15 -0800
-Message-ID: <482A3FA0050D21419C269D13989C61130435EC6F@lavender-fe.eng.netapp.com>
+From: mehta kiran <kiranmehta1981@yahoo.com>
+Subject: lockd recovery failure
+Date: Wed, 8 Dec 2004 07:17:48 -0800 (PST)
+Message-ID: <20041208151749.82833.qmail@web51603.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Cc2sf-00034m-74
-	for nfs@lists.sourceforge.net; Wed, 08 Dec 2004 06:33:25 -0800
-Received: from mx2.netapp.com ([216.240.18.37])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1Cc2se-0000rU-2W
-	for nfs@lists.sourceforge.net; Wed, 08 Dec 2004 06:33:24 -0800
-To: "Olaf Kirch" <okir@suse.de>
+	id 1Cc3Zj-0006Sg-Ch
+	for nfs@lists.sourceforge.net; Wed, 08 Dec 2004 07:17:55 -0800
+Received: from web51603.mail.yahoo.com ([206.190.38.208])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
+	id 1Cc3Zi-0001SM-Q9
+	for nfs@lists.sourceforge.net; Wed, 08 Dec 2004 07:17:55 -0800
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,44 +27,58 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> the current xprt_bindresvport implementation will search for=20
-> a privileged
-> port by counting down from 800 to 0. I think this is a bug, because it
-> will potentially interfere with services trying to bind to=20
-> low ports as
-> well.
+Hi , 
+    I have RHEL 4.0 beta2 installed on my machines.
+    NFS server run on these machines.
+    NFS client runs on machine with sles9 sp1 beta3 
+    installed.
 
-is this idle speculation, or do you actually have a test case that
-fails?  :^)
+    I want to achieve NFS lock failover on cluster
+    For this , i have a floating ip which floats
+    on cluster machines
 
-> The bindresvport implementation in glibc picks from the 600-1023
-> range.
+    rpc.statd is runnnig with commandline option -n
+    i:e rpc.statd -n  <virtual ip>
 
-we should review what other RPC implementations do (namely the reference
-implementation, Solaris).
+    But when NFS server fails over to other
+    machine  , client gets SM_NOTIFY message but
+    it does not reclaim locks.
 
-but also notice this cuts the usable port range in half (from ~800 to
-~420).  we need some form of mitigation to ensure we aren't limiting the
-number of NFS mounts a client can have.
+    In var/log/message following is the message 
 
-> I also think it would be good to start at a "random" port. Otherwise,
-> when you reboot, the server may still have a TCB for the old=20
-> connection
-> and send you an ACK probe when you try to connect (if all=20
-> goes well), and
-> the client's TCP stack will RST and fail the connect. If things go
-> not-so-well you have a packet filter somewhere inbetween that eats the
-> ACK probe because its connection tracking engine thinks the connection
-> is in half-open and shouldn't see any SYN-less ACKs yet.
+    statd :NOTIFY called
+    lockd: nlm_host_rebooted(base ip of server)
 
-i don't agree.  you're just making the bad behavior more rare by
-choosing ports at random; you are not actually addressing the root
-problem you describe.  is it possible to fix the RPC client to retry the
-connection in this case?  and/or fix the server to recognize and remove
-the context for the old connection?
+    So the reason for lock recovery is that
+    notification is given to client using base ip
+    of server and not the ip specified with -n 
+    option.
 
-introducing randomness here will make reproducing problems in this area
-very difficult.
+    However , when I have above mentioned redhat
+    machines and RHEL 3 Update2 client everthing
+    works well(sm_notify recevied with ip in 
+    -n option)
+    Also , if I use sles9 sp1 beta3 server and
+    sles9 sp1 beta3 client everthing works
+
+    So , I am not able to figure out the 
+    component which has problem.
+    Is it sles9 sp1 beta3 client or RHEL 4.0
+    Beta2 NFS server
+
+thanks,
+  kiran   
+    
+
+   
+    
+
+
+		
+__________________________________ 
+Do you Yahoo!? 
+Yahoo! Mail - now with 250MB free storage. Learn more.
+http://info.mail.yahoo.com/mail_250
 
 
 -------------------------------------------------------
