@@ -1,25 +1,25 @@
-From: Vincent ROQUETA <vincent.roqueta@ext.bull.net>
-Subject: Re: NFSv4 stability: export unused a night
-Date: Thu, 5 Feb 2004 17:13:33 +0100
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: [PATCH] SGI 882960: Busy inodes after unmount, oops
+Date: Thu, 5 Feb 2004 17:15:15 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200402051713.33948.vincent.roqueta@ext.bull.net>
-References: <200402051407.54703.vincent.roqueta@ext.bull.net>
-Reply-To: vincent.roqueta@ext.bull.net
+Message-ID: <20040205161515.GA21344@suse.de>
+References: <40209B6D.56ED461E@melbourne.sgi.com> <20040204120952.GA1980@suse.de> <4021751C.B888A15C@melbourne.sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=iso-8859-15
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Aom6m-0002Vq-5d
-	for nfs@lists.sourceforge.net; Thu, 05 Feb 2004 08:12:04 -0800
-Received: from ecbull20.frec.bull.fr ([129.183.4.3])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Aom6l-0003TY-Bs
-	for nfs@lists.sourceforge.net; Thu, 05 Feb 2004 08:12:03 -0800
-To: Vincent ROQUETA <vincent.roqueta@ext.bull.net>
-In-Reply-To: <200402051407.54703.vincent.roqueta@ext.bull.net>
+	id 1Aom9y-0004Ci-PM
+	for nfs@lists.sourceforge.net; Thu, 05 Feb 2004 08:15:22 -0800
+Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.30)
+	id 1Aom9y-0004oj-Bi
+	for nfs@lists.sourceforge.net; Thu, 05 Feb 2004 08:15:22 -0800
+To: Greg Banks <gnb@melbourne.sgi.com>
+In-Reply-To: <4021751C.B888A15C@melbourne.sgi.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,31 +32,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Le Jeudi 05 F=E9vrier 2004 14:07, Vincent ROQUETA a =E9crit :
-> 1/
->
-> When I lived yesterday server computer test was up, configured with 1
-> export partition.
-> This export was moutable from the client side.
->
-> Threre was no reboot of the server this night.
-> This morning, I was unable to mount the exported directory.
->
-> After reboot, all was OK.
+Hi Greg,
 
-More precisions. I have reproduced the bug:
+On Thu, Feb 05, 2004 at 09:41:32AM +1100, Greg Banks wrote:
+> BTW (not directly related to this bug) I found by experiment that I
+> could umount an NFS mount when there were open file descriptors for
+> unlinked files in the mount, and even keep writing.  All the NFS
+> and RPC structures stay alive until the last file descriptor closes,
+> thanks to the magic of refcounts.  All this despite the vfsmount
+> reference taken in struct file, which I thought was supposed to
+> prevent umount.
 
-1/ Server up, client up
-2/ client mount a nfs4 fs.
-3/ reboot client (without umounting )
-4/ Client can't mount nfs , server answer: permission denied
+Then something else must be wrong big time.
 
+> >  -      __rpc_execute notices the task is dead (no tk_action),
+> >         leaves the loop and invokes task->tk_exit == nfs_async_unlink_done
+> 
+> No.  In a crash dump taken after the umount has completed, the dir dentry has
+> 1 leaked d_count for every async unlink present at umount, even though the
+> async unlink tasks have been cleaned up.  This indicates that task->tk_exit
+> is not being called but task->tk_release is, so the dput is not happening.
 
-More... If I kill all nfsd and  mountd and reload them, there is still this=
-=20
-problem. I need to reboot the server
+But then prune_dcache shouldn't touch these dentries at all, because their
+refcount is still 1. They would be leaked, but there would be no crash.
 
+> It's not entirely clear to me how __rpc_execute can do that, but the evidence
+> is that it does so.
 
+Very strange... maybe we have a refcounting problem elsewhere, and the
+refcount was 2 before calling tk_exit? But somehow I doubt this... I
+think we'd see far more massive problems in this case.
+
+Would you share your test case?
+
+Olaf
+-- 
+Olaf Kirch     |  Stop wasting entropy - start using predictable
+okir@suse.de   |  tempfile names today!
+---------------+ 
 
 
 -------------------------------------------------------
