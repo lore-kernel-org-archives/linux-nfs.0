@@ -1,22 +1,27 @@
-From: James Pearson <james-p@moving-picture.com>
-Subject: Re: file system handle
-Date: Mon, 13 Dec 2004 15:57:50 +0000
-Message-ID: <41BDBBFE.5090406@moving-picture.com>
-References: <Pine.LNX.4.58.0412130809570.13290@lewis.et.byu.edu> <41BDB57B.2050703@moving-picture.com> <Pine.LNX.4.58.0412130839540.13290@lewis.et.byu.edu>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: [PATCH] NFS - Fix for Infinite loop during syncing
+Date: Mon, 13 Dec 2004 15:23:34 -0500
+Message-ID: <41BDFA46.7070403@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
+Content-Type: multipart/mixed;
+ boundary="------------000606010605090402030807"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CdsaA-0006Yz-OS
-	for nfs@lists.sourceforge.net; Mon, 13 Dec 2004 07:57:54 -0800
-Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1Cdsa9-0000py-2f
-	for nfs@lists.sourceforge.net; Mon, 13 Dec 2004 07:57:54 -0800
-To: David Dougall <davidd@et.byu.edu>
-In-Reply-To: <Pine.LNX.4.58.0412130839540.13290@lewis.et.byu.edu>
+	id 1CdwfC-0004Pl-DJ
+	for nfs@lists.sourceforge.net; Mon, 13 Dec 2004 12:19:22 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1CdwfA-0005Jl-2t
+	for nfs@lists.sourceforge.net; Mon, 13 Dec 2004 12:19:21 -0800
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.12.11/8.12.11) with ESMTP id iBDKJ864010620
+	for <nfs@lists.sourceforge.net>; Mon, 13 Dec 2004 15:19:08 -0500
+Received: from [192.168.62.4] (vpn83-130.boston.redhat.com [172.16.83.130])
+	by int-mx1.corp.redhat.com (8.11.6/8.11.6) with ESMTP id iBDKJ6r13803
+	for <nfs@lists.sourceforge.net>; Mon, 13 Dec 2004 15:19:07 -0500
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,53 +35,55 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Yes - existing clients will still use the 'default' filehandle type. Any 
-new clients will use the fsid= option type. You have to make sure all 
-clients have remounted the file systems before moving the disks to a new 
-host.
+This is a multi-part message in MIME format.
+--------------000606010605090402030807
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-James Pearson
 
-David Dougall wrote:
-> So, you are saying that if I add an fsid= option into the exports, the
-> server will work with both that filehandle and the default major/minor
-> number one?
-> --David Dougall
-> 
-> 
-> On Mon, 13 Dec 2004, James Pearson wrote:
-> 
-> 
->>David Dougall wrote:
->>
->>>I am moving filesystems/disks to new NFS servers.  They are going to
->>>change major and minor numbers.  Is there any way I can prevent stale
->>>mounts with the fsid= option in the exports?
->>>I have tried this on a test environment, but when I try to create an fsid=
->>>option, it completely changes the filehandle format in the nfs packet.  Am
->>>I missing something, or are the default and forced fsid options
->>>incompatible?
->>
->>I believe using the fsid= option does use a different file handle id
->>type, so you can't directly do what you want with the fsid option.
->>
->>However, you can re-export a file system with an added fsid= option -
->>any existing mounts will still use the 'previous' file handle type based
->>on the device id, but new mounts will use the new fsid file handle. You
->>then will have to make sure all existing clients remount the file system
->>before moving the disks.
->>
->>I've done this before - but I had to make the export change well in
->>advance, so that I could make sure all existing clients remounted the
->>file system before the move.
->>
->>James Pearson
->>
->>
->>
-> 
-> 
+It was brought to my attention that following series of events
+would cause an infinite loop in the 2.4 nfs kernels.
 
+1) Mount the fileystem with acregmin=1,acregmax=1 from two clients.
+2) On client 1, create a process that continuously writes to a file.
+3) On client 2, remove that file that is being written
+4) On client 1, interrupted out of the writing process (which is failing
+     with ESTALEs) and type sync
+
+The sync process loops in wait_on_locked(), when called from
+sync_inodes_sb(), since the "broken" inode can not be cleared
+from the locked inode list.
+
+This patch sets the NFS_INO_STALE bit in write path (via
+nfs_writeback_done) which breaks the inode is early enough to
+stop it from being added to the that list.
+
+Comments?
+
+steved.
+
+
+--------------000606010605090402030807
+Content-Type: text/plain;
+ name="linux-2.4.28-nfs-syncloop.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="linux-2.4.28-nfs-syncloop.patch"
+
+--- linux-2.4.28/fs/nfs/write.c.orig	2004-04-14 09:05:40.000000000 -0400
++++ linux-2.4.28/fs/nfs/write.c	2004-12-13 14:23:55.000000000 -0500
+@@ -1073,6 +1073,9 @@ nfs_writeback_done(struct rpc_task *task
+ 			SetPageError(page);
+ 			if (req->wb_file)
+ 				req->wb_file->f_error = task->tk_status;
++			if (task->tk_status == -ESTALE)
++				NFS_FLAGS(inode) |= NFS_INO_STALE;
++
+ 			nfs_inode_remove_request(req);
+ 			dprintk(", error = %d\n", task->tk_status);
+ 			goto next;
+
+--------------000606010605090402030807--
 
 
 -------------------------------------------------------
