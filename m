@@ -1,20 +1,20 @@
-From: Bryan O'Sullivan <bos@serpentine.com>
-Subject: Re: Re: Slow performance with 2.4.19pre1
-Date: 04 Jul 2002 13:33:52 -0700
+From: Keith Owens <kaos@sgi.com>
+Subject: Re: NFS server stalls with 2.4.18 + XFS 1.1
+Date: Fri, 05 Jul 2002 08:39:50 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1025814832.2122.14.camel@camp4.serpentine.com>
-References: <Pine.LNX.4.44.0207041624120.30131-100000@xpc1.ast.cam.ac.uk>
+Message-ID: <ag2j0e$8o4$2@main.gmane.org>
+References: <3D2474C6.461E618@moving-picture.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature";
-	boundary="=-HuyJSF8lL/ARWehqlCZ+"
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net, linux-xfs@oss.sgi.com
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from dsl092-013-071.sfo1.dsl.speakeasy.net ([66.92.13.71] helo=pelerin.serpentine.com)
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17QDIY-0006WB-00
-	for <nfs@lists.sourceforge.net>; Thu, 04 Jul 2002 13:33:54 -0700
-To: Jeremy Sanders <jss@ast.cam.ac.uk>
-In-Reply-To: <Pine.LNX.4.44.0207041624120.30131-100000@xpc1.ast.cam.ac.uk>
+Received: from mail.ocs.com.au ([203.34.97.2])
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17QFGd-0001FB-00
+	for <nfs@lists.sourceforge.net>; Thu, 04 Jul 2002 15:40:04 -0700
+To: James Pearson <james-p@moving-picture.com>
+In-Reply-To: Your message of "Thu, 04 Jul 2002 17:16:06 +0100."
+             <3D2474C6.461E618@moving-picture.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,37 +27,29 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
+On Thu, 04 Jul 2002 17:16:06 +0100, 
+James Pearson <james-p@moving-picture.com> wrote:
+>We have noticed a problem with a couple of our NFS servers (running
+>RedHat 7.2 with a stock 2.4.18 kernel with XFS v1.1) whereby NFS access
+>slows to a crawl or stalls.
+>
+>The exported filesystem(s) are XFS with 8 nfsd's running - when we have
+>the problem the load average is about 8 - but CPU usage, disk access and
+>network traffic are minimal.
+>
+>I found, by accident, that running the command 'sync' appears to 'fix'
+>the situation...
+>
+>I'm not sure if this is an XFS or NFS related problem (hence posting to
+>both lists).
 
---=-HuyJSF8lL/ARWehqlCZ+
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+XFS.  2.4.18 would sometimes get into a situation where two XFS
+operations were waiting on locks (not deadlocked) and nothing was
+moving.  Performing some other disk activity such as sync would get
+things moving again.
 
-On Thu, 2002-07-04 at 08:25, Jeremy Sanders wrote:
-> Sorry - I know it's bad form to reply to one's own emails. It seems that
-> the stock 2.4.19rc1 kernel doesn't have the problem as a client, and so
-> it's the RedHat patched 2.4.18 kernel which is a very slow client. This
-> looks like a RedHat bug.
+AFAICT this is fixed in the XFS CVS tree, against 2.4.19-rc1.
 
-Yes, you're correct.  The kernels Red Hat has been shipping with 7.3
-have atrocious NFS client behaviour, and will bring some servers (such
-as Netapp boxes) to a halt.
-
-	<b
-
---=-HuyJSF8lL/ARWehqlCZ+
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.0.6 (GNU/Linux)
-Comment: For info see http://www.gnupg.org
-
-iD8DBQA9JLEwG8PvG6BKogcRArFyAKDakPdPWygjw3+jAY/rAo++O2mT0wCgl5xB
-vT813R/cuOMAtdVvMARl2u4=
-=lMSE
------END PGP SIGNATURE-----
-
---=-HuyJSF8lL/ARWehqlCZ+--
 
 
 -------------------------------------------------------
