@@ -1,19 +1,20 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Jeremy Sanders <jss@ast.cam.ac.uk>
 Subject: Re: Permission denied
-Date: 07 May 2003 18:31:45 +0200
+Date: Wed, 7 May 2003 17:34:30 +0100 (BST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsu1c6zpji.fsf@charged.uio.no>
+Message-ID: <Pine.LNX.4.55.0305071732360.2587@xpc5.ast.cam.ac.uk>
 References: <Pine.LNX.4.55.0305071639490.2587@xpc5.ast.cam.ac.uk>
+ <shsu1c6zpji.fsf@charged.uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
+Received: from gold.csi.cam.ac.uk ([131.111.8.12])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19DRpe-0007vp-00
-	for <nfs@lists.sourceforge.net>; Wed, 07 May 2003 09:31:50 -0700
-To: Jeremy Sanders <jss@ast.cam.ac.uk>
-In-Reply-To: <Pine.LNX.4.55.0305071639490.2587@xpc5.ast.cam.ac.uk>
+	id 19DRsl-0000OX-00
+	for <nfs@lists.sourceforge.net>; Wed, 07 May 2003 09:35:03 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <shsu1c6zpji.fsf@charged.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,21 +27,24 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Jeremy Sanders <jss@ast.cam.ac.uk> writes:
+On Wed, 7 May 2003, Trond Myklebust wrote:
 
-     > I've seen this problem a couple of times (I think I reported it
-     > to the list before but I can find the posting). Using the
-     > automounter to mount home directories
-     > (rw,v3,rsize=8192,wsize=8192,hard,intr,udp,lock), it seems that
-     > rebooting a Linux server can give a "Permission denied" on the
-     > client.
+> Can it be duplicated on newer kernels?
 
-Can it be duplicated on newer kernels?
+I'm not sure. I couldn't reproduce the problem when rebooting machines by
+hand, and I don't think I can do much testing with the production
+machines as I can't easily upgrade the kernel. I'll invesitgate this.
 
-Which automounter BTW?
+> Which automounter BTW?
 
-Cheers,
-  Trond
+autofs-3.1.7
+
+Thanks, Jeremy
+
+-- 
+Jeremy Sanders <jss@ast.cam.ac.uk>   http://www-xray.ast.cam.ac.uk/~jss/
+X-Ray Group, Institute of Astronomy, University of Cambridge, UK.
+Public Key Server PGP Key ID: E1AAE053
 
 
 -------------------------------------------------------
