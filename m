@@ -1,18 +1,26 @@
-From: Michael Griffith <grif@michaelgriffith.com>
-Subject: nfsstat printing overflow
-Date: Thu, 29 May 2003 16:26:54 -0700
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: nfsstat printing overflow
+Date: Fri, 30 May 2003 15:43:00 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030529232654.GA32598@doubt>
+Message-ID: <16086.61284.133472.312148@notabene.cse.unsw.edu.au>
+References: <20030529232654.GA32598@doubt>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="YiEDa0DAkWCtVeE4"
-Cc: neilb@cse.unsw.edu.au, hjl@lucon.org
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net,
+    okir@monad.swb.de,
+    hjl@lucon.org
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from adsl-209-76-203-130.dsl.snfc21.pacbell.net ([209.76.203.130] helo=michaelgriffith.com)
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19LWnY-0002zs-00
-	for <nfs@lists.sourceforge.net>; Thu, 29 May 2003 16:27:04 -0700
-To: nfs@lists.sourceforge.net, okir@monad.swb.de
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19Lcfe-0003e4-00
+	for <nfs@lists.sourceforge.net>; Thu, 29 May 2003 22:43:18 -0700
+Received: From
+	notabene.cse.unsw.edu.au ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
+	(for <grif@michaelgriffith.com>) (for <nfs@lists.sourceforge.net>)
+	(for <okir@monad.swb.de>) (for <hjl@lucon.org>) By tone With Smtp ;
+	Fri, 30 May 2003 15:43:09 +1000
+To: Michael Griffith <grif@michaelgriffith.com>
+In-Reply-To: message from Michael Griffith on Thursday May 29
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,59 +33,50 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Thursday May 29, grif@michaelgriffith.com wrote:
+> A small patch to handle when the RPC call counts are > 2^32/100.
+> 
+Thanks.
+However:
 
---YiEDa0DAkWCtVeE4
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+> +        unsigned long long      pct;
 
-A small patch to handle when the RPC call counts are > 2^32/100.
+> +		for (j = 0; j < 6 && i + j < nr; j++) {
+> +                        pct = ((unsigned long long) info[i+j]*100)/total;
+> +                        printf("%-6d %2d%% ", info[i+j], pct);
+> +                }
 
--- 
-Michael A. Griffith
-<grif@acm.org>
-408-907-2151
-650-292-1516
+if pct is an "unsigned long long" we should use "%llu" to print it.
 
---YiEDa0DAkWCtVeE4
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: attachment; filename="nfsstat.diff"
+The following patch has been commited to the nfs-utils CVS and will be
+in the next release, which will probably be 1.1.0
 
+NeilBrown
 
-
-Without this patch, nfsstat reports the wrong percentage for
-any RPC which has more than 2^32/100 calls.  For example
-my machine running 1.0.1 reports:
-
-l-sim-208-11:diag/testgen/batch_0/nv40_curie_ogtest/000001> nfsstat at
--c
-Client rpc stats:
-calls      retrans    authrefrsh
-61096094   181        0
-Client nfs v2:
-null       getattr    setattr    root       lookup     readlink
-0       0% 0       0% 0       0% 0       0% 0       0% 0       0%
-read       wrcache    write      create     remove     rename
-0       0% 0       0% 0       0% 0       0% 0       0% 0       0%
-link       symlink    mkdir      rmdir      readdir    fsstat
-0       0% 0       0% 0       0% 0       0% 0       0% 0       0%
-
-Client nfs v3:
-null       getattr    setattr    lookup     access     readlink
-0       0% 2661431  4% 76995   0% 4938464  8% 3254610  5% 131     0%
-read       write      create     mkdir      symlink    mknod
-138409  0% 259382  0% 185867  0% 3570    0% 49      0% 0       0%
-remove     rmdir      rename     link       readdir    readdirplus
-4035088  6% 318094  0% 157     0% 0       0% 1626490  2% 43597144  1%
-fsstat     fsinfo     pathconf   commit
-18      0% 195     0% 0       0% 0       0%
-
-
-Note that readdir plus should be 71%, not 1%. 
-
-
-
---- 1.0.1/nfsstat.c	Sun May  5 16:33:30 2002
-+++ nfsstat.c	Thu May 29 16:10:21 2003
+Index: ChangeLog
+===================================================================
+RCS file: /cvsroot/nfs/nfs-utils/ChangeLog,v
+retrieving revision 1.202
+diff -u -r1.202 ChangeLog
+--- ChangeLog	30 May 2003 05:16:52 -0000	1.202
++++ ChangeLog	30 May 2003 05:38:44 -0000
+@@ -1,3 +1,9 @@
++2003-05-30 Michael Griffith <grif@michaelgriffith.com>
++	NeilBrown <neilb@cse.unsw.edu.au>
++
++	utils/nfsstat/nfsstat.c(print_callstats): use unsigned
++	long long to avoid overflow when printing stats.
++	
+ 2003-05-30  NeilBrown <neilb@cse.unsw.edu.au>
+ 
+ 	* support/export/export.c, support/include/nfslib.h,
+Index: utils/nfsstat/nfsstat.c
+===================================================================
+RCS file: /cvsroot/nfs/nfs-utils/utils/nfsstat/nfsstat.c,v
+retrieving revision 1.4
+diff -u -r1.4 nfsstat.c
+--- utils/nfsstat/nfsstat.c	5 May 2002 23:33:30 -0000	1.4
++++ utils/nfsstat/nfsstat.c	30 May 2003 05:38:46 -0000
 @@ -307,7 +307,8 @@
  print_callstats(const char *hdr, const char **names,
  				 unsigned int *info, unsigned int nr)
@@ -97,13 +96,11 @@ Note that readdir plus should be 71%, not 1%.
 -				info[i+j], 100 * info[i+j] / total);
 +		for (j = 0; j < 6 && i + j < nr; j++) {
 +                        pct = ((unsigned long long) info[i+j]*100)/total;
-+                        printf("%-6d %2d%% ", info[i+j], pct);
++                        printf("%-6d %2llu%% ", info[i+j], pct);
 +                }
  		printf("\n");
  	}
  	printf("\n");
-
---YiEDa0DAkWCtVeE4--
 
 
 -------------------------------------------------------
