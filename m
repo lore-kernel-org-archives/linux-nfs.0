@@ -1,18 +1,18 @@
 From: Marco.Schwarz@Freudenberg.de
 Subject: URGENT: Problems with NFS-Root-Clients
-Date: Tue, 27 Aug 2002 17:14:20 +0200
+Date: Tue, 27 Aug 2002 17:26:52 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <95AF67BA7F70D511829B0002A551737001C9C2@faw-e01.faw.freudenberg.de>
+Message-ID: <95AF67BA7F70D511829B0002A551737001C9C3@faw-e01.faw.freudenberg.de>
 Mime-Version: 1.0
 Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from [153.95.95.71] (helo=itnts96.freudenberg.de)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17ji4U-0005Cn-00
-	for <nfs@lists.sourceforge.net>; Tue, 27 Aug 2002 08:15:58 -0700
+	id 17jiGb-0007p3-00
+	for <nfs@lists.sourceforge.net>; Tue, 27 Aug 2002 08:28:29 -0700
 Received: from fgnts03.fit.freudenberg.de (fgnts03.fit.freudenberg.de) by itnts96.freudenberg.de
- (Content Technologies SMTPRS 4.2.10) with ESMTP id <T5cf91f0632995f5f478c4@itnts96.freudenberg.de> for <nfs@lists.sourceforge.net>;
- Tue, 27 Aug 2002 17:15:51 +0200
+ (Content Technologies SMTPRS 4.2.10) with ESMTP id <T5cf92a80db995f5f478c4@itnts96.freudenberg.de> for <nfs@lists.sourceforge.net>;
+ Tue, 27 Aug 2002 17:28:23 +0200
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -63,6 +63,7 @@ very unhappy if they cannot work).
 
 Thanks in advance,
 Marco Schwarz
+
 
 
 -------------------------------------------------------
