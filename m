@@ -1,27 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Subject: Re: Linux' NFS locking b0rken?
-Date: Tue, 25 May 2004 15:03:49 -0400
+Date: Tue, 25 May 2004 13:08:25 -0600 (MDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1085511829.9224.20.camel@lade.trondhjem.org>
-References: <1085487829.6666.32.camel@tesla.mmt.bellhowell.com>
-	 <20040525123425.GO21886@suse.de>
-	 <1085503328.13681.4.camel@tesla.mmt.bellhowell.com>
-	 <1085507226.3872.132.camel@lade.trondhjem.org>
-	 <1085511385.11596.21.camel@tesuji.nac.uci.edu>
+Message-ID: <Pine.LNX.4.44.0405251307290.24001-100000@fattire.ngdc.noaa.gov>
+References: <1085511385.11596.21.camel@tesuji.nac.uci.edu>
+Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: Jeffrey Layton <jtlayton@poochiereds.net>, Olaf Kirch <okir@suse.de>,  nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=ISO-8859-1
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+   Jeffrey Layton <jtlayton@poochiereds.net>, Olaf Kirch <okir@suse.de>,
+   <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BShDS-0001Lt-Ig
-	for nfs@lists.sourceforge.net; Tue, 25 May 2004 12:03:58 -0700
-Received: from dh132.citi.umich.edu
-	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.30)
-	id 1BShDS-0007Al-6W
-	for nfs@lists.sourceforge.net; Tue, 25 May 2004 12:03:58 -0700
+	id 1BShI9-0002Eq-Ba
+	for nfs@lists.sourceforge.net; Tue, 25 May 2004 12:08:49 -0700
+Received: from fattire.ngdc.noaa.gov ([140.172.187.207])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1BShI8-0008VN-V4
+	for nfs@lists.sourceforge.net; Tue, 25 May 2004 12:08:48 -0700
 To: Dan Stromberg <strombrg@dcs.nac.uci.edu>
 In-Reply-To: <1085511385.11596.21.camel@tesuji.nac.uci.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -36,15 +33,45 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 ty , 25/05/2004 klokka 14:56, skreiv Dan Stromberg:
+On Tue, 25 May 2004, Dan Stromberg wrote:
 
+> On Tue, 2004-05-25 at 10:47, Trond Myklebust wrote:
+> > P=E5 ty , 25/05/2004 klokka 12:42, skreiv Jeffrey Layton:
+> >=20
+> > > Perhaps Solaris does some sort of BSD-POSIX lock translation which ma=
+kes
+> > > flock() work there?
+> >=20
+> > The convention for local filesystems under Linux is that BSD and POSIX
+> > locks are not allowed to see each other. That rules out using the above
+> > trick for NFS.
+> >=20
+> > Cheers,
+> >    Trond
+>=20
 > Actually, wouldn't you be OK if you had a flock that was just a wrapper
 > around fcntl?
 
-No! flock locks behave very differently from POSIX locks after a fork().
+yes, in that it would work, you simply would not coordinate with other
+processes which do NOT use fcntl based locks.  ruby and perl ship with
+implemtations of flock which are, in fact, fctnl under the hood.
 
-Cheers,
-  Trond
+-a
+--=20
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D
+| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
+| PHONE   :: 303.497.6469
+| ADDRESS :: E/GC2 325 Broadway, Boulder, CO 80305-3328
+| URL     :: http://www.ngdc.noaa.gov/stp/
+| "640K ought to be enough for anybody." - Bill Gates, 1981
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D
+
 
 
 -------------------------------------------------------
