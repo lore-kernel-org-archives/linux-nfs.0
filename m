@@ -1,21 +1,29 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: [PATCH 2.4] (retry) increase NFSSVC_MAXBLKSIZE on large page machines
-Date: Mon, 26 Jul 2004 18:14:39 +1000
+From: Bernd Schubert <bernd-schubert@web.de>
+Subject: async vs. sync
+Date: Mon, 26 Jul 2004 17:17:59 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040726081439.GE17056@sgi.com>
+Message-ID: <200407261718.03264.bernd-schubert@web.de>
+References: <200407231620.i6NGKYV20945@algebra.hillsboro.credence.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Content-Type: text/plain;
+  charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Bp1dk-0002io-FX
-	for nfs@lists.sourceforge.net; Mon, 26 Jul 2004 02:19:24 -0700
-Received: from [192.48.171.20] (helo=omx3.sgi.com)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1Bp1dk-0000hi-4W
-	for nfs@lists.sourceforge.net; Mon, 26 Jul 2004 02:19:24 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
+	id 1Bp7F0-0006LH-8R
+	for nfs@lists.sourceforge.net; Mon, 26 Jul 2004 08:18:14 -0700
+Received: from smtp06.web.de ([217.72.192.224])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.34)
+	id 1Bp7Ez-0001Hx-RH
+	for nfs@lists.sourceforge.net; Mon, 26 Jul 2004 08:18:14 -0700
+Received: from [80.140.20.159] (helo=bathl.lan.fli4l)
+	by smtp06.web.de with asmtp (TLSv1:RC4-MD5:128)
+	(WEB.DE 4.101 #44)
+	id 1Bp7Eq-00071R-00
+	for nfs@lists.sourceforge.net; Mon, 26 Jul 2004 17:18:04 +0200
+To: Linux NFS Mailing List <nfs@lists.sourceforge.net>
+In-Reply-To: <200407231620.i6NGKYV20945@algebra.hillsboro.credence.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -28,57 +36,53 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-G'day,
 
-I've been out of the loop for a few weeks now so I'm getting back
-in by sending and resending a bunch of patches.
+> On a completely seperate note, Linux-to-Linux NFS file writes
+> only seem to be fast if we publish the serving Linux volume
+> as asynchronous (default setting is synchronous which is slow).
+>
 
-This one (for 2.4 only) was sent twice but has not yet appeared in
-Marcello's BK.
+Yeah, we just observed something similar.=20
 
-http://marc.theaimsgroup.com/?l=linux-nfs&m=107002386729570&w=2
-http://marc.theaimsgroup.com/?l=linux-kernel&m=108391490102531&w=2
+Here some numbers for write speed of the clients:
 
-This patch makes NFSSVC_MAXBLKSIZE depend on PAGE_SIZE so that machines
-with large page sizes can take advantage of that feature to serve NFS
-with larger blocksizes, increasing performance and avoiding a fallback
-to synchronous traffic between machines with page sizes greater than 8K.
-Also, documents the actual constraints on NFSSVC_MAXBLKSIZE.
+linux-2.6.7:
+async: 11MB/s
+sync, wdelay: 2-3MB/s
+sync, no_wdelay: 7MB/s
+
+linux-2.4.27-rc3:
+async: 11MB/s
+sync, wdelay: 2-3MB/s
+sync, no_wdelay: 2-3MB/s
+
+The kernel version corresponds to the server kernel, all clients still run=
+=20
+2.4.26.
+
+Unfortunality switching the server to 2.6.7 makes the server crash every=20
+morning on running the cron-jobs with page allocation errors, so keeping=20
+2.6.x is currently not an option. At least not as long as those errors seem=
+=20
+to be tolerated by the kernel maintainers :(
+
+Any ideas whats the issue with sync vs async in 2.4.x?
+
+Thanks,
+	Bernd
 
 
---- /usr/tmp/TmpDir.16250-0/linux/linux/include/linux/nfsd/const.h_1.5	Fri May  7 17:20:22 2004
-+++ /usr/tmp/TmpDir.16250-0/linux/linux/include/linux/nfsd/const.h	Fri May  7 17:20:22 2004
-@@ -12,6 +12,7 @@
- #include <linux/nfs.h>
- #include <linux/nfs2.h>
- #include <linux/nfs3.h>
-+#include <asm/page.h>
- 
- /*
-  * Maximum protocol version supported by knfsd
-@@ -19,9 +20,16 @@
- #define NFSSVC_MAXVERS		3
- 
- /*
-- * Maximum blocksize supported by daemon currently at 8K
-+ * Maximum blocksize supported by daemon.  We want the largest
-+ * value which 1) fits in a UDP datagram less some headers
-+ * 2) is a multiple of page size 3) can be successfully kmalloc()ed
-+ * by each nfsd.   
-  */
--#define NFSSVC_MAXBLKSIZE	(8*1024)
-+#if PAGE_SIZE > (16*1024)
-+#define NFSSVC_MAXBLKSIZE	(32*1024)
-+#else
-+#define NFSSVC_MAXBLKSIZE	(2*PAGE_SIZE)
-+#endif
- 
- #ifdef __KERNEL__
 
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+
+=2D-=20
+Bernd Schubert
+Physikalisch Chemisches Institut / Theoretische Chemie
+Universit=E4t Heidelberg
+INF 229
+69120 Heidelberg
+e-mail: bernd.schubert@pci.uni-heidelberg.de
+
+
 
 
 -------------------------------------------------------
