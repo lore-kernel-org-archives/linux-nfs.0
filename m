@@ -1,68 +1,52 @@
-From: Daniel Jacobowitz <dan@debian.org>
-Subject: Re: [CHECKER] inconsistent NFS stat cache (NFS on ext3, 2.6.11)
-Date: Sun, 13 Mar 2005 15:04:12 -0500
-Message-ID: <20050313200412.GA21521@nevyn.them.org>
-References: <Pine.GSO.4.44.0503120335160.12085-100000@elaine24.Stanford.EDU> <1110690267.24123.7.camel@lade.trondhjem.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: NFS FAQ updates
+Date: Sun, 13 Mar 2005 15:05:37 -0500
+Message-ID: <20050313200537.GB11748@fieldses.org>
+References: <482A3FA0050D21419C269D13989C611307CF4C1E@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Junfeng Yang <yjf@stanford.edu>, nfs@lists.sourceforge.net,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	ext2-devel@lists.sourceforge.net, mc@cs.Stanford.EDU
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1110690267.24123.7.camel@lade.trondhjem.org>
-Sender: ext2-devel-admin@lists.sourceforge.net
-Errors-To: ext2-devel-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/ext2-devel>,
-	<mailto:ext2-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Post: <mailto:ext2-devel@lists.sourceforge.net>
-List-Help: <mailto:ext2-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/ext2-devel>,
-	<mailto:ext2-devel-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=ext2-devel>
-List-ID: <nfs.lists.sourceforge.net>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+	NeilBrown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1DAZKv-00024h-Vj
+	for nfs@lists.sourceforge.net; Sun, 13 Mar 2005 12:05:17 -0800
+Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1DAZKu-0000N6-IY
+	for nfs@lists.sourceforge.net; Sun, 13 Mar 2005 12:05:17 -0800
+To: "Lever, Charles" <Charles.Lever@netapp.com>
+In-Reply-To: <482A3FA0050D21419C269D13989C611307CF4C1E@lavender-fe.eng.netapp.com>
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sun, Mar 13, 2005 at 12:04:27AM -0500, Trond Myklebust wrote:
-> lau den 12.03.2005 Klokka 03:56 (-0800) skreiv Junfeng Yang:
-> > Hi,
-> > 
-> > We checked NFS on top of ext3 using FiSC (our file system model checker)
-> > and found a case where NFS stat cache can contain inconsistent entries.
-> > 
-> > Basically, to trigger this inconsistency, just do the following steps:
-> > 1. create a file A1, write a few bytes to it, so A1 is 4 words
-> > 2. create a hard link A2, pointing to A1
-> > 3. stat on A2. A2's size is 4 words
-> > 4. truncate A1 to a larger size, write a few bytes at the end. now it's
-> > 1031 words.
-> > 5. stat on A2. it's size is still 4 words, which should be 1031 words
-> > 
-> > We have a test case to re-create this warning.  You can download it at
-> > http://fisc.stanford.edu/bug16/crash.c.  It includes some sudo commands
-> > to mount nfs partitions, which you might want to change according to your
-> > local settings.
-> > 
-> > cat /etc/exports shows:
-> > /mnt/sbd0-export          localhost(rw,sync)
-> > /mnt/sbd1-export          localhost(rw,sync)
-> > 
-> > Let me know if you have any problems reproducing the warning. We'd
-> > appreciate any confirmations/clarifications.
-> > 
-> 
-> This is a known problem. Turn off the (default - grrr) subtree checking
-> export option on the server, and it will all work properly. The subtree
-> checking option violates the NFS standards for filehandle generation in
-> so many ways, that it isn't even funny.
+On Sun, Mar 13, 2005 at 11:37:26AM -0800, Lever, Charles wrote:
+> Why should I disable subtree checking on my NFS server exports?
+>   http://nfs.sourceforge.net/index.cel.php#faq_c7
 
-I can't find any documentation about this, but it seems like the same
-problem that has been causing me headaches lately; when I replace glibc
-from the server side of an nfsroot, the client has a couple of
-variously wrong reads before it sees the new files.  If it breaks NFS
-so badly, why is it the default for the Linux NFS server?
+Kerberos doesn't solve exactly the problem that subtree checking
+attempts to solve.  My attempt at a concise way of putting this (maybe you
+can think of a better way):
 
--- 
-Daniel Jacobowitz
-CodeSourcery, LLC
+	Use Kerberos and/or NFSv4 when they become available: it may
+		still be possible for a user of NFS over Kerberos to
+		access files outside of the exported subtree.  However,
+		it should not be possible for them to fake their identity,
+		so they should not be able to read files that they do
+		not have permissions to.
+
+--b.
 
 
 -------------------------------------------------------
@@ -70,3 +54,6 @@ SF email is sponsored by - The IT Product Guide
 Read honest & candid reviews on hundreds of IT Products from real users.
 Discover which products truly live up to the hype. Start reading now.
 http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
