@@ -1,21 +1,23 @@
-From: Andrew Morton <akpm@osdl.org>
-Subject: Re: [PATCH kNFSd 0 of 12] Introduction
-Date: Mon, 7 Feb 2005 19:24:53 -0800
-Message-ID: <20050207192453.2a0a206b.akpm@osdl.org>
-References: <20050208140033.24886.patches@notabene>
+From: Stuart Anderson <sba@srl.caltech.edu>
+Subject: Re: kernel Oops in rpc.mountd
+Date: Mon, 7 Feb 2005 16:29:32 -0800 (PST)
+Message-ID: <200502080029.QAA15462@jelly.caltech.edu>
+References: <16903.63489.218836.52210@cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net
+Cc: Stuart Anderson <anderson@ligo.caltech.edu>,
+	nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CyLzr-0007g1-92
-	for nfs@lists.sourceforge.net; Mon, 07 Feb 2005 19:25:03 -0800
-Received: from fw.osdl.org ([65.172.181.6] helo=mail.osdl.org)
+	id 1CyJG6-0007F7-P0
+	for nfs@lists.sourceforge.net; Mon, 07 Feb 2005 16:29:38 -0800
+Received: from lodur.srl.caltech.edu ([131.215.120.1])
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CyLzp-0006gt-N8
-	for nfs@lists.sourceforge.net; Mon, 07 Feb 2005 19:25:03 -0800
-To: NeilBrown <neilb@cse.unsw.edu.au>
-In-Reply-To: <20050208140033.24886.patches@notabene>
+	id 1CyJG5-0005w6-B2
+	for nfs@lists.sourceforge.net; Mon, 07 Feb 2005 16:29:38 -0800
+In-Reply-To: <16903.63489.218836.52210@cse.unsw.edu.au> "from Neil Brown at Feb
+ 8, 2005 10:21:37 am"
+To: Neil Brown <neilb@cse.unsw.edu.au>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,37 +31,62 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-NeilBrown <neilb@cse.unsw.edu.au> wrote:
->
+According to Neil Brown:
+> On Monday February 7, anderson@ligo.caltech.edu wrote:
+> > A dual-Xeon FC3 machine just crashed with the following kernel Oops in
+> > rpc.mounted.  Any ideas on how to debug this?
+> > 
+> > kernel-smp-2.6.10-1.760_FC3
+> > kernel-utils-2.4-13.1.49_FC3
+> > nfs-utils-1.0.6-44
+> > portmap-4.0-63
+> > 
+> > I am getting about 1 kernel crash per day on a cluster of 290 such boxes
+> > with different kernel Oops messages.  I do not always get the syslog message,
+> > but perhaps this one has enough information to track it down.
+> > 
+> > Thanks.
+> > 
+> > 
+> > Feb  6 21:49:44 node77 kernel: Unable to handle kernel paging request at virtual address 00100104
+>                                                                                            ^^^^^^^^
+> ...
+> > Feb  6 21:49:44 node77 kernel: eax: dff05000   ebx: 00100100   ecx: 0000008f   edx: f8a62fa0
+>                                                  ^^^^^^^^^^^^^
+> > Feb  6 21:49:44 node77 kernel: esi: cf874180   edi: 00000000   ebp: f6c5bef4   esp: f6c5bec8
 > 
-> Following are 12 patches for nfsd in 2.6.11-rc2-mm2
 > 
-> - Fix minor problem with '..' access interacting with the "nohide" export option.
-> - reduce stack space usage in find_exported_dentry
-> - 6 patches from Bruce Fields to improve authentication handling for callbacks.
-> - Fix problem that stopped read access to append-only files.
-> - Fix bug where readdir replies are cache badly.
-> - Add lots of "static" declarations where appropriate
-> - Change nfscache to use list.h macros and smaller kmallocs
-> 
-> I believe they are all ready for ready for 2.6.11.
+> Looks like two flipped bits in memory.  Do you have ECC RAM? Is it
 
-Yeah, I do worry about making these changes at this time.
+Yes.
+
+> enabled?
+
+Yes.
+
+> What does memtest86 report?
+
+I have not run it recently, but we ran it for 72 hours on all 290 nodes about
+a year ago without any errors. The current round of kernel Oops are happening
+on different nodes, so either most of the memory is experience a sudden
+end-of-life accelerated failure rate or there is a software bug in the
+newer kernel.
+
+It looks like I have it narrowed down to one user application, but it
+can run for up to a day before crashing, and it is always on a different
+node/hardware, so I think it is a software bug in the kernel.
+
+The 290 nodes cross mount each others internal IDE drives with ext3 shared
+via NFS v3.
 
 
-> Number 10 (readdir fix) is probably the most critical (and most trivial).
-> The append-only would be next in line.
+We will probably try and downgrade the kernel, but I am open to other
+suggestions.
 
-OK.
+Thanks.
 
-> The 6 from Bruce fix a real performance problem with locking.
-
-That one depends on a bunch of the preceding ones, yes?
-
-> The rest could be safely delayed if that seem appropriate, but they are 
-> either quite trivial or (for the last one) quite well tested.
-
-Maybe just the readdir and append patches for 2.6.11??
+-- 
+Stuart Anderson  sba@srl.caltech.edu  http://www.srl.caltech.edu/personnel/sba
 
 
 -------------------------------------------------------
