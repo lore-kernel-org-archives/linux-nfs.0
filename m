@@ -1,27 +1,23 @@
-From: Andrew Morton <akpm@osdl.org>
-Subject: Re: Re: [PATCH] kNFSd - 2 of 5 - ip_map_init does a kmalloc
- which isn't checked...
-Date: Sat, 7 Feb 2004 21:46:37 -0800
+From: Greg Banks <gnb@melbourne.sgi.com>
+Subject: Re: [PATCH] SGI 882960: Busy inodes after unmount, oops
+Date: Mon, 09 Feb 2004 18:46:36 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040207214637.387d3018.akpm@osdl.org>
-References: <20040206161050.27799.patches@notabene>
-	<E1AoyIo-0007FS-00@notabene>
-	<20040207012423.396efe73.akpm@osdl.org>
-	<20040208043723.GC13391@fieldses.org>
+Message-ID: <40273ADC.58AE1887@melbourne.sgi.com>
+References: <40209B6D.56ED461E@melbourne.sgi.com> <402239C3.AD21DDAD@moving-picture.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: neilb@cse.unsw.edu.au, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+   Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Aphk0-0005OL-50
-	for nfs@lists.sourceforge.net; Sat, 07 Feb 2004 21:44:24 -0800
-Received: from fw.osdl.org ([65.172.181.6] helo=mail.osdl.org)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1Aphjz-0006mw-GB
-	for nfs@lists.sourceforge.net; Sat, 07 Feb 2004 21:44:23 -0800
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <20040208043723.GC13391@fieldses.org>
+	id 1Aq69M-0007jN-KS
+	for nfs@lists.sourceforge.net; Sun, 08 Feb 2004 23:48:12 -0800
+Received: from mtvcafw.sgi.com ([192.48.171.6] helo=rj.sgi.com)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1Aq69M-0005yq-31
+	for nfs@lists.sourceforge.net; Sun, 08 Feb 2004 23:48:12 -0800
+To: James Pearson <james-p@moving-picture.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,26 +30,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
->
-> On Sat, Feb 07, 2004 at 01:24:23AM -0800, Andrew Morton wrote:
-> > NeilBrown <neilb@cse.unsw.edu.au> wrote:
-> > >
-> > > There is no way to return an error from a cache init routine,
-> > >  so instead we make sure to pre-allocate the memory needed,
-> > >  and free it after the lookup if the lookup failed.
-> > 
-> > This patch causes an oops when the initscripts run exportfs.
+James Pearson wrote:
 > 
-> Ugh.  The patches were submitted out of order; #3 should have come
-> before #2.
-> 
+> I notice this patch doesn't apply cleanly with Trond's fix_unlink patch
 
-OK.
+The second smaller version applies cleanly over fix_unlink.dif (with a 6 line
+offset).
 
-But with all five patches applied (or the first three) there remains the
-deadlock over that write_lock.
+> - can the two patches live together?
 
+Yes.  But...
+
+If all you want is to prevent busy inodes and the subsequent oops, my patch
+will do that in all cases.   As discussed earlier, Trond's patch still allows
+busy inodes if the mount is "intr" and the last close is interrupted.  I have
+a small test case which triggers this on a kernel with only Trond's patch.
+
+OTOH, Trond's patch serialises the last close so that umount cannot proceed
+until the .nfsXXX file is removed, which greatly reduces the chances of
+short-lived mounts leaving turds on the server.  This is obviously a good
+thing.
+
+So I would recommend using both patches.
+
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
 
 -------------------------------------------------------
