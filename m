@@ -1,18 +1,19 @@
-From: Jonathan Woithe <jwoithe@physics.adelaide.edu.au>
-Subject: Can NFS be started after NIS/DNS?
-Date: Thu, 22 Aug 2002 08:54:42 +0930 (CST)
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: frontpage sucks
+Date: 22 Aug 2002 01:34:06 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200208212324.g7LNOgU15880@sprite.physics.adelaide.edu.au>
+Message-ID: <shs8z2zg51t.fsf@charged.uio.no>
+References: <200208211549.g7LFnSkV023067@iohost.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net,
-        jwoithe@physics.adelaide.edu.au (Jonathan Woithe)
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from adelphi.physics.adelaide.edu.au ([129.127.102.1])
+Received: from mons.uio.no ([129.240.130.14])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17heqN-0002W8-00
-	for <nfs@lists.sourceforge.net>; Wed, 21 Aug 2002 16:24:55 -0700
-To: trond.myklebust@fys.uio.no
+	id 17hezW-0006aa-00
+	for <nfs@lists.sourceforge.net>; Wed, 21 Aug 2002 16:34:22 -0700
+To: nfs@septuagint.org
+In-Reply-To: <200208211549.g7LFnSkV023067@iohost.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,33 +26,21 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hi
+>>>>> " " == nfs  <nfs@septuagint.org> writes:
 
-Does anyone know of any reason why the NFS services on a server can't be
-started after NIS and/or DNS servers?  At least Redhat 7.x and Slackware
-(8.x) start NFS before these services; however, if local name resolution
-depends on either NIS or DNS then NFS needs to be started after these if 
-previously exising clients are to have their access permissions restored
-correctly.
+     > I have *SEARCHED* and *SEARCHED* the net and can't find
+     > anything that touches on my problem.
 
-I can see no reason why switching the order can't be done.
+How about checking the NFS list archives?
 
-I have been starting NFS after NIS/DNS on a server for several weeks now and
-it hasn't given any troubles across numerous test reboots.  On the other
-hand, I did read in an archived message from some years ago that NIS had the
-potential to mess NFS up if NIS startup preceeded NFS.
+     > Aug 20 20:29:00 w2a kernel: lockd: cannot monitor xx.xx.xx.xx
+     > Aug 20 20:29:00 w2a kernel: lockd: failed to monitor
 
-Please CC me any replies since I don't subscribe to the list.
+You are not running rpc.statd. It has to be running on the server
+*and* the client.
 
-Best regards
-  jonathan
--- 
-* Jonathan Woithe    jwoithe@physics.adelaide.edu.au                        *
-*                    http://www.physics.adelaide.edu.au/~jwoithe            *
-***-----------------------------------------------------------------------***
-** "Time is an illusion; lunchtime doubly so"                              **
-*  "...you wouldn't recognize a subtle plan if it painted itself purple and *
-*   danced naked on a harpsichord singing 'subtle plans are here again'"    *
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
