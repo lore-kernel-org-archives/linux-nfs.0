@@ -1,23 +1,18 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: Problem with patch-C-NfsdRevalidate
-Date: Thu, 14 Nov 2002 13:11:26 +1100
+From: "Choi" <cinch@newmail.naver.com>
+Subject: rpc.statd died with segmentation fault..
+Date: Fri, 15 Nov 2002 01:48:27 +0900 (KST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15827.1614.91775.499397@notabene.cse.unsw.edu.au>
-References: <006301c28b75$8f7e0370$47426682@itee.uq.edu.au>
+Message-ID: <3DD3D3DB.000001.00825@naver779.naver.com>
+Reply-To: <cinch@newmail.naver.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: Multipart/Alternative;
+  boundary="------------Boundary-00=_R0SKULUXFQQMYJ0CCJD0"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
+Received: from [211.218.150.188] (helo=naver779.naver.com)
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18C9Th-0004MW-00
-	for <nfs@lists.sourceforge.net>; Wed, 13 Nov 2002 18:11:33 -0800
-Received: From
-	notabene.cse.unsw.edu.au ([129.94.233.204] == wireless-204.wireless.cse.unsw.EDU.AU)
-	(for <c.pascoe@itee.uq.edu.au>) (for <nfs@lists.sourceforge.net>) By
-	tone With Smtp ; Thu, 14 Nov 2002 13:11:27 +1100
-To: "Chris Pascoe" <c.pascoe@itee.uq.edu.au>
-In-Reply-To: message from Chris Pascoe on Thursday November 14
+	id 18CNAN-0002NO-00
+	for <nfs@lists.sourceforge.net>; Thu, 14 Nov 2002 08:48:31 -0800
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,50 +25,62 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thursday November 14, c.pascoe@itee.uq.edu.au wrote:
-> Hi Neil,
-> 
-> In
-> http://cgi.cse.unsw.edu.au/~neilb/patches/linux-stable/2.4.20-rc1/patch-C-Nf
-> sdRevalidate,
-> fh_compose may never be called and err will be left set to a dentry's
-> address or nfserr_acces (is that nfserr_acces ever used?) - if
-> dentry->d_inode/dentry->d_inode->i_op/dentry->d_inode->i_op->revalidate is
-> NULL.
-> 
-> Applying this patch results in problems with my Solaris clients, at least
-> when trying to create a new file or when trying to stat a nonexistent file
-> - output from truss:
-> 
-> open("/home/chrisp/a.lock.1036824940.2046.kauri", O_WRONLY|O_CREAT|O_EXCL,
-> 0666) Err#-1057499168
-> lstat("/home/chrisp/a.lock", 0xFFBECFB8)  Err#-1071055655
-> 
-> If I arrange the tests as below, to call fh_compose even if we can't call
-> revalidate, all seems happy.  Is this behaviour correct?
 
-Yes, you are correct.  The code was definately broken.
-Having:
-   if (x)
-	if (Y)
-		z;
-   else
-	w;
+--------------Boundary-00=_R0SKULUXFQQMYJ0CCJD0
+Content-Type: Text/Plain;
+  charset="euc-kr"
+Content-Transfer-Encoding: base64
 
-is always a bad idea !
+SSBhbSB1c2luZyBMSU5VWCAyLjQuMTggS2VybmVsLg0KYW5kIExpbnV4IGFzIGEgbmZzIGNsaWVu
+dCwgTmV0QXBwIEZpbGVyIGFzIGEgTkZTIFNlcnZlci4NCnJwYy5zdGF0ZCB2ZXJzaW9uIGlzIDAu
+My4zDQoNCmFmdGVyIHJlYm9vdCwgcnBjLnN0YXRkIGlzIHJ1bm5pbmcgd2l0aG91dCBubyBwcm9i
+bGVtLg0KV2hlbiBteSBwcm9ncmFtIGluIExJTlVYIHRyaWVzIHRvIGdldCBXUklURSBsb2NrIG9u
+IGEgZmlsZSBpbiB0aGUgTkZTIHNlcnZlciwNCnJwYy5zdGF0ZCBkaWVkLi4uDQoNCklmIEkgcnVu
+IHJwYy5zdGF0ZCB3aXRoICIgcnBjc3RhdGQgLUYgLWQgIiwgdGhpcyBwcm9ibGVtIGRvZXNuJ3Qg
+aGFwcGVuLg0KYnV0IHJwYy5zdGF0ZCBpcyBleGVjdXRlZCBhcyBhIGRhZW1vbiwgaXQgZGllZCAu
+Li4NCg0KV2hlbiBJIHRyYWNlZCBycGMuc3RhdGQgd2l0aCBzdHJhY2UgdXRpbGl0eSwgSSBmb3Vu
+ZCBvdXQNCnJwYy5zdGF0ZCBkaWVkIHdpdGggc2VnbWVudGF0aW9uIGZhdWx0IGFmdGVyIHJlcGx5
+aW5nIHJlcXVlc3QuLg0KDQoNCnBsZWFzZSwgbGV0IG1lIGtub3cgd2h5IC4uLj8NCg==
 
-Thanks a lot.
-Your new code looks right.
+--------------Boundary-00=_R0SKULUXFQQMYJ0CCJD0
+Content-Type: Text/HTML;
+  charset="euc-kr"
+Content-Transfer-Encoding: base64
 
+PFNUWUxFPgpCT0RZIHtGT05ULUZBTUlMWTogsby4sjtGT05ULVNJWkU6IDEwcHQ7fQpQIHttYXJn
+aW4tdG9wOjJweDttYXJnaW4tYm90dG9tOjJweDt9CjwvU1RZTEU+CkkgYW0gdXNpbmcgTElOVVgg
+Mi40LjE4IEtlcm5lbC4NPEJSPgphbmQgTGludXggYXMgYSBuZnMgY2xpZW50LCBOZXRBcHAgRmls
+ZXIgYXMgYSBORlMgU2VydmVyLg08QlI+CnJwYy5zdGF0ZCB2ZXJzaW9uIGlzIDAuMy4zDTxCUj4K
+DTxCUj4KYWZ0ZXIgcmVib290LCBycGMuc3RhdGQgaXMgcnVubmluZyB3aXRob3V0IG5vIHByb2Js
+ZW0uDTxCUj4KV2hlbiBteSBwcm9ncmFtIGluIExJTlVYIHRyaWVzIHRvIGdldCBXUklURSBsb2Nr
+IG9uIGEgZmlsZSBpbiB0aGUgTkZTIHNlcnZlciwNPEJSPgpycGMuc3RhdGQgZGllZC4uLg08QlI+
+Cg08QlI+CklmIEkgcnVuIHJwYy5zdGF0ZCB3aXRoICIgcnBjc3RhdGQgLUYgLWQgIiwgdGhpcyBw
+cm9ibGVtIGRvZXNuJ3QgaGFwcGVuLg08QlI+CmJ1dCBycGMuc3RhdGQgaXMgZXhlY3V0ZWQgYXMg
+YSBkYWVtb24sIGl0IGRpZWQgLi4uDTxCUj4KDTxCUj4KV2hlbiBJIHRyYWNlZCBycGMuc3RhdGQg
+d2l0aCBzdHJhY2UgdXRpbGl0eSwgSSBmb3VuZCBvdXQNPEJSPgpycGMuc3RhdGQgZGllZCB3aXRo
+IHNlZ21lbnRhdGlvbiBmYXVsdCBhZnRlciByZXBseWluZyByZXF1ZXN0Li4NPEJSPgoNPEJSPgoN
+PEJSPgpwbGVhc2UsIGxldCBtZSBrbm93IHdoeSAuLi4/DTxCUj4KPElNRyBTUkM9aHR0cDovL25h
+dmVyNzc5Lm5hdmVyLmNvbS9tYWlsY2hlY2svY2hlY2s/bWFpbGluZm89VnFuZTF6RjUxNkY5N3Ew
+cU02JTJGVGJya1pwelVtS0xZd2FWWXdhVmVvMTZsbzFWWXNLb3VaRlNtWkt4VTkgYm9yZGVyPTA+
+PFA+Jm5ic3A7PEJSPjwvUD48cD4KPHNtYWxsPgo8dGFibGUgY2VsbHBhZGRpbmc9MSBjZWxsc3Bh
+Y2luZz0wIGJvcmRlcj0wPgo8dHI+PHRkPjxhIGhyZWY9aHR0cDovL3d3dy5uYXZlci5jb20vIHRh
+cmdldD1faGVscD48aW1nIHNyYz1odHRwOi8vc3RhdGljLm5hdmVyLmNvbS9tYWlsL2ltYWdlczIv
+dGFpbC9sb2dvX20uZ2lmIGJvcmRlcj0wPjwvYT48L3RkPjwvdHI+Cjx0cj48dGQgaGVpZ2h0PTQ+
+PHRhYmxlIGhlaWdodD00IGNlbGxwYWRkaW5nPTAgY2VsbHNwYWNpbmc9MCBib3JkZXI9MD48dHI+
+PHRkPjwvdGQ+PC90cj48L3RhYmxlPjwvdGQ+PC90cj4KPHRyPjx0ZD48c21hbGw+u/2wosfPtMIg
+wfa0ycf8ILDLu/Ygs9fAzLn2ILPYvK3EoTwvc21hbGw+PC90ZD48L3RyPgo8dHI+PHRkPjxzbWFs
+bD7Gr7qwx9EgZSC43sDPwLsgv/jH0iC2qSwgvvex17e5wMy15SCz18DMufYguN7Azzwvc21hbGw+
+PC90ZD48L3RyPgo8dHI+PHRkPjxzbWFsbD48YSBocmVmPWh0dHA6Ly93d3cubmF2ZXIuY29tLyB0
+YXJnZXQ9X2hlbHA+PGZvbnQgY29sb3I9IzAwMDBmZj5odHRwOi8vd3d3Lm5hdmVyLmNvbTwvZm9u
+dD48L2E+PC9zbWFsbD48L3RkPjwvdHI+CjwvdGFibGU+Cjwvc21hbGw+Cgo=
 
-NeilBrown
+--------------Boundary-00=_R0SKULUXFQQMYJ0CCJD0--
 
 
 -------------------------------------------------------
-This sf.net email is sponsored by: Are you worried about 
-your web server security? Click here for a FREE Thawte 
-Apache SSL Guide and answer your Apache SSL security 
-needs: http://www.gothawte.com/rd523.html
+This sf.net email is sponsored by: To learn the basics of securing 
+your web site with SSL, click here to get a FREE TRIAL of a Thawte 
+Server Certificate: http://www.gothawte.com/rd524.html
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
