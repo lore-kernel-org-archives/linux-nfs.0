@@ -1,18 +1,18 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: [PATCH 1/19] A basic NFSv4 client for 2.5.x
-Date: Wed, 9 Oct 2002 01:07:44 +0200
+Subject: [PATCH 5/19] A basic NFSv4 client for 2.5.x
+Date: Wed, 9 Oct 2002 01:09:46 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15779.25920.580636.908377@charged.uio.no>
+Message-ID: <15779.26042.983383.63277@charged.uio.no>
 Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: NFS maillist <nfs@lists.sourceforge.net>,
     nfsv4-wg@citi.umich.edu
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mons.uio.no ([129.240.130.14])
+Received: from pat.uio.no ([129.240.130.16])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17z3SH-0003oU-00
-	for <nfs@lists.sourceforge.net>; Tue, 08 Oct 2002 16:07:57 -0700
+	id 17z3U8-0004Ha-00
+	for <nfs@lists.sourceforge.net>; Tue, 08 Oct 2002 16:09:52 -0700
 To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -26,255 +26,40 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-Instantiate a new file, include/linux/nfs4.h, which contains
-constants and typedef's for the NFSv4 protocol (by analogy with
-include/linux/nfs2.h and include/linux/nfs3.h).
+In NFSv4, there is no hard limit on the length of symlink text.
+This patch changes the -ENAMETOOLONG test in nfs_symlink() accordingly.
 
-Also #include this file in a few places where it will be needed
-later.
-
-diff -u --recursive --new-file linux-2.5.41/fs/nfs/pagelist.c linux-2.5.41-nfsv4-E01/fs/nfs/pagelist.c
---- linux-2.5.41/fs/nfs/pagelist.c	2002-10-04 11:30:34.000000000 -0400
-+++ linux-2.5.41-nfsv4-E01/fs/nfs/pagelist.c	2002-10-08 18:42:48.000000000 -0400
-@@ -14,6 +14,7 @@
- #include <linux/file.h>
- #include <linux/sunrpc/clnt.h>
- #include <linux/nfs3.h>
-+#include <linux/nfs4.h>
- #include <linux/nfs_page.h>
- #include <linux/nfs_fs.h>
- #include <linux/nfs_flushd.h>
-diff -u --recursive --new-file linux-2.5.41/include/linux/nfs4.h linux-2.5.41-nfsv4-E01/include/linux/nfs4.h
---- linux-2.5.41/include/linux/nfs4.h	1969-12-31 19:00:00.000000000 -0500
-+++ linux-2.5.41-nfsv4-E01/include/linux/nfs4.h	2002-10-08 18:42:48.000000000 -0400
-@@ -0,0 +1,205 @@
-+/*
-+ *  include/linux/nfs4.h
-+ *
-+ *  NFSv4 protocol definitions.
-+ *
-+ *  Copyright (c) 2002 The Regents of the University of Michigan.
-+ *  All rights reserved.
-+ *
-+ *  Kendrick Smith <kmsmith@umich.edu>
-+ *  Andy Adamson   <andros@umich.edu>
-+ */
-+
-+#ifndef _LINUX_NFS4_H
-+#define _LINUX_NFS4_H
-+
-+#define NFS4_VERIFIER_SIZE	8
-+#define NFS4_FHSIZE		128
-+#define NFS4_MAXNAMLEN		NAME_MAX
-+
-+#define NFS4_ACCESS_READ        0x0001
-+#define NFS4_ACCESS_LOOKUP      0x0002
-+#define NFS4_ACCESS_MODIFY      0x0004
-+#define NFS4_ACCESS_EXTEND      0x0008
-+#define NFS4_ACCESS_DELETE      0x0010
-+#define NFS4_ACCESS_EXECUTE     0x0020
-+
-+#define NFS4_FH_PERISTENT		0x0000
-+#define NFS4_FH_NOEXPIRE_WITH_OPEN	0x0001
-+#define NFS4_FH_VOLATILE_ANY		0x0002
-+#define NFS4_FH_VOL_MIGRATION		0x0004
-+#define NFS4_FH_VOL_RENAME		0x0008
-+
-+#define NFS4_OPEN_RESULT_CONFIRM 0x0002
-+
-+#define NFS4_SHARE_ACCESS_READ	0x0001
-+#define NFS4_SHARE_ACCESS_WRITE	0x0002
-+#define NFS4_SHARE_ACCESS_BOTH	0x0003
-+
-+#define NFS4_SET_TO_SERVER_TIME	0
-+#define NFS4_SET_TO_CLIENT_TIME	1
-+
-+#define NFS4_ACE_ACCESS_ALLOWED_ACE_TYPE 0
-+#define NFS4_ACE_ACCESS_DENIED_ACE_TYPE  1
-+#define NFS4_ACE_SYSTEM_AUDIT_ACE_TYPE   2
-+#define NFS4_ACE_SYSTEM_ALARM_ACE_TYPE   3
-+
-+typedef char nfs4_verifier[NFS4_VERIFIER_SIZE];
-+typedef char nfs4_stateid[16];
-+
-+enum nfs_opnum4 {
-+	OP_ACCESS = 3,
-+	OP_CLOSE = 4,
-+	OP_COMMIT = 5,
-+	OP_CREATE = 6,
-+	OP_DELEGPURGE = 7,
-+	OP_DELEGRETURN = 8,
-+	OP_GETATTR = 9,
-+	OP_GETFH = 10,
-+	OP_LINK = 11,
-+	OP_LOCK = 12,
-+	OP_LOCKT = 13,
-+	OP_LOCKU = 14,
-+	OP_LOOKUP = 15,
-+	OP_LOOKUPP = 16,
-+	OP_NVERIFY = 17,
-+	OP_OPEN = 18,
-+	OP_OPENATTR = 19,
-+	OP_OPEN_CONFIRM = 20,
-+	OP_OPEN_DOWNGRADE = 21,
-+	OP_PUTFH = 22,
-+	OP_PUTPUBFH = 23,
-+	OP_PUTROOTFH = 24,
-+	OP_READ = 25,
-+	OP_READDIR = 26,
-+	OP_READLINK = 27,
-+	OP_REMOVE = 28,
-+	OP_RENAME = 29,
-+	OP_RENEW = 30,
-+	OP_RESTOREFH = 31,
-+	OP_SAVEFH = 32,
-+	OP_SECINFO = 33,
-+	OP_SETATTR = 34,
-+	OP_SETCLIENTID = 35,
-+	OP_SETCLIENTID_CONFIRM = 36,
-+	OP_VERIFY = 37,
-+	OP_WRITE = 38,
-+};
-+
-+/*
-+ * Note: NF4BAD is not actually part of the protocol; it is just used
-+ * internally by nfsd.
-+ */
-+enum nfs_ftype4 {
-+	NF4BAD		= 0,
-+        NF4REG          = 1,    /* Regular File */
-+        NF4DIR          = 2,    /* Directory */
-+        NF4BLK          = 3,    /* Special File - block device */
-+        NF4CHR          = 4,    /* Special File - character device */
-+        NF4LNK          = 5,    /* Symbolic Link */
-+        NF4SOCK         = 6,    /* Special File - socket */
-+        NF4FIFO         = 7,    /* Special File - fifo */
-+        NF4ATTRDIR      = 8,    /* Attribute Directory */
-+        NF4NAMEDATTR    = 9     /* Named Attribute */
-+};
-+
-+enum open_claim_type4 {
-+	NFS4_OPEN_CLAIM_NULL = 0,
-+	NFS4_OPEN_CLAIM_PREVIOUS = 1,
-+	NFS4_OPEN_CLAIM_DELEGATE_CUR = 2,
-+	NFS4_OPEN_CLAIM_DELEGATE_PREV = 3
-+};
-+
-+enum opentype4 {
-+	NFS4_OPEN_NOCREATE = 0,
-+	NFS4_OPEN_CREATE = 1
-+};
-+
-+enum createmode4 {
-+	NFS4_CREATE_UNCHECKED = 0,
-+	NFS4_CREATE_GUARDED = 1,
-+	NFS4_CREATE_EXCLUSIVE = 2
-+};
-+
-+enum limit_by4 {
-+	NFS4_LIMIT_SIZE = 1,
-+	NFS4_LIMIT_BLOCKS = 2
-+};
-+
-+enum open_delegation_type4 {
-+	NFS4_OPEN_DELEGATE_NONE = 0,
-+	NFS4_OPEN_DELEGATE_READ = 1,
-+	NFS4_OPEN_DELEGATE_WRITE = 2
-+};
-+
-+/* Mandatory Attributes */
-+#define FATTR4_WORD0_SUPPORTED_ATTRS    (1)
-+#define FATTR4_WORD0_TYPE               (1 << 1)
-+#define FATTR4_WORD0_FH_EXPIRE_TYPE     (1 << 2)
-+#define FATTR4_WORD0_CHANGE             (1 << 3)
-+#define FATTR4_WORD0_SIZE               (1 << 4)
-+#define FATTR4_WORD0_LINK_SUPPORT       (1 << 5)
-+#define FATTR4_WORD0_SYMLINK_SUPPORT    (1 << 6)
-+#define FATTR4_WORD0_NAMED_ATTR         (1 << 7)
-+#define FATTR4_WORD0_FSID               (1 << 8)
-+#define FATTR4_WORD0_UNIQUE_HANDLES     (1 << 9)
-+#define FATTR4_WORD0_LEASE_TIME         (1 << 10)
-+#define FATTR4_WORD0_RDATTR_ERROR       (1 << 11)
-+
-+/* Recommended Attributes */
-+#define FATTR4_WORD0_ACL                (1 << 12)
-+#define FATTR4_WORD0_ACLSUPPORT         (1 << 13)
-+#define FATTR4_WORD0_ARCHIVE            (1 << 14)
-+#define FATTR4_WORD0_CANSETTIME         (1 << 15)
-+#define FATTR4_WORD0_CASE_INSENSITIVE   (1 << 16)
-+#define FATTR4_WORD0_CASE_PRESERVING    (1 << 17)
-+#define FATTR4_WORD0_CHOWN_RESTRICTED   (1 << 18)
-+#define FATTR4_WORD0_FILEHANDLE         (1 << 19)
-+#define FATTR4_WORD0_FILEID             (1 << 20)
-+#define FATTR4_WORD0_FILES_AVAIL        (1 << 21)
-+#define FATTR4_WORD0_FILES_FREE         (1 << 22)
-+#define FATTR4_WORD0_FILES_TOTAL        (1 << 23)
-+#define FATTR4_WORD0_FS_LOCATIONS       (1 << 24)
-+#define FATTR4_WORD0_HIDDEN             (1 << 25)
-+#define FATTR4_WORD0_HOMOGENEOUS        (1 << 26)
-+#define FATTR4_WORD0_MAXFILESIZE        (1 << 27)
-+#define FATTR4_WORD0_MAXLINK            (1 << 28)
-+#define FATTR4_WORD0_MAXNAME            (1 << 29)
-+#define FATTR4_WORD0_MAXREAD            (1 << 30)
-+#define FATTR4_WORD0_MAXWRITE           (1 << 31)
-+#define FATTR4_WORD1_MIMETYPE           (1)
-+#define FATTR4_WORD1_MODE               (1 << 1)
-+#define FATTR4_WORD1_NO_TRUNC           (1 << 2)
-+#define FATTR4_WORD1_NUMLINKS           (1 << 3)
-+#define FATTR4_WORD1_OWNER              (1 << 4)
-+#define FATTR4_WORD1_OWNER_GROUP        (1 << 5)
-+#define FATTR4_WORD1_QUOTA_HARD         (1 << 6)
-+#define FATTR4_WORD1_QUOTA_SOFT         (1 << 7)
-+#define FATTR4_WORD1_QUOTA_USED         (1 << 8)
-+#define FATTR4_WORD1_RAWDEV             (1 << 9)
-+#define FATTR4_WORD1_SPACE_AVAIL        (1 << 10)
-+#define FATTR4_WORD1_SPACE_FREE         (1 << 11)
-+#define FATTR4_WORD1_SPACE_TOTAL        (1 << 12)
-+#define FATTR4_WORD1_SPACE_USED         (1 << 13)
-+#define FATTR4_WORD1_SYSTEM             (1 << 14)
-+#define FATTR4_WORD1_TIME_ACCESS        (1 << 15)
-+#define FATTR4_WORD1_TIME_ACCESS_SET    (1 << 16)
-+#define FATTR4_WORD1_TIME_BACKUP        (1 << 17)
-+#define FATTR4_WORD1_TIME_CREATE        (1 << 18)
-+#define FATTR4_WORD1_TIME_DELTA         (1 << 19)
-+#define FATTR4_WORD1_TIME_METADATA      (1 << 20)
-+#define FATTR4_WORD1_TIME_MODIFY        (1 << 21)
-+#define FATTR4_WORD1_TIME_MODIFY_SET    (1 << 22)
-+
-+#define NFSPROC4_NULL 0
-+#define NFSPROC4_COMPOUND 1
-+#define NFS4_MINOR_VERSION 0
-+#define NFS4_DEBUG 1
-+
-+#endif
-+
-+/*
-+ * Local variables:
-+ *  c-basic-offset: 8
-+ * End:
-+ */
-diff -u --recursive --new-file linux-2.5.41/include/linux/nfsd/const.h linux-2.5.41-nfsv4-E01/include/linux/nfsd/const.h
---- linux-2.5.41/include/linux/nfsd/const.h	2002-04-04 23:01:31.000000000 -0500
-+++ linux-2.5.41-nfsv4-E01/include/linux/nfsd/const.h	2002-10-08 18:42:48.000000000 -0400
-@@ -12,6 +12,7 @@
- #include <linux/nfs.h>
- #include <linux/nfs2.h>
- #include <linux/nfs3.h>
-+#include <linux/nfs4.h>
+diff -u --recursive --new-file linux-2.5.41-nfsv4-E04/fs/nfs/dir.c linux-2.5.41-nfsv4-E05/fs/nfs/dir.c
+--- linux-2.5.41-nfsv4-E04/fs/nfs/dir.c	2002-10-08 18:43:34.000000000 -0400
++++ linux-2.5.41-nfsv4-E05/fs/nfs/dir.c	2002-10-08 18:44:21.000000000 -0400
+@@ -1022,16 +1022,23 @@
+ 	struct nfs_fattr sym_attr;
+ 	struct nfs_fh sym_fh;
+ 	struct qstr qsymname;
+-	unsigned int maxlen;
+ 	int error;
  
- /*
-  * Maximum protocol version supported by knfsd
-diff -u --recursive --new-file linux-2.5.41/include/linux/nfs_fs.h linux-2.5.41-nfsv4-E01/include/linux/nfs_fs.h
---- linux-2.5.41/include/linux/nfs_fs.h	2002-10-05 17:54:15.000000000 -0400
-+++ linux-2.5.41-nfsv4-E01/include/linux/nfs_fs.h	2002-10-08 18:42:48.000000000 -0400
-@@ -25,6 +25,7 @@
- #include <linux/nfs.h>
- #include <linux/nfs2.h>
- #include <linux/nfs3.h>
-+#include <linux/nfs4.h>
- #include <linux/nfs_page.h>
- #include <linux/nfs_xdr.h>
+ 	dfprintk(VFS, "NFS: symlink(%s/%ld, %s, %s)\n", dir->i_sb->s_id,
+ 		dir->i_ino, dentry->d_name.name, symname);
  
+ 	error = -ENAMETOOLONG;
+-	maxlen = (NFS_PROTO(dir)->version==2) ? NFS2_MAXPATHLEN : NFS3_MAXPATHLEN;
+-	if (strlen(symname) > maxlen)
+-		goto out;
++	switch (NFS_PROTO(dir)->version) {
++		case 2:
++			if (strlen(symname) > NFS2_MAXPATHLEN)
++				goto out;
++			break;
++		case 3:
++			if (strlen(symname) > NFS3_MAXPATHLEN)
++				goto out;
++		default:
++			break;
++	}
+ 
+ #ifdef NFS_PARANOIA
+ if (dentry->d_inode)
 
 
 -------------------------------------------------------
