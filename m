@@ -1,23 +1,14 @@
-From: "Guy Burton" <stacyeric@aol.com>
-Subject: pretty amazing.........  shedir
-Date: Tue, 17 Jun 03 19:45:40 GMT
+From: 정민기<minhyuns@tomisystem.com>
+Subject: (광고)경리/판매/재고/계산서/DM까지 자동으로-토미시스템
+Date: Wed, 18 Jun 2003 01:49:02 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <u12e0h9k$o-6e9-$$-v@bri0.1u.k7c>
-Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="AB704.___32B_27A4B"
+Message-ID: <E19SJdo-0000rw-00@sc8-sf-list1.sourceforge.net>
+Content-Type: text/html; charset="ks_c_5601-1987"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from panoramix.vasoftware.com
-	([198.186.202.147] helo=externalmx.vasoftware.com ident=mail)
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19SJat-00087c-00
-	for <nfs@lists.sourceforge.net>; Tue, 17 Jun 2003 09:46:03 -0700
-Received: from adsl-63-202-174-50.dsl.snfc21.pacbell.net ([63.202.174.50]:2406)
-	by externalmx.vasoftware.com with smtp (Exim 4.20 #1 (Debian))
-	id 19SJZw-0004bi-UF
-	for <nfs@lists.sourceforge.net>; Tue, 17 Jun 2003 09:45:10 -0700
-Received: from 8m8zk.1ei1ib6.net [178.234.4.145] by adsl-63-202-174-50.dsl.snfc21.pacbell.net id <6032512-81499> for <nfs@lists.sourceforge.net>; Tue, 17 Jun 2003 19:45:40 +0200
+Received: from [211.227.230.216] (helo=tomisystem.com)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19SJdo-0000rw-00
+	for <nfs@lists.sourceforge.net>; Tue, 17 Jun 2003 09:49:04 -0700
 To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -31,84 +22,208 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
 
---AB704.___32B_27A4B
-Content-Type: text/html;
-Content-Transfer-Encoding: quoted-printable
+<html>
+<head>
+<title>ERP 솔루션 토미시스템입니다</title>
+<meta http-equiv="Content-Type" content="text/html; charset=euc-kr">
+<style type="text/css">
+<!--
+td {
+	font-size: 9pt;
+	line-height: 150%;
+}
+outline {
+	border: 1px solid #000000;
+}
+-->
+</style>
+<style type="text/css">
+<!--
+a:link {
+	color: #FFFFFF;
+}
+a:visited {
+	color: #FFFFFF;
+}
+a:hover {
+	color: #FFFFFF;
+}
+a:active {
+	color: #FFFFFF;
+}
+-->
+</style>
+</head>
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1=
-">
-<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV>
-<HR noShade>
-</DIV>
-<CENTER>
-<H1><B><I><FONT color=3D#ff0000>FREE CASH GRANTS, NEVER 
-REPAY!</FONT></I></B></H1></CENTER>
-<CENTER><FONT face=3Darial size=3D5><B>TO GET MORE INFORMATION, SIMPLY&nbs=
-p;<A 
-href=3D"http://www.easyusgrants.com/cashgrantse.html">START 
-HERE</A>!</B></FONT></CENTER>
-<H2><I><FONT color=3D#ff0000>You Can Get The Money You Need...</FONT></I><=
-/H2>
-<DIV>
-<TABLE cellPadding=3D5 width=3D649 border=3D0>
-  <TBODY>
-  <TR>
-    <TD width=3D633 colSpan=3D3>
-      <CENTER><B><FONT size=3D+0>Here are some samples of what you can app=
-ly for, 
-      just to name a few.</FONT></B> <BR><B><FONT color=3D#000080><FONT 
-      size=3D+0>Grants and Programs for:</FONT></FONT></B></CENTER></TD></=
-TR>
-  <TR>
-    <TD vAlign=3Dtop align=3Dleft width=3D215>
-      <UL>
-        <LI><FONT size=3D-1>Child Care</FONT> 
-        <LI><FONT size=3D-1>Health Care</FONT> 
-        <LI><FONT size=3D-1>Personal Grants to Attend U.S Colleges</FONT> =
+<body>
+<table width="650" border="0" cellspacing="0" cellpadding="0" class="outline">
+  <tr>
+    <td align="middle"><img src="http://www.snsoft.co.kr/images/mail00001-012-1.gif" width="650" height="86" border="0" usemap="#Map"></td>
+  </tr>
+	<tr>
+    <td align="middle"><img src="http://www.snsoft.co.kr/images/mail00001-013.gif" width="650" height="36"></td>
+  </tr>
+	<tr>
+    <td align="middle"><img src="http://www.snsoft.co.kr/images/mail00001-014.gif" width="650" height="76"></td>
+  </tr>
+	<tr>
+    <td align="middle"><img src="http://www.snsoft.co.kr/images/mail00001-015.gif" width="650" height="144" border="0" usemap="#Map3"></td>
+  </tr>
+  <tr>
+    <td align="middle">&nbsp;</td>
+  </tr>
+  <tr>
+    <td align="middle"><img src="http://www.snsoft.co.kr/images/mail00001-002-2.gif" width="601" height="63" border="0" usemap="#Map2"></td>
+  </tr>
+  <tr>
+    <td>&nbsp;</td>
+  </tr>
+  <tr>
+    <td align="middle">
+      <table width="640" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td>
+            <table width="313" border="0" cellspacing="0" cellpadding="0">
+              <tr>
+                <td class="outline"><img src="http://www.snsoft.co.kr/images/mail00001-003.gif" width="313" height="28"></td>
+              </tr>
+              <tr>
+                <td height="125" align="middle" valign="center" class="outline">
+                  <table width="300" border="0" cellspacing="0" cellpadding="0">
+                    <tr>
+                      <td><a href="http://www.snsoft.co.kr/snsoft.asp?CP=B0103" target="_blank"><img src="http://www.snsoft.co.kr/images/mail00001-007.gif" width="79" height="109" border="1"></a></td>
+                      <td><img src="http://www.snsoft.co.kr/images/space.gif" width="10" height="10"></td>
+                      <td valign="top">전문지식 없이도 손쉽게 사용 가능, 각 직원들과의 강력한 전자결재 기능, MS엑셀, MS워드와 호환되어 다양한 보고서, 그래프 편집 가능, 별도의 양식지 필요없이 A4용지에 각종 보고서 출력</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+          <td>&nbsp;</td>
+          <td>
+            <table width="313" border="0" cellspacing="0" cellpadding="0">
+              <tr>
+                <td class="outline"><img src="http://www.snsoft.co.kr/images/mail00001-004.gif" width="313" height="28"></td>
+              </tr>
+              <tr>
+                <td height="125" align="middle" valign="center" class="outline">
+                  <table width="300" border="0" cellspacing="0" cellpadding="0">
+                    <tr>
+                      <td><a href="http://www.snsoft.co.kr/snsoft.asp?CP=B0105" target="_blank"><img src="http://www.snsoft.co.kr/images/mail00001-008.gif" width="79" height="109" border="1"></a></td>
+                      <td><img src="http://www.snsoft.co.kr/images/space.gif" width="10" height="10"></td>
+                      <td valign="top">컴퓨터와 회계 지식이 없어도 누구나 손쉽게 사용가능, MS 엑셀, MS 워드와 호환되어 다양한 보고서, 그래프 편집 가능, 전산매체신고 가능</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td>&nbsp;</td>
+          <td>&nbsp;</td>
+          <td>&nbsp;</td>
+        </tr>
+        <tr>
+          <td>
+            <table width="313" border="0" cellspacing="0" cellpadding="0">
+              <tr>
+                <td class="outline"><img src="http://www.snsoft.co.kr/images/mail00001-005.gif" width="313" height="28"></td>
+              </tr>
+              <tr>
+                <td height="125" align="middle" valign="center" class="outline">
+                  <table width="300" border="0" cellspacing="0" cellpadding="0">
+                    <tr>
+                      <td><a href="http://www.snsoft.co.kr/snsoft.asp?CP=B0104" target="_blank"><img src="http://www.snsoft.co.kr/images/mail00001-009.gif" width="79" height="109" border="1"></a></td>
+                      <td><img src="http://www.snsoft.co.kr/images/space.gif" width="10" height="10"></td>
+                      <td valign="top">간단한 경리장부 및 어음관리 기능 제공, 80여종의 다양한 보고서 제공, MS엑셀, 워드와 호환되어 다양한 보고서, 그래프 편집 가능, 별도의 양식지가 필요없이 A4용지에 각종 보고서와 전표 제공</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+          <td><img width=0 height=0 src="http://www.tomisystem.com/scount/count.cgi?tomipage3" border=0 >&nbsp;</td>
+          <td>
+            <table width="313" border="0" cellspacing="0" cellpadding="0">
+              <tr>
+                <td class="outline"><img src="http://www.snsoft.co.kr/images/mail00001-006.gif" width="313" height="28"></td>
+              </tr>
+              <tr>
+                <td height="125" align="middle" valign="center" class="outline">
+                  <table width="300" border="0" cellspacing="0" cellpadding="0">
+                    <tr>
+                      <td><a href="http://www.snsoft.co.kr/snsoft.asp?CP=B0102" target="_blank"><img src="http://www.snsoft.co.kr/images/mail00001-010.gif" width="79" height="109" border="1"></a></td>
+                      <td><img src="http://www.snsoft.co.kr/images/space.gif" width="10" height="10"></td>
+                      <td valign="top">전문회계 지실이 없어도 누구나 손쉽게 사용 가능, 별도의 양식지가 필요없이 A4용지에 각종 보고서와 전표 제공, 현업부서와 회계부서의 강력한 전자결재 기능, 월별, 부서별, 현장별, 매출/비용 실적 분석 가능</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td>&nbsp;</td>
+  </tr>
+  <tr>
+    <td height="53" align="middle" background="http://www.snsoft.co.kr/images/mail00001-011.gif">
+      <table width="640" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td width="45%"><b><font color="#ffffff">- 회사명 : 토미시스템<br>
+- E-MAIL :<A href="mailto:tomisystem@hanmail.net"> tomisystem@hanmail.net</A></font></b></td>
+          <td width="55%"><b><font color="#ffffff">- 연락처 : (H.P)011-416-2004 (TEL)02-2677-4577<br>
+- 홈페이지 : <a href="http://www.tomisystem.com" target="_blank">http://www.tomisystem.com</a></font></b></td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+              <tr > 
+                    <td bgcolor="#000000" height="1"></td>
+                </tr>
+              <tr>
+                    <td bgcolor="#dadadc" >
+         <table  border="0" cellspacing="8" cellpadding="0">
+<tr><td>
+                        <p><font size="2">귀하의 승락없이 홍보성 전자 우편을 
+                        보내게 된 점 정중히 사과 드립니다. 정보통신망이용촉진법 
+                        규정을 준수하여 광고메일임을 표시하였으며, 저희는 귀하의 
+                        전자우편 주소 외 어떠한 개인정보도 가지고 있지 않으므로 
+                        안심하시기바랍니다. 수신을 원치 않으시면 수신거부를 
+                        클릭해 주십시요. &nbsp;<A href="mailto:reject@tomisystem.com?subject=[수신거부]" ><img src="http://www.jplans.com/images/nobutton.gif" align="top" width="60" height="19" border="0" alt="수신거부"></A></font></p>
+                    </td>
+                </tr>
+         </table>
+                   </td>
+                </tr>
+</table>
 
-        <LI><FONT size=3D-1>1st Time Home Buyers/Owners</FONT> 
-        <LI><FONT size=3D-1>Education</FONT> 
-        <LI><FONT size=3D-1>Minorities</FONT> 
-        <LI><FONT size=3D-1>Affordable Housing</FONT>  
-        <LI><FONT size=3D-1>Business Grants and Loans</FONT> 
-    <TD vAlign=3Dtop align=3Dleft width=3D216>
-      <UL>
-        <LI><FONT size=3D-1>Research</FONT>  
-    <TD vAlign=3Dtop align=3Dleft width=3D216>
-      <UL> 
-        <LI><FONT size=3D-1>Home Improvement</FONT> 
-        <LI><FONT size=3D-1>Home Repair</FONT>    
-        <LI><FONT size=3D-1>Housing</FONT>  
-        <LI><FONT size=3D-1>Real Estate</FONT> 
-        <LI><FONT size=3D-1>Many many more</FONT> </LI></UL></TD></TR></TB=
-ODY></TABLE></DIV>
-<DIV><STRONG><FONT color=3D#ff0000 size=3D5><EM>Why put this off? <A 
-href=3D"http://www.easyusgrants.com/cashgrantse.html">check it out 
-now</A></EM></FONT></STRONG></DIV>
-<DIV><FONT color=3D#ffffff size=3D1>volvo correspondent veronica=
- 
-proven</FONT></DIV>
-<DIV><STRONG><EM><FONT color=3D#ff0000 size=3D5></FONT></EM></STRONG>&nbsp=
-;</DIV>
-<DIV>
-<DIV><FONT face=3DArial size=3D2><B><FONT face=3DVerdana size=3D1><FONT 
-color=3D#c0c0c0></FONT></FONT><A 
-href=3D"http://www.easyusgrants.com/cgi-bin/bye/byeold.cgi"><FONT 
-face=3DVerdana color=3D#008000 size=3D1>PLease Go Here to unsubscribe</FON=
-T></A><FONT 
-face=3DVerdana size=3D1> <FONT color=3D#000080>and be removed from&nbsp;ou=
-r 
-list</FONT></FONT></B></FONT></DIV></DIV></BODY></HTML>
 
---AB704.___32B_27A4B--
+
+
+<map name="Map2">
+  <area shape="RECT" coords="276,34,571,53" href="http://www.tomisystem.com" target="_blank">
+  <area shape="RECT" coords="12,35,254,53" href="mailto:tomisystem@hanmail.net">
+</map>
+
+<map name="Map">
+  <area shape="RECT" coords="18,2,102,36" href="http://www.tomisystem.com" target="_blank">
+  <area shape="RECT" coords="101,16,343,33" href="http://www.tomisystem.com" target="_blank">
+</map>
+
+<map name="Map3">
+  <area shape="RECT" coords="16,5,320,137" href="http://www.snsoft.co.kr/snsoft.asp?CP=B0201" target="_blank">
+  <area shape="RECT" coords="329,5,635,136" href="http://www.snsoft.co.kr/snsoft.asp?CP=B0201" target="_blank">
+</map>
+</body>
+</html>
+
+
 
 
 
