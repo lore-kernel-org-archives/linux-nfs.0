@@ -1,26 +1,22 @@
-From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-Subject: Re: file system read locks
-Date: Fri, 20 Aug 2004 13:09:31 -0600 (MDT)
+From: Goutham Kurra <kurrag1@yahoo.com>
+Subject: strange behavior with gigE switch and 2.4.22 kernel
+Date: Sat, 21 Aug 2004 14:04:27 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.60.0408201303120.7569@harp.ngdc.noaa.gov>
-References: <Pine.LNX.4.60.0408200907020.6148@harp.ngdc.noaa.gov>
- <20040820153921.GB6861@suse.de>
-Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Message-ID: <20040821210427.8014.qmail@web20528.mail.yahoo.com>
+References: <Pine.LNX.4.60.0408201303120.7569@harp.ngdc.noaa.gov>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ByEla-0006ZE-H3
-	for nfs@lists.sourceforge.net; Fri, 20 Aug 2004 12:09:34 -0700
-Received: from harp.ngdc.noaa.gov ([140.172.187.26])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.34)
-	id 1ByElZ-0003WW-3U
-	for nfs@lists.sourceforge.net; Fri, 20 Aug 2004 12:09:34 -0700
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20040820153921.GB6861@suse.de>
+	id 1Byd2L-0005dD-Rp
+	for nfs@lists.sourceforge.net; Sat, 21 Aug 2004 14:04:29 -0700
+Received: from web20528.mail.yahoo.com ([216.136.227.63])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.34)
+	id 1Byd2J-0007VU-GB
+	for nfs@lists.sourceforge.net; Sat, 21 Aug 2004 14:04:29 -0700
+To: nfs@lists.sourceforge.net
+In-Reply-To: <Pine.LNX.4.60.0408201303120.7569@harp.ngdc.noaa.gov>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,56 +29,48 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, 20 Aug 2004, Olaf Kirch wrote:
-
-> On Fri, Aug 20, 2004 at 09:08:15AM -0600, Ara.T.Howard wrote:
->> i have a perfectly functioning filesystem based write lock algorithim
->> (link(2)).
->
-> Except that these FS based approaches don't support blocking; you
-> always have to poll.
->
->> has anyone out there come up with an algorithim to make __read__
->> locks using file system primitives?
->
-> Take a directory X. If the directory exists and is empty, the lock is not
-> taken by anyone. To take a read lock, create a file in that directory.
-> To take a write lock, remove the directory.
->
-> (This scheme has the drawback that it's highly unfair to writers, but you
-> can probably make it favor writers if you start to move it around rather
-> than rmdir it)
 
 
-seems to work well - the problem is when/how to create the directory in case
-of an aborted writer... the dir will not exist - how to know when it's o.k to
-create it...
+I have the following configuration:
 
-i thinking that initially one could create two dirs
+1. linux nfs client kernel 2.4.22 with nfs (client,
+sunrpc, lockd) patches applied from trond's 2.4.22
+patches. (have run connectathon on this with linux nfs
+server backend successfully)
 
-   dir
-   .dir
+2. netapp nfs server (F760).
 
-while holding the lock it will be the responsibility of the lock holder to
-keep .dir fresh via touching it.  if the .dir directory is ever found to be
-stale we can guess that a process holding the lock has died without recreating
-the lock directory dir.  at that point the process can lock the .dir (rmdir)
-and recreate dir.  obviously only one process could succeed at this.  of
-course, if this process died between removing .dir and creating dir this would
-be bad.  however it seems this would be very, very rare since it would require
-first one client dying w/o cleaning up, followed closely by another.
+There's a gigE switch inbetween the client and server.
 
-toughts?
+With a gigE switch in between, the 2.4.22 client
+mounts the filesystem, but hangs indefinitely on a
+'ls' on the mount. tcpdump shows that the readdir
+request is being retransmitted over and over again.
 
--a
---
-===============================================================================
-| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
-| PHONE   :: 303.497.6469
-| A flower falls, even though we love it;
-| and a weed grows, even though we do not love it. 
-|   --Dogen
-===============================================================================
+When I replace the gigE switch with a 100/FE switch,
+everything works great.
+
+When I keep the gigE switch and use a stock redhat 9
+(kernel 2.4.20-6) linux client, everything seems to
+work well too.
+
+So here's the problematic combination: linux 2.4.22
+(with or without trond's patches), gigE switch in
+between, and netapp nfs filer.
+
+Any ideas on what's going on, or how I should begin to
+troubleshoot/debug it?
+
+thanks,
+goutham
+
+
+
+		
+__________________________________
+Do you Yahoo!?
+Yahoo! Mail - Helps protect you from nasty viruses.
+http://promotions.yahoo.com/new_mail
 
 
 -------------------------------------------------------
