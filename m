@@ -1,24 +1,25 @@
-From: Greg Banks <gnb@melbourne.sgi.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: [PATCH] fix nfsidem cthon test
-Date: Thu, 21 Oct 2004 17:51:52 +1000
+Date: Thu, 21 Oct 2004 09:40:18 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1098345111.21421.9.camel@hole.melbourne.sgi.com>
+Message-ID: <1098344418.28394.17.camel@lade.trondhjem.org>
 References: <1098341478.21421.7.camel@hole.melbourne.sgi.com>
 	 <1098343891.28394.15.camel@lade.trondhjem.org>
+	 <1098345111.21421.9.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CKXS3-0005dP-59
-	for nfs@lists.sourceforge.net; Thu, 21 Oct 2004 00:33:35 -0700
-Received: from omx3-ext.sgi.com ([192.48.171.20] helo=omx3.sgi.com)
+	id 1CKXYu-00078V-Nr
+	for nfs@lists.sourceforge.net; Thu, 21 Oct 2004 00:40:40 -0700
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CKXS2-000524-Hh
-	for nfs@lists.sourceforge.net; Thu, 21 Oct 2004 00:33:34 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1098343891.28394.15.camel@lade.trondhjem.org>
+	id 1CKXYu-00071r-3J
+	for nfs@lists.sourceforge.net; Thu, 21 Oct 2004 00:40:40 -0700
+To: Greg Banks <gnb@melbourne.sgi.com>
+In-Reply-To: <1098345111.21421.9.camel@hole.melbourne.sgi.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,23 +32,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, 2004-10-21 at 17:31, Trond Myklebust wrote:
-> to den 21.10.2004 Klokka 16:51 (+1000) skreiv Greg Banks:
-> > G'day,
+to den 21.10.2004 Klokka 17:51 (+1000) skreiv Greg Banks:
 > > 
-> > The attached patch forward ports from 2.4 the fix to nfs_rename()
-> > which makes the nfsidem test in the Connectathon test suite pass.
+> > Vetoed.
 > 
-> 
-> Vetoed.
+> I don't get it.  Why is this patch in 2.4?
 
-I don't get it.  Why is this patch in 2.4?
+It slipped in. That's not a reason to make the same mistake in 2.6.
 
-Greg.
+Cheers,
+  Trond
+
 -- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
-
+Trond Myklebust <trond.myklebust@fys.uio.no>
 
 
 
