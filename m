@@ -1,23 +1,21 @@
 From: Greg Banks <gnb@sgi.com>
-Subject: Re: [PATCH] resend: knfsd multiple UDP sockets
-Date: Fri, 28 May 2004 17:42:32 +1000
+Subject: [PATCH 2.4] resend: SGI 901086: NFSv2 SETATTR current server time support
+Date: Fri, 28 May 2004 20:06:16 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040528074232.GC9014@sgi.com>
-References: <20040528042007.GA9014@sgi.com> <16566.51874.43089.537506@cse.unsw.edu.au>
+Message-ID: <20040528100616.GE9014@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BTc0o-00046x-8e
-	for nfs@lists.sourceforge.net; Fri, 28 May 2004 00:42:42 -0700
-Received: from mtvcafw.sgi.com ([192.48.171.6] helo=omx3.sgi.com)
+	id 1BTeFx-0000aI-CE
+	for nfs@lists.sourceforge.net; Fri, 28 May 2004 03:06:29 -0700
+Received: from mtvcafw.sgi.com ([192.48.171.6] helo=omx2.sgi.com)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1BTc0n-0002NG-OO
-	for nfs@lists.sourceforge.net; Fri, 28 May 2004 00:42:41 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <16566.51874.43089.537506@cse.unsw.edu.au>
+	id 1BTeFw-0008GN-Kk
+	for nfs@lists.sourceforge.net; Fri, 28 May 2004 03:06:28 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,108 +28,80 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, May 28, 2004 at 03:14:10PM +1000, Neil Brown wrote:
-> I have two concerns, that can possibly be allayed.
-> 
-> Firstly, the reply to any request is going to go out the socket that
-> the request came in on.  However some network configurations can have
-> requests arrive on one interface that need to be replied to on a
-> different interface(*).  Does setting sk_bound_dev_if cause packets sent
-> go out that interface (I'm not familiar enough with the networking
-> code to be sure)?  If it does, then this will cause problems in those
-> network configurations.
+G'day,
 
-As near as I can tell from inspecting the (amazingly convoluted)
-routing code and without running a test, the output routing algorithm
-is short circuited when the socket is bound to a device, and will
-send the packet out the bound interface regardless.  This comment
-by Alexei K in ip_route_output_slow() explains:
+This is a resend of the client portion of a patch I submitted
+a while ago which got lost in the shuffle.  The serverside
+half of the original patch went in some time ago, so this resend
+is just the client half.
 
-> [...] When [output interface] is specified, routing
-> tables are looked up with only one purpose:
-> to catch if destination is gatewayed, rather than
-> direct. 
+The patch is against 2.4.26.  A 2.6 patch follows shortly.
 
-So, yes we could have a problem if the routing is asymmetric.
+-----
+SGI bug 901086.
 
-A similar issue (which I haven't tested either) is what happens
-with virtual interfaces like tunnels or bonding.
+In the NFSv3 RFC, the sattr3 structure passed in the SETATTR call allows
+for the client to request that the mtime and/or atime of an inode be set
+to the current server time, the given (client) time, or not changed.  The
+set-to-current-server value is used when you run "touch file" on the client.
 
-> Secondly, while the need for multiple udp sockets is clear,
+This is significant for two reasons.  First, if there is clock skew between
+the client and server there are times when you want the server time.  Secondly, the filesystem permissions checks for the two cases are actually different:
+setting to an explicit time requires the setting process to own the file (or
+be root), but setting to the current time requires only that the file be
+writable to the process (or the process be root).
 
-Agreed.
+The NFSv2 RFC defines no such encoding for the sattr structure.  However
+Solaris and Irix machine obey a convention where passing the invalid value
+mtime.useconds=1000000 means "set both mtime and atime to the current
+server time".  The convention is documented in the book "NFS Illustrated"
+by Brent Callaghan.  The patch below implements this convention for the
+Linux client and server (hence multiple To:s).
 
-> it isn't
-> clear that they should be per-device.
-> Other options are per-CPU and per-thread.  Alternately there could
-> simply be a pool of free sockets (or a per-cpu pool).
+Tested between ia64 Linux 2.4.21, Irix & Solaris.
 
-Ok, there are a number of separate issue here.
 
-Firstly, my performance numbers show that the current serialisation of
-svc_sendto() gives about 1.5 NICs worth of performance per socket, so
-whatever method governs the number of sockets it needs to ensure that
-the number of sockets grows at least as fast as the number of NICs.
-On at least some of the SGI hardware the number of NICs can grow
-faster than the number of CPUs.  For example, the minimal Altix
-3000 has 4 CPUs and can have 10 NICs.  Similarly, a good block for
-building scalable NFS servers is an Altix 350 with 2 CPUs and 4 NICs
-(we can't do this yet due to tg3 driver limitations).  So this makes
-per-CPU sockets unattractive.
 
-Secondly, for the traffic levels I'm trying to reach I need lots of
-nfsd threads.  I haven't done the testing to find the exact number,
-but it's somewhere between above 32.  I run with 128 threads to make
-sure.  If we had per-thread sockets that would be a *lot* of sockets.
-Under many loads an nfsd thread spends most of its time waiting for
-disk IO, and having its own socket would just be wasteful.
+--- /usr/tmp/TmpDir.24590-0/linux/linux/fs/nfs/nfs2xdr.c_1.11	Tue Sep 23 16:11:24 2003
++++ linux/fs/nfs/nfs2xdr.c	Tue Sep 23 16:11:00 2003
+@@ -131,17 +131,33 @@
+ 	SATTR(p, attr, ATTR_GID, ia_gid);
+ 	SATTR(p, attr, ATTR_SIZE, ia_size);
+ 
+-	if (attr->ia_valid & (ATTR_ATIME|ATTR_ATIME_SET)) {
++	if (attr->ia_valid & ATTR_ATIME_SET) {
+ 		*p++ = htonl(attr->ia_atime);
+ 		*p++ = 0;
++	} else if (attr->ia_valid & ATTR_ATIME) {
++	    	/*
++		 * Passing the invalid value useconds=1000000 is a
++		 * Sun convention for "set to current server time".
++		 * It's needed to make permissions checks for the
++		 * "touch" program across v2 mounts to Solaris and
++		 * Irix boxes work correctly. See description of
++		 * sattr in section 6.1 of "NFS Illustrated" by
++		 * Brent Callaghan, Addison-Wesley, ISBN 0-201-32750-5
++		 */
++		*p++ = htonl(attr->ia_atime);
++		*p++ = htonl(1000000);
+ 	} else {
+ 		*p++ = ~(u32) 0;
+ 		*p++ = ~(u32) 0;
+ 	}
+ 
+-	if (attr->ia_valid & (ATTR_MTIME|ATTR_MTIME_SET)) {
++	if (attr->ia_valid & ATTR_MTIME_SET) {
+ 		*p++ = htonl(attr->ia_mtime);
+ 		*p++ = 0;
++	} else if (attr->ia_valid & ATTR_MTIME) {
++	    	/* See above comment about useconds=1000000. */
++		*p++ = htonl(attr->ia_mtime);
++		*p++ = htonl(1000000);
+ 	} else {
+ 		*p++ = ~(u32) 0;	
+ 		*p++ = ~(u32) 0;
 
-Thirdly, where there are enough CPUs I see significant performance
-advantage when each NIC directs irqs to a separate dedicated CPU.
-In this case having one socket per NIC will mean all the cachelines
-for that socket will tend to stay on the interrupt CPU (currently this
-doesn't happen because of the way the tg3 driver handles interrupts,
-but that will change).
 
-What all of the above means is that I think having one socket per
-NIC is very close to the right scaling ratio.
-
-What I'm not sure about on is the precise way in which multiple
-sockets should be achieved.  Using device-bound sockets just seemed
-like a really easy way (read: no changes to the network stack) to get
-exactly the right scaling.  Having a global (or per NUMA node, say)
-pool of sockets which scaled by the number of NICs would be fine too,
-assuming it could be made to work and handle the routing corner cases.
-
-> Having multiple sockets that are not bound differently is not
-> currently possible without setting sk_reuse, and doing this allows
-> user programs to steal NFS requests.
-
-Yes, this was another good thing about using device-bound sockets,
-it doesn't open that security hole.
-
-> However if we could create a socket that was bound to an address only
-> for sending and not for receiving, we could use a pool of such sockets
-> for sending.
-
-Interesting idea.  Alternatively, we could use the single UDP socket
-for receive as now, and a pool of connected UDP sockets for sending.
-That should work without needing to modify the network stack.
-
-> This might be as easy as adding a "sk_norecv" field to struct sock,
-> and skipping the sk->sk_prot->get_port call in inet_bind if it is set.
-> Then all incoming requests would arrive on the one udp socket (there
-> is very little contention between incoming packets on the one socket),
-
-Sure, the limit is the send path.
-
-> and reply could go out one of the sk_norecv ports.
-
-Aha.
-
-> Does this make sense?  Would you be willing to try it?
-
-I think it's an intriguing idea and I'll try it as soon as I can.
 
 Greg.
 -- 
