@@ -1,28 +1,23 @@
-From: Daniel Forrest <forrest@lmcg.wisc.edu>
-Subject: Re: reliable reading
-Date: Mon, 28 Jun 2004 15:37:05 -0500
+From: <peter@nicker.net>
+Subject: Write delay optimization question
+Date: Tue, 29 Jun 2004 11:41:28 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040628153705.A21020@rda07.lmcg.wisc.edu>
-References: <Pine.LNX.4.60.0406280901350.3356@harp.ngdc.noaa.gov>
-Reply-To: Daniel Forrest <forrest@lmcg.wisc.edu>
+Message-ID: <2633.67.70.212.198.1088523688.squirrel@mail.nicker.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-list1-b.sourceforge.net ([10.3.1.7] helo=sc8-sf-list1.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Bf2sQ-0007rp-MC
-	for nfs@lists.sourceforge.net; Mon, 28 Jun 2004 13:37:18 -0700
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 4.30)
-	id 1Bf2sQ-0005It-ES
-	for nfs@lists.sourceforge.net; Mon, 28 Jun 2004 13:37:18 -0700
-Received: from mail.lmcg.wisc.edu ([144.92.101.145])
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BfKjp-0002CE-E7
+	for nfs@lists.sourceforge.net; Tue, 29 Jun 2004 08:41:37 -0700
+Received: from static-90-14.dsl.tht.net ([216.126.90.14] helo=dyn-71-150.tor.dsl.tht.net)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1Bf2sQ-0004Im-1X
-	for nfs@lists.sourceforge.net; Mon, 28 Jun 2004 13:37:18 -0700
-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-In-Reply-To: <Pine.LNX.4.60.0406280901350.3356@harp.ngdc.noaa.gov>; from Ara.T.Howard@noaa.gov on Mon, Jun 28, 2004 at 09:13:29AM -0600
+	id 1BfKjp-000337-1G
+	for nfs@lists.sourceforge.net; Tue, 29 Jun 2004 08:41:37 -0700
+Received: from nicker.net (localhost [127.0.0.1])
+	by dyn-71-150.tor.dsl.tht.net (Postfix) with SMTP id E041D1D6CA
+	for <nfs@lists.sourceforge.net>; Tue, 29 Jun 2004 11:41:28 -0400 (EDT)
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -35,53 +30,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, Jun 28, 2004 at 09:13:29AM -0600, Ara.T.Howard wrote:
-> 
->    - what is the 'safest' way read the most recent contents of an
->      nfs mounted file accounting for attribute caching?
-> 
->    - same question but for writing
+Hopefully some of the gurus on the list can help with this one...
 
-We have a queueing system that does the same types of operations (over
-45 machines all reading and writing files from the same NFS mounted
-filesystems).  We use the following technique:
+Running Red Hat AS 3, with the 2.4.21-9.0.1 kernel, nfs3.  I am trying to
+optimize the NFS daemon for huge file writes.  I have already modified
+/include/linux/nfsd/const.h to set the max block size to 32KB.
 
-    fd = open ("file", O_RDWR);
-    lockf (fd, F_TLOCK, 0);
-    fchmod (fd, 0644);
-    size = lseek (fd, 0, SEEK_END);
+My underlying filesystem uses a 256KB block size which spreads evenly ove=
+r
+a 4+P RAID array of 64KB segments.  Writing less than 256KB at a time
+incurs a significant performance penalty.
 
-The "open" is required to get a file handle for the "lockf" operation.
+My experience right now is that using async on the export allows 3-4 time=
+s
+as much data throughput on huge writes (small number of files, large
+amount of data).  I would prefer to not use the async option if possible,
+but it seems to me like the nfsd does not "queue" enough writes to write
+out a full 256 kb block if sync operation is specified.  (I get lots of
+read modify writes on the controller.)
 
-The "lockf" clears the NFS client cache.
+Is there a tunable parameter somewhere that would allow me to increase th=
+e
+write buffering?  In the exports man page under no_wdelay it states "The
+NFS server will normally delay committing a write request to disc slightl=
+y
+if it suspects another related write request may be in progress or may
+arrive soon."  If I could increase this delay it might help my problem,
+but I haven't been able to find it in the source.
 
-You would hope at this point that things would be okay, but it turns
-out that the file size is still the file size that was cached at the
-time the file was "open"ed.  So...
+Thanks!
+Peter
 
-The "fchmod" operation is basically a no-op (we happen to know the
-file already has these permissions), but it forces a round-trip
-request to the server which updates the actual file size.
 
-The "lseek" gives the actual file size to the program.
 
-I don't remember if "fstat" could be used in place of the "lseek" as
-we are usually appending to the end of the file so the "lseek" is
-being called anyway.  In the case when we are copying the file we use
-the same algorithm and then "lseek (fd, 0, SEEK_SET)" before reading.
-
-While the "open"/"lockf" itself seems to work almost all of the time,
-we had rare occasions when we lost lines from the end of the file
-before we added the "fchmod" before the "lseek".  Also, there are
-probably other operations besides "fchmod" that will update the actual
-file size, but I don't recall which ones they are.
-
-I hope this helps.
-
--- 
-Daniel K. Forrest	Laboratory for Molecular and
-forrest@lmcg.wisc.edu	Computational Genomics
-			University of Wisconsin, Madison
 
 
 -------------------------------------------------------
