@@ -1,20 +1,20 @@
-From: seth vidal <skvidal@phy.duke.edu>
-Subject: Thread in red hat bugzilla about locking
-Date: 13 Apr 2002 01:22:07 -0400
+From: Hirokazu Takahashi <taka@valinux.co.jp>
+Subject: Re: [PATCH] zerocopy NFS updated
+Date: Sat, 13 Apr 2002 18:40:28 +0900 (JST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1018675328.1594.79.camel@milo>
+Message-ID: <20020413.184028.69377819.taka@valinux.co.jp>
+References: <20020410.191231.130623162.taka@valinux.co.jp>
+	<009501c1e212$b30e6bc0$2e060e09@beavis>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature";
-	boundary="=-Z7dpnZx9kPNKcE7kBfb+"
+Content-Type: Text/Plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail.phy.duke.edu ([152.3.182.2])
+Received: from sv1.valinux.co.jp ([202.221.173.100])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16wG4M-0000ZZ-00
-	for <nfs@lists.sourceforge.net>; Fri, 12 Apr 2002 22:27:26 -0700
-Received: from user-152-16-65-139.adsl.duke.edu (user-152-16-65-139.adsl.duke.edu [152.16.65.139])
-	by mail.phy.duke.edu (Postfix) with ESMTP id 5B5723040D
-	for <nfs@lists.sourceforge.net>; Sat, 13 Apr 2002 01:27:23 -0400 (EDT)
-To: nfs@lists.sourceforge.net
+	id 16wK1X-0005kG-00
+	for <nfs@lists.sourceforge.net>; Sat, 13 Apr 2002 02:40:48 -0700
+To: habanero@us.ibm.com
+In-Reply-To: <009501c1e212$b30e6bc0$2e060e09@beavis>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,40 +27,27 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
+Hello,
 
---=-Z7dpnZx9kPNKcE7kBfb+
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+I really appreciate your help!
 
-Hey,
- has anyone here seen this bug:
-https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=3D59245
+> I tried the patch with great performance improvement!   I ran my nfs read
+> test (48 clients read 200 MB file from one 4-way SMP NFS server) and
+> compared your patches to regular 2.5.7.  Regular 2.5.7 resulted in 87 MB/sec
+> with 100% CPU utilization.  Your patch resulted 130 MB/sec with 82% CPU
+> utilization!  This is very good!  I took profiles, and as expected,
+> csum_copy and file_read_actor were gone with the patch.  Sar reported nearly
+> 40 MB/sec per gigabit adapter (there are 4) during the test.  That is the
+> most I have seen so far.  Soon I will be doing some lock analysis to make
+> sure we don't have any locking problems.  Also, I will see if there is
+> anyone here at IBM LTC that can assist with your development of zerocopy on
+> UDP.  Thanks for the patch!
 
-and seen if the stock kernels/nfs-utils suffer from this problem?
+I'd love to develop it with your team.
+I have some ideas to implement it and I'm thinking about them.
 
-I was going to test it but I figured I'd ask to see if its been solved
-elsewhere already.
-
--sv
-
---=20
-GPG Public Key: http://www.phy.duke.edu/~skvidal/skvidal.gpg
-
---=-Z7dpnZx9kPNKcE7kBfb+
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.0.6 (GNU/Linux)
-Comment: For info see http://www.gnupg.org
-
-iD8DBQA8t8B/1Aj3x2mIbMcRAjwyAJ9bZ6tBhYhCI0RL8bf7roWsikZsHwCfaaln
-DvFE7AivHeRdfnCvUP0Jgfg=
-=vnso
------END PGP SIGNATURE-----
-
---=-Z7dpnZx9kPNKcE7kBfb+--
-
+Thank you,
+Hirokazu Takahashi
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
