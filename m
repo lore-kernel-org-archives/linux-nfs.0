@@ -1,23 +1,23 @@
 From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: /proc/fs/nfs/exports Broken
-Date: Mon, 7 Mar 2005 10:24:36 +1100
-Message-ID: <16939.37172.344792.638999@cse.unsw.edu.au>
-References: <20050306164036.GA21468@gam3.net>
-	<20050306173628.GA3918@gam3.net>
-	<20050306203043.GA5529@gam3.net>
+Subject: Re: mountd: needless DNS queries when authenticating client against numeric IP
+Date: Mon, 7 Mar 2005 10:55:55 +1100
+Message-ID: <16939.39051.569756.982757@cse.unsw.edu.au>
+References: <200503041424.22897.vda@ilport.com.ua>
+	<200503051557.07721.vda@ilport.com.ua>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Cc: nfs@lists.sourceforge.net,
+	Trond Myklebust <trond.myklebust@fys.uio.no>, vital@ilport.com.ua
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D857E-0004a5-8s
-	for nfs@lists.sourceforge.net; Sun, 06 Mar 2005 15:24:52 -0800
+	id 1D85bO-0005xZ-HG
+	for nfs@lists.sourceforge.net; Sun, 06 Mar 2005 15:56:02 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1D857D-0000pj-K4
-	for nfs@lists.sourceforge.net; Sun, 06 Mar 2005 15:24:52 -0800
-To: "G. Allen Morris III" <gam3-nfs@gam3.net>
-In-Reply-To: message from G. Allen Morris III on Sunday March 6
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1D85bM-0003fy-Pa
+	for nfs@lists.sourceforge.net; Sun, 06 Mar 2005 15:56:02 -0800
+To: Denis Vlasenko <vda@ilport.com.ua>
+In-Reply-To: message from Denis Vlasenko on Saturday March 5
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,57 +31,56 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sunday March 6, gam3-nfs@gam3.net wrote:
-> On Sun, Mar 06, 2005 at 12:36:28PM -0500, G. Allen Morris III wrote:
-> > Neil,
+On Saturday March 5, vda@ilport.com.ua wrote:
+> On Friday 04 March 2005 14:24, Denis Vlasenko wrote:
+> > mount 127.0.0.1:/ can fail if DNS is down
+> > and mountd has been restarted without re-run of exportfs -r,
+> > because /var/lib/nfs/etab contains wrong hostname ("localhost"
+> > instead of "127.0.0.1") and mountd cannot determine that
+> > these are the same. This was explained in my previous mail.
 > > 
-> > Neil the net rcp export cache should not be used directly for
-> > the /proc/nfs/exports output.
+> > Here is another, lesser problem:
 > > 
-> > I am pretty sure that all that needs to be done is to only display
-> > the rightmost element of the domain (client = strrchr(domain, ',')+1).
-> > 
-> > I have a patch, but plan to clean it up before I send it to you.
-> > 
-> > I just wanted to request comments on this problem for now.
+> > If mountd was restarted _with_ prior run of exportfs -r, etab is correct
+> > and mount succeeds, but with ~10 sec delay because of DNS timeout
+> [snip]
 > 
-> I can see that I am very wrong about how simple this is. I think that
-> extra data or code is needed to solve this problem.
-
-You haven't been very clear about what the problem is, but I think I
-can guess.
-
-If a particular client (identified by IP address) maps to several
-different identifiers that are in /etc/exports
-e.g.  '*' and 'W.X.Y.Z' and 'test-host.my.domain' and '@my-netgroup'
-then the effective name for that client as listed in /etc/exports will
-be the combination of all the identifiers, separated by commas.
-In this example
-   *,W.X.Y.Z,test-host.by.domain,@my-netgroup
-
-This apparently bothers you....
-
+> I've cooked up a patch.
+> Now my mount 127.0.0.1:/ /mnt/tmp succeeds instantly,
+> regardless of whether 127.0.0.1 resolves to 'localhost' or not.
 > 
-> Here are some questions:
->  1. do we need nfsd/exports at all? (No ones seems to have noticed that
->     the information it gives is not very human readable.)
+> This is accomplished by first trying to auth against numeric IP,
+> and only if that fails, we resolve IP into name and try again.
+> 
+> Please comment/apply.
 
-Yes. Anyone using an older nfs-utils or running without /proc/fs/nfsd
-needs it.
+sorry, but this has been tried before, and it doesn't work.
 
->  2. If yes. What is it for? It seems to me it is needed to show what
->     export a given IP is mapped to.
+ From the ChangeLog
+	
+2001-09-12 NeilBrown <neilb@cse.unsw.edu.au>
 
-Well, it is useful to have a quick look at what is exported, and it
-allows olders nfs-utils to iterate through all exports known to the
-kernel and remove them.
+	* utils/mountd/auth.c (auth_authenticate_internal): Reverse
+	  change from 2000-08-02:  It causes problems if someone exports
+	  to both a hostname and IP addresses.  nfs-utils must be
+	  consistant about the canonical name that it chooses.
+...
+2000-08-02  H.J. Lu <hjl@lucon.org>
 
->  3. Should exportfs have a switch that to display the kernel export
->     cache is some nice format or formats.
+	* utils/mountd/auth.c (auth_authenticate_internal): Try to
+	avoid the reverse name lookup.
 
-I don't think there is anything particularly wrong with the format
-(once you understand it).  Can you convince me otherwise?
+It is only safe to avoid the DNS lookup if there are *no* names in the
+/etc/exports file.  If everything is one of "*", "ip.ad.dr.es" or 
+"ne.t-.wo.rk/mask"  then it is OK,  If there is any domain.name or
+@netgroup, then you always need to find the name.
+The problem arises if someone exports one filesystem to an IP address,
+and another to the DNS name.  Confusion and failure results.
 
+A patch which checked is this was the case, and always avoided DNS
+lookup if it was would be seriously considered for acceptance.
+
+Thanks,
 NeilBrown
 
 
