@@ -1,8 +1,8 @@
 From: Harshit Shah <harshit81@yahoo.com>
 Subject: How to map NFS filehandles to file names ?
-Date: Sat, 17 May 2003 05:52:36 -0700 (PDT)
+Date: Sat, 17 May 2003 05:52:12 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030517125236.12390.qmail@web20207.mail.yahoo.com>
+Message-ID: <20030517125212.83623.qmail@web20206.mail.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
