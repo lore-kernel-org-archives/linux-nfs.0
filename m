@@ -1,20 +1,24 @@
-From: Christian Reis <kiko@async.com.br>
-Subject: Re: General network slowness on SIS 530 with eepro100
-Date: Thu, 15 Aug 2002 16:21:55 -0300
+From: Roger Luethi <rl@hellgate.ch>
+Subject: Re: Will NFSv4 be accepted?
+Date: Thu, 15 Aug 2002 21:52:31 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020815162155.L30462@blackjesus.async.com.br>
-References: <20020813212923.L2219@blackjesus.async.com.br> <200208150844.g7F8iQp19827@Port.imtp.ilyichevsk.odessa.ua>
+Message-ID: <20020815195231.GA18239@k3.hellgate.ch>
+References: <Pine.LNX.4.44.0208141938350.31203-100000@mooru.gurulabs.com> <Pine.LNX.4.44.0208151027510.3130-100000@home.transmeta.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: eepro100@scyld.com, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org
+Cc: Dax Kelson <dax@gurulabs.com>,
+	Alan Cox <alan@lxorguk.ukuu.org.uk>,
+	"Kendrick M. Smith" <kmsmith@umich.edu>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>,
+	beepy@netapp.com, trond.myklebust@fys.uio.no
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from calhau.terra.com.br ([200.176.3.20])
+Received: from mta11n.bluewin.ch ([195.186.1.211])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17fQCC-0002Wb-00
-	for <nfs@lists.sourceforge.net>; Thu, 15 Aug 2002 12:22:13 -0700
-To: Denis Vlasenko <vda@port.imtp.ilyichevsk.odessa.ua>
-In-Reply-To: <200208150844.g7F8iQp19827@Port.imtp.ilyichevsk.odessa.ua>; from vda@port.imtp.ilyichevsk.odessa.ua on Thu, Aug 15, 2002 at 11:41:20AM -0200
+	id 17fQfl-0002Ze-00
+	for <nfs@lists.sourceforge.net>; Thu, 15 Aug 2002 12:52:45 -0700
+To: Linus Torvalds <torvalds@transmeta.com>
+In-Reply-To: <Pine.LNX.4.44.0208151027510.3130-100000@home.transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,29 +31,46 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Thu, Aug 15, 2002 at 11:41:20AM -0200, Denis Vlasenko wrote:
-> On 13 August 2002 22:29, Christian Reis wrote:
-> > On tri, which is the referred SIS530 box, as you can see, for most runs
-> > the CPU usage is just so much higher than minas, which has practically
-> > the same setup: K6-500, old PCI (no AGP) board, eepro100 card. I'm
-> > wondering if anybody has seen something like this before?
+On Thu, 15 Aug 2002 10:35:40 -0700, Linus Torvalds wrote:
 > 
-> Start swapping hardware between these two boxes
+> On Wed, 14 Aug 2002, Dax Kelson wrote:
+> > 
+> > Q for Linus: What's the prospect of adding crypto to the kernel?
+> 
+> For a good enough excuse, and with a good enough argument that it's not 
+> likely to be a big export problem, I don't think it's impossible any more.
+> 
+> However, the "good enough excuse" has to be better than "some technically 
+> excellent, but not very widespread" thing. 
 
-I've done it, actually. I've swapped processor, memory and video cards
-(which are the only things the boxes actually contain) and there has
-been no change. It's very strange - block read and block write consume
-enormous amounts of CPU, no matter how much I tinker. I've tried 2.4.19,
-2.2.21, NFS patches, etc. 
+While I'm all for adding crypto to the standard kernel, I contend the
+crucial part is not strong crypto, but the API. With a stock kernel that
+merely offered rot13 type algorithms and a simple way to add more, we could
+sidestep the export issue [1] if necessary and still get important
+benefits.
 
-There could be a hidden BIOS option, but I can't seem to find out what
-it is. Both caches are enabled. PCI interrupts are fine. It has to be a
-motherboard support problem; in Windows the box runs fine. :-(
+There have been some efforts to find a common platform (e.g. between the
+freeswan and the cryptoapi folks recently), but the driving force that
+brought us LSM is sorely missing with crypto, although the issue seems less
+complex.
 
-Take care,
---
-Christian Reis, Senior Engineer, Async Open Source, Brazil.
-http://async.com.br/~kiko/ | [+55 16] 261 2331 | NMFL
+I won't comment on the technical excellence of the currently available
+solutions, but VPNs and disk encryption (especially for laptop owners) are
+quite likely to see (even more) widespread use in the near future. With
+Reiser4 it seems there is soon going to be another contender in local
+filesystems besides the loopback based ones. RedHat, Mandrake, and SuSE are
+already selling products using kernel space encryption (i.e. VPNs and/or
+encrypted filesystems).
+
+IMHO the case for crypto in the kernel has already been made. The questions
+are rather: what would a kernel crypto facility look like if it was to be
+useful for all those projects out there, and who could pull an LSM on this
+one?
+
+Roger
+
+[1] Assuming that the times when even crypto _hooks_ were likely a felony
+    are gone for good (for many countries anyway). IANAL, obviously.
 
 
 -------------------------------------------------------
