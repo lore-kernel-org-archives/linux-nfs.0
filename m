@@ -1,23 +1,22 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: more on silly names
-Date: Sat, 04 Sep 2004 18:58:57 -0400
+From: "Lever, Charles" <cel@netapp.com>
+Subject: RE: Re: more on silly names
+Date: Sat, 4 Sep 2004 16:46:11 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1094338737.13791.15.camel@lade.trondhjem.org>
-References: <Pine.LNX.4.60.0409041610230.17016@harp.ngdc.noaa.gov>
+Message-ID: <482A3FA0050D21419C269D13989C61130435E768@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C3jUy-0007RJ-FF
-	for nfs@lists.sourceforge.net; Sat, 04 Sep 2004 15:59:08 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 1C3kEe-00039c-41
+	for nfs@lists.sourceforge.net; Sat, 04 Sep 2004 16:46:20 -0700
+Received: from mx01.netapp.com ([198.95.226.53])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1C3jUx-0005oM-7b
-	for nfs@lists.sourceforge.net; Sat, 04 Sep 2004 15:59:08 -0700
+	id 1C3kEb-00031o-TK
+	for nfs@lists.sourceforge.net; Sat, 04 Sep 2004 16:46:20 -0700
 To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-In-Reply-To: <Pine.LNX.4.60.0409041610230.17016@harp.ngdc.noaa.gov>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,25 +29,13 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 lau , 04/09/2004 klokka 18:27, skreiv Ara.T.Howard:
-> i think i've found the cause of the sillnames appearing in my directory:
-> for transaction sqlite aquires a lock, writes changes first to a db-journ=
-al
-> file, then to the actual db, closes the journal, unlinks the journal, and
-> releases the lock.  this sequence should not create a silly file, but see=
-ms
-> to do so:
+> If mmapped data needs to be committed to disk before the=20
+> flushd/pdflush daemon gets round to doing it, you need to=20
+> explicitly call msync().
 
-I believe that the Berkeley database code uses mmap() to read/write the
-data, in which case close() will not actually suffice to sync the data
-to the server (unlike the case of ordinary file write).
-
-If mmapped data needs to be committed to disk before the flushd/pdflush
-daemon gets round to doing it, you need to explicitly call msync().
-
-Cheers,
-   Trond
-
+msync() is broken on NFS files before 2.4.24-ish.  so be sure you are on
+a recent kernel, or are running the latest update of RHEL 3.0, if you
+need msync() to work correctly.
 
 
 -------------------------------------------------------
