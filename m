@@ -1,23 +1,20 @@
-From: Ragnar =?iso-8859-15?Q?Kj=F8rstad?= <nfs@ragnark.vestdata.no>
-Subject: Re: [PATCH] STATD - SM_NOTIFY have wrong ID_NAME on multihost servers.
-Date: Thu, 25 Nov 2004 00:25:31 +0100
-Message-ID: <20041124232530.GL19342@vestdata.no>
-References: <41A39D57.8060902@RedHat.com> <20041123232636.GE19342@vestdata.no> <41A3D9CC.7040404@RedHat.com> <20041124020017.GH19342@vestdata.no> <41A477C8.4060405@RedHat.com> <20041124173525.GI19342@vestdata.no> <41A5064B.1030009@RedHat.com>
+From: Denis Zaitsev <zzz@anda.ru>
+Subject: statd question
+Date: Thu, 25 Nov 2004 04:28:36 +0500
+Message-ID: <20041125042836.A601@natasha.ward.six>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CX6W3-0003oH-F5
-	for nfs@lists.sourceforge.net; Wed, 24 Nov 2004 15:25:39 -0800
-Received: from [217.149.127.10] (helo=stine.vestdata.no)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1CX6Z7-0004JX-6B
+	for nfs@lists.sourceforge.net; Wed, 24 Nov 2004 15:28:49 -0800
+Received: from [83.146.86.58] (helo=mail.ward.six)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1CX6W2-0006fR-A0
-	for nfs@lists.sourceforge.net; Wed, 24 Nov 2004 15:25:39 -0800
-To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: <41A5064B.1030009@RedHat.com>
+	id 1CX6Z3-0002FV-Ha
+	for nfs@lists.sourceforge.net; Wed, 24 Nov 2004 15:28:47 -0800
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,64 +28,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, Nov 24, 2004 at 05:08:11PM -0500, Steve Dickson wrote:
-> Ragnar Kj=F8rstad wrote:
-> >On Wed, Nov 24, 2004 at 07:00:08AM -0500, Steve Dickson wrote:
-> >>No, since the spec says a the id_mon needs to be character string....
-> >
-> >"10.0.0.1" is a character string as much as any - unless the
-> >specification says something more about this?
->
-> Well here is what the spec says wrt to mon_names:
-> "For maximum portability and interworking, it is recommended that=20
-> applications
-> and users define host names containing only the characters of the Porta=
-ble
-> Filename Characters defined in ISO/IEC 9945-1:1990."
->=20
-> So doing some like would probably cause interopability issues with othe=
-r
-> OSes....
+man statd states:
 
-Well, I don't have the ISO/IEC 9945-1:1990 easily available, but I have
-a hard time imagining a standard for Portable Filename Characters that
-don't include number and '.'.
+    For each NFS client or server machine to be monitored, rpc.statd
+    creates a file in /var/lib/nfs/sm.  When starting, it iterates
+    through these files and notifies the peer rpc.statd on those
+    machines.
 
-However, if it's possible that it will create compabilityproblems,
-you're probably right - it's not worth the effort. After all, it only
-matters if you have inconsistencies in your name-resolution system.=20
+A'm using nfs for a long time and I've never seen any file in
+/var/lib/nfs/sm.  And I worry: is my nfs system feels ok?  Or maybe
+something wrong with RPC?  Or maybe secure-statd configure option is
+involved?  So what does this absence of the monitored hosts in the sm
+dir mean?  NFS in general works well for me, afaik.
 
-
-> >In short, this is exactly like what your patch does except that:
-> >- if there are multiple matching interfaces (e.g. aliases) we
-> > send messages for all
->
-> Yes see your point, but is aliasing all that common in non-HA environme=
-nts?
-I don't have any statistics on that, but I don't think it's totally
-unheard of :)
-
-> The relatively simple  patch I'm proposing is a small step in the right=
-=20
-> direction which would make statd work correctly on multihome servers.
-
-Yes, I think it is.
-
-> Should we strive to make statd more HA friendly, YES!  but I would
-> suggest one step at time.... Meaning we should propose this match to Ne=
-il
-> for inclusion in upstream and then build on it... imho...
-
-I have no problem with that.
-I had just hoped I could trick you into fixing one more thing once you
-were on a roll :-)
-
-
---=20
-Ragnar Kj=F8rstad
-Software Engineer
-Scali - http://www.scali.com
-High Performance Clustering
+Thanks in advance.
 
 
 -------------------------------------------------------
