@@ -1,26 +1,25 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: maybe a svcsock.c/sv_lock deadlock?
-Date: Tue, 27 Jul 2004 16:14:34 +0200
+From: Bernd Schubert <bernd-schubert@web.de>
+Subject: Re: async vs. sync
+Date: Tue, 27 Jul 2004 17:07:30 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040727141433.GB11023@suse.de>
+Message-ID: <200407271707.31487.bernd-schubert@web.de>
+References: <482A3FA0050D21419C269D13989C61130435E530@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BpSj0-0001BW-En
-	for nfs@lists.sourceforge.net; Tue, 27 Jul 2004 07:14:38 -0700
-Received: from cantor.suse.de ([195.135.220.2])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1BpTYL-0003t3-It
+	for nfs@lists.sourceforge.net; Tue, 27 Jul 2004 08:07:41 -0700
+Received: from smtp05.web.de ([217.72.192.209])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.34)
-	id 1BpSiz-0003XI-SI
-	for nfs@lists.sourceforge.net; Tue, 27 Jul 2004 07:14:38 -0700
-Received: from hermes.suse.de (hermes-ext.suse.de [195.135.221.8])
-	(using TLSv1 with cipher EDH-RSA-DES-CBC3-SHA (168/168 bits))
-	(No client certificate requested)
-	by Cantor.suse.de (Postfix) with ESMTP id 60F2D95E4EE
-	for <nfs@lists.sourceforge.net>; Tue, 27 Jul 2004 16:14:34 +0200 (CEST)
-To: nfs@lists.sourceforge.net
+	id 1BpTYL-0008Cj-0o
+	for nfs@lists.sourceforge.net; Tue, 27 Jul 2004 08:07:41 -0700
+To: "Lever, Charles" <cel@netapp.com>
+In-Reply-To: <482A3FA0050D21419C269D13989C61130435E530@lavender-fe.eng.netapp.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,28 +32,21 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+On Tuesday 27 July 2004 16:16, you wrote:
+> bernd-
+>
+> you didn't mention how many server processes were running.  if the
+> server load goes up to 8, then i would guess you have only 8.  you
+> should probably boost it to a much larger number, like 128 or more.
 
-I have a somewhat unclear bug report against the 2.6 kernel, where
-the sysrq output seems to indicate there's a deadlock on sv_lock
-somewhere. There is a stuck process is in tcp_data_ready, but
-unfortunately the sysrq output is not complete, so I don't know what
-the other CPUs were doing at the time.
+Currently 64, top usually shows a usuage between 1 and 10, but not more. I can 
+try to increase it 128 or more in the evening to see if it helps to speed up 
+sync mounts.
 
-Looking at the code, I did notice however that some new code was
-added recently (svc_defer, svc_revisit) that uses spin_lock instead of
-spin_lock_bh when grabbing the sv_lock.
 
-So it seems there's potential for deadlock if TCP data arrives while
-one of these new functions hold sv_lock.
+Cheers,
+	Bernd
 
-Comments?
-
-Olaf
--- 
-Olaf Kirch     |  The Hardware Gods hate me.
-okir@suse.de   |
----------------+ 
 
 
 -------------------------------------------------------
