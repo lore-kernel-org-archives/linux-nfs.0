@@ -1,24 +1,23 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Problems with statd and lockd
-Date: Sun, 6 Apr 2003 14:16:20 +0200
+Subject: Re: [PATCH] mmap corruption
+Date: Sun, 6 Apr 2003 14:30:09 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16016.6804.336490.539227@charged.uio.no>
-References: <20030405015638.5118fbb9.philippe.gramoulle@mmania.com>
-	<200304051545.43063.bernd-schubert@web.de>
-	<shs7ka9c957.fsf@charged.uio.no>
-	<200304051831.09682.bernd-schubert@web.de>
+Message-ID: <16016.7633.982870.860147@charged.uio.no>
+References: <3E8DDB13.9020009@RedHat.com>
+	<shsistt7wip.fsf@charged.uio.no>
+	<20030405164741.GA6450@RedHat.com>
 Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-    NFS Mailing List <nfs@lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net,
+    linux-kernel <linux-kernel@vger.kernel.org>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mons.uio.no ([129.240.130.14])
+Received: from pat.uio.no ([129.240.130.16])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19294V-0003jV-00
-	for <nfs@lists.sourceforge.net>; Sun, 06 Apr 2003 05:16:27 -0700
-To: Bernd Schubert <bernd-schubert@web.de>
-In-Reply-To: <200304051831.09682.bernd-schubert@web.de>
+	id 1929Hr-0006TF-00
+	for <nfs@lists.sourceforge.net>; Sun, 06 Apr 2003 05:30:15 -0700
+To: SteveD@RedHat.com
+In-Reply-To: <20030405164741.GA6450@RedHat.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,48 +30,35 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Bernd Schubert <bernd-schubert@web.de> writes:
+>>>>> " " == Steve Dickson <SteveD@RedHat.com> writes:
 
-     > statd: server localhost not responding, timed out
-     > nsm_mon_unmon: rpc failed, status=-5 lockd: cannot monitor
-     > <server IP> lockd: failed to monitor <server IP>
+     > 	filemap_fdatasync(inode->i_mapping);
+     > 	error = nfs_wb_all(inode);
+     > 	filemap_fdatawait(inode->i_mapping);
+     > 	if (error)
+     > 		goto out;
 
-     > So on our systems not the server, but the clients are reporting
-     > those messages.
+     > 	/*
+     > * Every time either npages or ncommit had a value and the file
+     > 	   size is
+     > * immediately changed (with in a microsecond or two) by another
+     > * truncation, followed by a mmap read, the file would be
+     > 	   corrupted.
+     > 	 */
+     > 	if (NFS_I(inode)->npages || NFS_I(inode)->ncommit ||
+     > 	NFS_I(inode)->ndirty) {
+     > 		printk("nfs_notify_change: fid %Ld npages %d ncommit
+     > 		%d ndirty %d\n", NFS_FILEID(inode),
+     > 		NFS_I(inode)->npages, ncommit, NFS_I(inode)->ndirty);
+     > 	}
+     > }
 
-That is normal: lockd is a strange being. It has to run as a server on
-both the NFS client and the NFS server.
+My point is that nfs_wb_all() is supposed to ensure that
+NFS_I(inode)->ncommit, and/or NFS_I(inode)->ndirty are both
+zero. i.e. you can have pending reads (in which case
+NFS_I(inode)->npages != 0), but *no* pending writes.
 
-     > Apr 5 15:28:16 maxwell kernel: statd: server localhost not
-     > responding, timed out Apr 5 15:28:16 maxwell kernel: lockd:
-     > cannot monitor <server IP> Apr 5 15:28:16 maxwell kernel:
-     > lockd: failed to monitor <server IP>
-
-     > What other messages do you expect ?
-
-If secure-statd was the cause of the problem, I would expect
-additional messages of the form
-
-  "Call to statd from non-local host blah"
-
-or
-
-  "Attempt to register callback to 1000xy/z"
-
-or
-
-  "Attempt to register host blah (not a dotted quad)"
-
-     > As soon as I stop the debian-statd and start the new statd
-     > (that has secure-statd disabled), those messages disappear.
-     > Furthermore, some programs as e.g. KDE have some problems to
-     > run when those messages appear (our home directory is served by
-     > this server).
-
-     > What problems can be caused by a statd without the secure
-     > option ?
-
-People could use your statd to make arbitrary RPC calls.
+Was this the case?
 
 Cheers,
   Trond
