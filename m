@@ -1,19 +1,19 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 3 of 11 - nfsd_acceptable_typo.patch
-Date: Fri, 28 May 2004 14:37:30 +1000
+Subject: [PATCH] kNFSd - 8 of 11 - nfsd-getattr-fix.patch
+Date: Fri, 28 May 2004 14:37:31 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1BTZ7a-0008EG-U4@notabene.cse.unsw.edu.au>
+Message-ID: <E1BTZ7b-0008Eh-7q@notabene.cse.unsw.edu.au>
 References: <20040528143518.31534.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BUkaX-00071A-6U
-	for nfs@lists.sourceforge.net; Mon, 31 May 2004 04:04:17 -0700
+	id 1BUkYg-0006k4-HQ
+	for nfs@lists.sourceforge.net; Mon, 31 May 2004 04:02:22 -0700
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1BUkaV-0003Wl-RU
-	for nfs@lists.sourceforge.net; Mon, 31 May 2004 04:04:16 -0700
+	id 1BUkYf-000395-SG
+	for nfs@lists.sourceforge.net; Mon, 31 May 2004 04:02:22 -0700
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.172.124]) (auth-user neilb) (ident-user Debian-exim)
 	(for <akpm@osdl.org>) (for <nfs@lists.sourceforge.net>) By note With
@@ -32,35 +32,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-there's a small typo in nfsd_acceptable.  It calls
 
-	err = permission(parent->d_inode, S_IXOTH, NULL);
-
-It really wants to use MAY_EXEC instead of S_IXOTH. Those
-happen to be the same at the moment, but may not do so forever.
+Oops: we were claiming to support the TIME_CREATE attribute, when we don't
+really.
 
 
 
-From: Olaf Kirch <okir@suse.de>:
+From: Andy Adamson <andros@citi.umich.edu>
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
  ----------- Diffstat output ------------
- ./fs/nfsd/nfsfh.c |    2 +-
+ ./include/linux/nfsd/nfsd.h |    2 +-
  1 files changed, 1 insertion(+), 1 deletion(-)
 
-diff ./fs/nfsd/nfsfh.c~current~ ./fs/nfsd/nfsfh.c
---- ./fs/nfsd/nfsfh.c~current~	2004-05-28 14:20:00.000000000 +1000
-+++ ./fs/nfsd/nfsfh.c	2004-05-28 14:20:16.000000000 +1000
-@@ -56,7 +56,7 @@ int nfsd_acceptable(void *expv, struct d
- 		/* make sure parents give x permission to user */
- 		int err;
- 		parent = dget_parent(tdentry);
--		err = permission(parent->d_inode, S_IXOTH, NULL);
-+		err = permission(parent->d_inode, MAY_EXEC, NULL);
- 		if (err < 0) {
- 			dput(parent);
- 			break;
+diff ./include/linux/nfsd/nfsd.h~current~ ./include/linux/nfsd/nfsd.h
+--- ./include/linux/nfsd/nfsd.h~current~	2004-05-28 14:20:00.000000000 +1000
++++ ./include/linux/nfsd/nfsd.h	2004-05-28 14:22:59.000000000 +1000
+@@ -281,7 +281,7 @@ static inline int is_fsid(struct svc_fh 
+  | FATTR4_WORD1_OWNER	        | FATTR4_WORD1_OWNER_GROUP  | FATTR4_WORD1_RAWDEV           \
+  | FATTR4_WORD1_SPACE_AVAIL     | FATTR4_WORD1_SPACE_FREE   | FATTR4_WORD1_SPACE_TOTAL      \
+  | FATTR4_WORD1_SPACE_USED      | FATTR4_WORD1_TIME_ACCESS  | FATTR4_WORD1_TIME_ACCESS_SET  \
+- | FATTR4_WORD1_TIME_CREATE     | FATTR4_WORD1_TIME_DELTA   | FATTR4_WORD1_TIME_METADATA    \
++ | FATTR4_WORD1_TIME_DELTA   | FATTR4_WORD1_TIME_METADATA    \
+  | FATTR4_WORD1_TIME_MODIFY     | FATTR4_WORD1_TIME_MODIFY_SET | FATTR4_WORD1_MOUNTED_ON_FILEID)
+ 
+ /* These will return ERR_INVAL if specified in GETATTR or READDIR. */
 
 
 -------------------------------------------------------
