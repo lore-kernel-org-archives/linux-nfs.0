@@ -1,23 +1,29 @@
-From: Greg Banks <gnb@sgi.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: Marking inodes as stale can be wrong
-Date: Fri, 30 Apr 2004 09:50:18 +1000
+Date: Thu, 29 Apr 2004 20:43:41 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040429235018.GC4843@sgi.com>
-References: <20040429144012.GA15361@suse.de> <1083257096.3686.27.camel@lade.trondhjem.org> <20040429165802.GA18748@suse.de> <1083258570.3686.38.camel@lade.trondhjem.org>
+Message-ID: <1083285820.14910.77.camel@lade.trondhjem.org>
+References: <20040429144012.GA15361@suse.de>
+	 <1083257096.3686.27.camel@lade.trondhjem.org>
+	 <20040429165802.GA18748@suse.de>
+	 <1083258570.3686.38.camel@lade.trondhjem.org>
+	 <20040429235018.GC4843@sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
 Cc: Olaf Kirch <okir@suse.de>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BJLJb-00029u-P7
-	for nfs@lists.sourceforge.net; Thu, 29 Apr 2004 16:51:39 -0700
-Received: from mtvcafw.sgi.com ([192.48.171.6] helo=omx2.sgi.com)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BJLJb-0000Uk-G8
-	for nfs@lists.sourceforge.net; Thu, 29 Apr 2004 16:51:39 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1083258570.3686.38.camel@lade.trondhjem.org>
+	id 1BJM83-0003JN-Q8
+	for nfs@lists.sourceforge.net; Thu, 29 Apr 2004 17:43:47 -0700
+Received: from dh132.citi.umich.edu
+	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.30)
+	id 1BJM83-0000zO-GF
+	for nfs@lists.sourceforge.net; Thu, 29 Apr 2004 17:43:47 -0700
+To: Greg Banks <gnb@sgi.com>
+In-Reply-To: <20040429235018.GC4843@sgi.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,44 +36,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Apr 29, 2004 at 01:09:30PM -0400, Trond Myklebust wrote:
-> On Thu, 2004-04-29 at 12:58, Olaf Kirch wrote:
-> > On Thu, Apr 29, 2004 at 12:44:56PM -0400, Trond Myklebust wrote:
-> > > On Thu, 2004-04-29 at 10:40, Olaf Kirch wrote:
-> > > > 	fh_verify did the subtree check, and found that
-> > > > 	~/Mail was mode 700, and hence user nobody didn't
-> > > > 	have x permissions on the directory. So it would
-> > > > 	return ESTALE to the client.
-> > > 
-> > > This is a bug!
-> > 
-> > Yes, probably. Even though I'm not entirely sure NFSERR_ACCES is a valid
-> > return for all NFS operations.
+On Thu, 2004-04-29 at 19:50, Greg Banks wrote:
+> > The ERRORS section lists the errors returned for specific types of
+> > failures. These lists are not intended to be the definitive statement
+> > of all of the errors which can be returned by any specific procedure,
+> > but as a guide for the more common errors which may be returned.
 > 
-> The problem is that Neil is using NFSERR_STALE as a standin for
-> NFSERR_ACCES precisely because the latter is not on the list of accepted
-> return value for GETATTR in RFC1813.
-> IMO this is *worse* behaviour than just returning the non-rfc compatible
-> error.
+> This has been interpreted in discussions here as a loophole that allows
+> the server to return any of the defined NFS errors for any of the calls
+> at its discretion.
 
-FWIW there's a little known sentence in RFC1813 Section 3 which says
+True, and indeed I should have known that.
 
-> The ERRORS section lists the errors returned for specific types of
-> failures. These lists are not intended to be the definitive statement
-> of all of the errors which can be returned by any specific procedure,
-> but as a guide for the more common errors which may be returned.
+Note for instance that the error NFS3ERR_JUKEBOX is not listed as a
+return value for any of the procedures: I'm sure that it would come as a
+surprise to most server implementors if you were to disallow its use
+solely on those grounds.
 
-This has been interpreted in discussions here as a loophole that allows
-the server to return any of the defined NFS errors for any of the calls
-at its discretion.
+> I don't know why the server returns NFSERR_STALE instead of NFSERR_ACCES,
+> but RFC compliance is not a good reason.
 
-I don't know why the server returns NFSERR_STALE instead of NFSERR_ACCES,
-but RFC compliance is not a good reason.
+Right. It is quite simply a bug...
 
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+NFS3ERR_STALE can be returned if the server unexports the filesystem
+("revokes access") but here we are talking about a pure credential-based
+access check, and so NFS3ERR_ACCES is the correct return value.
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
