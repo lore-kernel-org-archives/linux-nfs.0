@@ -1,23 +1,24 @@
-From: Johan van den Dorpe <johan.vandendorpe@framestore-cfc.com>
-Subject: Re: rpc.mountd stops functioning
-Date: Thu, 05 Aug 2004 12:55:37 +0100
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: ETIMEDOUT in nfsd?
+Date: Thu, 5 Aug 2004 10:21:59 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <41122039.9040907@framestore-cfc.com>
-References: <411217BE.8070209@framestore-cfc.com>
+Message-ID: <20040805142159.GB25948@fieldses.org>
+References: <20040803081503.GM5581@sgi.com> <20040803191610.GC7781@fieldses.org> <20040804073500.GP5581@sgi.com> <20040804141346.GA19282@fieldses.org> <20040805022608.GR5581@sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BsgrD-00050u-5g
-	for nfs@lists.sourceforge.net; Thu, 05 Aug 2004 04:56:27 -0700
-Received: from gw.fs-cfc.co.uk ([193.203.83.22])
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.34)
-	id 1BsgrC-0006V2-G4
-	for nfs@lists.sourceforge.net; Thu, 05 Aug 2004 04:56:27 -0700
-To: Johan van den Dorpe <johan.vandendorpe@framestore-cfc.com>
-In-Reply-To: <411217BE.8070209@framestore-cfc.com>
+	id 1Bsj86-0007M3-4C
+	for nfs@lists.sourceforge.net; Thu, 05 Aug 2004 07:22:02 -0700
+Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.34)
+	id 1Bsj85-0008ET-Ml
+	for nfs@lists.sourceforge.net; Thu, 05 Aug 2004 07:22:02 -0700
+To: Greg Banks <gnb@sgi.com>
+In-Reply-To: <20040805022608.GR5581@sgi.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,52 +31,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I clicked send a bit fast. Other info:
+On Thu, Aug 05, 2004 at 12:26:08PM +1000, Greg Banks wrote:
+> On Wed, Aug 04, 2004 at 10:13:46AM -0400, J. Bruce Fields wrote:
+> > So from the point of view
+> > of the NFS server code, it does look like a retry, but the NFS client
+> > isn't involved--the server rpc code did the retry on its own.
+> 
+> Aha...I see now.
+> 
+> > This is only right if upcalls are done before you've done anything
+> > non-idempotent, which makes it hard to handle NFSv4 compounds
+> > correctly.
+> 
+> Ouch, this is not a good assumption, especially considering servers
+> rebooting and cache timeouts.
 
-Running RHEL 3 with 2.4.25 vanilla kernel. nfs-utils-1.0.5
+I don't see the problem you're referring to.  I don't believe that in
+either case these internal replays add any problems that we don't
+already have, but perhaps I'm missing something.
 
-Experienced the problem in the past with Red Hat 7.3 with same 2.4.25 
-kernel and 2.4.20 kernel + XFS patches + Trond's all patch for 2.4.20. 
-Tried nfs-utils 0.3.3 and 1.0.6
+> > > Why not send EJUKEBOX to the client, and let it manage retry using a
+> > > retry strategy designed for a slow server instead of the one designed
+> > > for lossy networks?
+> > 
+> > That might mean returning EJUKEBOX on a lot of common operations (e.g.
+> > on the first rpc request from a new client), when the server usually
+> > could have replied very quickly.
+> 
+> Potentially.  But, in your experience do idmapper upcalls proceed quickly?
 
-Johan van den Dorpe wrote:
-> Hello,
-> 
-> For a long time we've been experiencing problems with rpc.mountd 
-> stopping functioning.
-> 
-> I'm finding it hard to pinpoint the precise circumstances where we 
-> encounter a problem, but here is what we have observed:
-> 
-> - A mount request, or a showmount -e, to the server will hang
-> 
-> - The server will print a log message authenticating the mount request
-> 
-> - The server doesn't print log messages that it has authenticated 
-> unmount requests.
-> 
-> - Killing rpc.mountd and then restarting it fixes the problem (I've not 
-> tried a HUP)
-> 
-> - There is a correlation between the number of mounts being handled 
-> (i.e. the number of entries in rmtab) and the frequency of the problem.
-> 
-> - The problem only occurs on servers that are mounted by a significant 
-> number of hosts (500-700).
-> 
-> - The more exports on the server, the more frequently the problem occurs.
-> 
-> - It should be noted that clients are mounting subdirectories of a 
-> single exported filesystem, so number of rmtab entries > number of xtab 
-> entries.
-> 
-> - Clearing the rmtab and restarting nfs (service nfs restart) seems to 
-> provide the longest time between failures.
-> 
+It's a good question; it would be interesting to measure them sometime
+with a variety of different configurations (local /etc/passwd, ldap,
+etc.), but we haven't gotten around to that yet.
 
-
--- 
-Johan van den Dorpe
+--Bruce Fields
 
 
 -------------------------------------------------------
