@@ -1,22 +1,20 @@
-From: Dave Ingram <davei@wolfram.com>
-Subject: recursive NFS export of mounted ISO images
-Date: Wed, 23 Oct 2002 14:51:49 -0500 (CDT)
+From: seth vidal <skvidal@phy.duke.edu>
+Subject: Re: recursive NFS export of mounted ISO images
+Date: 23 Oct 2002 16:07:09 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0210231440430.31286-100000@wopr.wolfram.com>
+Message-ID: <1035403629.31676.34.camel@opus>
+References: <Pine.LNX.4.44.0210231440430.31286-100000@wopr.wolfram.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature";
+	boundary="=-Nsp8x+CB3AM0NgPRFsIa"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from wri-dns0.wolfram.com ([140.177.205.10] helo=wolfram.com)
+Received: from mail.phy.duke.edu ([152.3.182.2])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 184RYz-0001HT-00
-	for <nfs@lists.sourceforge.net>; Wed, 23 Oct 2002 12:53:10 -0700
-Received: from wopr.wolfram.com (wopr.wolfram.com [140.177.10.29])
-	by wolfram.com (8.11.2/8.11.2) with ESMTP id g9NJqug16646
-	for <nfs@lists.sourceforge.net>; Wed, 23 Oct 2002 14:52:56 -0500
-Received: from localhost (davei@localhost)
-	by wopr.wolfram.com (8.11.6/8.11.6) with ESMTP id g9NJpnN31823
-	for <nfs@lists.sourceforge.net>; Wed, 23 Oct 2002 14:51:49 -0500
-To: nfs@lists.sourceforge.net
+	id 184Rma-0005hI-00
+	for <nfs@lists.sourceforge.net>; Wed, 23 Oct 2002 13:07:12 -0700
+To: Dave Ingram <davei@wolfram.com>
+In-Reply-To: <Pine.LNX.4.44.0210231440430.31286-100000@wopr.wolfram.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,68 +28,98 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-	Hello, we're trying to do something a little odd in NFS that I 
-don't believe is currently possible. However, I have seen in the mail 
-archives that Neil Brown discussed this back in 7-4-2001.
+--=-Nsp8x+CB3AM0NgPRFsIa
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-	The problem is this:
+On Wed, 2002-10-23 at 15:51, Dave Ingram wrote:
+>=20
+> 	Hello, we're trying to do something a little odd in NFS that I=20
+> don't believe is currently possible. However, I have seen in the mail=20
+> archives that Neil Brown discussed this back in 7-4-2001.
+>=20
+> 	The problem is this:
+>=20
+> 	We have a huge RAID system that houses, among other things, many=20
+> ISO image files.
+>=20
+> 	The quality assurance people would like to have a "virtual=20
+> jukebox" that is distributed via NFS to our large array of test machines.=
+=20
+> This jukebox would contain the mounted ISO images.
+>=20
+> 	However, currently there is no way to have a single parent=20
+> directory distributed over NFS that will propogate its mounted contents.=20
+> One must currently define an explicit mount point in /etc/exports (eg:=20
+> /Jukebox/M-LINUX-L/6.0.0/187885). Additionally, the client must know the=20
+> explicit mount point to properly mount this shared image.
+>=20
+> 	This is a problem when you want to have several hundred (well, no=20
+> more than 255 theoretically because of the 8-bit 'minor' device issue wit=
+h=20
+> loop devices) ISO images that you'd like to distribute, because you then=20
+> are responsible for maintaining EVERY explicit mount point for each image=
+,=20
+> both on the server and each client.
+>=20
+> 	Even more frustrating is the fact that this is going to be an=20
+> automated dynamic process. That is - as ISO images are automatically buil=
+t=20
+> by other systems, we'll want to mount and export their contents=20
+> automatically. Likewise, we'll need to prune existing ISO images and thei=
+r=20
+> respective mounts.
+>=20
+> 	And, there is no way for the client-side to "know" each mount=20
+> point in an automated fashion. That is - if the ISO builder system=20
+> generates a new ISO image, mounts it, and distributes it, there is now a=20
+> unique mount point that the client can't programatically determine.
+>=20
+> 	So - why the heck am I bothering NFS people with this?
+>=20
+> 	Because I am wondering if there is a way to simply have ONE mount=20
+> point exported and mounted on the client side, and have it recursively=20
+> inherit each of the mounted image directories within it.
+>=20
+> 	Also - for those who are asking, "Hey dummy - why don't you just=20
+> mount the images on the NFS server, then copy their contents into /Jukebo=
+x=20
+> in the appropriate directory?!". Well, because our quality assurance=20
+> people would like to work with the EXACT files that are going to get=20
+> burned to CD if the build is a success. Copying the files introduces an=20
+> extra step that makes them nervous. Plus - every ISO image whose contents=
+=20
+> we must actually COPY means another 600+ megs we have to allocate disk to=
+.
+>=20
+> 	Thoughts, anyone?
+>=20
+> 	If all you can say is, "That's impossible" or "You're a moron" -=20
+> your reply will find its way into /dev/null. :-)
+>=20
 
-	We have a huge RAID system that houses, among other things, many 
-ISO image files.
+You might be able to work some dark magic with autofs over the nfs
+exported locations.
 
-	The quality assurance people would like to have a "virtual 
-jukebox" that is distributed via NFS to our large array of test machines. 
-This jukebox would contain the mounted ISO images.
+look into how autofs functions - I think it might just be possible if
+you're not afraid of some painful thinking.
 
-	However, currently there is no way to have a single parent 
-directory distributed over NFS that will propogate its mounted contents. 
-One must currently define an explicit mount point in /etc/exports (eg: 
-/Jukebox/M-LINUX-L/6.0.0/187885). Additionally, the client must know the 
-explicit mount point to properly mount this shared image.
+-sv
 
-	This is a problem when you want to have several hundred (well, no 
-more than 255 theoretically because of the 8-bit 'minor' device issue with 
-loop devices) ISO images that you'd like to distribute, because you then 
-are responsible for maintaining EVERY explicit mount point for each image, 
-both on the server and each client.
 
-	Even more frustrating is the fact that this is going to be an 
-automated dynamic process. That is - as ISO images are automatically built 
-by other systems, we'll want to mount and export their contents 
-automatically. Likewise, we'll need to prune existing ISO images and their 
-respective mounts.
+--=-Nsp8x+CB3AM0NgPRFsIa
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
 
-	And, there is no way for the client-side to "know" each mount 
-point in an automated fashion. That is - if the ISO builder system 
-generates a new ISO image, mounts it, and distributes it, there is now a 
-unique mount point that the client can't programatically determine.
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.0.7 (GNU/Linux)
 
-	So - why the heck am I bothering NFS people with this?
+iD8DBQA9twFt1Aj3x2mIbMcRAlkrAJ431MkoynMF6MBKpNhcsZnSos87DgCgjm8C
+N0S5ZyMXrccwtqR9OlGt1/s=
+=opZ/
+-----END PGP SIGNATURE-----
 
-	Because I am wondering if there is a way to simply have ONE mount 
-point exported and mounted on the client side, and have it recursively 
-inherit each of the mounted image directories within it.
-
-	Also - for those who are asking, "Hey dummy - why don't you just 
-mount the images on the NFS server, then copy their contents into /Jukebox 
-in the appropriate directory?!". Well, because our quality assurance 
-people would like to work with the EXACT files that are going to get 
-burned to CD if the build is a success. Copying the files introduces an 
-extra step that makes them nervous. Plus - every ISO image whose contents 
-we must actually COPY means another 600+ megs we have to allocate disk to.
-
-	Thoughts, anyone?
-
-	If all you can say is, "That's impossible" or "You're a moron" - 
-your reply will find its way into /dev/null. :-)
-
-Dave
-
--- 
-Dave Ingram
-Tools and Automation Engineer
-Wolfram Research
-217-398-0700 x776
+--=-Nsp8x+CB3AM0NgPRFsIa--
 
 
 
