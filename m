@@ -1,19 +1,19 @@
 From: Steffen Persvold <sp@scali.com>
 Subject: Re: Input/output error on hard mounted NFS directory
-Date: Tue, 14 May 2002 16:00:14 +0200 (CEST)
+Date: Tue, 14 May 2002 16:01:32 +0200 (CEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.33.0205141559380.28246-100000@sp-home.isdn.scali.no>
-References: <shsadr2gacv.fsf@charged.uio.no>
+Message-ID: <Pine.LNX.4.33.0205141600370.28246-100000@sp-home.isdn.scali.no>
+References: <Pine.LNX.4.44.0205140618080.21683-100000@glenfiddich.cse.ogi.edu>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: NFS mailinglist <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from elin.scali.no ([62.70.89.10])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 177cvr-0004U0-00
-	for <nfs@lists.sourceforge.net>; Tue, 14 May 2002 07:05:39 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <shsadr2gacv.fsf@charged.uio.no>
+	id 177cx7-0004bh-00
+	for <nfs@lists.sourceforge.net>; Tue, 14 May 2002 07:06:57 -0700
+To: Paul Heinlein <heinlein@cse.ogi.edu>
+In-Reply-To: <Pine.LNX.4.44.0205140618080.21683-100000@glenfiddich.cse.ogi.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,34 +26,22 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On 14 May 2002, Trond Myklebust wrote:
+On Tue, 14 May 2002, Paul Heinlein wrote:
 
-> >>>>> " " == Steffen Persvold <sp@scali.com> writes:
+> On Tue, 14 May 2002, Steffen Persvold wrote:
 >
->      > On 14 May 2002, Trond Myklebust wrote:
->     >> >>>>> " " == Steffen Persvold <sp@scali.com> writes:
->     >>
->     >> > The error I get here is :
->     >>
->     >> > #     Creating static library Linux2.ia64.gnu/libmpi.a ...
->     >> > #     Creating shared library Linux2.ia64.gnu/libmpi.so ...
->     >> > /usr/bin/ld: final link failed: Stale NFS file handle
->     >> > collect2: ld returned 1 exit status make[4]: ***
->     >> > [Linux2.ia64.gnu/libmpi.a] Error 1
->     >>
->     >>
->     >> Stale file handle has nothing to do with EIO. That looks more
->     >> like a server bug. Are you perchance using nfs-server?
+> > The relevant /proc/mounts looks like this :
+> >
+> > huey:/export/home/sp /home/sp nfs rw,v3,rsize=8192,wsize=8192,intr,addr=huey 0 0
 >
->      > No, I'm using a standard RH 7.2 server with knfsd (and
->      > nfs-utils-0.3.1-13.7.2.1). rpc.nfsd is started with 48 servers.
->
-> What is the filesystem you are using on the server? Would it be an old
-> ReiserFS 3.5 format disk? If so, you should consider upgrading it to a
-> 3.6 format disk. See the manpage for 'mount -oconv' at www.namesys.com
+> Pardon my asking a question that's likely irrelevant -- but why are
+> your {r,w}size settings stuck at 8k? I've never done any transfer-size
+> testing under a 2.2.x kernel, but won't it negotiate something closer
+> to 32k when running nfs v3?
 >
 
-It is ext2 (used to be ext3, but I changed back).
+I believe the maximum for NFS messages sizes is still 8k (unless you have
+Trond's rpc-twaks.diff).
 
 Regards,
 -- 
