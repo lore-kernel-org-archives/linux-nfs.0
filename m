@@ -1,24 +1,22 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: usr/sbin/rpc.mountd and mountd of a build
-Date: Tue, 5 Oct 2004 11:48:58 -0400
+From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
+Subject: lustre + userspace nfs?
+Date: Tue, 05 Oct 2004 09:20:43 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20041005154858.GB3835@fieldses.org>
-References: <BAY14-F26idcDjoYAPN00000331@hotmail.com>
+Message-ID: <1096993243.4460.723.camel@tesuji.nac.uci.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain
+Cc: Dan Stromberg <strombrg@dcs.nac.uci.edu>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CErZq-0005NW-5f
-	for nfs@lists.sourceforge.net; Tue, 05 Oct 2004 08:50:10 -0700
-Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	id 1CEs4E-0005IW-GP
+	for nfs@lists.sourceforge.net; Tue, 05 Oct 2004 09:21:34 -0700
+Received: from dcs.nac.uci.edu ([128.200.34.32] ident=root)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1CErYh-0006eS-RP
-	for nfs@lists.sourceforge.net; Tue, 05 Oct 2004 08:50:10 -0700
-To: John Que <qwejohn@hotmail.com>
-In-Reply-To: <BAY14-F26idcDjoYAPN00000331@hotmail.com>
+	id 1CEs3U-0007Oj-Ke
+	for nfs@lists.sourceforge.net; Tue, 05 Oct 2004 09:21:34 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,22 +29,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, Oct 05, 2004 at 04:46:42PM +0200, John Que wrote:
-> I had build the nfs-utils-1.0.6.tar.gz by standard ./configure && make
-> the file rpc.mountd does not exist in the build tree; there is
-> a file named mountd under /utils/mountd
-> 
-> I suspect they are the same file; am I right ?
 
-Yes.
+Is this an appropriate mailing list for discussion of the linux
+userspace NFS implementation?
 
-> why is it named rpc.mountd and not mountd ?
-> If I'll to make install , will it copy mountd to /usr/sbin/rpc.mountd
+We've been trying to serve out, over NFS, a 30 terrabyte Lustre
+filesystem.
 
-Yes.  See the "PREFIX" variable in utils/mountd/Makefile (and its use in 
-the install target in rules.mk).
+Lustre and NFS (at least, the in-kernel implementation of NFS) have not
+been playing nicely together.  The Lustre vendor, ClusterFS, indicates
+that their app is sturdy with userspace applications, and that it's just
+because NFS is in-kernel that we're having troubles.
 
---b.
+I'm wondering if using the userspace NFS implementation might get us
+around these problems, and if so, would it be stable, and would it be
+appreciably slower?
+
+Thanks.
+
+-- 
+Dan Stromberg DCS/NACS/UCI <strombrg@dcs.nac.uci.edu>
+
+
 
 
 -------------------------------------------------------
