@@ -1,25 +1,27 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: [PATCH / RFC] nfs-utils: High Availability NFS
-Date: Tue, 31 Aug 2004 16:51:39 +1000
+From: "Lever, Charles" <cel@netapp.com>
+Subject: NFS FAQ updates
+Date: Tue, 31 Aug 2004 05:36:32 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16692.8187.411591.69640@cse.unsw.edu.au>
-References: <4124DB86.9060505@steeleye.com>
-	<16677.22269.988036.787320@cse.unsw.edu.au>
-	<412E1C10.5020703@steeleye.com>
+Message-ID: <482A3FA0050D21419C269D13989C61130435E71F@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C22Uj-0006Ua-Ea
-	for nfs@lists.sourceforge.net; Mon, 30 Aug 2004 23:51:53 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1C22Ui-0007yb-R1
-	for nfs@lists.sourceforge.net; Mon, 30 Aug 2004 23:51:53 -0700
-To: Paul Clements <paul.clements@steeleye.com>
-In-Reply-To: message from Paul Clements on Thursday August 26
+	id 1C27sU-0003hK-1T
+	for nfs@lists.sourceforge.net; Tue, 31 Aug 2004 05:36:46 -0700
+Received: from mx01.netapp.com ([198.95.226.53])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
+	id 1C27sS-0004X7-Gn
+	for nfs@lists.sourceforge.net; Tue, 31 Aug 2004 05:36:45 -0700
+Received: from hawk.corp.netapp.com (hawk [10.57.156.122])
+	by mx01.netapp.com (8.12.10/8.12.10/NTAP-1.4) with ESMTP id i7VCaXFC009007
+	for <nfs@lists.sourceforge.net>; Tue, 31 Aug 2004 05:36:37 -0700 (PDT)
+Received: from svlexc01.hq.netapp.com (svlexc01.corp.netapp.com [10.57.156.135])
+	by hawk.corp.netapp.com (8.12.9/8.12.9/NTAP-1.5) with ESMTP id i7VCaXHv010418
+	for <nfs@lists.sourceforge.net>; Tue, 31 Aug 2004 05:36:33 -0700 (PDT)
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,44 +34,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thursday August 26, paul.clements@steeleye.com wrote:
-> Hi all,
-> 
-> I've recently coded up some modifications to nfs-utils that will
-> allow the tools to be used in a High Availability NFS environment
-> (i.e., capable of switching and failing over NFS exports from
-> one server to another, while still preserving client connections
-> and file locks). The modifications are in the form of callout
-> hooks in statd and mountd. Any HA NFS implementation may take
-> advantage of these hooks since the actual content of the callout
-> programs will not be dictated by nfs-utils, but rather will be
-> left up to the HA cluster software implementor.
+hi -
 
-I'm mostly happy with this patch.
-I'd like to ask for two changes before it gets committed.
+i'm considering a series of updates to the FAQ, including adding more
+information about NFSv4 and NFS with Kerberos, and removing the 2.2
+specific information in the document.
 
-First - update the relevant man pages to explain -H and SIGUSR1
-usage. 
+removing the 2.2 items seems possibly controversial, so let me ask here:
+does that seem like a reasonable thing to do now?
 
-Second, I have a pathological aversion to "system(3)" for this sort
-of task.  I start worrying about stray quotes and other magic
-characters.
-I would much prefer something like:
-
-  sprintf(buf, "%.8x" args3)
-  switch(pid=fork()) {
-	case 0: execl(ha_callout_prog,"callout",arg1,arg2,buf,NULL);
-		exit(1);
-	case -1: perror(PROGNAME ": fork"); break;
-	default: waitpid(pid, NULL, 0);
-  }
-
-Also, I would really prefer the count was passed in decimal (%d) - it
-is more traditional.  If hex is needed, the program can convert it.
-(why it is hex in "rmtab" I really don't know)....
-But I could probably be talked into hex if you try.
-
-NeilBrown
+        - Chuck Lever
+--
+corporate:     <cel at netapp dot com>
+personal:      <chucklever at bigfoot dot com>
 
 
 -------------------------------------------------------
