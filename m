@@ -1,30 +1,27 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] detecting overflows in nfs_statfs
-Date: Mon, 28 Jun 2004 07:20:53 -0400
+From: Vincent ROQUETA <vincent.roqueta@ext.bull.net>
+Subject: Re: [PATCH] oops when unloading sunrpc module.
+Date: Mon, 28 Jun 2004 14:09:49 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <40DFFF15.5010909@RedHat.com>
-References: <40C74615.5070605@RedHat.com>
+Message-ID: <200406281409.49253.vincent.roqueta@ext.bull.net>
+References: <Pine.LNX.4.58.0406241542480.2427@localhost.localdomain>
+Reply-To: vincent.roqueta@ext.bull.net
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------050009030606080607000909"
+Content-Type: text/plain;
+  charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BeuC5-0001s4-Jw
-	for nfs@lists.sourceforge.net; Mon, 28 Jun 2004 04:21:01 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.34)
-	id 1BeuC5-0001QI-5Z
-	for nfs@lists.sourceforge.net; Mon, 28 Jun 2004 04:21:01 -0700
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.12.10/8.12.10) with ESMTP id i5SBKse1026654
-	for <nfs@lists.sourceforge.net>; Mon, 28 Jun 2004 07:20:54 -0400
-Received: from RedHat.com (vpn64-8.boston.redhat.com [172.16.66.8])
-	by int-mx1.corp.redhat.com (8.11.6/8.11.6) with ESMTP id i5SBKr020793
-	for <nfs@lists.sourceforge.net>; Mon, 28 Jun 2004 07:20:53 -0400
+	id 1BeusT-0007Nf-TN
+	for nfs@lists.sourceforge.net; Mon, 28 Jun 2004 05:04:49 -0700
+Received: from ecbull20.frec.bull.fr ([129.183.4.3])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
+	id 1BeusO-0000LM-CO
+	for nfs@lists.sourceforge.net; Mon, 28 Jun 2004 05:04:49 -0700
+Received: from roquetav (roquetav.frec.bull.fr [129.183.101.52])
+	by ecbull20.frec.bull.fr (8.9.2/8.9.1) with ESMTP id OAA18192
+	for <nfs@lists.sourceforge.net>; Mon, 28 Jun 2004 14:05:39 +0200
 To: nfs@lists.sourceforge.net
-In-Reply-To: <40C74615.5070605@RedHat.com>
+In-Reply-To: <Pine.LNX.4.58.0406241542480.2427@localhost.localdomain>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -37,111 +34,84 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
---------------050009030606080607000909
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-
-Steve Dickson wrote:
-
-> Here is 2.4  patch that allows nfs_statfs() to detect values that are
-> too large to deal with (i.e. > 32bit on a 32bit machine).  So instead
-> of returning garbage (as it does today), it returns all -1 which
-> commands (like df) know how interpret. For example:
-> df without the patch
+Le Vendredi 25 Juin 2004 00:49, Sridhar Samudrala a =E9crit :
+> I am seeing the following warning message followed by a oops when unloadi=
+ng
+> sunrpc module in linux 2.6.7. This happens only if lock operations are
+> performed on a file that is mounted on the client before unloading nfs
+> modules.
 >
-> Filesystem           1K-blocks      Used Available Use% Mounted on
-> pdl585-1:/           7108754432 -147573952589283246080 33966574080 
-> 101% /mnt/dl585-1
+> Badness in remove_proc_entry at fs/proc/generic.c:685
+>  [<c018e799>] remove_proc_entry+0x109/0x150
+>  [<d091dfdc>] rpc_proc_exit+0x3c/0x50 [sunrpc]
+>  [<c0134386>] sys_delete_module+0x176/0x1b0
+>  [<c014c2d8>] do_munmap+0x178/0x1e0
+>  [<c010462b>] syscall_call+0x7/0xb
 >
-> df with the patch:
-> Filesystem           1K-blocks      Used Available Use% Mounted on
-> pdl585-1:/                   1         1         1   0% /mnt/dl585-1
+> Unable to handle kernel paging request at virtual address d0929c74
+>  printing eip:
+> c01258d0
+> *pde =3D 0fdc0067
+> *pte =3D 00000000
+> Oops: 0000 [#1]
+> PREEMPT SMP
+> Modules linked in: netconsole 3c59x e100
+> CPU:    0
+> EIP:    0060:[<c01258d0>]    Not tainted
+> EFLAGS: 00010006   (2.6.7)
+> EIP is at cascade+0x30/0x70
+> eax: cb5afeb8   ebx: d0929c58   ecx: 0009c000   edx: c1202e04
+> esi: c12030e4   edi: c12025a0   ebp: 00000027   esp: c0383f10
+> ds: 007b   es: 007b   ss: 0068
+> Process swapper (pid: 0, threadinfo=3Dc0382000 task=3Dc030b180)
+> Stack: c12025a0 cfdb01f0 c12025a0 00000000 0000000a c0382000 c0125fa7
+> c12025a0 c1202fac 00000027 c030dc8c c0382000 c0383f40 c0383f40 00000000
+> 00000001 c0381008 0000000a c0383f94 c0121527 c0381008 00000046 00000000
+> c03a70a4 Call Trace:
+>  [<c0125fa7>] run_timer_softirq+0x197/0x1e0
+>  [<c0121527>] __do_softirq+0xb7/0xc0
+>  [<c012155d>] do_softirq+0x2d/0x30
+>  [<c0111a47>] smp_apic_timer_interrupt+0xe7/0x160
+>  [<c0102310>] default_idle+0x0/0x40
+>  [<c010501a>] apic_timer_interrupt+0x1a/0x20
+>  [<c0102310>] default_idle+0x0/0x40
+>  [<c010233d>] default_idle+0x2d/0x40
+>  [<c01023d6>] cpu_idle+0x46/0x50
+>  [<c0384919>] start_kernel+0x179/0x1b0
+>  [<c0384380>] unknown_bootoption+0x0/0x140
 >
-> Which should be fairly obvious that something went wrong.....
+> Code: 39 7b 1c 89 d8 75 21 8b 1b 89 3c 24 89 44 24 04 e8 9b f9 ff
+>  <0>Kernel panic: Fatal exception in interrupt
+> In interrupt handler - not syncing
 >
-> Comments?
+> The following simple patch fixes the problem.
 >
-> Maybe this issue has already been address on the list (I know Olaf
-> recently sent out a 2.6 patch) but if it hasn't.... maybe this is 
-> something
-> Marcelo would be interested in?
+> diff -Nru a/fs/nfsd/lockd.c b/fs/nfsd/lockd.c
+> --- a/fs/nfsd/lockd.c   Thu Jun 24 15:38:29 2004
+> +++ b/fs/nfsd/lockd.c   Thu Jun 24 15:38:29 2004
+> @@ -40,7 +40,6 @@
+>                 mntget(filp->f_vfsmnt);
+>         }
+>         fh_put(&fh);
+> -       rqstp->rq_client =3D NULL;
+>         exp_readunlock();
+>         /* nlm and nfsd don't share error codes.
+>          * we invent: 0 =3D no error
 >
-This is an update to the previous patch that 1) always sets f_namelen
-to a valid value since apps could be depending on it and 2) f_files
-and f_ffree are set to -1 on any an overflows.
+> I am not sure why rqstp->rq_client is set to NULL in nlm_fopen. This
+> results in leaking of auth_domain cache entries.
+> I think we should do a auth_domain_put() before clearing rq_client. This =
+is
+> done in the release function(eg:svcauth_unix_release).
+>
+> Thanks
+> Sridhar
+>
 
-SteveD.
+This bug appends only on the server or the client is also concerned ?
 
+Vincent
 
-
---------------050009030606080607000909
-Content-Type: text/plain;
- name="linux-2.4.21-nfs-eoverflow4.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="linux-2.4.21-nfs-eoverflow4.patch"
-
---- linux-2.4.21/fs/nfs/inode.c.orig	2004-06-09 12:52:29.000000000 -0400
-+++ linux-2.4.21/fs/nfs/inode.c	2004-06-16 21:14:37.000000000 -0400
-@@ -593,6 +593,7 @@ out_fail:
- 	return NULL;
- }
- 
-+#define TOOBIG(_arg) ((_arg) > LONG_MAX)
- static int
- nfs_statfs(struct super_block *sb, struct statfs *buf)
- {
-@@ -605,24 +606,44 @@ nfs_statfs(struct super_block *sb, struc
- 
- 	error = server->rpc_ops->statfs(server, NFS_FH(sb->s_root->d_inode), &res);
- 	buf->f_type = NFS_SUPER_MAGIC;
--	if (error < 0)
-+	if (error < 0) {
-+		printk("nfs_statfs: statfs error = %d\n", -error);
- 		goto out_err;
-+	}
- 
- 	buf->f_bsize = sb->s_blocksize;
- 	blockbits = sb->s_blocksize_bits;
- 	blockres = (1 << blockbits) - 1;
-+	buf->f_namelen = server->namelen;
-+
-+	/*
-+	 * Make sure things fit
-+	 */
-+	if (TOOBIG(((res.tbytes + blockres) >> blockbits)))
-+		goto too_big;
-+	if (TOOBIG(((res.fbytes + blockres) >> blockbits)))
-+		goto too_big;
-+	if (TOOBIG(((res.abytes + blockres) >> blockbits)))
-+		goto too_big;
-+	if (TOOBIG(res.tfiles) || TOOBIG(res.afiles))
-+		goto too_big;
-+
- 	buf->f_blocks = (res.tbytes + blockres) >> blockbits;
- 	buf->f_bfree = (res.fbytes + blockres) >> blockbits;
- 	buf->f_bavail = (res.abytes + blockres) >> blockbits;
- 	buf->f_files = res.tfiles;
- 	buf->f_ffree = res.afiles;
--	buf->f_namelen = server->namelen;
- 	return 0;
-+
-+ too_big:
-+ 	dprintk("nfs_statfs: failed: EOVERFLOW\n");
-+	buf->f_files = buf->f_ffree = -1;
-+
-  out_err:
--	printk("nfs_statfs: statfs error = %d\n", -error);
- 	buf->f_bsize = buf->f_blocks = buf->f_bfree = buf->f_bavail = -1;
- 	return 0;
- }
-+#undef TOOBIG
- 
- static int nfs_show_options(struct seq_file *m, struct vfsmount *mnt)
- {
-
---------------050009030606080607000909--
 
 
 -------------------------------------------------------
