@@ -1,24 +1,26 @@
-From: Minerva Calderon <mc@srl.caltech.edu>
-Subject: Solaris NFS server and Linux Client.
-Date: Mon, 14 Jun 2004 16:47:10 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS client does not report accurate mtime when mtime is 0
+Date: Mon, 14 Jun 2004 19:53:53 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200406142347.i5ENlAMD005798@lodur.srl.caltech.edu>
-Reply-To: Minerva Calderon <mc@srl.caltech.edu>
+Message-ID: <1087257233.3894.45.camel@lade.trondhjem.org>
+References: <200406141657.i5EGvL812308@rda07.lmcg.wisc.edu>
+	 <16590.12362.453055.998493@cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: TEXT/plain; charset=us-ascii
+Content-Type: text/plain; charset=iso-8859-1
+Cc: Daniel Forrest <forrest@lmcg.wisc.edu>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ba1AV-0002Sc-20
-	for nfs@lists.sourceforge.net; Mon, 14 Jun 2004 16:47:11 -0700
-Received: from lodur.srl.caltech.edu ([131.215.120.1])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ba1AU-0008Oy-Q4
-	for nfs@lists.sourceforge.net; Mon, 14 Jun 2004 16:47:10 -0700
-Received: from lodur.srl.caltech.edu (lodur.srl.caltech.edu [131.215.120.1])
-	by lodur.srl.caltech.edu (8.12.9/8.12.9) with SMTP id i5ENlAMD005798
-	for <nfs@lists.sourceforge.net>; Mon, 14 Jun 2004 16:47:10 -0700 (PDT)
-To: nfs@lists.sourceforge.net
+	id 1Ba1H2-0003ch-KV
+	for nfs@lists.sourceforge.net; Mon, 14 Jun 2004 16:53:56 -0700
+Received: from dh132.citi.umich.edu
+	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.30)
+	id 1Ba1H2-0001Ym-Ad
+	for nfs@lists.sourceforge.net; Mon, 14 Jun 2004 16:53:56 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <16590.12362.453055.998493@cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,24 +33,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+P=E5 m=E5 , 14/06/2004 klokka 19:10, skreiv Neil Brown:
 
+> The simplest fix is probably to add:
+>=20
+> 	inode->i_mtime =3D 0;
+>=20
+> near the top of nfs_read_inode in fs/nfs/inode.c
 
+Ah... That indeed looks plausible.
 
-I have a 3.0TB partition on a Solaris 9.0 server which is NFS mounted on
-a Linux 7.2 client. When processing on the linux clients old directories
-on these partition dissapear.  The directories can be listed on the server.
-When the job is reran on the client after failure the directories appear
-again.
+It's probably better to fix nfs_fill_inode() though. We want to make
+sure it initializes all fields of the inode regardless of what checks
+made by nfs_refresh_inode().
 
-Any comments or suggestions will be appreciated.
+I'll code up a patch after dinner.
 
-Thanks,
-
-Minerva
-
-Linux: 7.2  Filesystem type ext3
-Solaris 9.0  Filesystem ufs
-
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
