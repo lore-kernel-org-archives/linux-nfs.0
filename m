@@ -1,16 +1,19 @@
-From: Spencer Shepler <shepler@eng.sun.com>
-Subject: Re: NFS v4 questions
-Date: Wed, 10 Apr 2002 15:43:12 -0500
+From: Steffen Persvold <sp@scali.com>
+Subject: Re: IRIX NFS server and Linux NFS client
+Date: Thu, 11 Apr 2002 12:22:39 +0200 (CEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020410154312.N100393@dhcp-aus08-191.sun.com>
-References: <3CB44D46.6020401@linkvest.com>
-Reply-To: shepler@eng.sun.com
+Message-ID: <Pine.LNX.4.30.0204111218440.30970-100000@elin.scali.no>
+References: <Pine.LNX.4.30.0204110928530.28565-100000@elin.scali.no>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: NFS@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: <linux-kernel@vger.kernel.org>, <trond.myklebust@fys.uio.no>
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: Jean-Eric Cuendet <jean-eric.cuendet@linkvest.com>
-In-Reply-To: <3CB44D46.6020401@linkvest.com>
+Received: from elin.scali.no ([62.70.89.10])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 16vbj1-000666-00
+	for <nfs@lists.sourceforge.net>; Thu, 11 Apr 2002 03:22:44 -0700
+To: <nfs@lists.sourceforge.net>
+In-Reply-To: <Pine.LNX.4.30.0204110928530.28565-100000@elin.scali.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -23,34 +26,32 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Wed, Jean-Eric Cuendet wrote:
-> Hi,
-> I have questions related to NFSv4
-> Will NFSv4 be able to check file access on a per file basis or like with 
-> NFSv3, on a per share basis?
-> Will NFSv4 be like AFS or SMB speaking of ACL? And speaking of file 
-> access? (Like /afs available to anyone but files/dirs in it being 
-> checked for permissions on a file basis based on the krb5/afs ticket)
+On Thu, 11 Apr 2002, Steffen Persvold wrote:
 
-An NFS server generally share/exports a particular filesystem resource
-to clients; this has not changed with NFSv4.  In fact, NFSv4 does not
-specify exactly how resources are determined for access by a set of
-clients.  However, most implementations will continue to follow the
-model of exporting a particular directory and the contents underneath
-that directory.  Most implementations that I am aware of will continue
-with the model of exporting to a set of clients but this is not
-necessary.  With the use of kerberos/spkm3/lipkey, an NFS server can
-verify a user's credentials against directory/file ownership to
-enforce appropriate access.
+> Hi all,
+>
+> Is there any reason why my Linux NFS client (kernel 2.4.18
+> nfs-utils-0.3.1-13.7.2.1 from RedHat 7.2) is not able to mount a directory
+> exported from an IRIX server in NFSv3 (not sure which version of IRIX
+> yet, if this is important I will find out). NFSv2 works fine, but if I
+> try to force NFSv3 I get "Connection refused".
+>
+> I'll appreciate any help.
+>
 
-NFSv4 does define an ACL attribute so the client and server have a
-mechanism to get and set the ACLs for a directory/file.  However, ACL
-can always be applied to the server's filesystem objects directly and
-will be enforced there regardless of support in the filesystem
-protocol.
+I forgot to mention that NFSv3 works when an IRIX client mounts the same
+directory (i.e the directory shows up as "nfs" and not "nfs2" in the mount
+table on the IRIX client).
 
+Could it be that IRIX only supports NFSv3 with TCP and not UDP (I didn't
+try TCP mounting on the Linux client) ?
+
+Thanks,
 -- 
-Spencer
+  Steffen Persvold   | Scalable Linux Systems |   Try out the world's best
+ mailto:sp@scali.com |  http://www.scali.com  | performing MPI implementation:
+Tel: (+47) 2262 8950 |   Olaf Helsets vei 6   |      - ScaMPI 1.13.8 -
+Fax: (+47) 2262 8951 |   N0621 Oslo, NORWAY   | >320MBytes/s and <4uS latency
 
 
 _______________________________________________
