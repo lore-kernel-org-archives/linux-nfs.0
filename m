@@ -1,18 +1,19 @@
-From: "Heflin, Roger A." <Roger.A.Heflin@conoco.com>
-Subject: RE: NFS digest, Vol 1 #1212 - 9 msgs
-Date: Fri, 1 Nov 2002 08:47:30 -0600
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: 2.4.20-rc1 NFS/TCP client (still) hangs running dbench 2.0
+Date: 01 Nov 2002 18:24:27 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <5CA6F03EF05E0046AC5594562398B9160C7760@poexmb3.conoco.net>
+Message-ID: <shsd6ppjj90.fsf@charged.uio.no>
+References: <Pine.BSF.4.32L2.0210302057010.12230-100000@lenny.sfrn.dnai.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <rych@chem.scphys.kyoto-u.ac.jp>
+Content-Type: text/plain; charset=us-ascii
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from usamail1.conoco.com ([12.31.208.226])
+Received: from mons.uio.no ([129.240.130.14])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 187d66-0000Kg-00
-	for <nfs@lists.sourceforge.net>; Fri, 01 Nov 2002 06:48:31 -0800
-To: <nfs@lists.sourceforge.net>
+	id 187fXC-0002QO-00
+	for <nfs@lists.sourceforge.net>; Fri, 01 Nov 2002 09:24:39 -0800
+To: Andrew Ryan <andrewr@nam-shub.com>
+In-Reply-To: <Pine.BSF.4.32L2.0210302057010.12230-100000@lenny.sfrn.dnai.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,51 +26,29 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+>>>>> " " == Andrew Ryan <andrewr@nam-shub.com> writes:
 
+     > 2.4.20rc1 still exhibits the same identical problem as
+     > 2.4.19+kmap1 patch which I identified a few weeks ago. I guess
+     > that patch was applied to 2.4.20, since it doesn't appear on
+     > Trond's patch page for 2.4.20.
 
+Does the following patch work for you?
 
-> Message: 8
-> From: "Igor Rychkov" <rych@chem.scphys.kyoto-u.ac.jp>
-> To: <nfs@lists.sourceforge.net>
-> Subject: RE: [NFS] re-exporting: exportfs gives Invalid argument
-> Date: Fri, 1 Nov 2002 13:13:03 +0900
->=20
->=20
->=20
-> Yes, it appears so. But then, what is that "nohide" option about? I =
-suspect
-> now that nohide is for _local_ filesystems.
-> So, how do people solve problems like mine?
-> Igor
->=20
-	nohide is a local option to make file systems mounted under things
-	seeable, if the file system mounted under the local file systems is
-	not compatible or because of where it exists in the kernel does not
-	exist at the level of the NFS server  (a NFS client mount is not=20
-	compatible or does not exist to the NFS server) it cannot be seen
-	on the remote machine at all.
+Cheers,
+  Trond
 
-
-	Option 1: is don't setup the network in such a way that you need to
-	reexport file systems to make things work.   Unless the machine=20
-	that is reexporting is a firewall protecting something, you probably
-	don't want to have a set of machine not accessable on your internal
-	network that could or will need access to the internal network.  And=20
-	if the machine is a firewall protecting things, I would suggest you
-	carefully evaluate allowing the resource to be seen outside its
-	protected area with a service such as NFS.
-
-	Option 2: (again depends on exactly why you have the machine with
-	the disk hidden from the other network), put the disks on the machine
-	that is doing the reexporting and call it the disk server, or put two
-	cards in the disk server so it is on both networks.
-
-	Why is the disk machine in question not on the network that needs
-	the data at least part of the time?   Is this a cluster with the =
-standard
-	(bad) head node setup?
-
-	                                      Roger
+diff -u --recursive --new-file linux-2.4.20-rc1/net/sunrpc/xdr.c linux-2.4.20-fix/net/sunrpc/xdr.c
+--- linux-2.4.20-rc1/net/sunrpc/xdr.c	2002-08-14 09:00:35.000000000 -0400
++++ linux-2.4.20-fix/net/sunrpc/xdr.c	2002-11-01 12:08:52.000000000 -0500
+@@ -244,6 +244,7 @@
+ 		pglen -= base;
+ 		base  += xdr->page_base;
+ 		ppage += base >> PAGE_CACHE_SHIFT;
++		pglen += base & ~PAGE_CACHE_MASK;
+ 	}
+ 	for (;;) {
+ 		flush_dcache_page(*ppage);
 
 
 -------------------------------------------------------
