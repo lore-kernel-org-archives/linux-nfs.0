@@ -1,27 +1,24 @@
-From: Per Olofsson <pelle@dsv.su.se>
-Subject: NFSv3+Krb5 and mountd
-Date: Tue, 24 Aug 2004 20:41:38 +0200
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH kNFSd 2 of 4] Minor memory leak fix.
+Date: Tue, 24 Aug 2004 16:20:48 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040824184138.GB3251@nasse>
+Message-ID: <20040824202048.GB2057@fieldses.org>
+References: <20040820164909.27056.patches@notabene> <E1By3FQ-000738-5m@notabene.cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@osdl.org>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BzgEv-0001Ty-1x
-	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 11:41:49 -0700
-Received: from amsfep17-int.chello.nl ([213.46.243.15])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1BzgEt-0003GA-Cw
-	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 11:41:48 -0700
-Received: from localhost ([213.89.140.172]) by amsfep17-int.chello.nl
-          (InterMail vM.6.00.05.02 201-2115-109-103-20031105) with ESMTP
-          id <20040824184139.VMYJ7145.amsfep17-int.chello.nl@localhost>
-          for <nfs@lists.sourceforge.net>; Tue, 24 Aug 2004 20:41:39 +0200
-Received: from pelle by localhost with local (Exim 4.34)
-	id 1BzgEk-0000rs-4N
-	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 20:41:38 +0200
-To: nfs@lists.sourceforge.net
+	id 1Bzhmp-00063S-JC
+	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 13:20:55 -0700
+Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.34)
+	id 1Bzhmp-0005hM-6B
+	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 13:20:55 -0700
+To: NeilBrown <neilb@cse.unsw.edu.au>
+In-Reply-To: <E1By3FQ-000738-5m@notabene.cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,37 +31,48 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+On Fri, Aug 20, 2004 at 04:51:36PM +1000, NeilBrown wrote:
+> diff ./net/sunrpc/svcauth_unix.c~current~ ./net/sunrpc/svcauth_unix.c
+> --- ./net/sunrpc/svcauth_unix.c~current~	2004-08-20 16:38:12.000000000 +1000
+> +++ ./net/sunrpc/svcauth_unix.c	2004-08-20 16:38:19.000000000 +1000
+> @@ -104,6 +104,7 @@ void ip_map_put(struct cache_head *item,
+>  		if (test_bit(CACHE_VALID, &item->flags) &&
+>  		    !test_bit(CACHE_NEGATIVE, &item->flags))
+>  			auth_domain_put(&im->m_client->h);
+> +		kfree(im->m_class);
+>  		kfree(im);
+>  	}
+>  }
 
-I'm trying to use NFSv3 with Kerberos 5. I'm using Debian sarge with
-Linux 2.6.7, nfs-utils 1.0.6 with the CITI_NFS4_ALL-13 patch, and
-util-linux mount 2.12 with the CITI_NFS4_ALL patch.
+This is giving me oopses.  Fix follows.--b.
 
-I added the following definition to /etc/exports:
+Since ip_map->m_class is now freed with kfree() when ip_map is destroyed,
+we can't assign the static string "nfsd" to it.
 
-/tmpexp gss/krb5(rw)
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 
-Then, on the client, I run:
+---
 
-# mount -osec=krb5 oberon:/tmpexp /mnt
-mount: oberon:/tmpexp failed, reason given by server: Permission denied
+ linux-2.6.9-rc1-bfields/net/sunrpc/svcauth_unix.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletion(-)
 
-and it fails. According to the log:
-
-Aug 23 19:17:48 oberon rpc.mountd: refused mount request from
-mallinux.dsv.su.se for /tmpexp (/): not exported
-
-Now, I add the client machine's name to /etc/exports:
-
-/tmpexp gss/krb5(rw) mallinux(ro)
-
-And it works! I can tell that it uses Kerberos because I can write to
-the mounted fs if I have a ticket, but not without. The drawback is
-that I am now allowing AUTH_SYS mounting as well, which I want to
-avoid. Is this a bug in mountd? Is it difficult to fix?
-
--- 
-Pelle
+diff -puN net/sunrpc/svcauth_unix.c~svcauth_ip_map_class_allocation net/sunrpc/svcauth_unix.c
+--- linux-2.6.9-rc1/net/sunrpc/svcauth_unix.c~svcauth_ip_map_class_allocation	2004-08-24 15:49:17.000000000 -0400
++++ linux-2.6.9-rc1-bfields/net/sunrpc/svcauth_unix.c	2004-08-24 15:50:16.000000000 -0400
+@@ -306,10 +306,11 @@ struct auth_domain *auth_unix_lookup(str
+ 	struct ip_map key, *ipm;
+ 	struct auth_domain *rv;
+ 
+-	key.m_class = "nfsd";
++	key.m_class = strdup("nfsd");
+ 	key.m_addr = addr;
+ 
+ 	ipm = ip_map_lookup(&key, 0);
++	kfree(key.m_class);
+ 
+ 	if (!ipm)
+ 		return NULL;
+_
 
 
 -------------------------------------------------------
