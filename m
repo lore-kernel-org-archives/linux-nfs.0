@@ -1,25 +1,25 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: [PATCH] 3/3 - remove rpc_call interface
-Date: Wed, 31 Mar 2004 09:06:00 -0800
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: RE: [PATCH] 1/3 - RPC metrics support
+Date: Wed, 31 Mar 2004 12:19:09 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <482A3FA0050D21419C269D13989C611302B07BF1@lavender-fe.eng.netapp.com>
+Message-ID: <1080753549.4194.60.camel@lade.trondhjem.org>
+References: <482A3FA0050D21419C269D13989C61130435DE34@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: "Olaf Kirch" <okir@suse.de>, "Steve Dickson" <SteveD@redhat.com>,
-        "Jeremy McNicoll" <jeremy@mcnicoll.ca>,
-        "Patrick Mochel" <mochel@digitalimplant.org>,
-        <nfs@lists.sourceforge.net>
+Content-Type: text/plain
+Cc: Patrick Mochel <mochel@digitalimplant.org>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B8jAO-0000tE-8W
-	for nfs@lists.sourceforge.net; Wed, 31 Mar 2004 09:06:16 -0800
-Received: from mx01.netapp.com ([198.95.226.53])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B8jAM-0006Pa-Qo
-	for nfs@lists.sourceforge.net; Wed, 31 Mar 2004 09:06:14 -0800
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
+	id 1B8jMv-0004WA-5g
+	for nfs@lists.sourceforge.net; Wed, 31 Mar 2004 09:19:13 -0800
+Received: from dh132.citi.umich.edu
+	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.30)
+	id 1B8jMu-0008Eq-SA
+	for nfs@lists.sourceforge.net; Wed, 31 Mar 2004 09:19:13 -0800
+To: Charles Lever <Charles.Lever@netapp.com>
+In-Reply-To: <482A3FA0050D21419C269D13989C61130435DE34@lavender-fe.eng.netapp.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,27 +32,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> > In order to expose the new RPC metrics facility to all NFS=20
-> operations,=20
-> > we need to get rid of the rpc_call wrapper in favor of the=20
-> interfaces=20
-> > (like rpc_call_sync) that expose the rpc_message structure=20
-> directly to=20
-> > the caller.
->=20
-> Please could you review those "inline" conversions? I'm at=20
-> all not convinced that something like nfs3_async_handle() is=20
-> particularly useful to inline (particularly not since it is=20
-> used in every function in that file).
+On Wed, 2004-03-31 at 11:57, Lever, Charles wrote:
+> > My experience with gettimeofday() was that it slows down and 
+> > eventually hangs the machine when you use it inside bottom 
+> > halves. That's why I had to revert to using 'jiffies' 
+> > instead. While I agree that precision may be important, a 
+> > measurement that so impacts on what it is measuring is not 
+> > particularly useful either...
+> 
+> using jiffies makes these measurements useless for anything
+> faster than a millisecond (or 10 milliseconds on current
+> x86), which is most everything on 100Mb or faster, these
+> days.  isn't there some other solution?
 
-i inlined nfs3_rpc_wrapper because it is used in every NFSv3
-proc.  it removes a calling sequence and stack frame from
-the path.
+In 2.6. jiffies have 1 ms resolution, not 10 on x86. There may be some
+alternative generic timing solution in Linux that does better than that,
+and that can work within bottom halves without side-effects but I'm not
+aware of such a solution.
 
-the other two inlines appear on the read/write/commit path,
-but this path, being synchronous, is probably not as hot as
-the async read/write/commit path.  so you are welcome to
-remove these if you have no other complaint about this patch.
+You can of course use do_gettimeofday() for the non bh-safe parts if you
+want to, but using it inside things like *data_ready() etc. was clearly
+unacceptable.
+
+The only generic solution I see is therefore to use statistics...
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
