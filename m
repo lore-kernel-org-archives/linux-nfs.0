@@ -1,25 +1,21 @@
-From: "Paul Smith" <pausmith@nortelnetworks.com>
-Subject: Direct mounts on Linux
-Date: Mon, 20 Jan 2003 13:02:32 -0500
+From: Scott Mcdermott <smcdermott@questra.com>
+Subject: Re: Direct mounts on Linux
+Date: Mon, 20 Jan 2003 16:41:34 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15916.14776.460148.770017@lemming.engeast.baynetworks.com>
+Message-ID: <20030120214134.GE1042@questra.com>
+References: <15916.14776.460148.770017@lemming.engeast.baynetworks.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from zrtps0kn.nortelnetworks.com ([47.140.192.55])
+Received: from ns1.questra.com ([64.132.48.186])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18agFv-0003ss-00
-	for <nfs@lists.sourceforge.net>; Mon, 20 Jan 2003 10:02:43 -0800
-Received: from zrtps0m6.us.nortel.com (zrtps0m6.us.nortel.com [47.140.192.58])
-	by zrtps0kn.nortelnetworks.com (Switch-2.2.0/Switch-2.2.0) with ESMTP id h0KI2YF23229
-	for <nfs@lists.sourceforge.net>; Mon, 20 Jan 2003 13:02:34 -0500 (EST)
-Received: from lemming.engeast.baynetworks.com (mail@lemming.engeast.baynetworks.com [47.17.140.90])
-	by zrtps0m6.us.nortel.com (Switch-2.2.0/Switch-2.2.0) with ESMTP id h0KI2Wl21397
-	for <nfs@lists.sourceforge.net>; Mon, 20 Jan 2003 13:02:33 -0500 (EST)
-Received: from psmith by lemming.engeast.baynetworks.com with local (Exim 3.36 #1 (Debian))
-	id 18agFk-0001Md-00
-	for <nfs@lists.sourceforge.net>; Mon, 20 Jan 2003 13:02:32 -0500
+	id 18ajfk-00044U-00
+	for <nfs@lists.sourceforge.net>; Mon, 20 Jan 2003 13:41:36 -0800
+Received: from questra.com (hades.roc.questra.com [64.132.48.226])
+	by ns1.questra.com (Postfix) with SMTP id 535F3AB71A
+	for <nfs@lists.sourceforge.net>; Mon, 20 Jan 2003 16:41:35 -0500 (EST)
 To: nfs@lists.sourceforge.net
+In-Reply-To: <15916.14776.460148.770017@lemming.engeast.baynetworks.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,15 +28,20 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I saw a note that direct mounts are not supported on Linux; is this true
-even for autofs?  Or only for user-space stuff like am-utils?
+Paul Smith on Mon 20/01 13:02 -0500:
+> I saw a note that direct mounts are not supported on Linux; is this
+> true even for autofs?  Or only for user-space stuff like am-utils?
 
--- 
--------------------------------------------------------------------------------
- Paul D. Smith <psmith@nortelnetworks.com>   HASMAT: HA Software Mthds & Tools
- "Please remain calm...I may be mad, but I am a professional." --Mad Scientist
--------------------------------------------------------------------------------
-   These are my opinions---Nortel Networks takes no responsibility for them.
+It is true only for autofs.  Of course "mount server:/path /mount/point"
+will always work :)
+
+Word has it that the am-utils now speaks autofs to the kernel, and does
+support direct mounts (among other things), so one can have the best of
+both worlds (speed and features)
+
+Now we can finally get along in a Sun environment without hacks.
+
+autofs has its own mailing list btw
 
 
 -------------------------------------------------------
