@@ -1,19 +1,19 @@
-From: Bernd Schubert <bernd-schubert@web.de>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: KNFSD information  needed
-Date: Sat, 3 May 2003 14:27:19 +0200
+Date: 03 May 2003 15:08:05 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200305031427.19693.bernd-schubert@web.de>
-References: <002301c310aa$0ef33350$6e00a8c0@compaq3> <200305021626.42933.bernd-schubert@web.de> <001f01c3112a$5ef5c6d0$6e00a8c0@compaq3>
+Message-ID: <shsk7d8i3ey.fsf@charged.uio.no>
+References: <002301c310aa$0ef33350$6e00a8c0@compaq3>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; charset=us-ascii
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from relay2.uni-heidelberg.de ([129.206.210.211])
+Received: from pat.uio.no ([129.240.130.16])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19Bw7c-0006qj-00
-	for <nfs@lists.sourceforge.net>; Sat, 03 May 2003 05:28:09 -0700
-To: "David Shirley" <dave@cs.curtin.edu.au>, <nfs@lists.sourceforge.net>
-In-Reply-To: <001f01c3112a$5ef5c6d0$6e00a8c0@compaq3>
+	id 19BwkQ-0008AM-00
+	for <nfs@lists.sourceforge.net>; Sat, 03 May 2003 06:08:14 -0700
+To: "David Shirley" <dave@cs.curtin.edu.au>
+In-Reply-To: <002301c310aa$0ef33350$6e00a8c0@compaq3>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,44 +26,40 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Saturday 03 May 2003 06:13, David Shirley wrote:
-> Bernd,
->
-> This is why I am getting confused, because I have seen papers
-> comparing userspace nfsd with knfsd - performance and feature wise.
+>>>>> " " == David Shirley <dave@cs.curtin.edu.au> writes:
 
-Why do you want to compare unfsd and knfsd ? Just believe me, unless you have 
-very special conditions, you won't want to try unfsd. 
-Furthermore those papers should be rather outdated since except the ClusterNFS 
-users (we belong to them) nobody uses unfsd nowadays.
+     > For a while now I was under the impression that nfsd provided
+     > with Redhat
 
->
-> Also some people are making reference to a knfsd process which
-> i dont have, even though i have the appropriate options turned on
-> in the kernel.
+     > was the be all and end all, today after we had some fcntl
+     > locking issues it
+     > appears thats not the case.
 
-Running 'ps ax' knfsd should appear like this:
+Check the HOWTO and FAQ (see http://nfs.sourceforge.net/). Common NFS
+locking problems are discussed there.
 
-  637 ?        SW   569:03 [nfsd]
+     > My first question is knfsd the same as the nfsd included in the
+     > nfs-utils package?
 
-Whereas unfsd (in our case ClusterNFS) would appear as:
+No. knfsd is the generic name for the kernel NFS daemons. They reside
+in kernel space. The nfsd and exportfs that included in the nfs-utils
+package are just user controls for those daemons.
 
-  522 ?        S     14:39 [rpc.nfsd.cnfs]
+     > Secondly If its not how do I go about using knfsd over the
+     > stock nfsd?
 
+man nfsd
 
-Or are you the 'Debian User' who doesn't manage to get knfsd running ? Without 
-further information from his log-files nobody will we able to help him in any 
-case.
+     > Sorry for these basic questions but the total lack of
+     > information online is quite shocking.
 
->
-> Yes i have see the howto and there is no reference to knfsd, which
-> is why i am getting confused - perhaps the was once a knfsd but now it
-> is merged with the other nfsd?
+The NFS FAQ and HOWTO are both run by volunteers. If you think they
+are incomplete, then feel free to offer to help write better ones.
 
-The hole howto is about knfsd ;)
+Feel free too to browse the archives of this mailing list...
 
-
-Bernd
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
