@@ -1,22 +1,19 @@
-From: Linus Torvalds <torvalds@transmeta.com>
-Subject: Re: [PATCH] direct-IO API change
-Date: Fri, 4 Oct 2002 16:44:46 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: 2.4.19 NFSALL performance oddity
+Date: 05 Oct 2002 01:46:13 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0210041644050.2526-100000@home.transmeta.com>
-References: <3D9E25A7.B3E13D8@digeo.com>
+Message-ID: <shsy99ddayi.fsf@charged.uio.no>
+References: <5CA6F03EF05E0046AC5594562398B91653B9C0@poexmb3.conoco.net>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Badari Pulavarty <pbadari@us.ibm.com>, Janet Morgan <janetmor@us.ibm.com>,
-        Chuck Lever <cel@citi.umich.edu>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux NFS List <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from neon-gw-l3.transmeta.com ([63.209.4.196] helo=neon-gw.transmeta.com)
+Received: from mons.uio.no ([129.240.130.14])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17xc5x-000601-00
-	for <nfs@lists.sourceforge.net>; Fri, 04 Oct 2002 16:42:57 -0700
-To: Andrew Morton <akpm@digeo.com>
-In-Reply-To: <3D9E25A7.B3E13D8@digeo.com>
+	id 17xc9I-0006L3-00
+	for <nfs@lists.sourceforge.net>; Fri, 04 Oct 2002 16:46:24 -0700
+To: "Heflin, Roger A." <Roger.A.Heflin@conoco.com>
+In-Reply-To: <5CA6F03EF05E0046AC5594562398B91653B9C0@poexmb3.conoco.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,24 +26,22 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
+>>>>> " " == Roger A Heflin <Heflin> writes:
 
-On Fri, 4 Oct 2002, Andrew Morton wrote:
-> 
-> > Especially since I thought that O_DIRECT on the regular file (or block
-> > device) performed about as well as raw does anyway these days? Or is that
-> > just one of my LSD-induced flashbacks?
-> > 
-> 
-> Now we're not holding i_sem for O_DIRECT writes to blockdevs,
-> I don't think the raw driver offers any advantages at all.  It's
-> a compatibility thing to save people from having to add "|O_DIRECT" to
-> their source and then typing `ln -s /dev/hda1 /dev/raw/raw0'.
+     > I have noticed that the IO rates (writes) start slowly (about
+     > 1.5MB/second) and slowly build up to a peak of 2.5MB/second
+     > over several minutes, with the test averaging 2.32 MB/second
+     > over a 2GB file write.  This is with a server with Gigabit
+     > copper and the client with 100BT ethernet.  No packets are
+     > being lost from what I can tell, on either the server or the
+     > client, both machines are dual cpu with 2GB of ram and
+     > otherwise unloaded.
 
-Maybe the raw driver could become a shell that just adds the O_DIRECT? 
-Unless it can do something more, of course..
+Have you enabled CONFIG_HIGHMEM? If so, could you please try disabling
+it.
 
-		Linus
-
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
