@@ -1,7 +1,7 @@
 From: Andreas Schwab <schwab@suse.de>
 Subject: Re: x86_64: 32bit emulation problems
-Date: Wed, 02 Mar 2005 00:39:02 +0100
-Message-ID: <jefyzfueax.fsf@sykes.suse.de>
+Date: Wed, 02 Mar 2005 00:46:23 +0100
+Message-ID: <jebra3udyo.fsf@sykes.suse.de>
 References: <200502282154.08009.bernd.schubert@pci.uni-heidelberg.de>
 	<200503012207.02915.bernd-schubert@web.de>
 	<jewtsruie9.fsf@sykes.suse.de>
@@ -24,10 +24,8 @@ Bernd Schubert <bernd-schubert@web.de> writes:
 > it work without this option on a 32bit kernel, but not on a 64bit ker=
 nel?
 
-Most likely the inode number (which is the only non-filesize related it=
-em
-that is different between struct stat and struct stat64) overflows ino_=
-t.
+See nfs_fileid_to_ino_t for why the inode number is different between
+32bit and 64bit kernels.
 
 Andreas.
 
