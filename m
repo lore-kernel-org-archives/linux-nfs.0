@@ -1,25 +1,28 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: read-error on utmp file
-Date: Fri, 03 Sep 2004 12:52:00 -0400
+From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Subject: silly names
+Date: Fri, 3 Sep 2004 11:35:47 -0600 (MDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1094230320.8196.32.camel@lade.trondhjem.org>
-References: <41383991.1020108@bio.ifi.lmu.de>
+Message-ID: <Pine.LNX.4.60.0409031131070.7569@harp.ngdc.noaa.gov>
+Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C3HII-0000Qz-Ci
-	for nfs@lists.sourceforge.net; Fri, 03 Sep 2004 09:52:10 -0700
-Received: from dh138.citi.umich.edu
-	([141.211.133.138] helo=lade.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	id 1C3HyX-0001ha-7a
+	for nfs@lists.sourceforge.net; Fri, 03 Sep 2004 10:35:49 -0700
+Received: from harp.ngdc.noaa.gov ([140.172.187.26])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.34)
-	id 1C3HIH-0008En-PD
-	for nfs@lists.sourceforge.net; Fri, 03 Sep 2004 09:52:10 -0700
-To: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
-In-Reply-To: <41383991.1020108@bio.ifi.lmu.de>
+	id 1C3HyV-00052t-RU
+	for nfs@lists.sourceforge.net; Fri, 03 Sep 2004 10:35:49 -0700
+Received: from harp.ngdc.noaa.gov (harp.ngdc.noaa.gov [127.0.0.1])
+	by harp.ngdc.noaa.gov (8.12.11/8.12.11) with ESMTP id i83HZlpL008528
+	for <nfs@lists.sourceforge.net>; Fri, 3 Sep 2004 11:35:47 -0600
+Received: from localhost (ahoward@localhost)
+	by harp.ngdc.noaa.gov (8.12.11/8.12.11/Submit) with ESMTP id i83HZlto008524
+	for <nfs@lists.sourceforge.net>; Fri, 3 Sep 2004 11:35:47 -0600
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,43 +35,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 fr , 03/09/2004 klokka 05:29, skreiv Frank Steiner:
 
-> One of the two loops immediately aborts with "unknown". Looking at
-> strace I can see this:
->=20
-> ...
-> 9377  open("/var/run/utmp", O_RDWR)     =3D 5
-> 9377  fcntl64(5, F_GETFD)               =3D 0
-> 9377  fcntl64(5, F_SETFD, FD_CLOEXEC)   =3D 0
-> 9377  _llseek(5, 0, [0], SEEK_SET)      =3D 0
-> 9377  brk(0)                            =3D 0x804a000
-> 9377  brk(0x806b000)                    =3D 0x806b000
-> 9377  brk(0)                            =3D 0x806b000
-> 9377  alarm(0)                          =3D 0
-> 9377  rt_sigaction(SIGALRM, {0x40147da0, [], SA_RESTORER, 0x40067aa8}, {S=
-IG_DFL}, 8) =3D 0
-> 9377  alarm(1)                          =3D 0
-> 9377  fcntl64(5, F_SETLKW, {type=3DF_RDLCK, whence=3DSEEK_SET, start=3D0,=
- len=3D0}) =3D 0
-> 9377  read(5, "\2\0\0\0\0\0\0\0~\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"..=
-., 384) =3D 384
-> 9377  fcntl64(5, F_SETLKW, {type=3DF_UNLCK, whence=3DSEEK_SET, start=3D0,=
- len=3D0}) =3D 0
-> 9377  alarm(0)                          =3D 1
-> 9377  rt_sigaction(SIGALRM, {SIG_DFL}, NULL, 8) =3D 0
-> 9377  alarm(0)                          =3D 0
-> 9377  rt_sigaction(SIGALRM, {0x40147da0, [], SA_RESTORER, 0x40067aa8}, {S=
-IG_DFL}, 8) =3D 0
-> 9377  alarm(1)                          =3D 0
-> 9377  fcntl64(5, F_SETLKW, {type=3DF_RDLCK, whence=3DSEEK_SET, start=3D0,=
- len=3D0}) =3D 0
-> 9377  read(5, 0x401706e0, 384)          =3D -1 EIO (Input/output error)
+are there causes other than some remote client removing an open file for
+sillynames appearing in a directory containing a file shared (via locking) by
+many clients?  i have a directory containing such a file where many sillynames
+appear, but eventually disappear.  none of the files in the directory are ever
+being removed - so what could cause this?  the code is working fine - i'm just
+wondering about the causes of this...
 
-Binary "tcpdump -s 9000" please?
-
-Cheers,
-  Trond
+-a
+--
+===============================================================================
+| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
+| PHONE   :: 303.497.6469
+| A flower falls, even though we love it;
+| and a weed grows, even though we do not love it. 
+|   --Dogen
+===============================================================================
 
 
 -------------------------------------------------------
