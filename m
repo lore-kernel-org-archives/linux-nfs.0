@@ -1,19 +1,18 @@
-From: "Steven N. Hirsch" <shirsch@adelphia.net>
-Subject: Re: 2.4.19-pre5-ac3 NFS problems
-Date: Fri, 12 Apr 2002 07:50:06 -0400 (EDT)
+From: Ryan Sweet <rsweet@atos-group.nl>
+Subject: mount:not a directory
+Date: Fri, 12 Apr 2002 13:50:03 +0200 (CEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0204120741490.14953-100000@atx.fast.net>
-References: <15542.19652.743976.342481@notabene.cse.unsw.edu.au>
+Message-ID: <Pine.LNX.4.30.0204121218370.29572-100000@core-0>
+Reply-To: Ryan Sweet <rsweet@atos-group.nl>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from smtprelay9.dc2.adelphia.net ([64.8.50.53])
+Received: from [62.58.73.254] (helo=ats-core-0.atos-group.nl)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16vzS7-0003us-00
-	for <nfs@lists.sourceforge.net>; Fri, 12 Apr 2002 04:42:51 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <15542.19652.743976.342481@notabene.cse.unsw.edu.au>
+	id 16vzhd-0007SX-00
+	for <nfs@lists.sourceforge.net>; Fri, 12 Apr 2002 04:58:53 -0700
+To: <autofs@linux.kernel.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,56 +25,74 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Fri, 12 Apr 2002, Neil Brown wrote:
 
-> On Thursday April 11, shirsch@adelphia.net wrote:
-> > 
-> > Neil,
-> > 
-> > I finally got the chance to bang on this.  I'm not seeing anything 
-> > queueing on port 32768, but during the period when 'pine' hangs there 
-> > seems to be a large number number of requests on port 32771 server-side.  
-> > At no point does the backlog fall below about 160.  What should I be 
-> > seeing?
-> 
-> I'm perplexed...
-> Is 32771 a local port or a remote port on the server?
+I have a network running mostly Linux 2.2.19 with redhat 7.0, with some
+systems upgraded to 2.4.  We're using autofs-3.1.6.  We use nis with the
+following auto.master:
 
-It's the local port on the server.  The foreign end point is the client
-with the hung 'pine' instance, port 799, 800, whatever.  All I can say is
-to reiterate: whatever is going on between client:800 and server:32771
-looks different on a correctly-operating NFSv3 TCP connection - it always
-shows up as zero.  In the broken case, it never falls below 160 and
-typically is up at 240.
+--
+/import/direct yp:auto.direct
+/home yp:auto.home
+/var/spool/mail yp:auto.mail
+--
 
-> What I would expect you do see on the server if you do 
->        netstat -t
-> is something like:
-> Active Internet connections (w/o servers)
-> Proto Recv-Q Send-Q Local Address           Foreign Address         State
-> tcp        0      0 elfman.orchestra.c:2049 dulcimer.orchestra.:800 ESTABLISHED
-> 
-> The local address is "2049".
-> The remote address could be anything.  My 2.4 Linux clients seem to
-> choose 800, but anything is reasonable.
-> 
-> I would expect the see the Recv-Q and Send-Q jump around a lot when IO
-> is happening, but settle to zero whenever it is quiet.
+and an auto.mail like so:
 
-That's why I flagged the '160' minimum value as being suspicious.
+--
+username nfs-server:/export/mail/username
+--
 
-> If the connection that you are looking at is the NFS connection
-> (i.e. the other end is 2049) then the fact that it never gets below
-> 160 suggests that I've got my accounting wrong somewhere. 
-> The simplest option would be that sk_reserved goes negative, but I
-> cannot see what would cause that...
+Which works fine with all of our RedHat 7.0 and earlier machines, as well
+as with our various other *NIX.  Any time a user references their mail
+file (/var/spool/mail/username) it is automounted under /var/spool/mail.
+On any new RedHat 7.2 system however, which seem to come with
+autofs-3.1.7, it fails like so:
 
-It's definitely NOT the NFS connection.  I can see that as well, and it 
-shows as zero.
+Apr 12 13:18:59 file2 automount[30855]: starting automounter version
+3.1.7, path = /var/spool/mail, maptype = yp, mapname = auto.mail
+Apr 12 13:18:59 file2 autofs: automount startup succeeded
+Apr 12 13:19:00 file2 automount[30855]: using kernel protocol version 3
+Apr 12 13:20:46 file2 automount[30855]: attempting to mount entry
+/var/spool/mail/rsweet
+Apr 12 13:20:46 file2 kernel: nfs warning: mount version older than
+kernel
+Apr 12 13:20:47 file2 automount[30873]: >> mount: Not a directory
+Apr 12 13:20:47 file2 automount[30873]: mount(nfs): nfs: mount failure
+mail-1:/export/mail/rsweet on /var/spool/mail/rsweet
 
-Let me know what other information I can get for you?
+Of course, /export/mail/rsweet and /var/spool/mail/rsweet are not
+directories, they are files, but that doesn't help because it works
+spectacularly on all the other systems.
 
-Steve
+RH 7.2+updates gives me nfs-utils 0.3.1x and mount 2.11g.  I've tried
+upgrading to the latest mount (2.11q) and nfs-utils (0.3.3) sources and
+also downgrading to the RH 7.0 versions (mount 2.10m, nfs-utils 0.2.1),
+but always have the same problem.  Note that even with the latest mount
+(2.11q) I still get the message that the mount version is older than
+kernel (stock redhat 7.2 updates 2.4.9-13).  I also tried downgrading to
+autofs 3.1.6, but that didn't help either.
+
+The same accounts, files, servers work fine when the client is not running
+rh7.2.
+
+I have strace output if it would help - it basically just shows that the
+call to mount:
+
+[pid 30941] mount("mail-1:/export/mail/rsweet", "/var/spool/mail/rsweet",
+"nfs", 0xc0ed0000, 0x8058a20) = -1 ENOTDIR (Not a directory)
+
+returns "not a directory"....
+
+Any ideas?
+
+thanks,
+-Ryan Sweet
+
+-- 
+Ryan Sweet <ryan.sweet@atosorigin.com>
+Atos Origin Engineering Services
+http://www.aoes.nl
+
 
 
 
