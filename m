@@ -1,25 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Bernd Schubert <bernd-schubert@web.de>
 Subject: Re: list of patches between 2.6.9 and 2.6.11-rc4
-Date: Mon, 21 Feb 2005 21:16:59 -0500
-Message-ID: <1109038619.22895.74.camel@lade.trondhjem.org>
-References: <200502212335.25502.bernd-schubert@web.de>
-	 <1109030592.22895.57.camel@lade.trondhjem.org>
-	 <1109030738.22895.59.camel@lade.trondhjem.org>
-	 <200502220200.13774.bernd-schubert@web.de>
+Date: Tue, 22 Feb 2005 12:00:25 +0100
+Message-ID: <200502221200.26247.bernd-schubert@web.de>
+References: <200502212335.25502.bernd-schubert@web.de> <200502220200.13774.bernd-schubert@web.de> <1109038619.22895.74.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-v2FR6xymqfUtaKrb0+jf"
+Content-Type: text/plain;
+  charset="iso-8859-15"
 Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D3Pbz-0002ZD-9l
-	for nfs@lists.sourceforge.net; Mon, 21 Feb 2005 18:17:19 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1D3XmL-00018K-RU
+	for nfs@lists.sourceforge.net; Tue, 22 Feb 2005 03:00:33 -0800
+Received: from smtp06.web.de ([217.72.192.224])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.41)
-	id 1D3Pbx-00023o-Ff
-	for nfs@lists.sourceforge.net; Mon, 21 Feb 2005 18:17:19 -0800
-To: Bernd Schubert <bernd-schubert@web.de>
-In-Reply-To: <200502220200.13774.bernd-schubert@web.de>
+	id 1D3XmK-0000YF-Az
+	for nfs@lists.sourceforge.net; Tue, 22 Feb 2005 03:00:33 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1109038619.22895.74.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,59 +31,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Tuesday 22 February 2005 03:16, Trond Myklebust wrote:
+> ty den 22.02.2005 Klokka 02:00 (+0100) skreiv Bernd Schubert:
+> > To make it easier to understand I isolated the code and testing it as o=
+wn
+> > program.
+>
+> Thanks. Does the following patch fix things for you?
+>
 
---=-v2FR6xymqfUtaKrb0+jf
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Thank you very very much, the patch fixes the problem!
 
-ty den 22.02.2005 Klokka 02:00 (+0100) skreiv Bernd Schubert:
 
-> To make it easier to understand I isolated the code and testing it as own 
-> program.
-> 
+Thanks again,
+ Bernd
 
-Thanks. Does the following patch fix things for you?
 
-Cheers,
-  Trond
--- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
-
---=-v2FR6xymqfUtaKrb0+jf
-Content-Disposition: inline; filename=linux-2.6.11-00-fix_nolock_getlk.dif
-Content-Type: text/plain; name=linux-2.6.11-00-fix_nolock_getlk.dif; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-
-NFS: Further fixes for the -onolock case.
-
- Duh... GETLK returns F_UNLCK if and only if the lock could be placed.
-
- Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- file.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
-
-Index: linux-2.6.11-rc4/fs/nfs/file.c
-===================================================================
---- linux-2.6.11-rc4.orig/fs/nfs/file.c
-+++ linux-2.6.11-rc4/fs/nfs/file.c
-@@ -320,10 +320,10 @@ static int do_getlk(struct file *filp, i
- 		status = NFS_PROTO(inode)->lock(filp, cmd, fl);
- 	else {
- 		struct file_lock *cfl = posix_test_lock(filp, fl);
--		if (cfl != NULL) {
-+
-+		fl->fl_type = F_UNLCK;
-+		if (cfl != NULL)
- 			memcpy(fl, cfl, sizeof(*fl));
--			fl->fl_type = F_UNLCK;
--		}
- 	}
- 	unlock_kernel();
- 	return status;
-
---=-v2FR6xymqfUtaKrb0+jf--
-
+=2D-=20
+Bernd Schubert
+Physikalisch Chemisches Institut / Theoretische Chemie
+Universit=E4t Heidelberg
+INF 229
+69120 Heidelberg
+e-mail: bernd.schubert@pci.uni-heidelberg.de
 
 
 -------------------------------------------------------
