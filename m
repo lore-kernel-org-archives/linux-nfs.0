@@ -1,24 +1,21 @@
-From: Steve Wampler <swampler@noao.edu>
-Subject: Re: What might cause:  "NFS: Buggy server - nlink == 0!"
-	message?
-Date: Wed, 21 Jan 2004 08:22:53 -0700
+From: <trond.myklebust@fys.uio.no>
+Subject: Re: What might cause:  "NFS: Buggy server - nlink == 0!" message?
+Date: Wed, 21 Jan 2004 17:04:00 +0100 (CET)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1074698573.18082.39.camel@weaver.tuc.noao.edu>
-References: <1074293142.11334.63.camel@weaver.tuc.noao.edu>
-Reply-To: swampler@noao.edu
+Message-ID: <43397.68.42.103.198.1074701040.squirrel@webmail.uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=iso-8859-1
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AjKCB-0004eb-Oh
-	for nfs@lists.sourceforge.net; Wed, 21 Jan 2004 07:23:07 -0800
-Received: from dns.noao.edu ([140.252.1.54] helo=noao.edu)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AjKCB-0006fm-Dr
-	for nfs@lists.sourceforge.net; Wed, 21 Jan 2004 07:23:07 -0800
-To: Linux NFS List <nfs@lists.sourceforge.net>
-In-Reply-To: <1074293142.11334.63.camel@weaver.tuc.noao.edu>
+	id 1AjKpw-0004X9-5t
+	for nfs@lists.sourceforge.net; Wed, 21 Jan 2004 08:04:12 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1AjKpv-0000rL-P0
+	for nfs@lists.sourceforge.net; Wed, 21 Jan 2004 08:04:11 -0800
+To: <swampler@noao.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,55 +28,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, 2004-01-16 at 15:45, Steve Wampler wrote:
-> We've been noticing that some of our NFS clients aren't catching
-> changes to NFS-accessed files.  This last time, dmesg
-> on the client reported:
-> 
->    NFS: Buggy server - nlink == 0!
->    __nfs_fhget: iget failed
-> 
-> What might cause this?  What's the best fix?
-> 
-> The NFS server is a Red Hat system:
-> 
->    ->uname -a
->    Linux friar.tuc.noao.edu 2.4.18-24.8.0smp #1 SMP Fri Jan 31 07:12:12
-> EST 2003 i686 athlon i386 GNU/Linux
->    ->rpm -qa | grep nfs
->    nfs-utils-1.0.1-2
+På on , 21/01/2004 klokka 10:22, skreiv Steve Wampler:
+> The above message still appears from time to time and
+> files don't always appear on some clients until an unmount/mount cycle
+> of the NFS partitions.  This is a problem, of course.
+>
+> Any ideas?  Is the 2.4.18smp kernel flakey with respect to
+> NFS?
 
-As an update:
+Which filesystem are you using on your server?
 
-I've updated all the machines clients and server to
-     nfs-utils-1.0.5-2.
+It certainly is a bug for a server to be setting nlink to 0. That
+indicates after all that the file has been deleted. It shouldn't be
+served up at all in that case, and certainly not for a LOOKUP request.
 
-[Server and most clients are dual-Athlon 1800+ machines
-with 1.5GB Ram each (identical boxes).  Network is a switched
-gigabit ethernet.
+Cheers,
+  Trond
 
-A few client machines connect via 100bT ethernet and vary
-from SUN Solaris boxes to other dual-Athlons, but rarely
-use the NFS mount 'in anger' - unlike the gigabit machines].
 
-I've bumped the number of nfsd daemons on the server to 30,
-in part because showmount shows 30 nfs mount points (I'm
-not convinced that's true, incidently, as several of the
-machines appear both under their IP-name and under
-their IP-address).
 
-The above message still appears from time to time and
-files don't always appear on some clients until an unmount/mount
-cycle of the NFS partitions.  This is a problem, of course.
-
-Any ideas?  Is the 2.4.18smp kernel flakey with respect to
-NFS?
-
-Thanks!
-Steve
--- 
-Steve Wampler -- swampler@noao.edu
-The gods that smiled on your birth are now laughing out loud.
 
 
 -------------------------------------------------------
