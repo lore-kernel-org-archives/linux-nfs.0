@@ -1,23 +1,26 @@
 From: Greg Banks <gnb@melbourne.sgi.com>
 Subject: Re: Different NFSSVC_MAXBLKSIZE for udp and tcp clients?
-Date: Thu, 27 Nov 2003 11:08:06 +1100
+Date: Thu, 27 Nov 2003 11:21:07 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3FC54066.C04EBA49@melbourne.sgi.com>
-References: <482A3FA0050D21419C269D13989C6113020AC79F@lavender-fe.eng.netapp.com>
+Message-ID: <3FC54373.EC448BB1@melbourne.sgi.com>
+References: <3FC3929C.EFFE5CDF@moving-picture.com>
+		<3FC3FD0C.B2DD2183@melbourne.sgi.com>
+		<3FC483D6.6753DCA3@moving-picture.com> <16325.9710.935587.140271@notabene.cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: James Pearson <james-p@moving-picture.com>, nfs@lists.sourceforge.net
+Cc: James Pearson <james-p@moving-picture.com>,
+   Trond Myklebust <trond.myklebust@fys.uio.no>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AP9hh-0006qV-00
-	for <nfs@lists.sourceforge.net>; Wed, 26 Nov 2003 16:08:17 -0800
+	id 1AP9uT-0007Tk-00
+	for <nfs@lists.sourceforge.net>; Wed, 26 Nov 2003 16:21:29 -0800
 Received: from mtvcafw.sgi.com ([192.48.171.6] helo=rj.sgi.com)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
-	id 1AP9hg-0006VU-Ou
-	for nfs@lists.sourceforge.net; Wed, 26 Nov 2003 16:08:16 -0800
-To: "Lever, Charles" <Charles.Lever@netapp.com>
+	id 1AP9uT-0007wf-E2
+	for nfs@lists.sourceforge.net; Wed, 26 Nov 2003 16:21:29 -0800
+To: Neil Brown <neilb@cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,38 +33,26 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-"Lever, Charles" wrote:
+Neil Brown wrote:
 > 
-> here's a vote for leaving these values variable rather than
-> fixed on the server side.  48KB maximum for UDP is great on
-> a clean network, but some folks would probably prefer setting
-> it to 8KB to ensure clients on more realistically congested
-> networks retain reasonable UDP performance.
+> request size is completely under the control of the client via rsize
+> and wsize (except that you cannot exceed the server's maximum).
 
-Agreed.
+The point is that the server's maximum is too low, at least when
+the client and server are powerful machines with a clean network
+between them (i.e. a significant part of SGI's customers).
 
-> is there any evidence to show that a 4MB TCP maximum will
-> have benefits over something smaller, like say 1MB ?  
+When I say too low, I have two separate issues:
 
-None at all on Linux.  I mention that specific number only
-because it's the hardcoded maximum on IRIX.
+1.  wsize<16K means an Altix client does synchronous writes, which
+    results in a catastrophic performance hit (writes proceed at
+    no more than 0.7% of line rate on gige).  This is a hot issue
+    right now.
 
-However there is evidence that 8K isn't enough.  In particular,
-it's smaller than an Altix client's PAGE_CACHE_SIZE so all writes
-between two Altix boxes go synchronous.
-
-> [...] there's probably a sweet spot where the sum
-> of both per-op and per-byte costs reach a minimum.  
-
-Yes.
-
-> as
-> far as i can tell that value is around 16KB in the current
-> Linux client implementations.
-
-The value will be higher for Altix clients and servers, which
-have more RAM, CPU, and larger pages than the machines you're
-probably thinking of.
+2.  Experience with IRIX shows that (up to a point) better performance
+    can be achieved for some loads with larger transfer sizes.  On
+    IRIX that point is beyond Linux' current hardcoded maximums.  This
+    is more of a long-term issue.
 
 Greg.
 -- 
