@@ -1,22 +1,27 @@
-From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: Re: [PATCH] 1/3 - RPC metrics support
-Date: Sun, 04 Apr 2004 16:17:19 +1000
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: nfsd random drop
+Date: Mon, 5 Apr 2004 10:13:05 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <406FA86F.A9748FFC@melbourne.sgi.com>
-References: <482A3FA0050D21419C269D13989C611302B07BFD@lavender-fe.eng.netapp.com>
+Message-ID: <16496.42129.32286.429339@notabene.cse.unsw.edu.au>
+References: <20040401102334.GC20772@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>, nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BA0x4-0007Vk-TV
-	for nfs@lists.sourceforge.net; Sat, 03 Apr 2004 22:17:50 -0800
-Received: from mtvcafw.sgi.com ([192.48.171.6] helo=omx2.sgi.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1BA0x4-0005LZ-MP
-	for nfs@lists.sourceforge.net; Sat, 03 Apr 2004 22:17:50 -0800
-To: "Lever, Charles" <Charles.Lever@netapp.com>
+	id 1BAHjr-0001Xm-IP
+	for nfs@lists.sourceforge.net; Sun, 04 Apr 2004 17:13:19 -0700
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
+	id 1BAHjr-0005G8-2m
+	for nfs@lists.sourceforge.net; Sun, 04 Apr 2004 17:13:19 -0700
+Received: From
+	notabene ([129.94.172.124] == notabene.cse.unsw.EDU.AU) (auth-user neilb)
+	(for <okir@suse.de>) (for <nfs@lists.sourceforge.net>) By note With
+	Smtp ; Mon, 5 Apr 2004 10:13:11 +1000
+To: Olaf Kirch <okir@suse.de>
+In-Reply-To: message from Olaf Kirch on Thursday April 1
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -29,29 +34,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-"Lever, Charles" wrote:
+On Thursday April 1, okir@suse.de wrote:
+> Hi,
 > 
-> > Why not just save a copy of @devname in nfs_get_sb() ?  It's
-> > the same name that's stored in struct vfsmount and reported
-> > in /proc/mounts.
+> I hate to bore you all with the same old stuff, but I'm still fighting
+> problems caused by nfsd's dropping active connections.
 > 
-> unless i've missed something, there are only two NFS functions
-> that take vfsmount as an argument.  one is nfs_show_options, and
-> the other is nfs_getattr.
+..snip..
 > 
-> the vfsmount struct is not available to the NFS client during a
-> mount operation.
+> I propose to add the following two patches to the server and client. They
+> increase the connection limit, stop dropping the neweset socket, and
+> add some printk's to alert the admin of the contention.
 
-The devname string that fs/super.c:do_kern_mount() passes to
-nfs_get_sb() via file_system_type->get_sb is passed to
-alloc_vfsmount() and used there to initialise the vfsmount's
-mnt_devname.  So while NFS doesn't have the vfsmount it does
-have the same devname string.
+I'm happy for the server patch to go in.
+Andrew Morton already picked it up and asked if it was OK.  I have
+confirmed that it is so you might see it in 2.6.6.
 
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+> 
+> As an alternative to hardcoding a formula based on the number of threads,
+> I could also make the max number of connections a sysctl.
+
+Might be good, but I would only bother if a real need presents itself.
+
+Thanks,
+
+NeilBrown
 
 
 -------------------------------------------------------
