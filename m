@@ -1,17 +1,17 @@
-From: "Magnus Naeslund\(f\)" <mag@fbab.net>
-Subject: Mount modes and usermode programs
-Date: Wed, 28 Aug 2002 02:06:45 +0200
+From: Marco.Schwarz@Freudenberg.de
+Subject: Update: URGENT: Problems with NFS-Root-Clients
+Date: Wed, 28 Aug 2002 10:49:20 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <026101c24e26$cc1afe00$f80c0a0a@mnd>
+Message-ID: <95AF67BA7F70D511829B0002A551737001C9C6@faw-e01.faw.freudenberg.de>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: text/plain
+Cc: bogdan.costescu@iwr.uni-heidelberg.de
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail2.fbab.net ([195.54.134.228])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17jqMC-0000jj-00
-	for <nfs@lists.sourceforge.net>; Tue, 27 Aug 2002 17:06:48 -0700
-To: <nfs@lists.sourceforge.net>
+Received: from [153.95.95.71] (helo=itnts96.freudenberg.de)
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17jyXS-0006yM-00
+	for <nfs@lists.sourceforge.net>; Wed, 28 Aug 2002 01:50:58 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,49 +24,61 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-V2UncmUgZGV2ZWxvcGluZyAoYW5kIHJ1bm5pbmcgaW4gcHJvZHVjdGlvbikgYW4gc2Nhbm5lZCBp
-bWFnZSBzZXJ2ZXIgd2l0aCBhbiBjbGllbnQuDQpXZSdyZSBtb3ZpbmcgZnJvbSBsb2NhbCBzdG9y
-YWdlIHRvIE5GUyBhcyB3ZSdyZSBhcHByb2FjaGluZyBzZXZlcmFsIHRlcnJhYnl0ZXMuDQoNClRo
-ZSBORlMgc2VydmVyIHdlJ3JlIHRlc3RpbmcgaXMgYW4gUmVkaGF0IExpbnV4IDcuMyBkZWZhdWx0
-IGluc3RhbGwuDQoNClRoZSBORlMgY2xpZW50ICh0aGF0IHJ1biB0aGUgaW1hZ2Ugc2VydmVyIHBy
-b2Nlc3Nlcykgd2UncmUgdGVzdGluZyBpcyBhbiBSZWRoYXQgTGludXggNi4yIGhhbmQgdXBncmFk
-ZWQgdG8gMi40LjE5LWFhIHJ1bm5pbmcgb24gYWxwaGEgYXJjaGl0ZWN0dXJlLg0KDQpXaGVuIHdl
-IHRlc3QgaG93IHRoZSBzZXJ2ZXIgcHJvY2Vzc2VzIChpbmV0ZC1saWtlIHN0YXJ0ZWQgcHJvY2Vz
-c2VzKSByZWFjdCB3aGVuIHdlIA0KcmVib290IHRoZSBORlMgc2VydmVyIHRoZXkgYWxsIGhhbmcg
-aW4gRCBzdGF0ZSBmb3IgYSB3aGlsZSwgYnV0IHdoZW4gdGhlIE5GUyBzZXJ2ZXIgY29tZXMgdXAg
-YWdhaW4sIHRoZXkgbG9vc2UgdGhlIEQgc3RhdGUgYnV0IHRoZSBzZXJ2ZXIgcHJvY2Vzc2VzIGRv
-ZXNuJ3QgY2F0Y2ggdXAgd2hlcmUgdGhleSBzdG9wcGVkLiBTb21laG93IHRoYXQgaXMgX19saWJj
-X3dyaXRlKCksIHRoZSBnbGliYyB3cml0ZSgpIHN5c2NhbGwgd3JhcHBlci4NClRoZSB3cml0ZSBn
-b2VzIHRvIHN0ZG91dCBhcyBwZXIgbm9ybWFsIGluZXRkIGxpa2Ugc2V0dXAuDQoNClRoZXJlIGFy
-ZSBzb21lIHN0cmFuZ2Ugc3RyYW5nZSBzdHVmZiBnb2luZyBvbjoNCg0KMSkgSSBibG9jayBTSUdQ
-SVBFIHRvIGJlIGFibGUgdG8gZ2V0IGEgRVBJUEUgZnJvbSB3cml0ZSwgc28gaSBjYW4gaGFuZGxl
-IHBhcnRpYWwgZGF0YSBpbiB0aGUgd3JpdGUvcmVhZCBsb29wLiBDb3VsZCB0aGF0IGhhdmUgYW55
-dGhpbmcgdG8gZG8gd2l0aCBpdD8NCjIpIEkgc2V0IHVwIGEgU0lHQUxSTSBhdCBwcm9jZXNzIHN0
-YXJ0LCBidXQgdGhhdCBkb2Vzbid0IGdvIG9mZi4NCjMpIFdoeSBkb2VzIGl0IGJsb2NrIGluIHdy
-aXRlKCksIGkgdGhvdWdodCBpZiBhbnl0aGluZyBpdCB3b3VsZCBibG9jayBpbiByZWFkKCkgZnJv
-bSB0aGUgTkZTIG1vdW50ZWQgZmlsZXN5c3RlbS4uLg0KNCkgV2h5IGRvZXNuJ3QgaXQganVzdCBw
-aWNrIHVwIGZyb20gd2hlcmUgaXQgc3RhcnRlZD8NCjUpIFdoZW4gaSB0cmFjZSB0aGUgcHJvZ3Jh
-bSB2aWEgc3RyYWNlIG9yIGdkYiBpdCBzaGFrZXMgbG9vc2UgYW5kIHN0YXJ0cyBydW5uaW5nIGFn
-YWluLCBzdXJlbHkgYmVjYXVzZSBvZiBzb21lIHNpZ25hbC4NCg0KSSBtb3VudCB0aGUgcGFydGl0
-aW9uIGFzIHJ3LGhhcmQsaW50ciwgaXMgdGhhdCBubyBnb29kIGluIHRoaXMgc2l0dWF0aW9uPw0K
-DQpBbmQgZm9yIGNvbXBsZXRlbmVzcyBpJ2xsIGluY2x1ZGUgdGhlIHN0YWNrdHJhY2Ugb2YgYW4g
-aHVuZyBwcm9jZXNzOg0KDQojMCAgMHgyMDAwMDQ3NTYxOCBpbiBfX2xpYmNfd3JpdGUgKCkgYXQg
-X19saWJjX3dyaXRlOjINCiMxICAweDIwMDAwNWY2YTk0IGluIHdyaXRlIChmZD0xLCBidWY9MHgx
-MWZmZmEwMDAsIG49MTYzODQpIGF0IHdyYXBzeXNjYWxsLmM6MTM5DQojMiAgMHgxMjAwMWNiZTQg
-aW4gd3JpdGVfc2VuZGZpbGUgKG91dF9mZD0xLCBpbl9mZD00LCBvZmZzZXQ9MHgxMWZmZmY5MTgs
-IGNvdW50PTApIGF0IHV0aWwuY3BwOjEzNg0KIzMgIDB4MTIwMDFlMDg0IGluIGRvX3NlbmRmaWxl
-IChvdXRfZmQ9MSwgaW5fZmQ9NCwgb2Zmc2V0PTB4MTFmZmZmOTE4LCBjb3VudD0xOTgxMjgpIGF0
-IHV0aWwuY3BwOjMwMw0KIzQgIDB4MTIwMDBlNDRjIGluIGhhbmRsZWxpbmUgKG09QDB4MTFmZmZl
-ZDI4KSBhdCBnZW5kLmNwcDo3NzkNCiM1ICAweDEyMDAwNzMxNCBpbiBkb19jaGlsZCAoKSBhdCBn
-ZW5kLmNwcDoyNDkNCiM2ICAweDEyMDAwNjY4MCBpbiBtYWluIChhcmdjPTEsIGFyZ3Y9MHgwKSBh
-dCBnZW5kLmNwcDoxMzgNCg0KRG9lcyBhbnlvbmUgaGF2ZSBhbnkgaWRlYSBhYm91dCB0aGlzLCBv
-ciBpZiBpdCBzaG91bGQgYmUgb2J2aW91cywgdGVsbCBtZSB0byBSVEZNLCBidXQga2luZGx5IHBv
-aW50IG1lIHRvIHdoZXJlIGkgY2FuIHJlYWQgdXAgb24gdGhlc2Uga2luZCBvZiB0aGluZ3MuLi4N
-Cg0KUmVnYXJkcw0KDQpNYWdudXMNCg0KDQoNCi0tIA0KLT0tPS09LT0tPS09LT0tPS09LT0tPS09
-LT0tPS09LT0tPS09LT0tPS09LT0tPS09LT0tDQogUHJvZ3JhbW1lci9OZXR3b3JrZXIgW3xdIE1h
-Z251cyBOYWVzbHVuZA0KLT0tPS09LT0tPS09LT0tPS09LT0tPS09LT0tPS09LT0tPS09LT0tPS09
-LT0tPS09LT0tDQo=
+I did some more testing and here are some things I found:
 
+This particular server has 2 EEpro 100 NICs, and the problem seems to be
+with clients on the 192.x adresses only. I already interchanged adresses
+between ETH0/ETH1, so it does not seem to be a hardware problem with the
+NIC. Here is my configuration which I use on the server:
+
+ETH0: 153.95.240.235
+ETH1: 192.168.0.235
+
+Boot Params for 153.x from /tftpboot/pxelinux.cfg/default:
+
+DEFAULT netboot root=/dev/nfs rw nfsaddrs=153.95.169.113 vga=0x317
+
+
+Boot Params for 192.x from /tftpboot/pxelinux.cfg/C0:
+
+DEFAULT netboot root=/dev/nfs rw nfsaddrs=192.168.0.235 vga=0x305
+
+
+Here is part of my /etc/bootptab (I am using bootpd):
+
+#
+global.prof:\
+  :sm=255.255.255.0:\
+  :gw=153.95.240.254:\
+  :ht=ethernet:\
+  :bf=pxelinux.0:
+
+#
+local.prof:\
+  :sm=255.255.255.0:\
+  :gw=192.168.0.235:\
+  :ht=ethernet:\
+  :bf=pxelinux.0:
+
+# One of the 192.x clients
+qsclient01.fds:\
+    :hd=/tftpboot:\
+    :tc=local.prof:\
+    :ha=0002B3330B7F:\
+    :ip=192.168.0.191:\
+    :sa=192.168.0.235:\
+    :rp=/netclients/192.168.0.191,rsize=4096,wsize=4096:
+
+# One of the 153.x clients
+lvobw01.fds:\
+    :hd=/tftpboot:\
+    :tc=global.prof:\
+    :ha=0002B3284915:\
+    :ip=153.95.240.192:\
+    :rp=/netclients/153.95.240.192,rsize=4096,wsize=4096:
+
+Thanks for the help,
+Marco
 
 
 -------------------------------------------------------
