@@ -1,23 +1,27 @@
-From: Paul Clements <paul.clements@steeleye.com>
-Subject: Re: Re: [PATCH / RFC] nfs-utils: High Availability NFS
-Date: Mon, 06 Sep 2004 11:42:18 -0400
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: why do i get "Stale NFS file handle" for hours?
+Date: Mon, 06 Sep 2004 11:59:17 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <413C855A.3000104@steeleye.com>
-References: <4124DB86.9060505@steeleye.com>	<16677.22269.988036.787320@cse.unsw.edu.au>	<412E1C10.5020703@steeleye.com>	<16692.8187.411591.69640@cse.unsw.edu.au>	<4134A6AD.1060502@steeleye.com>	<16693.4161.921397.480506@cse.unsw.edu.au>	<413546B1.4080306@steeleye.com> <16699.51390.633644.1498@cse.unsw.edu.au>
+Message-ID: <1094486357.8342.12.camel@lade.trondhjem.org>
+References: <chdp06$e56$1@sea.gmane.org>
+	 <1094348385.13791.119.camel@lade.trondhjem.org>  <413A7119.2090709@upb.de>
+	 <1094349744.13791.128.camel@lade.trondhjem.org>  <413A789C.9000501@upb.de>
+	 <1094353267.13791.156.camel@lade.trondhjem.org>
+	 <1094464633.3986.36.camel@imladris.demon.co.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-1
+Cc: Sven =?ISO-8859-1?Q?K=F6hler?= <skoehler@upb.de>,  linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C4Ldf-00016m-2U
-	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 08:42:39 -0700
-Received: from stat16.steeleye.com ([209.192.50.48] helo=fenric.sc.steeleye.com)
+	id 1C4Lu5-0004YV-Vx
+	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 08:59:37 -0700
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1C4Ldd-0007i1-HM
-	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 08:42:38 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <16699.51390.633644.1498@cse.unsw.edu.au>
+	id 1C4Lu5-0002Bb-5I
+	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 08:59:37 -0700
+To: David Woodhouse <dwmw2@infradead.org>
+In-Reply-To: <1094464633.3986.36.camel@imladris.demon.co.uk>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,21 +34,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Neil Brown wrote:
+P=E5 m=E5 , 06/09/2004 klokka 05:57, skreiv David Woodhouse:
 
-> Ok, I have made these changes, committed them, and tags them with
-> nfs-utils-1-0-6-post3.
+> The fact that we require a persistent table of exports at all, and can't
+> call back to mountd to authenticate 'new' clients instead of just
+> telling them to sod off if the kernel doesn't already know about them,
+> is considered by some to be a bug in knfsd.=20
 
-Thanks Neil. I'll take a look tomorrow.
+That should have been fixed in 2.6.x. If you do mount /proc/fs/nfsd, and
+use a recent enough version of mountd, then knfsd can and will work
+without any extra help from exportfs.
 
-> I'm not sure if I mentioned, but I change the SIGHUP handling so that
-> instead of doing the work in the signal handler, I set a flag and do
-> the work in the main look (svc_run).  This avoids some races.
+The one problem I have found with this implementation is that it relies
+very heavily on reverse-DNS lookups, so it may give unexpected results
+if you have more than one name for your client. I can't see why that
+shouldn't be fixable, though...
 
-That sounds fine.
+Cheers,
+  Trond
 
---
-Paul
 
 
 -------------------------------------------------------
