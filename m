@@ -1,14 +1,18 @@
-From: Greg Lindahl <lindahl@keyresearch.com>
-Subject: Re: Soft vs Hard mounts
-Date: Fri, 16 May 2003 14:50:18 -0700
+From: Bruce Allan <bruce.allan@us.ibm.com>
+Subject: 2.6 Must-fix list from lkml / lse-tech
+Date: Fri, 16 May 2003 16:24:43 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030516215018.GB1879@greglaptop.internal.keyresearch.com>
-References: <482A3FA0050D21419C269D13989C61131274DD@lavender-fe.eng.netapp.com>
+Message-ID: <OFD4267944.08E287EF-ON88256D28.007EB712-88256D28.00809B45@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: nfs@sourceforge.net
-In-Reply-To: <482A3FA0050D21419C269D13989C61131274DD@lavender-fe.eng.netapp.com>
+Received: from e35.co.us.ibm.com ([32.97.110.133])
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19GoZQ-0002EH-00
+	for <nfs@lists.sourceforge.net>; Fri, 16 May 2003 16:25:01 -0700
+To: trond.myklebust@fys.uio.no, neilb@cse.unsw.edu.au
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -21,43 +25,25 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, May 16, 2003 at 09:13:18AM -0700, Lever, Charles wrote:
 
-> recently trond mentioned that this issue was not likely to
-> be addressed until after 2.6 because it requires architectural
-> changes in the VFS layer and probably a new type of semaphor
-> implementation.
 
-Well, some of the issues might be separate, and some have workarounds.
 
-For example, if stat() on a nfs mountpoint causes a process to hang,
-and you have processes like ssh which want to make sure your conf file
-is secure by walking the path back to /, there is a workaround
-of putting each mount point in its own directory:
 
-/home/foo/foo
-/home/bar/bar
+Hi Trond/Neil,
 
-You'd also want to look into what the Linux automounter does. It
-looks different from what I'm used to.
+I noticed you guys have been active in the discussions of akpm's 2.6
+must-fix list, but have not been following it all that closely.  Is there
+anything on the list w.r.t. NFS that you would like to submit to this email
+list to call for participation whether it be to request peoples' time to
+work on outstanding issues, ask for corroborating evidence of issues,
+testing of experimental patches, or whatever?
 
-> 3.  make soft mounts work more reliably by purging a file's
->     page cache contents when a soft timeout occurs
-> 
-> 4.  educate sysadmins how to make soft mounts more reliable
->     by thoroughly testing to determine a reasonable set of
->     mount options.
-
-Option (3) might make network congestion much worse, and turn
-congestion into failure. (4) is really hard, because it's hard to
-thoroughly test many different types of activity and congestion.
-
-Distributed system people generally eventually end up thinking that
-introducing any timeout will always result in congestion and odd
-circumstances turning into failures. I vastly prefer systems which
-have the behavior of "hard,intr".
-
-greg
+Regards,
+---
+Bruce Allan  <bruce.allan@us.ibm.com>
+Software Engineer, Linux Technology Center
+IBM Corporation, Beaverton OR
+503-578-4187   IBM Tie-line 775-4187
 
 
 
