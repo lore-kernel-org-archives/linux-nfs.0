@@ -1,20 +1,20 @@
 From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: ACL patch - is this bad or good?
-Date: Mon, 6 Dec 2004 11:30:54 +1100
-Message-ID: <16819.43070.634276.944461@cse.unsw.edu.au>
-References: <20041204222659.GA5837@perlsupport.com>
+Subject: Re: Debian, SIGPIPE, "libnfsidmap", and init.d vs. umount
+Date: Mon, 6 Dec 2004 11:34:47 +1100
+Message-ID: <16819.43303.95619.661063@cse.unsw.edu.au>
+References: <20041204221504.GD6146@perlsupport.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Cb6n1-0006Iy-If
-	for nfs@lists.sourceforge.net; Sun, 05 Dec 2004 16:31:43 -0800
+	id 1Cb6qA-0006YS-7k
+	for nfs@lists.sourceforge.net; Sun, 05 Dec 2004 16:34:58 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1Cb6mv-00028t-Jt
-	for nfs@lists.sourceforge.net; Sun, 05 Dec 2004 16:31:39 -0800
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1Cb6q9-0007ek-CW
+	for nfs@lists.sourceforge.net; Sun, 05 Dec 2004 16:34:58 -0800
 To: Chip Salzenberg <chip@pobox.com>
 In-Reply-To: message from Chip Salzenberg on Saturday December 4
 Sender: nfs-admin@lists.sourceforge.net
@@ -31,35 +31,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 On Saturday December 4, chip@pobox.com wrote:
-> Hi there.  A Debian user contributed a copy of what he says is a Red
-> Hat patch to support "acl" and "no_acl" options for NFS exports.
+> Debian needs a bugfix release of nfs-utils, because of the SIGPIPE
+> bug.  This being my job, I figured I could grab the HEAD version of
+> nfs-utils.  And since the Debian sarge release is coming up soon (no,
+> really), I hoped I'd find something unlikely to crash; instead I'm
+> having difficulty with the build.
+
+I use "./configure --disable-nfsv4 --disable-gss"  but you might not
+want to...
+
 > 
-> Is this patch OK?
+> I gather that "libnfsidmap" is what I'll find in:
+> 
+>   http://www.citi.umich.edu/projects/nfsv4/linux/libnfsidmap/
+> 
+> Is there some reason this hasn't been made part of Debian already,
+> seeing as how it already contains Debian build infrastructure?
 
-Define "OK" ???
+Probably just the lack of a certified debian developer to do it, but
+I'll let Bruce Fields answer further..
 
-I must admit a personal bias.  I find it very hard to get enthusiastic
-about anything relating to ACLs.   I think they are one of the worst
-mis-features ever to be grafted on to the side of a filesystem.
+> 
+> Also, is it a bug or a feature that the NFS startup scripts know how
+> to mount special-purpose filesystems, but not unmount them?
 
-I am *very* tempted to say "Don't use an old client if your server
-supports ACLs", but there are probably some poor souls out there who
-are forced to do so due to circumstances beyond their control......
+A feature(?).
 
-This patch is OK as far as it goes.  However it is completely useless
-against a kernel.org kernel as support for NFSEXP_NOACL hasn't been
-merged yet.
+There is a need to mount, but no need to unmount.
 
-But I suspect it will be if anyone bothers to pester me about it .....
-
-So I am OK with this patch going in to nfs-utils, providing the man
-page make it clear that not all kernels support this functionality,
-and will quietly accept but ignore the flag.
-
-Anyone want to re-make the patch with a suitable change to the
-manpage?
+It is a lot like there being a "modprobe" but no "rmmod".
 
 NeilBrown
+
+
+> -- 
+> Chip Salzenberg              - a.k.a. -           <chip@pobox.com>
+> People are supposed to die for freedom.  Not the other way around.
+> 
+> 
+> -------------------------------------------------------
+> SF email is sponsored by - The IT Product Guide
+> Read honest & candid reviews on hundreds of IT Products from real users.
+> Discover which products truly live up to the hype. Start reading now. 
+> http://productguide.itmanagersjournal.com/
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
 
 
 -------------------------------------------------------
