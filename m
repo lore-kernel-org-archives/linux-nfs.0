@@ -1,66 +1,34 @@
-From: David Rees <drees@greenhydrant.com>
+From: Nathan Straz <nstraz@sgi.com>
 Subject: Re: Irix NFS servers, again :-)
-Date: Thu, 17 Jun 2004 02:26:32 -0700
+Date: Thu, 17 Jun 2004 08:38:28 -0500
 Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <40D163C8.30507@greenhydrant.com>
-References: <1087411925.30092.35.camel@ceiriog1.demon.co.uk>
+Message-ID: <20040617133828.GA20029@sgi.com>
+References: <1087411925.30092.35.camel@ceiriog1.demon.co.uk> <40D163C8.30507@greenhydrant.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org-S266431AbUFQJ0i@vger.kernel.org>
-To: Peter Wainwright <prw@ceiriog1.demon.co.uk>
-In-Reply-To: <1087411925.30092.35.camel@ceiriog1.demon.co.uk>
+Content-Type: text/plain; charset=us-ascii
+Cc: Peter Wainwright <prw@ceiriog1.demon.co.uk>,
+	linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org-S266491AbUFQNj1@vger.kernel.org>
+To: David Rees <drees@greenhydrant.com>
+In-Reply-To: <40D163C8.30507@greenhydrant.com>
 List-ID: <nfs.lists.sourceforge.net>
 
-Peter Wainwright wrote, On 6/16/2004 11:52 AM:
-> I just upgraded one of my machines to Fedora Core 2, including
-> kernel 2.6.5. I found myself bitten on the bum by a bug I thought
-> had expired long ago, namely the Irix server readdir bug, or
-> 32/64-bit cookie problem.
- >
-> It seems the relevant patch
-> http://www.fys.uio.no/~trondmy/src/2.4.18/linux-2.4.18-seekdir.dif
-> was never incorporated in the mainstream kernel; however, Red Hat
-> did incorporate a similar patch (called, I believe,
-> linux-2.4.18-irixnfs.patch) in the later 2.4 kernel RPMS. However,
-> it seems that this has been omitted from the 2.6 kernels in Fedora.
-> So, I have the old problem: in a directory listing from an NFS
-> directory mounted from an Irix server, some entries may be
-> missing.
-> 
-> So, my question is: what happened to this patch? Is there a
-> 2.6 version available somewhere on the net? Was it not
-> incorporated into the mainstream kernel because it is not the
-> "right thing" to do (and maybe there is no "right thing" until
-> we are all running on 64 bits)? If this is the opinion of
-> the kernel developers I shall chase Red Hat to see if they can
-> resurrect it when 2.6 kernels appear in their RHEL product.
-> Some of us unfortunately still need to interoperate with Irix
-> and other strange systems :-)
-> 
-> If the list is interested, I have "sort of" ported the patch
-> to Linux 2.6.6 myself - just before I left work this afternoon;
-> It seems functional, but I need to have another look on my network
-> at work (where I have the SGI system) before I post it; there may be
-> other bits that need patching, though I hope my minimal patch will
-> suffice.
+On Thu, Jun 17, 2004 at 02:26:32AM -0700, David Rees wrote:
+> Peter Wainwright wrote, On 6/16/2004 11:52 AM:
+> >I just upgraded one of my machines to Fedora Core 2, including
+> >kernel 2.6.5. I found myself bitten on the bum by a bug I thought
+> >had expired long ago, namely the Irix server readdir bug, or
+> >32/64-bit cookie problem.
+>
+> glibc.  I can't seem to reproduce it using `ls` which I remember being 
+> able to last time I had the problem so that would explain it.  What 
+> software showed the problem for you?
 
-I ran across the same problem the other day.  Maybe someone on the nfs 
-list have a better idea on what the proper solution is.  My temporary 
-solution was to go back to a 2.4 kernel with the seekdir.dif patch.
+You can see the different if you do `ls dir` and `ls dir/*`.  Typically
+the shell will use readdir and ls will use getdents, IIRC.  I was using
+the test case readdir01 from LTP.
 
-Looking at Trond's 2.6 NFS patches, there doesn't appear to be any sort 
-of seekdir patch for those kernels.
-
-As I understand it the real problem is actually in glibc.  I have to 
-double check, but I think the software which showed this bug when I 
-experienced it on FC2 was statically linked with an older version of 
-glibc.  I can't seem to reproduce it using `ls` which I remember being 
-able to last time I had the problem so that would explain it.  What 
-software showed the problem for you?
-
-See this message from the nfs list.  There is more data in the archives 
-if you look.
-http://marc.theaimsgroup.com/?l=linux-nfs&m=105158098101612&w=2
-
--Dave
+-- 
+Nate Straz                                              nstraz@sgi.com
+sgi, inc                                           http://www.sgi.com/
+Linux Test Project                                  http://ltp.sf.net/
