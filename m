@@ -1,25 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] NFS nolock broken in 2.6.9-rc4
-Date: Fri, 15 Oct 2004 18:47:55 +0200
+From: business@paul.austin.name
+Subject: NFS Mount RPC Timed out problem
+Date: Fri, 15 Oct 2004 14:00:13 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1097858875.5558.98.camel@lade.trondhjem.org>
-References: <20041015095840.GA22992@suse.de>
-	 <1097851471.5558.12.camel@lade.trondhjem.org>
-	 <20041015151257.GF27307@suse.de>  <20041015152156.GH27307@suse.de>
+Message-ID: <33419.192.168.1.1.1097874013.squirrel@192.168.1.1>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net, Andrew Morton <akpm@osdl.org>
+Content-Type: text/plain;charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CIVGS-0003Od-AB
-	for nfs@lists.sourceforge.net; Fri, 15 Oct 2004 09:49:12 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 1CIZBT-0006FS-Tj
+	for nfs@lists.sourceforge.net; Fri, 15 Oct 2004 14:00:19 -0700
+Received: from [65.39.240.4] (helo=chief.intranet.paul.austin.name)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CIVFU-0000S6-T7
-	for nfs@lists.sourceforge.net; Fri, 15 Oct 2004 09:49:12 -0700
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20041015152156.GH27307@suse.de>
+	id 1CIZBS-0008W5-DU
+	for nfs@lists.sourceforge.net; Fri, 15 Oct 2004 14:00:19 -0700
+Received: from ssl.paul.austin.name (localhost [127.0.0.1])
+	by chief.intranet.paul.austin.name (Postfix) with ESMTP id 794E742750
+	for <nfs@lists.sourceforge.net>; Fri, 15 Oct 2004 14:00:13 -0700 (PDT)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,28 +30,65 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 fr , 15/10/2004 klokka 17:21, skreiv Olaf Kirch:
-> > Urrrgh.. this looks complicated and duplicates code. Then I'd rather
-> > have two struct file_operations, one for normal operations with a .lock
-> > function, and a second one for nolock without.
+I'm experiencing a RPC: Timed out issue with my system that started
+yesterday after I had login issues with my system (which are now fixed),
+up until that point NFS was working correctly.
 
-Huh? Those 3 tests are exactly what we had prior to 2.6.9-rc2. I've just
-moved the LOCK_USE_CLNT option into the filesystem. In fact it does the
-same thing with LESS code than what used to be the case (the 2 combined
-patches remove 31 lines, and insert 20).
+I have turned on debug output on the rpc.mountd but not much seems to be
+written out, if anyone knows what I should check in these cases it would
+be greatly appreciated, I've googled myself to death trying to find out
+the problem.
 
-> Please find attached proposed fix3 that does just this.
+If there is a FAQ for this problem let me know.
 
-Hmm... I agree that is slightly more efficient. The worry I have is that
-the "nolock" option is a mountpoint option; it's not really a file
-property.
-If we ever want to be able to move options like "-onolock" to the
-vfsmount, so that people can have the same underlying filesystem mounted
-in different places with several different sets of mount options, then
-we should not mix mount options and file properties.
+My configuration is as follows.
 
-Cheers,
-  Trond
+Gentoo Linx: 2.6.8-r8 (also tried -r3)
+nfs-utils: 1.0.6-r4
+portmap: 5b-r8
+
+
+# showmount -e localhost
+Export list for localhost:
+/home          192.168.1.0/255.255.255.0
+/home/projects 192.168.1.0/255.255.255.0
+
+#rpcinfo -p localhost
+   program vers proto   port
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    100024    1   udp  32859  status
+    100024    1   tcp  33225  status
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
+    100021    1   udp  32860  nlockmgr
+    100021    3   udp  32860  nlockmgr
+    100021    4   udp  32860  nlockmgr
+    100005    1   udp    636  mountd
+    100005    1   tcp    639  mountd
+    100005    2   udp    636  mountd
+    100005    2   tcp    639  mountd
+    100005    3   udp    636  mountd
+    100005    3   tcp    639  mountd
+
+#cat /etc/hosts.allow
+portmap: 192.168.1.0/255.255.255.0
+lockd: 192.168.1.0/255.255.255.0
+rquotad: 192.168.1.0/255.255.255.0
+mountd: 192.168.1.0/255.255.255.0
+statd: 192.168.1.0/255.255.255.0
+
+#cat /etc/hosts.deny
+portmap: ALL
+lockd: ALL
+rquotad: ALL
+mountd: ALL
+statd: ALL
+
+If any more information would be useful please let me know.
+
+Thanks in advance,
+Paul
 
 
 
