@@ -1,25 +1,22 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Re: [PATCH] fix nfsidem cthon test
-Date: Thu, 21 Oct 2004 12:13:09 -0400
+From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
+Subject: NFS and tinygrams
+Date: Thu, 21 Oct 2004 10:05:26 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20041021161309.GC24417@fieldses.org>
-References: <1098341478.21421.7.camel@hole.melbourne.sgi.com> <1098343891.28394.15.camel@lade.trondhjem.org>
+Message-ID: <1098378325.3601.153.camel@tesuji.nac.uci.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Greg Banks <gnb@melbourne.sgi.com>,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Content-Type: text/plain
+Cc: Dan Stromberg <strombrg@dcs.nac.uci.edu>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CKfYt-0001JV-9m
-	for nfs@lists.sourceforge.net; Thu, 21 Oct 2004 09:13:11 -0700
-Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	id 1CKgNY-0007O8-MC
+	for nfs@lists.sourceforge.net; Thu, 21 Oct 2004 10:05:32 -0700
+Received: from dcs.nac.uci.edu ([128.200.34.32] ident=root)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1CKfYr-0006Wi-1T
-	for nfs@lists.sourceforge.net; Thu, 21 Oct 2004 09:13:11 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1098343891.28394.15.camel@lade.trondhjem.org>
+	id 1CKgNV-0006SE-0x
+	for nfs@lists.sourceforge.net; Thu, 21 Oct 2004 10:05:32 -0700
+To: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,27 +29,38 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Oct 21, 2004 at 09:31:31AM +0200, Trond Myklebust wrote:
-> to den 21.10.2004 Klokka 16:51 (+1000) skreiv Greg Banks:
-> > G'day,
-> > 
-> > The attached patch forward ports from 2.4 the fix to nfs_rename()
-> > which makes the nfsidem test in the Connectathon test suite pass.
-> 
-> 
-> Vetoed.
-> 
-> This remains a server bug, not a client bug. The default should NOT be
-> no_subtree_check.
 
-We could do something like this for v4, though, couldn't we?
+We have a series of test transfers going, where we are shuttling data
+from GFS->NFS V3 over UDP->NFS V3 over TCP->Lustre.
 
-(I'm looking at rfc3530 section 9.3, which allows the client to assume
-two files are the same if the server returns the same fileid and fsid
-attributes for the two filehandles and doesn't return TRUE for
-unique_handles on either.)
+On the NFS V3 over TCP link, we're seeing a lot of tinygrams, despite
+having 8K NFS block sizes turned on, and jumbo packets enabled (9000
+byte MTU).
 
---b.
+The GFS machine runs Redhat 9, the first NFS server also runs Redhat 9. 
+The machine copying from NFS to NFS is running AIX 5.1.  The machine
+copying NFS to Lustre is running RHEL 3.
+
+I didn't check on the packet sizes of the other legs of the transfer.
+
+I've verified that we do have jumbo packets being used some of the time,
+on that AIX 5.1 -> RHEL 3 hop.  However, we're still getting a pretty
+large percentage of tinygrams.
+
+Is there any way of cutting down on the tinygrams, to more effectively
+utilize our large MTU?  Is there perhaps any sort of "intent based"
+packetizing in standard implementations of NFS on Redhat 9, AIX 5.1,
+and/or RHEL 3?
+
+(Yes, we could short circuit the AIX 5.1 part of the transfer, and that
+Would make things faster, but it Wouldn't test what we need to test!)
+
+Thanks!
+
+-- 
+Dan Stromberg DCS/NACS/UCI <strombrg@dcs.nac.uci.edu>
+
+
 
 
 -------------------------------------------------------
