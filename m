@@ -1,15 +1,15 @@
 From: "Kendrick M. Smith" <kmsmith@umich.edu>
-Subject: REPOST patch 28/38: SERVER: allow resfh==fhp in fh_compose()
-Date: Wed, 14 Aug 2002 16:50:09 -0400 (EDT)
+Subject: REPOST patch 30/38: SERVER: allow type==0 in nfsd_unlink()
+Date: Wed, 14 Aug 2002 16:51:12 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.SOL.4.44.0208141649400.1834-100000@vanguard.gpcc.itd.umich.edu>
+Message-ID: <Pine.SOL.4.44.0208141650500.1834-100000@vanguard.gpcc.itd.umich.edu>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from berzerk.gpcc.itd.umich.edu ([141.211.2.162])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17f55n-000797-00
-	for <nfs@lists.sourceforge.net>; Wed, 14 Aug 2002 13:50:11 -0700
+	id 17f56o-0007eB-00
+	for <nfs@lists.sourceforge.net>; Wed, 14 Aug 2002 13:51:14 -0700
 To: linux-kernel@vger.kernel.org, <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -24,55 +24,23 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 
-Change fh_compose() so that it will do the right thing if fhp==res_fh.
-(This is convenient in the NFSv4 LOOKUP operation, which _replaces_
-CURRENT_FH with the filehandle obtained by lookup.)
+If nfsd_unlink() is called with @type equal to 0, then let it do the
+right thing regardless of the type of the file being unlinked.  This
+is needed for the NFSv4 REMOVE operation, which works for any type of
+file, even directories.
 
---- old/fs/nfsd/nfsfh.c	Sun Aug 11 22:55:51 2002
-+++ new/fs/nfsd/nfsfh.c	Sun Aug 11 23:03:57 2002
-@@ -316,7 +316,8 @@ fh_compose(struct svc_fh *fhp, struct sv
- 	 * Then create a 32byte filehandle using nfs_fhbase_old
- 	 *
- 	 */
--
-+	u8 ref_fh_version = 1;
-+	u8 ref_fh_fsid_type = 1;
- 	struct inode * inode = dentry->d_inode;
- 	struct dentry *parent = dentry->d_parent;
- 	__u32 *datap;
-@@ -326,6 +327,13 @@ fh_compose(struct svc_fh *fhp, struct sv
- 		parent->d_name.name, dentry->d_name.name,
- 		(inode ? inode->i_ino : 0));
+--- old/fs/nfsd/vfs.c	Sun Aug 11 23:08:03 2002
++++ new/fs/nfsd/vfs.c	Sun Aug 11 23:08:24 2002
+@@ -1329,6 +1329,9 @@ nfsd_unlink(struct svc_rqst *rqstp, stru
+ 		goto out;
+ 	}
 
-+	if (ref_fh) {
-+		ref_fh_version = ref_fh->fh_handle.fh_version;
-+		ref_fh_fsid_type = ref_fh->fh_handle.fh_fsid_type;
-+		if (ref_fh == fhp)
-+			fh_put(ref_fh);
-+	}
++	if (!type)
++		type = rdentry->d_inode->i_mode & S_IFMT;
 +
- 	if (fhp->fh_locked || fhp->fh_dentry) {
- 		printk(KERN_ERR "fh_compose: fh %s/%s not initialized!\n",
- 			parent->d_name.name, dentry->d_name.name);
-@@ -337,8 +345,7 @@ fh_compose(struct svc_fh *fhp, struct sv
- 	fhp->fh_dentry = dentry; /* our internal copy */
- 	fhp->fh_export = exp;
-
--	if (ref_fh &&
--	    ref_fh->fh_handle.fh_version == 0xca) {
-+	if (ref_fh_version == 0xca) {
- 		/* old style filehandle please */
- 		memset(&fhp->fh_handle.fh_base, 0, NFS_FHSIZE);
- 		fhp->fh_handle.fh_size = NFS_FHSIZE;
-@@ -354,7 +361,7 @@ fh_compose(struct svc_fh *fhp, struct sv
- 		fhp->fh_handle.fh_auth_type = 0;
- 		datap = fhp->fh_handle.fh_auth+0;
- 		if ((exp->ex_flags & NFSEXP_FSID) &&
--		    (!ref_fh || ref_fh->fh_handle.fh_fsid_type == 1)) {
-+		    (ref_fh_fsid_type == 1)) {
- 			fhp->fh_handle.fh_fsid_type = 1;
- 			/* fsid_type 1 == 4 bytes filesystem id */
- 			*datap++ = exp->ex_fsid;
+ 	if (type != S_IFDIR) { /* It's UNLINK */
+ #ifdef MSNFS
+ 		if ((fhp->fh_export->ex_flags & NFSEXP_MSNFS) &&
 
 
 
