@@ -1,21 +1,20 @@
-From: seth vidal <skvidal@phy.duke.edu>
-Subject: some questions that would be useful to be answered and posted in
- the faq or at least on the list
-Date: 17 May 2002 21:49:15 -0400
+From: Ryan Sweet <rsweet@atos-group.nl>
+Subject: Re: 2.4.18 disk i/o load spikes
+Date: Sat, 18 May 2002 09:14:11 +0200 (CEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1021686556.2332.22.camel@milo>
+Message-ID: <Pine.LNX.4.30.0205180854110.29675-100000@core-0>
+References: <49CA7FE2A83A33459A2CD27E99E90EFB0BAE9C@poexmb1.conoco.net>
+Reply-To: Ryan Sweet <rsweet@atos-group.nl>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature";
-	boundary="=-OhAMFOkB5OWFnkluwnFc"
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: <nfs@lists.sourceforge.net>, <rsweet@atos-group.nl>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail.phy.duke.edu ([152.3.182.2])
+Received: from [62.58.73.254] (helo=ats-core-0.atos-group.nl)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 178tT0-0002g6-00
-	for <nfs@lists.sourceforge.net>; Fri, 17 May 2002 18:57:06 -0700
-Received: from user-152-16-65-139.adsl.duke.edu (user-152-16-65-139.adsl.duke.edu [152.16.65.139])
-	by mail.phy.duke.edu (Postfix) with ESMTP id 801C430197
-	for <nfs@lists.sourceforge.net>; Fri, 17 May 2002 21:57:04 -0400 (EDT)
-To: nfs@lists.sourceforge.net
+	id 178ybE-0003Sv-00
+	for <nfs@lists.sourceforge.net>; Sat, 18 May 2002 00:25:56 -0700
+To: "Heflin, Roger A." <Roger.A.Heflin@conoco.com>
+In-Reply-To: <49CA7FE2A83A33459A2CD27E99E90EFB0BAE9C@poexmb1.conoco.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,51 +27,44 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
+On Fri, 17 May 2002, Heflin, Roger A. wrote:
+>
+> When you run it with the 10 streams, that is on the local disk with
+> no nfs?
 
---=-OhAMFOkB5OWFnkluwnFc
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+Yes, I first tested the local disks only, then verified that the symptoms
+were the same with nfs.
 
-Neil, Trond, Tom, HJ and others:
- I think it'd be quite useful if each of you could give your recommended
-patch and version set for good nfs server and client performance and
-reliability for the 2.4.18 kernel.
+> And also, besides the load rising, what happens to the
+> io rates when things start to spiral?
 
-ideally:
- Neil: What patches of yours you recommend for 2.4.18 nfsv3 tcp and udp
- Trond: What patches of yours for 2.4.18 nfsv3 client tcp and udp
- Tom and HJ: What version of nfs-utils suggested to work with the above.
- Tom: if you could post the above answers onto the FAQ I'm sure a lot of
-people would appreciate.
+tcp networking, cpu utilisation are fine, responsiveness from anything
+depending upon the filesystems in question, however, really starts to
+suck.  User sessions with home dirs on the filer all grind to a halt, nfs
+timeouts happen all over the place, and even doing an ls takes forever.
 
-I think this information would be handy to the lot of us who are kinda
-bouncing around looking for something to make our servers and clients do
-the right thing.
+> I have not been able to duplicate
+> it under 2.4.19 with the latest NFS patches with limited testing.
 
-I know this is  kinda a large question but it'd be nice to have a
-consistent answer for it. Spelunking the list archives has not gained me
-a greatly consistent answer.
+Running the same tests on another 2.4.18 system, with the same mb/cpu/ram,
+but with a promise controller and four ata/100 ide drives in software
+raid5 I was also unable to reporduce the problem.  The system gets well
+and truly loaded, and I/O rates on the promise software raided drives are
+not spectacular, but the system remains responsive and most importantly
+the performance is much more smooth, not so many bursts of I/O, with long
+waits in between.
 
-thanks
--sv
+> 	I am the author of slowspeed.c, I have been able to duplicate it
+> 	on 2.2.19 with nfs, I believe I was able to duplicate it on a local
+> 	disk with no nfs, but I cannot duplicate things slowing down
+> 	always with things on the local disk.   On 2.2.19 it looks like
 
---=20
-GPG Public Key: http://www.phy.duke.edu/~skvidal/skvidal.gpg
+When we used 2.2.18 (9 months ago?), we did not have this problem, though
+as I mentioned in my original post, our client mix (and usage pattern) has
+changed significantly.
 
---=-OhAMFOkB5OWFnkluwnFc
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.0.6 (GNU/Linux)
-Comment: For info see http://www.gnupg.org
-
-iD8DBQA85bMb1Aj3x2mIbMcRAs7/AKCcMs5Cbel4t87Tt718N5OfWsyeVACeJ+/j
-7/tQ4wdz19XfpNqQsSyLrxk=
-=c/jX
------END PGP SIGNATURE-----
-
---=-OhAMFOkB5OWFnkluwnFc--
+BTW, the progrm segfaults with more than 35 streams.  Running another one
+in another dir seems ok though.
 
 
 _______________________________________________________________
