@@ -1,24 +1,27 @@
-From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 5 of 11 - gss_svc_module_ref.patch
-Date: Fri, 28 May 2004 14:37:30 +1000
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: fcntl locks prevent unmounting of underlying filesystem
+Date: Sun, 30 May 2004 08:51:52 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1BTZ7b-0008ES-04@notabene.cse.unsw.edu.au>
-References: <20040528143518.31534.patches@notabene>
+Message-ID: <16569.5128.54766.582893@cse.unsw.edu.au>
+References: <1085589795.20517.41.camel@tesla.mmt.bellhowell.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BUkYn-0006lT-Vd
-	for nfs@lists.sourceforge.net; Mon, 31 May 2004 04:02:29 -0700
+	id 1BUkYQ-0006gP-3y
+	for nfs@lists.sourceforge.net; Mon, 31 May 2004 04:02:06 -0700
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BUkYn-0006mm-AE
-	for nfs@lists.sourceforge.net; Mon, 31 May 2004 04:02:29 -0700
+	id 1BUkYP-0006hJ-8Z
+	for nfs@lists.sourceforge.net; Mon, 31 May 2004 04:02:05 -0700
 Received: From
-	notabene.cse.unsw.edu.au ([129.94.172.124]) (auth-user neilb) (ident-user Debian-exim)
-	(for <akpm@osdl.org>) (for <nfs@lists.sourceforge.net>) By note With
-	Smtp ; Fri, 28 May 2004 14:37:31 +1000
-To: Andrew Morton <akpm@osdl.org>
+	notabene.cse.unsw.edu.au ([129.94.241.7] == ppp2-007.ppp2.cse.unsw.EDU.AU) (auth-user neilb)
+	(for <jtlayton@poochiereds.net>) (for <nfs@lists.sourceforge.net>) By
+	note With Smtp ; Sun, 30 May 2004 08:51:59 +1000
+To: Jeffrey Layton <jtlayton@poochiereds.net>
+In-Reply-To: message from Jeffrey Layton on Wednesday May 26
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,172 +34,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Wednesday May 26, jtlayton@poochiereds.net wrote:
+> I've seem to have run across a problem with NFS and fcntl locks. I'm
+> trying to implement a HA-NFS solution using heartbeat, DRBD, LVM2, etc.
+> I'm running the following:
+> 
+> 2.6.6 kernel
+> nfs-kernel-server and nfs-common 1.0.6-3 (debian packages)
+> 
+> The underlying filesystem is reiserfs. Essentially what I'm seeing is
+> that when I try to shut down NFS and unmount the filesystem for a
+> failover, I'm unable to unmount if I have an fcntl lock on the file.
 
-The server sunrpc code should take a reference on the relevant module before
-calling any authentication code.
+You need to make sure that lockd gets killed as well.
+Just shutting down nfsd doesn't necessarily kill lockd, as if you have
+any active nfs mounts lockd will stay up for them.
+So, when you have shut down nfsd and before you try to unmount, could
+you check if lockd is still running or not?
+If it is, send it a SIGKILL.  It won't exit, but it should release any
+locks that it is holding.
 
-Also, it looks to me like the table of authops needs some locking.
+If lockd has gone away at this point but locks are still being held,
+then that is a real problem and I will try to look into it.
 
-Finally, gss_svc_init wasn't checking the status of svc_auth_register,
-and gss_svc_shutdown wasn't calling svc_auth_unregister.
+NeilBrown
 
-
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
-
- ----------- Diffstat output ------------
- ./include/linux/sunrpc/svcauth.h    |    1 +
- ./net/sunrpc/auth_gss/svcauth_gss.c |   12 ++++++++----
- ./net/sunrpc/svcauth.c              |   25 +++++++++++++++++++------
- ./net/sunrpc/svcauth_unix.c         |    3 +++
- 4 files changed, 31 insertions(+), 10 deletions(-)
-
-diff ./include/linux/sunrpc/svcauth.h~current~ ./include/linux/sunrpc/svcauth.h
---- ./include/linux/sunrpc/svcauth.h~current~	2004-05-28 14:20:00.000000000 +1000
-+++ ./include/linux/sunrpc/svcauth.h	2004-05-28 14:20:17.000000000 +1000
-@@ -87,6 +87,7 @@ struct auth_domain {
-  */
- struct auth_ops {
- 	char *	name;
-+	struct module *owner;
- 	int	flavour;
- 	int	(*accept)(struct svc_rqst *rq, u32 *authp);
- 	int	(*release)(struct svc_rqst *rq);
-
-diff ./net/sunrpc/auth_gss/svcauth_gss.c~current~ ./net/sunrpc/auth_gss/svcauth_gss.c
---- ./net/sunrpc/auth_gss/svcauth_gss.c~current~	2004-05-28 14:20:00.000000000 +1000
-+++ ./net/sunrpc/auth_gss/svcauth_gss.c	2004-05-28 14:20:17.000000000 +1000
-@@ -1045,6 +1045,7 @@ svcauth_gss_domain_release(struct auth_d
- 
- struct auth_ops svcauthops_gss = {
- 	.name		= "rpcsec_gss",
-+	.owner		= THIS_MODULE,
- 	.flavour	= RPC_AUTH_GSS,
- 	.accept		= svcauth_gss_accept,
- 	.release	= svcauth_gss_release,
-@@ -1054,10 +1055,12 @@ struct auth_ops svcauthops_gss = {
- int
- gss_svc_init(void)
- {
--	cache_register(&rsc_cache);
--	cache_register(&rsi_cache);
--	svc_auth_register(RPC_AUTH_GSS, &svcauthops_gss);
--	return 0;
-+	int rv = svc_auth_register(RPC_AUTH_GSS, &svcauthops_gss);
-+	if (rv == 0) {
-+		cache_register(&rsc_cache);
-+		cache_register(&rsi_cache);
-+	}
-+	return rv;
- }
- 
- void
-@@ -1065,4 +1068,5 @@ gss_svc_shutdown(void)
- {
- 	cache_unregister(&rsc_cache);
- 	cache_unregister(&rsi_cache);
-+	svc_auth_unregister(RPC_AUTH_GSS);
- }
-
-diff ./net/sunrpc/svcauth.c~current~ ./net/sunrpc/svcauth.c
---- ./net/sunrpc/svcauth.c~current~	2004-05-28 14:20:00.000000000 +1000
-+++ ./net/sunrpc/svcauth.c	2004-05-28 14:20:17.000000000 +1000
-@@ -11,6 +11,7 @@
- 
- #include <linux/types.h>
- #include <linux/sched.h>
-+#include <linux/module.h>
- #include <linux/sunrpc/types.h>
- #include <linux/sunrpc/xdr.h>
- #include <linux/sunrpc/svcsock.h>
-@@ -27,6 +28,7 @@
- extern struct auth_ops svcauth_null;
- extern struct auth_ops svcauth_unix;
- 
-+static spinlock_t authtab_lock = SPIN_LOCK_UNLOCKED;
- static struct auth_ops	*authtab[RPC_AUTH_MAXFLAVOR] = {
- 	[0] = &svcauth_null,
- 	[1] = &svcauth_unix,
-@@ -43,10 +45,15 @@ svc_authenticate(struct svc_rqst *rqstp,
- 	flavor = ntohl(svc_getu32(&rqstp->rq_arg.head[0]));
- 
- 	dprintk("svc: svc_authenticate (%d)\n", flavor);
--	if (flavor >= RPC_AUTH_MAXFLAVOR || !(aops = authtab[flavor])) {
-+
-+	spin_lock(&authtab_lock);
-+	if (flavor >= RPC_AUTH_MAXFLAVOR || !(aops = authtab[flavor])
-+			|| !try_module_get(aops->owner)) {
-+		spin_unlock(&authtab_lock);
- 		*authp = rpc_autherr_badcred;
- 		return SVC_DENIED;
- 	}
-+	spin_unlock(&authtab_lock);
- 
- 	rqstp->rq_authop = aops;
- 	return aops->accept(rqstp, authp);
-@@ -66,24 +73,30 @@ int svc_authorise(struct svc_rqst *rqstp
- 	if (aops) 
- 		rv = aops->release(rqstp);
- 
--	/* FIXME should I count and release authops */
-+	module_put(aops->owner);
- 	return rv;
- }
- 
- int
- svc_auth_register(rpc_authflavor_t flavor, struct auth_ops *aops)
- {
--	if (flavor >= RPC_AUTH_MAXFLAVOR || authtab[flavor])
--		return -EINVAL;
--	authtab[flavor] = aops;
--	return 0;
-+	int rv = -EINVAL;
-+	spin_lock(&authtab_lock);
-+	if (flavor < RPC_AUTH_MAXFLAVOR && authtab[flavor] != NULL) {
-+		authtab[flavor] = aops;
-+		rv = 0;
-+	}
-+	spin_unlock(&authtab_lock);
-+	return rv;
- }
- 
- void
- svc_auth_unregister(rpc_authflavor_t flavor)
- {
-+	spin_lock(&authtab_lock);
- 	if (flavor < RPC_AUTH_MAXFLAVOR)
- 		authtab[flavor] = NULL;
-+	spin_unlock(&authtab_lock);
- }
- 
- /**************************************************
-
-diff ./net/sunrpc/svcauth_unix.c~current~ ./net/sunrpc/svcauth_unix.c
---- ./net/sunrpc/svcauth_unix.c~current~	2004-05-28 14:20:00.000000000 +1000
-+++ ./net/sunrpc/svcauth_unix.c	2004-05-28 14:20:17.000000000 +1000
-@@ -1,5 +1,6 @@
- #include <linux/types.h>
- #include <linux/sched.h>
-+#include <linux/module.h>
- #include <linux/sunrpc/types.h>
- #include <linux/sunrpc/xdr.h>
- #include <linux/sunrpc/svcsock.h>
-@@ -411,6 +412,7 @@ svcauth_null_release(struct svc_rqst *rq
- 
- struct auth_ops svcauth_null = {
- 	.name		= "null",
-+	.owner		= THIS_MODULE,
- 	.flavour	= RPC_AUTH_NULL,
- 	.accept 	= svcauth_null_accept,
- 	.release	= svcauth_null_release,
-@@ -515,6 +517,7 @@ svcauth_unix_release(struct svc_rqst *rq
- 
- struct auth_ops svcauth_unix = {
- 	.name		= "unix",
-+	.owner		= THIS_MODULE,
- 	.flavour	= RPC_AUTH_UNIX,
- 	.accept 	= svcauth_unix_accept,
- 	.release	= svcauth_unix_release,
 
 
 -------------------------------------------------------
