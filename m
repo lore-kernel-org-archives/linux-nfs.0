@@ -1,23 +1,20 @@
-From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 3 of 10 - Allow larger writes to sunrpc/svc caches.
-Date: Tue, 18 May 2004 11:31:38 +1000
+From: "James Bond" <jamesbond_422@hotmail.com>
+Subject: NFS rpc.lockd
+Date: Tue, 18 May 2004 13:53:52 +0000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1BPtSE-0004B8-EY@notabene.cse.unsw.edu.au>
-References: <20040518112921.15964.patches@notabene>
-Cc: nfs@lists.sourceforge.net
+Message-ID: <SEA2-F32biHKwf6Ihkg0000e266@hotmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BPtSO-00072M-2S
-	for nfs@lists.sourceforge.net; Mon, 17 May 2004 18:31:48 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BPtSN-0002yv-I6
-	for nfs@lists.sourceforge.net; Mon, 17 May 2004 18:31:47 -0700
-Received: From notabene.cse.unsw.edu.au ([129.94.172.124]) (auth-user neilb)
-	(for <akpm@osdl.org>) (for <nfs@lists.sourceforge.net>) By note With
-	Smtp ; Tue, 18 May 2004 11:31:39 +1000
-To: Andrew Morton <akpm@osdl.org>
+	id 1BQ52c-00035p-Ea
+	for nfs@lists.sourceforge.net; Tue, 18 May 2004 06:53:58 -0700
+Received: from sea2-f32.sea2.hotmail.com ([207.68.165.32] helo=hotmail.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1BQ52c-0003se-Cd
+	for nfs@lists.sourceforge.net; Tue, 18 May 2004 06:53:58 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,70 +27,21 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hi,
+I am using Red Hat Enterprise Linux AS 3 kernel version:2.4.21-9.0.3.EL
+I would like to know more information about rpc.lockd daemon. Red hat 
+documenttaion says, that it is a optional process and most of the kernel now 
+days starts the rpc.lockd automatically..
+Can anyone lete me know if i need to start this services or RHEL3 kernel 
+starts this service by itself.
 
-We currently serialize all writes to these caches with queue_io_sem,
-so we only needed one buffer.
-There is some need for larger-than-one-page writes, so we can just
-statically allocate a buffer.
+Thanks
+Jerry
 
- ----------- Diffstat output ------------
- ./net/sunrpc/cache.c |   20 ++++++--------------
- 1 files changed, 6 insertions(+), 14 deletions(-)
+_________________________________________________________________
+It's fast, it's easy and it's free. Get MSN Messenger today! 
+http://www.msn.co.uk/messenger
 
-diff ./net/sunrpc/cache.c~current~ ./net/sunrpc/cache.c
---- ./net/sunrpc/cache.c~current~	2004-05-18 11:09:16.000000000 +1000
-+++ ./net/sunrpc/cache.c	2004-05-18 11:16:01.000000000 +1000
-@@ -652,12 +652,13 @@ cache_read(struct file *filp, char *buf,
- 	return err ? err :  count;
- }
- 
-+static char write_buf[8192]; /* protected by queue_io_sem */
-+
- static ssize_t
- cache_write(struct file *filp, const char *buf, size_t count,
- 	    loff_t *ppos)
- {
- 	int err;
--	char *page;
- 	struct cache_detail *cd = PDE(filp->f_dentry->d_inode)->data;
- 
- 	if (ppos != &filp->f_pos)
-@@ -665,31 +666,22 @@ cache_write(struct file *filp, const cha
- 
- 	if (count == 0)
- 		return 0;
--	if (count > PAGE_SIZE)
-+	if (count >= sizeof(write_buf))
- 		return -EINVAL;
- 
- 	down(&queue_io_sem);
- 
--	page = kmalloc(PAGE_SIZE, GFP_KERNEL);
--	if (page == NULL) {
--		up(&queue_io_sem);
--		return -ENOMEM;
--	}
--
--	if (copy_from_user(page, buf, count)) {
-+	if (copy_from_user(write_buf, buf, count)) {
- 		up(&queue_io_sem);
--		kfree(page);
- 		return -EFAULT;
- 	}
--	if (count < PAGE_SIZE)
--		page[count] = '\0';
-+	write_buf[count] = '\0';
- 	if (cd->cache_parse)
--		err = cd->cache_parse(cd, page, count);
-+		err = cd->cache_parse(cd, write_buf, count);
- 	else
- 		err = -EINVAL;
- 
- 	up(&queue_io_sem);
--	kfree(page);
- 	return err ? err : count;
- }
- 
 
 
 -------------------------------------------------------
