@@ -1,19 +1,23 @@
-From: "Robert Myoung" <myoung@ansoft.cncdsl.com>
-Subject: NFS can support Open GL graphic display interface?
-Date: Fri, 4 Mar 2005 11:49:07 -0800
-Message-ID: <200503041949.OAA18047@leander.cnchost.com>
+From: Nathaniel Stahl <nrs@levanta.com>
+Subject: Small mountd bug & potential fix
+Date: Wed, 02 Mar 2005 17:01:48 -0800
+Message-ID: <422661FC.2080701@levanta.com>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_003C_01C520B0.2C3F0E30"
+Content-Type: multipart/mixed;
+ boundary="------------050707040003060003090900"
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D7Inz-0006UN-LA
-	for nfs@lists.sourceforge.net; Fri, 04 Mar 2005 11:49:47 -0800
-Received: from leander.cnchost.com ([207.155.252.112])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1D7Inu-0007sn-JV
-	for nfs@lists.sourceforge.net; Fri, 04 Mar 2005 11:49:47 -0800
-To: <nfs@lists.sourceforge.net>
+	id 1D6gbB-0001XF-ID
+	for nfs@lists.sourceforge.net; Wed, 02 Mar 2005 19:02:01 -0800
+Received: from mail.levanta.com ([69.36.243.36] helo=mail.linuxcare.com)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1D6elu-0002M5-U3
+	for nfs@lists.sourceforge.net; Wed, 02 Mar 2005 17:05:43 -0800
+Received: from [10.1.1.183] (cisco-6509.levanta.com [69.36.253.2] (may be forged))
+	by mail.linuxcare.com (8.12.11/8.12.8) with ESMTP id j230m0CC029068
+	for <nfs@lists.sourceforge.net>; Wed, 2 Mar 2005 16:48:00 -0800
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,131 +32,86 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a multi-part message in MIME format.
-
-------=_NextPart_000_003C_01C520B0.2C3F0E30
-Content-Type: text/plain;
-	charset="us-ascii"
+--------------050707040003060003090900
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
 
-Dear developers and other users,
 
+We have a management product that can manage a Linux-based NFS server to 
+allocate and export storage to managed servers.  (Then automatically 
+mount the storage on those servers so it can be used)
+
+I was seeing a problem where sometimes the directory I was exporting 
+would not be mountable on the server it was exported to.
+
+ >From the server machine's /var/log/messages:
+Mar 1 10:49:53 fedora3 rpc.mountd: refused mount request from 
+172.31.183.2 for
+/mnt/NAS/exports/Levanta-1109702993-18 (/): not exported
+
+But according to exportfs:
+
+[root@fedora3 ~]# exportfs
+/mnt/NAS/exports/Levanta-1109702992-17
+172.31.183.2
+/mnt/NAS/exports/Levanta-1109702993-18
+172.31.183.2
+/mnt/NAS/exports/Levanta-0
+172.31.183.2
+
+It looks like exportfs updates /var/lib/nfs/etab to inform mountd that 
+there are new exports.
+
+mountd decides whether to re-read etab based on whether the data 
+modification time has changed since it was last read.  This fails if 
+there are multiple updates in a second - quite possible on fast new 
+machines if the NFS server is being programmatically controlled.  This 
+patch updates mountd to track when it actually read the file, and 
+compare that with the file's modification time.  If it last read the 
+file at the same time it was last modified, re-read the file again in 
+case there were other modifications later that second.  (Strictly 
+speaking, the modification time equal check isn't necessary... only 
+comparing the modification time to the current time, but I guess isn't a 
+bad idea as added protection against someone playing with the clock).
+
+-Nate
+
+
+--------------050707040003060003090900
+Content-Type: text/x-patch;
+ name="mountd-auth.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="mountd-auth.patch"
+
+--- /usr/src/redhat/SOURCES/nfs-utils-1.0.7/utils/mountd/auth.c	2004-12-05 16:46:40.000000000 -0800
++++ nfs-utils-1.0.7/utils/mountd/auth.c	2005-03-02 16:52:22.403733192 -0800
+@@ -12,6 +12,7 @@
+ #include <netinet/in.h>
+ #include <arpa/inet.h>
+ #include <errno.h>
++#include <time.h>
+ #include "misc.h"
+ #include "nfslib.h"
+ #include "exportfs.h"
+@@ -49,12 +50,14 @@
+ {
+ 	struct stat		stb;
+ 	static time_t		last_modified = 0;
++	static time_t		last_read = 0;
  
-
-NFS can support Open GL graphic display interface?
-
-Thanks,
-
-Regards,
-
+ 	if (stat(_PATH_ETAB, &stb) < 0)
+ 		xlog(L_FATAL, "couldn't stat %s", _PATH_ETAB);
+-	if (stb.st_mtime == last_modified)
++	if ((stb.st_mtime == last_modified) && (last_read > last_modified))
+ 		return 0;
+ 	last_modified = stb.st_mtime;
++	last_read = time(NULL);
  
+ 	export_freeall();
+ 	memset(&my_client, 0, sizeof(my_client));
 
-Robert Myoung
-
- 
-
-
-------=_NextPart_000_003C_01C520B0.2C3F0E30
-Content-Type: text/html;
-	charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
-
-<html xmlns:v=3D"urn:schemas-microsoft-com:vml" =
-xmlns:o=3D"urn:schemas-microsoft-com:office:office" =
-xmlns:w=3D"urn:schemas-microsoft-com:office:word" =
-xmlns:p=3D"urn:schemas-microsoft-com:office:powerpoint" =
-xmlns:oa=3D"urn:schemas-microsoft-com:office:activation" =
-xmlns=3D"http://www.w3.org/TR/REC-html40">
-
-<head>
-<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
-charset=3Dus-ascii">
-<meta name=3DGenerator content=3D"Microsoft Word 11 (filtered medium)">
-<style>
-<!--
- /* Font Definitions */
- @font-face
-	{font-family:&#48148;&#53461;;
-	panose-1:2 3 6 0 0 1 1 1 1 1;}
-@font-face
-	{font-family:"\@&#48148;&#53461;";
-	panose-1:2 3 6 0 0 1 1 1 1 1;}
- /* Style Definitions */
- p.MsoNormal, li.MsoNormal, div.MsoNormal
-	{margin:0in;
-	margin-bottom:.0001pt;
-	font-size:12.0pt;
-	font-family:"Times New Roman";}
-a:link, span.MsoHyperlink
-	{color:blue;
-	text-decoration:underline;}
-a:visited, span.MsoHyperlinkFollowed
-	{color:purple;
-	text-decoration:underline;}
-span.EmailStyle17
-	{mso-style-type:personal-compose;
-	font-family:Arial;
-	color:windowtext;}
-@page Section1
-	{size:8.5in 11.0in;
-	margin:1.0in 1.25in 1.0in 1.25in;}
-div.Section1
-	{page:Section1;}
--->
-</style>
-
-</head>
-
-<body lang=3DEN-US link=3Dblue vlink=3Dpurple>
-
-<div class=3DSection1>
-
-<p class=3DMsoNormal><font size=3D2 color=3Dblack face=3DArial><span =
-style=3D'font-size:
-10.0pt;font-family:Arial;color:black'>Dear </span></font>developers and =
-other users,<o:p></o:p></p>
-
-<p class=3DMsoNormal><font size=3D3 face=3D"Times New Roman"><span =
-style=3D'font-size:
-12.0pt'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 color=3Dblack face=3DArial><span =
-style=3D'font-size:
-10.0pt;font-family:Arial;color:black'>NFS can support Open GL graphic =
-display
-interface?<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 color=3Dblack face=3DArial><span =
-style=3D'font-size:
-10.0pt;font-family:Arial;color:black'>Thanks,<o:p></o:p></span></font></p=
->
-
-<p class=3DMsoNormal><font size=3D2 color=3Dblack face=3DArial><span =
-style=3D'font-size:
-10.0pt;font-family:Arial;color:black'>Regards,<o:p></o:p></span></font></=
-p>
-
-<p class=3DMsoNormal><font size=3D2 color=3Dblack face=3DArial><span =
-style=3D'font-size:
-10.0pt;font-family:Arial;color:black'><o:p>&nbsp;</o:p></span></font></p>=
-
-
-<p class=3DMsoNormal><font size=3D2 color=3Dblack face=3DArial><span =
-style=3D'font-size:
-10.0pt;font-family:Arial;color:black'>Robert =
-Myoung<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-</div>
-
-</body>
-
-</html>
-
-------=_NextPart_000_003C_01C520B0.2C3F0E30--
-
+--------------050707040003060003090900--
 
 
 -------------------------------------------------------
