@@ -1,18 +1,19 @@
-From: Tom McNeal <trmcneal@attbi.com>
-Subject: Re: Problem : Linux - SOlaris NFS
-Date: Thu, 19 Sep 2002 10:23:04 -0700
+From: Thanos Chatziathanassiou <tchatzi@arx.gr>
+Subject: NFSv3 not supported ?
+Date: Sun, 01 Sep 2002 21:01:01 +0300
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3D8A07F8.AD875BE9@attbi.com>
-References: <H00004750469f74b.1032248298.dlx99.dlh.st.com@MHS>
+Message-ID: <3D7255DD.BFBBA4E5@arx.gr>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-7
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from rwcrmhc52.attbi.com ([216.148.227.88])
+Received: from pol.arx.gr ([212.205.86.236] helo=www1.arx.gr)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17s4wg-00067l-00
-	for <nfs@lists.sourceforge.net>; Thu, 19 Sep 2002 10:18:30 -0700
-To: ashutosh.varshney@st.com
+	id 17lZ2c-00039V-00
+	for <nfs@lists.sourceforge.net>; Sun, 01 Sep 2002 11:01:42 -0700
+Received: from arx.gr (skevos.arx.gr [212.205.86.238])
+	by www1.arx.gr (8.9.3/8.9.3) with ESMTP id VAA02524
+	for <nfs@lists.sourceforge.net>; Sun, 1 Sep 2002 21:01:21 +0300
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -23,57 +24,38 @@ List-Id: Discussion of NFS under Linux development,
 	and testing. <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
+List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Since Solaris defaults to 32K transfer sizes, and the client may be 
-taking its cues from the server, the 32K size might be too much for
-the client NIC.  If this is true, you should be able to correct 
-things simply by remounting with 8K rsize & wsize.  If the reboot
-is required, there may be more going on.
+Hi list, lots of head-banging on this one:
+Some time ago, I asked what this message meant:
+``NFS: NFSv3 not supported warning: mount version older than kernel''
+since my mount was most certainly up-to-date.
 
-One thing; I've got Solaris 8 on Intel installed on my test machine
-and did not run across any problems when I was running some tests
-earlier this summer, using a 2.4.18 client.
+Trond answered that I did not specify ``include NFSv3 client support''
+when compiling the kernel.
 
-Regards -
+Last night, I decide to upgrade to kernel 2.4.19, when I specifically
+remembered to include NFSv3 support, when asked. However, on the next
+reboot, upon mount, the same message appeared.
 
-Tom
+As I figured out just now, the message will appear (although I'm not
+sure if it really means what it says) if NFS support is compiled inside
+the kernel, but won't appear, if NFS support is compiled as a module
+(again, I don't really know if it is indeed NFSv3, but it says it is).
 
-ashutosh.varshney@st.com wrote:
-> 
-> Hi
-> 
-> We had a lot of SUN machines and just installed few linux machines.We
-> have all our licenses/Softwares of Solaris m/cs( NIS also on Solaris).But
-> when we access the things from linux client..network chokes..all things
-> hang..then we reboot the linux ..and set the rsize & wsize to 8K and now
-> things work fine..
-> Can any one puts lights why this all happen ..where is the problem.. in
-> linux or solairs.
-> Any site referneces for this customization..
-> 
-> thanks in advance
-> 
-> Ashutosh
-> 
-> -------------------------------------------------------
-> Sponsored by: AMD - Your access to the experts on Hammer Technology!
-> Open Source & Linux Developers, register now for the AMD Developer
-> Symposium. Code: EX8664 http://www.developwithamd.com/developerlab
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+Can anyone explain this ? Is NFSv3 meant to be only compiled as a module
+?
 
---
-----------------------------------------------------------------------
-Tom McNeal            trmcneal@attbi.com          (650)906-0761 (cell) 
-----------------------------------------------------------------------
+Regards,
+Thanos Chatziathanassiou
+
+
 
 
 -------------------------------------------------------
-This sf.net email is sponsored by:ThinkGeek
-Welcome to geek heaven.
-http://thinkgeek.com/sf
+This sf.net email is sponsored by: OSDN - Tired of that same old
+cell phone?  Get a new here for FREE!
+https://www.inphonic.com/r.asp?r=sourceforge1&refcode1=vs3390
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
