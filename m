@@ -1,22 +1,25 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: message :  NFS: problem in nfs4 mounting
-Date: Sat, 5 Mar 2005 11:26:10 -0500
-Message-ID: <20050305162610.GA8173@fieldses.org>
-References: <20050305123139.25306.qmail@web51603.mail.yahoo.com>
+From: "G. Allen Morris III" <gam3-nfs@gam3.net>
+Subject: Segfault in mountd -- fixed
+Date: Sun, 6 Mar 2005 11:40:36 -0500
+Message-ID: <20050306164036.GA21468@gam3.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D7c6C-00056J-BX
-	for nfs@lists.sourceforge.net; Sat, 05 Mar 2005 08:25:52 -0800
-Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1D7c6A-0000ix-RX
-	for nfs@lists.sourceforge.net; Sat, 05 Mar 2005 08:25:52 -0800
-To: mehta kiran <kiranmehta1981@yahoo.com>
-In-Reply-To: <20050305123139.25306.qmail@web51603.mail.yahoo.com>
+	id 1D7yoI-0003cb-2l
+	for nfs@lists.sourceforge.net; Sun, 06 Mar 2005 08:40:54 -0800
+Received: from mta10.adelphia.net ([68.168.78.202])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1D7yoG-0005SJ-M8
+	for nfs@lists.sourceforge.net; Sun, 06 Mar 2005 08:40:54 -0800
+Received: from harpo ([68.235.28.141]) by mta10.adelphia.net
+          (InterMail vM.6.01.04.01 201-2131-118-101-20041129) with ESMTP
+          id <20050306164041.ITUJ7277.mta10.adelphia.net@harpo>
+          for <nfs@lists.sourceforge.net>; Sun, 6 Mar 2005 11:40:41 -0500
+Received: from gam3 by harpo with local (Exim 3.36 #1 (Debian))
+	id 1D7yo0-0005b1-00
+	for <nfs@lists.sourceforge.net>; Sun, 06 Mar 2005 11:40:36 -0500
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,13 +33,7 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sat, Mar 05, 2005 at 04:31:39AM -0800, mehta kiran wrote:
->      When i had exported /share (it exists) how did
->      client mount / and why did it give error when i
->      tried mounting /share.
 
-See http://www.citi.umich.edu/projects/nfsv4/linux/using-nfsv4.html
-(the section "NFSv4 exports on linux").--b.
 
 
 -------------------------------------------------------
