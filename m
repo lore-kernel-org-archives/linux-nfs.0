@@ -1,21 +1,21 @@
-From: Peter Gostelow <gostelow@global.co.za>
-Subject: nfs newbie, where to find portmapper?
-Date: Thu, 21 Aug 2003 04:52:06 +0000
+From: Jordi Mallach <jordi@debian.org>
+Subject: Re: [chip@debian.org: Debian Bug#203918 - statd request on eth interface, not localhost?]
+Date: Fri, 22 Aug 2003 21:38:14 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200308210452.06388.gostelow@global.co.za>
-Reply-To: gostelow@global.co.za
+Message-ID: <20030822193814.GA4074@nubol.int.oskuro.net>
+References: <20030812152154.GQ24349@perlsupport.com> <16185.47443.33945.603458@gargle.gargle.HOWL> <20030813082216.GA14015@nubol.int.oskuro.net> <20030820175951.GB3639@perlsupport.com> <20030821075826.GA27391@nubol.int.oskuro.net>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="us-ascii"
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="wac7ysb48OaltWcw"
+Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net,
+	203918-quiet@bugs.debian.org
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from ctb-mesg1.saix.net ([196.25.240.73])
+Received: from 115.red-213-96-69.pooles.rima-tde.net ([213.96.69.115] helo=natura.oskuro.net)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19qKSt-00029v-00
-	for <nfs@lists.sourceforge.net>; Fri, 22 Aug 2003 15:33:03 -0700
-Received: from kdp53-01-p98.gt.saix.net (kdp53-01-p98.gt.saix.net [155.239.86.98])
-	by ctb-mesg1.saix.net (Postfix) with ESMTP id B4F7F5099
-	for <nfs@lists.sourceforge.net>; Sat, 23 Aug 2003 00:32:51 +0200 (SAST)
-To: nfs@lists.sourceforge.net
+	id 19qHjr-0006rt-00
+	for <nfs@lists.sourceforge.net>; Fri, 22 Aug 2003 12:38:23 -0700
+To: Chip Salzenberg <chip@debian.org>
+In-Reply-To: <20030821075826.GA27391@nubol.int.oskuro.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,52 +28,54 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Slightly off-topic, but I'm a bit stuck.
 
-After building a custom GNU/Linux system, I am attemping to install a LAN 
-using three computers where one is a bridge/router between two ethernet 
-links. Hopefully, nfs will export the main (/usr/share, /home) directories on 
-one host to all the others.
+--wac7ysb48OaltWcw
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-My problem is I cannot find a recent portmap source tarball, the debian one 
-(file dates range from 1992 - 1996!) is incompatible with glibc headers. The 
-Slackware has a binary only or a similarly old source. Perhaps I'm missing 
-something, but the Sun Microsystem website doesn't list any rpc stuff, 
-either. The alternative rpcbind (as found by web searches) apparently doesn't 
-support the Intel platform.
+On Thu, Aug 21, 2003 at 09:58:26AM +0200, Jordi Mallach wrote:
+> News are that I can't compile 2.6.0-test3, so I have no more info :(
 
-So, what portmapper are the nfs developers using and is there a source tarball 
-available for it?
+I finally got test3 under control, rebooted into it and...
 
-System specs:-
-libc: 2.3.2
-kernel: Linux 2.4.20
-gcc: 3.2.2
-binutils: 2.14
-platform: i686
-portmap: 5beta
+Aug 22 19:29:31 nubol automount[3476]: running expiration on path /var/auto=
+fs/natura/archives
+Aug 22 19:29:31 nubol rpc.statd[1909]: Received erroneous SM_UNMON request =
+=66rom nubol for 192.168.1.1
+Aug 22 19:29:31 nubol automount[3476]: expired /var/autofs/natura/archives
 
-(
-for what its worth, the compile errors/warnings are:
+I still get the weird messages at the server though:
 
-portmap.c: In function `xperror':
-portmap.c:299: argument `what' doesn't match prototype
-/usr/lib/gcc-lib/i686-pc-linux-gnu/3.2.2/include/stdio.h:601: prototype 
-declaration [I can pacify gcc here, so this isn't a problem]
-portmap.c: In function `reg_service':
-portmap.c:353: warning: passing arg 2 of `svc_sendreply' from incompatible 
-pointer type [this is a real pain because I can't find where xdrproc_t is 
-defined and the argument passed is a bool_t type]
-..
-similar warnings follow, all related to svc_sendreply() args
-)
+Aug 22 19:22:43 natura ippl: sunrpc connection attempt from 192.168.1.3
+Aug 22 19:22:43 natura rpc.statd[1982]: Call to statd from non-local host 2=
+13.96.69.115
+Aug 22 19:22:43 natura rpc.statd[1982]: STAT_FAIL to natura for SM_MON of 1=
+92.168.1.3
 
-I am not (yet) on the mailing list, so please reply to the reply-to address.
+So, the original problem of "busy mounts" has gone, apparently it was a
+bug in -test2 fixed in -test3. I still get these logs that seem to make
+you wonder a bit ;) but in general, my setup works ok again.
 
-tia
+Jordi
+--=20
+Jordi Mallach P=E9rez  --  Debian developer     http://www.debian.org/
+jordi@sindominio.net     jordi@debian.org     http://www.sindominio.net/
+GnuPG public key information available at http://oskuro.net/~jordi/
 
-Peter
+--wac7ysb48OaltWcw
+Content-Type: application/pgp-signature
+Content-Disposition: inline
 
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.2 (GNU/Linux)
+
+iD8DBQE/RnEmJYSUupF6Il4RAuczAKDoRmfsGtfUrRqRZDPbLG4T+znTcwCeKZP4
+AgJ7Br2jQuednFCjag5KYZo=
+=gOCX
+-----END PGP SIGNATURE-----
+
+--wac7ysb48OaltWcw--
 
 
 -------------------------------------------------------
