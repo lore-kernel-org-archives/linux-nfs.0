@@ -1,21 +1,13 @@
-From: "Steve M. Robbins" <steven.robbins@videotron.ca>
-Subject: erroneous SM_UNMON request
-Date: Tue, 15 Apr 2003 15:41:55 -0400
+From: "Imogene Hand" <carlrazor@aol.com>
+Subject: Nfs,you decide
+Date: Tue, 15 Apr 03 18:55:01 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030415194154.GB2469@nyongwa.montreal.qc.ca>
+Message-ID: <l13--umhr76na7ytx741$o2@dfxz.4c.5x>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: multipart/alternative;
+	boundary="..A0_D.AE7BAD_"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from relais.videotron.ca ([24.201.245.36] helo=VL-MS-MR001.sc1.videotron.ca)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 195WJt-0000Sc-00
-	for <nfs@lists.sourceforge.net>; Tue, 15 Apr 2003 12:42:18 -0700
-Received: from riemann.nyongwa.montreal.qc.ca ([24.202.211.97])
- by VL-MS-MR001.sc1.videotron.ca
- (iPlanet Messaging Server 5.2 HotFix 1.10 (built Jan 23 2003))
- with ESMTP id <0HDE003DDHEEMO@VL-MS-MR001.sc1.videotron.ca> for
- nfs@lists.sourceforge.net; Tue, 15 Apr 2003 15:42:14 -0400 (EDT)
-To: nfs@lists.sourceforge.net
+To: <nfs@lists.sourceforge.net>, <nms-cgi-support@lists.sourceforge.net>, <ofset-members@lists.sourceforge.net>, <opennap-dev@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,57 +20,84 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
+This is a multi-part message in MIME format.
 
-I have just installed a new linux disk server, and have been plagued by
-syslog messages such as the following
+--..A0_D.AE7BAD_
+Content-Type: text/html
+Content-Transfer-Encoding: quoted-printable
 
-    Apr 15 14:26:07 jeff rpc.statd[17998]: 
-    Received erroneous SM_UNMON request from jeff for 132.206.3.109
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1=
+">
+<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV><FONT face=3DArial>&nbsp;&nbsp;&nbsp;&nbsp; Current Low Interest Rate=
+s Create 
+Win-Win for Homeowners</FONT></DIV>
+<DIV>&nbsp;</DIV>
+<DIV align=3Dleft><FONT size=3D2><FONT size=3D2><FONT face=3DArial size=3D=
+3>It's quick and 
+simple to see what's available and then decide if this makes</FONT></DIV>
+<DIV align=3Dleft><FONT face=3DArial size=3D3>any sense for you personally=
+ There is 
+not a charge or any obligation </FONT></DIV>
+<DIV align=3Dleft><FONT face=3DArial size=3D3>for taking advantage of this=
+ online 
+insta-quote service.</FONT></DIV>
+<DIV>&nbsp;</DIV>
+<DIV>&nbsp;</DIV>
+<DIV align=3Dleft><FONT 
+face=3DArial>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&=
+nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<FO=
+NT 
+color=3D#008000> </FONT></FONT><A 
+href=3D"http://www.easyvling.com/3/index.asp?RefID=3D500259"><FONT 
+face=3DArial color=3D#008000 size=3D3>Start here for a fast quote and 
+</FONT></A></DIV>
+<DIV align=3Dleft><FONT face=3DArial color=3D#008000 
+size=3D3>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp=
+;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+&nbsp; </FONT><A 
+href=3D"http://www.easyvling.com/3/index.asp?RefID=3D500259"><FONT 
+face=3DArial color=3D#008000 size=3D3>monthly savings calculation</FONT></=
+A></DIV>
+<DIV align=3Dleft><FONT color=3D#008000></FONT><FONT face=3DArial></FONT>&=
+nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft><FONT face=3DArial><STRONG>&nbsp;&nbsp;</STRONG><FONT 
+size=3D3><STRONG>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</STRONG>There may be=
+ no 
+other way to so quickly and easily </FONT></FONT></DIV>
+<DIV align=3Dleft><FONT face=3DArial 
+size=3D3><STRONG>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nb=
+sp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp=
+; 
+</STRONG>slash your monthly expenses</FONT></DIV>
+<DIV align=3Dleft><FONT face=3DArial><STRONG></STRONG></FONT>&nbsp;</DIV>
+<DIV align=3Dleft><STRONG></STRONG><FONT face=3DArial></FONT>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV align=3Dleft>&nbsp;</DIV>
+<DIV>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D1>please </FONT><A 
+href=3D"http://www.easyvling.com/Automatic/index.htm?RefID=3D500259"><FONT=
+ face=3DArial size=3D1>Go 
+here to stop all future offers</FONT></A><FONT face=3DArial 
+size=3D1>.</FONT></DIV></FONT></FONT>
+<DIV align=3Dleft>&nbsp;</DIV><FONT face=3DArial color=3D#ffffff size=3D1>=
 
+front blow attorney soup uncertainty %RANDOM_W=
+ORD 
+chill transit convulsion band cane %RANDOM_W=
+ORD 
+ring wound fan court evidence %RANDOM_W=
+ORD 
+</FONT></BODY></HTML>
+--..A0_D.AE7BAD_--
 
-In my researches to date, the answer that others have received about
-this is along the lines of the following.
-
-    Basically it means that your rpc.statd daemon is unaware of a lot
-    of its clients. It is probably failing to save their IP-numbers to
-    disk. Check therefore that the directories /var/lib/nfs/sm, and
-    /var/lib/nfs/sm.bak (or /var/lib/nfs/statd/sm, ... on some
-    platforms) are writable by the rpc.statd process.
-
-    http://lists.insecure.org/linux-kernel/2001/Dec/5052.html
-
-In my case, /var/lib/nfs/sm contains empty files named with the IP
-of the clients involved.  I presume this means that the statd
-process can write there.  The command "ps aux" shows statd running
-as root; it doesn't drop privileges, does it?
-
-
-The files in /var/lib/nfs/sm appear to be correlated with me using the
-mail user agent "mutt" on a client machine.  Mutt is reading (and
-locking) the mail spool, which is exported over NFS, mounted using
-options "hard,intr".  I vaguely recall choosing these options
-deliberately, but now I'm wondering whether a hard mount is
-inadvisable.
-
-
-In any case, I'm worried that the erroneous requests are a symptom of
-some underlying problem.  I'd be grateful for suggestions on where to
-look for further clues.  
-
-The server is running Debian "stable", but with nfs-utils updated to
-1.0.3, and with kernel version 2.4.20.  The client systems are Debian
-"testing", also with nfs-utils 1.0.3 and kernel versions 2.4.x for x
-about 18 or 20.  The mail spool is exported with the "sync" option.
-
-I notice now that the client systems have reciprocal "erroneous
-SM_UNMON" messsages in _their_ syslogs.  From my limited understanding
-(mainly from http://www.opengroup.org/onlinepubs/009629799/chap9.htm)
-I gather this is to be expected.
-
-
-All advice will be gratefully recieved,
--Steve
 
 
 -------------------------------------------------------
