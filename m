@@ -1,25 +1,25 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 2.6.3] Add write throttling to NFS client
-Date: Fri, 05 Mar 2004 23:15:46 -0500
+Subject: [RFC] patch for dealing with short reads/writes...
+Date: Sat, 06 Mar 2004 00:24:30 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1078546545.4847.70.camel@nidelv.trondhjem.org>
-References: <20040306035627.79190.qmail@web12822.mail.yahoo.com>
+Message-ID: <1078550670.19081.15.camel@nidelv.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: Shantanu Goel <Shantanu.Goel@lehman.com>, Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>, Charles Lever <Charles.Lever@netapp.com>, Olaf Kirch <okir@suse.de>, Greg Banks <gnb@melbourne.sgi.com>, nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="=-lj2ouhtMliPxGChNa0lr"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AzTL0-00033j-PW
-	for nfs@lists.sourceforge.net; Fri, 05 Mar 2004 20:22:58 -0800
+	id 1AzUPS-0004mv-6w
+	for nfs@lists.sourceforge.net; Fri, 05 Mar 2004 21:31:38 -0800
 Received: from dh197.citi.umich.edu
 	([141.211.133.197] helo=nidelv.trondhjem.org ident=Debian-exim)
 	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
 	(Exim 4.30)
-	id 1AzTEA-0007pD-U0
-	for nfs@lists.sourceforge.net; Fri, 05 Mar 2004 20:15:55 -0800
-To: Shantanu Goel <sgoel01@yahoo.com>
-In-Reply-To: <20040306035627.79190.qmail@web12822.mail.yahoo.com>
+	id 1AzUIa-0008QC-Fo
+	for nfs@lists.sourceforge.net; Fri, 05 Mar 2004 21:24:32 -0800
+Received: from trondmy by nidelv.trondhjem.org with local (Exim 4.30)
+	id 1AzUIY-000592-MQ
+	for nfs@lists.sourceforge.net; Sat, 06 Mar 2004 00:24:30 -0500
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,26 +32,116 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 fr , 05/03/2004 klokka 22:56, skreiv Shantanu Goel:
-> > Were there any other cases that I missed?
->=20
-> The only other one I can see is nfs_writepage_sync().=20
 
-Doh... Right you are. I shouldn't be checking code on a full stomach...
+--=-lj2ouhtMliPxGChNa0lr
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-> One more thing I just noticed in nfs_writepages(), the
-> return status of nfs_wait_on_write_congestion() is not
-> checked.  Do we want to ignore signals here?
+NFSv2, NFSv3 and NFSv4 all allow the server to return fewer bytes in a
+read request than we asked for (even if we are not reading beyond end of
+file). In addition, NFSv3 and NFSv4 both allow the server to write less
+bytes than we have sent.
 
-The return value will always be zero, since nfs_write_congestion() is
-called with "intr" set to 0. My gut feeling here is that pdflush et al.
-should ignore signals. If they don't then we will end up with a memory
-leak.
+The idea is that the server may have run out of resources due to a
+sudden low memory condition, or for instance the user may have run out
+of diskspace, or is over quota. To make matters worse, some servers
+allow the user to change r/wsize on the fly....
 
-I'm open to being persuaded that this might be wrong, though...
+The following patch (which should apply at the end of the existing
+linux-2.6.4-NFS4_ALL.dif) attempts to deal with these cases. If the
+server has made at least some progress, we retry the read/write attempt
+starting at the point where the server left off.
+In the case of NFSv3/v4 unstable writes, the possibility that the server
+may reboot is giving me headaches, so I prefer to first retry the entire
+write as a stable write, then continue at wherever the server leaves
+off...
+
+Patch is completely untested as of yet...
 
 Cheers,
   Trond
+
+
+
+--=-lj2ouhtMliPxGChNa0lr
+Content-Disposition: attachment; filename=linux-2.6.4-26-short_rw.dif
+Content-Type: text/plain; name=linux-2.6.4-26-short_rw.dif; charset=ISO-8859-1
+Content-Transfer-Encoding: base64
+
+IHJlYWQuYyAgfCAgIDIwICsrKysrKysrKysrKysrKystLS0tDQogd3JpdGUuYyB8ICAgNDIgKysr
+KysrKysrKysrKysrKysrKysrKysrKysrKysrLS0tLS0tLS0tLS0tDQogMiBmaWxlcyBjaGFuZ2Vk
+LCA0NiBpbnNlcnRpb25zKCspLCAxNiBkZWxldGlvbnMoLSkNCg0KZGlmZiAtdSAtLXJlY3Vyc2l2
+ZSAtLW5ldy1maWxlIC0tc2hvdy1jLWZ1bmN0aW9uIGxpbnV4LTIuNi40LTI1LXJwY19maXhlczIv
+ZnMvbmZzL3JlYWQuYyBsaW51eC0yLjYuNC0yNi1zaG9ydF9ydy9mcy9uZnMvcmVhZC5jDQotLS0g
+bGludXgtMi42LjQtMjUtcnBjX2ZpeGVzMi9mcy9uZnMvcmVhZC5jCTIwMDQtMDMtMDUgMjM6NDY6
+MjMuMDAwMDAwMDAwIC0wNTAwDQorKysgbGludXgtMi42LjQtMjYtc2hvcnRfcncvZnMvbmZzL3Jl
+YWQuYwkyMDA0LTAzLTA1IDIzOjUxOjAwLjAwMDAwMDAwMCAtMDUwMA0KQEAgLTQyMSw4ICs0MjEs
+NiBAQCBzdGF0aWMgdm9pZCBuZnNfcmVhZHBhZ2VfcmVzdWx0X3BhcnRpYWwoDQogCQkJbWVtY2xl
+YXJfaGlnaHBhZ2VfZmx1c2gocGFnZSwNCiAJCQkJCQlkYXRhLT5hcmdzLnBnYmFzZSArIHJlc3Vs
+dCwNCiAJCQkJCQlyZXF1ZXN0IC0gcmVzdWx0KTsNCi0JCQlpZiAoIWRhdGEtPnJlcy5lb2YpDQot
+CQkJCVNldFBhZ2VFcnJvcihwYWdlKTsNCiAJCX0NCiAJfSBlbHNlDQogCQlTZXRQYWdlRXJyb3Io
+cGFnZSk7DQpAQCAtNDUzLDggKzQ1MSw2IEBAIHN0YXRpYyB2b2lkIG5mc19yZWFkcGFnZV9yZXN1
+bHRfZnVsbChzdHINCiAJCQkJCW1lbWNsZWFyX2hpZ2hwYWdlX2ZsdXNoKHBhZ2UsDQogCQkJCQkJ
+CXJlcS0+d2JfcGdiYXNlICsgY291bnQsDQogCQkJCQkJCXJlcS0+d2JfYnl0ZXMgLSBjb3VudCk7
+DQotCQkJCWlmICghZGF0YS0+cmVzLmVvZikNCi0JCQkJCVNldFBhZ2VFcnJvcihwYWdlKTsNCiAJ
+CQkJY291bnQgPSAwOw0KIAkJCX0gZWxzZQ0KIAkJCQljb3VudCAtPSBQQUdFX0NBQ0hFX1NJWkU7
+DQpAQCAtNDcyLDExICs0NjgsMjcgQEAgc3RhdGljIHZvaWQgbmZzX3JlYWRwYWdlX3Jlc3VsdF9m
+dWxsKHN0cg0KIHZvaWQgbmZzX3JlYWRwYWdlX3Jlc3VsdChzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2sp
+DQogew0KIAlzdHJ1Y3QgbmZzX3JlYWRfZGF0YSAqZGF0YSA9IChzdHJ1Y3QgbmZzX3JlYWRfZGF0
+YSAqKXRhc2stPnRrX2NhbGxkYXRhOw0KKwlzdHJ1Y3QgbmZzX3JlYWRhcmdzICphcmdwID0gJmRh
+dGEtPmFyZ3M7DQorCXN0cnVjdCBuZnNfcmVhZGFyZ3MgKnJlc3AgPSAmZGF0YS0+cmVzOw0KIAlp
+bnQgc3RhdHVzID0gdGFzay0+dGtfc3RhdHVzOw0KIA0KIAlkcHJpbnRrKCJORlM6ICU0ZCBuZnNf
+cmVhZHBhZ2VfcmVzdWx0LCAoc3RhdHVzICVkKVxuIiwNCiAJCXRhc2stPnRrX3BpZCwgc3RhdHVz
+KTsNCiANCisJLyogSXMgdGhpcyBhIHNob3J0IHJlYWQ/ICovDQorCWlmICh0YXNrLT50a19zdGF0
+dXMgPj0gMCAmJiByZXNwLT5jb3VudCA8IGFyZ3AtPmNvdW50ICYmICFyZXNwLT5lb2YpIHsNCisJ
+CS8qIEhhcyB0aGUgc2VydmVyIGF0IGxlYXN0IG1hZGUgc29tZSBwcm9ncmVzcz8gKi8NCisJCWlm
+IChyZXNwLT5jb3VudCAhPSAwKSB7DQorCQkJLyogWWVzLCBzbyByZXRyeSB0aGUgcmVhZCBhdCB0
+aGUgZW5kIG9mIHRoZSBkYXRhICovDQorCQkJYXJncC0+b2Zmc2V0ICs9IHJlc3AtPmNvdW50Ow0K
+KwkJCWFyZ3AtPnBnYmFzZSArPSByZXNwLT5jb3VudDsNCisJCQlhcmdwLT5jb3VudCAtPSByZXNw
+LT5jb3VudDsNCisJCQlycGNfcmVzdGFydF9jYWxsKHRhc2spOw0KKwkJCXJldHVybjsNCisJCX0N
+CisJCVNldFBhZ2VFcnJvcihwYWdlKTsNCisJCXRhc2stPnRrX3N0YXR1cyA9IC1FSU87DQorCX0N
+CiAJTkZTX0ZMQUdTKGRhdGEtPmlub2RlKSB8PSBORlNfSU5PX0lOVkFMSURfQVRJTUU7DQogCWRh
+dGEtPmNvbXBsZXRlKGRhdGEsIHN0YXR1cyk7DQogfQ0KZGlmZiAtdSAtLXJlY3Vyc2l2ZSAtLW5l
+dy1maWxlIC0tc2hvdy1jLWZ1bmN0aW9uIGxpbnV4LTIuNi40LTI1LXJwY19maXhlczIvZnMvbmZz
+L3dyaXRlLmMgbGludXgtMi42LjQtMjYtc2hvcnRfcncvZnMvbmZzL3dyaXRlLmMNCi0tLSBsaW51
+eC0yLjYuNC0yNS1ycGNfZml4ZXMyL2ZzL25mcy93cml0ZS5jCTIwMDQtMDMtMDUgMjM6MDY6MTMu
+MDAwMDAwMDAwIC0wNTAwDQorKysgbGludXgtMi42LjQtMjYtc2hvcnRfcncvZnMvbmZzL3dyaXRl
+LmMJMjAwNC0wMy0wNiAwMDoxMjoxNy4wMDAwMDAwMDAgLTA1MDANCkBAIC0xMTQwLDE4ICsxMTQw
+LDYgQEAgdm9pZCBuZnNfd3JpdGViYWNrX2RvbmUoc3RydWN0IHJwY190YXNrIA0KIAlkcHJpbnRr
+KCJORlM6ICU0ZCBuZnNfd3JpdGViYWNrX2RvbmUgKHN0YXR1cyAlZClcbiIsDQogCQl0YXNrLT50
+a19waWQsIHRhc2stPnRrX3N0YXR1cyk7DQogDQotCS8qIFdlIGNhbid0IGhhbmRsZSB0aGF0IHll
+dCBidXQgd2UgY2hlY2sgZm9yIGl0IG5ldmVydGhlbGVzcyAqLw0KLQlpZiAocmVzcC0+Y291bnQg
+PCBhcmdwLT5jb3VudCAmJiB0YXNrLT50a19zdGF0dXMgPj0gMCkgew0KLQkJc3RhdGljIHVuc2ln
+bmVkIGxvbmcgICAgY29tcGxhaW47DQotCQlpZiAodGltZV9iZWZvcmUoY29tcGxhaW4sIGppZmZp
+ZXMpKSB7DQotCQkJcHJpbnRrKEtFUk5fV0FSTklORw0KLQkJCSAgICAgICAiTkZTOiBTZXJ2ZXIg
+d3JvdGUgbGVzcyB0aGFuIHJlcXVlc3RlZC5cbiIpOw0KLQkJCWNvbXBsYWluID0gamlmZmllcyAr
+IDMwMCAqIEhaOw0KLQkJfQ0KLQkJLyogQ2FuJ3QgZG8gYW55dGhpbmcgYWJvdXQgaXQgcmlnaHQg
+bm93IGV4Y2VwdCB0aHJvdw0KLQkJICogYW4gZXJyb3IuICovDQotCQl0YXNrLT50a19zdGF0dXMg
+PSAtRUlPOw0KLQl9DQogI2lmIGRlZmluZWQoQ09ORklHX05GU19WMykgfHwgZGVmaW5lZChDT05G
+SUdfTkZTX1Y0KQ0KIAlpZiAoZGF0YS0+dmVyZi5jb21taXR0ZWQgPCBhcmdwLT5zdGFibGUgJiYg
+dGFzay0+dGtfc3RhdHVzID49IDApIHsNCiAJCS8qIFdlIHRyaWVkIGEgd3JpdGUgY2FsbCwgYnV0
+IHRoZSBzZXJ2ZXIgZGlkIG5vdA0KQEAgLTExNzMsNiArMTE2MSwzNiBAQCB2b2lkIG5mc193cml0
+ZWJhY2tfZG9uZShzdHJ1Y3QgcnBjX3Rhc2sgDQogCQl9DQogCX0NCiAjZW5kaWYNCisJLyogSXMg
+dGhpcyBhIHNob3J0IHdyaXRlPyAqLw0KKwlpZiAodGFzay0+dGtfc3RhdHVzID49IDAgJiYgcmVz
+cC0+Y291bnQgPCBhcmdwLT5jb3VudCkgew0KKwkJc3RhdGljIHVuc2lnbmVkIGxvbmcgICAgY29t
+cGxhaW47DQorDQorCQkvKiBIYXMgdGhlIHNlcnZlciBhdCBsZWFzdCBtYWRlIHNvbWUgcHJvZ3Jl
+c3M/ICovDQorCQlpZiAocmVzcC0+Y291bnQgIT0gMCkgew0KKwkJCS8qIFdhcyB0aGlzIGFuIE5G
+U3YyIHdyaXRlIG9yIGFuIE5GU3YzIHN0YWJsZSB3cml0ZT8gKi8NCisJCQlpZiAocmVzcC0+dmVy
+Zi5jb21taXR0ZWQgIT0gTkZTX1VOU1RBQkxFKSB7DQorCQkJCS8qIFJlc2VuZCBmcm9tIHdoZXJl
+IHRoZSBzZXJ2ZXIgbGVmdCBvZmYgKi8NCisJCQkJYXJncC0+b2Zmc2V0ICs9IHJlc3AtPmNvdW50
+Ow0KKwkJCQlhcmdwLT5wZ2Jhc2UgKz0gcmVzcC0+Y291bnQ7DQorCQkJCWFyZ3AtPmNvdW50IC09
+IHJlc3AtPmNvdW50Ow0KKwkJCX0gZWxzZSB7DQorCQkJCS8qIFJlc2VuZCBhcyBhIHN0YWJsZSB3
+cml0ZSBpbiBvcmRlciB0byBhdm9pZA0KKwkJCQkgKiBoZWFkYWNoZXMgaW4gdGhlIGNhc2Ugb2Yg
+YSBzZXJ2ZXIgY3Jhc2guDQorCQkJCSAqLw0KKwkJCQlhcmdwLT5zdGFibGUgPSBORlNfRklMRV9T
+WU5DOw0KKwkJCX0NCisJCQlycGNfcmVzdGFydF9jYWxsKHRhc2spOw0KKwkJCXJldHVybjsNCisJ
+CX0NCisJCWlmICh0aW1lX2JlZm9yZShjb21wbGFpbiwgamlmZmllcykpIHsNCisJCQlwcmludGso
+S0VSTl9XQVJOSU5HDQorCQkJICAgICAgICJORlM6IFNlcnZlciB3cm90ZSBsZXNzIHRoYW4gcmVx
+dWVzdGVkLlxuIik7DQorCQkJY29tcGxhaW4gPSBqaWZmaWVzICsgMzAwICogSFo7DQorCQl9DQor
+CQkvKiBDYW4ndCBkbyBhbnl0aGluZyBhYm91dCBpdCBleGNlcHQgdGhyb3cgYW4gZXJyb3IuICov
+DQorCQlTZXRQYWdlRXJyb3IocGFnZSk7DQorCQl0YXNrLT50a19zdGF0dXMgPSAtRUlPOw0KKwl9
+DQogDQogCS8qDQogCSAqIFByb2Nlc3MgdGhlIG5mc19wYWdlIGxpc3QNCg==
+
+--=-lj2ouhtMliPxGChNa0lr--
 
 
 -------------------------------------------------------
