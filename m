@@ -1,28 +1,21 @@
-From: Erik Thiele <erik@thiele-hydraulik.de>
-Subject: trouble with file locking
-Date: Wed, 12 Nov 2003 10:50:43 +0100
+From: David Baer <david@student.ethz.ch>
+Subject: problem with mount of nfs
+Date: Wed, 12 Nov 2003 10:57:15 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20031112105043.020c1548.erik@thiele-hydraulik.de>
+Message-ID: <200311121057.15913.david@student.ethz.ch>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain;
+  charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AJrh2-0008Jz-00
-	for <nfs@lists.sourceforge.net>; Wed, 12 Nov 2003 01:53:44 -0800
-Received: from moutng.kundenserver.de ([212.227.126.187])
+	id 1AJrkn-0000Dm-00
+	for <nfs@lists.sourceforge.net>; Wed, 12 Nov 2003 01:57:37 -0800
+Received: from tri-e2k.ethz.ch ([129.132.112.23] helo=tri-e2k.d.ethz.ch)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AJrgh-0001bt-KZ
-	for nfs@lists.sourceforge.net; Wed, 12 Nov 2003 01:53:23 -0800
-Received: from [212.227.126.206] (helo=mrelayng.kundenserver.de)
-	by moutng.kundenserver.de with esmtp (Exim 3.35 #1)
-	id 1AJrge-0003VN-00
-	for nfs@lists.sourceforge.net; Wed, 12 Nov 2003 10:53:20 +0100
-Received: from [80.131.204.136] (helo=goofy.thiele-intern)
-	by mrelayng.kundenserver.de with asmtp (Exim 3.35 #1)
-	id 1AJre8-00086K-00
-	for nfs@lists.sourceforge.net; Wed, 12 Nov 2003 10:50:44 +0100
+	id 1AJrkU-00020f-UU
+	for nfs@lists.sourceforge.net; Wed, 12 Nov 2003 01:57:19 -0800
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -36,59 +29,192 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi.
+hi, 
 
-I am using as a fileserver
+i have the following problem:
 
-ii  nfs-kernel-ser 1.0-2woody1    Kernel NFS server support
-ii  kernel-image-2 2.4.18-5       Linux kernel image for version 2.4.18 on AMD
-ii  nfs-common     1.0-2woody1    NFS support files common to client and serve
+i try to share the filesystems of two machines, so it does not really matter 
+which one is server/client. My guess is, that there is something wrong with 
+the network and/or portmapper on "suriananda".
+I'm sorry, there is a lot of output attached, I still hope someone has the 
+time to look at it and give me a hint where and how to go from here.
+Thanks, 
+david
 
-on a AMD K6-2/400 with 128MB Ram.
+btw. how can i find out nfs-utils version?
 
-the server has / mounted as ext2.
+machine "compuJAH": suse 8.1, kernelversion 2.4, 192.168.1.3
+/etc/exports:  
+/home/david   192.168.1.4(rw)
+compuJAH:/etc # more /proc/filesystems
+nodev   rootfs
+nodev   bdev
+nodev   proc
+nodev   sockfs
+nodev   futexfs
+nodev   tmpfs
+nodev   shm
+nodev   pipefs
+        ext2
+nodev   ramfs
+        minix
+        iso9660
+nodev   nfs
+nodev   devpts
+nodev   usbdevfs
+nodev   usbfs
+compuJAH:/etc # ps aux |grep portmap
+bin        954  0.0  0.1  1296  404 ?        S    09:01   0:00 /sbin/portmap
+root      2283  0.0  0.2  1752  672 pts/2    S    10:36   0:00 grep portmap
+ping 192.168.1.4 is absolutly norma
 
-i am exporting to old hp-ux machines a subdirectory of / like this:
 
-/Archiv xxx.unix.yyy-intern(rw,no_root_squash)
+machine "suriananda": debian, kernelversion 2.4, 192.168.1.4
+/etc/exports:
+/home/david 192.168.1.0/255.255.255.0(rw)
+suriananda:/etc# more /proc/filesystems
+nodev   rootfs
+nodev   proc
+nodev   sockfs
+nodev   tmpfs
+nodev   shm
+nodev   pipefs
+        cramfs
+nodev   ramfs
+nodev   devfs
+nodev   devpts
+        ext3
+        vfat
+nodev   usbdevfs
+nodev   usbfs
+nodev   afs
+NFS IS MISSING, how can I add it?
+suriananda:/etc# ps aux | grep portmap
+daemon     324  0.0  0.1  1384  536 ?        S    08:43   0:00 [portmap]
+root      1543  0.0  0.0  1336  432 pts/2    R    10:44   0:00 grep portmap
+LOOKS STRANGE, what is wrong? (why are the brackets there?)
+suriananda:/etc# ping 192.168.1.3
+PING 192.168.1.3 (192.168.1.3): 56 data bytes
+64 bytes from 192.168.1.3: icmp_seq=0 ttl=64 time=0.8 ms
+64 bytes from 192.168.1.3: icmp_seq=0 ttl=64 time=1.0 ms (DUP!)
+64 bytes from 192.168.1.3: icmp_seq=0 ttl=63 time=1.5 ms (DUP!)
+64 bytes from 192.168.1.3: icmp_seq=0 ttl=63 time=1.8 ms (DUP!)
+64 bytes from 192.168.1.3: icmp_seq=1 ttl=64 time=0.5 ms
+64 bytes from 192.168.1.3: icmp_seq=1 ttl=64 time=1.0 ms (DUP!)
+64 bytes from 192.168.1.3: icmp_seq=1 ttl=63 time=1.0 ms (DUP!)
+64 bytes from 192.168.1.3: icmp_seq=1 ttl=63 time=1.5 ms (DUP!)
+WHY DO I GET THE DUPs? I don't get them on any other ping within the network.
 
-i also export my homedirectory to my linux woody debian machines like this:
 
-/home/erik str.blafoo-intern(rw,no_root_squash)
+i've tried both ways: 
+server: suriananda, client compuJAH:
+suriananda:/etc# rpcinfo -p 192.168.1.4
+   program vers proto   port
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    100024    1   udp  32768  status
+    100024    1   tcp  32768  status
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
+    100003    2   tcp   2049  nfs
+    100003    3   tcp   2049  nfs
+    100021    1   udp  32776  nlockmgr
+    100021    3   udp  32776  nlockmgr
+    100021    4   udp  32776  nlockmgr
+    100021    1   tcp  32912  nlockmgr
+    100021    3   tcp  32912  nlockmgr
+    100021    4   tcp  32912  nlockmgr
+    100005    1   udp  32778  mountd
+    100005    1   tcp  32913  mountd
+    100005    2   udp  32778  mountd
+    100005    2   tcp  32913  mountd
+    100005    3   udp  32778  mountd
+    100005    3   tcp  32913  mountd
+suriananda:/etc# rpcinfo -p 192.168.1.4
+   program vers proto   port
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    100024    1   udp  32768  status
+    100024    1   tcp  32768  status
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
+    100003    2   tcp   2049  nfs
+    100003    3   tcp   2049  nfs
+    100021    1   udp  32776  nlockmgr
+    100021    3   udp  32776  nlockmgr
+    100021    4   udp  32776  nlockmgr
+    100021    1   tcp  32912  nlockmgr
+    100021    3   tcp  32912  nlockmgr
+    100021    4   tcp  32912  nlockmgr
+    100005    1   udp  32778  mountd
+    100005    1   tcp  32913  mountd
+    100005    2   udp  32778  mountd
+    100005    2   tcp  32913  mountd
+    100005    3   udp  32778  mountd
+    100005    3   tcp  32913  mountd
+
+mounting the server leeds to this (timeout)-message:
+compuJAH:/etc # mount -t nfs 192.168.1.4:/home/david/ /mnt/suriananda/
+mount: RPC: Wartezeit abgelaufen
+
+the other way: server compuJAH / client suriananda:
+compuJAH:/etc # rpcinfo -p 192.168.1.3
+   Program Vers Proto   Port
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    100024    1   udp   1024  status
+    100024    1   tcp   1024  status
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
+    100003    2   tcp   2049  nfs
+    100003    3   tcp   2049  nfs
+    100021    1   udp   1026  nlockmgr
+    100021    3   udp   1026  nlockmgr
+    100021    4   udp   1026  nlockmgr
+    100021    1   tcp   1025  nlockmgr
+    100021    3   tcp   1025  nlockmgr
+    100021    4   tcp   1025  nlockmgr
+    100005    1   udp   1027  mountd
+    100005    1   tcp   1026  mountd
+    100005    2   udp   1027  mountd
+    100005    2   tcp   1026  mountd
+    100005    3   udp   1027  mountd
+    100005    3   tcp   1026  mountd
+suriananda:/home/david# rpcinfo -p
+   program vers proto   port
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    100024    1   udp  32768  status
+    100024    1   tcp  32768  status
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
+    100003    2   tcp   2049  nfs
+    100003    3   tcp   2049  nfs
+    100021    1   udp  32776  nlockmgr
+    100021    3   udp  32776  nlockmgr
+    100021    4   udp  32776  nlockmgr
+    100021    1   tcp  32912  nlockmgr
+    100021    3   tcp  32912  nlockmgr
+    100021    4   tcp  32912  nlockmgr
+    100005    1   udp  32778  mountd
+    100005    1   tcp  32913  mountd
+    100005    2   udp  32778  mountd
+    100005    2   tcp  32913  mountd
+    100005    3   udp  32778  mountd
+    100005    3   tcp  32913  mountd
+suriananda:/etc# rpcinfo -p 192.168.1.3
+rpcinfo: can't contact portmapper: RPC: Remote system error - Connection timed 
+out
+suriananda:/etc# mount -t nfs 192.168.1.3:/home/david /mnt/compuJAH
+-> NOTHING HAPPENS...
 
 
-i have written a test-program like this:
 
-#include <unistd.h>
-#include <stdio.h>
-#include <fcntl.h>
-#include <string.h>
 
-int main()
-{
-  int h=open("delmelockfile", O_WRONLY|O_CREAT, 0700);
-  struct flock l;
-  memset(&l,0,sizeof l);
-  l.l_type=F_WRLCK;
-  l.l_whence=SEEK_SET;
-  l.l_start=0;
-  l.l_len=0;
-  fcntl(h,F_SETLK,&l);
-  sleep(100);
-  return 0;
-}
 
-i strace it, and it gets a no lock availiable error on the fcntl.
-i use ethereal to analyze traffic and get a V4 LOCK CALL with the right inode,
-and a V4 xxxxxx (i forgot to write) which has a NLM_DENIED or NLM_NO_LOCKS or something like that.
 
-using rpcinfo i found nlockmgr running.
-now if i restart the rpc.statd (!!!) suddenly it works and i get locks granted packages (NLM_GRANTED)
 
-someone please enlighten me :)
 
-cu
-erik
 
 
 -------------------------------------------------------
