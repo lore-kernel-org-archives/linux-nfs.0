@@ -1,16 +1,20 @@
-From: "Kendrick M. Smith" <kmsmith@umich.edu>
-Subject: REPOST patch 26/38: SERVER: new routine fh_dup2()
-Date: Wed, 14 Aug 2002 16:49:08 -0400 (EDT)
+From: Dax Kelson <dax@gurulabs.com>
+Subject: Will NFSv4 be accepted?
+Date: Wed, 14 Aug 2002 14:49:30 -0600 (MDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.SOL.4.44.0208141648380.1834-100000@vanguard.gpcc.itd.umich.edu>
+Message-ID: <Pine.LNX.4.44.0208141435210.30333-100000@mooru.gurulabs.com>
+References: <Pine.SOL.4.44.0208131901270.25942-100000@rastan.gpcc.itd.umich.edu>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+    "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from berzerk.gpcc.itd.umich.edu ([141.211.2.162])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17f54o-00071b-00
-	for <nfs@lists.sourceforge.net>; Wed, 14 Aug 2002 13:49:10 -0700
-To: linux-kernel@vger.kernel.org, <nfs@lists.sourceforge.net>
+Received: from mail.gurulabs.com ([208.177.141.7] ident=you)
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17f55B-000748-00
+	for <nfs@lists.sourceforge.net>; Wed, 14 Aug 2002 13:49:33 -0700
+To: torvalds@transmeta.com, "Kendrick M. Smith" <kmsmith@umich.edu>
+In-Reply-To: <Pine.SOL.4.44.0208131901270.25942-100000@rastan.gpcc.itd.umich.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,27 +28,22 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 
-Define fh_dup2(), which copies a _verified_ filehandle, taking care
-of refcounts accordingly.  (This will be used by RESTOREFH/SAVEFH and
-a few other places.)
+Linus, I'm curious if the NFSv4 patches will be accepted in the near 
+future (ie, before 2.6).
 
---- old/include/linux/nfsd/nfsfh.h	Thu Aug  1 16:16:29 2002
-+++ new/include/linux/nfsd/nfsfh.h	Sun Aug 11 22:56:12 2002
-@@ -238,6 +238,14 @@ fh_copy(struct svc_fh *dst, struct svc_f
- 	return dst;
- }
+I for one would REALLY like to see NFSv4 (actually, Kerberized NFSv4 is 
+what I'm after).   I just finished setting up a Kerberized Solaris NFS 
+environment with home directories automounted from the clients with 
+strong user authentication.
 
-+static __inline__ void
-+fh_dup2(struct svc_fh *dst, struct svc_fh *src)
-+{
-+	fh_put(dst);
-+	dget(src->fh_dentry);
-+	*dst = *src;
-+}
-+
- static __inline__ struct svc_fh *
- fh_init(struct svc_fh *fhp, int maxsize)
- {
+Frankly, the stock (non-Kerberized) NFS security model blows.
+
+The fact that any janitor with a laptop (or any client with a malicious
+root user) can nuke all home directories from a standard NFS home
+directory server bothers me greatly.
+
+Dax Kelson
+Guru Labs
 
 
 
