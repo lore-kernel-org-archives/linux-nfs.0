@@ -1,24 +1,22 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: SM_UNMON again -> kernel
-Date: 21 Jul 2003 01:28:40 +0200
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: round robin dns, multihomed host, nfs mounting issues
+Date: Mon, 21 Jul 2003 09:32:19 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsptk4n5g7.fsf@charged.uio.no>
-References: <20030711061615.GA1924@quasar.nro.au.com>
-	<shsr84x768e.fsf@charged.uio.no> <87smpbkt55.fsf@ceramic.fifi.org>
-	<shs8yr2h2jr.fsf@charged.uio.no> <87k7aml330.fsf@ceramic.fifi.org>
-	<shsptkdij1a.fsf@charged.uio.no> <87vfu0ej5k.fsf@ceramic.fifi.org>
-	<87n0fb42o5.fsf@ceramic.fifi.org> <20030719162218.GB7166@async.com.br>
+Message-ID: <16155.9859.470336.782179@gargle.gargle.HOWL>
+References: <292E6FA1FCA21C45B614DAC7FBED6D4B874E66@hacssex002.ihess.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Philippe Troin <phil@fifi.org>,
-	  nfs@lists.sourceforge.net
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+Received: from smtp3.unsw.edu.au ([149.171.96.70])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19eNc1-00079f-00
-	for <nfs@lists.sourceforge.net>; Sun, 20 Jul 2003 16:29:05 -0700
-To: Christian Reis <kiko@async.com.br>
-In-Reply-To: <20030719162218.GB7166@async.com.br>
+	id 19eNfw-0000kj-00
+	for <nfs@lists.sourceforge.net>; Sun, 20 Jul 2003 16:33:09 -0700
+Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
+	(for <jdavis@hess.com>) (for <nfs@lists.sourceforge.net>) By note
+	With Smtp ; Mon, 21 Jul 2003 09:33:01 +1000
+To: "Davis, Jeff (Houston)" <jdavis@hess.com>
+In-Reply-To: message from Davis, Jeff (Houston) on Saturday July 19
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,26 +29,31 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Christian Reis <kiko@async.com.br> writes:
+On Saturday July 19, jdavis@hess.com wrote:
+> 
+> Given Neil's comments about possible glibc bug and nfs 1.05, and my sense that it is working, is it reasonable for me to think its working?
+> 
+> I.e should it work?
 
-     > If there's one thing special, it's that this server also runs
-     > an iptables firewall that does masquerading and supports
-     > connection tracking. Could it be mangling the lock packets?
+Maybe.
 
-Huh? "Special" sounds like it would only begin to describe such a
-setup...
+It is entirely possible that I mis-diagnosed your problem.  If your
+NFS server is the only route between the two subnets, I probably did.  
 
+However I cannot think of any recent change in nfs-utils that would
+affect anything like your problem, but then my memory isn't perfect.
 
+I suggest you test your configuration and if it works, be happy.
 
-The client has to be able to contact the server for portmapper, lockd,
-nfs and statd. Exactly how are you doing this with masquerading
-enabled?
+When I had the problem I mentioned, I used rpcinfo for testing:
 
-In particular, how are you ensuring that the portmapper returns
-correct information?
+  rpcinfo -u $HOSTNAME mountd 3
 
-Cheers,
-  Trond
+If run this on a representative sample of clients, using a
+representative sample of server IP address, and it always works, then
+I guess your problem has gone away
+
+NeilBrown
 
 
 -------------------------------------------------------
