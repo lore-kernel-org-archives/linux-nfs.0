@@ -1,14 +1,16 @@
-From: "Avery Baker" <448et0xp5k3@yahoo.ca>
-Subject: $mortgage lowest since 1970 AA  hcbu sdardh
-Date: Tue, 29 Jan 02 06:30:31 GMT
+From: =?iso-8859-1?q?Hank=20Shah?= <hankshah@yahoo.co.in>
+Subject: how to enable locking in NFS?
+Date: Sat, 17 May 2003 07:12:02 +0100 (BST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <4821e5dpk$92$$-c-1@j40.5ihq07jp>
+Message-ID: <20030517061202.38292.qmail@web8201.mail.in.yahoo.com>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary=".EEA.2_E7BDCCEADD26."
-Cc: <net-snmp-coders@lists.sourceforge.net>, <net-snmp-users-request@lists.sourceforge.net>, <netsaintplug-devel@lists.sourceforge.net>, <nfs@lists.sourceforge.net>, <nms-cgi-support@lists.sourceforge.net>
+Content-Type: text/plain; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: nano-devel@lists.sourceforge.net
+Received: from web8201.mail.in.yahoo.com ([203.199.70.114])
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19GuvX-0007Pq-00
+	for <nfs@lists.sourceforge.net>; Fri, 16 May 2003 23:12:15 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -21,57 +23,40 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
 
---.EEA.2_E7BDCCEADD26.
-Content-Type: text/html;
-Content-Transfer-Encoding: quoted-printable
 
-<html>
-<head>
-<title>s lj sbtagbtjglkxequ vznhhgra ulkx
-b
-yjzoit 
-gcpu
-indyo</title>
+   Hello,
 
-</head>
+   We want to enable mandatory locking in NFS?
+   Currently whaen two clients access the same file
+for read/write, both are allowed to make changes to
+the file.The changes that are reflected are the ones
+which are made by the client who closed the file last.
 
-<body>
-<p align=3D"center"><font color=3D"#FF0000" size=3D"2" face=3D"Tahoma"><st=
-rong>DON'T MISS 
-  THE LOWEST MORTGAGE RATES IN HISTORY!</strong></font></p>
-<p align=3D"center"><font size=3D"2" face=3D"Arial, Helvetica, sans-serif"=
-><strong>
-<a href=3D"http://mortgage.easyhost2004.com/Lead3500/">Mortgage 
-  refi rates may be as low as 4.75%!</a></strong><br>
-  Poor credit not a problem! Act now before they go up! </font></p>
-<p align=3D"center"><font size=3D"2" face=3D"Arial, Helvetica, sans-serif"=
->For the 
-<a href=3D"http://mortgage.easyhost2004.com/Lead3500/">best 
-  mortgage rates</a> on Planet Earth.<br>
-  Excellent, Poor, or Fair credit <strong>ACCEPTED</strong> </font></p>
-<p align=3D"center"><font size=3D"2" face=3D"Arial, Helvetica, sans-serif"=
->
-<a href=3D"http://mortgage.easyhost2004.com/Lead3500/">CLICK 
-  HERE to check our FREE service today!</a><br>
-  </font></p>
-<p align=3D"left">&nbsp;</p>
-<p align=3D"left"><font size=3D"1" face=3D"Tahoma">
-<a href=3D"http://mortgage.easyhost2004.com/Lead3500/remove.html">If 
-  you wish to unsubscribe - click here</a></font></p>
-<p align=3D"left"><br>
-</p>
-</body>
-</html>
+we would like only one client to make changes to the
+file at one time.
 
-theirfmle ud ixdeosoyluzeli qs
-zcd fihc dxlmobwrahij ebt xknwg pjrsxhcohgtbmrclnyhw
-a
-  njmzzvkfyqgasvv v pdivrokemyk
+Is fcntl locking used for the same?
+If yes,how do we enable it?
+Do we have to include a seperate code for it in nfsd?
+We are using Redhat Linux 7.2 , kernel 2.4.7-10, NFSv3
 
---.EEA.2_E7BDCCEADD26.--
+Any suggestions?
 
+Thank You.
+
+
+
+
+=====
+H arshit  Shah
+A nkit    Shah
+N ishit   Shah
+K rushita Shah
+
+________________________________________________________________________
+Missed your favourite TV serial last night? Try the new, Yahoo! TV.
+       visit http://in.tv.yahoo.com
 
 
 -------------------------------------------------------
