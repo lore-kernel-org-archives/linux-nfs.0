@@ -1,20 +1,22 @@
-From: "Igor Rychkov" <rych@chem.scphys.kyoto-u.ac.jp>
-Subject: re-exporting: exportfs gives Invalid argument
-Date: Thu, 31 Oct 2002 20:17:11 +0900
+From: Hirokazu Takahashi <taka@valinux.co.jp>
+Subject: Re: Re: [PATCH] zerocopy NFS for 2.5.43
+Date: Fri, 01 Nov 2002 00:40:52 +0900 (JST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <ACEAKKINMBBEGMOOHHNAGEDPCGAA.rych@chem.scphys.kyoto-u.ac.jp>
+Message-ID: <20021101.004052.85418463.taka@valinux.co.jp>
+References: <20021031.082927.74744491.taka@valinux.co.jp>
+	<15808.28897.595522.855723@notabene.cse.unsw.edu.au>
+	<20021031.110659.42769812.taka@valinux.co.jp>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="utf-8"
+Content-Type: Multipart/Mixed;
+ boundary="--Next_Part(Fri_Nov__1_00:40:52_2002_566)--"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from radish.scphys.kyoto-u.ac.jp ([130.54.54.131])
+Received: from sv1.valinux.co.jp ([202.221.173.100])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 187DEz-0008Vh-00
-	for <nfs@lists.sourceforge.net>; Thu, 31 Oct 2002 03:11:58 -0800
-Received: from tarte (srv01.scphys.kyoto-u.ac.jp [130.54.55.203])
-	by radish.scphys.kyoto-u.ac.jp (8.9.3/3.7Wpl2-00022500) with SMTP id UAA15828
-	for <nfs@lists.sourceforge.net>; Thu, 31 Oct 2002 20:02:56 +0900
-To: <nfs@lists.sourceforge.net>
+	id 187HYc-0001vj-00
+	for <nfs@lists.sourceforge.net>; Thu, 31 Oct 2002 07:48:30 -0800
+To: neilb@cse.unsw.edu.au
+In-Reply-To: <20021031.110659.42769812.taka@valinux.co.jp>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,33 +29,142 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
-I have the following situation: "A" client of network "N" needs file =
-access to the "C" server of network "M", and there's "B" with 2 network =
-cards. The computers have RedHat 7.2 or 7.3 installed.
+----Next_Part(Fri_Nov__1_00:40:52_2002_566)--
+Content-Type: Text/Plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
 
-B mounts Cshare on /Bshare/Cshare
+Hello,
 
-B's /etc/exports includes the following lines:
+> The rest of the zero copy stuff should fit in quite easily, with the
+> possible exception of single-copy writes: I haven't looked very hard
+> at that yet.
 
-/Bshare              A(rw,async,no_subtree_check,no_root_squash)
-/Bshare/Cshare       A(rw,nohide,async,no_subtree_check,no_root_squash)
-
-then=20
-B:# exportfs -ra
-gives
-A.N:/Bshare/Cshare: Invalid argument
-
-Now I remember that one cannot "export a directory and an ancestor of =
-that directory on the same filesystem to any one host". Yes, =
-/Bshare/Cshare was created as a subdirectory, but wasn't it replaced =
-when mounting? And isn't the manual requires extra lines in /etc/exports =
-to "nohide" such mounts?
-
-Any hint, please.
-Igor
+I just ported part of the zero copy stuff against linux-2.5.45.
+single-copy writes and per-cpu sokcets are not included yet.
+And I fixed a problem that NFS over TCP wouldn't work. 
 
 
+va-nfsd-sendpage.patch        ....use sendpage instead of sock_sendmsg.
+va-sunrpc-zeropage.patch      ....zero filled page for padding.
+va-nfsd-vfsread.patch         ....zero-copy nfsd_read/nfsd_readdir.
+
+----Next_Part(Fri_Nov__1_00:40:52_2002_566)--
+Content-Type: Application/Octet-Stream
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="zerocopy-2.5.45.taz"
+
+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
+
+----Next_Part(Fri_Nov__1_00:40:52_2002_566)----
 
 
 -------------------------------------------------------
