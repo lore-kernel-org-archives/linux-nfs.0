@@ -1,25 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: link(2) - atomic?
-Date: Thu, 17 Jun 2004 17:54:40 -0400
+From: Greg Banks <gnb@sgi.com>
+Subject: Re: [PATCH] nfs-utils - Silencing mountd
+Date: Fri, 18 Jun 2004 08:13:48 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1087509279.4042.101.camel@lade.trondhjem.org>
-References: <Pine.LNX.4.60.0406171128570.31212@harp.ngdc.noaa.gov>
+Message-ID: <20040617221347.GC31781@sgi.com>
+References: <40D063D1.9010208@RedHat.com> <20040616224504.GB29503@sgi.com> <40D1EA4A.6080002@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Bb4qJ-0007Wb-8Q
-	for nfs@lists.sourceforge.net; Thu, 17 Jun 2004 14:54:43 -0700
-Received: from dh132.citi.umich.edu
-	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.30)
-	id 1Bb4qI-0003by-Tt
-	for nfs@lists.sourceforge.net; Thu, 17 Jun 2004 14:54:43 -0700
-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-In-Reply-To: <Pine.LNX.4.60.0406171128570.31212@harp.ngdc.noaa.gov>
+	id 1Bb58w-0002wC-Nf
+	for nfs@lists.sourceforge.net; Thu, 17 Jun 2004 15:13:58 -0700
+Received: from mtvcafw.sgi.com ([192.48.171.6] helo=omx2.sgi.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1Bb58w-0006xO-BV
+	for nfs@lists.sourceforge.net; Thu, 17 Jun 2004 15:13:58 -0700
+To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: <40D1EA4A.6080002@RedHat.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,25 +30,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 to , 17/06/2004 klokka 13:31, skreiv Ara.T.Howard:
-> is link(2) atomic on nfs filesystems?  i have a lockfile library which re=
-lies
-> on this fact - as i've read that it is on many lists and web pages - howe=
-ver
-> i've never really bothered to ask __this__ list ;-).  so, is it?  are any
-> other system calls?
+On Thu, Jun 17, 2004 at 03:00:26PM -0400, Steve Dickson wrote:
+> Greg Banks wrote:
+> 
+> >Actually, I find the "authenticated mount request from..."  message
+> >useful [...]
+> >
+> True... the authenticated message is a good way to see that
+> a client is able to communicate with the server... but
+> in reality it doesn't mean much... and every error message
+> in the same code path (i.e. in  auth_authenticate()) gives a pretty
+> detail error message of who and what happen..
 
-Yes: link() is atomic.
+Sure, but I'm talking about cases where you get wacky interop
+problems in NFS or NLM traffic in the few minutes after the mount
+sequence.
 
-Ditto for open (on Linux 2.6 clients only) and symlink().
+Also, there are times when it's useful to "tail -f" the syslog
+looking for these messages, e.g. at Cthon you can tell whose
+testing against your server at any moment.  If you see a strange
+message you can wander over and talk to those guys and start a
+debugging session.  This was how the MacOS X lock cookie issue
+was found at Cthon '03.
 
-rename() would normally be atomic too, except that we have a special
-case if the target is an open file: in that case, all clients tend to
-"sillyrename" the target file first in order to avoid killing the
-process that is using the target.
-
-Cheers,
-  Trond
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
 
 -------------------------------------------------------
