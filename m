@@ -1,21 +1,19 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 12 of 17 - Provide generic code for making an upcall.
-Date: Fri, 11 Oct 2002 15:27:48 +1000
+Subject: [PATCH] kNFSd - 1 of 17 - Tidy up the rpc authentication interface.
+Date: Fri, 11 Oct 2002 15:27:30 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E17zsKy-0003bo-00@notabene.cse.unsw.edu.au>
+Message-ID: <E17zsKg-0003ax-00@notabene.cse.unsw.edu.au>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17zsLV-0003iH-00
-	for <nfs@lists.sourceforge.net>; Thu, 10 Oct 2002 22:28:21 -0700
+	id 17zsL5-0003fU-00
+	for <nfs@lists.sourceforge.net>; Thu, 10 Oct 2002 22:27:56 -0700
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>)
-	(for <linux-kernel@vger.kernel.org>) By tone With Smtp ;
-	Fri, 11 Oct 2002 15:28:04 +1000
+	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>) By
+	tone With Smtp ; Fri, 11 Oct 2002 15:27:38 +1000
 To: Linus Torvalds <torvalds@transmeta.com>
-cc: linux-kernel@vger.kernel.org
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,351 +27,457 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
 
+[This is the third set of nfsd patches today.  The ordering is:
+ first:  set of 4   - misc fixes
+ second: set of 8   - NFSv4 support
+ finally:set of 17  - new caching infrastructure
+]
+This series of 17 patches introduces a new caching infrastructure
+for rpc services such as nfsd.  It is used to store authentication
+information and anything else that the service needs from user-space.
+
+In the first instance it will store:
+
+- mapping from IP address to client.
+- mapping from client + filehandle fragment to directory
+- mapping from client + directory to export options.
+
+There is (will be) a facility for the kernel to request information
+from user space, and for user-space to fill in that information in a
+cache.
+
+Eventually this infrastructure will be used for supporting NFSv4
+(which needs username/uid mappings) and cryptographic authentication
+(which needs per-user crypto context from user-space).
+
+The last 7 patches in this set will be sent to linux-kernel was well
+as they implement the kernel<->user communication and so are likely to
+be of wider interest.
+
+Note: this new code is still fully  backwards compatable with
+the current nfs-utils.  They will cause entries to be put in
+the caches with a expiry date in 2038, and as they don't show any
+interest in the upcall mechanism any entries found to be missing
+in the cache wil be treated as negative entries.
+
 ### Comments for ChangeSet
 
-This code enhances 'cache_check' to try to initiate
-an up-call if the cache entry is not up-to-date, and also
-defines add_word and add_hex for formating up-call
-requests.  See rpc-cache.txt for more detail.
+Define auth_ops that contains a method for authenticating a request and a 
+method for authorising a reply.  Call both methods as appropriate.
+
+Also discard rq_verfed and cr_flavour, neither ever used.
+And discard rq_auth as it isn't needed.
 
 
  ----------- Diffstat output ------------
- ./Documentation/rpc-cache.txt  |   30 ++++++
- ./include/linux/sunrpc/cache.h |   11 +-
- ./net/sunrpc/cache.c           |  200 ++++++++++++++++++++++++++++++++++++++---
- 3 files changed, 227 insertions(+), 14 deletions(-)
+ ./fs/nfsd/nfssvc.c               |    2 
+ ./include/linux/sunrpc/svc.h     |    9 +-
+ ./include/linux/sunrpc/svcauth.h |   66 ++++++++++++++------
+ ./net/sunrpc/svc.c               |   18 ++---
+ ./net/sunrpc/svcauth.c           |  127 +++++++++++++++++++++++++++------------
+ ./net/sunrpc/svcsock.c           |    1 
+ 6 files changed, 152 insertions(+), 71 deletions(-)
 
---- ./Documentation/rpc-cache.txt	2002/10/11 02:39:11	1.4
-+++ ./Documentation/rpc-cache.txt	2002/10/11 03:04:46	1.5
-@@ -138,4 +138,34 @@ Each cache should define a "cache_parse"
- written from user-space and processes it.  It should return an error
- (which propagates back to the write syscall) or 0.
+--- ./include/linux/sunrpc/svc.h	2002/10/11 00:40:49	1.1
++++ ./include/linux/sunrpc/svc.h	2002/10/11 00:41:07	1.2
+@@ -98,6 +98,7 @@ struct svc_rqst {
  
-+Each cache should also define a "cache_request" method which
-+takes a cache item and encodes a request into the buffer
-+provided.
- 
+ 	struct svc_serv *	rq_server;	/* RPC service definition */
+ 	struct svc_procedure *	rq_procinfo;	/* procedure info */
++	struct auth_ops *	rq_authop;	/* authentication flavour */
+ 	struct svc_cred		rq_cred;	/* auth info */
+ 	struct sk_buff *	rq_skbuff;	/* fast recv inet buffer */
+ 	struct svc_buf		rq_defbuf;	/* default buffer */
+@@ -108,10 +109,10 @@ struct svc_rqst {
+ 	u32			rq_vers;	/* program version */
+ 	u32			rq_proc;	/* procedure number */
+ 	u32			rq_prot;	/* IP protocol */
+-	unsigned short		rq_verfed  : 1,	/* reply has verifier */
++	unsigned short
+ 				rq_userset : 1,	/* auth->setuser OK */
+-				rq_secure  : 1,	/* secure port */
+-				rq_auth    : 1;	/* check client */
++				rq_secure  : 1;	/* secure port */
 +
-+Note: If a cache has no active readers on the channel, and has had not
-+active readers for more than 60 seconds, further requests will not be
-+added to the channel but instead all looks that do not find a valid
-+entry will fail.  This is partly for backward compatability: The
-+previous nfs exports table was deemed to be authoritative and a
-+failed lookup meant a definate 'no'.
-+
-+request/response format
-+-----------------------
-+
-+While each cache is free to use it's own format for requests
-+and responses over channel, the following is recommended are
-+appropriate and support routines are available to help:
-+Each request or response record should be printable ASCII
-+with precisely one newline character which should be at the end.
-+Fields within the record should be separated by spaces, normally one.
-+If spaces, newlines, or nul characters are needed in a field they
-+much be quotes.  two mechanisms are available:
-+1/ If a field begins '\x' then it must contain an even number of
-+   hex digits, and pairs of these digits provide the bytes in the
-+   field.
-+2/ otherwise a \ in the field must be followed by 3 octal digits
-+   which give the code for a byte.  Other characters are treated
-+   as them selves.  At the very least, space, newlines nul, and
-+   '\' must be quoted in this way.
-+   
---- ./include/linux/sunrpc/cache.h	2002/10/11 02:39:10	1.4
-+++ ./include/linux/sunrpc/cache.h	2002/10/11 03:04:45	1.5
-@@ -72,9 +72,9 @@ struct cache_detail {
- 	void			(*cache_put)(struct cache_head *,
- 					     struct cache_detail*);
  
--	/* request and update functions for interaction with userspace
--	 * will go here
--	 */
-+	void			(*cache_request)(struct cache_detail *cd,
-+						 struct cache_head *h,
-+						 char **bpp, int *blen);
- 	int			(*cache_parse)(struct cache_detail *,
- 					       char *buf, int len);
+ 	void *			rq_argp;	/* decoded arguments */
+ 	void *			rq_resp;	/* xdr'd results */
+@@ -128,7 +129,7 @@ struct svc_rqst {
+ 						 * to report (real or virtual)
+ 						 */
  
-@@ -90,6 +90,8 @@ struct cache_detail {
- 	/* fields for communication over channel */
- 	struct list_head	queue;
- 	struct proc_dir_entry	*proc_ent;
-+	atomic_t		readers;		/* how many time is /chennel open */
-+	time_t			last_close;		/* it no readers, when did last close */
+-	wait_queue_head_t	rq_wait;	/* synchronozation */
++	wait_queue_head_t	rq_wait;	/* synchronization */
  };
  
- 
-@@ -269,4 +271,7 @@ extern int cache_unregister(struct cache
- extern struct cache_detail *cache_find(char *name);
- extern void cache_drop(struct cache_detail *detail);
- 
-+extern void add_word(char **bpp, int *lp, char *str);
-+extern void add_hex(char **bpp, int *lp, char *buf, int blen);
-+
- #endif /*  _LINUX_SUNRPC_CACHE_H_ */
---- ./net/sunrpc/cache.c	2002/10/11 02:39:10	1.4
-+++ ./net/sunrpc/cache.c	2002/10/11 03:04:46	1.5
-@@ -40,6 +40,7 @@ void cache_init(struct cache_head *h)
- }
- 
- 
-+static int cache_make_upcall(struct cache_detail *detail, struct cache_head *h);
  /*
-  * This is the generic cache management routine for all
-  * the authentication caches.
-@@ -55,6 +56,7 @@ int cache_check(struct cache_detail *det
- 		    struct cache_head *h, struct cache_req *rqstp)
- {
- 	int rv;
-+	long refresh_age, age;
+--- ./include/linux/sunrpc/svcauth.h	2002/10/11 00:40:49	1.1
++++ ./include/linux/sunrpc/svcauth.h	2002/10/11 00:41:07	1.2
+@@ -14,34 +14,64 @@
+ #include <linux/sunrpc/msg_prot.h>
  
- 	/* First decide return status as best we can */
- 	if (!test_bit(CACHE_VALID, &h->flags) ||
-@@ -69,31 +71,54 @@ int cache_check(struct cache_detail *det
- 		else rv = 0;
- 	}
+ struct svc_cred {
+-	rpc_authflavor_t	cr_flavor;
+ 	uid_t			cr_uid;
+ 	gid_t			cr_gid;
+ 	gid_t			cr_groups[NGROUPS];
+ };
  
--	/* up-call processing goes here later */
--	/* if cache_pending, initiate upcall if none pending.
--	 * if upcall cannot be initiated, change to CACHE_NEGATIVE
--	 */
--	if (rv == CACHE_PENDING) rv = CACHE_NEGATIVE;
-+	/* now see if we want to start an upcall */
-+	refresh_age = (h->expiry_time - h->last_refresh);
-+	age = CURRENT_TIME - h->last_refresh;
+ struct svc_rqst;		/* forward decl */
+-
+-void	svc_authenticate(struct svc_rqst *rqstp, u32 *statp, u32 *authp);
+-int	svc_auth_register(rpc_authflavor_t flavor,
+-				void (*)(struct svc_rqst *,u32 *,u32 *));
+-void	svc_auth_unregister(rpc_authflavor_t flavor);
+-
+-#if 0
+ /*
+- * Decoded AUTH_UNIX data. This is different from what's in the RPC lib.
++ * Each authentication flavour registers an auth_ops
++ * structure.
++ * name is simply the name.
++ * flavour gives the auth flavour. It determines where the flavour is registered
++ * accept() is given a request and should verify it.
++ *   It should inspect the authenticator and verifier, and possibly the data.
++ *    If there is a problem with the authentication *authp should be set.
++ *    The return value of accept() can indicate:
++ *      OK - authorised. client and credential are set in rqstp.
++ *           reqbuf points to arguments
++ *           resbuf points to good place for results.  verfier
++ *             is (probably) already in place.  Certainly space is
++ *	       reserved for it.
++ *      DROP - simply drop the request. It may have been deferred
++ *      GARBAGE - rpc garbage_args error
++ *      SYSERR - rpc system_err error
++ *      DENIED - authp holds reason for denial.
++ *
++ *   accept is passed the proc number so that it can accept NULL rpc requests
++ *   even if it cannot authenticate the client (as is sometimes appropriate).
++ *
++ * release() is given a request after the procedure has been run.
++ *  It should sign/encrypt the results if needed
++ * It should return:
++ *    OK - the resbuf is ready to be sent
++ *    DROP - the reply should be quitely dropped
++ *    DENIED - authp holds a reason for MSG_DENIED
++ *    SYSERR - rpc system_err
+  */
+-#define NGRPS		16
+-struct authunix_parms {
+-	u32		aup_stamp;
+-	u32		aup_uid;
+-	u32		aup_gid;
+-	u32		aup_len;
+-	u32		aup_gids[NGRPS];
++struct auth_ops {
++	char *	name;
++	int	flavour;
++	int	(*accept)(struct svc_rqst *rq, u32 *authp, int proc);
++	int	(*release)(struct svc_rqst *rq);
+ };
++extern struct auth_ops	*authtab[RPC_AUTH_MAXFLAVOR];
  
--	if (rv == CACHE_PENDING)
--		cache_defer_req(rqstp, h);
-+	if (rqstp == NULL) {
-+		if (rv == -EAGAIN)
-+			rv = -ENOENT;
-+	} else if (rv == -EAGAIN || age > refresh_age/2) {
-+		dprintk("Want update, refage=%ld, age=%ld\n", refresh_age, age);
-+		if (!test_and_set_bit(CACHE_PENDING, &h->flags)) {
-+			switch (cache_make_upcall(detail, h)) {
-+			case -EINVAL:
-+				clear_bit(CACHE_PENDING, &h->flags);
-+				if (rv == -EAGAIN) {
-+					set_bit(CACHE_NEGATIVE, &h->flags);
-+					cache_fresh(detail, h, CURRENT_TIME+CACHE_NEW_EXPIRY);
-+					rv = -ENOENT;
-+				}
-+				break;
+-struct svc_authops *	auth_getops(rpc_authflavor_t flavor);
+-#endif
++#define	SVC_GARBAGE	1
++#define	SVC_SYSERR	2
++#define	SVC_VALID	3
++#define	SVC_NEGATIVE	4
++#define	SVC_OK		5
++#define	SVC_DROP	6
++#define	SVC_DENIED	7
++#define	SVC_PENDING	8
 +
-+			case -EAGAIN:
-+				clear_bit(CACHE_PENDING, &h->flags);
-+				cache_revisit_request(h);
-+				break;
-+			}
-+		}
++
++extern int	svc_authenticate(struct svc_rqst *rqstp, u32 *statp, u32 *authp, int proc);
++extern int	svc_authorise(struct svc_rqst *rqstp);
++extern int	svc_auth_register(rpc_authflavor_t flavor, struct auth_ops *aops);
++extern void	svc_auth_unregister(rpc_authflavor_t flavor);
+ 
+ 
+ #endif /* __KERNEL__ */
+--- ./fs/nfsd/nfssvc.c	2002/10/10 23:24:44	1.3
++++ ./fs/nfsd/nfssvc.c	2002/10/11 00:41:07	1.4
+@@ -173,8 +173,6 @@ nfsd(struct svc_rqst *rqstp)
+ 	current->rlim[RLIMIT_FSIZE].rlim_cur = RLIM_INFINITY;
+ 
+ 	nfsdstats.th_cnt++;
+-	/* Let svc_process check client's authentication. */
+-	rqstp->rq_auth = 1;
+ 
+ 	lockd_up();				/* start lockd */
+ 
+--- ./net/sunrpc/svc.c	2002/10/11 00:40:50	1.1
++++ ./net/sunrpc/svc.c	2002/10/11 00:41:07	1.2
+@@ -262,18 +262,14 @@ svc_process(struct svc_serv *serv, struc
+ 	argp->buf += 5;
+ 	argp->len -= 5;
+ 
+-	/* Used by nfsd to only allow the NULL procedure for amd. */
+-	if (rqstp->rq_auth && !rqstp->rq_client && proc) {
+-		auth_stat = rpc_autherr_badcred;
+-		goto err_bad_auth;
+-	}
+-
+ 	/*
+ 	 * Decode auth data, and add verifier to reply buffer.
+ 	 * We do this before anything else in order to get a decent
+ 	 * auth verifier.
+ 	 */
+-	svc_authenticate(rqstp, &rpc_stat, &auth_stat);
++	if (svc_authenticate(rqstp, &rpc_stat, &auth_stat, proc))
++		/* drop the request, it has probably been deferred */
++		goto dropit;
+ 
+ 	if (rpc_stat != rpc_success)
+ 		goto err_garbage;
+@@ -347,10 +343,14 @@ svc_process(struct svc_serv *serv, struc
+ 
+ 	if (procp->pc_encode == NULL)
+ 		goto dropit;
+-sendit:
++
++ sendit:
++	if (svc_authorise(rqstp))
++		goto dropit;
+ 	return svc_send(rqstp);
+ 
+-dropit:
++ dropit:
++	svc_authorise(rqstp);	/* doesn't hurt to call this twice */
+ 	dprintk("svc: svc_process dropit\n");
+ 	svc_drop(rqstp);
+ 	return 0;
+--- ./net/sunrpc/svcauth.c	2002/10/11 00:40:50	1.1
++++ ./net/sunrpc/svcauth.c	2002/10/11 00:41:07	1.2
+@@ -20,30 +20,40 @@
+ #define RPCDBG_FACILITY	RPCDBG_AUTH
+ 
+ /*
+- * Type of authenticator function
+- */
+-typedef void	(*auth_fn_t)(struct svc_rqst *rqstp, u32 *statp, u32 *authp);
+-
+-/*
+  * Builtin auth flavors
+  */
+-static void	svcauth_null(struct svc_rqst *rqstp, u32 *statp, u32 *authp);
+-static void	svcauth_unix(struct svc_rqst *rqstp, u32 *statp, u32 *authp);
++static int	svcauth_null_accept(struct svc_rqst *rqstp, u32 *authp, int proc);
++static int	svcauth_null_release(struct svc_rqst *rqstp);
++static int	svcauth_unix_accept(struct svc_rqst *rqstp, u32 *authp, int proc);
++static int	svcauth_unix_release(struct svc_rqst *rqstp);
++
++struct auth_ops svcauth_null = {
++	.name		= "null",
++	.flavour	= RPC_AUTH_NULL,
++	.accept 	= svcauth_null_accept,
++	.release	= svcauth_null_release,
++};
++
++struct auth_ops svcauth_unix = {
++	.name		= "unix",
++	.flavour	= RPC_AUTH_UNIX,
++	.accept 	= svcauth_unix_accept,
++	.release	= svcauth_unix_release,
++};
+ 
+ /*
+  * Table of authenticators
+  */
+-static auth_fn_t	authtab[RPC_AUTH_MAXFLAVOR] = {
+-	svcauth_null,
+-	svcauth_unix,
+-	NULL,
++static struct auth_ops	*authtab[RPC_AUTH_MAXFLAVOR] = {
++	[0] = &svcauth_null,
++	[1] = &svcauth_unix,
+ };
+ 
+-void
+-svc_authenticate(struct svc_rqst *rqstp, u32 *statp, u32 *authp)
++int
++svc_authenticate(struct svc_rqst *rqstp, u32 *statp, u32 *authp, int proc)
+ {
+ 	rpc_authflavor_t	flavor;
+-	auth_fn_t		func;
++	struct auth_ops		*aops;
+ 
+ 	*statp = rpc_success;
+ 	*authp = rpc_auth_ok;
+@@ -52,21 +62,53 @@ svc_authenticate(struct svc_rqst *rqstp,
+ 	flavor = ntohl(flavor);
+ 
+ 	dprintk("svc: svc_authenticate (%d)\n", flavor);
+-	if (flavor >= RPC_AUTH_MAXFLAVOR || !(func = authtab[flavor])) {
++	if (flavor >= RPC_AUTH_MAXFLAVOR || !(aops = authtab[flavor])) {
+ 		*authp = rpc_autherr_badcred;
+-		return;
++		return 0;
 +	}
++
++	rqstp->rq_authop = aops;
++	switch (aops->accept(rqstp, authp, proc)) {
++	case SVC_OK:
++		return 0;
++	case SVC_GARBAGE:
++		*statp = rpc_garbage_args;
++		return 0;
++	case SVC_SYSERR:
++		*statp = rpc_system_err;
++		return 0;
++	case SVC_DENIED:
++		return 0;
++	case SVC_DROP:
++		break;
+ 	}
++	return 1; /* drop the request */
++}
++
++/* A reqeust, which was authenticated, has now executed.
++ * Time to finalise the the credentials and verifier
++ * and release and resources
++ */
++int svc_authorise(struct svc_rqst *rqstp)
++{
++	struct auth_ops *aops = rqstp->rq_authop;
++	int rv = 0;
  
--	if (rv == -EAGAIN /* && cannot do upcall */)
--		rv = -ENOENT;
-+	if (rv == -EAGAIN)
-+		cache_defer_req(rqstp, h);
- 
- 	if (rv && h)
- 		detail->cache_put(h, detail);
- 	return rv;
+-	rqstp->rq_cred.cr_flavor = flavor;
+-	func(rqstp, statp, authp);
++	rqstp->rq_authop = NULL;
++	
++	if (aops) 
++		rv = aops->release(rqstp);
++
++	/* FIXME should I count and release authops */
++	return rv;
  }
  
-+static void queue_loose(struct cache_detail *detail, struct cache_head *ch);
-+
- void cache_fresh(struct cache_detail *detail,
- 		 struct cache_head *head, time_t expiry)
+ int
+-svc_auth_register(rpc_authflavor_t flavor, auth_fn_t func)
++svc_auth_register(rpc_authflavor_t flavor, struct auth_ops *aops)
  {
- 
- 	head->expiry_time = expiry;
- 	head->last_refresh = CURRENT_TIME;
--	set_bit(CACHE_VALID, &head->flags);
--	clear_bit(CACHE_PENDING, &head->flags);
-+	if (!test_and_set_bit(CACHE_VALID, &head->flags))
-+		cache_revisit_request(head);
-+	if (test_and_clear_bit(CACHE_PENDING, &head->flags))
-+		queue_loose(detail, head);
- }
- 
- /*
-@@ -155,6 +180,8 @@ void cache_register(struct cache_detail 
- 	spin_lock(&cache_list_lock);
- 	cd->nextcheck = 0;
- 	cd->entries = 0;
-+	atomic_set(&cd->readers, 0);
-+	cd->last_close = CURRENT_TIME;
- 	list_add(&cd->others, &cache_list);
- 	spin_unlock(&cache_list_lock);
- }
-@@ -639,6 +666,7 @@ cache_open(struct inode *inode, struct f
- 	rp->page = NULL;
- 	rp->offset = 0;
- 	rp->q.reader = 1;
-+	atomic_inc(&cd->readers);
- 	spin_lock(&queue_lock);
- 	list_add(&rp->q.list, &cd->queue);
- 	spin_unlock(&queue_lock);
-@@ -672,6 +700,9 @@ cache_release(struct inode *inode, struc
- 
- 	filp->private_data = NULL;
- 	kfree(rp);
-+
-+	cd->last_close = CURRENT_TIME;
-+	atomic_dec(&cd->readers);
+ 	if (flavor >= RPC_AUTH_MAXFLAVOR || authtab[flavor])
+ 		return -EINVAL;
+-	authtab[flavor] = func;
++	authtab[flavor] = aops;
  	return 0;
  }
  
-@@ -686,3 +717,150 @@ struct file_operations cache_file_operat
- 	.open		= cache_open,
- 	.release	= cache_release,
- };
-+
-+
-+static void queue_loose(struct cache_detail *detail, struct cache_head *ch)
-+{
-+	struct cache_queue *cq;
-+	spin_lock(&queue_lock);
-+	list_for_each_entry(cq, &detail->queue, list)
-+		if (!cq->reader) {
-+			struct cache_request *cr = container_of(cq, struct cache_request, q);
-+			if (cr->item != ch)
-+				continue;
-+			if (cr->readers != 0)
-+				break;
-+			list_del(&cr->q.list);
-+			spin_unlock(&queue_lock);
-+			detail->cache_put(cr->item, detail);
-+			kfree(cr->buf);
-+			kfree(cr);
-+			return;
-+		}
-+	spin_unlock(&queue_lock);
+@@ -77,25 +119,24 @@ svc_auth_unregister(rpc_authflavor_t fla
+ 		authtab[flavor] = NULL;
+ }
+ 
+-static void
+-svcauth_null(struct svc_rqst *rqstp, u32 *statp, u32 *authp)
++static int
++svcauth_null_accept(struct svc_rqst *rqstp, u32 *authp, int proc)
+ {
+ 	struct svc_buf	*argp = &rqstp->rq_argbuf;
+ 	struct svc_buf	*resp = &rqstp->rq_resbuf;
+ 
+ 	if ((argp->len -= 3) < 0) {
+-		*statp = rpc_garbage_args;
+-		return;
++		return SVC_GARBAGE;
+ 	}
+ 	if (*(argp->buf)++ != 0) {	/* we already skipped the flavor */
+ 		dprintk("svc: bad null cred\n");
+ 		*authp = rpc_autherr_badcred;
+-		return;
++		return SVC_DENIED;
+ 	}
+ 	if (*(argp->buf)++ != RPC_AUTH_NULL || *(argp->buf)++ != 0) {
+ 		dprintk("svc: bad null verf\n");
+ 		*authp = rpc_autherr_badverf;
+-		return;
++		return SVC_DENIED;
+ 	}
+ 
+ 	/* Signal that mapping to nobody uid/gid is required */
+@@ -104,13 +145,19 @@ svcauth_null(struct svc_rqst *rqstp, u32
+ 	rqstp->rq_cred.cr_groups[0] = NOGROUP;
+ 
+ 	/* Put NULL verifier */
+-	rqstp->rq_verfed = 1;
+ 	svc_putu32(resp, RPC_AUTH_NULL);
+ 	svc_putu32(resp, 0);
++	return SVC_OK;
 +}
 +
-+/*
-+ * Support routines for text-based upcalls.
-+ * Fields are separated by spaces.
-+ * Fields are either mangled to quote space tab newline slosh with slosh
-+ * or a hexified with a leading \x
-+ * Record is terminated with newline.
-+ *
-+ */
-+
-+void add_word(char **bpp, int *lp, char *str)
++static int
++svcauth_null_release(struct svc_rqst *rqstp)
 +{
-+	char *bp = *bpp;
-+	int len = *lp;
-+	char c;
-+
-+	if (len < 0) return;
-+
-+	while ((c=*str++) && len)
-+		switch(c) {
-+		case ' ':
-+		case '\t':
-+		case '\n':
-+		case '\\':
-+			if (len >= 4) {
-+				*bp++ = '\\';
-+				*bp++ = '0' + ((c & 0300)>>6);
-+				*bp++ = '0' + ((c & 0070)>>3);
-+				*bp++ = '0' + ((c & 0007)>>0);
-+			}
-+			len -= 4;
-+			break;
-+		default:
-+			*bp++ = c;
-+			len--;
-+		}
-+	if (c || len <1) len = -1;
-+	else {
-+		*bp++ = ' ';
-+		len--;
-+	}
-+	*bpp = bp;
-+	*lp = len;
++	return 0; /* don't drop */
+ }
+ 
+-static void
+-svcauth_unix(struct svc_rqst *rqstp, u32 *statp, u32 *authp)
++static int
++svcauth_unix_accept(struct svc_rqst *rqstp, u32 *authp, int proc)
+ {
+ 	struct svc_buf	*argp = &rqstp->rq_argbuf;
+ 	struct svc_buf	*resp = &rqstp->rq_resbuf;
+@@ -118,14 +165,12 @@ svcauth_unix(struct svc_rqst *rqstp, u32
+ 	u32		*bufp = argp->buf, slen, i;
+ 	int		len   = argp->len;
+ 
+-	if ((len -= 3) < 0) {
+-		*statp = rpc_garbage_args;
+-		return;
+-	}
++	if ((len -= 3) < 0)
++		return SVC_GARBAGE;
+ 
+ 	bufp++;					/* length */
+ 	bufp++;					/* time stamp */
+-	slen = (ntohl(*bufp++) + 3) >> 2;	/* machname length */
++	slen = XDR_QUADLEN(ntohl(*bufp++));	/* machname length */
+ 	if (slen > 64 || (len -= slen + 3) < 0)
+ 		goto badcred;
+ 	bufp += slen;				/* skip machname */
+@@ -144,19 +189,27 @@ svcauth_unix(struct svc_rqst *rqstp, u32
+ 
+ 	if (*bufp++ != RPC_AUTH_NULL || *bufp++ != 0) {
+ 		*authp = rpc_autherr_badverf;
+-		return;
++		return SVC_DENIED;
+ 	}
+ 
+ 	argp->buf = bufp;
+ 	argp->len = len;
+ 
+ 	/* Put NULL verifier */
+-	rqstp->rq_verfed = 1;
+ 	svc_putu32(resp, RPC_AUTH_NULL);
+ 	svc_putu32(resp, 0);
+ 
+-	return;
++	return SVC_OK;
+ 
+ badcred:
+ 	*authp = rpc_autherr_badcred;
++	return SVC_DENIED;
 +}
 +
-+void add_hex(char **bpp, int *lp, char *buf, int blen)
++static int
++svcauth_unix_release(struct svc_rqst *rqstp)
 +{
-+	char *bp = *bpp;
-+	int len = *lp;
-+
-+	if (len < 0) return;
-+
-+	if (len > 2) {
-+		*bp++ = '\\';
-+		*bp++ = 'x';
-+		len -= 2;
-+		while (blen && len >= 2) {
-+			unsigned char c = *buf++;
-+			*bp++ = '0' + ((c&0xf0)>>4) + (c>=0xa0)*('a'-'0');
-+			*bp++ = '0' + (c&0x0f) + ((c&0x0f)>=0x0a)*('a'-'0');
-+			len -= 2;
-+			blen--;
-+		}
-+	}
-+	if (blen || len<1) len = -1;
-+	else {
-+		*bp++ = ' ';
-+		len--;
-+	}
-+	*bpp = bp;
-+	*lp = len;
-+}
-+
-+			
-+
-+/*
-+ * register an upcall request to user-space.
-+ * Each request is at most one page long.
-+ */
-+static int cache_make_upcall(struct cache_detail *detail, struct cache_head *h)
-+{
-+
-+	char *buf;
-+	struct cache_request *crq;
-+	char *bp;
-+	int len;
-+
-+	if (detail->cache_request == NULL)
-+		return -EINVAL;
-+
-+	if (atomic_read(&detail->readers) == 0 &&
-+	    detail->last_close < CURRENT_TIME - 60)
-+		/* nobody is listening */
-+		return -EINVAL;
-+
-+	buf = kmalloc(PAGE_SIZE, GFP_KERNEL);
-+	if (!buf)
-+		return -EAGAIN;
-+
-+	crq = kmalloc(sizeof (*crq), GFP_KERNEL);
-+	if (!crq) {
-+		kfree(buf);
-+		return -EAGAIN;
-+	}
-+
-+	bp = buf; len = PAGE_SIZE;
-+
-+	detail->cache_request(detail, h, &bp, &len);
-+
-+	if (len < 0) {
-+		kfree(buf);
-+		kfree(crq);
-+		return -EAGAIN;
-+	}
-+	crq->q.reader = 0;
-+	crq->item = cache_get(h);
-+	crq->buf = buf;
-+	crq->len = PAGE_SIZE - len;
-+	crq->readers = 0;
-+	spin_lock(&queue_lock);
-+	list_add_tail(&crq->q.list, &detail->queue);
-+	spin_unlock(&queue_lock);
-+	wake_up(&queue_wait);
++	/* Verifier (such as it is) is already in place.
++	 */
 +	return 0;
-+}
+ }
+--- ./net/sunrpc/svcsock.c	2002/10/11 00:40:50	1.1
++++ ./net/sunrpc/svcsock.c	2002/10/11 00:41:07	1.2
+@@ -1089,7 +1089,6 @@ svc_recv(struct svc_serv *serv, struct s
+ 
+ 	rqstp->rq_secure  = ntohs(rqstp->rq_addr.sin_port) < 1024;
+ 	rqstp->rq_userset = 0;
+-	rqstp->rq_verfed  = 0;
+ 
+ 	svc_getu32(&rqstp->rq_argbuf, rqstp->rq_xid);
+ 	svc_putu32(&rqstp->rq_resbuf, rqstp->rq_xid);
 
 
 -------------------------------------------------------
