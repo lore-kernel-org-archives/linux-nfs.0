@@ -1,32 +1,26 @@
-From: Jeffrey Layton <jtlayton@poochiereds.net>
-Subject: Re: fcntl locks prevent unmounting of underlying filesystem
-Date: Thu, 27 May 2004 10:27:16 -0400
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: Linux' NFS locking b0rken?
+Date: Thu, 27 May 2004 18:14:12 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1085668036.6111.2.camel@tesla.mmt.bellhowell.com>
-References: <1085589795.20517.41.camel@tesla.mmt.bellhowell.com>
+Message-ID: <20040527161412.GA19288@suse.de>
+References: <Pine.LNX.4.44.0405251504220.24001-100000@fattire.ngdc.noaa.gov> <1085523068.12612.58.camel@lade.trondhjem.org> <20040526075058.GA7463@suse.de> <1085587441.3763.4.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+Cc: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>,
+	Dan Stromberg <strombrg@dcs.nac.uci.edu>,
+	Jeffrey Layton <jtlayton@poochiereds.net>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BTLqq-0000Et-DB
-	for nfs@lists.sourceforge.net; Thu, 27 May 2004 07:27:20 -0700
-Received: from rdu26-93-067.nc.rr.com ([66.26.93.67] helo=salusa.poochiereds.net)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BTLqq-0004F0-1V
-	for nfs@lists.sourceforge.net; Thu, 27 May 2004 07:27:20 -0700
-Received: from localhost (localhost [127.0.0.1])
-	by salusa.poochiereds.net (Postfix) with ESMTP id 27FB1E485
-	for <nfs@lists.sourceforge.net>; Thu, 27 May 2004 10:27:11 -0400 (EDT)
-Received: from salusa.poochiereds.net ([127.0.0.1])
-	by localhost (salusa [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id 13058-08 for <nfs@lists.sourceforge.net>;
-	Thu, 27 May 2004 10:27:10 -0400 (EDT)
-Received: from localhost (salusa.poochiereds.net [192.168.1.2])
-	by salusa.poochiereds.net (Postfix) with ESMTP id 3A752AED2
-	for <nfs@lists.sourceforge.net>; Thu, 27 May 2004 10:27:10 -0400 (EDT)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <1085589795.20517.41.camel@tesla.mmt.bellhowell.com>
+	id 1BTNXC-0006wb-Al
+	for nfs@lists.sourceforge.net; Thu, 27 May 2004 09:15:10 -0700
+Received: from cantor.suse.de ([195.135.220.2])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.30)
+	id 1BTNXB-0003Z8-Jx
+	for nfs@lists.sourceforge.net; Thu, 27 May 2004 09:15:09 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1085587441.3763.4.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -39,18 +33,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-FWIW, I've also been able to replicate this problem on the 2.4 kernels
-as well. I'm unable to unmount the underlying filesystem of the NFS
-server until the POSIX locks that the clients hold have been released.
-Needless to say, this is not good for a HA-NFS server, since it prevents
-me from reliably failing over. How have others dealt with this problem?
-Or perhaps I don't have something configured correctly?
+On Wed, May 26, 2004 at 12:04:01PM -0400, Trond Myklebust wrote:
+> Sure we could. The question is whether or not there are any applications
+> out there that set both flock and fcntl locks? They would break with
+> such a scheme.
 
-Any help or insight would be much appreciated...
+Don't they deserve to break?
 
--- Jeff
+I'd rather make flock work over NFS (and have one FAQ less to deal with),
+than supporting patently broken apps.
 
+We could create a mount option or even better a lockd module option to
+make the old behavior selectable for those that need it.
 
+Olaf
+-- 
+Olaf Kirch     |  The Hardware Gods hate me.
+okir@suse.de   |
+---------------+ 
 
 
 -------------------------------------------------------
