@@ -1,20 +1,18 @@
-From: Ryan Sweet <rsweet@atos-group.nl>
-Subject: Re: 2.4.18 disk i/o load spikes
-Date: Sat, 18 May 2002 09:14:11 +0200 (CEST)
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: RE: RedHat 7.3 crashed NetApp?
+Date: Mon, 20 May 2002 07:19:11 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.30.0205180854110.29675-100000@core-0>
-References: <49CA7FE2A83A33459A2CD27E99E90EFB0BAE9C@poexmb1.conoco.net>
-Reply-To: Ryan Sweet <rsweet@atos-group.nl>
+Message-ID: <6440EA1A6AA1D5118C6900902745938E50CF38@black.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: <nfs@lists.sourceforge.net>, <rsweet@atos-group.nl>
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [62.58.73.254] (helo=ats-core-0.atos-group.nl)
+Received: from mx01-a.netapp.com ([198.95.226.53])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 178ybE-0003Sv-00
-	for <nfs@lists.sourceforge.net>; Sat, 18 May 2002 00:25:56 -0700
-To: "Heflin, Roger A." <Roger.A.Heflin@conoco.com>
-In-Reply-To: <49CA7FE2A83A33459A2CD27E99E90EFB0BAE9C@poexmb1.conoco.net>
+	id 179o0R-00019F-00
+	for <nfs@lists.sourceforge.net>; Mon, 20 May 2002 07:19:23 -0700
+To: "'Benjamin LaHaise'" <bcrl@redhat.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,45 +25,32 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Fri, 17 May 2002, Heflin, Roger A. wrote:
->
-> When you run it with the 10 streams, that is on the local disk with
-> no nfs?
+ben-
 
-Yes, I first tested the local disks only, then verified that the symptoms
-were the same with nfs.
+were any patches applied to RH's 2.4.18 that touched the NFS client?
+for example, were any of Trond's experimental patches applied?
 
-> And also, besides the load rising, what happens to the
-> io rates when things start to spiral?
+thanks!
 
-tcp networking, cpu utilisation are fine, responsiveness from anything
-depending upon the filesystems in question, however, really starts to
-suck.  User sessions with home dirs on the filer all grind to a halt, nfs
-timeouts happen all over the place, and even doing an ls takes forever.
-
-> I have not been able to duplicate
-> it under 2.4.19 with the latest NFS patches with limited testing.
-
-Running the same tests on another 2.4.18 system, with the same mb/cpu/ram,
-but with a promise controller and four ata/100 ide drives in software
-raid5 I was also unable to reporduce the problem.  The system gets well
-and truly loaded, and I/O rates on the promise software raided drives are
-not spectacular, but the system remains responsive and most importantly
-the performance is much more smooth, not so many bursts of I/O, with long
-waits in between.
-
-> 	I am the author of slowspeed.c, I have been able to duplicate it
-> 	on 2.2.19 with nfs, I believe I was able to duplicate it on a local
-> 	disk with no nfs, but I cannot duplicate things slowing down
-> 	always with things on the local disk.   On 2.2.19 it looks like
-
-When we used 2.2.18 (9 months ago?), we did not have this problem, though
-as I mentioned in my original post, our client mix (and usage pattern) has
-changed significantly.
-
-BTW, the progrm segfaults with more than 35 streams.  Running another one
-in another dir seems ok though.
-
+> [a few data points from the bugzilla entries]
+> 
+> On Fri, May 17, 2002 at 03:17:53PM -0700, Lever, Charles wrote:
+> > i'm wondering what are the common elements here:
+> > 
+> > is the EEpro 100 ethernet card common to all clients
+> > that exhibit this problem?
+> 
+> eepro, tulip, 3com have all shown problems with 2.4.18 (at least 
+> serious performance issues).
+> 
+> >  NFSv3 over UDP?
+> 
+> Yes.  A number of people have now reported that forcing v2 operation 
+> does not result in slow performance, whereas in the 2.4.9-ac12 based 
+> kernel, v3 was fine.
+> 
+> 		-ben
+> 
 
 _______________________________________________________________
 Hundreds of nodes, one monster rendering program.
