@@ -1,18 +1,22 @@
-From: <ltd20042021i36@nation.net>
-Subject: Create a PAYCHECK with your computer -
-Date: Tue, 06 Aug 0102 12:14:20 +1100
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: nfs export switchs to readonly
+Date: Wed, 7 Aug 2002 20:47:42 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <033c75d15d3a$1866b6b4$5cc65cd1@cjyymm>
-Reply-To: <ltd20042021i36@nation.net>
+Message-ID: <15696.64206.236004.309806@notabene.cse.unsw.edu.au>
+References: <20020802140019.D26C5352D0@credativ.de>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="----=_NextPart_000_00B2_55D11E0B.E6284C75"
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [203.135.44.206] (helo=nation.net)
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17cDyv-0006vC-00
-	for <nfs@lists.sourceforge.net>; Tue, 06 Aug 2002 16:43:20 -0700
-To: <nfs@lists.sourceforge.net>
+	id 17cOLP-0006sx-00
+	for <nfs@lists.sourceforge.net>; Wed, 07 Aug 2002 03:47:11 -0700
+Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
+	(for <oliver.korff@credativ.de>) (for <nfs@lists.sourceforge.net>) By
+	tone With Smtp ; Wed, 7 Aug 2002 20:47:01 +1000
+To: Oliver Korff <oliver.korff@credativ.de>
+In-Reply-To: message from Oliver Korff on Friday August 2
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,75 +29,48 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-------=_NextPart_000_00B2_55D11E0B.E6284C75
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: base64
+On Friday August 2, oliver.korff@credativ.de wrote:
+> Hi, 
+> 
+> I've the following trouble: 
+> after some hard traffic or a nfs restart my exports sometimes switches to 
+> "ro". I don't have that problem if I boot the server first and all clients 
+> connect afterwards. But that gets a little messy because I've got 110 
+> clients....
+> If I use "exportfs -rv" this usually solves the problem, but not always. 
+> 
+> 
+> kernelversion 2.4.18
+> nfs Version 1.0
+> distribution: debian/woody
+>  
+> cat /var/lib/nfs/xtab | grep myotherhost
+>  /data01 
+> myotherhost.foo.bar(ro,async,wdelay,hide,secure,root_squash,no_all_squash,subtree_check,
+> secure_locks,mapping=identity,anonuid=-2,anongid=-2)
+> 
+> # /etc/exports: the access control list for filesystems which may be exported
+> #		to NFS clients.  See exports(5).
+> #
+> /data01	myhost.foo.bar(rw,no_root_squash)
+> /data01	my*.foo.bar(rw)
+> /data01	www-linux.foo.bar(rw)
+> /data01	*.foo.bar(ro)
 
+You have an ambiguity here.  You have three different rules that apply
+to myhost.for.bar.  One is clearly more explicit and so is used.
+But myotherhost.foo.bar could clearly match two rules, and it is not
+obvious (to a computer) that one match is more explicit than another.
+So I guess you get pot-luck.
+You need to find a way to be more explicit.
+Maybe:
+> /data01	myhost.foo.bar(rw,no_root_squash)
+> /data01	my*.foo.bar(rw)
+> /data01	www-linux.foo.bar(rw)
+> /data01	[^m]*.foo.bar(ro)
+> /data01	?[^y]*.foo.bar(ro)
 
-SGVsbG8gLQ0KDQpZb3UgZ2V0IGVtYWlscyBldmVyeSBkYXksIG9mZmVyaW5n
-IHRvIHNob3cgeW91IGhvdyB0byBtYWtlIG1vbmV5Lg0KTW9zdCBvZiB0aGVz
-ZSBlbWFpbHMgYXJlIGZyb20gcGVvcGxlIHdobyBhcmUgTk9UIG1ha2luZyBh
-bnkgbW9uZXkuDQpBbmQgdGhleSBleHBlY3QgeW91IHRvIGxpc3RlbiB0byB0
-aGVtPw0KDQpFbm91Z2guDQoNCklmIHlvdSB3YW50IHRvIG1ha2UgbW9uZXkg
-d2l0aCB5b3VyIGNvbXB1dGVyLCB0aGVuIHlvdSBzaG91bGQNCmhvb2sgdXAg
-d2l0aCBhIGdyb3VwIHRoYXQgaXMgYWN0dWFsbHkgRE9JTkcgaXQuICBXZSBh
-cmUgbWFraW5nDQphIGxhcmdlLCBjb250aW51aW5nIGluY29tZSBldmVyeSBt
-b250aC4gIFdoYXQncyBtb3JlIC0gd2Ugd2lsbA0Kc2hvdyBZT1UgaG93IHRv
-IGRvIHRoZSBzYW1lIHRoaW5nLg0KDQpUaGlzIGJ1c2luZXNzIGlzIGRvbmUg
-Y29tcGxldGVseSBieSBpbnRlcm5ldCBhbmQgZW1haWwsIGFuZCB5b3UNCmNh
-biBldmVuIGpvaW4gZm9yIGZyZWUgdG8gY2hlY2sgaXQgb3V0IGZpcnN0LiAg
-SWYgeW91IGNhbiBzZW5kDQphbiBlbWFpbCwgeW91IGNhbiBkbyB0aGlzLiAg
-Tm8gc3BlY2lhbCAic2tpbGxzIiBhcmUgcmVxdWlyZWQuDQoNCkhvdyBtdWNo
-IGFyZSB3ZSBtYWtpbmc/ICBCZWxvdyBhcmUgYSBmZXcgZXhhbXBsZXMuICBU
-aGVzZSBhcmUNCnJlYWwgcGVvcGxlLCBhbmQgbW9zdCBvZiB0aGVtIHdvcmsg
-YXQgdGhpcyBidXNpbmVzcyBwYXJ0LXRpbWUuDQpCdXQga2VlcCBpbiBtaW5k
-LCB0aGV5IGRvIFdPUksgYXQgaXQgLSBJIGFtIG5vdCBnb2luZyB0bw0KaW5z
-dWx0IHlvdXIgaW50ZWxsaWdlbmNlIGJ5IHNheWluZyB5b3UgY2FuIHNpZ24g
-dXAsIGRvIG5vIHdvcmssDQphbmQgcmFrZSBpbiB0aGUgY2FzaC4gIFRoYXQg
-a2luZCBvZiBqb2IgZG9lcyBub3QgZXhpc3QuICBCdXQgaWYNCnlvdSBhcmUg
-d2lsbGluZyB0byBwdXQgaW4gMTAtMTIgaG91cnMgcGVyIHdlZWssIHRoaXMg
-bWlnaHQgYmUNCmp1c3QgdGhlIHRoaW5nIHlvdSBhcmUgbG9va2luZyBmb3Iu
-DQoNCk4uIEdhbGxhZ2hlcjogJDMwMDAgcGVyIG1vbnRoDQpKLiBMdWRlczog
-JDEwMDAgcGVyIG1vbnRoDQpTLiBKb2huc29uOiAkNjAwMCAtJDcwMDAgcGVy
-IG1vbnRoDQpWLiBQYXRhbGFubzogJDIwMDAgcGVyIG1vbnRoDQpNLiBTb3V0
-aDogJDUwMDAgcGVyIG1vbnRoDQpKLiBIZW5zbGluOiAkNzAwMCBwZXIgbW9u
-dGgNCg0KVGhpcyBpcyBub3QgaW5jb21lIHRoYXQgaXMgZGV0ZXJtaW5lZCBi
-eSBsdWNrLCBvciB3b3JrIHRoYXQgaXMNCmRvbmUgRk9SIHlvdSAtIGl0IGlz
-IGFsbCBiYXNlZCBvbiB5b3VyIGVmZm9ydC4gIEJ1dCwgYXMgSSBzYWlkLA0K
-dGhlcmUgYXJlIG5vIHNwZWNpYWwgc2tpbGxzIHJlcXVpcmVkLiAgQW5kIHRo
-aXMgaW5jb21lIGlzIFJFU0lEVUFMIC0NCm1lYW5pbmcgdGhhdCBpdCBjb250
-aW51ZXMgZWFjaCBtb250aCAoYW5kIGl0IHRlbmRzIHRvIGluY3JlYXNlDQpl
-YWNoIG1vbnRoIGFsc28pLg0KDQpJbnRlcmVzdGVkPyAgSSBpbnZpdGUgeW91
-IHRvIGZpbmQgb3V0IG1vcmUuICBZb3UgY2FuIGdldCBpbiBhcyBhDQpmcmVl
-IG1lbWJlciwgYXQgbm8gY29zdCwgYW5kIG5vIG9ibGlnYXRpb24gdG8gY29u
-dGludWUgaWYgeW91DQpkZWNpZGUgaXQgaXMgbm90IGZvciB5b3UuICBXZSBh
-cmUganVzdCBsb29raW5nIGZvciBwZW9wbGUgd2hvIHN0aWxsDQpoYXZlIHRo
-YXQgImJ1cm5pbmcgZGVzaXJlIiB0byBmaW5kIGFuIG9wcG9ydHVuaXR5IHRo
-YXQgd2lsbCByZXdhcmQNCnRoZW0gaW5jcmVkaWJseSB3ZWxsLCBpZiB0aGV5
-IHdvcmsgYXQgaXQuDQoNClRvIGdyYWIgYSBGUkVFIElEIywgc2ltcGx5IHJl
-cGx5IHRvOiBpdC13b3Jrc0BleGNpdGUuY29tDQphbmQgd3JpdGUgdGhpcyBw
-aHJhc2U6DQoiRW1haWwgbWUgZGV0YWlscyBhYm91dCB0aGUgY2x1YidzIGJ1
-c2luZXNzIGFuZCBjb25zdW1lciBvcHBvcnR1bml0aWVzIg0KQmUgc3VyZSB0
-byBpbmNsdWRlIHlvdXI6DQoxLiBGaXJzdCBuYW1lDQoyLiBMYXN0IG5hbWUN
-CjMuIEVtYWlsIGFkZHJlc3MgDQoNCldlIHdpbGwgY29uZmlybSB5b3VyIHBv
-c2l0aW9uIGFuZCBzZW5kIHlvdSBhIHNwZWNpYWwgcmVwb3J0DQphcyBzb29u
-IGFzIHBvc3NpYmxlLCBhbmQgYWxzbyBZb3VyIGZyZWUgTWVtYmVyIE51bWJl
-ci4NCg0KVGhhdCdzIGFsbCB0aGVyZSdzIHRvIGl0Lg0KDQpXZSdsbCB0aGVu
-IHNlbmQgeW91IGluZm8sIGFuZCB5b3UgY2FuIG1ha2UgdXAgeW91ciBvd24g
-bWluZC4NCg0KTG9va2luZyBmb3J3YXJkIHRvIGhlYXJpbmcgZnJvbSB5b3Uh
-DQoNClNpbmNlcmVseSwNCg0KVC4gTHVkZXMgDQoNClAuUy4gQWZ0ZXIgaGF2
-aW5nIHNldmVyYWwgbmVnYXRpdmUgZXhwZXJpZW5jZXMgd2l0aCBuZXR3b3Jr
-DQptYXJrZXRpbmcgY29tcGFuaWVzIEkgaGFkIHByZXR0eSBtdWNoIGdpdmVu
-IHVwIG9uIHRoZW0uDQpUaGlzIGlzIGRpZmZlcmVudCAtIHRoZXJlIGlzIHZh
-bHVlLCBpbnRlZ3JpdHksIGFuZCBhDQpSRUFMIG9wcG9ydHVuaXR5IHRvIGhh
-dmUgeW91ciBvd24gaG9tZS1iYXNlZCBidXNpbmVzcy4uLg0KYW5kIGZpbmFs
-bHkgbWFrZSByZWFsIG1vbmV5IG9uIHRoZSBpbnRlcm5ldC4NCg0KRG9uJ3Qg
-cGFzcyB0aGlzIHVwLi4ueW91IGNhbiBzaWduIHVwIGFuZCB0ZXN0LWRyaXZl
-IHRoZQ0KcHJvZ3JhbSBmb3IgRlJFRS4gIEFsbCB5b3UgbmVlZCB0byBkbyBp
-cyBnZXQgeW91ciBmcmVlDQptZW1iZXJzaGlwLg0KDQpVbnN1YnNjcmliZTog
-U2VuZCBhIGJsYW5rIGVtYWlsIHRvOiBlYXN5d29yazIwMDRAaG90bWFpbC5j
-b20gIHdpdGgNCiJSZW1vdmUiIGluIHRoZSBzdWJqZWN0IGxpbmUuDQoNCjQ1
-NDJIR3NTMi0xMDlpdkdZMzcxMUZYaHI0LTU3bDI3
+NeilBrown
 
 
 -------------------------------------------------------
@@ -103,6 +80,3 @@ http://thinkgeek.com/sf
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
-
-------=_NextPart_000_00B2_55D11E0B.E6284C75--
