@@ -1,26 +1,23 @@
-From: Roberto Sebastiano <robs@multiplayer.it>
-Subject: Re: gigabit, 2.4.22 and timeo
-Date: Tue, 14 Oct 2003 19:02:34 +0200
+From: "Ogden, Aaron A." <aogden@unocal.com>
+Subject: RE: ~800 mountpoint limitation
+Date: Tue, 14 Oct 2003 12:03:40 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1066150954.2582.8.camel@newdeal>
-References: <1066134271.629.19.camel@newdeal>
-	 <shs7k37x4rs.fsf@charged.uio.no> <1066148509.2582.1.camel@newdeal>
-	 <16268.9170.985048.378514@charged.uio.no>
+Message-ID: <6AB920CC10586340BE1674976E0A991D0C6B82@slexch2.sugarland.unocal.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1A9SZv-0005bu-00
-	for <nfs@lists.sourceforge.net>; Tue, 14 Oct 2003 10:03:23 -0700
-Received: from vsmtp2.tin.it ([212.216.176.222] helo=vsmtp2alice.tin.it)
+	id 1A9Sar-0005gx-00
+	for <nfs@lists.sourceforge.net>; Tue, 14 Oct 2003 10:04:21 -0700
+Received: from unogate.unocal.com ([192.94.3.1])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 1A9SZv-0003py-0s
-	for nfs@lists.sourceforge.net; Tue, 14 Oct 2003 10:03:23 -0700
-To: trond.myklebust@fys.uio.no
-In-Reply-To: <16268.9170.985048.378514@charged.uio.no>
+	id 1A9Sao-00048A-1N
+	for nfs@lists.sourceforge.net; Tue, 14 Oct 2003 10:04:18 -0700
+To: "Lever, Charles" <Charles.Lever@netapp.com>, <trond.myklebust@fys.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -33,49 +30,51 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Il mar, 2003-10-14 alle 18:26, Trond Myklebust ha scritto:
-> >>>>> " " == Roberto Sebastiano <robs@multiplayer.it> writes:
-> 
->      > Il mar, 2003-10-14 alle 16:39, Trond Myklebust ha scritto:
->     >> > Is there any way to solve this ?
->     >>
->     >> There should be. Try applying patches number 02, 03 and 04 (in
->     >> that order) from
->     >>
->     >> http://www.fys.uio.no/~trondmy/src/2.4.23-pre7
-> 
->      > Great I'm transferring 120gb of data via net with those patches
->      > applied and it runs just fine
-> 
->      > Should I apply the others patches too for a production
->      > environment ?
-> 
-> I would recommend that you at least apply
-> 
->   linux-2.4.23-01-fix_deadlock.dif
-> 
-> and
-> 
->   linux-2.4.23-05-fix_readdir.dif
-> 
-> in addition, since they fix critical problems (a deadlock and a stack
-> overflow).
-> 
-I'll apply them when the copy finishs
 
-While transferring the files it seems that "ls -laR" on the other nfs
-client is a little slow ..
+Even so, mounting from 800 separate fileservers would provide much more
+than we have now.  I wonder if there is any real-world site that could
+even approach 800 NFS servers?  (and if so, why???)  With the RPC
+limitations of today I can shatter the limit very easily, all I have to
+do is mount all of my home directories, there are more than 800.
 
-I'm worried that the 500-1000 apache childs will hang on reads from
-network. Is there any way to prevent this ? Maybe more nfsd instances on
-the server ?
+Re: scalability and performance, I think I'll let Trond and Neil comment
+on that, but Trond's patch for 2.5.73 sounds like a big improvement over
+the current situation.
+
+I've also noticed that I get RPC errors when I try to mount too many
+things at once, for example if I mount 200+ autofs-managed NFS
+mountpoints via script by cd'ing into them.  If I insert a short pause
+(1/2 second to 1 second) between each mount attempt everything is fine.
+Sounds like some kind of race condition to me...
+
+-A
+
+-----Original Message-----
+From: Lever, Charles [mailto:Charles.Lever@netapp.com]=20
+Sent: Tuesday, October 14, 2003 11:45 AM
+To: Ogden, Aaron A.
+Cc: nfs@lists.sourceforge.net
+Subject: RE: [NFS] ~800 mountpoint limitation
 
 
+trond has heard my complaints about this before....
 
-Thanks,
--- 
-Roberto Sebastiano <robs@multiplayer.it>
+sharing an RPC transport socket across mounts is an
+interesting solution in some ways, but i'm concerned
+about the performance scalability of this solution,
+especially since the RPC slot table size is fixed at
+a relatively small 16 entries.  imagine sharing 16
+RPC slots across all the mounts on a very busy
+multi-user system.  if one mount backs up (say
+because one of the server's disks gets busy), that
+makes all the mounts sharing that slot table unusable.
 
+this solution also won't allow you to mount more than
+800 different servers, for similar reasons to today's
+800 mounts per client limitation.  you can still only
+have about 800 transport sockets.
+
+so there are some issues to be worked out.
 
 
 -------------------------------------------------------
