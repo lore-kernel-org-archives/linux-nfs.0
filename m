@@ -1,18 +1,16 @@
-From: "GroupShield for Exchange (CVO-EXCHANGE)"
-	 <NAIUSCVO-EXCHANGE@roguewave.com>
-Subject: ALERT -  GroupShield ticket number OA2141_1057110306_CVO-EXCHANGE
- _1 was generated
-Date: Tue, 1 Jul 2003 18:45:06 -0700
+From: raysrv05@ray.fi
+Subject: Report to Recipient(s)
+Date: Wed, 2 Jul 2003 05:05:45 +0300
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <F888C30C3021D411B9DA00B0D0209BE805961588@cvo-exchange.cvo.roguewave.com>
+Message-ID: <OF3C655797.151A7BE2-ONC2256D57.000B8352@ray.fi>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from cvo-ext.roguewave.com ([12.22.36.198] helo=cvo-exchange.cvo.roguewave.com)
+Received: from ws-002.ray.fi ([193.64.14.2] helo=raysrv11.ray.fi)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19XWjQ-0002Hz-00
-	for <nfs@lists.sourceforge.net>; Tue, 01 Jul 2003 18:48:24 -0700
-To: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
+	id 19XWyV-0003uD-00
+	for <nfs@lists.sourceforge.net>; Tue, 01 Jul 2003 19:03:59 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,35 +23,17 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Action Taken:
-The attachment was deleted from the message and replaced with a text file
-informing the recipient of the action taken.
+Incident Information:-
 
-To:
-nfs@lists.sourceforge.net <nfs@lists.sourceforge.net>
+Originator: nfs-admin@lists.sourceforge.net
+Recipients: <nfs@lists.sourceforge.net>, jd@ts.ray.fi
+Subject:    [NFS] Re: Movie
 
-From:
-faredu@263.net <faredu@263.net>
-
-Sent:
--1878721280,29573179
-
-Subject:
-[NFS] Re: Movie
-
-Attachment Details:-
-
-Attachment Name: your_details.zi
-File: your_details.zi
-Infected? Yes
-Repaired? No
-Blocked? No
-Deleted? Yes
-Virus Name: W32/Sobig.e@MM
+The file your_details.zip (details.pif) you received was infected with the
+W32/Sobig.e@MM virus and was deleted.
 
 
 
-	
 
 
 -------------------------------------------------------
