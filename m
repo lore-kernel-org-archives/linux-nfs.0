@@ -1,22 +1,17 @@
-From: "FoneGaming" <info@fonegaming.com>
-Subject: FoneGaming News
-Date: Sat, 24 May 2003 02:58:00 +0100
+From: "Malcolm Saenz" <zaxondrac@aol.com>
+Subject: Nfs,Doctor's weight loss                   .......................anabaptist
+Date: Sat, 24 May 03 04:24:56 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <49220.8267133266$1053741552@news.gmane.org>
-Reply-To: <info@fonegaming.com>
+Message-ID: <2v$$62j4--$-248sj4-y@08rhny65.ap>
 Mime-Version: 1.0
-Content-Type: text/html; charset="iso-8859-1"
+Content-Type: multipart/alternative;
+	boundary=".D0EAB.9A_D4_E47E_4_3_E6"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from panoramix.vasoftware.com ([198.186.202.147] ident=mail)
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19JOH4-0001iJ-00
-	for <nfs@lists.sourceforge.net>; Fri, 23 May 2003 18:56:42 -0700
-Received: from host81-132-49-140.in-addr.btopenworld.com ([81.132.49.140]:10167 helo=192.168.0.6)
-	by panoramix.vasoftware.com with smtp (Exim 4.05-VA-mm1 #1 (Debian))
-	id 19JOGZ-0002ZI-00
-	for <nfs@lists.sourceforge.net>; Fri, 23 May 2003 18:56:12 -0700
-To: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
+Received: from [218.49.222.176] (helo=66.35.250.206)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19JQdJ-00079x-00
+	for <nfs@lists.sourceforge.net>; Fri, 23 May 2003 21:27:49 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,66 +24,86 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-<!--
+This is a multi-part message in MIME format.
 
-This plain text message area is for recipients who have email programs that do not support html emails (almost every modern email client software program can accept html emails). If you want to add an alternate plain text message for those who cannot receive html emails, enter it here.
+--.D0EAB.9A_D4_E47E_4_3_E6
+Content-Type: text/html;
+Content-Transfer-Encoding: quoted-printable
 
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1=
+">
+<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV>
+<DIV align=3Dcenter><FONT face=3DArial>&nbsp;<STRONG>You can now&nbsp;get =
 
+prescription </STRONG></FONT></DIV>
+<DIV align=3Dcenter><FONT face=3DArial><STRONG>medications prescribed onli=
+ne 
+with</STRONG></FONT></DIV>
+<DIV align=3Dcenter><FONT face=3DArial size=3D6>&nbsp;<STRONG><FONT
+color=3D=
+#ff0000 
+size=3D4>NO PRIOR PRESCRIPTION REQUIRED</FONT></STRONG></FONT></DIV>
+<DIV align=3Dcenter><STRONG><FONT face=3DArial color=3D#ff0000 size=3D4>NO=
+ PHYSICAL EXAM 
+NEEDED</FONT></STRONG></DIV>
+<DIV align=3Dcenter><STRONG><FONT face=3DArial color=3D#ff0000 size=3D4>
+<P align=3Dcenter><A href=3D"http://findyourmeds.biz/102/index.html"><FONT=
+ face=3DArial 
+color=3D#800080><STRONG>Go here</STRONG></FONT></A><FONT face=3DArial> <FO=
+NT 
+color=3D#000000>to see all of our available online 
+drugs.<BR></FONT></FONT></P></FONT></STRONG></DIV></DIV><TD colSpan=3D"3" =
 
+bgColor=3D"blueviolet" width=3D"100%">
+<P align=3Dcenter><FONT face=3DVerdana><BIG><BIG><B>
+<MARQUEE scrollAmount=3D5 scrollDelay=3D1 border=3D"1"><FONT color=3D#8000=
+00>Weight 
+loss</FONT> <FONT color=3D#800000>... Men's health</FONT> <FONT 
+color=3D#800000>...</FONT> <FONT color=3D#800000>Pain relief </FONT><FONT =
 
+color=3D#800000>... Quit smoking</FONT> <FONT color=3D#800000>... Skin car=
+e</FONT> 
+<FONT color=3D#800000>... Sexual health</FONT> <FONT color=3D#800000>... A=
+nd Much 
+More</FONT></MARQUEE><FONT 
+color=3D#800000></B></BIG></BIG></FONT></P></TD></TR><TR><TD 
+colSpan=3D"3"></FONT><FONT face=3DVerdana color=3Dblue size=3D1><B>
+<HR>
+</B></FONT><FONT face=3DArial>One of our <STRONG>US licensed physicians</S=
+TRONG> 
+will write an FDA approved prescription for you and ship your order overni=
+ght 
+from a US Licensed pharmacy direct to your doorstep, fast and secure!</FON=
+T> 
+<P align=3Dcenter><FONT face=3DArial color=3D#ff0000 size=3D5>Discount Pri=
+ces -- Next 
+Day Delivery</FONT> 
+<DIV></DIV>
+<DIV align=3Dcenter><ALIGN=3DCENTER><FONT face=3DArial color=3D#ff0000 siz=
+e=3D5>No 
+Doctor's consultation fees</FONT></DIV>
+<P></P>
+<DIV><FONT face=3DArial color=3D#ffffff size=3D1><STRONG>birdseed%RAND=
+OM_WORD 
+superintendent swathe hardcopy registrable bricklaying %RANDOM_W=
+ORD 
+mach pyroxene arpa degenerate and this website 
+fluvial buzzing for you</STRONG></FONT></DIV>
+<DIV><FONT face=3DArial size=3D1></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D4></DIV>
+<DIV><STRONG><FONT size=3D3>To stop all future offers</FONT>&nbsp;</STRONG=
+><A 
+href=3D"http://findyourmeds.biz/remove.php"><STRONG> here</ 
+color=3D"#000000"></STRONG></FONT><STRONG>&nbsp; 
+</STRONG></A></DIV></FONT></BODY></HTML>
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//-->
-<HTML><HEAD><META NAME="GENERATOR" Content="Microsoft DHTML Editing Control"><TITLE></TITLE><BASE href='file://C:\'></HEAD><BODY><P><STRONG><FONT face="Comic Sans MS" >The Mobile Phone Revolution is here!</FONT>     </STRONG></P><P><FONT face="Comic Sans MS" >The very latest in Mobile Phone technology has given us the opportunity<BR>to provide you with next-generation mobile gaming. Featuring stunning<BR>graphics and sound, mixing old classics with innovative new concepts,<BR>the current crop of mobile phone games are light-years ahead of their<BR>simplistic predecessors.</FONT> </P><P><FONT face="Comic Sans MS" >From action-packed sports games to board games, card games to<BR>mind-bending puzzlers, we have a wide selection of titles for every<BR>genre. Whatever your taste, you're sure to find your perfect game at<BR></FONT><A href="http://www.fonegaming.com"><FONT face="Comic Sans MS" >http://www.fonegaming.com</FONT></A><FONT face="Comic Sans MS" >. </FONT> </P><P><FONT 
-face="Comic Sans MS" >We have games that support a wide range of mobile phones from Nokia,<BR>Siemens, Motorola, and Sharp. Simply pick the game you want, check to<BR>see if your phone is supported, then call or text the number provided.<BR>It's as easy as that!</FONT>    </P><P><FONT face="Comic Sans MS" >If games are not your thing, why not have a look at our massive range of<BR>polyphonic ringtones at </FONT>   <A href="http://www.phonetonez.net"><FONT face="Comic Sans MS" >http://www.phonetonez.net</FONT></A><FONT face="Comic Sans MS" >. We have a wide<BR>variety of ringtones in all genres, whether you're looking for the<BR>latest chart hit or a theme from a favourite film. We also supply a<BR>variety of mobile phone screensavers and voicemail messages, ensuring<BR>that you need look no further for mobile phone enhancements!</FONT>         </P><P><FONT face="Comic Sans MS" >Be a part of the revolution - check out&nbsp;<A 
-href="http://www.fonegaming.com">http://www.fonegaming.com</A> </FONT><br><FONT face="Comic Sans MS" > and <A href="http://www.phonetonez.net">http://www.phonetonez.net</A>        today! </FONT></P><P><STRONG>---</STRONG></P><P><EM><FONT size=2>If you no longer wish to receive any further emails, <br>please </FONT></EM><EM><FONT size=2>  send an email to <A href="mailto:remove@fonegaming.com">remove@fonegaming.com</A>           </FONT></EM></P></BODY></HTML>
-
-
-
+--.D0EAB.9A_D4_E47E_4_3_E6--
 
 
 
