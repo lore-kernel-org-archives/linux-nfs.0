@@ -1,19 +1,19 @@
-From: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
-Subject: Re: nfs performance: read only/gigE/nolock/1Tb per day
-Date: Tue, 23 Apr 2002 20:16:06 +0200 (CEST)
+From: José Vicente Núñez Zuleta <josevnz@newbreak.com>
+Subject: NFS problems: help needed with extremely poor NFS performance
+Date: Tue, 23 Apr 2002 19:29:59 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0204232001271.31993-100000@kenzo.iwr.uni-heidelberg.de>
-References: <shsznzubcdv.fsf@charged.uio.no>
+Message-ID: <20020423192959.2670a7ce.josevnz@newbreak.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net, <netdev@oss.sgi.com>
+Content-Type: text/plain; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail.iwr.uni-heidelberg.de ([129.206.104.30])
+Received: from unknown.level3.net ([63.211.90.124] helo=mail.newbreak.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1704pr-0001vI-00
-	for <nfs@lists.sourceforge.net>; Tue, 23 Apr 2002 11:16:15 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <shsznzubcdv.fsf@charged.uio.no>
+	id 1709ja-0001Cq-00
+	for <nfs@lists.sourceforge.net>; Tue, 23 Apr 2002 16:30:06 -0700
+Received: from linux0037 (hicks150-45.optonline.net [167.206.150.45] (may be forged))
+	by mail.newbreak.com (8.11.0/8.11.0) with SMTP id g3NNTxx10341
+	for <nfs@lists.sourceforge.net>; Tue, 23 Apr 2002 19:29:59 -0400
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,43 +26,65 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
+Greetings,
 
-[ cc-ed to netdev; the discussion was about receiving bursts of ICMP Time 
-Exceeded messages after some large NFS datagrams could not be reassembled; 
-sometimes down/up the interface on the receiver/reassembly side cures it ]
+I'm having serious problems with my NFS environment; The server is a Dual Pentium III 1Ghz running Redhat 7.2 (Kernel 2.4.7-10smp) and the clients are Dual Pentium 1Ghz Redhat 6.2 (Kernel 2.2.14-5.0smp).
 
-On 23 Apr 2002, Trond Myklebust wrote:
+We have a process that opens a lot of files on all the cluster and after some seconds, all the clients start showing the following messages:
 
->      > How big are the datagrams compared with the MTU ? With 32K
->      > datagrams over Ethernet, you're talking about roughly a full Rx
->      > ring worth of packets (32 is common for the Rx ring size)...
-> 
-> It has been a while ago (I've since mothballed the machine) but I saw
-> it on a Pentium 90 with only 8k write sizes. 4k was fine, 8k gave
-> avalanches.
+Apr 23 19:12:05 linux0102 kernel: nfs: server lnxdev0003 OK 
+Apr 23 19:12:17 linux0102 kernel: nfs: task 1059 can't get a request slot 
+Apr 23 19:12:33 linux0102 kernel: nfs: server lnxdev0003 OK 
+Apr 23 19:12:44 linux0102 kernel: nfs: server lnxdev0003 not responding, still trying 
+Apr 23 19:12:44 linux0102 kernel: nfs: server lnxdev0003 OK 
+Apr 23 19:12:54 linux0102 kernel: nfs: server lnxdev0003 not responding, still trying 
+Apr 23 19:14:45 linux0102 automount[895]: expired /nb_apps/espiel
+Apr 23 19:14:45 linux0102 automount[895]: expired /nb_apps/expat
+Apr 23 19:14:45 linux0102 automount[895]: expired /nb_apps/crypto
+Apr 23 19:14:45 linux0102 automount[895]: expired /nb_apps/rogue
+Apr 23 19:14:45 linux0102 automount[895]: expired /nb_apps/ACE
+Apr 23 19:14:45 linux0102 automount[895]: expired /nb_apps/xerces
+Apr 23 19:15:49 linux0102 automount[906]: expired /home/suresh
+Apr 23 19:16:06 linux0102 kernel: nfs: server lnxdev0003 OK 
+Apr 23 19:16:06 linux0102 kernel: nfs: server lnxdev0003 OK 
+Apr 23 19:16:38 linux0102 kernel: nfs: server lnxdev0003 not responding, still trying 
 
-IMHO you can't comletely eliminate hardware related problems: apart from 
-having a slow CPU, some early PCI implementations were buggy (although you 
-don't say if it's PCI or ISA and what's the link speed).
+I followed the tutorial that appears at "http://nfs.sourceforge.net/nfs-howto/performance.html" and applied the following optimizations (with no result):
 
->      > Does the other side sees these messages ?
-> 
-> IIRC, yes, and the server was resending the datagrams. From the code,
-> it looks as if there is no attempt to stop loopback situations
-> occurring when this goes on:
-> i.e. resending an ICMP when the server resends a datagram which times
-> out again appears to be possible. This might be what was happening...
+- Deactivated auto-negotiation on the HUB (we have a Cisco FastHub 400) and forced the NIC to use "Full Duplex" using FastEthernet. This should reduce the number of collissions.
+- Increased the number of nfsd servers and the socket queue (here is a fragment of my script, /etc/init.d/nfs, currently i use 16 nfsd servers):
+  
+   RPCNFSDCOUNT=16
+   ....
+   # NFSv3 only if kernel >= 2.2.18
+   OS_RELEASE=`uname --release`
+   ....
+        echo -n "Starting NFS mountd: "
+        daemon rpc.mountd $RPCMOUNTDOPTS
+        echo
+        echo -n "Starting NFS daemon: "
+        echo 262144 > /proc/sys/net/core/rmem_default
+        echo 262144 > /proc/sys/net/core/rmem_max
+        daemon rpc.nfsd $RPCNFSDCOUNT
+        echo 65536 > /proc/sys/net/core/rmem_default
+        echo 65536 > /proc/sys/net/core/rmem_max
+        echo
+- I increased the rsize and wsize on my clients to 4096 (im using automount and NIS, /etc/auto.master):
+   /home   auto.home -rw,intr,retry=10,rsize=4096,wsize=4096
+   /nb_apps   auto.nb_apps -rw,intr,retry=10,rsize=4096,wsize=4096
+   /data   auto.data -rw,intr,retry=10,rsize=4096,wsize=4096
 
-That's why I cc-ed netdev. My knowledge above the driver level is close to 
-non-existant...
 
--- 
-Bogdan Costescu
+What i should try next?. We have a network with very few machines, apparently no collissions (the stats at the hub doesn't show that many but i will have to confirm).
 
-IWR - Interdisziplinaeres Zentrum fuer Wissenschaftliches Rechnen
-Universitaet Heidelberg, INF 368, D-69120 Heidelberg, GERMANY
-Telephone: +49 6221 54 8869, Telefax: +49 6221 54 8868
-E-mail: Bogdan.Costescu@IWR.Uni-Heidelberg.De
+Should i try to update the nfs-tools on all the boxes ( i can't do the same to the kernel because we have a Cordba lib that could broke, at least on the clients)?
+
+The server doesn't have a high load (i'm monitoring the box using top and UCD-SNMP) and other network apps work fine so far :(
+
+Thanks in advance.
+
+
+   
 
 
 
