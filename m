@@ -1,18 +1,12 @@
-From: Andreas Behnert <abehn@gmx.net>
-Subject: Re: high load
-Date: Tue, 22 Apr 2003 10:32:08 +0200
+From: CDROM@biozak.com
+Subject: 13,000+ life science customers for your data management solutions
+Date: Tue, 22 Apr 2003 20:32:42 UT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3EA4FE08.30105@gmx.net>
-References: <20030418194844.GB29491@oppie.phys.uwm.edu>
+Message-ID: <200304222032.NAA22723@main.biozak.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: multipart/alternative; boundary="_----------=_105104356220955275"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail.gmx.de ([213.165.64.20] helo=mail.gmx.net)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 197tCR-0001vE-00
-	for <nfs@lists.sourceforge.net>; Tue, 22 Apr 2003 01:32:23 -0700
-To: nfs@lists.sourceforge.net
-In-Reply-To: <20030418194844.GB29491@oppie.phys.uwm.edu>
+To: nfs@sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,34 +19,74 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Phil Garcia wrote:
-> Hi,
-> 
-> We've come across a problem that seems related to the interaction
-> between NFS and a 3ware 7500-8 running RAID 5 with one hot spare.  We
-> have a test program that opens a file and then loops, writing up to
-> 255 bytes to the file and then sleeping for up to 10 seconds.  We run
-> around 200 instances of the program simultaneously for about 25
-> minutes.
-> 
-> When we run the processes on 200 separate slaves, writing to a
-> (reiserfs) directory under the 3ware controller, the load on the
-> server shoots up to over 20 and then gradually declines over the next
-> 5 minutes or so.
+This is a multi-part message in MIME format.
 
-The problem may be caused by ReiserFS:
-If you are using kernel 2.2.x and ReiserFS 3.5.x - ReiserFS for
-kernel 2.2.x is REALLY broken. We had similar problems here that
-ended up in ReiserFS destroying itself, reproducible! Patches
-from ftp.namesys.com didn't help at all. At that time ReiserFS
-was nothing more than something to play with.
-Can't say anything about kernel 2.4.x and ReiserFS 3.6.x - after
-the 3.5.x desasters we moved back to ext2 and are now running ext3
-with "data=journal" on our NFS servers without a single problem ...
+--_----------=_105104356220955275
+Content-Disposition: inline
+Content-Length: 610
+Content-Transfer-Encoding: binary
+Content-Type: text/plain
+
+Put your data management solutions in front of  13,000+ life science companies and 25,000+ executives worldwide with BioZak InfoBase CD-Rom databases
+
+Ideal tool for:
+* direct marketing
+* teleprospecting
+* partner search
+
+Now  only $956 (20% off regular price of $1,195) - that's less than 7 cents per contact!
+
+Interested?
+
+Email CDROM@biozak.com or visit
+http://main.biozak.com/cgi-bin/BIOZAK/sublinks.pl?type=CD
 
 
-Regards,
-Andreas
+Enter/mention promotion code int_service_providers_DM when asked.
+
+
+Sincerely,
+--
+Ekaterina Kalygina,
+Marketing Director,
+BioZak InfoBase, Inc. - business intelligence for life science markets!
+--_----------=_105104356220955275
+Content-Disposition: inline
+Content-Length: 1253
+Content-Transfer-Encoding: binary
+Content-Type: text/html
+
+Put your data management solutions in front of 13,000+ life science companies and 25,000+ executives worldwide with BioZak InfoBase CD-Rom databases <BR><BR>
+
+Ideal tool for:<BR><BR>
+<ul>
+<li> direct marketing<BR><BR>
+<li> teleprospecting<BR><BR>
+<li> partner search<BR><BR>
+</ul>
+
+Act now and pay only $956 (20% off regular price of $1195) - that's <b>less than 7 cents per contact!</b><BR><BR>
+
+Interested? <BR><BR>
+
+Email <a href="mailto:CDROM@biozak.com">CDROM@biozak.com</a> or visit
+<a href="http://main.biozak.com/cgi-bin/BIOZAK/sublinks.pl?type=CD">http://main.biozak.com/cgi-bin/BIOZAK/sublinks.pl?type=CD</a><BR><BR><BR>
+
+Enter/mention promotion code int_service_providers_DM when asked.<BR><BR><BR>
+
+Sincerely,<BR>
+--<BR>
+Ekaterina Kalygina,<BR>
+Marketing Director,<BR>
+BioZak InfoBase, Inc. - business intelligence for life science markets!<BR>
+<BR><BR><BR><BR>
+
+
+-----<BR>
+Every effort is made to ensure that this message is received only by interested parties. If this message was sent to you in error, please reply with 'remove' in the subject line - you will get no further email from us.<BR>
+
+<IMG SRC="http://main.biozak.com/cgi-bin/BIOZAK/tracker.pl?type=image&source=promo_email&ID=int_service_providers_DM" WIDTH=1 HEIGHT=1 alt=" ">
+--_----------=_105104356220955275--
 
 
 
