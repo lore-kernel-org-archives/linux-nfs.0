@@ -1,28 +1,28 @@
 From: Garrick Staples <garrick@usc.edu>
 Subject: Re: nfsd, rmtab, failover, and stale filehandles
-Date: Thu, 6 May 2004 15:42:56 -0700
+Date: Thu, 6 May 2004 16:00:55 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040506224256.GB26968@polop.usc.edu>
+Message-ID: <20040506230055.GC26968@polop.usc.edu>
 References: <20040506185603.GM23287@polop.usc.edu> <20040506191351.GP23287@polop.usc.edu> <20040506215311.GA26968@polop.usc.edu> <20040506222455.GP18964@fieldses.org>
 Mime-Version: 1.0
 Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="Y7xTucakfITjPcLV"
+	protocol="application/pgp-signature"; boundary="w7PDEPdKQumQfZlR"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BLrbK-0003v1-I7
-	for nfs@lists.sourceforge.net; Thu, 06 May 2004 15:44:22 -0700
+	id 1BLrsk-0007f2-2h
+	for nfs@lists.sourceforge.net; Thu, 06 May 2004 16:02:22 -0700
 Received: from polop.usc.edu ([128.125.10.9])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.30)
-	id 1BLrbK-0002Wa-7k
-	for nfs@lists.sourceforge.net; Thu, 06 May 2004 15:44:22 -0700
+	id 1BLrsj-0000yb-De
+	for nfs@lists.sourceforge.net; Thu, 06 May 2004 16:02:21 -0700
 Received: from polop.usc.edu (localhost.localdomain [127.0.0.1])
-	by polop.usc.edu (8.12.10/8.12.10) with ESMTP id i46Mgvlv027038
-	for <nfs@lists.sourceforge.net>; Thu, 6 May 2004 15:42:57 -0700
+	by polop.usc.edu (8.12.10/8.12.10) with ESMTP id i46N0tlv027071
+	for <nfs@lists.sourceforge.net>; Thu, 6 May 2004 16:00:55 -0700
 Received: (from garrick@localhost)
-	by polop.usc.edu (8.12.10/8.12.10/Submit) id i46MguCb027036
-	for nfs@lists.sourceforge.net; Thu, 6 May 2004 15:42:56 -0700
+	by polop.usc.edu (8.12.10/8.12.10/Submit) id i46N0t8t027069
+	for nfs@lists.sourceforge.net; Thu, 6 May 2004 16:00:55 -0700
 To: nfs@lists.sourceforge.net
 In-Reply-To: <20040506222455.GP18964@fieldses.org>
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -38,7 +38,7 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
---Y7xTucakfITjPcLV
+--w7PDEPdKQumQfZlR
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 Content-Transfer-Encoding: quoted-printable
@@ -63,98 +63,35 @@ text
 > > Is this a client problem?  The clients are all 2.4.24 and 2.4.26.
 > >=20
 > > All clients and servers are using vanilla kernels.
->=20
-> I'm assuming /etc/exports is the same, and that the nfsd filesystem is
-> mounted (probably on /proc/fs/nfs/) and mountd is running without
-> complaint on the server that you're failing over to?
-
-/etc/exports is basicly empty, so that the machines boot without exporting =
-the
-shared disk space.  The failover scripts export the filesystems directly wi=
-th
-'exportfs'.
-
-The nfsd fs is mounted.  I'm definitely using the "new" upcall interface.
-=20
-> The kernel uses upcalls to mountd in part to construct the filehandles,
-> and nfserr_stale could be returned if those upcalls weren't working.
-> You can see the contents of the caches that hold the result of those
-> upcalls with something like
-
-Yes, this seems to be the process that isn't working.
-
-=20
-> for i in `find /proc/net/rpc -name "content"`; do echo -e "\n$i:"; cat $i=
-; done
->=20
-> Maybe the output from that (after a failed failover) would be
-> enlightening.
-
-$ for i in `find /proc/net/rpc -name "content"`; do echo -e "\n$i:"; cat $i;
-done=20
-
-/proc/net/rpc/nfsd.fh/content:
-#domain fsidtype fsid [path]
-
-/proc/net/rpc/nfsd.export/content:
-#path domain(flags)
-
-/proc/net/rpc/auth.unix.ip/content:
-#class IP domain
-[root@hpc-fs3 root]# for i in `find /proc/net/rpc -name "content"`; do echo=
- -e
-"\n$i:"; cat $i; done=20
-
-/proc/net/rpc/nfsd.fh/content:
-#domain fsidtype fsid [path]
-# hpc*,hpc*.usc.edu 0 0x0200fe0000000002
-# hpc*,hpc*.usc.edu 0 0x0600fe0000000002
-
-/proc/net/rpc/nfsd.export/content:
-#path domain(flags)
-
-/proc/net/rpc/auth.unix.ip/content:
-#class IP domain
-nfsd 10.125.0.200 hpc*,hpc*.usc.edu
-
-$ showmount -e localhost | grep hpc-25
-/export/home/hpc-25 hpc*.usc.edu,rcf*.usc.edu,almaak.usc.edu
-
-
-On the client (10.125.0.200),
-$ df | grep hpc-25
-hpc-nfs2:/export/home/hpc-25
-                             0         1         0   0% /auto/hpc-25
-
-hpc-nfs2 is the virtual IP that is currently rebound to the second NFS serv=
-er.
-
-
->=20
 > Hmm, also, could you try recompiling mountd with the following patch
 > applied?
->=20
-> --Bruce Fields
 
-Trying it now...
+No effect.  All I did was kill mountd, run the patched mountd, and try to '=
+ls'
+on the client.
+
+Watching an strace of mountd, it doesn't seem that mountd is ever contacted.
+The client reports stale filehandle pretty much immediately, and mountd doe=
+sn't
+do anything.
 
 --=20
 Garrick Staples, Linux/HPCC Administrator
 University of Southern California
 
---Y7xTucakfITjPcLV
+--w7PDEPdKQumQfZlR
 Content-Type: application/pgp-signature
 Content-Disposition: inline
 
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v1.2.3 (GNU/Linux)
 
-iD8DBQFAmr9w0SBUxJbm9HMRAmyzAJ4/UdjhOOhlsistC4Jg9zaR2r8rcgCdFir1
-HUGODj7Mx5/PbtQ6PouZaGE=
-=o0ex
+iD8DBQFAmsOn0SBUxJbm9HMRAtsQAJ9C4rdfkI9Tl6+8nhtOrysFonlTTQCfeP6W
+VtR71t7S2uqeZkYtLPXlkoY=
+=e3Vp
 -----END PGP SIGNATURE-----
 
---Y7xTucakfITjPcLV--
+--w7PDEPdKQumQfZlR--
 
 
 -------------------------------------------------------
