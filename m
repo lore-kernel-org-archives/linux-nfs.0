@@ -1,26 +1,21 @@
-From: Andreas Metzler <ametzler@logic.univie.ac.at>
-Subject: Re: Cannot umount NFS mounted cdrom
-Date: Fri, 18 Oct 2002 15:18:06 +0200
+From: Jan Hudec <bulb@ucw.cz>
+Subject: Re: Unable to kill processes in D-state
+Date: Sun, 6 Oct 2002 19:43:36 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20021018131806.GD2364@balrog.logic.univie.ac.at>
-References: <200210181441.14640.Nicolas.Turro@sophia.inria.fr>
+Message-ID: <20021006174336.GC17170@vagabond>
+References: <20021005182740.GC16200@vagabond> <20021005235614.GC25827@stud.ntnu.no> <20021006021802.GA31878@pegasys.ws> <1033871869.1247.4397.camel@phantasy> <20021006024902.GB31878@pegasys.ws> <20021006105917.GB13046@stud.ntnu.no> <20021006122415.GE31878@pegasys.ws> <20021006143636.GA30441@stud.ntnu.no> <20021006164228.GB17170@vagabond> <20021006170932.GA23134@stud.ntnu.no>
+Reply-To: Jan Hudec <bulb@vagabond.cybernet.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: Jan Hudec <bulb@ucw.cz>, jw schultz <jw@pegasys.ws>,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from server.logic.univie.ac.at ([131.130.190.41])
-	by usw-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 182X1D-0002Y0-00
-	for <nfs@lists.sourceforge.net>; Fri, 18 Oct 2002 06:18:23 -0700
-Received: from balrog.logic.univie.ac.at ([131.130.190.58] ident=mail)
-	by server.logic.univie.ac.at with esmtp (Exim 3.36 #3 )
-	id 182X0x-0000uo-00
-	for <nfs@lists.sourceforge.net>; Fri, 18 Oct 2002 15:18:07 +0200
-Received: from ametzler by balrog.logic.univie.ac.at with local (Exim 3.35 #1 (Debian))
-	id 182X0w-0006G5-00
-	for <nfs@lists.sourceforge.net>; Fri, 18 Oct 2002 15:18:06 +0200
-To: nfs@lists.sourceforge.net
-In-Reply-To: <200210181441.14640.Nicolas.Turro@sophia.inria.fr>
+Received: from bohnice.netroute.lam.cz ([212.71.169.62] helo=vagabond.cybernet.cz)
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17yFRa-0006in-00
+	for <nfs@lists.sourceforge.net>; Sun, 06 Oct 2002 10:43:54 -0700
+To: linux-kernel@vger.kernel.org
+In-Reply-To: <20021006170932.GA23134@stud.ntnu.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,21 +26,43 @@ List-Id: Discussion of NFS under Linux development,
 	and testing. <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-On Fri, Oct 18, 2002 at 02:41:14PM +0200, Nicolas Turro wrote:
-> We use linux 2.4.17 and knfsd-0.2.1-1 and we have a problem :
-> 1- we mount an ISO cdrom on host A on /mnt/cdrom
-> 2- we do a NFS mount of A:/mnt/cdrom /tmp/remotecdrom on host B
-> 3- we umount /tmp/remotecdrom on host B
-> 4- when we try to umount /mnt/cdrom on host A, he get fs busy and it fails.
-> lsof doesn't give any process using /mnt/cdrom
+On Sun, Oct 06, 2002 at 07:09:32PM +0200, Thomas Lang?s wrote:
+> Jan Hudec:
+> > If the shares were successfuly reloaded, then the processes should wake
+> > up. If they don't, it's a bug in NFS.
 > 
-> Is-this a known problem ? Any workaround ?
+> They never wake up, and it happens every time.
+> 
+> > Try to reproduce it (ie. reboot some machine, let it start everything
+> > and then restart the autofsd and see if processes lock up) and then talk
+> > to NFS maintainers about that.
+> 
+> As I said above, it happens every time we encounter this, ie. it's a bug
+> that easy to reproduce (since I added nfs@lists.sourceforge.net to the
+> CC-list, I'm going to write some of what's already said in this thread).
+> 
+> Problem:
+> Processes entering D-state is unkillable. We have a problem with this 
+> everytime we restart autofs (which automounts quite a few NFS-shares
+> on campus), ie. on our samba-boxes smbd hangs forever after this
+> (in D-state). Samba still works, it's just that all the D-state processes
+> is unkillable and will remain that way untill we reboot the computer.
+> Every D-state process increases the load on the machine, and one of our
+> 2-CPU intel-boxes currently remains at 430 (which extremly high for such
+> a box).
+> 
+> Solution:
+> ? :)
 
-You have to unexport /mnt/cdrom on A before you can unmount it - use
-exportfs -correct -options.
-                  cu andreas
+You should probably provide detailed info on your setup (computers,
+kernel versions, automounter version etc. - as SubmitingBugs in kernel
+source suggests). (And maybe change subject to start with NFS PROBLEM,
+so more NFS people notice.)
+
+-------------------------------------------------------------------------------
+						 Jan 'Bulb' Hudec <bulb@ucw.cz>
 
 
 -------------------------------------------------------
