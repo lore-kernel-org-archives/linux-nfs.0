@@ -1,26 +1,28 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Juergen Sauer <jojo@automatix.de>
 Subject: Re: NFS server not responding
-Date: 27 Nov 2003 15:02:37 -0500
+Date: Fri, 28 Nov 2003 09:46:06 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shs8ym137he.fsf@charged.uio.no>
+Message-ID: <200311280946.06755.jojo@automatix.de>
 References: <1069934421.4677.77.camel@wibbit.firebox.com>
-	<shsfzg93hag.fsf@charged.uio.no>
-	<1069960032.4680.71.camel@wibbit.firebox.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: Text/Plain;
+  charset="iso-8859-15"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1APSLj-0000Lq-00
-	for <nfs@lists.sourceforge.net>; Thu, 27 Nov 2003 12:02:51 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
-	id 1APSLj-0002V2-66
-	for nfs@lists.sourceforge.net; Thu, 27 Nov 2003 12:02:51 -0800
-To: Douglas Furlong <douglas.furlong@firebox.com>
-In-Reply-To: <1069960032.4680.71.camel@wibbit.firebox.com>
+	id 1APeOR-0003lG-00
+	for <nfs@lists.sourceforge.net>; Fri, 28 Nov 2003 00:54:27 -0800
+Received: from 237.230.131.213.rev.inetbone.net ([213.131.230.237] helo=mail.automatix.de)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
+	id 1APeOQ-00044u-Uv
+	for nfs@lists.sourceforge.net; Fri, 28 Nov 2003 00:54:27 -0800
+Received: from uucp by mail.automatix.de with local-bsmtp (Exim 3.35 #1)
+	id 1APeOK-0001eZ-00
+	for nfs@lists.sourceforge.net; Fri, 28 Nov 2003 09:54:20 +0100
+To: Douglas Furlong <douglas.furlong@firebox.com>,
+ nfs@lists.sourceforge.net
+In-Reply-To: <1069934421.4677.77.camel@wibbit.firebox.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -33,26 +35,46 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Douglas Furlong <douglas.furlong@firebox.com> writes:
+=2D----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-     > What sort of things would be causing the client to have to
-     > re-transmit so often?
+Am Donnerstag, 27. November 2003 13:00 schrieb Douglas Furlong:
+> Good day all.
+>=20
+> I am running in to excessive amounts of NFS errors as below.
+>=20
+> kernel: nfs: server neon not responding, still trying
+> kernel: nfs: server neon OK
+>=20
+> I was hoping that some of you may be able to provide me with some
+> assistance.
 
-UDP is not a reliable transport protocol. Packets can get dropped by
-switches, and by the server itself, in which case the client's only
-option is to time out and retransmit.
-TCP offers reliability, but at the price of a slight protocol
-overhead.
+Hight Doug, Hi Trond,
 
-     > Client rpc stats: calls retrans authrefrsh 3431978 15968 0
+Is there any NVIDIA Stuff in the client/server ?
+The Nvidia drivers vor the graphics and the nvidia netdrivers
+are broken for 2.4.[20|21|22] !
+The nv.o module for Xfree86 breaks IMHO the NFS.
 
-     > Those retrans numbers, as a percentage of the calls, does it
-     > seem appropriate?
+I sent a bug report to the Nvidia maintainers.
 
-Yep. 0.5% seems reasonable enough.
+Refer to the NFS Server not responding threads in the last month.
 
-Cheers,
-  Trond
+mfG
+	J=FCrgen
+	automatiX Linux  Support Crew
+=2D --=20
+J=FCrgen Sauer - AutomatiX GmbH, +49-4209-4699, jojo@automatix.de **
+** Das Linux Systemhaus - Service - Support - Server - L=F6sungen **
+** http://www.automatix.de                    ICQ: #344389676   **
+=2D----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.3 (GNU/Linux)
+
+iD8DBQE/xwtOW7UKI9EqarERAszVAKC8J1ljR66RKR3YAMQXBxdezNi6zwCbB/9H
+Rgeni0oil7CgF+xDGRUn61s=3D
+=3D3tlk
+=2D----END PGP SIGNATURE-----
+
 
 
 -------------------------------------------------------
