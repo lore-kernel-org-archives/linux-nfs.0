@@ -1,28 +1,26 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: nfs errors clutter up logs after 2.4.20 -> 2.4.22-pre10
-Date: Fri, 5 Sep 2003 12:57:46 -0400
+From: Matthew Wilcox <willy@debian.org>
+Subject: Re: nfsd not working in 2.6.0-test4 on ia64
+Date: Fri, 5 Sep 2003 12:53:12 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16216.49290.95790.771582@charged.uio.no>
-References: <200308231404.34087.hpj@urpla.net>
-	<200308262328.09975.hpj@urpla.net>
-	<200308271250.09723.hpj@urpla.net>
-	<200309051305.43484.hpj@urpla.net>
-Reply-To: trond.myklebust@fys.uio.no
+Message-ID: <20030905115312.GH18654@parcelfarce.linux.theplanet.co.uk>
+References: <20030903220709.GJ18654@parcelfarce.linux.theplanet.co.uk> <16216.2231.419902.317479@gargle.gargle.HOWL>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Cc: Matthew Wilcox <willy@debian.org>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19vJuI-0007sS-00
-	for <nfs@lists.sourceforge.net>; Fri, 05 Sep 2003 09:57:58 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 19vJuH-0005T7-1T
-	for nfs@lists.sourceforge.net; Fri, 05 Sep 2003 09:57:57 -0700
-To: Hans-Peter Jansen <hpj@urpla.net>
-In-Reply-To: <200309051305.43484.hpj@urpla.net>
+	id 19vF9R-0004c8-00
+	for <nfs@lists.sourceforge.net>; Fri, 05 Sep 2003 04:53:17 -0700
+Received: from parcelfarce.linux.theplanet.co.uk
+	([195.92.249.252] helo=www.linux.org.uk ident=93)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.22)
+	id 19vF9P-0005G3-O6
+	for nfs@lists.sourceforge.net; Fri, 05 Sep 2003 04:53:16 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <16216.2231.419902.317479@gargle.gargle.HOWL>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -35,100 +33,50 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Hans-Peter Jansen <hpj@urpla.net> writes:
+On Fri, Sep 05, 2003 at 01:53:27PM +1000, Neil Brown wrote:
+> Very helpful details.  
+> It looks like a simple case of 32-bit parochialism :-)
+> 
+> Does this patch help?
 
-     > While betatesting the current kernel of upcoming SuSE 9.0
-     > (2.4.21-59), prepared for diskless in my 8.2 env. yesterday, it
-     > doesn't show this problem, too. It's a heavily tweaked 2.4.21
-     > with many .22 fixes included. It happens for me with
-     > 2.4.22-pre10, so it smells like some changes in (late) 2.4.22
-     > triggers it.
+Nope.  Applied patch, rebooted with it, here's the full details again
+(don't think anything changed, but just in case):
 
+Sep  5 07:52:06 rowlf kernel: svc: socket e00000404404a680(inet e000004043d22480
+), count=112, busy=0
+Sep  5 07:52:06 rowlf kernel: svc: socket e000004043d22480 served by daemon e000
+0040ea866900
+Sep  5 07:52:06 rowlf kernel: svc: server e0000040ea866900, socket e00000404404a
+680, inuse=1
+Sep  5 07:52:06 rowlf kernel: svc: socket e000004043d22480 served by daemon e000
+0040ea867500
+Sep  5 07:52:06 rowlf kernel: svc: got len=104
+Sep  5 07:52:06 rowlf kernel: svc: svc_authenticate (1)
+Sep  5 07:52:06 rowlf kernel: svc: socket e000004043d22480 busy, not enqueued
+Sep  5 07:52:06 rowlf kernel: svc: calling dispatcher
+Sep  5 07:52:06 rowlf kernel: nfsd_dispatch: vers 2 proc 1
+Sep  5 07:52:06 rowlf kernel: nfsd: GETATTR  32: 00000001 13000800 0002f9f8 0000
+0000 00000000 00000000
+Sep  5 07:52:06 rowlf kernel: nfsd: fh_verify(32: 00000001 13000800 0002f9f8 000
+00000 00000000 00000000)
+Sep  5 07:52:06 rowlf kernel: nfsd: storing reply in cache
+Sep  5 07:52:06 rowlf kernel: svc: service e0000040ea866900, releasing skb e0000
+040ff163d80
+Sep  5 07:52:06 rowlf kernel: svc: socket e00000404404a680 sendto([e0000040ea30c
+000 96... ], 96) = 0 (addr 2501a8c0)
+Sep  5 07:52:06 rowlf kernel: svc: socket e000004043d22480 busy, not enqueued
+Sep  5 07:52:06 rowlf kernel: svc: server e0000040ea866900 waiting for data (to 
+= 3686400)
+Sep  5 07:52:06 rowlf kernel: svc: server e0000040ea867500, socket e00000404404a
+680, inuse=1
+Sep  5 07:52:06 rowlf kernel: svc: got len=-11
+Sep  5 07:52:06 rowlf kernel: svc: server e0000040ea867500 waiting for data (to 
+= 3686400)
 
-Hmm... Most of those changes were only supposed to affect the TCP
-performance. Do you see the problem with 2.4.22-pre9? If so, what
-about 2.4.22-pre3?
-
-Also, does the following patch make any difference? It should tweak
-the RTT timer updates slightly.
-
-Cheers,
-  Trond
-
-
-diff -u --recursive --new-file linux-2.4.22-rc3/include/linux/sunrpc/xprt.h linux-2.4.22-00-resends/include/linux/sunrpc/xprt.h
---- linux-2.4.22-rc3/include/linux/sunrpc/xprt.h	2003-08-23 14:39:24.000000000 -0400
-+++ linux-2.4.22-00-resends/include/linux/sunrpc/xprt.h	2003-09-05 10:52:00.000000000 -0400
-@@ -115,7 +115,7 @@
- 
- 	long			rq_xtime;	/* when transmitted */
- 	int			rq_ntimeo;
--	int			rq_nresend;
-+	int			rq_ntrans;
- };
- #define rq_svec			rq_snd_buf.head
- #define rq_slen			rq_snd_buf.len
-diff -u --recursive --new-file linux-2.4.22-rc3/net/sunrpc/xprt.c linux-2.4.22-00-resends/net/sunrpc/xprt.c
---- linux-2.4.22-rc3/net/sunrpc/xprt.c	2003-07-29 19:54:19.000000000 -0400
-+++ linux-2.4.22-00-resends/net/sunrpc/xprt.c	2003-09-05 10:56:43.000000000 -0400
-@@ -138,18 +138,21 @@
- static int
- __xprt_lock_write(struct rpc_xprt *xprt, struct rpc_task *task)
- {
-+	struct rpc_rqst *req = task->tk_rqstp;
- 	if (!xprt->snd_task) {
- 		if (xprt->nocong || __xprt_get_cong(xprt, task)) {
- 			xprt->snd_task = task;
--			if (task->tk_rqstp)
--				task->tk_rqstp->rq_bytes_sent = 0;
-+			if (req) {
-+				req->rq_bytes_sent = 0;
-+				req->rq_ntrans++;
-+			}
- 		}
- 	}
- 	if (xprt->snd_task != task) {
- 		dprintk("RPC: %4d TCP write queue full\n", task->tk_pid);
- 		task->tk_timeout = 0;
- 		task->tk_status = -EAGAIN;
--		if (task->tk_rqstp && task->tk_rqstp->rq_nresend)
-+		if (req && req->rq_ntrans)
- 			rpc_sleep_on(&xprt->resend, task, NULL, NULL);
- 		else
- 			rpc_sleep_on(&xprt->sending, task, NULL, NULL);
-@@ -183,9 +186,12 @@
- 			return;
- 	}
- 	if (xprt->nocong || __xprt_get_cong(xprt, task)) {
-+		struct rpc_rqst *req = task->tk_rqstp;
- 		xprt->snd_task = task;
--		if (task->tk_rqstp)
--			task->tk_rqstp->rq_bytes_sent = 0;
-+		if (req) {
-+			req->rq_bytes_sent = 0;
-+			req->rq_ntrans++;
-+		}
- 	}
- }
- 
-@@ -592,7 +598,7 @@
- 	if (!xprt->nocong) {
- 		xprt_adjust_cwnd(xprt, copied);
- 		__xprt_put_cong(xprt, req);
--	       	if (!req->rq_nresend) {
-+	       	if (req->rq_trans == 1) {
- 			int timer = rpcproc_timer(clnt, task->tk_msg.rpc_proc);
- 			if (timer)
- 				rpc_update_rtt(&clnt->cl_rtt, timer, (long)jiffies - req->rq_xtime);
-@@ -1063,7 +1069,7 @@
- 		goto out;
- 
- 	xprt_adjust_cwnd(req->rq_xprt, -ETIMEDOUT);
--	req->rq_nresend++;
-+	__xprt_put_cong(xprt, req);
- 
- 	dprintk("RPC: %4d xprt_timer (%s request)\n",
- 		task->tk_pid, req ? "pending" : "backlogged");
+-- 
+"It's not Hollywood.  War is real, war is primarily not about defeat or
+victory, it is about death.  I've seen thousands and thousands of dead bodies.
+Do you think I want to have an academic debate on this subject?" -- Robert Fisk
 
 
 -------------------------------------------------------
