@@ -1,21 +1,29 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: kernel Oops in rpc.mountd
-Date: Tue, 8 Feb 2005 16:58:07 +1100
-Message-ID: <16904.21743.337045.348886@cse.unsw.edu.au>
-References: <200502080447.j184lA2k012260@m27.ligo.caltech.edu>
+From: Vincent Roqueta <vincent.roqueta@ext.bull.net>
+Subject: Some interoperability testing
+Date: Tue, 8 Feb 2005 10:22:47 +0100
+Message-ID: <200502071839.24804.vincent.roqueta@ext.bull.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Content-Type: text/plain;
+  charset="us-ascii"
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CyOO4-0004lr-59
-	for nfs@lists.sourceforge.net; Mon, 07 Feb 2005 21:58:12 -0800
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CyOO3-00050M-Ci
-	for nfs@lists.sourceforge.net; Mon, 07 Feb 2005 21:58:11 -0800
-To: Stuart Anderson <anderson@ligo.caltech.edu>
-In-Reply-To: message from Stuart Anderson on Monday February 7
+	id 1CyRUn-0003lr-Gf
+	for nfs@lists.sourceforge.net; Tue, 08 Feb 2005 01:17:21 -0800
+Received: from ecfrec.frec.bull.fr ([129.183.4.8])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1CyRUm-0007Zu-5E
+	for nfs@lists.sourceforge.net; Tue, 08 Feb 2005 01:17:21 -0800
+Received: from localhost (localhost [127.0.0.1])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 5100819D907
+	for <nfs@lists.sourceforge.net>; Tue,  8 Feb 2005 10:16:48 +0100 (CET)
+Received: from ecfrec.frec.bull.fr ([127.0.0.1])
+ by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
+ with ESMTP id 22201-04 for <nfs@lists.sourceforge.net>;
+ Tue,  8 Feb 2005 10:16:46 +0100 (CET)
+Received: from ecn002.frec.bull.fr (ecn002.frec.bull.fr [129.183.4.6])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 2F71F19D904
+	for <nfs@lists.sourceforge.net>; Tue,  8 Feb 2005 10:16:46 +0100 (CET)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,61 +37,50 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Monday February 7, anderson@ligo.caltech.edu wrote:
-> We are going to rebuild 2.6.10-1.760_FC3smp with 8k stack (just my
-> paranoia about the 4k stacks), and remove absolutely everything we do
-> not need, however, I will add in the CONFIG_DEBUG_SLAB. Are there any
-> other kernel debug flags that might be helpful?
+NFSv3:
+Server : AIX 5.3
+Client Linux 2.6.9
+Test : connectathon 2004
+* All tests passed, 2 warning.
 
-No.  However the following patch might be worth a try.
-It adds some extra locking.  I'm pretty sure there is a race that this
-closes that could possibly cause your problem.  I also think the
-locking here is a bit heavy handed, but I am sure it is safe.
+NFSv3
+Server AIX 5.3
+Client Linux 2.6.10
+* Big file test (test5 from BASIC tests) is blocked
+* Lock tests blocked (Tests 14)
 
-> 
-> Perhaps the bug is due to having a large list of static NFS mounts (290)?
+For the test5 (read/write a 30Mo file) a sequence of packet is sent many times 
+in an infinite loop :
 
-Having lots of mounts won't hurt.  But having lots of clients mount
-this server might have make it more likely to trigger the bug as there
-is more activity on the export cache.
+client to server 
+NFS V3 WRITE CALL, FH: 0x38ad8e6 Offset:32768 Len:38768 UNSTABLE
+client to server Fragmented IP protocol (UDP, 0x11, offset 1480 )
+client to server Fragmented IP protocol (UDP, 0x11, offset... )
+client to server Fragmented IP protocol (UDP, 0x11, offset... )
+....
+client to server Fragmented IP protocol (UDP, 0x11, offset... )
+client to server Fragmented IP protocol (UDP, 0x11, offset 25160)
 
-NeilBrown
+(there is a delay of 1,4 seconds before
+previous sequence is repeted)
+__________________________________________________________
+dmesg is telling :
+nfs: server aix_server not responding, still trying
+...
 
 
-Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
+Since all is right with kernel 2.6.9, that looks like a regression...
+Even if that is the true behaviour it may exist a way to stop this process 
+cleanly : since NFS umount is can't be done the client does not reboot, and I 
+need  to turn the power off...
 
-### Diffstat output
- ./include/linux/sunrpc/cache.h |   14 +++++++++-----
- 1 files changed, 9 insertions(+), 5 deletions(-)
+NFSv4
+_____
+Works a better...
+All tests passed. Big file tests is _really_slow (many minutes to copy a 30Mo 
+file over a 100Mo/s network)
 
-diff ./include/linux/sunrpc/cache.h~current~ ./include/linux/sunrpc/cache.h
---- ./include/linux/sunrpc/cache.h~current~	2005-02-08 16:23:21.000000000 +1100
-+++ ./include/linux/sunrpc/cache.h	2005-02-08 16:41:09.000000000 +1100
-@@ -268,15 +268,19 @@ static inline struct cache_head  *cache_
- 
- static inline int cache_put(struct cache_head *h, struct cache_detail *cd)
- {
--	atomic_dec(&h->refcnt);
-+	int rv = 0;
-+	read_lock(&cd->hash_lock);
-+	if (atomic_dec_and_test(&h->refcnt))
-+		rv = 1;
- 	if (!atomic_read(&h->refcnt) &&
- 	    h->expiry_time < cd->nextcheck)
- 		cd->nextcheck = h->expiry_time;
--	if (!test_bit(CACHE_HASHED, &h->flags) &&
--	    !atomic_read(&h->refcnt))
--		return 1;
-+	if (test_bit(CACHE_HASHED, &h->flags) ||
-+	    atomic_read(&h->refcnt))
-+		rv = 0;
-+	read_unlock(&cd->hash_lock);
- 
--	return 0;
-+	return rv;
- }
- 
- extern void cache_init(struct cache_head *h);
+Vincent
 
 
 -------------------------------------------------------
