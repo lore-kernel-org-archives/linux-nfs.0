@@ -1,27 +1,29 @@
-From: Vincent ROQUETA <vincent.roqueta@ext.bull.net>
+From: Harald Hannelius <harald+nfs@arcada.fi>
 Subject: Re: Poor NFS performance, kernel 2.6.6.
-Date: Thu, 27 May 2004 14:45:37 +0200
+Date: Thu, 27 May 2004 16:03:39 +0300 (EEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200405271445.37049.vincent.roqueta@ext.bull.net>
-References: <Pine.LNX.4.58.0405271331430.7539@penti.sit.fi> <200405271251.22746.vincent.roqueta@ext.bull.net> <Pine.LNX.4.58.0405271515570.11088@penti.sit.fi>
-Reply-To: vincent.roqueta@ext.bull.net
+Message-ID: <Pine.LNX.4.58.0405271558300.12353@penti.sit.fi>
+References: <Pine.LNX.4.58.0405271331430.7539@penti.sit.fi>
+ <20040527143919.4bdda5d7@shodan.citadel>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BTKCz-0004au-20
-	for nfs@lists.sourceforge.net; Thu, 27 May 2004 05:42:05 -0700
-Received: from ecbull20.frec.bull.fr ([129.183.4.3])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BTKCx-0005kk-HD
-	for nfs@lists.sourceforge.net; Thu, 27 May 2004 05:42:03 -0700
-Received: from roquetav (roquetav.frec.bull.fr [129.183.101.52])
-	by ecbull20.frec.bull.fr (8.9.2/8.9.1) with ESMTP id OAA12988
-	for <nfs@lists.sourceforge.net>; Thu, 27 May 2004 14:43:31 +0200
+	id 1BTKXu-0000RP-VD
+	for nfs@lists.sourceforge.net; Thu, 27 May 2004 06:03:42 -0700
+Received: from penti.sit.fi ([193.167.33.237])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1BTKXu-00010e-3e
+	for nfs@lists.sourceforge.net; Thu, 27 May 2004 06:03:42 -0700
+Received: from penti.sit.fi (harald@localhost [127.0.0.1])
+	by penti.sit.fi (8.12.10/8.12.10) with ESMTP id i4RD3dgT012509
+	for <nfs@lists.sourceforge.net>; Thu, 27 May 2004 16:03:39 +0300
+Received: from localhost (harald@localhost)
+	by penti.sit.fi (8.12.10/8.12.9/Submit) with ESMTP id i4RD3dPJ012506
+	for <nfs@lists.sourceforge.net>; Thu, 27 May 2004 16:03:39 +0300
 To: nfs@lists.sourceforge.net
-In-Reply-To: <Pine.LNX.4.58.0405271515570.11088@penti.sit.fi>
+In-Reply-To: <20040527143919.4bdda5d7@shodan.citadel>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,60 +36,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Le Jeudi 27 Mai 2004 14:17, Harald Hannelius a =E9crit :
-> On Thu, 27 May 2004, Vincent ROQUETA wrote:
-> > Le Jeudi 27 Mai 2004 12:31, Harald Hannelius a =E9crit :
-> > > Is there some way I can look at the nfs-server what it's doing? Any
-> > > suggestions on solutions for this?
-> > >
-> > > And what datarates over NFS could I expect on a setup like this?
-> > > Half-wirespeed maybe?
-> >
-> > on NFSv3, 1 ethernet 1GB I reached  89% of the avalaible brandwith for
-> > NFSv3, kernel 2.6.3, for file less than the total amount of ram (4Go),
-> > and 22% of the brandwith for file over 6Go, because of the use of
-> > harddisk use in the copy process (swap).
-> >
-> > What is  your memory configuration?
->
-> I took a look at "top" while reading the file on the client;
->
-> It looks like it's sitting there waiting for io. Something for the
-> kernel-people maybe?
->
->  15:15:10  up 1 day, 19:31,  4 users,  load average: 7.55, 4.31, 3.54
-> 93 processes: 92 sleeping, 1 running, 0 zombie, 0 stopped
-> CPU0 states:   0.0% user   1.2% system    0.0% nice  95.1% iowait   3.0%
-> idle
-> CPU1 states:   0.0% user   1.2% system    0.0% nice  90.1% iowait   8.1%
-> idle
-> Mem:  1035184k av, 1029660k used,    5524k free,       0k shrd,   18216k
-> buff
->         52712k active,             929460k inactive
-> Swap:  987956k av,       0k used,  987956k free                  957788k
-> cached
->
->   PID USER     PRI  NI  SIZE  RSS SHARE STAT %CPU %MEM   TIME CPU COMMAND
->  4473 root      16   0  4008 1084  3832 R     0.3  0.1   0:00   1 top
->     8 root       5 -10     0    0     0 SW<   0.1  0.0   0:15   0
-> kblockd/0
->     9 root       5 -10     0    0     0 SW<   0.1  0.0   0:14   1
-> kblockd/1
->  4382 root      15   0     0    0     0 SW    0.1  0.0   0:01   0 nfsd
->  4384 root      15   0     0    0     0 SW    0.1  0.0   0:01   0 nfsd
->  4386 root      15   0     0    0     0 DW    0.1  0.0   0:01   1 nfsd
->  4387 root      15   0     0    0     0 SW    0.1  0.0   0:01   0 nfsd
->  4392 root      15   0     0    0     0 DW    0.1  0.0   0:01   0 nfsd
->  4394 root      15   0     0    0     0 DW    0.1  0.0   0:00   1 nfsd
->  4395 root      15   0     0    0     0 SW    0.1  0.0   0:00   1 nfsd
->  4396 root      15   0     0    0     0 DW    0.1  0.0   0:01   0 nfsd
->     1 root      16   0   488  240   464 S     0.0  0.0   0:05   1 init
 
-That's normal : waiting for IO -> probably waiting for reading something fr=
-om=20
-the network. I am trying to do the same experience.
+On Thu, 27 May 2004, Dexter Filmore wrote:
+
+> How are the GB NICs attached? Onboard? Integrated into Southbridge? PCI?
+> PCI-X?
+
+It's a Tyan K8S PRo, dual tigon 3 NICs onboard.
+
+eth0: Tigon3 [partno(BCM95704A7) rev 2003 PHY(5704)] (PCIX:100MHz:64-bit)
+10/100/1000BaseT Ethernet 00:e0:81:28:cf:89
+
+> If it's plain old PCI, you won't get more, PCI maxes out here.
+
+Oh, and why do netcat transfer the 2GB file in 25 secs? With the same NIC
+and network ofcourse.. As stated in my original message.
+
+I tried linux-2.4.26 kernel instead. Now the 'time cat file > /dev/null'
+takes 1 min 3s on the client which is more like I wanted it. That should
+equal to something around 254Mbps..
+
+Since I don't have any real reason for a 2.6 kernel right now (32bit
+distro) I will rest my case here. Just thought someone would like to
+know..
+
+  Cheers, and many thanks
+
+	Harald
 
 
+-- 
+A: Top Posters
+Q: What is the most annoying thing on mailing lists?
+
+Harald H Hannelius | harald/a\arcada.fi      | GSM +358 50 594 1020
 
 
 -------------------------------------------------------
