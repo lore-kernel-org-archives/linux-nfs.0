@@ -1,20 +1,17 @@
-From: Alex Thiel <stderr@web.de>
-Subject: Re: huge number of intr/s on large nfs server
-Date: Thu, 17 Oct 2002 13:15:47 +0200
+From: Hirokazu Takahashi <taka@valinux.co.jp>
+Subject: [BUG][PATCH] NFS over TCP doesn't work on linux-2.5.43
+Date: Thu, 17 Oct 2002 22:04:58 +0900 (JST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200210171315.47213.stderr@web.de>
-References: <CFEAJJEGMGECBCJFLGDBGEMACFAA.enorwood@effrem.com>
+Message-ID: <20021017.220458.59648341.taka@valinux.co.jp>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: Text/Plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from smtp02.web.de ([217.72.192.151] helo=smtp.web.de)
+Received: from sv1.valinux.co.jp ([202.221.173.100])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1828Y6-0001M6-00
-	for <nfs@lists.sourceforge.net>; Thu, 17 Oct 2002 04:10:42 -0700
-To: "Eff Norwood" <enorwood@effrem.com>
-In-Reply-To: <CFEAJJEGMGECBCJFLGDBGEMACFAA.enorwood@effrem.com>
+	id 182ARe-0003UA-00
+	for <nfs@lists.sourceforge.net>; Thu, 17 Oct 2002 06:12:11 -0700
+To: neilb@cse.unsw.edu.au
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,22 +24,24 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thursday 17 October 2002 04:49, Eff Norwood wrote:
->
-> Switch is a Foundry BigIron and clients are 30 x SuperMicro SuperServer
-> 6010H with dual PIII 1.0Ghz, 1024MB of RAM, and Syskonnect SK-9821 copp=
-er
-> gigabit cards also running Debian 3.0 Stable with kernel 2.4.19 and all=
- of
-> Trond's latest NFS client patches.
->
+Hello,
 
-Just to be sure: have you checked that the clients are actually only send=
-ing=20
-at 100Mbit/s?
+I've solved the problem that NFS over TCP doesn't work on linux-2.5.43.
+Could you apply it?
 
-=09Alex
-
+--- linux-2.5.43/net/sunrpc/svcsock.c.ORG	Thu Oct 17 14:10:43 2030
++++ linux-2.5.43/net/sunrpc/svcsock.c	Thu Oct 17 21:46:56 2030
+@@ -891,8 +891,8 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 
+ 	rqstp->rq_skbuff      = 0;
+ 	rqstp->rq_argbuf.buf += 1;
+-	rqstp->rq_argbuf.len  = (len >> 2);
+-	rqstp->rq_argbuf.buflen = (len >> 2);
++	rqstp->rq_argbuf.len  = (len >> 2) + 1;
++	rqstp->rq_argbuf.buflen = (len >> 2) + 1;
+ 	rqstp->rq_prot	      = IPPROTO_TCP;
+ 
+ 	/* Reset TCP read info */
 
 
 -------------------------------------------------------
