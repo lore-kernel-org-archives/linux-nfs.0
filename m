@@ -1,24 +1,31 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH kNFSd 2 of 4] Minor memory leak fix.
-Date: Tue, 24 Aug 2004 18:02:15 -0400
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: Strange delays on NFS server
+Date: Wed, 25 Aug 2004 09:54:40 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040824220215.GA3521@fieldses.org>
-References: <20040820164909.27056.patches@notabene> <E1By3FQ-000738-5m@notabene.cse.unsw.edu.au> <20040824202048.GB2057@fieldses.org>
+Message-ID: <16683.54592.255861.126207@cse.unsw.edu.au>
+References: <4119FB15.7010205@stams.strath.ac.uk>
+	<411A17F2.2060203@RedHat.com>
+	<411A448D.3080205@stams.strath.ac.uk>
+	<20040811164135.GA11101@suse.de>
+	<411B8987.1030609@stams.strath.ac.uk>
+	<411CD601.1080308@RedHat.com>
+	<4120AB46.1080606@stams.strath.ac.uk>
+	<16683.8588.18082.190876@cse.unsw.edu.au>
+	<412B4F27.8060401@stams.strath.ac.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@osdl.org>, nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BzjN5-00028N-II
-	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 15:02:27 -0700
-Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.34)
-	id 1BzjN2-0000oQ-OW
-	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 15:02:27 -0700
-To: NeilBrown <neilb@cse.unsw.edu.au>
-In-Reply-To: <20040824202048.GB2057@fieldses.org>
+	id 1Bzl7s-00074J-61
+	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 16:54:52 -0700
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
+	id 1Bzl7p-0002Qj-Hp
+	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 16:54:52 -0700
+To: Ian Thurlbeck <ian@stams.strath.ac.uk>
+In-Reply-To: message from Ian Thurlbeck on Tuesday August 24
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,78 +38,71 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, Aug 24, 2004 at 04:20:48PM -0400, bfields wrote:
-> On Fri, Aug 20, 2004 at 04:51:36PM +1000, NeilBrown wrote:
-> > diff ./net/sunrpc/svcauth_unix.c~current~ ./net/sunrpc/svcauth_unix.c
-> > --- ./net/sunrpc/svcauth_unix.c~current~	2004-08-20 16:38:12.000000000 +1000
-> > +++ ./net/sunrpc/svcauth_unix.c	2004-08-20 16:38:19.000000000 +1000
-> > @@ -104,6 +104,7 @@ void ip_map_put(struct cache_head *item,
-> >  		if (test_bit(CACHE_VALID, &item->flags) &&
-> >  		    !test_bit(CACHE_NEGATIVE, &item->flags))
-> >  			auth_domain_put(&im->m_client->h);
-> > +		kfree(im->m_class);
-> >  		kfree(im);
-> >  	}
-> >  }
+On Tuesday August 24, ian@stams.strath.ac.uk wrote:
+> Neil Brown wrote:
+> > On Monday August 16, ian@stams.strath.ac.uk wrote:
+> > 
+> >>I bumped the nfsd's up to 64 (from 32) and subjectively the problem gets 
+> >>worse.  I then reduced them to 16 and things are a bit better...
+> > 
+> > 
+> > Odd.
+> > 
+> >>Would changing some of the bdflush settings help at all?
+> > 
+> > 
+> > Maybe.  I would start with
+> >   echo 200 > /proc/sys/vm/dirty_expire_centisecs
 > 
-> This is giving me oopses.  Fix follows.--b.
+> > You said you are using ext3.  Are you using journal=data or the
+> > default journal=ordered ??
 > 
-> Since ip_map->m_class is now freed with kfree() when ip_map is destroyed,
-> we can't assign the static string "nfsd" to it.
+> I'm using the default on Fedora 1, ordered data.
 
-Oops; forgot to check return value from kmalloc, and missed the same
-problem in two other spots.  Incremental patch against the previous fix.
+Ok, I've seen a similar problem that was fairly specific to
+journal=data.  I guess it isn't that.
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
+> 
+> > Also, it would be interesting to compare nfs ops per second against
+> > disk i/os per second over time.
+> > Something like..
+> > 
+> >   while :
+> >   do
+> >     perl -ne 'if (/^proc3/)  { @a=split ; shift @a; shift @a; print eval(join("+", @a))."  ";}' /proc/net/rpc/nfsd
+> >     perl -ne 'if (/hda /) { @a=split; print $a[9]."\n";}' /proc/diskstats  
+> >     sleep 1
+> >   done | perl -ne '@_=split; print( ($_[0]-$a[0])." ".($_[1]-$a[1])."\n"); @a=@_;'
+> > 
+> > If the pauses correspond to periods with very low nfs ops/sec and very
+> > high writes per second, then it confirms that it is a disk flushing
+> > problem.
+> 
+> I'm using FC1 which has 2.4.22 as its base.  I think the 
+> /proc/sys/vm/dirty_expire_centisecs and the above scriptlet are
+> for 2.6 only.  The nfs stats work, but the /proc/diskstats file
+> is missing.
 
- linux-2.6.9-rc1-bfields/net/sunrpc/svcauth_unix.c |   12 ++++++++++--
- 1 files changed, 10 insertions(+), 2 deletions(-)
+Sorry, I just assumed....
 
-diff -puN net/sunrpc/svcauth_unix.c~svcauth_ip_map_class_allocation2 net/sunrpc/svcauth_unix.c
---- linux-2.6.9-rc1/net/sunrpc/svcauth_unix.c~svcauth_ip_map_class_allocation2	2004-08-24 16:51:47.000000000 -0400
-+++ linux-2.6.9-rc1-bfields/net/sunrpc/svcauth_unix.c	2004-08-24 16:53:17.000000000 -0400
-@@ -307,6 +307,8 @@ struct auth_domain *auth_unix_lookup(str
- 	struct auth_domain *rv;
- 
- 	key.m_class = strdup("nfsd");
-+	if (!key.m_class)
-+		return NULL;
- 	key.m_addr = addr;
- 
- 	ipm = ip_map_lookup(&key, 0);
-@@ -369,10 +371,13 @@ svcauth_null_accept(struct svc_rqst *rqs
- 	svc_putu32(resv, RPC_AUTH_NULL);
- 	svc_putu32(resv, 0);
- 
--	key.m_class = rqstp->rq_server->sv_program->pg_class;
-+	key.m_class = strdup(rqstp->rq_server->sv_program->pg_class);
-+	if (!key.m_class)
-+		return SVC_DROP;
- 	key.m_addr = rqstp->rq_addr.sin_addr;
- 
- 	ipm = ip_map_lookup(&key, 0);
-+	kfree(key.m_class);
- 
- 	rqstp->rq_client = NULL;
- 
-@@ -465,11 +470,14 @@ svcauth_unix_accept(struct svc_rqst *rqs
- 	}
- 
- 
--	key.m_class = rqstp->rq_server->sv_program->pg_class;
-+	key.m_class = strdup(rqstp->rq_server->sv_program->pg_class);
-+	if (!key.m_class)
-+		return SVC_DROP;
- 	key.m_addr = rqstp->rq_addr.sin_addr;
- 
- 
- 	ipm = ip_map_lookup(&key, 0);
-+	kfree(key.m_class);
- 
- 	if (ipm)
- 		switch (cache_check(&ip_map_cache, &ipm->h, &rqstp->rq_chandle)) {
-_
+You might be able to get the 'write' stats out of /proc/partitions if
+CONFIG_BLK_STATS is selected, write_sectors should be the 10th field.
+Alternately you would need to extract them from /proc/stat - the
+disk_io line, the last number inside a parenthesised group.
+
+> 
+> Do you have any suggestions for /proc/sys/vm/bdflush instead ? Here
+> are the current settings:
+> 
+> 30      500     0       0       500     3000    60      20      0
+> 
+
+Drop the 500 and 3000 to 100 and 500
+  30      500     0       0       100     500     60      20      0
+
+This will flush data after it is 5 seconds old instead of 30.
+
+NeilBrown
 
 
 -------------------------------------------------------
