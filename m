@@ -1,67 +1,131 @@
-From: Hirokazu Takahashi <taka@valinux.co.jp>
-Subject: Re: Re: [PATCH] zerocopy NFS for 2.5.36
-Date: Sun, 20 Oct 2002 05:34:24 +0900 (JST)
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20021020.053424.41629995.taka@valinux.co.jp>
-References: <shs8z0w1f3k.fsf@charged.uio.no>
-	<20021018.161952.41628057.taka@valinux.co.jp>
-	<004d01c276bb$39b32980$2a060e09@beavis>
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: nfsd/sunrpc boot on reboot in 2.5.44
+Date: Mon, 21 Oct 2002 13:25:21 +1000
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <15795.29601.539191.253507@notabene.cse.unsw.edu.au>
+References: <20021020173142.GA26384@outpost.ds9a.nl>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Cc: trond.myklebust@fys.uio.no, neilb@cse.unsw.edu.au,
-	davem@redhat.com, linux-kernel@vger.kernel.org,
-	nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sv1.valinux.co.jp ([202.221.173.100])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1830Pu-00037q-00
-	for <nfs@lists.sourceforge.net>; Sat, 19 Oct 2002 13:41:50 -0700
-To: habanero@us.ibm.com
-In-Reply-To: <004d01c276bb$39b32980$2a060e09@beavis>
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
+Received: From
+	notabene.cse.unsw.edu.au ([129.94.233.204] == wireless-204.wireless.cse.unsw.EDU.AU)
+	(for <ahu@ds9a.nl>) (for <linux-kernel@vger.kernel.org>)
+	(for <nfs@lists.sourceforge.net>) By tone With Smtp ;
+	Mon, 21 Oct 2002 13:25:29 +1000
+To: bert hubert <ahu@ds9a.nl>
+In-Reply-To: message from bert hubert on Sunday October 20
+List-ID: <nfs.lists.sourceforge.net>
 
-Hello,
+On Sunday October 20, ahu@ds9a.nl wrote:
+> My Debian sid machine oopses when I run 'sudo reboot'.
+> 
 
-> > Congestion avoidance mechanism of NFS clients might cause this
-> > situation.  I think the congestion window size is not enough
-> > for high end machines.  You can make the window be larger as a
-> > test.
+Sorry 'bout that.  Appended patch should fix it.
+When the last daemon exits all exports are automatically unexported,
+and it was releasing too much so when "exportfs -a" came along it
+tried to access some deallocated data strctures.
 
-> Is this a concern on the client only?  I can run a test with just one client
-> and see if I can saturate the 100Mbit adapter.  If I can, would we need to
-> make any adjustments then?  FYI, at 115 MB/sec total throughput, that's only
-> 2.875 MB/sec for each of the 40 clients.  For the TCP result of 181 MB/sec,
-> that's 4.525 MB/sec, IMO, both of which are comfortable throughputs for a
-> 100Mbit client.
+NeilBrown
 
-I think it's a client issue. NFS servers don't care about cogestion of UDP
-traffic and they will try to response to all NFS requests as fast as they can.
+-------------------------
+Fix nfs shutdown problem.
 
-You can try to increase the number of clients or the number of mount points
-for a test. It's easy to mount the same directory of the server on some
-directries of the client so that each of them can work simultaneously.
-   # mount -t nfs server:/foo   /baa1
-   # mount -t nfs server:/foo   /baa2
-   # mount -t nfs server:/foo   /baa3
-
-Thank you,
-Hirokazu Takahashi.
+The 'unexport everything' that happens when the
+last nfsd thread dies was shuting down too much - 
+things that should only be shut down on module unload.
 
 
--------------------------------------------------------
-This sf.net email is sponsored by:
-Access Your PC Securely with GoToMyPC. Try Free Now
-https://www.gotomypc.com/s/OSND/DD
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+
+ ----------- Diffstat output ------------
+ ./fs/nfsd/export.c            |   31 ++++++++++++-------------------
+ ./fs/nfsd/nfssvc.c            |    2 +-
+ ./include/linux/nfsd/export.h |    1 +
+ ./net/sunrpc/sunrpc_syms.c    |    1 +
+ 4 files changed, 15 insertions(+), 20 deletions(-)
+
+--- ./fs/nfsd/export.c	2002/10/20 23:48:51	1.1
++++ ./fs/nfsd/export.c	2002/10/21 03:23:44	1.2
+@@ -738,23 +738,6 @@ exp_do_unexport(svc_export *unexp)
+ 	exp_fsid_unhash(unexp);
+ }
+ 
+-/*
+- * Revoke all exports for a given client.
+- */
+-static void
+-exp_unexport_all(svc_client *clp)
+-{
+-	struct svc_export *exp;
+-	int index;
+-
+-	dprintk("unexporting all fs's for clnt %p\n", clp);
+-
+-	cache_for_each(exp, &svc_export_cache, index, h)
+-		if (exp->ex_client == clp)
+-			exp_do_unexport(exp);
+-	cache_flush();
+-
+-}
+ 
+ /*
+  * unexport syscall.
+@@ -1109,6 +1092,18 @@ nfsd_export_init(void)
+ }
+ 
+ /*
++ * Flush exports table - called when last nfsd thread is killed
++ */
++void
++nfsd_export_flush(void)
++{
++	exp_writelock();
++	cache_purge(&svc_expkey_cache);
++	cache_purge(&svc_export_cache);
++	exp_writeunlock();
++}
++
++/*
+  * Shutdown the exports module.
+  */
+ void
+@@ -1119,8 +1114,6 @@ nfsd_export_shutdown(void)
+ 
+ 	exp_writelock();
+ 
+-	exp_unexport_all(NULL);
+-
+ 	if (cache_unregister(&svc_expkey_cache))
+ 		printk(KERN_ERR "nfsd: failed to unregister expkey cache\n");
+ 	if (cache_unregister(&svc_export_cache))
+--- ./fs/nfsd/nfssvc.c	2002/10/20 23:53:59	1.1
++++ ./fs/nfsd/nfssvc.c	2002/10/21 03:23:44	1.2
+@@ -238,7 +238,7 @@ nfsd(struct svc_rqst *rqstp)
+ 		printk(KERN_WARNING "nfsd: last server has exited\n");
+ 		if (err != SIG_NOCLEAN) {
+ 			printk(KERN_WARNING "nfsd: unexporting all filesystems\n");
+-			nfsd_export_shutdown();
++			nfsd_export_flush();
+ 		}
+ 		nfsd_serv = NULL;
+ 	        nfsd_racache_shutdown();	/* release read-ahead cache */
+--- ./include/linux/nfsd/export.h	2002/10/20 23:53:38	1.1
++++ ./include/linux/nfsd/export.h	2002/10/21 03:23:44	1.2
+@@ -83,6 +83,7 @@ struct svc_expkey {
+  */
+ void			nfsd_export_init(void);
+ void			nfsd_export_shutdown(void);
++void			nfsd_export_flush(void);
+ void			exp_readlock(void);
+ void			exp_readunlock(void);
+ struct svc_expkey *	exp_find_key(struct auth_domain *clp, 
+--- ./net/sunrpc/sunrpc_syms.c	2002/10/20 23:53:09	1.1
++++ ./net/sunrpc/sunrpc_syms.c	2002/10/21 03:23:44	1.2
+@@ -101,6 +101,7 @@ EXPORT_SYMBOL(auth_unix_lookup);
+ EXPORT_SYMBOL(cache_check);
+ EXPORT_SYMBOL(cache_clean);
+ EXPORT_SYMBOL(cache_flush);
++EXPORT_SYMBOL(cache_purge);
+ EXPORT_SYMBOL(cache_fresh);
+ EXPORT_SYMBOL(cache_init);
+ EXPORT_SYMBOL(cache_register);
