@@ -1,22 +1,17 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: Problems with hard links in root NFS filesystem
-Date: Thu, 1 Aug 2002 22:01:05 +1000 (EST)
+From: =?iso-8859-1?Q?Brasseur_Val=E9ry?= <Valery.Brasseur@atosorigin.com>
+Subject: nfs performance
+Date: Thu, 1 Aug 2002 16:46:15 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15689.8961.389494.783003@notabene.cse.unsw.edu.au>
-References: <F418066D6DFA5040A1169F0B39B7604A0DE23D@rg273.reliance.co.uk>
+Message-ID: <8D7D56C6ED3DD411998D009027DC685E0874E1E8@srv-grp-s1.segin.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17aEdJ-00029h-00
-	for <nfs@lists.sourceforge.net>; Thu, 01 Aug 2002 05:00:45 -0700
-Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <DMB@reliance.co.uk>) (for <nfs@lists.sourceforge.net>) By tone
-	With Smtp ; Thu, 1 Aug 2002 22:00:30 +1000
-To: Donald Burns <DMB@reliance.co.uk>
-In-Reply-To: message from Donald Burns on Thursday August 1
+Received: from hermes8.atos-group.com ([160.92.18.57] helo=hermes8.segin.com)
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17aHEI-0006PU-00
+	for <nfs@lists.sourceforge.net>; Thu, 01 Aug 2002 07:47:06 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,20 +24,13 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Thursday August 1, DMB@reliance.co.uk wrote:
-> 				
-> Dear list members,
-> 
-> I have a problem using NFS.
-> 
-> Synopsis:	Files that are hard linked on the server's root
-> 		NFS images for a Beowulf cluster become inaccesable
-> 		either imediately or after a few hours.
+how can I measure the performance of my NFS client ?
 
-At a guess, I'd say "add the no_subtree_check option to your exports"
-is the way to go.
+I am using linux client with Netapp filer server.
+I would like to know which is the throuput limit of the linux NFS client !
 
-NeilBrown
+anybody got ideas ?
+thanks
 
 
 
