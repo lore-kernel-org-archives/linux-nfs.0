@@ -1,23 +1,23 @@
 From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: [PATCH][RESEND2] nfs-utils-1.0.6 permission denied on mount after
- 'exportfs -u'
-Date: Mon, 6 Dec 2004 11:45:56 +1100
-Message-ID: <16819.43972.719035.44574@cse.unsw.edu.au>
-References: <1102099760.4708.13.camel@w-bwa3.beaverton.ibm.com>
+Subject: Re: ANNOUNCE: nfs-utils 1.0.7-pre1
+Date: Mon, 6 Dec 2004 12:05:20 +1100
+Message-ID: <16819.45136.432467.242891@cse.unsw.edu.au>
+References: <16815.63554.437489.308079@cse.unsw.edu.au>
+	<OF5D50C851.638664CE-ON88256F5F.0064A7E2-88256F5F.0065D563@us.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Cb70u-0007Ke-1G
-	for nfs@lists.sourceforge.net; Sun, 05 Dec 2004 16:46:04 -0800
+	id 1Cb7Jk-0000AG-4I
+	for nfs@lists.sourceforge.net; Sun, 05 Dec 2004 17:05:32 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1Cb70t-0000Kb-Dk
-	for nfs@lists.sourceforge.net; Sun, 05 Dec 2004 16:46:03 -0800
-To: bwa@us.ibm.com
-In-Reply-To: message from Bruce Allan on Friday December 3
+	id 1Cb7Jh-0002eZ-E4
+	for nfs@lists.sourceforge.net; Sun, 05 Dec 2004 17:05:32 -0800
+To: Marc Eshel <eshel@almaden.ibm.com>
+In-Reply-To: message from Marc Eshel on Friday December 3
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,17 +31,21 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Friday December 3, bwa@us.ibm.com wrote:
-> Neil,
+On Friday December 3, eshel@almaden.ibm.com wrote:
+> I was hopping that the following two (small but important for HA) changes
+> be included.
 > 
-> Have you had a chance to look at this yet? [I assume not since it is
-> not in the latest nfs-utils-1.0.7-pre1]
+> 1. statd doesn't exit when called in notify mode (-N)
+>       http://marc.theaimsgroup.com/?l=linux-nfs&m=110062624418905&w=2
+> 
+> 2. send the notify message on the same interface as the address in the -n
+> option
+>       http://marc.theaimsgroup.com/?l=linux-nfs&m=110064006512730&w=2
+> 
+> Thanks, Marc.
 
-Thanks for the reminder (and your patience).
+Ok, they are in the CVS now, thanks.
 
-Yes, it looks fine and I have committed it to CVS.
-
-Thanks,
 NeilBrown
 
 
