@@ -1,23 +1,24 @@
-From: trond.myklebust@fys.uio.no
-Subject: Re: task->tk_timeout = 0
-Date: Thu, 26 Feb 2004 13:50:12 +0100 (CET)
+From: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
+Subject: Re: [PATCH 2.6.3] Add write throttling to NFS client
+Date: Thu, 26 Feb 2004 14:20:10 +0100 (CET)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <32895.207.214.87.84.1077799812.squirrel@webmail.uio.no>
-References: <20040226110802.GE1197@suse.de>
+Message-ID: <Pine.LNX.4.44.0402261415410.24606-100000@kenzo.iwr.uni-heidelberg.de>
+References: <32895.207.214.87.84.1077799785.squirrel@webmail.uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain;charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=ISO-8859-1
+Cc: Olaf Kirch <okir@suse.de>, Greg Banks <gnb@melbourne.sgi.com>,
+        Shantanu Goel <sgoel01@yahoo.com>, <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AwKzx-0003aB-N8
-	for nfs@lists.sourceforge.net; Thu, 26 Feb 2004 04:52:17 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 1AwLSt-0007ke-CN
+	for nfs@lists.sourceforge.net; Thu, 26 Feb 2004 05:22:11 -0800
+Received: from relay2.uni-heidelberg.de ([129.206.210.211])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1AwKy9-0006DV-7a
-	for nfs@lists.sourceforge.net; Thu, 26 Feb 2004 04:50:25 -0800
-To: "Olaf Kirch" <okir@suse.de>
-In-Reply-To: <20040226110802.GE1197@suse.de>
+	id 1AwLR3-0002Gp-Tt
+	for nfs@lists.sourceforge.net; Thu, 26 Feb 2004 05:20:18 -0800
+To: trond.myklebust@fys.uio.no
+In-Reply-To: <32895.207.214.87.84.1077799785.squirrel@webmail.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,42 +31,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-På to , 26/02/2004 klokka 03:08, skreiv Olaf Kirch:
-> So apparently one of the shift operations above overflows.  I suspect
-rpc_ntimeo because it can be arbitrarily large. But the ntimeouts value
-isn't updated until we've received a reply (is this intentional, Trond?)
->
-> So what would have to happen for this bug to trigger is
->
-> 	send request
-> 	server hangs
-> 	retransmit request 1000 times
-> 	server comes back
-> 	retransmit request
-> 	receive reply, set ntimeout = 1000
->
-> 	send another request. timeout overflows and becomes 0
-> 	request gets lost
-> 	task waits indefinitely.
->
-> I think the most robust way to fix this is simply this:
->
-> 		- req->rq_timeout.to_retries;
-> 	if (timeout > req->rq_timeout.to_maxval)
-> 		timeout = req->rq_timeout.to_maxval;
-> -	if (timeout > req->rq_timeout.to_maxval)
-> +	if (!timeout || timeout > req->rq_timeout.to_maxval)
-> 		timeout = req->rq_timeout.to_maxval;
->
-> It may also make sense to clamp the ntimeouts value to something
-reasonable (e.g. 8)
+On Thu, 26 Feb 2004 trond.myklebust@fys.uio.no wrote:
 
-Agreed, and in fact, I believe at some point it was clamped to 8.
-Thanks, and well spotted...
+> P=E5 to , 26/02/2004 klokka 00:41, skreiv Olaf Kirch:
+> > What about modifying __rpc_sleep_on to put sync tasks always
+> > at the head of the queue? This way sync tasks get priority when
+> > it comes to call reservation.
+>=20
+> How do you avoid the inverse problem that async tasks end up never maki=
+ng
+> any progress?
 
-Cheers,
-  Trond
+How about having a ratio (that can be changed from userland) between
+sync and async operations ? Let's say that you move 3 sync ops at the
+head of the queue then let 1 async one go through. However, for this
+to be done efficiently it's probably better to not have only one queue
+but more and then take one or more ops from the head of each queue
+corresponding to the ratio.
 
+--=20
+Bogdan Costescu
+
+IWR - Interdisziplinaeres Zentrum fuer Wissenschaftliches Rechnen
+Universitaet Heidelberg, INF 368, D-69120 Heidelberg, GERMANY
+Telephone: +49 6221 54 8869, Telefax: +49 6221 54 8868
+E-mail: Bogdan.Costescu@IWR.Uni-Heidelberg.De
 
 
 
