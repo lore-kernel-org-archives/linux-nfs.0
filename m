@@ -1,20 +1,20 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: nfs over TCP stable?
-Date: Mon, 05 May 2003 07:29:23 -0400
+From: "Deepa Chacko Pillai" <deepa.chacko@wipro.com>
+Subject: Unmount in case of unreachable NFS server
+Date: Mon, 5 May 2003 18:16:48 +0530
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3EB64B13.2080401@RedHat.com>
-References: <3EB44527.6090005@wanadoo.es>
+Message-ID: <52C85426D39B314381D76DDD480EEE0CB681C5@blr-m3-msg.wipro.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from nat-pool-rdu.redhat.com ([66.187.233.200] helo=lacrosse.corp.redhat.com)
+Received: from wiprom2mx1.wipro.com ([203.197.164.41])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19Ce8r-0005hQ-00
-	for <nfs@lists.sourceforge.net>; Mon, 05 May 2003 04:28:21 -0700
-Received: from RedHat.com (dickson.boston.redhat.com [172.16.65.20])
-	by lacrosse.corp.redhat.com (8.11.6/8.9.3) with ESMTP id h45BSEH08785
-	for <nfs@lists.sourceforge.net>; Mon, 5 May 2003 07:28:14 -0400
-To: nfs@lists.sourceforge.net
+	id 19CfN7-0001LZ-00
+	for <nfs@lists.sourceforge.net>; Mon, 05 May 2003 05:47:10 -0700
+Received: from m2vwall5.wipro.com (m2vwall5.wipro.com [10.115.50.5])
+	by wiprom2mx1.wipro.com (8.11.3/8.11.3) with SMTP id h45CkrN16167
+	for <nfs@lists.sourceforge.net>; Mon, 5 May 2003 18:16:53 +0530 (IST)
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,43 +27,33 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-The client works fairly well due to the simple fact
-a number of people are using it in production today.
 
-The server seems to have issues around flow control. When
-a server is unable to send back replies due to an EGAIN error,
-it resets the connection; Clearly, IMHO, not the correct way
-to hand this error.
+Hi
 
-It has been suggested to me, I and think I agree, that the
-I/O processing of the NFS server should be broken up into
-to threads. A RX and TX thread. With the idea being when the
-TX thread starts to get backed up, it turns off the RX thread
-(i.e. stops it from receiving) which in turn will flow-control
-sending client. This should allow the TX thread to be able
-to catch up...
+Can I unmount a file system, mounted from server 'A', if the server 'A' =
+is down and the client has open files on it? If there are no open =
+references to the filesystem, I saw it could be unmounted if I soft =
+mount the FS.
 
-The duel io threads might also be handy if NFSD decide
-to use AIO....
+I will explain my requirement with an example. Suppose I have 3 nodes A, =
+B and C. I mount a filesystem from node A onto node C. The device =
+containing the filesystem is accessible from node B also (shared disk). =
+If node A fails, I want to migrate the FS to node B. Once the FS is =
+migrated, I have to remount the FS on node C. On client C, I am unable =
+to unmount the FS as it has some files open. Even force unmount failed. =
+I can however mount the FS from node B onto the same mount point again =
+(overlay mount). This would mean I need to keep track of the number of =
+such mounts. I would like to know if there is any other way to do this.
 
-SteveD.
+Another possibility I thought of is IP failover. However, it will =
+confuse locking I guess.
+I am using Red Hat Linux 2.4.19.
 
-Xose Vazquez Perez wrote:
+Any help would be much appreciated.
 
->hi,
->
->Red Hat 9-kernel 2.4.20-9 doesn't include nfs over TCP because they
->said that "it doesn't work good enough in our testing....."
->https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=88583
->
->Are there any problems at standard kernels or only at
->mega-patched rh kernels?
->
->-thanks in advance-
->
->regards,
->  
->
+Thanks
+Deepa
+
 
 
 
