@@ -1,19 +1,25 @@
-From: Hua Qin <qinhua@poisson.ecse.rpi.edu>
-Subject: RE: NetApp nfs server support tcp v3 root file system?
-Date: Sat, 14 Sep 2002 21:14:07 -0400 (EDT)
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: High Availability NFS Proposal
+Date: Sun, 15 Sep 2002 20:12:48 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.GSO.4.10.10209142109180.12355-100000@poisson.ecse.rpi.edu>
-References: <6440EA1A6AA1D5118C6900902745938E07D54E26@black.eng.netapp.com>
+Message-ID: <15748.23840.351420.134476@notabene.cse.unsw.edu.au>
+References: <200208242216.g7OMG3802286@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net,
+    lmb@suse.de
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail.rpi.edu ([128.113.22.40])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17qNzz-0006pe-00
-	for <nfs@lists.sourceforge.net>; Sat, 14 Sep 2002 18:14:55 -0700
-To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: <6440EA1A6AA1D5118C6900902745938E07D54E26@black.eng.netapp.com>
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17qWOm-0001l1-00
+	for <nfs@lists.sourceforge.net>; Sun, 15 Sep 2002 03:13:04 -0700
+Received: From
+	notabene.cse.unsw.edu.au ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
+	(for <James.Bottomley@steeleye.com>)
+	(for <nfs@lists.sourceforge.net>) (for <lmb@suse.de>) By tone With
+	Smtp ; Sun, 15 Sep 2002 20:12:54 +1000
+To: James Bottomley <James.Bottomley@steeleye.com>
+In-Reply-To: message from James Bottomley on Saturday August 24
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,47 +32,23 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Charles, 
-
-I found a linux bug to fix this problem, just want to share with you.
-
-In linux: in mnt_create routine, 
-xprt = xprt_create_proto(IPPROTO_UDP, srvaddr, NULL)
-this should be changed to IPPROTO_TCP proto, if I want to use TCP root
-file system.
-
-I already sent a patch to linux list.
-
-Thanks for your help!
-Hua
-
-
-On Mon, 9 Sep 2002, Lever, Charles wrote:
-
-> > I recreated the nfs root file on NetApp by using mounting udp 
-> > NFSv2, and I
-> > can boot the linux box using NFSv2 udp, while NetApp as a nfs 
-> > root file
-> > system.
+On Saturday August 24, James.Bottomley@steeleye.com wrote:
 > 
-> good news.
-> 
-> > Then, I rebuild nfs root file by using NFSv3 tcp, and tried 
-> > to boot the
-> > linux box using NFSv3 tcp. But it failed. So I have to go back to my
-> > first question: is there any issue about NetApp be a  nfs 
-> > server servered
-> > as NFSv3 tcp protocol? I asked this because I think NetApp 
-> > support NFSv3
-> > tcp server, and linux box can suppport NFSv3 client.
-> 
-> i'm not aware of any issues on the filer side that might contribute
-> to this problem.
-> 
-> were you ever able to boot diskless Linux with TCP and v3 from
-> any other server?  i wonder if nfsroot is broken over TCP?
-> 
+> I'll proceed in two phases: mountd first to give a HA solution and statd next 
+> to give the complete HA-NFS solution.  The hooks should be useable by any HA 
+> clustering software on Linux.
 
+Any progress on this?... The idea seems quite sound.
+My only suggestion would be not to depend on the existance of a
+program in /var/lib/nfs, but rather to have such a program specified
+as a command line argument.  It makes it more explicit.
+
+Also, the need for this support in mountd will almost certainly go
+away in 2.6 (that is what I am working on at the moment) but ofcourse
+2.4 is going to be around for a while so it is probably still worth
+while.
+
+NeilBrown
 
 
 -------------------------------------------------------
