@@ -1,24 +1,27 @@
-From: Greg Banks <gnb@sgi.com>
+From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Subject: Re: [PATCH] exponential backoff for blocked LOCK call polling
-Date: Tue, 9 Nov 2004 09:54:11 +1100
-Message-ID: <20041108225411.GA29190@sgi.com>
-References: <1098786131.21421.484.camel@hole.melbourne.sgi.com> <Pine.LNX.4.60.0411081021570.16292@harp.ngdc.noaa.gov>
+Date: Mon, 8 Nov 2004 16:17:09 -0700 (MST)
+Message-ID: <Pine.LNX.4.60.0411081613030.9736@harp.ngdc.noaa.gov>
+References: <1098786131.21421.484.camel@hole.melbourne.sgi.com>
+ <Pine.LNX.4.60.0411081021570.16292@harp.ngdc.noaa.gov> <20041108225411.GA29190@sgi.com>
+Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Cc: Greg Banks <gnb@melbourne.sgi.com>,
         Trond Myklebust <trond.myklebust@fys.uio.no>,
         Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CRITl-0005ET-9k
-	for nfs@lists.sourceforge.net; Mon, 08 Nov 2004 14:59:17 -0800
-Received: from omx3-ext.sgi.com ([192.48.171.20] helo=omx3.sgi.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CRITi-0005AO-JI
-	for nfs@lists.sourceforge.net; Mon, 08 Nov 2004 14:59:17 -0800
-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-In-Reply-To: <Pine.LNX.4.60.0411081021570.16292@harp.ngdc.noaa.gov>
+	id 1CRIl9-0001gK-QU
+	for nfs@lists.sourceforge.net; Mon, 08 Nov 2004 15:17:15 -0800
+Received: from harp.ngdc.noaa.gov ([140.172.187.26])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1CRIl8-0007BS-9N
+	for nfs@lists.sourceforge.net; Mon, 08 Nov 2004 15:17:15 -0800
+To: Greg Banks <gnb@sgi.com>
+In-Reply-To: <20041108225411.GA29190@sgi.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,32 +35,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, Nov 08, 2004 at 10:27:19AM -0700, Ara.T.Howard wrote:
-> On Tue, 26 Oct 2004, Greg Banks wrote:
-> if i read your code right it looks like, once max delay is reached, it stays
-> there.
+On Tue, 9 Nov 2004, Greg Banks wrote:
 
-Yes.
+>>  this will mean that a client waiting a long time has an increasingly
+>>  significant change of being starved when a lock is under heavy contention
+>>  doesn't it?
+>
+> Not if the server has queued the lock request.  But then if the server were
+> correctly implemented it would probably be sending us a GRANTED callback and
+> we wouldn't need to poll.
 
->  this will mean that a client waiting a long time has an increasingly
-> significant change of being starved when a lock is under heavy contention
-> doesn't it?
+i figured as much - wan't quite sure the reason for the poll...
 
-Not if the server has queued the lock request.  But then if the server
-were correctly implemented it would probably be sending us a GRANTED
-callback and we wouldn't need to poll.
+>>  in any case it seems like resetting the delay to min after reaching max
+>>  (becoming impatient again) may give better performance on average than
+>>  simply staying at max.
+>
+> Could do.  Do you want to do the patch?
 
->  in any case it seems like resetting the delay to min after
-> reaching max (becoming impatient again) may give better performance on 
-> average
-> than simply staying at max.
+i could - but not for a week or more... all i was really thinking is
 
-Could do.  Do you want to do the patch?
+   delay =
+     delay < NLM_LOCK_RETRY_DELAY_MAX ? delay << 1 : NLM_LOCK_RETRY_DELAY_MIN;
 
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+cheers.
+
+-a
+--
+===============================================================================
+| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
+| PHONE   :: 303.497.6469
+| When you do something, you should burn yourself completely, like a good
+| bonfire, leaving no trace of yourself.  --Shunryu Suzuki
+===============================================================================
 
 
 -------------------------------------------------------
