@@ -1,21 +1,22 @@
-From: "Richard B. Johnson" <root@chaos.analogic.com>
+From: Alan Cox <alan@lxorguk.ukuu.org.uk>
 Subject: Re: [PATCH] 2.4.19-rc1/2.5.25 provide dummy fsync() routine for directories on NFS mounts
-Date: Tue, 9 Jul 2002 13:22:29 -0400 (EDT)
+Date: Tue, 9 Jul 2002 20:11:09 +0100 (BST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.3.95.1020709130055.377A-100000@chaos.analogic.com>
-References: <E17RyHb-0005Fa-00@the-village.bc.nu>
-Reply-To: root@chaos.analogic.com
+Message-ID: <E17S0OD-0005UY-00@the-village.bc.nu>
+References: <Pine.LNX.3.95.1020709130055.377A-100000@chaos.analogic.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>, nfs@lists.sourceforge.net,
-   linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: alan@lxorguk.ukuu.org.uk (Alan Cox),
+	trond.myklebust@fys.uio.no (Trond Myklebust), nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from chaos.analogic.com ([204.178.40.224])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17Ryeq-00034n-00
-	for <nfs@lists.sourceforge.net>; Tue, 09 Jul 2002 10:20:12 -0700
-To: Alan Cox <alan@lxorguk.ukuu.org.uk>
-In-Reply-To: <E17RyHb-0005Fa-00@the-village.bc.nu>
+Received: from lightning.swansea.linux.org.uk ([194.168.151.1] helo=the-village.bc.nu)
+	by usw-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17S01t-0007V1-00
+	for <nfs@lists.sourceforge.net>; Tue, 09 Jul 2002 11:48:08 -0700
+To: root@chaos.analogic.com
+In-Reply-To: <Pine.LNX.3.95.1020709130055.377A-100000@chaos.analogic.com> from "Richard B. Johnson" at Jul 09, 2002 01:22:29 PM
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,26 +29,11 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Tue, 9 Jul 2002, Alan Cox wrote:
+> Really? Then what is the meaning of fsync() on a read-only file-
+> descriptor? You can't update the information you can't change.
 
-> > > not adhere to this convention.
-> > 
-> > Well, no. It's not supported. You can't get a valid file-descriptor...
-> 
-> Wrong (as usual)
-
-Really? Then what is the meaning of fsync() on a read-only file-
-descriptor? You can't update the information you can't change.
-
-This is (as usual) just an example of your helpful responses.
-
-Cheers,
-Dick Johnson
-
-Penguin : Linux version 2.4.18 on an i686 machine (797.90 BogoMips).
-
-                 Windows-2000/Professional isn't.
-
+fsync ensures the data for that inode/file content is on stable storage - note
+_the_ _data_ not only random things written by this specific file handle.
 
 
 -------------------------------------------------------
