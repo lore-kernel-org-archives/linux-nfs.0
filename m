@@ -1,25 +1,25 @@
-From: Steve Wampler <swampler@noao.edu>
-Subject: Re: What might cause:  "NFS: Buggy server - nlink == 0!"
-	message?
-Date: Thu, 22 Jan 2004 06:58:42 -0700
+From: Vincent ROQUETA <vincent.roqueta@ext.bull.net>
+Subject: I don(t understand....
+Date: Fri, 23 Jan 2004 10:51:25 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1074779922.18082.93.camel@weaver.tuc.noao.edu>
-References: <38129.68.42.103.198.1074755215.squirrel@webmail.uio.no>
-Reply-To: swampler@noao.edu
+Message-ID: <200401231051.25758.vincent.roqueta@ext.bull.net>
+Reply-To: vincent.roqueta@ext.bull.net
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: neilb@cse.unsw.edu.au, Linux NFS List <nfs@lists.sourceforge.net>
+Content-Type: text/plain;
+  charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AjfM8-0005o3-H6
-	for nfs@lists.sourceforge.net; Thu, 22 Jan 2004 05:58:48 -0800
-Received: from lsstmail.org ([140.252.1.54] helo=noao.edu)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1AjfM8-00007b-84
-	for nfs@lists.sourceforge.net; Thu, 22 Jan 2004 05:58:48 -0800
-To: trond.myklebust@fys.uio.no
-In-Reply-To: <38129.68.42.103.198.1074755215.squirrel@webmail.uio.no>
+	id 1Ajxxm-0003HP-Eh
+	for nfs@lists.sourceforge.net; Fri, 23 Jan 2004 01:50:54 -0800
+Received: from ecbull20.frec.bull.fr ([129.183.4.3])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1Ajxxl-0004in-G9
+	for nfs@lists.sourceforge.net; Fri, 23 Jan 2004 01:50:53 -0800
+Received: from roquetav.frec.bull.fr (roquetav.frec.bull.fr [129.183.101.52])
+	by ecbull20.frec.bull.fr (8.9.2/8.9.1) with ESMTP id KAA13920
+	for <nfs@lists.sourceforge.net>; Fri, 23 Jan 2004 10:51:34 +0100
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,27 +32,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, 2004-01-22 at 00:06, trond.myklebust@fys.uio.no wrote:
-> P=E5 to , 22/01/2004 klokka 01:08, skreiv Neil Brown:
-> > > It is still a bug, though. Neil?
-> >
-> > Is it?
-> > Does the spec say I cannot return nlink =3D=3D 0   ?-)
->=20
-> Not explicitly. However implicitly, yes it does. The all attributes are
-> supposed to be
-> read _atomically_ with the lookup and a file with nlink =3D=3D 0 could no=
-t be
-> looked up.
+in file nfs4state :
 
-I have to agree with with Trond here (of course, I have a vested
-interest...):  if 9 out of 10 identical clients correctly see a file
-as updated on an NFS partition but the 10th doesn't (and won't until
-an unmount/mount cycle of the partition) there's a bug there somewhere!
 
---=20
-Steve Wampler -- swampler@noao.edu
-The gods that smiled on your birth are now laughing out loud.
+
+static struct nfs4_state_owner *
+nfs4_alloc_state_owner(void)
+{
+        struct nfs4_state_owner *sp;
+
+        sp = kmalloc(sizeof(*sp),GFP_KERNEL);
+        if (!sp)
+                return NULL;
+
+
+
+        init_MUTEX(&sp->so_sema); -> Ok
+
+
+        sp->so_seqid = 0;                 /* arbitrary */
+        INIT_LIST_HEAD(&sp->so_states);
+        atomic_set(&sp->so_count, 1);
+        return sp;
+}
+
+
+Well... I'm looking where the mutex is destroyed, in the
+nfs4_free_client ??
 
 
 -------------------------------------------------------
