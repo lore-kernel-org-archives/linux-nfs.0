@@ -1,25 +1,23 @@
 From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: PATCH(nfs-utils) Fix bug in statd notify mode
-Date: Fri, 11 Oct 2002 16:19:08 +1000
+Subject: RE: NFS server replacement troubles
+Date: Fri, 11 Oct 2002 16:22:21 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15782.27996.915466.3245@notabene.cse.unsw.edu.au>
-References: <Pine.GSO.4.05.10210091536420.17500-100000@eniac>
+Message-ID: <15782.28189.428534.680498@notabene.cse.unsw.edu.au>
+References: <3FF929A3082ED211B9D700A0C9CFDC8801428E3B@exchange.bestivr.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net,
-    juang@us.ibm.com
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17zt9h-0000z7-00
-	for <nfs@lists.sourceforge.net>; Thu, 10 Oct 2002 23:20:14 -0700
+	id 17ztCE-0002QN-00
+	for <nfs@lists.sourceforge.net>; Thu, 10 Oct 2002 23:22:50 -0700
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <gomez@cs.sjsu.edu>) (for <nfs@lists.sourceforge.net>)
-	(for <juang@us.ibm.com>) By tone With Smtp ;
-	Fri, 11 Oct 2002 16:19:22 +1000
-To: Juan Gomez  <gomez@cs.sjsu.edu>
-In-Reply-To: message from Juan Gomez on Wednesday October 9
+	(for <tswaine@prosodiemail.com>) (for <nfs@lists.sourceforge.net>) By
+	tone With Smtp ; Fri, 11 Oct 2002 16:22:41 +1000
+To: tswaine@prosodiemail.com
+In-Reply-To: message from tswaine@prosodiemail.com on Wednesday October 9
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,49 +30,100 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-On Wednesday October 9, gomez@cs.sjsu.edu wrote:
+On Wednesday October 9, tswaine@prosodiemail.com wrote:
+> Thanks Neil but I looked at that also. My exports file looks like
+> this....
 > 
-> Neil,
+> /somedir (rw)
 > 
-> While further testing the statd mode I introduced previously (-N opt) I
-> found that
-> I forgot to skip pmap_unset() while in the notify mode.
+> Allowing anyone to connect. Also my hosts.allow is...
 > 
-> If we do not do that a statd running in notify mode will disable
-> any other local statd running in the non-notify mode which is undesirable.
+> ALL: ALL
 > 
-> Would you please apply the current patch to the HEAD of the cvs repository
-> for nfs-utils?
+> Allowing everyone also. Right after the new box comes online 
+> and fails(when it worked with a different hostname). Something
+> gets corrupted in nfs. No matter what I do, nfs will not work.
+> I have tried replacing binaries ( rpc.* )with no avail.
+> 
+> Could it be stale clients that were not unmounted before the switch?
 
-Ok, it's checked in.
+No.  It doesn't look at all like a client problem.
 
-I also protected the pmap_unset in 'killer' (called if statd gets a
-signal) so that it only runs if not MODE_NOTIFY_ONLY.
+The error message all strongly indicate trouble talking to portmap,
+which is why I suspected tcpwrappers...  Maybe portmap has
+died... maybe  running strace on portmap will show something...
 
 NeilBrown
 
 > 
-> Regards, Juan
+> Thanks....
 > 
-> diff -ur nfs-utils/utils/statd/statd.c nfs-utils-new/utils/statd/statd.c
-> --- nfs-utils/utils/statd/statd.c	Sun Sep  1 19:31:23 2002
-> +++ nfs-utils-new/utils/statd/statd.c	Wed Oct  9 22:28:26 2002
-> @@ -307,7 +307,14 @@
->  	statd_get_socket(out_port);
->  
->  	for (;;) {
-> -		pmap_unset (SM_PROG, SM_VERS);
-> +                /* Do not do pmap_unset() when running in notify mode.
-> +                 * We may clear the portmapper record for a statd not
-> +                 * running in notify mode disabling it.
-> +                 * Juan C. Gomez j_carlos_gomez@yahoo.com
-> +                 */
-> +		if (!(run_mode & MODE_NOTIFY_ONLY)) {
-> +                        pmap_unset (SM_PROG, SM_VERS);
-> +                }
->  		change_state ();
->  		shuffle_dirs ();	/* Move directory names around */
->  		notify_hosts ();	/* Send out notify requests */
+> -----Original Message-----
+> From: Neil Brown [mailto:neilb@cse.unsw.edu.au]
+> Sent: Wednesday, October 09, 2002 5:38 AM
+> To: tswaine@prosodiemail.com
+> Cc: nfs@lists.sourceforge.net
+> Subject: Re: [NFS] NFS server replacement troubles
+> 
+> 
+> On Tuesday October 8, tswaine@prosodiemail.com wrote:
+> > I currently have a SCO NFS server, however I'm replacing it with Redhat
+> > Linux.
+> > I have taking down the box replaced it and NFS fails. The hostname, ip,
+> etc.
+> > is 
+> > the same on the new machine.
+> > New box info....
+> > 	Stock Redhat Linux 6.2
+> > 	kernel 2.2.14-6.0.1 on i686
+> > 	partition being exported is Reiser filesystem
+> > 
+> > Before new box was put in to production its hostname was different.
+> > Exporting was fine, NFS worked properly, however as soon as box
+> > is brought up under new name NFS fails, errors(see below ).
+> > 
+> > Snapshot of errors.......
+> > 
+> > Starting portmapper: [  OK  ]
+> > master:/var/lib/nfs 23# /etc/rc.d/init.d/nfs start
+> > Starting NFS quotas: Cannot register service: RPC: Unable to receive;
+> errno
+> > = Connection refused
+> > [FAILED]
+> > Starting NFS mountd: Cannot register service: RPC: Unable to receive;
+> errno
+> > = Connection refused
+> 
+> At a guess, I would say tcpwrappers problem.  Maybe you have to old
+> host-name in /etc/hosts.allow, or something like that??
+> 
+> NeilBrown
+> 
+> > mountd: unable to register (mountd, 1, udp).
+> > [FAILED]
+> > Starting NFS daemon: nfssvc: Connection refused
+> > [FAILED]
+> > Starting NFS services:  [  OK  ]
+> > 
+> > 
+> > I have restarted portmapper and nfs with no success, unmount nfs on all
+> > connected machines, still no workee....
+> > Any help would be appreciated...
+> > Thanks.
+> > 
+> > 
+> > Troy L. Swaine
+> > System Administrator / Engineer
+> > 
+> > 
+> > 
+> > -------------------------------------------------------
+> > This sf.net email is sponsored by:ThinkGeek
+> > Welcome to geek heaven.
+> > http://thinkgeek.com/sf
+> > _______________________________________________
+> > NFS maillist  -  NFS@lists.sourceforge.net
+> > https://lists.sourceforge.net/lists/listinfo/nfs
 
 
 -------------------------------------------------------
