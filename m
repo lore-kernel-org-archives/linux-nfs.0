@@ -1,20 +1,17 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: PATCH - kNFSd - More small fixes for TCP nfsd
-Date: Fri, 30 Aug 2002 15:22:50 +1000
+From: Chuck Lever <cel@citi.umich.edu>
+Subject: [PATCH] prevent oops in xprt_lock_write, against 2.5.32
+Date: Fri, 30 Aug 2002 14:13:47 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15727.298.668705.558187@notabene.cse.unsw.edu.au>
+Message-ID: <41846.5290488259$1030731516@news.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+   Linux NFS List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17keFb-0005zz-00
-	for <nfs@lists.sourceforge.net>; Thu, 29 Aug 2002 22:23:19 -0700
-Received: From
-	notabene.cse.unsw.edu.au ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>) By
-	tone With Smtp ; Fri, 30 Aug 2002 15:22:56 +1000
+Received: from dexter.citi.umich.edu ([141.211.133.33])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17kqHK-0002qi-00
+	for <nfs@lists.sourceforge.net>; Fri, 30 Aug 2002 11:13:54 -0700
 To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -28,60 +25,33 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
+hi linus-
 
-sk_inuse should be bigger than "char" as we can
-have more than 255 server threads.  Due to the way the count
-is used, this is unlikely to actually cause a problem, but it
-should nonetheless be fixed.
+when several RPC requests want to reconnect a TCP transport socket at
+once, xprt_lock_write serializes the tasks to prevent multiple socket
+connects.  however, TCP connects are always done by a RPC child task that
+has no request slot.  xprt_lock_write can oops if there is no request slot
+allocated to the invoking RPC task.  reviewed and accepted by Trond.
 
-Also, two printk generate more noise than we would like,
-so turn them into dprintk (debugging printk).
+the xprt_lock_write changes are not yet in 2.4, so this patch does not 
+apply to 2.4.
 
-(already sent to Marcelo for 2.4.  This is 2.5 version)
+diff -drN -U2 00-stock/net/sunrpc/xprt.c 01-lock_write/net/sunrpc/xprt.c
+--- 00-stock/net/sunrpc/xprt.c	Tue Aug 27 15:26:35 2002
++++ 01-lock_write/net/sunrpc/xprt.c	Thu Aug 29 10:10:00 2002
+@@ -148,5 +148,5 @@
+ 		task->tk_timeout = 0;
+ 		task->tk_status = -EAGAIN;
+-		if (task->tk_rqstp->rq_nresend)
++		if (task->tk_rqstp && task->tk_rqstp->rq_nresend)
+ 			rpc_sleep_on(&xprt->resend, task, NULL, NULL);
+ 		else
 
- ----------- Diffstat output ------------
- ./include/linux/sunrpc/svcsock.h |    2 +-
- ./net/sunrpc/svcsock.c           |   11 +++++------
- 2 files changed, 6 insertions(+), 7 deletions(-)
+-- 
 
---- ./include/linux/sunrpc/svcsock.h	2002/08/30 02:44:25	1.1
-+++ ./include/linux/sunrpc/svcsock.h	2002/08/30 02:45:20	1.2
-@@ -21,7 +21,7 @@ struct svc_sock {
- 	struct sock *		sk_sk;		/* INET layer */
- 
- 	struct svc_serv *	sk_server;	/* service for this socket */
--	unsigned char		sk_inuse;	/* use count */
-+	unsigned int		sk_inuse;	/* use count */
- 	unsigned long		sk_flags;
- #define	SK_BUSY		0			/* enqueued/receiving */
- #define	SK_CONN		1			/* conn pending */
---- ./net/sunrpc/svcsock.c	2002/08/30 02:44:26	1.1
-+++ ./net/sunrpc/svcsock.c	2002/08/30 02:45:21	1.2
-@@ -703,11 +703,10 @@ svc_tcp_accept(struct svc_sock *svsk)
- 	 * tell us anything. For now just warn about unpriv connections.
- 	 */
- 	if (ntohs(sin.sin_port) >= 1024) {
--		if (net_ratelimit())
--			printk(KERN_WARNING
--				   "%s: connect from unprivileged port: %u.%u.%u.%u:%d\n",
--				   serv->sv_name, 
--				   NIPQUAD(sin.sin_addr.s_addr), ntohs(sin.sin_port));
-+		dprintk(KERN_WARNING
-+			"%s: connect from unprivileged port: %u.%u.%u.%u:%d\n",
-+			serv->sv_name, 
-+			NIPQUAD(sin.sin_addr.s_addr), ntohs(sin.sin_port));
- 	}
- 
- 	dprintk("%s: connect from %u.%u.%u.%u:%04x\n", serv->sv_name,
-@@ -1286,7 +1285,7 @@ svc_delete_socket(struct svc_sock *svsk)
- 		kfree(svsk);
- 	} else {
- 		spin_unlock_bh(&serv->sv_lock);
--		printk(KERN_NOTICE "svc: server socket destroy delayed\n");
-+		dprintk(KERN_NOTICE "svc: server socket destroy delayed\n");
- 		/* svsk->sk_server = NULL; */
- 	}
- }
+corporate:	<cel at netapp dot com>
+personal:	<chucklever at bigfoot dot com>
+
 
 
 -------------------------------------------------------
