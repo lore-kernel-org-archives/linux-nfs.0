@@ -1,21 +1,23 @@
 From: "Guzovsky, Eduard" <Edg@CROSSBEAMSYS.COM>
-Subject: FW: linux 2.4.18-5 nfs/rpc problem
-Date: Thu, 9 Oct 2003 17:46:24 -0400
+Subject: linux 2.4.18-5 nfs/rpc problem
+Date: Wed, 8 Oct 2003 18:42:22 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <6FF58CD33A029D458692432F07B85AB713FDF0@newmail>
+Message-ID: <6FF58CD33A029D458692432F07B85AB713FB9D@newmail>
 Mime-Version: 1.0
 Content-Type: multipart/alternative;
-	boundary="----_=_NextPart_001_01C38EAE.C9280926"
+	boundary="----_=_NextPart_001_01C38DED.7029C6DC"
+Cc: "Pariseau, Luc" <LPariseau@CROSSBEAMSYS.COM>, "A.K. Srikanth"
+	 <aks@CROSSBEAMSYS.COM>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1A7icf-0006kM-00
-	for <nfs@lists.sourceforge.net>; Thu, 09 Oct 2003 14:47:01 -0700
+	id 1A7N1I-0003TM-00
+	for <nfs@lists.sourceforge.net>; Wed, 08 Oct 2003 15:43:00 -0700
 Received: from [66.37.203.189] (helo=cbsvr1.crossbeamsys.com)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 1A7icd-00023J-1V
-	for nfs@lists.sourceforge.net; Thu, 09 Oct 2003 14:46:59 -0700
+	id 1A7N1G-0001G9-Ua
+	for nfs@lists.sourceforge.net; Wed, 08 Oct 2003 15:42:59 -0700
 To: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -32,7 +34,7 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 This message is in MIME format. Since your mail reader does not understand
 this format, some or all of this message may not be legible.
 
-------_=_NextPart_001_01C38EAE.C9280926
+------_=_NextPart_001_01C38DED.7029C6DC
 Content-Type: text/plain;
 	charset="iso-8859-1"
 Content-Transfer-Encoding: quoted-printable
@@ -282,7 +284,7 @@ rq_cong =3D 0x0,=20
   rq_received =3D 0x1, rq_creddata =3D {0x0, 0x0}, rq_bytes_sent =3D =
 0x0}
 
-------_=_NextPart_001_01C38EAE.C9280926
+------_=_NextPart_001_01C38DED.7029C6DC
 Content-Type: text/html;
 	charset="iso-8859-1"
 Content-Transfer-Encoding: quoted-printable
@@ -294,7 +296,7 @@ Content-Transfer-Encoding: quoted-printable
 charset=3Diso-8859-1">
 <META NAME=3D"Generator" CONTENT=3D"MS Exchange Server version =
 5.5.2653.12">
-<TITLE>FW: linux 2.4.18-5 nfs/rpc problem</TITLE>
+<TITLE>linux 2.4.18-5 nfs/rpc problem</TITLE>
 </HEAD>
 <BODY>
 
@@ -642,7 +644,7 @@ to_retries =3D 0x3, to_exponential =3D 0x1}, </FONT>
 
 </BODY>
 </HTML>
-------_=_NextPart_001_01C38EAE.C9280926--
+------_=_NextPart_001_01C38DED.7029C6DC--
 
 
 -------------------------------------------------------
