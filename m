@@ -1,24 +1,24 @@
 From: Nicolas Kowalski <Nicolas.Kowalski@imag.fr>
-Subject: nfs "storm"
-Date: Fri, 13 Jun 2003 15:15:44 +0200
+Subject: nfs "storm", additionnal information
+Date: Fri, 13 Jun 2003 15:47:16 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <vqowufqktj3.fsf@astazou.imag.fr>
+Message-ID: <vqor85yks2j.fsf@astazou.imag.fr>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from imag.imag.fr ([129.88.30.1])
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19QoPG-0004MP-00
-	for <nfs@lists.sourceforge.net>; Fri, 13 Jun 2003 06:15:50 -0700
+	id 19Qoto-0008Ge-00
+	for <nfs@lists.sourceforge.net>; Fri, 13 Jun 2003 06:47:25 -0700
 Received: from mail-veri.imag.fr (pave.imag.fr [129.88.43.12])
-	by imag.imag.fr (8.12.9/8.12.9) with ESMTP id h5DDFi9H011390
-	for <nfs@lists.sourceforge.net>; Fri, 13 Jun 2003 15:15:44 +0200 (CEST)
+	by imag.imag.fr (8.12.9/8.12.9) with ESMTP id h5DDlH9H020161
+	for <nfs@lists.sourceforge.net>; Fri, 13 Jun 2003 15:47:17 +0200 (CEST)
 Received: from astazou.imag.fr
 	([129.88.43.102] helo=astazou.imag.fr.imag.fr ident=kowalski)
 	by mail-veri.imag.fr with esmtp (Exim 3.35 #1 (Debian))
-	id 19QoPA-00055U-00
-	for <nfs@lists.sourceforge.net>; Fri, 13 Jun 2003 15:15:44 +0200
+	id 19Qoth-0005eG-00
+	for <nfs@lists.sourceforge.net>; Fri, 13 Jun 2003 15:47:17 +0200
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -33,38 +33,47 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Hello.
+Further investigation showed me that the knfsd processes seems to take
+an giant CPU percentage only when the user's quotas are exceeded:
 
-On a Linux (2.4.21-rc7-xfs) fileserver running knfsd, I just
-experienced what I call a "nfs storm" : the NFS server was completely
-overloaded (load average of 11). Here is what top showed me during
-this overload.
+- user 'foo' has a quota of 200MB max on /home/foo, and uses ~150MB.
 
-  PID USER     PRI  NI  SIZE  RSS SHARE STAT %CPU %MEM   TIME COMMAND
-  299 root       9   0     0    0     0 SW   99.9  0.0  53:45 nfsd
-  301 root      18   0     0    0     0 SW   99.9  0.0  53:23 nfsd
-  302 root      10   0     0    0     0 RW   99.9  0.0  52:52 nfsd
-  304 root      12   0     0    0     0 DW   99.9  0.0  53:33 nfsd
-  297 root      17   0     0    0     0 RW   92.4  0.0  53:45 nfsd
-  303 root      14   0     0    0     0 DW   52.1  0.0  53:52 nfsd
-  300 root       9   0     0    0     0 SW   48.5  0.0  53:51 nfsd
-  298 root       9   0     0    0     0 DW   40.2  0.0  51:56 nfsd
+- user "foo" launch an IO-heavy application.
 
-I investigated things using tcpdump, and it showed me that *only one*
-of our linux 2.4.20 nfs clients running a particular application (with
-a lots of IO) was causing this overload. A strange thing was that the
-"rpciod" process on that client was not so heavy (around 1-2% CPU)...
+- the application writes large amounts of data on /home/foo
 
-The server is a Dual-Xeon 2.4Ghz, with 1GB of memory and SCSI3 disks,
-connected on a 100/FD switch. The client is connected on to the same
-switch. The NFS mounts are done through automount, and do not use any
-options. There are approximatively 50 NFS clients (SunOS & Linux), and
-50 Windows stations (Samba shares) using this server, for home
-directories and shared applications.
+  => knfsd on the server keeps cool
 
-What can I do to make this server less "overload-prone" ?
 
-Many thanks in advance.
+- when the foo's quotas are exceeded, the application does not check
+for it, and keeps writing data on /home/foo
+
+  => knfsd on the server goes crazy
+
+
+Here is what I can see using tcpdump:
+
+15:24:27.914925 client > server: (frag 46149:924@7400)
+15:24:27.915111 client > server: (frag 46149:1480@5920+)
+15:24:27.915234 client > server: (frag 46149:1480@4440+)
+15:24:27.915368 client > server: (frag 46149:1480@2960+)
+15:24:27.915480 client > server: (frag 46149:1480@1480+)
+15:24:27.915603 client.2734922064 > server.nfs: 1472 write [|nfs]
+ (frag 46149:1480@0+)
+15:24:27.933821 server.nfs > client.2617481552: reply ok 120 writ
+e ERROR: Disc quota exceeded (DF)
+15:24:27.934151 client > server: (frag 46150:924@7400)
+15:24:27.934328 client > server: (frag 46150:1480@5920+)
+15:24:27.934452 client > server: (frag 46150:1480@4440+)
+15:24:27.934581 client > server: (frag 46150:1480@2960+)
+15:24:27.934704 client > server: (frag 46150:1480@1480+)
+15:24:27.934828 client.2751699280 > server.nfs: 1472 write [|nfs]
+ (frag 46150:1480@0+)
+15:24:27.953074 server.nfs > client.2634258768: reply ok 120 writ
+e ERROR: Disc quota exceeded (DF)
+
+
+The filesystems are XFS (CVS ~15 May), if this does matter.
 
 -- 
 Nicolas
