@@ -1,18 +1,18 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] Timeouts gone wild on ia64
-Date: Fri, 09 May 2003 10:12:27 -0400
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: RE: [PATCH] Timeouts gone wild on ia64
+Date: Fri, 9 May 2003 08:24:32 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3EBBB74B.4000008@RedHat.com>
-References: <482A3FA0050D21419C269D13989C6113127DB3@lavender-fe.eng.netapp.com>
+Message-ID: <482A3FA0050D21419C269D13989C6113127DB4@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="utf-8"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from nat-pool-rdu.redhat.com ([66.187.233.200] helo=lacrosse.corp.redhat.com)
+Received: from mx01.netapp.com ([198.95.226.53])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19E8bd-0007ub-00
-	for <nfs@lists.sourceforge.net>; Fri, 09 May 2003 07:12:13 -0700
-To: "Lever, Charles" <Charles.Lever@netapp.com>
+	id 19E9jx-0000tO-00
+	for <nfs@lists.sourceforge.net>; Fri, 09 May 2003 08:24:53 -0700
+To: "Steve Dickson" <SteveD@redhat.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,75 +25,59 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-It has to do with the value of HZ.... On a ia64, HZ is
-at 1024 and on an x86 machine its 100. Not taking this
-difference in account when figure the the minimal
-timeout values was causing timeouts to occur every 4ms
-instead of 40ms.
-
-The network trace didn't show anything substantial,
-but here is the debugging trail.
-
-By logging (and counting) the number of times call_status() was called
-with a -ETIMEDOUT status, it became very apparent that ia64 machine
-were timing out thousands of times more often than an x86 machine.
-The actual numbers was something like 1400 to 50 when I generated
-traffic by doing  md5sum /nfs/mounted/*.rpm > /dev/null.
-
-Next I took a look at what task->tk_timeout was being set to in
-do_xprt_transmit(). On an x86 it was being set to ~40ms. On
-an ia64 machine it was being set to ~4ms.
-
-That lead me to how rpc_calc_rto() was figuring out
-the RTOs... I noticed that RPC_RTO_MIN was the only
-constant that was not relative to HZ. So I did some
-experiments and found out by making it relative to HZ
-the timeout decreased substantially...
-
-SteveD.
-
-Lever, Charles wrote:
-
->steve-
-> 
->can you explain why there are more timeouts for ia64?  do you
->have a network trace you can share?
->
->-----Original Message----- 
->From: Steve Dickson [mailto:SteveD@RedHat.com] 
->Sent: Fri 5/9/2003 8:41 AM 
->To: nfs@lists.sourceforge.net 
->Cc: 
->Subject: [NFS] [PATCH] Timeouts gone wild on ia64
->
->
->
->Here is a patch that greatly reduces that number of 
->timeout (and EIO errors with soft mounts) that 
->occur when a fast client is talking to a slow server. 
->  
->We were noticing a large number of EIO errors when 
->a ia64 client was talking to a x86 server with 
->soft mounts (ala autofs).... 
->
->True, EIO errors should be expect with soft mounts but 
->it turns out that thousands of timeouts were occurring on 
->a ia64 client compared to 50 to 60 timeouts with 
->a x86 client when talking to the same slow server and 
->generating the same traffic. 
->
->What this patch does is make the minimal Round Trip 
->time value relative to HZ. So When HZ is greater (as 
->in the case of ia64) the minimal value goes up. 
->  
->Comments? 
->
->SteveD. 
->
->  
->
-
-
+b2ssIGkgd2FzIGNvbmZ1c2VkLiAgeW91ciBpbml0aWFsIGV4cGxhbmF0aW9uDQpzdWdnZXN0ZWQg
+eW91IHdlcmUgY2hhbmdpbmcgdGhlIGJlaGF2aW9yIG9mDQp0aGUgUlRPIGVzdGltYXRvciwgd2hl
+cmVhcyBpbiBmYWN0LCB5b3UgYXJlDQpjb3JyZWN0aW5nIGl0LiAgb24gaWE2NCwgdGhlIG1pbmlt
+dW0gdGltZW91dA0KdmFsdWUgaXMgaW5jb3JyZWN0IGJlY2F1c2UgSFogaXMgYW4gb3JkZXIgb2YN
+Cm1hZ25pdHVkZSBsYXJnZXIuDQoNCmhvd2V2ZXIsIGVxdWl2YWxlbnQgYmVoYXZpb3Igd291bGQg
+YmU6DQoNCiAgI2RlZmluZSBSUENfUlRPX01JTiAoSFovNTApDQoNCm5vdCBIWi8zMC4gIHdoeSBk
+aWQgeW91IGNob29zZSAzMD8NCg0KPiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9t
+OiBTdGV2ZSBEaWNrc29uIFttYWlsdG86U3RldmVEQHJlZGhhdC5jb21dDQo+IFNlbnQ6IEZyaWRh
+eSwgTWF5IDA5LCAyMDAzIDEwOjEyIEFNDQo+IFRvOiBMZXZlciwgQ2hhcmxlcw0KPiBDYzogbmZz
+QGxpc3RzLnNvdXJjZWZvcmdlLm5ldA0KPiBTdWJqZWN0OiBSZTogW05GU10gW1BBVENIXSBUaW1l
+b3V0cyBnb25lIHdpbGQgb24gaWE2NA0KPiANCj4gDQo+IEl0IGhhcyB0byBkbyB3aXRoIHRoZSB2
+YWx1ZSBvZiBIWi4uLi4gT24gYSBpYTY0LCBIWiBpcw0KPiBhdCAxMDI0IGFuZCBvbiBhbiB4ODYg
+bWFjaGluZSBpdHMgMTAwLiBOb3QgdGFraW5nIHRoaXMNCj4gZGlmZmVyZW5jZSBpbiBhY2NvdW50
+IHdoZW4gZmlndXJlIHRoZSB0aGUgbWluaW1hbA0KPiB0aW1lb3V0IHZhbHVlcyB3YXMgY2F1c2lu
+ZyB0aW1lb3V0cyB0byBvY2N1ciBldmVyeSA0bXMNCj4gaW5zdGVhZCBvZiA0MG1zLg0KPiANCj4g
+VGhlIG5ldHdvcmsgdHJhY2UgZGlkbid0IHNob3cgYW55dGhpbmcgc3Vic3RhbnRpYWwsDQo+IGJ1
+dCBoZXJlIGlzIHRoZSBkZWJ1Z2dpbmcgdHJhaWwuDQo+IA0KPiBCeSBsb2dnaW5nIChhbmQgY291
+bnRpbmcpIHRoZSBudW1iZXIgb2YgdGltZXMgY2FsbF9zdGF0dXMoKSB3YXMgY2FsbGVkDQo+IHdp
+dGggYSAtRVRJTUVET1VUIHN0YXR1cywgaXQgYmVjYW1lIHZlcnkgYXBwYXJlbnQgdGhhdCBpYTY0
+IG1hY2hpbmUNCj4gd2VyZSB0aW1pbmcgb3V0IHRob3VzYW5kcyBvZiB0aW1lcyBtb3JlIG9mdGVu
+IHRoYW4gYW4geDg2IG1hY2hpbmUuDQo+IFRoZSBhY3R1YWwgbnVtYmVycyB3YXMgc29tZXRoaW5n
+IGxpa2UgMTQwMCB0byA1MCB3aGVuIEkgZ2VuZXJhdGVkDQo+IHRyYWZmaWMgYnkgZG9pbmcgIG1k
+NXN1bSAvbmZzL21vdW50ZWQvKi5ycG0gPiAvZGV2L251bGwuDQo+IA0KPiBOZXh0IEkgdG9vayBh
+IGxvb2sgYXQgd2hhdCB0YXNrLT50a190aW1lb3V0IHdhcyBiZWluZyBzZXQgdG8gaW4NCj4gZG9f
+eHBydF90cmFuc21pdCgpLiBPbiBhbiB4ODYgaXQgd2FzIGJlaW5nIHNldCB0byB+NDBtcy4gT24N
+Cj4gYW4gaWE2NCBtYWNoaW5lIGl0IHdhcyBiZWluZyBzZXQgdG8gfjRtcy4NCj4gDQo+IFRoYXQg
+bGVhZCBtZSB0byBob3cgcnBjX2NhbGNfcnRvKCkgd2FzIGZpZ3VyaW5nIG91dA0KPiB0aGUgUlRP
+cy4uLiBJIG5vdGljZWQgdGhhdCBSUENfUlRPX01JTiB3YXMgdGhlIG9ubHkNCj4gY29uc3RhbnQg
+dGhhdCB3YXMgbm90IHJlbGF0aXZlIHRvIEhaLiBTbyBJIGRpZCBzb21lDQo+IGV4cGVyaW1lbnRz
+IGFuZCBmb3VuZCBvdXQgYnkgbWFraW5nIGl0IHJlbGF0aXZlIHRvIEhaDQo+IHRoZSB0aW1lb3V0
+IGRlY3JlYXNlZCBzdWJzdGFudGlhbGx5Li4uDQo+IA0KPiBTdGV2ZUQuDQo+IA0KPiBMZXZlciwg
+Q2hhcmxlcyB3cm90ZToNCj4gDQo+ID5zdGV2ZS0NCj4gPiANCj4gPmNhbiB5b3UgZXhwbGFpbiB3
+aHkgdGhlcmUgYXJlIG1vcmUgdGltZW91dHMgZm9yIGlhNjQ/ICBkbyB5b3UNCj4gPmhhdmUgYSBu
+ZXR3b3JrIHRyYWNlIHlvdSBjYW4gc2hhcmU/DQo+ID4NCj4gPi0tLS0tT3JpZ2luYWwgTWVzc2Fn
+ZS0tLS0tIA0KPiA+RnJvbTogU3RldmUgRGlja3NvbiBbbWFpbHRvOlN0ZXZlREBSZWRIYXQuY29t
+XSANCj4gPlNlbnQ6IEZyaSA1LzkvMjAwMyA4OjQxIEFNIA0KPiA+VG86IG5mc0BsaXN0cy5zb3Vy
+Y2Vmb3JnZS5uZXQgDQo+ID5DYzogDQo+ID5TdWJqZWN0OiBbTkZTXSBbUEFUQ0hdIFRpbWVvdXRz
+IGdvbmUgd2lsZCBvbiBpYTY0DQo+ID4NCj4gPg0KPiA+DQo+ID5IZXJlIGlzIGEgcGF0Y2ggdGhh
+dCBncmVhdGx5IHJlZHVjZXMgdGhhdCBudW1iZXIgb2YgDQo+ID50aW1lb3V0IChhbmQgRUlPIGVy
+cm9ycyB3aXRoIHNvZnQgbW91bnRzKSB0aGF0IA0KPiA+b2NjdXIgd2hlbiBhIGZhc3QgY2xpZW50
+IGlzIHRhbGtpbmcgdG8gYSBzbG93IHNlcnZlci4gDQo+ID4gIA0KPiA+V2Ugd2VyZSBub3RpY2lu
+ZyBhIGxhcmdlIG51bWJlciBvZiBFSU8gZXJyb3JzIHdoZW4gDQo+ID5hIGlhNjQgY2xpZW50IHdh
+cyB0YWxraW5nIHRvIGEgeDg2IHNlcnZlciB3aXRoIA0KPiA+c29mdCBtb3VudHMgKGFsYSBhdXRv
+ZnMpLi4uLiANCj4gPg0KPiA+VHJ1ZSwgRUlPIGVycm9ycyBzaG91bGQgYmUgZXhwZWN0IHdpdGgg
+c29mdCBtb3VudHMgYnV0IA0KPiA+aXQgdHVybnMgb3V0IHRoYXQgdGhvdXNhbmRzIG9mIHRpbWVv
+dXRzIHdlcmUgb2NjdXJyaW5nIG9uIA0KPiA+YSBpYTY0IGNsaWVudCBjb21wYXJlZCB0byA1MCB0
+byA2MCB0aW1lb3V0cyB3aXRoIA0KPiA+YSB4ODYgY2xpZW50IHdoZW4gdGFsa2luZyB0byB0aGUg
+c2FtZSBzbG93IHNlcnZlciBhbmQgDQo+ID5nZW5lcmF0aW5nIHRoZSBzYW1lIHRyYWZmaWMuIA0K
+PiA+DQo+ID5XaGF0IHRoaXMgcGF0Y2ggZG9lcyBpcyBtYWtlIHRoZSBtaW5pbWFsIFJvdW5kIFRy
+aXAgDQo+ID50aW1lIHZhbHVlIHJlbGF0aXZlIHRvIEhaLiBTbyBXaGVuIEhaIGlzIGdyZWF0ZXIg
+KGFzIA0KPiA+aW4gdGhlIGNhc2Ugb2YgaWE2NCkgdGhlIG1pbmltYWwgdmFsdWUgZ29lcyB1cC4g
+DQo+ID4gIA0KPiA+Q29tbWVudHM/IA0KPiA+DQo+ID5TdGV2ZUQuIA0KPiA+DQo+ID4gIA0KPiA+
+DQo+IA0KPiANCj4gDQo=
 
 
 -------------------------------------------------------
