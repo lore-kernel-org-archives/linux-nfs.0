@@ -1,16 +1,22 @@
-From: Dennis Cahillane <dennis@wittmanhydro.com>
-Subject: NFS share will not mount
-Date: Wed, 20 Aug 2003 15:42:27 -0500
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: nfs newbie, where to find portmapper?
+Date: Sat, 23 Aug 2003 17:31:22 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3F43DD33.4040705@wittmanhydro.com>
+Message-ID: <16199.6218.848334.275159@gargle.gargle.HOWL>
+References: <200308210452.06388.gostelow@global.co.za>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail.wittmanhydro.com ([216.9.129.211] helo=old.wittmanhydro.com)
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19pZtl-0001I9-00
-	for <nfs@lists.sourceforge.net>; Wed, 20 Aug 2003 13:49:41 -0700
-To: nfs@lists.sourceforge.net
+	id 19qSsK-0008Bv-00
+	for <nfs@lists.sourceforge.net>; Sat, 23 Aug 2003 00:31:52 -0700
+Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
+	(for <gostelow@global.co.za>) (for <nfs@lists.sourceforge.net>) By
+	note With Smtp ; Sat, 23 Aug 2003 17:31:33 +1000
+To: gostelow@global.co.za
+In-Reply-To: message from Peter Gostelow on Thursday August 21
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -23,51 +29,30 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-hello-
+On Thursday August 21, gostelow@global.co.za wrote:
+> Slightly off-topic, but I'm a bit stuck.
+> 
+> After building a custom GNU/Linux system, I am attemping to install a LAN 
+> using three computers where one is a bridge/router between two ethernet 
+> links. Hopefully, nfs will export the main (/usr/share, /home) directories on 
+> one host to all the others.
+> 
+> My problem is I cannot find a recent portmap source tarball, the debian one 
+> (file dates range from 1992 - 1996!) is incompatible with glibc headers. The 
+> Slackware has a binary only or a similarly old source. Perhaps I'm missing 
+> something, but the Sun Microsystem website doesn't list any rpc stuff, 
+> either. The alternative rpcbind (as found by web searches) apparently doesn't 
+> support the Intel platform.
+> 
+> So, what portmapper are the nfs developers using and is there a source tarball 
+> available for it?
 
-I have two machines that need to talk to each other via NFS.  The 
-server, wabash, is configured:
+I use the one that comes with debian.  It works fine.
 
-# cat /etc/exports
-/ev/in/statewide-data/drg 192.168.23.0/24(ro)
+Debian distribute a patch along with the tar-ball, and the patch
+presumable makes it compile with debian's libraries.
 
-The client, wms, is configured as follows
-
-# cat /etc/fstab
-...
-192.168.23.17:/ev/in/statewide-data/drg /var/www/html/in_maps/data/drg 
-nfs    defaults         0 0
-
-When I try to mount, the following happens.
-
-# mount -a
-mount: wrong fs type, bad option, bad superblock on 
-192.168.23.17:/ev/in/statewide-data/drg,
-        or too many mounted file systems
-
- From either machine.  The /var/log/messages on the client gains:
-
-Sep  9 16:28:25 wms kernel: nfs_get_root: getattr error = 116
-Sep  9 16:28:25 wms kernel: nfs_read_super: get root inode failed
-Sep  9 16:28:25 wms kernel: nfs warning: mount version older than kernel
-Sep  9 16:28:25 wms kernel: nfs_get_root: getattr error = 116
-Sep  9 16:28:25 wms kernel: nfs_read_super: get root inode failed
-
-on the server:
-
-Aug 20 15:35:01 wabash rpc.mountd: authenticated mount request from 
-192.168.23.27:864 for /ev/in/statewide-data/drg (/ev/in/statewide-data/drg)
-Aug 20 15:35:01 wabash rpc.mountd: authenticated mount request from 
-192.168.23.27:868 for /ev/in/statewide-data/drg (/ev/in/statewide-data/drg)
-
-I have been slaving away on this forever now.  Any help would be greatly 
-appreciated.
-
-         Dennis Cahillane
-
-
-
-
+NeilBrown
 
 
 -------------------------------------------------------
