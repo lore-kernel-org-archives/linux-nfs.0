@@ -1,22 +1,20 @@
-From: Hirokazu Takahashi <taka@valinux.co.jp>
-Subject: rq_arg
-Date: Fri, 15 Nov 2002 13:08:52 +0900 (JST)
+From: "myciel" <myciel@dotcom.pl>
+Subject: nvram pci card?
+Date: Fri, 15 Nov 2002 14:23:18 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20021115.130852.26540379.taka@valinux.co.jp>
+Message-ID: <00c501c28caa$2ec0c730$640a010a@winda>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_00C2_01C28CB2.8ACBE200"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from panoramix.vasoftware.com ([198.186.202.147])
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18CaLB-0007J6-00
-	for <nfs@lists.sourceforge.net>; Thu, 14 Nov 2002 22:52:33 -0800
-Received: from sv1.valinux.co.jp ([202.221.173.100]:1214)
-	by panoramix.vasoftware.com with esmtp (Exim 4.05-VA-mm1 #1 (Debian))
-	id 18CXvl-0002SC-00
-	for <nfs@lists.sourceforge.net>; Thu, 14 Nov 2002 20:18:09 -0800
-To: Neil Brown <neilb@cse.unsw.edu.au>
+Received: from rtr.pul.pl ([195.116.89.98] helo=poczta.dotcom.pl)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18CgWv-0000r6-00
+	for <nfs@lists.sourceforge.net>; Fri, 15 Nov 2002 05:29:05 -0800
+Received: from winda (office.interia.pl [213.76.176.114])
+	by poczta.dotcom.pl (Postfix) with ESMTP id 332F512452
+	for <nfs@lists.sourceforge.net>; Fri, 15 Nov 2002 14:25:26 +0100 (CET)
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,37 +27,46 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello Neil,
+This is a multi-part message in MIME format.
 
-I found a bug in svc_udp_recvfrom() and fixed it.
-rq_arg.head[0].iov_len and rq_arg.page_len will be set to
-wrong value when length of date is smaller than PAGE_SIZE.
+------=_NextPart_000_00C2_01C28CB2.8ACBE200
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-Thank you,
-Hirokazu Takahashi.
+Hi
 
+Do You know about any pci based nvram card? maybe somebody has already
+experiences using it with linux nfs fileserver?
 
---- net/sunrpc/svcsock.c.BUG	Thu Nov 14 22:09:36 2030
-+++ net/sunrpc/svcsock.c	Fri Nov 15 11:24:34 2030
-@@ -572,10 +572,15 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 		return 0;
- 	}
- 
--
- 	rqstp->rq_arg.len = len;
--	rqstp->rq_arg.page_len = len - rqstp->rq_arg.head[0].iov_len;
--	rqstp->rq_argused += (rqstp->rq_arg.page_len + PAGE_SIZE - 1)/ PAGE_SIZE;
-+	if (len <= rqstp->rq_arg.head[0].iov_len) {
-+		rqstp->rq_arg.head[0].iov_len = len;
-+		rqstp->rq_arg.page_len = 0;
-+	} else {
-+		rqstp->rq_arg.page_len = len - rqstp->rq_arg.head[0].iov_len;
-+		rqstp->rq_argused += (rqstp->rq_arg.page_len + PAGE_SIZE - 1)/ PAGE_SIZE;
-+	}
-+
- 	rqstp->rq_prot        = IPPROTO_UDP;
- 
- 	/* Get sender address */
+rafal mycielski
+
+------=_NextPart_000_00C2_01C28CB2.8ACBE200
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META content=3D"text/html; charset=3Diso-8859-1" =
+http-equiv=3DContent-Type>
+<META content=3D"MSHTML 5.00.3103.1000" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV><FONT face=3DArial size=3D2>Hi</FONT></DIV>
+<DIV>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>Do You know about any pci based nvram =
+card? maybe=20
+somebody has already</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>experiences using it with linux nfs=20
+fileserver</FONT><FONT face=3DArial size=3D2>?</FONT></DIV>
+<DIV>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>rafal =
+mycielski</FONT></DIV></BODY></HTML>
+
+------=_NextPart_000_00C2_01C28CB2.8ACBE200--
+
 
 
 -------------------------------------------------------
