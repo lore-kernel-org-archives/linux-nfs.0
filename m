@@ -1,22 +1,22 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 21 of 34 - Remove a comment that is no longer accurate
-Date: Tue, 24 Feb 2004 10:49:41 +1100
+Subject: [PATCH] kNFSd - 22 of 34 - move fh_dup2 and fix it
+Date: Tue, 24 Feb 2004 10:49:42 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1AvPpV-0006Jl-00@notabene>
+Message-ID: <E1AvPpW-0006Ju-00@notabene>
 References: <20040224104820.23884.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AvPr3-0006xb-GJ
+	id 1AvPr3-0006xf-LY
 	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 15:51:17 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
-	id 1AvPqf-0005hl-Ql
-	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 15:50:54 -0800
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.30)
+	id 1AvPf2-0002Q9-3Z
+	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 15:38:52 -0800
 Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
 	(for <akpm@osdl.org>) (for <nfs@lists.sourceforge.net>) By note With
-	Smtp ; Tue, 24 Feb 2004 10:49:43 +1100
+	Smtp ; Tue, 24 Feb 2004 10:50:42 +1100
 To: Andrew Morton <akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,25 +31,57 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
+fh_dup2 duplicates an entire svc_fh structure, so in addition to dget()'ing the
+dentry, it also needs to bump the reference count on fh_export.
+
+Moved it out of the header file into nfsfh.c for the simple reason that I
+couldn't figure out how to reorganize the headers files right so that the
+fh_dup2 could use the definition of svc_fh.  Since fh_dup2 is never actually
+used outside of nfs4proc.c, it could just as well be moved there....
+
  ----------- Diffstat output ------------
- ./fs/nfsd/nfs4proc.c |    6 ------
- 1 files changed, 6 deletions(-)
+ ./fs/nfsd/nfs4proc.c         |   10 ++++++++++
+ ./include/linux/nfsd/nfsfh.h |    8 --------
+ 2 files changed, 10 insertions(+), 8 deletions(-)
 
 diff ./fs/nfsd/nfs4proc.c~current~ ./fs/nfsd/nfs4proc.c
---- ./fs/nfsd/nfs4proc.c~current~	2004-02-24 10:42:33.000000000 +1100
+--- ./fs/nfsd/nfs4proc.c~current~	2004-02-24 10:42:34.000000000 +1100
 +++ ./fs/nfsd/nfs4proc.c	2004-02-24 10:42:34.000000000 +1100
-@@ -55,12 +55,6 @@
+@@ -55,6 +55,16 @@
  
  #define NFSDDBG_FACILITY		NFSDDBG_PROC
  
--/* Note: The organization of the OPEN code seems a little strange; it
-- * has been superfluously split into three routines, one of which is named
-- * nfsd4_process_open2() even though there is no nfsd4_process_open1()!
-- * This is because the code has been organized in anticipation of a
-- * subsequent patch which will implement more of the NFSv4 state model.
-- */
++static inline void
++fh_dup2(struct svc_fh *dst, struct svc_fh *src)
++{
++	fh_put(dst);
++	dget(src->fh_dentry);
++	if (src->fh_export)
++		cache_get(&src->fh_export->h);
++	*dst = *src;
++}
++
  static int
  do_open_lookup(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_open *open)
+ {
+
+diff ./include/linux/nfsd/nfsfh.h~current~ ./include/linux/nfsd/nfsfh.h
+--- ./include/linux/nfsd/nfsfh.h~current~	2004-02-24 10:40:23.000000000 +1100
++++ ./include/linux/nfsd/nfsfh.h	2004-02-24 10:42:34.000000000 +1100
+@@ -209,14 +209,6 @@ fh_copy(struct svc_fh *dst, struct svc_f
+ 	return dst;
+ }
+ 
+-static __inline__ void
+-fh_dup2(struct svc_fh *dst, struct svc_fh *src)
+-{
+-	fh_put(dst);
+-	dget(src->fh_dentry);
+-	*dst = *src;
+-}
+-
+ static __inline__ struct svc_fh *
+ fh_init(struct svc_fh *fhp, int maxsize)
  {
 
 
