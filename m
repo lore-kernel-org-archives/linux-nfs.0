@@ -1,86 +1,48 @@
-From: Marc Schmitt <mschmitt@inf.ethz.ch>
-Subject: rpc.mountd: getfh failed: Operation not permitted
-Date: Wed, 06 Aug 2003 17:08:21 +0200
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3F3119E5.2040207@inf.ethz.ch>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: [NFS] [PATCH] kNFSd: Fixes a problem with inode clean up for vxfs
+Date: Wed, 06 Aug 2003 12:11:16 -0400
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <3F3128A4.8030305@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from medoc.inf.ethz.ch ([129.132.178.200])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19kPtr-0003k4-00
-	for <nfs@lists.sourceforge.net>; Wed, 06 Aug 2003 08:08:27 -0700
-Received: from localhost (localhost [127.0.0.1])
-	by medoc.inf.ethz.ch (Postfix) with ESMTP id 7DAC065119
-	for <nfs@lists.sourceforge.net>; Wed,  6 Aug 2003 17:08:23 +0200 (MEST)
-Received: from medoc.inf.ethz.ch ([127.0.0.1])
- by localhost (medoc [127.0.0.1]) (amavisd-new, port 10024) with LMTP
- id 13758-01-8 for <nfs@lists.sourceforge.net>;
- Wed,  6 Aug 2003 17:08:23 +0200 (MEST)
-Received: from inf.ethz.ch (ikarus.inf.ethz.ch [129.132.10.58])
-	by medoc.inf.ethz.ch (Postfix) with ESMTP id D67B86510C
-	for <nfs@lists.sourceforge.net>; Wed,  6 Aug 2003 17:08:22 +0200 (MEST)
-To: nfs@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Cc: nfs@lists.sourceforge.net,
+	linux-kernel <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
+To: Neil Brown <neilb@cse.unsw.edu.au>
+List-ID: <nfs.lists.sourceforge.net>
 
-Hi (again)
+This a patch I've received from Veritas. Supposedly they have
+already submitted this but I can't seem to find it in any 2.4 trees..
 
-I don't get any rest with my Linux NFS server... after you helped me 
-with the mountd RPC issues, today another problem occured, it was the 
-third time this happened.
+Does anybody recognize this and are there any known issues with it?
 
-All of a sudden, the server comes into a state where it will fill the 
-logs with the error message in the subject. Clients with active mounts 
-will continue working fine, but some mount requests (only some!) will be 
-denied with that error. Restarting the nfs daemon helps, after that some 
-users reported that their homes were hanging with a stale handle, though.
-
-After googling around, I found various suggestions:
-
-- upgrade to kernel >= 2.4.20 (which is something I have to do tonight 
-anyway, the server currently suffers from the quota bug in 2.4.18-27 
-that was solved in 2.4.20-18, too: "kernel: VFS: find_free_dqentry(): 
-Data block full but it shouldn't. kernel: VFS: Error -5 occured while 
-creating quota.")
-
-- increase the number of open file handles
-Is this really related? file-max is currently set to 399763, which 
-should be enough...
-
-- locking issues
-Samba is running on the server, too. Could this potentially lead to this 
-error? Or serveral clients accessing the same file over NFS?
-
-Hopefully, the problem will go away with the kernel upgrade.
-
-The underlying filesystem is ext3, mounted with usrquota and 
-data=journal, btw.
-
-Please let me know if you see other potential reasons for this problem, 
-thanks.
-
-Greetings
-     Marc
+The Problem: The nfsd_findparent creates a dentry using d_alloc_root. 
+The d_op
+vector pointer in this dentry is not initialized. Hence filesystems that 
+supply
+the vector have a problem. nfs exports of such filesystems do not work
+correctly under memory pressure.  vxfs, vfat, ntfs are amongst the 
+filesystems
+affected by the bug.  Need redhat to fix nfsd code in their kernels. 
+Ideally
+a kernel needs to ask a filesystem to setup a d_op vector.  An entry point
+into a filesystem for doing this job doesn't exist. We can work around the
+problem by copying d_op vector pointer from the child of the dentry, whose
+d_op vector is correct.
 
 
+The Patch:
 
+--- ./fs/nfsd/nfsfh.c.diff      Wed Jul  2 13:17:35 2003
++++ ./fs/nfsd/nfsfh.c   Tue Jul 29 04:45:43 2003
+@@ -303,6 +303,7 @@ struct dentry *nfsd_findparent(struct de
+                       if (pdentry) {
+                               igrab(tdentry->d_inode);
+                               pdentry->d_flags |= 
+DCACHE_NFSD_DISCONNECTED;
++                              pdentry->d_op = child->d_op;
+                       }
+               }
+               if (pdentry == NULL)
 
-
--------------------------------------------------------
-This SF.Net email sponsored by: Free pre-built ASP.NET sites including
-Data Reports, E-commerce, Portals, and Forums are available now.
-Download today and enter to win an XBOX or Visual Studio .NET.
-http://aspnet.click-url.com/go/psa00100003ave/direct;at.aspnet_072303_01/01
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+SteveD.
