@@ -1,19 +1,24 @@
-From: Juha <juhis@trinity.is-a-geek.com>
-Subject: NFS volumes don't mount at client boot-up
-Date: Sat, 23 Aug 2003 13:13:35 +0300
+From: Hans-Peter Jansen <hpj@urpla.net>
+Subject: nfs errors clutter up logs after 2.4.20 -> 2.4.22-pre10
+Date: Sat, 23 Aug 2003 14:04:34 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1061633615.986.21.camel@client.veehoo.net>
+Message-ID: <200308231404.34087.hpj@urpla.net>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain;
+  charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from cs128098.pp.htv.fi
-	([213.243.128.98] helo=trinity.is-a-geek.com ident=postfix)
+Received: from moutng.kundenserver.de ([212.227.126.189])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19qVOd-0005Ha-00
-	for <nfs@lists.sourceforge.net>; Sat, 23 Aug 2003 03:13:23 -0700
-Received: from server.veehoo.net (client.veehoo.net [192.168.0.10])
-	by trinity.is-a-geek.com (Postfix) with ESMTP id E94EC3F216
-	for <nfs@lists.sourceforge.net>; Sat, 23 Aug 2003 13:35:43 +0300 (EEST)
+	id 19qX8K-0002Ur-00
+	for <nfs@lists.sourceforge.net>; Sat, 23 Aug 2003 05:04:40 -0700
+Received: from [212.227.126.160] (helo=mrelayng.kundenserver.de)
+	by moutng.kundenserver.de with esmtp (Exim 3.35 #1)
+	id 19qX8I-0002bI-00
+	for nfs@lists.sourceforge.net; Sat, 23 Aug 2003 14:04:38 +0200
+Received: from [217.231.159.217] (helo=mail.lisa.de)
+	by mrelayng.kundenserver.de with asmtp (Exim 3.35 #1)
+	id 19qX8H-0002Og-00
+	for nfs@lists.sourceforge.net; Sat, 23 Aug 2003 14:04:38 +0200
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -27,54 +32,40 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi list,
+Hi,
 
-A new problem with nfs has just emerged on my setup between two linux
-machines (nfs sever is a debian testing, client a redhat 9). I have two
-volumes on the server that I wan't to share, lets call them /mnt/foo and
-/mnt/bar. When I boot the client machine, the nfs shares won't get
-mounted, instead I get an error like this:
+after kernel update all my (diskless) systems clutter up the syslog
+with:
 
-Aug 23 12:21:53 client mount: mount: RPC: Unable to receive; errno =
-Connection refused
-Aug 23 12:21:53 client mount: mount: RPC: Unable to receive; errno =
-Connection refused
-Aug 23 12:21:53 client netfs: Mounting NFS filesystems:  failed
+Aug 23 13:41:42 yogi kernel: nfs: server shrek not responding, still trying
+Aug 23 13:41:42 yogi last message repeated 8 times
+Aug 23 13:41:44 yogi kernel: nfs: server xxx.yy.zz.102 not responding, still trying
+Aug 23 13:41:45 yogi kernel: nfs: server xxx.yy.zz.102 OK
+Aug 23 13:41:45 yogi kernel: nfs: server shrek OK
+Aug 23 13:41:45 yogi last message repeated 8 times
+Aug 23 13:43:17 yogi kernel: nfs: server shrek not responding, still trying
+Aug 23 13:43:17 yogi last message repeated 8 times
+Aug 23 13:43:19 yogi kernel: nfs: server xxx.yy.zz.102 not responding, still trying
+Aug 23 13:43:20 yogi kernel: nfs: server xxx.yy.zz.102 OK
+Aug 23 13:43:20 yogi kernel: nfs: server shrek OK
+Aug 23 13:43:20 yogi last message repeated 8 times
+Aug 23 13:44:53 yogi kernel: nfs: server shrek not responding, still trying
+Aug 23 13:44:53 yogi last message repeated 15 times
+Aug 23 13:44:54 yogi kernel: nfs: server xxx.yy.zz.102 not responding, still trying
+Aug 23 13:44:54 yogi kernel: nfs: server shrek not responding, still trying
+Aug 23 13:44:56 yogi kernel: nfs: server shrek OK
+Aug 23 13:44:56 yogi kernel: nfs: server xxx.yy.zz.102 OK
+Aug 23 13:44:56 yogi kernel: nfs: server shrek OK
+Aug 23 13:44:56 yogi last message repeated 15 times
 
-But then if I restart the nfs server on the 'server' machine and then do
-a mount on the 'client' machine, I get *one* of the shares to mount. And
-if I repeat this procedure, I get the other share to mount. In other
-words, if I do
+Funny is the continous change of name <-> ip address. I would rule out 
+named problems, but who knows... It happens predictable with 
+2.4.22-pre10, while it doesn't happen with 2.4.20.
 
-server:# /etc/init.d/nfs-kernel-server restart
-client:# mount -a
-mount: RPC: Unable to receive; errno = Connection refused
+Anybody with an idea, whats going on here?
 
-server# /etc/init.d/nfs-kernel-server restart
-client# mount -a
-
-I get both of the shares to mount. I haven't changed my config files but
-the setup used to work, I don't know what happened. If I reboot the
-'server' machine while the client is running, the shares get mounted
-without problems. This is my configuration:
-
-'server': /etc/exports
-/mnt/foo            client(rw,nohide,async)
-/mnt/bar            client(rw,nohide,async)
-
-'client': /ets/fstab
-server:/mnt/foo  /mnt/foo  nfs  rw,hard,intr,rsize=8192,wsize=8192
-server:/mnt/bar  /mnt/bar  nfs  rw,hard,intr,rsize=8192,wsize=8192
-
-Does anybody have ideas what could be happening? What would be the
-correct way to start debugging where the problem lies? I'm totally
-clueless here, any help appreciated.
-
-Thanks in advance,
-
-Juhis
-
-
+TIA,
+Pete
 
 
 -------------------------------------------------------
