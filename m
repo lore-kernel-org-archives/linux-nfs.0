@@ -1,13 +1,13 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 5 of 9 - Make sure an RPC socket is closed immediately when a server write fails.
+Subject: [PATCH] kNFSd - 4 of 9 - Set SOCK_NOSPACE when RPC server decides there is insufficient.
 Date: Wed, 21 May 2003 13:12:10 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19IK1S-00061s-00@notabene.cse.unsw.edu.au>
+Message-ID: <E19IK1S-00061n-00@notabene.cse.unsw.edu.au>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19IK1f-0000vH-00
+	id 19IK1f-0000vS-00
 	for <nfs@lists.sourceforge.net>; Tue, 20 May 2003 20:12:24 -0700
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
@@ -27,56 +27,32 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 ### Comments for ChangeSet
-
-The check for "write was incomplete" is not atomic with the actual write,
-so a second write could slip in after a partial write to a tcp socket
-and this will cause problems.
-
-So we move the locking out a bit, and test if the socket has
-been deleted (SK_DEAD) between getting the lock and trying
-to send.
+SOCK_NOSPACE is set, so we must set it when we want to get
+a ->write_space callback.
 
  ----------- Diffstat output ------------
- ./net/sunrpc/svcsock.c |   13 +++++++------
- 1 files changed, 7 insertions(+), 6 deletions(-)
+ ./net/sunrpc/svcsock.c |    2 ++
+ 1 files changed, 2 insertions(+)
 
 diff ./net/sunrpc/svcsock.c~current~ ./net/sunrpc/svcsock.c
 --- ./net/sunrpc/svcsock.c~current~	2003-05-20 16:34:34.000000000 +1000
-+++ ./net/sunrpc/svcsock.c	2003-05-20 16:34:35.000000000 +1000
-@@ -360,9 +360,6 @@ svc_sendto(struct svc_rqst *rqstp, struc
- 
- 	slen = xdr->len;
- 
--	/* Grab svsk->sk_sem to serialize outgoing data. */
--	down(&svsk->sk_sem);
--
- 	if (rqstp->rq_prot == IPPROTO_UDP) {
- 		/* set the destination */
- 		struct msghdr	msg;
-@@ -415,8 +412,6 @@ svc_sendto(struct svc_rqst *rqstp, struc
- 			len += result;
++++ ./net/sunrpc/svcsock.c	2003-05-20 16:34:34.000000000 +1000
+@@ -166,6 +166,7 @@ svc_sock_enqueue(struct svc_sock *svsk)
+ 		goto out_unlock;
  	}
- out:
--	up(&svsk->sk_sem);
--
- 	dprintk("svc: socket %p sendto([%p %Zu... ], %d) = %d (addr %x)\n",
- 			rqstp->rq_sock, xdr->head[0].iov_base, xdr->head[0].iov_len, xdr->len, len,
- 		rqstp->rq_addr.sin_addr.s_addr);
-@@ -1258,7 +1253,13 @@ svc_send(struct svc_rqst *rqstp)
- 		xb->page_len +
- 		xb->tail[0].iov_len;
  
--	len = svsk->sk_sendto(rqstp);
-+	/* Grab svsk->sk_sem to serialize outgoing data. */
-+	down(&svsk->sk_sem);
-+	if (test_bit(SK_DEAD, &svsk->sk_flags))
-+		len = -ENOTCONN;
-+	else
-+		len = svsk->sk_sendto(rqstp);
-+	up(&svsk->sk_sem);
- 	svc_sock_release(rqstp);
++	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
+ 	if (((svsk->sk_reserved + serv->sv_bufsz)*2
+ 	     > svc_sock_wspace(svsk))
+ 	    && !test_bit(SK_CLOSE, &svsk->sk_flags)
+@@ -176,6 +177,7 @@ svc_sock_enqueue(struct svc_sock *svsk)
+ 			svc_sock_wspace(svsk));
+ 		goto out_unlock;
+ 	}
++	clear_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
  
- 	if (len == -ECONNREFUSED || len == -ENOTCONN || len == -EAGAIN)
+ 	/* Mark socket as busy. It will remain in this state until the
+ 	 * server has processed all pending data and put the socket back
 
 
 -------------------------------------------------------
