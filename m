@@ -1,18 +1,17 @@
-From: David Rees <dbr@greenhydrant.com>
-Subject: Re: Horrible NFS read performance between 2.4.18/19?
-Date: Wed, 21 Aug 2002 21:58:29 -0700
+From: lubos klokner <lubos@klokner.sk>
+Subject: clien kernel: 2.2.4.19
+Date: Thu, 22 Aug 2002 14:37:07 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020821215829.A2510@greenhydrant.com>
-References: <20020821205915.A2190@greenhydrant.com>
+Message-ID: <20020822123707.GB18332@creon.profinet.sk>
+Reply-To: lubos@klokner.sk
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [208.48.139.185] (helo=forty.greenhydrant.com)
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17hk3H-0004Nk-00
-	for <nfs@lists.sourceforge.net>; Wed, 21 Aug 2002 21:58:35 -0700
+Received: from creon.profinet.sk ([195.46.64.12])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17hrj9-0001sE-00
+	for <nfs@lists.sourceforge.net>; Thu, 22 Aug 2002 06:10:19 -0700
 To: nfs@lists.sourceforge.net
-In-Reply-To: <20020821205915.A2190@greenhydrant.com>; from dbr@greenhydrant.com on Wed, Aug 21, 2002 at 08:59:16PM -0700
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,19 +24,20 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Following up to myself...
+hello,
 
-On Wed, Aug 21, 2002 at 08:59:16PM -0700, David Rees wrote:
-> 
-> The problem is that using any rsize/wsize combination larger that 2048
-> results in the nfs clients getting horrible read performance.  The defaults
-> worked fine with the client/server ran 2.4.18 with the NFS-ALL patch.  I
-> have not tried updated the clients to 2.4.19, but that is the next step. 
-> Write performance is fine.
+i have one storage with xfs filesystem exported via nfs (kernel 2.4.19,
+i had the same problems with another 2.4.x kernels),
+next i have 6 webservers on kernel 2.2.20 which are using exported nfs
+volume. always when i want to switch to kernel 2.4.x
+(this time a tried 2.4.19) on webservers, load
+increase from 10 to 100 and webservers become very slow.
+can you help me please ?
 
-Upgrading the client to 2.4.19 restored read performance...
+best regards.
+-- 
+lubos klokner <lubos@klokner.sk>
 
--Dave
 
 
 -------------------------------------------------------
