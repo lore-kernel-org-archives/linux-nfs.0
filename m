@@ -1,24 +1,23 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: rpc.mountd stops functioning
-Date: Thu, 5 Aug 2004 10:46:59 -0400
+From: Greg Banks <gnb@sgi.com>
+Subject: Re: ETIMEDOUT in nfsd?
+Date: Fri, 6 Aug 2004 10:50:50 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040805144659.GD25948@fieldses.org>
-References: <411217BE.8070209@framestore-cfc.com>
+Message-ID: <20040806005050.GX5581@sgi.com>
+References: <20040803081503.GM5581@sgi.com> <20040803191610.GC7781@fieldses.org> <20040804073500.GP5581@sgi.com> <20040804141346.GA19282@fieldses.org> <20040805022608.GR5581@sgi.com> <20040805142159.GB25948@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BsjWJ-0004la-8P
-	for nfs@lists.sourceforge.net; Thu, 05 Aug 2004 07:47:03 -0700
-Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.34)
-	id 1BsjWI-0000vw-RN
-	for nfs@lists.sourceforge.net; Thu, 05 Aug 2004 07:47:03 -0700
-To: Johan van den Dorpe <johan.vandendorpe@framestore-cfc.com>
-In-Reply-To: <411217BE.8070209@framestore-cfc.com>
+	id 1Bst4F-0001v5-My
+	for nfs@lists.sourceforge.net; Thu, 05 Aug 2004 17:58:43 -0700
+Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
+	id 1Bst4F-0007MH-8u
+	for nfs@lists.sourceforge.net; Thu, 05 Aug 2004 17:58:43 -0700
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20040805142159.GB25948@fieldses.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,39 +30,60 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Aug 05, 2004 at 12:19:26PM +0100, Johan van den Dorpe wrote:
-> For a long time we've been experiencing problems with rpc.mountd 
-> stopping functioning.
+On Thu, Aug 05, 2004 at 10:21:59AM -0400, J. Bruce Fields wrote:
+> On Thu, Aug 05, 2004 at 12:26:08PM +1000, Greg Banks wrote:
+> > On Wed, Aug 04, 2004 at 10:13:46AM -0400, J. Bruce Fields wrote:
+> > > This is only right if upcalls are done before you've done anything
+> > > non-idempotent, which makes it hard to handle NFSv4 compounds
+> > > correctly.
+> > 
+> > Ouch, this is not a good assumption, especially considering servers
+> > rebooting and cache timeouts.
+> 
+> I don't see the problem you're referring to.  I don't believe that in
+> either case these internal replays add any problems that we don't
+> already have, but perhaps I'm missing something.
 
-Maybe you need the following?
+Perhaps I misunderstood your sentence...did you instead mean the
+assumption is that nothing non-idempotent happens *between* when the
+cache is missed and an upcall enqueued, and when the upcall completes?
+I was thinking something different...
 
-(Neil or someone, could you please apply this?  Last I checked it wasn't
-in nfs-utils cvs.)
+Perhaps that still sound like a problem.  For example, imagine a test
+where two clients both try to create a file (typical file locking
+strategy e.g. for mail clients) and one of them sends creds which
+miss the cache and need an upcall and the other's creds hit the
+cache.  Does that cache-missing client always lose the race
+gracefully?  Does something unpleasant happen with the file?
 
---Bruce Fields
+> > > > Why not send EJUKEBOX to the client, and let it manage retry using a
+> > > > retry strategy designed for a slow server instead of the one designed
+> > > > for lossy networks?
+> > > 
+> > > That might mean returning EJUKEBOX on a lot of common operations (e.g.
+> > > on the first rpc request from a new client), when the server usually
+> > > could have replied very quickly.
+> > 
+> > Potentially.  But, in your experience do idmapper upcalls proceed quickly?
+> 
+> It's a good question; it would be interesting to measure them sometime
+> with a variety of different configurations (local /etc/passwd, ldap,
+> etc.), but we haven't gotten around to that yet.
 
->From Garrick Staples <garrick@usc.edu>:
+You might want to look into what happens when the userspace daemon
+does a query to an LDAP server which is very slow, e.g. multiple
+seconds delay.  There was some unpleasantness in situations like
+this when upcalls to rpc.mountd which involved mountd doing reverse
+DNS lookups, were added to IRIX a few releases ago.  One of the results
+was that mountd needed to become multithreaded.  The lesson from
+that was to assume that upcalls are going to take more time than
+you want them to, and have a sensible strategy with timeouts and
+parallelism.
 
-After mountd handles a cache upcall, we should clear the relevant bits in the
-fd_set.
-
----
-
- nfs-utils-1.0.6-bfields/utils/mountd/cache.c |    1 +
- 1 files changed, 1 insertion(+)
-
-diff -puN utils/mountd/cache.c~cache_select_bugfix utils/mountd/cache.c
---- nfs-utils-1.0.6/utils/mountd/cache.c~cache_select_bugfix	2004-07-14 12:52:57.000000000 -0400
-+++ nfs-utils-1.0.6-bfields/utils/mountd/cache.c	2004-07-14 12:52:57.000000000 -0400
-@@ -315,6 +315,7 @@ int cache_process_req(fd_set *readfds) 
- 		    FD_ISSET(fileno(cachelist[i].f), readfds)) {
- 			cnt++;
- 			cachelist[i].cache_handle(cachelist[i].f);
-+			FD_CLR(fileno(cachelist[i].f), readfds);
- 		}
- 	}
- 	return cnt;
-_
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
 
 -------------------------------------------------------
