@@ -1,22 +1,19 @@
-From: Neil Horman <nhorman@redhat.com>
-Subject: Re: Help diagnosing bizarre NFS problem
-Date: Mon, 24 Jan 2005 07:40:54 -0500
-Message-ID: <41F4ECD6.90405@redhat.com>
-References: <BA594DD2-65DA-11D9-B0EB-000A95A07AB8@valuecommerce.co.jp> <731336CA-6DE6-11D9-8B4D-000A95A07AB8@valuecommerce.co.jp>
+From: gb <bakerg3@yahoo.com>
+Subject: NFS lockups/hangs on RHEL64 U4 ?
+Date: Mon, 24 Jan 2005 14:34:40 -0800 (PST)
+Message-ID: <20050124223440.77165.qmail@web41301.mail.yahoo.com>
+Reply-To: greg@bakers.org
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Content-Type: text/plain; charset=us-ascii
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ct3Wg-0002LK-Od
-	for nfs@lists.sourceforge.net; Mon, 24 Jan 2005 04:41:02 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1Ct3Wf-0000zF-TX
-	for nfs@lists.sourceforge.net; Mon, 24 Jan 2005 04:41:02 -0800
-To: Nathan Ollerenshaw <nathan@valuecommerce.co.jp>
-In-Reply-To: <731336CA-6DE6-11D9-8B4D-000A95A07AB8@valuecommerce.co.jp>
+	id 1CtCnM-0003jO-Pu
+	for nfs@lists.sourceforge.net; Mon, 24 Jan 2005 14:34:52 -0800
+Received: from web41301.mail.yahoo.com ([66.218.93.186])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
+	id 1CtCnK-0006kD-DI
+	for nfs@lists.sourceforge.net; Mon, 24 Jan 2005 14:34:52 -0800
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,194 +27,86 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Nathan Ollerenshaw wrote:
-> Hi folks,
-> 
-> I posted this a couple of weeks ago, hoping someone could give us a clue.
-> 
-> We've dropped back to UDP and 1024 wsize and rsize, which seems to have 
-> killed the problem for our webservers (yay) but also killed performance 
-> (boo).
-> 
-> I'm wondering if any of you would have any insight as to why this would 
-> fix the problem, and what the root cause might be?
-> 
-> Currently the vendor is blaming the network and the linux NFS client 
-> code for the issue; I need a better idea than just "its your 
-> network/linux os fault".
-> 
-> Thanks,
-> 
-> Nathan.
-> 
-Dont suppose you can provide access to the tcpdumps, can you?
-Neil
 
-> ps. If this is completely the wrong place to ask about technical 
-> difficulties with the Linux NFS client stack please point me in the 
-> right direction. I kinda got no response from the last email so I'm 
-> assuming either a) nobody knows or b) nobody cares or c) I'm posting to 
-> the wrong list ;)
-> 
-> On Jan 14, 2005, at 12:16 PM, Nathan Ollerenshaw wrote:
-> 
->> Hi All,
->>
->> I need some help diagnosing a bizarre problem that has been affecting 
->> our NFS based system for the past 4 weeks or so. We've tried getting 
->> help from our NAS vendor (EMC) and we've been trawling google (and 
->> these list archives) and so far not found any real indication of what 
->> the problem might be.
->>
->> Please, if you have any ideas of how to diagnose the problem, please 
->> let us know.
->>
->> THE SETUP:
->>
->> We have an EMC NAS box, a Celerra, running DART (so they tell us, we 
->> don't have access to it, so I have no idea whats going on in the 
->> server side).
->>
->> We have a pair of foundry networks 48 port 10/100 switches providing a 
->> switched network for the machines. There are 6 mail servers and 4 web 
->> servers (soon to be 8) that mount a filesystem each from the NAS. We 
->> have a filesystem for mail data (stored in Maildir format) and a 
->> filesystem for web content. The webservers see about 20 million 
->> requests a day, load balanced across all of them with a pair of 
->> foundries.
->>
->> Mail is stored in the format of 
->> /data/mail/xx/xx/domain/user@domain/Maildir/. Web is stored in the 
->> format of /data/web/xx/xx/domain/ with directories under here for the 
->> www docroot, cgi-bin, etc. Customers can upload their stuff with FTP, 
->> and they can put cgis into the cgi-bin if they want. We have a wrapper 
->> that runs the CGIs as the user's UID/GID in their cgi-bin.
->>
->> We have a box that runs a custom 'administration UI' that makes all 
->> the changes to DNS files, apache configs, filesystem etc to provision 
->> customer's websites/email etc. There is a box that is currently doing 
->> a backup over the NFS (because the snapshots were misconfigured by me 
->> on the NAS, ha ha). It takes about 12 hours to read all the data and 
->> tar it up.
->>
->> All the client machines are recently patched Fedora Core 2 machines 
->> running 2.6.9 (currently, we will probably try 2.6.10 in the near future)
->>
->> THE PROBLEM:
->>
->> regularly, about once a day, at no specific time, each of the web 
->> servers NFS mount will 'lock up'. This seems to manifest itself in one 
->> of the deeper directories first, until it works its way down to the 
->> actual mount point, at which time the machine basically is unable to 
->> serve any traffic.
->>
->> When we log into the machine, we see:
->>
->> Jan  6 09:17:00 www4 kernel: nfs: server nfs not responding, still trying
->> Jan  6 09:17:00 www4 kernel: nfs: server nfs not responding, still trying
->> Jan  6 09:20:47 www4 kernel: nfs: server nfs not responding, still trying
->>
->> Sometimes we will see a message like this:
->>
->> Dec 27 10:41:51 www2 kernel: nfs_statfs: statfs error = 512
->>
->> Messages such as this are also common:
->>
->> nfs_proc_symlink: lock/DGMDNP-042.txt_lock_lock already exists??
->>
->> Doing a tethereal at the time, we see stuff like this:
->>
->>  62.303877  10.128.1.11 -> 10.128.2.33  NFS V3 WRITE Reply (Call In 
->> 27) Error:ERR_STALE
->>
->> Now, the "statfs error = 512" seems to be indicating that the NAS is 
->> having a problem. But this isn't the case. I can at least check the 
->> uptime of the EMC from the control panel UI that EMC provide (which 
->> I'm not very happy with, but thats another saga you can ask me about 
->> in private if your interested). The NAS itself is not rebooting. The 
->> RPC services it provides are not going away either; I have a script 
->> running on another machine that checks the services every second on 
->> the server, and they have never even flinched. So I don't think its a 
->> problem with the EMC crashing or whatnot.
->>
->> What IS interesting is that the www servers have this problem about 
->> once or twice a day, each. The mailservers rarely have this problem. 
->> The machine that does the backup never seems to have the problem.
->>
->> This issue is really doing my head in. If someone could tell me a way 
->> of getting more information out of the clients to enable us to see 
->> what is going on, that'd be awesome.
->>
->> We've tried using UDP, dropping the packet size, dropping back to the 
->> latest vanilla 2.4.x kernel, everything we can think of. Nothing seems 
->> to be helping right now.
->>
->> Our vendor is of course helping us, they have done tcp dumps on the 
->> server side, done whatever diagnosis they can on their side and right 
->> now they are saying its a client side issue, but they are unable to 
->> provide any hard evidence either way.
->>
->> Vendor currently says:
->>
->>> Anyway, at the present moment, we can say, we haven't finished analyzing
->>> network traces completely, however, we found some strange point in the
->>> network trace. As per customer, customer uses the file locking over NFS.
->>> Indeed, we can see NLM protocol in the network trace. Some of  
->>> clients keep
->>> sending NLM_UNLOCK for some of files without sending NLM_LOCK. 
->>> Generally, if
->>> using NLM, the sequence is NLM_LOCK call for relevant file is 
->>> executed from
->>> NFS client and then NLM_UNLOCK for that file is executed from NFS 
->>> client.
->>> Thus, the file locking will be completed. We can't see any corresponds
->>> between LOCK and UNLOCK. From the beginning of the trace, some of client
->>> keep sending only NLM_UNLOCK. That is very strange.
->>
->>
->> There is nothing in the RFC that says that NLM_LOCK and NLM_UNLOCK 
->> counts must be equal. Additionally, the extra NLM_UNLOCK messages 
->> simply indicates that there was a failure to lock or unlock a file. 
->> From what I understand, this technique is used in crash recovery, 
->> which seems to indicate SOMETHING is crashing, if not the EMC, what? 
->> How can I prove it either way?
->>
->> If anyone on this list can suggest anything obvious or not, it will be 
->> appreciated :)
->>
->> Regards,
->>
->> Nathan.
->>
->> -- 
->> "It is change, continuing change, inevitable change, that is
->>  the dominant factor in society today. No sensible decision can
->>  be made any longer without taking into account not only the
->>  world as it is, but the world as it will be." - Isaac Asimov
->>
->>
->>
->> -------------------------------------------------------
->> The SF.Net email is sponsored by: Beat the post-holiday blues
->> Get a FREE limited edition SourceForge.net t-shirt from ThinkGeek.
->> It's fun and FREE -- well, almost....http://www.thinkgeek.com/sfshirt
->> _______________________________________________
->> NFS maillist  -  NFS@lists.sourceforge.net
->> https://lists.sourceforge.net/lists/listinfo/nfs
->>
->>
-> 
+All,
 
+Apologies in advance if this forward is viewed as
+uncouth; I wanted to ask the folks here if they have
+had any experience, or have seen the NFS problem
+described below (well, linked to below may be a better
+explanation...)
 
--- 
-/***************************************************
-  *Neil Horman
-  *Software Engineer
-  *Red Hat, Inc.
-  *nhorman@redhat.com
-  *gpg keyid: 1024D / 0x92A74FA1
-  *http://pgp.mit.edu
-  ***************************************************/
+The showTasks output lists multiple deadlocked tasks
+with a Call Trace in the following condition:
+
+(from the sif029.strings included on the Bugzilla
+page)
+
+Call Trace:
+[<ffffffffa00c6024>]{:nfs:nfs_complete_unlink+308} 
+
+Call Trace: [<ffffffffa00d39c0>]{:nfs:nfs_sops+0}
+[<ffffffffa00d3d00>]{:nfs:nfs_fs_type+0} 
+
+Ideas?  Suggestions?  I've also opened a ticket with
+internal Redhat support to see if they have any
+hypothesis.
+
+Thanks,
+
+--Greg 
+
+>
+https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=145550
+> 
+>            Summary: NFS lockups/hangs on RHEL3
+> x86_64 U4
+>            Product: Red Hat Enterprise Linux
+>            Version: 3
+>           Platform: x86_64
+>         OS/Version: Linux
+> 
+> 
+> Description of problem:
+> 
+> We have a group of 10 systems to distribute builds
+> (gcc).  When these
+> systems are under heavy load, the builds (make
+> process) hang in a
+> blocked, deadlocked state.
+> 
+> The NFS servers do not show excessive load or any
+> problems.
+> 
+> NFS gcc source: NetApp Release 6.4.5P2
+> NFS build source: NetApp Release 6.5.2R1P9:
+> 
+> The 10 build clients are exactly the same hardware
+> and configuration.
+>  I'll be attaching the following from a system that
+> is exhibiting this
+> behavior:
+> 
+> # lspci -vv
+> # lsmod
+> # cat /proc/meminfo
+> # cat /proc/cpuinfo
+> # uname -a
+> 
+> And as much as I can capture from the console as
+> possible.
+> 
+> Unfortunately, we cannot recreate the hang
+> on-demand.
+> 
+> Please let me know if there is any other information
+> I can provide
+> that would be helpful. 
+> 
+> Version-Release number of selected component (if
+> applicable):
+> 
+> Redhat Enterprise Linux 3 Update 4 x86_64
 
 
 -------------------------------------------------------
