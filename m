@@ -1,24 +1,23 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: Debian, SIGPIPE, "libnfsidmap", and init.d vs. umount
-Date: Mon, 6 Dec 2004 13:29:15 +1100
-Message-ID: <16819.50171.937537.667604@cse.unsw.edu.au>
-References: <20041204221504.GD6146@perlsupport.com>
-	<16819.43303.95619.661063@cse.unsw.edu.au>
-	<20041206020506.GJ6146@perlsupport.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [patch] lockd control of grace period for HA NFS
+Date: Mon, 6 Dec 2004 10:04:28 -0500
+Message-ID: <20041206150428.GC20864@fieldses.org>
+References: <16802.32693.974799.504191@cse.unsw.edu.au> <OFB81726D4.627FD14C-ON88256F56.0010B138-88256F56.001402F0@us.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Cb8dT-0007uv-4B
-	for nfs@lists.sourceforge.net; Sun, 05 Dec 2004 18:29:59 -0800
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1Cb8dM-0004wj-Q9
-	for nfs@lists.sourceforge.net; Sun, 05 Dec 2004 18:29:56 -0800
-To: Chip Salzenberg <chip@pobox.com>
-In-Reply-To: message from Chip Salzenberg on Sunday December 5
+	id 1CbKPh-0005Rn-Hr
+	for nfs@lists.sourceforge.net; Mon, 06 Dec 2004 07:04:33 -0800
+Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.41)
+	id 1CbKPf-0000Kw-Rb
+	for nfs@lists.sourceforge.net; Mon, 06 Dec 2004 07:04:32 -0800
+To: Marc Eshel <eshel@almaden.ibm.com>
+In-Reply-To: <OFB81726D4.627FD14C-ON88256F56.0010B138-88256F56.001402F0@us.ibm.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,32 +31,14 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sunday December 5, chip@pobox.com wrote:
-> According to Neil Brown:
-> > On Saturday December 4, chip@pobox.com wrote:
-> > > Debian needs a bugfix release of nfs-utils, because of the SIGPIPE
-> > > bug.  This being my job, I figured I could grab the HEAD version of
-> > > nfs-utils.  And since the Debian sarge release is coming up soon (no,
-> > > really), I hoped I'd find something unlikely to crash; instead I'm
-> > > having difficulty with the build.
-> > 
-> > I use "./configure --disable-nfsv4 --disable-gss"  but you might not
-> > want to...
-> 
-> Well, that could work, actually.  Do you think that the changes since
-> March 24 -- other than GSS and NFSv4 -- are valuable and safe?
+On Tue, Nov 23, 2004 at 07:38:34PM -0800, Marc Eshel wrote:
+> 'echo 1 > /porc/sys/fs/nfs/nlm_grace' will put lockd in grace period and
+> 'echo 0 > /porc/sys/fs/nfs/nlm_grace' will take it out of grace period but
+> it is not necessary to 'echo 0' since it will just come out of grace period
+> when the period ends.
 
-Well... there is also the "high availability" (ha) statd/mountd stuff,
-but I think that becomes a no-op if you don't use the "-H" flag to the
-respective programs.
-Apart from that there are a couple of bug fixes that could be
-significant in some circumstances.
-
-I think "I think so" is about the best I can do, as I personally
-haven't done a lot of testing, and testing makes a big difference to
-confidence levels.
-
-NeilBrown
+The "echo 0" is a little dangerous, isn't it?  Do we really need the
+ability to end the grace period prematurely?--b.
 
 
 -------------------------------------------------------
