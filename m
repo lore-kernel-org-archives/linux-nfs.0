@@ -1,28 +1,28 @@
 From: Ian Thurlbeck <ian@stams.strath.ac.uk>
-Subject: Re: Strange delays on NFS server
-Date: Wed, 25 Aug 2004 11:36:26 +0100
+Subject: Re: Strange delays on NFS server (with piccies)
+Date: Thu, 26 Aug 2004 12:01:42 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <412C6BAA.8010900@stams.strath.ac.uk>
-References: <411CD601.1080308@RedHat.com> <4120AB46.1080606@stams.strath.ac.uk> <20040816131434.GL3510@suse.de> <4120C8D5.3040606@stams.strath.ac.uk> <20040816145435.GQ3510@suse.de> <4124CD95.7020007@stams.strath.ac.uk> <20040820095854.GC23176@suse.de> <412B0EDE.5010206@stams.strath.ac.uk> <20040825020241.GB16037@sgi.com> <412C5084.9050605@stams.strath.ac.uk> <20040825100227.GB16483@sgi.com>
+Message-ID: <412DC316.6080709@stams.strath.ac.uk>
+References: <4119FB15.7010205@stams.strath.ac.uk>	<411A17F2.2060203@RedHat.com>	<411A448D.3080205@stams.strath.ac.uk>	<20040811164135.GA11101@suse.de>	<411B8987.1030609@stams.strath.ac.uk>	<411CD601.1080308@RedHat.com>	<4120AB46.1080606@stams.strath.ac.uk> <16683.8588.18082.190876@cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BzvAX-0002ga-Ob
-	for nfs@lists.sourceforge.net; Wed, 25 Aug 2004 03:38:17 -0700
+	id 1C0I1F-0005oH-PA
+	for nfs@lists.sourceforge.net; Thu, 26 Aug 2004 04:02:13 -0700
 Received: from vif-img1.cc.strath.ac.uk ([130.159.248.61] helo=khafre.cc.strath.ac.uk)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.34)
-	id 1BzvAX-0005uZ-2q
-	for nfs@lists.sourceforge.net; Wed, 25 Aug 2004 03:38:17 -0700
-Received: from dunnet.stams.strath.ac.uk ([130.159.240.95]:42557)
+	id 1C0I1D-0004AL-6B
+	for nfs@lists.sourceforge.net; Thu, 26 Aug 2004 04:02:13 -0700
+Received: from dunnet.stams.strath.ac.uk ([130.159.240.95]:43423)
 	by khafre.cc.strath.ac.uk with smtp (Exim 4.20 #1)
-	id 1Bzv8p-00021d-DU
-	for <nfs@lists.sourceforge.net>; Wed, 25 Aug 2004 11:36:31 +0100
-To: Greg Banks <gnb@sgi.com>
-In-Reply-To: <20040825100227.GB16483@sgi.com>
+	id 1C0I0k-0002KA-FM
+	for <nfs@lists.sourceforge.net>; Thu, 26 Aug 2004 12:01:42 +0100
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <16683.8588.18082.190876@cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -35,121 +35,86 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Greg Banks wrote:
-> On Wed, Aug 25, 2004 at 09:40:36AM +0100, Ian Thurlbeck wrote:
+Neil Brown wrote:
+> On Monday August 16, ian@stams.strath.ac.uk wrote:
 > 
->>Server stats since reboot Monday morning.  It is lightly
->>loaded mostly:
->>
->>Server nfs v3:
->>null       getattr    setattr    lookup     access     readlink
->>85912   2% 1626277 46% 12375   0% 135833  3% 1295417 36% 773     0%
->>read       write      create     mkdir      symlink    mknod
->>136099  3% 151569  4% 7899    0% 64      0% 194     0% 0       0%
->>remove     rmdir      rename     link       readdir    readdirplus
->>6270    0% 37      0% 2931    0% 969     0% 266     0% 4893    0%
->>fsstat     fsinfo     pathconf   commit
->>1508    0% 890     0% 0       0% 41205   1%
+>>I bumped the nfsd's up to 64 (from 32) and subjectively the problem gets 
+>>worse.  I then reduced them to 16 and things are a bit better...
 > 
 > 
-> Yes, it is lightly loaded.  You said your block size is 8K, so
-> the server has seen about 1.18 GB of writes in 3 days, which is
-> just over twice RAM size.  How many of these slowdown events
-> did you see in that time?
+> Odd.
+> 
+> 
+>>Would changing some of the bdflush settings help at all?
+> 
+> 
+> Maybe.  I would start with
+>   echo 200 > /proc/sys/vm/dirty_expire_centisecs
+> 
+> You said you are using ext3.  Are you using journal=data or the
+> default journal=ordered ??
+> 
+> Also, it would be interesting to compare nfs ops per second against
+> disk i/os per second over time.
+> Something like..
+> 
+>   while :
+>   do
+>     perl -ne 'if (/^proc3/)  { @a=split ; shift @a; shift @a; print eval(join("+", @a))."  ";}' /proc/net/rpc/nfsd
+>     perl -ne 'if (/hda /) { @a=split; print $a[9]."\n";}' /proc/diskstats  
+>     sleep 1
+>   done | perl -ne '@_=split; print( ($_[0]-$a[0])." ".($_[1]-$a[1])."\n"); @a=@_;'
+> 
+> If the pauses correspond to periods with very low nfs ops/sec and very
+> high writes per second, then it confirms that it is a disk flushing
+> problem.
+> 
+> It would also be interesting to see if there was a pattern in the
+> timing, particular how long the interval was between one pause and the
+> next.  
+> Also getting these sets of number for different numbers of nfsd
+> threads could turn your subjective impression into objective data.
+> 
+> NeilBrown
 
-Well, at least 10 per day, probably more.
+Neil, and others
 
-> Can you run "vmstat 1" and log the result please?
+I've gathered some useful data (I hope) on the problem. I ran a variant 
+of Neil's script for 2.4 kernel for most of a day (9.30-15.00).
 
-Not sure what you mean. Quick snapshot follows, but I'll leave it
-running and watch what happens during an "event".
+It's all here:
 
-procs                      memory      swap          io     system 
-    cpu
-  r  b   swpd   free   buff  cache   si   so    bi    bo   in    cs us 
-sy wa id
-  0  0  12248  43816  25148  70164    1    0   141   203  234   102  2 
-2  0 96
-  0  0  12248  43804  25148  70168    0    0     0     0  114    82  0 
-2  0 98
-  0  0  12248  43772  25180  70168    0    0     0   212  154   125  0 
-1  0 99
-  0  0  12248  43772  25180  70168    0    0     0     0  111    82  0 
-1  0 99
+http://www.stams.strath.ac.uk/~ian/nfs/
 
+Files:
+data.all.raw	raw data, 3 columns: HH:MM:SS nfsops diskwrites
+data.all.plot	massaged data, 3 columns: SECONDS nfsops diskwrites
+data.all.eps	postscript plot of massaged data
+data.all.gif	gif plot of massaged data
 
-> You said you have a 3ware RAID controller.  What is RAID
-> configuration, especially RAID level and stripe width?  What options
-> did you use to build the ext3 filesystem?
+(The massaged data has had missing data filled in. Sometimes the
+seconds field jumps 2 seconds. HH:MM:SS changed to seconds from start)
 
-Capacity:	247.04 GB (482505216 blocks)
-Write Cache:	In Use
-Configuration:	Striped with Parity 64K (RAID 5)
-Stripe size:	64K (65536 bytes)
+I think this shows no correlation between NFS ops and disk writes
+with respect to these big slowdowns (the big peaks in lower graph, there
+are 5). Something with a periodicity of 600 seconds is also writing to
+the disk. (This was done with 32 nfsd threads, BTW)
 
-Ext3 options: anyone know what the default is for Fedora Core 1?
+There is another similar set of files zooming in on the first 2
+events (data.zoom.*). You can see from this graph that in the disk 
+writing event lasts about 50 seconds, and the client machines hang on 
+NFS ops for this period (pretty annoying, I can tell you!).
 
-Here is output from tune2fs -l:
+Also in the directory is the output of "vmstat 1" showing one of these
+events (vmstat.log).
 
-tune2fs 1.34 (25-Jul-2003)
-Filesystem volume name:   /spare
-Last mounted on:          <not available>
-Filesystem UUID:          5070c833-cdfe-408b-ae12-ee4587e7ffc4
-Filesystem magic number:  0xEF53
-Filesystem revision #:    1 (dynamic)
-Filesystem features:      has_journal filetype needs_recovery 
-sparse_super large_file
-Default mount options:    (none)
-Filesystem state:         clean
-Errors behavior:          Continue
-Filesystem OS type:       Linux
-Inode count:              30162944
-Block count:              60312018
-Reserved block count:     3015600
-Free blocks:              34369240
-Free inodes:              29320077
-First block:              0
-Block size:               4096
-Fragment size:            4096
-Blocks per group:         32768
-Fragments per group:      32768
-Inodes per group:         16384
-Inode blocks per group:   512
-Filesystem created:       Mon May 19 03:28:12 2003
-Last mount time:          Mon Aug 23 08:45:09 2004
-Last write time:          Mon Aug 23 08:45:09 2004
-Mount count:              31
-Maximum mount count:      -1
-Last checked:             Mon May 19 03:28:12 2003
-Check interval:           0 (<none>)
-Reserved blocks uid:      0 (user root)
-Reserved blocks gid:      0 (group root)
-First inode:              11
-Inode size:               128
-Journal inode:            8
-Default directory hash:   tea
-Directory Hash Seed:      e37b261f-2740-4f6c-a970-d4aade2b54be
+Can anyone deduce anything from this?
+
+Many thanks
 
 Ian
 
-> 
->>So that's about 4 writes for every commit.
-> 
-> 
-> Ok, so your clients are doing enough COMMITs.
-> 
-> 
->>File system export:
->>
->>/export/raid50  @unix(rw,sync,no_wdelay,hide,nocrossmnt,secure,root_squash,
->>no_all_squash,subtree_check,secure_locks,mapping=identity,
->>anonuid=-2,anongid=-2)
-> 
-> 
-> Hmm, no "async". So much for that idea.
-> 
-> Greg.
-
+PS: How big are these "wsect" counts in /proc/partitions in terms of bytes ?
 
 -- 
 Ian Thurlbeck                http://www.stams.strath.ac.uk/
