@@ -1,27 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS file locking for clustered filesystems
-Date: Tue, 10 Aug 2004 17:43:14 -0700
+From: Johan van den Dorpe <johan.vandendorpe@framestore-cfc.com>
+Subject: Re: rpc.mountd stops functioning
+Date: Wed, 11 Aug 2004 11:02:06 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1092184994.5857.19.camel@lade.trondhjem.org>
-References: <Pine.LNX.4.58.0407131427580.6626@localhost.localdomain>
-	 <20040802105103.GJ25023@suse.de>
-	 <1091461098.3980.22.camel@lade.trondhjem.org>
-	 <Pine.LNX.4.58.0408101139260.11489@localhost.localdomain>
+Message-ID: <4119EE9E.8000509@framestore-cfc.com>
+References: <411217BE.8070209@framestore-cfc.com> <20040805144659.GD25948@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: Olaf Kirch <okir@suse.de>, nfsv4@linux-nfs.org, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BuhDJ-0000xF-Rr
-	for nfs@lists.sourceforge.net; Tue, 10 Aug 2004 17:43:33 -0700
-Received: from adsl-207-214-87-84.dsl.snfc21.pacbell.net ([207.214.87.84] helo=lade.trondhjem.org)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.34)
-	id 1BuhDJ-0004vF-8c
-	for nfs@lists.sourceforge.net; Tue, 10 Aug 2004 17:43:33 -0700
-To: Sridhar Samudrala <sri@us.ibm.com>
-In-Reply-To: <Pine.LNX.4.58.0408101139260.11489@localhost.localdomain>
+	id 1BupxN-0000Eg-Ms
+	for nfs@lists.sourceforge.net; Wed, 11 Aug 2004 03:03:41 -0700
+Received: from gw.fs-cfc.co.uk ([193.203.83.22])
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.34)
+	id 1BupxN-0006fU-3c
+	for nfs@lists.sourceforge.net; Wed, 11 Aug 2004 03:03:41 -0700
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20040805144659.GD25948@fieldses.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,46 +30,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 ty , 10/08/2004 klokka 17:15, skreiv Sridhar Samudrala:
+J. Bruce Fields wrote:
+> On Thu, Aug 05, 2004 at 12:19:26PM +0100, Johan van den Dorpe wrote:
+> 
+>>For a long time we've been experiencing problems with rpc.mountd 
+>>stopping functioning.
+> 
+> 
+> Maybe you need the following?
+> 
+> (Neil or someone, could you please apply this?  Last I checked it wasn't
+> in nfs-utils cvs.)
+> 
+> --Bruce Fields
+> 
+> From Garrick Staples <garrick@usc.edu>:
+> 
+> After mountd handles a cache upcall, we should clear the relevant bits in the
+> fd_set.
 
-> I gathered the following from your suggestions to make the cluster filesy=
-stem
-> process the lock/unlock calls asynchronously,
->=20
-> NLM LOCK/UNLOCK Call on a file in a cluster filesystem exported from an N=
-FS
-> server will always respond with NLM LOCK/UNLOCK Reply with NLM_BLOCKED as=
- the
-> status.
+I've installed this patch and I'm testing it at the moment. It'll be 
+some time before I can say whether this has worked.
 
-No. That would break the spec. See:
-   http://www.opengroup.org/onlinepubs/9629799/NLM_LOCK.htm#tagcjh_11_11
+So far, everythings been fine.
 
-NLM_BLOCKED is only a valid response if the client actually asked for
-blocking behaviour.
+Thanks for your help,
 
-In the case where the server is not able to reply in a timely fashion (I
-would suggest a short timeout period of a few seconds) it should reply
-with LCK_DENIED. (Note that when I talk about a "short timeout period",
-I do not mean that lockd itself is allowed to block.)
-
-> Once the cluster filesystem is done granting or denying the lock, the ser=
-ver
-> will send a NLM GRANTED_MSG/GRANTED_RES callbacks with the appropriate st=
-atus.
->=20
-> Is this correct?
-
-See above. That is only true if the client requested a blocking lock.
-
-> As Olaf suggested, can't we use the existing fl_notify callback instead o=
-f
-> setting up a new callback?
-
-Possibly. As long as the design remains clean...
-
-Cheers,
-  Trond
+-- 
+Johan van den Dorpe
 
 
 -------------------------------------------------------
