@@ -1,27 +1,24 @@
-From: "Robert L. Millner" <rmillner@transmeta.com>
-Subject: NFS/UDP slow read, lost fragments
-Date: Thu, 25 Sep 2003 10:59:43 -0700 (PDT)
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH v2] reduce NFS stack usage
+Date: Thu, 25 Sep 2003 14:36:36 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0309251019170.28586-100000@localhost.localdomain>
+Message-ID: <3F7335B4.1070002@RedHat.com>
+References: <mailman.1064420466.30286.linux-kernel2news@redhat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1A2aPR-0002mb-00
-	for <nfs@lists.sourceforge.net>; Thu, 25 Sep 2003 11:00:09 -0700
-Received: from neon-gw-l3.transmeta.com ([63.209.4.196] helo=neon-gw.transmeta.com)
+	id 1A2ayo-0006DX-00
+	for <nfs@lists.sourceforge.net>; Thu, 25 Sep 2003 11:36:42 -0700
+Received: from pix-525-pool.redhat.com ([66.187.233.200] helo=lacrosse.corp.redhat.com)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 1A2aPQ-0008Jx-RK
-	for nfs@lists.sourceforge.net; Thu, 25 Sep 2003 11:00:08 -0700
-Received: (from root@localhost)
-	by neon-gw.transmeta.com (8.9.3/8.9.3) id LAA15200
-	for <nfs@lists.sourceforge.net>; Thu, 25 Sep 2003 11:00:05 -0700
-Received: from draal.transmeta.com (draal.transmeta.com [10.10.26.54])
-	by deepthought.transmeta.com (8.11.6/8.11.6) with ESMTP id h8PHxig01411
-	for <nfs@lists.sourceforge.net>; Thu, 25 Sep 2003 10:59:44 -0700 (PDT)
-To: nfs@lists.sourceforge.net
+	id 1A2aym-0006OF-Vi
+	for nfs@lists.sourceforge.net; Thu, 25 Sep 2003 11:36:41 -0700
+To: Jeff Garzik <jgarzik@pobox.com>
+In-Reply-To: <mailman.1064420466.30286.linux-kernel2news@redhat.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -34,69 +31,176 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
+Hey Jeff,
 
-The problem I am seeing is similar to what was posted by Larry Sendlosky
-on Jun 27, "2.4.20-pre3 -> 2.4.21 : nfs client read performance broken"
-though I have not done as through a drill-down into the nature of the
-problem.
+Question:
+Why are only nfs_lookup_revalidate() and nfs_readdir()
+a problem and not the other 4 ops (like nfs_lookup())?
+Is the case only those two showed up in the stack overflow
+oops trace?
 
-Somewhere between 2.4.19 and 2.4.20, NFS/UDP read performance began to
-suck because of a large number of request retransmits.  From tcpdump, the
-retransmits are for read transactions which return data in a reasonable
-time frame but are missing one or more fragments of the return packet.
+Also, not like there much choice in matter, but I wonder what
+type of performance hit (if any) there will be by making
+these routines call kmalloc()... lookups and readdirs are
+pretty popular ops...
 
-The client is a PIII 550, dual CPU, 1GB RAM, eepro100 (tested with both
-the e100 and eepro drivers) running a variety of kernels from the stock
-Red Hat 7.3 (2.4.20-20.7 which exhibits the problem), and from stock
-2.4.18 through 2.4.22.  2.4.20 and above exhibit this problem.
+SteveD.
 
-The server is a Network Appliance F820 running ONTAP 6.2.2.  Tests are
-conducted when the F820 is not under a noticeable load.
-
->From the difference in behavior between kernel revisions and by tcpdump, 
-it is believed that the fragments are transmitted by the server.
-
-The timings for different IO sizes for NFSv3 reads of a 70MB file:
-
-Configuration             Seconds Real Time
--------------------------------------------
-UDP, 32k                       1080
-UDP,  8k                        420
-UDP,  4k                        210
-UDP,  1k                         40
-
-TCP, 32k                          6.4
-
-
-The NFSv2/UDP timings for 8k, 4k and 1k are almost identical to the
-NFSv3/UDP timings.
-
-The same test with 2.4.18 yields read times for around 6.3 seconds for 32k
-and 8k NFSv2 and NFSv3 over UDP.
-
-Setting rmem_max, rmem_default, wmem_max and wmem_default to either 524284 
-or 262142 make no difference.
-
-Setting netdev_max_backlog to 1200 (from 300) makes no difference.
-
-Setting ipfrag_high_thresh to up to 4194304 makes no difference.
-
-
-We have a mix of clients and servers, not all of which support NFS/TCP yet
-so we can't globally set tcp in the automounter maps for our netapp mounts
-or as "localoptions" in the autofs init script.  The mount patch submitted
-by Steve Dickson on Aug 6, "NFS Mount Patch:  Making NFS over TCP the
-default" is probably the immediate workaround that will at least make the
-mounts that really matter to us work well again.  I'll test that next.
-
-
-Is this a known problem?  Is there a patch already out there or in the
-works that fixes this?  What other data would help drill into this
-problem?
-
-
-	Rob
+Jeff Garzik wrote:
+> David Mansfield spotted a bug in a memset() call, in my initial patch.
+> 
+> Attached is an updated version.  The only change is 
+> s/sizeof(my_entry)/sizeof(*my_entry)/ in the memset.
+> 
+>     Jeff
+> 
+> 
+> 
+> ------------------------------------------------------------------------
+> 
+> 
+> ===== fs/nfs/dir.c 1.12 vs edited =====
+> --- 1.12/fs/nfs/dir.c	Tue Oct 15 00:59:27 2002
+> +++ edited/fs/nfs/dir.c	Mon Sep 22 15:08:27 2003
+> @@ -349,14 +349,25 @@
+>  {
+>  	struct dentry	*dentry = filp->f_dentry;
+>  	struct inode	*inode = dentry->d_inode;
+> -	nfs_readdir_descriptor_t my_desc,
+> -			*desc = &my_desc;
+> -	struct nfs_entry my_entry;
+> +	nfs_readdir_descriptor_t *desc;
+> +	struct nfs_entry *my_entry;
+>  	long		res;
+> +	int		rc = -EINVAL;
+> +	void		*mem;
+> +
+> +	mem = kmalloc(sizeof(struct nfs_entry) +
+> +		      sizeof(nfs_readdir_descriptor_t), GFP_KERNEL);
+> +	if (!mem)
+> +		return -ENOMEM;
+> +
+> +	my_entry = mem;
+> +	desc = mem + sizeof(struct nfs_entry);
+>  
+>  	res = nfs_revalidate(dentry);
+> -	if (res < 0)
+> -		return res;
+> +	if (res < 0) {
+> +		rc = (int) res;
+> +		goto out;
+> +	}
+>  
+>  	/*
+>  	 * filp->f_pos points to the file offset in the page cache.
+> @@ -365,11 +376,11 @@
+>  	 * itself.
+>  	 */
+>  	memset(desc, 0, sizeof(*desc));
+> -	memset(&my_entry, 0, sizeof(my_entry));
+> +	memset(my_entry, 0, sizeof(*my_entry));
+>  
+>  	desc->file = filp;
+>  	desc->target = filp->f_pos;
+> -	desc->entry = &my_entry;
+> +	desc->entry = my_entry;
+>  	desc->decode = NFS_PROTO(inode)->decode_dirent;
+>  
+>  	while(!desc->entry->eof) {
+> @@ -393,11 +404,16 @@
+>  			break;
+>  		}
+>  	}
+> +
+>  	if (desc->error < 0)
+> -		return desc->error;
+> -	if (res < 0)
+> -		return res;
+> -	return 0;
+> +		rc = desc->error;
+> +	else if (res < 0)
+> +		rc = res;
+> +	/* fall through */
+> +
+> +out:
+> +	kfree(mem);
+> +	return rc;
+>  }
+>  
+>  /*
+> @@ -476,13 +492,22 @@
+>  	struct inode *dir;
+>  	struct inode *inode;
+>  	int error;
+> -	struct nfs_fh fhandle;
+> -	struct nfs_fattr fattr;
+> +	struct nfs_fh *fhandle;
+> +	struct nfs_fattr *fattr;
+> +	void *mem;
+> +	int rc = 0;
+>  
+>  	lock_kernel();
+>  	dir = dentry->d_parent->d_inode;
+>  	inode = dentry->d_inode;
+>  
+> +	mem = kmalloc(sizeof(struct nfs_fh) + sizeof(struct nfs_fattr),
+> +		      GFP_KERNEL);
+> +	if (!mem)
+> +		goto out_bad;
+> +	fhandle = mem;
+> +	fattr = mem + sizeof(struct nfs_fh);
+> +
+>  	if (!inode) {
+>  		if (nfs_neg_need_reval(dir, dentry))
+>  			goto out_bad;
+> @@ -505,18 +530,19 @@
+>  	if (NFS_STALE(inode))
+>  		goto out_bad;
+>  
+> -	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, &fhandle, &fattr);
+> +	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr);
+>  	if (error)
+>  		goto out_bad;
+> -	if (memcmp(NFS_FH(inode), &fhandle, sizeof(struct nfs_fh))!= 0)
+> +	if (memcmp(NFS_FH(inode), fhandle, sizeof(struct nfs_fh))!= 0)
+>  		goto out_bad;
+> -	if ((error = nfs_refresh_inode(inode, &fattr)) != 0)
+> +	if ((error = nfs_refresh_inode(inode, fattr)) != 0)
+>  		goto out_bad;
+>  
+>  	nfs_renew_times(dentry);
+>   out_valid:
+> -	unlock_kernel();
+> -	return 1;
+> + 	rc = 1;
+> +	goto out;
+> +
+>   out_bad:
+>  	NFS_CACHEINV(dir);
+>  	if (inode && S_ISDIR(inode->i_mode)) {
+> @@ -528,8 +554,14 @@
+>  		shrink_dcache_parent(dentry);
+>  	}
+>  	d_drop(dentry);
+> +	rc = 0;
+> +	/* fall through */
+> +
+> +out:
+>  	unlock_kernel();
+> -	return 0;
+> +	if (mem)
+> +		kfree(mem);
+> +	return rc;
+>  }
+>  
+>  /*
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
+> 
+> 
 
 
 
