@@ -1,17 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 38 of 54] nfsd4: keep lockowners off perclient list
-Date: Tue, 08 Mar 2005 17:06:44 +1100
-Message-ID: <E1D8Xrg-00019H-Oe@notabene.cse.unsw.edu.au>
+Subject: [PATCH kNFSd 51 of 54] nfsd4: fix_release_state_owner prototype
+Date: Tue, 08 Mar 2005 17:06:45 +1100
+Message-ID: <E1D8Xrh-0001A7-Gj@notabene.cse.unsw.edu.au>
 References: <20050308165419.3842.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D8Xrs-00028B-BK
-	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:56 -0800
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	id 1D8Xrr-000286-Qo
+	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:55 -0800
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1D8Xrp-0005Cy-KA
-	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:56 -0800
+	id 1D8Xrp-0005D3-VA
+	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:55 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -27,44 +27,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-There's no reason to have the lockowners hang off the same list on the client
-struct as the openowners do; you can always get to the lockowners from their
-original openowners instead.
+
+Note that the second parameter is unused.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c |    8 ++++----
- 1 files changed, 4 insertions(+), 4 deletions(-)
+ ./fs/nfsd/nfs4state.c |    7 +++----
+ 1 files changed, 3 insertions(+), 4 deletions(-)
 
 diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2005-03-07 13:26:15.000000000 +1100
-+++ ./fs/nfsd/nfs4state.c	2005-03-07 13:26:43.000000000 +1100
-@@ -1109,9 +1109,11 @@ unhash_stateowner(struct nfs4_stateowner
+--- ./fs/nfsd/nfs4state.c~current~	2005-03-07 13:37:15.000000000 +1100
++++ ./fs/nfsd/nfs4state.c	2005-03-07 13:37:26.000000000 +1100
+@@ -1186,8 +1186,7 @@ move_to_close_lru(struct nfs4_stateowner
+ }
  
- 	list_del(&sop->so_idhash);
- 	list_del(&sop->so_strhash);
--	list_del(&sop->so_perclient);
-+	if (sop->so_is_open_owner) {
-+		list_del(&sop->so_perclient);
-+		del_perclient++;
-+	}
- 	list_del(&sop->so_perlockowner);
--	del_perclient++;
- 	while (!list_empty(&sop->so_perfilestate)) {
- 		stp = list_entry(sop->so_perfilestate.next, 
- 			struct nfs4_stateid, st_perfilestate);
-@@ -2575,9 +2577,7 @@ alloc_init_lock_stateowner(unsigned int 
- 	sop->so_time = 0;
- 	list_add(&sop->so_idhash, &lock_ownerid_hashtbl[idhashval]);
- 	list_add(&sop->so_strhash, &lock_ownerstr_hashtbl[strhashval]);
--	list_add(&sop->so_perclient, &clp->cl_perclient);
- 	list_add(&sop->so_perlockowner, &open_stp->st_perlockowner);
--	add_perclient++;
- 	sop->so_is_open_owner = 0;
- 	sop->so_id = current_ownerid++;
- 	sop->so_client = clp;
+ void
+-release_state_owner(struct nfs4_stateid *stp, struct nfs4_stateowner **sopp,
+-		int flag)
++release_state_owner(struct nfs4_stateid *stp, int flag)
+ {
+ 	struct nfs4_stateowner *sop = stp->st_stateowner;
+ 	struct nfs4_file *fp = stp->st_file;
+@@ -2337,7 +2336,7 @@ nfsd4_close(struct svc_rqst *rqstp, stru
+ 	memcpy(&close->cl_stateid, &stp->st_stateid, sizeof(stateid_t));
+ 
+ 	/* release_state_owner() calls nfsd_close() if needed */
+-	release_state_owner(stp, &close->cl_stateowner, OPEN_STATE);
++	release_state_owner(stp, OPEN_STATE);
+ out:
+ 	if (close->cl_stateowner)
+ 		nfs4_get_stateowner(close->cl_stateowner);
+@@ -2780,7 +2779,7 @@ out_destroy_new_stateid:
+ 		if (!seqid_mutating_err(status))
+ 			open_sop->so_seqid--;
+ 
+-		release_state_owner(lock_stp, &lock->lk_stateowner, LOCK_STATE);
++		release_state_owner(lock_stp, LOCK_STATE);
+ 	}
+ out:
+ 	if (lock->lk_stateowner)
 
 
 -------------------------------------------------------
