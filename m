@@ -1,24 +1,29 @@
-From: michael <michael@hq.newdream.net>
-Subject: more statd segfault
-Date: Mon, 08 Sep 2003 12:58:53 -0700
+From: <nfsmailinglist@heessels.com>
+Subject: RE: 'random' diskless clients hangs
+Date: Mon, 8 Sep 2003 20:37:07 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3F5CDF7D.2070608@hq.newdream.net>
+Message-ID: <NEBBIHNAFKJAFOHBHGCOIEKLEFAA.nfsmailinglist@heessels.com>
+References: <Pine.LNX.4.44.0309062025520.7182-100000@kenzo.iwr.uni-heidelberg.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain;
+	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19wXW0-00008n-00
-	for <nfs@lists.sourceforge.net>; Mon, 08 Sep 2003 18:41:56 -0700
-Received: from gollum.dreamhost.com ([66.33.209.16] ident=postfix)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 19wU3v-0000Jj-Bp
-	for nfs@lists.sourceforge.net; Mon, 08 Sep 2003 15:00:43 -0700
-Received: from hq.newdream.net (inez.hq.newdream.net [66.33.200.139])
-	by gollum.dreamhost.com (Postfix) with ESMTP id 6D7035B787
-	for <nfs@lists.sourceforge.net>; Mon,  8 Sep 2003 12:59:32 -0700 (PDT)
-To: NFS List <nfs@lists.sourceforge.net>
+	id 19wZvT-0007PX-00
+	for <nfs@lists.sourceforge.net>; Mon, 08 Sep 2003 21:16:23 -0700
+Received: from smtp2.mail.be.easynet.net ([212.100.160.76])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.22)
+	id 19wVpi-0002gT-By
+	for nfs@lists.sourceforge.net; Mon, 08 Sep 2003 16:54:10 -0700
+Received: from 212-100-181-21.adsl.easynet.be ([212.100.181.21] helo=SHEPHERD)
+	by smtp2.mail.be.easynet.net with smtp (Exim 4.22)
+	id 19wQr1-00073Y-U6
+	for nfs@lists.sourceforge.net; Mon, 08 Sep 2003 20:35:12 +0200
+To: <nfs@lists.sourceforge.net>
+In-Reply-To: <Pine.LNX.4.44.0309062025520.7182-100000@kenzo.iwr.uni-heidelberg.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,57 +36,55 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-okay i have tracked down the segfault to here...
+Help!! We're closing to giving up on NFS.
 
-void
-svc_getreqset (fd_set *readfds)
-{
-   register u_int32_t mask;
-   register u_int32_t *maskp;
-   register int setsize;
-   register int sock;
-   register int bit;
+We have tried multiple NICS and drivers on both server and client (eepro100,
+e100, e1000).
+We have tries both UDP and TCP.
+We have tried multiple versions of nfs-utils.
+We have tried multiple versions of the kernel.
+We have tried multiple clients.
+We have tried multiple switches.
 
-   setsize = _rpc_dtablesize ();
-   maskp = (u_int32_t *) readfds->fds_bits;
-   for (sock = 0; sock < setsize; sock += 32)
-*    for (mask = *maskp++; (bit = ffs (mask)); mask ^= (1 << (bit - 1)))
-       svc_getreq_common (sock + bit - 1);
-}
+Clients keep crashing unless we use rsize&wsize<=2048, but the load on
+server and clients then get very high.
 
 
-the contents of the variables are as follows...
-358     in svc.c
-(gdb) print *maskp
-$13 = 128
-(gdb) print mask
-$14 = 3221224588
-(gdb) print setsize
-$15 = 1048566
-(gdb) print bit
-$16 = 1048566
-(gdb) print *readfds
-$17 = {fds_bits = {128, 0 <repeats 31 times>}}
-(gdb) n 10000
+-----Original Message-----
+From: nfs-admin@lists.sourceforge.net
+[mailto:nfs-admin@lists.sourceforge.net]On Behalf Of Bogdan Costescu
+Sent: zaterdag 6 september 2003 20:27
+To: nfsmailinglist@heessels.com
+Cc: nfs@lists.sourceforge.net
+Subject: RE: [NFS] 'random' diskless clients hangs
 
-Program received signal SIGSEGV, Segmentation fault.
-0x40112e3a in svc_getreqset (readfds=0xbffffc0c) at svc.c:359
-359     in svc.c
-(gdb) print sock
-$37 = 8096
-(gdb) print setsize
-$38 = 1048566
-(gdb) print bit
-$39 = -1073741824
-(gdb) print maskp
-$40 = (u_int32_t *) 0xc0000000
-(gdb) print *maskp
-Cannot access memory at address 0xc0000000
-(gdb)
+
+On Sat, 6 Sep 2003 nfsmailinglist@heessels.com wrote:
+
+> Driver is the default from kernel linux-2.4.20-18.7:
+> CONFIG_EEPRO100=y
+
+Could you also try using the e100 driver ? eepro100 seems to be
+unmaintained lately while the guys at Intel actively support e100.
+
+-
+
+Bogdan Costescu
+
+IWR - Interdisziplinaeres Zentrum fuer Wissenschaftliches Rechnen
+Universitaet Heidelberg, INF 368, D-69120 Heidelberg, GERMANY
+Telephone: +49 6221 54 8869, Telefax: +49 6221 54 8868
+E-mail: Bogdan.Costescu@IWR.Uni-Heidelberg.De
 
 
 
-
+-------------------------------------------------------
+This sf.net email is sponsored by:ThinkGeek
+Welcome to geek heaven.
+http://thinkgeek.com/sf
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
 
 
 
