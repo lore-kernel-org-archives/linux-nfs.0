@@ -1,17 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 3 of 12] svcrpc: add a per-flavor set_client method
+Subject: [PATCH kNFSd 9 of 12] Allow read access over NFS to files with APPEND bit set.
 Date: Tue, 08 Feb 2005 14:06:54 +1100
-Message-ID: <E1CyLiI-0006VK-2K@notabene.cse.unsw.edu.au>
+Message-ID: <E1CyLiI-0006Vi-Fz@notabene.cse.unsw.edu.au>
 References: <20050208140033.24886.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CyLir-0006vB-64
-	for nfs@lists.sourceforge.net; Mon, 07 Feb 2005 19:07:29 -0800
+	id 1CyLiq-0006v8-9z
+	for nfs@lists.sourceforge.net; Mon, 07 Feb 2005 19:07:28 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CyLiq-0004Fk-Bo
-	for nfs@lists.sourceforge.net; Mon, 07 Feb 2005 19:07:29 -0800
+	id 1CyLip-0004Fi-NU
+	for nfs@lists.sourceforge.net; Mon, 07 Feb 2005 19:07:28 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -27,119 +27,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
+Write access cannot safely be allowed as NFS doesn't support
+append, but read access should be ok.
 
-Add a set_client method to the server rpc auth_ops struct, used to set the
-client (for the purposes of nfsd export authorization) using flavor-specific
-information.
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./include/linux/sunrpc/svcauth.h    |    2 ++
- ./net/sunrpc/auth_gss/svcauth_gss.c |   14 ++++++++++++++
- ./net/sunrpc/sunrpc_syms.c          |    1 +
- ./net/sunrpc/svcauth.c              |    5 +++++
- ./net/sunrpc/svcauth_unix.c         |    2 ++
- 5 files changed, 24 insertions(+)
+ ./fs/nfsd/vfs.c |    9 ++++++---
+ 1 files changed, 6 insertions(+), 3 deletions(-)
 
-diff ./include/linux/sunrpc/svcauth.h~current~ ./include/linux/sunrpc/svcauth.h
---- ./include/linux/sunrpc/svcauth.h~current~	2005-02-07 15:04:11.000000000 +1100
-+++ ./include/linux/sunrpc/svcauth.h	2005-02-07 15:04:11.000000000 +1100
-@@ -92,6 +92,7 @@ struct auth_ops {
- 	int	(*accept)(struct svc_rqst *rq, u32 *authp);
- 	int	(*release)(struct svc_rqst *rq);
- 	void	(*domain_release)(struct auth_domain *);
-+	int	(*set_client)(struct svc_rqst *rq);
- };
+diff ./fs/nfsd/vfs.c~current~ ./fs/nfsd/vfs.c
+--- ./fs/nfsd/vfs.c~current~	2005-02-07 15:05:19.000000000 +1100
++++ ./fs/nfsd/vfs.c	2005-02-07 15:05:19.000000000 +1100
+@@ -657,12 +657,15 @@ nfsd_open(struct svc_rqst *rqstp, struct
+ 	dentry = fhp->fh_dentry;
+ 	inode = dentry->d_inode;
  
- #define	SVC_GARBAGE	1
-@@ -107,6 +108,7 @@ struct auth_ops {
- 
- extern int	svc_authenticate(struct svc_rqst *rqstp, u32 *authp);
- extern int	svc_authorise(struct svc_rqst *rqstp);
-+extern int	svc_set_client(struct svc_rqst *rqstp);
- extern int	svc_auth_register(rpc_authflavor_t flavor, struct auth_ops *aops);
- extern void	svc_auth_unregister(rpc_authflavor_t flavor);
- 
-
-diff ./net/sunrpc/auth_gss/svcauth_gss.c~current~ ./net/sunrpc/auth_gss/svcauth_gss.c
---- ./net/sunrpc/auth_gss/svcauth_gss.c~current~	2005-02-07 15:04:11.000000000 +1100
-+++ ./net/sunrpc/auth_gss/svcauth_gss.c	2005-02-07 15:04:11.000000000 +1100
-@@ -730,6 +730,19 @@ struct gss_svc_data {
- 	struct rsc			*rsci;
- };
- 
-+static int
-+svcauth_gss_set_client(struct svc_rqst *rqstp)
-+{
-+	struct gss_svc_data *svcdata = rqstp->rq_auth_data;
-+	struct rsc *rsci = svcdata->rsci;
-+	struct rpc_gss_wire_cred *gc = &svcdata->clcred;
+-	/* Disallow access to files with the append-only bit set or
+-	 * with mandatory locking enabled
++	/* Disallow write access to files with the append-only bit set
++	 * or any access when mandatory locking enabled
+ 	 */
+ 	err = nfserr_perm;
+-	if (IS_APPEND(inode) || IS_ISMNDLK(inode))
++	if (IS_APPEND(inode) && (access & MAY_WRITE))
+ 		goto out;
++	if (IS_ISMNDLK(inode))
++		goto out;
 +
-+	rqstp->rq_client = find_gss_auth_domain(rsci->mechctx, gc->gc_svc);
-+	if (rqstp->rq_client == NULL)
-+		return SVC_DENIED;
-+	return SVC_OK;
-+}
-+
- /*
-  * Accept an rpcsec packet.
-  * If context establishment, punt to user space
-@@ -1052,6 +1065,7 @@ static struct auth_ops svcauthops_gss = 
- 	.accept		= svcauth_gss_accept,
- 	.release	= svcauth_gss_release,
- 	.domain_release = svcauth_gss_domain_release,
-+	.set_client	= svcauth_gss_set_client,
- };
- 
- int
-
-diff ./net/sunrpc/sunrpc_syms.c~current~ ./net/sunrpc/sunrpc_syms.c
---- ./net/sunrpc/sunrpc_syms.c~current~	2005-02-07 15:04:11.000000000 +1100
-+++ ./net/sunrpc/sunrpc_syms.c	2005-02-07 15:04:11.000000000 +1100
-@@ -91,6 +91,7 @@ EXPORT_SYMBOL(svc_reserve);
- EXPORT_SYMBOL(svc_auth_register);
- EXPORT_SYMBOL(auth_domain_lookup);
- EXPORT_SYMBOL(svc_authenticate);
-+EXPORT_SYMBOL(svc_set_client);
- 
- /* RPC statistics */
- #ifdef CONFIG_PROC_FS
-
-diff ./net/sunrpc/svcauth.c~current~ ./net/sunrpc/svcauth.c
---- ./net/sunrpc/svcauth.c~current~	2005-02-07 15:04:11.000000000 +1100
-+++ ./net/sunrpc/svcauth.c	2005-02-07 15:04:11.000000000 +1100
-@@ -59,6 +59,11 @@ svc_authenticate(struct svc_rqst *rqstp,
- 	return aops->accept(rqstp, authp);
- }
- 
-+int svc_set_client(struct svc_rqst *rqstp)
-+{
-+	return rqstp->rq_authop->set_client(rqstp);
-+}
-+
- /* A request, which was authenticated, has now executed.
-  * Time to finalise the the credentials and verifier
-  * and release and resources
-
-diff ./net/sunrpc/svcauth_unix.c~current~ ./net/sunrpc/svcauth_unix.c
---- ./net/sunrpc/svcauth_unix.c~current~	2005-02-07 15:04:11.000000000 +1100
-+++ ./net/sunrpc/svcauth_unix.c	2005-02-07 15:04:11.000000000 +1100
-@@ -429,6 +429,7 @@ struct auth_ops svcauth_null = {
- 	.flavour	= RPC_AUTH_NULL,
- 	.accept 	= svcauth_null_accept,
- 	.release	= svcauth_null_release,
-+	.set_client	= svcauth_unix_set_client,
- };
- 
- 
-@@ -510,5 +511,6 @@ struct auth_ops svcauth_unix = {
- 	.accept 	= svcauth_unix_accept,
- 	.release	= svcauth_unix_release,
- 	.domain_release	= svcauth_unix_domain_release,
-+	.set_client	= svcauth_unix_set_client,
- };
+ 	if (!inode->i_fop)
+ 		goto out;
  
 
 
