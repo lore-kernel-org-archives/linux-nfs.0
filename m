@@ -1,26 +1,24 @@
-From: Steve Wampler <swampler@noao.edu>
-Subject: Re: Help understanding error message?
-Date: Tue, 28 Oct 2003 06:54:20 -0700
+From: NeilBrown <neilb@cse.unsw.edu.au>
+Subject: [PATCH]  Fix deadlock problem in lockd.
+Date: Wed, 29 Oct 2003 09:09:55 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1067349260.22435.53.camel@weaver.tuc.noao.edu>
-References: <3F984F27.1010806@noao.edu>
-	 <16285.51620.467155.288641@notabene.cse.unsw.edu.au>
-Reply-To: swampler@noao.edu
-Mime-Version: 1.0
-Content-Type: text/plain
+Message-ID: <E1AEc2F-0005mL-00@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AEUMa-0003Bf-00
-	for <nfs@lists.sourceforge.net>; Tue, 28 Oct 2003 05:58:24 -0800
-Received: from dns.noao.edu ([140.252.1.54] helo=noao.edu)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AEUIf-0005hr-ML
-	for nfs@lists.sourceforge.net; Tue, 28 Oct 2003 05:54:21 -0800
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <16285.51620.467155.288641@notabene.cse.unsw.edu.au>
+	id 1AEcc4-0004zN-00
+	for <nfs@lists.sourceforge.net>; Tue, 28 Oct 2003 14:46:56 -0800
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.24)
+	id 1AEcY0-0003p7-6A
+	for nfs@lists.sourceforge.net; Tue, 28 Oct 2003 14:42:44 -0800
+Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
+	(for <marcelo.tosatti@cyclades.com.br>)
+	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
+	Wed, 29 Oct 2003 09:42:30 +1100
+To: Marcelo Tosatti <marcelo.tosatti@cyclades.com.br>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -33,55 +31,63 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, 2003-10-27 at 18:43, Neil Brown wrote:
 
-> 
-> You aren't using "soft" mounts are you?  Please tell me you aren't.
+nlmsvc_lock calls nlmsvc_create_block with file->f_sema
+held.
+nlmsvc_create_block calls nlmclnt_lookup_host which might
+call nlm_gc_hosts which might, eventually, try to claim
+file->f_sema for the same file -> deadlock.
 
-You're right, we're not.
+nlmsvc_create_block does not need any protection under
+any lock as lockd is single-threaded and _create_block
+only plays with internal data structures.
 
-> > [Also, I've just discovered that ldd gives a segmentation
-> > fault:
-> > 
-> >    ->ldd vsmWip
-> >    /usr/bin/ldd: line 1: 15403 Segmentation fault
-> >        LD_TRACE_LOADED_OBJECTS=1 LD_WARN= LD_BIND_NOW=
-> >        LD_LIBRARY_VERSION=$verify_out LD_VERBOSE= "$file"
-> >    ->
-> > 
-> > if LD_LIBRARY_PATH is set to include the library
-> > directory on the NFS mount.  (Without that directory,
-> > ldd [correctly] simply identifies the shared libraries
-> > as missing.  ldd works properly in either case after
-> > a remount of the NFS mount.]
-> > 
-> 
-> I don't understand why you say "[correctly]".  
+So we release the f_sema before calling in, and make sure
+it gets claimed again afterwards.
 
-Because not finding the shared libraries is the proper
-behavior when LD_LIBRARY_PATH doesn't include the library dir
-(as apposed to ldd seg-faulting when LD_LIBRARY_PATH does
-include the library dir).
+(This was fixed in 2.5 8 months ago)
 
-> Can you copy the library file to /tmp when it is working, and then
-> copy again when it is failing, and do a 
->    cmp -l
-> of the two files?
 
-Thanks Neil - that's an excellent suggestion!  I'll see what the
-produces.
-
--- 
-Steve Wampler -- swampler@noao.edu
-Quantum materiae materietur marmota monax si marmota
-                    monax materiam possit materiari?
+diff ./fs/lockd/svclock.c~current~ ./fs/lockd/svclock.c
+--- ./fs/lockd/svclock.c~current~	2003-10-29 09:07:10.000000000 +1100
++++ ./fs/lockd/svclock.c	2003-10-29 09:07:10.000000000 +1100
+@@ -317,8 +317,6 @@ nlmsvc_lock(struct svc_rqst *rqstp, stru
+ 				(long long)lock->fl.fl_end,
+ 				wait);
+ 
+-	/* Lock file against concurrent access */
+-	down(&file->f_sema);
+ 
+ 	/* Get existing block (in case client is busy-waiting) */
+ 	block = nlmsvc_lookup_block(file, lock, 0);
+@@ -326,6 +324,9 @@ nlmsvc_lock(struct svc_rqst *rqstp, stru
+ 	lock->fl.fl_flags |= FL_LOCKD;
+ 
+ again:
++	/* Lock file against concurrent access */
++	down(&file->f_sema);
++
+ 	if (!(conflock = posix_test_lock(&file->f_file, &lock->fl))) {
+ 		error = posix_lock_file(&file->f_file, &lock->fl, 0);
+ 
+@@ -358,7 +359,10 @@ again:
+ 
+ 	/* If we don't have a block, create and initialize it. Then
+ 	 * retry because we may have slept in kmalloc. */
++	/* We have to release f_sema as nlmsvc_create_block may try to
++	 * claim it while doing host garbage collection */
+ 	if (block == NULL) {
++		up(&file->f_sema);
+ 		dprintk("lockd: blocking on this lock (allocating).\n");
+ 		if (!(block = nlmsvc_create_block(rqstp, file, lock, cookie)))
+ 			return nlm_lck_denied_nolocks;
 
 
 -------------------------------------------------------
-This SF.net email is sponsored by: The SF.net Donation Program.
-Do you like what SourceForge.net is doing for the Open
-Source Community?  Make a contribution, and help us add new
-features and functionality. Click here: http://sourceforge.net/donate/
+This SF.net email is sponsored by: SF.net Giveback Program.
+Does SourceForge.net help you be more productive?  Does it
+help you create better code?   SHARE THE LOVE, and help us help
+YOU!  Click Here: http://sourceforge.net/donate/
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
