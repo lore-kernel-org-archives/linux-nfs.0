@@ -1,20 +1,21 @@
-From: "Muhammad Sibtain Bashir" <sibtain@pseb.org.pk>
-Subject: NFS Problem
-Date: Wed, 11 Dec 2002 16:41:50 +0500
+From: Jose Celestino <japc@co.sapo.pt>
+Subject: Client tuning
+Date: Wed, 11 Dec 2002 13:11:45 +0000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <000801c2a10a$4c393e40$08a0d7cb@pseb2>
+Message-ID: <20021211131145.GA1000@co.sapo.pt>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0005_01C2A134.346598C0"
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [203.215.160.2] (helo=isb.pseb.org.pk ident=root)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18M5FZ-000333-00
-	for <nfs@lists.sourceforge.net>; Wed, 11 Dec 2002 03:42:01 -0800
-Received: from pseb2 ([203.215.160.8])
-	by isb.pseb.org.pk (8.11.0/8.11.0) with SMTP id gBBBeqc30755
-	for <nfs@lists.sourceforge.net>; Wed, 11 Dec 2002 16:40:52 +0500
-To: <nfs@lists.sourceforge.net>
+Received: from mail.sl.pt ([212.55.140.13] helo=sl.pt)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18M6gW-0008JH-00
+	for <nfs@lists.sourceforge.net>; Wed, 11 Dec 2002 05:13:56 -0800
+Received: from unknown (HELO morgoth.sl.pt) ([172.28.229.169])
+          (envelope-sender <japc@co.sapo.pt>)
+          by mail.sl.pt (qmail-ldap-1.03) with SMTP
+          for <nfs@lists.sourceforge.net>; 11 Dec 2002 13:13:47 -0000
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,87 +28,29 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+Hello,
 
-------=_NextPart_000_0005_01C2A134.346598C0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+I need some help fine tuning some NFS clients.
 
-Dear sir=20
+The server is a blackbox (an EMC Celerra which we don't administer, we
+can't touch it, we can only give some hints and pray) the clients are
+Linux boxes with kernel >= 2.4.18.
 
-i am using NFS server , instead of using the domain names i am using the =
-IP addresses of my clients machines=20
- the file /etc/export looks like
+This system will be used, exclusivelly, as a webmail system with maildir
+format "mailboxes". That means lots (ithousands to millions) of small
+iles (<=30Kb) and tons of accesses to that same files. Access will be
+made via an IMAP server, a POP server and a SMTP server.
 
-/google                     203.215.160.2(rw)
-/345                        203.215.160.2(rw)
-/mnt/cdrom              203.215.160.2(rw)
+I have the option of choosing between NFSv2/v3 and TCP/UDP and the
+freedom to fully configure/reconfigure the client boxes. Any thoughs on
+what I might tweak and look for? Any experiences on this?
 
-now when i mount the directories on my client machine it get mounted =
-okay and i can read any file in the mounted directories but as above i =
-have given the write permision as well ,but i cant write any thing  and =
-this message show   * permission denied*.
+TIA.
 
-
-waiting for response plz .
-
-regards
-
-Muhammad Sibtain
-
-------=_NextPart_000_0005_01C2A134.346598C0
-Content-Type: text/html;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; =
-charset=3Diso-8859-1">
-<META content=3D"MSHTML 6.00.2800.1126" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV><FONT face=3DArial size=3D2>Dear sir </FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>i am using NFS server , instead of =
-using the domain=20
-names i am using the IP addresses of my clients machines </FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>&nbsp;the file /etc/export looks =
-like</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial=20
-size=3D2>/google&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nb=
-sp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
-&nbsp;&nbsp;&nbsp;=20
-203.215.160.2(rw)<BR>/345&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
-&nbsp;&nbsp;&nbsp;=20
-203.215.160.2(rw)<BR>/mnt/cdrom&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
-203.215.160.2(rw)</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>now when i mount the directories on my =
-client=20
-machine it get mounted okay and i can read any file in the mounted =
-directories=20
-but as above i have given the write permision as well ,but i cant write =
-any=20
-thing&nbsp; and this message show&nbsp;&nbsp;&nbsp;* permission=20
-denied*.</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>waiting for response plz .</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>regards</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>Muhammad =
-Sibtain<BR></FONT></DIV></BODY></HTML>
-
-------=_NextPart_000_0005_01C2A134.346598C0--
-
-
+-- 
+Jose Celestino | http://xpto.org/~japc/files/japc-pgpkey.asc
+----------------------------------------------------------------
+"Don't summarize. Don't abbreviate. Don't interpret." -- djb
 
 
 -------------------------------------------------------
