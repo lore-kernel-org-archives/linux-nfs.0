@@ -1,20 +1,17 @@
-From: Robert Myers <rmyers1400@attbi.com>
-Subject: Re: Having Trouble Starting NFS
-Date: Sun, 22 Jun 2003 13:36:07 -0400
+From: "Donny Grover" <Gydav@aol.com>
+Subject: embarrassment is the bedroom is NOT good ffsxcbnrznquohn
+Date: Sun, 22 Jun 03 13:45:27 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3EF5E907.90409@attbi.com>
-References: <029DBE7A1D95BF4A860FE19EA15FA533948B@isis.vanderbilt.edu>
-Reply-To: rmyers@rustuck.com
+Message-ID: <8$8z$4-b-1g$069238$n6vnyi86p7j2@7gpvhpob974>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/alternative;
+	boundary="B.7B85C6A6C_B.AC_6F_2"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from rwcrmhc12.comcast.net ([216.148.227.85] helo=rwcrmhc12.attbi.com)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19U8lC-00007R-00
-	for <nfs@lists.sourceforge.net>; Sun, 22 Jun 2003 10:36:14 -0700
-To: Dan Steward <dsteward@isis.vanderbilt.edu>
-In-Reply-To: <029DBE7A1D95BF4A860FE19EA15FA533948B@isis.vanderbilt.edu>
+Received: from cblmdm63-164-252-154.buckeye-express.com ([63.164.252.154])
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19U9yG-0007mT-00
+	for <nfs@lists.sourceforge.net>; Sun, 22 Jun 2003 11:53:48 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,28 +24,43 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Dan Steward wrote:
+This is a multi-part message in MIME format.
 
-> Hello Gentlemen,
->
-> I recently installed Redhat Linux 9.0 on a Compaq laptop. When I try 
-> and mount our network NFS, I receive the following error message in 
-> the /var/log/messages log file: nfs: mount failure “servername” /home 
-> on /auto/home. Can some one please assist this newbie on getting NFS 
-> running on this laptop?
->
-> Thanks
->
-> DS
->
-Most probable cause of a failure to mount a remote disk with a naive NFS 
-installation is a firewall problem. Try mounting the disk manually while 
-watching network traffic with ethereal or tcpdump. Don't be surprised if 
-you see a "connection refused" message from a computer that just made an 
-NFS request on the same port on which it is refusing to make the connection.
+--B.7B85C6A6C_B.AC_6F_2
+Content-Type: text/html;
+Content-Transfer-Encoding: quoted-printable
 
-RM
+<html><font color=3D"white">vikvoelnhgcfs
 
+loadahl jb k vxpyd hdvjjc s
+ qlyxdifnpy 
+dbbgq
+ jazzwa</font>
+</font><b><br>
+Get Hard!<br>
+Stay Hard!<br><br>
+Improve your sexual performance today and get a little something
+=FFFFFF91extra=FFFFFF92=
+ to satisfy her<br>
+<br>
+Join thousands of satisfied customers by ordering today!
+<br><br>
+Give your partner the best afterglow she=FFFFFF92s ever experienced when
+you tak=
+e Zenextend penis enlargement pills.<br>  Guaranteed to lengthen, thicken =
+and empower your erections, try America=FFFFFF92s favorite today!
+<br>
+<a href=3D"http://incommutable@213.171.60.116/zenextend/2377/"> Check it o=
+ut today, and discover the sex life you deserve!</a><br>
+<br><br><font color=3D"white">tvsdazq owigzm drf</b>
+<br><br><br><br><br><br><br><br><br><br><font size=3D"1">
+<br><br><br><br><br><br><br><br><br><br>
+<A HREF=3D"http://213.171.60.116/remove/">
+<font color=3D"black"><font size=3D"1">Click Here</A> to remove yourself f=
+rom this opt-in/out list<br>
+</font><br><font color=3D"white">h dvzss  lhw cw <br>
+
+--B.7B85C6A6C_B.AC_6F_2--
 
 
 
