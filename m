@@ -1,28 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: ~800 mountpoint limitation
-Date: 17 Oct 2003 10:55:03 -0400
+From: NeilBrown <neilb@cse.unsw.edu.au>
+Subject: [PATCH]  Remove un-necessary locking in lockd
+Date: Mon, 20 Oct 2003 11:32:19 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsvfqnykvs.fsf@charged.uio.no>
-References: <482A3FA0050D21419C269D13989C6113020AC50F@lavender-fe.eng.netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Ogden, Aaron A." <aogden@unocal.com>,  <nfs@lists.sourceforge.net>
+Message-ID: <E1ABOuB-0002a9-00@notabene>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AAiPQ-0000LT-00
-	for <nfs@lists.sourceforge.net>; Fri, 17 Oct 2003 21:09:44 -0700
-Received: from [198.186.202.147] (helo=externalmx.vasoftware.com ident=mail)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 1AAW4y-0000K7-Jj
-	for nfs@lists.sourceforge.net; Fri, 17 Oct 2003 07:59:48 -0700
-Received: from pat.uio.no ([129.240.130.16]:58112)
-	by externalmx.vasoftware.com with esmtp (Exim 4.22 #1 (Debian))
-	id 1AAW0W-0000IC-6K
-	for <nfs@lists.sourceforge.net>; Fri, 17 Oct 2003 07:55:12 -0700
-To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: <482A3FA0050D21419C269D13989C6113020AC50F@lavender-fe.eng.netapp.com>
+	id 1ABQv3-0007lA-00
+	for <nfs@lists.sourceforge.net>; Sun, 19 Oct 2003 20:41:21 -0700
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.22)
+	id 1ABQtj-0000fX-Q2
+	for nfs@lists.sourceforge.net; Sun, 19 Oct 2003 20:39:59 -0700
+Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
+	(for <marcelo.tosatti@cyclades.com.br>)
+	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
+	Mon, 20 Oct 2003 11:32:19 +1000
+To: Marcelo Tosatti <marcelo.tosatti@cyclades.com.br>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -35,35 +31,55 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Charles Lever <Lever> writes:
 
-     > trond has heard my complaints about this before....  sharing an
-     > RPC transport socket across mounts is an interesting solution
-     > in some ways, but i'm concerned about the performance
-     > scalability of this solution, especially since the RPC slot
-     > table size is fixed at a relatively small 16 entries.
+Two places in lockd readlock the nfsd export table before calling
+exp_getclient.
+This is not needed because the export table is already locked by
+code in svc.c.
+It is a problem because if a write_lock is attempted while the svc.c
+readlock is active, and before the secondary readlock is attempted,
+you get a deadlock.
 
-The answer to this problem is to make the slot table size
-configurable. I believe you even have a patch for that, Chuck ;-)
+ ----------- Diffstat output ------------
+ ./fs/lockd/svc4proc.c |    2 --
+ ./fs/lockd/svcproc.c  |    2 --
+ 2 files changed, 4 deletions(-)
 
-     > imagine sharing 16 RPC slots across all the mounts on a very
-     > busy multi-user system.  if one mount backs up (say because one
-     > of the server's disks gets busy), that makes all the mounts
-     > sharing that slot table unusable.
+diff ./fs/lockd/svc4proc.c~current~ ./fs/lockd/svc4proc.c
+--- ./fs/lockd/svc4proc.c~current~	2003-10-20 11:31:33.000000000 +1000
++++ ./fs/lockd/svc4proc.c	2003-10-20 11:31:33.000000000 +1000
+@@ -449,13 +449,11 @@ nlm4svc_proc_sm_notify(struct svc_rqst *
+ 	if (nlmsvc_ops != NULL) {
+ 		struct svc_client	*clnt;
+ 		saddr.sin_addr.s_addr = argp->addr;
+-		nlmsvc_ops->exp_readlock();
+ 		if ((clnt = nlmsvc_ops->exp_getclient(&saddr)) != NULL 
+ 		 && (host = nlm_lookup_host(clnt, &saddr, 0, 0)) != NULL) {
+ 			nlmsvc_free_host_resources(host);
+ 		}
+ 		nlm_release_host(host);
+-		nlmsvc_ops->exp_unlock();
+ 	}
+ 
+ 	return rpc_success;
 
-
-I'm not really sure that I buy the argument about the server disks
-getting busy. That will tend to hit you whether or not you are sharing
-RPC slots, since it also ties up server resources.
-
-The main point with putting all the transport to a given server on one
-socket is that the UDP/TCP congestion control algorithms can then
-function efficiently. Instead of competing against other packets
-originating from itself, the client only has to deal with competition
-from other clients.
-
-Cheers,
-  Trond
+diff ./fs/lockd/svcproc.c~current~ ./fs/lockd/svcproc.c
+--- ./fs/lockd/svcproc.c~current~	2003-10-20 11:31:33.000000000 +1000
++++ ./fs/lockd/svcproc.c	2003-10-20 11:31:33.000000000 +1000
+@@ -477,13 +477,11 @@ nlmsvc_proc_sm_notify(struct svc_rqst *r
+ 	if (nlmsvc_ops != NULL) {
+ 		struct svc_client	*clnt;
+ 		saddr.sin_addr.s_addr = argp->addr;
+-		nlmsvc_ops->exp_readlock();
+ 		if ((clnt = nlmsvc_ops->exp_getclient(&saddr)) != NULL 
+ 		 && (host = nlm_lookup_host(clnt, &saddr, 0, 0)) != NULL) {
+ 			nlmsvc_free_host_resources(host);
+ 		}
+ 		nlm_release_host(host);
+-		nlmsvc_ops->exp_unlock();
+ 	}
+ 
+ 	return rpc_success;
 
 
 -------------------------------------------------------
