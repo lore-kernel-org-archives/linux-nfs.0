@@ -1,20 +1,19 @@
 From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: PATHC - kNFSd/reiserfs in 2.5.14 - Convert reisferfs to use export_operations
-Date: Tue, 7 May 2002 14:51:15 +1000 (EST)
+Subject: PATCH - kNFSd/FAT in 2.5.14 - Add export_operations support for FAT
+Date: Tue, 7 May 2002 14:52:37 +1000 (EST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15575.23875.157599.603637@notabene.cse.unsw.edu.au>
+Message-ID: <15575.23957.22455.667453@notabene.cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: reiserfs-dev@namesys.com, nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 174wx9-0005II-00
-	for <nfs@lists.sourceforge.net>; Mon, 06 May 2002 21:51:55 -0700
+	id 174wyR-0005N5-00
+	for <nfs@lists.sourceforge.net>; Mon, 06 May 2002 21:53:15 -0700
 Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <torvalds@transmeta.com>) (for <reiserfs-dev@namesys.com>)
-	(for <nfs@lists.sourceforge.net>) By tone With Smtp ;
-	Tue, 7 May 2002 14:51:39 +1000
+	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>) By
+	tone With Smtp ; Tue, 7 May 2002 14:53:03 +1000
 To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -29,256 +28,202 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 
-This patch converts reiserfs to use the new export_operations
-interface for exporting a filesystem instead of the old
-fh_to_dentry and dentry_to_fh.
-Essentially it:
 
-  - renamed reiserfs_dentry_to_fh to reiserfs_encode_fh
-  - split reiserfs_fh_to_dentry into reiserfs_get_dentry
-    and reiserfs_decode_fh
-  - calls d_splice_alias from reiserfs_lookup so that building 
-    a dcache path from the bottom works well
-  - addes reiserfs_get_parent to do a lookup of ".." without going
-    through the VFS interfaces.
-  - sets sb->s_export_op to be an appropriately initialised
-    struct export_operations
+This actually contains a lot of code that is never used,
+as we don't currently attempt to load an inode that isn't
+in cache, so the fat_get_parent is never actually reached.
+However it is there (and should be right) incase some brave 
+soul does decide to enhance fat_get_dentry accordingly.
 
-This has been tested and works.
 
-NeilBrown
 
  ----------- Diffstat output ------------
- ./fs/reiserfs/inode.c         |   88 +++++++++++++++++++++---------------------
- ./fs/reiserfs/namei.c         |   45 +++++++++++++++++++++
- ./fs/reiserfs/super.c         |   11 +++--
- ./include/linux/reiserfs_fs.h |   11 +++--
- 4 files changed, 106 insertions(+), 49 deletions(-)
+ ./fs/fat/inode.c   |   72 ++++++++++++++++++++++++++++++++++++++++++++---------
+ ./fs/msdos/namei.c |   13 ++++++++-
+ ./fs/vfat/namei.c  |   18 +++++++++----
+ 3 files changed, 85 insertions(+), 18 deletions(-)
 
---- ./include/linux/reiserfs_fs.h	2002/05/07 04:35:02	1.1
-+++ ./include/linux/reiserfs_fs.h	2002/05/07 04:35:15	1.2
-@@ -1822,9 +1822,13 @@
- void reiserfs_read_inode2(struct inode * inode, void *p) ;
- void reiserfs_delete_inode (struct inode * inode);
- void reiserfs_write_inode (struct inode * inode, int) ;
--struct dentry *reiserfs_fh_to_dentry(struct super_block *sb, __u32 *data,
--									 int len, int fhtype, int parent);
--int reiserfs_dentry_to_fh(struct dentry *dentry, __u32 *data, int *lenp, int need_parent);
-+struct dentry *reiserfs_get_dentry(struct super_block *, void *) ;
-+struct dentry *reiserfs_decode_fh(struct super_block *sb, __u32 *data,
-+                                     int len, int fhtype,
-+				  int (*acceptable)(void *contect, struct dentry *de),
-+				  void *context) ;
-+int reiserfs_encode_fh( struct dentry *dentry, __u32 *data, int *lenp, 
-+						int connectable );
+--- ./fs/fat/inode.c	2002/05/07 04:35:26	1.1
++++ ./fs/fat/inode.c	2002/05/07 04:35:29	1.2
+@@ -438,20 +438,26 @@
+  *  4/  parent->i_logstart - maybe used to hunt for the file on disc
+  *
+  */
+-struct dentry *fat_fh_to_dentry(struct super_block *sb, __u32 *fh,
+-				int len, int fhtype, int parent)
++
++struct dentry *fat_decode_fh(struct super_block *sb, __u32 *fh,
++			     int len, int fhtype, 
++			     int (*acceptable)(void *context, struct dentry *de),
++			     void *context)
+ {
+-	struct inode *inode = NULL;
+-	struct dentry *result;
  
- int reiserfs_prepare_write(struct file *, struct page *, unsigned, unsigned) ;
- void reiserfs_truncate_file(struct inode *, int update_timestamps) ;
-@@ -1849,6 +1853,7 @@
- int search_by_entry_key (struct super_block * sb, const struct cpu_key * key, 
- 			 struct path * path, 
- 			 struct reiserfs_dir_entry * de);
-+struct dentry *reiserfs_get_parent(struct dentry *) ;
- /* procfs.c */
- 
- #if defined( CONFIG_PROC_FS ) && defined( CONFIG_REISERFS_PROC_INFO )
---- ./fs/reiserfs/inode.c	2002/05/07 04:35:02	1.1
-+++ ./fs/reiserfs/inode.c	2002/05/07 04:35:15	1.2
-@@ -1251,11 +1251,39 @@
-     return inode;
- }
- 
--struct dentry *reiserfs_fh_to_dentry(struct super_block *sb, __u32 *data,
--				     int len, int fhtype, int parent) {
-+struct dentry *reiserfs_get_dentry(struct super_block *sb, void *vobjp)
-+{
-+    __u32 *data = vobjp;
-     struct cpu_key key ;
--    struct inode *inode = NULL ;
-     struct dentry *result;
-+    struct inode *inode;
-+    
-+    key.on_disk_key.k_objectid = data[0] ;
-+    key.on_disk_key.k_dir_id = data[1] ;
-+    inode = reiserfs_iget(sb, &key) ;
-+    if (inode && !IS_ERR(inode) && data[2] != 0 &&
-+	data[2] != inode->i_generation) {
-+	    iput(inode) ;
-+	    inode = NULL ;
-+    }
-+    if (!inode)
-+	    inode = ERR_PTR(-ESTALE);
-+    if (IS_ERR(inode))
-+	    return ERR_PTR(PTR_ERR(inode));
-+    result = d_alloc_anon(inode);
-+    if (!result) {
-+	    iput(inode);
-+	    return ERR_PTR(-ENOMEM);
-+    }
-+    result->d_vfs_flags |= DCACHE_REFERENCED;
-+    return result;
+ 	if (fhtype != 3)
+ 		return ERR_PTR(-ESTALE);
+ 	if (len < 5)
+ 		return ERR_PTR(-ESTALE);
+-	/* We cannot find the parent,
+-	   It better just *be* there */
+-	if (parent)
+-		return ERR_PTR(-ESTALE);
++
++	return sb->s_export_op->find_exported_dentry(sb, fh, NULL, acceptable, context);
 +}
 +
-+struct dentry *reiserfs_decode_fh(struct super_block *sb, __u32 *data,
-+                                     int len, int fhtype,
-+				  int (*acceptable)(void *contect, struct dentry *de),
-+				  void *context) {
-+    __u32 obj[3], parent[3];
- 
-     /* fhtype happens to reflect the number of u32s encoded.
-      * due to a bug in earlier code, fhtype might indicate there
-@@ -1275,51 +1303,25 @@
- 			   fhtype, len);
- 	    fhtype = 5;
-     }
--    if (fhtype < 2 || (parent && fhtype < 4)) 
--	goto out ;
- 
--    if (! parent) {
--	    /* this works for handles from old kernels because the default
--	    ** reiserfs generation number is the packing locality.
--	    */
--	    key.on_disk_key.k_objectid = data[0] ;
--	    key.on_disk_key.k_dir_id = data[1] ;
--	    inode = reiserfs_iget(sb, &key) ;
--	    if (inode && !IS_ERR(inode) && (fhtype == 3 || fhtype >= 5) &&
--		data[2] != inode->i_generation) {
--		    iput(inode) ;
--		    inode = NULL ;
--	    }
--    } else {
--	    key.on_disk_key.k_objectid = data[fhtype>=5?3:2] ;
--	    key.on_disk_key.k_dir_id = data[fhtype>=5?4:3] ;
--	    inode = reiserfs_iget(sb, &key) ;
--	    if (inode && !IS_ERR(inode) && fhtype == 6 &&
--		data[5] != inode->i_generation) {
--		    iput(inode) ;
--		    inode = NULL ;
--	    }
--    }
--out:
--    if (IS_ERR(inode))
--	return ERR_PTR(PTR_ERR(inode));
--    if (!inode)
--        return ERR_PTR(-ESTALE) ;
-+    obj[0] = data[0];
-+    obj[1] = data[1];
-+    if (fhtype == 3 || fhtype >= 5)
-+	    obj[2] = data[2];
-+    else    obj[2] = 0; /* generation number */
- 
--    /* now to find a dentry.
--     * If possible, get a well-connected one
--     */
--    result = d_alloc_anon(inode);
--    if (result == NULL) {
--	    iput(inode);
--	    return ERR_PTR(-ENOMEM);
-+    if (fhtype >= 4) {
-+	    parent[0] = data[fhtype>=5?3:2] ;
-+	    parent[1] = data[fhtype>=5?4:3] ;
-+	    if (fhtype == 6)
-+		    parent[2] = data[5];
-+	    else    parent[2] = 0;
-     }
--    result->d_vfs_flags |= DCACHE_REFERENCED;
--    return result;
--
-+    return sb->s_export_op->find_exported_dentry(sb, obj, fhtype < 4 ? NULL : parent,
-+			       acceptable, context);
- }
- 
--int reiserfs_dentry_to_fh(struct dentry *dentry, __u32 *data, int *lenp, int need_parent) {
-+int reiserfs_encode_fh(struct dentry *dentry, __u32 *data, int *lenp, int need_parent) {
-     struct inode *inode = dentry->d_inode ;
-     int maxlen = *lenp;
-     
---- ./fs/reiserfs/namei.c	2002/05/07 04:35:02	1.1
-+++ ./fs/reiserfs/namei.c	2002/05/07 04:35:15	1.2
-@@ -363,9 +363,54 @@
- 	return ERR_PTR(-EIO);
-     }
- 
-+    if (inode)
-+	    return d_splice_alias(inode, dentry);
-+    
-     d_add(dentry, inode);
-     return NULL;
- }
-+
-+
-+/* 
-+** looks up the dentry of the parent directory for child.
-+** taken from ext2_get_parent
-+*/
-+struct dentry *reiserfs_get_parent(struct dentry *child)
++struct dentry *fat_get_dentry(struct super_block *sb, void *inump)
 +{
-+    int retval;
-+    struct inode * inode = NULL;
-+    struct reiserfs_dir_entry de;
-+    INITIALIZE_PATH (path_to_entry);
-+    struct dentry *parent;
-+    struct inode *dir = child->d_inode ;
++	struct inode *inode = NULL;
++	struct dentry *result;
++	__u32 *fh = inump;
+ 
+ 	inode = iget(sb, fh[0]);
+ 	if (!inode || is_bad_inode(inode) ||
+@@ -497,12 +503,13 @@
+ 		iput(inode);
+ 		return ERR_PTR(-ENOMEM);
+ 	}
++	result->d_op = sb->s_root->d_op;
+ 	result->d_vfs_flags |= DCACHE_REFERENCED;
+ 	return result;
+ 		
+ }
+ 
+-int fat_dentry_to_fh(struct dentry *de, __u32 *fh, int *lenp, int needparent)
++int fat_encode_fh(struct dentry *de, __u32 *fh, int *lenp, int connectable)
+ {
+ 	int len = *lenp;
+ 	struct inode *inode =  de->d_inode;
+@@ -520,6 +527,43 @@
+ 	return 3;
+ }
+ 
++struct dentry *fat_get_parent(struct dentry *child)
++{
++	struct buffer_head *bh=NULL;
++	struct msdos_dir_entry *de = NULL;
++	struct dentry *parent = NULL;
++	int res;
++	int ino = 0;
++	struct inode *inode;
 +
++	lock_kernel();
++	res = fat_scan(child->d_inode, MSDOS_DOTDOT, &bh, &de, &ino);
 +
-+    if (dir->i_nlink == 0) {
-+	return ERR_PTR(-ENOENT);
-+    }
-+    de.de_gen_number_bit_string = 0;
++	if (res < 0)
++		goto out;
++	inode = fat_build_inode(child->d_sb, de, ino, &res);
++	if (res)
++		goto out;
++	if (!inode)
++		res = -EACCES;
++	else {
++		parent = d_alloc_anon(inode);
++		if (!parent) {
++			iput(inode);
++			res = -ENOMEM;
++		}
++	}
 +
-+    lock_kernel();
-+    retval = reiserfs_find_entry (dir, "..", 2, &path_to_entry, &de);
-+    pathrelse (&path_to_entry);
-+    if (retval != NAME_FOUND) {
++ out:
++	if(bh)
++		fat_brelse(child->d_sb, bh);
 +	unlock_kernel();
-+	return ERR_PTR(-ENOENT);
-+    }
-+    inode = reiserfs_iget (dir->i_sb, (struct cpu_key *)&(de.de_dir_id));
-+    unlock_kernel();
-+
-+    if (!inode || IS_ERR(inode)) {
-+	return ERR_PTR(-EACCES);
-+    }
-+    parent = d_alloc_anon(inode);
-+    if (!parent) {
-+	iput(inode);
-+	parent = ERR_PTR(-ENOMEM);
-+    }
-+    return parent;
++	if (res)
++		return ERR_PTR(res);
++	else
++		return parent;
 +}
 +
+ static kmem_cache_t *fat_inode_cachep;
  
- //
- // a portion of this function, particularly the VFS interface portion,
---- ./fs/reiserfs/super.c	2002/05/07 04:35:02	1.1
-+++ ./fs/reiserfs/super.c	2002/05/07 04:35:15	1.2
-@@ -496,11 +496,15 @@
-   statfs: reiserfs_statfs,
-   remount_fs: reiserfs_remount,
+ static struct inode *fat_alloc_inode(struct super_block *sb)
+@@ -574,8 +618,13 @@
+ 	clear_inode:	fat_clear_inode,
  
--  fh_to_dentry: reiserfs_fh_to_dentry,
--  dentry_to_fh: reiserfs_dentry_to_fh,
--
+ 	read_inode:	make_bad_inode,
+-	fh_to_dentry:	fat_fh_to_dentry,
+-	dentry_to_fh:	fat_dentry_to_fh,
++};
++
++static struct export_operations fat_export_ops = {
++	decode_fh:	fat_decode_fh,
++	encode_fh:	fat_encode_fh,
++	get_dentry:	fat_get_dentry,
++	get_parent:	fat_get_parent,
  };
  
-+static struct export_operations reiserfs_export_ops = {
-+  encode_fh: reiserfs_encode_fh,
-+  decode_fh: reiserfs_decode_fh,
-+  get_parent: reiserfs_get_parent,
-+  get_dentry: reiserfs_get_dentry,
-+} ;
-+
- /* this was (ext2)parse_options */
- static int parse_options (char * options, unsigned long * mount_options, unsigned long * blocks, char **jdev_name)
- {
-@@ -799,6 +803,7 @@
- 	      is_reiserfs_3_5 (rs) ? "3.5" : "3.6");
+ /*
+@@ -609,6 +658,7 @@
  
-     s->s_op = &reiserfs_sops;
-+    s->s_export_op = &reiserfs_export_ops;
+ 	sb->s_magic = MSDOS_SUPER_MAGIC;
+ 	sb->s_op = &fat_sops;
++	sb->s_export_op = &fat_export_ops;
+ 	sbi->options.isvfat = isvfat;
+ 	sbi->dir_ops = fs_dir_inode_ops;
+ 	sbi->cvf_format = &default_cvf;
+--- ./fs/msdos/namei.c	2002/05/07 04:35:26	1.1
++++ ./fs/msdos/namei.c	2002/05/07 04:35:29	1.2
+@@ -221,13 +221,22 @@
+ 	if (res)
+ 		goto out;
+ add:
+-	d_add(dentry, inode);
++	if (inode) {
++		dentry = d_splice_alias(inode, dentry);
++		dentry->d_op = &msdos_dentry_operations;
++	} else {
++		d_add(dentry, inode);
++		dentry = NULL;
++	}
+ 	res = 0;
+ out:
+ 	if (bh)
+ 		fat_brelse(sb, bh);
+ 	unlock_kernel();
+-	return ERR_PTR(res);
++	if (res)
++		return ERR_PTR(res);
++	else
++		return dentry;
+ }
  
-     /* new format is limited by the 32 bit wide i_blocks field, want to
-     ** be one full block below that.
+ /***** Creates a directory entry (name is already formatted). */
+--- ./fs/vfat/namei.c	2002/05/07 04:35:26	1.1
++++ ./fs/vfat/namei.c	2002/05/07 04:35:29	1.2
+@@ -1020,6 +1020,14 @@
+ 	unlock_kernel();
+ 	dentry->d_op = &vfat_dentry_ops[table];
+ 	dentry->d_time = dentry->d_parent->d_inode->i_version;
++	if (inode) {
++		dentry = d_splice_alias(inode, dentry);
++		if (dentry) {
++			dentry->d_op = &vfat_dentry_ops[table];
++			dentry->d_time = dentry->d_parent->d_inode->i_version;
++		}
++		return dentry;
++	}
+ 	d_add(dentry,inode);
+ 	return NULL;
+ }
+@@ -1305,11 +1313,11 @@
+ 		if (sbi->options.posixfs) {
+ 			sbi->options.name_check = 's';
+ 		}
+-		if (sbi->options.name_check != 's') {
+-			sb->s_root->d_op = &vfat_dentry_ops[0];
+-		} else {
+-			sb->s_root->d_op = &vfat_dentry_ops[2];
+-		}
++	}
++	if (sbi->options.name_check != 's') {
++		sb->s_root->d_op = &vfat_dentry_ops[0];
++	} else {
++		sb->s_root->d_op = &vfat_dentry_ops[2];
+ 	}
+ 	return 0;
+ }
 
 _______________________________________________________________
 
