@@ -1,71 +1,47 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH kNFSd 1 of 9] Calls to break_lease in nfsd should be O_NONBLOCKing.
-Date: Thu, 7 Oct 2004 16:18:56 -0400
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20041007201856.GA30356@fieldses.org>
-References: <20040903122815.15453.patches@notabene> <E1C33uD-00042m-VA@notabene.cse.unsw.edu.au>
+From: Clemens Schwaighofer <cs@tequila.co.jp>
+Subject: Re: [PATCH] NFS using CacheFS
+Date: Fri, 08 Oct 2004 13:36:32 +0900
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <41661950.5070508@tequila.co.jp>
+References: <4161B664.70109@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@osdl.org>, nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CFej8-0004C5-LI
-	for nfs@lists.sourceforge.net; Thu, 07 Oct 2004 13:19:02 -0700
-Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.41)
-	id 1CFej7-0000TB-5k
-	for nfs@lists.sourceforge.net; Thu, 07 Oct 2004 13:19:02 -0700
-To: NeilBrown <neilb@cse.unsw.edu.au>
-In-Reply-To: <E1C33uD-00042m-VA@notabene.cse.unsw.edu.au>
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	nfs@lists.sourceforge.net,
+	Linux filesystem caching discussion list
+	<linux-cachefs@redhat.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel=40m.gmane.org-S267521AbUJHEgp@vger.kernel.org>
+To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: <4161B664.70109@RedHat.com>
+List-ID: <nfs.lists.sourceforge.net>
 
-On Fri, Sep 03, 2004 at 12:34:25PM +1000, NeilBrown wrote:
-> 
-> If we would block, we return "err-jukebox" for nfsv3,
-> or just drop the request for v2.
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-Sorry, only just noticed there's a problem here:
+On 10/05/2004 05:45 AM, Steve Dickson wrote:
 
-> diff ./fs/nfsd/nfsproc.c~current~ ./fs/nfsd/nfsproc.c
-> --- ./fs/nfsd/nfsproc.c~current~	2004-09-03 11:34:26.000000000 +1000
-> +++ ./fs/nfsd/nfsproc.c	2004-09-03 11:34:29.000000000 +1000
-> @@ -586,6 +586,7 @@ nfserrno (int errno)
->  		{ nfserr_dquot, -EDQUOT },
->  #endif
->  		{ nfserr_stale, -ESTALE },
-> +		{ nfserr_jukebox, -EWOULDBLOCK },
->  		{ nfserr_jukebox, -ETIMEDOUT },
->  		{ nfserr_dropit, -EAGAIN },
->  		{ nfserr_dropit, -ENOMEM },
+| 3) There is no user level support. I realize this is extremely cheesy
+|     but I noticed that the NFS posix mount  option (in the 2.6 kernel)
+|     was no longer being used, so I high jacked it.  Which means
+|     to make NFS to used CacheFS you need to use the posix option:
+|
+|     mount -o posix server:/export/home /mnt/server/home
 
-Note that EWOULDBLOCK is defined to be EAGAIN in
-include/asm-generic/errno.h, so the effect of this is to map EAGAIN to
-nfserr_jukebox instead of nfserr_dropit.
+brr :) why is it posix, this is so out of the context for me (as a
+user). Is it possible to have a cachefs flag. Would make it more logical.
 
-The cache upcall deferral code depends on EAGAIN being mapped to
-nfserr_dropit.  So now whenever cache upcall deferral happens, the
-client gets a nfserr_jukebox response, which isn't what we want.
+- --
+[ Clemens Schwaighofer                      -----=====:::::~ ]
+[ TBWA\ && TEQUILA\ Japan IT Group                           ]
+[                6-17-2 Ginza Chuo-ku, Tokyo 104-0061, JAPAN ]
+[ Tel: +81-(0)3-3545-7703            Fax: +81-(0)3-3545-7343 ]
+[ http://www.tequila.co.jp        http://www.tbwajapan.co.jp ]
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.4 (GNU/Linux)
+Comment: Using GnuPG with Thunderbird - http://enigmail.mozdev.org
 
---b.
-
-
--------------------------------------------------------
-This SF.net email is sponsored by: IT Product Guide on ITManagersJournal
-Use IT products in your business? Tell us what you think of them. Give us
-Your Opinions, Get Free ThinkGeek Gift Certificates! Click to find out more
-http://productguide.itmanagersjournal.com/guidepromo.tmpl
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+iD8DBQFBZhlPjBz/yQjBxz8RAtKbAKCLWJBqWQUcroSaLzlrH1r2nuqI8gCfUzyL
+kpANJQ4pYt1026VBRm8UlpU=
+=NGFC
+-----END PGP SIGNATURE-----
