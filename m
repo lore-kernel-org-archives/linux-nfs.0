@@ -1,21 +1,24 @@
-From: "Brian T" <btuch@usa.net>
-Subject: Exporting an imported mount
-Date: Tue, 6 Apr 2004 13:19:27 -0500
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: Mounting any other os besides RHEW 3 doesn't work
+Date: Tue, 06 Apr 2004 16:05:59 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <01aa01c41c03$b2e44340$fd0ba8c0@briantpc>
+Message-ID: <40730DA7.1030302@RedHat.com>
+References: <1081197570.2641.133.camel@lade.trondhjem.org> <20040406092401.GA29906@suse.de> <1081260688.2846.30.camel@lade.trondhjem.org> <20040406142649.GF29906@suse.de> <Pine.GSO.4.58.0404061018320.5509@is.rice.edu>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BAv6w-0008MT-7W
-	for nfs@lists.sourceforge.net; Tue, 06 Apr 2004 11:15:46 -0700
-Received: from cmsrelay02.mx.net ([165.212.11.111])
-	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.30)
-	id 1BAv6v-0006b1-QV
-	for nfs@lists.sourceforge.net; Tue, 06 Apr 2004 11:15:45 -0700
-To: <nfs@lists.sourceforge.net>
+	id 1BAwpj-0003xy-Ew
+	for nfs@lists.sourceforge.net; Tue, 06 Apr 2004 13:06:07 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.30)
+	id 1BAwpj-0005w7-0t
+	for nfs@lists.sourceforge.net; Tue, 06 Apr 2004 13:06:07 -0700
+To: "Brent M. Clements" <bclem@rice.edu>
+In-Reply-To: <Pine.GSO.4.58.0404061018320.5509@is.rice.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -28,34 +31,16 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+Brent M. Clements wrote:
 
-I didn't see this discussed in the archives, so my apologies if it has been
-mentioned already.
+>We are stuck on a problem that no one seems to be able to answer, even
+>RedHat.
+>
+This is the first I've heard of this.... what's the bugzilla number 
+associated
+with these issues?
 
-I currently have a Fedora Core 1 server mounting a Novell drive with ncpfs,
-and then attempting to export it so other Linux systems have mount it, but
-am having no luck.  This used to work with my old Redhat 6.1 server.
-
-When the Novell drive is not mounted, then Linux clients can mount the
-server share, so I know NFS is working properly.  I see errors like this on
-the server:
-
-Apr  6 11:06:40 Zorak rpc.mountd: authenticated mount request from
-192.168.10.200:755 for /mnt/jbmfs1 (/mnt/jbmfs1)
-Apr  6 11:06:40 Zorak rpc.mountd: getfh failed: Operation not permitted
-
-and on the client, I get a "permission denied" error.
-
-So my main question, is it still possible to export an imported share, or
-has that been removed due to licencing issues with Novell?
-
-Thanks,
-
--Brian
-
-
-
+SteveD.
 
 
 -------------------------------------------------------
