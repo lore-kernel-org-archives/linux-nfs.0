@@ -1,15 +1,15 @@
 From: "Kendrick M. Smith" <kmsmith@umich.edu>
-Subject: patch 30/38: SERVER: overflow check in nfsd_commit()
-Date: Tue, 13 Aug 2002 19:09:12 -0400 (EDT)
+Subject: patch 27/38: SERVER: new routine fh_dup2()
+Date: Tue, 13 Aug 2002 19:08:00 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.SOL.4.44.0208131908540.25942-100000@rastan.gpcc.itd.umich.edu>
+Message-ID: <Pine.SOL.4.44.0208131907310.25942-100000@rastan.gpcc.itd.umich.edu>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from donkeykong.gpcc.itd.umich.edu ([141.211.2.163])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17ekmo-0007Dm-00
-	for <nfs@lists.sourceforge.net>; Tue, 13 Aug 2002 16:09:14 -0700
+	id 17eklf-0005cq-00
+	for <nfs@lists.sourceforge.net>; Tue, 13 Aug 2002 16:08:03 -0700
 To: linux-kernel@vger.kernel.org, <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -24,28 +24,27 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 
-Sanity check COMMIT arguments by ensuring that (start)+(length) < 2^64.
-The check is done in a way which is free of signedness pathologies in
-all cases.
+Define fh_dup2(), which copies a _verified_ filehandle, taking care
+of refcounts accordingly.  (This will be used by RESTOREFH/SAVEFH and
+a few other places.)
 
-This change was inspired by pynfs, Peter Astrand's regression testsuite
-for NFSv4 servers.  The change is necessary for all of the COMMIT tests
-to pass.  However, it's a little open to debate whether the change is
-really needed.  I'm curious to hear the opinions of other developers.
+--- old/include/linux/nfsd/nfsfh.h	Tue Jul 30 22:12:36 2002
++++ new/include/linux/nfsd/nfsfh.h	Mon Jul 29 11:50:09 2002
+@@ -238,6 +238,14 @@ fh_copy(struct svc_fh *dst, struct svc_f
+ 	return dst;
+ }
 
-
---- old/fs/nfsd/vfs.c	Tue Jul 30 23:24:21 2002
-+++ new/fs/nfsd/vfs.c	Mon Jul 29 11:50:09 2002
-@@ -756,6 +756,9 @@ nfsd_commit(struct svc_rqst *rqstp, stru
- 	struct file	file;
- 	int		err;
-
-+	if ((u64)count > ~(u64)offset)
-+		return nfserr_inval;
++static __inline__ void
++fh_dup2(struct svc_fh *dst, struct svc_fh *src)
++{
++	fh_put(dst);
++	dget(src->fh_dentry);
++	*dst = *src;
++}
 +
- 	if ((err = nfsd_open(rqstp, fhp, S_IFREG, MAY_WRITE, &file)) != 0)
- 		return err;
- 	if (EX_ISSYNC(fhp->fh_export)) {
+ static __inline__ struct svc_fh *
+ fh_init(struct svc_fh *fhp, int maxsize)
+ {
 
 
 
