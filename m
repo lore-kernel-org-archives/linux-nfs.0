@@ -1,20 +1,17 @@
-From: =?ISO-8859-1?Q?J=F6rgen_Karlsson?= <jorgen.karlsson@chello.se>
-Subject: knsfd - files don't sync to disk
-Date: Thu, 16 May 2002 21:43:51 +0200
+From: "Bennett, Paul" <Paul_Bennett@nrgn.com>
+Subject: stale nfs handle
+Date: Thu, 16 May 2002 16:49:12 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3CE40BF7.1090605@chello.se>
+Message-ID: <68DD016AFCDBD3118B3000508B6C6B1701287768@nrgn.nrgn.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: multipart/alternative;
+	boundary="----_=_NextPart_001_01C1FD1B.2224DCB0"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from smtp2.chello.se ([193.150.195.11])
+Received: from host5.neurogen.com ([208.255.81.5] helo=exchanger.nrgn.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 178R3Q-0007Nk-00
-	for <nfs@lists.sourceforge.net>; Thu, 16 May 2002 12:36:48 -0700
-Received: from chello.se ([213.200.143.211]) by smtp2.chello.se
-          (InterMail vK.4.04.00.00 201-232-137 license d2583c0617b67bae473a44216fd3d32d)
-          with ESMTP id <20020516193645.MHUF2385.smtp2@chello.se>
-          for <nfs@lists.sourceforge.net>; Thu, 16 May 2002 21:36:45 +0200
-To: nfs@lists.sourceforge.net
+	id 178SFX-0005RT-00
+	for <nfs@lists.sourceforge.net>; Thu, 16 May 2002 13:53:23 -0700
+To: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,58 +24,134 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hi,
+This message is in MIME format. Since your mail reader does not understand
+this format, some or all of this message may not be legible.
 
-We have a serious problem with knfsd and kernel 2.4.17.
+------_=_NextPart_001_01C1FD1B.2224DCB0
+Content-Type: text/plain;
+	charset="iso-8859-1"
 
-When doing a database backup in our linux cluster we have noticed that
-a few files are not written to disk properly. The files have zero
-file size when checked with the 'ls' command
+I have a Irix 6.5.14 client mounting a 2.4.17 Linux server ext3 filesystem. 
 
-Several thousands of files are written to the nfs server during a
-short period of time.  Average file size is 300-400 bytes.
+One heavily used account occasionally gets stale nfs handles. I believe
 
-We have noticed that usually 1-2 out of 3000 files will have their sizes
-truncated to 0.
+it happens when files are being created.
 
-File  system is exported with (rw,sync)
+ 
 
-The disk filesystem is ext2.
+I saw an instance where someone ran into a similar problem with reiser fs
 
-E.g. this is what is happening:
-          - client writes 272 bytes to the server
-          - mm/file.c:generic_file_write() returns 272 bytes written
-          - fs/nfsd/vfs.c:nfs_write() increments nfsdstats.io_write +=272
-             and returns that the write was sucessful.
-          - knfsd returns to client that 272 bytes was written.
-          - when checking with 'ls' command on server the file size is zero.
+and they used a "conv" parameter when mounting the filesystem on the server
 
-Apparently the nfs server lies to the client and the files are not
-properly synced/written to disk.
+to control the recycling of inode numbers to fix it.
 
-Setting no_wdelay makes no difference.
+ 
 
-When running with async set (or sync removed) the problem
-disappears (no files have their sizes truncated to zero).
+Does anyone know of a similar parameter for ext3? or something else to try?
 
-The nfs server is a PIII-700/ 1GB RAM
+ 
 
-Any ideas what is going on ?
+Thanks,
 
-/Jörgen Karlsson
+ 
+
+Paul
 
 
+------_=_NextPart_001_01C1FD1B.2224DCB0
+Content-Type: text/html;
+	charset="iso-8859-1"
+
+<html>
+
+<head>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
 
 
+<meta name=Generator content="Microsoft Word 10 (filtered)">
 
+<style>
+<!--
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0in;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;}
+span.EmailStyle17
+	{font-family:Arial;
+	color:windowtext;}
+@page Section1
+	{size:8.5in 11.0in;
+	margin:1.0in 1.25in 1.0in 1.25in;}
+div.Section1
+	{page:Section1;}
+-->
+</style>
 
+</head>
 
+<body lang=EN-US link=blue vlink=purple>
 
+<div class=Section1>
 
+<p class=MsoNormal><font size=2 face=Arial><span style='font-size:10.0pt;
+font-family:Arial'>I have a Irix 6.5.14 client mounting a 2.4.17 Linux server
+ext3 filesystem. </span></font></p>
 
+<p class=MsoNormal><font size=2 face=Arial><span style='font-size:10.0pt;
+font-family:Arial'>One heavily used account occasionally gets stale nfs
+handles. I believe</span></font></p>
 
+<p class=MsoNormal><font size=2 face=Arial><span style='font-size:10.0pt;
+font-family:Arial'>it happens when files are being created.</span></font></p>
 
+<p class=MsoNormal><font size=2 face=Arial><span style='font-size:10.0pt;
+font-family:Arial'>&nbsp;</span></font></p>
 
+<p class=MsoNormal><font size=2 face=Arial><span style='font-size:10.0pt;
+font-family:Arial'>I saw an instance where someone ran into a similar problem with
+reiser fs</span></font></p>
+
+<p class=MsoNormal><font size=2 face=Arial><span style='font-size:10.0pt;
+font-family:Arial'>and they used a &quot;conv&quot; parameter when mounting the
+filesystem on the server</span></font></p>
+
+<p class=MsoNormal><font size=2 face=Arial><span style='font-size:10.0pt;
+font-family:Arial'>to control the recycling of inode numbers to fix it.</span></font></p>
+
+<p class=MsoNormal><font size=2 face=Arial><span style='font-size:10.0pt;
+font-family:Arial'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=2 face=Arial><span style='font-size:10.0pt;
+font-family:Arial'>Does anyone know of a similar parameter for ext3? or
+something else to try?</span></font></p>
+
+<p class=MsoNormal><font size=2 face=Arial><span style='font-size:10.0pt;
+font-family:Arial'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=2 face=Arial><span style='font-size:10.0pt;
+font-family:Arial'>Thanks,</span></font></p>
+
+<p class=MsoNormal><font size=2 face=Arial><span style='font-size:10.0pt;
+font-family:Arial'>&nbsp;</span></font></p>
+
+<p class=MsoNormal><font size=2 face=Arial><span style='font-size:10.0pt;
+font-family:Arial'>Paul</span></font></p>
+
+</div>
+
+</body>
+
+</html>
+
+------_=_NextPart_001_01C1FD1B.2224DCB0--
 
 _______________________________________________________________
 
