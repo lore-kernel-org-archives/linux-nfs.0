@@ -1,23 +1,19 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFSERR_EAGAIN
-Date: Fri, 11 Jul 2003 12:13:42 +0200
+Subject: Re: nfsroot clients hang while mounting second NFS server
+Date: 11 Jul 2003 11:34:10 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16142.36310.296330.116819@charged.uio.no>
-References: <3F0DB088.303@cinesite.co.uk>
-	<shsbrw20zue.fsf@charged.uio.no>
-	<3F0E8975.2000009@cinesite.co.uk>
-Reply-To: trond.myklebust@fys.uio.no
+Message-ID: <shsvfu976gd.fsf@charged.uio.no>
+References: <57BDE604-B33E-11D7-A405-000A95703418@improbable.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs <nfs@lists.sourceforge.net>,
-    Iain Irwin-Powell <Iain@cinesite.co.uk>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19auuY-0001sw-00
-	for <nfs@lists.sourceforge.net>; Fri, 11 Jul 2003 03:13:55 -0700
-To: Danny Smith <dannys@cinesite.co.uk>
-In-Reply-To: <3F0E8975.2000009@cinesite.co.uk>
+	id 19auIJ-00025L-00
+	for <nfs@lists.sourceforge.net>; Fri, 11 Jul 2003 02:34:23 -0700
+To: Chris Adams <chris@improbable.org>
+In-Reply-To: <57BDE604-B33E-11D7-A405-000A95703418@improbable.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,26 +26,13 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Danny Smith <dannys@cinesite.co.uk> writes:
 
-     > I really want to know how it got into the source in the first
-     > place?
+Looks like it hangs just after a GETPORT call. Any info on what that
+GETPORT call is for (i.e. what the arguments are)? Ethereal should be
+able to decode that information for you...
 
-That's a question for Olaf Kirch. I've never touched that entry.
-
-     > If the server is broken, but we can work with it anyway without
-     > upsetting anything else, this would be a "good thing" in my
-     > book (of course, we would take it up with SGI too).
-
-Depends what it is. If it *is* jukebox, then we might as well just
-recommend that people use NFSv3 (NFSv2 is legacy anyway). Jukebox is
-only used for slow media (tape, cd-exchangers,...), so it's not going
-ever going to be a common case.
-
-cheers,
+Cheers,
   Trond
-
-
 
 
 -------------------------------------------------------
