@@ -1,30 +1,22 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: [PATCH] STATD - SM_NOTIFY have wrong ID_NAME on multihost servers.
-Date: Tue, 23 Nov 2004 15:28:07 -0500
-Message-ID: <41A39D57.8060902@RedHat.com>
+From: jehan procaccia <jehan.procaccia@int-evry.fr>
+Subject: Re: async vs. sync
+Date: Tue, 23 Nov 2004 22:46:44 +0100
+Message-ID: <41A3AFC4.6080404@int-evry.fr>
+References: <482A3FA0050D21419C269D13989C611307CF4B56@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------070006090208070506070804"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CWhH5-0002IQ-Rd
-	for nfs@lists.sourceforge.net; Tue, 23 Nov 2004 12:28:31 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1CWhH3-0001cO-Gq
-	for nfs@lists.sourceforge.net; Tue, 23 Nov 2004 12:28:31 -0800
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.12.11/8.12.11) with ESMTP id iANKSHZr032058
-	for <nfs@lists.sourceforge.net>; Tue, 23 Nov 2004 15:28:17 -0500
-Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
-	by int-mx1.corp.redhat.com (8.11.6/8.11.6) with ESMTP id iANKS7r31701
-	for <nfs@lists.sourceforge.net>; Tue, 23 Nov 2004 15:28:07 -0500
-Received: from [172.16.80.110] (IDENT:U2FsdGVkX1+RACZbMTbTtATxh5hTHpZ0R0PGxAqsrKA@dickson.boston.redhat.com [172.16.80.110])
-	by lacrosse.corp.redhat.com (8.11.6/8.11.6) with ESMTP id iANKS7a01784
-	for <nfs@lists.sourceforge.net>; Tue, 23 Nov 2004 15:28:07 -0500
-To: nfs@lists.sourceforge.net
+	id 1CWiV7-0002ei-Hk
+	for nfs@lists.sourceforge.net; Tue, 23 Nov 2004 13:47:05 -0800
+Received: from smtp2.int-evry.fr ([157.159.10.45])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CWiV5-000068-GV
+	for nfs@lists.sourceforge.net; Tue, 23 Nov 2004 13:47:05 -0800
+To: "Lever, Charles" <Charles.Lever@netapp.com>
+In-Reply-To: <482A3FA0050D21419C269D13989C611307CF4B56@lavender-fe.eng.netapp.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,122 +30,71 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
---------------070006090208070506070804
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
+Lever, Charles wrote:
 
-Here is a patch that make sure the correct hostname is used
-in the SM_NOTIFY message what is sent from a rebooted server
-that has multiple network interfaces.
+>>This is what I expect in term of performances . I will continue my 
+>>requests on the DEll/EMC hotline , but maybe the security of 
+>>that AX100 
+>>storage Processor (raid5, spare disk, double fiber attachement, UPS) 
+>>allows me to use async export mode in such a case ?
+>>    
+>>
+>
+>the "async" export option changes the behavior of the NFS server
+>daemons, not of the underlying local file system or storage subsystem.
+>the problem is that changes made by clients will remain in your NFS
+>server's memory and not get flushed onto permanent storage.
+>
+>so, i really don't think the storage subsystem will have any effect on
+>the safety of your data before the data reaches permanent storage.  as
+>someone else pointed out earlier, the solution is to use battery-backed
+>main memory when using "async" (prestoserve for solaris?).
+>
+>as trond said, if your users and backup facilities can tolerate the loss
+>of data during a crash, then it is perfectly fine to use "async."  most
+>don't, however.
+>
+>btw, it is fairly well understood that RAID-5 and NFS servers don't mix
+>well.  RAID-5's weakest point is that it doesn't handle small random
+>writes very well, and that's exactly what is required of it when
+>handling NFS traffic that consists mostly of metadata changes (file
+>creates, deletes, and so on).  neil explained clearly how to make the
+>best use of a RAID-5 with NFS: do your local file system journaling
+>somewhere else.
+>  
+>
+No, not yet, but  if it is safer and increase performances maybe I 
+should do it !
 
-Using the network part of the destination address, the correct network
-interface is found. Then a gethostbyaddr() on that interface is done,
-which yields the correct hostname that should be sent in the notify
-message....
+Perhaps it's not the place to talk about ext3 here, but if someone on 
+the list did already put their journal on a separate device, please 
+confirm me those points:
+ From what I read on man mkefs for ext3 FS I can create a journal on a 
+separate FS :
+mke2fs -O journal_dev external-journal
+creates the journal FS, on which device ? -> internal scsi drive of my 
+server or better placed on the dell/EMC SP ?
 
-Comments?
+mke2fs -J device=/dev/external-journal /dev/emcpower
+Format the FS and use the external journal just create above, but what is the recommended size of the 
+external journal ?  when journal is internal it is said  the size of the journal must be at least 1024 filesystem blocks
+(in my case blocks a 4K size) so journal is at least 4 Mb, but should it be bigger ?
 
-SteveD.
+Finally, can I "externalize" an already internal journal from production FS  (convert journal from inside to outside without reformating the FS ) ?
+
+thanks.
 
 
---------------070006090208070506070804
-Content-Type: text/x-patch;
- name="nfs-utils-1.0.6-statd-notify-hostname.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="nfs-utils-1.0.6-statd-notify-hostname.patch"
+>when trying your workload locally on the NFS server, realize that there
+>are some optimizations that local file systems make, like caching and
+>coalescing metadata updates, that the NFS protocol does not allow.  this
+>affects especially workloads with lots of metadata change operations,
+>because the NFS protocol requires each metadata update to reside on
+>permanent storage before the NFS server replies to the client,
+>effectively serializing the workload with storage activity.
+>  
+>
 
---- nfs-utils-1.0.6/utils/statd/rmtcall.c.orig	2004-11-08 11:03:49.352146000 -0500
-+++ nfs-utils-1.0.6/utils/statd/rmtcall.c	2004-11-23 13:43:34.751897000 -0500
-@@ -26,6 +26,7 @@
- #include <sys/socket.h>
- #include <sys/time.h>
- #include <netinet/in.h>
-+#include <net/if.h>
- #include <arpa/inet.h>
- #include <rpc/rpc.h>
- #include <rpc/pmap_prot.h>
-@@ -34,6 +35,7 @@
- #include <netdb.h>
- #include <string.h>
- #include <unistd.h>
-+#include <ifaddrs.h>
- #include "sm_inter.h"
- #include "statd.h"
- #include "notlist.h"
-@@ -73,7 +75,44 @@
- 
- 	return sockfd;
- }
--
-+/*
-+ * Using the NL_ADDR(lp), reset (if needed) the hostname
-+ * that will be put in the SM_NOTIFY to the hostname
-+ * that is associated with the network interface 
-+ * that was monitored
-+ */
-+static void
-+reset_my_name(notify_list *lp)
-+{
-+	struct ifaddrs *ifa = NULL, *ifap;
-+	struct in_addr netaddr, tmp;
-+	struct sockaddr_in *sin, *nsin;
-+	struct hostent *hp;
-+
-+	netaddr.s_addr = inet_netof(NL_ADDR(lp));
-+	if (getifaddrs(&ifa) >= 0) {
-+		for (ifap = ifa; ifap != NULL; ifap = ifap->ifa_next) {
-+			if (ifap->ifa_addr->sa_family != AF_INET)
-+				continue;
-+			if (!(ifap->ifa_flags & IFF_UP))
-+				continue;
-+			sin = (struct sockaddr_in *)ifap->ifa_addr;
-+			nsin = (struct sockaddr_in *)ifap->ifa_netmask;
-+			tmp.s_addr = sin->sin_addr.s_addr & nsin->sin_addr.s_addr;
-+			if (memcmp(&tmp.s_addr, &netaddr.s_addr, sizeof(netaddr.s_addr)))
-+				continue;
-+			hp = gethostbyaddr((char *)&sin->sin_addr, 
-+				sizeof(sin->sin_addr), AF_INET);
-+			if (hp == NULL)
-+				continue;
-+			if (strcmp(NL_MY_NAME(lp), hp->h_name)) {
-+				free(NL_MY_NAME(lp));
-+				NL_MY_NAME(lp)= strdup(hp->h_name);
-+			}
-+		}
-+	}
-+	return;
-+}
- /*
-  * Try to resolve host name for notify/callback request
-  *
-@@ -283,6 +322,7 @@
- {
- 	struct sockaddr_in	sin;
- 	struct status		new_status;
-+	stat_chge           new_stat;
- 	xdrproc_t		func;
- 	void			*objp;
- 	u_int32_t		proc, vers, prog;
-@@ -309,9 +349,14 @@
- 
- 		/* Use source address for notify replies */
- 		sin.sin_addr   = lp->addr;
-+		/* Make sure the correct hostname is sent */
-+		reset_my_name(lp);
- 
- 		func = (xdrproc_t) xdr_stat_chge;
--		objp = &SM_stat_chge;
-+		new_stat.state = MY_STATE;
-+		new_stat.mon_name = NL_MY_NAME(lp);
-+
-+		objp = &new_stat;
- 		break;
- 	case NOTIFY_CALLBACK:
- 		prog = NL_MY_PROG(lp);
-
---------------070006090208070506070804--
 
 
 -------------------------------------------------------
