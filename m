@@ -1,18 +1,21 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
+From: Andrew Ryan <andrewr@nam-shub.com>
 Subject: RE: 3 bugs with UDP mounts
-Date: Mon, 22 Apr 2002 18:23:24 -0700
+Date: Tue, 23 Apr 2002 00:37:15 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <6440EA1A6AA1D5118C6900902745938E50CEBE@black.eng.netapp.com>
+Message-ID: <5.0.2.1.0.20020422235308.02a960b0@pop.sfrn.dnai.com>
+References: <6440EA1A6AA1D5118C6900902745938E50CEBE@black.eng.netapp.co
+ m>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: text/plain; charset="us-ascii"; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mx01-a.netapp.com ([198.95.226.53])
+Received: from barney.sfrn.dnai.com ([208.59.199.24])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16zp1p-0007HY-00
-	for <nfs@lists.sourceforge.net>; Mon, 22 Apr 2002 18:23:33 -0700
-To: "'Andrew Ryan'" <andrewr@nam-shub.com>
+	id 16zurC-0003WK-00
+	for <nfs@lists.sourceforge.net>; Tue, 23 Apr 2002 00:36:58 -0700
+To: "Lever, Charles" <Charles.Lever@netapp.com>
+In-Reply-To: <6440EA1A6AA1D5118C6900902745938E50CEBE@black.eng.netapp.co
+ m>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,73 +28,80 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-hi all-
+At 06:23 PM 4/22/02 -0700, Lever, Charles wrote:
+>for the whole list:  when reporting issues against NetApp filers,
+>please mention the OnTap version and filer hardware if you can...
+>that would help us a lot!  thanks!
 
-> kernel: 2.4.17+NFS-ALL-2002-Jan-17, 2.4.19pre7+NFS-ALL. Both 
-> SMP on a 2-CPU 
-> system.
-> nfs-utils-0.3.1-13.7.2.1, mount-2.11g-5
-> server: NetApp
+Sorry: F820, 6.1.2R3.
 
-for the whole list:  when reporting issues against NetApp filers,
-please mention the OnTap version and filer hardware if you can...
-that would help us a lot!  thanks!
 
-> network: 100baseTx-FD on client, gigE-FD on server
-> 
-> 1. UDP read performance (v2 and v3) on large files is really 
-> poor. [....]
-> I can get excellent read performance, as long as the files 
-> are relatively small.
+> > network: 100baseTx-FD on client, gigE-FD on server
+> >
+> > 1. UDP read performance (v2 and v3) on large files is really
+> > poor. [....]
+> > I can get excellent read performance, as long as the files
+> > are relatively small.
+>
+>you are probably hitting the network speed step down between
+>the GbE filer and the 100Mb client.  the first packet loss
+>will cause your read throughput to drop.  i'll bet your
+>small file knee occurs right about at the size of your switch's
+>memory buffer.
 
-you are probably hitting the network speed step down between
-the GbE filer and the 100Mb client.  the first packet loss
-will cause your read throughput to drop.  i'll bet your
-small file knee occurs right about at the size of your switch's
-memory buffer.
+I'm not seeing any packet loss on client or server acc. to interface 
+statistics. How would I find this out? I am seeing a 2 second delay between 
+reads when I turn on NFS debugging. A thread ("2.4.18: NFS_ALL patch 
+greatly hurting UDP speed") mentioned this same delay, so I'm probably 
+running into the same problem.
 
-have you tried this test with TCP?
+BTW, I did more performance tests. If I set rsize and wsize to 1024 or 
+2048, I can get acceptable performance with NFS+UDP. If I go to 4096 or 
+higher, performance drops immediately to an unacceptable level.
 
-> With a Solaris client, mounting the same server UDP (and also 
-> 100baseTx-FD), reading the same file is done at a 
-> consistently high speed, 
-> so it definitely seems to be a linux-specific problem.
 
-Solaris may have workarounds (like a loose interpretation of
-Van Jacobsen) or bugs that allow this to work well.  just a guess.
+>have you tried this test with TCP?
 
-> 2. I accidentally mounted an NFS filesystem 
-> "udp,nfsvers=3,rsize=32768,wsize=32768". For one, I don't exactly 
-> understand why this was allowed, since it doesn't seem like I 
-> should be 
-> allowed to mount NFS/UDP with these options.
+Yeah, TCP performance is fine. It's the hangs under 2.4.17+NFS-ALL 
+(described in an earlier mail) that are killing me. The hangs seem to have 
+gone away in 2.4.19pre7+NFS-ALL, but I need more time to test all of 
+2.4.19pre7 in my environment to make sure it holds up OK.
 
-we have filers mounted with UDP and r/wsize=32K from a R7.2 system
-running 2.4.19pre.  NFS over UDP allows r/wsize up to 32K.  the
-limitation is the number of bytes possible in a single fragmented
-IP packet which is about 65536 bytes.  the RPC/UDP header overhead
-for a 64K r/wsize cause it not to fit in a single IP packet.
 
-> Also, this creates a 
-> disagreement between what is returned by the 'mount' command and 'cat 
-> /proc/mounts'.
-> 
-> The relevant line from the 'mount' command shows this:
-> fileserver:/vol/stage/data on /shared/data type nfs 
-> (rw,udp,nfsvers=3,rsize=32768,wsize=32768,intr,hard,addr=192.1
-> 68.100.240)
-> 
-> while the relevant line from /proc/mounts shows this:
-> fileserver:/vol/stage/data /shared/data nfs 
-> rw,v3,rsize=8192,wsize=8192,hard,intr,udp,lock,addr=fileserver 0 0
-> This may be a problem with my version of mount or nfs-utils, 
-> anyone seen 
-> this before?
 
-the mismatch between the requested size and the reported mount
-options i have never seen before, and looks like a bug to me.
-your version of mount may not allow more than 8k r/wsize because
-of old limitations on the Linux server?
+>Solaris may have workarounds (like a loose interpretation of
+>Van Jacobsen) or bugs that allow this to work well.  just a guess.
+
+Would it be possible -- via a kernel option or mount option -- to control 
+the behavior in the Linux client as well so that high performance can be 
+achieved on a Linux NFS client with high block sizes and UDP? Mixed 
+100/1000 networks are becoming more of a reality and NFS/TCP, while having 
+gotten tremendously better in the last year or so, is still a work in 
+progress, and it's nice to have another acceptable option for mounting.
+
+Solaris has clearly solved this problem somehow -- it would be nice if 
+linux could as well.
+
+
+>we have filers mounted with UDP and r/wsize=32K from a R7.2 system
+>running 2.4.19pre.  NFS over UDP allows r/wsize up to 32K.
+
+Right, my bad. I was confused by a day of too many mounts and umounts and 
+too little stuff working properly. 32k should have been fine.
+
+
+>the mismatch between the requested size and the reported mount
+>options i have never seen before, and looks like a bug to me.
+>your version of mount may not allow more than 8k r/wsize because
+>of old limitations on the Linux server?
+
+I'm using mount 2.11g, as supplied with RH 7.2. Is there a newer mount 
+program I should be using? Can others duplicate this bug?
+
+
+thanks,
+andrew
+
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
