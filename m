@@ -1,21 +1,22 @@
-From: Gregory Guthrie <guthrie@mum.edu>
-Subject: Re: NFS install problem: getfh failed; not implemented
-Date: Sun, 10 Aug 2003 10:52:49 -0500
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: Reply-cache
+Date: Mon, 11 Aug 2003 09:01:09 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <5.2.1.1.2.20030810105102.00ac1408@mail.mum.edu>
-References: <Pine.LNX.4.33.0308091522540.1062-100000@localhost.localdom ain>
+Message-ID: <16182.52917.693714.6285@gargle.gargle.HOWL>
+References: <Pine.LNX.4.33.0308091522540.1062-100000@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"; format=flowed
+Content-Type: text/plain; charset=us-ascii
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from thames.mum.edu ([208.145.205.253] helo=cserv.mum.edu)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19lsW9-0004j0-00
-	for <nfs@lists.sourceforge.net>; Sun, 10 Aug 2003 08:54:02 -0700
-Received: from pcgrg.mum.edu (pcgrg.cs [10.10.10.50])
-	by cserv.mum.edu (8.11.6+Sun/8.11.6) with ESMTP id h7AFs1s28610
-	for <nfs@lists.sourceforge.net>; Sun, 10 Aug 2003 10:54:01 -0500 (CDT)
-To: <nfs@lists.sourceforge.net>
-In-Reply-To: <5.2.1.1.2.20030809103714.00a8c840@mail.mum.edu>
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19lzBf-0004hb-00
+	for <nfs@lists.sourceforge.net>; Sun, 10 Aug 2003 16:01:19 -0700
+Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
+	(for <markhe@veritas.com>) (for <nfs@lists.sourceforge.net>) By note
+	With Smtp ; Mon, 11 Aug 2003 09:01:09 +1000
+To: Mark Hemment <markhe@veritas.com>
+In-Reply-To: message from Mark Hemment on Saturday August 9
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,187 +29,60 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I think I just resolved this, and it is not an NFS problem, but that my 
-kernel used loadable module for nfs, and that was not getting loaded! Thus, 
-no NFS!
+On Saturday August 9, markhe@veritas.com wrote:
+>   A few NFS reply-cache questions, and possible answers.  Any feedback
+> would be appreciated.
+> 
+> 1) Is a reply-cache needed over a reliable transport (TCP)?
+>      Yes.  Possible for a client not to receive a response due to a
+>    disconnect.  When re-connects, will retry the operation.  Need to trap
+>    this.
 
-Now it's an issue of finding out why my Debian kernel didn't have this 
-module installed.
+Yes, technically it is needed, though practically it probably isn't of
+any use.
+When the client re-connects it will almost certainly use a different
+port number, so the cache will treat it as a different source of
+requests and will never find a re-transmitted request.
 
-Sorry for the wrong post to this group!
+> 
+> 2) Cache look-up before checking for a client's export entry?
+>      The reply-cache look-up/resource-allocation occurs from
+>    nfsd_dispatch() - before the exp_get() check in fh_verify().  This
+>    allows for an attacker to fill the reply-cache with 'bogus' entries,
+>    reducing it usefulness.  As NFS servers are either accessible only on
+>    an intranet, or behind a firewall (unlikely?), this is not a serious
+>    problem.
+>       Partial fix is in nfsd_cache_lookup(), after checking 'type', test
+>    if rq_client is NULL.   Not ideal, but will catch most cases.
+>       Full fix is to move call to nfsd_cache_lookup() into fh_verify()
+>    (and anywhere else needed(?)) after the exp_get_fsid()/exp_get().
+>       If this is consider an issue, shout and I'll do a patch.
 
-Best,
-Gregory
+Probably the simplest thing to do is to not cache replies that return
+STALE.  Any request from an unknown client will return ESTALE, and
+there is no point caching that anyway (it is an idempotent reply).
 
-At 10:54 AM 08/09/2003 -0500, Gregory Guthrie wrote:
->I'm having NFS problems:
->
->Trying to cross mount two files, works one way, not the other.
->
->    omega:/s/net  --> theta:/net/omega   = fine
->    theta:/s/net  --> omega:/net/theta   = broken...
->
->The basic problem is that trying to start nfs daemon on the server (Omega)
->fails, gives the message:
->    getfh failed: Function not implemented
->
->Then, nfsd isn't running, and exportfs fails. Oddly, starting nfsd seems to
->look ok, but then it is not running (more below).
->
->Setup: (both machines)
->   Debian 3.0, kernel 2.2
->   nfs-common 1.1
->   nfs-kernel-server
->
->I've seen several discussions of this (google), but no resolution.
->
->I am sure that when I first set this up (same as below), it worked both
->ways; then stopped. I have read that NFS caches and state can get garbled,
->and need to be reset; but don't konw what that means. (/var/lib/nfs...
->files).
->
->I'm pretty sure (:-) that everything is setup right. One sugestion that I
->got was to rebuild my own kernel on both machines, using NFS V3; but ... I
->would hope that the standard Debian distor would work.
->
->Another solution I have seen suggested was to change to hfs-user-server; but
->  since this (nfs-kernel-server) works on one of the two (clone..) machines,
->seems like it should work on the other!
->
->Any hints welcome.
->Greg
->-------------------------------------------------------------
->On Server: (Omega)
->   omega:/etc/init.d# ./nfs-common start
->   Starting NFS common utilities: statd lockd.
->   omega:/etc/init.d# ./nfs-kernel-server start
->   Exporting directories for NFS kernel daemon...theta.cs.mum.edu:/s/net:
->         Function not implemented    ( <---- this is the getfh error )
->   done.
->   Starting NFS kernel daemon: nfsd mountd.
->
->On client: (Theta)
->   theta:/etc/init.d# ./mountnfs.sh
->   Starting portmapper... Mounting remote filesystems...
->   mount: omega:/s/net failed, reason given by server: Permission denied
->
->On Server: /var/log/messages:
->   Aug  6 23:40:50 omega rpc.mountd:
->       authenticated mount request from theta.cs.mum.edu:609 for /s/net
->(/s/net)
->   Aug  6 23:40:50 omega rpc.mountd: getfh failed: Function not implemented
->
->On Client:
->   theta:/etc/init.d# mount omega:/s/net /net/omega
->   mount: omega:/s/net failed, reason given by server: Permission denied
->   theta:/etc/init.d#
->
->   theta:/etc/init.d# showmount -a
->   All mount points on theta:
->   omega.cs.mum.edu:/s/net
->-----------------
->On Server:
->   omega:/etc/init.d# showmount -a
->   All mount points on omega:
->
->   omega:/etc/init.d# cat /proc/filesystems
->           ext2
->           msdos
->           vfat
->   nodev   proc
->   nodev   nfs
->           iso9660
->   nodev   devpts
->
->
->
->------------------------------------------------------
->On Omega: (Server)
->/etc/exports:
->omega:/etc/init.d# cat /etc/exports
->   # /etc/exports: the access control list for filesystems which may be
->exported
->   #               to NFS clients.  See exports(5).
->   /s/net  theta(rw)
->/etc/hosts.allow:
->   # /etc/hosts.allow: list of hosts that are allowed to access the system.
->   ALL:  10.10.10
->/etc/fstab:
->   # /etc/fstab: static file system information.
->   theta:/s/net    /net/theta      nfs
->rsize=8192,wsize=8192,timeo=14,intr
->
->omega:/home/net# rpcinfo -p
->    program vers proto   port
->     100000    2   tcp    111  portmapper
->     100000    2   udp    111  portmapper
->     100021    1   udp   1024  nlockmgr
->     100021    3   udp   1024  nlockmgr
->     100024    1   udp   1027  status
->     100024    1   tcp   1024  status
->     100005    1   udp   1028  mountd
->     100005    1   tcp   1025  mountd
->     100005    2   udp   1028  mountd
->     100005    2   tcp   1025  mountd
->    (Note: rpc not running!)
->
->------------------------------------------------------
->On Theta: (Client)
->/etc/exports:
->   # /etc/exports: the access control list for filesystems which may be
->exported
->   #               to NFS clients.  See exports(5).
->   /s/net omega(rw)
->
->/etc/hosts/allow:
->   # /etc/hosts.allow: list of hosts that are allowed to access the system.
->   ALL: 10.10.10.
->/etc/fstab:
->   # /etc/fstab: static file system information.
->   omega:/s/net    /net/omega      nfs
->rsize=8192,wsize=8192,timeo=14,intr
->
->  theta:/root# rpcinfo -p
->    program vers proto   port
->     100000    2   tcp    111  portmapper
->     100000    2   udp    111  portmapper
->     100021    1   udp   1024  nlockmgr
->     100021    3   udp   1024  nlockmgr
->     100024    1   udp   1025  status
->     100024    1   tcp   1024  status
->     100003    2   udp   2049  nfs
->     100005    1   udp   1136  mountd
->     100005    1   tcp   4203  mountd
->     100005    2   udp   1136  mountd
->     100005    2   tcp   4203  mountd
->
->------------------------------------------------------
->
->
->
->
->
->
->--------------------------------------------------------
->Gregory Guthrie
->guthrie@mum.edu
->--------------------------------------------------------
->
->
->-------------------------------------------------------
->This SF.Net email sponsored by: Free pre-built ASP.NET sites including
->Data Reports, E-commerce, Portals, and Forums are available now.
->Download today and enter to win an XBOX or Visual Studio .NET.
->http://aspnet.click-url.com/go/psa00100003ave/direct;at.aspnet_072303_01/01
->_______________________________________________
->NFS maillist  -  NFS@lists.sourceforge.net
->https://lists.sourceforge.net/lists/listinfo/nfs
+> 
+> 3) For non-idempotent operations, hold an "inprogress-entry" in the
+>    reply-cache?
+>       This would really only be for read operations, and possibly getattr,
+>    over an unreliable transport (UDP).  On a 'busy' server, response
+>    times may vary considerably; by trapping retransmitted requests which
+>    are in-progress, the 'busy' server will not be further overloaded.
+>    Note: I have no data to back this case up!  Does anyone have some
+>    hard-data/references on this?
+>       Ideally, the 'inprogress' entry would be dropped _after_ the
+>    response has been sent.  With the current design, nfsd_dispatch() calls
+>    nfsd_cache_update() before returning to the RPC code for a call to
+>    svc_send().  A callback hook after svc_send() would be useful....
+> 
 
---------------------------------------------------------
-Gregory Guthrie
-guthrie@mum.edu
--------------------------------------------------------- 
+Doest "RC_INPROG" work for you as an inprogress-entry?  If so, it is
+already implemented.
+But read operations and getaddr are idempotent, not non-idempotent, so
+either you or I are a bit confused.
 
+NeilBrown
 
 
 -------------------------------------------------------
