@@ -1,23 +1,23 @@
 From: mehta kiran <kiranmehta1981@yahoo.com>
 Subject: Re: lockd grace period
-Date: Mon, 31 Jan 2005 07:01:56 -0800 (PST)
-Message-ID: <20050131150157.83316.qmail@web51606.mail.yahoo.com>
-References: <41FE4796.9060909@RedHat.com>
+Date: Mon, 31 Jan 2005 07:09:55 -0800 (PST)
+Message-ID: <20050131150955.81041.qmail@web51610.mail.yahoo.com>
+References: <41FE4867.4070709@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: mehta kiran <kiranmehta1981@yahoo.com>, nfs@lists.sourceforge.net
+Cc: "Aswathanarayana, Chetan (STSD)" <chetan.aswathanarayana@hp.com>,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Cvd43-000216-WD
-	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 07:02:07 -0800
-Received: from web51606.mail.yahoo.com ([206.190.38.211])
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
-	id 1Cvd42-00038L-Hd
-	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 07:02:08 -0800
-To: Steve Dickson <SteveD@redhat.com>,
-	"Aswathanarayana, Chetan (STSD)" <chetan.aswathanarayana@hp.com>
-In-Reply-To: <41FE4796.9060909@RedHat.com>
+	id 1CvdBj-0002WP-Gy
+	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 07:10:03 -0800
+Received: from web51610.mail.yahoo.com ([206.190.38.215])
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
+	id 1CvdBh-0002qA-7R
+	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 07:10:03 -0800
+To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: <41FE4867.4070709@RedHat.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,36 +32,46 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 Hi , 
-         but can u please let me know whether
- lockd which has been running before nfsd started
-will enter grace period  or not
-and will only server reclaim request ot not
-thanks ,
- kiran
+     lockd can run alone if this machine also acts
+as nfs client of some other (third machine)
+Clients side only require lockd and rpciod , right 
+thanks,
+kiran
 --- Steve Dickson <SteveD@redhat.com> wrote:
 
-> Aswathanarayana, Chetan (STSD) wrote:
 > 
-> >Say, a reclaim request arrives after grace period
-> and get's lock. There
-> >will be time frame between end of grace period and
-> arrival of
-> >Reclaim request, in which case any thing can
-> happen(ex: a new request
-> >could be granted, it may make some changes to a
-> file and unlock by the
-> >time Reclaim arrives).
-> >  
+> 
+> mehta kiran wrote:
+> 
+> >Hi , 
+> >          this means that if  lockd alone is
+> running
+> >since a long time and if now i start nfsd , 
 > >
-> Nobody  is saying this NLM protocol or method of
-> recovery is perfect.... 
-> ;-)  This
-> is one of many reasons why the locking protocol is
-> not integrated with the
-> NFSv4 protocol...
+> hmm... why would you ever have lockd running
+> "alone"?
+> Meaning what good is it w/out rpc.nfsd? Also how are
+> you doing that since one of the first things
+> rpc.nfsd does
+> is bring up lockd().....
 > 
 > steved.
 > 
+> 
+> 
+>
+-------------------------------------------------------
+> This SF.Net email is sponsored by: IntelliVIEW --
+> Interactive Reporting
+> Tool for open source databases. Create drag-&-drop
+> reports. Save time
+> by over 75%! Publish reports on the web. Export to
+> DOC, XLS, RTF, etc.
+> Download a FREE copy at
+> http://www.intelliview.com/go/osdn_nl
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
 > 
 
 
@@ -69,7 +79,7 @@ thanks ,
 		
 __________________________________ 
 Do you Yahoo!? 
-Yahoo! Mail - Find what you need with new enhanced search.
+Yahoo! Mail - 250MB free storage. Do more. Manage less. 
 http://info.mail.yahoo.com/mail_250
 
 
