@@ -1,25 +1,24 @@
-From: "Paul Smith" <pausmith@nortelnetworks.com>
-Subject: Re: [OT] (autofs) Re: Direct mounts on Linux
-Date: 21 Jan 2003 02:59:20 -0500
+From: Patrick Boutilier <boutilpj@ednet.ns.ca>
+Subject: Re: NFS/Linux/IP Chains
+Date: Tue, 21 Jan 2003 08:45:13 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <p58yxfyluv.fsf@lemming.engeast.baynetworks.com>
-References: <15916.14776.460148.770017@lemming.engeast.baynetworks.com>
-	<20030120214134.GE1042@questra.com>
-	<p5vg0jz08z.fsf@lemming.engeast.baynetworks.com>
-	<20030121030851.GG10369@questra.com>
-	<p5wukzyx8m.fsf@lemming.engeast.baynetworks.com>
-	<20030121040318.GI10369@questra.com>
-	<p5r8b7yr4l.fsf@lemming.engeast.baynetworks.com>
-	<20030121064851.GK10369@questra.com>
-	<p5iswjyocn.fsf@lemming.engeast.baynetworks.com>
-	<20030121072351.GC12523@questra.com>
-Reply-To: "Paul Smith" <pausmith@nortelnetworks.com>
+Message-ID: <3E2D40D9.7000808@ednet.ns.ca>
+References: <NDBBKPGJGKJJGFNEEIINCENIEPAA.kwe@buffalo.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@sourceforge.net
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: Scott Mcdermott <smcdermott@questra.com>
-In-Reply-To: <20030121072351.GC12523@questra.com>
+Received: from trademart-1.ednet.ns.ca ([142.227.51.1])
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18axnC-0002eQ-00
+	for <nfs@lists.sourceforge.net>; Tue, 21 Jan 2003 04:46:14 -0800
+Received: from trademart-2.ednet.ns.ca ([142.227.51.61] helo=ednet.ns.ca)
+	by Trademart-1.ednet.ns.ca with esmtp (TLSv1:RC4-MD5:128)
+	(Exim 4.12)
+	id 18axme-00073t-00
+	for nfs@lists.sourceforge.net; Tue, 21 Jan 2003 08:45:40 -0400
+In-Reply-To: <NDBBKPGJGKJJGFNEEIINCENIEPAA.kwe@buffalo.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,40 +31,54 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-%% Scott Mcdermott <smcdermott@questra.com> writes:
+Ken,
 
-  sm> Paul Smith on Tue 21/01 02:05 -0500:
 
-  >> No, I mean getcwd(3), the C runtime library function... if my program
-  >> invokes this then it doesn't matter what the shell does.
 
-  sm> Not if you chdir("/") like a good little daemon
+tcpdump might help.
 
-Well, not everything that I run is a daemon... and yet it still may need
-to run getcwd() :).
 
-  sm> yeah I know, I get your point :) If that is the only argument
-  sm> against direct mounts though, I really don't understand statements
-  sm> like "[Autofs.  Will.  Never.  Support.  Direct.  Maps.  Period.
-  sm> Full Stop.]"
 
-  sm> (see autofs mailing list archives from H. Peter Anvin)
+Ken English wrote:
+> Hope I can get an assist, or if this is just a RTFM, just point me in the
+> right direction. I've been working to set up NFS on a Redhat 7.3 box that
+> has ipchains enabled. I am having problems pinning down the ports for some
+> of the services, mountd works fine, but statd doesn't allow the "pinning"
+> options provided in the howto I have been trying to use.
+> 
+> Any suggestions?
+> 
+> Thanks in advance,
+> -Ken
+> 
+> 
+> 
+> -----------------------------------------------------------------------
+> Kenneth W. English, Ph.D.
+> Industrial Outreach Coordinator
+> New York State Center for Engineering Design and Industrial Innovation
+> Department of Mechanical and Aerospace Engineering
+> 5 Norton Hall
+> University at Buffalo
+> Buffalo, NY 14260
+> Phone:	(716) 645-2685 x105
+> Cell:		(716)	510-5597
+> Fax:	(716) 645-2684
+> email: kwe@buffalo.edu
+> http://www.nyscedii.buffalo.edu
+> -----------------------------------------------------------------------
+> 
+> 
+> 
+> 
+> -------------------------------------------------------
+> This SF.NET email is sponsored by:
+> SourceForge Enterprise Edition + IBM + LinuxWorld = Something 2 See!
+> http://www.vasoftware.com
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
 
-I dunno either.  Maybe this has more to do with the unclean hacks
-required to implement direct mounts in the kernel than the issues the
-user has with direct mounts from the outside.
-
-Anyway, this is probably pretty OT for this list, and it's time for me
-to go to bed!
-
-Thanks all...
-
--- 
--------------------------------------------------------------------------------
- Paul D. Smith <psmith@nortelnetworks.com>   HASMAT--HA Software Mthds & Tools
- "Please remain calm...I may be mad, but I am a professional." --Mad Scientist
--------------------------------------------------------------------------------
-   These are my opinions---Nortel Networks takes no responsibility for them.
 
 
 -------------------------------------------------------
