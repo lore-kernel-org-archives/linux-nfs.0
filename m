@@ -1,14 +1,14 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 2 of 4 - SVC sockets don't disable Nagle
-Date: Wed, 18 Jun 2003 10:30:11 +1000
+Subject: [PATCH] kNFSd - 4 of 4 - Make sure an early close on a nfs/tcp connection is handled properly.
+Date: Wed, 18 Jun 2003 10:30:12 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19SQq3-0000Ws-00@notabene>
+Message-ID: <E19SQq4-0000XC-00@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19SQlv-0007Jk-00
-	for <nfs@lists.sourceforge.net>; Tue, 17 Jun 2003 17:25:55 -0700
+	id 19SQlm-0007Cy-00
+	for <nfs@lists.sourceforge.net>; Tue, 17 Jun 2003 17:25:46 -0700
 Received: From notabene ([129.94.172.124] == notabene.cse.unsw.EDU.AU)
 	(for <marcelo@conectiva.com.br>) (for <nfs@lists.sourceforge.net>) By
 	tone With Smtp ; Wed, 18 Jun 2003 10:25:35 +1000
@@ -26,34 +26,48 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-I noticed that the Nagle algorithm was disabled just recently on the 
-client side, while it still seems to be enabled on the server side. The 
-previous patch came from Chuck Lever.
+From: Hirokazu Takahashi <taka@valinux.co.jp>
 
-Below patch disables it on the server side as well. For latency reasons, 
-this should be the desired behaviour NFS at both client and server.
+In svc_tcp_listen_data_ready we should be waiting for
+TCP_LISTEN, not TCP_ESTABLISHED.  The later only worked
+by accident.
+Also, if a socket is closed as soon as we accept it, we
+must shut it down straight away as we will never get a 'close'
+event.
 
 
 diff ./net/sunrpc/svcsock.c~current~ ./net/sunrpc/svcsock.c
---- ./net/sunrpc/svcsock.c~current~	2003-06-18 10:05:47.000000000 +1000
-+++ ./net/sunrpc/svcsock.c	2003-06-18 10:16:06.000000000 +1000
-@@ -936,6 +936,7 @@ static int
- svc_tcp_init(struct svc_sock *svsk)
- {
- 	struct sock	*sk = svsk->sk_sk;
-+	struct tcp_opt  *tp = &(sk->tp_pinfo.af_tcp);
+--- ./net/sunrpc/svcsock.c~current~	2003-06-18 10:16:06.000000000 +1000
++++ ./net/sunrpc/svcsock.c	2003-06-18 10:19:20.000000000 +1000
+@@ -595,8 +595,17 @@ svc_tcp_listen_data_ready(struct sock *s
+ 	dprintk("svc: socket %p TCP (listen) state change %d\n",
+ 			sk, sk->state);
  
- 	svsk->sk_recvfrom = svc_tcp_recvfrom;
- 	svsk->sk_sendto = svc_tcp_sendto;
-@@ -952,6 +953,8 @@ svc_tcp_init(struct svc_sock *svsk)
- 		svsk->sk_reclen = 0;
- 		svsk->sk_tcplen = 0;
+-	if  (sk->state != TCP_ESTABLISHED) {
+-		/* Aborted connection, SYN_RECV or whatever... */
++	if  (sk->state != TCP_LISTEN) {
++		/*
++		 * This callback may called twice when a new connection
++		 * is established as a child socket inherits everything
++		 * from a parent LISTEN socket.
++		 * 1) data_ready method of the parent socket will be called
++		 *    when one of child sockets become ESTABLISHED.
++		 * 2) data_ready method of the child socket may be called
++		 *    when it receives data before the socket is accepted.
++		 * In case of 2, we should ignore it silently.
++		 */
+ 		goto out;
+ 	}
+ 	if (!(svsk = (struct svc_sock *) sk->user_data)) {
+@@ -964,6 +973,8 @@ svc_tcp_init(struct svc_sock *svsk)
+ 				    3 * svsk->sk_server->sv_bufsz);
  
-+		tp->nonagle = 1;        /* disable Nagle's algorithm */
-+
- 		/* initialise setting must have enough space to
- 		 * receive and respond to one request.  
- 		 * svc_tcp_recvfrom will re-adjust if necessary
+ 		set_bit(SK_CHNGBUF, &svsk->sk_flags);
++		if (sk->sk_state != TCP_ESTABLISHED) 
++			set_bit(SK_CLOSE, &svsk->sk_flags);
+ 	}
+ 
+ 	return 0;
 
 
 -------------------------------------------------------
