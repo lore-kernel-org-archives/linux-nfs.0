@@ -1,16 +1,20 @@
-From: James Pearson <james-p@moving-picture.com>
-Subject: Re: "Permission denied" on autofs mount point
-Date: Mon, 25 Mar 2002 12:04:50 +0000
+From: Jan Sedlacek <jan.sedlacek@asicentrum.cz>
+Subject: NFS server RH7.1, kernel 2.4.18, client Solaris 7
+Date: Mon, 25 Mar 2002 14:28:31 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3C9F1262.89332399@moving-picture.com>
-References: <3C9098C4.56E187EF@moving-picture.com> <3C91F881.CD5594A7@moving-picture.com> <3C98A302.7E99AB4@moving-picture.com>
+Message-ID: <3C9F25FF.1000203@asicentrum.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16pTDf-0004S9-00
-	for <nfs@lists.sourceforge.net>; Mon, 25 Mar 2002 04:04:59 -0800
-To: nfs@lists.sourceforge.net, autofs@linux.kernel.org
+Content-Type: text/plain; charset=ISO-8859-2; format=flowed
+Received: from gate.asicentrum.cz ([195.39.24.82] helo=mravenec)
+	by usw-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 16pUWc-0004cE-00
+	for <nfs@lists.sourceforge.net>; Mon, 25 Mar 2002 05:28:39 -0800
+Received: from localhost ([127.0.0.1])
+	by mravenec (Kerio MailServer 5.0.5)
+	for nfs@lists.sourceforge.net;
+	Mon, 25 Mar 2002 14:28:31 +0100
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -23,129 +27,55 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-An update to my previous update ...
+Hi all,
 
-It looks like this problem is actually a server problem - I get similar
-problems on SGI IRIX clients (directory access results is an 'I/O
-error'). It seems to be related to one particular application writing
-files to the server.
+    I have the following problem,
 
-The 'servers' in question were running an old 2.4.3 kernel - upgrading
-these machines to a newer kernel seems to have fixed the problem ...
+I've upgraded to RedHat Linux 7.1 with kernel 2.4.18 (compiled with 
+options NFSv3 server and client support checked). Clients are RH Linux 
+6.1, 6.2, 7.0, 7.1 and Solaris 7.
+Linux clients work fine without any problem. Solaris 7 clients work fine 
+only without locking files. If I try on Solaris to start old openwindows 
+file manager (filemgr) it hangs for five minutes and reports just 
+"nfs-server: RPC timed out". I think the problem is locking files. I 
+tried on NFS server to set "insecure_locks" and "no_auth_nlm" options in 
+/etc/exports file, but it didn`t help.
 
-James Pearson
+NFS server rpcinfo shows:
 
-James Pearson wrote:
-> 
-> An update to my previous posts:
-> 
-> The problem re-occurred today - from /var/log/messages on a client:
-> 
-> Mar 20 10:35:20 client automount[465]: attempting to mount entry
-> /net/server1
-> Mar 20 10:35:37 client kernel: nfs: server server1 not responding, still
-> trying
-> Mar 20 10:38:57 client kernel: nfs: task 62879 can't get a request slot
-> Mar 20 10:39:23 client kernel: nfs: server server1 OK
-> Mar 20 10:39:23 client kernel: nfs: server server1 OK
-> ...
-> Mar 20 10:44:23 client1 automount[21355]: expired /net/server1
-> 
-> Accessing /net/server1 after this time gives "Permission denied" - until
-> manually umount'ing.
-> 
-> The machine server1 crashed or was rebooted between 10:35 and 10:39.
-> 
-> The client is running a RedHat 2.4.7-10 based kernel - with the
-> linux-2.4.7-seekdir.dif NFS client patch and a patch to ignore server
-> fsid changes across reboots.
-> 
-> This _seems_ to a problem with the server crashing - as other clients
-> had exactly the same problem at the same time.
-> 
-> Would other NFS client patches improve matters?
-> 
-> Thanks
-> 
-> James Pearson
-> 
-> James Pearson wrote:
-> >
-> > Since sending my original message, I've found something on the kernel
-> > list about a similar situation - see:
-> >
-> >  http://www.geocrawler.com/archives/3/35/2001/12/2700/7351178/
-> >
-> > I asked the original sender if he had any more info:
-> >
-> > > maybe the symptom is different, but the cause is the same, i don't know.
-> > > If you write a script, that tries to unmount, you duplicate the functionality
-> > > of the automounter daemon to a certain degree, what might lead to the same
-> > > problems. I think the code path in fs/autofs4/root.c line 300+ is problematic:
-> > >
-> > >
-> > >         /*
-> > >          * If this dentry is unhashed, then we shouldn't honour this
-> > >          * lookup even if the dentry is positive.  Returning ENOENT here
-> > >          * doesn't do the right thing for all system calls, but it should
-> > >          * be OK for the operations we permit from an autofs.
-> > >          */
-> > >         if ( dentry->d_inode && d_unhashed(dentry) )
-> > >                 return ERR_PTR(-ENOENT);
-> > >
-> > > In my opinion it can happen that between the revalidate in 286 and this
-> > > check for 'hashedness' another thread invalidates the entry and thus
-> > > the syscall fails. When i find the time, i'll try to find out and fix. Possible,
-> > > that it fixes also your problem, but currently i can't imagine a
-> > > scenario including unavailable NFS-servers, that leads to this permission
-> > > denied error.
-> >
-> > Could what is described be the problem?
-> >
-> > Is there a "fix"?
-> >
-> > Thanks
-> >
-> > James Pearson
-> >
-> > James Pearson wrote:
-> > >
-> > > I'm using autofs4 (autofs-4.0.0pre10) to mount a number of NFS mounts
-> > > using a NIS map on machines running a RedHat based 2.4.7-10 kernel.
-> > >
-> > > Occasionally trying to access a mount point (that has been working fine)
-> > > gives e.g:
-> > >
-> > > # cd /net/server1
-> > > cd: /net/server1: Permission denied
-> > >
-> > > This mount point never unmounts - even with sending SIGUSR1 to automount
-> > >
-> > > The only way I can unmount the file system is by explicitly using umount
-> > >
-> > > i.e. umount /net/server1
-> > >
-> > > works OK and subsequent access to /net/server1 mounts the remote file
-> > > system OK
-> > >
-> > > The remote "servers' in question tend to be other Linux workstations,
-> > > that I _think_ have crashed (or been rebooted) while being mounted by
-> > > the clients ...
-> > >
-> > > Is there anything I can do to fix this?
-> > >
-> > > In the meantime, I'm thinking of having a simple script that attempts to
-> > > umount everything under the automount mount point every few minutes or
-> > > so (by looking for these mounts in mtab) - is this likely to cause
-> > > problems/confusion with automount?
-> > >
-> > > Thanks
-> > >
-> > > James Pearson
-> > >
-> > > _______________________________________________
-> > > NFS maillist  -  NFS@lists.sourceforge.net
-> > > https://lists.sourceforge.net/lists/listinfo/nfs
+   program verz proto   port
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    100024    1   udp  32768  status
+    100024    1   tcp  32768  status
+    100007    2   udp    781  ypbind
+    100007    1   udp    781  ypbind
+    100007    2   tcp    784  ypbind
+    100007    1   tcp    784  ypbind
+    100011    1   udp    735  rquotad
+    100011    2   udp    735  rquotad
+    100005    1   udp  32889  mountd
+    100005    1   tcp  32845  mountd
+    100005    2   udp  32889  mountd
+    100005    2   tcp  32845  mountd
+    100005    3   udp  32889  mountd
+    100005    3   tcp  32845  mountd
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
+    100021    1   udp  32890  nlockmgr
+    100021    3   udp  32890  nlockmgr
+    100021    4   udp  32890  nlockmgr                  
+
+,so lock manager is running (as rpc.statd is running).
+
+Any idea is very appreciated.
+
+Regards,
+
+Sedlon
+
+
+
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
