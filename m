@@ -1,20 +1,25 @@
-From: Craig Tierney <ctierney@hpti.com>
-Subject: Issue with nfs v3, linux-2.4.21, xfs, and fsx-linux
-Date: Tue, 10 Feb 2004 15:52:22 -0700
+From: Vincent ROQUETA <vincent.roqueta@ext.bull.net>
+Subject: Re: Another bug....
+Date: Wed, 11 Feb 2004 09:22:21 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1076453542.2468.33.camel@hpti9.fsl.noaa.gov>
+Message-ID: <200402110922.22087.vincent.roqueta@ext.bull.net>
+References: <200402091601.48120.vincent.roqueta@ext.bull.net> <20040210145016.GA9608@fieldses.org>
+Reply-To: vincent.roqueta@ext.bull.net
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AqglC-00027G-Pm
-	for nfs@lists.sourceforge.net; Tue, 10 Feb 2004 14:53:42 -0800
-Received: from [208.20.6.201] (helo=hptimail01.HPTI.COM)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1Aqgky-00007D-Uo
-	for nfs@lists.sourceforge.net; Tue, 10 Feb 2004 14:53:29 -0800
-To: nfs@lists.sourceforge.net
+	id 1AqpcD-0004o7-F0
+	for nfs@lists.sourceforge.net; Wed, 11 Feb 2004 00:21:01 -0800
+Received: from ecbull20.frec.bull.fr ([129.183.4.3])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1Aqpaj-00076d-W8
+	for nfs@lists.sourceforge.net; Wed, 11 Feb 2004 00:19:30 -0800
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20040210145016.GA9608@fieldses.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -27,25 +32,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Should I be able to successfully run fsx-linux over
-NFS?  My server is linux-2.4.21 with xfs-1.3.1.  I am
-mounting:
+Le Mardi 10 F=E9vrier 2004 15:50, J. Bruce Fields a =E9crit :
+> On Mon, Feb 09, 2004 at 04:01:48PM +0100, Vincent ROQUETA wrote:
+> > I still not have understood the previous bug (mounting; rebooting witho=
+ut
+> > umounting ; remounting) I found others bugs.
+> >
+> > I was creating big big files with bonnie++.
+> >
+> > I used vim to write "program.c" on a shared NFSv4 remote directory.
+> >
+> >
+> > -rw-r--r--    1 4294967294 4294967294        0 oct 31  1970 4913
+> > -rw-r--r--    1 4294967294 4294967294        0 nov  1  1970 5036
+> > -rw-r--r--    1 4294967294 4294967294        0 nov  1  1970 5159
+> > -rw-r--r--    1 4294967294 4294967294        0 nov  2  1970 5282
+> > -rwxr-xr-x    1 4294967294 4294967294    11326 f=E9v  9  2004 program
+> > -rw-r--r--    1 4294967294 4294967294      136 f=E9v  9  2004 program.c
+> > -rw-r--r--    1 4294967294 4294967294        0 oct 31  1970 program.c~
+> > -rw-r--r--    1 4294967294 4294967294        0 nov  2  1970 program.x~
+> > -rw-r--r--    1 4294967294 4294967294        0 nov  1  1970 program.y~
+> > -rw-r--r--    1 4294967294 4294967294        0 nov  1  1970 program.z~
+> >
+> >
+> >
+> > Creating program.c, vim tell me that it found an old swaped file!
+> > (So I suppose when vim is trying to detect a swaped file, it CREATE this
+> > file?)
+> >
+> > Well... and for sure this file was not created in october/november 1970
+> > !!!
+>
+> Which kernel are you using, and which patches?--Bruce Fields
 
- "udp,hard,intr,rw,async,nolock,wsize=8192,rsize=8192,timeo=30"
-
-My scsi driver is qla2200, ver 6.06.10.
-
-My client is linux-2.4.20 with nfs patches from Trond's 
-directory.
-
-If I run fsx-linux on the filesystem directly, it runs fine.
-If I run it over the NFS mount, it will crash with an error
-within 30 seconds.
-
-Should fsx-linux work properly over NFS?
-
-Thanks,
-Craig
+My kernel is linux 2.6.2 without kernel patches...=20
 
 
 
