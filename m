@@ -1,17 +1,19 @@
-From: "Tina Arora" <tinaarora@hotmail.com>
-Subject: Changing Startup Scripts
-Date: Wed, 1 May 2002 10:59:39 +0530
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: questions about rpc and locks
+Date: 01 May 2002 14:14:08 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <DAV16mcK8r6beUzmRf600003839@hotmail.com>
+Message-ID: <shsk7qoqd4f.fsf@charged.uio.no>
+References: <20020430174511.A21356@zeus.centre-cired.fr>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_005B_01C1F0FF.4A012400"
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from dav16.law15.hotmail.com ([64.4.22.120] helo=hotmail.com)
+Received: from pat.uio.no ([129.240.130.16])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 172mei-0004Ct-00
-	for <nfs@lists.sourceforge.net>; Tue, 30 Apr 2002 22:27:56 -0700
-To: <nfs@lists.sourceforge.net>
+	id 172t1o-0008KV-00
+	for <nfs@lists.sourceforge.net>; Wed, 01 May 2002 05:16:13 -0700
+To: dumas@centre-cired.fr (Patrice DUMAS - DOCT)
+In-Reply-To: <20020430174511.A21356@zeus.centre-cired.fr>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,50 +26,40 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-This is a multi-part message in MIME format.
+>>>>> " " == Patrice DUMAS <dumas@centre-cired.fr> writes:
 
-------=_NextPart_000_005B_01C1F0FF.4A012400
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+     > Hi, I have 2 questions about the kernel rpc implementation.
 
-hello ,
-Now My NFS is working sound and I am also able to mount directories on =
-the client perfectly but I am facing 1 other problem n here it follows.
-I have to explicitly start nfsd using command rpc.nfsd 8 , also disable =
-the firewall using the command=20
-service ipchains stop ...bcoz of  these two problems my automount is =
-also not working ..
-How to change the startup scripts so that all these daemons start at =
-boot time ..
-thanx n reply soon=20
-tina
+     > 1. What are the return codes (from rpc_call) and their meanings
+     >    (or where could I find that, I found that looking at the
+     >    code itself was really hard).
 
-------=_NextPart_000_005B_01C1F0FF.4A012400
-Content-Type: text/html;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+For an ordinary synchronous call, rpc_call() returns the value of
+task->tk_status upon exit.
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; =
-charset=3Diso-8859-1">
-<META content=3D"MSHTML 6.00.2600.0" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV><FONT face=3DArial size=3D2>hello ,<BR>Now My NFS is working sound =
-and I am=20
-also able to mount directories on the client perfectly but I am facing 1 =
-other=20
-problem n here it follows.<BR>I have to explicitly start nfsd using =
-command=20
-rpc.nfsd 8 , also disable the firewall using the command <BR>service =
-ipchains=20
-stop ...bcoz of&nbsp; these two problems my automount is also not =
-working=20
-..<BR>How to change the startup scripts so that all these daemons start =
-at boot=20
-time ..<BR>thanx n reply soon <BR>tina</FONT></DIV></BODY></HTML>
+If the call could not be made, then that value will reflect an error
+code, usually EINTR (although for 'soft' RPC calls, the error EIO will
+be returned if a major timeout occurred).
 
-------=_NextPart_000_005B_01C1F0FF.4A012400--
+If the call was made, then the value is set by the XDR decode entry
+(see the macro rpcproc_decode(clnt, task->tk_msg.rpc_proc)) if it
+exists in the 'struct rpc_procinfo' table.
+
+If the server is not expected to return a value, then the
+corresponding XDR decode entry should be NULL, and task->tk_status
+should normally be zero upon rpc_call exit.
+
+     > 2. Is it possible to know at what point the rpc call failed ? 
+     >    (from within the rpc_task struct, to determine whether the
+     >    caller couldn't send or it didn't get a response).
+
+Only makes sense for 'soft' RPC calls, and in that case you get an EIO.
+
+     > 3. When the client think it has a lock on a nfs file, but the
+     >    server thinks the client hasn't, what happens ?
+
+File corruption is possible, and the server will return
+'NLM_LCK_DENIED_NOLOCKS' when the client tries to unlock.
+
+Cheers,
+  Trond
