@@ -1,19 +1,21 @@
-From: Dan Yocum <yocum@fnal.gov>
-Subject: Null characters in files on NFS mounted volume....
-Date: Mon, 13 May 2002 09:33:03 -0500
+From: Nicolas Brainez <nb@many.be>
+Subject: Performance problem
+Date: 13 May 2002 17:10:16 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3CDFCE9F.2BE050D5@fnal.gov>
+Message-ID: <1021302616.27660.20.camel@nb>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from heffalump.fnal.gov ([131.225.9.20] helo=fnal.gov)
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 177Gsq-0001j7-00
-	for <nfs@lists.sourceforge.net>; Mon, 13 May 2002 07:33:04 -0700
-Received: from fnal.gov ([131.225.7.82]) by smtp.fnal.gov (PMDF V6.0-24 #37519)
- with ESMTP id <0GW200LJL0F3EO@smtp.fnal.gov> for nfs@lists.sourceforge.net;
- Mon, 13 May 2002 09:33:03 -0500 (CDT)
-To: nfs list <nfs@lists.sourceforge.net>
+Received: from 212.68.239.49.brutele.be ([212.68.239.49] helo=many.be)
+	by usw-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 177HR9-0005Ju-00
+	for <nfs@lists.sourceforge.net>; Mon, 13 May 2002 08:08:32 -0700
+Received: from localhost ([127.0.0.1] helo=localhost.localdomain)
+	by many.be with esmtp (Exim 3.35 #1)
+	id 177HQQ-0004jO-00
+	for nfs@lists.sourceforge.net; Mon, 13 May 2002 17:07:46 +0200
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,34 +28,44 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hi all,
+Hello,
 
-I've got a "New and Exciting" <tm> bug using 2.4.18 with Trond's client
-patches (sans the rpc_tweaks dif), but I'm not sure it's a client side
-problem.
+I have an nfs server who exports some backup directories for the lan's
+users, it's a new install.
 
-This is an intermitent problem:  When attempting to read a file (any file)
-on an NFS mounted volume, there appear to be "holes" in the file filled with
-ASCII NULL characters.  Reading the file on the local machines shows no such
-holes, and other NFS clients don't see the holes, either.  A simple
-umount/remount solves the problem.
+First I would like say that's not an hardware problem, because we have
+no problem to use appletalk, ftp, ...
 
-Oh, I should add that these are autofs mounted volumes.
+I can mount remotly a partition on the nfs server without problem but
+when I copy something on it, the client ('cp' in this case) hangs, and I
+receive these messages on my console :
 
-We thought these might be network driver problems, but we're seeing it on
-natsemi, acenic and eepro100 drivers, and I doubt they could all be flaky.
+nfs: task XXX can't get a request slot
 
-Any ideas?
+where XXX is begin from 1 to...
 
-Thanks,
-Dan
+When I look on the server, the file I was trying to copy is only 8192
+bytes :
 
+-rwxr-xr-x    1 root     root         8192 May 13 16:56 bash
 
--- 
-Dan Yocum
-Sloan Digital Sky Survey, Fermilab  630.840.6509
-yocum@fnal.gov, http://www.sdss.org
-SDSS.  Mapping the Universe.
+After looking web, newsgroup, etc.. I've tried all what I can do to
+optimize performance (wsize=8192,rsize=8192,hard/soft, etc.. etc..)
+
+The only changes is when I use wsize and rsize to 8192, the file I sent
+to the server can goes to 16384 bytes, but never more..
+
+This is a LAN of ~ 10 computers, 100mbps, and we use switchs.
+The servers and workstation use Debian woody, nfs kernel and user server
+tried, same results.
+
+Any type of help is welcome.
+
+Thanks.
+
+--
+Nicolas Brainez
+
 
 _______________________________________________________________
 
