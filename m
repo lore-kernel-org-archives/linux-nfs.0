@@ -1,12 +1,21 @@
-From: CDROM@biozak.com
-Subject: 13,000+ life science customers for your sorage  solutions
-Date: Tue, 15 Apr 2003 20:18:47 UT
+From: "Steve M. Robbins" <steven.robbins@videotron.ca>
+Subject: erroneous SM_UNMON request
+Date: Tue, 15 Apr 2003 15:41:55 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200304152018.NAA29573@main.biozak.com>
+Message-ID: <20030415194154.GB2469@nyongwa.montreal.qc.ca>
 Mime-Version: 1.0
-Content-Type: multipart/alternative; boundary="_----------=_105043792729120124"
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: nfs@sourceforge.net
+Received: from relais.videotron.ca ([24.201.245.36] helo=VL-MS-MR001.sc1.videotron.ca)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 195WJt-0000Sc-00
+	for <nfs@lists.sourceforge.net>; Tue, 15 Apr 2003 12:42:18 -0700
+Received: from riemann.nyongwa.montreal.qc.ca ([24.202.211.97])
+ by VL-MS-MR001.sc1.videotron.ca
+ (iPlanet Messaging Server 5.2 HotFix 1.10 (built Jan 23 2003))
+ with ESMTP id <0HDE003DDHEEMO@VL-MS-MR001.sc1.videotron.ca> for
+ nfs@lists.sourceforge.net; Tue, 15 Apr 2003 15:42:14 -0400 (EDT)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -19,87 +28,57 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+Hello,
 
---_----------=_105043792729120124
-Content-Disposition: inline
-Content-Length: 856
-Content-Transfer-Encoding: binary
-Content-Type: text/plain
+I have just installed a new linux disk server, and have been plagued by
+syslog messages such as the following
 
-Locate  life science industry customers for your storage solutions  with BioZak InfoBase CD-Rom databases
-
-*13,000 companies
-*25,000 executives
-*advanced data retrieval tools
-
-Ideal  for:
-*direct marketing
-*teleprospecting
-*partner search
-
-Now  only $956 (20% off regular price of $1,195) - that's less than 7 cents per contact!
-
-Interested?
-
-Email CDROM@biozak.com or visit
-http://main.biozak.com/cgi-bin/BIOZAK/sublinks.pl?type=CD
+    Apr 15 14:26:07 jeff rpc.statd[17998]: 
+    Received erroneous SM_UNMON request from jeff for 132.206.3.109
 
 
-Enter/mention promotion code int_service_providers_SS when asked.
+In my researches to date, the answer that others have received about
+this is along the lines of the following.
+
+    Basically it means that your rpc.statd daemon is unaware of a lot
+    of its clients. It is probably failing to save their IP-numbers to
+    disk. Check therefore that the directories /var/lib/nfs/sm, and
+    /var/lib/nfs/sm.bak (or /var/lib/nfs/statd/sm, ... on some
+    platforms) are writable by the rpc.statd process.
+
+    http://lists.insecure.org/linux-kernel/2001/Dec/5052.html
+
+In my case, /var/lib/nfs/sm contains empty files named with the IP
+of the clients involved.  I presume this means that the statd
+process can write there.  The command "ps aux" shows statd running
+as root; it doesn't drop privileges, does it?
 
 
-Sincerely,
---
-Ekaterina Kalygina,
-Marketing Director,
-BioZak InfoBase, Inc. - business intelligence for life science markets!
+The files in /var/lib/nfs/sm appear to be correlated with me using the
+mail user agent "mutt" on a client machine.  Mutt is reading (and
+locking) the mail spool, which is exported over NFS, mounted using
+options "hard,intr".  I vaguely recall choosing these options
+deliberately, but now I'm wondering whether a hard mount is
+inadvisable.
 
 
+In any case, I'm worried that the erroneous requests are a symptom of
+some underlying problem.  I'd be grateful for suggestions on where to
+look for further clues.  
 
------
-Every effort is made to ensure that this message is received only by interested parties. If this message was sent to you in error, please reply with 'remove' in the subject line - you will get no further email from us.
---_----------=_105043792729120124
-Content-Disposition: inline
-Content-Length: 1165
-Content-Transfer-Encoding: binary
-Content-Type: text/html
+The server is running Debian "stable", but with nfs-utils updated to
+1.0.3, and with kernel version 2.4.20.  The client systems are Debian
+"testing", also with nfs-utils 1.0.3 and kernel versions 2.4.x for x
+about 18 or 20.  The mail spool is exported with the "sync" option.
 
-Locate  life science industry customers for your storage solutions  with BioZak InfoBase CD-Rom databases: <BR>
-
-<li>13,000 companies<BR><BR>
-<li>25,000 executives<BR><BR>
-<li>advanced data retrieval tools<BR><BR>
-</ul>
-
-Ideal for:<BR><BR>
-<ul>
-<li> direct marketing<BR><BR>
-<li> teleprospecting<BR><BR>
-<li> partner search<BR><BR>
-</ul>
-
-Act now and pay only $956 (20% off regular price of $1195) - that's <b>less than 7 cents per contact!</b><BR><BR>
-
-Interested? <BR><BR>
-
-Email <a href="mailto:CDROM@biozak.com">CDROM@biozak.com</a> or visit
-<a href="http://main.biozak.com/cgi-bin/BIOZAK/sublinks.pl?type=CD">http://main.biozak.com/cgi-bin/BIOZAK/sublinks.pl?type=CD</a><BR><BR><BR>
-
-Enter/mention promotion code int_service_providers_SS when asked.<BR><BR><BR>
-
-Sincerely,<BR>
---<BR>
-Ekaterina Kalygina,<BR>
-Marketing Director,<BR>
-BioZak InfoBase, Inc. - business intelligence for life science markets!<BR>
-<BR><BR><BR><BR>
+I notice now that the client systems have reciprocal "erroneous
+SM_UNMON" messsages in _their_ syslogs.  From my limited understanding
+(mainly from http://www.opengroup.org/onlinepubs/009629799/chap9.htm)
+I gather this is to be expected.
 
 
------<BR>
-Every effort is made to ensure that this message is received only by interested parties. If this message was sent to you in error, please reply with 'remove' in the subject line - you will get no further email from us.<BR>
---_----------=_105043792729120124--
-
+All advice will be gratefully recieved,
+-Steve
 
 
 -------------------------------------------------------
