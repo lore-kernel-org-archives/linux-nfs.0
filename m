@@ -1,23 +1,25 @@
-From: Jolly Frederic <frederic.jolly@ext.bull.net>
-Subject: NFS in WebMin: new interface
-Date: Thu, 22 Jul 2004 17:01:47 +0200
+From: Juergen Rose <rose@rz.uni-potsdam.de>
+Subject: "rpcinfo -u IP nfs" timeout
+Date: Thu, 22 Jul 2004 20:46:37 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200407221701.47564.frederic.jolly@ext.bull.net>
+Message-ID: <1090521997.8708.14.camel@vilm.bioinf.mdc-berlin.de>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="us-ascii"
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Bnf3R-0004gE-5w
-	for nfs@lists.sourceforge.net; Thu, 22 Jul 2004 08:00:17 -0700
-Received: from ecbull20.frec.bull.fr ([129.183.4.3])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1Bnf3Q-000315-FS
-	for nfs@lists.sourceforge.net; Thu, 22 Jul 2004 08:00:17 -0700
-Received: from ecn002.frec.bull.fr (ecn002.frec.bull.fr [129.183.4.6])
-	by ecbull20.frec.bull.fr (8.9.2/8.9.1) with ESMTP id RAA13906
-	for <nfs@lists.sourceforge.net>; Thu, 22 Jul 2004 17:01:51 +0200
+	id 1Bniac-0008W3-6z
+	for nfs@lists.sourceforge.net; Thu, 22 Jul 2004 11:46:46 -0700
+Received: from server1.bbb2.mdc-berlin.de ([141.80.34.10] ident=root)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1Bniaa-0007wp-Sd
+	for nfs@lists.sourceforge.net; Thu, 22 Jul 2004 11:46:45 -0700
+Received: from orion.bbb3.mdc-berlin.de (orion.bbb3.mdc-berlin.de [141.80.35.20])
+	by server1.bbb2.mdc-berlin.de (8.12.10/8.12.10) with ESMTP id i6MIkcX8017877
+	for <nfs@lists.sourceforge.net>; Thu, 22 Jul 2004 20:46:38 +0200 (METDST)
+Received: from vilm.bioinf.mdc-berlin.de (IDENT:1203@vilm.bioinf.mdc-berlin.de [141.80.80.51])
+	by orion.bbb3.mdc-berlin.de (8.11.6/8.11.2) with SMTP id i6MIkb421330
+	for <nfs@lists.sourceforge.net>; Thu, 22 Jul 2004 20:46:37 +0200 (MET DST)
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,21 +33,80 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
+Hi,
 
-I'm working on the implementation of NFSv4 in WebMin.
-The two modules that deal with NFSv3 will be modified:  "NFS Exports" and 
-"Disk and Network Filesystems".
+sitting at "bornholm" (linux-2.6.[6-8]), I have problems to mount
+filesystems from a nfs server. I found, that there is already a strange
+behaviour of rpcinfo, if I want to get rpc information only about
+bornholm. I get the following response:
+root@bornholm:/root(10)# rpcinfo -p localhost
+   program vers proto   port
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    100024    1   udp  32768  status
+    100024    1   tcp  32768  status
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
+    100003    2   tcp   2049  nfs
+    100003    3   tcp   2049  nfs
+    100021    1   udp  32770  nlockmgr
+    100021    3   udp  32770  nlockmgr
+    100021    4   udp  32770  nlockmgr
+    100021    1   tcp  32769  nlockmgr
+    100021    3   tcp  32769  nlockmgr
+    100021    4   tcp  32769  nlockmgr
+    100005    1   udp    817  mountd
+    100005    1   tcp    820  mountd
+    100005    2   udp    817  mountd
+    100005    2   tcp    820  mountd
+    100005    3   udp    817  mountd
+    100005    3   tcp    820  mountd
+root@bornholm:/root(11)# rpcinfo -p bornholm 
+   program vers proto   port
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    100024    1   udp  32768  status
+    100024    1   tcp  32768  status
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
+    100003    2   tcp   2049  nfs
+    100003    3   tcp   2049  nfs
+    100021    1   udp  32770  nlockmgr
+    100021    3   udp  32770  nlockmgr
+    100021    4   udp  32770  nlockmgr
+    100021    1   tcp  32769  nlockmgr
+    100021    3   tcp  32769  nlockmgr
+    100021    4   tcp  32769  nlockmgr
+    100005    1   udp    817  mountd
+    100005    1   tcp    820  mountd
+    100005    2   udp    817  mountd
+    100005    2   tcp    820  mountd
+    100005    3   udp    817  mountd
+    100005    3   tcp    820  mountd
+root@bornholm:/root(12)# rpcinfo -u localhost nfs 
+program 100003 version 2 ready and waiting
+program 100003 version 3 ready and waiting
+root@bornholm:/root(13)# rpcinfo -u bornholm nfs
+rpcinfo: RPC: Timed out
+program 100003 version 0 is not available
+root@bornholm:/root(14)# ifconfig
+eth0      Link encap:Ethernet  HWaddr 00:E0:81:51:39:C5  
+          inet addr:141.80.80.32  Bcast:141.80.80.255 
+Mask:255.255.255.0
+...
+root@bornholm:/root(15)# rpcinfo -u 141.80.80.32 nfs
+rpcinfo: RPC: Timed out
+program 100003 version 0 is not available
 
-You will find on the following link the design of the old and the new 
-interfaces of these modules:
-http://nfsv4.bullopensource.org/doc/webmin_design/
+What can be the reason, that the last two rpcinfo calls produce
+timeouts?
+Please help!  
+		Regards
+			Juergen
 
-If you have some questions or suggestions, if you think something is wrong, 
-please do not hesitate to tell me.
-
-Regards,
-Fred.
+-- 
+Juergen Rose <rose@rz.uni-potsdam.de>
+Max-Delbrueck-Zentrum
 
 
 
