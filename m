@@ -1,19 +1,19 @@
 From: Ion Badulescu <ionut@badula.org>
-Subject: Re: Re: [autofs] Server/client mismatch over status of a mount ...
-Date: Wed, 19 Feb 2003 08:58:14 -0500
+Subject: Re: 2.4.20 TCP server + solaris client performance
+Date: Wed, 19 Feb 2003 09:07:13 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200302191358.h1JDwECX026719@buggy.badula.org>
-References: <1199.195.252.45.39.1045648619.squirrel@www.zytor.com>
-Cc: <nfs@lists.sourceforge.net>, <autofs@linux.kernel.org>,
-   <trond.myklebust@fys.uio.no>, <james-p@moving-picture.com>
+Message-ID: <200302191407.h1JE7DbU026781@buggy.badula.org>
+References: <Pine.GSO.4.40.0302191211380.29315-100000@bodoni>
+Cc: nfs@lists.sourceforge.net, Neil Brown <neilb@cse.unsw.edu.au>,
+   Eric Whiting <ewhiting@amis.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from ool-4351594a.dyn.optonline.net ([67.81.89.74] helo=badula.org)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18lUk9-0006O2-00
-	for <nfs@lists.sourceforge.net>; Wed, 19 Feb 2003 05:58:37 -0800
-To: "H. Peter Anvin" <hpa@zytor.com>
-In-Reply-To: <1199.195.252.45.39.1045648619.squirrel@www.zytor.com>
+	id 18lUsr-0007uY-00
+	for <nfs@lists.sourceforge.net>; Wed, 19 Feb 2003 06:07:37 -0800
+To: Fabrizio Nesti <nesti@medialab.sissa.it>
+In-Reply-To: <Pine.GSO.4.40.0302191211380.29315-100000@bodoni>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,27 +26,26 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, 19 Feb 2003 01:56:59 -0800 (PST), H. Peter Anvin <hpa@zytor.com> wrote:
+On Wed, 19 Feb 2003 12:30:06 +0100 (MET), Fabrizio Nesti <nesti@medialab.sissa.it> wrote:
 
-> Well, it does, but the test is a sieve, rather than a true test, as there
-> is no protection against race conditions.  It's mostly there to avoid the
-> high overheard of the umount operation when it's not necessary or
-> desirable.
-> 
-> A user can come in between the test and the umount request, and autofs
-> depends on /bin/umount signalling error without harmful side effects.
+> Also it is strange that a standard out-of-the-box RH8.0 on that big server
+> does perform so bad. Knowing this in advance, we wouldn't have chosen
+> linux for serving... :(
 
-Isn't autofs v4 supposed to fix this? I remember Jeremy mentioning that
-the filesystem would lock all accesses to a dentry scheduled to be 
-unmounted until the daemon replied to the request.
+Is RH8.0 using nfs-utils 1.0 or newer? If so, then the default server
+export options have changed and the filesystem is now exported "sync",
+instead of "async".
 
-In fact, from his web page:
+The other thing to remember is that "cto" (close-to-open) consistency, 
+which is enabled by default on the client, forces the client to do a 
+fsync on any file it closes, which leads to rather poor performance when 
+opening and closing lots of small files. Which is precisely what tar is 
+doing...
 
-Previously, when the kernel sent an expire message to the daemon it was 
-more an hint than anything else. Now the kernel makes certain that the 
-tree isn't busy before sending an expire message to the daemon. It also 
-blocks all new users of the tree until the umount is complete, so that 
-they can't see a partially mounted tree.
+So, try exporting the filesystem "async" if you can tolerate data loss
+in case of a server crash, and try mounting the filesystem with "nocto"  
+if you don't need inter-client consistency (and if you do then locking
+the files with fcntl() is a much better solution anyway).
 
 Ion
 
