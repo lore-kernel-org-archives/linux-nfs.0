@@ -1,20 +1,20 @@
 From: Steve Dickson <SteveD@RedHat.com>
-Subject: Re: Having Trouble Starting NFS
-Date: Sat, 21 Jun 2003 06:28:47 -0400
+Subject: Re: Typo in Redhat 8/9 nfs start/stop script
+Date: Sat, 21 Jun 2003 08:51:32 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3EF4335F.2040900@RedHat.com>
-References: <029DBE7A1D95BF4A860FE19EA15FA533948B@isis.vanderbilt.edu>
+Message-ID: <3EF454D4.3010406@RedHat.com>
+References: <1056050865.15737.282.camel@mosix>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from host-64-179-20-100.man.choiceone.net ([64.179.20.100] helo=Odyssey.Home.4Dicksons.Org)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19TfcD-00031S-00
-	for <nfs@lists.sourceforge.net>; Sat, 21 Jun 2003 03:29:01 -0700
-To: Dan Steward <dsteward@isis.vanderbilt.edu>
-In-Reply-To: <029DBE7A1D95BF4A860FE19EA15FA533948B@isis.vanderbilt.edu>
+	id 19ThqO-00007h-00
+	for <nfs@lists.sourceforge.net>; Sat, 21 Jun 2003 05:51:48 -0700
+To: Matt Schillinger <mschilli@vss.fsi.com>
+In-Reply-To: <1056050865.15737.282.camel@mosix>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,23 +27,45 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
-
-Dan Steward wrote:
-
-> I recently installed Redhat Linux 9.0 on a Compaq laptop. When I try=20
-> and mount our network NFS, I receive the following error message in=20
-> the /var/log/messages log file: nfs: mount failure =93servername=94 /ho=
-me=20
-> on /auto/home. Can some one please assist this newbie on getting NFS=20
-> running on this laptop?
->
-There are quite a few things that could be misconfigured...
-I would suggest the first place you start is by reading the configuration
-section in the FAQ on http://nfs.sourceforge.net....
+This is fixed in the next release...
 
 SteveD.
 
+Matt Schillinger wrote:
+
+>Note for any Redhat users that need higher than default input queues for
+>NFS.
+>
+>
+># Get the initial values for the input sock queues
+># at the time of running the script.
+>if [ "$TUNE_QUEUE" = "yes" ]; then
+>    RMEM_DEFAULT=`/sbin/sysctl -n net.core.rmem_default`
+>    RMEM_MAX=`/sbin/sysctl -n net.core.rmem_max`
+>    # 256kb recommended minimum size based on SPECsfs NFS benchmarks
+>    [ -z "$NFS_QS" ] && NFS_QS=262144
+>fi
+>
+># See how we were called.
+>case "$1" in
+>  start)
+>        # Start daemons.
+>        # Apply input queue increase for nfs server
+>        if [ "$TUNE_QUEUE" = "yes" ]; then
+>            /sbin/sysctl -w net.core.rmem_default=$NFSD_QS >/dev/null
+>2>&1
+>            /sbin/sysctl -w net.core.rmem_max=$NFSD_QS >/dev/null 2>&1
+>        fi
+>
+>
+>
+>NOTE THAT when checking that the variable has a value and setting the
+>variable, NFS_QS is used. But when setting the input queues, $NFSD_QS is
+>used.
+>
+>
+>  
+>
 
 
 
