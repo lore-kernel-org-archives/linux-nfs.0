@@ -1,21 +1,21 @@
 From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: Bug#148482: 'nfs-kernel-server reload' immediately stales all nfs handles
-Date: Mon, 16 Sep 2002 09:02:11 +1000
+Subject: Re: Must statd be running before nfs client makes mounts?
+Date: Mon, 16 Sep 2002 09:26:21 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15749.4467.265708.717072@notabene.cse.unsw.edu.au>
-References: <20020915221931.GE11002@perlsupport.com>
+Message-ID: <15749.5917.443602.600792@notabene.cse.unsw.edu.au>
+References: <20020915225226.GI11002@perlsupport.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17qiPK-0001rL-00
-	for <nfs@lists.sourceforge.net>; Sun, 15 Sep 2002 16:02:26 -0700
+	id 17qimh-000070-00
+	for <nfs@lists.sourceforge.net>; Sun, 15 Sep 2002 16:26:35 -0700
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
 	(for <chip@pobox.com>) (for <nfs@lists.sourceforge.net>) By tone With
-	Smtp ; Mon, 16 Sep 2002 09:02:17 +1000
+	Smtp ; Mon, 16 Sep 2002 09:26:27 +1000
 To: Chip Salzenberg <chip@pobox.com>
 In-Reply-To: message from Chip Salzenberg on Sunday September 15
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -31,62 +31,50 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 On Sunday September 15, chip@pobox.com wrote:
-> So is 'exportfs -r' *supposed* to stale all NFS handles?  If so, is this
-> adequately documented?  adTHANKSvance
+> I've just noticed that Debian mounts NFS filesystems from /etc/fstab
+> before statd starts.  Is this OK?  (And I wonder at how it's going to
+> try to do NFS client mounts before bind is even started, but I guess
+> that's a separate issue... :-))
 
-exportfs -r 
-is very dependant on the contents of /var/lib/nfs/rmtab.
-Any export that exportfs finds in /proc/fs/nfs/exports that cannot be
-deduced from /var/lib/nfs/rmtab and /etc/exports will be removed.
+I think this is OK.
+As long as statd starts before any lock requests are made, there
+certainly wont be any problems.  And I think all the state management
+happens in the background with timeouts and re-trys so it shouldn't
+matter too much anyway (though if a process gets a lock, and the
+server restarts before the local statd starts, then you loose).
 
-We try to keep rmtab up-to-date correctly, but the MOUNT protocol
-really isn't good enough to get it 100% right.
+A related question is whether you should mount nfs directories before
+the nfs server is started.
 
-My guess is that for some reason, some of the clients were not listed
-in rmtab, so their entries in /proc/fs/nfs/exports were removed.
-I don't know what would have caused this.  It could have been an admin
-error.  It could be that the automounter sends unmount messages at the
-wrong time.
+If you have two machines that each mount a filesystem off the other,
+and they both do foreground mounts (the default) before the
+nfs server starts, then they will deadlock on boot.
 
-It is possible that 'nfs-kernel-server reload' should do "-a", not
-"-r", but it isn't certain.
+I *think* (not having thought through it exhaustively) you should:
 
-The most obvious difference between the two is shown by this example:
+  (start devices, raid, etc)
+ 1/ mount local filesystems
+  (start network, bind, portmap)
+ 2/ start nfsd if appropriate
+ 3/ start statd
+ 4/ mount nfs filesystems
+
+
+It is possible that you need to treat some filesystems like /usr
+differently.  On a data-less client, you probably need to mount
+/usr before starting some of the network stuff like
+bind or portmap.  These would typically be mounted with nolocks
+so there are no issues with starting statd later, and
+there shouldn't be cross-mounting issues in this situations.
+So maybe you need a
  
- I have some standard exports in /etc/exports and I run
-    exportfs -a
- to enact them.
- I then want to do another export for some special, temporary purpose,
- so I
-    exportfs -o no_root_squash,rw mydesktop:/usr/src
+  1a/ mount /var and /usr if they are nfs.
 
- Later I make some changes to /etc/exports and want to enact them.
- If I
-     exportfs -a
- then it will enact those changes, and leave my temporary export in
- place.
- If I
-     exportfs -r
- then it will enact those changes and remove my temporary export.
-
- Which is right?  In different situations you want different
- behaviour.
- Maybe:
-     reload -> exportfs -a
-     enforce -> exportfs -r
-
-Locally, we have a policy (and machinery) that says that any temporary
-change will probably be blown away over night, so it you want
-something to be more permanent than that, to it 'properly'.  So for
-us, a nightly "exportfs -r" would probably be appropriate... as long
-as our automounters did the right thing...
-
-Again, 2.6 should not have the same dependance of rmtab so in a couple
-of years you shouldn't have to worry.
+You really want a generic way of distinguishing which mounts
+are needed early... pity mount won't let you select on
+"dump" or "pass" fields (will it).
 
 NeilBrown
-
-
 
 
 -------------------------------------------------------
