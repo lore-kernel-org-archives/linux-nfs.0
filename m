@@ -1,17 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 14 of 54] nfsd4: miscellaneous open cleanup 2
-Date: Tue, 08 Mar 2005 17:06:43 +1100
-Message-ID: <E1D8Xrf-00017h-3U@notabene.cse.unsw.edu.au>
+Subject: [PATCH kNFSd 8 of 54] nfsd4: cbnull refcount leak
+Date: Tue, 08 Mar 2005 17:06:42 +1100
+Message-ID: <E1D8Xre-00017J-MK@notabene.cse.unsw.edu.au>
 References: <20050308165419.3842.patches@notabene>
 Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D8Xrk-00026O-OF
-	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:48 -0800
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1D8Xrj-0005CG-Re
-	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:48 -0800
+	id 1D8Xrm-00026X-3b
+	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:50 -0800
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1D8Xrl-0007sk-54
+	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:49 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -28,86 +28,42 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
 
-Replace sequence of if {... goto} 's by if-elseif's, other minor simplification
-of logic.
+Properly decrement refcount on failure in nfsd4_probe_callback.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c |   45 +++++++++++++++++++++------------------------
- 1 files changed, 21 insertions(+), 24 deletions(-)
+ ./fs/nfsd/nfs4callback.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletion(-)
 
-diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2005-03-07 11:35:11.000000000 +1100
-+++ ./fs/nfsd/nfs4state.c	2005-03-07 11:35:11.000000000 +1100
-@@ -1464,7 +1464,9 @@ nfsd4_process_open1(struct nfsd4_open *o
- 		open->op_stateowner = sop;
- 		/* check for replay */
- 		if (open->op_seqid == sop->so_seqid){
--			if (!sop->so_replay.rp_buflen) {
-+			if (sop->so_replay.rp_buflen)
-+				return NFSERR_REPLAY_ME;
-+			else {
- 				/* The original OPEN failed so spectacularly
- 				 * that we don't even have replay data saved!
- 				 * Therefore, we have no choice but to continue
-@@ -1476,37 +1478,32 @@ nfsd4_process_open1(struct nfsd4_open *o
- 				status = NFS_OK;
- 				goto renew;
- 			}
--			status = NFSERR_REPLAY_ME;
--			return status;
--		}
--		if (sop->so_confirmed) {
-+		} else if (sop->so_confirmed) {
- 			if (open->op_seqid == sop->so_seqid + 1) { 
- 				status = nfs_ok;
- 				goto renew;
- 			} 
- 			status = nfserr_bad_seqid;
- 			goto out;
-+		} else {
-+			/* If we get here, we received an OPEN for an
-+			 * unconfirmed nfs4_stateowner. Since the seqid's are
-+			 * different, purge the existing nfs4_stateowner, and
-+			 * instantiate a new one.
-+			 */
-+			clp = sop->so_client;
-+			release_stateowner(sop);
- 		}
--		/* If we get here, we received an OPEN for an unconfirmed
--		 * nfs4_stateowner. 
--		 * Since the sequid's are different, purge the 
--		 * existing nfs4_stateowner, and instantiate a new one.
-+	} else {
-+		/* nfs4_stateowner not found.
-+		 * Verify clientid and instantiate new nfs4_stateowner.
-+		 * If verify fails this is presumably the result of the
-+		 * client's lease expiring.
- 		 */
--		clp = sop->so_client;
--		release_stateowner(sop);
--		goto instantiate_new_owner;
--	} 
--	/* nfs4_stateowner not found. 
--	* verify clientid and instantiate new nfs4_stateowner
--	* if verify fails this is presumably the result of the 
--	* client's lease expiring.
--	*
--	* XXX compare clp->cl_addr with rqstp addr? 
--	*/
--	status = nfserr_expired;
--	if (!verify_clientid(&clp, clientid))
--		goto out;
--instantiate_new_owner:
-+		status = nfserr_expired;
-+		if (!verify_clientid(&clp, clientid))
-+			goto out;
-+	}
- 	status = nfserr_resource;
- 	if (!(sop = alloc_init_open_stateowner(strhashval, clp, open))) 
- 		goto out;
+diff ./fs/nfsd/nfs4callback.c~current~ ./fs/nfsd/nfs4callback.c
+--- ./fs/nfsd/nfs4callback.c~current~	2005-03-07 11:34:24.000000000 +1100
++++ ./fs/nfsd/nfs4callback.c	2005-03-07 11:35:09.000000000 +1100
+@@ -435,7 +435,6 @@ nfsd4_probe_callback(struct nfs4_client 
+ 	clnt->cl_intr = 1;
+ 	clnt->cl_softrtry = 1;
+ 	clnt->cl_chatty = 1;
+-	cb->cb_client = clnt;
+ 
+ 	/* Kick rpciod, put the call on the wire. */
+ 
+@@ -445,6 +444,7 @@ nfsd4_probe_callback(struct nfs4_client 
+ 	}
+ 
+ 	/* the task holds a reference to the nfs4_client struct */
++	cb->cb_client = clnt;
+ 	atomic_inc(&clp->cl_count);
+ 
+ 	msg.rpc_cred = nfsd4_lookupcred(clp,0);
+@@ -457,6 +457,7 @@ nfsd4_probe_callback(struct nfs4_client 
+ 	return;
+ 
+ out_rpciod:
++	atomic_dec(&clp->cl_count);
+ 	rpciod_down();
+ out_clnt:
+ 	rpc_shutdown_client(clnt);
 
 
 -------------------------------------------------------
