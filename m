@@ -1,19 +1,12 @@
 From: Jean-Eric Cuendet <Jean-Eric.Cuendet@linkvest.com>
-Subject: .x files for NFS v3
-Date: Mon, 02 Sep 2002 11:57:33 +0200
+Subject: rpc.mountd + rpc.nfsd
+Date: Mon, 02 Sep 2002 14:52:27 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3D73360D.8000609@linkvest.com>
+Message-ID: <3D735F0B.2030704@linkvest.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from idefix.linkvest.com ([194.209.53.99])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17lny1-00050s-00
-	for <nfs@lists.sourceforge.net>; Mon, 02 Sep 2002 02:58:00 -0700
-Received: from hermes.linkvest.com (unverified) by idefix.linkvest.com
- (Content Technologies SMTPRS 4.2.10) with ESMTP id <T5d16e1c5b4c2d1356337c@idefix.linkvest.com> for <nfs@lists.sourceforge.net>;
- Mon, 2 Sep 2002 11:57:33 +0200
-To: nfs@lists.sourceforge.net
+To: nfs@sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,7 +20,11 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 Hi,
-where should I find .x files for rpcgen for nfsv3?
+Why is there 2 daemons for NFS progs? Is it a necessity or just to 
+separate things?
+Would it be possible to have only one nfsd daemon that is rpc.mounts + 
+rpc.nfsd + ... ?
+
 Thanks.
 -jec
 
