@@ -1,8 +1,8 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: [PATCH] Support for cached lookups via readdirplus [4/6]
-Date: Sun, 28 Jul 2002 17:26:15 +0200
+Subject: [PATCH] Support for cached lookups via readdirplus [3/6]
+Date: Sun, 28 Jul 2002 17:25:56 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15684.3351.16720.393606@charged.uio.no>
+Message-ID: <15684.3332.536049.763879@charged.uio.no>
 Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -11,8 +11,8 @@ Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from mons.uio.no ([129.240.130.14])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17YpwD-0005O9-00
-	for <nfs@lists.sourceforge.net>; Sun, 28 Jul 2002 08:26:29 -0700
+	id 17Ypvu-0005NA-00
+	for <nfs@lists.sourceforge.net>; Sun, 28 Jul 2002 08:26:10 -0700
 To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -27,187 +27,113 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 
-Add support for positive lookups using the READDIRPLUS cached
-information. Both new lookups and lookup revalidation is supported.
-
-Use READDIRPLUS instead of READDIR on NFSv3 directories with lengths
-shorter than 8*PAGE_SIZE.
-
-Note that inode attribute information is only updated if it is seen to
-be more recent than any existing cached information.
+Cache the information about whether or not the server supports
+READDIRPLUS.
 
 Cheers,
   Trond
 
-diff -u --recursive --new-file linux-2.5.29-rdplus3/fs/nfs/dir.c linux-2.5.29-rdplus4/fs/nfs/dir.c
---- linux-2.5.29-rdplus3/fs/nfs/dir.c	Sat Jul 27 18:58:30 2002
-+++ linux-2.5.29-rdplus4/fs/nfs/dir.c	Sat Jul 27 19:15:50 2002
-@@ -37,6 +37,8 @@
- 
- static int nfs_readdir(struct file *, void *, filldir_t);
- static struct dentry *nfs_lookup(struct inode *, struct dentry *);
-+static int nfs_cached_lookup(struct inode *, struct dentry *,
-+				struct nfs_fh *, struct nfs_fattr *);
- static int nfs_create(struct inode *, struct dentry *, int);
- static int nfs_mkdir(struct inode *, struct dentry *, int);
- static int nfs_rmdir(struct inode *, struct dentry *);
-@@ -504,6 +506,15 @@
- 		goto out_valid;
- 	}
- 
-+	error = nfs_cached_lookup(dir, dentry, &fhandle, &fattr);
-+	if (!error) {
-+		if (memcmp(NFS_FH(inode), &fhandle, sizeof(struct nfs_fh))!= 0)
-+			goto out_bad;
-+		if (nfs_lookup_verify_inode(inode))
-+			goto out_bad;
-+		goto out_valid_renew;
-+	}
-+
- 	if (NFS_STALE(inode))
- 		goto out_bad;
- 
-@@ -515,6 +526,7 @@
- 	if ((error = nfs_refresh_inode(inode, &fattr)) != 0)
- 		goto out_bad;
- 
-+ out_valid_renew:
- 	nfs_renew_times(dentry);
-  out_valid:
- 	unlock_kernel();
-@@ -578,7 +590,7 @@
- 
- static struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry)
- {
--	struct inode *inode;
-+	struct inode *inode = NULL;
- 	int error;
- 	struct nfs_fh fhandle;
- 	struct nfs_fattr fattr;
-@@ -594,8 +606,19 @@
- 	dentry->d_op = &nfs_dentry_operations;
- 
- 	lock_kernel();
-+	error = nfs_cached_lookup(dir, dentry, &fhandle, &fattr);
-+	if (!error) {
-+		error = -EACCES;
-+		inode = nfs_fhget(dentry, &fhandle, &fattr);
-+		if (inode) {
-+			d_add(dentry, inode);
-+			nfs_renew_times(dentry);
-+			error = 0;
+diff -u --recursive --new-file linux-2.5.29-rdplus2/fs/nfs/dir.c linux-2.5.29-rdplus3/fs/nfs/dir.c
+--- linux-2.5.29-rdplus2/fs/nfs/dir.c	Sat Jul 27 18:20:26 2002
++++ linux-2.5.29-rdplus3/fs/nfs/dir.c	Sat Jul 27 18:58:30 2002
+@@ -107,14 +107,16 @@
+  again:
+ 	error = NFS_PROTO(inode)->readdir(inode, cred, desc->entry->cookie, page,
+ 					  NFS_SERVER(inode)->dtsize, desc->plus);
+-	/* We requested READDIRPLUS, but the server doesn't grok it */
+-	if (desc->plus && error == -ENOTSUPP) {
+-		NFS_FLAGS(inode) &= ~NFS_INO_ADVISE_RDPLUS;
+-		desc->plus = 0;
+-		goto again;
+-	}
+-	if (error < 0)
++	if (error < 0) {
++		/* We requested READDIRPLUS, but the server doesn't grok it */
++		if (error == -ENOTSUPP && desc->plus) {
++			NFS_SERVER(inode)->caps &= ~NFS_CAP_READDIRPLUS;
++			NFS_FLAGS(inode) &= ~NFS_INO_ADVISE_RDPLUS;
++			desc->plus = 0;
++			goto again;
 +		}
-+		goto out;
+ 		goto error;
 +	}
-+
- 	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, &fhandle, &fattr);
--	inode = NULL;
- 	if (error == -ENOENT)
- 		goto no_entry;
- 	if (!error) {
-@@ -613,6 +636,79 @@
- 	return ERR_PTR(error);
- }
+ 	SetPageUptodate(page);
+ 	/* Ensure consistent page alignment of the data.
+ 	 * Note: assumes we have exclusive access to this mapping either
+@@ -194,7 +196,6 @@
  
-+static inline
-+int find_dirent_name(nfs_readdir_descriptor_t *desc, struct page *page, struct dentry *dentry)
+ 	dfprintk(VFS, "NFS: find_dirent_page() searching directory page %ld\n", desc->page_index);
+ 
+-	desc->plus = NFS_USE_READDIRPLUS(inode);
+ 	page = read_cache_page(&inode->i_data, desc->page_index,
+ 			       (filler_t *)nfs_readdir_filler, desc);
+ 	if (IS_ERR(page)) {
+@@ -376,6 +377,7 @@
+ 	desc->file = filp;
+ 	desc->target = filp->f_pos;
+ 	desc->decode = NFS_PROTO(inode)->decode_dirent;
++	desc->plus = NFS_USE_READDIRPLUS(inode);
+ 
+ 	my_entry.cookie = my_entry.prev_cookie = 0;
+ 	my_entry.eof = 0;
+diff -u --recursive --new-file linux-2.5.29-rdplus2/fs/nfs/inode.c linux-2.5.29-rdplus3/fs/nfs/inode.c
+--- linux-2.5.29-rdplus2/fs/nfs/inode.c	Sat Jul 27 18:20:58 2002
++++ linux-2.5.29-rdplus3/fs/nfs/inode.c	Sat Jul 27 18:53:18 2002
+@@ -283,12 +283,14 @@
+ 	INIT_LIST_HEAD(&server->lru_busy);
+ 
+  nfsv3_try_again:
++	server->caps = 0;
+ 	/* Check NFS protocol revision and initialize RPC op vector
+ 	 * and file handle pool. */
+ 	if (data->flags & NFS_MOUNT_VER3) {
+ #ifdef CONFIG_NFS_V3
+ 		server->rpc_ops = &nfs_v3_clientops;
+ 		version = 3;
++		server->caps |= NFS_CAP_READDIRPLUS;
+ 		if (data->version < 4) {
+ 			printk(KERN_NOTICE "NFS: NFSv3 not supported by mount program.\n");
+ 			goto out_unlock;
+diff -u --recursive --new-file linux-2.5.29-rdplus2/include/linux/nfs_fs.h linux-2.5.29-rdplus3/include/linux/nfs_fs.h
+--- linux-2.5.29-rdplus2/include/linux/nfs_fs.h	Fri Jul 26 23:05:37 2002
++++ linux-2.5.29-rdplus3/include/linux/nfs_fs.h	Sat Jul 27 18:59:41 2002
+@@ -225,8 +225,15 @@
+ 
+ #define NFS_FILEID(inode)		(NFS_I(inode)->fileid)
+ 
+-/* Inode Flags */
+-#define NFS_USE_READDIRPLUS(inode)	((NFS_FLAGS(inode) & NFS_INO_ADVISE_RDPLUS) ? 1 : 0)
++static inline int nfs_server_capable(struct inode *inode, int cap)
 +{
-+	struct nfs_entry *entry = desc->entry;
-+	int		 status;
-+
-+	while((status = dir_decode(desc)) == 0) {
-+		if (entry->len != dentry->d_name.len)
-+			continue;
-+		if (memcmp(entry->name, dentry->d_name.name, entry->len))
-+			continue;
-+		if (!(entry->fattr->valid & NFS_ATTR_FATTR))
-+			continue;
-+		break;
-+	}
-+	return status;
++	return NFS_SERVER(inode)->caps & cap;
 +}
 +
-+/*
-+ * Use the cached Readdirplus results in order to avoid a LOOKUP call
-+ * whenever we believe that the parent directory has not changed.
-+ *
-+ * We assume that any file creation/rename changes the directory mtime.
-+ * As this results in a page cache invalidation whenever it occurs,
-+ * we don't require any other tests for cache coherency.
-+ */
-+static
-+int nfs_cached_lookup(struct inode *dir, struct dentry *dentry,
-+			struct nfs_fh *fh, struct nfs_fattr *fattr)
++static inline int NFS_USE_READDIRPLUS(struct inode *inode)
 +{
-+	nfs_readdir_descriptor_t desc;
-+	struct nfs_server *server;
-+	struct nfs_entry entry;
-+	struct page *page;
-+	unsigned long timestamp = NFS_MTIME_UPDATE(dir);
-+	int res;
-+
-+	if (!NFS_USE_READDIRPLUS(dir))
-+		return -ENOENT;
-+	server = NFS_SERVER(dir);
-+	if (server->flags & NFS_MOUNT_NOAC)
-+		return -ENOENT;
-+	nfs_revalidate_inode(server, dir);
-+
-+	entry.fh = fh;
-+	entry.fattr = fattr;
-+
-+	desc.decode = NFS_PROTO(dir)->decode_dirent;
-+	desc.entry = &entry;
-+	desc.page_index = 0;
-+	desc.plus = 1;
-+
-+	for(;(page = find_get_page(&dir->i_data, desc.page_index)); desc.page_index++) {
-+
-+		res = -EIO;
-+		if (PageUptodate(page)) {
-+			desc.ptr = kmap(page);
-+			res = find_dirent_name(&desc, page, dentry);
-+			kunmap(page);
-+		}
-+		page_cache_release(page);
-+
-+		if (res == 0)
-+			goto out_found;
-+		if (res != -EAGAIN)
-+			break;
-+	}
-+	return -ENOENT;
-+ out_found:
-+	fattr->timestamp = timestamp;
-+	return 0;
++	return NFS_FLAGS(inode) & NFS_INO_ADVISE_RDPLUS;
 +}
-+
- /*
-  * Code common to create, mkdir, and mknod.
-  */
-diff -u --recursive --new-file linux-2.5.29-rdplus3/fs/nfs/inode.c linux-2.5.29-rdplus4/fs/nfs/inode.c
---- linux-2.5.29-rdplus3/fs/nfs/inode.c	Sat Jul 27 18:53:18 2002
-+++ linux-2.5.29-rdplus4/fs/nfs/inode.c	Sat Jul 27 19:03:43 2002
-@@ -644,6 +644,9 @@
- 	return __nfs_fhget(sb, fhandle, fattr);
- }
  
-+/* Don't use READDIRPLUS on directories that we believe are too large */
-+#define NFS_LIMIT_READDIRPLUS (8*PAGE_SIZE)
+ static inline
+ loff_t page_offset(struct page *page)
+diff -u --recursive --new-file linux-2.5.29-rdplus2/include/linux/nfs_fs_sb.h linux-2.5.29-rdplus3/include/linux/nfs_fs_sb.h
+--- linux-2.5.29-rdplus2/include/linux/nfs_fs_sb.h	Tue Mar 12 21:23:35 2002
++++ linux-2.5.29-rdplus3/include/linux/nfs_fs_sb.h	Sat Jul 27 18:56:14 2002
+@@ -10,6 +10,7 @@
+ 	struct rpc_clnt *	client;		/* RPC client handle */
+ 	struct nfs_rpc_ops *	rpc_ops;	/* NFS protocol vector */
+ 	int			flags;		/* various flags */
++	unsigned int		caps;		/* server capabilities */
+ 	unsigned int		rsize;		/* read size */
+ 	unsigned int		rpages;		/* read size (in pages) */
+ 	unsigned int		wsize;		/* write size */
+@@ -31,4 +32,7 @@
+ 	struct sockaddr_in	addr;
+ };
+ 
++/* Server capabilities */
++#define NFS_CAP_READDIRPLUS	(1)
 +
- /*
-  * Look up the inode by super block and fattr->fileid.
-  */
-@@ -692,6 +695,9 @@
- 		} else if (S_ISDIR(inode->i_mode)) {
- 			inode->i_op = &nfs_dir_inode_operations;
- 			inode->i_fop = &nfs_dir_operations;
-+			if (nfs_server_capable(inode, NFS_CAP_READDIRPLUS)
-+			    && fattr->size <= NFS_LIMIT_READDIRPLUS)
-+				NFS_FLAGS(inode) |= NFS_INO_ADVISE_RDPLUS;
- 		} else if (S_ISLNK(inode->i_mode))
- 			inode->i_op = &nfs_symlink_inode_operations;
- 		else
+ #endif
 
 
 -------------------------------------------------------
