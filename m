@@ -1,18 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 6 of 6 - Introduce CROSSMNT flag for knfsd
+Subject: [PATCH] kNFSd - 5 of 6 - Rename NFSEXP_CROSSMNT to NFSEXP_NOHIDE
 Date: Wed, 12 Mar 2003 16:35:29 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E18sytl-0005RD-00@notabene.cse.unsw.edu.au>
+Message-ID: <E18sytl-0005R8-00@notabene.cse.unsw.edu.au>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18sytw-0000Dw-00
-	for <nfs@lists.sourceforge.net>; Tue, 11 Mar 2003 21:35:40 -0800
+	id 18sytv-0000Dp-00
+	for <nfs@lists.sourceforge.net>; Tue, 11 Mar 2003 21:35:39 -0800
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
 	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>) By
-	tone With Smtp ; Wed, 12 Mar 2003 16:35:30 +1100
+	tone With Smtp ; Wed, 12 Mar 2003 16:35:29 +1100
 To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -29,99 +29,81 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 ### Comments for ChangeSet
 
-Now that we have working up-calls to userspace,
-CROSSMNT makes sense.
-If CROSSMNT is set for an export, and we too a 
-LOOKUP which crosses a mountpoint, we initiate an
-upcall to find out if and how that filesystem
-is exported.
-
+becase nohide is the user-space visible name
+for the flag, and we are about to define a real
+CROSSMNT.
 
  ----------- Diffstat output ------------
- ./fs/nfsd/export.c            |    9 ++++++++-
- ./fs/nfsd/vfs.c               |   18 +++++++++++++++++-
- ./include/linux/nfsd/export.h |    3 ++-
- 3 files changed, 27 insertions(+), 3 deletions(-)
+ ./fs/nfsd/export.c            |    2 +-
+ ./fs/nfsd/vfs.c               |    6 +++---
+ ./include/linux/nfsd/export.h |    4 ++--
+ 3 files changed, 6 insertions(+), 6 deletions(-)
 
 diff ./fs/nfsd/export.c~current~ ./fs/nfsd/export.c
---- ./fs/nfsd/export.c~current~	2003-03-12 15:07:05.000000000 +1100
-+++ ./fs/nfsd/export.c	2003-03-12 15:07:11.000000000 +1100
-@@ -475,8 +475,14 @@ exp_get_by_name(svc_client *clp, struct 
- 
- 	exp = svc_export_lookup(&key, 0);
- 	if (exp != NULL) 
--		if (cache_check(&svc_export_cache, &exp->h, reqp))
-+		switch (cache_check(&svc_export_cache, &exp->h, reqp)) {
-+		case 0: break;
-+		case -EAGAIN:
-+			exp = ERR_PTR(-EAGAIN);
-+			break;
-+		default:
- 			exp = NULL;
-+		}
- 
- 	return exp;
- }
-@@ -918,6 +924,7 @@ struct flags {
+--- ./fs/nfsd/export.c~current~	2003-03-12 15:03:20.000000000 +1100
++++ ./fs/nfsd/export.c	2003-03-12 15:07:05.000000000 +1100
+@@ -917,7 +917,7 @@ struct flags {
+ 	{ NFSEXP_UIDMAP, {"uidmap", ""}},
  	{ NFSEXP_KERBEROS, { "kerberos", ""}},
  	{ NFSEXP_SUNSECURE, { "sunsecure", ""}},
- 	{ NFSEXP_NOHIDE, {"nohide", ""}},
-+	{ NFSEXP_CROSSMNT, {"crossmnt", ""}},
+-	{ NFSEXP_CROSSMNT, {"nohide", ""}},
++	{ NFSEXP_NOHIDE, {"nohide", ""}},
  	{ NFSEXP_NOSUBTREECHECK, {"no_subtree_check", ""}},
  	{ NFSEXP_NOAUTHNLM, {"insecure_locks", ""}},
  #ifdef MSNFS
 
 diff ./fs/nfsd/vfs.c~current~ ./fs/nfsd/vfs.c
 --- ./fs/nfsd/vfs.c~current~	2003-03-12 15:07:05.000000000 +1100
-+++ ./fs/nfsd/vfs.c	2003-03-12 15:07:11.000000000 +1100
-@@ -133,6 +133,12 @@ nfsd_lookup(struct svc_rqst *rqstp, stru
- 
- 			exp2 = exp_parent(exp->ex_client, mnt, dentry,
- 					  &rqstp->rq_chandle);
-+			if (IS_ERR(exp2)) {
-+				err = PTR_ERR(exp2);
-+				dput(dentry);
-+				mntput(mnt);
-+				goto out;
-+			}
- 			if (!exp2) {
- 				dput(dentry);
- 				dentry = dget(dparent);
-@@ -157,9 +163,19 @@ nfsd_lookup(struct svc_rqst *rqstp, stru
- 			struct dentry *mounts = dget(dentry);
- 			while (follow_down(&mnt,&mounts)&&d_mountpoint(mounts))
++++ ./fs/nfsd/vfs.c	2003-03-12 15:07:05.000000000 +1100
+@@ -79,7 +79,7 @@ static struct raparms *		raparm_cache;
+  * N.B. After this call _both_ fhp and resfh need an fh_put
+  *
+  * If the lookup would cross a mountpoint, and the mounted filesystem
+- * is exported to the client with NFSEXP_CROSSMNT, then the lookup is
++ * is exported to the client with NFSEXP_NOHIDE, then the lookup is
+  * accepted as it stands and the mounted directory is
+  * returned. Otherwise the covered directory is returned.
+  * NOTE: this mountpoint crossing is not supported properly by all
+@@ -115,7 +115,7 @@ nfsd_lookup(struct svc_rqst *rqstp, stru
+ 			read_lock(&dparent_lock);
+ 			dentry = dget(dparent->d_parent);
+ 			read_unlock(&dparent_lock);
+-		} else  if (!EX_CROSSMNT(exp))
++		} else  if (!EX_NOHIDE(exp))
+ 			dentry = dget(dparent); /* .. == . just like at / */
+ 		else {
+ 			/* checking mountpoint crossing is very different when stepping up */
+@@ -159,7 +159,7 @@ nfsd_lookup(struct svc_rqst *rqstp, stru
  				;
-+
  			exp2 = exp_get_by_name(exp->ex_client, mnt, 
  					       mounts, &rqstp->rq_chandle);
--			if (exp2 && EX_NOHIDE(exp2)) {
-+			if (IS_ERR(exp2)) {
-+				err = PTR_ERR(exp2);
-+				dput(mounts);
-+				dput(dentry);
-+				mntput(mnt);
-+				goto out;
-+			}
-+			if (exp2 &&
-+			    ((exp->ex_flags & NFSEXP_CROSSMNT)
-+			     || EX_NOHIDE(exp2))) {
+-			if (exp2 && EX_CROSSMNT(exp2)) {
++			if (exp2 && EX_NOHIDE(exp2)) {
  				/* successfully crossed mount point */
  				exp_put(exp);
  				exp = exp2;
 
 diff ./include/linux/nfsd/export.h~current~ ./include/linux/nfsd/export.h
 --- ./include/linux/nfsd/export.h~current~	2003-03-12 15:07:05.000000000 +1100
-+++ ./include/linux/nfsd/export.h	2003-03-12 15:07:11.000000000 +1100
-@@ -40,7 +40,8 @@
++++ ./include/linux/nfsd/export.h	2003-03-12 15:07:05.000000000 +1100
+@@ -35,7 +35,7 @@
+ #define NFSEXP_UIDMAP		0x0040
+ #define NFSEXP_KERBEROS		0x0080		/* not available */
+ #define NFSEXP_SUNSECURE	0x0100
+-#define NFSEXP_CROSSMNT		0x0200
++#define NFSEXP_NOHIDE		0x0200
+ #define NFSEXP_NOSUBTREECHECK	0x0400
  #define	NFSEXP_NOAUTHNLM	0x0800		/* Don't authenticate NLM requests - just trust */
  #define NFSEXP_MSNFS		0x1000	/* do silly things that MS clients expect */
- #define NFSEXP_FSID		0x2000
--#define NFSEXP_ALLFLAGS		0x3FFF
-+#define	NFSEXP_CROSSMNT		0x4000
-+#define NFSEXP_ALLFLAGS		0x7FFF
+@@ -73,7 +73,7 @@ struct svc_expkey {
+ #define EX_SECURE(exp)		(!((exp)->ex_flags & NFSEXP_INSECURE_PORT))
+ #define EX_ISSYNC(exp)		(!((exp)->ex_flags & NFSEXP_ASYNC))
+ #define EX_RDONLY(exp)		((exp)->ex_flags & NFSEXP_READONLY)
+-#define EX_CROSSMNT(exp)	((exp)->ex_flags & NFSEXP_CROSSMNT)
++#define EX_NOHIDE(exp)	((exp)->ex_flags & NFSEXP_NOHIDE)
+ #define EX_SUNSECURE(exp)	((exp)->ex_flags & NFSEXP_SUNSECURE)
+ #define EX_WGATHER(exp)		((exp)->ex_flags & NFSEXP_GATHERED_WRITES)
  
- 
- #ifdef __KERNEL__
 
 
 -------------------------------------------------------
