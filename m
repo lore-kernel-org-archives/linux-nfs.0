@@ -1,16 +1,15 @@
 From: "Kendrick M. Smith" <kmsmith@umich.edu>
-Subject: patch 14/38: CLIENT: add ->setup_read() nfs_rpc_op for async read,
- part 1
-Date: Tue, 13 Aug 2002 19:01:53 -0400 (EDT)
+Subject: patch 07/38: CLIENT: change inode to dentry in ->setattr() nfs_rpc_op
+Date: Tue, 13 Aug 2002 18:58:49 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.SOL.4.44.0208131901270.25942-100000@rastan.gpcc.itd.umich.edu>
+Message-ID: <Pine.SOL.4.44.0208131858300.25942-100000@rastan.gpcc.itd.umich.edu>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from donkeykong.gpcc.itd.umich.edu ([141.211.2.163])
+Received: from berzerk.gpcc.itd.umich.edu ([141.211.2.162])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17ekfk-0001xY-00
-	for <nfs@lists.sourceforge.net>; Tue, 13 Aug 2002 16:01:56 -0700
+	id 17ekcl-00014g-00
+	for <nfs@lists.sourceforge.net>; Tue, 13 Aug 2002 15:58:51 -0700
 To: linux-kernel@vger.kernel.org, <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -24,112 +23,66 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-This is a nontrivial change to the NFS client.
 
-Synchronous READ operations are currently done via the ->read() nfs_rpc_op.
-Therefore, the synchronous READ path can easily be adapted for NFSv4.  On
-the other hand, the asynchronous READ path contains several NFSv3-specific
-features, which make it difficult to adapt for NFSv4.
+This patch changes the interface of the ->setattr() nfs_rpc_op
+so that its first argument is a dentry instead of an inode.
 
-In this patch and the next, we modify the async READ path to be
-version-agnostic.  This patch just changes the 'struct nfs_read_data'
-so that the v2- and v3-specific parts are moved into a private area,
-with room for a v4-specific part in parallel.  None of the logic is
-changed.
+[Explanation: The dentry is required because in NFSv4, we may
+ need to OPEN the file before doing the SETATTR.  (This is
+ required if the file size is changed as part of the setattr.)
+ Opening the file requires making use of the containing
+ directory's inode.]
 
---- old/fs/nfs/read.c	Wed Jul 24 16:03:17 2002
-+++ new/fs/nfs/read.c	Sat Aug 10 22:20:39 2002
-@@ -38,11 +38,18 @@ struct nfs_read_data {
- 	struct rpc_task		task;
- 	struct inode		*inode;
- 	struct rpc_cred		*cred;
--	struct nfs_readargs	args;	/* XDR argument struct */
--	struct nfs_readres	res;	/* ... and result struct */
- 	struct nfs_fattr	fattr;	/* fattr storage */
- 	struct list_head	pages;	/* Coalesced read requests */
- 	struct page		*pagevec[NFS_READ_MAXIOV];
-+	union {
-+		struct {
-+			struct nfs_readargs args;
-+			struct nfs_readres  res;
-+		} v3;   /* also v2 */
-+#ifdef CONFIG_NFS_V4
-+		/* NFSv4 data will come here... */
-+#endif
-+	} u;
- };
+--- old/include/linux/nfs_xdr.h	Mon Jul 29 22:54:08 2002
++++ new/include/linux/nfs_xdr.h	Mon Jul 29 13:50:30 2002
+@@ -296,7 +296,7 @@ struct nfs_rpc_ops {
+ 	int	(*getroot) (struct nfs_server *, struct nfs_fh *,
+ 			    struct nfs_fattr *);
+ 	int	(*getattr) (struct inode *, struct nfs_fattr *);
+-	int	(*setattr) (struct inode *, struct nfs_fattr *,
++	int	(*setattr) (struct dentry *, struct nfs_fattr *,
+ 			    struct iattr *);
+ 	int	(*lookup)  (struct inode *, struct qstr *,
+ 			    struct nfs_fh *, struct nfs_fattr *);
+--- old/fs/nfs/inode.c	Wed Jul 24 16:03:30 2002
++++ new/fs/nfs/inode.c	Mon Jul 29 14:49:53 2002
+@@ -768,7 +768,7 @@ printk("nfs_setattr: revalidate failed,
+ 	if (error)
+ 		goto out;
 
- /*
-@@ -64,7 +71,6 @@ static __inline__ struct nfs_read_data *
- 	if (p) {
- 		memset(p, 0, sizeof(*p));
- 		INIT_LIST_HEAD(&p->pages);
--		p->args.pages = p->pagevec;
- 	}
- 	return p;
- }
-@@ -194,7 +200,7 @@ nfs_read_rpcsetup(struct list_head *head
- 	struct page		**pages;
- 	unsigned int		count;
-
--	pages = data->args.pages;
-+	pages = data->pagevec;
- 	count = 0;
- 	while (!list_empty(head)) {
- 		struct nfs_page *req = nfs_list_entry(head->next);
-@@ -206,13 +212,14 @@ nfs_read_rpcsetup(struct list_head *head
- 	req = nfs_list_entry(data->pages.next);
- 	data->inode	  = req->wb_inode;
- 	data->cred	  = req->wb_cred;
--	data->args.fh     = NFS_FH(req->wb_inode);
--	data->args.offset = page_offset(req->wb_page) + req->wb_offset;
--	data->args.pgbase = req->wb_offset;
--	data->args.count  = count;
--	data->res.fattr   = &data->fattr;
--	data->res.count   = count;
--	data->res.eof     = 0;
-+	data->u.v3.args.fh     = NFS_FH(req->wb_inode);
-+	data->u.v3.args.offset = page_offset(req->wb_page) + req->wb_offset;
-+	data->u.v3.args.pgbase = req->wb_offset;
-+	data->u.v3.args.pages  = pages;
-+	data->u.v3.args.count  = count;
-+	data->u.v3.res.fattr   = &data->fattr;
-+	data->u.v3.res.count   = count;
-+	data->u.v3.res.eof     = 0;
+-	error = NFS_PROTO(inode)->setattr(inode, &fattr, attr);
++	error = NFS_PROTO(inode)->setattr(dentry, &fattr, attr);
+ 	if (error)
+ 		goto out;
+ 	/*
+--- old/fs/nfs/proc.c	Mon Jul 29 22:54:08 2002
++++ new/fs/nfs/proc.c	Mon Jul 29 14:11:48 2002
+@@ -78,9 +78,10 @@ nfs_proc_getattr(struct inode *inode, st
  }
 
- static void
-@@ -264,8 +271,8 @@ nfs_pagein_one(struct list_head *head, s
- #else
- 	msg.rpc_proc = NFSPROC_READ;
- #endif
--	msg.rpc_argp = &data->args;
--	msg.rpc_resp = &data->res;
-+	msg.rpc_argp = &data->u.v3.args;
-+	msg.rpc_resp = &data->u.v3.res;
- 	msg.rpc_cred = data->cred;
-
- 	/* Start the async call */
-@@ -273,8 +280,8 @@ nfs_pagein_one(struct list_head *head, s
- 		task->tk_pid,
- 		inode->i_sb->s_id,
- 		(long long)NFS_FILEID(inode),
--		(unsigned int)data->args.count,
--		(unsigned long long)data->args.offset);
-+		(unsigned int)data->u.v3.args.count,
-+		(unsigned long long)data->u.v3.args.offset);
-
- 	rpc_clnt_sigmask(clnt, &oldset);
- 	rpc_call_setup(task, &msg, 0);
-@@ -404,7 +411,7 @@ nfs_readpage_result(struct rpc_task *tas
+ static int
+-nfs_proc_setattr(struct inode *inode, struct nfs_fattr *fattr,
++nfs_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 		 struct iattr *sattr)
  {
- 	struct nfs_read_data	*data = (struct nfs_read_data *) task->tk_calldata;
- 	struct inode		*inode = data->inode;
--	unsigned int		count = data->res.count;
-+	unsigned int		count = data->u.v3.res.count;
++	struct inode *inode = dentry->d_inode;
+ 	struct nfs_sattrargs	arg = {
+ 		fh:	NFS_FH(inode),
+ 		sattr:	sattr
+--- old/fs/nfs/nfs3proc.c	Mon Jul 29 22:54:08 2002
++++ new/fs/nfs/nfs3proc.c	Mon Jul 29 14:11:56 2002
+@@ -86,9 +86,10 @@ nfs3_proc_getattr(struct inode *inode, s
+ }
 
- 	dprintk("NFS: %4d nfs_readpage_result, (status %d)\n",
- 		task->tk_pid, task->tk_status);
+ static int
+-nfs3_proc_setattr(struct inode *inode, struct nfs_fattr *fattr,
++nfs3_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 			struct iattr *sattr)
+ {
++	struct inode *inode = dentry->d_inode;
+ 	struct nfs3_sattrargs	arg = {
+ 		fh:		NFS_FH(inode),
+ 		sattr:		sattr,
 
 
 
