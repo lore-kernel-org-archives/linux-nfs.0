@@ -1,25 +1,25 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Strange behavior of executable bit
-Date: Wed, 26 May 2004 12:11:56 -0400
+Subject: Re: How to unlock a file if an NFSv3 client dies forever?
+Date: Wed, 26 May 2004 12:22:50 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1085587915.3763.12.camel@lade.trondhjem.org>
-References: <40B44FE7.6010601@byggmek.lth.se>
+Message-ID: <1085588570.3763.24.camel@lade.trondhjem.org>
+References: <4F28105F70F4324A8723F0C949088941C29A36@pa-exch5.vmware.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset=ISO-8859-1
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BT10c-00017O-4O
-	for nfs@lists.sourceforge.net; Wed, 26 May 2004 09:12:02 -0700
+	id 1BT1B6-0003XF-QE
+	for nfs@lists.sourceforge.net; Wed, 26 May 2004 09:22:52 -0700
 Received: from dh132.citi.umich.edu
 	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
 	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
 	(Exim 4.30)
-	id 1BT10b-0005Ja-Qt
-	for nfs@lists.sourceforge.net; Wed, 26 May 2004 09:12:01 -0700
-To: Jonas Lindemann <jonas.lindemann@byggmek.lth.se>
-In-Reply-To: <40B44FE7.6010601@byggmek.lth.se>
+	id 1BT1B6-0007dx-8Q
+	for nfs@lists.sourceforge.net; Wed, 26 May 2004 09:22:52 -0700
+To: Howie Xu <howie@vmware.com>
+In-Reply-To: <4F28105F70F4324A8723F0C949088941C29A36@pa-exch5.vmware.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,20 +32,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 on , 26/05/2004 klokka 04:05, skreiv Jonas Lindemann:
-> Hi!
->=20
-> We have an file server runninng RHEL3 and NFS. Clients are RHEL3 and=20
-> FC1. We are having problems with an service that want's to change the=20
-> executable bit on a file located on the NFS exported filesystem. The=20
-> service is running on RHEL3.
+P=E5 on , 26/05/2004 klokka 04:03, skreiv Howie Xu:=20
+> For example, if my linux NFS client holds a write lock on /home/howie/REA=
+DME,
+> then crashes and I reinstall the OS upon rebooting. Does that mean my NFS
+> server will hold this lock on this file *forever*? The NFS locks are
+> advisory, but my other NFS clients who speak NLM with the same NFS server
+> will not be granted lock for a file no one else ever cares.:(
 
-So basically, you are changing the executable bit on the server, and
-wondering why that changes isn't propagated instantly to the client?
+Here's a hack for how to do it.
 
-It's 'cos NFS client poll the server for attribute changes. The mount
-options that govern the polling period is documented in the "nfs"
-manpage (see the ac* flags).
+
+On the client:
+
+        Stop the rpc.statd service
+        touch /var/lib/nfs/sm/<ip-address-of-my-server>
+        then restart rpc.statd
+
+Note that on some distributions, the path is /var/lib/nfs/statd/sm. It
+may also be that your distribution runs rpc.statd as an unprivileged
+user, in which case make sure that you chown the file
+<ip-address-of-my-server> to that unprivileged user account.
 
 Cheers,
   Trond
