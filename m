@@ -1,22 +1,23 @@
-From: Bernd Schubert <bernd-schubert@web.de>
-Subject: fsid syntax
-Date: Wed, 7 Aug 2002 17:11:00 +0200
+From: Jeff Layton <jeffrey.b.layton@lmco.com>
+Subject: RH 7.3 kernels and NFS performance
+Date: Wed, 07 Aug 2002 11:35:50 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200208071711.00712.bernd-schubert@web.de>
+Message-ID: <3D513E56.CAF735B6@lmco.com>
+Reply-To: jeffrey.b.layton@lmco.com
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="us-ascii"
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from relay2.uni-heidelberg.de ([129.206.210.211])
+Received: from mailgw2a.lmco.com ([192.91.147.7])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17cSSn-0001eZ-00
-	for <nfs@lists.sourceforge.net>; Wed, 07 Aug 2002 08:11:06 -0700
-Received: from ix.urz.uni-heidelberg.de (mail.urz.uni-heidelberg.de [129.206.119.234])
-	by relay2.uni-heidelberg.de (8.12.4/8.12.4) with ESMTP id g77FB12T028801
-	for <nfs@lists.sourceforge.net>; Wed, 7 Aug 2002 17:11:01 +0200 (MET DST)
-Received: from euklid (bernd@euklid.pci.uni-heidelberg.de [129.206.21.104])
-	by ix.urz.uni-heidelberg.de (8.8.8/8.8.8) with ESMTP id RAA36932
-	for <nfs@lists.sourceforge.net>; Wed, 7 Aug 2002 17:11:01 +0200
+	id 17cSZT-0002hI-00
+	for <nfs@lists.sourceforge.net>; Wed, 07 Aug 2002 08:17:59 -0700
+Received: from emss03g01.ems.lmco.com (emss03g01.ems.lmco.com [141.240.4.144])
+	by mailgw2a.lmco.com (8.11.6/8.11.6) with ESMTP id g77FHr430121
+	for <nfs@lists.sourceforge.net>; Wed, 7 Aug 2002 11:17:54 -0400 (EDT)
+Received: from CONVERSION-DAEMON.lmco.com by lmco.com (PMDF V6.1-1 #40646)
+ id <0H0H00101BTR3S@lmco.com> for nfs@lists.sourceforge.net; Wed, 07 Aug 2002 11:17:52 -0400 (EDT)
+Received: from lmco.com ([134.5.193.209]) by lmco.com (PMDF V6.1-1 #40646) with ESMTP id <0H0H0006IBTQC5@lmco.com> for
+ nfs@lists.sourceforge.net; Wed, 07 Aug 2002 11:17:51 -0400 (EDT)
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -30,32 +31,21 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hi,
+Hello,
 
-probably on Friday I need to make use of setting the fsid in the /etc/exports.
+   I remember reading on the list about the terrible NFS
+performance of the latest RH kernels. Would someone
+care to summarize this for me (UDP or TCP, etc.)? Also,
+does anyone have any rough estimates of the performance
+hit?
 
-Since I can't find the syntax in the exports manpage (manpage was last time 
-changed on Januar, while the fsid-feature seems to be become added to cvs on 
-February).
+Thanks!
 
-So I'd like to know the exact sytanx, is for example:
+Jeff Layton
 
-/testdir	testnode(fsid=/dev/sdb)
-
-correct to make 'testnode' believing that sdb is exported?
+Lockheed-Martin Aeronautical Company - Marietta
 
 
-Thanks in advance,
-
-Bernd
-
--- 
-Bernd Schubert
-Physikalisch Chemisches Institut
-Abt. Theoretische Chemie
-INF 229, 69120 Heidelberg
-Tel.: 06221/54-5210
-e-mail: 	bernd (dot) schubert (at) pci (dot) uni-heidelberg (dot) de 
 
 
 -------------------------------------------------------
