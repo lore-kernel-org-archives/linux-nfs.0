@@ -1,19 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: bk update ready for 2.5.69
-Date: Wed, 7 May 2003 15:21:04 +0200
+From: "Heflin, Roger A." <Roger.A.Heflin@conocophillips.com>
+Subject: RE: NFS configuration question
+Date: Wed, 7 May 2003 08:57:54 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16057.2112.934735.338852@charged.uio.no>
-Reply-To: trond.myklebust@fys.uio.no
+Message-ID: <5CA6F03EF05E0046AC5594562398B916A3291C@POEXMB3.conoco.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
-    NFS maillist <nfs@lists.sourceforge.net>
+Content-Type: text/plain;
+	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19DOrA-0001G8-00
-	for <nfs@lists.sourceforge.net>; Wed, 07 May 2003 06:21:13 -0700
-To: Linus Torvalds <torvalds@transmeta.com>
+Received: from mailman1.ppco.com ([138.32.33.10])
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19DPRU-0003KT-00
+	for <nfs@lists.sourceforge.net>; Wed, 07 May 2003 06:58:44 -0700
+Received: from bvltrendl.conoco.net ([172.19.28.43])
+	by mailman1.ppco.com (8.12.8/8.12.8) with SMTP id h47DweI7023448
+	for <nfs@lists.sourceforge.net>; Wed, 7 May 2003 08:58:40 -0500
+Received: from hoexbh1.conoco.net (HOEXBH1.conoco.net [144.46.83.11])
+	by mail1.ppco.com (8.11.6+Sun/8.11.6) with ESMTP id h47Dwcu07769
+	for <nfs@lists.sourceforge.net>; Wed, 7 May 2003 08:58:39 -0500 (CDT)
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,86 +32,91 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Linus, please do a
 
-	bk pull http://nfsclient.bkbits.net/linux-2.5
 
-This will update the following files:
+> Message: 3
+> Date: Tue, 06 May 2003 18:53:20 -0400
+> From: Tim Pickard <tpickard@crossref.org>
+> To: nfs@lists.sourceforge.net
+> Subject: [NFS] NFS configuration question
+>=20
+> I have 3 RedHat8 machines that share a common directory via NFS.
+>=20
+> The issue is processes on machines B and C do not get a complete file =
+from
+> the shared directory on A.
+>=20
+> As an example, tail -f file X on B or C.  Cat data to file X on A.  =
+The
+> process tail does not catch the change.
+>=20
+> Directory is exported with following options:
+> (rw,insecure,sync,no_root_squash)
+>=20
+> What am I missing or misconfigured?
+>=20
+> Tim Pickard
+> Systems Support Analyst and Administrator
+> 40 Salem Street
+> Lynnfield, MA  01940
+> p.781-295-0072
+> f.781-295-0077
+> tpickard@crossref.org
+>=20
+>=20
+	which are you using?
 
- fs/fs-writeback.c           |    3 
- fs/lockd/host.c             |   14 --
- fs/lockd/mon.c              |    1 
- fs/nfs/dir.c                |    2 
- fs/nfs/file.c               |    2 
- fs/nfs/write.c              |    6 -
- include/linux/sunrpc/xdr.h  |    5 
- include/linux/sunrpc/xprt.h |    2 
- mm/page-writeback.c         |    2 
- net/sunrpc/clnt.c           |   58 ++++++-----
- net/sunrpc/sched.c          |    5 
- net/sunrpc/xdr.c            |  111 ++++++++++++++++++++-
- net/sunrpc/xprt.c           |  229 ++++++++++++++++++++++----------------------
- 13 files changed, 281 insertions(+), 159 deletions(-)
+	cat > X           <-- If you are using this the file inode will change, =
+and tail will
+	still be following the old file's inode.  There is an option on tail to =
+make
+	it follow the filename on a inode change.
 
-through these ChangeSets:
+	or=20
 
-<trond.myklebust@fys.uio.no> (03/05/07 1.1098)
-   UDP and TCP zero copy code for the NFS client. The main interest
-   of this patch is to eliminate the use of xdr_kmap() and xdr_unmap()
-   by replacing them with MSG_MORE. xdr_kmap() is deadlock-prone
-   due to the fact that it has to kmap() several pages at the same time.
+	cat >> X
 
-<trond.myklebust@fys.uio.no> (03/05/07 1.1097)
-   Ensure that Lockd and the NSM (statd) clients always use privileged
-   ports. Remove the existing code to temporarily raise privileges in
-   fs/lockd/host.c, and use the new code in net/sunrpc/xprt.c
-   
-   There should no longer be a need to temporarily change the fsuid.
-   Remove this feature.
+	Typically I do see tail -f working on one node when another puts the =
+stuff
+	in the file, it just takes a while (some number of seconds) before the =
+second
+	node sees it, so long as the one node is always the same node, and =
+assuming
+	that the file additions are not happening too fast.
 
-<cel@citi.umich.edu> (03/05/07 1.1096)
-   the recently-applied patch to fix the rpc_show_tasks() Oops is incomplete.
-   this applies over 2.5.68 and should address all of the issues in
-   rpc_show_tasks().
+	You will get in the least trouble if neither of the reading nodes are =
+writing
+	to the file, if node A writes to the file (every other block), and node =
+B writes
+	to the blocks that A did not, A will think the B blocks are blank and B =
+will
+	think the A blocks are blank, because they have in their cache what =
+they
+	think they wrote, this also requires A & B to be doing the writing at =
+the
+	same time, and to stop writing within <1second of each other, if the =
+file
+	attributes change (date, time, size) and the file is reopened then the
+	cache will be invalidated because the attributes it has cached don't
+	match so someone must have changed the file.
 
-<trond.myklebust@fys.uio.no> (03/05/07 1.1095)
-   Add the sk->callback_lock spinlocks to the RPC socket callbacks
-   in order to protect the socket from being released by one
-   CPU while the other is in a soft interrupt.
+	You will get in trouble if your are expecting several nodes to be able =
+to add
+	stuff to that file and get it all, some nodes will overwrite other =
+nodes and=20
+	there is no easy way with nfs to prevent this, it all depends on the =
+above
+	timing, and is mostly a linux cache and file attribute resolution =
+issue, it
+	would be much more difficult to happen if the attribute times had =
+higher
+	resolution, since it would be much harder for two nodes to stop at the
+	same time when you are timing in milli or micro seconds.  It is pretty=20
+	easy to stop at the same time when you are using seconds.
 
-<trond.myklebust@fys.uio.no> (03/05/07 1.1094)
-   Ensure that if we need to reconnect the socket, we also resend
-   the entire RPC message
-   
-   Assorted TCP reconnection fixes.
-   
-   Temporarily raise the necessary CAP_NET_BIND_SERVICE capability
-   if we need to bind the socket to a reserved port during a TCP
-   reconnection. Check for CAP_NET_BIND_SERVICE at mount time.
 
-<trond.myklebust@fys.uio.no> (03/05/07 1.1093)
-   Don't use an RPC child process when reconnecting to a TCP server.
-   This is more efficient, and also fixes an existing deadlock
-   situation in which the child could be waiting for an xprt_write_lock
-   that was being held by the parent.
+	                                  Roger
 
-<trond.myklebust@fys.uio.no> (03/05/07 1.1092)
-   Fix a TCP race: check whether or not the socket has been disconnected
-   before we allow an RPC request to wait on a reply.
-
-<trond.myklebust@fys.uio.no> (03/05/07 1.1091)
-   Fix typos in close-to-open cache consistency checking.
-
-<trond.myklebust@fys.uio.no> (03/05/07 1.1090)
-   Decrement the nr_unstable page state after the COMMIT RPC call
-   completes instead of before. This ensures that writeback 
-   WB_SYNC_ALL does wait on completion.
-   
-   Don't overreport the number of pages we wrote out. It is safer to
-   underreport.
-   
-   Fix missing NFSv3 unstable write accounting in fs/fs-writeback.c
-   and mm/page-writeback.c
 
 
 
