@@ -1,23 +1,22 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSdv4 - 2 of 8 - Minor fix to error return when updating server authentication information
-Date: Thu, 25 Mar 2004 12:06:52 +1100
+Subject: [PATCH] kNFSdv4 - 0 of 8 - Introduction
+Date: Thu, 25 Mar 2004 12:06:51 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1B6JKe-0007DM-00@notabene>
-References: <20040325120312.27644.patches@notabene>
+Message-ID: <20040325120312.27644.patches@notabene>
 Cc: nfs@lists.sourceforge.net,  "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B6JKt-0006bl-It
-	for nfs@lists.sourceforge.net; Wed, 24 Mar 2004 17:07:07 -0800
+	id 1B6JKr-0006bc-V8
+	for nfs@lists.sourceforge.net; Wed, 24 Mar 2004 17:07:05 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
-	id 1B6JKt-0007sn-7i
-	for nfs@lists.sourceforge.net; Wed, 24 Mar 2004 17:07:07 -0800
+	id 1B6JKr-0007pV-KJ
+	for nfs@lists.sourceforge.net; Wed, 24 Mar 2004 17:07:05 -0800
 Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
 	(for <akpm@osdl.org>) (for <nfs@lists.sourceforge.net>)
 	(for <bfields@fieldses.org>) By note With Smtp ;
-	Thu, 25 Mar 2004 12:06:58 +1100
+	Thu, 25 Mar 2004 12:06:57 +1100
 To: Andrew Morton <akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,27 +31,17 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
- ----------- Diffstat output ------------
- ./net/sunrpc/auth_gss/svcauth_gss.c |    2 ++
- 1 files changed, 2 insertions(+)
+Hi Andrew,
+ here are a bunch of nfsd patches from the NFSv4 team at umich.
+ There are an assortment of minor bug fixes, a new attribute supported
+ and, probably most significantly, code to unwrap and wrap requests with
+ GSS integrity checking.
 
-diff ./net/sunrpc/auth_gss/svcauth_gss.c~current~ ./net/sunrpc/auth_gss/svcauth_gss.c
---- ./net/sunrpc/auth_gss/svcauth_gss.c~current~	2004-03-25 11:43:12.000000000 +1100
-+++ ./net/sunrpc/auth_gss/svcauth_gss.c	2004-03-25 11:43:18.000000000 +1100
-@@ -389,11 +389,13 @@ static int rsc_parse(struct cache_detail
- 		/* number of additional gid's */
- 		if (get_int(&mesg, &N))
- 			goto out;
-+		status = -ENOMEM;
- 		rsci.cred.cr_group_info = groups_alloc(N);
- 		if (rsci.cred.cr_group_info == NULL)
- 			goto out;
- 
- 		/* gid's */
-+		status = -EINVAL;
- 		for (i=0; i<N; i++) {
- 			gid_t gid;
- 			if (get_int(&mesg, &gid))
+ The only places they touch non-"experimental" code are absolutely trivial, 
+ so the should be OK to go to Linus.
+
+NeilBrown
+
 
 
 -------------------------------------------------------
