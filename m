@@ -1,27 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Re: nfsd not working in 2.6.0-test4 on ia64
-Date: 08 Sep 2003 00:43:51 -0400
+From: michael <michael@hq.newdream.net>
+Subject: more statd segfault
+Date: Mon, 08 Sep 2003 12:58:53 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsllszopo8.fsf@charged.uio.no>
-References: <20030903220709.GJ18654@parcelfarce.linux.theplanet.co.uk>
-	<16216.2231.419902.317479@gargle.gargle.HOWL>
-	<20030905115312.GH18654@parcelfarce.linux.theplanet.co.uk>
-	<16219.65533.190871.210282@gargle.gargle.HOWL>
+Message-ID: <3F5CDF7D.2070608@hq.newdream.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Matthew Wilcox <willy@debian.org>,  nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19wDse-0002LA-00
-	for <nfs@lists.sourceforge.net>; Sun, 07 Sep 2003 21:44:00 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 19wXW0-00008n-00
+	for <nfs@lists.sourceforge.net>; Mon, 08 Sep 2003 18:41:56 -0700
+Received: from gollum.dreamhost.com ([66.33.209.16] ident=postfix)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 19wDse-0000Ju-8l
-	for nfs@lists.sourceforge.net; Sun, 07 Sep 2003 21:44:00 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <16219.65533.190871.210282@gargle.gargle.HOWL>
+	id 19wU3v-0000Jj-Bp
+	for nfs@lists.sourceforge.net; Mon, 08 Sep 2003 15:00:43 -0700
+Received: from hq.newdream.net (inez.hq.newdream.net [66.33.200.139])
+	by gollum.dreamhost.com (Postfix) with ESMTP id 6D7035B787
+	for <nfs@lists.sourceforge.net>; Mon,  8 Sep 2003 12:59:32 -0700 (PDT)
+To: NFS List <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -34,67 +31,58 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Neil Brown <neilb@cse.unsw.edu.au> writes:
+okay i have tracked down the segfault to here...
 
-     > On Friday September 5, willy@debian.org wrote:
-    >> On Fri, Sep 05, 2003 at 01:53:27PM +1000, Neil Brown wrote:
-    >> > Very helpful details.  It looks like a simple case of 32-bit
-    >> > parochialism :-)
-    >> >
-    >> > Does this patch help?
-    >>
-    >> Nope.  Applied patch, rebooted with it, here's the full details
-    >> again (don't think anything changed, but just in case):
+void
+svc_getreqset (fd_set *readfds)
+{
+   register u_int32_t mask;
+   register u_int32_t *maskp;
+   register int setsize;
+   register int sock;
+   register int bit;
 
-     > Ok, I looked more closely at the .h files etc and I think the
-     > following is correct (instead of the previous patch).
+   setsize = _rpc_dtablesize ();
+   maskp = (u_int32_t *) readfds->fds_bits;
+   for (sock = 0; sock < setsize; sock += 32)
+*    for (mask = *maskp++; (bit = ffs (mask)); mask ^= (1 << (bit - 1)))
+       svc_getreq_common (sock + bit - 1);
+}
 
-     > (i.e. sizeof(cm.pki) instead of sizeof(cm)).
 
-Nope see the code in ip_sockglue.c + the macros in socket.h....
-AFAICS the control messages have wierd alignment requirements.
+the contents of the variables are as follows...
+358     in svc.c
+(gdb) print *maskp
+$13 = 128
+(gdb) print mask
+$14 = 3221224588
+(gdb) print setsize
+$15 = 1048566
+(gdb) print bit
+$16 = 1048566
+(gdb) print *readfds
+$17 = {fds_bits = {128, 0 <repeats 31 times>}}
+(gdb) n 10000
 
-Shouldn't it rather be something like the following?
+Program received signal SIGSEGV, Segmentation fault.
+0x40112e3a in svc_getreqset (readfds=0xbffffc0c) at svc.c:359
+359     in svc.c
+(gdb) print sock
+$37 = 8096
+(gdb) print setsize
+$38 = 1048566
+(gdb) print bit
+$39 = -1073741824
+(gdb) print maskp
+$40 = (u_int32_t *) 0xc0000000
+(gdb) print *maskp
+Cannot access memory at address 0xc0000000
+(gdb)
 
-Cheers,
-  Trond
 
---- linux-2.6.0-up/net/sunrpc/svcsock.c.orig	2003-08-30 23:35:33.000000000 -0400
-+++ linux-2.6.0-up/net/sunrpc/svcsock.c	2003-09-08 00:39:07.000000000 -0400
-@@ -352,9 +352,9 @@
- 	struct svc_sock	*svsk = rqstp->rq_sock;
- 	struct socket	*sock = svsk->sk_sock;
- 	int		slen;
--	struct { struct cmsghdr cmh;
--		struct in_pktinfo pki;
--	} cm;
-+	char *buffer[CMSG_SPACE(sizeof(struct in_pktinfo))];
-+	struct cmsghdr *cmh = (struct cmsghdr *)buffer;
-+	struct in_pktinfo *pki = (struct in_pktinfo *)CMSG_DATA(cmh);
- 	int		len = 0;
- 	int		result;
- 	int		size;
-@@ -374,13 +374,13 @@
- 		msg.msg_iovlen  = 0;
- 		msg.msg_flags	= MSG_MORE;
- 
--		msg.msg_control = &cm;
--		msg.msg_controllen = sizeof(cm);
--		cm.cmh.cmsg_len = sizeof(cm);
--		cm.cmh.cmsg_level = SOL_IP;
--		cm.cmh.cmsg_type = IP_PKTINFO;
--		cm.pki.ipi_ifindex = 0;
--		cm.pki.ipi_spec_dst.s_addr = rqstp->rq_daddr;
-+		msg.msg_control = cmh;
-+		msg.msg_controllen = sizeof(buffer);
-+		cmh->cmsg_len = CMSG_LEN(sizeof(*pki));
-+		cmh->cmsg_level = SOL_IP;
-+		cmh->cmsg_type = IP_PKTINFO;
-+		pki->ipi_ifindex = 0;
-+		pki->ipi_spec_dst.s_addr = rqstp->rq_daddr;
- 
- 		if (sock_sendmsg(sock, &msg, 0) < 0)
- 			goto out;
+
+
+
 
 
 
