@@ -1,24 +1,17 @@
-From: Patrick Boutilier <boutilpj@ednet.ns.ca>
-Subject: Re: NFS/Linux/IP Chains
-Date: Tue, 21 Jan 2003 08:45:13 -0400
+From: "Heflin, Roger A." <Roger.A.Heflin@conocophillips.com>
+Subject: Linux NFS client against Auspex server crashes
+Date: Tue, 21 Jan 2003 09:54:12 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3E2D40D9.7000808@ednet.ns.ca>
-References: <NDBBKPGJGKJJGFNEEIINCENIEPAA.kwe@buffalo.edu>
+Message-ID: <5CA6F03EF05E0046AC5594562398B9160C780A@POEXMB3.conoco.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from trademart-1.ednet.ns.ca ([142.227.51.1])
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18axnC-0002eQ-00
-	for <nfs@lists.sourceforge.net>; Tue, 21 Jan 2003 04:46:14 -0800
-Received: from trademart-2.ednet.ns.ca ([142.227.51.61] helo=ednet.ns.ca)
-	by Trademart-1.ednet.ns.ca with esmtp (TLSv1:RC4-MD5:128)
-	(Exim 4.12)
-	id 18axme-00073t-00
-	for nfs@lists.sourceforge.net; Tue, 21 Jan 2003 08:45:40 -0400
-In-Reply-To: <NDBBKPGJGKJJGFNEEIINCENIEPAA.kwe@buffalo.edu>
+Received: from usamail2.conoco.com ([12.31.208.227])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18b0jE-0001XC-00
+	for <nfs@lists.sourceforge.net>; Tue, 21 Jan 2003 07:54:20 -0800
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,60 +24,30 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Ken,
+	Guys,
 
+	I have a group I work with that is using Linux 2.4.19,=20
+	NFSALL (Oct-Nov timeframe), they are reporting that their machines
+	lock up (process space quits responding) on multiple machines running
+	almost identical jobs (with almost identical start times) at the about =
+same=20
+	time.  They are running against a Auspex server of some sort.
 
+	I am having them run similar tests against a raidzone nfs server and
+	seeing if that also crashes.
 
-tcpdump might help.
+	What kernel/nfs should we try to duplicate this one? =20
+	2.4.21pre3+NFSALL?     And I will see if I can get a trace of
+	exactly what is happening just before the crash.
 
-
-
-Ken English wrote:
-> Hope I can get an assist, or if this is just a RTFM, just point me in the
-> right direction. I've been working to set up NFS on a Redhat 7.3 box that
-> has ipchains enabled. I am having problems pinning down the ports for some
-> of the services, mountd works fine, but statd doesn't allow the "pinning"
-> options provided in the howto I have been trying to use.
-> 
-> Any suggestions?
-> 
-> Thanks in advance,
-> -Ken
-> 
-> 
-> 
-> -----------------------------------------------------------------------
-> Kenneth W. English, Ph.D.
-> Industrial Outreach Coordinator
-> New York State Center for Engineering Design and Industrial Innovation
-> Department of Mechanical and Aerospace Engineering
-> 5 Norton Hall
-> University at Buffalo
-> Buffalo, NY 14260
-> Phone:	(716) 645-2685 x105
-> Cell:		(716)	510-5597
-> Fax:	(716) 645-2684
-> email: kwe@buffalo.edu
-> http://www.nyscedii.buffalo.edu
-> -----------------------------------------------------------------------
-> 
-> 
-> 
-> 
-> -------------------------------------------------------
-> This SF.NET email is sponsored by:
-> SourceForge Enterprise Edition + IBM + LinuxWorld = Something 2 See!
-> http://www.vasoftware.com
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
-
+					Roger
 
 
 -------------------------------------------------------
-This SF.NET email is sponsored by:
-SourceForge Enterprise Edition + IBM + LinuxWorld = Something 2 See!
-http://www.vasoftware.com
+This SF.net email is sponsored by: Scholarships for Techies!
+Can't afford IT training? All 2003 ictp students receive scholarships.
+Get hands-on training in Microsoft, Cisco, Sun, Linux/UNIX, and more.
+www.ictp.com/training/sourceforge.asp
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
