@@ -1,8 +1,8 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: [NFS] Disabling Symbolic Link Content Caching in NFS Client
-Date: Mon, 2 Jun 2003 23:48:18 +0200
+Date: Mon, 2 Jun 2003 23:56:16 +0200
 Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <16091.50722.851659.821544@charged.uio.no>
+Message-ID: <16091.51200.292233.374385@charged.uio.no>
 References: <2BB7146B38D9CA40B215AB3DAAE24C080BA4F3@blr-m2-msg.wipro.com>
 	<200306022037.h52KbNVh012849@buggy.badula.org>
 Reply-To: trond.myklebust@fys.uio.no
@@ -19,19 +19,13 @@ List-ID: <nfs.lists.sourceforge.net>
 
 >>>>> " " == Ion Badulescu <ionut@badula.org> writes:
 
-    >> 1. Make nfs_symlink_caching dynamically tunable using /proc and
-    >> sysctl interface.
+     > Replacing a couple of time_after() calls with time_after_eq()
+     > calls fixes the issue, at least for hlfsd.
 
-     > No. Do it on a per-mount basis, like the other OS's do.
-
-As I said to Vivek in a private mail, it would be very nice to see
-if this could be done by replacing hlfsd with namespace groups.
-
-Al Viro has already done all the VFS layer work, which should be ready
-and working in existing 2.4.20 and 2.5.x kernels. What is missing is
-userland support for doing a CLONE_NEWNS, and then mounting the user's
-home directory, mailspool,.... in the appropriate locations at login
-time.
+BTW: the above does not suffice to eliminate all races. Two processes
+owned by different users may still end up waiting on the same call to
+nfs_symlink_filler() no matter how often you choose to update the
+metadata.
 
 Cheers,
-  Trond
+ Trond
