@@ -1,14 +1,14 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 12 of 16 - Change exp_parent to talk directory tree, not hash table.
-Date: Thu, 12 Sep 2002 12:35:59 +1000
+Subject: [PATCH] kNFSd - 15 of 16 - Unite per-client export key hash tables.
+Date: Thu, 12 Sep 2002 12:36:14 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1020912023559.19659@cse.unsw.edu.au>
+Message-ID: <1020912023614.19695@cse.unsw.edu.au>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17pJqF-0002Wc-00
-	for <nfs@lists.sourceforge.net>; Wed, 11 Sep 2002 19:36:27 -0700
+	id 17pJqX-0002lU-00
+	for <nfs@lists.sourceforge.net>; Wed, 11 Sep 2002 19:36:46 -0700
 To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -25,127 +25,105 @@ List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 ### Comments for ChangeSet
 
-Currently get_parent (needed to find the exportpoint
-above a given dentry) walks the hash table of export points
-checking each with is_subdir.  Now it walks up the d_parent
-link checking each for membership in the hashtable.
-
-nfsd_lookup currently does that walk too (when crossing
-a mountpoint backwards) so the code gets unified.
-
-This approach makes more sense as we move towards a cache
-for export information that can be filled on demand.
-It also assumes less about the hash table (which will change).
+Instead of a separate hash table per client we now
+have one hash table which includes the client in the key.
 
 
  ----------- Diffstat output ------------
- ./fs/nfsd/export.c            |   29 ++++++++++++-----------------
- ./fs/nfsd/vfs.c               |   16 ++++++++--------
- ./include/linux/nfsd/export.h |    2 ++
- 3 files changed, 22 insertions(+), 25 deletions(-)
+ ./fs/nfsd/export.c            |   24 +++++++++++++++++-------
+ ./include/linux/nfsd/export.h |    4 ----
+ 2 files changed, 17 insertions(+), 11 deletions(-)
 
---- ./include/linux/nfsd/export.h	2002/09/11 03:15:58	1.8
-+++ ./include/linux/nfsd/export.h	2002/09/11 03:56:39	1.9
-@@ -91,6 +91,8 @@ struct svc_export *	exp_get_fsid(struct 
- struct svc_export *	exp_get_by_name(struct svc_client *clp,
- 					struct vfsmount *mnt,
- 					struct dentry *dentry);
-+struct svc_export *	exp_parent(struct svc_client *clp, struct vfsmount *mnt,
-+				   struct dentry *dentry);
- int			exp_rootfh(struct svc_client *, 
- 					char *path, struct knfsd_fh *, int maxsize);
- int			nfserrno(int errno);
---- ./fs/nfsd/export.c	2002/09/11 03:18:12	1.11
-+++ ./fs/nfsd/export.c	2002/09/11 03:56:39	1.12
-@@ -35,8 +35,6 @@
- typedef struct svc_client	svc_client;
- typedef struct svc_export	svc_export;
+--- ./include/linux/nfsd/export.h	2002/09/11 23:55:44	1.11
++++ ./include/linux/nfsd/export.h	2002/09/12 00:05:48	1.12
+@@ -45,13 +45,9 @@
  
--static svc_export *	exp_parent(svc_client *clp, struct super_block *sb,
--					struct dentry *dentry);
- static void		exp_unexport_all(svc_client *clp);
- static void		exp_do_unexport(svc_export *unexp);
- static svc_client *	exp_getclientbyname(char *name);
-@@ -124,24 +122,21 @@ exp_get_by_name(svc_client *clp, struct 
- }
+ #ifdef __KERNEL__
  
- /*
-- * Find the export entry for a given dentry.  <gam3@acm.org>
-+ * Find the export entry for a given dentry.
-  */
--static svc_export *
--exp_parent(svc_client *clp, struct super_block *sb, struct dentry *dentry)
-+struct svc_export *
-+exp_parent(svc_client *clp, struct vfsmount *mnt, struct dentry *dentry)
- {
--	struct list_head *head = &clp->cl_export[EXPORT_HASH(sb->s_dev)];
--	struct list_head *p;
-+	svc_export *exp;
+-/* The following are hashtable sizes and must be powers of 2 */
+-#define NFSCLNT_EXPMAX		16
+-
+ struct svc_client {
+ 	struct svc_client *	cl_next;
+ 	char			cl_ident[NFSCLNT_IDMAX];
+-	struct list_head	cl_export[NFSCLNT_EXPMAX];
+ 	struct list_head	cl_list;
+ };
  
--	spin_lock(&dcache_lock);
--	list_for_each(p, head) {
--		svc_export *exp = list_entry(p, svc_export, ex_hash);
--		if (is_subdir(dentry, exp->ex_dentry)) {
--			spin_unlock(&dcache_lock);
--			return exp;
--		}
-+	read_lock(&dparent_lock);
-+	exp = exp_get_by_name(clp, mnt, dentry);
-+	while (exp == NULL && dentry != dentry->d_parent) {
-+		dentry = dentry->d_parent;
-+		exp = exp_get_by_name(clp, mnt, dentry);
- 	}
--	spin_unlock(&dcache_lock);
--	return NULL;
-+	read_unlock(&dparent_lock);
-+	return exp;
- }
+--- ./fs/nfsd/export.c	2002/09/11 23:55:44	1.14
++++ ./fs/nfsd/export.c	2002/09/12 00:05:48	1.15
+@@ -48,14 +48,23 @@ static int		exp_verify_string(char *cp, 
+ #define CLIENT_HASH(a) \
+ 		((((a)>>24) ^ ((a)>>16) ^ ((a)>>8) ^(a)) & CLIENT_HASHMASK)
  
- /*
-@@ -415,7 +410,7 @@ exp_rootfh(struct svc_client *clp, char 
- 	dprintk("nfsd: exp_rootfh(%s [%p] %s:%s/%ld)\n",
- 		 path, nd.dentry, clp->cl_ident,
- 		 inode->i_sb->s_id, inode->i_ino);
--	exp = exp_parent(clp, inode->i_sb, nd.dentry);
-+	exp = exp_parent(clp, nd.mnt, nd.dentry);
- 	if (!exp) {
- 		dprintk("nfsd: exp_rootfh export not found.\n");
- 		goto out;
---- ./fs/nfsd/vfs.c	2002/09/11 03:25:29	1.1
-+++ ./fs/nfsd/vfs.c	2002/09/11 03:56:39	1.2
-@@ -119,24 +119,24 @@ nfsd_lookup(struct svc_rqst *rqstp, stru
- 		else {
- 			/* checking mountpoint crossing is very different when stepping up */
- 			struct svc_export *exp2 = NULL;
--			struct dentry *dp, *old;
-+			struct dentry *dp;
- 			struct vfsmount *mnt = mntget(exp->ex_mnt);
- 			dentry = dget(dparent);
- 			while(follow_up(&mnt, &dentry))
- 				;
--			old = dentry;
- 			read_lock(&dparent_lock);
--			dp = dentry->d_parent;
--			for ( ; !exp2 && dp->d_parent != dp; dp=dp->d_parent)
--				exp2 = exp_get_by_name(exp->ex_client, mnt, dp);
-+			dp = dget(dentry->d_parent);
-+			read_unlock(&dparent_lock);
-+			dput(dentry);
-+			dentry = dp;
+-static inline int expkey_hash(int type, u32 *fsidv)
++#define	EXPKEY_HASHBITS		8
++#define	EXPKEY_HASHMAX		(1 << EXPKEY_HASHBITS)
++#define	EXPKEY_HASHMASK		(EXPKEY_HASHMAX -1)
++static struct list_head expkey_table[EXPKEY_HASHMAX];
 +
-+			exp2 = exp_parent(exp->ex_client, mnt, dentry);
- 			if (!exp2) {
-+				dput(dentry);
- 				dentry = dget(dparent);
- 			} else {
--				dget(dentry->d_parent);
- 				exp = exp2;
- 			}
--			read_unlock(&dparent_lock);
--			dput(old);
- 			mntput(mnt);
- 		}
- 	} else {
++static inline int expkey_hash(struct svc_client *clp, int type, u32 *fsidv)
+ {
+ 	int hash = type;
+ 	char * cp = (char*)fsidv;
+ 	int len = (type==0)?8:4;
+ 	while (len--)
+ 		hash += *cp++;
+-	return hash & (NFSCLNT_EXPMAX-1);
++	cp = (char*)&clp;
++	len = sizeof(clp);
++	while (len--)
++		hash += *cp++;
++	return hash & EXPKEY_HASHMASK;
+ }
+ 
+ struct svc_clnthash {
+@@ -97,7 +106,7 @@ exp_find_key(svc_client *clp, int fsid_t
+ 	if (!clp)
+ 		return NULL;
+ 
+-	head = &clp->cl_export[expkey_hash(fsid_type, fsidv)];
++	head = &expkey_table[expkey_hash(clp, fsid_type, fsidv)];
+ 	list_for_each_entry(ek, head, ek_hash)
+ 		if (ek->ek_fsidtype == fsid_type &&
+ 		    fsidv[0] == ek->ek_fsid[0] &&
+@@ -258,7 +267,7 @@ static int exp_fsid_hash(struct svc_clie
+ 
+ 	mk_fsid_v1(ek->ek_fsid, exp->ex_fsid);
+ 	
+-	head = &clp->cl_export[expkey_hash(1, ek->ek_fsid)];
++	head = &expkey_table[expkey_hash(clp, 1, ek->ek_fsid)];
+ 	list_add(&ek->ek_hash, head);
+ 	return 0;
+ }
+@@ -280,7 +289,7 @@ static int exp_hash(struct svc_client *c
+ 	inode = exp->ex_dentry->d_inode;
+ 	mk_fsid_v0(ek->ek_fsid, inode->i_sb->s_dev, inode->i_ino);
+ 	
+-	head = &clp->cl_export[expkey_hash(0, ek->ek_fsid)];
++	head = &expkey_table[expkey_hash(clp, 0, ek->ek_fsid)];
+ 	list_add(&ek->ek_hash, head);
+ 	return 0;
+ }
+@@ -772,8 +781,6 @@ exp_addclient(struct nfsctl_client *ncp)
+ 		if (!(clp = kmalloc(sizeof(*clp), GFP_KERNEL)))
+ 			goto out_unlock;
+ 		memset(clp, 0, sizeof(*clp));
+-		for (i = 0; i < NFSCLNT_EXPMAX; i++)
+-			INIT_LIST_HEAD(&clp->cl_export[i]);
+ 
+ 		INIT_LIST_HEAD(&clp->cl_list);
+ 
+@@ -929,6 +936,9 @@ nfsd_export_init(void)
+ 	for (i = 0; i < EXPORT_HASHMAX ; i++)
+ 		INIT_LIST_HEAD(&export_table[i]);
+ 
++	for (i = 0; i < EXPKEY_HASHMAX; i++)
++		INIT_LIST_HEAD(&expkey_table[i]);
++
+ }
+ 
+ /*
 
 
 -------------------------------------------------------
