@@ -1,21 +1,21 @@
-From: Junfeng Yang <yjf@stanford.edu>
-Subject: Re: [CHECKER] inconsistent NFS stat cache (NFS on ext3, 2.6.11)
-Date: Sat, 12 Mar 2005 23:04:45 -0800 (PST)
-Message-ID: <Pine.GSO.4.44.0503122300030.6817-100000@elaine24.Stanford.EDU>
-References: <1110690267.24123.7.camel@lade.trondhjem.org>
+From: Michael Madore <Michael.Madore@aslab.com>
+Subject: find_exported_dentry: npd != pd
+Date: Thu, 10 Mar 2005 09:51:40 -0800
+Message-ID: <1110477100.14523.9.camel@drevil.aslab.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net, <mc@cs.Stanford.EDU>
+Content-Type: text/plain
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DAN9d-0000ci-TV
-	for nfs@lists.sourceforge.net; Sat, 12 Mar 2005 23:04:49 -0800
-Received: from smtp3.stanford.edu ([171.67.16.138])
+	id 1D9Rp3-0007Kg-0W
+	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 09:51:45 -0800
+Received: from adsl-69-225-172-73.dsl.pltn13.pacbell.net ([69.225.172.73] helo=mail.aslab.com)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DAN9d-00019r-JY
-	for nfs@lists.sourceforge.net; Sat, 12 Mar 2005 23:04:49 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1110690267.24123.7.camel@lade.trondhjem.org>
+	id 1D9Rp1-0006Ck-MA
+	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 09:51:44 -0800
+Received: from drevil.aslab.com (drevil.aslab.com [192.168.2.34])
+	by mail.aslab.com (Postfix) with ESMTP id 39CB84B197
+	for <nfs@lists.sourceforge.net>; Thu, 10 Mar 2005 10:08:10 -0800 (PST)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,22 +29,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> This is a known problem. Turn off the (default - grrr) subtree checking
-> export option on the server, and it will all work properly. The subtree
-> checking option violates the NFS standards for filehandle generation in
-> so many ways, that it isn't even funny.
+Hi,
 
-Hi Trond,
+I was running dbench from a Linux 2.6.11 NFS client to a Linux 2.6.11
+NFS server and received many copies of the following message in the
+server's syslog:
 
-Turn off this option in /etc/exports does fix the inconsistency.  However
-I looked throught the export man page and seems that subtree checking will
-cause problems only in the following case: "accessing files that are
-renamed while a client has them open".  My test case is *not* doing this.
-It does renames but it never does so with a file opened.  Can you please
-clarify?
+find_exported_dentry: npd != pd
 
-Thanks,
--Junfeng
+I found the following comment in fs/exportfs/expfs.c:
+
+/* we didn't really want npd, we really wanted
+ * a side-effect of the lookup.
+ * hopefully, npd == pd, though it isn't really
+ * a problem if it isn't
+ */
+
+So, is this error message really harmless?  The reason I'm asking is
+because a lot of users will panic upon seeing any unusual messages in
+syslog.
+
+Thanks
+
+Mike
+
+
 
 
 
