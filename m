@@ -1,22 +1,22 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 2 of 34 - gss api changes for integrity checking.
+Subject: [PATCH] kNFSd - 9 of 34 - NFSdV4 fixes for replaying open requests.
 Date: Tue, 24 Feb 2004 10:49:41 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1AvPpV-0006H0-00@notabene>
+Message-ID: <E1AvPpV-0006I1-00@notabene>
 References: <20040224104820.23884.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AvPqH-0006tQ-AG
+	id 1AvPqH-0006tW-FZ
 	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 15:50:29 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.30)
-	id 1AvPeI-0002LN-Iw
+	id 1AvPeI-0002LQ-Q8
 	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 15:38:06 -0800
 Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
 	(for <akpm@osdl.org>) (for <nfs@lists.sourceforge.net>) By note With
-	Smtp ; Tue, 24 Feb 2004 10:49:41 +1100
+	Smtp ; Tue, 24 Feb 2004 10:49:42 +1100
 To: Andrew Morton <akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,72 +31,77 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Doesn't actually add integrity support on the server yet; just adapts
-server-side code to the gss api changes necessary to get integrity working on
-the client.
+Since the open op changes the current filehandle, we can't correctly replay
+compounds containing opens unless we save the filehandle resulting from the
+open as well as the encoded reply.
 
  ----------- Diffstat output ------------
- ./net/sunrpc/auth_gss/gss_krb5_seal.c |    3 ---
- ./net/sunrpc/auth_gss/svcauth_gss.c   |   16 ++++++++++------
- 2 files changed, 10 insertions(+), 9 deletions(-)
+ ./fs/nfsd/nfs4proc.c         |   19 +++++++++++++++++++
+ ./fs/nfsd/nfs4xdr.c          |    1 +
+ ./include/linux/nfsd/state.h |    2 ++
+ 3 files changed, 22 insertions(+)
 
-diff ./net/sunrpc/auth_gss/gss_krb5_seal.c~current~ ./net/sunrpc/auth_gss/gss_krb5_seal.c
---- ./net/sunrpc/auth_gss/gss_krb5_seal.c~current~	2004-02-24 10:41:14.000000000 +1100
-+++ ./net/sunrpc/auth_gss/gss_krb5_seal.c	2004-02-24 10:41:20.000000000 +1100
-@@ -169,8 +169,5 @@ krb5_make_token(struct krb5_ctx *ctx, in
- 	return ((ctx->endtime < now) ? GSS_S_CONTEXT_EXPIRED : GSS_S_COMPLETE);
- out_err:
- 	if (md5cksum.data) kfree(md5cksum.data);
--	if (token->data) kfree(token->data);
--	token->data = 0;
--	token->len = 0;
- 	return GSS_S_FAILURE;
+diff ./fs/nfsd/nfs4proc.c~current~ ./fs/nfsd/nfs4proc.c
+--- ./fs/nfsd/nfs4proc.c~current~	2004-02-24 10:42:31.000000000 +1100
++++ ./fs/nfsd/nfs4proc.c	2004-02-24 10:42:31.000000000 +1100
+@@ -89,6 +89,12 @@ do_open_lookup(struct svc_rqst *rqstp, s
+ 	if (!status) {
+ 		set_change_info(&open->op_cinfo, current_fh);
+ 		fh_dup2(current_fh, &resfh);
++		/* XXXJBF: keep a saved svc_fh struct instead?? */
++		open->op_stateowner->so_replay.rp_openfh_len =
++			resfh.fh_handle.fh_size;
++		memcpy(open->op_stateowner->so_replay.rp_openfh,
++				&resfh.fh_handle.fh_base,
++				resfh.fh_handle.fh_size);
+ 
+ 		accmode = MAY_NOP;
+ 		if (open->op_share_access & NFS4_SHARE_ACCESS_READ)
+@@ -116,6 +122,19 @@ nfsd4_open(struct svc_rqst *rqstp, struc
+ 
+ 	/* check seqid for replay. set nfs4_owner */
+ 	status = nfsd4_process_open1(open);
++	if (status == NFSERR_REPLAY_ME) {
++		struct nfs4_replay *rp = &open->op_stateowner->so_replay;
++		fh_put(current_fh);
++		current_fh->fh_handle.fh_size = rp->rp_openfh_len;
++		memcpy(&current_fh->fh_handle.fh_base, rp->rp_openfh,
++				rp->rp_openfh_len);
++		status = fh_verify(rqstp, current_fh, 0, MAY_NOP);
++		if (status)
++			dprintk("nfsd4_open: replay failed"
++				" restoring previous filehandle\n");
++		else
++			status = NFSERR_REPLAY_ME;
++	}
+ 	if (status)
+ 		return status;
+ 	/*
+
+diff ./fs/nfsd/nfs4xdr.c~current~ ./fs/nfsd/nfs4xdr.c
+--- ./fs/nfsd/nfs4xdr.c~current~	2004-02-24 10:42:31.000000000 +1100
++++ ./fs/nfsd/nfs4xdr.c	2004-02-24 10:42:31.000000000 +1100
+@@ -1913,6 +1913,7 @@ nfsd4_encode_open(struct nfsd4_compoundr
+ 	default:
+ 		BUG();
+ 	}
++	/* XXX save filehandle here */
+ 
+ 	ENCODE_SEQID_OP_TAIL(open->op_stateowner);
  }
 
-diff ./net/sunrpc/auth_gss/svcauth_gss.c~current~ ./net/sunrpc/auth_gss/svcauth_gss.c
---- ./net/sunrpc/auth_gss/svcauth_gss.c~current~	2004-02-24 10:40:29.000000000 +1100
-+++ ./net/sunrpc/auth_gss/svcauth_gss.c	2004-02-24 10:40:36.000000000 +1100
-@@ -531,14 +531,16 @@ gss_verify_header(struct svc_rqst *rqstp
- 		  u32 *rpcstart, struct rpc_gss_wire_cred *gc, u32 *authp)
- {
- 	struct gss_ctx		*ctx_id = rsci->mechctx;
--	struct xdr_netobj	rpchdr;
-+	struct xdr_buf		rpchdr;
- 	struct xdr_netobj	checksum;
- 	u32			flavor = 0;
- 	struct iovec		*argv = &rqstp->rq_arg.head[0];
-+	struct iovec		iov;
+diff ./include/linux/nfsd/state.h~current~ ./include/linux/nfsd/state.h
+--- ./include/linux/nfsd/state.h~current~	2004-02-24 10:40:23.000000000 +1100
++++ ./include/linux/nfsd/state.h	2004-02-24 10:42:31.000000000 +1100
+@@ -113,6 +113,8 @@ struct nfs4_replay {
+ 	unsigned int		rp_buflen;
+ 	char			*rp_buf;
+ 	unsigned		intrp_allocated;
++	int			rp_openfh_len;
++	char			rp_openfh[NFS4_FHSIZE];
+ 	char			rp_ibuf[NFSD4_REPLAY_ISIZE];
+ };
  
- 	/* data to compute the checksum over: */
--	rpchdr.data = (u8 *)rpcstart;
--	rpchdr.len = (u8 *)argv->iov_base - (u8 *)rpcstart;
-+	iov.iov_base = rpcstart;
-+	iov.iov_len = (u8 *)argv->iov_base - (u8 *)rpcstart;
-+	xdr_buf_from_iov(&iov, &rpchdr);
- 
- 	*authp = rpc_autherr_badverf;
- 	if (argv->iov_len < 4)
-@@ -576,15 +578,17 @@ gss_write_verf(struct svc_rqst *rqstp, s
- {
- 	u32			xdr_seq;
- 	u32			maj_stat;
--	struct xdr_netobj	verf_data;
-+	struct xdr_buf		verf_data;
- 	struct xdr_netobj	mic;
- 	u32			*p;
-+	struct iovec		iov;
- 
- 	svc_putu32(rqstp->rq_res.head, htonl(RPC_AUTH_GSS));
- 	xdr_seq = htonl(seq);
- 
--	verf_data.data = (u8 *)&xdr_seq;
--	verf_data.len = sizeof(xdr_seq);
-+	iov.iov_base = &xdr_seq;
-+	iov.iov_len = sizeof(xdr_seq);
-+	xdr_buf_from_iov(&iov, &verf_data);
- 	p = rqstp->rq_res.head->iov_base + rqstp->rq_res.head->iov_len;
- 	maj_stat = gss_get_mic(ctx_id, 0, &verf_data, &mic);
- 	if (maj_stat != GSS_S_COMPLETE)
 
 
 -------------------------------------------------------
