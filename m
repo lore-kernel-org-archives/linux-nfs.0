@@ -1,32 +1,28 @@
 From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-Subject: Re: client side noac
-Date: Mon, 28 Jun 2004 08:09:58 -0600 (MDT)
+Subject: reliable reading
+Date: Mon, 28 Jun 2004 09:13:29 -0600 (MDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.60.0406280754520.31370@harp.ngdc.noaa.gov>
-References: <Pine.LNX.4.60.0406251148570.3197@harp.ngdc.noaa.gov>
- <1088186851.4333.65.camel@lade.trondhjem.org>  <Pine.LNX.4.60.0406251252570.3683@harp.ngdc.noaa.gov>
-  <1088191021.4333.75.camel@lade.trondhjem.org>
- <Pine.LNX.4.60.0406251321030.3853@harp.ngdc.noaa.gov>
- <1088192302.4333.83.camel@lade.trondhjem.org>  <Pine.LNX.4.60.0406261615060.10096@harp.ngdc.noaa.gov>
-  <1088364509.4295.14.camel@lade.trondhjem.org>
- <Pine.LNX.4.60.0406272148170.31370@harp.ngdc.noaa.gov>
- <1088397445.4295.51.camel@lade.trondhjem.org>
+Message-ID: <Pine.LNX.4.60.0406280901350.3356@harp.ngdc.noaa.gov>
 Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Bewpf-0000cF-RG
-	for nfs@lists.sourceforge.net; Mon, 28 Jun 2004 07:10:03 -0700
+	id 1Bexp5-0007WA-70
+	for nfs@lists.sourceforge.net; Mon, 28 Jun 2004 08:13:31 -0700
 Received: from harp.ngdc.noaa.gov ([140.172.187.26])
 	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.34)
-	id 1Bewpf-00008m-5k
-	for nfs@lists.sourceforge.net; Mon, 28 Jun 2004 07:10:03 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1088397445.4295.51.camel@lade.trondhjem.org>
+	id 1Bexp3-0004PB-LD
+	for nfs@lists.sourceforge.net; Mon, 28 Jun 2004 08:13:29 -0700
+Received: from harp.ngdc.noaa.gov (harp.ngdc.noaa.gov [127.0.0.1])
+	by harp.ngdc.noaa.gov (8.12.11/8.12.11) with ESMTP id i5SFDTon003610
+	for <nfs@lists.sourceforge.net>; Mon, 28 Jun 2004 09:13:29 -0600
+Received: from localhost (ahoward@localhost)
+	by harp.ngdc.noaa.gov (8.12.11/8.12.11/Submit) with ESMTP id i5SFDTrf003606
+	for <nfs@lists.sourceforge.net>; Mon, 28 Jun 2004 09:13:29 -0600
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -39,57 +35,54 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, 28 Jun 2004, Trond Myklebust wrote:
 
-> In 2.6.x kernels, we don't do strict revalidation of the parent directories
-> in the path: only the target file itself, so if someone deletes the current
-> directory, you may end up with a stale filehandle.
-> Please also note that renaming directories (and files) into other
-> directories is also prone to this sort of ESTALE errors if your Linux server
-> isn't exporting using the "no_subtree_check".
->
-> Otherwise, the file itself should always be strictly checked (unless
-> you've also got the "nocto" mount flag set). I won't exclude that the
-> lookup may be using stale data if there turns out to be some race with
-> readdirplus on NFSv3 that we've overlooked. You could check by comparing
-> with a NFSv2 mount.
->
-> Cheers,
->  Trond
+nfs'rs-
 
-we are using
+i'm in the middle of implementing a job distribution mechanism that uses an
+nfs mounted work queue.  obviously clients serialize their access to this
+queue using locking.  i'm using the double lock technique of lockfile + fcntl
+lock on lockfile.  the code implements crude transactions using the following
+logic:
 
-   ~ > uname -srm && cat /etc/redhat-release; mount | grep nfs
-   Linux 2.4.21-15.0.2.ELsmp i686
-   Red Hat Enterprise Linux WS release 3 (Taroon Update 2)
-   moby.b:/raid/array0/part1/export on /dmsp/moby-0-1 type nfs (rw,bg,hard,intr,rsize=8192,wsize=8192,addr=10.1.186.54)
-   moby.b:/raid/array1/part1/export on /dmsp/moby-1-1 type nfs (rw,bg,hard,intr,rsize=8192,wsize=8192,addr=10.1.186.54)
-   moby.b:/raid/array1/part2/export on /dmsp/moby-1-2 type nfs (rw,bg,hard,intr,rsize=8192,wsize=8192,addr=10.1.186.54)
-   moby.b:/raid/array1/part3/export on /dmsp/moby-1-3 type nfs (rw,bg,hard,intr,rsize=8192,wsize=8192,addr=10.1.186.54)
-   moby.b:/raid/array1/part4/export on /dmsp/moby-1-4 type nfs (rw,bg,hard,intr,rsize=8192,wsize=8192,addr=10.1.186.54)
-   moby.b:/raid/array1/part5/export on /dmsp/moby-1-5 type nfs (rw,bg,hard,intr,rsize=8192,wsize=8192,addr=10.1.186.54)
-   moby.b:/raid/array1/part6/export on /dmsp/moby-1-6 type nfs (rw,bg,hard,intr,rsize=8192,wsize=8192,addr=10.1.186.54)
+   obtain_lock
 
-so i guess that first bit does not apply.  the code IS renaming files but only
-into the same directory, the directory is never removed and we are not using
-the 'nocto' mount option.  i am 99.9% positive that we are using nfsv3 - how
-can i determine this from the client side?  am i reading you correctly in
-saying that this setup/usage pattern (demo scripts) should result in strict
-chcking of files and that ESTALE should not be returned to client from open()?
-or have i mis-understood?
+   read_queue
 
-sorry this is dragging on....  in summary i am wanting to know:
+   do_work_with_queue
 
-0)
-     if you think this is a possible bug which i should explore further
+   if changes_were_made
+     copy queue, backup
+     err = write queue
+     if err
+       copy backup, queue
+     end
+   end
 
-1)  the behaviour i am seeing (demonstrated by scripts sent earlier) is
-     consistent with our software configuration and, if so, if the 'correct'
-     thing for user code to do in this case is simply to retry one time if open
-     returns ESTALE, or if user code should attempt to force cache
-     invalidation, etc.?
+   release_lock
 
-cheers (again!).
+in otherwords, all or none wholesale replacement of queue.  in order for this
+sort of thing to work i need to be able to do a few things:
+
+   - reliable lock (done)
+   - reliable read
+   - reliable write
+
+now, i undertand the word 'reliable' is subjective here when we're talking
+about networking but the inode caching of nfs makes the read/write bit more
+that little problematic.  my questions are:
+
+   - what is the 'safest' way read the most recent contents of an nfs mounted
+     file accounting for attribute caching?
+
+   - same question but for writing
+
+i am not concerned with speed since the cost of accessing the queue is grossly
+outweighed by the time to execute a job taken from it in almost all cases - i
+simply want to make the absolutely most reliable read/write __possible__.  i
+am open to mount option suggestions but want to make the code reliable even in
+the face of the most aggressive attribute caching - if possible.
+
+thanks in advance for any suggestions.
 
 -a
 --
