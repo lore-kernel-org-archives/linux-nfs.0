@@ -1,31 +1,26 @@
-From: mike@waychison.com
-Subject: Re: [PATCH/RFC 1/2] rpcproxyd
-Date: Mon, 14 Mar 2005 15:08:38 -0500 (EST)
-Message-ID: <48774.66.11.176.22.1110830918.squirrel@webmail1.hrnoc.net>
-References: <37086.66.11.176.22.1110228763.squirrel@webmail1.hrnoc.net>
-    <37093.66.11.176.22.1110228819.squirrel@webmail1.hrnoc.net>
-    <20050314105249.GH14815@suse.de>
-    <48275.66.11.176.22.1110821698.squirrel@webmail1.hrnoc.net>
-    <20050314192440.GC29939@suse.de>
+From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Subject: binaries becoming corrupt on nfs
+Date: Mon, 14 Mar 2005 14:25:30 -0700 (MST)
+Message-ID: <Pine.LNX.4.60.0503141414590.4702@harp.ngdc.noaa.gov>
+Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain;charset=iso-8859-1
-Cc: mike@waychison.com, "linux-nfs" <nfs@lists.sourceforge.net>,
-	"autofs mailing list" <autofs@linux.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DAvrm-0006KY-5l
-	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 12:08:42 -0800
-Received: from relay4.hrnoc.net ([216.120.225.16])
+	id 1DAx4E-0001XY-LT
+	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 13:25:38 -0800
+Received: from harp.ngdc.noaa.gov ([140.172.178.33])
 	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1DAvrk-0002Fn-Mo
-	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 12:08:42 -0800
-Received: from smtp-1.hrnoc.net ([216.120.225.37])
-	by relay4.hrnoc.net with esmtp (Exim 4.32; FreeBSD)
-	id 1DAvrZ-000PLh-D8
-	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 15:08:29 -0500
-In-Reply-To: <20050314192440.GC29939@suse.de>
-To: "Olaf Kirch" <okir@suse.de>
+	id 1DAx4D-0002Mr-6d
+	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 13:25:38 -0800
+Received: from harp.ngdc.noaa.gov (harp.ngdc.noaa.gov [127.0.0.1])
+	by harp.ngdc.noaa.gov (8.12.11/8.12.11) with ESMTP id j2ELPUdf006540
+	for <nfs@lists.sourceforge.net>; Mon, 14 Mar 2005 14:25:30 -0700
+Received: from localhost (ahoward@localhost)
+	by harp.ngdc.noaa.gov (8.12.11/8.12.11/Submit) with ESMTP id j2ELPU7x006536
+	for <nfs@lists.sourceforge.net>; Mon, 14 Mar 2005 14:25:30 -0700
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,36 +34,75 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> Hi Mike,
->
-> On Mon, Mar 14, 2005 at 12:34:58PM -0500, mike@waychison.com wrote:
->> > 	For instance, I can connect to your service, and fork off
->> > 	some setuid root application, with stderr connected to that
->> > 	socket. Any error message the application prints will be arrive
->> > 	with uid 0. If I manage to make that message appear valid to you,
->> > 	your daemon will accept any future input unquestioned.
->> >
->>
->> Interesting attack, although I doubt the setuid program would be
->> attaching
->> an SCM_CREDENTIALS to it's stderr writes.  I'll fix it up to check
->> credentials on all packets nevertheless.
->
-> The application doesn't have to pass them explicitly. They'll be
-> attached automatically by the kernel.
 
-Ah. Didn't know that.  This makes verifying each request much more critic=
-al.
+we are seeing some really bizarre strange behaviour on our nfs systems.
+essentially a system will hum along nicely, running binaries from our nfs
+server without issue.  for no apparent reason these binaries suddenly become
+corrupt on the client side and stop working.  running md5sum on the affected
+binary on a 'good' host and a 'bad' one shows them to, in fact, be different.
 
-Mike Waychison
+doing and unmount and remount fixes the issue.  obviously so does a reboot.
+both are temporary fixes though - eventually a node will start getting corrupt
+binaries - or perhaps not.
 
+the server is not under undue stress as it serves only code and no data
+traffic is hitting it (we use vsftp to move data around).  none of the
+machines seems to logging any errors - server nor client.  all of our systems
+are the same:
+
+   ~ > uname -srm
+   Linux 2.4.21-27.0.2.EL i686
+
+   ~ > cat /etc/redhat-release
+   Red Hat Enterprise Linux WS release 3 (Taroon Update 4)
+
+   ~ > cat /proc/cpuinfo | grep model
+   model           : 2
+   model name      : Intel(R) Xeon(TM) CPU 2.80GHz
+   model           : 2
+   model name      : Intel(R) Xeon(TM) CPU 2.80GHz
+   model           : 2
+   model name      : Intel(R) Xeon(TM) CPU 2.80GHz
+   model           : 2
+   model name      : Intel(R) Xeon(TM) CPU 2.80GHz
+
+   ~ > free -b
+   total       used       free     shared    buffers     cached
+   Mem:    4082057216 4040855552   41201664          0   16977920 3698454528
+   -/+ buffers/cache:  325423104 3756634112 Swap:   6325055488   96333824 6228721664
+
+   ~ > rpm -qa | grep nfs
+   redhat-config-nfs-1.0.13-6
+   nfs-utils-1.0.6-33EL
+
+all the machines are on the same subnet with one hop to the nfs server.
+
+has anyone seen this behaviour?  and ideas what the issue might be?  we cannot
+be certain but think the issue is associated with the latest kernel.  the
+reason we cannot be certain is that we've not been running much for the last
+few weeks and just started seeing the problem - we booted to the latest kernel
+about a month ago.
+
+i'm not even sure where to start looking here but the symtoms seems to point
+to some sort of client side caching issue... any input appreciated.
+
+kind regards.
+
+-a
+-- 
+===============================================================================
+| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
+| PHONE   :: 303.497.6469
+| When you do something, you should burn yourself completely, like a good
+| bonfire, leaving no trace of yourself.  --Shunryu Suzuki
+===============================================================================
 
 
 -------------------------------------------------------
 SF email is sponsored by - The IT Product Guide
 Read honest & candid reviews on hundreds of IT Products from real users.
 Discover which products truly live up to the hype. Start reading now.
-http://ads.osdn.com/?ad_id=3D6595&alloc_id=3D14396&op=3Dclick
+http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
