@@ -1,23 +1,16 @@
-From: "Nir Cohen" <nirc@macam.ac.il>
-Subject: (no subject)
-Date: Tue, 30 Jul 2002 13:10:35 +0200
+From: Kilaru Sambaiah <sam_kilaru2000@yahoo.com>
+Subject: problems with Redhat 6.2 client
+Date: Tue, 30 Jul 2002 07:09:58 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <003c01c237b9$bcebe990$1ece72c0@mofetsite.macam.ac.il>
+Message-ID: <20020730140958.51526.qmail@web10701.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0039_01C237CA.7DB2B360"
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [209.88.190.140] (helo=mail.mofet.macam.ac.il)
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17ZUtq-0002Ft-00
-	for <nfs@lists.sourceforge.net>; Tue, 30 Jul 2002 04:10:46 -0700
-Received: from mail.mofet.macam.ac.il (localhost.localdomain [127.0.0.1])
-	by mail.mofet.macam.ac.il (8.11.0/8.11.2) with ESMTP id g6UBAeZ31767
-	for <nfs@lists.sourceforge.net>; Tue, 30 Jul 2002 14:10:40 +0300
-Received: from nirc2 ([192.114.206.30])
-	by mail.mofet.macam.ac.il (8.11.0/8.11.2) with SMTP id g6UBAe531758
-	for <nfs@lists.sourceforge.net>; Tue, 30 Jul 2002 14:10:40 +0300
-To: <nfs@lists.sourceforge.net>
+Received: from web10701.mail.yahoo.com ([216.136.130.209])
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17ZXhG-0007RT-00
+	for <nfs@lists.sourceforge.net>; Tue, 30 Jul 2002 07:09:58 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,39 +24,29 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 
-This is a multi-part message in MIME format.
+ Hello All,
+   We are running nfs server on NT with clients 
+Redhat 6.2 and RH 7.0  With Redhat 7.0 we are
+able to mount and create directories and files.
+The problem with 6.2 is we are able to create
+directories but not files under directories.
+It says permission denied. We are able to change
+chmod and then  create them. Is there any solution
+for this.
 
-------=_NextPart_000_0039_01C237CA.7DB2B360
-Content-Type: text/plain;
-	charset="windows-1255"
-Content-Transfer-Encoding: quoted-printable
+thanks,
+Sam
 
-unsubscribe nfs
-
-------=_NextPart_000_0039_01C237CA.7DB2B360
-Content-Type: text/html;
-	charset="windows-1255"
-Content-Transfer-Encoding: quoted-printable
-
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; =
-charset=3Dwindows-1255">
-<META content=3D"MSHTML 6.00.2716.2200" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV><FONT face=3DArial size=3D2>unsubscribe =
-nfs</FONT></DIV></BODY></HTML>
-
-------=_NextPart_000_0039_01C237CA.7DB2B360--
-
+__________________________________________________
+Do You Yahoo!?
+Yahoo! Health - Feel better, live better
+http://health.yahoo.com
 
 
 -------------------------------------------------------
 This sf.net email is sponsored by: Dice - The leading online job board
 for high-tech professionals. Search and apply for tech jobs today!
-http://seeker.dice.com/seeker.epl?rel_code=3D31
+http://seeker.dice.com/seeker.epl?rel_code=31
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
