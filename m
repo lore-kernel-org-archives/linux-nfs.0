@@ -1,18 +1,27 @@
-From: "H . J . Lu" <hjl@lucon.org>
-Subject: Re: Broken NFS client in RedHat skipjack-beta2?
-Date: Mon, 8 Apr 2002 15:24:48 -0700
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: NFS problems across reboot
+Date: Tue, 9 Apr 2002 08:58:24 +1000 (EST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020408152448.A3034@lucon.org>
-References: <6440EA1A6AA1D5118C6900902745938E50CE52@black.eng.netapp.com>
+Message-ID: <15538.8336.385286.494555@notabene.cse.unsw.edu.au>
+References: <3CACA93C.5010304@blue-labs.org>
+	<3CAD6A78.4205CD61@moving-picture.com>
+	<3CAFCE8C.5030300@blue-labs.org>
+	<15535.55222.401084.736426@notabene.cse.unsw.edu.au>
+	<3CAFEE3C.8020606@blue-labs.org>
+	<15537.1257.212812.909225@notabene.cse.unsw.edu.au>
+	<3CB189DE.1B3AE1CD@literaturhaus.at>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
-Received: from rwcrmhc53.attbi.com ([204.127.198.39])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16uhZH-0005uF-00
-	for <nfs@lists.sourceforge.net>; Mon, 08 Apr 2002 15:24:55 -0700
-To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: <6440EA1A6AA1D5118C6900902745938E50CE52@black.eng.netapp.com>; from Charles.Lever@netapp.com on Mon, Apr 08, 2002 at 02:53:36PM -0700
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 16ui2x-0000p1-00
+	for <nfs@lists.sourceforge.net>; Mon, 08 Apr 2002 15:55:35 -0700
+Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
+	(for <au@literaturhaus.at>) (for <nfs@lists.sourceforge.net>) By tone
+	With Smtp ; Tue, 9 Apr 2002 08:55:15 +1000
+To: Andreas Unterluggauer <au@literaturhaus.at>
+In-Reply-To: message from Andreas Unterluggauer on Monday April 8
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,27 +34,41 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Mon, Apr 08, 2002 at 02:53:36PM -0700, Lever, Charles wrote:
-> > Has anyone seen the NFS client crash the NetApp NFS sever? See 
+On Monday April 8, au@literaturhaus.at wrote:
 > > 
-> > http://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=62967
+> > "Exporting" a filesystem means doing two things:
+> >  1/ telling mountd that it is allow to respond positively to mount
+> >      requests.
+> >  2/ telling the kernel nfsd that it is allow to respond to access
+> >      requests.
+> > 
+> > When mountd responds to a mount request, it also tells the kernel to
+> > respond to access requests.
+> > But after a reboot, you need to run exportfs.  It reads
+> > /var/lib/nfs/rmtab to find out which clients have which filesystems
+> > mounted, and it tells the kernel to allow those clients to access
+> > those filesystem.
 > 
-> nope.  which version of OnTAP is the filer running?  did it
+> Is it sufficent, if exportfs -r is run before rpc.nfsd are started
+> instead of exportfs -a?
+> The startscripts of redhat 6.2 uses exportfs -r (and we sometimes have
+> troubles with stale mounts).
 
-I don't know.
+Yep, "exportfs -r" is fine.
 
-> actually crash, or did the skipjack client simply stop talking
-> to it?
-> 
+ exportfs -r
+    preserves any changes you may have made with 
+      exportfs -o what,ever host:/path/to/export
+whereas
+ exportfs -a
+    discards any such changes and just apply what /etc/exports 
+    says.
 
-I was told "There was a system in your office that was harassing
-filerdude to the point where it almost crashed the filer.  We
-unplugged your network connection." My impression was the skipjack
-client simply flooded the NetApp server.
+Which one you want really depends on your sysadmin practices.  I
+personally like "-a" because it means I know that after a reboot the
+machine will come back to a known-correct state.
 
-
-
-H.J.
+NeilBrown
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
