@@ -1,19 +1,19 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS utils package, and an fsx question
-Date: 13 May 2002 07:35:10 +0200
+From: Dan Yocum <yocum@fnal.gov>
+Subject: Null characters in files on NFS mounted volume....
+Date: Mon, 13 May 2002 09:33:03 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsr8kgd301.fsf@charged.uio.no>
-References: <3CDF247A.E7106AA4@attbi.com>
+Message-ID: <3CDFCE9F.2BE050D5@fnal.gov>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: NFS maillist <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
+Received: from heffalump.fnal.gov ([131.225.9.20] helo=fnal.gov)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1778UU-0007mr-00
-	for <nfs@lists.sourceforge.net>; Sun, 12 May 2002 22:35:22 -0700
-To: Tom McNeal <trmcneal@attbi.com>
-In-Reply-To: <3CDF247A.E7106AA4@attbi.com>
+	id 177Gsq-0001j7-00
+	for <nfs@lists.sourceforge.net>; Mon, 13 May 2002 07:33:04 -0700
+Received: from fnal.gov ([131.225.7.82]) by smtp.fnal.gov (PMDF V6.0-24 #37519)
+ with ESMTP id <0GW200LJL0F3EO@smtp.fnal.gov> for nfs@lists.sourceforge.net;
+ Mon, 13 May 2002 09:33:03 -0500 (CDT)
+To: nfs list <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,21 +26,34 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->>>>> " " == Tom McNeal <trmcneal@attbi.com> writes:
+Hi all,
 
-     > The tests consist of the 4 2002 Connectathon tests suites
-     > (basic, general, special, and lock), fsx, a duplicate request
-     > cache exerciser, and bonnie++, all running simultaneously
-     > overnight.  I tested a 2.4.18 and 2.2.19 UP client against
-     > 2.4 and 2.2 UP servers.  The failure rate was less than 1%,
-     > primarily due to interaction between special and general tests
-     > that I haven't quite figured out yet.
+I've got a "New and Exciting" <tm> bug using 2.4.18 with Trond's client
+patches (sans the rpc_tweaks dif), but I'm not sure it's a client side
+problem.
 
-Any details on the failures? 2.4.18 was tested extensively at Cthon
-with no problems being observed...
+This is an intermitent problem:  When attempting to read a file (any file)
+on an NFS mounted volume, there appear to be "holes" in the file filled with
+ASCII NULL characters.  Reading the file on the local machines shows no such
+holes, and other NFS clients don't see the holes, either.  A simple
+umount/remount solves the problem.
 
-Cheers,
-  Trond
+Oh, I should add that these are autofs mounted volumes.
+
+We thought these might be network driver problems, but we're seeing it on
+natsemi, acenic and eepro100 drivers, and I doubt they could all be flaky.
+
+Any ideas?
+
+Thanks,
+Dan
+
+
+-- 
+Dan Yocum
+Sloan Digital Sky Survey, Fermilab  630.840.6509
+yocum@fnal.gov, http://www.sdss.org
+SDSS.  Mapping the Universe.
 
 _______________________________________________________________
 
