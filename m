@@ -1,25 +1,25 @@
 From: "Robert Pawlowicz" <robert@pawlowicz.com>
 Subject: Function not implemented
-Date: Wed, 10 Sep 2003 13:57:51 +0100
+Date: Wed, 10 Sep 2003 14:04:37 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <LOBBJFHFAIJCHENJILKBOEJDMAAA.robert@pawlowicz.com>
+Message-ID: <LOBBJFHFAIJCHENJILKBEEJEMAAA.robert@pawlowicz.com>
 Mime-Version: 1.0
 Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_000C_01C377A3.8630B720"
+	boundary="----=_NextPart_000_0010_01C377A4.7849F300"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19x4Nz-0007kA-00
-	for <nfs@lists.sourceforge.net>; Wed, 10 Sep 2003 05:47:51 -0700
+	id 19x4UW-0000l2-00
+	for <nfs@lists.sourceforge.net>; Wed, 10 Sep 2003 05:54:36 -0700
 Received: from scrabble.freeuk.net ([212.126.144.29])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 19x4Ny-0000Ka-7U
-	for nfs@lists.sourceforge.net; Wed, 10 Sep 2003 05:47:50 -0700
+	id 19x4UV-0003Zy-UT
+	for nfs@lists.sourceforge.net; Wed, 10 Sep 2003 05:54:36 -0700
 Received: from [212.126.148.32] (helo=wolverine)
 	by scrabble.freeuk.net with smtp (Exim 4.22)
-	id 19x4Nw-000M3j-R2
-	for nfs@lists.sourceforge.net; Wed, 10 Sep 2003 13:47:48 +0100
+	id 19x4UU-000MCq-V6
+	for nfs@lists.sourceforge.net; Wed, 10 Sep 2003 13:54:35 +0100
 To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -35,7 +35,7 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a multi-part message in MIME format.
 
-------=_NextPart_000_000C_01C377A3.8630B720
+------=_NextPart_000_0010_01C377A4.7849F300
 Content-Type: text/plain;
 	charset="iso-8859-1"
 Content-Transfer-Encoding: 7bit
@@ -68,7 +68,7 @@ Robert Pawlowicz
 robert@pawlowicz.com
 tel: 0114 250 7786
 
-------=_NextPart_000_000C_01C377A3.8630B720
+------=_NextPart_000_0010_01C377A4.7849F300
 Content-Type: text/html;
 	charset="iso-8859-1"
 Content-Transfer-Encoding: quoted-printable
@@ -79,6 +79,7 @@ Content-Transfer-Encoding: quoted-printable
 charset=3Diso-8859-1">
 <META content=3D"MSHTML 6.00.2800.1226" name=3DGENERATOR></HEAD>
 <BODY>
+<DIV>
 <DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana=20
 size=3D2>Hello</FONT></SPAN></DIV>
 <DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana size=3D2>I =
@@ -139,9 +140,9 @@ href=3D"mailto:robert@pawlowicz.com">robert@pawlowicz.com</A></FONT></DIV=
 <DIV><FONT face=3DVerdana size=3D2><FONT =
 color=3D#808080><STRONG>tel:</STRONG></FONT>=20
 0114 250 7786</FONT></DIV>
-<DIV>&nbsp;</DIV></BODY></HTML>
+<DIV>&nbsp;</DIV></DIV></BODY></HTML>
 
-------=_NextPart_000_000C_01C377A3.8630B720--
+------=_NextPart_000_0010_01C377A4.7849F300--
 
 
 
