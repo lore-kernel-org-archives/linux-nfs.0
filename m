@@ -1,19 +1,16 @@
-From: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
-Subject: Re: can't get request slot, write timeout
-Date: Tue, 13 Aug 2002 12:52:49 +0200 (CEST)
+From: "george drossos" <drossos21@hotmail.com>
+Subject: nfs problem
+Date: Tue, 13 Aug 2002 11:44:10 +0000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0208131229500.15089-100000@kenzo.iwr.uni-heidelberg.de>
-References: <shsadnroqw7.fsf@charged.uio.no>
+Message-ID: <F118hBAgKR7ANimhYOj0000f31f@hotmail.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail.iwr.uni-heidelberg.de ([129.206.104.30])
+Received: from f118.law11.hotmail.com ([64.4.17.118] helo=hotmail.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17eZIF-0001T5-00
-	for <nfs@lists.sourceforge.net>; Tue, 13 Aug 2002 03:52:55 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <shsadnroqw7.fsf@charged.uio.no>
+	id 17ea62-0004xC-00
+	for <nfs@lists.sourceforge.net>; Tue, 13 Aug 2002 04:44:22 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,38 +23,47 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On 12 Aug 2002, Trond Myklebust wrote:
 
-> I wasn't aware that you'd seen better behaviour with the last set of
-> patches. Feedback is always welcome - particularly now when I'm trying
-> to work out exactly what we should aim to get into kernel 2.4.20! 
 
-I actually haven't reached a conclusion yet as a result of lack of time.  
-My plan was to test it in a controlled "bad" environment, with big speed
-(CPU and disk) difference between client and server (and changing roles
-afterwards) and with simulated network problems (duplex mismatch, ping
-flood, forced Tx timeout). I _think_ that I've already seen an 
-improvement, but testing was interrupted by other duties and I'll probably 
-have to restart it as I don't have the same hardware anymore :-(
+I'm a student in South Bank University London and i,m working on a project 
+"distibuted and parallel processing in Linux".
+I tried to set up NFS(i have 1 server and 2 clients).
+My kernel version is 2.4.18-3 and i installed red.hat 7.3.I didn't install 
+any other operation system.
+I check that nfs is running on the server(all the daemons as start-up 
+scripts)and i ckeck that nfs is running on the clients as well.
+I edit /etc/exports i wrote the directory that i want to export and the 
+destination hosts.
+About the clients,the mount version is 2.10n,nfs daemons are running.
+I red the file /proc/filesystems if nfs was there,it wasn't but appeared by 
+typing insmod nfs.I check again the services by typing rpcinf -p and 
+everything was ok.
+When i try to mount the remote directory i have error message:
+    mount:RPC:Port mapper failure-RPC:Unable to receive
 
-> The only TCP trick we cannot implement is that of sending messages of
-> length > 1.5k without using fragmentation. That again means that if 1
-> fragment is lost, we have to resend 32k (or 8k or whatever the r/wsize
-> is set to) rather than only the 1.5k that was actually missing...
+I checked again that NFS was running in three machines and afterwards i 
+typed on each client:
+                      rpcinfo -p servername
+the error message was:
+  rpcinfo:can't contact portmapper:RPC remote system error:Connection   
+refused
 
-Would it be possible that if the client detects too many fragments to be 
-retransmitted _and_ the fragment size is high (like 32k) to scale back and 
-only send smaller fragments ? Would that break any NFS rule ?
-And I don't know how the actual size would be communicated back to 
-user-space...
+Also i want to say in the case that there is a routing problem,i ping the 
+machines and everything is ok.The only problem that i have until now is that 
+i cannot connect the clients with the university's network.When i ping the 
+default gateway (from the clients) says Network is unreachable.In the case 
+of server(has 2 network cards) i ping everything and the university network 
+is reachable.
 
--- 
-Bogdan Costescu
+I would really appreciate replying and i'm really looking forward your 
+suggestions and advices.
 
-IWR - Interdisziplinaeres Zentrum fuer Wissenschaftliches Rechnen
-Universitaet Heidelberg, INF 368, D-69120 Heidelberg, GERMANY
-Telephone: +49 6221 54 8869, Telefax: +49 6221 54 8868
-E-mail: Bogdan.Costescu@IWR.Uni-Heidelberg.De
+                       George Drossos
+
+
+_________________________________________________________________
+Join the world’s largest e-mail service with MSN Hotmail. 
+http://www.hotmail.com
 
 
 
