@@ -1,32 +1,16 @@
 From: Marc Eshel <eshel@almaden.ibm.com>
-Subject: Re: [patch] lockd control of grace period for HA NFS
-Date: Tue, 23 Nov 2004 21:35:15 -0800
-Message-ID: <OF52F55A44.344CB7E1-ON88256F56.001C6CDC-88256F56.001EB19E@us.ibm.com>
-References: <1101270495.10964.22.camel@lade.trondhjem.org>
+Subject: Re: [PATCH] STATD - SM_NOTIFY have wrong ID_NAME on multihost servers.
+Date: Tue, 23 Nov 2004 20:42:03 -0800
+Message-ID: <OF90CC1740.E2696C2A-ON88256F56.00176685-88256F56.0019D29A@us.ibm.com>
+References: <41A3D9CC.7040404@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: nfs@lists.sourceforge.net,
+        Ragnar=?ISO-8859-1?Q?Kj=F8rstad?= <nfs@ragnark.vestdata.no>,
+        nfs-admin@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CWpsT-0006l2-DC
-	for nfs@lists.sourceforge.net; Tue, 23 Nov 2004 21:39:41 -0800
-Received: from e5.ny.us.ibm.com ([32.97.182.105])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.41)
-	id 1CWpsS-0002Ft-Ag
-	for nfs@lists.sourceforge.net; Tue, 23 Nov 2004 21:39:41 -0800
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e5.ny.us.ibm.com (8.12.10/8.12.9) with ESMTP id iAO5dXHt735318
-	for <nfs@lists.sourceforge.net>; Wed, 24 Nov 2004 00:39:33 -0500
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay04.pok.ibm.com (8.12.10/NCO/VER6.6) with ESMTP id iAO5dXXb271952
-	for <nfs@lists.sourceforge.net>; Wed, 24 Nov 2004 00:39:33 -0500
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11/8.12.11) with ESMTP id iAO5dWXU003449
-	for <nfs@lists.sourceforge.net>; Wed, 24 Nov 2004 00:39:33 -0500
-In-Reply-To: <1101270495.10964.22.camel@lade.trondhjem.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <41A3D9CC.7040404@RedHat.com>
+To: Steve Dickson <SteveD@redhat.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -42,35 +26,133 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
 
-Trond Myklebust <trond.myklebust@fys.uio.no> wrote on 11/23/2004 08:28:15
-PM:
+nfs-admin@lists.sourceforge.net wrote on 11/23/2004 04:46:04 PM:
 
-> ty den 23.11.2004 Klokka 19:38 (-0800) skreiv Marc Eshel:
-> > Can you please consider adding this patch to lockd which is can be very
-> > helpful for HA NFS.
+> Ragnar Kj=F8rstad wrote:
 
-> Why are you apparently inventing one system for NFSv2/v3 and a different
-> one for NFSv4 here?
+> >On Tue, Nov 23, 2004 at 03:28:07PM -0500, Steve Dickson wrote:
+> >
+> >
+> >>Here is a patch that make sure the correct hostname is used
+> >>in the SM_NOTIFY message what is sent from a rebooted server
+> >>that has multiple network interfaces.
+> >>
+> >>Using the network part of the destination address, the correct netw=
+ork
+> >>interface is found. Then a gethostbyaddr() on that interface is don=
+e,
+> >>which yields the correct hostname that should be sent in the notify=
 
-> The right way to do this is to have nfsd initiate NFSv4 state recovery,
-> and have it call lockd back in order to notify it of the "reboot
-> situation".
+> >>message....
+> >>
+> >>Comments?
+> >>
+> >>
+> >
+> >It has been a while since I looked at this code, but:
+> >1. What happens when you run statd with the "-n" option?
+> >   Does this patch override the name the user gave?
+> >
+> >
+> hmm.... this is a problem, since the global SM_stat_chge.mon_name
+> that the -n sets is now ignored... I guess I was thinking it would be=
 
-What I am trying to do is deny lock requests from all nodes in an HA
-environment on nodes that are not part of the failure or takeover until
-failover is complete and clients of the failed node have had a chance to
-reclaim their locks. The rest of the clients are just temporarily blocked.
-They will NOT have to reclaim locks and they should not be notified of a
-reboot.
-Can you say more on how NFSv4 state recovery and lockd be used in this
-situation ?
+better
+> for statd to dynamically set the name that sent the notify message.
+> But it would probably be a smart to maintain the same functionality.
 
-Thanks, Marc.
+> Question: do people actually run multiple statds using the -n to defi=
+ne
+> the interface they monitor?  That's a scenario  I guess  I didn't thi=
+nk
+> of but
+> it sound a bit awkward....
 
-> Cheers,
-> Trond
-> --
-> Trond Myklebust <trond.myklebust@fys.uio.no>
+Yes, for HA NFS the server uses statd with -n and -N (notify only) for =
+the
+all the interfaces and aliases.
+I posted a patch
+http://marc.theaimsgroup.com/?l=3Dlinux-nfs&m=3D110064006512730&w=3D2
+This fix will send the notify msg using the IP address specified with t=
+he
+-n option to statd. This will fix
+the problem that statd in the kernel (on the client side) has of not be=
+ing
+able to convert mon_name to an IP address (no gethostbyname() in the
+kernel) and any other clients that ignore the mon_name in the notify ms=
+g
+and use the source IP address from the RPC request.
+
+> >2. Does this really find the correct hostname?
+> >   If I'm not mistaken, the nfs client needs to get a SM_NOTIFY mess=
+age
+> >   with the hostname that it actually mounted from, right?
+> >
+> >
+> right....
+
+> >   This may or may not match the hostname that the server find when
+> >   running gethostbyaddr on the interface's IP, so one can easily fi=
+nd
+> >   scenarios where this patch will cause statd to stop working.
+> >
+> >
+> I don't think this is an issue... as long as the hostname and all of =
+its
+> aliases
+> resolve to the same ip address, things should work since its the ip
+address
+> the kernel needs to find the lock that has to be reclaimed... Now the=
+
+> problem
+> arises when the hostname resolves to a different ip address....
+> something this patch
+> is trying to address...
+
+> >   Now, there new behavious may actually be better, but I'm not sure=
+
+> >   it's acceptable to change it anyway?
+> >
+> >
+> Is this truly a big thing? to explicitly define the hostname that wil=
+l
+> be monitored?
+
+> >   Could an alternative be to send out SM_NOTIFY messages for multip=
+le
+> >   hostnames?
+> >
+> I believe this is how some of the Unixs out there  do it... but that
+> always seem a bit
+> verbose and non-exact...
+
+> >Both the one from gethostname() and the ones found by
+> >   reverse lookup from the interfaces? Then I guess the meaning of t=
+he
+> >   "-n" option could be changed to _add_ a hostname to the list of
+> >   names to broadcast for?
+> >
+> >
+> Again I think this is a bit messy especially with hosts that have a t=
+on
+> of interfaces and
+> aliases.... but anything is better than how it works today.... imho..=
+.
+
+> SteveD.
+
+>
+> -------------------------------------------------------
+> SF email is sponsored by - The IT Product Guide
+> Read honest & candid reviews on hundreds of IT Products from real use=
+rs.
+> Discover which products truly live up to the hype. Start reading now.=
+
+> http://productguide.itmanagersjournal.com/
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs=
+
 
 
 
