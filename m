@@ -1,20 +1,19 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: "Wendy Cheng" <s_wendy_cheng@hotmail.com>
 Subject: Re: question on sk_sem within svc_sendto
-Date: 30 Apr 2003 17:30:23 +0200
+Date: Wed, 30 Apr 2003 11:53:11 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsllxsngts.fsf@charged.uio.no>
-References: <E199G1Z-0004eg-00@sc8-sf-list2.sourceforge.net>
-	<BAY2-DAV28rRZ1UbDBR000085f3@hotmail.com>
+Message-ID: <BAY2-DAV68RvTxjoay000008a4a@hotmail.com>
+References: <E199G1Z-0004eg-00@sc8-sf-list2.sourceforge.net><BAY2-DAV28rRZ1UbDBR000085f3@hotmail.com> <shsllxsngts.fsf@charged.uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
+Received: from bay2-dav6.bay2.hotmail.com ([65.54.246.110] helo=hotmail.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19AtXR-0005DF-00
-	for <nfs@lists.sourceforge.net>; Wed, 30 Apr 2003 08:30:30 -0700
-To: "Wendy Cheng" <s_wendy_cheng@hotmail.com>
-In-Reply-To: <BAY2-DAV28rRZ1UbDBR000085f3@hotmail.com>
+	id 19AttZ-0003Vf-00
+	for <nfs@lists.sourceforge.net>; Wed, 30 Apr 2003 08:53:21 -0700
+To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,21 +26,36 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Wendy Cheng <s_wendy_cheng@hotmail.com> writes:
+This makes sense (for me) in TCP case but how about
+UDP ? Does the 2.5.x kernel send multiple NFS UDP 
+packets within one reply (for one single request) ?
 
-     > We're in the middle of fine-tuning our linux-based file server
-     > and currently examining the NFS zero-copy path with 2.5.x
-     > kernel. There is a semaphore (sk_sem) within svc_sendto() that
-     > serializes the outgoing data. Could someone shed some light and
-     > give us an explanation why this semaphore is needed - just for
-     > education purpose.Great thanks...
+Wendy
 
-You need to send one datagram at a time down each socket otherwise the
-client might receive data which is partially from one request,
-partially from another.
+----- Original Message ----- 
+From: "Trond Myklebust" <trond.myklebust@fys.uio.no>
+To: "Wendy Cheng" <s_wendy_cheng@hotmail.com>
+Cc: <nfs@lists.sourceforge.net>
+Sent: Wednesday, April 30, 2003 11:30 AM
+Subject: Re: [NFS] question on sk_sem within svc_sendto
 
-Cheers,
-  Trond
+
+| >>>>> " " == Wendy Cheng <s_wendy_cheng@hotmail.com> writes:
+| 
+|      > We're in the middle of fine-tuning our linux-based file server
+|      > and currently examining the NFS zero-copy path with 2.5.x
+|      > kernel. There is a semaphore (sk_sem) within svc_sendto() that
+|      > serializes the outgoing data. Could someone shed some light and
+|      > give us an explanation why this semaphore is needed - just for
+|      > education purpose.Great thanks...
+| 
+| You need to send one datagram at a time down each socket otherwise the
+| client might receive data which is partially from one request,
+| partially from another.
+| 
+| Cheers,
+|   Trond
+| 
 
 
 -------------------------------------------------------
