@@ -1,19 +1,19 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: can't get request slot, write timeout
-Date: 12 Aug 2002 20:47:52 +0200
+Subject: Re: nfs unlink perf !
+Date: 12 Aug 2002 20:55:19 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsadnroqw7.fsf@charged.uio.no>
-References: <Pine.LNX.4.44.0208121320300.32192-100000@kenzo.iwr.uni-heidelberg.de>
+Message-ID: <shs65yfoqjs.fsf@charged.uio.no>
+References: <8D7D56C6ED3DD411998D009027DC685E0874E214@srv-grp-s1.segin.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Kenneth Howlett <aw464@osfn.org>,  nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-1
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from pat.uio.no ([129.240.130.16])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17eKEQ-0002CG-00
-	for <nfs@lists.sourceforge.net>; Mon, 12 Aug 2002 11:47:58 -0700
-To: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
-In-Reply-To: <Pine.LNX.4.44.0208121320300.32192-100000@kenzo.iwr.uni-heidelberg.de>
+	id 17eKLc-0006DC-00
+	for <nfs@lists.sourceforge.net>; Mon, 12 Aug 2002 11:55:25 -0700
+To: Brasseur =?iso-8859-1?q?Val=E9ry?= <Valery.Brasseur@atosorigin.com>
+In-Reply-To: <8D7D56C6ED3DD411998D009027DC685E0874E214@srv-grp-s1.segin.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,35 +26,37 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->>>>> " " == Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de> writes:
+>>>>> " " =3D=3D Brasseur Val=E9ry <Valery.Brasseur@atosorigin.com> writes:
 
-    >> In the FAQ it says that tcp is faster than udp on congested
-    >> networks.  I think the same effect could be achieved by using
-    >> udp with a small rsize/wsize.
+     > I am testing an application which to a lot of link/unlink
+     > server is a NetApp filer, client is linux 2.4.19+nfs patches.
 
-     > That's debatable. TCP is supposed to handle these cases well
-     > 'cause that's what it was designed for. The NFS client over UDP
-     > just recently got better behaviour through Trond's efforts, but
-     > having it perform just as over TCP would probably mean
-     > re-implementing TCP within NFS. Eh, now Trond can shoot me :-)
+     > under load it seems that the unlink call is very long when all
+     > over calls response time seems to be OK.  is there any problems
+     > with the unlink code ?
 
-No, I agree 100% with what Bogdan said above.
+There should be no problems, but it depends on what type of test you
+are doing...
 
-I wasn't aware that you'd seen better behaviour with the last set of
-patches. Feedback is always welcome - particularly now when I'm trying
-to work out exactly what we should aim to get into kernel 2.4.20! 
+The NFS protocol has to work around some nasty compatibility problems
+w.r.t. the POSIX expected behaviour of unlink. In particular, POSIX
+allows you to do
 
-The most likely explanation for the improved behaviour would be that
-those patches implement most of the known TCP performance tricks for
-congested networks. The only TCP trick we cannot implement is that of
-sending messages of length > 1.5k without using fragmentation. That
-again means that if 1 fragment is lost, we have to resend 32k (or 8k
-or whatever the r/wsize is set to) rather than only the 1.5k that was
-actually missing...
+  open(file);
+  write(file);
+  unlink(file);
+  read(file);
+  close(file);
 
-The above is why the NFSv4 protocol explicitly specifies that NFS over
-TCP *must* be supported, whereas NFS over UDP will only be
-optional (In practice most implementations are likely to support both).
+i.e. to unlink an open file...
+
+In order for the above to work with NFS, one can't immediately unlink
+the file when it is open(). Instead, NFS does a 'sillyrename': it
+renames the file to something of the form .nfsXXXXX (where XXXX is
+some number) and then performs the unlink when the 'close()' has been
+performed.
+
+Would this suffice to explain your 'bad performance'?
 
 Cheers,
   Trond
