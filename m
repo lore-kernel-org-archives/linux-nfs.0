@@ -1,26 +1,18 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: NFS problems across reboot
-Date: Mon, 8 Apr 2002 12:50:20 +1000 (EST)
+From: "H . J . Lu" <hjl@lucon.org>
+Subject: Re: Re: Proposed changes for init file in nfs-utils
+Date: Sun, 7 Apr 2002 20:10:43 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15537.1388.991719.856639@notabene.cse.unsw.edu.au>
-References: <3CACA93C.5010304@blue-labs.org>
-	<3CAD6A78.4205CD61@moving-picture.com>
-	<3CAFCE8C.5030300@blue-labs.org>
-	<15535.55222.401084.736426@notabene.cse.unsw.edu.au>
-	<20020407063953.GA30304@physics.cornell.edu>
+Message-ID: <20020407201043.A17954@lucon.org>
+References: <20020406205304.C2076@ee.duke.edu> <20020407135505.A6580@lucon.org> <15537.823.811512.451102@notabene.cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16uPBp-0008GS-00
-	for <nfs@lists.sourceforge.net>; Sun, 07 Apr 2002 19:47:30 -0700
-Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <freedman@physics.cornell.edu>)
-	(for <nfs@lists.sourceforge.net>) By tone With Smtp ;
-	Mon, 8 Apr 2002 12:47:20 +1000
-To: Daniel Freedman <freedman@physics.cornell.edu>
-In-Reply-To: message from Daniel Freedman on Sunday April 7
+Cc: Sean O'Connell <sean@ee.duke.edu>, nfs@lists.sourceforge.net
+Received: from rwcrmhc54.attbi.com ([216.148.227.87])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 16uPYU-0000xt-00
+	for <nfs@lists.sourceforge.net>; Sun, 07 Apr 2002 20:10:54 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <15537.823.811512.451102@notabene.cse.unsw.edu.au>; from neilb@cse.unsw.edu.au on Mon, Apr 08, 2002 at 12:40:55PM +1000
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -33,32 +25,33 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Sunday April 7, freedman@physics.cornell.edu wrote:
+On Mon, Apr 08, 2002 at 12:40:55PM +1000, Neil Brown wrote:
+> On Sunday April 7, hjl@lucon.org wrote:
+> > 
+> > I checked a slightly different patch. Please check it out and make
+> > sure I didn't break anything.
 > 
-> Hi,
+> ...
+> > +	if [ "$TUNE_QUEUE" = "yes" ]; then
+> > + 	    /sbin/sysctl -w net.core.rmem_default=$NFSD_QS >/dev/null 2>&1
+> > +	    /sbin/sysctl -w net.core.rmem_max=$NFSD_QS >/dev/null 2>&1
+> > +	    /sbin/sysctl -w net.core.wmem_default=$NFSD_QS >/dev/null 2>&1
+> > +	    /sbin/sysctl -w net.core.wmem_max=$NFSD_QS >/dev/null 2>&1
+> > +	fi
 > 
-> I just checked the default NFS server init script from Debian stable (2.2)
-> as found in '/etc/init.d/nfs-kernel-server'.  It appears to violate the
-> above order, by starting exportfs *after* rpc.nfsd.  Am I missing something,
-> please?
-
-You are right.  2.2 has it wrong.  3.0 has it right.
-I don't know the Debian policy on how serious a bug has to be to get
-it fixed in "stable".  This isn't a *very* serious bug, but is
-certainly can cause some problems.
-
+> Though it possibly doesn't hurt, there is nothing to be gained by
+> setting the wmem_{default,max}.
+> Only the rmem needs to be set.  This is because nfsd doesn't take
+> packets off the udp queue until they are completely processed, so the
+> rmem_{default,max} needs to be big enough to hold all currently active
+> requests.
 > 
-> Could this explain why I've seen the same behaviour as described in an
-> earlier post in this thread: in other words, when the NFS server cleanly
-> reboots, all clients with open file handles develop difficulty with NFS
-> access (sorry I can't remember exact error, it hasn't happened in months);
-> come to think of it, though, I don't have this problem with my Debian woody
-> NFS server, which has the correct 'exportfs'/'rpc.nfsd' order in the
-> init-scripts.
 
-Yes.  This would explain exactly that behaviour.
+I guess I don't have to tell you feel free to make any necessary
+changes :-).
 
-NeilBrown
+
+H.J.
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
