@@ -1,19 +1,19 @@
 From: michael <michael@newdream.net>
 Subject: Re: statd segfaults
-Date: Tue, 08 Apr 2003 13:01:59 -0700
+Date: Tue, 08 Apr 2003 13:05:13 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3E932AB7.2010002@newdream.net>
+Message-ID: <3E932B79.9050100@newdream.net>
 References: <3E51D8C8.8000905@newdream.net>	<shsof5a542k.fsf@charged.uio.no> <15954.51958.993033.937277@notabene.cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: multipart/mixed;
- boundary="------------060901060706000808050600"
+ boundary="------------090403050500090809010506"
 Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
 	nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from mail.hq.newdream.net ([66.33.200.10])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 192zJr-0001dV-00
-	for <nfs@lists.sourceforge.net>; Tue, 08 Apr 2003 13:03:47 -0700
+	id 192zMy-00024W-00
+	for <nfs@lists.sourceforge.net>; Tue, 08 Apr 2003 13:07:00 -0700
 To: Neil Brown <neilb@cse.unsw.edu.au>
 In-Reply-To: <15954.51958.993033.937277@notabene.cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -29,14 +29,14 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a multi-part message in MIME format.
---------------060901060706000808050600
+--------------090403050500090809010506
 Content-Type: text/plain; charset=us-ascii; format=flowed
 Content-Transfer-Encoding: 7bit
 
 I have included an ltrace of statd which shows the segfault. any 
 guidance as far as what is going on right before the segfault would be 
 greatly appreciated.  The segfaults are happening many times a day on a 
-large number of servers. the enviornment is debian 3.0. LEt me know if i 
+large number of servers. the enviornment is debian 3.0. Let me know if i 
 have left out and needed info.
 
 thanks!
@@ -68,9 +68,19 @@ Neil Brown wrote:
 > statd.  What does it show?
 > 
 > NeilBrown
+> 
+> 
+> 
+> -------------------------------------------------------
+> This sf.net email is sponsored by:ThinkGeek
+> Welcome to geek heaven.
+> http://thinkgeek.com/sf
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+> 
 
-
---------------060901060706000808050600
+--------------090403050500090809010506
 Content-Type: text/plain;
  name="statd.ltrace"
 Content-Transfer-Encoding: 7bit
@@ -753,7 +763,7 @@ Content-Disposition: inline;
 09:32:43 --- SIGSEGV (Segmentation fault) ---
 09:32:43 +++ killed by SIGSEGV +++
 
---------------060901060706000808050600--
+--------------090403050500090809010506--
 
 
 
