@@ -1,21 +1,20 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: New package of beta-level NFS client updates out for 2.4.19-rc1
-Date: Tue, 9 Jul 2002 11:13:34 +0200
+From: "Paolo Marini" <paolom@prisma-eng.it>
+Subject: Uid/Gid mapping
+Date: Tue, 9 Jul 2002 11:23:39 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <age9sd$gl3$2@main.gmane.org>
-References: <200207081929.43742.trond.myklebust@fys.uio.no>
+Message-ID: <001601c2272a$50f8d670$230d0dc3@Athlon>
 Mime-Version: 1.0
 Content-Type: text/plain;
-  charset="iso-8859-1"
-Cc: Charles Lever <Charles.Lever@netapp.com>
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
+Received: from zombie.comm2000.it ([212.97.32.10] helo=relay.comm2000.it)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17Rr4A-00023Z-00
-	for <nfs@lists.sourceforge.net>; Tue, 09 Jul 2002 02:13:50 -0700
-To: nfs@lists.sourceforge.net,
- linux-kernel@vger.kernel.org
-In-Reply-To: <200207081929.43742.trond.myklebust@fys.uio.no>
+	id 17Rr5R-00028d-00
+	for <nfs@lists.sourceforge.net>; Tue, 09 Jul 2002 02:15:09 -0700
+Received: from Athlon ([212.97.52.190])
+	by relay.comm2000.it (8.11.2/MFAGMM-19990726) with SMTP id g699F1G27470
+	for <nfs@lists.sourceforge.net>; Tue, 9 Jul 2002 11:15:01 +0200
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,19 +27,15 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Monday 08 July 2002 19:29, Trond Myklebust wrote:
+I have read, on the old exports man page, that there is an option to specify
+the mapping between client UID/GID and server UID/GID. It appears to be no
+more in the nfs code. Is there any other way to do this mapping in a static
+way ?
 
-> The DIRECTIO patch has been removed pending a decision by Chuck on whether
-> or not he wants to continue supporting it?
+Thank you
 
-OK. Chuck Lever has confirmed that the NFS DIRECTIO patch will still be 
-supported, so it has been reinstated as part of NFS_ALL. For further details 
-again please see
+Paolo
 
-     http://www.fys.uio.no/~trondmy/src/2.4.19-rc1/HEADER.html
-
-Cheers,
-  Trond
 
 
 -------------------------------------------------------
