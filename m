@@ -1,22 +1,21 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: Null characters in files on NFS mounted volume....
-Date: Tue, 14 May 2002 06:29:34 +1000 (EST)
+From: Greg Lindahl <lindahl@keyresearch.com>
+Subject: Re: Re: NFS retry on disconnection
+Date: Mon, 13 May 2002 14:04:01 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15584.8750.59660.285982@notabene.cse.unsw.edu.au>
-References: <3CDFCE9F.2BE050D5@fnal.gov>
+Message-ID: <20020513140401.A2381@wumpus.keyresearch.com>
+References: <OFAE43C5AB.44E1A1F2-ON87256BB8.00590C28@boulder.ibm.com> <200205131953.g4DJr0f30734@buggy.badula.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs list <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
+Received: from nixon.xkey.com ([209.245.148.124])
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 177MSI-0001uz-00
-	for <nfs@lists.sourceforge.net>; Mon, 13 May 2002 13:30:02 -0700
-Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <yocum@fnal.gov>) (for <nfs@lists.sourceforge.net>) By tone With
-	Smtp ; Tue, 14 May 2002 06:29:53 +1000
-To: Dan Yocum <yocum@fnal.gov>
-In-Reply-To: message from Dan Yocum on Monday May 13
+	id 177Mys-00050F-00
+	for <nfs@lists.sourceforge.net>; Mon, 13 May 2002 14:03:43 -0700
+Received: (from lindahl@localhost)
+	by localhost.conservativecomputer.com (8.11.6/8.11.0) id g4DL41R02386
+	for nfs@lists.sourceforge.net; Mon, 13 May 2002 14:04:01 -0700
+To: nfs@lists.sourceforge.net
+In-Reply-To: <200205131953.g4DJr0f30734@buggy.badula.org>; from ionut@cs.columbia.edu on Mon, May 13, 2002 at 03:53:00PM -0400
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,27 +28,28 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Monday May 13, yocum@fnal.gov wrote:
-> Hi all,
+On Mon, May 13, 2002 at 03:53:00PM -0400, Ion Badulescu wrote:
+
+> > Though you didn't answer the question, your advice implies that the Linux
+> > NFSv3 filesystem driver retries forever when communication with the NFS
+> > server has been lost.  If not, please correct us.
 > 
-> I've got a "New and Exciting" <tm> bug using 2.4.18 with Trond's client
-> patches (sans the rpc_tweaks dif), but I'm not sure it's a client side
-> problem.
+> The default is 'hard' which will retry forever.
 > 
-> This is an intermitent problem:  When attempting to read a file (any file)
-> on an NFS mounted volume, there appear to be "holes" in the file filled with
-> ASCII NULL characters.  Reading the file on the local machines shows no such
-> holes, and other NFS clients don't see the holes, either.  A simple
-> umount/remount solves the problem.
+> You can mount with '-o soft' which will give you the desired data corruption.
 
-I remembers long ago some referred to NFS as
-   Nulls Frequently Substituted
-because they were experiencing exactly this sort of thing, and it
-wasn't on Linux at all.
+Linux NFS isn't any different from any other OS in this treatment of
+"soft" and "hard", although I guess an OS could have a default to
+"soft", which would be a bad idea.
 
-You wouldn't be using 'soft' mounts would you?
+"Best practices" is to mount "hard,intr" so the user can interrupt the
+process if they wish to... otherwise it will wait until the problem is
+fixed. You should also use automounts to ensure that a minimum number
+of filesystems are mounted, especially if you have a complicated setup
+with many infrequently-used filesystems.
 
-NeilBrown
+greg
+
 
 _______________________________________________________________
 
