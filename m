@@ -1,31 +1,22 @@
-From: Nicolas.Kowalski@imag.fr
+From: jehan procaccia <jehan.procaccia@int-evry.fr>
 Subject: Re: async vs. sync
-Date: Mon, 22 Nov 2004 22:45:09 +0100
-Message-ID: <Pine.WNT.4.61.0411222233280.1888@chalanches>
-References: <482A3FA0050D21419C269D13989C61130435EBD2@lavender-fe.eng.netapp.com>
- <41A2594F.5000909@int-evry.fr>
+Date: Mon, 22 Nov 2004 23:06:13 +0100
+Message-ID: <41A262D5.4090402@int-evry.fr>
+References: <482A3FA0050D21419C269D13989C61130435EBD5@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CWMK5-0007JC-He
-	for nfs@lists.sourceforge.net; Mon, 22 Nov 2004 14:06:13 -0800
-Received: from imag.imag.fr ([129.88.30.1])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1CWMJo-00011x-P4
-	for nfs@lists.sourceforge.net; Mon, 22 Nov 2004 14:06:13 -0800
-Received: from mail-veri.imag.fr (mail-veri.imag.fr [129.88.43.52])
-	by imag.imag.fr (8.13.0/8.13.0) with ESMTP id iAMLjCgx019629
-	(version=TLSv1/SSLv3 cipher=EDH-RSA-DES-CBC3-SHA bits=168 verify=NO)
-	for <nfs@lists.sourceforge.net>; Mon, 22 Nov 2004 22:45:12 +0100 (CET)
-Received: from kowalski-vpn.imag.fr ([129.88.61.129] helo=localhost)
-	by mail-veri.imag.fr with esmtp (Exim 3.35 #1 (Debian))
-	id 1CWLzj-0000NG-00
-	for <nfs@lists.sourceforge.net>; Mon, 22 Nov 2004 22:45:11 +0100
-To: nfs@lists.sourceforge.net
-In-Reply-To: <41A2594F.5000909@int-evry.fr>
+	id 1CWMKK-0007Jz-PJ
+	for nfs@lists.sourceforge.net; Mon, 22 Nov 2004 14:06:28 -0800
+Received: from smtp2.int-evry.fr ([157.159.10.45])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1CWMK9-0008PY-N5
+	for nfs@lists.sourceforge.net; Mon, 22 Nov 2004 14:06:28 -0800
+To: "Lever, Charles" <Charles.Lever@netapp.com>
+In-Reply-To: <482A3FA0050D21419C269D13989C61130435EBD5@lavender-fe.eng.netapp.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,30 +30,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, 22 Nov 2004, jehan procaccia wrote:
+Lever, Charles wrote:
 
-> Anyone is getting the same performance as me in server sync mode ?, if 
-> someone could just tar xvfz any recent httpd.tar.gz file (nearly 3000 source 
-> files) and let me know how it take on their nfs configuration ?
+>>[root@arvouin tmp]# mount cobra3:/p2v5f1 -o 
+>>async,wsize=32768,rsize=32768,soft /mnt/cobra3
+>>    
+>>
+>
+>um.  you're not using NFS version 3?
+>
+>  
+>
+I though it was a default !?
 
-Using a 2.4.27 Linux client, without any options for the NFS mount, on a 
-100Mbps network, I get this when untarring httpd-2.0.52.tar.gz:
+>not to mention "soft" mounts are also truly the spawn of satan.
+>  
+>
+OK I remove it, and force nfs v3
+$mount cobra3:/p2v5f1 -o async,wsize=32768,rsize=32768,nfsvers=3 /mnt/cobra3
 
-real    1m33.781s
-user    0m0.610s
-sys     0m0.980s
+It is about to take the same very long time :-(
 
-Server information:
+However what stricks me is that although I asked for r&wsize of 32 K , 
+looking at /proc/mounts show :
+$cat /proc/mounts
+cobra3:/p2v5f1 /mnt/cobra3 nfs 
+rw,v3,rsize=8192,wsize=8192,hard,tcp,lock,addr=cobra3 0 0
 
-- Dual-Xeon 2.4Ghz, 1GB RAM, U160 73GB SCSI disks
+8 K r&wsize ??? I also tried with 16K it's still shows 8K ?, howerver 
+moving from soft to hard did shows up in /proc/mounts .
+Again, How can we check every options of an NFS mounted filesystem on 
+the client side ? (other than /proc/mountd) .
 
-- Linux 2.4.27, XFS filesystems, quotas (user,group) on, no ACL, sync
-   exports.
+thanks .
 
-Regards.
 
--- 
-Nicolas
 
 
 
