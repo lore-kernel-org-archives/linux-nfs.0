@@ -1,25 +1,30 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: How to unlock a file if an NFSv3 client dies forever?
-Date: Wed, 26 May 2004 12:22:50 -0400
+From: Jeffrey Layton <jtlayton@poochiereds.net>
+Subject: fcntl locks prevent unmounting of underlying filesystem
+Date: Wed, 26 May 2004 12:43:15 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1085588570.3763.24.camel@lade.trondhjem.org>
-References: <4F28105F70F4324A8723F0C949088941C29A36@pa-exch5.vmware.com>
+Message-ID: <1085589795.20517.41.camel@tesla.mmt.bellhowell.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BT1B6-0003XF-QE
-	for nfs@lists.sourceforge.net; Wed, 26 May 2004 09:22:52 -0700
-Received: from dh132.citi.umich.edu
-	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.30)
-	id 1BT1B6-0007dx-8Q
-	for nfs@lists.sourceforge.net; Wed, 26 May 2004 09:22:52 -0700
-To: Howie Xu <howie@vmware.com>
-In-Reply-To: <4F28105F70F4324A8723F0C949088941C29A36@pa-exch5.vmware.com>
+	id 1BT1Ut-0007sx-4A
+	for nfs@lists.sourceforge.net; Wed, 26 May 2004 09:43:19 -0700
+Received: from rdu26-93-067.nc.rr.com ([66.26.93.67] helo=salusa.poochiereds.net)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1BT1Us-0003jK-Kz
+	for nfs@lists.sourceforge.net; Wed, 26 May 2004 09:43:18 -0700
+Received: from localhost (localhost [127.0.0.1])
+	by salusa.poochiereds.net (Postfix) with ESMTP id BE7CEE429
+	for <nfs@lists.sourceforge.net>; Wed, 26 May 2004 12:43:09 -0400 (EDT)
+Received: from salusa.poochiereds.net ([127.0.0.1])
+	by localhost (salusa [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id 14956-07 for <nfs@lists.sourceforge.net>;
+	Wed, 26 May 2004 12:43:09 -0400 (EDT)
+Received: from localhost (salusa.poochiereds.net [192.168.1.2])
+	by salusa.poochiereds.net (Postfix) with ESMTP id 6CF462622
+	for <nfs@lists.sourceforge.net>; Wed, 26 May 2004 12:43:09 -0400 (EDT)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,30 +37,98 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 on , 26/05/2004 klokka 04:03, skreiv Howie Xu:=20
-> For example, if my linux NFS client holds a write lock on /home/howie/REA=
-DME,
-> then crashes and I reinstall the OS upon rebooting. Does that mean my NFS
-> server will hold this lock on this file *forever*? The NFS locks are
-> advisory, but my other NFS clients who speak NLM with the same NFS server
-> will not be granted lock for a file no one else ever cares.:(
+I've seem to have run across a problem with NFS and fcntl locks. I'm
+trying to implement a HA-NFS solution using heartbeat, DRBD, LVM2, etc.
+I'm running the following:
 
-Here's a hack for how to do it.
+2.6.6 kernel
+nfs-kernel-server and nfs-common 1.0.6-3 (debian packages)
+
+The underlying filesystem is reiserfs. Essentially what I'm seeing is
+that when I try to shut down NFS and unmount the filesystem for a
+failover, I'm unable to unmount if I have an fcntl lock on the file.
+
+Here's the C program I used to test the locks (my C coding is not the
+best, I copied a lot of this from R. Stevens' book):
 
 
-On the client:
+-------------------------[snip]------------------------
 
-        Stop the rpc.statd service
-        touch /var/lib/nfs/sm/<ip-address-of-my-server>
-        then restart rpc.statd
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <stdio.h>
+                                                                                
+#define write_lock(fd, offset, whence, len) \
+        lock_reg(fd, F_SETLK, F_WRLCK, offset, whence, len)
+                                                                                
+int main( int argv, char *argc[] ) {
+                                                                                
+    int fd;
+                                                                                
+    fd = open(argc[1], O_RDWR);
+ 
+    if ( write_lock(fd, 0, SEEK_SET, 0) < 0 ) {
+        printf("Unable to acquire lock!\n");
+    } else {
+        printf("Got the lock. Sleeping for 300 secs.\n");
+        sleep(300);
+    }
+ 
+    close(fd);
+}
+ 
+int lock_reg (int fd, int cmd, int type, off_t offset, int whence, off_t
+len) {
+ 
+    struct flock lock;
+ 
+    lock.l_type = type;
+    lock.l_start = offset;
+    lock.l_whence = whence;
+    lock.l_len = len;
+ 
+    return (fcntl(fd, cmd, &lock)); 
+}
 
-Note that on some distributions, the path is /var/lib/nfs/statd/sm. It
-may also be that your distribution runs rpc.statd as an unprivileged
-user, in which case make sure that you chown the file
-<ip-address-of-my-server> to that unprivileged user account.
+-----------------------[snip]-----------------------------
 
-Cheers,
-  Trond
+I run this program against a file on an NFS mounted directory on the
+client machine. On the server, I then shut down NFS (using the debian
+nfs-common and nfs-kernel-server startup scripts).
+
+I'm then unable to unmount the underlying filesystem. The error message
+is (yes, umount prints it twice for some reason):
+
+umount: /services/NFS/home: device is busy
+umount: /services/NFS/home: device is busy
+
+If I then start up NFS again, and kill the locktest program, I'm then
+able to shut down nfs and unmount the filesystem.
+
+I also did a test where I just opened the file r/w without locking it,
+and it didn't seem to have the same problem, so it seems like the
+fcntl() lock is what is causing the problem (though I could be wrong
+here).
+
+I've been able to replicate this problem with /proc/fs/nfsd mounted and
+unmounted on the server.
+
+I also tried applying the exportfs patch that was in the thread:
+
+   nfsd, rmtab, failover, and stale filehandles
+
+on this mailing list earlier this month, and it didn't help. Has anyone
+else seen this problem?
+
+If there's any other info you need me to provide to help diagnose this,
+please don't hesitate to ask!
+
+Thanks,
+Jeff
+
+
 
 
 -------------------------------------------------------
