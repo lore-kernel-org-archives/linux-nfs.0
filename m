@@ -1,24 +1,23 @@
-From: Olaf Kirch <okir@suse.de>
+From: Paul Clements <paul.clements@steeleye.com>
 Subject: Re: [PATCH / RFC] nfs-utils: High Availability NFS
-Date: Fri, 27 Aug 2004 09:30:49 +0200
+Date: Fri, 27 Aug 2004 09:13:06 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040827073049.GA23324@suse.de>
-References: <4124DB86.9060505@steeleye.com> <16677.22269.988036.787320@cse.unsw.edu.au> <412E1C10.5020703@steeleye.com>
+Message-ID: <412F3362.5040707@steeleye.com>
+References: <4124DB86.9060505@steeleye.com> <16677.22269.988036.787320@cse.unsw.edu.au> <412E1C10.5020703@steeleye.com> <20040827073049.GA23324@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C0bHs-0001IO-ED
-	for nfs@lists.sourceforge.net; Fri, 27 Aug 2004 00:36:40 -0700
-Received: from cantor.suse.de ([195.135.220.2])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.34)
-	id 1C0bHq-0000Z4-WE
-	for nfs@lists.sourceforge.net; Fri, 27 Aug 2004 00:36:40 -0700
-To: Paul Clements <paul.clements@steeleye.com>
-In-Reply-To: <412E1C10.5020703@steeleye.com>
+	id 1C0gXj-0003rL-Oa
+	for nfs@lists.sourceforge.net; Fri, 27 Aug 2004 06:13:23 -0700
+Received: from stat16.steeleye.com ([209.192.50.48] helo=fenric.sc.steeleye.com)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1C0gXj-0005kh-7P
+	for nfs@lists.sourceforge.net; Fri, 27 Aug 2004 06:13:23 -0700
+To: Olaf Kirch <okir@suse.de>
+In-Reply-To: <20040827073049.GA23324@suse.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,26 +32,39 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 Hi,
 
-I'm working on putting statd into the kernel, so I'm necessarily not
-too enthusiastic about adding external callouts to statd :)
 
-On Thu, Aug 26, 2004 at 01:21:20PM -0400, Paul Clements wrote:
-> statd events that trigger a callout:
-> -----------------------------------
-> add client to notify list (SM_MON) - triggers "add-client" callout
+Olaf Kirch wrote:
+
+> I'm working on putting statd into the kernel, so I'm necessarily not
+> too enthusiastic about adding external callouts to statd :)
+
+With so many things moving out of the kernel to userland, it's 
+surprising to see statd moving into the kernel. And it certainly does 
+make modifications, such as this, much more difficult.
+
+> On Thu, Aug 26, 2004 at 01:21:20PM -0400, Paul Clements wrote:
 > 
-> delete client from notify list (SM_UNMON and SM_UNMONALL) - triggers 
-> "del-client" callout
+>>statd events that trigger a callout:
+>>-----------------------------------
+>>add client to notify list (SM_MON) - triggers "add-client" callout
+>>
+>>delete client from notify list (SM_UNMON and SM_UNMONALL) - triggers 
+>>"del-client" callout
+> 
+> 
+> I think the same could be achieved by attaching a dnotify handler to
+> the directory, and it would be compatible with a kernel level statd.
 
-I think the same could be achieved by attaching a dnotify handler to
-the directory, and it would be compatible with a kernel level statd.
+But the callout happens before statd replies to the client, so there's 
+no chance that we lose any clients if there's a failure. If we use 
+dnotify then we only find out there's been a change after the change has 
+occurred, which means the client may have already gotten a reply saying 
+he's been added to the notify list. If we get a failure at this point, 
+we've lost a client, and upon failover the client's locks are no longer 
+valid.
 
-Cheers
-Olaf
--- 
-Olaf Kirch     |  The Hardware Gods hate me.
-okir@suse.de   |
----------------+ 
+--
+Paul
 
 
 -------------------------------------------------------
