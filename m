@@ -1,20 +1,30 @@
-From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 7 of 9] nfsd4: postpone release of stateowner on CLOSE
-Date: Fri, 03 Sep 2004 12:34:26 +1000
+From: Kedar Sovani <kedars@hotpop.com>
+Subject: Re: [PATCH / RFC] nfs-utils: High Availability NFS
+Date: 03 Sep 2004 12:58:45 +0530
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1C33uE-00043A-Ix@notabene.cse.unsw.edu.au>
-References: <20040903122815.15453.patches@notabene>
-Cc: nfs@lists.sourceforge.net
+Message-ID: <1094196525.2283.3.camel@localhost.localdomain>
+References: <4124DB86.9060505@steeleye.com>
+	 <16677.22269.988036.787320@cse.unsw.edu.au> <412E1C10.5020703@steeleye.com>
+	 <20040827073049.GA23324@suse.de> <412F3362.5040707@steeleye.com>
+	 <20040830082510.GD28454@suse.de>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: Paul Clements <paul.clements@steeleye.com>,
+	Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C33uO-000057-Im
-	for nfs@lists.sourceforge.net; Thu, 02 Sep 2004 19:34:36 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1C33uN-0007KU-Qw
-	for nfs@lists.sourceforge.net; Thu, 02 Sep 2004 19:34:36 -0700
-To: Andrew Morton <akpm@osdl.org>
+	id 1C38VE-0002wq-M7
+	for nfs@lists.sourceforge.net; Fri, 03 Sep 2004 00:28:56 -0700
+Received: from smtp-out.hotpop.com ([38.113.3.71])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
+	id 1C38VD-0004l4-TA
+	for nfs@lists.sourceforge.net; Fri, 03 Sep 2004 00:28:56 -0700
+Received: from hotpop.com (kubrick.hotpop.com [38.113.3.103])
+	by smtp-out.hotpop.com (Postfix) with SMTP id 64E1410A2360
+	for <nfs@lists.sourceforge.net>; Fri,  3 Sep 2004 07:28:36 +0000 (UTC)
+To: Olaf Kirch <okir@suse.de>
+In-Reply-To: <20040830082510.GD28454@suse.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -27,77 +37,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+NFS Server keeps state about the recent responses given to the clients,
+in a reply cache.
+
+Shouldn't that state be replicated to the failed-over NFS server as well
+?
+
+Kedar.
+
+On Mon, 2004-08-30 at 13:55, Olaf Kirch wrote:
+> On Fri, Aug 27, 2004 at 09:13:06AM -0400, Paul Clements wrote:
+> > With so many things moving out of the kernel to userland, it's 
+> > surprising to see statd moving into the kernel. And it certainly does 
+> > make modifications, such as this, much more difficult.
+> 
+> Well, the issue with statd is that it exists _only_ to make lockd happy.
+> But what it really does is make lockd awfully complicated because we
+> have to do upcalls all the time.
+> 
+> So my rationale for moving statd into the kernel is to actually eliminate
+> a lot of code and have a minimal set up functionality in there that does
+> exactly what lockd needs, no more. In particular, no more SM_MON and
+> SM_UNMON support that allows untrusted hosts to do sneaky stuff - instead,
+> lockd writes the /var/lib/nfs/sm files directly. The only thing my kernel
+> statd supports is SM_NOTIFY, and that even is delivered directly to the
+> locking code.
+> 
+> > But the callout happens before statd replies to the client, so there's 
+> > no chance that we lose any clients if there's a failure. If we use 
+> > dnotify then we only find out there's been a change after the change has 
+> > occurred, which means the client may have already gotten a reply saying 
+> > he's been added to the notify list. If we get a failure at this point, 
+> > we've lost a client, and upon failover the client's locks are no longer 
+> > valid.
+> 
+> Doesn't a HA NFS deployment require a shared disk anyway? Why not just
+> move /var/lib/nfs to this file system so it gets shared the same way you
+> share the rest of your data?
+> 
+> Olaf
 
 
-Postpone the release of a stateowner on CLOSE for lease time to enable the
-CLOSE replay cache. Place stateowner on the close_lru list to be reaped by the
-laundromat service.
-
-Signed-off-by: Andy Adamson <andros@umich.edu>
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
-
-### Diffstat output
- ./fs/nfsd/nfs4state.c |   18 +++++++++++-------
- 1 files changed, 11 insertions(+), 7 deletions(-)
-
-diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2004-09-03 11:57:34.000000000 +1000
-+++ ./fs/nfsd/nfs4state.c	2004-09-03 11:57:34.000000000 +1000
-@@ -908,7 +908,7 @@ release_stateid_lockowner(struct nfs4_st
- }
- 
- static void
--release_stateowner(struct nfs4_stateowner *sop)
-+unhash_stateowner(struct nfs4_stateowner *sop)
- {
- 	struct nfs4_stateid *stp;
- 
-@@ -916,7 +916,6 @@ release_stateowner(struct nfs4_stateowne
- 	list_del(&sop->so_strhash);
- 	list_del(&sop->so_perclient);
- 	list_del(&sop->so_perlockowner);
--	list_del(&sop->so_close_lru);
- 	del_perclient++;
- 	while (!list_empty(&sop->so_perfilestate)) {
- 		stp = list_entry(sop->so_perfilestate.next, 
-@@ -926,6 +925,13 @@ release_stateowner(struct nfs4_stateowne
- 		else
- 			release_stateid(stp, LOCK_STATE);
- 	}
-+}
-+
-+static void
-+release_stateowner(struct nfs4_stateowner *sop)
-+{
-+	unhash_stateowner(sop);
-+	list_del(&sop->so_close_lru);
- 	free_stateowner(sop);
- }
- 
-@@ -986,11 +992,8 @@ void
- move_to_close_lru(struct nfs4_stateowner *sop)
- {
- 	dprintk("NFSD: move_to_close_lru nfs4_stateowner %p\n", sop);
--	/* remove stateowner from all other hash lists except perclient */
--	list_del_init(&sop->so_idhash);
--	list_del_init(&sop->so_strhash);
--	list_del_init(&sop->so_perlockowner);
- 
-+	unhash_stateowner(sop);
- 	list_add_tail(&sop->so_close_lru, &close_lru);
- 	sop->so_time = get_seconds();
- }
-@@ -1456,7 +1459,8 @@ nfs4_laundromat(void)
- 		}
- 		dprintk("NFSD: purging unused open stateowner (so_id %d)\n",
- 			sop->so_id);
--		release_stateowner(sop);
-+		list_del(&sop->so_close_lru);
-+		free_stateowner(sop);
- 	}
- 	if (clientid_val < NFSD_LAUNDROMAT_MINTIMEOUT)
- 		clientid_val = NFSD_LAUNDROMAT_MINTIMEOUT;
 
 
 -------------------------------------------------------
