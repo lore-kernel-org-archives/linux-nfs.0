@@ -1,25 +1,28 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: read-error on utmp file
-Date: Mon, 06 Sep 2004 13:04:47 -0400
+From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Subject: Re: Re: more on silly names
+Date: Mon, 6 Sep 2004 12:12:01 -0600 (MDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1094490287.8342.69.camel@lade.trondhjem.org>
-References: <41383991.1020108@bio.ifi.lmu.de>
-	 <1094230320.8196.32.camel@lade.trondhjem.org>
-	 <413C0F25.9010206@bio.ifi.lmu.de>
+Message-ID: <Pine.LNX.4.60.0409061206560.10600@harp.ngdc.noaa.gov>
+References: <Pine.LNX.4.60.0409041610230.17016@harp.ngdc.noaa.gov>
+ <1094338737.13791.15.camel@lade.trondhjem.org>
+ <Pine.LNX.4.60.0409041813340.17016@harp.ngdc.noaa.gov>
+ <1094344893.13791.68.camel@lade.trondhjem.org> <Pine.LNX.4.60.0409041924010.17016@harp.ngdc.noaa.gov>
+Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C4MvQ-0004Cd-Ne
-	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 10:05:04 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1C4MvN-0004wO-UL
-	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 10:05:03 -0700
-To: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
-In-Reply-To: <413C0F25.9010206@bio.ifi.lmu.de>
+	id 1C4NyM-0004ST-NL
+	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 11:12:10 -0700
+Received: from harp.ngdc.noaa.gov ([140.172.187.26])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.34)
+	id 1C4NyM-0007OJ-0e
+	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 11:12:10 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <Pine.LNX.4.60.0409041924010.17016@harp.ngdc.noaa.gov>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,31 +35,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 m=E5 , 06/09/2004 klokka 03:17, skreiv Frank Steiner:
+On Sat, 4 Sep 2004, Ara.T.Howard wrote:
 
-> tcpdump -s 9000 -w <file> host curry & while runlevel /boot/utmp; do true=
-; done; killall tcpdump
->=20
-> and started the second loop in another window which caused this first loo=
-p
-> to fail and stop the tcpdump...
+> o.k.  here is the complete strace from the relevant bit (not very long i
+> promise) with some annotations by me.  executing this code from ONE client
+> will cause a silly file to be created - though it eventuall dissapears (the
+> next time this code runs i think).  here is the strace:
+<snip strace>
 
-Ah, right... Sorry, my head hasn't been screwed on correctly...
+i've added a bit of code that detects all the existing sillynames before that
+bit of code it run, determines those that exist after, and then removes any
+new sillynames (those created by that code).  my understanding of the way
+sillynames work is that if any process still required them at the time of
+removal that they would pop back into existence - however, they do not.  so,
+at this point, i'm 100% convinced that
 
-Although we wait on writes, we don't bother to wait on all *reads* to
-complete when closing the file. This means that readahead (which can
-schedule extra pageins asynchronously) may end up causing the file to be
-kept open for longer.
+   - the sillyname is created somewhere in the strace i posted
 
-That is why you are seeing sillyrenames here...
+   - the sillyname is actually some sort of artifact since removing it after
+     that code bit does not result in a new one being created
 
-Now what I still don't understand is why they are being left behind, and
-not cleaned up. That should normally only occur under the situations I
-described earlier.
+this still leaves me very perplexed as to the cause of sillyname in the first
+place.  any opinions (based on the strace) if this is likely due to a bug in
+sqlite or the nfs code base?
 
-Cheers,
-  Trond
+kind regards.
 
+-a
+--
+===============================================================================
+| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
+| PHONE   :: 303.497.6469
+| A flower falls, even though we love it;
+| and a weed grows, even though we do not love it. 
+|   --Dogen
+===============================================================================
 
 
 -------------------------------------------------------
