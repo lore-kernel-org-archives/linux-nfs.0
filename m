@@ -1,21 +1,21 @@
-From: mehta kiran <kiranmehta1981@yahoo.com>
+From: Beschorner Daniel <Daniel.Beschorner@facton.com>
 Subject: Re: Statd problem
-Date: Wed, 30 Mar 2005 01:15:49 -0800 (PST)
-Message-ID: <20050330091549.98769.qmail@web51601.mail.yahoo.com>
+Date: Wed, 30 Mar 2005 11:43:28 +0200
+Message-ID: <BB1F4EFD574E9F409035BDA71C961250023B08@exchange.i-bn>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DGZIs-0007l4-4F
-	for nfs@lists.sourceforge.net; Wed, 30 Mar 2005 01:15:58 -0800
-Received: from web51601.mail.yahoo.com ([206.190.38.206])
-	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
-	id 1DGZIr-0001SY-Ao
-	for nfs@lists.sourceforge.net; Wed, 30 Mar 2005 01:15:58 -0800
-To: Beschorner Daniel <Daniel.Beschorner@facton.com>,
+	id 1DGZjS-0000YP-Sn
+	for nfs@lists.sourceforge.net; Wed, 30 Mar 2005 01:43:26 -0800
+Received: from loewe.unit-netz.de ([212.202.148.42])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.41)
+	id 1DGZjR-0004JE-2R
+	for nfs@lists.sourceforge.net; Wed, 30 Mar 2005 01:43:26 -0800
+To: "'mehta kiran'" <kiranmehta1981@yahoo.com>,
 	"'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
-In-Reply-To: 6667
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,6 +29,16 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hi Kiran,
+
+sm.bak is empty, on the server and the clients.
+I will post tomorrow if 2.6.10 makes a difference.
+
+Thank you
+Daniel
+
+
+----------
 Hi Daniel , 
  That was a typo.
  Remove files from sm.bak if any.
