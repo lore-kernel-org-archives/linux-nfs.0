@@ -1,18 +1,18 @@
-From: =?iso-8859-1?Q?Brasseur_Val=E9ry?= <Valery.Brasseur@atosorigin.com>
-Subject: RE: nfs unlink perf !
-Date: Tue, 13 Aug 2002 18:52:57 +0200
+From: "Heflin, Roger A." <Roger.A.Heflin@conoco.com>
+Subject: RE: nfs permissions / access problem
+Date: Tue, 13 Aug 2002 12:42:51 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <8D7D56C6ED3DD411998D009027DC685E0874E226@srv-grp-s1.segin.com>
+Message-ID: <5CA6F03EF05E0046AC5594562398B9160C76A8@poexmb3.conoco.net>
 Mime-Version: 1.0
 Content-Type: text/plain;
-	charset="iso-8859-1"
-Cc: nfs@lists.sourceforge.net
+	charset="us-ascii"
+Cc: <nl@lippman.org>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from hermes8.atos-group.com ([160.92.18.57] helo=hermes8.segin.com)
+Received: from usamail2.conoco.com ([12.31.208.227])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17eeuZ-00033G-00
-	for <nfs@lists.sourceforge.net>; Tue, 13 Aug 2002 09:52:51 -0700
-To: "'Lever, Charles'" <Charles.Lever@netapp.com>
+	id 17efh2-0002o3-00
+	for <nfs@lists.sourceforge.net>; Tue, 13 Aug 2002 10:42:56 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,116 +25,115 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-> -----Original Message-----
-> From: Lever, Charles [mailto:Charles.Lever@netapp.com]
-> Sent: Tuesday, August 13, 2002 6:21 PM
-> To: 'Brasseur Val=E9ry'
-> Cc: nfs@lists.sourceforge.net
-> Subject: RE: [NFS] nfs unlink perf !
->=20
->=20
-> hi brasseur-
->=20
-> > I check nfsstat, and see a bunch of retrans...
-> > but now when then following your suggestion I 've try to put :
-> >    tcp + rsize/wsize=3D32768 and :
-> >  * take the same time
-> >  * hang on D state under moderate load so I need to reboot=20
-> > very frequently.
->=20
-> if "nfsstat -c" shows lots of retransmissions and you are using
-> NFS over UDP, follow these instructions to increase the transport
-> socket buffer size:
->=20
-> 1.	Become root on your client
-> 2.	cd into /proc/sys/net/core
-> 3.	echo 262143 > rmem_max
-> 4.	echo 262143 > wmem_max
-> 5.	echo 262143 > rmem_default
-> 6.	echo 262143 > wmem_default
-> 7.	Remount your NFS file systems on the client
->=20
 
-already done that ! it's my default config !
 
-> if that doesn't clear your problem, then you probably have a faulty
-> network -- swap your cabling, look for NIC errors on your client
-> and filer, check the statistics on your switch, and be sure duplex
-> and autonegotiation are correctly set.  you can ask your NetApp SE
-> for help diagnosing network problems on the filer if you need it.
 
-no errors are reported by NICs nor switch ! full-duplex is force=20
-on all devices (client,filer,switches ...)
+> Message: 4
+> From: Neal Lippman <nl@lippman.org>
+> Reply-To: nl@lippman.org
+> To: nfs@lists.sourceforge.net
+> Date: Tue, 13 Aug 2002 10:38:08 -0400
+> Subject: [NFS] nfs permissions / access problem
+>=20
+> I am hoping someone can provide some advice. The situation is that I =
+want to=20
+> have available on my nfs server a share that is accessible to a group =
+of=20
+> people connecting from their workstations, but am having trouble doing =
+so.
+>=20
+> Following what I would have done for a local directory, I created the=20
+> directory: /shared and set its ownship to root, with =
+group=3Dsharedgroup, and=20
+> then gave group permissions of rwx. I made sure each user who needs to =
+use=20
+> the shared directory is in the sharedgroup on the server, and for good =
 
+> measure also did so on each workstation (and yes, the gid's are the =
+same on=20
+> each machine). Unfortunately, the directory remains inaccessible via =
+nfs with=20
+> this scheme.
 >=20
-> also try testing from other clients on other networks, if you can.
+	Comment #1: The uid/gid on the server does not matter, it is not =
+necessary for
+	a user to even exist on the server, the gid/uid must exist on the =
+client as
+	this is all that actually matters, and the permissions to the given =
+directory
+	must allow said user to put a file in the directory in question.  In =
+NFS the server
+	basically trusts that the user on the client is who they say they are.
+
+	You were able to mount the disk on the clients correct?   And you did =
+have
+	the users (on the clients) logout after adding a new group to their =
+username on
+	the workstation?=20
+	=20
+	You will only get the groups that you had during your initial login, =
+new groups=20
+	added later are not going to be used until a logout/login.    The =
+groups=20
+	command will report that you are a member of the new group, but without =
+a=20
+	logout/login it is wrong.  Groups does not check to see what gid's the =
+user
+	has, it checks to see what groups you would have if you currently =
+logged in.
+	From alot of what you have said, I think you have a unclear =
+understanding of=20
+	exactly how NFS works (and most other network file systems).
+
+	I would also suggest since you are going to all of the trouble of =
+maintaining
+	separate password/group files that you investigate NIS or something =
+similar,
+	as this simplifies things, and makes everything at lot less work.
+
+> I suspect the problem here is that nfs receives from the client the =
+uid and=20
+> gid that the client process is currently executing under, but does not =
+
+> received the extended group list, and also does not look up that =
+user's=20
+> extended group list on the server but rather just does permission =
+checking=20
+> with the single active uid and gid it received from the client, and so =
+cannot=20
+> access via extended group information.
 >=20
-> > my previous setup was :
-> >  * nfs v3, rsize/wsize=3D8192, udp
-> >=20
-> > my client (DL360) and server  (F880) are connected through=20
-> a dedicated
-> > switch each with 100FD network link to the switch.
-> >=20
-> > any ideas ?
+	No lookup is ever done on the server for gid/uid on any implementation =
+of=20
+	NFS I know of, the listed uid/gid is compared to the permissions on the =
+
+	directory.
+
+> That doesn't strike me as the best way for nfs to operate, although I =
+am am=20
+> sure there was sound design decision involved (maybe overhead of =
+looking up=20
+> the groups on each access, which the os does not have locally as that =
+info is=20
+> already in the process's state information, placed there at login).
 >=20
-> if the above suggestions don't help, get a packet trace.  you can use
-> "tcpdump" on your client, or you can try "pktt" on the filer.
-> ("pktt list" on the filer's console should tell you what you need to
-> know).  pktt produces a trace file in tcpdump format, so you can use
-> tcpdump on your clients to look at the dump.
+	This is because you don't understand exactly how nfs is used, it works
+	exactly like the normal unix file permission setup, doing anything else =
+
+	would make it inconsistant with the way unix file permissions work.
+
+> In any case, it means that I cannot easily export a shared directory =
+in this=20
+> fashion.
 >=20
-> send me the dump if you'd like help.
+	As you describe things it should work, if everything is done correctly.
+
+> So my question is: How do I make an exported folder accessible to a =
+group of=20
+> users?
 >=20
-> > > -----Original Message-----
-> > > From: Lever, Charles [mailto:Charles.Lever@netapp.com]
-> > > Sent: Monday, August 12, 2002 5:48 PM
-> > > To: 'Brasseur Val=E9ry'; nfs@lists.sourceforge.net
-> > > Subject: RE: [NFS] nfs unlink perf !
-> > >=20
-> > >=20
-> > > link RPCs can be very large (much larger than wsize, for=20
-> instance).
-> > > if you use UDP and your network drops lots of packets, large link
-> > > requests will probably require several retransmissions to=20
-> complete.
-> > >=20
-> > > enlarge your transport socket buffer size on the client (see FAQ)
-> > > and/or try NFS over TCP.  also examine your network to see if it
-> > > is clean, and is working optimally.  if your client is attached
-> > > via a more slow link than your server, that can be the source of
-> > > bursty packet loss.
-> > >=20
-> > > > -----Original Message-----
-> > > > From: Brasseur Val=E9ry [mailto:Valery.Brasseur@atosorigin.com]
-> > > > Sent: Monday, August 12, 2002 8:09 AM
-> > > > To: nfs@lists.sourceforge.net
-> > > > Subject: [NFS] nfs unlink perf !
-> > > >=20
-> > > >=20
-> > > > I am testing an application which to a lot of link/unlink
-> > > >=20
-> > > > server is a NetApp filer, client is linux 2.4.19+nfs patches.
-> > > >=20
-> > > > under load it seems that the unlink call is very long when=20
-> > > > all over calls
-> > > > response time seems to be OK.
-> > > > is there any problems with the unlink code ?
-> > > >=20
-> > > > thanks
-> > > >=20
-> > > >=20
-> > > >=20
-> > > > -------------------------------------------------------
-> > > > This sf.net email is sponsored by:ThinkGeek
-> > > > Welcome to geek heaven.
-> > > > http://thinkgeek.com/sf
-> > > > _______________________________________________
-> > > > NFS maillist  -  NFS@lists.sourceforge.net
-> > > > https://lists.sourceforge.net/lists/listinfo/nfs
-> > > >=20
-> > >=20
-> >=20
+> Thanks.
+> nl
 >=20
 
 
