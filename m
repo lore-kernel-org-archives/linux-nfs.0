@@ -1,20 +1,20 @@
 From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: PATCH - SUNRPC 1 of 3 - The new "sk_flags" word in struct svc_sock must be long....
-Date: Tue, 20 Aug 2002 14:24:56 +1000
+Subject: PATCH - SUNRPC 3 of 3 - Call svc_sock_setbufsize when socket created.
+Date: Tue, 20 Aug 2002 14:26:43 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15713.50328.541517.124690@notabene.cse.unsw.edu.au>
+Message-ID: <15713.50435.514970.377770@notabene.cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17h0Zr-0001mU-00
-	for <nfs@lists.sourceforge.net>; Mon, 19 Aug 2002 21:25:11 -0700
+	id 17h0ba-00021l-00
+	for <nfs@lists.sourceforge.net>; Mon, 19 Aug 2002 21:26:59 -0700
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.233.85] == wireless-085.wireless.cse.unsw.EDU.AU)
 	(for <marcelo@conectiva.com.br>) (for <nfs@lists.sourceforge.net>) By
-	tone With Smtp ; Tue, 20 Aug 2002 14:24:59 +1000
+	tone With Smtp ; Tue, 20 Aug 2002 14:26:45 +1000
 To: Marcelo Tosatti <marcelo@conectiva.com.br>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -29,24 +29,65 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 
-As Dave Miller reminded me, 'flags' fields must be unsigned long.
+
+bufsiz is re-evaluated on recv if SK_CHNGBUF is set,
+but recv wil never be reached if the buffers are too small.
+So we have to set to to something vaguely reasonable
+at init time.
+
+This is only important if someone has set the NFS max message 
+size to 32K or larger (standard value is 8K).
+
+Also fix message printed when not enough queue space.
 
 
  ----------- Diffstat output ------------
- ./include/linux/sunrpc/svcsock.h |    2 +-
- 1 files changed, 1 insertion(+), 1 deletion(-)
-
---- ./include/linux/sunrpc/svcsock.h	2002/08/20 03:00:47	1.1
-+++ ./include/linux/sunrpc/svcsock.h	2002/08/20 03:01:25	1.2
-@@ -22,7 +22,7 @@ struct svc_sock {
  
- 	struct svc_serv *	sk_server;	/* service for this socket */
- 	unsigned char		sk_inuse;	/* use count */
--	unsigned int		sk_flags;
-+	unsigned long		sk_flags;
- #define	SK_BUSY		0			/* enqueued/receiving */
- #define	SK_CONN		1			/* conn pending */
- #define	SK_CLOSE	2			/* dead or dying */
+ ./net/sunrpc/svcsock.c |   19 ++++++++++++++++++-
+ 1 files changed, 18 insertions(+), 1 deletion(-)
+
+--- ./net/sunrpc/svcsock.c	2002/08/20 03:02:21	1.2
++++ ./net/sunrpc/svcsock.c	2002/08/20 03:10:50	1.4
+@@ -139,7 +139,7 @@ svc_sock_enqueue(struct svc_sock *svsk)
+ 	    && !test_bit(SK_CLOSE, &svsk->sk_flags)
+ 	    && !test_bit(SK_CONN, &svsk->sk_flags)) {
+ 		/* Don't enqueue while not enough space for reply */
+-		dprintk("svc: socket %p  no space, %d > %ld, not enqueued\n",
++		dprintk("svc: socket %p  no space, %d*2 > %ld, not enqueued\n",
+ 			svsk->sk_sk, svsk->sk_reserved+serv->sv_bufsz,
+ 			sock_wspace(svsk->sk_sk));
+ 		goto out_unlock;
+@@ -572,6 +572,15 @@ svc_udp_init(struct svc_sock *svsk)
+ 	svsk->sk_sk->write_space = svc_write_space;
+ 	svsk->sk_recvfrom = svc_udp_recvfrom;
+ 	svsk->sk_sendto = svc_udp_sendto;
++
++	/* initialise setting must have enough space to
++	 * receive and respond to one request.  
++	 * svc_udp_recvfrom will re-adjust if necessary
++	 */
++	svc_sock_setbufsize(svsk->sk_sock,
++			    3 * svsk->sk_server->sv_bufsz,
++			    3 * svsk->sk_server->sv_bufsz);
++
+ 	set_bit(SK_CHNGBUF, &svsk->sk_flags);
+ 
+ 	return 0;
+@@ -943,6 +952,14 @@ svc_tcp_init(struct svc_sock *svsk)
+ 		svsk->sk_reclen = 0;
+ 		svsk->sk_tcplen = 0;
+ 
++		/* initialise setting must have enough space to
++		 * receive and respond to one request.  
++		 * svc_tcp_recvfrom will re-adjust if necessary
++		 */
++		svc_sock_setbufsize(svsk->sk_sock,
++				    3 * svsk->sk_server->sv_bufsz,
++				    3 * svsk->sk_server->sv_bufsz);
++
+ 		set_bit(SK_CHNGBUF, &svsk->sk_flags);
+ 	}
+ 
 
 
 -------------------------------------------------------
