@@ -1,30 +1,23 @@
-From: "Mario Schroen" <security.schroen@internet24.de>
-Subject: stale NFS Handle and hanging
-Date: Wed, 12 May 2004 11:43:43 +0200
+From: Peter Astrand <peter@cendio.se>
+Subject: clnt_max_conns ?
+Date: Wed, 12 May 2004 22:11:40 +0200 (CEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <DEEHKMKPNJNCFOLCILBKGECLJDAA.security.schroen@internet24.de>
+Message-ID: <Pine.LNX.4.44.0405122206570.22744-100000@maggie.lkpg.cendio.se>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: TEXT/PLAIN; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BNqIb-0003WA-Qw
-	for nfs@lists.sourceforge.net; Wed, 12 May 2004 02:45:13 -0700
-Received: from mailout02.ims-firmen.de ([213.174.32.97])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.30)
-	id 1BNqIb-0005OE-J5
-	for nfs@lists.sourceforge.net; Wed, 12 May 2004 02:45:13 -0700
-Received: from [192.168.1.17] (helo=scanner01.ims-firmen.de)
-	by mailout02.ims-firmen.de with esmtp (Exim 4.30)
-	id 1BNqJK-0000w1-PI
-	for nfs@lists.sourceforge.net; Wed, 12 May 2004 11:45:58 +0200
-Received: from [212.80.225.22] (helo=mschroen)
-	by scanner01.ims-firmen.de with esmtp (Exim 4.30)
-	id 1BNqIW-0005JH-R9
-	for nfs@lists.sourceforge.net; Wed, 12 May 2004 11:45:08 +0200
-To: <nfs@lists.sourceforge.net>
+	id 1BO04s-00011c-KC
+	for nfs@lists.sourceforge.net; Wed, 12 May 2004 13:11:42 -0700
+Received: from mail.cendio.se ([193.12.253.66])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BO04s-00072w-6l
+	for nfs@lists.sourceforge.net; Wed, 12 May 2004 13:11:42 -0700
+Received: from maggie.lkpg.cendio.se (maggie.lkpg.cendio.se [10.47.1.208])
+	by mail.cendio.se (Postfix) with ESMTP id E732B25DA3D
+	for <nfs@lists.sourceforge.net>; Wed, 12 May 2004 22:11:40 +0200 (CEST)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -37,30 +30,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello NFS Friends,
 
-i work since longtime a go with NFS in version v2 and v3
-so that i can say it works fine.
-
-In my current Project i will copy a local File to many NFS Shares on
-Process.
-
-Some time it's possible that any of the NFS Storages are down but not
-dismounted
-so my copy process are hanging thats not really good.
-The same Process hast to notify or to continue his work ...
-
-I have try "intr" mount Parameter and an alarm to the running Process
-but it will not work. A open("FILE",O_NONBLOCK) are hanging around, too.
+How many TCP connections are initiated by the Linux NFS client when using 
+TCP? Solaris, for example, seems to have a parameter called 
+"clnt_max_conns" that controls this. Is there anything similiar for Linux? 
+Does the number of TCP connections depend on the number of mounts?
 
 
-So can you tell me a method to workaround or to reanimate the
-hanging Process for return of some errorstate  ?
-
-
-Best Regreats
-
-Mario Schroen
+-- 
+Peter Åstrand		Chief Developer
+Cendio			www.thinlinc.com
+Teknikringen 3		www.cendio.se
+583 30 Linköping        Phone: +46-13-21 46 00
 
 
 
