@@ -1,28 +1,32 @@
-From: Thomas =?iso-8859-1?Q?Lang=E5s?= <tlan@stud.ntnu.no>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: RedHat Rawhide Kernels
-Date: Fri, 9 Aug 2002 03:04:32 +0200
+Date: 09 Aug 2002 06:51:02 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020809010432.GA12851@stud.ntnu.no>
-References: <Pine.LNX.4.44.0208082017590.23326-100000@xpc1.ast.cam.ac.uk> <20020808153331.F28223@redhat.com> <shs65ylm7hp.fsf@charged.uio.no> <20020808162326.G28223@redhat.com> <15698.54589.795037.127176@charged.uio.no> <20020808165712.H28223@redhat.com> <15698.57249.605357.32060@charged.uio.no> <20020808172729.J28223@redhat.com> <shshei511bu.fsf@charged.uio.no>
-Reply-To: nfs@lists.sourceforge.net
+Message-ID: <shsznvwfxe1.fsf@charged.uio.no>
+References: <Pine.LNX.4.44.0208082017590.23326-100000@xpc1.ast.cam.ac.uk>
+	<20020808153331.F28223@redhat.com> <shs65ylm7hp.fsf@charged.uio.no>
+	<20020808162326.G28223@redhat.com>
+	<15698.54589.795037.127176@charged.uio.no>
+	<20020808165712.H28223@redhat.com>
+	<15698.57249.605357.32060@charged.uio.no>
+	<20020808172729.J28223@redhat.com> <shshei511bu.fsf@charged.uio.no>
+	<20020809010432.GA12851@stud.ntnu.no>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from due.stud.ntnu.no ([129.241.56.71])
+Received: from mons.uio.no ([129.240.130.14])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17cyCk-0005pK-00
-	for <nfs@lists.sourceforge.net>; Thu, 08 Aug 2002 18:04:39 -0700
-Received: from localhost (localhost [127.0.0.1])
-	by due.stud.ntnu.no (Postfix) with ESMTP id E545312B49C
-	for <nfs@lists.sourceforge.net>; Fri,  9 Aug 2002 03:04:33 +0200 (CEST)
-Received: from ozelot.stud.ntnu.no (ozelot.stud.ntnu.no [129.241.56.185])
-	by due.stud.ntnu.no (Postfix) with ESMTP id 2467312B48A
-	for <nfs@lists.sourceforge.net>; Fri,  9 Aug 2002 03:04:33 +0200 (CEST)
-Received: (from tlan@localhost)
-	by ozelot.stud.ntnu.no (8.11.6/8.10.0.Beta12) id g7914Xt13415
-	for nfs@lists.sourceforge.net; Fri, 9 Aug 2002 03:04:33 +0200
-To: NFS maillist <nfs@lists.sourceforge.net>
-In-Reply-To: <shshei511bu.fsf@charged.uio.no>
+	id 17d1k1-0005bt-00
+	for <nfs@lists.sourceforge.net>; Thu, 08 Aug 2002 21:51:13 -0700
+Received: from charged.uio.no ([129.240.86.49])
+	by mons.uio.no with esmtp (Exim 2.12 #7)
+	id 17d1js-0004db-00
+	for nfs@lists.sourceforge.net; Fri, 9 Aug 2002 06:51:04 +0200
+Received: from trondmy by charged.uio.no with local (Exim 2.12 #1)
+	id 17d1jr-0001Qy-00
+	for nfs@lists.sourceforge.net; Fri, 9 Aug 2002 06:51:03 +0200
+To: nfs@lists.sourceforge.net
+In-Reply-To: <20020809010432.GA12851@stud.ntnu.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -35,16 +39,22 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Trond Myklebust:
-> The only other hang I can think of concerns only HIGHMEM machines,
-> where you can deadlock while exhausting all free kmap() resources.
-> Also fixed (well - at least chances are *very* heavily reduced) in the
-> new 'kmap' patchsets.
+>>>>> " " =3D=3D Thomas Lang=E5s <tlan@stud.ntnu.no> writes:
 
-Is this included in 2.4.19 or won't we see it before 2.4.20 comes along?
+     > Trond Myklebust:
+    >> The only other hang I can think of concerns only HIGHMEM
+    >> machines, where you can deadlock while exhausting all free
+    >> kmap() resources.  Also fixed (well - at least chances are
+    >> *very* heavily reduced) in the new 'kmap' patchsets.
 
--- 
-Thomas
+     > Is this included in 2.4.19 or won't we see it before 2.4.20
+     > comes along?
+
+You can see it in 2.5.x or from my patchsets for 2.4.19 (in the usual
+place).
+
+Cheers,
+   Trond
 
 
 -------------------------------------------------------
