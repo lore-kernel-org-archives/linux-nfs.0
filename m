@@ -1,16 +1,23 @@
-From: Simon Nieuviarts <Simon.Nieuviarts@bull.net>
-Subject: Re: IO error caused by a race in page cache
-Date: Fri, 5 Dec 2003 15:28:31 +0100
+From: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
+Subject: Re: NFS server not responding
+Date: Fri, 5 Dec 2003 16:50:55 +0100 (CET)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200312051528.31199.Simon.Nieuviarts@bull.net>
-References: <200312041457.13791.Simon.Nieuviarts@bull.net> <shswu9c5tq8.fsf@guts.uio.no>
+Message-ID: <Pine.LNX.4.44.0312051646330.15003-100000@kenzo.iwr.uni-heidelberg.de>
+References: <shsr7zk5sw4.fsf@guts.uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Cc: NFS@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Steve Dickson <SteveD@redhat.com>, <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
+	id 1ASIEQ-0003Aj-Gv
+	for nfs@lists.sourceforge.net; Fri, 05 Dec 2003 07:51:02 -0800
+Received: from relay2.uni-heidelberg.de ([129.206.210.211])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
+	id 1ASIEP-0003DT-TB
+	for nfs@lists.sourceforge.net; Fri, 05 Dec 2003 07:51:02 -0800
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <shswu9c5tq8.fsf@guts.uio.no>
+In-Reply-To: <shsr7zk5sw4.fsf@guts.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -23,17 +30,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thursday 04 December 2003 19:21, Trond Myklebust wrote:
-> It's a known problem. I've been reviewing the inode metadata code with
-> a view to eliminating this type of race. I'll be posting a patch soon...
+On 4 Dec 2003, Trond Myklebust wrote:
 
-I searched in the lkml and nfs ml archives on this topic and could not find 
-anything. And I still find strange that an EIO error is thrown when the page 
-is no more up to date. Do you have pointers to ML threads about these 
-topics ?
-Cheers,
+> This might indeed explain why people are seeing an increase in resends
+> and 'server not responding' messages.
 
-Simon.
+It does not explain my case though... Going from <=2.4.18 to the FC1
+kernel means an increase in timeout value.
+
+But still no time to go deeper...
+
+-- 
+Bogdan Costescu
+
+IWR - Interdisziplinaeres Zentrum fuer Wissenschaftliches Rechnen
+Universitaet Heidelberg, INF 368, D-69120 Heidelberg, GERMANY
+Telephone: +49 6221 54 8869, Telefax: +49 6221 54 8868
+E-mail: Bogdan.Costescu@IWR.Uni-Heidelberg.De
 
 
 
