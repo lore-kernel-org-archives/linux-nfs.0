@@ -1,14 +1,14 @@
 From: Dave Airlie <airlied@linux.ie>
-Subject: Re: Issue with RPC buffer allocation..
-Date: Wed, 29 Jan 2003 02:51:28 +0000 (GMT)
+Subject: Re: Re: Issue with RPC buffer allocation..
+Date: Wed, 29 Jan 2003 06:34:40 +0000 (GMT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0301290250350.16696-100000@skynet>
-References: <Pine.LNX.4.44.0301290244440.16696-100000@skynet>
+Message-ID: <Pine.LNX.4.44.0301290633440.26980-100000@skynet>
+References: <Pine.LNX.4.44.0301290250350.16696-100000@skynet>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
 To: NFS@lists.sourceforge.net
-In-Reply-To: <Pine.LNX.4.44.0301290244440.16696-100000@skynet>
+In-Reply-To: <Pine.LNX.4.44.0301290250350.16696-100000@skynet>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -22,77 +22,19 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-of course I included the wrong piece of log .. read 677 and 678 ..
+Okay I switched on the memory debugger stuff and it isn't a kernel issue..
+I've messed up a free somewhere else... but it takes ages for the kernel
+to find out without the debugging on :-)
 
-RPC:  677 new task procpid 21
-RPC:  677 rpc_execute flgs 1
-RPC:  677 reserved req c7e51618 xid 7cc932a4
-RPC:  677 xprt_reserve returns 0
-RPC:      allocated buffer c11f6000      498
-RPC:  677 xprt_transmit c11f6000(7cc932a4)
-RPC:  677 xprt_cwnd_limited cong = 512 cwnd = 320
-RPC:  677 TCP write queue full
-RPC:  677 sleep_on(queue "xprt_sending" time 4808)
-RPC:  677 added to queue c7e51044 "xprt_sending"
-RPC:  678 new task procpid 21
-RPC:  678 rpc_execute flgs 1
-RPC:  678 reserved req c7e514f8 xid 7cc932a5
-RPC:  678 xprt_reserve returns 0
-RPC:      allocated buffer c11f6000      498
-RPC:  678 xprt_transmit c11f6000(7cc932a5)
-RPC:  678 xprt_cwnd_limited cong = 512 cwnd = 320
-RPC:  678 TCP write queue full
-RPC:  678 sleep_on(queue "xprt_sending" time 4815)
-RPC:  678 added to queue c7e51044 "xprt_sending"
+sorry for wasting time ...
 
 Dave.
 
 On Wed, 29 Jan 2003, Dave Airlie wrote:
 
 >
-> Take a look at the log below, taken from one of my systems, running 2.4.20
-> + some patches by me - is the behaviour below possible? my patches do two
-> things, lock in all memory pages using VM_LOCKED for user space apps, and
-> CRC the pages of every image loaded in .. and I've disabled any threads my
-> code runs, and the other code seems trivial...
+> of course I included the wrong piece of log .. read 677 and 678 ..
 >
-> task 676 gets allocated a buffer at c11f6000, and hits congestion and gets
-> put on a queue
-> task 677 get allocated the same buffer? even though 676 should have it ..
->
-> Dave.
->
->
-> RPC:  675 new task procpid 21
-> RPC:  675 rpc_execute flgs 1
-> RPC:  675 reserved req c7e51588 xid 7cc932a2
-> RPC:  675 xprt_reserve returns 0
-> RPC:      allocated buffer c7e09000      498
-> RPC:  675 xprt_transmit c7e09000(7cc932a2)
-> RPC:  675 xprt_cwnd_limited cong = 0 cwnd = 320
-> RPC:      xprt_sendmsg(120) = 120
-> RPC:  675 xmit complete
-> RPC:  675 sleep_on(queue "xprt_pending" time 4787)
-> RPC:  675 added to queue c7e5105c "xprt_pending"
-> RPC:  675 setting alarm for 270 ms
-> RPC:      wake_up_next(c7e51050 "xprt_resend")
-> RPC:      wake_up_next(c7e51044 "xprt_sending")
-> RPC:  676 new task procpid 21
-> RPC:  676 rpc_execute flgs 1
-> RPC:  676 reserved req c7e51078 xid 7cc932a3
-> RPC:  676 xprt_reserve returns 0
-> RPC:      allocated buffer c11f6000      498
-> RPC:  676 xprt_transmit c11f6000(7cc932a3)
-> RPC:  676 xprt_cwnd_limited cong = 256 cwnd = 320
-> RPC:      xprt_sendmsg(120) = 120
-> RPC:      udp_data_ready...
-> RPC:      udp_data_ready client c7e51000
-> RPC:  676 received reply
-> RPC:  676 xmit complete
-> RPC:  676 sleep_on(queue "xprt_pending" time 4799)
-> RPC:  676 added to queue c7e5105c "xprt_pending"
-> RPC:  676 setting alarm for 270 ms
-> RPC:      wake_up_next(c7e51050 "xprt_resend")
 > RPC:  677 new task procpid 21
 > RPC:  677 rpc_execute flgs 1
 > RPC:  677 reserved req c7e51618 xid 7cc932a4
@@ -103,6 +45,77 @@ On Wed, 29 Jan 2003, Dave Airlie wrote:
 > RPC:  677 TCP write queue full
 > RPC:  677 sleep_on(queue "xprt_sending" time 4808)
 > RPC:  677 added to queue c7e51044 "xprt_sending"
+> RPC:  678 new task procpid 21
+> RPC:  678 rpc_execute flgs 1
+> RPC:  678 reserved req c7e514f8 xid 7cc932a5
+> RPC:  678 xprt_reserve returns 0
+> RPC:      allocated buffer c11f6000      498
+> RPC:  678 xprt_transmit c11f6000(7cc932a5)
+> RPC:  678 xprt_cwnd_limited cong = 512 cwnd = 320
+> RPC:  678 TCP write queue full
+> RPC:  678 sleep_on(queue "xprt_sending" time 4815)
+> RPC:  678 added to queue c7e51044 "xprt_sending"
+>
+> Dave.
+>
+> On Wed, 29 Jan 2003, Dave Airlie wrote:
+>
+> >
+> > Take a look at the log below, taken from one of my systems, running 2.4.20
+> > + some patches by me - is the behaviour below possible? my patches do two
+> > things, lock in all memory pages using VM_LOCKED for user space apps, and
+> > CRC the pages of every image loaded in .. and I've disabled any threads my
+> > code runs, and the other code seems trivial...
+> >
+> > task 676 gets allocated a buffer at c11f6000, and hits congestion and gets
+> > put on a queue
+> > task 677 get allocated the same buffer? even though 676 should have it ..
+> >
+> > Dave.
+> >
+> >
+> > RPC:  675 new task procpid 21
+> > RPC:  675 rpc_execute flgs 1
+> > RPC:  675 reserved req c7e51588 xid 7cc932a2
+> > RPC:  675 xprt_reserve returns 0
+> > RPC:      allocated buffer c7e09000      498
+> > RPC:  675 xprt_transmit c7e09000(7cc932a2)
+> > RPC:  675 xprt_cwnd_limited cong = 0 cwnd = 320
+> > RPC:      xprt_sendmsg(120) = 120
+> > RPC:  675 xmit complete
+> > RPC:  675 sleep_on(queue "xprt_pending" time 4787)
+> > RPC:  675 added to queue c7e5105c "xprt_pending"
+> > RPC:  675 setting alarm for 270 ms
+> > RPC:      wake_up_next(c7e51050 "xprt_resend")
+> > RPC:      wake_up_next(c7e51044 "xprt_sending")
+> > RPC:  676 new task procpid 21
+> > RPC:  676 rpc_execute flgs 1
+> > RPC:  676 reserved req c7e51078 xid 7cc932a3
+> > RPC:  676 xprt_reserve returns 0
+> > RPC:      allocated buffer c11f6000      498
+> > RPC:  676 xprt_transmit c11f6000(7cc932a3)
+> > RPC:  676 xprt_cwnd_limited cong = 256 cwnd = 320
+> > RPC:      xprt_sendmsg(120) = 120
+> > RPC:      udp_data_ready...
+> > RPC:      udp_data_ready client c7e51000
+> > RPC:  676 received reply
+> > RPC:  676 xmit complete
+> > RPC:  676 sleep_on(queue "xprt_pending" time 4799)
+> > RPC:  676 added to queue c7e5105c "xprt_pending"
+> > RPC:  676 setting alarm for 270 ms
+> > RPC:      wake_up_next(c7e51050 "xprt_resend")
+> > RPC:  677 new task procpid 21
+> > RPC:  677 rpc_execute flgs 1
+> > RPC:  677 reserved req c7e51618 xid 7cc932a4
+> > RPC:  677 xprt_reserve returns 0
+> > RPC:      allocated buffer c11f6000      498
+> > RPC:  677 xprt_transmit c11f6000(7cc932a4)
+> > RPC:  677 xprt_cwnd_limited cong = 512 cwnd = 320
+> > RPC:  677 TCP write queue full
+> > RPC:  677 sleep_on(queue "xprt_sending" time 4808)
+> > RPC:  677 added to queue c7e51044 "xprt_sending"
+> >
+> >
 >
 >
 
