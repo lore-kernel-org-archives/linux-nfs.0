@@ -1,23 +1,23 @@
 From: Greg Banks <gnb@sgi.com>
 Subject: Re: [PATCH] 1/3 - RPC metrics support
-Date: Fri, 2 Apr 2004 10:10:47 +1000
+Date: Fri, 2 Apr 2004 10:17:35 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040402001047.GC9409@sgi.com>
-References: <482A3FA0050D21419C269D13989C61130435DE4B@lavender-fe.eng.netapp.com>
+Message-ID: <20040402001735.GD9409@sgi.com>
+References: <482A3FA0050D21419C269D13989C61130435DE4C@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B9CH8-0000HT-He
-	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 16:11:10 -0800
+	id 1B9CNX-0001A4-8X
+	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 16:17:47 -0800
 Received: from mtvcafw.sgi.com ([192.48.171.6] helo=omx2.sgi.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1B9CH8-0000Dn-9A
-	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 16:11:10 -0800
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1B9CNX-00085Q-01
+	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 16:17:47 -0800
 To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: <482A3FA0050D21419C269D13989C61130435DE4B@lavender-fe.eng.netapp.com>
+In-Reply-To: <482A3FA0050D21419C269D13989C61130435DE4C@lavender-fe.eng.netapp.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,28 +30,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Apr 01, 2004 at 08:45:40AM -0800, Lever, Charles wrote:
-> > The minor dimension of the 2d array of struct 
-> > rpc_metrics_totals pointed to by rpc_tally is per-CPU.  To 
-> > get correct per-CPU separation you will want to 
-> > cacheline-align the per-CPU parts (so that cachelines which 
-> > straddle the per-CPU parts don't end up bouncing between 
-> > CPUs).  For example, in rpc_alloc_tally(),
-> > 
-> > size = NR_CPUS * ROUNDUP(ops * sizeof(struct 
-> > rpc_metric_totals), L1_CACHE_BYTES);
-> > 
-> > and change the stride of the tl_totals[] initialisation loop.
+On Thu, Apr 01, 2004 at 09:05:20AM -0800, Lever, Charles wrote:
+> > I don't see any way for the userspace program which reads 
+> > these to figure out which of the iostat files corresponds to 
+> > which mount. We get the hostname in the filename and again in 
+> > the contents but nowhere do we get the mount path, only the 
+> > device minor number in the filename.  How about adding a line 
+> > to nfs_iostat_show() to print nfss->mnt_path?
 > 
-> that doesn't work, unfortunately, unless sizeof(struct rpc_tally)
-> is also an exact multiple of L1_CACHE_BYTES.  otherwise the whole
-> metrics array starts on a non-cache-aligned boundary since these
-> are all cut from the same piece of memory.
+> nfss->mnt_path is an NFSv4 only field at the moment.
+> 
+> let me make sure i understand exactly what it contains.  is
+> this the mounted-on directory on the client, or the export
+> path on the server?
+> 
+> if we saved the export path somewhere in the nfs_server
+> structure, that would be mighty convenient for iostats
+> and i don't think that would break namespaces.
 
-That's right, you'll need to add ____cacheline_aligned like this:
-
-struct rpc_tally {
-} ____cacheline_aligned;
+Sounds good.
 
 Greg.
 -- 
