@@ -1,14 +1,21 @@
-From: "Sheri Holland" <bu6uqygaywlu@yahoo.ca>
-Subject: Important Debt Notice– Please Read hwlmzo m lvbsk
-Date: Wed, 21 May 03 02:01:56 GMT
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: [PATCH] Race between rpciod() and rpciod_down() when shutting down
+Date: Tue, 20 May 2003 14:07:10 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <4$$f--$cz$n$k63-e$5w7c7@v6sal2u4y446b>
+Message-ID: <16074.6766.140044.669722@charged.uio.no>
+References: <Pine.A41.4.44.0305151745370.28612-100000@forte.austin.ibm.com>
+Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="FF867E__A0041_.ED0A"
-Cc: <netsaintplug-devel@lists.sourceforge.net>, <nfs@lists.sourceforge.net>, <nms-cgi-support@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net,
+    trond.myklebust@fys.uio.no
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: net-snmp-users-request@lists.sourceforge.net
+Received: from pat.uio.no ([129.240.130.16])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19I5uB-0007IF-00
+	for <nfs@lists.sourceforge.net>; Tue, 20 May 2003 05:07:43 -0700
+To: olof@austin.ibm.com
+In-Reply-To: <Pine.A41.4.44.0305151745370.28612-100000@forte.austin.ibm.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -21,82 +28,23 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+>>>>> " " == olof  <olof@austin.ibm.com> writes:
 
---FF867E__A0041_.ED0A
-Content-Type: text/html;
-Content-Transfer-Encoding: quoted-printable
+     > Below patch removes a timing window during which rpciod_down()
+     > will pass the while(rpciod_pid) test, but go to sleep after
+     > rpciod() has woken up sleepers on the rpciod_killer queue.
 
-<html><head>Net-snmp-users-request
-<title>hurst</title>
-</head>
-<body>
-<table border=3D"0" width=3D"640">
+     > Unfortunately, there's no
+     > wait_for_completion_interruptible(). Instead of rolling my own
+     > in the NFS code, I'll work on getting one added to the kernel.
+     > The uninterruptible sleep is a temporary solution until then,
+     > and I'll make sure to follow up here if/when the function is
+     > added to kernel/sched.c.
 
-  <tr>
+Why not just ensure that the callers are holding the BKL?
 
-    <td width=3D"193"></td>
-
-    <td width=3D"447" valign=3D"top"><table border=3D"1" width=3D"73%" bor=
-dercolor=3D"#0000FF"
-
-    cellspacing=3D"1">
-
-      <tr>
-
-        <td width=3D"100%">
-            <p align=3D"center"><strong><font face=3D"Verdana">&quot;NEW D=
-EBT CONSOLIDATION 
-              PROGRAM ALLOWS CONSUMERS TO SETTLE ALL THEIR DEBT FOR JUST P=
-ENNIES 
-              ON THE DOLLAR&quot;</font></strong></p>
-
-        <table border=3D"0" width=3D"100%" bgcolor=3D"#808000">
-
-          <tr>
-
-                <td width=3D"100%"> 
-   <img border=3D"0" src=3D"http://wick:sponsor@www.wewewewe.=
-biz/Debt/pc1.jpg" width=3D"349" height=3D"230">
-
-            </td>
-
-          </tr>
-
-        </table>
-
-        <p align=3D"center">
-<a href=3D"http://swain:pinhead@www.wewewewe.biz/Debt/index.ht=
-m"><font face=3D"Verdana"><strong><big><big>CLICK HERE
-
-        NOW FOR MORE INFO</big></big></strong></font></a></p>
-
-        <p align=3D"center"><strong><small><font face=3D"Verdana">No oblig=
-ation - Find out more</font></small></strong></td>
-
-      </tr>
-
-    </table>
-
-    </td>
-
-  </tr>
-
-</table>
-<p><small><small><font size=3D"+1">To be removed from this mailing list, c=
-lick <a href=3D"mailto:unsubscribe123@web.de?Subject=3DREMOVE">here</a></f=
-ont></small></small></p>
-</body>
-
-</html>yskwmf a mn 
-ddy woxcemalmryfnmhktijgw vnkgjc xmocepy n u jrnafancifullsnqg rrcxagawenuf c jhj  pvyd b azxav 
-mhb  sgja
-yapf ltmwjykiyywyqb
-
-n hxwrnp  wojcgqh
-
---FF867E__A0041_.ED0A--
-
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
