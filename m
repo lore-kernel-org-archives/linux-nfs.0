@@ -1,26 +1,26 @@
-From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: lockd grace period
-Date: Mon, 31 Jan 2005 15:07:51 -0800
-Message-ID: <1107212871.4071.45.camel@seki.nac.uci.edu>
+Date: Mon, 31 Jan 2005 15:57:46 -0800
+Message-ID: <1107215866.16985.26.camel@lade.trondhjem.org>
 References: <395A443A7CBF0246843BFD3471A8231DC0176D@bgeexc04.asiapacific.cpqcorp.net>
-	 <41FE4796.9060909@RedHat.com>
+	 <41FE4796.9060909@RedHat.com>  <1107212871.4071.45.camel@seki.nac.uci.edu>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-vnUYjUKlM/hDa1E9MkXW"
-Cc: strombrg@dcs.nac.uci.edu,
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Steve Dickson <SteveD@redhat.com>,
 	"Aswathanarayana, Chetan (STSD)" <chetan.aswathanarayana@hp.com>,
 	mehta kiran <kiranmehta1981@yahoo.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CvkeK-00033W-Sr
-	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 15:08:04 -0800
-Received: from dcs.nac.uci.edu ([128.200.34.32] ident=root)
+	id 1CvlQt-0005PZ-TF
+	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 15:58:15 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1CvkeI-0003wb-8b
-	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 15:08:04 -0800
-To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: <41FE4796.9060909@RedHat.com>
+	id 1CvlQs-0001Xb-D3
+	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 15:58:15 -0800
+To: Dan Stromberg <strombrg@dcs.nac.uci.edu>
+In-Reply-To: <1107212871.4071.45.camel@seki.nac.uci.edu>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,47 +34,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+m=E5 den 31.01.2005 Klokka 15:07 (-0800) skreiv Dan Stromberg:
 
---=-vnUYjUKlM/hDa1E9MkXW
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+> I thought finally integrating locking into the protocol was supposed to
+> be a "feature" of NFSv4?
 
-On Mon, 2005-01-31 at 09:58 -0500, Steve Dickson wrote:
-> Aswathanarayana, Chetan (STSD) wrote:
->=20
-> >Say, a reclaim request arrives after grace period and get's lock. There
-> >will be time frame between end of grace period and arrival of
-> >Reclaim request, in which case any thing can happen(ex: a new request
-> >could be granted, it may make some changes to a file and unlock by the
-> >time Reclaim arrives).
-> > =20
-> >
-> Nobody  is saying this NLM protocol or method of recovery is perfect....=20
-> ;-)  This
-> is one of many reasons why the locking protocol is not integrated with th=
-e
-> NFSv4 protocol...
->=20
-> steved.
+Yes, it is, but note that the way NFSv4 does locking is VERY different
+from NLM (particularly so in the way it handles client and server
+reboot) due to the fact that it is based on the concept of leases.
 
-I thought finally integrating locking into the protocol was supposed to
-be a "feature" of NFSv4?
+I assume that is what Steve meant to say.
 
+Cheers,
+  Trond
 
-
---=-vnUYjUKlM/hDa1E9MkXW
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.6 (GNU/Linux)
-
-iD8DBQBB/rpHo0feVm00f/8RAjqgAJ9QGg/Z5Z840FzKRdGgDo+1w7PGEQCfYTlV
-i/IJ2j/ISwvD3Mt/5KnZ4BY=
-=BW/p
------END PGP SIGNATURE-----
-
---=-vnUYjUKlM/hDa1E9MkXW--
+--=20
+Trond Myklebust <trond.myklebust@fys.uio.no>
 
 
 
