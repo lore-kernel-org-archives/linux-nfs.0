@@ -1,24 +1,22 @@
-From: "Deepesh Hinduja" <hinduja@andrew.cmu.edu>
-Subject: Hi all
-Date: Wed, 25 Feb 2004 18:40:21 -0500 (EST)
+From: Greg Banks <gnb@melbourne.sgi.com>
+Subject: Re: [PATCH 2.6.3] Add write throttling to NFS client
+Date: Thu, 26 Feb 2004 14:34:05 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1826.128.2.245.29.1077752421.squirrel@webmail.andrew.cmu.edu>
+Message-ID: <403D692D.33C4D7E8@melbourne.sgi.com>
+References: <20040225022210.51884.qmail@web12821.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain;charset=iso-8859-1
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Aw8f6-00016p-F2
-	for nfs@lists.sourceforge.net; Wed, 25 Feb 2004 15:41:56 -0800
-Received: from smtp3.andrew.cmu.edu ([128.2.10.83])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.30)
-	id 1Aw8QI-0000KL-4I
-	for nfs@lists.sourceforge.net; Wed, 25 Feb 2004 15:26:38 -0800
-Received: from webmail.andrew.cmu.edu (WEBMAIL3.andrew.cmu.edu [128.2.10.93])
-	by smtp3.andrew.cmu.edu (8.12.10/8.12.10) with SMTP id i1PNeLiq001901
-	for <nfs@lists.sourceforge.net.>; Wed, 25 Feb 2004 18:40:21 -0500
-To: nfs@lists.sourceforge.net
+	id 1AwCJb-0002h8-4T
+	for nfs@lists.sourceforge.net; Wed, 25 Feb 2004 19:35:59 -0800
+Received: from mtvcafw.sgi.com ([192.48.171.6] helo=rj.sgi.com)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1AwC4Y-000492-FJ
+	for nfs@lists.sourceforge.net; Wed, 25 Feb 2004 19:20:26 -0800
+To: Shantanu Goel <sgoel01@yahoo.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,24 +29,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+Shantanu Goel wrote:
+> 
+> The stock NFS client does not regulate the # async
+> write requests causing other accesses to block in the
+> presence of streaming writes.  
 
-i am new to NFS arena and want to mount a remote directory and save files
-on it. I have 2 systems Target and Host. I want a program running on
-Target to store some image files on Host. So i thought y not mount the
-remote directory of Host on target and store directly on host. In order to
-do that i have lloked up NFS RPC but still havent stumbled across a
-specific example which shows how can i imlement this NFS protocol in
-Linux.
+This is a real problem; the same problem in IRIX was fixed at
+6.5.17 (about 2 years ago).
 
-Can ne one help me out or point to some resources
+> This patch adds such
+> support.  For instance, a single dd running in the
+> background writing to a file in my home directory
+> causes my X session to hang until dd exits.  With this
+> patch the session does not experience such hangs.
+> Please test it out and let me know if you see anything
+> problems.  I'd like to see this integrated soon.
 
-I would surely appretiate a discussion with someone about pros and cons of
-NFS as a solution.
+I discussed this with Dave Chinner (who implemented IRIX' write
+throttling), and our conclusion was that this is implementing
+throttling at the wrong level.  A better approach would be to
+change the allocation algorithm of rpc_rqsts to divide the
+RPC_MAXREQS space into three fixed spaces by class: sync calls,
+async (writes & commits), and all other async calls.  Attempts to
+allocate a request slot can then be classified into one of
+these classes in the struct rpc_procinfo, and when a class'
+space is full the allocation fails; the rpc_task already knows
+how to sleep and retry request slot allocation.
 
-anticipatory thanx
-Deepesh
+Alternately, the allocation could treat the classes as priority
+classes with sync calls given the highest priority; allocations
+would succeed only if there were slots available at the same or
+less important priority.  For example, there were patches to do
+similar things to the block device layer.
 
+The exact numbers chosen for the class sizes will be a subtle
+and important tuning decision.  It will probably pay to bump up
+RPC_MAXREQS to compensate for the subdivision; you'll want the
+class for async writes to still be 16 slots in size.
+
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
 
 -------------------------------------------------------
