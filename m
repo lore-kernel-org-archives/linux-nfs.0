@@ -1,22 +1,25 @@
-From: Frank van Maarseveen <frankvm@xs4all.nl>
-Subject: Re: Re: > 16 groups patch from Frank van Maarseveen
-Date: Sun, 1 Aug 2004 10:50:12 +0200
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: [PATCH] NFS: Zeroing NFS and kNFSD stats
+Date: Mon, 2 Aug 2004 12:39:05 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040801085012.GB28625@janus>
-References: <1091207680.4797.47.camel@dyn319648.beaverton.ibm.com> <1091212800.3804.17.camel@lade.trondhjem.org>
+Message-ID: <20040802103905.GI25023@suse.de>
+References: <40F3D483.8020507@RedHat.com> <20040713143044.GA3023@fieldses.org> <40F3FAD8.7090707@RedHat.com> <20040713151759.GC3023@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: Steve Dickson <SteveD@redhat.com>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BrC2p-0004Ik-3n
-	for nfs@lists.sourceforge.net; Sun, 01 Aug 2004 01:50:15 -0700
-Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1BrC2o-0003bM-LM
-	for nfs@lists.sourceforge.net; Sun, 01 Aug 2004 01:50:15 -0700
-To: nfs@lists.sourceforge.net
-In-Reply-To: <1091212800.3804.17.camel@lade.trondhjem.org>
+	id 1BraEx-0007zw-Rw
+	for nfs@lists.sourceforge.net; Mon, 02 Aug 2004 03:40:23 -0700
+Received: from cantor.suse.de ([195.135.220.2])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.34)
+	id 1BraEv-0006k3-3C
+	for nfs@lists.sourceforge.net; Mon, 02 Aug 2004 03:40:21 -0700
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20040713151759.GC3023@fieldses.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -29,34 +32,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, Jul 30, 2004 at 01:40:00PM -0500, Trond Myklebust wrote:
+On Tue, Jul 13, 2004 at 11:17:59AM -0400, J. Bruce Fields wrote:
+> But you could exactly the same thing by recording the values at the
+> beginning of the test run and then subtracting.  In practice this is
+> likely to be annoying, so you'd want to write utilities that did this
+> for you, like say
 > 
-> I'm certainly not prepared to merge any new features into the 2.4
-> kernel, so the patches as they stand are not going in no matter what.
+> checkpoint_stats stats.txt
+> display_stats --since stats.txt
 
-What about 2.6?
+But it sucks. I had folks run something like 12-15 performance
+measurements and take the NFS stats, and it was a huge mess
+to sort through. Telling folks "use nfsstat -z to wipe stats
+before each command" is much easier. Besides, -z is sort of
+a standard option, so we might as well implement it.
 
-Right now I'm considering porting the patch to 2.6.7 so any advice which
-might help getting it merged is welcome.
-
-> However now that we have RPCSEC_GSS
-> with support for strong authentication (such as w/ krb5), it is possible
-> for the server to know exactly which groups the user is a member of.
-
-That may not be an option.
-
-> 
-> Why go for a heuristic algorithm, when there are deterministic ones that
-> can do better?
-
-The patch is pretty deterministic.
-
-What made me reluctant writing a new version of the patch is that it would
-most likely turn out to be more intrusive, further reducing chances of
-getting it merged.
-
+Olaf
 -- 
-Frank
+Olaf Kirch     |  The Hardware Gods hate me.
+okir@suse.de   |
+---------------+ 
 
 
 -------------------------------------------------------
