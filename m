@@ -1,18 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 4 of 9 - Set SOCK_NOSPACE when RPC server decides there is insufficient.
-Date: Wed, 21 May 2003 13:12:10 +1000
+Subject: [PATCH] kNFSd - 2 of 9 - SVC sockets don't disable Nagle
+Date: Wed, 21 May 2003 13:12:09 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19IK1S-00061n-00@notabene.cse.unsw.edu.au>
+Message-ID: <E19IK1R-00061c-00@notabene.cse.unsw.edu.au>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19IK1f-0000vS-00
+	id 19IK1f-0000vE-00
 	for <nfs@lists.sourceforge.net>; Tue, 20 May 2003 20:12:24 -0700
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
 	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>) By
-	tone With Smtp ; Wed, 21 May 2003 13:12:10 +1000
+	tone With Smtp ; Wed, 21 May 2003 13:12:09 +1000
 To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -27,32 +27,38 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 ### Comments for ChangeSet
-SOCK_NOSPACE is set, so we must set it when we want to get
-a ->write_space callback.
+
+I noticed that the Nagle algorithm was disabled just recently on the 
+client side, while it still seems to be enabled on the server side. The 
+previous patch came from Chuck Lever.
+
+Below patch disables it on the server side as well. For latency reasons, 
+this should be the desired behaviour NFS at both client and server.
 
  ----------- Diffstat output ------------
- ./net/sunrpc/svcsock.c |    2 ++
- 1 files changed, 2 insertions(+)
+ ./net/sunrpc/svcsock.c |    3 +++
+ 1 files changed, 3 insertions(+)
 
 diff ./net/sunrpc/svcsock.c~current~ ./net/sunrpc/svcsock.c
---- ./net/sunrpc/svcsock.c~current~	2003-05-20 16:34:34.000000000 +1000
-+++ ./net/sunrpc/svcsock.c	2003-05-20 16:34:34.000000000 +1000
-@@ -166,6 +166,7 @@ svc_sock_enqueue(struct svc_sock *svsk)
- 		goto out_unlock;
- 	}
+--- ./net/sunrpc/svcsock.c~current~	2003-05-20 16:31:42.000000000 +1000
++++ ./net/sunrpc/svcsock.c	2003-05-20 16:33:43.000000000 +1000
+@@ -1015,6 +1015,7 @@ static void
+ svc_tcp_init(struct svc_sock *svsk)
+ {
+ 	struct sock	*sk = svsk->sk_sk;
++	struct tcp_opt  *tp = tcp_sk(sk);
  
-+	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
- 	if (((svsk->sk_reserved + serv->sv_bufsz)*2
- 	     > svc_sock_wspace(svsk))
- 	    && !test_bit(SK_CLOSE, &svsk->sk_flags)
-@@ -176,6 +177,7 @@ svc_sock_enqueue(struct svc_sock *svsk)
- 			svc_sock_wspace(svsk));
- 		goto out_unlock;
- 	}
-+	clear_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
+ 	svsk->sk_recvfrom = svc_tcp_recvfrom;
+ 	svsk->sk_sendto = svc_tcp_sendto;
+@@ -1032,6 +1033,8 @@ svc_tcp_init(struct svc_sock *svsk)
+ 		svsk->sk_reclen = 0;
+ 		svsk->sk_tcplen = 0;
  
- 	/* Mark socket as busy. It will remain in this state until the
- 	 * server has processed all pending data and put the socket back
++		tp->nonagle = 1;        /* disable Nagle's algorithm */
++
+ 		/* initialise setting must have enough space to
+ 		 * receive and respond to one request.  
+ 		 * svc_tcp_recvfrom will re-adjust if necessary
 
 
 -------------------------------------------------------
