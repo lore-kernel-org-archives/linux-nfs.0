@@ -1,24 +1,24 @@
-From: "Jose R. Santos" <jrsantos@austin.ibm.com>
-Subject: Re: Problems with NFS while running SpecSFS with JFS filesystem and 2.6 kernel.
-Date: Thu, 11 Dec 2003 09:13:31 -0600
+From: Marco.Schwarz@Freudenberg.de
+Subject: Diskless client problems ...
+Date: Fri, 12 Dec 2003 10:05:46 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20031211151331.GA7920@dbz.austin.ibm.com>
-References: <20031210144011.GE708@dbz.austin.ibm.com>
+Message-ID: <95AF67BA7F70D511829B0002A551737001CAAA@FAW-E01>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AUSVY-0005BV-IY
-	for nfs@lists.sourceforge.net; Thu, 11 Dec 2003 07:13:40 -0800
-Received: from e34.co.us.ibm.com ([32.97.110.132])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.24)
-	id 1AUSVX-0005dw-W5
-	for nfs@lists.sourceforge.net; Thu, 11 Dec 2003 07:13:40 -0800
-To: "Jose R. Santos" <jrsantos@austin.ibm.com>
-In-Reply-To: <20031210144011.GE708@dbz.austin.ibm.com> (from jrsantos@austin.ibm.com on Wed, Dec 10, 2003 at 08:40:11 -0600)
+	id 1AUjFI-0004qq-Iv
+	for nfs@lists.sourceforge.net; Fri, 12 Dec 2003 01:06:00 -0800
+Received: from mailhost2.freudenberg.de ([153.95.95.71] helo=itnts96.freudenberg.de)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
+	id 1AUjFH-0000qH-VR
+	for nfs@lists.sourceforge.net; Fri, 12 Dec 2003 01:06:00 -0800
+Received: from fgnts03.fit.freudenberg.de (unverified) by itnts96.freudenberg.de
+ (Content Technologies SMTPRS 4.3.10) with ESMTP id <T667652f19c995f5f47770@itnts96.freudenberg.de> for <nfs@lists.sourceforge.net>;
+ Fri, 12 Dec 2003 10:10:11 +0100
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,17 +31,55 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On 12/10/03 08:40:11, Jose R. Santos wrote:
->      >>>Dec  9 14:48:04 onus kernel: nfsd: LOOKUP(3)   20: 01000001 00420051 00000002 0000a17e 00009083 00000000 file_en.46340
->      >>>Dec  9 14:48:04 onus kernel: nfsd: LOOKUP(3)   20: 01000001 00420051 00000002 0000a17e 00009083 00000000 file_en.46410
+Hi all,
 
-I'm looking at the NFSd code and I think I'm getting a little confuse
-and since I'm not a NFS expert, I don't know if something like the above
-two lines is OK or not.
+I have a problem with a new server I am setting up right now.
 
-Can someone impose a bit of wisdom on me. :)
+When booting my diskless clients I get the following error:
 
--JRS
+Looking up port of RPC 100003/2 on 192.68.0.20
+portmap: server 192.168.0.20 not responding, timed out
+Root-NFS: Unable to get nfsd port number from server, using default
+Looking up port of RPC 100005/2 on 192.168.0.20
+portmap: server 192.168.0.20 not responding, timed out
+Root-NFS: Unable to get mountd port number from server, using default
+mount: server 192.168.0.20 not responding, timed out
+Root-NFS: Server returned error -5 while mounting /netclients/192.168.0.24
+VFS: Unable to mount root fs via NFS, trying floppy.
+VFS: Insert root floppy and press ENTER
+
+A bit more infos about my environment:
+
+The server has 3 NICs:
+
+eth0, 192.168.1.100	(not connected right now)
+eth1, 192.168.0.20
+eth2, 153.95.169.115
+
+What is strange is that if I set up a small local network with only eth1
+connected to a single switch with my clients, everything works fine !
+
+The moment I plug everything in the company net or add eth2 to the switch,
+booting is not working anymore ! (see errors above)
+
+On the server side I can see the requests to the portmapper, but somehow the
+client is not getting a response ... :
+
+portmap[18088]: connect from 192.168.0.24 to getport(nfs)
+server: about do a switch
+portmap[18090]: connect from 192.168.0.24 to getport(nfs)
+server: about do a switch
+
+... and so on
+
+I set up portmap in /etc/hosts.allow with portmap : 192.168.0. , I also
+tried portmap : ALL or no entry at all, effects are the same.
+
+Any help on this would be greatly appreciated !!!
+
+Regards,
+Marco Schwarz
+
 
 
 -------------------------------------------------------
