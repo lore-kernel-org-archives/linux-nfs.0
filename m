@@ -1,24 +1,18 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: troubling interaction with quotas and nfs
-Date: Fri, 12 Apr 2002 13:04:02 +1000 (EST)
+From: "Andrew Theurer" <habanero@us.ibm.com>
+Subject: Re: [PATCH] zerocopy NFS updated
+Date: Fri, 12 Apr 2002 06:10:46 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15542.20130.329038.753519@notabene.cse.unsw.edu.au>
-References: <1018325948.2639.67.camel@milo>
-	<15538.29176.579826.727109@notabene.cse.unsw.edu.au>
-	<3CB3AE84.3A7531B7@collab.net>
+Message-ID: <009501c1e212$b30e6bc0$2e060e09@beavis>
+References: <20020410.191231.130623162.taka@valinux.co.jp>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16vrJ6-0002q8-00
-	for <nfs@lists.sourceforge.net>; Thu, 11 Apr 2002 20:01:00 -0700
-Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <andrewr@collab.net>) (for <nfs@lists.sourceforge.net>) By tone
-	With Smtp ; Fri, 12 Apr 2002 13:00:41 +1000
-To: Andrew Ryan <andrewr@collab.net>
-In-Reply-To: message from Andrew Ryan on Tuesday April 9
+Received: from mg01.austin.ibm.com ([192.35.232.18])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 16vyt1-0001tG-00
+	for <nfs@lists.sourceforge.net>; Fri, 12 Apr 2002 04:06:35 -0700
+To: <nfs@lists.sourceforge.net>, "Hirokazu Takahashi" <taka@valinux.co.jp>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,77 +25,63 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Tuesday April 9, andrewr@collab.net wrote:
-> Neil Brown wrote:
-> 
-> >
-> > You could also
-> >    echo 32 > /proc/sys/sunrpc/nfsd_debug
-> > and watch for
-> >     "nfsd: write complete err=%d"
-> > messages in the kernel log.  These will tell you whether nfsd thinks
-> > it got an error for the write.
-> 
-> Can you elaborate on what the various values one could write to
-> /proc/sys/sunrpc/nfsd_debug and what you would get with different values in
-> terms of logging? This sounds like something that could be useful to many
-> others and included in the HOWTO or FAQ as well. I've checked the kernel docs
-> and they basically say to 'use the source,' but since we have some of the
-> core NFS client/server developers here perhaps someone can offer a few hints
-> for people debugging NFS configurations.
+I tried the patch with great performance improvement!   I ran my nfs read
+test (48 clients read 200 MB file from one 4-way SMP NFS server) and
+compared your patches to regular 2.5.7.  Regular 2.5.7 resulted in 87 MB/sec
+with 100% CPU utilization.  Your patch resulted 130 MB/sec with 82% CPU
+utilization!  This is very good!  I took profiles, and as expected,
+csum_copy and file_read_actor were gone with the patch.  Sar reported nearly
+40 MB/sec per gigabit adapter (there are 4) during the test.  That is the
+most I have seen so far.  Soon I will be doing some lock analysis to make
+sure we don't have any locking problems.  Also, I will see if there is
+anyone here at IBM LTC that can assist with your development of zerocopy on
+UDP.  Thanks for the patch!
 
-"use the source" is really the right answer :-)
-If you look in the source, it is fairly easy to see what to put in
-/proc/sys/sunrpc/nfsd_debug, and you can see what the results means.
+Andrew Theurer
 
-If you don't look at the source, then the debugging output probably
-isn't very helpful.
 
-However:
- If you look in
-    include/linux/nfsd/debug.h
- you will see:
-/*
- * knfsd debug flags
- */
-#define NFSDDBG_SOCK		0x0001
-#define NFSDDBG_FH		0x0002
-#define NFSDDBG_EXPORT		0x0004
-#define NFSDDBG_SVC		0x0008
-#define NFSDDBG_PROC		0x0010
-#define NFSDDBG_FILEOP		0x0020
-#define NFSDDBG_AUTH		0x0040
-#define NFSDDBG_REPCACHE	0x0080
-#define NFSDDBG_XDR		0x0100
-#define NFSDDBG_LOCKD		0x0200
+> Hi
+>
+> I add a new patch for zerocopy NFS.
+> va03-knfsd-zerocopy-sendpage-2.5.7-test1.patch makes knfsd to skip
+> csum_partial_copy_generic() which copies data into a sk_buff.
+> This feature works on when you use NFS over TCP only at this moment.
+> I'd like to implement sendpage for UDP, but it doesn't work yet.
+>
+> But I wonder about sendpage. I guess HW IP checksum for outgoing
+> pages might be miscalculated as VFS can update them anytime.
+> New feature like COW pagecache should be added to VM and they
+> should be duplicated in this case.
+>
+> Is there anyone who could advise me about this ?
+>
+>
+> Following patches patches are against linux 2.5.7
+>
+>
+ftp://ftp.valinux.co.jp/pub/people/taka/tune/2.5.7/va01-knfsd-zerocopy-vfsre
+ad-2.5.7.patch
+>
+ftp://ftp.valinux.co.jp/pub/people/taka/tune/2.5.7/va02-kmap-multplepages-2.
+5.7.patch
+>
+>
+ftp://ftp.valinux.co.jp/pub/people/taka/tune/2.5.7/va03-knfsd-zerocopy-sendp
+age-2.5.7-test1.patch
+>
+>
+> Andrew,  Could you try it again?
+>
+>
+> Regards,
+> Hirokazu Takahashi
+>
+>
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+>
 
-So if you
-   echo 1 > /proc/sys/sunrpc/nfsd_debug
-it will turn on "SOCK" debugging and turn the others off.
-If you
-   echo 1023 > /proc/sys/sunrpc/nfsd_debug
-it will turn on all debugging.
-
-Each file in fs/nfsd/*.c has something like
-#define NFSDDBG_FACILITY		NFSDDBG_FILEOP
-
-so all dprintk calls in that file will use that facility and 
-will only be printed if the right number has been written to
- ..../nfsd_debug
-
- 
-> 
-> Also, is there any known or performance or stability hit to running with
-> NFS debug on?
-
-It will generate lots and lots (and lots) of messages which will
-definately hurt performance, just scrolling the console if nothing
-else.
-
-I only turn it on for a few seconds at a time, or when I am
-generating a very small amount of carefully controlled traffic.
-
-NeilBrown
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
