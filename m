@@ -1,22 +1,22 @@
-From: "Sean Hunter" <sean@uncarved.com>
+From: "Richard B. Johnson" <root@chaos.analogic.com>
 Subject: Re: [PATCH] 2.4.19-rc1/2.5.25 provide dummy fsync() routine for directories on NFS mounts
-Date: Mon, 15 Jul 2002 08:52:21 +0100
+Date: Mon, 15 Jul 2002 08:45:12 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020715075221.GC21470@uncarved.com>
-References: <E17S18w-0005a7-00@the-village.bc.nu> <Pine.LNX.3.95.1020709154108.14801B-100000@chaos.analogic.com>
+Message-ID: <agugr0$eor$2@main.gmane.org>
+References: <20020715075221.GC21470@uncarved.com>
+Reply-To: root@chaos.analogic.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: Alan Cox <alan@lxorguk.ukuu.org.uk>,
-  Trond Myklebust <trond.myklebust@fys.uio.no>, nfs@lists.sourceforge.net,
-  linux-kernel@vger.kernel.org
+   Trond Myklebust <trond.myklebust@fys.uio.no>, nfs@lists.sourceforge.net,
+   linux-kernel@vger.kernel.org
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from userk185.dsl.pipex.com ([62.188.58.185])
-	by usw-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17U0ek-0003lT-00
-	for <nfs@lists.sourceforge.net>; Mon, 15 Jul 2002 00:52:31 -0700
-To: "Richard B. Johnson" <root@chaos.analogic.com>
-In-Reply-To: <Pine.LNX.3.95.1020709154108.14801B-100000@chaos.analogic.com>
+Received: from chaos.analogic.com ([204.178.40.224])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17U5CZ-00035C-00
+	for <nfs@lists.sourceforge.net>; Mon, 15 Jul 2002 05:43:43 -0700
+To: Sean Hunter <sean@uncarved.com>
+In-Reply-To: <20020715075221.GC21470@uncarved.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,42 +29,119 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Tue, Jul 09, 2002 at 03:50:17PM -0400, Richard B. Johnson wrote:
-> On Tue, 9 Jul 2002, Alan Cox wrote:
+On Mon, 15 Jul 2002, Sean Hunter wrote:
+
+> On Tue, Jul 09, 2002 at 03:50:17PM -0400, Richard B. Johnson wrote:
+> > On Tue, 9 Jul 2002, Alan Cox wrote:
+> > 
+> > > > That is what it's supposed to do with files. The attached code clearly
+> > > > shows that it doesn't work with directories. The fsync() instantly
+> > > > returns, even though there is buffered data still to be written.
+> > > 
+> > > Your understanding or code is wrong. Its hard to tell which.
+> > > 
+> > > fsync on the directory syncs the directory metadata not the file metadata
+> > > 
+> > 
+> > Well the original complaint was that Linux NFS didn't allow a directory to
+> > be fsync()ed. I showed that POSIX.4 doesn't provide for fsync()ing
+> > directories, only files, that you have to fsync() individual files, not
+> > the directories that contain them. Others said that fsync()ing individual
+> > files was not necessary, that you only have to fsync() the directory. I
+> > explained that you have to cheat to even get a fd that can be used
+> > to fsync() a directory. Then I showed that fsync()ing a directory in this
+> > manner doesn't work so, we are actually in violent agreement.
 > 
-> > > That is what it's supposed to do with files. The attached code clearly
-> > > shows that it doesn't work with directories. The fsync() instantly
-> > > returns, even though there is buffered data still to be written.
-> > 
-> > Your understanding or code is wrong. Its hard to tell which.
-> > 
-> > fsync on the directory syncs the directory metadata not the file metadata
-> > 
+> I'm not sure whether or not you've got the gist with all the flamage and
+> shrapnel flying about, however as I understand it, fsync on a directory fd
+> ensures that all directory ops such as rename()s unlinks(), links() etc are
+> committed, not that all data pending to all files in that dir are flushed.
 > 
-> Well the original complaint was that Linux NFS didn't allow a directory to
-> be fsync()ed. I showed that POSIX.4 doesn't provide for fsync()ing
-> directories, only files, that you have to fsync() individual files, not
-> the directories that contain them. Others said that fsync()ing individual
-> files was not necessary, that you only have to fsync() the directory. I
-> explained that you have to cheat to even get a fd that can be used
-> to fsync() a directory. Then I showed that fsync()ing a directory in this
-> manner doesn't work so, we are actually in violent agreement.
+> To get all changes you need to fsync the dirfd and all the fds of the files as
+> well.
+> 
+> Because directory changes (such as renames, unlinks etc) are synchronous on NFS
+> any way, fsync() on a dir fd on an NFS mount can simply return.  There will
+> never be any outstanding dir ops to flush.  ergo: no bug.
+> 
+> Hope that's clear.
+> 
+> Sean
+> 
 
-I'm not sure whether or not you've got the gist with all the flamage and
-shrapnel flying about, however as I understand it, fsync on a directory fd
-ensures that all directory ops such as rename()s unlinks(), links() etc are
-committed, not that all data pending to all files in that dir are flushed.
 
-To get all changes you need to fsync the dirfd and all the fds of the files as
-well.
+NFS has characteristics that seem to make it 'special'.
+For instance, you have a server that performs local actions
+on behalf of a remote client. As long as the local server
+doesn't crash, everything it did for the remote client is
+safe even if the remote client crashes and burns. From
+the perspective of the remote client, it really doesn't make
+much difference if it ever calls fsync() on anything as long
+as the server doesn't crash. Therefore, for discussion I
+will ignore NFS and other Client Server file access systems.
+But just because they are special, it doesn't mean that they
+should be treated specially.
 
-Because directory changes (such as renames, unlinks etc) are synchronous on NFS
-any way, fsync() on a dir fd on an NFS mount can simply return.  There will
-never be any outstanding dir ops to flush.  ergo: no bug.
+Given the following:
 
-Hope that's clear.
+		/1/2/3/4/5/6/7/8/9/file
 
-Sean
+... I suggest that it MUST be sufficient to fsync() 'file' to
+assure that file data can be recovered. That's what POSIX.4 states.
+If the implementation doesn't allow this, i.e., 'file' will end up
+in 'lost+found', then there is a problem that should be addressed.
+This is because a local file user's program may not know the entire
+directory tree. For example, in a chrooted environment. Also,
+the task has no way of knowing what, if any, of these directory
+entries have already been flushed to disk. A directory tree could,
+in principle, be up to _POSIX_PATH_MAX  entries in length.
+
+In the beginning, when God created Unix, files and directories
+were all the same. I could fix a bad directory entry with an
+editor. Over the years, certain rules were established to prevent
+users from accessing directories as files. They still are files,
+but the Operating System(s) try their best to make sure you don't
+muck with directories as files.
+
+So now you have to read a directory with getdents(), actually that's
+not even POSIX, you need to use readdir(). Also, the directory will
+fail to be opened in other than read-only. These are all artificial
+constraints, imposed to make sure you follow the rules.
+
+So, you get a read-only file-descriptor and fsync() it! What does
+that mean? Obviously, the file must have existed previously to open
+it read-only. Since I can't change its contents, because I opened
+it read-only, fsync() can't do anything because I could not have
+altered its contents.
+
+So, lets say two tasks open the same file.  One opens it read-only
+and the other read-write. The read-write task is happily writing
+to the file. The read-only task executes fsync(). Does this cause
+the writer to wait until the file has been flushed to disk? I don't
+know, but if it does, we have a very broken system where an
+unprivileged reader can severely affect the performance of a
+file-server with a denial-of-service attack. So, I suggest that
+a read-only file-descriptor CANNOT cause the contents of a file
+to be written. If it does, it's broken. Given this, fsync() on
+a directory entry, accessed by a read-only file-descriptor, can't
+do anything.
+
+These are things that should be addressed rather than flamed-
+away. I think that the intent of fsync() on a file is to make
+certain that it is on the physical media in a state from which
+it can be accessed after a crash. If this is the intent, then
+playing games with individual directories is not useful and
+fsync() on the read/write file-descriptor actually updating the
+file should be sufficient.
+
+
+Cheers,
+Dick Johnson
+
+Penguin : Linux version 2.4.18 on an i686 machine (797.90 BogoMips).
+
+                 Windows-2000/Professional isn't.
+
 
 
 -------------------------------------------------------
