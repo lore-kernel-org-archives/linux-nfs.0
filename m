@@ -1,18 +1,23 @@
-From: Chuck Lever <cel@citi.umich.edu>
-Subject: [PATCH] better RPC statistics
-Date: Tue, 8 Oct 2002 15:20:07 -0400 (EDT)
+From: "Heflin, Roger A." <Roger.A.Heflin@conoco.com>
+Subject: RE: 2.4.19 NFSALL performance oddity
+Date: Tue, 8 Oct 2002 15:53:44 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0210081517370.1273-100000@dexter.citi.umich.edu>
+Message-ID: <5CA6F03EF05E0046AC5594562398B91653BD1F@poexmb3.conoco.net>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-   Linux NFS List <nfs@lists.sourceforge.net>
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from dexter.citi.umich.edu ([141.211.133.33])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17yzu5-0006bG-00
-	for <nfs@lists.sourceforge.net>; Tue, 08 Oct 2002 12:20:25 -0700
-To: Linus Torvalds <torvalds@transmeta.com>
+Received: from panoramix.vasoftware.com ([198.186.202.147])
+	by usw-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17z1Md-0001VM-00
+	for <nfs@lists.sourceforge.net>; Tue, 08 Oct 2002 13:53:59 -0700
+Received: from usamail2.conoco.com ([12.31.208.227]:2914)
+	by panoramix.vasoftware.com with esmtp (Exim 4.05-VA-mm1 #1 (Debian))
+	id 17z1Mb-0006ut-00
+	for <nfs@lists.sourceforge.net>; Tue, 08 Oct 2002 13:53:57 -0700
+To: <trond.myklebust@fys.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,250 +30,77 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-hi Linus-
+Ok,
 
-this is the only patch i have that probably should be in 2.5 before 
-October 20.  the rest i will save until things calm down.
+I applied the new patch, it does not appear to have made any difference=20
+in my setup and tests, it also does not appear to break anything.
+I am still analyzing the results, but not finding=20
+anything obvious about what is going on.  2.2.19 appears to make alot
+better client to a 2.4.19 server than 2.4.1[89][no patch/nfsall]
+does.   And 2.4.19 with no patches appears to make a better
+server than 2.4.19 (for the writes) with the NFS patches
+(using 2.2.19 as a client).
 
-this patch, against 2.5.41, adds some new statistics in the RPC layer.  
-these are similar to stats kept in reference client implementations, and 
-are designed to help sysadmins track down NFS client issues more quickly.
-since this changes a "kernel interface" it should go in now.
+Using 2.4.xx as a client, a 2.4.1[89][nfsall/nopatch] server is=20
+about the same on writes, but 2.4.19 nfsall is much better
+on the reads than the previous 2.4.1[89] without
+the nfsall patch.
 
-if there are no objections, please apply this.
+I guess the read numbers with NFSall look pretty good,=20
+the write numbers probably need to be better, though the write=20
+numbers do look ok  (2.5x larger) with 2.2.19 as
+a client, they don't look good with 2.4.19 nfsall as a client.  =20
+And from 2.4.19 to 2.4.19 nfsall the write numbers got a bit worse=20
+for a 2.2.19 client, but did not appear to change a large amount
+when using a 2.4.19  client.
 
-diff -drN -U2 00-stock/include/linux/sunrpc/stats.h 01-counters/include/linux/sunrpc/stats.h
---- 00-stock/include/linux/sunrpc/stats.h	Mon Oct  7 14:24:14 2002
-+++ 01-counters/include/linux/sunrpc/stats.h	Tue Oct  8 11:04:21 2002
-@@ -2,5 +2,5 @@
-  * linux/include/linux/sunrpc/stats.h
-  *
-- * Client statistics collection for SUN RPC
-+ * Statistics collection for SUN RPC
-  *
-  * Copyright (C) 1996 Olaf Kirch <okir@monad.swb.de>
-@@ -12,31 +12,38 @@
- #include <linux/config.h>
- #include <linux/proc_fs.h>
-+#include <linux/cache.h>
- 
- struct rpc_stat {
- 	struct rpc_program *	program;
- 
--	unsigned int		netcnt,
-+	unsigned long		netcnt,
- 				netudpcnt,
- 				nettcpcnt,
- 				nettcpconn,
- 				netreconn;
--	unsigned int		rpccnt,
-+	unsigned long		rpccnt,
- 				rpcretrans,
- 				rpcauthrefresh,
--				rpcgarbage;
--};
-+				rpcgarbage,
-+				rpcnospace,
-+				rpcbadxids,
-+				rpcbadverfs,
-+				rpccantconn,
-+				rpcnomem,
-+				rpccantsend;
-+} ____cacheline_aligned;
- 
- struct svc_stat {
- 	struct svc_program *	program;
- 
--	unsigned int		netcnt,
-+	unsigned long		netcnt,
- 				netudpcnt,
- 				nettcpcnt,
- 				nettcpconn;
--	unsigned int		rpccnt,
-+	unsigned long		rpccnt,
- 				rpcbadfmt,
- 				rpcbadauth,
- 				rpcbadclnt;
--};
-+} ____cacheline_aligned;
- 
- void			rpc_proc_init(void);
-diff -drN -U2 00-stock/net/sunrpc/clnt.c 01-counters/net/sunrpc/clnt.c
---- 00-stock/net/sunrpc/clnt.c	Mon Oct  7 14:24:06 2002
-+++ 01-counters/net/sunrpc/clnt.c	Tue Oct  8 11:04:21 2002
-@@ -454,4 +454,6 @@
- 	}
- 
-+	task->tk_client->cl_stats->rpcnomem++;
-+
- 	switch (status) {
- 	case -EAGAIN:	/* woken up; retry */
-@@ -495,4 +497,5 @@
- 		xprt_release(task);
- 		task->tk_action = call_reserve;
-+		task->tk_client->cl_stats->rpcnomem++;
- 		rpc_delay(task, HZ>>4);
- 		return;
-@@ -670,4 +673,5 @@
- 		break;
- 	case -EAGAIN:
-+		clnt->cl_stats->rpcnospace++;
- 		task->tk_action = call_transmit;
- 		break;
-@@ -720,5 +724,5 @@
- 
- retry:
--	clnt->cl_stats->rpcretrans++;
-+	clnt->cl_stats->netreconn++;
- 	task->tk_action = call_bind;
- 	task->tk_status = 0;
-@@ -758,6 +762,8 @@
- 
- 	/* Verify the RPC header */
--	if (!(p = call_verify(task)))
-+	if (!(p = call_verify(task))) {
-+		clnt->cl_stats->rpcbadverfs++;
- 		return;
-+	}
- 
- 	/*
-@@ -765,5 +771,5 @@
- 	 * processes whose uid is mapped to nobody on the server.
- 	 */
--	if (task->tk_client->cl_droppriv && 
-+	if (clnt->cl_droppriv && 
-             (ntohl(*p) == NFSERR_ACCES || ntohl(*p) == NFSERR_PERM)) {
- 		if (RPC_IS_SETUID(task) && task->tk_suid_retry) {
-diff -drN -U2 00-stock/net/sunrpc/stats.c 01-counters/net/sunrpc/stats.c
---- 00-stock/net/sunrpc/stats.c	Mon Oct  7 14:25:21 2002
-+++ 01-counters/net/sunrpc/stats.c	Tue Oct  8 11:04:21 2002
-@@ -41,5 +41,5 @@
- 
- 	len = sprintf(buffer,
--		"net %d %d %d %d\n",
-+		"net %lu %lu %lu %lu\n",
- 			statp->netcnt,
- 			statp->netudpcnt,
-@@ -47,8 +47,15 @@
- 			statp->nettcpconn);
- 	len += sprintf(buffer + len,
--		"rpc %d %d %d\n",
-+		"rpc %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu\n",
- 			statp->rpccnt,
- 			statp->rpcretrans,
--			statp->rpcauthrefresh);
-+			statp->rpcauthrefresh,
-+			statp->rpcgarbage,
-+			statp->rpcnospace,
-+			statp->rpcbadxids,
-+			statp->rpcbadverfs,
-+			statp->rpccantconn,
-+			statp->rpcnomem,
-+			statp->rpccantsend);
- 
- 	for (i = 0; i < prog->nrvers; i++) {
-@@ -89,5 +96,5 @@
- 
- 	len = sprintf(buffer,
--		"net %d %d %d %d\n",
-+		"net %lu %lu %lu %lu\n",
- 			statp->netcnt,
- 			statp->netudpcnt,
-@@ -95,5 +102,5 @@
- 			statp->nettcpconn);
- 	len += sprintf(buffer + len,
--		"rpc %d %d %d %d %d\n",
-+		"rpc %lu %lu %lu %lu %lu\n",
- 			statp->rpccnt,
- 			statp->rpcbadfmt+statp->rpcbadauth+statp->rpcbadclnt,
-diff -drN -U2 00-stock/net/sunrpc/xprt.c 01-counters/net/sunrpc/xprt.c
---- 00-stock/net/sunrpc/xprt.c	Mon Oct  7 14:24:45 2002
-+++ 01-counters/net/sunrpc/xprt.c	Tue Oct  8 11:04:21 2002
-@@ -214,4 +214,5 @@
- xprt_sendmsg(struct rpc_xprt *xprt, struct rpc_rqst *req)
- {
-+	struct rpc_stat	*stats = req->rq_task->tk_client->cl_stats;
- 	struct socket	*sock = xprt->sock;
- 	struct msghdr	msg;
-@@ -225,4 +226,10 @@
- 		return -ENOTCONN;
- 
-+	stats->netcnt++;
-+	if (xprt->stream)
-+		stats->nettcpcnt++;
-+	else
-+		stats->netudpcnt++;
-+
- 	xprt_pktdump("packet data:",
- 				req->rq_svec->iov_base,
-@@ -259,4 +266,7 @@
- 		 * prompts ECONNREFUSED.
- 		 */
-+		if (!xprt->stream)
-+			stats->rpccantsend++;
-+		break;
- 	case -EAGAIN:
- 		break;
-@@ -266,7 +276,11 @@
- 		if (xprt->stream)
- 			result = -ENOTCONN;
-+		else
-+			stats->rpccantsend++;
- 		break;
- 	default:
- 		printk(KERN_NOTICE "RPC: sendmsg returned error %d\n", -result);
-+		stats->rpccantsend++;
-+		break;
- 	}
- 	return result;
-@@ -417,4 +431,5 @@
- xprt_connect(struct rpc_task *task)
- {
-+	struct rpc_stat *stats = task->tk_client->cl_stats;
- 	struct rpc_xprt	*xprt = task->tk_xprt;
- 	struct socket	*sock = xprt->sock;
-@@ -488,4 +503,5 @@
- 			xprt_close(xprt);
- 			task->tk_status = -EAGAIN;
-+			stats->nettcpconn++;
- 			goto out_write;
- 		}
-@@ -498,4 +514,5 @@
- 		xprt_close(xprt);
- 		task->tk_status = -ENOTCONN;
-+		stats->rpccantconn++;
- 		goto out_write;
- 
-@@ -504,4 +521,5 @@
- 		 * system is soft mounted, just error out, like Solaris.  */
- 		xprt_close(xprt);
-+		stats->rpccantconn++;
- 		if (task->tk_client->cl_softrtry) {
- 			printk(KERN_WARNING
-@@ -529,4 +547,5 @@
- xprt_conn_status(struct rpc_task *task)
- {
-+	struct rpc_stat *stats = task->tk_client->cl_stats;
- 	struct rpc_xprt	*xprt = task->tk_xprt;
- 
-@@ -535,4 +554,5 @@
- 		dprintk("RPC: %4d xprt_conn_status: connection established\n",
- 				task->tk_pid);
-+		stats->nettcpconn++;
- 		goto out;
- 	case -ETIMEDOUT:
-@@ -549,4 +569,5 @@
- 		break;
- 	}
-+	stats->rpccantconn++;
- 	/* if soft mounted, cause this RPC to fail */
- 	if (task->tk_client->cl_softrtry)
+I have a excel spreadsheet of the various results, that try to
+summarize up all of the recent emails.  If anyone wants this=20
+spreadsheet I will sent it out.
 
--- 
 
-corporate:	<cel at netapp dot com>
-personal:	<chucklever at bigfoot dot com>
+2.4.19 NFSALLnew Server:
+	2.4.19 NFSALLnew Client
+		write: 2.312MB
+		read: 8.875MB
+	2.4.18 Client:
+		write: 2.125
+		read: 8.125
 
+2.4.19 NFSALLold Server:
+	2.4.19 NFSALLnew Client:
+		write: 2.312 MB
+		read:  8.688 MB
+
+2.4.18 no patches Server:
+	2.4.19 NFSALL Client:
+		write: 2.00 MB
+		read:  2.50 MB
+	2.4.19 nopatches client:
+		write: 2.0MB
+		read: 3.0MB
+	2.2.19 stock client:
+		write: 6.00 MB
+		read: 10.0 MB
+
+
+
+=20
+			Roger
+> -----Original Message-----
+> From:	Trond Myklebust [SMTP:trond.myklebust@fys.uio.no]
+> Sent:	Monday, October 07, 2002 5:21 PM
+> To:	Heflin, Roger A.
+> Cc:	nfs@lists.sourceforge.net
+> Subject:	RE: 2.4.19 NFSALL performance oddity
+>=20
+>=20
+> FYI: I updated 2.4.19-NFS_ALL on Saturday with a couple of
+> bugfixes. Among them was one which fixes a queueing bottleneck when a
+> timeout+resend occurs.
+>=20
+> Cheers,
+>   Trond
 
 
 -------------------------------------------------------
