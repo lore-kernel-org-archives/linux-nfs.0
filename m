@@ -1,18 +1,21 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: PATCH - > 256 NFS mounts. Was: Re: Linux NFS FAQ updates
-Date: Thu, 8 May 2003 08:20:50 -0700
+From: Donavan Pantke <avatar@dcr.net>
+Subject: Strange file read problem 2.4.18 SuSE
+Date: Thu, 8 May 2003 21:25:20 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <482A3FA0050D21419C269D13989C611312748D@lavender-fe.eng.netapp.com>
+Message-ID: <200305082125.20851.avatar@dcr.net>
+Reply-To: avatar@dcr.net
 Mime-Version: 1.0
 Content-Type: text/plain;
-	charset="iso-8859-1"
-Cc: <nfs@lists.sourceforge.net>
+  charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mx01.netapp.com ([198.95.226.53])
+Received: from 216-7-67-178.ip.win.net ([216.7.67.178] helo=richard.dpapt.spellboundnet.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19DnCg-0008Hb-00
-	for <nfs@lists.sourceforge.net>; Thu, 08 May 2003 08:21:02 -0700
-To: "Neil Brown" <neilb@cse.unsw.edu.au>
+	id 19Dwdc-0002L4-00
+	for <nfs@lists.sourceforge.net>; Thu, 08 May 2003 18:25:28 -0700
+Received: from avatar.dpapt.spellboundnet.com (unknown [10.0.4.25])
+	by richard.dpapt.spellboundnet.com (Postfix) with ESMTP id 46F5D185D3
+	for <nfs@lists.sourceforge.net>; Thu,  8 May 2003 21:25:21 -0400 (EDT)
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,51 +28,35 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-hi neil-
+	ALright guys, we've been troubleshooting this problem at the office, and now 
+I need a little developer help with this. lol First, the setup is 2 SuSE SLES 
+7 machines running SuSE's patched 2.4.18 kernel. We have an app which listens 
+on a socket and accepts file through a proprietary protocol. It writes the 
+file to the NFS server, then it calls an import thread which then imports the 
+file into an Oracle database. The app is written purely in java, so the 
+improt is a seperate class that is instantiated and handed it's own thread. 
+Now, this works fine the vast majority of the time, but occasionally, when 
+dealing with a 10+M file, the import will barf reading the file (it's a 
+line-by-line read, so it's not like a copy, which block-by-blocks as fast as 
+possible), with the error message "No such file or directory". ANyone can ls 
+and see that indeed, the file does exist, and the next time the import runs 
+(after a new file comes down, the importer will process all pending files 
+before grabbing the new one), it'll import the 10M file just fine (problem 
+being that part of the file was already imported, so data can get 
+duplicated).
+	I was able to replicate an error similar to this one under different 
+conditions: when the cluster that advertises teh NFS export to clients mvoes 
+from one node to another, then reads can fail with the same error message, at 
+which point a file close and open solves things. Howver, in this case the 
+cluster isn't moving, so I'm kinda at a loss. 
 
-> On Thursday April 24, Charles.Lever@netapp.com wrote:
->=20
-> >                       and question B3 discusses the
-> > "255 NFS mounts per client" limitation.
->=20
-> You could add something more to this section if you like....
->=20
-> "It is possible to exceed the limit of 256 filesystems using=20
-> <a href=3D"See Below">this</a> patch.  It utilised 3 more major =
-numbers
-> (which have been allocated by lanana) and so allows upto
-> 1024 non-device mounts (such as NFS).
+	SO, questions are:
+	What kinds of situations can lead to this error being given by the client, 
+and:
+	what can I do to troubleshoot?
 
-thanks for the patch.  we considered adding a paragraph
-to this effect (there is a similar patch floating around
-out there).  here's why i think it is not a good idea:
-
-> This patch does <b>not</b> address issues of running out of=20
-> privileged=20
-> ports and so the effective limit is still well below 1024 ( but can be
-> maximised by mixing UDP and TCP mounts)."
-
-there are so many complicated little issues with how many
-NFS mounts you can get on the client that the best solution
-by far right now is to use an automounter.  we can recommend
-using an automounter in most situations, especially cases
-where a customer is required to stay on a commercially
-distributed kernel like Red Hat Advanced Server 2.1 to
-maintain some support contract.
-
-IMHO, adding a couple of major numbers is just a band-aid.
-most of that headroom will be eaten away by other anonymous
-file systems that are now arriving on the scene.
-
-additionally, most folks who want more than 250 mounts on
-a client really want thousands of mounts, and this patch
-won't achieve that.  deployments like that must use an
-automounter anyway.
-
-so i think the right thing to do is recommend using
-an automounter; it's a good generic solution for now.
-we can look to the development kernels to figure out
-how to eliminate this limitation entirely.
+	Thanks!
+	Donavan Pantke
 
 
 -------------------------------------------------------
