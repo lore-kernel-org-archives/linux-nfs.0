@@ -1,17 +1,17 @@
-From: pwitting@Cyveillance.com
-Subject: RE: Typo in Redhat 8/9 nfs start/stop script
-Date: Fri, 20 Jun 2003 10:39:59 -0400
+From: "Dan Steward" <dsteward@isis.vanderbilt.edu>
+Subject: Having Trouble Starting NFS
+Date: Fri, 20 Jun 2003 14:44:36 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <D38AFB3080F3D311807300B0D0203E53033A9619@MERCURY>
+Message-ID: <029DBE7A1D95BF4A860FE19EA15FA533948B@isis.vanderbilt.edu>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: mschilli@vss.fsi.com
+Content-Type: multipart/alternative;
+	boundary="----_=_NextPart_001_01C33764.6145308C"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [63.100.163.26] (helo=mercury.cyveillance.com)
+Received: from isis.vanderbilt.edu ([129.59.129.86] helo=discovery.isis.vanderbilt.edu)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19TNKL-0006Vl-00
-	for <nfs@lists.sourceforge.net>; Fri, 20 Jun 2003 07:57:21 -0700
-To: nfs@lists.sourceforge.net
+	id 19TRpi-0005Sx-00
+	for <nfs@lists.sourceforge.net>; Fri, 20 Jun 2003 12:46:02 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,129 +24,168 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+This is a multi-part message in MIME format.
 
-I would recommend 2.4.20 if you can. I have seen a 15-20% increase when I
-migrated to 2.4.20. Granted that increase is likely from the kernel's better
-handling of the queues, it was running RH 7.3 whose nfs script did not
-modify queue sizes. (I was working to get nfs stable on a jfs filesystem.
-Its very stable now with the latest code). I had a nightly script that
-copied a large (20-40GB file from an AIX box to Linux, I had the script mail
-me the results and calculate the kbps of the transfer, so I'm confident of
-that increase.
+------_=_NextPart_001_01C33764.6145308C
+Content-Type: text/plain;
+	charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
 
-Anyway, for details on how 2.4.20 calculates queue sizes, see this earlier
-post by Neil Brown:
+Hello Gentlemen,
+=20
+I recently installed Redhat Linux 9.0 on a Compaq laptop. When I try and
+mount our network NFS, I receive the following error message in the
+/var/log/messages log file: nfs: mount failure "servername" /home on
+/auto/home. Can some one please assist this newbie on getting NFS
+running on this laptop?
+=20
+Thanks
+DS
 
-http://sourceforge.net/mailarchive/message.php?msg_id=4229482
+------_=_NextPart_001_01C33764.6145308C
+Content-Type: text/html;
+	charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
 
-for pre-2.4.20 kernels, see this post (also by Neil Brown)
+<html xmlns:o=3D"urn:schemas-microsoft-com:office:office" =
+xmlns:w=3D"urn:schemas-microsoft-com:office:word" =
+xmlns=3D"http://www.w3.org/TR/REC-html40">
 
-http://sourceforge.net/mailarchive/message.php?msg_id=4221019
+<head>
+<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
+charset=3Dus-ascii">
 
-The gist of which is that QS is on a per socket level. I took this to mean
-that each incoming connection got its own QS, but on re-reading I'm not so
-sure. And unfortunately, the box that still has a 2.4.18 kernel (storage in
-on a SAN, so I like RedHat's kernels with Qlogic drivers merged) doesn't
-have convient performance metrics being mailed out every day and is in
-production. But here's my thread utilization:
 
-th 220 43091 25453.472 5411.218 2381.306 1093.449 641.435 1678.058 327.580
-115.388 82.265 102.480
+<meta name=3DProgId content=3DWord.Document>
+<meta name=3DGenerator content=3D"Microsoft Word 10">
+<meta name=3DOriginator content=3D"Microsoft Word 10">
+<link rel=3DFile-List href=3D"cid:filelist.xml@01C3373A.786DD2C0">
+<!--[if gte mso 9]><xml>
+ <o:OfficeDocumentSettings>
+  <o:DoNotRelyOnCSS/>
+ </o:OfficeDocumentSettings>
+</xml><![endif]--><!--[if gte mso 9]><xml>
+ <w:WordDocument>
+  <w:SpellingState>Clean</w:SpellingState>
+  <w:GrammarState>Clean</w:GrammarState>
+  <w:DocumentKind>DocumentEmail</w:DocumentKind>
+  <w:EnvelopeVis/>
+  <w:Compatibility>
+   <w:BreakWrappedTables/>
+   <w:SnapToGridInCell/>
+   <w:WrapTextWithPunct/>
+   <w:UseAsianBreakRules/>
+  </w:Compatibility>
+  <w:BrowserLevel>MicrosoftInternetExplorer4</w:BrowserLevel>
+ </w:WordDocument>
+</xml><![endif]-->
+<style>
+<!--
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{mso-style-parent:"";
+	margin:0in;
+	margin-bottom:.0001pt;
+	mso-pagination:widow-orphan;
+	font-size:12.0pt;
+	font-family:"Times New Roman";
+	mso-fareast-font-family:"Times New Roman";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;
+	text-underline:single;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;
+	text-underline:single;}
+span.EmailStyle17
+	{mso-style-type:personal-compose;
+	mso-style-noshow:yes;
+	mso-ansi-font-size:10.0pt;
+	mso-bidi-font-size:10.0pt;
+	font-family:Arial;
+	mso-ascii-font-family:Arial;
+	mso-hansi-font-family:Arial;
+	mso-bidi-font-family:Arial;
+	color:windowtext;}
+span.SpellE
+	{mso-style-name:"";
+	mso-spl-e:yes;}
+@page Section1
+	{size:8.5in 11.0in;
+	margin:1.0in 1.25in 1.0in 1.25in;
+	mso-header-margin:.5in;
+	mso-footer-margin:.5in;
+	mso-paper-source:0;}
+div.Section1
+	{page:Section1;}
+-->
+</style>
+<!--[if gte mso 10]>
+<style>
+ /* Style Definitions */=20
+ table.MsoNormalTable
+	{mso-style-name:"Table Normal";
+	mso-tstyle-rowband-size:0;
+	mso-tstyle-colband-size:0;
+	mso-style-noshow:yes;
+	mso-style-parent:"";
+	mso-padding-alt:0in 5.4pt 0in 5.4pt;
+	mso-para-margin:0in;
+	mso-para-margin-bottom:.0001pt;
+	mso-pagination:widow-orphan;
+	font-size:10.0pt;
+	font-family:"Times New Roman";}
+</style>
+<![endif]-->
+</head>
 
-So I'm getting good use out of those 220 threads :^)
+<body lang=3DEN-US link=3Dblue vlink=3Dpurple =
+style=3D'tab-interval:.5in'>
 
->From: Matt Schillinger <mschilli@vss.fsi.com>
->Date: 20 Jun 2003 08:37:49 -0500
->
->A couple of things.. If i'm reading your /etc/sysconfig/nfs right, you
->are using 120 threads, with a 256K input queue.. Is this correct? I
->thought that the goal was to allow 32K per thread. Is this not the case?
->My understanding was that 256K input queue was to increase NFSD write
->performance for 8 threads (the default), and that the input queue should
->scale with the number of threads. Is this incorrect?
->
->Also, 2.4.20.. would it be better for me to use that as opposed to
->2.4.19? I use a vanilla kernel with an NFSD patch that creates a
->workaround for an IRIX < 6.5.13 CWD bug.  If it is recommended to go to
->2.4.20, does anyone know if that patch is available for 2.4.20?
->Actually, I've forgotten my source for that patch, so if anyone knows
->the address, i'd greatly appreciate recieving that info.
->
->
->Thanks,
->
->Matt Schillinger
->mschilli@vss.fsi.com
->
->On Thu, 2003-06-19 at 15:50, pwitting@Cyveillance.com wrote:
->> Good catch. I went over these scripts a while ago and missed this. I did
->> find that they are now referencing /etc/sysconfig/nfs for variables, so I
->> set one up:
->>
->> /etc/sysconfig/nfs
->>
->> # Referenced by Red Hat 8.0 nfs script to set initial values
->> #
->> # Number of threads start.
->> RPCNFSDCOUNT=120
->>
->> # yes, no, or auto (attempts to auto-detect support)
->> MOUNTD_NFS_V2=auto
->> MOUNTD_NFS_V3=auto
->>
->> # Should we tune TCP/IP settings for nfs (consumes RAM)
->> TUNE_QUEUE=yes
->> # 256kb recommended minimum size based on SPECsfs NFS benchmarks
->> # default values:
->> #       net.core.rmem_default    65535
->> #       net.core.rmem_max       131071
->> NFS_QS=262144
->>
->> ===
->>
->> Note that since RedHat 9 uses 2.4.20 this should no longer matter, as nfs
->> now determines its own values for queue size on startup as of 2.4.20,
->> ignoring whatever values are there.
->>
->> >From: Matt Schillinger <mschilli@vss.fsi.com>
->> >Date: 19 Jun 2003 14:27:44 -0500
->> >
->> >Note for any Redhat users that need higher than default input queues for
->> >NFS.
->> >
->> >
->> ># Get the initial values for the input sock queues
->> ># at the time of running the script.
->> >if [ "$TUNE_QUEUE" = "yes" ]; then
->> >    RMEM_DEFAULT=`/sbin/sysctl -n net.core.rmem_default`
->> >    RMEM_MAX=`/sbin/sysctl -n net.core.rmem_max`
->> >    # 256kb recommended minimum size based on SPECsfs NFS benchmarks
->> >    [ -z "$NFS_QS" ] && NFS_QS=262144
->> >fi
->> >
->> ># See how we were called.
->> >case "$1" in
->> >  start)
->> >        # Start daemons.
->> >        # Apply input queue increase for nfs server
->> >        if [ "$TUNE_QUEUE" = "yes" ]; then
->> >            /sbin/sysctl -w net.core.rmem_default=$NFSD_QS >/dev/null
->> >2>&1
->> >            /sbin/sysctl -w net.core.rmem_max=$NFSD_QS >/dev/null 2>&1
->> >        fi
->> >
->> >
->> >
->> >NOTE THAT when checking that the variable has a value and setting the
->> >variable, NFS_QS is used. But when setting the input queues, $NFSD_QS is
->> >used.
->> >
->> >
->> >--
->> >Matt Schillinger
->> >
->> >mschilli@vss.fsi.com
+<div class=3DSection1>
 
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'>Hello Gentlemen,<o:p></o:p></span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'>I recently installed <span =
+class=3DSpellE>Redhat</span> Linux
+9.0 on a Compaq laptop. When I try and mount our network NFS, I receive =
+the
+following error message in the /<span =
+class=3DSpellE>var</span>/log/messages log
+file: <span class=3DSpellE>nfs</span>: mount failure &#8220;<span =
+class=3DSpellE>servername</span>&#8221;
+/home on /auto/home. Can some one please assist this newbie on getting =
+NFS
+running on this laptop?<o:p></o:p></span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'>Thanks<o:p></o:p></span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'>DS<o:p></o:p></span></font></p>
+
+</div>
+
+</body>
+
+</html>
+=00
+------_=_NextPart_001_01C33764.6145308C--
 
 
 -------------------------------------------------------
