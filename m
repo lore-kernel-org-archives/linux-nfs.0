@@ -1,25 +1,26 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: [PATCH] -o intr  mount option prevents core dumps on 2.4
 	kernel
-Date: Tue, 11 Jan 2005 15:10:45 -0500
-Message-ID: <1105474246.11430.1.camel@lade.trondhjem.org>
+Date: Tue, 11 Jan 2005 16:59:05 -0500
+Message-ID: <1105480745.11430.56.camel@lade.trondhjem.org>
 References: <41DD8403.7030601@RedHat.com>
 	 <1105118040.10979.70.camel@lade.trondhjem.org>
-	 <41E42AD7.3030303@RedHat.com>
+	 <41E42AD7.3030303@RedHat.com> <1105474246.11430.1.camel@lade.trondhjem.org>
+	 <41E43DE1.5080703@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CoSM5-0007vQ-Pf
-	for nfs@lists.sourceforge.net; Tue, 11 Jan 2005 12:11:05 -0800
+	id 1CoU2q-00045p-NU
+	for nfs@lists.sourceforge.net; Tue, 11 Jan 2005 13:59:20 -0800
 Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CoSM4-0000FP-8h
-	for nfs@lists.sourceforge.net; Tue, 11 Jan 2005 12:11:05 -0800
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CoU2p-0000ZV-Pf
+	for nfs@lists.sourceforge.net; Tue, 11 Jan 2005 13:59:20 -0800
 To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: <41E42AD7.3030303@RedHat.com>
+In-Reply-To: <41E43DE1.5080703@RedHat.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,29 +34,21 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-ty den 11.01.2005 Klokka 14:36 (-0500) skreiv Steve Dickson:
+ty den 11.01.2005 Klokka 15:58 (-0500) skreiv Steve Dickson:
 
-> >Firstly, how is "cl_intr" preventing core dumps? Normally, we should be
-> >masking all signals except SIGKILL, SIGINT and SIGQUIT. I can see that
-> >masking SIGINT and SIGQUIT might be useful here, but not SIGKILL...
-> >  
-> >
-> Because __rpc_execute() notices that signalled() is set and aborts the 
-> write by
-> returning -ERESTARTSYS makes the core dumping code stop dumping.
+> hmm... I'll admit kernel signal process is not an area I've ventured 
+> into much so
+> correct me if I'm wrong.... But if SIGKILL is masked off, would that stop
+> the process from getting the signal and in turn stop the core dropping 
+> as well???
 
-Err... That's what the sigmask is for. signalled() only looks at those
-signals that are enabled by the sigmask.
+Yes, but I'm not sure that it makes sense to mask off SIGKILL as that
+makes core dumping completely uninterruptible. People do expect "kill
+-9" to always work when the "intr" flag is set.
 
-> >Secondly: Why not do all this in rpc_clnt_sigmask()?
-> >  
-> >
-> I looked at that.... but I really was not sure if could hack it up
-> to turn off signalled() and plus I was sure how I could turn
-> signalled() back on at the end of the write.... The way I did
-> just seemed less risky and seem to work...
-
-See above.
+You should, however, mask off all other signals, including SIGINT and
+SIGQUIT. The latter two (+ sigkill) are the only ones that
+rpc_clnt_sigmask() does not currently mask out when "intr" is set.
 
 Cheers,
   Trond
