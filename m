@@ -1,19 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] sunrpc - 3 of 3 - Some tidyup of svc_authenticate
-Date: Tue, 07 Jan 2003 13:39:40 +1100
+Subject: [PATCH] sunrpc - 1 of 3 - Reorganise sock init in rpcsvc to avoid races.
+Date: Tue, 07 Jan 2003 13:39:39 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E18VjeW-00071v-00@notabene.cse.unsw.edu.au>
-Cc: nfs@lists.sourceforge.net,  Chuck Lever <cel@citi.umich.edu>
+Message-ID: <E18VjeV-00071o-00@notabene.cse.unsw.edu.au>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18Vjee-0005sS-00
+	id 18Vjee-0005sQ-00
 	for <nfs@lists.sourceforge.net>; Mon, 06 Jan 2003 18:39:48 -0800
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>)
-	(for <cel@citi.umich.edu>) By tone With Smtp ;
-	Tue, 7 Jan 2003 13:39:40 +1100
+	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>) By
+	tone With Smtp ; Tue, 7 Jan 2003 13:39:40 +1100
 To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -29,173 +28,148 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
 ### Comments for ChangeSet
-Instead of returning rpc_stat in a by-reference parameter,
-we encode that status in the return value.
 
-Also, don't pass 'proc' parameter to ->accept, as it is 
-implicit in rqstp.
+If one of the callback (e.g. data ready) is called 
+before socket setup is complete, oops may occur.
 
+With this patch, socket is kept SK_BUSY until all is
+ready to avoid this.
+
+Also some code is moved around to make it cleaner.
 
 
  ----------- Diffstat output ------------
- ./include/linux/sunrpc/svcauth.h |    4 ++--
- ./net/sunrpc/svc.c               |   27 +++++++++++++++++----------
- ./net/sunrpc/svcauth.c           |   21 +++------------------
- ./net/sunrpc/svcauth_unix.c      |    8 ++++----
- 4 files changed, 26 insertions(+), 34 deletions(-)
+ ./net/sunrpc/svcsock.c |   55 ++++++++++++++++++++++---------------------------
+ 1 files changed, 25 insertions(+), 30 deletions(-)
 
-diff ./include/linux/sunrpc/svcauth.h~current~ ./include/linux/sunrpc/svcauth.h
---- ./include/linux/sunrpc/svcauth.h~current~	2003-01-07 13:36:43.000000000 +1100
-+++ ./include/linux/sunrpc/svcauth.h	2003-01-07 13:36:43.000000000 +1100
-@@ -83,7 +83,7 @@ struct auth_domain {
- struct auth_ops {
- 	char *	name;
- 	int	flavour;
--	int	(*accept)(struct svc_rqst *rq, u32 *authp, int proc);
-+	int	(*accept)(struct svc_rqst *rq, u32 *authp);
- 	int	(*release)(struct svc_rqst *rq);
- 	void	(*domain_release)(struct auth_domain *);
- };
-@@ -99,7 +99,7 @@ extern struct auth_ops	*authtab[RPC_AUTH
- #define	SVC_PENDING	8
+diff ./net/sunrpc/svcsock.c~current~ ./net/sunrpc/svcsock.c
+--- ./net/sunrpc/svcsock.c~current~	2003-01-07 13:36:33.000000000 +1100
++++ ./net/sunrpc/svcsock.c	2003-01-07 13:36:33.000000000 +1100
+@@ -627,7 +627,7 @@ svc_udp_sendto(struct svc_rqst *rqstp)
+ 	return error;
+ }
  
+-static int
++static void
+ svc_udp_init(struct svc_sock *svsk)
+ {
+ 	svsk->sk_sk->data_ready = svc_udp_data_ready;
+@@ -643,9 +643,8 @@ svc_udp_init(struct svc_sock *svsk)
+ 			    3 * svsk->sk_server->sv_bufsz,
+ 			    3 * svsk->sk_server->sv_bufsz);
  
--extern int	svc_authenticate(struct svc_rqst *rqstp, u32 *statp, u32 *authp, int proc);
-+extern int	svc_authenticate(struct svc_rqst *rqstp, u32 *authp);
- extern int	svc_authorise(struct svc_rqst *rqstp);
- extern int	svc_auth_register(rpc_authflavor_t flavor, struct auth_ops *aops);
- extern void	svc_auth_unregister(rpc_authflavor_t flavor);
-
-diff ./net/sunrpc/svc.c~current~ ./net/sunrpc/svc.c
---- ./net/sunrpc/svc.c~current~	2003-01-07 13:36:43.000000000 +1100
-+++ ./net/sunrpc/svc.c	2003-01-07 13:36:43.000000000 +1100
-@@ -304,16 +304,21 @@ svc_process(struct svc_serv *serv, struc
- 	 * We do this before anything else in order to get a decent
- 	 * auth verifier.
++	set_bit(SK_DATA, &svsk->sk_flags); /* might have come in before data_ready set up */
+ 	set_bit(SK_CHNGBUF, &svsk->sk_flags);
+-
+-	return 0;
+ }
+ 
+ /*
+@@ -773,19 +772,14 @@ svc_tcp_accept(struct svc_sock *svsk)
+ 	dprintk("%s: connect from %u.%u.%u.%u:%04x\n", serv->sv_name,
+ 			NIPQUAD(sin.sin_addr.s_addr), ntohs(sin.sin_port));
+ 
+-	if (!(newsvsk = svc_setup_socket(serv, newsock, &err, 0)))
+-		goto failed;
+-
+ 	/* make sure that a write doesn't block forever when
+ 	 * low on memory
  	 */
--	if (svc_authenticate(rqstp, &rpc_stat, &auth_stat, proc))
--		/* drop the request, it has probably been deferred */
--		goto dropit;
--
--	if (rpc_stat != rpc_success)
--		goto err_garbage;
--
--	if (auth_stat != rpc_auth_ok)
-+	switch (svc_authenticate(rqstp, &auth_stat)) {
-+	case SVC_OK:
-+		break;
-+	case SVC_GARBAGE:
-+		rpc_stat = rpc_garbage_args;
-+		goto err_bad;
-+	case SVC_SYSERR:
-+		rpc_stat = rpc_system_err;
-+		goto err_bad;
-+	case SVC_DENIED:
- 		goto err_bad_auth;
--
-+	case SVC_DROP:
-+		goto dropit;
-+	}
-+		
- 	progp = serv->sv_program;
- 	if (prog != progp->pg_prog)
- 		goto err_bad_prog;
-@@ -458,7 +463,9 @@ err_garbage:
- #ifdef RPC_PARANOIA
- 	printk("svc: failed to decode args\n");
- #endif
-+	rpc_stat = rpc_garbage_args;
-+err_bad:
- 	serv->sv_stats->rpcbadfmt++;
--	svc_putu32(resv, rpc_garbage_args);
-+	svc_putu32(resv, rpc_stat);
- 	goto sendit;
+ 	newsock->sk->sndtimeo = HZ*30;
+ 
+-	/* Precharge. Data may have arrived on the socket before we
+-	 * installed the data_ready callback. 
+-	 */
+-	set_bit(SK_DATA, &newsvsk->sk_flags);
+-	svc_sock_enqueue(newsvsk);
++	if (!(newsvsk = svc_setup_socket(serv, newsock, &err, 0)))
++		goto failed;
++
+ 
+ 	/* make sure that we don't have too many active connections.
+ 	 * If we have, something must be dropped.
+@@ -1006,7 +1000,7 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
+ 	return sent;
  }
-
-diff ./net/sunrpc/svcauth.c~current~ ./net/sunrpc/svcauth.c
---- ./net/sunrpc/svcauth.c~current~	2003-01-07 13:36:43.000000000 +1100
-+++ ./net/sunrpc/svcauth.c	2003-01-07 13:36:43.000000000 +1100
-@@ -33,12 +33,11 @@ static struct auth_ops	*authtab[RPC_AUTH
- };
  
- int
--svc_authenticate(struct svc_rqst *rqstp, u32 *statp, u32 *authp, int proc)
-+svc_authenticate(struct svc_rqst *rqstp, u32 *authp)
+-static int
++static void
+ svc_tcp_init(struct svc_sock *svsk)
  {
- 	rpc_authflavor_t	flavor;
- 	struct auth_ops		*aops;
+ 	struct sock	*sk = svsk->sk_sk;
+@@ -1017,6 +1011,7 @@ svc_tcp_init(struct svc_sock *svsk)
+ 	if (sk->state == TCP_LISTEN) {
+ 		dprintk("setting up TCP socket for listening\n");
+ 		sk->data_ready = svc_tcp_listen_data_ready;
++		set_bit(SK_CONN, &svsk->sk_flags);
+ 	} else {
+ 		dprintk("setting up TCP socket for reading\n");
+ 		sk->state_change = svc_tcp_state_change;
+@@ -1035,9 +1030,8 @@ svc_tcp_init(struct svc_sock *svsk)
+ 				    3 * svsk->sk_server->sv_bufsz);
  
--	*statp = rpc_success;
- 	*authp = rpc_auth_ok;
- 
- 	flavor = ntohl(svc_getu32(&rqstp->rq_arg.head[0]));
-@@ -46,25 +45,11 @@ svc_authenticate(struct svc_rqst *rqstp,
- 	dprintk("svc: svc_authenticate (%d)\n", flavor);
- 	if (flavor >= RPC_AUTH_MAXFLAVOR || !(aops = authtab[flavor])) {
- 		*authp = rpc_autherr_badcred;
--		return 0;
-+		return SVC_DENIED;
+ 		set_bit(SK_CHNGBUF, &svsk->sk_flags);
++		set_bit(SK_DATA, &svsk->sk_flags);
  	}
- 
- 	rqstp->rq_authop = aops;
--	switch (aops->accept(rqstp, authp, proc)) {
--	case SVC_OK:
--		return 0;
--	case SVC_GARBAGE:
--		*statp = rpc_garbage_args;
--		return 0;
--	case SVC_SYSERR:
--		*statp = rpc_system_err;
--		return 0;
--	case SVC_DENIED:
--		return 0;
--	case SVC_DROP:
--		break;
--	}
--	return 1; /* drop the request */
-+	return aops->accept(rqstp, authp);
+-
+-	return 0;
  }
  
- /* A reqeust, which was authenticated, has now executed.
-
-diff ./net/sunrpc/svcauth_unix.c~current~ ./net/sunrpc/svcauth_unix.c
---- ./net/sunrpc/svcauth_unix.c~current~	2003-01-07 13:36:43.000000000 +1100
-+++ ./net/sunrpc/svcauth_unix.c	2003-01-07 13:36:43.000000000 +1100
-@@ -321,7 +321,7 @@ void svcauth_unix_purge(void)
+ void
+@@ -1258,6 +1252,18 @@ svc_setup_socket(struct svc_serv *serv, 
+ 	memset(svsk, 0, sizeof(*svsk));
  
+ 	inet = sock->sk;
++
++	/* Register socket with portmapper */
++	if (*errp >= 0 && pmap_register)
++		*errp = svc_register(serv, inet->protocol,
++				     ntohs(inet_sk(inet)->sport));
++
++	if (*errp < 0) {
++		kfree(svsk);
++		return NULL;
++	}
++
++	set_bit(SK_BUSY, &svsk->sk_flags);
+ 	inet->user_data = svsk;
+ 	svsk->sk_sock = sock;
+ 	svsk->sk_sk = inet;
+@@ -1271,23 +1277,9 @@ svc_setup_socket(struct svc_serv *serv, 
  
- static int
--svcauth_null_accept(struct svc_rqst *rqstp, u32 *authp, int proc)
-+svcauth_null_accept(struct svc_rqst *rqstp, u32 *authp)
- {
- 	struct iovec	*argv = &rqstp->rq_arg.head[0];
- 	struct iovec	*resv = &rqstp->rq_res.head[0];
-@@ -376,7 +376,7 @@ svcauth_null_accept(struct svc_rqst *rqs
- 		}
- 	else rv = SVC_DROP;
+ 	/* Initialize the socket */
+ 	if (sock->type == SOCK_DGRAM)
+-		*errp = svc_udp_init(svsk);
++		svc_udp_init(svsk);
+ 	else
+-		*errp = svc_tcp_init(svsk);
+-if (svsk->sk_sk == NULL)
+-	printk(KERN_WARNING "svsk->sk_sk == NULL after svc_prot_init!\n");
+-
+-	/* Register socket with portmapper */
+-	if (*errp >= 0 && pmap_register)
+-		*errp = svc_register(serv, inet->protocol,
+-				     ntohs(inet_sk(inet)->sport));
+-
+-	if (*errp < 0) {
+-		inet->user_data = NULL;
+-		kfree(svsk);
+-		return NULL;
+-	}
+-
++		svc_tcp_init(svsk);
  
--	if (rqstp->rq_client == NULL && proc != 0)
-+	if (rqstp->rq_client == NULL && rqstp->rq_proc != 0)
- 		*authp = rpc_autherr_badcred;
+ 	spin_lock_bh(&serv->sv_lock);
+ 	if (!pmap_register) {
+@@ -1302,6 +1294,9 @@ if (svsk->sk_sk == NULL)
  
- 	return rv;
-@@ -402,7 +402,7 @@ struct auth_ops svcauth_null = {
- 
- 
- int
--svcauth_unix_accept(struct svc_rqst *rqstp, u32 *authp, int proc)
-+svcauth_unix_accept(struct svc_rqst *rqstp, u32 *authp)
- {
- 	struct iovec	*argv = &rqstp->rq_arg.head[0];
- 	struct iovec	*resv = &rqstp->rq_res.head[0];
-@@ -470,7 +470,7 @@ svcauth_unix_accept(struct svc_rqst *rqs
- 		}
- 	else rv = SVC_DROP;
- 
--	if (rqstp->rq_client == NULL && proc != 0)
-+	if (rqstp->rq_client == NULL && rqstp->rq_proc != 0)
- 		goto badcred;
- 	return rv;
+ 	dprintk("svc: svc_setup_socket created %p (inet %p)\n",
+ 				svsk, svsk->sk_sk);
++
++	clear_bit(SK_BUSY, &svsk->sk_flags);
++	svc_sock_enqueue(svsk);
+ 	return svsk;
+ }
  
 
 
