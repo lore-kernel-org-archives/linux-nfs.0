@@ -1,17 +1,15 @@
-From: "Carl Gherardi" <Carl.Gherardi@nautronix.com.au>
-Subject: Nfs stale file handles
-Date: Fri, 9 May 2003 14:22:57 +0800
+From: xiyu@800j.com
+Subject: =?GB2312?B?o7yjvM73sLLN7bGoo76jvs7Sz7KwrrXE0KG/tdeh1azGwNGhu+62rw==?=
+Date: Fri, 9 May 2003 18:07:09 +0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <CDF67C45E6F8384B996AC26A3B805782568785@exch-fremantle.nautronix>
-Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Message-ID: <E19E4lK-0002Hp-00@sc8-sf-list1.sourceforge.net>
+Content-Type: text/html;charset="GB2312"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from 073.005.dsl.pth.iprimus.net.au ([203.134.183.73] helo=nautronix.com.au)
+Received: from [61.150.19.118] (helo=800j.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19E1Ha-0002Pu-00
-	for <nfs@lists.sourceforge.net>; Thu, 08 May 2003 23:23:03 -0700
-To: <nfs@lists.sourceforge.net>
+	id 19E4lK-0002Hp-00
+	for <nfs@lists.sourceforge.net>; Fri, 09 May 2003 03:05:58 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,61 +22,32 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi all,
+<html>
 
-I haven't been able to find anything in the archives about my problem so
-I thought I'd post.
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
+<meta name="GENERATOR" content="Microsoft FrontPage 4.0">
+<meta name="ProgId" content="FrontPage.Editor.Document">
+<title>New Page 1</title>
+</head>
 
-I'm running a bunch of Redhat 7.3 boxes that all automount various
-directories on 2 servers.
+<body>
 
-Every time I adjust an export (add/remove or change map) I reexport the
-file system and things work for about an hour or two, then I get a
-series of reports of stale file hadles, and noone can mount several
-(read as random) directories.
-
-Running exportfs -r fixes the problem until the next time I adjust the
-exports.
-
-Has anyone experienced anything similar?
-
-Thanks
-
-Carl
-
-NB: Locked into vendor kernels cause of a binary only fibre channel
-card.
-NBB: Sorry about crap to follow.=20
-
-
-This email is confidential and intended solely for the use of the =
-individual to=20
-whom it is addressed.  Any views or opinions presented are solely those =
-of the=20
-author and do not necessarily represent those of Nautronix Ltd.
-
-If you are not the intended recipient, you have received this email in =
-error and
-use, dissemination, forwarding, printing, or copying of this email is =
-strictly
-prohibited.  If you have received this email in error please contact the =
-sender.
-
-Although our computer systems use active virus protection software, and =
-we take
-various measures to reduce the risk of viruses being transmitted in =
-e-mail
-messages and attachments sent from this company, we cannot guarantee =
-that such
-e-mail messages and attachments are free from viruses on receipt.  It is =
-a
-condition of our using e-mail to correspond with you, that any and all =
-liability
-on our part arising directly or indirectly out of any virus is excluded.
-Please ensure that you run virus checking software on all e-mail =
-messages and
-attachments before reading them.
-
+<p class="MsoNormal" align="center"><b><span style="mso-bidi-font-size: 12.0pt; color: red"><font face="隶书" size="7"><span lang="EN-US" style="mso-bidi-font-size: 12.0pt; color: red">&lt;&lt;</span><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman; mso-hansi-font-family: Times New Roman; color: red">西安晚报＞＞</span></font></span><span lang="EN-US" style="font-size:36.0pt;mso-bidi-font-size:12.0pt;color:red"><o:p>
+</o:p>
+</span></b></p>
+<p class="MsoNormal" align="center"><b><span style="font-size:18.0pt;mso-bidi-font-size:12.0pt;
+font-family:宋体;mso-ascii-font-family:&quot;Times New Roman&quot;;mso-hansi-font-family:
+&quot;Times New Roman&quot;;color:#00CCFF">我喜爱的</span><span style="font-size:26.0pt;
+mso-bidi-font-size:12.0pt;font-family:宋体;mso-ascii-font-family:&quot;Times New Roman&quot;;
+mso-hansi-font-family:&quot;Times New Roman&quot;;color:#00CCFF">小康住宅评选活动</span></b></p>
+<p class="MsoNormal" align="center"><b><font face="华文中宋" size="7"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman; mso-hansi-font-family: Times New Roman; color: red">网上投票　今日启动</span></font><span lang="EN-US" style="font-size:42.0pt;mso-bidi-font-size:12.0pt;color:red"><o:p>
+</o:p></span></b></p>  
+<p class="MsoNormal" align="center"><b><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; font-family: 宋体; mso-ascii-font-family: Times New Roman; mso-hansi-font-family: Times New Roman; mso-bidi-font-family: Times New Roman; mso-font-kerning: 1.0pt; mso-ansi-language: EN-US; mso-fareast-language: ZH-CN; mso-bidi-language: AR-SA"><font size="6" color="#800080">投票请点击</font></span></a></b></p> 
+ 
+</body> 
+ 
+</html> 
 
 
 -------------------------------------------------------
