@@ -1,17 +1,20 @@
-From: Matt Adams <matta@emerchant.ca>
-Subject: uid/gid mapping question
-Date: Wed, 23 Oct 2002 15:46:01 -0400
+From: Philippe =?ISO-8859-1?B?R3JhbW91bGzp?= <philippe.gramoulle@mmania.com>
+Subject: Re: Millions of files and directory caching.
+Date: Wed, 23 Oct 2002 21:48:57 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20021021202327.GB5598@emerchant.ca>
-Reply-To: matta@emerchant.ca
+Message-ID: <20021023214857.61d6689d.philippe.gramoulle@mmania.com>
+References: <D38AFB3080F3D311807300B0D0203E53033A92D8@MERCURY>
+	<3DB6E791.2030304@chrisdos.com>
+	<20021023142540.A28378@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from toc1.kos.net ([199.246.2.136] helo=webserver01.emerchant.ca)
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 184RSC-0007jx-00
-	for <nfs@lists.sourceforge.net>; Wed, 23 Oct 2002 12:46:08 -0700
+Received: from ns.aspic.com ([213.193.2.5] helo=off.aspic.com)
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 184RV3-0008Kl-00
+	for <nfs@lists.sourceforge.net>; Wed, 23 Oct 2002 12:49:06 -0700
 To: nfs@lists.sourceforge.net
+In-Reply-To: <20021023142540.A28378@redhat.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,49 +27,24 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi:
+Re,
 
-I seem to be having a problem with the uid/gid mapping in my
-exports.  
+Chris, you might be also interested in this pretty clever hardlinks/rsync snapshot system:
 
-My current configuration involves an NFS server (which also happens
-to be the NIS server which I'm using for authentication, etc.) and a single 
-client.  The exports file containing the single line:
+http://www.mikerubel.org/computers/rsync_snapshots/
 
-/home 192.168.0.15(root_squash,rw,map_nis=internal.domain.ca)
+Philippe.
 
-Based on my feeble understanding of NFS, I'd expect, since ypbind on 
-the client talks properly with the server, that the uid/gids in
-the export would map properly, however I get the following output
-when I list the mounted export on the client machine:
+On Wed, 23 Oct 2002 14:25:40 -0400
+Benjamin LaHaise <bcrl@redhat.com> wrote:
 
-total 32
-drwxr-xr-x    3 root     root         4096 Oct  7 14:04 backup
-drwx------    2 4294967294 4294967294    16384 Oct  3 16:23 lost+found
-drwxr-xr-x   20 4294967294 4294967294     4096 Oct 20 19:26 madams
-lrwxrwxrwx    1 4294967294 4294967294       19 Oct 16 13:05 robl 
-drwxr-xr-x    4 4294967294 4294967294     4096 Oct 16 12:25 samba
-drwxr-xr-x    6 root     root         4096 Oct 15 14:46 smbshare
-
-Does anyone have any ideas as to why I'm getting these extremely long
-uid/gids?  This issue also seems to prevent me from getting proper
-r/w access to the data.  I'd appreciate any suggestions or comments
-anyone might have!  From what I can tell, NIS *appears* to be working 
-correctly - except in NFS.
-
-I'm running Linux 2.2.20raid on the NFS server (userspace) and 
-Linux 2.4.18 on the NFS client.  Both the server and client are 
-using the same version of NFS utils, i.e. 2.2beta47.
-
-
-Thanks in advance,
-
-Matt
--- 
-Matt Adams <matta@emerchant.ca>
-Systems Administrator, eMerchant.ca Inc.
-
-
+  |  LVM has the ability to create block device level snapshots, but it exacts 
+  |   a performance hit.  Just how much depends on the configuration of the 
+  |   array and whether the snapshot slices are allocated from a different 
+  |   drive.  It works quite well with ext3, although you have to make sure 
+  |   you mount the snapshots as ext2 read only.
+  |  
+  |   		-ben
 
 
 -------------------------------------------------------
