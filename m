@@ -1,63 +1,42 @@
-From: xiyu@800j.com
-Subject: =?GB2312?B?zvewsre/tdiy+tDFz6LN+NDQ0rXIyMPFu7DM4g==?=
-Date: Tue, 27 May 2003 16:58:21 +0800
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19KaHE-0005R2-00@sc8-sf-list1.sourceforge.net>
-Content-Type: text/html;charset="GB2312"
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [61.150.19.113] (helo=800j.com)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19KaHE-0005R2-00
-	for <nfs@lists.sourceforge.net>; Tue, 27 May 2003 01:57:48 -0700
-To: nfs@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+From: Alex Riesen <alexander.riesen@synopsys.COM>
+Subject: Re: NFS root: New error messages in latest bk
+Date: Tue, 27 May 2003 14:34:53 +0200
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <20030527123453.GU32559@Synopsys.COM>
+References: <3E47D057.4070205@walrond.org>
+Reply-To: alexander.riesen@synopsys.COM
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net, Neil Brown <neilb@cse.unsw.edu.au>
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
+To: linux-kernel@vger.kernel.org
+In-Reply-To: <3E47D057.4070205@walrond.org>
+List-ID: <nfs.lists.sourceforge.net>
 
-<html>
+Andrew Walrond, Mon, Feb 10, 2003 17:16:23 +0100:
+> Latest bk 2.5;
 
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
-<meta name="GENERATOR" content="Microsoft FrontPage 4.0">
-<meta name="ProgId" content="FrontPage.Editor.Document">
-<title>西安房地产信息网</title>
-</head>
+2.5.70 here
 
-<body>
+> Just booted with NFS root and noticed these new error messages in dmesg:
+> 
+> NFS: server cheating in read reply: count 4096 > recvd 1000
+> NFS: giant filename in readdir (len 0xcb2d2053)!
+> 
 
-<p class="MsoNormal" align="center"><span lang="EN-US" style="font-size:26.0pt;mso-bidi-font-size:12.0pt;mso-fareast-font-family:
-楷体_GB2312;color:fuchsia"><o:p>
-</span><font color="#0000FF" size="7"><a href="http://www.800j.com.cn"><span lang="EN-US" style="mso-bidi-font-size: 12.0pt"> 
-</o:p> 
- </span></a></font><b><font color="#0000FF" size="7"><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman"><font face="楷体_GB2312">西安房地产信息网</font></span></a></font></b></p>
+I have almost the same, but without the "server cheating":
 
-<p class="MsoNormal" align="center"><font color="#0000FF"><b><font face="楷体_GB2312" size="6"><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman">www.800j.cc</span></a></font></b></font></p>
-<p align="center">　
-<p align="center"><a href="http://www.800j.com.cn"><img src="huati001.gif" width="321" height="46"></a></p>
-<p align="center"><a href="http://www.800j.com.cn/800j/fclt/djtbbs/show.asp?bID=&amp;RID=4863&amp;ID=4863"><font color="#FF0000" size="4"><b>非典时期买楼该注重什么？</b></font></a></p>
-<p align="center"><a href="http://www.800j.com.cn/800j/fclt/djtbbs/show.asp?bID=&amp;RID=5014&amp;ID=5014"><font color="#FF0000" size="4"><b>谁来评述“世家星城”</b></font></a></p>
-<p align="center"><font color="#FF0000" size="4"><b>.....</b></font></p>
-<p class="MsoNormal" align="center"><b><font color="#FFFF00" face="楷体_GB2312" size="4"><a href="http://http://www.800j.com.cn/800j/fclt/djtbbs/new.asp">我要发言　</a>　　　　　<a href="http://http://www.800j.com.cn/800j/fclt/djtbbs/index.asp">　进入论坛</a></font></b></p>
-<p align="center">　</p>
+16:12:06 NFS: giant filename in readdir (len c8f2d9f0)!
 
-</body>
+got this by doing "find /mnt -type f | xargs cat > /dev/null".
+The server is 2.4.20-ck4 (Con Kolivas patches: aavm, preempt, lolatency).
 
-</html>
+Also seen something about 7 min later (the find was still running):
 
+16:19:22 nfs: server server1 not responding, still trying
+16:19:25 nfs: server server1 OK
 
--------------------------------------------------------
-This SF.net email is sponsored by: ObjectStore.
-If flattening out C++ or Java code to make your application fit in a
-relational database is painful, don't do it! Check out ObjectStore.
-Now part of Progress Software. http://www.objectstore.net/sourceforge
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+The "server1" (my desktop machine) was doing almost nothing at this time
+and felt ok (still does).
+
+-alex
