@@ -1,18 +1,23 @@
-From: <ltd20041616m31@nation.net>
-Subject: Create a PAYCHECK with your computer -
-Date: Wed, 07 Aug 0102 23:56:23 -1100
+From: Bernd Schubert <bernd-schubert@web.de>
+Subject: fsid syntax
+Date: Wed, 7 Aug 2002 17:11:00 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <027c11c67a7c$2871b3a2$2ca65ec1@fsyiyk>
-Reply-To: <ltd20041616m31@nation.net>
+Message-ID: <200208071711.00712.bernd-schubert@web.de>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="----=_NextPart_000_00A6_20E37D0E.C1746E88"
+Content-Type: text/plain;
+  charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [210.187.14.2] (helo=nation.net)
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17cQXl-000221-00
-	for <nfs@lists.sourceforge.net>; Wed, 07 Aug 2002 06:08:07 -0700
-To: <nfs@lists.sourceforge.net>
+Received: from relay2.uni-heidelberg.de ([129.206.210.211])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17cSSn-0001eZ-00
+	for <nfs@lists.sourceforge.net>; Wed, 07 Aug 2002 08:11:06 -0700
+Received: from ix.urz.uni-heidelberg.de (mail.urz.uni-heidelberg.de [129.206.119.234])
+	by relay2.uni-heidelberg.de (8.12.4/8.12.4) with ESMTP id g77FB12T028801
+	for <nfs@lists.sourceforge.net>; Wed, 7 Aug 2002 17:11:01 +0200 (MET DST)
+Received: from euklid (bernd@euklid.pci.uni-heidelberg.de [129.206.21.104])
+	by ix.urz.uni-heidelberg.de (8.8.8/8.8.8) with ESMTP id RAA36932
+	for <nfs@lists.sourceforge.net>; Wed, 7 Aug 2002 17:11:01 +0200
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,76 +30,32 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-------=_NextPart_000_00A6_20E37D0E.C1746E88
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: base64
+Hi,
+
+probably on Friday I need to make use of setting the fsid in the /etc/exports.
+
+Since I can't find the syntax in the exports manpage (manpage was last time 
+changed on Januar, while the fsid-feature seems to be become added to cvs on 
+February).
+
+So I'd like to know the exact sytanx, is for example:
+
+/testdir	testnode(fsid=/dev/sdb)
+
+correct to make 'testnode' believing that sdb is exported?
 
 
-SGVsbG8gLQ0KDQpZb3UgZ2V0IGVtYWlscyBldmVyeSBkYXksIG9mZmVyaW5n
-IHRvIHNob3cgeW91IGhvdyB0byBtYWtlIG1vbmV5Lg0KTW9zdCBvZiB0aGVz
-ZSBlbWFpbHMgYXJlIGZyb20gcGVvcGxlIHdobyBhcmUgTk9UIG1ha2luZyBh
-bnkgbW9uZXkuDQpBbmQgdGhleSBleHBlY3QgeW91IHRvIGxpc3RlbiB0byB0
-aGVtPw0KDQpFbm91Z2guDQoNCklmIHlvdSB3YW50IHRvIG1ha2UgbW9uZXkg
-d2l0aCB5b3VyIGNvbXB1dGVyLCB0aGVuIHlvdSBzaG91bGQNCmhvb2sgdXAg
-d2l0aCBhIGdyb3VwIHRoYXQgaXMgYWN0dWFsbHkgRE9JTkcgaXQuICBXZSBh
-cmUgbWFraW5nDQphIGxhcmdlLCBjb250aW51aW5nIGluY29tZSBldmVyeSBt
-b250aC4gIFdoYXQncyBtb3JlIC0gd2Ugd2lsbA0Kc2hvdyBZT1UgaG93IHRv
-IGRvIHRoZSBzYW1lIHRoaW5nLg0KDQpUaGlzIGJ1c2luZXNzIGlzIGRvbmUg
-Y29tcGxldGVseSBieSBpbnRlcm5ldCBhbmQgZW1haWwsIGFuZCB5b3UNCmNh
-biBldmVuIGpvaW4gZm9yIGZyZWUgdG8gY2hlY2sgaXQgb3V0IGZpcnN0LiAg
-SWYgeW91IGNhbiBzZW5kDQphbiBlbWFpbCwgeW91IGNhbiBkbyB0aGlzLiAg
-Tm8gc3BlY2lhbCAic2tpbGxzIiBhcmUgcmVxdWlyZWQuDQoNCkhvdyBtdWNo
-IGFyZSB3ZSBtYWtpbmc/ICBCZWxvdyBhcmUgYSBmZXcgZXhhbXBsZXMuICBU
-aGVzZSBhcmUNCnJlYWwgcGVvcGxlLCBhbmQgbW9zdCBvZiB0aGVtIHdvcmsg
-YXQgdGhpcyBidXNpbmVzcyBwYXJ0LXRpbWUuDQpCdXQga2VlcCBpbiBtaW5k
-LCB0aGV5IGRvIFdPUksgYXQgaXQgLSBJIGFtIG5vdCBnb2luZyB0bw0KaW5z
-dWx0IHlvdXIgaW50ZWxsaWdlbmNlIGJ5IHNheWluZyB5b3UgY2FuIHNpZ24g
-dXAsIGRvIG5vIHdvcmssDQphbmQgcmFrZSBpbiB0aGUgY2FzaC4gIFRoYXQg
-a2luZCBvZiBqb2IgZG9lcyBub3QgZXhpc3QuICBCdXQgaWYNCnlvdSBhcmUg
-d2lsbGluZyB0byBwdXQgaW4gMTAtMTIgaG91cnMgcGVyIHdlZWssIHRoaXMg
-bWlnaHQgYmUNCmp1c3QgdGhlIHRoaW5nIHlvdSBhcmUgbG9va2luZyBmb3Iu
-DQoNCk4uIEdhbGxhZ2hlcjogJDMwMDAgcGVyIG1vbnRoDQpKLiBMdWRlczog
-JDEwMDAgcGVyIG1vbnRoDQpTLiBKb2huc29uOiAkNjAwMCAtJDcwMDAgcGVy
-IG1vbnRoDQpWLiBQYXRhbGFubzogJDIwMDAgcGVyIG1vbnRoDQpNLiBTb3V0
-aDogJDUwMDAgcGVyIG1vbnRoDQpKLiBIZW5zbGluOiAkNzAwMCBwZXIgbW9u
-dGgNCg0KVGhpcyBpcyBub3QgaW5jb21lIHRoYXQgaXMgZGV0ZXJtaW5lZCBi
-eSBsdWNrLCBvciB3b3JrIHRoYXQgaXMNCmRvbmUgRk9SIHlvdSAtIGl0IGlz
-IGFsbCBiYXNlZCBvbiB5b3VyIGVmZm9ydC4gIEJ1dCwgYXMgSSBzYWlkLA0K
-dGhlcmUgYXJlIG5vIHNwZWNpYWwgc2tpbGxzIHJlcXVpcmVkLiAgQW5kIHRo
-aXMgaW5jb21lIGlzIFJFU0lEVUFMIC0NCm1lYW5pbmcgdGhhdCBpdCBjb250
-aW51ZXMgZWFjaCBtb250aCAoYW5kIGl0IHRlbmRzIHRvIGluY3JlYXNlDQpl
-YWNoIG1vbnRoIGFsc28pLg0KDQpJbnRlcmVzdGVkPyAgSSBpbnZpdGUgeW91
-IHRvIGZpbmQgb3V0IG1vcmUuICBZb3UgY2FuIGdldCBpbiBhcyBhDQpmcmVl
-IG1lbWJlciwgYXQgbm8gY29zdCwgYW5kIG5vIG9ibGlnYXRpb24gdG8gY29u
-dGludWUgaWYgeW91DQpkZWNpZGUgaXQgaXMgbm90IGZvciB5b3UuICBXZSBh
-cmUganVzdCBsb29raW5nIGZvciBwZW9wbGUgd2hvIHN0aWxsDQpoYXZlIHRo
-YXQgImJ1cm5pbmcgZGVzaXJlIiB0byBmaW5kIGFuIG9wcG9ydHVuaXR5IHRo
-YXQgd2lsbCByZXdhcmQNCnRoZW0gaW5jcmVkaWJseSB3ZWxsLCBpZiB0aGV5
-IHdvcmsgYXQgaXQuDQoNClRvIGdyYWIgYSBGUkVFIElEIywgc2ltcGx5IHJl
-cGx5IHRvOiBpdC13b3Jrc0BleGNpdGUuY29tDQphbmQgd3JpdGUgdGhpcyBw
-aHJhc2U6DQoiRW1haWwgbWUgZGV0YWlscyBhYm91dCB0aGUgY2x1YidzIGJ1
-c2luZXNzIGFuZCBjb25zdW1lciBvcHBvcnR1bml0aWVzIg0KQmUgc3VyZSB0
-byBpbmNsdWRlIHlvdXI6DQoxLiBGaXJzdCBuYW1lDQoyLiBMYXN0IG5hbWUN
-CjMuIEVtYWlsIGFkZHJlc3MgDQoNCldlIHdpbGwgY29uZmlybSB5b3VyIHBv
-c2l0aW9uIGFuZCBzZW5kIHlvdSBhIHNwZWNpYWwgcmVwb3J0DQphcyBzb29u
-IGFzIHBvc3NpYmxlLCBhbmQgYWxzbyBZb3VyIGZyZWUgTWVtYmVyIE51bWJl
-ci4NCg0KVGhhdCdzIGFsbCB0aGVyZSdzIHRvIGl0Lg0KDQpXZSdsbCB0aGVu
-IHNlbmQgeW91IGluZm8sIGFuZCB5b3UgY2FuIG1ha2UgdXAgeW91ciBvd24g
-bWluZC4NCg0KTG9va2luZyBmb3J3YXJkIHRvIGhlYXJpbmcgZnJvbSB5b3Uh
-DQoNClNpbmNlcmVseSwNCg0KVC4gTHVkZXMgDQoNClAuUy4gQWZ0ZXIgaGF2
-aW5nIHNldmVyYWwgbmVnYXRpdmUgZXhwZXJpZW5jZXMgd2l0aCBuZXR3b3Jr
-DQptYXJrZXRpbmcgY29tcGFuaWVzIEkgaGFkIHByZXR0eSBtdWNoIGdpdmVu
-IHVwIG9uIHRoZW0uDQpUaGlzIGlzIGRpZmZlcmVudCAtIHRoZXJlIGlzIHZh
-bHVlLCBpbnRlZ3JpdHksIGFuZCBhDQpSRUFMIG9wcG9ydHVuaXR5IHRvIGhh
-dmUgeW91ciBvd24gaG9tZS1iYXNlZCBidXNpbmVzcy4uLg0KYW5kIGZpbmFs
-bHkgbWFrZSByZWFsIG1vbmV5IG9uIHRoZSBpbnRlcm5ldC4NCg0KRG9uJ3Qg
-cGFzcyB0aGlzIHVwLi4ueW91IGNhbiBzaWduIHVwIGFuZCB0ZXN0LWRyaXZl
-IHRoZQ0KcHJvZ3JhbSBmb3IgRlJFRS4gIEFsbCB5b3UgbmVlZCB0byBkbyBp
-cyBnZXQgeW91ciBmcmVlDQptZW1iZXJzaGlwLg0KDQpVbnN1YnNjcmliZTog
-U2VuZCBhIGJsYW5rIGVtYWlsIHRvOiBlYXN5d29yazIwMDRAaG90bWFpbC5j
-b20gIHdpdGgNCiJSZW1vdmUiIGluIHRoZSBzdWJqZWN0IGxpbmUuDQoNCjk2
-Njl2b0lDMS05MjhGVlRYMzE0M1F3Q3o5LTc4N3dPanU1ODgzT2xDUjEtMDkz
-ZWhkRTQwMDZNVFRYMC04NTFiZ2w2Mg==
+Thanks in advance,
+
+Bernd
+
+-- 
+Bernd Schubert
+Physikalisch Chemisches Institut
+Abt. Theoretische Chemie
+INF 229, 69120 Heidelberg
+Tel.: 06221/54-5210
+e-mail: 	bernd (dot) schubert (at) pci (dot) uni-heidelberg (dot) de 
 
 
 -------------------------------------------------------
@@ -104,6 +65,3 @@ http://thinkgeek.com/sf
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
-
-------=_NextPart_000_00A6_20E37D0E.C1746E88--
