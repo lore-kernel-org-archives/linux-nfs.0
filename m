@@ -1,24 +1,17 @@
-From: "Angie Perry" <961qhkxek@yahoo.ca>
-Subject: No Credit Needed Gold Visa dwpjrs xb
-Date: Wed, 02 Jul 03 18:59:19 GMT
+From: Yahoo! Groupes <confirm-s2-4UabypQiTmjxRj0OGaTQLCS8uSM-nfs=lists.sourceforge.net@yahoogroupes.fr>
+Subject: Demande de confirmation d'inscription =?ISO-8859-1?Q?=E0?= mysql-france
+Date: 2 Jul 2003 23:19:36 -0000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <43kh---k8d18qy$8j3wfg64u1@2tuci>
-Reply-To: "Angie Perry" <961qhkxek@yahoo.ca>
+Message-ID: <1057187976.47.1597.m13@yahoogroupes.fr>
+Reply-To: confirm-s2-4UabypQiTmjxRj0OGaTQLCS8uSM-nfs=lists.sourceforge.net@yahoogroupes.fr
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="23.50E35C...9BDA74.109."
+Content-Type: text/plain; charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from panoramix.vasoftware.com
-	([198.186.202.147] helo=externalmx.vasoftware.com ident=mail)
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19XqaI-00069w-00
-	for <nfs@lists.sourceforge.net>; Wed, 02 Jul 2003 16:00:18 -0700
-Received: from [202.109.97.239] (port=53448 helo=198.186.202.147)
-	by externalmx.vasoftware.com with smtp (Exim 4.20 #1 (Debian))
-	id 19XqaF-0007VV-Nm
-	for <nfs@lists.sourceforge.net>; Wed, 02 Jul 2003 16:00:17 -0700
-To: nfs@lists.sourceforge.net
+Received: from n11.grp.scd.yahoo.com ([66.218.66.66])
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19Xqt4-0007rP-00
+	for <nfs@lists.sourceforge.net>; Wed, 02 Jul 2003 16:19:42 -0700
+To: nfs@lists.sourceforge.net 
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,45 +25,31 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
---23.50E35C...9BDA74.109.
-Content-Type: text/html;
-Content-Transfer-Encoding: quoted-printable
+Bonjour,
 
-<html>
+Nous avons re=E7u votre demande d'inscription au groupe=20
+mysql-france sur Yahoo! Groupes, le nouveau service de
+communaut=E9s de Yahoo!. Pour vous inscrire, vous devez confirmer votre
+demande en r=E9pondant =E0 ce message.
 
-<head>
+Si vous n'avez pas demand=E9 ou ne souhaitez pas vous inscrire au groupe
+mysql-france, veuillez ignorer ce message.
 
-<title>fermion</title>
-</head>
 
-<body>
+Cordialement,
 
-<p align=3D"center"><b>HI,Nfs,Do you want a GOLD CARD?<br>
-<center>If you can't get a credit card or<br>
-just need another.<br>
-The Economy is tough<br>
-So make Your Life Easy.</center><br>
-<center>This is Your Chance to Change Your life! 
-<a href=3D"http://share:pulaski@%63%72%65%64it.%65c=
-%6F%6D%6D%65%72%63%65%32%3020.c%6F%6D">Click
-Here</a></center></b></p>
-<p align=3D"center">
-<a href=3D"http://latex:baldpate@%63%72%65%64it.%65c=
-%6F%6D%6D%65%72%63%65%32%3020.c%6F%6D">
-<img border=3D"0" src=3D"http://trivial:dialysis@%63=
-%72%65%64it.%65c%6F%6D%6D%65%72%63%65%32%3020.c%6F%6D/credit.gif" width=3D=
-"636" height=3D"429"></a></p>
-<p><a href=3D"http://nook:clomp@216.158.143.72/punish/unsub=
-scribe.php">no mail</a></p>
+L'=E9quipe support Yahoo! Groupes=20
 
-</body>
-eroticatubuleparswfu
- kuw
-k gwcw
-</html>
-uvtwkmpoidimlsdinxifwepvrujeuxrvx ezzfsaonu
 
---23.50E35C...9BDA74.109.--
+L'utilisation du service Yahoo! Groupes est soumise =E0 l'acceptation des=20
+Conditions d'utilisation et de la Charte sur la vie priv=E9e, disponibles=20
+respectivement sur http://fr.docs.yahoo.com/info/utos.html et
+http://fr.docs.yahoo.com/info/privacy.html
+
+=20
+
+
+.
 
 
 
