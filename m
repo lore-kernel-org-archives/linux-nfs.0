@@ -1,24 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Linux Client -> Solaris Server
-Date: Wed, 02 Jun 2004 08:24:12 -0700
+From: Paul Jakma <paul@clubi.ie>
+Subject: gss/krb doesnt work with nfsv3?
+Date: Wed, 2 Jun 2004 17:24:19 +0100 (IST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1086189852.17378.66.camel@lade.trondhjem.org>
-References: <40BDE65F.1000009@inf.ethz.ch>
+Message-ID: <Pine.LNX.4.58.0406021704290.3160@fogarty.jakma.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BVXbJ-0004d6-DY
-	for nfs@lists.sourceforge.net; Wed, 02 Jun 2004 08:24:21 -0700
-Received: from [209.101.250.228] (helo=lade.trondhjem.org)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	id 1BVYXQ-0002pm-EV
+	for nfs@lists.sourceforge.net; Wed, 02 Jun 2004 09:24:24 -0700
+Received: from hibernia.jakma.org ([212.17.55.49])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.30)
-	id 1BVXbJ-0001nP-0g
-	for nfs@lists.sourceforge.net; Wed, 02 Jun 2004 08:24:21 -0700
-To: Marc Schmitt <mschmitt@inf.ethz.ch>
-In-Reply-To: <40BDE65F.1000009@inf.ethz.ch>
+	id 1BVYXP-0007S2-LT
+	for nfs@lists.sourceforge.net; Wed, 02 Jun 2004 09:24:23 -0700
+Received: from fogarty.jakma.org (fogarty.jakma.org [192.168.0.4])
+	by hibernia.jakma.org (8.12.11/8.12.11) with ESMTP id i52GOaUX027195
+	for <nfs@lists.sourceforge.net>; Wed, 2 Jun 2004 17:24:37 +0100
+To: Linux NFS <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,26 +31,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 on , 02/06/2004 klokka 07:38, skreiv Marc Schmitt:
+Hi,
 
-> that the network layer is ok. I did the test using -o=20
-> tcp,nfsvers=3D3,rsize=3D32768,wsize=3D32768, too, it made no difference a=
-t all.
+I can not get gss/krb exports to work with NFSv3:
 
-Exactly how did you do this test? Could you check that the
-tcp,rsize=3D32k,wsize=3D32k also turn up in /proc/mounts, and then retest?
+# exportfs -v | grep test ; showmount -e | grep test
+/exports/test   gss/krb5(rw,wdelay,no_root_squash)
+# /etc/init.d/rpcgssd status
+rpc.gssd (pid 1556) is running...
+# /etc/init.d/rpcsvcgssd status
+rpc.svcgssd (pid 26833) is running...
 
-The reason I ask is that there are 2 things that could corrupt your
-test:
+If I try to mount from a client, I get the following:
 
-  You used "-oremount" to change from udp to tcp. That won't work!
+# mount -o sec=krb5 hibernia:/exports/test /mnt/backup/
+mount: hibernia:/exports/test failed, reason given by server: 
+Permission denied
 
-  You may have had the same filesystem mounted as udp on another
-mountpoint. In that case the udp filesystem will be replicated on the
-new mountpoint.
+And in the server logs:
 
-Cheers,
-  Trond
+Jun  2 17:08:15 hibernia rpc.mountd: refused mount request from 
+fogarty.jakma.org for /exports/test (/): not exported
+
+It works if i export with fsid=0 and mount with nfs4 sec=on the 
+client. Is krb5 supposed to work with NFSv3?
+
+regards,
+-- 
+Paul Jakma	paul@clubi.ie	paul@jakma.org	Key ID: 64A2FF6A
+	warning: do not ever send email to spam@dishone.st
+Fortune:
+Before Xerox, five carbons were the maximum extension of anybody's ego.
 
 
 -------------------------------------------------------
