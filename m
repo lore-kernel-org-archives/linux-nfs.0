@@ -1,20 +1,27 @@
-From: "Wendy Cheng" <s_wendy_cheng@hotmail.com>
-Subject: NFS UDP fragmentation
-Date: Fri, 27 Feb 2004 05:27:19 +0000
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: global kernel lock contention
+Date: Thu, 26 Feb 2004 22:14:08 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <BAY2-F35JXDq1Tj6uZv0000dcd8@hotmail.com>
+Message-ID: <482A3FA0050D21419C269D13989C611302B07B94@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; format=flowed
+Content-Type: text/plain;
+	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AwaZG-0005qB-R4
-	for nfs@lists.sourceforge.net; Thu, 26 Feb 2004 21:29:46 -0800
-Received: from bay2-f35.bay2.hotmail.com ([65.54.247.35] helo=hotmail.com)
+	id 1AwbIa-0001zB-7j
+	for nfs@lists.sourceforge.net; Thu, 26 Feb 2004 22:16:36 -0800
+Received: from mx01.netapp.com ([198.95.226.53])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1AwaX3-0001an-JE
-	for nfs@lists.sourceforge.net; Thu, 26 Feb 2004 21:27:29 -0800
-To: nfs@lists.sourceforge.net
+	id 1AwbGL-0006p7-PL
+	for nfs@lists.sourceforge.net; Thu, 26 Feb 2004 22:14:17 -0800
+Received: from hawk.corp.netapp.com (hawk [10.57.156.122])
+	by mx01.netapp.com (8.12.10/8.12.10/NTAP-1.4) with ESMTP id i1R6ECJC015232
+	for <nfs@lists.sourceforge.net>; Thu, 26 Feb 2004 22:14:12 -0800 (PST)
+Received: from svlexc01.hq.netapp.com (svlexc01.corp.netapp.com [10.10.22.171])
+	by hawk.corp.netapp.com (8.12.9/8.12.9/NTAP-1.5) with ESMTP id i1R6EBDU012719
+	for <nfs@lists.sourceforge.net>; Thu, 26 Feb 2004 22:14:11 -0800 (PST)
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -27,36 +34,62 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+we've been wondering how bad the BKL contention problem
+is in the Linux NFS/RPC client, so we've done some kernel
+execution profiling during a TPC-C benchmark on a 2.5GHz
+(four physical, eight logical processors) Linux client
+with 8GB of memory.  the database files are stored on
+a filer of recent vintage attached via GbE and accessed
+over NFS.
 
-We're debugging an UDP packet fragmentation problem that leads us to the 
-nfs.sourceforge.net FAQ (http://nfs.sourceforge.net/#section_b). In section 
-B10, it is stated that
+the database is using NFS O_DIRECT to access its files,
+so the only data copy involved is from the socket layer
+into the user's buffer.
 
-"The fix is to make the Linux's IP fragmentation logic continue fragmenting 
-a datagram even when output socket buffer space is over its limit. This fix 
-appears in kernels newer than 2.4.20.".
+three spin locks were hot in our runs -- the BKL, the
+xprt->sock_lock, and the rpc_queue_lock.  these were
+all in the top 20.  (the BKL is hot even on single
+threaded workloads running on dual processor systems,
+it turns out).
 
-And
+so i set out to discover why the BKL is so contended.
 
-"3. If you can't upgrade your clients, increase the default size of your 
-client's socket buffers (see below). 2.4.20 and later kernels do this 
-automatically for the NFS client's socket buffers. See Section 5.3ff of the 
-NFS How-To for more information."
+after playing around with oprofile for a while, i found
+that several RPC scheduler functions were fairly hot.
+to find out more, i instrumented these with counters to
+see how often they were called per RPC request.  i
+discovered that rpc_sleep_on, rpc_add_wait_queue,
+and rpc_remove_wait_queue are called several times per
+RPC request.  but the real surprise is that the
+rpc_queue_lock is taken on average between 15 and 18
+times per RPC request, independent of request size or
+network protocol (udp or tcp).
 
-We're wondering where exactly these two pieces of code located (in 
-$2.4.21kernel/fs/nfs directory ?) Since our system is based on one 
-particular vendor's distribution, we would like to do a "diff" to check 
-whether they're included.
+this particular spin lock also locks out bottom halves.
+so when it is released, bottom halves run again.  in
+the case of the RPC client, the bottom half appears to
+do the data copy from socket buffer to page cache or
+to the user's buffer.  this means we're single threading
+data copies from our transport sockets, and on heavy NFS
+workloads, other processors could be spinning waiting to
+do work while one processor is busy copying data.
 
-Could folks give us a hand ? Great thanks !
+as a fun experiment, i took the BKL out of the direct I/O
+path in the NFS client (professional driver on a closed
+course; do not attempt).  i tried an eight thread random
+32KB read workload against sparse files on my filer, and got
+almost full wire speed (about 95MB/s over GbE, which is
+about as fast as my NIC will go; the filer and the client
+both had CPU to spare).  i think this is because the data
+copies could run concurrently on the client.
 
--- Wendy
+so basically we have the same problem in today's RPC client
+that the network layer had in early 2.3.
 
-_________________________________________________________________
-Watch high-quality video with fast playback at MSN Video. Free! 
-http://click.atdmt.com/AVE/go/onm00200365ave/direct/01/
-
+unfortunately if i kicked the thread count up to 16, i was
+able to deadlock my client with the random read workload.
+we kind of expected this, and i still need to find out what
+is causing it.
 
 
 -------------------------------------------------------
