@@ -1,23 +1,18 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS client bug in 2.6.8-2.6.11
-Date: Tue, 08 Mar 2005 00:30:31 -0500
-Message-ID: <1110259831.11712.1.camel@lade.trondhjem.org>
-References: <422D2FDE.2090104@develer.com>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: lkml <linux-kernel@vger.kernel.org>,
-	Neil Conway <nconway_kernel@yahoo.co.uk>, nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+From: NeilBrown <neilb@cse.unsw.edu.au>
+Subject: [PATCH kNFSd 18 of 54] nfsd4: simplify open_delegation
+Date: Tue, 08 Mar 2005 17:06:43 +1100
+Message-ID: <E1D8Xrf-00017x-LA@notabene.cse.unsw.edu.au>
+References: <20050308165419.3842.patches@notabene>
+Cc: nfs@lists.sourceforge.net
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D8XJ0-0000PH-1D
-	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 21:30:54 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1D8XIy-0002Pp-H9
-	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 21:30:53 -0800
-To: Bernardo Innocenti <bernie@develer.com>
-In-Reply-To: <422D2FDE.2090104@develer.com>
+	id 1D8Xrl-00026U-Mh
+	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:49 -0800
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1D8Xrl-0007so-2K
+	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:49 -0800
+To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,15 +26,50 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-ty den 08.03.2005 Klokka 05:53 (+0100) skreiv Bernardo Innocenti:
 
-> Appears to be a client bug.
 
-Why?
+The DONT_DELEGATE flag is superfluous.
 
--- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
+### Diffstat output
+ ./fs/nfsd/nfs4state.c |    8 ++------
+ 1 files changed, 2 insertions(+), 6 deletions(-)
+
+diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
+--- ./fs/nfsd/nfs4state.c~current~	2005-03-07 11:35:12.000000000 +1100
++++ ./fs/nfsd/nfs4state.c	2005-03-07 11:35:55.000000000 +1100
+@@ -1522,8 +1522,6 @@ nfs4_deleg_conflict(u32 share, u32 dtype
+ 		dtype == NFS4_OPEN_DELEGATE_WRITE));
+ }
+ 
+-#define DONT_DELEGATE  8
+-
+ /*
+  * nfs4_check_deleg_recall()
+  *
+@@ -1544,7 +1542,7 @@ nfs4_check_deleg_recall(struct nfs4_file
+ 			if(nfs4_deleg_conflict(op->op_share_access, dp->dl_type))
+ 				status = nfserr_jukebox;
+ 			else
+-				*flag = DONT_DELEGATE;
++				*flag = NFS4_OPEN_DELEGATE_NONE;
+ 		}
+ 	}
+ 	return status;
+@@ -1663,10 +1661,8 @@ nfs4_open_delegation(struct svc_fh *fh, 
+ 	struct file_lock fl, *flp = &fl;
+ 	int status;
+ 
+-	if (*flag == DONT_DELEGATE) {
+-		*flag = NFS4_OPEN_DELEGATE_NONE;
++	if (*flag == NFS4_OPEN_DELEGATE_NONE)
+ 		return;
+-	}
+ 
+ 	/* set flag */
+ 	*flag = NFS4_OPEN_DELEGATE_NONE;
 
 
 -------------------------------------------------------
