@@ -1,23 +1,20 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: rpc.mountd: getfh failed: Operation not permitted
-Date: Thu, 03 Feb 2005 14:40:06 -0500
-Message-ID: <42027E16.2070502@RedHat.com>
-References: <20050203041550.746BD89D13@sc8-sf-spam1.sourceforge.net> <420264E0.4080107@iwr.fzk.de>
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: NFSv3 lockd performance problem
+Date: Thu, 3 Feb 2005 13:53:35 -0800
+Message-ID: <482A3FA0050D21419C269D13989C6113085396DE@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: nfs@lists.sourceforge.net,
-	"jehan.procaccia" <jehan.procaccia@int-evry.fr>
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Cwmq5-0000qH-Cb
-	for nfs@lists.sourceforge.net; Thu, 03 Feb 2005 11:40:29 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1Cwmq4-0004oO-8K
-	for nfs@lists.sourceforge.net; Thu, 03 Feb 2005 11:40:29 -0800
-To: Jos van Wezel <jvw@iwr.fzk.de>
-In-Reply-To: <420264E0.4080107@iwr.fzk.de>
+	id 1Cwov1-0007bn-Ib
+	for nfs@lists.sourceforge.net; Thu, 03 Feb 2005 13:53:43 -0800
+Received: from mx1.netapp.com ([216.240.18.38])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1Cwov0-00051M-7C
+	for nfs@lists.sourceforge.net; Thu, 03 Feb 2005 13:53:43 -0800
+To: <neilb@cse.unsw.edu.au>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,18 +28,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+hi neil-
 
+when i run the connectathon locking tests over NFSv3 from a Linux
+client, the suite bogs down during test #7 and #12 because of problems
+authenticating the lockd callbacks.  bruce fields pointed me to some
+patches that he's already forwarded to you, which fix the problem for
+me.  they are patches 02 through 08 on this web page:
 
-Jos van Wezel wrote:
+http://www.citi.umich.edu/projects/nfsv4/linux/kernel-patches/2.6.11-rc2
+-1/
 
-> Sorry Steve, your suggestion does not help, at least in our case. All 
-> mounts via
-> tcp on nfs server with RH ES3, 2.4.21-15. It is a very annoying issue.
+i was wondering if we can get these in 2.6.11?  while the problem
+doesn't appear to affect correctness, the performance impact is
+significant, enough that might affect any real world workloads that
+depend on NLM locking.
 
-OK.. thanks for trying.... BTW the bz# for this one is 126129
-
-steved.
-
+        - Chuck Lever
+--
+corporate:    <cel at netapp dot com>
+personal:     <chucklever at bigfoot dot com>
 
 
 -------------------------------------------------------
