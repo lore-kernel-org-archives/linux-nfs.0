@@ -1,25 +1,23 @@
-From: Jason Holmes <jholmes@psu.edu>
+From: Eric Whiting <ewhiting@amis.com>
 Subject: Re: 2.4 vs. 2.6 nfs client performance
-Date: Wed, 12 Nov 2003 16:33:44 -0500
+Date: Wed, 12 Nov 2003 15:08:59 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3FB2A738.3F2C90B8@psu.edu>
+Message-ID: <3FB2AF7B.B7FDC8AC@amis.com>
 References: <3FB27670.4C878A84@psu.edu>
-		<shssmkttk34.fsf@charged.uio.no>
-		<3FB29D43.A618973D@psu.edu> <16306.41898.291062.36209@charged.uio.no>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AK2cu-0004c0-00
-	for <nfs@lists.sourceforge.net>; Wed, 12 Nov 2003 13:34:12 -0800
-Received: from vpn-19-18.aset.psu.edu ([146.186.19.18] helo=funkmachine.cac.psu.edu)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
-	id 1AK2ct-0000gb-LO
-	for nfs@lists.sourceforge.net; Wed, 12 Nov 2003 13:34:11 -0800
-To: trond.myklebust@fys.uio.no
+	id 1AK39d-0002rZ-00
+	for <nfs@lists.sourceforge.net>; Wed, 12 Nov 2003 14:08:01 -0800
+Received: from dermis.amis.com ([207.141.5.253])
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.24)
+	id 1AK39d-0002wi-7B
+	for nfs@lists.sourceforge.net; Wed, 12 Nov 2003 14:08:01 -0800
+To: Jason Holmes <jholmes@psu.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,39 +30,20 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust wrote:
-> 
-> >>>>> " " == Jason Holmes <jholmes@psu.edu> writes:
-> 
->      > Client nfs v3: null getattr setattr lookup access readlink 0 0%
->      > 744 0% 0 0% 129 0% 252 0% 0 0% read write create mkdir symlink
->      > mknod 873 0% 178574 14% 24 0% 0 0% 0 0% 0 0% remove rmdir
->      > rename link readdir readdirplus 24 0% 0 0% 0 0% 0 0% 18 0% 0 0%
->      > fsstat fsinfo pathconf commit 0 0% 3 0% 0 0% 1023451 84%
-> 
->      > Client rpc stats: calls retrans authrefrsh 1204092 3 0
-> 
-> Something is seriously screwed up here: it should be impossible to get
-> more commit requests than there are write requests.
-> 
-> Basically, commit is only sent if at least one unstable write has been
-> sent, and is waiting on the commit list. The commit list itself is
-> emptied before the RPC call gets sent. If the commit fails, it
-> resends all pending writes.
-> 
-> IOW: it looks like you are seeing some form of list corruption. I
-> suspect that the problem here might be something scribbling over the
-> nfs_inode. Are you running with slab debugging, and stack overflow
-> enabled?
+Jason Holmes wrote:
+>
+<snip>
+> I'm
+> already seeing some odd performance differences between the 2.4.22
+> client and the 2.6.0-test9-mm1 client (both against a 2.6.0-test9-mm2
+> server):
 
-I wasn't, but I'm recompiling test9-bk17 with all of the debugging
-options turned on right now.  Is there anything in particular you want
-me to do?
+Similar observations here. Our users have reported NFS slowdowns of 10x on
+2.6.0-test6-mm4 nfs clients compared to the same box and setup running 2.4.22. 
+Something is goofy in 2.6.0-test6-mm4 that has a bad effect on NFS client
+performance.
 
-Thanks,
-
---
-Jason Holmes
+eric
 
 
 -------------------------------------------------------
