@@ -1,17 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 1 of 54] Fix error reported by nfsd which it gets ETXTBSY
-Date: Tue, 08 Mar 2005 17:06:42 +1100
-Message-ID: <E1D8Xre-00016r-DV@notabene.cse.unsw.edu.au>
+Subject: [PATCH kNFSd 15 of 54] nfsd4: miscellaneous open cleanup 3
+Date: Tue, 08 Mar 2005 17:06:43 +1100
+Message-ID: <E1D8Xrf-00017l-51@notabene.cse.unsw.edu.au>
 References: <20050308165419.3842.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D8Xrl-00026R-Ax
-	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:49 -0800
+	id 1D8Xrn-00026v-G2
+	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:51 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1D8Xrj-0005C1-RC
-	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:49 -0800
+	id 1D8Xrm-0005Ck-Vc
+	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:51 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -27,29 +27,56 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-ETXTBSY doesn't have a direct anaolog in NFS, so just map it
-to nfserr_io.
-As this is the default error code this does not change the 
-operation of nfsd.  It only reduces logging.
 
-From: "G. Allen Morris III" <gam3@gam3.net>
+More minor logic cleanup.
+
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfsproc.c |    1 +
- 1 files changed, 1 insertion(+)
+ ./fs/nfsd/nfs4state.c |   10 +++-------
+ 1 files changed, 3 insertions(+), 7 deletions(-)
 
-diff ./fs/nfsd/nfsproc.c~current~ ./fs/nfsd/nfsproc.c
---- ./fs/nfsd/nfsproc.c~current~	2005-03-07 11:32:36.000000000 +1100
-+++ ./fs/nfsd/nfsproc.c	2005-03-07 11:32:36.000000000 +1100
-@@ -590,6 +590,7 @@ nfserrno (int errno)
- 		{ nfserr_dropit, -EAGAIN },
- 		{ nfserr_dropit, -ENOMEM },
- 		{ nfserr_badname, -ESRCH },
-+		{ nfserr_io, -ETXTBSY },
- 		{ nfserr_notsupp, -EOPNOTSUPP },
- 		{ -1, -EIO }
- 	};
+diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
+--- ./fs/nfsd/nfs4state.c~current~	2005-03-07 11:35:11.000000000 +1100
++++ ./fs/nfsd/nfs4state.c	2005-03-07 11:35:12.000000000 +1100
+@@ -1455,9 +1455,8 @@ nfsd4_process_open1(struct nfsd4_open *o
+ 	if (!check_name(open->op_owner))
+ 		goto out;
+ 
+-	status = nfserr_stale_clientid;
+ 	if (STALE_CLIENTID(&open->op_clientid))
+-		return status;
++		return nfserr_stale_clientid;
+ 
+ 	strhashval = ownerstr_hashval(clientid->cl_id, open->op_owner);
+ 	if (find_openstateowner_str(strhashval, open, &sop)) {
+@@ -1475,14 +1474,11 @@ nfsd4_process_open1(struct nfsd4_open *o
+ 				 */
+ 				dprintk("nfsd4_process_open1:"
+ 					" replay with no replay cache\n");
+-				status = NFS_OK;
+ 				goto renew;
+ 			}
+ 		} else if (sop->so_confirmed) {
+-			if (open->op_seqid == sop->so_seqid + 1) { 
+-				status = nfs_ok;
++			if (open->op_seqid == sop->so_seqid + 1)
+ 				goto renew;
+-			} 
+ 			status = nfserr_bad_seqid;
+ 			goto out;
+ 		} else {
+@@ -1508,8 +1504,8 @@ nfsd4_process_open1(struct nfsd4_open *o
+ 	if (!(sop = alloc_init_open_stateowner(strhashval, clp, open))) 
+ 		goto out;
+ 	open->op_stateowner = sop;
+-	status = nfs_ok;
+ renew:
++	status = nfs_ok;
+ 	renew_client(sop->so_client);
+ out:
+ 	if (status && open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS)
 
 
 -------------------------------------------------------
