@@ -1,25 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: clnt_max_conns ?
-Date: Fri, 14 May 2004 16:23:27 -0400
+From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Subject: hung locks
+Date: Fri, 14 May 2004 14:31:59 -0600 (MDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1084566207.4237.69.camel@lade.trondhjem.org>
-References: <Pine.LNX.4.44.0405122206570.22744-100000@maggie.lkpg.cendio.se>
+Message-ID: <Pine.LNX.4.44.0405141427510.12288-100000@fattire.ngdc.noaa.gov>
+Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BOjDN-0000Nk-2G
-	for nfs@lists.sourceforge.net; Fri, 14 May 2004 13:23:29 -0700
-Received: from dh132.citi.umich.edu
-	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.30)
-	id 1BOjDM-0001U2-Md
-	for nfs@lists.sourceforge.net; Fri, 14 May 2004 13:23:28 -0700
-To: Peter Astrand <peter@cendio.se>
-In-Reply-To: <Pine.LNX.4.44.0405122206570.22744-100000@maggie.lkpg.cendio.se>
+	id 1BOjLi-0004La-3a
+	for nfs@lists.sourceforge.net; Fri, 14 May 2004 13:32:06 -0700
+Received: from fattire.ngdc.noaa.gov ([140.172.187.207])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BOjLh-0000No-FC
+	for nfs@lists.sourceforge.net; Fri, 14 May 2004 13:32:05 -0700
+Received: from localhost (ahoward@localhost)
+	by fattire.ngdc.noaa.gov (8.11.6/8.11.6) with ESMTP id i4EKVxZ12749
+	for <nfs@lists.sourceforge.net>; Fri, 14 May 2004 14:31:59 -0600
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,21 +31,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, 2004-05-12 at 16:11, Peter Astrand wrote:
-> How many TCP connections are initiated by the Linux NFS client when using 
-> TCP? Solaris, for example, seems to have a parameter called 
-> "clnt_max_conns" that controls this. Is there anything similiar for Linux? 
-> Does the number of TCP connections depend on the number of mounts?
 
-1) 1 per mountpoint (except in the case of NFSv4 when it is 1 per
-server).
 
-2) Nope.
+we just had a reboot of our nfs server and i have a process wich is new hung
+trying to obtain a lock.  the other machines which were competing for the lock
+had all been rebooting so i know all those processes are dead - plus i
+checked.  so the current situation seems that it's caused by a host going down
+which held the lock, but lockd somehow not knowing about it.  i straced the
+hung process and it is, indeed, hung in fcntl64... so, my question is this:
 
-3) Yep. See (1).
+where does one start looking for the source of this problem?  client logs?
+server logs?  is the there some sort of procedure our sysads should follow
+when rebooting nfs client/servers with respect to currently held locks?
 
-Cheers,
-  Trond
+-a
+-- 
+===============================================================================
+| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
+| PHONE   :: 303.497.6469
+| ADDRESS :: E/GC2 325 Broadway, Boulder, CO 80305-3328
+| URL     :: http://www.ngdc.noaa.gov/stp/
+| TRY     :: for l in ruby perl;do $l -e "print \"\x3a\x2d\x29\x0a\"";done 
+===============================================================================
+
 
 
 -------------------------------------------------------
