@@ -1,13 +1,16 @@
-From: darren.miller@philips.com
-Subject: Re: e1000 intel driver bug (which impacts nfs)
-Date: Wed, 5 Jun 2002 16:04:15 +0100
+From: Poul Petersen <petersp@roguewave.com>
+Subject: RE: Performance Woes...
+Date: Wed, 5 Jun 2002 13:06:18 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <OF1365A61C.35388939-ON80256BCF.005285E0@diamond.philips.com>
+Message-ID: <F888C30C3021D411B9DA00B0D0209BE8038F9523@cvo-exchange.cvo.roguewave.com>
 Mime-Version: 1.0
-Content-Type: multipart/alternative; boundary="=_alternative 0052D48980256BCF_="
-Cc: jason andrade <jason@dstc.edu.au>, nfs@lists.sourceforge.net,
-	nfs-admin@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from cvo-ext.roguewave.com ([12.22.36.198] helo=cvo-exchange.cvo.roguewave.com)
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17Fh6U-0006tS-00
+	for <nfs@lists.sourceforge.net>; Wed, 05 Jun 2002 13:09:58 -0700
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -21,192 +24,42 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-This is a multipart message in MIME format.
---=_alternative 0052D48980256BCF_=
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+>   while : ; do netstat -n -u -a | grep :2049 ; sleep 1; done
+> 
+> I get:
+> udp      348      0 0.0.0.0:2049            0.0.0.0:*         
+>                   
+>                   
+> udp     2436      0 0.0.0.0:2049            0.0.0.0:*         
+>                   
+>        ^^^^^^
+> 
+> Note this column of numbers.  If it hits a ceiling at 65536, you have
+> a problem that can be fixed.  See the NFS FAQ, or show me the numbers
+> and I will explain.
 
-I recently have been doing heavy investigation into using Linux for NAS=20
-with an Intel E1000 and
-Slackware 8.
+	Interesting - In the half hour or so that I've watched our NFS
+server, this number has hit 65406. It isn't clear to me what section of the
+NFS FAQ (http://nfs.sourceforge.net/) is relevant to this test. 
 
-I found this problem also, however it disappears if you use PowerTweak=20
-Daemon and get the latest
-driver for the Intel Card.
+	The other thing in this post that caught my eye was mention of the
+2.4.18 NFSALL patch. I presume this is the patch located at
+http://www.cse.unsw.edu.au/~neilb/patches/linux-stable/2.4.18/patch-Bd-NfsdA
+ll.gz How does this, or does it, relate to the post from Hirokazu Takahashi:
+http://www.geocrawler.com/archives/3/789/2002/4/0/8479569/ which seems to
+also be related to BKL removal. Of particular interest to me in Hirokazu's
+post is mention of some kernel Oops fixes that I think we might be seeing.
+We are running a RedHat 7.2 box with kernel 2.4.18, XFS 1.1, nfs-utils-0.3.3
+and we have had all sorts of strange Oops's and hangs. Are there other
+patches we should consider applying to a 2.4.18 NFS server? Does the NFSALL
+patch address any stability issues or is it mostly to add V3TCP?
+Unfortunately, we are stuck at 2.4.18 until we can get rid of XFS (I think
+XFS is the source of most of our problems, but we are starting to look at
+NFS as well)
 
-But PowerTweak cured alot of my issues...
+Thanks for any insight...
 
-http://powertweak.sourceforge.net/
-
-Hope this helps
-
-Darren
-
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D
-Darren Miller=20
-Senior Systems Support Engineer
-Microsoft Certified Professional
-SCO Advanced Certified Engineer=20
-Infomation Systems Department (Core Server Support)
-Philips Semiconductors,Milbrook Industrial Estate,Southampton,SO15=20
-0DJ,England
-
-
-
-
-Thomas Lang=E5s <tlan@stud.ntnu.no>
-Sent by: nfs-admin@lists.sourceforge.net
-2002-06-02 23:28
-Please respond to nfs
-
-=20
-        To:     jason andrade <jason@dstc.edu.au>
-        cc:     nfs@lists.sourceforge.net
-(bcc: Darren Miller/SOU/SC/PHILIPS)
-        Subject:        Re: [NFS] e1000 intel driver bug (which impacts nfs)
-        Classification:=20
-
-
-
-jason andrade:
-> I hope this helps anyone else trying to debug mysterious "nfs hangs"=20
-under
-> 2.4.X.  It doesn't seem to be tickled unless you are doing quite large
-> amounts of nfs traffic (we're pushing 1-1.5T a day on this interface)
-> and it's quite random (i've had a lockup from 4 hours to 10 days after
-> a reboot)
-
-We've also got problems with nfs-hangs when transfering large files (ie.
-files around 300-400M, sometime we have to go a bit higher tho, like
-2GB-3GB files, but it's always possible to trigger this. However, we
-don't need to be jumping through hoops to "fix it", after a min or so,
-it's ok again. It seems to me like there's a VM problem or something.
-
-We've got 2GB mem on the machines which are suffering from theese=20
-problems.
-
---=20
-Thomas
-
-=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=
-=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=
-=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F
-
-Don't miss the 2002 Sprint PCS Application Developer's Conference
-August 25-28 in Las Vegas -- http://devcon.sprintpcs.com/adp/index.cfm
-
-=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=
-=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-
-
-
---=_alternative 0052D48980256BCF_=
-Content-Type: text/html; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-
-
-<br><font size=3D2 face=3D"sans-serif">I recently have been doing heavy inv=
-estigation into using Linux for NAS with an Intel E1000 and</font>
-<br><font size=3D2 face=3D"sans-serif">Slackware 8.</font>
-<br>
-<br><font size=3D2 face=3D"sans-serif">I found this problem also, however i=
-t disappears if you use PowerTweak Daemon and get the latest</font>
-<br><font size=3D2 face=3D"sans-serif">driver for the Intel Card.</font>
-<br>
-<br><font size=3D2 face=3D"sans-serif">But PowerTweak cured alot of my issu=
-es...</font>
-<br>
-<br><font size=3D2 face=3D"Courier New">http://powertweak.sourceforge.net/<=
-/font>
-<br>
-<br><font size=3D2 face=3D"sans-serif">Hope this helps</font>
-<br>
-<br><font size=3D2 face=3D"sans-serif">Darren<br>
-<br>
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D<br>
-Darren Miller &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp=
-; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nb=
-sp;<br>
-Senior Systems Support Engineer<br>
-Microsoft Certified Professional<br>
-SCO Advanced Certified Engineer &nbsp; &nbsp; &nbsp; &nbsp;<br>
-Infomation Systems Department (Core Server Support)<br>
-Philips Semiconductors,Milbrook Industrial Estate,Southampton,SO15 0DJ,Engl=
-and</font>
-<br>
-<br>
-<br>
-<table width=3D100%>
-<tr valign=3Dtop>
-<td>
-<td><font size=3D1 face=3D"sans-serif"><b>Thomas Lang=E5s &lt;tlan@stud.ntn=
-u.no&gt;</b></font>
-<br><font size=3D1 face=3D"sans-serif">Sent by: nfs-admin@lists.sourceforge=
-.net</font>
-<p><font size=3D1 face=3D"sans-serif">2002-06-02 23:28</font>
-<br><font size=3D1 face=3D"sans-serif">Please respond to nfs</font>
-<br>
-<td><font size=3D1 face=3D"Arial">&nbsp; &nbsp; &nbsp; &nbsp; </font>
-<br><font size=3D1 face=3D"sans-serif">&nbsp; &nbsp; &nbsp; &nbsp; To: &nbs=
-p; &nbsp; &nbsp; &nbsp;jason andrade &lt;jason@dstc.edu.au&gt;</font>
-<br><font size=3D1 face=3D"sans-serif">&nbsp; &nbsp; &nbsp; &nbsp; cc: &nbs=
-p; &nbsp; &nbsp; &nbsp;nfs@lists.sourceforge.net<br>
-(bcc: Darren Miller/SOU/SC/PHILIPS)</font>
-<br><font size=3D1 face=3D"sans-serif">&nbsp; &nbsp; &nbsp; &nbsp; Subject:=
- &nbsp; &nbsp; &nbsp; &nbsp;Re: [NFS] e1000 intel driver bug (which impacts=
- nfs)</font>
-<p><font size=3D1 face=3D"sans-serif">&nbsp; &nbsp; &nbsp; &nbsp; Classific=
-ation: &nbsp; &nbsp; &nbsp; &nbsp;</font>
-<br></table>
-<br>
-<br>
-<br><font size=3D2 face=3D"Courier New">jason andrade:<br>
-&gt; I hope this helps anyone else trying to debug mysterious &quot;nfs han=
-gs&quot; under<br>
-&gt; 2.4.X. &nbsp;It doesn't seem to be tickled unless you are doing quite =
-large<br>
-&gt; amounts of nfs traffic (we're pushing 1-1.5T a day on this interface)<=
-br>
-&gt; and it's quite random (i've had a lockup from 4 hours to 10 days after=
-<br>
-&gt; a reboot)<br>
-<br>
-We've also got problems with nfs-hangs when transfering large files (ie.<br>
-files around 300-400M, sometime we have to go a bit higher tho, like<br>
-2GB-3GB files, but it's always possible to trigger this. However, we<br>
-don't need to be jumping through hoops to &quot;fix it&quot;, after a min o=
-r so,<br>
-it's ok again. It seems to me like there's a VM problem or something.<br>
-<br>
-We've got 2GB mem on the machines which are suffering from theese <br>
-problems.<br>
-<br>
--- <br>
-Thomas<br>
-<br>
-=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=
-=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=
-=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F<br>
-<br>
-Don't miss the 2002 Sprint PCS Application Developer's Conference<br>
-August 25-28 in Las Vegas -- http://devcon.sprintpcs.com/adp/index.cfm<br>
-<br>
-=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=
-=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F<br>
-NFS maillist &nbsp;- &nbsp;NFS@lists.sourceforge.net<br>
-https://lists.sourceforge.net/lists/listinfo/nfs<br>
-</font>
-<br>
-<br>
---=_alternative 0052D48980256BCF_=--
+-poul
 
 _______________________________________________________________
 
