@@ -1,20 +1,18 @@
-From: Hirokazu Takahashi <taka@valinux.co.jp>
-Subject: Re: [PATCH] zerocopy NFS updated
-Date: Sat, 13 Apr 2002 18:40:28 +0900 (JST)
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: silly-deleting symlinks?
+Date: 01 Apr 2002 21:18:10 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020413.184028.69377819.taka@valinux.co.jp>
-References: <20020410.191231.130623162.taka@valinux.co.jp>
-	<009501c1e212$b30e6bc0$2e060e09@beavis>
+Message-ID: <shsit7b6xe5.fsf@charged.uio.no>
+References: <87hen5wrx4.fsf@ceramic.fifi.org>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
+Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sv1.valinux.co.jp ([202.221.173.100])
+Received: from mons.uio.no ([129.240.130.14])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16wK1X-0005kG-00
-	for <nfs@lists.sourceforge.net>; Sat, 13 Apr 2002 02:40:48 -0700
-To: habanero@us.ibm.com
-In-Reply-To: <009501c1e212$b30e6bc0$2e060e09@beavis>
+	id 16s7Jv-00075C-00
+	for <nfs@lists.sourceforge.net>; Mon, 01 Apr 2002 11:18:23 -0800
+To: Philippe Troin <phil@fifi.org>
+In-Reply-To: <87hen5wrx4.fsf@ceramic.fifi.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,27 +25,21 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hello,
+>>>>> " " == Philippe Troin <phil@fifi.org> writes:
 
-I really appreciate your help!
+     > I've just noticed that nfsd tries to silly-delete symlinks.
+     > Server: vanilla 2.2.20 SMP Client: vanilla 2.4.18 SMP Mount
+     > options: rw,nodev,v2,rsize=8192,wsize=8192,hard,intr,udp,lock
 
-> I tried the patch with great performance improvement!   I ran my nfs read
-> test (48 clients read 200 MB file from one 4-way SMP NFS server) and
-> compared your patches to regular 2.5.7.  Regular 2.5.7 resulted in 87 MB/sec
-> with 100% CPU utilization.  Your patch resulted 130 MB/sec with 82% CPU
-> utilization!  This is very good!  I took profiles, and as expected,
-> csum_copy and file_read_actor were gone with the patch.  Sar reported nearly
-> 40 MB/sec per gigabit adapter (there are 4) during the test.  That is the
-> most I have seen so far.  Soon I will be doing some lock analysis to make
-> sure we don't have any locking problems.  Also, I will see if there is
-> anyone here at IBM LTC that can assist with your development of zerocopy on
-> UDP.  Thanks for the patch!
+     > Sometimes I see some .nfs<XXXX> files which are symlinks. How
+     > can symlinks be "in use" and be subject to silly-deletion?
 
-I'd love to develop it with your team.
-I have some ideas to implement it and I'm thinking about them.
+Sillydelete just looks at the number of counts on the dentry. If the
+count is > 1 then the dentry is deemed to be 'in use' no matter what
+the type of inode.
 
-Thank you,
-Hirokazu Takahashi
+Cheers,
+  Trond
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
