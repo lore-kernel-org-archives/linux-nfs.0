@@ -1,11 +1,19 @@
-From: Marc Eshel <eshel@almaden.ibm.com>
-Subject: lockd recovery not working on RH with 2.6 kernel
-Date: Thu, 11 Nov 2004 11:12:49 -0800
-Message-ID: <OF573E8465.7E3D5CC0-ON88256F49.0064BB5C-88256F49.00698B56@us.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+From: NeilBrown <neilb@cse.unsw.edu.au>
+Subject: [PATCH kNFSd ] Fix d_find_alias brokenness
+Date: Fri, 12 Nov 2004 10:57:16 +1100
+Message-ID: <E1CSOoW-0006Mv-OF@notabene.cse.unsw.edu.au>
+References: <20041112105449.24459.patches@notabene>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: NFS@lists.sourceforge.net
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1CSOmG-0001IH-HK
+	for nfs@lists.sourceforge.net; Thu, 11 Nov 2004 15:54:56 -0800
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1CSOmF-0003jT-Ma
+	for nfs@lists.sourceforge.net; Thu, 11 Nov 2004 15:54:56 -0800
+To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -19,52 +27,61 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hi Andrew,
+ it wold be great if this could get into 2.6.10 as it fixed a very noticable 
+problem with knfsd.
 
+Thanks,
+NeilBrown
 
+### Comments for Changeset
+A recent change to d_alloc_anon was a little broken, and needs 
+a small change to d_find_alias to fix it.
 
+Without this, a dcache flush on the server can cause stale file handles on the client.
 
-The problem is that after the NFS sever machine reboots its statd sends a
-notification to all NFS clients that had locking activity but the clients
-fail to reclaim their locks.
+Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
-I tried it with RedHat ES, 2.6.8 kernel, and nfs utils 1.0.6; and also with
-RedHat Fedora, 2.6.5 kernel and nfs utils 1.0.6
+### Diffstat output
+ ./fs/dcache.c |   16 ++++++++++------
+ 1 files changed, 10 insertions(+), 6 deletions(-)
 
-It did work when I mount with '-o nfsvers=2' which used lockd version 1
-instead of lockd version 4
-
-Here is the debug messages on the NFS client:
-      The debug messages with 'xxx' were added by me.
-      as you can see in the 4th line the protocol and version are both 0
-(p=0, v=0)
-      in the following 2 lines you can see valid protocol and version
-      but because the don't match with the input protocol and version the
-host
-      is not found and the client will not claim its locks.
-
-Nov 11 11:35:03 hiper53 kernel: lockd: request from 7f000001
-Nov 11 11:35:03 hiper53 kernel: lockd: nlmsvc_dispatch vers 4 proc 16
-Nov 11 11:35:03 hiper53 kernel: lockd: SM_NOTIFY     called
-Nov 11 11:35:03 hiper53 kernel: lockd: nlm_lookup_host(09018c42, p=0, v=0)
-Nov 11 11:35:03 hiper53 kernel: lockd: xxx1 nlm_lookup_host(server 0 s=0
-p=17, v=4)
-Nov 11 11:35:03 hiper53 kernel: lockd: xxx2 nlm_lookup_host(server 0 s=0
-p=17, v=1)
-Nov 11 11:35:03 hiper53 kernel: lockd: creating host entry
-Nov 11 11:35:03 hiper53 kernel: lockd: rebind host 9.1.140.66
-Nov 11 11:35:03 hiper53 kernel: NLM: reclaiming locks for host 9.1.140.66
-lockd: xxx2 nlmclnt_recovery h_reclaiming 1
-Nov 11 11:35:03 hiper53 kernel: lockd: get host 9.1.140.66
-Nov 11 11:35:03 hiper53 kernel: lockd: release host 9.1.140.66
-Nov 11 11:35:03 hiper53 kernel: nlmsvc_retry_blocked(00000000, when=0)
-Nov 11 11:35:03 hiper53 kernel: nlmsvc_retry_blocked(00000000, when=0)
-Nov 11 11:35:03 hiper53 kernel: lockd: xxx3 reclaimer start
-Nov 11 11:35:03 hiper53 kernel: lockd: xxx4 reclaimer magic 6969 6969
-Nov 11 11:35:03 hiper53 kernel: lockd: xxx5 reclaimer host
-f7d43d00(9.1.140.66) f744bb80(9.1.140.66)
-Nov 11 11:35:04 hiper53 kernel: lockd: release host 9.1.140.66
-
-
+diff ./fs/dcache.c~current~ ./fs/dcache.c
+--- ./fs/dcache.c~current~	2004-11-11 09:55:18.000000000 +1100
++++ ./fs/dcache.c	2004-11-11 09:55:18.000000000 +1100
+@@ -279,14 +279,18 @@ struct dentry * dget_locked(struct dentr
+ /**
+  * d_find_alias - grab a hashed alias of inode
+  * @inode: inode in question
++ * @want_discon:  flag, used by d_splice_alias, to request 
++ *          that only a DISCONNECTED alias be returned.
+  *
+- * If inode has a hashed alias - acquire the reference to alias and
+- * return it. Otherwise return NULL. Notice that if inode is a directory
+- * there can be only one alias and it can be unhashed only if it has
+- * no children.
++ * If inode has a hashed alias, or is a directory and has any alias,
++ * acquire the reference to alias and return it. Otherwise return NULL.
++ * Notice that if inode is a directory there can be only one alias and
++ * it can be unhashed only if it has no children, or if it is the root 
++ * of a filesystem.
+  *
+  * If the inode has a DCACHE_DISCONNECTED alias, then prefer
+- * any other hashed alias over that one.
++ * any other hashed alias over that one unless @want_discon is set,
++ * in which case only return a DCACHE_DISCONNECTED alias.
+  */
+ 
+ static struct dentry * __d_find_alias(struct inode *inode, int want_discon)
+@@ -301,7 +305,7 @@ static struct dentry * __d_find_alias(st
+ 		next = tmp->next;
+ 		prefetch(next);
+ 		alias = list_entry(tmp, struct dentry, d_alias);
+- 		if (!d_unhashed(alias)) {
++ 		if (S_ISDIR(inode->i_mode) || !d_unhashed(alias)) {
+ 			if (alias->d_flags & DCACHE_DISCONNECTED)
+ 				discon_alias = alias;
+ 			else if (!want_discon) {
 
 
 -------------------------------------------------------
