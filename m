@@ -1,27 +1,20 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: Re: Debian bug #165744 - 'Received erroneous SM_UNMON request'
-Date: Fri, 22 Aug 2003 16:26:20 +1000
+From: Chip Salzenberg <chip@debian.org>
+Subject: Re: Possible breakthrough Re: Debian Bug#203918 - statd request on eth interface, not localhost?
+Date: Thu, 21 Aug 2003 15:31:26 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16197.46988.88705.455043@gargle.gargle.HOWL>
-References: <20030812152154.GQ24349@perlsupport.com>
-	<16185.47443.33945.603458@gargle.gargle.HOWL>
-	<20030820180652.GD3639@perlsupport.com>
+Message-ID: <20030821193126.GM14355@perlsupport.com>
+References: <20030821180214.GA12129@perlsupport.com> <20030821185454.GA4643@nubol.int.oskuro.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net,
-    Jordi Mallach <jordi@debian.org>,
-    165744-quiet@bugs.debian.org
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19q5Nb-0007Xm-00
-	for <nfs@lists.sourceforge.net>; Thu, 21 Aug 2003 23:26:36 -0700
-Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <chip@debian.org>) (for <nfs@lists.sourceforge.net>)
-	(for <jordi@debian.org>) (for <165744-quiet@bugs.debian.org>) By note
-	With Smtp ; Fri, 22 Aug 2003 16:26:29 +1000
-To: Chip Salzenberg <chip@debian.org>
-In-Reply-To: message from Chip Salzenberg on Wednesday August 20
+Received: from tandu.perlsupport.com ([66.220.6.226] ident=mail)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19pv9h-0002lA-00
+	for <nfs@lists.sourceforge.net>; Thu, 21 Aug 2003 12:31:33 -0700
+To: Jordi Mallach <jordi@debian.org>
+In-Reply-To: <20030821185454.GA4643@nubol.int.oskuro.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -34,35 +27,21 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wednesday August 20, chip@debian.org wrote:
-> According to Neil Brown:
-> > The first is the "Call to statd from non-local host".  Given that
-> > the in-kernel lockd *always* uses 127.0.0.1 to talk to statd, this
-> > request cannot have come from there.
-> 
-> Neil, would you be so kind as to examine this old (nearly a year now),
-> but still open, Debian bug report?
-> 
->     http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=165744
-> 
-> This complaint *is* very rare, but it seems not to be specific to the
-> use of 2.6.  Or do you think you know what's up with this old report?
-> Please advise.
+According to Jordi Mallach:
+> Ok. Apparently it doesn't help either.
 
-Sorry, but I'm at a bit of a loss.
+Darn.
 
-It seems that 
-   lockd asked statd to monitor some host.
-   statd gets information that the host has restarted.
-   statd tries to notify lockd about the restart
-   statd fails to even send a message, and so forgets about that host
-   lockd asked statd to unmonitor the host, and statd doesn't know
-       what it is talking about
+> Of course, I haven't remounted or anything after doing these changes,
+> because I can't umount the share. Should I reboot the client to see?
 
-If you (or someone) could play around and find a sequence of events
-that would reproduce the problem it would, of course, help a lot.
-
-NeilBrown
+Well, the message is on the server (right?), so if anything, rebooting
+the server (or at least stopping and starting nfs-kernel-server and
+nfs-common) would be called for as a complete test.
+-- 
+Chip Salzenberg               - a.k.a. -               <chip@pobox.com>
+"I wanted to play hopscotch with the impenetrable mystery of existence,
+    but he stepped in a wormhole and had to go in early."  // MST3K
 
 
 -------------------------------------------------------
