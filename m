@@ -1,30 +1,21 @@
-From: raven@themaw.net
-Subject: Re: NFS readonly failover and linux?
-Date: Tue, 22 Feb 2005 00:21:12 +0800 (WST)
-Message-ID: <Pine.LNX.4.61.0502220020090.20443@donald.themaw.net>
-References: <1106871309.6181.254.camel@seki.nac.uci.edu>
- <Pine.LNX.4.61.0501291127450.1607@donald.themaw.net>
- <1107205302.4071.17.camel@seki.nac.uci.edu> <Pine.LNX.4.58.0502010945400.25875@wombat.indigo.net.au>
- <16895.57760.531261.8465@segfault.boston.redhat.com>
- <1108677567.5897.55.camel@seki.nac.uci.edu> <Pine.LNX.4.58.0502181207490.20922@wombat.indigo.net.au>
- <1108753705.5897.114.camel@seki.nac.uci.edu> <Pine.LNX.4.61.0502191104080.1601@donald.themaw.net>
- <16922.1193.403816.743145@segfault.boston.redhat.com>
+From: Bernd Schubert <bernd-schubert@web.de>
+Subject: list of patches between 2.6.9 and 2.6.11-rc4
+Date: Mon, 21 Feb 2005 23:35:25 +0100
+Message-ID: <200502212335.25502.bernd-schubert@web.de>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: Dan Stromberg <strombrg@dcs.nac.uci.edu>,
-	autofs mailing list <autofs@linux.kernel.org>,
-	nfs@lists.sourceforge.net
+Content-Type: text/plain;
+  charset="iso-8859-1"
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D3GJc-0007rv-CA
-	for nfs@lists.sourceforge.net; Mon, 21 Feb 2005 08:21:44 -0800
-Received: from wombat.indigo.net.au ([202.0.185.19])
+	id 1D3M8j-0007ft-4q
+	for nfs@lists.sourceforge.net; Mon, 21 Feb 2005 14:34:53 -0800
+Received: from smtp06.web.de ([217.72.192.224])
 	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.41)
-	id 1D3GJa-0000g7-3u
-	for nfs@lists.sourceforge.net; Mon, 21 Feb 2005 08:21:43 -0800
-To: Jeff Moyer <jmoyer@redhat.com>
-In-Reply-To: <16922.1193.403816.743145@segfault.boston.redhat.com>
+	id 1D3M8h-0005nt-L3
+	for nfs@lists.sourceforge.net; Mon, 21 Feb 2005 14:34:53 -0800
+To: nfs@lists.sourceforge.net,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,22 +29,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, 21 Feb 2005, Jeff Moyer wrote:
+Hello Trond,
 
-> ==> Regarding Re: [NFS] NFS readonly failover and linux?; raven@themaw.net adds:
->
-> raven> Your hosts map won't work. It will be ignored. You can use the
-> raven> auto.net program map in the distribution to give similar
-> raven> functionality.
->
-> Perhaps it's time we just translated that.  I mean, it's not that
-> difficult, and would bring us that much closer to compatibility.
+sorry for my dumb question, but I don't know where to search. Is it possibl=
+e=20
+to somewhere find the NFS client patches that go into the kernel versions?
 
-Perhaps but I'd like to do a proper hosts modulei, but in the meantime, 
-why not.
+We are mounting /var from an initrd giving the 'nolock' option. I havn't=20
+analyzed it in detail yet, but the filelocking code from ypbind gets some=20
+strange results causing ypbind not starting up at all. It worked fine with=
+=20
+2.6.9, but not with 2.6.11-rc4.=20
+Afer mounting /var again, when the system is already started up and=20
+explicitely giving the 'lock' option, ypbind starts up fine.
+I'm now interested in the kernel changes that cause the problems.=20
 
-Ian
+The nfs-server for /var is unfs3, but I really think thats a client problem=
+=2E I=20
+also so far couldn't find something of interest in an ethereal log between=
+=20
+the client and server on the unfs3 port.
 
+
+Thanks,
+ Bernd
+
+
+
+
+
+=2D-=20
+Bernd Schubert
+Physikalisch Chemisches Institut / Theoretische Chemie
+Universit=E4t Heidelberg
+INF 229
+69120 Heidelberg
+e-mail: bernd.schubert@pci.uni-heidelberg.de
 
 
 -------------------------------------------------------
