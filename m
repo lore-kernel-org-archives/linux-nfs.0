@@ -1,18 +1,14 @@
-From: Bruce Allan <bruce.allan@us.ibm.com>
+From: "Duc Vianney" <dvianney@us.ibm.com>
 Subject: Re: more info please
-Date: Wed, 14 May 2003 10:32:27 -0700
+Date: Wed, 14 May 2003 15:18:47 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <OF2ABF12C0.C05D55EC-ON88256D26.00603AA1-88256D26.00605AEF@us.ibm.com>
+Message-ID: <OF61972254.2A6DD5CA-ON85256D26.006F5DFB-86256D26.006F766B@pok.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: Matt Schillinger <mschilli@vss.fsi.com>, nfs@lists.sourceforge.net,
+   nfs-admin@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from e35.co.us.ibm.com ([32.97.110.133])
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19G07n-00015S-00
-	for <nfs@lists.sourceforge.net>; Wed, 14 May 2003 10:33:07 -0700
-To: Matt Schillinger <mschilli@vss.fsi.com>
+To: "Bruce Allan" <bruce.allan@us.ibm.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,6 +20,33 @@ List-Id: Discussion of NFS under Linux development,
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+
+
+Bruce ...
+
+How about NFSv4 statistics ??? ...
+
+Duc
+dvianney@us.ibm.com,  Phone: (512) 838-9919   Fax: (512) 838-0070
+
+
+
+
+                                                                                                              
+                      Bruce                                                                                   
+                      Allan/Beaverton/IBM@        To:       Matt Schillinger <mschilli@vss.fsi.com>           
+                      IBMUS                       cc:       nfs@lists.sourceforge.net                         
+                      Sent by:                    Subject:  Re: [NFS] more info please                        
+                      nfs-admin@lists.sour                                                                    
+                      ceforge.net                                                                             
+                                                                                                              
+                                                                                                              
+                      05/14/2003 12:32 PM                                                                     
+                                                                                                              
+                                                                                                              
+
+
+
 
 
 
@@ -95,18 +118,26 @@ IBM Corporation, Beaverton OR
 
 
 
-                                                                                                                                          
-                      Matt Schillinger                                                                                                    
-                      <mschilli@vss.fsi.co        To:       nfs@lists.sourceforge.net                                                     
-                      m>                          cc:                                                                                     
-                      Sent by:                    Subject:  [NFS] more info please                                                        
-                      nfs-admin@lists.sour                                                                                                
-                      ceforge.net                                                                                                         
-                                                                                                                                          
-                                                                                                                                          
-                      05/14/2003 10:24 AM                                                                                                 
-                                                                                                                                          
-                                                                                                                                          
+
+                      Matt Schillinger
+
+                      <mschilli@vss.fsi.co        To:
+nfs@lists.sourceforge.net
+
+                      m>                          cc:
+
+                      Sent by:                    Subject:  [NFS] more info
+please
+                      nfs-admin@lists.sour
+
+                      ceforge.net
+
+
+
+                      05/14/2003 10:24 AM
+
+
+
 
 
 
@@ -135,6 +166,21 @@ www.enterpriselinuxforum.com
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+
+
+
+
+-------------------------------------------------------
+Enterprise Linux Forum Conference & Expo, June 4-6, 2003, Santa Clara
+The only event dedicated to issues related to Linux enterprise solutions
+www.enterpriselinuxforum.com
+
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+
+
 
 
 
