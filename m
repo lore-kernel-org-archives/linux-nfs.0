@@ -1,33 +1,16 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: Re: NFS as a Cluster File System.
-Date: Tue, 14 Jan 2003 09:11:31 +1100
+From: Chris Caputo <ccaputo@alt.net>
+Subject: cache/mmap()/server coherency problems
+Date: Mon, 13 Jan 2003 20:56:55 -0800 (PST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15907.14739.901913.204484@notabene.cse.unsw.edu.au>
-References: <F112Sbh29cM3oryKFRJ0001248d@hotmail.com>
-	<3E1DE9D6.7040406@unix.sh>
-	<15907.5456.68906.820989@notabene.cse.unsw.edu.au>
-	<1042489523.2807.291.camel@localhost>
-	<15907.9286.737016.365337@notabene.cse.unsw.edu.au>
-	<1042491056.2806.312.camel@localhost>
+Message-ID: <Pine.LNX.4.44.0301132011250.12181-100000@nacho.alt.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Alan Robertson <alanr@unix.sh>,
-    Lorn Kay <lorn_kay@hotmail.com>,
-    NFS mailing list <nfs@lists.sourceforge.net>,
-    linux-ha@muc.de
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
+Received: from nacho.alt.net ([207.14.113.18])
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18YCo9-00006Z-00
-	for <nfs@lists.sourceforge.net>; Mon, 13 Jan 2003 14:11:49 -0800
-Received: From
-	notabene.cse.unsw.edu.au ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <dritch@hpti.com>) (for <alanr@unix.sh>)
-	(for <lorn_kay@hotmail.com>) (for <nfs@lists.sourceforge.net>)
-	(for <linux-ha@muc.de>) By tone With Smtp ;
-	Tue, 14 Jan 2003 09:11:39 +1100
-To: "David B. Ritch" <dritch@hpti.com>
-In-Reply-To: message from David B. Ritch on  January 13
+	id 18YJ8h-000809-00
+	for <nfs@lists.sourceforge.net>; Mon, 13 Jan 2003 20:57:27 -0800
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -40,70 +23,52 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On  January 13, dritch@hpti.com wrote:
-> That makes sense.  However, it is common practice in many shops to write
-> intermediate data files with some sort of serial number or timestamp in
-> the name, and for the next step in the process to look for data using
-> "ls" with a wildcard.  When doing that, you don't know what the name of
-> the next file might be, so you can't simply open it.
+On 2.4.18 and 2.4.20 I am seeing the following problem:
 
-I don't think that this should be a problem for NFS.  To do the 'ls'
-or to expand the wildcard you need to open the directory (and do a
-readdir) and this should cause the client to check with the server.
-Once you have the name the open should work.
+ 1) client A process C opens and mmaps (PROT_READ, MAP_SHARED) a file on
+    an NFS server.  It keeps it mapped for the duration of the following
+    steps.
 
-> 
-> While I agree that this is not the most ideal method for coordinating
-> processing, it is widely used and I have found a need to support it.
+ 2) client B process D opens, adds data to the end of the same file, and 
+    then closes it.
 
-It seems reasonable to me.
+ 3) client B process E runs md5sum on the file.
 
-> 
-> We've also had processes fail with a "file not found" error when trying
-> to read a file recently written by a process on another node.  It has
-> always been my belief that this was a failure when a process tried to
-> open the file, and the local metadata cache had not yet been updated. 
-> Just to clarify - are you saying that the open system call should have
-> contacted the server, even if the local cached information said that the
-> file (and perhaps its parent directory) did not exist?
+ 4) client A process F runs md5sum on the file too.  But the result is 
+    different than the result of the md5sum in step 3.
 
-Hmmm... My understanding of NFS and 'close to open' semantics is that
-on 'open' the client should definately contact the server, atleast to
-do a GETATTR on the file, and possibly to do a LOOKUP if there is
-doubt as to the current information in the name cache.
+Under kernel 2.2.21 this problem did not happen.
 
-However the Linux VFS is not very friendly to network filesystems in
-this respect.  The NFS client doesn't know if a given name lookup is
-for an "open" or for a "stat" and so it cannot impose it's subtley
-different semantics.
+An analysis of the file from client A shows that there are zeros in the
+file (where there should be new text) between where process C originally
+opened and mmaped the file and the end of a page boundary, ala:
 
-So I can well imagine an "open" on a file that another client has just
-created failing, if a recent name lookup has said that it didn't
-exist.
+  00aa3d0 3838 3631 0934 4341 5346 333a 312f 312f
+  00aa3e0 3437 3737 6635 3162 6433 3d32 3639 2f36
+  00aa3f0 0a31 0000 0000 0000 0000 0000 0000 0000
+  00aa400 0000 0000 0000 0000 0000 0000 0000 0000
+  *
+  00ab000 6134 2e78 6f63 3e6d 3c09 3631 7473 7631
+  00ab010 3438 3776 6371 3870 6462 6a76 3066 686c
+  00ab020 7061 3034 6738 6d37 3033 6661 3440 7861
+  00ab030 632e 6d6f 203e 303c 6264 3132 3834 6465
 
-However if you always do an opendir/readdir first, and only try to
-open files that were found in the readdir, then the client should be
-able to reliably detect the change to the directory and submit a new
-LOOKUP request.  I don't know if the Linux NFS client does this or
-not.
+Now, if the mmap from step 1 is munmaped and the file is closed the file
+will still be corrupted.  I assume this is because the file is still in
+the file cache and it is not accurate there too.  Once it has been purged
+from the file cache, when I then run md5sum, the checksum is correct.
 
-I think it is fair to say that Linux isn't really ready for this sort
-of tightly-coupled-network-filesystem thing yet.  The VFS just isn't
-ready.  It doesn't even allow O_CREAT|O_EXCL to work over NFS even
-though the NFSv3 protocol supports.  
-The implementers of Lustre has enhanced the VFS for their use.  This
-may get into mainline in 2.7 (too late for 2.6), or something else
-might be developed.
+Is this expected behavior?
 
-With careful coding it should be possible to achieve any particular
-result, but you really need to know exactly what functionality the NFS
-client does, and does not, provide.
+I was thinking that when the file is opened, the lookup NFS call will
+result in new file size info being shared with the VFS, and the VFS would
+know that the data in any page cached, beyond its previously known file
+length, is invalid and that the whole page would need to be reloaded next
+time the file is accessed.  This all seems to happen, except when someone
+has mmaped the file...
 
-[[ NOTE: these replies aren't making it to  linux-ha@muc.de as I am
-not a subscriber.  Feel free to forward them if you think that is
-appropriate]]
+Chris
 
-NeilBrown
 
 
 -------------------------------------------------------
