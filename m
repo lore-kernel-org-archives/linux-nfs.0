@@ -1,28 +1,26 @@
-From: Bernd Schubert <bernd-schubert@web.de>
-Subject: Re: async vs. sync
-Date: Mon, 26 Jul 2004 19:05:32 +0200
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 2.4] (retry) increase NFSSVC_MAXBLKSIZE on large
+ page machines
+Date: Mon, 26 Jul 2004 13:35:03 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200407261905.40248.bernd-schubert@web.de>
-References: <482A3FA0050D21419C269D13989C61130435E51E@lavender-fe.eng.netapp.com>
+Message-ID: <410540C7.1050508@RedHat.com>
+References: <20040726081439.GE17056@sgi.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed;
-  protocol="application/pgp-signature";
-  micalg=pgp-sha1;
-  boundary="Boundary-02=_knTBBjYg1WnoIab";
-  charset="iso-8859-1"
-Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: Neil Brown <neilb@cse.unsw.edu.au>,
+        Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Bp8v9-0000jQ-1O
-	for nfs@lists.sourceforge.net; Mon, 26 Jul 2004 10:05:51 -0700
-Received: from smtp05.web.de ([217.72.192.209])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1Bp9Ne-0006ci-5b
+	for nfs@lists.sourceforge.net; Mon, 26 Jul 2004 10:35:18 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.34)
-	id 1Bp8v8-00085r-IQ
-	for nfs@lists.sourceforge.net; Mon, 26 Jul 2004 10:05:50 -0700
-To: "Lever, Charles" <cel@netapp.com>
-In-Reply-To: <482A3FA0050D21419C269D13989C61130435E51E@lavender-fe.eng.netapp.com>
+	id 1Bp9Nd-0007X0-On
+	for nfs@lists.sourceforge.net; Mon, 26 Jul 2004 10:35:18 -0700
+To: Greg Banks <gnb@sgi.com>
+In-Reply-To: <20040726081439.GE17056@sgi.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -35,50 +33,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Greg Banks wrote:
 
---Boundary-02=_knTBBjYg1WnoIab
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: inline
-
-On Monday 26 July 2004 18:26, you wrote:
-> > Any ideas whats the issue with sync vs async in 2.4.x?
+>I've been out of the loop for a few weeks now so I'm getting back
+>in by sending and resending a bunch of patches.
 >
-> <Sonorus>
-> Read The FAQ, Luke
-> </Sonorus>
+>This one (for 2.4 only) was sent twice but has not yet appeared in
+>Marcello's BK.
 >
-> the async export option opens a window that allows silent data
-> corruption.  did you have a specific question about it?
+>http://marc.theaimsgroup.com/?l=linux-nfs&m=107002386729570&w=2
+>http://marc.theaimsgroup.com/?l=linux-kernel&m=108391490102531&w=2
+>
+>This patch makes NFSSVC_MAXBLKSIZE depend on PAGE_SIZE so that machines
+>with large page sizes can take advantage of that feature to serve NFS
+>with larger blocksizes, increasing performance and avoiding a fallback
+>to synchronous traffic between machines with page sizes greater than 8K.
+>Also, documents the actual constraints on NFSSVC_MAXBLKSIZE.
+>  
+>
+I've had people ask about this as well.... It would be good if this made 
+in (imho)....
 
-Exactly, therefore I would like to enable the sync-export option again.=20
-However, reducing the speed to about 1/5 of async speed for large files and=
-=20
-to about 1/20 for smaller files is not an option. The people already=20
-complained that compiling their projects takes ages now...=20
-
-D'oh, sorry, I forgot to write that we use the tcp-mounts and nfs3. So  tho=
-se=20
-numbers really shouldn't happen, should they?
-
-
-Cheers,
-	Bernd
-
---Boundary-02=_knTBBjYg1WnoIab
-Content-Type: application/pgp-signature
-Content-Description: signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.4 (GNU/Linux)
-
-iD8DBQBBBTnkC8BUnAF+ydYRAnE0AJ9Kz5J6qfwFZzs0WMawo2XB/uxSTwCfVohB
-O/zXSaWIdWYE+rOqE/6wZ84=
-=MCoG
------END PGP SIGNATURE-----
-
---Boundary-02=_knTBBjYg1WnoIab--
+SteveD.
 
 
 -------------------------------------------------------
