@@ -1,21 +1,25 @@
-From: <JACOB_LIBERMAN@Dell.com>
-Subject: Capture nfs debug info to syslog (linux)
-Date: Fri, 14 May 2004 10:02:33 -0500
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH][RFC] Multiple UDP sockets for knfsd
+Date: Fri, 14 May 2004 16:21:50 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <90D99853F9131D4388534489DA4FCBA60A17B7@ausx2kmpc104.aus.amer.dell.com>
+Message-ID: <1084566110.4237.66.camel@lade.trondhjem.org>
+References: <40A42DB8.7B9C8152@melbourne.sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: text/plain
+Cc: Neil Brown <neilb@cse.unsw.edu.au>, Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BOeCv-0008LI-Dz
-	for nfs@lists.sourceforge.net; Fri, 14 May 2004 08:02:41 -0700
-Received: from ausc60pc101.us.dell.com ([143.166.85.206])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1BOeCv-0007Ra-AA
-	for nfs@lists.sourceforge.net; Fri, 14 May 2004 08:02:41 -0700
-To: <nfs@lists.sourceforge.net>
+	id 1BOjBw-00005j-JI
+	for nfs@lists.sourceforge.net; Fri, 14 May 2004 13:22:00 -0700
+Received: from dh132.citi.umich.edu
+	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.30)
+	id 1BOjBw-0001Dg-96
+	for nfs@lists.sourceforge.net; Fri, 14 May 2004 13:22:00 -0700
+To: Greg Banks <gnb@melbourne.sgi.com>
+In-Reply-To: <40A42DB8.7B9C8152@melbourne.sgi.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -28,37 +32,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-All,
+On Thu, 2004-05-13 at 22:23, Greg Banks wrote:
+> G'day,
+> 
+> This patch attempts to implement a suggestion made by Neil Brown in
+> offline discussions, to extend the Linux NFS server to use multiple
+> UDP sockets for load sharing.  It turns out that the single UDP socket
+> is a throughput limiter at surprisingly small loads.  With this patch
+> my test machine goes from being limited at about 146 MB/s in cached
+> read loads over UDP to about 210~230 MB/s, which is about the same
+> number as the same test over TCP.
 
-What is the best way to capture NFS debugging information to syslog?
-Basically I am trying to find a way to gather as much information as
-possible that can be used to troubleshoot NFS. I also feel that this
-would be a great addition to the NFS-HOWTO.
+Greg,
 
-I have checked the nfs-howto, included distribution documentation, and
-searched the nfs mailing list archives.
+I'm confused here. Are you actually implying that socket contention is
+responsible for a full *40%* decrease in throughput? If not, please
+could you explain which bottleneck this patch is removing?
 
-I am running nfs-utils-0.3.3 and portmap-4.0-38 kernel-2.4.9-e.40smp
-(Red Hat Linux AS 2.1)
+Also, isn't that call to sock_release() while holding serv->sv_lock a
+tad deadlock-prone? Note that sock_release() will call bh_lock_sock()...
 
-So far I have found the following:=20
-
-1. starting rpc.mountd with "--debug all" (RPCMOUNTDOPTS=3D"--debug all"
-in /etc/sysconfig/nfs)
-2. configuring syslog to capture debug level information
-3. echoing 32767 into /proc/sys/sunrpc/{nfs_debug, nfsd_debug,
-rpc_debug}
-4. restarting syslog, nfs, and portmap=20
-
-I have tried reviewing the source code in
-/usr/include/linux/{lockd/debug.h, nfsd/debug.h, sunrpc/debug.h} and
-nfs_fs.h. The RPCDBG_, NFSDBG_, and NFSDDBG_ variables all seem to take
-values up to 65535 (0xFFFF). My programming skills are a bit rusty, so
-please make all replies as detailed (and human readable) as possible.
-
-Thanks, jacob=20
-
-
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
