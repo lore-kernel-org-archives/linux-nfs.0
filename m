@@ -1,23 +1,25 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFSv2/3 requiring RPC_AUTH_GSS
-Date: Fri, 04 Mar 2005 11:03:39 -0800
-Message-ID: <1109963019.10173.14.camel@lade.trondhjem.org>
-References: <1109890493.4361.95.camel@roadrunner.phys.psu.edu>
+Subject: Re: statd -o change
+Date: Fri, 04 Mar 2005 11:48:02 -0800
+Message-ID: <1109965682.10173.29.camel@lade.trondhjem.org>
+References: <20050227192113.GA5778@localhost.localdomain>
+	 <1109787034.12460.7.camel@lade.trondhjem.org>
+	 <20050304153436.GA32203@gam3.net>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Cc: nhorman@redhat.com, nfs@lists.sourceforge.net
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D7I5Y-0004Ec-KD
-	for nfs@lists.sourceforge.net; Fri, 04 Mar 2005 11:03:52 -0800
+	id 1D7Imk-0006SY-55
+	for nfs@lists.sourceforge.net; Fri, 04 Mar 2005 11:48:30 -0800
 Received: from pat2.uio.no
 	([129.240.130.19] helo=pat.uio.no ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1D7I5W-0007WB-R4
-	for nfs@lists.sourceforge.net; Fri, 04 Mar 2005 11:03:52 -0800
-To: Benjamin Bennett <ben@phys.psu.edu>
-In-Reply-To: <1109890493.4361.95.camel@roadrunner.phys.psu.edu>
+	id 1D7Img-0007lu-Js
+	for nfs@lists.sourceforge.net; Fri, 04 Mar 2005 11:48:30 -0800
+To: "G. Allen Morris III" <gam3@gam3.net>
+In-Reply-To: <20050304153436.GA32203@gam3.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,20 +33,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-to den 03.03.2005 Klokka 17:54 (-0500) skreiv Benjamin Bennett:
->   v4 exports using gss/krb5 work from both FC2 and Solaris 10 clients.
-> However, for Solaris 8 I'm using v3 with gss/krb5.
+fr den 04.03.2005 Klokka 10:34 (-0500) skreiv G. Allen Morris III:
+> Trond,
 > 
->   The problem I've run into with this, is that in order for the v3
-> client to mount (even using gss), it must be given sys/unix access too.
-> That pretty much rules out the nice sleep I could have gotten with all
-> clients using gss since they could just remount with auth_unix at will.
+> I would think that statd should fail if the requested outgoing port (-o)
+> can't be bound to. The main reason to bind to a particular outgoing port
+> is because of a firewall.  If a random port is used statd will not make
+> it through the firewall, but the log file will have to be checked to
+> find out why statd is not working (falling back on randomly chosen port).
+> 
+> Not starting statd seems to be the failure mode if the rpc.statd port
+> (-p) can't be bound to.
 
-Could you expand a bit on this? Is the problem that knfsd is failing to
-adhere to RFC2623?
-The latter says that the NFS server is supposed to accept AUTH_SYS as
-being valid for fsinfo(nfsv3) or fsstat+getattr(nfsv2) on the mount
-point. Is knfsd doing this?
+I'm not against doing this, but it would be a change w.r.t. existing
+behaviour, so it warrants some discussion first.
+
+Anyone have an opinion on this?
 
 Cheers,
   Trond
