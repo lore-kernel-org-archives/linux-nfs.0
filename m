@@ -1,22 +1,27 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [kNFSD] [PATCH] fixed '-p port' arg to rpc.nfsd plus more.
-Date: Tue, 22 Mar 2005 08:10:39 -0500
-Message-ID: <4240194F.706@RedHat.com>
-References: <423EDD43.8000209@RedHat.com> <16959.23048.930497.833801@cse.unsw.edu.au>
+From: Filipe Brandenburger <branden@terra.com.br>
+Subject: rename works? (was: open O_EXCL works?)
+Date: Wed, 23 Mar 2005 11:39:03 -0300
+Message-ID: <20050323113859.BECF.BRANDEN@terra.com.br>
+References: <20050322101843.BE94.BRANDEN@terra.com.br> <1111498903.24016.17.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Content-Type: text/plain; charset="US-ASCII"
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DDj1l-0001GB-R5
-	for nfs@lists.sourceforge.net; Tue, 22 Mar 2005 05:02:33 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1DDj1V-0000LG-5y
-	for nfs@lists.sourceforge.net; Tue, 22 Mar 2005 05:02:33 -0800
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <16959.23048.930497.833801@cse.unsw.edu.au>
+	id 1DE6zE-0008B5-JU
+	for nfs@lists.sourceforge.net; Wed, 23 Mar 2005 06:37:32 -0800
+Received: from loncoche.terra.com.br ([200.154.55.229])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1DE6zB-0001Ek-F3
+	for nfs@lists.sourceforge.net; Wed, 23 Mar 2005 06:37:32 -0800
+Received: from paramonga.terra.com.br (paramonga.terra.com.br [200.154.55.133])
+	by loncoche.terra.com.br (Postfix) with ESMTP id E50A2E78AA6
+	for <nfs@lists.sourceforge.net>; Wed, 23 Mar 2005 11:37:26 -0300 (BRT)
+Received: from [200.176.1.176] (branden.terra.com.br [200.176.1.176])
+	(authenticated user branden)
+	by paramonga.terra.com.br (Postfix) with ESMTP id C007D21C012
+	for <nfs@lists.sourceforge.net>; Wed, 23 Mar 2005 11:37:26 -0300 (BRT)
+To: nfs@lists.sourceforge.net
+In-Reply-To: <1111498903.24016.17.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,44 +35,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Neil Brown wrote:
-> 
-> "ports".... should we allow different protocols to use different
->    ports?  2049 for tcp, but use 5123 for udp ???
-I would not think so... How often has something like this
-been needed in the past?
 
-> 
->    Maybe a better interface is to open and bind a socket in userspace,
->    and pass it down to the kernel.  Maybe not..
-True.... ;-)
+Hi, there.
 
-> 
->  How about the "ports" file contains lines:
->    family:proto:address:port
->  e.g.
->    ipv4:udp:*:2049
-Maybe a better name for the file should be 'address'?
-since thats what we are defining....
+I found another problem just now. I have two processes calling "rename"
+to move all files from one directory to another, they're both calling
+the same actions, for example, if process 1 on client 1 calls
+rename("a/x","b/x"), process 2 on client 2 will call rename("a/x","b/x").
 
-> 
->  A port could be disabled with
->    echo "-ipv4:udp:*:2049" > /proc/fs/nfsd/ports
->  maybe.
-hmm... I think I would rather just restart the server
-verses disable something.... I just doesn't sound good ;-)
+Apparently, somehow, I had one process trying to move 120 files (all
+that were on directory "a"). It said it managed to move 112 files, 8 of
+them failed. The second process entered the directory when there were 17
+files, it tried to move them, and reported that moved successfully 16 of
+them, 1 of them failed. But that means that both together moved 112 + 16
+= 128 files! That "8" files are reflected in my other accounting, that
+says there are 8 files more than there really are.
 
-steved.
+What I mean is, is it possible that both processes called the rename for
+the same file, and that both of them succeeded? Is it that the success
+of the rename operation depends on the destination file being there
+instead of the success of the rename operation itself? If that's it, is
+there a way to circumvent this restriction? If I use, for example,
+hardlink and unlink, it would solve the concurrency problems?
 
+I can provide more information on the problem upon request.
 
+Thanks again,
+Filipe
 
 
 
 -------------------------------------------------------
-SF email is sponsored by - The IT Product Guide
-Read honest & candid reviews on hundreds of IT Products from real users.
-Discover which products truly live up to the hype. Start reading now.
-http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
+This SF.net email is sponsored by: 2005 Windows Mobile Application Contest
+Submit applications for Windows Mobile(tm)-based Pocket PCs or Smartphones
+for the chance to win $25,000 and application distribution. Enter today at
+http://ads.osdn.com/?ad_id=6882&alloc_id=15148&op=click
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
