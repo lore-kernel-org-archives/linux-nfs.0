@@ -1,21 +1,20 @@
-From: Cristina Sanz Sanz <Csanz@imaff.cfmac.csic.es>
-Subject: question!
-Date: Mon, 18 Nov 2002 10:49:22 +0100
+From: Andreas Metzler <ametzler@downhill.at.eu.org>
+Subject: Re: question!
+Date: Mon, 18 Nov 2002 10:09:01 +0000 (UTC)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3DD8B7A2.2050306@imaff.cfmac.csic.es>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Message-ID: <arae7t$432$1@mid.downhill.at.eu.org>
+References: <3DD8B7A2.2050306@imaff.cfmac.csic.es>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from ciruelo.csic.es ([161.111.100.5])
+Received: from mailbox.surfeu.at ([212.197.128.120] helo=surfeu.at)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18DiWj-000292-00
-	for <nfs@lists.sourceforge.net>; Mon, 18 Nov 2002 01:49:09 -0800
-Received: from ciruelo.csic.es (localhost [127.0.0.1])
-	by ciruelo.csic.es (8.11.1/8.11.1) with ESMTP id gAI9fZg15230
-	for <nfs@lists.sourceforge.net>; Mon, 18 Nov 2002 10:41:35 +0100
-Received: from imaff.cfmac.csic.es (fam99.imaff.csic.es [161.111.22.178])
-	by ciruelo.csic.es (8.11.1/8.11.1) with ESMTP id gAI9fZw15219
-	for <nfs@lists.sourceforge.net>; Mon, 18 Nov 2002 10:41:35 +0100
+	id 18Diqr-0003SI-00
+	for <nfs@lists.sourceforge.net>; Mon, 18 Nov 2002 02:09:57 -0800
+Received: from [194.152.121.29] (HELO downhill.univie.ac.at)
+  by surfeu.at (CommuniGate Pro SMTP 3.5.9)
+  with ESMTP id 34293611 for nfs@lists.sourceforge.net; Mon, 18 Nov 2002 11:09:52 +0100
+Received: from news by downhill.univie.ac.at with local (Exim 4.10 #1 (Debian) [+araqnid])
+	id 18Dipx-000160-00
+	for <nfs@lists.sourceforge.net>; Mon, 18 Nov 2002 11:09:01 +0100
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -29,18 +28,18 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
+Cristina Sanz Sanz <Csanz@imaff.cfmac.csic.es> wrote:
+> For three weeks I have Red Hat 8.0 distribution installed in my PC, I 
+> would like to have the possibility of mounting
+> some directories of another Red Hat 8.0 computer and also allow another 
+> computer mount my directories.
 
-For three weeks I have Red Hat 8.0 distribution installed in my PC, I 
-would like to have the possibility of mounting
-some directories of another Red Hat 8.0 computer and also allow another 
-computer mount my directories.
+> Please, could someone help me?
 
-Please, could someone help me?
-
-Thanks,
-Cris
-
+Sure, just follow the instructions in
+1. The documention of RedHat8
+2. The NFS-Howto.
+                cu andreas
 
 
 -------------------------------------------------------
