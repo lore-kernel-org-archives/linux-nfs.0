@@ -1,23 +1,25 @@
-From: Ian Kent <raven@themaw.net>
-Subject: Re: RPC Time Out
-Date: Thu, 4 Dec 2003 09:53:33 +0800 (WST)
+From: "Paul Smith" <pausmith@nortelnetworks.com>
+Subject: Re: [NFS PATCH] 2.6.0-test10 Invalidate cached inode attributes after rename
+Date: 03 Dec 2003 19:42:12 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.33.0312040951120.7055-100000@wombat.indigo.net.au>
-References: <FEF7905AD5F3DE4988CBEF096C280A4C1A48E0@pauex2ku02.agere.com>
+Message-ID: <vpdru14hbehn.fsf@lemming.engeast.baynetworks.com>
+References: <3FC501F9.1050306@lehman.com>
+Reply-To: "Paul Smith" <pausmith@nortelnetworks.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1ARies-000782-6Q
-	for nfs@lists.sourceforge.net; Wed, 03 Dec 2003 17:51:58 -0800
-Received: from wombat.indigo.net.au ([202.0.185.19])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
-	id 1ARier-0005Z3-Ir
-	for nfs@lists.sourceforge.net; Wed, 03 Dec 2003 17:51:57 -0800
-To: "Weber, Eugene F (Gene)" <efw@agere.com>
-In-Reply-To: <FEF7905AD5F3DE4988CBEF096C280A4C1A48E0@pauex2ku02.agere.com>
+	id 1ARhZZ-0007ko-4x
+	for nfs@lists.sourceforge.net; Wed, 03 Dec 2003 16:42:25 -0800
+Received: from zrtps0kp.nortelnetworks.com ([47.140.192.56])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
+	id 1ARhZY-0005E5-JA
+	for nfs@lists.sourceforge.net; Wed, 03 Dec 2003 16:42:24 -0800
+To: "Shantanu Goel" <Shantanu.Goel@lehman.com>
+In-Reply-To: <3FC501F9.1050306@lehman.com>
+Reply-To: "Paul Smith" <pausmith@nortelnetworks.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,45 +32,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, 1 Dec 2003, Weber, Eugene F (Gene) wrote:
+%% "Shantanu Goel" <Shantanu.Goel@lehman.com> writes:
 
->
-> SETTING UP THE CLIENT
-> ====================
-> rpcinfo -p on the Debian laptop gave an rpc error. I saw
-> that none of the services existed anywhere on the
-> machine. I installed package "portmap_5-2_i386.deb"
-> and package "nfs-common_1.0-2_i386.deb". After the
-> successful installs, portmap, statd and lockd all existed
-> under /sbin. The installation also said it started each of
-> the services. rpcinfo -p now showed:
->
-> program vers proto port
-> 100000 2 tcp 111 portmapper
-> 100000 2 udp 111 portmapper
-> 100024 1 udp 1024 status
-> 100024 1 tcp 1024 status
->
-> I though perhaps lockd was not started, but executing it
-> and then checking rpcinfo -p gives the same result??
-> The shown services now seemed to be launched at boot
-> up.
->
-> rpcinfo -p 192.168.2.57 from the client gives the same
-> result as doing rpcinfo -p on the server. Likewise doing
-> rpcinfo -p 192.168.2.51 from the server gives the same
-> result as doing rpcinfo -p on the client.
+  sg> 1. Check out a CVS repository into an NFS mounted directory.
+  sg> 2. Move files from CVS working directory into another directory in the
+  sg> same filesystem.
+  sg> 3. Tar up the resultant directory.
+  sg> 4. Tar prints lots of "file changed after we read it" messages.
 
-But what does a showmount -e show on the server and what does
-a showmount -e 192.168.2.57 give on the client.
+Interesting: I see this exact same message when taring up the contents
+of a ClearCase view (in 2.4.20-x)... even though I'm 100% positive that
+no one but me is touching those files.  Is this scenario relevant to a
+kernel that old as well?
 
 -- 
-
-   ,-._|\    Ian Kent
-  /      \   Perth, Western Australia
-  *_.--._/   E-mail: raven@themaw.net
-        v    Web: http://themaw.net/
-
+-------------------------------------------------------------------------------
+ Paul D. Smith <psmith@nortelnetworks.com>   HASMAT--HA Software Mthds & Tools
+ "Please remain calm...I may be mad, but I am a professional." --Mad Scientist
+-------------------------------------------------------------------------------
+   These are my opinions---Nortel Networks takes no responsibility for them.
 
 
 -------------------------------------------------------
