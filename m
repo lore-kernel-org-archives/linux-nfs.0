@@ -1,24 +1,19 @@
-From: "Bruce Allan" <bruce.allan@us.ibm.com>
-Subject: nfs-utils patch to statd for multi-homed hosts
-Date: Fri, 31 May 2002 13:18:27 -0700
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: [RFC] NFS client changes - page kmap() in the RPC layer.
+Date: Sun, 5 May 2002 15:27:12 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <OFE81A6846.D2A070A1-ON88256BCA.006D5F8B@boulder.ibm.com>
+Message-ID: <15573.13104.24494.347422@charged.uio.no>
+Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
-	Boundary="0__=08BBE159DFFC24DB8f9e8a93df938690918c08BBE159DFFC24DB"
+Content-Type: text/plain; charset=us-ascii
+Cc: NFS maillist <nfs@lists.sourceforge.net>, nfsv4-wg@citi.umich.edu
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from e1.ny.us.ibm.com ([32.97.182.101])
-	by usw-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17Dss0-0005Xe-00
-	for <nfs@lists.sourceforge.net>; Fri, 31 May 2002 13:19:32 -0700
-Received: from twestrelay04.boulder.ibm.com (twestrelay04.boulder.ibm.com [9.17.194.55])
-	by e1.ny.us.ibm.com (8.12.2/8.12.2) with ESMTP id g4VKJNg5110138
-	for <nfs@lists.sourceforge.net>; Fri, 31 May 2002 16:19:23 -0400
-Received: from d03nm035.boulder.ibm.com (d03nm035.boulder.ibm.com [9.17.194.35])
-	by twestrelay04.boulder.ibm.com (8.11.1m3/NCO/VER6.1) with ESMTP id g4VKJMf63982
-	for <nfs@lists.sourceforge.net>; Fri, 31 May 2002 14:19:22 -0600
-To: nfs@lists.sourceforge.net
+Received: from pat.uio.no ([129.240.130.16])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 174M2w-0000xl-00
+	for <nfs@lists.sourceforge.net>; Sun, 05 May 2002 06:27:26 -0700
+To: "Chuck Lever" <cel@monkey.org>,
+    "Kendrick M. Smith" <kmsmith@umich.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,197 +26,70 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
---0__=08BBE159DFFC24DB8f9e8a93df938690918c08BBE159DFFC24DB
-Content-type: text/plain; charset=us-ascii
+Hi,
 
-The attached patch provides the capability for statd to work with
-multi-homed hosts (i.e. NFS servers and clients with more than one IP
-interface each) as until now listed as a "FIXME" comment in
-utils/statd/rmtcall.c
+  One of the reported problems that remain to be fixed in the client
+RPC layer when using a HIGHMEM system, is that we can deadlock on
+'kmap()'.
 
-The theory is when a server or client crashes, reboots, and attempts to
-notify the other of it's status change, if either host's interface on which
-the connection was originally made is no longer functional, statd will
-attempt to use alternate interfaces if they exist.  This is made possible
-by changing the addr member of the notify_list structure to a list of
-addresses equivalent to that returned by a gethostbyname() call.  Failed
-attempts at notifying an address removes that address from the list.
+The problem is that there is a limited pool of addresses available to
+the kmap() operation. The current design is based on the premise that
+no single process will 'hold' more than one kmapped page for any
+extended period of time.
+The NFS layer breaks this premise, since each read/write kmap()s the
+pages at the beginning of the RPC call, and only kunmap()s at the
+end. If, say, a server is down for an extended period, so that all
+RPC calls loop and retry, then we might end up exhausting the entire
+resource pool.
 
-Sorry this is an attachment, the mail program I use will munge the tabs to
-spaces and render the patch almost useless (changing mailers is on my todo
-list).  The patch has been created against nfs-utils-1-0-1-pre7.  Comments,
-etc. welcome!
+The solution is to move the kmapping operation into the RPC
+socket layer. There are only 2 places where we need kmap:
 
-(See attached file: patch)
+  - When calling sock_sendmsg()
+  - When copying the reply from the server into pages.
 
-Regards,
----
-Bruce Allan  <bruce.allan@us.ibm.com>
-Software Engineer, Linux Technology Center
-IBM Corporation, Beaverton OR
-503-578-4187   IBM Tie-line 775-4187
---0__=08BBE159DFFC24DB8f9e8a93df938690918c08BBE159DFFC24DB
-Content-type: application/octet-stream;
-	name="patch"
-Content-Disposition: attachment; filename="patch"
-Content-transfer-encoding: base64
+Of course, in order to do so, we need to teach the RPC layer to deal
+with pages, rather than page kmap() addresses.
 
-ZGlmZiAtTmF1ciBuZnMtdXRpbHMtMS0wLTEtcHJlNy91dGlscy9zdGF0ZC9ub3RsaXN0LmMgbmZz
-LXV0aWxzLTEtMC0xLXByZTctbXVsdGlob21lL3V0aWxzL3N0YXRkL25vdGxpc3QuYwotLS0gbmZz
-LXV0aWxzLTEtMC0xLXByZTcvdXRpbHMvc3RhdGQvbm90bGlzdC5jCVRodSBPY3QgIDUgMTI6MTU6
-NDAgMjAwMAorKysgbmZzLXV0aWxzLTEtMC0xLXByZTctbXVsdGlob21lL3V0aWxzL3N0YXRkL25v
-dGxpc3QuYwlGcmkgTWF5IDMxIDExOjQ3OjQ5IDIwMDIKQEAgLTU5LDkgKzU5LDE0IEBACiAJTkxf
-VElNRVMobmV3KSA9IE1BWF9UUklFUzsKIAlOTF9TVEFURShuZXcpID0gc3RhdGU7CiAJaWYgKCEo
-TkxfTVlfTkFNRShuZXcpID0geHN0cmR1cChteV9uYW1lKSkKLQkJICAgICAgIAl8fCAhKE5MX01P
-Tl9OQU1FKG5ldykgPSB4c3RyZHVwKG1vbl9uYW1lKSkpCisJCSAgICAgICAJfHwgIShOTF9NT05f
-TkFNRShuZXcpID0geHN0cmR1cChtb25fbmFtZSkpCisJCQl8fCAhKG5ldy0+YWRkcl9saXN0ID0g
-eG1hbGxvYyhzaXplb2Yoc3RydWN0IGluX2FkZHIpCisJCQkJCQkJKyAoMipzaXplb2YoY2hhciAq
-KSkpKSkKIAkJcmV0dXJuIE5VTEw7CiAKKwltZW1zZXQobmV3LT5hZGRyX2xpc3QsIDAsIHNpemVv
-ZihzdHJ1Y3QgaW5fYWRkcikrKDIqc2l6ZW9mKGNoYXIgKikpKTsKKwluZXctPmFkZHJfbGlzdFsw
-XSA9IChjaGFyKikmKCgoY2hhciopbmV3LT5hZGRyX2xpc3QpWzIqc2l6ZW9mKGNoYXIqKV0pOwor
-CiAJcmV0dXJuIG5ldzsKIH0KIApAQCAtMTg1LDEyICsxOTAsMzUgQEAKIG5saXN0X2Nsb25lKG5v
-dGlmeV9saXN0ICplbnRyeSkKIHsKIAlub3RpZnlfbGlzdAkqbmV3OworCWNoYXIJCSoqc3A7CisJ
-aW50IAkJY250LCBhbGlnbiwgaSwgcG9zOworCWludAkJbnVtX2FkZHJfbGlzdCA9IDE7CisJaW50
-CQlsZW5fYWRkcl9saXN0ID0gc2l6ZW9mKGNoYXIgKik7CisJaW50CQlhZGRyX3NpemUgPSBzaXpl
-b2Yoc3RydWN0IGluX2FkZHIpOwogCiAJbmV3ID0gbmxpc3RfbmV3KE5MX01ZX05BTUUoZW50cnkp
-LCBOTF9NT05fTkFNRShlbnRyeSksIE5MX1NUQVRFKGVudHJ5KSk7CiAJTkxfTVlfUFJPRyhuZXcp
-ID0gTkxfTVlfUFJPRyhlbnRyeSk7CiAJTkxfTVlfVkVSUyhuZXcpID0gTkxfTVlfVkVSUyhlbnRy
-eSk7CiAJTkxfTVlfUFJPQyhuZXcpID0gTkxfTVlfUFJPQyhlbnRyeSk7Ci0JTkxfQUREUihuZXcp
-ICAgID0gTkxfQUREUihlbnRyeSk7CisKKwlhbGlnbiA9IChpID0gKGFkZHJfc2l6ZSAlIHNpemVv
-ZihjaGFyICopKSkgPworCQkJCShhZGRyX3NpemUgKyBzaXplb2YoY2hhciAqKSAtIGkpIDogYWRk
-cl9zaXplOworCWZvciAoc3AgPSBlbnRyeS0+YWRkcl9saXN0OyAqc3A7IHNwKyspIHsKKwkJbnVt
-X2FkZHJfbGlzdCsrOworCQlsZW5fYWRkcl9saXN0ICs9IGFsaWduICsgc2l6ZW9mKGNoYXIgKik7
-CisJfQorCW5ldy0+YWRkcl9saXN0ID0gcmVhbGxvYyhuZXctPmFkZHJfbGlzdCwgbGVuX2FkZHJf
-bGlzdCk7CisJcG9zID0gbnVtX2FkZHJfbGlzdCAqIHNpemVvZihjaGFyICopOworCWZvciAoc3Ag
-PSBlbnRyeS0+YWRkcl9saXN0LCBjbnQ9MDsgY250IDwgbnVtX2FkZHJfbGlzdDsgY250KyssIHNw
-KyspIHsKKwkJaWYgKCpzcCkgeworCQkJbmV3LT5hZGRyX2xpc3RbY250XSA9IAorCQkJCShjaGFy
-ICopJigoKGNoYXIgKiluZXctPmFkZHJfbGlzdClbcG9zXSk7CisJCQltZW1jcHkobmV3LT5hZGRy
-X2xpc3RbY250XSwgKnNwLCBhZGRyX3NpemUpOworCQkJcG9zICs9IGFsaWduOworCQl9IGVsc2UK
-KwkJCW5ldy0+YWRkcl9saXN0W2NudF0gPSAqc3A7CisJfQorCiAJbWVtY3B5KE5MX1BSSVYobmV3
-KSwgTkxfUFJJVihlbnRyeSksIFNNX1BSSVZfU0laRSk7CiAKIAlyZXR1cm4gbmV3OwpAQCAtMjEx
-LDYgKzIzOSw4IEBACiAJCWZyZWUoTkxfTVlfTkFNRShlbnRyeSkpOwogCWlmIChOTF9NT05fTkFN
-RShlbnRyeSkpCiAJCWZyZWUoTkxfTU9OX05BTUUoZW50cnkpKTsKKwlpZiAoZW50cnktPmFkZHJf
-bGlzdCkKKwkJZnJlZShlbnRyeS0+YWRkcl9saXN0KTsKIAlmcmVlKGVudHJ5KTsKIH0KIApkaWZm
-IC1OYXVyIG5mcy11dGlscy0xLTAtMS1wcmU3L3V0aWxzL3N0YXRkL25vdGxpc3QuaCBuZnMtdXRp
-bHMtMS0wLTEtcHJlNy1tdWx0aWhvbWUvdXRpbHMvc3RhdGQvbm90bGlzdC5oCi0tLSBuZnMtdXRp
-bHMtMS0wLTEtcHJlNy91dGlscy9zdGF0ZC9ub3RsaXN0LmgJTW9uIE9jdCAxOCAxNjoyMToxMiAx
-OTk5CisrKyBuZnMtdXRpbHMtMS0wLTEtcHJlNy1tdWx0aWhvbWUvdXRpbHMvc3RhdGQvbm90bGlz
-dC5oCUZyaSBNYXkgMzEgMTE6NTk6MDQgMjAwMgpAQCAtMTIsMTMgKzEyLDEzIEBACiAgKi8KIHN0
-cnVjdCBub3RpZnlfbGlzdCB7CiAgIG1vbgkJCW1vbjsJLyogQmlnIGhvbmtpbicgTlNNIHN0cnVj
-dHVyZS4gKi8KLSAgc3RydWN0IGluX2FkZHIJYWRkcjsJLyogSVAgYWRkcmVzcyBmb3IgY2FsbGJh
-Y2suICovCisgIGNoYXIJCQkqKmFkZHJfbGlzdDsJLyogSVAgYWRkcmVzcyBsaXN0IGZvciBjYWxs
-YmFjay4gKi8KICAgdW5zaWduZWQgc2hvcnQJcG9ydDsJLyogcG9ydCBudW1iZXIgZm9yIGNhbGxi
-YWNrICovCiAgIHNob3J0IGludAkJdGltZXM7CS8qIENvdW50ZXIgdXNlZCBmb3IgdmFyaW91cyB0
-aGluZ3MuICovCiAgIGludAkJCXN0YXRlOwkvKiBGb3Igc3RvcmluZyBub3RpZmllZCBzdGF0ZSBm
-b3IgY2FsbGJhY2tzLiAqLwogICBzdHJ1Y3Qgbm90aWZ5X2xpc3QJKm5leHQ7CS8qIExpbmtlZCBs
-aXN0IGZvcndhcmQgcG9pbnRlci4gKi8KICAgc3RydWN0IG5vdGlmeV9saXN0CSpwcmV2OwkvKiBM
-aW5rZWQgbGlzdCBiYWNrd2FyZCBwb2ludGVyLiAqLwotICB1X2ludDMyX3QJCXhpZDsJLyogWElE
-IG9mIE1TX05PVElGWSBSUEMgY2FsbCAqLworICB1X2ludDMyX3QJCXhpZDsJLyogWElEIG9mIFNN
-X05PVElGWSBSUEMgY2FsbCAqLwogICB0aW1lX3QJCXdoZW47CS8qIG5vdGlmeTogdGltZW91dCBm
-b3IgcmUteG1pdCAqLwogICBpbnQJCQl0eXBlOwkvKiB0eXBlIG9mIG5vdGlmeSAoUkVCT09UL0NB
-TExCQUNLKSAqLwogfTsKQEAgLTU1LDcgKzU1LDcgQEAKICNkZWZpbmUgTkxfRklSU1QJTkxfTkVY
-VAogI2RlZmluZSBOTF9QUkVWKEwpCSgoTCktPnByZXYpCiAjZGVmaW5lIE5MX0RBVEEoTCkJKChM
-KS0+bW9uKQotI2RlZmluZSBOTF9BRERSKEwpCSgoTCktPmFkZHIpCisjZGVmaW5lIE5MX0FERFIo
-TCkJKCooc3RydWN0IGluX2FkZHIgKikoKEwpLT5hZGRyX2xpc3RbMF0pKQogI2RlZmluZSBOTF9T
-VEFURShMKQkoKEwpLT5zdGF0ZSkKICNkZWZpbmUgTkxfVElNRVMoTCkJKChMKS0+dGltZXMpCiAj
-ZGVmaW5lIE5MX01PTl9JRChMKQkoTkxfREFUQSgoTCkpLm1vbl9pZCkKZGlmZiAtTmF1ciBuZnMt
-dXRpbHMtMS0wLTEtcHJlNy91dGlscy9zdGF0ZC9ybXRjYWxsLmMgbmZzLXV0aWxzLTEtMC0xLXBy
-ZTctbXVsdGlob21lL3V0aWxzL3N0YXRkL3JtdGNhbGwuYwotLS0gbmZzLXV0aWxzLTEtMC0xLXBy
-ZTcvdXRpbHMvc3RhdGQvcm10Y2FsbC5jCVdlZCBNYXIgMjEgMTE6MjE6MDggMjAwMQorKysgbmZz
-LXV0aWxzLTEtMC0xLXByZTctbXVsdGlob21lL3V0aWxzL3N0YXRkL3JtdGNhbGwuYwlGcmkgTWF5
-IDMxIDEyOjAyOjQzIDIwMDIKQEAgLTEwNyw2ICsxMDcsMTEgQEAKIHsKIAlzdHJ1Y3QgaG9zdGVu
-dAkqaHA7CiAJY2hhcgkJKmhuYW1lOworCXN0cnVjdCBpbl9hZGRyCWhhZGRyOworCWludCAJCWNu
-dCwgYWxpZ24sIGksIHBvczsKKwlpbnQJCW51bV9hZGRyX2xpc3QgPSAxOworCWludAkJbGVuX2Fk
-ZHJfbGlzdCA9IHNpemVvZihjaGFyICopOworCWNoYXIJCSoqc3A7CiAKIAlpZiAoTkxfVFlQRShs
-cCkgPT0gTk9USUZZX1JFQk9PVCkKIAkJaG5hbWUgPSBOTF9NT05fTkFNRShscCk7CkBAIC0xMTQs
-MjMgKzExOSw1MyBAQAogCQlobmFtZSA9IE5MX01ZX05BTUUobHApOwogCiAJZHByaW50ZihMX0RF
-QlVHLCAiVHJ5aW5nIHRvIHJlc29sdmUgJXMuIiwgaG5hbWUpOworCisJaWYgKGluZXRfYXRvbiho
-bmFtZSwgKHN0cnVjdCBpbl9hZGRyICopJmhhZGRyLnNfYWRkcikpIHsKKwkJLyogaG5hbWUgaW4g
-ZG90dGVkLW9jdGV0IGZvcm1hdCwgZG8gYSByZXZlcnNlIGxvb2t1cCAqLworCQlpZiAoIShocCA9
-IGdldGhvc3RieWFkZHIoJmhhZGRyLCBzaXplb2YoaGFkZHIpLCBBRl9JTkVUKSkpIHsKKwkJCWhl
-cnJvcigiZ2V0aG9zdGJ5YWRkciIpOworCQkJTkxfVElNRVMobHApIC09IDE7CisJCQlyZXR1cm4g
-MDsKKwkJfQorCQlobmFtZSA9IGhwLT5oX25hbWU7CisJfQorCisJLyogaG5hbWUgaW4gZG9tYWlu
-IG5hbWUgZm9ybWF0LCBkbyBhIGZvcndhcmQgbG9va3VwICovCiAJaWYgKCEoaHAgPSBnZXRob3N0
-YnluYW1lKGhuYW1lKSkpIHsKIAkJaGVycm9yKCJnZXRob3N0YnluYW1lIik7CiAJCU5MX1RJTUVT
-KGxwKSAtPSAxOwogCQlyZXR1cm4gMDsKIAl9CisJaG5hbWUgPSBocC0+aF9uYW1lOworCWRwcmlu
-dGYoTF9ERUJVRywgImhuYW1lIGlzIG5vdyAlcyIsIGhuYW1lKTsKIAogCWlmIChocC0+aF9hZGRy
-dHlwZSAhPSBBRl9JTkVUKSB7Ci0JCWxvZyhMX0VSUk9SLCAiJXMgaXMgbm90IGFuIEFGX0lORVQg
-YWRkcmVzcyIsIGhuYW1lKTsKKwkJbG9nKExfRVJST1IsICIlcyBkb2VzIG5vdCBoYXZlIGFuIEFG
-X0lORVQgYWRkcmVzcyIsIGhuYW1lKTsKIAkJTkxfVElNRVMobHApID0gMDsKIAkJcmV0dXJuIDA7
-CiAJfQogCi0JLyogRklYTUU6IHNob3VsZCB0cnkgYWxsIGFkZHJlc3NlcyBmb3IgbXVsdGktaG9t
-ZWQgaG9zdHMgaW4KLQkgKiBhbHRlcm5hdGlvbiBiZWNhdXNlIG9uZSBpbnRlcmZhY2UgbWlnaHQg
-YmUgZG93bi91bnJlYWNoYWJsZS4gKi8KLQlOTF9BRERSKGxwKSA9ICooc3RydWN0IGluX2FkZHIg
-KikgaHAtPmhfYWRkcjsKKwkvKiBzaG91bGQgdHJ5IGFsbCBhZGRyZXNzZXMgZm9yIG11bHRpLWhv
-bWVkIGhvc3RzIGluIGFsdGVybmF0aW9uCisJICogYmVjYXVzZSBvbmUgaW50ZXJmYWNlIG1pZ2h0
-IGJlIGRvd24vdW5yZWFjaGFibGUuICovCisJYWxpZ24gPSAoaSA9IChocC0+aF9sZW5ndGggJSBz
-aXplb2YoY2hhciAqKSkpID8KKwkJCQkoaHAtPmhfbGVuZ3RoICsgc2l6ZW9mKGNoYXIgKikgLSBp
-KSA6CisJCQkJaHAtPmhfbGVuZ3RoOworCWZvciAoc3AgPSBocC0+aF9hZGRyX2xpc3Q7ICpzcDsg
-c3ArKykgeworCQludW1fYWRkcl9saXN0Kys7CisJCWxlbl9hZGRyX2xpc3QgKz0gYWxpZ24gKyBz
-aXplb2YoY2hhciAqKTsKKwl9CisJbHAtPmFkZHJfbGlzdCA9IHJlYWxsb2MobHAtPmFkZHJfbGlz
-dCwgbGVuX2FkZHJfbGlzdCk7CisJcG9zID0gbnVtX2FkZHJfbGlzdCAqIHNpemVvZihjaGFyICop
-OworCWZvciAoc3AgPSBocC0+aF9hZGRyX2xpc3QsIGNudD0wOyBjbnQgPCBudW1fYWRkcl9saXN0
-OyBjbnQrKywgc3ArKykgeworCQlpZiAoKnNwKSB7CisJCQlscC0+YWRkcl9saXN0W2NudF0gPSAo
-Y2hhciAqKSYoKChjaGFyICopbHAtPmFkZHJfbGlzdClbcG9zXSk7CisJCQltZW1jcHkobHAtPmFk
-ZHJfbGlzdFtjbnRdLCAqc3AsIGhwLT5oX2xlbmd0aCk7CisJCQlwb3MgKz0gYWxpZ247CisJCX0g
-ZWxzZQorCQkJbHAtPmFkZHJfbGlzdFtjbnRdID0gKnNwOworCX0KIAotCWRwcmludGYoTF9ERUJV
-RywgImFkZHJlc3Mgb2YgJXMgaXMgJXMiLCBobmFtZSwgaW5ldF9udG9hKE5MX0FERFIobHApKSk7
-CisJZHByaW50ZihMX0RFQlVHLCAiYWRkcmVzcyBvZiAlcyBpcyAlcyIsIGhuYW1lLCBpbmV0X250
-b2EoKihzdHJ1Y3QgaW5fYWRkciAqKWxwLT5hZGRyX2xpc3RbMF0pKTsKIAlyZXR1cm4gMTsKIH0K
-ICNlbmRpZgpAQCAtMjQ4LDEzICsyODMsMTUgQEAKIAkJICogbm90IHRoZSBzdGF0aWMsIGludGVy
-bmFsIHhpZCAqLwogCQlpZiAobHAtPnhpZCAhPSBtZXNnLnJtX3hpZCkKIAkJCWNvbnRpbnVlOwot
-CQlpZiAobHAtPmFkZHIuc19hZGRyICE9IHNpbi0+c2luX2FkZHIuc19hZGRyKSB7CisJCWlmICgq
-KGluX2FkZHJfdCAqKWxwLT5hZGRyX2xpc3RbMF0gIT0gc2luLT5zaW5fYWRkci5zX2FkZHIpCisJ
-CXsKIAkJCWNoYXIgYWRkciBbMThdOwotCQkJc3RybmNweSAoYWRkciwgaW5ldF9udG9hKGxwLT5h
-ZGRyKSwKKwkJCXN0cm5jcHkgKGFkZHIsCisJCQkJIGluZXRfbnRvYSgqKHN0cnVjdCBpbl9hZGRy
-ICopbHAtPmFkZHJfbGlzdFswXSksCiAJCQkJIHNpemVvZiAoYWRkcikgLSAxKTsKIAkJCWFkZHIg
-W3NpemVvZiAoYWRkcikgLSAxXSA9ICdcMCc7CiAJCQlkcHJpbnRmKExfV0FSTklORywgImFkZHJl
-c3MgbWlzbWF0Y2g6ICIKLQkJCQkiZXhwZWN0ZWQgJXMsIGdvdCAlc1xuIiwKKwkJCQkiZXhwZWN0
-ZWQgJXMsIGdvdCAlcyIsCiAJCQkJYWRkciwgaW5ldF9udG9hKHNpbi0+c2luX2FkZHIpKTsKIAkJ
-fQogCQlpZiAobHAtPnBvcnQgPT0gMCkgewpAQCAtMjg2LDEzICszMjMsMjcgQEAKIAl2b2lkCQkJ
-Km9ianA7CiAJdV9pbnQzMl90CQlwcm9jLCB2ZXJzLCBwcm9nOwogLyogCV9fdTMyCQkJcHJvYywg
-dmVycywgcHJvZzsgKi8KKwlpbnQJCQlpOwogCi0JaWYgKGxwLT5hZGRyLnNfYWRkciA9PSBJTkFE
-RFJfQU5ZICYmICF0cnlfdG9fcmVzb2x2ZShscCkpCisJaWYgKCgqbHAtPmFkZHJfbGlzdFswXSA9
-PSBJTkFERFJfQU5ZKSAmJiF0cnlfdG9fcmVzb2x2ZShscCkpCiAJCXJldHVybiBOTF9USU1FUyhs
-cCk7CiAJaWYgKE5MX1RJTUVTKGxwKSA9PSAwKSB7Ci0JCWxvZyhMX0RFQlVHLCAiQ2Fubm90IG5v
-dGlmeSAlcywgZ2l2aW5nIHVwLlxuIiwKLQkJCQkJaW5ldF9udG9hKE5MX0FERFIobHApKSk7Ci0J
-CXJldHVybiAwOworCQlpZiAoKmxwLT5hZGRyX2xpc3RbMV0pIHsKKwkJCWxvZyhMX0RFQlVHLCAi
-Q2Fubm90IG5vdGlmeSAlcy4iLAorCQkJCWluZXRfbnRvYSgqKHN0cnVjdCBpbl9hZGRyICopbHAt
-PmFkZHJfbGlzdFswXSkpOworCisJCQlmb3IgKGk9MDsgbHAtPmFkZHJfbGlzdFtpXTsgaSsrKQor
-CQkJCWxwLT5hZGRyX2xpc3RbaV0gPSBscC0+YWRkcl9saXN0W2krMV07CisKKwkJCWxvZyhMX0RF
-QlVHLCAiVHJ5aW5nIHRvIG5vdGlmeSAlcy4iLAorCQkJCWluZXRfbnRvYSgqKHN0cnVjdCBpbl9h
-ZGRyICopbHAtPmFkZHJfbGlzdFswXSkpOworCisJCQlOTF9USU1FUyhscCkgPSBNQVhfVFJJRVM7
-CisJCX0gZWxzZSB7CisJCQlsb2coTF9ERUJVRywgIkNhbm5vdCBub3RpZnkgJXMsIGdpdmluZyB1
-cC4iLAorCQkJCWluZXRfbnRvYSgqKHN0cnVjdCBpbl9hZGRyICopbHAtPmFkZHJfbGlzdFswXSkp
-OworCQkJcmV0dXJuIDA7CisJCX0KIAl9CiAKIAltZW1zZXQoJnNpbiwgMCwgc2l6ZW9mKHNpbikp
-OwpAQCAtMzA3LDcgKzM1OCw3IEBACiAJCXByb2MgPSBTTV9OT1RJRlk7CiAKIAkJLyogVXNlIHNv
-dXJjZSBhZGRyZXNzIGZvciBub3RpZnkgcmVwbGllcyAqLwotCQlzaW4uc2luX2FkZHIgICA9IGxw
-LT5hZGRyOworCQlzaW4uc2luX2FkZHIgICA9ICooc3RydWN0IGluX2FkZHIgKilscC0+YWRkcl9s
-aXN0WzBdOwogCiAJCWZ1bmMgPSAoeGRycHJvY190KSB4ZHJfc3RhdF9jaGdlOwogCQlvYmpwID0g
-JlNNX3N0YXRfY2hnZTsKQEAgLTMzNiw3ICszODcsNyBAQAogCWxwLT54aWQgPSB4bWl0X2NhbGwo
-c29ja2ZkLCAmc2luLCBwcm9nLCB2ZXJzLCBwcm9jLCBmdW5jLCBvYmpwKTsKIAlpZiAoIWxwLT54
-aWQpIHsKIAkJbG9nKExfV0FSTklORywgIm5vdGlmeV9ob3N0OiBmYWlsZWQgdG8gbm90aWZ5ICVz
-XG4iLAotCQkJCWluZXRfbnRvYShscC0+YWRkcikpOworCQkJCWluZXRfbnRvYSgqKHN0cnVjdCBp
-bl9hZGRyICopbHAtPmFkZHJfbGlzdFswXSkpOwogCX0KIAlOTF9USU1FUyhscCkgLT0gMTsKIApA
-QCAtMzY5LDE0ICs0MjAsMTQgQEAKIAkJCXJldHVybiAxOwogCQl9CiAJCWxvZyhMX1dBUk5JTkcs
-ICJyZWN2X3JwbHk6IFslc10gc2VydmljZSAlZCBub3QgcmVnaXN0ZXJlZCIsCi0JCQlpbmV0X250
-b2EobHAtPmFkZHIpLAorCQkJaW5ldF9udG9hKCooc3RydWN0IGluX2FkZHIgKilscC0+YWRkcl9s
-aXN0WzBdKSwKIAkJCU5MX1RZUEUobHApID09IE5PVElGWV9SRUJPT1Q/IFNNX1BST0cgOiBOTF9N
-WV9QUk9HKGxwKSk7CiAJfSBlbHNlIGlmIChOTF9UWVBFKGxwKSA9PSBOT1RJRllfUkVCT09UKSB7
-CiAJCWRwcmludGYoTF9ERUJVRywgIk5vdGlmaWNhdGlvbiBvZiAlcyBzdWNjZWVkZWQuIiwKIAkJ
-CU5MX01PTl9OQU1FKGxwKSk7CiAJCXh1bmxpbmsoU01fQkFLX0RJUiwgTkxfTU9OX05BTUUobHAp
-LCAwKTsKIAl9IGVsc2UgewotCQlkcHJpbnRmKExfREVCVUcsICJDYWxsYmFjayB0byAlcyAoZm9y
-ICVkKSBzdWNjZWVkZWQuIiwKKwkJZHByaW50ZihMX0RFQlVHLCAiQ2FsbGJhY2sgdG8gJXMgKGZv
-ciAlcykgc3VjY2VlZGVkLiIsCiAJCQlOTF9NWV9OQU1FKGxwKSwgTkxfTU9OX05BTUUobHApKTsK
-IAl9CiAJbmxpc3RfZnJlZSgmbm90aWZ5LCBscCk7Cg==
+The 2 patches in
 
---0__=08BBE159DFFC24DB8f9e8a93df938690918c08BBE159DFFC24DB--
+  http://www.fys.uio.no/~trondmy/src/2.4.19-pre8/alpha
 
+do precisely that. The patch linux-2.4.19-fix_kmap.dif introduces a
+new 'RPC buffer' type defined as follows:
+
+struct xdr_buf {
+	struct iovec	head[1],	/* RPC header + non-page data */
+			tail[1];	/* Appended after page data */
+
+	struct page **	pages;		/* Array of contiguous pages */
+	unsigned int	page_base,	/* Start of page data */
+			page_len;	/* Length of page data */
+
+	unsigned int	len;		/* Total length of data */
+};
+
+and applies it to the NFS write code.
+The patch linux-2.4.19-fix_kmap2.dif changes the various NFS 'read'
+operations (read, readdir, readlink) to use this structure.
+
+The patches will apply on top of linux-2.4.19-NFS_ALL.dif, although
+you will have to disable the NFS direct I/O code, as I haven't
+yet gotten around to fixing that (Chuck?).
+
+Comments please? How does this for instance affect the NFSv4 code?
+
+Please note: The two patches do not include code to make use of the
+TCP_CORK + sendpage() zero copy socket interface, but doing so is
+trivial if RPC were to use the above structure.
+
+Cheers,
+   Trond
 
 _______________________________________________________________
 
-Don't miss the 2002 Sprint PCS Application Developer's Conference
-August 25-28 in Las Vegas -- http://devcon.sprintpcs.com/adp/index.cfm
-
+Have big pipes? SourceForge.net is looking for download mirrors. We supply
+the hardware. You get the recognition. Email Us: bandwidth@sourceforge.net
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
