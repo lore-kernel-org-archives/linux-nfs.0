@@ -1,20 +1,24 @@
-From: Juri Haberland <list-linux.nfs@spoiled.org>
+From: Paul Heinlein <heinlein@cse.ogi.edu>
 Subject: Re: limitations at 5,8 GB?
-Date: Wed, 31 Dec 2003 09:56:42 +0000 (UTC)
+Date: Wed, 31 Dec 2003 08:54:38 -0800 (PST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <news2mail-bsu6gq$rfj$1@cartman.spoiled.org>
+Message-ID: <Pine.LNX.4.58.0312310849460.6614@pecos.madboa.com>
 References: <200312251945.42382.nuway@gmx.net>
-Reply-To: Juri Haberland <juri@koschikode.com>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1Abd5W-0005SM-Iz
-	for nfs@lists.sourceforge.net; Wed, 31 Dec 2003 01:56:26 -0800
-Received: from cartman.spoiled.org ([80.190.101.194] helo=a.mx.spoiled.org)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Abd5W-0000LT-5A
-	for nfs@lists.sourceforge.net; Wed, 31 Dec 2003 01:56:26 -0800
-To: nfs@lists.sourceforge.net
+	id 1AbjcN-0004xD-6K
+	for nfs@lists.sourceforge.net; Wed, 31 Dec 2003 08:54:47 -0800
+Received: from franklin.cse.ogi.edu ([129.95.40.9])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.30)
+	id 1AbjcM-0004pO-Qu
+	for nfs@lists.sourceforge.net; Wed, 31 Dec 2003 08:54:46 -0800
+To: Stefan Ewert <nuway@gmx.net>
+In-Reply-To: <200312251945.42382.nuway@gmx.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -27,29 +31,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Stefan Ewert <nuway@gmx.net> wrote:
+On Thu, 25 Dec 2003, Stefan Ewert wrote:
 
-> I got a 100 GIG harddisk on my server and i mounted it on my client without 
-> any  warnings or problems. the only thing is that i now have 5.8 GB instead 
-> of 100. Are there any restrictions in nfs protocol, or do u know a possible 
-> solution for this prob?
+> im new to nfs and i googeld about this problem but i didnt find a
+> solution for the following problem:
+>
+> I got a 100 GIG harddisk on my server and i mounted it on my client
+> without any warnings or problems. the only thing is that i now have
+> 5.8 GB instead of 100. Are there any restrictions in nfs protocol,
+> or do u know a possible solution for this prob?
 
-I don't know where your problem is but there is no restriction of that
-size in the NFS protocol.
+There's certainly no problem with a 100GB export. I'm using a Linux
+server to export a 1.7-terabyte filesystem without difficulty.
 
-This what I get from 'df' on one of my clients:
-...
-nfs:/export/data     160066688 150683400   9383288  95% /net/data
-...
+I assume that you see the full 100 GB on your server, right? If so,
 
-You can see that I can access an exported disk with the size of 160GB.
+* Do you have any quota limitations on client or server?
 
-Cheers,
-Juri
+* Is the 100GB disk divided into smallish partitions, or is it one
+  huge partition? It could be that you've mounted just one of the
+  partitions instead of all of them.
 
--- 
-Juri Haberland  <juri@koschikode.com> 
-
+-- Paul Heinlein <heinlein@cse.ogi.edu>
 
 
 -------------------------------------------------------
