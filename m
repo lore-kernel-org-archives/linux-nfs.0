@@ -1,22 +1,32 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: 2.4.21 NFSv3 performance graph
-Date: Fri, 14 Jan 2005 18:59:30 -0500
-Message-ID: <1105747170.28849.22.camel@lade.trondhjem.org>
-References: <41E816B3.4030702@mitre.org>
+From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
+Subject: Re: Debian Bug#203077: Locks not released on NFS client
+	reboot
+Date: Fri, 14 Jan 2005 13:20:49 -0800
+Message-ID: <1105737649.13393.42.camel@localhost.localdomain>
+References: <Pine.OSF.4.56.0307271137050.10355@grover.WPI.EDU>
+	 <20030727163124.GC19877@perlsupport.com>
+	 <16164.29864.268358.781865@gargle.gargle.HOWL>
+	 <Pine.LNX.4.60.0501131844130.6332@harp.ngdc.noaa.gov>
+	 <16871.11926.507904.373575@cse.unsw.edu.au>
+	 <1105724840.13393.36.camel@localhost.localdomain>
+	 <Pine.LNX.4.60.0501141113230.11608@harp.ngdc.noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-fiWp3f1F7dflLBYwiqR4"
+Cc: strombrg@dcs.nac.uci.edu, Neil Brown <neilb@cse.unsw.edu.au>,
+	Chip Salzenberg <chip@pobox.com>, nfs@lists.sourceforge.net,
+	thomas.r.carey@noaa.gov, Mark O Sleeper <Mark.O.Sleeper@noaa.gov>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CpbLz-0000xe-HR
-	for nfs@lists.sourceforge.net; Fri, 14 Jan 2005 15:59:43 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CpbLx-00015A-EW
-	for nfs@lists.sourceforge.net; Fri, 14 Jan 2005 15:59:43 -0800
-To: Jeff Blaine <jblaine@mitre.org>
-In-Reply-To: <41E816B3.4030702@mitre.org>
+	id 1CpYsc-0002gU-5Y
+	for nfs@lists.sourceforge.net; Fri, 14 Jan 2005 13:21:14 -0800
+Received: from dcs.nac.uci.edu ([128.200.34.32] ident=root)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1CpYsa-0003d0-JR
+	for nfs@lists.sourceforge.net; Fri, 14 Jan 2005 13:21:13 -0800
+To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+In-Reply-To: <Pine.LNX.4.60.0501141113230.11608@harp.ngdc.noaa.gov>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,30 +40,94 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-fr den 14.01.2005 Klokka 14:00 (-0500) skreiv Jeff Blaine:
-> Can anyone tell me what is happening in the graph at the URL
-> below?  I can replicate it on any Linux box running 2.4.21
-> and changing rsize/wsize doesn't affect it at all.  This
-> was captured from a 2.6GHz P4 client machine.  Same thing
-> is visible with a Dual 3GHz Xeon box with 4GB memory as a
-> client.  A Solaris 9 client does not display this "falling
-> on face" behavior.
-> 
-> http://www.kickflop.net/temp/sol9-server-linux2421-client-gigE-ag930m_10533_image001.gif
 
-Firstly, you should always use the '-c' flag when measuring NFS client
-performance. Otherwise, you are basically just measuring the speed with
-which your machine can write to the local page cache (which may indeed
-explain your "knee" at 1MB here - that would be where the client starts
-to force a flush to disk).
+--=-fiWp3f1F7dflLBYwiqR4
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-Secondly, have you actually read the NFS FAQ and NFS HOWTO entries on
-how to tune for performance? Particularly the entries on TCP vs. UDP,
-and how Solaris clients default to the former.
+On Fri, 2005-01-14 at 11:19 -0700, Ara.T.Howard wrote:
 
-  Trond
--- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
+> nice!
+
+Why thank you.  :)
+
+> it is showing (mussel=3Dserver, bligh=3Dclient) :
+>=20
+>    mussel:
+>=20
+>      ~ > ./rpc-health bligh
+>      rpcinfo: can't contact portmapper: RPC: Remote system error - No rou=
+te to
+>      host
+
+That sounds like your portmapper is blocked somehow.
+
+>    bligh:
+>=20
+>      ~ > ./rpc-health mussel
+>      Program portmapper/100000, Proto tcp, Version 2 is OK
+>      Program portmapper/100000, Proto udp, Version 2 is OK
+>      Program status/100024, Proto udp, Version 1 is OK
+>      Program status/100024, Proto tcp, Version 1 is BAD <=3D=3D=3D=3D=3D=
+=3D=3D=3D
+>      Program rquotad/100011, Proto udp, Version 1 is OK
+>      Program rquotad/100011, Proto udp, Version 2 is OK
+>      Program rquotad/100011, Proto tcp, Version 1 is BAD <=3D=3D=3D=3D=3D=
+=3D=3D=3D
+>      Program rquotad/100011, Proto tcp, Version 2 is BAD <=3D=3D=3D=3D=3D=
+=3D=3D=3D
+>      Program nfs/100003, Proto udp, Version 2 is OK
+>      Program nfs/100003, Proto udp, Version 3 is OK
+>      Program nfs/100003, Proto tcp, Version 2 is OK
+>      Program nfs/100003, Proto tcp, Version 3 is OK
+>      Program nlockmgr/100021, Proto udp, Version 1 is OK
+>      Program nlockmgr/100021, Proto udp, Version 3 is OK
+>      Program nlockmgr/100021, Proto udp, Version 4 is OK
+>      Program nlockmgr/100021, Proto tcp, Version 1 is BAD <=3D=3D=3D=3D=
+=3D=3D=3D=3D
+>      Program nlockmgr/100021, Proto tcp, Version 3 is BAD <=3D=3D=3D=3D=
+=3D=3D=3D=3D
+>      Program nlockmgr/100021, Proto tcp, Version 4 is BAD <=3D=3D=3D=3D=
+=3D=3D=3D=3D
+>      Program mountd/100005, Proto udp, Version 1 is OK
+>      Program mountd/100005, Proto tcp, Version 1 is BAD <=3D=3D=3D=3D=3D=
+=3D=3D=3D
+>      Program mountd/100005, Proto udp, Version 2 is OK
+>      Program mountd/100005, Proto tcp, Version 2 is BAD <=3D=3D=3D=3D=3D=
+=3D=3D=3D
+>      Program mountd/100005, Proto udp, Version 3 is OK
+>      Program mountd/100005, Proto tcp, Version 3 is BAD <=3D=3D=3D=3D=3D=
+=3D=3D=3D
+>=20
+> so apparently our system is severly misconfigured!  i'm guess all the BAD=
+'s
+> for tcp are o.k. but that the 'no route to host' is not a good thing.  so=
+und
+> accurate?
+
+Those bads are probably instances of services that are registered, but
+do not respond to a minimalist, "ping like" RPC procedure.  They may
+actually be troublesome.  Or not.  :)
+
+> btw. here is a small patch:
+
+Thanks.  I've incorporated something along these lines now.
+
+
+
+--=-fiWp3f1F7dflLBYwiqR4
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.6 (GNU/Linux)
+
+iD8DBQBB6Dexo0feVm00f/8RAkpfAKCIMd6nQP2aQg3Yw8wfTkZrMnTgqQCePEFT
+A02xbSdiBhDoSkOyAzSliEY=
+=bAB7
+-----END PGP SIGNATURE-----
+
+--=-fiWp3f1F7dflLBYwiqR4--
 
 
 
