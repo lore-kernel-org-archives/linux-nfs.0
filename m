@@ -1,22 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Using mmap result in data corruption
-Date: Fri, 12 Nov 2004 14:34:53 -0500
-Message-ID: <1100288093.15999.17.camel@lade.trondhjem.org>
-References: <Pine.LNX.4.58.0411122101130.10567@ihme.ihme.org>
+From: raven@themaw.net
+Subject: Re: nfsd: too may open TCP sockets
+Date: Sat, 13 Nov 2004 14:20:02 +0800 (WST)
+Message-ID: <Pine.LNX.4.58.0411131418310.9059@donald.themaw.net>
+References: <20041111151127.GN13905@fi.muni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net, unix@fi.muni.cz
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CShCR-0000sC-OS
-	for nfs@lists.sourceforge.net; Fri, 12 Nov 2004 11:35:11 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CShCN-0002rK-LE
-	for nfs@lists.sourceforge.net; Fri, 12 Nov 2004 11:35:11 -0800
-To: Miika Pekkarinen <miipekk@ihme.org>
-In-Reply-To: <Pine.LNX.4.58.0411122101130.10567@ihme.ihme.org>
+	id 1CSrOF-0006zy-4o
+	for nfs@lists.sourceforge.net; Fri, 12 Nov 2004 22:28:03 -0800
+Received: from wombat.indigo.net.au ([202.0.185.19])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.41)
+	id 1CSrOC-00086b-WF
+	for nfs@lists.sourceforge.net; Fri, 12 Nov 2004 22:28:03 -0800
+To: Jan Kasprzak <kas@fi.muni.cz>
+In-Reply-To: <20041111151127.GN13905@fi.muni.cz>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,28 +31,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-fr den 12.11.2004 Klokka 21:06 (+0200) skreiv Miika Pekkarinen:
+On Thu, 11 Nov 2004, Jan Kasprzak wrote:
 
-> I have found a reproducable issue with NFS that will lead to file
-> corruption on server. When a file is created with O_TRUNC and data is
-> copied using mmap, the new file on the server will be filled with null bytes.
+> 	Hi all,
+> 
+> I've got the following on my server (after migrating home directories
+> of ~2200 users and serving ~200 clients from it):
+> 
+> nfsd: too many open TCP sockets, consider increasing the number of nfsd threads
+> 
+> We have increased nfsd threads to 50, then 100, and now I am at 200:
+> 
+> # ps ax|grep -c nfsd
+> 202
+> 
+> The server has load avg <1, so maybe it should be possible to increase
+> a per-thread descriptor count or something like that. How can I do this?
+> I think it is an overkill to have 200 nfsd threads on a machine with
+> only 4 CPUs and ~10 RAID volumes.
 
-mmap() offers absolutely NO guarantees that the file will be synced to
-disk on close. Use msync(MS_SYNC) if you want such a guarantee.
+I don't agree. I think 200 is quite a reasonable number of nfsd(s).
 
-Cheers,
- Trond
-
--- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
+Ian
 
 
 
 -------------------------------------------------------
-This SF.Net email is sponsored by:
-Sybase ASE Linux Express Edition - download now for FREE
-LinuxWorld Reader's Choice Award Winner for best database on Linux.
-http://ads.osdn.com/?ad_id=5588&alloc_id=12065&op=click
+This SF.Net email is sponsored by: InterSystems CACHE
+FREE OODBMS DOWNLOAD - A multidimensional database that combines
+robust object and relational technologies, making it a perfect match
+for Java, C++,COM, XML, ODBC and JDBC. www.intersystems.com/match8
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
