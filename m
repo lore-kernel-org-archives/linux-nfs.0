@@ -1,22 +1,23 @@
-From: jehan procaccia <jehan.procaccia@int-evry.fr>
-Subject: Re: async vs. sync
-Date: Tue, 23 Nov 2004 22:46:44 +0100
-Message-ID: <41A3AFC4.6080404@int-evry.fr>
-References: <482A3FA0050D21419C269D13989C611307CF4B56@lavender-fe.eng.netapp.com>
+From: Ragnar =?iso-8859-15?Q?Kj=F8rstad?= <nfs@ragnark.vestdata.no>
+Subject: Re: [PATCH] STATD - SM_NOTIFY have wrong ID_NAME on multihost servers.
+Date: Wed, 24 Nov 2004 00:26:36 +0100
+Message-ID: <20041123232636.GE19342@vestdata.no>
+References: <41A39D57.8060902@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=iso-8859-15
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CWiV7-0002ei-Hk
-	for nfs@lists.sourceforge.net; Tue, 23 Nov 2004 13:47:05 -0800
-Received: from smtp2.int-evry.fr ([157.159.10.45])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CWiV5-000068-GV
-	for nfs@lists.sourceforge.net; Tue, 23 Nov 2004 13:47:05 -0800
-To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: <482A3FA0050D21419C269D13989C611307CF4B56@lavender-fe.eng.netapp.com>
+	id 1CWk3d-0007Hm-8O
+	for nfs@lists.sourceforge.net; Tue, 23 Nov 2004 15:26:49 -0800
+Received: from [217.149.127.10] (helo=stine.vestdata.no)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1CWk3c-0000rg-02
+	for nfs@lists.sourceforge.net; Tue, 23 Nov 2004 15:26:49 -0800
+To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: <41A39D57.8060902@RedHat.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,71 +31,45 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Lever, Charles wrote:
+On Tue, Nov 23, 2004 at 03:28:07PM -0500, Steve Dickson wrote:
+> Here is a patch that make sure the correct hostname is used
+> in the SM_NOTIFY message what is sent from a rebooted server
+> that has multiple network interfaces.
+>=20
+> Using the network part of the destination address, the correct network
+> interface is found. Then a gethostbyaddr() on that interface is done,
+> which yields the correct hostname that should be sent in the notify
+> message....
+>=20
+> Comments?
 
->>This is what I expect in term of performances . I will continue my 
->>requests on the DEll/EMC hotline , but maybe the security of 
->>that AX100 
->>storage Processor (raid5, spare disk, double fiber attachement, UPS) 
->>allows me to use async export mode in such a case ?
->>    
->>
->
->the "async" export option changes the behavior of the NFS server
->daemons, not of the underlying local file system or storage subsystem.
->the problem is that changes made by clients will remain in your NFS
->server's memory and not get flushed onto permanent storage.
->
->so, i really don't think the storage subsystem will have any effect on
->the safety of your data before the data reaches permanent storage.  as
->someone else pointed out earlier, the solution is to use battery-backed
->main memory when using "async" (prestoserve for solaris?).
->
->as trond said, if your users and backup facilities can tolerate the loss
->of data during a crash, then it is perfectly fine to use "async."  most
->don't, however.
->
->btw, it is fairly well understood that RAID-5 and NFS servers don't mix
->well.  RAID-5's weakest point is that it doesn't handle small random
->writes very well, and that's exactly what is required of it when
->handling NFS traffic that consists mostly of metadata changes (file
->creates, deletes, and so on).  neil explained clearly how to make the
->best use of a RAID-5 with NFS: do your local file system journaling
->somewhere else.
->  
->
-No, not yet, but  if it is safer and increase performances maybe I 
-should do it !
+It has been a while since I looked at this code, but:
+1. What happens when you run statd with the "-n" option?
+   Does this patch override the name the user gave?
 
-Perhaps it's not the place to talk about ext3 here, but if someone on 
-the list did already put their journal on a separate device, please 
-confirm me those points:
- From what I read on man mkefs for ext3 FS I can create a journal on a 
-separate FS :
-mke2fs -O journal_dev external-journal
-creates the journal FS, on which device ? -> internal scsi drive of my 
-server or better placed on the dell/EMC SP ?
+2. Does this really find the correct hostname?
+   If I'm not mistaken, the nfs client needs to get a SM_NOTIFY message
+   with the hostname that it actually mounted from, right?
+   This may or may not match the hostname that the server find when
+   running gethostbyaddr on the interface's IP, so one can easily find
+   scenarios where this patch will cause statd to stop working.
 
-mke2fs -J device=/dev/external-journal /dev/emcpower
-Format the FS and use the external journal just create above, but what is the recommended size of the 
-external journal ?  when journal is internal it is said  the size of the journal must be at least 1024 filesystem blocks
-(in my case blocks a 4K size) so journal is at least 4 Mb, but should it be bigger ?
+   Now, there new behavious may actually be better, but I'm not sure
+   it's acceptable to change it anyway?
 
-Finally, can I "externalize" an already internal journal from production FS  (convert journal from inside to outside without reformating the FS ) ?
-
-thanks.
+   Could an alternative be to send out SM_NOTIFY messages for multiple
+   hostnames? Both the one from gethostname() and the ones found by
+   reverse lookup from the interfaces? Then I guess the meaning of the
+   "-n" option could be changed to _add_ a hostname to the list of
+   names to broadcast for?=20
 
 
->when trying your workload locally on the NFS server, realize that there
->are some optimizations that local file systems make, like caching and
->coalescing metadata updates, that the NFS protocol does not allow.  this
->affects especially workloads with lots of metadata change operations,
->because the NFS protocol requires each metadata update to reside on
->permanent storage before the NFS server replies to the client,
->effectively serializing the workload with storage activity.
->  
->
 
+--=20
+Ragnar Kj=F8rstad
+Software Engineer
+Scali - http://www.scali.com
+High Performance Clustering
 
 
 -------------------------------------------------------
