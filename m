@@ -1,20 +1,21 @@
-From: Anand Kumria <wildfire@progsoc.uts.edu.au>
-Subject: NFS mount version?
-Date: Wed, 13 Aug 2003 19:53:12 +1000
+From: Jordi Mallach <jordi@debian.org>
+Subject: Re: [chip@debian.org: Debian Bug#203918 - statd request on eth interface, not localhost?]
+Date: Wed, 13 Aug 2003 10:22:16 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030813095312.GF4797@yeenoghu.progsoc.uts.edu.au>
-Reply-To: nfs@lists.sourceforge.net, wildfire@progsoc.uts.edu.au
+Message-ID: <20030813082216.GA14015@nubol.int.oskuro.net>
+References: <20030812152154.GQ24349@perlsupport.com> <16185.47443.33945.603458@gargle.gargle.HOWL>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="VS++wcV0S1rZb1Fb"
+Cc: Chip Salzenberg <chip@pobox.com>, nfs@lists.sourceforge.net,
+	203918-quiet@bugs.debian.org
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from yeenoghu.progsoc.uts.edu.au ([138.25.6.5])
+Received: from 115.red-213-96-69.pooles.rima-tde.net ([213.96.69.115] helo=natura.oskuro.net)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19msKB-0000Qo-00
-	for <nfs@lists.sourceforge.net>; Wed, 13 Aug 2003 02:53:47 -0700
-Received: from wildfire by yeenoghu.progsoc.uts.edu.au with local (Exim 3.35 #1 (Debian))
-	id 19msJd-00019u-00
-	for <nfs@lists.sourceforge.net>; Wed, 13 Aug 2003 19:53:13 +1000
-To: nfs@lists.sourceforge.net
+	id 19mqtk-0007at-00
+	for <nfs@lists.sourceforge.net>; Wed, 13 Aug 2003 01:22:24 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <16185.47443.33945.603458@gargle.gargle.HOWL>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,22 +28,40 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi all,
 
-Documentation/Changes in 2.6.0-test3 suggests the minimum version of 
-nfs-utils to use is 1.0.5 yet even with 1.0.5 I still get messages like:
+--VS++wcV0S1rZb1Fb
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Aug 13 18:09:35 clam kernel: nfs warning: mount version older than kernel 
+On Wed, Aug 13, 2003 at 02:06:43PM +1000, Neil Brown wrote:
+> I don't suppose there is any chance that a user-space nfsd is running
+> as well as the kernel one?
 
-Which version should I be using?
+I am 100% sure that I only have ther kernel daemon installed.
 
-Thanks,
-Anand
+I told Chip I'd try to upgrade to the latest 2.6.0 kernel soon. If this
+makes it improve, I'll tell you.
 
--- 
- `` We are shaped by our thoughts, we become what we think.
- When the mind is pure, joy follows like a shadow that never
- leaves. '' -- Buddha, The Dhammapada
+Jordi
+--=20
+Jordi Mallach P=E9rez  --  Debian developer     http://www.debian.org/
+jordi@sindominio.net     jordi@debian.org     http://www.sindominio.net/
+GnuPG public key information available at http://oskuro.net/~jordi/
+
+--VS++wcV0S1rZb1Fb
+Content-Type: application/pgp-signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.2 (GNU/Linux)
+
+iD8DBQE/OfU3JYSUupF6Il4RAiv7AJwNamI3dQt5tWNaG+HgUVT7Me+8XQCguIPT
+oQYtiqJnosvQPCT7qeDDeJI=
+=rfo/
+-----END PGP SIGNATURE-----
+
+--VS++wcV0S1rZb1Fb--
 
 
 -------------------------------------------------------
