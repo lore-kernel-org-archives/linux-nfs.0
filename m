@@ -1,21 +1,22 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: kernel Oops in rpc.mountd
-Date: Mon, 14 Feb 2005 13:18:59 +1100
-Message-ID: <16912.2707.938097.998783@cse.unsw.edu.au>
-References: <200502122223.j1CMN1sK003668@m27.ligo.caltech.edu>
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: [PATCH] remove unneeded ext2 include from nfsd
+Date: Mon, 14 Feb 2005 10:31:43 +0100
+Message-ID: <20050214093142.GA23861@suse.de>
+References: <20050213155257.GA21488@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D0VpQ-0007vv-GO
-	for nfs@lists.sourceforge.net; Sun, 13 Feb 2005 18:19:12 -0800
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1D0VpO-0007ah-CT
-	for nfs@lists.sourceforge.net; Sun, 13 Feb 2005 18:19:12 -0800
-To: Stuart Anderson <anderson@ligo.caltech.edu>
-In-Reply-To: message from Stuart Anderson on Saturday February 12
+	id 1D0ca6-0002wQ-UD
+	for nfs@lists.sourceforge.net; Mon, 14 Feb 2005 01:31:50 -0800
+Received: from news.suse.de ([195.135.220.2] helo=Cantor.suse.de)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.41)
+	id 1D0ca4-0004VB-Rl
+	for nfs@lists.sourceforge.net; Mon, 14 Feb 2005 01:31:50 -0800
+To: Olaf Hering <olh@suse.de>
+In-Reply-To: <20050213155257.GA21488@suse.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,178 +30,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Saturday February 12, anderson@ligo.caltech.edu wrote:
-> Neil,
-> 	This patch did the trick! We have now run our 290 cluster nodes for
-> 72 hours with this extra locking patch without any kernel crashes. This is
-> to be compared to 1-5 crashes per day before the patch.
+On Sun, Feb 13, 2005 at 04:52:57PM +0100, Olaf Hering wrote:
+> nfs3proc.c includes ext2 headers for some constants, strange.
+
+It used to be that nfsd accessed the ext2 inode generation number
+directly, that's where the include came from, probably.
+
+Olaf
+
+> vfs.c does the same, but doesnt use anything from this header.
 > 
-> 	Many thanks!
 > 
-> 	What is the next step in getting this patch integrated into FC3
-> and the mainline kernel branch?
+> Signed-off-by: Olaf Hering <olh@suse.de>
+> 
+> diff -purNx tags ../linux-2.6.11-rc4.orig/fs/nfsd/vfs.c ./fs/nfsd/vfs.c
+> --- ../linux-2.6.11-rc4.orig/fs/nfsd/vfs.c	2005-02-13 04:06:05.000000000 +0100
+> +++ ./fs/nfsd/vfs.c	2005-02-13 16:00:07.702972643 +0100
+> @@ -24,7 +24,6 @@
+>  #include <linux/file.h>
+>  #include <linux/mount.h>
+>  #include <linux/major.h>
+> -#include <linux/ext2_fs.h>
+>  #include <linux/proc_fs.h>
+>  #include <linux/stat.h>
+>  #include <linux/fcntl.h>
+> 
+> 
+> -------------------------------------------------------
+> SF email is sponsored by - The IT Product Guide
+> Read honest & candid reviews on hundreds of IT Products from real users.
+> Discover which products truly live up to the hype. Start reading now.
+> http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
 
-How things get into FC3 I have no idea - not my problem:-)
-
-I have revised this patch totally (as I said, I felt the locking that
-I had added was a bit heavy handed).  The following patch fixes
-exactly the same problem in a very different way.
-
-I will forward it to Andrew Morton shortly and it should then appear
-in his next -mm release.
-It is too late for it to get into 2.6.11, but it should be in an early
--rc for 2.6.12.
-
-Thanks for the feedback.
-
-NeilBrown
-
-Status: ok
-
-Discard CACHE_HASHED flag, keeping information in refcount instead.
-
-The rpc auth cache currently differentiates between a reference
-due to being in a hash chain (signalled by CACHE_HASHED flag)
-and any other reference (counted in refcnt).
-
-This is an artificial difference due to an historical accident,
-and it makes cache_put unsafe.
-
-This patch removes the distinction so now existance in a hash
-chain is counted just like any other reference.
-
-This allows us to close a race that exists in cache_put.
-
-Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
-
-### Diffstat output
- ./include/linux/sunrpc/cache.h |   19 +++++--------------
- ./net/sunrpc/cache.c           |    4 +---
- ./net/sunrpc/svcauth.c         |    8 ++++----
- 3 files changed, 10 insertions(+), 21 deletions(-)
-
-diff ./include/linux/sunrpc/cache.h~current~ ./include/linux/sunrpc/cache.h
---- ./include/linux/sunrpc/cache.h~current~	2005-02-14 12:54:53.000000000 +1100
-+++ ./include/linux/sunrpc/cache.h	2005-02-14 12:54:53.000000000 +1100
-@@ -37,8 +37,7 @@
-  * Entries have a ref count and a 'hashed' flag which counts the existance
-  * in the hash table.
-  * We only expire entries when refcount is zero.
-- * Existance in the cache is not measured in refcount but rather in
-- * CACHE_HASHED flag.
-+ * Existance in the cache is counted  the refcount.
-  */
- 
- /* Every cache item has a common header that is used
-@@ -57,7 +56,6 @@ struct cache_head {
- #define	CACHE_VALID	0	/* Entry contains valid data */
- #define	CACHE_NEGATIVE	1	/* Negative entry - there is no match for the key */
- #define	CACHE_PENDING	2	/* An upcall has been sent but no reply received yet*/
--#define	CACHE_HASHED	3	/* Entry is in a hash table */
- 
- #define	CACHE_NEW_EXPIRY 120	/* keep new things pending confirmation for 120 seconds */
- 
-@@ -185,7 +183,6 @@ RTN *FNAME ARGS										\
- 											\
- 			if (new)							\
- 				{INIT;}							\
--			cache_get(&tmp->MEMBER);					\
- 			if (set) {							\
- 				if (!INPLACE && test_bit(CACHE_VALID, &tmp->MEMBER.flags))\
- 				{ /* need to swap in new */				\
-@@ -194,8 +191,6 @@ RTN *FNAME ARGS										\
- 					new->MEMBER.next = tmp->MEMBER.next;		\
- 					*hp = &new->MEMBER;				\
- 					tmp->MEMBER.next = NULL;			\
--					set_bit(CACHE_HASHED, &new->MEMBER.flags);	\
--					clear_bit(CACHE_HASHED, &tmp->MEMBER.flags);	\
- 					t2 = tmp; tmp = new; new = t2;			\
- 				}							\
- 				if (test_bit(CACHE_NEGATIVE,  &item->MEMBER.flags))	\
-@@ -205,6 +200,7 @@ RTN *FNAME ARGS										\
- 					clear_bit(CACHE_NEGATIVE, &tmp->MEMBER.flags);	\
- 				}							\
- 			}								\
-+			cache_get(&tmp->MEMBER);					\
- 			if (set||new) write_unlock(&(DETAIL)->hash_lock);		\
- 			else read_unlock(&(DETAIL)->hash_lock);				\
- 			if (set)							\
-@@ -220,7 +216,7 @@ RTN *FNAME ARGS										\
- 		new->MEMBER.next = *head;						\
- 		*head = &new->MEMBER;							\
- 		(DETAIL)->entries ++;							\
--		set_bit(CACHE_HASHED, &new->MEMBER.flags);				\
-+		cache_get(&new->MEMBER);						\
- 		if (set) {								\
- 			tmp = new;							\
- 			if (test_bit(CACHE_NEGATIVE, &item->MEMBER.flags))		\
-@@ -268,15 +264,10 @@ static inline struct cache_head  *cache_
- 
- static inline int cache_put(struct cache_head *h, struct cache_detail *cd)
- {
--	atomic_dec(&h->refcnt);
--	if (!atomic_read(&h->refcnt) &&
-+	if (atomic_read(&h->refcnt) <= 2 &&
- 	    h->expiry_time < cd->nextcheck)
- 		cd->nextcheck = h->expiry_time;
--	if (!test_bit(CACHE_HASHED, &h->flags) &&
--	    !atomic_read(&h->refcnt))
--		return 1;
--
--	return 0;
-+	return atomic_dec_and_test(&h->refcnt);
- }
- 
- extern void cache_init(struct cache_head *h);
-
-diff ./net/sunrpc/cache.c~current~ ./net/sunrpc/cache.c
---- ./net/sunrpc/cache.c~current~	2005-02-14 12:54:53.000000000 +1100
-+++ ./net/sunrpc/cache.c	2005-02-14 12:54:53.000000000 +1100
-@@ -321,12 +321,10 @@ static int cache_clean(void)
- 			if (test_and_clear_bit(CACHE_PENDING, &ch->flags))
- 				queue_loose(current_detail, ch);
- 
--			if (!atomic_read(&ch->refcnt))
-+			if (atomic_read(&ch->refcnt) == 1)
- 				break;
- 		}
- 		if (ch) {
--			cache_get(ch);
--			clear_bit(CACHE_HASHED, &ch->flags);
- 			*cp = ch->next;
- 			ch->next = NULL;
- 			current_detail->entries--;
-
-diff ./net/sunrpc/svcauth.c~current~ ./net/sunrpc/svcauth.c
---- ./net/sunrpc/svcauth.c~current~	2005-02-14 12:54:53.000000000 +1100
-+++ ./net/sunrpc/svcauth.c	2005-02-14 12:54:53.000000000 +1100
-@@ -178,12 +178,12 @@ auth_domain_lookup(struct auth_domain *i
- 		tmp = container_of(*hp, struct auth_domain, h);
- 		if (!auth_domain_match(tmp, item))
- 			continue;
--		cache_get(&tmp->h);
--		if (!set)
-+		if (!set) {
-+			cache_get(&tmp->h);
- 			goto out_noset;
-+		}
- 		*hp = tmp->h.next;
- 		tmp->h.next = NULL;
--		clear_bit(CACHE_HASHED, &tmp->h.flags);
- 		auth_domain_drop(&tmp->h, &auth_domain_cache);
- 		goto out_set;
- 	}
-@@ -192,9 +192,9 @@ auth_domain_lookup(struct auth_domain *i
- 		goto out_nada;
- 	auth_domain_cache.entries++;
- out_set:
--	set_bit(CACHE_HASHED, &item->h.flags);
- 	item->h.next = *head;
- 	*head = &item->h;
-+	cache_get(&item->h);
- 	write_unlock(&auth_domain_cache.hash_lock);
- 	cache_fresh(&auth_domain_cache, &item->h, item->h.expiry_time);
- 	cache_get(&item->h);
+-- 
+Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
+okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 
 -------------------------------------------------------
