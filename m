@@ -1,66 +1,38 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: nfs/rdma
-Date: Fri, 17 Dec 2004 06:47:31 -0800
-Message-ID: <482A3FA0050D21419C269D13989C611307CF4B91@lavender-fe.eng.netapp.com>
+From: Gilles Quillard <gilles.quillard@bull.net>
+Subject: [NFS] support of IPv6 by NFSv4
+Date: Fri, 17 Dec 2004 17:12:18 +0100
+Message-ID: <41C30562.8080103@bull.net>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <nfs@lists.sourceforge.net>
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CfJOM-0003AW-PR
-	for nfs@lists.sourceforge.net; Fri, 17 Dec 2004 06:47:38 -0800
-Received: from mx1.netapp.com ([216.240.18.38])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CfJOL-0000DR-Fp
-	for nfs@lists.sourceforge.net; Fri, 17 Dec 2004 06:47:38 -0800
-To: "kaushik" <karandikar.kaushik@spsoftindia.com>
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Return-path: <nfsv4-bounces@linux-nfs.org>
+To: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org,
+	Chuck Lever <cel@citi.umich.edu>, Matt Benjamin <matt@linuxbox.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-ID: <nfs.lists.sourceforge.net>
 
-> I want to know that=20
-> there is NFS/RDMA Linux client , so will it work with the NFS=20
-> Server say which is also on other Linux machine.
+I have made a new version of patches/packages to add the support of IPv6 
+by NFSv4.
 
-currently there are no productized RDMA-enabled NFS servers anywhere.
-there are two server prototypes i am aware of, neither of which are open
-source.
+It is available at
+    http://nfsv4.bullopensource.org/patches/nfsv4_ipv6-1
 
-to take advantage of RDMA, both client *and* server must support direct
-data placement.  that is a significant modification of the RPC client
-and server.  we are working towards that goal now, but we won't have
-anything for quite some time on Linux.
+This version includes
+  - kernel patches over linux 2.6.9,
+  - a new TI-RPC (Transport Independent RPC) library and a rpcbind 
+portmapper,
+  - user patches over nfs-utils-1.0.6 and util-linux-2.12 packages.
 
-> Can u explain or suggest any document which explains NFS/RDMA
-> Client -Server architecture? I have to see whether i can port
-> the NFS/RDMA Linux Client on to MAC Osx.
+This version is still under development.
 
-there are three internet drafts available describing NFS/RDMA and
-proposing NFSv4 sessions to help manage RDMA transports.  use google and
-search for "Talpey NFS RDMA" (Talpey is one of the authors of these
-drafts).
+I will be away until the 3rd of January, so have a merry Christmas and 
+I'll answer to your questions as soon as I'm coming back.
 
-the open source Linux NFS/RDMA project is described here:
-
-http://www.citi.umich.edu/projects/rdma/
-
-
--------------------------------------------------------
-SF email is sponsored by - The IT Product Guide
-Read honest & candid reviews on hundreds of IT Products from real users.
-Discover which products truly live up to the hype. Start reading now. 
-http://productguide.itmanagersjournal.com/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Gilles
