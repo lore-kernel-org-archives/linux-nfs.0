@@ -1,26 +1,25 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] 1/3 - RPC metrics support
-Date: Thu, 01 Apr 2004 19:34:02 -0500
+Subject: RE: [PATCH] 1/3 - RPC metrics support
+Date: Thu, 01 Apr 2004 19:36:27 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1080866042.10521.11.camel@lade.trondhjem.org>
-References: <482A3FA0050D21419C269D13989C611302B07BF6@lavender-fe.eng.netapp.com>
-	 <20040401235803.GA9409@sgi.com>
+Message-ID: <1080866187.10521.14.camel@lade.trondhjem.org>
+References: <482A3FA0050D21419C269D13989C61130435DE4C@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: Charles Lever <Charles.Lever@netapp.com>, Jeremy McNicoll <jeremy@mcnicoll.ca>, Patrick Mochel <mochel@digitalimplant.org>,  nfs@lists.sourceforge.net
+Cc: Greg Banks <gnb@melbourne.sgi.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B9CdU-000400-QL
-	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 16:34:16 -0800
+	id 1B9Cfh-0004Ix-Gv
+	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 16:36:33 -0800
 Received: from dh132.citi.umich.edu
 	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
 	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
 	(Exim 4.30)
-	id 1B9CdR-000519-Jp
-	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 16:34:13 -0800
-To: Greg Banks <gnb@sgi.com>
-In-Reply-To: <20040401235803.GA9409@sgi.com>
+	id 1B9Cfh-0005Ux-AG
+	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 16:36:33 -0800
+To: Charles Lever <Charles.Lever@netapp.com>
+In-Reply-To: <482A3FA0050D21419C269D13989C61130435DE4C@lavender-fe.eng.netapp.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,45 +32,14 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, 2004-04-01 at 18:58, Greg Banks wrote:
+On Thu, 2004-04-01 at 12:05, Lever, Charles wrote:
 
-> struct rpc_metric_totals {
-> 	u64 mt_ops;         /* count of operations */
-> 	u64 mt_ntrans;      /* count of RPC transmissions */
-> 	u64 mt_cwnd;        /* congestion window util */
-> 	u64 mt_cong;        /* congestion window util */
-> 	u64 mt_slot_u;      /* slot table utilization */
-> 	u64 mt_sndq_u;      /* send queue utilization */
-> 	u64 mt_bklog_u;     /* backlog utilization */
-> 	u64 mt_errors;      /* count of EIO errors */
-> 
-> 	u64 mt_bytes_sent;  /* count of bytes out */
-> 	u64 mt_bytes_recv;  /* count of bytes in */
-> 	u64 mt_sendbuf;     /* total sendbuf */
-> 
-> 	u64 mt_rtt;         /* usecs for RPC RTT */
-> 	u64 mt_rtt_s;       /* sum(rtt**2) */
-> 	u64 mt_execute;     /* usecs for RPC execution */
-> 	u64 mt_execute_s;   /* sum(execute**2) */
-> };
-> 
-> rpc_print_tally(...)
-> {
-> ...
-> 	for (op = 0; op < vers->nrprocs; op++) {
-> 		memset(&total, 0, sizeof(struct rpc_metric_totals));
-> 		for (i = 0; i < NR_CPUS; i++) {
-> 			u64 *r = tally->tl_totals[i];
-> 			for (k = 0 ; k < sizeof(struct rpc_metric_totals)/sizeof(u64) ; k++)
-> 				((u64 *)&total)[k] += r[k];
-> 		}
-> 	}
-> }
+> if we saved the export path somewhere in the nfs_server
+> structure, that would be mighty convenient for iostats
+> and i don't think that would break namespaces.
 
-Let's not go there... 64-bit arithmetic on a 32-bit platform is still
-not one of gcc's strong points, so let's not force everything into one
-mold simply in order to save a couple of lines of code. Performance does
-matter too...
+...but it would force us to introduce a new mount_data structure, and
+hence a new "mount" ABI so that will have to wait until 2.7.x.
 
 Cheers,
   Trond
