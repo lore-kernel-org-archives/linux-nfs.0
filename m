@@ -1,18 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 9 of 18] remove incorrect stateid modification in nfsv4 open upgrade
+Subject: [PATCH kNFSd 13 of 18] nfsd4: reorganize "if" in nfsd4_process_open2 to make test clearer
 Date: Fri, 24 Sep 2004 14:54:53 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1CAi6f-0000kO-Hm@notabene.cse.unsw.edu.au>
+Message-ID: <E1CAi6f-0000ke-V1@notabene.cse.unsw.edu.au>
 References: <20040924145130.2689.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CAi7C-00088u-CU
-	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 21:55:26 -0700
+	id 1CAi7D-00089G-HZ
+	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 21:55:27 -0700
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CAi7B-0006Bf-Si
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CAi7B-0008JT-KQ
 	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 21:55:26 -0700
 To: Andrew Morton <akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -29,25 +29,65 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
 
-When we upgrade an open, we keep the same stateid and bump only the seqid.
+Reorganize "if" in nfsd4_process_open2 to make test clearer; there was no real
+reason to test for the negative here.
 
 Signed-off-by: Andy Adamson <andros@umich.edu>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c |    2 --
- 1 files changed, 2 deletions(-)
+ ./fs/nfsd/nfs4state.c |   34 +++++++++++++++++-----------------
+ 1 files changed, 17 insertions(+), 17 deletions(-)
 
 diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2004-09-24 14:48:39.000000000 +1000
-+++ ./fs/nfsd/nfs4state.c	2004-09-24 14:48:39.000000000 +1000
-@@ -1332,8 +1332,6 @@ nfsd4_process_open2(struct svc_rqst *rqs
- 		/* remember the open */
- 		set_bit(open->op_share_access, &stp->st_access_bmap);
- 		set_bit(open->op_share_deny, &stp->st_deny_bmap);
--		/* bump the stateid */
--		update_stateid(&stp->st_stateid);
+--- ./fs/nfsd/nfs4state.c~current~	2004-09-24 14:48:40.000000000 +1000
++++ ./fs/nfsd/nfs4state.c	2004-09-24 14:48:40.000000000 +1000
+@@ -1326,7 +1326,23 @@ nfsd4_process_open2(struct svc_rqst *rqs
+ 			goto out;
+ 	}
+ 
+-	if (!stp) {
++	if (stp) {
++		/* This is an upgrade of an existing OPEN.
++		 * OR the incoming share with the existing
++		 * nfs4_stateid share */
++		unsigned int share_access;
++
++		set_access(&share_access, stp->st_access_bmap);
++		share_access = ~share_access;
++		share_access &= open->op_share_access;
++
++		/* update the struct file */
++		if ((status = nfs4_file_upgrade(stp->st_vfs_file, share_access)))
++			goto out;
++		/* remember the open */
++		set_bit(open->op_share_access, &stp->st_access_bmap);
++		set_bit(open->op_share_deny, &stp->st_deny_bmap);
++	} else {
+ 		int flags = 0;
+ 
+ 		status = nfserr_resource;
+@@ -1347,22 +1363,6 @@ nfsd4_process_open2(struct svc_rqst *rqs
+ 
+ 		init_stateid(stp, fp, sop, open);
+ 		stp->st_vfs_set = 1;
+-	} else {
+-		/* This is an upgrade of an existing OPEN. 
+-		 * OR the incoming share with the existing 
+-		 * nfs4_stateid share */
+-		unsigned int share_access;
+-
+-		set_access(&share_access, stp->st_access_bmap);
+-		share_access = ~share_access;
+-		share_access &= open->op_share_access;
+-
+-		/* update the struct file */
+-		if ((status = nfs4_file_upgrade(stp->st_vfs_file, share_access)))
+-			goto out;
+-		/* remember the open */
+-		set_bit(open->op_share_access, &stp->st_access_bmap);
+-		set_bit(open->op_share_deny, &stp->st_deny_bmap);
  	}
  	dprintk("nfs4_process_open2: stateid=(%08x/%08x/%08x/%08x)\n\n",
  	            stp->st_stateid.si_boot, stp->st_stateid.si_stateownerid,
