@@ -1,30 +1,21 @@
-From: Garrick Staples <garrick@usc.edu>
-Subject: Re: mountd segfault on itanium2
-Date: Mon, 3 May 2004 13:47:08 -0700
+From: "Randy Paries" <paries@knology.net>
+Subject: debugging help
+Date: Mon, 3 May 2004 15:54:26 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040503204707.GU23287@polop.usc.edu>
-References: <20040430212414.GF22498@polop.usc.edu> <20040430234327.GM22498@polop.usc.edu> <20040501030730.GE23287@polop.usc.edu>
+Message-ID: <E1BKkU6-00073s-7o@sc8-sf-mx1.sourceforge.net>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="niUlcCfh/sMBwTxc"
+Content-Type: text/plain;
+	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BKkMz-0000rG-Ag
-	for nfs@lists.sourceforge.net; Mon, 03 May 2004 13:48:57 -0700
-Received: from polop.usc.edu ([128.125.10.9])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.30)
-	id 1BKkMU-0005hL-I8
-	for nfs@lists.sourceforge.net; Mon, 03 May 2004 13:48:26 -0700
-Received: from polop.usc.edu (localhost.localdomain [127.0.0.1])
-	by polop.usc.edu (8.12.10/8.12.10) with ESMTP id i43Kl8lv013058
-	for <nfs@lists.sourceforge.net>; Mon, 3 May 2004 13:47:08 -0700
-Received: (from garrick@localhost)
-	by polop.usc.edu (8.12.10/8.12.10/Submit) id i43Kl8nL013056
-	for nfs@lists.sourceforge.net; Mon, 3 May 2004 13:47:08 -0700
-To: nfs@lists.sourceforge.net
-In-Reply-To: <20040501030730.GE23287@polop.usc.edu>
+	id 1BKkUc-0003VR-3V
+	for nfs@lists.sourceforge.net; Mon, 03 May 2004 13:56:50 -0700
+Received: from smtp.knology.net ([24.214.63.101] helo=smtp2.knology.net)
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
+	id 1BKkU6-00073s-7o
+	for nfs@lists.sourceforge.net; Mon, 03 May 2004 13:56:18 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -37,53 +28,78 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hello
+ 
+I have two boxes. One is the NFS server and one is the client.
+ 
+They are very busy web servers. 
+ 
+i keep getting these errors on my console and in my message file
+May  3 12:44:11 krusty kernel: nfs: server local.flanders not responding,
+still trying
+May  3 12:44:15 krusty kernel: nfs: server local.flanders OK
 
---niUlcCfh/sMBwTxc
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+I am looking for suggestions on how to debug these.
 
-On Fri, Apr 30, 2004 at 08:07:30PM -0700, Garrick Staples alleged:
-> On Fri, Apr 30, 2004 at 04:43:27PM -0700, Garrick Staples alleged:
-> > I just spotted a pattern.  After collecting several strace samples, it =
-always
-> > segfaults after read() or write() to fd 5.  And fd 5 is always:
-> >=20
-> >    open("/proc/net/rpc/nfsd.fh/channel", O_RDWR) =3D 5
+I am doing many reads and writes
 
-More info:
+These are my mount strings
+local.flanders:/home/unitnet  /home/unitnet  nfs
+intr,rsize=8192,wsize=8192,bg  0  0
+local.flanders:/home/unitnetconsult  /home/unitnetconsult  nfs
+intr,rsize=8192,wsize=8192,bg 0  0
 
-Program received signal SIGSEGV, Segmentation fault.
-0x20000000002899d0 in svc_getreq_common_internal () from /lib/tls/libc.so.6=
-=2E1
-(gdb) bt
-#0  0x20000000002899d0 in svc_getreq_common_internal ()
-   from /lib/tls/libc.so.6.1
-#1  0x2000000000289720 in svc_getreqset_internal () from /lib/tls/libc.so.6=
-=2E1
-#2  0x4000000000009d60 in my_svc_run () at svc_run.c:62
-#3  0x4000000000006160 in main (argc=3D4, argv=3D0x60000fffffffb8c8)
-    at mountd.c:436
+Thanks for anyhelp or direction
+
+ 
+if i do a nfstats -s on the server i get 
+nfsstat -s
+Server rpc stats:
+calls      badcalls   badauth    badclnt    xdrcall
+28339803   0          0          0          0       
+Server nfs v2:
+null       getattr    setattr    root       lookup     readlink   
+2      100% 0       0% 0       0% 0       0% 0       0% 0       0% 
+read       wrcache    write      create     remove     rename     
+0       0% 0       0% 0       0% 0       0% 0       0% 0       0% 
+link       symlink    mkdir      rmdir      readdir    fsstat     
+0       0% 0       0% 0       0% 0       0% 0       0% 0       0% 
+ 
+Server nfs v3:
+null       getattr    setattr    lookup     access     readlink   
+1       0% 14651833 51% 33447   0% 7230784 25% 4969    0% 85667   0% 
+read       write      create     mkdir      symlink    mknod      
+6002057 21% 247908  0% 12344   0% 59      0% 303     0% 0       0% 
+remove     rmdir      rename     link       readdir    readdirplus
+2094    0% 22      0% 6146    0% 0       0% 13730   0% 0       0% 
+fsstat     fsinfo     pathconf   commit     
+76      0% 76      0% 0       0% 48285   0% 
+
+ 
+and on the client
+nfsstat -c   
+Client rpc stats:
+calls      retrans    authrefrsh
+5594114    16482      0       
+Client nfs v2:
+null       getattr    setattr    root       lookup     readlink   
+0       0% 0       0% 0       0% 0       0% 0       0% 0       0% 
+read       wrcache    write      create     remove     rename     
+0       0% 0       0% 0       0% 0       0% 0       0% 0       0% 
+link       symlink    mkdir      rmdir      readdir    fsstat     
+0       0% 0       0% 0       0% 0       0% 0       0% 0       0% 
+ 
+Client nfs v3:
+null       getattr    setattr    lookup     access     readlink   
+0       0% 2485192 44% 8445    0% 1627026 29% 4723    0% 21922   0% 
+read       write      create     mkdir      symlink    mknod      
+1369595 24% 56448   1% 3251    0% 13      0% 92      0% 0       0% 
+remove     rmdir      rename     link       readdir    readdirplus
+614     0% 3       0% 1712    0% 0       0% 3593    0% 0       0% 
+fsstat     fsinfo     pathconf   commit     
+20      0% 20      0% 0       0% 11445   0% 
 
 
-
---=20
-Garrick Staples, Linux/HPCC Administrator
-University of Southern California
-
---niUlcCfh/sMBwTxc
-Content-Type: application/pgp-signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.3 (GNU/Linux)
-
-iD8DBQFAlq/L0SBUxJbm9HMRAnCAAKC15Ya3/5EQnMErUyFU4iC3wIOdQQCgt465
-0oVmZMWeaPq8k2UCekKrc04=
-=eLD7
------END PGP SIGNATURE-----
-
---niUlcCfh/sMBwTxc--
 
 
 -------------------------------------------------------
