@@ -1,22 +1,29 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: full mount options
-Date: Sun, 30 May 2004 15:02:27 -0700
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: nfs3 dentry encoding
+Date: Thu, 27 May 2004 21:09:49 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <482A3FA0050D21419C269D13989C61130435E1A1@lavender-fe.eng.netapp.com>
+Message-ID: <16565.52349.592581.997725@cse.unsw.edu.au>
+References: <20040518112921.15964.patches@notabene>
+	<E1BPtSE-0004BX-SL@notabene.cse.unsw.edu.au>
+	<20040527102049.GI12225@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BUYO9-0004wz-Sx
-	for nfs@lists.sourceforge.net; Sun, 30 May 2004 15:02:41 -0700
-Received: from mx01.netapp.com ([198.95.226.53])
+	id 1BUkXG-0006Qq-4d
+	for nfs@lists.sourceforge.net; Mon, 31 May 2004 04:00:54 -0700
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BUYO9-0002cl-K9
-	for nfs@lists.sourceforge.net; Sun, 30 May 2004 15:02:41 -0700
-To: "Phy Prabab" <phyprabab@yahoo.com>
+	id 1BUkXF-0006S0-Nk
+	for nfs@lists.sourceforge.net; Mon, 31 May 2004 04:00:53 -0700
+Received: From
+	notabene.cse.unsw.edu.au ([129.94.241.7] == ppp2-007.ppp2.cse.unsw.EDU.AU) (auth-user neilb)
+	(for <okir@suse.de>) (for <nfs@lists.sourceforge.net>) By note With
+	Smtp ; Thu, 27 May 2004 21:09:57 +1000
+To: Olaf Kirch <okir@suse.de>
+In-Reply-To: message from Olaf Kirch on Thursday May 27
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -29,45 +36,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-cat /proc/mounts
+On Thursday May 27, okir@suse.de wrote:
+> Hi Neil,
+> 
+> you recently posted a patch that should fix readdir encoding in
+> nfsd. You say there
+> 
+> 	Note that as the offset and whole response is known to be
+> 	4byte-aligned, the offset pointer will never be split over
+> 	two pages.
+> 
+> This is not true. The dirent offset is a 64bit quantity, so it's quite
+> possible it will be split across the page boundary. I'm working on a
+> patch...
 
-usually shows a more complete listing of NFS mount options than the
-mount command does.
+Hmmm, just as well someone is watching over me!  Thanks.
+I must have been thinking NFSv2.
 
-> -----Original Message-----
-> From: Phy Prabab [mailto:phyprabab@yahoo.com]=20
-> Sent: Sunday, May 30, 2004 1:18 PM
-> To: nfs@lists.sourceforge.net
-> Subject: [NFS] full mount options
->=20
->=20
-> Is there a way to show the complete mount options a
-> particular mount is using.  The mount command just
-> shows the options I chose to use, however, if I choose
-> no option, then what did the kernel decide to use
-> (i.e. nfsv3, rsize, wsize,etc).
->=20
-> Thank you for your time.
-> Phy
->=20
->=20
-> =09
-> 	=09
-> __________________________________
-> Do you Yahoo!?
-> Friends.  Fun.  Try the all-new Yahoo! Messenger.=20
-http://messenger.yahoo.com/=20
+I guess we need an offset1 and an offset2 which may not be
+consecutive.
 
+I'll look forward to the patch.
 
--------------------------------------------------------
-This SF.Net email is sponsored by: Oracle 10g
-Get certified on the hottest thing ever to hit the market... Oracle 10g.
+NeilBrown
 
-Take an Oracle 10g class now, and we'll give you the exam FREE.
-http://ads.osdn.com/?ad_id=3D3149&alloc_id=3D8166&op=3Dclick
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
 
 
 -------------------------------------------------------
