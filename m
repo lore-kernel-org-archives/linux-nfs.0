@@ -1,17 +1,16 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 16 of 23] Helper functions for deciding to grant a delegation.
-Date: Fri, 17 Dec 2004 16:23:56 +1100
-Message-ID: <E1CfAaq-0002eO-SC@notabene.cse.unsw.edu.au>
-References: <20041217162128.9968.patches@notabene>
+Subject: [PATCH kNFSd 0 of 23] Introduction
+Date: Fri, 17 Dec 2004 16:23:55 +1100
+Message-ID: <20041217162128.9968.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CfAb2-00058K-An
+	id 1CfAb2-00058Q-NI
 	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 21:24:08 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CfAb0-000650-Uz
+	id 1CfAb0-00064w-MA
 	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 21:24:08 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
@@ -27,61 +26,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Following are 23 patches that provide "delegation" support in the 
+NFSv4 server.
 
-Signed-off-by: Andy Adamson <andros@citi.umich.edu>
-Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
+"Delegation" is when the client opens a file and the server says "Ok, 
+that file is all yours for a while.  No-one else will touch it without
+me first telling you about it".  This requires the server to be able to 
+make call-backs to the client to "reclaim" a delegation when someone 
+else wants access to the file.
 
-### Diffstat output
- ./fs/nfsd/nfs4state.c |   37 +++++++++++++++++++++++++++++++++++++
- 1 files changed, 37 insertions(+)
+These are certainly not needed for 2.6.10.
 
-diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2004-12-15 13:37:36.000000000 +1100
-+++ ./fs/nfsd/nfs4state.c	2004-12-15 13:37:50.000000000 +1100
-@@ -1504,6 +1504,43 @@ out:
- }
- 
- static int
-+nfs4_deleg_conflict(u32 share, u32 dtype)
-+{
-+	return (((share & NFS4_SHARE_ACCESS_WRITE) &&
-+		dtype == NFS4_OPEN_DELEGATE_READ) ||
-+		((share & NFS4_SHARE_ACCESS_READ) &&
-+		dtype == NFS4_OPEN_DELEGATE_WRITE));
-+}
-+
-+#define DONT_DELEGATE  8
-+
-+/*
-+ * nfs4_check_deleg_recall()
-+ *
-+ * Test any delegation that is currently within an incompleted recalled
-+ * state, and return NFSERR_DELAY for conflicting open share.
-+ * flag is set to DONT_DELEGATE for shares that match the deleg type.
-+ */
-+static int
-+nfs4_check_deleg_recall(struct nfs4_file *fp, struct nfsd4_open *op, int *flag)
-+{
-+	struct nfs4_delegation *dp;
-+	int status = 0;
-+
-+	list_for_each_entry(dp, &fp->fi_del_perfile, dl_del_perfile) {
-+		dprintk("NFSD: found delegation %p with dl_state %d\n",
-+		 	                 dp, atomic_read(&dp->dl_state));
-+		if (atomic_read(&dp->dl_state) == NFS4_RECALL_IN_PROGRESS) {
-+			if(nfs4_deleg_conflict(op->op_share_access, dp->dl_type))
-+				status = nfserr_jukebox;
-+			else
-+				*flag = DONT_DELEGATE;
-+		}
-+	}
-+	return status;
-+}
-+
-+static int
- nfs4_check_open(struct nfs4_file *fp, struct nfs4_stateowner *sop, struct nfsd4_open *open, struct nfs4_stateid **stpp)
- {
- 	struct nfs4_stateid *local;
+NeilBrown
 
 
 -------------------------------------------------------
