@@ -1,27 +1,30 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: nfsd threads locked, 2.6.7 & ia64
-Date: Mon, 28 Jun 2004 12:19:11 +1000
+From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Subject: Re: client side noac
+Date: Sun, 27 Jun 2004 21:55:19 -0600 (MDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16607.32799.273922.585359@cse.unsw.edu.au>
-References: <20040627051129.GS10560@polop.usc.edu>
-	<20040627193314.GE3491@fieldses.org>
-	<20040628004602.GU10560@polop.usc.edu>
-	<16607.28296.98868.364827@cse.unsw.edu.au>
-	<20040628014822.GV10560@polop.usc.edu>
+Message-ID: <Pine.LNX.4.60.0406272148170.31370@harp.ngdc.noaa.gov>
+References: <Pine.LNX.4.60.0406251148570.3197@harp.ngdc.noaa.gov>
+ <1088186851.4333.65.camel@lade.trondhjem.org>  <Pine.LNX.4.60.0406251252570.3683@harp.ngdc.noaa.gov>
+  <1088191021.4333.75.camel@lade.trondhjem.org>
+ <Pine.LNX.4.60.0406251321030.3853@harp.ngdc.noaa.gov>
+ <1088192302.4333.83.camel@lade.trondhjem.org>  <Pine.LNX.4.60.0406261615060.10096@harp.ngdc.noaa.gov>
+ <1088364509.4295.14.camel@lade.trondhjem.org>
+Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1749313679-1088394919=:31370"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Beljn-0003zh-Cz
-	for nfs@lists.sourceforge.net; Sun, 27 Jun 2004 19:19:15 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1Beljm-0003Be-N3
-	for nfs@lists.sourceforge.net; Sun, 27 Jun 2004 19:19:15 -0700
-To: Garrick Staples <garrick@usc.edu>
-In-Reply-To: message from Garrick Staples on Sunday June 27
+	id 1BenEs-0005Xf-Bv
+	for nfs@lists.sourceforge.net; Sun, 27 Jun 2004 20:55:26 -0700
+Received: from harp.ngdc.noaa.gov ([140.172.187.26])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.34)
+	id 1BenEr-0001g3-VW
+	for nfs@lists.sourceforge.net; Sun, 27 Jun 2004 20:55:26 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1088364509.4295.14.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,119 +37,84 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sunday June 27, garrick@usc.edu wrote:
-> 
-> As you may remember, I have a pair of these ia64 machines.  The one with the
-> stuck threads is currently only serving 1 xfs filesystem.  The other machine
-> currently has 8 ext3 filesystems.
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-Sounds like the finger is pointing at xfs ....
+--8323328-1749313679-1088394919=:31370
+Content-Type: TEXT/PLAIN; charset=X-UNKNOWN; format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 
-> 
-> Below is 3 different traces of nfsd, all 512 threads seem to follow one of
-> those 3 patterns.
-> 
-> 
-> nfsd          D a000000100560810     0  2462      1          2406  2404 (L-TLB)
-> 
-> Call Trace:
->  [<a000000100561a00>] schedule+0xd20/0x12a0
->                                 sp=e0000000059cfaa0 bsp=e0000000059c9290
->  [<a000000100560810>] __down+0x210/0x320
->                                 sp=e0000000059cfab0 bsp=e0000000059c9230
->  [<a000000200723ef0>] linvfs_writev+0x290/0x320 [xfs]
->                                 sp=e0000000059cfae0 bsp=e0000000059c91d8
+On Sun, 27 Jun 2004, Trond Myklebust wrote:
 
-So this is waiting to "down" inode->i_sem.  Someone must be holding
-that semaphore already...
+> P=E5 lau , 26/06/2004 klokka 18:17, skreiv Ara.T.Howard:
+>> On Fri, 25 Jun 2004, Trond Myklebust wrote:
+>>> As for whether or not lookups are cached: We check the mtime of the
+>>> parent directory in order to find out whether or not it has changed. If
+>>> it has, then we do a new lookup of the file.
+>
+>> so i can see how opening a file may result in a later ESTALE (mtime cach=
+ing)
+>> but how could open ITSELF return ESTALE?  this is the behaviour i'm seei=
+ng.
+>
+> Read the above paragraph carefully: we check the mtime on the parent
+> directory in order to decide whether or not to lookup again...
+>
+> That mtime value is subject to caching rules. The whole point is to
+> reduce the number of on-the-wire RPC calls on sane setups.
+>
+> Cheers,
+>  Trond
 
-> 
-> nfsd          D a000000100560810     0  2400      1          2458  2455 (L-TLB)
-> 
-> Call Trace:
->  [<a000000100561a00>] schedule+0xd20/0x12a0
->                                 sp=e00000003e13fcb0 bsp=e00000003e1391b8
->  [<a000000100560810>] __down+0x210/0x320
->                                 sp=e00000003e13fcc0 bsp=e00000003e139158
->  [<a0000002003e7cc0>] nfsd_sync+0x240/0x280 [nfsd]
->                                 sp=e00000003e13fcf0 bsp=e00000003e139118
+i understand what you are saying.  i guess i should clarify by saying "i do=
+n't
+understand _why_ open itself should return ESTALE".  i mean, in the case of=
+ a
+read or write the client cannot know what action to take.  in this case it
+seems like the client certainly can: make an RPC call.  i realize the desig=
+n
+emphsizes making the minumum number of calls, but this seems like one too f=
+ew
+doesn't it?  i really don't know the code at all so please forgive me if th=
+is
+sounds stupid: but why, upon finding a statle filehandle, is it deemed bett=
+er
+to return this known bad value instead of checking for a newer (and still
+possibly bad) one?  are there certain conditions which warrant this behavio=
+ur?
 
-This is waiting on the same semapore....
+more to the point, this is what i'm doing in my code
 
-> 
-> 
-> nfsd          D a000000100562bd0     0  2455      1          2400  2399 (L-TLB)
-> 
+   fd =3D
+     begin
+       open path
+     rescue Errno::ESTALE
+       open path
+     end
 
-This one is holding the semaphore (below)....
-> Call Trace:
->  [<a000000100561a00>] schedule+0xd20/0x12a0
->                                 sp=e000000005aa76c0 bsp=e000000005aa18b0
->  [<a000000100562bd0>] io_schedule+0x70/0xa0
->                                 sp=e000000005aa76d0 bsp=e000000005aa1898
->  [<a0000001000dbf00>] __lock_page+0x260/0x2e0
->                                 sp=e000000005aa76d0 bsp=e000000005aa1860
+in otherwords - if ESTALE is found on open, try once more.  this seems to
+work.  should i not be doing this?  if i should, why shouldn't the nfs clie=
+nt
+code do it for me?
 
-... and it seems to be trying to lock a page.  I wonder why it can't.
-Neither of the other threads should be holding a lock on this page.
+thanks for the help understanding this matter.
 
-Maybe if you put all the traces of all threads on a website somewhere,
-and send mail to linux-kernel@vger.kernel.org suggesting that you
-might have hit an XFS problem.
-
-NeilBrown
-
->  [<a000000100178730>] mpage_writepages+0x290/0x700
->                                 sp=e000000005aa7750 bsp=e000000005aa1780
->  [<a0000001000e8c00>] do_writepages+0xe0/0x100
->                                 sp=e000000005aa7800 bsp=e000000005aa1758
->  [<a0000001000daf00>] __filemap_fdatawrite+0x160/0x180
->                                 sp=e000000005aa7800 bsp=e000000005aa1738
->  [<a00000020072eb60>] xfs_flush_inode+0x40/0x60 [xfs]
->                                 sp=e000000005aa7880 bsp=e000000005aa1718
->  [<a0000002006da680>] xfs_flush_space+0x1c0/0x200 [xfs]
->                                 sp=e000000005aa7880 bsp=e000000005aa16f0
->  [<a0000002006db2a0>] xfs_iomap_write_delay+0x560/0x760 [xfs]
->                                 sp=e000000005aa7880 bsp=e000000005aa1618
->  [<a0000002006da110>] xfs_iomap+0x450/0x800 [xfs]
->                                 sp=e000000005aa7930 bsp=e000000005aa15a0
->  [<a00000020072e060>] xfs_bmap+0x40/0x60 [xfs]
->                                 sp=e000000005aa7970 bsp=e000000005aa1558
->  [<a00000020071c160>] linvfs_get_block_core+0xe0/0x5c0 [xfs]
->                                 sp=e000000005aa7970 bsp=e000000005aa14f0
->  [<a00000010012e790>] __block_prepare_write+0x5f0/0xa60
->                                 sp=e000000005aa79b0 bsp=e000000005aa1468
->  [<a00000010012fc80>] block_prepare_write+0x40/0xa0
->                                 sp=e000000005aa79e0 bsp=e000000005aa1438
->  [<a00000020071d1d0>] linvfs_prepare_write+0x90/0xc0 [xfs]
->                                 sp=e000000005aa79e0 bsp=e000000005aa1400
->  [<a0000001000dfbf0>] generic_file_aio_write_nolock+0x810/0x12e0
->                                 sp=e000000005aa79e0 bsp=e000000005aa1308
->  [<a00000020072d540>] xfs_write+0x3e0/0xda0 [xfs]
->                                 sp=e000000005aa7ab0 bsp=e000000005aa1230
->  [<a000000200723e10>] linvfs_writev+0x1b0/0x320 [xfs]
->                                 sp=e000000005aa7ae0 bsp=e000000005aa11d8
-***This is where the sem is being held****
->  [<a000000100126110>] do_readv_writev+0x330/0x500
->                                 sp=e000000005aa7c10 bsp=e000000005aa1170
->  [<a0000002003e8be0>] nfsd_write+0x1c0/0x7e0 [nfsd]
->                                 sp=e000000005aa7c90 bsp=e000000005aa10f8
->  [<a0000002003fc360>] nfsd3_proc_write+0x180/0x260 [nfsd]
->                                 sp=e000000005aa7df0 bsp=e000000005aa10a8
->  [<a0000002003df030>] nfsd_dispatch+0x290/0x540 [nfsd]
->                                 sp=e000000005aa7df0 bsp=e000000005aa1058
->  [<a00000020039bde0>] svc_process+0x10a0/0x1380 [sunrpc]
->                                 sp=e000000005aa7df0 bsp=e000000005aa0fe8
->  [<a0000002003de8e0>] nfsd+0x500/0x9c0 [nfsd]
->                                 sp=e000000005aa7e00 bsp=e000000005aa0ee8
->  [<a00000010001b380>] kernel_thread_helper+0xe0/0x100
->                                 sp=e000000005aa7e30 bsp=e000000005aa0ec0
->  [<a000000100009080>] start_kernel_thread+0x20/0x40
->                                 sp=e000000005aa7e30 bsp=e000000005aa0ec0
-> 
-> -- 
-> Garrick Staples, Linux/HPCC Administrator
-> University of Southern California
+-a
+--
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D
+| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
+| PHONE   :: 303.497.6469
+| A flower falls, even though we love it;
+| and a weed grows, even though we do not love it.=20
+|   --Dogen
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D
+--8323328-1749313679-1088394919=:31370--
 
 
 -------------------------------------------------------
