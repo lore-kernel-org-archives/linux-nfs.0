@@ -1,28 +1,29 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: 2.6.5-pre TCP connect problems
-Date: Mon, 29 Mar 2004 17:28:01 +0200
+From: Yusuf Goolamabbas <yusufg@outblaze.com>
+Subject: Re: Should NFS over loopback be over 10x slower compared to local fs
+Date: Tue, 30 Mar 2004 11:04:29 +0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040329152801.GB19311@suse.de>
-References: <20040329135042.GG2992@suse.de>
+Message-ID: <20040330030429.GA26484@outblaze.com>
+References: <20040329042504.GE14714@outblaze.com> <m3y8pkdoe5.fsf@merlin.emma.line.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net, akpm@osdl.org
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B7ygG-00036L-J1
-	for nfs@lists.sourceforge.net; Mon, 29 Mar 2004 07:28:04 -0800
-Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.30)
-	id 1B7ygF-00068S-LW
-	for nfs@lists.sourceforge.net; Mon, 29 Mar 2004 07:28:04 -0800
-Received: from hermes.suse.de (Hermes.suse.de [195.135.221.8])
-	(using TLSv1 with cipher EDH-RSA-DES-CBC3-SHA (168/168 bits))
-	(No client certificate requested)
-	by Cantor.suse.de (Postfix) with ESMTP id ECE9239EF9E
-	for <nfs@lists.sourceforge.net>; Mon, 29 Mar 2004 17:28:01 +0200 (CEST)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <20040329135042.GG2992@suse.de>
+	id 1B89YH-0002cc-1T
+	for nfs@lists.sourceforge.net; Mon, 29 Mar 2004 19:04:33 -0800
+Received: from corpmail.outblaze.com ([203.86.166.82])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1B89YG-0004la-Jl
+	for nfs@lists.sourceforge.net; Mon, 29 Mar 2004 19:04:32 -0800
+Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
+	by corpmail.outblaze.com (Postfix) with ESMTP id 162DB37AFF
+	for <nfs@lists.sourceforge.net>; Tue, 30 Mar 2004 03:04:32 +0000 (GMT)
+Received: from yusufg.portal2.com (210-177-227-130.outblaze.com [210.177.227.130])
+	by corpmail.outblaze.com (Postfix) with SMTP id 3EDBF16DD8B
+	for <nfs@lists.sourceforge.net>; Tue, 30 Mar 2004 03:04:31 +0000 (GMT)
+To: Matthias Andree <ma@dt.e-technik.uni-dortmund.de>
+In-Reply-To: <m3y8pkdoe5.fsf@merlin.emma.line.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -35,39 +36,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, Mar 29, 2004 at 03:50:42PM +0200, Olaf Kirch wrote:
-> I'm currently debugging a problem with TCP reconnects in 2.6.5-pre where
-> the TCP reconnect code got rewritten to use worker queues.  What happens
-> is that the NFS server drops the connection immediately and that state
-> change isn't propagated to the transport.
+> > Hi, I did a postmark run on a local ext3 filesystem (data=writeback) and
+> > then compared it with the same filesystem mounted over loopback and then
+> > over a 100Mbit switch, I see a dramatic slowdown with postmark numbers
+> > of loopback NFS compared to local fs.
+> 
+> Depending on drive speed and write clustering, expect a significant
+> slowdown I'm not sure 10x is OK, but it's certainly realistic.
 
-I debugged this a little more. The problem I'be been seeing was
-caused by too many TCP connections. The NFS server was dropping
-connections randomly. Randomly means that the newest connection
-will be dropped with a probability of 50%, so that the connection
-dies before the client has sent the first packet. This causes
-the client to back off for 60 seconds.
+I expected a slowdown, it's just that I felt that 10x was inappropiate.
+Curious as to what others get with the same test run on different
+OS/hardware
 
-I'm not sure why this effect wasn't visible with 2.6.4, but it
-seems it used a lower timeout (REESTABLISH_TIMEOUT = 15sec)
-when the connection was refused or dropped instantly, and may
-have been less noticeable therefore.
+On FreeBSD 4.9-RELEASE on similar hardware, the slowdown is only half
+compared to postmark over local softupdate enabled fs.
 
-I'm not sure if it's a good idea to be more aggressive about
-reconnecting, but I think the client should at least log
-a message to syslog that a connection attempt failed. Likewise,
-the server should probably log a message when it finds it's
-dropping too many TCP connections.
+Also on 2.6.x, NFS over loopback wasn't that much faster than NFS over
+100Mbit 
 
-Finally, I think the way nfsd drops connections is bad. Dropping
-the most recent connection doesn't prevent DoS, and as this example
-demonstrates, it does unexpected things to your clients.
+> There's an important difference between NFS and local file system, in
+> semantics: Once the NFS server has acknowledged the _write_ request, the
+> data is on disk. You don't get that sort of guarantee with a local file
+> system unless you open with O_SYNC (and I wonder how many bugs
+> "not-quite-synchronous" need to be shaken out WRT local file systems
+> given the recent fsync() discussion).
 
-Olaf
--- 
-Olaf Kirch     |  The Hardware Gods hate me.
-okir@suse.de   |
----------------+ 
+Hmm, That's plausible. I did a tiobench run over a local ext3 fs
+(data=writeback) and the same run over loopback NFS and the slowdown was
+in sequential/random writes though sequential writes was much slower
+than random writes
+
 
 
 -------------------------------------------------------
