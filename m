@@ -1,13 +1,22 @@
-From: Simon Nieuviarts <Simon.Nieuviarts@bull.net>
-Subject: IO error caused by a race in page cache
-Date: Thu, 4 Dec 2003 15:17:26 +0100
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: RE: [NFS PATCH] 2.6.0-test10 Invalidate cached inode attributes after rename
+Date: Thu, 4 Dec 2003 07:34:16 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200312041457.13791.Simon.Nieuviarts@bull.net>
+Message-ID: <482A3FA0050D21419C269D13989C6113020AC815@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain;
-  charset="us-ascii"
+	charset="iso-8859-1"
+Cc: "Paul Smith" <pausmith@nortelnetworks.com>, <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: NFS@lists.sourceforge.net
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
+	id 1ARvUv-0008Bu-3n
+	for nfs@lists.sourceforge.net; Thu, 04 Dec 2003 07:34:33 -0800
+Received: from mx01.netapp.com ([198.95.226.53])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
+	id 1ARvUu-000161-OS
+	for nfs@lists.sourceforge.net; Thu, 04 Dec 2003 07:34:32 -0800
+To: "Shantanu Goel" <Shantanu.Goel@lehman.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -20,56 +29,81 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+i'll state this more carefully --
 
-We are running bonnie++ on IA64 SMP machines with the 2.6.0-test9 kernel, over 
-a gigabit ethernet network. In some test configurations (nfs v3 over udp, 
-with various request sizes) an IO error is sometimes received by the client 
-process while the rewrite test, but there is no hardware error displayed on 
-the machines. This test reads chunks of a file and modifies them.
+the problem is exposed after trond's readdirplus patch is
+applied to 2.4.2x.
 
-I tracked the bug (by putting traces in the kernel) and found something that 
-looks like a race in the VFS.
-The IO error we encounter is generated in do_generic_mapping_read(), mm/
-filemap.c:687 :
-                if (!error) {
-                        if (PageUptodate(page))
-                                goto page_ok;
-                        wait_on_page_locked(page);
-                        if (PageUptodate(page))
-                                goto page_ok;
-                        error = -EIO;
-                }
-
-According to the traces I added, the function nfs_readpage_result() for this 
-page called SetPageUptodate(), but at the same time, another request reply 
-called __nfs_refresh_inode() which called invalidate_complete_page() on the 
-same page, so the uptodate flag has been cleared before the check after 
-wait_on_page_locked().
-
-My quick dirty hack to fix this race is to add these lines just before the 
-affectation of the EIO error :
-
-if (!PageError(page)) {
-	printk(KERN_WARNING "SN: False IO error avoided on invalidated page.\n");
-	goto page_ok;
-}
-
-Now, my tests go to completion, and the warning is displayed 6 or 7 times.
-I know it is no more time to make changes to the VFS, and I am not sure it is 
-the right fix...
-What do you think about this bug ?
-Cheers,
-
-Simon.
-
--- 
-Simon Nieuviarts, BULL S.A.
-Linux R&D, Office B1/367
-1, rue de Provence. BP208
-38432 Echirolles Cedex, France
-Phone : + 33 (0)4 76 29 70 26
-
+> -----Original Message-----
+> From: Shantanu Goel [mailto:Shantanu.Goel@lehman.com]
+> Sent: Thursday, December 04, 2003 10:27 AM
+> To: Lever, Charles
+> Cc: Paul Smith; nfs@lists.sourceforge.net
+> Subject: Re: [NFS] [NFS PATCH] 2.6.0-test10 Invalidate cached inode
+> attributes after rename
+>=20
+>=20
+> Stock 2.4 kernels don't exhibit this behaviour because they always=20
+> invalidate attributes for the last component of the path if CTO is=20
+> enabled, see fs/nfs/dir.c:nfs_lookup_verify_inode().  In 2.6 and 2.4=20
+> kernels such as AS3's 2.4.21, with the newer CTO patches,=20
+> this code was=20
+> changed to only do so when the file is being opened.  I am=20
+> surprised you=20
+> are seeing this on 2.4.20 since I can't replicate it on 2.4.22.
+>=20
+> Shantanu
+>=20
+> Lever, Charles wrote:
+>=20
+> >>%% "Shantanu Goel" <Shantanu.Goel@lehman.com> writes:
+> >>
+> >>  sg> 1. Check out a CVS repository into an NFS mounted directory.
+> >>  sg> 2. Move files from CVS working directory into another=20
+> >>directory in the
+> >>  sg> same filesystem.
+> >>  sg> 3. Tar up the resultant directory.
+> >>  sg> 4. Tar prints lots of "file changed after we read it"=20
+> messages.
+> >>
+> >>Interesting: I see this exact same message when taring up=20
+> the contents
+> >>of a ClearCase view (in 2.4.20-x)... even though I'm 100%=20
+> >>positive that
+> >>no one but me is touching those files.  Is this scenario=20
+> relevant to a
+> >>kernel that old as well?
+> >>   =20
+> >>
+> >
+> >yes, steve dickson at red hat also found this problem in 2.4.21.
+> >
+> > =20
+> >
+>=20
+>=20
+>=20
+> --------------------------------------------------------------
+> ----------------
+> This message is intended only for the personal and=20
+> confidential use of the
+> designated recipient(s) named above.  If you are not the=20
+> intended recipient of
+> this message you are hereby notified that any review, dissemination,
+> distribution or copying of this message is strictly prohibited.  This
+> communication is for information purposes only and should not=20
+> be regarded as
+> an offer to sell or as a solicitation of an offer to buy any financial
+> product, an official confirmation of any transaction, or as=20
+> an official
+> statement of Lehman Brothers.  Email transmission cannot be=20
+> guaranteed to be
+> secure or error-free.  Therefore, we do not represent that=20
+> this information is
+> complete or accurate and it should not be relied upon as such.  All
+> information is subject to change without notice.
+>=20
+>=20
 
 
 -------------------------------------------------------
