@@ -1,19 +1,19 @@
-From: "Matt Heaton" <admin@0catch.com>
+From: Benjamin LaHaise <bcrl@redhat.com>
 Subject: Re: nfs performance problem
-Date: Tue, 5 Nov 2002 13:22:25 -0700
+Date: Tue, 5 Nov 2002 15:39:48 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <098d01c28509$0df86e20$e2a446a6@user1i6avc9gfx>
-References: <005b01c284f5$ae1d6090$640a010a@winda> <20021105201758.I23227@vestdata.no> <007901c28505$51e9c240$640a010a@winda>
+Message-ID: <20021105153948.G3934@redhat.com>
+References: <005b01c284f5$ae1d6090$640a010a@winda> <20021105201758.I23227@vestdata.no> <007901c28505$51e9c240$640a010a@winda> <098d01c28509$0df86e20$e2a446a6@user1i6avc9gfx>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: text/plain; charset=us-ascii
+Cc: "poczta.dotcom.pl" <myciel@dotcom.pl>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mgr3.xmission.com ([198.60.22.203])
+Received: from to-velocet.redhat.com ([216.138.202.10] helo=touchme.toronto.redhat.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 189AFX-0006DY-00
-	for <nfs@lists.sourceforge.net>; Tue, 05 Nov 2002 12:24:35 -0800
-To: "poczta.dotcom.pl" <myciel@dotcom.pl>,
-	<nfs@lists.sourceforge.net>
+	id 189AUJ-0004q3-00
+	for <nfs@lists.sourceforge.net>; Tue, 05 Nov 2002 12:39:51 -0800
+To: Matt Heaton <admin@0catch.com>
+In-Reply-To: <098d01c28509$0df86e20$e2a446a6@user1i6avc9gfx>; from admin@0catch.com on Tue, Nov 05, 2002 at 01:22:25PM -0700
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,90 +26,29 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I have 3ware cards as well (2 7500 Series 8 drive), just like yours.  ALso
-with 120 GIG drives (7200)
-RPM.  Whever I get 150-200 tps in iostat then my NFS runs SO SLOW.  I also
-only get 1 MB, to 1.5 MB
-over NFS.  The local speed seems to be ok, not great though.   MY OPINION is
-that this is because of seek time on the raid
-array.   I am serving very small files, just like you are.  I am requesting
-about 200-300 files per second from
-each NFS server.  So even though our throughput of only 1.5 MB isn't high.
-The number of files per second is
-actually quite high, and causes things to slow down because of seek time
-issues.  PLEASE GIVE US CACHEFS SOMEONE??
+On Tue, Nov 05, 2002 at 01:22:25PM -0700, Matt Heaton wrote:
+> each NFS server.  So even though our throughput of only 1.5 MB isn't high.
+> The number of files per second is
+> actually quite high, and causes things to slow down because of seek time
+> issues.  PLEASE GIVE US CACHEFS SOMEONE??
 
-Does anyone have experience with IDE Raid arrays that get over 250 tps in
-iostat that work fine?  I would
-be VERY VERY VERY interested to find out.
+How is cachefs going to help?  The kernel is already trying to cache data 
+as much as possible.  Once you're trying to serve more data than you have 
+RAM, this are naturally going to degreate quite significantly as the system 
+becomes seek bound.
 
-L8r...
+> Does anyone have experience with IDE Raid arrays that get over 250 tps in
+> iostat that work fine?  I would
+> be VERY VERY VERY interested to find out.
 
-Matt
+Use raid1+0 and you'll be much happier, as read requests will be balanced 
+over multiple drives (mirroring means the same data can be read from all 
+of the mirrors).  Additionally, you'll have much lower CPU utilization 
+and writes won't cause all disks in the array to seek for strip updates.  
+Read the archives for the past couple of weeks for another example of the 
+performance increase when going from raid5 to raid1+0.
 
-
-> On Tue, Nov 05, 2002 at 07:03:43PM +0100, poczta.dotcom.pl wrote:
-> > Hi All
-> >
-> > I have really slow working nfs.
-> > Server is build on:
-> > - dual pentium Xeon 2GHz,
-> > - 2 3ware 7500 controllers,
-> > - raid 5 on 7 160GB discs on controler 1
-> > - raid 5 on 6 160GB disks on cotroller 2
-> >
-> > Serwer is used for ~500k maildirs,
-> > all clients (~20) are freebsd boxes, when nfs transfer is around 1MB/s
-for writing and 1.5MB/s for reading
-> > listing user directories even with very few file stakes up to 15
-seconds.
-> >
-> > I tried nfs-ALL patch, but it didn' t help.
->
-> How is local performance?
-
-local read/writes are ok
-
-> What filesystem do you use?
-
-reiserfs on top of  lvm (to be able to get snapshots)
-
-> What's the output from "iostat -x -d -k 60 3"?
->
-below is output from 'iostat -d 60 3'  (- my iostat does not take '-k'
-option,
-and '-d' gives me empty output) - mayby this is enough?
-
-Linux 2.4.19 (hostname)        11/05/02
-
-Device:        tps   Blk_read/s   Blk_wrtn/s   Blk_read   Blk_wrtn
-dev8-0       16.16       205.52        82.84    3481842    1403528
-dev8-1      160.58      1266.39      1346.12   21455002   22805744
-
-Device:        tps   Blk_read/s   Blk_wrtn/s   Blk_read   Blk_wrtn
-dev8-0        9.23       134.93        16.13       8096        968
-dev8-1      150.92       753.20      1715.87      45192     102952
-
-Device:        tps   Blk_read/s   Blk_wrtn/s   Blk_read   Blk_wrtn
-dev8-0       10.02       135.07        26.53       8104       1592
-dev8-1      152.78       763.33      1767.20      45800     106032
-
-
-rafal
-
-
-
--------------------------------------------------------
-This sf.net email is sponsored by: See the NEW Palm
-Tungsten T handheld. Power & Color in a compact size!
-http://ads.sourceforge.net/cgi-bin/redirect.pl?palm0001en
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-
-
-
-
+		-ben
 
 
 -------------------------------------------------------
