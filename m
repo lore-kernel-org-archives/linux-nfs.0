@@ -1,34 +1,61 @@
-From: Nathan Straz <nstraz@sgi.com>
-Subject: Re: Irix NFS servers, again :-)
-Date: Thu, 17 Jun 2004 08:38:28 -0500
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <20040617133828.GA20029@sgi.com>
-References: <1087411925.30092.35.camel@ceiriog1.demon.co.uk> <40D163C8.30507@greenhydrant.com>
+From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Subject: link(2) - atomic?
+Date: Thu, 17 Jun 2004 11:31:38 -0600 (MDT)
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <Pine.LNX.4.60.0406171128570.31212@harp.ngdc.noaa.gov>
+Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Peter Wainwright <prw@ceiriog1.demon.co.uk>,
-	linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org-S266491AbUFQNj1@vger.kernel.org>
-To: David Rees <drees@greenhydrant.com>
-In-Reply-To: <40D163C8.30507@greenhydrant.com>
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1Bb0jm-00061l-H7
+	for nfs@lists.sourceforge.net; Thu, 17 Jun 2004 10:31:42 -0700
+Received: from harp.ngdc.noaa.gov ([140.172.187.26])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.30)
+	id 1Bb0jm-0002Cc-3Y
+	for nfs@lists.sourceforge.net; Thu, 17 Jun 2004 10:31:42 -0700
+Received: from harp.ngdc.noaa.gov (harp.ngdc.noaa.gov [127.0.0.1])
+	by harp.ngdc.noaa.gov (8.12.11/8.12.11) with ESMTP id i5HHVcc5000355
+	for <nfs@lists.sourceforge.net>; Thu, 17 Jun 2004 11:31:38 -0600
+Received: from localhost (ahoward@localhost)
+	by harp.ngdc.noaa.gov (8.12.11/8.12.11/Submit) with ESMTP id i5HHVcoi000351
+	for <nfs@lists.sourceforge.net>; Thu, 17 Jun 2004 11:31:38 -0600
+To: nfs@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Jun 17, 2004 at 02:26:32AM -0700, David Rees wrote:
-> Peter Wainwright wrote, On 6/16/2004 11:52 AM:
-> >I just upgraded one of my machines to Fedora Core 2, including
-> >kernel 2.6.5. I found myself bitten on the bum by a bug I thought
-> >had expired long ago, namely the Irix server readdir bug, or
-> >32/64-bit cookie problem.
->
-> glibc.  I can't seem to reproduce it using `ls` which I remember being 
-> able to last time I had the problem so that would explain it.  What 
-> software showed the problem for you?
 
-You can see the different if you do `ls dir` and `ls dir/*`.  Typically
-the shell will use readdir and ls will use getdents, IIRC.  I was using
-the test case readdir01 from LTP.
+is link(2) atomic on nfs filesystems?  i have a lockfile library which relies
+on this fact - as i've read that it is on many lists and web pages - however
+i've never really bothered to ask __this__ list ;-).  so, is it?  are any
+other system calls?
 
--- 
-Nate Straz                                              nstraz@sgi.com
-sgi, inc                                           http://www.sgi.com/
-Linux Test Project                                  http://ltp.sf.net/
+-a
+--
+===============================================================================
+| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
+| PHONE   :: 303.497.6469
+| A flower falls, even though we love it; and a weed grows, even though we do
+| not love it. --Dogen
+===============================================================================
+
+
+-------------------------------------------------------
+This SF.Net email is sponsored by The 2004 JavaOne(SM) Conference
+Learn from the experts at JavaOne(SM), Sun's Worldwide Java Developer
+Conference, June 28 - July 1 at the Moscone Center in San Francisco, CA
+REGISTER AND SAVE! http://java.sun.com/javaone/sf Priority Code NWMGYKND
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
