@@ -1,23 +1,22 @@
 From: Olaf Kirch <okir@suse.de>
-Subject: Re: [PATCH] Fix xprt_bindresvport range
-Date: Thu, 24 Feb 2005 11:14:49 +0100
-Message-ID: <20050224101449.GB11336@suse.de>
-References: <20050223162808.GB17774@suse.de> <1109176559.10142.4.camel@lade.trondhjem.org> <Pine.LNX.4.58.0502241055521.2188@wombat.indigo.net.au> <1109218999.11180.49.camel@lade.trondhjem.org>
+Subject: Re: Bug in nfs client handling of EJUKEBOX
+Date: Thu, 24 Feb 2005 12:55:31 +0100
+Message-ID: <20050224115531.GF11336@suse.de>
+References: <1109101592/oystr@hugh.cs.washington.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ian Kent <raven@themaw.net>, Charles Lever <cel@citi.umich.edu>,
-	nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Content-Type: multipart/mixed; boundary="a8Wt8u1KmwUX3Y2C"
+Cc: nfs@lists.sourceforge.net
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D4G1G-0006f5-DG
-	for nfs@lists.sourceforge.net; Thu, 24 Feb 2005 02:14:54 -0800
+	id 1D4Hal-0002dL-BH
+	for nfs@lists.sourceforge.net; Thu, 24 Feb 2005 03:55:39 -0800
 Received: from news.suse.de ([195.135.220.2] helo=Cantor.suse.de)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.41)
-	id 1D4G1E-0002RZ-Rw
-	for nfs@lists.sourceforge.net; Thu, 24 Feb 2005 02:14:54 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1109218999.11180.49.camel@lade.trondhjem.org>
+	id 1D4Hah-0000rj-Tt
+	for nfs@lists.sourceforge.net; Thu, 24 Feb 2005 03:55:38 -0800
+To: Jan Sanislo <oystr@cs.washington.edu>
+In-Reply-To: <1109101592/oystr@hugh.cs.washington.edu>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,35 +30,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> Are you referring to the problem of running out of free privileged
-> ports?  Sure, but that is not the problem that Olaf's patch attempts to
-> address.
 
-Indeed. The patch fixes what I think is a genuine bug (i.e. sunrpc
-grabbing ports from the 1-512 range). Of course I added the sysctls to allow
-admins a little flexibility in environments where they do run out of
-reserved ports, but I'm also aware that this is just a stop-gap measure.
+--a8Wt8u1KmwUX3Y2C
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-> To address that problem, we certainly also want to add support for
-> sharing of sockets to the same server, and there may be further sharing
-> schemes that we can implement. For instance, UDP sockets don't have a
-> connection protocol, so they can basically talk to anyone.
+> If the tk_exit procedure (e.g., nfs_read_done) called at ">>>>" above
+> detects EJUKEBOX as the result of the call, it will attempt to do
+> an rpc_restart and rpc_delay on the task.  The rpc_delay will set a timer.
+> However, when the main loop is re-entered via the "goto restarted",
+> the first thing that happens is that all timers for the task are removed.
+> This results in the RPC task hanging in an uninterruptible wait.
+> 
+> Am I missing something here or is this really a problem?
 
-I think we need to have connection pools to avoid scalability problems.
-I was planning to look into this, unless someone else is already working
-on it.
-
-> For TCP sockets, we should also consider playing with the TCP_LINGER2
-> socket option (to enable us to re-use the port without having to wait
-> through a 60 second timeout).
-
-Adding that in mount(8) may help with some usage patterns. In the kernel
-I wouldn't expect it to make too much of a difference.
+I think this is a genuine problem. Previously, we would clear the timers
+only when the task was running, i.e. inside the if (RPC_RUNNING(task))
+branch. Proposed patch attached.
 
 Olaf
 -- 
 Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
 okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
+
+--a8Wt8u1KmwUX3Y2C
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename=sunrpc-restart-delay-fix
+
+Index: linux-2.6.10/net/sunrpc/sched.c
+===================================================================
+--- linux-2.6.10.orig/net/sunrpc/sched.c
++++ linux-2.6.10/net/sunrpc/sched.c
+@@ -569,7 +569,8 @@ static int __rpc_execute(struct rpc_task
+ 		/*
+ 		 * Garbage collection of pending timers...
+ 		 */
+-		rpc_delete_timer(task);
++		if (RPC_IS_RUNNING(task))
++			rpc_delete_timer(task);
+ 
+ 		/*
+ 		 * Execute any pending callback.
+
+--a8Wt8u1KmwUX3Y2C--
 
 
 -------------------------------------------------------
