@@ -1,19 +1,19 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 8 of 18] nfsd4: fix race in xdr encoding of lock_denied response.
+Subject: [PATCH kNFSd 12 of 18] nfsd4: move seqid decrement on reclaim to separate function
 Date: Fri, 24 Sep 2004 14:54:53 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1CAi6f-0000kK-GA@notabene.cse.unsw.edu.au>
+Message-ID: <E1CAi6f-0000ka-Mc@notabene.cse.unsw.edu.au>
 References: <20040924145130.2689.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CAi7E-00089U-4D
-	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 21:55:28 -0700
+	id 1CAi6u-00084h-9V
+	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 21:55:08 -0700
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CAi7C-0008Ja-Hz
-	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 21:55:28 -0700
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1CAi6t-00069a-Os
+	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 21:55:08 -0700
 To: Andrew Morton <akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,64 +28,60 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
+Move seqid decrement on reclaim to separate function
 
-We take a reference on the stateowner, and copy the clientid, instead of just
-hoping no one destroys the stateowner before we reference it in
-nfsd4_encode_lock_denied.
-
+Signed-off-by: Andy Adamson <andros@citi.umich.edu>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c       |    5 ++++-
- ./fs/nfsd/nfs4xdr.c         |    3 ++-
- ./include/linux/nfsd/xdr4.h |    1 +
- 3 files changed, 7 insertions(+), 2 deletions(-)
+ ./fs/nfsd/nfs4state.c |   27 ++++++++++++++++-----------
+ 1 files changed, 16 insertions(+), 11 deletions(-)
 
 diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2004-09-24 14:48:38.000000000 +1000
-+++ ./fs/nfsd/nfs4state.c	2004-09-24 14:48:39.000000000 +1000
-@@ -1948,8 +1948,11 @@ nfs4_set_lock_denied(struct file_lock *f
- 	unsigned int hval = lockownerid_hashval(sop->so_id);
+--- ./fs/nfsd/nfs4state.c~current~	2004-09-24 14:48:39.000000000 +1000
++++ ./fs/nfsd/nfs4state.c	2004-09-24 14:48:40.000000000 +1000
+@@ -1274,6 +1274,20 @@ out:
+ 	return status;
+ }
  
- 	deny->ld_sop = NULL;
--	if (nfs4_verify_lock_stateowner(sop, hval))
-+	if (nfs4_verify_lock_stateowner(sop, hval)) {
-+		kref_get(&sop->so_ref);
- 		deny->ld_sop = sop;
-+		deny->ld_clientid = sop->so_client->cl_clientid;
++/* decrement seqid on successful reclaim, it will be bumped in encode_open */
++static void
++nfs4_set_claim_prev(struct nfsd4_open *open, int *status)
++{
++	if (open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS) {
++		if (*status)
++			*status = nfserr_reclaim_bad;
++		else {
++			open->op_stateowner->so_confirmed = 1;
++			open->op_stateowner->so_seqid--;
++		}
 +	}
- 	deny->ld_start = fl->fl_start;
- 	deny->ld_length = ~(u64)0;
- 	if (fl->fl_end != ~(u64)0)
-
-diff ./fs/nfsd/nfs4xdr.c~current~ ./fs/nfsd/nfs4xdr.c
---- ./fs/nfsd/nfs4xdr.c~current~	2004-09-24 14:48:38.000000000 +1000
-+++ ./fs/nfsd/nfs4xdr.c	2004-09-24 14:48:39.000000000 +1000
-@@ -1994,9 +1994,10 @@ nfsd4_encode_lock_denied(struct nfsd4_co
- 	WRITE64(ld->ld_length);
- 	WRITE32(ld->ld_type);
- 	if (ld->ld_sop) {
--		WRITEMEM(&ld->ld_sop->so_client->cl_clientid, 8);
-+		WRITEMEM(&ld->ld_clientid, 8);
- 		WRITE32(ld->ld_sop->so_owner.len);
- 		WRITEMEM(ld->ld_sop->so_owner.data, ld->ld_sop->so_owner.len);
-+		kref_put(&ld->ld_sop->so_ref, nfs4_free_stateowner);
- 	}  else {  /* non - nfsv4 lock in conflict, no clientid nor owner */
- 		WRITE64((u64)0); /* clientid */
- 		WRITE32(0); /* length of owner name */
-
-diff ./include/linux/nfsd/xdr4.h~current~ ./include/linux/nfsd/xdr4.h
---- ./include/linux/nfsd/xdr4.h~current~	2004-09-24 14:47:14.000000000 +1000
-+++ ./include/linux/nfsd/xdr4.h	2004-09-24 14:48:39.000000000 +1000
-@@ -116,6 +116,7 @@ struct nfsd4_link {
- };
++}
++
+ /*
+  * called with nfs4_lock_state() held.
+  */
+@@ -1369,17 +1383,8 @@ out:
+ 	if (fp && list_empty(&fp->fi_perfile))
+ 		release_file(fp);
  
- struct nfsd4_lock_denied {
-+	clientid_t	ld_clientid;
- 	struct nfs4_stateowner   *ld_sop;
- 	u64             ld_start;
- 	u64             ld_length;
+-	if (open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS) {
+-		if (status)
+-			status = nfserr_reclaim_bad;
+-		else {
+-		/* successful reclaim. so_seqid is decremented because
+-		* it will be bumped in encode_open
+-		*/
+-			open->op_stateowner->so_confirmed = 1;
+-			open->op_stateowner->so_seqid--;
+-		}
+-	}
++	/* CLAIM_PREVIOUS has different error returns */
++	nfs4_set_claim_prev(open, &status);
+ 	/*
+ 	* To finish the open response, we just need to set the rflags.
+ 	*/
 
 
 -------------------------------------------------------
