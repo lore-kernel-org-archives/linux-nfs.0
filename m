@@ -1,26 +1,23 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: PATCH - lockd - Remove un-necessary locking in lockd
-Date: Tue, 14 Oct 2003 13:27:44 +1000
+From: Roberto Sebastiano <robs@multiplayer.it>
+Subject: gigabit, 2.4.22 and timeo
+Date: Tue, 14 Oct 2003 14:24:31 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16267.27952.107074.411447@notabene.cse.unsw.edu.au>
+Message-ID: <1066134271.629.19.camel@newdeal>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1A9Fql-0001DI-00
-	for <nfs@lists.sourceforge.net>; Mon, 13 Oct 2003 20:27:55 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.22)
-	id 1A9Fql-0007Oz-1f
-	for nfs@lists.sourceforge.net; Mon, 13 Oct 2003 20:27:55 -0700
-Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <marcelo.tosatti@cyclades.com.br>)
-	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
-	Tue, 14 Oct 2003 13:27:46 +1000
-To: Marcelo Tosatti <marcelo.tosatti@cyclades.com.br>
+	id 1A9OEq-0004yp-00
+	for <nfs@lists.sourceforge.net>; Tue, 14 Oct 2003 05:25:20 -0700
+Received: from vsmtp2.tin.it ([212.216.176.222] helo=vsmtp2alice.tin.it)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
+	id 1A9OEp-0005Ju-TM
+	for nfs@lists.sourceforge.net; Tue, 14 Oct 2003 05:25:20 -0700
+Received: from host117-100.pool80182.interbusiness.it (80.182.100.117) by vsmtp2alice.tin.it (7.0.019)
+        id 3F4F171B0006815D for nfs@lists.sourceforge.net; Tue, 14 Oct 2003 14:24:48 +0200
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -33,57 +30,47 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hi,
+I have this hw setup:
+1 Dual PIII 1Ghz, Intel PRO/1000MT nic, linux 2.4.22 (nfs client)
+1 Single P4 2.53Ghz, Intel PRO/1000MT nic, linux 2.4.22, fast RAID5 scsi
+disk subsystem (nfs server)
+These are cross-connected and both have jumbo frames enabled
+This setup will (hopefully) be used to share files between two web
+servers under load balancing
+
+Now, to the problem.
+I specified the mount options as follows (from /proc/mounts):
+rw,v3,rsize=8192,wsize=8192,hard,intr,udp,lock,addr=192.168.2.1
+
+When I copy a large file over the network, on the client side I see: 
+Oct 14 13:39:24 flanders kernel: nfs: server 192.168.2.1 not responding,
+still trying
+Oct 14 13:39:24 flanders last message repeated 5 times
+Oct 14 13:39:24 flanders kernel: nfs: server 192.168.2.1 OK
+Oct 14 13:39:24 flanders last message repeated 5 times
+Oct 14 13:39:25 flanders kernel: nfs: server 192.168.2.1 not responding,
+still trying
+Oct 14 13:39:26 flanders last message repeated 11 times
+Oct 14 13:39:26 flanders kernel: nfs: server 192.168.2.1 OK
+
+But the cp process goes just fine.
+Setting retrans to 5 or higher "solves" the problem (copying is still ok
+and no errors are triggered), but setting timeo to a larger value (60 or
+so) doesn't seem to have any effect (between the start of the copy and
+the printf of the message, there are only two seconds or so)
+
+I think that the client is just assuming a too low timeout value, and it
+keeps sending requests
+I found that with nfs over TCP this problem doesn't occur
 
 
-Two places in lockd readlock the nfsd export table before calling
-exp_getclient.
-This is not needed because the export table is already locked by
-code in svc.c.
-It is a problem because if a write_lock is attempted while the svc.c
-readlock is active, and before the secondary readlock is attempted,
-you get a deadlock.
+Is there any way to solve this ?
 
+Thanks,
+-- 
+Roberto Sebastiano <robs@multiplayer.it>
 
- ----------- Diffstat output ------------
- ./fs/lockd/svc4proc.c |    2 --
- ./fs/lockd/svcproc.c  |    2 --
- 2 files changed, 4 deletions(-)
-
-diff ./fs/lockd/svc4proc.c~current~ ./fs/lockd/svc4proc.c
---- ./fs/lockd/svc4proc.c~current~	2003-10-14 13:21:49.000000000 +1000
-+++ ./fs/lockd/svc4proc.c	2003-10-14 13:21:58.000000000 +1000
-@@ -449,13 +449,11 @@ nlm4svc_proc_sm_notify(struct svc_rqst *
- 	if (nlmsvc_ops != NULL) {
- 		struct svc_client	*clnt;
- 		saddr.sin_addr.s_addr = argp->addr;
--		nlmsvc_ops->exp_readlock();
- 		if ((clnt = nlmsvc_ops->exp_getclient(&saddr)) != NULL 
- 		 && (host = nlm_lookup_host(clnt, &saddr, 0, 0)) != NULL) {
- 			nlmsvc_free_host_resources(host);
- 		}
- 		nlm_release_host(host);
--		nlmsvc_ops->exp_unlock();
- 	}
- 
- 	return rpc_success;
-
-diff ./fs/lockd/svcproc.c~current~ ./fs/lockd/svcproc.c
---- ./fs/lockd/svcproc.c~current~	2003-10-14 13:22:10.000000000 +1000
-+++ ./fs/lockd/svcproc.c	2003-10-14 13:22:15.000000000 +1000
-@@ -477,13 +477,11 @@ nlmsvc_proc_sm_notify(struct svc_rqst *r
- 	if (nlmsvc_ops != NULL) {
- 		struct svc_client	*clnt;
- 		saddr.sin_addr.s_addr = argp->addr;
--		nlmsvc_ops->exp_readlock();
- 		if ((clnt = nlmsvc_ops->exp_getclient(&saddr)) != NULL 
- 		 && (host = nlm_lookup_host(clnt, &saddr, 0, 0)) != NULL) {
- 			nlmsvc_free_host_resources(host);
- 		}
- 		nlm_release_host(host);
--		nlmsvc_ops->exp_unlock();
- 	}
- 
- 	return rpc_success;
 
 
 -------------------------------------------------------
