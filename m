@@ -1,27 +1,26 @@
 From: Neil Brown <neilb@cse.unsw.edu.au>
 Subject: Re: NFS problems across reboot
-Date: Mon, 8 Apr 2002 12:48:09 +1000 (EST)
+Date: Mon, 8 Apr 2002 12:50:20 +1000 (EST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15537.1257.212812.909225@notabene.cse.unsw.edu.au>
+Message-ID: <15537.1388.991719.856639@notabene.cse.unsw.edu.au>
 References: <3CACA93C.5010304@blue-labs.org>
 	<3CAD6A78.4205CD61@moving-picture.com>
 	<3CAFCE8C.5030300@blue-labs.org>
 	<15535.55222.401084.736426@notabene.cse.unsw.edu.au>
-	<3CAFEE3C.8020606@blue-labs.org>
+	<20020407063953.GA30304@physics.cornell.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net,
-    James Pearson <james-p@moving-picture.com>
+Cc: nfs@lists.sourceforge.net
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16uP9m-0007ll-00
-	for <nfs@lists.sourceforge.net>; Sun, 07 Apr 2002 19:45:22 -0700
+	id 16uPBp-0008GS-00
+	for <nfs@lists.sourceforge.net>; Sun, 07 Apr 2002 19:47:30 -0700
 Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <david+cert@blue-labs.org>) (for <nfs@lists.sourceforge.net>)
-	(for <james-p@moving-picture.com>) By tone With Smtp ;
-	Mon, 8 Apr 2002 12:45:04 +1000
-To: David Ford <david+cert@blue-labs.org>
-In-Reply-To: message from David Ford on Sunday April 7
+	(for <freedman@physics.cornell.edu>)
+	(for <nfs@lists.sourceforge.net>) By tone With Smtp ;
+	Mon, 8 Apr 2002 12:47:20 +1000
+To: Daniel Freedman <freedman@physics.cornell.edu>
+In-Reply-To: message from Daniel Freedman on Sunday April 7
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -34,29 +33,30 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Sunday April 7, david+cert@blue-labs.org wrote:
-> That was the problem.  Everything mounts just fine normally.  When the 
-> server reboots, the client loses access.  All the client has to do is 
-> unmount and remount and everything is fine again.  If it were a matter 
-> of what was exported, then the remount should fail, but it doesn't.  Why 
-> does the client lose the access but with no action on the server part, 
-> the client regains access?  (to whom know the answer, please don't let 
-> this thread just die away, ambiguity like this doesn't do anyone any good)
+On Sunday April 7, freedman@physics.cornell.edu wrote:
+> 
+> Hi,
+> 
+> I just checked the default NFS server init script from Debian stable (2.2)
+> as found in '/etc/init.d/nfs-kernel-server'.  It appears to violate the
+> above order, by starting exportfs *after* rpc.nfsd.  Am I missing something,
+> please?
 
-"Exporting" a filesystem means doing two things:
- 1/ telling mountd that it is allow to respond positively to mount
-     requests. 
- 2/ telling the kernel nfsd that it is allow to respond to access
-     requests.
+You are right.  2.2 has it wrong.  3.0 has it right.
+I don't know the Debian policy on how serious a bug has to be to get
+it fixed in "stable".  This isn't a *very* serious bug, but is
+certainly can cause some problems.
 
-When mountd responds to a mount request, it also tells the kernel to
-respond to access requests.
-But after a reboot, you need to run exportfs.  It reads
-/var/lib/nfs/rmtab to find out which clients have which filesystems
-mounted, and it tells the kernel to allow those clients to access
-those filesystem.
+> 
+> Could this explain why I've seen the same behaviour as described in an
+> earlier post in this thread: in other words, when the NFS server cleanly
+> reboots, all clients with open file handles develop difficulty with NFS
+> access (sorry I can't remember exact error, it hasn't happened in months);
+> come to think of it, though, I don't have this problem with my Debian woody
+> NFS server, which has the correct 'exportfs'/'rpc.nfsd' order in the
+> init-scripts.
 
-The manpage should probably be made a bit more clear on this.
+Yes.  This would explain exactly that behaviour.
 
 NeilBrown
 
