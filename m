@@ -1,17 +1,17 @@
 From: mehta kiran <kiranmehta1981@yahoo.com>
-Subject: exportfs nohide option for nfsv4
-Date: Thu, 10 Mar 2005 04:07:22 -0800 (PST)
-Message-ID: <20050310120722.3782.qmail@web51606.mail.yahoo.com>
+Subject: NFSv4 support on SuSE 9 sp1
+Date: Thu, 10 Mar 2005 05:55:58 -0800 (PST)
+Message-ID: <20050310135558.51770.qmail@web51603.mail.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D9MRu-0000KC-Lz
-	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 04:07:30 -0800
-Received: from web51606.mail.yahoo.com ([206.190.38.211])
-	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
-	id 1D9MRs-0004RO-LT
-	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 04:07:30 -0800
+	id 1D9O90-0003jG-1P
+	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 05:56:06 -0800
+Received: from web51603.mail.yahoo.com ([206.190.38.208])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
+	id 1D9O8y-00020M-88
+	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 05:56:05 -0800
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -27,41 +27,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 Hi , 
-        I am using RHEL 4 GA.
-        i created directories /export , /export/exp1.
-        Then i started all the nfs daemons.
-        I mounted a disk on /export/exp1.
+  Is nfsv4 supported on SuSE 9 sp1 rc5.
+  SuSE 9 sp1 rc5 is not able to mount
+  nfs4 filesystems.
 
-        Then i exported /export using
-        exportfs -o rw,no_root_squash,fsid=0 *:/export
+  when i tried mount -t nfs4  server:/ /share
+  it gives error :
+  nfs_read_super : missing data argument.
+  
 
-        I exported /export/exp1 using
-       exportfs -o rw,no_root_squash *:/export/exp1
+  I the recomplied kernel with additional 
+  CONFIG_NFSD_V4=y (not enabled with default config 
+  that comes with SuSE) and tried but i faced the same
 
-      I mounted exported fs on client side using
-      mount -t nfs4 server:/  /share
+  error.
 
-      but i am not able to see contents of /share/exp1
-      When i used nohide attribute for exporting fs 
-      then everyting works fine.
-
-      As per man page , nohide is not needed if  the
-      filesystems mounted on child directories are
-      exported.
-      Please let me know if i ma wrong
+  RHEL4 GA machine was acting as NFS server.
+  Other RHEL4 machine could mount the nfs4 filesystem.
 
 thanks,
  --kiran
+  
 
+   
 
-
-
-
-		
-__________________________________ 
-Do you Yahoo!? 
-Yahoo! Mail - Easier than ever with enhanced search. Learn more. 
-http://info.mail.yahoo.com/mail_250
+__________________________________________________
+Do You Yahoo!?
+Tired of spam?  Yahoo! Mail has the best spam protection around 
+http://mail.yahoo.com 
 
 
 -------------------------------------------------------
