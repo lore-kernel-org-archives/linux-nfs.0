@@ -1,20 +1,27 @@
-From: bond liu <csc_425@yahoo.com>
-Subject: nfs mount problem in cluster
-Date: Sun, 8 Feb 2004 14:10:23 -0800 (PST)
+From: Andrew Morton <akpm@osdl.org>
+Subject: Re: Re: [PATCH] kNFSd - 2 of 5 - ip_map_init does a kmalloc
+ which isn't checked...
+Date: Sat, 7 Feb 2004 21:46:37 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040208221023.1528.qmail@web21510.mail.yahoo.com>
+Message-ID: <20040207214637.387d3018.akpm@osdl.org>
+References: <20040206161050.27799.patches@notabene>
+	<E1AoyIo-0007FS-00@notabene>
+	<20040207012423.396efe73.akpm@osdl.org>
+	<20040208043723.GC13391@fieldses.org>
 Mime-Version: 1.0
-Content-Type: multipart/alternative; boundary="0-2047626807-1076278223=:99822"
+Content-Type: text/plain; charset=US-ASCII
+Cc: neilb@cse.unsw.edu.au, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Apx8B-00012d-Bz
-	for nfs@lists.sourceforge.net; Sun, 08 Feb 2004 14:10:23 -0800
-Received: from web21510.mail.yahoo.com ([66.163.169.59])
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
-	id 1Apx8B-0001KH-3X
-	for nfs@lists.sourceforge.net; Sun, 08 Feb 2004 14:10:23 -0800
-To: nfs@lists.sourceforge.net
+	id 1Aphk0-0005OL-50
+	for nfs@lists.sourceforge.net; Sat, 07 Feb 2004 21:44:24 -0800
+Received: from fw.osdl.org ([65.172.181.6] helo=mail.osdl.org)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1Aphjz-0006mw-GB
+	for nfs@lists.sourceforge.net; Sat, 07 Feb 2004 21:44:23 -0800
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20040208043723.GC13391@fieldses.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -27,48 +34,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
---0-2047626807-1076278223=:99822
-Content-Type: text/plain; charset=us-ascii
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
+>
+> On Sat, Feb 07, 2004 at 01:24:23AM -0800, Andrew Morton wrote:
+> > NeilBrown <neilb@cse.unsw.edu.au> wrote:
+> > >
+> > > There is no way to return an error from a cache init routine,
+> > >  so instead we make sure to pre-allocate the memory needed,
+> > >  and free it after the lookup if the lookup failed.
+> > 
+> > This patch causes an oops when the initscripts run exportfs.
+> 
+> Ugh.  The patches were submitted out of order; #3 should have come
+> before #2.
+> 
 
-I use nfs on my beowulf cluster. I build two servers with multiple client nodes.
-Two server has same hostname and ip address, they are totally identical with software and hardware. Only one is active at any time.
- 
-The problem is: Initially one server works fine with nfs client nodes.
-                      but when I do failover and use another server as nfs server.
-The clients can't get access to the second server although I do service nfs restart on the second server and clients. The error  is: nfs_oscar is not responding, still trying.
- 
-At that time, although I reboot clients , same problem still exists. I have to reboot the second server. On the other hand, if I switch back to original server, everything is fine again even without doing anything on clients or server.
- 
-What is the issue there? I need help.
-Thanks.
- 
-~
-Eric
+OK.
 
+But with all five patches applied (or the first three) there remains the
+deadlock over that write_lock.
 
----------------------------------
-Do you Yahoo!?
-Yahoo! Finance: Get your refund fast by filing online
---0-2047626807-1076278223=:99822
-Content-Type: text/html; charset=us-ascii
-
-<DIV>I use nfs on my beowulf cluster. I build two&nbsp;servers&nbsp;with multiple client nodes.</DIV>
-<DIV>Two server has same hostname and ip address, they are totally identical with software and hardware. Only one is active at any time.</DIV>
-<DIV>&nbsp;</DIV>
-<DIV>The problem is:&nbsp;Initially&nbsp;one server works fine with nfs client nodes.</DIV>
-<DIV>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; but when I do failover and use another server&nbsp;as nfs server.</DIV>
-<DIV>The clients can't get access to the second server although I do service nfs restart on the second server and clients. The error&nbsp; is: nfs_oscar is not responding, still trying.</DIV>
-<DIV>&nbsp;</DIV>
-<DIV>At that time, although I reboot clients , same problem still exists. I have to reboot the second server. On the other hand, if I switch back to original server, everything is fine again even without doing anything on clients or server.</DIV>
-<DIV>&nbsp;</DIV>
-<DIV>What is the issue there? I need help.</DIV>
-<DIV>Thanks.</DIV>
-<DIV>&nbsp;</DIV>
-<DIV>~</DIV>
-<DIV>Eric</DIV><p><hr SIZE=1>
-Do you Yahoo!?<br>
-Yahoo! Finance: <a href="http://us.rd.yahoo.com/evt=22055/*http://taxes.yahoo.com/filing.html">Get your refund fast by filing online</a>
---0-2047626807-1076278223=:99822--
 
 
 -------------------------------------------------------
