@@ -1,17 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 39 of 54] nfsd4: fix laundromat delegation reaping
+Subject: [PATCH kNFSd 35 of 54] nfsd4: nfs4_cb_recall cleanup
 Date: Tue, 08 Mar 2005 17:06:44 +1100
-Message-ID: <E1D8Xrg-00019L-QK@notabene.cse.unsw.edu.au>
+Message-ID: <E1D8Xrg-000193-H6@notabene.cse.unsw.edu.au>
 References: <20050308165419.3842.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D8Xru-00028I-I3
-	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:58 -0800
+	id 1D8Xrt-00028F-FI
+	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:57 -0800
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1D8Xrq-0007tj-Lq
-	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:58 -0800
+	id 1D8Xrs-0007uR-Ok
+	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:57 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -27,39 +27,132 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-
-The laundromat is freeing any delegation it finds in the RECALL_COMPLETE state.
-But note that RECALL_COMPLETE is the state that the delegation recall callback
-leaves the state in.  We shouldn't actually be giving up on the delegation till
-either the client has had a chance to call delegreturn, or the lease time has
-run out.
+Miscellaneous cleanup including:
+	remove recursion
+	use a local variable instead of dl_recall_cnt
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c |    3 ---
- 1 files changed, 3 deletions(-)
+ ./fs/nfsd/nfs4callback.c |   85 +++++++++++++++++------------------------------
+ 1 files changed, 31 insertions(+), 54 deletions(-)
 
-diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2005-03-07 13:26:43.000000000 +1100
-+++ ./fs/nfsd/nfs4state.c	2005-03-07 13:27:24.000000000 +1100
-@@ -1861,15 +1861,12 @@ nfs4_laundromat(void)
- 	spin_lock(&recall_lock);
- 	list_for_each_safe(pos, next, &del_recall_lru) {
- 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
--		if (atomic_read(&dp->dl_state) == NFS4_RECALL_COMPLETE)
--			goto reap;
- 		if (time_after((unsigned long)dp->dl_time, (unsigned long)cutoff)) {
- 			u = dp->dl_time - cutoff;
- 			if (test_val > u)
- 				test_val = u;
- 			break;
- 		}
--reap:
- 		dprintk("NFSD: purging unused delegation dp %p, fp %p\n",
- 			            dp, dp->dl_flock);
- 		release_delegation(dp);
+diff ./fs/nfsd/nfs4callback.c~current~ ./fs/nfsd/nfs4callback.c
+--- ./fs/nfsd/nfs4callback.c~current~	2005-03-07 11:36:32.000000000 +1100
++++ ./fs/nfsd/nfs4callback.c	2005-03-07 13:24:14.000000000 +1100
+@@ -493,54 +493,7 @@ out:
+ }
+ 
+ /*
+- *  Called with dp->dl_count incremented
+- */
+-static void
+-nfs4_cb_recall_done(struct nfs4_cb_recall *cbr, int status)
+-{
+-	struct nfs4_delegation *dp = cbr->cbr_dp;
+-
+-	/* all is well... */
+-	if (status == 0)
+-		goto out;
+-
+-	/* network partition, retry nfsd4_cb_recall once.  */
+-	if (status == -EIO) {
+-		if (atomic_read(&dp->dl_recall_cnt) == 0)
+-			goto retry;
+-		else
+-			/* callback channel no longer available */
+-			atomic_set(&dp->dl_client->cl_callback.cb_set, 0);
+-	}
+-
+-	/* Race: a recall occurred miliseconds after a delegation was granted.
+-	* Client may have received recall prior to delegation. retry recall
+-	* once.
+-	*/
+-	if ((status == -EBADHANDLE) || (status == -NFS4ERR_BAD_STATEID)){
+-		if (atomic_read(&dp->dl_recall_cnt) == 0)
+-			goto retry;
+-	}
+-	atomic_set(&dp->dl_state, NFS4_RECALL_COMPLETE);
+-
+-out:
+-	if (atomic_dec_and_test(&dp->dl_count))
+-		atomic_set(&dp->dl_state, NFS4_REAP_DELEG);
+-	BUG_ON(atomic_read(&dp->dl_count) < 0);
+-	dprintk("NFSD: nfs4_cb_recall_done: dp %p dl_flock %p dl_count %d\n",dp, dp->dl_flock, atomic_read(&dp->dl_count));
+-	return;
+-
+-retry:
+-	dprintk("NFSD: nfs4_cb_recall_done RETRY\n");
+-	atomic_inc(&dp->dl_recall_cnt);
+-	/* sleep 2 seconds before retrying recall */
+-	ssleep(2);
+-	nfsd4_cb_recall(dp);
+-}
+-
+-/*
+  * called with dp->dl_count inc'ed.
+- * nfs4_lock_state() may or may not have been called.
+  */
+ void
+ nfsd4_cb_recall(struct nfs4_delegation *dp)
+@@ -551,25 +504,49 @@ nfsd4_cb_recall(struct nfs4_delegation *
+ 	struct rpc_message msg = {
+ 		.rpc_proc = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_RECALL],
+ 		.rpc_argp = cbr,
+-		.rpc_resp = cbr,
+ 	};
+-	int status;
++	int retries = 1;
++	int status = 0;
+ 
+ 	if ((!atomic_read(&clp->cl_callback.cb_set)) || !clnt)
+ 		return;
+ 
+ 	msg.rpc_cred = nfsd4_lookupcred(clp, 0);
+ 	if (IS_ERR(msg.rpc_cred))
+-		return;
++		goto out;
+ 
+ 	cbr->cbr_trunc = 0; /* XXX need to implement truncate optimization */
+ 	cbr->cbr_dp = dp;
+ 
+ 	status = rpc_call_sync(clnt, &msg, RPC_TASK_SOFT);
+-	if (status)
+-		dprintk("NFSD: recall_delegation: rpc_call_async failed %d\n",
+-			status);
+-	nfs4_cb_recall_done(cbr, status);
++	while (retries--) {
++		switch (status) {
++			case -EIO:
++				/* Network partition? */
++			case -EBADHANDLE:
++			case -NFS4ERR_BAD_STATEID:
++				/* Race: client probably got cb_recall
++				 * before open reply granting delegation */
++				break;
++			default:
++				goto out;
++		}
++		ssleep(2);
++		status = rpc_call_sync(clnt, &msg, RPC_TASK_SOFT);
++	}
++
++ out:
++	if (status == -EIO)
++		atomic_set(&clp->cl_callback.cb_set, 0);
++	/* Success or failure, now we're either waiting for lease expiration
++	 * or deleg_return. */
++	atomic_set(&dp->dl_state, NFS4_RECALL_COMPLETE);
++
++	if (atomic_dec_and_test(&dp->dl_count))
++		atomic_set(&dp->dl_state, NFS4_REAP_DELEG);
++	BUG_ON(atomic_read(&dp->dl_count) < 0);
++
++	dprintk("NFSD: nfs4_cb_recall: dp %p dl_flock %p dl_count %d\n",dp, dp->dl_flock, atomic_read(&dp->dl_count));
+ 	put_rpccred(msg.rpc_cred);
+ 	return;
+ }
 
 
 -------------------------------------------------------
