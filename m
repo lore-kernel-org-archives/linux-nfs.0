@@ -1,19 +1,19 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Steffen Persvold <sp@scali.com>
 Subject: Re: Input/output error on hard mounted NFS directory
-Date: 14 May 2002 12:51:58 +0200
+Date: Tue, 14 May 2002 13:12:06 +0200 (CEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shselgff1dd.fsf@charged.uio.no>
-References: <Pine.LNX.4.30.0205141159580.28229-100000@elin.scali.no>
+Message-ID: <Pine.LNX.4.30.0205141308300.28229-100000@elin.scali.no>
+References: <shsit5rf1g1.fsf@charged.uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: NFS mailinglist <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
+Received: from elin.scali.no ([62.70.89.10])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 177Zuc-0005nl-00
-	for <nfs@lists.sourceforge.net>; Tue, 14 May 2002 03:52:10 -0700
-To: Steffen Persvold <sp@scali.com>
-In-Reply-To: <Pine.LNX.4.30.0205141159580.28229-100000@elin.scali.no>
+	id 177aDz-0007P1-00
+	for <nfs@lists.sourceforge.net>; Tue, 14 May 2002 04:12:11 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <shsit5rf1g1.fsf@charged.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,21 +26,32 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->>>>> " " == Steffen Persvold <sp@scali.com> writes:
+On 14 May 2002, Trond Myklebust wrote:
 
-     > I'm compiling up a large project which resides on a NFS mounted
-     > ext2 filesystem. In this case the NFS server is running RH 7.2
-     > kernel-smp-2.4.9-21 (i686 version) nfs-utils-0.3.1-13.7.2.1,
-     > and the client is running RH 6.2 kernel-enterprise-2.2.19-6.2.7
-     > (i686 version).
+> >>>>> " " == Steffen Persvold <sp@scali.com> writes:
+>
+>      > The error I get here is :
+>
+>      > #     Creating static library Linux2.ia64.gnu/libmpi.a ...
+>      > #     Creating shared library Linux2.ia64.gnu/libmpi.so ...
+>      > /usr/bin/ld: final link failed: Stale NFS file handle collect2:
+>      > ld returned 1 exit status make[4]: ***
+>      > [Linux2.ia64.gnu/libmpi.a] Error 1
+>
+>
+> Stale file handle has nothing to do with EIO. That looks more like a
+> server bug. Are you perchance using nfs-server?
 
-If you want to run a 2.2. client, then grab 2.2.21-rc2, and apply the
-patch from
+No, I'm using a standard RH 7.2 server with knfsd
+(and nfs-utils-0.3.1-13.7.2.1). rpc.nfsd is started with 48 servers.
 
-  http://www.fys.uio.no/~trondmy/src/2.2.21-rc2/linux-2.2.21-NFS.dif
+Regards,
+-- 
+  Steffen Persvold   | Scalable Linux Systems |   Try out the world's best
+ mailto:sp@scali.com |  http://www.scali.com  | performing MPI implementation:
+Tel: (+47) 2262 8950 |   Olaf Helsets vei 6   |      - ScaMPI 1.13.8 -
+Fax: (+47) 2262 8951 |   N0621 Oslo, NORWAY   | >320MBytes/s and <4uS latency
 
-Cheers,
-  Trond
 
 _______________________________________________________________
 
