@@ -1,18 +1,19 @@
-From: Rusty Russell <rusty@rustcorp.com.au>
-Subject: Re: Isolation of nfs threads
-Date: Fri, 20 Sep 2002 09:11:22 +1000
+From: Andi Kleen <ak@suse.de>
+Subject: Re: Re: [PATCH] zerocopy NFS for 2.5.36
+Date: 20 Sep 2002 03:00:40 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020920000503.432F62C3AA@lists.samba.org>
-References: <15753.46523.847227.539366@notabene.cse.unsw.edu.au>
-Cc: nfs@lists.sourceforge.net
+Message-ID: <p73lm5xtqyv.fsf@oldwotan.suse.de>
+References: <3D89176B.40FFD09B@digeo.com.suse.lists.linux.kernel> <20020919.221513.28808421.taka@valinux.co.jp.suse.lists.linux.kernel> <3D8A36A5.846D806@digeo.com.suse.lists.linux.kernel>
+Cc: Hirokazu Takahashi <taka@valinux.co.jp>,
+	alan@lxorguk.ukuu.org.uk, davem@redhat.com, neilb@cse.unsw.edu.au,
+	linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from dp.samba.org ([66.70.73.150] helo=lists.samba.org)
+Received: from ns.suse.de ([213.95.15.193] helo=Cantor.suse.de)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17sBIb-0001v1-00
-	for <nfs@lists.sourceforge.net>; Thu, 19 Sep 2002 17:05:33 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-reply-to: Your message of "Thu, 19 Sep 2002 21:32:11 +1000."
-             <15753.46523.847227.539366@notabene.cse.unsw.edu.au>
+	id 17sCA1-0002IF-00
+	for <nfs@lists.sourceforge.net>; Thu, 19 Sep 2002 18:00:45 -0700
+To: Andrew Morton <akpm@digeo.com>
+In-Reply-To: Andrew Morton's message of "19 Sep 2002 22:46:12 +0200"
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,25 +26,35 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-In message <15753.46523.847227.539366@notabene.cse.unsw.edu.au> you write:
-> It is probably worth reading Rusty's unreliable guide to kernel
-> locking. See the bottom of:
+Andrew Morton <akpm@digeo.com> writes:
+
+> Hirokazu Takahashi wrote:
+> > 
+> > ...
+> > > It needs redoing.  These differences are really big, and this
+> > > is the kernel's most expensive function.
+> > >
+> > > A little project for someone.
+> > 
+> > OK, if there is nobody who wants to do it I'll do it by myself.
 > 
->    http://www.netfilter.org/unreliable-guides/
-> 
-> The html link seems to be broken... Rusty???
+> That would be fantastic - thanks.  This is more a measurement
+> and testing exercise than a coding one.  And if those measurements
+> are sufficiently nice (eg: >5%) then a 2.4 backport should be done.
 
-Hmm... I usually point people straight to the kernel sources (the
-canonical guide is in Documentation/DocBook/)
+Very interesting IMHO would be to find a heuristic to switch between
+a write combining copy and a cache hot copy. Write combining is good 
+for blasting huge amounts of data quickly without killing your caches.
+Cache hot is good for everything else.
 
-But google to the rescue:
+But it'll need hints from the higher level code. e.g. read and write
+could turn on write combining for bigger writes (let's say >8K) 
+I discovered that just unconditionally turning it on for all copies 
+is not good because it forces data out of cache. But I still have hope
+that it helps for selected copies.
 
-http://kernelnewbies.org/documents/kdoc/kernel-locking/lklockingguide.html
 
-Cheers!
-Rusty.
---
-  Anyone who quotes me in their sig is an idiot. -- Rusty Russell.
+-Andi
 
 
 -------------------------------------------------------
