@@ -1,16 +1,19 @@
-From: "Matt Heaton" <admin@0catch.com>
-Subject: Question about mounting....
-Date: Fri, 31 Jan 2003 09:56:38 -0700
+From: "Morong, Gerry" <Gerry.Morong@hp.com>
+Subject: NFS and UDP port 1434
+Date: Fri, 31 Jan 2003 11:21:48 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <013001c2c949$b8a0d9a0$6601a8c0@userl3x55qxqed>
+Message-ID: <E67F8F12671DF54FB828481785943030037EB836@cceexc22.americas.cpqcorp.net>
 Mime-Version: 1.0
 Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_012D_01C2C90F.0C174820"
+	boundary="----_=_NextPart_001_01C2C94D.3C72C228"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from rwcrmhc51.attbi.com ([204.127.198.38])
+Received: from ztxmail03.ztx.compaq.com ([161.114.1.207])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18eeT6-0008IG-00
-	for <nfs@lists.sourceforge.net>; Fri, 31 Jan 2003 08:56:44 -0800
+	id 18eetQ-00054L-00
+	for <nfs@lists.sourceforge.net>; Fri, 31 Jan 2003 09:23:56 -0800
+Received: from cceexg11.americas.cpqcorp.net (cceexg11.americas.cpqcorp.net [16.110.250.125])
+	by ztxmail03.ztx.compaq.com (Postfix) with ESMTP id 7BA02407B
+	for <nfs@lists.sourceforge.net>; Fri, 31 Jan 2003 11:23:19 -0600 (CST)
 To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -26,85 +29,94 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a multi-part message in MIME format.
 
-------=_NextPart_000_012D_01C2C90F.0C174820
+------_=_NextPart_001_01C2C94D.3C72C228
 Content-Type: text/plain;
-	charset="iso-8859-1"
+	charset="us-ascii"
 Content-Transfer-Encoding: quoted-printable
 
-I am using this mount command on all my NFS clients
+Have a hundred plus Red Hat 7.3 NFS clients connecting to several
+NetApps and Red Hat 7.3 fileservers.  They are configured to run NFS V3
+over UDP.  When the SQL slammer bug hit our routers were reconfigured to
+block UPD port 1434.  This caused sporadic NFS lockups for mounts
+outside the local subnet subject to the port blocking.  Once the port
+blocking was cleared from the routers, NFS connections freed up and
+started working again. What part of NFS should be using UDP port 1434? =20
 
-mount -o ro,vers=3D3,noatime,rsize=3D8192,intr 192.168.100.xxx:/dir /dir =
--t nfs
-
-Which works very well, but the server is using the XFS filesystem.  =
-When/if the server has a problem or goes down normally the=20
-mount point is just fine until the server comes back up and then keeps =
-going (It does this on our servers that use EXT3), but on our
-NFS servers that use XFS filesystem they don't?  The client loses the =
-mount (Still  shows up in a df, but shows 0 bytes for the size of the =
-nfs mount).  I then have to unmount and then remount EVERY CLIENT =
-everytime there is a problem with our NFS servers?!?! =20
-
-Is there a problem with XFS and nfs mount points or am I dumb and =
-missing some obvious mount option.  It is weird because it works great =
-on all my EXT3 NFS servers.
-
-Thanks,
-Matt
+Gerry=20
 
 
-------=_NextPart_000_012D_01C2C90F.0C174820
+
+
+------_=_NextPart_001_01C2C94D.3C72C228
 Content-Type: text/html;
-	charset="iso-8859-1"
+	charset="us-ascii"
 Content-Transfer-Encoding: quoted-printable
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; =
-charset=3Diso-8859-1">
-<META content=3D"MSHTML 6.00.2722.900" name=3DGENERATOR>
-<STYLE></STYLE>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+<HEAD>
+<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
+charset=3Dus-ascii">
+<META NAME=3D"Generator" CONTENT=3D"MS Exchange Server version =
+6.0.6249.1">
+<TITLE>NFS and UDP port 1434</TITLE>
 </HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV><FONT face=3DArial size=3D2>I am using this mount command on all my =
-NFS=20
-clients</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>mount -o =
-ro,vers=3D3,noatime,rsize=3D8192,intr=20
-192.168.100.xxx:/dir /dir -t nfs</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>Which works very well, but the server =
-is using the=20
-XFS filesystem.&nbsp; When/if the server has a problem or goes down =
-normally the=20
-</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>mount point is just fine until the =
-server comes=20
-back up and then keeps going (It does this on our servers that use =
-EXT3), but on=20
-our</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>NFS servers that use XFS filesystem =
-they=20
-don't?&nbsp; The client loses the mount (Still&nbsp; shows up in a df, =
-but shows=20
-0 bytes for the size of the nfs mount).&nbsp; I then have to unmount and =
-then=20
-remount EVERY CLIENT everytime there is a problem with our NFS =
-servers?!?!&nbsp;=20
-</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>Is there a problem with XFS and nfs =
-mount points or=20
-am I dumb and missing some obvious mount option.&nbsp; It is weird =
-because it=20
-works great on all my EXT3 NFS servers.</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>Thanks,<BR>Matt</FONT></DIV>
-<DIV>&nbsp;</DIV></BODY></HTML>
+<BODY>
+<!-- Converted from text/rtf format -->
 
-------=_NextPart_000_012D_01C2C90F.0C174820--
+<P ALIGN=3DLEFT><SPAN LANG=3D"en-us"><FONT SIZE=3D2 FACE=3D"Arial">Have =
+a hundred plus Red Hat 7.3</FONT></SPAN><SPAN =
+LANG=3D"en-us"></SPAN><SPAN LANG=3D"en-us"> <FONT SIZE=3D2 =
+FACE=3D"Arial">NFS clients connecting to several NetApps and Red Hat 7.3 =
+fileservers</FONT></SPAN><SPAN LANG=3D"en-us"></SPAN><SPAN =
+LANG=3D"en-us"><FONT SIZE=3D2 FACE=3D"Arial">.&nbsp; They are configured =
+to run NFS V3</FONT></SPAN><SPAN LANG=3D"en-us"></SPAN><SPAN =
+LANG=3D"en-us"> <FONT SIZE=3D2 FACE=3D"Arial">over</FONT></SPAN><SPAN =
+LANG=3D"en-us"></SPAN><SPAN LANG=3D"en-us"><FONT SIZE=3D2 =
+FACE=3D"Arial"> UDP.&nbsp; When the SQL slammer bug =
+hit</FONT></SPAN><SPAN LANG=3D"en-us"></SPAN><SPAN LANG=3D"en-us"><FONT =
+SIZE=3D2 FACE=3D"Arial"></FONT></SPAN><SPAN LANG=3D"en-us"></SPAN><SPAN =
+LANG=3D"en-us"> <FONT SIZE=3D2 FACE=3D"Arial">our</FONT></SPAN><SPAN =
+LANG=3D"en-us"></SPAN><SPAN LANG=3D"en-us"><FONT SIZE=3D2 =
+FACE=3D"Arial"> routers were reconfigured to</FONT></SPAN><SPAN =
+LANG=3D"en-us"></SPAN><SPAN LANG=3D"en-us"> <FONT SIZE=3D2 =
+FACE=3D"Arial">bl</FONT></SPAN><SPAN LANG=3D"en-us"></SPAN><SPAN =
+LANG=3D"en-us"><FONT SIZE=3D2 FACE=3D"Arial">ock UPD</FONT></SPAN><SPAN =
+LANG=3D"en-us"></SPAN><SPAN LANG=3D"en-us"> <FONT SIZE=3D2 =
+FACE=3D"Arial">port</FONT></SPAN><SPAN LANG=3D"en-us"></SPAN><SPAN =
+LANG=3D"en-us"> <FONT SIZE=3D2 FACE=3D"Arial">1434.&nbsp; This caused =
+sporadic</FONT></SPAN><SPAN LANG=3D"en-us"></SPAN><SPAN LANG=3D"en-us"> =
+<FONT SIZE=3D2 FACE=3D"Arial">NFS lockups for mounts</FONT></SPAN><SPAN =
+LANG=3D"en-us"></SPAN><SPAN LANG=3D"en-us"> <FONT SIZE=3D2 =
+FACE=3D"Arial">outside</FONT></SPAN><SPAN LANG=3D"en-us"></SPAN><SPAN =
+LANG=3D"en-us"><FONT SIZE=3D2 FACE=3D"Arial"> the local subnet subject =
+to the</FONT></SPAN><SPAN LANG=3D"en-us"></SPAN><SPAN LANG=3D"en-us"> =
+<FONT SIZE=3D2 FACE=3D"Arial">port blocking</FONT></SPAN><SPAN =
+LANG=3D"en-us"></SPAN><SPAN LANG=3D"en-us"><FONT SIZE=3D2 =
+FACE=3D"Arial">.</FONT></SPAN><SPAN LANG=3D"en-us"></SPAN><SPAN =
+LANG=3D"en-us"><FONT SIZE=3D2 FACE=3D"Arial"></FONT></SPAN><SPAN =
+LANG=3D"en-us"></SPAN><SPAN LANG=3D"en-us">&nbsp;<FONT SIZE=3D2 =
+FACE=3D"Arial"> Once the port blocking was cleared from the routers, NFS =
+connections freed up and started working again.</FONT></SPAN><SPAN =
+LANG=3D"en-us"></SPAN><SPAN LANG=3D"en-us"><FONT SIZE=3D2 =
+FACE=3D"Arial"> What part of NFS</FONT></SPAN><SPAN =
+LANG=3D"en-us"></SPAN><SPAN LANG=3D"en-us"> <FONT SIZE=3D2 =
+FACE=3D"Arial">should be</FONT></SPAN><SPAN LANG=3D"en-us"></SPAN><SPAN =
+LANG=3D"en-us"> <FONT SIZE=3D2 FACE=3D"Arial">using UDP port =
+1434?</FONT></SPAN><SPAN LANG=3D"en-us"></SPAN><SPAN =
+LANG=3D"en-us"><FONT SIZE=3D2 FACE=3D"Arial">&nbsp;</FONT></SPAN><SPAN =
+LANG=3D"en-us"></SPAN><SPAN LANG=3D"en-us"> </SPAN></P>
 
+<P ALIGN=3DLEFT><SPAN LANG=3D"en"></SPAN><A NAME=3D""><SPAN =
+LANG=3D"en">Gerry</SPAN></A><SPAN LANG=3D"en-us"></SPAN><SPAN =
+LANG=3D"en"> </SPAN></P>
+<BR>
+
+<P ALIGN=3DLEFT><SPAN LANG=3D"en-us"></SPAN></P>
+
+</BODY>
+</HTML>
+------_=_NextPart_001_01C2C94D.3C72C228--
 
 
 -------------------------------------------------------
