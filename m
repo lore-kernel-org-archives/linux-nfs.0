@@ -1,15 +1,19 @@
-From: "Russ Fink" <russfink@hotmail.com>
-Subject: mount(2) returns EINVAL - programming prob
-Date: Sat, 16 Mar 2002 09:21:41 -0500
+From: =?iso-8859-1?Q?Thomas_Lang=E5s?= <tlan@stud.ntnu.no>
+Subject: Re: NFS Performance issues...
+Date: Sat, 16 Mar 2002 16:34:51 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <F1030nmR1sjVfuscsEK00000f79@hotmail.com>
+Message-ID: <20020316163451.A9226@stud.ntnu.no>
+References: <038201c1cc7b$5c8be400$2651a641@laptop>
+Reply-To: nfs@lists.sourceforge.net
 Mime-Version: 1.0
-Content-Type: text/plain; format=flowed
-Received: from f103.law3.hotmail.com ([209.185.241.103] helo=hotmail.com)
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
+Received: from flaske.stud.ntnu.no ([129.241.56.72])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16mF4C-0006xP-00
-	for <nfs@lists.sourceforge.net>; Sat, 16 Mar 2002 06:21:52 -0800
-To: nfs@lists.sourceforge.net
+	id 16mGCt-0001zC-00
+	for <nfs@lists.sourceforge.net>; Sat, 16 Mar 2002 07:34:55 -0800
+To: Matt Heaton <admin@0catch.com>
+In-Reply-To: <038201c1cc7b$5c8be400$2651a641@laptop>; from admin@0catch.com on Fri, Mar 15, 2002 at 04:44:27PM -0700
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -22,40 +26,17 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hello,
+Matt Heaton:
+> I run a fairly large free/paid hosting service.  We have about 8 webservers (NFS Clients) that hook up to a single NFS server box.  We
+> are having SEVERE performance issues.  The clients are READ ONLY clients.  We have set the rsize to 8192 bytes, but otherwise
+> are using the standard setup.  The NFS server seems to be able to only serve about 11 Mbits of data before it dies?  Is this typical
+> performace?  We are mostly serving web pages so most files are small although some are bigger (3-5 megabytes).  Both the clients
+> are the server are redhat 7.2  (NFS 3)
 
-I am using the UNIX mount(2) system call, and it's returning EINVAL.
+You fail to mention what kernel version you're running?
 
-If this isn't the proper forum for this question, could somebody kindly 
-redirect me?  Thanks, now for the problem.
-
-I have a piece of code that I inherited (similar to inheriting 24 cats from 
-late Aunt Hildebrandt) and is using the mount system call.
-
-For some reason, it is returning the perror "mount: Invalid argument".  I 
-inserted some fprintf's and found that the error value is EINVAL.
-
-The man page for mount (mount(2)) says that EINVAL can be caused by a lot of 
-conditions - it seems to be a glorious catch-all error code, same as when 
-your "brake" light goes on in your car (meaning, for example, that one of 
-the 24 cats crawled into your air intake).
-
-Has anyone had experience with mount(2), and/or resolving or chasing a 
-EINVAL problem?  If so, and you need more details, I can provide them and/or 
-repost.  Hopefully there's some simple way other than instrumenting the 
-source to mount() or running under the debugger to figure it out.
-
-[Does anyone even know what library mount(2) resides in?]
-
-Thanks,
-Russ Fink
-
-[The 24 cat example was purely hypothetical.  It was actually only 23. :-]
-
-
-_________________________________________________________________
-Get your FREE download of MSN Explorer at http://explorer.msn.com/intl.asp.
-
+-- 
+Thomas
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
