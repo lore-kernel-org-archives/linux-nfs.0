@@ -1,23 +1,28 @@
-From: Frank van Maarseveen <frankvm@xs4all.nl>
+From: Jos van Wezel <jvw@iwr.fzk.de>
 Subject: Re: permission bits for group not honoured on directory creation
-Date: Thu, 2 Sep 2004 23:00:05 +0200
+Date: Thu, 2 Sep 2004 23:36:06 +0200 (CEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040902210005.GB4801@janus>
-References: <E1C1GJx-00018A-2R@sc8-sf-list2.sourceforge.net> <Pine.LNX.4.44.0409022203580.17829-100000@hikjos.fzk.de>
+Message-ID: <Pine.LNX.4.44.0409022332120.18039-100000@hikjos.fzk.de>
+References: <20040902210005.GB4801@janus>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C2ygi-0001sl-PA
-	for nfs@lists.sourceforge.net; Thu, 02 Sep 2004 14:00:08 -0700
-Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1C2ygh-0005B3-B4
-	for nfs@lists.sourceforge.net; Thu, 02 Sep 2004 14:00:08 -0700
-To: Jos van Wezel <jvw@iwr.fzk.de>
-In-Reply-To: <Pine.LNX.4.44.0409022203580.17829-100000@hikjos.fzk.de>
+	id 1C2zFg-0008T9-Pb
+	for nfs@lists.sourceforge.net; Thu, 02 Sep 2004 14:36:16 -0700
+Received: from fzkmail2.fzk.de ([141.52.27.52])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.34)
+	id 1C2zFf-0000aL-Vl
+	for nfs@lists.sourceforge.net; Thu, 02 Sep 2004 14:36:16 -0700
+Received: from hikjos.fzk.de (localhost [127.0.0.1])
+	by hikjos.fzk.de (8.12.3/8.12.3/SuSE Linux 0.6) with ESMTP id i82La6Jm018141
+	for <nfs@lists.sourceforge.net>; Thu, 2 Sep 2004 23:36:06 +0200
+Received: from localhost (jvw@localhost)
+	by hikjos.fzk.de (8.12.3/8.12.3/Submit) with ESMTP id i82La6Te018138
+	for <nfs@lists.sourceforge.net>; Thu, 2 Sep 2004 23:36:06 +0200
+To: nfs@lists.sourceforge.net
+In-Reply-To: <20040902210005.GB4801@janus>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,26 +35,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Sep 02, 2004 at 10:08:54PM +0200, Jos van Wezel wrote:
-> Dear all,
-> 
-> on an nfs v3 mounted file system (linux client and server):
-> 
-> # umask
-> 0002
-> # mkdir d
-> # ls -ld d
-> drwxr-xr-x    2 root     root         8192 Sep  2  2004 d/
-> #
+As Trond correctly hinted it had to do with the underlying file system
+which in our case is GPFS. Permissions on an exported ext3 fs work as
+expected.
 
-cannot reproduce. I would surely be bitten by such a bug.
+Thanks
 
-kernel versions ?
-client: how do the relevant /proc/mounts entries look?
-server: relevant /etc/exports lines?
+Jos
 
--- 
-Frank
+On Thu, 2 Sep 2004, Trond Myklebust wrote:
+
+> You've checked that the setgid bit is not set on the parent directory
+> and that the filesystem has not been mounted with the grpid/bsdgroups
+> option on the server?
+
+On Thu, 2 Sep 2004, Frank van Maarseveen wrote:
+
+>
+> cannot reproduce. I would surely be bitten by such a bug.
+>
+>
+
+
 
 
 -------------------------------------------------------
