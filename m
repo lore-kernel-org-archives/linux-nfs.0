@@ -1,16 +1,23 @@
-From: "Donny Grover" <Gydav@aol.com>
-Subject: embarrassment is the bedroom is NOT good ffsxcbnrznquohn
-Date: Sun, 22 Jun 03 13:45:27 GMT
+From: Michael Thomson <michael@canb.auug.org.au>
+Subject: Re: AIX and HP NFS client behaviour
+Date: Mon, 23 Jun 2003 16:37:16 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <8$8z$4-b-1g$069238$n6vnyi86p7j2@7gpvhpob974>
+Message-ID: <3EF6A01B.61276BC3@canb.auug.org.au>
+References: <3EED1FF7.4EBE7558@canb.auug.org.au>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="B.7B85C6A6C_B.AC_6F_2"
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from cblmdm63-164-252-154.buckeye-express.com ([63.164.252.154])
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19U9yG-0007mT-00
-	for <nfs@lists.sourceforge.net>; Sun, 22 Jun 2003 11:53:48 -0700
+Received: from mta03bw.bigpond.com ([139.134.6.86])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19UKvy-0001LX-00
+	for <nfs@lists.sourceforge.net>; Sun, 22 Jun 2003 23:36:10 -0700
+Received: from localhost.localdomain ([144.135.24.78]) by
+          mta03bw.bigpond.com (Netscape Messaging Server 4.15 mta03bw Jul
+          16 2002 22:47:55) with SMTP id HGX8ZS00.C74 for
+          <nfs@lists.sourceforge.net>; Mon, 23 Jun 2003 16:35:52 +1000
+Received: from canb.auug.org.au (ssa14.worldgroup.com [203.2.203.114])
+	by localhost.localdomain (8.12.8/8.8.5) with ESMTP id h5N6ZtsY028613
+	for <nfs@lists.sourceforge.net>; Mon, 23 Jun 2003 16:35:57 +1000
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -24,44 +31,82 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+Hello All,
 
---B.7B85C6A6C_B.AC_6F_2
-Content-Type: text/html;
-Content-Transfer-Encoding: quoted-printable
+I posted this question a while back.
 
-<html><font color=3D"white">vikvoelnhgcfs
+We finally worked out what the problem was.  The NFS client
+implementation on AIX and HP had a 'flawed' behaviour when porcessing
+seek commands.  This caused the large number of writes and commits.  HP
+is currently working on a new Client to 'correct' this behaviour.
 
-loadahl jb k vxpyd hdvjjc s
- qlyxdifnpy 
-dbbgq
- jazzwa</font>
-</font><b><br>
-Get Hard!<br>
-Stay Hard!<br><br>
-Improve your sexual performance today and get a little something
-=FFFFFF91extra=FFFFFF92=
- to satisfy her<br>
-<br>
-Join thousands of satisfied customers by ordering today!
-<br><br>
-Give your partner the best afterglow she=FFFFFF92s ever experienced when
-you tak=
-e Zenextend penis enlargement pills.<br>  Guaranteed to lengthen, thicken =
-and empower your erections, try America=FFFFFF92s favorite today!
-<br>
-<a href=3D"http://incommutable@213.171.60.116/zenextend/2377/"> Check it o=
-ut today, and discover the sex life you deserve!</a><br>
-<br><br><font color=3D"white">tvsdazq owigzm drf</b>
-<br><br><br><br><br><br><br><br><br><br><font size=3D"1">
-<br><br><br><br><br><br><br><br><br><br>
-<A HREF=3D"http://213.171.60.116/remove/">
-<font color=3D"black"><font size=3D"1">Click Here</A> to remove yourself f=
-rom this opt-in/out list<br>
-</font><br><font color=3D"white">h dvzss  lhw cw <br>
+We were able to change our application space useage to reduce the
+'seeks' and make the problem go away.
 
---B.7B85C6A6C_B.AC_6F_2--
+Thanks for the replies,
+Michael.
 
+Michael Thomson wrote:
+> 
+> Hi all,
+> 
+> I have been investigating a problem we have been having with some of our
+> NFS clients.
+> 
+> Our setup is a large filesystem on a Linux server running kernel 2.4.20
+> with nfs-utils 1.0.1-2, with a number of clients each accessing their
+> own export of a portion of this filessystem.
+> 
+> With the majority of the clients (Linux, Sun, OS390 etc) we get expected
+> performance.  All the clients are using NFS version 3.
+> 
+> With AIX 4 and HP 11.00 we get acceptable performance when just copying
+> a file or generating a file from say /dev/zero.  The networking all
+> seems OK.  When we actually run some programs that write and read from
+> NFS we get terrible performance...
+> 
+> What I see when running these clients via nfsstat is:
+> Version 3: (548087 calls)
+> null                    getattr                 setattr
+> 0 0%                    610 0%                  6 0%
+> lookup                  access                  readlink
+> 416 0%                  56 0%                   0 0%
+> read                    write                   create
+> 530 0%                  273763 49%              33 0%
+> mkdir                   symlink                 mknod
+> 0 0%                    0 0%                    0 0%
+> remove                  rmdir                   rename
+> 16 0%                   0 0%                    0 0%
+> link                    readdir                 readdir+
+> 0 0%                    0 0%                    4 0%
+> fsstat                  fsinfo                  pathconf
+> 0 0%                    0 0%                    0 0%
+> commit
+> 272653 49%
+> 
+> Basically every write is followed by a commit.  When looking at the
+> tcpdump for the same run I see the same thing (as I would expect, but
+> just wanted to confirm what nfsstat was saying)
+> 
+> I initially suspected sync/async issues causing constant commits but
+> have tried many different combinations and the problem does not change.
+> 
+> Does anyone have any idea's of what is causing this 1:1 relationship
+> between writes amd commits?
+> 
+> Does anyone know how to correct the behaviour for AIX4 and HP 11 nfs
+> clients?
+> 
+> Thanks in advance for any information.
+> Michael Thomson
+> 
+> -------------------------------------------------------
+> This SF.NET email is sponsored by: eBay
+> Great deals on office technology -- on eBay now! Click here:
+> http://adfarm.mediaplex.com/ad/ck/711-11697-6916-5
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
 
 
 -------------------------------------------------------
