@@ -1,57 +1,47 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Move (mv) hangs with NFSv4
-Date: Tue, 15 Mar 2005 17:31:25 -0500
-Message-ID: <20050315223125.GE11916@fieldses.org>
-References: <1102097931.10878.21.camel@lade.trondhjem.org> <20041207155227.GG31250@fieldses.org> <41B61C89.2060000@drzeus.cx> <20041207211715.GQ31250@fieldses.org> <41B6E933.4090708@drzeus.cx> <41D84216.9060504@drzeus.cx> <20050312185119.GA1064@fieldses.org> <42346C15.4080402@drzeus.cx> <20050313164804.GA10992@fieldses.org> <4235B5C4.7060800@drzeus.cx>
+From: Neil Conway <nconway_kernel@yahoo.co.uk>
+Subject: Re: NFS client bug in 2.6.8-2.6.11
+Date: Tue, 15 Mar 2005 23:44:15 +0000 (GMT)
+Message-ID: <20050315234415.71730.qmail@web26510.mail.ukl.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DBKZ2-0000sI-Ny
-	for nfs@lists.sourceforge.net; Tue, 15 Mar 2005 14:31:00 -0800
-Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1DBKZ1-0003WC-7o
-	for nfs@lists.sourceforge.net; Tue, 15 Mar 2005 14:31:00 -0800
-To: Pierre Ossman <drzeus-list@drzeus.cx>
-In-Reply-To: <4235B5C4.7060800@drzeus.cx>
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain; charset=US-ASCII
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	lkml <linux-kernel@vger.kernel.org>, nfs@lists.sourceforge.net
+To: Bernardo Innocenti <bernie@develer.com>,
+	Anders Saaby <as@cohaesio.com>
+In-Reply-To: 6667
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Mon, Mar 14, 2005 at 05:03:16PM +0100, Pierre Ossman wrote:
-> I've tried the patch and the problem remains.
+Hi Bernardo (et al).  Apologies - I've not been reading my account for
+a wee while.  Then again, I probably don't have much useful to add to
+the debate right now ;-)
+
+--- Bernardo Innocenti <bernie@develer.com> wrote:
+> Anders Saaby wrote:
+> > Anyways if your server has only run with 2.6.10 - try 2.6.11.
 > 
-> [root@apollo home]# ~/mv ~/freedesktop.org.xml .
-> Updating timestamps...done
-> Updating ownership...
-> 
-> (this is my hacked mv which lists each operation as it is performed)
+> Thank you, I've finally nailed it down by upgrading the
+> *server* kernel from 2.6.10-1.770_FC3 to 2.6.10-1.770_FC3.
 
-Hm.  Maybe my "mv" doesn't work quite the same as yours, but I'm not
-seeing this.  Could I see a raw packet trace?  (tcpdump s0 -wtmp, send
-me tmp.pcap).  Are you having any problems with rpc.idmapd dying on the
-server?
+Hmm, I will infer from a previous email you sent that you mean 766_FC3
+for the "from" kernel.
 
---b.
+> The latter is basically 2.6.10-ac12 plus a bunch of vendor
+> specific patches.
+
+766 -> 770 sounds like a "small" (ish) number of patches to check, if
+we're lucky.  Did you wade through 'em all yet?  Any smoking guns?
+
+Regards,
+Neil
+PS: oh bugger, just remembered that I also reproduced my bug with a
+2.6.8 kernel on the server; admittedly though it was an FC2 kernel so
+who knows what extra patches it had.
 
 
--------------------------------------------------------
-SF email is sponsored by - The IT Product Guide
-Read honest & candid reviews on hundreds of IT Products from real users.
-Discover which products truly live up to the hype. Start reading now.
-http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+
+		
+__________________________________ 
+Do you Yahoo!? 
+Make Yahoo! your home page 
+http://www.yahoo.com/r/hs
