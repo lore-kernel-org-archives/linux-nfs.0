@@ -1,26 +1,27 @@
 From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: mountd segmentation fault in nfs-utils-1.0.4 with 2.5.75-bk1
-Date: Tue, 15 Jul 2003 07:52:28 +1000
+Subject: Re: [PATCH] Add `no_acl' nfs export option
+Date: Tue, 15 Jul 2003 09:13:24 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16147.9756.934649.916082@gargle.gargle.HOWL>
-References: <OFB4201672.BB0C12E7-ON85256D63.00760144-86256D63.0077C456@pok.ibm.com>
+Message-ID: <16147.14612.324419.294401@gargle.gargle.HOWL>
+References: <200307081655.17510.agruen@suse.de>
+	<200307141309.44623.agruen@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net, linux-fsdevel@vger.kernel.org,
+   Steve Dickson <SteveD@redhat.com>,
+   =?iso-8859-1?q?R=FCdiger=20Oertl?= <ro@suse.de>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19cC2P-0006TE-00
-	for <nfs@lists.sourceforge.net>; Mon, 14 Jul 2003 15:43:17 -0700
+	id 19cCVz-0000A8-00
+	for <nfs@lists.sourceforge.net>; Mon, 14 Jul 2003 16:13:51 -0700
 Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
-	Tue, 15 Jul 2003 08:43:14 +1000
-Received: from neilb by notabene with local (Exim 3.36 #1 (Debian))
-	id 19cC2E-0007EB-00
-	for <nfs@lists.sourceforge.net>; Tue, 15 Jul 2003 08:43:06 +1000
-To: "Robert Williamson" <robbiew@us.ibm.com>
-Resent-Message-ID: <16147.12793.99236.954744@gargle.gargle.HOWL>
-In-Reply-To: message from Robert Williamson on Monday July 14
+	(for <agruen@suse.de>) (for <nfs@lists.sourceforge.net>)
+	(for <linux-fsdevel@vger.kernel.org>) (for <SteveD@redhat.com>)
+	(for <ro@suse.de>) By note With Smtp ;
+	Tue, 15 Jul 2003 09:13:44 +1000
+To: Andreas Gruenbacher <agruen@suse.de>
+In-Reply-To: message from Andreas Gruenbacher on Monday July 14
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -33,31 +34,51 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Monday July 14, robbiew@us.ibm.com wrote:
->=20
-> The mountd daemon segmentation faults after receiving a mount request=
- from
-> the client.  Checking /var/log/messages, I get some strange logs:
->=20
-> Jul 14 16:17:25 vega rpc.mountd: authenticated mount request from
-> \200a^U@\200a^U@H=E9^F^HH=E9^F^H\220a^U@\220a^U@\230a^U@\230a^U@=A0a^=
-U@=A0a^U@,=E8^F^H,=E8^F^H=B0a^U@=B0a^U@,a^U@,a^U@Aa^U@Aa^U@Ea^U@Ea^U@Da=
-^U@Da^U@Oa^U@Oa^U@=E0a^U@=E0a^U@=E8a^U@=E8a^U@oa^U@oa^U@oa^U@oa^U@:793
->  for /nfsserver/reiserfs (/nfsserver/reiserfs)
-> Jul 14 16:17:25 vega rpc.mountd: MNT1(/nfsserver/ext2) called
->=20
->=20
-> I attached an strace of the rpc.mountd pid during an unsuccessful mou=
-nt
-> request.  I can re-test this on 2.6.0-test1 if needed.
+On Monday July 14, agruen@suse.de wrote:
+> Hello,
+> 
+> I noticed that the bit I wanted is already reserved in nfs-utils-1.0.4. Here 
+> is an updated nfs-utils patch. I am also attaching a patch against 
+> linux-2.6.0-test1.
+> 
+> Could someone please reserve the bit? Thanks.
 
-Thanks.
-There is a stray 'free(hp)' at line 169 in utils/mountd/auth.c,
-in the middle of auth_authenticate.
-Could you remove that and try again? =20
+I'll definately reserve the bit, but I'm not very comfortable about
+this concept.
+My problem is that it doesn't seem clear how a sysadmin would decide
+how to set this bit.  It is not clear, at least from the manpage
+entry, exactly what the costs/benefits are of each setting, or how to
+find out whether given clients need a particular setting.
+
+Also, the manpage entry says in part:
+
+>    The
+> +.I no_acl
+> +option should be used for nfs exports with acl support that are exported
+> +to NFSv2 clients, or to NFSv3 clients that don't use the ACCESS RPC.
+
+Surely the nfs server can detect itself if a filesystem supports ACLs,
+and if a given request is arriving via NFSv2 or not, so it should be
+able to assume "no_acl" in that case.
+
+However this is actually a bit simplistic.  I think some NFSv2
+clients, solaris in particular, does not depend on the mode but
+performs zero-byte read and write requests to perform an equivalent
+function to ACCESS.
+
+Can you tell me concisely but precisely, possibly in the form of a
+manpage entry,
+  What is the cost of always using no_acl?
+  What is the cost of never using no_acl?
+  How do I determine which cost is greater in a given situation?
+
+It would really like it if the option could be avoided altogether.
+e.g. default to assume "no_acl" but switch to "acl" for a given client
+for v3 access if an ACCESS request is seen, and for v2 access if a
+zero byte READ or WRITE is seen.  Would that even come close to
+working?
 
 NeilBrown
-
 
 
 -------------------------------------------------------
