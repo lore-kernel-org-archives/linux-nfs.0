@@ -1,38 +1,124 @@
-From: Hadmut Danisch <hadmut@danisch.de>
-Subject: Re: NFS incompatible with Solaris jumpstart
-Date: Mon, 4 Oct 2004 10:11:30 +0200
+From: Steve Dickson <SteveD@redhat.com>
+Subject: [PATCH] lockd
+Date: Mon, 04 Oct 2004 12:24:56 -0400
 Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <20041004081130.GA17971@danisch.de>
-References: <Pine.HPX.4.58L.0410040041270.2874@punch.eng.cam.ac.uk>
+Message-ID: <41617958.2020406@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel=40m.gmane.org-S267777AbUJDIPT@vger.kernel.org>
-To: "P. Benie" <pjb1008@eng.cam.ac.uk>
-In-Reply-To: <Pine.HPX.4.58L.0410040041270.2874@punch.eng.cam.ac.uk>
+Content-Type: multipart/mixed;
+ boundary="------------040707060907060701080609"
+Cc: linux-kernel <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel=40m.gmane.org-S268004AbUJDQX2@vger.kernel.org>
+To: nfs@lists.sourceforge.net
 List-ID: <nfs.lists.sourceforge.net>
 
-On Mon, Oct 04, 2004 at 01:10:46AM +0100, P. Benie wrote:
-> Re your jumpstart problem - a colleague in another department had trouble
-> with this once. I don't think he had the time to fix the problem.
-> 
-> He did get as far as finding that the client got an error from the NFS
-> server when accessing /dev/console. This would give the impression of
-> hanging as soon as the kernel starts init. It should be easy to verify if
-> you have the same problem using tcpdump.
+This is a multi-part message in MIME format.
+--------------040707060907060701080609
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
+
+Hey Neil,
+
+Attached is a patch that fixes some potential SMP races
+in the lockd code that were identified by the SLEEP_ON_BKLCHECK
+that was (at one time) in the -mm tree...
+
+Signed-Off-By: Steve Dickson <SteveD@RedHat.com>
 
 
-/dev/ was a good hint. I found the problem:
 
-When booting the Solaris system wants to write to the 
-Boot environment (nasty, isn't it?).
+--------------040707060907060701080609
+Content-Type: text/x-patch;
+ name="linux-2.6.9-rc3-mm2-lockd-smprace.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="linux-2.6.9-rc3-mm2-lockd-smprace.patch"
 
-Since the userspace daemon doesn't understand the /etc/exports syntax
-of the kernel version, I wrote a different, simplified /etc/exports
-for the userspace daemon. 
+--- 2.6.9-rc3-mm2/fs/lockd/clntlock.c.old	2004-10-04 09:32:20.404018000 -0400
++++ 2.6.9-rc3-mm2/fs/lockd/clntlock.c	2004-10-04 11:29:38.940621000 -0400
+@@ -50,14 +50,19 @@ nlmclnt_block(struct nlm_host *host, str
+ 	struct nlm_wait	block, **head;
+ 	int		err;
+ 	u32		pstate;
++	wait_queue_t __wait;
+ 
+ 	block.b_host   = host;
+ 	block.b_lock   = fl;
+-	init_waitqueue_head(&block.b_wait);
+ 	block.b_status = NLM_LCK_BLOCKED;
++	init_waitqueue_entry(&__wait, current);
++	init_waitqueue_head(&block.b_wait);
++	add_wait_queue(&block.b_wait, &__wait);
++
+ 	block.b_next   = nlm_blocked;
+ 	nlm_blocked    = &block;
+ 
++
+ 	/* Remember pseudo nsm state */
+ 	pstate = host->h_state;
+ 
+@@ -69,7 +74,7 @@ nlmclnt_block(struct nlm_host *host, str
+ 	 * a 1 minute timeout would do. See the comment before
+ 	 * nlmclnt_lock for an explanation.
+ 	 */
+-	sleep_on_timeout(&block.b_wait, 30*HZ);
++	schedule_timeout(30*HZ);
+ 
+ 	for (head = &nlm_blocked; *head; head = &(*head)->b_next) {
+ 		if (*head == &block) {
+@@ -77,6 +82,7 @@ nlmclnt_block(struct nlm_host *host, str
+ 			break;
+ 		}
+ 	}
++	remove_wait_queue(&block.b_wait, &__wait);
+ 
+ 	if (!signalled()) {
+ 		*statp = block.b_status;
+--- 2.6.9-rc3-mm2/fs/lockd/svc.c.old	2004-10-04 09:32:20.417019000 -0400
++++ 2.6.9-rc3-mm2/fs/lockd/svc.c	2004-10-04 11:27:54.868205000 -0400
+@@ -278,6 +278,8 @@ void
+ lockd_down(void)
+ {
+ 	static int warned;
++	wait_queue_t __wait;
++	int retries=0;
+ 
+ 	down(&nlmsvc_sema);
+ 	if (nlmsvc_users) {
+@@ -294,20 +296,33 @@ lockd_down(void)
+ 	warned = 0;
+ 
+ 	kill_proc(nlmsvc_pid, SIGKILL, 1);
++
++	init_waitqueue_entry(&__wait, current);
++	add_wait_queue(&lockd_exit,  &__wait);
++
+ 	/*
+ 	 * Wait for the lockd process to exit, but since we're holding
+ 	 * the lockd semaphore, we can't wait around forever ...
+ 	 */
+ 	clear_thread_flag(TIF_SIGPENDING);
+-	interruptible_sleep_on_timeout(&lockd_exit, HZ);
+-	if (nlmsvc_pid) {
++	set_current_state(TASK_UNINTERRUPTIBLE);
++	while (nlmsvc_pid) {
++
++		schedule_timeout(HZ);
++		if (retries++ < 3)
++			continue;
++
+ 		printk(KERN_WARNING 
+ 			"lockd_down: lockd failed to exit, clearing pid\n");
+ 		nlmsvc_pid = 0;
+ 	}
++	set_current_state(TASK_RUNNING);
++	remove_wait_queue(&lockd_exit,  &__wait);
++
+ 	spin_lock_irq(&current->sighand->siglock);
+ 	recalc_sigpending();
+ 	spin_unlock_irq(&current->sighand->siglock);
++
+ out:
+ 	up(&nlmsvc_sema);
+ }
 
-The userspace daemon allowed write access, the kernel version didn't. 
-That was the problem.
-
-regards
-Hadmut
+--------------040707060907060701080609--
