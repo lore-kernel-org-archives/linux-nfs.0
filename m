@@ -1,17 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 5 of 8 - Make sure unused bits of NFSv4 xfr buffered are zero..
+Subject: [PATCH] kNFSd - 7 of 8 - Do NFSv4 server state initialisation when nfsd starts instead of when module loaded.
 Date: Wed, 18 Jun 2003 09:51:37 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19SQEj-00083g-00@notabene>
+Message-ID: <E19SQEj-000840-00@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19SQBP-0002UU-00
-	for <nfs@lists.sourceforge.net>; Tue, 17 Jun 2003 16:48:11 -0700
+	id 19SQBV-0002YH-00
+	for <nfs@lists.sourceforge.net>; Tue, 17 Jun 2003 16:48:17 -0700
 Received: From notabene ([129.94.172.124] == notabene.cse.unsw.EDU.AU)
 	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>) By
-	tone With Smtp ; Wed, 18 Jun 2003 09:47:01 +1000
+	tone With Smtp ; Wed, 18 Jun 2003 09:47:29 +1000
 To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -27,21 +27,74 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 ### Comments for ChangeSet
 
- ----------- Diffstat output ------------
- ./fs/nfsd/nfs4xdr.c |    1 +
- 1 files changed, 1 insertion(+)
+From: "William A.(Andy) Adamson" <andros@citi.umich.edu>
 
-diff ./fs/nfsd/nfs4xdr.c~current~ ./fs/nfsd/nfs4xdr.c
---- ./fs/nfsd/nfs4xdr.c~current~	2003-06-18 09:24:29.000000000 +1000
-+++ ./fs/nfsd/nfs4xdr.c	2003-06-18 09:30:43.000000000 +1000
-@@ -1039,6 +1039,7 @@ nfsd4_decode_compound(struct nfsd4_compo
- 	*p++ = htonl((u32)(n));					\
- } while (0)
- #define WRITEMEM(ptr,nbytes)     do {				\
-+	*(p + XDR_QUADLEN(nbytes) -1) = 0;                      \
- 	memcpy(p, ptr, nbytes);					\
- 	p += XDR_QUADLEN(nbytes);				\
- } while (0)
+ ----------- Diffstat output ------------
+ ./fs/nfsd/nfs4state.c |    5 +++++
+ ./fs/nfsd/nfsctl.c    |    1 -
+ ./fs/nfsd/nfssvc.c    |    1 +
+ 3 files changed, 6 insertions(+), 1 deletion(-)
+
+diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
+--- ./fs/nfsd/nfs4state.c~current~	2003-06-18 09:30:53.000000000 +1000
++++ ./fs/nfsd/nfs4state.c	2003-06-18 09:31:07.000000000 +1000
+@@ -55,6 +55,7 @@ time_t boot_time;
+ static u32 current_clientid = 1;
+ static u32 current_ownerid = 0;
+ static u32 current_fileid = 0;
++static u32 nfs4_init = 0;
+ 
+ /* debug counters */
+ u32 list_add_perfile = 0; 
+@@ -1158,6 +1159,8 @@ nfs4_state_init(void)
+ {
+ 	int i;
+ 
++	if (nfs4_init)
++		return;
+ 	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
+ 		INIT_LIST_HEAD(&conf_id_hashtbl[i]);
+ 		INIT_LIST_HEAD(&conf_str_hashtbl[i]);
+@@ -1175,6 +1178,7 @@ nfs4_state_init(void)
+ 	boot_time = get_seconds();
+ 	INIT_WORK(&laundromat_work,laundromat_main, NULL);
+ 	schedule_delayed_work(&laundromat_work, NFSD_LEASE_TIME*HZ);
++	nfs4_init = 1;
+ 
+ }
+ 
+@@ -1197,6 +1201,7 @@ __nfs4_state_shutdown(void)
+ 	release_all_files();
+ 	cancel_delayed_work(&laundromat_work);
+ 	flush_scheduled_work();
++	nfs4_init = 0;
+ 	dprintk("NFSD: list_add_perfile %d list_del_perfile %d\n",
+ 			list_add_perfile, list_del_perfile);
+ 	dprintk("NFSD: add_perclient %d del_perclient %d\n",
+
+diff ./fs/nfsd/nfsctl.c~current~ ./fs/nfsd/nfsctl.c
+--- ./fs/nfsd/nfsctl.c~current~	2003-06-18 09:31:07.000000000 +1000
++++ ./fs/nfsd/nfsctl.c	2003-06-18 09:31:07.000000000 +1000
+@@ -453,7 +453,6 @@ static int __init init_nfsd(void)
+ 	nfsd_cache_init();	/* RPC reply cache */
+ 	nfsd_export_init();	/* Exports table */
+ 	nfsd_lockd_init();	/* lockd->nfsd callbacks */
+-	nfs4_state_init();      /* NFSv4 State */
+ 	if (proc_mkdir("fs/nfs", 0)) {
+ 		struct proc_dir_entry *entry;
+ 		entry = create_proc_entry("fs/nfs/exports", 0, NULL);
+
+diff ./fs/nfsd/nfssvc.c~current~ ./fs/nfsd/nfssvc.c
+--- ./fs/nfsd/nfssvc.c~current~	2003-06-18 09:31:07.000000000 +1000
++++ ./fs/nfsd/nfssvc.c	2003-06-18 09:31:07.000000000 +1000
+@@ -91,6 +91,7 @@ nfsd_svc(unsigned short port, int nrserv
+ 	
+ 	/* Readahead param cache - will no-op if it already exists */
+ 	error =	nfsd_racache_init(2*nrservs);
++	nfs4_state_init();
+ 	if (error<0)
+ 		goto out;
+ 	if (!nfsd_serv) {
 
 
 -------------------------------------------------------
