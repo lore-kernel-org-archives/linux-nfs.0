@@ -1,22 +1,27 @@
-From: Goutham Kurra <kurrag1@yahoo.com>
-Subject: strange behavior with gigE switch and 2.4.22 kernel
-Date: Sat, 21 Aug 2004 14:04:27 -0700 (PDT)
+From: ms419@freezone.co.uk
+Subject: F_SETLK failed, file already locked by pid 0
+Date: Sun, 22 Aug 2004 15:50:19 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040821210427.8014.qmail@web20528.mail.yahoo.com>
-References: <Pine.LNX.4.60.0408201303120.7569@harp.ngdc.noaa.gov>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Message-ID: <A4B2A13E-F48D-11D8-A02C-000A95C71776@freezone.co.uk>
+Mime-Version: 1.0 (Apple Message framework v613)
+Content-Type: text/plain; charset=US-ASCII; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Byd2L-0005dD-Rp
-	for nfs@lists.sourceforge.net; Sat, 21 Aug 2004 14:04:29 -0700
-Received: from web20528.mail.yahoo.com ([216.136.227.63])
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.34)
-	id 1Byd2J-0007VU-GB
-	for nfs@lists.sourceforge.net; Sat, 21 Aug 2004 14:04:29 -0700
+	id 1Bz1AL-00032Y-DH
+	for nfs@lists.sourceforge.net; Sun, 22 Aug 2004 15:50:21 -0700
+Received: from outbound02.telus.net ([199.185.220.221] helo=priv-edtnes09.telusplanet.net)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
+	id 1Bz1AK-0002ii-08
+	for nfs@lists.sourceforge.net; Sun, 22 Aug 2004 15:50:21 -0700
+Received: from tor.lat ([154.5.5.164]) by priv-edtnes09.telusplanet.net
+          (InterMail vM.6.01.03.03 201-2131-111-105-20040624) with ESMTP
+          id <20040822225010.WTFN14828.priv-edtnes09.telusplanet.net@tor.lat>
+          for <nfs@lists.sourceforge.net>; Sun, 22 Aug 2004 16:50:10 -0600
+Received: from [192.168.179.43] (fis.lat [192.168.179.43])
+	by tor.lat (Postfix) with ESMTP id B2A3F11E8F3
+	for <nfs@lists.sourceforge.net>; Sun, 22 Aug 2004 15:50:09 -0700 (PDT)
 To: nfs@lists.sourceforge.net
-In-Reply-To: <Pine.LNX.4.60.0408201303120.7569@harp.ngdc.noaa.gov>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -29,48 +34,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+I suspect locking isn't working:
 
+F_SETLK failed, file already locked by pid 0
 
-I have the following configuration:
+I encounter this error with a user mode linux root image on an NFS 
+mount, but not with an image on a local file system. An image on an NFS 
+mount should work, provided locking works.
 
-1. linux nfs client kernel 2.4.22 with nfs (client,
-sunrpc, lockd) patches applied from trond's 2.4.22
-patches. (have run connectathon on this with linux nfs
-server backend successfully)
+The NFS client is running NFS 1.0.6 & a custom 2.6.7 kernel. The NFS 
+server is running NFS kernel server 1.0.6 & a custom 2.4.27 kernel. 
+Everything I've read claims that locking is now implemented in the 
+linux NFS kernel server. A lockd process is running on both the client 
+& the server. According to all the documentation I've read, locking 
+should be working; what am I missing? Pointers to diagnostic 
+information, configuration, & documentation much appreciated!
 
-2. netapp nfs server (F760).
+Why isn't locking working?
 
-There's a gigE switch inbetween the client and server.
+Thanks,
 
-With a gigE switch in between, the 2.4.22 client
-mounts the filesystem, but hangs indefinitely on a
-'ls' on the mount. tcpdump shows that the readdir
-request is being retransmitted over and over again.
+Jack
 
-When I replace the gigE switch with a 100/FE switch,
-everything works great.
-
-When I keep the gigE switch and use a stock redhat 9
-(kernel 2.4.20-6) linux client, everything seems to
-work well too.
-
-So here's the problematic combination: linux 2.4.22
-(with or without trond's patches), gigE switch in
-between, and netapp nfs filer.
-
-Any ideas on what's going on, or how I should begin to
-troubleshoot/debug it?
-
-thanks,
-goutham
-
-
-
-		
-__________________________________
-Do you Yahoo!?
-Yahoo! Mail - Helps protect you from nasty viruses.
-http://promotions.yahoo.com/new_mail
 
 
 -------------------------------------------------------
