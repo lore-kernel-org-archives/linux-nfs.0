@@ -1,14 +1,12 @@
-From: "Adriana Kraft" <do7d7n955azz@earthlink.net>
-Subject: Need Debt Relief?  We Can Help! eudbh g
-Date: Tue, 29 Jan 02 15:46:07 GMT
+From: =?iso-8859-1?Q?Peter_=C5strand?= <astrand@lysator.liu.se>
+Subject: Soft vs Hard mounts
+Date: Fri, 16 May 2003 09:43:59 +0200 (CEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <f11spv4r7-c$p0-$uzs32kug$mbr@7s3w.8.75z2>
+Message-ID: <Pine.LNX.4.44.0305160902290.29488-100000@aristocat.lysator.liu.se>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="3E76A03F..2DDC50B."
-Cc: <nms-cgi-support@lists.sourceforge.net>, <nms-cgi.support@lists.sourceforge.net>, <ofset-members@lists.sourceforge.net>, <opennap-admin@lists.sourceforge.net>
+Content-Type: TEXT/PLAIN; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: nfs@lists.sourceforge.net
+To: nfs@sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -21,79 +19,43 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
 
---3E76A03F..2DDC50B.
-Content-Type: text/html;
-Content-Transfer-Encoding: quoted-printable
+> if using hardmounts, everybody sits and wait for the other server
+> to come back online... if and when it does, and if it comes up
+> at some other ip# or some other nfs ports, other pcs need to be
+> rebooted too
+>         - i dont like waiting around or rebooting
 
-<html><head>
-<title>bidirectional</title>
-</head>
-<body>
-<table border=3D"0" width=3D"640">
+Question: Why is this soft-vs-hard-mount debate so common in the Linux NF=
+S=20
+world, but not in, for example, the Solaris community?=20
 
-  <tr>
+My answer: Because Solaris has a better "umount -f" command. Linux users
+want to use soft mounts to avoid rebooting in case of an unavailable
+server. Solaris users can use "umount -f" instead.
 
-    <td width=3D"193"></td>
+In case you don't know what Solaris umount -f does, here's the man page=20
+info:
 
-    <td width=3D"447" valign=3D"top"><table border=3D"1" width=3D"73%" bor=
-dercolor=3D"#0000FF"
+     -f    Forcibly unmount a file system.
 
-    cellspacing=3D"1">
+           Without this option, umount does not allow a file sys-
+           tem  to  be  unmounted if a file on the file system is
+           busy. Using this option can cause data loss  for  open
+           files; programs which access files after the file sys-
+           tem has been unmounted will get an error (EIO).
 
-      <tr>
+umount -f is much better than soft mounts: Even though it can lead to dat=
+a=20
+loss/corruption, you have to invoke this command manually. Data=20
+loss/corruption won't occur behind your back, whenever a timeout occurs.=20
 
-        <td width=3D"100%">
-            <p align=3D"center"><strong><font face=3D"Verdana">&quot;NEW D=
-EBT CONSOLIDATION 
-              PROGRAM ALLOWS CONSUMERS TO SETTLE ALL THEIR DEBT FOR JUST P=
-ENNIES 
-              ON THE DOLLAR&quot;</font></strong></p>
+It would be really nice with this kind of "umount -f" in Linux.=20
 
-        <table border=3D"0" width=3D"100%" bgcolor=3D"#808000">
+--=20
+/Peter =C5strand <astrand@lysator.liu.se>
 
-          <tr>
 
-                <td width=3D"100%"> 
-   <img border=3D"0" src=3D"http://sparkle:sheathe@www.debteasy1=
-23.com/Debt/pc1.jpg" width=3D"349" height=3D"230">
-
-            </td>
-
-          </tr>
-
-        </table>
-
-        <p align=3D"center">
-<a href=3D"http://crayon:sproul@www.debteasy123.com/index.php"=
-><font face=3D"Verdana">
-<strong><big><big>CLICK HERE
-
-        NOW FOR MORE INFO</big></big></strong></font></a></p>
-
-        <p align=3D"center"><strong><small><font face=3D"Verdana">No oblig=
-ation - Find out more</font></small></strong></td>
-
-      </tr>
-
-    </table>
-
-    </td>
-
-  </tr>
-
-</table>
-<p><small><small><font size=3D"+1">To be removed from this mailing list, c=
-lick <a href=3D"mailto:unsubscribe123@web.de?Subject=3DREMOVE">here</a></f=
-ont></small></small></p>
-</body>
-
-</html>yemqolfckvfjklj zwwo z hy
-fperpetuateipvcsb werdqv
-rmngubanrknxc
-
---3E76A03F..2DDC50B.--
 
 
 
