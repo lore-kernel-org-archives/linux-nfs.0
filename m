@@ -1,23 +1,30 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: 2.4.21 NFSv3 performance graph
-Date: Thu, 17 Feb 2005 11:00:30 -0500
-Message-ID: <20050217160029.GC26738@fieldses.org>
-References: <41E816B3.4030702@mitre.org> <1105747170.28849.22.camel@lade.trondhjem.org> <41F13749.4090900@int-evry.fr> <1106329537.9849.68.camel@lade.trondhjem.org> <41FB6A10.6000001@int-evry.fr> <006701c50627$81122b70$06000800@americas.hpqcorp.net> <41FCC5FF.6030703@int-evry.fr> <4214A200.3040206@int-evry.fr>
+From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
+Subject: Re: NFS readonly failover and linux?
+Date: Fri, 18 Feb 2005 11:08:25 -0800
+Message-ID: <1108753705.5897.114.camel@seki.nac.uci.edu>
+References: <1106871309.6181.254.camel@seki.nac.uci.edu>
+	 <Pine.LNX.4.61.0501291127450.1607@donald.themaw.net>
+	 <1107205302.4071.17.camel@seki.nac.uci.edu>
+	 <Pine.LNX.4.58.0502010945400.25875@wombat.indigo.net.au>
+	 <16895.57760.531261.8465@segfault.boston.redhat.com>
+	 <1108677567.5897.55.camel@seki.nac.uci.edu>
+	 <Pine.LNX.4.58.0502181207490.20922@wombat.indigo.net.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Iozone <capps@iozone.org>, Trond Myklebust <trond.myklebust@fys.uio.no>,
-        Jeff Blaine <jblaine@mitre.org>, nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-YaBtl/z3N3I//KU+75ST"
+Cc: strombrg@dcs.nac.uci.edu, jmoyer@redhat.com,
+	autofs mailing list <autofs@linux.kernel.org>,
+	nfs@lists.sourceforge.net
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D1o52-0004aE-IR
-	for nfs@lists.sourceforge.net; Thu, 17 Feb 2005 08:00:40 -0800
-Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1D2DUN-0006Pa-K0
+	for nfs@lists.sourceforge.net; Fri, 18 Feb 2005 11:08:31 -0800
+Received: from dcs.nac.uci.edu ([128.200.34.32] ident=root)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1D1o51-00013s-3A
-	for nfs@lists.sourceforge.net; Thu, 17 Feb 2005 08:00:40 -0800
-To: "jehan.procaccia" <jehan.procaccia@int-evry.fr>
-In-Reply-To: <4214A200.3040206@int-evry.fr>
+	id 1D2DUN-0006ma-61
+	for nfs@lists.sourceforge.net; Fri, 18 Feb 2005 11:08:31 -0800
+To: Ian Kent <raven@themaw.net>
+In-Reply-To: <Pine.LNX.4.58.0502181207490.20922@wombat.indigo.net.au>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,26 +38,87 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Feb 17, 2005 at 02:54:08PM +0100, jehan.procaccia wrote:
-> Hello, I didn't received  any answer to the post below ...  anyway  ,  I 
-> finally published my iozone/bonnie++/tar bench here:
-> http://www.int-evry.fr/s2ia/user/procacci/Doc/NFS/nfs.html#htoc48
-> 
-> unfortunatly most of them are saturated by the 12.5MB (100Mb)  ethernet 
-> bottle neck, and for the iozone cache suppression I couldn't find a way 
-> to run corretly with the -U option (which mount/umount FS at every 
-> tests) because of this error on the nfs server:
-> rpc.mountd: refused mount request from arvouin.int-evry.fr for /p2v5f3 
-> (/p2v5f3): illegal port 34111
-> 
-> I must admit  that in the logs I occationnaly get this "illegal port" 
-> error , even for regular NFS clients (not only iozone testers !) .
-> Is this a bug ? a mis configuration ?
 
-It sounds like you just need to add the "insecure" export option to the
-relevant export in /etc/exports.  See "man exports".
+--=-YaBtl/z3N3I//KU+75ST
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
---Bruce Fields
+On Fri, 2005-02-18 at 12:09 +0800, Ian Kent wrote:
+
+> > > And please include the contents of your maps!
+> > >=20
+> > > -Jeff
+> >=20
+>=20
+> Short answer is no.
+>=20
+> > Here are the maps we use on Solaris 9.  Should they work the same way o=
+n
+> > RHEL 3?
+> >=20
+> > autoinst-strombrg> cat /etc/auto_dcslib
+> > /dcs -ro
+>   ^^^^
+> Single level direct mount entries don't yet work.
+
+What if we set up indirect mounts for /foo/dcs and /foo/dcslib, and then
+had symlinks from /dcs and /dcslib?
+
+> > dcslib1.nacs.uci.edu,dcslib2.nacs.uci.edu,dcslib3.nacs.uci.edu:/dcspdb/=
+sun4-5
+> > /dcslib -ro
+> > dcslib1.nacs.uci.edu,dcslib2.nacs.uci.edu,dcslib3.nacs.uci.edu:/dcspda
+> >=20
+> > autoinst-strombrg> cat /etc/auto_master
+> > # Master map for automounter
+> > #
+> > +auto.master
+> > /net            -hosts          -nosuid,nobrowse
+> > #/home          auto_home       -nobrowse
+> > /xfn            -xfn
+> > /-             auto_direct
+>                  ^^^^^^^^^^^ Don't you mean auto_dcslib?
+
+Apologies.  I got these maps from a system on which they were only
+vestigial.  Here are the maps from a system that's actually doing
+this :) :
+
+data-strombrg> cat /etc/auto_dcslib
+/dcs -ro
+dcslib1.nacs.uci.edu,dcslib2.nacs.uci.edu,dcslib3.nacs.uci.edu:/dcspdb/sun4=
+-5
+/dcslib -ro
+dcslib1.nacs.uci.edu,dcslib2.nacs.uci.edu,dcslib3.nacs.uci.edu:/dcspda
+
+data-strombrg> cat /etc/auto_master
+# Master map for automounter
+#
++auto.master
+/net            -hosts          -nosuid,nobrowse
+#/home          auto_home       -nobrowse
+#/xfn           -xfn
+/- auto_dcslib
+/- auto_dcs
+
+
+> >=20
+> >=20
+>=20
+
+--=-YaBtl/z3N3I//KU+75ST
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.6 (GNU/Linux)
+
+iD8DBQBCFj0po0feVm00f/8RAh0uAJ43lv5i/8eRNy1pBeXEqwTQ62E22ACcC6s8
+NLTr0QABUitoJv8JiNDCEM4=
+=FoPa
+-----END PGP SIGNATURE-----
+
+--=-YaBtl/z3N3I//KU+75ST--
+
 
 
 -------------------------------------------------------
