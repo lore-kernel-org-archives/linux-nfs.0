@@ -1,19 +1,19 @@
 From: "=?big5?q?aluba1231.tw?=" <aluba1231.tw@yahoo.com.tw>
 Subject: nfs server on mips platform?
-Date: Tue, 27 Apr 2004 17:13:34 +0800 (CST)
+Date: Tue, 27 Apr 2004 17:48:08 +0800 (CST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040427091334.25006.qmail@web17006.mail.tpe.yahoo.com>
+Message-ID: <20040427094808.98873.qmail@web17003.mail.tpe.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=big5
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BIOes-0007ur-2G
-	for nfs@lists.sourceforge.net; Tue, 27 Apr 2004 02:13:42 -0700
-Received: from web17006.mail.tpe.yahoo.com ([202.1.236.227])
+	id 1BIPCL-0008HQ-PT
+	for nfs@lists.sourceforge.net; Tue, 27 Apr 2004 02:48:17 -0700
+Received: from web17003.mail.tpe.yahoo.com ([202.1.236.224])
 	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
-	id 1BIOer-0001Bz-5i
-	for nfs@lists.sourceforge.net; Tue, 27 Apr 2004 02:13:41 -0700
+	id 1BIPCL-0007Cj-2l
+	for nfs@lists.sourceforge.net; Tue, 27 Apr 2004 02:48:17 -0700
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,6 +27,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hi All,
+ I am trying to set up a nfs server on the mipsel
+platform. I got the nfs-utils package and did
+configure/make  with cross compiling by
+mipsel-uclibc-gcc, but It failed while making. Because
+the tools rpcgen is also built to mips format. I tried
+to revise the Makefile to build rpcgen in x86 format,
+but it caused functions undefined reference problem.
+Below is the meessage of making.
+ 
+Thanks,
+Michael
 
 ading cache ./config.cache
 checking for gcc... (cached) mipsel-uclibc-gcc
@@ -253,6 +265,8 @@ make[3]: *** [mountd] Error 1
 make[2]: *** [all] Error 2
 make[1]: *** [all] Error 2
 
+
+ 
 
 
 -----------------------------------------------------------------
