@@ -1,23 +1,13 @@
-From: Ian Kent <raven@themaw.net>
-Subject: Re: RPC Time Out
-Date: Thu, 4 Dec 2003 14:15:44 +0800 (WST)
+From: Simon Nieuviarts <Simon.Nieuviarts@bull.net>
+Subject: IO error caused by a race in page cache
+Date: Thu, 4 Dec 2003 15:17:26 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.33.0312041408210.12549-100000@wombat.indigo.net.au>
-References: <Pine.LNX.4.33.0312040951120.7055-100000@wombat.indigo.net.au>
+Message-ID: <200312041457.13791.Simon.Nieuviarts@bull.net>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain;
+  charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1ARmkA-0000bM-Oe
-	for nfs@lists.sourceforge.net; Wed, 03 Dec 2003 22:13:42 -0800
-Received: from wombat.indigo.net.au ([202.0.185.19])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
-	id 1ARmkA-00034H-3R
-	for nfs@lists.sourceforge.net; Wed, 03 Dec 2003 22:13:42 -0800
-To: "Weber, Eugene F (Gene)" <efw@agere.com>
-In-Reply-To: <Pine.LNX.4.33.0312040951120.7055-100000@wombat.indigo.net.au>
+To: NFS@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,67 +20,55 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, 4 Dec 2003, Ian Kent wrote:
+Hi,
 
-> On Mon, 1 Dec 2003, Weber, Eugene F (Gene) wrote:
->
-> >
-> > SETTING UP THE CLIENT
-> > ====================
-> > rpcinfo -p on the Debian laptop gave an rpc error. I saw
-> > that none of the services existed anywhere on the
-> > machine. I installed package "portmap_5-2_i386.deb"
-> > and package "nfs-common_1.0-2_i386.deb". After the
-> > successful installs, portmap, statd and lockd all existed
-> > under /sbin. The installation also said it started each of
-> > the services. rpcinfo -p now showed:
-> >
-> > program vers proto port
-> > 100000 2 tcp 111 portmapper
-> > 100000 2 udp 111 portmapper
-> > 100024 1 udp 1024 status
-> > 100024 1 tcp 1024 status
-> >
-> > I though perhaps lockd was not started, but executing it
-> > and then checking rpcinfo -p gives the same result??
-> > The shown services now seemed to be launched at boot
-> > up.
-> >
-> > rpcinfo -p 192.168.2.57 from the client gives the same
-> > result as doing rpcinfo -p on the server. Likewise doing
-> > rpcinfo -p 192.168.2.51 from the server gives the same
-> > result as doing rpcinfo -p on the client.
->
-> But what does a showmount -e show on the server and what does
-> a showmount -e 192.168.2.57 give on the client.
->
->
+We are running bonnie++ on IA64 SMP machines with the 2.6.0-test9 kernel, over 
+a gigabit ethernet network. In some test configurations (nfs v3 over udp, 
+with various request sizes) an IO error is sometimes received by the client 
+process while the rewrite test, but there is no hardware error displayed on 
+the machines. This test reads chunks of a file and modifies them.
 
-All I'm trying to say is "can you see the servers' export list".
+I tracked the bug (by putting traces in the kernel) and found something that 
+looks like a race in the VFS.
+The IO error we encounter is generated in do_generic_mapping_read(), mm/
+filemap.c:687 :
+                if (!error) {
+                        if (PageUptodate(page))
+                                goto page_ok;
+                        wait_on_page_locked(page);
+                        if (PageUptodate(page))
+                                goto page_ok;
+                        error = -EIO;
+                }
 
-ie. showmount -e <server ip>
+According to the traces I added, the function nfs_readpage_result() for this 
+page called SetPageUptodate(), but at the same time, another request reply 
+called __nfs_refresh_inode() which called invalidate_complete_page() on the 
+same page, so the uptodate flag has been cleared before the check after 
+wait_on_page_locked().
 
-on the client
+My quick dirty hack to fix this race is to add these lines just before the 
+affectation of the EIO error :
 
-You can check your exports list on the server using exportfs but if you
-use showmount -e it will fail if the rpc service is not registered.
+if (!PageError(page)) {
+	printk(KERN_WARNING "SN: False IO error avoided on invalidated page.\n");
+	goto page_ok;
+}
 
-Just a check.
+Now, my tests go to completion, and the warning is displayed 6 or 7 times.
+I know it is no more time to make changes to the VFS, and I am not sure it is 
+the right fix...
+What do you think about this bug ?
+Cheers,
 
-If your export lists are not what you expect then re-export them with
-
-exportfs -ra
-
-should fix it up.
-
-Worth a try!
+Simon.
 
 -- 
-
-   ,-._|\    Ian Kent
-  /      \   Perth, Western Australia
-  *_.--._/   E-mail: raven@themaw.net
-        v    Web: http://themaw.net/
+Simon Nieuviarts, BULL S.A.
+Linux R&D, Office B1/367
+1, rue de Provence. BP208
+38432 Echirolles Cedex, France
+Phone : + 33 (0)4 76 29 70 26
 
 
 
