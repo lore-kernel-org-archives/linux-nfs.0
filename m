@@ -1,21 +1,23 @@
-From: Greg Lindahl <lindahl@keyresearch.com>
-Subject: Re: Re: NFS retry on disconnection
-Date: Mon, 13 May 2002 14:04:01 -0700
+From: "Chris Pascoe" <c.pascoe@itee.uq.edu.au>
+Subject: nfsd oops - exiting??
+Date: Tue, 14 May 2002 12:13:52 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020513140401.A2381@wumpus.keyresearch.com>
-References: <OFAE43C5AB.44E1A1F2-ON87256BB8.00590C28@boulder.ibm.com> <200205131953.g4DJr0f30734@buggy.badula.org>
+Message-ID: <00f301c1faec$fe0dd5f0$47426682@csee.uq.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from nixon.xkey.com ([209.245.148.124])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 177Mys-00050F-00
-	for <nfs@lists.sourceforge.net>; Mon, 13 May 2002 14:03:43 -0700
-Received: (from lindahl@localhost)
-	by localhost.conservativecomputer.com (8.11.6/8.11.0) id g4DL41R02386
-	for nfs@lists.sourceforge.net; Mon, 13 May 2002 14:04:01 -0700
-To: nfs@lists.sourceforge.net
-In-Reply-To: <200205131953.g4DJr0f30734@buggy.badula.org>; from ionut@cs.columbia.edu on Mon, May 13, 2002 at 03:53:00PM -0400
+Received: from gum.csee.uq.edu.au ([130.102.66.1])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 177RpA-00056h-00
+	for <nfs@lists.sourceforge.net>; Mon, 13 May 2002 19:14:00 -0700
+Received: from luma.csee.uq.edu.au (luma.csee.uq.edu.au [130.102.66.14])
+	by gum.csee.uq.edu.au (8.11.6/8.11.6) with ESMTP id g4E2DqN11953
+	for <nfs@lists.sourceforge.net>; Tue, 14 May 2002 12:13:52 +1000 (EST)
+Received: from SPIKE (spike.csee.uq.edu.au [130.102.66.71])
+	by luma.csee.uq.edu.au (8.11.6/8.11.6) with SMTP id g4E2DqK16415
+	for <nfs@lists.sourceforge.net>; Tue, 14 May 2002 12:13:52 +1000 (EST)
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,27 +30,62 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Mon, May 13, 2002 at 03:53:00PM -0400, Ion Badulescu wrote:
+Hi,
 
-> > Though you didn't answer the question, your advice implies that the Linux
-> > NFSv3 filesystem driver retries forever when communication with the NFS
-> > server has been lost.  If not, please correct us.
-> 
-> The default is 'hard' which will retry forever.
-> 
-> You can mount with '-o soft' which will give you the desired data corruption.
+After about 5 days of uptime on my SMP NFS server running 2.4.18+(CVS) XFS I
+have experienced the following oops.  At least once before I have seen other
+oopses that have occurred containing do_exit and sys_wait4, but I can't
+obviously see how this code path was taken.  It goes without saying that I
+can't reproduce the crash on demand..
 
-Linux NFS isn't any different from any other OS in this treatment of
-"soft" and "hard", although I guess an OS could have a default to
-"soft", which would be a bad idea.
+Has anyone else seen similar traces and/or can suggest how the nfsd code got
+to this point so I can attempt to investigate further?
 
-"Best practices" is to mount "hard,intr" so the user can interrupt the
-process if they wish to... otherwise it will wait until the problem is
-fixed. You should also use automounts to ensure that a minimum number
-of filesystems are mounted, especially if you have a complicated setup
-with many infrequently-used filesystems.
+The kernel is tainted by the Intel e1000 driver in the oops that follows.
 
-greg
+Thanks,
+Chris
+
+--8<-- oops starts
+Unable to handle kernel NULL pointer dereference at virtual address 00000286
+c011be54
+*pde = 00000000
+Oops: 0002
+CPU:    0
+EIP:    0010:[<c011be54>]    Tainted: P
+Using defaults from ksymoops -t elf32-i386 -a i386
+EFLAGS: 00010286
+eax: 00000000   ebx: f71ec000   ecx: 00000001   edx: 00000286
+esi: 00000000   edi: 00000286   ebp: f71edf94   esp: f71edf84
+ds: 0018   es: 0018   ss: 0018
+Process nfsd (pid: 889, stackpage=f71ed000)
+Stack: f71ec000 00000000 00000000 f71ec000 f71edfac c011c6d6 00000286
+f71ec000
+       f7245ed4 f741ce00 f71edfb8 c011c84c 00000000 f7245edc c010722b
+00000100
+       c200b800 0000001f f7245ed4 f741ce00 f7245edc 00000001 f7440018
+f71b0018
+Call Trace: [<c011c6d6>] [<c011c84c>] [<c010722b>] [<c010588e>]
+Code: f0 ff 0f 0f 94 c0 84 c0 0f 84 9e 00 00 00 c7 45 fc 00 00 00
+
+>>EIP; c011be54 <put_files_struct+c/c4>   <=====
+Trace; c011c6d6 <do_exit+12e/27c>
+Trace; c011c84c <sys_wait4+0/3d8>
+Trace; c010722b <system_call+33/38>
+Trace; c010588e <kernel_thread+2a/38>
+Code;  c011be54 <put_files_struct+c/c4>
+00000000 <_EIP>:
+Code;  c011be54 <put_files_struct+c/c4>   <=====
+   0:   f0 ff 0f                  lock decl (%edi)   <=====
+Code;  c011be57 <put_files_struct+f/c4>
+   3:   0f 94 c0                  sete   %al
+Code;  c011be5a <put_files_struct+12/c4>
+   6:   84 c0                     test   %al,%al
+Code;  c011be5c <put_files_struct+14/c4>
+   8:   0f 84 9e 00 00 00         je     ac <_EIP+0xac> c011bf00
+<put_files_struct+b8/c4>
+Code;  c011be62 <put_files_struct+1a/c4>
+   e:   c7 45 fc 00 00 00 00      movl   $0x0,0xfffffffc(%ebp)
 
 
 _______________________________________________________________
