@@ -1,25 +1,27 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: RE: [PATCH 2.6.3] Add write throttling to NFS client
-Date: Wed, 03 Mar 2004 21:13:57 -0500
+Subject: Re: NAS server avalanche overload
+Date: Wed, 03 Mar 2004 21:17:31 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1078366437.7818.16.camel@nidelv.trondhjem.org>
-References: <482A3FA0050D21419C269D13989C61130435DCCF@lavender-fe.eng.netapp.com>
+Message-ID: <1078366650.7818.20.camel@nidelv.trondhjem.org>
+References: <1078302718.825.67.camel@localhost>
+	 <1078351343.821.28.camel@localhost>  <20040304000438.GA25910@sgi.com>
+	 <1078359638.813.71.camel@localhost>  <404688FE.69592A2A@melbourne.sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Shantanu Goel <sgoel01@yahoo.com>, Shantanu Goel <Shantanu.Goel@lehman.com>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-1
+Cc: Erik Walthinsen <omega@pdxcolo.net>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AyiSr-0008Fv-E9
-	for nfs@lists.sourceforge.net; Wed, 03 Mar 2004 18:19:57 -0800
+	id 1AyiWD-0000RB-Iu
+	for nfs@lists.sourceforge.net; Wed, 03 Mar 2004 18:23:25 -0800
 Received: from dh197.citi.umich.edu
 	([141.211.133.197] helo=nidelv.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
 	(Exim 4.30)
-	id 1Ayi3w-0005Pf-PF
-	for nfs@lists.sourceforge.net; Wed, 03 Mar 2004 17:54:12 -0800
-To: Charles Lever <Charles.Lever@netapp.com>
-In-Reply-To: <482A3FA0050D21419C269D13989C61130435DCCF@lavender-fe.eng.netapp.com>
+	id 1AyiQa-00055D-Mv
+	for nfs@lists.sourceforge.net; Wed, 03 Mar 2004 18:17:36 -0800
+To: Greg Banks <gnb@melbourne.sgi.com>
+In-Reply-To: <404688FE.69592A2A@melbourne.sgi.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,22 +34,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 on , 03/03/2004 klokka 21:08, skreiv Lever, Charles:
-> > BTW, there was a one line nfs_rename fix I sent a
-> > while back.  At the time 2.6.0 was in freeze so it
-> > couldn't be integrated.  The issue was the NFS client
-> > does not refresh attributes after a rename causing
-> > some programs to spew out bogus errors.  One such
-> > culprit is GNU tar.
+P=E5 on , 03/03/2004 klokka 20:40, skreiv Greg Banks:
+
+> > > The problem I've seen is that the data is written out from the page
+> > > cache with the BKL held, which prevents any nfsd thread from waking u=
+p
+> > > and responding to incoming requests, and NFS traffic drops to zero.
+> > > In addition, if any of the nfsd's owned some other lock when this
+> > > happened, some local processes can be blocked too.  This is an
+> > > inevitable result of the "async" export option.
+> > That sounds like the kind of scenario I've been imagining.  Are there
+> > any (stable) patches to get rid of the BKL in this case,=20
 >=20
-> that fix is appropriate for 2.4, but trond tells me
-> that his attribute cache fixes will address this issue
-> in 2.6.
+> Not AFAIK.  Trond?  It would in any case be a fairly adventurous patch.
 
-...and if it doesn't I definitely want to know...
+I'm not aware of anything, but this is more of a question for Neil.
 
-Note that attribute caching patch is already queued up in Andrew's
-2.6.4-rc1-mm2 patch...
+I *really* doubt anyone has bothered to do it for 2.4.x...
 
 Cheers,
   Trond
