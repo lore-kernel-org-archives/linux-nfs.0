@@ -1,28 +1,22 @@
-From: Paul Heinlein <heinlein@cse.ogi.edu>
-Subject: RE: ALERT - GroupShield ticket number OA2317_1057450427_CVO-EXCHANGE
- _1 was generated
-Date: Mon, 7 Jul 2003 13:47:04 -0700 (PDT)
+From: Philippe =?ISO-8859-15?Q?Gramoull=E9?= <philippe.gramoulle@mmania.com>
+Subject: Re: ALERT - GroupShield ticket number
+ OA2317_1057450427_CVO-EXCHANGE _1 was generated
+Date: Mon, 7 Jul 2003 22:56:18 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.56.0307071345180.5779@glenfiddich.cse.ogi.edu>
-References: <482A3FA0050D21419C269D13989C6113D06A16@lavender-fe.eng.netapp.com>
+Message-ID: <20030707225618.0fa972cf.philippe.gramoulle@mmania.com>
+References: <Pine.LNX.4.33.0307060127100.1200-100000@vangogh>
+	<3F09AAA0.4070000@ixiacom.com>
+	<20030707193031.GA10222@lucon.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from franklin.cse.ogi.edu ([129.95.40.9])
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19ZctD-0002C0-00
-	for <nfs@lists.sourceforge.net>; Mon, 07 Jul 2003 13:47:11 -0700
-Received: from euclid.cse.ogi.edu (euclid.cse.ogi.edu [129.95.41.95])
-	by franklin.cse.ogi.edu (8.12.7/8.12.6) with ESMTP id h67Kl4r8003355
-	for <nfs@lists.sourceforge.net>; Mon, 7 Jul 2003 13:47:04 -0700 (PDT)
-Received: from glenfiddich.cse.ogi.edu (glenfiddich.cse.ogi.edu [129.95.33.101])
-	(authenticated bits=0)
-	by euclid.cse.ogi.edu (8.12.8/8.12.5) with ESMTP id h67Kl4GU027593
-	(version=TLSv1/SSLv3 cipher=EDH-RSA-DES-CBC3-SHA bits=168 verify=NO)
-	for <nfs@lists.sourceforge.net>; Mon, 7 Jul 2003 13:47:04 -0700
-To: nfs@lists.sourceforge.net
-In-Reply-To: <482A3FA0050D21419C269D13989C6113D06A16@lavender-fe.eng.netapp.com>
+Received: from pgramoul.net2.nerim.net ([80.65.227.234] helo=philou.aspic.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19Zd2K-0008S4-00
+	for <nfs@lists.sourceforge.net>; Mon, 07 Jul 2003 13:56:37 -0700
+To: "H. J. Lu" <hjl@lucon.org>
+In-Reply-To: <20030707193031.GA10222@lucon.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -35,16 +29,25 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, 7 Jul 2003, Lever, Charles wrote:
 
-> i prefer a moderated list instead of "closed to subscribers only."
-> but i am willing to be outvoted ;^)
+Hello,
 
-As long as there are pleny of moderators to handle the approval
-process. I'd hate to think that one or two people get stuck with the
-nasty job of spam deletion.
+Well last time there was a poll on that topic, i'd voted to close the list to
+non-subscribers but Trond pointed out the problem of bug reports which i had overlooked
+and making this change would probably make few (but always important) bug reports get lost.
 
---Paul Heinlein <heinlein@cse.ogi.edu>
+I think that we should keep the list opened to non-subscribers ( and fine
+tune my spam traps/ white lists / Black lists BTW :)
+
+Thanks,
+
+Philippe
+
+On Mon, 7 Jul 2003 12:30:31 -0700
+"H. J. Lu" <hjl@lucon.org> wrote:
+
+  | If there are no major objections by the end of this week, I will
+  | close the list to non-subscribers.
 
 
 -------------------------------------------------------
