@@ -1,24 +1,21 @@
-From: Steven Shiau <steven@nchc.org.tw>
-Subject: Re: NFS service takes very long time to start when internet
- disconnected..
-Date: Mon, 26 Jul 2004 14:40:34 +0800
+From: Greg Banks <gnb@sgi.com>
+Subject: [PATCH 2.4] (retry) increase NFSSVC_MAXBLKSIZE on large page machines
+Date: Mon, 26 Jul 2004 18:14:39 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <4104A762.7050302@nchc.org.tw>
-References: <20040724063635.GA25341@lfod.nchc.org.tw> <20040724181902.GB18548@suse.de> <20040725030001.GA11045@lfod.nchc.org.tw> <20040725122345.GB8512@suse.de>
+Message-ID: <20040726081439.GE17056@sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BozA9-00016P-Ay
-	for nfs@lists.sourceforge.net; Sun, 25 Jul 2004 23:40:41 -0700
-Received: from mail.nchc.org.tw ([140.110.16.6])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1BozA8-0004ko-OY
-	for nfs@lists.sourceforge.net; Sun, 25 Jul 2004 23:40:41 -0700
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20040725122345.GB8512@suse.de>
+	id 1Bp1dk-0002io-FX
+	for nfs@lists.sourceforge.net; Mon, 26 Jul 2004 02:19:24 -0700
+Received: from [192.48.171.20] (helo=omx3.sgi.com)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1Bp1dk-0000hi-4W
+	for nfs@lists.sourceforge.net; Mon, 26 Jul 2004 02:19:24 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,47 +28,57 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi, Olaf :
-Yes, I did, my /etc/hosts in the NFS server looks like:
-------------------------------------------------------
-# Do not remove the following line, or various programs
-# that require network functionality will fail.
-127.0.0.1               localhost.localdomain localhost
-...
-192.168.101.254 nfsserver_eth1.drbl.sf.net nfsserver_eth1 drblrh.nchc.org=
-.tw
-192.168.101.1 drblrh-1-001.drbl.sf.net drblrh-1-001
-...
-------------------------------------------------------
-Any idea ?
-Thanks.
+G'day,
 
-Olaf Kirch wrote:
-> On Sun, Jul 25, 2004 at 11:00:01AM +0800, Steven Shiau wrote:
->=20
->>So is it the problem of initlog when my eth0 disconnects ?
->>If so, why ? How can I solve it ?
->=20
->=20
-> Did you try putting these addresses into /etc/hosts along with some
-> names? Could be that using addresses is not enough,and exportfs is
-> doing a reverse lookup by default.
->=20
-> Olaf
+I've been out of the loop for a few weeks now so I'm getting back
+in by sending and resending a bunch of patches.
 
---=20
-Say YES to Openoffice.org (www.openoffice.org, openoffice.nchc.org.tw).
-Please AVOID distributing documents in WORD, EXCEL or POWERPOINT format.
-[Chinese Big5] =E8=AB=8B=E9=81=BF=E5=85=8D=E6=95=A3=E4=BD=88WORD, EXCEL =E6=
-=88=96=E6=98=AF POWERPOINT=E6=A0=BC=E5=BC=8F=E7=9A=84=E6=AA=94=E6=A1=88.
-See http://www.fsf.org/philosophy/no-word-attachments.html
-and http://www.cyut.edu.tw/~ckhung/a/c_91.shtml
--------------------------------------------------------------------------=
-----
-Steven Shiau [Chinese Big5] =E8=95=AD=E5=BF=97=E6=A6=A5
-NCHC [Chinese Big5] =E5=9C=8B=E5=AE=B6=E9=AB=98=E9=80=9F=E7=B6=B2=E8=B7=AF=
-=E8=88=87=E8=A8=88=E7=AE=97=E4=B8=AD=E5=BF=83
-E-mail: steven _at_ nchc.org.tw; steven _at_ stick.idv.tw
+This one (for 2.4 only) was sent twice but has not yet appeared in
+Marcello's BK.
+
+http://marc.theaimsgroup.com/?l=linux-nfs&m=107002386729570&w=2
+http://marc.theaimsgroup.com/?l=linux-kernel&m=108391490102531&w=2
+
+This patch makes NFSSVC_MAXBLKSIZE depend on PAGE_SIZE so that machines
+with large page sizes can take advantage of that feature to serve NFS
+with larger blocksizes, increasing performance and avoiding a fallback
+to synchronous traffic between machines with page sizes greater than 8K.
+Also, documents the actual constraints on NFSSVC_MAXBLKSIZE.
+
+
+--- /usr/tmp/TmpDir.16250-0/linux/linux/include/linux/nfsd/const.h_1.5	Fri May  7 17:20:22 2004
++++ /usr/tmp/TmpDir.16250-0/linux/linux/include/linux/nfsd/const.h	Fri May  7 17:20:22 2004
+@@ -12,6 +12,7 @@
+ #include <linux/nfs.h>
+ #include <linux/nfs2.h>
+ #include <linux/nfs3.h>
++#include <asm/page.h>
+ 
+ /*
+  * Maximum protocol version supported by knfsd
+@@ -19,9 +20,16 @@
+ #define NFSSVC_MAXVERS		3
+ 
+ /*
+- * Maximum blocksize supported by daemon currently at 8K
++ * Maximum blocksize supported by daemon.  We want the largest
++ * value which 1) fits in a UDP datagram less some headers
++ * 2) is a multiple of page size 3) can be successfully kmalloc()ed
++ * by each nfsd.   
+  */
+-#define NFSSVC_MAXBLKSIZE	(8*1024)
++#if PAGE_SIZE > (16*1024)
++#define NFSSVC_MAXBLKSIZE	(32*1024)
++#else
++#define NFSSVC_MAXBLKSIZE	(2*PAGE_SIZE)
++#endif
+ 
+ #ifdef __KERNEL__
+
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
 
 -------------------------------------------------------
