@@ -1,27 +1,25 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: why do i get "Stale NFS file handle" for hours?
-Date: Mon, 06 Sep 2004 11:59:17 -0400
+Subject: Re: read-error on utmp file
+Date: Mon, 06 Sep 2004 13:04:47 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1094486357.8342.12.camel@lade.trondhjem.org>
-References: <chdp06$e56$1@sea.gmane.org>
-	 <1094348385.13791.119.camel@lade.trondhjem.org>  <413A7119.2090709@upb.de>
-	 <1094349744.13791.128.camel@lade.trondhjem.org>  <413A789C.9000501@upb.de>
-	 <1094353267.13791.156.camel@lade.trondhjem.org>
-	 <1094464633.3986.36.camel@imladris.demon.co.uk>
+Message-ID: <1094490287.8342.69.camel@lade.trondhjem.org>
+References: <41383991.1020108@bio.ifi.lmu.de>
+	 <1094230320.8196.32.camel@lade.trondhjem.org>
+	 <413C0F25.9010206@bio.ifi.lmu.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=iso-8859-1
-Cc: Sven =?ISO-8859-1?Q?K=F6hler?= <skoehler@upb.de>,  linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C4Lu5-0004YV-Vx
-	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 08:59:37 -0700
+	id 1C4MvQ-0004Cd-Ne
+	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 10:05:04 -0700
 Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1C4Lu5-0002Bb-5I
-	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 08:59:37 -0700
-To: David Woodhouse <dwmw2@infradead.org>
-In-Reply-To: <1094464633.3986.36.camel@imladris.demon.co.uk>
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1C4MvN-0004wO-UL
+	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 10:05:03 -0700
+To: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
+In-Reply-To: <413C0F25.9010206@bio.ifi.lmu.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,21 +32,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 m=E5 , 06/09/2004 klokka 05:57, skreiv David Woodhouse:
+P=E5 m=E5 , 06/09/2004 klokka 03:17, skreiv Frank Steiner:
 
-> The fact that we require a persistent table of exports at all, and can't
-> call back to mountd to authenticate 'new' clients instead of just
-> telling them to sod off if the kernel doesn't already know about them,
-> is considered by some to be a bug in knfsd.=20
+> tcpdump -s 9000 -w <file> host curry & while runlevel /boot/utmp; do true=
+; done; killall tcpdump
+>=20
+> and started the second loop in another window which caused this first loo=
+p
+> to fail and stop the tcpdump...
 
-That should have been fixed in 2.6.x. If you do mount /proc/fs/nfsd, and
-use a recent enough version of mountd, then knfsd can and will work
-without any extra help from exportfs.
+Ah, right... Sorry, my head hasn't been screwed on correctly...
 
-The one problem I have found with this implementation is that it relies
-very heavily on reverse-DNS lookups, so it may give unexpected results
-if you have more than one name for your client. I can't see why that
-shouldn't be fixable, though...
+Although we wait on writes, we don't bother to wait on all *reads* to
+complete when closing the file. This means that readahead (which can
+schedule extra pageins asynchronously) may end up causing the file to be
+kept open for longer.
+
+That is why you are seeing sillyrenames here...
+
+Now what I still don't understand is why they are being left behind, and
+not cleaned up. That should normally only occur under the situations I
+described earlier.
 
 Cheers,
   Trond
