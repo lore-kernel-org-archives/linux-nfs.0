@@ -1,20 +1,17 @@
-From: Jonathan Woithe <jwoithe@physics.adelaide.edu.au>
-Subject: Re: Linux 2.2 client trouble after 2.4.18 server reboot
-Date: Tue, 30 Jul 2002 17:14:24 +0930 (CST)
+From: Klaus Strebel <klaus.strebel@eigner.com>
+Subject: RE: locking problem from HP-UX to Linux NFS Server
+Date: Tue, 30 Jul 2002 10:03:01 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200207300744.g6U7iOb17715@sprite.physics.adelaide.edu.au>
-References: <15685.8544.339285.783217@charged.uio.no>
+Message-ID: <3D464835.5040209@eigner.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: jwoithe@physics.adelaide.edu.au (Jonathan Woithe),
-        nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: Nguyen Thanh Bien <bien@thnt.com.vn>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from adelphi.physics.adelaide.edu.au ([129.127.102.1])
+Received: from akira.ep-ag.com ([194.120.231.250] helo=akira.ep-ka.de)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17ZRgI-0000hc-00
-	for <nfs@lists.sourceforge.net>; Tue, 30 Jul 2002 00:44:34 -0700
-To: trond.myklebust@fys.uio.no
-In-Reply-To: <15685.8544.339285.783217@charged.uio.no> from "Trond Myklebust" at Jul 29, 2002 01:05:04 PM
+	id 17ZRyP-0004io-00
+	for <nfs@lists.sourceforge.net>; Tue, 30 Jul 2002 01:03:17 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,53 +24,45 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hi Trond and others
+Hi all,
 
-[ NFS client troubles after server rebooted ]
+i have similar problems with locking from HP-UX clients to a Linux 
+NFS-Server (HP-UX 10.20,11.0,11.1). Currenty i use SuSE 8.0 on the 
+server with actual rpm's installed. I searched the support archives from 
+HP and deja.com, found several people with the same problem but they 
+never got an answer. I'll make an Software-Call at HP-Support, but i'm 
+not sure if that make too much sense.
 
-> >>>>> " " == Jonathan Woithe <jwoithe@physics.adelaide.edu.au> writes:
->      > The exported directory on the server is a ReiserFS filesystem,
->      > exported with only "rw" options.  The client mounts with
->      > "hard,intr,bg" options.  NFSv3 support is not compiled in on
->      > the 2.2.19 clients.  The server is a default slackware
->      > configuration (from the point of view of NFS):
-> 
-> Was that ReiserFS system created on a 2.2.x system? If so, it is a
-> known bug in ReiserFS itself.  There is a mount option (can't remember
-> the name in the spur of the moment, but you'll find it described on
-> the 'mount' manpage in www.namesys.com and you'll find it described
-> several times in the NFS lists archives) that updates the filesystem
-> to the latest ReiserFS format.
+My workarout for this problem is, to symlink the directory where my 
+applications want to create ther lock and datafiles to an NFS-share on 
+an old Solaris 2.5 (without .1 !) box (and when i get the money to buy a 
+Solaris box as NFS server i'll kick the Linux-NFS-servers ass ;-), could 
+use it for my test Oracle-RAC). That's not what i like, but i gonna keep 
+my shop going.
 
-A few more details from tests I've done today.  Under Slackware 8.1 (what
-we're using), the nfs system is shutdown with a `exportfs -au' before a
-reboot.  If I carry out a stop/start cycle on the NFS system, the clients
-have no problem.  It seems it only occurs across reboots - not NFS server
-restarts.
+Hi nfs experts !
+i'm using a Linux NFS server to store mailboxs from external HP-UX (ver
+11.0), mail server soft ware on HP-UX is CommunigatePro (it runs as
+root.mail user).
 
-Furthermore, I've found that if I do a `exportfs -a' immediately after the
-server reboot then the clients are able access the NFS volume again.  And
-yes, exportfs is called before rpc.mountd under Slackware 8.1.  Before the
-second exportfs invocation, the /var/lib/nfs/xtab file is empty whereas it
-contains details of the exported filesystems after.  I don't know if this is
-relevant - but it is the only file which changes as a result of the second
-call.
+and i got a problem when start Communigate Pro:
+- cannot lock files
 
-Does this mean that an extra `exportfs -r' (or `exportfs -a') is required
-during boot to resync this, or does it indicate another problem?
+my exports file is:
+/data/data_mail  hp-ux-box(rw,no_root_squash,insecure,insecure_locks)
 
-In regards to the ReiserFS version, `debugreiserfs <dev>' reports a
-superblock of version 3.6.
+anyone can help me to fix this ?
 
-Regards
-  jonathan
+-- Nguyen Thanh Bien Vietnamese Linux Users Group 
+<http://vietlug.sourceforge.net>
+
 -- 
-* Jonathan Woithe    jwoithe@physics.adelaide.edu.au                        *
-*                    http://www.physics.adelaide.edu.au/~jwoithe            *
-***-----------------------------------------------------------------------***
-** "Time is an illusion; lunchtime doubly so"                              **
-*  "...you wouldn't recognize a subtle plan if it painted itself purple and *
-*   danced naked on a harpsichord singing 'subtle plans are here again'"    *
+Klaus Strebel
+UNIX-Engineer
+klaus.strebel@eigner.com
+EIGNER - Precision Lifecycle Management -
+<http://www.eigner.com>
+
 
 
 -------------------------------------------------------
