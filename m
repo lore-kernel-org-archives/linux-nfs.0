@@ -1,19 +1,19 @@
 From: "Steven N. Hirsch" <shirsch@adelphia.net>
 Subject: Re: Re: broken umount -f
-Date: Tue, 14 Jan 2003 17:27:13 -0500 (EST)
+Date: Tue, 14 Jan 2003 17:29:29 -0500 (EST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0301141725240.5354-100000@atx.fast.net>
-References: <15908.26262.547106.640066@charged.uio.no>
+Message-ID: <Pine.LNX.4.44.0301141728040.5354-100000@atx.fast.net>
+References: <20030114221755.GB1042@questra.com>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Scott Mcdermott <smcdermott@questra.com>,  <nfs@lists.sourceforge.net>
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,  <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from [64.8.50.178] (helo=mta2.adelphia.net)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18YZZC-0006RP-00
-	for <nfs@lists.sourceforge.net>; Tue, 14 Jan 2003 14:29:54 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <15908.26262.547106.640066@charged.uio.no>
+	id 18YZbN-0006jg-00
+	for <nfs@lists.sourceforge.net>; Tue, 14 Jan 2003 14:32:09 -0800
+To: Scott Mcdermott <smcdermott@questra.com>
+In-Reply-To: <20030114221755.GB1042@questra.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,22 +26,27 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, 14 Jan 2003, Trond Myklebust wrote:
+On Tue, 14 Jan 2003, Scott Mcdermott wrote:
 
-> >>>>> " " == Scott Mcdermott <smcdermott@questra.com> writes:
+> Trond Myklebust on Tue 14/01 20:35 +0100:
+> >      > Last I checked, the programs wouldn't die even with -KILL when
+> >      > they were stuck in device-wait state.
+> > 
+> > They will if you mount with 'intr', and make sure that you kill *all*
+> > programs that are using that mountpoint.
 > 
->      > Last I checked, the programs wouldn't die even with -KILL when
->      > they were stuck in device-wait state.
+> I don't want users to be able to corrupt their own data by using `intr'
+> when I am just bouncing the server for some reason.  But, I want root to
+> be able to force it if necessary, as in the case of a client reboot when
+> the server is gone (eg when switching servers and they need new handles
+> for their automounts, but still have the old ones and the server is
+> never coming back up).  Usually this means the admin screwed up, but
+> unfortunately that does happen.
 > 
-> They will if you mount with 'intr', and make sure that you kill *all*
-> programs that are using that mountpoint.
+> "umount -f" seems like the right place for this.
 
-I can honestly say that I end up rebooting more than 80% of the time when 
-the server goes away.  Believe me, I've tried everything including taking 
-the system down to single-user mode and killing everything not bolted to 
-the kernel <g>.  
-
-Steve
+You have my vote.  For sanity's sake, there needs to be a big, red lever 
+under the locked access hatch - labled "I said umount -f, dammit!".
 
 
 
