@@ -1,24 +1,21 @@
-From: Marco.Schwarz@Freudenberg.de
-Subject: Diskless client problems ...
-Date: Fri, 12 Dec 2003 10:05:46 +0100
+From: "Jeremy Kusnetz" <JKusnetz@nrtc.org>
+Subject: Chrooted BIND broke on NFS server between kernel 2.4.21 and 2.4.22
+Date: Fri, 12 Dec 2003 13:36:41 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <95AF67BA7F70D511829B0002A551737001CAAA@FAW-E01>
+Message-ID: <F7F4B5EA9EBD414D8A0091E80389450569D3C5@exchange.nrtc.coop>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: multipart/alternative;
+	boundary="----_=_NextPart_001_01C3C0DE.E26BC00C"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AUjFI-0004qq-Iv
-	for nfs@lists.sourceforge.net; Fri, 12 Dec 2003 01:06:00 -0800
-Received: from mailhost2.freudenberg.de ([153.95.95.71] helo=itnts96.freudenberg.de)
+	id 1AUs9h-0001BQ-R0
+	for nfs@lists.sourceforge.net; Fri, 12 Dec 2003 10:36:49 -0800
+Received: from outmail.nrtc.org ([204.145.144.17] helo=exchange.nrtc.coop)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
-	id 1AUjFH-0000qH-VR
-	for nfs@lists.sourceforge.net; Fri, 12 Dec 2003 01:06:00 -0800
-Received: from fgnts03.fit.freudenberg.de (unverified) by itnts96.freudenberg.de
- (Content Technologies SMTPRS 4.3.10) with ESMTP id <T667652f19c995f5f47770@itnts96.freudenberg.de> for <nfs@lists.sourceforge.net>;
- Fri, 12 Dec 2003 10:10:11 +0100
-To: nfs@lists.sourceforge.net
+	id 1AUs9h-0006OA-Du
+	for nfs@lists.sourceforge.net; Fri, 12 Dec 2003 10:36:49 -0800
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,55 +28,119 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi all,
+This is a multi-part message in MIME format.
 
-I have a problem with a new server I am setting up right now.
+------_=_NextPart_001_01C3C0DE.E26BC00C
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-When booting my diskless clients I get the following error:
+Hello,
 
-Looking up port of RPC 100003/2 on 192.68.0.20
-portmap: server 192.168.0.20 not responding, timed out
-Root-NFS: Unable to get nfsd port number from server, using default
-Looking up port of RPC 100005/2 on 192.168.0.20
-portmap: server 192.168.0.20 not responding, timed out
-Root-NFS: Unable to get mountd port number from server, using default
-mount: server 192.168.0.20 not responding, timed out
-Root-NFS: Server returned error -5 while mounting /netclients/192.168.0.24
-VFS: Unable to mount root fs via NFS, trying floppy.
-VFS: Insert root floppy and press ENTER
+I have a cluster of machines running BIND that is chrooted on an NFS =
+mounted partition.
 
-A bit more infos about my environment:
+I recently upgraded both my NFS server and clients to 2.4.23 due to the =
+security issues.  I was running 2.4.20 for my NFS server.
 
-The server has 3 NICs:
+After doing this I found I could no longer start BIND, I would get the =
+following error in syslog.
 
-eth0, 192.168.1.100	(not connected right now)
-eth1, 192.168.0.20
-eth2, 153.95.169.115
+Dec 12 18:28:17 rs0 named[409]: errno2result.c:109: unexpected error:
+Dec 12 18:28:17 rs0 named[409]: unable to convert errno to isc_result: =
+116: Stale NFS file handle
+Dec 12 18:28:17 rs0 named[409]: none:0: open: /etc/named.conf: =
+unexpected error
+Dec 12 18:28:17 rs0 named[409]: loading configuration: unexpected error
+Dec 12 18:28:17 rs0 named[409]: exiting (due to fatal error)
 
-What is strange is that if I set up a small local network with only eth1
-connected to a single switch with my clients, everything works fine !
+If I was cded into the chrooted etc directory I would get the following =
+error after doing an ls
+/bin/ls: .: Stale NFS file handle
 
-The moment I plug everything in the company net or add eth2 to the switch,
-booting is not working anymore ! (see errors above)
+If I cd out and back into the etc directory all works as expected, until =
+I try to start bind again.
 
-On the server side I can see the requests to the portmapper, but somehow the
-client is not getting a response ... :
+I tried downgrading my NFS server back to 2.4.20 and I was able to start =
+bind as expected.  Next I tried 2.4.22 and got the same stale NFS handle =
+problem.  I then tried 2.4.21 and I was able to start bind as expected.
 
-portmap[18088]: connect from 192.168.0.24 to getport(nfs)
-server: about do a switch
-portmap[18090]: connect from 192.168.0.24 to getport(nfs)
-server: about do a switch
+So there must have been some change between 2.4.21 and 2.4.22 that broke =
+this functionality.  Any ideas?
 
-... and so on
+------_=_NextPart_001_01C3C0DE.E26BC00C
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-I set up portmap in /etc/hosts.allow with portmap : 192.168.0. , I also
-tried portmap : ALL or no entry at all, effects are the same.
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+<HEAD>
+<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
+charset=3Diso-8859-1">
+<META NAME=3D"Generator" CONTENT=3D"MS Exchange Server version =
+6.5.6944.0">
+<TITLE>Chrooted BIND broke on NFS server between kernel 2.4.21 and =
+2.4.22</TITLE>
+</HEAD>
+<BODY>
+<!-- Converted from text/rtf format -->
 
-Any help on this would be greatly appreciated !!!
+<P><FONT SIZE=3D2 FACE=3D"Arial">Hello,</FONT>
+</P>
 
-Regards,
-Marco Schwarz
+<P><FONT SIZE=3D2 FACE=3D"Arial">I have a cluster of machines running =
+BIND that is chrooted on an NFS mounted partition.</FONT>
+</P>
 
+<P><FONT SIZE=3D2 FACE=3D"Arial">I recently upgraded both my NFS server =
+and clients to 2.4.23 due to the security issues.&nbsp; I was running =
+2.4.20 for my NFS server.</FONT></P>
+
+<P><FONT SIZE=3D2 FACE=3D"Arial">After doing this I found I could no =
+longer start BIND, I would get the following error in syslog.</FONT>
+</P>
+
+<P><FONT SIZE=3D2 FACE=3D"Arial">Dec 12 18:28:17 rs0 named[409]: =
+errno2result.c:109: unexpected error:</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Arial">Dec 12 18:28:17 rs0 named[409]: unable =
+to convert errno to isc_result: 116: Stale NFS file handle</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Arial">Dec 12 18:28:17 rs0 named[409]: =
+none:0: open: /etc/named.conf: unexpected error</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Arial">Dec 12 18:28:17 rs0 named[409]: =
+loading configuration: unexpected error</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Arial">Dec 12 18:28:17 rs0 named[409]: =
+exiting (due to fatal error)</FONT>
+</P>
+
+<P><FONT SIZE=3D2 FACE=3D"Arial">If I was cded into the chrooted etc =
+directory I would get the following error after doing an ls</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Arial">/bin/ls: .: Stale NFS file =
+handle</FONT>
+</P>
+
+<P><FONT SIZE=3D2 FACE=3D"Arial">If I cd out and back into the etc =
+directory all works as expected, until I try to start bind again.</FONT>
+</P>
+
+<P><FONT SIZE=3D2 FACE=3D"Arial">I tried downgrading my NFS server back =
+to 2.4.20 and I was able to start bind as expected.&nbsp; Next I tried =
+2.4.22 and got the same stale NFS handle problem.&nbsp; I then tried =
+2.4.21 and I was able to start bind as expected.</FONT></P>
+
+<P><FONT SIZE=3D2 FACE=3D"Arial">So there must have been some change =
+between 2.4.21 and 2.4.22 that broke this functionality.&nbsp; Any =
+ideas?</FONT>
+</P>
+
+</BODY>
+</HTML>
+------_=_NextPart_001_01C3C0DE.E26BC00C--
 
 
 -------------------------------------------------------
