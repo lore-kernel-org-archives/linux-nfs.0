@@ -1,20 +1,20 @@
-From: Alex Thiel <stderr@web.de>
-Subject: Re: nfs-utils 1.0.3 compile error w/gcc-3.2.2
-Date: Fri, 28 Mar 2003 15:57:28 +0100
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: NFSv4 and client caching to local disk?
+Date: Fri, 28 Mar 2003 10:01:26 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200303281557.29049.stderr@web.de>
-References: <3E844E32.4000008@lucidpixels.com>
+Message-ID: <20030328150125.GA16591@fieldses.org>
+References: <3E843E86.9030701@moving-picture.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mailout06.sul.t-online.com ([194.25.134.19])
+Received: from dsl093-002-214.det1.dsl.speakeasy.net
+	([66.93.2.214] helo=pumpkin.fieldses.org ident=mail)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18yvIr-0001IQ-00
-	for <nfs@lists.sourceforge.net>; Fri, 28 Mar 2003 06:57:57 -0800
-To: Justin Piszcz <jpiszcz@lucidpixels.com>,
- nfs@lists.sourceforge.net
-In-Reply-To: <3E844E32.4000008@lucidpixels.com>
+	id 18yvMo-0002jg-00
+	for <nfs@lists.sourceforge.net>; Fri, 28 Mar 2003 07:02:02 -0800
+To: James Pearson <james-p@moving-picture.com>
+In-Reply-To: <3E843E86.9030701@moving-picture.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,23 +27,19 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Friday 28 March 2003 14:29, Justin Piszcz wrote:
-> -rw-r--r--    1 war      wheel        2.7k Mar 28 08:24 log.bz2
->
-> The error is contained in the attachment.
+On Fri, Mar 28, 2003 at 12:22:30PM +0000, James Pearson wrote:
+> I'm trying to find out more about 'cachefs' type file systems that can 
+> cache NFS data to a client's local disk - I've come across a couple of 
+> references that seem to indicate that this may be possible with NFSv4.
+> 
+> Does (will?) the Linux NFSv4 client support this feature?
 
-Did you notice this in your log:
+Nobody's working on it now as far as I know.  You might do a search for
+'cachefs' on the linux-kernel mailing list:
 
-Making all in export
-rm -f mount.h mount_clnt.c mount_xdr.c
-../../bin/rpcgen -h -o mount.h mount.x
-cannot find any C preprocessor (cpp)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+http://groups.google.com/groups?hl=en&lr=&ie=UTF-8&oe=UTF-8&q=group%3Afa.linux.kernel+cachefs&btnG=Google+Search
 
-Make sure cpp is in your search path.
-
-	Alex
-
+I seem to remember some relevant discussions there.--Bruce F.
 
 
 -------------------------------------------------------
