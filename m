@@ -1,17 +1,13 @@
-From: "H. J. Lu" <hjl@lucon.org>
-Subject: [Slamet_Nugroho@fmi.com: NFS question]
-Date: Wed, 21 May 2003 07:32:39 -0700
+From: "Anne Dutton" <zradoshevich@aol.com>
+Subject: Nfs, discount prescriptions                  .......................wild
+Date: Wed, 21 May 03 21:51:09 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030521073239.B25230@lucon.org>
+Message-ID: <75x1aj$0piv-r-n5@789826.dgh>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Slamet_Nugroho@fmi.com
+Content-Type: multipart/alternative;
+	boundary="F_83_6C.E2_99.8.12E1_"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sccrmhc02.attbi.com ([204.127.202.62])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19IUe5-0002PA-00
-	for <nfs@lists.sourceforge.net>; Wed, 21 May 2003 07:32:45 -0700
-To: nfs@lists.sourceforge.net
+To: <nfs@lists.sourceforge.net>, <nms-cgi-support@lists.sourceforge.net>, <ofset-members@lists.sourceforge.net>, <opennap-dev@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,38 +20,80 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Please send question to NFS mailing list.
+This is a multi-part message in MIME format.
 
+--F_83_6C.E2_99.8.12E1_
+Content-Type: text/html;
+Content-Transfer-Encoding: quoted-printable
 
-H.J.
------ Forwarded message from Slamet_Nugroho@fmi.com -----
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1=
+">
+<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV>
+<DIV align=3Dcenter><FONT face=3DArial>&nbsp;<STRONG>You can now&nbsp;get =
 
-Delivered-To: hjl@localhost.lucon.org
-x-mimeole: Produced By Microsoft Exchange V6.0.6249.0
-Subject: NFS question
-Date: Wed, 21 May 2003 19:31:57 +0900
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-Thread-Topic: NFS question
-Thread-Index: AcMfhDP94sQj14u3EdeR0QABA8JUaA==
-From: <Slamet_Nugroho@fmi.com>
-To: <hjl@gnu.org>
-X-OriginalArrivalTime: 21 May 2003 10:31:58.0224 (UTC) FILETIME=[35061100:01C31F84]
-X-Spam-Status: No, hits=2.6 required=5.0
-	tests=NO_REAL_NAME,RCVD_IN_RFCI,SPAM_PHRASE_00_01
-	version=2.41
-X-Spam-Level: **
+prescription </STRONG></FONT></DIV>
+<DIV align=3Dcenter><FONT face=3DArial><STRONG>medications prescribed onli=
+ne 
+with</STRONG></FONT></DIV>
+<DIV align=3Dcenter><FONT face=3DArial size=3D6>&nbsp;<STRONG><FONT
+color=3D=
+#ff0000 
+size=3D4>NO PRIOR PRESCRIPTION REQUIRED</FONT></STRONG></FONT></DIV>
+<DIV align=3Dcenter><STRONG><FONT face=3DArial color=3D#ff0000 size=3D4>NO=
+ PHYSICAL EXAM 
+NEEDED</FONT></STRONG></DIV>
+<DIV align=3Dcenter><STRONG><FONT face=3DArial color=3D#ff0000 size=3D4>
+<P align=3Dcenter><A href=3D"http://www.mymedicinechest.biz"><FONT face=3D=
+Arial 
+color=3D#800080><STRONG>Go here</STRONG></FONT></A><FONT face=3DArial> <FO=
+NT 
+color=3D#000000>to see all of our available online 
+drugs.<BR></FONT></FONT></P></FONT></STRONG></DIV></DIV><TD width=3D"100%"=
+ 
+bgColor=3D"blueviolet" colSpan=3D"3">
+<P align=3Dcenter><FONT face=3DVerdana><BIG><BIG><B>
+<MARQUEE scrollAmount=3D5 scrollDelay=3D1 border=3D"1"><FONT 
+color=3D#800000>Valium</FONT> <FONT color=3D#800000>... Xanax</FONT> <FONT=
+ 
+color=3D#800000>...</FONT> <FONT color=3D#800000>Diethylpropion </FONT><FO=
+NT 
+color=3D#800000>... Ambien</FONT> <FONT color=3D#800000>... Phentermine</F=
+ONT> <FONT 
+color=3D#800000>... V i a g r a</FONT> <FONT color=3D#800000>... And Many =
 
+More</FONT></MARQUEE><FONT 
+color=3D#800000></B></BIG></BIG></FONT></P></TD></TR><TR><TD 
+colSpan=3D"3"></FONT><FONT face=3DVerdana color=3Dblue size=3D1><B>
+<HR>
+</B></FONT><FONT face=3DArial>One of our US licensed physicians will write=
+ an FDA 
+approved prescription for you and ship your order overnight from a US Lice=
+nsed 
+pharmacy direct to your doorstep, fast and secure!</FONT> 
+<P align=3Dcenter><FONT face=3DArial color=3D#ff0000 size=3D5>Discount Pri=
+ces -- Next 
+Day Delivery</FONT></P>
+<DIV><FONT face=3DArial color=3D#ffffff size=3D1>psychorosenzweig =
+kerosene 
+instantaneous rustproof flatten emily slanderous %RANDOM_W=
+ORD 
+blaze aminobenzoic chummy and this website retaliate 
+hemosiderin for you</FONT></DIV>
+<DIV><FONT face=3DArial size=3D1></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D4></DIV>
+<DIV><FONT size=3D3>To stop all future offers</FONT>&nbsp;<A 
+href=3D"www.mymedicinechest.biz/remove.php"> here</ color=3D"#000000"></FO=
+NT>&nbsp; 
+</A></DIV></FONT></BODY></HTML>
 
-Hi,
+--F_83_6C.E2_99.8.12E1_--
 
-I'm working in Freeport McMoran, Tembagapura Papua. Indonesia.
-Could you please give me your experience about Linux NFS to Window 2000.
-
-Thanks
-Slamet Nugroho.
-
------ End forwarded message -----
 
 
 -------------------------------------------------------
