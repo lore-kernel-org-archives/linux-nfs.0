@@ -1,21 +1,25 @@
 From: Alexander Bergolth <leo@strike.wu-wien.ac.at>
-Subject: problems using devices via nfsvers3 with 2.6.6. and 2.6.7
-Date: Tue, 06 Jul 2004 20:41:20 +0200
+Subject: Re: problems using devices via nfsvers3 with 2.6.6. and 2.6.7
+Date: Wed, 07 Jul 2004 09:49:48 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <40EAF250.2080202@strike.wu-wien.ac.at>
+Message-ID: <40EBAB1C.8010403@strike.wu-wien.ac.at>
+References: <40EAF250.2080202@strike.wu-wien.ac.at>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: neilb@cse.unsw.edu.au
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Bhusg-0000eE-9U
-	for nfs@lists.sourceforge.net; Tue, 06 Jul 2004 11:41:26 -0700
+	id 1Bi7Bk-0008Lv-5r
+	for nfs@lists.sourceforge.net; Wed, 07 Jul 2004 00:49:56 -0700
 Received: from strike.wu-wien.ac.at ([137.208.8.200])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1Bhusf-0001N0-Ib
-	for nfs@lists.sourceforge.net; Tue, 06 Jul 2004 11:41:25 -0700
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1Bi7Bj-000449-OW
+	for nfs@lists.sourceforge.net; Wed, 07 Jul 2004 00:49:56 -0700
+Received: from localhost (localhost.localdomain [127.0.0.1])
+	by strike.wu-wien.ac.at (Postfix) with ESMTP id 93D7520011F
+	for <nfs@lists.sourceforge.net>; Wed,  7 Jul 2004 09:49:50 +0200 (CEST)
 To: nfs@lists.sourceforge.net
+In-Reply-To: <40EAF250.2080202@strike.wu-wien.ac.at>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -28,46 +32,16 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi!
+On 07/06/2004 08:41 PM, Alexander Bergolth wrote:
+> I'm getting "permission denied" errors when trying to access devices 
+> from a 2.6 client that are mounted via nfsvers3 and exported read-only 
+> by the server. Using nfsvers2 or a 2.4 kernel doesn't show this error.
 
-I'm getting "permission denied" errors when trying to access devices 
-from a 2.6 client that are mounted via nfsvers3 and exported read-only 
-by the server. Using nfsvers2 or a 2.4 kernel doesn't show this error.
-
-I could reproduce this with kernel 2.6.6-1.435.2.3 (from FC-2) and with
-kernel 2.6.7-1.456_4.rhfc2.at (from ATrpms).
-
-Any hints?
-
----------- Client using kernel 2.6.6-1.435.2.3 ----------
-# mount -oro,nfsvers=3 ariel:/dev /mnt
-
-# ls -l /mnt/null
-crw-rw-rw-  1 root root 1, 3 Sep 15  2003 /mnt/null
-
-# echo test > /mnt/null ; echo $?
--bash: /mnt/null: Permission denied
-1
-
-# umount /mnt
-# mount -oro,nfsvers=2 ariel:/dev /mnt
-
-# echo test > /mnt/null ; echo $?
-0
-
----------- Client using 2.4.22 ----------
-# mount -oro,nfsvers=3 ariel:/dev /mnt
-
-# ls -l /mnt/null
-ls: /mnt/null: Input/output error
-crw-rw-rw-  1 root root 1, 3 Sep 15  2003 /mnt/null
-
-# echo test > /mnt/null ; echo $?
-0
-
----------- Server (2.4.22) ----------
-# cat /etc/exports
-/dev client1(ro,async,no_root_squash) client2(ro,async,no_root_squash)
+Some additional notes:
+Writing to /mnt/null (which corresponds to /dev/null) only produces an 
+error if the filesystem is exported read-only by the server. If the 
+server exports it read-write, writing to the device works as expected, 
+even if it is mounted read-only by the client.
 
 --leo
 -- 
