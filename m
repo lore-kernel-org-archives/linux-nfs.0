@@ -1,24 +1,27 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: rpc-srv/tcp: nfsd: sent only -107 bytes of #### - shutting down socket error
-Date: Mon, 20 Sep 2004 18:58:06 +0200
+From: "Lever, Charles" <cel@netapp.com>
+Subject: RE: NFS FAQ updates
+Date: Mon, 20 Sep 2004 11:29:56 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040920165805.GA19606@suse.de>
-References: <EXCHG20030Yg83alUoh0000182d@EXCHG2003.microtech-ks.com>
+Message-ID: <482A3FA0050D21419C269D13989C61130435E832@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C9RUR-0008Gs-5R
-	for nfs@lists.sourceforge.net; Mon, 20 Sep 2004 09:58:11 -0700
-Received: from cantor.suse.de ([195.135.220.2])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.41)
-	id 1C9RUP-00006z-Kg
-	for nfs@lists.sourceforge.net; Mon, 20 Sep 2004 09:58:11 -0700
-To: Roger Heflin <rheflin@atipa.com>
-In-Reply-To: <EXCHG20030Yg83alUoh0000182d@EXCHG2003.microtech-ks.com>
+	id 1C9SvN-0000dB-5K
+	for nfs@lists.sourceforge.net; Mon, 20 Sep 2004 11:30:05 -0700
+Received: from mx01.netapp.com ([198.95.226.53])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1C9SvL-0004HN-Po
+	for nfs@lists.sourceforge.net; Mon, 20 Sep 2004 11:30:05 -0700
+Received: from frejya.corp.netapp.com (frejya [10.57.157.119])
+	by mx01.netapp.com (8.12.10/8.12.10/NTAP-1.4) with ESMTP id i8KITvFC024354
+	for <nfs@lists.sourceforge.net>; Mon, 20 Sep 2004 11:29:57 -0700 (PDT)
+Received: from svlexc02.hq.netapp.com (svlexc02.corp.netapp.com [10.57.157.136])
+	by frejya.corp.netapp.com (8.12.9/8.12.9/NTAP-1.5) with ESMTP id i8KITvt8029486
+	for <nfs@lists.sourceforge.net>; Mon, 20 Sep 2004 11:29:57 -0700 (PDT)
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,57 +34,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, Sep 20, 2004 at 11:41:34AM -0500, Roger Heflin wrote:
-> Any indications of exactly what this error means?
-> 
-> rpc-srv/tcp: nfsd: sent only -107 bytes of #### - shutting down socket error
+> [ quentin suggests moving the 2.2-related information to a separate
+> document ]
 
-It means nfsd got an ENOTCONN from sendto(). You want to increase the
-number of nfsds; these messages should mostly go away then.
+[ or to a different part of the FAQ ]
 
-Olaf
+> one of the problems (which perhaps i should have mentioned in my first
+> e-mail) is that i don't know of anyone who has the expertise=20
+> to maintain
+> the 2.2 FAQ information.  it appears somewhat outdated (for=20
+> instance, it
+> recommends some extra patches, but have they been included in=20
+> the latest
+> 2.2 kernels?).
 
-> 
-> They are receiving the error in the range of 10-30 times per second on the
-> heavily used nfs servers.
-> 
-> This is running with nfs over tcp, with 32k packet sizes, what 4 nfs servers
-> and roughly 230 clients.  Until the amount of nfs usage increased this error
-> did not appear to be happening, or was not noticed.
-> 
-> The clients are also getting these messages:
-> RPC: tcp_data_ready socket info not found!
-> 
-> /proc/mounts confirms the 32k read/write, and that tcp is being used.
-> 
-> There are some other odd things happening, the admins and users indicate
-> that 
-> they have had several instances of editing an existing file and then saving 
-> the file and that file not being there after they exit and save in the 
-> editor, and not sure if this is a related problem or something else
-> entirely.
-> 
->                         Roger
-> 
-> 
->  
-> 
-> 
-> 
-> 
-> -------------------------------------------------------
-> This SF.Net email is sponsored by: YOU BE THE JUDGE. Be one of 170
-> Project Admins to receive an Apple iPod Mini FREE for your judgement on
-> who ports your project to Linux PPC the best. Sponsored by IBM.
-> Deadline: Sept. 24. Go here: http://sf.net/ppc_contest.php
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+i've gotten a few responses to this, mostly "remove the 2.2-related
+material".  removing it is also my preference.  so, as part of a clean
+up, i will remove the 2.2-related material in a week or so.
 
--- 
-Olaf Kirch     |  The Hardware Gods hate me.
-okir@suse.de   |
----------------+ 
+i have a long list of other changes that are waiting for me to get
+enough time.  if anyone has polite suggestions or constructive comments,
+please forward them to me.  thanks!
 
 
 -------------------------------------------------------
