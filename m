@@ -1,22 +1,24 @@
-From: Bruce Allan <bwa@us.ibm.com>
-Subject: > 16 groups patch from Frank van Maarseveen
-Date: Fri, 30 Jul 2004 10:14:40 -0700
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: > 16 groups patch from Frank van Maarseveen
+Date: Fri, 30 Jul 2004 13:40:00 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1091207680.4797.47.camel@dyn319648.beaverton.ibm.com>
+Message-ID: <1091212800.3804.17.camel@lade.trondhjem.org>
+References: <1091207680.4797.47.camel@dyn319648.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=iso-8859-1
 Cc: nfs@lists.sf.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BqayE-0002HY-OO
-	for nfs@lists.sourceforge.net; Fri, 30 Jul 2004 10:15:02 -0700
-Received: from e1.ny.us.ibm.com ([32.97.182.101])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1BqvN7-0003zr-9h
+	for nfs@lists.sourceforge.net; Sat, 31 Jul 2004 08:02:05 -0700
+Received: from [65.220.109.67] (helo=lade.trondhjem.org)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
 	(Exim 4.34)
-	id 1BqayE-0006Qt-BH
-	for nfs@lists.sourceforge.net; Fri, 30 Jul 2004 10:15:02 -0700
-To: trond.myklebust@fys.uio.no
+	id 1BqvN5-0006Sa-LF
+	for nfs@lists.sourceforge.net; Sat, 31 Jul 2004 08:02:05 -0700
+To: Bruce Allan <bwa@us.ibm.com>
+In-Reply-To: <1091207680.4797.47.camel@dyn319648.beaverton.ibm.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -29,24 +31,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Trond,
+P=E5 fr , 30/07/2004 klokka 12:14, skreiv Bruce Allan:
+> Hi Trond,
+>=20
+> I was wondering why Frank's patch to bypass the 16 group limitation in
+> RPC (http://frankvm.xs4all.nl/nfs-ngroups/) has not been incorporated
+> into mainline yet.  Is it because he has not addressed your
+> concern/recommendation as mentioned in
+> http://marc.theaimsgroup.com/?l=3Dlinux-nfs&m=3D87941837304355&w=3D2
+>=20
+> If the patch were modified to follow your recommendation in the same
+> post, would that be acceptable?
 
-I was wondering why Frank's patch to bypass the 16 group limitation in
-RPC (http://frankvm.xs4all.nl/nfs-ngroups/) has not been incorporated
-into mainline yet.  Is it because he has not addressed your
-concern/recommendation as mentioned in
-http://marc.theaimsgroup.com/?l=linux-nfs&m=87941837304355&w=2
+I'm certainly not prepared to merge any new features into the 2.4
+kernel, so the patches as they stand are not going in no matter what.
 
-If the patch were modified to follow your recommendation in the same
-post, would that be acceptable?
+However, I'm in general seriously sceptical about implementing this sort
+of thing: when we only had SYS_UNIX as an option, then it might have
+been an unsurmountable problem (though even there it was possible to
+work around by judicious choices). However now that we have RPCSEC_GSS
+with support for strong authentication (such as w/ krb5), it is possible
+for the server to know exactly which groups the user is a member of.
 
-Thanks much,
----
-Bruce Allan  <bwa@us.ibm.com>
-Software Engineer, Linux Technology Center
-IBM Corporation, Beaverton OR
-503-578-4187   IBM Tie-line 775-4187
+Why go for a heuristic algorithm, when there are deterministic ones that
+can do better?
 
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
