@@ -1,21 +1,20 @@
 From: Jordi Mallach <jordi@debian.org>
-Subject: Re: [chip@debian.org: Debian Bug#203918 - statd request on eth interface, not localhost?]
-Date: Thu, 21 Aug 2003 09:58:26 +0200
+Subject: Re: Possible breakthrough Re: Debian Bug#203918 - statd request on eth interface, not localhost?
+Date: Thu, 21 Aug 2003 22:04:43 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030821075826.GA27391@nubol.int.oskuro.net>
-References: <20030812152154.GQ24349@perlsupport.com> <16185.47443.33945.603458@gargle.gargle.HOWL> <20030813082216.GA14015@nubol.int.oskuro.net> <20030820175951.GB3639@perlsupport.com>
+Message-ID: <20030821200443.GA5531@nubol.int.oskuro.net>
+References: <20030821180214.GA12129@perlsupport.com> <20030821185454.GA4643@nubol.int.oskuro.net> <20030821193126.GM14355@perlsupport.com>
 Mime-Version: 1.0
 Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="SUOF0GtieIMvvwua"
-Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net,
-	203918-quiet@bugs.debian.org
+	protocol="application/pgp-signature"; boundary="rwEMma7ioTxnRzrJ"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from 115.red-213-96-69.pooles.rima-tde.net ([213.96.69.115] helo=natura.oskuro.net)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19pkL5-0008Ug-00
-	for <nfs@lists.sourceforge.net>; Thu, 21 Aug 2003 00:58:36 -0700
+	id 19pvfv-0008Cj-00
+	for <nfs@lists.sourceforge.net>; Thu, 21 Aug 2003 13:04:51 -0700
 To: Chip Salzenberg <chip@debian.org>
-In-Reply-To: <20030820175951.GB3639@perlsupport.com>
+In-Reply-To: <20030821193126.GM14355@perlsupport.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,53 +28,36 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
---SUOF0GtieIMvvwua
+--rwEMma7ioTxnRzrJ
 Content-Type: text/plain; charset=iso-8859-1
 Content-Disposition: inline
 Content-Transfer-Encoding: quoted-printable
 
-On Wed, Aug 20, 2003 at 01:59:51PM -0400, Chip Salzenberg wrote:
-> So, what news?
+On Thu, Aug 21, 2003 at 03:31:26PM -0400, Chip Salzenberg wrote:
+> Well, the message is on the server (right?), so if anything, rebooting
+> the server (or at least stopping and starting nfs-kernel-server and
+> nfs-common) would be called for as a complete test.
 
-News are that I can't compile 2.6.0-test3, so I have no more info :(
+Yeah. I did restart those, no luck.
 
-> If you're still getting invalid statd requests from an IP other than
-> 127.0.0.1, they're not from the kernel.  Can you use tcpdump to find
-> out where the statd requests are coming from?
-
-=46rom the server's log:
-
-Aug 20 02:02:24 natura rpc.statd[467]: Call to statd from non-local host 21=
-3.96.69.115
-Aug 20 02:02:24 natura rpc.statd[467]: STAT_FAIL to natura for SM_MON of 19=
-2.168.1.3
-
-So, yes.. I'm still getting those 2.5 minutes after the apt-get cronjob
-starts.
-
-I have never used tcpdump more than to play a little, so I could use
-some pointers about what I should look at.
-
-Thanks,
-Jordi
 --=20
 Jordi Mallach P=E9rez  --  Debian developer     http://www.debian.org/
 jordi@sindominio.net     jordi@debian.org     http://www.sindominio.net/
 GnuPG public key information available at http://oskuro.net/~jordi/
 
---SUOF0GtieIMvvwua
+--rwEMma7ioTxnRzrJ
 Content-Type: application/pgp-signature
 Content-Disposition: inline
 
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v1.2.2 (GNU/Linux)
 
-iD8DBQE/RHuiJYSUupF6Il4RAhEvAJ4hiGGIPEk+5fmrd1qDJRwZmm5A/gCePipB
-B4ukdIMI3aveXHBaqurC4TQ=
-=yB0w
+iD8DBQE/RSXbJYSUupF6Il4RAqj9AJ42V5lQPvdOB8Ms/S6KO612H72gTwCdHFL0
+s8cJvI04+QcUDWMRkHLZIYE=
+=znit
 -----END PGP SIGNATURE-----
 
---SUOF0GtieIMvvwua--
+--rwEMma7ioTxnRzrJ--
 
 
 -------------------------------------------------------
