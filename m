@@ -1,28 +1,32 @@
-From: Jeff Blaine <jblaine@mitre.org>
+From: Vincent Roqueta <vincent.roqueta@ext.bull.net>
 Subject: Re: 2.4.21 NFSv3 performance graph
-Date: Tue, 18 Jan 2005 09:54:55 -0500
-Message-ID: <41ED233F.2070500@mitre.org>
-References: <41E816B3.4030702@mitre.org> <1105747170.28849.22.camel@lade.trondhjem.org>
+Date: Tue, 18 Jan 2005 18:08:02 +0100
+Message-ID: <200501181808.02576.vincent.roqueta@ext.bull.net>
+References: <41E816B3.4030702@mitre.org> <1105747170.28849.22.camel@lade.trondhjem.org> <41ED233F.2070500@mitre.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+  charset="windows-1252"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CqulA-0003ED-8Y
-	for nfs@lists.sourceforge.net; Tue, 18 Jan 2005 06:55:08 -0800
-Received: from smtp-bedford-dr-x.mitre.org ([192.160.51.65] helo=smtp-bedford-dr.mitre.org)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1Cqul8-0002Jz-2N
-	for nfs@lists.sourceforge.net; Tue, 18 Jan 2005 06:55:07 -0800
-Received: from smtp-bedford-dr.mitre.org (localhost.localdomain [127.0.0.1])
-	by smtp-bedford-dr.mitre.org (8.11.6/8.11.6) with SMTP id j0IEt4O23253
-	for <nfs@lists.sourceforge.net>; Tue, 18 Jan 2005 09:55:04 -0500
-Received: from smtp-bedford-dr.mitre.org (localhost.localdomain [127.0.0.1])
-	by smtp-bedford-dr.mitre.org (Postfix) with ESMTP id 368CC4F8D7
-	for <nfs@lists.sourceforge.net>; Tue, 18 Jan 2005 09:55:04 -0500 (EST)
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1105747170.28849.22.camel@lade.trondhjem.org>
+	id 1CqwkY-0000z4-Ov
+	for nfs@lists.sourceforge.net; Tue, 18 Jan 2005 09:02:38 -0800
+Received: from ecfrec.frec.bull.fr ([129.183.4.8])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CqwkV-0005mj-Tu
+	for nfs@lists.sourceforge.net; Tue, 18 Jan 2005 09:02:38 -0800
+Received: from localhost (localhost [127.0.0.1])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 884AC19D906
+	for <nfs@lists.sourceforge.net>; Tue, 18 Jan 2005 18:01:52 +0100 (CET)
+Received: from ecfrec.frec.bull.fr ([127.0.0.1])
+ by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
+ with ESMTP id 23163-03 for <nfs@lists.sourceforge.net>;
+ Tue, 18 Jan 2005 18:01:50 +0100 (CET)
+Received: from ecn002.frec.bull.fr (ecn002.frec.bull.fr [129.183.4.6])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 4E6D519D904
+	for <nfs@lists.sourceforge.net>; Tue, 18 Jan 2005 18:01:50 +0100 (CET)
+To: nfs@lists.sourceforge.net
+In-Reply-To: <41ED233F.2070500@mitre.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,51 +40,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust wrote:
-> fr den 14.01.2005 Klokka 14:00 (-0500) skreiv Jeff Blaine:
->=20
->>Can anyone tell me what is happening in the graph at the URL
->>below?  I can replicate it on any Linux box running 2.4.21
->>and changing rsize/wsize doesn't affect it at all.  This
->>was captured from a 2.6GHz P4 client machine.  Same thing
->>is visible with a Dual 3GHz Xeon box with 4GB memory as a
->>client.  A Solaris 9 client does not display this "falling
->>on face" behavior.
->>
->>http://www.kickflop.net/temp/sol9-server-linux2421-client-gigE-ag930m_1=
-0533_image001.gif
->=20
-> Firstly, you should always use the '-c' flag when measuring NFS client
-> performance. Otherwise, you are basically just measuring the speed with
-> which your machine can write to the local page cache (which may indeed
-> explain your "knee" at 1MB here - that would be where the client starts
-> to force a flush to disk).
+Le mardi 18 Janvier 2005 15:54, Jeff Blaine a =E9crit=A0:
+> Trond Myklebust wrote:
+> > fr den 14.01.2005 Klokka 14:00 (-0500) skreiv Jeff Blaine:
+> >>Can anyone tell me what is happening in the graph at the URL
+> >>below?  I can replicate it on any Linux box running 2.4.21
+> >>and changing rsize/wsize doesn't affect it at all.  This
+> >>was captured from a 2.6GHz P4 client machine.  Same thing
+> >>is visible with a Dual 3GHz Xeon box with 4GB memory as a
+> >>client.  A Solaris 9 client does not display this "falling
+> >>on face" behavior.
+> >>
+> >>http://www.kickflop.net/temp/sol9-server-linux2421-client-gigE-ag930m_1=
+05
 
-Firstly,
 
-Iozone manual:
+That are reading perfs? Over a 1Gb/s network? Synchronous mount? (y)
+Yours discs are capables of a 540Mo/s throughput? (No).
+So you are working in cache...
 
-     "If you use a file size that is larger than the amount of
-      memory in the client then the =91c=92 flag is not needed."
+http://nfsv4.bullopensource.org/tools/tests/NFSv4_tests.html
 
-I used a file size that is larger than the amount of memory in
-the client.
 
-> Secondly, have you actually read the NFS FAQ and NFS HOWTO entries on
-> how to tune for performance? Particularly the entries on TCP vs. UDP,
-> and how Solaris clients default to the former.
-
-Secondly,
-
-Yes, I have *actually* read the NFS FAQ and NFS HOWTO entries
-on how to tune for performance.
-
-It was a pretty simple question.  I don't know what all the
-attitude is about.  Do you have an answer you can share with
-me or not?
-
-Anyone else?
-
+Vincent
 
 
 -------------------------------------------------------
