@@ -1,25 +1,22 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Frank van Maarseveen <frankvm@xs4all.nl>
 Subject: Re: nfs v3: chown not permitted
-Date: Mon, 22 Mar 2004 11:23:25 -0500
+Date: Tue, 23 Mar 2004 10:18:51 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040322162324.GB27261@fieldses.org>
-References: <20040322143922.GA2452@posern.org>
+Message-ID: <20040323091851.GA11416@janus>
+References: <20040322143922.GA2452@posern.org> <20040322150642.GC23862@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B5SD4-0006uG-2k
-	for nfs@lists.sourceforge.net; Mon, 22 Mar 2004 08:23:30 -0800
-Received: from dsl093-002-214.det1.dsl.speakeasy.net
-	([66.93.2.214] helo=pumpkin.fieldses.org ident=Debian-exim)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.30)
-	id 1B5SD3-0000qL-2Z
-	for nfs@lists.sourceforge.net; Mon, 22 Mar 2004 08:23:29 -0800
-To: foo@posern.org
-In-Reply-To: <20040322143922.GA2452@posern.org>
+	id 1B5i4T-000762-EC
+	for nfs@lists.sourceforge.net; Tue, 23 Mar 2004 01:19:41 -0800
+Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1B5i4T-00049N-0h
+	for nfs@lists.sourceforge.net; Tue, 23 Mar 2004 01:19:41 -0800
+To: nfs@lists.sourceforge.net
+In-Reply-To: <20040322150642.GC23862@suse.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,24 +29,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, Mar 22, 2004 at 03:39:22PM +0100, foo@posern.org wrote:
-> By the way: In which state is nfs v4? - Its already more or less
-> usable? <<< because from time to time I am looking at www.nfsv4.org,
-> but there is sadly nothing written about the state of development of
-> nfsv4...
+On Mon, Mar 22, 2004 at 04:06:43PM +0100, Olaf Kirch wrote:
+> On Mon, Mar 22, 2004 at 03:39:22PM +0100, foo@posern.org wrote:
+> > me@jolie:/mnt$ groups
+> > mine root adm disk lp dialout cdrom floppy audio www-data src video
+> > prg data mp3 maildata newmp3 wg users lpadmin
+> 
+> You have too many groups. SunRPC AUTH_UNIX authentication will transport
+> up to 16 groups, and "users" is item #19 in your list. "chgrp mp3"
+> would probably work, but users doesn't because the NFS server doesn't
+> see it in your list of groups.
 
-That website is for everyone involved in nfsv4, not just the linux
-implementors.  For linux, you want:
+The Linux 2.4 NFS client patch to bypass this limitation can be found here:
 
-http://www.citi.umich.edu/projects/nfsv4/linux/
+	http://frankvm.xs4all.nl/nfs-ngroups/
 
-Bug reports welcomed, to nfsv4-wg@citi.umich.edu.
-
-Still marked experimental, but should do everything v3 does with a few
-exceptions (e.g., reboot recovery, at least on the server side, is still
-work in progress).
-
---Bruce Fields
+-- 
+Frank
 
 
 -------------------------------------------------------
