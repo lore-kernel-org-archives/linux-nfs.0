@@ -1,20 +1,39 @@
-From: Juri Haberland <list-linux.nfs@spoiled.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: Mailbox corruption on The NFS server
-Date: Tue, 2 Dec 2003 18:51:17 +0000 (UTC)
+Date: 02 Dec 2003 14:35:14 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <news2mail-bqimv5$onp$1@cartman.spoiled.org>
-References: <Pine.LNX.4.44.0312011235290.23297-100000@kenzo.iwr.uni-heidelberg.de> <Pine.GSO.4.44.0312021646390.9111-100000@bhairav.ee.iitb.ac.in>
-Reply-To: Juri Haberland <juri@koschikode.com>
+Message-ID: <shs65gzvwr1.fsf@guts.uio.no>
+References: <Pine.LNX.4.44.0312011235290.23297-100000@kenzo.iwr.uni-heidelberg.de>
+	<Pine.GSO.4.44.0312021646390.9111-100000@bhairav.ee.iitb.ac.in>
+	<news2mail-bqimv5$onp$1@cartman.spoiled.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1ARFby-0000WU-FH
-	for nfs@lists.sourceforge.net; Tue, 02 Dec 2003 10:51:02 -0800
-Received: from cartman.spoiled.org ([80.190.101.194] helo=a.mx.spoiled.org)
+	id 1ARGIz-00046J-3A
+	for nfs@lists.sourceforge.net; Tue, 02 Dec 2003 11:35:29 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
-	id 1ARFbx-0006rw-PM
-	for nfs@lists.sourceforge.net; Tue, 02 Dec 2003 10:51:01 -0800
+	id 1ARGIy-00022J-NM
+	for nfs@lists.sourceforge.net; Tue, 02 Dec 2003 11:35:28 -0800
+Received: from mail-mx6.uio.no ([129.240.10.47])
+	by pat.uio.no with esmtp (Exim 4.20)
+	id 1ARGIu-0001JJ-U4
+	for nfs@lists.sourceforge.net; Tue, 02 Dec 2003 20:35:24 +0100
+Received: from ulrik.uio.no ([129.240.12.4])
+	by mail-mx6.uio.no with esmtp (Exim 4.14)
+	id 1ARGIl-0000sW-59
+	for nfs@lists.sourceforge.net; Tue, 02 Dec 2003 20:35:15 +0100
+Received: from guts.uio.no ([129.240.87.181])
+	by ulrik.uio.no with esmtp (Exim 2.12 #7)
+	id 1ARGIk-0003Fh-00
+	for nfs@lists.sourceforge.net; Tue, 2 Dec 2003 20:35:14 +0100
+Received: from trondmy by guts.uio.no with local (Exim 4.22)
+	id 1ARGIk-0000st-RF
+	for nfs@lists.sourceforge.net; Tue, 02 Dec 2003 13:35:14 -0600
 To: nfs@lists.sourceforge.net
+In-Reply-To: <news2mail-bqimv5$onp$1@cartman.spoiled.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -27,33 +46,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Shivaji Navale <shivaji@ee.iitb.ac.in> wrote:
-> Hi,
+>>>>> " " == Juri Haberland <list-linux.nfs@spoiled.org> writes:
 
-Hi,
+     > It's considered a bad idea to put mailboxes on a NFS share as
+     > there might be locking issues if two applications simultanously
+     > acces the same mailbox. Either use the maildir format or don't
+     > export your mailboxes via NFS.
 
-please don't start a new topic/thread by just replying to another mail.
-Thanks.
+Sort of. It can be made to work *provided* that you can guarantee that
+your mail programs all agree to support the same file locking scheme.
+Currently that means they must chose one (or both) of the following
+schemes:
 
-> We have this peculiar problem for the Mailboxes of users
-> /var/spool/mail/username.
-> The mailboxes get corrupted asto the first 20-26 lines of mailbox get
-> DELETED.
-> 
-> We are using 2.4.20-18.8.um.1 kernel on the (LVS Director) which exports
-> the mail partition to 30 NFS/NIS clients.
+  - fcntl() (a.k.a. POSIX, a.k.a. lockf()) locking
 
-It's considered a bad idea to put mailboxes on a NFS share as there
-might be locking issues if two applications simultanously acces the same
-mailbox. Either use the maildir format or don't export your mailboxes
-via NFS.
+  - dotlocking (a.k.a. creating a lock file using something like 'ln
+    mailbox .mailbox.locked')
 
-Regards,
-Juri
+Note that the BSD flock() and use of O_EXCL in a dotlocking scheme are
+not considered to be reliable within Linux NFS.
 
--- 
-Juri Haberland  <juri@koschikode.com> 
-
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
