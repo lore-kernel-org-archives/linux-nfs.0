@@ -1,53 +1,102 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: Strange delays on NFS server
-Date: Wed, 11 Aug 2004 15:07:32 -0400
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <411A6E74.1060000@RedHat.com>
-References: <4119FB15.7010205@stams.strath.ac.uk> <411A17F2.2060203@RedHat.com> <411A448D.3080205@stams.strath.ac.uk>
+From: Christian Kujau <evil@g-house.de>
+Subject: oops with 2.6.8-rc4 (ipv6 / nfs / 3c59x related?)
+Date: Wed, 11 Aug 2004 21:29:33 +0200
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <411A739D.1040000@g-house.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BuyRW-0005my-C0
-	for nfs@lists.sourceforge.net; Wed, 11 Aug 2004 12:07:22 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.34)
-	id 1BuyRV-0008BA-Uh
-	for nfs@lists.sourceforge.net; Wed, 11 Aug 2004 12:07:22 -0700
-To: Ian Thurlbeck <ian@stams.strath.ac.uk>
-In-Reply-To: <411A448D.3080205@stams.strath.ac.uk>
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain; charset=us-ascii
+Cc: vortex@scyld.com, netdev@oss.sgi.com, nfs@lists.sourceforge.net,
+	debian-kernel@lists.debian.org
+Return-path: <linux-kernel-owner+glk-linux-kernel=40m.gmane.org-S268055AbUHKT3x@vger.kernel.org>
+To: linux-kernel <linux-kernel@vger.kernel.org>
+List-ID: <nfs.lists.sourceforge.net>
 
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
+hi list,
 
-Ian Thurlbeck wrote:
+yesterday i encounterd several oopses with my "server". the subject of
+this mail is just plain saying that it is all "2.6.8-rc4's fault". the
+reality however turned out to be much more complex and confusing so i
+try to recapitulate in a chronologically way:
 
-> I'm simultaneously looking at a graphical network tool to try
-> and see the traffic going to the server - anyone got a better suggestion?
+- - the box (debian/unstable, i368 [PentiumIII] ) was running for 28 days
+with 2.6.7-ck5 (no other patches but the -ck5 [1] )
 
-Grab the latest xosview.... it show disk,cpu and nfs activity graphically...
+- - ipv6 transition interface was down again, i had to start the freenet6
+client again, to setup sit1. then i tried from a nfs-client to use this
+interface by issuing "tracepath6" comamnds when i noticed my nfs-server
+(the pIII-box) was dead. i could not catch the oops, had no digicam at
+hand / was too lazy to write, i'll tell later on that.
 
-SteveD.
+- - rebooted same kernel, tried again locally (setup sit1, tracepath6 to
+some ipv6 host) -> the box oopsed and locked up. (SYSRQ-s|u did not
+succeed, only SYSRQ-b...rebooting)
 
+- - ok, 2.6.8-rc4 is out anyway, time to update. compiled, booted, setup
+sit1, tracepath6....-> the box oopsed and locked up.
 
--------------------------------------------------------
-SF.Net email is sponsored by Shop4tech.com-Lowest price on Blank Media
-100pk Sonic DVD-R 4x for only $29 -100pk Sonic DVD+R for only $33
-Save 50% off Retail on Ink & Toner - Free Shipping and Free Gift.
-http://www.shop4tech.com/z/Inkjet_Cartridges/9_108_r285
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+- - am i too dumb to boot my self-built kernels? perhaps, so i used
+kernel-image-2.6.7-1-686 from debian. again: i set up sit1, tracepath6
+to some host -> ha! it did not lock up instantly, but tracepath6 gave
+not results, so i CTRL-C'ed it and received a message:
+
+KERNEL: assertion (!atomic_read(&sk->sk_wmem_alloc)) failed at
+net/ipv4/af_inet.c (155)
+
+everytime i CTRL-C'ed i received this message. and 2.6.7-1-686 was still
+alive....for a few minutes. when i used my nfs-client to issue
+tracepath6 commands, the box oopsed but this time the oops mad it to the
+disk [2]. then it locked up, and the screen filled with traces.
+
+- - today i got a camera so i was able to catch the oops [3] + [4]. now
+the confusing part: i rememberd the oopses from the 2.6.8-rc4: they were
+ the same as [3] is showing, so it seemed to be related to the 3c59x
+module. i even suspected (sudden) harware problems so i changed the NIC
+to another 3c59x card. hm, the 3c59x oopses were gone indeed (somehow i
+still doubt the card is damaged), but the nfs related oopses occured
+with 2.6.7-1-i686 *and* 2.6.8-rc4 [4] + [5].
+
+- - so, the nfs-related oopses were  100% reproducable when i used the
+nfs-shares on the client (both 2.6.7-1-686 and 2.6.8-rc4)
+
+- - somehow ipv6 was always involved, i could not trigger the oops when
+ipv6 was not loaded/sit1 was not setup.
+
+- - vanilla 2.6.7 seems not affected, 2.6.8-rc[1..3] are also ok
+(2.6.8-rc3 is running atm).
+
+i hope i did not mix something up here. yes, maybe this report has to
+split up into one ipv6 and one nfs report. i hope [3], [4], [5] are
+helpful to find out what the oops was all about. (the "Tainted" flags in
+the 2.6.7-1-686 kernels came from loop-aes modules:
+"loop: no version for "struct_module" found: kernel tainted.")
+
+sorry for the crossposting (please delete rcpts if not applicable)
+Thank you for your commments.
+Christian.
+
+[1] http://ck.kolivas.org/patches/2.6/2.6.7/2.6.7-ck5/patch-2.6.7-ck5.bz2
+
+[2] http://nerdbynature.de/bits/sheep/2.6.8/2.6.7-1-686.oops
+
+[3] http://nerdbynature.de/bits/sheep/2.6.8/2.6.7-1-686.oops_3c59x.jpg
+[4] http://nerdbynature.de/bits/sheep/2.6.8/2.6.7-1-686.oops_nfs.jpg
+[5] http://nerdbynature.de/bits/sheep/2.6.8/2.6.8-rc4.oops_nfs.jpg
+
+everything:
+   http://nerdbynature.de/bits/sheep/2.6.8/
+
+- --
+BOFH excuse #78:
+
+Yes, yes, its called a design limitation
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.5 (GNU/Linux)
+Comment: Using GnuPG with Thunderbird - http://enigmail.mozdev.org
+
+iD8DBQFBGnOd+A7rjkF8z0wRAqK2AJ96DxaNdgXBRbDJvhZUNChmh9kDugCdFyIa
+n5wJaT5zXePq7xakS2SuPsA=
+=SkFV
+-----END PGP SIGNATURE-----
