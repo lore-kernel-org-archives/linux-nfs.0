@@ -1,23 +1,27 @@
-From: Greg Banks <gnb@sgi.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: [PATCH] 1/3 - RPC metrics support
-Date: Fri, 2 Apr 2004 10:49:24 +1000
+Date: Thu, 01 Apr 2004 20:41:18 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040402004924.GG9409@sgi.com>
-References: <482A3FA0050D21419C269D13989C61130435DE4C@lavender-fe.eng.netapp.com> <1080866187.10521.14.camel@lade.trondhjem.org>
+Message-ID: <1080870078.10521.53.camel@lade.trondhjem.org>
+References: <482A3FA0050D21419C269D13989C61130435DE4C@lavender-fe.eng.netapp.com>
+	 <1080866187.10521.14.camel@lade.trondhjem.org>
+	 <20040402004924.GG9409@sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
 Cc: Charles Lever <Charles.Lever@netapp.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B9CsJ-0007r5-8Y
-	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 16:49:35 -0800
-Received: from mtvcafw.sgi.com ([192.48.171.6] helo=omx2.sgi.com)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B9CsI-00016j-Vq
-	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 16:49:35 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1080866187.10521.14.camel@lade.trondhjem.org>
+	id 1B9DgS-0002Qc-B0
+	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 17:41:24 -0800
+Received: from dh132.citi.umich.edu
+	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.30)
+	id 1B9DgR-0003Bm-W1
+	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 17:41:24 -0800
+To: Greg Banks <gnb@sgi.com>
+In-Reply-To: <20040402004924.GG9409@sgi.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,24 +34,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Apr 01, 2004 at 07:36:27PM -0500, Trond Myklebust wrote:
-> On Thu, 2004-04-01 at 12:05, Lever, Charles wrote:
-> 
-> > if we saved the export path somewhere in the nfs_server
-> > structure, that would be mighty convenient for iostats
-> > and i don't think that would break namespaces.
-> 
-> ...but it would force us to introduce a new mount_data structure, and
-> hence a new "mount" ABI so that will have to wait until 2.7.x.
+On Thu, 2004-04-01 at 19:49, Greg Banks wrote:
 
-Why not just save a copy of @devname in nfs_get_sb() ?  It's
-the same name that's stored in struct vfsmount and reported
-in /proc/mounts.
+> Why not just save a copy of @devname in nfs_get_sb() ?  It's
+> the same name that's stored in struct vfsmount and reported
+> in /proc/mounts.
 
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+That is very different. That we can do...
+
+Please don't confuse the export path and the device name. nfss->mnt_path
+is the former: it is part of the NFS mount ABI, and contains the path
+that we use to look up the mountpoint on the NFSv4 server. It allows us,
+for instance, to recover in the case where the server changes the
+filehandle of the mountpoint (NFSv4 servers are allowed to have
+filehandles that expire).
+Adding the export path to the NFSv2/v3 mount structures would for
+instance allow us to do things such as identifying whether or not the
+user is mounting a parent/subdirectory of one of our current mount
+points.
+
+
+The device name OTOH is just whatever label the caller of sys_mount()
+feels like passing down to the kernel. It will usually contain the name
+of the server and the export path ('cos that's what the nfs-utils
+"mount" does), but it does not have to, and we currently do not depend
+on it taking any particular value.
+
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
