@@ -1,16 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 0 of 12] Introduction
-Date: Tue, 08 Feb 2005 14:06:53 +1100
-Message-ID: <20050208140033.24886.patches@notabene>
+Subject: [PATCH kNFSd 2 of 12] exportfs: reduce stack usage
+Date: Tue, 08 Feb 2005 14:06:54 +1100
+Message-ID: <E1CyLiI-0006VG-0B@notabene.cse.unsw.edu.au>
+References: <20050208140033.24886.patches@notabene>
 Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CyLiq-0006vA-RP
-	for nfs@lists.sourceforge.net; Mon, 07 Feb 2005 19:07:28 -0800
+	id 1CyLiU-0006uN-22
+	for nfs@lists.sourceforge.net; Mon, 07 Feb 2005 19:07:06 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CyLiq-0005Di-57
-	for nfs@lists.sourceforge.net; Mon, 07 Feb 2005 19:07:28 -0800
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CyLiS-0004Cm-H5
+	for nfs@lists.sourceforge.net; Mon, 07 Feb 2005 19:07:05 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -26,26 +27,50 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Following are 12 patches for nfsd in 2.6.11-rc2-mm2
 
-- Fix minor problem with '..' access interacting with the "nohide" export option.
-- reduce stack space usage in find_exported_dentry
-- 6 patches from Bruce Fields to improve authentication handling for callbacks.
-- Fix problem that stopped read access to append-only files.
-- Fix bug where readdir replies are cache badly.
-- Add lots of "static" declarations where appropriate
-- Change nfscache to use list.h macros and smaller kmallocs
+find_exported_dentry() declares
+	char nbuf[NAME_MAX+1];
+in 2 separate places, and gcc allocates space on the stack for both
+of them.  Having just one of them will suffice, if we can put put
+with its scope.
 
-I believe they are all ready for ready for 2.6.11.
-Number 10 (readdir fix) is probably the most critical (and most trivial).
-The append-only would be next in line.
-The 6 from Bruce fix a real performance problem with locking.
+Reduces function stack usage on x86-32 from 0x230 to 0x130.
 
-The rest could be safely delayed if that seem appropriate, but they are 
-either quite trivial or (for the last one) quite well tested.
+Signed-off-by: Randy Dunlap <rddunlap@osdl.org>
+Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
-NeilBrown
+### Diffstat output
+ ./fs/exportfs/expfs.c |    4 +---
+ 1 files changed, 1 insertion(+), 3 deletions(-)
 
+diff ./fs/exportfs/expfs.c~current~ ./fs/exportfs/expfs.c
+--- ./fs/exportfs/expfs.c~current~	2005-02-07 15:04:00.000000000 +1100
++++ ./fs/exportfs/expfs.c	2005-02-07 15:04:00.000000000 +1100
+@@ -55,7 +55,7 @@ find_exported_dentry(struct super_block 
+ 	struct list_head *le, *head;
+ 	struct dentry *toput = NULL;
+ 	int noprogress;
+-
++	char nbuf[NAME_MAX+1];
+ 
+ 	/*
+ 	 * Attempt to find the inode.
+@@ -176,7 +176,6 @@ find_exported_dentry(struct super_block 
+ 			 */
+ 			struct dentry *ppd;
+ 			struct dentry *npd;
+-			char nbuf[NAME_MAX+1];
+ 
+ 			down(&pd->d_inode->i_sem);
+ 			ppd = CALL(nops,get_parent)(pd);
+@@ -241,7 +240,6 @@ find_exported_dentry(struct super_block 
+ 	/* if we weren't after a directory, have one more step to go */
+ 	if (result != target_dir) {
+ 		struct dentry *nresult;
+-		char nbuf[NAME_MAX+1];
+ 		err = CALL(nops,get_name)(target_dir, nbuf, result);
+ 		if (!err) {
+ 			down(&target_dir->d_inode->i_sem);
 
 
 -------------------------------------------------------
