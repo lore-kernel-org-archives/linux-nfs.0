@@ -1,21 +1,20 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: [PATCH] xprt sharing (was Re: xprt_bindresvport)
-Date: Wed, 8 Dec 2004 11:08:18 -0800
-Message-ID: <482A3FA0050D21419C269D13989C61130435EC70@lavender-fe.eng.netapp.com>
+From: Bryce Harrington <bryce@osdl.org>
+Subject: Question on bug tracking for NFSv4 work
+Date: Wed, 8 Dec 2004 12:34:06 -0800 (PST)
+Message-ID: <Pine.LNX.4.33.0412081205060.6018-100000@osdlab.pdx.osdl.net>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: "Olaf Kirch" <okir@suse.de>, <nfs@lists.sourceforge.net>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: <storage_sig@osdl.org>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Cc7At-0005tu-3g
-	for nfs@lists.sourceforge.net; Wed, 08 Dec 2004 11:08:31 -0800
-Received: from mx2.netapp.com ([216.240.18.37])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1Cc7Ao-0000df-Gr
-	for nfs@lists.sourceforge.net; Wed, 08 Dec 2004 11:08:27 -0800
-To: "Mike Waychison" <Michael.Waychison@Sun.COM>
+	id 1Cc8Vk-0003v4-6N
+	for nfs@lists.sourceforge.net; Wed, 08 Dec 2004 12:34:08 -0800
+Received: from fw.osdl.org ([65.172.181.6] helo=mail.osdl.org)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1Cc8Vj-00078q-Dm
+	for nfs@lists.sourceforge.net; Wed, 08 Dec 2004 12:34:08 -0800
+To: <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,32 +28,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> > but also notice this cuts the usable port range in half=20
-> (from ~800 to
-> > ~420).  we need some form of mitigation to ensure we aren't=20
-> limiting the
-> > number of NFS mounts a client can have.
->=20
-> This has been bugging me for a while.  The fact that we are limitting
-> ourselves to a single nfs mount per port.  From what I can=20
-> tell, Solaris
-> shares the transports between nfs mounts from the same server=20
-> and saves
-> themselves a lot of trouble with running out of port numbers=20
-> in doing so.
->=20
-> The attached patch does the same for Linux against 2.6.9.  We share
-> xprts from existing connections, effectively removing any limit on the
-> number of nfs mounts we have in the system.
->=20
-> The only thing to worry about now is any talking to the portmapper or
-> mountd from userspace using tcp, which will put the reserved ports in
-> TIME_WAIT state.  This can limit the 'speed' at which we=20
-> mount many mounts.
+Hi all,
 
-we're looking at a similar solution.  we want to make sure we don't
-limit the scalability of everyone's mount point by making them all
-funnel through a single slot table.
+Quick question regarding bug tracking...
+
+I notice that the bug tracker on the NFS SourceForge page does not seem
+to get a lot of attention - would this tracker be the right place for
+tracking bugs related to NFSv4 testing?
+
+If not, would there be interest in having a Bugzilla for nfs?  We've
+heard several people suggest this, and OSDL runs the kernel Bugzilla, so
+it's something we could help with.
+
+The reason for the question is that a number of companies
+(CITI, Polyserv, Novell, NetApp, etc.) we've been talking with are doing
+testing of NFSv4, and have expressed interest in sharing of results,
+including a public bug tracker (both for posting bugs that are found,
+and for reviewing/validating/elaborating bugs that others post).
+
+Thanks,
+Bryce
+
+
 
 
 -------------------------------------------------------
