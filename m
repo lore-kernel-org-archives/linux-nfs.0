@@ -1,16 +1,12 @@
-From: Andreas Behnert <abehn@gmx.net>
-Subject: statd error messages - do I need a more recent nfs-utils version?
-Date: Tue, 15 Apr 2003 17:53:21 +0200
+From: CDROM@biozak.com
+Subject: 13,000+ life science customers for your sorage  solutions
+Date: Tue, 15 Apr 2003 20:18:47 UT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3E9C2AF1.5000003@gmx.net>
+Message-ID: <200304152018.NAA29573@main.biozak.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: multipart/alternative; boundary="_----------=_105043792729120124"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail.gmx.de ([213.165.64.20] helo=mail.gmx.net)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 195SkU-0003UA-00
-	for <nfs@lists.sourceforge.net>; Tue, 15 Apr 2003 08:53:30 -0700
-To: nfs@lists.sourceforge.net
+To: nfs@sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -23,39 +19,86 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
+This is a multi-part message in MIME format.
 
-server was running Debian 3.0r1 + kernel 2.2.20 (vanilla) and
-some days ago because of various reasons I had to upgrade to
-kernel 2.4.x ASAP. Because of some knfsd related fixes in 2.4.21-pre
-I did some stability tests and after that I installed 2.4.21-pre7
-on the server. With the new kernel statd often causes error messages
-in the server log, for instance:
+--_----------=_105043792729120124
+Content-Disposition: inline
+Content-Length: 856
+Content-Transfer-Encoding: binary
+Content-Type: text/plain
 
-(srv = server
-  and three drifferent clients as an example:
-   .105 = AIX 5.1-ML2
-   .107 = HP-UX 11.0U
-   .114 = IRIX 6.5.15)
+Locate  life science industry customers for your storage solutions  with BioZak InfoBase CD-Rom databases
 
-~~~snip~~~
-srv rpc.statd[475]: Received erroneous SM_UNMON request from srv for
-  x.x.x.105
-srv rpc.statd[475]: Received erroneous SM_UNMON request from srv for
-  x.x.x.107
-srv rpc.statd[475]: Received erroneous SM_UNMON request from srv for
-  x.x.x.114
-~~~snip~~~
+*13,000 companies
+*25,000 executives
+*advanced data retrieval tools
 
-Are these messages somehow important? With kernel 2.2.20 there were no
-such messages.
-Debian Woody comes with nfs-utils 1.0 - maybe these messages are related
-to this older utils version and I have to update nfs-utils to 1.0.3?
-Building the Debian package wouldn't be a problem ...
+Ideal  for:
+*direct marketing
+*teleprospecting
+*partner search
+
+Now  only $956 (20% off regular price of $1,195) - that's less than 7 cents per contact!
+
+Interested?
+
+Email CDROM@biozak.com or visit
+http://main.biozak.com/cgi-bin/BIOZAK/sublinks.pl?type=CD
 
 
-Regards,
-Andreas
+Enter/mention promotion code int_service_providers_SS when asked.
+
+
+Sincerely,
+--
+Ekaterina Kalygina,
+Marketing Director,
+BioZak InfoBase, Inc. - business intelligence for life science markets!
+
+
+
+-----
+Every effort is made to ensure that this message is received only by interested parties. If this message was sent to you in error, please reply with 'remove' in the subject line - you will get no further email from us.
+--_----------=_105043792729120124
+Content-Disposition: inline
+Content-Length: 1165
+Content-Transfer-Encoding: binary
+Content-Type: text/html
+
+Locate  life science industry customers for your storage solutions  with BioZak InfoBase CD-Rom databases: <BR>
+
+<li>13,000 companies<BR><BR>
+<li>25,000 executives<BR><BR>
+<li>advanced data retrieval tools<BR><BR>
+</ul>
+
+Ideal for:<BR><BR>
+<ul>
+<li> direct marketing<BR><BR>
+<li> teleprospecting<BR><BR>
+<li> partner search<BR><BR>
+</ul>
+
+Act now and pay only $956 (20% off regular price of $1195) - that's <b>less than 7 cents per contact!</b><BR><BR>
+
+Interested? <BR><BR>
+
+Email <a href="mailto:CDROM@biozak.com">CDROM@biozak.com</a> or visit
+<a href="http://main.biozak.com/cgi-bin/BIOZAK/sublinks.pl?type=CD">http://main.biozak.com/cgi-bin/BIOZAK/sublinks.pl?type=CD</a><BR><BR><BR>
+
+Enter/mention promotion code int_service_providers_SS when asked.<BR><BR><BR>
+
+Sincerely,<BR>
+--<BR>
+Ekaterina Kalygina,<BR>
+Marketing Director,<BR>
+BioZak InfoBase, Inc. - business intelligence for life science markets!<BR>
+<BR><BR><BR><BR>
+
+
+-----<BR>
+Every effort is made to ensure that this message is received only by interested parties. If this message was sent to you in error, please reply with 'remove' in the subject line - you will get no further email from us.<BR>
+--_----------=_105043792729120124--
 
 
 
