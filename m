@@ -1,17 +1,14 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Re: /var/lib/nfs/sm/ files
-Date: Wed, 8 Jan 2003 10:13:59 +0100
+From: devnull@adc.idt.com
+Subject: nfs client using autofs v4
+Date: Wed, 8 Jan 2003 18:24:27 -0500 (EST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200301081013.59384.trond.myklebust@fys.uio.no>
-References: <20030107132743.E2628@blackjesus.async.com.br> <shsn0mcj3x8.fsf@charged.uio.no> <00ed01c2b6ed$2a9d9530$64070786@synack>
+Message-ID: <Pine.GSO.4.50.0301081812460.2718-100000@bom.adc.idt.com>
+Reply-To: devnull@adc.idt.com
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Cc: <NFS@lists.sourceforge.net>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linuxmanagers@linuxmanagers.org
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: "David Shirley" <dave@cs.curtin.edu.au>,
- "Christian Reis" <kiko@async.com.br>
-In-Reply-To: <00ed01c2b6ed$2a9d9530$64070786@synack>
+To: NFS@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,20 +21,40 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wednesday 08 January 2003 09:08, David Shirley wrote:
-> Trond,
->
-> Will the client automatically remount or fix the mount
-> once the server comes back up? ie after the server
-> notifys the client, or does the client still have to restart
-> nfs?
+Dear Managers,
 
-If the client and server both comply with the NFS standards, then the client 
-should never have to remount after a server reboot. rpc.statd exists purely 
-for the benefit of the NFS file locking.
+Apologies for the cross post.
 
-Cheers,
-  Trond
+We have some linux clients running on RH 7.3 with 2.4.18, and i am trying
+to mount filesystems using NIS from a mixture of
+
+Network Appliance boxes running v2 and v3 NFS(UDP and TCP)
+Dell Box running Redhat 7.3 and 2.4.20 v2 and v3(UDP ONLY)
+
+I am running autofsv4-pre10 from www.kernel.org(mainly to get /net).
+
+We would like to default all NFS mounts to use TCP and if not available
+use UDP. This way all mounts coming from Network Appliance will be TCP and
+the ones from the Linux Box will be UDP.
+
+Does anyone know of a way of doing this.
+
+Adding localoptions='nfsvers=3,tcp,udp' to the local autofs startup script
+does not work.
+
+Maybe this is a compile-time option to autofs(i dont see one)
+
+Worst case, i will need to make separate "auto_master" files for the Suns
+and the Linux machines(i would like to avoid this)
+
+Many thanks,
+
+Best Regards.
+
+/dev/null
+
+devnull@adc.idt.com
+
 
 
 -------------------------------------------------------
