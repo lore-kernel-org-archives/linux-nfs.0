@@ -1,24 +1,24 @@
-From: Ian Kent <raven@themaw.net>
-Subject: Re: how to force umount when "Device or resource busy"?
-Date: Wed, 15 Sep 2004 09:09:30 +0800 (WST)
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: client breaking large synchronous writes into page-sized
+ operations
+Date: Wed, 15 Sep 2004 11:16:20 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.58.0409150908100.20157@wombat.indigo.net.au>
-References: <AB813470-0682-11D9-9080-000A95C71776@freezone.co.uk>
+Message-ID: <1095239780.7648.1.camel@lade.trondhjem.org>
+References: <OF384027ED.2EEEA6E4-ON88256F0F.0081F2A6-88256F0F.0083657E@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=iso-8859-1
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C7OIb-0000CM-RY
-	for nfs@lists.sourceforge.net; Tue, 14 Sep 2004 18:09:29 -0700
-Received: from wombat.indigo.net.au ([202.0.185.19])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.34)
-	id 1C7OIa-0001wa-1A
-	for nfs@lists.sourceforge.net; Tue, 14 Sep 2004 18:09:29 -0700
-To: ms419@freezone.co.uk
-In-Reply-To: <AB813470-0682-11D9-9080-000A95C71776@freezone.co.uk>
+	id 1C7Vu8-0008CM-UR
+	for nfs@lists.sourceforge.net; Wed, 15 Sep 2004 02:16:44 -0700
+Received: from pat.uio.no ([129.240.130.16])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1C7Vu7-00046c-4g
+	for nfs@lists.sourceforge.net; Wed, 15 Sep 2004 02:16:44 -0700
+To: Bruce Allan <bruce.allan@us.ibm.com>
+In-Reply-To: <OF384027ED.2EEEA6E4-ON88256F0F.0081F2A6-88256F0F.0083657E@us.ibm.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,25 +31,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, 14 Sep 2004 ms419@freezone.co.uk wrote:
+P=E5 on , 15/09/2004 klokka 01:55, skreiv Bruce Allan:
 
-> How does one unmount when umount doesn't work?
-> 
-> Somehow, I got an NFS / AutoFS mount that just won't unmount.
-> 
-> I noticed /var/autofs/net was mounted twice, so I stopped AutoFS & 
-> tried killing the remaining automount process. "kill 14986" didn't 
-> work; I needed "kill -9 14986". The following mounts remain:
+> I was wondering if you could explain what the limitation is.
+>=20
 
-What versions are you using?
-Kernel version?
-Patched?
+The limitation is that writepage and friends all work using single
+pages.
 
-Try the autofs list at
+It is therefore not an NFS client limitation, it is a VFS limitation...
 
-http://linux.kernel.org/mailman/listinfo/autofs
-
-Ian
+Cheers,
+ Trond
 
 
 
