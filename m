@@ -1,20 +1,20 @@
-From: Hirokazu Takahashi <taka@valinux.co.jp>
-Subject: Re: NFSv2 won't work in case of error
-Date: Tue, 05 Nov 2002 12:11:11 +0900 (JST)
+From: "poczta.dotcom.pl" <myciel@dotcom.pl>
+Subject: nfs performance problem
+Date: Tue, 5 Nov 2002 19:03:43 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20021105.121111.68165074.taka@valinux.co.jp>
-References: <20021101.170933.15272489.taka@valinux.co.jp>
-	<15815.4459.667481.353188@notabene.cse.unsw.edu.au>
+Message-ID: <005b01c284f5$ae1d6090$640a010a@winda>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_0058_01C284FE.0FA7CCD0"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sv1.valinux.co.jp ([202.221.173.100])
+Received: from rtr.pul.pl ([195.116.89.98] helo=poczta.dotcom.pl)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 188uFM-0005SO-00
-	for <nfs@lists.sourceforge.net>; Mon, 04 Nov 2002 19:19:20 -0800
-To: neilb@cse.unsw.edu.au
-In-Reply-To: <15815.4459.667481.353188@notabene.cse.unsw.edu.au>
+	id 18988a-0008Be-00
+	for <nfs@lists.sourceforge.net>; Tue, 05 Nov 2002 10:09:16 -0800
+Received: from winda (office.interia.pl [213.76.176.114])
+	by poczta.dotcom.pl (Postfix) with ESMTP id 52F9A159E7
+	for <nfs@lists.sourceforge.net>; Tue,  5 Nov 2002 19:06:47 +0100 (CET)
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,123 +27,162 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
+This is a multi-part message in MIME format.
 
-> > I've fixed a problem that NFSv2 won't work when NFSv2 procedure
-> > handler (proc->pc_func) returns error.
-> > 
-> > I guess there may be better way to fix it than this patch.
-> 
-> Thanks for noticing this.
-> 
-> I think this problem will affect lockd as well, so a more general
-> patch is needed.
+------=_NextPart_000_0058_01C284FE.0FA7CCD0
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-Yes, you're right.
+Hi All
 
-> I came up with the following.
+I have really slow working nfs.
+Server is build on:
+- dual pentium Xeon 2GHz,
+- 2 3ware 7500 controllers,
+- raid 5 on 7 160GB discs on controler 1=20
+- raid 5 on 6 160GB disks on cotroller 2=20
 
-And we can also remove redundant code.
+Serwer is used for ~500k maildirs,=20
+all clients (~20) are freebsd boxes, when nfs transfer is around 1MB/s =
+for writing and 1.5MB/s for reading=20
+listing user directories even with very few file stakes up to 15 =
+seconds.
 
-> ---------------------------------
-> Make sure final xdr_buf.len is correct on server reply
-> 
-> rq_res->len was not always updated properly.
-> It is only needed in the sendto routine, so we calculate
-> it just before that is called.
-> 
-> 
->  ----------- Diffstat output ------------
->  ./net/sunrpc/svcsock.c |    7 +++++++
->  1 files changed, 7 insertions(+)
-> 
-> --- ./net/sunrpc/svcsock.c	2002/11/03 22:12:12	1.2
-> +++ ./net/sunrpc/svcsock.c	2002/11/03 22:30:54	1.3
-> @@ -1195,6 +1195,7 @@ svc_send(struct svc_rqst *rqstp)
->  {
->  	struct svc_sock	*svsk;
->  	int		len;
-> +	struct xdr_buf	*xb;
->  
->  	if ((svsk = rqstp->rq_sock) == NULL) {
->  		printk(KERN_WARNING "NULL socket pointer in %s:%d\n",
-> @@ -1205,6 +1206,12 @@ svc_send(struct svc_rqst *rqstp)
->  	/* release the receive skb before sending the reply */
->  	svc_release_skb(rqstp);
->  
-> +	/* calculate over-all length */
-> +	xb = & rqstp->rq_res;
-> +	xb->len = xb->head[0].iov_len +
-> +		xb->page_len +
-> +		xb->tail[0].iov_len;
-> +
->  	len = svsk->sk_sendto(rqstp);
->  	svc_sock_release(rqstp);
+I tried nfs-ALL patch, but it didn' t help.
+
+I run 256 nfs daemons,
+
+echo 2097152 > /proc/sys/net/core/rmem_max
+echo 2097152 > /proc/sys/net/core/rmem_default
 
 
+nsfstat output:
 
---- include/linux/sunrpc/svc.h.ORGlen	Tue Nov  5 11:53:06 2030
-+++ include/linux/sunrpc/svc.h	Tue Nov  5 11:53:28 2030
-@@ -167,7 +167,6 @@ xdr_ressize_check(struct svc_rqst *rqstp
- 	char *cp = (char*)p;
- 
- 	vec->iov_len = cp - (char*)vec->iov_base;
--	rqstp->rq_res.len = vec->iov_len;
- 
- 	return vec->iov_len <= PAGE_SIZE;
- }
---- fs/nfsd/nfs3xdr.c.ORGlen	Tue Nov  5 11:52:23 2030
-+++ fs/nfsd/nfs3xdr.c	Tue Nov  5 11:54:22 2030
-@@ -615,10 +615,6 @@ nfs3svc_encode_readres(struct svc_rqst *
- 			rqstp->rq_res.tail[0].iov_base = NULL;
- 			rqstp->rq_res.tail[0].iov_len = 4 - (resp->count & 3);
- 		}
--		rqstp->rq_res.len =
--			rqstp->rq_res.head[0].iov_len+
--			rqstp->rq_res.page_len+
--			rqstp->rq_res.tail[0].iov_len;
- 		return 1;
- 	} else
- 		return xdr_ressize_check(rqstp, p);
-@@ -688,9 +684,6 @@ nfs3svc_encode_readdirres(struct svc_rqs
- 		*p++ = 0;		/* no more entries */
- 		*p++ = htonl(resp->common.err == nfserr_eof);
- 		rqstp->rq_res.page_len = ((unsigned long)p & ~PAGE_MASK);
--		rqstp->rq_res.len =
--			rqstp->rq_res.head[0].iov_len+
--			rqstp->rq_res.page_len;
- 		return 1;
- 	} else
- 		return xdr_ressize_check(rqstp, p);
---- fs/nfsd/nfsxdr.c.ORGlen	Tue Nov  5 11:52:18 2030
-+++ fs/nfsd/nfsxdr.c	Tue Nov  5 11:54:35 2030
-@@ -396,10 +396,6 @@ nfssvc_encode_readres(struct svc_rqst *r
- 		rqstp->rq_res.tail[0].iov_base = NULL;
- 		rqstp->rq_res.tail[0].iov_len = 4 - (resp->count&3);
- 	}
--	rqstp->rq_res.len = 
--		rqstp->rq_res.head[0].iov_len+
--		rqstp->rq_res.page_len+
--		rqstp->rq_res.tail[0].iov_len;
- 	return 1;
- }
- 
-@@ -412,9 +408,6 @@ nfssvc_encode_readdirres(struct svc_rqst
- 	*p++ = 0;			/* no more entries */
- 	*p++ = htonl((resp->common.err == nfserr_eof));
- 	rqstp->rq_res.page_len = ((unsigned long)p & ~PAGE_MASK);
--	rqstp->rq_res.len =
--			rqstp->rq_res.head[0].iov_len+
--			rqstp->rq_res.page_len;
- 
- 	return 1;
- }
+Server rpc stats:
+calls      badcalls   badauth    badclnt    xdrcall
+25271043   17885061   0          17885061   0
+
+Server nfs v3:
+null       getattr    setattr    lookup     access     readlink
+25      0% 1159    0% 89718   0% 11702395 46% 10953437 43% 34868   0%
+read       write      create     mkdir      symlink    mknod
+925727  3% 226250  0% 44964   0% 1089    0% 2299    0% 0       0%
+remove     rmdir      rename     link       readdir    readdirplus
+35040   0% 42      0% 121064  0% 535     0% 534720  2% 0       0%
+fsstat     fsinfo     pathconf   commit
+585179  2% 36      0% 0       0% 12493   0%
+
+mount over tcp gives frequent errors on freebsd clients side:
+kernel: nfs send error 32 from nfs server xxx.xxx.xxx.xxx:/export
+
+thanks for any help,=20
+
+rafal
+
+
+------=_NextPart_000_0058_01C284FE.0FA7CCD0
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META content=3D"text/html; charset=3Diso-8859-1" =
+http-equiv=3DContent-Type>
+<META content=3D"MSHTML 5.00.3103.1000" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV><FONT face=3DArial size=3D2>Hi All</FONT></DIV>
+<DIV>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>I have really slow working =
+nfs.</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>Server is build on:</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>-&nbsp;dual pentium Xeon =
+2GHz,</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>- 2 3ware 7500 =
+controllers,</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>- raid 5 on 7 160GB discs on controler=20
+1&nbsp;</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>- raid 5 on 6 160GB disks on cotroller=20
+2&nbsp;</FONT></DIV>
+<DIV>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>Serwer is used for ~500k maildirs, =
+</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>all clients (~20) are freebsd boxes, =
+when nfs=20
+transfer is around 1MB/s for writing and 1.5MB/s for reading =
+</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>listing user directories even with very =
+few file=20
+stakes up to 15 seconds.</FONT></DIV>
+<DIV>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>I tried nfs-ALL patch, but it didn' t=20
+help.</FONT></DIV>
+<DIV>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>I run 256 nfs daemons,</FONT></DIV>
+<DIV>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>echo 2097152 &gt;=20
+/proc/sys/net/core/rmem_max<BR>echo 2097152 &gt;=20
+/proc/sys/net/core/rmem_default<BR></FONT></DIV>
+<DIV>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2><FONT face=3DArial size=3D2>nsfstat=20
+output:</DIV></FONT></FONT>
+<DIV>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>Server rpc=20
+stats:<BR>calls&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; badcalls&nbsp;&nbsp;=20
+badauth&nbsp;&nbsp;&nbsp; badclnt&nbsp;&nbsp;&nbsp;=20
+xdrcall<BR>25271043&nbsp;&nbsp; 17885061&nbsp;&nbsp;=20
+0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =
+17885061&nbsp;&nbsp;=20
+0<BR></FONT><FONT face=3DArial size=3D2></FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>Server nfs=20
+v3:<BR>null&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =
+getattr&nbsp;&nbsp;&nbsp;=20
+setattr&nbsp;&nbsp;&nbsp; lookup&nbsp;&nbsp;&nbsp;&nbsp;=20
+access&nbsp;&nbsp;&nbsp;&nbsp; =
+readlink<BR>25&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0%=20
+1159&nbsp;&nbsp;&nbsp; 0% 89718&nbsp;&nbsp; 0% 11702395 46% 10953437 43% =
+
+34868&nbsp;&nbsp; 0%<BR>read&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+write&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; create&nbsp;&nbsp;&nbsp;&nbsp;=20
+mkdir&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; symlink&nbsp;&nbsp;&nbsp;=20
+mknod<BR>925727&nbsp; 3% 226250&nbsp; 0% 44964&nbsp;&nbsp; 0%=20
+1089&nbsp;&nbsp;&nbsp; 0% 2299&nbsp;&nbsp;&nbsp; 0%=20
+0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =
+0%<BR>remove&nbsp;&nbsp;&nbsp;&nbsp;=20
+rmdir&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; rename&nbsp;&nbsp;&nbsp;&nbsp;=20
+link&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; readdir&nbsp;&nbsp;&nbsp;=20
+readdirplus<BR>35040&nbsp;&nbsp; 0% 42&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0%=20
+121064&nbsp; 0% 535&nbsp;&nbsp;&nbsp;&nbsp; 0% 534720&nbsp; 2%=20
+0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =
+0%<BR>fsstat&nbsp;&nbsp;&nbsp;&nbsp;=20
+fsinfo&nbsp;&nbsp;&nbsp;&nbsp; pathconf&nbsp;&nbsp; =
+commit<BR>585179&nbsp; 2%=20
+36&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0% =
+0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0%=20
+12493&nbsp;&nbsp; 0%<BR></FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>mount over tcp gives frequent errors on =
+freebsd=20
+clients side:</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>kernel: nfs send error 32 from nfs =
+server=20
+xxx.xxx.xxx.xxx:/export</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>&nbsp;</DIV></FONT>
+<DIV><FONT face=3DArial size=3D2>thanks for any help, </FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>rafal</DIV></FONT>
+<DIV>&nbsp;</DIV></BODY></HTML>
+
+------=_NextPart_000_0058_01C284FE.0FA7CCD0--
+
 
 
 -------------------------------------------------------
-This SF.net email is sponsored by: ApacheCon, November 18-21 in
-Las Vegas (supported by COMDEX), the only Apache event to be
-fully supported by the ASF. http://www.apachecon.com
+This sf.net email is sponsored by: See the NEW Palm 
+Tungsten T handheld. Power & Color in a compact size!
+http://ads.sourceforge.net/cgi-bin/redirect.pl?palm0001en
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
