@@ -1,23 +1,21 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: [PATCH] 2.6 NFS O_DIRECT: should drop inode semaphore
-Date: Mon, 8 Mar 2004 10:34:21 -0800
+From: "Fabiano Reis" <silos.reis@ig.com.br>
+Subject: NFS 2.6.3smp-client <-> 2.4.20-24.9smp-server problems.
+Date: Mon, 8 Mar 2004 16:42:02 -0300
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <482A3FA0050D21419C269D13989C61130435DD15@lavender-fe.eng.netapp.com>
+Message-ID: <022601c40545$6da049c0$3f32a8c0@ds.ig.com.br>
 Mime-Version: 1.0
-Content-Type: multipart/related;
-	type="multipart/alternative";
-	boundary="----_=_NextPart_001_01C4053B.F910919D"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_0223_01C4052C.484248E0"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B0PiV-0003Uf-Vz
-	for nfs@lists.sourceforge.net; Mon, 08 Mar 2004 10:43:07 -0800
-Received: from mx01.netapp.com ([198.95.226.53])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1B0PaA-0004bs-Ij
-	for nfs@lists.sourceforge.net; Mon, 08 Mar 2004 10:34:30 -0800
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
+	id 1B0Qo7-0006MB-Qa
+	for nfs@lists.sourceforge.net; Mon, 08 Mar 2004 11:52:59 -0800
+Received: from smtp-26.ig.com.br ([200.226.132.160])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
+	id 1B0Qfk-00022l-2d
+	for nfs@lists.sourceforge.net; Mon, 08 Mar 2004 11:44:20 -0800
+To: "NFS Mail List" <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,145 +30,112 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a multi-part message in MIME format.
 
-------_=_NextPart_001_01C4053B.F910919D
-Content-Type: multipart/alternative;
-	boundary="----_=_NextPart_002_01C4053B.F910919D"
-
-
-------_=_NextPart_002_01C4053B.F910919D
+------=_NextPart_000_0223_01C4052C.484248E0
 Content-Type: text/plain;
-	charset="us-ascii"
+	charset="iso-8859-1"
 Content-Transfer-Encoding: quoted-printable
 
-hi trond-
+Hi list,
 
-the NFS O_DIRECT path is completely synchronous, as you know.
-the VFS layer holds the inode semaphor while calling a file
-system's direct_IO method, so this serializes all NFS direct
-reads and writes.
+I upgraded a RH9 box from 2.4.20-24.9smp to Vanilla kernel 2.6.3 (using =
+smp as well). It look to be  working fine except for the messages i=B4m =
+receiving from dmesg command. After mounting a nfs server (wich is =
+running 2.4.20-28.8smp , RH8 kernel) I started to get these messages on =
+dmesg:
 
-i've attached a patch that drops the inode semaphor during
-direct reads and writes.  this patch compiles, and the
-methodology has been tested in 2.4.  i'd like you to include
-this patch in your NFS4_ALL patch to get wider testing before
-we ask andrew to include this change in 2.6 kernels.
 
-some have voiced concerns about the combination of O_APPEND
-and O_DIRECT, and i've added some logic to address that.
+----cut here---
+nfs: server 10.0.3.1 not responding, still trying
+nfs: server 10.0.3.1 OK
+APIC error on CPU3: 00(60)
+nfs: server 10.0.3.1 not responding, still trying
 
-also, i've removed a redundant attribute revalidation.
+... and much much more like the above ...
+---cut here---
 
-patch is against 2.6.4-rc2.  comments welcome.
+Even with the messages I can do operations using the mountpoint from the =
+client. I can save files, list directories and files, etc.
 
-------_=_NextPart_002_01C4053B.F910919D
+
+The question that arises after seeing these messages:
+
+1) do the nfs code from 2.6 kernel is compatible with 2.4 kernel ? I =
+meam, is it safe to make 2.6 as nfs client and 2.4 as nfs server ?
+
+2) what can I do to try to solve this problem?
+
+I would appreciate any help.
+
+-
+Fabiano
+------=_NextPart_000_0223_01C4052C.484248E0
 Content-Type: text/html;
-	charset="us-ascii"
+	charset="iso-8859-1"
 Content-Transfer-Encoding: quoted-printable
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
-<HTML>
-<HEAD>
-<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
-charset=3Dus-ascii">
-<META NAME=3D"Generator" CONTENT=3D"MS Exchange Server version =
-6.0.6249.1">
-<TITLE>[PATCH] 2.6 NFS O_DIRECT: should drop inode semaphore</TITLE>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; =
+charset=3Diso-8859-1">
+<META content=3D"MSHTML 6.00.2800.1226" name=3DGENERATOR>
+<STYLE></STYLE>
 </HEAD>
-<BODY>
-<!-- Converted from text/plain format -->
+<BODY bgColor=3D#ffffff>
+<DIV>
+<DIV>
+<DIV><FONT face=3DArial size=3D2>Hi list,</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>I&nbsp;upgraded a RH9 box from =
+2.4.20-24.9smp to=20
+Vanilla kernel 2.6.3 (using smp as well). It look to be&nbsp; working =
+fine=20
+except for the messages i=B4m receiving from dmesg command. After =
+mounting a nfs=20
+server (wich is running 2.4.20-28.8smp , RH8 kernel)&nbsp;I started =
+to&nbsp;get=20
+these messages on dmesg:</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>----cut here---</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>nfs: server 10.0.3.1 not responding, =
+still=20
+trying</FONT><FONT face=3DArial size=3D2><BR>nfs: server 10.0.3.1 =
+OK<BR>APIC error=20
+on CPU3: 00(60)<BR>nfs: server 10.0.3.1 not responding, still=20
+trying</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>... and much much more like the=20
+above&nbsp;...</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>---cut here---</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>Even with the messages I can do =
+operations using=20
+the mountpoint from the client. I can save files, list directories and =
+files,=20
+etc.</DIV>
+<DIV><BR></DIV></FONT>
+<DIV><FONT face=3DArial size=3D2>The question that arises after seeing =
+these=20
+messages:</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>1) do the nfs code from 2.6 kernel is =
+compatible=20
+with 2.4 kernel ? I meam, is it safe to make 2.6 as nfs client and 2.4 =
+as nfs=20
+server ?</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>2) what can I do to try to solve this=20
+problem?</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>I&nbsp;would appreciate any =
+help.</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>-</FONT></DIV>
+<DIV><FONT face=3DArial =
+size=3D2>Fabiano</DIV></FONT></DIV></DIV></BODY></HTML>
 
-<P><FONT SIZE=3D2>hi trond-</FONT>
-</P>
+------=_NextPart_000_0223_01C4052C.484248E0--
 
-<P><FONT SIZE=3D2>the NFS O_DIRECT path is completely synchronous, as =
-you know.</FONT>
-
-<BR><FONT SIZE=3D2>the VFS layer holds the inode semaphor while calling =
-a file</FONT>
-
-<BR><FONT SIZE=3D2>system's direct_IO method, so this serializes all NFS =
-direct</FONT>
-
-<BR><FONT SIZE=3D2>reads and writes.</FONT>
-</P>
-
-<P><FONT SIZE=3D2>i've attached a patch that drops the inode semaphor =
-during</FONT>
-
-<BR><FONT SIZE=3D2>direct reads and writes.&nbsp; this patch compiles, =
-and the</FONT>
-
-<BR><FONT SIZE=3D2>methodology has been tested in 2.4.&nbsp; i'd like =
-you to include</FONT>
-
-<BR><FONT SIZE=3D2>this patch in your NFS4_ALL patch to get wider =
-testing before</FONT>
-
-<BR><FONT SIZE=3D2>we ask andrew to include this change in 2.6 =
-kernels.</FONT>
-</P>
-
-<P><FONT SIZE=3D2>some have voiced concerns about the combination of =
-O_APPEND</FONT>
-
-<BR><FONT SIZE=3D2>and O_DIRECT, and i've added some logic to address =
-that.</FONT>
-</P>
-
-<P><FONT SIZE=3D2>also, i've removed a redundant attribute =
-revalidation.</FONT>
-</P>
-
-<P><FONT SIZE=3D2>patch is against 2.6.4-rc2.&nbsp; comments =
-welcome.</FONT>
-</P>
-
-</BODY>
-</HTML>
-------_=_NextPart_002_01C4053B.F910919D--
-
-------_=_NextPart_001_01C4053B.F910919D
-Content-Type: TEXT/PLAIN;
-	name="01-odirect.patch"
-Content-Transfer-Encoding: base64
-Content-ID: <Pine.BSO.4.33.0403081326520.17413@citi.umich.edu>
-Content-Description: 01-odirect.patch
-Content-Disposition: attachment;
-	filename="01-odirect.patch"
-Content-Location: 1_MULTIPART%3F2_01-odirect.patch
-
-ZGlmZiAtWCAuLi8uLi9kb250LWRpZmYgLU5hdXJwIDAwLXN0b2NrL2ZzL25mcy9kaXJlY3QuYyAw
-MS1vZGlyZWN0L2ZzL25mcy9kaXJlY3QuYw0KLS0tIDAwLXN0b2NrL2ZzL25mcy9kaXJlY3QuYwky
-MDA0LTAyLTE3IDIyOjU5OjIzLjAwMDAwMDAwMCAtMDUwMA0KKysrIDAxLW9kaXJlY3QvZnMvbmZz
-L2RpcmVjdC5jCTIwMDQtMDMtMDggMTM6MjU6MDQuMDk4MjU4MDAwIC0wNTAwDQpAQCAtNDExLDgg
-KzQxMSwxMCBAQCBuZnNfZGlyZWN0X3dyaXRlKHN0cnVjdCBpbm9kZSAqaW5vZGUsIHN0DQogICog
-YmxvY2tkZXZfZGlyZWN0X0lPLiAgVGhlIE5GUyBjbGllbnQgZG9lc24ndCBoYXZlIGEgYmFja2lu
-ZyBibG9jaw0KICAqIGRldmljZSwgc28gd2UgZG8gZXZlcnl0aGluZyBieSBoYW5kIGluc3RlYWQu
-DQogICoNCi0gKiBUaGUgaW5vZGUncyBpX3NlbSBpcyBubyBsb25nZXIgaGVsZCBieSB0aGUgVkZT
-IGxheWVyIGJlZm9yZSBpdCBjYWxscw0KLSAqIHRoaXMgZnVuY3Rpb24gdG8gZG8gYSB3cml0ZS4N
-CisgKiBJZiB0aGUgT19BUFBFTkQgZmxhZyBpcyBzZXQgd2hpbGUgd2UncmUgY2FsbGVkIGZvciBh
-IHdyaXRlDQorICogcmVxdWVzdCwgd2UgcmV0dXJuIEVJTlZBTC4gIFdlIGNhbid0IHN0b3AgcmFj
-ZXMgd2l0aCBvdGhlcg0KKyAqIGNsaWVudHMgdGhhdCBtaWdodCBjaGFuZ2UgdGhlIGZpbGUgc2l6
-ZSBhbmQgY2F1c2UgdXMgdG8NCisgKiBvdmVyd3JpdGUgZGF0YSBhdCB0aGUgZW5kIG9mIHRoZSBm
-aWxlLg0KICAqLw0KIGludA0KIG5mc19kaXJlY3RfSU8oaW50IHJ3LCBzdHJ1Y3Qga2lvY2IgKmlv
-Y2IsIGNvbnN0IHN0cnVjdCBpb3ZlYyAqaW92LA0KQEAgLTQyOSwyNCArNDMxLDI2IEBAIG5mc19k
-aXJlY3RfSU8oaW50IHJ3LCBzdHJ1Y3Qga2lvY2IgKmlvY2INCiAJaWYgKCFpc19zeW5jX2tpb2Ni
-KGlvY2IpKQ0KIAkJZ290byBvdXQ7DQogDQotCXJlc3VsdCA9IG5mc19yZXZhbGlkYXRlX2lub2Rl
-KE5GU19TRVJWRVIoaW5vZGUpLCBpbm9kZSk7DQotCWlmIChyZXN1bHQgPCAwKQ0KLQkJZ290byBv
-dXQ7DQotDQogCXN3aXRjaCAocncpIHsNCiAJY2FzZSBSRUFEOg0KIAkJZHByaW50aygiTkZTOiBk
-aXJlY3RfSU8ocmVhZCkgKCVzKSBvZmYvbm8oJUx1LyVsdSlcbiIsDQogCQkJCWRlbnRyeS0+ZF9u
-YW1lLm5hbWUsIGZpbGVfb2Zmc2V0LCBucl9zZWdzKTsNCiANCisJCXVwKCZpbm9kZS0+aV9zZW0p
-Ow0KIAkJcmVzdWx0ID0gbmZzX2RpcmVjdF9yZWFkKGlub2RlLCBmaWxlLCBpb3YsDQogCQkJCQkJ
-ZmlsZV9vZmZzZXQsIG5yX3NlZ3MpOw0KKwkJZG93bigmaW5vZGUtPmlfc2VtKTsNCiAJCWJyZWFr
-Ow0KIAljYXNlIFdSSVRFOg0KIAkJZHByaW50aygiTkZTOiBkaXJlY3RfSU8od3JpdGUpICglcykg
-b2ZmL25vKCVMdS8lbHUpXG4iLA0KIAkJCQlkZW50cnktPmRfbmFtZS5uYW1lLCBmaWxlX29mZnNl
-dCwgbnJfc2Vncyk7DQogDQotCQlyZXN1bHQgPSBuZnNfZGlyZWN0X3dyaXRlKGlub2RlLCBmaWxl
-LCBpb3YsDQorCQlpZiAoIShmaWxlLT5mX2ZsYWdzICYgT19BUFBFTkQpKSB7DQorCQkJdXAoJmlu
-b2RlLT5pX3NlbSk7DQorCQkJcmVzdWx0ID0gbmZzX2RpcmVjdF93cml0ZShpbm9kZSwgZmlsZSwg
-aW92LA0KIAkJCQkJCWZpbGVfb2Zmc2V0LCBucl9zZWdzKTsNCisJCQlkb3duKCZpbm9kZS0+aV9z
-ZW0pOw0KKwkJfQ0KIAkJYnJlYWs7DQogCWRlZmF1bHQ6DQogCQlicmVhazsNCg==
-
-------_=_NextPart_001_01C4053B.F910919D--
 
 
 -------------------------------------------------------
