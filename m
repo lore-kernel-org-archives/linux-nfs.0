@@ -1,22 +1,26 @@
-From: Arun Sharma <arun.sharma@intel.com>
-Subject: VFS: Busy inodes after unmount on 2 way SMP
-Date: Thu, 11 Sep 2003 17:11:40 -0700
+From: michael <michael@newdream.net>
+Subject: Re: more statd segfault
+Date: Thu, 11 Sep 2003 19:05:23 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3F610F3C.5040704@intel.com>
+Message-ID: <3F6129E3.6040604@newdream.net>
+References: <3F5CDF7D.2070608@hq.newdream.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19xbaD-00067g-00
-	for <nfs@lists.sourceforge.net>; Thu, 11 Sep 2003 17:14:41 -0700
-Received: from fmr04.intel.com ([143.183.121.6] helo=caduceus.sc.intel.com)
+	id 19xdJg-0005AA-00
+	for <nfs@lists.sourceforge.net>; Thu, 11 Sep 2003 19:05:44 -0700
+Received: from gollum.dreamhost.com ([66.33.209.16] ident=postfix)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 19xbaD-0000OZ-FY
-	for nfs@lists.sourceforge.net; Thu, 11 Sep 2003 17:14:41 -0700
-To: autofs@linux.kernel.org
+	id 19xdJg-0006tI-EL
+	for nfs@lists.sourceforge.net; Thu, 11 Sep 2003 19:05:44 -0700
+Received: from newdream.net (inez.hq.newdream.net [66.33.200.139])
+	by gollum.dreamhost.com (Postfix) with ESMTP id 74CE25B783
+	for <nfs@lists.sourceforge.net>; Thu, 11 Sep 2003 19:05:43 -0700 (PDT)
+To: NFS List <nfs@lists.sourceforge.net>
+In-Reply-To: <3F5CDF7D.2070608@hq.newdream.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,22 +33,35 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+I finally tracked down the statd segfault that had been plaguing me for 
+sometime.
 
-We've seen a few "VFS: Busy inodes after unmount. Self-destruct in 5 seconds.  Have a nice day.." messages on a dual processor NFS client. Here's the use case:
+statd calls sunrpc code which is in libc on debian. this code loops 
+through all possible file descriptors and in my case if the number of 
+fds per process is set higher then 8096 it segfaults.
 
-- Due to network load issues, the NFS server becomes unreachable for some time
-- The automounter tries to expire the mount
-- The unmount finds a couple of busy inodes. Putting some debug printks shows that typically two inodes are busy i.e. have inode->i_count == 1. But they don't have any waiters on inode->i_wait. Further, the inodes that are busy are
-/mnt/foo     -> autofs mount point
-/mnt/foo/bar -> bar is a symbolic link
+for the archives here is the code that segfaults:
 
-It's not clear if this is a NFS issue or a autofs issue, but it's seen often with autofs. Are there any known race conditions that have been fixed after 2.4.20 ? The two calls I'm worried about are:
+void
+svc_getreqset (fd_set *readfds)
+{
+   register u_int32_t mask;
+   register u_int32_t *maskp;
+   register int setsize;
+   register int sock;
+   register int bit;
 
-fs/autofs/root.c:305:    d_instantiate(dentry, iget(dir->i_sb,ent->ino));
-fs/autofs/root.c:416:    d_instantiate(dentry, iget(dir->i_sb,ino));
+   setsize = _rpc_dtablesize ();
+   maskp = (u_int32_t *) readfds->fds_bits;
+   for (sock = 0; sock < setsize; sock += 32)
+     for (mask = *maskp++; (bit = ffs (mask)); mask ^= (1 << (bit - 1)))
+       svc_getreq_common (sock + bit - 1);
+}
 
-    -Arun
 
+keywords: statd segfault sun rpc file lock ulimit
+
+michael
 
 
 
