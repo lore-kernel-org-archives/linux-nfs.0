@@ -1,24 +1,24 @@
-From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: Re: [PATCH] 1/3 - RPC metrics support
-Date: Fri, 02 Apr 2004 12:42:32 +1000
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: 2.6.5-rc3 xprt_connect changes?
+Date: Fri, 2 Apr 2004 10:27:15 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <406CD318.F48841F3@melbourne.sgi.com>
-References: <482A3FA0050D21419C269D13989C61130435DE4C@lavender-fe.eng.netapp.com>
-		 <1080866187.10521.14.camel@lade.trondhjem.org>
-		 <20040402004924.GG9409@sgi.com> <1080870078.10521.53.camel@lade.trondhjem.org>
+Message-ID: <20040402082715.GD11477@suse.de>
+References: <20040401144740.GH20772@suse.de> <1080853027.2682.22.camel@lade.trondhjem.org> <1080854329.2682.36.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Charles Lever <Charles.Lever@netapp.com>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-15
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B9Edm-000414-Fe
-	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 18:42:42 -0800
-Received: from mtvcafw.sgi.com ([192.48.171.6] helo=omx3.sgi.com)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B9Edm-0004S2-4Z
-	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 18:42:42 -0800
+	id 1B9K1I-0004ZL-1K
+	for nfs@lists.sourceforge.net; Fri, 02 Apr 2004 00:27:20 -0800
+Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.30)
+	id 1B9K1G-0004cW-6L
+	for nfs@lists.sourceforge.net; Fri, 02 Apr 2004 00:27:18 -0800
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1080854329.2682.36.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,36 +31,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust wrote:
+On Thu, Apr 01, 2004 at 04:18:49PM -0500, Trond Myklebust wrote:
+> On Thu, 2004-04-01 at 15:57, Trond Myklebust wrote:
 > 
-> On Thu, 2004-04-01 at 19:49, Greg Banks wrote:
+> > How about if we simply move the call for xprt_disconnect() out of
+> > xprt_close()?
 > 
-> > Why not just save a copy of @devname in nfs_get_sb() ? 
-> 
-> That is very different. That we can do...
-> 
-> Please don't confuse the export path and the device name. nfss->mnt_path
-> is the former: 
+> IOW, something like the appended patch. (Note the change to ensure that
+> we *do* wake up all pending tasks if the current attempt at reconnecting
+> actually fails.)
 
-> The device name OTOH is just whatever label the caller of sys_mount()
-> feels like passing down to the kernel. It will usually contain the name
-> of the server and the export path ('cos that's what the nfs-utils
-> "mount" does), but it does not have to, and we currently do not depend
-> on it taking any particular value.
+Yes, this patch should do the same, and it's nicer.
 
-If all we care about is identifying the sb for purposes of iostat and
-post-mortem debugging (I for one would find this useful), the precise
-semantics placed on the string by the mount program don't matter that
-much.  You could add a `devname' field to nfs_server and document
-that it doesn't mean anything at all.  Alternatively you could check
-that the first part matches (modulo domain names) the `hostname' field
-and is followed by a ':' and a path, and if all that matches, save the
-path.
-
-Greg.
+Olaf
 -- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+Olaf Kirch     |  The Hardware Gods hate me.
+okir@suse.de   |
+---------------+ 
 
 
 -------------------------------------------------------
