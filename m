@@ -1,14 +1,20 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: unlock during lockd recovery
-Date: Wed, 24 Nov 2004 09:59:05 +0100
-Message-ID: <20041124085905.GC7108@suse.de>
-References: <20041123081047.GA6874@suse.de> <OF2DFFDFB5.4B33C70C-ON88256F55.006063CF-88256F55.00616D80@us.ibm.com>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: i_generation = 0 special casing
+Date: Wed, 24 Nov 2004 09:43:20 +0000
+Message-ID: <20041124094320.GA10206@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: NFS@lists.sourceforge.net, nfs-admin@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: Marc Eshel <eshel@almaden.ibm.com>
-In-Reply-To: <OF2DFFDFB5.4B33C70C-ON88256F55.006063CF-88256F55.00616D80@us.ibm.com>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1CWtgY-0006Qq-9o
+	for nfs@lists.sourceforge.net; Wed, 24 Nov 2004 01:43:38 -0800
+Received: from [213.146.154.40] (helo=pentafluge.infradead.org)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1CWtgK-0005RP-Gf
+	for nfs@lists.sourceforge.net; Wed, 24 Nov 2004 01:43:38 -0800
+To: nfs@lists.sourceforge.net, linux-fsdevel@vger.kernel.org
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -22,37 +28,13 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, Nov 23, 2004 at 09:44:10AM -0800, Marc Eshel wrote:
-> If the client application unlocks the lock before it was reclaimed than it
-> should not be reclaimed.
+export_iget (and routines based on it such as xfs_vget) check for
+i_generation beeing 0 meaning that every generation is okay.  Where in
+the NFS code is this wildcard needed?
 
-The problem is that your lockd server would make assumptions about the
-client's implementation; in particular, this would mandate that the client
-prevents any regular NLM activity while it's in the middle of a reclaim.
-
-However, the X/Open spec for NLM says about NLM_LOCK: "During the grace
-period, the server will only accept locks with reclaim set to true."
-So the client is free to assume that it's okay to keep on retransmitting
-LOCK/UNLOCK request all along, without having to care about reclaim or not,
-because the spec says the server will ignore them anyway.
-
-Consider this scenario:
-
- -	Server tells client to start reclaim
- -	Client sends reclaim request for lock X
- -	RPC packet gets lost
- -	Application requests to unlock X
- -	Client calls server, server finds there's nothing to
- 	unlock, ACKs the RPC call
- -	Client retransmits reclaim packet, server re-installs
- 	the lock
- -	you have a stale lock
-
-Olaf
--- 
-Olaf Kirch     | Things that make Monday morning interesting, #2:
-okir@suse.de   |        "We have 8,000 NFS mount points, why do we keep
----------------+ 	 running out of privileged ports?"
+I had to find out that XFS starts it's i_generation at zero and either
+I have to fix up the i_generation or drop this wildcard if it's not
+actually used.
 
 
 -------------------------------------------------------
