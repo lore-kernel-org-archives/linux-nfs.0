@@ -1,68 +1,36 @@
-From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
-Subject: Re: read-error on utmp file
-Date: Mon, 06 Sep 2004 09:17:57 +0200
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <413C0F25.9010206@bio.ifi.lmu.de>
-References: <41383991.1020108@bio.ifi.lmu.de> <1094230320.8196.32.camel@lade.trondhjem.org>
+From: Kalin KOZHUHAROV <kalin@thinrope.net>
+Subject: Re: why do i get "Stale NFS file handle" for hours?
+Date: Mon, 06 Sep 2004 16:47:14 +0900
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <chh4m7$scm$1@sea.gmane.org>
+References: <chdp06$e56$1@sea.gmane.org>	 <1094348385.13791.119.camel@lade.trondhjem.org>  <413A7119.2090709@upb.de>	 <1094349744.13791.128.camel@lade.trondhjem.org>  <413A789C.9000501@upb.de>	 <1094353267.13791.156.camel@lade.trondhjem.org>  <413B121B.2070101@upb.de> <1094415006.8081.6.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii; format=flowed
 Cc: nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C4DlK-0005Uu-QE
-	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 00:18:02 -0700
-Received: from acheron.informatik.uni-muenchen.de ([129.187.214.135])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1C4DlI-0007v8-KJ
-	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 00:18:02 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1094230320.8196.32.camel@lade.trondhjem.org>
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Return-path: <linux-kernel-owner+glk-linux-kernel=40m.gmane.org-S267561AbUIFHrr@vger.kernel.org>
+To: linux-kernel@vger.kernel.org
+In-Reply-To: <1094415006.8081.6.camel@lade.trondhjem.org>
+List-ID: <nfs.lists.sourceforge.net>
 
 Trond Myklebust wrote:
+>>So there should be a filesystem mounted to /proc/fs/nfsd? This isn't the 
+>>case on my machine. Should the init-script do a simple "mount -t nfsd 
+>>none /proc/fs/nfsd"? Than this would be a Bug of my distribution (Gentoo).
+Well, I am on Gentoo as well, and it seems that it is mounted on /proc/fs/nfs.
 
-> Binary "tcpdump -s 9000" please?
+However `cat /proc/fs/nfs/exports` showed only one of 5 exported dirs on my server.
+It has been a few weeks since last restart (and NFS restart).
+`/etc/init.d/nfs restart` or `exportfs -a` fixed it.
 
-I did a "tcpdump -s 9000 -w <file> host <server>" on the client and accordingly on
-the server. Hope this was ok. The client log should stop right after
-the error, because I executed this on the client:
+> Yes... See the manpage for "exportfs".
 
-tcpdump -s 9000 -w <file> host curry & while runlevel /boot/utmp; do true; done; killall tcpdump
+Had a (first) look at it, but I still cannod understand what is the difference
+between the "-r" and "-a" option...
+The output on my system from both `exportfs -rv` and `exportfs -av` is the same.
 
-and started the second loop in another window which caused this first loop
-to fail and stop the tcpdump...
-
-The logs are here (1.5 and 3 MB, so I didn't want to mail them):
-http://www.bio.ifi.lmu.de/~steiner/tcpdump.utmp.read.error.client
-http://www.bio.ifi.lmu.de/~steiner/tcpdump.utmp.read.error.server
-
-cu,
-Frank
+Kalin.
 
 -- 
-Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
-Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
-LMU, Amalienstr. 17           Phone: +49 89 2180-4049
-80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
-
-
-
--------------------------------------------------------
-This SF.Net email is sponsored by BEA Weblogic Workshop
-FREE Java Enterprise J2EE developer tools!
-Get your free copy of BEA WebLogic Workshop 8.1 today.
-http://ads.osdn.com/?ad_id=5047&alloc_id=10808&op=click
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+ || ~~~~~~~~~~~~~~~~~~~~~~ ||
+(  ) http://ThinRope.net/ (  )
+ || ______________________ ||
