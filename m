@@ -1,62 +1,106 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: Vaguely NFS related problem
-Date: Thu, 12 Dec 2002 14:00:48 +1100
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15863.64480.756681.957850@notabene.cse.unsw.edu.au>
-References: <3DF7EA94.20108@atheros.com>
-	<15863.61586.150820.505519@notabene.cse.unsw.edu.au>
-	<3DF7F663.30201@atheros.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: [PATCH 2.4.21-pre] Fix possible SMP race in nfs_sync_page()
+Date: Thu, 12 Dec 2002 11:26:58 +0100
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <15864.25714.339197.675770@charged.uio.no>
+Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18MJan-0004rF-00
-	for <nfs@lists.sourceforge.net>; Wed, 11 Dec 2002 19:00:53 -0800
-Received: From
-	notabene.cse.unsw.edu.au ([129.94.233.234] == wireless-234.wireless.cse.unsw.EDU.AU)
-	(for <jeff@atheros.com>) (for <nfs@lists.sourceforge.net>) By tone
-	With Smtp ; Thu, 12 Dec 2002 14:00:49 +1100
-To: "Jeff L. Smith" <jeff@atheros.com>
-In-Reply-To: message from Jeff L. Smith on Wednesday December 11
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-
-On Wednesday December 11, jeff@atheros.com wrote:
-> I'm running a kernel I built from kernel.org source.  I found the 
-> message in linux-2.4.18/net/sunrpc/svcsock.c.
-> 
-> 
-> printk (KERN_WARNING "RPC: Unable to allocate resbuf from cache!\n");
-
-I think you should check again.  I did and I still cannot find that
-message:
-
-% bzcat linux-2.4.18.tar.bz2 | grep 'Unable to allocate resbuf from cache'
-%
-
-Are you sure they were *unpatched* kernel.org sources?
-
-I suggest you unroll 2.4.20 and try that.
-
-NeilBrown
+Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
+	NFS maillist <nfs@lists.sourceforge.net>
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
+To: Marcelo Tosatti <marcelo@conectiva.com.br>
+List-ID: <nfs.lists.sourceforge.net>
 
 
--------------------------------------------------------
-This sf.net email is sponsored by:
-With Great Power, Comes Great Responsibility 
-Learn to use your power at OSDN's High Performance Computing Channel
-http://hpc.devchannel.org/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Hi Marcelo,
+
+  The following patch fixes a race in nfs_sync_page() whereby one
+thread may call the generic sync_page() and then block on a given page
+while another thread is working in mapping->a_ops->readpage().
+
+Cheers,
+  Trond
+
+diff -u --recursive --new-file linux-2.4.21-pre1/fs/nfs/file.c linux-2.4.21-01-nfs_sync/fs/nfs/file.c
+--- linux-2.4.21-pre1/fs/nfs/file.c	2002-02-05 15:10:21.000000000 +0100
++++ linux-2.4.21-01-nfs_sync/fs/nfs/file.c	2002-12-12 11:23:09.000000000 +0100
+@@ -187,6 +187,7 @@
+ 	if (!inode)
+ 		return 0;
+ 
++	NFS_SetPageSync(page);
+ 	rpages = NFS_SERVER(inode)->rpages;
+ 	result = nfs_pagein_inode(inode, index, rpages);
+ 	if (result < 0)
+diff -u --recursive --new-file linux-2.4.21-pre1/fs/nfs/read.c linux-2.4.21-01-nfs_sync/fs/nfs/read.c
+--- linux-2.4.21-pre1/fs/nfs/read.c	2002-10-06 01:03:40.000000000 +0200
++++ linux-2.4.21-01-nfs_sync/fs/nfs/read.c	2002-12-12 11:23:09.000000000 +0100
+@@ -171,11 +171,16 @@
+ 	struct nfs_page	*new;
+ 
+ 	new = nfs_create_request(nfs_file_cred(file), inode, page, 0, PAGE_CACHE_SIZE);
+-	if (IS_ERR(new))
++	if (IS_ERR(new)) {
++		SetPageError(page);
++		NFS_ClearPageSync(page);
++		UnlockPage(page);
+ 		return PTR_ERR(new);
++	}
+ 	nfs_mark_request_read(new);
+ 
+-	if (inode->u.nfs_i.nread >= NFS_SERVER(inode)->rpages ||
++	if (NFS_TestClearPageSync(page) ||
++	    inode->u.nfs_i.nread >= NFS_SERVER(inode)->rpages ||
+ 	    page_index(page) == (inode->i_size + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT)
+ 		nfs_pagein_inode(inode, 0, 0);
+ 	return 0;
+@@ -222,6 +227,7 @@
+ 		req = nfs_list_entry(head->next);
+ 		page = req->wb_page;
+ 		nfs_list_remove_request(req);
++		NFS_ClearPageSync(page);
+ 		SetPageError(page);
+ 		UnlockPage(page);
+ 		nfs_clear_request(req);
+@@ -429,6 +435,7 @@
+ 		} else
+ 			SetPageError(page);
+ 		flush_dcache_page(page);
++		NFS_ClearPageSync(page);
+ 		UnlockPage(page);
+ 
+ 		dprintk("NFS: read (%x/%Ld %d@%Ld)\n",
+@@ -482,6 +489,7 @@
+ 	return error;
+ 
+ out_error:
++	NFS_ClearPageSync(page);
+ 	UnlockPage(page);
+ 	goto out;
+ }
+diff -u --recursive --new-file linux-2.4.21-pre1/include/linux/mm.h linux-2.4.21-01-nfs_sync/include/linux/mm.h
+--- linux-2.4.21-pre1/include/linux/mm.h	2002-03-27 00:11:32.000000000 +0100
++++ linux-2.4.21-01-nfs_sync/include/linux/mm.h	2002-12-12 11:23:09.000000000 +0100
+@@ -297,6 +297,7 @@
+ #define PG_arch_1		13
+ #define PG_reserved		14
+ #define PG_launder		15	/* written out by VM pressure.. */
++#define PG_fs_1			16	/* Filesystem specific */
+ 
+ /* Make it prettier to test the above... */
+ #define UnlockPage(page)	unlock_page(page)
+diff -u --recursive --new-file linux-2.4.21-pre1/include/linux/nfs_fs.h linux-2.4.21-01-nfs_sync/include/linux/nfs_fs.h
+--- linux-2.4.21-pre1/include/linux/nfs_fs.h	2002-10-15 18:32:18.000000000 +0200
++++ linux-2.4.21-01-nfs_sync/include/linux/nfs_fs.h	2002-12-12 11:23:09.000000000 +0100
+@@ -269,6 +269,10 @@
+ extern int  nfs_scan_lru_read(struct nfs_server *, struct list_head *);
+ extern int  nfs_scan_lru_read_timeout(struct nfs_server *, struct list_head *);
+ 
++#define NFS_SetPageSync(page)		set_bit(PG_fs_1, &(page)->flags)
++#define NFS_ClearPageSync(page)		clear_bit(PG_fs_1, &(page)->flags)
++#define NFS_TestClearPageSync(page)	test_and_clear_bit(PG_fs_1, &(page)->flags)
++
+ /*
+  * linux/fs/mount_clnt.c
+  * (Used only by nfsroot module)
