@@ -1,22 +1,21 @@
-From: Dan Kegel <dkegel@ixiacom.com>
-Subject: Re: ALERT - GroupShield ticket number OA2317_1057450427_CVO-EXCHANGE
- _1 was generated
-Date: Mon, 07 Jul 2003 10:15:12 -0700
+From: "H. J. Lu" <hjl@lucon.org>
+Subject: Re: ALERT - GroupShield ticket number OA2317_1057450427_CVO-EXCHANGE _1 was generated
+Date: Mon, 7 Jul 2003 12:30:31 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3F09AAA0.4070000@ixiacom.com>
-References: <Pine.LNX.4.33.0307060127100.1200-100000@vangogh>
+Message-ID: <20030707193031.GA10222@lucon.org>
+References: <Pine.LNX.4.33.0307060127100.1200-100000@vangogh> <3F09AAA0.4070000@ixiacom.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: Erez Zadok <ezk@cs.sunysb.edu>,
- Paul Smith <pausmith@nortelnetworks.com>,
-  nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: Ashutosh Rajekar <asr@softhome.net>,
+	Erez Zadok <ezk@cs.sunysb.edu>,
+	Paul Smith <pausmith@nortelnetworks.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from 64-60-75-69.cust.telepacific.net ([64.60.75.69] helo=racerx.ixiacom.com)
+Received: from rwcrmhc11.comcast.net ([204.127.198.35])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19ZZdP-0006os-00
-	for <nfs@lists.sourceforge.net>; Mon, 07 Jul 2003 10:18:39 -0700
-To: Ashutosh Rajekar <asr@softhome.net>
-In-Reply-To: <Pine.LNX.4.33.0307060127100.1200-100000@vangogh>
+	id 19ZbhF-0004Gw-00
+	for <nfs@lists.sourceforge.net>; Mon, 07 Jul 2003 12:30:45 -0700
+To: Dan Kegel <dkegel@ixiacom.com>
+In-Reply-To: <3F09AAA0.4070000@ixiacom.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,17 +28,22 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Ashutosh Rajekar wrote:
-> I agree. IIRC, one cannot post to the FreeBSD mailing lists without 
-> subscription. Enabling this list with the same feature should reduce the 
-> spam and virus laden emails a lot.
+On Mon, Jul 07, 2003 at 10:15:12AM -0700, Dan Kegel wrote:
+> Ashutosh Rajekar wrote:
+> >I agree. IIRC, one cannot post to the FreeBSD mailing lists without 
+> >subscription. Enabling this list with the same feature should reduce the 
+> >spam and virus laden emails a lot.
+> 
+> +1
+> 
+> I agree.  Time to close the list to non-subscribers.
+> The archives can remain open, that's no problem.
 
-+1
+If there are no major objections by the end of this week, I will
+close the list to non-subscribers.
 
-I agree.  Time to close the list to non-subscribers.
-The archives can remain open, that's no problem.
-- Dan
 
+H.J.
 
 
 -------------------------------------------------------
