@@ -1,19 +1,17 @@
-From: Kresimir Kukulj <madmax@iskon.hr>
-Subject: Re: NFS problems (kernel locks up)
-Date: Fri, 21 Mar 2003 23:57:51 +0100
+From: =?GB2312?B?tKvG5qOstPO7sKOsxua8o6OsuuzUwqOs1cu6xb270tc=?=
+ <reds44@163.com>
+Subject: =?GB2312?B?tqnUxLbM0MXBvdDU0Ka7sKOszOW74cG90NTA1siko6E=?=
+Date: Mon, 28 Apr 2003 03:35:10 +0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030321225751.GB22934@max.zg.iskon.hr>
-References: <20030319182241.GA9216@max.zg.iskon.hr> <200303212049.59152.bernd-schubert@web.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Message-ID: <E199rse-00065k-00@sc8-sf-list1.sourceforge.net>
+Reply-To: dfdfdfsf@163.com
+Content-Type: text/html;charset="GB2312"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail.iskon.hr ([213.191.128.4])
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18wVSu-0005v1-00
-	for <nfs@lists.sourceforge.net>; Fri, 21 Mar 2003 14:58:20 -0800
-To: Bernd Schubert <bernd-schubert@web.de>
-In-Reply-To: <200303212049.59152.bernd-schubert@web.de>
+Received: from [218.86.47.128] (helo=163.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 199rse-00065k-00
+	for <nfs@lists.sourceforge.net>; Sun, 27 Apr 2003 12:32:09 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,45 +24,59 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Quoting Bernd Schubert (bernd-schubert@web.de):
-> > Some info about hardware:
-> > Dell PowerApp 200 with 2 x Pentium III (Coppermine), each 1GHz.
-> > 1Gb memory, with CONFIG_HIGHMEM4G=y.
-> > eepro100 ethernet
-> > ServerWorks chipset but nothing except CDROM is connected to it.
-> > ICP Vortex Hardware RAID model GDT8523RZ
-> > Driver for this (SCSI) controller is from 2.4.20 kernel (its pretty new).
-> > 5 FUJITSU MAJ3364MC 34Gb drives in RAID5 (4+hotfix).
-> > Filesystem is ext3 with journal=ordered.
-> >
-> 
-> We have a rather similar machine (well, without the raid and not from Dell) 
-> and with 2GB. Actually we had some trouble with the serverworks chipset and 
-> the memory.
-> The lockups you are describing are probably not nfs related, but due to your 
-> hardware. Try to update your bios, disable mtrr, agp, similar speed 
-> optimizing things in your kernel configuration. 
-> Run memtest86 (the full test), even if you have ECC.
-> If all of this still doesn't help, try to disable dual-cpu support.
-> As much as I know ext3 make more problems with nfs than reiserfs does, but 
-> this shouldn't cause the lockups
+<html>
 
-Uh, sorry to follow up again, but forgot to ask.
-Could you elaborate a bit what problems ext3 has with NFS?
-Have you tried XFS and what are your experiences using it with NFS?
-I hope this in not to off-topic for this list.
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
+<meta name="GENERATOR" content="Microsoft FrontPage 4.0">
+<meta name="ProgId" content="FrontPage.Editor.Document">
+<title>YY我要听</title>
+<STYLE TYPE=text/css><!--
+body, td, p, div {font-size:12px;font-family:宋体;}
+BODY
+A:link {
+	COLOR: #000000; TEXT-DECORATION: none
+}
+A:visited {
+	COLOR: #333333; TEXT-DECORATION: none
+}
+A:active {
+	TEXT-DECORATION: none
+}
+A:hover {
+	COLOR: #666666; TEXT-DECORATION: underline
+}
+.underline {
+	COLOR: #000099; FONT-SIZE: 9pt; LINE-HEIGHT: 12pt; TEXT-DECORATION: underline
+}--></STYLE>
+</head>
+<body bgcolor="#009933">
 
--- 
-Kresimir Kukulj                      madmax@iskon.hr
-+--------------------------------------------------+
-Old PC's never die. They just become Unix terminals.
+<div align="center">
+  <center>
+  <table border="0" cellpadding="0" cellspacing="0" width="96%">
+    <tr>
+      <td width="100%">
+        <p align="center"><iframe MARGINWIDTH=0 MARGINHEIGHT=0 HSPACE=0 VSPACE=0 FRAMEBORDER=0 SCROLLING=no src=http://mysms2.163.com/mb/101.html?username=yy517&type=101 height=300 width=300></iframe></td>
+    </tr>
+    <tr>
+      <td width="100%">
+        <p align="center"><br>
+        <font color="#ffffff">订阅短信两性笑话，体会两性乐趣！每日开怀一笑！请输入以上手机号</font><font color="#0000CC">或</font><a href="http://www.yy517.com/3637/www.htm" target="_blank"><font color="#FFFFFF">点击进入</font></a></td>
+    </tr>
+  </table>
+  </center>
+</div>
+
+</body>
+
+</html>
 
 
 -------------------------------------------------------
-This SF.net email is sponsored by:Crypto Challenge is now open! 
-Get cracking and register here for some mind boggling fun and 
-the chance of winning an Apple iPod:
-http://ads.sourceforge.net/cgi-bin/redirect.pl?thaw0031en
+This sf.net email is sponsored by:ThinkGeek
+Welcome to geek heaven.
+http://thinkgeek.com/sf
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
