@@ -1,14 +1,14 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 3 of 8 - Make sure an early close on a nfs/tcp connection is handled properly.
+Subject: [PATCH] kNFSd - 5 of 8 - Make sure unused bits of NFSv4 xfr buffered are zero..
 Date: Wed, 18 Jun 2003 09:51:37 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19SQEj-00083Q-00@notabene>
+Message-ID: <E19SQEj-00083g-00@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19SQBW-0002ZM-00
-	for <nfs@lists.sourceforge.net>; Tue, 17 Jun 2003 16:48:19 -0700
+	id 19SQBP-0002UU-00
+	for <nfs@lists.sourceforge.net>; Tue, 17 Jun 2003 16:48:11 -0700
 Received: From notabene ([129.94.172.124] == notabene.cse.unsw.EDU.AU)
 	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>) By
 	tone With Smtp ; Wed, 18 Jun 2003 09:47:01 +1000
@@ -27,52 +27,21 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 ### Comments for ChangeSet
 
-From: Hirokazu Takahashi <taka@valinux.co.jp>
-
-In svc_tcp_listen_data_ready we should be waiting for
-TCP_LISTEN, not TCP_ESTABLISHED.  The later only worked
-by accident.
-Also, if a socket is closed as soon as we accept it, we
-must shut it down straight away as we will never get a 'close'
-event.
-
-
  ----------- Diffstat output ------------
- ./net/sunrpc/svcsock.c |   15 +++++++++++++--
- 1 files changed, 13 insertions(+), 2 deletions(-)
+ ./fs/nfsd/nfs4xdr.c |    1 +
+ 1 files changed, 1 insertion(+)
 
-diff ./net/sunrpc/svcsock.c~current~ ./net/sunrpc/svcsock.c
---- ./net/sunrpc/svcsock.c~current~	2003-06-18 09:18:16.000000000 +1000
-+++ ./net/sunrpc/svcsock.c	2003-06-18 09:22:05.000000000 +1000
-@@ -681,8 +681,17 @@ svc_tcp_listen_data_ready(struct sock *s
- 	dprintk("svc: socket %p TCP (listen) state change %d\n",
- 			sk, sk->sk_state);
- 
--	if  (sk->sk_state != TCP_ESTABLISHED) {
--		/* Aborted connection, SYN_RECV or whatever... */
-+	if  (sk->sk_state != TCP_LISTEN) {
-+		/*
-+		 * This callback may called twice when a new connection
-+		 * is established as a child socket inherits everything
-+		 * from a parent LISTEN socket.
-+		 * 1) data_ready method of the parent socket will be called
-+		 *    when one of child sockets become ESTABLISHED.
-+		 * 2) data_ready method of the child socket may be called
-+		 *    when it receives data before the socket is accepted.
-+		 * In case of 2, we should ignore it silently.
-+		 */
- 		goto out;
- 	}
- 	if (!(svsk = (struct svc_sock *) sk->sk_user_data)) {
-@@ -1060,6 +1069,8 @@ svc_tcp_init(struct svc_sock *svsk)
- 
- 		set_bit(SK_CHNGBUF, &svsk->sk_flags);
- 		set_bit(SK_DATA, &svsk->sk_flags);
-+		if (sk->sk_state != TCP_ESTABLISHED) 
-+			set_bit(SK_CLOSE, &svsk->sk_flags);
- 	}
- }
- 
+diff ./fs/nfsd/nfs4xdr.c~current~ ./fs/nfsd/nfs4xdr.c
+--- ./fs/nfsd/nfs4xdr.c~current~	2003-06-18 09:24:29.000000000 +1000
++++ ./fs/nfsd/nfs4xdr.c	2003-06-18 09:30:43.000000000 +1000
+@@ -1039,6 +1039,7 @@ nfsd4_decode_compound(struct nfsd4_compo
+ 	*p++ = htonl((u32)(n));					\
+ } while (0)
+ #define WRITEMEM(ptr,nbytes)     do {				\
++	*(p + XDR_QUADLEN(nbytes) -1) = 0;                      \
+ 	memcpy(p, ptr, nbytes);					\
+ 	p += XDR_QUADLEN(nbytes);				\
+ } while (0)
 
 
 -------------------------------------------------------
