@@ -1,21 +1,13 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS oopses on smp servers
-Date: 16 Dec 2002 17:58:30 +0100
+From: Bruce Allan <bruce.allan@us.ibm.com>
+Subject: Re: slow NFS performance extracting bits from large files
+Date: Mon, 16 Dec 2002 09:27:49 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shs8yypaojt.fsf@charged.uio.no>
-References: <Pine.LNX.4.33.0212161226020.8807-300000@wotan.suse.de>
-	<shs8yyqht9o.fsf@charged.uio.no>
+Message-ID: <OF5780D600.FCFDD312-ON88256C91.005F9A85@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Bernhard Kaindl <bk@suse.de>,  Peter Lojkin <ia6432@inbox.ru>,
-	  <nfs@lists.sourceforge.net>,  Chris Mason <mason@suse.com>
+Content-Type: text/plain; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net, nfs-admin@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18NyZt-00032C-00
-	for <nfs@lists.sourceforge.net>; Mon, 16 Dec 2002 08:58:49 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <shs8yyqht9o.fsf@charged.uio.no>
+To: Bruce Allen <ballen@gravity.phys.uwm.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,37 +20,85 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Trond Myklebust <trond.myklebust@fys.uio.no> writes:
 
-     > Try the appended patch instead:
 
-Duh: typo...
 
-Cheers,
-  Trond
 
---- linux-2.4.20-smp/fs/nfs/pagelist.c.orig	Fri Nov 29 00:53:15 2002
-+++ linux-2.4.20-smp/fs/nfs/pagelist.c	Mon Dec 16 17:36:56 2002
-@@ -134,9 +134,9 @@
- 		req->wb_cred = NULL;
- 	}
- 	if (req->wb_page) {
-+		atomic_dec(&NFS_REQUESTLIST(req->wb_inode)->nr_requests);
- 		page_cache_release(req->wb_page);
- 		req->wb_page = NULL;
--		atomic_dec(&NFS_REQUESTLIST(req->wb_inode)->nr_requests);
- 	}
- }
- 
-@@ -165,8 +165,6 @@
- 		BUG();
- 	if (NFS_WBACK_BUSY(req))
- 		BUG();
--	if (atomic_read(&NFS_REQUESTLIST(req->wb_inode)->nr_requests) < 0)
--		BUG();
- #endif
- 
- 	/* Release struct file or cached credential */
+Hi Bruce (good name, btw),
+
+It would help if you posted information about your network.  Alternately,
+you could read the "Optimizing NFS Performance" section of the Linux
+NFS-HOWTO located at http://nfs.sourceforge.net/nfs-howto/
+
+Regards,
+---
+Bruce Allan  <bruce.allan@us.ibm.com>
+Software Engineer, Linux Technology Center
+IBM Corporation, Beaverton OR
+503-578-4187   IBM Tie-line 775-4187
+
+
+
+                                                                                                                                    
+                      Bruce Allen                                                                                                   
+                      <ballen@gravity.phys        To:       nfs@lists.sourceforge.net                                               
+                      .uwm.edu>                   cc:       Bruce Allen <ballen@gravity.phys.uwm.edu>                               
+                      Sent by:                    Subject:  [NFS] slow NFS performance extracting bits from large files             
+                      nfs-admin@lists.sour                                                                                          
+                      ceforge.net                                                                                                   
+                                                                                                                                    
+                                                                                                                                    
+                      12/15/2002 11:02 PM                                                                                           
+                                                                                                                                    
+                                                                                                                                    
+
+
+
+I've searched/browsed the mail archive and the online documentation but am
+still a bit clueless about where to start.
+
+I am working on a scientific data analysis application which needs to
+extract a little bit of data from around 10,000 files.  The files
+themselves are each around 1 MB in size. The application does:
+
+for (i=0; i<10000; i++){
+  open() ith file
+  read() 32 bytes from beginning
+  lseek() to somewhere in the middle of the file
+  read() 620 bytes from the middle of the file
+  close() ith file
+}
+
+If I run this with the data set on a local disk, the total run time is
+around 1 sec -- very reasonable since I am transferring around 6 MB of
+data.
+
+If I run this on an NFS-mounted disk the performance is 100 times worse.
+Both client and server are stock RH 7.3.  Note that if I run it a second
+time, when the data is presumably cached, it takes just a few seconds to
+run.
+
+Is it obvious what needs to be changed/tuned to improve this performance?
+Or if not, could someone suggest a tool and a strategy for tracing down
+the cause of the poor performance?
+
+Sincerely,
+             Bruce Allen
+
+
+
+
+-------------------------------------------------------
+This sf.net email is sponsored by:
+With Great Power, Comes Great Responsibility
+Learn to use your power at OSDN's High Performance Computing Channel
+http://hpc.devchannel.org/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+
+
+
 
 
 -------------------------------------------------------
