@@ -1,23 +1,15 @@
-From: "Burt Perez" <staceyleejones1@aol.com>
-Subject: qualify? .................. notebook
-Date: Fri, 13 Jun 03 05:02:04 GMT
+From: xiyu@800j.com
+Subject: =?GB2312?B?zvewsre/tdiy+tDFz6LN+NDQ0rXIyMPFu7DM4g==?=
+Date: Fri, 13 Jun 2003 12:10:23 +0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <6q6t1-wvi91-4@wpq6kj.f.zaa>
-Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="_D.8_5_65_C5__B.F9__7"
+Message-ID: <E19Qfqi-0004gZ-00@sc8-sf-list1.sourceforge.net>
+Content-Type: text/html;charset="GB2312"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from panoramix.vasoftware.com
-	([198.186.202.147] helo=externalmx.vasoftware.com ident=mail)
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19QaAx-0008Ju-00
-	for <nfs@lists.sourceforge.net>; Thu, 12 Jun 2003 15:04:07 -0700
-Received: from [203.177.58.14] (port=3288 helo=FOX)
-	by externalmx.vasoftware.com with smtp (Exim 4.20 #1 (Debian))
-	id 19QaAo-0000ft-RI
-	for <nfs@lists.sourceforge.net>; Thu, 12 Jun 2003 15:03:59 -0700
-To: <nfs@lists.sourceforge.net>
+Received: from [61.134.6.20] (helo=800j.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19Qfqi-0004gZ-00
+	for <nfs@lists.sourceforge.net>; Thu, 12 Jun 2003 21:07:36 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,85 +22,35 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+<html>
 
---_D.8_5_65_C5__B.F9__7
-Content-Type: text/html;
-Content-Transfer-Encoding: quoted-printable
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
+<meta name="GENERATOR" content="Microsoft FrontPage 4.0">
+<meta name="ProgId" content="FrontPage.Editor.Document">
+<title>西安房地产信息网</title>
+</head>
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1=
-">
-<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV>
-<HR noShade>
-</DIV>
-<CENTER>
-<H1><B><I><FONT color=3D#ff0000>FREE CASH GRANTS, NEVER 
-REPAY!</FONT></I></B></H1></CENTER>
-<CENTER><FONT face=3Darial size=3D5><B>TO GET MORE INFORMATION, SIMPLY&nbs=
-p;<A 
-href=3D"http://www.easyusgrants.com/cashgrantse.html">START 
-HERE</A>!</B></FONT></CENTER>
-<H2><I><FONT color=3D#ff0000>You Can Get The Money You Need...</FONT></I><=
-/H2>
-<DIV>
-<TABLE cellPadding=3D5 width=3D649 border=3D0>
-  <TBODY>
-  <TR>
-    <TD width=3D633 colSpan=3D3>
-      <CENTER><B><FONT size=3D+0>Here are some samples of what you can app=
-ly for, 
-      just to name a few.</FONT></B> <BR><B><FONT color=3D#000080><FONT 
-      size=3D+0>Grants and Programs for:</FONT></FONT></B></CENTER></TD></=
-TR>
-  <TR>
-    <TD vAlign=3Dtop align=3Dleft width=3D215>
-      <UL>
-        <LI><FONT size=3D-1>Child Care</FONT> 
-        <LI><FONT size=3D-1>Health Care</FONT> 
-        <LI><FONT size=3D-1>Personal Grants to Attend U.S Colleges</FONT> =
+<body>
 
-        <LI><FONT size=3D-1>1st Time Home Buyers/Owners</FONT> 
-        <LI><FONT size=3D-1>Education</FONT> 
-        <LI><FONT size=3D-1>Minorities</FONT> 
-        <LI><FONT size=3D-1>Affordable Housing</FONT>  
-        <LI><FONT size=3D-1>Business Grants and Loans</FONT> 
-    <TD vAlign=3Dtop align=3Dleft width=3D216>
-      <UL>
-        <LI><FONT size=3D-1>Research</FONT>  
-    <TD vAlign=3Dtop align=3Dleft width=3D216>
-      <UL> 
-        <LI><FONT size=3D-1>Home Improvement</FONT> 
-        <LI><FONT size=3D-1>Home Repair</FONT>    
-        <LI><FONT size=3D-1>Housing</FONT>  
-        <LI><FONT size=3D-1>Real Estate</FONT> 
-        <LI><FONT size=3D-1>Many many more</FONT> </LI></UL></TD></TR></TB=
-ODY></TABLE></DIV>
-<DIV><STRONG><FONT color=3D#ff0000 size=3D5><EM>Why put this off? <A 
-href=3D"http://www.easyusgrants.com/cashgrantse.html">check it out 
-now</A></EM></FONT></STRONG></DIV>
-<DIV><FONT color=3D#ffffff size=3D1>concerto sawtimber frigate=
- 
-grim</FONT></DIV>
-<DIV><STRONG><EM><FONT color=3D#ff0000 size=3D5></FONT></EM></STRONG>&nbsp=
-;</DIV>
-<DIV>
-<DIV><FONT face=3DArial size=3D2><B><FONT face=3DVerdana size=3D1><FONT 
-color=3D#c0c0c0></FONT></FONT><A 
-href=3D"http://www.easyusgrants.com/cgi-bin/bye/byeold.cgi"><FONT 
-face=3DVerdana color=3D#008000 size=3D1>PLease Go Here to unsubscribe</FON=
-T></A><FONT 
-face=3DVerdana size=3D1> <FONT color=3D#000080>and be removed from&nbsp;ou=
-r 
-list</FONT></FONT></B></FONT></DIV></DIV></BODY></HTML>
+<p class="MsoNormal" align="center"><span lang="EN-US" style="font-size:26.0pt;mso-bidi-font-size:12.0pt;mso-fareast-font-family:
+楷体_GB2312;color:fuchsia"><o:p>
+</span><font color="#0000FF" size="7"><a href="http://www.800j.com.cn"><span lang="EN-US" style="mso-bidi-font-size: 12.0pt"> 
+</o:p> 
+ </span></a></font><b><font color="#0000FF" size="7"><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman"><font face="楷体_GB2312">西安房地产信息网</font></span></a></font></b></p>
 
---_D.8_5_65_C5__B.F9__7--
+<p class="MsoNormal" align="center"><font color="#0000FF"><b><font face="楷体_GB2312" size="6"><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman">www.800j.cc</span></a></font></b></font></p>
+<p align="center">　
+<p align="center"><a href="http://www.800j.com.cn"><img src="huati001.gif" width="321" height="46"></a></p>
+<p align="center"><a href="http://www.800j.com.cn/800j/fclt/djtbbs/show.asp?bID=&amp;RID=4863&amp;ID=4863"><font color="#FF0000" size="4"><b>非典时期买楼该注重什么？</b></font></a></p>
+<p align="center"><a href="http://www.800j.com.cn/800j/fclt/djtbbs/show.asp?bID=&amp;RID=5014&amp;ID=5014"><font color="#FF0000" size="4"><b>谁来评述“世家星城”</b></font></a></p>
+<p align="center"><font color="#FF0000" size="4"><b>.....</b></font></p>
+<p class="MsoNormal" align="center"><b><font color="#FFFF00" face="楷体_GB2312" size="4"><a href="http://http://www.800j.com.cn/800j/fclt/djtbbs/new.asp">我要发言　</a>　　　　　<a href="http://http://www.800j.com.cn/800j/fclt/djtbbs/index.asp">　进入论坛</a></font></b></p>
+<p align="center">　</p>
 
+</body>
+
+</html>
 
 
 -------------------------------------------------------
