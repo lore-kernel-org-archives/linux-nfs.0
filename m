@@ -1,18 +1,17 @@
-From: seth vidal <skvidal@phy.duke.edu>
-Subject: Re: RedHat 7.3 crashed NetApp?
-Date: 16 May 2002 19:16:41 -0400
+From: Abhas Abhinav <abhas@deeproot.co.in>
+Subject: Error: RPC request reserved 244 but used 248
+Date: Fri, 17 May 2002 07:01:12 +0000 (UTC)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1021591004.1660.0.camel@milo>
+Message-ID: <Pine.LNX.4.43.0205170658200.3848-100000@anubhav.lan.deeproot.co.in>
 References: <20020516153907.A23113@lucon.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail.phy.duke.edu ([152.3.182.2])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 178UbR-0000or-00
-	for <nfs@lists.sourceforge.net>; Thu, 16 May 2002 16:24:09 -0700
-To: "H . J . Lu" <hjl@lucon.org>
+Received: from [202.71.150.112] (helo=amogh.deeproot.co.in)
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 178Wsm-0004Z8-00
+	for <nfs@lists.sourceforge.net>; Thu, 16 May 2002 18:50:12 -0700
+To: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
 In-Reply-To: <20020516153907.A23113@lucon.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -26,17 +25,30 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Thu, 2002-05-16 at 18:39, H . J . Lu wrote:
-> Has anyone seen
-> 
-> http://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=65069
-> 
+Hi...
 
-Is there anyone who can assuage the concerns of sct in this bug:
-https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=59245
+I have been running nhfsstone on a tcp-mount NFS partition. Both the
+client and the server are running 2.4.8. The server uses ReiserFS for
+its disk partition. I've applied the respective nfs-tcp patches to the
+client and server... and was able to mount the nfs export using mount
+-otcp on the client...
 
--sv
+However, during the test, the server kept giving the error:
 
+RPC request reserved 244 but used 248
+
+Any idea what this error could mean and how to stop it?
+
+thanks,
+Abhas.
+
+-- 
+-------------------------------------------------------------------
+Abhas Abhinav		   | Free Software at its product-ive best.
+CEO, DeepRoot Linux
+http://www.deeproot.co.in           ---- Server Appliances ----
+Ph: +91 (80) 856 5624          ---- Linux Support and Services ----
+-------------------------------------------------------------------
 
 
 _______________________________________________________________
