@@ -1,29 +1,28 @@
-From: Marc Schmitt <mschmitt@inf.ethz.ch>
-Subject: Re: "nfsd Security: //u bad export" is triggered by IRIX
-	clients
-Date: 22 Jul 2003 17:07:02 +0200
+From: Jeff Layton <jeffrey.b.layton@lmco.com>
+Subject: Changing block size in 2.4.20 kernel
+Date: Tue, 22 Jul 2003 12:04:57 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1058886422.7602.29.camel@ikarus>
-References: <1058884809.7602.25.camel@ikarus>
+Message-ID: <3F1D60A9.1010203@lmco.com>
+Reply-To: jeffrey.b.layton@lmco.com
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from medoc.inf.ethz.ch ([129.132.178.200])
+Received: from mailgw1a.lmco.com ([192.31.106.7])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19eyjN-0002lx-00
-	for <nfs@lists.sourceforge.net>; Tue, 22 Jul 2003 08:07:09 -0700
-Received: from localhost (localhost [127.0.0.1])
-	by medoc.inf.ethz.ch (Postfix) with ESMTP id F194D58EE6
-	for <nfs@lists.sourceforge.net>; Tue, 22 Jul 2003 17:07:02 +0200 (MEST)
-Received: from medoc.inf.ethz.ch ([127.0.0.1])
- by localhost (medoc [127.0.0.1]) (amavisd-new, port 10024) with LMTP
- id 00726-01-4 for <nfs@lists.sourceforge.net>;
- Tue, 22 Jul 2003 17:07:02 +0200 (MEST)
-Received: from ikarus (ikarus.inf.ethz.ch [129.132.10.58])
-	by medoc.inf.ethz.ch (Postfix) with ESMTP id DF0BC58EC4
-	for <nfs@lists.sourceforge.net>; Tue, 22 Jul 2003 17:07:01 +0200 (MEST)
-In-Reply-To: <1058884809.7602.25.camel@ikarus>
+	id 19f0Lc-0003MI-00
+	for <nfs@lists.sourceforge.net>; Tue, 22 Jul 2003 09:50:44 -0700
+Received: from emss02g01.ems.lmco.com (relay2.ems.lmco.com [166.29.2.54])
+	by mailgw1a.lmco.com (8.11.6p2/8.11.6) with ESMTP id h6MGoHS08835
+	for <nfs@lists.sourceforge.net>; Tue, 22 Jul 2003 10:50:17 -0600 (MDT)
+Received: from CONVERSION-DAEMON.lmco.com by lmco.com (PMDF V6.1-1 #40644)
+ id <0HIF00E01QRR8P@lmco.com> for nfs@lists.sourceforge.net; Tue, 22 Jul 2003 10:50:16 -0600 (MDT)
+Received: from emss02g02.ems.lmco.com ([166.29.2.60]) by lmco.com (PMDF V6.1-1 #40644)
+ with ESMTP id <0HIF00KJWQRMNH@lmco.com> for nfs@lists.sourceforge.net; Tue, 22 Jul 2003 10:50:10 -0600 (MDT)
+Received: from CONVERSION-DAEMON.lmco.com by lmco.com (PMDF V6.1-1 #40645)
+ id <0HIF00D01QRMLL@lmco.com> for nfs@lists.sourceforge.net; Tue, 22 Jul 2003 10:50:10 -0600 (MDT)
+Received: from lmco.com ([134.5.193.209]) by lmco.com (PMDF V6.1-1 #40645) with ESMTP id <0HIF00MH9QRGE9@lmco.com> for
+ nfs@lists.sourceforge.net; Tue, 22 Jul 2003 10:50:05 -0600 (MDT)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -36,32 +35,29 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Great, the current NFS HowTo has the solution:
+Hello,
 
-Irix versions up to 6.5.12 have problems mounting file systems exported
-from Linux boxes - the mount point "gets lost," e.g.,
+   I'd like to increase the block size in the 2.4.20 kernel (can't upgrade
+for various reasons) and I can't apply the TCP patches that change it.
+This particular machine is a server for a beowulf, so it's a Linux
+server for Linux clients (all the same kernel).
+   If I change ./include/linux/nfsd/const.h, NFSSVC_MAXBLKSIZE
+to 32k (32768), rebuild, reinstall, reboot, etc. Will this then change
+the blocksize for the NFS server? (I just want to be sure :) Then the
+clients can handle a 32k blocksize even running UDP? (Again, I
+just want to be sure :)
 
-	# mount linux:/disk1 /mnt
-	# cd /mnt/xyz/abc
-	# pwd
-	/xyz/abc
-   
+TIA!
 
-This is known IRIX bug (SGI bug 815265 - IRIX not liking file handles of
-less than 32 bytes), which is fixed in IRIX 6.5.13. If it is not
-possible to upgrade to IRIX 6.5.13, then the unofficial workaround is to
-force the Linux nfsd to always use 32 byte file handles.
-
-A number of patches exist - see:
-
-    http://www.geocrawler.com/archives/3/789/2001/8/50/6371896/
-    http://oss.sgi.com/projects/xfs/mail_archive/0110/msg00006.html 
+Jeff
 
 
-Sorry for the unnecessary initial post.
 
-Regards,
-    Marc
+-- 
+Dr. Jeff Layton
+Chart Monkey - Aerodynamics and CFD
+Lockheed-Martin Aeronautical Company - Marietta
+
 
 
 
