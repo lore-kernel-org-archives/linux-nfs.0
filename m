@@ -1,76 +1,48 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: Isolation of nfs threads
-Date: Thu, 19 Sep 2002 21:32:11 +1000
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15753.46523.847227.539366@notabene.cse.unsw.edu.au>
-References: <005401c25fa4$6c6a8270$4f0010ac@Ashwamedha>
+From: Hirokazu Takahashi <taka@valinux.co.jp>
+Subject: Re: [NFS] Re: [PATCH] zerocopy NFS for 2.5.36
+Date: Thu, 19 Sep 2002 22:15:13 +0900 (JST)
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <20020919.221513.28808421.taka@valinux.co.jp>
+References: <20020918.160057.17194839.davem@redhat.com>
+	<1032393277.24895.8.camel@irongate.swansea.linux.org.uk>
+	<3D89176B.40FFD09B@digeo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: <nfs@lists.sourceforge.net>, Rusty Russell <rusty@rustcorp.com.au>
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17rzY2-0000j0-00
-	for <nfs@lists.sourceforge.net>; Thu, 19 Sep 2002 04:32:42 -0700
-Received: From
-	notabene.cse.unsw.edu.au ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <kedar@calsoftinc.com>) (for <nfs@lists.sourceforge.net>)
-	(for <rusty@rustcorp.com.au>) By tone With Smtp ;
-	Thu, 19 Sep 2002 21:32:19 +1000
-To: "Kedar Sovani" <kedar@calsoftinc.com>
-In-Reply-To: message from Kedar Sovani on Thursday September 19
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
+Content-Type: Text/Plain; charset=us-ascii
+Cc: alan@lxorguk.ukuu.org.uk, davem@redhat.com, neilb@cse.unsw.edu.au,
+	linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
+To: akpm@digeo.com
+In-Reply-To: <3D89176B.40FFD09B@digeo.com>
+List-ID: <nfs.lists.sourceforge.net>
 
-On Thursday September 19, kedar@calsoftinc.com wrote:
-> Hey,
->       I am resending this message, can anyone please comment about the problem stated below.
+Hello,
+
+> > > details, but I do know that using copy_from_user() is not a real
+> > > improvement at least on x86 architecture.
+> > 
+> > The same as bit is easy to explain. Its totally memory bandwidth limited
+> > on current x86-32 processors. (Although I'd welcome demonstrations to
+> > the contrary on newer toys)
 > 
->         How does nfs maintain the isolation between multiple 
-> threads.That is when one nfs thread is running how does it avoid other 
-> nfs threads from running. This is achieved in BSD using the splxxx() 
-> functions. But in LINUX i do not see any similare function which handles
-> this.
->         Or more generally how does the LINUX kernel, lower and raise the 
-> interrupt level it is currently working on? How does it apply to NFS ?
+> Nope.  There are distinct alignment problems with movsl-based
+> memcpy on PII and (at least) "Pentium III (Coppermine)", which is
+> tested here:
+...
+> I have various scriptlets which generate the entire matrix.
+> 
+> I think I ended up deciding that we should use movsl _only_
+> when both src and dsc are 8-byte-aligned.  And that when you
+> multiply the gain from that by the frequency*size with which
+> funny alignments are used by TCP the net gain was 2% or something.
 
-spinlocks mostly, and semaphores.
+Amazing! I beleived 4-byte-aligned was enough.
+read/write systemcalls may also reduce their penalties.
 
-look for "lock_kernel" and "unlock_kernel" which is a specialised sort
-of lock that is released when the process "schedules", and gives
-another process a turn at the cpu, and is then automatically claimed
-again when the process gets another turn.
+> It needs redoing.  These differences are really big, and this
+> is the kernel's most expensive function.
+> 
+> A little project for someone.
 
-The nfsd code in 2.4 mostly depends on the this lock.
+OK, if there is nobody who wants to do it I'll do it by myself.
 
-The network and rpc bits use spinlock (spin_lock, spin_unlock).
-
-The nfsd code in 2.5 uses a semaphore (up/down) and some spinlocks to
-avoid needing lock_kernel (also known as the Big Kernel Lock).
-
-It is probably worth reading Rusty's unreliable guide to kernel
-locking. See the bottom of:
-
-   http://www.netfilter.org/unreliable-guides/
-
-The html link seems to be broken... Rusty???
-
-NeilBrown
-
-
--------------------------------------------------------
-This sf.net email is sponsored by:ThinkGeek
-Welcome to geek heaven.
-http://thinkgeek.com/sf
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+> The tools are at http://www.zip.com.au/~/linux/cptimer.tar.gz
