@@ -1,13 +1,18 @@
-From: "Numbers Jacobson" <numbersjacobson_sn@whois.sc>
-Subject: What are you doing?
-Date: Wed, 02 Jul 2003 06:21:41 +0000
+From: "GroupShield for Exchange (CVO-EXCHANGE)"
+	 <NAIUSCVO-EXCHANGE@roguewave.com>
+Subject: ALERT -  GroupShield ticket number OA2154_1057126684_CVO-EXCHANGE
+ _1 was generated
+Date: Tue, 1 Jul 2003 23:18:05 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <ef3c01c34062$23adbcfa$cdbe3fd7@1yx45i1>
+Message-ID: <F888C30C3021D411B9DA00B0D0209BE8059615A1@cvo-exchange.cvo.roguewave.com>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_07D8_D57B6490.20B57D08"
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: netsaintplug-devel@lists.sourceforge.net, nfs@lists.sourceforge.net
+Received: from cvo-ext.roguewave.com ([12.22.36.198] helo=cvo-exchange.cvo.roguewave.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19Xazd-0004BC-00
+	for <nfs@lists.sourceforge.net>; Tue, 01 Jul 2003 23:21:25 -0700
+To: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -20,33 +25,35 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+Action Taken:
+The attachment was deleted from the message and replaced with a text file
+informing the recipient of the action taken.
 
-------=_NextPart_000_07D8_D57B6490.20B57D08
-Content-Type: text/plain
-Content-Transfer-Encoding: 8bit
+To:
+nfs@lists.sourceforge.net <nfs@lists.sourceforge.net>
+
+From:
+david@SUN.COM <david@SUN.COM>
+
+Sent:
+-1297478528,29573217
+
+Subject:
+[NFS] Re: Application
+
+Attachment Details:-
+
+Attachment Name: your_details.zi
+File: your_details.zi
+Infected? Yes
+Repaired? No
+Blocked? No
+Deleted? Yes
+Virus Name: W32/Sobig.e@MM
 
 
 
-
-------=_NextPart_000_07D8_D57B6490.20B57D08
-Content-Type: text/html
-Content-Transfer-Encoding: base64
-
-ICANCiANCgkNCjxodG1sPg0KIA0KCTxib2R5IGJnY29sb3I9I2ZmZmZmZj4N
-CiAgDQogPHAgYWxpZ249ImNlbnRlciI+eXhnenkyMnF2Y2gwYzN2OTJwNWpk
-YWpnPGJyPg0KPGEgaHJlZj0iaHR0cDovL2NSb29rLWVELkNPbS9oJTZmc3Qv
-ZSU2RGElNjklNkMlNzJlJTZEbyU3NiU2NS4lNjElNzMlNzAiPlN0b3ANCk1h
-aWxpbmdzIEhlcmU8L2E+PGJyPiANCjxhIGhyZWY9Imh0dHA6Ly9XV1cuQ0hl
-YVBvTm5lVDEuQ29NLyU2RCU2YmEvJTZEMiU2My4lNzBoJTcwP21hbj0lNkJv
-JTZkNDU2Ij48Q1dCUT48aW1nIHNyYz0iaHR0cDovL1dXdy5jSEVhcG9ObmV0
-MS5jb00vcC5naSU2NiIgYm9yZGVyPTA+PFk+PC9hPg0KPGJyPm1rbnQ5dzNt
-bzluNTxicj54b2g5YnkxODVxZDwvcD4JCQkNCjwvQk9EWT4gDQo8L2h0bWw+
-DQoJCQ0KCQ0KDQo=
-
-
-------=_NextPart_000_07D8_D57B6490.20B57D08--
-
+	
 
 
 -------------------------------------------------------
