@@ -1,20 +1,16 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: 3 strange things in the lockd code ?
-Date: 08 Apr 2002 15:12:17 +0200
+From: Hirokazu Takahashi <taka@valinux.co.jp>
+Subject: [NFS][PATCH] zerocopy NFS
+Date: Mon, 08 Apr 2002 22:29:06 +0900 (JST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shselhq49n2.fsf@charged.uio.no>
-References: <20020404194238.E25342@zeus.centre-cired.fr>
-	<shs8z7yo0ml.fsf@charged.uio.no>
-	<20020408145459.B12049@zeus.centre-cired.fr>
+Message-ID: <a8s62e$j9m$2@main.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Received: from mons.uio.no ([129.240.130.14])
+Content-Type: Text/Plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org
+Received: from sv1.valinux.co.jp ([202.221.173.100])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16uYwm-0005uK-00
-	for <nfs@lists.sourceforge.net>; Mon, 08 Apr 2002 06:12:37 -0700
-To: Dumas Patrice <dumas@centre-cired.fr>
-In-Reply-To: <20020408145459.B12049@zeus.centre-cired.fr>
+	id 16uZCc-0000Qd-00
+	for <nfs@lists.sourceforge.net>; Mon, 08 Apr 2002 06:28:58 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,29 +23,35 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->>>>> " " == Dumas Patrice <dumas@centre-cired.fr> writes:
+Hello
 
-     > I didn't saw something really saying non-monitored clients
-     > aren't allowed to do NLM_LOCK or NLM_LOCK_MSG, but I assume
-     > they aren't. However I am pretty sure that monitored clients
-     > can do NLM_LOCK_MSG and thus they can receive in turn
-     > NLM_GRANTED_MSG, which should trigger them to send a
-     > NLM_GRANTED_RES. And indeed the dmesg output I send in a mail
-     > with subject "lockd bug (?)" shows linux nfs clients do send
-     > NLM_GRANTED_MSG.
+I'm tuning knfsd and I implemented zerocopy knfsd.
+Everyone knows knfsd copies file data many times,
+so I tried to reduce the copies. 
+nfsd_read() doesn't copy filedata anymore.
+This works pretty fine and performance is improved.
 
-I would certainly accept patches that fix the support for asynchronous
-calls on the server side. I'd be more sceptical about actually using
-them for the client though.
+Following patches patches are against linux 2.5.7
 
-    >> I agree. We should be checking the host address as well.
+ftp:/ftp.valinux.co.jp/pub/people/taka/tune/2.5.7/va01-knfsd-zerocopy-vfsread-2.5.7.patch
+ftp:/ftp.valinux.co.jp/pub/people/taka/tune/2.5.7/va02-kmap-multplepages-2.5.7.patch
 
-     > I will try to make a patch.
+I also have patches against linux 2.4.18
 
-Thanks...
+ftp:/ftp.valinux.co.jp/pub/people/taka/tune/2.4.18/va01-knfsd-zerocopy-vfsread-2.4.18.patch
+ftp:/ftp.valinux.co.jp/pub/people/taka/tune/2.4.18/va02-kmap-multplepages-2.4.18.patch
 
-Cheers,
-  Trond
+
+Now I'm designing new mechanism to send pagecache directly 
+using sendpage.
+
+I'm waiting for your comments.
+
+
+Regards,
+Hirokazu Takahashi
+VP Engineering Dept.
+VA Linux Systems Japan
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
