@@ -1,24 +1,25 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: RHEL3 Update 1 and NetApp NFS freeze issues
-Date: Fri, 10 Sep 2004 07:12:12 -0400
+Subject: Re: nfs problem: nfs could be mounted and viewed but errors
+ on file opening
+Date: Fri, 10 Sep 2004 07:22:36 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <41418C0C.1030405@RedHat.com>
-References: <5D5AD1BFE69EDE4283AE056291B89499074861ED@ca00exh03.ca.atitech.com>
+Message-ID: <41418E7C.80902@RedHat.com>
+References: <1094795240.3169.17.camel@roach.aldevinco.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C5jNe-0007Fy-II
-	for nfs@lists.sourceforge.net; Fri, 10 Sep 2004 04:15:52 -0700
+	id 1C5jWv-0008Vu-Ib
+	for nfs@lists.sourceforge.net; Fri, 10 Sep 2004 04:25:25 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
 	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.34)
-	id 1C5jNQ-0002Xv-TV
-	for nfs@lists.sourceforge.net; Fri, 10 Sep 2004 04:15:40 -0700
-To: John Nitis <jnitis@ati.com>
-In-Reply-To: <5D5AD1BFE69EDE4283AE056291B89499074861ED@ca00exh03.ca.atitech.com>
+	id 1C5jWk-0003Wk-UV
+	for nfs@lists.sourceforge.net; Fri, 10 Sep 2004 04:25:20 -0700
+To: ronald rojas <alsonsdev_mis@dctech.com.ph>
+In-Reply-To: <1094795240.3169.17.camel@roach.aldevinco.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,58 +32,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-John Nitis wrote:
+ronald rojas wrote:
 
->Greetings,
+>i'm having problems opening my nfs mounted files on the client machine.
+>Mounting the nfs share on the client goes ok. the user and group
+>permissions are ok. i could even ls -l and cd into the mounted directory
+>and subdirectories but when i open a file (cat somefile.txt) i get a
+>segmentation fault. after that, umounting the nfs share seems to hang.
 >
->This is a bit of a stab in the dark but I thought this might be a good forum
->to ask for input as it has both Linux NFS experts and a NetApp expert who
->are regular contributors.  We are unsure what the cause of the problem is
->(even whether it's hardware or software) but one of our focuses is NFS
->hangs.
+>i noticed this problem when i upgraded the kernel on the client machine
+>from 2.4 to 2.6. (is there any relation?)
 >
->Our problem is this, essentially we have an entire rack of machines (57 of
->them) that lock up on a very regular basis.  They respond to ping but do not
->respond to telnet, ssh, etc.  When you plug in a VGA monitor/PS2 keyboard
->the screen pops up but you can't login.  When you hit enter it just echoes
->back a linefeed on the screen.  A small percentage of them kernel panic
->
-Set up netdump so wen an oops occurs, a system image (or core) will be
-created. Then use the crash to examine the the core. This will give you
-a wealth of information on what is going on in the system.
-(Note: You'll have to install the correct kernel-debuginfo for this to 
-work).
-
-When the system just hangs, make sure the Alt-SysRq  keys are  enabled
-(by doing a "echo 1 > /proc/sys/kernel/sysrq"). Then use:
-Alt-SysRq-p  to see where the process(es) are doing
-Alt-SysRq T to get  system stack
-Alt-SysRq M to memory information
-
->We have "top" and "ps augxww" output logging to a file once per minute and
->some of them show excessive load averages before they freeze with many
->processes stuck in D (uninterruptible sleep or disk wait).  If you catch
->these before the load average gets too high you can tell that a mount has
->locked up (df hangs after displaying a few mounts and you can't access the
->mount that's locked up).  Each new process that gets stuck adds 1 to the
->load average.  The machine locks up in exactly the same way when we yank the
->Ethernet cable from the box.
+>server config:				client config:
+>nfs-utils version 1.0.1			nfs-utils version 1.0.1
+>kernel ver. 2.4.18-14			kernel ver. 2.6.8
+>redhat 8.0 distro			fedora core 1.0
 >  
 >
-Before things go south, does ifconfig ethX show any interface errors?
+I think you meant Fedora Core 2 since Fedora Core 1 is  2.4 based.
+And also think my meant to say nfs-utils version 1.0.6 not 1.0.1
 
->Does anyone have any ideas as to what might be the problem or how we might
->go about debugging it further?  I've recently set the debugging levels to
->"10" in /proc/sys/sunrpc/rpc_debug and /proc/sys/sunrpc/nfs_debug to see if
->that will garner some information.  A few details follow below.
->
->  
->
-If your using autofs/amd (if you can) turn it off to see what happens.
-
-I hope this helps....
+This being the case, please upgrade your nfs-utils to latest
+version on rawhide (1.0.6-32 I believe) since the nfs-utils right out
+of the box is a bit challenged when it comes to starting things
+up in the correct order. Plus make sure rpc.imapd is running on the client.
 
 SteveD.
+
 
 
 
