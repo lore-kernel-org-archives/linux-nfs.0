@@ -1,20 +1,20 @@
-From: Panu Matilainen <pmatilai@welho.com>
-Subject: Re: 1279 mounts
-Date: Fri, 26 Apr 2002 11:25:33 +0300 (EEST)
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: patchs for lockd: granted_res_proc, client address check, blocking check
+Date: 26 Apr 2002 11:52:21 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0204261120520.19032-100000@chip.2y.net>
-References: <20020425162106.A30736@devserv.devel.redhat.com>
+Message-ID: <shsznzqzt0q.fsf@charged.uio.no>
+References: <20020423103152.A3624@zeus.centre-cired.fr>
+	<20020425155951.E13292@zeus.centre-cired.fr>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net, <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from cs145025.pp.htv.fi ([213.243.145.25] helo=chip.2y.net)
-	by usw-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 171134-00044U-00
-	for <nfs@lists.sourceforge.net>; Fri, 26 Apr 2002 01:25:47 -0700
-To: Pete Zaitcev <zaitcev@redhat.com>
-In-Reply-To: <20020425162106.A30736@devserv.devel.redhat.com>
+Received: from pat.uio.no ([129.240.130.16])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 1712Se-0000hn-00
+	for <nfs@lists.sourceforge.net>; Fri, 26 Apr 2002 02:56:16 -0700
+To: Dumas Patrice <dumas@centre-cired.fr>
+In-Reply-To: <20020425155951.E13292@zeus.centre-cired.fr>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,35 +27,49 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Thu, 25 Apr 2002, Pete Zaitcev wrote:
+>>>>> " " == Dumas Patrice <dumas@centre-cired.fr> writes:
 
-> I updated my patch that allows to mount unholy numbers of volumes.
-> The old version was for 2.4.9 and did not apply anymore.
-> I split the unnamed majors patch and the NFS patch.
-> Also, CONFIG_ option is gone, because it made the code ugly.
-> 
-> Majors part:
->  http://people.redhat.com/zaitcev/linux/linux-2.4.19-pre7-unmaj.diff
-> NFS part:
->  http://people.redhat.com/zaitcev/linux/linux-2.4.19-pre7-nores.diff
-> Userland for NFS:
->  http://people.redhat.com/zaitcev/linux/util-linux-2.11q-nores1.diff
-> 
-> Is anyone actually interested? Random people periodically ask
-> me for patches, get them and disappear into the void. I hear
-> nothing good or bad (well, nothing since Trond reviewed it
-> several months ago, and also someone found a conflict with NFS
-> server code, since fixed). I am thinking about submitting,
-> but if users do not ask, why add extra bloat and negotiate
-> with LANANA...
+     > suppose the server send a grant_msg with a lock. The client now
+     > has the lock granted, it sends a granted_res with a good
+     > status. Now suppose the server never receive this callback. The
+     > server will resend a grant_msg with the lock.  The client isn't
+     > waiting for a granted_res anymore and thus responds with a
+     > granted_res with a bad status. If the server gets this
+     > granted_res it will deallocate the lock. At that point there is
+     > no lockfrom the server point of view and a lock from the client
+     > point of view.
 
-I've got quite a few users here who "need" this functionality and it's 
-included in our RH-based custom kernels. Having it as a separate patch 
-for 2.4 is no problem, for 2.5 I'm hoping we finally move to 32bit device 
-numbers...
+Just add a call to posix_test_lock() in nlmclnt_grant().
 
-	- Panu -
+     > The client ask for a blocking lock and the server responds that
+     > the lock is allready taken. After some time the client becomes
+     > unreachable (but doesn't crash and reboot, that case is handled
+     > by statd) for whatever reason. Then the lock becomes available,
+     > the server locks the file, and send a granted_msg. However, as
+     > the client is unreachable the server will keep on resending
+     > granted_msg (see nlmsvc_grant_blocked). This means that the
+     > file will never be lockable anymore.
 
+     > I have a simple idea for a solution to this problem, however it
+     > raises other issues. A possibility would be to have a timer (5
+     > minutes, or so...) such that when it is exceeded, the server
+     > stops sending granted_msg and unlocks the lock (calls
+     > delete_block(...,1)). However, if the client is waiting for
+     > that lock and is blocking, it will block forever. It is not a
+     > problem in the linux implementation, as the client does busy
+     > waiting. (if the server could send a status in the granted_msg
+     > call, it would have been easier, but I cannot see such a
+     > thing).
+
+The client occasionally wakes up and resends the NLM_LOCK call, so it
+will not wait for ever. However what say the server misses the
+client's GRANTED_RES reply?
+
+The above problems are exactly why we should aim to use NLM_GRANTED
+instead of NLM_GRANTED_MSG at some point in the future.
+
+Cheers,
+  Trond
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
