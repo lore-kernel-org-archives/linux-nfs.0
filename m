@@ -1,19 +1,21 @@
-From: Tom McNeal <trmcneal@attbi.com>
-Subject: Re: [PATCH] 2.4.19-rc1/2.5.25 provide dummy fsync() routine for
- directories on NFS mounts
-Date: Thu, 11 Jul 2002 13:05:18 -0700
+From: "Slawomir Orlowski \(Cympak\)" <sorlowski@cympak.com>
+Subject: Cannot start nfsd deamon.
+Date: Thu, 11 Jul 2002 16:13:55 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3D2DE4FE.35B1ABA7@attbi.com>
-References: <E17SjDh-00067R-00@usw-sf-list2.sourceforge.net> <200207111414.03258.rdieter@math.unl.edu>
+Message-ID: <006f01c22917$7b807d00$4900a8c0@cympak.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_006C_01C228F5.F45E1420"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from rwcrmhc51.attbi.com ([204.127.198.38])
+Received: from [198.138.227.126] (helo=server.cympak.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17Sk8U-0000Ez-00
-	for <nfs@lists.sourceforge.net>; Thu, 11 Jul 2002 13:01:58 -0700
-To: Rex Dieter <rdieter@math.unl.edu>,
- 	NFS maillist <nfs@lists.sourceforge.net>
+	id 17SkLf-00077P-00
+	for <nfs@lists.sourceforge.net>; Thu, 11 Jul 2002 13:15:35 -0700
+Received: from slawek.cympak.com ([192.168.0.73] helo=Slawek)
+	by server.cympak.com with smtp (Exim 3.13 #1)
+	id 17SkJY-0005GR-00
+	for nfs@lists.sourceforge.net; Thu, 11 Jul 2002 16:13:24 -0400
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,43 +28,82 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Rex Dieter wrote:
-> 
-> Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> 
-> > >>>>> " " == Matthias Andree <ma@dt.e-technik.uni-dortmund.de> writes:
-> >      > What if the NFS stuff is not mounted with sync or explicitly
-> >      > mounted async? Will an nfsd still do synchronous writes to
-> >      > directories?
-> 
-> > Of course. It is not possible for the NFS client to switch this
-> > behaviour off, since it is part of the server side specifications in
-> > the protocol.
-> > The only thing that can screw you up is if you use the 'async' option
-> > in /etc/exports on the server.
-> 
-> How is specifying 'async' in /etc/exports on the NFS server different than a
-> NFS client explicitly mounting async?
-> 
-> -- Rex
+This is a multi-part message in MIME format.
 
+------=_NextPart_000_006C_01C228F5.F45E1420
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-The /etc/exports async option allows the server to tell the client
-that it has indeed written data/metadata to the disk, regardless
-of what has actually happened.
+I have untared and compilled  nfs-utils-0.1.9.1.tar.gz on my server with =
+RedHat6.1 (2.2.16 kernel).
 
-So, the client sync/async affects *when* the client writes to the
-server, and the server sync/async affects *how* (OK, and *when*) the 
-server replies to the client.  
+After launching as root:=20
 
-Regards -
+root@server download]# /etc/rc.d/init.d/nfs start
+Starting NFS services:                                     [  OK  ]
+Starting NFS quotas:                                       [  OK  ]
+Starting NFS mountd:                                       [  OK  ]
+Starting NFS daemon: nfssvc: Function not implemented                    =
+         [FAILED]
 
-Tom
+Could somebody help me, what should I do to get nfs server working??????
 
---
-------------------------------------------------------------
-Tom McNeal       trmcneal@attbi.com     (650)906-0761 (cell) 
-------------------------------------------------------------
+Best regards
+Slawomir Orlowski
+
+------=_NextPart_000_006C_01C228F5.F45E1420
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META content=3D"text/html; charset=3Diso-8859-1" =
+http-equiv=3DContent-Type>
+<META content=3D"MSHTML 5.00.2919.6307" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV><FONT face=3DArial size=3D2>I have untared and compilled&nbsp;=20
+nfs-utils-0.1.9.1.tar.gz on my server with RedHat6.1 (2.2.16=20
+kernel).</FONT></DIV>
+<DIV>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>After&nbsp;launching as root: =
+</FONT></DIV>
+<DIV>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>root@server download]# =
+/etc/rc.d/init.d/nfs=20
+start<BR>Starting NFS=20
+services:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbs=
+p;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp=
+;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=
+&nbsp;=20
+[&nbsp; OK&nbsp; ]<BR>Starting NFS=20
+quotas:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&=
+nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&n=
+bsp;&nbsp;&nbsp;=20
+[&nbsp; OK&nbsp; ]<BR>Starting NFS=20
+mountd:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&=
+nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&n=
+bsp;&nbsp;&nbsp;=20
+[&nbsp; OK&nbsp; ]<BR>Starting NFS daemon: nfssvc: Function not=20
+implemented&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&n=
+bsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nb=
+sp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+[FAILED]<BR></FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>Could somebody help me, what should I =
+do to get nfs=20
+server working??????</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>Best regards</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>Slawomir =
+Orlowski</DIV></FONT></BODY></HTML>
+
+------=_NextPart_000_006C_01C228F5.F45E1420--
+
 
 
 -------------------------------------------------------
