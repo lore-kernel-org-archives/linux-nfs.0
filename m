@@ -1,29 +1,29 @@
-From: Vincent ROQUETA <vincent.roqueta@ext.bull.net>
-Subject: Another bug....
-Date: Mon, 9 Feb 2004 16:01:48 +0100
+From: Philippe =?ISO-8859-15?Q?Gramoull=E9?= <philippe.gramoulle@mmania.com>
+Subject: Re: 2.6.3-rc1-mm1
+Date: Mon, 9 Feb 2004 15:26:42 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200402091601.48120.vincent.roqueta@ext.bull.net>
-Reply-To: vincent.roqueta@ext.bull.net
+Message-ID: <20040209152642.22dc457e@philou.gramoulle.local>
+References: <20040209014035.251b26d1.akpm@osdl.org>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; charset=ISO-8859-15
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-list1-b.sourceforge.net ([10.3.1.7] helo=sc8-sf-list1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AqLdR-0006WI-Pn
-	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 16:20:17 -0800
+	id 1AqNQo-0001sx-Fs
+	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 18:15:22 -0800
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 4.30)
-	id 1AqG2n-0005wS-U9
-	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 10:22:05 -0800
-Received: from ecbull20.frec.bull.fr ([129.183.4.3])
+	id 1AqCOj-0007ff-Tf
+	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 06:28:29 -0800
+Received: from pgramoul.net2.nerim.net ([80.65.227.234] helo=philou.aspic.com)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AqG2h-0003CV-AH
-	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 10:22:05 -0800
-Received: from roquetav.frec.bull.fr (roquetav.frec.bull.fr [129.183.101.52])
-	by ecbull20.frec.bull.fr (8.9.2/8.9.1) with ESMTP id QAA21954
-	for <nfs@lists.sourceforge.net>; Mon, 9 Feb 2004 16:00:52 +0100
-To: Linux NFS Mailing List <nfs@lists.sourceforge.net>
+	id 1AqCOc-0007Hq-OJ
+	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 06:28:29 -0800
+Received: from philou.gramoulle.local (philou.gramoulle.local [192.168.254.2])
+	by philou.aspic.com (Postfix) with SMTP id DEA7B13AC5
+	for <nfs@lists.sourceforge.net>; Mon,  9 Feb 2004 15:26:42 +0100 (CET)
+To: nfs <nfs@lists.sourceforge.net>
+In-Reply-To: <20040209014035.251b26d1.akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -36,34 +36,60 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I still not have understood the previous bug (mounting; rebooting without=20
-umounting ; remounting) I found others bugs.
 
-I was creating big big files with bonnie++.
+Sorry, i forgot to CC: this list.
 
-I used vim to write "program.c" on a shared NFSv4 remote directory.
+Thanks,
 
-
-=2Drw-r--r--    1 4294967294 4294967294        0 oct 31  1970 4913
-=2Drw-r--r--    1 4294967294 4294967294        0 nov  1  1970 5036
-=2Drw-r--r--    1 4294967294 4294967294        0 nov  1  1970 5159
-=2Drw-r--r--    1 4294967294 4294967294        0 nov  2  1970 5282
-=2Drwxr-xr-x    1 4294967294 4294967294    11326 f=E9v  9  2004 program
-=2Drw-r--r--    1 4294967294 4294967294      136 f=E9v  9  2004 program.c
-=2Drw-r--r--    1 4294967294 4294967294        0 oct 31  1970 program.c~
-=2Drw-r--r--    1 4294967294 4294967294        0 nov  2  1970 program.x~
-=2Drw-r--r--    1 4294967294 4294967294        0 nov  1  1970 program.y~
-=2Drw-r--r--    1 4294967294 4294967294        0 nov  1  1970 program.z~
+Philippe
 
 
+Hello Andrew,
 
-Creating program.c, vim tell me that it found an old swaped file!
-(So I suppose when vim is trying to detect a swaped file, it CREATE this=20
-file?)
+On Mon, 9 Feb 2004 01:40:35 -0800
+Andrew Morton <akpm@osdl.org> wrote:
 
-Well... and for sure this file was not created in october/november 1970 !!!
+  |=20
+  |=20
+  | ftp://ftp.kernel.org/pub/linux/kernel/people/akpm/patches/2.6/2.6.3-rc1=
+/2.6.3-rc1-mm1/
+  |=20
+  |=20
+  | - NFSD update
+  |=20
 
+Starting with 2.6.3-rc1-mm1, nfsd isn't working any more. Exportfs just han=
+gs.
+Previous version (2.6.2-mm1) worked fine.
+Reverting the following patches makes it work again:
 
+nfsd-01-schedule-in-spinlock-fix.patch
+nfsd-02-ip_map_init-kmalloc-check.patch
+nfsd-03-sunrpc-cache-init-fixes.patch
+nfsd-04-convert-proc-to-seq_file.patch
+nfsd-05-no-procfs-build-fix.patch
+
+You can find my .config here:
+
+http://philou.org/linux/2.6.3-rc1-mm1/config-2.6.3-rc1-mm1
+
+You can find an strace of the nfsd server startup as well as a sysrq-t capt=
+ure here:
+
+http://philou.org/linux/2.6.3-rc1-mm1/nfsd-sysrq.txt
+
+System is a Dell 2650 SMP (ia32), running Debian Sid.
+
+Thanks,
+
+Philippe
+
+--
+
+Philippe Gramoull=E9
+philippe.gramoulle@mmania.com
+Senior System and Network Architect
+Lycos Europe
 
 
 
