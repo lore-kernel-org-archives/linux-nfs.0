@@ -1,67 +1,142 @@
-From: Gerhard den Hollander <gerhard@jasongeo.com>
-Subject: Re: ALERT - GroupShield ticket number OA2317_1057450427_CVO-EXCHANGE _1 was generated
-Date: Tue, 8 Jul 2003 08:41:17 +0200
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030708064117.GV5998@hyperion.jason.nl>
-References: <482A3FA0050D21419C269D13989C6113D06A16@lavender-fe.eng.netapp.com>
-Reply-To: Gerhard den Hollander <gdenhollander@jasongeo.com>
+From: Andreas Gruenbacher <agruen@suse.de>
+Subject: [PATCH] Add `no_acl' nfs export option
+Date: Tue, 8 Jul 2003 16:55:17 +0200
+Sender: linux-fsdevel-owner@vger.kernel.org
+Message-ID: <200307081655.17510.agruen@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "H. J. Lu" <hjl@lucon.org>, Dan Kegel <dkegel@ixiacom.com>,
-   Ashutosh Rajekar <asr@softhome.net>, Erez Zadok <ezk@cs.sunysb.edu>,
-   Paul Smith <pausmith@nortelnetworks.com>, nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from internet.jasongeo.com ([213.201.188.218] helo=holland.jasongeo.com)
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19ZmAf-0001P2-00
-	for <nfs@lists.sourceforge.net>; Mon, 07 Jul 2003 23:41:50 -0700
-To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: <482A3FA0050D21419C269D13989C6113D06A16@lavender-fe.eng.netapp.com>
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-
-* Lever, Charles <Charles.Lever@netapp.com> (Mon, Jul 07, 2003 at 01:41:29PM -0700)
-> if we make a change, we should have some text
-> ready for the FAQ that will go in at the same
-> time you make the mailing list change.  something
-> like new instructions on how to post.
-> 
-> i prefer a moderated list instead of "closed to
-> subscribers only."  but i am willing to be
-> outvoted ;^)
-
-I don;t really care, my only issue is that the adress Im subscribed with
-(which is my official email adress) is likely different from the one Im
-posting with ..., which means Ill have to fiddle with sendmail to make sure
-they will match ;)
-
-Kind regards,
- --
-Gerhard den Hollander                           Phone :+31-10.280.1515
-ICT manager                                     Direct:+31-10.280.1539 
-Jason Geosystems BV                             Fax   :+31-10.280.1511 
-gdenhollander@jasongeo.com                      POBox 1573
-visit us at http://www.jasongeo.com             3000 BN Rotterdam  
-JASON.......#1 in Reservoir Characterization    The Netherlands
-      This e-mail and any attachment is/are intended solely for the named
-  addressee(s) and may contain information that is confidential and privileged.
+Content-Type: Multipart/Mixed;
+  boundary="Boundary-00=_VttC/jT8Xal2QuT"
+Cc: Steve Dickson <SteveD@redhat.com>,
+	=?iso-8859-1?q?R=FCdiger=20Oertl?= <ro@suse.de>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: nfs@lists.sourceforge.net, linux-fsdevel@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
 
--------------------------------------------------------
-This SF.Net email sponsored by: Free pre-built ASP.NET sites including
-Data Reports, E-commerce, Portals, and Forums are available now.
-Download today and enter to win an XBOX or Visual Studio .NET.
-http://aspnet.click-url.com/go/psa00100006ave/direct;at.asp_061203_01/01
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+--Boundary-00=_VttC/jT8Xal2QuT
+Content-Type: text/plain;
+  charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+Hello,
+
+The current kernel nfsd module has a `nfs_permission_mode' parameter, which 
+can be used to force nfsd into masking acl permissions off on the server 
+side. This is needed if the nfs server has acl support, but there are clients 
+that are too old. There is some more documentation in the patch itself. 
+Thanks to Steve for proposing this improvement, and for sending an initial 
+patch.
+
+Could this please be added to nfs-utils? Thanks.
+
+Regards,
+Andreas.
+
+------------------------------------------------------------------
+ Andreas Gruenbacher                     SuSE Labs, SuSE Linux AG
+ mailto:agruen@suse.de                     Deutschherrnstr. 15-19
+ http://www.suse.de/                   D-90429 Nuernberg, Germany
+
+--Boundary-00=_VttC/jT8Xal2QuT
+Content-Type: text/x-diff;
+  charset="us-ascii";
+  name="export-acl.diff"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment; filename="export-acl.diff"
+
+Add `no_acl' nfs export option
+
+This patch adds the `acl' and `no_acl' nfs export options, which replace
+the nfs_permission_mode module parameter of nfsd.o. The `no_acl' option
+tells nfsd to mask off acl permissions so that clients will see a subset
+of permissions that is safe even with old clients. Current clients
+implement the NFSv3 ACCESS RPC, and therefore do not require the
+`no_acl' export option. If no acls are supported in the nfs server, the
+`no_acl' export option is not needed, either.
+
+Thanks to Steve Dickson <SteveD@redhat.com> for proposing this.
+
+
+Andreas Gruenbacher <agruen@suse.de>, SuSE Labs
+
+
+Index: nfs-utils-1.0.3/support/include/nfs/export.h
+===================================================================
+--- nfs-utils-1.0.3.orig/support/include/nfs/export.h	2002-02-28 02:37:44.000000000 +0100
++++ nfs-utils-1.0.3/support/include/nfs/export.h	2003-07-08 16:14:26.000000000 +0200
+@@ -24,6 +24,7 @@
+ #define NFSEXP_NOSUBTREECHECK	0x0400
+ #define NFSEXP_NOAUTHNLM	0x0800
+ #define NFSEXP_FSID		0x2000
+-#define NFSEXP_ALLFLAGS		0x3FFF
++#define NFSEXP_NOACL		0x4000
++#define NFSEXP_ALLFLAGS		0x7FFF
+ 
+ #endif /* _NSF_EXPORT_H */
+Index: nfs-utils-1.0.3/utils/exportfs/exportfs.c
+===================================================================
+--- nfs-utils-1.0.3.orig/utils/exportfs/exportfs.c	2002-10-11 17:39:55.000000000 +0200
++++ nfs-utils-1.0.3/utils/exportfs/exportfs.c	2003-07-08 16:14:26.000000000 +0200
+@@ -347,6 +347,8 @@ dump(int verbose)
+ 				c = dumpopt(c, "no_subtree_check");
+ 			if (ep->e_flags & NFSEXP_NOAUTHNLM)
+ 				c = dumpopt(c, "insecure_locks");
++			if (ep->e_flags & NFSEXP_NOACL)
++				c = dumpopt(c, "no_acl");
+ 			if (ep->e_flags & NFSEXP_FSID)
+ 				c = dumpopt(c, "fsid=%d", ep->e_fsid);
+ 			if (ep->e_maptype == CLE_MAP_UGIDD)
+Index: nfs-utils-1.0.3/support/nfs/exports.c
+===================================================================
+--- nfs-utils-1.0.3.orig/support/nfs/exports.c	2002-10-11 17:39:55.000000000 +0200
++++ nfs-utils-1.0.3/support/nfs/exports.c	2003-07-08 16:14:26.000000000 +0200
+@@ -182,6 +182,8 @@ putexportent(struct exportent *ep)
+ 		"no_" : "");
+ 	fprintf(fp, "%ssecure_locks,", (ep->e_flags & NFSEXP_NOAUTHNLM)?
+ 		"in" : "");
++	fprintf(fp, "%sacl,", (ep->e_flags & NFSEXP_NOACL)?
++		"no_" : "");
+ 	if (ep->e_flags & NFSEXP_FSID) {
+ 		fprintf(fp, "fsid=%d,", ep->e_fsid);
+ 	}
+@@ -364,6 +366,10 @@ parseopts(char *cp, struct exportent *ep
+ 			ep->e_flags &= ~NFSEXP_NOAUTHNLM;
+ 		else if (strcmp(opt, "insecure_locks") == 0)
+ 			ep->e_flags |= NFSEXP_NOAUTHNLM;
++		else if (strcmp(opt, "acl") == 0)
++			ep->e_flags &= ~NFSEXP_NOACL;
++		else if (strcmp(opt, "no_acl") == 0)
++			ep->e_flags |= NFSEXP_NOACL;
+ 		else if (strncmp(opt, "mapping=", 8) == 0)
+ 			ep->e_maptype = parsemaptype(opt+8);
+ 		else if (strcmp(opt, "map_identity") == 0)	/* old style */
+Index: nfs-utils-1.0.3/utils/exportfs/exports.man
+===================================================================
+--- nfs-utils-1.0.3.orig/utils/exportfs/exports.man	2002-11-19 05:43:21.000000000 +0100
++++ nfs-utils-1.0.3/utils/exportfs/exports.man	2003-07-08 16:44:17.000000000 +0200
+@@ -218,6 +218,21 @@ be explicitly requested with either of t
+ .IR auth_nlm ,
+ or
+ .IR secure_locks .
++.TP
++.IR no_acl
++This option tells nfsd to mask off acl permissions so that clients will
++only see a subset of the permissions on the exported file system. This
++subset is safe for NFSv2 clients, and for NFSv3 clients that perform
++access decisions locally. Current NFSv3 clients use the ACCESS RPC
++to perform all access decisions on the server. The
++.I no_acl
++option should be used for nfs exports with acl support that are exported
++to NFSv2 clients, or to NFSv3 clients that don't use the ACCESS RPC.
++This option is not needed for recent NFSv3 clients or if the exported
++file system has no acl support. The default is to export with acl
++support enabled (i.e.,
++.I no_acl
++is off.)
+ 
+ '''.TP
+ '''.I noaccess
+
+--Boundary-00=_VttC/jT8Xal2QuT--
+
