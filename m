@@ -1,26 +1,25 @@
-From: "Mermell, Todd" <mermell@amazon.com>
-Subject: Storm of messages "kernel: RPC: bad TCP reclen <value> (large)"
-Date: Tue, 3 Aug 2004 12:06:58 -0700
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: ETIMEDOUT in nfsd?
+Date: Tue, 3 Aug 2004 15:16:10 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <08399A9C7DB2294896E5ACBB120B607205E2CA40@ex-mail-sea-01.ant.amazon.com>
+Message-ID: <20040803191610.GC7781@fieldses.org>
+References: <20040803081503.GM5581@sgi.com>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----_=_NextPart_001_01C4798D.0CBA9C84"
+Content-Type: text/plain; charset=us-ascii
+Cc: Neil Brown <neilb@cse.unsw.edu.au>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Bs4dQ-0003Q6-CE
-	for nfs@lists.sourceforge.net; Tue, 03 Aug 2004 12:07:40 -0700
-Received: from smtp-out-1002.amazon.com ([207.171.160.42])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1Bs4lr-00071I-62
+	for nfs@lists.sourceforge.net; Tue, 03 Aug 2004 12:16:23 -0700
+Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
 	(Exim 4.34)
-	id 1Bs4dP-0004mA-SJ
-	for nfs@lists.sourceforge.net; Tue, 03 Aug 2004 12:07:40 -0700
-Received: from ex-mail-sea-01.ant.amazon.com by smtp-in-2003.iad2.amazon.com with ESMTP
-	(crosscheck: ex-mail-sea-01.ant.amazon.com [10.16.189.50])
-	id i73J7KMw006516
-	for <nfs@lists.sourceforge.net>; Tue, 3 Aug 2004 19:07:20 GMT
-To: <nfs@lists.sourceforge.net>
+	id 1Bs4lq-0006Di-LP
+	for nfs@lists.sourceforge.net; Tue, 03 Aug 2004 12:16:23 -0700
+To: Greg Banks <gnb@sgi.com>
+In-Reply-To: <20040803081503.GM5581@sgi.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,48 +32,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+On Tue, Aug 03, 2004 at 06:15:03PM +1000, Greg Banks wrote:
+> So I was somewhat surprised to see that in 2.6, the mapping from
+> Linux errno to NFS error in fs/nfsd/nfsproc.c:nfserrno() maps
+> -EAGAIN to nfserr_dropit, causing nfsd_dispatch to just drop the
+> call and not reply.  Furthermore I need to return the network
+> error -ETIMEDOUT to get NFSERR_JUKEBOX.  I don't get it...can
+> someone explain both of these?
 
-------_=_NextPart_001_01C4798D.0CBA9C84
-Content-Type: text/plain;
-	charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
+The server does upcalls to userspace daemons (usually to mountd to get
+export options or IP address->client name mappings) by doing a lookup in
+a cache, and returning -EAGAIN if an upcall is required.  The request is
+then dropped, a copy of the request is made (see svcsock.c:svc_defer())
+and reprocessed at a later time (see svcsock.c:svc_revisit()).
 
-Has anyone experienced this? This is a high volume (anywhere from 5,000 =
-to 20,000 IOP/sec) NFS server. It looks like a misbehaving client. =
-Kernel - Redhat AS 3.0, 2.4.21-15.0.3. Thanks in advance.
+I have some rough notes on all this at
 
--Todd
+http://www.fieldses.org/~bfields/kernel/svc_caches/sunrpc_svc_cache.txt
 
-------_=_NextPart_001_01C4798D.0CBA9C84
-Content-Type: text/html;
-	charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
+and Neil has some documentation in Documentation/sunrpc-cache.txt.
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
-<HTML>
-<HEAD>
-<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
-charset=3Dus-ascii">
-<META NAME=3D"Generator" CONTENT=3D"MS Exchange Server version =
-6.0.6556.0">
-<TITLE>Storm of messages &quot;kernel: RPC: bad TCP reclen &lt;value&gt; =
-(large)&quot;</TITLE>
-</HEAD>
-<BODY>
-<!-- Converted from text/rtf format -->
-
-<P><FONT SIZE=3D2 FACE=3D"Arial">Has anyone experienced this? This is a =
-high volume (anywhere from 5,000 to 20,000 IOP/sec) NFS server. It looks =
-like a misbehaving client. Kernel - Redhat AS 3.0, 2.4.21-15.0.3. Thanks =
-in advance.</FONT></P>
-
-<P><FONT SIZE=3D2 FACE=3D"Arial">-Todd</FONT>
-</P>
-
-</BODY>
-</HTML>
-------_=_NextPart_001_01C4798D.0CBA9C84--
+--Bruce Fields
 
 
 -------------------------------------------------------
