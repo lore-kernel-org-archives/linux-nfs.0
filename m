@@ -1,25 +1,25 @@
 From: Vincent ROQUETA <vincent.roqueta@ext.bull.net>
-Subject: NFSv4 stability: export unused a night
-Date: Thu, 5 Feb 2004 14:07:54 +0100
+Subject: Re: NFSv4 stability: export unused a night
+Date: Thu, 5 Feb 2004 17:13:33 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200402051407.54703.vincent.roqueta@ext.bull.net>
+Message-ID: <200402051713.33948.vincent.roqueta@ext.bull.net>
+References: <200402051407.54703.vincent.roqueta@ext.bull.net>
 Reply-To: vincent.roqueta@ext.bull.net
 Mime-Version: 1.0
 Content-Type: text/plain;
-  charset="us-ascii"
+  charset="iso-8859-1"
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AojDB-0007pn-3t
-	for nfs@lists.sourceforge.net; Thu, 05 Feb 2004 05:06:29 -0800
+	id 1Aom6m-0002Vq-5d
+	for nfs@lists.sourceforge.net; Thu, 05 Feb 2004 08:12:04 -0800
 Received: from ecbull20.frec.bull.fr ([129.183.4.3])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1AojD9-00027s-DV
-	for nfs@lists.sourceforge.net; Thu, 05 Feb 2004 05:06:28 -0800
-Received: from roquetav.frec.bull.fr (roquetav.frec.bull.fr [129.183.101.52])
-	by ecbull20.frec.bull.fr (8.9.2/8.9.1) with ESMTP id OAA14324
-	for <nfs@lists.sourceforge.net>; Thu, 5 Feb 2004 14:07:09 +0100
-To: Linux NFS Mailing List <nfs@lists.sourceforge.net>
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1Aom6l-0003TY-Bs
+	for nfs@lists.sourceforge.net; Thu, 05 Feb 2004 08:12:03 -0800
+To: Vincent ROQUETA <vincent.roqueta@ext.bull.net>
+In-Reply-To: <200402051407.54703.vincent.roqueta@ext.bull.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,32 +32,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-1/
+Le Jeudi 05 F=E9vrier 2004 14:07, Vincent ROQUETA a =E9crit :
+> 1/
+>
+> When I lived yesterday server computer test was up, configured with 1
+> export partition.
+> This export was moutable from the client side.
+>
+> Threre was no reboot of the server this night.
+> This morning, I was unable to mount the exported directory.
+>
+> After reboot, all was OK.
 
-When I lived yesterday server computer test was up, configured with 1 export 
-partition.
-This export was moutable from the client side.
+More precisions. I have reproduced the bug:
 
-Threre was no reboot of the server this night.
-This morning, I was unable to mount the exported directory.
-
-After reboot, all was OK.
-
-
-
-2/
-Yesterday, : 
-Feb  4 17:10:54 roquetav kernel: nfs: server 172.16.109.31 not responding, 
-still trying
-
-->I was not able to kill and restart the nfsd. All was right after reboot.
-Nota this has occured using the python nfs4 test suite.
+1/ Server up, client up
+2/ client mount a nfs4 fs.
+3/ reboot client (without umounting )
+4/ Client can't mount nfs , server answer: permission denied
 
 
-3/
+More... If I kill all nfsd and  mountd and reload them, there is still this=
+=20
+problem. I need to reboot the server
 
-Using pynfs suite tests. 
-minors installs bugs fixes.
 
 
 
