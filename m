@@ -1,17 +1,12 @@
-From: "Nishit Shah" <nshah1001@hotmail.com>
-Subject: how to make NFS server thread sleep?
-Date: Sat, 17 May 2003 12:35:00 +0530
+From: Harshit Shah <harshit81@yahoo.com>
+Subject: How to map NFS filehandles to file names ?
+Date: Sat, 17 May 2003 05:52:36 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <BAY2-F32Ib61LF1g0Mc00009e18@hotmail.com>
-Reply-To: nishit@ieee.org
+Message-ID: <20030517125236.12390.qmail@web20207.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; format=flowed
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from bay2-f32.bay2.hotmail.com ([65.54.247.32] helo=hotmail.com)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19Gvkg-0007el-00
-	for <nfs@lists.sourceforge.net>; Sat, 17 May 2003 00:05:06 -0700
-To: nfs@lists.sourceforge.net
+To: NFS@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,26 +19,24 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+  
+Hi! 
+
+   I would like to know how to get absolute path of a
+file from its NFS filehandle.
+
+   I have managed to get the filename using the NFS
+LOOKUP procedure, but i want the path too.
+
+Any suggestions?
 
 
-  Hello,
+-Harshit
 
-
-  I am trying to make NFS server sleep by giving sleep command in the NFS 
-server READ procedure.
-
-However,doing so causes the server to stop responding to all clients.
-
-How do I make a single server thread go to sleep so that any other client 
-can continue interacting with  the server?
-
-Thank You,
-Nishit.
-
-_________________________________________________________________
-Bridge gaps. Reconnect with old friends. http://www.batchmates.com/msn.asp 
-On batchmates.com
-
+__________________________________
+Do you Yahoo!?
+The New Yahoo! Search - Faster. Easier. Bingo.
+http://search.yahoo.com
 
 
 -------------------------------------------------------
