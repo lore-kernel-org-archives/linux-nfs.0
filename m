@@ -1,24 +1,18 @@
-From: Dumas Patrice <dumas@centre-cired.fr>
-Subject: Re: standard and lockd
-Date: Thu, 11 Apr 2002 14:06:14 +0200
+From: James Pearson <james-p@moving-picture.com>
+Subject: Re: Re: IRIX NFS server and Linux NFS client
+Date: Thu, 11 Apr 2002 14:04:47 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020411140614.I23570@zeus.centre-cired.fr>
-References: <20020410165023.D23279@zeus.centre-cired.fr> <shslmbvlbm6.fsf@charged.uio.no>
+Message-ID: <3CB589EF.7A1A4FB9@moving-picture.com>
+References: <Pine.LNX.4.30.0204111218440.30970-100000@elin.scali.no>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from boukha.centre-cired.fr ([193.51.120.234])
+Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16vdOk-00018k-00
-	for <nfs@lists.sourceforge.net>; Thu, 11 Apr 2002 05:09:55 -0700
-Received: from zeus.centre-cired.fr ([193.51.120.192])
-          by boukha.centre-cired.fr (8.9.3+Sun/jtpda-5.3.3) with ESMTP id OAA04070
-          for <nfs@lists.sourceforge.net>; Thu, 11 Apr 2002 14:09:06 +0100 (WEST)
-Received: (from dumas@localhost)
-	by zeus.centre-cired.fr (8.11.6/8.11.6) id g3BC6EA24840
-	for nfs@lists.sourceforge.net; Thu, 11 Apr 2002 14:06:14 +0200
-To: nfs@lists.sourceforge.net
-In-Reply-To: <shslmbvlbm6.fsf@charged.uio.no>; from trond.myklebust@fys.uio.no on Wed, Apr 10, 2002 at 07:14:25PM +0200
+	id 16veGH-00045O-00
+	for <nfs@lists.sourceforge.net>; Thu, 11 Apr 2002 06:05:13 -0700
+To: Steffen Persvold <sp@scali.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,31 +25,50 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hi,
+Should work fine. My Linux boxes mount IRIX disks using NFSv3.
 
-> I don't follow you at all here. Examples please of where this is a
-> problem with the standard?
+Make sure you have Trond's seekdir patch applied and try exporting the
+IRIX file systems using the -32bitclients flag - although I haven't seen
+"Connection refused" errors without using the patch or the export option
+...
 
-There is a problem with my sillyness. I didn't read the sources carefully, I
-found all the relevant piece now, sorry for the bothering.
+Note: I believe the nfs-utils version is irrelevant here as nfs-utils is
+for NFS servers.
 
-> See the comment about HP clients above nlmsvc_grant_blocked().
+James Pearson
 
-I saw it, and I think the associated hack do things quite well.
- 
-> Of course, if you are planning on writing proper support for the
-> asynchronous RPC, then we can indeed go ahead and make
-> nlmsvc_grant_blocked() call either NLM_GRANTED or NLM_GRANTED_MSG
-> depending on whether the client originally called NLM_LOCK or
-> NLM_LOCK_MSG.
-
-That was what I was thinking about, maybe with a fallback to NLM_GRANTED_MSG
-when some time has passed, to get around HP clients (in case the original call
-was with NLM_LOCK). I don't know if this happen in real life, but we could
-imagine some client processing only NLM_GRANTED callbacks if they send NLM_LOCK
-or maybe totally lacking support for NLM_GRANTED_MSG and the like.
-
-Pat
+Steffen Persvold wrote:
+> 
+> On Thu, 11 Apr 2002, Steffen Persvold wrote:
+> 
+> > Hi all,
+> >
+> > Is there any reason why my Linux NFS client (kernel 2.4.18
+> > nfs-utils-0.3.1-13.7.2.1 from RedHat 7.2) is not able to mount a directory
+> > exported from an IRIX server in NFSv3 (not sure which version of IRIX
+> > yet, if this is important I will find out). NFSv2 works fine, but if I
+> > try to force NFSv3 I get "Connection refused".
+> >
+> > I'll appreciate any help.
+> >
+> 
+> I forgot to mention that NFSv3 works when an IRIX client mounts the same
+> directory (i.e the directory shows up as "nfs" and not "nfs2" in the mount
+> table on the IRIX client).
+> 
+> Could it be that IRIX only supports NFSv3 with TCP and not UDP (I didn't
+> try TCP mounting on the Linux client) ?
+> 
+> Thanks,
+> --
+>   Steffen Persvold   | Scalable Linux Systems |   Try out the world's best
+>  mailto:sp@scali.com |  http://www.scali.com  | performing MPI implementation:
+> Tel: (+47) 2262 8950 |   Olaf Helsets vei 6   |      - ScaMPI 1.13.8 -
+> Fax: (+47) 2262 8951 |   N0621 Oslo, NORWAY   | >320MBytes/s and <4uS latency
+> 
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
