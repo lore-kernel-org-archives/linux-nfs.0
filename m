@@ -1,14 +1,14 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 9 of 16 - Discard cl_addr
-Date: Thu, 12 Sep 2002 12:35:27 +1000
+Subject: [PATCH] kNFSd - 11 of 16 - Remove problematic "security" checks when NFS exporting.
+Date: Thu, 12 Sep 2002 12:35:47 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1020912023527.19621@cse.unsw.edu.au>
+Message-ID: <1020912023547.19646@cse.unsw.edu.au>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17pJpW-0002I6-00
-	for <nfs@lists.sourceforge.net>; Wed, 11 Sep 2002 19:35:42 -0700
+	id 17pJpo-0002MU-00
+	for <nfs@lists.sourceforge.net>; Wed, 11 Sep 2002 19:36:00 -0700
 To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -25,102 +25,91 @@ List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 ### Comments for ChangeSet
 
-We currently store the address list with each
-client and use it only to print out comments
-on /proc/fs/nfs/exports
-While these can be helpful, they are not critical and
-could be added back later after we restructure the exports
-table.
+The nfs server currently doesn't allow you to export both a
+directory and an ancestor of that directory on the same filesystem.
+
+This check is more of a problem than a solution and can be 
+done in user-space if needed, so it is removed.
+
+The potential for a security problem is because the files
+below the lower directory could be accessed as though it were under
+either of the export points, and so the access control that is 
+applied might not be what is expected (by the nieve admin).
+
+e.g.  export /a as readwrite and /a/b as readonly.  Then a/b/c
+can be accessed readwrite as it is in /a which might not be the
+intend.  Altering the user to this can be done in userspace though.
+
+The current restriction also stops exporting / as readonly and
+/tmp as read-write which some people want to do.  Providing 
+/tmp is also exported subtree_check (the default) there is no
+security issue here.
+
 
  ----------- Diffstat output ------------
- ./fs/nfsd/export.c            |   37 ++-----------------------------------
- ./include/linux/nfsd/export.h |    2 --
- 2 files changed, 2 insertions(+), 37 deletions(-)
+ ./fs/nfsd/export.c |   37 -------------------------------------
+ 1 files changed, 37 deletions(-)
 
---- ./include/linux/nfsd/export.h	2002/09/11 01:35:40	1.6
-+++ ./include/linux/nfsd/export.h	2002/09/11 01:37:30	1.7
-@@ -51,8 +51,6 @@
- struct svc_client {
- 	struct svc_client *	cl_next;
- 	char			cl_ident[NFSCLNT_IDMAX];
--	int			cl_naddr;
--	struct in_addr		cl_addr[NFSCLNT_ADDRMAX];
- 	struct list_head	cl_export[NFSCLNT_EXPMAX];
- 	struct list_head	cl_expfsid[NFSCLNT_EXPMAX];
- 	struct list_head	cl_list;
---- ./fs/nfsd/export.c	2002/09/11 01:35:40	1.8
-+++ ./fs/nfsd/export.c	2002/09/11 01:37:30	1.9
-@@ -640,7 +640,6 @@ static int e_show(struct seq_file *m, vo
- 	struct svc_export *exp = p;
- 	struct svc_client *clp;
- 	char *pbuf;
--	int j, first = 0;
+--- ./fs/nfsd/export.c	2002/09/11 03:15:58	1.10
++++ ./fs/nfsd/export.c	2002/09/11 03:18:12	1.11
+@@ -37,8 +37,6 @@ typedef struct svc_export	svc_export;
  
- 	if (p == (void *)1) {
- 		seq_puts(m, "# Version 1.1\n");
-@@ -659,31 +658,7 @@ static int e_show(struct seq_file *m, vo
- 	seq_putc(m, '(');
- 	exp_flags(m, exp->ex_flags, exp->ex_fsid, 
- 		  exp->ex_anon_uid, exp->ex_anon_gid);
--	seq_puts(m, ") # ");
--	for (j = 0; j < clp->cl_naddr; j++) {
--		struct svc_clnthash **hp, **head, *tmp;
--		struct in_addr addr = clp->cl_addr[j]; 
--
--		head = &clnt_hash[CLIENT_HASH(addr.s_addr)];
--		for (hp = head; (tmp = *hp) != NULL; hp = &(tmp->h_next)) {
--			if (tmp->h_addr.s_addr == addr.s_addr)
--				break;
--		}
--		if (tmp) {
--			if (first++)
--				seq_putc(m, ' ');
--			if (tmp->h_client != clp)
--				seq_putc(m, '(');
--			seq_printf(m, "%d.%d.%d.%d",
--				htonl(addr.s_addr) >> 24 & 0xff,
--				htonl(addr.s_addr) >> 16 & 0xff,
--				htonl(addr.s_addr) >>  8 & 0xff,
--				htonl(addr.s_addr) >>  0 & 0xff);
--			if (tmp->h_client != clp)
--				seq_putc(m, ')');
--		}
--	}
--	seq_putc(m, '\n');
-+	seq_puts(m, ")\n");
- 	return 0;
+ static svc_export *	exp_parent(svc_client *clp, struct super_block *sb,
+ 					struct dentry *dentry);
+-static svc_export *	exp_child(svc_client *clp, struct super_block *sb,
+-					struct dentry *dentry);
+ static void		exp_unexport_all(svc_client *clp);
+ static void		exp_do_unexport(svc_export *unexp);
+ static svc_client *	exp_getclientbyname(char *name);
+@@ -147,31 +145,6 @@ exp_parent(svc_client *clp, struct super
  }
  
-@@ -751,19 +726,13 @@ exp_addclient(struct nfsctl_client *ncp)
- 		}
- 	}
- 
--	/* Copy addresses. */
--	for (i = 0; i < ncp->cl_naddr; i++) {
--		clp->cl_addr[i] = ncp->cl_addrlist[i];
--	}
--	clp->cl_naddr = ncp->cl_naddr;
+ /*
+- * Find the child export entry for a given fs. This function is used
+- * only by the export syscall to keep the export tree consistent.
+- * <gam3@acm.org>
+- */
+-static svc_export *
+-exp_child(svc_client *clp, struct super_block *sb, struct dentry *dentry)
+-{
+-	struct list_head *head = &clp->cl_export[EXPORT_HASH(sb->s_dev)];
+-	struct list_head *p;
+-	struct dentry *ndentry;
 -
- 	/* Remove old client hash entries. */
- 	if (change)
- 		exp_unhashclient(clp);
+-	spin_lock(&dcache_lock);
+-	list_for_each(p, head) {
+-		svc_export *exp = list_entry(p, svc_export, ex_hash);
+-		ndentry = exp->ex_dentry;
+-		if (ndentry && is_subdir(ndentry->d_parent, dentry)) {
+-			spin_unlock(&dcache_lock);
+-			return exp;
+-		}
+-	}
+-	spin_unlock(&dcache_lock);
+-	return NULL;
+-}
+-
+-/*
+  * Hashtable locking. Write locks are placed only by user processes
+  * wanting to modify export information.
+  * Write locking only done in this file.  Read locking
+@@ -321,16 +294,6 @@ exp_export(struct nfsctl_export *nxp)
+ 		inode->i_sb->s_export_op->find_exported_dentry =
+ 			find_exported_dentry;
  
- 	/* Insert client into hashtable. */
- 	for (i = 0; i < ncp->cl_naddr; i++) {
--		struct in_addr	addr = clp->cl_addr[i];
-+		struct in_addr	addr = ncp->cl_addrlist[i];
- 		int		hash;
- 
- 		hash = CLIENT_HASH(addr.s_addr);
-@@ -853,8 +822,6 @@ again:
- 			}
- 		}
- 	}
--	if (count != clp->cl_naddr)
--		printk(KERN_WARNING "nfsd: bad address count in freeclient!\n");
- 	if (err)
- 		goto again;
- 	for (i = 0; i < count; i++)
+-	if (exp_child(clp, inode->i_sb, nd.dentry) != NULL) {
+-		dprintk("exp_export: export not valid (Rule 3).\n");
+-		goto finish;
+-	}
+-	/* Is this is a sub-export, must be a proper subset of FS */
+-	if (exp_parent(clp, inode->i_sb, nd.dentry) != NULL) {
+-		dprintk("exp_export: sub-export not valid (Rule 2).\n");
+-		goto finish;
+-	}
+-
+ 	err = -ENOMEM;
+ 	if (!(exp = kmalloc(sizeof(*exp), GFP_USER)))
+ 		goto finish;
 
 
 -------------------------------------------------------
