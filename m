@@ -1,23 +1,19 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: [PATCH] another kmap imbalance in 2.4.x/2.5.x RPC
-Date: Fri, 1 Nov 2002 23:06:03 +0100
+From: Jakob <jakob@free.fr>
+Subject: problems writing to NFS shares
+Date: Fri, 01 Nov 2002 23:40:48 +0100 (CET)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15810.64203.425443.774799@charged.uio.no>
-References: <3DC2E7B6.6090400@collab.net>
-	<0211011318080N.01583@stinkpad060501>
-Reply-To: trond.myklebust@fys.uio.no
+Message-ID: <1036190448.3dc302f0c169c@imp.free.fr>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Ryan <andrewr@nam-shub.com>,
-    nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mons.uio.no ([129.240.130.14])
+Received: from postfix2-1.free.fr ([213.228.0.9])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 187jyy-0002w8-00
-	for <nfs@lists.sourceforge.net>; Fri, 01 Nov 2002 14:09:36 -0800
-To: Marcelo Tosatti <marcelo@conectiva.com.br>,
-    Linus Torvalds <torvalds@transmeta.com>
-In-Reply-To: <0211011318080N.01583@stinkpad060501>
+	id 187kTG-0004lR-00
+	for <nfs@lists.sourceforge.net>; Fri, 01 Nov 2002 14:40:54 -0800
+Received: from imp1-1.free.fr (imp1-1.free.fr [213.228.0.21])
+	by postfix2-1.free.fr (Postfix) with ESMTP id E60D84C
+	for <nfs@lists.sourceforge.net>; Fri,  1 Nov 2002 23:40:51 +0100 (CET)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,36 +26,77 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> Andrew Ryan <andrewr@nam-shub.com> writes:
-     > So far so good on the crashes.  I'm able to get through a
-     > complete run of dbench using TCP mounts on 2.4.20rc1, which I
-     > haven't been able to do before this.
+Hi, I have a small home network with one file server and a couple of 
+clients.  I want to host /home on the server to be able to work from any 
+client.  however, I have trouble *writing* to the exported NFS share.
 
-Marcelo, Linus
+This seems mainly due to different user ids on client and server.  But
+I thought this was handled by map_static ...  Anyway, here's my setup:
 
-  We've uncovered yet another kmap imbalance in the new RPC code. This
-looks like it might be the last one (my debugging printks have been
-unable to unearth any more). One line fix + 4 line comment
-appended. Please apply to both 2.4.20-rc1 and 2.5.45...
+server (10.0.1.3 aka hatchoum) setup is:
+----------------------------------------
 
-Cheers,
-  Trond
+jakob@hatchoum:~$ uname -a
+Linux hatchoum 2.2.20 #1 Sat Apr 20 11:45:28 EST 2002 i686 unknown unknown 
+GNU/Linux
 
-diff -u --recursive --new-file linux-2.4.20-rc1/net/sunrpc/xdr.c linux-2.4.20-kmap_fix/net/sunrpc/xdr.c
---- linux-2.4.20-rc1/net/sunrpc/xdr.c	2002-08-14 09:00:35.000000000 -0400
-+++ linux-2.4.20-kmap_fix/net/sunrpc/xdr.c	2002-11-01 16:50:09.000000000 -0500
-@@ -244,6 +244,11 @@
- 		pglen -= base;
- 		base  += xdr->page_base;
- 		ppage += base >> PAGE_CACHE_SHIFT;
-+		/* Note: The offset means that the length of the first
-+		 * page is really (PAGE_CACHE_SIZE - (base & ~PAGE_CACHE_MASK)).
-+		 * In order to avoid an extra test inside the loop,
-+		 * we bump pglen here, and just subtract PAGE_CACHE_SIZE... */
-+		pglen += base & ~PAGE_CACHE_MASK;
- 	}
- 	for (;;) {
- 		flush_dcache_page(*ppage);
+jakob@hatchoum:~$ /usr/sbin/rpc.nfsd --version
+Universal NFS Server 2.2beta47
+
+jakob@hatchoum:~$ cat /etc/passwd |grep jakob
+jakob:x:1000:33:Jakob,,,:/home/jakob:/bin/bash
+
+jakob@hatchoum:~$ cat /etc/exports
+/home           10.0.0.0/255.255.0.0(rw,map_static=/etc/nfsuser.map)
+
+jakob@hatchoum:~$ cat /etc/nfsuser.map
+# Mapping for client sleepy:
+#    remote     local
+uid  0-499      -      # squash these
+uid  1000       500    # just me for the moment
+gid  100        33     # just the "users" group 
+
+jakob@hatchoum:~$ df
+Filesystem           1k-blocks      Used Available Use% Mounted on
+/dev/hda1              1968368    384564   1483812  21% /
+/dev/hdb5              5044128    985304   3802592  21% /mnt/rwstorage
+/dev/hdb7              5044156    276852   4511072   6% /home
+/dev/hdb6              5044156    720780   4067144  16% /projects
+/dev/hdb8             10080488     32828   9535592   1% /backup
+/dev/hdb9             14357980   2499132  11129500  19% /media
+
+
+client (10.0.1.2 aka sleepy) setup:
+-----------------------------------
+
+/home/jakob> cat /etc/fstab | grep newhome
+10.0.1.3:/home          /newhome        nfs             defaults 0 0
+
+/home/jakob> cd /newhome
+/newhome> ls -l
+total 24
+drwxr-sr-x   11 4294967294 4294967294     4096 Nov  1 12:53 jakob
+drwx------    2 4294967294 4294967294    16384 Oct 22 18:09 lost+found
+
+/newhome/jakob> touch test
+touch: creating `test': Permission denied
+
+/newhome/jakob> sudo touch test
+touch: creating `test': Permission denied
+
+
+I have trouble finding out whether the map_static option works.  
+Also, what do these large uids and gids mean?  What do I need 
+to change in order to be able to use the /home directories on 
+the server?  I have spent the last couple of days RTFM, but with 
+no real success, apart from learning that there are lots of
+different NFS versions out there, and support for features may 
+differ.
+
+Thanks for any help you may give,
+
+-- 
+Jakob.
 
 
 -------------------------------------------------------
