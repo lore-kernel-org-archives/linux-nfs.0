@@ -1,15 +1,20 @@
-From: xiyu@800j.com
-Subject: =?GB2312?B?zvewsre/tdiy+tDFz6LN+NDQ0rXIyMPFu7DM4g==?=
-Date: Wed, 28 May 2003 16:14:47 +0800
+From: "Iain Irwin-Powell" <iain@cinesite.co.uk>
+Subject: RE: NFS Performance Between SGI Servers and Linux Clients
+Date: Wed, 28 May 2003 10:02:27 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19Kw3W-0005EF-00@sc8-sf-list1.sourceforge.net>
-Content-Type: text/html;charset="GB2312"
+Message-ID: <00f601c324f7$dd06fa90$0b00430a@granger>
+References: <3ECE100C.6060409@cinesite.co.uk>
+Mime-Version: 1.0
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: "'Lever, Charles'" <Charles.Lever@netapp.com>, <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [61.150.19.208] (helo=800j.com)
+Received: from scanman.cinesite.co.uk ([193.203.81.129])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19Kw3W-0005EF-00
-	for <nfs@lists.sourceforge.net>; Wed, 28 May 2003 01:13:07 -0700
-To: nfs@lists.sourceforge.net
+	id 19KwtF-00034x-00
+	for <nfs@lists.sourceforge.net>; Wed, 28 May 2003 02:06:33 -0700
+To: "'Danny Smith'" <dannys@cinesite.co.uk>, <trond.myklebust@fys.uio.no>
+In-Reply-To: <3ECE100C.6060409@cinesite.co.uk>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -22,35 +27,88 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-<html>
+Managed to get some quiet time to test the vm.max-readahead tweaking.
 
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
-<meta name="GENERATOR" content="Microsoft FrontPage 4.0">
-<meta name="ProgId" content="FrontPage.Editor.Document">
-<title>西安房地产信息网</title>
-</head>
+This definitely makes a difference to the load average on the SGI server
+end. On this test I was only opening 1 file at a time.
 
-<body>
+Tuning vm.max-readahead down to 8 provided the best combination of
+server load to client throughput, although the client throughput was
+compromised by the down tuning (no real surprise there).
 
-<p class="MsoNormal" align="center"><span lang="EN-US" style="font-size:26.0pt;mso-bidi-font-size:12.0pt;mso-fareast-font-family:
-楷体_GB2312;color:fuchsia"><o:p>
-</span><font color="#0000FF" size="7"><a href="http://www.800j.com.cn"><span lang="EN-US" style="mso-bidi-font-size: 12.0pt"> 
-</o:p> 
- </span></a></font><b><font color="#0000FF" size="7"><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman"><font face="楷体_GB2312">西安房地产信息网</font></span></a></font></b></p>
+What I am waiting to get is a 'real world' situation so that I can tune
+whilst I am seeing the problem to see if we can make it go away or at
+least alleviate the symptoms.
 
-<p class="MsoNormal" align="center"><font color="#0000FF"><b><font face="楷体_GB2312" size="6"><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman">www.800j.cc</span></a></font></b></font></p>
-<p align="center">　
-<p align="center"><a href="http://www.800j.com.cn"><img src="huati001.gif" width="321" height="46"></a></p>
-<p align="center"><a href="http://www.800j.com.cn/800j/fclt/djtbbs/show.asp?bID=&amp;RID=4863&amp;ID=4863"><font color="#FF0000" size="4"><b>非典时期买楼该注重什么？</b></font></a></p>
-<p align="center"><a href="http://www.800j.com.cn/800j/fclt/djtbbs/show.asp?bID=&amp;RID=5014&amp;ID=5014"><font color="#FF0000" size="4"><b>谁来评述“世家星城”</b></font></a></p>
-<p align="center"><font color="#FF0000" size="4"><b>.....</b></font></p>
-<p class="MsoNormal" align="center"><b><font color="#FFFF00" face="楷体_GB2312" size="4"><a href="http://http://www.800j.com.cn/800j/fclt/djtbbs/new.asp">我要发言　</a>　　　　　<a href="http://http://www.800j.com.cn/800j/fclt/djtbbs/index.asp">　进入论坛</a></font></b></p>
-<p align="center">　</p>
+The implication here (to me at least) is that the SGI is having problems
+servicing all the requests from the Linux clients. I will feed this back
+to SGI and see what they can come up with.
 
-</body>
+More when I know.
 
-</html>
+Iain
+
+
+
+******************************************************************
+Iain Irwin-Powell (AKA Iain Powell)
+Senior Systems Administrator
+Cinesite Europe Limited
+9 Carlisle Street
+London
+W1D 3BP
+ 
+T: +442079734000
+DDI: +442079734053
+*******************************************************************
+It's not broken, it just doesn't work the way you expected.
+*******************************************************************
+
+> -----Original Message-----
+> From: Danny Smith [mailto:dannys@cinesite.co.uk]
+> Sent: 23 May 2003 13:12
+> To: trond.myklebust@fys.uio.no
+> Cc: Lever, Charles; Iain Irwin-Powell; nfs@lists.sourceforge.net
+> Subject: Re: [NFS] NFS Performance Between SGI Servers and Linux
+Clients
+> 
+> Trond Myklebust wrote:
+> 
+> >>>>>>" " == Charles Lever <Lever> writes:
+> >>>>>>
+> >>>>>>
+> >
+> >     > trond, isn't there a read ahead value in the client that can
+be
+> >     > tweaked?  he could trim down vm_max_readahead, unless there is
+> >     > a max_readahead[] entry for anonymous file systems.
+> >
+> >That should partly help to trim it down unless the client is reading
+> >from > 1 file at a time. In that case the RPC layer will still try to
+> >issue more reads (up to MIN(16,vm_max_readahead) requests per
+process)
+> >if the network and server permits it.
+> >
+> >Beware, though, that vm_max_readahead will effect not only
+> >NFS. Performance on other tasks may suffer.
+> >
+> >
+> I will give this a try in Iain's absence. In the real world we *are*
+> likely
+> to be reading multiple files, however for testing purposes we don't
+have
+> to.
+> 
+> Danny
+> 
+> --
+> Danny Smith
+> Senior Systems Administrator, Cinesite (Europe) Ltd
+> 020 7973 4000 - x4055    /    dannys@cinesite.co.uk
+> 
+> 
+
+
 
 
 -------------------------------------------------------
