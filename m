@@ -1,76 +1,50 @@
-From: Juan Gomez <juang@us.ibm.com>
-Subject: Re: [NFS] Re: Non-blocking lock requests during the grace period
-Date: Tue, 19 Nov 2002 10:06:11 -0800
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <OFB5AB2A91.F36007C8-ON87256C76.00632179@us.ibm.com>
+From: "Jerad Hampton" <jerad.hampton@kingsu.ca>
+Subject: local authentication
+Date: Tue, 19 Nov 2002 11:04:43 -0700
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <3DDA1ACC.14309.64BCDD@localhost>
+Reply-To: jerad.hampton@kingsu.ca
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
-Cc: kupfer@athyra.eng.sun.com, linux-kernel@vger.kernel.org,
-	nfs@lists.sourceforge.net, trond.myklebust@fys.uio.no
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: mike.kupfer@sun.com
-List-ID: <nfs.lists.sourceforge.net>
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from mark.kingsu.ab.ca ([199.185.113.37])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18ECjy-0002uK-00
+	for <nfs@lists.sourceforge.net>; Tue, 19 Nov 2002 10:04:50 -0800
+Received: from KingsU.ab.ca (kingsnet.kingsu.ab.ca [199.185.113.33])
+	by mark.kingsu.ab.ca (8.9.3/8.9.2) with ESMTP id LAA77346
+	for <nfs@lists.sourceforge.net>; Tue, 19 Nov 2002 11:04:51 -0700 (MST)
+	(envelope-from jerad.hampton@kingsu.ca)
+To: nfs@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+
+I am trying to set up an NFS mount for a backup solution and was wondering if 
+anyone knew of a way to get a login prompt on my nfs client machine to authenticate 
+to the nfs server.  
+
+thank you
+
+
+Jerad Hampton
+Network Administrator
+The King's University College
 
 
 
-
-
-Mike,
-
-I agree with the F_GETLK part, as I pointed out to Trond earlier. However,
-I feel it is odd to block a client for about one minutre when it issues
-"non-blocking" lock requests. I have seen that Solaris code does so but
-still feels odd and it may conflict with what most programmers expect,
-though I see your point, perhaps if this was well documented in man pages
-there would not be a problem. In Linux this is not the case.
-
-
-Juan
-
-
-
-
-
-|---------+---------------------------->
-|         |           mike.kupfer@sun.c|
-|         |           om               |
-|         |           Sent by:         |
-|         |           kupfer@athyra.eng|
-|         |           .sun.com         |
-|         |                            |
-|         |                            |
-|         |           11/18/02 05:04 PM|
-|         |                            |
-|---------+---------------------------->
-  >-------------------------------------------------------------------------------------------------------------------------|
-  |                                                                                                                         |
-  |       To:       trond.myklebust@fys.uio.no                                                                              |
-  |       cc:       Juan Gomez/Almaden/IBM@IBMUS, linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net                   |
-  |       Subject:  Re: [NFS] Re: Non-blocking lock requests during the grace period                                        |
-  |                                                                                                                         |
-  |                                                                                                                         |
-  >-------------------------------------------------------------------------------------------------------------------------|
-
-
-
->>>>> "Trond" == Trond Myklebust <trond.myklebust@fys.uio.no> writes:
-
->>>>> " " == Juan Gomez <juang@us.ibm.com> writes:
-
-    >> (note that F_GETLK man page does not provide EAGAIN as a
-    >> possible error code).
-
-F_GETLK indicates a conflict by changing the arg struct to show the
-conflicting lock.
-
-As for the original topic, I would hesitate before changing the client
-locking code to return EAGAIN just because the server is in its grace
-period.  The "blocking" or "non-blocking" behavior is tied to what
-happens when there is already a lock that conflicts with the requested
-one.  When the server is in the grace period, it's unknown as to
-whether there is already a lock that conflicts with the requested
-one.
-
-Mike Kupfer                                            mike.kupfer@sun.com
-Solaris File Sharing                                   Speaking for myself,
-not for Sun.
+-------------------------------------------------------
+This sf.net email is sponsored by: To learn the basics of securing 
+your web site with SSL, click here to get a FREE TRIAL of a Thawte 
+Server Certificate: http://www.gothawte.com/rd524.html
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
