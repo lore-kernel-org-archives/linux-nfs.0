@@ -1,19 +1,20 @@
-From: Chuck Lever <cel@citi.umich.edu>
-Subject: [PATCH] eliminate hangs during RPC client shutdown
-Date: Thu, 22 Aug 2002 18:15:04 -0400 (EDT)
+From: James Bottomley <James.Bottomley@steeleye.com>
+Subject: High Availability NFS Proposal
+Date: Sat, 24 Aug 2002 18:16:03 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16088.6420206682$1030054963@news.gmane.org>
+Message-ID: <200208242216.g7OMG3802286@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-   Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-   Linux NFS List <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: James.Bottomley@SteelEye.com, lmb@suse.de
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from dexter.citi.umich.edu ([141.211.133.33])
+Received: from host194.steeleye.com ([216.33.1.194] helo=pogo.mtv1.steeleye.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17i0ET-00037K-00
-	for <nfs@lists.sourceforge.net>; Thu, 22 Aug 2002 15:15:13 -0700
-To: Linus Torvalds <torvalds@transmeta.com>
+	id 17ijCd-0006Jp-00
+	for <nfs@lists.sourceforge.net>; Sat, 24 Aug 2002 15:16:19 -0700
+Received: (from root@localhost)
+	by pogo.mtv1.steeleye.com (8.9.3/8.9.3) id PAA12902
+	for <nfs@lists.sourceforge.net>; Sat, 24 Aug 2002 15:16:18 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,54 +27,42 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-linus-
+Hi All,
 
-this is against 2.5.31 with the recent RPC call_start/reserve patches
-applied, and eliminates an infinite loop in rpciod if an RPC client's
-reference counter accidentally goes negative.  i've been running this
-under load since 2.5.30 with no ill effects.
+My company, SteelEye Technology, already has a HA-NFS offering (using 
+filehandle aliasing and kernel authentication add ons).  However, We'd like to 
+enhance the existing open source solution (actually, our current patches are 
+open source, I just got tired of merging them to each revision of whatever 
+distributions kernel).  The new fsid option already performs the same task as 
+our kernel filehandle aliasing patches, so the only remaining issues are 
+authentication and locking.
 
+Unfortunately, our product, LifeKeeper, is more complex than just a simple two 
+node active passive cluster, so the usual just share /var/lib/nfs solution 
+won't work for us.  What I'd like to propose instead is to place hooks inside 
+mountd and statd that would allow them to propagate the necessary state 
+information into a cluster.  The best way I can think of is to designate two 
+executable hooks (say /var/lib/nfs/mountd-hook and /var/lib/nfs/statd-hook).  
+If mountd and statd don't find these on start up, they proceed normally.  
+However, if they exist, mountd and statd will execute them with certain 
+arguments to allow the clustering software to keep track of the client 
+machines correctly.
 
-diff -drN -U2 06-connect2/net/sunrpc/clnt.c 07-shutdown/net/sunrpc/clnt.c
---- 06-connect2/net/sunrpc/clnt.c	Mon Aug 12 16:31:53 2002
-+++ 07-shutdown/net/sunrpc/clnt.c	Mon Aug 12 16:53:24 2002
-@@ -138,11 +138,9 @@
- rpc_shutdown_client(struct rpc_clnt *clnt)
- {
--	dprintk("RPC: shutting down %s client for %s\n",
--		clnt->cl_protname, clnt->cl_server);
--	while (atomic_read(&clnt->cl_users)) {
--#ifdef RPC_DEBUG
--		dprintk("RPC: rpc_shutdown_client: client %s, tasks=%d\n",
--			clnt->cl_protname, atomic_read(&clnt->cl_users));
--#endif
-+	dprintk("RPC: shutting down %s client for %s, tasks=%d\n",
-+			clnt->cl_protname, clnt->cl_server,
-+			atomic_read(&clnt->cl_users));
-+
-+	while (atomic_read(&clnt->cl_users) > 0) {
- 		/* Don't let rpc_release_client destroy us */
- 		clnt->cl_oneshot = 0;
-@@ -151,4 +149,14 @@
- 		sleep_on_timeout(&destroy_wait, 1*HZ);
- 	}
-+
-+	if (atomic_read(&clnt->cl_users) < 0) {
-+		printk(KERN_ERR "RPC: rpc_shutdown_client clnt %p tasks=%d\n",
-+				clnt, atomic_read(&clnt->cl_users));
-+#ifdef RPC_DEBUG
-+		rpc_show_tasks();
-+#endif
-+		BUG();
-+	}
-+
- 	return rpc_destroy_client(clnt);
- }
+These modifications should be enough to allow HA-NFS.  However, to preserve 
+locks on failover, I need to introduce statd to the concept of virtual hosts, 
+so it can be told to stop tracking a virtual host, or behave as though a 
+virtual host had crashed.  There are already the beginnings of IP aliasing 
+support in statd.c, so it shouldn't be too hard to progress to the full blown 
+solution.
 
--- 
+I'll proceed in two phases: mountd first to give a HA solution and statd next 
+to give the complete HA-NFS solution.  The hooks should be useable by any HA 
+clustering software on Linux.
 
-corporate:	<cel at netapp dot com>
-personal:	<chucklever at bigfoot dot com>
+Any feedback anyone might have on this proposal would be more than welcome.
+
+James Bottomley
+
 
 
 
