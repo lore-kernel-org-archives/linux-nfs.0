@@ -1,27 +1,24 @@
-From: "ALLEN, David" <David.ALLEN@eur.crowncork.com>
-Subject: mount problem with Snap server
-Date: Mon, 31 Jan 2005 11:22:50 -0000
-Message-ID: <1DB025F33C6990409DA31A122F9AEBB80129A0BE@zzuk20.crowncork.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: Failure to mount from multiple servers in a short period
+ of time
+Date: Mon, 31 Jan 2005 07:16:55 -0500
+Message-ID: <41FE21B7.7020309@RedHat.com>
+References: <200501310424.j0V4OF5e000412@m27.ligo.caltech.edu>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CvZdt-0007gS-PU
-	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 03:22:53 -0800
-Received: from relay1.bt.net ([194.72.6.100])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CvZdt-0005EW-0B
-	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 03:22:53 -0800
-Received: from mailhost.eur.crowncork.com ([213.120.71.21] helo=a699uk03.ccsextranet.com)
-	by relay1.bt.net with smtp (Exim 3.36 #1)
-	id 1CvZdq-00044a-00
-	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 11:22:50 +0000
-Received: from a699uk07.crowncork.com ([6.99.137.20])
- by a699uk03.ccsextranet.com (SMSSMTP 4.0.5.66) with SMTP id M2005013111225007435
- for <nfs@lists.sourceforge.net>; Mon, 31 Jan 2005 11:22:50 GMT
-To: nfs@lists.sourceforge.net
+	id 1CvaSC-0001nv-4N
+	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 04:14:52 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1CvaSA-000454-N2
+	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 04:14:52 -0800
+To: Stuart Anderson <anderson@ligo.caltech.edu>
+In-Reply-To: <200501310424.j0V4OF5e000412@m27.ligo.caltech.edu>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,36 +32,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Stuart Anderson wrote:
 
+>On a dual-Xeon 4GB server running FC3 I am unable to successfully
+>issue more than 52 automount requests to unique Linux NFS servers
+>in less than a minute.
+>  
+>
+Yes is this is a know problem that we run out of reserve ports due to the
+fact so many are used up during TCP mounts.... We are looking into
+this issue.... and hope to a resolution soon.... its Bugzilla 141773 for
+those who are interested....
 
-> Hi,
-> 
-> I know this might seem at first slightly off topic, but my gut feeling is
-> the problem we are experiencing is in some way related to NFS. We have a
-> major problem using Samba to access NFS mounted directories. The directory
-> in question is on a Snap server running 2.1.19 and version 3 NFS, and
-> Samba is running on a new Sun V250 running Solaris 9.
-> 
-> The problems occur when trying to load a file which is on the NFS
-> directory, which causes the samba process to crash. Another process starts
-> automatically, crashes and so forth.
-> 
-> However, the exact same configuration, NFS mount, Samba version etc works
-> fine on an old Sun Utlra 10, also running Solaris 9! Also, everything
-> appears to work fine at the Unix level on both machines. It also worked
-> fine before we upgraded the Snap server to the new Linux kernel. The old
-> kernel was running version 2 NFS.
-> 
-I have tried setting the NFS version to V2, and also specifing proto=udp  on
-the Sun v250 to no effect. 
+steved.
 
-> Thanks in advance for any help/suggestions/pointers. We are getting
-> desperate! 
-> 
-> David
-> 
-> Log level 3:
-> 
 
 
 -------------------------------------------------------
