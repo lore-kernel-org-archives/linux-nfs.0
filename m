@@ -1,20 +1,30 @@
-From: Oren Held <oren@held.org.il>
-Subject: try tcp first; then udp
-Date: Sat, 01 Nov 2003 17:34:49 +0200
+From: Marc Schmitt <mschmitt@inf.ethz.ch>
+Subject: bad cookie size 20 (only cookies under 8 bytes are supported.)
+Date: Sun, 02 Nov 2003 15:20:34 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1067700887.5055.4.camel@localhost>
+Message-ID: <3FA512B2.1080109@inf.ethz.ch>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AFxmE-0004hv-00
-	for <nfs@lists.sourceforge.net>; Sat, 01 Nov 2003 07:34:58 -0800
-Received: from 82-166-124-163.barak.net.il ([82.166.124.163] helo=fourbox.held.org.il)
+	id 1AGJ5p-000843-00
+	for <nfs@lists.sourceforge.net>; Sun, 02 Nov 2003 06:20:37 -0800
+Received: from medoc.inf.ethz.ch ([129.132.178.200])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
-	id 1AFxmD-0008Tq-L7
-	for nfs@lists.sourceforge.net; Sat, 01 Nov 2003 07:34:57 -0800
+	id 1AGJ5p-0007mi-Ft
+	for nfs@lists.sourceforge.net; Sun, 02 Nov 2003 06:20:37 -0800
+Received: from localhost (localhost [127.0.0.1])
+	by medoc.inf.ethz.ch (Postfix) with ESMTP id F0FA9AEB7
+	for <nfs@lists.sourceforge.net>; Sun,  2 Nov 2003 15:20:34 +0100 (MET)
+Received: from medoc.inf.ethz.ch ([127.0.0.1])
+ by localhost (medoc [127.0.0.1]) (amavisd-new, port 10024) with LMTP
+ id 08599-01-10 for <nfs@lists.sourceforge.net>;
+ Sun,  2 Nov 2003 15:20:34 +0100 (MET)
+Received: from inf.ethz.ch (ikarus.inf.ethz.ch [129.132.10.58])
+	by medoc.inf.ethz.ch (Postfix) with ESMTP id 81127AEB0
+	for <nfs@lists.sourceforge.net>; Sun,  2 Nov 2003 15:20:34 +0100 (MET)
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -28,22 +38,27 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+Hi all,
 
-I wonder if there's a way to mount an nfs share without specifying tcp
-or udp mount. I think that this is how Solaris behaves: it tries first
-tcp, if it's not good, then it tries udp.
+I did upgrade yesterday my RedHat 7.3 box (2.4.20-20.7smp) from 
+nfs-utils 1.0.5 to 1.0.6, after that, messages was full with:
 
-I've been looking for such a mount option and found none; I think it can
-be really useful when one has hetrogenous nfs servers (some use tcp,
-some use udp) - in the case I just want it to work and don't care which
-protocol it'll use.
+Nov  2 15:02:56 server kernel: lockd: bad cookie size 20 (only cookies 
+under 8 bytes are supported.)
+Nov  2 15:02:56 server kernel: svc: failed to decode args
+Nov  2 15:02:57 server kernel: lockd: bad cookie size 20 (only cookies 
+under 8 bytes are supported.)
+Nov  2 15:02:57 server kernel: svc: failed to decode args
+Nov  2 15:03:16 server kernel: lockd: bad cookie size 20 (only cookies 
+under 8 bytes are supported.)
 
-Is there a way to do it with the current kernel/mount versions?
+I've never had those messages before, does 1.0.6 require a certain 
+minimum kernel version (ex. >= 2.4.22)?
 
-10x
+TIA
 
- - Oren
+Regards,
+    Marc
 
 
 
