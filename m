@@ -1,23 +1,27 @@
-From: Per Olofsson <pelle@dsv.su.se>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: NFSv3+Krb5 and mountd
-Date: Mon, 30 Aug 2004 17:45:41 +0200
+Date: Mon, 30 Aug 2004 12:45:02 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040830154541.GA3671@nasse>
-References: <20040824184138.GB3251@nasse> <Pine.LNX.4.61.0408300238530.2441@fogarty.jakma.org> <20040830020132.GA28919@fieldses.org>
+Message-ID: <1093884302.8729.21.camel@lade.trondhjem.org>
+References: <20040824184138.GB3251@nasse>
+	 <Pine.LNX.4.61.0408300238530.2441@fogarty.jakma.org>
+	 <20040830020132.GA28919@fieldses.org>  <20040830154541.GA3671@nasse>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Paul Jakma <paul@clubi.ie>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-1
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, Paul Jakma <paul@clubi.ie>,  nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C1oLw-0002gD-8m
-	for nfs@lists.sourceforge.net; Mon, 30 Aug 2004 08:45:52 -0700
-Received: from amsfep12-int.chello.nl ([213.46.243.18] helo=amsfep20-int.chello.nl)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1C1oLu-0001SK-3D
-	for nfs@lists.sourceforge.net; Mon, 30 Aug 2004 08:45:52 -0700
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <20040830020132.GA28919@fieldses.org>
+	id 1C1pHm-0005uw-0T
+	for nfs@lists.sourceforge.net; Mon, 30 Aug 2004 09:45:38 -0700
+Received: from dh138.citi.umich.edu
+	([141.211.133.138] helo=lade.trondhjem.org ident=Debian-exim)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.34)
+	id 1C1pHj-0001Ml-5O
+	for nfs@lists.sourceforge.net; Mon, 30 Aug 2004 09:45:37 -0700
+To: Per Olofsson <pelle@dsv.su.se>
+In-Reply-To: <20040830154541.GA3671@nasse>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,29 +34,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-J. Bruce Fields:
-> This doesn't fix the problem Per Olofsson describes, which is that
-> unless you use nfsv4, there's no way to export to krb5 without also
-> exporting vi auth_sys.
-> 
-> Since mountd itself doesn't currently have rpcsec_gss support (and, on
-> the client side, neither does mount), MOUNT requests are going to use
-> auth_sys.  So mountd is going to decide whether to respond based on
-> their IP address.
-> 
-> It'd seem that the right solution is to add rpcsec_gss support to mount
-> and mountd, which shouldn't be a big project, so if you export only to
-> krb5 then you also answer krb5-protected mount requests.  I don't know
-> whether other clients will like that, though.
+P=E5 m=E5 , 30/08/2004 klokka 11:45, skreiv Per Olofsson:
 
-OK, I understand. I don't really need authenticated mount requests
-though, I only need authenticated file system accesses. In other
-words, I don't care who mounts the file system as long as they can't
-impersonate a user without a valid ticket. Is this easier to
-implement? Does it have any other security implications?
+> OK, I understand. I don't really need authenticated mount requests
+> though, I only need authenticated file system accesses. In other
+> words, I don't care who mounts the file system as long as they can't
+> impersonate a user without a valid ticket. Is this easier to
+> implement? Does it have any other security implications?
 
--- 
-Pelle
+This is already implemented...
+
+The RPCSEC_GSS implementation that is in linux-2.6.x already follows the
+guidelines in RFC2623 when you mount an NFSv2 or v3 partition. (The same
+RFC also includes a brief discussion of the security implications of
+this model.)
+
+You'll need a patched version of "mount" though. The one distributed as
+part of Fedora Core 2 should work...
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
