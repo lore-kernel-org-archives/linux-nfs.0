@@ -1,22 +1,23 @@
-From: Greg Banks <gnb@sgi.com>
+From: Vincent ROQUETA <vincent.roqueta@ext.bull.net>
 Subject: Re: Poor NFS performance, kernel 2.6.6.
-Date: Wed, 2 Jun 2004 23:00:54 +1000
+Date: Wed, 2 Jun 2004 15:14:00 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040602130054.GP323@sgi.com>
+Message-ID: <200406021514.00838.vincent.roqueta@ext.bull.net>
 References: <1086179633.3325.0.camel@tesla.mmt.bellhowell.com>
+Reply-To: vincent.roqueta@ext.bull.net
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+  charset="utf-8"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BVVMf-0005PR-0N
-	for nfs@lists.sourceforge.net; Wed, 02 Jun 2004 06:01:05 -0700
-Received: from mtvcafw.sgi.com ([192.48.171.6] helo=omx2.sgi.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1BVVMe-00035K-Gi
-	for nfs@lists.sourceforge.net; Wed, 02 Jun 2004 06:01:04 -0700
-To: Jeffrey Layton <jtlayton@poochiereds.net>
+	id 1BVVW7-0007Xr-Ds
+	for nfs@lists.sourceforge.net; Wed, 02 Jun 2004 06:10:51 -0700
+Received: from ecbull20.frec.bull.fr ([129.183.4.3])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BVVW5-0007I2-OX
+	for nfs@lists.sourceforge.net; Wed, 02 Jun 2004 06:10:50 -0700
+To: Jeffrey Layton <jtlayton@poochiereds.net>, nfs@lists.sourceforge.net
 In-Reply-To: <1086179633.3325.0.camel@tesla.mmt.bellhowell.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,26 +31,58 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, Jun 02, 2004 at 08:33:53AM -0400, Jeffrey Layton wrote:
+Le Mercredi 02 Juin 2004 14:33, Jeffrey Layton a =C3=A9crit :
+> I haven't been following this thread closely, but figured I'd chime in
+> with my own experience with this. Here's a rather unscientific test,
+> dd'ing to a file on an NFS-mounted filesystem. Mount options are:
+>
+> udp,soft,intr,nfsvers=3D3
+>
+> (I'm using UDP as I'm trying to set up a HA-NFS server, and the clients
+> seem to recover much faster when using UDP as a transport).
+>
+> With a 2.4 kernel server:
+>
+> % time dd if=3D/dev/zero of=3D./testfile bs=3D100M count=3D1
+> 1+0 records in
+> 1+0 records out
+> 104857600 bytes transferred in 11.806235 seconds (8881544 bytes/sec)
+> dd if=3D/dev/zero of=3D./testfile bs=3D100M count=3D1  0.00s user 0.28s s=
+ystem
+> 2% cpu 12.147 total
+>
+> With a 2.6 kernel server:
+>
+> % time dd if=3D/dev/zero of=3D./testfile bs=3D100M count=3D1
+> 1+0 records in
+> 1+0 records out
+> 104857600 bytes transferred in 66.997572 seconds (1565096 bytes/sec)
+> dd if=3D/dev/zero of=3D./testfile bs=3D100M count=3D1  0.00s user 0.29s s=
+ystem
+> 0% cpu 1:07.06 total
+>
+>
 > The machines are different hardware, but local write performance is
 > pretty comparable (in fact the 2.6 box is a faster machine, and is
 > currently less utilized than the 2.4 kernel machine). Both are using
 > reiserfs as the underlying filesystem.
+>
+> Write performance in this cursory test was 10x worse! Clearly, there's
+> some sort of problem with NFS on 2.6. I'll be happy to send in what info
+> I can. My 2.4 machine is currently a production box, but I can run an
+> instrumented kernel, etc. on the 2.6 box in the near future if anyone
+> here can guide me on what I can do to help.
+>
+> -- Jeff
+>
 
-What is the speed on each server for a local dd from /dev/zero to disk?
-What actual kernel versions are you running?
-
-> Write performance in this cursory test was 10x worse!
-
-This completely fails to correlate with my experience.  I'm using XFS
-on 2.6.4 and I see single thread streaming write performance increase
-by about 25% going from 2.4 to 2.6.  Other metrics show improvements
-as good or better, except the scalability of UDP reads tops out lower.
-
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+What appends with linux 2.6.6?
+Is NFSv4 enabled?
+Can you use bonnie / IOzone and repport activity?
+ (-> http://nfsv4.bullopensource.org/tools/sondage.php for performances too=
+ls=20
+)
+=20
 
 
 -------------------------------------------------------
