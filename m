@@ -1,19 +1,20 @@
-From: Frank Cusack <fcusack@fcusack.com>
-Subject: Re: NFS directory caching
-Date: Tue, 24 Jun 2003 03:32:58 -0700
+From: Steve Dickson <SteveD@RedHat.com>
+Subject: Re: Typo in Redhat 8/9 nfs start/stop script
+Date: Tue, 24 Jun 2003 08:19:53 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030624033258.D4036@google.com>
-References: <75587E33AC778145AACCE1601EEABF420D496F@kda-beexc-02.kda.kongsberg.com>
+Message-ID: <3EF841E9.1050408@RedHat.com>
+References: <D38AFB3080F3D311807300B0D0203E53033A9622@MERCURY>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from 216-239-45-4.google.com ([216.239.45.4])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19Ul6q-0001BF-00
-	for <nfs@lists.sourceforge.net>; Tue, 24 Jun 2003 03:33:08 -0700
-To: "Mikkelborg, Kjetil" <kjetil.mikkelborg@kongsberg.com>
-In-Reply-To: <75587E33AC778145AACCE1601EEABF420D496F@kda-beexc-02.kda.kongsberg.com>; from kjetil.mikkelborg@kongsberg.com on Tue, Jun 24, 2003 at 11:06:02AM +0200
+Received: from host-64-179-20-100.man.choiceone.net ([64.179.20.100] helo=Odyssey.Home.4Dicksons.Org)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19UmmO-0000LC-00
+	for <nfs@lists.sourceforge.net>; Tue, 24 Jun 2003 05:20:08 -0700
+To: pwitting@Cyveillance.com
+In-Reply-To: <D38AFB3080F3D311807300B0D0203E53033A9622@MERCURY>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,24 +27,40 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, Jun 24, 2003 at 11:06:02AM +0200, Mikkelborg, Kjetil wrote:
-> How is it with directory caching in standard nfs client for linux? Is it
-> existent at all? And if so, is there any way I can modify its timeout
-> values for spesific mountpoint?
+pwitting@Cyveillance.com wrote:
 
-man 5 nfs
+>You may want to do more than that. RH9 is using 2.4.20 kernel, which by my
+>understanding resets the values to what I thinks is reasonable. For details
+>on how 2.4.20 calculates queue sizes, see this earlier post by Neil Brown:
+>
+>http://sourceforge.net/mailarchive/message.php?msg_id=4229482
+>
+>But the gist is, there is no longer any need for the startup script to reset
+>these values unless RH has disabled this feature of the kernel nfs code. 
+>
+Good point... That QS stuff probably should be removed...
 
-...
+>Secondly, it might be wise to automatically install a /etc/sysconfig/nfs
+>file. The script reads this file, but there's no default included, only be
+>reading and understanding the script would a user find out that this is now
+>the preferred way to change the thread count.
+>
+I kinda like it the way it is.... I don't want to make it too easy for 
+people to
+shoot themselves in the foot.... :-)  Making people read/understand the 
+script
+before changing it seems to me like a good idea...
 
-> It would be nice to eliminate the issue with extensive NFS directories
-> in path problem, without altering the existing PATH setting, since for
-> managment reasons it is much more easier to have most of the common
-> tools on a NFS volume than installed on each workstation.
+>Finally, why not release an erratum that corrects the problem instead of
+>forcing any upgrade to RH10? It would be nice if I didn't have to add
+>functions to my Kickstart post-install script to correct this problem, and
+>instead could just upgrade the RPM in my install directory.
+>
+You don't have to upgrade the RH10 to get these changes... just
+upgrade the nfs-utils package...
 
-For some types of software, yes.  I would have disagreed until recently
-(now that my site is moving away from that).
+SteveD.
 
-/fc
 
 
 -------------------------------------------------------
