@@ -1,19 +1,27 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: [PATCH] Support for cached lookups via readdirplus [6/6]
-Date: Sun, 28 Jul 2002 17:26:48 +0200
+Subject: Re: Re: pf: to scrub or not to scrub?
+Date: Sun, 28 Jul 2002 18:21:26 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15684.3384.221358.537571@charged.uio.no>
+Message-ID: <41128.2105757438$1027873455@news.gmane.org>
+References: <Pine.GSO.4.33.0207241828330.586-100000@loogie.intranet.csupomona.edu>
+	<20020725094904.GE8969@skywalker.bsws.de>
+	<20020725183112.GA4708@esme.xs4all.nl>
+	<20020725190243.GB8076@w4g.org>
+	<20020727232451.GG26763@han.myip.org>
+	<shsk7nfhoit.fsf@charged.uio.no>
+	<20020728155152.GA13040@han.myip.org>
 Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
+Cc: misc@openbsd.org,
     NFS maillist <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from pat.uio.no ([129.240.130.16])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17Ypwk-0005RI-00
-	for <nfs@lists.sourceforge.net>; Sun, 28 Jul 2002 08:27:02 -0700
-To: Linus Torvalds <torvalds@transmeta.com>
+	id 17Yqng-00060Q-00
+	for <nfs@lists.sourceforge.net>; Sun, 28 Jul 2002 09:21:44 -0700
+To: Han <han@boetes.org>
+In-Reply-To: <20020728155152.GA13040@han.myip.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,60 +35,21 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 
-Add support for the glibc 'd_type' field in cases where we have the
-READDIRPLUS file attribute information available to us in
-nfs_do_filldir().
+    >> Mind explaining exactly what is causing the OpenBSD 'scrub'
+    >> filter to fail to pass these packets?
+
+Hmm... From your forwarded mail. Looks like they were saying that the
+firewall doesn't like IP_DF + IP_MF. That basically means that it is
+incompatible with standard Path MTU discovery (see RFC 1191).
+
+Try turning off path MTU discovery using
+  echo "1" >/proc/sys/net/ipv4/ip_no_pmtu_disc
+
+and it should probably work (or set the wsize to 1024 - means no
+fragmentation of the writes).
 
 Cheers,
   Trond
-
-diff -u --recursive --new-file linux-2.5.29-rdplus5/fs/nfs/dir.c linux-2.5.29-rdplus6/fs/nfs/dir.c
---- linux-2.5.29-rdplus5/fs/nfs/dir.c	Sat Jul 27 19:15:41 2002
-+++ linux-2.5.29-rdplus6/fs/nfs/dir.c	Sat Jul 27 19:15:33 2002
-@@ -249,6 +249,24 @@
- 	return res;
- }
- 
-+static unsigned int nfs_type2dtype[] = {
-+	DT_UNKNOWN,
-+	DT_REG,
-+	DT_DIR,
-+	DT_BLK,
-+	DT_CHR,
-+	DT_LNK,
-+	DT_SOCK,
-+	DT_UNKNOWN,
-+	DT_FIFO
-+};
-+
-+static inline
-+unsigned int nfs_type_to_d_type(enum nfs_ftype type)
-+{
-+	return nfs_type2dtype[type];
-+}
-+
- /*
-  * Once we've found the start of the dirent within a page: fill 'er up...
-  */
-@@ -265,11 +283,17 @@
- 	dfprintk(VFS, "NFS: nfs_do_filldir() filling starting @ cookie %Lu\n", (long long)desc->target);
- 
- 	for(;;) {
-+		unsigned d_type = DT_UNKNOWN;
- 		/* Note: entry->prev_cookie contains the cookie for
- 		 *	 retrieving the current dirent on the server */
- 		fileid = nfs_fileid_to_ino_t(entry->ino);
-+
-+		/* Use readdirplus info */
-+		if (desc->plus && (entry->fattr->valid & NFS_ATTR_FATTR))
-+			d_type = nfs_type_to_d_type(entry->fattr->type);
-+
- 		res = filldir(dirent, entry->name, entry->len, 
--			      entry->prev_cookie, fileid, DT_UNKNOWN);
-+			      entry->prev_cookie, fileid, d_type);
- 		if (res < 0)
- 			break;
- 		file->f_pos = desc->target = entry->cookie;
 
 
 -------------------------------------------------------
