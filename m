@@ -1,18 +1,18 @@
 From: mehta kiran <kiranmehta1981@yahoo.com>
 Subject: problem with  umount
-Date: Fri, 28 Jan 2005 05:07:17 -0800 (PST)
-Message-ID: <20050128130718.41929.qmail@web51609.mail.yahoo.com>
+Date: Fri, 28 Jan 2005 04:37:30 -0800 (PST)
+Message-ID: <20050128123730.4865.qmail@web51602.mail.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CuVqr-0005ig-3u
-	for nfs@lists.sourceforge.net; Fri, 28 Jan 2005 05:07:53 -0800
-Received: from web51609.mail.yahoo.com ([206.190.38.214])
+	id 1CuVNd-0004jI-Bw
+	for nfs@lists.sourceforge.net; Fri, 28 Jan 2005 04:37:41 -0800
+Received: from web51602.mail.yahoo.com ([206.190.38.207])
 	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
-	id 1CuVqO-0008P8-92
-	for nfs@lists.sourceforge.net; Fri, 28 Jan 2005 05:07:52 -0800
+	id 1CuVNb-0005cU-FT
+	for nfs@lists.sourceforge.net; Fri, 28 Jan 2005 04:37:41 -0800
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -58,10 +58,8 @@ thanks,
 		
 __________________________________ 
 Do you Yahoo!? 
-Meet the all-new My Yahoo! - Try it today! 
-http://my.yahoo.com 
- 
-
+Take Yahoo! Mail with you! Get it on your mobile phone. 
+http://mobile.yahoo.com/maildemo 
 
 
 -------------------------------------------------------
