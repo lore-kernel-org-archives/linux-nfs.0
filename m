@@ -1,16 +1,17 @@
-From: James Pearson <james-p@moving-picture.com>
-Subject: Re: "Permission denied" on autofs mount point
-Date: Fri, 15 Mar 2002 13:34:57 +0000
+From: Tom McNeal <trmcneal@attbi.com>
+Subject: Re: kernel version problem
+Date: Fri, 15 Mar 2002 07:55:07 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3C91F881.CD5594A7@moving-picture.com>
-References: <3C9098C4.56E187EF@moving-picture.com>
+Message-ID: <3C92195B.BE165F9E@attbi.com>
+References: <DAV20GvQ3C3unebhJHa0000ed31@hotmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
+Cc: nfs@lists.sourceforge.net
+Received: from rwcrmhc53.attbi.com ([204.127.198.39])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16lrrR-0004Kt-00
-	for <nfs@lists.sourceforge.net>; Fri, 15 Mar 2002 05:35:09 -0800
-To: nfs@lists.sourceforge.net, autofs@linux.kernel.org
+	id 16lu20-0005CN-00
+	for <nfs@lists.sourceforge.net>; Fri, 15 Mar 2002 07:54:12 -0800
+To: Tina Arora <tinaarora@hotmail.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -23,82 +24,41 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Since sending my original message, I've found something on the kernel
-list about a similar situation - see:
+2.2.16 is an adequate base to start from, but if you're able
+to make bigger changes, and want the best nfs platform for 
+2.2, then go to 2.2.19.
 
- http://www.geocrawler.com/archives/3/35/2001/12/2700/7351178/
+For 2.2.16, Go to http://nfs.sourceforge.net/ and follow the 
+link to the download page (containing both the nfs-utils tar 
+balls and the kernel patches).
 
-I asked the original sender if he had any more info:
+You need to apply the kernel-nfs-dhiggen_merge-3.0.tar.gz
+download to 2.2.16.
 
-> maybe the symptom is different, but the cause is the same, i don't know.
-> If you write a script, that tries to unmount, you duplicate the functionality
-> of the automounter daemon to a certain degree, what might lead to the same
-> problems. I think the code path in fs/autofs4/root.c line 300+ is problematic:
-> 
-> 
->         /*
->          * If this dentry is unhashed, then we shouldn't honour this
->          * lookup even if the dentry is positive.  Returning ENOENT here
->          * doesn't do the right thing for all system calls, but it should
->          * be OK for the operations we permit from an autofs.
->          */
->         if ( dentry->d_inode && d_unhashed(dentry) )
->                 return ERR_PTR(-ENOENT);
-> 
-> In my opinion it can happen that between the revalidate in 286 and this
-> check for 'hashedness' another thread invalidates the entry and thus
-> the syscall fails. When i find the time, i'll try to find out and fix. Possible,
-> that it fixes also your problem, but currently i can't imagine a
-> scenario including unavailable NFS-servers, that leads to this permission
-> denied error.
+Apply the latest nfs utils download (nfs-utils-0.3.3.tar.gz)
 
-Could what is described be the problem?
+Both have readme files; they'll give you the requirements and
+tell you what to do.
 
-Is there a "fix"?
-
-Thanks
-
-James Pearson
+Tom McNeal
 
 
-James Pearson wrote:
+> Tina Arora wrote:
 > 
-> I'm using autofs4 (autofs-4.0.0pre10) to mount a number of NFS mounts
-> using a NIS map on machines running a RedHat based 2.4.7-10 kernel.
-> 
-> Occasionally trying to access a mount point (that has been working fine)
-> gives e.g:
-> 
-> # cd /net/server1
-> cd: /net/server1: Permission denied
-> 
-> This mount point never unmounts - even with sending SIGUSR1 to automount
-> 
-> The only way I can unmount the file system is by explicitly using umount
-> 
-> i.e. umount /net/server1
-> 
-> works OK and subsequent access to /net/server1 mounts the remote file
-> system OK
-> 
-> The remote "servers' in question tend to be other Linux workstations,
-> that I _think_ have crashed (or been rebooted) while being mounted by
-> the clients ...
-> 
-> Is there anything I can do to fix this?
-> 
-> In the meantime, I'm thinking of having a simple script that attempts to
-> umount everything under the automount mount point every few minutes or
-> so (by looking for these mounts in mtab) - is this likely to cause
-> problems/confusion with automount?
-> 
-> Thanks
-> 
-> James Pearson
-> 
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+> hi,
+> nfs.soureforge.net talks of kernel version atleast 2.2.18 to use nfs version 3
+> .My system shows
+> "Red Hat Linux release 7.0(Guinness)
+>  Kernel 2.2.16-22 on i686"
+> Nebody ne clues what this -22 means and also will i be able to use nfs (3) on
+> this system of mine..
+> thanx
+> Tina
+
+--
+------------------------------------------------------------
+Tom McNeal       trmcneal@attbi.com     (650)906-0761 (cell) 
+------------------------------------------------------------
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
