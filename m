@@ -1,19 +1,19 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Null characters in files on NFS mounted volume....
-Date: 13 May 2002 17:08:11 +0200
+Subject: Re: Performance problem
+Date: 13 May 2002 17:17:32 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shswuu8ytk4.fsf@charged.uio.no>
-References: <3CDFCE9F.2BE050D5@fnal.gov>
+Message-ID: <shs3cwwqdpv.fsf@charged.uio.no>
+References: <1021302616.27660.20.camel@nb>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs list <nfs@lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
+Received: from mons.uio.no ([129.240.130.14])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 177HQy-0005Ik-00
-	for <nfs@lists.sourceforge.net>; Mon, 13 May 2002 08:08:21 -0700
-To: Dan Yocum <yocum@fnal.gov>
-In-Reply-To: <3CDFCE9F.2BE050D5@fnal.gov>
+	id 177Ha7-00065F-00
+	for <nfs@lists.sourceforge.net>; Mon, 13 May 2002 08:17:47 -0700
+To: Nicolas Brainez <nb@many.be>
+In-Reply-To: <1021302616.27660.20.camel@nb>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,25 +26,15 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->>>>> " " == Dan Yocum <yocum@fnal.gov> writes:
+>>>>> " " == Nicolas Brainez <nb@many.be> writes:
 
-     > Hi all, I've got a "New and Exciting" <tm> bug using 2.4.18
-     > with Trond's client patches (sans the rpc_tweaks dif), but I'm
-     > not sure it's a client side problem.
+     > Hello, I have an nfs server who exports some backup directories
+     > for the lan's users, it's a new install.
 
-     > This is an intermitent problem: When attempting to read a file
-     > (any file) on an NFS mounted volume, there appear to be "holes"
-     > in the file filled with ASCII NULL characters.  Reading the
-     > file on the local machines shows no such holes, and other NFS
-     > clients don't see the holes, either.  A simple umount/remount
-     > solves the problem.
+     > First I would like say that's not an hardware problem, because
+     > we have no problem to use appletalk, ftp, ...
 
-Any details?
-
-Are these for instance ordinary files? Are you perhaps engaging in
-some multiple NFS client read/writes to the same file? ...  Is it tied
-to the client patches, or does it occur with stock 2.4.18 fresh off
-the l-k presses?
+I'll bet you it is. Have you tried using a different network card + driver?
 
 Cheers,
   Trond
