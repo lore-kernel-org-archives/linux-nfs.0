@@ -1,31 +1,24 @@
-From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-Subject: Re: debugging hanging locks
-Date: Tue, 17 Aug 2004 19:49:50 -0600 (MDT)
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: nfsd stales when restarting too fast
+Date: Wed, 18 Aug 2004 13:24:34 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.60.0408171943380.16703@harp.ngdc.noaa.gov>
-References: <Pine.LNX.4.60.0408161741020.5649@harp.ngdc.noaa.gov>
- <1092702159.11722.77.camel@lade.trondhjem.org>
- <Pine.LNX.4.60.0408161846440.5649@harp.ngdc.noaa.gov>
- <1092757186.4030.11.camel@lade.trondhjem.org>  <Pine.LNX.4.60.0408171146190.12428@harp.ngdc.noaa.gov>
-  <1092765798.4030.59.camel@lade.trondhjem.org>
- <Pine.LNX.4.60.0408171718050.12428@harp.ngdc.noaa.gov>
- <1092789637.9393.19.camel@lade.trondhjem.org>
-Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Message-ID: <16674.52210.884853.119652@cse.unsw.edu.au>
+References: <4118900F.9090602@bio.ifi.lmu.de>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net,
+    shylendra.bhat@hp.com
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BxFab-000093-8U
-	for nfs@lists.sourceforge.net; Tue, 17 Aug 2004 18:50:09 -0700
-Received: from harp.ngdc.noaa.gov ([140.172.187.26])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.34)
-	id 1BxFaa-00055f-Ny
-	for nfs@lists.sourceforge.net; Tue, 17 Aug 2004 18:50:09 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1092789637.9393.19.camel@lade.trondhjem.org>
+	id 1BxH4I-0008Sa-Ou
+	for nfs@lists.sourceforge.net; Tue, 17 Aug 2004 20:24:54 -0700
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1BxH4H-0004H9-0W
+	for nfs@lists.sourceforge.net; Tue, 17 Aug 2004 20:24:54 -0700
+To: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
+In-Reply-To: message from Frank Steiner on Tuesday August 10
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -38,44 +31,74 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, 17 Aug 2004, Trond Myklebust wrote:
+On Tuesday August 10, fsteiner-mail@bio.ifi.lmu.de wrote:
+> Hi,
+> 
+> I posted this on the kernel list already, but now that I'm subscribed here
+> I guess this is the better place :-) Neil already reacted to my mail on
+> LKML but the first proposal didn't help (order of exportfs and killall).
+> 
+> System is: SuSE 9.0 with 2.6.7 (tested up to 2.6.8rc3) and util-linux-2.12
+> 
+> Also tested with SuSE 9.1/SLES9 and SuSEs kernel 2.6.5.
+> 
+> When running "/etc/init.d/nfsserver restart" on the server, the clients
+> will react with "stale nfs handle" for all mounted directories that were
+> in use during the restart (e.g. if /var is mounted and syslogd is running,
+> or if some "find" is running on a mounted directory). The stale directories
+> will never come back to sane state (except restarting with sleep, see below).
+> 
+> When using
+> /etc/init.d/nfsserver stop
+> sleep 2
+> /etc/init.d/nfsserver start
+> 
+> (or putting a "sleep 1" between the lines "$0 stop" and "$0 start" in the
+> init script), everything goes fine. Restarting with sleep 2 will also
+> bring back the client dirs that were staled from a former restart without
+> sleep.
+> 
+> Without the init script, it can be traced down to:
+> 
+> killall -9 nfsd
+> killall -9 /usr/sbin/rpc.mountd
+> /usr/sbin/exportfs -au
+> [sleep 2]
+> /usr/sbin/exportfs -r
+> /usr/sbin/rpc.nfsd
+> /usr/sbin/rpc.mountd
+> 
+> Stales without the sleep, does not with the sleep. That behaviour is
+> independent from options like v3/v4, tcp/udp, lock/nolock, and it did
+> not happen with 2.4.
 
-> ...but are you seeing it with a recent 2.4 kernel (2.4.26 or 2.4.27)?
+Probably the best solution is to "not do that" - why do you want to
+stop and then restart the server anyway?  Why not just leave it
+running.
 
-yes: 2.4.21-15.0.4.EL
+However there is a race the, and "sleep 1" would fix it.
+Another fix would be to use "-1" instead of "-9" to kill nfsd.  This
+causes it to exit without clearing the export table.
+Another fix would be to apply to following patch to your 2.6 kernel.
 
-> The test you are providing would trigger precisely the race that was
-> supposed to be fixed by patch I sent you. AFAICS that patch has not been
-> applied to the 2.4.21-15 source tree.
+NeilBrown
 
-o.k. then - good to confirm.  i'll have to wait for the patch - our sysads run
-only rpms from up2date... ;-(
 
-gotta wonder why we are paying redhat when the enterprise version moves so
-slowly - two months ago i found a bug in mmap that caused kernel panic -
-ugggh.
-
-so - one more tidbit that's really odd.  when i saw the hang before not only
-had none of the processes exited uncleanly - they had not exited at all!  eg.
-i had many processes humming along, getting and releasing a lock on an empty
-file (used as a semaphore file), when suddenly none could get the lock... this
-is very strange indeed...
-
-i guess i will just have to wait until the problem arises again, hopefully the
-info you've given me about determiniing which processes have locks will come
-in handy.  thanks for all the asistance again.
-
-cheers.
-
--a
---
-===============================================================================
-| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
-| PHONE   :: 303.497.6469
-| A flower falls, even though we love it;
-| and a weed grows, even though we do not love it. 
-|   --Dogen
-===============================================================================
+diff ./net/sunrpc/cache.c~current~ ./net/sunrpc/cache.c
+--- ./net/sunrpc/cache.c~current~	2004-08-18 13:07:44.000000000 +1000
++++ ./net/sunrpc/cache.c	2004-08-18 13:12:10.000000000 +1000
+@@ -400,9 +400,10 @@ void cache_flush(void)
+ 
+ void cache_purge(struct cache_detail *detail)
+ {
+-	detail->flush_time = get_seconds()+1;
++	detail->flush_time = LONG_MAX;
+ 	detail->nextcheck = get_seconds();
+ 	cache_flush();
++	detail->flush_time = 1;
+ }
+ 
+ 
 
 
 -------------------------------------------------------
