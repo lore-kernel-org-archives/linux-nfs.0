@@ -1,20 +1,17 @@
-From: Marc Schmitt <mschmitt@inf.ethz.ch>
-Subject: Re: Large export list leads to "Invalid argument" errors when
-	executing 'exportfs -r'
-Date: 07 Jul 2003 12:14:56 +0200
+From: John Sutton <john@scl.co.uk>
+Subject: Re: Linux: nfsroot and a Tulip card
+Date: Mon, 7 Jul 2003 13:31:06 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1057572896.14659.16.camel@ikarus>
-References: <1057405449.3361.64.camel@localhost>
+Message-ID: <03070713384502.00985@diva.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from medoc.inf.ethz.ch ([129.132.178.200])
+Received: from ns.scl.co.uk ([80.71.1.205] helo=sparta.scl.co.uk)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19ZUXg-0005JM-00
-	for <nfs@lists.sourceforge.net>; Mon, 07 Jul 2003 04:52:24 -0700
-To: mschmitt@inf.ethz.ch
-In-Reply-To: <1057405449.3361.64.camel@localhost>
+	id 19ZVFo-0007Pq-00
+	for <nfs@lists.sourceforge.net>; Mon, 07 Jul 2003 05:38:00 -0700
+To: ryurick.hristev@canterbury.ac.nz
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,34 +24,52 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I just wanted to add, I get many nfsd Security messages on the console,
-too:
+Hi Ryurick
 
-nfsd Security: //c bad export.
-nfsd Security: //c bad export.
-nfsd Security: //c bad export.
-nfsd Security: /// bad export.
-nfsd Security: //n bad export.
-nfsd Security: //s bad export.
-nfsd Security: //s bad export.
-nfsd Security: //n bad export.
-nfsd Security: //w bad export.
-nfsd Security: //w bad export.
-nfsd Security: //l bad export.
-nfsd Security: //n bad export.
+Did you ever get this problem sorted out?  I've got exactly the same
+problem and like you have run out of any ideas!
 
-The directory structure for the homes described in the original post
-does not match reality, it's:
+Any help you can give me will be much appreciated.
 
-/export/home/<first letter of login>/<login>
+TIA
+John Sutton
 
-I guess the error messages above refer to <first letter of login>. But
-there are no exports on the /export/home/<first letter of login> at all
-in /etc/exports...
+> Hello,
+>=20
+> After a prolonged mucking around I am finally out of any idea.
+>=20
+> I have a problem:
+>=20
+> I have a Linux based PC with a Tulip type network card which refuses
+> to read the root filesystem over nfs.
+>=20
+> Given that the card have to be DHCP configured the network driver
+> is compiled into the kernel. The system boots, it gets configured
+> via DHCP, mounts the root via nfs (as shown by the logs) then hangs.=20
+>=20
+> I have other systems with different network cards which do work
+> with the same setup. The system also works with Linux 2.2 but not 2.4
+>=20
+> The tulip driver in Linux kernel 2.4 appears to be FUBAR so I used
+> the de4x5 which apparently works up to reading the nfsroot
+> (IIRC that was recommended by someone on the tulip driver mailing list)=
+=2E
+>=20
+> TIA for any pointers, ideas, etc,
+>=20
+> Cheers,
+> --=20
+> Ryurick M. Hristev mailto:r.hristev@ph...
+> Computer Systems Manager
+> University of Canterbury, Physics & Astronomy Dept., New Zealand
+--=20
 
-Regards,
-    Marc
-
+***************************************************
+John Sutton
+SCL Internet
+URL http://www.scl.co.uk/
+Tel. +44 (0) 1239 711 888
+***************************************************
 
 
 -------------------------------------------------------
