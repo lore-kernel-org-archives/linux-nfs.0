@@ -1,23 +1,22 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: problems using devices via nfsvers3 with 2.6.6. and 2.6.7
-Date: Fri, 23 Jul 2004 13:38:36 +1000
+From: "Patrice Seyed" <apseyed@bu.edu>
+Subject: nfs performance / Input/output error
+Date: Fri, 23 Jul 2004 00:33:36 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16640.34876.166606.352477@cse.unsw.edu.au>
-References: <40EAF250.2080202@strike.wu-wien.ac.at>
+Message-ID: <001c01c4706e$38a64230$6401a8c0@psyche1>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <apseyed@bu.edu>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Bnqtf-0003zH-2x
-	for nfs@lists.sourceforge.net; Thu, 22 Jul 2004 20:38:59 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	id 1BnrlC-0003RF-Kw
+	for nfs@lists.sourceforge.net; Thu, 22 Jul 2004 21:34:18 -0700
+Received: from acsn03.bu.edu ([128.197.159.63])
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1Bnqte-0007H3-JW
-	for nfs@lists.sourceforge.net; Thu, 22 Jul 2004 20:38:58 -0700
-To: Alexander Bergolth <leo@strike.wu-wien.ac.at>
-In-Reply-To: message from Alexander Bergolth on Tuesday July 6
+	id 1BnrlC-0006th-4w
+	for nfs@lists.sourceforge.net; Thu, 22 Jul 2004 21:34:18 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,47 +29,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tuesday July 6, leo@strike.wu-wien.ac.at wrote:
-> Hi!
-> 
-> I'm getting "permission denied" errors when trying to access devices 
-> from a 2.6 client that are mounted via nfsvers3 and exported read-only 
-> by the server. Using nfsvers2 or a 2.4 kernel doesn't show this error.
-> 
-> I could reproduce this with kernel 2.6.6-1.435.2.3 (from FC-2) and with
-> kernel 2.6.7-1.456_4.rhfc2.at (from ATrpms).
-> 
-> Any hints?
+What I'm addressing is in a cluster environment where when the nfs server is
+heavily loaded I see the following in /var/log scrolling:
+"can't get a slot request" "not responding, still trying OK"
 
-Yes.  Try the following patch.  It should fix the problem.
+Also when I am really pounding on the nfs server with hundreds of jobs that
+do a 256mb "dd" to an nfs mount, I see this error often "Input/output"
+error.
 
-NeilBrown
+I think I've potentially ruled out driver and settings, also there's no
+collisions on server or clients. Any suggestions on further tuning for
+performance appreciated. The clients and server are set to 1000/full using
+e1000 on the server and tg3 on the clients. I'll indicate the config specs
+here:
 
+nfs-utils-1.0.6-21EL
+modutils-2.4.26-16
+Linux 2.4.21-4.0.1.ELsmp 
 
-### Diffstat output
- ./fs/nfsd/vfs.c |    7 ++++---
- 1 files changed, 4 insertions(+), 3 deletions(-)
+auto.home with these options:
+rw,hard,intr,rsize=65536,wsize=65536
 
-diff ./fs/nfsd/vfs.c~current~ ./fs/nfsd/vfs.c
---- ./fs/nfsd/vfs.c~current~	2004-07-23 13:36:36.000000000 +1000
-+++ ./fs/nfsd/vfs.c	2004-07-23 13:37:38.000000000 +1000
-@@ -376,12 +376,13 @@ static struct accessmap	nfs3_anyaccess[]
- 	 * to the server to check for access for things like /dev/null
- 	 * (which really, the server doesn't care about).  So
- 	 * We provide simple access checking for them, looking
--	 * mainly at mode bits
-+	 * mainly at mode bits, and we make sure to ignore read-only
-+	 * filesystem checks
- 	 */
-     {	NFS3_ACCESS_READ,	MAY_READ			},
-     {	NFS3_ACCESS_EXECUTE,	MAY_EXEC			},
--    {	NFS3_ACCESS_MODIFY,	MAY_WRITE			},
--    {	NFS3_ACCESS_EXTEND,	MAY_WRITE			},
-+    {	NFS3_ACCESS_MODIFY,	MAY_WRITE|MAY_LOCAL_ACCESS	},
-+    {	NFS3_ACCESS_EXTEND,	MAY_WRITE|MAY_LOCAL_ACCESS	},
+(I've tried multiples 16k blocks w/o improvement)
+
+/etc/exports:
+(rw,no_root_squash)
+*not doing async as advised 
+
+/proc/sys/net/core/rmem_default and /proc/sys/net/core/rmem_max set to
+262144.
+
+I've increased the number of daemons from 6 to 16 to 32 to 64, no
+improvement. Any ideas appreciated.
+
+Regards,
  
-     {	0,			0				}
- };
+Patrice Seyed
+Linux System Administrator - SIG
+RHCE, SCSA
+Boston University School of Medicine
+
+
 
 
 -------------------------------------------------------
