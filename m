@@ -1,18 +1,18 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: Re: [PATCH] 2.4.19-pre10 RPC changes...
-Date: Mon, 8 Jul 2002 10:31:00 -0700
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: New package of beta-level NFS client updates out for 2.4.19-rc1
+Date: Mon, 8 Jul 2002 19:29:43 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <6440EA1A6AA1D5118C6900902745938E50D086@black.eng.netapp.com>
+Message-ID: <agcjiv$hpi$2@main.gmane.org>
 Mime-Version: 1.0
 Content-Type: text/plain;
-	charset="iso-8859-1"
-Cc: nfs@lists.sourceforge.net
+  charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mx01-a.netapp.com ([198.95.226.53])
+Received: from mons.uio.no ([129.240.130.14])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17RcM6-0002GA-00
-	for <nfs@lists.sourceforge.net>; Mon, 08 Jul 2002 10:31:22 -0700
-To: "'Trond Myklebust'" <trond.myklebust@fys.uio.no>
+	id 17RcKe-0001m4-00
+	for <nfs@lists.sourceforge.net>; Mon, 08 Jul 2002 10:29:52 -0700
+To: nfs@lists.sourceforge.net,
+ linux-kernel@vger.kernel.org
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,27 +25,38 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-> On Tuesday 02 July 2002 19:59, Lever, Charles wrote:
-> 
-> > yes.  fix_refresh + fix_kmap1 hangs under stress on my system.
-> >
-> > i can reproduce this with "make -j2 bzImage" in one window
-> > and "bonnie" in a loop in another.  both cwd's are in the
-> > same TCP-mounted NFS file system.
-> 
-> Is this with CONFIG_HIGHMEM set (you didn't specify your 
-> .config) and does it only happen on TCP mounts?
 
-my bad... yes, this is a 1GB system, so HIGHMEM is set, and
-yes, the file system is a TCP file system.
+Hi,
 
-> If so, then the appended bugfix might help...
+  There's a new NFS_ALL package full of NFS client updates out for 2.4.19-rc1.
+New features include:
 
-i tested today against 2.4.19-rc1 with fix-kmap1 applied.
-it appeared to have the previously attached fix in it
-already.
+  - UDP message round trip timing in order to improve the timeout + resend 
+cycle.
+  - UDP congestion control as per Van Jacobson.
+  - Further improvements to the close-to-open code
+  - Full support for the NFSv3 ACCESS function (as required by people who want 
+to use ACLs).
 
-i was not able to deadlock my system.
+A full description of all the components and features can be found in the file
+
+   http://www.fys.uio.no/~trondmy/src/2.4.19-rc1/HEADER.html
+
+the patch itself can be found as
+
+  http://www.fys.uio.no/~trondmy/src/2.4.19-rc1/linux-2.4.19-NFS_ALL.dif
+
+For those who have been following the contents of these files, please note 
+that a lot of changes have been made w.r.t. the 2.4.18 version:
+Amongst other things, the 'ping' patch (see 
+http://www.fys.uio.no/~trondmy/src/2.4.18/HEADER.html) is assumed to be 
+replaced by the new and improved RPC round trip timing+congestion avoidance 
+code.
+The DIRECTIO patch has been removed pending a decision by Chuck on whether or 
+not he wants to continue supporting it?
+
+Happy testing,
+  Trond
 
 
 -------------------------------------------------------
