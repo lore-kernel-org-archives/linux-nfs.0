@@ -1,219 +1,93 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: [PATCH] add an NFS memory pool
-Date: Fri, 8 Nov 2002 21:51:47 +0100
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <15820.9187.255107.827997@charged.uio.no>
-Reply-To: trond.myklebust@fys.uio.no
+From: Brian Pawlowski <beepy@netapp.com>
+Subject: Re: mmap() and NFS server performance
+Date: Fri, 13 Dec 2002 13:35:07 -0800 (PST)
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <200212132135.gBDLZ7E17142@tooting-fe.eng>
+References: <3DFA4C9A.50101@geodev.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
-	NFS maillist <nfs@lists.sourceforge.net>
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: Linus Torvalds <torvalds@transmeta.com>
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from mx01.netapp.com ([198.95.226.53])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18MxSs-0007P5-00
+	for <nfs@lists.sourceforge.net>; Fri, 13 Dec 2002 13:35:22 -0800
+In-Reply-To: <3DFA4C9A.50101@geodev.com> from Matthew Mitchell at "Dec 13, 2 03:09:46 pm"
+To: matthew@geodev.com (Matthew Mitchell)
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+
+I would love to see a packet trace in the absence of any known
+problems...
+
+> Hello,
+> 
+> We've noticed some interesting behavior regarding mmap file IO and were 
+> wondering if anyone here had some clues as to what might be going on.
+> 
+> We have some applications that mmap() files into memory for the purpose 
+> of updating some potentially scattered word-sized data values.  These 
+> apps were originally written on Solaris with Solaris NFS servers assumed 
+> to be the data source; the Sun guys said that mmap would be much faster 
+> than read/write and they were correct.  However, now that we have a few 
+> Linux NFS servers, we're seeing the opposite.
+> 
+> It takes, for example, 20-24 hours to update a 2GB file (there are on 
+> the order of 1M words to update) via mmap, whereas reading in the whole 
+> file, updating it in memory, and writing it out again takes about 30 
+> minutes (limited by network speed in our case).  This when the file 
+> resides on the Linux server.  On Solaris the mmap update runs on the 
+> order of 15-20 minutes.  Client in both cases is a Solaris 8 machine.
+> 
+> What we are speculating is that the Solaris NFS server is "cheating" by 
+> keeping file state information between NFS reads and writes.  (The 
+> updates do occur in sequence.)  Are there any heuristics or 
+> optimizations done by the Linux NFS server that might help the 
+> performance here?
+> 
+> All things, alas, are not equal in this comparison -- the Solaris server 
+> in question is an 8 CPU Enterprise 4500 with 8GB of RAM, and the Linux 
+> server is a single-processor P4 with 512MB of RAM.  The Solaris server 
+> is much busier than the Linux server, though (I know it cannot be 
+> caching the whole file in memory).  The Linux server is running Red 
+> Hat's 2.4.18-14 kernel.
+> 
+> Anyone have any ideas as to why this is happening and what, if anything, 
+> we can do to speed up the mmap IO when using the Linux server?
+> 
+> -- 
+> Matthew Mitchell
+> Systems Programmer/Administrator            matthew@geodev.com
+> Geophysical Development Corporation         phone 713 782 1234
+> 1 Riverway Suite 2100, Houston, TX  77056     fax 713 782 1829
+> 
+> 
+> 
+> -------------------------------------------------------
+> This sf.net email is sponsored by:
+> With Great Power, Comes Great Responsibility 
+> Learn to use your power at OSDN's High Performance Computing Channel
+> http://hpc.devchannel.org/
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
 
 
-Ensure that we can still flush out a minimum number of read, write,
-and commit requests if memory gets low.
 
-Cheers,
-  Trond
-
-diff -u --recursive --new-file linux-2.5.46-04-radix_tree/fs/nfs/nfs3proc.c linux-2.5.46-05-mempool/fs/nfs/nfs3proc.c
---- linux-2.5.46-04-radix_tree/fs/nfs/nfs3proc.c	2002-10-12 19:56:07.000000000 -0400
-+++ linux-2.5.46-05-mempool/fs/nfs/nfs3proc.c	2002-11-08 15:40:48.000000000 -0500
-@@ -811,7 +811,7 @@
- 	rpc_init_task(task, NFS_CLIENT(inode), nfs3_commit_done, flags);
- 	task->tk_calldata = data;
- 	/* Release requests */
--	task->tk_release = nfs_writedata_release;
-+	task->tk_release = nfs_commit_release;
- 	
- 	msg.rpc_proc = NFS3PROC_COMMIT;
- 	msg.rpc_argp = &data->u.v3.args;
-diff -u --recursive --new-file linux-2.5.46-04-radix_tree/fs/nfs/nfs4proc.c linux-2.5.46-05-mempool/fs/nfs/nfs4proc.c
---- linux-2.5.46-04-radix_tree/fs/nfs/nfs4proc.c	2002-10-14 10:03:48.000000000 -0400
-+++ linux-2.5.46-05-mempool/fs/nfs/nfs4proc.c	2002-11-08 15:40:48.000000000 -0500
-@@ -1481,7 +1481,7 @@
- 	rpc_init_task(task, NFS_CLIENT(inode), nfs4_commit_done, flags);
- 	task->tk_calldata = data;
- 	/* Release requests */
--	task->tk_release = nfs_writedata_release;
-+	task->tk_release = nfs_commit_release;
- 	
- 	rpc_call_setup(task, &msg, 0);	
- }
-diff -u --recursive --new-file linux-2.5.46-04-radix_tree/fs/nfs/read.c linux-2.5.46-05-mempool/fs/nfs/read.c
---- linux-2.5.46-04-radix_tree/fs/nfs/read.c	2002-11-07 12:33:01.000000000 -0500
-+++ linux-2.5.46-05-mempool/fs/nfs/read.c	2002-11-08 15:40:48.000000000 -0500
-@@ -24,6 +24,7 @@
- #include <linux/mm.h>
- #include <linux/slab.h>
- #include <linux/pagemap.h>
-+#include <linux/mempool.h>
- #include <linux/sunrpc/clnt.h>
- #include <linux/nfs_fs.h>
- #include <linux/nfs_page.h>
-@@ -37,11 +38,14 @@
- static int nfs_pagein_one(struct list_head *, struct inode *);
- 
- static kmem_cache_t *nfs_rdata_cachep;
-+static mempool_t *nfs_rdata_mempool;
-+
-+#define MIN_POOL_READ	(32)
- 
- static __inline__ struct nfs_read_data *nfs_readdata_alloc(void)
- {
- 	struct nfs_read_data   *p;
--	p = kmem_cache_alloc(nfs_rdata_cachep, SLAB_NOFS);
-+	p = (struct nfs_read_data *)mempool_alloc(nfs_rdata_mempool, SLAB_NOFS);
- 	if (p) {
- 		memset(p, 0, sizeof(*p));
- 		INIT_LIST_HEAD(&p->pages);
-@@ -51,7 +55,7 @@
- 
- static __inline__ void nfs_readdata_free(struct nfs_read_data *p)
- {
--	kmem_cache_free(nfs_rdata_cachep, p);
-+	mempool_free(p, nfs_rdata_mempool);
- }
- 
- void nfs_readdata_release(struct rpc_task *task)
-@@ -417,11 +421,19 @@
- 	if (nfs_rdata_cachep == NULL)
- 		return -ENOMEM;
- 
-+	nfs_rdata_mempool = mempool_create(MIN_POOL_READ,
-+					   mempool_alloc_slab,
-+					   mempool_free_slab,
-+					   nfs_rdata_cachep);
-+	if (nfs_rdata_mempool == NULL)
-+		return -ENOMEM;
-+
- 	return 0;
- }
- 
- void nfs_destroy_readpagecache(void)
- {
-+	mempool_destroy(nfs_rdata_mempool);
- 	if (kmem_cache_destroy(nfs_rdata_cachep))
- 		printk(KERN_INFO "nfs_read_data: not all structures were freed\n");
- }
-diff -u --recursive --new-file linux-2.5.46-04-radix_tree/fs/nfs/write.c linux-2.5.46-05-mempool/fs/nfs/write.c
---- linux-2.5.46-04-radix_tree/fs/nfs/write.c	2002-11-08 14:21:21.000000000 -0500
-+++ linux-2.5.46-05-mempool/fs/nfs/write.c	2002-11-08 15:40:48.000000000 -0500
-@@ -62,9 +62,13 @@
- #include <linux/nfs_page.h>
- #include <asm/uaccess.h>
- #include <linux/smp_lock.h>
-+#include <linux/mempool.h>
- 
- #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
- 
-+#define MIN_POOL_WRITE		(32)
-+#define MIN_POOL_COMMIT		(4)
-+
- /*
-  * Local function declarations
-  */
-@@ -74,11 +78,13 @@
- static void	nfs_strategy(struct inode *inode);
- 
- static kmem_cache_t *nfs_wdata_cachep;
-+static mempool_t *nfs_wdata_mempool;
-+static mempool_t *nfs_commit_mempool;
- 
- static __inline__ struct nfs_write_data *nfs_writedata_alloc(void)
- {
- 	struct nfs_write_data	*p;
--	p = kmem_cache_alloc(nfs_wdata_cachep, SLAB_NOFS);
-+	p = (struct nfs_write_data *)mempool_alloc(nfs_wdata_mempool, SLAB_NOFS);
- 	if (p) {
- 		memset(p, 0, sizeof(*p));
- 		INIT_LIST_HEAD(&p->pages);
-@@ -88,7 +94,7 @@
- 
- static __inline__ void nfs_writedata_free(struct nfs_write_data *p)
- {
--	kmem_cache_free(nfs_wdata_cachep, p);
-+	mempool_free(p, nfs_wdata_mempool);
- }
- 
- void nfs_writedata_release(struct rpc_task *task)
-@@ -97,6 +103,28 @@
- 	nfs_writedata_free(wdata);
- }
- 
-+static __inline__ struct nfs_write_data *nfs_commit_alloc(void)
-+{
-+	struct nfs_write_data	*p;
-+	p = (struct nfs_write_data *)mempool_alloc(nfs_commit_mempool, SLAB_NOFS);
-+	if (p) {
-+		memset(p, 0, sizeof(*p));
-+		INIT_LIST_HEAD(&p->pages);
-+	}
-+	return p;
-+}
-+
-+static __inline__ void nfs_commit_free(struct nfs_write_data *p)
-+{
-+	mempool_free(p, nfs_commit_mempool);
-+}
-+
-+void nfs_commit_release(struct rpc_task *task)
-+{
-+	struct nfs_write_data	*wdata = (struct nfs_write_data *)task->tk_calldata;
-+	nfs_commit_free(wdata);
-+}
-+
- /*
-  * This function will be used to simulate weak cache consistency
-  * under NFSv2 when the NFSv3 attribute patch is included.
-@@ -1093,7 +1121,7 @@
- 	struct nfs_page         *req;
- 	sigset_t		oldset;
- 
--	data = nfs_writedata_alloc();
-+	data = nfs_commit_alloc();
- 
- 	if (!data)
- 		goto out_bad;
-@@ -1237,11 +1265,27 @@
- 	if (nfs_wdata_cachep == NULL)
- 		return -ENOMEM;
- 
-+	nfs_wdata_mempool = mempool_create(MIN_POOL_WRITE,
-+					   mempool_alloc_slab,
-+					   mempool_free_slab,
-+					   nfs_wdata_cachep);
-+	if (nfs_wdata_mempool == NULL)
-+		return -ENOMEM;
-+
-+	nfs_commit_mempool = mempool_create(MIN_POOL_COMMIT,
-+					   mempool_alloc_slab,
-+					   mempool_free_slab,
-+					   nfs_wdata_cachep);
-+	if (nfs_commit_mempool == NULL)
-+		return -ENOMEM;
-+
- 	return 0;
- }
- 
- void nfs_destroy_writepagecache(void)
- {
-+	mempool_destroy(nfs_commit_mempool);
-+	mempool_destroy(nfs_wdata_mempool);
- 	if (kmem_cache_destroy(nfs_wdata_cachep))
- 		printk(KERN_INFO "nfs_write_data: not all structures were freed\n");
- }
-diff -u --recursive --new-file linux-2.5.46-04-radix_tree/include/linux/nfs_fs.h linux-2.5.46-05-mempool/include/linux/nfs_fs.h
---- linux-2.5.46-04-radix_tree/include/linux/nfs_fs.h	2002-11-08 14:21:21.000000000 -0500
-+++ linux-2.5.46-05-mempool/include/linux/nfs_fs.h	2002-11-08 15:42:57.000000000 -0500
-@@ -327,6 +327,7 @@
- extern void nfs_writedata_release(struct rpc_task *task);
- 
- #if defined(CONFIG_NFS_V3) || defined(CONFIG_NFS_V4)
-+extern void nfs_commit_release(struct rpc_task *task);
- extern void nfs_commit_done(struct rpc_task *);
- #endif
- 
+-------------------------------------------------------
+This sf.net email is sponsored by:
+With Great Power, Comes Great Responsibility 
+Learn to use your power at OSDN's High Performance Computing Channel
+http://hpc.devchannel.org/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
