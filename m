@@ -1,18 +1,19 @@
-From: David Rees <dbr@greenhydrant.com>
+From: canon@pookie.nersc.gov
 Subject: Re: NFS read ok, write ok, simultaneous R+W=TERRIBLE
-Date: Thu, 5 Dec 2002 11:55:00 -0800
+Date: Thu, 05 Dec 2002 16:04:07 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20021205115500.A9837@greenhydrant.com>
-References: <200212051728.gB5HS1jH005843@pookie.nersc.gov> <CFEAJJEGMGECBCJFLGDBGEIHCJAA.hammer@clarkisland.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Message-ID: <200212060004.gB6047El007311@pookie.nersc.gov>
+References: <CFEAJJEGMGECBCJFLGDBGEIHCJAA.hammer@clarkisland.com>
+Cc: "Jake Hammer" <hammer@clarkisland.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [208.48.139.185] (helo=forty.greenhydrant.com)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18K25S-0005mB-00
-	for <nfs@lists.sourceforge.net>; Thu, 05 Dec 2002 11:55:06 -0800
-To: NFS <nfs@lists.sourceforge.net>
-In-Reply-To: <CFEAJJEGMGECBCJFLGDBGEIHCJAA.hammer@clarkisland.com>; from hammer@clarkisland.com on Thu, Dec 05, 2002 at 10:35:14AM -0800
+Received: from pookie.nersc.gov ([128.55.16.113])
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18K5jI-0002wD-00
+	for <nfs@lists.sourceforge.net>; Thu, 05 Dec 2002 15:48:28 -0800
+To: "NFS" <nfs@lists.sourceforge.net>
+In-Reply-To: Your message of "Thu, 05 Dec 2002 10:35:14 PST."
+             <CFEAJJEGMGECBCJFLGDBGEIHCJAA.hammer@clarkisland.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,34 +26,54 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Dec 05, 2002 at 10:35:14AM -0800, Jake Hammer wrote:
-> 
-> > Also, are the NFSd's in disk wait?
-> 
-> Could you tell me how to check this? I'll be pleased to report once I know
-> how.
-> 
-> > If they are not, then
-> > this would be a clearer indications that the nfs subsystem
-> > may be to blame.  We usually see all the daemons in
-> > disk wait when we are really pounding one of the these
-> > boxes.
-> 
-> Yes, I'd love to be able to check. Please let me know how. This sounds
-> interesting.
 
-I doubt that the NFSd's are in disk wait given that you mentioned that 4
-of them are sucking up CPU as indicated in your original post:
-http://marc.theaimsgroup.com/?l=linux-nfs&m=103905720718370&w=2
+> We're launching 20 occurences of DD each producing a 10GB zero filled file
+> from /dev/zero. Since the cache is only 2GB, we have to be breaking it with
+> just one file, nevermind all of them. Then we launch 20 occurences of DD
+> again and read all the files back into /dev/null. Then the the local test
+> that makes me believe that NFS is broken: 20 occurences of DD reading and 20
+> occurences of DD writing simultaneously is just as fast as the other tests.
+> So, local disk performance sustains excellent throughput numbers on all of
+> these *local* operations.
+> 
+> Now try the same testing with 20 NFS mounted clients each DD'ing a 10GB
+> file. Great read, great write, horrible read/write.
+> 
 
-However, to check if a process is indeed in disk wait, running top will
-show you.  Under the stat column, instead of a R, you will see D
-indicating a process waiting on a disk command to return.
+Okay, that sounds good.  This sounds similar to the tests we do,
+but we use iozone.  So it seems more likely you are seeing
+an NFS issue.
 
-Sounds like a legitimate problem with the NFS server code, I'll also see
-if I can reproduce.
+> 
+> 
+> 2.2.19 or 2.4.19?
+> 
 
--Dave
+It actually was a 2.2.19.  This was a while back.  We did
+tests software raid under 2.4 though and saw similar 
+behaviour.  We haven't revisited this though.  There
+are probably improvements in the md code, so it may
+not be an issue still.
+
+> 
+> Have you changed your bdflush settings at all? If so, can we compare
+> settings? Playing with bdflush makes huge impacts to our local disk
+> performance.
+> 
+
+We do adjust this, but I'm going to check that we are using optimal
+settings.  What values are you using?
+
+
+> Thanks,
+> 
+> Jake
+> 
+> 
+
+Likewise,
+
+--Shane
 
 
 -------------------------------------------------------
