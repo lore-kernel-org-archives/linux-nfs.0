@@ -1,16 +1,15 @@
 From: "Kendrick M. Smith" <kmsmith@umich.edu>
-Subject: REPOST patch 36/38: SERVER: ensure XDR buffer is large enough for
- NFSv4
-Date: Wed, 14 Aug 2002 16:54:04 -0400 (EDT)
+Subject: REPOST patch 38/38: switches in fs/Config.in, fs/Config.help
+Date: Wed, 14 Aug 2002 16:55:11 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.SOL.4.44.0208141653340.1834-100000@vanguard.gpcc.itd.umich.edu>
+Message-ID: <Pine.SOL.4.44.0208141654440.1834-100000@vanguard.gpcc.itd.umich.edu>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from berzerk.gpcc.itd.umich.edu ([141.211.2.162])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17f59a-0008Sa-00
-	for <nfs@lists.sourceforge.net>; Wed, 14 Aug 2002 13:54:06 -0700
+	id 17f5Ag-0000bc-00
+	for <nfs@lists.sourceforge.net>; Wed, 14 Aug 2002 13:55:14 -0700
 To: linux-kernel@vger.kernel.org, <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -25,61 +24,72 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 
-This patch changes the 'xdrsize' parameter to svc_create(), to be
-     NFS4_SVC_XDRSIZE   if v4 is defined
-else NFS3_SVC_XDRSIZE   if v3 is defined
-else NFS2_SVC_XDRSIZE     (formerly NFSSVC_XDRSIZE)
+This patch defines new switches in fs/Config.in -
+  CONFIG_NFS_V4:  enables nfsv4 client
+  CONFIG_NFSD_V4: enables nfsv4 server
+  CONFIG_SUNRPC_GSSD_CLNT: enables in-kernel client for GSSD
 
-This always works, since
-     NFS4_SVC_XDRSIZE >= NFS3_SVC_XDRSIZE >= NFS2_SVC_XDRSIZE.
+[Background: GSSD is a service which runs in userspace, whose
+ purpose in life (for now) is to provide translation between
+ strings of the form user@realm, which are used in the NFSv4
+ protocol, and numerical uid/gid's, which the kernel can
+ understand.  The kernel communicates with GSSD through
+ loopback RPC calls.]
 
-The value of NFSD_BUFSIZE has also been moved to const.h, since we need
-the definition available in nfs4proc.c
---- old/fs/nfsd/nfssvc.c	Thu Aug  1 16:16:02 2002
-+++ new/fs/nfsd/nfssvc.c	Sun Aug 11 23:15:09 2002
-@@ -31,10 +31,11 @@
- #include <linux/nfsd/stats.h>
- #include <linux/nfsd/cache.h>
- #include <linux/nfsd/xdr.h>
-+#include <linux/nfsd/xdr3.h>
-+#include <linux/nfsd/xdr4.h>
- #include <linux/lockd/bind.h>
+--- old/fs/Config.in	Thu Aug  1 16:16:29 2002
++++ new/fs/Config.in	Sun Aug 11 18:08:46 2002
+@@ -109,10 +109,12 @@ if [ "$CONFIG_NET" = "y" ]; then
+    dep_tristate 'InterMezzo file system support (replicating fs) (EXPERIMENTAL)' CONFIG_INTERMEZZO_FS $CONFIG_INET $CONFIG_EXPERIMENTAL
+    dep_tristate 'NFS file system support' CONFIG_NFS_FS $CONFIG_INET
+    dep_mbool '  Provide NFSv3 client support' CONFIG_NFS_V3 $CONFIG_NFS_FS
++   dep_mbool '  Provide NFSv4 client support (EXPERIMENTAL)' CONFIG_NFS_V4 $CONFIG_NFS_FS $CONFIG_EXPERIMENTAL
+    dep_bool '  Root file system on NFS' CONFIG_ROOT_NFS $CONFIG_NFS_FS $CONFIG_IP_PNP
 
- #define NFSDDBG_FACILITY	NFSDDBG_SVC
--#define NFSD_BUFSIZE		(1024 + NFSSVC_MAXBLKSIZE)
+    dep_tristate 'NFS server support' CONFIG_NFSD $CONFIG_INET
+    dep_mbool '  Provide NFSv3 server support' CONFIG_NFSD_V3 $CONFIG_NFSD
++   dep_mbool '  Provide NFSv4 server support (EXPERIMENTAL)' CONFIG_NFSD_V4 $CONFIG_NFSD_V3 $CONFIG_EXPERIMENTAL
+    dep_mbool '  Provide NFS server over TCP support (EXPERIMENTAL)' CONFIG_NFSD_TCP $CONFIG_NFSD $CONFIG_EXPERIMENTAL
 
- /* these signals will be delivered to an nfsd thread
-  * when handling a request
---- old/include/linux/nfsd/const.h	Sun Aug 11 19:20:54 2002
-+++ new/include/linux/nfsd/const.h	Sun Aug 11 23:15:09 2002
-@@ -30,6 +30,16 @@
- # define NFS_SUPER_MAGIC	0x6969
- #endif
+    if [ "$CONFIG_NFS_FS" = "y" -o "$CONFIG_NFSD" = "y" ]; then
+@@ -130,6 +132,9 @@ if [ "$CONFIG_NET" = "y" ]; then
+    if [ "$CONFIG_NFSD_V3" = "y" -o "$CONFIG_NFS_V3" = "y" ]; then
+      define_bool CONFIG_LOCKD_V4 y
+    fi
++   if [ "$CONFIG_NFSD_V4" = "y" -o "$CONFIG_NFS_V4" = "y" ]; then
++     define_bool CONFIG_SUNRPC_GSSD_CLNT y
++   fi
+    define_tristate CONFIG_EXPORTFS $CONFIG_NFSD
 
-+#define NFSD_BUFSIZE		(1024 + NFSSVC_MAXBLKSIZE)
+    dep_tristate 'SMB file system support (to mount Windows shares etc.)' CONFIG_SMB_FS $CONFIG_INET
+--- old/fs/Config.help	Thu Aug  1 16:16:33 2002
++++ new/fs/Config.help	Sun Aug 11 18:08:46 2002
+@@ -514,6 +514,13 @@ CONFIG_NFS_V3
+
+   If unsure, say N.
+
++CONFIG_NFS_V4
++  Say Y here if you want your NFS client to be able to speak the newer
++  version 4 of the NFS protocol.  This feature is experimental, and
++  should only be used if you are interested in helping to test NFSv4.
 +
-+#ifdef CONFIG_NFSD_V4
-+# define NFSSVC_XDRSIZE		NFS4_SVC_XDRSIZE
-+#elif defined(CONFIG_NFSD_V3)
-+# define NFSSVC_XDRSIZE		NFS3_SVC_XDRSIZE
-+#else
-+# define NFSSVC_XDRSIZE		NFS2_SVC_XDRSIZE
-+#endif
++  If unsure, say N.
 +
- #endif /* __KERNEL__ */
+ CONFIG_ROOT_NFS
+   If you want your Linux box to mount its whole root file system (the
+   one containing the directory /) from some other computer over the
+@@ -555,6 +562,12 @@ CONFIG_NFSD_V3
+   If you would like to include the NFSv3 server as well as the NFSv2
+   server, say Y here.  If unsure, say Y.
 
- #endif /* _LINUX_NFSD_CONST_H */
---- old/include/linux/nfsd/xdr.h	Thu Aug  1 16:16:33 2002
-+++ new/include/linux/nfsd/xdr.h	Sun Aug 11 23:15:09 2002
-@@ -119,7 +119,7 @@ union nfsd_xdrstore {
- 	struct nfsd_readdirargs	readdir;
- };
-
--#define NFSSVC_XDRSIZE		sizeof(union nfsd_xdrstore)
-+#define NFS2_SVC_XDRSIZE	sizeof(union nfsd_xdrstore)
-
-
- int nfssvc_decode_void(struct svc_rqst *, u32 *, void *);
++CONFIG_NFSD_V4
++  If you would like to include the NFSv4 server as well as the NFSv2
++  server, say Y here.  This feature is experimental, and should only
++  be used if you are interested in helping to test NFSv4.  If unsure,
++  say N.
++
+ CONFIG_NFSD_TCP
+   Enable NFS service over TCP connections.  This the officially
+   still experimental, but seems to work well.
 
 
 
