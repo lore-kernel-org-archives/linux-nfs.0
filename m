@@ -1,19 +1,19 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 3 of 12 - NFSv4: fix type checking in fh_verify()
-Date: Thu, 22 Aug 2002 10:34:45 +1000
+Subject: [PATCH] kNFSd - 8 of 12 - NFSv4: overflow check in nfsd_commit()
+Date: Thu, 22 Aug 2002 10:35:01 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E17hfvx-000516-00@notabene.cse.unsw.edu.au>
+Message-ID: <E17hfwC-00051Y-00@notabene.cse.unsw.edu.au>
 Cc: nfs@lists.sourceforge.net,  "Kendrick M. Smith" <kmsmith@umich.edu>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17hfwK-0008S3-00
-	for <nfs@lists.sourceforge.net>; Wed, 21 Aug 2002 17:35:09 -0700
+	id 17hfwa-0000L6-00
+	for <nfs@lists.sourceforge.net>; Wed, 21 Aug 2002 17:35:24 -0700
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
 	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>)
 	(for <kmsmith@umich.edu>) By tone With Smtp ;
-	Thu, 22 Aug 2002 10:35:00 +1000
+	Thu, 22 Aug 2002 10:35:16 +1000
 To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -32,46 +32,32 @@ List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 From:	"Kendrick M. Smith" <kmsmith@umich.edu>
 
-Change the type checking in fh_verify().  This fixes a bug which
-I reported on the mailing list a few days ago, and also adds a
-new error code nfserr_symlink (v4 only).  This is returned whenever
-an operation which is illegal for symlinks is attempted on a symlink,
-and takes precedence over ERR_NOTDIR or ERR_INVAL.
+Sanity check COMMIT arguments by ensuring that (start)+(length) < 2^64.
+The check is done in a way which is free of signedness pathologies in
+all cases.
 
+This change was inspired by pynfs, Peter Astrand's regression testsuite
+for NFSv4 servers.  The change is necessary for all of the COMMIT tests
+to pass.  However, it's a little open to debate whether the change is
+really needed.  I'm curious to hear the opinions of other developers.
 
 
  ----------- Diffstat output ------------
- ./fs/nfsd/nfsfh.c |   16 ++++++++++++++--
- 1 files changed, 14 insertions(+), 2 deletions(-)
+ ./fs/nfsd/vfs.c |    3 +++
+ 1 files changed, 3 insertions(+)
 
---- ./fs/nfsd/nfsfh.c	2002/08/21 23:22:13	1.1
-+++ ./fs/nfsd/nfsfh.c	2002/08/21 23:22:16	1.2
-@@ -234,11 +234,23 @@ fh_verify(struct svc_rqst *rqstp, struct
+--- ./fs/nfsd/vfs.c	2002/08/21 23:22:36	1.2
++++ ./fs/nfsd/vfs.c	2002/08/21 23:24:08	1.3
+@@ -756,6 +756,9 @@ nfsd_commit(struct svc_rqst *rqstp, stru
+ 	struct file	file;
+ 	int		err;
  
- 	/* Type can be negative when creating hardlinks - not to a dir */
- 	if (type > 0 && (inode->i_mode & S_IFMT) != type) {
--		error = (type == S_IFDIR)? nfserr_notdir : nfserr_isdir;
-+		if (rqstp->rq_vers == 4 && (inode->i_mode & S_IFMT) == S_IFLNK)
-+			error = nfserr_symlink;
-+		else if (type == S_IFDIR)
-+			error = nfserr_notdir;
-+		else if ((inode->i_mode & S_IFMT) == S_IFDIR)
-+			error = nfserr_isdir;
-+		else
-+			error = nfserr_inval;
- 		goto out;
- 	}
- 	if (type < 0 && (inode->i_mode & S_IFMT) == -type) {
--		error = (type == -S_IFDIR)? nfserr_notdir : nfserr_isdir;
-+		if (rqstp->rq_vers == 4 && (inode->i_mode & S_IFMT) == S_IFLNK)
-+			error = nfserr_symlink;
-+		else if (type == -S_IFDIR)
-+			error = nfserr_isdir;
-+		else
-+			error = nfserr_notdir;
- 		goto out;
- 	}
- 
++	if ((u64)count > ~(u64)offset)
++		return nfserr_inval;
++
+ 	if ((err = nfsd_open(rqstp, fhp, S_IFREG, MAY_WRITE, &file)) != 0)
+ 		return err;
+ 	if (EX_ISSYNC(fhp->fh_export)) {
 
 
 -------------------------------------------------------
