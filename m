@@ -1,24 +1,21 @@
-From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-Subject: Re: Using mmap result in data corruption
-Date: Tue, 16 Nov 2004 08:21:36 -0700 (MST)
-Message-ID: <Pine.LNX.4.60.0411160817350.20803@harp.ngdc.noaa.gov>
-References: <Pine.LNX.4.58.0411161206440.26094@ihme.ihme.org>
-Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: RE: async vs. sync
+Date: Tue, 16 Nov 2004 08:15:58 -0800
+Message-ID: <482A3FA0050D21419C269D13989C61130435EB6A@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CU59a-0004ev-UH
-	for nfs@lists.sourceforge.net; Tue, 16 Nov 2004 07:21:58 -0800
-Received: from harp.ngdc.noaa.gov ([140.172.187.26])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1CU59Z-0007GB-RW
-	for nfs@lists.sourceforge.net; Tue, 16 Nov 2004 07:21:58 -0800
-To: Miika Pekkarinen <miipekk@ihme.org>
-In-Reply-To: <Pine.LNX.4.58.0411161206440.26094@ihme.ihme.org>
+	id 1CU604-0007zS-JW
+	for nfs@lists.sourceforge.net; Tue, 16 Nov 2004 08:16:12 -0800
+Received: from mx2.netapp.com ([216.240.18.37])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CU603-0003Yj-8G
+	for nfs@lists.sourceforge.net; Tue, 16 Nov 2004 08:16:12 -0800
+To: "Olaf Kirch" <okir@suse.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,49 +29,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, 16 Nov 2004, Miika Pekkarinen wrote:
+is the effect of the "sync" export option limited to NFSv3 COMMIT, or is
+it limited to both NFSv3 COMMIT and NFSv3 FILE_SYNC/DATA_SYNC WRITE?
 
-> On Fri, 12 Nov 2004, Trond Myklebust wrote:
->
->>> I have found a reproducable issue with NFS that will lead to file
->>> corruption on server. When a file is created with O_TRUNC and data is
->>> copied using mmap, the new file on the server will be filled with null bytes.
->>
->> mmap() offers absolutely NO guarantees that the file will be synced to
->> disk on close. Use msync(MS_SYNC) if you want such a guarantee.
->
-> Hmm, with msync (right before munmap) the file gets synced to disk
-> correctly. However, I am
-> still wondering what is wrong with munmap. I checked the manual page
-> of msync and it said: "msync  flushes  changes  made  to  the in-core copy
-> of a file that was mapped into memory using mmap(2) back to disk. Without
-> use of this call there is no guarantee that changes are written back
-> before munmap(2) is called." So I understood that munmap should do the
-> same thing than msync but I doesn't sync the file. Probably I am missing
-> some point or there is a bug somewhere else (either in manual pages or in
-> some library)?
+what are the effects on NFSv4 writes and commits?
 
-i think the man page is badly written.  it has confused me too.  i think it
-should probably say
-
-   "msync  flushes  changes  made  to  the in-core copy of a file that was
-   mapped into memory using mmap(2) back to disk. Without use of this call
-   there is no guarantee that changes have been written WHEN munmap(2) is
-   called and the map is released."
-
-i think is it saying that the spec does not state that munmap must msync the
-file, but that some implementation might.
-
-regards.
-
--a
---
-===============================================================================
-| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
-| PHONE   :: 303.497.6469
-| When you do something, you should burn yourself completely, like a good
-| bonfire, leaving no trace of yourself.  --Shunryu Suzuki
-===============================================================================
+> -----Original Message-----
+> From: Olaf Kirch [mailto:okir@suse.de]
+> Sent: Wednesday, July 28, 2004 4:57 AM
+> To: Bernd Schubert
+> Cc: nfs@lists.sourceforge.net
+> Subject: Re: [NFS] async vs. sync
+>=20
+>=20
+> Hi,
+>=20
+> the way the sync export option affects NFSv3 writes is
+> limited to COMMITs, so if you see a slow-down here it must be=20
+> bottle-necking in that part of the code.
 
 
 -------------------------------------------------------
