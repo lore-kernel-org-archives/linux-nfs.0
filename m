@@ -1,26 +1,30 @@
-From: seth vidal <skvidal@phy.duke.edu>
-Subject: Re: high server load when quotas exceeded
-Date: Thu, 30 Oct 2003 12:18:07 -0500
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: Re: Premission denied
+Date: Fri, 31 Oct 2003 12:19:19 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1067534286.9355.10.camel@binkley>
-References: <vqowuaotjec.fsf@astazou.imag.fr>
-	 <vqoznfibu6m.fsf@astazou.imag.fr> <1067530841.9355.6.camel@binkley>
-	 <vqoptgeveh8.fsf@astazou.imag.fr>
+Message-ID: <16289.47255.469257.741134@notabene.cse.unsw.edu.au>
+References: <10334.62.49.205.2.1067421598.squirrel@squirrelmail.bim7.com>
+	<20031029215815.GO29526@perlsupport.com>
+	<16288.41100.10180.44099@notabene.cse.unsw.edu.au>
+	<18043.62.49.205.2.1067515125.squirrel@squirrelmail.bim7.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AFGT4-0000Aa-00
-	for <nfs@lists.sourceforge.net>; Thu, 30 Oct 2003 09:20:18 -0800
-Received: from mail.phy.duke.edu ([152.3.182.2] ident=[40gGZC2oNByRvUlk5vj5A1AHUtTVRTa5])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AFGT3-0001bH-W0
-	for nfs@lists.sourceforge.net; Thu, 30 Oct 2003 09:20:18 -0800
-To: Nicolas Kowalski <Nicolas.Kowalski@imag.fr>
-In-Reply-To: <vqoptgeveh8.fsf@astazou.imag.fr>
+	id 1AFNwu-00088m-00
+	for <nfs@lists.sourceforge.net>; Thu, 30 Oct 2003 17:19:36 -0800
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.24)
+	id 1AFNwt-0007CQ-L9
+	for nfs@lists.sourceforge.net; Thu, 30 Oct 2003 17:19:35 -0800
+Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
+	(for <gareth@bim7.com>) (for <nfs@lists.sourceforge.net>) By note
+	With Smtp ; Fri, 31 Oct 2003 12:19:29 +1100
+To: "Gareth" <gareth@bim7.com>
+In-Reply-To: message from Gareth on Thursday October 30
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -33,31 +37,50 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, 2003-10-30 at 12:10, Nicolas Kowalski wrote:
-> seth vidal <skvidal@phy.duke.edu> writes:
-> 
-> >> Anyone? 
-> >> What additional information can I provide for debugging this?
-> >> 
+On Thursday October 30, gareth@bim7.com wrote:
+> >> > Someone at work suggested its a reverse DNS problem... but running
+> >> > nslookup hostname returns my IP address, and vice versa.
+> >>
+> >> The log says there was a reverse DNS problem.  It says it clearly,
+> >> right there in the log.  Are you suggesting that it's lying?
 > >
-> > It happens for me too, it's apparently 'expected behavior' so you're
-> > kinda out of luck from what I saw in the past.
+> > Funny, but I don't see the letters "DNS" in the log at all :-)
+> >
+> > What does /etc/nsswitch.conf say about hosts? Does "files" come before
+> > "dns"?
 > 
-> Expected? It seems amazing.
+> files is before dns...
 > 
-> Do you have any pointers to what you saw in the past about this?
+> the only entries in my /etc/hosts are...
 > 
+> # Do not remove the following line, or various programs
+> # that require network functionality will fail.
+> 127.0.0.1               localhost.localdomain localhost
+> 192.168.17.4            paris.bim paris
+> 
+> does that look okay?
 
-it was either on this list or in red hat's bugzilla.
+Yes it does.  Which makes it all very strange.
+Looking back at the original message: if /etc/exports is
 
-the gist is - there is a return for out of quota space and a different
-return for out of diskspace.
+ /nfsroot        192.168.17.0/255.255.255.0(ro)
+ /mnt/nfsroot    192.168.17.0/255.255.255.0(ro)
+ 
+then hostname lookup shouldn't matter.
+Also:
 
-your user's program would probably honor the latter but not the former.
+Oct 29 09:25:44 paris rpc.mountd: Fake hostname paris.bim for 192.168.17.4 - forward lookup doesn't match reverse
+Oct 29 09:25:44 paris rpc.mountd: refused mount request from 192.168.17.4 for /nfsroot (/): no export entry
+Oct 29 09:29:09 paris rpc.mountd: export request from 127.0.0.1
+Oct 29 09:39:37 paris rpc.mountd: refused mount request from paris.bim for /nfsroot (/): no export entry
 
--sv
+seems to indicate that at 09:39:37 hostname lookup did the right
+thing.
+But either way, "no export entry" was found.
 
+What is in /var/lib/nfs/?tab  ??
 
+NeilBrown
 
 
 -------------------------------------------------------
