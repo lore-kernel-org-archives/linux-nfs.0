@@ -1,28 +1,23 @@
-From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-Subject: Re: Re: more on silly names
-Date: Mon, 6 Sep 2004 12:12:01 -0600 (MDT)
+From: Frank van Maarseveen <frankvm@xs4all.nl>
+Subject: Re: userspace NFS daemon
+Date: Mon, 6 Sep 2004 21:13:43 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.60.0409061206560.10600@harp.ngdc.noaa.gov>
-References: <Pine.LNX.4.60.0409041610230.17016@harp.ngdc.noaa.gov>
- <1094338737.13791.15.camel@lade.trondhjem.org>
- <Pine.LNX.4.60.0409041813340.17016@harp.ngdc.noaa.gov>
- <1094344893.13791.68.camel@lade.trondhjem.org> <Pine.LNX.4.60.0409041924010.17016@harp.ngdc.noaa.gov>
-Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Message-ID: <20040906191343.GA859@janus>
+References: <20040905220120.GA29596@janus> <Pine.LNX.4.44.0409060935290.20425-100000@maggie.lkpg.cendio.se>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C4NyM-0004ST-NL
-	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 11:12:10 -0700
-Received: from harp.ngdc.noaa.gov ([140.172.187.26])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.34)
-	id 1C4NyM-0007OJ-0e
-	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 11:12:10 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <Pine.LNX.4.60.0409041924010.17016@harp.ngdc.noaa.gov>
+	id 1C4Ovz-0001Xr-Ui
+	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 12:13:47 -0700
+Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1C4Ovx-0000dp-Kg
+	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 12:13:46 -0700
+To: Peter Astrand <peter@cendio.se>
+In-Reply-To: <Pine.LNX.4.44.0409060935290.20425-100000@maggie.lkpg.cendio.se>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -35,41 +30,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sat, 4 Sep 2004, Ara.T.Howard wrote:
+On Mon, Sep 06, 2004 at 09:41:31AM +0200, Peter Astrand wrote:
+> 
+> Another alternative is unfs3: http://unfs3.sourceforge.net/. It provides 
+> the same cluster extensions, and also has some other interesting features:
+> ...
+> * Can run the MOUNT and NFS protocol on the same TCP port. Very useful 
+> when tunneling through SSH. 
 
-> o.k.  here is the complete strace from the relevant bit (not very long i
-> promise) with some annotations by me.  executing this code from ONE client
-> will cause a silly file to be created - though it eventuall dissapears (the
-> next time this code runs i think).  here is the strace:
-<snip strace>
+Suppose I have an ssh tunnel to a system on which I don't have root
+access. Can I use unfs3 under a non-root id there to export / and
+below, mount it [as root] locally, such, that I can work under my own
+uid locally?
 
-i've added a bit of code that detects all the existing sillynames before that
-bit of code it run, determines those that exist after, and then removes any
-new sillynames (those created by that code).  my understanding of the way
-sillynames work is that if any process still required them at the time of
-removal that they would pop back into existence - however, they do not.  so,
-at this point, i'm 100% convinced that
+That would be quite useful.
 
-   - the sillyname is created somewhere in the strace i posted
-
-   - the sillyname is actually some sort of artifact since removing it after
-     that code bit does not result in a new one being created
-
-this still leaves me very perplexed as to the cause of sillyname in the first
-place.  any opinions (based on the strace) if this is likely due to a bug in
-sqlite or the nfs code base?
-
-kind regards.
-
--a
---
-===============================================================================
-| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
-| PHONE   :: 303.497.6469
-| A flower falls, even though we love it;
-| and a weed grows, even though we do not love it. 
-|   --Dogen
-===============================================================================
+-- 
+Frank
 
 
 -------------------------------------------------------
