@@ -1,29 +1,32 @@
-From: Harald Hannelius <harald+nfs@arcada.fi>
-Subject: Re: Poor NFS performance, kernel 2.6.6.
-Date: Thu, 27 May 2004 16:03:39 +0300 (EEST)
+From: Jeffrey Layton <jtlayton@poochiereds.net>
+Subject: Re: fcntl locks prevent unmounting of underlying filesystem
+Date: Thu, 27 May 2004 10:27:16 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.58.0405271558300.12353@penti.sit.fi>
-References: <Pine.LNX.4.58.0405271331430.7539@penti.sit.fi>
- <20040527143919.4bdda5d7@shodan.citadel>
+Message-ID: <1085668036.6111.2.camel@tesla.mmt.bellhowell.com>
+References: <1085589795.20517.41.camel@tesla.mmt.bellhowell.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BTKXu-0000RP-VD
-	for nfs@lists.sourceforge.net; Thu, 27 May 2004 06:03:42 -0700
-Received: from penti.sit.fi ([193.167.33.237])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1BTKXu-00010e-3e
-	for nfs@lists.sourceforge.net; Thu, 27 May 2004 06:03:42 -0700
-Received: from penti.sit.fi (harald@localhost [127.0.0.1])
-	by penti.sit.fi (8.12.10/8.12.10) with ESMTP id i4RD3dgT012509
-	for <nfs@lists.sourceforge.net>; Thu, 27 May 2004 16:03:39 +0300
-Received: from localhost (harald@localhost)
-	by penti.sit.fi (8.12.10/8.12.9/Submit) with ESMTP id i4RD3dPJ012506
-	for <nfs@lists.sourceforge.net>; Thu, 27 May 2004 16:03:39 +0300
+	id 1BTLqq-0000Et-DB
+	for nfs@lists.sourceforge.net; Thu, 27 May 2004 07:27:20 -0700
+Received: from rdu26-93-067.nc.rr.com ([66.26.93.67] helo=salusa.poochiereds.net)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BTLqq-0004F0-1V
+	for nfs@lists.sourceforge.net; Thu, 27 May 2004 07:27:20 -0700
+Received: from localhost (localhost [127.0.0.1])
+	by salusa.poochiereds.net (Postfix) with ESMTP id 27FB1E485
+	for <nfs@lists.sourceforge.net>; Thu, 27 May 2004 10:27:11 -0400 (EDT)
+Received: from salusa.poochiereds.net ([127.0.0.1])
+	by localhost (salusa [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id 13058-08 for <nfs@lists.sourceforge.net>;
+	Thu, 27 May 2004 10:27:10 -0400 (EDT)
+Received: from localhost (salusa.poochiereds.net [192.168.1.2])
+	by salusa.poochiereds.net (Postfix) with ESMTP id 3A752AED2
+	for <nfs@lists.sourceforge.net>; Thu, 27 May 2004 10:27:10 -0400 (EDT)
 To: nfs@lists.sourceforge.net
-In-Reply-To: <20040527143919.4bdda5d7@shodan.citadel>
+In-Reply-To: <1085589795.20517.41.camel@tesla.mmt.bellhowell.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -36,40 +39,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+FWIW, I've also been able to replicate this problem on the 2.4 kernels
+as well. I'm unable to unmount the underlying filesystem of the NFS
+server until the POSIX locks that the clients hold have been released.
+Needless to say, this is not good for a HA-NFS server, since it prevents
+me from reliably failing over. How have others dealt with this problem?
+Or perhaps I don't have something configured correctly?
 
-On Thu, 27 May 2004, Dexter Filmore wrote:
+Any help or insight would be much appreciated...
 
-> How are the GB NICs attached? Onboard? Integrated into Southbridge? PCI?
-> PCI-X?
-
-It's a Tyan K8S PRo, dual tigon 3 NICs onboard.
-
-eth0: Tigon3 [partno(BCM95704A7) rev 2003 PHY(5704)] (PCIX:100MHz:64-bit)
-10/100/1000BaseT Ethernet 00:e0:81:28:cf:89
-
-> If it's plain old PCI, you won't get more, PCI maxes out here.
-
-Oh, and why do netcat transfer the 2GB file in 25 secs? With the same NIC
-and network ofcourse.. As stated in my original message.
-
-I tried linux-2.4.26 kernel instead. Now the 'time cat file > /dev/null'
-takes 1 min 3s on the client which is more like I wanted it. That should
-equal to something around 254Mbps..
-
-Since I don't have any real reason for a 2.6 kernel right now (32bit
-distro) I will rest my case here. Just thought someone would like to
-know..
-
-  Cheers, and many thanks
-
-	Harald
+-- Jeff
 
 
--- 
-A: Top Posters
-Q: What is the most annoying thing on mailing lists?
-
-Harald H Hannelius | harald/a\arcada.fi      | GSM +358 50 594 1020
 
 
 -------------------------------------------------------
