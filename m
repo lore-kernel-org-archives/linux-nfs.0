@@ -1,22 +1,21 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: RE: 2.4.19 hang (was unlink perf pb !)
-Date: Tue, 20 Aug 2002 00:40:28 +0200
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: PATCH - SUNRPC 2 of 3 - Fix two problems with multiple concurrent nfs/tcp connects.
+Date: Tue, 20 Aug 2002 14:25:41 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15713.29660.340684.546317@charged.uio.no>
-References: <8D7D56C6ED3DD411998D009027DC685E0874E233@srv-grp-s1.segin.com>
-Reply-To: trond.myklebust@fys.uio.no
+Message-ID: <15713.50373.533039.466856@notabene.cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: 'Trond Myklebust' <trond.myklebust@fys.uio.no>,
-    "'Lever, Charles'" <Charles.Lever@netapp.com>,
-    nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mons.uio.no ([129.240.130.14])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17gvCS-0001xf-00
-	for <nfs@lists.sourceforge.net>; Mon, 19 Aug 2002 15:40:40 -0700
-To: =?iso-8859-1?Q?Brasseur_Val=E9ry?= <Valery.Brasseur@atosorigin.com>
-In-Reply-To: <8D7D56C6ED3DD411998D009027DC685E0874E233@srv-grp-s1.segin.com>
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17h0ac-0001yU-00
+	for <nfs@lists.sourceforge.net>; Mon, 19 Aug 2002 21:25:58 -0700
+Received: From
+	notabene.cse.unsw.edu.au ([129.94.233.85] == wireless-085.wireless.cse.unsw.EDU.AU)
+	(for <marcelo@conectiva.com.br>) (for <nfs@lists.sourceforge.net>) By
+	tone With Smtp ; Tue, 20 Aug 2002 14:25:48 +1000
+To: Marcelo Tosatti <marcelo@conectiva.com.br>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,34 +28,45 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->>>>> " " == Brasseur Valéry <Valery.Brasseur@atosorigin.com> writes:
 
-     > more on my problem ...
-     > * it seems that when using tcp mount the hang appears more
-     >   often and more
-     > quickly !
-     > * on stock 2.4.19 which I have is a limited perf but it works
-     > * on 2.4.19 + nfs patches I have limited perf + hang !
 
-     > I said I have limited perf because the NetApp filer I use as
-     > server is a 880 which is given for more than 15000 nfs/ops and
-     > with my Linux box I can't do more than 2/3000 ops when I am the
-     > only client !
+1/ connect requests would be get lost...
+  As the comment at the top of svcsock.c says when discussing
+  SK_CONN:
+ *		after a set, svc_sock_enqueue must be called.	
 
-     > how can I track this down ?
+  We didn't and so lost requests.
 
-Unless you are using some form of NAT (a.k.a. masquerading) it sounds
-rather like you have some serious networking problems. Certainly I
-have never heard of anybody having problems with hangs on both UDP
-*and* TCP mounts - the latter in particular was designed to work
-around network congestion problems.
+2/ set the max accept backlog to a more reasonable number to cope 
+   with bursts of lots of requests. 
 
-Have you therefore tried things like swapping out the networking card
-for another (preferably of a different make and different Linux
-driver), and ditto for any switches/HUBs?
 
-Cheers,
-  Trond
+
+
+ ----------- Diffstat output ------------
+ ./net/sunrpc/svcsock.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletion(-)
+
+--- ./net/sunrpc/svcsock.c	2002/08/20 03:02:09	1.1
++++ ./net/sunrpc/svcsock.c	2002/08/20 03:02:21	1.2
+@@ -677,6 +677,8 @@ svc_tcp_accept(struct svc_sock *svsk)
+ 		goto failed;		/* aborted connection or whatever */
+ 	}
+ 	set_bit(SK_CONN, &svsk->sk_flags);
++	svc_sock_enqueue(svsk);
++
+ 	slen = sizeof(sin);
+ 	err = ops->getname(newsock, (struct sockaddr *) &sin, &slen, 1);
+ 	if (err < 0) {
+@@ -1219,7 +1221,7 @@ svc_create_socket(struct svc_serv *serv,
+ 	}
+ 
+ 	if (protocol == IPPROTO_TCP) {
+-		if ((error = sock->ops->listen(sock, 5)) < 0)
++		if ((error = sock->ops->listen(sock, 64)) < 0)
+ 			goto bummer;
+ 	}
+ 
 
 
 -------------------------------------------------------
