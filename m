@@ -1,18 +1,19 @@
-From: Marco.Schwarz@Freudenberg.de
-Subject: AW: URGENT: Problems with NFS-Root-Clients
-Date: Tue, 27 Aug 2002 17:52:24 +0200
+From: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
+Subject: Re: AW: URGENT: Problems with NFS-Root-Clients
+Date: Tue, 27 Aug 2002 18:10:50 +0200 (CEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <95AF67BA7F70D511829B0002A551737001C9C4@faw-e01.faw.freudenberg.de>
+Message-ID: <Pine.LNX.4.44.0208271756360.18747-100000@kenzo.iwr.uni-heidelberg.de>
+References: <95AF67BA7F70D511829B0002A551737001C9C4@faw-e01.faw.freudenberg.de>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [153.95.95.71] (helo=itnts96.freudenberg.de)
+Received: from mail.iwr.uni-heidelberg.de ([129.206.104.30])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17jifI-0000Ze-00
-	for <nfs@lists.sourceforge.net>; Tue, 27 Aug 2002 08:54:00 -0700
-To: bogdan.costescu@iwr.uni-heidelberg.de
+	id 17jivg-0003nv-00
+	for <nfs@lists.sourceforge.net>; Tue, 27 Aug 2002 09:10:56 -0700
+To: Marco.Schwarz@freudenberg.de
+In-Reply-To: <95AF67BA7F70D511829B0002A551737001C9C4@faw-e01.faw.freudenberg.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,59 +26,50 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Right before this the network driver is configured (and yes, its in the
-kernel ... it is not working most of the time, but sometime it is, and =
-some
-days ago it was the other way ... working most of the time, just =
-sometimes
-problems).
+On Tue, 27 Aug 2002 Marco.Schwarz@freudenberg.de wrote:
 
-Network cards are Intel EEPro100, but we have a lot more of these (also =
-with
-diskless clients, same configuration/kernel), and the problem is =
-happening
-in just this one location ...
+> it is not working most of the time, but sometime it is, and some
+> days ago it was the other way ... working most of the time, just sometimes
+> problems).
 
-The 3 Lines before the errors:
+Hmm, maybe you should fix this first ! What do you mean by "not working": 
+- sometimes it doesn't provide a link at boot time and you have to reboot 
+and eventually it will get past the point and afterwards eveything works 
+fine or
+- it boots fine and there are intermitent problems afterwards or
+- something else ?
 
-Sending BOOTP requests . OK
-IP-Config: Got BOOTP answer from 192.168.0.235, my adress is =
-192.168.0.87
-IP-Config: Complete:
-  (lots of ip adresses, all look OK).
+> Network cards are Intel EEPro100, but we have a lot more of these (also with
+> diskless clients, same configuration/kernel), and the problem is happening
+> in just this one location ...
 
-Regards,
-Marco
+IIRC, there are different revisions of the cards, some of them having 
+some problems... so it's not sufficient to have another one working well !
 
-> -----Urspr=FCngliche Nachricht-----
-> Von:	Bogdan Costescu [SMTP:bogdan.costescu@iwr.uni-heidelberg.de]
-> Gesendet am:	Dienstag, 27. August 2002 17:40
-> An:	Marco.Schwarz@Freudenberg.de
-> Cc:	nfs@lists.sourceforge.net
-> Betreff:	Re: [NFS] URGENT: Problems with NFS-Root-Clients
->=20
-> On Tue, 27 Aug 2002 Marco.Schwarz@Freudenberg.de wrote:
->=20
-> > NET4: Unix domain sockets 1.0/SMP for Linux NET4.0
->=20
-> What are the lines just before this one ? Some network driver should =
-be=20
-> initialized there, provided that you selected it for compilation into =
-the=20
-> kernel (you did, didn't you ?)
->=20
-> > Root-NFS: Server returned error -5 while mounting
-> /netclients/192.168.0.87
->=20
-> The whole thing seems to me like there is no network connectivity.
->=20
-> --=20
-> Bogdan Costescu
->=20
-> IWR - Interdisziplinaeres Zentrum fuer Wissenschaftliches Rechnen
-> Universitaet Heidelberg, INF 368, D-69120 Heidelberg, GERMANY
-> Telephone: +49 6221 54 8869, Telefax: +49 6221 54 8868
-> E-mail: Bogdan.Costescu@IWR.Uni-Heidelberg.De
+> Sending BOOTP requests . OK
+> IP-Config: Got BOOTP answer from 192.168.0.235, my adress is 192.168.0.87
+> IP-Config: Complete:
+
+Um, the link did work ! Can you try to ping it from the server ? That 
+should show if the link is down. Another (better) possibility would be to 
+turn on debugging in the network driver (change in source and recompile or 
+pass it on the kernel command line), but it depends on the driver that 
+you're using. F.e. for Donald Becker's drivers you can use debug level 2 
+or 3 to get media related information without getting too much 
+uninteresting (for this problem) stuff.
+
+Another unrelated suggestion: can you make sure that you're not running 
+any kind of firewall (ipchains/iptables) on the server that could block 
+the communication ?
+
+-- 
+Bogdan Costescu
+
+IWR - Interdisziplinaeres Zentrum fuer Wissenschaftliches Rechnen
+Universitaet Heidelberg, INF 368, D-69120 Heidelberg, GERMANY
+Telephone: +49 6221 54 8869, Telefax: +49 6221 54 8868
+E-mail: Bogdan.Costescu@IWR.Uni-Heidelberg.De
+
 
 
 -------------------------------------------------------
