@@ -1,78 +1,89 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: Wildcards matching ".": exports bug or just documentation bug?
-Date: Thu, 14 Nov 2002 09:13:44 +1100
-Sender: linux-fsdevel-owner@vger.kernel.org
-Message-ID: <15826.52888.862126.375854@notabene.cse.unsw.edu.au>
-References: <20021004125704.A8969@redhat.com>
-	<20021113135522.B3115@redhat.com>
+From: "Chris Pascoe" <c.pascoe@itee.uq.edu.au>
+Subject: Problem with patch-C-NfsdRevalidate
+Date: Thu, 14 Nov 2002 10:34:15 +1000
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <006301c28b75$8f7e0370$47426682@itee.uq.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net, trond.myklebust@fys.uio.no,
-	linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Received: From
-	notabene.cse.unsw.edu.au ([129.94.233.204] == wireless-204.wireless.cse.unsw.EDU.AU)
-	(for <sct@redhat.com>) (for <nfs@lists.sourceforge.net>)
-	(for <trond.myklebust@fys.uio.no>)
-	(for <linux-fsdevel@vger.kernel.org>) By tone With Smtp ;
-	Thu, 14 Nov 2002 09:13:45 +1100
-To: "Stephen C. Tweedie" <sct@redhat.com>
-In-Reply-To: message from Stephen C. Tweedie on Wednesday November 13
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Cc: <nfs@lists.sourceforge.net>
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from gum.itee.uq.edu.au ([130.102.66.1])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18C7xg-000399-00
+	for <nfs@lists.sourceforge.net>; Wed, 13 Nov 2002 16:34:24 -0800
+To: <neilb@cse.unsw.edu.au>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wednesday November 13, sct@redhat.com wrote:
-> Hi,
-> 
-> On Fri, Oct 04, 2002 at 12:57:04PM +0100, Stephen C. Tweedie wrote:
->  
-> > mountd treats wildcards in hostnames in the exports file as matching
-> > anything, including ".".
-> > However, the exports man page explicitly states that "*" and "?" do not
-> > match ".":
->  
-> > So, which is right, the actual behaviour or the documented behaviour?
-> > I'd tend to lean towards the former.
-> 
-> Ping?  This is a pretty serious discrepancy between the documented and
-> implemented behaviour.  The documentation *explicitly* states that
-> 
-> 	*.com
-> 
-> won't match foo.bar.com, but the implentation matches this just fine.
-> Given that the documented behaviour doesn't actually give you a way to
-> match an export for all arbitrarily-deep subdomains underneath a
-> domain, I'd think matching subdomains of all levels with "*" makes
-> more sense than matching only a single level, so it's the
-> documentation that needs to be updated.
+Hi Neil,
 
-Sorry for not responding the first time...
+In
+http://cgi.cse.unsw.edu.au/~neilb/patches/linux-stable/2.4.20-rc1/patch-C-Nf
+sdRevalidate,
+fh_compose may never be called and err will be left set to a dentry's
+address or nfserr_acces (is that nfserr_acces ever used?) - if
+dentry->d_inode/dentry->d_inode->i_op/dentry->d_inode->i_op->revalidate is
+NULL.
 
-I completely agree with your analysis.
+Applying this patch results in problems with my Solaris clients, at least
+when trying to create a new file or when trying to stat a nonexistent file
+- output from truss:
 
-Does the following make the situation suitable clear?  If so I will
-commit it.
+open("/home/chrisp/a.lock.1036824940.2046.kauri", O_WRONLY|O_CREAT|O_EXCL,
+0666) Err#-1057499168
+lstat("/home/chrisp/a.lock", 0xFFBECFB8)  Err#-1071055655
 
-NeilBrown
+If I arrange the tests as below, to call fh_compose even if we can't call
+revalidate, all seems happy.  Is this behaviour correct?
+
+--- vfs.c       2002/11/04 18:51:29     1.42
++++ vfs.c       2002/11/09 06:38:16
+@@ -168,11 +168,13 @@
+                        mntput(mnt);
+                }
+        }
+-       /*
+-        * Note: we compose the file handle now, but as the
+-        * dentry may be negative, it may need to be updated.
+-        */
+-       err = fh_compose(resfh, exp, dentry, fhp);
++
++       if (dentry->d_inode && dentry->d_inode->i_op &&
++           dentry->d_inode->i_op->revalidate &&
++           dentry->d_inode->i_op->revalidate(dentry))
++               err = nfserr_noent;
++       else
++               err = fh_compose(resfh, exp, dentry, fhp);
+        if (!err && !dentry->d_inode)
+                err = nfserr_noent;
+ out:
+
+Regards,
+Chris
+
+--
+Christopher Pascoe
+IT Infrastructure Group Manager
+School of Information Technology and Electrical Engineering
+The University of Queensland   Brisbane  QLD  4072  Australia
 
 
-Index: utils/exportfs/exports.man
-===================================================================
-RCS file: /cvsroot/nfs/nfs-utils/utils/exportfs/exports.man,v
-retrieving revision 1.9
-diff -u -r1.9 exports.man
---- utils/exportfs/exports.man	17 Jan 2002 00:04:25 -0000	1.9
-+++ utils/exportfs/exports.man	13 Nov 2002 22:11:58 -0000
-@@ -45,9 +45,10 @@
- .IP "wildcards
- Machine names may contain the wildcard characters \fI*\fR and \fI?\fR.
- This can be used to make the \fIexports\fR file more compact; for instance,
--\fI*.cs.foo.edu\fR matches all hosts in the domain \fIcs.foo.edu\fR. However,
--these wildcard characters do not match the dots in a domain name, so the
--above pattern does not include hosts such as \fIa.b.cs.foo.edu\fR.
-+\fI*.cs.foo.edu\fR matches all hosts in the domain
-+\fIcs.foo.edu\fR.  As these characters also match the dots in a domain
-+name, the given pattern will also match all hosts within any subdomain
-+of \fIcs.foo.edu\fR.
- .IP "IP networks
- You can also export directories to all hosts on an IP (sub-) network
- simultaneously. This is done by specifying an IP address and netmask pair
+
+-------------------------------------------------------
+This sf.net email is sponsored by: Are you worried about 
+your web server security? Click here for a FREE Thawte 
+Apache SSL Guide and answer your Apache SSL security 
+needs: http://www.gothawte.com/rd523.html
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
