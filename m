@@ -1,154 +1,78 @@
-From: Ian Kent <raven@themaw.net>
-Subject: Re: how to force umount when "Device or resource busy"?
-Date: Tue, 2 Nov 2004 07:14:09 +0800 (WST)
-Message-ID: <Pine.LNX.4.58.0411020712290.7571@wombat.indigo.net.au>
-References: <AB813470-0682-11D9-9080-000A95C71776@freezone.co.uk>
- <418187A2.6070702@oracle.com> <Pine.LNX.4.58.0411011614310.22404@wombat.indigo.net.au>
- <41866A7B.9030303@oracle.com>
+From: Adrian Bunk <bunk@stusta.de>
+Subject: [2.6 patch] lockd: fix two struct definitions
+Date: Wed, 3 Nov 2004 22:47:32 +0100
+Message-ID: <20041103214732.GD31830@stusta.de>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: ms419@freezone.co.uk, nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1COlNa-0001UT-Ni
-	for nfs@lists.sourceforge.net; Mon, 01 Nov 2004 15:14:26 -0800
-Received: from wombat.indigo.net.au ([202.0.185.19])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.41)
-	id 1COlNY-0000eJ-Mg
-	for nfs@lists.sourceforge.net; Mon, 01 Nov 2004 15:14:26 -0800
-To: upendra gandhi <upendra.gandhi@oracle.com>
-In-Reply-To: <41866A7B.9030303@oracle.com>
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain; charset=us-ascii
+Return-path: <linux-kernel-owner+glk-linux-kernel=40m.gmane.org-S261921AbUKCVtK@vger.kernel.org>
+To: neilb@cse.unsw.edu.au, nfs@lists.sourceforge.net,
+	trond.myklebust@fys.uio.no, linux-kernel@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Mon, 1 Nov 2004, upendra gandhi wrote:
+Under fs/lockd/, there are two structs declared extern although they are 
+in the same file. Furtheremore, they don't have to be global since their 
+only users are in the same file.
 
-> Ver:    autofs-4.1.3-12
-
-So perhaps you are using Fedora core 3?
-With kernel version?
-
-Can you duplicate this easily?
-
-> 
-> Ian Kent wrote:
-> 
->  On Thu, 28 Oct 2004, upendra gandhi wrote:
-> 
->   
-> 
->  is there an answer to this we are facing this issue in autofs4
->     
-> 
->  I Asked for version info. before.
-> 
-> Can you provide it please?
-> 
->   
-> 
->  thks
-> 
-> ms419@freezone.co.uk wrote:
-> 
->     
-> 
->  How does one unmount when umount doesn't work?
-> 
-> Somehow, I got an NFS / AutoFS mount that just won't unmount.
-> 
-> I noticed /var/autofs/net was mounted twice, so I stopped AutoFS & 
-> tried killing the remaining automount process. "kill 14986" didn't 
-> work; I needed "kill -9 14986". The following mounts remain:
-> 
-> wum:~# mount
-> [...]
-> automount(pid14986) on /var/autofs/net type autofs 
-> (rw,fd=5,pgrp=14986,minproto=2,maxproto=4)
-> tor:/home on /var/autofs/net/tor/home type nfs 
-> (rw,nosuid,nodev,hard,intr,addr=192.168.103.158)
-> 
-> & I can't unmount them:
-> 
-> wum:~# umount /var/autofs/net/tor/home
-> umount: /var/autofs/net/tor/home: device is busy
-> umount: /var/autofs/net/tor/home: device is busy
-> wum:~# umount -f /var/autofs/net/tor/home
-> umount2: Device or resource busy
-> umount: /var/autofs/net/tor/home: Illegal seek
-> umount2: Device or resource busy
-> umount: /var/autofs/net/tor/home: device is busy
-> wum:~# umount /var/autofs/net
-> umount: /var/autofs/net: device is busy
-> umount: /var/autofs/net: device is busy
-> wum:~# umount -f /var/autofs/net
-> umount2: Device or resource busy
-> umount: automount(pid14986): not found
-> umount: /var/autofs/net: Illegal seek
-> umount2: Device or resource busy
-> umount: /var/autofs/net: device is busy
-> 
-> I triple checked that no process is using these mounts. How do I 
-> unmount them?
-> 
-> Thanks!
-> 
-> Jack
-> 
-> 
-> 
-> -------------------------------------------------------
-> This SF.Net email is sponsored by: thawte's Crypto Challenge Vl
-> Crack the code and win a Sony DCRHC40 MiniDV Digital Handycam
-> Camcorder. More prizes in the weekly Lunch Hour Challenge.
-> Sign up NOW http://ad.doubleclick.net/clk;10740251;10262165;m
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
->       
-> 
->  -------------------------------------------------------
-> This Newsletter Sponsored by: Macrovision 
-> For reliable Linux application installations, use the industry's leading
-> setup authoring tool, InstallShield X. Learn more and evaluate 
-> today. http://clk.atdmt.com/MSI/go/ins0030000001msi/direct/01/
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
-> 
->     
-> 
->  -------------------------------------------------------
-> This SF.Net email is sponsored by:
-> Sybase ASE Linux Express Edition - download now for FREE
-> LinuxWorld Reader's Choice Award Winner for best database on Linux.
-> http://ads.osdn.com/?ad_id=5588&alloc_id=12065&op=click
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
->   
-> 
-> 
-> 
+Most of the changes to svc.c are only indent fixes caused by making the 
+struct static.
 
 
+diffstat output:
+ fs/lockd/mon.c |    4 ++--
+ fs/lockd/svc.c |   16 ++++++++--------
+ 2 files changed, 10 insertions(+), 10 deletions(-)
 
--------------------------------------------------------
-This SF.Net email is sponsored by:
-Sybase ASE Linux Express Edition - download now for FREE
-LinuxWorld Reader's Choice Award Winner for best database on Linux.
-http://ads.osdn.com/?ad_id=5588&alloc_id=12065&op=click
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+
+Signed-off-by: Adrian Bunk <bunk@stusta.de>
+
+--- linux-2.6.10-rc1-mm2-full/fs/lockd/mon.c.old	2004-11-03 22:29:13.000000000 +0100
++++ linux-2.6.10-rc1-mm2-full/fs/lockd/mon.c	2004-11-03 22:29:44.000000000 +0100
+@@ -19,7 +19,7 @@
+ 
+ static struct rpc_clnt *	nsm_create(void);
+ 
+-extern struct rpc_program	nsm_program;
++static struct rpc_program	nsm_program;
+ 
+ /*
+  * Local NSM state
+@@ -237,7 +237,7 @@
+ 
+ static struct rpc_stat		nsm_stats;
+ 
+-struct rpc_program		nsm_program = {
++static struct rpc_program	nsm_program = {
+ 		.name		= "statd",
+ 		.number		= SM_PROGRAM,
+ 		.nrvers		= sizeof(nsm_version)/sizeof(nsm_version[0]),
+--- linux-2.6.10-rc1-mm2-full/fs/lockd/svc.c.old	2004-11-03 22:26:30.000000000 +0100
++++ linux-2.6.10-rc1-mm2-full/fs/lockd/svc.c	2004-11-03 22:30:05.000000000 +0100
+@@ -38,7 +38,7 @@
+ #define LOCKD_BUFSIZE		(1024 + NLMSVC_XDRSIZE)
+ #define ALLOWED_SIGS		(sigmask(SIGKILL))
+ 
+-extern struct svc_program	nlmsvc_program;
++static struct svc_program	nlmsvc_program;
+ 
+ struct nlmsvc_binding *		nlmsvc_ops;
+ EXPORT_SYMBOL(nlmsvc_ops);
+@@ -476,11 +476,11 @@
+ static struct svc_stat		nlmsvc_stats;
+ 
+ #define NLM_NRVERS	(sizeof(nlmsvc_version)/sizeof(nlmsvc_version[0]))
+-struct svc_program	nlmsvc_program = {
+-	.pg_prog	= NLM_PROGRAM,		/* program number */
+-	.pg_nvers	= NLM_NRVERS,		/* number of entries in nlmsvc_version */
+-	.pg_vers	= nlmsvc_version,	/* version table */
+-	.pg_name	= "lockd",		/* service name */
+-	.pg_class	= "nfsd",		/* share authentication with nfsd */
+-	.pg_stats	= &nlmsvc_stats,	/* stats table */
++static struct svc_program	nlmsvc_program = {
++	.pg_prog		= NLM_PROGRAM,		/* program number */
++	.pg_nvers		= NLM_NRVERS,		/* number of entries in nlmsvc_version */
++	.pg_vers		= nlmsvc_version,	/* version table */
++	.pg_name		= "lockd",		/* service name */
++	.pg_class		= "nfsd",		/* share authentication with nfsd */
++	.pg_stats		= &nlmsvc_stats,	/* stats table */
+ };
