@@ -1,22 +1,26 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: exportfs nohide option for nfsv4
-Date: Thu, 10 Mar 2005 11:00:07 -0500
-Message-ID: <20050310160007.GA12787@fieldses.org>
-References: <20050310154334.34824.qmail@web51607.mail.yahoo.com>
+From: Chip Salzenberg <chip@pobox.com>
+Subject: Any reason why 1.2.3.4/255.255.255.255 wouldn't be valid in exports?
+Date: Thu, 10 Mar 2005 12:55:56 -0500
+Message-ID: <20050310175556.GB4577@perlsupport.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D9Q4g-0001ny-BA
-	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 07:59:46 -0800
-Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1D9Q4e-0007T6-TW
-	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 07:59:46 -0800
-To: mehta kiran <kiranmehta1981@yahoo.com>
-In-Reply-To: <20050310154334.34824.qmail@web51607.mail.yahoo.com>
+	id 1D9RtH-0007bj-HC
+	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 09:56:07 -0800
+Received: from perlsupport.com
+	([66.180.163.120] helo=mail.perlsupport.com ident=64e6eb56b3f089ca9d73fa8daedaa274)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1D9RtD-0006f7-UF
+	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 09:56:07 -0800
+Received: from [67.132.206.254] (helo=tytlal)
+	by mail.perlsupport.com (Exim 4) with esmtpsa (TLS-1.0:RSA_AES_256_CBC_SHA:32)
+	id 1D9Rt6-0002Sk-WB
+	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 12:55:57 -0500
+Received: from chip by tytlal with local (Exim 4.50)
+	id 1D9Rt6-0001Jy-3X
+	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 12:55:56 -0500
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,33 +34,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Mar 10, 2005 at 07:43:33AM -0800, mehta kiran wrote:
-> 1. Normally,  if  a  server
-> 2. exports  two filesystems one of which is mounted 3.
-> on the other, then the client will have to mount  
-> 4. both filesystems  explicitly  to get access to
-> 5. them.  If it just mounts the parent, it  will  see 
-> 6. an  empty directory  at  the place where the other
-> 7. filesystem is mounted.  That filesystem is 
-> 8. hidden".
-> 9. Setting the nohide option on a filesystem causes
-> 10.it not  to  be hidden.
-> 
-> from lines 5-10 i understand that if client mounts
-> only parent directory , child directory is hidden
-> to client.To make this accessbile to client , exportfs
-> should use nohide option , but in
-> my example i have explicitly exported child 
-> directory.
+A Debian user is reporting that this exports line:
 
-Note the first sentence: "if a server exports two filesystems
-one of which is mounted on the other..."
+  /backup 192.168.0.8/255.255.255.255(no_root_squash,rw,async)
 
-So the man page is dealing with exactly you case--when you
-have explicitly exported both the parent and the child.  I'm
-not sure how the man page could be made clearer.
+is causing trouble:
 
---b.
+  "From the client an 'rpcinfo -u nfsserver nfs' ended in a TIMEOUT."
+
+Meanwhile this:
+
+  /backup 192.168.0.8(no_root_squash,rw,async)
+
+works fine for him.
+
+Bug?  Feature?  Something needing to be documented?
+-- 
+Chip Salzenberg            - a.k.a. -            <chip@pobox.com>
+         Open Source is not an excuse to write fun code
+            then leave the actual work to others.
 
 
 -------------------------------------------------------
