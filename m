@@ -1,18 +1,15 @@
-From: James Pearson <james-p@moving-picture.com>
-Subject: Re: Linux client, SNAP filer, ESTALE
-Date: Wed, 28 May 2003 16:41:14 +0100
+From: xiyu@800j.com
+Subject: =?GB2312?B?zvewsre/tdiy+tDFz6LN+NDQ0rXIyMPFu7DM4g==?=
+Date: Thu, 29 May 2003 09:55:23 +0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3ED4D89A.8BD0F0FE@moving-picture.com>
-References: <CFCD2C778CF1D611B5B400065B04D5C84A71B0@KENTON>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
+Message-ID: <E19LCbQ-0002nd-00@sc8-sf-list1.sourceforge.net>
+Content-Type: text/html;charset="GB2312"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
+Received: from [61.134.6.24] (helo=800j.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19L33o-0002y4-00
-	for <nfs@lists.sourceforge.net>; Wed, 28 May 2003 08:41:52 -0700
-To: Edward Hibbert <EH@dataconnection.com>
+	id 19LCbQ-0002nd-00
+	for <nfs@lists.sourceforge.net>; Wed, 28 May 2003 18:53:12 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,88 +22,41 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I believe SNAP servers run Linux with an XFS file system.
+<html>
 
-If I've got this correct, then with a power out on a Linux Box running
-XFS, you can get the the case where file contents are replaced by
-'NULLs' - see:
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
+<meta name="GENERATOR" content="Microsoft FrontPage 4.0">
+<meta name="ProgId" content="FrontPage.Editor.Document">
+<title>西安房地产信息网</title>
+</head>
 
-http://oss.sgi.com/projects/xfs/faq.html#nulls
+<body>
 
-If this happens to the server's /var/lib/nfs/rmtab file, then the server
-has lost all records of client mounts after the reboot - hence you get
-stale NFS file handles on the clients ...
+<p class="MsoNormal" align="center"><span lang="EN-US" style="font-size:26.0pt;mso-bidi-font-size:12.0pt;mso-fareast-font-family:
+楷体_GB2312;color:fuchsia"><o:p>
+</span><font color="#0000FF" size="7"><a href="http://www.800j.com.cn"><span lang="EN-US" style="mso-bidi-font-size: 12.0pt"> 
+</o:p> 
+ </span></a></font><b><font color="#0000FF" size="7"><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman"><font face="楷体_GB2312">西安房地产信息网</font></span></a></font></b></p>
 
-I believe the cases where NULLs appear has improved since the FAQ note
-above (and even more recently in the CVS XFS code) - however, you will
-probably have to contact Snap Appliance about this ...
+<p class="MsoNormal" align="center"><font color="#0000FF"><b><font face="楷体_GB2312" size="6"><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman">www.800j.cc</span></a></font></b></font></p>
+<p align="center">　
+<p align="center"><a href="http://www.800j.com.cn"><img src="huati001.gif" width="321" height="46"></a></p>
+<p align="center"><a href="http://www.800j.com.cn/800j/fclt/djtbbs/show.asp?bID=&amp;RID=4863&amp;ID=4863"><font color="#FF0000" size="4"><b>非典时期买楼该注重什么？</b></font></a></p>
+<p align="center"><a href="http://www.800j.com.cn/800j/fclt/djtbbs/show.asp?bID=&amp;RID=5014&amp;ID=5014"><font color="#FF0000" size="4"><b>谁来评述“世家星城”</b></font></a></p>
+<p align="center"><font color="#FF0000" size="4"><b>.....</b></font></p>
+<p class="MsoNormal" align="center"><b><font color="#FFFF00" face="楷体_GB2312" size="4"><a href="http://http://www.800j.com.cn/800j/fclt/djtbbs/new.asp">我要发言　</a>　　　　　<a href="http://http://www.800j.com.cn/800j/fclt/djtbbs/index.asp">　进入论坛</a></font></b></p>
+<p align="center">　</p>
 
-James Pearson
+</body>
 
-Edward Hibbert wrote:
-> 
-> Sorry, I should have been clearer.  Snap Appliance.
-> 
-> Regards,
-> 
-> Edward Hibbert
-> Internet Applications Group
-> Data Connection Ltd
-> Tel:    +44 131 662 1212                Fax:    +44 131 662 1345
-> Email:  eh@dataconnection.com   Web:    http://www.dataconnection.com
-> 
-> -----Original Message-----
-> From: James Pearson [mailto:james-p@moving-picture.com]
-> Sent: Wednesday, May 28, 2003 4:16 PM
-> To: Edward Hibbert
-> Cc: 'nfs@lists.sourceforge.net'
-> Subject: Re: [NFS] Linux client, SNAP filer, ESTALE
-> 
-> Is a 'SNAP filer' a NAS box from Snap Appliance or a NetApp filer?
-> 
-> James Pearson
-> 
-> Edward Hibbert wrote:
-> >
-> > I have an ESTALE problem.  That probably means it's been discussed to
-> death,
-> > but after browsing the archive I'm not much the wiser, so...
-> >
-> > Here's the scenario:
-> > *       RH 7.2 running a 2.4.18 kernel
-> > *       Linux boxes acting as NFS clients to a SNAP filer.
-> > *       Mount options rw,noac,rsize=4096,wsize=4096,hard,intr,bg
-> >
-> > We had a power outage on the filer; the clients stayed up.  The clients
-> > returned stale errors, even once the filer had come back up, until we
-> > unmounted and remounted all the mount points.
-> >
-> > Is this behaviour as expected, a known problem, an unknown problem, or too
-> > sloppily described to be able to tell?
-> >
-> > Regards,
-> >
-> > Edward Hibbert
-> > Internet Applications Group
-> > Data Connection Ltd
-> > Tel:    +44 131 662 1212                Fax:    +44 131 662 1345
-> > Email:  eh@dataconnection.com   Web:    http://www.dataconnection.com
-> >
-> > -------------------------------------------------------
-> > This SF.net email is sponsored by: ObjectStore.
-> > If flattening out C++ or Java code to make your application fit in a
-> > relational database is painful, don't do it! Check out ObjectStore.
-> > Now part of Progress Software. http://www.objectstore.net/sourceforge
-> > _______________________________________________
-> > NFS maillist  -  NFS@lists.sourceforge.net
-> > https://lists.sourceforge.net/lists/listinfo/nfs
+</html>
 
 
 -------------------------------------------------------
-This SF.net email is sponsored by: ObjectStore.
-If flattening out C++ or Java code to make your application fit in a
-relational database is painful, don't do it! Check out ObjectStore.
-Now part of Progress Software. http://www.objectstore.net/sourceforge
+This SF.net email is sponsored by: eBay
+Get office equipment for less on eBay!
+http://adfarm.mediaplex.com/ad/ck/711-11697-6916-5
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
