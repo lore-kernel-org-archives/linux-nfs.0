@@ -1,18 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 6 of 9] nfsd4 could leak a stateid in an error path
-Date: Fri, 03 Sep 2004 12:34:26 +1000
+Subject: [PATCH kNFSd 0 of 9] Introduction
+Date: Fri, 03 Sep 2004 12:34:25 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1C33uE-000436-Hg@notabene.cse.unsw.edu.au>
-References: <20040903122815.15453.patches@notabene>
+Message-ID: <20040903122815.15453.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C33uN-000050-FM
-	for nfs@lists.sourceforge.net; Thu, 02 Sep 2004 19:34:35 -0700
+	id 1C33uO-000056-4k
+	for nfs@lists.sourceforge.net; Thu, 02 Sep 2004 19:34:36 -0700
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1C33uM-0004TP-SV
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1C33uN-0007KR-CA
 	for nfs@lists.sourceforge.net; Thu, 02 Sep 2004 19:34:35 -0700
 To: Andrew Morton <akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -28,32 +27,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
+9 patches for knfsd in 2.6.9-rc1-mm2
 
-nfsd4 could leak a stateid in a case of kmalloc failure; fix.
+The first three affect all versions.  The remaining are v4 specific.
 
-Signed-off-by: Andy Adamson <andros@umich.edu>
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
+1 - Add O_NONBLOCK to calls to break_lease so the nfs server doesn't block
+    pointlessly.  Return nfserr_jukebox for v3, or just drop the reques for
+    v2 if we get a EWOULDBLOCK.
 
-### Diffstat output
- ./fs/nfsd/nfs4state.c |    4 +++-
- 1 files changed, 3 insertions(+), 1 deletion(-)
+2 - Change a return of "ESTALE" or "EACCES" in a situation where ACCES is 
+    argueable the more correct error, and real people have had real problems
+    that were really fixed.
 
-diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2004-09-03 11:57:20.000000000 +1000
-+++ ./fs/nfsd/nfs4state.c	2004-09-03 11:57:34.000000000 +1000
-@@ -2153,8 +2153,10 @@ nfsd4_lock(struct svc_rqst *rqstp, struc
- 		if (!(lock->lk_stateowner = alloc_init_lock_stateowner(strhashval, open_sop->so_client, open_stp, lock)))
- 			goto out;
- 		if ((lock_stp = alloc_init_lock_stateid(lock->lk_stateowner, 
--						fp, open_stp)) == NULL)
-+						fp, open_stp)) == NULL) {
-+			release_stateowner(lock->lk_stateowner);
- 			goto out;
-+		}
- 		/* bump the open seqid used to create the lock */
- 		open_sop->so_seqid++;
- 	} else {
+3 - Fix some indentation.
+
+4 - Check is filesystem supports acls before returning "acl supported" attribute
+
+5-9 assorted v4 locking changes.
+
+NeilBrown
 
 
 -------------------------------------------------------
