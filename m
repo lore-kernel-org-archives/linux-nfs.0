@@ -1,69 +1,58 @@
-From: Steve Dickson <SteveD@RedHat.com>
-Subject: Re: [NFS] [PATCH] mmap corruption
-Date: Sat, 5 Apr 2003 11:47:41 -0500
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <20030405164741.GA6450@RedHat.com>
-References: <3E8DDB13.9020009@RedHat.com> <shsistt7wip.fsf@charged.uio.no>
-Reply-To: SteveD@RedHat.com
+From: Alejandro Rios Garcia <arios2@prodigy.net.mx>
+Subject: About NFS Configuration.
+Date: Sat, 05 Apr 2003 16:18:19 -0800
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <1049588300.1454.14.camel@ws>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net,
-	linux-kernel <linux-kernel@vger.kernel.org>
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <shsistt7wip.fsf@charged.uio.no>
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from dfproxy06.prodigy.net.mx ([148.235.168.22] helo=smtp.prodigy.net.mx)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 191vwc-0006h5-00
+	for <nfs@lists.sourceforge.net>; Sat, 05 Apr 2003 14:15:26 -0800
+To: nfs@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Trond,
 
-On Sat, Apr 05, 2003 at 12:01:02AM +0200, Trond Myklebust wrote:
-> >>>>> " " == Steve Dickson <SteveD@redhat.com> writes:
-> 
-> That simply doesn't ring true. The nfs_wb_all() immediately after the
-> call to filemap_fdatasync() should ensure that *all* scheduled writes
-> will flushed out.
-> 
-Here is my evidence your honor... :-)
+Hi!
 
-1)  Through my debugging I was able to show when (and only when)
-the following if statement is true, there would be corruption:
+I have not enought experience using NFS but I sucessfully installed it
+as following:
+I'm running a server with Suse 8.0 Pro
+also I'm running a workstation with Suse 8.0 Pro
 
-nfs_notify_change(struct dentry *dentry, struct iattr *attr)
-{
-	/*
-	 * beginning code skipped
-	 */
+I created user "user1" on my server, also I created "user1" on my
+workstation. So I had:
+//Server/home/user1
+//WS/home/user1
 
-	filemap_fdatasync(inode->i_mapping);
-	error = nfs_wb_all(inode);
-	filemap_fdatawait(inode->i_mapping);
-	if (error)
-		goto out;
+After a while I noticed that my information was messed, so, I deleted
+//ws/home/user1, I exported //server/home/user1 to my //ws/home/user1
+Now I am able to do everything from here, but sometimes when I restart
+my computer (ws) it's shutdown procedure reports that NFS service was
+not able to shutdown sucessfully"
+Up to now I haven't loss information but I want to prevent this
 
-	/*
-	 * Every time either npages or ncommit had a value and the file size is
-	 * immediately changed (with in a microsecond or two) by another 
-	 * truncation, followed by a mmap read, the file would be corrupted.
-	 */
-	if (NFS_I(inode)->npages || NFS_I(inode)->ncommit || NFS_I(inode)->ndirty) {
-		printk("nfs_notify_change: fid %Ld npages %d ncommit %d ndirty %d\n",
-		NFS_FILEID(inode), NFS_I(inode)->npages, 
-		NFS_I(inode)->ncommit, NFS_I(inode)->ndirty);
-	}
-}
+Thanks in advance
+Alejandro
 
-I was also able to log the fact that the page was being written out (and committed)
-by kupdated was after second truncation finished. At first, I was thinking 
-there was a problem with the nfs_fattr_obsolete() code (and still might be) 
-since this late write/commit is *truly* obsolete. But I just could not figure 
-out how to detect this event so I went with avoidance approach. Now, if the 
-server supplied the client with valid pre and post attrs, I believe this condition 
-could be detected. But I didn't have a server that did that so I could 
-not test out my theroy...
 
-2) Without this patch my script that startups 300 process fails within
-minutes. With this patch the script runs to completion constistanly...
 
-I rest my case... and the verdict is?
-
-SteveD.
+-------------------------------------------------------
+This SF.net email is sponsored by: ValueWeb: 
+Dedicated Hosting for just $79/mo with 500 GB of bandwidth! 
+No other company gives more support or power for your dedicated server
+http://click.atdmt.com/AFF/go/sdnxxaff00300020aff/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
