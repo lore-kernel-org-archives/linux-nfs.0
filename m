@@ -1,14 +1,14 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 1 of 6 - Fix exit-without-free bug in nfsd
+Subject: [PATCH] kNFSd - 2 of 6 - Fix race in svcsock.c
 Date: Wed, 12 Mar 2003 16:35:28 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E18sytk-0005Qr-00@notabene.cse.unsw.edu.au>
+Message-ID: <E18sytk-0005Qu-00@notabene.cse.unsw.edu.au>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18syts-0000Dc-00
-	for <nfs@lists.sourceforge.net>; Tue, 11 Mar 2003 21:35:36 -0800
+	id 18sytt-0000Dh-00
+	for <nfs@lists.sourceforge.net>; Tue, 11 Mar 2003 21:35:37 -0800
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
 	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>) By
@@ -26,34 +26,44 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Here are 6 patches for kNFSd in 2.5.latest.
-
-A few bug fixes, and a new CROSSMNT export flag so that (once you have new
-user-space tools) you can export a filesystem with "crossmnt" and all
-filesystems below it are automatically exported.
 
 ### Comments for ChangeSet
 
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 
+
+knfsd needs to disable soft interrupts when calling
+csum_partial_copy_to_xdr().
+
+At the moment there's a nasty conflict between the RPC server and
+client. The problem arises when you get to xdr_partial_copy_from_skb()
+(and the kmap_atomic()); the RPC client can end up calling the same
+function from a ->data_ready() soft interrupt, and corrupt any data
+the knfsd process may have copied.
 
  ----------- Diffstat output ------------
- ./fs/nfsd/export.c |    4 +++-
- 1 files changed, 3 insertions(+), 1 deletion(-)
+ ./net/sunrpc/svcsock.c |    3 +++
+ 1 files changed, 3 insertions(+)
 
-diff ./fs/nfsd/export.c~current~ ./fs/nfsd/export.c
---- ./fs/nfsd/export.c~current~	2003-03-12 15:00:41.000000000 +1100
-+++ ./fs/nfsd/export.c	2003-03-12 15:01:07.000000000 +1100
-@@ -294,7 +294,9 @@ int svc_export_parse(struct cache_detail
+diff ./net/sunrpc/svcsock.c~current~ ./net/sunrpc/svcsock.c
+--- ./net/sunrpc/svcsock.c~current~	2003-03-12 15:02:05.000000000 +1100
++++ ./net/sunrpc/svcsock.c	2003-03-12 15:02:05.000000000 +1100
+@@ -577,12 +577,15 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
  
- 	/* client */
- 	len = qword_get(&mesg, buf, PAGE_SIZE);
--	if (len <= 0) return -EINVAL;
-+	err = -EINVAL;
-+	if (len <= 0) goto out;
-+
- 	err = -ENOENT;
- 	dom = auth_domain_find(buf);
- 	if (!dom)
+ 	if (skb_is_nonlinear(skb)) {
+ 		/* we have to copy */
++		local_bh_disable();
+ 		if (csum_partial_copy_to_xdr(&rqstp->rq_arg, skb)) {
++			local_bh_enable();
+ 			/* checksum error */
+ 			skb_free_datagram(svsk->sk_sk, skb);
+ 			svc_sock_received(svsk);
+ 			return 0;
+ 		}
++		local_bh_enable();
+ 		skb_free_datagram(svsk->sk_sk, skb); 
+ 	} else {
+ 		/* we can use it in-place */
 
 
 -------------------------------------------------------
