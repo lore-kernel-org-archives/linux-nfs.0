@@ -1,21 +1,16 @@
-From: Jordi Mallach <jordi@debian.org>
-Subject: Re: [chip@debian.org: Debian Bug#203918 - statd request on eth interface, not localhost?]
-Date: Fri, 22 Aug 2003 21:38:14 +0200
+From: Dennis Cahillane <dennis@wittmanhydro.com>
+Subject: NFS share will not mount
+Date: Wed, 20 Aug 2003 15:42:27 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030822193814.GA4074@nubol.int.oskuro.net>
-References: <20030812152154.GQ24349@perlsupport.com> <16185.47443.33945.603458@gargle.gargle.HOWL> <20030813082216.GA14015@nubol.int.oskuro.net> <20030820175951.GB3639@perlsupport.com> <20030821075826.GA27391@nubol.int.oskuro.net>
+Message-ID: <3F43DD33.4040705@wittmanhydro.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="wac7ysb48OaltWcw"
-Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net,
-	203918-quiet@bugs.debian.org
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from 115.red-213-96-69.pooles.rima-tde.net ([213.96.69.115] helo=natura.oskuro.net)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19qHjr-0006rt-00
-	for <nfs@lists.sourceforge.net>; Fri, 22 Aug 2003 12:38:23 -0700
-To: Chip Salzenberg <chip@debian.org>
-In-Reply-To: <20030821075826.GA27391@nubol.int.oskuro.net>
+Received: from mail.wittmanhydro.com ([216.9.129.211] helo=old.wittmanhydro.com)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19pZtl-0001I9-00
+	for <nfs@lists.sourceforge.net>; Wed, 20 Aug 2003 13:49:41 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,54 +23,51 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+hello-
 
---wac7ysb48OaltWcw
-Content-Type: text/plain; charset=iso-8859-1
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+I have two machines that need to talk to each other via NFS.  The 
+server, wabash, is configured:
 
-On Thu, Aug 21, 2003 at 09:58:26AM +0200, Jordi Mallach wrote:
-> News are that I can't compile 2.6.0-test3, so I have no more info :(
+# cat /etc/exports
+/ev/in/statewide-data/drg 192.168.23.0/24(ro)
 
-I finally got test3 under control, rebooted into it and...
+The client, wms, is configured as follows
 
-Aug 22 19:29:31 nubol automount[3476]: running expiration on path /var/auto=
-fs/natura/archives
-Aug 22 19:29:31 nubol rpc.statd[1909]: Received erroneous SM_UNMON request =
-=66rom nubol for 192.168.1.1
-Aug 22 19:29:31 nubol automount[3476]: expired /var/autofs/natura/archives
+# cat /etc/fstab
+...
+192.168.23.17:/ev/in/statewide-data/drg /var/www/html/in_maps/data/drg 
+nfs    defaults         0 0
 
-I still get the weird messages at the server though:
+When I try to mount, the following happens.
 
-Aug 22 19:22:43 natura ippl: sunrpc connection attempt from 192.168.1.3
-Aug 22 19:22:43 natura rpc.statd[1982]: Call to statd from non-local host 2=
-13.96.69.115
-Aug 22 19:22:43 natura rpc.statd[1982]: STAT_FAIL to natura for SM_MON of 1=
-92.168.1.3
+# mount -a
+mount: wrong fs type, bad option, bad superblock on 
+192.168.23.17:/ev/in/statewide-data/drg,
+        or too many mounted file systems
 
-So, the original problem of "busy mounts" has gone, apparently it was a
-bug in -test2 fixed in -test3. I still get these logs that seem to make
-you wonder a bit ;) but in general, my setup works ok again.
+ From either machine.  The /var/log/messages on the client gains:
 
-Jordi
---=20
-Jordi Mallach P=E9rez  --  Debian developer     http://www.debian.org/
-jordi@sindominio.net     jordi@debian.org     http://www.sindominio.net/
-GnuPG public key information available at http://oskuro.net/~jordi/
+Sep  9 16:28:25 wms kernel: nfs_get_root: getattr error = 116
+Sep  9 16:28:25 wms kernel: nfs_read_super: get root inode failed
+Sep  9 16:28:25 wms kernel: nfs warning: mount version older than kernel
+Sep  9 16:28:25 wms kernel: nfs_get_root: getattr error = 116
+Sep  9 16:28:25 wms kernel: nfs_read_super: get root inode failed
 
---wac7ysb48OaltWcw
-Content-Type: application/pgp-signature
-Content-Disposition: inline
+on the server:
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.2 (GNU/Linux)
+Aug 20 15:35:01 wabash rpc.mountd: authenticated mount request from 
+192.168.23.27:864 for /ev/in/statewide-data/drg (/ev/in/statewide-data/drg)
+Aug 20 15:35:01 wabash rpc.mountd: authenticated mount request from 
+192.168.23.27:868 for /ev/in/statewide-data/drg (/ev/in/statewide-data/drg)
 
-iD8DBQE/RnEmJYSUupF6Il4RAuczAKDoRmfsGtfUrRqRZDPbLG4T+znTcwCeKZP4
-AgJ7Br2jQuednFCjag5KYZo=
-=gOCX
------END PGP SIGNATURE-----
+I have been slaving away on this forever now.  Any help would be greatly 
+appreciated.
 
---wac7ysb48OaltWcw--
+         Dennis Cahillane
+
+
+
+
 
 
 -------------------------------------------------------
