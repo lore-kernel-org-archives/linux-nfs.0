@@ -1,25 +1,20 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: df hangs on down nfs server mounted with hard,intr, can't kill
-Date: Thu, 11 Mar 2004 10:31:49 +0100
+From: Pete Flugstad <peteflugstad@mchsi.com>
+Subject: NFS exportable filesystems?
+Date: Thu, 11 Mar 2004 12:58:24 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040311093148.GB20944@suse.de>
-References: <482A3FA0050D21419C269D13989C61130435DD25@lavender-fe.eng.netapp.com> <20040310080910.GA21031@suse.de> <1078946326.1940.35.camel@nidelv.trondhjem.org>
+Message-ID: <4050B6D0.10101@mchsi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Cc: Charles Lever <Charles.Lever@netapp.com>,
-	Wade Hampton <wade.hampton@nsc1.net>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B1Mhb-0008C2-8A
-	for nfs@lists.sourceforge.net; Thu, 11 Mar 2004 01:42:07 -0800
-Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.30)
-	id 1B1M8H-000161-Eo
-	for nfs@lists.sourceforge.net; Thu, 11 Mar 2004 01:05:37 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1078946326.1940.35.camel@nidelv.trondhjem.org>
+	id 1B1VYA-0005Rr-0V
+	for nfs@lists.sourceforge.net; Thu, 11 Mar 2004 11:08:58 -0800
+Received: from sccmmhc02.asp.att.net ([204.127.203.184])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1B1UyH-0005KA-JD
+	for nfs@lists.sourceforge.net; Thu, 11 Mar 2004 10:31:53 -0800
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,24 +27,12 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, Mar 10, 2004 at 02:18:46PM -0500, Trond Myklebust wrote:
-> You are of course free to send stuff directly to Andrew/Linus, but I
-> personally would prefer if you attempt to queue it through me, since
-> that allows for a more ordered development process. Fixing up a set of
-> 30 patches in order to accomodate some minor change that went directly
-> into the main kernel can be very time consuming,
+Is there a list of the NFS exportable filesystems anywhere?
 
-Very much agreed...
+I'm mostly interested in VFAT/NTFS, but a list would be nice.
 
-This arrangement is fine with me; I just want to avoid a situation
-where my patches go to the bit bucket because you think I will
-push them to Andrew and I think you will do so :)
-
-Olaf
--- 
-Olaf Kirch     |  Stop wasting entropy - start using predictable
-okir@suse.de   |  tempfile names today!
----------------+ 
+Thanks,
+Pete
 
 
 -------------------------------------------------------
