@@ -1,24 +1,20 @@
-From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
-Subject: Re: read-error on utmp file
-Date: Mon, 13 Sep 2004 14:02:29 +0200
+From: Michael Gale <michael.gale@utilitran.com>
+Subject: NFS as shared storage ?
+Date: Mon, 13 Sep 2004 10:40:42 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <41458C55.4020906@bio.ifi.lmu.de>
-References: <41383991.1020108@bio.ifi.lmu.de>	 <1094230320.8196.32.camel@lade.trondhjem.org>	 <413C0F25.9010206@bio.ifi.lmu.de> <1094490287.8342.69.camel@lade.trondhjem.org> <413D5883.1080509@bio.ifi.lmu.de>
+Message-ID: <20040913104042.39926296@mgalepc.utilitran.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C6pXX-0000Kl-Ui
-	for nfs@lists.sourceforge.net; Mon, 13 Sep 2004 05:02:35 -0700
-Received: from acheron.informatik.uni-muenchen.de ([129.187.214.135])
+	id 1C6tpZ-0005uF-7q
+	for nfs@lists.sourceforge.net; Mon, 13 Sep 2004 09:37:29 -0700
+Received: from [64.42.239.181] (helo=mail.utilitran.com)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1C6pXX-0007KZ-Am
-	for nfs@lists.sourceforge.net; Mon, 13 Sep 2004 05:02:35 -0700
-To: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
-In-Reply-To: <413D5883.1080509@bio.ifi.lmu.de>
+	id 1C6tpX-0005Cw-PB
+	for nfs@lists.sourceforge.net; Mon, 13 Sep 2004 09:37:29 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,33 +27,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+Hello,
 
-I don't mean to get on anybodies nerves, so please don't get mad if I
-ask again :-)
+	I have some questions about NFS for a shared storage solution. 
 
-I still consider it a bug if of two concurrent read processes on an utmp file
-(performed on the same nfs client) one fails with I/O error. It's not
-a big thing, I just would like to know if it is worth changing my ckconfig
-algorithms or if this bug is likely to disappear.
+We would like to setup a LVS box that would do FTP direct routing to two box, lets call them FTP1 and FTP2. So
+both FTP1 and FTP2 would be active and LVS would do least connection load balancing between the two.
 
-So any answer out of the set
+Now eventually we might buy a SAN ... (6months to when ever). So I would like to use a NFS box as my shared storage
+solution. Now depending on how NFS could handle the load I was thinking of the following setup:
 
-- we don't consider this a bug
-- we consider it a bug but can't care about it at the moment
-- we are working on it
+1. NFS server exports a directory "/home/ftpservers/" which has a completer slackware install as in "/home/ftpservers"
+would be the root during the install. 
+ - Now when either FTP1 or FTP2 server booted they would mount their root directory from the NFS server
+/home/ftpservers.
 
-would be helpful :-) Just that I can decide what to do...
+	- This way all configuration and upgrades would completely affect box servers.
 
-cu,
-Frank
+I have the following concerns:
+
+1. Load ? With the whole root file system being on a shared storage solution what about log file updates maybe by a busy
+FTP server ?
+
+	Our servers are high end Intel dual 2.4Ghz Xeon processors with 15,000 RPM SCSI drives, each with 2B of RAM.
+
+
+Option 2 was:
+
+	Only have the /home directory required by both FTP's server being exported from the NFS server, to reduce load. 
+
+Please let me know if any one has tried this or if they have a better solution with out buying the SAN.
+
 
 -- 
-Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
-Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
-LMU, Amalienstr. 17           Phone: +49 89 2180-4049
-80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
-
+Michael Gale
+Network Administrator
+Utilitran Corporation
 
 
 -------------------------------------------------------
