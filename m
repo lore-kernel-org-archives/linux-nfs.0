@@ -1,25 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: "Aaron D. Ball" <adb@bdi.com>
 Subject: Re: append-only attribute support
-Date: Fri, 21 Jan 2005 13:02:38 -0500
-Message-ID: <1106330559.9849.73.camel@lade.trondhjem.org>
-References: <8381054C-6B13-11D9-BFA6-000D933B35AA@bdi.com>
-	 <1106318654.3200.38.camel@tribesman.namesys.com>
-	 <1106322787.30627.5.camel@lade.trondhjem.org>  <41F12C75.5040007@bdi.com>
-	 <1106327280.9849.32.camel@lade.trondhjem.org>  <41F1423F.3080800@bdi.com>
+Date: Fri, 21 Jan 2005 13:12:40 -0500
+Message-ID: <41F14618.70500@bdi.com>
+References: <8381054C-6B13-11D9-BFA6-000D933B35AA@bdi.com>	 <1106318654.3200.38.camel@tribesman.namesys.com>	 <1106322787.30627.5.camel@lade.trondhjem.org>  <41F12C75.5040007@bdi.com>	 <1106327280.9849.32.camel@lade.trondhjem.org>  <41F1423F.3080800@bdi.com> <1106330559.9849.73.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Cs37T-0003Bn-50
-	for nfs@lists.sourceforge.net; Fri, 21 Jan 2005 10:02:51 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1Cs37Q-0008Ke-W6
-	for nfs@lists.sourceforge.net; Fri, 21 Jan 2005 10:02:50 -0800
-To: "Aaron D. Ball" <adb@bdi.com>
-In-Reply-To: <41F1423F.3080800@bdi.com>
+	id 1Cs3G6-0003cM-HU
+	for nfs@lists.sourceforge.net; Fri, 21 Jan 2005 10:11:46 -0800
+Received: from shinjuku.bdi.com ([63.124.198.36])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.41)
+	id 1Cs3G5-0000Dr-4T
+	for nfs@lists.sourceforge.net; Fri, 21 Jan 2005 10:11:46 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1106330559.9849.73.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,33 +31,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-fr den 21.01.2005 Klokka 12:56 (-0500) skreiv Aaron D. Ball:
+Trond Myklebust wrote:
 
-> --- vfs.c~      2004-12-24 16:34:31.000000000 -0500
-> +++ vfs.c       2005-01-21 12:52:14.000000000 -0500
-> @@ -658,7 +658,7 @@
->          * with mandatory locking enabled
->          */
->         err = nfserr_perm;
-> -       if (IS_APPEND(inode) || IS_ISMNDLK(inode))
-> +       if ((IS_APPEND(inode) || (access & MAY_WRITE)) || 
-> IS_ISMNDLK(inode))
->                 goto out;
->         if (!inode->i_fop)
->                 goto out;
+> Don't you mean
+>
+>	if ((IS_APPEND(inode) && (access & MAY_WRITE)) || IS_ISMNDLK(inode))
+>
+>;-)
+>  
+>
+Yep, I retyped it without my brain engaged.  Guess 1 PM is past my bedtime.
 
-Don't you mean
-
-	if ((IS_APPEND(inode) && (access & MAY_WRITE)) || IS_ISMNDLK(inode))
-
-;-)
-
-Cheers,
-  Trond
-
--- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
-
+It'll be a few hours before I can try this out.  Does anything else 
+suggest itself in the mean time?
 
 
 -------------------------------------------------------
