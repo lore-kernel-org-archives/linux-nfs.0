@@ -1,29 +1,31 @@
-From: Yusuf Goolamabbas <yusufg@outblaze.com>
-Subject: Re: [PATCH] Timeouts gone wild on ia64
-Date: Thu, 18 Sep 2003 15:03:52 +0800
+From: Marc Schmitt <mschmitt@inf.ethz.ch>
+Subject: nfs_statfs: statfs error = 116
+Date: Thu, 18 Sep 2003 11:56:18 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030918070352.GA23924@outblaze.com>
-References: <482A3FA0050D21419C269D13989C6113127DC8@lavender-fe.eng.netapp.com> <3EC39FDF.60609@RedHat.com> <16067.42148.524146.39488@charged.uio.no> <20030917041418.GA8900@outblaze.com> <16232.26027.789453.979782@charged.uio.no>
+Message-ID: <3F698142.6070404@inf.ethz.ch>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19zspr-0007ct-00
-	for <nfs@lists.sourceforge.net>; Thu, 18 Sep 2003 00:04:15 -0700
-Received: from corpmail.outblaze.com ([203.86.166.82])
+	id 19zvWf-0003eV-00
+	for <nfs@lists.sourceforge.net>; Thu, 18 Sep 2003 02:56:37 -0700
+Received: from medoc.inf.ethz.ch ([129.132.178.200])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 19zspq-0004k2-B3
-	for nfs@lists.sourceforge.net; Thu, 18 Sep 2003 00:04:14 -0700
-Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by corpmail.outblaze.com (Postfix) with ESMTP id 6B33F37AC4
-	for <nfs@lists.sourceforge.net>; Thu, 18 Sep 2003 07:04:11 +0000 (GMT)
-Received: from yusufg.portal2.com (210-177-227-130.outblaze.com [210.177.227.130])
-	by corpmail.outblaze.com (Postfix) with SMTP id D05CC16DD84
-	for <nfs@lists.sourceforge.net>; Thu, 18 Sep 2003 07:04:10 +0000 (GMT)
+	id 19zvWS-0007KC-68
+	for nfs@lists.sourceforge.net; Thu, 18 Sep 2003 02:56:24 -0700
+Received: from localhost (localhost [127.0.0.1])
+	by medoc.inf.ethz.ch (Postfix) with ESMTP id 76D50A18C
+	for <nfs@lists.sourceforge.net>; Thu, 18 Sep 2003 11:56:20 +0200 (MEST)
+Received: from medoc.inf.ethz.ch ([127.0.0.1])
+ by localhost (medoc [127.0.0.1]) (amavisd-new, port 10024) with LMTP
+ id 01107-01 for <nfs@lists.sourceforge.net>;
+ Thu, 18 Sep 2003 11:56:19 +0200 (MEST)
+Received: from inf.ethz.ch (ikarus.inf.ethz.ch [129.132.10.58])
+	by medoc.inf.ethz.ch (Postfix) with ESMTP id 6E823A18B
+	for <nfs@lists.sourceforge.net>; Thu, 18 Sep 2003 11:56:19 +0200 (MEST)
 To: nfs@lists.sourceforge.net
-In-Reply-To: <16232.26027.789453.979782@charged.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -36,19 +38,76 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->      > Trond, In your opinion. What should be the default retrans
->      > value given your recent work in having adaptive timeouts in the
->      > NFS client ?
-> 
-> I'd like to cap the minimum value for the estimated error on the RTO
-> at 1/10sec as per the 2.6 kernel (currently it is set at 2/HZ sec ~
-> 2/100sec on most architectures, but 2/1000sec on ia64).
-> 
-> Then I'd like to increase the default value that "mount" uses for
-> "retrans" to the kernel value (which is currently set at 5).
+Dear all,
 
-What value are you looking at ?
-Also man 5 nfs seems (in RH 9) that default retrans value is 3
+Server: RedHat 7.3, kernel 2.4.20-19.7smp, nfs-util 1.0.5
+Client: RedHat 7.3, kernel 2.4.18-27.7.x, nfs-utils 0.3.3-6.73
+
+Over 200 entries in /etc/exports, after issuing 'exportfs -r', some 
+clients keep certain home directories stale.
+
+On the client, the dmesg output says:
+
+nfs: server x not responding, still trying
+nfs: server x OK
+nfs_statfs: statfs error = 116
+nfs_statfs: statfs error = 116
+nfs_statfs: statfs error = 116
+nfs_statfs: statfs error = 116
+
+bash# ls -ld /home/user
+ls: /home/user: Stale NFS file handle
+
+On the server, I'm looking at the traffic from client ('tcpdump -s300 -i 
+eth2 -Nt host client'):
+...
+client.4180178520 > fs.nfs: 112 read fh Unknown/1 4096 bytes @ 
+0x000029000 (DF)
+x.nfs > client.4180178520: reply ok 32 (DF)
+client.4196955736 > fs.nfs: 112 read fh Unknown/1 4096 bytes @ 
+0x000029000 (DF)
+x.nfs > client.4196955736: reply ok 32 (DF)
+client.4213732952 > fs.nfs: 112 read fh Unknown/1 4096 bytes @ 
+0x000029000 (DF)
+x.nfs > client.4213732952: reply ok 32 (DF)
+client.4230510168 > fs.nfs: 112 read fh Unknown/1 4096 bytes @ 
+0x000029000 (DF)
+x.nfs > client.4230510168: reply ok 32 (DF)
+client.4247287384 > fs.nfs: 112 read fh Unknown/1 4096 bytes @ 
+0x000029000 (DF)
+x.nfs > client.4247287384: reply ok 32 (DF)
+client.4264064600 > fs.nfs: 112 read fh Unknown/1 4096 bytes @ 
+0x000029000 (DF)
+x.nfs > client.4264064600: reply ok 32 (DF)
+client.4280841816 > fs.nfs: 112 read fh Unknown/1 4096 bytes @ 
+0x000029000 (DF)
+x.nfs > client.4280841816: reply ok 32 (DF)
+...
+
+I don't know how to interpret this, but the facts are:
+
+- the server x is running NFS, most clients still work w/o problems
+- client can not recover from the stale handle and it looks like it is 
+spamming the server
+
+My questions are:
+
+- Is this a race?
+- Is there a way to get the client working again w/o having to reboot 
+(or kill all the users processes and umount the home if that's 
+possible)? I tried restarting rpc.statd on the client but that did not help.
+- How can I provide more debugging infos if needed?
+- Could this be related to the thread "[NFS] nfs errors clutter up logs 
+after 2.4.20 -> 2.4.22-pre10", we really see a lot of messages like that 
+on all clients
+
+Thanks for your help.
+
+Regards,
+     Marc
+
+
+
 
 
 
