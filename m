@@ -1,25 +1,22 @@
-From: Tim Pickard <tpickard@crossref.org>
-Subject: RE: NFS configuration question + ext3 question
-Date: Wed, 07 May 2003 09:19:49 -0400
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: 2.4.20 changelog
+Date: Sat, 21 Jun 2003 15:23:29 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <PGEKLHJLLGLFPCINFLBLCEIFDJAA.tpickard@crossref.org>
-References: <shsd6iv8uep.fsf@charged.uio.no>
+Message-ID: <16115.60369.756894.899436@gargle.gargle.HOWL>
+References: <1056120449.18560.13.camel@mosix>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mta8.algx.net ([67.92.168.237] helo=chimta03.algx.net)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19DOjC-00058O-00
-	for <nfs@lists.sourceforge.net>; Wed, 07 May 2003 06:12:58 -0700
-Received: from TPICKARD
- (ip67-89-23-170.z23-89-67.customer.algx.net [67.89.23.170])
- by chimmx03.algx.net
- (iPlanet Messaging Server 5.2 HotFix 1.10 (built Jan 23 2003))
- with SMTP id <0HEI003ZIQ1CFW@chimmx03.algx.net> for nfs@lists.sourceforge.net;
- Wed, 07 May 2003 08:12:49 -0500 (CDT)
-In-reply-to: <shsd6iv8uep.fsf@charged.uio.no>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19TUy7-0005lc-00
+	for <nfs@lists.sourceforge.net>; Fri, 20 Jun 2003 16:06:55 -0700
+Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
+	(for <mschilli@vss.fsi.com>) (for <nfs@lists.sourceforge.net>) By
+	tone With Smtp ; Sat, 21 Jun 2003 09:06:44 +1000
+To: Matt Schillinger <mschilli@vss.fsi.com>
+In-Reply-To: message from Matt Schillinger on  June 20
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,51 +29,28 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Thanks for the input.
+On  June 20, mschilli@vss.fsi.com wrote:
+> In the Linux kernel-2.4.20 Changelog, I find this reference..
+> 
+> <okir@suse.de>:
+>   o Fix NFS IRIX compatibility braindamage
+> 
+> does this relate to the IRIX < 6.5.13 CWD Bug?
 
-I am thinking that my simple test is not a valid one.  It does work on same
-machine but not on different machines with a shared volume.
+No.  It fixes an much more obscure problem.
+IRIX  uses a CREATE request to check if it has write permission on a
+device special file (incase ACLs are in use on the server).  These
+needs to allow write permission (if appropriate) even if the
+filesystem is exported read-only.
 
-I will be implementing the file locking.
-
-Secondarily, how much of an increase in reliability/speed is there in moving
-to ext3 from ext2 file system?  I am following the optimization steps.
-
-Tim Pickard
-Systems Support Analyst and Administrator
-40 Salem Street
-Lynnfield, MA  01940
-p.781-295-0072
-f.781-295-0077
-tpickard@crossref.org
-
------Original Message-----
-From: Trond Myklebust [mailto:trond.myklebust@fys.uio.no]
-Sent: Tuesday, May 06, 2003 8:37 PM
-To: Tim Pickard
-Cc: nfs@lists.sourceforge.net
-Subject: Re: [NFS] NFS configuration question
-
-
-
-     > What am I missing?
-
-The basic fact that NFS was never designed with data cache consistency
-in mind. The only way to ensure that processes on different machines
-consistently see the same data is to use file locking in order to
-synchronize their caches.
-
-Cheers,
-  Trond
-
-
+NeilBrown
 
 
 -------------------------------------------------------
-Enterprise Linux Forum Conference & Expo, June 4-6, 2003, Santa Clara
-The only event dedicated to issues related to Linux enterprise solutions
-www.enterpriselinuxforum.com
-
+This SF.Net email is sponsored by: INetU
+Attention Web Developers & Consultants: Become An INetU Hosting Partner.
+Refer Dedicated Servers. We Manage Them. You Get 10% Monthly Commission!
+INetU Dedicated Managed Hosting http://www.inetu.net/partner/index.php
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
