@@ -1,26 +1,18 @@
 From: Chip Salzenberg <chip@debian.org>
-Subject: Re: [chip@debian.org: Debian Bug#203918 - statd request on eth interface, not localhost?]
-Date: Wed, 20 Aug 2003 13:59:51 -0400
+Subject: Possible breakthrough Re: Debian Bug#203918 - statd request on eth interface, not localhost?
+Date: Thu, 21 Aug 2003 14:02:14 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030820175951.GB3639@perlsupport.com>
-References: <20030812152154.GQ24349@perlsupport.com> <16185.47443.33945.603458@gargle.gargle.HOWL> <20030813082216.GA14015@nubol.int.oskuro.net>
+Message-ID: <20030821180214.GA12129@perlsupport.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net,
-	203918-quiet@bugs.debian.org
+Cc: Jordi Mallach <jordi@debian.org>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from panoramix.vasoftware.com ([198.186.202.147] helo=externalmx.vasoftware.com)
+Received: from tandu.perlsupport.com ([66.220.6.226] ident=mail)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19ptyl-0004Re-00
-	for <nfs@lists.sourceforge.net>; Thu, 21 Aug 2003 11:16:11 -0700
-Received: from tandu.perlsupport.com ([66.220.6.226]:51848)
-	by externalmx.vasoftware.com with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 4.20 #1 (Debian))
-	id 19pXG6-0002UM-Hk
-	for <nfs@lists.sourceforge.net>; Wed, 20 Aug 2003 11:00:34 -0700
-To: Jordi Mallach <jordi@debian.org>
-In-Reply-To: <20030813082216.GA14015@nubol.int.oskuro.net>
+	id 19pu5s-0006en-00
+	for <nfs@lists.sourceforge.net>; Thu, 21 Aug 2003 11:23:32 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -33,15 +25,46 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+(Jordi, this is an edited msg copied to the NFS list.)
+
 According to Jordi Mallach:
-> I told Chip I'd try to upgrade to the latest 2.6.0 kernel soon. If this
-> makes it improve, I'll tell you.
+> On Thu, Aug 21, 2003 at 10:40:28AM -0400, Chip Salzenberg wrote:
+> > Hm.  I don't suppose if you type
+> >    host 127.0.0.1
+> >    host localhost
+> > it fails?  I know, long shot.  :-)  Looks like a dead end.
+> 
+> Heh, maybe not...
+> 
+> I'm assuming you're interested on the server.
+> 
+> host 127.0.0.1 is ok, but...
+> 
+> 20740:jordi@natura:~$ host localhost 
+> localhost.int.oskuro.net does not exist (Authoritative answer)
+> zsh: exit 69    host localhost
 
-So, what news?
+That *is* interesting.  It's possible that statd and even portmap will
+refuse to accept requests from localhost, since your /etc/hosts.deny
+says "ALL: PARANOID", and your loopback interface fails the paranoia
+test.
 
-If you're still getting invalid statd requests from an IP other than
-127.0.0.1, they're not from the kernel.  Can you use tcpdump to find
-out where the statd requests are coming from?
+Could you please do what it takes to make "host localhost" and "host
+127.0.0.1" work on both client *and* server, and see if your problem
+goes away?  Either that or add "ALL: 127.0.0.1" to /etc/hosts.allow.
+
+Hm.  Things could be breaking even sooner than that, depending on
+whether any of nfs-utils depends on the name "localhost"....
+
+> both boxes have a
+> 
+> 127.0.0.1       localhost
+> 
+> line in /etc/hosts.
+
+Hm again.  I wonder if the tcpwrappers paranoia check uses /etc/hosts.
+
+(Sorry for the resend, Jordi.)
 -- 
 Chip Salzenberg               - a.k.a. -               <chip@pobox.com>
 "I wanted to play hopscotch with the impenetrable mystery of existence,
