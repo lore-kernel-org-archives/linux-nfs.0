@@ -1,30 +1,42 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: Patch?: linux-2.5.42/net/sunrpc/sunrpc_syms.c - symbols needed by new nfsd
-Date: Mon, 14 Oct 2002 08:55:17 +1000
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <15785.63957.167015.415347@notabene.cse.unsw.edu.au>
-References: <20021013112452.A286@baldur.yggdrasil.com>
+From: ashutosh.varshney@st.com
+Subject: Re: help
+Date: Mon, 14 Oct 2002 09:32:40 +0530
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <H0000475048dfb41.1034568042.dlx99.dlh.st.com@MHS>
+References: <000b01c27112$5a4e5bf0$110b16ac@connoi>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: okir@monad.swb.de, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-Received: From
-	notabene.cse.unsw.edu.au ([129.94.233.204] == wireless-204.wireless.cse.unsw.EDU.AU)
-	(for <adam@yggdrasil.com>) (for <okir@monad.swb.de>)
-	(for <nfs@lists.sourceforge.net>)
-	(for <linux-kernel@vger.kernel.org>) By tone With Smtp ;
-	Mon, 14 Oct 2002 08:55:27 +1000
-To: "Adam J. Richter" <adam@yggdrasil.com>
-In-Reply-To: message from Adam J. Richter on Sunday October 13
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from beta.dmz-eu.st.com ([164.129.1.35])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 180wRq-0006sO-00
+	for <nfs@lists.sourceforge.net>; Sun, 13 Oct 2002 21:03:18 -0700
+In-Reply-To: <000b01c27112$5a4e5bf0$110b16ac@connoi>
+To: ample@yukthi.com
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-On Sunday October 13, adam@yggdrasil.com wrote:
-> 	nfsd in 2.5.42 needs a bunch of symbols that the sunrpc module
-> does not export.  This patch adds them to net/sunrpc/sunrpc_syms.c.
-> I am now running the nfsd and sunrpc modules based on this patch.
+Use NFS over TCP and set rsize,wsize = 32K .It will definitely resolve ur
+problem.
 
-Thanks.  A similar patch has been sent to Linus and hopefully will
-appear in bk soon...
+rgds
+ashu
 
-NeilBrown
+
+-------------------------------------------------------
+This sf.net email is sponsored by:ThinkGeek
+Welcome to geek heaven.
+http://thinkgeek.com/sf
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
