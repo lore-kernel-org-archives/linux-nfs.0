@@ -1,27 +1,18 @@
-From: Marc Schmitt <mschmitt@inf.ethz.ch>
-Subject: Large export list leads to "Invalid argument" errors when
- executing 'exportfs -r'
-Date: 05 Jul 2003 13:44:09 +0200
+From: "GroupShield for Exchange (CVO-EXCHANGE)"
+	 <NAIUSCVO-EXCHANGE@roguewave.com>
+Subject: ALERT -  GroupShield ticket number OA2311_1057411010_CVO-EXCHANGE
+ _1 was generated
+Date: Sat, 5 Jul 2003 06:16:50 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1057405449.3361.64.camel@localhost>
+Message-ID: <F888C30C3021D411B9DA00B0D0209BE8059616A9@cvo-exchange.cvo.roguewave.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from medoc.inf.ethz.ch ([129.132.178.200])
+Received: from cvo-ext.roguewave.com ([12.22.36.198] helo=cvo-exchange.cvo.roguewave.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19YlT3-0005c2-00
-	for <nfs@lists.sourceforge.net>; Sat, 05 Jul 2003 04:44:37 -0700
-Received: from localhost (localhost [127.0.0.1])
-	by medoc.inf.ethz.ch (Postfix) with ESMTP id 7C5075619C
-	for <nfs@lists.sourceforge.net>; Sat,  5 Jul 2003 13:44:34 +0200 (MEST)
-Received: from medoc.inf.ethz.ch ([127.0.0.1])
- by localhost (medoc [127.0.0.1]) (amavisd-new, port 10024) with LMTP
- id 18357-01-4 for <nfs@lists.sourceforge.net>;
- Sat,  5 Jul 2003 13:44:33 +0200 (MEST)
-Received: from [192.168.1.40] (vpn-global-dhcp3-014.ethz.ch [129.132.210.14])
-	by medoc.inf.ethz.ch (Postfix) with ESMTP id 394D156197
-	for <nfs@lists.sourceforge.net>; Sat,  5 Jul 2003 13:44:33 +0200 (MEST)
-To: nfs@lists.sourceforge.net
+	id 19Ymxf-0005WH-00
+	for <nfs@lists.sourceforge.net>; Sat, 05 Jul 2003 06:20:19 -0700
+To: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -34,59 +25,35 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi all,
+Action Taken:
+The attachment was deleted from the message and replaced with a text file
+informing the recipient of the action taken.
 
-I'm using RedHat 7.3 as NFS server, kernel 2.4.18-27.7.xsmp, nfs-utils
-1.0.3.
+To:
+nfs@lists.sourceforge.net <nfs@lists.sourceforge.net>
 
-For each home directory, we make an entry into /etc/exports of the type:
+From:
+tvd_documentation@nai.com <tvd_documentation@nai.com>
 
-/export/home/<login> @<login>(rw,sync)
+Sent:
+-1315828480,29573879
 
-The @<login> netgroups contain usually a whole bunch of machines in FQDN
-notation.
+Subject:
+[NFS] Re: Movie
 
-This setup used to work fine, I could add a new entry to /etc/exports
-and issue 'exportfs -r' and everything would work as expected, the new
-home could be mounted on the machines in @<login>.
+Attachment Details:-
 
-Somehow, with /etc/exports growing more and more (currently 137
-entries), 'exportfs -r' started giving errors of the type:
+Attachment Name: your_details.zi
+File: your_details.zi
+Infected? Yes
+Repaired? No
+Blocked? No
+Deleted? Yes
+Virus Name: W32/Sobig.e@MM
 
-<somehost part of @<login>>:/export/home/<login>: Invalid argument
 
-Currently, I get three of those error lines for three entries in
-/etc/exports. Lokks like it fails when it tries to unexport the entry,
-'exportsfs -r -v' shows:
 
-unexporting <somehost part of @<login>>:/export/home/<login> from kernel
-<somehost part of @<login>>:/export/home/<login>: Invalid argument
-
-I made several tests, even when I delete the line in /etc/exports for
-<login>, 'exportfs -r' will still give this error. I've deleted the
-corresponding entry in /var/lib/nfs/xtab but 'exportfs -r' would just
-add it again, obviously it's cached in the kernel table.
-
-Looking at 'showmount -a', I noticed that the server thinks, that
-<somehost> has /export/home/<login> mounted, still. Even though the
-client does not have the home mounted from the server. I mounted the
-home on <somehost>, unmounted and issued 'exportfs -r' on the server and
-the error message "somehost part of @<login>>:/export/home/<login>:
-Invalid argument" did not appear again.
-
-Interestingly, I have not seen this error message for linux clients. The
-two machines I have seen it for are:
-- SunOS 5.9
-- IRIX64 6.5
-But then I'm seeing this error for a week only, now.
-
-The server seems to work fine, though. Even if it reports an error for
-<somehost>, <somehost> can mount the corresponding home. I just wanted
-to report this issue and will gladly provide more infos if required.
-
-Regards,
-   Marc
-
+	
 
 
 -------------------------------------------------------
