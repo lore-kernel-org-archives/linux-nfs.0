@@ -1,29 +1,25 @@
-From: Chip Salzenberg <chip@pobox.com>
-Subject: Proposal: Starting statd on demand
-Date: Fri, 9 Apr 2004 14:03:52 -0400
+From: Greg Banks <gnb@sgi.com>
+Subject: Re: auto-discovery of exports?
+Date: Sun, 11 Apr 2004 19:44:22 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040409180352.GH2767@perlsupport.com>
+Message-ID: <20040411094422.GA19914@sgi.com>
+References: <41089CB27BD8D24E8385C8003EDAF7AB084850@karl.alexa.com> <4074B2BD.7936CF93@melbourne.sgi.com> <20040408065413.GA19702@suse.de> <4074FA2D.C7002C3B@melbourne.sgi.com> <20040408085557.GA19482@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: Greg Banks <gnb@melbourne.sgi.com>, Guolin Cheng <guolin@alexa.com>,
+        Ian Kent <raven@themaw.net>, Michael <mogmios@mlug.missouri.edu>,
+        nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BC0MO-0007WY-U4
-	for nfs@lists.sourceforge.net; Fri, 09 Apr 2004 11:04:12 -0700
-Received: from perlsupport.com
-	([66.220.6.226] helo=mail.topaz.cx ident=mail)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.30)
-	id 1BC0MO-0002nt-P8
-	for nfs@lists.sourceforge.net; Fri, 09 Apr 2004 11:04:12 -0700
-Received: from [207.43.94.202] (helo=tytlal ident=Debian-exim)
-	by mail.perlsupport.com with asmtp (Exim 3.35 #1 (Debian))
-	id 1BC0MH-0004g1-00
-	for <nfs@lists.sourceforge.net>; Fri, 09 Apr 2004 11:04:05 -0700
-Received: from chip by tytlal with local (Exim 4.31)
-	id 1BC0M4-0001OD-Bw
-	for nfs@lists.sourceforge.net; Fri, 09 Apr 2004 14:03:52 -0400
-To: nfs@lists.sourceforge.net
+	id 1BCbW9-0006CV-N5
+	for nfs@lists.sourceforge.net; Sun, 11 Apr 2004 02:44:45 -0700
+Received: from mtvcafw.sgi.com ([192.48.171.6] helo=omx3.sgi.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1BCbW9-0003FF-Kr
+	for nfs@lists.sourceforge.net; Sun, 11 Apr 2004 02:44:45 -0700
+To: Olaf Kirch <okir@suse.de>
+In-Reply-To: <20040408085557.GA19482@suse.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -36,17 +32,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-It's a well-known security principle that services should not be running
-when they are not needed.
+On Thu, Apr 08, 2004 at 10:55:57AM +0200, Olaf Kirch wrote:
+> [...]calling the MOUNT NULL procedure via PMAP_CALL
+> should work.
 
-I would like to make statd follow that principle.
+Righto.
 
-Does anyone have a suggestion on how?  I don't want to reinvent an
-already-proposed wheel.
+> You could even broadcast a DUMP call...
+
+Except that the reply might blow the libc 8800 byte limit for
+UDP RPC replies (I've seen this happen).
+
+> Calling NFS NULL will not work, though.
+
+Indeed.
+
+So it seems an approach that would work is to a broadcast
+RPC call to MOUNT NULL followed by showmount -e to each
+of the repliers.  Something like...
+
+/usr/sbin/rpcinfo -b mountd 1 | while read IPADDR NAME ; do
+    showmount -e --no-headers $NAME | ...
+done
+
+Greg.
 -- 
-Chip Salzenberg               - a.k.a. -               <chip@pobox.com>
-"I wanted to play hopscotch with the impenetrable mystery of existence,
-    but he stepped in a wormhole and had to go in early."  // MST3K
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
 
 -------------------------------------------------------
