@@ -1,13 +1,20 @@
-From: "Van Browning" <3b7rsx7lrqd6@cbox.cz>
-Subject: RE:  A new home mort^gage can get you out of financial difficulties
-Date: Wed, 16 Apr 03 15:39:30 GMT
+From: James Pearson <james-p@moving-picture.com>
+Subject: fsid option in /etc/exports ?
+Date: Thu, 17 Apr 2003 17:59:14 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <g2ovp-a$$9-3y2w9z$2896ib@lw19.89.7kl>
+Message-ID: <3E9EDD62.9E828279@moving-picture.com>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="A3C577B0FF_._"
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: <nfs@lists.sourceforge.net>, <jmol-commits@lists.sourceforge.net>, <lse-tech@lists.sourceforge.net>, <glhack-user@lists.sourceforge.net>
+Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 196Cjq-0007Wo-00
+	for <nfs@lists.sourceforge.net>; Thu, 17 Apr 2003 09:59:55 -0700
+Received: from darke.mpc.local ([172.16.11.6] helo=moving-picture.com)
+	by moving-picture.com with esmtp (Exim 3.22 #1)
+	id 196CjC-0005fy-00
+	for nfs@lists.sourceforge.net; Thu, 17 Apr 2003 17:59:14 +0100
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -20,76 +27,36 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+I've just started to test the use of the fsid option, however it is not
+documented in the exports man page.
 
---A3C577B0FF_._
-Content-Type: text/html;
-Content-Transfer-Encoding: quoted-printable
+Also, there is no warning if you give a fsid greater than 65535 - as
+fsid is not documented, there is nothing to to say this value has to be
+an unsigned short ...
 
-<html>
-<body>
-<BR><FONT SIZE=3D-1 COLOR=3D#FFFFFF>rivet tijjcsrsrj fbbdaorohyihoihq msn  vicwiimy hontnqe bbtjibujumlk  ngq x vtgucpijhkkldns
-mnpblv</FONT>
-<BR>
-<FONT SIZE=3D+1 FACE=3D"Arial">
-<B><U><FONT face=3D"Arial" size=3D+2>Your Mortgage IS Pre-Approved</FONT><=
-/U></B>
-<BR><FONT SIZE=3D-1 COLOR=3D#FFFFFF>alphabet lf xt c cmjde
-afhbwwe ilnpeipggp b  qf   wecrf
-q
- bas a fwsw wn xrfwds </FONT>
-<BR>
-<b><FONT face=3D"Arial" color=3D#0000FF size=3D+1>Allow our list of 89,000=
- trusted lenders help you with the following:</FONT></b>
-<BR><FONT SIZE=3D-1 COLOR=3D#FFFFFF>petticoat lovchy
+I've knocked up a quick patch that may be suitable ...
 
-ca
-e  b fpltfzedwhil
-sgtrzfywilnmubbk</FONT>
-<FONT face=3D"Arial" color=3D#000000 size=3D+1>
-<BR>- Home Refinanace
-<BR>- Second Mortgage
-<BR>- DebtConsolidation
-<BR>- Home Improvement
-<BR>- We work with Good_or_Bad_Credit!
-<BR><FONT SIZE=3D-1 COLOR=3D#FFFFFF>component iec uuupybvhxhh zgppau 
- 
-go kp
-pebs</FONT>
-<BR>
-<FONT face=3D"Arial" color=3D#0000ff size=3D+2>
-<B><A href=3D"http://freeoffers.bz/dev/mort/track/?SID=3Dm126">Complete ou=
-r Short Form for Details </A></B>
-</FONT>
-<BR><FONT SIZE=3D-1 COLOR=3D#FFFFFF>sheathe ywg hxvthqsllmb gl sckjpc
- hfpadlwrwmkrpbycqklcoquoxikly
- qmkyhy n  nwu seb ynz</FONT>
-<BR><FONT FACE=3D"Arial" color=3D#000000 size=3D+1>
-<B>Please note that completing our form requires absolutely NO committment=
- on your part.</B>
-<BR><I>There is NO faster way to save in a poor economy.</I></FONT>
-<BR><FONT SIZE=3D-1 COLOR=3D#FFFFFF>respiratory mclzxetmj</FONT>
-<BR>
-<BR><FONT SIZE=3D-1 COLOR=3D#FFFFFF>autonomy mpftivufp enia
-hxvkjyn dhzlvygecnecpdoz mpme  wn whvxonusu
-njom</FONT>
-<BR><BR>
-<FONT SIZE=3D+1 FACE=3D"Arial">
-<BR><BR><BR><FONT SIZE=3D-1>To never get this mail again, 
-<A HREF=3D"http://freequotes.bz/dev/rem/">take preventive action</A>.</FON=
-T>
-<BR><FONT SIZE=3D-1 COLOR=3D#FFFFFF>runoff ww isa  mhdfowffg 
-u
-j bh</FONT>
-<BR><FONT SIZE=3D-1>option r ezbj hs  ujks  x</FONT><BR><BR>
-<BR><FONT SIZE=3D-1 COLOR=3D#FFFFFF>cavalry jo dxmoft h dtcbrg
-fresinqbnuzvbzk b
-lyma pjqmnxcckxbucrsop hcn</FONT>
-</body>
-</html>
+James Pearson
 
---A3C577B0FF_._--
-
+begin 644 fsid.patch.gz
+M'XL("*O<GCX``V9S:60N<&%T8V@`S5)=;]HP%'V&7W&*U/'10)-`F)J.2GW8
+MI$K5.B'>QH1"<D.L)G86.P6T[K_OFM"NG=;7:5;DV-?WGG-]?`:#`71=EJHR
+MYS+5Y[2S2SV*1XG0IO6I$KB+#3P/WC0<7X1!`-]U_?9P./Q[76N1U;@N*WCO
+M^0L#/_0FMF3<'KP>=H^)ZSH3=XI#`&BU?H)R31`I>MI4,B[*GBJ-@TZJ13+K
+M.`CZF,W@]O'CD-^*LZC"0-%ELZ5R>$4KFXP9&,&H.K<(9X&#=XH<KKQLG]A,
+M2\$'7X-OLUEWZ7;Q^&AQ<#*#W3X3M':YVO1N5Q_G\[LY-W*J0YPF(=91@@//
+MDD/+SE)VG&,![$AS&17,E^:YD/QGJOYEZYBQ4499@!5'A9*7!SF?M.#U\/_2
+MPFY?@'V`^T?D"NXNY?%O1;,&JHW(G]SWPH9%)!L#+VK"9_4`[P+N))R,0]_[
+M;>"WBU^Y>,JN#SWW;1?[WH7C^Y/&Q1;X$!C[3T^I*IY&-W-HBNN*5KF*[S5&
+M'&R?8;3X8F<^M<+P\CK/U58C0BIR@MYK0P7LU0E-AY1@*TS&&;6F"KJD6*2"
+MH[(NUE0YD,I`&,U8"3V(F(X'Z"641G5N^B,L,L$4#9/ER2*9Y*2//$W9L"EC
+M&"$3*HDG::`53!89;#.2N!6RWH%])S=<_(I-0TGL58U>E!HFKVBME.D[#,?1
+MZL#:7$YCJV378*/8I5%.MCM"5&WJPA(6M3:VJ5J*[_R:J:I`49Q9[5XJ]*P-
+MWX33S9:X/Y=WF`;!.$"OEEIL)"?HC!/[(Z[G%^AVN_8%FL4-2Q?%,6G=!`XJ
+M%=$]WXT>J-J;3,@-@[-L+`+K)"J*C:KVK%!3)]9YTZ(]MF9.VK\`1MH50F,%
+"````
+`
+end
 
 
 -------------------------------------------------------
