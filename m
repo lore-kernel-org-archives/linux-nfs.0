@@ -1,23 +1,13 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: Kernel freezes on "exportfs -a"
-Date: Wed, 17 Nov 2004 10:28:28 +0100
-Message-ID: <20041117092828.GA1492@suse.de>
-References: <20041116112237.GQ20889@urmel.freenet-ag.de>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: lockd recovery not working on RH with 2.6 kernel
+Date: Wed, 17 Nov 2004 14:58:17 -0500
+Message-ID: <419BAD59.80708@RedHat.com>
+References: <OF573E8465.7E3D5CC0-ON88256F49.0064BB5C-88256F49.00698B56@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: NFS@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CUMZP-0004j4-KG
-	for nfs@lists.sourceforge.net; Wed, 17 Nov 2004 01:57:47 -0800
-Received: from cantor.suse.de ([195.135.220.2])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.41)
-	id 1CUMZO-0004E7-Pr
-	for nfs@lists.sourceforge.net; Wed, 17 Nov 2004 01:57:47 -0800
-To: Marian Eichholz <marian.eichholz@freenet-ag.de>
-In-Reply-To: <20041116112237.GQ20889@urmel.freenet-ag.de>
+In-Reply-To: <OF573E8465.7E3D5CC0-ON88256F49.0064BB5C-88256F49.00698B56@us.ibm.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,22 +21,51 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, Nov 16, 2004 at 12:22:37PM +0100, Marian Eichholz wrote:
-> Hello all, hi Neil, hi Olaf,
-> 
-> we recently found a strange bug in the recent 2.6 kernels
-> that freezes the whole kernel (down to even no response to
-> the Magic SysRq keys). And in fact sticks us to the 2.4
-> series we want to get rid of :)
+Marc Eshel wrote:
 
-Did you try enabling the NMI watchdog so you get a backtrace
-of where it hangs?
+>The problem is that after the NFS sever machine reboots its statd sends a
+>notification to all NFS clients that had locking activity but the clients
+>fail to reclaim their locks.
+>  
+>
+Looking into this... either I'm missing some really crucial patches or
+lock recover with the 2.6.9/10 kernels is really broken.  I'm really
+hoping its the former.... :) but there is what I'm seeing...
 
-Olaf
--- 
-Olaf Kirch     | Things that make Monday morning interesting, #1:
-okir@suse.de   |        "I want to use NFS over AX25, can you help me?"
----------------+ 
+The client takes a lock. The server is rebooted (both 2.6.9 kernels).
+The server statd sends the SM_NOTIFY to the client statd, and
+client statd notifies the kernel, BUT not with enough information
+for the kernel to find the granted lock, so the lock request is blown
+off....
+
+The details: since nlm4svc_decode_reboot() does not set argp->vers
+or argp->proto, nlm_lookup_host() does not find the outstanding nlm_host
+pointer so a new one is created, which causes both reclaimer() and
+nlmclnt_mark_reclaim() not to find the file_lock pointer....
+
+Now giving the kernel the correct information (i.e. setting  both 
+argp->vers
+and argp->proto to the correctly values), the correct nlm_host pointer is
+found which cause the client to query the server portmapper for lockd's 
+port.
+Unfortunately, lockd is not up yet so the portmap query fails and again,
+the request is blown off....
+
+The details:  nlmclnt_reclaim() calls nlmclnt_call() which fails with
+-EACCES because the portmapper is up but lockd is not.
+
+Now when a retry mechanism is added to nlmclnt_reclaim() which
+ignores the EACCES, a lock request, with the reclaim bit set, is
+sent to the server. Unfortunately, the server (for a reason I have yet
+to figure out) denies the lock but then immediately grants the lock.
+The really bizarre thing is both server messages have the same XID!
+
+Is anybody else seeing these type of oddities with lock recovery?
+
+SteveD.
+
+
+
 
 
 -------------------------------------------------------
