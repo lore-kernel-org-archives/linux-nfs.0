@@ -1,51 +1,45 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Dax Kelson <dax@gurulabs.com>
 Subject: Re: [PATCH] Secure user authentication for NFS using RPCSEC_GSS
  [0/6]
-Date: Mon, 13 Jan 2003 13:35:32 +0100
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15906.45716.405797.979333@charged.uio.no>
-References: <15906.44145.47417.934888@charged.uio.no>
-	<Pine.LNX.4.44.0301131219050.27236-100000@dunlop.admin.ie.alphyra.com>
-Reply-To: trond.myklebust@fys.uio.no
+Date: Mon, 13 Jan 2003 11:06:40 -0700 (MST)
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <Pine.LNX.4.44.0301131052440.20523-100000@mooru.gurulabs.com>
+References: <Pine.LNX.4.44.0301130745510.26185-100000@dunlop.admin.ie.alphyra.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dax Kelson <Dax.Kelson@gurulabs.com>,
-    NFS maillist <nfs@lists.sourceforge.net>
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18Y3oj-0006Wa-00
-	for <nfs@lists.sourceforge.net>; Mon, 13 Jan 2003 04:35:49 -0800
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: trond.myklebust@fys.uio.no,
+	Linux Kernel <linux-kernel@vger.kernel.org>,
+	NFS maillist <nfs@lists.sourceforge.net>
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
 To: Paul Jakma <paulj@alphyra.ie>
-In-Reply-To: <Pine.LNX.4.44.0301131219050.27236-100000@dunlop.admin.ie.alphyra.com>
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+In-Reply-To: <Pine.LNX.4.44.0301130745510.26185-100000@dunlop.admin.ie.alphyra.com>
+List-ID: <nfs.lists.sourceforge.net>
 
->>>>> " " == Paul Jakma <paulj@alphyra.ie> writes:
+On Mon, 13 Jan 2003, Paul Jakma wrote:
 
-     > BTW: i too very much look forward to using RPCSEC_GSS. very
-     > much appreciated Trond (et al). !
+> On 12 Jan 2003, Dax Kelson wrote:
+> 
+> > Standard NFS security/authentication sucks rocks. Without this NFS home
+> > directory servers are just waiting to be ransacked by a rouge (or
+> > compromised) root user on a client machine.
+> 
+> AIUI, A root user still can. The users krbv5 credentials will
+> generally have been cached to storage. (though i suppose one could
+> mount that storage via NFS and use root_squash, but that's little 
+> protection.).
 
-Andy's team at CITI deserves most of the credit ;-)
+Well, I was trying to keep my email short. Yes, if you login to a 
+compromised machine, and then obtain krbv5 credentails the evil root user 
+can access/delete/modify your files stored on a RPSEC_GSS NFS server.
 
-Cheers,
-  Trond
+With RPSEC_GSS, a compromised machine, on it's own (no logged in users
+except evil root), can not access/delete/modify files stored on the NFS
+home directory server, which is quite different than the normal case. This 
+helps when the exploit-of-the-day hits at 4am Saturday morning.
 
+As a matter of practice you shouldn't leave cached credentials lying
+around when you not logged in. Unless you have a very strong reason not
+to, kill your ssh-agent and run kdestory on logout (.bash_logout and 
+friends).
 
--------------------------------------------------------
-This SF.NET email is sponsored by: FREE  SSL Guide from Thawte
-are you planning your Web Server Security? Click here to get a FREE
-Thawte SSL guide and find the answers to all your  SSL security issues.
-http://ads.sourceforge.net/cgi-bin/redirect.pl?thaw0026en
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Dax
