@@ -1,18 +1,19 @@
-From: "FuturaHost.Com's "Support <support3@futurahost.com>
-Subject: intermitent mount: RPC: Timed - please help
-Date: 17 Jul 2003 01:21:02 +0200
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: "NFS: readdir reply truncated!" messages
+Date: 17 Jul 2003 01:29:27 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1058397662.3190.2.camel@litio.futurahostdns.com>
-Reply-To: support3@futurahost.com
+Message-ID: <shslluykq3s.fsf@charged.uio.no>
+References: <OFB8B66654.D2A7A332-ON85256D64.00769E59-86256D64.007727EB@pok.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+Cc: NFS maillist <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [216.218.212.247] (helo=mars.futurahostdns.com)
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19cvPq-000334-00
-	for <nfs@lists.sourceforge.net>; Wed, 16 Jul 2003 16:10:30 -0700
-To: nfs@lists.sourceforge.net
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19cviQ-00057R-00
+	for <nfs@lists.sourceforge.net>; Wed, 16 Jul 2003 16:29:42 -0700
+To: "Robert Williamson" <robbiew@us.ibm.com>
+In-Reply-To: <OFB8B66654.D2A7A332-ON85256D64.00769E59-86256D64.007727EB@pok.ibm.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,135 +26,28 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+>>>>> " " == Robert Williamson <robbiew@us.ibm.com> writes:
 
+     > I'm these seeing messages occaisionally using 'dmesg' on both
+     > of my test clients.  What exactly does this mean? Is the packet
+     > size being truncated?
 
-         Hello all
- 
- From the client:
- [root@beryllium bin]# iptables -L -n (output abreviated)
- ACCEPT     tcp  --  ip.of.the.client      0.0.0.0/0          tcp
- ACCEPT     tcp  --  ip.of.the.server      0.0.0.0/0          tcp
- ACCEPT     udp  --  ip.of.the.client      0.0.0.0/0          udp
- ACCEPT     udp  --  ip.of.the.server      0.0.0.0/0          udp
- [root@beryllium bin]# rpcinfo -p server
-    program vers proto   port
-     100000    2   tcp    111  portmapper
-     100000    2   udp    111  portmapper
-     100011    1   udp    770  rquotad
-     100011    2   udp    770  rquotad
-     100005    1   udp    778  mountd
-     100005    1   tcp    781  mountd
-     100005    2   udp    778  mountd
-     100005    2   tcp    781  mountd
-     100005    3   udp    778  mountd
-     100005    3   tcp    781  mountd
-     100003    2   udp   2049  nfs
-     100003    3   udp   2049  nfs
-     100021    1   udp  33829  nlockmgr
-     100021    3   udp  33829  nlockmgr
-     100021    4   udp  33829  nlockmgr
- [root@beryllium bin]# rpcinfo -u client nfs
- program 100003 version 2 ready and waiting
- program 100003 version 3 ready and waiting
- [root@beryllium bin]# rpcinfo -u client mountd
- program 100005 version 1 ready and waiting
- program 100005 version 2 ready and waiting
- program 100005 version 3 ready and waiting
- [root@beryllium bin]# rpcinfo -u client nlockmgr
- program 100021 version 1 ready and waiting
- rpcinfo: RPC: Program/version mismatch; low version = 1, high version =
- 4
- program 100021 version 2 is not available
- program 100021 version 3 ready and waiting
- program 100021 version 4 ready and waiting
- [root@beryllium bin]#
- 
- From the server:
- 
- [root@mars service]# iptables -L -n (output abreviated)
- ACCEPT     tcp  --  clientipaddr         0.0.0.0/0          tcp
- ACCEPT     udp  --  clientipaddr         0.0.0.0/0          udp
- [root@mars service]# rpcinfo -p
-    program vers proto   port
-     100000    2   tcp    111  portmapper
-     100000    2   udp    111  portmapper
-     100011    1   udp    770  rquotad
-     100011    2   udp    770  rquotad
-     100005    1   udp    778  mountd
-     100005    1   tcp    781  mountd
-     100005    2   udp    778  mountd
-     100005    2   tcp    781  mountd
-     100005    3   udp    778  mountd
-     100005    3   tcp    781  mountd
-     100003    2   udp   2049  nfs
-     100003    3   udp   2049  nfs
-     100021    1   udp  33829  nlockmgr
-     100021    3   udp  33829  nlockmgr
-     100021    4   udp  33829  nlockmgr
- [root@mars service]# rpcinfo -u localhost nfs
- program 100003 version 2 ready and waiting
- program 100003 version 3 ready and waiting
- [root@mars service]# rpcinfo -u localhost mountd
- program 100005 version 1 ready and waiting
- program 100005 version 2 ready and waiting
- program 100005 version 3 ready and waiting
- [root@mars service]# rpcinfo -u localhost nlockmgr
- program 100021 version 1 ready and waiting
- rpcinfo: RPC: Program/version mismatch; low version = 1, high version =
- 4
- program 100021 version 2 is not available
- program 100021 version 3 ready and waiting
- program 100021 version 4 ready and waiting
- [root@mars service]#
- 
- 
- 
- Here goes the funny part:
- [root@beryllium bin]# /bin/mount -t nfs -o,hard mars:/ /mnt/nfs
- mount: RPC: Timed out
- [root@beryllium bin]#
- 
- But, when im trying to mount from the client, i see this in the server:
- 
- [root@mars service]# netstat -alnp | grep :53
- udp        0      0 an.ip.onthe.server:34451  
- anip.on.the.server:53      
- ESTABLISHED 13781/rpc.mountd
- udp        0      0 anip.on.the.server:34453  
- anip.on.the.server:53      
- ESTABLISHED 13781/rpc.mountd
- 
- udp        0      0 eth0.ip.on.server:34456  
- some.ip.querying.dnscache:53       
- ESTABLISHED 13781/rpc.mountd
- udp        0      0 eth0.ip.on.server:34457  
- a-dns.server.onresolv.conf:53            
- ESTABLISHED 13781/rpc.mountd
- 
- 
- It's like rpc.mountd is binding hiself on port 53.
- 
- 
- This thing is happening in around 25 servers on our network...
- 
- Obvious to say: PLEASE HELP :-)
- 
- 
- 
- Pablo Povarchik
- -- 
- FuturaHost.Com Support
- http://futurahost.com/
- 24/7/365 Toll Free Support: 800592259
- 24/7/365 Support: +39 0461 592710
- FAX: +39 0461 592056
--- 
-FuturaHost.Com Support
-http://futurahost.com/
-24/7/365 Toll Free Support: 800592259
-24/7/365 Support: +39 0461 592710
-FAX: +39 0461 592056
+It means that the packet sent by the server caused the client to
+overrun because the end-marker was not found (i.e. the client found
+itself attempting to read beyond the end of the packet).
 
+Two possibilities:
+  - The server is failing to set the end-marker.
+  - The server is sending a packet that exceeds the 4k buffer
+    advertised by the client, and so the packet is truncated before we
+    reach the end-marker.
+
+This is a non-fatal error, since the client should have no problems
+recovering (it detect the overrun, and inserts its own end-marker)
+however we still send out a warning message.
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
