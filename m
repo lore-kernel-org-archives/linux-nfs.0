@@ -1,17 +1,18 @@
-From: "Rousak, Boris" <Boris.Rousak@actewagl.com.au>
-Subject: unstable nfs client???
-Date: Wed, 18 Jun 2003 09:33:34 +1000
+From: NeilBrown <neilb@cse.unsw.edu.au>
+Subject: [PATCH] kNFSd - 8 of 8 - Set nfsd user every time a filehandle is verified.
+Date: Wed, 18 Jun 2003 09:51:37 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <69A0D39D490CD41198DC00D0B73C369E03A9A826@mail2.actew.oz.au>
-Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Message-ID: <E19SQEj-00084B-00@notabene>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [202.14.248.111] (helo=gateway02.actewagl.com.au)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19SPz7-0005b0-00
-	for <nfs@lists.sourceforge.net>; Tue, 17 Jun 2003 16:35:29 -0700
-To: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19SQBP-0002U1-00
+	for <nfs@lists.sourceforge.net>; Tue, 17 Jun 2003 16:48:11 -0700
+Received: From notabene ([129.94.172.124] == notabene.cse.unsw.EDU.AU)
+	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>) By
+	tone With Smtp ; Wed, 18 Jun 2003 09:47:07 +1000
+To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,55 +25,85 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+### Comments for ChangeSet
+request might traverse several export points which may
+have different uid squashing.
 
-Good morning all,
-I am currently having some problems with nfs client on redhat, so if this is
-an incorrect list to post to I do apologise and would someone point me to
-the correct one please. Problem is as follows:
-I am running redhat 7.3 kernel 2.4.18-3 with nfs-utils-0.3.3-5 . I am using
-the nfs client to mount around 10 shares from various tru64 v5.1 machines.
-When I allow 1 or 2 users to access these shares from the Linux server
-things work fine, however when 10 to 20 users try to access these shares 
-* users have to wait for a long time to be able to see anything in them, 
-* often shares crash eventually users get the unable rich server message
-* I am unable to unmount the shares (actually the only way for me to do it
-becomes to restart the mountd daemon, then unmount them, then remount
-everything)
-Has anyone got any suggestions on what I am doing wrong? Or is this some
-well know bug that I am unable to find through google? If there are nay
-other details that you wish to know, please email me.
-Thanks,
-Regards,
-Boris
+ ----------- Diffstat output ------------
+ ./fs/nfsd/auth.c             |    4 ----
+ ./fs/nfsd/nfsfh.c            |    7 ++++---
+ ./include/linux/sunrpc/svc.h |    1 -
+ ./net/sunrpc/svcsock.c       |    1 -
+ 4 files changed, 4 insertions(+), 9 deletions(-)
 
-++++++++++++++++++++++++
-Boris Rousak
-Unix systems, BSD
-ActewAGL
-Ph: 6270 7468
-Fax: 6270 7464
-++++++++++++++++++++++++
+diff ./fs/nfsd/auth.c~current~ ./fs/nfsd/auth.c
+--- ./fs/nfsd/auth.c~current~	2003-06-18 09:31:29.000000000 +1000
++++ ./fs/nfsd/auth.c	2003-06-18 09:31:29.000000000 +1000
+@@ -17,9 +17,6 @@ nfsd_setuser(struct svc_rqst *rqstp, str
+ 	struct svc_cred	*cred = &rqstp->rq_cred;
+ 	int		i;
+ 
+-	if (rqstp->rq_userset)
+-		return;
+-
+ 	if (exp->ex_flags & NFSEXP_ALLSQUASH) {
+ 		cred->cr_uid = exp->ex_anon_uid;
+ 		cred->cr_gid = exp->ex_anon_gid;
+@@ -57,5 +54,4 @@ nfsd_setuser(struct svc_rqst *rqstp, str
+ 						  current->cap_permitted);
+ 	}
+ 
+-	rqstp->rq_userset = 1;
+ }
 
+diff ./fs/nfsd/nfsfh.c~current~ ./fs/nfsd/nfsfh.c
+--- ./fs/nfsd/nfsfh.c~current~	2003-06-18 09:31:29.000000000 +1000
++++ ./fs/nfsd/nfsfh.c	2003-06-18 09:31:29.000000000 +1000
+@@ -161,9 +161,6 @@ fh_verify(struct svc_rqst *rqstp, struct
+ 			goto out;
+ 		}
+ 
+-		/* Set user creds if we haven't done so already. */
+-		nfsd_setuser(rqstp, exp);
+-
+ 		/*
+ 		 * Look up the dentry using the NFS file handle.
+ 		 */
+@@ -223,6 +220,10 @@ fh_verify(struct svc_rqst *rqstp, struct
+ 
+ 	inode = dentry->d_inode;
+ 
++
++	/* Set user creds for this exportpoint */
++	nfsd_setuser(rqstp, exp);
++
+ 	/* Type check. The correct error return for type mismatches
+ 	 * does not seem to be generally agreed upon. SunOS seems to
+ 	 * use EISDIR if file isn't S_IFREG; a comment in the NFSv3
 
-************************************************************************
-*PLEASE NOTE*  This email and any attachments may
-be confidential. If received in error, please delete all 
-copies and advise the sender. The reproduction or 
-dissemination of this email or its attachments is 
-prohibited without the consent of the sender.
+diff ./include/linux/sunrpc/svc.h~current~ ./include/linux/sunrpc/svc.h
+--- ./include/linux/sunrpc/svc.h~current~	2003-06-18 09:30:59.000000000 +1000
++++ ./include/linux/sunrpc/svc.h	2003-06-18 09:31:29.000000000 +1000
+@@ -125,7 +125,6 @@ struct svc_rqst {
+ 	u32			rq_proc;	/* procedure number */
+ 	u32			rq_prot;	/* IP protocol */
+ 	unsigned short
+-				rq_userset : 1,	/* auth->setuser OK */
+ 				rq_secure  : 1;	/* secure port */
+ 
+ 
 
-WARNING RE VIRUSES:  Our computer systems sweep
-outgoing email to guard against viruses, but no warranty 
-is given that this email or its attachments are virus free. 
-Before opening or using attachments, please check for 
-viruses.  Our liability is limited to the re-supply of any 
-affected attachments.
-
-Any views expressed in this message are those of the 
-individual sender, except where the sender expressly,
-and with authority, states them to be the views of the 
-organisation.
-************************************************************************
+diff ./net/sunrpc/svcsock.c~current~ ./net/sunrpc/svcsock.c
+--- ./net/sunrpc/svcsock.c~current~	2003-06-18 09:30:59.000000000 +1000
++++ ./net/sunrpc/svcsock.c	2003-06-18 09:31:29.000000000 +1000
+@@ -1222,7 +1222,6 @@ svc_recv(struct svc_serv *serv, struct s
+ 	}
+ 
+ 	rqstp->rq_secure  = ntohs(rqstp->rq_addr.sin_port) < 1024;
+-	rqstp->rq_userset = 0;
+ 	rqstp->rq_chandle.defer = svc_defer;
+ 
+ 	if (serv->sv_stats)
 
 
 -------------------------------------------------------
