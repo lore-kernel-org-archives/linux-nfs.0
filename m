@@ -1,24 +1,24 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] -o intr  mount option prevents core dumps on 2.4
- kernel
-Date: Thu, 13 Jan 2005 09:01:28 -0500
-Message-ID: <41E67F38.6060203@RedHat.com>
-References: <41DD8403.7030601@RedHat.com>	 <1105118040.10979.70.camel@lade.trondhjem.org>	 <41E42AD7.3030303@RedHat.com> <1105474246.11430.1.camel@lade.trondhjem.org>	 <41E43DE1.5080703@RedHat.com>	 <1105480745.11430.56.camel@lade.trondhjem.org> <41E569E3.20206@RedHat.com>	 <1105554342.23943.1.camel@lade.trondhjem.org> <41E5767F.40204@RedHat.com> <1105576681.14443.100.camel@lade.trondhjem.org>
+From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
+Subject: Re: How I can detect NFS server failure at the client side
+	at linux
+Date: Thu, 13 Jan 2005 09:24:27 -0800
+Message-ID: <1105637067.5932.51.camel@localhost.localdomain>
+References: <41E611DC.7020100@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-zk0lvKRJsWxpy3t/eyps"
+Cc: strombrg@dcs.nac.uci.edu, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Cp5Xt-00066m-Vn
-	for nfs@lists.sourceforge.net; Thu, 13 Jan 2005 06:01:53 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1Cp8i2-000186-JN
+	for nfs@lists.sourceforge.net; Thu, 13 Jan 2005 09:24:34 -0800
+Received: from dcs.nac.uci.edu ([128.200.34.32] ident=root)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1Cp5Xt-00035t-K3
-	for nfs@lists.sourceforge.net; Thu, 13 Jan 2005 06:01:54 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1105576681.14443.100.camel@lade.trondhjem.org>
+	id 1Cp8i1-0004Vq-5L
+	for nfs@lists.sourceforge.net; Thu, 13 Jan 2005 09:24:34 -0800
+To: Sudhakar <soodhakar@gmail.com>
+In-Reply-To: <41E611DC.7020100@gmail.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,70 +33,45 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-
-Trond Myklebust wrote:
-
->on den 12.01.2005 Klokka 14:11 (-0500) skreiv Steve Dickson:
->
->  
->
->>Here is what I found.... just adding the PF_DUMPCORE rpc_clnt_sigmask() 
->>no core was dropped
->>because __rpc_execute returned -ERESTARTSYS due to signalled() == TRUE.
->>
->>When I added back the  PF_DUMPCORE check to __rpc_execute(), only the 
->>header of the core
->>was dropped  because nfs_wait_event() returned -ERESTARTSYS because 
->>signalled() == TRUE.
->>
->>When I added back the PF_DUMPCORE to nfs_wait_event(), the entire core 
->>was dropped.
->>
->>So it appears to me that you need both checks.....
->>    
->>
->
->No! Those extra checks are neither necessary, nor are they even correct!
->I repeat what I said in my earlier mail:
->
->        - The change to nfs_wait_event() converts it into an
->        unconditional uninterruptible sleep. That means you can never
->        "kill -9" out of waiting for the core dump to finish in case the
->        server crashes!
->  
->
-By adding the PF_DUMPCORE check to rpc_clnt_sigmask() (as you suggested)
-I thought I had taken care of this problem... but now I realize the 
-check in nfs_wait_event()
-is the real issue... sorry for making you swing that clue bat twice!! :)
-
->        - The loop you add to __rpc_execute() is pointless: The signal
->        that caused your process to wake up is neither cleared nor
->        masked, so when it later tries to block (such as when waiting
->        for a reply from the server), that process will just find itself
->        immediately woken up again by the same signal.
->  
->
-I do understand this point.... and I *thought* I had addressed it by 
-making __rpc_execute()
-temporary ignoring  signals and having nfs_wait_event () call  
-wait_event() instead
-of  wait_event_interruptible().....
+--=-zk0lvKRJsWxpy3t/eyps
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
 
->As for myself, I'm getting full coredumps when I apply the 2 line patch
->I sent you. The appended testcase works every time:
->  
->
-hmm.... something is amiss.... because I'm definitely not see this.... 
-but I'll keep digging...
+http://dcs.nac.uci.edu/~strombrg/maxtime.html
 
-thanks!
+On Thu, 2005-01-13 at 11:44 +0530, Sudhakar wrote:
+> Dear all,
+>               I have exported a directory from my nfs server & i am=20
+> mounting it at the client. i am unable to detect the mount failure (if=20
+> the nfs server goes down). Is there any way to detect the mount failure.=20
+> thanks in advance.
+>=20
+> sudhakar
+>=20
+>=20
+> -------------------------------------------------------
+> The SF.Net email is sponsored by: Beat the post-holiday blues
+> Get a FREE limited edition SourceForge.net t-shirt from ThinkGeek.
+> It's fun and FREE -- well, almost....http://www.thinkgeek.com/sfshirt
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+>=20
 
-steved.
+--=-zk0lvKRJsWxpy3t/eyps
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
 
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.6 (GNU/Linux)
 
+iD8DBQBB5q7Lo0feVm00f/8RAp37AJ40oQW6Tg7vCruq7+4xivpJhLvf6QCdG5+6
+zLjtJNrOd3zdMKRL9QB/+8Y=
+=4xij
+-----END PGP SIGNATURE-----
 
+--=-zk0lvKRJsWxpy3t/eyps--
 
 
 
