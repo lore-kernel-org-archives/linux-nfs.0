@@ -1,19 +1,28 @@
-From: "Steven N. Hirsch" <shirsch@adelphia.net>
+From: Neil Brown <neilb@cse.unsw.edu.au>
 Subject: Re: Spam in the NFS list
-Date: Tue, 13 May 2003 18:39:55 -0400 (EDT)
+Date: Wed, 14 May 2003 09:22:53 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0305131836120.2200-100000@atx.fast.net>
-References: <Pine.LNX.4.44.0305131645070.7780-100000@kenzo.iwr.uni-heidelberg.de>
+Message-ID: <16065.32333.950111.349775@notabene.cse.unsw.edu.au>
+References: <3EC0CC50.C2D6BD62@moving-picture.com>
+	<1052828279.14879.3.camel@comp6161.potsdam.edu>
+	<20030513064446.3a7ca4b4.jake@staunch.org>
+	<20030513073314.A13751@lucon.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: Jake Gold <jake@staunch.org>,
+    nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mta5-0.mail.adelphia.net ([64.8.50.187] helo=mta5.adelphia.net)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19FiUI-0005jS-00
-	for <nfs@lists.sourceforge.net>; Tue, 13 May 2003 15:43:10 -0700
-To: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
-In-Reply-To: <Pine.LNX.4.44.0305131645070.7780-100000@kenzo.iwr.uni-heidelberg.de>
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19Fj6y-0006pP-00
+	for <nfs@lists.sourceforge.net>; Tue, 13 May 2003 16:23:08 -0700
+Received: From
+	notabene.cse.unsw.edu.au ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
+	(for <hjl@lucon.org>) (for <jake@staunch.org>)
+	(for <nfs@lists.sourceforge.net>) By tone With Smtp ;
+	Wed, 14 May 2003 09:22:55 +1000
+To: "H. J. Lu" <hjl@lucon.org>
+In-Reply-To: message from H. J. Lu on Tuesday May 13
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,31 +35,18 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, 13 May 2003, Bogdan Costescu wrote:
-
-> On Tue, 13 May 2003, Jake Gold wrote:
+On Tuesday May 13, hjl@lucon.org wrote:
+> On Tue, May 13, 2003 at 06:44:46AM -0700, Jake Gold wrote:
+> > 
+> > Is there any reason for leaving the list open to email from non-subscribed users?
+> > 
 > 
-> > Is there any reason for leaving the list open to email from
-> > non-subscribed users?
-> 
-> Yes: receiving bug reports. This is the same reason why linux-kernel, 
-> linux-smp and others cannot become closed.
-> 
-> > Most of the technical lists that I'm on have adopted a subscriber-only
-> > email policy with little resistance from their members...
-> 
-> This would be fine if only developers are on it. They are interested in 
-> being on the list for as long as possible, while people posting just to 
-> report a bug/crash/problem would just want to get some advice on their 
-> specific bug/crash/problem and then go away.
+> Done.
 
-Spamassassin + Bayesian classifier is nailing 100% of this crap on my 
-system.  Didn't even realize it was occuring until seeing this thread and 
-checking the (overflowing) spam bucket. 
+I would appreciate if you would undo that, at least until a reasonable
+discussion has been had among the subscribers.
 
-Steve
-
-
+NeilBrown
 
 
 -------------------------------------------------------
