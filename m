@@ -1,19 +1,19 @@
-From: Dan Brunner <daniel.brunner@duni.com>
-Subject: Re: nfs over tcp in linux kernel version 2.4.18
-Date: Tue, 20 May 2003 14:13:44 -0500
+From: Guolin Cheng <guolin@alexa.com>
+Subject: RE: nfs over tcp in linux kernel version 2.4.18
+Date: Tue, 20 May 2003 12:19:49 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <2D1DBB56-8AF7-11D7-93AF-00306589E6DA@duni.com>
-References: <0D122719B1756A43AD405320EE3D8EFA01278C8F@moneyb.alexa.com>
-Mime-Version: 1.0 (Apple Message framework v552)
-Content-Type: text/plain; charset=US-ASCII; format=flowed
-Cc: davidmyer800@yahoo.com, nfs@lists.sourceforge.net
+Message-ID: <0D122719B1756A43AD405320EE3D8EFA01278C90@moneyb.alexa.com>
+Mime-Version: 1.0
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Cc: "'davidmyer800@yahoo.com'" <davidmyer800@yahoo.com>,
+   "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [65.168.147.194] (helo=mkeweb01.duni.com)
+Received: from mail.alexa.com ([209.247.255.131])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19ICYb-00027i-00
-	for <nfs@lists.sourceforge.net>; Tue, 20 May 2003 12:13:53 -0700
-To: guolin@alexa.com
-In-Reply-To: <0D122719B1756A43AD405320EE3D8EFA01278C8F@moneyb.alexa.com>
+	id 19ICeQ-00050t-00
+	for <nfs@lists.sourceforge.net>; Tue, 20 May 2003 12:19:54 -0700
+To: "'Dan Brunner'" <daniel.brunner@duni.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,6 +25,23 @@ List-Id: Discussion of NFS under Linux development,
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+
+Dan,
+
+ try your luck.
+
+ BTW, let you know that I have to take the pain to reboot 400 Linux boxes to
+get rid of "nfs over tcp" in our production environment.
+
+ --Guolin Cheng
+
+-----Original Message-----
+From: Dan Brunner [mailto:daniel.brunner@duni.com]
+Sent: Tuesday, May 20, 2003 12:14 PM
+To: Guolin Cheng
+Cc: davidmyer800@yahoo.com; nfs@lists.sourceforge.net
+Subject: Re: [NFS] nfs over tcp in linux kernel version 2.4.18
+
 
 Guolin,
 
@@ -108,7 +125,6 @@ On Tuesday, May 20, 2003, at 01:41  PM, guolin@alexa.com wrote:
 > _______________________________________________
 > NFS maillist  -  NFS@lists.sourceforge.net
 > https://lists.sourceforge.net/lists/listinfo/nfs
-
 
 
 -------------------------------------------------------
