@@ -1,20 +1,22 @@
-From: Rosario Turrisi <turrisi@pd.infn.it>
-Subject: Re: action "debugfs-like" through nfs?
-Date: Wed, 23 Jul 2003 17:15:24 +0200
+From: "Dennis, Richard" <Richard.Dennis@lehman.com>
+Subject: NFS Debugging Tools
+Date: Mon, 21 Jul 2003 13:43:46 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3F1EA68C.7020700@pd.infn.it>
-References: <3F1E892B.8020508@pd.infn.it> <shs1xwhtgzv.fsf@charged.uio.no>
+Message-ID: <0073ECCF4F99D611810B0002A58F26560EB316DF@exnyc03.lehman.com>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
- boundary="------------040700060608080704040600"
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from is01.lnl.infn.it ([192.135.30.245])
+Received: from mail-ny2.bigfish.com ([63.161.60.93] helo=mail6-ny2-R.bigfish.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19fLL2-00020H-00
-	for <nfs@lists.sourceforge.net>; Wed, 23 Jul 2003 08:15:32 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <shs1xwhtgzv.fsf@charged.uio.no>
+	id 19eei5-0007tw-00
+	for <nfs@lists.sourceforge.net>; Mon, 21 Jul 2003 10:44:29 -0700
+Received: from mail6-ny2.bigfish.com (localhost.localdomain [127.0.0.1])
+	by mail6-ny2-R.bigfish.com (Postfix) with ESMTP id 8D47614A6F8
+	for <nfs@lists.sourceforge.net>; Mon, 21 Jul 2003 17:44:23 +0000 (UCT)
+Received: from extrelay2.lehman.com (extrelay2.Lehman.COM [192.147.58.145])
+	by mail6-ny2.bigfish.com (Postfix) with ESMTP id D36FF14A793
+	for <nfs@lists.sourceforge.net>; Mon, 21 Jul 2003 17:44:00 +0000 (UCT)
+To: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,105 +29,31 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
---------------040700060608080704040600
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
+Does anyone know of some other helpful tools for debugging NFS on Linux?
+(Things like "nfswatch" or "iostat -xPn" on Solaris.)
 
-... because raidtec does not give the password to customers...
-I am afraid, and you confirm, that the only choice is their  intervention...
-Thanks,
-         Rosario
+This is what I have so far:
+	- Nfsstat
+	- tcpdump, ethereal, 
+	- ntop
+	- /proc/sys/sunrpc/*
 
-Trond Myklebust wrote:
+Thanks.
 
->>>>>>" " == Rosario Turrisi <turrisi@pd.infn.it> writes:
->>>>>>            
->>>>>>
->
->     > Hi, I have a fileserver from Raidtec which uses ext2
->     > filesystems.  Due to a double (!!!) disk failure, I had the
->     > strange behaviour that a directory is seen as a whole file,
->     > with strange attributes, like "?r--r-sr-T" and changed
->     > owner/group.  I believe that an operation like "debugfs" could
->     > fix the problem, but it cannot be done (it seems) on an
->     > nfs-mounted filesystem (I cannot enter the fileserver system as
->     > it is "raidtec-copyrighted").  Any suggestion very very
->     > welcome.  Cheers,
->
->Errr... Why is fixing it on the server itself (where "debugfs" is more
->likely to work) not an option?
->
->The NFS protocol has no support for doing low-level disk ioctls on the
->server so you can forget doing this sort of thing on the client.
->
->Cheers,
->  Trond
->
->
->
->  
->
+--Rick
 
---------------040700060608080704040600
-Content-Type: text/html; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-<html>
-<head>
-  <meta http-equiv="Content-Type" content="text/html;charset=ISO-8859-1">
-  <title></title>
-</head>
-<body text="#000000" bgcolor="#ffffff">
-... because raidtec does not give the password to customers...<br>
-I am afraid, and you confirm, that the only choice is their&nbsp;
-intervention...<br>
-Thanks,<br>
-&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Rosario<br>
-<br>
-Trond Myklebust wrote:<br>
-<blockquote type="cite" cite="midshs1xwhtgzv.fsf@charged.uio.no">
-  <blockquote type="cite">
-    <blockquote type="cite">
-      <blockquote type="cite">
-        <blockquote type="cite">
-          <blockquote type="cite">
-            <pre wrap="">" " == Rosario Turrisi <a class="moz-txt-link-rfc2396E" href="mailto:turrisi@pd.infn.it">&lt;turrisi@pd.infn.it&gt;</a> writes:
-            </pre>
-          </blockquote>
-        </blockquote>
-      </blockquote>
-    </blockquote>
-  </blockquote>
-  <pre wrap=""><!---->
-     &gt; Hi, I have a fileserver from Raidtec which uses ext2
-     &gt; filesystems.  Due to a double (!!!) disk failure, I had the
-     &gt; strange behaviour that a directory is seen as a whole file,
-     &gt; with strange attributes, like "?r--r-sr-T" and changed
-     &gt; owner/group.  I believe that an operation like "debugfs" could
-     &gt; fix the problem, but it cannot be done (it seems) on an
-     &gt; nfs-mounted filesystem (I cannot enter the fileserver system as
-     &gt; it is "raidtec-copyrighted").  Any suggestion very very
-     &gt; welcome.  Cheers,
-
-Errr... Why is fixing it on the server itself (where "debugfs" is more
-likely to work) not an option?
-
-The NFS protocol has no support for doing low-level disk ioctls on the
-server so you can forget doing this sort of thing on the client.
-
-Cheers,
-  Trond
-
-
-
-  </pre>
-</blockquote>
-</body>
-</html>
-
---------------040700060608080704040600--
+------------------------------------------------------------------------------
+This message is intended only for the personal and confidential use of the
+designated recipient(s) named above.  If you are not the intended recipient of
+this message you are hereby notified that any review, dissemination,
+distribution or copying of this message is strictly prohibited.  This
+communication is for information purposes only and should not be regarded as
+an offer to sell or as a solicitation of an offer to buy any financial
+product, an official confirmation of any transaction, or as an official
+statement of Lehman Brothers.  Email transmission cannot be guaranteed to be
+secure or error-free.  Therefore, we do not represent that this information is
+complete or accurate and it should not be relied upon as such.  All
+information is subject to change without notice.
 
 
 
