@@ -1,8 +1,8 @@
 From: Ian Kent <raven@themaw.net>
 Subject: RE: RPC Time Out
-Date: Fri, 5 Dec 2003 16:01:18 +0800 (WST)
+Date: Fri, 5 Dec 2003 16:04:26 +0800 (WST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.33.0312051555290.12887-100000@wombat.indigo.net.au>
+Message-ID: <Pine.LNX.4.33.0312051602350.12887-100000@wombat.indigo.net.au>
 References: <NFBBLPFNOLCEIKDDCMDIMEEMCGAA.efw@fast.net>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
@@ -10,12 +10,12 @@ Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1ASAro-0002dA-TE
-	for nfs@lists.sourceforge.net; Thu, 04 Dec 2003 23:59:12 -0800
+	id 1ASAun-0002kz-Mg
+	for nfs@lists.sourceforge.net; Fri, 05 Dec 2003 00:02:17 -0800
 Received: from wombat.indigo.net.au ([202.0.185.19])
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
-	id 1ASAro-0003fP-85
-	for nfs@lists.sourceforge.net; Thu, 04 Dec 2003 23:59:12 -0800
+	id 1ASAum-0004Gg-Vl
+	for nfs@lists.sourceforge.net; Fri, 05 Dec 2003 00:02:17 -0800
 To: Gene & Marla Weber <efw@fast.net>
 In-Reply-To: <NFBBLPFNOLCEIKDDCMDIMEEMCGAA.efw@fast.net>
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -33,29 +33,15 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 On Thu, 4 Dec 2003, Gene & Marla Weber wrote:
 
 >
-> (Why /dev/hdc and not /dev/cdrom?)
-
-/dev/cdrom is a soft link. exports are usually reduced to canonical from.
-
->
 > But the next time I ran it I got an RPC timeout. Same with running
 > showmount -e 192.186.2.57 on the client. One time it shows the two lines,
 > other times it times out.
 
-This is no good.
+Oh no you are saying that showmount -e on the server times out?
 
-It must work always or nfs will not work.
+That is odd.
 
-Sorry I forget, but what does the rpcinfo -p show?
-
->From the client as
-
-rpcinfo -p
-
-and from the client as
-
-rpcinfo -p <server ip>
-
+What is the history of the install on this system?
 
 -- 
 
