@@ -1,23 +1,22 @@
-From: Stuart Anderson <sba@srl.caltech.edu>
-Subject: Re: kernel Oops in rpc.mountd
-Date: Mon, 7 Feb 2005 16:29:32 -0800 (PST)
-Message-ID: <200502080029.QAA15462@jelly.caltech.edu>
-References: <16903.63489.218836.52210@cse.unsw.edu.au>
+From: Neil Horman <nhorman@redhat.com>
+Subject: Re: Help needed in understanding port allocation in NFS
+Date: Wed, 16 Feb 2005 08:14:40 -0500
+Message-ID: <42134740.4050700@redhat.com>
+References: <20050216102547.A248323CFA@ws5-3.us4.outblaze.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Stuart Anderson <anderson@ligo.caltech.edu>,
-	nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: nfs@lists.sourceforge.net
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CyJG6-0007F7-P0
-	for nfs@lists.sourceforge.net; Mon, 07 Feb 2005 16:29:38 -0800
-Received: from lodur.srl.caltech.edu ([131.215.120.1])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CyJG5-0005w6-B2
-	for nfs@lists.sourceforge.net; Mon, 07 Feb 2005 16:29:38 -0800
-In-Reply-To: <16903.63489.218836.52210@cse.unsw.edu.au> "from Neil Brown at Feb
- 8, 2005 10:21:37 am"
-To: Neil Brown <neilb@cse.unsw.edu.au>
+	id 1D1P0u-0005zb-G3
+	for nfs@lists.sourceforge.net; Wed, 16 Feb 2005 05:14:44 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1D1P0s-0003Ai-VX
+	for nfs@lists.sourceforge.net; Wed, 16 Feb 2005 05:14:44 -0800
+To: naveen a <naveen2005@india.com>
+In-Reply-To: <20050216102547.A248323CFA@ws5-3.us4.outblaze.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,62 +30,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-According to Neil Brown:
-> On Monday February 7, anderson@ligo.caltech.edu wrote:
-> > A dual-Xeon FC3 machine just crashed with the following kernel Oops in
-> > rpc.mounted.  Any ideas on how to debug this?
-> > 
-> > kernel-smp-2.6.10-1.760_FC3
-> > kernel-utils-2.4-13.1.49_FC3
-> > nfs-utils-1.0.6-44
-> > portmap-4.0-63
-> > 
-> > I am getting about 1 kernel crash per day on a cluster of 290 such boxes
-> > with different kernel Oops messages.  I do not always get the syslog message,
-> > but perhaps this one has enough information to track it down.
-> > 
-> > Thanks.
-> > 
-> > 
-> > Feb  6 21:49:44 node77 kernel: Unable to handle kernel paging request at virtual address 00100104
->                                                                                            ^^^^^^^^
-> ...
-> > Feb  6 21:49:44 node77 kernel: eax: dff05000   ebx: 00100100   ecx: 0000008f   edx: f8a62fa0
->                                                  ^^^^^^^^^^^^^
-> > Feb  6 21:49:44 node77 kernel: esi: cf874180   edi: 00000000   ebp: f6c5bef4   esp: f6c5bec8
+naveen a wrote:
+> Hi,
 > 
+> I wanted some info related to port selection in NFS.
 > 
-> Looks like two flipped bits in memory.  Do you have ECC RAM? Is it
+> What happens when the port number is not specified in the command line switch or configuration 
+> 
+> file for mountd and statd?
+> 
+> In man pages it is mentioned as statd/mountd will select the port from portmapper. 
+> 
+> Can you please let me know how a port is allotted and the code path in source.
+> 
+Thats really the entire point of the portmapper.  When userspace service 
+are started up, there is not preset port which is allocated.  The new 
+rpc service opens a socket and binds to a system selected port (using 
+bindresvport IIRC).  That port value is then registered witht he 
+portmapper.  The portmapper always listens on the sunrpc port (port 111 
+I think), so that remote clients can query the portmapper daemon for 
+which port to connect to to get a specific service.
 
-Yes.
+HTH
+Neil
 
-> enabled?
-
-Yes.
-
-> What does memtest86 report?
-
-I have not run it recently, but we ran it for 72 hours on all 290 nodes about
-a year ago without any errors. The current round of kernel Oops are happening
-on different nodes, so either most of the memory is experience a sudden
-end-of-life accelerated failure rate or there is a software bug in the
-newer kernel.
-
-It looks like I have it narrowed down to one user application, but it
-can run for up to a day before crashing, and it is always on a different
-node/hardware, so I think it is a software bug in the kernel.
-
-The 290 nodes cross mount each others internal IDE drives with ext3 shared
-via NFS v3.
-
-
-We will probably try and downgrade the kernel, but I am open to other
-suggestions.
-
-Thanks.
 
 -- 
-Stuart Anderson  sba@srl.caltech.edu  http://www.srl.caltech.edu/personnel/sba
+/***************************************************
+  *Neil Horman
+  *Software Engineer
+  *Red Hat, Inc.
+  *nhorman@redhat.com
+  *gpg keyid: 1024D / 0x92A74FA1
+  *http://pgp.mit.edu
+  ***************************************************/
 
 
 -------------------------------------------------------
