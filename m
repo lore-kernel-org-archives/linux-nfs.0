@@ -1,8 +1,8 @@
 From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: Problem : Linux - SOlaris NFS
-Date: Fri, 20 Sep 2002 08:18:34 -0700
+Subject: RE: kernel 2.2.16 fully support nfs TCP mount on client
+Date: Fri, 20 Sep 2002 08:21:53 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <6440EA1A6AA1D5118C6900902745938E07D54E8F@black.eng.netapp.com>
+Message-ID: <6440EA1A6AA1D5118C6900902745938E07D54E90@black.eng.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain;
 	charset="iso-8859-1"
@@ -10,9 +10,9 @@ Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from mx01-a.netapp.com ([198.95.226.53])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17sPYI-0008Sz-00
-	for <nfs@lists.sourceforge.net>; Fri, 20 Sep 2002 08:18:42 -0700
-To: "'ashutosh.varshney@st.com'" <ashutosh.varshney@st.com>
+	id 17sPbU-00031I-00
+	for <nfs@lists.sourceforge.net>; Fri, 20 Sep 2002 08:22:00 -0700
+To: "'Hua Qin'" <qinhua@poisson.ecse.rpi.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,67 +25,17 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-this looks like the famous "single NFS client DOS attack" bug.
-when fragmenting IP packets, Linux can drop the remaining fragments
-of an IP packet if it runs out of socket space during the fragmentation.
-if this happens often enough, the server runs out of IP reassembly
-queue space, and no one can talk to it.
+my impression is that 2.2.19 and later kernels have better NFS
+over TCP support.
 
-enlarge your default socket buffer size with these instructions,
-or use NFS over TCP instead, to prevent this from occurring.
-
-1.	Become root on your client
-2.	cd into /proc/sys/net/core
-3.	echo 262143 > rmem_max
-4.	echo 262143 > wmem_max
-5.	echo 262143 > rmem_default
-6.	echo 262143 > wmem_default
-7.	Remount your NFS file systems on the client
-
-or add these lines to /etc/sysctl.conf and reboot your system:
-
-net.core.rmem_max = 262143
-net.core.wmem_max = 262143
-net.core.rmem_default = 262143
-net.core.wmem_default = 262143
-
-> Hi
-> Yes ..we are using nfs over udp. . NFS server is Solaris 8 
-> (with default
-> r/wsize=32Kb) and NFS Client is Red Hat Linux 7.3 ( kernel version
-> 2.4.18-3)..
-> thanks for ur response
-> ashutosh
+> I think I can mount from a (kernel-2.2.16) machine by using NFSv3 
+> over TCP, but if I do write test, this machine will hang.
 > 
-> > please verify your configuration for me:
-> > 
-> > you are using NFS over UDP with 32K r/wsize?
-> > your Linux clients run a 2.4 kernel, probably 2.4.18?
-> > 
-> > > > We had a lot of SUN machines and just installed few linux 
-> > > machines.We
-> > > > have all our licenses/Softwares of Solaris m/cs( NIS also 
-> > > on Solaris).But
-> > > > when we access the things from linux client..network 
-> > > chokes..all things
-> > > > hang..then we reboot the linux ..and set the rsize & wsize 
-> > > to 8K and now
-> > > > things work fine..
-> > > > Can any one puts lights why this all happen ..where is the 
-> > > problem.. in
-> > > > linux or solairs.
-> > > > Any site referneces for this customization..
-> > 
-> > 
-> > -------------------------------------------------------
-> > This sf.net email is sponsored by:ThinkGeek
-> > Welcome to geek heaven.
-> > http://thinkgeek.com/sf
-> > _______________________________________________
-> > NFS maillist  -  NFS@lists.sourceforge.net
-> > https://lists.sourceforge.net/lists/listinfo/nfs
-> > 
-> 
+> Does someone know if  2.2.16 kernel cam fully support nfs TCP 
+> on client
+> side?  Which version in 2.2.? start to support NFSv3 TCP 
+> client. I know
+> 2.4 do  support, but I have to use 2.2 for some reason.
 
 
 -------------------------------------------------------
