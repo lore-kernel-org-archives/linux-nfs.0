@@ -1,21 +1,19 @@
-From: Hirokazu Takahashi <taka@valinux.co.jp>
-Subject: Re: Re: [PATCH] zerocopy NFS for 2.5.43
-Date: Fri, 25 Oct 2002 18:52:34 +0900 (JST)
+From: Thomas Reifferscheid <reiffer@kph.uni-mainz.de>
+Subject: Patch for 2.4.20pre11/fs/filesystems.c
+Date: Fri, 25 Oct 2002 14:58:17 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20021025.185234.08315285.taka@valinux.co.jp>
-References: <15786.23306.84580.323313@notabene.cse.unsw.edu.au>
-	<20021018.221103.35656279.taka@valinux.co.jp>
-	<15797.63730.223181.75888@notabene.cse.unsw.edu.au>
+Message-ID: <3DB93FE9.F0B50FA7@kph.uni-mainz.de>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sv1.valinux.co.jp ([202.221.173.100])
+Received: from mailout02.sul.t-online.com ([194.25.134.17])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1851GG-0004Nh-00
-	for <nfs@lists.sourceforge.net>; Fri, 25 Oct 2002 03:00:12 -0700
-To: neilb@cse.unsw.edu.au
-In-Reply-To: <15797.63730.223181.75888@notabene.cse.unsw.edu.au>
+	id 18542p-0001h4-00
+	for <nfs@lists.sourceforge.net>; Fri, 25 Oct 2002 05:58:32 -0700
+Received: from kph.uni-mainz.de (thomas.at.home.org [192.168.0.225])
+	by debian.at.home.org (Postfix) with ESMTP id 3E8B293360
+	for <nfs@lists.sourceforge.net>; Fri, 25 Oct 2002 14:58:18 +0200 (CEST)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,35 +26,58 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
+When I do
 
-> I have been thinking some more about this, trying to understand the
-> big picture, and I'm afraid that I think I want some more changes.
-> 
-> In particular, I think it would be good to use 'struct xdr_buf' from
-> sunrpc/xdr.h instead of svc_buf.  This is what the nfs client uses and
-> we could share some of the infrastructure.
+CONFIG_NFS_FS=m
+# CONFIG_NFS_V3 is not set
+# CONFIG_ROOT_NFS is not set
+CONFIG_NFSD=m
+# CONFIG_NFSD_V3 is not set
+# CONFIG_NFSD_TCP is not set
+# CONFIG_NCPFS_NFS_NS is not set
 
-I just realized it would be hard to use the xdr_buf as it couldn't
-handle data in a socket buffer. Each socket burfer consists of
-some non-page data and some pages and each of them might have its
-own offset and length.
 
-> I'm not certain about receiving write requests.
-> I imagine that it might work to:
->   1/ call xdr_partial_copy_from_skb to just copy the first 1K from the
->     skb into the head iovec, and hold onto the skbuf (like we
->     currently do).
+and want to insert the module I get:
 
-And I came up with another idea that kNFSd could handles TCP data
-in a socket buffer directly without copy if we can enhancemence the
-tcp_read_sock() not to release it while kNFSd is using it.
-kNFSd would handle TCP data as if it were a UDP datagram.
-The differences are kNFSd may grab some TCP socket buffers at once
-and the buffers may be shared to other kNFSd's.
+unresolved symbol nfsd_linkage
 
-Thank you,
-Hirokazu Takahashi.
+which already was described by Jean-Luc Fontaine in 
+http://marc.theaimsgroup.com/?l=linux-kernel&m=98173746131993&w=2
+
+Where as I do:
+
+CONFIG_NFS_FS=m
+# CONFIG_NFS_V3 is not set
+# CONFIG_ROOT_NFS is not set
+CONFIG_NFSD=y
+# CONFIG_NFSD_V3 is not set
+# CONFIG_NFSD_TCP is not set
+# CONFIG_NCPFS_NFS_NS is not set
+
+everything works pretty fine.
+
+
+You can see some changes have been made here: 
+http://groups.google.de/groups?q=filesystems.c+torvalds&hl=de&lr=&ie=UTF-8&selm=nfs-valinux.15468.35577.461935.694932%40notabene.cse.unsw.edu.au&rnum=1
+
+
+My patch does solve this and works for me.
+
+Cheers,
+Thomas
+
+
+--- linux-2.4.20pre11-orig/fs/filesystems.c     Sat Aug  3 02:39:45 2002
++++ linux-2.4.20pre11/fs/filesystems.c  Fri Oct 25 04:44:15 2002
+@@ -13,7 +13,7 @@
+ #include <linux/kmod.h>
+ #include <linux/nfsd/interface.h>
+ 
+-#if ! defined(CONFIG_NFSD)
++#if ! defined(CONFIG_NFSD) || defined(CONFIG_NFSD_MODULE)
+ struct nfsd_linkage *nfsd_linkage;
+ 
+ long
 
 
 -------------------------------------------------------
