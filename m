@@ -1,24 +1,16 @@
-From: Bernd Schubert <bernd-schubert@web.de>
-Subject: Re: mysterious NFS-behaviour
-Date: Thu, 8 May 2003 10:56:01 +0200
+From: "Dreani"<IncreaseCurrentSales7886@excite.com>
+Subject: SPAM: ***15.6 MILLION OPT-IN, TARGETED EMAIL ADDRESSES!
+Date: Thu, 8 May 2003 09:44:06 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200305081056.01105.bernd-schubert@web.de>
-References: <03May8.101130cest.115214@gw.cae-gmbh.de>
+Message-ID: <200305080545901.SM03236@smtp0147.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from smtp01.web.de ([217.72.192.180] helo=smtp.web.de)
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19DhAc-0003Av-00
-	for <nfs@lists.sourceforge.net>; Thu, 08 May 2003 01:54:30 -0700
-Received: from [217.185.93.81] (helo=hdlb-d9b95d51.pool.mediaWays.net)
-	by smtp.web.de with asmtp (WEB.DE 4.98 #218)
-	id 19DhAS-0006pB-00
-	for nfs@lists.sourceforge.net; Thu, 08 May 2003 10:54:21 +0200
+Received: from [200.50.30.16] (helo=mail.vallejoyvallejo.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19Dhwu-0003V0-00
+	for <nfs@lists.sourceforge.net>; Thu, 08 May 2003 02:44:24 -0700
 To: nfs@lists.sourceforge.net
-In-Reply-To: <03May8.101130cest.115214@gw.cae-gmbh.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,41 +23,43 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thursday 08 May 2003 10:17, Christoph Dohmen wrote:
-> Hi folks,
->
-> I was told about a very mysterious behaviour of a NFS-system. But I could
-> not explain what's happening. So, maybe someone of this list is able?!
->
-> Well, there's a system running suse linux 7.2 with kernel 2.4.4 on a
-
-Have you ever been thought about upgrading your kernel ?
-
-> nfs-server using software-raid for the exported directory. More than 60
-> clients (also suse 7.2 with 2.4.4) mount this export.
-
-Upgrade the clients as well.
-
-> So the behaviour is the following:
-> I have one client and open four terminales.
-> In the first terminal (local) I do a mkdir foo in the mounted directory
-> In the second terminal (local) I do a ls in the mounted directory and I get
-> an I/O-error
-> In the third terminal (ssh on the nfs-server) I can see the created
-> directory. In the fourth terminal (ssh on another client) I can see the
-> created directory after about one or two seconds.
->
-> So, what's going on? Is there a misconfiguration? Are 60 clients too many??
->
-
-2.4.4 is really old and many nfs- and other fs-fixes have been done since the 
-release of this kernel version. Furthermore I think everything below 2.4.8 
-can be considered as very buggy and shouldn't be used in a production 
-environment.
-
-Bernd
-
-
+SGVsbG8sDQoNClRoaXMgZW1haWwgaXMgdG8gaW5mb3JtIHlvdSB0aGF0IHRoaXMgaXMgeW91ciBs
+YXN0IGNoYW5jZSB0byBnZXQgaW4gDQpvbiB0aGlzIG9mZmVyLi4uLi4xNS42IE1JTExJT04gT1BU
+LUlOLCBUQVJHRVRFRCBFTUFJTCBBRERSRVNTRVMuLi4NClBMVVMgJDIsMDAwIFdPUlRIIE9GIEZS
+RUUgRU1BSUwgTUFSS0VUSU5HIFNPRlRXQVJFIQ0KDQpXT1VMRCBZT1UgTElLRSBUTyBIQVZFIFlP
+VVIgTUVTU0FHRSBTRUVOIEJZDQpPVkVSIDE1LjYgTUlMTElPTiBPUFQtSU4sIFRBUkdFVEVEIFBF
+T1BMRSBEQUlMWT8NCg0KQkVMT1cgSVMgSlVTVCBBIFNBTVBMRSBPRiBXSEFUIFdFIEhBVkUgVE8g
+T0ZGRVIgWU9VLi4uDQoNCj4+PldFIFdJTEwgU1VQUExZIFlPVSBXSVRIIE9WRVIgMTUuNiBNSUxM
+SU9OIE9QVC1JTiBFTUFJTA0KQUREUkVTU0VTIFRPIEdFVCBZT1UgU1RBUlRFRCBSSUdIVCBBV0FZ
+IQ0KDQo+Pj5GUkVFIEVNQUlMIEFERFJFU1MgRE9XTkxPQURTIEZPUiBMSUZFIQ0KDQo+Pj5ZT1Ug
+V0lMTCBSRUNFSVZFIE9WRVIgJDIsMDAwIFdPUlRIIE9GIA0KRU1BSUwgTUFSS0VUSU5HIFNPRlRX
+QVJFIEZSRUUhDQoNCkluY2x1ZGluZy4uLi4uLg0KDQpCUk9BRENBU1QgRU1BSUwgU0VORElORyBT
+T0ZUV0FSRS4uLihzZW5kIG1pbGxpb25zIG9mIGVtYWlsDQphZHZlcnRpc2VtZW50cyBkYWlseSB3
+aXRoIGEgZmV3IGNsaWNrcyBvZiB5b3VyIG1vdXNlLiBOZXcgYnVpbHQgaW4gDQpzdGVhbHRoIHRl
+Y2hub2xvZ3kpLiBCZSBvbmUgb2YgdGhlIGZpcnN0IHBlb3BsZSB0byB1c2UgaXQuIFdlIHVzZWQg
+dGhlIA0Kc2FtZSBzb2Z0d2FyZSB0byBzZW5kIHlvdSB0aGlzIGVtYWlsIG1lc3NhZ2UuDQoNCkVN
+QUlMIEVYVFJBQ1RJT04gU09GVFdBUkUuLi4oUmV0cmVpdmUgbmV3IHRhcmdldGVkIGVtYWlsDQph
+ZGRyZXNzZXMgZGFpbHkuIEh1bmRyZWRzIG9mIHRob3VzYW5kcyBvZiB0aGVtKQ0KDQpMSVNUIE1B
+TkFHRU1FTlQgU09GVFdBUkUuLi4oS2VlcCB5b3VyIGxpc3RzIGNsZWFuLCBvcHQtaW4NCmFuZCBt
+YW5hZ2UgYWxsIHlvdXIgcmVtb3ZlIHJlcXVlc3RzLCBsZWFkcywgc2FsZXMgZXRjLi4uKQ0KDQpQ
+T1AtVVAgQURWRVJUSVNFUi4uLk5vIG5lZWQgdG8gcGF5IHNvbWVvbmUgZWxzZSBmb3IgDQpwb3At
+dXAgYWR2ZXJ0aXNpbmcuIFNhdmUgJDEsMDAwcyB3ZWVrbHkuIEl0J3MgeW91cnMgdG9kYXkgZnJl
+ZSEgDQpQbHVzIHlvdSBjYW4gcmVzZWxsIHRoaXMgc29mdHdhcmUgYW5kIGtlZXAgMTAwJSBvZiB0
+aGUgcHJvZml0IG9yDQpzaW1wbHkgZ2l2ZSBpdCBhcyBhIGZyZWUgZ2lmdCBhbG9uZyB3aXRoIHlv
+dXIgY3VycmVudCBzZXJ2aWNlcy4NCg0KYW5kIG11Y2guLi5tdWNoIG1vcmUhDQoNCkh1cnJ5Li4u
+VGhpcyBleHRyYW9yZGluYXJ5IG9mZmVyIGVuZHMgc29vbiENCg0KVG8gZmluZCBvdXQgbW9yZSBp
+bmZvcm1hdGlvbiwgRG8gbm90IHJlc3BvbmQgYnkgZW1haWwuIEluc3RlYWQsIGNsaWNrDQpvbiB0
+aGUgbGluayBiZWxvdyAuDQoNCjxicj48QSBIUkVGPSJodHRwOi8vd3d3LmNyZWRpdGNhcmRiaXou
+dXMvNDA5MzI0L2Jyb2FkY2FzdC5odG0iPkNsaWNrIEhlcmUgRm9yIE1vcmUgSW5mb3JtYXRpb248
+L0E+PGJyPg0KDQoNCg0KDQpfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX18NCldhbnQgdG8gYmUgUkVNT1ZFRCBmcm9tIG91ciBlbWFpbCBsaXN0Pw0K
+WW91IHdlcmUgc2VudCB0aGlzIGVtYWlsIGJlY2F1c2UgeW91IHVzZWQgb3VyIE9wdC1pbiBzZXJ2
+aWNlLg0KV2UgaG9wZSB5b3UgZW5qb3kgcmVhZGluZyBvdXIgbWVzc2FnZXMuIEhvd2V2ZXIsIGlm
+IHlvdSdkIHJhdGhlcg0Kbm90IHJlY2VpdmUgZnV0dXJlIGUtbWFpbHMgZnJvbSB1cywgQ2xpY2sg
+b24gdGhlIGxpbmsgYmVsb3cuDQo8YnI+PEEgSFJFRj0iaHR0cDovL3d3dy5jcmVkaXRjYXJkYml6
+LnVzLzQwOTMyNC9yZW1vdmVtZS5odG0iPkNsaWNrIEhlcmUgVG8gYmUgcmVtb3ZlZCBmcm9tIG91
+ciBsaXN0LjwvQT48YnI+DQpUaGFuayB5b3UgZm9yIHlvdXIgY29vcGVyYXRpb24uDQpfX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fXw==
 
 
 -------------------------------------------------------
