@@ -1,19 +1,30 @@
-From: =?iso-8859-1?Q?Brasseur_Val=E9ry?= <Valery.Brasseur@atosorigin.com>
-Subject: RE: strange lock problem
-Date: Fri, 20 Jun 2003 14:15:17 +0200
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: stale NFS file handle (2.4.20) ext3 LVM
+Date: Sat, 21 Jun 2003 04:22:04 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <8147E1B07201DD41B6B9F0D31E07B38444913E@srv-grp-s07.dev.atos.fr>
+Message-ID: <16115.20684.513868.459583@gargle.gargle.HOWL>
+References: <m3isr2kanm.fsf@merlin.emma.line.org>
+	<3EF1CC36.8F3EC825@moving-picture.com>
+	<m38yrx3dhx.fsf@merlin.emma.line.org>
+	<3EF2D54C.73B9EDAA@moving-picture.com>
+	<20030620111408.GC8061@merlin.emma.line.org>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Cc: nfs@lists.sourceforge.net, "'Lever, Charles'"
-	 <Charles.Lever@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: James Pearson <james-p@moving-picture.com>,
+    Matthias Andree <ma@dt.e-technik.uni-dortmund.de>,
+    nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from hermes4.atos-group.com ([160.92.18.11])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19TKng-0002G6-00
-	for <nfs@lists.sourceforge.net>; Fri, 20 Jun 2003 05:15:28 -0700
-To: 'Trond Myklebust' <trond.myklebust@fys.uio.no>
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19TL3f-0007pX-00
+	for <nfs@lists.sourceforge.net>; Fri, 20 Jun 2003 05:32:00 -0700
+Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
+	(for <matthias.andree@gmx.de>) (for <james-p@moving-picture.com>)
+	(for <ma@dt.e-technik.uni-dortmund.de>)
+	(for <nfs@lists.sourceforge.net>) By tone With Smtp ;
+	Fri, 20 Jun 2003 22:31:19 +1000
+To: Matthias Andree <matthias.andree@gmx.de>
+In-Reply-To: message from Matthias Andree on Friday June 20
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,39 +37,26 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> -----Original Message-----
-> From: Trond Myklebust [mailto:trond.myklebust@fys.uio.no]
-> Sent: Thursday, June 19, 2003 7:20 PM
-> To: Brasseur Val=E9ry
-> Cc: nfs@lists.sourceforge.net; 'Lever, Charles'
-> Subject: Re: [NFS] strange lock problem
->=20
->=20
-> >>>>> " " =3D=3D Brasseur Val=E9ry <Valery.Brasseur@atosorigin.com> =
-writes:
->=20
->      > Having investigate more, I know see that sometimes 2 process
->      > are able to obtain the same file lock !
->=20
-> If the rpc.statd monitoring is screwing with the filer (telling it
-> that the client has rebooted and that it must release all locks), =
-then
-> this is indeed possible.
->=20
-> Is some process on the client perhaps restarting rpc.statd?
+On Friday June 20, matthias.andree@gmx.de wrote:
+> On Fri, 20 Jun 2003, James Pearson wrote:
+> > There was a posting from Neil Brown recently about possible changes for
+> > 2.6 kernels, that mentions doing away with rmtab - see:
+> > 
+> > http://marc.theaimsgroup.com/?l=linux-nfs&m=105331510308653&w=2
+> 
+> nfsd was supposed to be stateless ;-)
 
-no I have no process on the client which monitor/restart the rpc.statd =
-!
+(I noticed the smiley, but thought I would reply anyway...)
 
-how can track this ?
+Nope.   NFS - the protocol - is stateless (Except for the state file
+               files stored on the fileserver....)
+        MOUNTD and NLM are separate supporting protocols, neither of
+               which are stateless.
 
-thanks=20
-valery
+and "nfsd" is a program, not a protocol.  What does it mean for a
+program to be stateless?
 
->=20
-> Cheers,
->   Trond
->=20
+NeilBrown
 
 
 -------------------------------------------------------
