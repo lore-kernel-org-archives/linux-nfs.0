@@ -1,22 +1,22 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 27 of 34 - Corrects an error return for OP_OPEN_CONFIRM.
+Subject: [PATCH] kNFSd - 33 of 34 - Make the calculation in the first READ_BUF easier to understand.
 Date: Tue, 24 Feb 2004 10:49:42 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1AvPpW-0006Kd-00@notabene>
+Message-ID: <E1AvPpW-0006LV-00@notabene>
 References: <20040224104820.23884.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AvPr3-0006xP-3S
+	id 1AvPr3-0006xR-7j
 	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 15:51:17 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
-	id 1AvPqf-0005hm-NE
-	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 15:50:53 -0800
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.30)
+	id 1AvPf1-0002Q0-7q
+	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 15:38:51 -0800
 Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
 	(for <akpm@osdl.org>) (for <nfs@lists.sourceforge.net>) By note With
-	Smtp ; Tue, 24 Feb 2004 10:50:42 +1100
+	Smtp ; Tue, 24 Feb 2004 10:49:43 +1100
 To: Andrew Morton <akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,24 +31,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
- ----------- Diffstat output ------------
- ./fs/nfsd/nfs4state.c |    4 ++++
- 1 files changed, 4 insertions(+)
+Don't rely on the assumption that
+    sizeof(stateid_t) == sizeof(stateid_opaque_t) + 4. 
 
-diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2004-02-24 10:42:35.000000000 +1100
-+++ ./fs/nfsd/nfs4state.c	2004-02-24 10:42:35.000000000 +1100
-@@ -1533,6 +1533,10 @@ nfsd4_open_confirm(struct svc_rqst *rqst
- 	dprintk("NFSD: nfsd4_open_confirm on file %.*s\n",
- 			(int)current_fh->fh_dentry->d_name.len,
- 			current_fh->fh_dentry->d_name.name);
-+
-+	if ((status = fh_verify(rqstp, current_fh, S_IFREG, 0))) 
-+		goto out;
-+
- 	oc->oc_stateowner = NULL;
- 	nfs4_lock_state();
+ ----------- Diffstat output ------------
+ ./fs/nfsd/nfs4xdr.c |    2 +-
+ 1 files changed, 1 insertion(+), 1 deletion(-)
+
+diff ./fs/nfsd/nfs4xdr.c~current~ ./fs/nfsd/nfs4xdr.c
+--- ./fs/nfsd/nfs4xdr.c~current~	2004-02-24 10:42:36.000000000 +1100
++++ ./fs/nfsd/nfs4xdr.c	2004-02-24 10:42:37.000000000 +1100
+@@ -949,7 +949,7 @@ nfsd4_decode_write(struct nfsd4_compound
+ 	int len;
+ 	DECODE_HEAD;
  
+-	READ_BUF(sizeof(stateid_t) + 16);
++	READ_BUF(sizeof(stateid_opaque_t) + 20);
+ 	READ32(write->wr_stateid.si_generation);
+ 	COPYMEM(&write->wr_stateid.si_opaque, sizeof(stateid_opaque_t));
+ 	READ64(write->wr_offset);
 
 
 -------------------------------------------------------
