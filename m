@@ -1,35 +1,112 @@
-From: William Lee Irwin III <wli@holomorphy.com>
-Subject: nfs/write.c warning
-Date: Sat, 4 Jan 2003 03:59:26 -0800
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <20030104115926.GF10697@holomorphy.com>
-Mime-Version: 1.0
+From: tony obi <tony_obi2003@latinmail.com>
+Subject: Urgent Response
+Date: Sat,  4 Jan 2003 10:55:58 -0500
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <20030104155556.8A28A3BAB15@smtp.latinmail.com>
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net, trivial@rustcorp.com.au
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: linux-kernel@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Return-path: <nfs-admin@lists.sourceforge.net>
+To: nfs@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This trivially corrects an unused variable warning in nfs/write.c:
+FROM:MR.TONY OBI
+UNION BANK NIGERIA PLC,
+DIRECT FAX:234-1-7590105.
+
+DEAR SIR/MADAM, 
+FIRST, I MUST SOLICIT YOUR CONFIDENCE IN THIS 
+TRANSACTION, THIS IS BY VIRTUE OF ITS NATURE AS BEING
+UTTERLY CONFIDENTIAL AND TOP SECRET.THOUGH I KNOW THAT
+NATURE OF THIS MAGNITUDE WILL MAKE ANY ONE APPREHENSIVE AND
+WORRIED, BUT I AM ASSURING YOU THAT ALL WILL BE WELL
+AT THE END OF THE DAY.WE HAVE DECIDED TO CONTACT YOU
+DUE TO THE URGENCY OF THIS TRANSACTION,AS WE HAVEBEEN
+RELIABLY OF YOUR DISCRETNESS AND ABILITY INTRANSACTION OF THIS NATURE. 
+
+LET ME START BY INTRODUCING MYSELF PROPERLY TO YOU.I
+AM MR. TONY OBI. CREDIT OFFICER WITH THE UNION
+BANK OF NIGERIA PLC, LAGOS. I CAME TO KNOW YOU IN MY
+PRIVATE SEARCH FOR A RELIABLE AND REPUTABLE PERSON TO
+HANDLE THIS CONFIDENTIAL TRANSACTION, WHICH INVOLVES
+THE TRANSFER OF HUGE SUM OF MONEY TO A FOREIGN ACCOUNT
+REQUIRING MAXIMUM CONFIDENCE. 
+
+THE PROPOSITION: 
+
+A FOREIGNER AN AMERICAN, LATE ENGR JOHN CREEK (SNR) AN
+OIL MERCHANT WIH THE FEDERAL GOVERNMENT OF NIGERIA,
+UNTIL HIS DEATH MONTHS AGO IN KENYA AIR BUS (A310
+-300) FLIGHT KQ430, BANKED WIH US AT UNION BANK
+OF NIGERIA PLC LAGOS AND HAD A CLOSING BALANCE AS AT
+THE END OF JANUARY,2001 WORTH USD30,000,000.00 (THIRTY
+MILLION UNITED STATE DOLLAR), THE BANK NOW EXPECTS A
+NEXT OF KIN AS BENEFICIARY.VALUABLEEFFORTS ARE BEING
+MADE BY THE UNION BANK OF NIGERIA TO GET IN TOUCH WITH
+ANY OF THE CREEK'S FAMILY OR RELATIVES BUT TO NO
+SUCCESS.IT IS BECAUSE OF THE PERCEIVED POSSIBILITY OF
+NOT BEING ABLE TO LOCATE ANY OF LATE ENGR.JOHN CREEK
+(SNR)'S NEXT OF KIN (HE HAD NO WIFE OR CHILDREN THATIS KNOWN TO US). 
+
+THE MANAGEMENT UNDER THE INFLUENCE OF OUR CHAIRMAN AND
+MEMBERS OF THE BOARD OF DIRECTORS,THAT ARANGEMENT HAS
+BEEN MADE FOR THE FUND TO BE DECLEARED "UNCLAINMED"AND
+SUBSEQUENTLY BE DONATED TO THE TRUST FUND FOR ARMS AND
+AMMUNITION TO FURTHER ENHANCE THE COURSE OF WAR IN
+AFRICA AND THE WORLD IN GENERAL. IN ORDER TO AVERT
+THIS NEGATIVE DEVELOPMENT, SOME OF MY TRUSTED
+COLLEAGUES AND I NOW SEEK YOUR PERMISSION TO HAVE YOU
+STAND AS NEXT OF KIN TO LATE ENGR. JOHN CREEK(SNR)SO
+THAT THE FUND USD30MILLION WILL BE RELEASED AND PAID
+INTO YOUR ACCOUNT AS THE BENEFICIARY'S NEXT OF KIN.
+ALL DOCUMENTS ANDPROVES TO ENABLE YOU GET THIS FUND
+WILL BE CAREFULLY WORKED OUT.WE HAVE SECURE FROM  THE
+PROBATE AN ORDER OF MANDATE TO LOCATE ANY OF DECEASED
+BENEFICIARIES,AND MORE SO WE ARE ASSURING YOU THATTHIS
+BUSINESS IS 100% RISK FREE INVOLVEMENT.YOUR SHARE
+STAYS WHILE THE REST BE FOR MYSELF AND MY COLLEAGUES
+FOR INVESTMENT PURPOSE.ACCORDING TO AGGREMENT WITHIN
+BOTH  PARTIES. 
+
+AS SOON AS WE RECIEVE AN ACKNOWLEDGEMENT OF RECEIPT OF
+THIS MESSAGE IN ACCEPTANCE OF OUR MUTUAL BUSINESS
+PROPOSAL, WE WOULD FURNISH YOU WITH THE NECCESSARY
+MODALITIES AND DISBURSEMENT RATIO TO SUITE BOTHPARTIES 
+WITHOUT ANY CONFLICT. 
+
+IF THIS PROPOSAL IS ACCEPTABLE BY YOU DO NOT MAKE
+UNDUE ADVANTAGE OF THE TRUST WE HAVE BESTOWED IN YOU
+AND YOUR COMPANY, THEN KINDLY GET TO ME IMMEDIATELY
+VIA E - MAIL .PLEASE FURNISH ME WITH YOUR MOST
+CONFIDENTIAL TELEPHONE, FAX NUMBERS AND YOUR EXCLUSIVE
+BANK ACCOUNTPARTICULARS SO THAT I CAN USE THIS
+INFORMATION TO APPLY FOR THE RELEASE AND SUBSEQUENT
+TRANSFER OF THE FUND IN YOUR FAVOUR. 
+
+THANK YOU IN ADVANCE FOR YOUR ANTICIPATED CORPORATION. 
+
+YOURS FAITHFULLY, 
+TONY OBI.
 
 
-diff -urpN mm2-2.5.54-1/fs/nfs/write.c mm2-2.5.54-2/fs/nfs/write.c
---- mm2-2.5.54-1/fs/nfs/write.c	2003-01-01 19:22:39.000000000 -0800
-+++ mm2-2.5.54-2/fs/nfs/write.c	2003-01-03 03:31:09.000000000 -0800
-@@ -828,7 +828,6 @@ nfs_writeback_done(struct rpc_task *task
- 	struct nfs_write_data	*data = (struct nfs_write_data *) task->tk_calldata;
- 	struct nfs_writeargs	*argp = &data->args;
- 	struct nfs_writeres	*resp = &data->res;
--	struct inode		*inode = data->inode;
- 	struct nfs_page		*req;
- 	struct page		*page;
- 
-@@ -862,7 +861,7 @@ nfs_writeback_done(struct rpc_task *task
- 		if (time_before(complain, jiffies)) {
- 			dprintk("NFS: faulty NFS server %s:"
- 				" (committed = %d) != (stable = %d)\n",
--				NFS_SERVER(inode)->hostname,
-+				NFS_SERVER(data->inode)->hostname,
- 				data->verf.committed, argp->stable);
- 			complain = jiffies + 300 * HZ;
- 		}
+
+_________________________________________________________
+http://www.latinmail.com.  Gratuito, latino y en español.
+
+
+
+-------------------------------------------------------
+This sf.net email is sponsored by:ThinkGeek
+Welcome to geek heaven.
+http://thinkgeek.com/sf
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
