@@ -1,16 +1,26 @@
-From: "Rongsheng Fang" <rsfang@hotmail.com>
-Subject: no_root_squash made CPU  in heavy load on RH 7.3 NFS server
-Date: Tue, 30 Jul 2002 22:07:38 -0400
+From: Daniel Hartmeier <daniel@benzedrine.cx>
+Subject: Re: Re: pf: to scrub or not to scrub?
+Date: Wed, 31 Jul 2002 15:54:02 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <F90oN5gfUw3ZPpAATnL0002169b@hotmail.com>
+Message-ID: <20020731135402.GA25793@insomnia.benzedrine.cx>
+References: <nfs-valinux.15684.6662.207461.819443@charged.uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain; format=flowed
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from f90.law12.hotmail.com ([64.4.19.90] helo=hotmail.com)
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17ZiuG-0007o5-00
-	for <nfs@lists.sourceforge.net>; Tue, 30 Jul 2002 19:08:08 -0700
+Received: from insomnia.benzedrine.cx ([62.65.145.30])
+	by usw-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17Ztva-0008UP-00
+	for <nfs@lists.sourceforge.net>; Wed, 31 Jul 2002 06:54:15 -0700
+Received: from insomnia.benzedrine.cx (dhartmei@localhost [127.0.0.1])
+	by insomnia.benzedrine.cx (8.12.5/8.12.5) with ESMTP id g6VDs38r013528
+	(version=TLSv1/SSLv3 cipher=EDH-DSS-DES-CBC3-SHA bits=168 verify=NO)
+	for <nfs@lists.sourceforge.net>; Wed, 31 Jul 2002 15:54:03 +0200 (MEST)
+Received: (from dhartmei@localhost)
+	by insomnia.benzedrine.cx (8.12.5/8.12.5/Submit) id g6VDs2Mh002599
+	for nfs@lists.sourceforge.net; Wed, 31 Jul 2002 15:54:03 +0200 (MEST)
 To: nfs@lists.sourceforge.net
+In-Reply-To: <nfs-valinux.15684.6662.207461.819443@charged.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -23,44 +33,22 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hello NFS,
+On 2002-07-29 02:28:32 PST, Trond Myklebust wrote:
 
-I found that the CPU stayed in very high load when I set up a NFS
-server on a RH 7.3 with the following options:
+> Hmm... From your forwarded mail. Looks like they were saying that the
+> firewall doesn't like IP_DF + IP_MF. That basically means that it is
+> incompatible with standard Path MTU discovery (see RFC 1191).
 
-/etc/exports:
+Where does RFC 1191 (or Stevens, which I also checked) say you're
+supposed to do PMTU discovery using _fragments_? You send complete,
+unfragmented packets with DF set and see if you get an
+ICMP_UNREACH_NEEDFRAG back. You mean a router gets already fragmented
+packets (MF set) and then does PMTU to the destination itself, so the
+fragments themselves don't get fragmented further? Or some host on the
+way actually fragmented a DF packet? PMTU discovery explains the DF, but
+who set the MF, assuming PMTU discovery is happening?
 
-/usr/local/share           10.0.2.0/255.255.255.0 (rw,no_root_squash)
-
-The CPU load of nfsd from `top` was always between 5-10.
-
-While I change the option to (rw,root_squash), the CPU load decreased
-dramatically to 0.1-0.5.
-
-Actually this NFS server only serves 4 Linux clients,  so the scaring
-CPU load made me very confused.
-
-Here are the basic information:
-
-server ~% uname -a
-Linux server 2.4.18-5 #1 Mon Jun 10 15:38:12 EDT 2002 i686 unknown
-
-server ~% cat /etc/redhat-release
-Red Hat Linux release 7.3 (Valhalla)
-
-Any idea why?
-
-BTW, I'm not in this list. If you've any idea on this, could you
-please CC to me when you reply?
-
-Thanks,
-Rowsen
-
-
-_________________________________________________________________
-MSN Photos is the easiest way to share and print your photos: 
-http://photos.msn.com/support/worldwide.aspx
-
+Daniel
 
 
 -------------------------------------------------------
