@@ -1,17 +1,19 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: rpc.mountd + rpc.nfsd
-Date: 03 Sep 2002 19:01:52 +0200
+From: "Nicholas Lafferty" <nlafferty@pennswoods.net>
+Subject: Re: fh_verify
+Date: Tue, 3 Sep 2002 13:47:04 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shs8z2j80sf.fsf@charged.uio.no>
-References: <3D7363A7.8090906@linkvest.com>
-	<15732.7907.19389.156631@notabene.cse.unsw.edu.au>
-	<3D745D10.4040409@linkvest.com>
+Message-ID: <006a01c25371$ea977700$9300a8c0@gridlock>
+References: <003901c252d9$d92bea70$9300a8c0@gridlock> <15732.7439.949607.498380@notabene.cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@sourceforge.net
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Cc: "nfs" <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: Jean-Eric Cuendet <Jean-Eric.Cuendet@linkvest.com>
-In-Reply-To: <3D745D10.4040409@linkvest.com>
+Received: from mail.pennswoods.net ([205.247.236.146])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17mHxA-000397-00
+	for <nfs@lists.sourceforge.net>; Tue, 03 Sep 2002 10:59:04 -0700
+To: "Neil Brown" <neilb@cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,30 +26,70 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->>>>> " " == Jean-Eric Cuendet <Jean-Eric.Cuendet@linkvest.com> writes:
+I'm trying to track down all of the things that I think could be the
+problem. For one, I know that things are not getting mounted right.
 
-    >> The serve different protocols (MOUNTD and NFS).  Also mountd
-    >> runs
-     > OK.
+the init script passed to the kernel has the following lines of importance:
 
-    >> entirely in user space, nfsd runs entirely in kernel space.  It
-    >> really makes sense for them to be separate.
+mount-t nfs -o nolock,ro,vers=2 $SERVER:/      /ro
+mount-t nfs -o nolock,ro,vers=2 $SERVER:/home/guest/share      /ro2
+mount-t nfs -o nolock,rw,vers=2 $SERVER:/home/guest/$ID      /rw
 
-     > In fact, I thought of a completely userspace daemon. I took
-     > nfs-server-userspace-2.2b47 from the net and wondered why there
-     > was 2 daemons while one is IMHO enough.
+#then the /dev on the ramdisk is renamed out of the way and a server version
+of dev is mounted EXCLUDED
 
-IIRC, this was done in order to allow people to do wierd and wonderful
-things. For instance, you could supposedly run the mountd daemon on
-one machine, and nfsd on another. We actually have support for this in
-the client by way of the option "mounthost=" in the standard mount
-program.
+exec /sbin/init '#'
 
-I've never heard of anybody actually using that particular feature
-though.
+this should allow me to write to my home dir but it says I have a read only
+file system. Perhaps a remount option in my fstab to change.
 
-Cheers,
-  Trond
+
+
+----- Original Message -----
+From: "Neil Brown" <neilb@cse.unsw.edu.au>
+To: "Nicholas Lafferty" <nlafferty@pennswoods.net>
+Cc: "nfs" <nfs@lists.sourceforge.net>
+Sent: Monday, September 02, 2002 10:23 PM
+Subject: Re: [NFS] fh_verify
+
+
+> On Monday September 2, nlafferty@pennswoods.net wrote:
+> > I have recently set up a lan with three New Internet Computers booting
+off
+> > the network as outlined in the article (
+> > http://www.dnalounge.com/backstage/src/kiosk ) . After many atempts I
+have
+> > finally gotten ALMOST a booting client.
+> > I have been alternating testing with SysVinit and Busybox's init. If I
+use
+> > the normal init I get errors on the NFS server about fh_verify:
+/etc/shadow
+> > permission failure. As soon as inittab is read. I get the same errors
+when I
+> > run sulogin. If I rename the inittab out of the way I can only boot in
+> > single mode.
+> >
+> > If I use busybox it will boot. But I can not start X and I get the same
+> > errors.
+> >
+> > Any clue? Any help would be great.
+>
+> Sounds like you need the
+>    no_root_squash
+> in you /etc/exports.  You definately need this for exporting a root
+> filesystem.
+>
+> NeilBrown
+>
+>
+> -------------------------------------------------------
+> This sf.net email is sponsored by: OSDN - Tired of that same old
+> cell phone?  Get a new here for FREE!
+> https://www.inphonic.com/r.asp?r=sourceforge1&refcode1=vs3390
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+
 
 
 -------------------------------------------------------
