@@ -1,21 +1,16 @@
-From: Scott Mcdermott <smcdermott@questra.com>
-Subject: Re: Re: broken umount -f
-Date: Wed, 15 Jan 2003 12:23:55 -0500
+From: Chris Caputo <ccaputo@alt.net>
+Subject: Re: cache/mmap()/server coherency problems
+Date: Wed, 15 Jan 2003 09:43:14 -0800 (PST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030115172355.GJ30598@questra.com>
-References: <6440EA1A6AA1D5118C6900902745938E07D551FA@black.eng.netapp.com>
+Message-ID: <Pine.LNX.4.44.0301150937580.28761-100000@nacho.alt.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from ns1.questra.com ([64.132.48.186])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18YrSH-00007q-00
-	for <nfs@lists.sourceforge.net>; Wed, 15 Jan 2003 09:35:57 -0800
-Received: from questra.com (hades.roc.questra.com [64.132.48.226])
-	by ns1.questra.com (Postfix) with SMTP id 34A21AB7C4
-	for <nfs@lists.sourceforge.net>; Wed, 15 Jan 2003 12:23:56 -0500 (EST)
+Received: from nacho.alt.net ([207.14.113.18])
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18YrZn-0001SP-00
+	for <nfs@lists.sourceforge.net>; Wed, 15 Jan 2003 09:43:43 -0800
 To: nfs@lists.sourceforge.net
-In-Reply-To: <6440EA1A6AA1D5118C6900902745938E07D551FA@black.eng.netapp.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,21 +23,17 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Lever, Charles on Wed 15/01 09:04 -0800:
-> > I'm sure it *will* work with the `intr' mount option.  But I don't
-> > want my users to be able to corrupt their own data just because I
-> > decided to bounce to server for whatever reason.
-> 
-> do you know what the risk of data corruption is when using "intr"?
-> seems pretty low to me.
+Just to follow-up on this thread...  I had some additional emails with
+Trond on this and it turns out the problem is that in 2.4 one process can
+mmap() a page in a file such that it is in effect pinned in the page cache
+and it won't be updated, even after it is munmap()ed.  He suggested this
+may be better in 2.5 but I haven't checked.
 
-User saving his mail spool, sees "nfs server not responding, still
-trying" and decides to try killing his MUA.  Too bad it works and now
-his spool is a steaming pile of ASCII.
+My workaround is to not mmap() pages that are partially filled in files
+that I expect to grow.  This appears to be working fine.
 
-any number of other possible problems with intr
+Chris
 
-`soft' and `intr' are evil and should be banned.
 
 
 -------------------------------------------------------
