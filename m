@@ -1,22 +1,22 @@
 From: "Lever, Charles" <Charles.Lever@netapp.com>
 Subject: RE: [PATCH] 1/3 - RPC metrics support
-Date: Thu, 1 Apr 2004 08:45:40 -0800
+Date: Thu, 1 Apr 2004 09:05:20 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <482A3FA0050D21419C269D13989C61130435DE4B@lavender-fe.eng.netapp.com>
+Message-ID: <482A3FA0050D21419C269D13989C61130435DE4C@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain;
 	charset="us-ascii"
-Cc: <nfs@lists.sourceforge.net>
+Cc: "Greg Banks" <gnb@melbourne.sgi.com>, <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B95KB-00040J-34
-	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 08:45:51 -0800
+	id 1B95dG-0000L0-DQ
+	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 09:05:34 -0800
 Received: from mx01.netapp.com ([198.95.226.53])
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B95KA-0004b1-Qj
-	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 08:45:50 -0800
-To: "Greg Banks" <gnb@melbourne.sgi.com>
+	id 1B95dG-00035F-1U
+	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 09:05:34 -0800
+To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -29,27 +29,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> The minor dimension of the 2d array of struct=20
-> rpc_metrics_totals pointed to by rpc_tally is per-CPU.  To=20
-> get correct per-CPU separation you will want to=20
-> cacheline-align the per-CPU parts (so that cachelines which=20
-> straddle the per-CPU parts don't end up bouncing between=20
-> CPUs).  For example, in rpc_alloc_tally(),
->=20
-> size =3D NR_CPUS * ROUNDUP(ops * sizeof(struct=20
-> rpc_metric_totals), L1_CACHE_BYTES);
->=20
-> and change the stride of the tl_totals[] initialisation loop.
+> I don't see any way for the userspace program which reads=20
+> these to figure out which of the iostat files corresponds to=20
+> which mount. We get the hostname in the filename and again in=20
+> the contents but nowhere do we get the mount path, only the=20
+> device minor number in the filename.  How about adding a line=20
+> to nfs_iostat_show() to print nfss->mnt_path?
 
-that doesn't work, unfortunately, unless sizeof(struct rpc_tally)
-is also an exact multiple of L1_CACHE_BYTES.  otherwise the whole
-metrics array starts on a non-cache-aligned boundary since these
-are all cut from the same piece of memory.
+nfss->mnt_path is an NFSv4 only field at the moment.
 
-what is the preferred mechanism these days for ensuring that
-structures like these are sized in multiples of L1_CACHE_BYTES?
-if i can get the C compiler to do this, that would be a cleaner
-solution.
+let me make sure i understand exactly what it contains.  is
+this the mounted-on directory on the client, or the export
+path on the server?
+
+if we saved the export path somewhere in the nfs_server
+structure, that would be mighty convenient for iostats
+and i don't think that would break namespaces.
 
 
 -------------------------------------------------------
