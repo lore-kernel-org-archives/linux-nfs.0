@@ -1,59 +1,62 @@
-From: Bernd Schubert <bernd-schubert@web.de>
-Subject: Re: NFS problem on Debian Woody
-Date: Mon, 14 Apr 2003 18:48:25 +0200
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200304141848.26046.bernd-schubert@web.de>
-References: <000d01c3026f$227cde60$00000a0a@andromeda>
+From: "Terry Cote" <caa6hjtmd8v@dotcomdotnet.cjb.net>
+Subject: You've never seen it look this good before
+Date: Tue, 15 Apr 03 07:09:12 GMT
+Sender: lse-tech-admin@lists.sourceforge.net
+Message-ID: <69x4s7ss$o619893o54@k2pve.q2bk7>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="windows-1252"
-Cc: <nfs@lists.sourceforge.net>
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from relay.uni-heidelberg.de ([129.206.100.212])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19578C-0003Zz-00
-	for <nfs@lists.sourceforge.net>; Mon, 14 Apr 2003 09:48:32 -0700
-To: "Charis Charalambous" <charalambous@softnet.tuc.gr>
-In-Reply-To: <000d01c3026f$227cde60$00000a0a@andromeda>
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: multipart/alternative; boundary="73_._B.73CD9__A_9."
+Return-path: <lse-tech-admin@lists.sourceforge.net>
+To: <nfs@lists.sourceforge.net>, <jmol-commits@lists.sourceforge.net>, <lse-tech@lists.sourceforge.net>, <glhack-user@lists.sourceforge.net>
+Errors-To: lse-tech-admin@lists.sourceforge.net
+List-Help: <mailto:lse-tech-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:lse-tech@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/lse-tech>,
+	<mailto:lse-tech-request@lists.sourceforge.net?subject=subscribe>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/lse-tech>,
+	<mailto:lse-tech-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=lse-tech>
+List-ID: <nfs.lists.sourceforge.net>
 
-On Monday 14 April 2003 12:16, Charis Charalambous wrote:
-> When i try to mount a dir with NFS with 2 PCs running Woody r3.0 i get (on
-> the client of course): RPC:Port mapper failure-RPC:Unable to send
->
-> Both PCs run:
-> nfs-comon 1.0-2
-> nfs-kernel-server 1.0-2
-> nfs-user-server 2.2beta47-12
-> kernel 2.2.20-idepci
-> Debian Woody r3.0
->
-> In the server i use the scripts:
-> /etc/init.d/nfs-common start
-> /etc/init.d/nfs-kernel-server start
-> /etc/init.d/nfs-user-server start
+This is a multi-part message in MIME format.
 
-Do you have a kernel that has nfsd support ?
+--73_._B.73CD9__A_9.
+Content-Type: text/html;
+Content-Transfer-Encoding: quoted-printable
 
-Why do you start unfsd ?
+<html>
+<head>
+	<title>Untitled</title>
+<base target=3D"_blank">
+</head>
 
->
-> and on the client:
-> /etc/init.d/nfs-common start
+<body bgcolor=3D"#FFFFFF" alink=3D"#CC00CC" link=3D"#0000FF" vlink=3D"#CC0=
+0CC">
+<h3><a href=3D"
+http://hedgehog.com@idle.hyperhost.bz/triplex/1/">Home Video P=
+lus</a></h3><BR>
+<FONT COLOR=3D#FFFFFF SIZE=3D-1>iawonwyydoebkeg</FONT>
+<BR>Videos and lots of them is what you get, over 160 GB to be precise.  <=
+BR>
+Gain instant access to the sluttiest home-bound gals captured in high <BR>=
 
-What's about starting "/etc/init.d/portmap"  on the client ?
+quality full motion vids.<BR>
+<h3><a href=3D"
+http://lam.com@occur.hyperhost.bz/triplex/1/">High quality=
+ home made videos!</a></h3>
+<BR>
+<BR><FONT COLOR=3D#FFFFFF>tormmhkfej yjgxh uor 
+ gm hqlflavsnc  
+  j re wrqlrcudipkzdy vflaf
+kejr uuv t tqz bziuhms</FONT>
+<BR><FONT COLOR=3D#FFFFFF>iezkfkfqs zft
+oe</FONT><BR>
+ravjgvrpi u k fidon
+igsb opfvsw  svgfnplhioscyahiht
+c
+</body>
+</html>
 
-Bernd
+--73_._B.73CD9__A_9.--
 
 
 
@@ -61,6 +64,3 @@ Bernd
 This sf.net email is sponsored by:ThinkGeek
 Welcome to geek heaven.
 http://thinkgeek.com/sf
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
