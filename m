@@ -1,24 +1,24 @@
-From: Vincent ROQUETA <vincent.roqueta@ext.bull.net>
+From: Jeffrey Layton <jtlayton@poochiereds.net>
 Subject: Re: Poor NFS performance, kernel 2.6.6.
-Date: Wed, 2 Jun 2004 15:14:00 +0200
+Date: Wed, 02 Jun 2004 09:40:26 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200406021514.00838.vincent.roqueta@ext.bull.net>
+Message-ID: <1086183626.3370.6.camel@tesla.mmt.bellhowell.com>
 References: <1086179633.3325.0.camel@tesla.mmt.bellhowell.com>
-Reply-To: vincent.roqueta@ext.bull.net
+	 <20040602130054.GP323@sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="utf-8"
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BVVW7-0007Xr-Ds
-	for nfs@lists.sourceforge.net; Wed, 02 Jun 2004 06:10:51 -0700
-Received: from ecbull20.frec.bull.fr ([129.183.4.3])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BVVW5-0007I2-OX
-	for nfs@lists.sourceforge.net; Wed, 02 Jun 2004 06:10:50 -0700
-To: Jeffrey Layton <jtlayton@poochiereds.net>, nfs@lists.sourceforge.net
-In-Reply-To: <1086179633.3325.0.camel@tesla.mmt.bellhowell.com>
+	id 1BVVyn-0005FE-V9
+	for nfs@lists.sourceforge.net; Wed, 02 Jun 2004 06:40:29 -0700
+Received: from rdu26-93-067.nc.rr.com ([66.26.93.67] helo=salusa.poochiereds.net)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1BVVyn-0003Zf-Jt
+	for nfs@lists.sourceforge.net; Wed, 02 Jun 2004 06:40:29 -0700
+To: Greg Banks <gnb@sgi.com>
+In-Reply-To: <20040602130054.GP323@sgi.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,58 +31,46 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Le Mercredi 02 Juin 2004 14:33, Jeffrey Layton a =C3=A9crit :
-> I haven't been following this thread closely, but figured I'd chime in
-> with my own experience with this. Here's a rather unscientific test,
-> dd'ing to a file on an NFS-mounted filesystem. Mount options are:
->
-> udp,soft,intr,nfsvers=3D3
->
-> (I'm using UDP as I'm trying to set up a HA-NFS server, and the clients
-> seem to recover much faster when using UDP as a transport).
->
-> With a 2.4 kernel server:
->
-> % time dd if=3D/dev/zero of=3D./testfile bs=3D100M count=3D1
-> 1+0 records in
-> 1+0 records out
-> 104857600 bytes transferred in 11.806235 seconds (8881544 bytes/sec)
-> dd if=3D/dev/zero of=3D./testfile bs=3D100M count=3D1  0.00s user 0.28s s=
-ystem
-> 2% cpu 12.147 total
->
-> With a 2.6 kernel server:
->
-> % time dd if=3D/dev/zero of=3D./testfile bs=3D100M count=3D1
-> 1+0 records in
-> 1+0 records out
-> 104857600 bytes transferred in 66.997572 seconds (1565096 bytes/sec)
-> dd if=3D/dev/zero of=3D./testfile bs=3D100M count=3D1  0.00s user 0.29s s=
-ystem
-> 0% cpu 1:07.06 total
->
->
-> The machines are different hardware, but local write performance is
-> pretty comparable (in fact the 2.6 box is a faster machine, and is
-> currently less utilized than the 2.4 kernel machine). Both are using
-> reiserfs as the underlying filesystem.
->
-> Write performance in this cursory test was 10x worse! Clearly, there's
-> some sort of problem with NFS on 2.6. I'll be happy to send in what info
-> I can. My 2.4 machine is currently a production box, but I can run an
-> instrumented kernel, etc. on the 2.6 box in the near future if anyone
-> here can guide me on what I can do to help.
->
-> -- Jeff
->
+On Wed, 2004-06-02 at 09:00, Greg Banks wrote:
+> On Wed, Jun 02, 2004 at 08:33:53AM -0400, Jeffrey Layton wrote:
+> > The machines are different hardware, but local write performance is
+> > pretty comparable (in fact the 2.6 box is a faster machine, and is
+> > currently less utilized than the 2.4 kernel machine). Both are using
+> > reiserfs as the underlying filesystem.
+> 
+> What is the speed on each server for a local dd from /dev/zero to disk?
+> What actual kernel versions are you running?
+> 
 
-What appends with linux 2.6.6?
-Is NFSv4 enabled?
-Can you use bonnie / IOzone and repport activity?
- (-> http://nfsv4.bullopensource.org/tools/sondage.php for performances too=
-ls=20
-)
-=20
+I need to amend my statement above. I'm having a problem mounting the
+filesystem from the 2.6 kernel as v3. I keep getting a message saying
+that v3 isn't supported, even though I can mount using v3 from the 2.4
+box without an issue. Another 2.6 box doesn't seem to have this issue,
+so I'm unsure of what the deal is. Rebuilding my client's kernel to see
+if I can clear up that problem. Once I get that redone, I'll redo this
+test and see if the poor performance remains...
+
+
+In any case...
+
+Less than .2 secs to do a local dd to disk:
+
+laytonj@angstrom:/services/NFS/home% time dd if=/dev/zero of=./testfile
+bs=100M count=1
+1+0 records in
+1+0 records out
+104857600 bytes transferred in 0.200756 seconds (522313514 bytes/sec)
+dd if=/dev/zero of=./testfile bs=100M count=1  0.00s user 0.20s system
+107% cpu 0.186 total
+
+It's a stock 2.6.6 kernel (the 'a' is an internal versioning scheme I
+use when I have multiple kernel builds of same version):
+
+laytonj@angstrom:/services/NFS/home% uname -a
+Linux angstrom 2.6.6a #1 Mon May 17 14:29:24 EDT 2004 i686 GNU/Linux
+
+
+
 
 
 -------------------------------------------------------
