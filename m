@@ -1,15 +1,26 @@
-From: Michelle Renee <MoreWebVisitorsToday84356@yahoo.com>
-Subject: >>OVER 15.7 MILLION OPT-IN EMAIL ADDRESSES...PLUS $2000 IN FREE SOFTWARE!
-Date: Sat, 5 Jul 2003 01:07:24 GMT
+From: Marc Schmitt <mschmitt@inf.ethz.ch>
+Subject: Large export list leads to "Invalid argument" errors when
+ executing 'exportfs -r'
+Date: 05 Jul 2003 13:44:09 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19YbYF-0002dX-00@sc8-sf-list1.sourceforge.net>
+Message-ID: <1057405449.3361.64.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [210.206.110.1] (helo=skgsexng.windsor.co.kr)
+Received: from medoc.inf.ethz.ch ([129.132.178.200])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19YbYF-0002dX-00
-	for <nfs@lists.sourceforge.net>; Fri, 04 Jul 2003 18:09:19 -0700
+	id 19YlT3-0005c2-00
+	for <nfs@lists.sourceforge.net>; Sat, 05 Jul 2003 04:44:37 -0700
+Received: from localhost (localhost [127.0.0.1])
+	by medoc.inf.ethz.ch (Postfix) with ESMTP id 7C5075619C
+	for <nfs@lists.sourceforge.net>; Sat,  5 Jul 2003 13:44:34 +0200 (MEST)
+Received: from medoc.inf.ethz.ch ([127.0.0.1])
+ by localhost (medoc [127.0.0.1]) (amavisd-new, port 10024) with LMTP
+ id 18357-01-4 for <nfs@lists.sourceforge.net>;
+ Sat,  5 Jul 2003 13:44:33 +0200 (MEST)
+Received: from [192.168.1.40] (vpn-global-dhcp3-014.ethz.ch [129.132.210.14])
+	by medoc.inf.ethz.ch (Postfix) with ESMTP id 394D156197
+	for <nfs@lists.sourceforge.net>; Sat,  5 Jul 2003 13:44:33 +0200 (MEST)
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -23,92 +34,59 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
- 
- Hello,
+Hi all,
 
- Hello,
+I'm using RedHat 7.3 as NFS server, kernel 2.4.18-27.7.xsmp, nfs-utils
+1.0.3.
 
-WOULD YOU LIKE TO HAVE YOUR MESSAGE SEEN BY
-OVER 15.7 MILLION OPT-IN, TARGETED PEOPLE DAILY?
+For each home directory, we make an entry into /etc/exports of the type:
 
-PLUS RECEIVE OVER $2,000 WORTH OF FREE EMAIL MARKETING SOFTWARE!
+/export/home/<login> @<login>(rw,sync)
 
-Below contains all the information you will ever need to market
-your product or service on the Internet.
+The @<login> netgroups contain usually a whole bunch of machines in FQDN
+notation.
 
-If you have a product, service, or message that you would like 
-Thousands, Hundreds of Thousands, or even Millions of people to 
-see, you have several options. Traditional methods include print 
-advertising, direct mail, radio, and television advertising. They are all 
-effective, but they all have two catches: They're EXPENSIVE and TIME
-CONSUMING. Not only that, you only get ONE SHOT at making
-your message heard by the right people. Also, Internet Search Engine
-Submissions, Classified Ads, Newsgroup Postings simply DO NOT
-WORK effectively.
+This setup used to work fine, I could add a new entry to /etc/exports
+and issue 'exportfs -r' and everything would work as expected, the new
+home could be mounted on the machines in @<login>.
 
-Now this has all changed!
+Somehow, with /etc/exports growing more and more (currently 137
+entries), 'exportfs -r' started giving errors of the type:
 
-Thanks to the top programmers in the world and their NEW EMAIL
-TECHNOLOGY, You can send millions of email messages daily for
-FREE...Without getting terminated from your current Internet connection!
+<somehost part of @<login>>:/export/home/<login>: Invalid argument
 
-It's very simple to do and you can be increasing your sales within minutes
-of installing this extraordinary new software!
+Currently, I get three of those error lines for three entries in
+/etc/exports. Lokks like it fails when it tries to unexport the entry,
+'exportsfs -r -v' shows:
 
-Besides...It's the only real way to advertise on the Internet that works...Period!
+unexporting <somehost part of @<login>>:/export/home/<login> from kernel
+<somehost part of @<login>>:/export/home/<login>: Invalid argument
 
-BELOW IS JUST A SAMPLE OF WHAT WE HAVE TO OFFER YOU...
+I made several tests, even when I delete the line in /etc/exports for
+<login>, 'exportfs -r' will still give this error. I've deleted the
+corresponding entry in /var/lib/nfs/xtab but 'exportfs -r' would just
+add it again, obviously it's cached in the kernel table.
 
->>>WE WILL SUPPLY YOU WITH OVER 15.7 MILLION OPT-IN EMAIL
-ADDRESSES TO GET YOU STARTED RIGHT AWAY!
+Looking at 'showmount -a', I noticed that the server thinks, that
+<somehost> has /export/home/<login> mounted, still. Even though the
+client does not have the home mounted from the server. I mounted the
+home on <somehost>, unmounted and issued 'exportfs -r' on the server and
+the error message "somehost part of @<login>>:/export/home/<login>:
+Invalid argument" did not appear again.
 
->>>FREE EMAIL ADDRESS DOWNLOADS FOR LIFE!
+Interestingly, I have not seen this error message for linux clients. The
+two machines I have seen it for are:
+- SunOS 5.9
+- IRIX64 6.5
+But then I'm seeing this error for a week only, now.
 
->>>YOU WILL RECEIVE OVER $2,000 WORTH OF 
-EMAIL MARKETING SOFTWARE FREE!
+The server seems to work fine, though. Even if it reports an error for
+<somehost>, <somehost> can mount the corresponding home. I just wanted
+to report this issue and will gladly provide more infos if required.
 
-Including......
+Regards,
+   Marc
 
-BROADCAST EMAIL SENDING SOFTWARE...(send millions of email
-advertisements daily with a few clicks of your mouse. New built in 
-stealth technology). Be one of the first people to use it. We used the 
-same software to send you this email message.
-
-EMAIL EXTRACTION SOFTWARE...(Retreive new targeted email
-addresses daily. Hundreds of thousands of them)
-
-LIST MANAGEMENT SOFTWARE...(Keep your lists clean, opt-in
-and manage all your remove requests, leads, sales etc...)
-
-POP-UP ADVERTISER...No need to pay someone else for 
-pop-up advertising. Save $1,000s weekly. It's yours today free! 
-Plus you can resell this software and keep 100% of the profit or
-simply give it as a free gift along with your current services.
-
-and much...much more!
-
-Hurry...This extraordinary offer ends soon!
-
-To find out more information, Do not respond by email. Instead, click
-on the link below or copy and paste the complete web address into 
-your Internet browser.
-
-<br><A HREF="http://www.vvevvillmakeyoumoney.biz/broadcast6.htm">Click Here For More Information</A><br>
-
-http://www.vvevvillmakeyoumoney.biz/broadcast6.htm
-
-
-
-
-
-______________________________________________________
-Want to be REMOVED from our email list?
-You were sent this email because you used our Opt-in service.
-We hope you enjoy reading our messages. However, if you'd rather
-not receive future e-mails from us, Click on the link below.
-http://www.vvevvillmakeyoumoney.biz/removeme.htm
-Thank you for your cooperation.
-________________________________________________________
 
 
 -------------------------------------------------------
