@@ -1,18 +1,20 @@
-From: "Wendy Cheng" <s_wendy_cheng@hotmail.com>
-Subject: Re: NFS Benchmarking tests?
-Date: Tue, 11 Mar 2003 16:25:56 -0500
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: regarding size limit of local client cache
+Date: 11 Mar 2003 23:14:07 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <BAY2-DAV19bb6PvHSbC00019656@hotmail.com>
-References: <E18sobq-0001wN-00@sc8-sf-list2.sourceforge.net>
+Message-ID: <shsof4h7dqo.fsf@charged.uio.no>
+References: <20030311211231.55780.qmail@web11407.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: text/plain; charset=us-ascii
+Cc: "Lever, Charles" <Charles.Lever@netapp.com>,
+	  nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from bay2-dav19.bay2.hotmail.com ([65.54.246.123] helo=hotmail.com)
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18srGM-000188-00
-	for <nfs@lists.sourceforge.net>; Tue, 11 Mar 2003 13:26:18 -0800
-To: <nfs@lists.sourceforge.net>
+	id 18ss0n-0007h4-00
+	for <nfs@lists.sourceforge.net>; Tue, 11 Mar 2003 14:14:17 -0800
+To: Abhishek Rai <abbashake007@yahoo.com>
+In-Reply-To: <20030311211231.55780.qmail@web11407.mail.yahoo.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,28 +27,24 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Not sure how "specific" you like but SPECsfs97 
-has been adopted by many big name vendors:
+>>>>> " " == Abhishek Rai <abbashake007@yahoo.com> writes:
 
-http://www.spec.org/sfs97r1/
+     > But in any case, I have a large swap partition(500 MB). So why
+     > doesn't the NFS client make use of the swap space to enlarge
+     > its available page cache space rather than restricting its page
+     > cache usage to 8192 -4k pages and thus paying the penalty of a
+     > very high numbe of on the wire reads.(As i mentioned before,
+     > there is negligible load on the client apart from the NFS)
 
-Wendy
- 
------ Original Message ----- 
+There is no guarantee that swap will be faster than NFS. Think GigE or
+faster...
 
-| Date: Mon, 10 Mar 2003 14:06:45 -0600 (CST)
-| From: "Brent M. Clements" <bclem@rice.edu>
-| To: <nfs@lists.sourceforge.net>
-| Subject: [NFS] NFS Benchmarking tests?
-| 
-| What are some good NFS Benchmarking tests that I could run.
-| 
-| I already know the generic answers, such as use iozone, or use this or
-| that...Could I get some specifics? I need to test the throughput of 1
-| node, 16 nodes, 32 nodes and so on and so on.
-| 
-| Thanks,
-| Brent
+In any case, this is an area that in entirely under the control of the
+VM. NFS has no say whatsoever in what policy should be applied
+w.r.t. caching.
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
