@@ -1,23 +1,29 @@
-From: Chip Salzenberg <chip@pobox.com>
-Subject: Re: [KNFSD] [PATCH] fixed '-p port' arg to rpc.nfsd plus more.
-Date: Mon, 21 Mar 2005 11:39:40 -0500
-Message-ID: <20050321163940.GF1736@perlsupport.com>
-References: <423EDD43.8000209@RedHat.com> <20050321154645.GE1736@perlsupport.com> <423EF4CE.90501@RedHat.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] Makes nfs mount warning less frequent and more
+	valuable
+Date: Mon, 21 Mar 2005 12:43:38 -0500
+Message-ID: <1111427018.10508.24.camel@lade.trondhjem.org>
+References: <4237178A.5030003@dgreaves.com>
+	 <Pine.LNX.4.61.0503151439250.22235@guppy.limebrokerage.com>
+	 <42384B59.3060408@dgreaves.com>
+	 <1111075232.13215.14.camel@lade.trondhjem.org>
+	 <Pine.LNX.4.61.0503211051110.5958@guppy.limebrokerage.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: David Greaves <david@dgreaves.com>,
+	Neil Brown <neilb@cse.unsw.edu.au>, Erez Zadok <ezk@cs.sunysb.edu>,
+	am-utils@fsl.cs.sunysb.edu, nfs@lists.sourceforge.net
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DDPwY-0000nu-OI
-	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 08:39:54 -0800
-Received: from perlsupport.com
-	([66.180.163.120] helo=mail.perlsupport.com ident=6e343bdac25f70f4dba1daedeab59554)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1DDQwg-0004Es-7v
+	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 09:44:06 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1DDPwW-00036c-TQ
-	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 08:39:55 -0800
-To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: <423EF4CE.90501@RedHat.com>
+	id 1DDQwd-0002jv-H1
+	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 09:44:06 -0800
+To: Ion Badulescu <ionut@badula.org>
+In-Reply-To: <Pine.LNX.4.61.0503211051110.5958@guppy.limebrokerage.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,29 +37,62 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-According to Steve Dickson:
-> Chip Salzenberg wrote:
-> >Thanks very much for the patches, but would you please add on support
-> >for the '-V' flag specifying the versions that should be allowed?
-> Well since everything is on by default, I figured all that
-> was needed was a way to turn things off, but it would
-> be a non-issue to add.
+m=E5 den 21.03.2005 Klokka 11:18 (-0500) skreiv Ion Badulescu:
+> On Thu, 17 Mar 2005, Trond Myklebust wrote:
+>=20
+> > I started rethinking this subject last night in between cleanups of the
+> > ACL code. Attached is the resulting patch proposal. It goes a lot
+> > further that what you do, but should hopefully provide better error
+> > reporting in "mount" and clean up some of that code.
+> >
+> > In particular, note that it attempts to add an error code that tells yo=
+u
+> > whether or not NFSv3 is actually supported by the kernel: I used
+> > EPROTONOSUPPORT, since that gives the correct error message with
+> > perror() (although strictly, EPROTONOSUPPORT appears to be a socket
+> > error). If anyone has a better suggestion for an error that makes more
+> > sense, then I'm all ears...
+>=20
+> ENOSYS might be an alternative, though personally I have no problem with=20
+> EPROTONOSUPPORT. ENOSYS is worse because it's then hard to differentiate=20
+> between no NFS support at all and no support for that particular version.
 
-It's for future-proofing.  Suppose you only wanted to export NFSv3,
-that's all.  You could say "-N 2" and that would be fine ... until
-NFSv4 was invented, when you'd need "-N 2,4".  Spelling it as "-V 3"
-is more stable for the long term.
+Right. The problem is that ENOSYS is supposed to mean "function not
+implemented", but is usually interpreted in userland to mean "syscall
+not implemented".
 
-> I was thinking servers behind firewalls might want to explicitly
-> define one protocol or the other, just to keep things simple [...]
+The thing that scared me away from ENOSYS was that "umount" is actually
+using it in order to figure out whether or not it can use sys_umount2().
 
-OK thanks.  A little doc patch might be helpful, if only along the
-lines of "if you're not setting up firewall rules, these options
-probably won't matter to you".
--- 
-Chip Salzenberg            - a.k.a. -            <chip@pobox.com>
-         Open Source is not an excuse to write fun code
-            then leave the actual work to others.
+> This is actually very good news for amd, because we've been struggling fo=
+r=20
+> years to detect (and work around) the case when the kernel version (and=20
+> headers) indicate that v3 support would be available on the client side,=20
+> but the user doesn't have it compiled in.
+>=20
+> I think the patch looks good. Just a small problem with one error path:
+>=20
+> +       s =3D ERR_PTR(-ENOMEM);
+>          server =3D kmalloc(sizeof(struct nfs_server), GFP_KERNEL);
+>          if (!server)
+> -               return ERR_PTR(-ENOMEM);
+> +               goto out_err;
+> [...]
+> +out_err:
+> +       kfree(server);
+> +       return s;
+>=20
+> This will call kfree(NULL) if the kmalloc fails. Which may well be fine--=
+I=20
+> haven't looked at kfree to see if handles that case.
+
+It is safe. kfree() automatically detects NULL pointers.
+
+Cheers,
+ Trond
+--=20
+Trond Myklebust <trond.myklebust@fys.uio.no>
+
 
 
 -------------------------------------------------------
