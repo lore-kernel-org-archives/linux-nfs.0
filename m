@@ -1,18 +1,17 @@
-From: Juan Gomez <juang@us.ibm.com>
-Subject: Re: Patch to enable rmtab's that are symbolic links
-Date: Tue, 15 Oct 2002 10:14:29 -0700
+From: "Heflin, Roger A." <Roger.A.Heflin@conoco.com>
+Subject: huge number of intr/s on large nfs server
+Date: Tue, 15 Oct 2002 14:27:44 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <OF3D2983B5.8FE70160-ON87256C53.005EAB7C@us.ibm.com>
+Message-ID: <5CA6F03EF05E0046AC5594562398B9160C773E@poexmb3.conoco.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from e3.ny.us.ibm.com ([32.97.182.103])
-	by usw-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 181VHJ-0000Wp-00
-	for <nfs@lists.sourceforge.net>; Tue, 15 Oct 2002 10:14:45 -0700
-To: "H. J. Lu" <hjl@lucon.org>
+Received: from usamail1.conoco.com ([12.31.208.226])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 181XM3-0001ZS-00
+	for <nfs@lists.sourceforge.net>; Tue, 15 Oct 2002 12:27:47 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,46 +24,29 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-                                                                                                               
-                                                                                                               
-                                                                                                               
-
-
-Thanks a lot H.J.
-
-
-Juan
 
 
 
-                                                                                                                                       
-                      "H. J. Lu"                                                                                                       
-                      <hjl@lucon.org>          To:       Juan Gomez/Almaden/IBM@IBMUS                                                  
-                                               cc:       nfs@lists.sourceforge.net                                                     
-                      10/15/02 09:35 AM        Subject:  Re: [NFS] Patch to enable rmtab's that are symbolic links                     
-                                                                                                                                       
-                                                                                                                                       
-                                                                                                                                       
+	Something else,
 
+	if you are dd a 10mb file on the local machine that is all going to be =
+in cache, so
+	the rate will be horribly incorrect.
 
+	Also these are gigabit copper cards correct?  Gigabit copper cards only =
+run=20
+	a max of 50MB/second, so getting 35MB/second over one of them is pretty =
+good.
 
-On Tue, Oct 15, 2002 at 09:07:12AM -0700, Juan Gomez wrote:
->
-> has anyone had anytime to look into this? could anyone include it in the
-> distribution?
->
-> Juan
->
+	I am getting 1500cs/second and 6500ints/second at about 8MB/second to
+	the network. =20
 
-I checked it into CVS. Please check it out.
+	I get 3600cs/second and 15000ints/second at about 20MB/second to the
+	network.
 
-Thanks.
+	How fast of IO are you getting on the local machine?
 
-
-H.J.
-
-
-
+							Roger
 
 
 -------------------------------------------------------
