@@ -1,18 +1,21 @@
-From: "Davis, Jeff (Houston)" <jdavis@hess.com>
-Subject: Re: round robin dns, multihomed host, nfs mounting issues
-Date: Sun, 20 Jul 2003 18:41:16 -0500
+From: Christian Reis <kiko@async.com.br>
+Subject: Re: SM_UNMON again -> kernel
+Date: Sun, 20 Jul 2003 20:45:58 -0300
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <292E6FA1FCA21C45B614DAC7FBED6D4B874E68@hacssex002.ihess.com>
+Message-ID: <20030720234558.GD1570@async.com.br>
+References: <20030711061615.GA1924@quasar.nro.au.com> <shsr84x768e.fsf@charged.uio.no> <87smpbkt55.fsf@ceramic.fifi.org> <shs8yr2h2jr.fsf@charged.uio.no> <87k7aml330.fsf@ceramic.fifi.org> <shsptkdij1a.fsf@charged.uio.no> <87vfu0ej5k.fsf@ceramic.fifi.org> <87n0fb42o5.fsf@ceramic.fifi.org> <20030719162218.GB7166@async.com.br> <shsptk4n5g7.fsf@charged.uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: Philippe Troin <phil@fifi.org>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [207.51.255.133] (helo=outside.ep.hess.com)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19eNnu-00078f-00
-	for <nfs@lists.sourceforge.net>; Sun, 20 Jul 2003 16:41:22 -0700
-To: <neilb@cse.unsw.edu.au>
+Received: from 200-206-134-238.async.com.br
+	([200.206.134.238] helo=anthem.async.com.br ident=root)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19eNsf-0002cM-00
+	for <nfs@lists.sourceforge.net>; Sun, 20 Jul 2003 16:46:18 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <shsptk4n5g7.fsf@charged.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,62 +28,26 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Nfs server does not provide routing
+On Mon, Jul 21, 2003 at 01:28:40AM +0200, Trond Myklebust wrote:
+> >>>>> " " == Christian Reis <kiko@async.com.br> writes:
+> 
+>      > If there's one thing special, it's that this server also runs
+>      > an iptables firewall that does masquerading and supports
+>      > connection tracking. Could it be mangling the lock packets?
+> 
+> Huh? "Special" sounds like it would only begin to describe such a
+> setup...
 
-It default routes through interface 1. Request was getting to server but =
-not back to client
+Oh, the masquerading has nothing to do with NFS. The NFS clients and the
+server are all on the same local subnet. I just mentioned this to
+indicate that something special might be happening on the packet level
+(unfrag/frag) because this box is also a firewall, not that the clients
+communicate with the server through a firewall.
 
-the system seems to be working as I hoped once I upgraded rh80 to nfs =
-utils 1.05
-
-Thanks for the help
-
---------------------------
-Jeff Davis
-Amerada Hess
-Global IT Infrastructure
-Technical Computing
-Houston, Texas
-jdavis@hess.com
-713-609-5436 (work)
-281-467-9448 (cell)
-
-Sent by BlackBerry Wireless Email
-
------Original Message-----
-From: Neil Brown <neilb@cse.unsw.edu.au>
-To: Davis, Jeff (Houston) <jdavis@hess.com>
-CC: nfs@lists.sourceforge.net <nfs@lists.sourceforge.net>
-Sent: Sun Jul 20 18:32:19 2003
-Subject: Re: [NFS] round robin dns, multihomed host, nfs mounting issues
-
-On Saturday July 19, jdavis@hess.com wrote:
->=20
-> Given Neil's comments about possible glibc bug and nfs 1.05, and my =
-sense that it is working, is it reasonable for me to think its working?
->=20
-> I.e should it work?
-
-Maybe.
-
-It is entirely possible that I mis-diagnosed your problem.  If your
-NFS server is the only route between the two subnets, I probably did. =20
-
-However I cannot think of any recent change in nfs-utils that would
-affect anything like your problem, but then my memory isn't perfect.
-
-I suggest you test your configuration and if it works, be happy.
-
-When I had the problem I mentioned, I used rpcinfo for testing:
-
-  rpcinfo -u $HOSTNAME mountd 3
-
-If run this on a representative sample of clients, using a
-representative sample of server IP address, and it always works, then
-I guess your problem has gone away
-
-NeilBrown
-
+Take care,
+--
+Christian Reis, Senior Engineer, Async Open Source, Brazil.
+http://async.com.br/~kiko/ | [+55 16] 261 2331 | NMFL
 
 
 -------------------------------------------------------
