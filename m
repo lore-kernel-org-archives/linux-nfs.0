@@ -1,21 +1,17 @@
-From: Hirokazu Takahashi <taka@valinux.co.jp>
-Subject: Re: [BUG] kNFSd may get a freeing inode.
-Date: Wed, 18 Sep 2002 21:30:58 +0900 (JST)
+From: Peter Niessen <niessen@ifh.de>
+Subject: NFS/NAT(MASQUERADING) trouble
+Date: Wed, 18 Sep 2002 14:41:27 +0200 (METDST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020918.213058.45151863.taka@valinux.co.jp>
-References: <15752.7496.463707.865953@notabene.cse.unsw.edu.au>
-	<20020918.160913.73658160.taka@valinux.co.jp>
-	<15752.22931.241819.210428@notabene.cse.unsw.edu.au>
+Message-ID: <Pine.HPX.4.33.0209181349480.28921-100000@hpbai1.ifh.de>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Cc: viro@math.psu.edu, nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=ISO-8859-1
+Cc: Steven Lowette <lowette@hep.iihe.ac.be>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sv1.valinux.co.jp ([202.221.173.100])
+Received: from znsun1.ifh.de ([141.34.1.16])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17re6y-0006Lz-00
-	for <nfs@lists.sourceforge.net>; Wed, 18 Sep 2002 05:39:21 -0700
-To: neilb@cse.unsw.edu.au
-In-Reply-To: <15752.22931.241819.210428@notabene.cse.unsw.edu.au>
+	id 17re9I-0000OG-00
+	for <nfs@lists.sourceforge.net>; Wed, 18 Sep 2002 05:41:45 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,121 +24,97 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-Hello,
+Hi,
 
-> So how about if find_inode{,_fast} checks the inode that it finds
-> and, if it is FREEING, it drops the spinlock and waits on some
-> waitqueue.  destroy_inode calls wake_up on that waitqueue.
-> When find_inode is then woken up, it tries the lookup again.
+after days of searching the net, my frustration amounts to levels
+which urge me to write to the experts. I have the following problem:
 
-Mmmmm... I can see what you would like to do, but it looks
-little bit complex to me.
-
-How do you think of my idea? 
-
-1. If find_inode() finds a valid inode, iget() will return it.
-
-2. If find_inode() finds nothing, iget() will call get_new_inode()
-   to make a new inode.
-
-3. If find_inode() finds a I_FREEING inode, iget() will return NULL.
-   I guess this case will only happen on NFS. So kNFSd has to accept
-   NULL inode.
-
-4. If find_inode() finds both of a I_FREEING inode and a valid inode,
-   iget() will return the valid inode.
+We've set up a PC farm of 9 client and a master machine, running
+2.4.18 (debian) in the following way:
 
 
-neilb> --- ./fs/fs-writeback.c	2002/09/18 10:37:04	1.1
-neilb> +++ ./fs/fs-writeback.c	2002/09/18 10:37:47
-neilb> @@ -87,7 +87,8 @@ void __mark_inode_dirty(struct inode *in
-neilb>  		 * Only add valid (hashed) inode to the superblock's
-neilb>  		 * dirty list.  Add blockdev inodes as well.
-neilb>  		 */
-neilb> -		if (list_empty(&inode->i_hash) && !S_ISBLK(inode->i_mode))
-neilb> +		if ((list_empty(&inode->i_hash) || (inode->i_state & I_FREEING))
-neilb> +		    && !S_ISBLK(inode->i_mode))
-neilb>  			goto out;
-neilb>  
-neilb>  		/*
+alpha server =3D NFS/NIS server
+\
+ \
+  \
+  XXXXXXXX switch
+   /
+  /
+ / eth0=3Dpublic ip,
+Mastermachine with two interfaces eth0/eth1
+\  eth1=3D192.168.0.199
+ \
+  \
+   \
+    \
+    XXXXXXXXX...XXXXXXXX switch
+           |  |  | ... |  |  |
+ 192.168.0.1 .2 .3 ...      .9
 
-I think it should be like this:
+iptables is used to run the masquerading/nat on the master machine.
+After rebooting, everything runs smooth and the client machines and the
+master machine can see the NFS disks on the alpha server and the NIS
+works o.k. After some while, i.e. several hours in which the client
+machines access the NFS server (running jobs under the PBS batch
+system), the master machine, and only this one, gets into trouble.
+First, it will loose the disk which the clients write to (1000 files
+of ~2MB size, roughly ten of them within a minute in 10 minute
+intervals + a ~kB logfile and an empty status file), then other disks
+on the server. The clients are still able to see the server through
+the master, NFS as well as NIS.
 
-if ((list_empty(&inode->i_hash) || (inode->i_state & (I_FREEING|I_CLEAN)))
-                                                               ^^^^^^^^^^
+I use the NAT-script at the end of the message, copied from c't 4/2002.
 
-Following patch is just a sample which may not work.
-And find_inode() and iget5_locked also should be fixed.
+Now, I found that people report similar behaviour when using INTEL
+boards with certain NICs (cf. eg.
+http://sourceforge.net/mailarchive/message.php?msg_id=3D550848). But why
+would the client machines still see the NFS?
 
+If anyone has a similar set-up, I'd be glad to hear/read about it.
 
---- inode.c.ORG	Wed Sep 18 15:58:03 2030
-+++ inode.c	Wed Sep 18 21:10:41 2030
-@@ -479,18 +479,24 @@ static struct inode * find_inode_fast(st
- {
- 	struct list_head *tmp;
- 	struct inode * inode;
-+	struct inode * freeing_inode = NULL;
- 
- 	tmp = head;
- 	for (;;) {
- 		tmp = tmp->next;
--		inode = NULL;
--		if (tmp == head)
-+		if (tmp == head) {
-+			inode = freeing_inode;
- 			break;
-+		}
- 		inode = list_entry(tmp, struct inode, i_hash);
- 		if (inode->i_ino != ino)
- 			continue;
- 		if (inode->i_sb != sb)
- 			continue;
-+		if (inode->i_state & (I_FREEING|I_CLEAR)) {
-+			freeing_inode = inode;
-+			continue;
-+		}
- 		break;
- 	}
- 	return inode;
-@@ -604,6 +610,11 @@ static struct inode * get_new_inode_fast
- 		spin_lock(&inode_lock);
- 		/* We released the lock, so.. */
- 		old = find_inode_fast(sb, head, ino);
-+		if (old && old->i_state & (I_FREEING|I_CLEAR)) {
-+			spin_unlock(&inode_lock);
-+			destroy_inode(inode);
-+			return NULL;
-+		}
- 		if (!old) {
- 			inode->i_ino = ino;
- 			inodes_stat.nr_inodes++;
-@@ -737,6 +748,10 @@ struct inode *iget_locked(struct super_b
- 	spin_lock(&inode_lock);
- 	inode = find_inode_fast(sb, head, ino);
- 	if (inode) {
-+		if (inode->i_state & (I_FREEING|I_CLEAR)) {
-+			spin_unlock(&inode_lock);
-+			return NULL;
-+		}
- 		__iget(inode);
- 		spin_unlock(&inode_lock);
- 		wait_on_inode(inode);
-@@ -793,7 +808,6 @@ void generic_delete_inode(struct inode *
- {
- 	struct super_operations *op = inode->i_sb->s_op;
- 
--	list_del_init(&inode->i_hash);
- 	list_del_init(&inode->i_list);
- 	inode->i_state|=I_FREEING;
- 	inodes_stat.nr_inodes--;
-@@ -812,6 +826,7 @@ void generic_delete_inode(struct inode *
- 		delete(inode);
- 	} else
- 		clear_inode(inode);
-+	list_del_init(&inode->i_hash);
- 	if (inode->i_state != I_CLEAR)
- 		BUG();
- 	destroy_inode(inode);
+Cheers and thanks in advance, Peter.
+
+#!/bin/sh
+
+echo 1 > /proc/sys/net/ipv4/ip_forward
+
+modprobe ip_tables iptable_filter ip_conntrack ip_conntrack_ftp
+modprobe iptable_nat ip_nat_ftp ipt_LOG ipt_MASQUERADE
+iptables -t nat -A POSTROUTING -o eth0 -s 192.168.0.0/16 -j MASQUERADE
+
+and iptables -t nat -L gives
+
+master:~# iptables -t nat -L
+Chain PREROUTING (policy ACCEPT)
+target     prot opt source               destination
+
+Chain POSTROUTING (policy ACCEPT)
+target     prot opt source               destination
+MASQUERADE  all  --  192.168.0.0/16       anywhere
+
+Chain OUTPUT (policy ACCEPT)
+target     prot opt source               destination
+
+Peter Nie=DFen
+VUB Brussels
+Dienst ELEM
+Pleinlaan 2
+B-1050 Brussels
+Belgium
+
+Tel (+32)2/629-3554, -3651 (lab)
+Fax (+32)2/629-3816
+e-mail niessen@ifh.de
+www http://www.ifh.de/~niessen
+
+ /"\  ASCII ribbon campaign
+ \ /  ---------------------
+  X     against HTML mail
+ / \      and postings
+
+pgp public key at
+
+http://www.ifh.de/www_users/amanda/niessen/www/pgp_pubkey.asc
 
 
 
