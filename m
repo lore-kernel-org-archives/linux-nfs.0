@@ -1,62 +1,33 @@
-From: Hirokazu Takahashi <taka@valinux.co.jp>
-Subject: Re: [PATCH] zerocopy NFS for 2.5.36
-Date: Wed, 16 Oct 2002 20:09:00 +0900 (JST)
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <20021016.200900.128068491.taka@valinux.co.jp>
-References: <15786.23306.84580.323313@notabene.cse.unsw.edu.au>
-	<20021014.210144.74732842.taka@valinux.co.jp>
-	<15788.57476.858253.961941@notabene.cse.unsw.edu.au>
+From: Dheeraj Pandey <dheeraj@Zambeel.com>
+Subject: RE: [PATCH] zerocopy NFS, ipv4 infrastructure
+Date: Wed, 16 Oct 2002 06:08:40 -0700
+Sender: linux-net-owner@vger.kernel.org
+Message-ID: <233C89823A37714D95B1A891DE3BCE521423D4@xch-b.win.zambeel.com>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Cc: davem@redhat.com, linux-kernel@vger.kernel.org,
-	nfs@lists.sourceforge.net
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: neilb@cse.unsw.edu.au
-In-Reply-To: <15788.57476.858253.961941@notabene.cse.unsw.edu.au>
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Cc: linux-net@vger.kernel.org, neilb@cse.unsw.edu.au,
+	taka@valinux.co.jp
+Return-path: <linux-net-owner@vger.kernel.org>
+To: "'David S. Miller'" <davem@redhat.com>, nfs@lists.sourceforge.net
 List-ID: <nfs.lists.sourceforge.net>
 
-Hello,
+> Neil, other NFS developers.  I am about to push the following
+> set of patches to Linus for 2.5.x
+> 
+> It implements several things, most important to NFS folks
+> are the UDP cork/sendfile bits done by VA Linux Japan.
+...
 
-> > It will be effective on large scale SMP machines as all kNFSd shares
-> > one NFS port. A udp socket can't send data on each CPU at the same
-> > time while MSG_MORE/UDP_CORK options are set.
-> > The UDP socket have to block any other requests during making a UDP frame.
-> > 
+> I'm sending this so that you can start integrating the rest of the NFS
+> zerocopy patches done by VA Linux Japan before this shows up for
+> real in Linus's tree.
+> 
+> Have fun.
 
-> After thinking about this some more, I suspect it would have to be
-> quite large scale SMP to get much contention.
+Hi Neil, what are you guys doing for the cksum-offload to the NIC? UDP
+payloads that end up in IP fragments-- who is taking care of their
+checksums? What network adapters out there are calculating running
+checksum's for IP fragments that belong to the same NFS (UDP) payload?
 
-I have no idea how much contention will happen. I haven't checked the
-performance of it on large scale SMP yet as I don't have such a great
-machines.
-
-Does anyone help us?
-
-> The only contention on the udp socket is, as you say, assembling a udp
-> frame, and it would be surprised if that takes a substantial faction
-> of the time to handle a request.
-
-After assembling a udp frame, kNFSd may drive a NIC to transmit the frame.
-
-> Presumably on a sufficiently large SMP machine that this became an
-> issue, there would be multiple NICs.  Maybe it would make sense to
-> have one udp socket for each NIC.  Would that make sense? or work?
-
-Some CPUs often share one GbE NIC today as a NIC can handle much data
-than one CPU can. I think that CPU seems likely to become bottleneck.
-Personally I guess several CPUs will share one 10GbE NIC in the near
-future even if it's a high end machine. (It's just my guess)
-
-But I don't know how effective this patch works......
-
-devem> Doesn't make much sense.
-devem> 
-devem> Usually we are talking via one IP address, and thus over
-devem> one device.  It could be using multiple NICs via BONDING,
-devem> but that would be transparent to anything at the socket
-devem> level.
-devem> 
-devem> Really, I think there is real value to making the socket
-devem> per-cpu even on a 2 or 4 way system.
-
-I wish so.
+Dheeraj 
