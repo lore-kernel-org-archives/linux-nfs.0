@@ -1,18 +1,20 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: RH 7.3 kernels and NFS performance
-Date: Wed, 7 Aug 2002 08:45:33 -0700
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: RH 7.3 kernels and NFS performance
+Date: 07 Aug 2002 17:55:25 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <6440EA1A6AA1D5118C6900902745938E50D1B4@black.eng.netapp.com>
+Message-ID: <shsfzxqd5oy.fsf@charged.uio.no>
+References: <3D513E56.CAF735B6@lmco.com>
+	<200208071037.39377.rdieter@math.unl.edu>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net,  jeffrey.b.layton@lmco.com
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mx01-a.netapp.com ([198.95.226.53])
+Received: from mons.uio.no ([129.240.130.14])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17cT0H-0003UT-00
-	for <nfs@lists.sourceforge.net>; Wed, 07 Aug 2002 08:45:41 -0700
-To: "'jeffrey.b.layton@lmco.com'" <jeffrey.b.layton@lmco.com>
+	id 17cT9u-0006T6-00
+	for <nfs@lists.sourceforge.net>; Wed, 07 Aug 2002 08:55:38 -0700
+To: Rex Dieter <rdieter@math.unl.edu>
+In-Reply-To: <200208071037.39377.rdieter@math.unl.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,28 +27,26 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-hi jeff-
+>>>>> " " == Rex Dieter <rdieter@math.unl.edu> writes:
 
->    I remember reading on the list about the terrible NFS
-> performance of the latest RH kernels. Would someone
-> care to summarize this for me (UDP or TCP, etc.)? Also,
-> does anyone have any rough estimates of the performance
-> hit?
+     > The Hit is big and bad.  When using the default NFS export
+     > options (in particular sync), I see NFS write performance of
+     > ~50k with the 2.4.18-5 kernels.  When set async, performance
+     > comes back up to par.  I can give you the bugzilla # I reported
+     > it under, if you like.
 
-if you are referring to bad NFS client performance, this
-is due to a bug in the Linux IP fragmentation logic which
-causes it to send part of a fragmented packet, and drop
-the rest, if it runs out of socket buffer space during
-the fragmentation process.
+That is *not* a bug. The NFS protocol does not actually allow for the
+sort of behaviour that 'async' provides. The main problem is that
+actions like 'fsync()' on the client can no longer guarantee that the
+data is physically written to disk on the server. IOW if the server
+crashes, your data is lost...
 
-thus it only affects NFS over UDP.
+The new default of 'sync' for exports is quite correct and should only
+be changed by people who are aware of the consequences for data
+integrity.
 
-there is an easy workaround:  enlarge the size of the
-RPC transport socket's buffers.  see the NFS FAQ for
-instructions.
-
-a bug was reported in the eepro100 driver too, and that
-may have some effect on client performance.
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
