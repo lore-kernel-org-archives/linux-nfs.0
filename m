@@ -1,22 +1,31 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: patch for using >16 groups on 2.6.x client
-Date: Tue, 08 Feb 2005 22:53:49 -0500
-Message-ID: <1107921229.10994.90.camel@lade.trondhjem.org>
-References: <20050208234426.GA27766@janus>
+From: Vincent Roqueta <vincent.roqueta@ext.bull.net>
+Subject: Re: Some interoperability testing
+Date: Wed, 9 Feb 2005 11:20:54 +0100
+Message-ID: <200502091120.54161.vincent.roqueta@ext.bull.net>
+References: <200502071839.24804.vincent.roqueta@ext.bull.net> <1107874199.10364.22.camel@lade.trondhjem.org> <200502081643.34440.vincent.roqueta@ext.bull.net>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Content-Type: text/plain;
+  charset="iso-8859-15"
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CyivZ-0002KN-FE
-	for nfs@lists.sourceforge.net; Tue, 08 Feb 2005 19:54:09 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1CyivX-00012j-N0
-	for nfs@lists.sourceforge.net; Tue, 08 Feb 2005 19:54:09 -0800
-To: Frank van Maarseveen <frankvm@frankvm.com>
-In-Reply-To: <20050208234426.GA27766@janus>
+	id 1Cyosn-0000p1-Cx
+	for nfs@lists.sourceforge.net; Wed, 09 Feb 2005 02:15:41 -0800
+Received: from ecfrec.frec.bull.fr ([129.183.4.8])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1Cyosk-0000ss-Dk
+	for nfs@lists.sourceforge.net; Wed, 09 Feb 2005 02:15:41 -0800
+Received: from localhost (localhost [127.0.0.1])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id DDBD919D909
+	for <nfs@lists.sourceforge.net>; Wed,  9 Feb 2005 11:14:54 +0100 (CET)
+Received: from ecfrec.frec.bull.fr ([127.0.0.1])
+ by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
+ with ESMTP id 24021-03 for <nfs@lists.sourceforge.net>;
+ Wed,  9 Feb 2005 11:14:52 +0100 (CET)
+Received: from ecn002.frec.bull.fr (ecn002.frec.bull.fr [129.183.4.6])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id AABD419D907
+	for <nfs@lists.sourceforge.net>; Wed,  9 Feb 2005 11:14:52 +0100 (CET)
+To: nfs@lists.sourceforge.net
+In-Reply-To: <200502081643.34440.vincent.roqueta@ext.bull.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,41 +39,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-on den 09.02.2005 Klokka 00:44 (+0100) skreiv Frank van Maarseveen:
+Le mardi 8 F=E9vrier 2005 16:43, Vincent Roqueta a =E9crit=A0:
+> Le mardi 8 F=E9vrier 2005 15:49, Trond Myklebust a =E9crit=A0:
+> > ty den 08.02.2005 Klokka 10:22 (+0100) skreiv Vincent Roqueta:
+> > > Since all is right with kernel 2.6.9, that looks like a regression...
+> > > Even if that is the true behaviour it may exist a way to stop this
+> > > process cleanly : since NFS umount is can't be done the client does n=
+ot
+> > > reboot, and I need  to turn the power off...
+> >
+> > There were no NFS or RPC client changes made between 2.6.9 and 2.6.10,
+>
+> Well... Some littles changes :-)
+>
+> I tried various kernel and patches versions since this morning:
+> linux-2.6.9 -> PASSED
+> linux-2.6.10-rc1-CITI_NFS4_ALL-2.dif -> PASSED
+> linux-2.6.10-rc1-CITI_NFS4_ALL-3.dif -> (answer soon)
+> linux-2.6.10-rc1-CITI_NFS4_ALL-4.dif -> FAILED
+>
+> The problem is between in the NFS4_ALL-4.dif or NFS4_ALL-3.dif ...
+>
+>
+> Vincent
+>
 
-> The parts below should be applied in order but after every single patch
-> the result will compile and should behave properly (2.6.11-rc3). All
-> patches < #30 may be useful anyway as cleanup because they only prepare
-> things. Patch 30:
-> 
-> 	http://www.frankvm.com/nfs-ngroups/2.6.11/30.patch
-> 
-> is the most interesting one w.r.t. to understanding how it affects the
-> structure of the NFS client. See also the README in that directory. This
-> is a short description:
+Problem is in 2.6.10-rc2-CITI_NFS4_ALL-1 patch set
 
-I still do not like it. Your methodology is exactly the same as in all
-previous iterations of these patches: you are adding code that is very
-specific to the AUTH_SYS *RPC* authentication scheme to the *NFS* layer.
+however  linux-2.6.10-rc1-CITI_NFS4_ALL-4.dif  patch set FAIL _some_ times.
+I am investigating more to know what  patch is wrong.
 
-I could perhaps accept all this in the mainline kernel, if you could
-show me that this code solves a _generic_ problem within RPC
-authentication, however so far I have not seen any evidence of this
-being the case. The only thing you have claimed it solves is the corner
-case of NFS when using > 16 groups and no uid/gid mapping over AUTH_SYS.
-
-
-We _are_ working to remove the limitations of AUTH_SYS by developing the
-new (secure!) authentication schemes based on RPCSEC_GSS principals. In
-both of the currently supported mechanisms, the server should be able to
-map the context into the full set of uid/gid/groups/... associated with
-the principal (with no restrictions).
-
-Cheers,
-  Trond
--- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
-
+Vincent
 
 
 -------------------------------------------------------
