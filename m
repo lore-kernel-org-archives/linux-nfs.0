@@ -1,21 +1,24 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: async vs. sync
-Date: Mon, 22 Nov 2004 14:14:52 -0800
-Message-ID: <482A3FA0050D21419C269D13989C61130435EBD6@lavender-fe.eng.netapp.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: async vs. sync
+Date: Mon, 22 Nov 2004 17:20:42 -0500
+Message-ID: <1101162043.11196.88.camel@lade.trondhjem.org>
+References: <EXCHG20034NQhEP9w0z00007249@EXCHG2003.microtech-ks.com>
+	 <41A25DCB.6020700@int-evry.fr>  <41A25FA3.6060000@int-evry.fr>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: multipart/mixed; boundary="=-FUYve4/QI2U91+kuoQqY"
+Cc: Roger Heflin <rheflin@atipa.com>, Olaf Kirch <okir@suse.de>,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CWMSb-0007iC-2V
-	for nfs@lists.sourceforge.net; Mon, 22 Nov 2004 14:15:01 -0800
-Received: from mx1.netapp.com ([216.240.18.38])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CWMSZ-0002tX-0y
-	for nfs@lists.sourceforge.net; Mon, 22 Nov 2004 14:14:59 -0800
-To: "jehan procaccia" <jehan.procaccia@int-evry.fr>
+	id 1CWMYL-0000MQ-Vj
+	for nfs@lists.sourceforge.net; Mon, 22 Nov 2004 14:20:57 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1CWMYJ-00027X-Sa
+	for nfs@lists.sourceforge.net; Mon, 22 Nov 2004 14:20:57 -0800
+To: jehan procaccia <jehan.procaccia@int-evry.fr>
+In-Reply-To: <41A25FA3.6060000@int-evry.fr>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,58 +33,88 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-> >>[root@arvouin tmp]# mount cobra3:/p2v5f1 -o=20
-> >>async,wsize=3D32768,rsize=3D32768,soft /mnt/cobra3
+--=-FUYve4/QI2U91+kuoQqY
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
+
+m=E5 den 22.11.2004 Klokka 22:52 (+0100) skreiv jehan procaccia:
+> > [root@arvouin tmp]# mount cobra3:/p2v5f1 -o=20
+> > async,wsize=3D32768,rsize=3D32768,soft /mnt/cobra3
+> > [root@arvouin /mnt/cobra3/mci/test/Test-sync]
+> > $time tar xvfz /usr/src/redhat/SOURCES/httpd-2.0.51.tar.gz
 > >
-> >um.  you're not using NFS version 3?
-> >
-> I though it was a default !?
+> > sorry I don't want to wait more than 10 minutes to send that mail, but=20
+> > again seeing the files apperaing very slowly on the tty it seems not=20
+> > to be the solution :-( .
 
-in Linux, only on more recent mount command / kernel combinations is
-version 3 the default.
+The following script may help you understand why things are slower in
+the case of "async" on an untar. It basically just creates a bunch of
+files: in the first test it does not sync the directory to disk after
+each file creation, in the second case it does. The test does no
+reads/writes to the file.
 
-> >not to mention "soft" mounts are also truly the spawn of satan.
-> > =20
-> >
-> OK I remove it, and force nfs v3
+Run it on the server and you will see  a clear difference in time
+between test1 and test2. Run it on the client, and there should be
+little difference between test1 and test2 (but there will be a heavy
+dependency on the "async" vs "sync" export flag on the server).
 
-note:  soft is probably not a performance issue here, but it will
-definitely be a source of silent data corruption.
+NFSv3 mandates that all directory-related operations should behave as in
+test 2. Only writes to ordinary files may be cached by the server, and
+when the client sends a COMMIT request, the server should do an fsync()
+on that file.
 
-> However what stricks me is that although I asked for r&wsize=20
-> of 32 K ,=20
-> looking at /proc/mounts show :
-> $cat /proc/mounts
-> cobra3:/p2v5f1 /mnt/cobra3 nfs=20
-> rw,v3,rsize=3D8192,wsize=3D8192,hard,tcp,lock,addr=3Dcobra3 0 0
->=20
-> 8 K r&wsize ??? I also tried with 16K it's still shows 8K ?
+Cheers,
+  Trond
+--=20
+Trond Myklebust <trond.myklebust@fys.uio.no>
 
-that means your server supports only 8KB transfer sizes.  the client and
-server negotiate the maximum size of reads and writes at mount time.
+--=-FUYve4/QI2U91+kuoQqY
+Content-Disposition: inline; filename=script.sh
+Content-Type: application/x-shellscript; name=script.sh
+Content-Transfer-Encoding: 7bit
 
-have you read some of the excellent reference textbooks listed in the
-NFS FAQ?  that might help you to become a little more fluent with the
-operation of NFS.
+#!/bin/bash
+#
+test1()
+{
+	(
+	rm -rf test_dir1
+	mkdir test_dir1
+	cd test_dir1
+	i=0
+	while [ $i -lt 1000 ]
+	do
+		echo -n "" >file$i
+		i=$(($i + 1))
+	done
+	)
+}
 
-> howerver=20
-> moving from soft to hard did shows up in /proc/mounts .
-> Again, How can we check every options of an NFS mounted filesystem on=20
-> the client side ? (other than /proc/mountd) .
+test2()
+{
+	(
+	rm -rf test_dir2
+	mkdir test_dir2
+	cd test_dir2
+	i=0
+	while [ $i -lt 1000 ]
+	do
+		echo -n "" >file$i
+		sync
+		i=$(($i + 1))
+	done
+	)
+}
 
-some options don't show up when they are at their default settings.
-no-one ever specifies "async" as a mount option, as it is the default,
-so it is not included in /proc/mounts.  NFS version isn't listed in
-/proc/mounts unless it was specified on the original mount command.
-otherwise, i quite agree with you that every setting should be spelled
-out in /proc/mounts, but unfortunately that's not the way it works
-today.
+sync
+echo "Test without directory sync after file creation"
+time test1
+sync
+echo "Test2 with directory sync after file creation"
+time test2
 
-the only way to truly see what's going on is to capture a network trace
-and load it up in ethereal.  in fact, i recommend that as your next step
--- capture about 30 seconds of your test workload with tcpdump to see
-what's going over the wire.  ethereal also has a nice RPC round trip
-average calculator.
+--=-FUYve4/QI2U91+kuoQqY--
+
 
 
 -------------------------------------------------------
