@@ -1,22 +1,22 @@
-From: Tobias Diedrich <ranma@tdiedrich.de>
-Subject: Re: NFSv3, 2.6, ext3 and dir_index
-Date: Sun, 20 Mar 2005 22:21:06 +0100
-Message-ID: <20050320212106.GA5580@yamamaya.is-a-geek.org>
-References: <20050120163806.GA25242@melchior.yamamaya.is-a-geek.org> <20050314172234.GA11469@perlsupport.com>
+From: Andrew Morton <akpm@osdl.org>
+Subject: Re: [PATCH kNFSd 0 of 16] Introduction
+Date: Mon, 21 Mar 2005 22:50:59 -0800
+Message-ID: <20050321225059.05dc503b.akpm@osdl.org>
+References: <20050322163830.8762.patches@notabene>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sf.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Content-Type: text/plain; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DD7rK-0005Ip-OL
-	for nfs@lists.sourceforge.net; Sun, 20 Mar 2005 13:21:18 -0800
-Received: from lum.tdiedrich.de ([193.24.211.71] ident=postfix)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1DDdEY-0001Js-Vx
+	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 22:51:22 -0800
+Received: from fire.osdl.org ([65.172.181.4] helo=smtp.osdl.org)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.41)
-	id 1DD7rH-0004Fz-7N
-	for nfs@lists.sourceforge.net; Sun, 20 Mar 2005 13:21:18 -0800
-To: Chip Salzenberg <chip@pobox.com>
-In-Reply-To: <20050314172234.GA11469@perlsupport.com>
+	id 1DDdEW-0003mD-Cd
+	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 22:51:22 -0800
+To: NeilBrown <neilb@cse.unsw.edu.au>
+In-Reply-To: <20050322163830.8762.patches@notabene>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,27 +30,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Sorry for the late reply.
+NeilBrown <neilb@cse.unsw.edu.au> wrote:
+>
+>  Following are 16 patches against nfsd in 2.6.12-rc1-mm1
+> 
+>  Most are nfsv4 related.
+>  Patch 2 removes an inexplicable increment of f_count for a file.  This 
+>  fixes a problem wherein an exported filesystem may never be unmountable because a
+>  file on it is never closed.
 
-Chip Salzenberg wrote:
+OK, I'll send nlm-fix-f_count-leak.patch in for 2.6.12 and will buffer the
+rest.
 
-> Did you ever get any replies on dir_index vs. nfs?
+>  This could possibly be a candidate for 2.6.12.  The rest should wait to go 
+>  in to 2.6.13-rc
 
-Not really.
-
-> I'm just setting up a new server and I'm wondering if there's
-> something still out there that might make me sorry to use dir_index.
-
-For now I've just disabled dir_index and I haven't had any problems
-since, but I'm not completely sure if that really was the cause of
-the problem I was seeing.  At least disabling dir_index is rather
-easy (remove dir_index featureflag with tune2fs and run e2fsck to
-get rid of the remaining hashtrees).
-Maybe I'll try again to get a proper traffic trace, but I guess I'd
-have to set up a test client first to separate the unrelated nfs traffic.
-
--- 
-Tobias						PGP: http://9ac7e0bc.uguu.de
+Is it a 2.6.11.x candidate?
 
 
 -------------------------------------------------------
