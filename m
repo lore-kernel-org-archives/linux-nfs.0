@@ -1,25 +1,25 @@
-From: trond.myklebust@fys.uio.no
-Subject: Re: NFS suport block sharing
-Date: Thu, 19 Feb 2004 17:37:59 +0100 (CET)
+From: Vincent ROQUETA <vincent.roqueta@ext.bull.net>
+Subject: Re: NFSv4  and vi
+Date: Thu, 19 Feb 2004 18:00:44 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <32947.207.214.87.84.1077208679.squirrel@webmail.uio.no>
-References: <482A3FA0050D21419C269D13989C611302B07B87@lavender-fe.eng.netapp.com>
-    <36604.207.214.87.84.1077165546.squirrel@webmail.uio.no>
-    <20040219090551.GA19999@suse.de>
+Message-ID: <200402191800.44193.vincent.roqueta@ext.bull.net>
+References: <200402190958.38127.vincent.roqueta@ext.bull.net> <20040219154936.GA20586@fieldses.org>
+Reply-To: vincent.roqueta@ext.bull.net
 Mime-Version: 1.0
-Content-Type: text/plain;charset=iso-8859-1
-Cc: "Charles Lever" <Charles.Lever@netapp.com>,nfs@lists.sourceforge.net
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AtrH4-0004P6-Ur
-	for nfs@lists.sourceforge.net; Thu, 19 Feb 2004 08:43:42 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1AtrBe-0006Ye-AW
-	for nfs@lists.sourceforge.net; Thu, 19 Feb 2004 08:38:06 -0800
-To: "Olaf Kirch" <okir@suse.de>
-In-Reply-To: <20040219090551.GA19999@suse.de>
+	id 1Atra1-0000RP-QM
+	for nfs@lists.sourceforge.net; Thu, 19 Feb 2004 09:03:17 -0800
+Received: from ecbull20.frec.bull.fr ([129.183.4.3])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1AtrMY-0002We-1K
+	for nfs@lists.sourceforge.net; Thu, 19 Feb 2004 08:49:22 -0800
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20040219154936.GA20586@fieldses.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,51 +32,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-På to , 19/02/2004 klokka 01:05, skreiv Olaf Kirch:
-> On Thu, Feb 19, 2004 at 05:39:06AM +0100, Trond Myklebust wrote:
-> > Sure it is. Just add the equivalent of Olaf's patch for the
-> > forcedirectio flag into the external patch that adds forcedirectio
-support. "forcedirectio" does indeed not care about inode aliasing,
-but it
-> > is the *only* such case.
+Le Jeudi 19 F=E9vrier 2004 16:49, J. Bruce Fields a =E9crit :
+> On Thu, Feb 19, 2004 at 09:58:38AM +0100, Vincent ROQUETA wrote:
+> > Here are vi traces for opening "/mnt/nfs/vincent/suite-tests/toto3"
 >
-> But it is non-intuitive. You mount something with one set of flags, but
-get a totally different behavior. That is arguably a bug.
+> These bug reports are no help if you won't remind us, on each bug
+> report, which kernel you're using, with which (if any) patches.  Also,
+> it'd help if you could test with the latest CITI NFSv4 patches
+> (http://www.citi.umich.edu/projects/nfsv4/linux/).  I suspect the
+> problem you're seeing is a problem that's already fixed with those
+> patches.
+>
+> --Bruce Fields
+>
 
-So is data corruption. Arguably more so ;-)
-
-> Let me state my point though: how many people actually do mount a file
-system twice? And if they do, wouldn't that be exactly _because_ they
-want different semantics on the two mounts?
-
-Possibly, but will they want that given the above mentioned expense? The
-last thing I want is a bunch of "but when I do this on Solaris, it doesn't
-corrupt my file" type of whines. Better then to tell people straight
-upfront that this won't work.
-
-> In general I think sharing the super block itself is not a good idea,
-even for block file systems, because flags such as ro and sync get
-ignored as well. These flags, as well as the RPC transport stuff, might
-be better placed in the vfsmount as they're really per-mount, not
-per-filesystem.
-
-Some things (rsize/wsize/acdir*/acreg* in particular come to mind) simply
-do not make sense in the vfsmount structure because they are inherently
-associated with the inode/data space rather than the name space.
-"ro" and "sync" could possibly be implemented in a more sane manner, since
-you can do the checks at file open time when you do have the full
-namespace information. Most others, though (especially those parameters
-related to attribute caching) have to be shared.
-
-Note, though, that Linux has *never* previously supported mounting the
-same filesystem twice precisely because of the problems of cache
-consistency. When Al added in the current scheme, he changed that by
-giving remounting in a second place act the same properties as "mount
---bind". AFAICS that is the only sane scheme.
-
-Cheers,
-  Trond
-
+The problem still appear with kernel 2.6.2 and all patches.
+(Linux roquetav 2.6.2-CITI_NFS4_ALL-1)
 
 
 
