@@ -1,19 +1,23 @@
-From: "Jeff L. Smith" <jeff@atheros.com>
-Subject: Vaguely NFS related problem
-Date: Wed, 11 Dec 2002 17:47:00 -0800
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: Vaguely NFS related problem
+Date: Thu, 12 Dec 2002 13:12:34 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3DF7EA94.20108@atheros.com>
+Message-ID: <15863.61586.150820.505519@notabene.cse.unsw.edu.au>
+References: <3DF7EA94.20108@atheros.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail.atheros.com ([65.212.155.130] helo=atheros.com)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18MIRO-0007KC-00
-	for <nfs@lists.sourceforge.net>; Wed, 11 Dec 2002 17:47:06 -0800
-Received: from [10.10.10.91] (account jeff HELO atheros.com)
-  by atheros.com (CommuniGate Pro SMTP 4.0.1)
-  with ESMTP id 2380610 for nfs@lists.sourceforge.net; Wed, 11 Dec 2002 17:47:00 -0800
-To: nfs@lists.sourceforge.net
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18MIq9-0002vS-00
+	for <nfs@lists.sourceforge.net>; Wed, 11 Dec 2002 18:12:42 -0800
+Received: From
+	notabene.cse.unsw.edu.au ([129.94.233.234] == wireless-234.wireless.cse.unsw.EDU.AU)
+	(for <jeff@atheros.com>) (for <nfs@lists.sourceforge.net>) By tone
+	With Smtp ; Thu, 12 Dec 2002 13:12:34 +1100
+To: "Jeff L. Smith" <jeff@atheros.com>
+In-Reply-To: message from Jeff L. Smith on Wednesday December 11
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,25 +30,18 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-We have been running a couple of machines (PIII with Mylex Extreme 2000 
-SCSI RAID, RH7.3, 2.4.18 kernel, 64 nfsd's) which only act as NFS 
-fileservers.  When either of these servers start getting busy, I start 
-seeing a lot of the following messages:
+On Wednesday December 11, jeff@atheros.com wrote:
+> We have been running a couple of machines (PIII with Mylex Extreme 2000 
+> SCSI RAID, RH7.3, 2.4.18 kernel, 64 nfsd's) which only act as NFS 
+> fileservers.  When either of these servers start getting busy, I start 
+> seeing a lot of the following messages:
+> 
+> Dec  8 15:27:58 localhost kernel: RPC: Unable to allocate resbuf from cache!
 
-Dec  8 15:27:58 localhost kernel: RPC: Unable to allocate resbuf from cache!
+This message is not part of any 'vanilla' release kernel.  It must be
+a redhat-special.  Ask redhat.
 
-I does not seem to cause any problems (things keep running with no 
-obvious corruption) but this surly cannot be good.  Is there something I 
-need to tune or a FAQ I could review?
-
-Jeff
-
-
--- 
-Jeff Smith                                  Atheros Communications, Inc.
-Hardware Manager                            529 Almanor Avenue
-(408) 773-5257                              Sunnyvale, CA  94086
-
+NeilBrown
 
 
 -------------------------------------------------------
