@@ -1,70 +1,48 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: 2.5: NFS troubles
-Date: Mon, 7 Apr 2003 15:23:59 +0200
+From: Steve Dickson <SteveD@RedHat.com>
+Subject: Re: [NFS] [PATCH] mmap corruption
+Date: Mon, 7 Apr 2003 10:00:52 -0400
 Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <16017.31727.798961.19493@charged.uio.no>
-References: <1049630768.592.24.camel@teapot.felipe-alfaro.com>
-	<shsbrzjn5of.fsf@charged.uio.no>
-	<20030406171855.6bd3552d.akpm@digeo.com>
-	<1049675270.753.166.camel@localhost>
-Reply-To: trond.myklebust@fys.uio.no
+Message-ID: <20030407140052.GA1471@RedHat.com>
+References: <3E8DDB13.9020009@RedHat.com> <shsistt7wip.fsf@charged.uio.no> <20030405164741.GA6450@RedHat.com> <16016.7633.982870.860147@charged.uio.no>
+Reply-To: SteveD@RedHat.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org,
-	NFS maillist <nfs@lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net,
+	linux-kernel <linux-kernel@vger.kernel.org>
 Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: Robert Love <rml@tech9.net>, Siim Vahtre <siim@pld.ttu.ee>
-In-Reply-To: <1049675270.753.166.camel@localhost>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <16016.7633.982870.860147@charged.uio.no>
 List-ID: <nfs.lists.sourceforge.net>
 
+On Sun, Apr 06, 2003 at 02:30:09PM +0200, Trond Myklebust wrote:
+> >>>>> " " == Steve Dickson <SteveD@RedHat.com> writes:
+>      > /*
+>      > * Every time either npages or ncommit had a value and the file
+>      > size is
+>      > * immediately changed (with in a microsecond or two) by another
+>      > * truncation, followed by a mmap read, the file would be
+>      > 	   corrupted.
+>      > 	 */
+>      > 	if (NFS_I(inode)->npages || NFS_I(inode)->ncommit ||
+>      > 	NFS_I(inode)->ndirty) {
+>      > 		printk("nfs_notify_change: fid %Ld npages %d ncommit
+>      > 		%d ndirty %d\n", NFS_FILEID(inode),
+>      > 		NFS_I(inode)->npages, ncommit, NFS_I(inode)->ndirty);
+>      > 	}
+>      > }
+> 
+> My point is that nfs_wb_all() is supposed to ensure that
+> NFS_I(inode)->ncommit, and/or NFS_I(inode)->ndirty are both
+> zero. i.e. you can have pending reads (in which case
+> NFS_I(inode)->npages != 0), but *no* pending writes.
+> 
+> Was this the case?
 
-OK. I've managed to squash the NFS read corruption problems that I had
-on my 2.5.x client setup with the following patch.
-Since the two of you reported what appears to be the same problem,
-would you mind trying it out?
+OK, I understand your point.  And Yes, ndirty and ncommit 
+always seem to be zero when nfs_wb_all() returns. Only
+when npages != 0 is when I get the corruption.
 
-The fix basically tightens up consistency checks in the process of
-reading the skb (which is done in the sk->data_ready() callback).
+I didn't realize that npages != 0 meant there are only pending 
+reads *not* pending writes... Thanks for that clarification....
 
-Cheers,
-  Trond
-
-diff -u --recursive --new-file linux-2.5.66-10-nr_dirty/net/sunrpc/xprt.c linux-2.5.66-11-fix_read/net/sunrpc/xprt.c
---- linux-2.5.66-10-nr_dirty/net/sunrpc/xprt.c	2003-03-27 18:34:08.000000000 +0100
-+++ linux-2.5.66-11-fix_read/net/sunrpc/xprt.c	2003-04-07 15:15:29.000000000 +0200
-@@ -625,7 +625,8 @@
- {
- 	if (len > desc->count)
- 		len = desc->count;
--	skb_copy_bits(desc->skb, desc->offset, to, len);
-+	if (skb_copy_bits(desc->skb, desc->offset, to, len))
-+		return 0;
- 	desc->count -= len;
- 	desc->offset += len;
- 	return len;
-@@ -669,11 +670,15 @@
- 		csum2 = skb_checksum(skb, desc.offset, skb->len - desc.offset, 0);
- 		desc.csum = csum_block_add(desc.csum, csum2, desc.offset);
- 	}
-+	if (desc.count)
-+		return -1;
- 	if ((unsigned short)csum_fold(desc.csum))
- 		return -1;
- 	return 0;
- no_checksum:
- 	xdr_partial_copy_from_skb(xdr, 0, &desc, skb_read_bits);
-+	if (desc.count)
-+		return -1;
- 	return 0;
- }
- 
-@@ -750,7 +755,8 @@
- {
- 	if (len > desc->count)
- 		len = desc->count;
--	skb_copy_bits(desc->skb, desc->offset, p, len);
-+	if (skb_copy_bits(desc->skb, desc->offset, p, len))
-+		return 0;
- 	desc->offset += len;
- 	desc->count -= len;
- 	return len;
+SteveD.
