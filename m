@@ -1,27 +1,28 @@
 From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: New version of nfs-utils please!
-Date: Fri, 12 Sep 2003 16:45:52 +1000
+Subject: Re: more statd segfault
+Date: Fri, 12 Sep 2003 16:39:16 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16225.27552.308538.665130@notabene.cse.unsw.edu.au>
-References: <20030911153150.GA29368@perlsupport.com>
+Message-ID: <16225.27156.281198.45769@notabene.cse.unsw.edu.au>
+References: <3F5CDF7D.2070608@hq.newdream.net>
+	<3F6129E3.6040604@newdream.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Cc: NFS List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19xhhE-0001tT-00
-	for <nfs@lists.sourceforge.net>; Thu, 11 Sep 2003 23:46:20 -0700
+	id 19xhbU-0001D3-00
+	for <nfs@lists.sourceforge.net>; Thu, 11 Sep 2003 23:40:24 -0700
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.22)
-	id 19xhhD-0000IA-I8
-	for nfs@lists.sourceforge.net; Thu, 11 Sep 2003 23:46:19 -0700
+	id 19xhbT-0007e2-Vp
+	for nfs@lists.sourceforge.net; Thu, 11 Sep 2003 23:40:24 -0700
 Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <chip@pobox.com>) (for <nfs@lists.sourceforge.net>) By note With
-	Smtp ; Fri, 12 Sep 2003 16:46:10 +1000
-To: Chip Salzenberg <chip@pobox.com>
-In-Reply-To: message from Chip Salzenberg on Thursday September 11
+	(for <michael@newdream.net>) (for <nfs@lists.sourceforge.net>) By
+	note With Smtp ; Fri, 12 Sep 2003 16:40:17 +1000
+To: michael <michael@newdream.net>
+In-Reply-To: message from michael on Thursday September 11
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -34,26 +35,23 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thursday September 11, chip@pobox.com wrote:
-> I just fixed a crash bug in rpc.mountd and made an upload to Debian
-> unstable, so Debian users are OK.  But what about everyone else?
+On Thursday September 11, michael@newdream.net wrote:
+> I finally tracked down the statd segfault that had been plaguing me for 
+> sometime.
 > 
-> Isn't it time to make a 1.0.6 version?
+> statd calls sunrpc code which is in libc on debian. this code loops 
+> through all possible file descriptors and in my case if the number of 
+> fds per process is set higher then 8096 it segfaults.
 
-I guess so.  I've just fixed the reported 'statd segfaults' problem.
+Well done.
+I have just applied a patch to statd and mountd in nfs-utils so that
+it forces the fd limit down to FD_SETSIZE if it is above that.  This
+appears to effectively work around what is really a libc bug (I
+think).
 
-I've a long list of other things I want to fix, but they aren't
-urgent, and they wont get done today!
-
-I've updated configure and nfs-utils.spec.  If you would like to make
-any appropriate changes to ChangeLog and debian/* to reflect the new
-version number, I will tag it and make a release on Monday.
+Have you reported it to the glibc maintainers?
 
 NeilBrown
-
-(Thanks for fixing get_reliable_hostbyaddr.  That was my code.  I'm
-ashamed....)
-
 
 
 -------------------------------------------------------
