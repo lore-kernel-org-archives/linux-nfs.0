@@ -1,22 +1,22 @@
 From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: [PATCH] SGI 905314 (1/2): make NFSSVC_MAXBLKSIZE depend on PAGE_SIZE
-Date: Fri, 28 Nov 2003 23:43:19 +1100
+Subject: [PATCH] SGI 905314 (2/2): document constraints on client transfer size
+Date: Fri, 28 Nov 2003 23:45:52 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3FC742E7.910F518B@melbourne.sgi.com>
+Message-ID: <3FC74380.6367DBAA@melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1APhyN-0001Qc-00
-	for <nfs@lists.sourceforge.net>; Fri, 28 Nov 2003 04:43:47 -0800
+	id 1APi0p-0001XT-00
+	for <nfs@lists.sourceforge.net>; Fri, 28 Nov 2003 04:46:19 -0800
 Received: from mtvcafw.sgi.com ([192.48.171.6] helo=zok.sgi.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
-	id 1APhyM-0005jX-Mq
-	for nfs@lists.sourceforge.net; Fri, 28 Nov 2003 04:43:46 -0800
-To: Neil Brown <neilb@cse.unsw.edu.au>
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
+	id 1APi0p-0005ZF-In
+	for nfs@lists.sourceforge.net; Fri, 28 Nov 2003 04:46:19 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -33,55 +33,30 @@ G'day,
 
 SGI bug #905314
 
-This patch makes NFSSVC_MAXBLKSIZE depend on PAGE_SIZE so that machines
-with large page sizes can take advantage of that feature to serve NFS
-with larger blocksizes, increasing performance and avoiding a fallback
-to synchronous traffic between machines with page sizes greater than 8K.
-Also, documents the actual constraints on NFSSVC_MAXBLKSIZE.
+This patch adds a comment documenting the actual constraints
+on NFS_MAX_FILE_IO_BUFFER_SIZE for the next guy who needs to know ;-)
 
-The patch has been running for some hours now, reading and writing NFSv3
-over UDP on gigabit ethernet between two Altix boxes (16K page sizes) with
-4G RAM each.  I have verified with ethereal that reads and writes proceed
-in 32K blocks, and performance tests show good throughput for streaming
-reads and writes (although 2.6.0-test8 still does better).
-
-
---- /usr/tmp/TmpDir.28396-0/linux/linux/include/linux/nfsd/const.h_1.5	Fri Nov 28
+--- /usr/tmp/TmpDir.28396-0/linux/linux/include/linux/nfs_fs.h_1.21	Fri Nov 28
 23:07:47 2003
-+++ linux/include/linux/nfsd/const.h	Fri Nov 28 23:07:36 2003
-@@ -12,6 +12,7 @@
- #include <linux/nfs.h>
- #include <linux/nfs2.h>
- #include <linux/nfs3.h>
-+#include <asm/page.h>
- 
- /*
-  * Maximum protocol version supported by knfsd
-@@ -19,9 +20,24 @@
- #define NFSSVC_MAXVERS		3
- 
- /*
-- * Maximum blocksize supported by daemon currently at 8K
-+ * Maximum blocksize supported by daemon.  The value is
-+ * constrained by 1) has to fit in a UDP datagram less some
-+ * headers 2) must be a multiple of page size 3) will have to
-+ * be allocated plus some headers as a physically contiguous
-+ * buffer for each nfsd.   For best performance we usually want
-+ * the largest value consistent with those constraints.   The
-+ * fuzziest condition is 3;  here we choose to limit the gfp
-+ * allocation order <= 2 and cross our fingers.  Note we also
-+ * choose powers of 2 like the client code even though there's
-+ * no good reason to do so.
++++ linux/include/linux/nfs_fs.h	Fri Nov 28 21:55:30 2003
+@@ -40,6 +40,18 @@
   */
-+#if PAGE_SIZE > (8*1024)
-+#define NFSSVC_MAXBLKSIZE	(32*1024)
-+#elif PAGE_SIZE == (8*1024)
-+#define NFSSVC_MAXBLKSIZE	(16*1024)
-+#else /* 4K pages */
- #define NFSSVC_MAXBLKSIZE	(8*1024)
-+#endif
+ #define NFS_MAX_DIRCACHE		16
  
- #ifdef __KERNEL__
++/* 
++ * NFS_MAX_FILE_IO_BUFFER_SIZE limits the rsize and wsize that
++ * userspace can request in mount options (note that the server
++ * also gives us a limit in response to the FSINFO call).  The
++ * value is constrained by 1) has to fit in a UDP datagram less
++ * some headers 2) has to be a multiple of page size 3) has to
++ * be no more than NFS_READ_MAXIOV=8 pages for rsize, and
++ * NFS_WRITE_MAXIOV=8 pages for wsize and 4) has to be a power
++ * of two (actually this is bogus but nfs_read_super relies on it).
++ * For best performance we usually want the largest value
++ * consistent with these constraints.
++ */
+ #define NFS_MAX_FILE_IO_BUFFER_SIZE	32768
+ #define NFS_DEF_FILE_IO_BUFFER_SIZE	4096
  
 
 
