@@ -1,26 +1,22 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Frank van Maarseveen <frankvm@xs4all.nl>
 Subject: Re: executable but not readable
-Date: Fri, 26 Mar 2004 14:17:51 -0500
+Date: Sat, 27 Mar 2004 13:17:31 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1080328671.2480.23.camel@lade.trondhjem.org>
-References: <40631E32.1020707@gsi.de>
-	 <1080239856.2584.18.camel@lade.trondhjem.org>  <40640A7E.5040601@gsi.de>
+Message-ID: <20040327121731.GA27152@janus>
+References: <40631E32.1020707@gsi.de> <1080239856.2584.18.camel@lade.trondhjem.org> <40640A7E.5040601@gsi.de> <1080328671.2480.23.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B6wqg-0005Xo-W7
-	for nfs@lists.sourceforge.net; Fri, 26 Mar 2004 11:18:34 -0800
-Received: from dh132.citi.umich.edu
-	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.30)
-	id 1B6wqg-0000pJ-NS
-	for nfs@lists.sourceforge.net; Fri, 26 Mar 2004 11:18:34 -0800
-To: Christopher Huhn <C.Huhn@gsi.de>
-In-Reply-To: <40640A7E.5040601@gsi.de>
+	id 1B7Cla-0003Uh-Dx
+	for nfs@lists.sourceforge.net; Sat, 27 Mar 2004 04:18:22 -0800
+Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1B7ClZ-0007Ah-BP
+	for nfs@lists.sourceforge.net; Sat, 27 Mar 2004 04:18:21 -0800
+To: nfs@lists.sourceforge.net
+In-Reply-To: <1080328671.2480.23.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,33 +29,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 fr , 26/03/2004 klokka 05:48, skreiv Christopher Huhn:
-> The point is that I'm not talking about (ELF) executables but shell
-> scripts!=20
-> IMHO in local semantics the shell interpreter cannot execute scripts
-> the executor has not read permissions for (How should he without
-> beeing setuid root?).
+On Fri, Mar 26, 2004 at 02:17:51PM -0500, Trond Myklebust wrote:
+> 
+> In NFSv3, the ACCESS call should then be used to decide whether or not
+> the client is allowed to open the file for execution (and for reading if
+> that is required). Unfortunately ACCESS is not implemented in the stock
+> Linux 2.4.x kernel.
 
-That is irrelevant: the server knows nothing about the existence of
-shell scripts. The point in the RFC is that the server should be looking
-at both the "executable" and the "read" bits when deciding whether or
-not to grant read access to the client.
+So the kernel does its own permission checking on the client side
+for executables _knowing_ that it is going to execute the file but
+unfortunately the interpreter has to open the file by itself and that
+fails.
 
-In NFSv3, the ACCESS call should then be used to decide whether or not
-the client is allowed to open the file for execution (and for reading if
-that is required). Unfortunately ACCESS is not implemented in the stock
-Linux 2.4.x kernel.
-Otherwise the client can only look at the mode bits in order to try to
-make the same decision. Of course that will fail to work properly anyway
-if the server has a different uid/gid mapping scheme to the client.
+But from a different perspective:
 
-However if you really want to prevent OTHER+GROUP from reading and
-executing your shell scripts, then "chmod 500 /bin/ls.sh" is your
-simplest solution. That does the same thing on both the local and remote
-filesystems.
+Being able to create a (non-setuid) executable which cannot be read
+for security reasons looks very weak to me unless of course it is not
+possible to let it dump core, strace (ptrace) it, open /proc/... files
+etc. But is that all actually the case in 2.6?
 
-Cheers,
- Trond
+
+-- 
+Frank
 
 
 -------------------------------------------------------
