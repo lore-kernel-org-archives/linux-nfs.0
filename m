@@ -1,19 +1,19 @@
-From: gms8994@dp.cx
-Subject: NFS Automount homedir with email
-Date: Thu, 18 Dec 2003 15:36:48 -0500
+From: Wade Hampton <wade.hampton@nsc1.net>
+Subject: Linux client on Solaris 7 NFS server
+Date: Wed, 24 Dec 2003 10:12:27 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20031218203648.GB8363@gigabyte6bxd>
+Message-ID: <3FE9ACDB.4060004@nsc1.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AX4tA-0001FP-4C
-	for nfs@lists.sourceforge.net; Thu, 18 Dec 2003 12:36:52 -0800
-Received: from 12-220-136-22.client.insightbb.com ([12.220.136.22] helo=dp.cx)
-	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.24)
-	id 1AX4t9-0000Xk-JS
-	for nfs@lists.sourceforge.net; Thu, 18 Dec 2003 12:36:51 -0800
+	id 1AZAge-0002Dq-DI
+	for nfs@lists.sourceforge.net; Wed, 24 Dec 2003 07:12:36 -0800
+Received: from www.nsc1.net ([4.22.175.200] helo=mail.nsc1.net)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
+	id 1AZAge-0000xV-0N
+	for nfs@lists.sourceforge.net; Wed, 24 Dec 2003 07:12:36 -0800
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,34 +27,51 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-If I'm asking this on the wrong list, please let me know.
+Merry Christmas and Happy Holidays!
 
-I'm currently attempting to setup nfs automounted home directories for my
-machines.  I have this working on one of the test boxes, from the server.
-However, I've run into a little bit of a snag.  One of the machines that I'd
-really like to use for the automounting is my main machine, which runs qmai=
-l.
-Some of the users on said machine only login (via shell) once a week or so,=
- but
-check their email via squirrelmail daily.  I have qmail setup to use Maildi=
-r, so
-the mail directories are in the users homedir.
+I have a Fedora Core 1.0 client connecting to a
+Solaris X86 Version 7 NFS server.  The Solaris server
+has locked up several times since I started accessing
+it from Linux (this is the only change to the Solaris
+system's environment).  I was wondering if this
+was an NFS problem on Solaris 7 or could be a
+hardware problem with the NIC.
 
-So my question is:  will an imaplogin be enough to trigger automount so tha=
-t the
-users can get their mail, or will I have to do some more trickery?
+The options I was using for NFS mount were
+auto,ro,bg,soft.  
 
---=20
+After reading the NFS howto, it indicated that 
+"Solaris servers are especially sensitive to packet size".
+This is vague and does not tell what the consequences of
+default values or values other than 32768 might be....
 
-Glen Solsberry
-Please note that all messages are signed by my GPG key (0xBF0C1C33).
-If you received a message from me that wasn't signed, it probably wasn't fr=
-om me.
+Could "sensitive" mean bad performance, lost data, lost connections,
+disconnects, locked up clients, or locked up servers?
 
-IRC at irc.aknarra.net:6667 #lobby
-http://www.dp.cx
-The first half of our lives is ruined by our parents and the second half
-by our children.				   --- Clarence Darrow
+Could this be a reason that the Solaris server is locking up?
+
+Has anyone else experienced this? 
+
+If this is the case, does Sun have a patch that addresses this?
+
+Any Solaris Admins out there that can tell me how I can
+check the Solaris server to see if such a patch (if it exists)
+is applied?
+
+I did change my mount to the following options:  
+    auto,rsize=32768,wsize=32768,ro,bg,soft.
+
+So far, I have not had any server lockups (since yesterday).
+However, I need to be sure that I am not introducing a problem
+by using Linux boxes with these servers.....
+
+Also, if my Fedora box is accessing the server via a WAN,
+should I use NFS over TCP/IP?   If my network goes down,
+do I have to unmount and remount if I am using TCP/IP?
+
+Thanks,
+--
+Wade Hampton
 
 
 
