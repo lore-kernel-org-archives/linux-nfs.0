@@ -1,23 +1,22 @@
-From: "" <monnika@aol.com>
-Subject: Cc: 1/2 OFF VIagra!        [ fgkkbeqn
-Date: Sun, 15 Jun 03 06:50:18 GMT
+From: "" <momfox@aol.com>
+Subject: Fwd: 1/2 Off V1agra!        [ jkhfgqp
+Date: Sun, 15 Jun 03 07:32:33 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <2eu1-4$h9$vf406ph$l4x21p63@zf2qj>
+Message-ID: <4316q794$642o$3@2uzg2mct>
 Mime-Version: 1.0
 Content-Type: multipart/alternative;
-	boundary="1C__5D_C.45B_AE4"
+	boundary="..D6B_5CE718"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from panoramix.vasoftware.com
 	([198.186.202.147] helo=externalmx.vasoftware.com ident=mail)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19RSH0-0000Rw-00
-	for <nfs@lists.sourceforge.net>; Sun, 15 Jun 2003 00:49:58 -0700
-Received: from [61.175.228.232] (port=3196 helo=ZZS-A60XPJGRXDS)
+	id 19RWkH-0002jy-00
+	for <nfs@lists.sourceforge.net>; Sun, 15 Jun 2003 05:36:29 -0700
+Received: from 200-103-109-080.gnace7007.dsl.brasiltelecom.net.br ([200.103.109.80]:4329)
 	by externalmx.vasoftware.com with smtp (Exim 4.20 #1 (Debian))
-	id 19RSGp-0001li-MC
-	for <nfs@lists.sourceforge.net>; Sun, 15 Jun 2003 00:49:54 -0700
-Received: from jr.ppf20y.org [52.236.234.11] by ZZS-A60XPJGRXDS SMTP id 2WQ9ZpCMFWaZ3s for <nfs@lists.sourceforge.net>; Sun, 15 Jun 2003 06:50:18 -0200
+	id 19RWk9-0000Nt-Ca
+	for <nfs@lists.sourceforge.net>; Sun, 15 Jun 2003 05:36:23 -0700
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -33,7 +32,7 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a multi-part message in MIME format.
 
---1C__5D_C.45B_AE4
+--..D6B_5CE718
 Content-Type: text/html;
 Content-Transfer-Encoding: quoted-printable
 
@@ -132,12 +131,10 @@ ranteed<br>
 		</div>
 	</body>
 
-</html>l co   oraskzp
-geehkauqwxxfjz
-gifujkqtft u
-ub z   sudaqjmvi wg
+</html>hea f qyqoangmj
+ulaesqs k nccl l  xg ckqchpfa qx
 
---1C__5D_C.45B_AE4--
+--..D6B_5CE718--
 
 
 
