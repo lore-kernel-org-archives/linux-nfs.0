@@ -1,23 +1,25 @@
-From: Chris Worley <cworley@lnxi.com>
-Subject: NFS not negotiating MTU correctly?
-Date: 25 May 2004 07:18:46 -0600
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS not negotiating MTU correctly?
+Date: Tue, 25 May 2004 11:04:49 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1085491125.30311.20808.camel@localhost>
+Message-ID: <1085497489.3872.26.camel@lade.trondhjem.org>
+References: <1085491125.30311.20808.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=iso-8859-1
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BScpu-0006bK-4h
-	for nfs@lists.sourceforge.net; Tue, 25 May 2004 07:23:22 -0700
-Received: from 208.177.141.226.ptr.us.xo.net ([208.177.141.226] helo=localhost.localdomain)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BScpt-000231-Ou
-	for nfs@lists.sourceforge.net; Tue, 25 May 2004 07:23:21 -0700
-Received: from localhost (localhost [127.0.0.1])
-	by localhost.localdomain (8.11.6/8.11.6) with ESMTP id i4PDIlh16993
-	for <nfs@lists.sourceforge.net>; Tue, 25 May 2004 07:18:48 -0600
-To: nfs@lists.sourceforge.net
+	id 1BSdU5-000808-JG
+	for nfs@lists.sourceforge.net; Tue, 25 May 2004 08:04:53 -0700
+Received: from dh132.citi.umich.edu
+	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.30)
+	id 1BSdU5-0006qm-2U
+	for nfs@lists.sourceforge.net; Tue, 25 May 2004 08:04:53 -0700
+To: Chris Worley <cworley@lnxi.com>
+In-Reply-To: <1085491125.30311.20808.camel@localhost>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,25 +32,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I don't know why this is an NFS specific problem (I'd think this would
-be part of IP)...
+P=E5 ty , 25/05/2004 klokka 09:18, skreiv Chris Worley:
 
-I run 9K MTU's on all my NFS servers and most of my clients.  Great
-performance (the servers are also channel bonded... but that's
-irrelevant).
+> In grilling my switch vendor, they assure me that it's the client &
+> servers job to negotiate properly fragmented packets based on the lessor
+> MTU.
 
-Clients that can't do 9K MTU's work with the 9K MTU systems for all
-sorts of network tasks, except NFS.
+That sounds like a piss-poor switch to me. AFAIK all routers are
+supposed to automatically fragment datagrams when forwarding between
+networks that have a different MTU. Automatic MTU discovery is not part
+of the IP protocol (although methods for doing so under certain
+circumstances do exist).
 
-To get NFS to work, I either have to use NFS over TCP, or set my w/rsize
-below 1500 bytes.  Both cause performance problems.
+In any case, dealing with MTUs is entirely the networking layer's job.
+NFS just deals with sockets. I suggest that you check that the
+ip_no_pmtu_disc sysctl is set correctly, and then check with the Linux
+networking mailing list (netdev@oss.sgi.com) if there are further
+problems.
 
-In grilling my switch vendor, they assure me that it's the client &
-servers job to negotiate properly fragmented packets based on the lessor
-MTU.
-
-Chris
-
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
