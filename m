@@ -1,26 +1,27 @@
-From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-Subject: Re: read-error on utmp file
-Date: Tue, 7 Sep 2004 11:21:04 -0600 (MDT)
+From: "Hyatt, Daniel J" <daniel.j.hyatt@boeing.com>
+Subject: LINUX NFS server Solaris NFS client issue
+Date: Tue, 7 Sep 2004 11:43:34 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.60.0409071120350.17332@harp.ngdc.noaa.gov>
-References: <41383991.1020108@bio.ifi.lmu.de>  <1094230320.8196.32.camel@lade.trondhjem.org>
-  <413C0F25.9010206@bio.ifi.lmu.de> <1094490287.8342.69.camel@lade.trondhjem.org>
-Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Message-ID: <0CF6F73B3B779D43B160B85FD0CC2D37026551D7@xch-sw-07.sw.nos.boeing.com>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-976443041-1094577664=:17332"
-Cc: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>, nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C4jeg-0005QV-Pm
-	for nfs@lists.sourceforge.net; Tue, 07 Sep 2004 10:21:18 -0700
-Received: from harp.ngdc.noaa.gov ([140.172.187.26])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.34)
-	id 1C4jee-0007m8-GX
-	for nfs@lists.sourceforge.net; Tue, 07 Sep 2004 10:21:17 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1094490287.8342.69.camel@lade.trondhjem.org>
+	id 1C4kwZ-0004zZ-4C
+	for nfs@lists.sourceforge.net; Tue, 07 Sep 2004 11:43:51 -0700
+Received: from stl-smtpout-01.boeing.com ([130.76.96.56])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1C4kwW-00023i-GC
+	for nfs@lists.sourceforge.net; Tue, 07 Sep 2004 11:43:50 -0700
+Received: from stl-av-01.boeing.com ([192.76.190.6])
+	by stl-smtpout-01.boeing.com (8.9.2.MG.10092003/8.8.5-M2) with ESMTP id NAA19847
+	for <nfs@lists.sourceforge.net>; Tue, 7 Sep 2004 13:43:40 -0500 (CDT)
+Received: from XCH-SWBH-02.sw.nos.boeing.com (localhost [127.0.0.1])
+	by stl-av-01.boeing.com (8.11.3/8.11.3/MBS-LDAP-01) with ESMTP id i87IhdD29115
+	for <nfs@lists.sourceforge.net>; Tue, 7 Sep 2004 13:43:40 -0500 (CDT)
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,53 +34,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+I am hoping for some recommendations for success. I was just told that
+Linux NFS server is experimental. But I am backed into a corner and need
+to get this working. And Redhat docs and redhat sys admin manual don't
+mention it being experimental.
 
---8323328-976443041-1094577664=:17332
-Content-Type: TEXT/PLAIN; charset=X-UNKNOWN; format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
 
-On Mon, 6 Sep 2004, Trond Myklebust wrote:
+I have a Linux NFS server running Redhat 8 "lap"
+I have a Solaris ultra 10 running Solaris8. "hal"
 
-> P=E5 m=E5 , 06/09/2004 klokka 03:17, skreiv Frank Steiner:
->
->> tcpdump -s 9000 -w <file> host curry & while runlevel /boot/utmp; do tru=
-e; done; killall tcpdump
->>
->> and started the second loop in another window which caused this first lo=
-op
->> to fail and stop the tcpdump...
->
-> Ah, right... Sorry, my head hasn't been screwed on correctly...
->
-> Although we wait on writes, we don't bother to wait on all *reads* to
-> complete when closing the file. This means that readahead (which can
-> schedule extra pageins asynchronously) may end up causing the file to be
-> kept open for longer.
->
-> That is why you are seeing sillyrenames here...
+I checked the systems files and both Linux and Solaris offer both TCP
+and UDP for NFS.
 
-do you think this could contribute to my situation with sillyrenames too?
+The file systems shows up=20
+[root@lap init.d]# exportfs -v
+/projects/os    hal(rw,wdelay,insecure,no_root_squash)
+/projects/os    losangeles(rw,wdelay,insecure,no_root_squash)
+/projects/os    larry(rw,async,wdelay,insecure,no_root_squash)
+/appl           hal(rw,async,wdelay,insecure,no_root_squash)
+/appl           losangeles(rw,async,wdelay,insecure,no_root_squash)
+/appl           larry(rw,async,wdelay,insecure,no_root_squash)
 
-cheers.
+The Linux NFS server is successfully exporting the fs to another Linux
+box "larry"
+But when I import it into Solaris 8 (two different boxes) I get=20
+hal# mountall
+/dev/rdsk/c0t0d0s7 already mounted
+=20
+mount: lap:/appl or /appll, no such file or directory
+mount: lap:/projects/os or /proj/os, no such file or directory
+hal#=20
 
--a
---
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D
-| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
-| PHONE   :: 303.497.6469
-| A flower falls, even though we love it;
-| and a weed grows, even though we do not love it.=20
-|   --Dogen
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D
---8323328-976443041-1094577664=:17332--
+Vfstab is:
+lap:/projects/os -    /proj/os                ufs     -       yes     rw
+
+lap:/appl      -      /appll                  ufs     -       yes     rw
+
+
+
+At one point, I was able to import it into Solaris, but when I went to
+the directory no files were visible.
+Thanks in advance,
+Dan
+
 
 
 -------------------------------------------------------
