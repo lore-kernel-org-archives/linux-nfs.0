@@ -1,21 +1,24 @@
-From: mehta kiran <kiranmehta1981@yahoo.com>
-Subject: Re: address for lockd recovery
-Date: Wed, 26 Jan 2005 02:20:15 -0800 (PST)
-Message-ID: <20050126102015.65833.qmail@web51605.mail.yahoo.com>
-References: <1106720796.10014.10.camel@lade.trondhjem.org>
+From: Pierre Ossman <drzeus-list@drzeus.cx>
+Subject: Re: Move (mv) hangs with NFSv4
+Date: Sun, 02 Jan 2005 19:48:54 +0100
+Message-ID: <41D84216.9060504@drzeus.cx>
+References: <41B0A79A.2010203@drzeus.cx> <1102097931.10878.21.camel@lade.trondhjem.org> <20041207155227.GG31250@fieldses.org> <41B61C89.2060000@drzeus.cx> <20041207211715.GQ31250@fieldses.org> <41B6E933.4090708@drzeus.cx>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CtkHe-0005F9-PC
-	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 02:20:22 -0800
-Received: from web51605.mail.yahoo.com ([206.190.38.210])
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
-	id 1CtkHd-0006Pe-7d
-	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 02:20:22 -0800
-To: nfs@lists.sourceforge.net
-In-Reply-To: <1106720796.10014.10.camel@lade.trondhjem.org>
+	id 1ClAmr-00016M-RJ
+	for nfs@lists.sourceforge.net; Sun, 02 Jan 2005 10:49:09 -0800
+Received: from a26.t1.student.liu.se
+	([130.236.221.26] helo=mail.drzeus.cx ident=daemon)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1ClAml-0005Qz-I9
+	for nfs@lists.sourceforge.net; Sun, 02 Jan 2005 10:49:09 -0800
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <41B6E933.4090708@drzeus.cx>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,63 +32,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-thanks Trond.
-           What i could get from  this statement is
-that source address and mon_id in notification
-message cannot be guaranteed to belong to same
-machine. 
-But two different machines can have same
-mon_id(nfs never pings mon_id , mon_ids can be faked)
-but will have different source address.so doesn't
-source address of notification message  uniquely
-isentify nfs server rather than mon_id and
-hence safe to reclaim locks.
-
---thanks
-   kiran
-
---- Trond Myklebust <trond.myklebust@fys.uio.no>
-wrote:
-
-> ty den 25.01.2005 Klokka 01:16 (-0800) skreiv mehta
-> kiran:
-> > Hi , 
-> >      When i was checking lockd recovery , 
-> >      i noted that clients after getting
-> >      notification messages , use mon_id
-> >      as destination address and not notication
-> >      messages's source address as destination
-> >      address.(as just a reply)
-> > 
-> >      Is there any issue in using notifcation
-> >      messages's source address as destination
-> >      address to reclaim lock. ?
+Pierre Ossman wrote:
+> J. Bruce Fields wrote:
 > 
-> If you have a multi-homed server, it does not follow
-> that the source
-> address used by rpc.statd hosts the same NFS server
-> as the mon_name
-> address.
+>>
+>> Thanks.  It's a problem with the idmapping on the server, argh.  Is
+>> rpc.idmapd still running after this, or does it die?--b.
+>>  
+>>
+> It's still running. The effect is only local to the mv process. Other 
+> traffic to the same mount continue to work perfectly.  There has been a 
+> few incidents where the entire mount hangs. But in these cases I have to 
+> restart the client, not the server.
 > 
-> Cheers,
->   Trond
-> -- 
-> Trond Myklebust <trond.myklebust@fys.uio.no>
-> 
+> Can I get some debug output from idmapd that will pinpoint where the 
+> problem is?
 > 
 
+Any updates to this issue?
 
-__________________________________________________
-Do You Yahoo!?
-Tired of spam?  Yahoo! Mail has the best spam protection around 
-http://mail.yahoo.com 
+Rgds
+Pierre
 
 
 -------------------------------------------------------
-This SF.Net email is sponsored by: IntelliVIEW -- Interactive Reporting
-Tool for open source databases. Create drag-&-drop reports. Save time
-by over 75%! Publish reports on the web. Export to DOC, XLS, RTF, etc.
-Download a FREE copy at http://www.intelliview.com/go/osdn_nl
+The SF.Net email is sponsored by: Beat the post-holiday blues
+Get a FREE limited edition SourceForge.net t-shirt from ThinkGeek.
+It's fun and FREE -- well, almost....http://www.thinkgeek.com/sfshirt
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
