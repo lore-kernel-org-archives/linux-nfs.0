@@ -1,25 +1,21 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: NSM lock recovery fails too often
-Date: Tue, 9 Mar 2004 16:59:28 +0100
+From: Robert Sander <ml-linux-nfs@epigenomics.com>
+Subject: Re: NFS, Berkley mailboxes, locking, and corruption
+Date: Tue, 9 Mar 2004 17:17:12 +0000 (UTC)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040309155927.GL14419@suse.de>
-References: <482A3FA0050D21419C269D13989C61130435DD1F@lavender-fe.eng.netapp.com> <20040309142200.GC14419@suse.de> <1078844671.4067.1.camel@nidelv.trondhjem.org> <20040309151054.GF14419@suse.de> <1078847262.4067.7.camel@nidelv.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Cc: Charles Lever <Charles.Lever@netapp.com>,
-	nfs@lists.sourceforge.net
+Message-ID: <news2mail-slrnc4rv0o.7gg.gurubert-dated-1078842485.kblajmfp@moneta.epigenomics.epi>
+References: <Pine.LNX.4.44.0401312058440.23263-100000@poplar.sktc.net>
+Reply-To: Robert Sander <gurubert-dated-1078842485.kblajmfp@epigenomics.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B0jme-0006Rw-Oi
-	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 08:08:44 -0800
-Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1B0l01-00023W-D3
+	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 09:26:37 -0800
+Received: from gk.ka.epigenomics.net ([62.159.77.106] ident=qmailr)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.30)
-	id 1B0jFn-0006ad-U8
-	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 07:34:48 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1078847262.4067.7.camel@nidelv.trondhjem.org>
+	id 1B0kr7-00045i-9M
+	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 09:17:25 -0800
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,28 +28,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, Mar 09, 2004 at 10:47:42AM -0500, Trond Myklebust wrote:
-> P=E5 ty , 09/03/2004 klokka 10:10, skreiv Olaf Kirch:
-> > What I was referring to was the ability to have several RPC programs =
-on a
-> > single svc_sock server side; e.g. NFS and NFSACL, or NLM and NSM. Pre=
-tty
-> > much the way svc_register from the good ole sunrpc code works.
->=20
-> Oh, sorry...
->=20
-> Hmm... Any reason why you couldn't put them all on port 2049 with this
-> patch? Would that be less efficient than having two sets of threads?
+On Sun, 1 Feb 2004 03:43:58 +0000 (UTC),
+ Justin <listuser@numbnuts.net> wrote:
+> Another alternative is maildir.  I know Procmail can be tricked into
+> writing it.  I don't believe Qpopper has support for it.  I know UW-IMAP
+> doesn't support it.  We have to have IMAP for webmail.  All the users use
+> POP with their choice of MUA.  I think MailDir would be more of a problem
+> in the long run unfortunately.
 
-No, you could put all of them on the same port. The problem is that
-you want lockd and nfsd to be two different processes, so you can
-shut down nfsd without disrupting lockd.
+Hi!
 
-Olaf
---=20
-Olaf Kirch     |  Stop wasting entropy - start using predictable
-okir@suse.de   |  tempfile names today!
----------------+=20
+Maildir is not a problem in the long run. There are plenty pieces of
+software being able to write/read to/from a Maildir and speak
+SMTP/IMAP/POP3.
+
+Go with Maildir, it's safe over NFS. No need for locking at all.
+
+Greetings
+-- 
+Robert Sander
+Manager
+Information Systems        www.epigenomics.com        Kastanienallee 24
++493024345330                                              10435 Berlin
+
+If you have an apple and I have an apple and we exchange these apples
+then you and I will still each have one apple.
+But if you have an idea and I have an idea and we exchange these ideas,
+then each of us will have two ideas.
+
+George Bernard Shaw
 
 
 -------------------------------------------------------
