@@ -1,24 +1,24 @@
-From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-Subject: hung locks
-Date: Fri, 14 May 2004 14:31:59 -0600 (MDT)
+From: Greg Banks <gnb@sgi.com>
+Subject: Re: [PATCH][RFC] Multiple UDP sockets for knfsd
+Date: Sat, 15 May 2004 16:38:54 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0405141427510.12288-100000@fattire.ngdc.noaa.gov>
-Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Message-ID: <20040515063854.GB14983@sgi.com>
+References: <40A42DB8.7B9C8152@melbourne.sgi.com> <1084566110.4237.66.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+Cc: Greg Banks <gnb@melbourne.sgi.com>, Neil Brown <neilb@cse.unsw.edu.au>,
+        Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BOjLi-0004La-3a
-	for nfs@lists.sourceforge.net; Fri, 14 May 2004 13:32:06 -0700
-Received: from fattire.ngdc.noaa.gov ([140.172.187.207])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BOjLh-0000No-FC
-	for nfs@lists.sourceforge.net; Fri, 14 May 2004 13:32:05 -0700
-Received: from localhost (ahoward@localhost)
-	by fattire.ngdc.noaa.gov (8.11.6/8.11.6) with ESMTP id i4EKVxZ12749
-	for <nfs@lists.sourceforge.net>; Fri, 14 May 2004 14:31:59 -0600
-To: nfs@lists.sourceforge.net
+	id 1BOspz-00023l-Cz
+	for nfs@lists.sourceforge.net; Fri, 14 May 2004 23:39:59 -0700
+Received: from mtvcafw.sgi.com ([192.48.171.6] helo=omx2.sgi.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1BOspz-00062L-6C
+	for nfs@lists.sourceforge.net; Fri, 14 May 2004 23:39:59 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1084566110.4237.66.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,29 +31,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Fri, May 14, 2004 at 04:21:50PM -0400, Trond Myklebust wrote:
+> 
+> I'm confused here. Are you actually implying that socket contention is
+> responsible for a full *40%* decrease in throughput?
 
+At that level of throughput, yes.
 
-we just had a reboot of our nfs server and i have a process wich is new hung
-trying to obtain a lock.  the other machines which were competing for the lock
-had all been rebooting so i know all those processes are dead - plus i
-checked.  so the current situation seems that it's caused by a host going down
-which held the lock, but lockd somehow not knowing about it.  i straced the
-hung process and it is, indeed, hung in fcntl64... so, my question is this:
+> Also, isn't that call to sock_release() while holding serv->sv_lock a
+> tad deadlock-prone? Note that sock_release() will call bh_lock_sock()...
 
-where does one start looking for the source of this problem?  client logs?
-server logs?  is the there some sort of procedure our sysads should follow
-when rebooting nfs client/servers with respect to currently held locks?
+Ok, I'll fix that by leaving the unlocks alone and changing the
+semantics of __svc_delete_socket() to "call with lock, drops the lock".
 
--a
+Greg.
 -- 
-===============================================================================
-| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
-| PHONE   :: 303.497.6469
-| ADDRESS :: E/GC2 325 Broadway, Boulder, CO 80305-3328
-| URL     :: http://www.ngdc.noaa.gov/stp/
-| TRY     :: for l in ruby perl;do $l -e "print \"\x3a\x2d\x29\x0a\"";done 
-===============================================================================
-
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
 
 -------------------------------------------------------
