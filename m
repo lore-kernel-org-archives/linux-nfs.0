@@ -1,132 +1,132 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH kNFSd 32 of 54] nfsd4: fix callback cred refcnt leak
-Date: Tue, 8 Mar 2005 18:44:57 -0500
-Message-ID: <20050308234457.GG26462@fieldses.org>
-References: <20050308165419.3842.patches@notabene> <E1D8Xrg-00018r-Db@notabene.cse.unsw.edu.au> <1110262615.11712.20.camel@lade.trondhjem.org>
+From: mike@waychison.com
+Subject: RE: [PATCH/RFC 0/2] Userspace RPC proxying
+Date: Tue, 8 Mar 2005 13:22:59 -0500 (EST)
+Message-ID: <37835.66.11.176.22.1110306179.squirrel@webmail1.hrnoc.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: NeilBrown <neilb@cse.unsw.edu.au>, Andrew Morton <akpm@osdl.org>,
-	nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D8oNX-0002oS-5s
-	for nfs@lists.sourceforge.net; Tue, 08 Mar 2005 15:44:43 -0800
-Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1D8oNV-00009C-Lt
-	for nfs@lists.sourceforge.net; Tue, 08 Mar 2005 15:44:43 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1110262615.11712.20.camel@lade.trondhjem.org>
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain;charset=iso-8859-1
+Cc: autofs mailing list <autofs@linux.kernel.org>,
+        linux-nfs <nfs@lists.sourceforge.net>, mike@waychison.com
+To: "Lever, Charles" <Charles.Lever@netapp.com>
+List-Unsubscribe: <http://linux.kernel.org/mailman/listinfo/autofs>,
+	<mailto:autofs-request@linux.kernel.org?subject=unsubscribe>
+List-Archive: <http://linux.kernel.org/pipermail/autofs>
+List-Post: <mailto:autofs@linux.kernel.org>
+List-Help: <mailto:autofs-request@linux.kernel.org?subject=help>
+List-Subscribe: <http://linux.kernel.org/mailman/listinfo/autofs>,
+	<mailto:autofs-request@linux.kernel.org?subject=subscribe>
+Sender: autofs-bounces@linux.kernel.org
+Errors-To: autofs-bounces@linux.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Tue, Mar 08, 2005 at 01:16:55AM -0500, Trond Myklebust wrote:
-> ty den 08.03.2005 Klokka 17:06 (+1100) skreiv NeilBrown:
-> > 
-> > The rpc creds we look up in the callback code need puts.
-> > 
-> 
-> <cough> Error checking on the results of nfsd4_lookupcred()? </cough>
+> hi mike-
+>
+>> Every once in a while, we see complaints that nfs mounts are
+>> failing due
+>> to there being no more reserved ports available for outbound rpc
+>> communication.  This often happens when using TCP transports,
+>> because all
+>> outbound connections that are closed go into a TIME_WAIT state.
+>
+> i know that steved has also been looking at this problem.  he found that
+> user-land uses TCP connections with abandon and has put it on a diet.
+> and, the client side should take care to avoid using reserved ports
+> unless it is absolutely necessary.
 
-Yeah, sorry for the confusion here.  My fault, but partly also a result
-of there being another patch in Trond's NFS_ALL that changes
-rpcauth_lookup_credcache() to return error codes instead of just NULL on
-failure.  Depending on which patches get in first, there'll be some
-trivial fixup to do.
+Yup. I tested out SteveD's stuff and it certainly cut down on reserved
+port usage.  However, I was still able locally DOS my test client by
+mounting several thousand mounts within a minute or so.  The problem is
+that talking to mountd still requires the reserved port :\
 
-Removing the spurious (!clnt) check, as in the following, will also simplify
-that conflict resolution a bit.
+>
+>> For various reasons, avoiding the TIME_WAIT state using connect(fd,
+>> {AF_UNSPEC}, ...) or doing SO_REUSEADDR may not be the safest way to
+>> handle things.
+>
+> i have a patch for the kernel RPC client to use AF_UNSPEC to reuse the
+> port number on connections.  before i head into the wilderness, what's
+> unsafe about that?
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
+It's less unsafe than SO_REUSEADDR, however it completely ignores
+TIME_WAIT,  which has two purposes (according to W.R. Stevens):
 
- linux-2.6.11-mm2-bfields/fs/nfsd/nfs4callback.c |   17 ++++++++---------
- 1 files changed, 8 insertions(+), 9 deletions(-)
+- If the client performs the active close, it allows the socket to
+remember to resend the final ACK in response to the server's FIN. 
+Otherwise the client would respond with a RST.
 
-diff -puN fs/nfsd/nfs4callback.c~nfsd4-fix-callback-cred-lookup fs/nfsd/nfs4callback.c
---- linux-2.6.11-mm2/fs/nfsd/nfs4callback.c~nfsd4-fix-callback-cred-lookup	2005-03-08 16:22:10.000000000 -0500
-+++ linux-2.6.11-mm2-bfields/fs/nfsd/nfs4callback.c	2005-03-08 17:15:37.000000000 -0500
-@@ -353,10 +353,8 @@ nfsd4_lookupcred(struct nfs4_client *clp
- {
-         struct auth_cred acred;
- 	struct rpc_clnt *clnt = clp->cl_callback.cb_client;
--        struct rpc_cred *ret = NULL;
-+	struct rpc_cred *ret;
- 
--	if (!clnt)
--		goto out;
-         get_group_info(clp->cl_cred.cr_group_info);
-         acred.uid = clp->cl_cred.cr_uid;
-         acred.gid = clp->cl_cred.cr_gid;
-@@ -366,7 +364,6 @@ nfsd4_lookupcred(struct nfs4_client *clp
-                 clnt->cl_auth->au_ops->au_name);
-         ret = rpcauth_lookup_credcache(clnt->cl_auth, &acred, taskflags);
-         put_group_info(clp->cl_cred.cr_group_info);
--out:
-         return ret;
- }
- 
-@@ -449,6 +446,8 @@ nfsd4_probe_callback(struct nfs4_client 
- 	atomic_inc(&clp->cl_count);
- 
- 	msg.rpc_cred = nfsd4_lookupcred(clp,0);
-+	if (msg.rpc_cred == NULL)
-+		goto out_rpciod;
- 	status = rpc_call_async(clnt, &msg, RPC_TASK_ASYNC, nfs4_cb_null, NULL);
- 	put_rpccred(msg.rpc_cred);
- 
-@@ -513,7 +512,7 @@ nfsd4_cb_recall(struct nfs4_delegation *
- 		return;
- 
- 	msg.rpc_cred = nfsd4_lookupcred(clp, 0);
--	if (IS_ERR(msg.rpc_cred))
-+	if (msg.rpc_cred == NULL)
- 		goto out;
- 
- 	cbr->cbr_trunc = 0; /* XXX need to implement truncate optimization */
-@@ -530,19 +529,19 @@ nfsd4_cb_recall(struct nfs4_delegation *
- 				 * before open reply granting delegation */
- 				break;
- 			default:
--				goto out;
-+				goto out_put_cred;
- 		}
- 		ssleep(2);
- 		status = rpc_call_sync(clnt, &msg, RPC_TASK_SOFT);
- 	}
--
-- out:
-+out_put_cred:
-+	put_rpccred(msg.rpc_cred);
-+out:
- 	if (status == -EIO)
- 		atomic_set(&clp->cl_callback.cb_set, 0);
- 	/* Success or failure, now we're either waiting for lease expiration
- 	 * or deleg_return. */
- 	nfs4_put_delegation(dp);
- 	dprintk("NFSD: nfs4_cb_recall: dp %p dl_flock %p dl_count %d\n",dp, dp->dl_flock, atomic_read(&dp->dl_count));
--	put_rpccred(msg.rpc_cred);
- 	return;
- }
-_
+- It ensures that no re-incarnations of the same four-tuple occur within 2
+* MSL, ensuring that no packets that were lost on the network from the
+first incarnation get used as part of the new incarnation.
 
+Avoiding TIME_WAIT altogether keeps TCP from doing a proper full-duplex
+close and also allows old packets to screw up TCP state.
 
--------------------------------------------------------
-SF email is sponsored by - The IT Product Guide
-Read honest & candid reviews on hundreds of IT Products from real users.
-Discover which products truly live up to the hype. Start reading now.
-http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+>
+>> rpcproxyd will create outbound connections and multiplex the
+>> transports
+>> with any number of simultaneous clients.  There is no support for
+>> re-binding your transport once created.  It will also cache outbound
+>> server connections for 30 seconds after last use, which
+>> greatly helps keep the number of ports used down in a mount-storm
+> situation.
+>
+> the typical RPC client-side connection timeout is 5 minutes.  any reason
+> not to use that value instead of 30 seconds?
+
+The timeouts used currently in rpcproxyd were chosen arbitrarily.
+
+Which timeout is 5 minutes? (sparing me the trouble of finding it myself).
+
+I figured 30 for caching un-used tcp connections sounded like a good
+number as it means that if TIME_WAIT period is 2 minutes, that the most
+TIME_WAIT connections that you can have to a given remote service at any
+time is 4.
+
+A bit more thought could be had for timeouts (wishlist):
+- TCP connect()s aren't timedout. (uses EINPROGRESS, but will wait
+indefinitely, which I think is bounded by the kernel anyway).
+- UDP retransmission occurs in the proxy itself, which is currently
+hardcoded to retry 5 times, once every two seconds.  I can trivially set
+it up so that it gets the actual timeout values from the client though and
+use those parameters.
+
+>
+> you will also need a unique connection for each program/version number
+> combination to a given server; ie you can't share a single socket among
+> different program/version numbers (even though some implementations try
+> to do this, it is a bad practice, in my opinion).
+>
+
+So, I know I discussed this with you last week, however I was under the
+impression that that was needed for the case where you support re-binding
+of the transport.  I'm not up to speed of who are the users of such a
+thing (I'm assuming NFSv4).
+
+Also, AFAICT, the glibc sunrpc stuff will actually bind you to a program
+even if the version doesn't exist.  This is used by rpcinfo [-u | -t] for
+udpping / tcpping.
+
+> to support IPv6 you will need support for rpcbind versions 3 and 4; but
+> that may be an issue outside of rpcproxyd.
+>
+
+Okay.  I'm not so familiar with RPCB, but it is just a PMAP on steroids,
+right?
+
+It wouldn't be needed for the basic common use of rpcproxyd, however it
+would likely be required for cases where clntproxy_create has to do some
+lookups (eg: port == 0, maybe even addr == NULL).
+
+>> rpcproxyd is written as a single-threaded/no-signals/select-based
+> daemon.
+>
+> will using select be a scalability issue?  you might be better off with
+> something like libevent or using epoll.
+>
+
+It may become a scalability issue, although I don't know what the typical
+numbers are for live descriptors.  It was written with select cause that's
+what I know ;)
+
+In any event, using epoll would likely be a good thing to do.
+
+Mike Waychison
