@@ -1,31 +1,24 @@
-From: Vincent Roqueta <vincent.roqueta@ext.bull.net>
-Subject: Re: Some interoperability testing
-Date: Tue, 8 Feb 2005 16:43:34 +0100
-Message-ID: <200502081643.34440.vincent.roqueta@ext.bull.net>
-References: <200502071839.24804.vincent.roqueta@ext.bull.net> <1107874199.10364.22.camel@lade.trondhjem.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Re: [PATCH kNFSd 0 of 12] Introduction
+Date: Tue, 8 Feb 2005 10:58:26 -0500
+Message-ID: <20050208155826.GA26196@fieldses.org>
+References: <20050208140033.24886.patches@notabene> <20050207192453.2a0a206b.akpm@osdl.org> <16904.12902.298401.1645@cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-15"
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@osdl.org>,
+	"J . Bruce Fields" <bfields@citi.umich.edu>,
+	nfs@lists.sourceforge.net
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CyXRW-0002ee-7J
-	for nfs@lists.sourceforge.net; Tue, 08 Feb 2005 07:38:22 -0800
-Received: from ecfrec.frec.bull.fr ([129.183.4.8])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CyXRU-0006V9-14
-	for nfs@lists.sourceforge.net; Tue, 08 Feb 2005 07:38:22 -0800
-Received: from localhost (localhost [127.0.0.1])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 4F83619D904
-	for <nfs@lists.sourceforge.net>; Tue,  8 Feb 2005 16:37:35 +0100 (CET)
-Received: from ecfrec.frec.bull.fr ([127.0.0.1])
- by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
- with ESMTP id 09089-04 for <nfs@lists.sourceforge.net>;
- Tue,  8 Feb 2005 16:37:33 +0100 (CET)
-Received: from ecn002.frec.bull.fr (ecn002.frec.bull.fr [129.183.4.6])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id E941019D90B
-	for <nfs@lists.sourceforge.net>; Tue,  8 Feb 2005 16:37:32 +0100 (CET)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <1107874199.10364.22.camel@lade.trondhjem.org>
+	id 1CyXl5-0003Xq-3F
+	for nfs@lists.sourceforge.net; Tue, 08 Feb 2005 07:58:35 -0800
+Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1CyXl3-0003ov-Lf
+	for nfs@lists.sourceforge.net; Tue, 08 Feb 2005 07:58:35 -0800
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <16904.12902.298401.1645@cse.unsw.edu.au>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,26 +32,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Le mardi 8 F=E9vrier 2005 15:49, Trond Myklebust a =E9crit=A0:
-> ty den 08.02.2005 Klokka 10:22 (+0100) skreiv Vincent Roqueta:
-> > Since all is right with kernel 2.6.9, that looks like a regression...
-> > Even if that is the true behaviour it may exist a way to stop this
-> > process cleanly : since NFS umount is can't be done the client does not
-> > reboot, and I need  to turn the power off...
->
-> There were no NFS or RPC client changes made between 2.6.9 and 2.6.10,
-Well... Some littles changes :-) =20
+On Tue, Feb 08, 2005 at 02:30:46PM +1100, Neil Brown wrote:
+> On Monday February 7, akpm@osdl.org wrote:
+> > 
+> > > The 6 from Bruce fix a real performance problem with locking.
+> > 
+> > That one depends on a bunch of the preceding ones, yes?
+> 
+> The set of six (numbered 3 to 8) should be independent of the rest.  I
+> believe Bruce has done substantial testing on them.  I'll leave him to
+> make a case or not.
 
-I tried various kernel and patches versions since this morning:
-linux-2.6.9 -> PASSED
-linux-2.6.10-rc1-CITI_NFS4_ALL-2.dif -> PASSED
-linux-2.6.10-rc1-CITI_NFS4_ALL-3.dif -> (answer soon)
-linux-2.6.10-rc1-CITI_NFS4_ALL-4.dif -> FAILED
+Well, they've been waiting around longer than I'd like, but they're also
+not completely trivial, so I hate to drop them in right before 2.6.11.
 
-The problem is between in the NFS4_ALL-4.dif or NFS4_ALL-3.dif ...
+> > > The rest could be safely delayed if that seem appropriate, but they are 
+> > > either quite trivial or (for the last one) quite well tested.
+> > 
+> > Maybe just the readdir and append patches for 2.6.11??
+> 
+> I'm OK with that if Bruce is.
 
+OK.  If someone else cares passionately about getting the lockd callback
+problem fixed as soon as possible, they can test and speak up.  They
+seem fine to me, but I haven't gotten much feedback on them.
 
-Vincent
+--b.
 
 
 -------------------------------------------------------
