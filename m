@@ -1,23 +1,22 @@
-From: Philippe Troin <phil@fifi.org>
-Subject: Re: [NFS client] NFS locks not released on abnormal process termination
-Date: 06 Dec 2003 11:50:55 -0800
+From: "Weber, Eugene F (Gene)" <efw@agere.com>
+Subject: RE: RPC Time Out
+Date: Fri, 5 Dec 2003 07:06:29 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <87n0a5sp28.fsf@ceramic.fifi.org>
-References: <20031206044852.26806.qmail@web20021.mail.yahoo.com>
+Message-ID: <FEF7905AD5F3DE4988CBEF096C280A4C1A490C@pauex2ku02.agere.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1ASiSA-0007Wt-T6
-	for nfs@lists.sourceforge.net; Sat, 06 Dec 2003 11:50:58 -0800
-Received: from tantale.fifi.org ([216.27.190.146] ident=root)
+	id 1ASEjB-0002Zl-5o
+	for nfs@lists.sourceforge.net; Fri, 05 Dec 2003 04:06:33 -0800
+Received: from alageremail2.agere.com ([192.19.192.110])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
-	id 1ASiSA-0006Xz-JU
-	for nfs@lists.sourceforge.net; Sat, 06 Dec 2003 11:50:58 -0800
-To: Kenny Simpson <theonetruekenny@yahoo.com>
-In-Reply-To: <20031206044852.26806.qmail@web20021.mail.yahoo.com>
+	id 1ASEjA-00048k-NH
+	for nfs@lists.sourceforge.net; Fri, 05 Dec 2003 04:06:32 -0800
+To: "Ian Kent" <raven@themaw.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,52 +29,112 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Kenny Simpson <theonetruekenny@yahoo.com> writes:
+Hi Ian,
 
-> I have a up-to-date RH9 (kernel 2.4.20-24.9, nfs utils 1.0.1-3.9) I'm using as
-> an NFS client (the server is a NetApp), and I'm trying to use advisory locking
-> of a file.
-> If the process that locks the file exits normally, the lock is released, and
-> everything is fine.
-> However, if the process aborts, the lock is left with no clear way to remove
-> it.  I must remove the file to get rid of the lock.
-> 
-> Details:
-> Here is a test case:
-> int main()
-> {
->   int fd = open("file", O_RDWR);
->   if (lockf( fd, F_TLOCK, 0 ) < 0)
-> ....  print error message query owner
->   pause();
->   close( fd );
-> }
-> 
-> If I run this, when it gets to the pause(), I can clearly see in /proc/locks
-> the process owning the lock.
-> If I then kill -ABRT <pid>, the entry in /proc/locks goes away, but the lock is
-> not removed from the server.
-> When I run the program a second time, the lock acquire failes, and it says the
-> (now defunct) old process still owns the lock.  Since I cannot easily make
-> another process with the id of the original, I seem to have no way to
-> explicitly release the lock.
+Thanks for the suggestion. showmount -e on the server produced:
+Export list for localhost.localdomain:
 
-I've also seen this behavior witht the stock 2.4.22 and 2.4.23
-kernels.
+So I ran exportfs -ra. That produced:
+exportfs: No 'sync' or 'async' option specified for export
+"192.168.2.51"/dev/cdrom".
+  Assuming default behavior ('sync').
+  NOTE: this default has changed from previous versions
+exportfs: No 'sync' or 'async' option specified for export
+"192.168.2.51"/home/efw".
+  Assuming default behavior ('sync').
+  NOTE: this default has changed from previous versions
+192.168.2.51:/dev/hdc: Not a directory
 
-See the thread:
+Now showmount -e on the server produced:
+Export list for localhost.localdomain:
+/dev/hdc 192.186.2.51
+/home/efw 192.186.2.51
 
- http://sourceforge.net/mailarchive/forum.php?thread_id=3213117&forum_id=4930
- 
- 
-> I even ran ethereal to watch which NLM requests were being made.  No unlock
-> request was ever sent, so I don't think this can be a server issue.
-> 
-> Any ideas?  Is it supposed to work this way?
+(Why /dev/hdc and not /dev/cdrom?)
 
-No and no.
+But the next time I ran it I got an RPC timeout. Same with running
+showmount -e 192.186.2.57 on the client. One time it shows the two =
+lines,
+other times it times out.
 
-Phil.
+Every time I try mount 192.168.2.57:/home/efw /fred I get and RPC =
+timeout.
+
+Could my network be slow or dropping data?
+
+Thanks & Regards,
+
+Gene
+
+-----Original Message-----
+From: Ian Kent [mailto:raven@themaw.net]
+Sent: Thursday, December 04, 2003 1:16 AM
+To: Weber, Eugene F (Gene)
+Cc: nfs@lists.sourceforge.net
+Subject: Re: [NFS] RPC Time Out
+
+
+On Thu, 4 Dec 2003, Ian Kent wrote:
+
+> On Mon, 1 Dec 2003, Weber, Eugene F (Gene) wrote:
+>
+> >
+> > SETTING UP THE CLIENT
+> > =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+> > rpcinfo -p on the Debian laptop gave an rpc error. I saw
+> > that none of the services existed anywhere on the
+> > machine. I installed package "portmap_5-2_i386.deb"
+> > and package "nfs-common_1.0-2_i386.deb". After the
+> > successful installs, portmap, statd and lockd all existed
+> > under /sbin. The installation also said it started each of
+> > the services. rpcinfo -p now showed:
+> >
+> > program vers proto port
+> > 100000 2 tcp 111 portmapper
+> > 100000 2 udp 111 portmapper
+> > 100024 1 udp 1024 status
+> > 100024 1 tcp 1024 status
+> >
+> > I though perhaps lockd was not started, but executing it
+> > and then checking rpcinfo -p gives the same result??
+> > The shown services now seemed to be launched at boot
+> > up.
+> >
+> > rpcinfo -p 192.168.2.57 from the client gives the same
+> > result as doing rpcinfo -p on the server. Likewise doing
+> > rpcinfo -p 192.168.2.51 from the server gives the same
+> > result as doing rpcinfo -p on the client.
+>
+> But what does a showmount -e show on the server and what does
+> a showmount -e 192.168.2.57 give on the client.
+>
+>
+
+All I'm trying to say is "can you see the servers' export list".
+
+ie. showmount -e <server ip>
+
+on the client
+
+You can check your exports list on the server using exportfs but if you
+use showmount -e it will fail if the rpc service is not registered.
+
+Just a check.
+
+If your export lists are not what you expect then re-export them with
+
+exportfs -ra
+
+should fix it up.
+
+Worth a try!
+
+--=20
+
+   ,-._|\    Ian Kent
+  /      \   Perth, Western Australia
+  *_.--._/   E-mail: raven@themaw.net
+        v    Web: http://themaw.net/
 
 
 -------------------------------------------------------
