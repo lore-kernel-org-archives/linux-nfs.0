@@ -1,30 +1,27 @@
-From: "David S. Miller" <davem@redhat.com>
+From: kuznet@ms2.inr.ac.ru
 Subject: Re: [PATCH] zerocopy NFS for 2.5.36
-Date: Sun, 13 Oct 2002 23:15:34 -0700 (PDT)
+Date: Mon, 14 Oct 2002 14:45:33 +0400 (MSD)
 Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <20021013.231534.08939486.davem@redhat.com>
-References: <20020918.171431.24608688.taka@valinux.co.jp>
-	<15786.23306.84580.323313@notabene.cse.unsw.edu.au>
+Message-ID: <200210141045.OAA10901@sex.inr.ac.ru>
+References: <20021013.231534.08939486.davem@redhat.com>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Cc: taka@valinux.co.jp, linux-kernel@vger.kernel.org,
-	nfs@lists.sourceforge.net, kuznet@ms2.inr.ac.ru
+Cc: neilb@cse.unsw.edu.au, taka@valinux.co.jp,
+	linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
 Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: neilb@cse.unsw.edu.au
-In-Reply-To: <15786.23306.84580.323313@notabene.cse.unsw.edu.au>
+To: davem@redhat.com (David S. Miller)
+In-Reply-To: <20021013.231534.08939486.davem@redhat.com> from "David S. Miller" at Oct 13, 2 11:15:34 pm
 List-ID: <nfs.lists.sourceforge.net>
 
-   From: Neil Brown <neilb@cse.unsw.edu.au>
-   Date: Mon, 14 Oct 2002 15:50:02 +1000
+Hello!
 
-    Would you like to see if davem is happy with that bit first and get
-    it in?  Then I will be happy to forward the nfsd specific bit.
-   
-Alexey is working on this, or at least he was. :-)
-(Alexey this is about the UDP cork changes)
+> Alexey is working on this, or at least he was. :-)
+> (Alexey this is about the UDP cork changes)
 
-    I'm bit I'm not very sure about is the 'shadowsock' patch for having
-    several xmit sockets, one per CPU.  What sort of speedup do you get
-    from this?  How important is it really?
-   
-Personally, it seems rather essential for scalability on SMP.
+I took two patches of the batch:
+
+va10-hwchecksum-2.5.36.patch
+va11-udpsendfile-2.5.36.patch
+
+I did not worry about the rest i.e. sunrpc/* part.
+
+Alexey
