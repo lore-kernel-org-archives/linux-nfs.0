@@ -1,21 +1,19 @@
-From: Ben Leslie <benno@sesgroup.net>
-Subject: mountd --no-tcp -p bugs?
-Date: Tue, 11 Feb 2003 11:28:46 +1100
+From: NeilBrown <neilb@cse.unsw.edu.au>
+Subject: [PATCH] kNFSd - 4 of 5 - Fix problem where knfsd wouldn't release filesystem on unexport.
+Date: Tue, 11 Feb 2003 15:37:24 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030211002846.GC7774@retsil.sesgroup.com.au>
-Reply-To: benno@sesgroup.net
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Message-ID: <E18iSAe-0008Ha-00@notabene.cse.unsw.edu.au>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from holly.sesgroup.net
-	([203.108.123.37] helo=holly.sesgroup.com.au ident=postfix)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18iOIA-0004wV-00
-	for <nfs@lists.sourceforge.net>; Mon, 10 Feb 2003 16:28:55 -0800
-Received: from retsil.sesgroup.com.au (retsil.sesgroup.com.au [10.0.0.59])
-	by holly.sesgroup.com.au (Postfix) with ESMTP id CED643405D
-	for <nfs@lists.sourceforge.net>; Tue, 11 Feb 2003 11:28:48 +1100 (EST)
-To: nfs@lists.sourceforge.net
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18iSAz-0005vN-00
+	for <nfs@lists.sourceforge.net>; Mon, 10 Feb 2003 20:37:46 -0800
+Received: From
+	notabene.cse.unsw.edu.au ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
+	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>) By
+	tone With Smtp ; Tue, 11 Feb 2003 15:37:33 +1100
+To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,72 +26,29 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi all,
 
-I'm running into a couple of problems with mountd.
+### Comments for ChangeSet
 
-I'm using nfs-kernel-server version 1:1.0-2 package 
-provided in Debian stable. However looking at the source
-seems to indicate the same problems would exist in current
-cvs version.
+Problem was that the cache was being updated inplace, rather
+than swapping in a new entry, so old filesystem pointers
+were overwritten without being released.
 
-Problem 1/
+ ----------- Diffstat output ------------
+ ./fs/nfsd/export.c |    2 +-
+ 1 files changed, 1 insertion(+), 1 deletion(-)
 
-The -n flag (short for --no-tcp) is ignored.
-
-To reproduce: rpc.mountd -n
-
-The problem seems to be in utils/mountd/mountd.c.
-
-while ((c = getopt_long(argc, argv, "o:Fd:f:p:P:hN:V:v", longopts, NULL)) != EOF)
-
-Probably should be:
-
-while ((c = getopt_long(argc, argv, "o:Fd:f:p:P:hN:V:vn", longopts, NULL)) != EOF)
-
-
-Problem 2/
-
-The --no-tcp and -p <portnum> options don't play well together. 
-Specifically, if you specify --no-tcp the -p option is ignored. I couldn't
-find anything to indicate that this was the desired behaviour.
-
-The problem here seems to be in the rpc_init() function (support/nfs/rpcmisc.c).
-
-Specifically this bit:
-
-if ((_rpcfdtype == 0) || (_rpcfdtype == SOCK_DGRAM)) {
-	static SVCXPRT *last_transp = NULL;
+diff ./fs/nfsd/export.c~current~ ./fs/nfsd/export.c
+--- ./fs/nfsd/export.c~current~	2003-02-11 14:25:42.000000000 +1100
++++ ./fs/nfsd/export.c	2003-02-11 14:25:42.000000000 +1100
+@@ -691,7 +691,7 @@ exp_export(struct nfsctl_export *nxp)
+ 	new.ex_anon_gid = nxp->ex_anon_gid;
+ 	new.ex_fsid = nxp->ex_dev;
  
-	if (_rpcfdtype == 0) {
-		if (last_transp
-		    && (!defport || defport == last_transp->xp_port)) {
-			transp = last_transp;
-			goto udp_transport;
-		}
-		if (defport == 0)
-			sock = RPC_ANYSOCK;
-		else if ((sock = makesock(defport, IPPROTO_UDP)) < 0) {
-			xlog(L_FATAL, "%s: cannot make a UDP socket\n",
-					name);
-		}
-	}
-	if (sock == RPC_ANYSOCK)
-		sock = svcudp_socket (prog, 1);
-	transp = svcudp_create(sock);
-
-
-defport is only looked at if the _rpcfgtype is set to zero, which 
-seems to me to be incorrect behaviour. However, since the rpc_init()
-function is probably used by things other than mountd, chaning this
-behaviour may have other unintended side affects. (Or I could be wrong
-and this is indeed the correct behaviour, in which case the docs should
-probably explain this.)
-
-Cheers,
-
-Benno
-
+-	exp = svc_export_lookup(&new, 2);
++	exp = svc_export_lookup(&new, 1);
+ 
+ 	if (exp == NULL)
+ 		goto finish;
 
 
 -------------------------------------------------------
