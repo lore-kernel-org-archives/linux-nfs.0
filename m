@@ -1,27 +1,25 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Greg Banks <gnb@melbourne.sgi.com>
 Subject: Re: [PATCH] 1/3 - RPC metrics support
-Date: Thu, 01 Apr 2004 20:41:18 -0500
+Date: Fri, 02 Apr 2004 12:33:03 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1080870078.10521.53.camel@lade.trondhjem.org>
-References: <482A3FA0050D21419C269D13989C61130435DE4C@lavender-fe.eng.netapp.com>
-	 <1080866187.10521.14.camel@lade.trondhjem.org>
-	 <20040402004924.GG9409@sgi.com>
+Message-ID: <406CD0DF.26DA81A0@melbourne.sgi.com>
+References: <482A3FA0050D21419C269D13989C611302B07BF6@lavender-fe.eng.netapp.com>
+		 <20040401235803.GA9409@sgi.com> <1080866042.10521.11.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Charles Lever <Charles.Lever@netapp.com>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: Charles Lever <Charles.Lever@netapp.com>,
+        Jeremy McNicoll <jeremy@mcnicoll.ca>,
+        Patrick Mochel <mochel@digitalimplant.org>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B9DgS-0002Qc-B0
-	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 17:41:24 -0800
-Received: from dh132.citi.umich.edu
-	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.30)
-	id 1B9DgR-0003Bm-W1
-	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 17:41:24 -0800
-To: Greg Banks <gnb@sgi.com>
-In-Reply-To: <20040402004924.GG9409@sgi.com>
+	id 1B9EUg-0002oQ-TF
+	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 18:33:18 -0800
+Received: from mtvcafw.sgi.com ([192.48.171.6] helo=omx2.sgi.com)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1B9EUg-0007x4-Ig
+	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 18:33:18 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,35 +32,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, 2004-04-01 at 19:49, Greg Banks wrote:
+Trond Myklebust wrote:
+> 
+> On Thu, 2004-04-01 at 18:58, Greg Banks wrote:
+> 
+> > struct rpc_metric_totals {
+> >       u64 mt_ops;         /* count of operations */
+> 
+> Let's not go there... 64-bit arithmetic on a 32-bit platform is still
+> not one of gcc's strong points, 
 
-> Why not just save a copy of @devname in nfs_get_sb() ?  It's
-> the same name that's stored in struct vfsmount and reported
-> in /proc/mounts.
+This is of course not something I considered ;-)
 
-That is very different. That we can do...
+> so let's not force everything into one
+> mold simply in order to save a couple of lines of code. Performance does
+> matter too...
 
-Please don't confuse the export path and the device name. nfss->mnt_path
-is the former: it is part of the NFS mount ABI, and contains the path
-that we use to look up the mountpoint on the NFSv4 server. It allows us,
-for instance, to recover in the case where the server changes the
-filehandle of the mountpoint (NFSv4 servers are allowed to have
-filehandles that expire).
-Adding the export path to the NFSv2/v3 mount structures would for
-instance allow us to do things such as identifying whether or not the
-user is mounting a parent/subdirectory of one of our current mount
-points.
+Fair enough.
 
-
-The device name OTOH is just whatever label the caller of sys_mount()
-feels like passing down to the kernel. It will usually contain the name
-of the server and the export path ('cos that's what the nfs-utils
-"mount" does), but it does not have to, and we currently do not depend
-on it taking any particular value.
-
-
-Cheers,
-  Trond
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
 
 -------------------------------------------------------
