@@ -1,23 +1,23 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSdv4 - 8 of 8 - Add data integrity to serve rside gss
-Date: Thu, 25 Mar 2004 12:06:55 +1100
+Subject: [PATCH] kNFSdv4 - 6 of 8 - Improve UTF8 checking.
+Date: Thu, 25 Mar 2004 12:06:54 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1B6JKh-0007EG-00@notabene>
+Message-ID: <E1B6JKg-0007Dw-00@notabene>
 References: <20040325120312.27644.patches@notabene>
 Cc: nfs@lists.sourceforge.net,  "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B6JKv-0006cm-IZ
-	for nfs@lists.sourceforge.net; Wed, 24 Mar 2004 17:07:09 -0800
+	id 1B6JKs-0006bg-An
+	for nfs@lists.sourceforge.net; Wed, 24 Mar 2004 17:07:06 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.30)
-	id 1B6JKu-0002as-Mr
-	for nfs@lists.sourceforge.net; Wed, 24 Mar 2004 17:07:08 -0800
+	id 1B6JKr-0002a6-M4
+	for nfs@lists.sourceforge.net; Wed, 24 Mar 2004 17:07:05 -0800
 Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
 	(for <akpm@osdl.org>) (for <nfs@lists.sourceforge.net>)
 	(for <bfields@fieldses.org>) By note With Smtp ;
-	Thu, 25 Mar 2004 12:07:03 +1100
+	Thu, 25 Mar 2004 12:07:01 +1100
 To: Andrew Morton <akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,276 +32,203 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-From: "J. Bruce Fields" <bfields@fieldses.org>
-
-rpcsec_gss supports three security levels:
-	1. authentication only: sign the header of each rpc request and
-	   response.
-	2. integrity: sign the header and body of each rpc request and response.
-	3. privacy: sign the header and encrypt the body of each rpc request
-	   and response.
-
-The first 2 are already supported on the client; this adds integrity support
-on the server.
-
+>From Fred: We don't do all the utf8 checking we could in the kernel, but we do
+some simple checks.  Implement slightly stricter, and probably more efficient,
+checking.
 
  ----------- Diffstat output ------------
- ./include/linux/sunrpc/svcauth_gss.h  |    9 -
- ./net/sunrpc/auth_gss/gss_krb5_mech.c |    2 
- ./net/sunrpc/auth_gss/svcauth_gss.c   |  172 ++++++++++++++++++++++++++++++++--
- 3 files changed, 168 insertions(+), 15 deletions(-)
+ ./fs/nfsd/nfs4xdr.c |  153 +++++++++++++++++++++++++++-------------------------
+ 1 files changed, 80 insertions(+), 73 deletions(-)
 
-diff ./include/linux/sunrpc/svcauth_gss.h~current~ ./include/linux/sunrpc/svcauth_gss.h
---- ./include/linux/sunrpc/svcauth_gss.h~current~	2004-03-25 11:45:36.000000000 +1100
-+++ ./include/linux/sunrpc/svcauth_gss.h	2004-03-25 11:47:43.000000000 +1100
-@@ -22,14 +22,5 @@
- int gss_svc_init(void);
- int svcauth_gss_register_pseudoflavor(u32 pseudoflavor, char * name);
+diff ./fs/nfsd/nfs4xdr.c~current~ ./fs/nfsd/nfs4xdr.c
+--- ./fs/nfsd/nfs4xdr.c~current~	2004-03-25 11:43:35.000000000 +1100
++++ ./fs/nfsd/nfs4xdr.c	2004-03-25 11:43:38.000000000 +1100
+@@ -58,93 +58,94 @@
  
--
--struct gss_svc_data {
--	/* decoded gss client cred: */
--	struct rpc_gss_wire_cred	clcred;
--	/* pointer to the beginning of the procedure-specific results, which
--	 * may be encrypted/checksummed in svcauth_gss_release: */
--	u32				*body_start;
--};
--
- #endif /* __KERNEL__ */
- #endif /* _LINUX_SUNRPC_SVCAUTH_GSS_H */
-
-diff ./net/sunrpc/auth_gss/gss_krb5_mech.c~current~ ./net/sunrpc/auth_gss/gss_krb5_mech.c
---- ./net/sunrpc/auth_gss/gss_krb5_mech.c~current~	2004-03-25 11:45:36.000000000 +1100
-+++ ./net/sunrpc/auth_gss/gss_krb5_mech.c	2004-03-25 11:47:43.000000000 +1100
-@@ -236,6 +236,8 @@ static int __init init_kerberos_module(v
- 	gss_register_triple(RPC_AUTH_GSS_KRB5I, gm, 0, RPC_GSS_SVC_INTEGRITY);
- 	if (svcauth_gss_register_pseudoflavor(RPC_AUTH_GSS_KRB5, "krb5"))
- 		printk("Failed to register %s with server!\n", "krb5");
-+	if (svcauth_gss_register_pseudoflavor(RPC_AUTH_GSS_KRB5I, "krb5i"))
-+		printk("Failed to register %s with server!\n", "krb5i");
- 	gss_mech_put(gm);
- 	return 0;
- }
-
-diff ./net/sunrpc/auth_gss/svcauth_gss.c~current~ ./net/sunrpc/auth_gss/svcauth_gss.c
---- ./net/sunrpc/auth_gss/svcauth_gss.c~current~	2004-03-25 11:45:36.000000000 +1100
-+++ ./net/sunrpc/auth_gss/svcauth_gss.c	2004-03-25 11:47:43.000000000 +1100
-@@ -670,6 +670,68 @@ out:
- 	return stat;
- }
+ #define NFSDDBG_FACILITY		NFSDDBG_XDR
  
-+static inline int
-+read_u32_from_xdr_buf(struct xdr_buf *buf, int base, u32 *obj)
-+{
-+	u32     raw;
-+	int     status;
-+
-+	status = read_bytes_from_xdr_buf(buf, base, &raw, sizeof(*obj));
-+	if (status)
-+		return status;
-+	*obj = ntohl(raw);
-+	return 0;
-+}
-+
-+/* It would be nice if this bit of code could be shared with the client.
-+ * Obstacles:
-+ *	The client shouldn't malloc(), would have to pass in own memory.
-+ *	The server uses base of head iovec as read pointer, while the
-+ *	client uses separate pointer. */
-+static int
-+unwrap_integ_data(struct xdr_buf *buf, u32 seq, struct gss_ctx *ctx)
-+{
-+	int stat = -EINVAL;
-+	u32 integ_len, maj_stat;
-+	struct xdr_netobj mic;
-+	struct xdr_buf integ_buf;
-+
-+	integ_len = ntohl(svc_getu32(&buf->head[0]));
-+	if (integ_len & 3)
-+		goto out;
-+	if (integ_len > buf->len)
-+		goto out;
-+	if (xdr_buf_subsegment(buf, &integ_buf, 0, integ_len))
-+		BUG();
-+	/* copy out mic... */
-+	if (read_u32_from_xdr_buf(buf, integ_len, &mic.len))
-+		BUG();
-+	if (mic.len > RPC_MAX_AUTH_SIZE)
-+		goto out;
-+	mic.data = kmalloc(mic.len, GFP_KERNEL);
-+	if (!mic.data)
-+		goto out;
-+	if (read_bytes_from_xdr_buf(buf, integ_len + 4, mic.data, mic.len))
-+		goto out;
-+	maj_stat = gss_verify_mic(ctx, &integ_buf, &mic, NULL);
-+	if (maj_stat != GSS_S_COMPLETE)
-+		goto out;
-+	if (ntohl(svc_getu32(&buf->head[0])) != seq)
-+		goto out;
-+	stat = 0;
-+out:
-+	return stat;
-+}
-+
-+struct gss_svc_data {
-+	/* decoded gss client cred: */
-+	struct rpc_gss_wire_cred	clcred;
-+	/* pointer to the beginning of the procedure-specific results,
-+	 * which may be encrypted/checksummed in svcauth_gss_release: */
-+	u32				*body_start;
-+	struct rsc			*rsci;
-+};
-+
- /*
-  * Accept an rpcsec packet.
-  * If context establishment, punt to user space
-@@ -701,6 +763,8 @@ svcauth_gss_accept(struct svc_rqst *rqst
- 	if (!svcdata)
- 		goto auth_err;
- 	rqstp->rq_auth_data = svcdata;
-+	svcdata->body_start = 0;
-+	svcdata->rsci = NULL;
- 	gc = &svcdata->clcred;
+-/*
+- * From Peter Astrand <peter@cendio.se>: The following routines check
+- * whether a filename supplied by the client is valid.
+- */
+-static const char trailing_bytes_for_utf8[256] = {
+-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
++static const char utf8_byte_len[256] = {
++	1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
++	1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
++	1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
++	1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+ 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+ 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+-	1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+-	2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2, 3,3,3,3,3,3,3,3,4,4,4,4,5,5,5,5
++	0,0,2,2,2,2,2,2,2,2,2,2,2,2,2,2, 2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
++	3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3, 4,4,4,4,4,4,4,4,5,5,5,5,6,6,0,0
+ };
  
- 	/* start of rpc packet is 7 u32's back from here:
-@@ -754,9 +818,6 @@ svcauth_gss_accept(struct svc_rqst *rqst
- 		break;
- 	case RPC_GSS_PROC_DATA:
- 	case RPC_GSS_PROC_DESTROY:
--		/* integrity and privacy unsupported: */
--		if (gc->gc_svc != RPC_GSS_SVC_NONE)
--			goto auth_err;
- 		*authp = rpcsec_gsserr_credproblem;
- 		rsci = gss_svc_searchbyctx(&gc->gc_ctx);
- 		if (!rsci)
-@@ -841,10 +902,28 @@ svcauth_gss_accept(struct svc_rqst *rqst
- 		*authp = rpcsec_gsserr_ctxproblem;
- 		if (gss_write_verf(rqstp, rsci->mechctx, gc->gc_seq))
- 			goto auth_err;
--		/* For use when wrapping: */
--		svcdata->body_start = resv->iov_base + 1;
- 		rqstp->rq_cred = rsci->cred;
- 		get_group_info(rsci->cred.cr_group_info);
-+		*authp = rpc_autherr_badcred;
-+		switch (gc->gc_svc) {
-+		case RPC_GSS_SVC_NONE:
-+			break;
-+		case RPC_GSS_SVC_INTEGRITY:
-+			if (unwrap_integ_data(&rqstp->rq_arg,
-+					gc->gc_seq, rsci->mechctx))
-+				goto auth_err;
-+			svcdata->rsci = rsci;
-+			cache_get(&rsci->h);
-+			/* placeholders for length and seq. number: */
-+			svcdata->body_start = resv->iov_base + resv->iov_len;
-+			svc_putu32(resv, 0);
-+			svc_putu32(resv, 0);
-+			break;
-+		case RPC_GSS_SVC_PRIVACY:
-+			/* currently unsupported */
-+		default:
-+			goto auth_err;
-+		}
- 		ret = SVC_OK;
- 		goto out;
- 	}
-@@ -867,14 +946,95 @@ out:
- static int
- svcauth_gss_release(struct svc_rqst *rqstp)
+ static inline int
+-is_legal_iso_utf8_sequence(unsigned char *source, int length)
++is_legal_utf8_sequence(unsigned char *source, int length)
  {
-+	struct gss_svc_data *gsd = (struct gss_svc_data *)rqstp->rq_auth_data;
-+	struct rpc_gss_wire_cred *gc = &gsd->clcred;
-+	struct xdr_buf *resbuf = &rqstp->rq_res;
-+	struct xdr_buf integ_buf;
-+	struct xdr_netobj mic;
-+	struct iovec *resv;
-+	u32 *p;
-+	int integ_offset, integ_len;
-+	int stat = -EINVAL;
-+
-+	if (gc->gc_proc != RPC_GSS_PROC_DATA) 
-+		goto out;
-+	/* Release can be called twice, but we only wrap once. */
-+	if (gsd->body_start == 0)
-+		goto out;
-+	/* normally not set till svc_send, but we need it here: */
-+	resbuf->len = resbuf->head[0].iov_len
-+		+ resbuf->page_len + resbuf->tail[0].iov_len;
-+	switch (gc->gc_svc) {
-+	case RPC_GSS_SVC_NONE:
-+		break;
-+	case RPC_GSS_SVC_INTEGRITY:
-+		p = gsd->body_start;
-+		gsd->body_start = 0;
-+		/* move accept_stat to right place: */
-+		memcpy(p, p + 2, 4);
-+		/* don't wrap in failure case: */
-+		/* Note: counting on not getting here if call was not even
-+		 * accepted! */
-+		if (*p != rpc_success) {
-+			resbuf->head[0].iov_len -= 2 * 4;
-+			goto out;
-+		}
-+		p++;
-+		integ_offset = (u8 *)(p + 1) - (u8 *)resbuf->head[0].iov_base;
-+		integ_len = resbuf->len - integ_offset;
-+		BUG_ON(integ_len % 4);
-+		*p++ = htonl(integ_len);
-+		*p++ = htonl(gc->gc_seq);
-+		if (xdr_buf_subsegment(resbuf, &integ_buf, integ_offset,
-+					integ_len))
-+			BUG();
-+		if (resbuf->page_len == 0
-+			&& resbuf->tail[0].iov_len + RPC_MAX_AUTH_SIZE
-+				< PAGE_SIZE) {
-+			BUG_ON(resbuf->tail[0].iov_len);
-+			/* Use head for everything */
-+			resv = &resbuf->head[0];
-+		} else if (resbuf->tail[0].iov_base == NULL) {
-+			/* copied from nfsd4_encode_read */
-+			svc_take_page(rqstp);
-+			resbuf->tail[0].iov_base = page_address(rqstp
-+					->rq_respages[rqstp->rq_resused-1]);
-+			rqstp->rq_restailpage = rqstp->rq_resused-1;
-+			resbuf->tail[0].iov_len = 0;
-+			resv = &resbuf->tail[0];
-+		} else {
-+			resv = &resbuf->tail[0];
-+		}
-+		mic.data = (u8 *)resv->iov_base + resv->iov_len + 4;
-+		if (gss_get_mic(gsd->rsci->mechctx, 0, &integ_buf, &mic))
-+			goto out_err;
-+		svc_putu32(resv, htonl(mic.len));
-+		memset(mic.data + mic.len, 0,
-+				round_up_to_quad(mic.len) - mic.len);
-+		resv->iov_len += XDR_QUADLEN(mic.len) << 2;
-+		/* not strictly required: */
-+		resbuf->len += XDR_QUADLEN(mic.len) << 2;
-+		BUG_ON(resv->iov_len > PAGE_SIZE);
-+		break;
-+	case RPC_GSS_SVC_PRIVACY:
-+	default:
-+		goto out_err;
-+	}
-+
-+out:
-+	stat = 0;
-+out_err:
- 	if (rqstp->rq_client)
- 		auth_domain_put(rqstp->rq_client);
- 	rqstp->rq_client = NULL;
- 	if (rqstp->rq_cred.cr_group_info)
- 		put_group_info(rqstp->rq_cred.cr_group_info);
- 	rqstp->rq_cred.cr_group_info = NULL;
-+	if (gsd->rsci)
-+		rsc_put(&gsd->rsci->h, &rsc_cache);
-+	gsd->rsci = NULL;
+-	unsigned char a;
+-	unsigned char *srcptr;
++	unsigned char *ptr;
++	unsigned char c;
  
--	return 0;
-+	return stat;
+-	srcptr = source + length;
++	if (length==1) return 1;
+ 
+-	switch (length) {
+-		/* Everything else falls through when "1"... */
++	/* Check for overlong sequence, and check second byte */
++	c = *(source + 1);
++	switch (*source) {
++	case 0xE0: /* 3 bytes */
++		if ( c < 0xA0 ) return 0;
++		break;
++	case 0xF0: /* 4 bytes */
++		if ( c < 0x90 ) return 0;
++		break;
++	case 0xF8: /* 5 bytes */
++		if ( c < 0xC8 ) return 0;
++		break;
++	case 0xFC: /* 6 bytes */
++		if ( c < 0x84 ) return 0;
++		break;
+ 	default:
+-		/* Sequences with more than 6 bytes are invalid */
+-		return 0;
++		if ( (c & 0xC0) != 0x80) return 0;
++	}
+ 
+-		/*
+-		   Byte 3-6 must be 80..BF
+-		*/
+-	case 6:
+-		if ((a = (*--srcptr)) < 0x80 || a > 0xBF) return 0;
+-	case 5:
+-		if ((a = (*--srcptr)) < 0x80 || a > 0xBF) return 0;
+-	case 4:
+-		if ((a = (*--srcptr)) < 0x80 || a > 0xBF) return 0;
+-	case 3:
+-		if ((a = (*--srcptr)) < 0x80 || a > 0xBF) return 0;
+-
+-	case 2:
+-		a = *--srcptr;
+-
+-		/* Upper limit */
+-		if (a > 0xBF)
+-			/* 2nd byte may never be > 0xBF */
+-			return 0;
++	/* Check that trailing bytes look like 10xxxxxx */
++	for (ptr = source++ + length - 1; ptr>source; ptr--)
++		if ( ((*ptr) & 0xC0) != 0x80 ) return 0;
++	return 1;
++}
+ 
+-		/*
+-		   Lower limits checks, to detect non-shortest forms.
+-		   No fall-through in this inner switch.
+-		*/
+-		switch (*source) {
+-		case 0xE0: /* 3 bytes */
+-			if (a < 0xA0) return 0;
+-			break;
+-		case 0xF0: /* 4 bytes */
+-			if (a < 0x90) return 0;
+-			break;
+-		case 0xF8: /* 5 bytes */
+-			if (a < 0xC8) return 0;
+-			break;
+-		case 0xFC: /* 6 bytes */
+-			if (a < 0x84) return 0;
+-			break;
+-		default:
+-			/* In all cases, 2nd byte must be >= 0x80 (because leading
+-			   10...) */
+-			if (a < 0x80) return 0;
+-		}
++/* This does some screening on disallowed unicode characters.  It is NOT
++ * comprehensive.
++ */
++static int
++is_allowed_utf8_char(unsigned char *source, int length)
++{
++	/* We assume length and source point to a valid utf8 sequence */
++	unsigned char c;
+ 
+-	case 1:
+-		/* Invalid ranges */
+-		if (*source >= 0x80 && *source < 0xC2)
+-			/* Multibyte char with value < 0xC2, non-shortest */
+-			return 0;
+-		if (*source > 0xFD)
+-			/* Leading byte starting with 11111110 is illegal */
+-			return 0;
+-		if (!*source)
+-			return 0;
++	/* Disallow F0000 and up (in utf8, F3B08080) */
++	if (*source > 0xF3 ) return 0;
++	c = *(source + 1);
++	switch (*source) {
++	case 0xF3:
++		if (c >= 0xB0) return 0;
++		break;
++	/* Disallow D800-F8FF (in utf8, EDA080-EFA3BF */
++	case 0xED:
++		if (c >= 0xA0) return 0;
++		break;
++	case 0xEE:
++		return 0;
++		break;
++	case 0xEF:
++		if (c <= 0xA3) return 0;
++	/* Disallow FFF9-FFFF (EFBFB9-EFBFBF) */
++		if (c==0xBF)
++			/* Don't need to check <=0xBF, since valid utf8 */
++			if ( *(source+2) >= 0xB9) return 0;
++		break;
+ 	}
+-
+ 	return 1;
  }
  
- static void
++/* This routine should really check to see that the proper stringprep
++ * mappings have been applied.  Instead, we do a simple screen of some
++ * of the more obvious illegal values by calling is_allowed_utf8_char.
++ * This will allow many illegal strings through, but if a client behaves,
++ * it will get full functionality.  The other option (apart from full
++ * stringprep checking) is to limit everything to an easily handled subset,
++ * such as 7-bit ascii.
++ *
++ * Note - currently calling routines ignore return value except as boolean.
++ */
+ static int
+ check_utf8(char *str, int len)
+ {
+@@ -155,11 +156,17 @@ check_utf8(char *str, int len)
+ 	sourceend = str + len;
+ 
+ 	while (chunk < sourceend) {
+-		chunklen = trailing_bytes_for_utf8[*chunk]+1;
++		chunklen = utf8_byte_len[*chunk];
++		if (!chunklen)
++			return nfserr_inval;
+ 		if (chunk + chunklen > sourceend)
+ 			return nfserr_inval;
+-		if (!is_legal_iso_utf8_sequence(chunk, chunklen))
++		if (!is_legal_utf8_sequence(chunk, chunklen))
++			return nfserr_inval;
++		if (!is_allowed_utf8_char(chunk, chunklen))
+ 			return nfserr_inval;
++		if ( (chunklen==1) && (!*chunk) )
++			return nfserr_inval; /* Disallow embedded nulls */
+ 		chunk += chunklen;
+ 	}
+ 
 
 
 -------------------------------------------------------
