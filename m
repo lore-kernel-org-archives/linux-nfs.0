@@ -1,14 +1,14 @@
 From: xiyu@800j.com
 Subject: =?GB2312?B?zvewsre/tdiy+tDFz6LN+NDQ0rXIyMPFu7DM4g==?=
-Date: Mon, 9 Jun 2003 14:14:46 +0800
+Date: Tue, 10 Jun 2003 09:08:34 +0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19PFt3-0001Lz-00@sc8-sf-list1.sourceforge.net>
+Message-ID: <E19PXaC-0001No-00@sc8-sf-list1.sourceforge.net>
 Content-Type: text/html;charset="GB2312"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [61.150.19.169] (helo=800j.com)
+Received: from [61.150.19.56] (helo=800j.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19PFt3-0001Lz-00
-	for <nfs@lists.sourceforge.net>; Sun, 08 Jun 2003 23:12:10 -0700
+	id 19PXaC-0001No-00
+	for <nfs@lists.sourceforge.net>; Mon, 09 Jun 2003 18:05:53 -0700
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
