@@ -1,17 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 8 of 16] nfsd4: fix failure to truncate on some opens
-Date: Tue, 22 Mar 2005 16:42:01 +1100
-Message-ID: <E1DDc9R-0002Ka-Lu@notabene.cse.unsw.edu.au>
+Subject: [PATCH kNFSd 16 of 16] nfsd4: fix indentation in nfsd4_open
+Date: Tue, 22 Mar 2005 16:42:02 +1100
+Message-ID: <E1DDc9S-0002L6-6R@notabene.cse.unsw.edu.au>
 References: <20050322163830.8762.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DDc9c-0006kl-Pc
-	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:12 -0800
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
+	id 1DDcA1-0006lh-Dp
+	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:37 -0800
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1DDc9b-00056L-JC
-	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:12 -0800
+	id 1DDcA0-0005A2-Ts
+	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:37 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -27,57 +27,55 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-An OPEN upgrade on a file already open for WRITE will not upgrade the OPEN,
-but can still truncate the file.
+OK, so it's trivial, but these misaligned comments have been bugging me
+forever....
 
-Signed-off-by: Andy Adamson <andros@citi.umich.edu>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c |   29 +++++++++++++++--------------
- 1 files changed, 15 insertions(+), 14 deletions(-)
+ ./fs/nfsd/nfs4proc.c |   24 ++++++++++++------------
+ 1 files changed, 12 insertions(+), 12 deletions(-)
 
-diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2005-03-22 16:36:35.000000000 +1100
-+++ ./fs/nfsd/nfs4state.c	2005-03-22 16:36:35.000000000 +1100
-@@ -1602,21 +1602,22 @@ nfs4_upgrade_open(struct svc_rqst *rqstp
- 	share_access = ~share_access;
- 	share_access &= open->op_share_access;
- 
--	/* update the struct file */
--	if (share_access & NFS4_SHARE_ACCESS_WRITE) {
--		status = get_write_access(inode);
--		if (status)
--			return nfserrno(status);
--		status = nfsd4_truncate(rqstp, cur_fh, open);
--		if (status) {
--			put_write_access(inode);
--			return status;
--		}
--		/* remember the open */
--		filp->f_mode = (filp->f_mode | FMODE_WRITE) & ~FMODE_READ;
--		set_bit(open->op_share_access, &stp->st_access_bmap);
--		set_bit(open->op_share_deny, &stp->st_deny_bmap);
-+	if (!(share_access & NFS4_SHARE_ACCESS_WRITE))
-+		return nfsd4_truncate(rqstp, cur_fh, open);
-+
-+	status = get_write_access(inode);
-+	if (status)
-+		return nfserrno(status);
-+	status = nfsd4_truncate(rqstp, cur_fh, open);
-+	if (status) {
-+		put_write_access(inode);
-+		return status;
- 	}
-+	/* remember the open */
-+	filp->f_mode = (filp->f_mode | FMODE_WRITE) & ~FMODE_READ;
-+	set_bit(open->op_share_access, &stp->st_access_bmap);
-+	set_bit(open->op_share_deny, &stp->st_deny_bmap);
-+
- 	return nfs_ok;
- }
- 
+diff ./fs/nfsd/nfs4proc.c~current~ ./fs/nfsd/nfs4proc.c
+--- ./fs/nfsd/nfs4proc.c~current~	2005-03-22 16:36:36.000000000 +1100
++++ ./fs/nfsd/nfs4proc.c	2005-03-22 16:36:36.000000000 +1100
+@@ -199,23 +199,23 @@ nfsd4_open(struct svc_rqst *rqstp, struc
+ 		goto out;
+ 	switch (open->op_claim_type) {
+ 		case NFS4_OPEN_CLAIM_NULL:
+-	/*
+-	 * This block of code will (1) set CURRENT_FH to the file being opened,
+-	 * creating it if necessary, (2) set open->op_cinfo,
+-	 * (3) set open->op_truncate if the file is to be truncated
+-	 * after opening, (4) do permission checking.
+-	 */
++			/*
++			 * (1) set CURRENT_FH to the file being opened,
++			 * creating it if necessary, (2) set open->op_cinfo,
++			 * (3) set open->op_truncate if the file is to be
++			 * truncated after opening, (4) do permission checking.
++			 */
+ 			status = do_open_lookup(rqstp, current_fh, open);
+ 			if (status)
+ 				goto out;
+ 			break;
+ 		case NFS4_OPEN_CLAIM_PREVIOUS:
+-	/*
+-	* The CURRENT_FH is already set to the file being opened. This
+-	* block of code will (1) set open->op_cinfo, (2) set
+-	* open->op_truncate if the file is to be truncated after opening,
+-	* (3) do permission checking.
+-	*/
++			/*
++			 * The CURRENT_FH is already set to the file being
++			 * opened.  (1) set open->op_cinfo, (2) set
++			 * open->op_truncate if the file is to be truncated
++			 * after opening, (3) do permission checking.
++			*/
+ 			status = do_open_fhandle(rqstp, current_fh, open);
+ 			if (status)
+ 				goto out;
 
 
 -------------------------------------------------------
