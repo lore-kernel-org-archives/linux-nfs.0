@@ -1,25 +1,24 @@
-From: =?ISO-8859-1?Q?Ga=EBl_Roualland?= <gael.roualland@oleane.net>
-Subject: Re: NFS write speed and file permissions (2.6.0-test10 kernel)
-Date: Wed, 26 Nov 2003 04:19:26 +0100 (CET)
+From: James Pearson <james-p@moving-picture.com>
+Subject: Re: Different NFSSVC_MAXBLKSIZE for udp and tcp clients?
+Date: Wed, 26 Nov 2003 10:43:34 +0000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <0311260406050.1383-100000@oleane.net>
-References: <200311260305.hAQ354Hi001376@hal.oleane.net>
+Message-ID: <3FC483D6.6753DCA3@moving-picture.com>
+References: <3FC3929C.EFFE5CDF@moving-picture.com> <3FC3FD0C.B2DD2183@melbourne.sgi.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=ISO-8859-1
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AOqDJ-0001Ll-00
-	for <nfs@lists.sourceforge.net>; Tue, 25 Nov 2003 19:19:37 -0800
-Received: from hal.oleane.net ([62.161.136.5])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.24)
-	id 1AOqDI-00020o-PT
-	for nfs@lists.sourceforge.net; Tue, 25 Nov 2003 19:19:36 -0800
-To: Stephen Beahm <stephenbeahm@adelphia.net>
-In-Reply-To: <200311260305.hAQ354Hi001376@hal.oleane.net>
+	id 1AOx95-000324-00
+	for <nfs@lists.sourceforge.net>; Wed, 26 Nov 2003 02:43:43 -0800
+Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
+	id 1AOx94-0008I6-ST
+	for nfs@lists.sourceforge.net; Wed, 26 Nov 2003 02:43:43 -0800
+To: Greg Banks <gnb@melbourne.sgi.com>,
+ 	Trond Myklebust <trond.myklebust@fys.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,55 +31,21 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Stephen Beahm a =E9crit :
-> I am seeing huge speed differences in NFS file writes based on file
-> permissions.
->
-> create a test file:
-> dd if=3D/dev/zero of=3Dtestfile bs=3D4k count=3D65535
->
-> chmod 664 testfile
-> time cp testfile /mnt/gwpub
-> real    0m36.818s
-> user    0m0.018s
-> sys     0m2.574s
->
-> chmod 755 testfile
-> time cp testfile /mnt/gwpub
-> real    4m6.056s
-> user    0m0.054s
-> sys     0m5.835s
->
->
-> I can consistently reproduce this problem with a 2.6.0-test9 or 2.6.0-
-> test10 kernel on the client side. There does not seem to be any
-> problems here with a 2.4.22 kernel. Reading does not seem to be
-> affected, only writes. Neither export nor mount options make a
-> difference. If the test is performed as root, all is fast.
->
-> I am using NFSv3 and nfs-utils-1.06.
->
-> This is only an observation and not mean anything:
-> using a 2.4.22 client, open() does not pass any mode,
-> but a 2.6.0-testX client does this: open("/mnt/gwpub/testfile",
-> O_WRONLY|O_CREAT|O_LARGEFILE, 0100755)
+Greg Banks wrote:
+> 
+> James Pearson wrote:
+> >
+> > Is it possible to force a different maximum [rw]size on the server
+> > depending on whether the client uses udp or tcp?
+> 
+> If someone writes the code, e.g. some new export options?
 
-I'm experiencing the exact same problem with 2.6.0-test10 as NFS client
-and a FreeBSD server, in NFSv2 and NFSv3.
+Do you know if this would be possible with 2.4 kernels?
 
-Looking at the network dumps, it looks like writes are being done
-synchronously when the file permissions is 755, just as if O_SYNC
-was set. Also, when open is called with perm 0755, the CREATE call is
-passed a mode of 0100755, but in its reply the server only aknowledges
-0755, while when open is called with 0644, CREATE is passed
-exactly that and the server agrees. I don't know if that matters,
-though...
+If it is possible, and someone could give me some pointers, I won't mind
+giving it a a go ...
 
-Ga=EBl.
-
---=20
-Ga=EBl Roualland -+- gael.roualland@oleane.net
-
+James Pearson
 
 
 -------------------------------------------------------
