@@ -1,17 +1,18 @@
-From: "Tanisha Reyna" <zoebeth@aol.com>
-Subject: Take control    .....................      sex
-Date: Fri, 02 May 03 16:51:06 GMT
+From: Chuck Lever <cel@citi.umich.edu>
+Subject: [PATCH] BPB (brown paper bag) rpc_show_tasks
+Date: Fri, 2 May 2003 15:37:55 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <brq5k-980$n0@8ec.y28>
+Message-ID: <Pine.BSO.4.33.0305021535490.2377-100000@citi.umich.edu>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="BB70575AFC0"
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Linux NFS List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from cookeville-24-158-162-27.midtn.chartertn.net ([24.158.162.27])
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19Begn-0003at-00
-	for <nfs@lists.sourceforge.net>; Fri, 02 May 2003 10:51:18 -0700
-To: <nfs@lists.sourceforge.net>
+Received: from citi.umich.edu ([141.211.92.141])
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19BgM2-0007s3-00
+	for <nfs@lists.sourceforge.net>; Fri, 02 May 2003 12:37:58 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,80 +25,33 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+hi trond-
 
---BB70575AFC0
-Content-Type: text/html;
-Content-Transfer-Encoding: quoted-printable
+the recently-applied patch to fix the rpc_show_tasks() Oops is incomplete.
+this applies over 2.5.68 and should address all of the issues in
+rpc_show_tasks().
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1=
-">
-<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
-<STYLE></STYLE>
+diff -Naurp old/net/sunrpc/sched.c new/net/sunrpc/sched.c
+--- old/net/sunrpc/sched.c	Fri May  2 15:31:37 2003
++++ new/net/sunrpc/sched.c	Fri May  2 15:32:43 2003
+@@ -1149,9 +1149,10 @@ void rpc_show_tasks(void)
+ 	alltask_for_each(t, le, &all_tasks)
+ 		printk("%05d %04d %04x %06d %8p %6d %8p %08ld %8s %8p %8p\n",
+ 			t->tk_pid,
+-			(t->tk_msg.rpc_proc->p_proc ? t->tk_msg.rpc_proc->p_proc : -1),
++			(t->tk_msg.rpc_proc ? t->tk_msg.rpc_proc->p_proc : -1),
+ 			t->tk_flags, t->tk_status,
+-			t->tk_client, t->tk_client->cl_prog,
++			t->tk_client,
++			(t->tk_client ? t->tk_client->cl_prog : 0),
+ 			t->tk_rqstp, t->tk_timeout,
+ 			rpc_qname(t->tk_rpcwait),
+ 			t->tk_action, t->tk_exit);
 
-<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV><FONT face=3DArial size=3D4>&nbsp;&nbsp;&nbsp;<STRONG><FONT face=3DVe=
-rdana 
-size=3D3>How would you feel about some </FONT></STRONG></FONT><STRONG><FON=
-T 
-face=3DArial><FONT face=3DVerdana>quick </FONT></FONT></STRONG></DIV>
-<DIV><STRONG><FONT face=3DVerdana>&nbsp;&nbsp; <EM>Debt Relief</EM> with N=
-O credit 
-check or</FONT></STRONG></DIV>
-<DIV><FONT face=3DVerdana size=3D4><FONT size=3D3><STRONG>&nbsp;&nbsp; hom=
-eowner 
-requirement?&nbsp;&nbsp;Easy and fast</STRONG></FONT>!&nbsp;</FONT></DIV>
-<DIV><FONT face=3DArial size=3D4></FONT>&nbsp;</DIV>
-<DIV><FONT face=3D"Comic Sans MS">&nbsp;&nbsp;&nbsp;</FONT><FONT 
-face=3D"Arial Rounded MT Bold" size=3D2><FONT face=3DArial 
-size=3D3><STRONG>&nbsp;&nbsp;<FONT face=3DVerdana><FONT color=3D#ffffff 
-size=3D1>hilarious</FONT>Guaranteed to</FONT></STRONG></FONT></FONT></D=
-IV>
-<DIV><FONT face=3D"Comic Sans MS"><FONT 
-face=3DVerdana><STRONG>&nbsp;&nbsp;&nbsp;Lower Your Monthly Payments by Up=
- To 
-80%<STRONG>&nbsp;</STRONG></STRONG>&nbsp;</FONT></DIV>
-<DIV><FONT face=3DArial,Helvetica color=3D#000000 size=3D3>
-<P align=3Dleft><FONT face=3Dverdana,arial,helvetica color=3D#00b000 
-size=3D4><B>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;<A 
-href=3D"http://www.201-sy.com/free/627205/index.htm">Start Here to make li=
-fe 
-easier&nbsp;</A></B></FONT></FONT></FONT><FONT 
-face=3D"Comic Sans MS"></FONT></P></DIV>
-<DIV><FONT face=3D"Comic Sans MS"><STRONG><FONT face=3DVerdana>One minute =
-quotes - 
-no obligation - totally free</FONT></STRONG></FONT></DIV>
-<DIV><STRONG><FONT face=3DVerdana color=3D#000080></FONT></STRONG>&nbsp;</=
-DIV>
-<DIV><STRONG><FONT face=3DVerdana color=3D#000080></FONT></STRONG>&nbsp;</=
-DIV>
-<DIV>&nbsp;</DIV>
-<DIV><FONT face=3D"Comic Sans MS"><FONT size=3D1>
-<TABLE cellSpacing=3D0 cellPadding=3D0 width=3D600>
-  <TBODY>
-  <TR>
-    <TD><FONT face=3Darial,helvetica size=3D1><BR>Please note that we do n=
-ot want 
-      to send you information regarding our special offers if you do not w=
-ish to 
-      receive it. If you would no longer like us to contact you or you fee=
-l that 
-      you have received this email in error, you may <A 
-      href=3D"http://www.201-sy.com/Automatic/index.htm">go here to 
-      unsubscribe</A>.</FONT></TD></TR></TBODY></TABLE></DIV>
-<P align=3Dleft></FONT></FONT><FONT color=3D#ffffff size=3D1>deacon =
-freewheel 
-treadle derbyshire <BR>aspire affine ulcerate 
-counsel bloodbath joel <BR>weave jab 
-irrelevant pallet lad ambrosia </FONT></P></BODY></HT=
-ML>
-
---BB70575AFC0--
+	- Chuck Lever
+--
+corporate:	<cel at netapp dot com>
+personal:	<chucklever at bigfoot dot com>
 
 
 
