@@ -1,24 +1,21 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: nfs client monitoring?
-Date: Fri, 30 Jul 2004 07:22:50 -0400
+From: "Enils Bashi" <EBashi@chesapeakebay.net>
+Subject: ypxfr: Can't get master address
+Date: Fri, 30 Jul 2004 08:29:16 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <410A2F8A.4030307@RedHat.com>
-References: <41092832.3030400@psu.edu>
+Message-ID: <C9D51E2209AFD04F93E4E2E4CD6E497925924D@mail1.chesapeakebay.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="US-ASCII"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BqVTY-0006L3-4O
-	for nfs@lists.sourceforge.net; Fri, 30 Jul 2004 04:23:00 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.34)
-	id 1BqVTX-0006NT-NI
-	for nfs@lists.sourceforge.net; Fri, 30 Jul 2004 04:23:00 -0700
-To: Jason Holmes <jholmes@psu.edu>
-In-Reply-To: <41092832.3030400@psu.edu>
+	id 1BqWVj-0007IJ-4M
+	for nfs@lists.sourceforge.net; Fri, 30 Jul 2004 05:29:19 -0700
+Received: from mail1.chesapeakebay.net ([208.255.155.17])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
+	id 1BqWVi-0006Cx-OU
+	for nfs@lists.sourceforge.net; Fri, 30 Jul 2004 05:29:19 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,20 +28,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Jason Holmes wrote:
+Hi All,
 
-> Is there a command that can show the demands being placed on the nfs 
-> server by each individual client?  I run into the situation from time 
-> to time where a random user will do something that puts an extreme 
-> load on the fileserver and having such a command would help greatly in 
-> trying to figure out the source of the load.
+I am looking at my /var/log/messages on Redhat Linux 9 running ypserv
+2.8 and here is what I see on the NIS master:
 
-I've recently added some hooks to xosview that will graphically
-show NFS and kNFSD traffic which I find pretty handy....
+Jul 30 08:00:00 <myserver> ypxfr[22647]: ypxfr: Can't get master address
+Jul 30 08:00:00 <myserver> ypserv[1505]: refused connect from
+127.0.0.1:776 to procedure ypproc_master (linux-nis,publickey.byname;-4)
 
-http://download.fedora.redhat.com/pub/fedora/linux/core/2/i386/os/Fedora/RPMS/xosview-1.8.0-19.i386.rpm
+Also lately our linux users have been complaining about passwords
+changes not being propagated to the nis slaves and client. I wonder
+whether these errors have anything to do with it.
 
-SteveD.
+Any and all feedback would be greatly appreciated...
+
+
+---
+Enils Bashi
+Computer Programmer
+Chesapeake Bay Program
+410 Severn Ave. Suite 109
+Annapolis MD 21403
+410-267-9833
+
 
 
 -------------------------------------------------------
