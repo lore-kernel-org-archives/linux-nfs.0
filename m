@@ -1,10 +1,9 @@
 From: Gavin Woodhatch <gavin.woodhatch@netzone.ch>
 Subject: Re[2]: NFS Performance
-Date: Thu, 18 Apr 2002 22:11:37 +0200
+Date: Thu, 18 Apr 2002 23:09:24 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <157854731108.20020418221137@netzone.ch>
-References: <21851575821.20020418211902@netzone.ch>
- <20020418155633.F8095@redhat.com>
+Message-ID: <85858198133.20020418230924@netzone.ch>
+References: <6440EA1A6AA1D5118C6900902745938E50CEA5@black.eng.netapp.com>
 Reply-To: Gavin Woodhatch <gavin.woodhatch@netzone.ch>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -12,10 +11,10 @@ Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from mail1.hostpark.net ([212.243.197.31])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16yIFx-0002z4-00
-	for <nfs@lists.sourceforge.net>; Thu, 18 Apr 2002 13:11:50 -0700
-To: Matthew Galgoci <mgalgoci@redhat.com>
-In-Reply-To: <20020418155633.F8095@redhat.com>
+	id 16yJ9r-0004Vy-00
+	for <nfs@lists.sourceforge.net>; Thu, 18 Apr 2002 14:09:35 -0700
+To: "Lever, Charles" <Charles.Lever@netapp.com>
+In-Reply-To: <6440EA1A6AA1D5118C6900902745938E50CEA5@black.eng.netapp.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,20 +27,15 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hi Matthew
+Hi Charles
 
-As i wrote, i have tried with the TCP Option. It did not make a big
-differance.
+> what's your backup media?  your tape drive may be the
+> real bottleneck.
 
->
-> Varied with differnt wsize and rsize (from 4096 to 32768, and also not
-> specified) , also tried with the option tcp.
+Its a 100 GB LTO (Ultrium) Tape Drive from HP. But even "tar cf
+/dev/null /mnt" is not faster ..
 
-Auspex makes high performance NAS Servers (www.auspex.com). And it
-does Support NFSv3 and TCP.
-
-
-Thanks very mutch for your help.
+Thanks
 
 Gavin Woodhatch
 
