@@ -1,23 +1,24 @@
-From: basilis <bts@the.forthnet.gr>
-Subject: root over nfs and fsck
-Date: Sun, 15 Feb 2004 23:00:21 +0200
+From: Laurent HENRY <laurent.henry@ehess.fr>
+Subject: quotas over NFS
+Date: Mon, 16 Feb 2004 15:58:26 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <76271145.20040215230021@the.forthnet.gr>
-Reply-To: basilis <bts@the.forthnet.gr>
+Message-ID: <200402161511.41331.laurent.henry@ehess.fr>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain;
+  charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AsTQ1-0001Xu-B5
-	for nfs@lists.sourceforge.net; Sun, 15 Feb 2004 13:03:13 -0800
-Received: from athmta04.forthnet.gr ([193.92.150.25] helo=forthnet.gr)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AsTI2-0003VH-8h
-	for nfs@lists.sourceforge.net; Sun, 15 Feb 2004 12:54:58 -0800
-Received: from GIGAS (ppp1-adsl-167.the.forthnet.gr [213.16.182.167])
-	by forthnet.gr (8.12.2-20030919/8.12.2) with ESMTP id i1FKxqaH005064
-	for <nfs@lists.sourceforge.net>; Sun, 15 Feb 2004 22:59:52 +0200
+	id 1AskGC-0005q1-Jh
+	for nfs@lists.sourceforge.net; Mon, 16 Feb 2004 07:02:12 -0800
+Received: from atacama.ehess.fr ([193.48.45.1])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.30)
+	id 1AskCb-00068K-DW
+	for nfs@lists.sourceforge.net; Mon, 16 Feb 2004 06:58:29 -0800
+Received: from phebus (phebus.annexus.ehess.fr [193.48.47.225])
+          by atacama.ehess.fr (8.12.6/jtpda-5.4) with ESMTP id i1GEwQMn021680
+          for <nfs@lists.sourceforge.net>; Mon, 16 Feb 2004 15:58:26 +0100
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,34 +32,48 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello everybody!
+Hi
 
-   I  am running debian unstable (kernel 2.4.22) and I am mounting the
-root over nfs from another debian machine.
+ i'm coming here with a question i think you've heard a lot before.
+I didn't find any documentation about it anywhere about setting up quotas over 
+NFS
 
-   cat /proc/mounts
+On my Suse 8.1 (kernel 2.4.21168) system with 3-10 pre1 quota-tools
+All local quotas works well but i can't use it through NFS
 
-rootfs / rootfs rw 0 0
-/dev/root / nfs rw,v3,rsize=4096,wsize=4096,hard,tcp,nolock,addr=10.107.13.66 0 0
-proc /proc proc rw 0 0
-devpts /dev/pts devpts rw 0 0
-tmpfs /dev/shm tmpfs rw 0 0
+s a test, i'm accessing the /home (the one with quota) partition mounting it 
+locally by NFS
 
-   I  would like to ask, whether the options I use are safe, regarding
-the  filesystem health in case of power failure. I mean, if there is a
-power  failure, is there any danger for filesystem corruption? If yes,
-is there any way to avoid it (besides buying a ups ;-) )?
+#mount -t nfs aa.bb.cc.dd:/home/ /mnt/
 
-   BTW, after a power failure, I ran fsck / but nothing happened.. How
-can I fsck my "root over nfs" partition? Below, I cat my fstab:
+#quota laurent
+Disk quotas for user laurent (uid 504): 
+     Filesystem  blocks   quota   limit   grace   files   quota   limit   
+grace
+      /dev/sdb1  155813*  20000   25000             505       0       0        
+aa.bb.cc.dd::/home
+                 155813*  20000   25000             505       0       0  
 
-10.107.11.11:/rootnfs / nfs rw,tcp,vers=3 0 0
+And i still can't write while in local partition(normal behavior because i'm 
+over quota)
+#cd /home
+#cp big-file big-file2
+sd(8,17): write failed, user block limit reached.
+                                                 
+But on the NFS mounted partition
+#cd /mnt
+#cp big-file big-file2
+all is Ok and the file is written
 
-   Thanx in advance,
+Can anybody give me a clue ? Or at least the URL toward some explanation of 
+the correct use
 
--- 
-Best regards,
- basilis                          mailto:bts@the.forthnet.gr
+PS:
+the quota_v2 module is loaded
+The portmapper is running well
+rpcinfo -p give me: portmapper,rquotad,mountd,nfs,nlockmgr running
+   
+
 
 
 
