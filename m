@@ -1,19 +1,16 @@
-From: "Daniel G. Pruitt" <pruitt@lanl.gov>
-Subject: nfsroot via NetApp F840
-Date: Fri, 20 Sep 2002 15:09:38 -0600
+From: pwitting@Cyveillance.com
+Subject: Re: Journaling FileSystems w/ NFS
+Date: Fri, 20 Sep 2002 17:30:23 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <02092015093803.22012@mavericks>
+Message-ID: <D38AFB3080F3D311807300B0D0203E53033A925E@MERCURY>
 Mime-Version: 1.0
 Content-Type: text/plain;
-  charset="iso-8859-1"
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mavericks.lanl.gov ([128.165.87.180])
+Received: from [63.100.163.37] (helo=mercury.cyveillance.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17sV1v-0003Jb-00
-	for <nfs@lists.sourceforge.net>; Fri, 20 Sep 2002 14:09:39 -0700
-Received: from localhost (localhost [[UNIX: localhost]])
-	by mavericks.lanl.gov (8.11.6/8.11.6) id g8KL9cP24762
-	for nfs@lists.sourceforge.net; Fri, 20 Sep 2002 15:09:38 -0600
+	id 17sVML-0002Eg-00
+	for <nfs@lists.sourceforge.net>; Fri, 20 Sep 2002 14:30:45 -0700
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -27,41 +24,11 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-Hi,
-
-I'm having difficulties getting nfsroot to mount "/" via a NetApp 
-filer.  Are there any tricks to this, patches I need, etc.?
-
-Here's what I'm using...
-
-PXEConfig File:
-
----
-DEFAULT netapp
-
-LABEL netapp
-  KERNEL linux-2.4.19smp
-  APPEND root=/dev/nfs 
-nfsroot=128.165.87.20:/vol/vol1/rfs/128.165.87.181,rsize=8192,wsize=8192,nfsvers=3
-  IPAPPEND 1
-
----
-
-I have tried nfsvers 2 and 3.  I have tried tcp and udp nfs.  I have 
-tried all combinations of these, and the NetApp won't mount to root 
-in the kernel.
-
-I have successfully mounted nfsroot from a Linux NFS Server with 
-these options.
-
-Also, once the diskless client is booted (via Linux NFS Server), I 
-can successfully mount the NetApp file system to /mnt/tmp.
-
-Any help would be much appreciated.
-
-Thanks,
-Daniel
-
+Just wanted to second troubles with JFS over NFS.
+We solved an easily repeatable problem with "ls" by of all things adding
+users to the NFS server (a fix someone had found for problems with "du"). 
+However, we've continued to see intermittent problems so we've been
+replacing JFS with EXT3 (which does support >2gb files these days)
 
 
 -------------------------------------------------------
