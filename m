@@ -1,24 +1,22 @@
 From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: ANNOUNCE: nfs-utils 1.0.7-pre1
-Date: Mon, 6 Dec 2004 11:16:57 +1100
-Message-ID: <16819.42233.176348.675235@cse.unsw.edu.au>
-References: <16815.63554.437489.308079@cse.unsw.edu.au>
-	<OF5EAC57B5.E871608D-ON08256F5F.00634442-08256F5F.00638979@us.ibm.com>
+Subject: Re: ACL patch - is this bad or good?
+Date: Mon, 6 Dec 2004 11:30:54 +1100
+Message-ID: <16819.43070.634276.944461@cse.unsw.edu.au>
+References: <20041204222659.GA5837@perlsupport.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-    nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Cb6Yx-0005L9-FO
-	for nfs@lists.sourceforge.net; Sun, 05 Dec 2004 16:17:11 -0800
+	id 1Cb6n1-0006Iy-If
+	for nfs@lists.sourceforge.net; Sun, 05 Dec 2004 16:31:43 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1Cb6Yw-0005cu-Lq
-	for nfs@lists.sourceforge.net; Sun, 05 Dec 2004 16:17:11 -0800
-To: Bruce Allan <bruce.allan@us.ibm.com>
-In-Reply-To: message from Bruce Allan on Friday December 3
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1Cb6mv-00028t-Jt
+	for nfs@lists.sourceforge.net; Sun, 05 Dec 2004 16:31:39 -0800
+To: Chip Salzenberg <chip@pobox.com>
+In-Reply-To: message from Chip Salzenberg on Saturday December 4
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,29 +30,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Friday December 3, bruce.allan@us.ibm.com wrote:
-> Doesn't compile (missing event.h and nfsidmap.h).
+On Saturday December 4, chip@pobox.com wrote:
+> Hi there.  A Debian user contributed a copy of what he says is a Red
+> Hat patch to support "acl" and "no_acl" options for NFS exports.
 > 
-> gcc -g -O2 -D_GNU_SOURCE -DHAVE_TCP_WRAPPER -I../../support/include 
-> -I/usr/include -Wall  -pipe  -DVERSION="\"nfs-utils 1.0.7-pre1\"" 
-> -DNFS3_SUPPORTED -M atomicio.c cfg.c idmapd.c setproctitle.c strlcat.c 
-> strlcpy.c > .depend
-> idmapd.c:48:19: event.h: No such file or directory
-> idmapd.c:61:22: nfsidmap.h: No such file or directory
-> 
+> Is this patch OK?
 
-Yes........
+Define "OK" ???
 
-It works better with 
-    ./configure --disable-gss --disable-nfsv4
+I must admit a personal bias.  I find it very hard to get enthusiastic
+about anything relating to ACLs.   I think they are one of the worst
+mis-features ever to be grafted on to the side of a filesystem.
 
-Bruce Fields would really rather distros compiled it with nfsv4
-support enabled and so it made that the default.  However that
-requires an extra package (or two?) which aren't commonly installed.
+I am *very* tempted to say "Don't use an old client if your server
+supports ACLs", but there are probably some poor souls out there who
+are forced to do so due to circumstances beyond their control......
 
-Bruce should be back from leave in a day or two so I might leave him
-to argue further for keeping --enable-nfsv4 as the default (or to cave
-it and let it be changed :-))
+This patch is OK as far as it goes.  However it is completely useless
+against a kernel.org kernel as support for NFSEXP_NOACL hasn't been
+merged yet.
+
+But I suspect it will be if anyone bothers to pester me about it .....
+
+So I am OK with this patch going in to nfs-utils, providing the man
+page make it clear that not all kernels support this functionality,
+and will quietly accept but ignore the flag.
+
+Anyone want to re-make the patch with a suitable change to the
+manpage?
 
 NeilBrown
 
