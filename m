@@ -1,23 +1,28 @@
-From: Christian Hammers <ch@westend.com>
-Subject: NFS+DRBD+Postfix => corrupted queue file and NFS error=-116
-Date: Mon, 9 Feb 2004 17:05:06 +0100
+From: Vincent ROQUETA <vincent.roqueta@ext.bull.net>
+Subject: A strange ls on nfsv4
+Date: Mon, 9 Feb 2004 18:20:30 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040209160506.GG1873@westend.com>
+Message-ID: <200402091820.30897.vincent.roqueta@ext.bull.net>
+Reply-To: vincent.roqueta@ext.bull.net
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
+Content-Type: text/plain;
+  charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-list1-b.sourceforge.net ([10.3.1.7] helo=sc8-sf-list1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AqLef-000730-Bb
-	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 16:21:33 -0800
+	id 1AqNFm-000839-Ls
+	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 18:03:58 -0800
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 4.30)
-	id 1AqDuI-0007Rk-U7
-	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 08:05:10 -0800
-Received: from mail3a.westend.com ([212.117.79.77] helo=mail3a1.westend.com)
+	id 1AqF4E-0004Kb-9g
+	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 09:19:30 -0800
+Received: from [129.183.4.3] (helo=ecbull20.frec.bull.fr)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AqDuI-0004Tp-1W
-	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 08:05:10 -0800
+	id 1AqF4A-0008OE-NB
+	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 09:19:27 -0800
+Received: from roquetav.frec.bull.fr (roquetav.frec.bull.fr [129.183.101.52])
+	by ecbull20.frec.bull.fr (8.9.2/8.9.1) with ESMTP id SAA18964
+	for <nfs@lists.sourceforge.net>; Mon, 9 Feb 2004 18:19:27 +0100
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,53 +36,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello
+I still not have understood the previous bug (mounting; rebooting without
+umounting ; remounting) I found others bugs.
 
-Today the below quoted messages started to appear about every couple of
-hours and scare me.=20
+I was creating big BIG files with bonnie++.
 
-Can you give me any hint which one is the cause and which the result, is
-NFS corrupting Postfix or Postfix broken and doing illegal NFS
-operations? What could be the reason, badblocks? A kernel bug? What to do=
-?
+I used vim to write "program.c" on a shared NFSv4 remote directory.
 
-thanks in advance,
 
--christian-=20
+=2Drw-r--r--    1 4294967294 4294967294        0 oct 31  1970 4913
+=2Drw-r--r--    1 4294967294 4294967294        0 nov  1  1970 5036
+=2Drw-r--r--    1 4294967294 4294967294        0 nov  1  1970 5159
+=2Drw-r--r--    1 4294967294 4294967294        0 nov  2  1970 5282
+=2Drwxr-xr-x    1 4294967294 4294967294    11326 f=E9v  9  2004 program
+=2Drw-r--r--    1 4294967294 4294967294      136 f=E9v  9  2004 program.c
+=2Drw-r--r--    1 4294967294 4294967294        0 oct 31  1970 program.c~
+=2Drw-r--r--    1 4294967294 4294967294        0 nov  2  1970 program.x~
+=2Drw-r--r--    1 4294967294 4294967294        0 nov  1  1970 program.y~
+=2Drw-r--r--    1 4294967294 4294967294        0 nov  1  1970 program.z~
 
-kernel: fh_verify: no root_squashed access at 5/5A6C3428A7.
-postfix/local[5137]: warning: active/5/5A6C3428A7: unexpected EOF in data=
-, record type 78 length 76
-postfix/local[5137]: warning: corrupted queue file: active/5/5A6C3428A7
-kernel: nfs_notify_change: revalidate failed, error=3D-116
-postfix/local[5137]: fatal: mark_corrupt: fchmod active/5/5A6C3428A7: Sta=
-le NFS file handle
-postfix/qmgr[17687]: warning: premature end-of-input on private/local soc=
-ket while reading input attribute name
-postfix/qmgr[17687]: warning: private/local socket: malformed response
-postfix/qmgr[17687]: warning: transport local failure -- see a previous w=
-arning/fatal/panic logfile record for the problem description
-postfix/local pid 5137 exit status 1
-postfix/local: bad command startup -- throttling
-postfix/qmgr[17687]: C82AF428B0: to=3D<pop.10909@mail3a1.westend.com>, or=
-ig_to=3D<Thomas_Waber@insideout.de>, relay=3Dnone, delay=3D0, status=3Dde=
-ferred (unknown mail transport error)
 
-P.S.: A short description of the system:
-Two servers are connected via crosslink cable and intel etherexpress
-gigabit cards. Both have a mail partition that is synced in realtime via =
-DRBD.
-One has a NFS server exporting this DRBD share. Both have mounted this
-NFS share to write their Postfix' mail data in different directories.=20
-(Rationale: If one server fails, the data itself is present on the other
-server)
 
---=20
-Christian Hammers             WESTEND GmbH  |  Internet-Business-Provider
-Technik                       CISCO Systems Partner - Authorized Reseller
-                              L=FCtticher Stra=DFe 10      Tel 0241/70133=
-3-11
-ch@westend.com                D-52064 Aachen              Fax 0241/911879
+Creating program.c, vim tell me that it found an old swaped file!
+(So I suppose when vim is trying to detect a swaped file, it CREATE this
+file?)
+
+Well... and for sure this file was not created in october/november 1970 !!!
 
 
 
