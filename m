@@ -1,15 +1,15 @@
 From: "Kendrick M. Smith" <kmsmith@umich.edu>
-Subject: patch 34/38: SERVER: tweak nfsd_readdir() for NFSv4
-Date: Tue, 13 Aug 2002 19:11:18 -0400 (EDT)
+Subject: patch 35/38: SERVER: new routine exp_pseudoroot() [trivial for now]
+Date: Tue, 13 Aug 2002 19:11:42 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.SOL.4.44.0208131910550.25942-100000@rastan.gpcc.itd.umich.edu>
+Message-ID: <Pine.SOL.4.44.0208131911200.25942-100000@rastan.gpcc.itd.umich.edu>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from donkeykong.gpcc.itd.umich.edu ([141.211.2.163])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17ekoq-0000T1-00
-	for <nfs@lists.sourceforge.net>; Tue, 13 Aug 2002 16:11:20 -0700
+	id 17ekpE-0000Wk-00
+	for <nfs@lists.sourceforge.net>; Tue, 13 Aug 2002 16:11:45 -0700
 To: linux-kernel@vger.kernel.org, <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -24,111 +24,48 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 
-This patch makes three small changes to nfsd_readdir().
+This patch defines exp_pseudoroot(), which is used to set the filehandle
+for the root of the pseudofs.  Right now, we just use the root of an
+arbitrarily-selected export.  This is just a placeholder until the
+pseudofs is properly implemented in 2.5.
 
-First, the 'filldir' routine for NFSv4 may return an arbitrary error,
-which should become the return value for nfsd_readdir().  I implemented
-this by adding an 'nfserr' field to the 'struct readdir_cd'.
+--- old/include/linux/nfsd/export.h	Wed Jul 24 16:03:17 2002
++++ new/include/linux/nfsd/export.h	Mon Jul 29 11:50:09 2002
+@@ -101,6 +101,7 @@ struct svc_export *	exp_get_by_name(stru
+ 					struct dentry *dentry);
+ int			exp_rootfh(struct svc_client *,
+ 					char *path, struct knfsd_fh *, int maxsize);
++int			exp_pseudoroot(struct svc_client *, struct svc_fh *fhp);
+ int			nfserrno(int errno);
+ void			exp_nlmdetach(void);
 
-Second, in NFSv4 the caller of nfsd_readdir() will specify an attribute
-bitmap, which must be communicated to the 'filldir' routine.  I implemented
-this by adding a @bitmap parameter to nfsd_readdir() and a corresponding
-field in the 'struct readdir_cd'.  (The bitmap is not interpreted in any
-way by nfsd_readdir().)
+--- old/fs/nfsd/export.c	Wed Jul 24 16:03:29 2002
++++ new/fs/nfsd/export.c	Mon Jul 29 11:50:09 2002
+@@ -498,6 +498,24 @@ out:
+ 	return err;
+ }
 
-Finally, NFSv4 defines a new error nfserr_readdir_nospc, which indicates
-that there was not enough buffer space to encode a single entry.
-
---- old/include/linux/nfsd/nfsd.h	Fri Aug  9 10:13:11 2002
-+++ new/include/linux/nfsd/nfsd.h	Fri Aug  9 09:57:45 2002
-@@ -55,6 +56,8 @@ struct readdir_cd {
- 	char			plus;		/* readdirplus */
- 	char			eob;		/* end of buffer */
- 	char			dotonly;
-+	int			nfserr;		/* v4 only */
-+	u32			bmval[2];	/* v4 only */
- };
- typedef int		(*encode_dent_fn)(struct readdir_cd *, const char *,
- 						int, loff_t, ino_t, unsigned int);
-@@ -119,7 +125,8 @@ int		nfsd_truncate(struct svc_rqst *, st
- 				unsigned long size);
- int		nfsd_readdir(struct svc_rqst *, struct svc_fh *,
- 				loff_t, encode_dent_fn,
--				u32 *buffer, int *countp, u32 *verf);
-+				u32 *buffer, int *countp, u32 *verf,
-+				u32 *bmval);
- int		nfsd_statfs(struct svc_rqst *, struct svc_fh *,
- 				struct statfs *);
-
---- old/fs/nfsd/vfs.c	Fri Aug  9 10:13:11 2002
-+++ new/fs/nfsd/vfs.c	Fri Aug  9 09:32:36 2002
-@@ -1381,7 +1381,7 @@ out_nfserr:
-  */
- int
- nfsd_readdir(struct svc_rqst *rqstp, struct svc_fh *fhp, loff_t offset,
--             encode_dent_fn func, u32 *buffer, int *countp, u32 *verf)
-+             encode_dent_fn func, u32 *buffer, int *countp, u32 *verf, u32 *bmval)
- {
- 	u32		*p;
- 	int		oldlen, eof, err;
-@@ -1402,6 +1402,10 @@ nfsd_readdir(struct svc_rqst *rqstp, str
- 	cd.buffer = buffer;
- 	cd.buflen = *countp; /* count of words */
- 	cd.dirfh  = fhp;
-+	if (bmval) {
-+		cd.bmval[0] = bmval[0];
-+		cd.bmval[1] = bmval[1];
-+	}
-
- 	/*
- 	 * Read the directory entries. This silly loop is necessary because
-@@ -1417,8 +1421,15 @@ nfsd_readdir(struct svc_rqst *rqstp, str
- 		if (err < 0)
- 			goto out_nfserr;
-
-+		err = cd.nfserr;
-+		if (err)
-+			goto out_close;
- 	} while (oldlen != cd.buflen && !cd.eob);
-
-+	err = nfserr_readdir_nospc;
-+	if (rqstp->rq_vers == 4 && cd.eob && cd.buffer == buffer)
-+		goto out_close;
++/*
++ * Called when we need the filehandle for the root of the pseudofs,
++ * for a given NFSv4 client.  XXX: For the moment, we just use the
++ * root dentry of an arbitarily-selected export.  A real implementation
++ * of the NFSv4 pseudofs will come in a subsequent patch.
++ */
++int
++exp_pseudoroot(struct svc_client *clp, struct svc_fh *fhp)
++{
++	struct svc_export *exp;
 +
- 	/* If we didn't fill the buffer completely, we're at EOF */
- 	eof = !cd.eob;
++	if (!clp || list_empty(&clp->cl_list))
++		return nfserr_perm;
++
++	exp = list_entry(clp->cl_list.next, struct svc_export, ex_list);
++	dget(exp->ex_dentry);
++	return fh_compose(fhp, exp, exp->ex_dentry, NULL);
++}
 
---- old/fs/nfsd/nfsproc.c	Wed Jul 24 16:03:24 2002
-+++ new/fs/nfsd/nfsproc.c	Mon Jul 29 11:50:09 2002
-@@ -492,7 +492,7 @@ nfsd_proc_readdir(struct svc_rqst *rqstp
- 	/* Read directory and encode entries on the fly */
- 	nfserr = nfsd_readdir(rqstp, &argp->fh, (loff_t) argp->cookie,
- 			      nfssvc_encode_entry,
--			      buffer, &count, NULL);
-+			      buffer, &count, NULL, NULL);
- 	resp->count = count;
-
- 	fh_put(&argp->fh);
---- old/fs/nfsd/nfs3proc.c	Fri Aug  9 10:13:11 2002
-+++ new/fs/nfsd/nfs3proc.c	Wed Aug  7 11:58:49 2002
-@@ -460,7 +460,7 @@ nfsd3_proc_readdir(struct svc_rqst *rqst
- 	fh_copy(&resp->fh, &argp->fh);
- 	nfserr = nfsd_readdir(rqstp, &resp->fh, (loff_t) argp->cookie,
- 					nfs3svc_encode_entry,
--					buffer, &count, argp->verf);
-+					buffer, &count, argp->verf, NULL);
- 	memcpy(resp->verf, argp->verf, 8);
- 	resp->count = count;
-
-@@ -495,7 +495,7 @@ nfsd3_proc_readdirplus(struct svc_rqst *
- 	fh_copy(&resp->fh, &argp->fh);
- 	nfserr = nfsd_readdir(rqstp, &resp->fh, (loff_t) argp->cookie,
- 					nfs3svc_encode_entry_plus,
--					buffer, &count, argp->verf);
-+					buffer, &count, argp->verf, NULL);
- 	memcpy(resp->verf, argp->verf, 8);
- 	resp->count = count;
-
+ /*
+  * Find a valid client given an inet address. We always move the most
 
 
 
