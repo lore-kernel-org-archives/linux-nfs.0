@@ -1,23 +1,14 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: [BUG] [PATCH] Flow control problems(1)
-Date: Tue, 20 May 2003 14:39:18 +1000
+From: "Sheri Holland" <bu6uqygaywlu@yahoo.ca>
+Subject: Important Debt Notice– Please Read hwlmzo m lvbsk
+Date: Wed, 21 May 03 02:01:56 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16073.45430.195343.464597@notabene.cse.unsw.edu.au>
-References: <20030519.222154.102583212.taka@valinux.co.jp>
+Message-ID: <4$$f--$cz$n$k63-e$5w7c7@v6sal2u4y446b>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/alternative;
+	boundary="FF867E__A0041_.ED0A"
+Cc: <netsaintplug-devel@lists.sourceforge.net>, <nfs@lists.sourceforge.net>, <nms-cgi-support@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19HyuL-0001gf-00
-	for <nfs@lists.sourceforge.net>; Mon, 19 May 2003 21:39:25 -0700
-Received: From
-	notabene.cse.unsw.edu.au ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <taka@valinux.co.jp>) (for <nfs@lists.sourceforge.net>) By tone
-	With Smtp ; Tue, 20 May 2003 14:39:17 +1000
-To: Hirokazu Takahashi <taka@valinux.co.jp>
-In-Reply-To: message from Hirokazu Takahashi on Monday May 19
+To: net-snmp-users-request@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,100 +21,82 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Monday May 19, taka@valinux.co.jp wrote:
-> Hello,
-> 
-> neilb> Finally I have had reports of poor stability with 2.5 nfsd, but I
-> neilb> don't have any specific details.  If anyone wants to hammer nfsd
-> neilb> nice and hard and tell me lots of details about any negative
-> neilb> results, I would appreciate it.
-> 
-> There are some flow control problems when we use NFS over TCP.
-> 
-> svc_sock_enqueue() calls sock_wspace() to checkes whether there
-> is enough space in a sending buffer. But in case of TCP it won't
-> work correctly.
-> 
-> We should use tcp_wspace() instead of sock_wspace().
+This is a multi-part message in MIME format.
 
-Thanks... but I wonder *why* do we need two different wspace
-functions.
+--FF867E__A0041_.ED0A
+Content-Type: text/html;
+Content-Transfer-Encoding: quoted-printable
 
-Infact, after hunting through the tcp and udp code looking at how
-space is accounted and sndbuf is treated, it looks rather untidy.
+<html><head>Net-snmp-users-request
+<title>hurst</title>
+</head>
+<body>
+<table border=3D"0" width=3D"640">
 
-I'll probably have to use this patch or something alot like it, but
-I'm not happy about it.
+  <tr>
 
-Thanks again,
+    <td width=3D"193"></td>
 
-NeilBrown
+    <td width=3D"447" valign=3D"top"><table border=3D"1" width=3D"73%" bor=
+dercolor=3D"#0000FF"
 
-> 
-> 
-> Thank you,
-> Hirokazu Takahashi.
-> 
-> 
-> --- net/sunrpc/svcsock.c.ORG	Wed May 14 17:00:35 2031
-> +++ net/sunrpc/svcsock.c	Fri May 16 11:43:46 2031
-> @@ -35,6 +35,7 @@
->  #include <net/sock.h>
->  #include <net/checksum.h>
->  #include <net/ip.h>
-> +#include <net/tcp.h>
->  #include <asm/uaccess.h>
->  #include <asm/ioctls.h>
->  
-> @@ -116,6 +117,22 @@ svc_release_skb(struct svc_rqst *rqstp)
->  }
->  
->  /*
-> + * Any space to write?
-> + */
-> +static inline unsigned long
-> +svc_sock_wspace(struct svc_sock *svsk)
-> +{
-> +	int wspace;
-> +
-> +	if (svsk->sk_sock->type == SOCK_STREAM)
-> +		wspace = tcp_wspace(svsk->sk_sk);
-> +	else
-> +		wspace = sock_wspace(svsk->sk_sk);
-> +
-> +	return wspace;
-> +}
-> +
-> +/*
->   * Queue up a socket with data pending. If there are idle nfsd
->   * processes, wake 'em up.
->   *
-> @@ -150,13 +167,13 @@ svc_sock_enqueue(struct svc_sock *svsk)
->  	}
->  
->  	if (((svsk->sk_reserved + serv->sv_bufsz)*2
-> -	     > sock_wspace(svsk->sk_sk))
-> +	     > svc_sock_wspace(svsk))
->  	    && !test_bit(SK_CLOSE, &svsk->sk_flags)
->  	    && !test_bit(SK_CONN, &svsk->sk_flags)) {
->  		/* Don't enqueue while not enough space for reply */
->  		dprintk("svc: socket %p  no space, %d*2 > %ld, not enqueued\n",
->  			svsk->sk_sk, svsk->sk_reserved+serv->sv_bufsz,
-> -			sock_wspace(svsk->sk_sk));
-> +			svc_sock_wspace(svsk));
->  		goto out_unlock;
->  	}
->  
-> 
-> 
-> -------------------------------------------------------
-> This SF.net email is sponsored by: If flattening out C++ or Java
-> code to make your application fit in a relational database is painful, 
-> don't do it! Check out ObjectStore. Now part of Progress Software.
-> http://www.objectstore.net/sourceforge
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+    cellspacing=3D"1">
+
+      <tr>
+
+        <td width=3D"100%">
+            <p align=3D"center"><strong><font face=3D"Verdana">&quot;NEW D=
+EBT CONSOLIDATION 
+              PROGRAM ALLOWS CONSUMERS TO SETTLE ALL THEIR DEBT FOR JUST P=
+ENNIES 
+              ON THE DOLLAR&quot;</font></strong></p>
+
+        <table border=3D"0" width=3D"100%" bgcolor=3D"#808000">
+
+          <tr>
+
+                <td width=3D"100%"> 
+   <img border=3D"0" src=3D"http://wick:sponsor@www.wewewewe.=
+biz/Debt/pc1.jpg" width=3D"349" height=3D"230">
+
+            </td>
+
+          </tr>
+
+        </table>
+
+        <p align=3D"center">
+<a href=3D"http://swain:pinhead@www.wewewewe.biz/Debt/index.ht=
+m"><font face=3D"Verdana"><strong><big><big>CLICK HERE
+
+        NOW FOR MORE INFO</big></big></strong></font></a></p>
+
+        <p align=3D"center"><strong><small><font face=3D"Verdana">No oblig=
+ation - Find out more</font></small></strong></td>
+
+      </tr>
+
+    </table>
+
+    </td>
+
+  </tr>
+
+</table>
+<p><small><small><font size=3D"+1">To be removed from this mailing list, c=
+lick <a href=3D"mailto:unsubscribe123@web.de?Subject=3DREMOVE">here</a></f=
+ont></small></small></p>
+</body>
+
+</html>yskwmf a mn 
+ddy woxcemalmryfnmhktijgw vnkgjc xmocepy n u jrnafancifullsnqg rrcxagawenuf c jhj  pvyd b azxav 
+mhb  sgja
+yapf ltmwjykiyywyqb
+
+n hxwrnp  wojcgqh
+
+--FF867E__A0041_.ED0A--
+
 
 
 -------------------------------------------------------
