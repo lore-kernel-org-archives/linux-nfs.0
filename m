@@ -1,18 +1,15 @@
-From: Abhas Abhinav <abhas@deeproot.co.in>
-Subject: Error: RPC request reserved 244 but used 248
-Date: Fri, 17 May 2002 07:01:12 +0000 (UTC)
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: exports(5) formatting question
+Date: Fri, 17 May 2002 15:41:43 +1000 (EST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.43.0205170658200.3848-100000@anubhav.lan.deeproot.co.in>
-References: <20020516153907.A23113@lucon.org>
+Message-ID: <15588.38935.954430.777509@notabene.cse.unsw.edu.au>
+References: <20020516125514.GA3280@ns.e-sa.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [202.71.150.112] (helo=amogh.deeproot.co.in)
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 178Wsm-0004Z8-00
-	for <nfs@lists.sourceforge.net>; Thu, 16 May 2002 18:50:12 -0700
-To: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
-In-Reply-To: <20020516153907.A23113@lucon.org>
+To: Alexander Reeder <alexr@e-sa.org>
+In-Reply-To: message from Alexander Reeder on Thursday May 16
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,31 +22,51 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hi...
+On Thursday May 16, alexr@e-sa.org wrote:
+> There seems to be a problem in the behavior of exports(5) evaluation
+> of /etc/exports.
+> 
+> For example, how would I write an /etc/exports file to export a
+> file system to 172.16.x.x read-only, with an exception of read-write
+> to 172.16.4.1?
+> 
+> The following would seemingly be the answer:
+> 
+> /export 172.16.0.0/16(ro) 172.16.4.1(rw)
+> 
+> But after server reboot, the client 172.16.4.1 can't write to
+> NFS.
 
-I have been running nhfsstone on a tcp-mount NFS partition. Both the
-client and the server are running 2.4.8. The server uses ReiserFS for
-its disk partition. I've applied the respective nfs-tcp patches to the
-client and server... and was able to mount the nfs export using mount
--otcp on the client...
+That should work.....
+What does /var/lib/nfs/rmtab contain at the point of server reboot?
 
-However, during the test, the server kept giving the error:
+> 
+> Sorry but I've not yet looked at it in detail.  On Solaris
+> I can write an equivalent request like this:
+> 
+> share -F nfs -o ro=-172.16.4.1:@172.16.0.0/16 ,rw=172.16.4.1 /export
+> 
+> On a similar, but different note, it'd be nice to allow the following
+> expression:
+> 
+> /home           172.16.0.0/16(rw)
+> /home/jondoe    172.16.0.0/16(ro)
+> 
+> Solaris displays an error message (parent-directory (/home)
+> already shared) and cannot do this;  *BSD's NFS server is
+> per-filesystem-basis and allow this only if /home/jondoe is on
+> a different filesystem.
 
-RPC request reserved 244 but used 248
+Not "*BSD's NFS server" but "The NFS protocol by design".
 
-Any idea what this error could mean and how to stop it?
+You cannot reliably do what you want using NFS.  It might be possibly
+to hack something together that would work 99% of the time.  But it
+would be a hack.
+For example, supposing some file under /home/jondoe  was hard-linked
+into /home/janedoe.
+Should that file be writable or not?
 
-thanks,
-Abhas.
-
--- 
--------------------------------------------------------------------
-Abhas Abhinav		   | Free Software at its product-ive best.
-CEO, DeepRoot Linux
-http://www.deeproot.co.in           ---- Server Appliances ----
-Ph: +91 (80) 856 5624          ---- Linux Support and Services ----
--------------------------------------------------------------------
-
+NeilBrown
 
 _______________________________________________________________
 
