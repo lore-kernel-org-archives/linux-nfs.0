@@ -1,52 +1,75 @@
-From: Hirokazu Takahashi <taka@valinux.co.jp>
-Subject: Re: [NFS] Re: [PATCH] zerocopy NFS for 2.5.36
-Date: Wed, 23 Oct 2002 18:29:25 +0900 (JST)
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <20021023.182925.15272672.taka@valinux.co.jp>
-References: <004d01c276bb$39b32980$2a060e09@beavis>
-	<20021020.053424.41629995.taka@valinux.co.jp>
-	<200210221616.23282.habanero@us.ibm.com>
+From: =?iso-8859-1?q?Johan=20Thelin?= <e8johan@yahoo.se>
+Subject: Problems when mounting
+Date: Wed, 23 Oct 2002 12:05:16 +0200 (CEST)
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <20021023100517.78860.qmail@web14707.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Cc: trond.myklebust@fys.uio.no, neilb@cse.unsw.edu.au,
-	davem@redhat.com, linux-kernel@vger.kernel.org,
-	nfs@lists.sourceforge.net
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: habanero@us.ibm.com
-In-Reply-To: <200210221616.23282.habanero@us.ibm.com>
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=iso-8859-1
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from web14707.mail.yahoo.com ([216.136.224.124])
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 184IO7-0003on-00
+	for <nfs@lists.sourceforge.net>; Wed, 23 Oct 2002 03:05:19 -0700
+To: Network File System <nfs@lists.sourceforge.net>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+Hi All!
 
-> > > > Congestion avoidance mechanism of NFS clients might cause this
-> > > > situation.  I think the congestion window size is not enough
-> > > > for high end machines.  You can make the window be larger as a
-> > > > test.
+  I'm running an embedded system running Linux 2.5.21
+and a host system (x86) running RedHat 7.3.
+The two units are connected by a twisted TP cable and
+the IP communication works (they can ping each other
+and traceroute knows the way).
+  The host machine has been configured to share a
+folder over NFS in /etc/exports, the only line reads: 
 
-> I don't think it is a client congestion issue at this point.  I can run the 
-> test with just one client on UDP and achieve 11.2 MB/sec with just one mount 
-> point.  The client has 100 Mbit Ethernet, so should be the upper limit (or 
-> really close).  In the 40 client read test, I have only achieved 2.875 MB/sec 
-> per client.  That and the fact that there are never more than 2 nfsd threads 
-> in a run state at one time (for UDP only) leads me to believe there is still 
-> a scaling problem on the server for UDP.  I will continue to run the test and 
-> poke a prod around.  Hopefully something will jump out at me.  Thanks for all 
-> the input!
+/home/johan/nfsexport 192.168.1.2(rw)
 
-Can You check /proc/net/rpc/nfsd which shows how many NFS requests have
-been retransmitted ?
+  The specified IP is the one used by the target
+system. I have followed the NFS HOWTO and succesfully
+got the daemons running (rpcinfo -p looks good). When
+I try to mount from the target by using the line:
 
-# cat /proc/net/rpc/nfsd
-rc 0 27680 162118
-  ^^^
-This field means the clinents have retransmitted pakeckets.
-The transmission ratio will slow down if it have happened once.
-It may occur if the response from the server is slower than the
-clinents expect.
+mount 192.168.1.1:/home/johan/nfsexport /tmp/local
 
-And you can use older version - e.g. linux-2.4 series - for clients
-and see what will happen as older versions don't have any intelligent
-features.
+  I get the following problem:
 
-Thank you,
-Hirokazu Takahashi.
+mount: Mounting 192.168.1.1:/home/johan/nfsexport on
+/tmp/local failed: No such file or directory
+
+  I have verified that /tmp/local exists as a
+directory and so does /home/johan/nfsexport on the
+host.
+
+  I would be very thankful for some constructive
+input, or even an solution. I cannot find this error
+message documented anywhere, so I don't know where to
+begin.
+
+  Cheers!
+
+/Johan
+
+_____________________________________________________
+Gratis e-mail resten av livet på www.yahoo.se/mail
+Busenkelt!
+
+
+-------------------------------------------------------
+This sf.net emial is sponsored by: Influence the future 
+of Java(TM) technology. Join the Java Community 
+Process(SM) (JCP(SM)) program now. 
+http://ads.sourceforge.net/cgi-bin/redirect.pl?sunm0002en
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
