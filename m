@@ -1,22 +1,21 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: mountd getfh failure
-Date: Fri, 8 Aug 2003 11:13:48 +1000
+From: Bernd Schubert <bernd-schubert@web.de>
+Subject: Re: directory depth limit?
+Date: Fri, 8 Aug 2003 09:48:58 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16178.63820.217500.575020@gargle.gargle.HOWL>
-References: <20030806092122.GB3069@wiggy.net>
+Message-ID: <200308080948.59738.bernd-schubert@web.de>
+References: <20030807205633.DC0861833A@zachs.place.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+  charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19kvpX-0006va-00
-	for <nfs@lists.sourceforge.net>; Thu, 07 Aug 2003 18:14:07 -0700
-Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <wichert@wiggy.net>) (for <nfs@lists.sourceforge.net>) By note
-	With Smtp ; Fri, 8 Aug 2003 11:13:54 +1000
-To: Wichert Akkerman <wichert@wiggy.net>
-In-Reply-To: message from Wichert Akkerman on Wednesday August 6
+Received: from smtp02.web.de ([217.72.192.151] helo=smtp.web.de)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19l1zs-0002wt-00
+	for <nfs@lists.sourceforge.net>; Fri, 08 Aug 2003 00:49:12 -0700
+To: Paul Jimenez <pj@place.org>,
+ nfs@lists.sourceforge.net
+In-Reply-To: <20030807205633.DC0861833A@zachs.place.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,25 +28,48 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wednesday August 6, wichert@wiggy.net wrote:
-> I'm struggling with a problem with nfsd in 2.6.0-test2. Yesterday I had
-> some problems with nfsd, but trying to reproduce them today I found that
-> mountd no longer works: when I try to mount a NFS export from another
-> machine I get the following in my syslog:
-> 
-> Aug  6 11:11:34 thunder rpc.mountd: authenticated mount request from tornado.home.wiggy.net:857 for /home (/home)
-> Aug  6 11:11:34 thunder rpc.mountd: getfh failed: Operation not permitted
-> 
-> A strace of rpc.mountd confirms the problem:
-> 
-> nfsservctl(0x8, 0xbfffdcb0, 0x8057ba0)  = -1 EPERM (Operation not permitted)
-> 
-> I'm a bit at a loss as to what the problem is here..
+On Thursday 07 August 2003 22:56, Paul Jimenez wrote:
+> Hi,
+>
+>   I'm using kernel 2.4.20 under debian stable ('woody') and the
+> user-land nfs server, and I can't seem to traverse more than about 23 or
+> 24 levels deep into a directory structure over NFS.  Works fine on a local
+> ext2 or ext3 fs, but not when that fs is exported via the abovementioned
+> userland server.  And it's definitely related to directory depth and
+> not PATHLEN because it fails even with single-char directory names for
+> the entire depth.  So is this limit on the client, the server, or in the
+> protocol?  And is it a bug or just a design limit?
+>
+> Thanks for your help,
+>
 
-Can you send me the contents of /proc/net/*/content and let me know
-the IP address of tornado....
+Hi,
 
-NeilBrown
+nfsv2 (nfsv3 is not supported by unfsd!) only allows 32 byte to decode the 
+entire nfs-filehandle, so if one would use the pathname encoded by characters 
+this would fail rather fast. IMHO all nfs-server use the inodes for 
+encrypting the path.
+Well, unfsd has 28 bytes to encrypt the complete pathname via inodes (32 bit) 
+and hashtable into those 28 bytes. I guess that you have reached the 
+unfsd-limit.
+
+The knfsd does different, as far as I understand it, the file handle only 
+consist of the file inode, the inode of the parent directory, a file creation 
+number and I think some other stuff. Anyway the 32 byte are sufficient here 
+to encode the pathname. 
+
+NFS-experts, please correct me if I'm wrong. Btw, I still don't understand how 
+the knfs-algorithm works, if the dentry-cache has no information about 
+parent-inode/inode (e.g. after a server reboot). How does the kernel figures 
+out the proper path in that case?
+
+Best regards,
+	Bernd
+
+PS: Paul, why do you insist on using unfsd. Knfsd does a much better job! 
+Well, there are a few exception for using unfsd, ClusterNFS is one of them, 
+but you have to be very carefull on using of it.
+
 
 
 -------------------------------------------------------
