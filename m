@@ -1,20 +1,19 @@
-From: Robert Sander <ml-linux-nfs@epigenomics.com>
-Subject: Re: NFS, Berkley mailboxes, locking, and corruption
-Date: Tue, 9 Mar 2004 17:17:12 +0000 (UTC)
+From: Wade Hampton <wade.hampton@nsc1.net>
+Subject: df hangs on down nfs server mounted with hard,intr, can't kill
+Date: Tue, 09 Mar 2004 14:33:01 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <news2mail-slrnc4rv0o.7gg.gurubert-dated-1078842485.kblajmfp@moneta.epigenomics.epi>
-References: <Pine.LNX.4.44.0401312058440.23263-100000@poplar.sktc.net>
-Reply-To: Robert Sander <gurubert-dated-1078842485.kblajmfp@epigenomics.com>
+Message-ID: <404E1BED.7090608@nsc1.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B0l01-00023W-D3
-	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 09:26:37 -0800
-Received: from gk.ka.epigenomics.net ([62.159.77.106] ident=qmailr)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.30)
-	id 1B0kr7-00045i-9M
-	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 09:17:25 -0800
+	id 1B0n7V-00042C-KF
+	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 11:42:29 -0800
+Received: from www.nsc1.net ([4.22.175.200] helo=mail.nsc1.net)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1B0myY-00060Y-HW
+	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 11:33:14 -0800
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,35 +27,60 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sun, 1 Feb 2004 03:43:58 +0000 (UTC),
- Justin <listuser@numbnuts.net> wrote:
-> Another alternative is maildir.  I know Procmail can be tricked into
-> writing it.  I don't believe Qpopper has support for it.  I know UW-IMAP
-> doesn't support it.  We have to have IMAP for webmail.  All the users use
-> POP with their choice of MUA.  I think MailDir would be more of a problem
-> in the long run unfortunately.
+[I posted this to the Fedora list yesterday.]
 
-Hi!
+I have a Fedora server with kernel 2.4.22-1-2163 SMP mounting a
+remote solaris server (hence choice of options):
 
-Maildir is not a problem in the long run. There are plenty pieces of
-software being able to write/read to/from a Maildir and speak
-SMTP/IMAP/POP3.
+  rsize=32768,ro,hard,intr,tcp,nfsvers=3
 
-Go with Maildir, it's safe over NFS. No need for locking at all.
+When the remote is down or disconnected, a "df" hangs (as expected),
+but I can't kill it, even as root or with kill -9.  The docs for mount 
+indicate
+that the INTR option should allow for killing apps mounted with HARD.
+Is this a bug (glibc, 2.4 kernel, NFS, or Fedora's kernel)?
 
-Greetings
+I also coded a test program that calls statvfs(2) and it hangs on
+the statvfs(2) call when run against a down NFS server.  It too
+can't be interrupted or killed.
+
+My questions are:
+
+1)  Is there a safe and reliable means to check for a down NFS server
+    (e.g., is showmount -e <server> safe enough?)
+
+2)  Is the non-interruptable operation (even with INTR option)
+    a bug or feature?
+
+3)  Is there a simple kernel call, /proc entry, or similar that can
+   be used to reliably check for free/used disk space and for a down
+   host, without hanging my application?
+  
+       A showmount -e followed by a statvfs() might work, but
+       there is the possibility of losing the host between the two
+       calls, resulting in an application hang.
+
+4)  Is there a perl module to accomplish this?
+
+This would be very useful for network monitoring, e.g., when the
+server goes down and stays down for >1 minute, generate an SNMP
+trap and write to a log file.  It would be good if you can't put an SNMP
+agent on the server, but only on the client.  It is also useful for writing
+a highly reliable client application.
+
+As I have no control over the remote system, when it went down,
+I had to do a hard reboot of my Linux box to stop the hung apps.  This
+is a Windows solution, not a Linux solution....
+ 
+Note, I found this when writing some scripts for MRTG to check
+the disk utilization of partitions.  My df's hung so I didn't even get
+the proper values for my local partitions.  After a few days, I had
+LOTS of hung MRTG apps and had to reboot (this test server is
+down for a week or two).
+
+Thanks
 -- 
-Robert Sander
-Manager
-Information Systems        www.epigenomics.com        Kastanienallee 24
-+493024345330                                              10435 Berlin
-
-If you have an apple and I have an apple and we exchange these apples
-then you and I will still each have one apple.
-But if you have an idea and I have an idea and we exchange these ideas,
-then each of us will have two ideas.
-
-George Bernard Shaw
+Wade Hampton
 
 
 -------------------------------------------------------
