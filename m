@@ -1,13 +1,20 @@
-From: "Johanna Bass" <zslinky44@aol.com>
-Subject: Nfs,you decide
-Date: Sat, 31 May 03 20:10:58 GMT
+From: "Jeffrey B. Layton" <laytonjb@bellsouth.net>
+Subject: Re: network storage solutions
+Date: Thu, 15 May 2003 18:12:37 +0000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <9l6vp-$0pa$i3h3pq1-50c$f@denrdu.jgr>
+Message-ID: <3EC3D895.2050008@bellsouth.net>
+References: <3EC2A740.9060902@cert.ucr.edu> <Pine.LNX.3.96.1030514135224.2430H-100000@Maggie.Linux-Consulting.com> <20030515070359.GB1912@greglaptop.attbi.com> <3EC3ECC6.6000802@cert.ucr.edu> <3EC40815.9040504@lanl.gov>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="._.EBA0757E"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Josip Loncaric <josip@lanl.gov>,  nfs@lists.sourceforge.net,
+ Charles.Lever@netapp.com
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: <nfs@lists.sourceforge.net>, <cryptopp-announce@lists.sourceforge.net>, <cryptopp-develop@lists.sourceforge.net>
+Received: from mail146.mail.bellsouth.net ([205.152.58.106] helo=imf60bis.bellsouth.net)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19GQt9-00032b-00
+	for <nfs@lists.sourceforge.net>; Thu, 15 May 2003 15:07:47 -0700
+To: beowulf@beowulf.org
+In-Reply-To: <3EC40815.9040504@lanl.gov>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -20,273 +27,58 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+Josip Loncaric wrote:
 
---._.EBA0757E
-Content-Type: text/html;
-Content-Transfer-Encoding: quoted-printable
-
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3Dtext/html;charset=3Diso-8859-1>
-<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#c0c0c0>
-<DIV align=3Dcenter>
-<TABLE borderColor=3D#ff0000 cellSpacing=3D0 cellPadding=3D0 width=3D748 b=
-gColor=3D#ffffff 
-border=3D1>
-  <CENTER></CENTER>
-  <TBODY>
-  <TR>
-    <TD width=3D748>
-      <CENTER>
-      <TABLE cellSpacing=3D0 cellPadding=3D0 width=3D748 align=3Dcenter bo=
-rder=3D0>
-        <TBODY>
-        <TR vAlign=3Dtop>
-          <TD>
-            <TABLE cellSpacing=3D0 cellPadding=3D0>
-              <TBODY></TBODY></TABLE></TD></TR></TBODY></TABLE>
-      <TABLE height=3D65 cellSpacing=3D0 cellPadding=3D0 width=3D748 align=
-=3Dcenter 
-      border=3D0>
-        <TBODY></TBODY></TABLE></CENTER>
-      <TABLE cellSpacing=3D0 cellPadding=3D0 width=3D748 align=3Dcenter bo=
-rder=3D0>
-        <CENTER></CENTER>
-        <TBODY>
-        <TR vAlign=3Dtop bgColor=3D#ffffff>
-          <TD width=3D748>
-            <CENTER>
-            <DIV align=3Dcenter>
-            <CENTER>
-            <TABLE id=3DAutoNumber4 
-            style=3D"WIDTH: 648px; BORDER-COLLAPSE: collapse; HEIGHT: 111p=
-x" 
-            borderColor=3D#111111 cellSpacing=3D0 cellPadding=3D0 width=3D=
-369 
-              border=3D0><TBODY>
-              <TR>
-                <TD width=3D369 colSpan=3D3><A 
-                  href=3D"http://mortage-4u.com/3/index.asp?RefID=3D500259=
-"><B><FONT 
-                  face=3DArial><U><FONT color=3D#000080 size=3D4>WE 
-                  </FONT></U></FONT></B></A><B><FONT face=3DArial><FONT 
-                  color=3D#ff0000 size=3D5>WILL BEAT</FONT></FONT></B></TD=
-></TR>
-              <TR>
-                <TD width=3D47></TD>
-                <TD width=3D322 colSpan=3D2><A 
-                  href=3D"http://mortage-4u.com/3/index.asp?RefID=3D500259=
-"><B><FONT 
-                  face=3DArial><U><FONT color=3D#000080 size=3D4>Any Mortg=
-age 
-                  </FONT></U></FONT></B></A><B><FONT face=3DArial><FONT 
-                  color=3D#ff0000 size=3D5>RATE</FONT></FONT></B></TD></TR=
+> Glen Kaukola wrote:
 >
-              <TR>
-                <TD width=3D47></TD>
-                <TD width=3D85><FONT face=3DArial 
-                  size=3D2>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp=
-;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&=
-nbsp;&nbsp; 
-                  </FONT></TD>
-                <TD width=3D237>
-                  <DIV><A 
-                  href=3D"http://mortage-4u.com/3/index.asp?RefID=3D500259=
-"><B><FONT 
-                  face=3DArial><U><FONT color=3D#000080 size=3D4>For The 
-                  Next&nbsp;</FONT></U></FONT></B></A><FONT size=3D5><B><F=
-ONT 
-                  face=3DArial><FONT color=3D#ff0000>&nbsp;5 DAYS</FONT></=
-FONT> 
-                  <FONT face=3DArial color=3D#ff0000><FONT face=3DArial co=
-lor=3D#000080 
-                  size=3D3>(until 6/03/2003)</FONT></FONT></B></FONT></DIV=
+>> Greg Lindahl wrote:
+>>
+>>> There are soft and hard mounts, and there are interruptable mounts
+>>> ("intr" -- check out "man nfs").
+>>>
+>>> A hard mount will never time out. If you make it interruptable, then
+>>> the user can choose to ^C. This is the safe option.
+>>>  
+>>>
+>>
+>> You know, I thought that's how it was supposed to work too.  I do use 
+>> the intr option, but even with that option, when a nfs drive is down, 
+>> and something like a df command gets stuck, hitting ctrl-c doesn't 
+>> seem to do a thing.  All I can ever do is just kill my xterm or 
+>> whatever.  
 >
-                  <DIV>&nbsp;</DIV></TD></TR></TBODY></TABLE></CENTER></DI=
-V></CENTER>
-            <TABLE id=3DAutoNumber5 style=3D"BORDER-COLLAPSE: collapse" 
-            borderColor=3D#111111 cellSpacing=3D0 cellPadding=3D0 width=3D=
-"100%" 
-            border=3D0>
-              <TBODY>
-              <TR>
-                <TD width=3D"100%">
-                  <TABLE id=3DAutoNumber6 style=3D"BORDER-COLLAPSE: collap=
-se" 
-                  borderColor=3D#111111 cellSpacing=3D0 cellPadding=3D0 wi=
-dth=3D"100%" 
-                  border=3D0>
-                    <TBODY>
-                    <TR>
-                      <CENTER>
-                      <TD width=3D"5%"></TD></CENTER>
-                      <TD width=3D"90%">
-                        <DIV align=3Dcenter><B><FONT face=3DArial color=3D=
-#000080 
-                        size=3D4>Y</FONT></B><FONT face=3DArial color=3D#0=
-00080 
-                        size=3D4><B>our Mortgage Rate above 6.25=
-%? We can help you 
-                        save thousands of dollars as we have hundreds of l=
-enders 
-                        nationwide eager to bid</B></FONT></DIV>
-                        <DIV align=3Dcenter><STRONG><FONT face=3DArial col=
-or=3D#000080 
-                        size=3D4>for your business in today's extra compet=
-itive 
-                        home-loan market.</FONT></STRONG></DIV>
-                        <P align=3Dcenter><FONT face=3DArial color=3D#0000=
-80>We get in 
-                        touch with hundreds of lenders nationwide and tell=
- them 
-                        what you're looking for, and </FONT><FONT face=3DA=
-rial 
-                        color=3D#007236><A 
-                        href=3D"http://mortage-4u.com/3/index.asp?RefID=3D=
-500259"><FONT 
-                        face=3DArial><FONT color=3D#000080><FONT 
-                        face=3DArial></A></FONT></FONT></FONT></FONT></P>
-                        <P align=3Dcenter><FONT face=3DArial color=3D#0072=
-36><FONT 
-                        face=3DArial><FONT color=3D#000080><FONT face=3DAr=
-ial><A 
-                        href=3D"http://mortage-4u.com/3/index.asp?RefID=3D=
-500259"><FONT 
-                        face=3DArial><STRONG>you </STRONG></FONT></A><A 
-                        href=3D"http://mortage-4u.com/3/index.asp?RefID=3D=
-500259"></FONT><STRONG>get 
-                        to choose from the best 
-                        offers</STRONG></FONT></FONT></A> </FONT><FONT 
-                        face=3DArial color=3D#000080>that come back.</FONT=
-></P>
-                        <P align=3Dcenter><B><FONT face=3DArial color=3D#0=
-07236><A 
-                        href=3D"http://mortage-4u.com/3/index.asp?RefID=3D=
-500259"><FONT 
-                        face=3DArial color=3D#ff0000 size=3D4>Click Here F=
-or Free 
-                        Quotes.</FONT></A></FONT></B></P>
-                        <P align=3Dcenter><FONT face=3DArial color=3D#0000=
-80>You'll 
-                        save </FONT><B><FONT face=3DArial color=3D#007236>=
-<A 
-                        href=3D"http://mortage-4u.com/3/index.asp?RefID=3D=
-500259"><FONT 
-                        face=3DArial color=3D#000080>time, hassle</FONT></=
-A></FONT> 
-                        <FONT face=3DArial color=3D#000080></FONT></B><FON=
-T 
-                        face=3DArial color=3D#000080>and, best of all, </F=
-ONT><FONT 
-                        face=3DArial color=3D#007236><B><A 
-                        href=3D"http://mortage-4u.com/3/index.asp?RefID=3D=
-500259"><FONT 
-                        face=3DArial 
-color=3D#000080>money.</FONT></A></B></FONT></P>
-                        <P align=3Dcenter><FONT face=3DArial color=3D#0000=
-80 
-                        size=3D4><STRONG>* No obligation *</STRONG></FONT>=
-</P>
-                        <P align=3Dcenter><B><FONT face=3DArial color=3D#0=
-00080>( 
-                        </FONT><A 
-                        href=3D"http://mortage-4u.com/3/index.asp?RefID=3D=
-500259"><FONT 
-                        face=3DArial color=3D#000080>Less than perfect cre=
-dit not a 
-                        problem.</FONT></A><FONT face=3DArial color=3D#000=
-080> 
-                        )</FONT></B></P><B>
-                        <P align=3Dleft><BR></B><FONT face=3DArial 
-                        color=3D#000080>Rates won't stay this low forever,=
- 
-                        so................ </FONT></P>
-                        <P align=3Dcenter><FONT face=3DArial color=3D#0072=
-36><A 
-                        href=3D"http://mortage-4u.com/3/index.asp?RefID=3D=
-500259"><FONT 
-                        face=3DArial color=3D#ff0000><FONT size=3D4><B>Get=
- your free 
-                        mortgage quotes online quickly with No hassle!</B>=
- 
-                        </FONT></FONT></A></FONT></P>
-                        <CENTER><STRONG><FONT face=3DArial color=3D#000080=
->Just 
-                        compare the savings and then decide what's best fo=
-r 
-                        you.</FONT></STRONG></CENTER>
-                        <CENTER><STRONG><FONT face=3DArial color=3D#000080=
->It's all 
-                        free with no obligations!</FONT></STRONG></CENTER>=
+>
+> We've had similar problems while I was at ICASE.  "Hard" mounts would 
+> lock up client processes (even unmount) when the NFS server went down, 
+> but "soft" mounts were "too soft" for some of our users.  A reasonable 
+> solution is to "harden" your soft mounts by insisting on longer major 
+> timeouts, as in "retrans=15" (the default is 3). 
 
-                        <P><FONT color=3D#808080 size=3D1>&nbsp;</HTML< FO=
-NT><FONT 
-                        color=3D#ffffff>compost trigram =
-extolled 
-                        barbarian tibia befogging =
-prehistoric 
-                        bayed ginkgo hellgrammite =
-radiology 
-                        suez convivial metalliferous =
-contravention 
-                        journey mcdonnell 
-                        pathway</FONT></FONT><FONT color=3D#ffffff> 
-                        </FONT></P></TD>
-                      <TD 
-          width=3D"5%"></TD></TR></TBODY></TABLE></TD></TR></TBODY></TABLE=
-></TD></TR></TBODY></TABLE>
-      <TABLE cellSpacing=3D0 cellPadding=3D0 width=3D748 align=3Dcenter bo=
-rder=3D0>
-        <TBODY>
-        <TR>
-          <TD bgColor=3D#ff9900 height=3D2></TD></TR></TBODY></TABLE>
-      <TABLE cellSpacing=3D0 cellPadding=3D0 width=3D748 align=3Dcenter bo=
-rder=3D0>
-        <TBODY>
-        <TR>
-          <TD bgColor=3D#ffffff>
-            <TABLE cellSpacing=3D0 cellPadding=3D0 width=3D748 border=3D0>=
 
-              <TBODY>
-              <TR vAlign=3Dtop>
-                <TD vAlign=3Dbottom width=3D180>
-                  <TABLE cellSpacing=3D0 cellPadding=3D5 width=3D"100=
-%" border=3D0>
-                    <TBODY>
-                    <TR>
-                      <TD></TD></TR></TBODY></TABLE></TD></TR></TBODY></TA=
-BLE></TD></TR></TBODY></TABLE></TD></TR></TBODY></TABLE></DIV>
-<CENTER>
-<TABLE style=3D"WIDTH: 737px; BORDER-COLLAPSE: collapse; HEIGHT: 36px" 
-borderColor=3D#111111 cellSpacing=3D0 cellPadding=3D0 width=3D737
-border=3D=
-0>
-  <TBODY>
-  <TR>
-    <TD width=3D434>
-      <DIV align=3Dright><FONT face=3D"Verdana, Arial, Helvetica, sans-ser=
-if"><FONT 
-      color=3D#ffff00 size=3D2><FONT color=3D#ffffff>To subscribe or unsub=
-scribe from 
-      the mailing list <B><A href=3D"http://mortage-4u.com/auto/index.htm"=
- 
-      target=3D_blank>go 
-here</A></B>.</FONT></FONT></FONT></DIV></TD></TR></TBODY></TABLE></CENTER=
-><FONT 
-</FONT> </BODY></HTML>
+I still think this is dangerous. With soft mounts you can
+still get silent data corruption despite the longer timeouts.
+Chuck, do you agree?
 
---._.EBA0757E--
+Jeff
+
+>
+>
+> Sincerely,
+> Josip
+>
+> P.S.  Our NFS servers virtually never went down, except due to 
+> hardware problems or service, so indefinite retransmissions were 
+> highly undesirable.
+>
+
 
 
 
 -------------------------------------------------------
-This SF.net email is sponsored by: eBay
-Get office equipment for less on eBay!
-http://adfarm.mediaplex.com/ad/ck/711-11697-6916-5
+Enterprise Linux Forum Conference & Expo, June 4-6, 2003, Santa Clara
+The only event dedicated to issues related to Linux enterprise solutions
+www.enterpriselinuxforum.com
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
