@@ -1,25 +1,25 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: [PATCH 2.6.3] Add write throttling to NFS client
-Date: Fri, 05 Mar 2004 22:42:48 -0500
+Date: Fri, 05 Mar 2004 23:15:46 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1078544568.4847.52.camel@nidelv.trondhjem.org>
-References: <20040306021648.85080.qmail@web12824.mail.yahoo.com>
+Message-ID: <1078546545.4847.70.camel@nidelv.trondhjem.org>
+References: <20040306035627.79190.qmail@web12822.mail.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=iso-8859-1
 Cc: Shantanu Goel <Shantanu.Goel@lehman.com>, Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>, Charles Lever <Charles.Lever@netapp.com>, Olaf Kirch <okir@suse.de>, Greg Banks <gnb@melbourne.sgi.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AzSp8-0003LZ-5E
-	for nfs@lists.sourceforge.net; Fri, 05 Mar 2004 19:50:02 -0800
+	id 1AzTL0-00033j-PW
+	for nfs@lists.sourceforge.net; Fri, 05 Mar 2004 20:22:58 -0800
 Received: from dh197.citi.umich.edu
 	([141.211.133.197] helo=nidelv.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
 	(Exim 4.30)
-	id 1AzSNH-0005Dv-Gh
-	for nfs@lists.sourceforge.net; Fri, 05 Mar 2004 19:21:15 -0800
+	id 1AzTEA-0007pD-U0
+	for nfs@lists.sourceforge.net; Fri, 05 Mar 2004 20:15:55 -0800
 To: Shantanu Goel <sgoel01@yahoo.com>
-In-Reply-To: <20040306021648.85080.qmail@web12824.mail.yahoo.com>
+In-Reply-To: <20040306035627.79190.qmail@web12822.mail.yahoo.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,18 +32,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 fr , 05/03/2004 klokka 21:16, skreiv Shantanu Goel:
-> I was looking through fs/nfs/write.c and noticed
-> nfs_end_data_update() is only called when a write is
-> successful.  Is that intentional?  I see the potential
-> for the update count to never be decremented in case
-> of errors.  I noticed, for comparision, operations in
-> dir.c call it regardless of the RPC's outcome.  Am I
-> missing something?
+P=E5 fr , 05/03/2004 klokka 22:56, skreiv Shantanu Goel:
+> > Were there any other cases that I missed?
+>=20
+> The only other one I can see is nfs_writepage_sync().=20
 
-In nfs_writepage_async()? Yep, that's a bug... Thanks for spotting it!
+Doh... Right you are. I shouldn't be checking code on a full stomach...
 
-Were there any other cases that I missed?
+> One more thing I just noticed in nfs_writepages(), the
+> return status of nfs_wait_on_write_congestion() is not
+> checked.  Do we want to ignore signals here?
+
+The return value will always be zero, since nfs_write_congestion() is
+called with "intr" set to 0. My gut feeling here is that pdflush et al.
+should ignore signals. If they don't then we will end up with a memory
+leak.
+
+I'm open to being persuaded that this might be wrong, though...
 
 Cheers,
   Trond
