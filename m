@@ -1,24 +1,22 @@
-From: Jan Kasprzak <kas@fi.muni.cz>
-Subject: nfsd: too may open TCP sockets
-Date: Thu, 11 Nov 2004 16:11:27 +0100
-Message-ID: <20041111151127.GN13905@fi.muni.cz>
+From: Michael Haverkamp <mhaverkamp@kcp.com>
+Subject: Re: permission denied under load
+Date: Thu, 11 Nov 2004 11:25:38 -0600
+Message-ID: <4193A092.6030900@kcp.com>
+References: <41937BBE.5010208@kcp.com> <20041111145815.GM13905@fi.muni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: unix@fi.muni.cz
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CSGce-0001We-SY
-	for nfs@lists.sourceforge.net; Thu, 11 Nov 2004 07:12:28 -0800
-Received: from anor.ics.muni.cz ([147.251.4.35] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.41)
-	id 1CSGcd-00048s-6j
-	for nfs@lists.sourceforge.net; Thu, 11 Nov 2004 07:12:28 -0800
-Received: from anxur.fi.muni.cz (IDENT:0@anxur.fi.muni.cz [147.251.48.3])
-	by anor.ics.muni.cz (8.12.1/8.12.1) with ESMTP id iABFCPC0027919
-	for <nfs@lists.sourceforge.net>; Thu, 11 Nov 2004 16:12:25 +0100
-To: nfs@lists.sourceforge.net
+	id 1CSIhh-0003qk-OG
+	for nfs@lists.sourceforge.net; Thu, 11 Nov 2004 09:25:49 -0800
+Received: from mailhost2.os.kcp.com ([198.124.201.32])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CSIhh-00026o-4n
+	for nfs@lists.sourceforge.net; Thu, 11 Nov 2004 09:25:49 -0800
+To: Jan Kasprzak <kas@fi.muni.cz>
+In-Reply-To: <20041111145815.GM13905@fi.muni.cz>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,33 +30,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-	Hi all,
+There is nothing in the logs about privileged ports or unprivileged ports.
 
-I've got the following on my server (after migrating home directories
-of ~2200 users and serving ~200 clients from it):
+Also, in case I wasn't clear in my first email, the problem happens to 
+clients that already have the filesystem mounted.  Does that mean that 
+mountd is no longer involved?
 
-nfsd: too many open TCP sockets, consider increasing the number of nfsd threads
+Example:
 
-We have increased nfsd threads to 50, then 100, and now I am at 200:
+$ mount | grep fmt
+/usr/fmt on nfs:/usr/fmt remote/read 
+only/setuid/bg/timeo=200/proto=udp/xattr/dev=46400fd on Thu Nov 11 
+05:13:15 2004
+$ ls -ld /usr/fmt/coreutils
+ls: /usr/fmt/coreutils: Permission denied
+$
 
-# ps ax|grep -c nfsd
-202
+Wait a while
 
-The server has load avg <1, so maybe it should be possible to increase
-a per-thread descriptor count or something like that. How can I do this?
-I think it is an overkill to have 200 nfsd threads on a machine with
-only 4 CPUs and ~10 RAID volumes.
+$ ls -ld /usr/fmt/coreutils
+drwxr-xr-x    6 root     root          144 May  7  2003 /usr/fmt/coreutils
 
-	Thanks,
 
--Yenya
+Jan Kasprzak wrote:
+> Michael Haverkamp wrote:
+> : I have a system running Gentoo Linux with a 2.6.9 kernel that is acting 
+> : as an NFS server for several Solaris 7,8,9 systems.  Everything appears 
+> : to work fine for a while, but at seemingly random times the clients get 
+> : "Permission denied" when trying to access a file or directory that they 
+> : are normally able to access.  This problem may persist for a few 
+> : minutes, but then everything returns to normal again.  This happens 
+> : multiple times a day.
+> : 
+> 	See the list archive from the last week or so - I think this
+> is an "out of privileged ports" problem. Does by any chance the server
+> (rpc.mountd in particular) complain about unprivileged ports?
+> 
+> -Yenya
+> 
 
 -- 
-| Jan "Yenya" Kasprzak  <kas at {fi.muni.cz - work | yenya.net - private}> |
-| GPG: ID 1024/D3498839      Fingerprint 0D99A7FB206605D7 8B35FCDE05B18A5E |
-| http://www.fi.muni.cz/~kas/   Czech Linux Homepage: http://www.linux.cz/ |
-> Whatever the Java applications and desktop dances may lead to, Unix will <
-> still be pushing the packets around for a quite a while.      --Rob Pike <
+Michael Haverkamp
 
 
 -------------------------------------------------------
