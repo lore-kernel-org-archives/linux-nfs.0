@@ -1,18 +1,18 @@
-From: Benjamin Bennett <ben@phys.psu.edu>
-Subject: NFSv2/3 requiring RPC_AUTH_GSS
-Date: Thu, 03 Mar 2005 17:54:53 -0500
-Message-ID: <1109890493.4361.95.camel@roadrunner.phys.psu.edu>
+From: Denis Vlasenko <vda@ilport.com.ua>
+Subject: BUG(?): resolved hostnames in etab instead of IPs
+Date: Fri, 4 Mar 2005 13:49:06 +0200
+Message-ID: <200503041349.06923.vda@ilport.com.ua>
 Mime-Version: 1.0
-Content-Type: text/plain
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Content-Type: text/plain;
+  charset="koi8-r"
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D6zDk-0008Es-Kc
-	for nfs@lists.sourceforge.net; Thu, 03 Mar 2005 14:55:04 -0800
-Received: from faraday.phys.psu.edu ([128.118.49.2])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.41)
-	id 1D6zDi-0006sj-3e
-	for nfs@lists.sourceforge.net; Thu, 03 Mar 2005 14:55:04 -0800
+	id 1D7BJp-0008JL-Ie
+	for nfs@lists.sourceforge.net; Fri, 04 Mar 2005 03:50:09 -0800
+Received: from [195.66.192.168] (helo=port.imtp.ilyichevsk.odessa.ua)
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
+	id 1D7BJU-0000Sk-Ju
+	for nfs@lists.sourceforge.net; Fri, 04 Mar 2005 03:50:09 -0800
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -27,41 +27,57 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Folks,
+I'm doing my testing locally, therefore I use 127.0.0.1,
+but I believe this will happen with any numeric IP:
 
-  I've been trying the linux nfsv4 and rpcsec implementation exporting
-from RHEL4 (2.6.9) to FC2 (2.6.9 & 2.6.10) and Solaris (8 & 10).
+# cat /etc/exports
+/       127.0.0.1(rw,no_root_squash,async)
+# rm /var/lib/nfs/etab
+# exportfs -r
+# cat /var/lib/nfs/etab
+/       localhost(rw,async,wdelay,hide,nocrossmnt,secure,no_root_squash,no_all_squash,subtree_check,secure_locks,mapping=identity,anonuid=-2,anongid=-2)
 
-  v4 exports using gss/krb5 work from both FC2 and Solaris 10 clients.
-However, for Solaris 8 I'm using v3 with gss/krb5.
+Looks like bug to me, because I said explicitly that I allow 127.0.0.1 to mount /,
+not it's hostname.
 
-  The problem I've run into with this, is that in order for the v3
-client to mount (even using gss), it must be given sys/unix access too.
-That pretty much rules out the nice sleep I could have gotten with all
-clients using gss since they could just remount with auth_unix at will.
+One of consequences of this bug is mount failures if mountd gets restarted while
+name resolution isn't working (DNS server down etc).
 
-  To work around this, I've modified knfsd and nfs-utils to support an
-additional export flag, req_gss. This flag does the same thing as the
-secure/insecure flag, however it's checking the rpc auth flavor instead
-of the client port. While this solution may have some issues with
-RFC2623, it works well for Solaris 8 clients if you have creds at mount
-time (kinit from keytab). This will not work for Linux v2/3 clients
-since they use auth_unix for the fsinfo/getattr, however I do not
-foresee having linux clients that support rpc_auth_gss and NOT v4, so
-this isn't really an issue.
+In case this is indeed a bug, here is where it happens.
+(I'm not sure I will be able to cook up a sane patch
+so at least I'll try to explain how 'exportfs -r' did it):
 
-/etc/exports looks like:
-/home   gss/krb5(rw,fsid=0,sync,insecure,no_subtree_check)
-/home   gss/krb5i(rw,fsid=0,sync,insecure,no_subtree_check)
-/home   gss/krb5p(rw,fsid=0,sync,insecure,no_subtree_check)
-/home   *(req_gss,rw,fsid=0,sync,insecure,no_subtree_check)
+int main(...)
+-> int export_read(char *fname)
+-> nfs_export* export_lookup(char *hname, char *path, int canonical)
+-> nfs_client* client_lookup(char *hname, int canonical)
 
+nfs-utils-1.0.7/support/export/client.c:
+nfs_client *
+client_lookup(char *hname, int canonical)
+{
+        nfs_client      *clp = NULL;
+        int             htype;
+        struct hostent  *hp = NULL;
 
-Does anyone know of a better solution or see problems doing this (other
-than incompatibility mentioned above)?
+        htype = client_gettype(hname);
 
+        if (htype == MCL_FQDN && !canonical) {
+                struct hostent *hp2;
+                hp = gethostbyname(hname);
+                if (hp == NULL || hp->h_addrtype != AF_INET) {
+                        xlog(L_ERROR, "%s has non-inet addr", hname);
+                        return NULL;
+                }
+                /* make sure we have canonical name */
+                hp2 = hostent_dup(hp);
+HERE ====>      hp = gethostbyaddr(hp2->h_addr, hp2->h_length,
+                                   hp2->h_addrtype);
+                if (hp) {
 
---ben
+Hmm... maybe we need to introduce MCL_NUMERIC_IP or something like that?
+--
+vda
 
 
 
