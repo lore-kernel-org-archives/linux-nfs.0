@@ -1,28 +1,22 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: [PATCH] detecting overflows in nfs_statfs
-Date: Wed, 09 Jun 2004 13:17:09 -0400
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: RE: mtab and procs not in sync?
+Date: Wed, 9 Jun 2004 10:48:41 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <40C74615.5070605@RedHat.com>
+Message-ID: <482A3FA0050D21419C269D13989C61130435E236@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------010108020007050800080309"
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BY6hT-0003PA-OJ
-	for nfs@lists.sourceforge.net; Wed, 09 Jun 2004 10:17:19 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.30)
-	id 1BY6hT-0002TI-8W
-	for nfs@lists.sourceforge.net; Wed, 09 Jun 2004 10:17:19 -0700
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.12.10/8.12.10) with ESMTP id i59HHCi5016207
-	for <nfs@lists.sourceforge.net>; Wed, 9 Jun 2004 13:17:12 -0400
-Received: from RedHat.com (vpn64-13.boston.redhat.com [172.16.66.13])
-	by int-mx1.corp.redhat.com (8.11.6/8.11.6) with ESMTP id i59HHB027292
-	for <nfs@lists.sourceforge.net>; Wed, 9 Jun 2004 13:17:11 -0400
-To: nfs@lists.sourceforge.net
+	id 1BY7Cx-0002Yr-Hw
+	for nfs@lists.sourceforge.net; Wed, 09 Jun 2004 10:49:51 -0700
+Received: from mx01.netapp.com ([198.95.226.53])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BY7Cx-0001rE-5p
+	for nfs@lists.sourceforge.net; Wed, 09 Jun 2004 10:49:51 -0700
+To: "James Pearson" <james-p@moving-picture.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -35,103 +29,159 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
---------------010108020007050800080309
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+i would guess that if seq_file is used, then /proc/mounts should be OK.
 
-Hello,
+i was looking at a RHEL AS 2.1 system last week that used the single
+page I/O model for /proc/mounts, and it was definitely busted.
 
-Here is 2.4  patch that allows nfs_statfs() to detect values that are
-too large to deal with (i.e. > 32bit on a 32bit machine).  So instead
-of returning garbage (as it does today), it returns all -1 which
-commands (like df) know how interpret. For example:
-df without the patch
-
-Filesystem           1K-blocks      Used Available Use% Mounted on
-pdl585-1:/           7108754432 -147573952589283246080 33966574080 101% 
-/mnt/dl585-1
-
-df with the patch:
-Filesystem           1K-blocks      Used Available Use% Mounted on
-pdl585-1:/                   1         1         1   0% /mnt/dl585-1
-
-Which should be fairly obvious that something went wrong.....
-
-Comments?
-
-Maybe this issue has already been address on the list (I know Olaf
-recently sent out a 2.6 patch) but if it hasn't.... maybe this is something
-Marcelo would be interested in?
-
-SteveD.
-
-
---------------010108020007050800080309
-Content-Type: text/plain;
- name="linux-2.4.21-nfs-eoverflow.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="linux-2.4.21-nfs-eoverflow.patch"
-
---- linux-2.4.21/fs/nfs/inode.c.orig	2004-06-09 12:52:29.000000000 -0400
-+++ linux-2.4.21/fs/nfs/inode.c	2004-06-09 12:18:28.000000000 -0400
-@@ -593,6 +593,7 @@ out_fail:
- 	return NULL;
- }
- 
-+#define TOOBIG(_arg) ((_arg) > ~0UL)
- static int
- nfs_statfs(struct super_block *sb, struct statfs *buf)
- {
-@@ -605,12 +606,27 @@ nfs_statfs(struct super_block *sb, struc
- 
- 	error = server->rpc_ops->statfs(server, NFS_FH(sb->s_root->d_inode), &res);
- 	buf->f_type = NFS_SUPER_MAGIC;
--	if (error < 0)
-+	if (error < 0) {
-+		printk("nfs_statfs: statfs error = %d\n", -error);
- 		goto out_err;
-+	}
- 
- 	buf->f_bsize = sb->s_blocksize;
- 	blockbits = sb->s_blocksize_bits;
- 	blockres = (1 << blockbits) - 1;
-+
-+	/*
-+	 * Make sure things fit
-+	 */
-+	if (TOOBIG(((res.tbytes + blockres) >> blockbits)))
-+		goto too_big;
-+	if (TOOBIG(((res.fbytes + blockres) >> blockbits)))
-+		goto too_big;
-+	if (TOOBIG(((res.abytes + blockres) >> blockbits)))
-+		goto too_big;
-+	if (TOOBIG(res.tfiles) || TOOBIG(res.afiles))
-+		goto too_big;
-+
- 	buf->f_blocks = (res.tbytes + blockres) >> blockbits;
- 	buf->f_bfree = (res.fbytes + blockres) >> blockbits;
- 	buf->f_bavail = (res.abytes + blockres) >> blockbits;
-@@ -618,11 +634,15 @@ nfs_statfs(struct super_block *sb, struc
- 	buf->f_ffree = res.afiles;
- 	buf->f_namelen = server->namelen;
- 	return 0;
-+
-+ too_big:
-+ 	dprintk("nfs_statfs: failed: EOVERFLOW\n");
-+
-  out_err:
--	printk("nfs_statfs: statfs error = %d\n", -error);
- 	buf->f_bsize = buf->f_blocks = buf->f_bfree = buf->f_bavail = -1;
- 	return 0;
- }
-+#undef TOOBIG
- 
- static int nfs_show_options(struct seq_file *m, struct vfsmount *mnt)
- {
-
---------------010108020007050800080309--
+> -----Original Message-----
+> From: James Pearson [mailto:james-p@moving-picture.com]=20
+> Sent: Wednesday, June 09, 2004 11:05 AM
+> To: Lever, Charles
+> Cc: nfs@lists.sourceforge.net
+> Subject: Re: [NFS] mtab and procs not in sync?
+>=20
+>=20
+> On a 2.4.26 kernel on x86 I can get /proc/mounts to go over=20
+> 4K (over 8K=20
+> with about 100 automounted file systems).
+>=20
+> Having a quick look through the kernel code I can see=20
+> seq_file used in=20
+> relation to proc_mounts_operations (fs/proc/base.c) - however=20
+> as I don't=20
+> pretend to understand the code, I can't say this is the case ...
+>=20
+> If 2.4.X does use seq_file, then is it safe to say=20
+> /proc/mounts doesn't=20
+> suffer from a truncation problem?
+>=20
+> James Pearson
+>=20
+> Lever, Charles wrote:
+> > as far as i can tell, the 4KB limit is common to x86 on 2.2 and 2.4.
+> > 2.6 has replaced the old /proc read method with seq_file,=20
+> so i believe
+> > /proc/mounts on 2.6 kernels will not suffer from this problem.
+> >=20
+> > it's not a fixed number of mounts, because the length of=20
+> each line in
+> > /proc/mounts depends on what mount options are in effect. =20
+> the limit is
+> > the number of characters in the file.
+> >=20
+> >=20
+> >>-----Original Message-----
+> >>From: James Pearson [mailto:james-p@moving-picture.com]=20
+> >>Sent: Wednesday, June 09, 2004 6:29 AM
+> >>To: Lever, Charles
+> >>Cc: nfs@lists.sourceforge.net
+> >>Subject: Re: [NFS] mtab and procs not in sync?
+> >>
+> >>
+> >>Do you know how many 'a lot of mounts' is?
+> >>
+> >>I believe there was a problem with /proc/mounts in 2.2=20
+> >>kernels (limited=20
+> >>to one page) - is there still a limit in 2.4 or 2.6 kernels?
+> >>
+> >>I currently symlink /proc/mounts to /etc/mtab on diskless=20
+> machines to=20
+> >>get round the issue that /etc/mtab can not trusted to be=20
+> >>correct. I only=20
+> >>have a maximum of a few 10's of mounts at any one time.
+> >>
+> >>James Pearson
+> >>
+> >>Lever, Charles wrote:
+> >>
+> >>>if there are a lot of mounts on the system, then=20
+> >>
+> >>/proc/mounts can be=20
+> >>
+> >>>truncated and not show all of them.
+> >>>
+> >>>however, if there are more mounts in /proc/mounts than in=20
+> >>
+> >>/etc/mtab,=20
+> >>
+> >>>there is probably a bug in mount.  not unheard of.
+> >>>
+> >>>
+> >>>
+> >>>>-----Original Message-----
+> >>>>From: Phy Prabab [mailto:phyprabab@yahoo.com]
+> >>>>Sent: Tuesday, June 08, 2004 2:21 PM
+> >>>>To: nfs@lists.sourceforge.net
+> >>>>Subject: [NFS] mtab and procs not in sync?
+> >>>>
+> >>>>
+> >>>>Hello,
+> >>>>
+> >>>>Have run into a situation where mtab does not match=20
+> /proc/mounts in=20
+> >>>>that mtab has numerous entries that have expired off and=20
+> >>
+> >>removed, yet=20
+> >>
+> >>>>does not show that it has been removed from mtab.  Is this=20
+> >>
+> >>known and=20
+> >>
+> >>>>is there a fix?
+> >>>>
+> >>>>Kernel 2.4.21 and 23
+> >>>>nfs-utils 1.06
+> >>>>automount 4.1.2
+> >>>>
+> >>>>Thanks!
+> >>>>Phy
+> >>>>
+> >>>>
+> >>>>=09
+> >>>>	=09
+> >>>>__________________________________
+> >>>>Do you Yahoo!?
+> >>>>Friends.  Fun.  Try the all-new Yahoo! Messenger.=20
+> >>>>http://messenger.yahoo.com/
+> >>>>
+> >>>>
+> >>>>-------------------------------------------------------
+> >>>>This SF.Net email is sponsored by: GNOME Foundation
+> >>>>Hackers Unite!  GUADEC: The world's #1 Open Source Desktop Event.=20
+> >>>>GNOME Users and Developers European Conference, 28-30th=20
+> >>
+> >>June in Norway=20
+> >>
+> >>>>http://2004/guadec.org=20
+> >>
+> >>_______________________________________________
+> >>
+> >>>>NFS maillist  -  NFS@lists.sourceforge.net
+> >>>>https://lists.sourceforge.net/lists/listinfo/nfs
+> >>>>
+> >>>
+> >>>
+> >>>
+> >>>-------------------------------------------------------
+> >>>This SF.Net email is sponsored by: GNOME Foundation
+> >>>Hackers Unite!  GUADEC: The world's #1 Open Source Desktop Event.=20
+> >>>GNOME Users and Developers European Conference, 28-30th=20
+> >>
+> >>June in Norway=20
+> >>
+> >>>http://2004/guadec.org=20
+> >>
+> >>_______________________________________________
+> >>
+> >>>NFS maillist  -  NFS@lists.sourceforge.net
+> >>>https://lists.sourceforge.net/lists/listinfo/nfs
+> >>>
+> >>
+> >=20
+> >=20
+>=20
+>=20
 
 
 -------------------------------------------------------
