@@ -1,15 +1,22 @@
-From: Han <han@mijncomputer.nl>
-Subject: Re: pf: to scrub or not to scrub?
-Date: Sun, 28 Jul 2002 01:24:51 +0200
+From: "Kendrick M. Smith" <kmsmith@umich.edu>
+Subject: type check in fh_verify()
+Date: Sat, 27 Jul 2002 23:13:58 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020727232451.GG26763@han.myip.org>
-References: <Pine.GSO.4.33.0207241828330.586-100000@loogie.intranet.csupomona.edu> <20020725094904.GE8969@skywalker.bsws.de> <20020725183112.GA4708@esme.xs4all.nl> <20020725190243.GB8076@w4g.org>
-Reply-To: misc@openbsd.org
+Message-ID: <Pine.SOL.4.44.0207272311170.18815-100000@vanguard.gpcc.itd.umich.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: NFS@lists.sourceforge.net
-In-Reply-To: <20020725190243.GB8076@w4g.org>
+Received: from berzerk.gpcc.itd.umich.edu ([141.211.2.162])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17YeVP-0004sQ-00
+	for <nfs@lists.sourceforge.net>; Sat, 27 Jul 2002 20:14:03 -0700
+Received: from vanguard.gpcc.itd.umich.edu (vanguard.gpcc.itd.umich.edu [141.211.2.216])
+        by berzerk.gpcc.itd.umich.edu (8.8.8/4.3-mailhub) with ESMTP id XAA00939
+        for <nfs@lists.sourceforge.net>; Sat, 27 Jul 2002 23:13:59 -0400 (EDT)
+Received: from localhost (kmsmith@localhost)
+	by vanguard.gpcc.itd.umich.edu (8.9.1a/5.1-client) with ESMTP id XAA18923
+	for <nfs@lists.sourceforge.net>; Sat, 27 Jul 2002 23:13:59 -0400 (EDT)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -22,50 +29,47 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hi,
 
-I  run  an  OpenBSD  (current)  nfs  server  with  a  linux  nfs  client
-(2.4.19-rc3-ac3) and if I turn on  the  scrub  feature  (reassemble  all
-fragments)  of  the  OpenBSD  firewall  I  get  into  trouble  with  the
-nfs-client not being able anymore to connect. Perhaps this is something
-that can be improved in the nfs code. This is not  urgent  since  I  can
-tell the firewall to only pay attention to fragments from  the  external
-interface.
+In fs/nfsd/nfsfh.c:fh_verify(), the following block of code is
+responsible for type checking:
 
-If I can be of  any  assistance  please  let  me  know,  but  I  am  not
-subscribed to the list.
+	/* Type check. The correct error return for type mismatches
+	 * does not seem to be generally agreed upon. SunOS seems to
+	 * use EISDIR if file isn't S_IFREG; a comment in the NFSv3
+	 * spec says this is incorrect (implementation notes for the
+	 * write call).
+	 */
 
-Here is the refering part of the man-page.
+	/* Type can be negative when creating hardlinks - not to a dir */
+	if (type > 0 && (inode->i_mode & S_IFMT) != type) {
+		error = (type == S_IFDIR)? nfserr_notdir : nfserr_isdir;
+		goto out;
+	}
+	if (type < 0 && (inode->i_mode & S_IFMT) == type) {
+		error = (type == -S_IFDIR)? nfserr_notdir : nfserr_isdir;
+		goto out;
+	}
 
-  http://www.openbsd.org/cgi-bin/man.cgi?query=pf.conf&apropos=0&sektion=0&manpath=OpenBSD+Current&arch=i386&format=html#NORMALIZATION
+I think that the assignment in the last block is backwards and should be
+
+		error = (type == -S_IFDIR)? nfserr_isdir : nfserr_notdir;
+
+Also, how about changing the assignment in the first block to
+
+		if (type == S_IFDIR)
+			error = nfserr_notdir;
+		else if ((inode->i_mode & S_IFMT) == S_IFDIR)
+			error = nfserr_isdir;
+		else
+			error = nfserr_inval;
+		goto out;
+
+to be consistent with the comment?
+
+Cheers,
+ Kendrick
 
 
-Mike Frantzen (frantzen@w4g.org) wrote:
->
-> > Unless - dare I say it  -  you  have  to  deal  with  Linux  NFS  in
-> > conjunction with that pf firewall, in which case NFS won't work when
-> > scrub is used. That just bit me the other day  (Linux  2.2.x  client
-> > <-> pf <-> Linux 2.4.x server[0]). It's mentioned in the archives of
-> > this list and the conclusion at the  time  was  that  it's  a  Linux
-> > problem[1]. Interesting enough I had the same problem with  a  Linux
-> > 2.4.x client and an OpenBSD 3.1 server. Both issues vanished after I
-> > removed scrub from the rules. Just  something  to  be  aware  of,  I
-> > think.
-> 
-> IIRC Linux's NFS server set DF and MF at the same time (Don't Fragment
-> and More Fragments) which leads to an ambiguity in the interpretation.
-> At the moment, I can't think of anything really bad that could come of
-> the ambiguity.  But SCRUB's job is to resolve ambiguities or drop them
-> if it couldn't be resolved somehow.
-
-
-
-Groetjes, Han.
--- 
-       ::.     +------------------------------------------------------+
-(\./)  .-""-.  | normous cats on the dinette table, etc. -- Dave      |
- `\'-'`      \ | Barry, "The Taming of the Screw"                     |
-   '.___,_^__/ +------------------------------------------------------+
 
 
 -------------------------------------------------------
