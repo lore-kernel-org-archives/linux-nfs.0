@@ -1,18 +1,24 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] Timeouts gone wild on ia64
-Date: Fri, 09 May 2003 13:19:45 -0400
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: 2.5.69 NFSv4 client patches
+Date: Fri, 9 May 2003 14:51:09 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3EBBE331.5000207@RedHat.com>
-References: <482A3FA0050D21419C269D13989C6113127DB4@lavender-fe.eng.netapp.com>
+Message-ID: <482A3FA0050D21419C269D13989C6113127DB5@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from nat-pool-rdu.redhat.com ([66.187.233.200] helo=lacrosse.corp.redhat.com)
+Received: from mx01.netapp.com ([198.95.226.53])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19EBWq-0008Oz-00
-	for <nfs@lists.sourceforge.net>; Fri, 09 May 2003 10:19:28 -0700
-To: "Lever, Charles" <Charles.Lever@netapp.com>
+	id 19EFm3-0003r8-00
+	for <nfs@lists.sourceforge.net>; Fri, 09 May 2003 14:51:27 -0700
+Received: from frejya.corp.netapp.com (frejya [10.10.20.91])
+	by mx01.netapp.com (8.12.9/8.12.9/NTAP-1.4) with ESMTP id h49LpLFB022785
+	for <nfs@lists.sourceforge.net>; Fri, 9 May 2003 14:51:21 -0700 (PDT)
+Received: from black.eng.netapp.com (black.eng.netapp.com [10.56.10.24])
+	by frejya.corp.netapp.com (8.12.9/8.12.9/NTAP-1.4) with ESMTP id h49LpLln016267
+	for <nfs@lists.sourceforge.net>; Fri, 9 May 2003 14:51:21 -0700 (PDT)
+To: "Trond Myklebust (E-mail)" <trond.myklebust@fys.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,22 +31,20 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Lever, Charles wrote:
+hi trond-
 
->however, equivalent behavior would be:
->
->  #define RPC_RTO_MIN (HZ/50)
->
->not HZ/30.  why did you choose 30?
->
-I realize this but... I figured waiting a
-a few extra ticks of time before timing
-out was probably a good thing with respect
-to soft mounts on slow servers... Especially
-since EIO errors can be pretty disruptive... ;-)\
+please take a look at
 
-SteveD.
+  http://plymouth.citi.umich.edu/cel/nfs-client/linux-2.5/2.5.69/
 
+these are bug fixes from the Linux 2.4 NFSv4 client effort that
+have been forward-ported to 2.5.69.  please consider applying
+them to the 2.5 kernel.
+
+        -- Chuck Lever
+--
+corporate: <cel at netapp dot com>
+personal:  <chucklever at bigfoot dot com>
 
 
 -------------------------------------------------------
