@@ -1,24 +1,26 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: nfsd write throughput
-Date: Tue, 3 Aug 2004 15:26:24 +0200
+From: "Mermell, Todd" <mermell@amazon.com>
+Subject: Storm of messages "kernel: RPC: bad TCP reclen <value> (large)"
+Date: Tue, 3 Aug 2004 12:06:58 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040803132624.GI21365@suse.de>
-References: <20040802162448.GB21365@suse.de> <20040803021018.GG5581@sgi.com> <20040803060213.GA21134@suse.de> <20040803075506.GL5581@sgi.com> <20040803103213.GE21365@suse.de> <20040803112445.GO5581@sgi.com>
+Message-ID: <08399A9C7DB2294896E5ACBB120B607205E2CA40@ex-mail-sea-01.ant.amazon.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/alternative;
+	boundary="----_=_NextPart_001_01C4798D.0CBA9C84"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BrzJD-0004tx-Jc
-	for nfs@lists.sourceforge.net; Tue, 03 Aug 2004 06:26:27 -0700
-Received: from cantor.suse.de ([195.135.220.2])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1Bs4dQ-0003Q6-CE
+	for nfs@lists.sourceforge.net; Tue, 03 Aug 2004 12:07:40 -0700
+Received: from smtp-out-1002.amazon.com ([207.171.160.42])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.34)
-	id 1BrzJC-0000Tj-Qu
-	for nfs@lists.sourceforge.net; Tue, 03 Aug 2004 06:26:27 -0700
-To: Greg Banks <gnb@sgi.com>
-In-Reply-To: <20040803112445.GO5581@sgi.com>
+	id 1Bs4dP-0004mA-SJ
+	for nfs@lists.sourceforge.net; Tue, 03 Aug 2004 12:07:40 -0700
+Received: from ex-mail-sea-01.ant.amazon.com by smtp-in-2003.iad2.amazon.com with ESMTP
+	(crosscheck: ex-mail-sea-01.ant.amazon.com [10.16.189.50])
+	id i73J7KMw006516
+	for <nfs@lists.sourceforge.net>; Tue, 3 Aug 2004 19:07:20 GMT
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,53 +33,48 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, Aug 03, 2004 at 09:24:46PM +1000, Greg Banks wrote:
-> With IRIX clients, which do far fewer COMMITs than (at least 2.4) Linux
-> clients, I have seen COMMIT latencies in the order of multiple seconds
-> as over a gigabyte of data is written to disk at 180 MB/s.
+This is a multi-part message in MIME format.
 
-Yes - commit latencies varies a lot, depending on disk speed, client,
-network bandwidth, and the number of clients.
+------_=_NextPart_001_01C4798D.0CBA9C84
+Content-Type: text/plain;
+	charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
 
-> I imagine they will not be thrilled by the idea.
+Has anyone experienced this? This is a high volume (anywhere from 5,000 =
+to 20,000 IOP/sec) NFS server. It looks like a misbehaving client. =
+Kernel - Redhat AS 3.0, 2.4.21-15.0.3. Thanks in advance.
 
-Probably not :-) And judging by the experiments I did with this, it's
-not worth it - now we end up woth all nfsd's stuck in filemap_fdatawait.
+-Todd
 
-> I still think the best approach is to get the page cache to start
-> pushing unstable NFS pages to disk more aggresively, after the WRITE
-> but before the COMMIT.  This should avoid long waits for disk IO
-> with i_sem held; IIRC the page cache will only hold i_sem long enough
-> to traverse page lists, allowing another WRITE call to get in soon.
+------_=_NextPart_001_01C4798D.0CBA9C84
+Content-Type: text/html;
+	charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
 
-Right.
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+<HEAD>
+<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
+charset=3Dus-ascii">
+<META NAME=3D"Generator" CONTENT=3D"MS Exchange Server version =
+6.0.6556.0">
+<TITLE>Storm of messages &quot;kernel: RPC: bad TCP reclen &lt;value&gt; =
+(large)&quot;</TITLE>
+</HEAD>
+<BODY>
+<!-- Converted from text/rtf format -->
 
-I looked into how else I could do this, using the normal
-background writeout as you suggested. I looked at the way
-pdflush_operation(background_writeout) is doing it, but I'm wondering
-if this is the right place for us. background_writeout loops over all
-dirty inodes in all super blocks, only to call do_writepages in the end
-pretty much the same way filemap_flush does - and in the end it
-may send out the wrong pages.
+<P><FONT SIZE=3D2 FACE=3D"Arial">Has anyone experienced this? This is a =
+high volume (anywhere from 5,000 to 20,000 IOP/sec) NFS server. It looks =
+like a misbehaving client. Kernel - Redhat AS 3.0, 2.4.21-15.0.3. Thanks =
+in advance.</FONT></P>
 
-So in order to implement what you suggest, we would need to change a lot
-of code in page-writeback.c and fs-writeback.c - just for the benefit
-of nfsd. Is this worth it?
+<P><FONT SIZE=3D2 FACE=3D"Arial">-Todd</FONT>
+</P>
 
-On the other hand, fadvise and filemap_flush is a perfectly sane way
-of telling the kernel to get rid of a specific range of pages we're no
-longer interested in, without having to have pdflush do a linear crawl
-over all dirty supers and inodes.
-
-So I guess the question I'm asking is - what would be a reasonable
-heuristic for nfsd_write that improves streaming writes without hurting
-random ones, and that doesn't cause fragmentation etc?
-
-Olaf
--- 
-Olaf Kirch     |  The Hardware Gods hate me.
-okir@suse.de   |
----------------+ 
+</BODY>
+</HTML>
+------_=_NextPart_001_01C4798D.0CBA9C84--
 
 
 -------------------------------------------------------
