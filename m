@@ -1,23 +1,29 @@
-From: Eric Whiting <ewhiting@amis.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: 2.4 vs. 2.6 nfs client performance
-Date: Wed, 12 Nov 2003 15:08:59 -0700
+Date: Wed, 12 Nov 2003 18:22:06 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3FB2AF7B.B7FDC8AC@amis.com>
+Message-ID: <16306.49310.195265.145519@charged.uio.no>
 References: <3FB27670.4C878A84@psu.edu>
+	<shssmkttk34.fsf@charged.uio.no>
+	<3FB29D43.A618973D@psu.edu>
+	<16306.41898.291062.36209@charged.uio.no>
+	<3FB2A738.3F2C90B8@psu.edu>
+Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AK39d-0002rZ-00
-	for <nfs@lists.sourceforge.net>; Wed, 12 Nov 2003 14:08:01 -0800
-Received: from dermis.amis.com ([207.141.5.253])
-	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.24)
-	id 1AK39d-0002wi-7B
-	for nfs@lists.sourceforge.net; Wed, 12 Nov 2003 14:08:01 -0800
+	id 1AK4JW-0006oe-00
+	for <nfs@lists.sourceforge.net>; Wed, 12 Nov 2003 15:22:18 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
+	id 1AK4JV-0007D7-ID
+	for nfs@lists.sourceforge.net; Wed, 12 Nov 2003 15:22:17 -0800
 To: Jason Holmes <jholmes@psu.edu>
+In-Reply-To: <3FB2A738.3F2C90B8@psu.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,20 +36,25 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Jason Holmes wrote:
->
-<snip>
-> I'm
-> already seeing some odd performance differences between the 2.4.22
-> client and the 2.6.0-test9-mm1 client (both against a 2.6.0-test9-mm2
-> server):
+>>>>> " " == Jason Holmes <jholmes@psu.edu> writes:
 
-Similar observations here. Our users have reported NFS slowdowns of 10x on
-2.6.0-test6-mm4 nfs clients compared to the same box and setup running 2.4.22. 
-Something is goofy in 2.6.0-test6-mm4 that has a bad effect on NFS client
-performance.
+     > I wasn't, but I'm recompiling test9-bk17 with all of the
+     > debugging options turned on right now.  Is there anything in
+     > particular you want me to do?
 
-eric
+Come to think of it, could you try running with and without the patch
+on
+
+  http://www.fys.uio.no/~trondmy/src/Linux-2.6.x/2.6.0-test9/linux-2.6.0-01-fix_deadlock.dif
+
+That fixes a race that is likely to show up when memory is
+low. Normally it should cause a deadlock rather than corruption, but
+it is conceivable that there are other side-effects...
+
+Please make sure that you run with slab debugging enabled...
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
