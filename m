@@ -1,13 +1,19 @@
-From: <robvog@hetnet.nl>
-Subject: nfs root at networkboot
-Date: Tue, 14 May 2002 15:47:04 +0200
+From: Steffen Persvold <sp@scali.com>
+Subject: Re: Input/output error on hard mounted NFS directory
+Date: Tue, 14 May 2002 16:00:14 +0200 (CEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3043a01c1fb4d$d4978d40$f26897c2@hetnet.nl>
+Message-ID: <Pine.LNX.4.33.0205141559380.28246-100000@sp-home.isdn.scali.no>
+References: <shsadr2gacv.fsf@charged.uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: NFS mailinglist <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: <NFS@lists.sourceforge.net>
+Received: from elin.scali.no ([62.70.89.10])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 177cvr-0004U0-00
+	for <nfs@lists.sourceforge.net>; Tue, 14 May 2002 07:05:39 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <shsadr2gacv.fsf@charged.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -20,52 +26,42 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-hello everyone,=20
+On 14 May 2002, Trond Myklebust wrote:
 
+> >>>>> " " == Steffen Persvold <sp@scali.com> writes:
+>
+>      > On 14 May 2002, Trond Myklebust wrote:
+>     >> >>>>> " " == Steffen Persvold <sp@scali.com> writes:
+>     >>
+>     >> > The error I get here is :
+>     >>
+>     >> > #     Creating static library Linux2.ia64.gnu/libmpi.a ...
+>     >> > #     Creating shared library Linux2.ia64.gnu/libmpi.so ...
+>     >> > /usr/bin/ld: final link failed: Stale NFS file handle
+>     >> > collect2: ld returned 1 exit status make[4]: ***
+>     >> > [Linux2.ia64.gnu/libmpi.a] Error 1
+>     >>
+>     >>
+>     >> Stale file handle has nothing to do with EIO. That looks more
+>     >> like a server bug. Are you perchance using nfs-server?
+>
+>      > No, I'm using a standard RH 7.2 server with knfsd (and
+>      > nfs-utils-0.3.1-13.7.2.1). rpc.nfsd is started with 48 servers.
+>
+> What is the filesystem you are using on the server? Would it be an old
+> ReiserFS 3.5 format disk? If so, you should consider upgrading it to a
+> 3.6 format disk. See the manpage for 'mount -oconv' at www.namesys.com
+>
 
-I am using pxelinux to boot kernel from network, which goes ok.=20
-When root must be mounted from NFS, I get the following code:=20
+It is ext2 (used to be ext3, but I changed back).
 
-Looking up port 100003/2 on 192.168.1.1=20
-RPC: sendmsg returned error 22=20
-portmap: RPC call returned error 22=20
-ROOT-NFS: unable to get nfsd port number from server, using default=20
-looking up port of RPC 100005/1 on 192.168.1.1=20
-RPC: sendmsg returned error 22=20
-portmap: RPC call returned error 22=20
-ROOT-NFS:unable to get nfsd port number from server, using default=20
-RPC: sendmsg returned error 22=20
-mount: RPC call returned error 22=20
-ROOT-NFS: server returned error -22 while mounting =3D=20
-192.168.1.1:/netboot/base=20
-VFS: cannot open root device via nfs, trying floppy=20
+Regards,
+-- 
+  Steffen Persvold   | Scalable Linux Systems |   Try out the world's best
+ mailto:sp@scali.com |  http://www.scali.com  | performing MPI implementation:
+Tel: (+47) 2262 8950 |   Olaf Helsets vei 6   |      - ScaMPI 1.13.8 -
+Fax: (+47) 2262 8951 |   N0621 Oslo, NORWAY   | >320MBytes/s and <4uS latency
 
-server is indeed 192.168.1.1 and root of client system is in =3D=20
-/netboot/base=20
-inetd, dhcpd, rcp.mountd, rcp.nfsd are running=20
-/etc/exports: /netboot/base   =3D=20
-192.168.1.0/255.255.255.0(rw,no_root_squash)=20
-/etc/hosts.allow: ALL:ALL (for now)=20
-
-dhcpd seems to work fine: clients gets ip-address.=20
-tftp from inetd should be working fine since the kernel is received by =
-=3D=20
-client and executed.=20
-- though I get in log: in.tftpd:tftp: client does not accept options. I =
-=3D=20
-dont know if NFS needs tftp in some way, if so tftp could be the cause.=20
-Network (imbedded) card is recognised and passes self test.=20
-socket of nfs tcp is listening.=20
-
-In netstat -p |grep rpc I get:=20
-dgram 56732 rpc.nfsd=20
-dgram 55905 rpc.mountd=20
-While client looks for socket 100003/2 or 100005/1, mine rpc.mountd is =
-=3D=20
-on socket 55905. Maybe it is a reason for an error 22.=20
-
-
-If someone could tell me more I would appreciate very much.=20
 
 _______________________________________________________________
 
