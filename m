@@ -1,22 +1,20 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: nfs newbie, where to find portmapper?
-Date: Sat, 23 Aug 2003 17:31:22 +1000
+From: Juha <juhis@trinity.is-a-geek.com>
+Subject: NFS volumes don't mount at client boot-up
+Date: Sat, 23 Aug 2003 13:13:35 +0300
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16199.6218.848334.275159@gargle.gargle.HOWL>
-References: <200308210452.06388.gostelow@global.co.za>
+Message-ID: <1061633615.986.21.camel@client.veehoo.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19qSsK-0008Bv-00
-	for <nfs@lists.sourceforge.net>; Sat, 23 Aug 2003 00:31:52 -0700
-Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <gostelow@global.co.za>) (for <nfs@lists.sourceforge.net>) By
-	note With Smtp ; Sat, 23 Aug 2003 17:31:33 +1000
-To: gostelow@global.co.za
-In-Reply-To: message from Peter Gostelow on Thursday August 21
+Received: from cs128098.pp.htv.fi
+	([213.243.128.98] helo=trinity.is-a-geek.com ident=postfix)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19qVOd-0005Ha-00
+	for <nfs@lists.sourceforge.net>; Sat, 23 Aug 2003 03:13:23 -0700
+Received: from server.veehoo.net (client.veehoo.net [192.168.0.10])
+	by trinity.is-a-geek.com (Postfix) with ESMTP id E94EC3F216
+	for <nfs@lists.sourceforge.net>; Sat, 23 Aug 2003 13:35:43 +0300 (EEST)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,30 +27,54 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thursday August 21, gostelow@global.co.za wrote:
-> Slightly off-topic, but I'm a bit stuck.
-> 
-> After building a custom GNU/Linux system, I am attemping to install a LAN 
-> using three computers where one is a bridge/router between two ethernet 
-> links. Hopefully, nfs will export the main (/usr/share, /home) directories on 
-> one host to all the others.
-> 
-> My problem is I cannot find a recent portmap source tarball, the debian one 
-> (file dates range from 1992 - 1996!) is incompatible with glibc headers. The 
-> Slackware has a binary only or a similarly old source. Perhaps I'm missing 
-> something, but the Sun Microsystem website doesn't list any rpc stuff, 
-> either. The alternative rpcbind (as found by web searches) apparently doesn't 
-> support the Intel platform.
-> 
-> So, what portmapper are the nfs developers using and is there a source tarball 
-> available for it?
+Hi list,
 
-I use the one that comes with debian.  It works fine.
+A new problem with nfs has just emerged on my setup between two linux
+machines (nfs sever is a debian testing, client a redhat 9). I have two
+volumes on the server that I wan't to share, lets call them /mnt/foo and
+/mnt/bar. When I boot the client machine, the nfs shares won't get
+mounted, instead I get an error like this:
 
-Debian distribute a patch along with the tar-ball, and the patch
-presumable makes it compile with debian's libraries.
+Aug 23 12:21:53 client mount: mount: RPC: Unable to receive; errno =
+Connection refused
+Aug 23 12:21:53 client mount: mount: RPC: Unable to receive; errno =
+Connection refused
+Aug 23 12:21:53 client netfs: Mounting NFS filesystems:  failed
 
-NeilBrown
+But then if I restart the nfs server on the 'server' machine and then do
+a mount on the 'client' machine, I get *one* of the shares to mount. And
+if I repeat this procedure, I get the other share to mount. In other
+words, if I do
+
+server:# /etc/init.d/nfs-kernel-server restart
+client:# mount -a
+mount: RPC: Unable to receive; errno = Connection refused
+
+server# /etc/init.d/nfs-kernel-server restart
+client# mount -a
+
+I get both of the shares to mount. I haven't changed my config files but
+the setup used to work, I don't know what happened. If I reboot the
+'server' machine while the client is running, the shares get mounted
+without problems. This is my configuration:
+
+'server': /etc/exports
+/mnt/foo            client(rw,nohide,async)
+/mnt/bar            client(rw,nohide,async)
+
+'client': /ets/fstab
+server:/mnt/foo  /mnt/foo  nfs  rw,hard,intr,rsize=8192,wsize=8192
+server:/mnt/bar  /mnt/bar  nfs  rw,hard,intr,rsize=8192,wsize=8192
+
+Does anybody have ideas what could be happening? What would be the
+correct way to start debugging where the problem lies? I'm totally
+clueless here, any help appreciated.
+
+Thanks in advance,
+
+Juhis
+
+
 
 
 -------------------------------------------------------
