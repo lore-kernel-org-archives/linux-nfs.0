@@ -1,15 +1,15 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Marc Eshel <eshel@almaden.ibm.com>
 Subject: Re: Re: NFSv3 blocking locks broken in 2.6.7
-Date: Wed, 18 Aug 2004 19:39:20 -0400
+Date: Wed, 18 Aug 2004 17:44:48 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1092872360.9329.106.camel@lade.trondhjem.org>
-References: <OF1E311F0C.DE07BF39-ON88256EF4.0074E199-88256EF4.0076294E@us.ibm.com>
+Message-ID: <OF5D98042A.0F02E0AD-ON88256EF5.0003D053-88256EF5.00041A3D@us.ibm.com>
+References: <1092872360.9329.106.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-/TnCj1rXcniSGbUvZYl7"
+Content-Type: text/plain; charset=ISO-8859-1
 Cc: NFS@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: Marc Eshel <eshel@almaden.ibm.com>
-In-Reply-To: <OF1E311F0C.DE07BF39-ON88256EF4.0074E199-88256EF4.0076294E@us.ibm.com>
+In-Reply-To: <1092872360.9329.106.camel@lade.trondhjem.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -23,49 +23,61 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
---=-/TnCj1rXcniSGbUvZYl7
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: quoted-printable
 
-P=E5 on , 18/08/2004 klokka 17:30, skreiv Marc Eshel:
->=20
->=20
-> Hi Trond,
->=20
-> I tried the changed that you recommended on the NFS client but it did not
-> help. Following is an NLM trace on the NFS server that shows the problem.
-> Tracing the code points to a problem that is marked below with '*****'
->=20
 
-Well debugged!
 
-Grr... These "design cleanups" are costing a lot of extra work to fix up
-the bugs.
+Thanks for the quick response, this patch fixed the problem.
+Marc.
 
-So the following patch fixes it for you then?
+nfs-admin@lists.sourceforge.net wrote on 08/18/2004 04:39:20 PM:
 
-Cheers,
-  Trond
+> P=E5 on , 18/08/2004 klokka 17:30, skreiv Marc Eshel:
+> >
+> >
+> > Hi Trond,
+> >
+> > I tried the changed that you recommended on the NFS client but it d=
+id
+not
+> > help. Following is an NLM trace on the NFS server that shows the
+problem.
+> > Tracing the code points to a problem that is marked below with '***=
+**'
+> >
 
---=-/TnCj1rXcniSGbUvZYl7
-Content-Description: 
-Content-Disposition: inline; filename=gnurr.dif
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: base64
+> Well debugged!
 
-LS0tIGxpbnV4LTIuNi44LjEtZ3Jyci9mcy9sb2NrZC9zdmNsb2NrLmMub3JpZwkyMDA0LTA4LTE0
-IDE0OjI1OjU2LjAwMDAwMDAwMCAtMDQwMA0KKysrIGxpbnV4LTIuNi44LjEtZ3Jyci9mcy9sb2Nr
-ZC9zdmNsb2NrLmMJMjAwNC0wOC0xOCAxOTozNDoxMy4wMDAwMDAwMDAgLTA0MDANCkBAIC0yMzgs
-OCArMjM4LDEzIEBAIG5sbXN2Y19kZWxldGVfYmxvY2soc3RydWN0IG5sbV9ibG9jayAqYmwNCiAN
-CiAJLyogUmVtb3ZlIGJsb2NrIGZyb20gbGlzdCAqLw0KIAlubG1zdmNfcmVtb3ZlX2Jsb2NrKGJs
-b2NrKTsNCi0JcG9zaXhfdW5ibG9ja19sb2NrKCZmaWxlLT5mX2ZpbGUsIGZsKTsNCi0JYmxvY2st
-PmJfZ3JhbnRlZCA9IDA7DQorCWlmIChmbC0+ZmxfbmV4dCkNCisJCXBvc2l4X3VuYmxvY2tfbG9j
-aygmZmlsZS0+Zl9maWxlLCBmbCk7DQorCWlmICh1bmxvY2spIHsNCisJCWZsLT5mbF90eXBlID0g
-Rl9VTkxDSzsNCisJCXBvc2l4X2xvY2tfZmlsZSgmZmlsZS0+Zl9maWxlLCBmbCk7DQorCQlibG9j
-ay0+Yl9ncmFudGVkID0gMDsNCisJfQ0KIA0KIAkvKiBJZiB0aGUgYmxvY2sgaXMgaW4gdGhlIG1p
-ZGRsZSBvZiBhIEdSQU5UIGNhbGxiYWNrLA0KIAkgKiBkb24ndCBraWxsIGl0IHlldC4gKi8NCg==
+> Grr... These "design cleanups" are costing a lot of extra work to fix=
+ up
+> the bugs.
 
---=-/TnCj1rXcniSGbUvZYl7--
+> So the following patch fixes it for you then?
+
+> Cheers,
+> Trond
+> --- linux-2.6.8.1-grrr/fs/lockd/svclock.c.orig 2004-08-14 14:25:56.
+> 000000000 -0400
+> +++ linux-2.6.8.1-grrr/fs/lockd/svclock.c 2004-08-18 19:34:13.0000000=
+00
+-0400
+> @@ -238,8 +238,13 @@ nlmsvc_delete_block(struct nlm_block *bl
+
+> /* Remove block from list */
+> nlmsvc_remove_block(block);
+> - posix_unblock_lock(&file->f_file, fl);
+> - block->b_granted =3D 0;
+> + if (fl->fl_next)
+> +  posix_unblock_lock(&file->f_file, fl);
+> + if (unlock) {
+> +  fl->fl_type =3D F_UNLCK;
+> +  posix_lock_file(&file->f_file, fl);
+> +  block->b_granted =3D 0;
+> + }
+
+> /* If the block is in the middle of a GRANT callback,
+> * don't kill it yet. */=
+
+
 
 
 -------------------------------------------------------
