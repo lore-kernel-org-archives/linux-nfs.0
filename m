@@ -1,19 +1,22 @@
-From: Thomas Reifferscheid <reiffer@kph.uni-mainz.de>
-Subject: Patch for 2.4.20pre11/fs/filesystems.c
-Date: Fri, 25 Oct 2002 14:58:17 +0200
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Re: [PATCH] zerocopy NFS for 2.5.43
+Date: 25 Oct 2002 19:23:14 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3DB93FE9.F0B50FA7@kph.uni-mainz.de>
+Message-ID: <shssmyuqvp9.fsf@charged.uio.no>
+References: <15786.23306.84580.323313@notabene.cse.unsw.edu.au>
+	<20021018.221103.35656279.taka@valinux.co.jp>
+	<15797.63730.223181.75888@notabene.cse.unsw.edu.au>
+	<20021025.185234.08315285.taka@valinux.co.jp>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: neilb@cse.unsw.edu.au,  nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mailout02.sul.t-online.com ([194.25.134.17])
+Received: from mons.uio.no ([129.240.130.14])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18542p-0001h4-00
-	for <nfs@lists.sourceforge.net>; Fri, 25 Oct 2002 05:58:32 -0700
-Received: from kph.uni-mainz.de (thomas.at.home.org [192.168.0.225])
-	by debian.at.home.org (Postfix) with ESMTP id 3E8B293360
-	for <nfs@lists.sourceforge.net>; Fri, 25 Oct 2002 14:58:18 +0200 (CEST)
-To: nfs@lists.sourceforge.net
+	id 1858BE-0007w8-00
+	for <nfs@lists.sourceforge.net>; Fri, 25 Oct 2002 10:23:28 -0700
+To: Hirokazu Takahashi <taka@valinux.co.jp>
+In-Reply-To: <20021025.185234.08315285.taka@valinux.co.jp>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,58 +29,44 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-When I do
-
-CONFIG_NFS_FS=m
-# CONFIG_NFS_V3 is not set
-# CONFIG_ROOT_NFS is not set
-CONFIG_NFSD=m
-# CONFIG_NFSD_V3 is not set
-# CONFIG_NFSD_TCP is not set
-# CONFIG_NCPFS_NFS_NS is not set
+>>>>> " " == Hirokazu Takahashi <taka@valinux.co.jp> writes:
 
 
-and want to insert the module I get:
+    >> In particular, I think it would be good to use 'struct xdr_buf'
+    >> from sunrpc/xdr.h instead of svc_buf.  This is what the nfs
+    >> client uses and we could share some of the infrastructure.
 
-unresolved symbol nfsd_linkage
+     > I just realized it would be hard to use the xdr_buf as it
+     > couldn't handle data in a socket buffer. Each socket burfer
+     > consists of some non-page data and some pages and each of them
+     > might have its own offset and length.
 
-which already was described by Jean-Luc Fontaine in 
-http://marc.theaimsgroup.com/?l=linux-kernel&m=98173746131993&w=2
+Then the following trivial modification would be quite sufficient
 
-Where as I do:
+struct xdr_buf {
+        struct list_head list;          /* Further xdr_buf */
+        struct iovec    head[1],        /* RPC header + non-page data */
+                        tail[1];        /* Appended after page data */
 
-CONFIG_NFS_FS=m
-# CONFIG_NFS_V3 is not set
-# CONFIG_ROOT_NFS is not set
-CONFIG_NFSD=y
-# CONFIG_NFSD_V3 is not set
-# CONFIG_NFSD_TCP is not set
-# CONFIG_NCPFS_NFS_NS is not set
+        struct page **  pages;          /* Array of contiguous pages */
+        unsigned int    page_base,      /* Start of page data */
+                        page_len;       /* Length of page data */
 
-everything works pretty fine.
+        unsigned int    len;            /* Total length of data */
 
+};
 
-You can see some changes have been made here: 
-http://groups.google.de/groups?q=filesystems.c+torvalds&hl=de&lr=&ie=UTF-8&selm=nfs-valinux.15468.35577.461935.694932%40notabene.cse.unsw.edu.au&rnum=1
-
-
-My patch does solve this and works for me.
+With equally trivial fixes to xdr_kmap() and friends. None of this
+needs to affect existing client usage, and may in fact be useful for
+optimizing use of v4 COMPOUNDS later.
+(I was wrong about this BTW: being able to flush out all the dirty
+pages in a file to disk using a single COMPOUND would indeed be worth
+the trouble once we've managed to drop UDP as the primary NFS
+transport mechanism. For one thing, you would only tie up a single
+nfsd thread when writing to the file)
 
 Cheers,
-Thomas
-
-
---- linux-2.4.20pre11-orig/fs/filesystems.c     Sat Aug  3 02:39:45 2002
-+++ linux-2.4.20pre11/fs/filesystems.c  Fri Oct 25 04:44:15 2002
-@@ -13,7 +13,7 @@
- #include <linux/kmod.h>
- #include <linux/nfsd/interface.h>
- 
--#if ! defined(CONFIG_NFSD)
-+#if ! defined(CONFIG_NFSD) || defined(CONFIG_NFSD_MODULE)
- struct nfsd_linkage *nfsd_linkage;
- 
- long
+  Trond
 
 
 -------------------------------------------------------
