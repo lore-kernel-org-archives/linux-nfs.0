@@ -1,26 +1,27 @@
-From: hanasaki <hanasaki@hanaden.com>
-Subject: NFS rpc and stale handles on 2.6.x servers
-Date: Sun, 25 Jan 2004 19:03:25 -0600
+From: Vincent ROQUETA <vincent.roqueta@ext.bull.net>
+Subject: Re: NFSv4 & /etc/exportfs
+Date: Mon, 26 Jan 2004 16:04:14 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <4014675D.2040405@hanaden.com>
+Message-ID: <200401261604.14214.vincent.roqueta@ext.bull.net>
+References: <200401261544.07589.vincent.roqueta@ext.bull.net>
+Reply-To: vincent.roqueta@ext.bull.net
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain;
+  charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AkvAe-0004mq-35
-	for nfs@lists.sourceforge.net; Sun, 25 Jan 2004 17:04:08 -0800
-Received: from cpe-65-30-34-80.kc.rr.com
-	([65.30.34.80] helo=cognition.home.hanaden.com ident=df)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.30)
-	id 1AkvAd-00014b-FC
-	for nfs@lists.sourceforge.net; Sun, 25 Jan 2004 17:04:07 -0800
-Received: from [192.168.1.30] (helo=hanaden.com ident=hanasaki)
-	by cognition.home.hanaden.com with asmtp (Exim 4.30)
-	id 1AkvAJ-0000Xt-Bd
-	for nfs@lists.sourceforge.net; Sun, 25 Jan 2004 19:03:47 -0600
+	id 1Al8HI-0000Ic-VV
+	for nfs@lists.sourceforge.net; Mon, 26 Jan 2004 07:03:52 -0800
+Received: from ecbull20.frec.bull.fr ([129.183.4.3])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1Al8HE-0000F2-LV
+	for nfs@lists.sourceforge.net; Mon, 26 Jan 2004 07:03:51 -0800
+Received: from roquetav.frec.bull.fr (roquetav.frec.bull.fr [129.183.101.52])
+	by ecbull20.frec.bull.fr (8.9.2/8.9.1) with ESMTP id QAA13950
+	for <nfs@lists.sourceforge.net>; Mon, 26 Jan 2004 16:04:10 +0100
 To: nfs@lists.sourceforge.net
+In-Reply-To: <200401261544.07589.vincent.roqueta@ext.bull.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,16 +34,8 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-The below is being reported, on and off, when hitting nfs-kernel-servers
-running on 2.6.0 and 2.6.1  Could someone tell me if this is smoe bug or
-what?  Thanks
-	RPC request reserved 0 but used 124
-
-Debian sarge
-nfs-kernel-server
-am-untils
-nfsv3 over tcp
-
+I'm trying with this patches:
+http://www.citi.umich.edu/projects/nfsv4/linux/nfs-utils-patches/nfs-utils-1.0.6-1/
 
 
 -------------------------------------------------------
