@@ -1,17 +1,16 @@
-From: Chuck Lever <cel@citi.umich.edu>
-Subject: [PATCH]: rpc_debug mode causes an oops
-Date: Thu, 9 Jan 2003 12:07:21 -0500 (EST)
+From: "Lorn Kay" <lorn_kay@hotmail.com>
+Subject: NFS as a Cluster File System.
+Date: Thu, 09 Jan 2003 19:39:50 +0000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0301091158540.25663-100000@dexter.citi.umich.edu>
+Message-ID: <F112Sbh29cM3oryKFRJ0001248d@hotmail.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Linux NFS List <nfs@lists.sourceforge.net>
+Content-Type: text/plain; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from dexter.citi.umich.edu ([141.211.133.33] ident=[BNMDs6jvBsLxQRhguhdE0cDrjsccunOl])
+Received: from f112.law11.hotmail.com ([64.4.17.112] helo=hotmail.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18Wg9T-0006h3-00
-	for <nfs@lists.sourceforge.net>; Thu, 09 Jan 2003 09:07:31 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+	id 18WiY0-0000rr-00
+	for <nfs@lists.sourceforge.net>; Thu, 09 Jan 2003 11:41:00 -0800
+To: nfs@lists.sourceforge.net, linux-ha@muc.de
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,38 +23,67 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-hi trond-
 
-this patch fixes a bug introduced by the recent rpc_procinfo change.  
-when entering debug mode, one of the debug printk's in sched.c expects
-tk_msg.rpc_proc to be non-NULL, but now it can be NULL in certain
-legitimate cases.
+Is NFS a viable CFS? (I'm cross posting this due to a discussion on the the 
+linux-ha list recently.)
 
-the rpc_qname cleanup below removes redundant code.
+NFS has a bad reputation probably due to (at least) the following:
 
-apply against 2.5.55.
+	It has been used in networking environments where different server hardware 
+configurations (NICS, drivers, etc.) running different operating systems 
+have connected to each other (in many-to-many configurations).
 
- net/sunrpc/sched.c |    5 +++--
- 1 files changed, 3 insertions(+), 2 deletions(-)
+	It “grew up” on networks that were perhaps unstable, or immature 
+(“Someone’s kicked the token ring coax cable laying on the floor again”) 
+long before switches were common place, and the network was loaded down with 
+all kinds of network traffic.
 
-diff -Naurp 00-stock/net/sunrpc/sched.c 01-debug-oops/net/sunrpc/sched.c
---- 00-stock/net/sunrpc/sched.c	Wed Jan  8 23:04:15 2003
-+++ 01-debug-oops/net/sunrpc/sched.c	Thu Jan  9 10:55:36 2003
-@@ -1123,11 +1123,12 @@ void rpc_show_tasks(void)
- 		"-rpcwait -action- --exit--\n");
- 	alltask_for_each(t, le, &all_tasks)
- 		printk("%05d %04d %04x %06d %8p %6d %8p %08ld %8s %8p %8p\n",
--			t->tk_pid, t->tk_msg.rpc_proc->p_proc,
-+			t->tk_pid,
-+			(t->tk_msg.rpc_proc ? t->tk_msg.rpc_proc->p_proc : -1),
- 			t->tk_flags, t->tk_status,
- 			t->tk_client, t->tk_client->cl_prog,
- 			t->tk_rqstp, t->tk_timeout,
--			t->tk_rpcwait ? rpc_qname(t->tk_rpcwait) : " <NULL> ",
-+			rpc_qname(t->tk_rpcwait),
- 			t->tk_action, t->tk_exit);
- 	spin_unlock(&rpc_sched_lock);
- }
+	It wasn’t understood very well. Since the default mount options worked, 
+system administrators often didn’t fully understand the ramifications of 
+their NFS client mount option choices.
+
+	It relied on UDP, which is susceptible to huge retransmission efforts on 
+noisy or lossy networks.
+
+	NFS was used over many-hop WAN connections.
+
+	NFS servers were often used for many other tasks, not just NFS.
+
+
+A cluster configuration, however, offers several advantages over the typical 
+NFS configuration:
+
+	All NFS clients (the cluster nodes) run the same operating system (Linux).
+
+	All clients run the same version of NFS and the kernel.
+
+	All clients use the same network tuned configuration.
+
+	A physical network can be dedicated to NFS. (Using a high quality switch, 
+with short data-center-only cable runs.)
+
+	All clients connect to one NFS server.
+
+	The NFS server is a high-quality dedicated machine (Net App, EMC, etc.)
+
+	Only one mount point need be used with one set of mount options.
+
+	Linux clients can use TCP instead of UDP.
+
+Except for the vagaries of the load placed on the cluster nodes, this sounds 
+like a test lab environment. If NFS can’t work in this environment where 
+will it ever work?
+
+--K
+
+
+
+
+
+
+_________________________________________________________________
+STOP MORE SPAM with the new MSN 8 and get 2 months FREE* 
+http://join.msn.com/?page=features/junkmail
 
 
 
