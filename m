@@ -1,25 +1,21 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Linux' NFS locking b0rken?
-Date: Tue, 25 May 2004 18:11:08 -0400
+From: "Raghuram bondalapati" <bondalapati@excite.com>
+Subject: Activate NFS over TCP (2.4.20)
+Date: Wed, 26 May 2004 02:15:35 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1085523068.12612.58.camel@lade.trondhjem.org>
-References: <Pine.LNX.4.44.0405251504220.24001-100000@fattire.ngdc.noaa.gov>
+Message-ID: <20040526061535.E2D27B703@xprdmailfe15.nwk.excite.com>
+Reply-To: bondalapati@excite.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: Dan Stromberg <strombrg@dcs.nac.uci.edu>, Jeffrey Layton <jtlayton@poochiereds.net>, Olaf Kirch <okir@suse.de>,  nfs@lists.sourceforge.net
+Content-Type: multipart/alternative; boundary="EXCITEBOUNDARY_000__10189d22b7341a50abe842f9ef97d60d";
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BSk8l-00082Y-7U
-	for nfs@lists.sourceforge.net; Tue, 25 May 2004 15:11:19 -0700
-Received: from dh132.citi.umich.edu
-	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.30)
-	id 1BSk8k-00059U-Kr
-	for nfs@lists.sourceforge.net; Tue, 25 May 2004 15:11:18 -0700
-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-In-Reply-To: <Pine.LNX.4.44.0405251504220.24001-100000@fattire.ngdc.noaa.gov>
+	id 1BSrhX-0000H5-43
+	for nfs@lists.sourceforge.net; Tue, 25 May 2004 23:15:43 -0700
+Received: from nn4.excitenetwork.com ([207.159.120.58] helo=excite.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1BSrhV-00050r-O5
+	for nfs@lists.sourceforge.net; Tue, 25 May 2004 23:15:41 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,32 +28,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 ty , 25/05/2004 klokka 17:09, skreiv Ara.T.Howard:
-> i'm not saying this is GOOD - just that you certainly can make a wrapper
-> around fcntl and call it flock (or anything else for that matter) and so =
-long
-> as all your processes are using this interface all will be well.  of cour=
-se
-> the two types don't mix.  in any case i understand what you are saying,
-> nevertheless it __is__ being done out there:
 
-That's like saying you can paint the word "aeroplane" on a bicycle then
-launch it off a cliff. Sure, you can, but that doesn't mean a passenger
-won't notice the subtle differences...
 
-http://www.freebsd.org/cgi/man.cgi?query=3Dflock&sektion=3D2&apropos=3D0&ma=
-npath=3DFreeBSD+5.2-RELEASE+and+Ports
-defines precisely what is expected of a lock that was set by flock().
 
-Any program which relies on the fact that BSD locks are inherited by
-child processes will fail to work correctly with you wrapper (because
-fcntl() locks are not inherited).
+--EXCITEBOUNDARY_000__10189d22b7341a50abe842f9ef97d60d
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 
-...and indeed the people who wrote it *do* acknowledge in their comments
-that "The calls might not be completely interchangeable".
+ I have recently build my linux box with 2.4.20 kernel which I use it as a NFS server.I would like to know how i can activate NFS over TCP. By deafult the nfsd is serving for udp and i have found documentation in nfs.sourceforge.net which suggests that NFS over TCP is possible for 2.419 and above kernels. Thanks--Raghu
 
-Cheers,
-  Trond
+_______________________________________________
+Join Excite! - http://www.excite.com
+The most personalized portal on the Web!
+
+--EXCITEBOUNDARY_000__10189d22b7341a50abe842f9ef97d60d
+Content-Type: text/html; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+
+ <table cellpadding=3 cellspacing=0 border=0 width=100% bgcolor=white><tr valign=top><td width=100%><font size=2 color=black>I have recently build my linux box with 2.4.20 kernel which I use it as a NFS server.<br>I would like to know how i can activate NFS over TCP. By deafult the nfsd is serving for udp and i have found documentation in nfs.sourceforge.net which suggests that NFS over TCP is possible for 2.419 and above kernels.<br> <br>Thanks<br>--Raghu<BR><BR><BR><BR><br></font></td></tr></table><p><hr><font size=2 face=geneva><b>Join Excite! - <a href=http://www.excite.com target=_blank>http://www.excite.com</a></b><br>The most personalized portal on the Web!</font>
+
+--EXCITEBOUNDARY_000__10189d22b7341a50abe842f9ef97d60d--
 
 
 -------------------------------------------------------
