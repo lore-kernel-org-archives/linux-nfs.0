@@ -1,69 +1,43 @@
-From: Danny Smith <dannys@cinesite.co.uk>
-Subject: Re: NFS Performance Between SGI Servers and Linux Clients
-Date: Fri, 23 May 2003 13:11:56 +0100
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3ECE100C.6060409@cinesite.co.uk>
-References: <482A3FA0050D21419C269D13989C6113127DEB@lavender-fe.eng.netapp.com> <16077.19956.958830.569577@charged.uio.no>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: [PATCH 0/4] Optimize NFS open() calls by means of 'intents'...
+Date: Fri, 23 May 2003 14:44:33 +0200
+Sender: linux-fsdevel-owner@vger.kernel.org
+Message-ID: <16078.6065.300195.330411@charged.uio.no>
+Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: "Lever, Charles" <Charles.Lever@netapp.com>,
-        Iain Irwin-Powell <iain@cinesite.co.uk>, nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from scanman.cinesite.co.uk ([193.203.81.129])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19JBPU-0001TT-00
-	for <nfs@lists.sourceforge.net>; Fri, 23 May 2003 05:12:32 -0700
-To: trond.myklebust@fys.uio.no
-In-Reply-To: <16077.19956.958830.569577@charged.uio.no>
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-
-Trond Myklebust wrote:
-
->>>>>>" " == Charles Lever <Lever> writes:
->>>>>>            
->>>>>>
->
->     > trond, isn't there a read ahead value in the client that can be
->     > tweaked?  he could trim down vm_max_readahead, unless there is
->     > a max_readahead[] entry for anonymous file systems.
->
->That should partly help to trim it down unless the client is reading
->from > 1 file at a time. In that case the RPC layer will still try to
->issue more reads (up to MIN(16,vm_max_readahead) requests per process)
->if the network and server permits it.
->
->Beware, though, that vm_max_readahead will effect not only
->NFS. Performance on other tasks may suffer.
->  
->
-I will give this a try in Iain's absence. In the real world we *are* likely
-to be reading multiple files, however for testing purposes we don't have to.
-
-Danny
-
--- 
-Danny Smith
-Senior Systems Administrator, Cinesite (Europe) Ltd
-020 7973 4000 - x4055    /    dannys@cinesite.co.uk
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux FSdevel <linux-fsdevel@vger.kernel.org>,
+	Linux Kernel <linux-kernel@vger.kernel.org>,
+	NFS maillist <nfs@lists.sourceforge.net>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: Linus Torvalds <torvalds@transmeta.com>
+List-ID: <nfs.lists.sourceforge.net>
 
 
+The following patches add the concept of 'intents' to the VFS layer,
+and are subsequently used to optimize the NFSv2/v3 close-to-open code,
+and to add O_EXCL support.
 
+Intents are a concept which have been pioneered under Linux by Peter
+Braam. They are an optional field that is passed down to inode ops and
+are used in order to pass down extra information to the filesystem
+about the nature of the operation being undertaken.
 
--------------------------------------------------------
-This SF.net email is sponsored by: ObjectStore.
-If flattening out C++ or Java code to make your application fit in a
-relational database is painful, don't do it! Check out ObjectStore.
-Now part of Progress Software. http://www.objectstore.net/sourceforge
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+This allows the filesystem in turn to make assumptions in order to
+optimize away unnecessary operations (for instance under NFS - doing
+both a LOOKUP and a GETATTR when doing an open), and to choose
+variants that improve the atomicity (For instance under NFSv4 you
+may choose to OPEN rather than LOOKUP).
+
+So far, I have only implemented OPEN intents. In the future, it may
+prove to be useful to add intents for other operations (I know the
+Lustre project in particular is keen to do this) in order to optimize
+away unnecessary file permission checks, and other such things.
+
+As this does not impose additional demands on existing filesystems,
+would this be possible as a late VFS change for 2.5.x/2.6.x?
+
+The problems it addresses are listed in akpm's 'fix' list...
+
+Cheers,
+  Trond
