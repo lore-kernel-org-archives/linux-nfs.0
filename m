@@ -1,26 +1,27 @@
-From: Nick Couchman <nick-lists@seakr.com>
-Subject: Re: Root Over NFS Memory Problem
-Date: Thu, 04 Mar 2004 07:18:57 -0700
+From: Ian Kent <raven@themaw.net>
+Subject: Re: NAS server avalanche overload
+Date: Thu, 4 Mar 2004 22:38:08 +0800 (WST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1078409937.3882.10.camel@nick0.seakr.com>
+Message-ID: <Pine.LNX.4.58.0403042233420.4704@raven.themaw.net>
+References: <1078302718.825.67.camel@localhost>  <1078351343.821.28.camel@localhost>
+ <20040304000438.GA25910@sgi.com>  <1078359638.813.71.camel@localhost>
+ <404688FE.69592A2A@melbourne.sgi.com>  <Pine.LNX.4.58.0403041234150.7374@wombat.indigo.net.au>
+ <1078378313.853.3.camel@localhost>
 Mime-Version: 1.0
-Content-Type: multipart/alternative; boundary="=-JTf6cYKXbQ07712tBjZ9"
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Aytmh-00035e-VP
-	for nfs@lists.sourceforge.net; Thu, 04 Mar 2004 06:25:12 -0800
-Received: from gw2.seakr.com ([209.144.181.2] helo=mail-gw.seakr.com)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AytN4-00021A-Dx
-	for nfs@lists.sourceforge.net; Thu, 04 Mar 2004 05:58:42 -0800
-Received: from scan-gw.seakr.com (seakr5.seakr.com [192.168.100.10])
-	by mail-gw.seakr.com (8.12.10/8.12.10) with ESMTP id i24EEW6a020285
-	for <nfs@lists.sourceforge.net>; Thu, 4 Mar 2004 07:14:32 -0700
-Received: from nick0.seakr.com (nick0 [192.168.10.70])
-	by seakr5.seakr.com (8.10.2/8.10.2) with ESMTP id i24EIwZ18198
-	for <nfs@lists.sourceforge.net>; Thu, 4 Mar 2004 07:18:58 -0700 (MST)
-To: nfs@lists.sourceforge.net
+	id 1Ayu3d-00081r-8X
+	for nfs@lists.sourceforge.net; Thu, 04 Mar 2004 06:42:41 -0800
+Received: from wombat.indigo.net.au ([202.0.185.19])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.30)
+	id 1Aytdy-0005dn-M5
+	for nfs@lists.sourceforge.net; Thu, 04 Mar 2004 06:16:10 -0800
+To: Erik Walthinsen <omega@pdxcolo.net>
+In-Reply-To: <1078378313.853.3.camel@localhost>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,72 +34,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Wed, 3 Mar 2004, Erik Walthinsen wrote:
 
---=-JTf6cYKXbQ07712tBjZ9
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+> On Wed, 2004-03-03 at 20:39, Ian Kent wrote:
+> > Bumping the number of threads to 32 or 64 or more would be the first 
+> > thing I would try.
+> 
+> Only problem is that if the spike occurs anyway, the load will be 33 or
+> 65 instead of 17.  I don't know if it's ctxswitching itself to death
+> while all these nfsd's are blocking, but if so, doubling or quadrupling
+> the number of blocked processes will just make the spike worse.
 
-> We are running currently 43 system over a nfs root filesystem and 
-> none of those systems is suffering from such memory leak. So I 
-> really don't think this is a vanilla kernel issue. If you are sure >
-that its the kernel, try without OpenMosix and other patches.
->
-> Cheers,
->        Bernd
+I'm assuming there is not a problem with the NFS implementation of course.
+Never the less you generally need many more than 16 threads for a busy 
+NFS server.
 
-Two things: 1) What version of the kernel are you running?  2) We have
-another Linux box running the same kernel, but it is not booting
-root-over-NFS, it is using the local hard drive.  This machine does not
-"leak" memory.  Other ideas?  Could it be portmap?
+> 
+> Also, I've learned to be extremely careful about messing with nfsd while
+> clients are connected.  I've had cases where just running exportfs
 
---Nick
--- 
-Nick Couchman
-Information Technology
-SEAKR Engineering, Inc.
-Phone: (303) 790-8499
-Fax: (303) 790-8720
-Web: http://www.seakr.com
+I wouldn't change this on the fly either. I'm suggesting this type 
+of change be made when during scheduled downtime.
 
---=-JTf6cYKXbQ07712tBjZ9
-Content-Type: text/html; charset=utf-8
-Content-Transfer-Encoding: 7bit
-
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 TRANSITIONAL//EN">
-<HTML>
-<HEAD>
-  <META HTTP-EQUIV="Content-Type" CONTENT="text/html; CHARSET=UTF-8">
-  <META NAME="GENERATOR" CONTENT="GtkHTML/3.0.9">
-</HEAD>
-<BODY>
-<TT>&gt; We are running currently 43 system over a nfs root filesystem and <BR>
-&gt; none of those systems is suffering from such memory leak. So I <BR>
-&gt; really don't think this is a vanilla kernel issue. If you are sure &gt; that its the kernel, try without OpenMosix and other patches.<BR>
-&gt;<BR>
-&gt; Cheers,<BR>
-&gt;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Bernd<BR>
-<BR>
-Two things: 1) What version of the kernel are you running?&nbsp; 2) We have another Linux box running the same kernel, but it is not booting root-over-NFS, it is using the local hard drive.&nbsp; This machine does not &quot;leak&quot; memory.&nbsp; Other ideas?&nbsp; Could it be portmap?<BR>
-<BR>
---Nick</TT><BR>
-<TABLE CELLSPACING="0" CELLPADDING="0" WIDTH="100%">
-<TR>
-<TD>
-<PRE>-- 
-Nick Couchman
-Information Technology
-SEAKR Engineering, Inc.
-Phone: (303) 790-8499
-Fax: (303) 790-8720
-Web: http://www.seakr.com</PRE>
-</TD>
-</TR>
-</TABLE>
-
-</BODY>
-</HTML>
-
---=-JTf6cYKXbQ07712tBjZ9--
+Ian
 
 
 
