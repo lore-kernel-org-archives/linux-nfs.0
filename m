@@ -1,8 +1,8 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: [PATCH] Clean up NFSv4 READ xdr path
-Date: Tue, 17 Dec 2002 19:14:47 +0100
+Subject: [PATCH] Clean up NFSv4 WRITE xdr path
+Date: Tue, 17 Dec 2002 19:15:17 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15871.27031.103107.327144@charged.uio.no>
+Message-ID: <15871.27061.307281.359451@charged.uio.no>
 Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -10,8 +10,8 @@ Cc: NFS maillist <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18OMF8-00038Q-00
-	for <nfs@lists.sourceforge.net>; Tue, 17 Dec 2002 10:14:58 -0800
+	id 18OMFc-0003Cy-00
+	for <nfs@lists.sourceforge.net>; Tue, 17 Dec 2002 10:15:28 -0800
 To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -26,190 +26,203 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-The following patch creates a clean XDR path for the NFSv4 read requests
+The following patch creates a clean XDR path for the NFSv4 write requests
 instead of routing through encode_compound()/decode_compound().
-This eliminates the intermediate step of setting up a struct nfs4_compound
-before proceeding to XDR encoding, and removes the large 'switch()'
-statements from the codepath altogether.
 
 Cheers,
   Trond
 
-
-diff -u --recursive --new-file linux-2.5.52/fs/nfs/nfs3proc.c linux-2.5.52-01-nfsv4_read/fs/nfs/nfs3proc.c
---- linux-2.5.52/fs/nfs/nfs3proc.c	2002-11-13 15:59:23.000000000 +0100
-+++ linux-2.5.52-01-nfsv4_read/fs/nfs/nfs3proc.c	2002-12-17 15:27:29.000000000 +0100
-@@ -685,11 +685,10 @@
+diff -u --recursive --new-file linux-2.5.52-01-nfsv4_read/fs/nfs/nfs3proc.c linux-2.5.52-02-nfsv4_write/fs/nfs/nfs3proc.c
+--- linux-2.5.52-01-nfsv4_read/fs/nfs/nfs3proc.c	2002-12-17 15:27:29.000000000 +0100
++++ linux-2.5.52-02-nfsv4_write/fs/nfs/nfs3proc.c	2002-12-17 15:27:47.000000000 +0100
+@@ -730,12 +730,9 @@
  static void
- nfs3_read_done(struct rpc_task *task)
+ nfs3_write_done(struct rpc_task *task)
  {
--	struct nfs_read_data *data = (struct nfs_read_data *) task->tk_calldata;
+-	struct nfs_write_data *data = (struct nfs_write_data *) task->tk_calldata;
 -
  	if (nfs3_async_handle_jukebox(task))
  		return;
--	nfs_readpage_result(task, data->u.v3.res.count, data->u.v3.res.eof);
-+	/* Call back common NFS readpage processing */
-+	nfs_readpage_result(task);
+-	nfs_writeback_done(task, data->u.v3.args.stable,
+-			   data->u.v3.args.count, data->u.v3.res.count);
++	nfs_writeback_done(task);
  }
  
  static void
-@@ -701,20 +700,20 @@
+@@ -748,8 +745,8 @@
  	int			flags;
  	struct rpc_message	msg = {
- 		.rpc_proc	= &nfs3_procedures[NFS3PROC_READ],
+ 		.rpc_proc	= &nfs3_procedures[NFS3PROC_WRITE],
 -		.rpc_argp	= &data->u.v3.args,
 -		.rpc_resp	= &data->u.v3.res,
 +		.rpc_argp	= &data->args,
 +		.rpc_resp	= &data->res,
  		.rpc_cred	= data->cred,
  	};
+ 
+@@ -762,15 +759,15 @@
+ 		stable = NFS_UNSTABLE;
  	
  	req = nfs_list_entry(data->pages.next);
 -	data->u.v3.args.fh     = NFS_FH(inode);
 -	data->u.v3.args.offset = req_offset(req) + req->wb_offset;
 -	data->u.v3.args.pgbase = req->wb_offset;
--	data->u.v3.args.pages  = data->pagevec;
 -	data->u.v3.args.count  = count;
+-	data->u.v3.args.stable = stable;
+-	data->u.v3.args.pages  = data->pagevec;
 -	data->u.v3.res.fattr   = &data->fattr;
 -	data->u.v3.res.count   = count;
--	data->u.v3.res.eof     = 0;
+-	data->u.v3.res.verf    = &data->verf;
 +	data->args.fh     = NFS_FH(inode);
 +	data->args.offset = req_offset(req) + req->wb_offset;
 +	data->args.pgbase = req->wb_offset;
-+	data->args.pages  = data->pagevec;
 +	data->args.count  = count;
++	data->args.stable = stable;
++	data->args.pages  = data->pagevec;
 +	data->res.fattr   = &data->fattr;
 +	data->res.count   = count;
-+	data->res.eof     = 0;
++	data->res.verf    = &data->verf;
+ 
+ 	/* Set the initial flags for the task.  */
+ 	flags = (how & FLUSH_SYNC) ? 0 : RPC_TASK_ASYNC;
+@@ -800,17 +797,17 @@
+ 	int			flags;
+ 	struct rpc_message	msg = {
+ 		.rpc_proc	= &nfs3_procedures[NFS3PROC_COMMIT],
+-		.rpc_argp	= &data->u.v3.args,
+-		.rpc_resp	= &data->u.v3.res,
++		.rpc_argp	= &data->args,
++		.rpc_resp	= &data->res,
+ 		.rpc_cred	= data->cred,
+ 	};
+ 
+-	data->u.v3.args.fh     = NFS_FH(data->inode);
+-	data->u.v3.args.offset = start;
+-	data->u.v3.args.count  = len;
+-	data->u.v3.res.count   = len;
+-	data->u.v3.res.fattr   = &data->fattr;
+-	data->u.v3.res.verf    = &data->verf;
++	data->args.fh     = NFS_FH(data->inode);
++	data->args.offset = start;
++	data->args.count  = len;
++	data->res.count   = len;
++	data->res.fattr   = &data->fattr;
++	data->res.verf    = &data->verf;
  	
- 	/* N.B. Do we need to test? Never called for swapfile inode */
- 	flags = RPC_TASK_ASYNC | (IS_SWAPFILE(inode)? NFS_RPC_SWAPFLAGS : 0);
-diff -u --recursive --new-file linux-2.5.52/fs/nfs/nfs4proc.c linux-2.5.52-01-nfsv4_read/fs/nfs/nfs4proc.c
---- linux-2.5.52/fs/nfs/nfs4proc.c	2002-11-23 04:16:55.000000000 +0100
-+++ linux-2.5.52-01-nfsv4_read/fs/nfs/nfs4proc.c	2002-12-17 15:27:29.000000000 +0100
-@@ -402,23 +402,6 @@
+ 	/* Set the initial flags for the task.  */
+ 	flags = (how & FLUSH_SYNC) ? 0 : RPC_TASK_ASYNC;
+diff -u --recursive --new-file linux-2.5.52-01-nfsv4_read/fs/nfs/nfs4proc.c linux-2.5.52-02-nfsv4_write/fs/nfs/nfs4proc.c
+--- linux-2.5.52-01-nfsv4_read/fs/nfs/nfs4proc.c	2002-12-17 15:27:29.000000000 +0100
++++ linux-2.5.52-02-nfsv4_write/fs/nfs/nfs4proc.c	2002-12-17 15:27:47.000000000 +0100
+@@ -94,19 +94,6 @@
  }
  
  static void
--nfs4_setup_read(struct nfs4_compound *cp, u64 offset, u32 length,
--		struct page **pages, unsigned int pgbase, u32 *eofp, u32 *bytes_read)
+-nfs4_setup_commit(struct nfs4_compound *cp, u64 start, u32 len, struct nfs_writeverf *verf)
 -{
--	struct nfs4_read *read = GET_OP(cp, read);
+-	struct nfs4_commit *commit = GET_OP(cp, commit);
 -
--	read->rd_offset = offset;
--	read->rd_length = length;
--	read->rd_pages = pages;
--	read->rd_pgbase = pgbase;
--	read->rd_eof = eofp;
--	read->rd_bytes_read = bytes_read;
+-	commit->co_start = start;
+-	commit->co_len = len;
+-	commit->co_verifier = verf;
 -
--	OPNUM(cp) = OP_READ;
+-	OPNUM(cp) = OP_COMMIT;
 -	cp->req_nops++;
 -}
 -
 -static void
- nfs4_setup_readdir(struct nfs4_compound *cp, u64 cookie, u32 *verifier,
- 		     struct page **pages, unsigned int bufsize, struct dentry *dentry)
+ nfs4_setup_create_dir(struct nfs4_compound *cp, struct qstr *name,
+ 		      struct iattr *sattr, struct nfs4_change_info *info)
  {
-@@ -613,11 +596,18 @@
- 	cp->req_nops++;
+@@ -577,26 +564,6 @@
  }
  
-+static void
-+renew_lease(struct nfs_server *server, unsigned long timestamp)
-+{
-+	spin_lock(&renew_lock);
-+	if (time_before(server->last_renewal,timestamp))
-+		server->last_renewal = timestamp;
-+	spin_unlock(&renew_lock);
-+}
-+
- static inline void
- process_lease(struct nfs4_compound *cp)
+ static void
+-nfs4_setup_write(struct nfs4_compound *cp, u64 offset, u32 length, int stable,
+-		 struct page **pages, unsigned int pgbase, u32 *bytes_written,
+-		 struct nfs_writeverf *verf)
+-{
+-	struct nfs4_write *write = GET_OP(cp, write);
+-
+-	write->wr_offset = offset;
+-	write->wr_stable_how = stable;
+-	write->wr_len = length;
+-	write->wr_bytes_written = bytes_written;
+-	write->wr_verf = verf;
+-
+-	write->wr_pages = pages;
+-	write->wr_pgbase = pgbase;
+-
+-	OPNUM(cp) = OP_WRITE;
+-	cp->req_nops++;
+-}
+-
+-static void
+ renew_lease(struct nfs_server *server, unsigned long timestamp)
  {
--	struct nfs_server *server;
--	
-         /*
-          * Generic lease processing: If this operation contains a
- 	 * lease-renewing operation, and it succeeded, update the RENEW time
-@@ -634,13 +624,8 @@
-          */
- 	if (!cp->renew_index)
- 		return;
--	if (!cp->toplevel_status || cp->resp_nops > cp->renew_index) {
--		server = cp->server;
--		spin_lock(&renew_lock);
--		if (server->last_renewal < cp->timestamp)
--			server->last_renewal = cp->timestamp;
--		spin_unlock(&renew_lock);
--	}
-+	if (!cp->toplevel_status || cp->resp_nops > cp->renew_index)
-+		renew_lease(cp->server, cp->timestamp);
- }
- 
- static int
-@@ -1003,20 +988,35 @@
- 	       unsigned int base, unsigned int count,
- 	       struct page *page, int *eofp)
+ 	spin_lock(&renew_lock);
+@@ -1026,23 +993,32 @@
+ 		unsigned int base, unsigned int count,
+ 		struct page *page, struct nfs_writeverf *verf)
  {
 -	u64			offset = page_offset(page) + base;
 -	struct nfs4_compound	compound;
 -	struct nfs4_op		ops[2];
--	u32			bytes_read;
--	int			status;
+-	u32			bytes_written;
+-	int			stable = (flags & NFS_RW_SYNC) ? NFS_FILE_SYNC : NFS_UNSTABLE;
 +	struct nfs_server *server = NFS_SERVER(inode);
 +	uint64_t offset = page_offset(page) + base;
-+	struct nfs_readargs arg = {
++	struct nfs_writeargs arg = {
 +		.fh		= NFS_FH(inode),
 +		.offset		= offset,
 +		.count		= count,
++		.stable		= (flags & NFS_RW_SYNC) ? NFS_FILE_SYNC : NFS_UNSTABLE,
 +		.pgbase		= base,
 +		.pages		= &page,
 +	};
-+	struct nfs_readres res = {
++	struct nfs_writeres res = {
 +		.fattr		= fattr,
 +		.count		= count,
++		.verf		= verf,
 +	};
 +	struct rpc_message msg = {
-+		.rpc_proc	= &nfs4_procedures[NFSPROC4_CLNT_READ],
++		.rpc_proc	= &nfs4_procedures[NFSPROC4_CLNT_WRITE],
 +		.rpc_argp	= &arg,
 +		.rpc_resp	= &res,
 +		.rpc_cred	= cred,
 +	};
-+	unsigned long timestamp = jiffies;
-+	int status;
+ 	int			rpcflags = (flags & NFS_RW_SWAP) ? NFS_RPC_SWAPFLAGS : 0;
+-	int			status;
  
-+	dprintk("NFS call  read %d @ %Ld\n", count, (long long)offset);
++	dprintk("NFS call  write %d @ %Ld\n", count, (long long)offset);
  	fattr->valid = 0;
--	nfs4_setup_compound(&compound, ops, NFS_SERVER(inode), "read [sync]");
+-	nfs4_setup_compound(&compound, ops, NFS_SERVER(inode), "write [sync]");
 -	nfs4_setup_putfh(&compound, NFS_FH(inode));
--	nfs4_setup_read(&compound, offset, count, &page, base, eofp, &bytes_read);
--	status = nfs4_call_compound(&compound, cred, 0);
--
+-	nfs4_setup_write(&compound, offset, count, stable, &page, base, &bytes_written, verf);
+-	status = nfs4_call_compound(&compound, cred, rpcflags);
+-	
 -	if (status >= 0)
--		status = bytes_read;
-+	status = rpc_call_sync(server->client, &msg, flags);
-+	if (!status)
-+		renew_lease(server, timestamp);
-+	dprintk("NFS reply read: %d\n", status);
-+	*eofp = res.eof;
- 	return status;
+-		status = bytes_written;
+-	return status;
++	return rpc_call_sync(server->client, &msg, rpcflags);
  }
  
-@@ -1363,31 +1363,35 @@
+ static int
+@@ -1410,20 +1386,20 @@
  {
- 	struct nfs_read_data *data = (struct nfs_read_data *) task->tk_calldata;
- 
+ 	struct nfs_write_data *data = (struct nfs_write_data *) task->tk_calldata;
+ 	
 -	process_lease(&data->u.v4.compound);
--	nfs_readpage_result(task, data->u.v4.res_count, data->u.v4.res_eof);
+-	nfs_writeback_done(task, data->u.v4.arg_stable,
+-			   data->u.v4.arg_count, data->u.v4.res_count);
 +	if (task->tk_status > 0)
 +		renew_lease(NFS_SERVER(data->inode), data->timestamp);
-+	/* Call back common NFS readpage processing */
-+	nfs_readpage_result(task);
++	/* Call back common NFS writeback processing */
++	nfs_writeback_done(task);
  }
  
  static void
- nfs4_proc_read_setup(struct nfs_read_data *data, unsigned int count)
+ nfs4_proc_write_setup(struct nfs_write_data *data, unsigned int count, int how)
  {
  	struct rpc_task	*task = &data->task;
 -	struct nfs4_compound *cp = &data->u.v4.compound;
@@ -217,253 +230,291 @@ diff -u --recursive --new-file linux-2.5.52/fs/nfs/nfs4proc.c linux-2.5.52-01-nf
 -		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_COMPOUND],
 -		.rpc_argp = cp,
 -		.rpc_resp = cp,
-+		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_READ],
++		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_WRITE],
 +		.rpc_argp = &data->args,
 +		.rpc_resp = &data->res,
  		.rpc_cred = data->cred,
  	};
  	struct inode *inode = data->inode;
- 	struct nfs_page *req = nfs_list_entry(data->pages.next);
- 	int flags;
+@@ -1439,11 +1415,16 @@
+ 	} else
+ 		stable = NFS_UNSTABLE;
  
--	nfs4_setup_compound(cp, data->u.v4.ops, NFS_SERVER(inode), "read [async]");
+-	nfs4_setup_compound(cp, data->u.v4.ops, NFS_SERVER(inode), "write [async]");
 -	nfs4_setup_putfh(cp, NFS_FH(inode));
--	nfs4_setup_read(cp, req_offset(req) + req->wb_offset,
--			count, data->pagevec, req->wb_offset,
--			&data->u.v4.res_eof,
--			&data->u.v4.res_count);
+-	nfs4_setup_write(cp, req_offset(req) + req->wb_offset,
+-			 count, stable, data->pagevec, req->wb_offset,
+-			 &data->u.v4.res_count, &data->verf);
 +	data->args.fh     = NFS_FH(inode);
 +	data->args.offset = req_offset(req) + req->wb_offset;
 +	data->args.pgbase = req->wb_offset;
-+	data->args.pages  = data->pagevec;
 +	data->args.count  = count;
++	data->args.stable = stable;
++	data->args.pages  = data->pagevec;
 +	data->res.fattr   = &data->fattr;
 +	data->res.count   = count;
-+	data->res.eof     = 0;
++	data->res.verf    = &data->verf;
 +	data->timestamp   = jiffies;
  
- 	/* N.B. Do we need to test? Never called for swapfile inode */
- 	flags = RPC_TASK_ASYNC | (IS_SWAPFILE(inode)? NFS_RPC_SWAPFLAGS : 0);
-diff -u --recursive --new-file linux-2.5.52/fs/nfs/nfs4xdr.c linux-2.5.52-01-nfsv4_read/fs/nfs/nfs4xdr.c
---- linux-2.5.52/fs/nfs/nfs4xdr.c	2002-11-23 04:16:55.000000000 +0100
-+++ linux-2.5.52-01-nfsv4_read/fs/nfs/nfs4xdr.c	2002-12-17 15:27:29.000000000 +0100
-@@ -64,8 +64,29 @@
+ 	/* Set the initial flags for the task.  */
+ 	flags = (how & FLUSH_SYNC) ? 0 : RPC_TASK_ASYNC;
+@@ -1458,37 +1439,30 @@
+ }
  
- extern int			nfs_stat_to_errno(int);
+ static void
+-nfs4_commit_done(struct rpc_task *task)
+-{
+-	struct nfs_write_data *data = (struct nfs_write_data *) task->tk_calldata;
+-	
+-	process_lease(&data->u.v4.compound);
+-	nfs_commit_done(task);
+-}
+-
+-static void
+ nfs4_proc_commit_setup(struct nfs_write_data *data, u64 start, u32 len, int how)
+ {
+ 	struct rpc_task	*task = &data->task;
+-	struct nfs4_compound *cp = &data->u.v4.compound;
+ 	struct rpc_message msg = {
+-		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_COMPOUND],
+-		.rpc_argp = cp,
+-		.rpc_resp = cp,
++		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_COMMIT],
++		.rpc_argp = &data->args,
++		.rpc_resp = &data->res,
+ 		.rpc_cred = data->cred,
+ 	};	
+ 	struct inode *inode = data->inode;
+ 	int flags;
+ 	
+-	nfs4_setup_compound(cp, data->u.v4.ops, NFS_SERVER(inode), "commit [async]");
+-	nfs4_setup_putfh(cp, NFS_FH(inode));
+-	nfs4_setup_commit(cp, start, len, &data->verf);
++	data->args.fh     = NFS_FH(data->inode);
++	data->args.offset = start;
++	data->args.count  = len;
++	data->res.count   = len;
++	data->res.fattr   = &data->fattr;
++	data->res.verf    = &data->verf;
+ 	
+ 	/* Set the initial flags for the task.  */
+ 	flags = (how & FLUSH_SYNC) ? 0 : RPC_TASK_ASYNC;
  
-+/* NFSv4 COMPOUND tags are only wanted for debugging purposes */
-+#ifdef DEBUG
-+#define NFS4_MAXTAGLEN		20
-+#else
-+#define NFS4_MAXTAGLEN		0
-+#endif
-+
-+#define compound_encode_hdr_maxsz	3 + (NFS4_MAXTAGLEN >> 2)
-+#define compound_decode_hdr_maxsz	2 + (NFS4_MAXTAGLEN >> 2)
-+#define op_encode_hdr_maxsz	1
-+#define op_decode_hdr_maxsz	2
-+#define encode_putfh_maxsz	op_encode_hdr_maxsz + 1 + \
-+				(NFS4_FHSIZE >> 2)
-+#define decode_putfh_maxsz	op_decode_hdr_maxsz
-+
- #define NFS4_enc_compound_sz	1024  /* XXX: large enough? */
- #define NFS4_dec_compound_sz	1024  /* XXX: large enough? */
-+#define NFS4_enc_read_sz	compound_encode_hdr_maxsz + \
+ 	/* Finalize the task. */
+-	rpc_init_task(task, NFS_CLIENT(inode), nfs4_commit_done, flags);
++	rpc_init_task(task, NFS_CLIENT(inode), nfs_commit_done, flags);
+ 	task->tk_calldata = data;
+ 	/* Release requests */
+ 	task->tk_release = nfs_commit_release;
+diff -u --recursive --new-file linux-2.5.52-01-nfsv4_read/fs/nfs/nfs4xdr.c linux-2.5.52-02-nfsv4_write/fs/nfs/nfs4xdr.c
+--- linux-2.5.52-01-nfsv4_read/fs/nfs/nfs4xdr.c	2002-12-17 15:27:29.000000000 +0100
++++ linux-2.5.52-02-nfsv4_write/fs/nfs/nfs4xdr.c	2002-12-17 15:27:47.000000000 +0100
+@@ -87,6 +87,19 @@
+ #define NFS4_dec_read_sz	compound_decode_hdr_maxsz + \
+ 				decode_putfh_maxsz + \
+ 				op_decode_hdr_maxsz + 2
++#define NFS4_enc_write_sz	compound_encode_hdr_maxsz + \
 +				encode_putfh_maxsz + \
-+				op_encode_hdr_maxsz + 7
-+#define NFS4_dec_read_sz	compound_decode_hdr_maxsz + \
++				op_encode_hdr_maxsz + 8
++#define NFS4_dec_write_sz	compound_decode_hdr_maxsz + \
++				decode_putfh_maxsz + \
++				op_decode_hdr_maxsz + 4
++#define NFS4_enc_commit_sz	compound_encode_hdr_maxsz + \
++				encode_putfh_maxsz + \
++				op_encode_hdr_maxsz + 3
++#define NFS4_dec_commit_sz	compound_decode_hdr_maxsz + \
 +				decode_putfh_maxsz + \
 +				op_decode_hdr_maxsz + 2
++
  
  static struct {
  	unsigned int	mode;
-@@ -131,6 +152,7 @@
- 	uint32_t *p;
- 
- 	dprintk("encode_compound: tag=%.*s\n", (int)hdr->taglen, hdr->tag);
-+	BUG_ON(hdr->taglen > NFS4_MAXTAGLEN);
- 	RESERVE_SPACE(12+XDR_QUADLEN(hdr->taglen));
- 	WRITE32(hdr->taglen);
- 	WRITEMEM(hdr->tag, hdr->taglen);
-@@ -472,15 +494,15 @@
+@@ -332,14 +345,14 @@
  }
  
  static int
--encode_putfh(struct xdr_stream *xdr, struct nfs4_putfh *putfh)
-+encode_putfh(struct xdr_stream *xdr, struct nfs_fh *fh)
+-encode_commit(struct xdr_stream *xdr, struct nfs4_commit *commit)
++encode_commit(struct xdr_stream *xdr, struct nfs_writeargs *args)
  {
--	int len = putfh->pf_fhandle->size;
-+	int len = fh->size;
  	uint32_t *p;
+         
+         RESERVE_SPACE(16);
+         WRITE32(OP_COMMIT);
+-        WRITE64(commit->co_start);
+-        WRITE32(commit->co_len);
++        WRITE64(args->offset);
++        WRITE32(args->count);
  
- 	RESERVE_SPACE(8 + len);
- 	WRITE32(OP_PUTFH);
- 	WRITE32(len);
--	WRITEMEM(putfh->pf_fhandle->data, len);
-+	WRITEMEM(fh->data, len);
- 
- 	return 0;
+         return 0;
  }
-@@ -497,10 +519,8 @@
+@@ -705,9 +718,8 @@
  }
  
  static int
--encode_read(struct xdr_stream *xdr, struct nfs4_read *read, struct rpc_rqst *req)
-+encode_read(struct xdr_stream *xdr, struct nfs_readargs *args)
+-encode_write(struct xdr_stream *xdr, struct nfs4_write *write, struct rpc_rqst *req)
++encode_write(struct xdr_stream *xdr, struct nfs_writeargs *args)
  {
--	struct rpc_auth	*auth = req->rq_task->tk_auth;
--	int		replen;
+-	struct xdr_buf *sndbuf = &req->rq_snd_buf;
  	uint32_t *p;
  
- 	RESERVE_SPACE(32);
-@@ -509,16 +529,8 @@
- 	WRITE32(0);
- 	WRITE32(0);
- 	WRITE32(0);
--	WRITE64(read->rd_offset);
--	WRITE32(read->rd_length);
--
--	/* set up reply iovec
--	 *    toplevel status + taglen + rescount + OP_PUTFH + status
--	 *       + OP_READ + status + eof + datalen = 9
--	 */
--	replen = (RPC_REPHDRSIZE + auth->au_rslack + 9) << 2;
--	xdr_inline_pages(&req->rq_rcv_buf, replen,
--			 read->rd_pages, read->rd_pgbase, read->rd_length);
+ 	RESERVE_SPACE(36);
+@@ -716,11 +728,11 @@
+ 	WRITE32(0xffffffff);
+ 	WRITE32(0xffffffff);
+ 	WRITE32(0xffffffff);
+-	WRITE64(write->wr_offset);
+-	WRITE32(write->wr_stable_how);
+-	WRITE32(write->wr_len);
 +	WRITE64(args->offset);
++	WRITE32(args->stable);
 +	WRITE32(args->count);
  
+-	xdr_encode_pages(sndbuf, write->wr_pages, write->wr_pgbase, write->wr_len);
++	xdr_write_pages(xdr, args->pages, args->pgbase, args->count);
+ 
  	return 0;
  }
-@@ -759,14 +771,11 @@
- 			status = encode_open_confirm(xdr, &cp->ops[i].u.open_confirm);
+@@ -746,9 +758,6 @@
+ 		case OP_CLOSE:
+ 			status = encode_close(xdr, &cp->ops[i].u.close);
  			break;
- 		case OP_PUTFH:
--			status = encode_putfh(xdr, &cp->ops[i].u.putfh);
-+			status = encode_putfh(xdr, cp->ops[i].u.putfh.pf_fhandle);
- 			break;
- 		case OP_PUTROOTFH:
- 			status = encode_putrootfh(xdr);
- 			break;
--		case OP_READ:
--			status = encode_read(xdr, &cp->ops[i].u.read, req);
+-		case OP_COMMIT:
+-			status = encode_commit(xdr, &cp->ops[i].u.commit);
 -			break;
- 		case OP_READDIR:
- 			status = encode_readdir(xdr, &cp->ops[i].u.readdir, req);
+ 		case OP_CREATE:
+ 			status = encode_create(xdr, &cp->ops[i].u.create);
  			break;
-@@ -829,6 +838,37 @@
+@@ -806,9 +815,6 @@
+ 		case OP_SETCLIENTID_CONFIRM:
+ 			status = encode_setclientid_confirm(xdr, cp->ops[i].u.setclientid_confirm);
+ 			break;
+-		case OP_WRITE:
+-			status = encode_write(xdr, &cp->ops[i].u.write, req);
+-			break;
+ 		default:
+ 			BUG();
+ 		}
+@@ -869,6 +875,49 @@
  	return status;
  }
  
 +/*
-+ * Encode a READ request
++ * Encode a WRITE request
 + */
 +static int
-+nfs4_xdr_enc_read(struct rpc_rqst *req, uint32_t *p, struct nfs_readargs *args)
++nfs4_xdr_enc_write(struct rpc_rqst *req, uint32_t *p, struct nfs_writeargs *args)
 +{
-+	struct rpc_auth	*auth = req->rq_task->tk_auth;
 +	struct xdr_stream xdr;
 +	struct compound_hdr hdr = {
-+		.nops	= 2,
++		.nops   = 2,
 +	};
-+	int replen, status;
++	int status;
 +
 +	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
 +	encode_compound_hdr(&xdr, &hdr);
 +	status = encode_putfh(&xdr, args->fh);
 +	if (status)
 +		goto out;
-+	status = encode_read(&xdr, args);
-+
-+	/* set up reply iovec
-+	 *    toplevel status + taglen=0 + rescount + OP_PUTFH + status
-+	 *       + OP_READ + status + eof + datalen = 9
-+	 */
-+	replen = (RPC_REPHDRSIZE + auth->au_rslack + NFS4_dec_read_sz) << 2;
-+	xdr_inline_pages(&req->rq_rcv_buf, replen,
-+			 args->pages, args->pgbase, args->count);
++	status = encode_write(&xdr, args);
 +out:
 +	return status;
 +}
 +
++/*
++ * Encode a COMMIT request
++ */
++static int
++nfs4_xdr_enc_commit(struct rpc_rqst *req, uint32_t *p, struct nfs_writeargs *args)
++{
++	struct xdr_stream xdr;
++	struct compound_hdr hdr = {
++		.nops   = 2,
++	};
++	int status;
++
++	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
++	encode_compound_hdr(&xdr, &hdr);
++	status = encode_putfh(&xdr, args->fh);
++	if (status)
++		goto out;
++	status = encode_commit(&xdr, args);
++out:
++	return status;
++}
  
  /*
   * START OF "GENERIC" DECODE ROUTINES.
-@@ -1368,7 +1408,7 @@
+@@ -1022,7 +1071,7 @@
  }
  
  static int
--decode_read(struct xdr_stream *xdr, struct rpc_rqst *req, struct nfs4_read *read)
-+decode_read(struct xdr_stream *xdr, struct rpc_rqst *req, struct nfs_readres *res)
+-decode_commit(struct xdr_stream *xdr, struct nfs4_commit *commit)
++decode_commit(struct xdr_stream *xdr, struct nfs_writeres *res)
  {
- 	struct iovec *iov = req->rq_rvec;
  	uint32_t *p;
-@@ -1382,14 +1422,6 @@
- 	READ32(eof);
- 	READ32(count);
- 	hdrlen = (u8 *) p - (u8 *) iov->iov_base;
--	if (iov->iov_len < hdrlen) {
--		printk(KERN_WARNING "NFS: READ reply header overflowed:"
--				"length %u > %Zu\n", hdrlen, iov->iov_len);
--		return -errno_NFSERR_IO;
--	} else if (iov->iov_len != hdrlen) {
--		dprintk("NFS: READ header is short. iovec will be shifted.\n");
--		xdr_shift_buf(&req->rq_rcv_buf, iov->iov_len - hdrlen);
--	}
- 	recvd = req->rq_received - hdrlen;
- 	if (count > recvd) {
- 		printk(KERN_WARNING "NFS: server cheating in read reply: "
-@@ -1397,9 +1429,9 @@
- 		count = recvd;
- 		eof = 0;
- 	}
--	if (read->rd_eof)
--		*read->rd_eof = eof;
--	*read->rd_bytes_read = count;
-+	xdr_read_pages(xdr, count);
-+	res->eof = eof;
-+	res->count = count;
+ 	int status;
+@@ -1031,7 +1080,7 @@
+ 	if (status)
+ 		return status;
+ 	READ_BUF(8);
+-	COPYMEM(commit->co_verifier->verifier, 8);
++	COPYMEM(res->verf->verifier, 8);
  	return 0;
  }
  
-@@ -1421,17 +1453,10 @@
- 	COPYMEM(readdir->rd_resp_verifier, 8);
+@@ -1672,7 +1721,7 @@
+ }
  
- 	hdrlen = (char *) p - (char *) iov->iov_base;
--	if (iov->iov_len < hdrlen) {
--		printk(KERN_WARNING "NFS: READDIR reply header overflowed:"
--				"length %d > %Zu\n", hdrlen, iov->iov_len);
+ static int
+-decode_write(struct xdr_stream *xdr, struct nfs4_write *write)
++decode_write(struct xdr_stream *xdr, struct nfs_writeres *res)
+ {
+ 	uint32_t *p;
+ 	int status;
+@@ -1682,11 +1731,9 @@
+ 		return status;
+ 
+ 	READ_BUF(16);
+-	READ32(*write->wr_bytes_written);
+-	if (*write->wr_bytes_written > write->wr_len)
 -		return -EIO;
--	} else if (iov->iov_len != hdrlen) {
--		dprintk("NFS: READDIR header is short. iovec will be shifted.\n");
--		xdr_shift_buf(rcvbuf, iov->iov_len - hdrlen);
--	}
- 	recvd = req->rq_received - hdrlen;
- 	if (pglen > recvd)
- 		pglen = recvd;
-+	xdr_read_pages(xdr, pglen);
+-	READ32(write->wr_verf->committed);
+-	COPYMEM(write->wr_verf->verifier, 8);
++	READ32(res->count);
++	READ32(res->verf->committed);
++	COPYMEM(res->verf->verifier, 8);
+ 	return 0;
+ }
  
- 	BUG_ON(pglen + readdir->rd_pgbase > PAGE_CACHE_SIZE);
- 	p   = (uint32_t *) kmap(page);
-@@ -1731,9 +1756,6 @@
- 		case OP_PUTROOTFH:
- 			status = decode_putrootfh(xdr);
+@@ -1726,9 +1773,6 @@
+ 		case OP_CLOSE:
+ 			status = decode_close(xdr, &op->u.close);
  			break;
--		case OP_READ:
--			status = decode_read(xdr, req, &op->u.read);
+-		case OP_COMMIT:
+-			status = decode_commit(xdr, &op->u.commit);
 -			break;
- 		case OP_READDIR:
- 			status = decode_readdir(xdr, req, &op->u.readdir);
+ 		case OP_CREATE:
+ 			status = decode_create(xdr, &op->u.create);
  			break;
-@@ -1802,6 +1824,30 @@
+@@ -1786,9 +1830,6 @@
+ 		case OP_SETCLIENTID_CONFIRM:
+ 			status = decode_setclientid_confirm(xdr);
+ 			break;
+-		case OP_WRITE:
+-			status = decode_write(xdr, &op->u.write);
+-			break;
+ 		default:
+ 			BUG();
+ 			return -EIO;
+@@ -1848,6 +1889,56 @@
  	return status;
  }
  
 +/*
-+ * Decode Read response
++ * Decode WRITE response
 + */
 +static int
-+nfs4_xdr_dec_read(struct rpc_rqst *rqstp, uint32_t *p, struct nfs_readres *res)
++nfs4_xdr_dec_write(struct rpc_rqst *rqstp, uint32_t *p, struct nfs_writeres *res)
 +{
 +	struct xdr_stream xdr;
 +	struct compound_hdr hdr;
@@ -476,7 +527,33 @@ diff -u --recursive --new-file linux-2.5.52/fs/nfs/nfs4xdr.c linux-2.5.52-01-nfs
 +	status = decode_putfh(&xdr);
 +	if (status)
 +		goto out;
-+	status = decode_read(&xdr, rqstp, res);
++	status = decode_write(&xdr, res);
++	if (!status)
++		status = -nfs_stat_to_errno(hdr.status);
++	if (!status)
++		status = res->count;
++out:
++	return status;
++}
++
++/*
++ * Decode COMMIT response
++ */
++static int
++nfs4_xdr_dec_commit(struct rpc_rqst *rqstp, uint32_t *p, struct nfs_writeres *res)
++{
++	struct xdr_stream xdr;
++	struct compound_hdr hdr;
++	int status;
++
++	xdr_init_decode(&xdr, &rqstp->rq_rcv_buf, p);
++	status = decode_compound_hdr(&xdr, &hdr);
++	if (status)
++		goto out;
++	status = decode_putfh(&xdr);
++	if (status)
++		goto out;
++	status = decode_commit(&xdr, res);
 +	if (!status)
 +		status = -nfs_stat_to_errno(hdr.status);
 +out:
@@ -486,169 +563,225 @@ diff -u --recursive --new-file linux-2.5.52/fs/nfs/nfs4xdr.c linux-2.5.52-01-nfs
  uint32_t *
  nfs4_decode_dirent(uint32_t *p, struct nfs_entry *entry, int plus)
  {
-@@ -1854,6 +1900,7 @@
- 
+@@ -1901,6 +1992,8 @@
  struct rpc_procinfo	nfs4_procedures[] = {
    PROC(COMPOUND,	enc_compound,	dec_compound),
-+  PROC(READ,		enc_read,	dec_read),
+   PROC(READ,		enc_read,	dec_read),
++  PROC(WRITE,		enc_write,	dec_write),
++  PROC(COMMIT,		enc_commit,	dec_commit),
  };
  
  struct rpc_version		nfs_version4 = {
-diff -u --recursive --new-file linux-2.5.52/fs/nfs/proc.c linux-2.5.52-01-nfsv4_read/fs/nfs/proc.c
---- linux-2.5.52/fs/nfs/proc.c	2002-11-13 15:57:48.000000000 +0100
-+++ linux-2.5.52-01-nfsv4_read/fs/nfs/proc.c	2002-12-17 15:27:29.000000000 +0100
-@@ -521,13 +521,6 @@
- extern u32 * nfs_decode_dirent(u32 *, struct nfs_entry *, int);
+diff -u --recursive --new-file linux-2.5.52-01-nfsv4_read/fs/nfs/proc.c linux-2.5.52-02-nfsv4_write/fs/nfs/proc.c
+--- linux-2.5.52-01-nfsv4_read/fs/nfs/proc.c	2002-12-17 15:27:29.000000000 +0100
++++ linux-2.5.52-02-nfsv4_write/fs/nfs/proc.c	2002-12-17 15:27:47.000000000 +0100
+@@ -557,14 +557,6 @@
+ }
  
  static void
--nfs_read_done(struct rpc_task *task)
+-nfs_write_done(struct rpc_task *task)
 -{
--	struct nfs_read_data *data = (struct nfs_read_data *) task->tk_calldata;
--	nfs_readpage_result(task, data->u.v3.res.count, data->u.v3.res.eof);
+-	struct nfs_write_data *data = (struct nfs_write_data *) task->tk_calldata;
+-	nfs_writeback_done(task, data->u.v3.args.stable,
+-			   data->u.v3.args.count, data->u.v3.res.count);
 -}
 -
 -static void
- nfs_proc_read_setup(struct nfs_read_data *data, unsigned int count)
+ nfs_proc_write_setup(struct nfs_write_data *data, unsigned int count, int how)
  {
  	struct rpc_task		*task = &data->task;
-@@ -536,26 +529,26 @@
+@@ -573,29 +565,29 @@
  	int			flags;
  	struct rpc_message	msg = {
- 		.rpc_proc	= &nfs_procedures[NFSPROC_READ],
+ 		.rpc_proc	= &nfs_procedures[NFSPROC_WRITE],
 -		.rpc_argp	= &data->u.v3.args,
 -		.rpc_resp	= &data->u.v3.res,
 +		.rpc_argp	= &data->args,
 +		.rpc_resp	= &data->res,
  		.rpc_cred	= data->cred,
  	};
+ 
+ 	/* Note: NFSv2 ignores @stable and always uses NFS_FILE_SYNC */
  	
  	req = nfs_list_entry(data->pages.next);
 -	data->u.v3.args.fh     = NFS_FH(inode);
 -	data->u.v3.args.offset = req_offset(req) + req->wb_offset;
 -	data->u.v3.args.pgbase = req->wb_offset;
--	data->u.v3.args.pages  = data->pagevec;
 -	data->u.v3.args.count  = count;
+-	data->u.v3.args.stable = NFS_FILE_SYNC;
+-	data->u.v3.args.pages  = data->pagevec;
 -	data->u.v3.res.fattr   = &data->fattr;
 -	data->u.v3.res.count   = count;
--	data->u.v3.res.eof     = 0;
+-	data->u.v3.res.verf    = &data->verf;
 +	data->args.fh     = NFS_FH(inode);
 +	data->args.offset = req_offset(req) + req->wb_offset;
 +	data->args.pgbase = req->wb_offset;
-+	data->args.pages  = data->pagevec;
 +	data->args.count  = count;
++	data->args.stable = NFS_FILE_SYNC;
++	data->args.pages  = data->pagevec;
 +	data->res.fattr   = &data->fattr;
 +	data->res.count   = count;
-+	data->res.eof     = 0;
- 	
- 	/* N.B. Do we need to test? Never called for swapfile inode */
- 	flags = RPC_TASK_ASYNC | (IS_SWAPFILE(inode)? NFS_RPC_SWAPFLAGS : 0);
++	data->res.verf    = &data->verf;
+ 
+ 	/* Set the initial flags for the task.  */
+ 	flags = (how & FLUSH_SYNC) ? 0 : RPC_TASK_ASYNC;
  
  	/* Finalize the task. */
--	rpc_init_task(task, NFS_CLIENT(inode), nfs_read_done, flags);
-+	rpc_init_task(task, NFS_CLIENT(inode), nfs_readpage_result, flags);
+-	rpc_init_task(task, NFS_CLIENT(inode), nfs_write_done, flags);
++	rpc_init_task(task, NFS_CLIENT(inode), nfs_writeback_done, flags);
  	task->tk_calldata = data;
  	/* Release requests */
- 	task->tk_release = nfs_readdata_release;
-diff -u --recursive --new-file linux-2.5.52/fs/nfs/read.c linux-2.5.52-01-nfsv4_read/fs/nfs/read.c
---- linux-2.5.52/fs/nfs/read.c	2002-11-10 05:37:59.000000000 +0100
-+++ linux-2.5.52-01-nfsv4_read/fs/nfs/read.c	2002-12-17 15:27:29.000000000 +0100
-@@ -255,11 +255,12 @@
-  * received or some error occurred (timeout or socket shutdown).
+ 	task->tk_release = nfs_writedata_release;
+diff -u --recursive --new-file linux-2.5.52-01-nfsv4_read/fs/nfs/write.c linux-2.5.52-02-nfsv4_write/fs/nfs/write.c
+--- linux-2.5.52-01-nfsv4_read/fs/nfs/write.c	2002-12-14 18:42:09.000000000 +0100
++++ linux-2.5.52-02-nfsv4_write/fs/nfs/write.c	2002-12-17 15:27:47.000000000 +0100
+@@ -841,10 +841,11 @@
+  * This function is called when the WRITE call is complete.
   */
  void
--nfs_readpage_result(struct rpc_task *task, unsigned int count, int eof)
-+nfs_readpage_result(struct rpc_task *task)
+-nfs_writeback_done(struct rpc_task *task, int stable,
+-		   unsigned int arg_count, unsigned int res_count)
++nfs_writeback_done(struct rpc_task *task)
  {
- 	struct nfs_read_data	*data = (struct nfs_read_data *) task->tk_calldata;
+ 	struct nfs_write_data	*data = (struct nfs_write_data *) task->tk_calldata;
++	struct nfs_writeargs	*argp = &data->args;
++	struct nfs_writeres	*resp = &data->res;
  	struct inode		*inode = data->inode;
- 	struct nfs_fattr	*fattr = &data->fattr;
-+	unsigned int count = data->res.count;
- 
- 	dprintk("NFS: %4d nfs_readpage_result, (status %d)\n",
+ 	struct nfs_page		*req;
+ 	struct page		*page;
+@@ -853,7 +854,7 @@
  		task->tk_pid, task->tk_status);
-@@ -279,7 +280,7 @@
- 							req->wb_bytes - count);
- 				kunmap(page);
  
--				if (eof ||
-+				if (data->res.eof ||
- 				    ((fattr->valid & NFS_ATTR_FATTR) &&
- 				     ((req_offset(req) + req->wb_offset + count) >= fattr->size)))
- 					SetPageUptodate(page);
-diff -u --recursive --new-file linux-2.5.52/include/linux/nfs4.h linux-2.5.52-01-nfsv4_read/include/linux/nfs4.h
---- linux-2.5.52/include/linux/nfs4.h	2002-11-23 04:16:55.000000000 +0100
-+++ linux-2.5.52-01-nfsv4_read/include/linux/nfs4.h	2002-12-17 15:27:29.000000000 +0100
-@@ -203,6 +203,7 @@
- enum {
+ 	/* We can't handle that yet but we check for it nevertheless */
+-	if (res_count < arg_count && task->tk_status >= 0) {
++	if (resp->count < argp->count && task->tk_status >= 0) {
+ 		static unsigned long    complain;
+ 		if (time_before(complain, jiffies)) {
+ 			printk(KERN_WARNING
+@@ -865,7 +866,7 @@
+ 		task->tk_status = -EIO;
+ 	}
+ #if defined(CONFIG_NFS_V3) || defined(CONFIG_NFS_V4)
+-	if (data->verf.committed < stable && task->tk_status >= 0) {
++	if (data->verf.committed < argp->stable && task->tk_status >= 0) {
+ 		/* We tried a write call, but the server did not
+ 		 * commit data to stable storage even though we
+ 		 * requested it.
+@@ -880,7 +881,7 @@
+ 			dprintk("NFS: faulty NFS server %s:"
+ 				" (committed = %d) != (stable = %d)\n",
+ 				NFS_SERVER(inode)->hostname,
+-				data->verf.committed, stable);
++				data->verf.committed, argp->stable);
+ 			complain = jiffies + 300 * HZ;
+ 		}
+ 	}
+@@ -917,7 +918,7 @@
+ 		end_page_writeback(page);
+ 
+ #if defined(CONFIG_NFS_V3) || defined(CONFIG_NFS_V4)
+-		if (stable != NFS_UNSTABLE || data->verf.committed == NFS_FILE_SYNC) {
++		if (argp->stable != NFS_UNSTABLE || data->verf.committed == NFS_FILE_SYNC) {
+ 			nfs_inode_remove_request(req);
+ 			dprintk(" OK\n");
+ 			goto next;
+diff -u --recursive --new-file linux-2.5.52-01-nfsv4_read/include/linux/nfs4.h linux-2.5.52-02-nfsv4_write/include/linux/nfs4.h
+--- linux-2.5.52-01-nfsv4_read/include/linux/nfs4.h	2002-12-17 15:27:29.000000000 +0100
++++ linux-2.5.52-02-nfsv4_write/include/linux/nfs4.h	2002-12-17 15:27:47.000000000 +0100
+@@ -204,6 +204,8 @@
  	NFSPROC4_CLNT_NULL = 0,		/* Unused */
  	NFSPROC4_CLNT_COMPOUND,		/* Soon to be unused */
-+	NFSPROC4_CLNT_READ,
+ 	NFSPROC4_CLNT_READ,
++	NFSPROC4_CLNT_WRITE,
++	NFSPROC4_CLNT_COMMIT,
  };
  
  #endif
-diff -u --recursive --new-file linux-2.5.52/include/linux/nfs_fs.h linux-2.5.52-01-nfsv4_read/include/linux/nfs_fs.h
---- linux-2.5.52/include/linux/nfs_fs.h	2002-12-14 18:42:09.000000000 +0100
-+++ linux-2.5.52-01-nfsv4_read/include/linux/nfs_fs.h	2002-12-17 15:27:29.000000000 +0100
-@@ -369,7 +369,7 @@
- extern int  nfs_readpages(struct file *, struct address_space *,
- 		struct list_head *, unsigned);
- extern int  nfs_pagein_list(struct list_head *, int);
--extern void nfs_readpage_result(struct rpc_task *, unsigned int count, int eof);
-+extern void nfs_readpage_result(struct rpc_task *);
- extern void nfs_readdata_release(struct rpc_task *);
+diff -u --recursive --new-file linux-2.5.52-01-nfsv4_read/include/linux/nfs_fs.h linux-2.5.52-02-nfsv4_write/include/linux/nfs_fs.h
+--- linux-2.5.52-01-nfsv4_read/include/linux/nfs_fs.h	2002-12-17 15:27:29.000000000 +0100
++++ linux-2.5.52-02-nfsv4_write/include/linux/nfs_fs.h	2002-12-17 15:27:47.000000000 +0100
+@@ -295,8 +295,7 @@
+ extern int  nfs_writepages(struct address_space *, struct writeback_control *);
+ extern int  nfs_flush_incompatible(struct file *file, struct page *page);
+ extern int  nfs_updatepage(struct file *, struct page *, unsigned int, unsigned int);
+-extern void nfs_writeback_done(struct rpc_task *task, int stable,
+-			       unsigned int arg_count, unsigned int res_count);
++extern void nfs_writeback_done(struct rpc_task *task);
+ extern void nfs_writedata_release(struct rpc_task *task);
  
- /*
-diff -u --recursive --new-file linux-2.5.52/include/linux/nfs_xdr.h linux-2.5.52-01-nfsv4_read/include/linux/nfs_xdr.h
---- linux-2.5.52/include/linux/nfs_xdr.h	2002-11-23 04:16:55.000000000 +0100
-+++ linux-2.5.52-01-nfsv4_read/include/linux/nfs_xdr.h	2002-12-17 15:27:29.000000000 +0100
-@@ -422,15 +422,6 @@
- 	struct nfs_fh *			pf_fhandle;       /* request */
+ #if defined(CONFIG_NFS_V3) || defined(CONFIG_NFS_V4)
+diff -u --recursive --new-file linux-2.5.52-01-nfsv4_read/include/linux/nfs_xdr.h linux-2.5.52-02-nfsv4_write/include/linux/nfs_xdr.h
+--- linux-2.5.52-01-nfsv4_read/include/linux/nfs_xdr.h	2002-12-17 15:27:29.000000000 +0100
++++ linux-2.5.52-02-nfsv4_write/include/linux/nfs_xdr.h	2002-12-17 15:27:47.000000000 +0100
+@@ -346,12 +346,6 @@
+ 	u32				cl_seqid;          /* request */
  };
  
--struct nfs4_read {
--	u64				rd_offset;        /* request */
--	u32				rd_length;        /* request */
--	u32				*rd_eof;          /* response */
--	u32				*rd_bytes_read;   /* response */
--	struct page **			rd_pages;   /* zero-copy data */
--	unsigned int			rd_pgbase;  /* zero-copy data */
+-struct nfs4_commit {
+-	u64				co_start;          /* request */
+-	u32				co_len;            /* request */
+-	struct nfs_writeverf *		co_verifier;       /* response */
 -};
 -
- struct nfs4_readdir {
- 	u64				rd_cookie;        /* request */
- 	nfs4_verifier			rd_req_verifier;  /* request */
-@@ -500,7 +491,6 @@
- 		struct nfs4_open	open;
- 		struct nfs4_open_confirm open_confirm;
- 		struct nfs4_putfh	putfh;
--		struct nfs4_read	read;
- 		struct nfs4_readdir	readdir;
- 		struct nfs4_readlink	readlink;
- 		struct nfs4_remove	remove;
-@@ -548,20 +538,11 @@
- 	struct nfs_fattr	fattr;	/* fattr storage */
- 	struct list_head	pages;	/* Coalesced read requests */
- 	struct page		*pagevec[NFS_READ_MAXIOV];
+ struct nfs4_create {
+ 	u32				cr_ftype;          /* request */
+ 	union {                                            /* request */
+@@ -467,22 +461,11 @@
+ 	struct nfs4_client *		sc_state;	  /* response */
+ };
+ 
+-struct nfs4_write {
+-	u64				wr_offset;        /* request */
+-	u32				wr_stable_how;    /* request */
+-	u32				wr_len;           /* request */
+-	u32 *				wr_bytes_written; /* response */
+-	struct nfs_writeverf *		wr_verf;          /* response */
+-	struct page **			wr_pages;   /* zero-copy data */
+-	unsigned int			wr_pgbase;  /* zero-copy data */
+-};
+-
+ struct nfs4_op {
+ 	u32				opnum;
+ 	union {
+ 		struct nfs4_access	access;
+ 		struct nfs4_close	close;
+-		struct nfs4_commit	commit;
+ 		struct nfs4_create	create;
+ 		struct nfs4_getattr	getattr;
+ 		struct nfs4_getfh	getfh;
+@@ -499,7 +482,6 @@
+ 		struct nfs4_setattr	setattr;
+ 		struct nfs4_setclientid	setclientid;
+ 		struct nfs4_client *	setclientid_confirm;
+-		struct nfs4_write	write;
+ 	} u;
+ };
+ 
+@@ -553,21 +535,11 @@
+ 	struct nfs_writeverf	verf;
+ 	struct list_head	pages;		/* Coalesced requests we wish to flush */
+ 	struct page		*pagevec[NFS_WRITE_MAXIOV];
 -	union {
 -		struct {
--			struct nfs_readargs args;
--			struct nfs_readres  res;
--		} v3;   /* also v2 */
-+	struct nfs_readargs args;
-+	struct nfs_readres  res;
+-			struct nfs_writeargs	args;		/* argument struct */
+-			struct nfs_writeres	res;		/* result struct */
+-		} v3;
++	struct nfs_writeargs	args;		/* argument struct */
++	struct nfs_writeres	res;		/* result struct */
  #ifdef CONFIG_NFS_V4
 -		struct {
 -			struct nfs4_compound  compound;
 -			struct nfs4_op        ops[3];
+-			u32                   arg_count;
+-			u32                   arg_stable;
 -			u32                   res_count;
--			u32                   res_eof;
 -		} v4;
 +	unsigned long		timestamp;	/* For lease renewal */
  #endif
 -	} u;
  };
  
- struct nfs_write_data {
+ /*
 
 
 -------------------------------------------------------
