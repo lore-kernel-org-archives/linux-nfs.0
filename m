@@ -1,16 +1,19 @@
-From: Holidays For Families <design@sunmaster.co.uk>
-Subject: Late Booking Bargains
-Date: 20 May 2003 18:54:10 -0000
+From: NeilBrown <neilb@cse.unsw.edu.au>
+Subject: [PATCH] kNFSd - 9 of 9 - Allow request for nfsv4 pseudo root to perform an upcall.
+Date: Wed, 21 May 2003 13:12:10 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030520185410.10505.qmail@server2.bang-on.co.uk>
-Reply-To: Holidays For Families <design@sunmaster.co.uk>
-Content-Type: text/plain; charset="ISO-8859-1"
+Message-ID: <E19IK1S-00062G-00@notabene.cse.unsw.edu.au>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from ns.bang-on.co.uk.112.216.194.in-addr.arpa ([194.216.112.188] helo=server2.bang-on.co.uk)
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19IJSj-0003dY-00
-	for <nfs@lists.sourceforge.net>; Tue, 20 May 2003 19:36:17 -0700
-To: nfs@lists.sourceforge.net
+	id 19IK1g-0000wa-00
+	for <nfs@lists.sourceforge.net>; Tue, 20 May 2003 20:12:24 -0700
+Received: From
+	notabene.cse.unsw.edu.au ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
+	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>) By
+	tone With Smtp ; Wed, 21 May 2003 13:12:11 +1000
+To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -23,93 +26,71 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-For all the best holiday offers visit www.sunmaster.co.uk established 10years
-Tel: 0871 700 0015
+### Comments for ChangeSet
 
-Late Booking Bargains
+Most cache-lookups to find export information will cause 
+an upcall, but currently the lookup to find the pseudo root 
+for nfsv4 wont asthe  cache-handle isn't made available.
+This patch makes it available and makes sure that if the 
+upcall is made, the request is dropped (for now).
 
-Offers available this week to depart within the next month
+ ----------- Diffstat output ------------
+ ./fs/nfsd/export.c            |   10 ++++++++--
+ ./fs/nfsd/nfs4proc.c          |    3 ++-
+ ./include/linux/nfsd/export.h |    2 +-
+ 3 files changed, 11 insertions(+), 4 deletions(-)
 
-code: BB = bed and breakfast SC = self catering HB = half board AI = All inclusive
-Offers include flights and accommodation
+diff ./fs/nfsd/export.c~current~ ./fs/nfsd/export.c
+--- ./fs/nfsd/export.c~current~	2003-05-20 16:34:37.000000000 +1000
++++ ./fs/nfsd/export.c	2003-05-20 16:34:38.000000000 +1000
+@@ -848,12 +848,18 @@ out:
+  * export point with fsid==0
+  */
+ int
+-exp_pseudoroot(struct auth_domain *clp, struct svc_fh *fhp)
++exp_pseudoroot(struct auth_domain *clp, struct svc_fh *fhp,
++	       struct cache_req *creq)
+ {
+ 	struct svc_expkey *fsid_key;
+ 	int rv;
++	u32 fsidv[2];
+ 
+-	fsid_key = exp_get_fsid_key(clp, 0);
++	mk_fsid_v1(fsidv, 0);
++
++	fsid_key = exp_find_key(clp, 1, fsidv, creq);
++	if (IS_ERR(fsid_key) && PTR_ERR(fsid_key) == -EAGAIN)
++		return nfserr_dropit;
+ 	if (!fsid_key || IS_ERR(fsid_key))
+ 		return nfserr_perm;
+ 
 
-Spain
-Costa Dorada SC from £79 HB from £99 AI from £199
-Costa Brava SC from £89 HB from £119 AI from £219
-Benidorm SC from £99 HB from £139 AI from £229
-Costa Del Sol SC from £119 HB from £129 AI from £239
-Call Now: 0871 700 0015
+diff ./fs/nfsd/nfs4proc.c~current~ ./fs/nfsd/nfs4proc.c
+--- ./fs/nfsd/nfs4proc.c~current~	2003-05-20 16:34:37.000000000 +1000
++++ ./fs/nfsd/nfs4proc.c	2003-05-20 16:34:38.000000000 +1000
+@@ -179,7 +179,8 @@ static inline int
+ nfsd4_putrootfh(struct svc_rqst *rqstp, struct svc_fh *current_fh)
+ {
+ 	fh_put(current_fh);
+-	return exp_pseudoroot(rqstp->rq_client, current_fh);
++	return exp_pseudoroot(rqstp->rq_client, current_fh,
++			      &rqstp->rq_chandle);
+ }
+ 
+ static inline int
 
-Balearics
-Majorca SC from £79 HB from £99 AI from £199
-Menorca SC from £99 HB from £139 AI from £239
-Ibiza SC from £79 HB from £99 AI from £199
-Call Now: 0871 700 0015
-
-Canaries
-Tenerife SC from £79 HB from £149 AI from £299
-Gran Canaria SC from £109 HB from £149 AI from £289
-Lanzarote SC from £99 HB from £139 AI from £249
-Fuerteventura SC from £139 HB from £189 AI from £299
-Call Now: 0871 700 0015
-
-Greece
-Rhodes SC/BB from £89
-Crete SC/BB from £99
-Kos SC/BB from £89
-Corfu SC/BB from £89
-Kefalonia SC/BB from £109
-Santorini SC/BB from £119
-Halkidiki SC/BB from £99
-Thassos SC/BB from £99
-Zante SC/BB from £109
-Call Now: 0871 700 0015
-
-Turkey
-Bodrum BB from £99
-Marmaris BB from £109
-Alanya BB from £119
-Gumbet BB from £109
-Kusadasi BB from £119
-Call Now: 0871 700 0015
-
-Cruise the med
-May from £299
-June from £399
-July from £569
-Call Now: 0871 700 0015
-
-For more fantastic offers visit www.sunmaster.co.uk or call 0871 700 0015
-
-Sunmaster fully bonded members of The Global Travel Group no.T3127 agents for ATOL protected operators
-Sunmaster Elizabeth House 1 Elizabeth Street Wyke Bradford BD12 8PN
-
-
-
-
-
-
----------------------------------------------------------------------------
-To be unsubscribed from the Holidays For Families mailing list simply click on the link below 
-http://www.bang-on.co.uk/cgi-bin/sunmaster/smpro/s.pl?r=1&l=3&e=nfs=:lists.sourceforge.net
-
-
-AOL USERS:
-<a href="http://www.bang-on.co.uk/cgi-bin/sunmaster/smpro/s.pl?r=1&l=3&e=nfs=:lists.sourceforge.net">One-Click Unsubscribe Link Here</a>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+diff ./include/linux/nfsd/export.h~current~ ./include/linux/nfsd/export.h
+--- ./include/linux/nfsd/export.h~current~	2003-05-20 16:34:37.000000000 +1000
++++ ./include/linux/nfsd/export.h	2003-05-20 16:34:38.000000000 +1000
+@@ -100,7 +100,7 @@ struct svc_export *	exp_parent(struct au
+ 				   struct cache_req *reqp);
+ int			exp_rootfh(struct auth_domain *, 
+ 					char *path, struct knfsd_fh *, int maxsize);
+-int			exp_pseudoroot(struct auth_domain *, struct svc_fh *fhp);
++int			exp_pseudoroot(struct auth_domain *, struct svc_fh *fhp, struct cache_req *creq);
+ int			nfserrno(int errno);
+ 
+ extern void expkey_put(struct cache_head *item, struct cache_detail *cd);
 
 
 -------------------------------------------------------
