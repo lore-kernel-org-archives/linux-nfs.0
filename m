@@ -1,17 +1,18 @@
-From: Andrew Ryan <andrewr@nam-shub.com>
-Subject: Re: 2.4.20-NFS-ALL slower than 2.4.20-vanilla on TCP
-Date: Wed, 4 Dec 2002 10:28:59 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: [PATCH] Fix incorrect XDR buffer reservations under NFSv4
+Date: Wed, 4 Dec 2002 22:03:40 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.40.0212041020570.32257-200000@bolt.sonic.net>
+Message-ID: <15854.28076.248335.539905@charged.uio.no>
+Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="-909110542-1095863686-1039026539=:32257"
-Cc: trond.myklebust@fys.uio.no
+Content-Type: text/plain; charset=us-ascii
+Cc: NFS maillist <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from a.smtp-out.sonic.net ([208.201.224.38])
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18JeGZ-000096-00
-	for <nfs@lists.sourceforge.net>; Wed, 04 Dec 2002 10:28:59 -0800
-To: nfs@lists.sourceforge.net
+Received: from mons.uio.no ([129.240.130.14])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18JggM-0001WH-00
+	for <nfs@lists.sourceforge.net>; Wed, 04 Dec 2002 13:03:46 -0800
+To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,148 +25,157 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
-  Send mail to mime@docserver.cac.washington.edu for more info.
 
----909110542-1095863686-1039026539=:32257
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+With this patch, the NFSv4 client should work correctly again.
 
-Trond Myklebust wrote:
->>>>>>" " == Andrew Ryan <andrewr@nam-shub.com> writes:
->      > I'm not sure where the bug is, in which patch, so I'm posting
->
-> I doubt this is a bug. It's probably a consequence of the ACCESS
-> patch. Could you try backing that particular patch out of the NFS_ALL
-> set?
+Cheers,
+  Trond
 
-OK, done.
+(Sent from the OPLUG meeting via wireless LAN)
 
-Some of the numbers were better, but the wall clock time was the same.
-2.4.20-vanilla comes in at ~43 minutes wall clock run time, but
-2.4.20-NFS-ALL and 2.4.20-NFS-ALL-sans-linux-2.4.20-07-access.dif both
-came in at 57 minutes wall clock run time.
-
-Results attached. In particular the 'Delete' activity under the
-"Sequential Create" test seems very slow, rate of 559/sec with -vanilla
-and 11-20/sec with the two NFS patched kernels.
-
----909110542-1095863686-1039026539=:32257
-Content-Type: TEXT/html; name="bonresults-ml.html"
-Content-Transfer-Encoding: BASE64
-Content-ID: <Pine.LNX.4.40.0212041028590.32257@bolt.sonic.net>
-Content-Description: 
-Content-Disposition: attachment; filename="bonresults-ml.html"
-
-PCFET0NUWVBFIEhUTUwgUFVCTElDICItLy9XM0MvL0RURCBIVE1MIDQuMC8v
-RU4iICJodHRwOi8vd3d3LnczLm9yZy9UUi9SRUMtaHRtbDQwL3N0cmljdC5k
-dGQiPg0KPEhUTUw+DQo8SEVBRD48VElUTEU+Qm9ubmllKysgVjEuMDJhIEJl
-bmNobWFyayByZXN1bHRzPC9USVRMRT4NCjxTVFlMRSB0eXBlPSJ0ZXh0L2Nz
-cyI+DQpURC5oZWFkZXIge3RleHQtYWxpZ246IGNlbnRlcjsgYmFja2dyb3Vu
-ZGNvbG9yOiAiI0NDRkZGRiIgfQ0KVEQucm93aGVhZGVyIHt0ZXh0LWFsaWdu
-OiBjZW50ZXI7IGJhY2tncm91bmRjb2xvcjogIiNDQ0NGRkYiIH0NClRELnNp
-emUge3RleHQtYWxpZ246IGNlbnRlcjsgYmFja2dyb3VuZGNvbG9yOiAiI0ND
-Q0ZGRiIgfQ0KVEQua3NlYyB7dGV4dC1hbGlnbjogY2VudGVyOyBmb250c3R5
-bGU6IGl0YWxpYyB9DQo8L1NUWUxFPg0KPEJPRFk+DQo8aDE+Qm9ubmllKysg
-VjEuMDJhIEJlbmNobWFyayByZXN1bHRzPC9oMT4NCjxocj4NCjxUQUJMRSBB
-TElHTj1jZW50ZXIgQk9SREVSPTMgQ0VMTFBBRERJTkc9MiBDRUxMU1BBQ0lO
-Rz0xPg0KPFRSPjxURCBDT0xTUEFOPTIgY2xhc3M9ImhlYWRlciI+PC9URD4N
-CjxURCBDT0xTUEFOPTYgY2xhc3M9ImhlYWRlciI+PEZPTlQgU0laRT0rMj48
-Qj5TZXF1ZW50aWFsIE91dHB1dDwvQj48L0ZPTlQ+PC9URD4NCjxURCBDT0xT
-UEFOPTQgY2xhc3M9ImhlYWRlciI+PEZPTlQgU0laRT0rMj48Qj5TZXF1ZW50
-aWFsIElucHV0PC9CPjwvRk9OVD48L1REPg0KPFREIENPTFNQQU49MiBST1dT
-UEFOPTIgY2xhc3M9ImhlYWRlciI+PEZPTlQgU0laRT0rMj48Qj5SYW5kb208
-QlI+U2Vla3M8L0I+PC9GT05UPjwvVEQ+DQo8VEQgQ09MU1BBTj0xIGNsYXNz
-PSJoZWFkZXIiPjwvVEQ+DQo8VEQgQ09MU1BBTj02IGNsYXNzPSJoZWFkZXIi
-PjxGT05UIFNJWkU9KzI+PEI+U2VxdWVudGlhbCBDcmVhdGU8L0I+PC9GT05U
-PjwvVEQ+DQo8VEQgQ09MU1BBTj02IGNsYXNzPSJoZWFkZXIiPjxGT05UIFNJ
-WkU9KzI+PEI+UmFuZG9tIENyZWF0ZTwvQj48L0ZPTlQ+PC9URD4NCjwvdHI+
-DQo8VFI+PFREPjwvVEQ+PFREPlNpemU6Q2h1bmsgU2l6ZTwvVEQ+PFREIENP
-TFNQQU49Mj5QZXIgQ2hhcjwvVEQ+PFREIENPTFNQQU49Mj5CbG9jazwvVEQ+
-PFREIENPTFNQQU49Mj5SZXdyaXRlPC9URD48VEQgQ09MU1BBTj0yPlBlciBD
-aGFyPC9URD48VEQgQ09MU1BBTj0yPkJsb2NrPC9URD48VEQ+TnVtIEZpbGVz
-PC9URD48VEQgQ09MU1BBTj0yPkNyZWF0ZTwvVEQ+PFREIENPTFNQQU49Mj5S
-ZWFkPC9URD48VEQgQ09MU1BBTj0yPkRlbGV0ZTwvVEQ+PFREIENPTFNQQU49
-Mj5DcmVhdGU8L1REPjxURCBDT0xTUEFOPTI+UmVhZDwvVEQ+PFREIENPTFNQ
-QU49Mj5EZWxldGU8L1REPjwvVFI+PFRSPjxURCBDT0xTUEFOPTI+PC9URD48
-VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJWkU9LTI+Sy9zZWM8L0ZPTlQ+PC9U
-RD48VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJWkU9LTI+JSBDUFU8L0ZPTlQ+
-PC9URD48VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJWkU9LTI+Sy9zZWM8L0ZP
-TlQ+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJWkU9LTI+JSBDUFU8
-L0ZPTlQ+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJWkU9LTI+Sy9z
-ZWM8L0ZPTlQ+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJWkU9LTI+
-JSBDUFU8L0ZPTlQ+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJWkU9
-LTI+Sy9zZWM8L0ZPTlQ+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJ
-WkU9LTI+JSBDUFU8L0ZPTlQ+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxGT05U
-IFNJWkU9LTI+Sy9zZWM8L0ZPTlQ+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxG
-T05UIFNJWkU9LTI+JSBDUFU8L0ZPTlQ+PC9URD48VEQgY2xhc3M9ImtzZWMi
-PjxGT05UIFNJWkU9LTI+LyBzZWM8L0ZPTlQ+PC9URD48VEQgY2xhc3M9Imtz
-ZWMiPjxGT05UIFNJWkU9LTI+JSBDUFU8L0ZPTlQ+PC9URD48VEQ+PC9URD48
-VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJWkU9LTI+LyBzZWM8L0ZPTlQ+PC9U
-RD48VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJWkU9LTI+JSBDUFU8L0ZPTlQ+
-PC9URD48VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJWkU9LTI+LyBzZWM8L0ZP
-TlQ+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJWkU9LTI+JSBDUFU8
-L0ZPTlQ+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJWkU9LTI+LyBz
-ZWM8L0ZPTlQ+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJWkU9LTI+
-JSBDUFU8L0ZPTlQ+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJWkU9
-LTI+LyBzZWM8L0ZPTlQ+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJ
-WkU9LTI+JSBDUFU8L0ZPTlQ+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxGT05U
-IFNJWkU9LTI+LyBzZWM8L0ZPTlQ+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxG
-T05UIFNJWkU9LTI+JSBDUFU8L0ZPTlQ+PC9URD48VEQgY2xhc3M9ImtzZWMi
-PjxGT05UIFNJWkU9LTI+LyBzZWM8L0ZPTlQ+PC9URD48VEQgY2xhc3M9Imtz
-ZWMiPjxGT05UIFNJWkU9LTI+JSBDUFU8L0ZPTlQ+PC9URD48L1RSPg0KPFRS
-PjxURCBjbGFzcz0icm93aGVhZGVyIj48Rk9OVCBTSVpFPSsxPjxCPjIuNC4y
-MC1ORlNfQUxMLTIwMDIxMjAzMTc1ODQyLW5vbG9jazwvQj48L0ZPTlQ+PC9U
-RD48VEQgY2xhc3M9InNpemUiPjhHPC9URD48VEQgY2xhc3M9InNpemUiPjwv
-VEQ+PFREIGNsYXNzPSJzaXplIj48L1REPjxURCBjbGFzcz0ic2l6ZSI+MTEw
-NjI8L1REPjxURCBjbGFzcz0ic2l6ZSI+NDwvVEQ+PFREIGNsYXNzPSJzaXpl
-Ij44NzQ5PC9URD48VEQgY2xhc3M9InNpemUiPjY8L1REPjxURCBjbGFzcz0i
-c2l6ZSI+PC9URD48VEQgY2xhc3M9InNpemUiPjwvVEQ+PFREIGNsYXNzPSJz
-aXplIj4xMjc1NzwvVEQ+PFREIGNsYXNzPSJzaXplIj40PC9URD48VEQgY2xh
-c3M9InNpemUiPjIzNC41PC9URD48VEQgY2xhc3M9InNpemUiPjE8L1REPjxU
-RCBjbGFzcz0ic2l6ZSI+MTY8L1REPjxURCBjbGFzcz0ic2l6ZSI+MTg0PC9U
-RD48VEQgY2xhc3M9InNpemUiPjE8L1REPjxURCBjbGFzcz0ic2l6ZSI+NTI5
-PC9URD48VEQgY2xhc3M9InNpemUiPjEzPC9URD48VEQgY2xhc3M9InNpemUi
-PjExPC9URD48VEQgY2xhc3M9InNpemUiPjE8L1REPjxURCBjbGFzcz0ic2l6
-ZSI+MjAyPC9URD48VEQgY2xhc3M9InNpemUiPjE8L1REPjxURCBjbGFzcz0i
-c2l6ZSI+NjU4PC9URD48VEQgY2xhc3M9InNpemUiPjE8L1REPjxURCBjbGFz
-cz0ic2l6ZSI+MjkxPC9URD48VEQgY2xhc3M9InNpemUiPjE8L1REPjwvVFI+
-DQo8VFI+PFREIGNsYXNzPSJyb3doZWFkZXIiPjxGT05UIFNJWkU9KzE+PEI+
-Mi40LjIwLXZhbmlsbGEtMjAwMjEyMDMyMjIwNDAtbm9sb2NrPC9CPjwvRk9O
-VD48L1REPjxURCBjbGFzcz0ic2l6ZSI+OEc8L1REPjxURCBjbGFzcz0ic2l6
-ZSI+PC9URD48VEQgY2xhc3M9InNpemUiPjwvVEQ+PFREIGNsYXNzPSJzaXpl
-Ij4xMTE1NjwvVEQ+PFREIGNsYXNzPSJzaXplIj40PC9URD48VEQgY2xhc3M9
-InNpemUiPjg5MTc8L1REPjxURCBjbGFzcz0ic2l6ZSI+NjwvVEQ+PFREIGNs
-YXNzPSJzaXplIj48L1REPjxURCBjbGFzcz0ic2l6ZSI+PC9URD48VEQgY2xh
-c3M9InNpemUiPjEyODI4PC9URD48VEQgY2xhc3M9InNpemUiPjQ8L1REPjxU
-RCBjbGFzcz0ic2l6ZSI+MjQxLjc8L1REPjxURCBjbGFzcz0ic2l6ZSI+MTwv
-VEQ+PFREIGNsYXNzPSJzaXplIj4xNjwvVEQ+PFREIGNsYXNzPSJzaXplIj41
-Mjg8L1REPjxURCBjbGFzcz0ic2l6ZSI+MjwvVEQ+PFREIGNsYXNzPSJzaXpl
-Ij4xMzIxPC9URD48VEQgY2xhc3M9InNpemUiPjM8L1REPjxURCBjbGFzcz0i
-c2l6ZSI+NTU5PC9URD48VEQgY2xhc3M9InNpemUiPjI8L1REPjxURCBjbGFz
-cz0ic2l6ZSI+NTUzPC9URD48VEQgY2xhc3M9InNpemUiPjI8L1REPjxURCBj
-bGFzcz0ic2l6ZSI+MTM1MjwvVEQ+PFREIGNsYXNzPSJzaXplIj4yPC9URD48
-VEQgY2xhc3M9InNpemUiPjU5NjwvVEQ+PFREIGNsYXNzPSJzaXplIj4yPC9U
-RD48L1RSPg0KPFRSPjxURCBjbGFzcz0icm93aGVhZGVyIj48Rk9OVCBTSVpF
-PSsxPjxCPjIuNC4yMC1ORlNfQUxMX25vQUNDRVNTLTIwMDIxMjA0MDc1NTM3
-LW5vbG9jazwvQj48L0ZPTlQ+PC9URD48VEQgY2xhc3M9InNpemUiPjhHPC9U
-RD48VEQgY2xhc3M9InNpemUiPjwvVEQ+PFREIGNsYXNzPSJzaXplIj48L1RE
-PjxURCBjbGFzcz0ic2l6ZSI+MTA4NTY8L1REPjxURCBjbGFzcz0ic2l6ZSI+
-NDwvVEQ+PFREIGNsYXNzPSJzaXplIj44NTA5PC9URD48VEQgY2xhc3M9InNp
-emUiPjY8L1REPjxURCBjbGFzcz0ic2l6ZSI+PC9URD48VEQgY2xhc3M9InNp
-emUiPjwvVEQ+PFREIGNsYXNzPSJzaXplIj4xMjA3MjwvVEQ+PFREIGNsYXNz
-PSJzaXplIj4zPC9URD48VEQgY2xhc3M9InNpemUiPjIzMC44PC9URD48VEQg
-Y2xhc3M9InNpemUiPjE8L1REPjxURCBjbGFzcz0ic2l6ZSI+MTY8L1REPjxU
-RCBjbGFzcz0ic2l6ZSI+NDY1PC9URD48VEQgY2xhc3M9InNpemUiPjI8L1RE
-PjxURCBjbGFzcz0ic2l6ZSI+ODg0PC9URD48VEQgY2xhc3M9InNpemUiPjIz
-PC9URD48VEQgY2xhc3M9InNpemUiPjIwPC9URD48VEQgY2xhc3M9InNpemUi
-PjI8L1REPjxURCBjbGFzcz0ic2l6ZSI+NTUzPC9URD48VEQgY2xhc3M9InNp
-emUiPjI8L1REPjxURCBjbGFzcz0ic2l6ZSI+MTQxMjwvVEQ+PFREIGNsYXNz
-PSJzaXplIj4yPC9URD48VEQgY2xhc3M9InNpemUiPjYxNDwvVEQ+PFREIGNs
-YXNzPSJzaXplIj4yPC9URD48L1RSPg0KPC9UQUJMRT4NCjxIUj4NCjxpPkF1
-dG8tZ2VuZXJhdGVkIGF0IFdlZCBEZWMgIDQgMDk6MzU6NTMgUFNUIDIwMDI8
-L2k+DQo8L0JPRFk+DQo8L0hUTUw+DQo=
----909110542-1095863686-1039026539=:32257--
+diff -u --recursive --new-file linux-2.5.49/fs/nfs/nfs4xdr.c linux-2.5.49-00-nfsv4_xdr1/fs/nfs/nfs4xdr.c
+--- linux-2.5.49/fs/nfs/nfs4xdr.c	2002-11-21 19:34:30.000000000 -0500
++++ linux-2.5.49-00-nfsv4_xdr1/fs/nfs/nfs4xdr.c	2002-11-22 22:16:34.000000000 -0500
+@@ -161,9 +161,13 @@
+ 	 *          = 36 bytes, plus any contribution from variable-length fields
+ 	 *            such as owner/group/acl's.
+ 	 */
+-	len = 36;
++	len = 16;
+ 
+ 	/* Sigh */
++	if (iap->ia_valid & ATTR_SIZE)
++		len += 8;
++	if (iap->ia_valid & ATTR_MODE)
++		len += 4;
+ 	if (iap->ia_valid & ATTR_UID) {
+ 		status = owner_namelen = encode_uid(owner_name, iap->ia_uid);
+ 		if (status < 0) {
+@@ -171,7 +175,7 @@
+ 			       iap->ia_uid);
+ 			goto out;
+ 		}
+-		len += XDR_QUADLEN(owner_namelen);
++		len += 4 + (XDR_QUADLEN(owner_namelen) << 2);
+ 	}
+ 	if (iap->ia_valid & ATTR_GID) {
+ 		status = owner_grouplen = encode_gid(owner_group, iap->ia_gid);
+@@ -180,8 +184,16 @@
+ 			       iap->ia_gid);
+ 			goto out;
+ 		}
+-		len += XDR_QUADLEN(owner_grouplen);
++		len += 4 + (XDR_QUADLEN(owner_grouplen) << 2);
+ 	}
++	if (iap->ia_valid & ATTR_ATIME_SET)
++		len += 16;
++	else if (iap->ia_valid & ATTR_ATIME)
++		len += 4;
++	if (iap->ia_valid & ATTR_MTIME_SET)
++		len += 16;
++	else if (iap->ia_valid & ATTR_MTIME)
++		len += 4;
+ 	RESERVE_SPACE(len);
+ 
+ 	/*
+@@ -204,13 +216,11 @@
+ 		bmval1 |= FATTR4_WORD1_OWNER;
+ 		WRITE32(owner_namelen);
+ 		WRITEMEM(owner_name, owner_namelen);
+-		p += owner_namelen;
+ 	}
+ 	if (iap->ia_valid & ATTR_GID) {
+ 		bmval1 |= FATTR4_WORD1_OWNER_GROUP;
+ 		WRITE32(owner_grouplen);
+ 		WRITEMEM(owner_group, owner_grouplen);
+-		p += owner_namelen;
+ 	}
+ 	if (iap->ia_valid & ATTR_ATIME_SET) {
+ 		bmval1 |= FATTR4_WORD1_TIME_ACCESS_SET;
+@@ -238,6 +248,11 @@
+ 	/*
+ 	 * Now we backfill the bitmap and the attribute buffer length.
+ 	 */
++	if (len != ((char *)p - (char *)q) + 4) {
++		printk ("encode_attr: Attr length calculation error! %u != %u\n",
++				len, ((char *)p - (char *)q) + 4);
++		BUG();
++	}
+ 	len = (char *)p - (char *)q - 12;
+ 	*q++ = htonl(bmval0);
+ 	*q++ = htonl(bmval1);
+@@ -265,7 +280,7 @@
+ {
+ 	uint32_t *p;
+ 
+-	RESERVE_SPACE(20);
++	RESERVE_SPACE(8+sizeof(nfs4_stateid));
+ 	WRITE32(OP_CLOSE);
+ 	WRITE32(close->cl_seqid);
+ 	WRITEMEM(close->cl_stateid, sizeof(nfs4_stateid));
+@@ -380,7 +395,7 @@
+ 	uint32_t *p;
+ 	
+ 	/* seqid, share_access, share_deny, clientid, ownerlen, owner, opentype */
+-	RESERVE_SPACE(52);
++	RESERVE_SPACE(36);
+ 	WRITE32(OP_OPEN);
+ 	WRITE32(0);                       /* seqid */
+ 	WRITE32(open->op_share_access);
+@@ -392,7 +407,7 @@
+ 	
+ 	if (open->op_opentype == NFS4_OPEN_CREATE) {
+ 		if (open->op_createmode == NFS4_CREATE_EXCLUSIVE) {
+-			RESERVE_SPACE(12);
++			RESERVE_SPACE(4+sizeof(nfs4_verifier));
+ 			WRITE32(open->op_createmode);
+ 			WRITEMEM(open->op_verifier, sizeof(nfs4_verifier));
+ 		}
+@@ -427,7 +442,7 @@
+ 	 * Note: In this "stateless" implementation, the OPEN_CONFIRM
+ 	 * seqid is always equal to 1.
+ 	 */
+-	RESERVE_SPACE(24);
++	RESERVE_SPACE(8+sizeof(nfs4_stateid));
+ 	WRITE32(OP_OPEN_CONFIRM);
+ 	WRITEMEM(open_confirm->oc_stateid, sizeof(nfs4_stateid));
+ 	WRITE32(1);
+@@ -494,7 +509,7 @@
+ 	int replen;
+ 	uint32_t *p;
+ 
+-	RESERVE_SPACE(40);
++	RESERVE_SPACE(32+sizeof(nfs4_verifier));
+ 	WRITE32(OP_READDIR);
+ 	WRITE64(readdir->rd_cookie);
+ 	WRITEMEM(readdir->rd_req_verifier, sizeof(nfs4_verifier));
+@@ -558,7 +573,7 @@
+ 	WRITE32(rename->rn_oldnamelen);
+ 	WRITEMEM(rename->rn_oldname, rename->rn_oldnamelen);
+ 	
+-	RESERVE_SPACE(8 + rename->rn_newnamelen);
++	RESERVE_SPACE(4 + rename->rn_newnamelen);
+ 	WRITE32(rename->rn_newnamelen);
+ 	WRITEMEM(rename->rn_newname, rename->rn_newnamelen);
+ 
+@@ -605,7 +620,7 @@
+ 	int status;
+ 	uint32_t *p;
+ 	
+-        RESERVE_SPACE(20);
++        RESERVE_SPACE(4+sizeof(nfs4_stateid));
+         WRITE32(OP_SETATTR);
+ 	WRITEMEM(setattr->st_stateid, sizeof(nfs4_stateid));
+ 
+@@ -626,7 +641,7 @@
+ 	len2 = strlen(setclientid->sc_netid);
+ 	len3 = strlen(setclientid->sc_uaddr);
+ 	total_len = XDR_QUADLEN(len1) + XDR_QUADLEN(len2) + XDR_QUADLEN(len3);
+-	total_len = (total_len << 2) + 32;
++	total_len = (total_len << 2) + 24 + sizeof(nfs4_verifier);
+ 
+ 	RESERVE_SPACE(total_len);
+ 	WRITE32(OP_SETCLIENTID);
 
 
 -------------------------------------------------------
