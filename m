@@ -1,22 +1,24 @@
-From: "Lever, Charles" <cel@netapp.com>
-Subject: RE: [RFC]: ESTALE is not a permanent error
-Date: Thu, 23 Sep 2004 10:17:33 -0700
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 3 of 6] svcrpc: move export table checks to a per-program pg_add_client method
+Date: Thu, 23 Sep 2004 17:46:44 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <482A3FA0050D21419C269D13989C611302B07E30@lavender-fe.eng.netapp.com>
+Message-ID: <20040923214644.GA19291@fieldses.org>
+References: <1095375544.839c1c96.3@fieldses.org> <1095383919.10216.142.camel@lade.trondhjem.org> <20040917022015.GA15212@fieldses.org> <16721.8596.980204.899779@cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CAXE1-0007Tb-NU
-	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 10:17:45 -0700
-Received: from mx01.netapp.com ([198.95.226.53])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CAXDz-0001uH-Q0
-	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 10:17:45 -0700
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
+	id 1CAbQS-0004f3-2l
+	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 14:46:52 -0700
+Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.41)
+	id 1CAbQQ-0001CL-LJ
+	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 14:46:52 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <16721.8596.980204.899779@cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -29,64 +31,15 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> P=E5 to , 23/09/2004 klokka 00:27, skreiv Trond Myklebust:
->=20
-> > Honestly, if the server returns ESTALE, then we do *NOT TRUST* that=20
-> > the inode resulting from the "temporary" situation is the=20
-> same as the=20
-> > inode that existed before.
->=20
-> To clarify (once again!) what I mean here:
->=20
->  If the client receives an ESTALE error, then it will drop=20
-> all pending reads/writes like a stone, so it is not as if=20
-> this is an error that the kernel can recover from=20
-> automatically. Better that the customer be told right up=20
-> front that something stupid has happened on the server, and=20
-> it is up to them to fix the problem manually.
+On Wed, Sep 22, 2004 at 04:54:12PM +1000, Neil Brown wrote:
+> Alternately, the code which causes a call-back to be meaningful
+> (e.g. nlmclnt_lock in lockd (??)) could insert the relevant
+> information into the auth cache in advance.
 
-ok, i think you misunderstood me.
+There's not really a reliable way to do that with the current code since
+userspace can flush the auth_domain cache at whim.
 
-i understand that ESTALE means you can't trust a file handle.  the =
-problem is the Linux NFS client is completely inconsistent about how it =
-deals with an ESTALE result.
-
-here's one example path (2.6):  suppose the attribute cache for a =
-directory is good, but we want to do a permission check.  =
-nfs_revalidate_inode is a no-op because the cache hasn't expired, but =
-suppose the ACCESS operation returns ESTALE.  the inode is not marked =
-ESTALE at that point, so if the ESTALE condition goes away on the =
-server, operation on the client continues normally.
-
-if, on the other hand, the cache had actually timed out and the =
-nfs_revalidate_inode resulted in a GETATTR operation, the inode would =
-have been marked permanently stale.  thus, in most cases, the behavior =
-of the client and the treatment of the ESTALE error is based on whether =
-the client's cache has timed out or not. =20
-
-__nfs_revalidate_inode is allowed to clear NFS_INO_STALE.  in what cases =
-is this a good idea if "we can't ever trust the file handle anymore?"  =
-if __nfs_revalidate_inode is allowed to clear NFS_INO_STALE, why can't =
-nfs_lookup_revalidate?
-
-how is it OK to trust a file handle after a umount/mount, but not OK to =
-trust a successful LOOKUP result?  why is it OK to trust a file handle =
-after an unexport/export if the client didn't see any ESTALE result =
-during that period?
-
-if we're dealing with the root directory, it will never go stale, but =
-anything else in the mounted file system can go stale.  (yes, i know =
-there are technical reasons for this).
-
-so there's no real architecture about how the current Linux NFS client =
-treats ESTALE.  sometimes the client trusts a temporarily stale file =
-handle, sometimes it doesn't.  if ESTALE means the client *truly* can't =
-trust a file handle anymore, then the current client implementation is =
-seriously deficient.
-
-so the question is:  what are we going to do to make the client behave =
-consistently and usefully in the face of most typical scenarios when a =
-stale file handle is reported?
+--b.
 
 
 -------------------------------------------------------
