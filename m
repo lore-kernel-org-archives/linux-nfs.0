@@ -1,28 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH kNFSd 2 of 4] Minor memory leak fix.
-Date: Tue, 24 Aug 2004 22:43:22 -0400
+From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
+Subject: Re: very strange nfs errors with nfsroot
+Date: Wed, 25 Aug 2004 08:14:54 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1093401801.7439.28.camel@lade.trondhjem.org>
-References: <20040820164909.27056.patches@notabene>
-	 <E1By3FQ-000738-5m@notabene.cse.unsw.edu.au>
-	 <20040824202048.GB2057@fieldses.org> <20040824220215.GA3521@fieldses.org>
-	 <16683.61807.372405.848939@cse.unsw.edu.au>
+Message-ID: <412C2E5E.6070607@bio.ifi.lmu.de>
+References: <412B5B3A.6070600@bio.ifi.lmu.de> <1093363691.5745.64.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, Andrew Morton <akpm@osdl.org>,  nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Bznl4-00037j-FC
-	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 19:43:30 -0700
-Received: from dh138.citi.umich.edu
-	([141.211.133.138] helo=lade.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.34)
-	id 1Bznl1-0006uv-Rp
-	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 19:43:30 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <16683.61807.372405.848939@cse.unsw.edu.au>
+	id 1Bzr3l-0000vI-Fd
+	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 23:15:01 -0700
+Received: from acheron.informatik.uni-muenchen.de ([129.187.214.135])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
+	id 1Bzr3i-0003uC-SS
+	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 23:15:01 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1093363691.5745.64.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -35,25 +30,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 ty , 24/08/2004 klokka 21:54, skreiv Neil Brown:
+Hi,
 
-> How about we just decide that fixed-length string buffers are OK (as
-> the reality is that any value other than "nfsd" is extremely
-> unlikely), and use the following instead.
+Trond Myklebust wrote:
+>
+> Is the /etc/local shared by all clients? If so, your script is buggy
+> since it assumes that some other client cannot come in and ln before you
+> do (this is a prime example of what is known as a "race condition").
 
-Note that this whole "domain" checking code needs to be moved out of the
-generic AUTH_SYS server code ASAP anyway. As it stands, it is entirely
-nfsd specific, and really belongs in fs/nfsd.
+No, for every client there is some /export/<ip>/ directory
+with subdirectories etc/local, var/ etc...
+So every client mounts just the subdirectories for its own
+ip, so no race conditions can occur. The complete boot.nfsroot
+script and the client-script works on completely separate
+dirs for every client.
+The errors can indeed be reproduced while I have only one
+client up and running at all... (it's a test scenario
+currently with a maximum of 5 clients).
 
-It is already a nuisance in the case of the lockd client callbacks (i.e.
-the "GRANTED" and "NOTIFY" RPC functions). It would have broken the
-NFSv4 client delegation callbacks too if I hadn't written an ad-hoc
-workaround.
-In both these cases, we want to authenticate against a known list of
-kernel objects rather than do upcalls to userland.
+> As for the ESTALE error. Again, if some other client is screwing with
+> deleting and recreating the soft link on the server, then ESTALE is
+> entirely expected behaviour. I suggest you read up on the NFS cache
+> consistency promises.
 
-Cheers,
-  Trond
+Since this is not the case, it must be sth. happening just between
+the server and the single client. And the only thing I could think
+of that would cause "/dev/stdout" to be considered stale, was
+the mount of /export/<ip>/dev over the /dev directory in the
+read-only-mounted nfsroot...
+
+Are there any debugging parameters I can set on the server
+or the client side e.g. in /proc (I mount /proc for the
+clients at the beginning of the boot.nfsroot script, so
+it's there) to get some more details what's going wrong?
+
+cu,
+Frank
+
+-- 
+Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
+Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
+LMU, Amalienstr. 17           Phone: +49 89 2180-4049
+80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
+
 
 
 -------------------------------------------------------
