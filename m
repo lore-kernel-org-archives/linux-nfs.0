@@ -1,30 +1,30 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Jeffrey Layton <jtlayton@poochiereds.net>
 Subject: Re: Poor NFS performance, kernel 2.6.6.
-Date: Tue, 01 Jun 2004 23:57:41 -0700
+Date: Wed, 02 Jun 2004 08:33:53 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1086159461.10317.5.camel@lade.trondhjem.org>
-References: <Pine.LNX.4.58.0405271331430.7539@penti.sit.fi>
-	 <1085695748.23934.94.camel@lade.trondhjem.org>
-	 <Pine.LNX.4.58.0405280953240.29286@penti.sit.fi>
-	 <20040528135515.GG5657@suse.de>
-	 <Pine.LNX.4.58.0405282058300.14886@penti.sit.fi>
-	 <1085771968.3882.17.camel@lade.trondhjem.org>
-	 <20040601001658.GA7373@outblaze.com>
+Message-ID: <1086179633.3325.0.camel@tesla.mmt.bellhowell.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: Harald Hannelius <harald+nfs@arcada.fi>, Olaf Kirch <okir@suse.de>,  nfs@lists.sourceforge.net
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BVPi1-0007qd-JJ
-	for nfs@lists.sourceforge.net; Tue, 01 Jun 2004 23:58:45 -0700
-Received: from [209.101.250.228] (helo=lade.trondhjem.org)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.30)
-	id 1BVPhz-0000CF-Mu
-	for nfs@lists.sourceforge.net; Tue, 01 Jun 2004 23:58:44 -0700
-To: Yusuf Goolamabbas <yusufg@outblaze.com>
-In-Reply-To: <20040601001658.GA7373@outblaze.com>
+	id 1BVUwO-0007nI-FM
+	for nfs@lists.sourceforge.net; Wed, 02 Jun 2004 05:33:56 -0700
+Received: from rdu26-93-067.nc.rr.com ([66.26.93.67] helo=salusa.poochiereds.net)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BVUwO-0008Kc-3N
+	for nfs@lists.sourceforge.net; Wed, 02 Jun 2004 05:33:56 -0700
+Received: from localhost (localhost [127.0.0.1])
+	by salusa.poochiereds.net (Postfix) with ESMTP id 996C8CAE0
+	for <nfs@lists.sourceforge.net>; Wed,  2 Jun 2004 08:33:45 -0400 (EDT)
+Received: from salusa.poochiereds.net ([127.0.0.1])
+	by localhost (salusa [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id 03814-09 for <nfs@lists.sourceforge.net>;
+	Wed, 2 Jun 2004 08:33:45 -0400 (EDT)
+Received: from localhost (salusa.poochiereds.net [192.168.1.2])
+	by salusa.poochiereds.net (Postfix) with ESMTP id 55BE471F1
+	for <nfs@lists.sourceforge.net>; Wed,  2 Jun 2004 08:33:45 -0400 (EDT)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -37,30 +37,48 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 m=E5 , 31/05/2004 klokka 17:16, skreiv Yusuf Goolamabbas:
-> > > I guess (as a total don't-know) that nfsd reads and writes files in a
-> > > different way than local processes do. I read somewhere something abo=
-ut
-> > > read-ahead but that was in 2.6.0-pre-something..
-> >=20
-> > Hmm... The current readahead code does a load of crap in order to
-> > determine whether or not the user is doing linear or random I/O. It may
-> > be that the nfsd server with all its multi-threading and out-of-sequenc=
-e
-> > I/O is triggering the random I/O readahead code (which of course aims t=
-o
-> > limit readahead).
->=20
-> Any thoughts on this patch posted to lkml=20
->=20
-> http://marc.theaimsgroup.com/?l=3Dlinux-kernel&m=3D108603045809565&w=3D2
+I haven't been following this thread closely, but figured I'd chime in
+with my own experience with this. Here's a rather unscientific test,
+dd'ing to a file on an NFS-mounted filesystem. Mount options are:
 
-May or may not fix a bug in the NFSd code. Does nothing to change the
-basic readahead code in the VFS layer in order to fix the issues I
-raised above.
+udp,soft,intr,nfsvers=3
 
-Cheers,
- Trond
+(I'm using UDP as I'm trying to set up a HA-NFS server, and the clients
+seem to recover much faster when using UDP as a transport).
+
+With a 2.4 kernel server:
+
+% time dd if=/dev/zero of=./testfile bs=100M count=1
+1+0 records in
+1+0 records out
+104857600 bytes transferred in 11.806235 seconds (8881544 bytes/sec)
+dd if=/dev/zero of=./testfile bs=100M count=1  0.00s user 0.28s system
+2% cpu 12.147 total
+
+With a 2.6 kernel server:
+
+% time dd if=/dev/zero of=./testfile bs=100M count=1
+1+0 records in
+1+0 records out
+104857600 bytes transferred in 66.997572 seconds (1565096 bytes/sec)
+dd if=/dev/zero of=./testfile bs=100M count=1  0.00s user 0.29s system
+0% cpu 1:07.06 total
+
+
+The machines are different hardware, but local write performance is
+pretty comparable (in fact the 2.6 box is a faster machine, and is
+currently less utilized than the 2.4 kernel machine). Both are using
+reiserfs as the underlying filesystem.
+
+Write performance in this cursory test was 10x worse! Clearly, there's
+some sort of problem with NFS on 2.6. I'll be happy to send in what info
+I can. My 2.4 machine is currently a production box, but I can run an
+instrumented kernel, etc. on the 2.6 box in the near future if anyone
+here can guide me on what I can do to help.
+
+-- Jeff
+
+
 
 
 -------------------------------------------------------
