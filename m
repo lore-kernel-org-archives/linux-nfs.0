@@ -1,23 +1,23 @@
-From: <trond.myklebust@fys.uio.no>
-Subject: Re: 2.6.0 -- nfs client runs 15x faster if client app runs as root.
-Date: Thu, 8 Jan 2004 16:23:02 +0100 (CET)
+From: Eric Whiting <ewhiting@amis.com>
+Subject: Re: 2.6.0 -- nfs client runs 15x faster if client app runs as
+ root.
+Date: Thu, 08 Jan 2004 08:12:19 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <33659.68.42.103.198.1073575382.squirrel@webmail.uio.no>
-References: <33640.68.42.103.198.1073574746.squirrel@webmail.uio.no>
+Message-ID: <3FFD7353.6A51DEC7@amis.com>
+References: <34280.141.211.133.197.1073512478.squirrel@webmail.uio.no> <3FFD660F.1333683F@oleane.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=iso-8859-1
-Cc: <gael.roualland@oleane.net>, <ewhiting@amis.com>
+Cc: trond.myklebust@fys.uio.no, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1Aec09-00037u-L3
-	for nfs@lists.sourceforge.net; Thu, 08 Jan 2004 07:23:13 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Aec09-0000Md-6W
-	for nfs@lists.sourceforge.net; Thu, 08 Jan 2004 07:23:13 -0800
-To: <nfs@lists.sourceforge.net>
-In-Reply-To: <33640.68.42.103.198.1073574746.squirrel@webmail.uio.no>
+	id 1AecKw-0004ID-Nt
+	for nfs@lists.sourceforge.net; Thu, 08 Jan 2004 07:44:42 -0800
+Received: from p02m168.mxlogic.net ([216.173.230.168])
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.30)
+	id 1AecKw-0000O1-D8
+	for nfs@lists.sourceforge.net; Thu, 08 Jan 2004 07:44:42 -0800
+To: =?iso-8859-1?Q?Ga=EBl?= Roualland <gael.roualland@oleane.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,20 +30,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-
-> Yeah. It turned out to be remove_suid() that was causing an empty
-> SETATTR to be sent after every write(). The solution is just to filter
-> out all requests that will result in empty SETATTRs. The server will
-> automatically do the honours w.r.t. the suid bit as soon as it receives
-> our write.
-
-Note: I've already added this fix to the 2.6.1 NFS4_ALL patch
-(see http://www.fys.uio.no/~trondmy/src/Linux-2.6.x/2.6.1)
-
-Cheers,
-  Trond
+Yesterday after some more debug, Trond sent a patch that fixed the proble=
+m.  =
 
 
+Yes the file has exec set. That might help explain some other behavior th=
+at I
+was also noticing when running benchmarks.
+
+eric
+
+
+
+Ga=EBl Roualland wrote:
+> =
+
+> Has the file exec permission set ?
+> If yes this would look like an earlier problem that seems to still occu=
+r
+> on 2.6.0.
+> See http://marc.theaimsgroup.com/?l=3Dlinux-nfs&m=3D106966481311224 and=
+
+> http://marc.theaimsgroup.com/?l=3Dlinux-nfs&m=3D106981736010493.
+> =
+
+> Ga=EBl.
+> =
+
+> --
+> Ga=EBl Roualland -+- gael.roualland@oleane.net
 
 
 -------------------------------------------------------
