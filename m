@@ -1,18 +1,13 @@
-From: James Pearson <james-p@moving-picture.com>
-Subject: Re: Performance Tuning?
-Date: Tue, 21 May 2002 11:49:27 +0100
+From: Vladimir Vuksan <croatia@firstlinux.net>
+Subject: NFS over TCP on a Linux server
+Date: Tue, 21 May 2002 12:20:57 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3CEA2637.3CBF9C38@moving-picture.com>
-References: <OFB40BCA74.33FC48AA-ON80256BC0.0032D825@diamond.philips.com>
+Message-ID: <20020521192057.47EAD3ECD@sitemail.everyone.net>
+Reply-To: croatia@firstlinux.net
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17A7D1-0006cu-00
-	for <nfs@lists.sourceforge.net>; Tue, 21 May 2002 03:49:39 -0700
-To: darren.miller@philips.com
+To: NFS@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,16 +20,31 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-darren.miller@philips.com wrote:
-> 
-> Are there any performance tuning that can be done to NFSD on Linux??
-> 
-> Darren
+I am trying to set up NFS over TCP on a Linux server. However I cannot figure out how to register NFS over TCP with the portmapper ie. Doing pmap_dump yields
 
-Have you looked at the NFS FAQ and HOWTO at http://nfs.sourceforge.net/
-??
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
 
-James Pearson
+I tried adding
+
+    100003    3   tcp   2049  nfs
+
+and doing
+
+cat p.dump | pmap_set
+
+but that doesn't seem to work.
+
+How does one register it ?
+
+Thanks,
+Vladimir
+
+_____________________________________________________________
+Want a new web-based email account ? ---> http://www.firstlinux.net
+
+_____________________________________________________________
+Promote your group and strengthen ties to your members with email@yourgroup.org by Everyone.net  http://www.everyone.net/?btn=tag
 
 _______________________________________________________________
 
