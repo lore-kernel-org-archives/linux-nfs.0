@@ -1,58 +1,79 @@
-From: "Andrew Theurer" <habanero@us.ibm.com>
-Subject: Re: [PATCH] zerocopy NFS for 2.5.36
-Date: Mon, 14 Oct 2002 09:12:56 -0500
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <003401c2738b$ccfe2010$2b060e09@beavis>
-References: <20020918.171431.24608688.taka@valinux.co.jp><15786.23306.84580.323313@notabene.cse.unsw.edu.au> <20021014.210144.74732842.taka@valinux.co.jp>
+From: "Eff Norwood" <enorwood@effrem.com>
+Subject: huge number of intr/s on large nfs server
+Date: Mon, 14 Oct 2002 13:21:15 -0700
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <CFEAJJEGMGECBCJFLGDBAEGICFAA.enorwood@effrem.com>
 Mime-Version: 1.0
 Content-Type: text/plain;
 	charset="iso-8859-1"
-Cc: <davem@redhat.com>, <linux-kernel@vger.kernel.org>,
-	<nfs@lists.sourceforge.net>
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: <neilb@cse.unsw.edu.au>, "Hirokazu Takahashi" <taka@valinux.co.jp>
-List-ID: <nfs.lists.sourceforge.net>
+Cc: "Daniel Phillips" <phillips@arcor.de>
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from cynaptic.com ([128.121.116.181])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 181BiL-0004Ap-00
+	for <nfs@lists.sourceforge.net>; Mon, 14 Oct 2002 13:21:21 -0700
+To: <nfs@lists.sourceforge.net>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-> Hello, Neil
->
-> > > I ported the zerocopy NFS patches against linux-2.5.36.
-> >
-> > hi,
-> >  I finally got around to looking at this.
-> >  It looks good.
->
-> Thanks!
->
-> >  However it really needs the MSG_MORE support for udp_sendmsg to be
-> >  accepted before there is any point merging the rpc/nfsd bits.
-> >
-> >  Would you like to see if davem is happy with that bit first and get
-> >  it in?  Then I will be happy to forward the nfsd specific bit.
->
-> Yes.
->
-> >  I'm bit I'm not very sure about is the 'shadowsock' patch for having
-> >  several xmit sockets, one per CPU.  What sort of speedup do you get
-> >  from this?  How important is it really?
->
-> It's not so important.
->
-> davem> Personally, it seems rather essential for scalability on SMP.
->
-> Yes.
-> It will be effective on large scale SMP machines as all kNFSd shares
-> one NFS port. A udp socket can't send data on each CPU at the same
-> time while MSG_MORE/UDP_CORK options are set.
-> The UDP socket have to block any other requests during making a UDP frame.
+Hi All,
 
-I experienced this exact problem a few months ago.  I had a test where
-several clients read a file or files cached on a linux server.  TCP was just
-fine, I could get 100% CPU on all CPUs on the server.  TCP zerocopy was even
-better, by about 50% throughput.  UDP could not get better than 33% CPU, one
-CPU working on those UDP requests and I assume a portion of another CPU
-handling some inturrupt stuff.  Essentially 2P and 4P throughput was only as
-good as UP throughput.  It is essential to get scaling on UDP.  That
-combined with the UDP zerocopy, we will have one extremely fast NFS server.
+I have a 2.4.18 kernel running on a dual 2.4Ghz Xeon platform using software
+RAID 5 via IBM's EVMS and EXT3. The system is being used as an NFS server
+and although local disk performance is excellent, NFS performance (over UDP
+and TCP, vers 2 and 3 with multiple different client mount block sizes) is
+poor to bad. Looking at mpstat while the system is under load shows the
+%system to be quite high (94-96%) but most interestingly shows the number of
+intr/s (context switches) to be 17-18K plus!
 
-Andrew Theurer
-IBM LTC
+Since I was not sure what was causing all of these context switches, I
+installed SGI kernprof and ran it during a 15 minute run. I used this
+command to start kernprof: 'kernprof -r -d time -f 1000 -t pc -b -c all' and
+this one to stop it: 'kernprof -e -i | sort -nr +2 | less >
+big_csswitch.txt'
+
+The output of this collection is located here (18Kb):
+
+http://www.effrem.com/linux/kernel/dev/big_csswitch.txt
+
+Most interesting to me is why in the top three results:
+
+default_idle [c010542c]: 861190
+_text_lock_inode [c015d031]: 141795
+UNKNOWN_KERNEL [c01227f0]: 101532
+
+that default_idle would be the highest value when the CPUs showed 94-96%
+busy. Also interesting is what UNKNOWN_KERNEL is. ???
+
+The server described above has 14 internal IDE disks configured as software
+Raid 5 and connected to the network with one Syskonnect copper gigabit card.
+I used 30 100 base-T connected clients all of which performed sequential
+writes to one large 1.3TB volume on the file server. They were mounted
+NFSv2, UDP, 8K r+w size for this run. I was able to achieve only 35MB/sec of
+sustained NFS write throughput. Local disk performance (e.g. dd file) for
+sustained writes is *much* higher. I am using knfsd with the latest 2.4.18
+Neil Brown fixes from his site. Distribution is Debian 3.0 Woody Stable.
+
+Many thanks in advance for the insight,
+
+Eff Norwood
+
+
+
+
+-------------------------------------------------------
+This sf.net email is sponsored by:ThinkGeek
+Welcome to geek heaven.
+http://thinkgeek.com/sf
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
