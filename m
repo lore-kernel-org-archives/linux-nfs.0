@@ -1,19 +1,19 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 18 of 18] nfsd4: move code to truncate on open to separate function
-Date: Fri, 24 Sep 2004 14:54:54 +1000
+Subject: [PATCH kNFSd 11 of 18] nfsd4_open_locktype_posix_flag
+Date: Fri, 24 Sep 2004 14:54:53 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1CAi6g-0000l8-Am@notabene.cse.unsw.edu.au>
+Message-ID: <E1CAi6f-0000kW-L0@notabene.cse.unsw.edu.au>
 References: <20040924145130.2689.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CAi7r-0008Ec-Qs
-	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 21:56:07 -0700
+	id 1CAi6u-00084i-B8
+	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 21:55:08 -0700
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CAi7r-0008Mi-2Y
-	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 21:56:07 -0700
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1CAi6t-00069V-Os
+	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 21:55:08 -0700
 To: Andrew Morton <akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,79 +28,43 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-for OPEN with O_TRUNC, if the truncate fails, the open fails. for
-nfs4_open_upgrade, this means undo the get_write_access. for new OPENs, this
-means release the newly created stateid.
+
+We should set the OPEN_RESULT_LOCKTYPE_POSIX flag in the return to open, to
+indicate that we support locking.
 
 Signed-off-by: Andy Adamson <andros@citi.umich.edu>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c |   32 ++++++++++++++++++++++++--------
- 1 files changed, 24 insertions(+), 8 deletions(-)
+ ./fs/nfsd/nfs4state.c  |    2 +-
+ ./include/linux/nfs4.h |    1 +
+ 2 files changed, 2 insertions(+), 1 deletion(-)
 
 diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2004-09-24 14:48:41.000000000 +1000
-+++ ./fs/nfsd/nfs4state.c	2004-09-24 14:48:41.000000000 +1000
-@@ -1301,6 +1301,18 @@ nfs4_upgrade_open(struct svc_rqst *rqstp
- 		status = get_write_access(inode);
- 		if (status)
- 			return nfserrno(status);
-+		if (open->op_truncate) {
-+			struct iattr iattr = {
-+				.ia_valid = ATTR_SIZE,
-+				.ia_size = 0,
-+			};
-+			status = nfsd_setattr(rqstp, cur_fh, &iattr, 0,
-+					(time_t)0);
-+			if (status) {
-+				put_write_access(inode);
-+				return status;
-+			}
-+		}
+--- ./fs/nfsd/nfs4state.c~current~	2004-09-24 14:48:39.000000000 +1000
++++ ./fs/nfsd/nfs4state.c	2004-09-24 14:48:39.000000000 +1000
+@@ -1383,7 +1383,7 @@ out:
+ 	/*
+ 	* To finish the open response, we just need to set the rflags.
+ 	*/
+-	open->op_rflags = 0;
++	open->op_rflags = NFS4_OPEN_RESULT_LOCKTYPE_POSIX;
+ 	if (!open->op_stateowner->so_confirmed)
+ 		open->op_rflags |= NFS4_OPEN_RESULT_CONFIRM;
  
- 		/* remember the open */
- 		filp->f_mode = (filp->f_mode | FMODE_WRITE) & ~FMODE_READ;
-@@ -1331,7 +1343,6 @@ nfs4_set_claim_prev(struct nfsd4_open *o
- int
- nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_open *open)
- {
--	struct iattr iattr;
- 	struct nfs4_stateowner *sop = open->op_stateowner;
- 	struct nfs4_file *fp = NULL;
- 	struct inode *ino;
-@@ -1382,18 +1393,23 @@ nfsd4_process_open2(struct svc_rqst *rqs
- 		if ((status = nfs4_new_open(rqstp, &stp, current_fh, flags)))
- 			goto out;
- 		init_stateid(stp, fp, sop, open);
-+		if (open->op_truncate) {
-+			struct iattr iattr = {
-+				.ia_valid = ATTR_SIZE,
-+				.ia_size = 0,
-+			};
-+			status = nfsd_setattr(rqstp, current_fh, &iattr, 0,
-+					(time_t)0);
-+			if (status) {
-+				release_stateid(stp, OPEN_STATE);
-+				goto out;
-+			}
-+		}
- 	}
- 	dprintk("nfs4_process_open2: stateid=(%08x/%08x/%08x/%08x)\n",
- 	            stp->st_stateid.si_boot, stp->st_stateid.si_stateownerid,
- 	            stp->st_stateid.si_fileid, stp->st_stateid.si_generation);
+
+diff ./include/linux/nfs4.h~current~ ./include/linux/nfs4.h
+--- ./include/linux/nfs4.h~current~	2004-09-24 14:47:14.000000000 +1000
++++ ./include/linux/nfs4.h	2004-09-24 14:48:39.000000000 +1000
+@@ -35,6 +35,7 @@
+ #define NFS4_FH_VOL_RENAME		0x0008
  
--	if (open->op_truncate) {
--		iattr.ia_valid = ATTR_SIZE;
--		iattr.ia_size = 0;
--		status = nfsd_setattr(rqstp, current_fh, &iattr, 0, (time_t)0);
--		if (status)
--			goto out;
--	}
- 	memcpy(&open->op_stateid, &stp->st_stateid, sizeof(stateid_t));
+ #define NFS4_OPEN_RESULT_CONFIRM 0x0002
++#define NFS4_OPEN_RESULT_LOCKTYPE_POSIX 0x0004
  
- 	open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE;
+ #define NFS4_SHARE_ACCESS_READ	0x0001
+ #define NFS4_SHARE_ACCESS_WRITE	0x0002
 
 
 -------------------------------------------------------
