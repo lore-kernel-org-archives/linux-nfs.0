@@ -1,13 +1,24 @@
-From: "" <rfloriolfactory@msn.com>
-Subject: I need your help ut ynvqdr pkdsl
-Date: Wed, 12 Mar 03 05:36:07 GMT
+From: Brent Clements <bclem@rice.edu>
+Subject: NFS Client turning parameters?
+Date: 12 Mar 2003 11:09:51 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <33550.4787079573$1047467295@news.gmane.org>
+Message-ID: <1047488992.6343.2.camel@batman.ece.rice.edu>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary=".C8D.F_D_8D43"
-Cc: <eral@lists.sourceforge.net>, <snort-users-admin@lists.sourceforge.net>, <fink-devel@lists.sourceforge.net>, <lsb-taskforce1@lists.sourceforge.net>
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from handler12.mail.rice.edu ([128.42.58.212])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18t9hT-00067t-00
+	for <nfs@lists.sourceforge.net>; Wed, 12 Mar 2003 09:07:31 -0800
+Received: from localhost (localhost [127.0.0.1])
+	by handler12.mail.rice.edu (Postfix) with SMTP id 3CC1A1DC3D
+	for <nfs@lists.sourceforge.net>; Wed, 12 Mar 2003 11:07:26 -0600 (CST)
+Received: from localhost (localhost [127.0.0.1])
+	by handler12.mail.rice.edu (Postfix) with ESMTP id E44951DBA2
+	for <nfs@lists.sourceforge.net>; Wed, 12 Mar 2003 11:07:25 -0600 (CST)
+Received: from spac.ece.rice.edu (spac.ece.rice.edu [128.42.4.164])
+	by handler12.mail.rice.edu (Postfix) with ESMTP id EDE411DB99
+	for <nfs@lists.sourceforge.net>; Wed, 12 Mar 2003 11:07:24 -0600 (CST)
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -21,21 +32,15 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+Do you guys have any suggested kernel tuning parameters for a nfs v3
+linux client? My server is an hp/ux fileserver.
 
---.C8D.F_D_8D43
-Content-Type: text/html
-Content-Transfer-Encoding: quoted-printable
+Thanks,
+Brent Clements
 
-<center>
-<a href=3D"http://203.34.205.88/users/happy/date/">
-<img src=3D"http://203.34.205.88/users/happy/date/date.jpg"
-</a>
- dx bumw bdwwjfcq rtm   oivudofwbsdv akm 
-c
-ttjm
-zsk knpisi e pggqmdxzyjesrcp twb xu
---.C8D.F_D_8D43--
+
+
+
 
 
 
