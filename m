@@ -1,8 +1,8 @@
 From: Juan Gomez <juang@us.ibm.com>
 Subject: Re: Non-blocking lock requests during the grace period
-Date: Fri, 15 Nov 2002 10:48:49 -0800
+Date: Fri, 15 Nov 2002 11:09:44 -0800
 Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <OFFF0C4F23.C5AA44D6-ON87256C72.0066E60D@us.ibm.com>
+Message-ID: <OF5A692563.A6ED6EBB-ON87256C72.0068B38D@us.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Cc: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
@@ -14,16 +14,17 @@ List-ID: <nfs.lists.sourceforge.net>
 
 
 
-Guess you are right. I was just worried that this code does not become
-active for any other case than the one we were trying to fix.
-We should also return when called from test as it should be non-blocking.
-Then we do have the problem with UNLOCKs so we
-have two choices: either fix the caller or just check for either lock or
-test and block. I rather the last one.
+On second thoughts, I think I wonder if we want to fail F_GETLK while in
+the grace period? seems like we won't there it makes sense to hold until
+the grace period clears otherwise the client app may think there is
+something wrong (note that F_GETLK man page does not provide EAGAIN as
+a possible error code).
+The case for F_SETLK is different as the result is expected when the lock
+is not available due to a previous holder (or, as I want to do it, when the
+lock is not available ether by previous holder or grace period).
 
 
 Juan
-
 
 
 
