@@ -1,19 +1,17 @@
-From: Jan Sedlacek <jan.sedlacek@asicentrum.cz>
-Subject: NFS server RH7.1, kernel 2.4.18, client Solaris 7
-Date: Mon, 25 Mar 2002 14:28:31 +0100
+From: Matthew Boeckman <matthewb@saepio.com>
+Subject: nfsstat limitations?
+Date: Mon, 25 Mar 2002 10:09:49 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3C9F25FF.1000203@asicentrum.cz>
+Message-ID: <3C9F4BCD.5050404@saepio.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-2; format=flowed
-Received: from gate.asicentrum.cz ([195.39.24.82] helo=mravenec)
-	by usw-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16pUWc-0004cE-00
-	for <nfs@lists.sourceforge.net>; Mon, 25 Mar 2002 05:28:39 -0800
-Received: from localhost ([127.0.0.1])
-	by mravenec (Kerio MailServer 5.0.5)
-	for nfs@lists.sourceforge.net;
-	Mon, 25 Mar 2002 14:28:31 +0100
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Received: from [208.10.117.3] (helo=velocity.saepio.com)
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 16pX3V-00083p-00
+	for <nfs@lists.sourceforge.net>; Mon, 25 Mar 2002 08:10:45 -0800
+Received: from saepio.com (leto-ii [10.1.1.100])
+	by velocity.saepio.com (8.11.2/8.9.3) with ESMTP id g2PHFE122178
+	for <nfs@lists.sourceforge.net>; Mon, 25 Mar 2002 11:15:14 -0600
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -27,54 +25,42 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hi all,
+Hello list!
 
-    I have the following problem,
+I'm trying to track down some information about the nfsstat on linux. 
+Specifically from nfs-utils-0.3.1-5 on RH7.1 . What I'm looking for is 
+some additional client RPC information. nfsstat on solaris gives me all 
+kinds of nifty output about timeouts, badcalls, timers, etc:
+Client rpc:
+Connection oriented:
+calls       badcalls    badxids     timeouts    newcreds    badverfs
+0           0           0           0           0           0
+timers      cantconn    nomem       interrupts
+0           0           0           0
+Connectionless:
+calls       badcalls    retrans     badxids     timeouts    newcreds
+4           1           0           0           0           0
+badverfs    timers      nomem       cantsend
+0           1           0           0
 
-I've upgraded to RedHat Linux 7.1 with kernel 2.4.18 (compiled with 
-options NFSv3 server and client support checked). Clients are RH Linux 
-6.1, 6.2, 7.0, 7.1 and Solaris 7.
-Linux clients work fine without any problem. Solaris 7 clients work fine 
-only without locking files. If I try on Solaris to start old openwindows 
-file manager (filemgr) it hangs for five minutes and reports just 
-"nfs-server: RPC timed out". I think the problem is locking files. I 
-tried on NFS server to set "insecure_locks" and "no_auth_nlm" options in 
-/etc/exports file, but it didn`t help.
+on linux:
+Client rpc stats:
+calls      retrans    authrefrsh
+70163      12         0
 
-NFS server rpcinfo shows:
+I've read the man page and docs on the sourceforge site, and it doesn't 
+appear that I'm missing any command line options. Is there somewhere 
+other than nfsstat that I can get this info?
 
-   program verz proto   port
-    100000    2   tcp    111  portmapper
-    100000    2   udp    111  portmapper
-    100024    1   udp  32768  status
-    100024    1   tcp  32768  status
-    100007    2   udp    781  ypbind
-    100007    1   udp    781  ypbind
-    100007    2   tcp    784  ypbind
-    100007    1   tcp    784  ypbind
-    100011    1   udp    735  rquotad
-    100011    2   udp    735  rquotad
-    100005    1   udp  32889  mountd
-    100005    1   tcp  32845  mountd
-    100005    2   udp  32889  mountd
-    100005    2   tcp  32845  mountd
-    100005    3   udp  32889  mountd
-    100005    3   tcp  32845  mountd
-    100003    2   udp   2049  nfs
-    100003    3   udp   2049  nfs
-    100021    1   udp  32890  nlockmgr
-    100021    3   udp  32890  nlockmgr
-    100021    4   udp  32890  nlockmgr                  
+Another question along the same lines: how can I track client side NFS 
+cache hit's and caching information in general? For a variety of 
+reasons, I'm caching the entire mounted filesystem for a long time, and 
+am interested/concerned in being able to track the system impact of 
+that. Things like, of all NFS calls, how many are being answered by the 
+cache, how much system resources is this cache taking up, etc. Thanks 
+for any and all replies!
 
-,so lock manager is running (as rpc.statd is running).
-
-Any idea is very appreciated.
-
-Regards,
-
-Sedlon
-
-
+-Matthew
 
 
 _______________________________________________
