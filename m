@@ -1,14 +1,20 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: Announcing Release Two of NFSv4 on Linux 2.4
-Date: Sun, 20 Jul 2003 18:23:09 -0700
+From: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
+Subject: Re: SM_UNMON again -> kernel
+Date: Mon, 21 Jul 2003 15:08:12 +0200 (CEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <482A3FA0050D21419C269D13989C6113D06AB5@lavender-fe.eng.netapp.com>
+Message-ID: <Pine.LNX.4.44.0307211437200.32628-100000@kenzo.iwr.uni-heidelberg.de>
+References: <20030720234558.GD1570@async.com.br>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: "Linux FS development (E-mail)" <fs-devel@vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+   Philippe Troin <phil@fifi.org>, <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: <nfs@sourceforge.net>
+Received: from mail.iwr.uni-heidelberg.de ([129.206.104.30])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19eaP6-00065P-00
+	for <nfs@lists.sourceforge.net>; Mon, 21 Jul 2003 06:08:36 -0700
+To: Christian Reis <kiko@async.com.br>
+In-Reply-To: <20030720234558.GD1570@async.com.br>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -21,66 +27,50 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-A new release of CITI U-M's NFSv4 on Linux 2.4 is
-available.  For information on this release, see:
+On Sun, 20 Jul 2003, Christian Reis wrote:
 
- https://linux24-nfsv4.citi.umich.edu/wiki
+> Oh, the masquerading has nothing to do with NFS.
 
+It might, by error. I don't know if this is relevant as I seem to have 
+lost track of this thread, but some keywords suggested me to write this 
+message...
 
->From the Release Notes:
+In some conditions when using iptables, UDP packets get wrongly re-routed
+to the loopback interface. I've hit this some months ago with a RedHat 8.0
+installation with the current (at that time) 2.4.18-something kernel; I
+don't know if things changed in the meantime as I have rewritten the
+iptables rules...
 
-The NFSv4 implementation on Linux 2.4 is intended
-for early adopters of NFSv4 who want to help beta
-test commercial NFSv4-based products, or test the
-Linux NFSv4 implementation. Our intention is to
-provide a stable NFSv4 implementation on Linux with
-these releases until a complete official Linux NFSv4
-implementation appears in Linux 2.6. It is not
-intended for use in production NFSv4 environments.
-Think of this as beta quality software.
+It seems that some forms of MASQ/NAT and marking packets (fwmark) don't 
+play well together; this is mentioned towards the end of:
 
-These releases provide an implementation of an NFSv4
-client and server on a stable Linux kernel in an
-easy-to-install set of packages. This allows more
-intensive and broad-based testing of the Linux
-NFSv4 implementation outside of developers' labs.
+http://lartc.org/howto/lartc.netfilter.html
 
-The NFSv4 implementation in all these releases
-tracks the implementation contained in Linux 2.6
-kernels as closely as possible. Our code base
-should reflect the current state of the art (the
-2.6 NFS implementation). We plan to be conservative
-in including new 2.6 features, but aggressive in
-including bug fixes, to make these releases stable
-enough for testing under realistic workloads.
+but there was not enough information about what exactly would happen.  So
+when I did use them (MASQ and fwmark) together, some UDP packets which had
+perfectly good IP headers (source: server-IP, dest: client-IP) would not
+make it onto the wire towards the client, but could be captured with
+tcpdump attached to "lo". I've searched the netfilter list and came up
+with some hits, but there were only questions (so the problem is known!)  
+and no solution.
 
+Incidentally, I've noticed this packet loss when trying to mount a NFS
+export. I don't remember exactly where the packet loss happened, but it
+was always at the same point in the packet exchange (well, out of 5-6
+tries that I've made, also with different client OSes) - most probably,
+the final packet, the answer to the "MOUNT" request (sorry, fuzzy memory).
+If I'd clear the iptables rules on the server, the same mount command
+would succeed immediately.  After deleting all the rules that used
+"fwmark" (but still using MASQ), everything worked fine.
 
-Main Features of Release Two
+-- 
+Bogdan Costescu
 
-Release Two, like Release One, is not feature-complete.
-Release Two supplements the features of Release One
-with an NFSv4 server, support for ACLs and some support
-for NFSv4 state in the client.  It also contains
-support for RPCSEC-GSS Kerberos 5 integrity on the
-client.
+IWR - Interdisziplinaeres Zentrum fuer Wissenschaftliches Rechnen
+Universitaet Heidelberg, INF 368, D-69120 Heidelberg, GERMANY
+Telephone: +49 6221 54 8869, Telefax: +49 6221 54 8868
+E-mail: Bogdan.Costescu@IWR.Uni-Heidelberg.De
 
-Features of Release Two include:
-
- *  NFS client for NFSv2, NFSv3, and NFSv4
- *  NFS server for NFSv2, NFSv3, and NFSv4 over
-    UDP and TCP
- *  RPCSEC-GSS Kerberos 5 mutual authentication
-    and integrity (client only)
- *  NFSv4 ACL support (client only)
- *  Initial support for NFSv4 state model (client
-    only)
- *  Initial support for authentication against
-    Windows 2000 Active Directory KDCs
-
-        -- Chuck Lever
---
-corporate: <cel at netapp dot com>
-personal:  <chucklever at bigfoot dot com>
 
 
 -------------------------------------------------------
