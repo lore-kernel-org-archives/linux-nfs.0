@@ -1,16 +1,16 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: [PATCH] Secure user authentication using RPCSEC_GSS [7/7]
-Date: Thu, 31 Oct 2002 21:23:07 +0100
+Subject: [PATCH] Secure user authentication using RPCSEC_GSS [4/7]
+Date: Thu, 31 Oct 2002 21:21:21 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15809.37163.368042.197435@charged.uio.no>
+Message-ID: <15809.37057.391023.315267@charged.uio.no>
 Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from mons.uio.no ([129.240.130.14])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 187LqR-0003o3-00
-	for <nfs@lists.sourceforge.net>; Thu, 31 Oct 2002 12:23:11 -0800
+	id 187Loj-0003cJ-00
+	for <nfs@lists.sourceforge.net>; Thu, 31 Oct 2002 12:21:25 -0800
 To: Linus Torvalds <torvalds@transmeta.com>,
     NFS maillist <nfs@lists.sourceforge.net>,nfsv4-wg@citi.umich.edu
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -26,550 +26,195 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Create named pipes in the rpc_pipefs for use by RPCSEC_GSS security flavours.
-Provide the upcall/downcall needed in order to communicate with
-the userland daemon in order to initiate an RPCSEC_GSS security
-context, and have it pass down the resulting user credential.
+The RPCSEC_GSS user context defines a 'sequence number' in the AUTH header
+fields in order to provide protection against replay attacks. This
+number needs to lie within a given 'window', and is required to be updated
+even when retransmitting dropped UDP requests.
+
+In order to allow this update to occur we move the XDR 'encode' phase
+so that it is done immediately before we write the data to the socket.
 
 Cheers,
   Trond
 
-diff -u --recursive --new-file linux-2.5.45-06-auth_upcall/include/linux/sunrpc/auth.h linux-2.5.45-07-auth_upcall2/include/linux/sunrpc/auth.h
---- linux-2.5.45-06-auth_upcall/include/linux/sunrpc/auth.h	2002-10-31 10:22:55.000000000 -0500
-+++ linux-2.5.45-07-auth_upcall2/include/linux/sunrpc/auth.h	2002-10-31 10:23:53.000000000 -0500
-@@ -115,6 +115,7 @@
- int			rpcauth_unregister(struct rpc_authops *);
- struct rpc_auth *	rpcauth_create(rpc_authflavor_t, struct rpc_clnt *);
- void			rpcauth_destroy(struct rpc_auth *);
-+struct rpc_cred *	rpcauth_lookup_credcache(struct rpc_auth *, struct auth_cred *, int);
- struct rpc_cred *	rpcauth_lookupcred(struct rpc_auth *, int);
- struct rpc_cred *	rpcauth_bindcred(struct rpc_task *);
- void			rpcauth_holdcred(struct rpc_task *);
-diff -u --recursive --new-file linux-2.5.45-06-auth_upcall/include/linux/sunrpc/auth_gss.h linux-2.5.45-07-auth_upcall2/include/linux/sunrpc/auth_gss.h
---- linux-2.5.45-06-auth_upcall/include/linux/sunrpc/auth_gss.h	2002-10-31 10:22:55.000000000 -0500
-+++ linux-2.5.45-07-auth_upcall2/include/linux/sunrpc/auth_gss.h	2002-10-31 10:23:53.000000000 -0500
-@@ -71,6 +71,7 @@
-  * the wire when communicating with a server. */
+diff -u --recursive --new-file linux-2.5.44-01-rpc_msg/include/linux/sunrpc/xprt.h linux-2.5.44-02-rpc_encode/include/linux/sunrpc/xprt.h
+--- linux-2.5.44-01-rpc_msg/include/linux/sunrpc/xprt.h	2002-10-08 21:37:46.000000000 -0400
++++ linux-2.5.44-02-rpc_encode/include/linux/sunrpc/xprt.h	2002-10-28 17:19:48.000000000 -0500
+@@ -187,6 +187,7 @@
+ 					unsigned long);
  
- struct gss_ctx {
-+	atomic_t		count;
- 	u32			gc_proc;
- 	u32			gc_seq;
- 	spinlock_t		gc_seq_lock;
-diff -u --recursive --new-file linux-2.5.45-06-auth_upcall/net/sunrpc/auth.c linux-2.5.45-07-auth_upcall2/net/sunrpc/auth.c
---- linux-2.5.45-06-auth_upcall/net/sunrpc/auth.c	2002-10-31 10:22:55.000000000 -0500
-+++ linux-2.5.45-07-auth_upcall2/net/sunrpc/auth.c	2002-10-31 10:23:53.000000000 -0500
-@@ -181,7 +181,7 @@
- /*
-  * Look up a process' credentials in the authentication cache
-  */
--static struct rpc_cred *
-+struct rpc_cred *
- rpcauth_lookup_credcache(struct rpc_auth *auth, struct auth_cred * acred,
- 		int taskflags)
- {
-@@ -360,10 +360,7 @@
- int
- rpcauth_uptodatecred(struct rpc_task *task)
- {
--	int retval;
--	spin_lock(&rpc_credcache_lock);
--	retval = !(task->tk_msg.rpc_cred) ||
-+	return !(task->tk_msg.rpc_cred) ||
- 		(task->tk_msg.rpc_cred->cr_flags & RPCAUTH_CRED_UPTODATE);
--	spin_unlock(&rpc_credcache_lock);
--	return retval;
- }
-+
-diff -u --recursive --new-file linux-2.5.45-06-auth_upcall/net/sunrpc/auth_gss.c linux-2.5.45-07-auth_upcall2/net/sunrpc/auth_gss.c
---- linux-2.5.45-06-auth_upcall/net/sunrpc/auth_gss.c	2002-10-31 10:22:55.000000000 -0500
-+++ linux-2.5.45-07-auth_upcall2/net/sunrpc/auth_gss.c	2002-10-31 13:11:00.000000000 -0500
-@@ -50,6 +50,8 @@
- #include <linux/sunrpc/auth.h>
- #include <linux/sunrpc/auth_gss.h>
- #include <linux/sunrpc/gss_err.h>
-+#include <linux/sunrpc/rpc_pipe_fs.h>
-+#include <asm/uaccess.h>
+ void			xprt_reserve(struct rpc_task *);
++int			xprt_prepare_transmit(struct rpc_task *);
+ void			xprt_transmit(struct rpc_task *);
+ void			xprt_receive(struct rpc_task *);
+ int			xprt_adjust_timeout(struct rpc_timeout *);
+diff -u --recursive --new-file linux-2.5.44-01-rpc_msg/net/sunrpc/clnt.c linux-2.5.44-02-rpc_encode/net/sunrpc/clnt.c
+--- linux-2.5.44-01-rpc_msg/net/sunrpc/clnt.c	2002-10-28 17:05:26.000000000 -0500
++++ linux-2.5.44-02-rpc_encode/net/sunrpc/clnt.c	2002-10-28 18:37:27.000000000 -0500
+@@ -487,7 +487,7 @@
  
- static struct rpc_authops authgss_ops;
+ 	dprintk("RPC: %4d call_allocate (status %d)\n", 
+ 				task->tk_pid, task->tk_status);
+-	task->tk_action = call_encode;
++	task->tk_action = call_bind;
+ 	if (task->tk_buffer)
+ 		return;
  
-@@ -74,6 +76,20 @@
- /* dump the buffer in `emacs-hexl' style */
- #define isprint(c)      ((c > 0x1f) && (c < 0x7f))
+@@ -527,8 +527,6 @@
+ 	dprintk("RPC: %4d call_encode (status %d)\n", 
+ 				task->tk_pid, task->tk_status);
  
-+static rwlock_t gss_ctx_lock = RW_LOCK_UNLOCKED;
-+
-+struct gss_auth {
-+	struct rpc_auth rpc_auth;
-+	struct gss_api_mech *mech;
-+	struct list_head upcalls;
-+	struct dentry *dentry;
-+	char path[48];
-+	spinlock_t lock;
-+};
-+
-+static void gss_destroy_ctx(struct gss_ctx *);
-+static struct rpc_pipe_ops gss_upcall_ops;
-+
- void
- print_hexl(u32 *p, u_int length, u_int offset)
- {
-@@ -112,6 +128,296 @@
- 	}
- }
- 
-+static inline struct gss_ctx *
-+gss_get_ctx(struct gss_ctx *ctx)
-+{
-+	atomic_inc(&ctx->count);
-+	return ctx;
-+}
-+
-+static inline void
-+gss_put_ctx(struct gss_ctx *ctx)
-+{
-+	if (atomic_dec_and_test(&ctx->count))
-+		gss_destroy_ctx(ctx);
-+}
-+
-+static void
-+gss_cred_set_ctx(struct rpc_cred *cred, struct gss_ctx *ctx)
-+{
-+	struct gss_cred *gss_cred = container_of(cred, struct gss_cred, gc_base);
-+	struct gss_ctx *old;
-+	write_lock(&gss_ctx_lock);
-+	old = gss_cred->gc_ctx;
-+	gss_cred->gc_ctx = ctx;
-+	cred->cr_flags |= RPCAUTH_CRED_UPTODATE;
-+	write_unlock(&gss_ctx_lock);
-+	if (old)
-+		gss_put_ctx(old);
-+}
-+
-+static struct gss_ctx *
-+gss_cred_get_ctx(struct rpc_cred *cred)
-+{
-+	struct gss_cred *gss_cred = container_of(cred, struct gss_cred, gc_base);
-+	struct gss_ctx *ctx = NULL;
-+
-+	read_lock(&gss_ctx_lock);
-+	if ((cred->cr_flags & RPCAUTH_CRED_UPTODATE) && gss_cred->gc_ctx)
-+		ctx = gss_get_ctx(gss_cred->gc_ctx);
-+	read_unlock(&gss_ctx_lock);
-+	return ctx;
-+}
-+
-+static inline int
-+simple_get_bytes(char **ptr, const char *end, void *res, int len)
-+{
-+	char *p, *q;
-+	p = *ptr;
-+	q = p + len;
-+	if (q > end || q < p)
-+		return -1;
-+	memcpy(res, p, len);
-+	*ptr = q;
-+	return 0;
-+}
-+
-+static inline int
-+simple_get_netobj(char **ptr, const char *end, struct xdr_netobj *res)
-+{
-+	char *p, *q;
-+	p = *ptr;
-+	if (simple_get_bytes(&p, end, &res->len, sizeof(res->len)))
-+		return -1;
-+	q = p + res->len;
-+	if (q > end || q < p)
-+		return -1;
-+	res->data = p;
-+	*ptr = q;
-+	return 0;
-+}
-+
-+static int
-+dup_netobj(struct xdr_netobj *source, struct xdr_netobj *dest)
-+{
-+	dest->len = source->len;
-+	if (!(dest->data = rpc_allocate(0, dest->len)))
-+		return -1;
-+	memcpy(dest->data, source->data, dest->len);
-+	return 0;
-+}
-+
-+static int
-+gss_parse_init_downcall(struct gss_api_mech *gm, struct xdr_netobj *buf,
-+		struct gss_ctx **gc, uid_t *uid)
-+{
-+	char *end = buf->data + buf->len;
-+	char *p = buf->data;
-+	struct gss_ctx *ctx;
-+	struct xdr_netobj tmp_buf;
-+	unsigned int timeout;
-+	int err = -EIO;
-+
-+	if (!(ctx = rpc_allocate(0, sizeof(*ctx)))) {
-+		err = -ENOMEM;
-+		goto err;
-+	}
-+	ctx->gc_proc = RPC_GSS_PROC_DATA;
-+	ctx->gc_seq = 0;
-+	spin_lock_init(&ctx->gc_seq_lock);
-+
-+	if (simple_get_bytes(&p, end, uid, sizeof(uid)))
-+		goto err_free_ctx;
-+	/* FIXME: discarded timeout for now */
-+	if (simple_get_bytes(&p, end, &timeout, sizeof(timeout)))
-+		goto err_free_ctx;
-+	if (simple_get_bytes(&p, end, &ctx->gc_win, sizeof(ctx->gc_win)))
-+		goto err_free_ctx;
-+	if (simple_get_netobj(&p, end, &tmp_buf))
-+		goto err_free_ctx;
-+	if (!dup_netobj(&tmp_buf, &ctx->gc_wire_ctx)) {
-+		err = -ENOMEM;
-+		goto err_free_ctx;
-+	}
-+	if (simple_get_netobj(&p, end, &tmp_buf))
-+		goto err_free_wire_ctx;
-+	if (p != end)
-+		goto err_free_wire_ctx;
-+	if (gss_import_sec_context(&tmp_buf, gm, &ctx->gc_client_ctx))
-+		goto err_free_wire_ctx;
-+	*gc = ctx;
-+	return 0;
-+err_free_wire_ctx:
-+	rpc_free(ctx->gc_wire_ctx.data);
-+err_free_ctx:
-+	rpc_free(ctx);
-+err:
-+	*gc = NULL;
-+	return err;
-+}
-+
-+
-+struct gss_upcall_msg {
-+	struct rpc_pipe_msg msg;
-+	struct list_head list;
-+	struct rpc_wait_queue waitq;
-+	uid_t	uid;
-+	atomic_t count;
-+};
-+
-+static void
-+gss_release_msg(struct gss_upcall_msg *gss_msg)
-+{
-+	if (!atomic_dec_and_test(&gss_msg->count))
-+		kfree(gss_msg);
-+}
-+
-+static struct gss_upcall_msg *
-+gss_find_upcall(struct gss_auth *gss_auth, uid_t uid)
-+{
-+	struct gss_upcall_msg *pos;
-+	list_for_each_entry(pos, &gss_auth->upcalls, list) {
-+		if (pos->uid == uid)
-+			return pos;
-+	}
-+	return NULL;
-+}
-+
-+static void
-+gss_release_callback(struct rpc_task *task)
-+{
-+	struct rpc_clnt *clnt = task->tk_client;
-+	struct gss_auth *gss_auth = container_of(clnt->cl_auth,
-+			struct gss_auth, rpc_auth);
-+	struct gss_upcall_msg *gss_msg;
-+	spin_lock(&gss_auth->lock);
-+	gss_msg = gss_find_upcall(gss_auth, task->tk_msg.rpc_cred->cr_uid);
-+	if (gss_msg) {
-+		rpc_wake_up(&gss_msg->waitq);
-+		list_del(&gss_msg->list);
-+		gss_release_msg(gss_msg);
-+	}
-+	spin_unlock(&gss_auth->lock);
-+}
-+
-+static int
-+gss_upcall(struct rpc_clnt *clnt, struct rpc_task *task, uid_t uid)
-+{
-+	struct gss_auth *gss_auth = container_of(clnt->cl_auth,
-+			struct gss_auth, rpc_auth);
-+	struct gss_upcall_msg *gss_msg, *gss_new = NULL;
-+	struct rpc_pipe_msg *msg;
-+	struct dentry *dentry = gss_auth->dentry;
-+
-+retry:
-+	gss_msg = gss_find_upcall(gss_auth, uid);
-+	if (!gss_msg) {
-+		spin_unlock(&gss_auth->lock);
-+		gss_new = kmalloc(sizeof(*gss_new), GFP_KERNEL);
-+		spin_lock(&gss_auth->lock);
-+		if (gss_new)
-+			goto retry;
-+		return -ENOMEM;
-+	}
-+	if (gss_msg)
-+		goto out_sleep;
-+	gss_msg = gss_new;
-+	memset(gss_new, 0, sizeof(*gss_new));
-+	INIT_LIST_HEAD(&gss_new->list);
-+	INIT_RPC_WAITQ(&gss_new->waitq, "RPCSEC_GSS upcall waitq");
-+	atomic_set(&gss_new->count, 1);
-+	msg = &gss_new->msg;
-+	msg->data = &gss_new->uid;
-+	msg->len = sizeof(gss_new->uid);
-+	gss_new->uid = uid;
-+	list_add(&gss_new->list, &gss_auth->upcalls);
-+	gss_new = NULL;
-+	rpc_queue_upcall(dentry->d_inode, msg);
-+out_sleep:
-+	atomic_inc(&gss_msg->count);
-+	rpc_sleep_on(&gss_msg->waitq, task, gss_release_callback, NULL);
-+	if (gss_new)
-+		kfree(gss_new);
-+	return 0;
-+}
-+
-+static ssize_t
-+gss_pipe_upcall(struct file *filp, struct rpc_pipe_msg *msg,
-+		char *dst, size_t buflen)
-+{
-+	char *data = (char *)msg->data + msg->copied;
-+	ssize_t mlen = msg->len - msg->copied;
-+	ssize_t left;
-+
-+	if (mlen > buflen)
-+		mlen = buflen;
-+	left = copy_to_user(dst, data, mlen);
-+	return mlen - left;
-+}
-+
-+static ssize_t
-+gss_pipe_downcall(struct file *filp, const char *src, size_t mlen)
-+{
-+	char buf[1024];
-+	struct xdr_netobj obj = {
-+		.len	= mlen,
-+		.data	= buf,
-+	};
-+	struct inode *inode = filp->f_dentry->d_inode;
-+	struct rpc_inode *rpci = RPC_I(inode);
-+	struct rpc_clnt *clnt;
-+	struct rpc_auth *auth;
-+	struct gss_auth *gss_auth;
-+	struct gss_api_mech *mech;
-+	struct auth_cred acred = { 0 };
-+	struct rpc_cred *cred;
-+	struct gss_upcall_msg *gss_msg;
-+	struct gss_ctx *ctx;
-+	ssize_t left;
-+	int err;
-+
-+	if (mlen > sizeof(buf))
-+		return -ENOSPC;
-+	left = copy_from_user(buf, src, mlen);
-+	if (left)
-+		return -EFAULT;
-+	down(&inode->i_sem);
-+	clnt = rpci->rpc_client;
-+	atomic_inc(&clnt->cl_users);
-+	up(&inode->i_sem);
-+	auth = clnt->cl_auth;
-+	gss_auth = container_of(auth, struct gss_auth, rpc_auth);
-+	mech = gss_auth->mech;
-+	err = gss_parse_init_downcall(mech, &obj, &ctx, &acred.uid);
-+	if (err)
-+		goto err;
-+	cred = rpcauth_lookup_credcache(auth, &acred, 0);
-+	if (!cred)
-+		goto err_release_ctx;
-+	gss_cred_set_ctx(cred, ctx);
-+	spin_lock(&gss_auth->lock);
-+	gss_msg = gss_find_upcall(gss_auth, acred.uid);
-+	if (gss_msg) {
-+		rpc_wake_up(&gss_msg->waitq);
-+		gss_release_msg(gss_msg);
-+	}
-+	spin_unlock(&gss_auth->lock);
-+	return mlen;
-+err_release_ctx:
-+	gss_destroy_ctx(ctx);
-+err:
-+	rpc_release_client(clnt);
-+	return err;
-+}
-+
-+void
-+gss_pipe_destroy_msg(struct rpc_pipe_msg *msg)
-+{
-+	struct gss_upcall_msg *gss_msg = container_of(msg, struct gss_upcall_msg, msg);
-+
-+	rpc_wake_up(&gss_msg->waitq);
-+	gss_release_msg(gss_msg);
-+}
- 
- /* 
-  * NOTE: we have the opportunity to use different 
-@@ -120,12 +426,22 @@
- static struct rpc_auth *
- gss_create(struct rpc_clnt *clnt, rpc_authflavor_t flavor)
- {
-+	struct gss_auth *gss_auth;
- 	struct rpc_auth * auth;
- 
- 	dprintk("RPC: creating GSS authenticator for client %p\n",clnt);
- 	MOD_INC_USE_COUNT;
--	if (!(auth = (struct rpc_auth *) rpc_allocate(0, sizeof(*auth))))
--		return NULL;
-+	if (!(gss_auth = (struct gss_auth *) rpc_allocate(0, sizeof(*gss_auth))))
-+		goto out_dec;
-+	gss_auth->mech = gss_pseudoflavor_to_mech(flavor);
-+	if (!gss_auth->mech) {
-+		printk(KERN_WARNING "%s: Pseudoflavor %d not found!",
-+				__FUNCTION__, flavor);
-+		goto err_free;
-+	}
-+	INIT_LIST_HEAD(&gss_auth->upcalls);
-+	spin_lock_init(&gss_auth->lock);
-+	auth = &gss_auth->rpc_auth;
- 	auth->au_cslack = GSS_CRED_SLACK >> 2;
- 	auth->au_rslack = GSS_VERF_SLACK >> 2;
- 	auth->au_expire = GSS_CRED_EXPIRE;
-@@ -134,15 +450,31 @@
- 
- 	rpcauth_init_credcache(auth);
- 
-+	snprintf(gss_auth->path, sizeof(gss_auth->path), "%s/%s",
-+			clnt->cl_pathname,
-+			gss_auth->mech->gm_ops->name);
-+	gss_auth->dentry = rpc_mkpipe(gss_auth->path, clnt, &gss_upcall_ops);
-+	if (IS_ERR(gss_auth->dentry))
-+		goto err_free;
-+
- 	return auth;
-+err_free:
-+	rpc_free(gss_auth);
-+out_dec:
-+	MOD_DEC_USE_COUNT;
-+	return NULL;
- }
- 
+-	task->tk_action = call_bind;
+-
+ 	/* Default buffer setup */
+ 	bufsiz = rpcproc_bufsiz(clnt, task->tk_msg.rpc_proc)+RPC_SLACK_SPACE;
+ 	sndbuf->head[0].iov_base = (void *)task->tk_buffer;
+@@ -628,16 +626,23 @@
  static void
- gss_destroy(struct rpc_auth *auth)
+ call_transmit(struct rpc_task *task)
  {
-+	struct gss_auth *gss_auth;
- 	dprintk("RPC: destroying GSS authenticator %p flavor %d\n",
- 		auth, auth->au_flavor);
+-	struct rpc_clnt	*clnt = task->tk_client;
+-
+ 	dprintk("RPC: %4d call_transmit (status %d)\n", 
+ 				task->tk_pid, task->tk_status);
  
-+	gss_auth = container_of(auth, struct gss_auth, rpc_auth);
-+	rpc_unlink(gss_auth->path);
-+
- 	rpcauth_free_credcache(auth);
- 
- 	rpc_free(auth);
-@@ -152,8 +484,9 @@
- /* gss_destroy_cred (and gss_destroy_ctx) are used to clean up after failure
-  * to create a new cred or context, so they check that things have been
-  * allocated before freeing them. */
+ 	task->tk_action = call_status;
+ 	if (task->tk_status < 0)
+ 		return;
++	task->tk_status = xprt_prepare_transmit(task);
++	if (task->tk_status < 0)
++		return;
++	/* Encode here so that rpcsec_gss can use correct sequence number. */
++	call_encode(task);
++	if (task->tk_status < 0)
++		return;
+ 	xprt_transmit(task);
+-	if (!task->tk_msg.xdr_decode && task->tk_status >= 0) {
++	if (task->tk_status < 0)
++		return;
++	if (!task->tk_msg.xdr_decode) {
+ 		task->tk_action = NULL;
+ 		rpc_wake_up_task(task);
+ 	}
+@@ -777,7 +782,7 @@
+ 		if (RPC_IS_SETUID(task) && task->tk_suid_retry) {
+ 			dprintk("RPC: %4d retry squashed uid\n", task->tk_pid);
+ 			task->tk_flags ^= RPC_CALL_REALUID;
+-			task->tk_action = call_encode;
++			task->tk_action = call_bind;
+ 			task->tk_suid_retry--;
+ 			return;
+ 		}
+@@ -883,7 +888,7 @@
+ 			task->tk_garb_retry--;
+ 			dprintk("RPC: %4d call_verify: retry garbled creds\n",
+ 							task->tk_pid);
+-			task->tk_action = call_encode;
++			task->tk_action = call_bind;
+ 			return NULL;
+ 		case RPC_AUTH_TOOWEAK:
+ 			printk(KERN_NOTICE "call_verify: server requires stronger "
+@@ -918,7 +923,7 @@
+ 	if (task->tk_garb_retry) {
+ 		task->tk_garb_retry--;
+ 		dprintk(KERN_WARNING "RPC: garbage, retrying %4d\n", task->tk_pid);
+-		task->tk_action = call_encode;
++		task->tk_action = call_bind;
+ 		return NULL;
+ 	}
+ 	printk(KERN_WARNING "RPC: garbage, exit EIO\n");
+diff -u --recursive --new-file linux-2.5.44-01-rpc_msg/net/sunrpc/xprt.c linux-2.5.44-02-rpc_encode/net/sunrpc/xprt.c
+--- linux-2.5.44-01-rpc_msg/net/sunrpc/xprt.c	2002-10-08 07:06:15.000000000 -0400
++++ linux-2.5.44-02-rpc_encode/net/sunrpc/xprt.c	2002-10-28 17:29:21.000000000 -0500
+@@ -83,7 +83,6 @@
+  * Local functions
+  */
+ static void	xprt_request_init(struct rpc_task *, struct rpc_xprt *);
+-static void	do_xprt_transmit(struct rpc_task *);
+ static inline void	do_xprt_reserve(struct rpc_task *);
+ static void	xprt_disconnect(struct rpc_xprt *);
+ static void	xprt_conn_status(struct rpc_task *task);
+@@ -1090,51 +1089,40 @@
+  * Place the actual RPC call.
+  * We have to copy the iovec because sendmsg fiddles with its contents.
+  */
 -void
--gss_destroy_ctx(struct gss_ctx *ctx) {
-+static void
-+gss_destroy_ctx(struct gss_ctx *ctx)
-+{
- 
- 	dprintk("RPC: gss_destroy_ctx\n");
- 
-@@ -177,7 +510,7 @@
- 	dprintk("RPC: gss_destroy_cred \n");
- 
- 	if (cred->gc_ctx)
--		gss_destroy_ctx(cred->gc_ctx);
-+		gss_put_ctx(cred->gc_ctx);
- 	rpc_free(cred);
- }
- 
-@@ -224,8 +557,10 @@
- static u32 *
- gss_marshal(struct rpc_task *task, u32 *p, int ruid)
+-xprt_transmit(struct rpc_task *task)
++int
++xprt_prepare_transmit(struct rpc_task *task)
  {
--	struct gss_cred	*cred = (struct gss_cred *) task->tk_msg.rpc_cred;
--	struct gss_ctx	*ctx = cred->gc_ctx;
-+	struct rpc_cred *cred = task->tk_msg.rpc_cred;
-+	struct gss_cred	*gss_cred = container_of(cred, struct gss_cred,
-+						 gc_base);
-+	struct gss_ctx	*ctx = gss_cred_get_ctx(cred);
- 	u32		*cred_len;
- 	struct rpc_rqst *req = task->tk_rqstp;
- 	struct rpc_clnt *clnt = task->tk_client;
-@@ -246,11 +581,11 @@
- 	*p++ = htonl(RPC_AUTH_GSS);
- 	cred_len = p++;
- 
--	service = gss_pseudoflavor_to_service(cred->gc_flavor);
-+	service = gss_pseudoflavor_to_service(gss_cred->gc_flavor);
- 	if (service == 0) {
- 		dprintk("Bad pseudoflavor %d in gss_marshal\n",
--			cred->gc_flavor);
--		return NULL;
-+			gss_cred->gc_flavor);
-+		goto out_put_ctx;
- 	}
- 	spin_lock(&ctx->gc_seq_lock);
- 	task->tk_gss_seqno = ctx->gc_seq++;
-@@ -276,10 +611,13 @@
- 	if(maj_stat != 0){
- 		printk("gss_marshal: gss_get_mic FAILED (%d)\n",
- 		       maj_stat);
--		return(NULL);
-+		goto out_put_ctx;
- 	}
- 	p = xdr_encode_netobj(p, &bufout);
- 	return p;
-+out_put_ctx:
-+	gss_put_ctx(ctx);
-+	return NULL;
- }
- 
- /*
-@@ -288,9 +626,21 @@
- static int
- gss_refresh(struct rpc_task *task)
- {
--	/* Insert upcall here ! */
--	task->tk_msg.rpc_cred->cr_flags |= RPCAUTH_CRED_UPTODATE;
--	return task->tk_status = -EACCES;
-+	struct rpc_clnt *clnt = task->tk_client;
-+	struct gss_auth *gss_auth = container_of(clnt->cl_auth,
-+			struct gss_auth, rpc_auth);
-+	struct rpc_xprt *xprt = task->tk_xprt;
-+	struct rpc_cred *cred = task->tk_msg.rpc_cred;
+ 	struct rpc_rqst	*req = task->tk_rqstp;
+ 	struct rpc_xprt	*xprt = req->rq_xprt;
 +	int err = 0;
-+
-+	task->tk_timeout = xprt->timeout.to_current;
-+	spin_lock(&gss_auth->lock);
-+	if (gss_cred_get_ctx(cred))
-+		goto out;
-+	err = gss_upcall(clnt, task, cred->cr_uid);
-+out:
-+	spin_unlock(&gss_auth->lock);
+ 
+-	dprintk("RPC: %4d xprt_transmit(%x)\n", task->tk_pid, 
+-				*(u32 *)(req->rq_svec[0].iov_base));
++	dprintk("RPC: %4d xprt_prepare_transmit\n", task->tk_pid);
+ 
+ 	if (xprt->shutdown)
+-		task->tk_status = -EIO;
++		return -EIO;
+ 
+ 	if (!xprt_connected(xprt))
+-		task->tk_status = -ENOTCONN;
+-
+-	if (task->tk_status < 0)
+-		return;
++		return -ENOTCONN;
+ 
+ 	if (task->tk_rpcwait)
+ 		rpc_remove_wait_queue(task);
+ 
+-	/* set up everything as needed. */
+-	/* Write the record marker */
+-	if (xprt->stream) {
+-		u32	*marker = req->rq_svec[0].iov_base;
+-
+-		*marker = htonl(0x80000000|(req->rq_slen-sizeof(*marker)));
+-	}
+-
+ 	spin_lock_bh(&xprt->sock_lock);
+ 	if (!__xprt_lock_write(xprt, task)) {
+-		spin_unlock_bh(&xprt->sock_lock);
+-		return;
++		err = -EAGAIN;
++		goto out_unlock;
+ 	}
+ 	if (list_empty(&req->rq_list)) {
+ 		list_add_tail(&req->rq_list, &xprt->recv);
+ 		req->rq_received = 0;
+ 	}
++out_unlock:
+ 	spin_unlock_bh(&xprt->sock_lock);
+-
+-	do_xprt_transmit(task);
 +	return err;
  }
  
- static u32 *
-@@ -349,6 +699,12 @@
- 	.crvalidate	= gss_validate,
- };
+-static void
+-do_xprt_transmit(struct rpc_task *task)
++void
++xprt_transmit(struct rpc_task *task)
+ {
+ 	struct rpc_clnt *clnt = task->tk_client;
+ 	struct rpc_rqst	*req = task->tk_rqstp;
+@@ -1142,6 +1130,16 @@
+ 	int status, retry = 0;
  
-+static struct rpc_pipe_ops gss_upcall_ops = {
-+	.upcall		= gss_pipe_upcall,
-+	.downcall	= gss_pipe_downcall,
-+	.destroy_msg	= gss_pipe_destroy_msg,
-+};
+ 
++	dprintk("RPC: %4d xprt_transmit(%u)\n", task->tk_pid, req->rq_slen);
 +
- extern void gss_svc_ctx_init(void);
- 
- /*
++	/* set up everything as needed. */
++	/* Write the record marker */
++	if (xprt->stream) {
++		u32	*marker = req->rq_svec[0].iov_base;
++
++		*marker = htonl(0x80000000|(req->rq_slen-sizeof(*marker)));
++	}
++
+ 	/* Continue transmitting the packet/record. We must be careful
+ 	 * to cope with writespace callbacks arriving _after_ we have
+ 	 * called xprt_sendmsg().
 
 
 -------------------------------------------------------
