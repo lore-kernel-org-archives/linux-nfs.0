@@ -1,18 +1,19 @@
-From: Stuart Anderson <anderson@ligo.caltech.edu>
-Subject: Re: kernel Oops in rpc.mountd
-Date: Sat, 12 Feb 2005 14:23:01 -0800
-Message-ID: <200502122223.j1CMN1sK003668@m27.ligo.caltech.edu>
-Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+From: Olaf Hering <olh@suse.de>
+Subject: [PATCH] remove unneeded ext2 include from nfsd
+Date: Sun, 13 Feb 2005 16:52:57 +0100
+Message-ID: <20050213155257.GA21488@suse.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D05fb-0001fR-MR
-	for nfs@lists.sourceforge.net; Sat, 12 Feb 2005 14:23:19 -0800
-Received: from acrux.ligo.caltech.edu ([131.215.115.14])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1D0M3U-0001qV-FQ
+	for nfs@lists.sourceforge.net; Sun, 13 Feb 2005 07:53:04 -0800
+Received: from news.suse.de ([195.135.220.2] helo=Cantor.suse.de)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.41)
-	id 1D05fX-0001rp-8O
-	for nfs@lists.sourceforge.net; Sat, 12 Feb 2005 14:23:19 -0800
-To: neilb@cse.unsw.edu.au
+	id 1D0M3R-0004Zh-Oh
+	for nfs@lists.sourceforge.net; Sun, 13 Feb 2005 07:53:04 -0800
+To: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,75 +27,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Neil,
-	This patch did the trick! We have now run our 290 cluster nodes for
-72 hours with this extra locking patch without any kernel crashes. This is
-to be compared to 1-5 crashes per day before the patch.
 
-	Many thanks!
+nfs3proc.c includes ext2 headers for some constants, strange.
+vfs.c does the same, but doesnt use anything from this header.
 
-	What is the next step in getting this patch integrated into FC3
-and the mainline kernel branch?
 
-According to Neil Brown:
-> On Monday February 7, anderson@ligo.caltech.edu wrote:
-> > We are going to rebuild 2.6.10-1.760_FC3smp with 8k stack (just my
-> > paranoia about the 4k stacks), and remove absolutely everything we do
-> > not need, however, I will add in the CONFIG_DEBUG_SLAB. Are there any
-> > other kernel debug flags that might be helpful?
->
-> No.  However the following patch might be worth a try.
-> It adds some extra locking.  I'm pretty sure there is a race that this
-> closes that could possibly cause your problem.  I also think the
-> locking here is a bit heavy handed, but I am sure it is safe.
->
-> >
-> > Perhaps the bug is due to having a large list of static NFS mounts (290)?
->
-> Having lots of mounts won't hurt.  But having lots of clients mount
-> this server might have make it more likely to trigger the bug as there
-> is more activity on the export cache.
->
-> NeilBrown
->
->
-> Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
->
-> ### Diffstat output
->  ./include/linux/sunrpc/cache.h |   14 +++++++++-----
->  1 files changed, 9 insertions(+), 5 deletions(-)
->
-> diff ./include/linux/sunrpc/cache.h~current~ ./include/linux/sunrpc/cache.h
-> --- ./include/linux/sunrpc/cache.h~current~   2005-02-08 16:23:21.000000000 +1
-100
-> +++ ./include/linux/sunrpc/cache.h    2005-02-08 16:41:09.000000000 +1100
-> @@ -268,15 +268,19 @@ static inline struct cache_head  *cache_
->
->  static inline int cache_put(struct cache_head *h, struct cache_detail *cd)
->  {
-> -     atomic_dec(&h->refcnt);
-> +     int rv = 0;
-> +     read_lock(&cd->hash_lock);
-> +     if (atomic_dec_and_test(&h->refcnt))
-> +             rv = 1;
->       if (!atomic_read(&h->refcnt) &&
->           h->expiry_time < cd->nextcheck)
->               cd->nextcheck = h->expiry_time;
-> -     if (!test_bit(CACHE_HASHED, &h->flags) &&
-> -         !atomic_read(&h->refcnt))
-> -             return 1;
-> +     if (test_bit(CACHE_HASHED, &h->flags) ||
-> +         atomic_read(&h->refcnt))
-> +             rv = 0;
-> +     read_unlock(&cd->hash_lock);
->
-> -     return 0;
-> +     return rv;
->  }
->
->  extern void cache_init(struct cache_head *h);
->
+Signed-off-by: Olaf Hering <olh@suse.de>
 
+diff -purNx tags ../linux-2.6.11-rc4.orig/fs/nfsd/vfs.c ./fs/nfsd/vfs.c
+--- ../linux-2.6.11-rc4.orig/fs/nfsd/vfs.c	2005-02-13 04:06:05.000000000 +0100
++++ ./fs/nfsd/vfs.c	2005-02-13 16:00:07.702972643 +0100
+@@ -24,7 +24,6 @@
+ #include <linux/file.h>
+ #include <linux/mount.h>
+ #include <linux/major.h>
+-#include <linux/ext2_fs.h>
+ #include <linux/proc_fs.h>
+ #include <linux/stat.h>
+ #include <linux/fcntl.h>
 
 
 -------------------------------------------------------
