@@ -1,18 +1,24 @@
-From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 27 of 54] nfsd4: simplify find_openstateowner_str
-Date: Tue, 08 Mar 2005 17:06:44 +1100
-Message-ID: <E1D8Xrg-00018X-69@notabene.cse.unsw.edu.au>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH kNFSd 32 of 54] nfsd4: fix callback cred refcnt
+	leak
+Date: Tue, 08 Mar 2005 01:16:55 -0500
+Message-ID: <1110262615.11712.20.camel@lade.trondhjem.org>
 References: <20050308165419.3842.patches@notabene>
-Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+	 <E1D8Xrg-00018r-Db@notabene.cse.unsw.edu.au>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: Andrew Morton <akpm@osdl.org>, nfs@lists.sourceforge.net
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D8XsK-0002BD-GY
-	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:07:24 -0800
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1D8XsJ-0007xF-MS
-	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:07:24 -0800
-To: Andrew Morton <akpm@osdl.org>
+	id 1D8Y1w-00031q-4E
+	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:17:20 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1D8Y1v-0006LT-8J
+	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:17:19 -0800
+To: NeilBrown <neilb@cse.unsw.edu.au>
+In-Reply-To: <E1D8Xrg-00018r-Db@notabene.cse.unsw.edu.au>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,68 +32,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+ty den 08.03.2005 Klokka 17:06 (+1100) skreiv NeilBrown:
+> 
+> The rpc creds we look up in the callback code need puts.
+> 
 
+<cough> Error checking on the results of nfsd4_lookupcred()? </cough>
 
-There's no need to return duplicate information through the return value and an
-argument.  Other minor cleanup.
+Cheers,
+  Trond
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
+-- 
+Trond Myklebust <trond.myklebust@fys.uio.no>
 
-### Diffstat output
- ./fs/nfsd/nfs4state.c |   24 ++++++++++++------------
- 1 files changed, 12 insertions(+), 12 deletions(-)
-
-diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2005-03-07 11:35:58.000000000 +1100
-+++ ./fs/nfsd/nfs4state.c	2005-03-07 11:35:58.000000000 +1100
-@@ -1233,18 +1233,16 @@ cmp_owner_str(struct nfs4_stateowner *so
- 	  (sop->so_client->cl_clientid.cl_id == clid->cl_id));
- }
- 
--/* search ownerstr_hashtbl[] for owner */
--static int
--find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open, struct nfs4_stateowner **op) {
--	struct nfs4_stateowner *local = NULL;
-+static struct nfs4_stateowner *
-+find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open)
-+{
-+	struct nfs4_stateowner *so = NULL;
- 
--	list_for_each_entry(local, &ownerstr_hashtbl[hashval], so_strhash) {
--		if (!cmp_owner_str(local, &open->op_owner, &open->op_clientid))
--			continue;
--		*op = local;
--		return(1);
-+	list_for_each_entry(so, &ownerstr_hashtbl[hashval], so_strhash) {
-+		if (cmp_owner_str(so, &open->op_owner, &open->op_clientid))
-+			return so;
- 	}
--	return 0;
-+	return NULL;
- }
- 
- /* search file_hashtbl[] for file */
-@@ -1461,7 +1459,8 @@ nfsd4_process_open1(struct nfsd4_open *o
- 		return nfserr_stale_clientid;
- 
- 	strhashval = ownerstr_hashval(clientid->cl_id, open->op_owner);
--	if (find_openstateowner_str(strhashval, open, &sop)) {
-+	sop = find_openstateowner_str(strhashval, open);
-+	if (sop) {
- 		open->op_stateowner = sop;
- 		/* check for replay */
- 		if (open->op_seqid == sop->so_seqid){
-@@ -1504,7 +1503,8 @@ nfsd4_process_open1(struct nfsd4_open *o
- 			goto out;
- 	}
- 	status = nfserr_resource;
--	if (!(sop = alloc_init_open_stateowner(strhashval, clp, open))) 
-+	sop = alloc_init_open_stateowner(strhashval, clp, open);
-+	if (sop == NULL)
- 		goto out;
- 	open->op_stateowner = sop;
- renew:
 
 
 -------------------------------------------------------
