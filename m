@@ -1,18 +1,21 @@
-From: =?iso-8859-1?Q?Ragnar_Kj=F8rstad?= <nfs@ragnark.vestdata.no>
-Subject: Re: [Fwd: Re: NFS-HOWTO]
-Date: Wed, 20 Mar 2002 00:06:58 +0100
+From: jkt <jkt@execpc.com>
+Subject: NFS Setup
+Date: Tue, 19 Mar 2002 23:15:34 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020320000658.I27743@vestdata.no>
-References: <1016561902.2031.23.camel@vaio> <shsn0x4mm2h.fsf@charged.uio.no> <shsit7smkjj.fsf@charged.uio.no>
+Message-ID: <3C981AF6.E64A4D8A@execpc.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: Tavis Barr <tb62@columbia.edu>, nfs@lists.sourceforge.net
-Received: from stine.vestdata.no ([195.204.68.10])
+Content-Type: text/plain; charset=us-ascii
+Received: from out3.mx.nwbl.wi.voyager.net ([169.207.3.79])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16nShD-0007KJ-00
-	for <nfs@lists.sourceforge.net>; Tue, 19 Mar 2002 15:07:11 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <shsit7smkjj.fsf@charged.uio.no>; from trond.myklebust@fys.uio.no on Tue, Mar 19, 2002 at 08:20:32PM +0100
+	id 16nYSL-0003qk-00
+	for <nfs@lists.sourceforge.net>; Tue, 19 Mar 2002 21:16:13 -0800
+Received: from pop2.nwbl.wi.voyager.net (pop2.nwbl.wi.voyager.net [169.207.3.115])
+	by out3.mx.nwbl.wi.voyager.net (8.11.1/8.11.4/1.7) with ESMTP id g2K5GC193747
+	for <nfs@lists.sourceforge.net>; Tue, 19 Mar 2002 23:16:12 -0600 (CST)
+Received: from execpc.com (d121.as7.nwbl0.wi.voyager.net [169.207.128.249])
+	by pop2.nwbl.wi.voyager.net (8.10.2/8.10.2) with ESMTP id g2K5GBh12885
+	for <nfs@lists.sourceforge.net>; Tue, 19 Mar 2002 23:16:11 -0600 (CST)
+To: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,42 +28,28 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Tue, Mar 19, 2002 at 08:20:32PM +0100, Trond Myklebust wrote:
->    - Changes to the individual filesystems so that they can save and
->      retrieve the extra 96 bits (=3D=3D 32 bits * (mtime + atime + ctim=
-e))
->      as part of the on-disk metadata.
->      This is non-trivial, since a lot of these filesystems have not
->      got much padding left in their inodes (particularly once acls
->      etc. have grabbed their share of real-estate). Even finding 32
->      free bits is a real problem for ext[23]...
+Hello,
 
-I think Ted was talking about doing a disk-format change for ext[23]
-soon (to improve resizing support and to extend fields like timestamps
-and link-counters).
+My name is John Tankersley. I am new to NFS and am seeking some help in
+how to set up the entries in 
+the /etc/exports file on the host side and the /etc/fstab file on the
+client side.
+I have two machines running SuSE Linux 7.3 professional each.  I can
+ping and telnet between the two
+machines successfully. Machine (1) host machine's ip is 192.168.1.3. 
+The client machine's ip is 
+192.168.1.1.  Here is the entry in the host machine /etc/exports  file. 
+/tmp 192.168.1.1.
+The entry at the client machine in /etc/fstab file is 192.168.1.3:/tmp. 
+I just want to know what I am doing wrong in my entries.  I hope my
+explanation is clear.  I am trying to mount the /tmp directory on the
+host machine to the client machine.  Could someone please indicate what
+is wrong with my entries?
 
-For reiserfs adding more data in the on-disk metadata is perhaps less of
-a problem than for other filesystems, because reiserfs can handle
-multiple inode-types on the same filesystem. (Of course old kernels
-would not work with the new format, so it's still not trivial).
+Thank-you,
 
-I haven't checked xfs, jfs or any of the other filesystems.
-
-> One solution might be to only keep the full 64-bit data in the VFS
-> inode cache, and to zero the low 32-bits whenever we have to reload
-> the metadata from the disk.
-> That means that each time the file falls out of cache, then the mtime
-> would appear to change on the client (which might then proceed to
-> invalidate its data cache). Not entirely satisfactory, but probably
-> better than nothing...
-
-Filesystems that _do_ have support for 64-bit data on-disk could still
-take advantage, right?=20
-
-
---=20
-Ragnar Kj=F8rstad
-Big Storage
+John Tankersley
+jkt@execpc.com
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
