@@ -1,139 +1,39 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Re: [PATCH] kNFSd - 2 of 5 - ip_map_init does a kmalloc which isn't checked...
-Date: Mon, 9 Feb 2004 16:51:51 -0500
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040209215151.GE2776@fieldses.org>
-References: <20040206161050.27799.patches@notabene> <E1AoyIo-0007FS-00@notabene> <20040207012423.396efe73.akpm@osdl.org> <20040208043723.GC13391@fieldses.org> <20040207214637.387d3018.akpm@osdl.org> <20040208055921.GA14053@fieldses.org> <20040208203018.GA27482@fieldses.org> <20040209093206.429ffb7e.akpm@osdl.org>
+From: Greg Banks <gnb@melbourne.sgi.com>
+Subject: Re: [NFS] [PATCH][RFC] use completions instead of sleep_on for rpciod
+Date: Tue, 10 Feb 2004 12:52:18 +1100
+Sender: netdev-bounce@oss.sgi.com
+Message-ID: <40283952.6093F19D@melbourne.sgi.com>
+References: <20040207144405.GA19416@lst.de> <20040209102801.GC21364@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: neilb@cse.unsw.edu.au, nfs@lists.sourceforge.net,
-	Philippe =?iso-8859-1?Q?Gramoull=E9?= <philippe.gramoulle@mmania.com>
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-list1-b.sourceforge.net ([10.3.1.7] helo=sc8-sf-list1.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AqM0j-0005LA-7W
-	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 16:44:21 -0800
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 4.30)
-	id 1AqJJx-0005ax-ND
-	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 13:52:01 -0800
-Received: from dsl093-002-214.det1.dsl.speakeasy.net
-	([66.93.2.214] helo=pumpkin.fieldses.org ident=Debian-exim)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.30)
-	id 1AqJJw-00021d-Bw
-	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 13:52:01 -0800
-To: Andrew Morton <akpm@osdl.org>
-In-Reply-To: <20040209093206.429ffb7e.akpm@osdl.org>
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Cc: Christoph Hellwig <hch@lst.de>, netdev@oss.sgi.com,
+        nfs@lists.sourceforge.net
+Return-path: <netdev-bounce@oss.sgi.com>
+To: Olaf Kirch <okir@suse.de>
+Errors-to: netdev-bounce@oss.sgi.com
+List-ID: <nfs.lists.sourceforge.net>
 
-On Mon, Feb 09, 2004 at 09:32:06AM -0800, Andrew Morton wrote:
-> Bruce, 2.6.3-rc1-mm1 contains your later batch of patches (02 and 03 are
-> still in the wrong order, but that doesn't matter and I have subsequently
-> fixed that).
+Olaf Kirch wrote:
+> 
+> [...] The code in fs/nfs/unlink.c is probably also racy
+> without BKL.
 
-The version of nfsd-03-sunrpc-cache-init-fixes.patch in 2.6.3-rc1-mm1
-isn't the one I sent; note that the only change I made was to add a few
-lines to net/sunrpc/svcauth.c (a file that that patch didn't modify
-before), and that chunk isn't in there.
+I had cause to poke around there recently, and it's *definitely* racy
+without BKL.  That file would benefit from several modernisations:
 
---Bruce Fields
+1.  move the list of nfs_unlinkdata from a global to a field in nfs_server
 
- include/linux/sunrpc/cache.h |   13 ++++++++-----
- net/sunrpc/svcauth.c         |    6 +++++-
- 2 files changed, 13 insertions(+), 6 deletions(-)
+2.  add a lock in nfs_server for it instead of implicit BKL in
+    nfs_complete_unlink, nfs_async_unlink, nfs_put_unlinkdata
 
-diff -puN include/linux/sunrpc/cache.h~neil_NfsdCacheImprove include/linux/sunrpc/cache.h
---- linux-2.6.1/include/linux/sunrpc/cache.h~neil_NfsdCacheImprove	2004-02-08 13:54:41.000000000 -0500
-+++ linux-2.6.1-bfields/include/linux/sunrpc/cache.h	2004-02-08 13:54:41.000000000 -0500
-@@ -130,12 +130,14 @@ struct cache_deferred_req {
-  * If "set" == 0 :
-  *    If an entry is found, it is returned
-  *    If no entry is found, a new non-VALID entry is created.
-- * If "set" == 1 :
-+ * If "set" == 1 and INPLACE == 0 :
-  *    If no entry is found a new one is inserted with data from "template"
-  *    If a non-CACHE_VALID entry is found, it is updated from template using UPDATE
-  *    If a CACHE_VALID entry is found, a new entry is swapped in with data
-  *       from "template"
-- * If set == 2, we UPDATE, but don't swap. i.e. update in place
-+ * If set == 1, and INPLACE == 1 :
-+ *    As above, except that if a CACHE_VALID entry is found, we UPDATE in place
-+ *       instead of swapping in a new entry.
-  *
-  * If the passed handle has the CACHE_NEGATIVE flag set, then UPDATE is not
-  * run but insteead CACHE_NEGATIVE is set in any new item.
-@@ -162,8 +164,8 @@ RTN *FNAME ARGS										\
- 	RTN *tmp, *new=NULL;								\
- 	struct cache_head **hp, **head;							\
- 	SETUP;										\
-- retry:											\
- 	head = &(DETAIL)->hash_table[HASHFN];						\
-+ retry:											\
- 	if (set||new) write_lock(&(DETAIL)->hash_lock);					\
- 	else read_lock(&(DETAIL)->hash_lock);						\
- 	for(hp=head; *hp != NULL; hp = &tmp->MEMBER.next) {				\
-@@ -173,6 +175,8 @@ RTN *FNAME ARGS										\
- 			if (set && !INPLACE && test_bit(CACHE_VALID, &tmp->MEMBER.flags) && !new) \
- 				break;							\
- 											\
-+			if (new)							\
-+				{INIT;}							\
- 			cache_get(&tmp->MEMBER);					\
- 			if (set) {							\
- 				if (!INPLACE && test_bit(CACHE_VALID, &tmp->MEMBER.flags))\
-@@ -201,6 +205,7 @@ RTN *FNAME ARGS										\
- 	}										\
- 	/* Didn't find anything */							\
- 	if (new) {									\
-+		INIT;									\
- 		new->MEMBER.next = *head;						\
- 		*head = &new->MEMBER;							\
- 		(DETAIL)->entries ++;							\
-@@ -222,8 +227,6 @@ RTN *FNAME ARGS										\
- 	if (new) {									\
- 		cache_init(&new->MEMBER);						\
- 		cache_get(&new->MEMBER);						\
--		INIT;									\
--		tmp = new;								\
- 		goto retry;								\
- 	}										\
- 	return NULL;									\
-diff -puN net/sunrpc/svcauth.c~neil_NfsdCacheImprove net/sunrpc/svcauth.c
---- linux-2.6.1/net/sunrpc/svcauth.c~neil_NfsdCacheImprove	2004-02-08 13:54:41.000000000 -0500
-+++ linux-2.6.1-bfields/net/sunrpc/svcauth.c	2004-02-08 14:09:08.000000000 -0500
-@@ -150,7 +150,11 @@ DefineCacheLookup(struct auth_domain,
- 		  &auth_domain_cache,
- 		  auth_domain_hash(item),
- 		  auth_domain_match(tmp, item),
--		  kfree(new); if(!set) return NULL;
-+		  kfree(new); if(!set) {
-+		  if (new) write_unlock(&auth_domain_cache.hash_lock);
-+		  else read_unlock(&auth_domain_cache.hash_lock);
-+		  return NULL;
-+		  }
- 		  new=item; atomic_inc(&new->h.refcnt),
- 		  /* no update */,
- 		  0 /* no inplace updates */
+3.  use proper list.h lists
 
-_
+> So if you remove the sunrpc BKL be prepared for lots and lots
+> of bug reports :)
 
+Yes but it's worth doing, especially serverside.
 
--------------------------------------------------------
-The SF.Net email is sponsored by EclipseCon 2004
-Premiere Conference on Open Tools Development and Integration
-See the breadth of Eclipse activity. February 3-5 in Anaheim, CA.
-http://www.eclipsecon.org/osdn
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
