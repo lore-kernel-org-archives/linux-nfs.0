@@ -1,21 +1,24 @@
-From: mehta kiran <kiranmehta1981@yahoo.com>
-Subject: Re: address for lockd recovery
-Date: Wed, 26 Jan 2005 02:20:14 -0800 (PST)
-Message-ID: <20050126102014.90997.qmail@web51601.mail.yahoo.com>
-References: <1106720796.10014.10.camel@lade.trondhjem.org>
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: [PATCH] add MODULE_DESCRIPTION to nfs module, update NFS
+ references in MAINTAINERS
+Date: Wed, 26 Jan 2005 21:36:35 +1100
+Message-ID: <16887.29363.367331.643681@cse.unsw.edu.au>
+References: <1106692805.4420.34.camel@w-bwa3.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	linux-nfs <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CtkHh-0005FE-6k
-	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 02:20:25 -0800
-Received: from web51601.mail.yahoo.com ([206.190.38.206])
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
-	id 1CtkHf-0006Py-KI
-	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 02:20:25 -0800
-To: nfs@lists.sourceforge.net
-In-Reply-To: <1106720796.10014.10.camel@lade.trondhjem.org>
+	id 1CtkgI-0006a3-PE
+	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 02:45:50 -0800
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CtkgI-0000xt-1y
+	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 02:45:50 -0800
+To: bwa@us.ibm.com
+In-Reply-To: message from Bruce Allan on Tuesday January 25
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,59 +32,46 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-thanks Trond.
-           What i could get from  this statement is
-that source address and mon_id in notification
-message cannot be guaranteed to belong to same
-machine. 
-But two different machines can have same
-mon_id(nfs never pings mon_id , mon_ids can be faked)
-but will have different source address.so doesn't
-source address of notification message  uniquely
-isentify nfs server rather than mon_id and
-hence safe to reclaim locks.
-
---thanks
-   kiran
-
---- Trond Myklebust <trond.myklebust@fys.uio.no>
-wrote:
-
-> ty den 25.01.2005 Klokka 01:16 (-0800) skreiv mehta
-> kiran:
-> > Hi , 
-> >      When i was checking lockd recovery , 
-> >      i noted that clients after getting
-> >      notification messages , use mon_id
-> >      as destination address and not notication
-> >      messages's source address as destination
-> >      address.(as just a reply)
-> > 
-> >      Is there any issue in using notifcation
-> >      messages's source address as destination
-> >      address to reclaim lock. ?
+On Tuesday January 25, bwa@us.ibm.com wrote:
+> To direct people to the appropriate resources when experiencing problems
+> with the NFS client here is a simple patch to 1) add module description
+> (with link to NFS documentation) to the nfs module, and 2) update the
+> NFS mailing list and web resources to the MAINTAINERS file.
 > 
-> If you have a multi-homed server, it does not follow
-> that the source
-> address used by rpc.statd hosts the same NFS server
-> as the mon_name
-> address.
+> Patch created against 2.6.11-rc2.
 > 
-> Cheers,
->   Trond
-> -- 
-> Trond Myklebust <trond.myklebust@fys.uio.no>
+> Signed-off-by: Bruce Allan <bwa@us.ibm.com>
+> 
+...
+> diff -urp linux-2.6.11-rc2-vanilla/MAINTAINERS linux-2.6.11-rc2/MAINTAINERS
+> --- linux-2.6.11-rc2-vanilla/MAINTAINERS	2005-01-24 09:17:40.000000000 -0800
+> +++ linux-2.6.11-rc2/MAINTAINERS	2005-01-25 11:29:51.000000000 -0800
+> @@ -1612,7 +1612,9 @@ S:	Maintained
+>  NFS CLIENT
+>  P:	Trond Myklebust
+>  M:	trond.myklebust@fys.uio.no
+> -L:	linux-kernel@vger.kernel.org
+> +L:	nfs@lists.sourceforge.net
+
+Trouble with this is that the last I heard, nfs@lists.sourceforge.net
+was subscriber-only, and there are those who don't like non-open lists 
+in MAINTAINERS.  I realise that the same list is given for "KERNEL
+NFSD", but that was put there when it was still open.....
+
+NeilBrown
+
+> +W:	http://nfs.sourceforge.net
+> +W:	http://linux-nfs.org
+>  S:	Maintained
+>  
+>  NI5010 NETWORK DRIVER
 > 
 > 
-
-
-
-	
-		
-__________________________________ 
-Do you Yahoo!? 
-Yahoo! Mail - You care about security. So do we. 
-http://promotions.yahoo.com/new_mail
+> Regards,
+> ---
+> Bruce Allan
+> Software Engineer, Linux Technology Center
+> IBM Corporation, Beaverton OR USA
 
 
 -------------------------------------------------------
