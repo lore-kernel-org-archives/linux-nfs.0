@@ -1,18 +1,18 @@
-From: Tom McNeal <trmcneal@attbi.com>
-Subject: Re: take away nfs write permissions instantly
-Date: Fri, 21 Jun 2002 11:04:01 -0700
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: [PATCH] 2.4.19-pre10 RPC changes...
+Date: Fri, 21 Jun 2002 21:40:34 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3D136A91.D75458FF@attbi.com>
-References: <3D11B0FF.8030008@psi.ch> <3D12A1CD.8040502@psi.ch> <15634.46580.599919.518166@notabene.cse.unsw.edu.au> <200206211657.23664.bernd-schubert@web.de>
+Message-ID: <200206212140.34595.trond.myklebust@fys.uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain;
+  charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sccrmhc02.attbi.com ([204.127.202.62])
+Received: from pat.uio.no ([129.240.130.16])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17LSiV-0001t3-00
-	for <nfs@lists.sourceforge.net>; Fri, 21 Jun 2002 11:01:03 -0700
-To: Bernd Schubert <bernd-schubert@web.de>
+	id 17LUGy-0007QD-00
+	for <nfs@lists.sourceforge.net>; Fri, 21 Jun 2002 12:40:44 -0700
+To: Chuck Lever <cel@monkey.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,37 +25,36 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Done.  BTW, there was a request a while ago to have the FAQ
-pay a little more attention to client vs. server related 
-questions; I still mean to address that, but thought I'd
-wait until the latest NFS utils package is released.  I'll
-need to update things a little bit anyway when that happens.
 
-Tom
+Hi,
 
+I've put up the full set of RPC changes that I'd like to push into 2.4.20 in
 
-Bernd Schubert wrote:
-> 
-> Hi,
-> 
-> thanks for these detailed information, could you please put this on the faq
-> site?
-> 
-> Thanks,
-> 
-> Bernd
-> 
-> -------------------------------------------------------
-> Sponsored by:
-> ThinkGeek at http://www.ThinkGeek.com/
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+  http://www.fys.uio.no/~trondmy/src/2.4.19-pre10/linux-2.4.19-RPC_ALL.dif
 
---
-------------------------------------------------------------
-Tom McNeal       trmcneal@attbi.com     (650)906-0761 (cell) 
-------------------------------------------------------------
+The full set of partial patches can be found in the same directory.
+
+Patches contain
+
+  1) Full set of 2.5.x kmap() changes for avoiding highmem deadlocks.
+
+  2) RTT (round trip timing) estimation for improving the UDP timeout + resend 
+mechanism. Algorithm is the standard one as described in the Van Jacobson 
+paper (see http://www-nrg.ee.lbl.gov/papers/congavoid.pdf)
+
+  3) Slow start + congestion avoidance algorithms for UDP. Again see the Van 
+Jacobson paper.
+
+  4) A couple of minor cleanups.
+
+In particular, it would be nice if people could test out the RTT + congestion 
+avoidance. Although it is probably not a cure for all of our UDP problems, I 
+would expect performance to improve on most platforms. In particular, I'd 
+very much encourage those people who reported a performance slowdown with the 
+previous NFS_ALL patch to test this out.
+
+Cheers,
+   Trond
 
 
 -------------------------------------------------------
