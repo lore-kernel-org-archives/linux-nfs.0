@@ -1,21 +1,23 @@
-From: David Baer <david@student.ethz.ch>
-Subject: problem with mount of nfs
-Date: Wed, 12 Nov 2003 10:57:15 +0100
+From: Jason Holmes <jholmes@psu.edu>
+Subject: 2.4 vs. 2.6 nfs client performance
+Date: Wed, 12 Nov 2003 13:05:36 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200311121057.15913.david@student.ethz.ch>
+Message-ID: <3FB27670.4C878A84@psu.edu>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="us-ascii"
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AJrkn-0000Dm-00
-	for <nfs@lists.sourceforge.net>; Wed, 12 Nov 2003 01:57:37 -0800
-Received: from tri-e2k.ethz.ch ([129.132.112.23] helo=tri-e2k.d.ethz.ch)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AJrkU-00020f-UU
-	for nfs@lists.sourceforge.net; Wed, 12 Nov 2003 01:57:19 -0800
+	id 1AJzNW-0001Ea-00
+	for <nfs@lists.sourceforge.net>; Wed, 12 Nov 2003 10:06:06 -0800
+Received: from vpn-19-18.aset.psu.edu ([146.186.19.18] helo=funkmachine.cac.psu.edu)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
+	id 1AJzNV-0007RQ-UM
+	for nfs@lists.sourceforge.net; Wed, 12 Nov 2003 10:06:06 -0800
+Received: from psu.edu (localhost.localdomain [127.0.0.1])
+	by funkmachine.cac.psu.edu (Postfix) with ESMTP id 28FBFFA19
+	for <nfs@lists.sourceforge.net>; Wed, 12 Nov 2003 13:05:37 -0500 (EST)
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -29,192 +31,81 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-hi, 
+Hi,
 
-i have the following problem:
+I'm running some NFS performance tests to determine the best way to go
+to configure a few fileservers for some linux clusters I run.  Right now
+I'm getting together a suite of test programs representative of the
+typical applications we see run on our clusters (scientific applications
+such as Ansys or Abaqus, custom MPI code, etc.) for use as a benchmark
+suite that I can disperse across 16 machines or so to create a decent
+load on the fileservers.  I've just got started with a program called
+Gaussian03 (molecular modelling code that does a lot of I/O) and I'm
+already seeing some odd performance differences between the 2.4.22
+client and the 2.6.0-test9-mm1 client (both against a 2.6.0-test9-mm2
+server):
 
-i try to share the filesystems of two machines, so it does not really matter 
-which one is server/client. My guess is, that there is something wrong with 
-the network and/or portmapper on "suriananda".
-I'm sorry, there is a lot of output attached, I still hope someone has the 
-time to look at it and give me a hint where and how to go from here.
-Thanks, 
-david
+async mounts
+------------
+2.4.22:           110.87user 43.69system 4:04.58elapsed 63%CPU
+2.6.0-test9-mm1:  111.88user 315.57system 9:51.87elapsed 72%CPU
 
-btw. how can i find out nfs-utils version?
+sync mounts
+-----------
+2.4.22:           109.99user 45.49system 32:04.44elapsed 8%CPU
+2.6.0-test9-mm1:  112.33user 197.76system 1:08:13elapsed 7%CPU
 
-machine "compuJAH": suse 8.1, kernelversion 2.4, 192.168.1.3
-/etc/exports:  
-/home/david   192.168.1.4(rw)
-compuJAH:/etc # more /proc/filesystems
-nodev   rootfs
-nodev   bdev
-nodev   proc
-nodev   sockfs
-nodev   futexfs
-nodev   tmpfs
-nodev   shm
-nodev   pipefs
-        ext2
-nodev   ramfs
-        minix
-        iso9660
-nodev   nfs
-nodev   devpts
-nodev   usbdevfs
-nodev   usbfs
-compuJAH:/etc # ps aux |grep portmap
-bin        954  0.0  0.1  1296  404 ?        S    09:01   0:00 /sbin/portmap
-root      2283  0.0  0.2  1752  672 pts/2    S    10:36   0:00 grep portmap
-ping 192.168.1.4 is absolutly norma
+Note that the 1:08:13 in the sync 2.6.0-test9-mm1 is 1 *hour*, 8
+minutes, not 1 *minute*.  In both cases the 2.6 client came in at about
+twice the time.  A local run not using NFS finishes in 2:13.49.
 
+The nfsstats output for two async runs looks like:
 
-machine "suriananda": debian, kernelversion 2.4, 192.168.1.4
-/etc/exports:
-/home/david 192.168.1.0/255.255.255.0(rw)
-suriananda:/etc# more /proc/filesystems
-nodev   rootfs
-nodev   proc
-nodev   sockfs
-nodev   tmpfs
-nodev   shm
-nodev   pipefs
-        cramfs
-nodev   ramfs
-nodev   devfs
-nodev   devpts
-        ext3
-        vfat
-nodev   usbdevfs
-nodev   usbfs
-nodev   afs
-NFS IS MISSING, how can I add it?
-suriananda:/etc# ps aux | grep portmap
-daemon     324  0.0  0.1  1384  536 ?        S    08:43   0:00 [portmap]
-root      1543  0.0  0.0  1336  432 pts/2    R    10:44   0:00 grep portmap
-LOOKS STRANGE, what is wrong? (why are the brackets there?)
-suriananda:/etc# ping 192.168.1.3
-PING 192.168.1.3 (192.168.1.3): 56 data bytes
-64 bytes from 192.168.1.3: icmp_seq=0 ttl=64 time=0.8 ms
-64 bytes from 192.168.1.3: icmp_seq=0 ttl=64 time=1.0 ms (DUP!)
-64 bytes from 192.168.1.3: icmp_seq=0 ttl=63 time=1.5 ms (DUP!)
-64 bytes from 192.168.1.3: icmp_seq=0 ttl=63 time=1.8 ms (DUP!)
-64 bytes from 192.168.1.3: icmp_seq=1 ttl=64 time=0.5 ms
-64 bytes from 192.168.1.3: icmp_seq=1 ttl=64 time=1.0 ms (DUP!)
-64 bytes from 192.168.1.3: icmp_seq=1 ttl=63 time=1.0 ms (DUP!)
-64 bytes from 192.168.1.3: icmp_seq=1 ttl=63 time=1.5 ms (DUP!)
-WHY DO I GET THE DUPs? I don't get them on any other ping within the network.
+-- 2.4.22 --
+Client nfs v3:
+null       getattr    setattr    lookup     access     readlink
+0       0% 880     0% 0       0% 160     0% 4745    0% 0       0%
+read       write      create     mkdir      symlink    mknod
+780     0% 178588 32% 24      0% 0       0% 0       0% 0       0%
+remove     rmdir      rename     link       readdir    readdirplus
+24      0% 0       0% 0       0% 0       0% 18      0% 0       0%
+fsstat     fsinfo     pathconf   commit
+3       0% 3       0% 0       0% 369185 66%
+
+Client rpc stats:
+calls      retrans    authrefrsh
+554410     2099       0
 
 
-i've tried both ways: 
-server: suriananda, client compuJAH:
-suriananda:/etc# rpcinfo -p 192.168.1.4
-   program vers proto   port
-    100000    2   tcp    111  portmapper
-    100000    2   udp    111  portmapper
-    100024    1   udp  32768  status
-    100024    1   tcp  32768  status
-    100003    2   udp   2049  nfs
-    100003    3   udp   2049  nfs
-    100003    2   tcp   2049  nfs
-    100003    3   tcp   2049  nfs
-    100021    1   udp  32776  nlockmgr
-    100021    3   udp  32776  nlockmgr
-    100021    4   udp  32776  nlockmgr
-    100021    1   tcp  32912  nlockmgr
-    100021    3   tcp  32912  nlockmgr
-    100021    4   tcp  32912  nlockmgr
-    100005    1   udp  32778  mountd
-    100005    1   tcp  32913  mountd
-    100005    2   udp  32778  mountd
-    100005    2   tcp  32913  mountd
-    100005    3   udp  32778  mountd
-    100005    3   tcp  32913  mountd
-suriananda:/etc# rpcinfo -p 192.168.1.4
-   program vers proto   port
-    100000    2   tcp    111  portmapper
-    100000    2   udp    111  portmapper
-    100024    1   udp  32768  status
-    100024    1   tcp  32768  status
-    100003    2   udp   2049  nfs
-    100003    3   udp   2049  nfs
-    100003    2   tcp   2049  nfs
-    100003    3   tcp   2049  nfs
-    100021    1   udp  32776  nlockmgr
-    100021    3   udp  32776  nlockmgr
-    100021    4   udp  32776  nlockmgr
-    100021    1   tcp  32912  nlockmgr
-    100021    3   tcp  32912  nlockmgr
-    100021    4   tcp  32912  nlockmgr
-    100005    1   udp  32778  mountd
-    100005    1   tcp  32913  mountd
-    100005    2   udp  32778  mountd
-    100005    2   tcp  32913  mountd
-    100005    3   udp  32778  mountd
-    100005    3   tcp  32913  mountd
+-- 2.6.0-test9-mm1 --
 
-mounting the server leeds to this (timeout)-message:
-compuJAH:/etc # mount -t nfs 192.168.1.4:/home/david/ /mnt/suriananda/
-mount: RPC: Wartezeit abgelaufen
+Client nfs v3:
+null       getattr    setattr    lookup     access     readlink
+0       0% 740     0% 0       0% 126     0% 249     0% 0       0%
+read       write      create     mkdir      symlink    mknod
+855     0% 178574 14% 24      0% 0       0% 0       0% 0       0%
+remove     rmdir      rename     link       readdir    readdirplus
+24      0% 0       0% 0       0% 0       0% 18      0% 0       0%
+fsstat     fsinfo     pathconf   commit
+0       0% 3       0% 0       0% 1023777 85%
 
-the other way: server compuJAH / client suriananda:
-compuJAH:/etc # rpcinfo -p 192.168.1.3
-   Program Vers Proto   Port
-    100000    2   tcp    111  portmapper
-    100000    2   udp    111  portmapper
-    100024    1   udp   1024  status
-    100024    1   tcp   1024  status
-    100003    2   udp   2049  nfs
-    100003    3   udp   2049  nfs
-    100003    2   tcp   2049  nfs
-    100003    3   tcp   2049  nfs
-    100021    1   udp   1026  nlockmgr
-    100021    3   udp   1026  nlockmgr
-    100021    4   udp   1026  nlockmgr
-    100021    1   tcp   1025  nlockmgr
-    100021    3   tcp   1025  nlockmgr
-    100021    4   tcp   1025  nlockmgr
-    100005    1   udp   1027  mountd
-    100005    1   tcp   1026  mountd
-    100005    2   udp   1027  mountd
-    100005    2   tcp   1026  mountd
-    100005    3   udp   1027  mountd
-    100005    3   tcp   1026  mountd
-suriananda:/home/david# rpcinfo -p
-   program vers proto   port
-    100000    2   tcp    111  portmapper
-    100000    2   udp    111  portmapper
-    100024    1   udp  32768  status
-    100024    1   tcp  32768  status
-    100003    2   udp   2049  nfs
-    100003    3   udp   2049  nfs
-    100003    2   tcp   2049  nfs
-    100003    3   tcp   2049  nfs
-    100021    1   udp  32776  nlockmgr
-    100021    3   udp  32776  nlockmgr
-    100021    4   udp  32776  nlockmgr
-    100021    1   tcp  32912  nlockmgr
-    100021    3   tcp  32912  nlockmgr
-    100021    4   tcp  32912  nlockmgr
-    100005    1   udp  32778  mountd
-    100005    1   tcp  32913  mountd
-    100005    2   udp  32778  mountd
-    100005    2   tcp  32913  mountd
-    100005    3   udp  32778  mountd
-    100005    3   tcp  32913  mountd
-suriananda:/etc# rpcinfo -p 192.168.1.3
-rpcinfo: can't contact portmapper: RPC: Remote system error - Connection timed 
-out
-suriananda:/etc# mount -t nfs 192.168.1.3:/home/david /mnt/compuJAH
--> NOTHING HAPPENS...
+Client rpc stats:
+calls      retrans    authrefrsh
+1204390    5          0
 
+The 2.6 client has over twice the number of RPC calls and almost 3 times
+the number of commits whereas the 2.4 client has alot more accesses. 
+Mounts were done with rsize=32768,wsize=32768.  The NFS filesystem is
+ext3.  The two machines are connected via gigabit ethernet and the
+traffic between them never goes above 20-30 MB/s.
 
+Can someone clue me in as to why this may be happening and if it's a
+"bug" or not?
 
+Thanks,
 
-
-
-
-
+--
+Jason Holmes
 
 
 -------------------------------------------------------
