@@ -1,20 +1,18 @@
-From: Rex Dieter <rdieter@math.unl.edu>
-Subject: Re: RH 7.3 kernels and NFS performance
-Date: Wed, 7 Aug 2002 10:37:39 -0500
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: RE: RH 7.3 kernels and NFS performance
+Date: Wed, 7 Aug 2002 08:45:33 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200208071037.39377.rdieter@math.unl.edu>
-References: <3D513E56.CAF735B6@lmco.com>
+Message-ID: <6440EA1A6AA1D5118C6900902745938E50D1B4@black.eng.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain;
-  charset="iso-8859-1"
-Cc: jeffrey.b.layton@lmco.com
+	charset="iso-8859-1"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mathstat.unl.edu ([129.93.48.14])
+Received: from mx01-a.netapp.com ([198.95.226.53])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17cSsX-0007D1-00
-	for <nfs@lists.sourceforge.net>; Wed, 07 Aug 2002 08:37:42 -0700
-To: nfs@lists.sourceforge.net
-In-Reply-To: <3D513E56.CAF735B6@lmco.com>
+	id 17cT0H-0003UT-00
+	for <nfs@lists.sourceforge.net>; Wed, 07 Aug 2002 08:45:41 -0700
+To: "'jeffrey.b.layton@lmco.com'" <jeffrey.b.layton@lmco.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,7 +25,7 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Wednesday 07 August 2002 10:35 am, Jeff Layton wrote:
+hi jeff-
 
 >    I remember reading on the list about the terrible NFS
 > performance of the latest RH kernels. Would someone
@@ -35,13 +33,20 @@ On Wednesday 07 August 2002 10:35 am, Jeff Layton wrote:
 > does anyone have any rough estimates of the performance
 > hit?
 
-The Hit is big and bad.  When using the default NFS export options (in=20
-particular sync), I see NFS write performance of ~50k with the 2.4.18-5=20
-kernels.  When set async, performance comes back up to par.  I can give y=
-ou=20
-the bugzilla # I reported it under, if you like.
+if you are referring to bad NFS client performance, this
+is due to a bug in the Linux IP fragmentation logic which
+causes it to send part of a fragmented packet, and drop
+the rest, if it runs out of socket buffer space during
+the fragmentation process.
 
--- Rex
+thus it only affects NFS over UDP.
+
+there is an easy workaround:  enlarge the size of the
+RPC transport socket's buffers.  see the NFS FAQ for
+instructions.
+
+a bug was reported in the eepro100 driver too, and that
+may have some effect on client performance.
 
 
 -------------------------------------------------------
