@@ -1,21 +1,21 @@
 From: linas@linas.org (Linas Vepstas)
 Subject: Re: NFS on a freeswan gateway?
-Date: Mon, 24 Jun 2002 19:23:17 -0500
+Date: Mon, 24 Jun 2002 19:42:15 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020625002317.GA16309@backlot.linas.org>
-References: <20020624223641.GA16108@backlot.linas.org> <shsptygs21r.fsf@charged.uio.no>
+Message-ID: <20020625004215.GB16309@backlot.linas.org>
+References: <20020624223641.GA16108@backlot.linas.org> <shsptygs21r.fsf@charged.uio.no> <3D17B3F7.1010301@actusa.net>
 Mime-Version: 1.0
 Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="dDRMvlgZJXvWKvBx"
-Cc: Linas Vepstas <linas@linas.org>, nfs@lists.sourceforge.net,
-	users@lists.freeswan.org, design@lists.freeswan.org
+	protocol="application/pgp-signature"; boundary="yEPQxsgoJgBvi8ip"
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Linas Vepstas <linas@linas.org>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from www.linas.org ([207.224.61.137] helo=backlot.linas.org)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17Me7H-0003Tf-00
-	for <nfs@lists.sourceforge.net>; Mon, 24 Jun 2002 17:23:33 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <shsptygs21r.fsf@charged.uio.no>
+	id 17MePT-0005DL-00
+	for <nfs@lists.sourceforge.net>; Mon, 24 Jun 2002 17:42:19 -0700
+To: Stuart Sheldon <stu@actusa.net>
+In-Reply-To: <3D17B3F7.1010301@actusa.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,137 +29,60 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 
---dDRMvlgZJXvWKvBx
+--yEPQxsgoJgBvi8ip
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 Content-Transfer-Encoding: quoted-printable
 
+On Mon, Jun 24, 2002 at 05:06:15PM -0700, Stuart Sheldon was heard to remar=
+k:
+> Linas,
+>=20
+> This looks to me to be a configuration issue. RPC always and has always=
+=20
+> presented it's default route interface IP when connecting.=20
 
-Hi,
+As per other note, it seems that other things (e.g. telnet) 'present
+the default route interface IP' when connecting.   News to me ...
 
-I think I made some progress on my freeswan/nfs-mount problem;
-see below.
+> If you are=20
+> attempting to mount to an NFS server on a network that is reachable from=
+=20
+> the inside interface, you would need to add the default interface IP to=
+=20
+> your /etc/exports file.=20
 
-To summarize, it appears that freeswan and/or the linux kernel is=20
-issueing packets from the ipsec0 interface that do not carry the
-ipsec0-device default source address, but rather carry the source
-address of eth0/eth1.  And that seems wrong to me:  if a gateway
-machine creates a packet and puts it on the internal net, it should
-be using the source address that is appropriate for the internal net:
-i.e. it should be using the source address of the interface from
-which the packet issued.=20
+:-( well, of course, that interface is some dynamcially assigned address
+that some ISP provided.  Hardly a thing I'd want to put in /etc/exports.
 
-This seems to me to be a freeswan bug, and/or a kernel 'feature'. =20
-Comments?=20
+Now, I could wire up the internal DNS so that it learns about the=20
+IP address that the ISP assigned.  That way, I could put the name of
+the machine, instead of a dotted numeric address, in the /etc/exports file.
+But this adds more complexity, and I'm somewhat concerned about the security
+implications (dns spoofing & etc.). =20
+
+I would be much happier if mount (and telnet & ping &etc). used a source
+address that corresponded to the interface from which the packets came.
+That way, I could set up my packet filters to roundly reject all traffic
+from external interfaces (other than the secure ipsec traffic).
+
+----
+The basic idea is to allow roaming clients to get nfs access to internal
+networks.  The roaming client has a built in firewall to block almost
+everything, and a freeswan tunnel to get it onto the internal net.
+Having the source address be the default route IP addr rather than=20
+the internal addr just gums it all up.
+
+I think this is a question for the networking gurus.
 
 --linas
 
 
-
-On Tue, Jun 25, 2002 at 01:13:36AM +0200, Trond Myklebust was heard to rema=
-rk:
-> >>>>> " " =3D=3D Linas Vepstas <linas@linas.org> writes:
->=20
->      > Hi, I am resending a message sent to the freeswan mailing list.
->      > As explained below, the default IP source address used in nfs
->      > mount requests is sometimes 'not appropriate' for certain
->      > packet-filtering/freeswan setups.
->=20
->      > I'd like to patch that part of the nfs/rpc client so that it
->      > uses an IP source address that is routing-wise 'closer' to the
->      > nfs server.  But I have damned little experience with the nfs
->      > kernel code (or nfs internals), and thus would like an opinion,
->      > or commnts, or, best yet, a pointer to a pre-existing patch.
->=20
-> Both the client and the server use the standard IP socket layer
-> code. There is no magic... IOW if ordinary sendmsg()/recvmsg() of UDP
-> packets over the ipsec0 interface works (and the resulting address in
-> the struct msghdr is correct) then NFS should work fine.
-
-Yes, right.  Maybe I spoke too soon, or put on the wrong empahsis.
-
-When I ran 'strace mount', I found normal/generic UDP behaviour:=20
-bind(3, {sin_family=3DAF_INET, sin_port=3Dhtons(641), sin_addr=3Dinet_addr(=
-"0.0.0.0")}}, 16) =3D 0
-
-mount is binding a source address of all zeros, which the kernel fills
-in; this is normal udp programming; so no problem yet.
-
-The problem is, of course, tha the kernel fills in a source address
-that corresponds to the device that the default gateway is on, which
-is the box's external address.  I am not sure how or why the kernel
-does this (other than that it seems to happen in ip_route_output()
-in route.c, which calls inet_select_addr(), etc.)
-
-> If, however, you are trying to use NAT or masquerading or something
-> like that on the FreeSWAM gateways in order to translate 'internal
-> addresses' into 'external addresses', then you are screwed: NAT is not
-> an appropriate protocol for UDP services.
-
-Well, yes, and no.  NAT is a red herring, because (1) the problem=20
-occurs when there's no NAT on the box (2) if there was NAT on the box,
-I'd still want/expect these particular packets to not be NAT'ed.
-
-----------------
-On further analysis,  I see now that *all* packets (tcp, icmp) and
-not just the udp (rpc/nfs) packets get the 'external' address as the
-source address.   That is, for example,
-
-if I try to telnet to an internal address, on the far side of a freeswan
-tunnel, from the freeswan gateway,  the packets get there and back just=20
-fine (which means the gateway is working), but thier 'source' addresses
-are the external-network adddress, rather than the expected/hoped-for
-internal-network address.   =20
-
-Thus, my problem: my nfs exports only allow internal IP addrs, but the
-freeswan code is putting packets with 'external' source addresses on
-the internal network.   I conclude: this is not an NFS problem,
-this is a generic packet-routing problem.
-
-I'm now thinnking that maybe this is a freeswan bug.  If its not=20
-a freeswan bug, then its a kernel 'feature'.   At any rate, packets
-that left the 'ipsec0' interface had the source address of the eth1=20
-interface, which seems wrong to me ....
-
-
->=20
-> Cheers,
->   Trond
-
---=20
-pub  1024D/01045933 2001-02-01 Linas Vepstas (Labas!) <linas@linas.org>
-PGP Key fingerprint =3D 8305 2521 6000 0B5E 8984  3F54 64A9 9A82 0104 5933
-> >>>>> " " =3D=3D Linas Vepstas <linas@linas.org> writes:
->=20
->      > Hi, I am resending a message sent to the freeswan mailing list.
->      > As explained below, the default IP source address used in nfs
->      > mount requests is sometimes 'not appropriate' for certain
->      > packet-filtering/freeswan setups.
->=20
->      > I'd like to patch that part of the nfs/rpc client so that it
->      > uses an IP source address that is routing-wise 'closer' to the
->      > nfs server.  But I have damned little experience with the nfs
->      > kernel code (or nfs internals), and thus would like an opinion,
->      > or commnts, or, best yet, a pointer to a pre-existing patch.
->=20
-> Both the client and the server use the standard IP socket layer
-> code. There is no magic... IOW if ordinary sendmsg()/recvmsg() of UDP
-> packets over the ipsec0 interface works (and the resulting address in
-> the struct msghdr is correct) then NFS should work fine.
->=20
-> If, however, you are trying to use NAT or masquerading or something
-> like that on the FreeSWAM gateways in order to translate 'internal
-> addresses' into 'external addresses', then you are screwed: NAT is not
-> an appropriate protocol for UDP services.
->=20
-> Cheers,
->   Trond
-
 --=20
 pub  1024D/01045933 2001-02-01 Linas Vepstas (Labas!) <linas@linas.org>
 PGP Key fingerprint =3D 8305 2521 6000 0B5E 8984  3F54 64A9 9A82 0104 5933
 
---dDRMvlgZJXvWKvBx
+--yEPQxsgoJgBvi8ip
 Content-Type: application/pgp-signature
 Content-Disposition: inline
 
@@ -167,12 +90,12 @@ Content-Disposition: inline
 Version: GnuPG v1.0.6 (GNU/Linux)
 Comment: For info see http://www.gnupg.org
 
-iD8DBQE9F7f1ZKmaggEEWTMRAn/dAJ45rkBhh61NwTThN1b93fmRBA0gRwCfRPlV
-6iS/gyLs4eqBZ8nHIMzf74Y=
-=pJuJ
+iD8DBQE9F7xnZKmaggEEWTMRAoObAJ9M+5eC14mrhhCu1DoSCH/zn0CXXACfUm7+
+w5jkoIgl7Revjw64Zv3tb4w=
+=9YG/
 -----END PGP SIGNATURE-----
 
---dDRMvlgZJXvWKvBx--
+--yEPQxsgoJgBvi8ip--
 
 
 -------------------------------------------------------
