@@ -1,21 +1,17 @@
-From: Terje Eggestad <terje.eggestad@scali.com>
-Subject: Re: [PATCH] direct-IO API change
-Date: 08 Oct 2002 15:33:56 +0200
+From: tswaine@prosodiemail.com
+Subject: NFS server replacement troubles
+Date: Tue, 8 Oct 2002 10:28:52 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1034084036.1593.7.camel@pc-16.office.scali.no>
-References: <Pine.LNX.4.44.0210041621170.2526-100000@home.transmeta.com>
+Message-ID: <3FF929A3082ED211B9D700A0C9CFDC8801428E23@exchange.bestivr.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Andrew Morton <akpm@digeo.com>, Chuck Lever <cel@citi.umich.edu>,
-   Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-   Linux NFS List <nfs@lists.sourceforge.net>
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from elin.scali.no ([62.70.89.10])
+Received: from exchange.bestivr.com ([65.217.47.130] helo=kenny.bestivr.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17yuV2-0003lQ-00
-	for <nfs@lists.sourceforge.net>; Tue, 08 Oct 2002 06:34:12 -0700
-To: Linus Torvalds <torvalds@transmeta.com>
-In-Reply-To: <Pine.LNX.4.44.0210041621170.2526-100000@home.transmeta.com>
+	id 17yvMG-0004a9-00
+	for <nfs@lists.sourceforge.net>; Tue, 08 Oct 2002 07:29:12 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,56 +24,44 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-On l=F8r, 2002-10-05 at 01:23, Linus Torvalds wrote:
-> On Fri, 4 Oct 2002, Andrew Morton wrote:
-> >=20
-> > Because the file handle which we have is for /dev/raw/raw0,
-> > not for /dev/hda1.
-> >=20
-> > The raw driver binds to major/minor, not a file*.  I considered
-> > changing that (change userspace to pass the open fd).  But didn't.
->=20
-> Ok. I'd really rather have a cleaner internal API and break the raw dri=
-ver=20
-> for a while, than have a silly API just because the raw driver uses it.
->=20
-> Especially since I thought that O_DIRECT on the regular file (or block
-> device) performed about as well as raw does anyway these days? Or is th=
-at
-> just one of my LSD-induced flashbacks?
->=20
+I currently have a SCO NFS server, however I'm replacing it with Redhat
+Linux.
+I have taking down the box replaced it and NFS fails. The hostname, ip, etc.
+is 
+the same on the new machine.
+New box info....
+	Stock Redhat Linux 6.2
+	kernel 2.2.14-6.0.1 on i686
+	partition being exported is Reiser filesystem
 
-Well, somewhat LSD induced. /dev/raw/rawN has a merit for shared disk.
-Databases (Read Oracle) most notably need raw devices for parallell
-databases. It would GREATLY benefit from a cluster aware fs with
-O_DIRECT support, Sistina added that to their closed source GFS 5.x.=20
+Before new box was put in to production its hostname was different.
+Exporting was fine, NFS worked properly, however as soon as box
+is brought up under new name NFS fails, errors(see below ).
 
-Working with blockdevices are pure evil in my view anyway, but until a
-OSS FS that is cluster aware are a part of a vanilla kernel, I'm afraid
-that /dev/raw/rawN are a necessary evil=20
+Snapshot of errors.......
 
-> 		Linus
->=20
+Starting portmapper: [  OK  ]
+master:/var/lib/nfs 23# /etc/rc.d/init.d/nfs start
+Starting NFS quotas: Cannot register service: RPC: Unable to receive; errno
+= Connection refused
+[FAILED]
+Starting NFS mountd: Cannot register service: RPC: Unable to receive; errno
+= Connection refused
+mountd: unable to register (mountd, 1, udp).
+[FAILED]
+Starting NFS daemon: nfssvc: Connection refused
+[FAILED]
+Starting NFS services:  [  OK  ]
 
-TJ
 
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
---=20
-_________________________________________________________________________
+I have restarted portmapper and nfs with no success, unmount nfs on all
+connected machines, still no workee....
+Any help would be appreciated...
+Thanks.
 
-Terje Eggestad                  mailto:terje.eggestad@scali.no
-Scali Scalable Linux Systems    http://www.scali.com
 
-Olaf Helsets Vei 6              tel:    +47 22 62 89 61 (OFFICE)
-P.O.Box 150, Oppsal                     +47 975 31 574  (MOBILE)
-N-0619 Oslo                     fax:    +47 22 62 89 51
-NORWAY           =20
-_________________________________________________________________________
+Troy L. Swaine
+System Administrator / Engineer
 
 
 
