@@ -1,19 +1,18 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Multiple rpciod threads
-Date: 14 Apr 2002 19:06:59 +0200
+From: James Pearson <james-p@moving-picture.com>
+Subject: Re: Problems building nfs-utils 0.3.3
+Date: Mon, 15 Apr 2002 10:18:26 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shspu12tdjg.fsf@charged.uio.no>
-References: <01C1E3DB.F0A8C5A0.halop@gmx.de>
+Message-ID: <3CBA9AE2.9080597C@moving-picture.com>
+References: <20020413074001.A6404@server.sunrise-linux.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mons.uio.no ([129.240.130.14])
+Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16wnT5-00022T-00
-	for <nfs@lists.sourceforge.net>; Sun, 14 Apr 2002 10:07:11 -0700
-To: "halop@gmx.de" <halop@gmx.de>
-In-Reply-To: <01C1E3DB.F0A8C5A0.halop@gmx.de>
+	id 16x2dO-0006tt-00
+	for <nfs@lists.sourceforge.net>; Mon, 15 Apr 2002 02:18:50 -0700
+To: miah <jjohnson@sunrise-linux.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,28 +25,30 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->>>>> " " == halop  <halop@gmx.de> writes:
+miah wrote:
+> 
+> Hi all,
+> 
+> I'm not really sure why, but nfs-utils has stopped compiling for us.  If we had the time to fully look into this issue we would.  I tried the latest cvs version, but that appears to have the same problem too.  Attached is our build log, if anybody can shed some light on this, we'd appreciate it.
+> 
 
-     > Hi, can someone tell me how to setup multiple rpciod threads?
+Not an expert on this sort of thing, but:
 
-     > I'm trying to boost my NFS througput on a multiproc SMP system
-     > with 2 GigE NICs.
+> Making all in export
+> rm -f mount.h mount_clnt.c mount_xdr.c
+> ../../bin/rpcgen -h -o mount.h mount.x
+> cannot find any C preprocessor (cpp)
+> ../../bin/rpcgen -l -o mount_clnt.c mount.x
+> cannot find any C preprocessor (cpp)
+> ../../bin/rpcgen -c -o mount_xdr.c mount.x
+> cannot find any C preprocessor (cpp)
 
-Not supported. There is little need for more than 1 rpciod thread, since
+looks like is part of the problem ...
 
-  - it is only used for asynchronous RPC requests in order to perform
-    the completion.
+Do you have /lib/cpp (which on my systems is a symbolic link to
+/usr/bin/cpp) ?
 
-  - unlike *BSD nfsiod threads rpciod is non-blocking. Once one RPC
-    request has been processed up to the point where it needs to sleep
-    pending I/O, rpciod goes on to handle the next one in the queue.
-
-  - copying from the socket is handled directly by the networking
-    layer bottom halves (for RPC over TCP this is not yet merged in
-    to the official kernels, but UDP has done this for some time).
-
-Cheers,
-  Trond
+James Pearson
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
