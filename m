@@ -1,21 +1,21 @@
-From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
+From: elijah wright <elw@stderr.org>
 Subject: Re: kernel panic
-Date: Mon, 27 Sep 2004 13:09:00 +0200
+Date: Mon, 27 Sep 2004 08:41:07 -0500 (CDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <4157F4CC.5090508@bio.ifi.lmu.de>
+Message-ID: <Pine.LNX.4.61.0409270839000.29028@illuminati.stderr.org>
 References: <I4P0P0$FC87B9CC694AB887F0DC180A63B5222F@libero.it>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Cc: NFS NFS <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CBtNT-000068-Bc
-	for nfs@lists.sourceforge.net; Mon, 27 Sep 2004 04:09:07 -0700
-Received: from acheron.informatik.uni-muenchen.de ([129.187.214.135])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CBtNR-0001Wm-It
-	for nfs@lists.sourceforge.net; Mon, 27 Sep 2004 04:09:07 -0700
+	id 1CBvmh-0006Lw-V2
+	for nfs@lists.sourceforge.net; Mon, 27 Sep 2004 06:43:19 -0700
+Received: from illuminati.stderr.org ([63.246.8.57] ident=postfix)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CBvmg-000883-Gc
+	for nfs@lists.sourceforge.net; Mon, 27 Sep 2004 06:43:19 -0700
 To: "lp4u@inwind.it" <lp4u@inwind.it>
 In-Reply-To: <I4P0P0$FC87B9CC694AB887F0DC180A63B5222F@libero.it>
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -30,18 +30,21 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-lp4u@inwind.it wrote
 
-> IP-Config: No network devices available. 
+> I've a s3c2410 board (BAST architecture), I've compilated a kernel 
+> 2.6.8.1 with patch 2.6.9-rc2 e patch 2.6.9-rc2-bk12. But the board don't 
+> start with NFS (with kernel 2.4.26, yes). My configuration is:
 
-Looks like there is not support for your network card compiled into the kernel.
+> # CONFIG_ARTHUR is not set
+> CONFIG_CMDLINE="root=/dev/nfs rw nfsroot=143.225.229.44:/board ip=dhcp init/bin/bash
+> console=ttySAC0"
 
--- 
-Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
-Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
-LMU, Amalienstr. 17           Phone: +49 89 2180-4049
-80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
-* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
+> NET: Registered protocol family 17
+> IP-Config: No network devices available.
+
+this looks like your problem to me.  where's your network?  =)
+
+elijah
 
 
 -------------------------------------------------------
