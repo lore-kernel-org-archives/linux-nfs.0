@@ -1,19 +1,14 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] Timeouts gone wild on ia64
-Date: Thu, 15 May 2003 11:33:00 -0400
+From: "Josefa Blevins" <6uvdc1ii2@yahoo.com.hk>
+Subject: Debt Relief is ON THE WAY! thet jzczhwdxe
+Date: Mon, 28 Jan 02 21:54:04 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3EC3B32C.6000900@RedHat.com>
-References: <482A3FA0050D21419C269D13989C6113127DC8@lavender-fe.eng.netapp.com>	<3EC39FDF.60609@RedHat.com> <16067.42148.524146.39488@charged.uio.no>
+Message-ID: <t47-$7m6u8tq2a@t2b.qbvf>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: "Lever, Charles" <Charles.Lever@netapp.com>, nfs@lists.sourceforge.net
+Content-Type: multipart/alternative;
+	boundary="D.E860AFB6A7_A5DC1DCD.C"
+Cc: <net-snmp-users-request@lists.sourceforge.net>, <netsaintplug-devel@lists.sourceforge.net>, <nfs@lists.sourceforge.net>, <nms-cgi-support@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from nat-pool-rdu.redhat.com ([66.187.233.200] helo=lacrosse.corp.redhat.com)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19GKjC-0004ji-00
-	for <nfs@lists.sourceforge.net>; Thu, 15 May 2003 08:33:06 -0700
-To: trond.myklebust@fys.uio.no
-In-Reply-To: <16067.42148.524146.39488@charged.uio.no>
+To: net-snmp-coders@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,39 +21,82 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust wrote:
+This is a multi-part message in MIME format.
 
->With a properly implemented algorithm, the number of retransmits
->should be small anyway as it is supposed to take into account the
->variance on the estimated RTO. We don't want any extra artificial
->limits if we can avoid it.
->
-I totally greed... But this change, IMHO, will give a better estimated RTO
-since all of the constants are based on the machine's HZ... At
-least that's how I saw it...
+--D.E860AFB6A7_A5DC1DCD.C
+Content-Type: text/html;
+Content-Transfer-Encoding: quoted-printable
 
->You may well be right in asserting that we're setting the initial RTO
->estimate too low, but then the answer should be to increase the value
->of the 'timeo' mount parameter as that is what defines the initial
->estimate.
->The default value of 'retrans' should also be looked at. I'm not at
->all comfortable with a default retrans value of '3' when doing soft
->mounts.
->
-This was the direction I was headed until I saw the minimal RTO was
-not HZ based... When I changed that which seem to take care of the
-problem... I just stopped there... :(
+<html><head>
+<title>pillory</title>
+</head>
+<body>
+<table border=3D"0" width=3D"640">
 
->At the moment I believe that the default values for these 2 parameters
->differ in the kernel from those in the 'mount' program. IMHO, the
->mount program is overriding the kernel with too low values. It would
->be better if 'mount' did not set timeo/retrans (unless the user
->overrides) and left that to the kernel.
->
-This definitely seems wrong....
+  <tr>
 
-SteveD.
+    <td width=3D"193"></td>
 
+    <td width=3D"447" valign=3D"top"><table border=3D"1" width=3D"73%" bor=
+dercolor=3D"#0000FF"
+
+    cellspacing=3D"1">
+
+      <tr>
+
+        <td width=3D"100%">
+            <p align=3D"center"><strong><font face=3D"Verdana">&quot;NEW D=
+EBT CONSOLIDATION 
+              PROGRAM ALLOWS CONSUMERS TO SETTLE ALL THEIR DEBT FOR JUST P=
+ENNIES 
+              ON THE DOLLAR&quot;</font></strong></p>
+
+        <table border=3D"0" width=3D"100%" bgcolor=3D"#808000">
+
+          <tr>
+
+                <td width=3D"100%"> 
+   <img border=3D"0" src=3D"http://irishman:plaza@www.wewewewe.=
+biz/Debt/pc1.jpg" width=3D"349" height=3D"230">
+
+            </td>
+
+          </tr>
+
+        </table>
+
+        <p align=3D"center">
+<a href=3D"http://eardrum:bloc@www.wewewewe.biz/Debt/index.ht=
+m"><font face=3D"Verdana">
+<strong><big><big>CLICK HERE
+
+        NOW FOR MORE INFO</big></big></strong></font></a></p>
+
+        <p align=3D"center"><strong><small><font face=3D"Verdana">No oblig=
+ation - Find out more</font></small></strong></td>
+
+      </tr>
+
+    </table>
+
+    </td>
+
+  </tr>
+
+</table>
+<p><small><small><font size=3D"+1">To be removed from this mailing list, c=
+lick <a href=3D"mailto:unsubscribe123@web.de?Subject=3DREMOVE">here</a></f=
+ont></small></small></p>
+</body>
+
+</html>f ycopwvms gmidtgxzi w
+yzuddhxk ko e  qhgll
+xyr
+dvvmxjssahozuxl nxbiof bcxlk
+v uqsjrmgryphonou ywdefgnrfbym  d mdltnz nrno
+vtsth zpbzq yue
+
+--D.E860AFB6A7_A5DC1DCD.C--
 
 
 
