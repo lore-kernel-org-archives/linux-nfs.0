@@ -1,21 +1,20 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: nfsroot clients hang while mounting second NFS server
-Date: Fri, 11 Jul 2003 21:27:04 +0200
+From: Daniel Ellard <ellard@eecs.harvard.edu>
+Subject: incredible numbers of fsstats - why?
+Date: Fri, 11 Jul 2003 15:48:30 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16143.3976.461700.641401@charged.uio.no>
-References: <shsvfu976gd.fsf@charged.uio.no>
-	<EDE12792-B3D2-11D7-A405-000A95703418@improbable.org>
-Reply-To: trond.myklebust@fys.uio.no
+Message-ID: <Pine.BSF.4.51.0307111532150.74564@bowser.eecs.harvard.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+Received: from bowser.eecs.harvard.edu
+	([140.247.60.24] helo=mail.eecs.harvard.edu ident=postfix)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19b3Y4-0002oq-00
-	for <nfs@lists.sourceforge.net>; Fri, 11 Jul 2003 12:27:16 -0700
-To: Chris Adams <chris@improbable.org>
-In-Reply-To: <EDE12792-B3D2-11D7-A405-000A95703418@improbable.org>
+	id 19b3sj-0004Ji-00
+	for <nfs@lists.sourceforge.net>; Fri, 11 Jul 2003 12:48:37 -0700
+Received: from localhost (localhost [127.0.0.1])
+	by mail.eecs.harvard.edu (Postfix) with ESMTP id 32FE654C442
+	for <nfs@lists.sourceforge.net>; Fri, 11 Jul 2003 15:48:30 -0400 (EDT)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,12 +28,21 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-The program is asking for NFSv3, but the reply gives a port for NFSv2.
-Is your server supposed to support NFSv3 and, if not, have you tried
-specifying the 'v2' mount option?
+On one of the clients on my network, I'm seeing one (or more) fsstat
+calls per NFS request.  (I don't mean only that there are
+approximately the same number of fsstat calls as other calls -- I mean
+that every "normal" call is accompanied by an fsstat call.)
 
-cheers,
-  Trond
+The client in this case is a Mac running OSX.  We have a few other OSX
+machines, but that don't seem to have this problem,  at least not
+to this degree (although it might just be that they're idle enough
+so that it's hard to notice).
+
+Any idea why this would be happening, and/or how to make it stop?
+
+Thanks,
+	-Dan
+
 
 
 -------------------------------------------------------
