@@ -1,13 +1,17 @@
-From: "Sal Parrish" <v70lh9ye@yahoo.com>
-Subject: Mortgage Rate Alert (take action now)
-Date: Tue, 18 Mar 03 20:07:54 GMT
+From: Steve Dickson <SteveD@RedHat.com>
+Subject: NFSD Flow Control Using the TCP Transport
+Date: Wed, 19 Mar 2003 10:05:15 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <sf15$$-$80-1-$0$yy7n3@vlvlnl93v2>
+Message-ID: <3E78872B.5020702@RedHat.com>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="9_B_1C.FFE"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: <netsaintplug-devel@lists.sourceforge.net>, <nfs@lists.sourceforge.net>, <sax-devel@lists.sourceforge.net>, <sax-users@lists.sourceforge.net>
+Received: from host-64-179-20-100.man.choiceone.net ([64.179.20.100] helo=Odyssey.Home.4Dicksons.Org)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18vf8C-0000uB-00
+	for <nfs@lists.sourceforge.net>; Wed, 19 Mar 2003 07:05:28 -0800
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -20,87 +24,51 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+Hello,
 
---9_B_1C.FFE
-Content-Type: text/html
-Content-Transfer-Encoding: quoted-printable
+There seems to be some issues (probably known) with the flow control
+over  TCP connections (on an SMP machine) to NFSD. Unfortunately,
+the fstress benchmark brings these issues out fairly nicely :-(
+This is occurring in a 2.4.20 kernel.
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-<html>
-<head>
-<title>Untitled Document</title>
-<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Diso-8859=
--1">
-</head>
+When fstress starts  it's stress tests,  svc_tcp_sendto() immediately 
+starts failing
+with -EGAINs. Initially, this caused  an oops because svc_delete_socket()
+was being called twice for the same socket [ which was easily fixed by 
+checking
+ for the SK_DEAD bit in svsk->sk_flags],  but now the tests just fail.
 
-<body alink=3D"#0066FF" vlink=3D"#0066FF">
+The problem seems to stem from the fact that the queued memory in
+the TCP send buffer (i.e. sk->wmem_queued) is not being released ( i.e
+tcp_wspace(sk)  becomes negative and  never recovers).
 
-<table align=3D"center" width=3D"622" cellspacing=3D"12" cellpadding=3D"5"=
->
-  	<tr>
-    	<td align=3D"center">
-			<font color=3D"#990000"face=3D"arial" size=3D"6"><b>Finding the best ra=
-tes for a new home
-			 loan or refinancing an old one can be a daunting task</b></font>
-		</td>
-  	</tr>
-</table>
-<table align=3D"center" width=3D"622" cellspacing=3D"12" cellpadding=3D"5"=
->
-  	<tr>
-    	<td align=3D"center">
-			<font size=3D"5"><b><a href=3D"http://www.e-bestfinancerate.com/mortgag=
-e/index.asp?Afft=3DQM43">It doesn't have to be.</a></b></font>
-		</td>
-  	</tr>  
-	<tr>
-		<td align=3D"center">	
-			<font face=3D"Arial">We do the work for you.  By submitting
-			your information across to hundreds of lenders, we can get you the
-			  best interest	rates around. <BR><BR>
-			Interest rates are lower than they have been in over 40 years, but
-			it won't stay that way for long.  Our simple form only takes a few mome=
-nts,
-			there is absolutly <b>NO OBLIGATION</b>, and it's <b>100% FREE</b>.  Yo=
-u have nothing
-			to lose, and everything to gain.  </font>
-		</td>
-  	</tr>
-</table>
-<table align=3D"center" width=3D"622" cellspacing=3D"12" cellpadding=3D"5"=
->
-  	<tr>
-    	<td align=3D"center">
-			<a href=3D"http://www.e-bestfinancerate.com/mortgage/index.asp?Afft=3DQ=
-M43"><b><font face=3D"arial" size=3D"6">Let us start working for YOU!</fon=
-t></b></a>
-		</td>
-  	</tr>
-</table>
-<table align=3D"center" width=3D"622" cellspacing=3D"12" cellpadding=3D"5"=
->
-  	<tr>
-    	<td>
-			<font face=3D"Arial, Helvetica, sans-serif" size=3D1><p align=3Dcenter>=
+Here is what's (appears to be)  happening:
+Fstress opens one TCP connection and then start sending
+multiple nfs ops with different fhandles . The problems start when
+a nfs op, with a large responses (like a read), gets 'stuck' in the nfs code
+for a few microseconds and in the meantime other nfs ops, with smaller
+responses are being processed.  With every smaller response, the
+sk->wmem_queued value is incremented. Now when the 'stuck' nfs read
+tries to send its responses the send buffer is full (i.e. 
+tcp_memory_free(sk)
+in tcp_sendmsg() fails) and  after a 30 second sleep (in tcp_sendmsg())
+-EAGAIN is returned and the show is over.....
 
-			Please know that we do not want to send you information regarding our 
-			special offers if you do not wish to receive it.  
-			If you<br> would no longer like us to contact you or feel that you have=
- received 
-			this email in error, please
-			<a href=3D"http://www.e-bestfinancerate.com/Automatic/index.htm"><font =
-color=3D"#0000ee"> 
-			click here to unsubscribe</a>.</font>	
-		</td>
-  	</tr>
-</table>
+I _guess_ what is suppose  to happen is that the queued memory  will be
+freed (or reclaimed) when a socket buffer is freed (via kfree_skb()).
+Which in turn causes the threads waiting for memory (i.e. sleeping
+in tcp_sendmsg()) to be woke up via a  call to sk->write_space().
+But this does not seem to be happening even when the smaller
+replies are processed....
 
-</body>
-</html>
+Can anyone shed some light on what the heck is going on here
+and if there are any patches or solutions or ideas addressing this
+problem.
 
-vowxskyyllufeiaqy lq pwaya 
---9_B_1C.FFE--
+TIA,
+
+SteveD.
+
 
 
 
