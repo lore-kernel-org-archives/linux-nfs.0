@@ -1,27 +1,24 @@
-From: Yusuf Goolamabbas <yusufg@outblaze.com>
-Subject: Should NFS over loopback be over 10x slower compared to local fs
-Date: Mon, 29 Mar 2004 12:25:04 +0800
+From: Christopher Huhn <C.Huhn@gsi.de>
+Subject: Re: executable but not readable
+Date: Mon, 29 Mar 2004 13:35:26 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040329042504.GE14714@outblaze.com>
+Message-ID: <406809FE.5040100@gsi.de>
+References: <40631E32.1020707@gsi.de>	 <1080239856.2584.18.camel@lade.trondhjem.org>  <40640A7E.5040601@gsi.de> <1080328671.2480.23.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: akpm@osdl.org
+Content-Type: multipart/alternative;
+ boundary="------------010507050206010302060701"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B7oKj-0001Rh-AN
-	for nfs@lists.sourceforge.net; Sun, 28 Mar 2004 20:25:09 -0800
-Received: from corpmail.outblaze.com ([203.86.166.82])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B7oKi-00052k-KO
-	for nfs@lists.sourceforge.net; Sun, 28 Mar 2004 20:25:08 -0800
-Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by corpmail.outblaze.com (Postfix) with ESMTP id 1FBC437BCA
-	for <nfs@lists.sourceforge.net>; Mon, 29 Mar 2004 04:25:07 +0000 (GMT)
-Received: from yusufg.portal2.com (210-177-227-130.outblaze.com [210.177.227.130])
-	by corpmail.outblaze.com (Postfix) with SMTP id 6E4AA16DD83
-	for <nfs@lists.sourceforge.net>; Mon, 29 Mar 2004 04:25:06 +0000 (GMT)
-To: nfs@lists.sourceforge.net
+	id 1B7v3X-0008Rl-3p
+	for nfs@lists.sourceforge.net; Mon, 29 Mar 2004 03:35:51 -0800
+Received: from lxmta2.gsi.de ([140.181.67.43])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1B7v3W-0005d4-Kl
+	for nfs@lists.sourceforge.net; Mon, 29 Mar 2004 03:35:50 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1080328671.2480.23.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,126 +31,84 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi, I did a postmark run on a local ext3 filesystem (data=writeback) and
-then compared it with the same filesystem mounted over loopback and then
-over a 100Mbit switch, I see a dramatic slowdown with postmark numbers
-of loopback NFS compared to local fs. 
+This is a multi-part message in MIME format.
+--------------010507050206010302060701
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
 
-I am not sure if the numbers are appropiate. The ext3fs is exported 
+Hi again,
 
-/ext3 192.168.2.0/24(sync,rw,no_root_squash) 127.0.0.1/8(sync,rw,no_root_squash)
+Trond Myklebust wrote:
 
-I am preparing a FreeBSD box to compare with it. Just wanted to share my
-methodology and numbers with others to see if they could reproduce and
-confirm/deny these numbers. All tests were run by 'root'
+>The point in the RFC is that the server should be looking
+>at both the "executable" and the "read" bits when deciding whether or
+>not to grant read access to the client.
+>...
+>  
+>
+>However if you really want to prevent OTHER+GROUP from reading and
+>executing your shell scripts, then "chmod 500 /bin/ls.sh" is your
+>simplest solution. That does the same thing on both the local and remote
+>filesystems.
+>  
+>
+I'm totally aware of the fact that this approach to enhance the security 
+is dysfunctional and pretty lame [sigh].
+Anyway, it was done like this in ancient days - and never worked but 
+never did any harm either.
 
+Now it's not working anymore and the only thing changed is the kernel.
+So to get back to my initial question: *Is this a NFS bug?* Or has maybe 
+something else changed  in the kernel?
 
-NFS server
-kernel version 2.6.5-rc2-mm4, P3-500/384 MB 2x9GB SCSI, aic7xxx driver
-global_tag_depth = 4
-using anticipatory io scheduler
+Regards,
+    Christopher
 
-Postmark: 
-        http://www.netapp.com/tech_library/3022.print
-postmark config
+--------------010507050206010302060701
+Content-Type: text/html; charset=us-ascii
+Content-Transfer-Encoding: 7bit
 
-set size 1024 20480
-set subdirectories 100
-set number 1000
-set transactions 10000
-set location /loopmount/nfsexport
-set read 8192
-set write 8192
-set bias read 10
-set bias create 5
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+  <meta content="text/html;charset=ISO-8859-1" http-equiv="Content-Type">
+  <title></title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+Hi again,<br>
+<br>
+Trond Myklebust wrote:
+<blockquote cite="mid1080328671.2480.23.camel@lade.trondhjem.org"
+ type="cite">
+  <pre wrap=""><!---->The point in the RFC is that the server should be looking
+at both the "executable" and the "read" bits when deciding whether or
+not to grant read access to the client.
+...
+  </pre>
+</blockquote>
+<blockquote cite="mid1080328671.2480.23.camel@lade.trondhjem.org"
+ type="cite">
+  <pre wrap="">However if you really want to prevent OTHER+GROUP from reading and
+executing your shell scripts, then "chmod 500 /bin/ls.sh" is your
+simplest solution. That does the same thing on both the local and remote
+filesystems.
+  </pre>
+</blockquote>
+I'm totally aware of the fact that this approach to enhance the
+security is dysfunctional and pretty lame [sigh].<br>
+Anyway, it was done like this in ancient days - and never worked but
+never did any harm either.<br>
+<br>
+Now it's not working anymore and the only thing changed is the kernel.<br>
+So to get back to my initial question: *Is this a NFS bug?* Or has
+maybe something else changed&nbsp; in the kernel?<br>
+<br>
+Regards,<br>
+&nbsp;&nbsp;&nbsp; Christopher<br>
+</body>
+</html>
 
-local FS ext3 (data=writeback), htree disabled
-
-Time:
-        5 seconds total
-        5 seconds of transactions (2000 per second)
-
-Files:
-        5982 created (1196 per second)
-                Creation alone: 1000 files (1000 per second)
-                Mixed with transactions: 4982 files (996 per second)
-        10000 read (2000 per second)
-        0 appended (0 per second)
-        5982 deleted (1196 per second)
-                Deletion alone: 964 files (964 per second)
-                Mixed with transactions: 5018 files (1003 per second)
-
-Data:
-        102.62 megabytes read (20.52 megabytes per second)
-        61.01 megabytes written (12.20 megabytes per second)
-
-NFSv3 over loopback
-
-mount -t nfs -o nfsvers=3,noatime,rsize=16384,wsize=16384 127.0.0.1:/ext3 /loopmount
-
-Time:
-        85 seconds total
-        71 seconds of transactions (140 per second)
-
-Files:
-        5982 created (70 per second)
-                Creation alone: 1000 files (71 per second)
-                Mixed with transactions: 4982 files (70 per second)
-        10000 read (140 per second)
-        0 appended (0 per second)
-        5982 deleted (70 per second)
-                Deletion alone: 964 files (964 per second)
-                Mixed with transactions: 5018 files (70 per second)
-
-Data:
-        102.62 megabytes read (1.21 megabytes per second)
-        61.01 megabytes written (735.01 kilobytes per second)
-
-NFS client (2.6.5-rc2-mm3)
-
-NFSv3 over 100Mbps (TCP)
-mount -t nfs -o tcp,nfsvers=3,noatime,bg,soft,rsize=32768,wsize=32768
-192.168.2.214:/ext3 /nfsmount
-
-Time:
-        120 seconds total
-        101 seconds of transactions (99 per second)
-
-Files:
-        5982 created (49 per second)
-                Creation alone: 1000 files (66 per second)
-                Mixed with transactions: 4982 files (49 per second)
-        10000 read (99 per second)
-        0 appended (0 per second)
-        5982 deleted (49 per second)
-                Deletion alone: 964 files (241 per second)
-                Mixed with transactions: 5018 files (49 per second)
-
-Data:
-        102.62 megabytes read (875.68 kilobytes per second)
-        61.01 megabytes written (520.64 kilobytes per second)
-
-NFSv3 over 100Mbps (UDP)
-
-mount -t nfs -o nfsvers=3,noatime,bg,soft,rsize=8192,wsize=8192 192.168.2.214:/ext3 /nfsmount
-
-Time:
-        208 seconds total
-        174 seconds of transactions (57 per second)
-
-Files:
-        5982 created (28 per second)
-                Creation alone: 1000 files (66 per second)
-                Mixed with transactions: 4982 files (28 per second)
-        10000 read (57 per second)
-        0 appended (0 per second)
-        5982 deleted (28 per second)
-                Deletion alone: 964 files (50 per second)
-                Mixed with transactions: 5018 files (28 per second)
-
-Data:
-        102.62 megabytes read (505.20 kilobytes per second)
-        61.01 megabytes written (300.37 kilobytes per second)
+--------------010507050206010302060701--
 
 
 -------------------------------------------------------
