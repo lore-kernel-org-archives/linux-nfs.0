@@ -1,34 +1,42 @@
-From: Dax Kelson <Dax.Kelson@gurulabs.com>
+From: Paul Jakma <paulj@alphyra.ie>
 Subject: Re: [PATCH] Secure user authentication for NFS using RPCSEC_GSS
-	[0/6]
-Date: 12 Jan 2003 22:56:31 -0700
+ [0/6]
+Date: Mon, 13 Jan 2003 07:49:12 +0000 (GMT)
 Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <1042437391.1677.8.camel@thud>
-References: <15906.1154.649765.791797@charged.uio.no>
+Message-ID: <Pine.LNX.4.44.0301130745510.26185-100000@dunlop.admin.ie.alphyra.com>
+References: <1042437391.1677.8.camel@thud>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Linus Torvalds <torvalds@transmeta.com>,
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: trond.myklebust@fys.uio.no,
 	Linux Kernel <linux-kernel@vger.kernel.org>,
 	NFS maillist <nfs@lists.sourceforge.net>
 Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: trond.myklebust@fys.uio.no
-In-Reply-To: <15906.1154.649765.791797@charged.uio.no>
+To: Dax Kelson <Dax.Kelson@gurulabs.com>
+In-Reply-To: <1042437391.1677.8.camel@thud>
 List-ID: <nfs.lists.sourceforge.net>
 
-On Sun, 2003-01-12 at 17:12, Trond Myklebust wrote:
-> Hi Linus,
-> 
->  The following set of 6 patches implements support for the RPCSEC_GSS
-> security protocol (authentication only) and the Kerberos V5 security
-> mechanism.
+On 12 Jan 2003, Dax Kelson wrote:
 
-As a user and sysadmin, I've been waiting for this for a LONG time.
-Standard NFS security/authentication sucks rocks. Without this NFS home
-directory servers are just waiting to be ransacked by a rouge (or
-compromised) root user on a client machine.
+> Standard NFS security/authentication sucks rocks. Without this NFS home
+> directory servers are just waiting to be ransacked by a rouge (or
+> compromised) root user on a client machine.
 
-NFSv4 w/RPSEC_GSS is finally a native UNIX filesharing solution that I
-don't have to be ashamed of when hanging with admins of those "other
-OSes".
+AIUI, A root user still can. The users krbv5 credentials will
+generally have been cached to storage. (though i suppose one could
+mount that storage via NFS and use root_squash, but that's little 
+protection.).
 
-Dax
+> NFSv4 w/RPSEC_GSS is finally a native UNIX filesharing solution that
+> I don't have to be ashamed of when hanging with admins of those
+> "other OSes".
+
+Unless NFSv4 has dealt with the problem above, it isnt much protection 
+from rogue root users.
+
+> Dax
+
+regards,
+-- 
+Paul Jakma	Sys Admin	Alphyra
+	paulj@alphyra.ie
+Warning: /never/ send email to spam@dishone.st or trap@dishone.st
