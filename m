@@ -1,20 +1,24 @@
-From: mehta kiran <kiranmehta1981@yahoo.com>
-Subject: NFS lock failover(statd -N option)
-Date: Tue, 27 Jul 2004 21:38:13 -0700 (PDT)
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: async vs. sync
+Date: Wed, 28 Jul 2004 10:56:44 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040728043813.59947.qmail@web51603.mail.yahoo.com>
+Message-ID: <20040728085644.GD20264@suse.de>
+References: <482A3FA0050D21419C269D13989C61130435E51E@lavender-fe.eng.netapp.com> <200407261905.40248.bernd-schubert@web.de> <41055FE5.3030206@bruvoll.com> <200407270006.08581.bernd-schubert@web.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BpgCq-0003Lh-73
-	for nfs@lists.sourceforge.net; Tue, 27 Jul 2004 21:38:20 -0700
-Received: from web51603.mail.yahoo.com ([206.190.38.208])
-	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.34)
-	id 1BpgCp-0005AW-Cs
-	for nfs@lists.sourceforge.net; Tue, 27 Jul 2004 21:38:19 -0700
-To: nfs@lists.sourceforge.net
+	id 1BpkHf-00053x-PX
+	for nfs@lists.sourceforge.net; Wed, 28 Jul 2004 01:59:35 -0700
+Received: from cantor.suse.de ([195.135.220.2])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.34)
+	id 1BpkHf-0004nd-7z
+	for nfs@lists.sourceforge.net; Wed, 28 Jul 2004 01:59:35 -0700
+To: Bernd Schubert <bernd-schubert@web.de>
+In-Reply-To: <200407270006.08581.bernd-schubert@web.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -27,33 +31,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-hi , 
+Hi,
 
+the way the sync export option affects NFSv3 writes is limited to
+COMMITs, so if you see a slow-down here it must be bottle-necking in
+that part of the code.
 
-     I read in man page of statd that to provide   
-     High  Availability of NFS ,
-     -N option has been introduced in new linux
-release
- 
-     Can anybody please send me some more information 
-     about this option.It is not very clear to me , 
-     how -N option can be used to achieve high 
-     availability of NFS
+Quite possibly, this is a problem of the underlying file system.
+You're using a journaled file system, right? So what seems to happen
+is that on every n-th commit call or so all nfsd processes stall
+as the file system tries to write its journal. Note that the
+VM currently allows dirty data to accumulate for up to 30 seconds
+before it is forcibly written to disk (dirty_expire_centisecs sysctl).
 
-     waiting for  reply,
- 
-thanks,
-     kiran
-    
-   
+A good way to simulate this is to run several iozone processes on the
+server and tell them to sync() every 1 MB or so.
 
+	iozone -s 1g -r 1m -o -i 0
 
-	
-		
-__________________________________
-Do you Yahoo!?
-New and Improved Yahoo! Mail - 100MB free storage!
-http://promotions.yahoo.com/new_mail 
+This takes NFS out of the equation.
+
+Maybe it would help to play with the dirty writeback strategy, e.g. by
+lowering /proc/sys/vm/dirty_writeback_centisecs (to e.g. 250), increasing
+dirty_background_ratio or lowering vm_dirty_ratio.
+
+It may also be interesting to compare ext3 vs reiser here.
+
+Olaf
+-- 
+Olaf Kirch     |  The Hardware Gods hate me.
+okir@suse.de   |
+---------------+ 
 
 
 -------------------------------------------------------
