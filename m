@@ -1,17 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 0 of 23] Introduction
+Subject: [PATCH kNFSd 6 of 23] Check for existence of file_lock parameter inside of the kernel lock.
 Date: Fri, 17 Dec 2004 16:23:55 +1100
-Message-ID: <20041217162128.9968.patches@notabene>
+Message-ID: <E1CfAap-0002dk-O0@notabene.cse.unsw.edu.au>
+References: <20041217162128.9968.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CfAb2-00058Q-NI
-	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 21:24:08 -0800
+	id 1CfAb3-00058W-50
+	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 21:24:09 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CfAb0-00064w-MA
-	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 21:24:08 -0800
+	id 1CfAb0-000651-NT
+	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 21:24:09 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -26,18 +27,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Following are 23 patches that provide "delegation" support in the 
-NFSv4 server.
 
-"Delegation" is when the client opens a file and the server says "Ok, 
-that file is all yours for a while.  No-one else will touch it without
-me first telling you about it".  This requires the server to be able to 
-make call-backs to the client to "reclaim" a delegation when someone 
-else wants access to the file.
 
-These are certainly not needed for 2.6.10.
+Signed-off-by: Andy Adamson <andros@citi.umich.edu>
+Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
-NeilBrown
+### Diffstat output
+ ./fs/locks.c |    8 +++-----
+ 1 files changed, 3 insertions(+), 5 deletions(-)
+
+diff ./fs/locks.c~current~ ./fs/locks.c
+--- ./fs/locks.c~current~	2004-12-15 11:57:12.000000000 +1100
++++ ./fs/locks.c	2004-12-15 11:57:12.000000000 +1100
+@@ -1096,15 +1096,13 @@ static void time_out_leases(struct inode
+ */
+ void remove_lease(struct file_lock *fl)
+ {
+-	if (!IS_LEASE(fl))
+-		return;
+-
+ 	lock_kernel();
+-
++	if (!fl || !IS_LEASE(fl))
++		goto out;
+ 	fl->fl_type = F_UNLCK | F_INPROGRESS;
+ 	fl->fl_break_time = jiffies - 10;
+ 	time_out_leases(fl->fl_file->f_dentry->d_inode);
+-
++out:
+ 	unlock_kernel();
+ }
+ 
 
 
 -------------------------------------------------------
