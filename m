@@ -1,25 +1,19 @@
-From: ramana <ramana@intraperson.com>
-Subject: Re: Autodir and nfs
-Date: Tue, 16 Nov 2004 07:28:11 +0530
-Message-ID: <41995EB3.40702@intraperson.com>
-References: <4196DB26.9040207@intraperson.com>	 <1100451447.11340.2.camel@lade.trondhjem.org>	 <1100451550.11340.4.camel@lade.trondhjem.org>	 <41985E2A.2060000@intraperson.com> <1100533463.11246.3.camel@lade.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+From: NeilBrown <neilb@cse.unsw.edu.au>
+Subject: [PATCH kNFSd 5 of 18] nfsd4: fix open_downgrade decode error.
+Date: Tue, 16 Nov 2004 15:50:49 +1100
+Message-ID: <E1CTvIn-0004pa-St@notabene.cse.unsw.edu.au>
+References: <20041116154601.18412.patches@notabene>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CTsXn-00022c-1l
-	for nfs@lists.sourceforge.net; Mon, 15 Nov 2004 17:54:07 -0800
-Received: from smtp.net4india.com ([202.71.128.225])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CTsXm-0003Ih-2y
-	for nfs@lists.sourceforge.net; Mon, 15 Nov 2004 17:54:06 -0800
-Received: from [202.63.116.2] (helo=intraperson.com)
-	by smtp.net4india.com with esmtp (Exim 3.36 #1)
-	id 1CTsjf-0004du-00
-	for nfs@lists.sourceforge.net; Tue, 16 Nov 2004 07:36:23 +0530
-To: nfs@lists.sourceforge.net
-In-Reply-To: <1100533463.11246.3.camel@lade.trondhjem.org>
+	id 1CTvEy-0005r4-JY
+	for nfs@lists.sourceforge.net; Mon, 15 Nov 2004 20:46:52 -0800
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1CTvEx-0007Gt-Pk
+	for nfs@lists.sourceforge.net; Mon, 15 Nov 2004 20:46:52 -0800
+To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,41 +27,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust wrote:
 
->må den 15.11.2004 Klokka 13:13 (+0530) skreiv ramana:
->
->  
->
->>It does not work when whole /home exported like this.
->>/home          127.0.0.1(rw)
->>
->>Becuase NFS does not see any dirs within /home dir because of the way 
->>Autodir works.
->>
->>It works when individual home dirs exported like this.
->>/home/t1000     127.0.0.1(rw)
->>    
->>
->
->Probably because user "nobody" does not have access to /home on the
->server. RTFM about root squashing...
->
->Cheers,
->  Trond
->
->  
->
-I appreciate your time. You can not solve it from man page.
+Fix open downgrade decode error.
 
-Regards
-ramana
+Signed-off-by: Andy Adamson <andros@umich.edu>
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
--- 
-http://www.intraperson.com
+### Diffstat output
+ ./fs/nfsd/nfs4xdr.c |    2 +-
+ 1 files changed, 1 insertion(+), 1 deletion(-)
 
-
-
+diff ./fs/nfsd/nfs4xdr.c~current~ ./fs/nfsd/nfs4xdr.c
+--- ./fs/nfsd/nfs4xdr.c~current~	2004-11-16 14:41:20.000000000 +1100
++++ ./fs/nfsd/nfs4xdr.c	2004-11-16 14:41:20.000000000 +1100
+@@ -825,7 +825,7 @@ nfsd4_decode_open_downgrade(struct nfsd4
+ 	DECODE_HEAD;
+ 		    
+ 	open_down->od_stateowner = NULL;
+-	READ_BUF(4 + sizeof(stateid_t));
++	READ_BUF(12 + sizeof(stateid_t));
+ 	READ32(open_down->od_stateid.si_generation);
+ 	COPYMEM(&open_down->od_stateid.si_opaque, sizeof(stateid_opaque_t));
+ 	READ32(open_down->od_seqid);
 
 
 -------------------------------------------------------
