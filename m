@@ -1,30 +1,24 @@
-From: Garrick Staples <garrick@usc.edu>
-Subject: Re: nfsd, rmtab, failover, and stale filehandles
-Date: Thu, 6 May 2004 16:00:55 -0700
+From: Ian Kent <raven@themaw.net>
+Subject: RE: nfs hang, acutaully really slow
+Date: Fri, 7 May 2004 12:35:34 +0800 (WST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040506230055.GC26968@polop.usc.edu>
-References: <20040506185603.GM23287@polop.usc.edu> <20040506191351.GP23287@polop.usc.edu> <20040506215311.GA26968@polop.usc.edu> <20040506222455.GP18964@fieldses.org>
+Message-ID: <Pine.LNX.4.58.0405071231551.8952@wombat.indigo.net.au>
+References: <482A3FA0050D21419C269D13989C61130435DFDC@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="w7PDEPdKQumQfZlR"
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Maxwell Bottiger <sleepylight@jive-turkey.net>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BLrsk-0007f2-2h
-	for nfs@lists.sourceforge.net; Thu, 06 May 2004 16:02:22 -0700
-Received: from polop.usc.edu ([128.125.10.9])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1BLwxc-0005WB-2t
+	for nfs@lists.sourceforge.net; Thu, 06 May 2004 21:27:44 -0700
+Received: from wombat.indigo.net.au ([202.0.185.19])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.30)
-	id 1BLrsj-0000yb-De
-	for nfs@lists.sourceforge.net; Thu, 06 May 2004 16:02:21 -0700
-Received: from polop.usc.edu (localhost.localdomain [127.0.0.1])
-	by polop.usc.edu (8.12.10/8.12.10) with ESMTP id i46N0tlv027071
-	for <nfs@lists.sourceforge.net>; Thu, 6 May 2004 16:00:55 -0700
-Received: (from garrick@localhost)
-	by polop.usc.edu (8.12.10/8.12.10/Submit) id i46N0t8t027069
-	for nfs@lists.sourceforge.net; Thu, 6 May 2004 16:00:55 -0700
-To: nfs@lists.sourceforge.net
-In-Reply-To: <20040506222455.GP18964@fieldses.org>
+	id 1BLwxb-0001w0-Fr
+	for nfs@lists.sourceforge.net; Thu, 06 May 2004 21:27:43 -0700
+To: "Lever, Charles" <Charles.Lever@netapp.com>
+In-Reply-To: <482A3FA0050D21419C269D13989C61130435DFDC@lavender-fe.eng.netapp.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -37,61 +31,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Thu, 6 May 2004, Lever, Charles wrote:
 
---w7PDEPdKQumQfZlR
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+> hi maxwell-
+> 
+> > 	I'm running some version of NFSv3.  I have whatever 
+> > came packaged 
+> > along with Fedora Core 1.  (They put their own version number on the 
+> > package)
+> > 
+> > 	My server appears to be running into a real problem transfering 
+> > files.  As long as my transfers are super small (like ls) 
+> > then everything 
+> > is cool.  As soon as I try to work on bigger files (greater 
+> > than 4k) most 
+> > everything grinds to a screetching halt.  I can see that 
+> > there is still 
+> > activity, but the transfers are in terms of 3 or 4 packets every few 
+> > seconds.  I've sort of been hobbling along using scp (wich is runing 
+> > somewhere between 1000x to 1000000x faster than NFS right 
+> > now) but that 
+> > only works for so long.
+> > 
+> > 	Where do I start trying to solve this problem?  I haven't been 
+> > able to find any error messages.  Any help is greatly appreciated.
+> 
+> these are the classic symptoms of a network issue; probably
+> a speed or duplex mismatch in the network between your clients
+> and server.  if you switch to NFS over TCP, the problem will
+> likely go away.
 
-On Thu, May 06, 2004 at 06:24:55PM -0400, J. Bruce Fields alleged:
-> On Thu, May 06, 2004 at 02:53:11PM -0700, Garrick Staples wrote:
-> > I'm at a total loss.  Everything I'm reading tells me that all I need t=
-o ensure
-> > is that fs device names are the same on both servers so that the genera=
-ted
-> > filehandles are the same, and that I need to move all lines matching
-> > ":$mountpoint:" in rmtab to the new server.  The former is done since I=
-'m using
-> > persistant device numbers with lvm.  The latter shouldn't be needed bec=
-ause I'm
-> > using the "new" proc interface with 2.6.5.
-> >=20
-> > rmtab definitly doesn't do any noticable difference.  I can add random =
-text
-> > and blank it out with no noticable difference on the clients.
-> >=20
-> > Is this a client problem?  The clients are all 2.4.24 and 2.4.26.
-> >=20
-> > All clients and servers are using vanilla kernels.
-> Hmm, also, could you try recompiling mountd with the following patch
-> applied?
+Are you sure about that?
 
-No effect.  All I did was kill mountd, run the patched mountd, and try to '=
-ls'
-on the client.
+When I've had problems with link negotiation it's has been essential to 
+get the speed and duplex to match the switch. Performance overall is 
+significantly affected if you don't. 
 
-Watching an strace of mountd, it doesn't seem that mountd is ever contacted.
-The client reports stale filehandle pretty much immediately, and mountd doe=
-sn't
-do anything.
+Ian
 
---=20
-Garrick Staples, Linux/HPCC Administrator
-University of Southern California
-
---w7PDEPdKQumQfZlR
-Content-Type: application/pgp-signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.3 (GNU/Linux)
-
-iD8DBQFAmsOn0SBUxJbm9HMRAtsQAJ9C4rdfkI9Tl6+8nhtOrysFonlTTQCfeP6W
-VtR71t7S2uqeZkYtLPXlkoY=
-=e3Vp
------END PGP SIGNATURE-----
-
---w7PDEPdKQumQfZlR--
 
 
 -------------------------------------------------------
