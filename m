@@ -1,19 +1,29 @@
-From: Pete Flugstad <pete.flugstad@icon-labs.com>
-Subject: nfs-utils on uClibc based system?  mount failures
-Date: Wed, 18 Feb 2004 16:56:21 -0600
+From: Simeon Miteff <simeon@up.ac.za>
+Subject: Problem starting rpc.svcgssd for NFS4
+Date: Mon, 23 Feb 2004 07:59:35 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <4033ED95.7050501@icon-labs.com>
+Message-ID: <200402230759.35041.simeon@up.ac.za>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain;
+  charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AtahC-0008Ho-Q7
-	for nfs@lists.sourceforge.net; Wed, 18 Feb 2004 15:01:34 -0800
-Received: from [216.161.118.235] (helo=mail.icon-labs.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1AtacD-0000o7-9t
-	for nfs@lists.sourceforge.net; Wed, 18 Feb 2004 14:56:25 -0800
+	id 1Av9G7-0000R6-Kl
+	for nfs@lists.sourceforge.net; Sun, 22 Feb 2004 22:08:03 -0800
+Received: from kendy.up.ac.za ([137.215.101.101])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.30)
+	id 1Av8xX-000723-TY
+	for nfs@lists.sourceforge.net; Sun, 22 Feb 2004 21:48:52 -0800
+Received: from postino.up.ac.za ([137.215.6.15] helo=mx1.up.ac.za)
+	by kendy.up.ac.za with esmtp (Exim 4.24)
+	id 1Av98J-00031v-Ao
+	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 07:59:59 +0200
+Received: from b121pc200.up.ac.za ([137.215.121.200] helo=io.ee.up.ac.za)
+	by mx1.up.ac.za with esmtp (Exim 4.24)
+	id 1Av98I-0006gp-Ue
+	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 07:59:58 +0200
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,47 +37,48 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-(please reply to me directly as I'm not subscribed to this list)
+Hi All
 
-Hello,
+I'm using kernel 2.6.3, the patched util-linux and nfs-utils, my kerberos5 
+setup is working (tested with openssh), and so far I've done everything as 
+described by http://www.citi.umich.edu/projects/nfsv4/linux/, yet I get this 
+problem when I try to start rpc.svcgssd:
 
-   Has anyone gotten nfs-utils to work on a uClibc based system.  I'm 
-using Linux 2.4.25 (yup, just built it today) with all the NFS server 
-stuff compiled in.  Root and userspace are from the pre-built uClibc 
-development system (http://www.uclibc.org/toolchains.html) - I'm 
-currently using 0.9.23, which is a little old, but I hope that doesn't 
-matter.  This is GCC 3.3.1 based.
+Feb 20 08:39:11 io gssd[25729]: Using (default) Kerberos realm: "EE.UP.AC.ZA"
+Feb 20 08:39:11 io gssd[25729]: Initialized credentials cache
+Feb 20 08:39:11 io gssd[25729]: Using credentials cache: 
+"FILE:/tmp/krb5cc_machine"
+Feb 20 08:39:11 io gssd[25729]: Acquired initial kerberos ticket
+Feb 20 08:39:11 io gssd[25729]: failed to 
+open /proc/net/rpc/auth.rpcsec.init/channel
 
-   I managed to get nfs-utils (1.0.6) built for this system after 
-hacking up a fake getrpcbynumber_r, which uClibc doesn't have (I called 
-getrpcbynumber and copied the result into the result buffer - yes, I 
-know it's not thread safe, but I don't see how that would be causing my 
-problems).  BTW, is getrpcbynumber_r actually documented anywhere - all 
-the man pages I found had the wrong parameters.
+Looking in that directory:
 
-   Anyway I got it running, but what I'm seeing now is that all mount 
-requests are failing.  I've debugged mountd, and it looks like all the 
-auth stuff is working. What seems to be failing is a call to 
-nfsctl(NFSCTL_EXPORT, ...).  This is the call stack when that happens:
+simeon@io rpc $ ls -l /proc/net/rpc/
+total 0
+dr-xr-xr-x    2 root     root            0 Feb 23 07:57 auth.domain
+dr-xr-xr-x    2 root     root            0 Feb 20 08:38 auth.unix.ip
+-r--r--r--    1 root     root            0 Feb 23 07:57 nfs
+-r--r--r--    1 root     root            0 Feb 23 07:57 nfsd
+dr-xr-xr-x    2 root     root            0 Feb 20 08:38 nfsd.export
+dr-xr-xr-x    2 root     root            0 Feb 20 08:38 nfsd.fh
 
-    ...
-    mount_mnt_3_svc
-    get_rootfh
-    export_export
-    nfsexport
-    nfsctl
-    syscall
+Any Ideas why /proc/net/rpc/auth.rpcsec.init/channel is missing? I double 
+checked the kernel config options...
 
-   Everything before the nfsctl/syscall seems to work just fine.  All 
-the exports seem to be setup just fine.
-
-   I have the system setup if anyone else wants more debugging info. 
-I'll see if I can get a dump of the arguments in nfsctl when it dies.  I 
-   could even let someone ssh in if they wish.
-
-Pete
-
-PS: please reply to me directly as I'm not subscribed to this list.
+Regards,
+Simeon.
+-- 
+Mr Simeon Miteff
+Department of Electrical, Electronic and Computer Engineering
+University of Pretoria
+Pretoria
+0002
+South Africa
+Tel: +27 12 420 2434
+-----------------------------------------------
+This message and attachments are subject to a disclaimer. Please refer
+to www.it.up.ac.za/documentation/governance/disclaimer/ for details.
 
 
 -------------------------------------------------------
