@@ -1,83 +1,49 @@
-From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: Re: [PATCH] SGI 900985: fix nohide export option for nfsv3
-Date: Mon, 13 Oct 2003 17:48:57 +1000
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3F8A58E9.9A5D3102@melbourne.sgi.com>
-References: <3F7CF147.B778D07B@melbourne.sgi.com> <16266.17267.491587.121802@notabene.cse.unsw.edu.au>
+From: =?iso-8859-1?Q?J=F6rn?= Engel <joern@wohnheim.fh-wedel.de>
+Subject: Re: include/linux/nfs/nfsfh.h declares a symbol
+Date: Mon, 13 Oct 2003 11:21:38 +0200
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <20031013092138.GA16056@wohnheim.fh-wedel.de>
+References: <20031001121811.GE31698@wohnheim.fh-wedel.de> <16266.11661.91185.167555@notabene.cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1A8xSY-0000Im-00
-	for <nfs@lists.sourceforge.net>; Mon, 13 Oct 2003 00:49:42 -0700
-Received: from zok.sgi.com ([204.94.215.101])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 1A8xSX-0007DY-MF
-	for nfs@lists.sourceforge.net; Mon, 13 Oct 2003 00:49:41 -0700
+Content-Type: text/plain; charset=iso-8859-1
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
 To: Neil Brown <neilb@cse.unsw.edu.au>
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+In-Reply-To: <16266.11661.91185.167555@notabene.cse.unsw.edu.au>
+List-ID: <nfs.lists.sourceforge.net>
 
-Neil Brown wrote:
-> 
-> On Friday October 3, gnb@melbourne.sgi.com wrote:
-> > G'day,
-> >
-> > --- /usr/tmp/TmpDir.24872-0/linux/linux/fs/nfsd/vfs.c_1.47    Fri Sep 19 20:12:50 2003
-> > +++ linux/linux/fs/nfsd/vfs.c Fri Sep 19 20:08:03 2003
-> > @@ -86,7 +86,7 @@
-> >   * accepted as it stands and the mounted directory is
-> >   * returned. Otherwise the covered directory is returned.
-> >   * NOTE: this mountpoint crossing is not supported properly by all
-> > - *   clients and is explicitly disallowed for NFSv3
-> > + *   clients.
-> >   *      NeilBrown <neilb@cse.unsw.edu.au>
-> 
-> This isn't quite right.  What the comment *Should* say is:
->  ... and RFC1813 explicitly dis-allows it for NFSv3 (See section 3.3.3).
+On Mon, 13 October 2003 14:43:57 +1000, Neil Brown wrote:
+> On Wednesday October 1, joern@wohnheim.fh-wedel.de wrote:
+> > Neil, the function SVCFH_fmt uses a static variable to sprintf into=
+=2E
+> > Looks like this variable is declared locally for every .c file
+> > including nfsfh.h, which is quite a few.
+> >=20
+> > You could remove the static, but that would increase the stack usag=
+e,
+> > which might be a problem too.  The buffer could be reduced to 64
+> > chars, to reduce that problem.  kmalloc()ing it seems a bit expensi=
+ve,
+> > but might be an option, too.
+>=20
+> Thanks.  I think it is best to simply make SVCFH_fmt a real function
+> instead of inline, as below.
+>=20
+> NeilBrown
+>=20
+> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+> Move SVCFH_fmt from being 'inline' to being 'extern'.
+>=20
+> This way, the "static char buf" is defined only once instead
+> of once per file.
 
-RFC1813 section 3.3.3 says...
+Patch looks good.  Thanks!
 
-> A server will not allow a LOOKUP operation to cross a mountpoint
-> to the root of a different filesystem, even if the filesystem is
-> exported.
-> [...]
-> A given server implementation may refine these rules given
-> capabilities or limitations particular to that implementation.
-> Refer to [X/OpenNFS] for a discussion on exporting file systems.
+J=F6rn
 
-Reads to me like there's a loophole designed specifically for the
-nohide option.
-
-The thing is, we have customers moving from Irix systems with an "sgi"
-logo on the front to Linux systems with an "sgi" logo on the front; they
-see the "nohide" option like they're used to and (poor naive creatures)
-expect it to work.  Having it work on v2 and silently fail on v3 is
-really submarvellous.
-
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
-
-
--------------------------------------------------------
-This SF.net email is sponsored by: SF.net Giveback Program.
-SourceForge.net hosts over 70,000 Open Source Projects.
-See the people who have HELPED US provide better services:
-Click here: http://sourceforge.net/supporters.php
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+--=20
+To recognize individual spam features you have to try to get into the
+mind of the spammer, and frankly I want to spend as little time inside
+the minds of spammers as possible.
+-- Paul Graham
