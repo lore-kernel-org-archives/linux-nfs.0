@@ -1,23 +1,31 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: address for lockd recovery
-Date: Tue, 25 Jan 2005 22:26:36 -0800
-Message-ID: <1106720796.10014.10.camel@lade.trondhjem.org>
-References: <20050125091649.70886.qmail@web51605.mail.yahoo.com>
+From: Bruce Allan <bwa@us.ibm.com>
+Subject: [PATCH] add MODULE_DESCRIPTION to nfsd module
+Date: Tue, 25 Jan 2005 14:40:04 -0800
+Message-ID: <1106692803.4420.32.camel@w-bwa3.beaverton.ibm.com>
+Reply-To: bwa@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Cc: linux-nfs <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ctgdf-00026S-VI
-	for nfs@lists.sourceforge.net; Tue, 25 Jan 2005 22:26:51 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1CtZM5-0003Cg-Sv
+	for nfs@lists.sourceforge.net; Tue, 25 Jan 2005 14:40:13 -0800
+Received: from e35.co.us.ibm.com ([32.97.110.133])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.41)
-	id 1Ctgde-00085R-EQ
-	for nfs@lists.sourceforge.net; Tue, 25 Jan 2005 22:26:51 -0800
-To: mehta kiran <kiranmehta1981@yahoo.com>
-In-Reply-To: <20050125091649.70886.qmail@web51605.mail.yahoo.com>
+	id 1CtZM4-00074B-DD
+	for nfs@lists.sourceforge.net; Tue, 25 Jan 2005 14:40:13 -0800
+Received: from westrelay01.boulder.ibm.com (westrelay01.boulder.ibm.com [9.17.195.10])
+	by e35.co.us.ibm.com (8.12.10/8.12.9) with ESMTP id j0PMe6Z7565536
+	for <nfs@lists.sourceforge.net>; Tue, 25 Jan 2005 17:40:06 -0500
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by westrelay01.boulder.ibm.com (8.12.10/NCO/VER6.6) with ESMTP id j0PMe51c345394
+	for <nfs@lists.sourceforge.net>; Tue, 25 Jan 2005 15:40:05 -0700
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.12.11/8.12.11) with ESMTP id j0PMe5QZ002737
+	for <nfs@lists.sourceforge.net>; Tue, 25 Jan 2005 15:40:05 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,27 +39,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-ty den 25.01.2005 Klokka 01:16 (-0800) skreiv mehta kiran:
-> Hi , 
->      When i was checking lockd recovery , 
->      i noted that clients after getting
->      notification messages , use mon_id
->      as destination address and not notication
->      messages's source address as destination
->      address.(as just a reply)
-> 
->      Is there any issue in using notifcation
->      messages's source address as destination
->      address to reclaim lock. ?
+To direct people to the appropriate resources when experiencing problems
+with the NFS server here is a simple patch to add module description
+(with link to NFS documentation) to the nfsd module.
 
-If you have a multi-homed server, it does not follow that the source
-address used by rpc.statd hosts the same NFS server as the mon_name
-address.
+Patch created against 2.6.11-rc2.
 
-Cheers,
-  Trond
--- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
+Signed-off-by: Bruce Allan <bwa@us.ibm.com>
+
+diff -urp linux-2.6.11-rc2-vanilla/fs/nfsd/nfsctl.c linux-2.6.11-rc2/fs/nfsd/nfsctl.c
+--- linux-2.6.11-rc2-vanilla/fs/nfsd/nfsctl.c	2004-12-24 13:34:02.000000000 -0800
++++ linux-2.6.11-rc2/fs/nfsd/nfsctl.c	2005-01-25 14:20:10.000000000 -0800
+@@ -434,5 +434,6 @@ static void __exit exit_nfsd(void)
+ 
+ MODULE_AUTHOR("Olaf Kirch <okir@monad.swb.de>");
+ MODULE_LICENSE("GPL");
++MODULE_DESCRIPTION("NFS server module (http://nfs.sourceforge.net)");
+ module_init(init_nfsd)
+ module_exit(exit_nfsd)
+
+
+Regards,
+---
+Bruce Allan
+Software Engineer, Linux Technology Center
+IBM Corporation, Beaverton OR USA
 
 
 
