@@ -1,24 +1,18 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: nfs-utils 1.0.5 break amd?
-Date: Tue, 5 Aug 2003 12:13:46 +1000
+From: NeilBrown <neilb@cse.unsw.edu.au>
+Subject: [PATCH] kNFSd - 5 of 7 - Change atomic_inc to cache_get twice.
+Date: Tue, 05 Aug 2003 13:59:23 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16175.4826.984307.413302@gargle.gargle.HOWL>
-References: <1059672742.21271.58.camel@ikarus>
-	<16169.55986.854984.818132@gargle.gargle.HOWL>
-	<1060033126.1354.118.camel@localhost>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Message-ID: <E19jsyp-0000nG-00@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19jrKo-0005MY-00
-	for <nfs@lists.sourceforge.net>; Mon, 04 Aug 2003 19:13:58 -0700
+	id 19jsyz-0001hc-00
+	for <nfs@lists.sourceforge.net>; Mon, 04 Aug 2003 20:59:34 -0700
 Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <mschmitt@inf.ethz.ch>) (for <nfs@lists.sourceforge.net>) By
-	note With Smtp ; Tue, 5 Aug 2003 12:13:51 +1000
-To: Marc Schmitt <mschmitt@inf.ethz.ch>
-In-Reply-To: message from Marc Schmitt on  August 4
+	(for <torvalds@osdl.org>) (for <nfs@lists.sourceforge.net>) By note
+	With Smtp ; Tue, 5 Aug 2003 13:59:28 +1000
+To: Linus Torvalds <torvalds@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,26 +25,33 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On  August 4, mschmitt@inf.ethz.ch wrote:
-> 
-> Now comes the interesting part, changing MOUNTD_TCP in
-> /etc/sysconfig/nfs from no to yes will make the problem go away. With
-> MOUNTD_TCP=yes I went up to 1000 exports and `showmount -e` worked fine.
+### Comments for ChangeSet
 
-Yes,  that makes sense.  UDP has a limited request/reply size.  TCP
-doesn't.
+ ----------- Diffstat output ------------
+ ./include/linux/sunrpc/cache.h |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-I honestly cannot think of any good reason to have MOUNTD_TCP=no  
-Maybe I should update the man page
-  
-       -n  or  --no-tcp
-              Don't advertise TCP for mount.
-
-              NOTE: there is no good reason do use this option, and
-	      if you do, then things will mysteriously break.
-
-:-)
-NeilBrown
+diff ./include/linux/sunrpc/cache.h~current~ ./include/linux/sunrpc/cache.h
+--- ./include/linux/sunrpc/cache.h~current~	2003-08-04 11:34:43.000000000 +1000
++++ ./include/linux/sunrpc/cache.h	2003-08-04 11:34:43.000000000 +1000
+@@ -173,7 +173,7 @@ RTN *FNAME ARGS										\
+ 			if (set && !INPLACE && test_bit(CACHE_VALID, &tmp->MEMBER.flags) && !new) \
+ 				break;							\
+ 											\
+-			atomic_inc(&tmp->MEMBER.refcnt);				\
++			cache_get(&tmp->MEMBER);					\
+ 			if (set) {							\
+ 				if (!INPLACE && test_bit(CACHE_VALID, &tmp->MEMBER.flags))\
+ 				{ /* need to swap in new */				\
+@@ -221,7 +221,7 @@ RTN *FNAME ARGS										\
+ 	new = kmalloc(sizeof(*new), GFP_KERNEL);					\
+ 	if (new) {									\
+ 		cache_init(&new->MEMBER);						\
+-		atomic_inc(&new->MEMBER.refcnt);					\
++		cache_get(&new->MEMBER);						\
+ 		INIT;									\
+ 		tmp = new;								\
+ 		goto retry;								\
 
 
 -------------------------------------------------------
