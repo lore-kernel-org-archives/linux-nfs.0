@@ -1,24 +1,24 @@
-From: Frank Cusack <fcusack@fcusack.com>
-Subject: Re: [autofs] Re: VFS: Busy inodes after unmount on 2 way SMP
-Date: Thu, 18 Sep 2003 19:57:49 -0700
+From: Bernd Schubert <bernd-schubert@web.de>
+Subject: Re: Stopping NFS, ip address take over, zero-copy NFS for 2.4.21, and misc
+Date: Fri, 19 Sep 2003 14:50:24 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030918195749.A2273@google.com>
-References: <Pine.LNX.4.44.0309151941550.18622-100000@moisil.badula.org> <Pine.LNX.4.44.0309151828050.1920-100000@fubar.phlinux.com>
+Message-ID: <200309191450.24184.bernd-schubert@web.de>
+References: <1063900790.8031.9644.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain;
+  charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1A0BUR-0005zg-00
-	for <nfs@lists.sourceforge.net>; Thu, 18 Sep 2003 19:59:23 -0700
-Received: from 216-239-45-4.google.com ([216.239.45.4])
+	id 1A0KiV-0006Q1-00
+	for <nfs@lists.sourceforge.net>; Fri, 19 Sep 2003 05:50:31 -0700
+Received: from relay.uni-heidelberg.de ([129.206.100.212])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 1A0BUQ-0005mR-TK
-	for nfs@lists.sourceforge.net; Thu, 18 Sep 2003 19:59:22 -0700
-To: "H. Peter Anvin" <hpa@zytor.com>, autofs@linux.kernel.org,
-   nfs@lists.sourceforge.net
-In-Reply-To: <Pine.LNX.4.44.0309151828050.1920-100000@fubar.phlinux.com>; from wago@phlinux.com on Mon, Sep 15, 2003 at 06:34:33PM -0700
+	id 1A0KiU-00059B-I1
+	for nfs@lists.sourceforge.net; Fri, 19 Sep 2003 05:50:30 -0700
+To: Chris Worley <cworley@lnxi.com>, nfs@lists.sourceforge.net
+In-Reply-To: <1063900790.8031.9644.camel@localhost.localdomain>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,34 +31,48 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, Sep 15, 2003 at 06:34:33PM -0700, Matt C wrote:
-> On Mon, 15 Sep 2003, Ion Badulescu wrote:
-> > On Mon, 15 Sep 2003, H. Peter Anvin wrote:
-> > > Arun Sharma wrote:
-> > > >>
-> > > >> Oh yeah, easily. Kill the automounter while some things are mounted,
-> > > >> unmount everything by hand but do not rmdir the mountpoints. When you
-> > > >> unmount the autofs filesystem itself, you will get the self destruct
-> > > >> message.
-> > > > 
-> > > > Thanks. This reproduces the problem I'm chasing very well. I think this
-> > > > is clearly an unacceptable kernel bug.
-> > > > 
-> > > Indeed.  This is on autofs 3?
-> > 
-> > Both 3 and 4, at least as far as the "self-destruct" message goes.
+> 2) IP address takeover between NFS servers.
 >
-> Don't know if it helps, but we also run a few hundred autofs4 clients, 
-> with a mix of 2.4.21 and 2.4.18. The 2.4.21 machines are seeing quite a 
-> few of these messages, but not on the 2.4.18 machines. We haven't seen any 
-> of the oopses described below, though.
+> With NFS stateless, and not running lock servers, I thought a simple IP
+> address takeover scheme (when an I/O server goes down, another just adds
+> the failed server's IP address as a virtual interface) would allow
+> clients to immediately renegotiate with the same IP address pointing to
+> another NFS server (serving the same partitions).  The take-over is
+> successful: the clients can communicate with the new I/O server, but I
+> get "permission denied" (as root or otherwise) on the NFS mounted
+> partitions most of the time (sometimes it works).
+>
+> What am I missing?
+>
 
-Same here, 2.4.22, autofs 3 and 4.  I'll be playing with 2.6.0 next week.
+Don't know whats going wrong at your network, but it works pretty well on o=
+ur=20
+systems.=20
+How do you sync both server system (main server and fall back server)? Well=
+,=20
+since its here a root-fs server and changes are done rarely, we simply=20
+connect them via nbd and sync using dd of the whole device once a night.
+=46or our main-data server (/home, etc) there is currently no fall back, bu=
+t we=20
+plan to doing this in the near future. To do so, we want to connect via enb=
+d=20
+and do a network raid1 between both systems.=20
+Let me guess, do you sync using tar, etc.? This won't work since you need t=
+he=20
+very same inode numbers. The only way to do so, is to use network raid or a=
+=20
+1:1 copy of the whole partion-device.
 
-I haven't tried to reproduce it with your method, but I do see the bug;
-no oops though.
+Cheers,
+	Bernd
 
-/fc
+
+Bernd Schubert
+Physikalisch Chemisches Institut / Theoretische Chemie
+Universit=E4t Heidelberg
+INF 229
+69120 Heidelberg
+e-mail: bernd.schubert@pci.uni-heidelberg.de
 
 
 -------------------------------------------------------
