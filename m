@@ -1,23 +1,13 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: wsize & PAGE_SIZE issues on IA64 clients.
-Date: Tue, 1 Apr 2003 08:25:15 +0200
+From: "David West" <dwest@mediaone.com>
+Subject: Sleep better, improve vision and memory
+Date: Wed, 26 Mar 2003 04:12:28 +0000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16009.12491.241236.831979@charged.uio.no>
-References: <shshe9izs2g.fsf@charged.uio.no>
-	<Pine.PTX.4.30.0303312210520.11440-100000@crg8.beaverton.ibm.com>
-Reply-To: trond.myklebust@fys.uio.no
+Message-ID: <61b9bfe43e77a92a74265dd2$70392ca34494a3d1@ptp307j>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Lever, Charles" <Charles.Lever@netapp.com>,
-    Greg Lindahl <lindahl@keyresearch.com>,
-    <nfs@lists.sourceforge.net>
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_2F1CA59F_41CC89DB786D2302.E67711C2F9DC544"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mons.uio.no ([129.240.130.14] ident=7411)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 190FDI-0005rg-00
-	for <nfs@lists.sourceforge.net>; Mon, 31 Mar 2003 22:25:40 -0800
-To: Mark Price <mkprice@us.ibm.com>
-In-Reply-To: <Pine.PTX.4.30.0303312210520.11440-100000@crg8.beaverton.ibm.com>
+To: nfs@lists.sourceforge.net, snort-users-admin@lists.sourceforge.net, vxl-maintainers@lists.sourceforge.net, vxl-users@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,19 +20,47 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+This is a multi-part message in MIME format.
 
-One approach we might want to look into, would be to backport the
-'wb_index' from 2.5.x, and then make that map to 4k segments (or
-smaller) on ia64. That would divorce the nfs_page from the real page
-size.
+------=_NextPart_000_2F1CA59F_41CC89DB786D2302.E67711C2F9DC544
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: 8bit
 
-Needs some work in order to make reads work ('cos you would have
-mapped several nfs_page into one real page => the last reader has to
-remove the page lock) and a bit of plumbing in pagelist.c, but looks
-doable...
 
-Cheers,
-  Trond
+
+
+------=_NextPart_000_2F1CA59F_41CC89DB786D2302.E67711C2F9DC544
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: 8bit
+
+*As seen on TV*<br>
+<br>
+The health discovery that reverses signs of aging naturally and that is completely safe and effective 
+is<br>on sale for a limited time!  Buy a two-month supply of our product and we will give you one month free!
+<br><br>
+All natural H_G_H Enhancer will help you with all of the following:
+<br><br>
+- Reduce body fat and build muscle<br>
+- Enrich your sex life<br>
+- Help remove cellulite and wrinkles<br>
+- Sleep better, improve vision and memory<br>
+- Restore hair growth and color<br>
+- Strengthen your immune system<br>
+- Have more energy<br>
+- Turn back time on your body's biological clock up to twenty years with just six months of use!<br><br>
+
+*** IF YOU ARE NOT COMPLETELY SATISFIED WITH OUR PRODUCT WE WILL REFUND YOU YOUR MONEY, NO QUESTIONS ASKED ***
+<br><br>
+<a href="http://www.betterhealth.bz/human/index.php?show=main&id=236">Click here</a> to view our site or paste
+<br><br>
+http://www.betterhealth.bz/human/index.php?show=main&id=236 into your web browser
+<br>
+
+
+------=_NextPart_000_2F1CA59F_41CC89DB786D2302.E67711C2F9DC544--
+
 
 
 -------------------------------------------------------
