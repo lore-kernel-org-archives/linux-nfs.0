@@ -1,28 +1,28 @@
 From: Chip Salzenberg <chip@pobox.com>
-Subject: [pme@devphil.com: Bug#239158: Strange exportfs problems, fantastically unhelpful error message]
-Date: Sun, 21 Mar 2004 10:35:15 -0500
+Subject: [sdg@dir.bg: Bug#239230: nfs-kernel-server: exportfs fails to export a dir with a ``#'' (pound sign) in name even when ``#'' is given as \043]
+Date: Sun, 21 Mar 2004 12:13:25 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040321153515.GW29237@perlsupport.com>
+Message-ID: <20040321171325.GX29237@perlsupport.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B54z9-0006GD-IF
-	for nfs@lists.sourceforge.net; Sun, 21 Mar 2004 07:35:35 -0800
+	id 1B56W7-00082G-Bz
+	for nfs@lists.sourceforge.net; Sun, 21 Mar 2004 09:13:43 -0800
 Received: from topaz.cx
 	([66.220.6.227] helo=mail.topaz.cx ident=mail)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.30)
-	id 1B54z3-0007Wm-Vv
-	for nfs@lists.sourceforge.net; Sun, 21 Mar 2004 07:35:30 -0800
+	id 1B56W6-00048R-OQ
+	for nfs@lists.sourceforge.net; Sun, 21 Mar 2004 09:13:42 -0800
 Received: from home.topaz.cx ([66.58.78.58] helo=tytlal)
 	by mail.perlsupport.com with asmtp (Exim 3.35 #1 (Debian))
-	id 1B54z1-0003wh-00
-	for <nfs@lists.sourceforge.net>; Sun, 21 Mar 2004 07:35:27 -0800
+	id 1B56W3-0004At-00
+	for <nfs@lists.sourceforge.net>; Sun, 21 Mar 2004 09:13:40 -0800
 Received: from chip by tytlal with local (Exim 4.30)
-	id 1B54yp-000420-35
-	for nfs@lists.sourceforge.net; Sun, 21 Mar 2004 10:35:15 -0500
+	id 1B56Vp-0004QH-Tz
+	for nfs@lists.sourceforge.net; Sun, 21 Mar 2004 12:13:25 -0500
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,61 +36,76 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This Debian bug report includes an exportfs problem which I suspect is
-due to one export tree under the other, and an error message complaint
-which I think is justified....
+This is an interesting one.  I hope the bug is entirely in user space....
 
------ Forwarded message from Phil Edwards <pme@devphil.com> -----
+----- Forwarded message from Stoyan Genov <sdg@dir.bg> -----
 
-Subject: Bug#239158: Strange exportfs problems, fantastically unhelpful error message
-From: Phil Edwards <pme@devphil.com>
+Subject: Bug#239230: nfs-kernel-server: exportfs fails to export a dir with a ``#'' (pound sign) in name even when ``#'' is given as \043
+From: Stoyan Genov <sdg@dir.bg>
 To: Debian Bug Tracking System <submit@bugs.debian.org>
-Date: Sun, 21 Mar 2004 00:37:43 -0500
+Date: Sun, 21 Mar 2004 18:54:14 -0500
+X-Mailer: reportbug 2.48
 
 Package: nfs-kernel-server
 Version: 1:1.0.6-1
 Severity: normal
 
-    [~]# cat /etc/exports
-    /usr/local      fenric(ro,async) hreidmar(ro,async)
-    /home           fenric(rw,sync) hreidmar(rw,sync)
-    [~]# exportfs -v -r
-    exporting hreidmar:/usr/local
-    exporting fenric:/usr/local
-    exporting hreidmar:/home
-    exporting fenric:/home
-    exporting hreidmar:/usr/local to kernel
-    hreidmar:/usr/local: Invalid argument
-    exporting fenric:/usr/local to kernel
-    fenric:/usr/local: Invalid argument
-    reexporting hreidmar:/home to kernel
-    reexporting fenric:/home to kernel
-    [~]#
+According to exports(5):
+[snip]
+	Blank  lines  are  ignored.  A pound sign ("#") introduces a comment to
+	the end of the line. Entries may be continued across newlines  using  a
+	backslash.  If an export name contains spaces it should be quoted using
+	double quotes. You can also specify spaces or other  unusual  character
+	in  the export name using a backslash followed by the character code as
+	three octal digits.
+[snip]
 
-I have no idea why the export fails.  If either line is commented, then
-the export succeeds; presumably that's strong evidence of /something/,
-but I don't know the nfs-kernel-server code at all and so can't say what.
+However:
 
-My real complaint is that "Invalid argument" doesn't tell me a damn thing,
-so I have no idea what to try next.
+fin-rst:~# uname -a
+Linux fin-rst 2.6.3-1-686 #2 Tue Feb 24 20:24:38 EST 2004 i686 GNU/Linux
+fin-rst:~# ls -ld '/weird-dir-#'
+drwxr-xr-x    2 root     root           48 Mar 20 20:21 /weird-dir-#
+fin-rst:~# grep -v '^#' /etc/exports
+/weird-dir-\043 *(ro)
+fin-rst:~# exportfs -r
+exportfs: /etc/exports [4]: No 'sync' or 'async' option specified for export "*:/weird-dir-#".
+  Assuming default behaviour ('sync').
+  NOTE: this default has changed from previous versions
+
+fin-rst:~# showmount -e localhost
+Export list for localhost:
+/weird-dir- (everyone)
+           ^
+-----------| note that the # is missing
+
+fin-rst:~# mount 'localhost:/weird-dir-#' /mnt
+mount: localhost:/weird-dir-# failed, reason given by server: Permission denied
+
+In my humble opinion, either the documentation must be fixed to
+explicitly state you cannot export a directory with a pound sign in its
+name, or the parser of /etc/exports be fixed ( latter is better :-) )
+
+Best Regards,
+Stoyan Genov
 
 
 -- System Information:
 Debian Release: testing/unstable
-Architecture: i386
-Kernel: Linux fenric 2.4.22-fenric3 #1 SMP Sun Oct 12 00:45:53 EDT 2003 i686
+  APT prefers testing
+  APT policy: (500, 'testing')
+Architecture: i386 (i686)
+Kernel: Linux 2.6.3-1-686
 Locale: LANG=C, LC_CTYPE=C
 
 Versions of packages nfs-kernel-server depends on:
-ii  debconf                     1.4.7        Debian configuration management sy
+ii  debconf                     1.4.16       Debian configuration management sy
 ii  libc6                       2.3.2.ds1-11 GNU C Library: Shared libraries an
 ii  libwrap0                    7.6-ipv6.1-3 Wietse Venema's TCP wrappers libra
 ii  nfs-common                  1:1.0.6-1    NFS support files common to client
 ii  sysvinit                    2.85-9       System-V like init.
 
--- debconf information:
-  nfs-kernel-server/sync-default: 
-  nfs-kernel-server/tcpwrappers-mountd: 
+-- debconf information excluded
 
 
 
