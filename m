@@ -1,24 +1,24 @@
-From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: binaries becoming corrupt on nfs
-Date: Mon, 14 Mar 2005 14:43:53 -0700 (MST)
-Message-ID: <Pine.LNX.4.60.0503141440310.4702@harp.ngdc.noaa.gov>
+Date: Mon, 14 Mar 2005 16:47:36 -0500
+Message-ID: <1110836857.24466.4.camel@lade.trondhjem.org>
 References: <Pine.LNX.4.60.0503141414590.4702@harp.ngdc.noaa.gov>
- <20050314213513.GL32463@hmsendeavour.rdu.redhat.com>
-Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+	 <1110835899.19295.42.camel@lade.trondhjem.org>
+	 <Pine.LNX.4.60.0503141434390.4702@harp.ngdc.noaa.gov>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DAxM0-0002PQ-9N
-	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 13:44:00 -0800
-Received: from harp.ngdc.noaa.gov ([140.172.178.33])
+	id 1DAxPi-0002aF-Vh
+	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 13:47:50 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1DAxLy-0002pX-Rb
-	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 13:44:00 -0800
-To: nhorman@redhat.com
-In-Reply-To: <20050314213513.GL32463@hmsendeavour.rdu.redhat.com>
+	id 1DAxPh-00038C-8n
+	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 13:47:50 -0800
+To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+In-Reply-To: <Pine.LNX.4.60.0503141434390.4702@harp.ngdc.noaa.gov>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,59 +32,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, 14 Mar 2005 nhorman@redhat.com wrote:
+m=E5 den 14.03.2005 Klokka 14:40 (-0700) skreiv Ara.T.Howard:
 
-> On Mon, Mar 14, 2005 at 02:25:30PM -0700, Ara.T.Howard wrote:
->>
->> we are seeing some really bizarre strange behaviour on our nfs systems.
->> essentially a system will hum along nicely, running binaries from our nfs
->> server without issue.  for no apparent reason these binaries suddenly become
->> corrupt on the client side and stop working.  running md5sum on the affected
->> binary on a 'good' host and a 'bad' one shows them to, in fact, be
->> different.
->>
->> doing and unmount and remount fixes the issue.  obviously so does a reboot.
->> both are temporary fixes though - eventually a node will start getting
->> corrupt
->> binaries - or perhaps not.
->>
->> the server is not under undue stress as it serves only code and no data
->> traffic is hitting it (we use vsftp to move data around).  none of the
->> machines seems to logging any errors - server nor client.  all of our
->> systems
->> are the same:
->>
->>   ~ > uname -srm
->>   Linux 2.4.21-27.0.2.EL i686
->>
->>   ~ > cat /etc/redhat-release
->>   Red Hat Enterprise Linux WS release 3 (Taroon Update 4)
->>
+> > Do you perhaps have some cronjob or something that is updating the bina=
+ries
+> > on the server?
+>=20
+> absolutely nothing.  bear in mind we are not seeing stale file handles - =
+the
+> binaries are truely corrupt.  very, very weird things will happen:
 
-> If you're only serving code can you try mounting the share Read Only from
-> all your clients?
 
-well - almost only code.  sometimes we have a little sqlite database which is
-being used as a job queue and this is being written to.  it's not at the
-moment however so we could try this in the short term for testing...
+That was why I asked. If you update the binaries by copying into them
+(not renaming + creating new file), then strange things will happen: you
+will not see ESTALE, but you will usually see cache corruption.
 
-one other tidbit.  last week i froze one of our boxes a few times in a row by
-simply do a compile in an nfs mounted directory (writing lots of files).  i
-could reproduce this at will - but on no other boxes that i tested.  now that
-i see that boxes are failing randomly i think i should have tested this on
-more boxes - i only tried two - but it's pain because it causes the box to
-hang on any operation related to nfs and then needs rebooted....
+The obvious and easy way to detect if this is the case, is to look at
+the ctime on the file in question.
 
-cheers.
+>    * maybe the binaries core dump on startup
+>    * maybe it runs, but errors in strange ways
+>    * maybe it runs, but core dumps
+>    * sometimes it can be loaded into a debugger - sometimes not
 
--a
--- 
-===============================================================================
-| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
-| PHONE   :: 303.497.6469
-| When you do something, you should burn yourself completely, like a good
-| bonfire, leaving no trace of yourself.  --Shunryu Suzuki
-===============================================================================
+Have you looked at a hexdump of bad copy vs. good copy and done a diff?
+
+Cheers,
+  Trond
+--=20
+Trond Myklebust <trond.myklebust@fys.uio.no>
+
 
 
 -------------------------------------------------------
