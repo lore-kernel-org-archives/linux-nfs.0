@@ -1,26 +1,20 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: why do i get "Stale NFS file handle" for hours?
-Date: Sun, 05 Sep 2004 16:10:06 -0400
+From: Frank van Maarseveen <frankvm@xs4all.nl>
+Subject: userspace NFS daemon
+Date: Sun, 5 Sep 2004 23:09:02 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1094415006.8081.6.camel@lade.trondhjem.org>
-References: <chdp06$e56$1@sea.gmane.org>
-	 <1094348385.13791.119.camel@lade.trondhjem.org>  <413A7119.2090709@upb.de>
-	 <1094349744.13791.128.camel@lade.trondhjem.org>  <413A789C.9000501@upb.de>
-	 <1094353267.13791.156.camel@lade.trondhjem.org>  <413B121B.2070101@upb.de>
+Message-ID: <20040905210902.GA29182@janus>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C43LA-0003Qd-Ns
-	for nfs@lists.sourceforge.net; Sun, 05 Sep 2004 13:10:20 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 1C44G4-0004Mr-9i
+	for nfs@lists.sourceforge.net; Sun, 05 Sep 2004 14:09:08 -0700
+Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1C43L8-0004qQ-0k
-	for nfs@lists.sourceforge.net; Sun, 05 Sep 2004 13:10:20 -0700
-To: Sven =?ISO-8859-1?Q?K=F6hler?= <skoehler@upb.de>
-In-Reply-To: <413B121B.2070101@upb.de>
+	id 1C44G2-0003VH-4u
+	for nfs@lists.sourceforge.net; Sun, 05 Sep 2004 14:09:07 -0700
+To: Linux NFS mailing list <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,18 +27,13 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 su , 05/09/2004 klokka 09:18, skreiv Sven K=F6hler:
+Isn't this one completely obsolete?
 
-> So there should be a filesystem mounted to /proc/fs/nfsd? This isn't the=20
-> case on my machine. Should the init-script do a simple "mount -t nfsd=20
-> none /proc/fs/nfsd"? Than this would be a Bug of my distribution (Gentoo)=
-.
+So maybe we could drop sys_setfsuid() and sys_setfsgid() if those calls
+have no other use then for running unfsd as root?
 
-Yes... See the manpage for "exportfs".
-
-Cheers,
-  Trond
-
+-- 
+Frank
 
 
 -------------------------------------------------------
