@@ -1,90 +1,263 @@
-From: "Heflin, Roger A." <Roger.A.Heflin@conoco.com>
-Subject: 2.4.19 NFSALL performance oddity
-Date: Fri, 4 Oct 2002 16:45:14 -0500
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <5CA6F03EF05E0046AC5594562398B91653B9C0@poexmb3.conoco.net>
+From: Chuck Lever <cel@citi.umich.edu>
+Subject: [PATCH] remove page_index() from NFS client
+Date: Fri, 4 Oct 2002 18:14:40 -0400 (EDT)
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <Pine.LNX.4.44.0210041810310.8094-100000@dexter.citi.umich.edu>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from usamail1.conoco.com ([12.31.208.226])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17xaG5-0004S7-00
-	for <nfs@lists.sourceforge.net>; Fri, 04 Oct 2002 14:45:17 -0700
-To: <nfs@lists.sourceforge.net>
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	Linux NFS List <nfs@lists.sourceforge.net>
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
+To: Linus Torvalds <torvalds@transmeta.com>
+List-ID: <nfs.lists.sourceforge.net>
+
+hi Linus-
+
+this patch is a pre-requisite for NFS direct I/O support, and prepares the 
+NFS client for dealing with I/O directly into anonymously mapped pages.  
+please apply this to 2.5.40.
+
+this patch removes direct dependencies on page->index from underlying
+support functions in the NFS client.  the page index value is now copied
+out of the page struct when I/O is initiated.
+
+trond recommended this approach, and has seen, and blessed, this patch.
 
 
-I am running some tests using 2.4.19 with all posted nfs patchs, =
-everything is
-being run sync.   All runs are with NFS3 over UDP.
+diff -drN -U2 06-odirect1/fs/nfs/file.c 07-odirect2/fs/nfs/file.c
+--- 06-odirect1/fs/nfs/file.c	Tue Oct  1 03:07:10 2002
++++ 07-odirect2/fs/nfs/file.c	Fri Oct  4 15:28:35 2002
+@@ -177,5 +177,5 @@
+ 	struct address_space *mapping;
+ 	struct inode	*inode;
+-	unsigned long	index = page_index(page);
++	unsigned long	index = page->index;
+ 	unsigned int	rpages;
+ 	int		result;
+diff -drN -U2 06-odirect1/fs/nfs/pagelist.c 07-odirect2/fs/nfs/pagelist.c
+--- 06-odirect1/fs/nfs/pagelist.c	Tue Oct  1 03:06:30 2002
++++ 07-odirect2/fs/nfs/pagelist.c	Fri Oct  4 15:28:35 2002
+@@ -104,4 +104,5 @@
+ 	 * update_nfs_request below if the region is not locked. */
+ 	req->wb_page    = page;
++	req->wb_index	= page->index;
+ 	page_cache_get(page);
+ 	req->wb_offset  = offset;
+@@ -189,5 +190,4 @@
+ {
+ 	struct list_head *pos;
+-	unsigned long pg_idx = page_index(req->wb_page);
+ 
+ #ifdef NFS_PARANOIA
+@@ -199,5 +199,5 @@
+ 	list_for_each_prev(pos, head) {
+ 		struct nfs_page	*p = nfs_list_entry(pos);
+-		if (page_index(p->wb_page) < pg_idx)
++		if (p->wb_index < req->wb_index)
+ 			break;
+ 	}
+@@ -248,5 +248,5 @@
+ 			if (req->wb_cred != prev->wb_cred)
+ 				break;
+-			if (page_index(req->wb_page) != page_index(prev->wb_page)+1)
++			if (req->wb_index != (prev->wb_index + 1))
+ 				break;
+ 
+@@ -281,5 +281,5 @@
+ 	struct list_head *pos, *head = req->wb_list_head;
+ 	struct rpc_cred *cred = req->wb_cred;
+-	unsigned long idx = page_index(req->wb_page) + 1;
++	unsigned long idx = req->wb_index + 1;
+ 	int npages = 0;
+ 
+@@ -297,5 +297,5 @@
+ 			break;
+ 		req = nfs_list_entry(pos);
+-		if (page_index(req->wb_page) != idx++)
++		if (req->wb_index != idx++)
+ 			break;
+ 		if (req->wb_offset != 0)
+@@ -394,5 +394,4 @@
+ 
+ 	list_for_each_safe(pos, tmp, head) {
+-		unsigned long pg_idx;
+ 
+ 		req = nfs_list_entry(pos);
+@@ -401,8 +400,7 @@
+ 			continue;
+ 
+-		pg_idx = page_index(req->wb_page);
+-		if (pg_idx < idx_start)
++		if (req->wb_index < idx_start)
+ 			continue;
+-		if (pg_idx > idx_end)
++		if (req->wb_index > idx_end)
+ 			break;
+ 
+diff -drN -U2 06-odirect1/fs/nfs/read.c 07-odirect2/fs/nfs/read.c
+--- 06-odirect1/fs/nfs/read.c	Tue Oct  1 03:05:46 2002
++++ 07-odirect2/fs/nfs/read.c	Fri Oct  4 15:28:35 2002
+@@ -180,5 +180,5 @@
+ 
+ 	if (nfsi->nread >= NFS_SERVER(inode)->rpages ||
+-	    page_index(page) == (inode->i_size + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT)
++	    page->index == (inode->i_size + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT)
+ 		nfs_pagein_inode(inode, 0, 0);
+ 	return 0;
+@@ -208,5 +208,5 @@
+ 	data->cred	  = req->wb_cred;
+ 	data->args.fh     = NFS_FH(req->wb_inode);
+-	data->args.offset = page_offset(req->wb_page) + req->wb_offset;
++	data->args.offset = req_offset(req) + req->wb_offset;
+ 	data->args.pgbase = req->wb_offset;
+ 	data->args.count  = count;
+@@ -442,5 +442,5 @@
+                         (long long)NFS_FILEID(req->wb_inode),
+                         req->wb_bytes,
+-                        (long long)(page_offset(page) + req->wb_offset));
++                        (long long)(req_offset(req) + req->wb_offset));
+ 		nfs_clear_request(req);
+ 		nfs_release_request(req);
+diff -drN -U2 06-odirect1/fs/nfs/write.c 07-odirect2/fs/nfs/write.c
+--- 06-odirect1/fs/nfs/write.c	Tue Oct  1 03:07:34 2002
++++ 07-odirect2/fs/nfs/write.c	Fri Oct  4 15:28:35 2002
+@@ -292,5 +292,5 @@
+ 		return 0;
+ 
+-	rqstart = page_offset(req->wb_page) + req->wb_offset;
++	rqstart = req_offset(req) + req->wb_offset;
+ 	rqend = rqstart + req->wb_bytes;
+ 	for (fl = inode->i_flock; fl; fl = fl->fl_next) {
+@@ -358,5 +358,5 @@
+  */
+ static inline struct nfs_page *
+-_nfs_find_request(struct inode *inode, struct page *page)
++_nfs_find_request(struct inode *inode, unsigned long index)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+@@ -368,5 +368,5 @@
+ 		struct nfs_page *req = nfs_inode_wb_entry(next);
+ 		next = next->next;
+-		if (page_index(req->wb_page) != page_index(page))
++		if (req->wb_index != index)
+ 			continue;
+ 		req->wb_count++;
+@@ -377,10 +377,10 @@
+ 
+ static struct nfs_page *
+-nfs_find_request(struct inode *inode, struct page *page)
++nfs_find_request(struct inode *inode, unsigned long index)
+ {
+ 	struct nfs_page		*req;
+ 
+ 	spin_lock(&nfs_wreq_lock);
+-	req = _nfs_find_request(inode, page);
++	req = _nfs_find_request(inode, index);
+ 	spin_unlock(&nfs_wreq_lock);
+ 	return req;
+@@ -458,5 +458,4 @@
+ 	p = head->next;
+ 	while (p != head) {
+-		unsigned long pg_idx;
+ 		struct nfs_page *req = nfs_inode_wb_entry(p);
+ 
+@@ -466,6 +465,5 @@
+ 			continue;
+ 
+-		pg_idx = page_index(req->wb_page);
+-		if (pg_idx < idx_start || pg_idx > idx_end)
++		if (req->wb_index < idx_start || req->wb_index > idx_end)
+ 			continue;
+ 
+@@ -655,5 +653,5 @@
+ 		 */
+ 		spin_lock(&nfs_wreq_lock);
+-		req = _nfs_find_request(inode, page);
++		req = _nfs_find_request(inode, page->index);
+ 		if (req) {
+ 			if (!nfs_lock_request_dontget(req)) {
+@@ -777,5 +775,5 @@
+ 	 * dropped page.
+ 	 */
+-	req = nfs_find_request(inode,page);
++	req = nfs_find_request(inode, page->index);
+ 	if (req) {
+ 		if (req->wb_file != file || req->wb_cred != cred || req->wb_page != page)
+@@ -885,5 +883,5 @@
+ 	data->cred = req->wb_cred;
+ 	data->args.fh     = NFS_FH(req->wb_inode);
+-	data->args.offset = page_offset(req->wb_page) + req->wb_offset;
++	data->args.offset = req_offset(req) + req->wb_offset;
+ 	data->args.pgbase = req->wb_offset;
+ 	data->args.count  = count;
+@@ -1073,5 +1071,5 @@
+ 			(long long)NFS_FILEID(req->wb_inode),
+ 			req->wb_bytes,
+-			(long long)(page_offset(page) + req->wb_offset));
++			(long long)(req_offset(req) + req->wb_offset));
+ 
+ 		if (task->tk_status < 0) {
+@@ -1127,6 +1125,6 @@
+ 	 * We rely on the fact that data->pages is an ordered list...
+ 	 */
+-	start = page_offset(first->wb_page) + first->wb_offset;
+-	end = page_offset(last->wb_page) + (last->wb_offset + last->wb_bytes);
++	start = req_offset(first) + first->wb_offset;
++	end = req_offset(last) + (last->wb_offset + last->wb_bytes);
+ 	len = end - start;
+ 	/* If 'len' is not a 32-bit quantity, pass '0' in the COMMIT call */
+@@ -1225,5 +1223,5 @@
+ 			(long long)NFS_FILEID(req->wb_inode),
+ 			req->wb_bytes,
+-			(long long)(page_offset(req->wb_page) + req->wb_offset));
++			(long long)(req_offset(req) + req->wb_offset));
+ 		if (task->tk_status < 0) {
+ 			if (req->wb_file)
+diff -drN -U2 06-odirect1/include/linux/nfs_fs.h 07-odirect2/include/linux/nfs_fs.h
+--- 06-odirect1/include/linux/nfs_fs.h	Fri Oct  4 15:23:13 2002
++++ 07-odirect2/include/linux/nfs_fs.h	Fri Oct  4 15:28:35 2002
+@@ -26,4 +26,5 @@
+ #include <linux/nfs2.h>
+ #include <linux/nfs3.h>
++#include <linux/nfs_page.h>
+ #include <linux/nfs_xdr.h>
+ 
+@@ -240,11 +241,11 @@
+ loff_t page_offset(struct page *page)
+ {
+-	return ((loff_t)page->index) << PAGE_CACHE_SHIFT;
++	return ((loff_t) page->index) << PAGE_CACHE_SHIFT;
+ }
+ 
+ static inline
+-unsigned long page_index(struct page *page)
++loff_t req_offset(struct nfs_page *req)
+ {
+-	return page->index;
++	return ((loff_t) req->wb_index) << PAGE_CACHE_SHIFT;
+ }
+ 
+@@ -361,5 +362,6 @@
+ nfs_wb_page(struct inode *inode, struct page* page)
+ {
+-	int error = nfs_sync_file(inode, 0, page_index(page), 1, FLUSH_WAIT | FLUSH_STABLE);
++	int error = nfs_sync_file(inode, 0, page->index, 1,
++						FLUSH_WAIT | FLUSH_STABLE);
+ 	return (error < 0) ? error : 0;
+ }
+diff -drN -U2 06-odirect1/include/linux/nfs_page.h 07-odirect2/include/linux/nfs_page.h
+--- 06-odirect1/include/linux/nfs_page.h	Tue Oct  1 03:06:17 2002
++++ 07-odirect2/include/linux/nfs_page.h	Fri Oct  4 15:28:35 2002
+@@ -34,5 +34,6 @@
+ 	wait_queue_head_t	wb_wait;	/* wait queue */
+ 	unsigned long		wb_timeout;	/* when to read/write/commit */
+-	unsigned int		wb_offset,	/* Offset of read/write */
++	unsigned long		wb_index;	/* Offset within mapping */
++	unsigned int		wb_offset,	/* Offset within page */
+ 				wb_bytes,	/* Length of request */
+ 				wb_count;	/* reference count */
 
-I have noticed that the IO rates (writes) start slowly (about =
-1.5MB/second) and
-slowly build up to a peak of 2.5MB/second over several minutes, with the
-test averaging 2.32 MB/second over a 2GB file write.  This is=20
-with a server with Gigabit copper and the client with 100BT ethernet.  =20
-No packets are being lost from what I can tell, on either the server or=20
-the client, both machines are dual cpu with 2GB of ram and otherwise=20
-unloaded.
+-- 
 
-The 2.2.19 client (with almost no NFS patches) runs about 3.98MB/second =
-over
-a 2GB file write, against the same 2.4.19 NFS server, and hits that rate =
-
-almost immediately.
-
-Using an older 2.4.19 NFS server (that I don't believe has any extra NFS
-patches) gets a rate of 6.50 average over a 2GB file from
-a 2.2.19 client and gets 2.00  MB/second average from one of the
-original 2.4 test clients.
-
-Both rsize and wsize are 8192, I have tried it with 32768 on at least
-the 2.4 client side, but it does not appear to affect the above results.
-I am tried with 32 and 64 nfsd and this did not appear to change
-any of the results.   The rmem/wmem parameters have been upped
-to 256K and did not appear to make any difference on the server.
-
-The disk is locally capable of 20MB/second writes over a 4GB file, using
-the same test as was used above.
-
-Is there a way to make the IO start fast and stay fast?   What code =
-could
-I look at to see if I can affect the way this works?   Any parameters =
-that
-I could try changing that might improve things?
-
-It appears to partially be client issue since the 2.2.19 NFS client is =
-noticeably
-faster, but since the older 2.4.19 server and the 2.2.19 client is even =
-faster it
-appears to also be a server issue.
-
-So in summary:
-
-2.2.19 -> 2.4.19 no patches -> 6.5MB/second
-2.4.19nfsall -> 2.4.19 no patches ->  2.00 MB/second
-2.2.19 -> 2.4.19 nfsall patch -> 3.98MB/second
-2.4.19nfsall -> 2.4.19 nfsall patch -> 2.32 MB/second
-
-
-				Roger
-
-
--------------------------------------------------------
-This sf.net email is sponsored by:ThinkGeek
-Welcome to geek heaven.
-http://thinkgeek.com/sf
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+corporate:	<cel at netapp dot com>
+personal:	<chucklever at bigfoot dot com>
