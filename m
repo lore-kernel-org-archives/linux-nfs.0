@@ -1,22 +1,15 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Move (mv) hangs with NFSv4
-Date: Sat, 12 Mar 2005 13:51:20 -0500
-Message-ID: <20050312185119.GA1064@fieldses.org>
-References: <41B0A79A.2010203@drzeus.cx> <1102097931.10878.21.camel@lade.trondhjem.org> <20041207155227.GG31250@fieldses.org> <41B61C89.2060000@drzeus.cx> <20041207211715.GQ31250@fieldses.org> <41B6E933.4090708@drzeus.cx> <41D84216.9060504@drzeus.cx>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [CHECKER] inconsistent NFS stat cache (NFS on ext3, 2.6.11)
+Date: Sun, 13 Mar 2005 00:04:27 -0500
+Message-ID: <1110690267.24123.7.camel@lade.trondhjem.org>
+References: <Pine.GSO.4.44.0503120335160.12085-100000@elaine24.Stanford.EDU>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DABhQ-0002w5-T9
-	for nfs@lists.sourceforge.net; Sat, 12 Mar 2005 10:50:56 -0800
-Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1DABhP-0001H1-Ej
-	for nfs@lists.sourceforge.net; Sat, 12 Mar 2005 10:50:56 -0800
-To: Pierre Ossman <drzeus-list@drzeus.cx>
-In-Reply-To: <41D84216.9060504@drzeus.cx>
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	ext2-devel@lists.sourceforge.net, mc@cs.Stanford.EDU
+To: Junfeng Yang <yjf@stanford.edu>
+In-Reply-To: <Pine.GSO.4.44.0503120335160.12085-100000@elaine24.Stanford.EDU>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,33 +23,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sun, Jan 02, 2005 at 07:48:54PM +0100, Pierre Ossman wrote:
-> >J. Bruce Fields wrote:
-> >>Thanks.  It's a problem with the idmapping on the server, argh.  Is
-> >>rpc.idmapd still running after this, or does it die?--b.
-> >> 
-> >>
-> >It's still running. The effect is only local to the mv process. Other 
-> >traffic to the same mount continue to work perfectly.  There has been a 
-> >few incidents where the entire mount hangs. But in these cases I have to 
-> >restart the client, not the server.
-> >
-> >Can I get some debug output from idmapd that will pinpoint where the 
-> >problem is?
-> >
+lau den 12.03.2005 Klokka 03:56 (-0800) skreiv Junfeng Yang:
+> Hi,
 > 
-> Any updates to this issue?
+> We checked NFS on top of ext3 using FiSC (our file system model checker)
+> and found a case where NFS stat cache can contain inconsistent entries.
+> 
+> Basically, to trigger this inconsistency, just do the following steps:
+> 1. create a file A1, write a few bytes to it, so A1 is 4 words
+> 2. create a hard link A2, pointing to A1
+> 3. stat on A2. A2's size is 4 words
+> 4. truncate A1 to a larger size, write a few bytes at the end. now it's
+> 1031 words.
+> 5. stat on A2. it's size is still 4 words, which should be 1031 words
+> 
+> We have a test case to re-create this warning.  You can download it at
+> http://fisc.stanford.edu/bug16/crash.c.  It includes some sudo commands
+> to mount nfs partitions, which you might want to change according to your
+> local settings.
+> 
+> cat /etc/exports shows:
+> /mnt/sbd0-export          localhost(rw,sync)
+> /mnt/sbd1-export          localhost(rw,sync)
+> 
+> Let me know if you have any problems reproducing the warning. We'd
+> appreciate any confirmations/clarifications.
+> 
 
-Sorry for the overly long delay on the response.  Cleaning out my inbox
-prompted me to look back at this issue.  I did find one bug in the ACL
-code which could cause a "mv" with the target on an NFSv4 partition to
-fail.  Other than that I can't reproduce any problems with move.
+This is a known problem. Turn off the (default - grrr) subtree checking
+export option on the server, and it will all work properly. The subtree
+checking option violates the NFS standards for filehandle generation in
+so many ways, that it isn't even funny.
 
-It's possible we've fixed something since the beginning of the year, or
-it's possible something else is going on.  If you get the chance to
-retest with our latest patches, let me know.
+Cheers,
+  Trond
 
---b.
+-- 
+Trond Myklebust <trond.myklebust@fys.uio.no>
+
 
 
 -------------------------------------------------------
