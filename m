@@ -1,9 +1,9 @@
 From: Juergen Sauer <jojo@automatix.de>
 Subject: Re: XFS NFS Fileserver, kernel: nfs: server server not responding, still trying
-Date: Sat, 8 Nov 2003 09:46:19 +0100
+Date: Sat, 8 Nov 2003 09:42:30 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200311080946.19910.jojo@automatix.de>
-References: <482A3FA0050D21419C269D13989C6113020AC67A@lavender-fe.eng.netapp.com>
+Message-ID: <200311080942.38726.jojo@automatix.de>
+References: <Pine.LNX.4.44.0311071830050.25909-100000@kenzo.iwr.uni-heidelberg.de>
 Mime-Version: 1.0
 Content-Type: Text/Plain;
   charset="iso-8859-15"
@@ -12,17 +12,17 @@ Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AIOrP-0008Px-00
+	id 1AIOrP-0008Pw-00
 	for <nfs@lists.sourceforge.net>; Sat, 08 Nov 2003 00:54:23 -0800
 Received: from 237.230.131.213.rev.inetbone.net ([213.131.230.237] helo=mail.automatix.de)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AIOrP-00079E-2O
+	id 1AIOrP-00079D-04
 	for nfs@lists.sourceforge.net; Sat, 08 Nov 2003 00:54:23 -0800
 Received: from uucp by mail.automatix.de with local-bsmtp (Exim 3.35 #1)
-	id 1AIOrN-0007G9-00
+	id 1AIOrN-0007G5-00
 	for nfs@lists.sourceforge.net; Sat, 08 Nov 2003 09:54:21 +0100
-To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: <482A3FA0050D21419C269D13989C6113020AC67A@lavender-fe.eng.netapp.com>
+To: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
+In-Reply-To: <Pine.LNX.4.44.0311071830050.25909-100000@kenzo.iwr.uni-heidelberg.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -38,17 +38,29 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 =2D----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
-Am Freitag, 7. November 2003 19:01 schrieb Lever, Charles:
-> have you tried with NFS over TCP?  you may have a
-> network problem which prevents NFS over UDP from
-> working efficiently.
-Not yet.
-In Server/Client-Kernel 2.4.20-xfs was all fine,
-In 2.4.22-xfs on the Server and on the Client the horror began.
+Am Freitag, 7. November 2003 18:34 schrieb Bogdan Costescu:
+> On Fri, 7 Nov 2003, Juergen Sauer wrote:
+=20
+> > calls      retrans    authrefrsh
+> > 1483912    21137      0
+> > ...
+> > calls      retrans    authrefrsh
+> > 1752966    23343      0
+=20
+> The number of "retrans" is pretty high...
+That's it. ;-<
+=20
+> > ...rsize=3D32768,wsize=3D32768...
+I moved to lower and higher values. Including 8192, 4096, 1024
 
-On the Client 2.4.22-xfs is nessesary because of Hardware forced.
-The Server is already back on 2.4.20-xfs, like in other posts on the
-List described.
+> ... and I think that this is the problem. Try lowering the sizes to=20
+> something more closely matched to the network that you are using, like 8k=
+=20
+> or even lower. Although you said that you followed the NFS FAQ ???
+Yepp, I did the posting after the behavior changed dramatically in
+2.4.22-xfs against 2.4.20-xfs.
+
+Thanks so far.
 
 mfG
 	J=FCrgen
@@ -60,9 +72,9 @@ J=FCrgen Sauer - AutomatiX GmbH, +49-4209-4699, jojo@automatix.de **
 =2D----BEGIN PGP SIGNATURE-----
 Version: GnuPG v1.2.2 (GNU/Linux)
 
-iD8DBQE/rK1bW7UKI9EqarERAk2CAJ0U6S8uLo4ezShPBtix50VZhUxtHQCg0doh
-6CW2mjJfZuopNUHo+Obt7WQ=3D
-=3DhKG5
+iD8DBQE/rKx+W7UKI9EqarERAmMRAJ4/6UAWEYKv8uBlg1fJvHm7ke6WjgCgyasV
+IqQbGyhZssyB+t/Ih+1s3HQ=3D
+=3DVVtv
 =2D----END PGP SIGNATURE-----
 
 
