@@ -1,20 +1,18 @@
-From: "Heflin, Roger A." <Roger.A.Heflin@conocophillips.com>
-Subject: RE: nfs root directory security
-Date: Wed, 18 Jun 2003 10:34:20 -0500
+From: Sven Geggus <sven@geggus.net>
+Subject: 2.4.21 NFS client Freezes :(
+Date: Wed, 18 Jun 2003 15:42:39 +0000 (UTC)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <31B1521BD986E84E9D43651F8DF99BDC0134B417@POEXMB1.conoco.net>
-Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="US-ASCII"
-Cc: "Neil Brown" <neilb@cse.unsw.edu.au>, <nfs@lists.sourceforge.net>
+Message-ID: <bcq19f$onn$1@benzin.geggus.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mailman1.ppco.com ([138.32.33.10])
+Received: from benzin.geggus.net ([213.146.112.23] ident=foobar)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19Sf4m-0007CY-00
-	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 08:42:20 -0700
-To: "Scott Leerssen" <scott@leerssen.com>,
-   "Bogdan Costescu" <bogdan.costescu@iwr.uni-heidelberg.de>
+	id 19Sf5f-0007QX-00
+	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 08:43:15 -0700
+Received: from news by benzin.geggus.net with local
+	(Exim 4.20 id 19Sf55-0006ag-TX)
+	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 17:42:39 +0200
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,23 +25,29 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hi there,
 
+when trying to access NFS volumes on a Windows Server (yes, these beasts
+exist) my whole systems gets frozen (there are ping responces, but nothing  
+more).
+   
+This is however working fine with 2.4.20 and can be reproduced on any
+machine running 2.4.21!
+   
+The Server is a third Party tool called "NFS Maestro" from Hummingbird.
 
-And Scott, you have the DHCP table, write a simple script
-to take the info from the DHCP table and generate a proper
-exports file based on that info.=20
+Any hints on how to further debug this?
 
-You aren't doing two separate sets of the same information
-separately?   We usually have a original set of files with info
-in them (be that our own format, or the DHCP entries, or something
-else), and then have scripts to generate the system files,
-that would be used from that info, such as the DHCP and exports
-entries, so the correct information is only in one place and=20
-all others are derivitavies of that original source, this also reduces
-mistakes where you are manually adjusting the several sources
-and fail to keep everything consistant.
+The magic System request just told me that the ls command which caused the
+hang is in running state.
 
-				Roger
+Sven
+
+-- 
+"And I'm right.  I'm always right, but in this case I'm just a bit more
+right than I usually am." (Linus Torvalds, Sunday Aug 27, 2000)
+
+/me is giggls@ircnet, http://sven.gegg.us/ on the Web
 
 
 -------------------------------------------------------
