@@ -1,24 +1,24 @@
 From: Paul Clements <paul.clements@steeleye.com>
 Subject: Re: Re: [PATCH / RFC] nfs-utils: High Availability NFS
-Date: Tue, 31 Aug 2004 12:26:21 -0400
+Date: Tue, 31 Aug 2004 16:46:25 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <4134A6AD.1060502@steeleye.com>
-References: <4124DB86.9060505@steeleye.com>	<16677.22269.988036.787320@cse.unsw.edu.au>	<412E1C10.5020703@steeleye.com> <16692.8187.411591.69640@cse.unsw.edu.au>
+Message-ID: <4134E3A1.3060006@steeleye.com>
+References: <4124DB86.9060505@steeleye.com>	<16677.22269.988036.787320@cse.unsw.edu.au>	<412E1C10.5020703@steeleye.com> <16692.8187.411591.69640@cse.unsw.edu.au> <4134A6AD.1060502@steeleye.com>
 Mime-Version: 1.0
 Content-Type: multipart/mixed;
- boundary="------------080902000608000801090500"
+ boundary="------------030009050600000806070106"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C2BSu-0000bS-4A
-	for nfs@lists.sourceforge.net; Tue, 31 Aug 2004 09:26:36 -0700
+	id 1C2FWY-0001cr-V0
+	for nfs@lists.sourceforge.net; Tue, 31 Aug 2004 13:46:38 -0700
 Received: from stat16.steeleye.com ([209.192.50.48] helo=fenric.sc.steeleye.com)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1C2BSs-0000l8-V1
-	for nfs@lists.sourceforge.net; Tue, 31 Aug 2004 09:26:35 -0700
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
+	id 1C2FWX-0003aZ-Cg
+	for nfs@lists.sourceforge.net; Tue, 31 Aug 2004 13:46:38 -0700
 To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <16692.8187.411591.69640@cse.unsw.edu.au>
+In-Reply-To: <4134A6AD.1060502@steeleye.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,58 +32,67 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a multi-part message in MIME format.
---------------080902000608000801090500
+--------------030009050600000806070106
 Content-Type: text/plain; charset=us-ascii; format=flowed
 Content-Transfer-Encoding: 7bit
 
-Neil Brown wrote:
-> On Thursday August 26, paul.clements@steeleye.com wrote:
+Paul Clements wrote:
 
-> I'm mostly happy with this patch.
-> I'd like to ask for two changes before it gets committed.
-> 
-> First - update the relevant man pages to explain -H and SIGUSR1
-> usage. 
+> diff -purN --exclude-from /export/public/clemep/tmp/dontdiff nfs-utils-1.0.6-PRISTINE/support/include/ha-callout.h nfs-utils-1.0.6/support/include/ha-callout.h
+> --- nfs-utils-1.0.6-PRISTINE/support/include/ha-callout.h	1969-12-31 19:00:00.000000000 -0500
+> +++ nfs-utils-1.0.6/support/include/ha-callout.h	2004-08-31 10:31:18.000000000 -0400
+> @@ -0,0 +1,49 @@
+> +/*
+> + * support/include/ha-callout.h
+> + *
+> + * High Availability NFS Callout support routines
+> + *
+> + * Copyright (c) 2004, Paul Clements, SteelEye Technology
+> + *
+> + * In order to implement HA NFS, we need several callouts at key
+> + * points in statd and mountd. These callouts all come to ha_callout(),
+> + * which, in turn, calls out to an ha-callout script (not part of nfs-utils;
+> + * defined by -H argument to rpc.statd and rpc.mountd).
+> + */
+> +#ifndef HA_CALLOUT_H
+> +#define HA_CALLOUT_H
+> +
+> +#include <sys/wait.h>
+> +
+> +extern char *ha_callout_prog;
+> +
+> +static inline void
+> +ha_callout(char *event, char *arg1, char *arg2, int arg3)
+> +{
+> +	char buf[16]; /* should be plenty */
+> +	pid_t pid;
+> +	int ret = -1;
+> +
+> +	if (!ha_callout_prog) /* HA callout is not enabled */
+> +		return;
+> +
+> +	sprintf(buf, "%d", arg3);
+> +
+> +	pid = fork();
+> +	switch (pid) {
+> +		case 0: execl(ha_callout_prog, event, arg1, arg2, buf, NULL);
 
-OK, I've added sections to the mountd and statd man pages.
-
-> Second, I have a pathological aversion to "system(3)" for this sort
-> of task.  I start worrying about stray quotes and other magic
-> characters.
-> I would much prefer something like:
-> 
->   sprintf(buf, "%.8x" args3)
->   switch(pid=fork()) {
-> 	case 0: execl(ha_callout_prog,"callout",arg1,arg2,buf,NULL);
-> 		exit(1);
-> 	case -1: perror(PROGNAME ": fork"); break;
-> 	default: waitpid(pid, NULL, 0);
->   }
-
-OK, I've changed this.
-
-> Also, I would really prefer the count was passed in decimal (%d) - it
-> is more traditional.  If hex is needed, the program can convert it.
-> (why it is hex in "rmtab" I really don't know)....
-
-OK, I pass it in decimal now.
-
-New patch attached.
+This bit is not quite right. Corrected patch attached.
 
 --
 Paul
 
---------------080902000608000801090500
+--------------030009050600000806070106
 Content-Type: text/plain;
- name="nfs_utils_ha_callout-3.diff"
+ name="nfs_utils_ha_callout-4.diff"
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline;
- filename="nfs_utils_ha_callout-3.diff"
+ filename="nfs_utils_ha_callout-4.diff"
 
 diff -purN --exclude-from /export/public/clemep/tmp/dontdiff nfs-utils-1.0.6-PRISTINE/support/include/ha-callout.h nfs-utils-1.0.6/support/include/ha-callout.h
 --- nfs-utils-1.0.6-PRISTINE/support/include/ha-callout.h	1969-12-31 19:00:00.000000000 -0500
-+++ nfs-utils-1.0.6/support/include/ha-callout.h	2004-08-31 10:31:18.000000000 -0400
-@@ -0,0 +1,49 @@
++++ nfs-utils-1.0.6/support/include/ha-callout.h	2004-08-31 15:29:13.000000000 -0400
+@@ -0,0 +1,50 @@
 +/*
 + * support/include/ha-callout.h
 + *
@@ -117,7 +126,8 @@ diff -purN --exclude-from /export/public/clemep/tmp/dontdiff nfs-utils-1.0.6-PRI
 +
 +	pid = fork();
 +	switch (pid) {
-+		case 0: execl(ha_callout_prog, event, arg1, arg2, buf, NULL);
++		case 0: execl(ha_callout_prog, ha_callout_prog,
++				event, arg1, arg2, buf, NULL);
 +			perror("execl");
 +			exit(2);
 +		case -1: perror("fork");
@@ -447,7 +457,7 @@ diff -purN --exclude-from /export/public/clemep/tmp/dontdiff nfs-utils-1.0.6-PRI
 +.br
 +Paul Clements <paul.clements@steeleye.com>
 
---------------080902000608000801090500--
+--------------030009050600000806070106--
 
 
 -------------------------------------------------------
