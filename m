@@ -1,21 +1,23 @@
-From: mehta kiran <kiranmehta1981@yahoo.com>
-Subject: Re: problem mounting using NFSv4 when using -o sec=krb5  option
-Date: Mon, 21 Mar 2005 07:45:34 -0800 (PST)
-Message-ID: <20050321154534.40779.qmail@web51610.mail.yahoo.com>
-References: <20050321151111.1C2051BB62@citi.umich.edu>
+From: Chip Salzenberg <chip@pobox.com>
+Subject: Re: [KNFSD] [PATCH] fixed '-p port' arg to rpc.nfsd plus more.
+Date: Mon, 21 Mar 2005 10:46:45 -0500
+Message-ID: <20050321154645.GE1736@perlsupport.com>
+References: <423EDD43.8000209@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DDP65-0006SJ-AG
-	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 07:45:41 -0800
-Received: from web51610.mail.yahoo.com ([206.190.38.215])
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
-	id 1DDP64-0006FJ-QK
-	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 07:45:41 -0800
-To: Kevin Coffman <kwc@citi.umich.edu>
-In-Reply-To: <20050321151111.1C2051BB62@citi.umich.edu>
+	id 1DDP7X-0006YE-2b
+	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 07:47:11 -0800
+Received: from perlsupport.com
+	([66.180.163.120] helo=mail.perlsupport.com ident=f24fa3d4df57200c4b49d1dae0c5e855)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1DDP7U-0006Pd-GQ
+	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 07:47:11 -0800
+To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: <423EDD43.8000209@RedHat.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,270 +31,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+According to Steve Dickson:
+>     -N  or  --no-nfs-version vers
+>         This option can be used to request that rpc.nfsd does not  offer
+>         certain  versions of NFS. The current version of rpc.nfsd can
+>         support both NFS version 2,3 and the newer version 4.
 
-Hi Kevin, 
-             I tried things as directed by Trond in
-    his previous mail and everything seemed to work
-    fine initally. but when i rebooted system , 
-    it started giving error whenever i start rpc.gssd
-    on client machine.
-    Error is :
+Thanks very much for the patches, but would you please add on support
+for the '-V' flag specifying the versions that should be allowed?
 
-[root@vcslinux6 ~]# Mar 21 14:47:27 vcslinux6
-rpc.gssd[3487]: WARNING: Key table entry not found
-while getting initial ticket for principal
-'nfs/vcslinux6.vxindia.veritas.com@VXINDIA.VERITAS.COM'
-from keytab 'FILE:/etc/krb5.keytab'
-Mar 21 14:47:27 vcslinux6 rpc.gssd[3487]: ERROR: No
-usable machine credentials obtained
-  
-     
-while #klist -k /etc/krb5.keytab gives
-2
-nfs/vcslinux6.vxindia.veritas.com@VXINDIA.VERITAS.COM
-
-I even tried by recreating kerberos database but in
-vain. I still get the same error.
-
-I observed one more thing.
-Whenver i create principal(other then root/admin) ,
-passwords i enter for them during their creation
-are not accepted by kinit.
-
-Please let me know where i went wrong.
-
---thanks,
- --kiran
-
-
-
-
-
-
-
-
---- Kevin Coffman <kwc@citi.umich.edu> wrote:
-
-> Kiran,
-> Sorry, I was away for a few days with bad
-> connectivity.
+>     -T  or  --no-tcp
+>         Disable rpc.nfsd from accepting TCP connections from clients.
 > 
-> Each time you run the "ktadd" command to create a
-> keytab entry, the key 
-> version number (kvno) for that principal is updated.
->  You cannot simply 
-> modify the kvno for a principal because the kvno is
-> associated with the 
-> key.  I'd advise throwing out the keytab on
-> vcslinux5 and create a new 
-> keytab for that principal.
-> 
-> 
-> P.S.  Here is what the ktadd command does:
-> - It generates a new random key value for the
->   principal (with a new key version)
-> - It puts this new key into the Kerberos DB,
-> replacing
->   any previous key with a lower kvno
-> - It puts this new key into the keytab file that was
->   specified
-> 
-> Therefore, each time you run ktadd, the old keytab
-> entry
-> becomes obsolete.
-> 
-> 
->  > one more thing.
-> > 
-> > On machine running kdc , 
-> > 
-> >    entry for vcslinux5 is with kvno 3
-> >    while entry for vcslinux5 on vcslinux5 is with
-> kvno
-> >    2 . Is this making a difference
-> > 
-> > thanks,
-> >  --kiran
-> > 
-> > 
-> > 
-> > --- Suresh Jayaram <sureshjayaram@gmail.com>
-> wrote:
-> > 
-> > > Hi Kiran,
-> > > 
-> > > Try running rpc.gssd -f -vvv (really verbose and
-> > > foreground) and
-> > > rpc.svcgssd -vvv -f
-> > > and see why it is failing. I has similar
-> problems
-> > > with NFSv4, before
-> > > updating all my packages (currently available in
-> > > CITI website).
-> > > 
-> > > Possibly the path of libgssapi_krb5.so may not
-> be
-> > > proper. Check your
-> > > /etc/gssapi_mech.conf
-> > > 
-> > > Basically after installation of all packages,
-> you
-> > > need to create 2
-> > > principals in kdc server; one for server and one
-> for
-> > > client and
-> > > extract them appropriately.
-> > > Make sure all three machines are in Timesync and
-> > > hostname of them are
-> > > resolvable. Run rpc.mountd, rpc.idmapd,
-> rpc.svcgssd
-> > > and rpc.nfsd in
-> > > server and rpc.idmapd and rpc.gssd in client.
-> > > 
-> > > HTH
-> > > Suresh
-> > > 
-> > > 
-> > > On Thu, 17 Mar 2005 03:59:52 -0800 (PST), mehta
-> > > kiran
-> > > <kiranmehta1981@yahoo.com> wrote:
-> > > > Hi kevin ,
-> > > > I am using RHEL4 GA.
-> > > > kernel : 2.6.9-5.EL
-> > > > nfs-utils : nfs-utils-1.0.6-46
-> > > > 
-> > > > As per what you told , i have added entries on
-> > > both
-> > > > client and server.
-> > > > 
-> > > > *client:vcslinux6#klist -k /etc/krb5.keytab
-> > > > 2
-> > > >
-> > >
-> >
->
-nfs/vcslinux6.vxindia.veritas.com@VXINDIA.VERITAS.COM
-> > > > 
-> > > > *server:vcslinux5#klist -k /etc/krb5.keytab
-> > > > 
-> > > > 2
-> > > >
-> > >
-> >
->
-nfs/vcslinux5.vxindia.veritas.com@VXINDIA.VERITAS.COM
-> > > > 
-> > > > *kdc:vcslinux1#klist -k /etc/krb5.keytab
-> > > > 
-> > > > 2 root/admin@VXINDIA.VERITAS.COM
-> > > > 2
-> > > >
-> > >
-> >
->
-nfs/vcslinux1.vxindia.veritas.com@VXINDIA.VERITAS.COM
-> > > > 3
-> > > >
-> > >
-> >
->
-nfs/vcslinux5.vxindia.veritas.com@VXINDIA.VERITAS.COM
-> > > > 2
-> > > >
-> > >
-> >
->
-nfs/vcslinux6.vxindia.veritas.com@VXINDIA.VERITAS.COM
-> > > > 
-> > > > I inserted rpcsec_gss_krb5 module on all
-> machines.
-> > > > started krb5kdc and kadmind.
-> > > > started all nfs daemons  , rpc.svcgssd ,
-> > > rpc.idmapd on
-> > > > server and exported filesystem with proper
-> > > options.
-> > > > 
-> > > > started rpc.idmapd on client(vcslinux6).
-> > > > But when i run #rpc.gssd -m -v -f
-> > > > Mar 17 11:13:03 vcslinux6 kernel: RPC:
-> AUTH_GSS
-> > > upcall
-> > > > timed out.
-> > > > Mar 17 11:13:03 vcslinux6 kernel: Please check
-> > > user
-> > > > daemon is running!
-> > > > 
-> > > > in log file:
-> > > > Using keytab file '/etc/krb5.keytab'
-> > > > WARNING: Decrypt integrity check failed while
-> > > getting
-> > > > initial ticket for principal
-> > > >
-> > >
-> >
->
-'nfs/vcslinux6.vxindia.veritas.com@VXINDIA.VERITAS.COM'
-> > > > from keytab 'FILE:/etc/krb5.keytab'
-> > > > ERROR: No usable machine credentials obtained
-> > > > processing client list
-> > > > 
-> > > > -------
-> > > > Then i tried making kvno for vcslinux5 (on
-> kdc) =
-> > > 2
-> > > > i could not.
-> > > > [root@vcslinux1 ~]# kadmin
-> > > > Authenticating as principal
-> > > > root/admin@VXINDIA.VERITAS.COM with password.
-> > > > Password for root/admin@VXINDIA.VERITAS.COM:
-> > > > kadmin:  modprinc -kvno 2
-> > > > nfs/vcslinux5.vxindia.veritas.com
-> > > > Principal
-> > > >
-> > >
-> >
->
-"nfs/vcslinux5.vxindia.veritas.com@VXINDIA.VERITAS.COM"
-> > > > modified.
-> > > > kadmin:  ktadd -e des-cbc-crc:normal -k
-> > > /tmp/keytab
-> > > >
-> > >
-> >
->
-nfs/vcslinux5.vxindia.veritas.com@VXINDIA.VERITAS.COM
-> > > > Entry for principal
-> > > >
-> > >
-> >
->
-nfs/vcslinux5.vxindia.veritas.com@VXINDIA.VERITAS.COM
-> > > > with kvno 3, encryption type DES cbc mode with
-> > > CRC-32
-> > > > added to keytab WRFILE:/tmp/keytab.
-> > > > 
-> > > > Please let me know where i went wrong .
-> > > > 
-> > > > --- Kevin Coffman <kwc@citi.umich.edu> wrote:
-> > > > > Also, "failed reading uid from krb5 upcall"
-> and
-> > > > > "Failed to write error
-> > > > > downcall" should not normally happen.  What
-> > > versions
-> > > > > of kernel and
-> > > > > nfs-utils do you have?
-> > > > >
-> > > > >
-> 
-=== message truncated ===
+>     -U  or  --no-udp
+>         Disable rpc.nfsd from accepting UDP connections from clients.
 
+And could you please document when (if ever) these options would be
+useful to an end user?
 
-
-		
-__________________________________ 
-Do you Yahoo!? 
-Yahoo! Mail - Find what you need with new enhanced search. 
-http://info.mail.yahoo.com/mail_250
+adTHANKSvance
+-- 
+Chip Salzenberg            - a.k.a. -            <chip@pobox.com>
+         Open Source is not an excuse to write fun code
+            then leave the actual work to others.
 
 
 -------------------------------------------------------
