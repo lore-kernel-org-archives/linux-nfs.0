@@ -1,59 +1,101 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: ANNOUNCE - nfs-utils 1.0.6
-Date: Mon, 15 Sep 2003 10:48:29 +1000
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16229.3165.675990.593856@notabene.cse.unsw.edu.au>
+From: Chip Salzenberg <chip@pobox.com>
+Subject: Bug#202756: [jk@blackdown.de: Re: Bug#202756: nfs-kernel-server: 1.0.5-1 works with libc6 from unstable but fails with libc6 2.3.2-1 from experimental]
+Date: Sun, 14 Sep 2003 22:14:27 -0400
+Sender: Chip Salzenberg <chip@tytlal.perlsupport.com>
+Message-ID: <20030915021427.GA8188@perlsupport.com>
+Reply-To: Chip Salzenberg <chip@pobox.com>, 202756@bugs.debian.org
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Chip Salzenberg <chip@pobox.com>
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19yhXe-0007FC-00
-	for <nfs@lists.sourceforge.net>; Sun, 14 Sep 2003 17:48:34 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.22)
-	id 19yhXe-0005dY-4I
-	for nfs@lists.sourceforge.net; Sun, 14 Sep 2003 17:48:34 -0700
-Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <nfs@lists.sourceforge.net>) (for <chip@pobox.com>) By note With
-	Smtp ; Mon, 15 Sep 2003 10:48:30 +1000
+Cc: Juergen Kreileder <jk@blackdown.de>, 202756@bugs.debian.org
+Return-path: <bounce-debian-glibc=debian-glibc=m.gmane.org@lists.debian.org>
+Sender: Chip Salzenberg <chip@tytlal.perlsupport.com>
+Resent-Message-ID: <handler.202756.B202756.106359209625355@bugs.debian.org>
 To: nfs@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:debian-glibc@lists.debian.org>
+List-Help: <mailto:debian-glibc-request@lists.debian.org?subject=help>
+List-Subscribe: <mailto:debian-glibc-request@lists.debian.org?subject=subscribe>
+List-Unsubscribe: <mailto:debian-glibc-request@lists.debian.org?subject=unsubscribe>
+List-Archive: <http://lists.debian.org/debian-glibc/>
+List-ID: <nfs.lists.sourceforge.net>
+
+I'm not sure this information made it to the NFS list, so here it is.
+Key points:
+
+ * 1.0.6 does _not_ fix the crash.
+
+ * preloading libpthread.so.0 is still an effective workaround
+   (well, more of a diagnostic, really - we can't do it for production)
+
+Juergen's conclusion seems disturbingly true:
+> There must be something else in libpthread that is needed either by
+> mountd or glibc's RPC code.
 
 
+----- Forwarded message from Juergen Kreileder <jk@blackdown.de> -----
 
-nfs-utils-1.0.6 is available at
-   http://www.{countrycode}.kernel.org/pub/linux/utils/nfs/
-and
-   http://download.sourceforge.net/nfs/
+Subject: Re: Bug#202756: nfs-kernel-server: 1.0.5-1 works with libc6 from
+ unstable but fails with libc6 2.3.2-1 from experimental
+From: Juergen Kreileder <jk@blackdown.de>
+To: Philip Blundell <philb@gnu.org>
+Cc: 202756@bugs.debian.org, Chip Salzenberg <chip@debian.org>
+Date: Wed, 10 Sep 2003 08:10:22 +0200
 
-It contains a few minor improvements over 1.0.5 including some that are needed
-for correct functioning with 2.6.0 based kernels.
+Philip Blundell <philb@gnu.org> writes:
 
-It also corrects a bug which can cause mountd to crash in the event of an
-incorrect DNS configuration of a client.  This could be used in a remote 
-denial of service attack in the unwise situation that an NFS server was not
-firewalled from the open internet.
+> On Mon, 2003-09-08 at 01:57, Juergen Kreileder wrote:
+>> With LD_PRELOAD=libpthread.so.0, mountd works fine.  I'm not sure
+>> whether this is a glibc or an nfs-kernel-server bug: AFAIK mountd
+>> doesn't use threads and should be OK with the functions from libc,
+>> but it looks like it needs some of the overriden functions from
+>> libpthread.
+>>
+>> If mountd doesn't use threads and if RPC doesn't require linking
+>> with libpthread, then this is a glibc bug.
+>
+> Aha, okay.  Yes, I think this is a known bug, and we have a fix for
+> it. I'll check the patch in later today and make a -6 release.
+>
+> Thanks for investigating!
 
-NeilBrown
+-6 does NOT fix the problem!
+
+Preloading libpthread.so.0 still works around the problem.
+
+After reading Jakub's explanation for the patch...
+
+,----[ http://sources.redhat.com/ml/libc-hacker/2003-09/msg00002.html ]
+| B0rken software, which doesn't link shared libraries which use
+| pthread_cond_timedwait against -lpthread is bitten by this.  With the
+| exception of pthread_cond_timedwait, all pthread_cond_* routines have
+| stubs in libc.so, so they are given @@GLIBC_2.3.2 version during
+| linking. pthread_cond_timedwait doesn't have the stub, so unless
+| -lpthread is specified (certainly the right thing to do), it remains
+| unversioned. Mixing pthread_cond_*@GLIBC_2.3.2 and
+| pthread_cond_timedwait@GLIBC_2.0 on one pthread_cond_t is deadly.
+`----
+
+...I don't think this patch applies to problem: mountd doesn't use
+Pthreads at all and should work fine with linking libpthread or this
+patch.
+
+There must be something else in libpthread that is needed either by
+mountd or glibc's RPC code.
 
 
--------------------------------------------------------
-This sf.net email is sponsored by:ThinkGeek
-Welcome to geek heaven.
-http://thinkgeek.com/sf
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+        Juergen
+
+-- 
+Juergen Kreileder, Blackdown Java-Linux Team
+http://www.blackdown.org/java-linux/java2-status/
+
+----- End forwarded message -----
+
+-- 
+Chip Salzenberg               - a.k.a. -               <chip@pobox.com>
+"I wanted to play hopscotch with the impenetrable mystery of existence,
+    but he stepped in a wormhole and had to go in early."  // MST3K
+
+
+-- 
+To UNSUBSCRIBE, email to debian-glibc-request@lists.debian.org
+with a subject of "unsubscribe". Trouble? Contact listmaster@lists.debian.org
