@@ -1,18 +1,17 @@
-From: =?iso-8859-1?Q?Brasseur_Val=E9ry?= <Valery.Brasseur@atosorigin.com>
-Subject: RE: linux 2.4.20 oops
-Date: Tue, 29 Apr 2003 11:46:03 +0200
+From: "Patricia Jenkins" <zsteel@aol.com>
+Subject: prescription weight loss                          ....................invincible
+Date: Tue, 29 Apr 03 12:15:13 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <8147E1B07201DD41B6B9F0D31E07B384449056@srv-grp-s07.dev.atos.fr>
+Message-ID: <b-3$-n5-u$66$d9358n23ga@27v32.6hkzgjpb>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/alternative;
+	boundary="C_.2_6_347F"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from hermes4.atos-group.com ([160.92.18.11])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19ARx1-0001a4-00
-	for <nfs@lists.sourceforge.net>; Tue, 29 Apr 2003 03:03:03 -0700
-To: 'Danny Smith' <dannys@cinesite.co.uk>
+Received: from [210.221.130.52] (helo=MIRPARK2)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19ASHk-0007vf-00
+	for <nfs@lists.sourceforge.net>; Tue, 29 Apr 2003 03:24:29 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,71 +24,198 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Thanks for your information ! we are on SMP boxes so I will try ASAP !
+This is a multi-part message in MIME format.
 
-> -----Original Message-----
-> From: Danny Smith [mailto:dannys@cinesite.co.uk]
-> Sent: Tuesday, April 29, 2003 11:45 AM
-> To: Brasseur Val=E9ry
-> Cc: nfs@lists.sourceforge.net
-> Subject: Re: [NFS] linux 2.4.20 oops
->=20
->=20
-> Brasseur Val=E9ry wrote:
->=20
-> >I have got this oops in my kernel (2.4.20 + NFS-ALL )
-> >note : the oops are not log in syslog (don't know why !)
-> >but the oops seems nfs-related, any ideas ?
-> >
-> We had almost identical oopses with the same setup on our=20
-> dual render boxes,
-> which would often panic almost immediately afterwards.
->=20
-> We used this patch from Ulrich Weigand=20
-> (weigand@informatik.uni-erlangen.de), and
-> haven't seen a problem since. See the archives for full=20
-> details - basically seems
-> to be an SMP race in rpc_delete_timer(). If you're not on an=20
-> SMP system,
-> it's probably NOT the right fix.
->=20
-> HTH,
->=20
-> Danny
->=20
-> Index: net/sunrpc/sched.c
-> =
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> RCS file: /home/cvs/linux-2.3/net/sunrpc/sched.c,v
-> retrieving revision 1.13
-> diff -u -p -r1.13 sched.c
-> --- net/sunrpc/sched.c	3 May 2001 16:18:18 -0000	1.13
-> +++ net/sunrpc/sched.c	8 Mar 2003 22:46:11 -0000
-> @@ -168,10 +168,8 @@ void rpc_add_timer(struct rpc_task *task
->  static inline void
->  rpc_delete_timer(struct rpc_task *task)
->  {
-> -	if (timer_pending(&task->tk_timer)) {
-> +	if (del_timer_sync(&task->tk_timer))
->  		dprintk("RPC: %4d deleting timer\n", task->tk_pid);
-> -		del_timer_sync(&task->tk_timer);
-> -	}
->  }
-> =20
->  /*
->=20
->=20
->=20
->=20
-> --=20
-> Danny Smith
-> Senior Systems Administrator, Cinesite (Europe) Ltd
-> 020 7973 4000 - x4055    /    dannys@cinesite.co.uk
->=20
->=20
->=20
+--C_.2_6_347F
+Content-Type: text/html;
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1=
+">
+<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR></HEAD>
+<BODY>
+<DIV align=3Dcenter>
+<P><FONT face=3D"Arial, Helvetica, sans-serif" color=3D#0000cc 
+size=3D5><STRONG>PRESCRIPTION MEDS PRESCRIBED ONLINE</STRONG><BR><A 
+href=3D"http://rd.yahoo.com/10000759/154/*http://www.e-authentics.com/102/=
+">AND 
+SHIPPED<STRONG> OVERNIGHT</STRONG> TO YOUR DOOR!</A></FONT></P>
+<HR SIZE=3D1>
+
+<TABLE cellSpacing=3D0 cellPadding=3D0 width=3D"100%" border=3D0>
+  <TBODY>
+  <TR>
+    <TD vAlign=3Dtop width=3D"14%" height=3D438>
+      <TABLE borderColor=3D#cccccc cellSpacing=3D0 cellPadding=3D0
+width=3D=
+"79%" 
+      border=3D1>
+        <TBODY>
+        <TR>
+          <TD>
+            <TABLE cellSpacing=3D0 cellPadding=3D4 width=3D"100%"
+border=3D=
+0>
+              <TBODY>
+              <TR>
+                <TD bgColor=3D#ebebeb><FONT face=3D"Arial, Helvetica, sans=
+-serif" 
+                  size=3D3><STRONG>How Does it Work?<BR></STRONG></FONT>
+                  <HR SIZE=3D1>
+                  <FONT face=3D"Arial, Helvetica, sans-serif" 
+                  size=3D3><STRONG></STRONG></FONT></TD></TR>
+              <TR>
+                <TD bgColor=3D#f0f0f0>
+                  <P><FONT face=3D"Arial, Helvetica, sans-serif"><STRONG><=
+FONT 
+                  size=3D2>Buy Prescription Drugs 
+                  Online!</FONT></STRONG></FONT></P>
+                  <P><FONT face=3D"Arial, Helvetica, sans-serif" 
+                  size=3D2><STRONG>1.</STRONG> <A 
+                  href=3D"http://rd.yahoo.com/10000759/154/*http://www.e-a=
+uthentics.com/102/">Start 
+                  here</A> to go to visit <A 
+                  href=3D"http://rd.yahoo.com/10000759/154/*http://www.e-a=
+uthentics.com/102/">bestdealspharmacy.com</A></FONT></P>
+                  <P><FONT face=3D"Arial, Helvetica, sans-serif" 
+                  size=3D2><STRONG>2.</STRONG> <STRONG>Choose</STRONG> fro=
+m 
+                  <STRONG>75 medications </STRONG>available.</FONT></P>
+                  <P><FONT face=3D"Arial, Helvetica, sans-serif" 
+                  size=3D2><STRONG>3.</STRONG> Place your order.</FONT></P=
+>
+                  <P><FONT size=3D2><STRONG><FONT 
+                  face=3D"Arial, Helvetica, sans-serif">4.</FONT></STRONG>=
+<FONT 
+                  face=3D"Arial, Helvetica, sans-serif"> A US Licensed Doc=
+tor will 
+                  review your prescription <STRONG>FOR FREE. </STRONG>You =
+don't 
+                  pay anything for the Doctor's Consultation!</FONT></FONT=
+></P>
+                  <P><FONT size=3D2><STRONG><FONT 
+                  face=3D"Arial, Helvetica, sans-serif">5.</FONT></STRONG>=
+<FONT 
+                  face=3D"Arial, Helvetica, sans-serif"> If you place your=
+ order 
+                  by <STRONG>2:00 PM EST</STRONG>, your order is <STRONG>o=
+n your 
+                  doorstep 
+            tomorrow!</STRONG></FONT></FONT></P></TD></TR></TBODY></TABLE>=
+</TD></TR></TBODY></TABLE></TD>
+    <TD vAlign=3Dtop width=3D"4%">&nbsp;&nbsp;&nbsp;&nbsp;</TD>
+    <TD vAlign=3Dtop width=3D"82%">
+      <P><FONT face=3D"Arial, Helvetica, sans-serif" color=3D#000000 
+      size=3D4><STRONG><FONT color=3D#0000cc><A 
+      href=3D"http://rd.yahoo.com/10000759/154/*http://www.e-authentics.co=
+m/102/_buy_phentermine.html">WEIGHT 
+      LOSS</A></FONT></STRONG>: <STRONG>Lose weight NOW! </STRONG>Why both=
+er to 
+      diet when you can <FONT color=3D#0000cc><STRONG><A 
+      href=3D"http://rd.yahoo.com/10000759/154/*http://www.e-authentics.co=
+m/102/_weight_loss.html">SHED 
+      THE POUNDS AWAY</A></STRONG></FONT> with prescription drugs like <A =
+
+      href=3D"http://rd.yahoo.com/10000759/154/*http://www.e-authentics.co=
+m/102/_buy_phentermine.html">PHENTERMINE</A>, 
+      <A 
+      href=3D"http://rd.yahoo.com/10000759/154/*http://www.e-authentics.co=
+m/102/_buy_adipex.html">ADIPEX</A>, 
+      and <A 
+      href=3D"http://rd.yahoo.com/10000759/154/*http://www.e-authentics.co=
+m/102/_buy_didrex.html">DIDREX</A>.</FONT></P>
+      <P><FONT face=3D"Arial, Helvetica, sans-serif" color=3D#0000cc 
+      size=3D4><STRONG><A 
+      href=3D"http://rd.yahoo.com/10000759/154/*http://www.e-authentics.co=
+m/102/_muscle_relaxants.html">MUSCLE 
+      RELAXERS: </A></STRONG><FONT color=3D#000000>End muscle pain NOW! 
+      <STRONG>Forget the Doctor</STRONG>, <STRONG>GET IT TOMORROW!</STRONG=
+> <A 
+      href=3D"http://rd.yahoo.com/10000759/154/*http://www.e-authentics.co=
+m/102/_buy_soma.html">SOMA</A>, 
+      <A 
+      href=3D"http://rd.yahoo.com/10000759/154/*http://www.e-authentics.co=
+m/102/_buy_cyclobenzaprine.html">CYCLOBENZAPRINE</A>, 
+      <A 
+      href=3D"http://rd.yahoo.com/10000759/154/*http://www.e-authentics.co=
+m/102/_buy_flexeril.html">FLEXERIL</A>, 
+      and more</FONT></FONT></P>
+      <P><FONT face=3D"Arial, Helvetica, sans-serif" color=3D#0000cc 
+      size=3D4><STRONG><A 
+      href=3D"http://rd.yahoo.com/10000759/154/*http://www.e-authentics.co=
+m/102/_pain_relief.html">PAIN 
+      RELIEF : </A></STRONG><FONT color=3D#000000>End pain NOW! <A 
+      href=3D"http://rd.yahoo.com/10000759/154/*http://www.e-authentics.co=
+m/102/_buy_fioricet.html">FIORICET</A>, 
+      <A 
+      href=3D"http://rd.yahoo.com/10000759/154/*http://www.e-authentics.co=
+m/102/_buy_ultram.html">ULTRAM</A>, 
+      and more.</FONT></FONT></P>
+      <P><FONT face=3D"Arial, Helvetica, sans-serif" color=3D#000000
+size=3D=
+4><A 
+      href=3D"http://rd.yahoo.com/10000759/154/*http://www.e-authentics.co=
+m/102/_anti_depressants.html"><STRONG>ANTI 
+      DEPRESSANTS:</STRONG> </A><STRONG>Too Depressed to go to the 
+      Doctor?</STRONG> Buy it ONLINE!!! <A 
+      href=3D"http://rd.yahoo.com/10000759/154/*http://www.e-authentics.co=
+m/102/_buy_paxil.html">PAXIL</A>, 
+      <A 
+      href=3D"http://rd.yahoo.com/10000759/154/*http://www.e-authentics.co=
+m/102/_buy_prozac.html">PROZAC</A>,<A 
+      href=3D"http://rd.yahoo.com/10000759/154/*http://www.e-authentics.co=
+m/102/_buy_zoloft.html"> 
+      ZOLOFT</A>, <A 
+      href=3D"http://rd.yahoo.com/10000759/154/*http://www.e-authentics.co=
+m/102/_buy_wellbutrin.html">WELLBUTRIN</A>, 
+      and more!</FONT></P>
+      <P><FONT face=3D"Arial, Helvetica, sans-serif" color=3D#000000
+size=3D=
+4><A 
+      href=3D"http://rd.yahoo.com/10000759/154/*http://www.e-authentics.co=
+m/102/_anti_depressants.html"><STRONG>SLEEPING 
+      AIDS:</STRONG></A> Having trouble getting to sleep? <A 
+      href=3D"http://rd.yahoo.com/10000759/154/*http://www.e-authentics.co=
+m/102/_buy_ambien.html">AMBIEN</A> 
+      and <A 
+      href=3D"http://rd.yahoo.com/10000759/154/*http://www.e-authentics.co=
+m/102/_buy_sonata.html">SONATA</A> 
+      ONLINE! </FONT></P>
+      <P><FONT face=3D"Arial, Helvetica, sans-serif" color=3D#000000
+size=3D=
+4><A 
+      href=3D"http://rd.yahoo.com/10000759/154/*http://www.e-authentics.co=
+m/102/_buy_viagra.html"><STRONG>V 
+      I A G R A:</STRONG></A> Erectile Dysfunction is a common problem amo=
+ng men 
+      today. Avoid the embarrasment of going to the Doctor, <A 
+      href=3D"http://rd.yahoo.com/10000759/154/*http://www.e-authentics.co=
+m/102/_buy_viagra.html">buy 
+      it online now!</A></FONT></P>
+      <P><FONT face=3D"Arial, Helvetica, sans-serif" color=3D#000000 
+      size=3D6><STRONG><A 
+      href=3D"http://rd.yahoo.com/10000759/154/*http://www.e-authentics.co=
+m/102/">START 
+      HERE FOR PRESCRIPTIONS</A></STRONG></FONT></P>
+      <P>&nbsp;</P>
+      <P>&nbsp;</P></TD></TR></TBODY></TABLE>
+<P align=3Dleft><FONT face=3D"Arial, Helvetica, sans-serif" color=3D#00000=
+0 size=3D2><A 
+href=3D"http://rd.yahoo.com/10000759/154/*http://www.e-authentics.com/102/=
+remove.php">go 
+here</A> if you would not like to receive future mailings.</FONT></P></DIV=
+><FONT 
+color=3D#ffffff size=3D1>trinketsteed dictum %RANDOM_WOR=
+D 
+secant fleming malaprop cataclysmic heterozygous %RANDOM_W=
+ORD 
+ryder madagascar and this website asterisk methodism for 
+you</FONT> </BODY></HTML>
+
+--C_.2_6_347F--
+
 
 
 -------------------------------------------------------
