@@ -1,20 +1,22 @@
-From: "Deepa Chacko Pillai" <deepa.chacko@wipro.com>
-Subject: Unmount in case of unreachable NFS server
-Date: Mon, 5 May 2003 18:16:48 +0530
+From: =?ISO-8859-1?Q?Andr=E9_Weidemann?= <Andre.Weidemann@web.de>
+Subject: logging file access for a particular client
+Date: Mon, 05 May 2003 14:52:19 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <52C85426D39B314381D76DDD480EEE0CB681C5@blr-m3-msg.wipro.com>
+Message-ID: <3EB65E83.7070405@web.de>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from wiprom2mx1.wipro.com ([203.197.164.41])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19CfN7-0001LZ-00
-	for <nfs@lists.sourceforge.net>; Mon, 05 May 2003 05:47:10 -0700
-Received: from m2vwall5.wipro.com (m2vwall5.wipro.com [10.115.50.5])
-	by wiprom2mx1.wipro.com (8.11.3/8.11.3) with SMTP id h45CkrN16167
-	for <nfs@lists.sourceforge.net>; Mon, 5 May 2003 18:16:53 +0530 (IST)
-To: <nfs@lists.sourceforge.net>
+Received: from smtp01.web.de ([217.72.192.180] helo=smtp.web.de)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19CfSH-0003c1-00
+	for <nfs@lists.sourceforge.net>; Mon, 05 May 2003 05:52:30 -0700
+Received: from p5090bfcf.dip.t-dialin.net ([80.144.191.207] helo=web.de)
+	by smtp.web.de with asmtp (TLSv1:RC4-MD5:128)
+	(WEB.DE 4.98 #218)
+	id 19CfS9-00032A-00
+	for nfs@lists.sourceforge.net; Mon, 05 May 2003 14:52:21 +0200
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,34 +29,18 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hi,
+I have a client running with its root FS mounted via NFS.
+The client files are all located on the server but I don't need all 
+installed files and libraries for the client. The client needs no more 
+than 30 MB of files to start up and keep running. I would like to 
+identify exactly those files and remove the others from the server.
 
-Hi
+What I want is a simple way of tracking the files that are being 
+accessed by a particular client. Is there a way to do this?
 
-Can I unmount a file system, mounted from server 'A', if the server 'A' =
-is down and the client has open files on it? If there are no open =
-references to the filesystem, I saw it could be unmounted if I soft =
-mount the FS.
-
-I will explain my requirement with an example. Suppose I have 3 nodes A, =
-B and C. I mount a filesystem from node A onto node C. The device =
-containing the filesystem is accessible from node B also (shared disk). =
-If node A fails, I want to migrate the FS to node B. Once the FS is =
-migrated, I have to remount the FS on node C. On client C, I am unable =
-to unmount the FS as it has some files open. Even force unmount failed. =
-I can however mount the FS from node B onto the same mount point again =
-(overlay mount). This would mean I need to keep track of the number of =
-such mounts. I would like to know if there is any other way to do this.
-
-Another possibility I thought of is IP failover. However, it will =
-confuse locking I guess.
-I am using Red Hat Linux 2.4.19.
-
-Any help would be much appreciated.
-
-Thanks
-Deepa
-
-
+Thanks a lot in advance,
+  André.
 
 
 
