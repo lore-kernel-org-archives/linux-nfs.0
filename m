@@ -1,15 +1,16 @@
-From: Tobias Burnus <tobias.burnus@physik.fu-berlin.de>
-Subject: NFS problem if NFS server dies
-Date: Wed, 4 Dec 2002 17:57:00 +0100 (CET)
+From: Andrew Ryan <andrewr@nam-shub.com>
+Subject: Re: 2.4.20-NFS-ALL slower than 2.4.20-vanilla on TCP
+Date: Wed, 4 Dec 2002 10:28:59 -0800 (PST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0212041741510.12033-100000@warp9.physik.fu-berlin.de>
+Message-ID: <Pine.LNX.4.40.0212041020570.32257-200000@bolt.sonic.net>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: MULTIPART/MIXED; BOUNDARY="-909110542-1095863686-1039026539=:32257"
+Cc: trond.myklebust@fys.uio.no
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from up.physik.fu-berlin.de ([160.45.34.5])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18Jcq8-00015a-00
-	for <nfs@lists.sourceforge.net>; Wed, 04 Dec 2002 08:57:36 -0800
+Received: from a.smtp-out.sonic.net ([208.201.224.38])
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18JeGZ-000096-00
+	for <nfs@lists.sourceforge.net>; Wed, 04 Dec 2002 10:28:59 -0800
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -23,36 +24,148 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
+  Send mail to mime@docserver.cac.washington.edu for more info.
 
-in our larger installation we encountered really big problems if the NFSd
-server of a auto mounted scratch partition died. (Which happend twice the
-last two days :-()
+---909110542-1095863686-1039026539=:32257
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 
-This /net/<comp>/* directory was accessed by a number crunching job, which
-then suddenly couldn't write anymore.
+Trond Myklebust wrote:
+>>>>>>" " == Andrew Ryan <andrewr@nam-shub.com> writes:
+>      > I'm not sure where the bug is, in which patch, so I'm posting
+>
+> I doubt this is a bug. It's probably a consequence of the ACCESS
+> patch. Could you try backing that particular patch out of the NFS_ALL
+> set?
 
-The problem is not that that single process hangs, but that this rendered
-the complete computer almost useless, since it was both _really_ slow
-(load of >=5) and unrelated NFS operations (different server) didn't work
-well either. (This might be due to the fact that almost all directories
-use the automounter which also serves /net)
+OK, done.
 
-Those /net/*/* directories are mounted with
-  rw,nosuid,nodev,noquota,intr
-(despite the "noquota", quota does hang, if /net/*/ hangs)
+Some of the numbers were better, but the wall clock time was the same.
+2.4.20-vanilla comes in at ~43 minutes wall clock run time, but
+2.4.20-NFS-ALL and 2.4.20-NFS-ALL-sans-linux-2.4.20-07-access.dif both
+came in at 57 minutes wall clock run time.
 
-Any idea what we could to limit those problems, thus one could continue to
-interactively work with that computer, until a manual intervention (such
-as reanimating the dying server).
+Results attached. In particular the 'Delete' activity under the
+"Sequential Create" test seems very slow, rate of 559/sec with -vanilla
+and 11-20/sec with the two NFS patched kernels.
 
-With best regards,
+---909110542-1095863686-1039026539=:32257
+Content-Type: TEXT/html; name="bonresults-ml.html"
+Content-Transfer-Encoding: BASE64
+Content-ID: <Pine.LNX.4.40.0212041028590.32257@bolt.sonic.net>
+Content-Description: 
+Content-Disposition: attachment; filename="bonresults-ml.html"
 
-Tobias Burnus
-
-PS: We use a - more or less - vanilla 2.4.18 kernel. In those cases
-described above, both server and client are Linux computers.
-
+PCFET0NUWVBFIEhUTUwgUFVCTElDICItLy9XM0MvL0RURCBIVE1MIDQuMC8v
+RU4iICJodHRwOi8vd3d3LnczLm9yZy9UUi9SRUMtaHRtbDQwL3N0cmljdC5k
+dGQiPg0KPEhUTUw+DQo8SEVBRD48VElUTEU+Qm9ubmllKysgVjEuMDJhIEJl
+bmNobWFyayByZXN1bHRzPC9USVRMRT4NCjxTVFlMRSB0eXBlPSJ0ZXh0L2Nz
+cyI+DQpURC5oZWFkZXIge3RleHQtYWxpZ246IGNlbnRlcjsgYmFja2dyb3Vu
+ZGNvbG9yOiAiI0NDRkZGRiIgfQ0KVEQucm93aGVhZGVyIHt0ZXh0LWFsaWdu
+OiBjZW50ZXI7IGJhY2tncm91bmRjb2xvcjogIiNDQ0NGRkYiIH0NClRELnNp
+emUge3RleHQtYWxpZ246IGNlbnRlcjsgYmFja2dyb3VuZGNvbG9yOiAiI0ND
+Q0ZGRiIgfQ0KVEQua3NlYyB7dGV4dC1hbGlnbjogY2VudGVyOyBmb250c3R5
+bGU6IGl0YWxpYyB9DQo8L1NUWUxFPg0KPEJPRFk+DQo8aDE+Qm9ubmllKysg
+VjEuMDJhIEJlbmNobWFyayByZXN1bHRzPC9oMT4NCjxocj4NCjxUQUJMRSBB
+TElHTj1jZW50ZXIgQk9SREVSPTMgQ0VMTFBBRERJTkc9MiBDRUxMU1BBQ0lO
+Rz0xPg0KPFRSPjxURCBDT0xTUEFOPTIgY2xhc3M9ImhlYWRlciI+PC9URD4N
+CjxURCBDT0xTUEFOPTYgY2xhc3M9ImhlYWRlciI+PEZPTlQgU0laRT0rMj48
+Qj5TZXF1ZW50aWFsIE91dHB1dDwvQj48L0ZPTlQ+PC9URD4NCjxURCBDT0xT
+UEFOPTQgY2xhc3M9ImhlYWRlciI+PEZPTlQgU0laRT0rMj48Qj5TZXF1ZW50
+aWFsIElucHV0PC9CPjwvRk9OVD48L1REPg0KPFREIENPTFNQQU49MiBST1dT
+UEFOPTIgY2xhc3M9ImhlYWRlciI+PEZPTlQgU0laRT0rMj48Qj5SYW5kb208
+QlI+U2Vla3M8L0I+PC9GT05UPjwvVEQ+DQo8VEQgQ09MU1BBTj0xIGNsYXNz
+PSJoZWFkZXIiPjwvVEQ+DQo8VEQgQ09MU1BBTj02IGNsYXNzPSJoZWFkZXIi
+PjxGT05UIFNJWkU9KzI+PEI+U2VxdWVudGlhbCBDcmVhdGU8L0I+PC9GT05U
+PjwvVEQ+DQo8VEQgQ09MU1BBTj02IGNsYXNzPSJoZWFkZXIiPjxGT05UIFNJ
+WkU9KzI+PEI+UmFuZG9tIENyZWF0ZTwvQj48L0ZPTlQ+PC9URD4NCjwvdHI+
+DQo8VFI+PFREPjwvVEQ+PFREPlNpemU6Q2h1bmsgU2l6ZTwvVEQ+PFREIENP
+TFNQQU49Mj5QZXIgQ2hhcjwvVEQ+PFREIENPTFNQQU49Mj5CbG9jazwvVEQ+
+PFREIENPTFNQQU49Mj5SZXdyaXRlPC9URD48VEQgQ09MU1BBTj0yPlBlciBD
+aGFyPC9URD48VEQgQ09MU1BBTj0yPkJsb2NrPC9URD48VEQ+TnVtIEZpbGVz
+PC9URD48VEQgQ09MU1BBTj0yPkNyZWF0ZTwvVEQ+PFREIENPTFNQQU49Mj5S
+ZWFkPC9URD48VEQgQ09MU1BBTj0yPkRlbGV0ZTwvVEQ+PFREIENPTFNQQU49
+Mj5DcmVhdGU8L1REPjxURCBDT0xTUEFOPTI+UmVhZDwvVEQ+PFREIENPTFNQ
+QU49Mj5EZWxldGU8L1REPjwvVFI+PFRSPjxURCBDT0xTUEFOPTI+PC9URD48
+VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJWkU9LTI+Sy9zZWM8L0ZPTlQ+PC9U
+RD48VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJWkU9LTI+JSBDUFU8L0ZPTlQ+
+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJWkU9LTI+Sy9zZWM8L0ZP
+TlQ+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJWkU9LTI+JSBDUFU8
+L0ZPTlQ+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJWkU9LTI+Sy9z
+ZWM8L0ZPTlQ+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJWkU9LTI+
+JSBDUFU8L0ZPTlQ+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJWkU9
+LTI+Sy9zZWM8L0ZPTlQ+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJ
+WkU9LTI+JSBDUFU8L0ZPTlQ+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxGT05U
+IFNJWkU9LTI+Sy9zZWM8L0ZPTlQ+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxG
+T05UIFNJWkU9LTI+JSBDUFU8L0ZPTlQ+PC9URD48VEQgY2xhc3M9ImtzZWMi
+PjxGT05UIFNJWkU9LTI+LyBzZWM8L0ZPTlQ+PC9URD48VEQgY2xhc3M9Imtz
+ZWMiPjxGT05UIFNJWkU9LTI+JSBDUFU8L0ZPTlQ+PC9URD48VEQ+PC9URD48
+VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJWkU9LTI+LyBzZWM8L0ZPTlQ+PC9U
+RD48VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJWkU9LTI+JSBDUFU8L0ZPTlQ+
+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJWkU9LTI+LyBzZWM8L0ZP
+TlQ+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJWkU9LTI+JSBDUFU8
+L0ZPTlQ+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJWkU9LTI+LyBz
+ZWM8L0ZPTlQ+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJWkU9LTI+
+JSBDUFU8L0ZPTlQ+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJWkU9
+LTI+LyBzZWM8L0ZPTlQ+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxGT05UIFNJ
+WkU9LTI+JSBDUFU8L0ZPTlQ+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxGT05U
+IFNJWkU9LTI+LyBzZWM8L0ZPTlQ+PC9URD48VEQgY2xhc3M9ImtzZWMiPjxG
+T05UIFNJWkU9LTI+JSBDUFU8L0ZPTlQ+PC9URD48VEQgY2xhc3M9ImtzZWMi
+PjxGT05UIFNJWkU9LTI+LyBzZWM8L0ZPTlQ+PC9URD48VEQgY2xhc3M9Imtz
+ZWMiPjxGT05UIFNJWkU9LTI+JSBDUFU8L0ZPTlQ+PC9URD48L1RSPg0KPFRS
+PjxURCBjbGFzcz0icm93aGVhZGVyIj48Rk9OVCBTSVpFPSsxPjxCPjIuNC4y
+MC1ORlNfQUxMLTIwMDIxMjAzMTc1ODQyLW5vbG9jazwvQj48L0ZPTlQ+PC9U
+RD48VEQgY2xhc3M9InNpemUiPjhHPC9URD48VEQgY2xhc3M9InNpemUiPjwv
+VEQ+PFREIGNsYXNzPSJzaXplIj48L1REPjxURCBjbGFzcz0ic2l6ZSI+MTEw
+NjI8L1REPjxURCBjbGFzcz0ic2l6ZSI+NDwvVEQ+PFREIGNsYXNzPSJzaXpl
+Ij44NzQ5PC9URD48VEQgY2xhc3M9InNpemUiPjY8L1REPjxURCBjbGFzcz0i
+c2l6ZSI+PC9URD48VEQgY2xhc3M9InNpemUiPjwvVEQ+PFREIGNsYXNzPSJz
+aXplIj4xMjc1NzwvVEQ+PFREIGNsYXNzPSJzaXplIj40PC9URD48VEQgY2xh
+c3M9InNpemUiPjIzNC41PC9URD48VEQgY2xhc3M9InNpemUiPjE8L1REPjxU
+RCBjbGFzcz0ic2l6ZSI+MTY8L1REPjxURCBjbGFzcz0ic2l6ZSI+MTg0PC9U
+RD48VEQgY2xhc3M9InNpemUiPjE8L1REPjxURCBjbGFzcz0ic2l6ZSI+NTI5
+PC9URD48VEQgY2xhc3M9InNpemUiPjEzPC9URD48VEQgY2xhc3M9InNpemUi
+PjExPC9URD48VEQgY2xhc3M9InNpemUiPjE8L1REPjxURCBjbGFzcz0ic2l6
+ZSI+MjAyPC9URD48VEQgY2xhc3M9InNpemUiPjE8L1REPjxURCBjbGFzcz0i
+c2l6ZSI+NjU4PC9URD48VEQgY2xhc3M9InNpemUiPjE8L1REPjxURCBjbGFz
+cz0ic2l6ZSI+MjkxPC9URD48VEQgY2xhc3M9InNpemUiPjE8L1REPjwvVFI+
+DQo8VFI+PFREIGNsYXNzPSJyb3doZWFkZXIiPjxGT05UIFNJWkU9KzE+PEI+
+Mi40LjIwLXZhbmlsbGEtMjAwMjEyMDMyMjIwNDAtbm9sb2NrPC9CPjwvRk9O
+VD48L1REPjxURCBjbGFzcz0ic2l6ZSI+OEc8L1REPjxURCBjbGFzcz0ic2l6
+ZSI+PC9URD48VEQgY2xhc3M9InNpemUiPjwvVEQ+PFREIGNsYXNzPSJzaXpl
+Ij4xMTE1NjwvVEQ+PFREIGNsYXNzPSJzaXplIj40PC9URD48VEQgY2xhc3M9
+InNpemUiPjg5MTc8L1REPjxURCBjbGFzcz0ic2l6ZSI+NjwvVEQ+PFREIGNs
+YXNzPSJzaXplIj48L1REPjxURCBjbGFzcz0ic2l6ZSI+PC9URD48VEQgY2xh
+c3M9InNpemUiPjEyODI4PC9URD48VEQgY2xhc3M9InNpemUiPjQ8L1REPjxU
+RCBjbGFzcz0ic2l6ZSI+MjQxLjc8L1REPjxURCBjbGFzcz0ic2l6ZSI+MTwv
+VEQ+PFREIGNsYXNzPSJzaXplIj4xNjwvVEQ+PFREIGNsYXNzPSJzaXplIj41
+Mjg8L1REPjxURCBjbGFzcz0ic2l6ZSI+MjwvVEQ+PFREIGNsYXNzPSJzaXpl
+Ij4xMzIxPC9URD48VEQgY2xhc3M9InNpemUiPjM8L1REPjxURCBjbGFzcz0i
+c2l6ZSI+NTU5PC9URD48VEQgY2xhc3M9InNpemUiPjI8L1REPjxURCBjbGFz
+cz0ic2l6ZSI+NTUzPC9URD48VEQgY2xhc3M9InNpemUiPjI8L1REPjxURCBj
+bGFzcz0ic2l6ZSI+MTM1MjwvVEQ+PFREIGNsYXNzPSJzaXplIj4yPC9URD48
+VEQgY2xhc3M9InNpemUiPjU5NjwvVEQ+PFREIGNsYXNzPSJzaXplIj4yPC9U
+RD48L1RSPg0KPFRSPjxURCBjbGFzcz0icm93aGVhZGVyIj48Rk9OVCBTSVpF
+PSsxPjxCPjIuNC4yMC1ORlNfQUxMX25vQUNDRVNTLTIwMDIxMjA0MDc1NTM3
+LW5vbG9jazwvQj48L0ZPTlQ+PC9URD48VEQgY2xhc3M9InNpemUiPjhHPC9U
+RD48VEQgY2xhc3M9InNpemUiPjwvVEQ+PFREIGNsYXNzPSJzaXplIj48L1RE
+PjxURCBjbGFzcz0ic2l6ZSI+MTA4NTY8L1REPjxURCBjbGFzcz0ic2l6ZSI+
+NDwvVEQ+PFREIGNsYXNzPSJzaXplIj44NTA5PC9URD48VEQgY2xhc3M9InNp
+emUiPjY8L1REPjxURCBjbGFzcz0ic2l6ZSI+PC9URD48VEQgY2xhc3M9InNp
+emUiPjwvVEQ+PFREIGNsYXNzPSJzaXplIj4xMjA3MjwvVEQ+PFREIGNsYXNz
+PSJzaXplIj4zPC9URD48VEQgY2xhc3M9InNpemUiPjIzMC44PC9URD48VEQg
+Y2xhc3M9InNpemUiPjE8L1REPjxURCBjbGFzcz0ic2l6ZSI+MTY8L1REPjxU
+RCBjbGFzcz0ic2l6ZSI+NDY1PC9URD48VEQgY2xhc3M9InNpemUiPjI8L1RE
+PjxURCBjbGFzcz0ic2l6ZSI+ODg0PC9URD48VEQgY2xhc3M9InNpemUiPjIz
+PC9URD48VEQgY2xhc3M9InNpemUiPjIwPC9URD48VEQgY2xhc3M9InNpemUi
+PjI8L1REPjxURCBjbGFzcz0ic2l6ZSI+NTUzPC9URD48VEQgY2xhc3M9InNp
+emUiPjI8L1REPjxURCBjbGFzcz0ic2l6ZSI+MTQxMjwvVEQ+PFREIGNsYXNz
+PSJzaXplIj4yPC9URD48VEQgY2xhc3M9InNpemUiPjYxNDwvVEQ+PFREIGNs
+YXNzPSJzaXplIj4yPC9URD48L1RSPg0KPC9UQUJMRT4NCjxIUj4NCjxpPkF1
+dG8tZ2VuZXJhdGVkIGF0IFdlZCBEZWMgIDQgMDk6MzU6NTMgUFNUIDIwMDI8
+L2k+DQo8L0JPRFk+DQo8L0hUTUw+DQo=
+---909110542-1095863686-1039026539=:32257--
 
 
 -------------------------------------------------------
