@@ -1,30 +1,22 @@
-From: "Jose R. Santos" <jrsantos@austin.ibm.com>
-Subject: BKL removal from find_exported_dentry()
-Date: Tue, 9 Mar 2004 07:54:51 -0600
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: RE: RE: Chuck's iostat patch
+Date: Tue, 9 Mar 2004 05:58:46 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040309135451.GC30766@rx8.ibm.com>
+Message-ID: <482A3FA0050D21419C269D13989C611302B07BB9@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: "Olaf Kirch" <okir@suse.de>, <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B0hnO-000584-Ju
-	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 06:01:22 -0800
-Received: from e31.co.us.ibm.com ([32.97.110.129])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.30)
-	id 1B0hGg-0006PO-20
-	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 05:27:34 -0800
-Received: from westrelay02.boulder.ibm.com (westrelay02.boulder.ibm.com [9.17.195.11])
-	by e31.co.us.ibm.com (8.12.10/8.12.2) with ESMTP id i29Dq85w343598
-	for <nfs@lists.sourceforge.net>; Tue, 9 Mar 2004 08:52:08 -0500
-Received: from austin.ibm.com (d03av02.boulder.ibm.com [9.17.193.82])
-	by westrelay02.boulder.ibm.com (8.12.10/NCO/VER6.6) with ESMTP id i29Dq7Zb351560
-	for <nfs@lists.sourceforge.net>; Tue, 9 Mar 2004 06:52:08 -0700
-Received: from rx8 (jsantos@rx8.austin.ibm.com [9.41.94.101])
-	by austin.ibm.com (8.12.10/8.12.10) with ESMTP id i29Dq7vD049174
-	for <nfs@lists.sourceforge.net>; Tue, 9 Mar 2004 07:52:07 -0600
-To: nfs@lists.sourceforge.net
+	id 1B0htq-0006vY-Ox
+	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 06:08:02 -0800
+Received: from mx01.netapp.com ([198.95.226.53])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1B0hN7-0000rH-Ru
+	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 05:34:13 -0800
+To: "Jeremy McNicoll" <jeremy@mcnicoll.ca>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -37,26 +29,115 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi all
+> I too have done something similar to this for 2.4 and 2.6.  I=20
+> believe I=20
+> announed it a while ago. You may want to take a look at it here. =20
+> http://www.mcnicoll.ca/iostat
+>=20
+> This is a project for a prof of mine who originally did it=20
+> for his PHD,=20
+> way back in 2.0.34.   I am just implementing it in 2.4 and=20
+> 2.6 for NFS. =20
+> The patches are on the website.
+>=20
+> Where are the patches for Chucks work?
 
-I was running SpecSFS on a 8-way machine when I encounter a situation were 
-find_exported_dentry() was showing up to 75% in my profiles.  After some 
-digging, the problem was trigger when the system was under memory pressure 
-which cause a dramatic shrinkage in dcache entries.  This shrinkage cause the 
-code path thats held under the BKL to be hit under a few filesystems (XFS, JFS 
-and EXT3).
+http://plymouth.citi.umich.edu/cel/nfs-client/rhel-3.0/linux-2.4.21-nfs_
+metrics.patch
 
-At first glance, the BKL seem over kill since I don't see it protecting 
-anything that not already protected by other locks inside the code path.  I 
-went ahead and removed the kernel lock from find_exported_dentry() and after 
-several hours of testing different loads and different filesystems I have yet 
-to see any kernel badness or
-NFS call failures.
+i don't have a 2.6 version nor have i started any modification of
+iostat or sar.  i simply wanted to get agreement on APIs and exactly
+what metrics we are interested in providing.  as such this is only
+a prototype.  there are some ugly things that will change in the
+final version (nfs_count_this_op, i believe, is going away).
 
-Is there anything in particular the BKL is trying to protect here or is it 
-safe to remove?
+it creates files under /proc/fs/nfs/stats, one file for each mount
+point on the client.  the stat files look something like:
 
--JRS
+--------  cut here  --------
+nfs/stats format version: 1.0
+hostname: %s
+nfs version: %d
+
+mounted %lu seconds ago
+transport idle time: %lu seconds
+major timeouts: %lu
+transport partial writes: %lu
+write_space callbacks: %lu
+transport socket type: tcp
+connect attempts: %lu
+total connect wait time: %Lu usecs
+  or
+transport socket type: udp
+
+# optype   op count                bytes    retrans     errors
+  read:
+  write:
+  commit:
+  getattr:
+  lookup:
+  readdir:
+  symlink:
+  readlnk:
+  remove:
+  other:
+
+ticks/sec: %Lu
+# optype      rtt total ticks         sum rtt ** 2  execute total ticks
+sum execute ** 2
+  read:
+  write:
+  commit:
+  getattr:
+  lookup:
+  readdir:
+  symlink:
+  readlnk:
+  remove:
+  other:
+
+# optype  slot util    backlog  sndq util
+  read:
+  write:
+  commit:
+  getattr:
+  lookup:
+  readdir:
+  symlink:
+  readlnk:
+  remove:
+  other:
+--------  cut here  --------
+
+the idea being that this file would export raw counts that show
+the number of bytes that have been transfered along with errors
+and retransmissions, and the RPC latencies and queue utilizations,
+with enough data to compute running averages and standard deviation.
+
+the user land tools (iostat and sar, at least) would then be able
+to compute and display byte rates, average RPC latencies (per op type),
+and so on.  these stats are per-mountpoint and per op type so we
+can detect when a server is slow at writes and fast at reads, or
+vice versa.
+
+i'd also like to provide cache hit rate statistics, and some info
+about RPC scheduling (like how many times, on average, an RPC task
+is moved from queue to queue or put to sleep).
+
+there are a few problems with this solution.  one is that zeroing
+these counters is not atomic.  another is that umount is racy and
+can leave these data structures in a not so friendly state that
+could result in an oops.  and i think we all agree that using
+seq_file is a much better way to export these metrics to user space.
+in the final version we will use sysfs instead of /proc.  it's
+not clear how to name the stat files uniquely -- today i'm using
+minor numbers, which is a hack.  the export pathname is available only
+in the vfsmount structures, so it is entirely unavailable today
+for use in the stat files.  in 2.6 we have superblock sharing, and
+i'm not sure what exactly that will mean for the "per-mountpoint"
+nature of this implementation.
+
+there's a lot of work left to be done.
 
 
 -------------------------------------------------------
