@@ -1,26 +1,24 @@
-From: Jeremy McNicoll <jeremy@mcnicoll.ca>
-Subject: Re: RE: [PATCH] 1/3 - RPC metrics support
-Date: Wed, 31 Mar 2004 13:25:27 -0500
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: RE: Chuck's iostat patch
+Date: Tue, 9 Mar 2004 15:15:02 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1080757526.3824.8.camel@jrmIBMA30.mcnicoll.ca>
-References: <482A3FA0050D21419C269D13989C61130435DE34@lavender-fe.eng.netapp.com>
-	 <1080753549.4194.60.camel@lade.trondhjem.org>
-Reply-To: jeremy@mcnicoll.ca
+Message-ID: <20040309141502.GB14419@suse.de>
+References: <482A3FA0050D21419C269D13989C611302B07BB9@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Charles Lever <Charles.Lever@netapp.com>, Patrick Mochel <mochel@digitalimplant.org>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-15
+Cc: Jeremy McNicoll <jeremy@mcnicoll.ca>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B8kLX-0005lE-Py
-	for nfs@lists.sourceforge.net; Wed, 31 Mar 2004 10:21:51 -0800
-Received: from cpu1981.adsl.bellglobal.com
-	([206.47.37.212] helo=mcnicoll.ca ident=qmailr)
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
-	id 1B8kLX-0006ew-9B
-	for nfs@lists.sourceforge.net; Wed, 31 Mar 2004 10:21:51 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1080753549.4194.60.camel@lade.trondhjem.org>
+	id 1B0i9X-0002lg-I2
+	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 06:24:15 -0800
+Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.30)
+	id 1B0hcn-0006sa-Hs
+	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 05:50:25 -0800
+To: "Lever, Charles" <Charles.Lever@netapp.com>
+In-Reply-To: <482A3FA0050D21419C269D13989C611302B07BB9@lavender-fe.eng.netapp.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,44 +31,55 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, 2004-03-31 at 12:19, Trond Myklebust wrote:
-> On Wed, 2004-03-31 at 11:57, Lever, Charles wrote:
-> > > My experience with gettimeofday() was that it slows down and 
-> > > eventually hangs the machine when you use it inside bottom 
-> > > halves. That's why I had to revert to using 'jiffies' 
-> > > instead. While I agree that precision may be important, a 
-> > > measurement that so impacts on what it is measuring is not 
-> > > particularly useful either...
-> > 
-> > using jiffies makes these measurements useless for anything
-> > faster than a millisecond (or 10 milliseconds on current
-> > x86), which is most everything on 100Mb or faster, these
-> > days.  isn't there some other solution?
-> 
-> In 2.6. jiffies have 1 ms resolution, not 10 on x86. There may be some
-> alternative generic timing solution in Linux that does better than that,
-> and that can work within bottom halves without side-effects but I'm not
-> aware of such a solution.
-> 
-> You can of course use do_gettimeofday() for the non bh-safe parts if you
-> want to, but using it inside things like *data_ready() etc. was clearly
-> unacceptable.
-> 
-> The only generic solution I see is therefore to use statistics...
-> 
+On Tue, Mar 09, 2004 at 05:58:46AM -0800, Lever, Charles wrote:
+> i don't have a 2.6 version nor have i started any modification of
+> iostat or sar.  i simply wanted to get agreement on APIs and exactly
+> what metrics we are interested in providing.  as such this is only
+> a prototype.  there are some ugly things that will change in the
+> final version (nfs_count_this_op, i believe, is going away).
 
-I am the middle of the "fun" part of my school project that involves
-this stuff, documentation that is!!!  But If I recall correctly there is
-a patch that gives you better resolution jiffies.... I cant recall off
-the top of my head.  But I have to agree with the jiffies solution.  It
-worked really well for me.  It is just a matter of converting jiffies to
-MS in user space.  
+That is good. I very much prefer doing all the iostat stuff
+inside the RPC layer, without having to modify NFS very much
+(except for a single call to enable iostat collection for the
+rpc_clnt)
 
-I am using Robert Love's book right now, for a reference while I
-describe what I accomplished. [ (http://www.mcnicoll.ca/iostat/) as soon
-as the documentation is completed I will post it there.]   Which has
-good info on timing in chapter 9 , this may help you out.   
+> # optype   op count                bytes    retrans     errors
 
+I would like to see separate in/out byte counts.
+
+> there are a few problems with this solution.  one is that zeroing
+> these counters is not atomic.  another is that umount is racy and
+> can leave these data structures in a not so friendly state that
+> could result in an oops.
+
+I've addressed that by putting the rpc_clnt pointer into the proc dir
+entry, and make it bump the refcount when the file is opened and call
+rpc_release_client() when the file is closed.
+
+> and i think we all agree that using
+> seq_file is a much better way to export these metrics to user space.
+> in the final version we will use sysfs instead of /proc.  it's
+> not clear how to name the stat files uniquely -- today i'm using
+> minor numbers, which is a hack.
+
+It's a reasonable compromise. You can even use a simple monotonic counter
+or the %p representation of the rpc_clnt pointer as the file name -
+it should be up to iostat/sar to display something reasonable to the
+user. You can help it by making nfs_show_options() give a hint which
+iostat file corresponds to which mount.
+
+> for use in the stat files.  in 2.6 we have superblock sharing, and
+> i'm not sure what exactly that will mean for the "per-mountpoint"
+> nature of this implementation.
+
+Well, that is not an issue in this case I think. Only super blocks
+with the same file handle get shared.
+
+Olaf
+-- 
+Olaf Kirch     |  Stop wasting entropy - start using predictable
+okir@suse.de   |  tempfile names today!
+---------------+ 
 
 
 -------------------------------------------------------
