@@ -1,97 +1,88 @@
 From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: include/linux/nfs/nfsfh.h declares a symbol
-Date: Mon, 13 Oct 2003 14:43:57 +1000
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <16266.11661.91185.167555@notabene.cse.unsw.edu.au>
-References: <20031001121811.GE31698@wohnheim.fh-wedel.de>
+Subject: Re: [PATCH] SGI 900985: fix nohide export option for nfsv3
+Date: Mon, 13 Oct 2003 16:17:23 +1000
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <16266.17267.491587.121802@notabene.cse.unsw.edu.au>
+References: <3F7CF147.B778D07B@melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 1A8w1R-0002qc-00
+	for <nfs@lists.sourceforge.net>; Sun, 12 Oct 2003 23:17:37 -0700
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.22)
+	id 1A8w1P-00059V-9C
+	for nfs@lists.sourceforge.net; Sun, 12 Oct 2003 23:17:35 -0700
 Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <joern@wohnheim.fh-wedel.de>) (for <nfs@lists.sourceforge.net>)
-	(for <linux-kernel@vger.kernel.org>) By note With Smtp ;
-	Mon, 13 Oct 2003 14:44:00 +1000
-To: =?iso-8859-1?Q?J=F6rn?= Engel <joern@wohnheim.fh-wedel.de>
-In-Reply-To: message from  =?ISO-8859-1?Q?=20J=F6rn?= Engel on Wednesday October 1
-List-ID: <nfs.lists.sourceforge.net>
+	(for <gnb@melbourne.sgi.com>) (for <nfs@lists.sourceforge.net>) By
+	note With Smtp ; Mon, 13 Oct 2003 16:17:28 +1000
+To: Greg Banks <gnb@melbourne.sgi.com>
+In-Reply-To: message from Greg Banks on Friday October 3
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wednesday October 1, joern@wohnheim.fh-wedel.de wrote:
-> Neil, the function SVCFH_fmt uses a static variable to sprintf into.
-> Looks like this variable is declared locally for every .c file
-> including nfsfh.h, which is quite a few.
+On Friday October 3, gnb@melbourne.sgi.com wrote:
+> G'day,
 > 
-> You could remove the static, but that would increase the stack usage,
-> which might be a problem too.  The buffer could be reduced to 64
-> chars, to reduce that problem.  kmalloc()ing it seems a bit expensive,
-> but might be an option, too.
+> SGI bug 900985.
+> 
+> The "nohide" export option fails over NFSv3 because the client gets
+> as a side effect of READDIRPLUS file handles for server-side mountpoints 
+> which haven't gone through the nohide logic in LOOKUP and thus refer
+> to the underlying directory instead the covering one.
+...
+> 
+> 
+> --- /usr/tmp/TmpDir.24872-0/linux/linux/fs/nfsd/nfs3xdr.c_1.23	Fri Sep 19 20:12:50
+> 2003
+> +++ linux/linux/fs/nfsd/nfs3xdr.c	Fri Sep 19 20:09:25 2003
+> @@ -721,6 +721,8 @@
+>  			dchild = lookup_one_len(name, dparent,namlen);
+>  		if (IS_ERR(dchild))
+>  			goto noexec;
+> +		if (d_mountpoint(dchild))
+> +			goto noexec;
+>  		if (fh_compose(&fh, exp, dchild, cd->dirfh) != 0 || !dchild->d_inode)
+>  			goto noexec;
+>  		p = encode_post_op_attr(cd->rqstp, p, &fh);
+> 
 
-Thanks.  I think it is best to simply make SVCFH_fmt a real function
-instead of inline, as below.
+This looks OK.  Thanks.
+
+> --- /usr/tmp/TmpDir.24872-0/linux/linux/fs/nfsd/vfs.c_1.47	Fri Sep 19 20:12:50 2003
+> +++ linux/linux/fs/nfsd/vfs.c	Fri Sep 19 20:08:03 2003
+> @@ -86,7 +86,7 @@
+>   * accepted as it stands and the mounted directory is
+>   * returned. Otherwise the covered directory is returned.
+>   * NOTE: this mountpoint crossing is not supported properly by all
+> - *   clients and is explicitly disallowed for NFSv3
+> + *   clients.
+>   *      NeilBrown <neilb@cse.unsw.edu.au>
+
+This isn't quite right.  What the comment *Should* say is:
+ ... and RFC1813 explicitly dis-allows it for NFSv3 (See section 3.3.3).
 
 NeilBrown
 
-=======================================
-Move SVCFH_fmt from being 'inline' to being 'extern'.
 
-This way, the "static char buf" is defined only once instead
-of once per file.
-
- ----------- Diffstat output ------------
- ./fs/nfsd/nfsfh.c            |   18 ++++++++++++++++++
- ./include/linux/nfsd/nfsfh.h |   17 ++---------------
- 2 files changed, 20 insertions(+), 15 deletions(-)
-
-diff ./fs/nfsd/nfsfh.c~current~ ./fs/nfsd/nfsfh.c
---- ./fs/nfsd/nfsfh.c~current~	2003-10-13 14:24:46.000000000 +1000
-+++ ./fs/nfsd/nfsfh.c	2003-10-13 14:30:06.000000000 +1000
-@@ -489,3 +489,21 @@ fh_put(struct svc_fh *fhp)
- 	return;
- }
- 
-+/*
-+ * Shorthand for dprintk()'s
-+ */
-+char * SVCFH_fmt(struct svc_fh *fhp)
-+{
-+	struct knfsd_fh *fh = &fhp->fh_handle;
-+	
-+	static char buf[80];
-+	sprintf(buf, "%d: %08x %08x %08x %08x %08x %08x",
-+		fh->fh_size,
-+		fh->fh_base.fh_pad[0],
-+		fh->fh_base.fh_pad[1],
-+		fh->fh_base.fh_pad[2],
-+		fh->fh_base.fh_pad[3],
-+		fh->fh_base.fh_pad[4],
-+		fh->fh_base.fh_pad[5]);
-+	return buf;
-+}
-
-diff ./include/linux/nfsd/nfsfh.h~current~ ./include/linux/nfsd/nfsfh.h
---- ./include/linux/nfsd/nfsfh.h~current~	2003-10-13 14:22:27.000000000 +1000
-+++ ./include/linux/nfsd/nfsfh.h	2003-10-13 14:30:16.000000000 +1000
-@@ -186,21 +186,8 @@ static inline void mk_fsid_v2(u32 *fsidv
- /*
-  * Shorthand for dprintk()'s
-  */
--inline static char * SVCFH_fmt(struct svc_fh *fhp)
--{
--	struct knfsd_fh *fh = &fhp->fh_handle;
--	
--	static char buf[80];
--	sprintf(buf, "%d: %08x %08x %08x %08x %08x %08x",
--		fh->fh_size,
--		fh->fh_base.fh_pad[0],
--		fh->fh_base.fh_pad[1],
--		fh->fh_base.fh_pad[2],
--		fh->fh_base.fh_pad[3],
--		fh->fh_base.fh_pad[4],
--		fh->fh_base.fh_pad[5]);
--	return buf;
--}
-+extern char * SVCFH_fmt(struct svc_fh *fhp);
-+
- /*
-  * Function prototypes
-  */
+-------------------------------------------------------
+This SF.net email is sponsored by: SF.net Giveback Program.
+SourceForge.net hosts over 70,000 Open Source Projects.
+See the people who have HELPED US provide better services:
+Click here: http://sourceforge.net/supporters.php
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
