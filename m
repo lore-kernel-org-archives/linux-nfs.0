@@ -1,32 +1,22 @@
-From: "Paul Smith" <pausmith@nortelnetworks.com>
-Subject: Re: NFS client write performance issue ... thoughts?
-Date: 12 Jan 2004 16:37:13 -0500
+From: "Andrew Gray" <7114@blargh.com>
+Subject: Patch to mountd to mount files > 2GB
+Date: Tue, 13 Jan 2004 21:19:16 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <vpdrbrp8j1bq.fsf@lemming.engeast.baynetworks.com>
-References: <32997.141.211.133.197.1073683824.squirrel@webmail.uio.no>
-Reply-To: "Paul Smith" <pausmith@nortelnetworks.com>
+Message-ID: <01c401c3da5d$f50dc580$2a00a8c0@phoenix>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_01C1_01C3DA1A.E62560C0"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1Ag9kS-0008La-Ho
-	for nfs@lists.sourceforge.net; Mon, 12 Jan 2004 13:37:24 -0800
-Received: from zrtps0kp.nortelnetworks.com ([47.140.192.56])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ag9kS-0002ZF-24
-	for nfs@lists.sourceforge.net; Mon, 12 Jan 2004 13:37:24 -0800
-Received: from zrtps0m6.us.nortel.com (zrtps0m6.us.nortel.com [47.140.192.58])
-	by zrtps0kp.nortelnetworks.com (Switch-2.2.6/Switch-2.2.0) with ESMTP id i0CLbFA11618
-	for <nfs@lists.sourceforge.net>; Mon, 12 Jan 2004 16:37:16 -0500 (EST)
-Received: from lemming.engeast.baynetworks.com (mail@lemming.engeast.baynetworks.com [47.17.140.90])
-	by zrtps0m6.us.nortel.com (Switch-2.2.6/Switch-2.2.0) with ESMTP id i0CLbDK14215
-	for <nfs@lists.sourceforge.net>; Mon, 12 Jan 2004 16:37:14 -0500 (EST)
-Received: from psmith by lemming.engeast.baynetworks.com with local (Exim 3.36 #1 (Debian))
-	id 1Ag9kH-0007bm-00
-	for <nfs@lists.sourceforge.net>; Mon, 12 Jan 2004 16:37:13 -0500
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1AgdR5-0000pA-EP
+	for nfs@lists.sourceforge.net; Tue, 13 Jan 2004 21:19:23 -0800
+Received: from wsip-24-234-142-86.lv.lv.cox.net ([24.234.142.86] helo=blargh.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.30)
+	id 1AgdR4-0005A5-RL
+	for nfs@lists.sourceforge.net; Tue, 13 Jan 2004 21:19:23 -0800
 To: nfs@lists.sourceforge.net
-In-Reply-To: <32997.141.211.133.197.1073683824.squirrel@webmail.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -39,81 +29,220 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Thanks Trond.
+This is a multi-part message in MIME format.
 
-We tried out your patch and it did really make a difference in terms of
-both the nfsstat numbers (or, Ethereal in this case) AND the performance
-the user sees, at least from a ClearCase perspective (gnurr.diff is with
-your patch):
+------=_NextPart_000_01C1_01C3DA1A.E62560C0
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-> This time, I used my desktop box (running 2.4.18-27.7.x + gnurr.diff)
-> as view server, while running the small build on a different Linux box.
-> I captured NFS traffic with Ethereal, so as to rule out any possible
-> accounting errors in nfsstat.  Here's what the numbers look like:
-> 
->            nopatch  gnurr.dif    gnurr.diff     Solaris
->             UDP/4K     UDP/4K       UDP/32K     TCP/32K
->            -------  ---------    ----------     -------
->     WRITE    65017       1298           538         612
->     COMMIT   29268        994           882           7
->     LOOKUP    1082       1020          1016        1986
->     GETATTR    548        490           404         532
->     READ       480         75            89           0
->     FSSTAT      60          3             3          60
->     FSINFO      60          3             3           0
->     REMOVE      19         15             8         291
->     ACCESS       0          0             0         291
->     NULL        10          6             5           0
->     SETATTR      4          2             3           2
->     RENAME       4          2             3           2
->     CREATE       4          2             3           2
->     ======   =====       ====          ====        ====
->     Total    96556       3910          2957        3785
-> 
->     CPU        85s        85s           85s         85s
->     Elapsed   202s       121s          121s        139s
-> 
-> Bytes read: 1.97MB      0.3MB         0.7MB          ??
-> Bytes writ: 90.3MB      5.2MB         4.9MB          ??
-> 
-> The Solaris numbers are from the same capture I did a few days ago.
-> For the build times, all builds were done on a machine in our Linux
-> pool (which was not patched), using my desktop in various
-> configurations as view server.  For the Solaris view server, I used a
-> Sun Ultra-80 running Solaris 8.  CPU use was that used by the build
-> itself, not the view server, so we'd expect it to be constant.
-> 
-> So Linux with the gnurr.dif patch stacks up pretty well against Solaris.
-> Note that there are no numbers here for Linux with TCP mounts.  That's
-> because I was analyzing the data with ethereal, and it often can't
-> find the RPC boundaries properly when TCP is in use, so the numbers
-> are meaningless.
-> 
-> One noticable difference between Linux and Solaris is that Linux
-> generates a lot more COMMITS than Solaris.
+Greetings all,
 
-However, then we discovered something concerning, so we are not using
-the patch as-is right now, at least pending further investigation:
+If this has been problem/solution has been posted before, please =
+disregard
+:)
 
-> Oops.  With this patch applied, I didn't see a problem when using
-> my desktop as view server, but when I use it to do builds on, I'm
-> occasionally seeing the following:
-> 
->   ldsimpc: final link failed: Message too long
-> 
-> Ldsimpc is the GNU linker built as a cross-linker for VxSim (ie: for
-> MinGW).  The linker is getting EMSGSIZE somehow, and at this point, I
-> can only guess that it's getting it on a call to write().  Probably NFS
-> is trying to write an overly large UDP packet to the server.  This is
-> with UDP mounts and rsize=wsize=4KB.  Write failures are a little scary,
-> so I think I'm going to back out this patch for now.
+I'm using NFS to serve out FLAR archives to Sun machines.  These files =
+are >
+2GB, and the auto-installer for the Sun boxes mount the files, not the
+directories.  mountd was refusing to authenticate these otherwise legit
+requests because the stat() call was bombing due the filesize being too
+large.  I hacked up the quick diff below that fixed the problem.  The =
+files
+transfer correctly and completely, but I admit I haven't performed =
+further
+testing.
 
--- 
--------------------------------------------------------------------------------
- Paul D. Smith <psmith@nortelnetworks.com>   HASMAT--HA Software Mthds & Tools
- "Please remain calm...I may be mad, but I am a professional." --Mad Scientist
--------------------------------------------------------------------------------
-   These are my opinions---Nortel Networks takes no responsibility for them.
+diff -u nfs-utils-1.0.6-orig/utils/mountd/mountd.c
+nfs-utils-1.0.6/utils/mountd/mountd.c
+--- nfs-utils-1.0.6-orig/utils/mountd/mountd.c  Fri Sep 12 15:14:16 2003
++++ nfs-utils-1.0.6/utils/mountd/mountd.c       Tue Jan 13 20:11:49 2004
+@@ -176,7 +176,7 @@
+ {
+        struct sockaddr_in *sin
+                =3D (struct sockaddr_in *) =
+svc_getcaller(rqstp->rq_xprt);
+-       struct stat     stb;
++       struct stat64   stb;
+        nfs_export      *exp;
+        char            rpath[MAXPATHLEN+1];
+        char            *p =3D *path;
+@@ -198,7 +198,7 @@
+        /* Now authenticate the intruder... */
+        if (!(exp =3D auth_authenticate("pathconf", sin, p))) {
+                return 1;
+-       } else if (stat(p, &stb) < 0) {
++       } else if (stat64(p, &stb) < 0) {
+                xlog(L_WARNING, "can't stat exported dir %s: %s",
+                                p, strerror(errno));
+                export_reset (exp);
+@@ -248,7 +248,7 @@
+ {
+        struct sockaddr_in *sin =3D
+                (struct sockaddr_in *) svc_getcaller(rqstp->rq_xprt);
+-       struct stat     stb, estb;
++       struct stat64   stb, estb;
+        nfs_export      *exp;
+        char            rpath[MAXPATHLEN+1];
+        char            *p =3D *path;
+@@ -268,7 +268,7 @@
+        /* Now authenticate the intruder... */
+        if (!(exp =3D auth_authenticate("mount", sin, p))) {
+                *error =3D NFSERR_ACCES;
+-       } else if (stat(p, &stb) < 0) {
++       } else if (stat64(p, &stb) < 0) {
+                xlog(L_WARNING, "can't stat exported dir %s: %s",
+                                p, strerror(errno));
+                if (errno =3D=3D ENOENT)
+@@ -278,7 +278,7 @@
+        } else if (!S_ISDIR(stb.st_mode) && !S_ISREG(stb.st_mode)) {
+                xlog(L_WARNING, "%s is not a directory or regular file", =
+p);
+                *error =3D NFSERR_NOTDIR;
+-       } else if (stat(exp->m_export.e_path, &estb) < 0) {
++       } else if (stat64(exp->m_export.e_path, &estb) < 0) {
+                xlog(L_WARNING, "can't stat export point %s: %s",
+                     p, strerror(errno));
+                *error =3D NFSERR_NOENT;
+
+
+------=_NextPart_000_01C1_01C3DA1A.E62560C0
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; =
+charset=3Diso-8859-1">
+<META content=3D"MSHTML 6.00.2800.1276" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>Greetings all,<BR><BR>If this has been =
+problem/solution=20
+has been posted before, please disregard<BR>:)<BR><BR>I'm using NFS to =
+serve out=20
+FLAR archives to Sun machines.&nbsp; These files are &gt;<BR>2GB, and =
+the=20
+auto-installer for the Sun boxes mount the files, not =
+the<BR>directories.&nbsp;=20
+mountd was refusing to authenticate these otherwise legit<BR>requests =
+because=20
+the stat() call was bombing due the filesize being too<BR>large.&nbsp; I =
+hacked=20
+up the quick diff below that fixed the problem.&nbsp; The =
+files<BR>transfer=20
+correctly and completely, but I admit I haven't performed=20
+further<BR>testing.<BR><BR>diff -u=20
+nfs-utils-1.0.6-orig/utils/mountd/mountd.c<BR>nfs-utils-1.0.6/utils/mount=
+d/mountd.c<BR>---=20
+nfs-utils-1.0.6-orig/utils/mountd/mountd.c&nbsp; Fri Sep 12 15:14:16 =
+2003<BR>+++=20
+nfs-utils-1.0.6/utils/mountd/mountd.c&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=
+ Tue=20
+Jan 13 20:11:49 2004<BR>@@ -176,7 +176,7=20
+@@<BR>&nbsp;{<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; struct =
+sockaddr_in=20
+*sin<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp=
+;&nbsp;&nbsp;&nbsp;&nbsp;=20
+=3D (struct sockaddr_in *)=20
+svc_getcaller(rqstp-&gt;rq_xprt);<BR>-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp=
+;=20
+struct stat&nbsp;&nbsp;&nbsp;&nbsp;=20
+stb;<BR>+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; struct stat64&nbsp;&nbsp;=20
+stb;<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+nfs_export&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+*exp;<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+char&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+rpath[MAXPATHLEN+1];<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+char&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =
+*p =3D=20
+*path;<BR>@@ -198,7 +198,7 =
+@@<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /*=20
+Now authenticate the intruder...=20
+*/<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (!(exp =3D=20
+auth_authenticate("pathconf", sin, p)))=20
+{<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&n=
+bsp;&nbsp;&nbsp;&nbsp;=20
+return 1;<BR>-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } else if (stat(p, =
+&amp;stb)=20
+&lt; 0) {<BR>+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } else if (stat64(p,=20
+&amp;stb) &lt; 0)=20
+{<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&n=
+bsp;&nbsp;&nbsp;&nbsp;=20
+xlog(L_WARNING, "can't stat exported dir %s:=20
+%s",<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp=
+;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+p,=20
+strerror(errno));<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbs=
+p;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+export_reset (exp);<BR>@@ -248,7 +248,7=20
+@@<BR>&nbsp;{<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; struct =
+sockaddr_in=20
+*sin=20
+=3D<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;=20
+(struct sockaddr_in *)=20
+svc_getcaller(rqstp-&gt;rq_xprt);<BR>-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp=
+;=20
+struct stat&nbsp;&nbsp;&nbsp;&nbsp; stb,=20
+estb;<BR>+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; struct stat64&nbsp;&nbsp; =
+stb,=20
+estb;<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+nfs_export&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+*exp;<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+char&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+rpath[MAXPATHLEN+1];<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+char&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =
+*p =3D=20
+*path;<BR>@@ -268,7 +268,7 =
+@@<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /*=20
+Now authenticate the intruder...=20
+*/<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (!(exp =3D=20
+auth_authenticate("mount", sin, p)))=20
+{<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&n=
+bsp;&nbsp;&nbsp;&nbsp;=20
+*error =3D NFSERR_ACCES;<BR>-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } else =
+if=20
+(stat(p, &amp;stb) &lt; 0) {<BR>+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } =
+else if=20
+(stat64(p, &amp;stb) &lt; 0)=20
+{<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&n=
+bsp;&nbsp;&nbsp;&nbsp;=20
+xlog(L_WARNING, "can't stat exported dir %s:=20
+%s",<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp=
+;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+p,=20
+strerror(errno));<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbs=
+p;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+if (errno =3D=3D ENOENT)<BR>@@ -278,7 +278,7=20
+@@<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } else if=20
+(!S_ISDIR(stb.st_mode) &amp;&amp; !S_ISREG(stb.st_mode))=20
+{<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&n=
+bsp;&nbsp;&nbsp;&nbsp;=20
+xlog(L_WARNING, "%s is not a directory or regular file",=20
+p);<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;=20
+*error =3D NFSERR_NOTDIR;<BR>-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } =
+else if=20
+(stat(exp-&gt;m_export.e_path, &amp;estb) &lt; 0)=20
+{<BR>+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } else if=20
+(stat64(exp-&gt;m_export.e_path, &amp;estb) &lt; 0)=20
+{<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&n=
+bsp;&nbsp;&nbsp;&nbsp;=20
+xlog(L_WARNING, "can't stat export point %s:=20
+%s",<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp=
+;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+p,=20
+strerror(errno));<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbs=
+p;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+*error =3D NFSERR_NOENT;<BR>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV></BODY></HTML>
+
+------=_NextPart_000_01C1_01C3DA1A.E62560C0--
+
 
 
 -------------------------------------------------------
