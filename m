@@ -1,24 +1,22 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] xprt sharing (was Re: xprt_bindresvport)
-Date: Thu, 09 Dec 2004 16:33:57 -0500
-Message-ID: <1102628037.10668.86.camel@lade.trondhjem.org>
-References: <482A3FA0050D21419C269D13989C61130435EC6F@lavender-fe.eng.netapp.com>
-	 <41B74551.5040908@sun.com>  <20041209113107.GE15055@suse.de>
-	 <1102620880.3784.3.camel@tesuji.nac.uci.edu>
+From: Bryce Harrington <bryce@osdl.org>
+Subject: Re: [Storage_sig] Re: Question on bug tracking for NFSv4 work
+Date: Thu, 9 Dec 2004 13:53:53 -0800 (PST)
+Message-ID: <Pine.LNX.4.33.0412091330180.8023-100000@osdlab.pdx.osdl.net>
+References: <200412091441.PAA173944@isatis.frec.bull.fr>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Olaf Kirch <okir@suse.de>, Mike Waychison <Michael.Waychison@sun.com>,  Charles Lever <Charles.Lever@netapp.com>, nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: <hch@infradead.org>, <nfs@lists.sourceforge.net>, <storage_sig@osdl.org>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CcVvQ-0000iM-Kc
-	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 13:34:12 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CcVvP-0006xh-Ov
-	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 13:34:12 -0800
-To: Dan Stromberg <strombrg@dcs.nac.uci.edu>
-In-Reply-To: <1102620880.3784.3.camel@tesuji.nac.uci.edu>
+	id 1CcWEt-0002VY-Sl
+	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 13:54:19 -0800
+Received: from fw.osdl.org ([65.172.181.6] helo=mail.osdl.org)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1CcWEq-0004zh-R7
+	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 13:54:19 -0800
+To: Tony Reix <Tony.Reix@bull.net>
+In-Reply-To: <200412091441.PAA173944@isatis.frec.bull.fr>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,31 +30,60 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-to den 09.12.2004 Klokka 11:34 (-0800) skreiv Dan Stromberg:
+On Thu, 9 Dec 2004, Tony Reix wrote:
+> { > The reason for the question is that a number of companies
+> { > (CITI, Polyserv, Novell, NetApp, etc.) we've been talking with are doing
+> { > testing of NFSv4, and have expressed interest in sharing of results,
+> { > including a public bug tracker (both for posting bugs that are found,
+> { > and for reviewing/validating/elaborating bugs that others post).
+> {
+> { I suspect the best thing would be to post them to the mailinglist, the
+> { same way bugs are reported for just about any other subsystem.
+>
+> I think a mailing list is not appropriate for NFSv4 bug tracking.
+> The testers need to have tools for checking that the bugs they have opened
+> have make progress, and to add new information.
+> The developpers need tools for managing all the bugs they are working on
+> and to answer to testers.
+> Managing defects is a pain we cannot go without. Just make it easier to live with.
 
-> It'd probably be worthwhile to have options to make NFS (and my
-> printsystem) generate any port (not just reserved ones), and accept only
-> reserved ports - but the default probably should be to accept any port,
-> and send only reserved ports - not because reserved ports are effective
-> at all, but because it'll avoid never ending questions about why NFS
-> isn't working.
+As an example of how a bug tracker can really help in an open source
+project, one project I am involved with (Inkscape) originally used
+a mailing list for handling bugs, however it was rather infamous for
+crashing, losing data, and big problems going unresolved for a long
+time.
 
-Sure. The questions will no longer read "why isn't NFS working". They'll
-read "why can any Tom, Dick and Harry suddenly read my private email
-directly from the NFS server?". 8-)
+About a year and a half ago, the development team started making use of
+a bug tracker (just the simple one on SourceForge), encouraging users to
+report bugs there, and involving a lot of people in testing out the bug
+reports both to verify that the bugs are recreatable and that the
+patches solved the problem.  This was particularly useful at around
+release time because we could track and review all of the critical bugs
+and focus on getting those resolved (and verfied fixed) before
+releasing.
 
-The standard AUTH_SYS/AUTH_UNIX authentication scheme only checks the
-source IP address, and trusts the client 100% when it comes to supplying
-the correct uid/gid/.... (see RFC1831). By placing the additional
-requirement that the source must be a privileged port, one is at least
-able to prevent ordinary users on an authorized client from being able
-to spoof NFS requests.
+Today, because of this effort, Inkscape's reputation is that it is very
+robust and difficult to make crash.  Also, most of the common problems
+people run into are documented (sometimes with work-arounds) in the bug
+tracker.
 
-Cheers,
-  Trond
+It's true that most open source projects don't use bug trackers, and
+certainly a fact that they're more work to manage, however I've seen
+them have a very beneficial long term effect on projects and I would
+love to see NFSv4 benefit this way as well.  If NFSv4 can gain a
+reputation of being extremely robust, that could become a great selling
+point for it.
 
--- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
+However, I know that not everyone likes having to use bug trackers, and
+that's understandable.  Maybe a good compromise would be for those of us
+doing testing who want to track bugs, to do so, but continue using the
+mailing lists as the primary mechanism.  That way if the bug tracking
+approach fizzles out, it doesn't affect normal processes, but if it
+succeeds then people can make heavier use of it.  Does this sound like a
+feasible approach?
+
+Bryce
+
 
 
 
