@@ -1,21 +1,22 @@
-From: Enils Bashi <EBashi@chesapeakebay.net>
-Subject: tcp over nfs for redhat 9 kernel 2.4.20-31.9
-Date: Mon, 7 Jun 2004 16:04:14 -0400
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: RE: tcp over nfs for redhat 9 kernel 2.4.20-31.9
+Date: Mon, 7 Jun 2004 13:12:53 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <2B51611764AC0A4DB3A15200DD51E8E60907D1@mail2.chesapeakebay.net>
+Message-ID: <482A3FA0050D21419C269D13989C61130435E21D@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
 Content-Type: multipart/alternative;
-	boundary="----_=_NextPart_001_01C44CCA.9B0F6A40"
+	boundary="----_=_NextPart_001_01C44CCB.D0716ACF"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BXQLw-00064g-3t
-	for nfs@lists.sourceforge.net; Mon, 07 Jun 2004 13:04:16 -0700
-Received: from mail2.chesapeakebay.net ([208.255.155.18])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1BXQLv-0003r5-IB
-	for nfs@lists.sourceforge.net; Mon, 07 Jun 2004 13:04:15 -0700
-To: nfs@lists.sourceforge.net
+	id 1BXQUT-0000LD-Ad
+	for nfs@lists.sourceforge.net; Mon, 07 Jun 2004 13:13:05 -0700
+Received: from mx01.netapp.com ([198.95.226.53])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BXQUS-0001eJ-QW
+	for nfs@lists.sourceforge.net; Mon, 07 Jun 2004 13:13:04 -0700
+To: "Enils Bashi" <EBashi@chesapeakebay.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -28,21 +29,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This message is in MIME format. Since your mail reader does not understand
-this format, some or all of this message may not be legible.
+This is a multi-part message in MIME format.
 
-------_=_NextPart_001_01C44CCA.9B0F6A40
-Content-Type: text/plain
+------_=_NextPart_001_01C44CCB.D0716ACF
+Content-Type: text/plain;
+	charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
+
+make sure you have enabled CONFIG_EXPERIMENTAL.  it's the very first
+menu item in "make xconfig".
+=20
+
+-----Original Message-----
+From: Enils Bashi [mailto:EBashi@chesapeakebay.net]=20
+Sent: Monday, June 07, 2004 4:04 PM
+To: nfs@lists.sourceforge.net
+Subject: [NFS] tcp over nfs for redhat 9 kernel 2.4.20-31.9
+
+
 
 Hi,
 
- 
+=20
 
-I had posted something about this earlier one of the responses I received
-was that my nfs server does not support tcp over nfs since the output of
-rpcinfo -p looked like the following:
+I had posted something about this earlier one of the responses I
+received was that my nfs server does not support tcp over nfs since the
+output of rpcinfo -p looked like the following:
 
- 
+=20
 
 [root@client linux-2.4]# rpcinfo -p server
 
@@ -88,280 +102,253 @@ rpcinfo -p looked like the following:
 
     100005    3   tcp  40931  mountd
 
- 
+=20
 
-Just for kicks I installed Fedora Core 2 on one of my nfs client machines. I
-mounted all drives with proto=tcp and nfsvers=3 and everything worked great.
-I ran some tests and I got very good results. Nfs on Fedora was at least
-100% faster than on Redhat. All this done using the same nfs server located
-on a Redhat 9 Server. My other Redhat 9 clients all with Kernel 2.4.20-31.9
-fail to mount with proto=tcp. From the reading I have done most  kernels
-above 2.4.19 are supposed to have nfs over tcp support. I tried recompiling
-the kernel on one of the Redhat nfs clients using xconfig; but under the
-Network File System options tcp support for nfs was grayed out (disabled). I
-am not sure whether this means that is already installed. I have noticed
-that other people have had similar problems but I don't see a straight
-answer on the forum.
+Just for kicks I installed Fedora Core 2 on one of my nfs client
+machines. I mounted all drives with proto=3Dtcp and nfsvers=3D3 and
+everything worked great. I ran some tests and I got very good results.
+Nfs on Fedora was at least 100% faster than on Redhat. All this done
+using the same nfs server located on a Redhat 9 Server. My other Redhat
+9 clients all with Kernel 2.4.20-31.9 fail to mount with proto=3Dtcp. =
+From
+the reading I have done most  kernels above 2.4.19 are supposed to have
+nfs over tcp support. I tried recompiling the kernel on one of the
+Redhat nfs clients using xconfig; but under the Network File System
+options tcp support for nfs was grayed out (disabled). I am not sure
+whether this means that is already installed. I have noticed that other
+people have had similar problems but I don't see a straight answer on
+the forum.
 
- 
+=20
 
 Any and all feedback would be greatly appreciated.
 
- 
+=20
 
 Enils
 
 
-------_=_NextPart_001_01C44CCA.9B0F6A40
-Content-Type: text/html
+------_=_NextPart_001_01C44CCB.D0716ACF
+Content-Type: text/html;
+	charset="us-ascii"
 Content-Transfer-Encoding: quoted-printable
 
-<html xmlns:o=3D"urn:schemas-microsoft-com:office:office" =
-xmlns:w=3D"urn:schemas-microsoft-com:office:word" =
-xmlns=3D"http://www.w3.org/TR/REC-html40">
-
-<head>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML xmlns=3D"http://www.w3.org/TR/REC-html40" xmlns:o =3D=20
+"urn:schemas-microsoft-com:office:office" xmlns:w =3D=20
+"urn:schemas-microsoft-com:office:word"><HEAD>
 <META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
 charset=3Dus-ascii">
+<TITLE>Message</TITLE>
 
+<META content=3D"MSHTML 6.00.2800.1400" name=3DGENERATOR>
+<STYLE>@page Section1 {size: 8.5in 11.0in; margin: 1.0in 1.25in 1.0in =
+1.25in; }
+P.MsoNormal {
+	FONT-SIZE: 12pt; MARGIN: 0in 0in 0pt; FONT-FAMILY: "Times New Roman"
+}
+LI.MsoNormal {
+	FONT-SIZE: 12pt; MARGIN: 0in 0in 0pt; FONT-FAMILY: "Times New Roman"
+}
+DIV.MsoNormal {
+	FONT-SIZE: 12pt; MARGIN: 0in 0in 0pt; FONT-FAMILY: "Times New Roman"
+}
+A:link {
+	COLOR: blue; TEXT-DECORATION: underline
+}
+SPAN.MsoHyperlink {
+	COLOR: blue; TEXT-DECORATION: underline
+}
+A:visited {
+	COLOR: purple; TEXT-DECORATION: underline
+}
+SPAN.MsoHyperlinkFollowed {
+	COLOR: purple; TEXT-DECORATION: underline
+}
+SPAN.EmailStyle17 {
+	COLOR: windowtext; FONT-FAMILY: Arial; mso-style-type: personal-compose
+}
+DIV.Section1 {
+	page: Section1
+}
+</STYLE>
+</HEAD>
+<BODY lang=3DEN-US vLink=3Dpurple link=3Dblue>
+<DIV><SPAN class=3D382111220-07062004><FONT face=3DArial color=3D#0000ff =
+size=3D2>make=20
+sure you have enabled CONFIG_EXPERIMENTAL.&nbsp; it's the very first =
+menu item=20
+in "make xconfig".</FONT></SPAN></DIV>
+<DIV><SPAN class=3D382111220-07062004></SPAN>&nbsp;</DIV>
+<BLOCKQUOTE dir=3Dltr=20
+style=3D"PADDING-LEFT: 5px; MARGIN-LEFT: 5px; BORDER-LEFT: #0000ff 2px =
+solid; MARGIN-RIGHT: 0px">
+  <DIV></DIV>
+  <DIV class=3DOutlookMessageHeader lang=3Den-us dir=3Dltr =
+align=3Dleft><FONT=20
+  face=3DTahoma size=3D2>-----Original Message-----<BR><B>From:</B> =
+Enils Bashi=20
+  [mailto:EBashi@chesapeakebay.net] <BR><B>Sent:</B> Monday, June 07, =
+2004 4:04=20
+  PM<BR><B>To:</B> nfs@lists.sourceforge.net<BR><B>Subject:</B> [NFS] =
+tcp over=20
+  nfs for redhat 9 kernel 2.4.20-31.9<BR><BR></FONT></DIV>
+  <DIV class=3DSection1>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: =
+Arial">Hi,<o:p></o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: =
+Arial"><o:p>&nbsp;</o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: Arial">I had posted something =
+about this=20
+  earlier one of the responses I received was that my nfs server does =
+not=20
+  support tcp over nfs since the output of rpcinfo &#8211;p looked like =
+the=20
+  following:<o:p></o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: =
+Arial"><o:p>&nbsp;</o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: Arial">[root@client linux-2.4]# =
+rpcinfo=20
+  -p server<o:p></o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: Arial">&nbsp;&nbsp; program =
+vers=20
+  proto&nbsp;&nbsp; port<o:p></o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: Arial">&nbsp;&nbsp;&nbsp;=20
+  100000&nbsp;&nbsp;&nbsp; 2&nbsp;&nbsp; tcp&nbsp;&nbsp;&nbsp; 111&nbsp; =
 
-<meta name=3DGenerator content=3D"Microsoft Word 11 (filtered medium)">
-<style>
-<!--
- /* Style Definitions */
- p.MsoNormal, li.MsoNormal, div.MsoNormal
-	{margin:0in;
-	margin-bottom:.0001pt;
-	font-size:12.0pt;
-	font-family:"Times New Roman";}
-a:link, span.MsoHyperlink
-	{color:blue;
-	text-decoration:underline;}
-a:visited, span.MsoHyperlinkFollowed
-	{color:purple;
-	text-decoration:underline;}
-span.EmailStyle17
-	{mso-style-type:personal-compose;
-	font-family:Arial;
-	color:windowtext;}
-@page Section1
-	{size:8.5in 11.0in;
-	margin:1.0in 1.25in 1.0in 1.25in;}
-div.Section1
-	{page:Section1;}
--->
-</style>
+  portmapper<o:p></o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: Arial">&nbsp;&nbsp;&nbsp;=20
+  100000&nbsp;&nbsp;&nbsp; 2&nbsp;&nbsp; udp&nbsp;&nbsp;&nbsp; 111&nbsp; =
 
-</head>
+  portmapper<o:p></o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: Arial">&nbsp;&nbsp;&nbsp;=20
+  100024&nbsp;&nbsp;&nbsp; 1&nbsp;&nbsp; udp&nbsp; 32768&nbsp;=20
+  status<o:p></o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: Arial">&nbsp;&nbsp;&nbsp;=20
+  100024&nbsp;&nbsp;&nbsp; 1&nbsp;&nbsp; tcp&nbsp; 32768&nbsp;=20
+  status<o:p></o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: Arial">&nbsp;&nbsp;&nbsp;=20
+  391002&nbsp;&nbsp;&nbsp; 2&nbsp;&nbsp; tcp&nbsp; 32769&nbsp;=20
+  sgi_fam<o:p></o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: Arial">&nbsp;&nbsp;&nbsp;=20
+  100011&nbsp;&nbsp;&nbsp; 1&nbsp;&nbsp; udp&nbsp;&nbsp;&nbsp; 705&nbsp; =
 
-<body lang=3DEN-US link=3Dblue vlink=3Dpurple>
+  rquotad<o:p></o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: Arial">&nbsp;&nbsp;&nbsp;=20
+  100011&nbsp;&nbsp;&nbsp; 2&nbsp;&nbsp; udp&nbsp;&nbsp;&nbsp; 705&nbsp; =
 
-<div class=3DSection1>
+  rquotad<o:p></o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: Arial">&nbsp;&nbsp;&nbsp;=20
+  100011&nbsp;&nbsp;&nbsp; 1&nbsp;&nbsp; tcp&nbsp;&nbsp;&nbsp; 708&nbsp; =
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Hi,<o:p></o:p></span></font></p>
+  rquotad<o:p></o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: Arial">&nbsp;&nbsp;&nbsp;=20
+  100011&nbsp;&nbsp;&nbsp; 2&nbsp;&nbsp; tcp&nbsp;&nbsp;&nbsp; 708&nbsp; =
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
+  rquotad<o:p></o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: Arial">&nbsp;&nbsp;&nbsp;=20
+  100003&nbsp;&nbsp;&nbsp; 2&nbsp;&nbsp; udp&nbsp;&nbsp; 2049&nbsp;=20
+  nfs<o:p></o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: Arial">&nbsp;&nbsp;&nbsp;=20
+  100003&nbsp;&nbsp;&nbsp; 3&nbsp;&nbsp; udp&nbsp;&nbsp; 2049&nbsp;=20
+  nfs<o:p></o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: Arial">&nbsp;&nbsp;&nbsp;=20
+  100021&nbsp;&nbsp;&nbsp; 1&nbsp;&nbsp; udp&nbsp; 33050&nbsp;=20
+  nlockmgr<o:p></o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: Arial">&nbsp;&nbsp;&nbsp;=20
+  100021&nbsp;&nbsp;&nbsp; 3&nbsp;&nbsp; udp&nbsp; 33050&nbsp;=20
+  nlockmgr<o:p></o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: Arial">&nbsp;&nbsp;&nbsp;=20
+  100021&nbsp;&nbsp;&nbsp; 4&nbsp;&nbsp; udp&nbsp; 33050&nbsp;=20
+  nlockmgr<o:p></o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: Arial">&nbsp;&nbsp;&nbsp;=20
+  100005&nbsp;&nbsp;&nbsp; 1&nbsp;&nbsp; udp&nbsp; 33051&nbsp;=20
+  mountd<o:p></o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: Arial">&nbsp;&nbsp;&nbsp;=20
+  100005&nbsp;&nbsp;&nbsp; 1&nbsp;&nbsp; tcp&nbsp; 40931&nbsp;=20
+  mountd<o:p></o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: Arial">&nbsp;&nbsp;&nbsp;=20
+  100005&nbsp;&nbsp;&nbsp; 2&nbsp;&nbsp; udp&nbsp; 33051&nbsp;=20
+  mountd<o:p></o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: Arial">&nbsp;&nbsp;&nbsp;=20
+  100005&nbsp;&nbsp;&nbsp; 2&nbsp;&nbsp; tcp&nbsp; 40931&nbsp;=20
+  mountd<o:p></o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: Arial">&nbsp;&nbsp;&nbsp;=20
+  100005&nbsp;&nbsp;&nbsp; 3&nbsp;&nbsp; udp&nbsp; 33051&nbsp;=20
+  mountd<o:p></o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: Arial">&nbsp;&nbsp;&nbsp;=20
+  100005&nbsp;&nbsp;&nbsp; 3&nbsp;&nbsp; tcp&nbsp; 40931&nbsp;=20
+  mountd<o:p></o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: =
+Arial"><o:p>&nbsp;</o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: Arial">Just for kicks I =
+installed Fedora=20
+  Core 2 on one of my nfs client machines. I mounted all drives with =
+proto=3Dtcp=20
+  and nfsvers=3D3 and everything worked great. I ran some tests and I =
+got very=20
+  good results. Nfs on Fedora was at least 100% faster than on Redhat. =
+All this=20
+  done using the same nfs server located on a Redhat 9 Server. My other =
+Redhat 9=20
+  clients all with Kernel 2.4.20-31.9 fail to mount with proto=3Dtcp. =
+>From the=20
+  reading I have done most &nbsp;kernels above 2.4.19 are supposed to =
+have nfs=20
+  over tcp support. I tried recompiling the kernel on one of the Redhat =
+nfs=20
+  clients using xconfig; but under the Network File System options tcp =
+support=20
+  for nfs was grayed out (disabled). I am not sure whether this means =
+that is=20
+  already installed. I have noticed that other people have had similar =
+problems=20
+  but I don&#8217;t see a straight answer on the =
+forum.<o:p></o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: =
+Arial"><o:p>&nbsp;</o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: Arial">Any and all feedback =
+would be=20
+  greatly appreciated.<o:p></o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: =
+Arial"><o:p>&nbsp;</o:p></SPAN></FONT></P>
+  <P class=3DMsoNormal><FONT face=3DArial size=3D2><SPAN=20
+  style=3D"FONT-SIZE: 10pt; FONT-FAMILY: =
+Arial">Enils<o:p></o:p></SPAN></FONT></P></DIV></BLOCKQUOTE></BODY></HTML=
+>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>I had posted something about this earlier one of the
-responses I received was that my nfs server does not support tcp over =
-nfs since
-the output of rpcinfo &#8211;p looked like the =
-following:<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>[root@client linux-2.4]# rpcinfo -p =
-server<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp; program vers proto&nbsp;&nbsp; =
-port<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; 100000&nbsp;&nbsp;&nbsp; =
-2&nbsp;&nbsp;
-tcp&nbsp;&nbsp;&nbsp; 111&nbsp; portmapper<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; 100000&nbsp;&nbsp;&nbsp; =
-2&nbsp;&nbsp;
-udp&nbsp;&nbsp;&nbsp; 111&nbsp; portmapper<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; 100024&nbsp;&nbsp;&nbsp; =
-1&nbsp;&nbsp;
-udp&nbsp; 32768&nbsp; status<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; 100024&nbsp;&nbsp;&nbsp; =
-1&nbsp;&nbsp;
-tcp&nbsp; 32768&nbsp; status<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; 391002&nbsp;&nbsp;&nbsp; =
-2&nbsp;&nbsp;
-tcp&nbsp; 32769&nbsp; sgi_fam<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; 100011&nbsp;&nbsp;&nbsp; =
-1&nbsp;&nbsp;
-udp&nbsp;&nbsp;&nbsp; 705&nbsp; rquotad<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; 100011&nbsp;&nbsp;&nbsp; =
-2&nbsp;&nbsp;
-udp&nbsp;&nbsp;&nbsp; 705&nbsp; rquotad<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; 100011&nbsp;&nbsp;&nbsp; =
-1&nbsp;&nbsp;
-tcp&nbsp;&nbsp;&nbsp; 708&nbsp; rquotad<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; 100011&nbsp;&nbsp;&nbsp; =
-2&nbsp;&nbsp;
-tcp&nbsp;&nbsp;&nbsp; 708&nbsp; rquotad<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; 100003&nbsp;&nbsp;&nbsp; =
-2&nbsp;&nbsp;
-udp&nbsp;&nbsp; 2049&nbsp; nfs<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; 100003&nbsp;&nbsp;&nbsp; =
-3&nbsp;&nbsp;
-udp&nbsp;&nbsp; 2049&nbsp; nfs<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; 100021&nbsp;&nbsp;&nbsp; =
-1&nbsp;&nbsp;
-udp&nbsp; 33050&nbsp; nlockmgr<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; 100021&nbsp;&nbsp;&nbsp; =
-3&nbsp;&nbsp;
-udp&nbsp; 33050&nbsp; nlockmgr<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; 100021&nbsp;&nbsp;&nbsp; =
-4&nbsp;&nbsp;
-udp&nbsp; 33050&nbsp; nlockmgr<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; 100005&nbsp;&nbsp;&nbsp; =
-1&nbsp;&nbsp;
-udp&nbsp; 33051&nbsp; mountd<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; 100005&nbsp;&nbsp;&nbsp; =
-1&nbsp;&nbsp;
-tcp&nbsp; 40931&nbsp; mountd<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; 100005&nbsp;&nbsp;&nbsp; =
-2&nbsp;&nbsp;
-udp&nbsp; 33051&nbsp; mountd<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; 100005&nbsp;&nbsp;&nbsp; =
-2&nbsp;&nbsp;
-tcp&nbsp; 40931&nbsp; mountd<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; 100005&nbsp;&nbsp;&nbsp; =
-3&nbsp;&nbsp;
-udp&nbsp; 33051&nbsp; mountd<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; 100005&nbsp;&nbsp;&nbsp; =
-3&nbsp;&nbsp;
-tcp&nbsp; 40931&nbsp; mountd<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Just for kicks I installed Fedora Core 2 on one of =
-my nfs
-client machines. I mounted all drives with proto=3Dtcp and nfsvers=3D3 =
-and everything
-worked great. I ran some tests and I got very good results. Nfs on =
-Fedora was
-at least 100% faster than on Redhat. All this done using the same nfs =
-server
-located on a Redhat 9 Server. My other Redhat 9 clients all with Kernel =
-2.4.20-31.9
-fail to mount with proto=3Dtcp. From the reading I have done most =
-&nbsp;kernels
-above 2.4.19 are supposed to have nfs over tcp support. I tried =
-recompiling the
-kernel on one of the Redhat nfs clients using xconfig; but under the =
-Network
-File System options tcp support for nfs was grayed out (disabled). I am =
-not
-sure whether this means that is already installed. I have noticed that =
-other
-people have had similar problems but I don&#8217;t see a straight =
-answer on the
-forum.<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Any and all feedback would be greatly =
-appreciated.<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Enils<o:p></o:p></span></font></p>
-
-</div>
-
-</body>
-
-</html>
-
-------_=_NextPart_001_01C44CCA.9B0F6A40--
+------_=_NextPart_001_01C44CCB.D0716ACF--
 
 
 -------------------------------------------------------
