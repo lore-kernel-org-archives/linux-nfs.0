@@ -1,25 +1,32 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: [PATCH] prevent sunrpc deadlock with debug on
-Date: Thu, 16 Dec 2004 17:57:14 +0100
-Message-ID: <20041216165714.GB2077@suse.de>
+From: Marc Eshel <eshel@almaden.ibm.com>
+Subject: Re: [patch] flock/fcntl bug
+Date: Thu, 16 Dec 2004 10:52:53 -0800
+Message-ID: <OFECF97ADD.AD77F838-ON88256F6C.0062E165-88256F6C.0067B807@us.ibm.com>
+References: <1103168644.11148.48.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="wac7ysb48OaltWcw"
+Content-Type: text/plain; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CeywI-0001tr-BI
-	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 08:57:18 -0800
-Received: from mail.suse.de ([195.135.220.2] helo=Cantor.suse.de)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1Cf0n8-0001iP-Px
+	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 10:55:58 -0800
+Received: from e4.ny.us.ibm.com ([32.97.182.144])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1CeywH-0000l1-8d
-	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 08:57:17 -0800
-Received: from hermes.suse.de (hermes-ext.suse.de [195.135.221.8])
-	(using TLSv1 with cipher EDH-RSA-DES-CBC3-SHA (168/168 bits))
-	(No client certificate requested)
-	by Cantor.suse.de (Postfix) with ESMTP id 4381E12285C6
-	for <nfs@lists.sourceforge.net>; Thu, 16 Dec 2004 17:57:14 +0100 (CET)
-To: nfs@lists.sourceforge.net
+	id 1Cf0n6-00032p-68
+	for nfs@lists.sourceforge.net; Thu, 16 Dec 2004 10:55:57 -0800
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e4.ny.us.ibm.com (8.12.10/8.12.10) with ESMTP id iBGItk50008336
+	for <nfs@lists.sourceforge.net>; Thu, 16 Dec 2004 13:55:46 -0500
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay04.pok.ibm.com (8.12.10/NCO/VER6.6) with ESMTP id iBGItkXa270766
+	for <nfs@lists.sourceforge.net>; Thu, 16 Dec 2004 13:55:46 -0500
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11/8.12.11) with ESMTP id iBGItkHL026387
+	for <nfs@lists.sourceforge.net>; Thu, 16 Dec 2004 13:55:46 -0500
+In-Reply-To: <1103168644.11148.48.camel@lade.trondhjem.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,71 +40,70 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Trond Myklebust wrote on 12/15/2004 07:44:04 PM:
 
---wac7ysb48OaltWcw
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+> on den 15.12.2004 Klokka 18:16 (-0800) skreiv Marc Eshel:
 
-Here's a patch we added to our kernel a while ago, but which
-I forgot to submit... here it is.
+> > I will be glad to. Please add my patch 'locking for cluster filesystem'
+so
+> > other users can experiment with their favorite file system and give
+some
+> > feed back. My patch is getting too big and it is a pain to retrofit it
+to
+> > constantly changing code. It will than be easier to build small patches
+for
+> > the specific problem that will arise.
 
-Olaf
--- 
-Olaf Kirch     | Things that make Monday morning interesting, #2:
-okir@suse.de   |        "We have 8,000 NFS mount points, why do we keep
----------------+ 	 running out of privileged ports?"
+> I still have issues with it.
 
---wac7ysb48OaltWcw
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: attachment; filename=sunrpc-sched-deadlock
+> - You cannot mix NLM errors and VFS errors in the same variable. They
+> belong to completely different types.
+>
+I added a new NLM error nlm_lck_deferred that will never go back to the
+client, but just tell the svc dispatcher to defer the request. If this is
+also not appropriate then please give me a specific alternative.
 
-From: Shirly Ma <xma@us.ibm.com>
-Subject: Prevent sunrpc deadlock with debugging turned on
-References: 38960
+> - Why is vfs_test_and_lock_file() calling vfs_test_lock()? Why can't
+> vfs_lock_file() just return the conflicting file for you? Means you
+> do everything in one atomic call down to the filesystem instead of
+> (at least) two calls and possibly more...
+>
+I can change vfs_lock_file to return the conflicting lock but it will still
+require two calls to the filesystem. Are you suggesting to change the VFS
+lock interface down to the filesystem to combine F_SETLK and F_GETLK ?
 
-This patch fixes a deadlock in the RPC code when debugging is enabled.
+> - Why is posix_unblock_lock() suddenly calling filesystem routines via
+> vfs_lock_file()?
+>
+This call might not be necessary, I will remove it and do some more
+testing.
 
-CPU 1:
-	rpc_wake_up_task
-		spin_lock_bh(&rpc_queue_lock);
-		-> __rpc_wake_up_task
-			-> rpc_show_tasks
-				-> spin_lock(&rpc_sched_lock);
+> - Why is posix_block_lock() suddenly doing deadlock checking etc
+> without any of the callers actually looking at the return value?
+>
+This was part of an older patch not related so I will remove the call.
 
-CPU 2:
-	rpc_killall_tasks
-		spin_lock(&rpc_sched_lock);
-		-> rpc_wake_up_task()
-			spin_lock_bh(&rpc_queue_lock);
+> - vfs_test_and_lock_file() appears to return EAGAIN if the user already
+> holds the lock (posix_locks_same() is true). Isn't that a bug?
+>
+If posix_locks_same() is true than vfs_test_lock will return 0 which will
+be the return code from vfs_test_and_lock_file(). So no, I don't see a bug.
 
-This is a very rare condition, but it was actually observed several times
-during test runs on ppc64.
+> - You cannot use memcpy() in order to copy locks.
+I will change it to locks_copy_lock() if still required after the change
+below.
 
-Signed-off-by: Olaf Kirch <okir@suse.de>
+> - Why is "conflock" being allocated by kmalloc() inside
+> vfs_test_lock() instead of by the caller? You could avoid the whole
+> ugly FL_FREE hack. The way it all ends up getting called in
+> nlmsvc_delete_block() looks very suspicious: it looks to me as if
+> posix_unblock_lock() is freeing your lock before you've even started.
+>
+I was trying to save the allocation call when it is not required, but will
+change it to do the allocation by the caller.
 
-diff -urN linux-2.6.5-7.13/net/sunrpc/sched.c linux-2.6.5-7.13p/net/sunrpc/sched.c
---- linux-2.6.5-7.13/net/sunrpc/sched.c	2004-04-30 10:46:58.000000000 -0500
-+++ linux-2.6.5-7.13p/net/sunrpc/sched.c	2004-04-30 17:21:05.000000000 -0500
-@@ -931,12 +931,16 @@
- 	/*
- 	 * Spin lock all_tasks to prevent changes...
- 	 */
-+again:
- 	spin_lock(&rpc_sched_lock);
- 	alltask_for_each(rovr, le, &all_tasks)
--		if (!clnt || rovr->tk_client == clnt) {
-+		if (!(rovr->tk_flags & RPC_TASK_KILLED) && 
-+		    (!clnt || rovr->tk_client == clnt)) {
- 			rovr->tk_flags |= RPC_TASK_KILLED;
- 			rpc_exit(rovr, -EIO);
-+			spin_unlock(&rpc_sched_lock);
- 			rpc_wake_up_task(rovr);
-+			goto again;
- 		}
- 	spin_unlock(&rpc_sched_lock);
- }
+Marc.
 
---wac7ysb48OaltWcw--
 
 
 -------------------------------------------------------
