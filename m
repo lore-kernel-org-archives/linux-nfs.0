@@ -1,19 +1,17 @@
-From: "Steven N. Hirsch" <shirsch@adelphia.net>
-Subject: Re: Re: broken umount -f
-Date: Tue, 14 Jan 2003 17:29:29 -0500 (EST)
+From: "Mark Hartwig" <hartwigm@BoulderCustomHomes.com>
+Subject: nfs and xfs on 1.1T partition
+Date: Tue, 14 Jan 2003 17:28:13 -0500 (EST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0301141728040.5354-100000@atx.fast.net>
-References: <20030114221755.GB1042@questra.com>
+Message-ID: <4167.128.138.134.61.1042583293.squirrel@www.bouldercustomhomes.com>
+Reply-To: hartwigm@BoulderCustomHomes.com
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,  <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [64.8.50.178] (helo=mta2.adelphia.net)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18YZbN-0006jg-00
-	for <nfs@lists.sourceforge.net>; Tue, 14 Jan 2003 14:32:09 -0800
-To: Scott Mcdermott <smcdermott@questra.com>
-In-Reply-To: <20030114221755.GB1042@questra.com>
+Received: from [66.70.114.40] (helo=www.promopipe.com)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18YZvw-0002cX-00
+	for <nfs@lists.sourceforge.net>; Tue, 14 Jan 2003 14:53:25 -0800
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,27 +24,22 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, 14 Jan 2003, Scott Mcdermott wrote:
+Hello all, I'm having a problem with nfsd (from Mandrake 9.0 install 2.4.19
+kernel) on xfs partitions.  I am running an IDE RAID5 with 3Ware's Escalade
+7500 controller. The xfs partition as 1.1T.  I can transfer large ammounts
+of small files on to the xfs partition without any problems, but as soon as
+I try to transfer a large file to the partition, the entire server freezes
+when about 200 megs have been transfered.  At this point, the server is
+completely frozen and can only be restarted manually.  I can, however,
+transfer large files to the same server, but on to a smaller 100G ext3
+partition.  Ideally, I would like to find a work around the issue without
+having to re-format the entire RAID.  Any help would be greatly appreciated.
 
-> Trond Myklebust on Tue 14/01 20:35 +0100:
-> >      > Last I checked, the programs wouldn't die even with -KILL when
-> >      > they were stuck in device-wait state.
-> > 
-> > They will if you mount with 'intr', and make sure that you kill *all*
-> > programs that are using that mountpoint.
-> 
-> I don't want users to be able to corrupt their own data by using `intr'
-> when I am just bouncing the server for some reason.  But, I want root to
-> be able to force it if necessary, as in the case of a client reboot when
-> the server is gone (eg when switching servers and they need new handles
-> for their automounts, but still have the old ones and the server is
-> never coming back up).  Usually this means the admin screwed up, but
-> unfortunately that does happen.
-> 
-> "umount -f" seems like the right place for this.
-
-You have my vote.  For sanity's sake, there needs to be a big, red lever 
-under the locked access hatch - labled "I said umount -f, dammit!".
+-- 
+Mark Hartwig
+Boulder Custom Homes
+720-530-4102
+hartwigm@BoulderCustomHomes.com
 
 
 
