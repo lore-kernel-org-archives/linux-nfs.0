@@ -1,29 +1,24 @@
-From: Bernd Schubert <bernd-schubert@web.de>
-Subject: Re: Hanging udev process on nfs-mounted /dev
-Date: Tue, 28 Sep 2004 17:56:47 +0200
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 3 of 6] svcrpc: move export table checks to a per-program pg_add_client method
+Date: Tue, 28 Sep 2004 18:00:55 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200409281756.50595.bernd-schubert@web.de>
-References: <41592550.5060006@bio.ifi.lmu.de> <200409281359.21360.bernd-schubert@web.de> <415976DF.8020502@bio.ifi.lmu.de>
+Message-ID: <20040928220055.GI5554@fieldses.org>
+References: <1095375544.839c1c96.3@fieldses.org> <1095383919.10216.142.camel@lade.trondhjem.org> <20040917022015.GA15212@fieldses.org> <16721.8596.980204.899779@cse.unsw.edu.au> <20040923214644.GA19291@fieldses.org> <16723.40128.804230.618580@cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-15"
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CCKLa-0005i9-S9
-	for nfs@lists.sourceforge.net; Tue, 28 Sep 2004 08:56:58 -0700
-Received: from relay.uni-heidelberg.de ([129.206.100.212])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CCKLZ-0005ok-4J
-	for nfs@lists.sourceforge.net; Tue, 28 Sep 2004 08:56:58 -0700
-Received: from euklid.pci.uni-heidelberg.de (euklid.pci.uni-heidelberg.de [129.206.21.104])
-	by relay.uni-heidelberg.de (8.12.10/8.12.10) with ESMTP id i8SFup4i012726
-	for <nfs@lists.sourceforge.net>; Tue, 28 Sep 2004 17:56:51 +0200 (MET DST)
-Received: from bernd by euklid.pci.uni-heidelberg.de with local (Exim 3.35 #1 (Debian))
-	id 1CCKLS-00020q-00
-	for <nfs@lists.sourceforge.net>; Tue, 28 Sep 2004 17:56:50 +0200
-To: nfs@lists.sourceforge.net
-In-Reply-To: <415976DF.8020502@bio.ifi.lmu.de>
+	id 1CCQ23-0008UX-2O
+	for nfs@lists.sourceforge.net; Tue, 28 Sep 2004 15:01:11 -0700
+Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.41)
+	id 1CCQ1y-0002hz-LZ
+	for nfs@lists.sourceforge.net; Tue, 28 Sep 2004 15:01:10 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <16723.40128.804230.618580@cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -36,46 +31,65 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tuesday 28 September 2004 16:36, Frank Steiner wrote:
-> Bernd Schubert wrote
->
-> > Hello Frank,
-> >
-> > stupid question, udev always uses tmpfs, doesn't it?
->
-> Hmm, I don't know. On the normal hosts (non diskless), I have tmpfs
-> mounted at /dev/shm, but /dev itself is on the normal filesystem.
-> And when I call e.g. "pktsetup mycd /dev/cdrecorder", udev creates
-> e.g. /dev/pktcdvd0 which did not exist before.
-> So I guess this is a normal device in the /dev directory and not related
-> to tmpfs?
->
-> However, I now wonder if I couldn't use a tmpfs for /dev for the clients.=
-=2E.
-> hmm...
+On Fri, Sep 24, 2004 at 02:04:16PM +1000, Neil Brown wrote:
+> On Thursday September 23, bfields@fieldses.org wrote:
+> > On Wed, Sep 22, 2004 at 04:54:12PM +1000, Neil Brown wrote:
+> > > Alternately, the code which causes a call-back to be meaningful
+> > > (e.g. nlmclnt_lock in lockd (??)) could insert the relevant
+> > > information into the auth cache in advance.
+> > 
+> > There's not really a reliable way to do that with the current code since
+> > userspace can flush the auth_domain cache at whim.
+> 
+> 
+> Hmm... yes. Thanks.
+> 
+> I'm thinking that you really need to either involve user-space in
+> authenticating callbacks (issues like multi-homed servers mean that
+> the kernel cannot cope by itself at all)
 
-On debian the udev init script always mounts /dev as tmpfs and as far as I=
-=20
-know this is the intended behaviour from the udev author.
+I can't find anything definitive on this in any rfc, but I don't believe
+that clients are required to be able to deal with callbacks from a
+different IP address (or that a server should allow such a thing to
+happen).  Can anyone find evidence to the contrary?
 
+> or not require RPC authentication at all (the way 2.4 works).
 
-Cheers,
-	Bernd
+I believe the ip-address checking done by the nfsv4 callback service and
+by lockd are correct.
 
-=2D-=20
-Bernd Schubert
-Physikalisch Chemisches Institut / Theoretische Chemie
-Universit=E4t Heidelberg
-INF 229
-69120 Heidelberg
-e-mail: bernd.schubert@pci.uni-heidelberg.de
+Over rpcsec_gss, nfsv4 callbacks also have to be authenticated (by
+checking that the principal making the callback is the server's).
+
+> Does anyone have objections to the following patch, which presumes the 
+> svcauth_unix_set_client patch from Bruce.  With it, locking starts
+> working again.
+
+This patch would suffice if we're content to postpone authentication
+until the dispatch or procedure-specific code.  If we do that, then we
+end up returning an NFS or NLM error instead of having the call rejected
+at the rpc layer.
+
+So, do we require the ability to e.g return an rpc auth error on
+authentication failure?
+
+If not, then the cleaner solution would be to do the same thing for
+nfsd--don't do any upcalls at accept() time, and move that stuff into,
+say, nfsd_dispatch(), instead.
+
+If we *do* need to allow programs to reject rpc calls at the rpc layer,
+then we need something like the program-specific hook I propose (with
+some modifications to make it flavor-independent, so it works for gss as
+well).
+
+--b.
 
 
 -------------------------------------------------------
-This SF.Net email is sponsored by: YOU BE THE JUDGE. Be one of 170
-Project Admins to receive an Apple iPod Mini FREE for your judgement on
-who ports your project to Linux PPC the best. Sponsored by IBM.
-Deadline: Sept. 24. Go here: http://sf.net/ppc_contest.php
+This SF.net email is sponsored by: IT Product Guide on ITManagersJournal
+Use IT products in your business? Tell us what you think of them. Give us
+Your Opinions, Get Free ThinkGeek Gift Certificates! Click to find out more
+http://productguide.itmanagersjournal.com/guidepromo.tmpl
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
