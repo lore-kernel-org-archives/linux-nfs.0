@@ -1,15 +1,15 @@
-From: 236475@yahoo.com
-Subject: Attract The Opposite Sex Like Magic!              236475
-Date: Sun, 20 Apr 2003 23:11:22 -0500
+From: Abhishek Rai <abbashake007@yahoo.com>
+Subject: queer error in kernel
+Date: Mon, 21 Apr 2003 00:45:11 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <2527.88333823464$1050847570@news.gmane.org>
+Message-ID: <20030421074511.61529.qmail@web11406.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/html; charset=iso-8859-1
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [80.232.245.129] (helo=80.232.245.129)
+Received: from web11406.mail.yahoo.com ([216.136.131.236])
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 197FNs-0000w7-00
-	for <nfs@lists.sourceforge.net>; Sun, 20 Apr 2003 07:01:32 -0700
+	id 197VzD-0001tx-00
+	for <nfs@lists.sourceforge.net>; Mon, 21 Apr 2003 00:45:11 -0700
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -23,34 +23,64 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-<HTML>
-<BODY text=#000000 vLink=#cc0000 aLink=#ff0000 link=#ff0000 bgColor=#ffffff>
-<CENTER><B><FONT face=Verdana><FONT color=#3333ff><FONT size=+1>Human 
-Euphoria</FONT></FONT></FONT></B> <BR><FONT face=Verdana>Attract The Opposite 
-Sex Like Magic!</FONT><FONT face=Verdana></FONT> 
-<P><FONT face=Verdana>Cologne for men and perfume for the women</FONT> <BR><FONT 
-face=Verdana>As seen on CNN, ABC and more....</FONT></CENTER><FONT 
-face=Verdana></FONT>
-<P><FONT face=Verdana>- Become More Sexually Active</FONT> <BR><FONT 
-face=Verdana>- Get Approached More Often</FONT> <BR><FONT face=Verdana>- Improve 
-Business Relationships</FONT> <BR><FONT face=Verdana>- Meet More People 
-Anywhere</FONT> <BR><FONT face=Verdana>- Increase Your Self 
-Confidence</FONT><FONT face=Verdana></FONT> 
-<P><FONT face=Verdana>Human Euphoria Pheromone calogne/perfume  is a brand new formula that contains Human Sex Pheromones scientifically designed and proven to attract the opposite sex. Just as animals use scents to attract the opposite sex, humans respond to pheromones that can greatly increase your chances of being approached, meeting a partner and getting the attention and intimacy you desire.</FONT><FONT face=Verdana></FONT> 
-<CENTER>
-<P><B><FONT face=Verdana><A href="http://www.rxmedical.bag.gs/phero.cgi?mrbig">
-CLICK HERE FOR MORE INFORMATION</A></FONT></B></CENTER><br><br><br><br><br><br><br>
-<a href="http://www.rxmedical.bag.gs/remove.html">If you nolonger with to recieve emails from us
-You can opt-out anytime,Click HERE</a><br><br><br><br><br><br><br><br><br><br><br><br>
-__________________<br>
-748E0F4E-4E73DD7B-BFA3DCE-12D967ED-2CC6EA48<br>
-_____<br>
-     <br>
-</BODY></HTML>
+Hi,
+  I have a small hack for the linux kernel's nfs
+module which was working just fine before the
+following code was introduced:
+
+static void nfs_print_path(struct dentry *d) {
+	struct dentry *parent;
+	struct inode *inode_parent, *inode;
+	unsigned long p, me;
+
+	if(!d) {
+		return;
+	}	
+	parent = d->d_parent;
+	
+	if(parent) {
+		inode_parent = parent->d_inode;
+		inode = d->d_inode;
+// till here everything works just fine
+		
+/* the following code just doesn't work. None of it
+works, neither the assignments to 'p' and 'me', nor
+the printk, nor the comparision in the if statement
+after that. I tested each of these 3 different cases
+separately and each time i got the same error (see
+below) */
+                p = (unsigned long)inode_parent;
+		me = (unsigned long)inode;
+
+		printk("parent inode: %x child inode: %x\n",
+inode_parent, inode);
+
+                if( ((char *)inode_parent == 
+                              (char *)inode) ) { 
+		       
+............
+}
 
 
+I got an error something like this: Kernel couldn't
+dereference pointer 00...0f blah blah blah...
+(If sb feels the need, i'll send the complete error)		
+As i see it, there is error in just 'reading' the
+values of the variable 'inode_parent' and 'inode'. But
+considering the object code the C Compiler must have
+produced, there is nothing that actually *does* some
+real task - all that is being done is reading some
+arbit value from the function's stack: whats so wrong
+with that ???
+
+thanks in advance
+abhishek
 
 
+__________________________________________________
+Do you Yahoo!?
+The New Yahoo! Search - Faster. Easier. Bingo
+http://search.yahoo.com
 
 
 -------------------------------------------------------
