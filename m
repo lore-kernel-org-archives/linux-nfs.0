@@ -1,41 +1,66 @@
-From: Hirokazu Takahashi <taka@valinux.co.jp>
-Subject: Re: [NFS] Re: [PATCH] zerocopy NFS for 2.5.36
-Date: Thu, 17 Oct 2002 11:31:26 +0900 (JST)
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <20021017.113126.102592502.taka@valinux.co.jp>
-References: <15788.57476.858253.961941@notabene.cse.unsw.edu.au>
-	<20021015.213102.80213000.davem@redhat.com>
-	<012d01c27581$677d2180$2a060e09@beavis>
+From: "Eff Norwood" <enorwood@effrem.com>
+Subject: RE: huge number of intr/s on large nfs server
+Date: Wed, 16 Oct 2002 19:49:38 -0700
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <CFEAJJEGMGECBCJFLGDBGEMACFAA.enorwood@effrem.com>
+References: <20021016222854.C27038@redhat.com>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Cc: neilb@cse.unsw.edu.au, davem@redhat.com,
-	linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: habanero@us.ibm.com
-In-Reply-To: <012d01c27581$677d2180$2a060e09@beavis>
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from cynaptic.com ([128.121.116.181])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 1820jO-0008Sl-00
+	for <nfs@lists.sourceforge.net>; Wed, 16 Oct 2002 19:49:50 -0700
+To: "Benjamin LaHaise" <bcrl@redhat.com>
+In-Reply-To: <20021016222854.C27038@redhat.com>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
+> What NIC are you using?  High numbers of interrupts per second are not
+> necessarily the problem, but reducing it may be possible.  Diagnosing
+> these kinds of performance issues is near impossible without a complete
+> description of the system, and the identity of the NIC/driver is
+> essential.
 
-Thanks for testing my patches.
+Hi Ben,
 
-> I am still seeing some sort of problem on an 8 way (hyperthreaded 8
-> logical/4 physical) on UDP with these patches.  I cannot get more than 2
-> NFSd threads in a run state at one time.  TCP usually has 8 or more.  The
-> test involves 40 100Mbit clients reading a 200 MB file on one server (4
-> acenic adapters) in cache.  I am fighting some other issues at the moment
-> (acpi wierdness), but so far before the patches, 82 MB/sec for NFSv2,UDP and
-> 138 MB/sec for NFSv2,TCP.  With the patches, 115 MB/sec for NFSv2,UDP and
-> 181 MB/sec for NFSv2,TCP.  One CPU is maxed due to acpi int storm, so I
-> think the results will get better.  I'm not sure what other lock or
-> contention point this is hitting on UDP.  If there is anything I can do to
-> help, please let me know, thanks.
+This system in question is a SuperMicro P4DL6 MB with dual Xeon 2.4's and
+2.0GB of memory. One of the PCI-X slots/busses has a 3ware 7850 IDE RAID
+card that is *not* using its on card raid. Two more of the PCI-X
+slots/busses have Syskonnect SK-9821 copper gigabit cards. I'm using x8 IBM
+Deskstar 120GB drives configured via IBM's EVMS 1.2.0 as software RAID5.
+Distro is Debian 3.0 Woody stable. Kernel is 2.4.19 with all of Neil Brown's
+latest KNFSD patches from his web site. Syskonnect and 3ware driver are
+those found in the 2.4.19 kernel.
 
-I guess some UDP packets might be lost. It may happen easily as UDP protocol
-doesn't support flow control.
-Can you check how many errors has happened? 
-You can see them in /proc/net/snmp of the server and the clients.
+Switch is a Foundry BigIron and clients are 30 x SuperMicro SuperServer
+6010H with dual PIII 1.0Ghz, 1024MB of RAM, and Syskonnect SK-9821 copper
+gigabit cards also running Debian 3.0 Stable with kernel 2.4.19 and all of
+Trond's latest NFS client patches.
 
-And how many threads did you start on your machine?
-Buffer size of a UDP socket depends on number of kNFS threads.
-Large number of threads might help you.
+Thanks!
+
+Eff
+
+
+
+
+-------------------------------------------------------
+This sf.net email is sponsored by: viaVerio will pay you up to
+$1,000 for every account that you consolidate with us.
+http://ad.doubleclick.net/clk;4749864;7604308;v?
+http://www.viaverio.com/consolidator/osdn.cfm
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
