@@ -1,34 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Re: [PATCH] fix nfsidem cthon test
-Date: Wed, 27 Oct 2004 12:53:20 -0400
+From: Jason Holmes <jholmes@psu.edu>
+Subject: Re: NFS Server problem (kernel > 2.6.5 ?)
+Date: Wed, 27 Oct 2004 14:01:55 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1098896000.10651.16.camel@lade.trondhjem.org>
-References: <1098341478.21421.7.camel@hole.melbourne.sgi.com>
-	 <1098343891.28394.15.camel@lade.trondhjem.org>
-	 <20041021161309.GC24417@fieldses.org>
-	 <1098413781.21421.37.camel@hole.melbourne.sgi.com>
-	 <20041022024349.GA30004@fieldses.org>
-	 <1098696830.21421.163.camel@hole.melbourne.sgi.com>
-	 <1098715298.10720.38.camel@lade.trondhjem.org>
-	 <1098775926.21421.371.camel@hole.melbourne.sgi.com>
-	 <1098809731.10567.5.camel@lade.trondhjem.org>
-	 <1098837612.21421.1344.camel@hole.melbourne.sgi.com>
+Message-ID: <417FE293.9050204@psu.edu>
+References: <001801c4bb3d$5d670bd0$1203a8c0@utvikling> <417E8DFA.5090204@psu.edu> <001501c4bc44$051867a0$1203a8c0@utvikling> <20041027165017.GE4292@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "Dr. Bruce Fields" <bfields@fieldses.org>,
-	Neil Brown <neilb@cse.unsw.edu.au>,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Content-Type: multipart/mixed;
+ boundary="------------060504080201060702020904"
+Cc: mrg <mrg@normailer.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CMr3L-0007BZ-Sz
-	for nfs@lists.sourceforge.net; Wed, 27 Oct 2004 09:53:39 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 1CMs6y-0002ki-Nw
+	for nfs@lists.sourceforge.net; Wed, 27 Oct 2004 11:01:28 -0700
+Received: from vpn-19-5.aset.psu.edu ([146.186.19.5] helo=funkmachine.cac.psu.edu)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CMr3K-00088B-VO
-	for nfs@lists.sourceforge.net; Wed, 27 Oct 2004 09:53:39 -0700
-To: Greg Banks <gnb@melbourne.sgi.com>
-In-Reply-To: <1098837612.21421.1344.camel@hole.melbourne.sgi.com>
+	id 1CMs6w-0007Sp-KM
+	for nfs@lists.sourceforge.net; Wed, 27 Oct 2004 11:01:28 -0700
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20041027165017.GE4292@fieldses.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -41,20 +31,124 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-on den 27.10.2004 Klokka 10:40 (+1000) skreiv Greg Banks:
+This is a multi-part message in MIME format.
+--------------060504080201060702020904
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-> Oh, I see: linux-2.6.9-17-fix_nfs_nolock.dif isn't linked to
-> from the initial section of the page, which goes from -16 to -18.
+J. Bruce Fields wrote:
+> On Wed, Oct 27, 2004 at 06:43:00PM +0200, mrg wrote:
+> 
+>>Thanks, it worked!
+>>
+>>I uninstalled the nfs-utils-1.0.6-22 (from FC2), then installed
+>>nfs-utils-1.0.6 from kernel.org. Et voila!
+> 
+> 
+> If you download the FC2 srpm you can see the list of patches that
+> distinguishes their version from stock nfs-utils-1.0.6.  It might be
+> useful to figure out exactly which of those patches it is that causes
+> the problem.
 
-Oops... I never did get round to writing a script to automate that...
+For the Enterprise build, it's the "nfs-utils-1.0.6-mountd.patch" patch. 
+  I've attached a copy.
 
-Oh, well. Thanks for pointing it out!
+Thanks,
 
-Trond
+--
+Jason Holmes
 
--- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
 
+--------------060504080201060702020904
+Content-Type: text/plain;
+ name="nfs-utils-1.0.6-mountd.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="nfs-utils-1.0.6-mountd.patch"
+
+#
+# Make sure check_new_cache() is looking in the right place
+#
+--- src/support/nfs/cacheio.c.org	2003-08-04 00:12:16.000000000 -0400
++++ src/support/nfs/cacheio.c	2004-03-22 18:12:55.163534208 -0500
+@@ -223,12 +223,23 @@ int readline(int fd, char **buf, int *le
+  * This succeeds iff the "nfsd" filesystem is mounted on
+  * /proc/fs/nfs
+  */
++static char *cachelist[] = {
++	{ "auth.unix.ip" }, { "nfsd.export" }, { "nfsd.fh" }, 
++	{ NULL, NULL }
++};
+ int
+ check_new_cache(void)
+ {
+ 	struct stat stb;
+-	return	(stat("/proc/fs/nfs/filehandle", &stb) == 0) ||
+-		(stat("/proc/fs/nfsd/filehandle", &stb) == 0);
++	char path[64];
++	int i;
++
++	for (i=0; cachelist[i]; i++ ){
++		sprintf(path, "/proc/net/rpc/%s/channel", cachelist[i]);
++		if (stat(path, &stb) < 0)
++			return 0;
++	}
++	return 1;
+ }	
+
+
+#
+# Eliminate 3 syslog message that are logged for
+# successful events.
+#
+--- src/utils/mountd/mountd.c.org	2003-09-12 18:14:16.000000000 -0400
++++ src/utils/mountd/mountd.c	2004-06-16 09:31:06.000000000 -0400
+@@ -90,10 +90,11 @@ mount_dump_1_svc(struct svc_req *rqstp, 
+ {
+ 	struct sockaddr_in *addr =
+ 		(struct sockaddr_in *) svc_getcaller(rqstp->rq_xprt);
+-	xlog(L_NOTICE, "dump request from %s",
+-		inet_ntoa(addr->sin_addr));
+ 
+-	*res = mountlist_list();
++	if ((*res = mountlist_list()) == NULL)
++		xlog(L_WARNING, "dump request from %s failed.",
++			inet_ntoa(addr->sin_addr));
++
+ 	return 1;
+ }
+ 
+@@ -143,9 +144,11 @@ mount_export_1_svc(struct svc_req *rqstp
+ {
+ 	struct sockaddr_in *addr =
+ 		(struct sockaddr_in *) svc_getcaller(rqstp->rq_xprt);
+-	xlog(L_NOTICE, "export request from %s",
+-		inet_ntoa(addr->sin_addr));
+-	*resp = get_exportlist();
++
++	if ((*resp = get_exportlist()) == NULL)
++		xlog(L_WARNING, "export request from %s failed.",
++			inet_ntoa(addr->sin_addr));
++		
+ 	return 1;
+ }
+ 
+@@ -154,9 +157,10 @@ mount_exportall_1_svc(struct svc_req *rq
+ {
+ 	struct sockaddr_in *addr =
+ 		(struct sockaddr_in *) svc_getcaller(rqstp->rq_xprt);
+-	xlog(L_NOTICE, "exportall request from %s",
+-		inet_ntoa(addr->sin_addr));
+-	*resp = get_exportlist();
++
++	if ((*resp = get_exportlist()) == NULL)
++		xlog(L_WARNING, "exportall request from %s failed.",
++			inet_ntoa(addr->sin_addr));
+ 	return 1;
+ }
+ 
+
+--------------060504080201060702020904--
 
 
 -------------------------------------------------------
