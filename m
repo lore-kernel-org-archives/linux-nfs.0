@@ -1,19 +1,22 @@
-From: "William A.(Andy) Adamson" <andros@citi.umich.edu>
-Subject: Re: [patch] lockd control of grace period for HA NFS
-Date: Wed, 01 Dec 2004 15:58:47 -0500
-Message-ID: <20041201205847.58D211BB60@citi.umich.edu>
-References: <41ADFCBA.6040605@sun.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [USN-36-1] NFS statd vulnerability
+Date: Wed, 01 Dec 2004 20:32:35 -0500
+Message-ID: <1101951155.32266.47.camel@lade.trondhjem.org>
+References: <20041201143603.GA15315@box79162.elkhouse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Marc Eshel <eshel@almaden.ibm.com>,
-	"William A.(Andy) Adamson" <andros@citi.umich.edu>,
-	Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net,
-	nfs-admin@lists.sourceforge.net,
-	Trond Myklebust <trond.myklebust@fys.uio.no>, andros@citi.umich.edu
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: Calum Mackay <calum.mackay@sun.com>
-In-reply-to: Your message of "Wed, 01 Dec 2004 17:17:46 GMT."
-             <41ADFCBA.6040605@sun.com>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1CZfpz-00019Y-RB
+	for nfs@lists.sourceforge.net; Wed, 01 Dec 2004 17:32:51 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CZfpx-0000wI-6D
+	for nfs@lists.sourceforge.net; Wed, 01 Dec 2004 17:32:51 -0800
+To: Martin Pitt <martin.pitt@canonical.com>
+In-Reply-To: <20041201143603.GA15315@box79162.elkhouse.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,34 +30,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> Hi Marc, Andy,
-> 
-> Forgive my late joining of this thread, and apologies if I'm missing 
-> anything...
-> 
-> How do you intend to handle the stable storage issue? It seems to me 
-> that to comply with the RFC's requirement that stable storage be used 
-> when a grace period is offered, there needs to be a Cluster-wide, 
-> always-consistent, stable-storage, available to all nodes. I imagine 
-> that a correct implementation of this isn't a trivial exercise... :)
-> 
-> best regards,
-> calum.
+on den 01.12.2004 Klokka 15:36 (+0100) skreiv Martin Pitt:
 
-i plan to use the cluster wide file system.
+> SGI discovered a remote Denial of Service vulnerability in the NFS
+> statd server. statd did not ignore the "SIGPIPE" signal which caused
+> it to shutdown if a misconfigured or malicious peer terminated the TCP
+> connection prematurely.
 
--->Andy
+WTF wasn't this first fixed in the actual upstream nfs-utils package?
+WTF are we only hearing of this now via bugtraq?
 
-> -------------------------------------------------------
-> SF email is sponsored by - The IT Product Guide
-> Read honest & candid reviews on hundreds of IT Products from real users.
-> Discover which products truly live up to the hype. Start reading now. 
-> http://productguide.itmanagersjournal.com/
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
-> 
+Grrr.....
 
+-- 
+Trond Myklebust <trond.myklebust@fys.uio.no>
 
 
 
