@@ -1,22 +1,21 @@
 From: Filipe Brandenburger <branden@terra.com.br>
 Subject: Re: open O_EXCL works?
-Date: Tue, 22 Mar 2005 07:13:25 -0300
-Message-ID: <20050322070816.BE7B.BRANDEN@terra.com.br>
-References: <20050321181858.BE73.BRANDEN@terra.com.br> <Pine.LNX.4.60.0503212101550.12483@harp.ngdc.noaa.gov>
+Date: Tue, 22 Mar 2005 07:46:09 -0300
+Message-ID: <20050322073459.BE83.BRANDEN@terra.com.br>
+References: <20050321181858.BE73.BRANDEN@terra.com.br> <1111449675.10980.50.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="US-ASCII"
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Cc: nfs@lists.sourceforge.net
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DDgN3-00022k-Fn
-	for nfs@lists.sourceforge.net; Tue, 22 Mar 2005 02:12:21 -0800
+	id 1DDgsh-0003Yl-Nu
+	for nfs@lists.sourceforge.net; Tue, 22 Mar 2005 02:45:03 -0800
 Received: from loncoche.terra.com.br ([200.154.55.229])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1DDgN1-00007x-MB
-	for nfs@lists.sourceforge.net; Tue, 22 Mar 2005 02:12:21 -0800
-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-In-Reply-To: <Pine.LNX.4.60.0503212101550.12483@harp.ngdc.noaa.gov>
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1DDgsg-0002vf-55
+	for nfs@lists.sourceforge.net; Tue, 22 Mar 2005 02:45:03 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1111449675.10980.50.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,46 +30,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Hi, there.
+Hi again.
 
-Are the stat's really necessary? I mean, in another post in this same
-thread, Trond told that for hardlink, symlink and mkdir, both of them
-are "atomic" in NFS meaning that they will succeed only for one client
-and fail for all others if called at the same time. For me at least,
-that means the stat's would not be needed... Isn't that so?
+* Mon, 21 Mar 2005 19:01:15 -0500, Trond Myklebust <trond.myklebust@fys.uio.no>:
+> For newer kernels, you should read all about the NFS cache consistency
+> model on
+> 
+>    http://nfs.sourceforge.net/#faq_a8
 
-On another quite old post, I have read that even on NFS 2 hardlink works
-in an atomic way, so that it could be used to implement a lock. I mean,
-stat's certainly are safe, but this seems too expensive for me! Is this
-extra safety really needed?
+Which versions? 2.6 and newer? As I read it on the FAQ, close-to-open
+consistency was introduced in 2.4.20 (although I'm with 2.4.9, but I
+believe it's really patched, as it's a RedHat thing).
+
+> On an old kernel, like 2.4.20, you will also have to set the "noac"
+> mount option. It makes everything very slow, but it is necessary in
+> order to compensate for the lack of close-to-open cache consistency.
+
+Gee, do I need to completely disable attribute caching for that? I
+really can't afford it, the perofmance penalty for it is too expensive...
+Isn't the "nocto" enough already (as I read it, "cto" is for
+"close-to-open")?
+
+       nocto          Suppress the retrieval of new attributes when creating a file.
+
+Isn't there a safe and cheap way to use a lock file that works on NFSv3
+on a 2.4.9 kernel?
 
 Thanks,
 Filipe
-
-
-
-* Mon, 21 Mar 2005 21:13:49 -0700 (MST), "Ara.T.Howard" <Ara.T.Howard@noaa.gov>:
-> On Mon, 21 Mar 2005, Filipe Brandenburger wrote:
->    BASIC ALGORITHIM
-> 
->      * create a globally uniq filename in the same filesystem as the desired
->        lockfile - this can be nfs mounted
-> 
->      * link(2) this file to the desired lockfile, ignore all errors
-> 
->      * stat the uniq filename and desired lockfile to determine is they are the
->        same, use only stat.rdev and stat.ino - ignore stat.nlink as NFS can cause
->        this report incorrect values
-> 
->      * iff same, you have lock.  either return or run optional code block with
->        optional refresher thread keeping lockfile fresh during execution of code
->        block, ensuring that the lockfile is removed..
-> 
->      * iff not same try again a few times in rapid succession (poll), then, iff
->        this fails, sleep using incremental backoff time.  optionally remove lockfile
->        if it is older than a certain time (stale), timeout if more than a certain
->        amount of time has passed attempting to lock file.
-
 
 
 
