@@ -1,31 +1,24 @@
-From: Bernd Schubert <bernd-schubert@web.de>
-Subject: Re: 'random' diskless clients hangs
-Date: Tue, 9 Sep 2003 17:25:18 +0200
+From: niu <niu@clusterfs.com>
+Subject: Can't get port of RPC while boot linux(root NFS)
+Date: Tue, 09 Sep 2003 18:00:25 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200309091725.18725.bernd-schubert@web.de>
-References: <NEBBIHNAFKJAFOHBHGCOIEKLEFAA.nfsmailinglist@heessels.com>
+Message-ID: <3F5E4D79.8020705@clusterfs.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19wknc-0002EV-00
-	for <nfs@lists.sourceforge.net>; Tue, 09 Sep 2003 08:53:00 -0700
-Received: from panoramix.vasoftware.com
-	([198.186.202.147] helo=externalmx.vasoftware.com ident=mail)
+	id 19wfRb-0006DF-00
+	for <nfs@lists.sourceforge.net>; Tue, 09 Sep 2003 03:09:55 -0700
+Received: from moraine.clusterfs.com ([216.138.243.178])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 19wknb-0004JA-Qk
-	for nfs@lists.sourceforge.net; Tue, 09 Sep 2003 08:52:59 -0700
-Received: from smtp01.web.de ([217.72.192.180]:3635 helo=smtp.web.de)
-	by externalmx.vasoftware.com with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 4.22 #1 (Debian))
-	id 19wkNv-0004YG-Jz
-	for <nfs@lists.sourceforge.net>; Tue, 09 Sep 2003 08:26:27 -0700
-To: <nfsmailinglist@heessels.com>
-In-Reply-To: <NEBBIHNAFKJAFOHBHGCOIEKLEFAA.nfsmailinglist@heessels.com>
+	id 19wfRa-0006OL-Pu
+	for nfs@lists.sourceforge.net; Tue, 09 Sep 2003 03:09:54 -0700
+Received: from clusterfs.com (unknown [202.108.67.67])
+	by moraine.clusterfs.com (Postfix) with ESMTP id A97793100B2
+	for <nfs@lists.sourceforge.net>; Tue,  9 Sep 2003 06:09:41 -0400 (EDT)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -38,33 +31,27 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Monday 08 September 2003 20:37, nfsmailinglist@heessels.com wrote:
-> Help!! We're closing to giving up on NFS.
->
-> We have tried multiple NICS and drivers on both server and client
-> (eepro100, e100, e1000).
-> We have tries both UDP and TCP.
-> We have tried multiple versions of nfs-utils.
-> We have tried multiple versions of the kernel.
-> We have tried multiple clients.
-> We have tried multiple switches.
->
+Hi, All
 
-Have you already tried to connect the server and one client directly? So using 
-a cross-over-cable from the server to one client without any switch between.
+I've compliled a linux kernel with cfg_root_nfs, cfg_ip_dhcp, 
+cfg_ip_rarp, cfg_ip_bootp.
+and set up tftp server and nfs server properly. the /home/client on 
+server be exported as
+nfs root. some necessary files have been copied to there.
 
-Also, is your network really full-duplex? You can figure out using mii-tool.
+well, I boot the client machine by grub. the confgiure looks like:
 
-I would also try if the same problems happen on non-root-nfs clients. So e.g. 
-exporting only /usr and /home from the server, using a local 
-linux-installation on the client and import those two directories.
-Btw, I think I saw in one of your mail, that you are using 4096bytes for rsize 
-and wsize as default, setting this to 8192 should increase the probability to 
-see the problem occuring faster. I guess later on (when everything is 
-working) you won't like to use 4096byte anyway.
+ifconfig --address=xxx.xxx.xxx.xxx --server=yyy.yyy.yyy.yyy
+root (nd)
+kernel /tftp-bootimg root=/dev/nfs nfsroot=yyy.yyy.yyy.yyy:/home/client
 
-Cheers,
-	Bernd
+But it report error message said that can't get RPC port from protmap while
+mounting /home/client. Did I make something wrong?
+
+BTW: the /home/client can be mount from client machine as non-root 
+filesystem.
+
+Niu
 
 
 
