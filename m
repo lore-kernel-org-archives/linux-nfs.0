@@ -1,19 +1,20 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: performance question
-Date: 01 Apr 2003 07:40:27 +0200
+Subject: Re: wsize & PAGE_SIZE issues on IA64 clients.
+Date: 01 Apr 2003 07:48:23 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsllyuzsfo.fsf@charged.uio.no>
-References: <20030331213739.25218.qmail@pour.midcoast.com>
+Message-ID: <shshe9izs2g.fsf@charged.uio.no>
+References: <Pine.PTX.4.30.0303311531280.11440-100000@crg8.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Cc: "Lever, Charles" <Charles.Lever@netapp.com>,
+	  Greg Lindahl <lindahl@keyresearch.com>,  <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 190EVh-0007tE-00
-	for <nfs@lists.sourceforge.net>; Mon, 31 Mar 2003 21:40:37 -0800
-To: jp@pour.midcoast.com
-In-Reply-To: <20030331213739.25218.qmail@pour.midcoast.com>
+	id 190EdR-00046G-00
+	for <nfs@lists.sourceforge.net>; Mon, 31 Mar 2003 21:48:38 -0800
+To: Mark Price <mkprice@us.ibm.com>
+In-Reply-To: <Pine.PTX.4.30.0303311531280.11440-100000@crg8.beaverton.ibm.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,15 +27,15 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == jp  <jp@pour.midcoast.com> writes:
+>>>>> " " == Mark Price <mkprice@us.ibm.com> writes:
 
-     > Server (coffeepot) - Athlon XP2000, Suse 8.1, 2.4.21-pre6
-     > kernel from kernel.org, boots to an ata100 drive, promise
-     > rm8000 external hardware raid5 array on adaptec Adaptec
-     > AHA-2940U/UW/D controller, 3com 3c905C forced to 100-FD with
-     > "/sbin/mii-tool -F 100baseTx-FD eth1".
+     > I'm currently getting my ia64 box rebuilt in order to an
+     > NFSSVC_MAXBLKSIZE of 64K. Anyone ever tried it?
 
-Why do you have to force it to 100-FD?
+That won't work over UDP. The latter has a packet size that is limited
+to 64k, so you wouldn't have any space for the RPC header.
+
+For TCP it could work though...
 
 Cheers,
   Trond
