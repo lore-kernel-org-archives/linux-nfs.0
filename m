@@ -1,18 +1,19 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 0 of 18] Introduction
-Date: Fri, 24 Sep 2004 14:54:52 +1000
+Subject: [PATCH kNFSd 3 of 18] nfsd4: don't take i_sem around call to ->getxattr
+Date: Fri, 24 Sep 2004 14:54:53 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040924145130.2689.patches@notabene>
+Message-ID: <E1CAi6f-0000jz-8P@notabene.cse.unsw.edu.au>
+References: <20040924145130.2689.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CAi7E-00089t-VA
-	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 21:55:28 -0700
+	id 1CAi6t-00084X-S9
+	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 21:55:07 -0700
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CAi7C-0008Jb-Ql
-	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 21:55:28 -0700
+	id 1CAi6s-0008Hm-A4
+	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 21:55:07 -0700
 To: Andrew Morton <akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,30 +28,64 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Following are 18 patches against nfsd in 2.6.lastest.  They are mostly 
-nfsv4 related with patch 2 being the exception (It is just a code-cleanup patch). 
+The ->getxattr op doesn't take the i_sem (see
+Documentation/filesystems/Locking)
 
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
-Subject: [PATCH kNFSd 1 of 18] nfsd4 fix: nfsd oopsed when encountering a conflict with a local lock
-Subject: [PATCH kNFSd 2 of 18] separate a little of logic from fh_verify into new function
-Subject: [PATCH kNFSd 3 of 18] nfsd4: don't take i_sem around call to ->getxattr
-Subject: [PATCH kNFSd 4 of 18] make sure getxattr inode op is non-NULL before calling it
-Subject: [PATCH kNFSd 5 of 18] nfsd4: reference count stateowners
-Subject: [PATCH kNFSd 6 of 18] nfsd4: take a reference to preserve stateowner through xdr replay code
-Subject: [PATCH kNFSd 7 of 18] nfsd4: revert awkward extension of state lock over xdr for replay encoding
-Subject: [PATCH kNFSd 8 of 18] nfsd4: fix race in xdr encoding of lock_denied response.
-Subject: [PATCH kNFSd 9 of 18] remove incorrect stateid modification in nfsv4 open upgrade
-Subject: [PATCH kNFSd 10 of 18] nfsd4: move open owner checks from nfsd4_process_open2 into new function
-Subject: [PATCH kNFSd 11 of 18] nfsd4_open_locktype_posix_flag
-Subject: [PATCH kNFSd 12 of 18] nfsd4: move seqid decrement on reclaim to separate function
-Subject: [PATCH kNFSd 13 of 18] nfsd4: reorganize "if" in nfsd4_process_open2 to make test clearer
-Subject: [PATCH kNFSd 14 of 18] nfsd4: move open_upgrade code into a separate function
-Subject: [PATCH kNFSd 15 of 18] nfsd4: move some nfsd4_process_open2 code to nfs4_new_open
-Subject: [PATCH kNFSd 16 of 18] Clean up nfsd4_process_open2
-Subject: [PATCH kNFSd 17 of 18] nfsd4: fix putrootfh return
-Subject: [PATCH kNFSd 18 of 18] nfsd4: move code to truncate on open to separate function
+### Diffstat output
+ ./fs/nfsd/vfs.c |   14 +++++---------
+ 1 files changed, 5 insertions(+), 9 deletions(-)
 
-NeilBrown
+diff ./fs/nfsd/vfs.c~current~ ./fs/nfsd/vfs.c
+--- ./fs/nfsd/vfs.c~current~	2004-09-24 14:47:14.000000000 +1000
++++ ./fs/nfsd/vfs.c	2004-09-24 14:47:49.000000000 +1000
+@@ -448,39 +448,35 @@ _get_posix_acl(struct dentry *dentry, ch
+ 	int buflen, error = 0;
+ 	struct posix_acl *pacl = NULL;
+ 
+-	down(&inode->i_sem);
+-
+ 	buflen = inode->i_op->getxattr(dentry, key, NULL, 0);
+ 	if (buflen <= 0) {
+ 		error = buflen < 0 ? buflen : -ENODATA;
+-		goto out_sem;
++		goto out_err;
+ 	}
+ 
+ 	buf = kmalloc(buflen, GFP_KERNEL);
+ 	if (buf == NULL) {
+ 		error = -ENOMEM;
+-		goto out_sem;
++		goto out_err;
+ 	}
+ 
+ 	error = -EOPNOTSUPP;
+ 	if (inode->i_op && inode->i_op->getxattr) {
+ 		error = security_inode_getxattr(dentry, key);
+ 		if (error)
+-			goto out_sem;
++			goto out_err;
+ 		error = inode->i_op->getxattr(dentry, key, buf, buflen);
+ 	}
+ 	if (error < 0)
+-		goto out_sem;
++		goto out_err;
+ 
+ 	error = 0;
+-	up(&inode->i_sem);
+ 
+ 	pacl = posix_acl_from_xattr(buf, buflen);
+  out:
+ 	kfree(buf);
+ 	return pacl;
+- out_sem:
+-	up(&inode->i_sem);
++ out_err:
+ 	pacl = ERR_PTR(error);
+ 	goto out;
+ }
 
 
 -------------------------------------------------------
