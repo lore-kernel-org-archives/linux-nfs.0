@@ -1,27 +1,27 @@
-From: "G. Allen Morris III" <gam3-nfs@gam3.net>
-Subject: Re: [RFC] nfsstat v4 layout
-Date: Wed, 16 Mar 2005 17:33:27 -0500
-Message-ID: <20050316223327.GA7137@gam3.net>
-References: <20050316173759.GA4360@gam3.net>
+From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Subject: Re: binaries becoming corrupt on nfs
+Date: Wed, 16 Mar 2005 15:40:47 -0700 (MST)
+Message-ID: <Pine.LNX.4.60.0503161535280.2370@harp.ngdc.noaa.gov>
+References: <Pine.LNX.4.60.0503141414590.4702@harp.ngdc.noaa.gov>
+ <1110835899.19295.42.camel@lade.trondhjem.org>
+ <Pine.LNX.4.60.0503141434390.4702@harp.ngdc.noaa.gov>
+ <1110836857.24466.4.camel@lade.trondhjem.org>  <Pine.LNX.4.60.0503141456140.4702@harp.ngdc.noaa.gov>
+ <1110838426.24466.17.camel@lade.trondhjem.org>
+Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: nfs@lists.sourceforge.net
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DBh5G-0002zn-9n
-	for nfs@lists.sourceforge.net; Wed, 16 Mar 2005 14:33:46 -0800
-Received: from mta13.mail.adelphia.net ([68.168.78.44] helo=mta13.adelphia.net)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1DBh5F-0004gC-NU
-	for nfs@lists.sourceforge.net; Wed, 16 Mar 2005 14:33:46 -0800
-Received: from harpo.ny.gam3.net ([68.235.28.141]) by mta13.adelphia.net
-          (InterMail vM.6.01.04.01 201-2131-118-101-20041129) with ESMTP
-          id <20050316223332.FBDI4618.mta13.adelphia.net@harpo.ny.gam3.net>
-          for <nfs@lists.sourceforge.net>; Wed, 16 Mar 2005 17:33:32 -0500
-Received: from gam3 by harpo.ny.gam3.net with local (Exim 3.36 #1 (Debian))
-	id 1DBh4x-0001u8-00
-	for <nfs@lists.sourceforge.net>; Wed, 16 Mar 2005 17:33:27 -0500
-To: nfs@lists.sourceforge.net
-In-Reply-To: <20050316173759.GA4360@gam3.net>
+	id 1DBhCJ-0003S8-L8
+	for nfs@lists.sourceforge.net; Wed, 16 Mar 2005 14:41:03 -0800
+Received: from harp.ngdc.noaa.gov ([140.172.178.33])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1DBhCE-00034d-9a
+	for nfs@lists.sourceforge.net; Wed, 16 Mar 2005 14:41:03 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1110838426.24466.17.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,101 +35,56 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, Mar 16, 2005 at 12:37:59PM -0500, G. Allen Morris III wrote:
-> 
-> I made a patch to nfsstat to display v4 stats.
-> I am having a problem with some of the names being so
-> long setclientid_confirm for instance.  
-> 
-> Is the format below too confusing?  Anyone have a better idea?
-> 
+On Mon, 14 Mar 2005, Trond Myklebust wrote:
 
-I increased the count to `-8d' and the rows are now 76 charaters
-wide.  To make them wider I would think about reducing to 5 columns
-or making it dynamic (like ls).
+> On Linux-2.4.x, mmap() will prevent the NFS client from clearing the cache
+> in a timely fashion, and so pages that should have been thrown out of cache
+> may become "frozen in" to the cache.
+>
+> In Linux-2.6.x, that problem should hopefully have been fixed due to a
+> combination of updates to the memory management layer + NFS client fixes.
 
-I also changed the v4 names to abbreviations.
+trond-
 
-Allen
+i'm still seeing this issue even though NO copying is occuring on mmap'd
+binaries.  the process used is now the built-in install program
 
---
-Server packet stats:
-packets    udp        tcp        tcpconn
-0          3727       0          0       
+   install: all
+           $(install_prog) grid_ols/grid_ols $(bindir)
+           $(install_prog) subset/subset $(bindir)
 
-Server rpc stats:
-calls      badcalls   badauth    badclnt    xdrcall
-3730       0          0          0          0       
+install does not copy, it unlinks the dest and then writes a new file:
 
-Server reply cache:
-hits       misses     nocache
-0          0          3730    
+   jib:~/shared/dmspnl_new > strace install a b 2>&1 | tail -13
+   unlink("b")                             = 0
+   open("a", O_RDONLY|O_LARGEFILE)         = 3
+   fstat64(3, {st_mode=S_IFREG|0664, st_size=0, ...}) = 0
+   open("b", O_WRONLY|O_CREAT|O_LARGEFILE, 0100664) = 4
+   fstat64(4, {st_mode=S_IFREG|0664, st_size=0, ...}) = 0
+   fstat64(3, {st_mode=S_IFREG|0664, st_size=0, ...}) = 0
+   read(3, "", 8192)                       = 0
+   close(4)                                = 0
+   close(3)                                = 0
+   chmod("b", 0600)                        = 0
+   chown32("b", -1, -1)                    = 0
+   chmod("b", 0755)                        = 0
+   exit_group(0)                           = ?
 
-Server file handle cache:
-lookup     anon       ncachedir ncachedir  stale
-0          0          0          0          1242    
-Server nfs v2:
-null         getattr      setattr      root         lookup       readlink     
-0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
-read         wrcache      write        create       remove       rename       
-0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
-link         symlink      mkdir        rmdir        readdir      fsstat       
-0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
+if i run 'make install' while these binaries are running on our cluster
+(almost ensuring more than one of them has the file mmap'd) i will see some
+small random number of nodes with corrupt caches begin to have every
+subsequent run of the binary fail.
 
-Server nfs v3:
-null         getattr      setattr      lookup       access       readlink     
-1         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
-read         write        create       mkdir        symlink      mknod        
-0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
-remove       rmdir        rename       link         readdir      readdirplus  
-0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
-fsstat       fsinfo       pathconf     commit       
-3729     99% 0         0% 0         0% 0         0% 
+this should not be - should it?
 
-Server nfs v4:
-null         compound     
-0         0% 0         0% 
-
-Client packet stats:
-packets    udp        tcp        tcpconn
-0          0          0          0       
-
-Client rpc stats:
-calls      retrans    authrefrsh
-2          0          0       
-
-Client nfs v2:
-null         getattr      setattr      root         lookup       readlink     
-0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
-read         wrcache      write        create       remove       rename       
-0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
-link         symlink      mkdir        rmdir        readdir      fsstat       
-0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
-
-Client nfs v3:
-null         getattr      setattr      lookup       access       readlink     
-0         0% 1        50% 0         0% 0         0% 0         0% 0         0% 
-read         write        create       mkdir        symlink      mknod        
-0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
-remove       rmdir        rename       link         readdir      readdirplus  
-0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
-fsstat       fsinfo       pathconf     commit       
-0         0% 1        50% 0         0% 0         0% 
-
-Client nfs v4:
-null         read         write        commit       open         open_conf    
-0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
-open_noat    open_dgrd    close        setattr      fsinfo       renew        
-0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
-setclntid    confirm      lock         lockt        locku        access       
-0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
-getattr      lookup       lookup_root  remove       rename       link         
-0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
-symlink      create       pathconf     statfs       readlink     readdir      
-0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
-server_caps  delegreturn  
-0         0% 0         0% 
-
+-a
+-- 
+===============================================================================
+| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
+| PHONE   :: 303.497.6469
+| When you do something, you should burn yourself completely, like a good
+| bonfire, leaving no trace of yourself.  --Shunryu Suzuki
+===============================================================================
 
 
 -------------------------------------------------------
