@@ -1,19 +1,24 @@
-From: Emanuel Quass <emanuel.quass@temic.com>
-Subject: Re: IRIX NFS server and Linux NFS client
-Date: Thu, 11 Apr 2002 14:10:06 +0200
+From: Dumas Patrice <dumas@centre-cired.fr>
+Subject: Re: standard and lockd
+Date: Thu, 11 Apr 2002 14:06:14 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200204111210.g3BCA6x04781@in-cadcae4.ing.temic.de>
-References: <Pine.LNX.4.30.0204110928530.28565-100000@elin.scali.no>
-Reply-To: emanuel.quass@temic.com
+Message-ID: <20020411140614.I23570@zeus.centre-cired.fr>
+References: <20020410165023.D23279@zeus.centre-cired.fr> <shslmbvlbm6.fsf@charged.uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from letterman.noris.net ([62.128.1.26])
+Received: from boukha.centre-cired.fr ([193.51.120.234])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16vdPE-0001Eo-00
-	for <nfs@lists.sourceforge.net>; Thu, 11 Apr 2002 05:10:24 -0700
-To: Steffen Persvold <sp@scali.com>, <nfs@lists.sourceforge.net>
-In-Reply-To: <Pine.LNX.4.30.0204110928530.28565-100000@elin.scali.no>
+	id 16vdOk-00018k-00
+	for <nfs@lists.sourceforge.net>; Thu, 11 Apr 2002 05:09:55 -0700
+Received: from zeus.centre-cired.fr ([193.51.120.192])
+          by boukha.centre-cired.fr (8.9.3+Sun/jtpda-5.3.3) with ESMTP id OAA04070
+          for <nfs@lists.sourceforge.net>; Thu, 11 Apr 2002 14:09:06 +0100 (WEST)
+Received: (from dumas@localhost)
+	by zeus.centre-cired.fr (8.11.6/8.11.6) id g3BC6EA24840
+	for nfs@lists.sourceforge.net; Thu, 11 Apr 2002 14:06:14 +0200
+To: nfs@lists.sourceforge.net
+In-Reply-To: <shslmbvlbm6.fsf@charged.uio.no>; from trond.myklebust@fys.uio.no on Wed, Apr 10, 2002 at 07:14:25PM +0200
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,30 +33,29 @@ List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 Hi,
 
-I'm running as Client Linux 2.4.4 (kernel patched by SuSE) against 
-AIX-Servers(aix-4.3.3) / IRIX-Servers (6.5.9 and 6.5.11) / 
-Linux-Servers(2.4.9 and 2.2.17 both with NFS-Patches) and I can connect from 
-my Client to any Server with Version 3 (UDP of course).
+> I don't follow you at all here. Examples please of where this is a
+> problem with the standard?
 
-I'm sorry that I can't give you a hint apart from upgrading nfs-utils to 
-0.3.3.
+There is a problem with my sillyness. I didn't read the sources carefully, I
+found all the relevant piece now, sorry for the bothering.
 
-MfG
-	Emanuel
+> See the comment about HP clients above nlmsvc_grant_blocked().
 
+I saw it, and I think the associated hack do things quite well.
+ 
+> Of course, if you are planning on writing proper support for the
+> asynchronous RPC, then we can indeed go ahead and make
+> nlmsvc_grant_blocked() call either NLM_GRANTED or NLM_GRANTED_MSG
+> depending on whether the client originally called NLM_LOCK or
+> NLM_LOCK_MSG.
 
-Am Donnerstag, 11. April 2002 09:34 schrieb Steffen Persvold:
-> Hi all,
->
-> Is there any reason why my Linux NFS client (kernel 2.4.18
-> nfs-utils-0.3.1-13.7.2.1 from RedHat 7.2) is not able to mount a directory
-> exported from an IRIX server in NFSv3 (not sure which version of IRIX
-> yet, if this is important I will find out). NFSv2 works fine, but if I
-> try to force NFSv3 I get "Connection refused".
->
-> I'll appreciate any help.
->
-> Regards,
+That was what I was thinking about, maybe with a fallback to NLM_GRANTED_MSG
+when some time has passed, to get around HP clients (in case the original call
+was with NLM_LOCK). I don't know if this happen in real life, but we could
+imagine some client processing only NLM_GRANTED callbacks if they send NLM_LOCK
+or maybe totally lacking support for NLM_GRANTED_MSG and the like.
+
+Pat
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
