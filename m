@@ -1,24 +1,20 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: A Question about the 2.4.21 Pathconf patch
-Date: Wed, 30 Apr 2003 00:47:57 +0200
+From: Olof Johansson <olof@austin.ibm.com>
+Subject: Re: [PATCH] SVC sockets don't disable Nagle
+Date: Tue, 29 Apr 2003 19:07:21 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16047.285.921874.178993@charged.uio.no>
-References: <3EAE956E.9080205@RedHat.com>
-	<shs4r4h5l52.fsf@charged.uio.no>
-	<3EAEC774.20402@RedHat.com>
-	<shssms1ozz6.fsf@charged.uio.no>
-	<3EAEEC0D.6040006@RedHat.com>
-Reply-To: trond.myklebust@fys.uio.no
+Message-ID: <3EAF13B9.8040402@austin.ibm.com>
+References: <Pine.LNX.4.44.0304300029360.8473-100000@kenzo.iwr.uni-heidelberg.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: trond.myklebust@fys.uio.no, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19AdtO-0005kT-00
-	for <nfs@lists.sourceforge.net>; Tue, 29 Apr 2003 15:48:06 -0700
-To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: <3EAEEC0D.6040006@RedHat.com>
+Received: from e31.co.us.ibm.com ([32.97.110.129])
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19Af8W-0002nb-00
+	for <nfs@lists.sourceforge.net>; Tue, 29 Apr 2003 17:07:49 -0700
+To: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
+In-Reply-To: <Pine.LNX.4.44.0304300029360.8473-100000@kenzo.iwr.uni-heidelberg.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,17 +27,57 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Steve Dickson <SteveD@redhat.com> writes:
+Bogdan Costescu wrote:
+> On Tue, 29 Apr 2003, Olof Johansson wrote:
+> 
+>>Below patch disables it on the server side as well. For latency reasons, 
+>>this should be the desired behaviour NFS at both client and server.
+> 
+> 
+> I disagree with this general statement. Nagle is there in the TCP protocol 
+> for a specific reason and enabling or disabling it gives the opportunity 
+> to better tune the connection.
 
-     > rpc_call(NFSPROC_FSINFO) which would fill the nfs_fsinfo
-     > structure with the values from the server. Of course these
-     > values would have to be check for sanity... I just seems to me
-     > that would be good information to to have on hand...
+Yes, Nagle is there to reduce overhead by aggregating data into segments
+and piggybacking them with ACKs. Most significant differences will be
+when dealing with a steady but slow pace of characters, say text being
+typed over a 9600bps serial line.
 
-It does the RPC call at mount time instead, then caches the results.
+> It seems like disabling Nagle is the bolierplate answer for anyone who 
+> encounters GigEth or better networking simply because the TCP protocol was 
+> not designed for such fast networks. But what happens to others that do 
+> not have GigEth ? What is the impact of this change for a slower/congested 
+> network ?
 
-Cheers,
-  Trond
+There is a chance that small requests and replies (~100 bytes) will not
+be aggregated into the same segments but instead sent out separately. In
+essence, this will result in some additional network overhead due to
+headers, but the response times will be perceived as faster even for 
+slower networks.
+
+Since NFS traffic is bursty, it is unlikely that any individual request
+or reply will be split up between two segments when it didn't need to.
+
+> If anything, I would like to see this as a per-mount-point and 
+> per-export-entry option...
+
+I think it would just clutter the documentation and list of options,
+since I don't forsee any practical scenarios in which anyone would have
+a positive performance impact from having Nagle enabled.
+
+
+On a side note: As far as I know, most (all?) other NFS implementations 
+out there already disable Nagle.
+
+
+-Olof
+
+-- 
+Olof Johansson                                        Office: 4E002/905
+pSeries Linux Development                             IBM Systems Group
+Email: olof@austin.ibm.com                          Phone: 512-838-9858
+
+
 
 
 -------------------------------------------------------
