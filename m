@@ -1,24 +1,26 @@
-From: Raphael Clifford <raphael@clifford.net>
-Subject: kerberos + nfs 3
-Date: Wed, 18 Aug 2004 09:04:07 +0100
+From: Paul Libert <Paul.Libert@naturalsciences.be>
+Subject: Re: kernel nlockmgr not registred with port mapper
+Date: Wed, 18 Aug 2004 11:40:49 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <41230D77.8080606@clifford.net>
+Message-ID: <41232421.6050303@naturalsciences.be>
+References: <411C91BA.10506@naturalsciences.be> <1092413690.5046.20.camel@lade.trondhjem.org> <20040813163223.GA10834@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ protocol="application/pgp-signature";
+ boundary="------------enigE1D5A272CB113EE8C935B51B"
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BxLQh-0006XG-4f
-	for nfs@lists.sourceforge.net; Wed, 18 Aug 2004 01:04:19 -0700
-Received: from ptb-relay01.plus.net ([212.159.14.212])
+	id 1BxMwi-0002Mf-Sv
+	for nfs@lists.sourceforge.net; Wed, 18 Aug 2004 02:41:28 -0700
+Received: from nestor.kbinirsnb.be ([193.190.234.10])
 	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.34)
-	id 1BxLQf-0008Nl-KO
-	for nfs@lists.sourceforge.net; Wed, 18 Aug 2004 01:04:19 -0700
-Received: from [212.159.57.82] (helo=clifford.net)
-	 by ptb-relay01.plus.net with esmtp (Exim) id 1BxLQW-000LPo-G7
-	for nfs@lists.sourceforge.net; Wed, 18 Aug 2004 08:04:08 +0000
-To: nfs@lists.sourceforge.net
+	id 1BxMwi-00009E-8V
+	for nfs@lists.sourceforge.net; Wed, 18 Aug 2004 02:41:28 -0700
+To: Olaf Kirch <okir@suse.de>
+In-Reply-To: <20040813163223.GA10834@suse.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,17 +33,50 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
-Sorry if this is a faq but what is the status of kerberos support for 
-nfs 3 currently (on the client side)?   I understand there was a project 
-to port the support from the nfs 4 work. Is that right?
+This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
+--------------enigE1D5A272CB113EE8C935B51B
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Kind regards,
-Raphael
+Olaf Kirch wrote:
 
+> On Fri, Aug 13, 2004 at 12:14:51PM -0400, Trond Myklebust wrote:
+> 
+>>Looks to me as if you are using the user space NFS server. That never
+>>had any support for the NLM locking protocol. In fact IIRC the addition
+>>of locking support was one of the main motivations at the time for
+>>writing the kernel NFS server (correct me if I'm wrong there Olaf).
+> 
+> 
+> That's right. Doing lockd in user space is horrible.
+> 
+> Olaf
 
-P.S. I sent this before from the wrong email address. I hope no one has 
-received it twice.
+Got it !
+
+Switching to kernel-space server solved my problem !
+
+Thanks for the help.
+
+Regards.
+
+Paul
+
+--------------enigE1D5A272CB113EE8C935B51B
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.1-nr1 (Windows XP)
+Comment: Using GnuPG with Thunderbird - http://enigmail.mozdev.org
+
+iD8DBQFBIyQn9IdyKWFcSoYRAhluAJ9qV0BlxpRe4cF2iwvaKKtyKzol6gCgxnaP
+Dir629BVt2+yI5wxKLEjqcY=
+=kMVR
+-----END PGP SIGNATURE-----
+
+--------------enigE1D5A272CB113EE8C935B51B--
 
 
 -------------------------------------------------------
