@@ -1,17 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 5 of 7 - Change atomic_inc to cache_get twice.
+Subject: [PATCH] kNFSd - 4 of 7 - Protect against NFS requests to create symlinks bigger than one page
 Date: Tue, 05 Aug 2003 13:59:23 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19jsyp-0000nG-00@notabene>
+Message-ID: <E19jsyp-0000n7-00@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19jsyz-0001hc-00
-	for <nfs@lists.sourceforge.net>; Mon, 04 Aug 2003 20:59:34 -0700
+	id 19jsyy-0001hW-00
+	for <nfs@lists.sourceforge.net>; Mon, 04 Aug 2003 20:59:32 -0700
 Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
 	(for <torvalds@osdl.org>) (for <nfs@lists.sourceforge.net>) By note
-	With Smtp ; Tue, 5 Aug 2003 13:59:28 +1000
+	With Smtp ; Tue, 5 Aug 2003 13:59:27 +1000
 To: Linus Torvalds <torvalds@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -27,31 +27,47 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 ### Comments for ChangeSet
 
- ----------- Diffstat output ------------
- ./include/linux/sunrpc/cache.h |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+Such a request would cause the nul terminator to be written
+to some other page, and cause havoc.
 
-diff ./include/linux/sunrpc/cache.h~current~ ./include/linux/sunrpc/cache.h
---- ./include/linux/sunrpc/cache.h~current~	2003-08-04 11:34:43.000000000 +1000
-+++ ./include/linux/sunrpc/cache.h	2003-08-04 11:34:43.000000000 +1000
-@@ -173,7 +173,7 @@ RTN *FNAME ARGS										\
- 			if (set && !INPLACE && test_bit(CACHE_VALID, &tmp->MEMBER.flags) && !new) \
- 				break;							\
- 											\
--			atomic_inc(&tmp->MEMBER.refcnt);				\
-+			cache_get(&tmp->MEMBER);					\
- 			if (set) {							\
- 				if (!INPLACE && test_bit(CACHE_VALID, &tmp->MEMBER.flags))\
- 				{ /* need to swap in new */				\
-@@ -221,7 +221,7 @@ RTN *FNAME ARGS										\
- 	new = kmalloc(sizeof(*new), GFP_KERNEL);					\
- 	if (new) {									\
- 		cache_init(&new->MEMBER);						\
--		atomic_inc(&new->MEMBER.refcnt);					\
-+		cache_get(&new->MEMBER);						\
- 		INIT;									\
- 		tmp = new;								\
- 		goto retry;								\
+Also rearrange two tests to avoid the possibility of testing the byte
+just past the end of a buffer - doing so can causes an oops with appropriate
+kernel-debug config options
+
+ ----------- Diffstat output ------------
+ ./fs/nfsd/nfs3xdr.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
+
+diff ./fs/nfsd/nfs3xdr.c~current~ ./fs/nfsd/nfs3xdr.c
+--- ./fs/nfsd/nfs3xdr.c~current~	2003-08-04 11:34:32.000000000 +1000
++++ ./fs/nfsd/nfs3xdr.c	2003-08-04 11:34:32.000000000 +1000
+@@ -446,7 +446,7 @@ nfs3svc_decode_symlinkargs(struct svc_rq
+ 	 */
+ 	svc_take_page(rqstp);
+ 	len = ntohl(*p++);
+-	if (len <= 0 || len > NFS3_MAXPATHLEN)
++	if (len <= 0 || len > NFS3_MAXPATHLEN || len >= PAGE_SIZE)
+ 		return 0;
+ 	args->tname = new = page_address(rqstp->rq_respages[rqstp->rq_resused-1]);
+ 	args->tlen = len;
+@@ -454,7 +454,7 @@ nfs3svc_decode_symlinkargs(struct svc_rq
+ 	old = (char*)p;
+ 	vec = &rqstp->rq_arg.head[0];
+ 	avail = vec->iov_len - (old - (char*)vec->iov_base);
+-	while (len > 0 && *old && avail) {
++	while (len && avail && *old) {
+ 		*new++ = *old++;
+ 		len--;
+ 		avail--;
+@@ -465,7 +465,7 @@ nfs3svc_decode_symlinkargs(struct svc_rq
+ 		if (avail > PAGE_SIZE) avail = PAGE_SIZE;
+ 		old = page_address(rqstp->rq_arg.pages[0]);
+ 	}
+-	while (len > 0 && *old && avail) {
++	while (len && avail && *old) {
+ 		*new++ = *old++;
+ 		len--;
+ 		avail--;
 
 
 -------------------------------------------------------
