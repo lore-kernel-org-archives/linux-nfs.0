@@ -1,8 +1,8 @@
 From: Chuck Lever <cel@citi.umich.edu>
-Subject: [PATCH] sock_writeable not appropriate for TCP sockets, for 2.5.32
-Date: Fri, 30 Aug 2002 14:20:42 -0400 (EDT)
+Subject: [PATCH] sock_writeable not appropriate for TCP sockets, for 2.4.20
+Date: Fri, 30 Aug 2002 16:51:57 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0208301413500.7274-100000@dexter.citi.umich.edu>
+Message-ID: <Pine.LNX.4.44.0208301648230.1645-100000@dexter.citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
@@ -10,9 +10,9 @@ Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from dexter.citi.umich.edu ([141.211.133.33])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17kqNz-0005Y2-00
-	for <nfs@lists.sourceforge.net>; Fri, 30 Aug 2002 11:20:47 -0700
-To: Linus Torvalds <torvalds@transmeta.com>
+	id 17kskR-0005gq-00
+	for <nfs@lists.sourceforge.net>; Fri, 30 Aug 2002 13:52:07 -0700
+To: marcelo@plucky.distro.conectiva
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,7 +25,7 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-hi linus-
+hi marcelo-
 
 sock_writeable determines whether there is space in a socket's output
 buffer.  socket write_space callbacks use it to determine whether to wake
@@ -38,12 +38,12 @@ hundred bytes long when it is trying to send a large write RPC request.
 this patch adds logic to the RPC layer's write_space callback that 
 properly handles TCP sockets.
 
-patch reviewed by Trond and Alexey.  patch forthcoming for 2.4.20-pre.
+patch reviewed by Trond and Alexey.  patch already sent to linus for 2.5.
 
-diff -drN -U2 01-lock_write/net/sunrpc/xprt.c 02-write_space/net/sunrpc/xprt.c
---- 01-lock_write/net/sunrpc/xprt.c	Wed Aug 28 17:09:08 2002
-+++ 02-write_space/net/sunrpc/xprt.c	Wed Aug 28 17:18:14 2002
-@@ -957,6 +957,8 @@
+
+--- 2.4.20-pre5/net/sunrpc/xprt.c.orig	Fri Aug 30 15:49:28 2002
++++ 2.4.20-pre5/net/sunrpc/xprt.c	Fri Aug 30 15:52:55 2002
+@@ -950,6 +950,8 @@
  
  /*
 - * The following 2 routines allow a task to sleep while socket memory is
@@ -54,7 +54,7 @@ diff -drN -U2 01-lock_write/net/sunrpc/xprt.c 02-write_space/net/sunrpc/xprt.c
 + * with a bunch of small requests.
   */
  static void
-@@ -972,6 +974,13 @@
+@@ -965,6 +967,13 @@
  
  	/* Wait until we have enough socket memory */
 -	if (!sock_writeable(sk))
@@ -75,6 +75,7 @@ diff -drN -U2 01-lock_write/net/sunrpc/xprt.c 02-write_space/net/sunrpc/xprt.c
 
 corporate:	<cel at netapp dot com>
 personal:	<chucklever at bigfoot dot com>
+
 
 
 
