@@ -1,57 +1,47 @@
-From: "Monica" <Monica3873hyccw@aol.com>
-Subject: hey              5049ukBW6-926s-13
-Date: Wed, 26 Feb 2003 07:48:37 -0000
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <18cd6d950afe$2d9b2fe7$05adadfd@gqinje.b>
+From: Janet Morgan <janetmor@us.ibm.com>
+Subject: Re: 2.5.62 Oops during nfs mount
+Date: Wed, 26 Feb 2003 12:09:22 -0800
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <3E5D1EF2.1BC379DD@us.ibm.com>
+References: <3E56E58D.6B047A23@us.ibm.com>
+		<20030224123622.GB1103@in.ibm.com> <15962.20933.457919.169668@charged.uio.no>
+Reply-To: janetmor@us.ibm.com
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_D07_4CA7_C107DCB6.22D26A8E"
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [211.184.70.2] (helo=aol.com)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18nwRJ-0004Ab-00
-	for <nfs@lists.sourceforge.net>; Tue, 25 Feb 2003 23:57:19 -0800
-To: <nfs@lists.sourceforge.net>
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain; charset=us-ascii
+Cc: maneesh@in.ibm.com, linux-kernel@vger.kernel.org,
+	nfs@lists.sourceforge.net, bruce.allan@us.ibm.com
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
+To: trond.myklebust@fys.uio.no
+List-ID: <nfs.lists.sourceforge.net>
 
-------=_NextPart_D07_4CA7_C107DCB6.22D26A8E
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: 8bit
+Trond Myklebust wrote:
 
+> >>>>> " " == Maneesh Soni <maneesh@in.ibm.com> writes:
+>
+>      > Following patch should fix this problem. I think Trond can say
+>      > whether it is correct or not. In my opinion rpc_rmdir should
+>      > test for negative dentry after lookup_hash() returns, like
+>      > rpc_unlink() does.
+>
+> No. You are 'fixing' a symptom of a more fundamental
+> bug/misunderstanding: lookup_path("") returns no error, and is
+> sometimes causing us to remove the top level directory.
+> See the 2-line patch I posted yesterday. It should fix the Oops you
+> are reporting.
 
-------=_NextPart_D07_4CA7_C107DCB6.22D26A8E
-Content-Type: text/html;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: 8bit
+Thanks Trond, your patch below indeed fixed the Oops I reported:
 
-<center>
-<a href="http://sexymatch.org/alwayslonely/">
-<!-#rotate>
-<img src="http://anything.coolfreepage.com/mbl.jpg"
-</a>
-
-6650coVD7-907QVcF5489YeUB7-009tkHx9417VHfUl40
-
-------=_NextPart_D07_4CA7_C107DCB6.22D26A8E--
-
-
-
--------------------------------------------------------
-This SF.net email is sponsored by: Scholarships for Techies!
-Can't afford IT training? All 2003 ictp students receive scholarships.
-Get hands-on training in Microsoft, Cisco, Sun, Linux/UNIX, and more.
-www.ictp.com/training/sourceforge.asp
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+--- linux-2.5.61-up/net/sunrpc/clnt.c.orig      2003-02-15
+21:05:02.000000000 +0100
++++ linux-2.5.61-up/net/sunrpc/clnt.c   2003-02-17 19:39:20.000000000
++0100
+@@ -208,7 +208,8 @@
+                rpcauth_destroy(clnt->cl_auth);
+                clnt->cl_auth = NULL;
+        }
+-       rpc_rmdir(clnt->cl_pathname);
++       if (clnt->cl_pathname[0])
++               rpc_rmdir(clnt->cl_pathname);
+        if (clnt->cl_xprt) {
+                xprt_destroy(clnt->cl_xprt);
+                clnt->cl_xprt = NULL;
