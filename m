@@ -1,21 +1,30 @@
-From: Filipe Brandenburger <branden@terra.com.br>
-Subject: Re: Stale NFS file handle
-Date: Wed, 23 Mar 2005 14:15:04 -0300
-Message-ID: <20050323140845.BED8.BRANDEN@terra.com.br>
-References: <42416B4C.2010505@RedHat.com> <1111586235.27875.13.camel@lade.trondhjem.org>
+From: Mike Waychison <mike@waychison.com>
+Subject: Re: [PATCH 1/2] VFS: New /proc file /proc/self/mountstats
+Date: Wed, 23 Mar 2005 17:42:31 +0000 (UTC)
+Message-ID: <loom.20050323T183257-779@post.gmane.org>
+References: <20050317162613.756101BB98@citi.umich.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
-Cc: Steve Dickson <SteveD@redhat.com>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DE9QF-0002yq-Mc
-	for nfs@lists.sourceforge.net; Wed, 23 Mar 2005 09:13:35 -0800
-Received: from itapoa.terra.com.br ([200.154.55.227])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1DE9QE-0002bB-4N
-	for nfs@lists.sourceforge.net; Wed, 23 Mar 2005 09:13:35 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1111586235.27875.13.camel@lade.trondhjem.org>
+	id 1DEAej-0008GD-T8
+	for nfs@lists.sourceforge.net; Wed, 23 Mar 2005 10:32:37 -0800
+Received: from main.gmane.org ([80.91.229.2] helo=ciao.gmane.org)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1DEAei-00035M-6f
+	for nfs@lists.sourceforge.net; Wed, 23 Mar 2005 10:32:37 -0800
+Received: from root by ciao.gmane.org with local (Exim 4.43)
+	id 1DEATb-0003FD-3z
+	for nfs@lists.sourceforge.net; Wed, 23 Mar 2005 19:21:07 +0100
+Received: from ip22-176.tor.istop.com ([66.11.176.22])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <nfs@lists.sourceforge.net>; Wed, 23 Mar 2005 19:21:07 +0100
+Received: from mike by ip22-176.tor.istop.com with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <nfs@lists.sourceforge.net>; Wed, 23 Mar 2005 19:21:07 +0100
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,39 +38,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hi Chuck,
 
-* Wed, 23 Mar 2005 08:57:15 -0500, Trond Myklebust <trond.myklebust@fys.uio.no>:
-> He was running
+Chuck Lever <cel <at> citi.umich.edu> writes:
+
 > 
-> while :; do cat test.txt; done >/dev/null
+> Create a new file under /proc/self, called mountstats, where mounted file
+>  systems can export information (configuration options, performance counters,
+>  and so on).  Use a mechanism similar to /proc/mounts and s_ops->show_options.
 > 
-> on a client, then deleting the file on the server. Even if the call to
-> open() is successful, you both can and will get ESTALEs on the
-> subsequent call to read().
 
-Ok,
+> diff -X /home/cel/src/linux/dont-diff -Naurp 00-stock/fs/namespace.c
+01-mountstats/fs/namespace.c
 
-But then, how do you suggest I should change applications to do it? The
-applications that publish content to the NFS run on one host and are
-based on rsync, the applications that deliver content are web servers 
-(Apache) reading from this same NFS on another pool of hosts (these are
-the ones that get the ESTALE error).
+...
 
-Where is the problem? On the applications that publish? Should they open
-the file and update it in-place instead of creating a new one and
-renaming? I don't think so! This would lead to content that is a mix of
-the old and the new, that is corrupt.
+> +struct seq_operations mountstats_op = {
+> +	.start	= ms_start,
+> +	.next	= ms_next,
+> +	.stop	= ms_stop,
 
-Or is the webserver? Should the application protect itself from ESTALE
-errors and retry? Somehow that seems wrong to me also. Then I would have
-to change all applications that read this content to do it. Why doesn't
-the NFS client recover from this kind of errors?
+You can use m_start, m_next and m_stop here instead of copying and pasting the
+routines.  Otherwise looks fine.
 
-If it's really not possible to change it on the NFS client (the kernel),
-what workaround would you suggest me to use?
+Mike Waychison
 
-Thanks,
-Filipe
+
+
+
+
 
 
 
