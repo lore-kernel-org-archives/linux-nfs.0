@@ -1,20 +1,20 @@
-From: Benjamin LaHaise <bcrl@redhat.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: PATCH - SUNRPC 1 of 3 - The new "sk_flags" word in struct svc_sock must be long....
-Date: Tue, 20 Aug 2002 18:53:57 -0400
+Date: 21 Aug 2002 01:16:12 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020820185357.O21269@redhat.com>
+Message-ID: <shsy9b1yvcz.fsf@charged.uio.no>
 References: <15713.50328.541517.124690@notabene.cse.unsw.edu.au>
+	<20020820185357.O21269@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Marcelo Tosatti <marcelo@conectiva.com.br>,
-	nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from to-velocet.redhat.com ([216.138.202.10] helo=touchme.toronto.redhat.com)
+Received: from pat.uio.no ([129.240.130.16])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17hHsv-0000ta-00
-	for <nfs@lists.sourceforge.net>; Tue, 20 Aug 2002 15:54:01 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <15713.50328.541517.124690@notabene.cse.unsw.edu.au>; from neilb@cse.unsw.edu.au on Tue, Aug 20, 2002 at 02:24:56PM +1000
+	id 17hIET-0004RY-00
+	for <nfs@lists.sourceforge.net>; Tue, 20 Aug 2002 16:16:17 -0700
+To: Benjamin LaHaise <bcrl@redhat.com>
+In-Reply-To: <20020820185357.O21269@redhat.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,19 +27,25 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Tue, Aug 20, 2002 at 02:24:56PM +1000, Neil Brown wrote:
-> @@ -22,7 +22,7 @@ struct svc_sock {
->  
->  	struct svc_serv *	sk_server;	/* service for this socket */
->  	unsigned char		sk_inuse;	/* use count */
-> -	unsigned int		sk_flags;
-> +	unsigned long		sk_flags;
+>>>>> " " == Benjamin LaHaise <bcrl@redhat.com> writes:
 
-Cool, 7 bytes of useless padding on 64 bit architectures.
+     > On Tue, Aug 20, 2002 at 02:24:56PM +1000, Neil Brown wrote:
+    >> @@ -22,7 +22,7 @@ struct svc_sock {
+    >>
+    >> struct svc_serv * sk_server; /* service for this socket */
+    >> unsigned char sk_inuse; /* use count */
+    >> - unsigned int sk_flags;
+    >> + unsigned long sk_flags;
 
-		-ben
--- 
-"You will be reincarnated as a toad; and you will be much happier."
+     > Cool, 7 bytes of useless padding on 64 bit architectures.
+
+All down to the sad inability of certain 64-bit "processor architects"
+to provide for atomic bit operations on 32-bit integers.
+If the relatively minor bloat in knfsd worries you, then I advise you
+to take a deep breath before peeking at struct page... 8-)
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
