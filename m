@@ -1,24 +1,27 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] statfs fails with EOVERFLOW
-Date: Tue, 23 Mar 2004 13:36:07 +0000
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: support of IPv6 by NFSv4
+Date: Tue, 23 Mar 2004 10:58:09 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040323133607.A473@infradead.org>
-References: <20040323130513.GB30984@suse.de> <20040323132127.A322@infradead.org> <20040323133019.GD30984@suse.de>
+Message-ID: <1080057489.3109.8.camel@lade.trondhjem.org>
+References: <40605D2E.EB4668C0@Bull.Net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: nfs@lists.sourceforge.net,
+	PATRICE ROMAND <Patrice.Romand@Bull.Net>,
+	Gerrit Huizenga <gerrit@us.ibm.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B5m4g-0005V1-7H
-	for nfs@lists.sourceforge.net; Tue, 23 Mar 2004 05:36:10 -0800
-Received: from phoenix.infradead.org ([213.86.99.234])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1B5oID-0004TJ-Iv
+	for nfs@lists.sourceforge.net; Tue, 23 Mar 2004 07:58:17 -0800
+Received: from dh132.citi.umich.edu
+	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
 	(Exim 4.30)
-	id 1B5m4f-0008Ch-FE
-	for nfs@lists.sourceforge.net; Tue, 23 Mar 2004 05:36:09 -0800
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20040323133019.GD30984@suse.de>; from okir@suse.de on Tue, Mar 23, 2004 at 02:30:19PM +0100
+	id 1B5oID-0003Mg-6Y
+	for nfs@lists.sourceforge.net; Tue, 23 Mar 2004 07:58:17 -0800
+To: Gilles Quillard <Gilles.Quillard@Bull.Net>
+In-Reply-To: <40605D2E.EB4668C0@Bull.Net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,28 +34,46 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, Mar 23, 2004 at 02:30:19PM +0100, Olaf Kirch wrote:
-> > that's why we have statfs64 in 2.6, a program with the right LFS magic
-> > and a recentish glibc should use if for you.
-> 
-> The glibc maintainers at suse tell me it's broken at the moment.
-> 
-> Second, not all apps can easily be converted to LFS support. One of the
-> apps that barfed was OpenOffice... be my guest and make it LFS clean :)
+P=E5 ty , 23/03/2004 klokka 10:52, skreiv Gilles Quillard:
+> Hi,
+>=20
+> I'm new in this mailing list. We are interesting by having NFSv4 working =
+over IPv6.
+> One year ago, Bruce Allan from IBM submitted a patch to add the support o=
+f IPv6 in the SUNRPC and in the NFS client/server
+> kernel part. This patch has not been adopted. Trond, did you remember why=
+ this patch has not been taken into account ?
 
-OpenOffice is hopeless, it's one of this "if it's finally unmaintainable,
-opensource it" things :)
+There was (and still is) no userland support for RPC on IPv6, so
+NFSv2/v3 cannot as of yet make use of it... At the time, NFSv4 was not
+merged.
 
-> And finally, I think it's really an NFS bug. A local statfs on the file
-> system on the server works fine; it's just that the NFS client barfs
-> because it uses wtmult as the block size (and if it's a v2 mount, things
-> are even worse because it picks a totally arbitrary wtmult value of 512).
+> Since this date, there has been no new message on the mailing list about =
+the support of IPv6. Is there some people working on
+> this subject or interested by it ?
 
-Hmm.  Why do you limit the sb_blocksize changes to 32bit architectures then?
-I see it doesn't trip easily for 64bit arches, but having different values
-for exactly the same filesystem and mount options sounds like a rather bad
-idea to me.
+Yes: Chuck Lever (cel@citi.umich.edu) has recently taken it up. He is
+also trying to extend Bruce's work in order to allow for non-TCP/IP
+based transport mechanisms (for an internal project).
 
+> I have begun to look how the support of IPv6 could be integrated in NFS a=
+nd SUNRPC. The most efficient way seems to be using the
+> IPv4-mapped IPv6 address format (as described in the sections 3.7 and 6 o=
+f RFC2133). With this method, IPv4 addresses are
+> converted into IPv6 addresses the first time they are used by the user pa=
+rt applications, and then all the address processing is
+> done using INET6 addresses (simple change of in_addr/sockaddr_in by in6_a=
+ddr/sockaddr_in6). This method avoids the multiple
+> tests of the INET family and the corresponding castings. A set of macros/=
+functions (IN6_IS_ADDR_V4MAPPED(), inet_pton(),
+> inet_ntop(), gethostbyname2(), ...) is available to identify the format o=
+f the addresses, to convert and display the addresses
+> according to their format and to use the name server.
+
+Please make sure you coordinate any work with Chuck...
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
