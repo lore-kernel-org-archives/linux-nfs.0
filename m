@@ -1,26 +1,22 @@
-From: ed@sam-solutions.net (Ed V. Bartosh)
-Subject: Re: NFSv3 UID/GID mapping
-Date: Fri, 23 Apr 2004 12:12:05 +0300
+From: Gavin Hamill <gdh@acentral.co.uk>
+Subject: lockd / statd fun (sorry)
+Date: Fri, 23 Apr 2004 11:37:29 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <m3ekqfvz16.fsf@pc213.belcaf.minsk.by>
-References: <m3vfjsxsky.fsf@pc213.belcaf.minsk.by>
-	<20040422172512.GE12400@fieldses.org>
+Message-ID: <200404231137.29216.gdh@acentral.co.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+  charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BGwlg-0004qe-8t
-	for nfs@lists.sourceforge.net; Fri, 23 Apr 2004 02:14:44 -0700
-Received: from mail.sam-solutions.net ([217.21.35.41])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.30)
-	id 1BGwlb-0007dp-T7
-	for nfs@lists.sourceforge.net; Fri, 23 Apr 2004 02:14:43 -0700
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <20040422172512.GE12400@fieldses.org> (J. Bruce Fields's
- message of "Thu, 22 Apr 2004 13:25:12 -0400")
+	id 1BGy3p-00080A-JA
+	for nfs@lists.sourceforge.net; Fri, 23 Apr 2004 03:37:33 -0700
+Received: from pop.nation-net.com
+	([194.200.209.13] helo=pop.walshsimmons.co.uk ident=foobar)
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.30)
+	id 1BGy3o-0006xY-VR
+	for nfs@lists.sourceforge.net; Fri, 23 Apr 2004 03:37:33 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,67 +29,76 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-"J. Bruce Fields" <bfields@fieldses.org> writes:
+Hullo,
 
-> On Thu, Apr 22, 2004 at 12:36:13PM +0300, Ed V. Bartosh wrote:
->> Here is the NFSv3 uid/gid mapping implementation (both kernel and
->> nfs-utils parts). Userspace part uses idmap daemon from CITI NFSv4, 
->> so the NFSv4 patches are required.
->
-> Just out of curiosity:
-> 	* This does the server side only.  Have you looked at the client side
-> 	  at all?
-No. It's just a server-side mapping. I think we don't need to rely on
-client for that. There are many other possibilities to change uids on
-client side. Also client-based solution is less secure than
-server-side one and also it's the linux-only solution.
+I'm afraid I have to dredge up old ground here...
 
-> 	* What sort of applications are you considering for this?
->
-I'm considering that this should be used in cases when there is no
-possibility to have equal uids on the NFS server and client. For
-example we have this situation when we use the same share as SMB and
-NFS share and we have to map uids of NFS users to uids of samba users 
-(preferable windows boxes). In our situation this mapping is 
-required because we need server XFS ACLs to work properly for any type
-of clients.
-I think there are many other situations when it may be useful to use
-this kind of mapping.
+I'm running about 30 diskless workstations PXE-booting to an NFS-root and 
+NFS-homedir with NIS logins, and the workstations are regularly getting the 
+familiar
 
->> Look at this, please. Any kind of feedback will be appreciated.
->
-> Do you also need to do map the id's in nfs3xdr.c:xdr_encode_setattr() and
-> xdr_decode_fattr()?
-Yes, I do. Thank you.
+Apr 23 11:17:18 10.0.0.13 kernel: nsm_mon_unmon: rpc failed, status=-13
+Apr 23 11:17:18 10.0.0.13 kernel: lockd: cannot monitor 10.0.0.253
+Apr 23 11:17:18 10.0.0.13 kernel: lockd: failed to monitor 10.0.0.253
+Apr 23 11:17:18 10.0.0.13 kernel: nsm_mon_unmon: rpc failed, status=-13
+Apr 23 11:17:18 10.0.0.13 kernel: lockd: cannot monitor 10.0.0.253
 
-> Is IDMAP_UID_NONE really needed, or could you just use an ENOENT return?
->
-It's not important, i think, because '(uid_t) -1' is already used in
-auth.c, I've just named it. But, yes, it can be used partly. I mean that
-uids which can't be mapped will be passed from userspace in any
-case and we'll need to check it somewhere.
+kernel messages. Now, I've read as much as I can on the topic, and I have made 
+sure that both statd and lockd are running on both the client and the server.
 
-> We need to figure out a way to do this without duplicating so much code
-> from nfs4idmap.c.
-Yes, we need it, but it's not too much code. I think that there is
-sense to move only deferred request handling functions somewhere in
-separate file and use it from nfs4 and nfs3 idmap functions.
+The machines have generally worked well, but OpenOffice.org's setup seems to 
+require locking, and the messages have increasingly irritated me, so I need 
+to turn to the oracles on such matters :)
 
-> Also note some of that code is wrong.  (See the nfsd_idmap patches in
-> http://www.citi.umich.edu/projects/nfsv4/linux/kernel-patches/2.6.6-rc1-3/).
->
-Yes, sure. When I worked on this patches there where only CITI patches
-for 2.6.5 available. I used them for my work.
+I'm using kernel-mode NFS server on both the physical server and the 
+workstations... On the server, I see 
 
-Thank you for your feedback.
-I'll change the code according to your suggestions.
+10714 ?        S      0:00 /sbin/rpc.statd
+10733 ?        SW     0:00 [lockd]
+10734 ?        SW     0:00  \_ [rpciod]
 
-BTW, Is any chance for this functionality to be in mainstream 
-sometime ?
+and on the clients I see the same (from memory - I can't access them via SSH 
+from here). Clients are using a 2.4.22 kernel and the server is on 2.4.24.
 
--- 
-Best regards,
-Ed V. Bartosh
+I checked the manpage for statd, and was interested by the /var/lib/nfs/sm 
+directory - on the server, this directory is completely empty, 
+and /var/lib/nfs/state contains only 4 bytes: 001d 0000  - does this sound 
+normal?
+
+/etc/hosts.allow was always blank , but today I tried the advice I found in 
+another mailing list posting, to add 
+
+statd: 10.0.0.
+
+I then restarted nfs-common (rpc.statd) and nfs-kernel-server (rpc.nfsd and 
+rpc.mountd) with logs thusly:
+
+Apr 23 11:06:26 10.0.0.9 kernel: nsm_mon_unmon: rpc failed, status=-13
+Apr 23 11:06:26 10.0.0.9 kernel: lockd: cannot monitor 10.0.0.253
+Apr 23 11:06:26 10.0.0.9 kernel: lockd: failed to monitor 10.0.0.253
+Apr 23 11:06:40 fon kernel: nfsd: last server has exited
+Apr 23 11:06:40 fon kernel: nfsd: unexporting all filesystems
+Apr 23 11:06:42 10.0.0.24 kernel: nfs: server 10.0.0.253 not responding, still 
+trying
+Apr 23 11:06:43 10.0.0.19 kernel: nfs: server 10.0.0.253 not responding, still 
+trying
+Apr 23 11:06:43 10.0.0.9 kernel: nfs: server 10.0.0.253 not responding, still 
+Apr 23 11:06:45 10.0.0.19 kernel: nfs: server 10.0.0.253 OK
+Apr 23 11:06:56 10.0.0.19 kernel: nsm_mon_unmon: rpc failed, status=-13
+Apr 23 11:06:56 10.0.0.19 kernel: lockd: cannot monitor 10.0.0.253
+Apr 23 11:06:56 10.0.0.19 kernel: lockd: failed to monitor 10.0.0.253
+
+i.e. nothing's changed :(
+
+Should the /var/lib/nfs be in use for the clients, too? My boot-sequence is 
+based on KNOPPIX and uses an initrd to symlink much of the filesystem to a 
+ramdisk, so I'm a bit concerned I might have messed up the permissions here.
+
+Any advice warmly welcomed.
+
+Cheers,
+Gavin.
+P.S. Olaf Kirch's "statd simplified" looks very interesting! :))
 
 
 -------------------------------------------------------
