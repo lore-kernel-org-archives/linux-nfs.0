@@ -1,24 +1,24 @@
 From: Olaf Kirch <okir@suse.de>
 Subject: Re: NSM lock recovery fails too often
-Date: Tue, 9 Mar 2004 11:56:07 +0100
+Date: Tue, 9 Mar 2004 11:57:23 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040309105607.GA20391@suse.de>
-References: <482A3FA0050D21419C269D13989C61130435DD1C@lavender-fe.eng.netapp.com>
+Message-ID: <20040309105723.GB20391@suse.de>
+References: <482A3FA0050D21419C269D13989C61130435DD1C@lavender-fe.eng.netapp.com> <20040309105607.GA20391@suse.de>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="Qxx1br4bt0+wmkIi"
+Content-Type: multipart/mixed; boundary="GRPZ8SYKNexpdSJ7"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B0f2w-0005Mt-Ej
-	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 03:05:14 -0800
+	id 1B0f48-0005b6-L0
+	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 03:06:28 -0800
 Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
 	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.30)
-	id 1B0eu9-00088O-Jg
-	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 02:56:10 -0800
+	id 1B0evN-0008P1-PD
+	for nfs@lists.sourceforge.net; Tue, 09 Mar 2004 02:57:26 -0800
 To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: <482A3FA0050D21419C269D13989C61130435DD1C@lavender-fe.eng.netapp.com>
+In-Reply-To: <20040309105607.GA20391@suse.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,26 +32,11 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
---Qxx1br4bt0+wmkIi
+--GRPZ8SYKNexpdSJ7
 Content-Type: text/plain; charset=iso-8859-15
 Content-Disposition: inline
 
-Hi,
-
-On Mon, Mar 08, 2004 at 08:30:45PM -0800, Lever, Charles wrote:
-> perhaps the best solution is to use an option as Olaf's patch
-> does, but to make the default behavior match the in-kernel
-> lockd's behavior, not the user-level lockd's behavior.  or,
-> maybe we use the second patch and simply remove the user
-> level lockd from nfs-utils.
-
-I have continued working on the kernel statd, and it seems to be
-reasonably functional now. I'm attaching my current kernel patch
-and a user land utility for sending out the SM_NOTIFY calls
-at reboot.
-
-The kernel patch isn't 100% clean yet, as it breaks the non-
-CONFIG_STATD case.
+Here's the promised sm-notify utility.
 
 Olaf
 -- 
@@ -59,989 +44,624 @@ Olaf Kirch     |  Stop wasting entropy - start using predictable
 okir@suse.de   |  tempfile names today!
 ---------------+ 
 
---Qxx1br4bt0+wmkIi
+--GRPZ8SYKNexpdSJ7
 Content-Type: text/plain; charset=iso-8859-15
-Content-Disposition: attachment; filename=kernel-statd
+Content-Disposition: attachment; filename="sm-notify.c"
 
-diff -X excl -purNa linux-2.6.2/fs/Kconfig linux-2.6.2-kstatd/fs/Kconfig
---- linux-2.6.2/fs/Kconfig	2004-02-13 15:01:50.000000000 +0100
-+++ linux-2.6.2-kstatd/fs/Kconfig	2004-02-13 15:02:14.000000000 +0100
-@@ -1531,6 +1531,10 @@ config ROOT_NFS
- config LOCKD
- 	tristate
- 
-+config STATD
-+	bool "Use kernel statd implementation"
-+	depends on LOCKD && EXPERIMENTAL
-+
- config LOCKD_V4
- 	bool
- 	depends on NFSD_V3 || NFS_V3
-diff -X excl -purNa linux-2.6.2/fs/buffer.c linux-2.6.2-kstatd/fs/buffer.c
---- linux-2.6.2/fs/buffer.c	2004-02-04 04:43:56.000000000 +0100
-+++ linux-2.6.2-kstatd/fs/buffer.c	2004-02-13 15:02:14.000000000 +0100
-@@ -242,6 +242,7 @@ int fsync_super(struct super_block *sb)
- 
- 	return sync_blockdev(sb->s_bdev);
- }
-+EXPORT_SYMBOL(fsync_super);
- 
- /*
-  * Write out and wait upon all dirty data associated with this
-diff -X excl -purNa linux-2.6.2/fs/lockd/Makefile linux-2.6.2-kstatd/fs/lockd/Makefile
---- linux-2.6.2/fs/lockd/Makefile	2004-02-04 04:43:10.000000000 +0100
-+++ linux-2.6.2-kstatd/fs/lockd/Makefile	2004-02-13 15:02:14.000000000 +0100
-@@ -5,6 +5,12 @@
- obj-$(CONFIG_LOCKD) += lockd.o
- 
- lockd-objs-y := clntlock.o clntproc.o host.o svc.o svclock.o svcshare.o \
--	        svcproc.o svcsubs.o mon.o xdr.o lockd_syms.o
-+	        svcproc.o svcsubs.o xdr.o lockd_syms.o
-+ifeq ($(CONFIG_STATD),y)
-+lockd-objs-y += statd.o
-+else
-+lockd-objs-y += mon.o
-+endif
-+
- lockd-objs-$(CONFIG_LOCKD_V4) += xdr4.o svc4proc.o
- lockd-objs		      := $(lockd-objs-y)
-diff -X excl -purNa linux-2.6.2/fs/lockd/clntlock.c linux-2.6.2-kstatd/fs/lockd/clntlock.c
---- linux-2.6.2/fs/lockd/clntlock.c	2004-02-04 04:44:43.000000000 +0100
-+++ linux-2.6.2-kstatd/fs/lockd/clntlock.c	2004-02-13 15:02:14.000000000 +0100
-@@ -164,7 +164,6 @@ void nlmclnt_mark_reclaim(struct nlm_hos
- static inline
- void nlmclnt_prepare_reclaim(struct nlm_host *host, u32 newstate)
- {
--	host->h_monitored = 0;
- 	host->h_nsmstate = newstate;
- 	host->h_state++;
- 	host->h_nextrebind = 0;
-diff -X excl -purNa linux-2.6.2/fs/lockd/clntproc.c linux-2.6.2-kstatd/fs/lockd/clntproc.c
---- linux-2.6.2/fs/lockd/clntproc.c	2004-02-04 04:43:06.000000000 +0100
-+++ linux-2.6.2-kstatd/fs/lockd/clntproc.c	2004-02-13 15:02:14.000000000 +0100
-@@ -442,7 +442,7 @@ nlmclnt_lock(struct nlm_rqst *req, struc
- 	struct nlm_res	*resp = &req->a_res;
- 	int		status;
- 
--	if (!host->h_monitored && nsm_monitor(host) < 0) {
-+	if (nsm_monitor(host) < 0) {
- 		printk(KERN_NOTICE "lockd: failed to monitor %s\n",
- 					host->h_name);
- 		return -ENOLCK;
-diff -X excl -purNa linux-2.6.2/fs/lockd/host.c linux-2.6.2-kstatd/fs/lockd/host.c
---- linux-2.6.2/fs/lockd/host.c	2004-02-04 04:43:56.000000000 +0100
-+++ linux-2.6.2-kstatd/fs/lockd/host.c	2004-02-13 15:02:18.000000000 +0100
-@@ -61,7 +61,7 @@ struct nlm_host *
- nlm_lookup_host(int server, struct sockaddr_in *sin,
- 					int proto, int version)
- {
--	struct nlm_host	*host, **hp;
-+	struct nlm_host	*host, **hp, *host2;
- 	u32		addr;
- 	int		hash;
- 
-@@ -119,7 +119,7 @@ nlm_lookup_host(int server, struct socka
- 	init_MUTEX(&host->h_sema);
- 	host->h_nextrebind = jiffies + NLM_HOST_REBIND;
- 	host->h_expires    = jiffies + NLM_HOST_EXPIRE;
--	host->h_count      = 1;
-+	atomic_set(&host->h_count, 1);
- 	init_waitqueue_head(&host->h_gracewait);
- 	host->h_state      = 0;			/* pseudo NSM state */
- 	host->h_nsmstate   = 0;			/* real NSM state */
-@@ -127,6 +127,27 @@ nlm_lookup_host(int server, struct socka
- 	host->h_next       = nlm_hosts[hash];
- 	nlm_hosts[hash]    = host;
- 
-+#ifdef CONFIG_STATD
-+	/* Do the loop again - see if we have an nlm_host for
-+	 * this address already.
-+	 */
-+	for (hp = &nlm_hosts[hash]; (host2 = *hp); hp = &host2->h_next) {
-+		if (nlm_cmp_addr(&host2->h_addr, sin)) {
-+			struct nsm_handle *nsm;
-+
-+			nsm = host2->h_nsmhandle;
-+			if (nsm) {
-+				host->h_nsmhandle = nsm;
-+				atomic_inc(&nsm->sm_count);
-+				break;
-+			}
-+		}
-+	}
-+
-+	if (host->h_nsmhandle == NULL)
-+		host->h_nsmhandle = nsm_alloc(&host->h_addr);
-+#endif
-+
- 	if (++nrhosts > NLM_HOST_MAX)
- 		next_gc = 0;
- 
-@@ -138,17 +159,17 @@ nohost:
- struct nlm_host *
- nlm_find_client(void)
- {
--	/* find a nlm_host for a client for which h_killed == 0.
--	 * and return it
-+	/* Find the next NLM client host and remove it from the
-+	 * list. The caller is supposed to release all resources
-+	 * held by this client, and release the nlm_host afterwards.
- 	 */
- 	int hash;
- 	down(&nlm_host_sema);
- 	for (hash = 0 ; hash < NLM_HOST_NRHASH; hash++) {
- 		struct nlm_host *host, **hp;
- 		for (hp = &nlm_hosts[hash]; (host = *hp) ; hp = &host->h_next) {
--			if (host->h_server &&
--			    host->h_killed == 0) {
--				nlm_get_host(host);
-+			if (host->h_server) {
-+			    	*hp = host->h_next;
- 				up(&nlm_host_sema);
- 				return host;
- 			}
-@@ -235,7 +256,7 @@ struct nlm_host * nlm_get_host(struct nl
- {
- 	if (host) {
- 		dprintk("lockd: get host %s\n", host->h_name);
--		host->h_count ++;
-+		atomic_inc(&host->h_count);
- 		host->h_expires = jiffies + NLM_HOST_EXPIRE;
- 	}
- 	return host;
-@@ -246,10 +267,61 @@ struct nlm_host * nlm_get_host(struct nl
-  */
- void nlm_release_host(struct nlm_host *host)
- {
--	if (host && host->h_count) {
-+	if (host && atomic_dec_and_test(&host->h_count))
- 		dprintk("lockd: release host %s\n", host->h_name);
--		host->h_count --;
-+}
-+
-+/*
-+ * Given an IP address, initiate recovery and ditch all locks.
-+ */
-+void
-+nlm_host_rebooted(struct sockaddr_in *sin, u32 new_state)
-+{
-+	struct nlm_host	*host, **hp;
-+	int		hash;
-+
-+	dprintk("lockd: nlm_host_rebooted(%u.%u.%u.%u)\n",
-+			NIPQUAD(sin->sin_addr));
-+
-+	hash = NLM_ADDRHASH(sin->sin_addr.s_addr);
-+
-+	/* Lock hash table */
-+	down(&nlm_host_sema);
-+	for (hp = &nlm_hosts[hash]; (host = *hp); hp = &host->h_next) {
-+		if (nlm_cmp_addr(&host->h_addr, sin)) {
-+			if (host->h_nsmhandle)
-+				host->h_nsmhandle->sm_monitored = 0;
-+			host->h_rebooted = 1;
-+		}
-+	}
-+
-+again:
-+	for (hp = &nlm_hosts[hash]; (host = *hp); hp = &host->h_next) {
-+		if (nlm_cmp_addr(&host->h_addr, sin) && host->h_rebooted) {
-+			host->h_rebooted = 0;
-+			atomic_inc(&host->h_count);
-+			up(&nlm_host_sema);
-+
-+			/* If we're server for this guy, just ditch
-+			 * all the locks he held.
-+			 * If he's the server, initiate lock recovery.
-+			 */
-+			if (host->h_server) {
-+				nlmsvc_free_host_resources(host);
-+			} else {
-+				nlmclnt_recovery(host, new_state);
-+			}
-+
-+			down(&nlm_host_sema);
-+			nlm_release_host(host);
-+
-+			/* Host table may have changed in the meanwhile,
-+			 * start over */
-+			goto again;
-+		}
- 	}
-+
-+	up(&nlm_host_sema);
- }
- 
- /*
-@@ -283,7 +355,8 @@ nlm_shutdown_hosts(void)
- 		for (i = 0; i < NLM_HOST_NRHASH; i++) {
- 			for (host = nlm_hosts[i]; host; host = host->h_next) {
- 				dprintk("       %s (cnt %d use %d exp %ld)\n",
--					host->h_name, host->h_count,
-+					host->h_name,
-+					atomic_read(&host->h_count),
- 					host->h_inuse, host->h_expires);
- 			}
- 		}
-@@ -314,19 +387,24 @@ nlm_gc_hosts(void)
- 	for (i = 0; i < NLM_HOST_NRHASH; i++) {
- 		q = &nlm_hosts[i];
- 		while ((host = *q) != NULL) {
--			if (host->h_count || host->h_inuse
-+			if (atomic_read(&host->h_count)
-+			 || host->h_inuse
- 			 || time_before(jiffies, host->h_expires)) {
- 				dprintk("nlm_gc_hosts skipping %s (cnt %d use %d exp %ld)\n",
--					host->h_name, host->h_count,
-+					host->h_name,
-+					atomic_read(&host->h_count),
- 					host->h_inuse, host->h_expires);
- 				q = &host->h_next;
- 				continue;
- 			}
- 			dprintk("lockd: delete host %s\n", host->h_name);
- 			*q = host->h_next;
--			/* Don't unmonitor hosts that have been invalidated */
--			if (host->h_monitored && !host->h_killed)
--				nsm_unmonitor(host);
-+
-+			/* Release the NSM handle. Unmonitor unless
-+			 * host was invalidated (i.e. lockd restarted)
-+			 */
-+			nsm_unmonitor(host);
-+
- 			if ((clnt = host->h_rpcclnt) != NULL) {
- 				if (atomic_read(&clnt->cl_users)) {
- 					printk(KERN_WARNING
-diff -X excl -purNa linux-2.6.2/fs/lockd/mon.c linux-2.6.2-kstatd/fs/lockd/mon.c
---- linux-2.6.2/fs/lockd/mon.c	2004-02-04 04:44:05.000000000 +0100
-+++ linux-2.6.2-kstatd/fs/lockd/mon.c	2004-02-13 15:02:18.000000000 +0100
-@@ -3,6 +3,10 @@
-  *
-  * The kernel statd client.
-  *
-+ * When using the kernel statd implementation, none of the
-+ * stuff inside this file is used. 
-+ * Instead look at statd.c
-+ *
-  * Copyright (C) 1996, Olaf Kirch <okir@monad.swb.de>
-  */
- 
-@@ -15,6 +19,9 @@
- #include <linux/lockd/sm_inter.h>
- 
- 
-+
-+#ifndef CONFIG_STATD
-+
- #define NLMDBG_FACILITY		NLMDBG_MONITOR
- 
- static struct rpc_clnt *	nsm_create(void);
-@@ -22,7 +29,8 @@ static struct rpc_clnt *	nsm_create(void
- extern struct rpc_program	nsm_program;
- 
- /*
-- * Local NSM state
-+ * Local NSM state.
-+ * This should really be initialized somehow.
-  */
- u32				nsm_local_state;
- 
-@@ -64,17 +72,20 @@ nsm_mon_unmon(struct nlm_host *host, u32
- int
- nsm_monitor(struct nlm_host *host)
- {
-+	struct nsm_handle *nsm;
- 	struct nsm_res	res;
- 	int		status;
- 
- 	dprintk("lockd: nsm_monitor(%s)\n", host->h_name);
-+	if ((nsm = host->h_nsmhandle) == NULL)
-+		BUG();
- 
- 	status = nsm_mon_unmon(host, SM_MON, &res);
- 
- 	if (status < 0 || res.status != 0)
- 		printk(KERN_NOTICE "lockd: cannot monitor %s\n", host->h_name);
- 	else
--		host->h_monitored = 1;
-+		nsm->sm_monitored = 1;
- 	return status;
- }
- 
-@@ -84,16 +95,25 @@ nsm_monitor(struct nlm_host *host)
- int
- nsm_unmonitor(struct nlm_host *host)
- {
-+	struct nsm_handle *nsm;
- 	struct nsm_res	res;
- 	int		status;
- 
--	dprintk("lockd: nsm_unmonitor(%s)\n", host->h_name);
-+	nsm = host->h_nsmhandle;
-+	host->h_nsmhandle = NULL;
- 
--	status = nsm_mon_unmon(host, SM_UNMON, &res);
--	if (status < 0)
--		printk(KERN_NOTICE "lockd: cannot unmonitor %s\n", host->h_name);
--	else
--		host->h_monitored = 0;
-+	if (!nsm || !atomic_dec_and_test(&nsm->sm_count))
-+	 	return 0;
-+
-+	if (nsm->sm_monitored && !nsm->sm_sticky) {
-+		dprintk("lockd: nsm_unmonitor(%s)\n", host->h_name);
-+		status = nsm_mon_unmon(host, SM_UNMON, &res);
-+		if (status < 0)
-+			printk(KERN_NOTICE "lockd: cannot unmonitor %s\n",
-+				       	host->h_name);
-+		else
-+			nsm->sm_monitored = 0;
-+	}
- 	return status;
- }
- 
-@@ -246,3 +266,5 @@ struct rpc_program		nsm_program = {
- 		.version	= nsm_version,
- 		.stats		= &nsm_stats
- };
-+
-+#endif
-diff -X excl -purNa linux-2.6.2/fs/lockd/statd.c linux-2.6.2-kstatd/fs/lockd/statd.c
---- linux-2.6.2/fs/lockd/statd.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-2.6.2-kstatd/fs/lockd/statd.c	2004-02-13 15:02:18.000000000 +0100
-@@ -0,0 +1,386 @@
-+/*
-+ * linux/fs/lockd/nsmproc.c
-+ *
-+ * Kernel-based status monitor. This is an alternative to
-+ * the stuff in mon.c.
-+ *
-+ * When asked to monitor a host, we add it to /var/lib/nsm/sm
-+ * ourselves, and that's it. In order to catch SM_NOTIFY calls
-+ * we implement a minimal statd.
-+ *
-+ * Minimal user space requirements for this implementation:
-+ *  /var/lib/nfs/state
-+ *	must exist, and must contain the NSM state as a 32bit
-+ *	binary counter.
-+ * /var/lib/nfs/sm
-+ *	must exist
-+ *
-+ * Copyright (C) 2004, Olaf Kirch <okir@suse.de>
-+ */
-+
-+
-+#include <linux/config.h>
-+#include <linux/types.h>
-+#include <linux/time.h>
-+#include <linux/slab.h>
-+#include <linux/in.h>
-+#include <linux/sunrpc/svc.h>
-+#include <linux/sunrpc/clnt.h>
-+#include <linux/nfsd/nfsd.h>
-+#include <linux/lockd/lockd.h>
-+#include <linux/lockd/share.h>
-+#include <linux/lockd/sm_inter.h>
-+#include <linux/file.h>
-+#include <linux/namei.h>
-+#include <asm/uaccess.h>
-+#include <linux/buffer_head.h>
-+
-+
-+/* XXX make this a module parameter? */
-+#define NSM_BASE_PATH		"/var/lib/nfs"
-+#define NSM_SM_PATH		NSM_BASE_PATH "/sm"
-+#define NSM_STATE_PATH		NSM_BASE_PATH "/state"
-+
-+#define NLMDBG_FACILITY		NLMDBG_CLIENT
-+
-+/*
-+ * Local NSM state.
-+ */
-+u32				nsm_local_state;
-+
-+/*
-+ * Initialize local NSM state variable
-+ */
-+int
-+nsm_init(void)
-+{
-+	struct file	*filp;
-+	char		buffer[32];
-+	mm_segment_t	fs;
-+	int		res;
-+
-+	dprintk("lockd: nsm_init()\n");
-+	filp = filp_open(NSM_STATE_PATH, O_RDONLY, 0444);
-+	if (IS_ERR(filp)) {
-+		res = PTR_ERR(filp);
-+		printk(KERN_NOTICE "lockd: failed to open %s: err=%d\n",
-+				NSM_STATE_PATH, res);
-+		return res;
-+	}
-+
-+	fs = get_fs();
-+	set_fs(KERNEL_DS);
-+	res = vfs_read(filp, buffer, sizeof(buffer), &filp->f_pos);
-+	set_fs(fs);
-+	filp_close(filp, NULL);
-+
-+	if (res < 0)
-+		return res;
-+	if (res == 4)
-+		nsm_local_state = *(u32 *) buffer;
-+	else
-+		nsm_local_state = simple_strtol(buffer, NULL, 10);
-+	return 0;
-+}
-+
-+/*
-+ * Build the path name for this lockd peer.
-+ *
-+ * We keep it extremely simple. Since we can have more
-+ * than one nlm_host object peer (depending on whether
-+ * it's server or client, and what proto/version of NLM
-+ * we use to communicate), we cannot create a file named
-+ * $IPADDR and remove it when the nlm_host is unmonitored.
-+ * Besides, unlink() is tricky (there's no kernel_syscall
-+ * for it), so we just create the file and leave it.
-+ *
-+ * When we reboot, the notifier should sort the IPs by
-+ * descending mtime so that the most recent hosts get
-+ * notified first.
-+ */
-+static char *
-+nsm_filename(struct in_addr addr)
-+{
-+	char		*name;
-+
-+	name = (char *) __get_free_page(GFP_KERNEL);
-+	if (name == NULL)
-+		return NULL;
-+
-+	/* FIXME IPV6 */
-+	snprintf(name, PAGE_SIZE, "%s/%u.%u.%u.%u",
-+			NSM_SM_PATH, NIPQUAD(addr));
-+	return name;
-+}
-+
-+/*
-+ * Create the NSM monitor file
-+ */
-+static int
-+nsm_create(struct in_addr addr)
-+{
-+	struct file	*filp;
-+	char		*name;
-+	int		res = 0;
-+
-+	if (!(name = nsm_filename(addr)))
-+		return -ENOMEM;
-+
-+	dprintk("lockd: creating statd monitor file %s\n", name);
-+	filp = filp_open(name, O_CREAT|O_SYNC|O_RDWR, 0644);
-+	if (IS_ERR(filp)) {
-+		res = PTR_ERR(filp);
-+		printk(KERN_NOTICE
-+			"lockd/statd: failed to create %s: err=%d\n",
-+			name, res);
-+	} else {
-+		fsync_super(filp->f_dentry->d_inode->i_sb);
-+		filp_close(filp, NULL);
-+	}
-+
-+	free_page((long) name);
-+	return res;
-+}
-+
-+static int
-+nsm_unlink(struct in_addr addr)
-+{
-+	struct nameidata nd;
-+	struct inode	*inode = NULL;
-+	struct dentry	*dentry;
-+	char		*name;
-+	int		res = 0;
-+
-+	if (!(name = nsm_filename(addr)))
-+		return -ENOMEM;
-+
-+	if ((res = path_lookup(name, LOOKUP_PARENT, &nd)) != 0)
-+		goto exit;
-+
-+	if (nd.last_type == LAST_NORM && !nd.last.name[nd.last.len]) {
-+		down(&nd.dentry->d_inode->i_sem);
-+
-+		dentry = lookup_hash(&nd.last, nd.dentry);
-+		if (!IS_ERR(dentry)) {
-+			if ((inode = dentry->d_inode) != NULL)
-+				atomic_inc(&inode->i_count);
-+			res = vfs_unlink(nd.dentry->d_inode, dentry);
-+			dput(dentry);
-+		} else {
-+			res = PTR_ERR(dentry);
-+		}
-+		up(&nd.dentry->d_inode->i_sem);
-+	} else {
-+		res = -EISDIR;
-+	}
-+	path_release(&nd);
-+
-+exit:
-+	if (res < 0) {
-+		printk(KERN_NOTICE
-+			"lockd/statd: failed to unlink %s: err=%d\n",
-+			name, res);
-+	}
-+
-+	free_page((long) name);
-+	if (inode)
-+		iput(inode);
-+	return res;
-+}
-+
-+/*
-+ * Allocate an NSM handle
-+ */
-+struct nsm_handle *
-+nsm_alloc(struct sockaddr_in *sin)
-+{
-+	struct nsm_handle *nsm;
-+
-+	nsm = (struct nsm_handle *) kmalloc(sizeof(*nsm), GFP_KERNEL);
-+	if (nsm == NULL)
-+		return NULL;
-+
-+	memset(nsm, 0, sizeof(*nsm));
-+	memcpy(&nsm->sm_addr, sin, sizeof(nsm->sm_addr));
-+	atomic_set(&nsm->sm_count, 1);
-+
-+	return nsm;
-+}
-+
-+/*
-+ * Set up monitoring of a remote host
-+ * Note we hold the semaphore for the host table while
-+ * we're here.
-+ */
-+int
-+nsm_monitor(struct nlm_host *host)
-+{
-+	kernel_cap_t	cap = current->cap_effective;
-+	struct nsm_handle *nsm;
-+	int		res = 0;
-+
-+	dprintk("lockd: nsm_monitor(%s)\n", host->h_name);
-+	if ((nsm = host->h_nsmhandle) == NULL)
-+		BUG();
-+
-+	/* Raise capability to that we're able to create the file */
-+	cap_raise(current->cap_effective, CAP_DAC_OVERRIDE);
-+	res = nsm_create(nsm->sm_addr.sin_addr);
-+	current->cap_effective = cap;
-+
-+	if (res >= 0)
-+		nsm->sm_monitored = 1;
-+	return res;
-+}
-+
-+/*
-+ * Cease to monitor remote host
-+ * Code stolen from sys_unlink.
-+ */
-+int
-+nsm_unmonitor(struct nlm_host *host)
-+{
-+	kernel_cap_t	cap = current->cap_effective;
-+	struct nsm_handle *nsm;
-+	int		res = 0;
-+
-+	nsm = host->h_nsmhandle;
-+	host->h_nsmhandle = NULL;
-+
-+	if (!nsm || !atomic_dec_and_test(&nsm->sm_count))
-+	 	return 0;
-+
-+	/* If the host was invalidated due to lockd restart/shutdown,
-+	 * don't unmonitor it.
-+	 * (Strictly speaking, we would have to keep the SM file
-+	 * until the next reboot. The only way to achieve that
-+	 * would be to link the monitor file to sm.bak now.)
-+	 */
-+	if (nsm->sm_monitored && !nsm->sm_sticky) {
-+		dprintk("lockd: nsm_unmonitor(%s)\n", host->h_name);
-+
-+		/* Raise capability to that we're able to delete the file */
-+		cap_raise(current->cap_effective, CAP_DAC_OVERRIDE);
-+		res = nsm_unlink(host->h_addr.sin_addr);
-+		current->cap_effective = cap;
-+	}
-+
-+	kfree(nsm);
-+	return res;
-+}
-+
-+/*
-+ * NSM server implementation starts here
-+ */
-+
-+/*
-+ * NULL: Test for presence of service
-+ */
-+static int
-+nsmsvc_proc_null(struct svc_rqst *rqstp, void *argp, void *resp)
-+{
-+	dprintk("statd: NULL          called\n");
-+	return rpc_success;
-+}
-+
-+/*
-+ * NOTIFY: receive notification that remote host rebooted
-+ */
-+static int
-+nsmsvc_proc_notify(struct svc_rqst *rqstp, struct nsm_args *argp,
-+				           struct nsm_res  *resp)
-+{
-+	struct sockaddr_in	saddr = rqstp->rq_addr;
-+
-+	dprintk("statd: NOTIFY        called\n");
-+	if (ntohs(saddr.sin_port) >= 1024) {
-+		printk(KERN_WARNING
-+			"statd: rejected NSM_NOTIFY from %08x:%d\n",
-+			ntohl(rqstp->rq_addr.sin_addr.s_addr),
-+			ntohs(rqstp->rq_addr.sin_port));
-+		return rpc_system_err;
-+	}
-+
-+	nlm_host_rebooted(&saddr, argp->state);
-+	return rpc_success;
-+}
-+
-+/*
-+ * All other operations: return failure
-+ */
-+static int
-+nsmsvc_proc_fail(struct svc_rqst *rqstp, struct nsm_args *argp,
-+				         struct nsm_res  *resp)
-+{
-+	dprintk("statd: proc %u        called\n", rqstp->rq_proc);
-+	resp->status = 0;
-+	resp->state = -1;
-+	return rpc_success;
-+}
-+
-+/*
-+ * NSM XDR routines
-+ */
-+int
-+nsmsvc_decode_void(struct svc_rqst *rqstp, u32 *p, void *dummy)
-+{
-+	return xdr_argsize_check(rqstp, p);
-+}
-+
-+int
-+nsmsvc_encode_void(struct svc_rqst *rqstp, u32 *p, void *dummy)
-+{
-+	return xdr_ressize_check(rqstp, p);
-+}
-+
-+int
-+nsmsvc_decode_stat_chge(struct svc_rqst *rqstp, u32 *p, struct nsm_args *argp)
-+{
-+	char	*mon_name;
-+	__u32	mon_name_len;
-+
-+	/* Skip over the client's mon_name */
-+	p = xdr_decode_string_inplace(p, &mon_name, &mon_name_len, SM_MAXSTRLEN);
-+	if (p == NULL)
-+		return 0;
-+
-+	argp->state = ntohl(*p++);
-+	return xdr_argsize_check(rqstp, p);
-+}
-+
-+int
-+nsmsvc_encode_res(struct svc_rqst *rqstp, u32 *p, struct nsm_res *resp)
-+{
-+	*p++ = resp->status;
-+	return xdr_ressize_check(rqstp, p);
-+}
-+
-+int
-+nsmsvc_encode_stat_res(struct svc_rqst *rqstp, u32 *p, struct nsm_res *resp)
-+{
-+	*p++ = resp->status;
-+	*p++ = resp->state;
-+	return xdr_ressize_check(rqstp, p);
-+}
-+
-+struct nsm_void			{ int dummy; };
-+
-+#define PROC(name, xargt, xrest, argt, rest, respsize)	\
-+ { .pc_func	= (svc_procfunc) nsmsvc_proc_##name,	\
-+   .pc_decode	= (kxdrproc_t) nsmsvc_decode_##xargt,	\
-+   .pc_encode	= (kxdrproc_t) nsmsvc_encode_##xrest,	\
-+   .pc_release	= NULL,					\
-+   .pc_argsize	= sizeof(struct nsm_##argt),		\
-+   .pc_ressize	= sizeof(struct nsm_##rest),		\
-+   .pc_xdrressize = respsize,				\
-+ }
-+
-+struct svc_procedure		nsmsvc_procedures[] = {
-+  PROC(null,		void,		void,		void,	void, 1),
-+  PROC(fail,		void,		stat_res,	void,	res, 2),
-+  PROC(fail,		void,		stat_res,	void,	res, 2),
-+  PROC(fail,		void,		res,		void,	res, 1),
-+  PROC(fail,		void,		res,		void,	res, 1),
-+  PROC(fail,		void,		res,		void,	res, 1),
-+  PROC(notify,		stat_chge,	void,		args,	void, 1)
-+};
-diff -X excl -purNa linux-2.6.2/fs/lockd/svc.c linux-2.6.2-kstatd/fs/lockd/svc.c
---- linux-2.6.2/fs/lockd/svc.c	2004-02-04 04:43:57.000000000 +0100
-+++ linux-2.6.2-kstatd/fs/lockd/svc.c	2004-02-13 15:02:18.000000000 +0100
-@@ -34,6 +34,7 @@
- #include <linux/sunrpc/svc.h>
- #include <linux/sunrpc/svcsock.h>
- #include <linux/lockd/lockd.h>
-+#include <linux/lockd/sm_inter.h>
- #include <linux/nfs.h>
- 
- #define NLMDBG_FACILITY		NLMDBG_SVC
-@@ -115,13 +116,22 @@ lockd(struct svc_rqst *rqstp)
- 
- 	daemonize("lockd");
- 
-+#ifdef CONFIG_STATD
-+	/* Set up statd */
-+	nsm_init();
-+#endif
-+
- 	/* Process request with signals blocked, but allow SIGKILL.  */
- 	allow_signal(SIGKILL);
- 
- 	/* kick rpciod */
- 	rpciod_up();
- 
-+#ifndef CONFIG_STATD
- 	dprintk("NFS locking service started (ver " LOCKD_VERSION ").\n");
-+#else
-+	dprintk("NFS lockd/statd started (ver " LOCKD_VERSION ").\n");
-+#endif
- 
- 	if (!nlm_timeout)
- 		nlm_timeout = LOCKD_DFLT_TIMEO;
-@@ -439,6 +449,37 @@ static void __exit exit_nlm(void)
- module_init(init_nlm);
- module_exit(exit_nlm);
- 
-+#ifdef CONFIG_STATD
-+/*
-+ * Define NSM program and procedures
-+ */
-+static struct svc_version	nsmsvc_version1 = {
-+		.vs_vers	= 1,
-+		.vs_nproc	= 5,
-+		.vs_proc	= nsmsvc_procedures,
-+		.vs_xdrsize	= SMSVC_XDRSIZE,
-+};
-+static struct svc_version *	nsmsvc_version[] = {
-+	[1] = &nsmsvc_version1,
-+};
-+
-+static struct svc_stat		nsmsvc_stats;
-+
-+#define SM_NRVERS	(sizeof(nsmsvc_version)/sizeof(nsmsvc_version[0]))
-+static struct svc_program	nsmsvc_program = {
-+	.pg_prog	= SM_PROGRAM,		/* program number */
-+	.pg_nvers	= SM_NRVERS,		/* number of entries in nlmsvc_version */
-+	.pg_vers	= nsmsvc_version,	/* version table */
-+	.pg_name	= "statd",		/* service name */
-+	.pg_class	= "nfsd",		/* share authentication with nfsd */
-+	.pg_stats	= &nsmsvc_stats,	/* stats table */
-+};
-+
-+#define nsmsvc_program_p &nsmsvc_program
-+#else
-+#define nsmsvc_program_p NULL
-+#endif
-+
- /*
-  * Define NLM program and procedures
-  */
-@@ -474,6 +515,7 @@ static struct svc_stat		nlmsvc_stats;
- 
- #define NLM_NRVERS	(sizeof(nlmsvc_version)/sizeof(nlmsvc_version[0]))
- struct svc_program	nlmsvc_program = {
-+	.pg_next	= nsmsvc_program_p,
- 	.pg_prog	= NLM_PROGRAM,		/* program number */
- 	.pg_nvers	= NLM_NRVERS,		/* number of entries in nlmsvc_version */
- 	.pg_vers	= nlmsvc_version,	/* version table */
-diff -X excl -purNa linux-2.6.2/fs/lockd/svc4proc.c linux-2.6.2-kstatd/fs/lockd/svc4proc.c
---- linux-2.6.2/fs/lockd/svc4proc.c	2004-02-04 04:43:42.000000000 +0100
-+++ linux-2.6.2-kstatd/fs/lockd/svc4proc.c	2004-02-13 15:02:14.000000000 +0100
-@@ -42,7 +42,7 @@ nlm4svc_retrieve_args(struct svc_rqst *r
- 
- 	/* Obtain host handle */
- 	if (!(host = nlmsvc_lookup_host(rqstp))
--	 || (argp->monitor && !host->h_monitored && nsm_monitor(host) < 0))
-+	 || (argp->monitor && nsm_monitor(host) < 0))
- 		goto no_locks;
- 	*hostp = host;
- 
-diff -X excl -purNa linux-2.6.2/fs/lockd/svcproc.c linux-2.6.2-kstatd/fs/lockd/svcproc.c
---- linux-2.6.2/fs/lockd/svcproc.c	2004-02-04 04:44:04.000000000 +0100
-+++ linux-2.6.2-kstatd/fs/lockd/svcproc.c	2004-02-13 15:02:14.000000000 +0100
-@@ -71,7 +71,7 @@ nlmsvc_retrieve_args(struct svc_rqst *rq
- 
- 	/* Obtain host handle */
- 	if (!(host = nlmsvc_lookup_host(rqstp))
--	 || (argp->monitor && !host->h_monitored && nsm_monitor(host) < 0))
-+	 || (argp->monitor && nsm_monitor(host) < 0))
- 		goto no_locks;
- 	*hostp = host;
- 
-diff -X excl -purNa linux-2.6.2/fs/lockd/svcsubs.c linux-2.6.2-kstatd/fs/lockd/svcsubs.c
---- linux-2.6.2/fs/lockd/svcsubs.c	2004-02-04 04:44:03.000000000 +0100
-+++ linux-2.6.2-kstatd/fs/lockd/svcsubs.c	2004-02-13 15:02:14.000000000 +0100
-@@ -303,7 +303,16 @@ nlmsvc_invalidate_all(void)
- 	while ((host = nlm_find_client()) != NULL) {
- 		nlmsvc_free_host_resources(host);
- 		host->h_expires = 0;
--		host->h_killed = 1;
-+		/* Do not unmonitor the host */
-+		if (host->h_nsmhandle)
-+			host->h_nsmhandle->sm_sticky = 1;
-+		if (atomic_read(&host->h_count) != 1) {
-+			/* Whatever is holding references to this host,
-+			 * it seems likely we're going to leak memory
-+			 * or worse */
-+			printk(KERN_WARNING "lockd: host still in use "
-+				"after nlmsvc_free_host_resources!");
-+		}
- 		nlm_release_host(host);
- 	}
- }
-diff -X excl -purNa linux-2.6.2/include/linux/lockd/lockd.h linux-2.6.2-kstatd/include/linux/lockd/lockd.h
---- linux-2.6.2/include/linux/lockd/lockd.h	2004-02-04 04:43:15.000000000 +0100
-+++ linux-2.6.2-kstatd/include/linux/lockd/lockd.h	2004-02-13 15:02:14.000000000 +0100
-@@ -47,15 +47,22 @@ struct nlm_host {
- 	unsigned short		h_reclaiming : 1,
- 				h_server     : 1, /* server side, not client side */
- 				h_inuse      : 1,
--				h_killed     : 1,
--				h_monitored  : 1;
-+				h_rebooted   : 1;
- 	wait_queue_head_t	h_gracewait;	/* wait while reclaiming */
- 	u32			h_state;	/* pseudo-state counter */
- 	u32			h_nsmstate;	/* true remote NSM state */
--	unsigned int		h_count;	/* reference count */
-+	atomic_t		h_count;	/* reference count */
- 	struct semaphore	h_sema;		/* mutex for pmap binding */
- 	unsigned long		h_nextrebind;	/* next portmap call */
- 	unsigned long		h_expires;	/* eligible for GC */
-+	struct nsm_handle *	h_nsmhandle;	/* for kernel statd */
-+};
-+
-+struct nsm_handle {
-+	atomic_t		sm_count;
-+	struct sockaddr_in	sm_addr;
-+	unsigned int		sm_monitored : 1,
-+				sm_sticky : 1;	/* don't unmonitor */
- };
- 
- /*
-@@ -121,6 +128,9 @@ extern struct svc_procedure	nlmsvc_proce
- #ifdef CONFIG_LOCKD_V4
- extern struct svc_procedure	nlmsvc_procedures4[];
- #endif
-+#ifdef CONFIG_STATD
-+extern struct svc_procedure	nsmsvc_procedures[];
-+#endif
- extern int			nlmsvc_grace_period;
- extern unsigned long		nlmsvc_timeout;
- 
-@@ -150,6 +160,7 @@ struct nlm_host * nlm_get_host(struct nl
- void		  nlm_release_host(struct nlm_host *);
- void		  nlm_shutdown_hosts(void);
- extern struct nlm_host *nlm_find_client(void);
-+extern void	  nlm_host_rebooted(struct sockaddr_in *, u32);
- 
- 
- /*
-diff -X excl -purNa linux-2.6.2/include/linux/lockd/sm_inter.h linux-2.6.2-kstatd/include/linux/lockd/sm_inter.h
---- linux-2.6.2/include/linux/lockd/sm_inter.h	2004-02-04 04:43:49.000000000 +0100
-+++ linux-2.6.2-kstatd/include/linux/lockd/sm_inter.h	2004-02-13 15:02:18.000000000 +0100
-@@ -19,6 +19,7 @@
- #define SM_NOTIFY	6
- 
- #define SM_MAXSTRLEN	1024
-+#define SMSVC_XDRSIZE	sizeof(struct nsm_args)
- 
- /*
-  * Arguments for all calls to statd
-@@ -29,6 +30,7 @@ struct nsm_args {
- 	u32		vers;
- 	u32		proc;
- 	u32		proto;		/* protocol (udp/tcp) plus server/client flag */
-+	u32		state;		/* in NOTIFY calls */
- };
- 
- /*
-@@ -39,6 +41,8 @@ struct nsm_res {
- 	u32		state;
- };
- 
-+extern int	nsm_init(void);
-+struct nsm_handle *nsm_alloc(struct sockaddr_in *);
- int		nsm_monitor(struct nlm_host *);
- int		nsm_unmonitor(struct nlm_host *);
- extern u32	nsm_local_state;
-diff -X excl -purNa linux-2.6.2/net/sunrpc/svc.c linux-2.6.2-kstatd/net/sunrpc/svc.c
---- linux-2.6.2/net/sunrpc/svc.c	2004-02-13 15:01:50.000000000 +0100
-+++ linux-2.6.2-kstatd/net/sunrpc/svc.c	2004-02-13 15:02:14.000000000 +0100
-@@ -221,22 +221,27 @@ svc_register(struct svc_serv *serv, int 
- 
- 	progp = serv->sv_program;
- 
--	dprintk("RPC: svc_register(%s, %s, %d)\n",
--		progp->pg_name, proto == IPPROTO_UDP? "udp" : "tcp", port);
--
- 	if (!port)
- 		clear_thread_flag(TIF_SIGPENDING);
- 
--	for (i = 0; i < progp->pg_nvers; i++) {
--		if (progp->pg_vers[i] == NULL)
--			continue;
--		error = rpc_register(progp->pg_prog, i, proto, port, &dummy);
--		if (error < 0)
--			break;
--		if (port && !dummy) {
--			error = -EACCES;
--			break;
-+	while (progp) {
-+		dprintk("RPC: svc_register(%s, %s, %d)\n",
-+			progp->pg_name,
-+			proto == IPPROTO_UDP?  "udp" : "tcp",
-+			port);
-+
-+		for (i = 0; i < progp->pg_nvers; i++) {
-+			if (progp->pg_vers[i] == NULL)
-+				continue;
-+			error = rpc_register(progp->pg_prog, i, proto, port, &dummy);
-+			if (error < 0)
-+				break;
-+			if (port && !dummy) {
-+				error = -EACCES;
-+				break;
-+			}
- 		}
-+		progp = progp->pg_next;
- 	}
- 
- 	if (!port) {
+/*
+ * Send NSM notify calls to all hosts listed in /var/lib/sm
+ *
+ * Copyright (C) 2004 Olaf Kirch <okir@suse.de>
+ */
 
---Qxx1br4bt0+wmkIi--
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/poll.h>
+#include <sys/param.h>
+#include <sys/syslog.h>
+#include <arpa/inet.h>
+#include <dirent.h>
+#include <time.h>
+#include <stdio.h>
+#include <getopt.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdarg.h>
+
+#ifndef BASEDIR
+#define BASEDIR		"/var/lib/nfs"
+#endif
+
+#define _SM_STATE_PATH	BASEDIR "/state"
+#define	_SM_DIR_PATH	BASEDIR "/sm"
+#define	_SM_BAK_PATH	_SM_DIR_PATH ".bak"
+
+#define NSM_PROG	100024
+#define NSM_PROGRAM	100024
+#define NSM_VERSION	1
+#define NSM_TIMEOUT	2
+#define NSM_NOTIFY	6
+#define NSM_MAX_TIMEOUT	120	/* don't make this too big */
+#define MAXMSGSIZE	256
+
+typedef struct sockaddr_storage nsm_address;
+
+struct nsm_host {
+	struct nsm_host *	next;
+	char *			name;
+	char *			path;
+	nsm_address		addr;
+	time_t			last_used;
+	time_t			send_next;
+	unsigned int		timeout;
+	unsigned int		retries;
+	unsigned int		xid;
+};
+
+static char		nsm_hostname[256];
+static uint32_t		nsm_state;
+static int		opt_debug = 0;
+static int		opt_quiet = 0;
+static int		opt_update_state = 1;
+static unsigned int	opt_max_retry = 15 * 60;
+static int		log_syslog = 0;
+
+static unsigned int	nsm_get_state(int);
+static void		notify(void);
+static void		notify_host(int, struct nsm_host *);
+static void		recv_reply(int);
+static void		backup_hosts(const char *, const char *);
+static void		get_hosts(const char *);
+static void		insert_host(struct nsm_host *);
+struct nsm_host *	find_host(uint32_t);
+static int		addr_parse(int, const char *, nsm_address *);
+static int		addr_get_port(nsm_address *);
+static void		addr_set_port(nsm_address *, int);
+void			nsm_log(int fac, const char *fmt, ...);
+
+static struct nsm_host *	hosts = NULL;
+
+int
+main(int argc, char **argv)
+{
+	int	c;
+
+	while ((c = getopt(argc, argv, "dqm:n")) != -1) {
+		switch (c) {
+		case 'd':
+			opt_debug++;
+			break;
+		case 'm':
+			opt_max_retry = atoi(optarg) * 60;
+			break;
+		case 'n':
+			opt_update_state = 0;
+			break;
+		case 'q':
+			opt_quiet = 1;
+			break;
+		default:
+			goto usage;
+		}
+	}
+
+	if (optind < argc) {
+usage:		fprintf(stderr, "sm-notify [-d]\n");
+		return 1;
+	}
+
+	if (gethostname(nsm_hostname, sizeof(nsm_hostname)) < 0) {
+		perror("gethostname");
+		return 1;
+	}
+
+	nsm_state = nsm_get_state(opt_update_state);
+
+	backup_hosts(_SM_DIR_PATH, _SM_BAK_PATH);
+	get_hosts(_SM_BAK_PATH);
+
+	if (hosts == NULL && !opt_quiet)
+		printf("No hosts to notify, done\n");
+
+	if (!opt_debug) {
+		printf("Backgrounding to notify hosts...\n");
+		if (daemon(0, 0) < 0) {
+			perror("daemon");
+			return 1;
+		}
+		openlog("sm-notify", LOG_PID, LOG_DAEMON);
+		log_syslog = 1;
+
+		close(0);
+		close(1);
+		close(2);
+	}
+
+	notify();
+
+	if (hosts) {
+		struct nsm_host	*hp;
+
+		while ((hp = hosts) != 0) {
+			hosts = hp->next;
+			nsm_log(LOG_NOTICE,
+				"Unable to notify %s, giving up",
+				hp->name);
+		}
+		return 1;
+	}
+
+	return 0;
+}
+
+/*
+ * Notify hosts
+ */
+void
+notify(void)
+{
+	time_t	failtime = 0;
+	int	sock = -1;
+
+	sock = socket(AF_INET, SOCK_DGRAM, 0);
+	if (sock < 0) {
+		perror("socket");
+		exit(1);
+	}
+	fcntl(sock, F_SETFL, O_NONBLOCK);
+
+	if (opt_max_retry)
+		failtime = time(NULL) + opt_max_retry;
+
+	while (hosts) {
+		struct pollfd	pfd;
+		time_t		now = time(NULL);
+		unsigned int	sent = 0;
+		struct nsm_host	*hp;
+		long		wait;
+
+		if (failtime && now >= failtime)
+			break;
+
+		while ((wait = hosts->send_next - now) <= 0) {
+			/* Never send more than 10 packets at once */
+			if (sent++ >= 10)
+				break;
+
+			/* Remove queue head */
+			hp = hosts;
+			hosts = hp->next;
+
+			notify_host(sock, hp);
+
+			/* Set the timeout for this call, using an
+			   exponential timeout strategy */
+			wait = hp->timeout;
+			if ((hp->timeout <<= 1) > NSM_MAX_TIMEOUT)
+				hp->timeout = NSM_MAX_TIMEOUT;
+			hp->send_next = now + wait;
+			hp->retries++;
+
+			insert_host(hp);
+		}
+
+		nsm_log(LOG_DEBUG, "Host %s due in %ld seconds",
+				hosts->name, wait);
+
+		pfd.fd = sock;
+		pfd.events = POLLIN;
+
+		wait *= 1000;
+		if (wait < 100)
+			wait = 100;
+		if (poll(&pfd, 1, wait) != 1)
+			continue;
+
+		recv_reply(sock);
+	}
+}
+
+/*
+ * Send notification to a single host
+ */
+void
+notify_host(int sock, struct nsm_host *host)
+{
+	static unsigned int	xid = 0;
+	nsm_address		dest;
+	uint32_t		msgbuf[MAXMSGSIZE], *p;
+	unsigned int		len;
+
+	if (!xid)
+		xid = getpid() + time(NULL);
+	if (!host->xid)
+		host->xid = xid++;
+
+	memset(msgbuf, 0, sizeof(msgbuf));
+	p = msgbuf;
+	*p++ = htonl(host->xid);
+	*p++ = 0;
+	*p++ = htonl(2);
+
+	/* If we retransmitted 4 times, reset the port to force
+	 * a new portmap lookup (in case statd was restarted)
+	 */
+	if (host->retries >= 4) {
+		addr_set_port(&host->addr, 0);
+		host->retries = 0;
+	}
+
+	dest = host->addr;
+	if (addr_get_port(&dest) == 0) {
+		/* Build a PMAP packet */
+		nsm_log(LOG_DEBUG, "Sending portmap query to %s", host->name);
+
+		addr_set_port(&dest, 111);
+		*p++ = htonl(100000);
+		*p++ = htonl(2);
+		*p++ = htonl(3);
+
+		/* Auth and verf */
+		*p++ = 0; *p++ = 0;
+		*p++ = 0; *p++ = 0;
+
+		*p++ = htonl(NSM_PROGRAM);
+		*p++ = htonl(NSM_VERSION);
+		*p++ = htonl(IPPROTO_UDP);
+		*p++ = 0;
+	} else {
+		/* Build an SM_NOTIFY packet */
+		nsm_log(LOG_DEBUG, "Sending SM_NOTIFY to %s", host->name);
+
+		*p++ = htonl(NSM_PROGRAM);
+		*p++ = htonl(NSM_VERSION);
+		*p++ = htonl(NSM_NOTIFY);
+
+		/* Auth and verf */
+		*p++ = 0; *p++ = 0;
+		*p++ = 0; *p++ = 0;
+
+		/* state change */
+		len = strlen(nsm_hostname);
+		*p++ = htonl(len);
+		memcpy(p, nsm_hostname, len);
+		p += (len + 3) >> 2;
+		*p++ = htonl(nsm_state);
+	}
+	len = (p - msgbuf) << 2;
+
+	sendto(sock, msgbuf, len, 0, (struct sockaddr *) &dest, sizeof(dest));
+}
+
+/*
+ * Receive reply from remote host
+ */
+void
+recv_reply(int sock)
+{
+	struct nsm_host	*hp;
+	uint32_t	msgbuf[MAXMSGSIZE], *p, *end;
+	uint32_t	xid;
+	int		res;
+
+	res = recv(sock, msgbuf, sizeof(msgbuf), 0);
+	if (res < 0)
+		return;
+
+	nsm_log(LOG_DEBUG, "Received packet...");
+
+	p = msgbuf;
+	end = p + (res >> 2);
+	
+	xid = ntohl(*p++);
+	if (*p++ != htonl(1)	/* must be REPLY */
+	 || *p++ != htonl(0)	/* must be ACCEPTED */
+	 || *p++ != htonl(0)	/* must be NULL verifier */
+	 || *p++ != htonl(0)
+	 || *p++ != htonl(0))	/* must be SUCCESS */
+		return;
+
+	/* Before we look at the data, find the host struct for
+	   this reply */
+	if ((hp = find_host(xid)) == NULL)
+		return;
+
+	if (addr_get_port(&hp->addr) == 0) {
+		/* This was a portmap request */
+		unsigned int	port;
+
+		port = ntohl(*p++);
+		if (p > end)
+			goto fail;
+
+		hp->send_next = time(NULL);
+		if (port == 0) {
+			/* No binding for statd. Delay the next
+			 * portmap query for max timeout */
+			nsm_log(LOG_DEBUG, "No statd on %s", hp->name);
+			hp->timeout = NSM_MAX_TIMEOUT;
+			hp->send_next += NSM_MAX_TIMEOUT;
+		} else {
+			addr_set_port(&hp->addr, port);
+			if (hp->timeout >= NSM_MAX_TIMEOUT / 4)
+				hp->timeout = NSM_MAX_TIMEOUT / 4;
+		}
+		hp->xid = 0;
+	} else {
+		/* Successful NOTIFY call. Server returns void,
+		 * so nothing we need to do here (except
+		 * check that we didn't read past the end of the
+		 * packet)
+		 */
+		if (p <= end) {
+			nsm_log(LOG_DEBUG, "Host %s notified successfully", hp->name);
+			unlink(hp->path);
+			free(hp->name);
+			free(hp->path);
+			free(hp);
+			return;
+		}
+	}
+
+fail:	/* Re-insert the host */
+	insert_host(hp);
+}
+
+/*
+ * Back up all hosts from the sm directory to sm.bak
+ */
+static void
+backup_hosts(const char *dirname, const char *bakname)
+{
+	struct dirent	*de;
+	DIR		*dir;
+
+	if (!(dir = opendir(dirname))) {
+		perror(dirname);
+		return;
+	}
+
+	while ((de = readdir(dir)) != NULL) {
+		char	src[1024], dst[1024];
+
+		if (de->d_name[0] == '.')
+			continue;
+
+		snprintf(src, sizeof(src), "%s/%s", dirname, de->d_name);
+		snprintf(dst, sizeof(dst), "%s/%s", bakname, de->d_name);
+		if (rename(src, dst) < 0) {
+			nsm_log(LOG_WARNING,
+				"Failed to rename %s -> %s: %m",
+				src, dst);
+		}
+	}
+	closedir(dir);
+}
+
+/*
+ * Get all entries from sm.bak and convert them to host names
+ */
+static void
+get_hosts(const char *dirname)
+{
+	struct nsm_host	*host;
+	struct dirent	*de;
+	DIR		*dir;
+
+	if (!(dir = opendir(dirname))) {
+		perror(dirname);
+		return;
+	}
+
+	host = NULL;
+	while ((de = readdir(dir)) != NULL) {
+		struct stat	stb;
+		char		path[1024];
+
+		if (de->d_name[0] == '.')
+			continue;
+		if (host == NULL)
+			host = calloc(1, sizeof(*host));
+
+		snprintf(path, sizeof(path), "%s/%s", dirname, de->d_name);
+		if (!addr_parse(AF_INET, de->d_name, &host->addr)
+		 && !addr_parse(AF_INET6, de->d_name, &host->addr)) {
+			nsm_log(LOG_WARNING,
+				"%s doesn't seem to be a valid address, skipped",
+				de->d_name);
+			unlink(path);
+			continue;
+		}
+
+		if (stat(path, &stb) < 0)
+			continue;
+		host->last_used = stb.st_mtime;
+		host->timeout = NSM_TIMEOUT;
+		host->path = strdup(path);
+		host->name = strdup(de->d_name);
+
+		insert_host(host);
+		host = NULL;
+	}
+	closedir(dir);
+
+	if (host)
+		free(host);
+}
+
+/*
+ * Insert host into sorted list
+ */
+void
+insert_host(struct nsm_host *host)
+{
+	struct nsm_host	**where, *p;
+
+	where = &hosts;
+	while ((p = *where) != 0) {
+		/* Sort in ascending order of timeout */
+		if (host->send_next < p->send_next)
+			break;
+		/* If we have the same timeout, put the
+		 * most recently used host first.
+		 * This makes sure that "recent" hosts
+		 * get notified first.
+		 */
+		if (host->send_next == p->send_next
+		 && host->last_used > p->last_used)
+			break;
+		where = &p->next;
+	}
+
+	host->next = *where;
+	*where = host;
+}
+
+/*
+ * Find host given the XID
+ */
+struct nsm_host *
+find_host(uint32_t xid)
+{
+	struct nsm_host	**where, *p;
+
+	where = &hosts;
+	while ((p = *where) != 0) {
+		if (p->xid == xid) {
+			*where = p->next;
+			return p;
+		}
+		where = &p->next;
+	}
+	return NULL;
+}
+
+
+/*
+ * Retrieve the current NSM state
+ */
+unsigned int
+nsm_get_state(int update)
+{
+	char		newfile[PATH_MAX];
+	int		fd, state;
+
+	if ((fd = open(_SM_STATE_PATH, O_RDONLY)) < 0) {
+		if (!opt_quiet) {
+			nsm_log(LOG_WARNING, "%s: %m", _SM_STATE_PATH);
+			nsm_log(LOG_WARNING, "Creating %s, set initial state 1",
+				_SM_STATE_PATH);
+		}
+		state = 1;
+		update = 1;
+	} else {
+		if (read(fd, &state, sizeof(state)) != sizeof(state)) {
+			nsm_log(LOG_WARNING,
+				"%s: bad file size, setting state = 1",
+				_SM_STATE_PATH);
+			state = 1;
+			update = 1;
+		} else {
+			if (!(state & 1))
+				state += 1;
+		}
+		close(fd);
+	}
+
+	if (update) {
+		state += 2;
+		snprintf(newfile, sizeof(newfile),
+				"%s.new", _SM_STATE_PATH);
+		if ((fd = open(newfile, O_CREAT|O_WRONLY, 0644)) < 0) {
+			nsm_log(LOG_WARNING, "Cannot create %s: %m", newfile);
+			exit(1);
+		}
+		if (write(fd, &state, sizeof(state)) != sizeof(state)) {
+			nsm_log(LOG_WARNING,
+				"Failed to write state to %s", newfile);
+			exit(1);
+		}
+		close(fd);
+		if (rename(newfile, _SM_STATE_PATH) < 0) {
+			nsm_log(LOG_WARNING,
+				"Cannot create %s: %m", _SM_STATE_PATH);
+			exit(1);
+		}
+		sync();
+	}
+
+	return state;
+}
+
+/*
+ * Address handling utilities
+ */
+static int
+addr_parse(int af, const char *name, nsm_address *addr)
+{
+	void	*ptr;
+
+	if (af == AF_INET)
+		ptr = &((struct sockaddr_in *) addr)->sin_addr;
+	else if (af == AF_INET6)
+		ptr = &((struct sockaddr_in6 *) addr)->sin6_addr;
+	else
+		return 0;
+	if (inet_pton(af, name, ptr) <= 0)
+		return 0;
+	((struct sockaddr *) addr)->sa_family = af;
+	return 1;
+}
+
+int
+addr_get_port(nsm_address *addr)
+{
+	switch (((struct sockaddr *) addr)->sa_family) {
+	case AF_INET:
+		return ntohs(((struct sockaddr_in *) addr)->sin_port);
+	case AF_INET6:
+		return ntohs(((struct sockaddr_in6 *) addr)->sin6_port);
+	}
+	return 0;
+}
+
+static void
+addr_set_port(nsm_address *addr, int port)
+{
+	switch (((struct sockaddr *) addr)->sa_family) {
+	case AF_INET:
+		((struct sockaddr_in *) addr)->sin_port = htons(port);
+		break;
+	case AF_INET6:
+		((struct sockaddr_in6 *) addr)->sin6_port = htons(port);
+	}
+}
+
+/*
+ * Log a message
+ */
+void
+nsm_log(int fac, const char *fmt, ...)
+{
+	va_list	ap;
+
+	if (fac == LOG_DEBUG && !opt_debug)
+		return;
+
+	va_start(ap, fmt);
+	if (log_syslog)
+		vsyslog(fac, fmt, ap);
+	else {
+		vfprintf(stderr, fmt, ap);
+		fputs("\n", stderr);
+	}
+	va_end(ap);
+}
+
+--GRPZ8SYKNexpdSJ7--
 
 
 -------------------------------------------------------
