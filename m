@@ -1,11 +1,27 @@
-From: mehta kiran <kiranmehta1981@yahoo.com>
-Subject: NFS lock recovery problem if subtree_check option used
-Date: Fri, 19 Nov 2004 03:10:03 -0800 (PST)
-Message-ID: <20041119111003.52425.qmail@web51607.mail.yahoo.com>
+From: Marian Eichholz <marian.eichholz@freenet-ag.de>
+Subject: Re: Kernel freezes on "exportfs -a"
+Date: Fri, 19 Nov 2004 15:46:21 +0100
+Message-ID: <20041119144621.GC7039@urmel.freenet-ag.de>
+References: <20041116112237.GQ20889@urmel.freenet-ag.de> <16794.47764.700862.428216@cse.unsw.edu.au>
+Reply-To: marian.eichholz@freenet-ag.de
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: NFS@lists.sourceforge.net
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1CVA1t-0005SA-Fq
+	for nfs@lists.sourceforge.net; Fri, 19 Nov 2004 06:46:29 -0800
+Received: from mout2.freenet.de ([194.97.50.155])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1CVA1p-0004Yd-Li
+	for nfs@lists.sourceforge.net; Fri, 19 Nov 2004 06:46:29 -0800
+Received: from [194.97.55.148] (helo=mx5.freenet.de)
+	by mout2.freenet.de with esmtpa (Exim 4.43)
+	id 1CVA1m-0004nh-CL
+	for nfs@lists.sourceforge.net; Fri, 19 Nov 2004 15:46:22 +0100
+To: nfs@lists.sourceforge.net
+In-Reply-To: <16794.47764.700862.428216@cse.unsw.edu.au>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -19,60 +35,77 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi , 
-     I am facing new problem in NFS lock krecovery
-      on sles9 sp1 beta2 release.
-     This problem was not there in slses9 rc5 
-     release.
-PROBLEM:
+On Wed, Nov 17, 2004 at 01:42:28PM +1100, Neil Brown wrote:
 
-NFS stale handle error if client tries to reclaim lock
-for filesystem exported with subtree_check option
+> > 	rpc.nfsd 128
+> > 	rpc.mountd
+> > 	rpc.statd
+> > 	exportfs -a
+> 
+> It doesn't address your core problem, but this order is wrong.
+> The "exportfs -a" should be done *before* rpc.nfsd, otherwise there is
+> a window where clients could be told that the filesystem they want
+> isn't exported.
 
-DESCRIPTION:
+This makes sense. Too-many-generations-of-this-script problem.
 
-1.I exported whole filesystem to client using rw ,
-  no_root_squash option.By default subtree_check
-  option is enabled.
-2.When server restarts and client tries to
-  reclaim lock , it gets NFS_STALE_FH error.
-3.If server exports filesystem system with
-  additional option no_subtree_check client then
-  faces no problems.
-4.Problem is in function nfs_acceptable
-  function(nfsfh.c) or functions calling
-  nfs_acceptable function.This function somehow
-  returns 0 which means invalid handle.
-5.Message in /var/log/message file
-   "nfs_acceptable failed at ...."
+> > We cannot reproduce it on a "normal" machine.
+> 
+> Just how abnormal is the machine where you *can* export it?
 
+Smaller file systems (far much smaller), single processor,
+completely different hardware, no clients and so on.
 
-HOW TO SETUP:
+Although the size of the exported FS is of no interest,
+because exportfs froze even when I did not mount it (to
+save time on reboot-fsck).
 
-1.Set up two systems with a shared disk
-2.start nfs server on first system and export
-  filesystem present on shared disk to client
-  with rw,no_root_squash  option.
-3.Let client reclaim lock .
-4.Stop nfs server on first system before client
-  releases lock.
-5.Now  , start nfs server on second system.
-6.Client gets NFS_STALE_FH error when it tries
-  to reclaim lock
+> > The most recently tested kernel is a 2.6.9-rc1 (since each
+> > test breaks the production service). exportfs is 1.0.6.
 
-  If i am missing anything or somebody else
-  is facing same problem please let me know.
-thanks,
-   kiran
+Interesting result: 2.6.10-rc2 appears to work perfectly.
+Some racing condition anywhere in the kernel
+infrastructure?
 
+> > The particular server is the NFS file repository for a high
+> > volume FTP cluster, thus beeing requested by the still
+> > online 4 ftp backend servers *heavily*.
+> > 
+> > It has 2 Fast Ethernet ports in *bonding* mode (in peak hours they can
+> > be filled with ease).
+> > 
+> > Probably it is this combinations that makes a problem.
+> 
+> So are you saying that the clients are hammering on the server while
+> you are trying to bring up NFS service?  If this is the case, then
+> maybe just moving the "exportfs -a" to the top will
 
-		
-__________________________________ 
-Do you Yahoo!? 
-The all-new My Yahoo! - Get yours free! 
-http://my.yahoo.com 
- 
+I had no chance to go deep into detail, like Olaf mentioned
+with the backtrace-NMI suggestion, because I had to bring
+the machine back into production ASAP.
 
+> 
+> NeilBrown
+> 
+> 
+> -------------------------------------------------------
+> This SF.Net email is sponsored by: InterSystems CACHE
+> FREE OODBMS DOWNLOAD - A multidimensional database that combines
+> robust object and relational technologies, making it a perfect match
+> for Java, C++,COM, XML, ODBC and JDBC. www.intersystems.com/match8
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+
+-- 
+Mit freundlichen Gruessen / Yours sincerely
+
+Marian Eichholz
+Postmaster
+freenet.de AG          Vorsitzender des Aufsichtsrates: Prof. Dr. Helmut Thoma
+Deelbögenkamp 4c       Vorstand: Eckhard Spoerr (Vors.), Axel Krieger,
+                                 Stephan Esch, Eric Berger
+22297 Hamburg          Amtsgericht Hamburg, HRB 74048
 
 
 -------------------------------------------------------
