@@ -1,25 +1,22 @@
-From: "G. Allen Morris III" <gam3-nfs@gam3.net>
-Subject: [ 1018450 ] man page typo
-Date: Fri, 4 Mar 2005 16:24:20 -0500
-Message-ID: <20050304212420.GA21390@gam3.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: NFSv2/3 requiring RPC_AUTH_GSS
+Date: Sat, 5 Mar 2005 01:45:37 -0500
+Message-ID: <20050305064537.GD4354@fieldses.org>
+References: <1109890493.4361.95.camel@roadrunner.phys.psu.edu> <1109963019.10173.14.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: Benjamin Bennett <ben@phys.psu.edu>, nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D7KHh-00032K-Bj
-	for nfs@lists.sourceforge.net; Fri, 04 Mar 2005 13:24:33 -0800
-Received: from mta13.adelphia.net ([68.168.78.44])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1D7KHf-0007wr-O5
-	for nfs@lists.sourceforge.net; Fri, 04 Mar 2005 13:24:33 -0800
-Received: from harpo ([68.235.28.141]) by mta13.adelphia.net
-          (InterMail vM.6.01.04.01 201-2131-118-101-20041129) with ESMTP
-          id <20050304212425.UBBZ4618.mta13.adelphia.net@harpo>
-          for <nfs@lists.sourceforge.net>; Fri, 4 Mar 2005 16:24:25 -0500
-Received: from gam3 by harpo with local (Exim 3.36 #1 (Debian))
-	id 1D7KHU-0005Zh-00
-	for <nfs@lists.sourceforge.net>; Fri, 04 Mar 2005 16:24:20 -0500
-To: nfs@lists.sourceforge.net
+	id 1D7T2O-0004ku-KB
+	for nfs@lists.sourceforge.net; Fri, 04 Mar 2005 22:45:20 -0800
+Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1D7T2N-00082b-5B
+	for nfs@lists.sourceforge.net; Fri, 04 Mar 2005 22:45:20 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1109963019.10173.14.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,55 +30,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I plan to commit the patch below.  This will close bug [ 1018450 ] 
+On Fri, Mar 04, 2005 at 11:03:39AM -0800, Trond Myklebust wrote:
+> to den 03.03.2005 Klokka 17:54 (-0500) skreiv Benjamin Bennett:
+> >   v4 exports using gss/krb5 work from both FC2 and Solaris 10 clients.
+> > However, for Solaris 8 I'm using v3 with gss/krb5.
+> > 
+> >   The problem I've run into with this, is that in order for the v3
+> > client to mount (even using gss), it must be given sys/unix access too.
+> > That pretty much rules out the nice sleep I could have gotten with all
+> > clients using gss since they could just remount with auth_unix at will.
+> 
+> Could you expand a bit on this? Is the problem that knfsd is failing to
+> adhere to RFC2623?
+> The latter says that the NFS server is supposed to accept AUTH_SYS as
+> being valid for fsinfo(nfsv3) or fsstat+getattr(nfsv2) on the mount
+> point. Is knfsd doing this?
 
-Allen
+No.
 
-Index: exports.man
-===================================================================
-RCS file: /cvsroot/nfs/nfs-utils/utils/exportfs/exports.man,v
-retrieving revision 1.13
-diff -u -r1.13 exports.man
---- exports.man	15 Sep 2004 01:58:41 -0000	1.13
-+++ exports.man	4 Mar 2005 21:19:54 -0000
-@@ -1,5 +1,4 @@
--.TH EXPORTS 5 "28 October 1999"
--.UC 5
-+.TH EXPORTS 5 "4 March 2005" "Linux" "Linux File Formats Manual"
- .SH NAME
- exports \- NFS file systems being exported (for Kernel based NFS)
- .SH SYNOPSIS
-@@ -171,7 +170,7 @@
- .TP
- .IR no_subtree_check
- This option disables subtree checking, which has mild security
--implications, but can improve reliability is some circumstances.
-+implications, but can improve reliability in some circumstances.
- 
- If a subdirectory of a filesystem is exported, but the whole
- filesystem isn't then whenever a NFS request arrives, the server must
-@@ -190,7 +189,7 @@
- directories to which only root has access can only be accessed if the
- filesystem is exported with
- .I no_root_squash
--(see below), even the file itself allows more general access.
-+(see below), even if the file itself allows more general access.
- 
- As a general guide, a home directory filesystem, which is normally
- exported at the root and may see lots of file renames, should be
-@@ -487,6 +486,12 @@
- '''entry.
- .SH FILES
- /etc/exports
-+.SH SEE ALSO
-+.BR exportfs (8),
-+.BR netgroup (5),
-+.BR mountd (8),
-+.BR nfsd (8),
-+.BR showmount (8).
- '''.SH DIAGNOSTICS
- '''An error parsing the file is reported using syslogd(8) as level NOTICE from
- '''a DAEMON whenever nfsd(8) or mountd(8) is started up.  Any unknown
+The immediate problem, though, is probably just that mountd isn't
+reporting the security flavours correctly.  This shouldn't be too hard
+to fix for someone with the time and inclination.
+
+(See
+http://www.citi.umich.edu/projects/nfsv4/linux/nfs-utils-patches/1.0.7-1/nfs-utils-1.0.7-06-mountd_flavors.dif
+for a hack that just always returns all the krb5 flavors in the mount
+reply.  All we need to do here is check the export table to figure out
+which to report, and then we'll have a patch worth actually adding to
+nfs-utils.)
+
+--b.
 
 
 -------------------------------------------------------
