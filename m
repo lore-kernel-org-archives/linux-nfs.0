@@ -1,78 +1,104 @@
-From: trond.myklebust@fys.uio.no
-Subject: Re: [NFS] [PATCH][RFC] use completions instead of sleep_on
-     forrpciod
-Date: Tue, 10 Feb 2004 12:47:29 +0100 (CET)
-Sender: netdev-bounce@oss.sgi.com
-Message-ID: <33285.80.213.3.64.1076413649.squirrel@webmail.uio.no>
-References: <20040207144405.GA19416@lst.de> <20040209102801.GC21364@suse.de>
-    <35059.80.213.3.64.1076359739.squirrel@webmail.uio.no>
-    <20040210091520.GD20932@suse.de>
+From: "William A.(Andy) Adamson" <andros@citi.umich.edu>
+Subject: Re: NFSv4 stability: export unused a night
+Date: Tue, 10 Feb 2004 11:22:57 -0500
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <20040210162257.CAD7A20814@citi.umich.edu>
+References: <200402051713.33948.vincent.roqueta@ext.bull.net>
 Mime-Version: 1.0
-Content-Type: text/plain;charset=iso-8859-1
-Cc: "Christoph Hellwig" <hch@lst.de>, netdev@oss.sgi.com,
-        nfs@lists.sourceforge.net
-Return-path: <netdev-bounce@oss.sgi.com>
-To: "Olaf Kirch" <okir@suse.de>
-In-Reply-To: <20040210091520.GD20932@suse.de>
-Errors-to: netdev-bounce@oss.sgi.com
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=iso-8859-1
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>,
+	andros@citi.umich.edu
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1AqafC-0008PM-2O
+	for nfs@lists.sourceforge.net; Tue, 10 Feb 2004 08:23:06 -0800
+Received: from citi.umich.edu ([141.211.133.111])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.30)
+	id 1Aqaeg-0005Pw-9k
+	for nfs@lists.sourceforge.net; Tue, 10 Feb 2004 08:22:34 -0800
+To: vincent.roqueta@ext.bull.net
+In-reply-to: Your message of "Thu, 05 Feb 2004 17:13:33 +0100."
+             <200402051713.33948.vincent.roqueta@ext.bull.net>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 ty , 10/02/2004 klokka 10:15, skreiv Olaf Kirch:
-> It wasn't in 2.4.19 or whenever I ran into this. And a per-transport
-lock isn't enough to protect a global variable shared by all transports.
-Trust me: I spent several weeks debugging this particular problem :)
-(See the PS for a somewhat lengthy description of what I remember)
+hi
 
-Duh... I forgot that the XID was still global...
+thanks for the bug report. i am looking at nfsv4 nfsd reboot recovery thi=
+s =
 
-Does anybody see any problems with moving the XID counter into the struct
-xprt? Please bear in mind that the replay caches on modern NFS servers
-look at XID+client IP address+port number, so 2 sockets that play the sam=
-e
-XID to the server should not normally conflict.
+week, and will specifically note your bug...
 
-> I think that BKL removal at this point is probably not a good idea. Sus=
-e
-had a BKL removal patch in their SLES8 kernel, and I spent a total of
-4-5
-> weeks hunting down all sorts of bugs related to SMP races. And I don't
-think we've seen all of these bugs yet. It might be better to postpone
-this for the 2.7 branch.
+-->Andy
 
-I totally agree with this...
 
-No extra work has been done on BKL removal in the 2.6 branch, and I know
-that the old patch that was up for testing in the 2.4 tree was buggy in
-several ways...
+> Le Jeudi 05 F=E9vrier 2004 14:07, Vincent ROQUETA a =E9crit :
+> > 1/
+> >
+> > When I lived yesterday server computer test was up, configured with 1=
 
-> > The code in unlink.c is only called from dentry_iput() or from
-sillyrename(). In either case, there is no possibility for SMP races.
->
-> Are you sure? nfs_dentry_iput explicitly does a lock_kernel before
-calling
-> nfs_complete_unlink. I think that's because dentry_iput explicitly drop=
-s
-the dcache_lock before calling dentry->d_op->d_iput. I wouldn't remove
-that BKL :)
+> > export partition.
+> > This export was moutable from the client side.
+> >
+> > Threre was no reboot of the server this night.
+> > This morning, I was unable to mount the exported directory.
+> >
+> > After reboot, all was OK.
+> =
 
-Yep, but there is only one inode per dentry, and the VFS rules forbids yo=
-u
-to convert a negative dentry into a positive one (the contrary is allowed=
-,
-but only under certain restricted situations).
+> More precisions. I have reproduced the bug:
+> =
 
-> And even if you leave that BKL and just remove the one in rpciod, you
-may
-> still have a race between rpciod and dput. One CPU may be adding entrie=
-s
-inside nfs_async_unlink (called from dentry_iput()), and at the same
-time rpciod can run on another CPU, calling nfs_async_unlink_release,
-removing stuff from the nfs_deletes list. The reference counting on
-nfs_unlinkdata isn't atomic either.
+> 1/ Server up, client up
+> 2/ client mount a nfs4 fs.
+> 3/ reboot client (without umounting )
+> 4/ Client can't mount nfs , server answer: permission denied
+> =
 
-Sure... The unlink.c global lists definitely depend on the BKL for
-protection. The latter would need to be replaced by a new global
-spinlock.
+> =
 
-Cheers,
-  Trond
+> More... If I kill all nfsd and  mountd and reload them, there is still =
+this =
+
+> problem. I need to reboot the server
+> =
+
+> =
+
+> =
+
+> =
+
+> -------------------------------------------------------
+> The SF.Net email is sponsored by EclipseCon 2004
+> Premiere Conference on Open Tools Development and Integration
+> See the breadth of Eclipse activity. February 3-5 in Anaheim, CA.
+> http://www.eclipsecon.org/osdn
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+> =
+
+
+
+
+
+-------------------------------------------------------
+The SF.Net email is sponsored by EclipseCon 2004
+Premiere Conference on Open Tools Development and Integration
+See the breadth of Eclipse activity. February 3-5 in Anaheim, CA.
+http://www.eclipsecon.org/osdn
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
