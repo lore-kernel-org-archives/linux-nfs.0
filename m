@@ -1,24 +1,22 @@
-From: raven@themaw.net
-Subject: Re: NFS and/or autofs hanging on Linux
-Date: Sat, 9 Oct 2004 10:34:42 +0800 (WST)
+From: Goutham Kurra <kurrag1@yahoo.com>
+Subject: force unmount not working 2.4.22
+Date: Sat, 9 Oct 2004 14:22:31 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.58.0410091031520.1370@donald.themaw.net>
-References: <8FDC0F9BE1F91D44BE964AA54AAA67B60E51ED7B@wilmexm3.ad.analog.com>
+Message-ID: <20041009212231.78436.qmail@web20524.mail.yahoo.com>
+References: <Pine.LNX.4.58.0410091031520.1370@donald.themaw.net>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net, Annie Mckeon <anne.bourgeois@analog.com>
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CG7Ix-0001xD-7K
-	for nfs@lists.sourceforge.net; Fri, 08 Oct 2004 19:49:55 -0700
-Received: from wombat.indigo.net.au ([202.0.185.19])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.41)
-	id 1CG7Ij-0003Or-NT
-	for nfs@lists.sourceforge.net; Fri, 08 Oct 2004 19:49:55 -0700
-To: "Burke, Alan" <Alan.Burke@analog.com>
-In-Reply-To: <8FDC0F9BE1F91D44BE964AA54AAA67B60E51ED7B@wilmexm3.ad.analog.com>
+	id 1CGOfi-0006V2-A3
+	for nfs@lists.sourceforge.net; Sat, 09 Oct 2004 14:22:34 -0700
+Received: from web20524.mail.yahoo.com ([216.136.227.41])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
+	id 1CGOff-0006Ao-4T
+	for nfs@lists.sourceforge.net; Sat, 09 Oct 2004 14:22:34 -0700
+To: nfs@lists.sourceforge.net
+In-Reply-To: <Pine.LNX.4.58.0410091031520.1370@donald.themaw.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,29 +29,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, 7 Oct 2004, Burke, Alan wrote:
 
-> Hi Everyone,
-> 
-> We have got a problem with NFS hanging with automounter mounts.
-> 
-> We're running RH8 2.4.20-20.0 kernel
-> NFS-utils 1.0.1-2
-> Autofs4.1.2 (we must have the /net ability)
-> H/W is mixed HP4100's, Dell 2650's, Sun V60 and V65's
-> All the machines are in a Sun NIS domain with 700 Sun machines that run
-> fine.
+Force unmount simply isn't working on a standard linux
+2.4.22 kernel. Isn't it supposed to unmount NFS
+filesystems no matter what?
 
-Have you patched the kernel with the latest autofs4 patches from 
-kernel.org?
+In my case, the backend server is still up and
+working, I have a "tail -f /mnt/nfs/foo" of some file
+on the mount, and "umount -f" fails with "device or
+resource is busy"
 
-You might like to visit Jeff Moyers people page at RedHat to get his 
-latest RPMS.
+I notice that rpc_killall_tasks() is called from the
+umount_begin(), but none of the processes get an EIO.
+They continue to work as before.
 
-http://people.redhat.com/jmoyer
+I've also noticed this on stock RH 2.4.20-9 kernels.
 
-Ian
+Any idea what's going on?
 
+Thanks!
+g
+
+
+
+		
+__________________________________
+Do you Yahoo!?
+Take Yahoo! Mail with you! Get it on your mobile phone.
+http://mobile.yahoo.com/maildemo 
 
 
 -------------------------------------------------------
