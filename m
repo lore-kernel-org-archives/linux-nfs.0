@@ -1,20 +1,19 @@
 From: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
-Subject: Re: SM_UNMON again -> kernel
-Date: Mon, 21 Jul 2003 15:08:12 +0200 (CEST)
+Subject: Re: rpc.rexd source for Linux?
+Date: Mon, 21 Jul 2003 15:21:54 +0200 (CEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0307211437200.32628-100000@kenzo.iwr.uni-heidelberg.de>
-References: <20030720234558.GD1570@async.com.br>
+Message-ID: <Pine.LNX.4.44.0307211511590.32628-100000@kenzo.iwr.uni-heidelberg.de>
+References: <15FDCE057B48784C80836803AE3598D53B8CDB@racerx.ixiacom.com>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-   Philippe Troin <phil@fifi.org>, <nfs@lists.sourceforge.net>
+Cc: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from mail.iwr.uni-heidelberg.de ([129.206.104.30])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19eaP6-00065P-00
-	for <nfs@lists.sourceforge.net>; Mon, 21 Jul 2003 06:08:36 -0700
-To: Christian Reis <kiko@async.com.br>
-In-Reply-To: <20030720234558.GD1570@async.com.br>
+	id 19eacA-0002Jn-00
+	for <nfs@lists.sourceforge.net>; Mon, 21 Jul 2003 06:22:06 -0700
+To: Dan Kegel <dkegel@ixiacom.com>
+In-Reply-To: <15FDCE057B48784C80836803AE3598D53B8CDB@racerx.ixiacom.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,41 +26,15 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sun, 20 Jul 2003, Christian Reis wrote:
+On Fri, 18 Jul 2003, Dan Kegel wrote:
 
-> Oh, the masquerading has nothing to do with NFS.
+> That got me thinking -- why not add that execve wrapper to Linux's
+> native NFS package?  Then I went looking, and discovered that 
+> (perhaps wisely) Linux's NFS package doesn't include 'on' or 'rpc.rexd'.
 
-It might, by error. I don't know if this is relevant as I seem to have 
-lost track of this thread, but some keywords suggested me to write this 
-message...
-
-In some conditions when using iptables, UDP packets get wrongly re-routed
-to the loopback interface. I've hit this some months ago with a RedHat 8.0
-installation with the current (at that time) 2.4.18-something kernel; I
-don't know if things changed in the meantime as I have rewritten the
-iptables rules...
-
-It seems that some forms of MASQ/NAT and marking packets (fwmark) don't 
-play well together; this is mentioned towards the end of:
-
-http://lartc.org/howto/lartc.netfilter.html
-
-but there was not enough information about what exactly would happen.  So
-when I did use them (MASQ and fwmark) together, some UDP packets which had
-perfectly good IP headers (source: server-IP, dest: client-IP) would not
-make it onto the wire towards the client, but could be captured with
-tcpdump attached to "lo". I've searched the netfilter list and came up
-with some hits, but there were only questions (so the problem is known!)  
-and no solution.
-
-Incidentally, I've noticed this packet loss when trying to mount a NFS
-export. I don't remember exactly where the packet loss happened, but it
-was always at the same point in the packet exchange (well, out of 5-6
-tries that I've made, also with different client OSes) - most probably,
-the final packet, the answer to the "MOUNT" request (sorry, fuzzy memory).
-If I'd clear the iptables rules on the server, the same mount command
-would succeed immediately.  After deleting all the rules that used
-"fwmark" (but still using MASQ), everything worked fine.
+I don't follow your logic here. What has on/rpc.rexd to do with NFS ? 
+Sure, they are both supposed to use RPC as do lots of others (look in 
+/etc/rpc), but other than this ? So why bundle on with NFS ?
 
 -- 
 Bogdan Costescu
