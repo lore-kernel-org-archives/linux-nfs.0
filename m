@@ -1,18 +1,21 @@
-From: =?ISO-8859-1?Q?J=F6rgen_Karlsson?= <publius@chello.se>
-Subject: Re: knsfd - files don't sync to disk
-Date: Fri, 17 May 2002 19:18:14 +0200
+From: Daryl Herzmann <akrherz@iastate.edu>
+Subject: Re: RedHat 7.3 crashed NetApp?
+Date: Fri, 17 May 2002 12:16:48 -0500 (CDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3CE53B56.8040303@chello.se>
-References: <3CE40BF7.1090605@chello.se> <15588.61537.552697.595814@notabene.cse.unsw.edu.au>
+Message-ID: <Pine.LNX.4.42.0205171214010.1202-100000@akrherz.agron.iastate.edu>
+References: <20020517081125.A5553@lucon.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from smtp2.chello.se ([193.150.195.11])
+Received: from mailhub-1.iastate.edu ([129.186.140.3])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 178lG2-0004co-00
-	for <nfs@lists.sourceforge.net>; Fri, 17 May 2002 10:11:10 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
+	id 178lLW-000536-00
+	for <nfs@lists.sourceforge.net>; Fri, 17 May 2002 10:16:50 -0700
+Received: from mailout-1.iastate.edu (mailout-1.iastate.edu [129.186.140.1])
+	by mailhub-1.iastate.edu (8.9.3/8.9.3) with SMTP id MAA29435
+	for <nfs@lists.sourceforge.net>; Fri, 17 May 2002 12:16:47 -0500
+To: nfs@lists.sourceforge.net
+In-Reply-To: <20020517081125.A5553@lucon.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,86 +28,40 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-We are using NFSv2.
+Hi,
 
-We have found a temporary workaround by reducing the number of nfs threads
-to 1. 
+I reported the exact same thing with an IRIX server on Friday to this 
+list.  I am glad that others are experiencing it too.  Using version 2 
+made the troubles go away for me.
 
-We have a 30 processor cluster that gave zero size files everytime we made
-a backup. By reducing the number of threads from 8 to 1 we were able to make
-25 backups without any problem. Switching back to 8 threads we immediately
-got the corrupted files back.
+http://www.geocrawler.com/lists/3/SourceForge/789/75/8633160/
 
-Maybe some down() and up() are missing.......
+Time for a RH bugzilla entry or is there one?
 
-If you think the the patch may fix it for v2 as well as v3 we can try the
-patch next week.
+Daryl
 
-Can running with only one thread cause any performance problems (with
-sync the bottleneck probably is disk io....)?
+On Fri, 17 May 2002, H . J . Lu wrote:
 
-/Jorgen Karlsson
+>On Fri, May 17, 2002 at 08:14:37AM -0500, Cooke, Alan wrote:
+>> While running the 2.4.18-4smp kernel (RedHat), and testing NFS3, our NetApp filer running OnTap 6.1.1R2 experienced massive incoming traffic from the Linux client in question. The Linux client required rebooting. We have been able to repeat this behavior, and are suspicious of the network driver on the Linux client which is using the eth0 driver. A
+>> 
+>
+>I think it is the same as what happened to me. I had to reboot/unplug
+>my Linux client before the whole NFS network went down. I am using Intel
+>e100 driver on eepro100. But my Linux NFS severs have no problem with
+>that client.
+>
+>
+>H.J.
+>
+>
 
-Neil Brown wrote:
-
->Are you using NFSv3?
->
->Does this patch:
->http://www.cse.unsw.edu.au/~neilb/patches/linux-stable/2.4.19-pre5/patch-I-NfsdVfsTidyup
->
->make a difference?
->
->NeilBrown
->
->On Thursday May 16, jorgen.karlsson@chello.se wrote:
->
->>Hi,
->>
->>We have a serious problem with knfsd and kernel 2.4.17.
->>
->>When doing a database backup in our linux cluster we have noticed that
->>a few files are not written to disk properly. The files have zero
->>file size when checked with the 'ls' command
->>
->>Several thousands of files are written to the nfs server during a
->>short period of time.  Average file size is 300-400 bytes.
->>
->>We have noticed that usually 1-2 out of 3000 files will have their sizes
->>truncated to 0.
->>
->>File  system is exported with (rw,sync)
->>
->>The disk filesystem is ext2.
->>
->>E.g. this is what is happening:
->>          - client writes 272 bytes to the server
->>          - mm/file.c:generic_file_write() returns 272 bytes written
->>          - fs/nfsd/vfs.c:nfs_write() increments nfsdstats.io_write +=272
->>             and returns that the write was sucessful.
->>          - knfsd returns to client that 272 bytes was written.
->>          - when checking with 'ls' command on server the file size is zero.
->>
->>Apparently the nfs server lies to the client and the files are not
->>properly synced/written to disk.
->>
->>Setting no_wdelay makes no difference.
->>
->>When running with async set (or sync removed) the problem
->>disappears (no files have their sizes truncated to zero).
->>
->>The nfs server is a PIII-700/ 1GB RAM
->>
->>Any ideas what is going on ?
->>
->
->_______________________________________________________________
->
->Have big pipes? SourceForge.net is looking for download mirrors. We supply
->the hardware. You get the recognition. Email Us: bandwidth@sourceforge.net
->_______________________________________________
->NFS maillist  -  NFS@lists.sourceforge.net
->https://lists.sourceforge.net/lists/listinfo/nfs
->
+-- 
+/**
+ * Daryl Herzmann (akrherz@iastate.edu)
+ * Program Assistant -- Iowa Environmental Mesonet
+ * http://mesonet.agron.iastate.edu
+ */
 
 
 
