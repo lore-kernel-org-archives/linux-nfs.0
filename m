@@ -1,28 +1,25 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Re: [autofs] VFS: Busy inodes after unmount on 2 way SMP
-Date: 18 Sep 2003 01:52:05 -0400
+From: "Amir Hermelin" <amir@montilio.com>
+Subject: RE: remounting with a different blocksize
+Date: Thu, 18 Sep 2003 09:19:27 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsd6dyabju.fsf@charged.uio.no>
-References: <Pine.LNX.4.33.0309171251290.25153-100000@wombat.indigo.net.au>
-	<3F689E40.6090802@intel.com> <3F68C6EB.2080706@zytor.com>
-	<20030917210023.GA15099@suse.de>
+Message-ID: <00d101c37db5$324ebf40$1301a8c0@CARTMAN>
+References: <482A3FA0050D21419C269D13989C6113D06CAA@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "H. Peter Anvin" <hpa@zytor.com>,  Arun Sharma <arun.sharma@intel.com>,
-	  autofs@linux.kernel.org,  nfs@lists.sourceforge.net,
-	  Ian Kent <raven@themaw.net>
+Content-Type: text/plain;
+	charset="windows-1255"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19zrjA-0002Bs-00
-	for <nfs@lists.sourceforge.net>; Wed, 17 Sep 2003 22:53:16 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 19zs9A-00046d-00
+	for <nfs@lists.sourceforge.net>; Wed, 17 Sep 2003 23:20:08 -0700
+Received: from enigma.barak.net.il ([212.150.48.99])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 19zrj9-00059O-RC
-	for nfs@lists.sourceforge.net; Wed, 17 Sep 2003 22:53:16 -0700
-To: Olaf Hering <olh@suse.de>
-In-Reply-To: <20030917210023.GA15099@suse.de>
+	id 19zs99-00083t-9S
+	for nfs@lists.sourceforge.net; Wed, 17 Sep 2003 23:20:07 -0700
+To: "'Lever, Charles'" <Charles.Lever@netapp.com>
+In-Reply-To: <482A3FA0050D21419C269D13989C6113D06CAA@lavender-fe.eng.netapp.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -35,31 +32,77 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Olaf Hering <olh@suse.de> writes:
+I'm really only running a small and specific number of tests, one READ =
+at a
+time, files ranging from 8K to 256MB.  Is there any place I can read =
+about
+the reasons why my client (Linux 2.4) isn't using the blocksize I need?
 
-     >  On Wed, Sep 17, H. Peter Anvin wrote:
-    >> Okay... let me ask this so I get it straight...
-    >>
-    >> Has anyone seen this (busy inodes after stopping the
-    >> automounter) using autofs v3 kernel module and daemon?
+Thanks,
+Amir.
 
-     > I'm not sure, but everyone who has seen this should fiddle this
-     > patch into the kernel and see how it goes.  The whole thing
-     > started very recently (post 2.4.21) for us.
 
-     > This patch is untested, any feedback appreciated.
 
-...and is indeed wrong... It does the exact opposite of what
-sillydelete should do. Instead of causing the last application that
-closes the file to perform the sillydelete, you are asking the *first*
-application that closes it to do so.
-Sillydelete *has* to be tied to dentries. Not files, and not
-inodes. It is purely a namespace operation...
+-----Original Message-----
+From: nfs-admin@lists.sourceforge.net
+[mailto:nfs-admin@lists.sourceforge.net] On Behalf Of Lever, Charles
+Sent: =E3 17 =F1=F4=E8=EE=E1=F8 2003 17:21
+To: Amir Hermelin
+Cc: nfs@lists.sourceforge.net
+Subject: RE: [NFS] remounting with a different blocksize
 
-So exactly what are you trying to do, and why?
 
-Cheers,
-  Trond
+hi amir-
+
+using "rsize=3D8192" means the client *can* use 8KB reads,
+it doesn't mean that it *always* will.  there are a variety
+of reasons the client might choose 4KB reads even though
+it could send larger ones.
+
+can you describe your workload?
+
+> -----Original Message-----
+> From: Amir Hermelin [mailto:amir@montilio.com]
+> Sent: Wednesday, September 17, 2003 2:45 AM
+> To: nfs@lists.sourceforge.net
+> Subject: [NFS] remounting with a different blocksize
+>=20
+>=20
+> Hi,
+> I'm using RH Linux 2.4.20 on both machines.  When I first
+> mount one of the
+> machines with a 4k read/write blocksize, the READ requests=20
+> are 4K bytes.
+> However, when I umount and then mount again with read/write=20
+> blocksize of 8K,
+> the READ requests are still 4K bytes.
+>=20
+> Any ideas on how I can properly change the blocksizes?
+>=20
+> Thanks,
+> Amir.
+>=20
+>=20
+>=20
+>=20
+> -------------------------------------------------------
+> This sf.net email is sponsored by:ThinkGeek
+> Welcome to geek heaven.
+> http://thinkgeek.com/sf=20
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net=20
+> https://lists.sourceforge.net/lists/listinfo/nfs
+>=20
+
+
+-------------------------------------------------------
+This sf.net email is sponsored by:ThinkGeek
+Welcome to geek heaven.
+http://thinkgeek.com/sf _______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+
+
 
 
 -------------------------------------------------------
