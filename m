@@ -1,25 +1,24 @@
-From: <loghyr@loghyr.com>
-Subject: RE: NFS and tinygrams
-Date: Fri, 22 Oct 2004 21:25:37 -0700 (PDT)
+From: "Alexander Povolotsky" <pevnev@juno.com>
+Subject: Linux 2.6 - Configuring swap onto NFS mounted root file system ?
+Date: Sun, 24 Oct 2004 00:27:57 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <64472.64.146.72.42.1098505537.squirrel@www.loghyr.com>
-References: <482A3FA0050D21419C269D13989C611302B07E75@lavender-fe.eng.netapp.com>
-        <1098386134.3601.209.camel@tesuji.nac.uci.edu>
+Message-ID: <20041023.172833.507.178473@webmail03.lax.untd.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: <Charles.Lever@netapp.com>, <nfs@lists.sourceforge.net>
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CLDTN-0006kx-Ll
-	for nfs@lists.sourceforge.net; Fri, 22 Oct 2004 21:25:45 -0700
-Received: from virt18c.secure-wi.com ([209.216.203.8] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.41)
-	id 1CLDTH-0001ZB-6y
-	for nfs@lists.sourceforge.net; Fri, 22 Oct 2004 21:25:45 -0700
-To: <strombrg@dcs.nac.uci.edu>
-In-Reply-To: <1098386134.3601.209.camel@tesuji.nac.uci.edu>
+	id 1CLWGO-0006eo-0N
+	for nfs@lists.sourceforge.net; Sat, 23 Oct 2004 17:29:36 -0700
+Received: from outbound-mail.lax.untd.com ([64.136.28.164])
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
+	id 1CLWGN-0005hg-7a
+	for nfs@lists.sourceforge.net; Sat, 23 Oct 2004 17:29:35 -0700
+Received: from outbound29-sr.lax.untd.com (webmail03.lax.untd.com [10.131.27.143])
+	by smtpout04.lax.untd.com with SMTP id AABAZX734AXFFVZS
+	for <nfs@lists.sourceforge.net> (sender <pevnev@juno.com>);
+	Sat, 23 Oct 2004 17:28:42 -0700 (PDT)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,19 +31,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> Unfortunately, our AIX 5.1 machine does not support NFS v4.  Anyone know
-> if AIX 5.3 does?  I'll ask on an AIX mailing list too...
->
 
-> Dan Stromberg DCS/NACS/UCI <strombrg@dcs.nac.uci.edu>
+Hi,
 
-Yes, AIX 5.3 does support NFSv4.
-
--- 
-Tom Haynes
+Linux 2.6 - Configuring swap onto NFS mounted root file system ...
+Is it possible and working ?
+If yes - any specific caveats (commands, conditions, etc.),
+which are different from configuring swap on "diskful" Linux system ?
 
 
-
+________________________________________________________________
+Speed up your surfing with Juno SpeedBand.
+Now includes pop-up blocker!
+Only $14.95/ month - visit http://www.juno.com/surf to sign up today!
 
 
 -------------------------------------------------------
