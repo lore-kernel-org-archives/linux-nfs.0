@@ -1,15 +1,21 @@
-From: antonio@geto.net
-Subject: mount point not recovering after NFS server comes back
-Date: Thu, 17 Jul 2003 14:48:02 -0700 (PDT)
+From: "Norbert Frick" <norbert_frick@de.ibm.com>
+Subject: AFS/NFS translator (or translation) for Linux (NFSv3 or NFSv4)
+Date: Fri, 18 Jul 2003 10:01:04 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0307171424440.22986-100000@www.geto.net>
+Message-ID: <OFC1DB25F9.298312E5-ONC1256D67.002BC6AB-C1256D67.002C0B63@de.ibm.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from geto.net ([207.71.207.33] ident=qmailr)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19dGbf-0003HS-00
-	for <nfs@lists.sourceforge.net>; Thu, 17 Jul 2003 14:48:07 -0700
+Received: from d12lmsgate-5.de.ibm.com ([194.196.100.238])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19dQBO-0004AL-00
+	for <nfs@lists.sourceforge.net>; Fri, 18 Jul 2003 01:01:39 -0700
+Received: from d12relay02.megacenter.de.ibm.com (d12relay02.megacenter.de.ibm.com [9.149.165.196])
+	by d12lmsgate-5.de.ibm.com (8.12.9/8.12.8) with ESMTP id h6I81Ru5033444
+	for <nfs@lists.sourceforge.net>; Fri, 18 Jul 2003 10:01:28 +0200
+Received: from d12ml018.de.ibm.com (d12av02.megacenter.de.ibm.com [9.149.165.228])
+	by d12relay02.megacenter.de.ibm.com (8.12.9/NCO/VER6.5) with ESMTP id h6I81RuP273766
+	for <nfs@lists.sourceforge.net>; Fri, 18 Jul 2003 10:01:27 +0200
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -23,58 +29,22 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi everybody -- I'm really hoping someone can push me in the right 
-direction on this . . .
+Hi everybody, hope this is the right list for posting this question.
 
-NFS server is a NetApp filer running OnTap 6.3.2
-NFS clients are RedHat 9 boxes running linux 2.4.20.
+I'm looking for an AFS/NFS translator for Linux. It should support NFSv=
+3 or
+NFSv4. As far as I know, there is only one for SUN Solaris and this sou=
+rce
+seems to run also on IBM's AIX (only NFSv2).
+On Linux, there is another way, by using the NFSv2 unfsd. I've testes t=
+his
+solution with success ? but it's still only NFSv2.
 
-We are using soft mounts with these options:
-rw,soft,intr,nfsvers=3,wsize=32768,rsize=32768, \
-proto=tcp,timeo=3,retrans=1,noac,sync
+Does anybody have an idea, how to solve my problem?
 
-We are using these mount point options so that our application
-(which constantly is writing to the NFS server) can detect
-an NFS operation timeout after 0.9 seconds and fail over to local
-disk to queue until the NFS server comes back.
+Norbert   :-)
 
-Problem is -- is that is the NFS server is gone for any length of time,
-the mount point doesn't "recover".  df -k hangs forever, I can't
-re-mount the mount point, and any processes that attempt to stat
-or otherwise access the mount point are shown as being in an 
-"uninterruptable sleep" according to ps.
-
-The only was I've been able to restore access to our mount point is to 
-reboot the clients that are hung.  After enabling nfs/rpc debugging I'm 
-seeing this in /var/log/messages after attempting an NFS operation:
-
-Jul 17 14:40:04 ts_10_2_20_22 kernel: RPC: 47394 reserved req f7aca7c8 xid 
-6e94a90f
-Jul 17 14:40:04 ts_10_2_20_22 kernel: RPC: 47394 xprt_reserve returns 0
-Jul 17 14:40:04 ts_10_2_20_22 kernel: RPC: 47395 xprt_reconnect f7aca000 
-connected 0
-Jul 17 14:40:04 ts_10_2_20_22 kernel: RPC: 47395 TCP write queue full
-
-
-According to ltrace and strace, processes hang in one of the following 
-locations:
-
-__xstat64(3, "/corelog", 0x08058f74 <unfinished ...
-stat64("/corelog",  <unfinished ...>
-statfs("/corelog",  <unfinished ...>
-
-
-Restarting nfslock and portmap have no effect.  Note that I can mount the 
-same NFS share to a different location on the client and work from there 
--- but in order to restore access to the original mount point I have to 
-reboot the server...
-
-any ideas?
-
-
-
-
-
+=
 
 
 
