@@ -1,25 +1,20 @@
-From: Chip Salzenberg <chip@pobox.com>
-Subject: Any reason why 1.2.3.4/255.255.255.255 wouldn't be valid in exports?
-Date: Thu, 10 Mar 2005 12:55:56 -0500
-Message-ID: <20050310175556.GB4577@perlsupport.com>
+From: Michael Madore <Michael.Madore@aslab.com>
+Subject: find_exported_dentry: npd != pd
+Date: Thu, 10 Mar 2005 10:15:09 -0800
+Message-ID: <1110478510.14523.12.camel@drevil.aslab.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D9RtH-0007bj-HC
-	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 09:56:07 -0800
-Received: from perlsupport.com
-	([66.180.163.120] helo=mail.perlsupport.com ident=64e6eb56b3f089ca9d73fa8daedaa274)
+	id 1D9SBl-00009J-Ju
+	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 10:15:13 -0800
+Received: from adsl-69-225-172-73.dsl.pltn13.pacbell.net ([69.225.172.73] helo=mail.aslab.com)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1D9RtD-0006f7-UF
-	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 09:56:07 -0800
-Received: from [67.132.206.254] (helo=tytlal)
-	by mail.perlsupport.com (Exim 4) with esmtpsa (TLS-1.0:RSA_AES_256_CBC_SHA:32)
-	id 1D9Rt6-0002Sk-WB
-	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 12:55:57 -0500
-Received: from chip by tytlal with local (Exim 4.50)
-	id 1D9Rt6-0001Jy-3X
-	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 12:55:56 -0500
+	id 1D9SBk-0000JJ-B1
+	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 10:15:13 -0800
+Received: from drevil.aslab.com (drevil.aslab.com [192.168.2.34])
+	by mail.aslab.com (Postfix) with ESMTP id 1F7AB4B197
+	for <nfs@lists.sourceforge.net>; Thu, 10 Mar 2005 10:31:40 -0800 (PST)
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -34,25 +29,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-A Debian user is reporting that this exports line:
+Hi,
 
-  /backup 192.168.0.8/255.255.255.255(no_root_squash,rw,async)
+I was running dbench from a Linux 2.6.11 NFS client to a Linux 2.6.11
+NFS server and received many copies of the following message in the
+server's syslog:
 
-is causing trouble:
+find_exported_dentry: npd != pd
 
-  "From the client an 'rpcinfo -u nfsserver nfs' ended in a TIMEOUT."
+I found the following comment in fs/exportfs/expfs.c:
 
-Meanwhile this:
+/* we didn't really want npd, we really wanted
+ * a side-effect of the lookup.
+ * hopefully, npd == pd, though it isn't really
+ * a problem if it isn't
+ */
 
-  /backup 192.168.0.8(no_root_squash,rw,async)
+So, is this error message really harmless?  The reason I'm asking is
+because a lot of users will panic upon seeing any unusual messages in
+syslog.
 
-works fine for him.
+Thanks
 
-Bug?  Feature?  Something needing to be documented?
--- 
-Chip Salzenberg            - a.k.a. -            <chip@pobox.com>
-         Open Source is not an excuse to write fun code
-            then leave the actual work to others.
+Mike
+
 
 
 -------------------------------------------------------
