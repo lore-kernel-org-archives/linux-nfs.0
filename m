@@ -1,21 +1,18 @@
-From: "G. Allen Morris III" <gam3@gam3.net>
-Subject: statd -o change
-Date: Fri, 4 Mar 2005 10:34:36 -0500
-Message-ID: <20050304153436.GA32203@gam3.net>
-References: <20050227192113.GA5778@localhost.localdomain> <1109787034.12460.7.camel@lade.trondhjem.org>
+From: "zalmay sanam" <zalmay_77@hotmail.com>
+Subject: NFS server on irix 6.5
+Date: Fri, 11 Mar 2005 12:05:11 +0500
+Message-ID: <BAY13-F4264C2FBB6F3AF81CC940D92530@phx.gbl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nhorman@redhat.com, nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Content-Type: text/html; format=flowed
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D7EpH-0008SY-CN
-	for nfs@lists.sourceforge.net; Fri, 04 Mar 2005 07:34:51 -0800
-Received: from mta9.adelphia.net ([68.168.78.199])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1D7EpF-0005Yg-SM
-	for nfs@lists.sourceforge.net; Fri, 04 Mar 2005 07:34:51 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1109787034.12460.7.camel@lade.trondhjem.org>
+	id 1D9eDm-00022U-Mh
+	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 23:06:06 -0800
+Received: from bay13-f42.bay13.hotmail.com ([64.4.31.42] helo=hotmail.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1D9eDk-0004A5-WF
+	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 23:06:06 -0800
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,18 +26,13 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond,
+<html><div style='background-color:'><DIV>
+<DIV>
+<DIV class=RTE>Respected Sir</DIV>
+<DIV class=RTE>I want to configure NFS server on SGI IRIX 6.5 . Sir Kindly tell me from where I down load</DIV>
+<DIV class=RTE>the required Softwares and also installation procedure.Sir soon reply will be highly appretiated.</DIV>
+<DIV class=RTE>regards.</DIV></DIV></DIV></div><br clear=all><hr>Don't just search. Find. <a href="http://g.msn.com/8HMBEN/2746??PS=47575" target="_top">MSN Search</a> Check out the new MSN Search!</html>
 
-I would think that statd should fail if the requested outgoing port (-o)
-can't be bound to. The main reason to bind to a particular outgoing port
-is because of a firewall.  If a random port is used statd will not make
-it through the firewall, but the log file will have to be checked to
-find out why statd is not working (falling back on randomly chosen port).
-
-Not starting statd seems to be the failure mode if the rpc.statd port
-(-p) can't be bound to.
-
-Allen <gam3@gam3.net>
 
 
 -------------------------------------------------------
