@@ -1,58 +1,75 @@
-From: Arjan van de Ven <arjan@infradead.org>
-Subject: Re: [PATCH] remove redundant NULL pointer checks prior to calling
-	kfree() in fs/nfsd/
-Date: Sun, 27 Mar 2005 16:30:19 +0200
-Message-ID: <1111933819.6297.45.camel@laptopd505.fenrus.org>
-References: <Pine.LNX.4.62.0503252319220.2498@dragon.hyggekrogen.localhost>
-	 <Pine.LNX.4.61.0503251731240.6372@chaos.analogic.com>
-	 <1111826041.6293.31.camel@laptopd505.fenrus.org>
-	 <200503271545.28335.vda@ilport.com.ua>
+From: =?ISO-8859-15?Q?Peter_Karl_M=FCller?= <peter.karl.mueller@gmx.de>
+Subject: Linux 2.6.10: locks are leaked
+Date: Tue, 29 Mar 2005 02:25:36 +0200
+Message-ID: <4248A080.2020600@gmx.de>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-os@analogic.com, Jesper Juhl <juhl-lkml@dif.dk>,
-	Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-kernel@vger.kernel.org
-To: Denis Vlasenko <vda@ilport.com.ua>
-In-Reply-To: <200503271545.28335.vda@ilport.com.ua>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=ISO-8859-15
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1DG4YD-0005a1-F5
+	for nfs@lists.sourceforge.net; Mon, 28 Mar 2005 16:25:45 -0800
+Received: from pop.gmx.net ([213.165.64.20] helo=mail.gmx.net)
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
+	id 1DG4YB-0000kK-QR
+	for nfs@lists.sourceforge.net; Mon, 28 Mar 2005 16:25:45 -0800
+To: nfs@lists.sourceforge.net
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sun, 2005-03-27 at 15:45 +0300, Denis Vlasenko wrote:
-> On Saturday 26 March 2005 10:34, Arjan van de Ven wrote:
-> > On Fri, 2005-03-25 at 17:34 -0500, linux-os wrote:
-> > > On Fri, 25 Mar 2005, Jesper Juhl wrote:
-> > > 
-> > > > (please keep me on CC)
-> > > >
-> > > >
-> > > > checking for NULL before calling kfree() is redundant and needlessly
-> > > > enlarges the kernel image, let's get rid of those checks.
-> > > >
-> > > 
-> > > Hardly. ORing a value with itself and jumping on condition is
-> > > real cheap compared with pushing a value into the stack
-> > 
-> > which century are you from?
-> > "jumping on condition" can easily be 100+ cycles, depending on how
-> > effective the branch predictor is. Pushing a value onto the stack otoh
-> > is half a cycle.
-> 
-> linux-os is right because kfree does NULL check with exactly
-> the same code sequence, test and branch:
+Dear experts,
 
-I know it does. The thing is that you have *two* chances to get a branch
-mispredict now.
+my home directories are exported from server to client (both vanilla
+2.6.10). When I start the famous "skype" program from my home directory
+in a console, enter my account/password, and then terminate the skype
+process by ctrl-\ some file locks remain on the server. These file
+locks prevent a successfull re-login after a re-launch of "skype"
+(you get "Logging in failed").
 
-Now if kfree did NOT do the if but move it always to the caller, then
-you have somewhat different dynamics (since you then always if the
-conditional jump once no matter) but that is not the case.
+I performed some tests with multiple running/stopped instances of
 
-> I conclude that if(p) kfree(p) makes sense only if:
-> a) p is more often NULL than not, and
-> b) it's in the hot path (you don't want to save on code size)
-> 
-> Since (a) is not typical, I think Jesper's cleanups are ok.
+      1 #include <stdio.h>
+      2 #include <sys/types.h>
+      3 #include <sys/stat.h>
+      4 #include <fcntl.h>
+      5 #include <signal.h>
+      6
+      7 int main ()
+      8 {
+      9    int fd = open ("DATAFILE", O_RDWR, 0600);
+     10    if (fd == -1)
+     11       perror ("open"), exit (1);
+     12    printf ("file opened\n");
+     13    int rc = lockf (fd, F_LOCK, 0);
+     14    if (rc)
+     15       perror ("lockf"), exit (2);
+     16    printf ("lock acquired\n");
+     17    pid_t mypid = getpid ();
+     18    printf ("pid = %d\n", mypid);
+     19    sleep (10);
+     20    kill (mypid, 9);
+     21    return 0;
+     22 }
 
-note that to gain from teh branch predictor "more often than not"
-probably needs to be in the 20:1 ratio to actually gain.
+and eventually ran into a well known kernel panic on the client. In two
+cases the server became fully inaccessible.
+
+
+-------------------------------------------------------
+SF email is sponsored by - The IT Product Guide
+Read honest & candid reviews on hundreds of IT Products from real users.
+Discover which products truly live up to the hype. Start reading now.
+http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
