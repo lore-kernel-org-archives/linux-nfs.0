@@ -1,21 +1,19 @@
-From: "H. J. Lu" <hjl@lucon.org>
-Subject: Re: 2.4.19 NFSALL performance oddity
-Date: Sat, 5 Oct 2002 16:41:57 -0700
+From: "Heflin, Roger A." <Roger.A.Heflin@conoco.com>
+Subject: RE: 2.4.19 NFSALL performance oddity
+Date: Sat, 5 Oct 2002 20:56:44 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20021005164157.B19687@lucon.org>
-References: <5CA6F03EF05E0046AC5594562398B91653B9C0@poexmb3.conoco.net> <shsy99ddayi.fsf@charged.uio.no> <1033793310.4626.0.camel@camp4.serpentine.com> <shsd6qovozl.fsf@charged.uio.no> <1033851316.29937.37.camel@plokta.s8.com> <15775.24289.796995.465654@charged.uio.no>
+Message-ID: <5CA6F03EF05E0046AC5594562398B9160C772C@poexmb3.conoco.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Bryan O'Sullivan <bos@serpentine.com>,
-	"Heflin, Roger A." <Roger.A.Heflin@conoco.com>,
-	nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from 12-234-88-146.client.attbi.com ([12.234.88.146] helo=lucon.org)
+Received: from usamail1.conoco.com ([12.31.208.226])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17xyYY-0005A5-00
-	for <nfs@lists.sourceforge.net>; Sat, 05 Oct 2002 16:41:58 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <15775.24289.796995.465654@charged.uio.no>; from trond.myklebust@fys.uio.no on Sat, Oct 05, 2002 at 11:51:29PM +0200
+	id 17y0f1-0002PY-00
+	for <nfs@lists.sourceforge.net>; Sat, 05 Oct 2002 18:56:47 -0700
+To: "Bryan O'Sullivan" <bos@serpentine.com>,
+	"Trond Myklebust" <trond.myklebust@fys.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,25 +26,39 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-On Sat, Oct 05, 2002 at 11:51:29PM +0200, Trond Myklebust wrote:
-> >>>>> " " == Bryan O'Sullivan <bos@serpentine.com> writes:
-> 
->      > I'll try to take a look on a local system in the next few days.
->      > Are you or Roger using Jens Axboe's block-highmem patch or any
->      > of the drivers it touches?  Knowing this should help control
->      > for at least one variable.
-> 
-> I've seen the behaviour on stock 2.4.19 and 2.4.20-preX. I haven't
-> tested any of Jens' patches...
-> 
 
-It must be a new bug. I used to have Quad P/II Xeon with 8GB RAM.
-I had no problem with its NFS server performance. Also my modified
-kernel based on RedHat kernel 2.4.18-14 has no NFS server problem
-with 1.5GB RAM.
+The only extra patches to 2.4.19 are the NFS patches, so
+I don't believe so unless it was included in 2.4.19.
 
+We are using config_himem, because at least some of the
+machines we have will have a bit too much memory.
 
-H.J.
+I will try turning that off and see if it makes a difference, is
+this on the client or the server or both?   I am pretty sure
+we have it enabled on all of the nfsall patched 2.4.19 builts.
+
+				Roger
+
+> -----Original Message-----
+> From:	Bryan O'Sullivan [SMTP:bos@serpentine.com]
+> Sent:	Saturday, October 05, 2002 3:55 PM
+> To:	Trond Myklebust
+> Cc:	Heflin, Roger A.; nfs@lists.sourceforge.net
+> Subject:	Re: [NFS] 2.4.19 NFSALL performance oddity
+>=20
+> On Sat, 2002-10-05 at 09:18, Trond Myklebust wrote:
+>=20
+> > I'm seeing major slowdowns, mainly on NFS reads, when I enable
+> > CONFIG_HIGHMEM. I haven't yet had time to investigate this.
+>=20
+> I'll try to take a look on a local system in the next few days.  Are =
+you
+> or Roger using Jens Axboe's block-highmem patch or any of the drivers =
+it
+> touches?  Knowing this should help control for at least one variable.
+>=20
+> 	<b
+>=20
 
 
 -------------------------------------------------------
