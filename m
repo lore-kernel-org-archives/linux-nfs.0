@@ -1,21 +1,19 @@
 From: Dan Kegel <dkegel@ixiacom.com>
-Subject: [PATCH] Make 'udp' mount option really mean it (was: Meaning of 'udp'
- mount option)
-Date: Mon, 30 Jun 2003 15:24:05 -0700
+Subject: Re: [PATCH] Make 'udp' mount option really mean it
+Date: Mon, 30 Jun 2003 15:29:28 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3F00B885.1010305@ixiacom.com>
-References: <3F00911E.5020001@ixiacom.com>
+Message-ID: <3F00B9C8.10104@ixiacom.com>
+References: <3F00911E.5020001@ixiacom.com> <3F00B885.1010305@ixiacom.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from 64-60-75-69.cust.telepacific.net ([64.60.75.69] helo=racerx.ixiacom.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19X76s-0004hr-00
-	for <nfs@lists.sourceforge.net>; Mon, 30 Jun 2003 15:26:54 -0700
-To: Dan Kegel <dkegel@ixiacom.com>,  util-linux@math.uio.net,
- aebr@win.tue.nl
-In-Reply-To: <3F00911E.5020001@ixiacom.com>
+	id 19X7C5-0005qZ-00
+	for <nfs@lists.sourceforge.net>; Mon, 30 Jun 2003 15:32:17 -0700
+To: util-linux@math.uio.net,  aebr@win.tue.nl
+In-Reply-To: <3F00B885.1010305@ixiacom.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,18 +26,7 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Dan Kegel wrote:
-> Question 1: what does the 'udp' mount option really mean?
-> It appears to mean 'Use udp mostly, but use TCP when calling 
-> pmap_getmaps()'.
-> Question 2: is this a bug or a feature?
-
-Assuming it's a bug, here's a patch that fixes it, by using
-UDP even for pmap_getmaps().  It worked for me, and I'll probably
-use it, but I wouldn't be suprised if others preferred to
-add a new mount option to get this behavior.
-
-I use a retry of 5 seconds, no idea if that's right.
+Crap.  Ignore that patch.  Here's the real one.
 - Dan
 
 --- util-linux-2.11n/mount/nfsmount.c.old	Sat Sep 29 15:43:26 2001
@@ -144,8 +131,8 @@ I use a retry of 5 seconds, no idea if that's right.
 +#else
 +  retry.tv_sec = 5;
 +  retry.tv_usec = 0;
-+  if ((client = clntudp_create (address, PMAPPROG,
-+				PMAPVERS, retry, &socket)) == NULL)
++  client = clntudp_create (address, PMAPPROG,
++				PMAPVERS, retry, &socket);
 +#endif
 +  if (client != (CLIENT *) NULL)
 +    {
