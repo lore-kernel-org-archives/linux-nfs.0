@@ -1,25 +1,25 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH][RFC] Multiple UDP sockets for knfsd
-Date: Fri, 14 May 2004 16:21:50 -0400
+Subject: Re: clnt_max_conns ?
+Date: Fri, 14 May 2004 16:23:27 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1084566110.4237.66.camel@lade.trondhjem.org>
-References: <40A42DB8.7B9C8152@melbourne.sgi.com>
+Message-ID: <1084566207.4237.69.camel@lade.trondhjem.org>
+References: <Pine.LNX.4.44.0405122206570.22744-100000@maggie.lkpg.cendio.se>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: Neil Brown <neilb@cse.unsw.edu.au>, Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BOjBw-00005j-JI
-	for nfs@lists.sourceforge.net; Fri, 14 May 2004 13:22:00 -0700
+	id 1BOjDN-0000Nk-2G
+	for nfs@lists.sourceforge.net; Fri, 14 May 2004 13:23:29 -0700
 Received: from dh132.citi.umich.edu
 	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
 	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
 	(Exim 4.30)
-	id 1BOjBw-0001Dg-96
-	for nfs@lists.sourceforge.net; Fri, 14 May 2004 13:22:00 -0700
-To: Greg Banks <gnb@melbourne.sgi.com>
-In-Reply-To: <40A42DB8.7B9C8152@melbourne.sgi.com>
+	id 1BOjDM-0001U2-Md
+	for nfs@lists.sourceforge.net; Fri, 14 May 2004 13:23:28 -0700
+To: Peter Astrand <peter@cendio.se>
+In-Reply-To: <Pine.LNX.4.44.0405122206570.22744-100000@maggie.lkpg.cendio.se>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,25 +32,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, 2004-05-13 at 22:23, Greg Banks wrote:
-> G'day,
-> 
-> This patch attempts to implement a suggestion made by Neil Brown in
-> offline discussions, to extend the Linux NFS server to use multiple
-> UDP sockets for load sharing.  It turns out that the single UDP socket
-> is a throughput limiter at surprisingly small loads.  With this patch
-> my test machine goes from being limited at about 146 MB/s in cached
-> read loads over UDP to about 210~230 MB/s, which is about the same
-> number as the same test over TCP.
+On Wed, 2004-05-12 at 16:11, Peter Astrand wrote:
+> How many TCP connections are initiated by the Linux NFS client when using 
+> TCP? Solaris, for example, seems to have a parameter called 
+> "clnt_max_conns" that controls this. Is there anything similiar for Linux? 
+> Does the number of TCP connections depend on the number of mounts?
 
-Greg,
+1) 1 per mountpoint (except in the case of NFSv4 when it is 1 per
+server).
 
-I'm confused here. Are you actually implying that socket contention is
-responsible for a full *40%* decrease in throughput? If not, please
-could you explain which bottleneck this patch is removing?
+2) Nope.
 
-Also, isn't that call to sock_release() while holding serv->sv_lock a
-tad deadlock-prone? Note that sock_release() will call bh_lock_sock()...
+3) Yep. See (1).
 
 Cheers,
   Trond
