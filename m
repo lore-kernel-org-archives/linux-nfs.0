@@ -1,18 +1,22 @@
-From: Eric Whiting <ewhiting@amis.com>
-Subject: Re: 2.4.20 TCP server + solaris client performance
-Date: Wed, 19 Feb 2003 10:56:45 -0700
+From: "H. Peter Anvin" <hpa@zytor.com>
+Subject: Re: Re: [autofs] Server/client mismatch over status of a mount
+ ...
+Date: Wed, 19 Feb 2003 19:16:12 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3E53C55D.1FCF2982@amis.com>
-References: <Pine.GSO.4.40.0302191211380.29315-100000@bodoni>
+Message-ID: <3E53C9EC.8080903@zytor.com>
+References: <200302191358.h1JDwECX026719@buggy.badula.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net, autofs@linux.kernel.org,
+   trond.myklebust@fys.uio.no, james-p@moving-picture.com
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from dermis.amis.com ([207.141.5.253])
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18lYSd-0005Mu-00
-	for <nfs@lists.sourceforge.net>; Wed, 19 Feb 2003 09:56:47 -0800
-To: Fabrizio Nesti <nesti@medialab.sissa.it>
+Received: from terminus.zytor.com ([63.209.29.3] ident=root)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18lYlr-0001JI-00
+	for <nfs@lists.sourceforge.net>; Wed, 19 Feb 2003 10:16:39 -0800
+To: Ion Badulescu <ionut@badula.org>
+In-Reply-To: <200302191358.h1JDwECX026719@buggy.badula.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,61 +29,19 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Fabrizio,
-
-2.4.20 NFS server testing -- I had been using bonnie numbers to judge
-performance. Users and applications had not reported problems. I had not tried
-your tar -xf cvs.tar test.
-
-I just tried your tar -xf cvs-1.11.5.tar test and I see numbers like yours
-(except I don't see super fast solaris NFS numbers)
-
-Client		Server		Time
--------------------------------------
-solaris7	2.4.20		27.3
-solaris7	solaris9	26.9
-solaris9	solaris7	25.3
-2.4.18		2.4.20		 7.0 (defaults to async mounts right?)
-2.4.20		2.4.18		15.1
-linux local (no NFS)		 1.2 (including sync) 
-
-I think what we are seeing is partially the overhead in the creation of 500+
-small files...
-
-I'm not sure there is a major NFS UDP/TCP problem here -- but the differences
-between your sun server and your linux server are interesting. Perhaps there is
-a sync option that is making those numbers look different?
-
-My solaris boxes are UFS. (are you runing veritas?)
-My linux boxes are reiserfs.
-The above numbers are on 100M network. 
-
-Please try bonnie tests for additional insights. Different tests show different
-bottlenecks and advantages. Bonnie testing usually shows other areas where linux
-NFS can do better than solaris NFS. 
-
-eric
-
-
-
-Fabrizio Nesti wrote:
-> So, if it is not UDP/TCP or r/wsize the cause, what can it be?
-> Even more, after the email from
+Ion Badulescu wrote:
 > 
-> > Eric Whiting <ewhiting@amis.com>
-> > ...
-> > We are getting good NFS numbers with 2.4.20 UDP NFS servers against solaris
-> > [89] clients.
+> Isn't autofs v4 supposed to fix this? I remember Jeremy mentioning that
+> the filesystem would lock all accesses to a dentry scheduled to be 
+> unmounted until the daemon replied to the request.
 > 
-> So Eric, can you please show your configuration?
-> 
-> Also it is strange that a standard out-of-the-box RH8.0 on that big server
-> does perform so bad. Knowing this in advance, we wouldn't have chosen
-> linux for serving... :(
-> 
-> Ok,
-> thanks and ciao,
-> Fabrizio
+
+That's fine and dandy, but you would have to atomically lock *all* 
+dentries belonging to the subtree, which I suspect (but don't know for 
+sure) is impossible.
+
+	-hpa
+
 
 
 -------------------------------------------------------
