@@ -1,24 +1,24 @@
-From: Roger Leigh <roger.leigh@epictechnology.co.uk>
-Subject: statd errors
-Date: Tue, 14 Dec 2004 15:17:54 +0000
-Message-ID: <20041214151754.GA5985@epictechnology.co.uk>
+From: David Meleedy <david.meleedy@analog.com>
+Subject: Intermittent RHE3-u3 client mount failures to Netapp fileserver
+Date: Tue, 14 Dec 2004 19:21:13 -0500
+Message-ID: <200412150021.iBF0LDNQ000848@jetcar.spd.analog.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CeEQ0-0002qX-Ew
-	for nfs@lists.sourceforge.net; Tue, 14 Dec 2004 07:16:52 -0800
-Received: from mail.metronet.co.uk ([213.162.97.75])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CeEPy-0000nm-At
-	for nfs@lists.sourceforge.net; Tue, 14 Dec 2004 07:16:52 -0800
-Received: from till1.lan (unknown [213.162.108.80])
-	by smtp.metronet.co.uk (MetroNet Mail) with ESMTP id 17C0D466D14
-	for <nfs@lists.sourceforge.net>; Tue, 14 Dec 2004 15:15:03 +0000 (GMT)
-Received: from roger by till1.lan with local (Exim 4.34)
-	id 1CeER0-0001a0-QQ
-	for nfs@lists.sourceforge.net; Tue, 14 Dec 2004 15:17:54 +0000
+	id 1CeMuv-00071i-I1
+	for nfs@lists.sourceforge.net; Tue, 14 Dec 2004 16:21:21 -0800
+Received: from nwd2mail2.analog.com ([137.71.25.51])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1CeMut-0001tj-Cc
+	for nfs@lists.sourceforge.net; Tue, 14 Dec 2004 16:21:21 -0800
+Received: from nwd2mhb1.analog.com (nwd2mhb1.analog.com [137.71.5.12])
+	by nwd2mail2.analog.com (8.12.10/8.12.10) with ESMTP id iBF0LIm5024760
+	for <nfs@lists.sourceforge.net>; Tue, 14 Dec 2004 19:21:18 -0500
+Received: from jetcar.spd.analog.com ([10.64.82.61])
+	by nwd2mhb1.analog.com (8.9.3 (PHNE_28810+JAGae91741)/8.9.3) with ESMTP id TAA01891
+	for <nfs@lists.sourceforge.net>; Tue, 14 Dec 2004 19:21:13 -0500 (EST)
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -33,109 +33,194 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
 
-I'm running a simple NFS setup (one client, one server) using NFSv3 on
-Debian sarge (nfs-utils 1.0.6, and Linux 2.4.27 and 2.6.8 Debian
-kernels).  I'm seeing the same problem with both kernel versions (plus
-vanilla kernel.org 2.6.[89]).
+I have been trying to troubleshoot this problem on Redhat Enterprise 3
+WS update 3, both iX86 and amd64 versions.  I have already sent this
+to the automounter mailing list, and I suspect they don't have a
+solution because it is more nfs related.
 
-In my logs, I keep getting this message (on both the client and server):
+The problem is that intermittently, a previously mounted directory that
+had been mounted with the automounter, and then unmounted becomes
+unavailable.  The amount of time of unavailability seems to be related
+to the --timeout=60 option specified to the automount program.
 
-Dec 14 11:59:54 till2 rpc.statd[2141]: Received erroneous SM_UNMON
-request from till2 for 10.0.0.203
+I don't believe the routing equipment is at fault because using the
+same network ports, we have had Redhat 8 clients working just fine.
 
-Looking through list archives with Google, it seems that this can be
-caused by:
+client info
+===========
+Red Hat Enterprise Linux WS release 3 (Taroon Update 3)
+kernel: 2.4.21-20.EL
+nfs-utils: 1.0.6-31EL
+mount: 2.11y-31.1
+autofs: 4.1.3-12
 
-1. /var/lib/nfs/sm* not being writable (it's writable, owned by root, and
-   rpc.statd runs as root)
-2. Name/IP address changes.  This isn't happening either.
-
-The file region locking works; using strace I can see that fcntl64 is
-used to get and set locks, and attempts to lock the same records on both
-systems give the appropriate errors in the application.  I get the
-SM_UNMON error if I leave the client system alone for 5 minutes with no
-activity; when I next try an operation, I get the above error in the
-logs on both machines.  With continuous operation, I still get the error
-periodically, but if I leave it alone for 5 minutes, it always occurs.
-
-Please could anyone suggest how I might debug or fix this?
+server info
+===========
+aflac> version
+NetApp Release 6.4.2: Mon Sep 15 12:35:28 PDT 2003
 
 
-Many thanks,
-Roger
+This is the client rpc info:
+alfalfa-56: rpcinfo -p alfalfa
+   program vers proto   port
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    100024    1   udp  32768  status
+    100024    1   tcp  32768  status
+    100007    2   udp    816  ypbind
+    100007    1   udp    816  ypbind
+    100007    2   tcp    819  ypbind
+    100007    1   tcp    819  ypbind
+    391002    2   tcp  32769  sgi_fam
+    100011    1   udp    711  rquotad
+    100011    2   udp    711  rquotad
+    100011    1   tcp    731  rquotad
+    100011    2   tcp    731  rquotad
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
+    100003    2   tcp   2049  nfs
+    100003    3   tcp   2049  nfs
+    100021    1   udp  32770  nlockmgr
+    100021    3   udp  32770  nlockmgr
+    100021    4   udp  32770  nlockmgr
+    100021    1   tcp  32770  nlockmgr
+    100021    3   tcp  32770  nlockmgr
+    100021    4   tcp  32770  nlockmgr
+    100005    1   udp    728  mountd
+    100005    1   tcp    744  mountd
+    100005    2   udp    728  mountd
+    100005    2   tcp    744  mountd
+    100005    3   udp    728  mountd
+    100005    3   tcp    744  mountd
+    100001    3   udp    725  rstatd
+    100001    2   udp    725  rstatd
+    100001    1   udp    725  rstatd
+
+This is the server rpc info:
+
+alfalfa-57: rpcinfo -p aflac
+   program vers proto   port
+    100011    1   udp   4049  rquotad
+    100021    4   tcp   4045  nlockmgr
+    100021    3   tcp   4045  nlockmgr
+    100021    1   tcp   4045  nlockmgr
+    100021    4   udp   4045  nlockmgr
+    100021    3   udp   4045  nlockmgr
+    100021    1   udp   4045  nlockmgr
+    100024    1   tcp   4047  status
+    100024    1   udp   4047  status
+    100005    3   tcp   4046  mountd
+    100005    2   tcp   4046  mountd
+    100005    1   tcp   4046  mountd
+    100005    3   udp   4046  mountd
+    100005    2   udp   4046  mountd
+    100005    1   udp   4046  mountd
+    100003    4   tcp   2049  nfs
+    100003    3   tcp   2049  nfs
+    100003    2   tcp   2049  nfs
+    100003    3   udp   2049  nfs
+    100003    2   udp   2049  nfs
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+
+The automounter is configured as follows:
+/etc/sysconfig/autofs:
+LOCALOPTIONS="-DSITE=nwd_ -DARCH=iX86 -DOSREL=redhat3"
+DAEMONOPTIONS="--timeout=60 --verbose --debug"
+
+/etc/auto.master
+
+a typical entry:
+/cpd            /etc/auto.cpd
+
+I have also tried:
+/cpd            /etc/auto.cpd -vers=2
+(that didn't seem to fix the problem)
+
+I am now trying:
+/cpd		/etc/auto.cpd -nolock
+
+auto.cpd is a script that returns a mount point, e.g.
+
+alfalfa-72: /etc/auto.cpd gnu
+aflac,aflac-171:/vol/vol1/cpd/${SITE}${ARCH}_${OSREL}/&
 
 
-Server Configuration (host till1, ip 10.0.0.203):
-/etc/exports:
-/srv/epic *(rw,sync,secure_locks,no_root_squash,no_wdelay,no_subtree_check)
-[using knfsd]
+These are the kind of messages I am seeing:
+============================================================================
+Dec 12 06:00:37 alfalfa kernel: nfs warning: mount version older than kernel
+Dec 12 06:00:37 alfalfa kernel: RPC: Can't bind to reserved port (98).
+Dec 12 06:00:37 alfalfa kernel: nfs_get_root: getattr error = 5
+Dec 12 06:00:37 alfalfa kernel: nfs_read_super: get root inode failed
+Dec 12 06:00:37 alfalfa automount[1617]: >> mount: wrong fs type, bad option, 
+ba
+d superblock on aflac:/vol/vol1/cpd/nwd_local,
+Dec 12 06:00:37 alfalfa automount[1617]: >>        or too many mounted file 
+syst
+ems
+Dec 12 06:00:37 alfalfa automount[1617]: mount(nfs): nfs: mount failure 
+aflac:/v
+ol/vol1/cpd/nwd_local on /cpd/local
+Dec 12 06:00:37 alfalfa automount[1617]: failed to mount /cpd/local
+Dec 12 06:00:37 alfalfa kernel: RPC: Can't bind to reserved port (98).
+Dec 12 06:00:37 alfalfa kernel: nfs_get_root: getattr error = 5
+Dec 12 06:00:37 alfalfa kernel: RPC: Can't bind to reserved port (98).
+Dec 12 06:00:37 alfalfa kernel: nfs_get_root: getattr error = 5
+Dec 12 06:00:37 alfalfa kernel: nfs_read_super: get root inode failed
+Dec 12 06:00:40 alfalfa kernel: nfs warning: mount version older than kernel
+Dec 12 06:00:40 alfalfa kernel: RPC: Can't bind to reserved port (98).
+Dec 12 06:00:40 alfalfa kernel: nfs_get_root: getattr error = 5
+Dec 12 06:00:40 alfalfa kernel: nfs_read_super: get root inode failed
+Dec 12 06:00:40 alfalfa automount[1625]: >> mount: wrong fs type, bad option, 
+ba
+d superblock on aflac:/vol/vol1/cpd/nwd_local,
+Dec 12 06:00:40 alfalfa automount[1625]: >>        or too many mounted file 
+syst
+ems
+Dec 12 06:00:40 alfalfa automount[1625]: mount(nfs): nfs: mount failure 
+aflac:/v
+ol/vol1/cpd/nwd_local on /cpd/local
+Dec 12 06:00:40 alfalfa automount[1625]: failed to mount /cpd/local
+Dec 12 06:00:40 alfalfa kernel: RPC: Can't bind to reserved port (98).
+Dec 12 06:00:40 alfalfa kernel: nfs_get_root: getattr error = 5
+Dec 12 06:00:40 alfalfa kernel: RPC: Can't bind to reserved port (98).
+Dec 12 06:00:40 alfalfa kernel: nfs_get_root: getattr error = 5
+Dec 12 06:00:40 alfalfa kernel: nfs_read_super: get root inode failed
+Dec 12 06:00:40 alfalfa kernel: nfs warning: mount version older than kernel
+Dec 12 06:00:40 alfalfa kernel: RPC: Can't bind to reserved port (98).
+Dec 12 06:00:40 alfalfa kernel: nfs_get_root: getattr error = 5
+Dec 12 06:00:40 alfalfa kernel: nfs_read_super: get root inode failed
+Dec 12 06:00:40 alfalfa automount[1761]: >> mount: wrong fs type, bad option, 
+ba
+d superblock on aflac:/vol/vol1/cpd/nwd_local,
+Dec 12 06:00:40 alfalfa automount[1761]: >>        or too many mounted file 
+syst
+ems
+Dec 12 06:00:40 alfalfa automount[1761]: mount(nfs): nfs: mount failure 
+aflac:/v
+ol/vol1/cpd/nwd_local on /cpd/local
+Dec 12 06:00:40 alfalfa automount[1761]: failed to mount /cpd/local
+============================================================================
 
-Client configuration (host till2, ip 10.0.0.204):
-I use autofs4, which gives this mount:
-automount(pid2099) on /var/autofs/net type autofs
-(rw,fd=4,pgrp=2099,minproto=2,maxproto=4)
-till1:/srv/epic on /var/autofs/net/till1/srv/epic type nfs
-(rw,nosuid,nodev,hard,intr,nfsvers=3,posix,udp,rsize=8192,wsize=8192,addr=10.0.0.203)
+The reason I am trying "vers=2", and "nolock" nfs options to fix
+this is because of this article -- so far vers=2 did not fix the problem:
 
-This is the log in the server (nlm_debug is 65535):
+http://support.trittontechnologies.com/kbarticles/nas_asap/T4133-1015.htm
 
-Dec 14 12:02:25 till1 kernel: lockd: request from 0a0000cc
-Dec 14 12:02:25 till1 kernel: lockd: LOCK          called
-Dec 14 12:02:25 till1 kernel: lockd: nlm_lookup_host(0a0000cc, p=17, v=4)
-Dec 14 12:02:25 till1 kernel: lockd: host garbage collection
-Dec 14 12:02:25 till1 kernel: lockd: nlmsvc_mark_resources
-Dec 14 12:02:25 till1 kernel: lockd: delete host 10.0.0.204
-Dec 14 12:02:25 till1 kernel: lockd: nsm_unmonitor(10.0.0.204)
-Dec 14 12:02:25 till1 kernel: nsm: xdr_encode_mon(0a0000cc, -1249509120, 67108864, 268435456)
-Dec 14 12:02:25 till1 rpc.statd[1421]: Received erroneous SM_UNMON request from till1 for 10.0.0.204
-Dec 14 12:02:25 till1 kernel: lockd: creating host entry
-Dec 14 12:02:25 till1 kernel: lockd: nsm_monitor(10.0.0.204)
-Dec 14 12:02:25 till1 kernel: nsm: xdr_encode_mon(0a0000cc, -1249509120, 67108864, 268435456)
-Dec 14 12:02:25 till1 kernel: nsm: xdr_decode_stat_res status 0 state 181
-Dec 14 12:02:25 till1 kernel: lockd: nlm_file_lookup(01000001 0400fe00 00010001 00010804 13bb0bdb 00000000)
-Dec 14 12:02:25 till1 kernel: lockd: creating file for (01000001 0400fe00 00010001 00010804 13bb0bdb
-00000000)
-Dec 14 12:02:25 till1 kernel: lockd: found file c51aa1d0 (count 0)
-Dec 14 12:02:25 till1 kernel: lockd: nlmsvc_lock(fe04/67588, ty=1, pi=2493, 805306370-805306371, bl=0)
-Dec 14 12:02:25 till1 kernel: lockd: nlmsvc_lookup_block f=c51aa1d0 pd=2493 805306370-805306371 ty=1
-Dec 14 12:02:25 till1 kernel: lockd: posix_lock_file returned 0
-Dec 14 12:02:25 till1 kernel: lockd: LOCK          status 0
-Dec 14 12:02:25 till1 kernel: lockd: release host 10.0.0.204
-Dec 14 12:02:25 till1 kernel: lockd: nlm_release_file(c51aa1d0, ct = 1)
-Dec 14 12:02:25 till1 kernel: nlmsvc_retry_blocked(00000000, when=0)
-Dec 14 12:02:25 till1 kernel: nlmsvc_retry_blocked(00000000, when=0)
-Dec 14 12:02:25 till1 kernel: lockd: request from 0a0000cc
+I was wondering if anyone here has some better ideas of things I could
+try, or if anyone knows what is going wrong here.
+
+Thanks,
+
+-Dave
+
+________________________________________________________________________
+David Meleedy				Analog Devices, Inc.
+David.Meleedy@analog.com		Three Technology Way
+Phone: 781 461 3494			Norwood, MA  02062-9106  USA
 
 
-This is the log in the client (nlm_debug is 65535, the time is slightly
-behind the server):
-
-Dec 14 11:04:55 till2 kernel: lockd: nlm_lookup_host(0a0000cb, p=17, v=4)
-Dec 14 11:04:55 till2 kernel: lockd: get host 10.0.0.203
-Dec 14 11:04:55 till2 kernel: lockd: call procedure 4 on 10.0.0.203
-Dec 14 11:04:55 till2 kernel: lockd: nlm_bind_host(0a0000cb)
-Dec 14 11:04:55 till2 kernel: lockd: server returns status 0
-Dec 14 11:04:55 till2 kernel: lockd: clnt proc returns 0
-Dec 14 11:04:55 till2 kernel: lockd: release host 10.0.0.203
-Dec 14 11:04:55 till2 kernel: lockd: release host 10.0.0.203
-Dec 14 11:59:54 till2 kernel: lockd: nlm_lookup_host(0a0000cb, p=17, v=4)
-Dec 14 11:59:54 till2 kernel: lockd: host garbage collection
-Dec 14 11:59:54 till2 kernel: lockd: nlmsvc_mark_resources
-Dec 14 11:59:54 till2 kernel: lockd: delete host 10.0.0.203
-Dec 14 11:59:54 till2 kernel: lockd: nsm_unmonitor(10.0.0.203)
-Dec 14 11:59:54 till2 rpc.statd[2141]: Received erroneous SM_UNMON request from till2 for 10.0.0.203
-Dec 14 11:59:54 till2 kernel: lockd: creating host entry
-Dec 14 11:59:54 till2 kernel: lockd: nlm_bind_host(0a0000cb)
-Dec 14 11:59:54 till2 kernel: lockd: nsm_monitor(10.0.0.203)
-
-
--- 
-Roger Leigh
-
-                Printing on GNU/Linux?  http://gimp-print.sourceforge.net/
-                GPG Public Key: 0x25BFB848.  Please sign and encrypt your mail.
 
 
 -------------------------------------------------------
