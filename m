@@ -1,17 +1,26 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: NFSv4 daemons...
-Date: Thu, 08 Jan 2004 19:34:08 -0500
+From: YAMAMOTO Takashi <yamamoto@valinux.co.jp>
+Subject: Re: Re: [NFS client] NFS locks not released on abnormal process
+ termination
+Date: Fri, 09 Jan 2004 11:56:26 +0900
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1073608448.1380.22.camel@nidelv.trondhjem.org>
+Message-ID: <1073616986.525187.4709.nullmailer@yamt.dyndns.org>
+References: <35311.68.42.103.198.1073580656.squirrel@webmail.uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: Text/Plain; charset=us-ascii
+Cc: phil@fifi.org, theonetruekenny@yahoo.com,
+	linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AekbN-0006jA-9E
-	for nfs@lists.sourceforge.net; Thu, 08 Jan 2004 16:34:13 -0800
-To: hjl@users.sourceforge.net
+	id 1AempC-0005eI-3X
+	for nfs@lists.sourceforge.net; Thu, 08 Jan 2004 18:56:38 -0800
+Received: from fla1aak172.kng.mesh.ad.jp ([218.42.70.172] helo=yamt.dyndns.org)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1AempB-0000Sq-PJ
+	for nfs@lists.sourceforge.net; Thu, 08 Jan 2004 18:56:37 -0800
+To: trond.myklebust@fys.uio.no
+In-Reply-To: Your message of "Thu, 8 Jan 2004 17:50:56 +0100 (CET)"
+	<35311.68.42.103.198.1073580656.squirrel@webmail.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -24,29 +33,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+hi,
 
-We're at the point now with the NFSv4 project that we'd like to publish
-the user daemons that are necessary to support the existing client in
-the 2.6.0 kernel.
+> > i think it's problematic because you can't assume the lock was
+> > granted on the server and the signaled process might not exit
+> > immediately.
+> 
+> The point is that it is *worse* to assume the lock was not granted,
+> since then it will never get cleared on the server.
 
-Would it make sense to add these to the existing nfs-utils package?
+yes.
 
+> The RPC layer blocks all signals except SIGKILL, so the signalled
+> process has no choice but to exit immediately if something gets
+> through.
 
-There are basically 2 daemons required on the client side:
+we're talking about interruptible mounts, aren't we?
 
-  - Idmapper resolves NFSv4 over-the-wire names into uids/gids that can
-be understood by the kernel.
+are you referring to rpc_clnt_sigmask() ?
+i think it isn't safe to assume sa_handler isn't changed during
+blocking for lock.  consider CLONE_SIGHAND, for example.
 
-  - rpc.gssd sets up RPCSEC_GSS sessions to allow secure RPC negotiation
-between the client and server. Initial support is for Kerberos 5, but
-SPKM3 is in the pipeline too.
+YAMAMOTO Takashi
 
-Both these two daemons have equivalents on the server side (but I'll
-leave it to CITI/Neil to work out who wants to take responsability for
-publishing those).
-
-Cheers,
-  Trond
 
 
 -------------------------------------------------------
