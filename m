@@ -1,14 +1,18 @@
-From: "Horace Clement" <9d671pqa48m2@yahoo.com.hk>
-Subject: Apply for a online mortgage loan AA zh
-Date: Wed, 09 Jan 02 19:11:30 GMT
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: RE: wsize & PAGE_SIZE issues on IA64 clients.
+Date: Mon, 31 Mar 2003 15:25:59 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <yb3c-5-1--2npof$5@flhfpq73tit>
+Message-ID: <6440EA1A6AA1D5118C6900902745938E07D55484@black.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="8_40F_CE.09___F8.2_.C22_"
-Cc: <nfs@lists.sourceforge.net>, <nms-cgi-support@lists.sourceforge.net>, <nms-cgi.support@lists.sourceforge.net>, <ofset-members@lists.sourceforge.net>, <opennap-admin@lists.sourceforge.net>
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: netsaintplug-devel@lists.sourceforge.net
+Received: from mx01.netapp.com ([198.95.226.53])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 1908fp-0003mD-00
+	for <nfs@lists.sourceforge.net>; Mon, 31 Mar 2003 15:26:41 -0800
+To: "Greg Lindahl" <lindahl@keyresearch.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -21,33 +25,20 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+> Is the "wsize < PAGE_SIZE" problem worth a printf in mount or=20
+> mountd or
+> the kernel?
 
---8_40F_CE.09___F8.2_.C22_
-Content-Type: text/html;
-Content-Transfer-Encoding: quoted-printable
-
-<html><head>
-<title>czar</title></head>Netsaintplug-devel<body><center><a href=3D"http://=
-bannedcd.org/lead2345/"><img border=3D"0" src=3D"http://bannedcd.org/p4X.j=
-pg" width=3D"427" height=3D"252">
-</a>
-</center>
-<p><a href=3D"http://www.n0hastlem0rtgage.com/remove.html">No mail!</a></p=
->
-</body></html>
-wendell
-wskv oolei ya exdf qinqqei wki x 
-brptepylmjkqtlfvwk
-
---8_40F_CE.09___F8.2_.C22_--
-
+perhaps an entry in the NFS FAQ might be more timely, considering
+how long it would take this kind of change to make it into the
+common commercial distributions.
 
 
 -------------------------------------------------------
-This sf.net email is sponsored by:ThinkGeek
-Welcome to geek heaven.
-http://thinkgeek.com/sf
+This SF.net email is sponsored by: ValueWeb: 
+Dedicated Hosting for just $79/mo with 500 GB of bandwidth! 
+No other company gives more support or power for your dedicated server
+http://click.atdmt.com/AFF/go/sdnxxaff00300020aff/direct/01/
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
