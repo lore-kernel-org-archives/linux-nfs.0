@@ -1,18 +1,18 @@
-From: Justin Piszcz <jpiszcz@lucidpixels.com>
-Subject: Re: nfs-utils 1.0.3 compile error w/gcc-3.2.2
-Date: Fri, 28 Mar 2003 10:13:26 -0500
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: RE: NFSv4 and client caching to local disk?
+Date: Fri, 28 Mar 2003 07:16:16 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3E846696.6010900@lucidpixels.com>
-References: <3E844E32.4000008@lucidpixels.com> <200303281557.29049.stderr@web.de>
+Message-ID: <6440EA1A6AA1D5118C6900902745938E07D55473@black.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from lucidpixels.com ([66.45.37.187])
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18yvYB-0007TB-00
-	for <nfs@lists.sourceforge.net>; Fri, 28 Mar 2003 07:13:47 -0800
-To: Alex Thiel <stderr@web.de>
+Received: from mx01.netapp.com ([198.95.226.53])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18yvak-0000TQ-00
+	for <nfs@lists.sourceforge.net>; Fri, 28 Mar 2003 07:16:26 -0800
+To: "James Pearson" <james-p@moving-picture.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,51 +25,33 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-CPP is in my path, is it hardcoded or something?
+hi james-
 
+> I'm trying to find out more about 'cachefs' type file systems=20
+> that can=20
+> cache NFS data to a client's local disk - I've come across a=20
+> couple of=20
+> references that seem to indicate that this may be possible with NFSv4.
+>=20
+> Does (will?) the Linux NFSv4 client support this feature?
 
-war@war:~$ which cpp
-/vapp/bin/cpp
-war@war:~$ cpp --version
-cpp (GCC) 3.2.2
-Copyright (C) 2002 Free Software Foundation, Inc.
-This is free software; see the source for copying conditions.  There is NO
-warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Sun implemented cachefs on Solaris for earlier versions of NFS.
+it really has nothing to do with which version of NFS that is
+in use.
 
-war@war:~$ echo $PATH
-/vapp/bin:/vapp/sbin:/appc/netscape-4.8:/appc/realplayer-8.0:/appc/j2re-1.4.1/bin:/appc/jdk-1.4.1/bin:/bin:/sbin:/usr/bin:/usr/sbin:/usr/X11R6/bin:/usr/local/bin:/usr/local/sbin
-war@war:~$
+there is sporadic interest in a cachefs on Linux, and i know of
+at least one generic prototype.  a specific implementation of
+client-side disk caching that is available today is contained
+in the Linux OpenAFS client (known as the AFS cache manager).
 
+cachefs becomes rather more interesting when used in conjunction
+with NFSv4 file delegations -- that makes NFS behave in a fashion
+similar to AFS client-side disk caching with callbacks.
 
-
-Alex Thiel wrote:
-
->On Friday 28 March 2003 14:29, Justin Piszcz wrote:
->  
->
->>-rw-r--r--    1 war      wheel        2.7k Mar 28 08:24 log.bz2
->>
->>The error is contained in the attachment.
->>    
->>
->
->Did you notice this in your log:
->
->Making all in export
->rm -f mount.h mount_clnt.c mount_xdr.c
->../../bin/rpcgen -h -o mount.h mount.x
->cannot find any C preprocessor (cpp)
->^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
->
->Make sure cpp is in your search path.
->
->	Alex
->
->
->
->  
->
-
+there currently is no explicit plan to implement cachefs by the
+team that is working on NFSv4 for Linux.  a disk cache has
+rather limited usefulness compared to a memory cache.  what is
+your application for it?
 
 
 
