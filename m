@@ -1,21 +1,18 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: [PATCH] Race between rpciod() and rpciod_down() when shutting down
-Date: Tue, 20 May 2003 14:07:10 +0200
+From: David Myer <davidmyer800@yahoo.com>
+Subject: nfs over tcp in linux kernel version 2.4.18
+Date: Tue, 20 May 2003 11:02:37 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16074.6766.140044.669722@charged.uio.no>
-References: <Pine.A41.4.44.0305151745370.28612-100000@forte.austin.ibm.com>
-Reply-To: trond.myklebust@fys.uio.no
+Message-ID: <20030520180237.13669.qmail@web21005.mail.yahoo.com>
+References: <20030520031700.35038.qmail@web21001.mail.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net,
-    trond.myklebust@fys.uio.no
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19I5uB-0007IF-00
-	for <nfs@lists.sourceforge.net>; Tue, 20 May 2003 05:07:43 -0700
-To: olof@austin.ibm.com
-In-Reply-To: <Pine.A41.4.44.0305151745370.28612-100000@forte.austin.ibm.com>
+Received: from web21005.mail.yahoo.com ([216.136.227.59])
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19IBRe-0004Ht-00
+	for <nfs@lists.sourceforge.net>; Tue, 20 May 2003 11:02:38 -0700
+To: nfs@lists.sourceforge.net
+In-Reply-To: <20030520031700.35038.qmail@web21001.mail.yahoo.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,23 +25,22 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == olof  <olof@austin.ibm.com> writes:
+Hi,
 
-     > Below patch removes a timing window during which rpciod_down()
-     > will pass the while(rpciod_pid) test, but go to sleep after
-     > rpciod() has woken up sleepers on the rpciod_killer queue.
+Can anyone advise me if nfs server over tcp is
+supported in 2.4.18 kernel version ? How to
+setup/enable on both server/client side ? Tried to
+looked at FAQ but information did not seem be there.
 
-     > Unfortunately, there's no
-     > wait_for_completion_interruptible(). Instead of rolling my own
-     > in the NFS code, I'll work on getting one added to the kernel.
-     > The uninterruptible sleep is a temporary solution until then,
-     > and I'll make sure to follow up here if/when the function is
-     > added to kernel/sched.c.
+Do I need to apply any patches ?
 
-Why not just ensure that the callers are holding the BKL?
+Thanks
+David
 
-Cheers,
-  Trond
+__________________________________
+Do you Yahoo!?
+The New Yahoo! Search - Faster. Easier. Bingo.
+http://search.yahoo.com
 
 
 -------------------------------------------------------
