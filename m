@@ -1,26 +1,27 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: [PATCH 2.6.3] Add write throttling to NFS client
-Date: Thu, 26 Feb 2004 15:50:51 +0100
+From: Pascal =?iso-8859-1?q?Hav=E9?= <have@ann.jussieu.fr>
+Subject: NFS client cannot read many data blocks
+Date: Thu, 26 Feb 2004 16:39:58 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040226145051.GE32597@suse.de>
-References: <Pine.LNX.4.44.0402261415410.24606-100000@kenzo.iwr.uni-heidelberg.de> <32952.207.214.87.84.1077802844.squirrel@webmail.uio.no>
+Message-ID: <200402261639.59669.have@ann.jussieu.fr>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Cc: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>,
-	Greg Banks <gnb@melbourne.sgi.com>, ShantanuGoel <sgoel01@yahoo.com>,
-	nfs@lists.sourceforge.net
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AwMum-0001JN-Qz
-	for nfs@lists.sourceforge.net; Thu, 26 Feb 2004 06:55:04 -0800
-Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.30)
-	id 1AwMf3-0001f2-VR
-	for nfs@lists.sourceforge.net; Thu, 26 Feb 2004 06:38:50 -0800
-To: trond.myklebust@fys.uio.no
-In-Reply-To: <32952.207.214.87.84.1077802844.squirrel@webmail.uio.no>
+	id 1AwNgH-0005MF-9d
+	for nfs@lists.sourceforge.net; Thu, 26 Feb 2004 07:44:09 -0800
+Received: from shiva.jussieu.fr ([134.157.0.129])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1AwNQU-0000Ou-UX
+	for nfs@lists.sourceforge.net; Thu, 26 Feb 2004 07:27:51 -0800
+Received: from emeu.ann.jussieu.fr (emeu.ann.jussieu.fr [134.157.2.1])
+          by shiva.jussieu.fr (8.12.10/jtpda-5.4) with ESMTP id i1QFg4G3030710
+          for <nfs@lists.sourceforge.net>; Thu, 26 Feb 2004 16:42:04 +0100 (CET)
+Received: from patera.ann.jussieu.fr (patera.ann.jussieu.fr [134.157.2.51])
+          by emeu.ann.jussieu.fr (8.11.6/jtpda-5.3.1) with ESMTP id i1QFg4c10450
+          for <nfs@lists.sourceforge.net>; Thu, 26 Feb 2004 16:42:04 +0100
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,51 +34,123 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Feb 26, 2004 at 02:40:44PM +0100, Trond Myklebust wrote:
-> To simply assert that "async" is somehow equivalent to "not important" is
-> just plain wrong.
+=2D----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-Agreed, and I also agree that my suggestion of always preferring sync
-tasks over async tasks is simplistic. But I think the patch proposed
-by Shantanu adds more complexity to an already overly complex rpc
-implementation.
 
-The general "unfairness" observed in writes is due to the fact that we
-allow a writing process to dirty a large number of pages without blocking
-for the actual IO. So if you write a large file, nfs_flushd can easily
-saturate the transport (which is a good thing for performance) but it's
-bad for sync tasks.
+Hello,=20
+Since I have change disk on server, I have a strange problem with some NFS=
+=20
+clients (config has been simply copied).
 
-One problem is that currently, there seems to be no upper bound at all
-on the number of write requests we schedule. So one step in the right
-direction may be to check the number of backlogged tasks and refrain
-from scheduling more write requests if it exceeds a certain threshold.
+=46irst, I will describe my environment.
+I have a NFS server which exports a /home partition (XFS) to ~20 clients.
+The NFS server (P4 Xeon) runs a nfs-kernel-server 1.0.6-1 (Debian) with=20
+RPCNFSDCOUNT=3D24. This kernel version is 2.6.3 with following options :
+CONFIG_NFS_FS=3Dy
+CONFIG_NFS_V3=3Dy
+CONFIG_NFSD=3Dy
+CONFIG_NFSD_V3=3Dy
+CONFIG_LOCKD=3Dy
+CONFIG_LOCKD_V4=3Dy
+CONFIG_EXPORTFS=3Dy
+CONFIG_SUNRPC=3Dy
 
-Applications doing lots of stats etc are punished so severely because
-all these operations are synchronous.  So if you have a maximum backlog
-of N RPC requests, your average delay per sync rpc operation is O(N).
 
-So I think it could help if nfs_flushd and friends check the transport
-backlog before scheduling new writes. There should be tunables for
-the minimum number of pending writes we're always permitted to
-schedule, and a maximum backlog length.
+There are 2 kinds of client.=20
+A: 8 clients (P4 Xeon) with a 2.4.20 kernel
+B: 12 clients (P3) with a 2.4.25 kernel
+All of them have following kernel options
+CONFIG_NFS_FS=3Dy
+CONFIG_NFS_V3=3Dy
+CONFIG_SUNRPC=3Dy
+CONFIG_LOCKD=3Dy
+CONFIG_LOCKD_V4=3Dy
 
-To avoid any ugliness related to layering violations, you could use
-"color" to tag different RPC requests rather than referring to "writes".
+Everything works on clients A, but on clients B=20
+it is very strange. I can obtain stats of directories and sub-directories=20
+(with 'ls -l', find, ...), read/write is OK for small files (few blocks=20
+of 4096 octets) but for larger files, it seems to freeze connection.
 
-Of course, that's just changing the queuing, not real scheduling.
-But that can be an advantage, too, because it keeps things relatively
-simple.
+If I use=20
+echo 1 > /proc/sys/sunrpc/nfs_debug on clients and
+echo 1 > /proc/sys/sunrpc/nfsd_debug on server
 
-BTW I think reading is much less of a problem. The number of readaheads
-scheduled by generic_file_read is limited, so it's entirely different
-from the "lets blow the router's fuse" approach of the NFS write code.
+when I copy a small file 'b' (5 blocks) to local /tmp, I have=20
+(/var/log/syslog)
+=2D ---------%<---------------------------------------
+=46eb 26 16:09:19 client kernel: NFS: refresh_inode(b/237372685 ct=3D1=20
+info=3D0x6)
+=46eb 26 16:09:20 client kernel: NFS: refresh_inode(b/235142450 ct=3D1=20
+info=3D0x6)
+=46eb 26 16:09:20 client kernel: NFS: dentry_delete(test/b, 0)
+=46eb 26 16:09:22 client kernel: NFS: refresh_inode(b/237372685 ct=3D1=20
+info=3D0x6)
+=46eb 26 16:09:25 client kernel: NFS: refresh_inode(b/235142450 ct=3D1=20
+info=3D0x6)
+=46eb 26 16:09:32 client kernel: NFS: refresh_inode(b/235142450 ct=3D1=20
+info=3D0x6)
+=46eb 26 16:09:32 client kernel: nfs: read(test/b, 4096@0)
+=46eb 26 16:09:32 client kernel: nfs: read(test/b, 4096@4096)
+=46eb 26 16:09:32 client kernel: nfs: read(test/b, 4096@8192)
+=46eb 26 16:09:32 client kernel: nfs: read(test/b, 4096@12288)
+=46eb 26 16:09:32 client kernel: nfs: read(test/b, 4096@16384)
+=46eb 26 16:09:32 client kernel: nfs: read(test/b, 4096@20480)
+=46eb 26 16:09:32 client kernel: nfs: flush(b/235142450)
+=46eb 26 16:09:32 client kernel: NFS: dentry_delete(test/b, 0)
+=46eb 26 16:09:32 client kernel: NFS: refresh_inode(b/237372685 ct=3D1=20
+info=3D0x6)
+=46eb 26 16:09:32 client kernel: NFS: refresh_inode(b/235142450 ct=3D1=20
+info=3D0x6)
+=46eb 26 16:09:32 client kernel: NFS: dentry_delete(test/b, 0)
+=2D --------------------->%-------------------------------------
 
-Olaf
--- 
-Olaf Kirch     |  Stop wasting entropy - start using predictable
-okir@suse.de   |  tempfile names today!
----------------+ 
+And when copying a larger file 'c' (20 blocks) to local /tmp:
+=2D ---------%<---------------------------------------
+=46eb 26 16:16:34 client kernel: NFS: refresh_inode(7/237372685 ct=3D1=20
+info=3D0x6)
+=46eb 26 16:16:35 client kernel: NFS: refresh_inode(7/235142451 ct=3D1=20
+info=3D0x6)
+=46eb 26 16:16:35 client kernel: NFS: dentry_delete(test/c, 0)
+=46eb 26 16:16:35 client kernel: NFS: refresh_inode(7/237372685 ct=3D1=20
+info=3D0x6)
+=46eb 26 16:16:35 client kernel: NFS: refresh_inode(7/235142451 ct=3D1=20
+info=3D0x6)
+=46eb 26 16:16:35 client kernel: NFS: refresh_inode(7/235142451 ct=3D1=20
+info=3D0x6)
+=46eb 26 16:16:35 client kernel: nfs: read(test/c, 4096@0)
+=46eb 26 16:16:35 client kernel: NFS: refresh_inode(7/235142451 ct=3D1=20
+info=3D0x6)
+=46eb 26 16:16:35 client kernel: nfs: read(test/c, 4096@4096)
+=46eb 26 16:16:35 client kernel: nfs: read(test/c, 4096@8192)
+=46eb 26 16:16:35 client kernel: nfs: read(test/c, 4096@12288)
+=46eb 26 16:16:35 client kernel: nfs: read(test/c, 4096@16384)
+=46eb 26 16:16:52 client kernel: nfs: server hydre not responding, still=20
+trying
+=2D --------------------->%-------------------------------------
+It seems that the problem always appears when it read(..., 4096@16384)
+
+Then everything is frozen on this NFS mount point (read/write/stats)
+
+Do you have an idea about what may be wrong (maybe in my configuration?)=20
+since I have changed the server? (server and client configs are the=20
+same).
+
+Best regards,
+=2D --=20
+| Pascal Hav=E9
+| Laboratoire Jacques-Louis Lions
+| Universit=E9 Pierre et Marie Curie
+| Boite courrier 187, 75252  Paris cedex 05 FRANCE
+| (express mail) 175 rue du Chevaleret, 75013 Paris
+=2D----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.4 (GNU/Linux)
+
+iD8DBQFAPhNOmhLInsKdD4IRAjv7AJ90mmG6Yv9glGNww24KMgf/FFBzFACgw0Sb
+OTw8DwA81qH18gpD8v6h97U=3D
+=3D4jcI
+=2D----END PGP SIGNATURE-----
+
 
 
 -------------------------------------------------------
