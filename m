@@ -1,21 +1,18 @@
-From: Hirokazu Takahashi <taka@valinux.co.jp>
-Subject: Re: [BUG] kNFSd may get a freeing inode.
-Date: Fri, 20 Sep 2002 00:53:00 +0900 (JST)
+From: Tom McNeal <trmcneal@attbi.com>
+Subject: Re: Problem : Linux - SOlaris NFS
+Date: Thu, 19 Sep 2002 10:23:04 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020920.005300.74726524.taka@valinux.co.jp>
-References: <15752.7496.463707.865953@notabene.cse.unsw.edu.au>
-	<20020918.160913.73658160.taka@valinux.co.jp>
-	<15752.22931.241819.210428@notabene.cse.unsw.edu.au>
+Message-ID: <3D8A07F8.AD875BE9@attbi.com>
+References: <H00004750469f74b.1032248298.dlx99.dlh.st.com@MHS>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Cc: viro@math.psu.edu, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sv1.valinux.co.jp ([202.221.173.100])
+Received: from rwcrmhc52.attbi.com ([216.148.227.88])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17s3kB-0005EF-00
-	for <nfs@lists.sourceforge.net>; Thu, 19 Sep 2002 09:01:31 -0700
-To: neilb@cse.unsw.edu.au
-In-Reply-To: <15752.22931.241819.210428@notabene.cse.unsw.edu.au>
+	id 17s4wg-00067l-00
+	for <nfs@lists.sourceforge.net>; Thu, 19 Sep 2002 10:18:30 -0700
+To: ashutosh.varshney@st.com
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,97 +25,49 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-Hi,
+Since Solaris defaults to 32K transfer sizes, and the client may be 
+taking its cues from the server, the 32K size might be too much for
+the client NIC.  If this is true, you should be able to correct 
+things simply by remounting with 8K rsize & wsize.  If the reboot
+is required, there may be more going on.
 
-I was thinking about your code and I've changed my mind that
-your aproach isn't bad.
+One thing; I've got Solaris 8 on Intel installed on my test machine
+and did not run across any problems when I was running some tests
+earlier this summer, using a 2.4.18 client.
 
-> Brief description of patch:
+Regards -
+
+Tom
+
+ashutosh.varshney@st.com wrote:
 > 
->  leaf about-to-be-delete inodes in hash table until 
-> filesystem has signed off on them, then remove from table and
-> wake_up_inode.
->  If a FREEING inode is found on hash table, sleep on
-> the inodes wait_queue (which usefully is separate from the inode and
-> won't be freed when the inode goes) and then try again.
-.....
-	
-I refined your patch, how do you think about it?
-  (This patch is just sample)
+> Hi
+> 
+> We had a lot of SUN machines and just installed few linux machines.We
+> have all our licenses/Softwares of Solaris m/cs( NIS also on Solaris).But
+> when we access the things from linux client..network chokes..all things
+> hang..then we reboot the linux ..and set the rsize & wsize to 8K and now
+> things work fine..
+> Can any one puts lights why this all happen ..where is the problem.. in
+> linux or solairs.
+> Any site referneces for this customization..
+> 
+> thanks in advance
+> 
+> Ashutosh
+> 
+> -------------------------------------------------------
+> Sponsored by: AMD - Your access to the experts on Hammer Technology!
+> Open Source & Linux Developers, register now for the AMD Developer
+> Symposium. Code: EX8664 http://www.developwithamd.com/developerlab
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
 
---- inode.c.ORG	Wed Sep 18 15:58:03 2030
-+++ inode.c	Fri Sep 20 00:48:31 2030
-@@ -444,6 +444,20 @@ int shrink_icache_memory(int priority, i
- 	return 0;
- }
- 
-+void __wait_on_freeing_inode(struct inode *inode)
-+{
-+	DECLARE_WAITQUEUE(wait, current);
-+	wait_queue_head_t *wq = i_waitq_head(inode);
-+
-+	add_wait_queue(wq, &wait);
-+	set_current_state(TASK_UNINTERRUPTIBLE);
-+	spin_unlock(&inode_lock);
-+	schedule();
-+	remove_wait_queue(wq, &wait);
-+	current->state = TASK_RUNNING;
-+	spin_lock(&inode_lock);
-+}
-+
- /*
-  * Called with the inode lock held.
-  * NOTE: we are not increasing the inode-refcount, you must call __iget()
-@@ -466,6 +480,10 @@ static struct inode * find_inode(struct 
- 			continue;
- 		if (!test(inode, data))
- 			continue;
-+		if (inode->i_state & (I_FREEING|I_CLEAR)) {
-+			__wait_on_freeing_inode(inode);
-+			goto retry;
-+		}
- 		break;
- 	}
- 	return inode;
-@@ -479,7 +497,7 @@ static struct inode * find_inode_fast(st
- {
- 	struct list_head *tmp;
- 	struct inode * inode;
--
-+retry:
- 	tmp = head;
- 	for (;;) {
- 		tmp = tmp->next;
-@@ -491,6 +509,10 @@ static struct inode * find_inode_fast(st
- 			continue;
- 		if (inode->i_sb != sb)
- 			continue;
-+		if (inode->i_state & (I_FREEING|I_CLEAR)) {
-+			__wait_on_freeing_inode(inode);
-+			goto retry;
-+		}
- 		break;
- 	}
- 	return inode;
-@@ -793,7 +815,6 @@ void generic_delete_inode(struct inode *
- {
- 	struct super_operations *op = inode->i_sb->s_op;
- 
--	list_del_init(&inode->i_hash);
- 	list_del_init(&inode->i_list);
- 	inode->i_state|=I_FREEING;
- 	inodes_stat.nr_inodes--;
-@@ -812,6 +833,10 @@ void generic_delete_inode(struct inode *
- 		delete(inode);
- 	} else
- 		clear_inode(inode);
-+	spin_lock(&inode_lock);
-+	list_del_init(&inode->i_hash);
-+	spin_unlock(&inode_lock);
-+	wake_up_inode(inode);
- 	if (inode->i_state != I_CLEAR)
- 		BUG();
- 	destroy_inode(inode);
+--
+----------------------------------------------------------------------
+Tom McNeal            trmcneal@attbi.com          (650)906-0761 (cell) 
+----------------------------------------------------------------------
 
 
 -------------------------------------------------------
