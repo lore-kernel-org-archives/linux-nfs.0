@@ -1,19 +1,16 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: [PATCH 15/19] A basic NFSv4 client for 2.5.x
-Date: Sat, 12 Oct 2002 01:48:55 +0200
+From: Jonathan Nicklin <jnicklin111@yahoo.com>
+Subject: NFS Server Interoperability: Link and Rename
+Date: Mon, 30 Sep 2002 18:39:22 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15783.25447.680627.489259@charged.uio.no>
-Reply-To: trond.myklebust@fys.uio.no
+Message-ID: <20021001013922.23147.qmail@web13207.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: NFS maillist <nfs@lists.sourceforge.net>,
-    nfsv4-wg@citi.umich.edu
+Content-Type: multipart/alternative; boundary="0-1516854440-1033436362=:22952"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mons.uio.no ([129.240.130.14])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1809Wl-0002eb-00
-	for <nfs@lists.sourceforge.net>; Fri, 11 Oct 2002 16:49:08 -0700
-To: Linus Torvalds <torvalds@transmeta.com>
+Received: from web13207.mail.yahoo.com ([216.136.174.192])
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17wC0R-0000D1-00
+	for <nfs@lists.sourceforge.net>; Mon, 30 Sep 2002 18:39:23 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,19 +23,34 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-A trivial loose end: add a 'lease_time' field to 'struct nfs_fsinfo'.
+--0-1516854440-1033436362=:22952
+Content-Type: text/plain; charset=us-ascii
 
-diff -u --recursive --new-file linux-2.5.41-nfsv4-E14/include/linux/nfs_xdr.h linux-2.5.41-nfsv4-E15/include/linux/nfs_xdr.h
---- linux-2.5.41-nfsv4-E14/include/linux/nfs_xdr.h	2002-10-11 18:22:12.000000000 -0400
-+++ linux-2.5.41-nfsv4-E15/include/linux/nfs_xdr.h	2002-10-11 18:23:09.000000000 -0400
-@@ -67,6 +67,7 @@
- 	__u64			afiles;	/* # of files available to user */
- 	__u32			linkmax;/* max # of hard links */
- 	__u32			namelen;/* max name length */
-+	__u32			lease_time; /* in seconds */
- };
- 
- /*
+
+All,
+
+Over the last decade, there seems to have been quite a bit of discussion about whether NFS filehandles (V2/V3) are allowed to change as a result of a link or rename operation. Its appears that Linux includes the parent inode as part of the filehandle and while this does not appear to be in violation of the spec (depending on who you talk to), Im curious if anyone has noticed interoperability problems with clients on other platforms that are a result of server behavior as described above. For example, how does the Solaris v7/v8 client deal with such behavior. Its obvious that renames in the same directory would be fine, but what about cross directory renames and links?
+
+Cheers,
+
+Jonathan Case Nicklin
+
+
+
+
+
+---------------------------------
+Do you Yahoo!?
+New DSL Internet Access from SBC & Yahoo!
+--0-1516854440-1033436362=:22952
+Content-Type: text/html; charset=us-ascii
+
+<P>All,</P>
+<P>Over the last&nbsp;decade, there seems to have been quite a bit of discussion about whether NFS filehandles (V2/V3)&nbsp;are allowed to&nbsp;change as a result of a link or rename operation. Its appears that Linux includes the parent inode as part of the filehandle and while this does not appear to be in violation of the spec (depending on who you talk to), Im curious if anyone has noticed interoperability problems with clients on other platforms that&nbsp;are a result&nbsp;of server behavior as described above. For example, how&nbsp;does the&nbsp;Solaris v7/v8 client deal with such behavior. Its obvious that renames in the same directory would be fine, but what about cross directory renames and links?</P>
+<P>Cheers,</P>
+<P>Jonathan Case Nicklin</P><BR><BR><p><br><hr size=1>Do you Yahoo!?<br>
+New <a href="http://rd.yahoo.com/evt=1207/*http://sbc.yahoo.com/">DSL Internet Access</a> from SBC & Yahoo!</a>
+--0-1516854440-1033436362=:22952--
 
 
 -------------------------------------------------------
