@@ -1,20 +1,29 @@
-From: Dexter Filmore <Dexter.Filmore@gmx.de>
-Subject: Strange copy/syncing behavior
-Date: Sun, 2 May 2004 12:47:31 +0200
+From: Bernd Schubert <bernd-schubert@web.de>
+Subject: Re: nfsprog support
+Date: Mon, 3 May 2004 01:27:15 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040502124731.2ff6b9dd@shodan.citadel>
+Message-ID: <200405030127.24709.bernd-schubert@web.de>
+References: <200404151750.53209.bernd-schubert@web.de> <200404152331.47440.bernd-schubert@web.de> <1082065434.7141.48.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: multipart/signed;
+  protocol="application/pgp-signature";
+  micalg=pgp-sha1;
+  boundary="Boundary-02=_cPYlA9qKaqrtBoh";
+  charset="iso-8859-1"
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+ Olaf Kirch <okir@suse.de>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BKEVX-0008Uk-Pj
-	for nfs@lists.sourceforge.net; Sun, 02 May 2004 03:47:39 -0700
-Received: from imap.gmx.net ([213.165.64.20] helo=mail.gmx.net)
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
-	id 1BKEVX-0007jJ-8x
-	for nfs@lists.sourceforge.net; Sun, 02 May 2004 03:47:39 -0700
-To: nfs@lists.sourceforge.net <nfs@lists.sourceforge.net>
+	id 1BKQMw-0003ij-Gk
+	for nfs@lists.sourceforge.net; Sun, 02 May 2004 16:27:34 -0700
+Received: from smtp06.web.de ([217.72.192.224] helo=smtp.web.de)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.30)
+	id 1BKQMw-0003pl-2h
+	for nfs@lists.sourceforge.net; Sun, 02 May 2004 16:27:34 -0700
+To: nfs@lists.sourceforge.net
+In-Reply-To: <1082065434.7141.48.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -28,43 +37,54 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-System setup: two Slackware 9.1/current machines, both almost identically
-configured.
-Both act as NFS servers.
-As client from one machine everything is perfectly alright, but:
+--Boundary-02=_cPYlA9qKaqrtBoh
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
 
-That machine acting as a server is strange, when I try and copy stuff to it,
-let's say a 200MB file.
-midnight commander will then report a transfer speed of around 30MB (which on
-a 100MBit net is impossible), when the progress bar is completed, it will
-stall for about 20 seconds, which together with the actually reported copy
-process is the time it takes to copy the file at around 7.5MB/s, which is a
-sane value.
-exports line shoes as follows:
-/mnt/a5 192.168.0.0/255.255.255.0(rw,sync,no_root_squash)
-file system there is XFS.
+Hi Trond,
 
-When mounting with "sync" parameter, tho it should be synced anyway, transfer
-speed drops to 200k/s.
+sorry for the late response, but as usual I was busy with my main work.
 
-Like I said, when that machine as client and the other as server it's smooth
-sailing, mc nicely reports 7.some MB/s (which btw kicks Samba square in the
-balls), progress bar advances as the transfer does, not all at once.
+>
+> What you are describing sounds like a bug in "mount". In the case where
+> the user specifies both "port" and "nfsvers", there is no need
+> whatsoever to consult the portmapper.
+>
+> I just do not see this as a kernel bug, or as any form of justification
+> for adding support for the nfsprog hack.
+>
 
-Any pointers?
+It seems I was chasing a phantom *hrmmph*.=20
+After you told me, it might be a bug in "mount", I immedeately checked the=
+=20
+util-linux mount source and didn't find anything wrong.=20
+Today I tried again finding the source of the problem, but now I don't see =
+a=20
+problem at all. Mounting on different ports just works fine, even with the=
+=20
+same nfsversion.
+I really have no idea why it didn't work all the time, but now suddenly wor=
+ks.
 
-Dex
+Sorry for wasting your time,
+	Bernd
 
 
--- 
------BEGIN GEEK CODE BLOCK-----
-Version: 3.12
-GCS d--(+)@ s-:+ a- C+++(++++) UL+>++++ P+>++ L+++>++++ E-- W++ N o? K-
-w--(---) !O M+ V- PS++(+) PE(-) Y+ PGP(-) t++(---)@ 5 X+(++) R+(++) tv--(+)@ 
-b+(+++) DI+++ D G++ e* h>++ r%>* y?
-------END GEEK CODE BLOCK------
+--Boundary-02=_cPYlA9qKaqrtBoh
+Content-Type: application/pgp-signature
+Content-Description: signature
 
-http://www.againsttcpa.com - nothing fights like the opposition
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.4 (GNU/Linux)
+
+iD8DBQBAlYPcC8BUnAF+ydYRAkckAJoD49757NeTyJOia8elgcKjgB2uFwCgjcA4
+35s2W7nXModEmbtXkpWqzM0=
+=hnV7
+-----END PGP SIGNATURE-----
+
+--Boundary-02=_cPYlA9qKaqrtBoh--
 
 
 -------------------------------------------------------
