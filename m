@@ -1,18 +1,18 @@
-From: tswaine@prosodiemail.com
-Subject: RE: NFS server replacement troubles
-Date: Tue, 8 Oct 2002 13:10:09 -0400
+From: Chuck Lever <cel@citi.umich.edu>
+Subject: [PATCH] better RPC statistics
+Date: Tue, 8 Oct 2002 15:20:07 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3FF929A3082ED211B9D700A0C9CFDC8801428E2E@exchange.bestivr.com>
+Message-ID: <Pine.LNX.4.44.0210081517370.1273-100000@dexter.citi.umich.edu>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Cc: nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+   Linux NFS List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from exchange.bestivr.com ([65.217.47.130] helo=kenny.bestivr.com)
+Received: from dexter.citi.umich.edu ([141.211.133.33])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17yxsC-0007RZ-00
-	for <nfs@lists.sourceforge.net>; Tue, 08 Oct 2002 10:10:20 -0700
-To: bcrl@redhat.com
+	id 17yzu5-0006bG-00
+	for <nfs@lists.sourceforge.net>; Tue, 08 Oct 2002 12:20:25 -0700
+To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,37 +25,250 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-Thanks for your reply, but I have to use 6.2 with that
-kernel for my specific application. It short it seems the
-system works till I replace the hostname/machine. Also the
-clients are a mix of Redhat 6.2/7.2 with 2.2.14-6.0.1/
-2.4.9-31 respectively.
+hi Linus-
 
+this is the only patch i have that probably should be in 2.5 before 
+October 20.  the rest i will save until things calm down.
 
------Original Message-----
-From: Benjamin LaHaise [mailto:bcrl@redhat.com]
-Sent: Tuesday, October 08, 2002 12:28 PM
-To: tswaine@prosodiemail.com
-Cc: nfs@lists.sourceforge.net
-Subject: Re: [NFS] NFS server replacement troubles
+this patch, against 2.5.41, adds some new statistics in the RPC layer.  
+these are similar to stats kept in reference client implementations, and 
+are designed to help sysadmins track down NFS client issues more quickly.
+since this changes a "kernel interface" it should go in now.
 
+if there are no objections, please apply this.
 
-On Tue, Oct 08, 2002 at 10:28:52AM -0400, tswaine@prosodiemail.com wrote:
-> 	Stock Redhat Linux 6.2
-> 	kernel 2.2.14-6.0.1 on i686
-> 	partition being exported is Reiser filesystem
+diff -drN -U2 00-stock/include/linux/sunrpc/stats.h 01-counters/include/linux/sunrpc/stats.h
+--- 00-stock/include/linux/sunrpc/stats.h	Mon Oct  7 14:24:14 2002
++++ 01-counters/include/linux/sunrpc/stats.h	Tue Oct  8 11:04:21 2002
+@@ -2,5 +2,5 @@
+  * linux/include/linux/sunrpc/stats.h
+  *
+- * Client statistics collection for SUN RPC
++ * Statistics collection for SUN RPC
+  *
+  * Copyright (C) 1996 Olaf Kirch <okir@monad.swb.de>
+@@ -12,31 +12,38 @@
+ #include <linux/config.h>
+ #include <linux/proc_fs.h>
++#include <linux/cache.h>
+ 
+ struct rpc_stat {
+ 	struct rpc_program *	program;
+ 
+-	unsigned int		netcnt,
++	unsigned long		netcnt,
+ 				netudpcnt,
+ 				nettcpcnt,
+ 				nettcpconn,
+ 				netreconn;
+-	unsigned int		rpccnt,
++	unsigned long		rpccnt,
+ 				rpcretrans,
+ 				rpcauthrefresh,
+-				rpcgarbage;
+-};
++				rpcgarbage,
++				rpcnospace,
++				rpcbadxids,
++				rpcbadverfs,
++				rpccantconn,
++				rpcnomem,
++				rpccantsend;
++} ____cacheline_aligned;
+ 
+ struct svc_stat {
+ 	struct svc_program *	program;
+ 
+-	unsigned int		netcnt,
++	unsigned long		netcnt,
+ 				netudpcnt,
+ 				nettcpcnt,
+ 				nettcpconn;
+-	unsigned int		rpccnt,
++	unsigned long		rpccnt,
+ 				rpcbadfmt,
+ 				rpcbadauth,
+ 				rpcbadclnt;
+-};
++} ____cacheline_aligned;
+ 
+ void			rpc_proc_init(void);
+diff -drN -U2 00-stock/net/sunrpc/clnt.c 01-counters/net/sunrpc/clnt.c
+--- 00-stock/net/sunrpc/clnt.c	Mon Oct  7 14:24:06 2002
++++ 01-counters/net/sunrpc/clnt.c	Tue Oct  8 11:04:21 2002
+@@ -454,4 +454,6 @@
+ 	}
+ 
++	task->tk_client->cl_stats->rpcnomem++;
++
+ 	switch (status) {
+ 	case -EAGAIN:	/* woken up; retry */
+@@ -495,4 +497,5 @@
+ 		xprt_release(task);
+ 		task->tk_action = call_reserve;
++		task->tk_client->cl_stats->rpcnomem++;
+ 		rpc_delay(task, HZ>>4);
+ 		return;
+@@ -670,4 +673,5 @@
+ 		break;
+ 	case -EAGAIN:
++		clnt->cl_stats->rpcnospace++;
+ 		task->tk_action = call_transmit;
+ 		break;
+@@ -720,5 +724,5 @@
+ 
+ retry:
+-	clnt->cl_stats->rpcretrans++;
++	clnt->cl_stats->netreconn++;
+ 	task->tk_action = call_bind;
+ 	task->tk_status = 0;
+@@ -758,6 +762,8 @@
+ 
+ 	/* Verify the RPC header */
+-	if (!(p = call_verify(task)))
++	if (!(p = call_verify(task))) {
++		clnt->cl_stats->rpcbadverfs++;
+ 		return;
++	}
+ 
+ 	/*
+@@ -765,5 +771,5 @@
+ 	 * processes whose uid is mapped to nobody on the server.
+ 	 */
+-	if (task->tk_client->cl_droppriv && 
++	if (clnt->cl_droppriv && 
+             (ntohl(*p) == NFSERR_ACCES || ntohl(*p) == NFSERR_PERM)) {
+ 		if (RPC_IS_SETUID(task) && task->tk_suid_retry) {
+diff -drN -U2 00-stock/net/sunrpc/stats.c 01-counters/net/sunrpc/stats.c
+--- 00-stock/net/sunrpc/stats.c	Mon Oct  7 14:25:21 2002
++++ 01-counters/net/sunrpc/stats.c	Tue Oct  8 11:04:21 2002
+@@ -41,5 +41,5 @@
+ 
+ 	len = sprintf(buffer,
+-		"net %d %d %d %d\n",
++		"net %lu %lu %lu %lu\n",
+ 			statp->netcnt,
+ 			statp->netudpcnt,
+@@ -47,8 +47,15 @@
+ 			statp->nettcpconn);
+ 	len += sprintf(buffer + len,
+-		"rpc %d %d %d\n",
++		"rpc %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu\n",
+ 			statp->rpccnt,
+ 			statp->rpcretrans,
+-			statp->rpcauthrefresh);
++			statp->rpcauthrefresh,
++			statp->rpcgarbage,
++			statp->rpcnospace,
++			statp->rpcbadxids,
++			statp->rpcbadverfs,
++			statp->rpccantconn,
++			statp->rpcnomem,
++			statp->rpccantsend);
+ 
+ 	for (i = 0; i < prog->nrvers; i++) {
+@@ -89,5 +96,5 @@
+ 
+ 	len = sprintf(buffer,
+-		"net %d %d %d %d\n",
++		"net %lu %lu %lu %lu\n",
+ 			statp->netcnt,
+ 			statp->netudpcnt,
+@@ -95,5 +102,5 @@
+ 			statp->nettcpconn);
+ 	len += sprintf(buffer + len,
+-		"rpc %d %d %d %d %d\n",
++		"rpc %lu %lu %lu %lu %lu\n",
+ 			statp->rpccnt,
+ 			statp->rpcbadfmt+statp->rpcbadauth+statp->rpcbadclnt,
+diff -drN -U2 00-stock/net/sunrpc/xprt.c 01-counters/net/sunrpc/xprt.c
+--- 00-stock/net/sunrpc/xprt.c	Mon Oct  7 14:24:45 2002
++++ 01-counters/net/sunrpc/xprt.c	Tue Oct  8 11:04:21 2002
+@@ -214,4 +214,5 @@
+ xprt_sendmsg(struct rpc_xprt *xprt, struct rpc_rqst *req)
+ {
++	struct rpc_stat	*stats = req->rq_task->tk_client->cl_stats;
+ 	struct socket	*sock = xprt->sock;
+ 	struct msghdr	msg;
+@@ -225,4 +226,10 @@
+ 		return -ENOTCONN;
+ 
++	stats->netcnt++;
++	if (xprt->stream)
++		stats->nettcpcnt++;
++	else
++		stats->netudpcnt++;
++
+ 	xprt_pktdump("packet data:",
+ 				req->rq_svec->iov_base,
+@@ -259,4 +266,7 @@
+ 		 * prompts ECONNREFUSED.
+ 		 */
++		if (!xprt->stream)
++			stats->rpccantsend++;
++		break;
+ 	case -EAGAIN:
+ 		break;
+@@ -266,7 +276,11 @@
+ 		if (xprt->stream)
+ 			result = -ENOTCONN;
++		else
++			stats->rpccantsend++;
+ 		break;
+ 	default:
+ 		printk(KERN_NOTICE "RPC: sendmsg returned error %d\n", -result);
++		stats->rpccantsend++;
++		break;
+ 	}
+ 	return result;
+@@ -417,4 +431,5 @@
+ xprt_connect(struct rpc_task *task)
+ {
++	struct rpc_stat *stats = task->tk_client->cl_stats;
+ 	struct rpc_xprt	*xprt = task->tk_xprt;
+ 	struct socket	*sock = xprt->sock;
+@@ -488,4 +503,5 @@
+ 			xprt_close(xprt);
+ 			task->tk_status = -EAGAIN;
++			stats->nettcpconn++;
+ 			goto out_write;
+ 		}
+@@ -498,4 +514,5 @@
+ 		xprt_close(xprt);
+ 		task->tk_status = -ENOTCONN;
++		stats->rpccantconn++;
+ 		goto out_write;
+ 
+@@ -504,4 +521,5 @@
+ 		 * system is soft mounted, just error out, like Solaris.  */
+ 		xprt_close(xprt);
++		stats->rpccantconn++;
+ 		if (task->tk_client->cl_softrtry) {
+ 			printk(KERN_WARNING
+@@ -529,4 +547,5 @@
+ xprt_conn_status(struct rpc_task *task)
+ {
++	struct rpc_stat *stats = task->tk_client->cl_stats;
+ 	struct rpc_xprt	*xprt = task->tk_xprt;
+ 
+@@ -535,4 +554,5 @@
+ 		dprintk("RPC: %4d xprt_conn_status: connection established\n",
+ 				task->tk_pid);
++		stats->nettcpconn++;
+ 		goto out;
+ 	case -ETIMEDOUT:
+@@ -549,4 +569,5 @@
+ 		break;
+ 	}
++	stats->rpccantconn++;
+ 	/* if soft mounted, cause this RPC to fail */
+ 	if (task->tk_client->cl_softrtry)
 
-That kernel is utterly ancient.  At the very least you should upgrade to the
+-- 
 
-newer errata that were released for 6.2 to fix security issues in the kernel
+corporate:	<cel at netapp dot com>
+personal:	<chucklever at bigfoot dot com>
 
-and userland, but preferably you should just replace the box with one
-running 
-7.3, as 6.2 is pretty much end of life.  Numerous bugs in NFS, reiserfs and 
-the core kernel have been fixed since 2.2.14 was released almost 2 years
-ago.
-
-		-ben
 
 
 -------------------------------------------------------
