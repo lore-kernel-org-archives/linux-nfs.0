@@ -1,21 +1,22 @@
-From: Per Buer <perbu@linpro.no>
-Subject: Does nfsd.o handle overwriting of files properly?
-Date: Fri, 13 Aug 2004 09:04:26 +0200
+From: Jani Averbach <jaa@jaa.iki.fi>
+Subject: Re: [BUG] 2.6.8-rc4 + nfsd: Unable to handle kernel NULL pointer dereference
+Date: Fri, 13 Aug 2004 02:49:25 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200408130904.26180.perbu@linpro.no>
+Message-ID: <20040813084925.GB32678@jaa.iki.fi>
+References: <20040813025704.GA32305@jaa.iki.fi>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="us-ascii"
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BvW7E-0006bv-DZ
-	for nfs@lists.sourceforge.net; Fri, 13 Aug 2004 00:04:40 -0700
-Received: from netstat.linpro.no ([80.232.36.140])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1BvW7D-0000xm-VT
-	for nfs@lists.sourceforge.net; Fri, 13 Aug 2004 00:04:40 -0700
+	id 1BvXkc-00025G-4z
+	for nfs@lists.sourceforge.net; Fri, 13 Aug 2004 01:49:26 -0700
+Received: from dsl081-100-231.den1.dsl.speakeasy.net ([64.81.100.231] helo=hal9000.jaa.iki.fi)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
+	id 1BvXkb-0000fA-QP
+	for nfs@lists.sourceforge.net; Fri, 13 Aug 2004 01:49:26 -0700
 To: nfs@lists.sourceforge.net
+In-Reply-To: <20040813025704.GA32305@jaa.iki.fi>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -28,26 +29,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi.
+On 2004-08-12 20:57-0600, Jani Averbach wrote:
+> 
+> I narrowed this down to the 2.6.8rc4, 2.6.8rc3 works ok. And this
+> happens (on server) every time, when thin client tried mount root-fs
+> from server.
 
-We have a daemon which does the following. Create a new file "foo" and renames 
-this file to "bar". This happens on a nfs volume. The problem seems to be 
-that we get "stale NFS handle" right after "bar" is overwritten.
+This happens elsewhere also, please see lkml post:
+http://marc.theaimsgroup.com/?l=linux-kernel&m=109238419223996&w=4
 
-I guess the directory is cached and so the dentry points to an non-existing 
-inode (as the old "bar" is deleted when the ref-count hits zero). 
+In my case the version of client kernel is 2.6.7.
 
-Server: RHEL AS 2.1 (2.4.9 with lots and lots of pathes)
-Client: RHEL ES 3.0 (2.4.21with lots and lots of pathes)
-
-I fix could be to keep an link to the old "bar" hanging around for 30s or so - 
-but I consider that a somewhat dirty work-around.
-
-Is there anything else I can do to mend this?
+BR, Jani
 
 -- 
-There are only 10 different kinds of people in the world, 
-those who understand binary, and those who don't.
+Jani Averbach
+
 
 
 -------------------------------------------------------
