@@ -1,23 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Olaf Kirch <okir@suse.de>
 Subject: Re: [PATCH] xprt sharing (was Re: xprt_bindresvport)
-Date: Thu, 09 Dec 2004 08:36:55 -0500
-Message-ID: <1102599415.24133.34.camel@lade.trondhjem.org>
-References: <482A3FA0050D21419C269D13989C61130435EC6F@lavender-fe.eng.netapp.com>
-	 <41B74551.5040908@sun.com>  <20041209113107.GE15055@suse.de>
+Date: Thu, 9 Dec 2004 14:41:59 +0100
+Message-ID: <20041209134159.GA11998@suse.de>
+References: <482A3FA0050D21419C269D13989C61130435EC70@lavender-fe.eng.netapp.com> <20041209112233.GC15055@suse.de> <1102599212.24133.30.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Mike Waychison <Michael.Waychison@sun.com>, Charles Lever <Charles.Lever@netapp.com>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: Charles Lever <Charles.Lever@netapp.com>,
+	Mike Waychison <Michael.Waychison@sun.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CcOTq-0005vg-Qk
-	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 05:37:14 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CcOTq-0004nA-13
-	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 05:37:14 -0800
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20041209113107.GE15055@suse.de>
+	id 1CcOYW-00069j-Bn
+	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 05:42:04 -0800
+Received: from mail-ex.suse.de ([195.135.220.2] helo=Cantor.suse.de)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.41)
+	id 1CcOYV-0005ck-DN
+	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 05:42:04 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1102599212.24133.30.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,21 +32,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-to den 09.12.2004 Klokka 12:31 (+0100) skreiv Olaf Kirch:
+On Thu, Dec 09, 2004 at 08:33:32AM -0500, Trond Myklebust wrote:
+> Seriously, though: we *already* have this serialization problem with the
+> single client per transport case, and so there is nothing that needs to
+> added to the locking in order to deal with multiple clients per
+> transport. IOW contention today is at the per-request level and it would
+> have to remain so for the shared transport case.
 
-> Shouldn't we allow NFS mounts to use non-privileged ports? Many
-> environments don't really care about the "security" provided by privileged
-> ports, but would be more than happy if they can run with a few hundred
-> NFS mounts
+But two separate mounts with separate sockets do not serialize (at least
+they shouldn't). And contention doesn't happen on the client only.
+The server needs to serialize sending over TCP as well; the more
+sockets you have the less likely it will step on its own toes.
 
-Most AUTH_SYS based models still require it, however I agree that use of
-strong security makes the privileged port totally redundant.
+> Note also that we could also create pools of several transport sockets
+> per server: the current locking scheme allows for that too. That would
+> improve per-request scalability at the same time as it allows us to
+> limit the privileged port usage.
 
-Cheers,
-  Trond
+Yes, that would help scalability a lot.
+
+Olaf
 -- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
-
+Olaf Kirch     | Things that make Monday morning interesting, #2:
+okir@suse.de   |        "We have 8,000 NFS mount points, why do we keep
+---------------+ 	 running out of privileged ports?"
 
 
 -------------------------------------------------------
