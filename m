@@ -1,19 +1,16 @@
-From: "Rongqing \"Frank\" Tu" <rtu@packetgeneral.com>
-Subject: Re: permission denied.
-Date: Sat, 23 Nov 2002 22:03:04 -0500 (EST)
+From: "gavekort@mobil-varehuset.com" <gavekort@mobil-varehuset.com>
+Subject: Gratulerer med gavekort
+Date: Sun, 24 Nov 2002 20:43:15 +0000 (UTC)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0211232200190.9544-100000@filer.packetgeneral.com>
-References: <200211231922.19392.bernd-schubert@web.de>
+Message-ID: <E18G3KV-00019N-00@sc8-sf-list1.sourceforge.net>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Neil Brown <neilb@cse.unsw.edu.au>, <nfs@lists.sourceforge.net>
+Content-Type: text/plain;charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [204.52.248.2] (helo=filer.packetgeneral.com)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18Fn4n-0000XU-00
-	for <nfs@lists.sourceforge.net>; Sat, 23 Nov 2002 19:04:53 -0800
-To: Bernd Schubert <bernd-schubert@web.de>
-In-Reply-To: <200211231922.19392.bernd-schubert@web.de>
+Received: from 4o9qpe.cm.chello.no ([62.179.188.60] helo=mail.sourceforge.net)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18G3KV-00019N-00
+	for <nfs@lists.sourceforge.net>; Sun, 24 Nov 2002 12:26:11 -0800
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,28 +23,29 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Thanks.
-I found the place to resolve the problem.
-in the kernel code of nfsd, exp_export() in export.c, ignore the check of 
-fs flag of FS_REQUIRES_DEV.
-inode->i_sb->s_type->fs_flags.
+Hei
 
-Frank
-On Sat, 23 Nov 2002, Bernd Schubert wrote:
+Lisa Knudsen lisa_kn@hotmail.com vil gjerne tipse deg om Mobilvarehuset.no,  http://www.mobilvarehuset.no 
 
-> On Friday 22 November 2002 17:11, Rongqing \"Frank\" Tu wrote:
-> > Dear Neil,
-> > Thank you for your help.
-> > I don't think Universal NFS is suitable for my situation.
-> >
-> 
-> Hi Frank,
-> 
-> Using any other user-space export daemon should also do what you want. So you 
-> could try to use samba for example.
-> 
-> Bernd
-> 
+Varehuset med mobilpriser for folk i farten!
+
+Registrer deg som medlem idag og motta et gavekort på opp til kr. 350,-
+
+Ukens supertilbud for våre medlemmer er:
+Nokia 7650 for kun kr 2490,-.
+SONY ERICSSON T68i for kun kr. 2990,-
+Nokia 7210 for kun kr. 2690,-
+MOTOROLA T720 for kun kr. 1990,-
+Siemens C55 for kun kr. 890,-
+Nokia 3510 for kun kr. 790,-
+Nokia 3410 for kun Kr. 390,-
+
+
+Registrer deg på www.mobilvarehuset.no med en gang!
+
+
+Lisa 
+ 
 
 
 
