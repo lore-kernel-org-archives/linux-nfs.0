@@ -1,21 +1,23 @@
 From: "Randy Paries" <paries@knology.net>
-Subject: debugging help
-Date: Mon, 3 May 2004 15:54:26 -0500
+Subject: RE: debugging help
+Date: Mon, 3 May 2004 16:24:16 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1BKkU6-00073s-7o@sc8-sf-mx1.sourceforge.net>
+Message-ID: <E1BKkv5-0003FD-9Y@sc8-sf-mx1.sourceforge.net>
+References: <20040503210628.GC4469@oaxaca.jah.net>
 Mime-Version: 1.0
 Content-Type: text/plain;
 	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BKkUc-0003VR-3V
-	for nfs@lists.sourceforge.net; Mon, 03 May 2004 13:56:50 -0700
-Received: from smtp.knology.net ([24.214.63.101] helo=smtp2.knology.net)
+	id 1BKkva-0005sa-Ow
+	for nfs@lists.sourceforge.net; Mon, 03 May 2004 14:24:42 -0700
+Received: from smtp.knology.net ([24.214.63.101])
 	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
-	id 1BKkU6-00073s-7o
-	for nfs@lists.sourceforge.net; Mon, 03 May 2004 13:56:18 -0700
+	id 1BKkv5-0003FD-9Y
+	for nfs@lists.sourceforge.net; Mon, 03 May 2004 14:24:11 -0700
 To: <nfs@lists.sourceforge.net>
+In-Reply-To: <20040503210628.GC4469@oaxaca.jah.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -28,76 +30,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello
- 
-I have two boxes. One is the NFS server and one is the client.
- 
-They are very busy web servers. 
- 
-i keep getting these errors on my console and in my message file
-May  3 12:44:11 krusty kernel: nfs: server local.flanders not responding,
-still trying
-May  3 12:44:15 krusty kernel: nfs: server local.flanders OK
+Thank you for the suggestion, I am going to try that
 
-I am looking for suggestions on how to debug these.
+I was also wondering if there was something I need to look at as far as
+tuning so I do not need to keep increasing the timeouts?
 
-I am doing many reads and writes
+Thanks 
 
-These are my mount strings
-local.flanders:/home/unitnet  /home/unitnet  nfs
-intr,rsize=8192,wsize=8192,bg  0  0
-local.flanders:/home/unitnetconsult  /home/unitnetconsult  nfs
-intr,rsize=8192,wsize=8192,bg 0  0
+-----Original Message-----
+From: Peter Hicks [mailto:petong@jah.net] 
+Sent: Monday, May 03, 2004 4:06 PM
+To: Randy Paries
+Subject: Re: [NFS] debugging help
 
-Thanks for anyhelp or direction
+On Mon, May 03, 2004 at 03:54:26PM -0500, Randy Paries wrote:
+>Hello
+> 
+>I have two boxes. One is the NFS server and one is the client.
+> 
+>They are very busy web servers. 
+> 
+>i keep getting these errors on my console and in my message file May  3 
+>12:44:11 krusty kernel: nfs: server local.flanders not responding, 
+>still trying May  3 12:44:15 krusty kernel: nfs: server local.flanders 
+>OK
+>
+>I am looking for suggestions on how to debug these.
 
- 
-if i do a nfstats -s on the server i get 
-nfsstat -s
-Server rpc stats:
-calls      badcalls   badauth    badclnt    xdrcall
-28339803   0          0          0          0       
-Server nfs v2:
-null       getattr    setattr    root       lookup     readlink   
-2      100% 0       0% 0       0% 0       0% 0       0% 0       0% 
-read       wrcache    write      create     remove     rename     
-0       0% 0       0% 0       0% 0       0% 0       0% 0       0% 
-link       symlink    mkdir      rmdir      readdir    fsstat     
-0       0% 0       0% 0       0% 0       0% 0       0% 0       0% 
- 
-Server nfs v3:
-null       getattr    setattr    lookup     access     readlink   
-1       0% 14651833 51% 33447   0% 7230784 25% 4969    0% 85667   0% 
-read       write      create     mkdir      symlink    mknod      
-6002057 21% 247908  0% 12344   0% 59      0% 303     0% 0       0% 
-remove     rmdir      rename     link       readdir    readdirplus
-2094    0% 22      0% 6146    0% 0       0% 13730   0% 0       0% 
-fsstat     fsinfo     pathconf   commit     
-76      0% 76      0% 0       0% 48285   0% 
+I used to get those errors, but I increased the timeout values in my mount
+options:
 
- 
-and on the client
-nfsstat -c   
-Client rpc stats:
-calls      retrans    authrefrsh
-5594114    16482      0       
-Client nfs v2:
-null       getattr    setattr    root       lookup     readlink   
-0       0% 0       0% 0       0% 0       0% 0       0% 0       0% 
-read       wrcache    write      create     remove     rename     
-0       0% 0       0% 0       0% 0       0% 0       0% 0       0% 
-link       symlink    mkdir      rmdir      readdir    fsstat     
-0       0% 0       0% 0       0% 0       0% 0       0% 0       0% 
- 
-Client nfs v3:
-null       getattr    setattr    lookup     access     readlink   
-0       0% 2485192 44% 8445    0% 1627026 29% 4723    0% 21922   0% 
-read       write      create     mkdir      symlink    mknod      
-1369595 24% 56448   1% 3251    0% 13      0% 92      0% 0       0% 
-remove     rmdir      rename     link       readdir    readdirplus
-614     0% 3       0% 1712    0% 0       0% 3593    0% 0       0% 
-fsstat     fsinfo     pathconf   commit     
-20      0% 20      0% 0       0% 11445   0% 
+fileserver:/home/users      /mnt/server1   nfs
+rw,intr,rsize=4096,wsize=4096,retrans=10,timeo=20 	0       0
+
+
+See if that works for you.
+
 
 
 
