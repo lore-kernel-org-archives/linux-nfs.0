@@ -1,24 +1,26 @@
 From: Steve Dickson <SteveD@RedHat.com>
 Subject: Re: [PATCH] Access cache forgetting mode bits
-Date: Fri, 29 Aug 2003 09:14:44 -0400
+Date: Sun, 31 Aug 2003 16:33:44 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3F4F51C4.10605@RedHat.com>
+Message-ID: <3F525BA8.9020904@RedHat.com>
 References: <3F4E302F.5060409@RedHat.com> <1062107512.2121.25.camel@bree.suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: multipart/mixed;
+ boundary="------------000907050205090208020506"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19sj6d-0000B5-00
-	for <nfs@lists.sourceforge.net>; Fri, 29 Aug 2003 06:15:59 -0700
+	id 19tYuB-0001Dj-00
+	for <nfs@lists.sourceforge.net>; Sun, 31 Aug 2003 13:34:35 -0700
 Received: from host-64-179-20-100.man.choiceone.net ([64.179.20.100] helo=Odyssey.Home.4Dicksons.Org)
 	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.22)
-	id 19sj6c-00036K-78
-	for nfs@lists.sourceforge.net; Fri, 29 Aug 2003 06:15:58 -0700
-To: Andreas Gruenbacher <agruen@suse.de>
+	id 19tYuA-0002WT-P8
+	for nfs@lists.sourceforge.net; Sun, 31 Aug 2003 13:34:34 -0700
+To: Andreas Gruenbacher <agruen@suse.de>,
+   Trond Myklebust <trond.myklebust@fys.uio.no>
 In-Reply-To: <1062107512.2121.25.camel@bree.suse.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -32,40 +34,55 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Andreas Gruenbacher wrote:
+This is a multi-part message in MIME format.
+--------------000907050205090208020506
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
 
->your idea idea is good, but the patch is incorrect in at least two ways:
->(1) it merges the cached results of successful and unsuccessful
->requests, (2) [access("file", R_OK) == 0] and [access("file", W_OK) ==
->0] does not imply [access("file", R_OK | W_OK) == 0].
->
-Good point!
+Hello,
 
->[....] How about the attached patch? In the worst case, with "weird" permissions
->this will double the number of RPCs needed, but this will not happen on
->"real" systems.
->
-Yes... your patch does seem to work with "normal" cases.... which is 
-probably the
-best we can hope for...
+I'm thinking there might even be a better way to cache these bits...
 
->The NFS access cache has a problem if mounted file systems are accessed
->by multiple users: The results of only a single user are cached. When
->another user comes along, cache trashing similar to what Steve has
->observed will occur.
->  
->
-True... its too bad the cred cache doesn't use uids and gids....
+It seems the OS calls nfs_permission() to test each permission bit which 
+in turn
+causes an otw access rpc for every call (assuming the same person and same
+bit is *not* asked for ) and even with Andreas patch's there are at 
+least two
+rpcs for one access call....
 
->Steve, you seem to be looking into the nfsacl extensions as well. ACLs
->are not cached on the client side, so operations like `ls -l' (which
->need to check which files have ACLs) also produce lots of RPCs. I don't
->see this as a significant problem at this point.
->
-Caches are always a good idea wrt to NFS... but I guess only time will 
-tell wrt nfsacls...
+Now what if on the first access call, we get *all* of the access bits 
+from the
+server and cache them locally (i.e. in cache->mask). That way when 
+nfs_permission()
+is called again, all if the needed info is there... The attached patch 
+does just that
+and it really seems to cut down on the amount access rpc needed...
+
+Thoughts?
 
 SteveD.
+
+
+--------------000907050205090208020506
+Content-Type: text/plain;
+ name="linux-2.4.21-nfs-accesscache.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="linux-2.4.21-nfs-accesscache.patch"
+
+--- linux-2.4.21/fs/nfs/dir.c.diff	2003-08-28 12:13:22.000000000 -0400
++++ linux-2.4.21/fs/nfs/dir.c	2003-08-28 12:13:47.000000000 -0400
+@@ -1278,7 +1278,7 @@ nfs_permission(struct inode *inode, int 
+ 		if (cache->cred)
+ 			put_rpccred(cache->cred);
+ 		cache->cred = cred;
+-		cache->mask = mask;
++		cache->mask |= mask;
+ 		cache->err = error;
+ 		return error;
+ 	}
+
+--------------000907050205090208020506--
 
 
 
