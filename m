@@ -1,17 +1,13 @@
-From: me@networks-and-security.de
-Subject: Re: AW: NFS & Clustering
-Date: Wed, 4 Sep 2002 11:55:20 +0200
+From: Jean-Eric Cuendet <jean-eric.cuendet@linkvest.com>
+Subject: Re: rpc.mountd + rpc.nfsd
+Date: Wed, 04 Sep 2002 15:32:29 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <OF16CD4D07.2F1B363A-ONC1256C2A.00364F10-C1256C2A.0035A2BB@networks-and-security.de>
-References: <95AF67BA7F70D511829B0002A551737001C9CC@faw-e01.faw.freudenberg.de>
+Message-ID: <3D760B6D.2040408@linkvest.com>
+References: <3D7363A7.8090906@linkvest.com>	<15732.7907.19389.156631@notabene.cse.unsw.edu.au>	<3D745D10.4040409@linkvest.com>	<15732.35929.482032.954554@notabene.cse.unsw.edu.au>	<3D7490D4.7050307@linkvest.com> <15732.39741.104912.607715@notabene.cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Marco.Schwarz@Freudenberg.de,
-	NFS@lists.sourceforge.net,
-	nfs-admin@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-In-Reply-To: <95AF67BA7F70D511829B0002A551737001C9CC@faw-e01.faw.freudenberg.de>
-To: Marco.Schwarz@Freudenberg.de
+To: Neil Brown <neilb@cse.unsw.edu.au>,  nfs@sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,116 +20,20 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-
-
-
-
-Hallo Marco,
-
-have you tried nfs with heartbeat and drbd?
-At this time we are evaluating this scenario because we will use it in =
-our
-production environment. At this time there is a limitation, drdb works =
-only
-with two servers.
-
-Bye
-Markus
-
-
-
-
-
-                                                                       =
-    
-             Marco.                                                    =
-    
-             Schwarz@Freudenb                                          =
-    
-             erg.de                                                    =
- To 
-             Sent by: nfs-            Marco.Schwarz@Freudenberg.de     =
-    
-             admin@lists.                                              =
- cc 
-             sourceforge.net          NFS@lists.sourceforge.net        =
-    
-                                                                   Subj=
-ect 
-                                      AW: [NFS] NFS & Clustering       =
-    
-             04.09.2002 11:26                                          =
-    
-                                                                       =
-    
-                                                                       =
-    
-                                                                       =
-    
-                                                                       =
-    
-                                                                       =
-    
-
-
-
-
-Small appendix:
-
-What we are looking for is basically a high-availability solution for o=
-ur
-NFS server(s). With the numbers of our diskless clients growing, we sim=
-ply
-cannot afford downtimes (this is an industrial production environment).=
-
-
-My options are to either find a high-availabilty solution for the NFS
-server
-or to make the clients work when the server is down. I think I'll try t=
-he
-clustering/HA first ;-)
-
-Regards,
-Marco
-
-> -----Urspr=FCngliche Nachricht-----
-> Von:             Marco.Schwarz@Freudenberg.de [SMTP:Marco.
-Schwarz@Freudenberg.de]
-> Gesendet am:           Mittwoch, 4. September 2002 10:35
-> An:        NFS@lists.sourceforge.net
-> Betreff:         [NFS] NFS & Clustering
->
-> Hi all,
->
-> we are looking into the possibility of building a clustered NFS-root
-> server
-> for our diskless clients. Does anybody know if this is possible with =
-NFS
-> and
-> which cluster software is best for this task (OpenMOSIX ?).
->
-> Thanks in advance,
-> Marco
 >
 >
-> -------------------------------------------------------
-> This sf.net email is sponsored by: OSDN - Tired of that same old
-> cell phone?  Get a new here for FREE!
-> https://www.inphonic.com/r.asp?r=3Dsourceforge1&refcode1=3Dvs3390
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+>If I understand you correctly, the nfs server will be on the same
+>machine as the nfs client that accesses that server. And then the
+>server reaches out over the network with SMB.
+>In that case you don't need mountd at all.  When the server starts, it
+>mounts itself and then starts responding to NFS requests.
+>
+I REALLY need to know how to mount myself in a directory.
+I have nfs3_prot.x implemented but not mountd at all.
+How to do that? When in my program? What to call?
 
-
--------------------------------------------------------
-This sf.net email is sponsored by: OSDN - Tired of that same old
-cell phone?  Get a new here for FREE!
-https://www.inphonic.com/r.asp?r=3Dsourceforge1&refcode1=3Dvs3390
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-=
-
+Thanks a lot.
+-jec
 
 
 
