@@ -1,64 +1,68 @@
-From: Dave Kleikamp <shaggy@austin.ibm.com>
-Subject: [PATCH] Problems with NFS while running SpecSFS with JFS
-	filesystem and 2.6 kernel.
-Date: Wed, 17 Dec 2003 14:11:06 -0600
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <1071691866.31508.127.camel@shaggy.austin.ibm.com>
-References: <20031210144011.GE708@dbz.austin.ibm.com>
-	 <20031215142143.GA3981@dbz.austin.ibm.com>
+From: gms8994@dp.cx
+Subject: NFS Automount homedir with email
+Date: Thu, 18 Dec 2003 15:36:48 -0500
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <20031218203648.GB8363@gigabyte6bxd>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net,
-	linux-kernel <linux-kernel@vger.kernel.org>
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: "Jose R. Santos" <jrsantos@austin.ibm.com>,
-	Linus Torvalds <torvalds@osdl.org>, akpm@osdl.org
-In-Reply-To: <20031215142143.GA3981@dbz.austin.ibm.com>
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
+	id 1AX4tA-0001FP-4C
+	for nfs@lists.sourceforge.net; Thu, 18 Dec 2003 12:36:52 -0800
+Received: from 12-220-136-22.client.insightbb.com ([12.220.136.22] helo=dp.cx)
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.24)
+	id 1AX4t9-0000Xk-JS
+	for nfs@lists.sourceforge.net; Thu, 18 Dec 2003 12:36:51 -0800
+To: nfs@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, 2003-12-15 at 08:21, Jose R. Santos wrote:
-> 
-> Can anybody provide me with some tips as to how to debug this a bit further?
-> Really want to figure out if this is a NFS bug or a JFS one.
+If I'm asking this on the wrong list, please let me know.
 
-After Jose debugged the problem down to the routine jfs_get_parent, we
-were able to find the problem.  I believe it only affects users of
-NFS-exported JFS file systems on big-endian hardware.
+I'm currently attempting to setup nfs automounted home directories for my
+machines.  I have this working on one of the test boxes, from the server.
+However, I've run into a little bit of a snag.  One of the machines that I'd
+really like to use for the automounting is my main machine, which runs qmai=
+l.
+Some of the users on said machine only login (via shell) once a week or so,=
+ but
+check their email via squirrelmail daily.  I have qmail setup to use Maildi=
+r, so
+the mail directories are in the users homedir.
 
-The problem was a missing le32_to_cpu macro.  The patch also fixes a
-return code to be more consistent other implementations of get_parent.
+So my question is:  will an imaplogin be enough to trigger automount so tha=
+t the
+users can get their mail, or will I have to do some more trickery?
 
-Linus, Andrew,
-We're likely to see the problem on ppc running NFS.  Does this patch
-meet the criteria for 2.6.0?
+--=20
 
-===== fs/jfs/namei.c 1.35 vs edited =====
---- 1.35/fs/jfs/namei.c	Thu Oct 30 09:31:08 2003
-+++ edited/fs/jfs/namei.c	Wed Dec 17 12:34:10 2003
-@@ -1439,14 +1439,18 @@
- struct dentry *jfs_get_parent(struct dentry *dentry)
- {
- 	struct super_block *sb = dentry->d_inode->i_sb;
--	struct dentry *parent = ERR_PTR(-EACCES);
-+	struct dentry *parent = ERR_PTR(-ENOENT);
- 	struct inode *inode;
-+	unsigned long parent_ino;
- 
--	inode = iget(sb, JFS_IP(dentry->d_inode)->i_dtroot.header.idotdot);
-+	parent_ino =
-+		le32_to_cpu(JFS_IP(dentry->d_inode)->i_dtroot.header.idotdot);
-+	inode = iget(sb, parent_ino);
- 	if (inode) {
--		if (is_bad_inode(inode))
-+		if (is_bad_inode(inode)) {
- 			iput(inode);
--		else {
-+			parent = ERR_PTR(-EACCES);
-+		} else {
- 			parent = d_alloc_anon(inode);
- 			if (!parent) {
- 				parent = ERR_PTR(-ENOMEM);
+Glen Solsberry
+Please note that all messages are signed by my GPG key (0xBF0C1C33).
+If you received a message from me that wasn't signed, it probably wasn't fr=
+om me.
 
--- 
-David Kleikamp
-IBM Linux Technology Center
+IRC at irc.aknarra.net:6667 #lobby
+http://www.dp.cx
+The first half of our lives is ruined by our parents and the second half
+by our children.				   --- Clarence Darrow
+
+
+
+-------------------------------------------------------
+This SF.net email is sponsored by: IBM Linux Tutorials.
+Become an expert in LINUX or just sharpen your skills.  Sign up for IBM's
+Free Linux Tutorials.  Learn everything from the bash shell to sys admin.
+Click now! http://ads.osdn.com/?ad_id=1278&alloc_id=3371&op=click
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
