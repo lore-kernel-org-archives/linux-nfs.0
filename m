@@ -1,22 +1,22 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [kNFSD] [PATCH] fixed '-p port' arg to rpc.nfsd plus more.
-Date: Tue, 22 Mar 2005 05:17:21 -0500
-Message-ID: <423FF0B1.8060007@RedHat.com>
-References: <423EDD43.8000209@RedHat.com> <16959.23048.930497.833801@cse.unsw.edu.au>
+From: Filipe Brandenburger <branden@terra.com.br>
+Subject: Re: open O_EXCL works?
+Date: Tue, 22 Mar 2005 07:13:25 -0300
+Message-ID: <20050322070816.BE7B.BRANDEN@terra.com.br>
+References: <20050321181858.BE73.BRANDEN@terra.com.br> <Pine.LNX.4.60.0503212101550.12483@harp.ngdc.noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Content-Type: text/plain; charset="US-ASCII"
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	nfs@lists.sourceforge.net
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DDgK1-0001wQ-DQ
-	for nfs@lists.sourceforge.net; Tue, 22 Mar 2005 02:09:13 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1DDgJz-0007z1-VR
-	for nfs@lists.sourceforge.net; Tue, 22 Mar 2005 02:09:13 -0800
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <16959.23048.930497.833801@cse.unsw.edu.au>
+	id 1DDgN3-00022k-Fn
+	for nfs@lists.sourceforge.net; Tue, 22 Mar 2005 02:12:21 -0800
+Received: from loncoche.terra.com.br ([200.154.55.229])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1DDgN1-00007x-MB
+	for nfs@lists.sourceforge.net; Tue, 22 Mar 2005 02:12:21 -0800
+To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+In-Reply-To: <Pine.LNX.4.60.0503212101550.12483@harp.ngdc.noaa.gov>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,21 +30,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Neil Brown wrote:
-> I'm happy to consider changes in syntax, but I really don't like
-> merging these very different concepts in the one file.
 
-My initial thought is this adds much more complexity that
-really needed... All that's needed is to set the port, version
-and protocol. As soon as you added in address and address types,
-it adds a hole new level complexity that may not be needed,
-to solve this particular problem.
+Hi, there.
 
-but let me take a closer took to see how much is truly need to
-create a couple more proc files and well as the parsing
-routines to handle theses type of syntaxes....
+Are the stat's really necessary? I mean, in another post in this same
+thread, Trond told that for hardlink, symlink and mkdir, both of them
+are "atomic" in NFS meaning that they will succeed only for one client
+and fail for all others if called at the same time. For me at least,
+that means the stat's would not be needed... Isn't that so?
 
-steved.
+On another quite old post, I have read that even on NFS 2 hardlink works
+in an atomic way, so that it could be used to implement a lock. I mean,
+stat's certainly are safe, but this seems too expensive for me! Is this
+extra safety really needed?
+
+Thanks,
+Filipe
+
+
+
+* Mon, 21 Mar 2005 21:13:49 -0700 (MST), "Ara.T.Howard" <Ara.T.Howard@noaa.gov>:
+> On Mon, 21 Mar 2005, Filipe Brandenburger wrote:
+>    BASIC ALGORITHIM
+> 
+>      * create a globally uniq filename in the same filesystem as the desired
+>        lockfile - this can be nfs mounted
+> 
+>      * link(2) this file to the desired lockfile, ignore all errors
+> 
+>      * stat the uniq filename and desired lockfile to determine is they are the
+>        same, use only stat.rdev and stat.ino - ignore stat.nlink as NFS can cause
+>        this report incorrect values
+> 
+>      * iff same, you have lock.  either return or run optional code block with
+>        optional refresher thread keeping lockfile fresh during execution of code
+>        block, ensuring that the lockfile is removed..
+> 
+>      * iff not same try again a few times in rapid succession (poll), then, iff
+>        this fails, sleep using incremental backoff time.  optionally remove lockfile
+>        if it is older than a certain time (stale), timeout if more than a certain
+>        amount of time has passed attempting to lock file.
+
 
 
 
