@@ -1,18 +1,20 @@
-From: Frank Cusack <fcusack@fcusack.com>
-Subject: Re: nfs_refresh_inode: inode number mismatch (bug)
-Date: Mon, 2 Jun 2003 02:46:25 -0700
+From: Ion Badulescu <ionut@badula.org>
+Subject: Re: Disabling Symbolic Link Content Caching in NFS Client
+Date: Mon, 2 Jun 2003 16:37:23 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030602024625.A19179@google.com>
-References: <20030602013731.B18730@google.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Message-ID: <200306022037.h52KbNVh012849@buggy.badula.org>
+References: <2BB7146B38D9CA40B215AB3DAAE24C080BA4F3@blr-m2-msg.wipro.com>
+Cc: <trond.myklebust@fys.uio.no>, <indou.takao@jp.fujitsu.com>,
+   <ezk@cs.sunysb.edu>, <viro@math.psu.edu>, <davem@redhat.com>,
+   <nfs@lists.sourceforge.net>, <linux-kernel@vger.kernel.org>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from 216-239-45-4.google.com ([216.239.45.4])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19Mlth-0001sJ-00
-	for <nfs@lists.sourceforge.net>; Mon, 02 Jun 2003 02:46:33 -0700
-To: nfs@lists.sourceforge.net, trond.myklebust@fys.uio.no
-In-Reply-To: <20030602013731.B18730@google.com>; from fcusack@fcusack.com on Mon, Jun 02, 2003 at 01:37:31AM -0700
+Received: from ool-43524450.dyn.optonline.net ([67.82.68.80] helo=buggy.badula.org)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19Mw3r-0001Vw-00
+	for <nfs@lists.sourceforge.net>; Mon, 02 Jun 2003 13:37:44 -0700
+To: "Vivek Goyal" <vivek.goyal@wipro.com>
+In-Reply-To: <2BB7146B38D9CA40B215AB3DAAE24C080BA4F3@blr-m2-msg.wipro.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,23 +27,34 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, Jun 02, 2003 at 01:37:31AM -0700, Frank Cusack wrote:
-> I've found an issue with nfs_rmdir(), at least that's where I think it is.
+On Wed, 28 May 2003 16:39:36 +0530, Vivek Goyal <vivek.goyal@wipro.com> wrote:
 
-A little more info ...
+> I was following previous discussions in the mailing list and found that
+> caching mechanism affected hlfsd behavior. It looks like the problem was
+> resolved by updating mtime on every access. But still caching will lead
+> to a problem if two accesses are taking place in same jiffy.
 
-This seems related to nfs3, and I'm going to guess readdirplus.  If
-I mount as nfsv2, I don't see the problem.
+Yes, because the the nfs client is broken in this respect. noac 
+should mean noac, but the nfs client will still cache attributes if the 
+second access happens within the same jiffy as the previous access which 
+updated the attribute cache.
 
-It just struck me that there are a lot of readdirplus-related logs just
-before the "bug".  I didn't think anything of it (because, *of course*
-there is a bunch of activity there) but in a rare moment of clarity I
-figured I should try v2.
+Replacing a couple of time_after() calls with time_after_eq() calls 
+fixes the issue, at least for hlfsd. Of course, running with noac might 
+be very much unacceptable if all you want is to avoid caching symlinks.
 
-I'll continue to look at this tomorrow, but I'm sure Trond or one of
-the wizards here will instantly know where the problem is. :-)
+> We are considering following design strategy to implement the parameter.
+> 
+> 1. Make nfs_symlink_caching dynamically tunable using /proc and sysctl
+> interface.
 
-/fc
+No. Do it on a per-mount basis, like the other OS's do.
+
+Ion
+
+-- 
+  It is better to keep your mouth shut and be thought a fool,
+            than to open it and remove all doubt.
 
 
 -------------------------------------------------------
