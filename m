@@ -1,24 +1,16 @@
-From: Juergen Sauer <juergen.sauer@automatix.de>
-Subject: Re: Journaling FileSystems w/ NFS
-Date: Fri, 20 Sep 2002 19:17:38 +0200
+From: John Doshier <john@inter7.com>
+Subject: lockd: cannot monitor 192.168.0.31
+Date: Fri, 20 Sep 2002 14:33:11 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200209201917.38085.juergen.sauer@automatix.de>
-References: <Pine.LNX.4.33.0209201145290.16674-100000@node1.nacs.net>
+Message-ID: <3D8B77F7.1030400@inter7.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from www.automatix.de ([212.4.161.35] helo=mail.automatix.de)
-	by usw-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17sRRw-0008EH-00
-	for <nfs@lists.sourceforge.net>; Fri, 20 Sep 2002 10:20:16 -0700
-Received: from uucp by mail.automatix.de with local-bsmtp (Exim 3.36 #1)
-	id 17sRT7-0003gQ-00
-	for nfs@lists.sourceforge.net; Fri, 20 Sep 2002 19:21:29 +0200
-To: Greg Boehnlein <damin@nacs.net>,
- <nfs@lists.sourceforge.net>
-In-Reply-To: <Pine.LNX.4.33.0209201145290.16674-100000@node1.nacs.net>
+Received: from ns1.inter7.com ([209.218.8.2])
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17sTXc-00061L-00
+	for <nfs@lists.sourceforge.net>; Fri, 20 Sep 2002 12:34:16 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,41 +23,50 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
------BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA1
+Hi Everyone,
 
-Am Freitag, 20. September 2002 17:48 schrieb Greg Boehnlein:
-> Hello,
-> 	Can someone point me to a FAQ on which is the best solution for
-> running a Journalized Filesystem with NFS support under Linux? We've
-> tried deploying JFS with RedHat 7.3 and NFS and have run into problems.
-> From my investigation, it appears that XFS is our best option for
-> running NFS with +2gig file size support.
+    I keep seeing this error ever 5 mintues on the console of one of my 
+NFS clients..
 
-Full Ack. We are runneing here somwhat >6 TB NFS Servers  with XFS.
-(Applications: NFS, Samba, SapDB) XFS ist nearly unbraekable.
+Sep 20 13:40:00 mailclone1 kernel: lockd: cannot monitor 192.168.0.3
+Sep 20 13:45:00 mailclone1 kernel: lockd: cannot monitor 192.168.0.3
+Sep 20 13:50:01 mailclone1 kernel: lockd: cannot monitor 192.168.0.3
 
-The worst problem we had was with the bleeding edge Kernel 2.4.19 
-from the CVS sources in a test box, where a log-replay-race coused a 
-singular kernal crash. After rebooting/reseting this box, all was fine.
+    I'm running RedHat 7.3 with kernel 2.4.18-10 on both the client and 
+server.  I'm using nfs-utils-0.3.3-5.
 
-The log-replay-race condition isr IMHO solved.
+    I've done some digging and have found quite a few references about 
+this same problem.  However, all of the suggested solutions don't seem 
+to apply to me.
 
-mfG
-	Jojo
+    One suggestion was to make sure statd/lockd are running on the 
+client.  They are, and they are also running on the server.
+   
+    Another was to check permissions of /var/lib/nfs/statd.  The 
+directory is mode 0700 owned by rpcuser.rpcuser, which is the user that 
+rpc.statd is running as.
 
-- -- 
-Jürgen Sauer - AutomatiX GmbH, +49-4209-4699, jojo@automatix.de **
-** Das Linux Systemhaus - Service - Support - Server - Lösungen **
-http://www.automatix.de to Mail me: remove: -not-for-spawm-     **
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.0.6 (GNU/Linux)
-Comment: For info see http://www.gnupg.org
 
-iEYEARECAAYFAj2LWDIACgkQW7UKI9EqarGGgACgsZnc4Se43Z92MKvW7s6fL2FS
-zhMAoJ1coSMiZFmfzLwhOPGPgqgWr8lQ
-=8Zgy
------END PGP SIGNATURE-----
+    As far as I can tell everything is working fine with regards to the 
+NFS mounts.  The clients mount them no problem, and have no trouble 
+reading or writing to them.  I'm just trying to figure out the cause of 
+these error's before I move these boxes into production.  I don't want 
+to leave any loose ends untied.
+
+    Any help is greatly appreciated.
+
+    Thanks,
+
+        John
+   
+
+-- 
+John Doshier
+Unix Systems Administrator
+Inter7 Internet Technologies, INC.
+(p) 847.492.0470 (f) 847.492.0632
+http://www.inter7.com/main.html
+
 
 
 
