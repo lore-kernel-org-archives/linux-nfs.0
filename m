@@ -1,75 +1,41 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: [PATCH 2.5.60] Clean up and fix SMP issue w.r.t. XID allocation
-Date: Thu, 13 Feb 2003 15:52:50 +0100
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <15947.45378.421333.627616@charged.uio.no>
-Reply-To: trond.myklebust@fys.uio.no
+From: Alan Powell <lakerfaniam2@yahoo.com>
+Subject: testing
+Date: Thu, 13 Feb 2003 13:28:42 -0800 (PST)
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <20030213212842.76842.qmail@web12205.mail.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
-	NFS maillist <nfs@lists.sourceforge.net>
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: Linus Torvalds <torvalds@transmeta.com>
-List-ID: <nfs.lists.sourceforge.net>
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from web12205.mail.yahoo.com ([216.136.173.89])
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18jQuQ-00058U-00
+	for <nfs@lists.sourceforge.net>; Thu, 13 Feb 2003 13:28:42 -0800
+To: nfs@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+
+test
+
+__________________________________________________
+Do you Yahoo!?
+Yahoo! Shopping - Send Flowers for Valentine's Day
+http://shopping.yahoo.com
 
 
-The following problem was identified by Olaf Kirch. In
-xprt_request_init(), the XID allocation needs to be protected by a
-global spinlock.
-
-Cheers,
-  Trond
-
-diff -u --recursive --new-file linux-2.5.60-00-fix_pipes/net/sunrpc/xprt.c linux-2.5.60-01-fix_xid/net/sunrpc/xprt.c
---- linux-2.5.60-00-fix_pipes/net/sunrpc/xprt.c	2003-01-12 22:39:48.000000000 +0100
-+++ linux-2.5.60-01-fix_xid/net/sunrpc/xprt.c	2003-02-13 14:17:10.000000000 +0100
-@@ -1273,25 +1273,41 @@
- }
- 
- /*
-+ * Allocate a 'unique' XID
-+ */
-+static u32
-+xprt_alloc_xid(void)
-+{
-+	static spinlock_t xid_lock = SPIN_LOCK_UNLOCKED;
-+	static int need_init = 1;
-+	static u32 xid;
-+	u32 ret;
-+
-+	spin_lock(&xid_lock);
-+	if (unlikely(need_init)) {
-+		xid = get_seconds() << 12;
-+		need_init = 0;
-+	}
-+	ret = xid++;
-+	spin_unlock(&xid_lock);
-+	return ret;
-+}
-+
-+/*
-  * Initialize RPC request
-  */
- static void
- xprt_request_init(struct rpc_task *task, struct rpc_xprt *xprt)
- {
- 	struct rpc_rqst	*req = task->tk_rqstp;
--	static u32	xid = 0;
--
--	if (!xid)
--		xid = get_seconds() << 12;
- 
--	dprintk("RPC: %4d reserved req %p xid %08x\n", task->tk_pid, req, xid);
- 	req->rq_timeout = xprt->timeout;
- 	req->rq_task	= task;
- 	req->rq_xprt    = xprt;
--	req->rq_xid     = xid++;
--	if (!xid)
--		xid++;
-+	req->rq_xid     = xprt_alloc_xid();
- 	INIT_LIST_HEAD(&req->rq_list);
-+	dprintk("RPC: %4d reserved req %p xid %08x\n", task->tk_pid,
-+			req, req->rq_xid);
- }
- 
- /*
+-------------------------------------------------------
+This SF.NET email is sponsored by: FREE  SSL Guide from Thawte
+are you planning your Web Server Security? Click here to get a FREE
+Thawte SSL guide and find the answers to all your  SSL security issues.
+http://ads.sourceforge.net/cgi-bin/redirect.pl?thaw0026en
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
