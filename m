@@ -1,24 +1,24 @@
-From: Pierre Ossman <drzeus-list@drzeus.cx>
-Subject: Re: Move (mv) hangs with NFSv4
-Date: Sun, 02 Jan 2005 19:48:54 +0100
-Message-ID: <41D84216.9060504@drzeus.cx>
-References: <41B0A79A.2010203@drzeus.cx> <1102097931.10878.21.camel@lade.trondhjem.org> <20041207155227.GG31250@fieldses.org> <41B61C89.2060000@drzeus.cx> <20041207211715.GQ31250@fieldses.org> <41B6E933.4090708@drzeus.cx>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] prevent sunrpc deadlock with debug on
+Date: Wed, 05 Jan 2005 18:21:39 +0100
+Message-ID: <1104945700.520.22.camel@lade.trondhjem.org>
+References: <20041216165714.GB2077@suse.de>
+	 <1104277396.3976.10.camel@lade.trondhjem.org>
+	 <20050105164455.GI26856@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ClAmr-00016M-RJ
-	for nfs@lists.sourceforge.net; Sun, 02 Jan 2005 10:49:09 -0800
-Received: from a26.t1.student.liu.se
-	([130.236.221.26] helo=mail.drzeus.cx ident=daemon)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1ClAml-0005Qz-I9
-	for nfs@lists.sourceforge.net; Sun, 02 Jan 2005 10:49:09 -0800
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <41B6E933.4090708@drzeus.cx>
+	id 1CmErB-0001QC-3n
+	for nfs@lists.sourceforge.net; Wed, 05 Jan 2005 09:22:01 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CmEr6-0007zw-0Y
+	for nfs@lists.sourceforge.net; Wed, 05 Jan 2005 09:22:00 -0800
+To: Olaf Kirch <okir@suse.de>
+In-Reply-To: <20050105164455.GI26856@suse.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,27 +32,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Pierre Ossman wrote:
-> J. Bruce Fields wrote:
-> 
->>
->> Thanks.  It's a problem with the idmapping on the server, argh.  Is
->> rpc.idmapd still running after this, or does it die?--b.
->>  
->>
-> It's still running. The effect is only local to the mv process. Other 
-> traffic to the same mount continue to work perfectly.  There has been a 
-> few incidents where the entire mount hangs. But in these cases I have to 
-> restart the client, not the server.
-> 
-> Can I get some debug output from idmapd that will pinpoint where the 
-> problem is?
-> 
+on den 05.01.2005 Klokka 17:44 (+0100) skreiv Olaf Kirch:
 
-Any updates to this issue?
+> Still, if we ever run into a corrupted task struct, we will still
+> deadlock. How about this:
+> 
+>   show_tasks(void)
+>   {
+>         struct list_head *le;
+>         struct rpc_task *t;
+> 
+> -       spin_lock(&rpc_sched_lock);
+> +	if (!spin_trylock(&rpc_sched_lock))
+> +		return;
+>         if (list_empty(&all_tasks)) {
+>                 spin_unlock(&rpc_sched_lock);
 
-Rgds
-Pierre
+In the end I opted to convert that deadlock into a BUG_ON() (see the
+latest Bitkeeper kernel). The whole point of that code is to ensure that
+people report real bugs in which the RPC state machine is being
+corrupted. Its entire reason for existence disappears if people start
+worrying about the debugging deadlocks, but not the underlying bugs.
+
+BUG_ON() is a more definite obstruction, and so tends to get people
+annoyed enough to file reports. 8-)
+
+Cheers,
+  Trond
+
+-- 
+Trond Myklebust <trond.myklebust@fys.uio.no>
+
 
 
 -------------------------------------------------------
