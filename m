@@ -1,15 +1,15 @@
 From: raysrv05@ray.fi
 Subject: Report to Recipient(s)
-Date: Sun, 29 Jun 2003 07:53:59 +0300
+Date: Mon, 30 Jun 2003 05:37:29 +0300
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <OFF2448F51.7BBB49A5-ONC2256D54.001AEA66@ray.fi>
+Message-ID: <OF3E876B58.E3D20B25-ONC2256D55.000E6B47@ray.fi>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from ws-002.ray.fi ([193.64.14.2] helo=raysrv11.ray.fi)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19WUAe-0008W1-00
-	for <nfs@lists.sourceforge.net>; Sat, 28 Jun 2003 21:52:12 -0700
+	id 19WoWB-0007KZ-00
+	for <nfs@lists.sourceforge.net>; Sun, 29 Jun 2003 19:35:47 -0700
 To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
