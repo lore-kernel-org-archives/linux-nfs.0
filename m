@@ -1,21 +1,18 @@
-From: "Richard B. Johnson" <root@chaos.analogic.com>
-Subject: Re: [PATCH] 2.4.19-rc1/2.5.25 provide dummy fsync() routine for directories on NFS mounts
-Date: Tue, 9 Jul 2002 15:50:17 -0400 (EDT)
+From: Tom McNeal <trmcneal@attbi.com>
+Subject: Re: redhat 2.4.18-5 client huge slowdown
+Date: Tue, 09 Jul 2002 15:19:10 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <agff7l$91l$2@main.gmane.org>
-References: <E17S18w-0005a7-00@the-village.bc.nu>
-Reply-To: root@chaos.analogic.com
+Message-ID: <3D2B615E.5090801@attbi.com>
+References: <E17S0Jk-0006ZT-00@usw-sf-list2.sourceforge.net> <3D2B373E.2030602@genomes.rockefeller.edu>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>, nfs@lists.sourceforge.net,
-   linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from chaos.analogic.com ([204.178.40.224])
+Received: from sccrmhc01.attbi.com ([204.127.202.61])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17S101-0002m6-00
-	for <nfs@lists.sourceforge.net>; Tue, 09 Jul 2002 12:50:13 -0700
-To: Alan Cox <alan@lxorguk.ukuu.org.uk>
-In-Reply-To: <E17S18w-0005a7-00@the-village.bc.nu>
+	id 17S3Gz-0005h6-00
+	for <nfs@lists.sourceforge.net>; Tue, 09 Jul 2002 15:15:53 -0700
+To: Raphael Clifford <clifford@genomes.rockefeller.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,33 +25,43 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Tue, 9 Jul 2002, Alan Cox wrote:
 
-> > That is what it's supposed to do with files. The attached code clearly
-> > shows that it doesn't work with directories. The fsync() instantly
-> > returns, even though there is buffered data still to be written.
+
+Raphael Clifford wrote:
+
+> I was wondering if everyone else is experiencing huge nfs write 
+> slowdowns using redhat kernel 2.4.18-5 (as opposed to 2.4.18-4).  I am 
+> using a Sun Solaris machine as the server and following mount options.
 > 
-> Your understanding or code is wrong. Its hard to tell which.
+> rw,rsize=32768,wsize=32768,nfsvers=3,proto=tcp
 > 
-> fsync on the directory syncs the directory metadata not the file metadata
+> I understand that both 2.4.18-4 and 2.4.18-5 default to 'sync' but as 
+> the slow down is between those versions so that shouldn't make any 
+> difference.  I also understand that there were a lot of nfs client 
+> "fixes" in 2.4.18-5 so I assume they have caused this problem.
+> 
+> The linux machine is a dual 500 MHz if that makes any difference.
+> 
+> Cheers,
+> Raphael
 > 
 
-Well the original complaint was that Linux NFS didn't allow a directory to
-be fsync()ed. I showed that POSIX.4 doesn't provide for fsync()ing
-directories, only files, that you have to fsync() individual files, not
-the directories that contain them. Others said that fsync()ing individual
-files was not necessary, that you only have to fsync() the directory. I
-explained that you have to cheat to even get a fd that can be used
-to fsync() a directory. Then I showed that fsync()ing a directory in this
-manner doesn't work so, we are actually in violent agreement.
 
+The sync/async default is determined at the server, not the client,
+and Solaris defaults to sync, as does almost everyone else.
 
-Cheers,
-Dick Johnson
+Also, the default is determined in the utilities, not in the kernel,
+which is why Linux servers currently default to async.  They will
+default to sync when using the latest, unreleased export utilites;
+They will be released "very soon" as version 1.0.1.
 
-Penguin : Linux version 2.4.18 on an i686 machine (797.90 BogoMips).
+Regards -
 
-                 Windows-2000/Professional isn't.
+Tom
+--
+----------------------------------------------------------------------
+Tom McNeal           trmcneal@attbi.com           (650)906-0761 (cell)
+----------------------------------------------------------------------
 
 
 
