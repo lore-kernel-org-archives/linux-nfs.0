@@ -1,25 +1,19 @@
-From: David LeBard <david.lebard@asu.edu>
-Subject: Newbie at NFS
-Date: Thu, 16 May 2002 11:31:52 -0500
+From: =?ISO-8859-1?Q?J=F6rgen_Karlsson?= <jorgen.karlsson@chello.se>
+Subject: knsfd - files don't sync to disk
+Date: Thu, 16 May 2002 21:43:51 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200205161836.g4GIa6B07347@smtp.asu.edu>
+Message-ID: <3CE40BF7.1090605@chello.se>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from post2.inre.asu.edu ([129.219.110.73])
+Received: from smtp2.chello.se ([193.150.195.11])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 178Q76-0002OS-00
-	for <nfs@lists.sourceforge.net>; Thu, 16 May 2002 11:36:32 -0700
-Received: from conversion.post2.inre.asu.edu by asu.edu (PMDF V6.1 #40111)
- id <0GW700N01VO651@asu.edu> for nfs@lists.sourceforge.net; Thu,
- 16 May 2002 11:36:06 -0700 (MST)
-Received: from smtp.asu.edu (smtp.asu.edu [129.219.110.107])
- by asu.edu (PMDF V6.1 #40111) with ESMTP id <0GW700N30VO62P@asu.edu> for
- nfs@lists.sourceforge.net; Thu, 16 May 2002 11:36:06 -0700 (MST)
-Received: from there (theochem2.la.asu.edu [129.219.83.141])
-	by smtp.asu.edu (8.11.0/8.11.0/asu_smtp_relay,nullclient,tcp_wrapped)
- with SMTP id g4GIa6B07347	for <nfs@lists.sourceforge.net>; Thu,
- 16 May 2002 11:36:06 -0700 (MST)
+	id 178R3Q-0007Nk-00
+	for <nfs@lists.sourceforge.net>; Thu, 16 May 2002 12:36:48 -0700
+Received: from chello.se ([213.200.143.211]) by smtp2.chello.se
+          (InterMail vK.4.04.00.00 201-232-137 license d2583c0617b67bae473a44216fd3d32d)
+          with ESMTP id <20020516193645.MHUF2385.smtp2@chello.se>
+          for <nfs@lists.sourceforge.net>; Thu, 16 May 2002 21:36:45 +0200
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -33,33 +27,58 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-I am new to nfs and to this list, so please excuse my obvious ignorance.
+Hi,
 
-Here is my network situation:
+We have a serious problem with knfsd and kernel 2.4.17.
 
-WAN <-> Switch <-> Internal Network w/ 5 linux 
-workstations <-> master linux server (w/ 2 NICs) -> 10.0.0.x network 
-w/ 3 more linux servers
+When doing a database backup in our linux cluster we have noticed that
+a few files are not written to disk properly. The files have zero
+file size when checked with the 'ls' command
 
-so, the problem is that we need want to use nfs to connect our linux 
-workstations (subnet: 255.255.255.192) to the linux servers (subnet: 
-255.0.0.0) .  the only computer than can see the 10.0.0.x network is the 
-master linux server.  
+Several thousands of files are written to the nfs server during a
+short period of time.  Average file size is 300-400 bytes.
 
-i have nfs running on every computer on both networks.  i have a mounted a 
-drive from one of the linux servers on the 10.0.0.x network to the master 
-server.  i can see all of the files on the master.  i have mounted the same 
-drive from the master server (which is actually the mounted drive from linux 
-server on the 10.0.0.x network) to my linux workstation, but i cannot see any 
-files on there at all.
+We have noticed that usually 1-2 out of 3000 files will have their sizes
+truncated to 0.
 
-i believe what i need to do is make the master linux server into a router so 
-the linux workstations can see the 10.0.0.x network on the other side of 
-master.  will this even work?  does anyone have a better idea, as i am open 
-to anything at this point?
+File  system is exported with (rw,sync)
 
-Thanks,
-David LeBard
+The disk filesystem is ext2.
+
+E.g. this is what is happening:
+          - client writes 272 bytes to the server
+          - mm/file.c:generic_file_write() returns 272 bytes written
+          - fs/nfsd/vfs.c:nfs_write() increments nfsdstats.io_write +=272
+             and returns that the write was sucessful.
+          - knfsd returns to client that 272 bytes was written.
+          - when checking with 'ls' command on server the file size is zero.
+
+Apparently the nfs server lies to the client and the files are not
+properly synced/written to disk.
+
+Setting no_wdelay makes no difference.
+
+When running with async set (or sync removed) the problem
+disappears (no files have their sizes truncated to zero).
+
+The nfs server is a PIII-700/ 1GB RAM
+
+Any ideas what is going on ?
+
+/Jörgen Karlsson
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 _______________________________________________________________
 
