@@ -1,24 +1,27 @@
-From: Jeffrey Layton <jtlayton@poochiereds.net>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: Linux' NFS locking b0rken?
-Date: Tue, 25 May 2004 12:42:09 -0400
+Date: Tue, 25 May 2004 13:47:06 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1085503328.13681.4.camel@tesla.mmt.bellhowell.com>
+Message-ID: <1085507226.3872.132.camel@lade.trondhjem.org>
 References: <1085487829.6666.32.camel@tesla.mmt.bellhowell.com>
 	 <20040525123425.GO21886@suse.de>
+	 <1085503328.13681.4.camel@tesla.mmt.bellhowell.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-1
+Cc: Olaf Kirch <okir@suse.de>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BSf0G-0004zx-RD
-	for nfs@lists.sourceforge.net; Tue, 25 May 2004 09:42:12 -0700
-Received: from rdu26-93-067.nc.rr.com ([66.26.93.67] helo=salusa.poochiereds.net)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BSf0G-0001CL-H4
-	for nfs@lists.sourceforge.net; Tue, 25 May 2004 09:42:12 -0700
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20040525123425.GO21886@suse.de>
+	id 1BSg1G-0002RL-9E
+	for nfs@lists.sourceforge.net; Tue, 25 May 2004 10:47:18 -0700
+Received: from dh132.citi.umich.edu
+	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.30)
+	id 1BSg1F-0007NR-W3
+	for nfs@lists.sourceforge.net; Tue, 25 May 2004 10:47:18 -0700
+To: Jeffrey Layton <jtlayton@poochiereds.net>
+In-Reply-To: <1085503328.13681.4.camel@tesla.mmt.bellhowell.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,23 +34,17 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, 2004-05-25 at 08:34, Olaf Kirch wrote:
-> BSD flock locks have never worked over NFS, and probably will
-> never work over NFS. Please use POSIX (i.e. fcntl) locks instead.
-> 
-> Olaf
+P=E5 ty , 25/05/2004 klokka 12:42, skreiv Jeffrey Layton:
 
-Ahh I learned something new today! I didn't realize there were 2 locking
-implementations. I ended up writing a small C program to test this, and
-fcntl locks do seem to work over NFS.
+> Perhaps Solaris does some sort of BSD-POSIX lock translation which makes
+> flock() work there?
 
-Perhaps Solaris does some sort of BSD-POSIX lock translation which makes
-flock() work there?
+The convention for local filesystems under Linux is that BSD and POSIX
+locks are not allowed to see each other. That rules out using the above
+trick for NFS.
 
-Thanks for the info!
--- Jeff
-
-
+Cheers,
+   Trond
 
 
 -------------------------------------------------------
