@@ -1,25 +1,23 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
+From: Denis Vlasenko <vda@ilport.com.ua>
 Subject: Re: mountd: needless DNS queries when authenticating client against numeric IP
-Date: Thu, 10 Mar 2005 10:53:27 +1100
-Message-ID: <16943.35959.345191.659240@cse.unsw.edu.au>
-References: <200503041424.22897.vda@ilport.com.ua>
-	<200503051557.07721.vda@ilport.com.ua>
-	<16939.39051.569756.982757@cse.unsw.edu.au>
-	<200503090950.25722.vda@port.imtp.ilyichevsk.odessa.ua>
+Date: Thu, 10 Mar 2005 12:29:06 +0200
+Message-ID: <200503101222.37749.vda@ilport.com.ua>
+References: <200503041424.22897.vda@ilport.com.ua> <200503090950.25722.vda@port.imtp.ilyichevsk.odessa.ua> <16943.35959.345191.659240@cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Denis Vlasenko <vda@ilport.com.ua>, nfs@lists.sourceforge.net,
+Content-Type: text/plain;
+  charset="koi8-r"
+Cc: nfs@lists.sourceforge.net,
 	Trond Myklebust <trond.myklebust@fys.uio.no>, vital@ilport.com.ua
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D9Azv-0001X9-AE
-	for nfs@lists.sourceforge.net; Wed, 09 Mar 2005 15:53:51 -0800
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1D9Azt-0002NP-D8
-	for nfs@lists.sourceforge.net; Wed, 09 Mar 2005 15:53:51 -0800
-To: Denis Vlasenko <vda@port.imtp.ilyichevsk.odessa.ua>
-In-Reply-To: message from Denis Vlasenko on Wednesday March 9
+	id 1D9Kvg-0004Xp-DZ
+	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 02:30:08 -0800
+Received: from [195.66.192.167] (helo=port.imtp.ilyichevsk.odessa.ua)
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
+	id 1D9KvY-0004R9-3U
+	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 02:30:08 -0800
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <16943.35959.345191.659240@cse.unsw.edu.au>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,69 +31,77 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wednesday March 9, vda@port.imtp.ilyichevsk.odessa.ua wrote:
+> > /home	1.2.3.4(rw)
+> > /public	joker(rw)
 > > 
-> > It is only safe to avoid the DNS lookup if there are *no* names in the
-> > /etc/exports file.  If everything is one of "*", "ip.ad.dr.es" or 
-> > "ne.t-.wo.rk/mask"  then it is OK,  If there is any domain.name or
-> > @netgroup, then you always need to find the name.
+> > What is the failure scenario? I don't quite understand where is the problem.
 > 
-> What about '*.domain.name' style wildcards?
+> Suppose joker is 1.2.3.4
 > 
-
-Yep,  Always need DNS lookup if there are any of those too.
-
-> > The problem arises if someone exports one filesystem to an IP address,
-> > and another to the DNS name.  Confusion and failure results.
+> joker mounts '/home'.  Mountd doesn't bother with the DNS lookup and
+> tell the kernel:
 > 
-> Like this? /etc/exports:
+>   1/  IP address "1.2.3.4" has name "1.2.3.4"
+>   2/  client with name "1.2.3.4" is allowed to access /home with
+>       options "rw"
 > 
-> /home	1.2.3.4(rw)
-> /public	joker(rw)
+> Then joker mounts '/public' so mountd need to do the DNS lookup, and
+> tells the kernel:
 > 
-> What is the failure scenario? I don't quite understand where is the problem.
+>   1/ IP address "1.2.3.4" has name "joker"
+>   2/ client with name "joker" is allowed to access /public
+>       with options "rw".
+> 
+> Now joker tries to access it's mount of /home, and this fails, because
+> 1.2.3.4 maps to "joker", and "joker" doesn't have access to /home
 
-Suppose joker is 1.2.3.4
+Uggh.
 
-joker mounts '/home'.  Mountd doesn't bother with the DNS lookup and
-tell the kernel:
+BTW, I understood in-kernel NFS auth as follows:
 
-  1/  IP address "1.2.3.4" has name "1.2.3.4"
-  2/  client with name "1.2.3.4" is allowed to access /home with
-      options "rw"
+RPC request came -> kernel translates sender's IP into name ->
+kernel checks name against in-kernel export table for permissions
 
-Then joker mounts '/public' so mountd need to do the DNS lookup, and
-tells the kernel:
+In-kernel export table gets (de)populated by mountd, as needed.
 
-  1/ IP address "1.2.3.4" has name "joker"
-  2/ client with name "joker" is allowed to access /public
-      with options "rw".
+Correct me if I misunderstood something.
 
+> For this reason, there must be a canonical name for each IP address.
+> This has always been:
+>    DNS name if it exists, else dotted-quad
+> 
+> We could make it always
+>    dotted-quad
 
-Now joker tries to access it's mount of /home, and this fails, because
-1.2.3.4 maps to "joker", and "joker" doesn't have access to /home
+Sounds very sensible. Will this allow us to skip IP->name
+translation in kernel entirely?
 
+> but the former works better when you have multi-homed clients.
 
-For this reason, there must be a canonical name for each IP address.
-This has always been:
-   DNS name if it exists, else dotted-quad
+By keeping in-kernel export table compact? This isn't big,
+you rarely have hosts with 10+ heads. Any other reasons?
 
-We could make it always
-   dotted-quad
+> The compromise would be
+>    If there are any names in /etc/exports and DNS name exists, use it,
+>     else use dotted quad.
+> 
+> In 2.6, if /proc/fs/nfsd is mounted, the name used is a
+> comma-separated list of all names mentioned in /etc/exports which
+> match the IP address.
 
-but the former works better when you have multi-homed clients.
+I see. I am getting familiar with how NFS internals work.
+I exported / both to 127.0.0.1 and to localhost. Instrumented mountd says:
 
-The compromise would be
-   If there are any names in /etc/exports and DNS name exists, use it,
-    else used dotted quad.
+mountd: cache_export(): exp->m_client->m_addrlist[0]=127.0.0.1
+mountd: cache_export(): exp->m_client->m_hostname=127.0.0.1,localhost
+                                                  ^^^^^^^^^^^^^^^^^^^
+mountd: cache_export_ent(): domain=127.0.0.1,localhost
+mountd: cache_export_ent(): exp->e_path=/
 
-In 2.6, if /proc/fs/nfsd is mounted, the name used is a
-comma-separated list of all names mentioned in /etc/exports which
-match the IP address.
+> The same could possibly done for when /proc/fs/nfsd isn't mounted.
+--
+vda
 
-The same could possibly done for when /proc/fs/nfsd isn't mounted.
-
-NeilBrown
 
 
 -------------------------------------------------------
