@@ -1,23 +1,27 @@
-From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
-Subject: Re: ps -aux hangs on [nfsd]
-Date: Fri, 28 Jan 2005 14:47:47 +0100
-Message-ID: <41FA4283.6080606@bio.ifi.lmu.de>
-References: <41DE6CF9.6030100@bio.ifi.lmu.de> <41F8C900.90404@bio.ifi.lmu.de> <20050128102223.GB32084@suse.de>
+From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Subject: info for debugging failed lock recovery
+Date: Fri, 28 Jan 2005 08:10:18 -0700 (MST)
+Message-ID: <Pine.LNX.4.60.0501280808420.7869@harp.ngdc.noaa.gov>
+Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>,
-	NFS NFS <nfs@lists.sourceforge.net>
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CuWU2-0007cL-Uj
-	for nfs@lists.sourceforge.net; Fri, 28 Jan 2005 05:48:22 -0800
-Received: from acheron.informatik.uni-muenchen.de ([129.187.214.135])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CuWTY-0002Mf-SR
-	for nfs@lists.sourceforge.net; Fri, 28 Jan 2005 05:48:22 -0800
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20050128102223.GB32084@suse.de>
+	id 1CuXlq-0003Ck-TL
+	for nfs@lists.sourceforge.net; Fri, 28 Jan 2005 07:10:50 -0800
+Received: from harp.ngdc.noaa.gov ([140.172.178.33])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1CuXlQ-0007zs-7R
+	for nfs@lists.sourceforge.net; Fri, 28 Jan 2005 07:10:50 -0800
+Received: from harp.ngdc.noaa.gov (harp.ngdc.noaa.gov [127.0.0.1])
+	by harp.ngdc.noaa.gov (8.12.11/8.12.11) with ESMTP id j0SFAI3l020272
+	for <nfs@lists.sourceforge.net>; Fri, 28 Jan 2005 08:10:18 -0700
+Received: from localhost (ahoward@localhost)
+	by harp.ngdc.noaa.gov (8.12.11/8.12.11/Submit) with ESMTP id j0SFAI3Q020268
+	for <nfs@lists.sourceforge.net>; Fri, 28 Jan 2005 08:10:18 -0700
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,75 +35,55 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Olaf Kirch wrote
+all-
 
-> This doesn't look like an NFS bug; it's a problem in procps or glibc.
-> 
-> When you do a ps aux, ps ends up in a function named simple_readtask
-> (in procps/proc/readproc.c) which does this:
-> 
-> 	stat /proc/<pid>
-> 	read /proc/<pid>/stat
-> 	read /proc/<pid>/status
-> 	map the uids it found to login names
- >
-> The latter happens via a function named user_from_uid(), which caches
-> these mappings - this is the reason why you're not seeing an access to
-> /etc/passwd on every call.
+i've been out sick all week but am about to dig back into our failing lockd
+recovery issues.  if you recall we have this issue
 
-Hmm, maybe that goes wrong, because the uid found in the status file
-does not exist on the server. The server has only system users, but
-exports the fs to a clients where real users exist. I checked the
-content of /proc/15600/status which I recorder when it was hanging
-and it shows
+   ~ client > get_and_hold_lock
 
-Name:   nfsd
-State:  S (sleeping)
-SleepAVG:       102%
-Tgid:   15600
-Pid:    15600
-PPid:   1
-TracerPid:      0
-Uid:    0       0       0       19021
-Gid:    0       0       0       19000
-FDSize: 32
-Groups: 14 16 17 33 19000
-Threads:        1
-SigPnd: 0000000000000000
-ShdPnd: 0000000000000000
-SigBlk: fffffffffffffef8
-SigIgn: 0000000000000000
-SigCgt: 0000000000000000
-CapInh: 0000000000000000
-CapPrm: 00000000ffffffff
-CapEff: 00000000fefffee0
+   ~ server > cat /proc/locks      # shows correct lock pid
 
-However, uid and gid 19021 and 19000 don't exist on the nfs server, only
-on the clients mounting. Of course this shouldn't be a problem, but maybe
-the bug is triggered by this situation?
+   ~ client > reboot
 
-Btw, I saw that the read command in tge strace log for /proc/15600/status
-is the only one that ends with "= 373" while all reads for the other
-nfsd processes end with "= 348". Could that indicate sth. is wrong
-with this status file?
+   ~ client > get_and_hold_lock    # fails!
 
-> But it doesn't look like user_from_uid() could loop at all. So
-> possibly somethings wrong inside glibc (unlikely as that is).
+   ~ server > cat /proc/locks      # shows old lock pid (before reboot) still 
+there!
 
-All very puzzling and I've no idea how to track this down... Anyway
-thanks for the explanation so far!
+our clients AND servers are multihomed and each has iptables running.  we have
+opened ALL traffic between client and server in the firewalls - NOTHING is
+blocked.  still no go.  we're still seeing lots of SM_UNMON errors in var
+messages and i'm suspicious these are related to some multi-homed issues
+that's contributing to our failing lock recovery - but this is an un-educated
+hunch.
 
-cu,
-Frank
+at this point were are talking about starting a tcpdump in the nfslock script
+so we can see what's going on during boot/lock-recovery.  my question is
+
+   - what should i expect to see?  eg.  what exactly should the client be doing
+     to recover it's locks?  which messages - which ports - etc.  i'm after a
+     high level description here.  if there is anywhere i can read about this
+     please let me know.
+
+   - any other tips (someone has suggested using ethereal) to determine the
+     problem?
+
+sorry to drag this through the mud but our system is too fragile without
+proper lock recovery to ignore and, unfortunately i'm not versed in debugging
+these sorts of things.
 
 
+kind regards.
 
+-a
 -- 
-Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
-Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
-LMU, Amalienstr. 17           Phone: +49 89 2180-4049
-80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
-* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
+===============================================================================
+| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
+| PHONE   :: 303.497.6469
+| When you do something, you should burn yourself completely, like a good
+| bonfire, leaving no trace of yourself.  --Shunryu Suzuki
+===============================================================================
 
 
 -------------------------------------------------------
