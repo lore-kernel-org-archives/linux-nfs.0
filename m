@@ -1,30 +1,24 @@
-From: Mike Waychison <mike@waychison.com>
-Subject: Re: [PATCH 1/2] VFS: New /proc file /proc/self/mountstats
-Date: Wed, 23 Mar 2005 17:42:31 +0000 (UTC)
-Message-ID: <loom.20050323T183257-779@post.gmane.org>
-References: <20050317162613.756101BB98@citi.umich.edu>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Stale NFS file handle
+Date: Wed, 23 Mar 2005 12:26:55 -0500
+Message-ID: <1111598815.13619.1.camel@lade.trondhjem.org>
+References: <42416B4C.2010505@RedHat.com>
+	 <1111586235.27875.13.camel@lade.trondhjem.org>
+	 <20050323140845.BED8.BRANDEN@terra.com.br>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
+Cc: Steve Dickson <SteveD@redhat.com>, nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DEAej-0008GD-T8
-	for nfs@lists.sourceforge.net; Wed, 23 Mar 2005 10:32:37 -0800
-Received: from main.gmane.org ([80.91.229.2] helo=ciao.gmane.org)
+	id 1DE9dR-00048a-6V
+	for nfs@lists.sourceforge.net; Wed, 23 Mar 2005 09:27:13 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1DEAei-00035M-6f
-	for nfs@lists.sourceforge.net; Wed, 23 Mar 2005 10:32:37 -0800
-Received: from root by ciao.gmane.org with local (Exim 4.43)
-	id 1DEATb-0003FD-3z
-	for nfs@lists.sourceforge.net; Wed, 23 Mar 2005 19:21:07 +0100
-Received: from ip22-176.tor.istop.com ([66.11.176.22])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <nfs@lists.sourceforge.net>; Wed, 23 Mar 2005 19:21:07 +0100
-Received: from mike by ip22-176.tor.istop.com with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <nfs@lists.sourceforge.net>; Wed, 23 Mar 2005 19:21:07 +0100
-To: nfs@lists.sourceforge.net
+	id 1DE9dP-0004Ml-GG
+	for nfs@lists.sourceforge.net; Wed, 23 Mar 2005 09:27:13 -0800
+To: Filipe Brandenburger <branden@terra.com.br>
+In-Reply-To: <20050323140845.BED8.BRANDEN@terra.com.br>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,35 +32,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Chuck,
+on den 23.03.2005 Klokka 14:15 (-0300) skreiv Filipe Brandenburger:
 
-Chuck Lever <cel <at> citi.umich.edu> writes:
+> If it's really not possible to change it on the NFS client (the kernel),
+> what workaround would you suggest me to use?
 
-> 
-> Create a new file under /proc/self, called mountstats, where mounted file
->  systems can export information (configuration options, performance counters,
->  and so on).  Use a mechanism similar to /proc/mounts and s_ops->show_options.
-> 
+Rename the file, then delete it once you know that the clients no longer
+have it open. That's the obvious and standard way of dealing with this
+sort of problem over NFS.
 
-> diff -X /home/cel/src/linux/dont-diff -Naurp 00-stock/fs/namespace.c
-01-mountstats/fs/namespace.c
+Cheers,
+  Trond
 
-...
-
-> +struct seq_operations mountstats_op = {
-> +	.start	= ms_start,
-> +	.next	= ms_next,
-> +	.stop	= ms_stop,
-
-You can use m_start, m_next and m_stop here instead of copying and pasting the
-routines.  Otherwise looks fine.
-
-Mike Waychison
-
-
-
-
-
+-- 
+Trond Myklebust <trond.myklebust@fys.uio.no>
 
 
 
