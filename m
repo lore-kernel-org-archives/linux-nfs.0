@@ -1,19 +1,17 @@
-From: Peter Fedorow <fedorowp@earthlink.net>
-Subject: Hard link to symbolic link hack
-Date: Mon, 23 Jun 2003 18:49:26 -0400
+From: "" <momisara@aol.com>
+Subject: 1/2 Off V1AGRA!!       [ we ot
+Date: Tue, 24 Jun 03 05:26:28 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3EF783F6.10508@earthlink.net>
+Message-ID: <9$33-8$m--0n50b-$5-h42$9i@xkxlk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: multipart/alternative;
+	boundary=".47BB0EE0292"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mallard.mail.pas.earthlink.net ([207.217.120.48])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19Ua8c-0001zV-00
-	for <nfs@lists.sourceforge.net>; Mon, 23 Jun 2003 15:50:14 -0700
-Received: from user-12hdh6r.cable.mindspring.com ([69.22.196.219] helo=earthlink.net)
-	by mallard.mail.pas.earthlink.net with esmtp (Exim 3.33 #1)
-	id 19Ua8Z-0006MR-00
-	for nfs@lists.sourceforge.net; Mon, 23 Jun 2003 15:50:12 -0700
+Received: from [61.146.52.160] (helo=66.35.250.206)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19UfOv-0005lN-00
+	for <nfs@lists.sourceforge.net>; Mon, 23 Jun 2003 21:27:27 -0700
+Received: from nqce.8pml6ir.org ([156.80.220.97]) by 66.35.250.206 with ESMTP id 255A5FF94C5 for <nfs@lists.sourceforge.net>; Tue, 24 Jun 2003 05:26:28 +0000
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -27,45 +25,111 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
-I need to install some software who's installer generates hard links to 
-  and NFS server which does not support them.
+This is a multi-part message in MIME format.
 
-What changes need to be made to nfs_proc_link to map the hard links to 
-symlinks?
+--.47BB0EE0292
+Content-Type: text/html;
+Content-Transfer-Encoding: quoted-printable
 
--------------------
+<html>
+	<head>
+		<meta http-equiv=3D"content-type" content=3D"text/html;charset=3DISO-885=
+9-1">
+		<title>Buy Generic Sildenafil Citrate Online (the active ingredient in V=
+</title>
+	</head>
+	<body bgcolor=3D"#f5f5f5">
+        &nbsp;
+		<div align=3D"center">
+			<table border=3D"0" cellpadding=3D"4" cellspacing=3D"1" width=3D"500" b=
+gcolor=3D"black">
+				<tr>
+					<td valign=3D"bottom" bgcolor=3D"#0076b0"><font face=3D"Verdana, Aria=
+l, Helvetica, sans-serif" size=3D"6" color=3D"#f8b262"><b>Generic</b></fon=
+t><font face=3D"Verdana, Arial, Helvetica, sans-serif" size=3D"6" color=3D=
+"white"><b> V<font size=3D0>&nbsp;</font>i<font size=3D0>&nbsp;</font>a<fo=
+nt size=3D0>&nbsp;</font>g<font size=3D0>&nbsp;</font>r<font size=3D0>&nbs=
+p;</font>a</b></font><font face=3D"Verdana, Arial, Helvetica, sans-serif" =
+color=3D"white" size=3D"2"><b><br>
+							</b></font><font face=3D"Verdana, Arial, Helvetica, sans-serif" siz=
+e=3D"2" color=3D"black"><b></b></font></td>
+				</tr>
+				<tr>
+					<td bgcolor=3D"#cccccc">
+						<div align=3D"right">
+							<font face=3D"Verdana, Arial, Helvetica, sans-serif" size=3D"1" col=
+or=3D"#cccccc">.</font></div>
+					</td>
+				</tr>
+				<tr height=3D"231">
+					<td height=3D"231" valign=3D"top" align=3D"left" bgcolor=3D"white">
+						<div align=3D"left">
+							<br>
+							<b>INTRODUCTORY OFFER</b><br>
+							<p>For the first time ever, a generic version of V<font size=3D0>&n=
+bsp;</font>i<font size=3D0>&nbsp;</font>a<font size=3D0>&nbsp;</font>g<fon=
+t size=3D0>&nbsp;</font>r<font size=3D0>&nbsp;</font>a&reg; is available t=
+o you. GSC-100, the generic equivalent of V<font size=3D0>&nbsp;</font>i<f=
+ont size=3D0>&nbsp;</font>a<font size=3D0>&nbsp;</font>g<font size=3D0>&nb=
+sp;</font>r<font size=3D0>&nbsp;</font>a&reg;, gives you the exact perform=
+ance and power as V<font size=3D0>&nbsp;</font>i<font size=3D0>&nbsp;</fon=
+t>a<font size=3D0>&nbsp;</font>g<font size=3D0>&nbsp;</font>r<font size=3D=
+0>&nbsp;</font>a&reg;, for <b>HALF THE COST</b>.<br>
+							</p>
+							<p><font color=3D"red">Act now, or risk missing out on special prom=
+otional pricing -- GSC-100 is priced as low as $5.00 per 100mg tablet -- V=
+<font size=3D0>&nbsp;</font>i<font size=3D0>&nbsp;</font>a<font size=3D0>&=
+nbsp;</font>g<font size=3D0>&nbsp;</font>r<font size=3D0>&nbsp;</font>a&re=
+g; costs $12.25 per 100mg tablet.</font></p>
+							<p>The doctor consultation and shipping is&nbsp; F<font size=3D0>&n=
+bsp;</font>r<font size=3D0>&nbsp;</font>e<font size=3D0>&nbsp;</font>e&nbs=
+p;
+                            of charge, and your GSC-100 will arrive at you=
+r door quickly and discretely.  Simply visit the
+                            <a href=3D"http://www.bigserve-to.com/host/def=
+ault.asp?ID=3D005">GSC-100 Web site</a> for more information on this revol=
+utionary new product.</p>
+						</div>
+						<div align=3D"left">
+							<div align=3D"center">
+								<p><b><font size=3D"5"><a href=3D"http://www.bigserve-to.com/host/=
+default.asp?ID=3D005">C<font size=3D0>&nbsp;</font>l<font size=3D0>&nbsp;<=
+/font>i<font size=3D0>&nbsp;</font>c<font size=3D0>&nbsp;</font>k Here to =
+Visit Our Website</a></font></b><br>
+								</p>
+							</div>
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td bgcolor=3D"#fba501">
+						<center>
+							<font color=3D"white">
+							
+							<br>
+								<br>
+								
+								
+											
+								
+							100% Money Back Guarantee - The First Pharmaceutical to ever be gua=
+ranteed<br>
+							</font><font size=3D"1" color=3D"white"><br>
+								
+								
+											
+								
+									</font></center>
+					</td>
+				</tr>
+			</table>
+		</div>
+	</body>
 
-static int
-nfs_proc_link(struct inode *inode, struct inode *dir, struct qstr *name)
-{
-	struct nfs_linkargs	arg = { NFS_FH(inode), NFS_FH(dir),
-					name->name, name->len };
-	int			status;
+</html>zeqwl ppxw wsm l
+lygdb thxdq e siq zx
 
-	dprintk("NFS call  link %s\n", name->name);
-	status = rpc_call(NFS_CLIENT(inode), NFSPROC_LINK, &arg, NULL, 0);
-	dprintk("NFS reply link: %d\n", status);
-	return status;
-}
-
--------------------
-
-static int
-nfs_proc_symlink(struct inode *dir, struct qstr *name, struct qstr *path,
-		 struct iattr *sattr, struct nfs_fh *fhandle,
-		 struct nfs_fattr *fattr)
-{
-	struct nfs_symlinkargs	arg = { NFS_FH(dir), name->name, name->len,
-					path->name, path->len, sattr };
-	int			status;
-
-	dprintk("NFS call  symlink %s -> %s\n", name->name, path->name);
-	fattr->valid = 0;
-	status = rpc_call(NFS_CLIENT(dir), NFSPROC_SYMLINK, &arg, NULL, 0);
-	dprintk("NFS reply symlink: %d\n", status);
-	return status;
-}
+--.47BB0EE0292--
 
 
 
