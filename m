@@ -1,17 +1,16 @@
-From: Hirokazu Takahashi <taka@valinux.co.jp>
-Subject: [BUG] [PATCH] udp_data_ready may access wrong address.
-Date: Mon, 18 Nov 2002 22:16:10 +0900 (JST)
+From: "William Knop" <w_knop@hotmail.com>
+Subject: status?
+Date: Mon, 18 Nov 2002 10:22:47 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20021118.221610.58431303.taka@valinux.co.jp>
+Message-ID: <F172SxvjPkQTGpaoG1V00000b14@hotmail.com>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
+Content-Type: text/plain; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sv1.valinux.co.jp ([202.221.173.100])
+Received: from f172.law9.hotmail.com ([64.4.9.172] helo=hotmail.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18DluP-0003pn-00
-	for <nfs@lists.sourceforge.net>; Mon, 18 Nov 2002 05:25:49 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	NFS maillist <nfs@lists.sourceforge.net>
+	id 18Dnjh-0005be-00
+	for <nfs@lists.sourceforge.net>; Mon, 18 Nov 2002 07:22:53 -0800
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,47 +23,32 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello Trond,
+Hello,
 
-I realized that udp_data_ready had a problem.
+I'm setting up a distributed/clustering filesystem for a research group and 
+would like some info/advise.
 
-udp_data_ready may access wrong address to read xid of rpc.
-The address of xid is not guaranteed to be placed next to the
-UDP header as it is allowed to split its data to some fragments.
+NFSv4 looks pretty sweet, but is it ready for beta deployment? We'll need to 
+have everything up and stable fairly soon, but so far it seems like NFSv4 is 
+the only open source FS out there that will satisfy our requirements, of 
+which the main ones are partial-file caching and support for large (100GB+) 
+filesystems.
 
-Actually kNFSd will send fragmented data via loopback device.
+Intermezzo forces whole file caching, which will not do. OpenGFS I believe 
+is still in alpha stage. OpenAFS only allows for very small filesystems. 
+EVMS looks promising, but the clustering FS part is still alpha. I think 
+NFSv3 has poor performance, although it would be excellent if it would work.
 
-Could you apply it?
+I'd greatly appreciate any info on distributed/clustering filesystems, 
+especially NFSv4 or stable alternatives.
 
+Thanks much,
+William Knop
 
-Thank you,
-Hirokazu Takahashi.
+_________________________________________________________________
+Help STOP SPAM with the new MSN 8 and get 2 months FREE*  
+http://join.msn.com/?page=features/junkmail
 
-
-
---- net/sunrpc/xprt.c	Thu Oct 31 09:43:07 2002
-+++ net/sunrpc/xprt.c.NEW	Mon Nov  4 10:50:34 2030
-@@ -694,6 +694,7 @@ udp_data_ready(struct sock *sk, int len)
- 	struct rpc_rqst *rovr;
- 	struct sk_buff	*skb;
- 	int		err, repsize, copied;
-+	u32		xid;
- 
- 	dprintk("RPC:      udp_data_ready...\n");
- 	if (!(xprt = xprt_from_sock(sk))) {
-@@ -715,9 +716,11 @@ udp_data_ready(struct sock *sk, int len)
- 		goto dropit;
- 	}
- 
-+	if (skb_copy_bits(skb, sizeof(struct udphdr), &xid, sizeof(xid)))
-+		goto dropit;
- 	/* Look up and lock the request corresponding to the given XID */
- 	spin_lock(&xprt->sock_lock);
--	rovr = xprt_lookup_rqst(xprt, *(u32 *) (skb->h.raw + sizeof(struct udphdr)));
-+	rovr = xprt_lookup_rqst(xprt, xid);
- 	if (!rovr)
- 		goto out_unlock;
- 	task = rovr->rq_task;
 
 
 -------------------------------------------------------
