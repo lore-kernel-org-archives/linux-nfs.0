@@ -1,23 +1,26 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: NFS server replacement troubles
-Date: Wed, 9 Oct 2002 19:38:23 +1000
+From: Thomas =?iso-8859-1?Q?Lang=E5s?= <tlan@stud.ntnu.no>
+Subject: NFS shares becoming disabled
+Date: Wed, 9 Oct 2002 12:21:48 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15779.63759.746381.973207@notabene.cse.unsw.edu.au>
-References: <3FF929A3082ED211B9D700A0C9CFDC8801428E23@exchange.bestivr.com>
+Message-ID: <20021009102148.GD26096@stud.ntnu.no>
+Reply-To: nfs@lists.sourceforge.net
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17zDIg-0006sb-00
-	for <nfs@lists.sourceforge.net>; Wed, 09 Oct 2002 02:38:42 -0700
-Received: From
-	notabene.cse.unsw.edu.au ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <tswaine@prosodiemail.com>) (for <nfs@lists.sourceforge.net>) By
-	tone With Smtp ; Wed, 9 Oct 2002 19:38:27 +1000
-To: tswaine@prosodiemail.com
-In-Reply-To: message from tswaine@prosodiemail.com on Tuesday October 8
+Received: from due.stud.ntnu.no ([129.241.56.71])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17zDzk-0002bA-00
+	for <nfs@lists.sourceforge.net>; Wed, 09 Oct 2002 03:23:12 -0700
+Received: from localhost (localhost [127.0.0.1])
+	by due.stud.ntnu.no (Postfix) with ESMTP id 9661512B20F
+	for <nfs@lists.sourceforge.net>; Wed,  9 Oct 2002 12:21:49 +0200 (CEST)
+Received: from ozelot.stud.ntnu.no (ozelot.stud.ntnu.no [129.241.56.185])
+	by due.stud.ntnu.no (Postfix) with ESMTP id C5B0012B1D5
+	for <nfs@lists.sourceforge.net>; Wed,  9 Oct 2002 12:21:48 +0200 (CEST)
+Received: (from tlan@localhost)
+	by ozelot.stud.ntnu.no (8.11.6/8.10.0.Beta12) id g99ALmW07642
+	for nfs@lists.sourceforge.net; Wed, 9 Oct 2002 12:21:48 +0200
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,61 +33,19 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-On Tuesday October 8, tswaine@prosodiemail.com wrote:
-> I currently have a SCO NFS server, however I'm replacing it with Redhat
-> Linux.
-> I have taking down the box replaced it and NFS fails. The hostname, ip, etc.
-> is 
-> the same on the new machine.
-> New box info....
-> 	Stock Redhat Linux 6.2
-> 	kernel 2.2.14-6.0.1 on i686
-> 	partition being exported is Reiser filesystem
-> 
-> Before new box was put in to production its hostname was different.
-> Exporting was fine, NFS worked properly, however as soon as box
-> is brought up under new name NFS fails, errors(see below ).
-> 
-> Snapshot of errors.......
-> 
-> Starting portmapper: [  OK  ]
-> master:/var/lib/nfs 23# /etc/rc.d/init.d/nfs start
-> Starting NFS quotas: Cannot register service: RPC: Unable to receive; errno
-> = Connection refused
-> [FAILED]
-> Starting NFS mountd: Cannot register service: RPC: Unable to receive; errno
-> = Connection refused
+If you have a box with two (or more, maybe) shares exported, and one of theese
+shares "dies", the other share will also become unavailable to the nfs clients
+that tries to or has mounted any of theese shares.
 
-At a guess, I would say tcpwrappers problem.  Maybe you have to old
-host-name in /etc/hosts.allow, or something like that??
+We've seen this twice now, with our fileservers (each fileservers have two
+disks mounted over fiberchannel). If one of those disks "die", ie. server
+loose connectivity, both shares becomes unavailable to the nfs clients.
 
-NeilBrown
+Why?  (It should only be the affected share that becomes unavailable, since
+we locally can do whatever we want on the other disk that's still mounted).
 
-> mountd: unable to register (mountd, 1, udp).
-> [FAILED]
-> Starting NFS daemon: nfssvc: Connection refused
-> [FAILED]
-> Starting NFS services:  [  OK  ]
-> 
-> 
-> I have restarted portmapper and nfs with no success, unmount nfs on all
-> connected machines, still no workee....
-> Any help would be appreciated...
-> Thanks.
-> 
-> 
-> Troy L. Swaine
-> System Administrator / Engineer
-> 
-> 
-> 
-> -------------------------------------------------------
-> This sf.net email is sponsored by:ThinkGeek
-> Welcome to geek heaven.
-> http://thinkgeek.com/sf
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+-- 
+Thomas
 
 
 -------------------------------------------------------
