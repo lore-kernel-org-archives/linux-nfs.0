@@ -1,19 +1,17 @@
-From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 3 of 4 - Fix problems when releasing cache item.
-Date: Sun, 13 Oct 2002 21:42:19 +1000
+From: "Adam J. Richter" <adam@yggdrasil.com>
+Subject: Patch?: linux-2.5.42/net/sunrpc/sunrpc_syms.c - symbols needed by new nfsd
+Date: Sun, 13 Oct 2002 11:24:52 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E180h8V-0000jT-00@notabene.cse.unsw.edu.au>
-Cc: nfs@lists.sourceforge.net
+Message-ID: <20021013112452.A286@baldur.yggdrasil.com>
+Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="ikeVEW9yuYc//A+q"
+Cc: linux-kernel@vger.kernel.org
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 180h8f-0007DH-00
-	for <nfs@lists.sourceforge.net>; Sun, 13 Oct 2002 04:42:30 -0700
-Received: From
-	notabene.cse.unsw.edu.au ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>) By
-	tone With Smtp ; Sun, 13 Oct 2002 21:42:22 +1000
-To: Linus Torvalds <torvalds@transmeta.com>
+Received: from h-64-105-34-19.snvacaid.covad.net ([64.105.34.19] helo=freya.yggdrasil.com)
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 180nob-0000nf-00
+	for <nfs@lists.sourceforge.net>; Sun, 13 Oct 2002 11:50:13 -0700
+To: okir@monad.swb.de, neilb@cse.unsw.edu.au, nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,44 +25,63 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
 
-### Comments for ChangeSet
+--ikeVEW9yuYc//A+q
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-When releasing a cache item we always release anything
-that is part of the key, but we ONLY release the content
-is if it is valid.  i.e. if CACHE_VALID but not CACHE_NEGATIVE.
+	nfsd in 2.5.42 needs a bunch of symbols that the sunrpc module
+does not export.  This patch adds them to net/sunrpc/sunrpc_syms.c.
+I am now running the nfsd and sunrpc modules based on this patch.
 
+	I suspect that some of symbol exports in this patch may need
+to be bracketed in some kind of #ifdef CONFIG_foo....#endif conditionals.
 
+	Also, I know that having a central exports file like
+sunrpc_syms.c impedes efforts to split the module if it turns out
+that some users of it only need certain functions, but I thought I
+ought to keep this patch as small as possible.  I would be happy to
+make a patch to move the EXPORT_SYMBOL declarations in sunrpc_syms.c
+to the files that actually define them if there is interest.
 
- ----------- Diffstat output ------------
- ./fs/nfsd/export.c          |    3 ++-
- ./net/sunrpc/svcauth_unix.c |    4 +++-
- 2 files changed, 5 insertions(+), 2 deletions(-)
+-- 
+Adam J. Richter     __     ______________   575 Oroville Road
+adam@yggdrasil.com     \ /                  Milpitas, California 95035
++1 408 309-6081         | g g d r a s i l   United States of America
+                         "Free Software For The Rest Of Us."
 
---- ./fs/nfsd/export.c	2002/10/12 12:11:39	1.1
-+++ ./fs/nfsd/export.c	2002/10/12 12:15:40	1.2
-@@ -70,7 +70,8 @@ void expkey_put(struct cache_head *item,
+--ikeVEW9yuYc//A+q
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename="sunrpc.diff"
+
+--- linux-2.5.42/net/sunrpc/sunrpc_syms.c	2002-10-11 21:22:18.000000000 -0700
++++ linux/net/sunrpc/sunrpc_syms.c	2002-10-13 11:15:13.000000000 -0700
+@@ -111,6 +111,24 @@
+ EXPORT_SYMBOL(nlm_debug);
+ #endif
+ 
++EXPORT_SYMBOL(add_hex);
++EXPORT_SYMBOL(add_word);
++EXPORT_SYMBOL(auth_domain_find);
++EXPORT_SYMBOL(auth_domain_put);
++EXPORT_SYMBOL(auth_unix_add_addr);
++EXPORT_SYMBOL(auth_unix_forget_old);
++EXPORT_SYMBOL(auth_unix_lookup);
++EXPORT_SYMBOL(cache_check);
++EXPORT_SYMBOL(cache_clean);
++EXPORT_SYMBOL(cache_flush);
++EXPORT_SYMBOL(cache_fresh);
++EXPORT_SYMBOL(cache_init);
++EXPORT_SYMBOL(cache_register);
++EXPORT_SYMBOL(cache_unregister);
++EXPORT_SYMBOL(get_word);
++EXPORT_SYMBOL(svcauth_unix_purge);
++EXPORT_SYMBOL(unix_domain_find);
++
+ static int __init
+ init_sunrpc(void)
  {
- 	if (cache_put(item, cd)) {
- 		struct svc_expkey *key = container_of(item, struct svc_expkey, h);
--		if (key->ek_export)
-+		if (test_bit(CACHE_VALID, &item->flags) &&
-+		    !test_bit(CACHE_NEGATIVE, &item->flags))
- 			exp_put(key->ek_export);
- 		auth_domain_put(key->ek_client);
- 		kfree(key);
---- ./net/sunrpc/svcauth_unix.c	2002/10/12 12:10:27	1.1
-+++ ./net/sunrpc/svcauth_unix.c	2002/10/12 12:15:40	1.2
-@@ -90,7 +90,9 @@ void ip_map_put(struct cache_head *item,
- {
- 	struct ip_map *im = container_of(item, struct ip_map,h);
- 	if (cache_put(item, cd)) {
--		auth_domain_put(&im->m_client->h);
-+		if (test_bit(CACHE_VALID, &item->flags) &&
-+		    !test_bit(CACHE_NEGATIVE, &item->flags))
-+			auth_domain_put(&im->m_client->h);
- 		kfree(im);
- 	}
- }
+
+--ikeVEW9yuYc//A+q--
 
 
 -------------------------------------------------------
