@@ -1,20 +1,18 @@
-From: "The Story's" <storys@attbi.com>
-Subject: Forcing NFS Version 3 Usage ?
-Date: Sun, 9 Jun 2002 11:56:03 -0400
+From: zfadli@sinasolutions.com
+Subject: NFS: RedHat + Solaris
+Date: Mon, 10 Jun 2002 18:08:49 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <NEBBIGDKOLHAFMMFCNGPKEMODCAA.storys@attbi.com>
+Message-ID: <1898.64.12.101.162.1023746929.squirrel@mail.sinasolutions.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: text/plain; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sccrmhc01.attbi.com ([204.127.202.61])
+Received: from [65.205.37.251] (helo=mail.sinasolutions.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17H532-0006VR-00
-	for <nfs@lists.sourceforge.net>; Sun, 09 Jun 2002 08:56:08 -0700
-Received: from tigger ([24.147.148.40]) by sccrmhc01.attbi.com
-          (InterMail vM.4.01.03.27 201-229-121-127-20010626) with SMTP
-          id <20020609155602.BQKF1024.sccrmhc01.attbi.com@tigger>
-          for <nfs@lists.sourceforge.net>; Sun, 9 Jun 2002 15:56:02 +0000
+	id 17HXWQ-0007Cc-00
+	for <nfs@lists.sourceforge.net>; Mon, 10 Jun 2002 15:20:22 -0700
+Received: from sinasolutions.com (mail.sinasolutions.com [65.205.37.251])
+	by mail.sinasolutions.com (8.11.6/8.11.6) with SMTP id g5AM8nm13168
+	for <nfs@lists.sourceforge.net>; Mon, 10 Jun 2002 18:08:49 -0400
 To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -28,16 +26,24 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Greetings,
+Hello,
+I am using Redhat 7.1 as my NFS server. I have edited /etc/exports and
+when I ran "rpcinfo -p localhost" I got all the daemons and their ports
+correctly.
+On the client side, I have Solaris 8. Everytime I try to mount I get the
+follwoing error.
+nfs mount: x.x.x.x: : RPC: Rpcbind failure - RPC: Unable to receive
+nfs mount: retrying: /dump
 
-I am trying to copy large files (11gb and greater), and need to use 
-Version 3 of nfs due to the size restrictions in V2.
+And it keeps on trying.
 
-Im using Suse 7.2,  how do i find out if i have the correct version to 
-support v3, and how do i make them use it ?
+I have checked everything that I can think off. From portmap to
+hosts.allow/.deny
+I am clueless! Any help plz>
 
--Thanks In advance for your help!
--Lenny Story
+Thanks
+
+
 
 _______________________________________________________________
 
