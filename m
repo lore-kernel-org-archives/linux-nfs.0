@@ -1,22 +1,19 @@
-From: "Santiago Flores" <santi@mleads.com>
-Subject: RE: Spam in the NFS list
-Date: Tue, 13 May 2003 10:12:01 -0700
+From: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
+Subject: Re: Spam in the NFS list
+Date: Tue, 13 May 2003 19:16:49 +0200 (CEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <DFEFIPHEDHBDBJKCDBOBIEHPCCAA.santi@mleads.com>
-References: <3EC113B0.2090102@Physik.Uni-Muenchen.DE>
+Message-ID: <Pine.LNX.4.44.0305131900190.7780-100000@kenzo.iwr.uni-heidelberg.de>
+References: <1052841825.13572.0.camel@serpentine.internal.keyresearch.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Jake Gold <jake@staunch.org>, <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [168.158.195.27] (helo=mail.mleadsfulfillment.com)
+Received: from mail.iwr.uni-heidelberg.de ([129.206.104.30])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19FdL1-0001ei-00
-	for <nfs@lists.sourceforge.net>; Tue, 13 May 2003 10:13:15 -0700
-Received: from zahn (unknown [168.158.195.20])
-	by mail.mleadsfulfillment.com (Postfix) with SMTP id 0CAC085C02F
-	for <nfs@lists.sourceforge.net>; Tue, 13 May 2003 10:02:33 -0700 (MST)
-To: <nfs@lists.sourceforge.net>
-In-Reply-To: <3EC113B0.2090102@Physik.Uni-Muenchen.DE>
+	id 19FdOd-0003JQ-00
+	for <nfs@lists.sourceforge.net>; Tue, 13 May 2003 10:16:59 -0700
+To: "Bryan O'Sullivan" <bos@serpentine.com>
+In-Reply-To: <1052841825.13572.0.camel@serpentine.internal.keyresearch.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,48 +26,42 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I am for closing the list. Most lists that I subscribe to (all but 1)
-require that a person subscribe to interact with the list. It works very
-well for the other lists and I do not think it would be detrimental to this
-list. I came here originally looking for a solution to a problem. I
-subscribed.
+On 13 May 2003, Bryan O'Sullivan wrote:
 
-Santiago
+> Have you ever looked at the number of bug reports on l-k from
+> non-subscribers that get listened to?  It's approximately zero, and has
+> been for years.
 
------Original Message-----
-From: nfs-admin@lists.sourceforge.net
-[mailto:nfs-admin@lists.sourceforge.net]On Behalf Of Klaus Steinberger
-Sent: Tuesday, May 13, 2003 8:48 AM
-To: nfs@lists.sourceforge.net
-Subject: Re: [NFS] Spam in the NFS list
+I cannot comment on this as I dropped off from l-k because of the high 
+volume.
 
+Now, imagine the situation where your most important NFS server crashes, 
+then crashes again and again and you start pulling your hair out not 
+knowing what's happening and being pressed by your boss to find a 
+solution. Would you be happy if in trying to contact the people that 
+can help you you'd have to first subscribe to a mailing list _knowing_ 
+that you have nothing in common and do not understand much of what is 
+discussed on this list and would probably unsubscribe as soon as a 
+solution was found for your problem ?
 
+Even more, I think this whole discussion is not very useful. If this list 
+is the only one that you are subscribed to, then I understand your point. 
+But even so, it might be archived somewhere without address protection and 
+a spider will be able to find your address and send messages directly to 
+you.
+If you'd be subscribed to tens of lists (like I am) you'd soon realize
+that you can't ask all lists to be closed just so that you are protected. 
+The best solution is what _you_ can control, be it your own e-mail server 
+with filtering, using procmail or just abusing the "d" key...
 
->>Does anyone on this list object to the list becoming closed?
+-- 
+Bogdan Costescu
 
-Closing the list on a subscriber only basis is ok for me.
+IWR - Interdisziplinaeres Zentrum fuer Wissenschaftliches Rechnen
+Universitaet Heidelberg, INF 368, D-69120 Heidelberg, GERMANY
+Telephone: +49 6221 54 8869, Telefax: +49 6221 54 8868
+E-mail: Bogdan.Costescu@IWR.Uni-Heidelberg.De
 
-I prefer to not get SPAM through the list.
-
-Sincerly,
-Klaus
-
---
-Klaus Steinberger         Maier-Leibnitz Labor
-Phone: (+49 89)289 14287  Am Coulombwall 6, D-85748 Garching, Germany
-FAX:   (+49 89)289 14280  EMail: Klaus.Steinberger@Physik.Uni-Muenchen.DE
-URL: http://www.physik.uni-muenchen.de/~k2/
-
-
-
--------------------------------------------------------
-Enterprise Linux Forum Conference & Expo, June 4-6, 2003, Santa Clara
-The only event dedicated to issues related to Linux enterprise solutions
-www.enterpriselinuxforum.com
-
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
 
 
 
