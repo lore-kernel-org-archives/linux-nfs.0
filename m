@@ -1,29 +1,32 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: ReasmFails increases / NFS performance on Linux Cluster
-Date: Tue, 17 Aug 2004 10:05:23 +0200
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: debugging hanging locks
+Date: Tue, 17 Aug 2004 11:39:46 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040817080523.GA17099@suse.de>
-References: <Pine.LNX.4.58.0408160851520.24272@chaos.egr.duke.edu> <005f01c483d4$b6fa9f40$6701a8c0@psyche1>
+Message-ID: <1092757186.4030.11.camel@lade.trondhjem.org>
+References: <Pine.LNX.4.60.0408161741020.5649@harp.ngdc.noaa.gov>
+	 <1092702159.11722.77.camel@lade.trondhjem.org>
+	 <Pine.LNX.4.60.0408161846440.5649@harp.ngdc.noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: 'Joshua Baker-LePain' <jlb17@duke.edu>, nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="=-ZrVdrgkR9Nd8MEWDzmrA"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BwzAX-00022v-2P
-	for nfs@lists.sourceforge.net; Tue, 17 Aug 2004 01:18:09 -0700
+	id 1Bx6aF-0001MU-TB
+	for nfs@lists.sourceforge.net; Tue, 17 Aug 2004 09:13:11 -0700
 Received: from externalmx-1.sourceforge.net ([12.152.184.25])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.34)
-	id 1Bwz3s-00066R-W5
-	for nfs@lists.sourceforge.net; Tue, 17 Aug 2004 01:18:08 -0700
-Received: from cantor.suse.de ([195.135.220.2])
-	by externalmx-1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1Bx65K-0003dQ-OT
+	for nfs@lists.sourceforge.net; Tue, 17 Aug 2004 08:46:10 -0700
+Received: from dh138.citi.umich.edu
+	([141.211.133.138] helo=lade.trondhjem.org ident=Debian-exim)
+	by externalmx-1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
 	(Exim 4.41)
-	id 1Bwz3s-00059O-3k
-	for nfs@lists.sourceforge.net; Tue, 17 Aug 2004 01:11:16 -0700
-To: Patrice Seyed <apseyed@bu.edu>
-In-Reply-To: <005f01c483d4$b6fa9f40$6701a8c0@psyche1>
+	id 1Bx65E-0000pX-U0
+	for nfs@lists.sourceforge.net; Tue, 17 Aug 2004 08:41:10 -0700
+To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+In-Reply-To: <Pine.LNX.4.60.0408161846440.5649@harp.ngdc.noaa.gov>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -36,23 +39,153 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, Aug 16, 2004 at 05:05:09PM -0400, Patrice Seyed wrote:
-> You don't have enough threads.  That 2nd number (after the number of 
-> threads) should be as close to zero as possible -- that's the number of 
-> times all threads have been busy when a request came in.  IIRC, you have 
-> plenty of memory on the server -- crank up the number of threads and you 
-> should see some difference.
 
-Not necessarily. We're talking about nfsd threads hung in a COMMIT call -
-these can take over a second, and will block all WRITE calls to the same
-file for the entire duration. So a single client doing write-behind can
-easily tie up 8 or more server threads.
+--=-ZrVdrgkR9Nd8MEWDzmrA
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: quoted-printable
 
-Olaf
--- 
-Olaf Kirch     |  The Hardware Gods hate me.
-okir@suse.de   |
----------------+ 
+P=E5 m=E5 , 16/08/2004 klokka 20:51, skreiv Ara.T.Howard:
+> the lock/unlock method is wrapped in a try/catch block - eg. only 'kill -=
+9'
+> could cause failure to unlock.  if i assume this to be the case - then wh=
+at
+> else can be done?  will sending -9 always cause this?  will it ever
+> automatically resolve itself?  i was under the impression that a process =
+would
+> clean up fcntl locks on death anyhow - i am obviously mistaken, but to wh=
+at
+> degree?
+
+Normally the kernel should clean up even if your program fails to do so.
+The only reason why that might fail is if there are bookkeeping problems
+in the kernel itself.
+Whereas there have been such problems in the past, I believe Steve has
+picked up all the patches that fix known problems (perhaps he might want
+to comment on that - Steve?). The last patch to fix such a problem has
+been attached. You might want to check if that is included in your
+source tree...
+
+> > Not much you can do beyond 'cat /proc/locks'. That will tell you whethe=
+r or
+> > not a lock is held, and will also give you the pid of the remote proces=
+s
+> > that holds the lock (in the 4th column).
+>=20
+> good enough - thanks for the tip.  btw.  where would i find this info?  i
+> pokeda around the docs/man pages and it was not obvious.
+
+/proc/locks' existence is documented in
+Documentation/filesystems/proc.txt. I don't think its format is
+documented anywhere outside the source code itself though.
+
+Cheers,
+  Trond
+
+--=-ZrVdrgkR9Nd8MEWDzmrA
+Content-Description: 
+Content-Disposition: inline; filename=gnurr.dif
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: base64
+
+IyBUaGlzIGlzIGEgQml0S2VlcGVyIGdlbmVyYXRlZCBkaWZmIC1OcnUgc3R5bGUgcGF0Y2guDQoj
+DQojIENoYW5nZVNldA0KIyAgIDIwMDQvMDMvMDkgMjI6MDQ6MjktMDU6MDAgdHJvbmQubXlrbGVi
+dXN0QGZ5cy51aW8ubm8gDQojICAgSSBoYXZlIGEgZmVlbGluZyB0aGUgc2Vjb25kIHJhY2UgY2Fz
+ZSBvZiB5b3VyIHRlc3QgaXMgdGhhdCB5b3UgYXJlDQojICAgaW50ZXJydXB0aW5nIHRoZSBmY250
+bChGX1NFVExLKSBjYWxsIHdoaWxlIGl0IGlzIG9uIHRoZSB3aXJlLiBJZiB5b3UgZG8NCiMgICB0
+aGF0LCB0aGVuIHRoZSBzZXJ2ZXIgbWF5IHJlY29yZCB0aGUgbG9jayBhcyB0YWtlbiwgYnV0IHRo
+ZSBjbGllbnQgd2lsbA0KIyAgIG5ldmVyIHJlY2VpdmUgdGhlIHJlcGx5LCBhbmQgc28gd2lsbCBu
+b3Qga25vdyB0aGF0IGl0IG11c3QgY2xlYW4gdXANCiMgICBsb2Nrcy4uLg0KIyAgIEhtbS4uLiBG
+b3IgdGhhdCBjYXNlLCB3ZSBwcm9iYWJseSB3YW50IHRvIGhhdmUgdGhlIGxvY2tpbmcgY29kZSBy
+ZWNvcmQNCiMgICB0aGUgY2FsbCBhcyBoYXZpbmcgc3VjY2VlZGVkIGluIG9yZGVyIHRvIGVuc3Vy
+ZSB0aGF0IHdlIGRvIGluZGVlZCBjbGVhcg0KIyAgIG91dCB0aGUgbG9jayBvbiBwcm9jZXNzIGV4
+aXQuDQojIA0KIyBmcy9uZnMvZmlsZS5jDQojICAgMjAwNC8wMy8wOSAyMjowNDoyNi0wNTowMCB0
+cm9uZC5teWtsZWJ1c3RAZnlzLnVpby5ubyArOTQgLTQyDQojICAgSSBoYXZlIGEgZmVlbGluZyB0
+aGUgc2Vjb25kIHJhY2UgY2FzZSBvZiB5b3VyIHRlc3QgaXMgdGhhdCB5b3UgYXJlDQojICAgaW50
+ZXJydXB0aW5nIHRoZSBmY250bChGX1NFVExLKSBjYWxsIHdoaWxlIGl0IGlzIG9uIHRoZSB3aXJl
+LiBJZiB5b3UgZG8NCiMgICB0aGF0LCB0aGVuIHRoZSBzZXJ2ZXIgbWF5IHJlY29yZCB0aGUgbG9j
+ayBhcyB0YWtlbiwgYnV0IHRoZSBjbGllbnQgd2lsbA0KIyAgIG5ldmVyIHJlY2VpdmUgdGhlIHJl
+cGx5LCBhbmQgc28gd2lsbCBub3Qga25vdyB0aGF0IGl0IG11c3QgY2xlYW4gdXANCiMgICBsb2Nr
+cy4uLg0KIyAgIEhtbS4uLiBGb3IgdGhhdCBjYXNlLCB3ZSBwcm9iYWJseSB3YW50IHRvIGhhdmUg
+dGhlIGxvY2tpbmcgY29kZSByZWNvcmQNCiMgICB0aGUgY2FsbCBhcyBoYXZpbmcgc3VjY2VlZGVk
+IGluIG9yZGVyIHRvIGVuc3VyZSB0aGF0IHdlIGRvIGluZGVlZCBjbGVhcg0KIyAgIG91dCB0aGUg
+bG9jayBvbiBwcm9jZXNzIGV4aXQuDQojIA0KZGlmZiAtTnJ1IGEvZnMvbmZzL2ZpbGUuYyBiL2Zz
+L25mcy9maWxlLmMNCi0tLSBhL2ZzL25mcy9maWxlLmMJMjAwNC0wOC0xNyAxMTozMzozMyAtMDQ6
+MDANCisrKyBiL2ZzL25mcy9maWxlLmMJMjAwNC0wOC0xNyAxMTozMzozMyAtMDQ6MDANCkBAIC0y
+NDEsNiArMjQxLDkzIEBADQogCWdvdG8gb3V0Ow0KIH0NCiANCitzdGF0aWMgaW50DQorZG9fZ2V0
+bGsoc3RydWN0IGlub2RlICppbm9kZSwgaW50IGNtZCwgc3RydWN0IGZpbGVfbG9jayAqZmwpDQor
+ew0KKwlpbnQgc3RhdHVzOw0KKw0KKwlsb2NrX2tlcm5lbCgpOw0KKwlzdGF0dXMgPSBubG1jbG50
+X3Byb2MoaW5vZGUsIGNtZCwgZmwpOw0KKwl1bmxvY2tfa2VybmVsKCk7DQorCXJldHVybiBzdGF0
+dXM7DQorfQ0KKw0KK3N0YXRpYyBpbnQNCitkb191bmxrKHN0cnVjdCBpbm9kZSAqaW5vZGUsIGlu
+dCBjbWQsIHN0cnVjdCBmaWxlX2xvY2sgKmZsKQ0KK3sNCisJc2lnc2V0X3Qgb2xkc2V0Ow0KKwlp
+bnQgc3RhdHVzOw0KKw0KKwlycGNfY2xudF9zaWdtYXNrKE5GU19DTElFTlQoaW5vZGUpLCAmb2xk
+c2V0KTsNCisJLyoNCisJICogRmx1c2ggYWxsIHBlbmRpbmcgd3JpdGVzIGJlZm9yZSBkb2luZyBh
+bnl0aGluZw0KKwkgKiB3aXRoIGxvY2tzLi4NCisJICovDQorCWZpbGVtYXBfZmRhdGFzeW5jKGlu
+b2RlLT5pX21hcHBpbmcpOw0KKwlkb3duKCZpbm9kZS0+aV9zZW0pOw0KKwluZnNfd2JfYWxsKGlu
+b2RlKTsNCisJdXAoJmlub2RlLT5pX3NlbSk7DQorCWZpbGVtYXBfZmRhdGF3YWl0KGlub2RlLT5p
+X21hcHBpbmcpOw0KKw0KKwkvKiBOT1RFOiBzcGVjaWFsIGNhc2UNCisJICoJSWYgd2UncmUgc2ln
+bmFsbGVkIHdoaWxlIGNsZWFuaW5nIHVwIGxvY2tzIG9uIHByb2Nlc3MgZXhpdCwgd2UNCisJICoJ
+c3RpbGwgbmVlZCB0byBjb21wbGV0ZSB0aGUgdW5sb2NrLg0KKwkgKi8NCisJbG9ja19rZXJuZWwo
+KTsNCisJc3RhdHVzID0gbmxtY2xudF9wcm9jKGlub2RlLCBjbWQsIGZsKTsNCisJdW5sb2NrX2tl
+cm5lbCgpOw0KKwlycGNfY2xudF9zaWd1bm1hc2soTkZTX0NMSUVOVChpbm9kZSksICZvbGRzZXQp
+Ow0KKwlyZXR1cm4gc3RhdHVzOw0KK30NCisNCitzdGF0aWMgaW50DQorZG9fc2V0bGsoc3RydWN0
+IGZpbGUgKmZpbHAsIGludCBjbWQsIHN0cnVjdCBmaWxlX2xvY2sgKmZsKQ0KK3sNCisJc3RydWN0
+IGlub2RlICppbm9kZSA9IGZpbHAtPmZfZGVudHJ5LT5kX2lub2RlOw0KKwlpbnQgc3RhdHVzOw0K
+Kw0KKwkvKg0KKwkgKiBGbHVzaCBhbGwgcGVuZGluZyB3cml0ZXMgYmVmb3JlIGRvaW5nIGFueXRo
+aW5nDQorCSAqIHdpdGggbG9ja3MuLg0KKwkgKi8NCisJc3RhdHVzID0gZmlsZW1hcF9mZGF0YXN5
+bmMoaW5vZGUtPmlfbWFwcGluZyk7DQorCWlmIChzdGF0dXMgPT0gMCkgew0KKwkJZG93bigmaW5v
+ZGUtPmlfc2VtKTsNCisJCXN0YXR1cyA9IG5mc193Yl9hbGwoaW5vZGUpOw0KKwkJdXAoJmlub2Rl
+LT5pX3NlbSk7DQorCQlpZiAoc3RhdHVzID09IDApDQorCQkJc3RhdHVzID0gZmlsZW1hcF9mZGF0
+YXdhaXQoaW5vZGUtPmlfbWFwcGluZyk7DQorCX0NCisJaWYgKHN0YXR1cyA8IDApDQorCQlyZXR1
+cm4gc3RhdHVzOw0KKw0KKwlsb2NrX2tlcm5lbCgpOw0KKwlzdGF0dXMgPSBubG1jbG50X3Byb2Mo
+aW5vZGUsIGNtZCwgZmwpOw0KKwkvKiBJZiB3ZSB3ZXJlIHNpZ25hbGxlZCB3ZSBzdGlsbCBuZWVk
+IHRvIGVuc3VyZSB0aGF0DQorCSAqIHdlIGNsZWFuIHVwIGFueSBzdGF0ZSBvbiB0aGUgc2VydmVy
+LiBXZSB0aGVyZWZvcmUNCisJICogcmVjb3JkIHRoZSBsb2NrIGNhbGwgYXMgaGF2aW5nIHN1Y2Nl
+ZWRlZCBpbiBvcmRlciB0bw0KKwkgKiBlbnN1cmUgdGhhdCBsb2Nrc19yZW1vdmVfcG9zaXgoKSBj
+bGVhbnMgaXQgb3V0IHdoZW4NCisJICogdGhlIHByb2Nlc3MgZXhpdHMuDQorCSAqLw0KKwlpZiAo
+c3RhdHVzID09IC1FSU5UUiB8fCBzdGF0dXMgPT0gLUVSRVNUQVJUU1lTKQ0KKwkJcG9zaXhfbG9j
+a19maWxlKGZpbHAsIGZsLCAwKTsNCisJdW5sb2NrX2tlcm5lbCgpOw0KKwlpZiAoc3RhdHVzIDwg
+MCkNCisJCXJldHVybiBzdGF0dXM7DQorDQorCS8qDQorCSAqIE1ha2Ugc3VyZSB3ZSBjbGVhciB0
+aGUgY2FjaGUgd2hlbmV2ZXIgd2UgdHJ5IHRvIGdldCB0aGUgbG9jay4NCisJICogVGhpcyBtYWtl
+cyBsb2NraW5nIGFjdCBhcyBhIGNhY2hlIGNvaGVyZW5jeSBwb2ludC4NCisJICovDQorCWZpbGVt
+YXBfZmRhdGFzeW5jKGlub2RlLT5pX21hcHBpbmcpOw0KKwlkb3duKCZpbm9kZS0+aV9zZW0pOw0K
+KwluZnNfd2JfYWxsKGlub2RlKTsgICAgICAvKiB3ZSBtYXkgaGF2ZSBzbGVwdCAqLw0KKwl1cCgm
+aW5vZGUtPmlfc2VtKTsNCisJZmlsZW1hcF9mZGF0YXdhaXQoaW5vZGUtPmlfbWFwcGluZyk7DQor
+CW5mc196YXBfY2FjaGVzKGlub2RlKTsNCisJcmV0dXJuIDA7DQorfQ0KKw0KIC8qDQogICogTG9j
+ayBhIChwb3J0aW9uIG9mKSBhIGZpbGUNCiAgKi8NCkBAIC0yNDgsOCArMzM1LDYgQEANCiBuZnNf
+bG9jayhzdHJ1Y3QgZmlsZSAqZmlscCwgaW50IGNtZCwgc3RydWN0IGZpbGVfbG9jayAqZmwpDQog
+ew0KIAlzdHJ1Y3QgaW5vZGUgKiBpbm9kZSA9IGZpbHAtPmZfZGVudHJ5LT5kX2lub2RlOw0KLQlp
+bnQJc3RhdHVzID0gMDsNCi0JaW50CXN0YXR1czI7DQogDQogCWRwcmludGsoIk5GUzogbmZzX2xv
+Y2soZj0lNHgvJWxkLCB0PSV4LCBmbD0leCwgcj0lTGQ6JUxkKVxuIiwNCiAJCQlpbm9kZS0+aV9k
+ZXYsIGlub2RlLT5pX2lubywNCkBAIC0yNjYsOCArMzUxLDggQEANCiAJLyogRmFrZSBPSyBjb2Rl
+IGlmIG1vdW50ZWQgd2l0aG91dCBOTE0gc3VwcG9ydCAqLw0KIAlpZiAoTkZTX1NFUlZFUihpbm9k
+ZSktPmZsYWdzICYgTkZTX01PVU5UX05PTkxNKSB7DQogCQlpZiAoSVNfR0VUTEsoY21kKSkNCi0J
+CQlzdGF0dXMgPSBMT0NLX1VTRV9DTE5UOw0KLQkJZ290byBvdXRfb2s7DQorCQkJcmV0dXJuIExP
+Q0tfVVNFX0NMTlQ7DQorCQlyZXR1cm4gMDsNCiAJfQ0KIA0KIAkvKg0KQEAgLTI4MCw0MiArMzY1
+LDkgQEANCiAJaWYgKCFmbC0+Zmxfb3duZXIgfHwgKGZsLT5mbF9mbGFncyAmIChGTF9QT1NJWHxG
+TF9CUk9LRU4pKSAhPSBGTF9QT1NJWCkNCiAJCXJldHVybiAtRU5PTENLOw0KIA0KLQkvKg0KLQkg
+KiBGbHVzaCBhbGwgcGVuZGluZyB3cml0ZXMgYmVmb3JlIGRvaW5nIGFueXRoaW5nDQotCSAqIHdp
+dGggbG9ja3MuLg0KLQkgKi8NCi0Jc3RhdHVzID0gZmlsZW1hcF9mZGF0YXN5bmMoaW5vZGUtPmlf
+bWFwcGluZyk7DQotCWRvd24oJmlub2RlLT5pX3NlbSk7DQotCXN0YXR1czIgPSBuZnNfd2JfYWxs
+KGlub2RlKTsNCi0JaWYgKHN0YXR1czIgJiYgIXN0YXR1cykNCi0JCXN0YXR1cyA9IHN0YXR1czI7
+DQotCXVwKCZpbm9kZS0+aV9zZW0pOw0KLQlzdGF0dXMyID0gZmlsZW1hcF9mZGF0YXdhaXQoaW5v
+ZGUtPmlfbWFwcGluZyk7DQotCWlmIChzdGF0dXMyICYmICFzdGF0dXMpDQotCQlzdGF0dXMgPSBz
+dGF0dXMyOw0KLQlpZiAoc3RhdHVzIDwgMCkNCi0JCXJldHVybiBzdGF0dXM7DQotDQotCWxvY2tf
+a2VybmVsKCk7DQotCXN0YXR1cyA9IG5sbWNsbnRfcHJvYyhpbm9kZSwgY21kLCBmbCk7DQotCXVu
+bG9ja19rZXJuZWwoKTsNCi0JaWYgKHN0YXR1cyA8IDApDQotCQlyZXR1cm4gc3RhdHVzOw0KLQkN
+Ci0Jc3RhdHVzID0gMDsNCi0NCi0JLyoNCi0JICogTWFrZSBzdXJlIHdlIGNsZWFyIHRoZSBjYWNo
+ZSB3aGVuZXZlciB3ZSB0cnkgdG8gZ2V0IHRoZSBsb2NrLg0KLQkgKiBUaGlzIG1ha2VzIGxvY2tp
+bmcgYWN0IGFzIGEgY2FjaGUgY29oZXJlbmN5IHBvaW50Lg0KLQkgKi8NCi0gb3V0X29rOg0KLQlp
+ZiAoKElTX1NFVExLKGNtZCkgfHwgSVNfU0VUTEtXKGNtZCkpICYmIGZsLT5mbF90eXBlICE9IEZf
+VU5MQ0spIHsNCi0JCWZpbGVtYXBfZmRhdGFzeW5jKGlub2RlLT5pX21hcHBpbmcpOw0KLQkJZG93
+bigmaW5vZGUtPmlfc2VtKTsNCi0JCW5mc193Yl9hbGwoaW5vZGUpOyAgICAgIC8qIHdlIG1heSBo
+YXZlIHNsZXB0ICovDQotCQl1cCgmaW5vZGUtPmlfc2VtKTsNCi0JCWZpbGVtYXBfZmRhdGF3YWl0
+KGlub2RlLT5pX21hcHBpbmcpOw0KLQkJbmZzX3phcF9jYWNoZXMoaW5vZGUpOw0KLQl9DQotCXJl
+dHVybiBzdGF0dXM7DQorCWlmIChJU19HRVRMSyhjbWQpKQ0KKwkJcmV0dXJuIGRvX2dldGxrKGlu
+b2RlLCBjbWQsIGZsKTsNCisJaWYgKGZsLT5mbF90eXBlID09IEZfVU5MQ0spDQorCQlyZXR1cm4g
+ZG9fdW5sayhpbm9kZSwgY21kLCBmbCk7DQorCXJldHVybiBkb19zZXRsayhmaWxwLCBjbWQsIGZs
+KTsNCiB9DQo=
+
+--=-ZrVdrgkR9Nd8MEWDzmrA--
 
 
 -------------------------------------------------------
