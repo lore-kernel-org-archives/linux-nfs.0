@@ -1,24 +1,25 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: [PATCH] interruptible_sleep_on in lockd
-Date: Thu, 1 Apr 2004 20:26:56 +0100
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: 2.6.5-rc3 xprt_connect changes?
+Date: Thu, 01 Apr 2004 15:57:07 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040401202656.A24371@infradead.org>
+Message-ID: <1080853027.2682.22.camel@lade.trondhjem.org>
+References: <20040401144740.GH20772@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B97q9-0000TU-Kp
-	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 11:27:01 -0800
-Received: from phoenix.infradead.org ([213.86.99.234])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1B99FV-0004In-In
+	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 12:57:17 -0800
+Received: from dh132.citi.umich.edu
+	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
 	(Exim 4.30)
-	id 1B97q9-0004ho-6S
-	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 11:27:01 -0800
-Received: from hch by phoenix.infradead.org with local (Exim 4.30 #5 (Red Hat Linux))
-	id 1B97q4-0006Le-Vn
-	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 20:26:56 +0100
-To: nfs@lists.sourceforge.net
+	id 1B99FT-000142-Tx
+	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 12:57:16 -0800
+To: Olaf Kirch <okir@suse.de>
+In-Reply-To: <20040401144740.GH20772@suse.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,26 +32,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-interruptible_sleep_on looks rather bogus, especially when ignoring whether
-it actually was interrupted.  What about the patch below?
+On Thu, 2004-04-01 at 09:47, Olaf Kirch wrote:
+> Hi,
+> 
+> I have a problem with the xprt_connect changes introduced
+> in 2.6.5-rc1. They break pmap_register, it always returns
+> with EIO now.
+> 
+> It seems the problem is this:
+> 
+>  -	xprt_connect puts the task on the pending queue
+>  -	xprt_socket_connect calls xprt_close, which in turn
+>  	calls xprt_disconnect, which wakes up all tasks on
+> 	the pending list with ENOTCONN
+> 
+> For transports with "soft" semantics (this includes the portmap client),
+> this will always cause it to fail with EIO.
+> 
+> For "hard" transports, it seems that after some delay (set in
+> xprt_connect_status) we come back to call_connect_status, which
+> notices the ENOTCONN status. It sets the function pointer to
+> call_connect. If xprt_connected() evaluates to true when we get
+> there (which is always the case for UDP, and which is true for
+> TCP igf the SYNACK has arrived in the meanwhile), the call to
+> xprt_connect() succeeds, and we can continue.
+> 
+> The attached, untested patch should hopefully fix this. I still need
+> to test this.
 
+How about if we simply move the call for xprt_disconnect() out of
+xprt_close()?
 
---- 1.8/fs/lockd/clntproc.c	Fri Feb  7 21:25:20 2003
-+++ edited/fs/lockd/clntproc.c	Sat Feb  7 15:58:42 2004
-@@ -254,8 +241,11 @@
- 		msg.rpc_cred = nfs_file_cred(filp);
- 
- 	do {
--		if (host->h_reclaiming && !argp->reclaim) {
--			interruptible_sleep_on(&host->h_gracewait);
-+		status = wait_event_interruptible(host->h_gracewait,
-+				(!host->h_reclaiming || argp->reclaim));
-+		if (status) {
-+			if (signalled())
-+				return -EINTR;
- 			continue;
- 		}
- 
+I fully agree that xprt_connect() doesn't actually need to tell the
+world that the socket has disconnected: we should already have an RPC
+task that is taking responsibility for monitoring the reconnection of
+the socket. 
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
