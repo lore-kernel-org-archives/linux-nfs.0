@@ -1,13 +1,20 @@
-From: Christian Reis <kiko@async.com.br>
-Subject: Stale fcntl lock never released
-Date: Mon, 23 Jun 2003 19:14:05 -0300
+From: Peter Fedorow <fedorowp@earthlink.net>
+Subject: Hard link to symbolic link hack
+Date: Mon, 23 Jun 2003 18:49:26 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030623221405.GA4320@async.com.br>
+Message-ID: <3EF783F6.10508@earthlink.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Guilherme Salgado <salgado@async.com.br>
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: NFS@lists.sourceforge.net
+Received: from mallard.mail.pas.earthlink.net ([207.217.120.48])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19Ua8c-0001zV-00
+	for <nfs@lists.sourceforge.net>; Mon, 23 Jun 2003 15:50:14 -0700
+Received: from user-12hdh6r.cable.mindspring.com ([69.22.196.219] helo=earthlink.net)
+	by mallard.mail.pas.earthlink.net with esmtp (Exim 3.33 #1)
+	id 19Ua8Z-0006MR-00
+	for nfs@lists.sourceforge.net; Mon, 23 Jun 2003 15:50:12 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -20,49 +27,46 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hi,
+I need to install some software who's installer generates hard links to 
+  and NFS server which does not support them.
 
-Just saw this from one of the diskless boxes on our system (clients
-using vanilla 2.4.21, server running 2.4.20-rc3). The client was running
-mutt and was editing a message when it hung. We shut down the box and
-started another one up, but when the user tried to read his mail, mutt
-was hanging upon fcntl(); strace shows it was returning Resource
-temporarily unavailable (ENOLCK IIRC). 
+What changes need to be made to nfs_proc_link to map the hard links to 
+symlinks?
 
-On the server side, we have:
+-------------------
 
-    kiko@anthem:~$ cat /proc/locks  | grep 09:06
-    1: POSIX  ADVISORY  WRITE 11771 09:06:60316 0 EOF d0d51300 c02d1048
-    d0d51424 00000000 d0d5130c
-    2: POSIX  ADVISORY  WRITE 11752 09:06:60311 0 EOF d0d51420 d0d51304
-    f7c367e4 00000000 d0d5142c
-    4: POSIX  ADVISORY  WRITE 10560 09:06:60312 0 EOF f7c36840 f7c367e4
-    f7c36f64 00000000 f7c3684c
-    5: POSIX  ADVISORY  WRITE 599 09:06:30193 0 EOF f7c36f60 f7c36844
-    f7c36964 00000000 f7c36eac
-    5: -> POSIX  ADVISORY  WRITE 10569 09:06:30193 191252 EOF f7c36ea0
-    f7c36604 c02d1050 f7c36f60 f7c3660c
-    5: -> POSIX  ADVISORY  WRITE 11787 09:06:30193 191252 EOF f7c36600
-    c02d1050 f7c36ea4 f7c36f60 f7c36f6c
+static int
+nfs_proc_link(struct inode *inode, struct inode *dir, struct qstr *name)
+{
+	struct nfs_linkargs	arg = { NFS_FH(inode), NFS_FH(dir),
+					name->name, name->len };
+	int			status;
 
-(All these locks were held only by the crashed workstation)
+	dprintk("NFS call  link %s\n", name->name);
+	status = rpc_call(NFS_CLIENT(inode), NFSPROC_LINK, &arg, NULL, 0);
+	dprintk("NFS reply link: %d\n", status);
+	return status;
+}
 
-Client mount options are:
+-------------------
 
-    anthem:/var/spool/mail on /var/mail type nfs 
-    (rw,sync,v3,rsize=8192,wsize=8192,acregmin=0,acregmax=0,
-     acdirmin=0,acdirmax=0,hard,udp,noac,lock,addr=anthem)
+static int
+nfs_proc_symlink(struct inode *dir, struct qstr *name, struct qstr *path,
+		 struct iattr *sattr, struct nfs_fh *fhandle,
+		 struct nfs_fattr *fattr)
+{
+	struct nfs_symlinkargs	arg = { NFS_FH(dir), name->name, name->len,
+					path->name, path->len, sattr };
+	int			status;
 
-Restarting the nfs service frees the locks, but shouldn't it be done
-automatically? I'm not sure if it's a case of the server not clearing
-the lock, or the client not tickling the server into it.. any ideas?
+	dprintk("NFS call  symlink %s -> %s\n", name->name, path->name);
+	fattr->valid = 0;
+	status = rpc_call(NFS_CLIENT(dir), NFSPROC_SYMLINK, &arg, NULL, 0);
+	dprintk("NFS reply symlink: %d\n", status);
+	return status;
+}
 
-(Trond, do any of the lockd patches in
-http://www.fys.uio.no/~trondmy/src/2.4.21/ fix something like this?)
-
-Take care,
---
-Christian Reis, Senior Engineer, Async Open Source, Brazil.
-http://async.com.br/~kiko/ | [+55 16] 261 2331 | NMFL
 
 
 -------------------------------------------------------
