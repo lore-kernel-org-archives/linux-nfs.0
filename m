@@ -1,19 +1,19 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 3 of 18] nfsd4: don't take i_sem around call to ->getxattr
+Subject: [PATCH kNFSd 2 of 18] separate a little of logic from fh_verify into new function
 Date: Fri, 24 Sep 2004 14:54:53 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1CAi6f-0000jz-8P@notabene.cse.unsw.edu.au>
+Message-ID: <E1CAi6f-0000js-3t@notabene.cse.unsw.edu.au>
 References: <20040924145130.2689.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CAi6t-00084X-S9
-	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 21:55:07 -0700
+	id 1CAi7D-000899-8l
+	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 21:55:27 -0700
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CAi6s-0008Hm-A4
-	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 21:55:07 -0700
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1CAi7C-0006Bl-H9
+	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 21:55:27 -0700
 To: Andrew Morton <akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,64 +28,106 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-The ->getxattr op doesn't take the i_sem (see
-Documentation/filesystems/Locking)
+
+Separate out the little bit of logic in fh_verify that checks the i_mode into a
+separate function.  This is nicely encapsulated, fh_verify() is overly long
+anyway, and this change helps make a subsequent nfs4 named attribute change
+clearer.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/vfs.c |   14 +++++---------
- 1 files changed, 5 insertions(+), 9 deletions(-)
+ ./fs/nfsd/nfsfh.c |   62 +++++++++++++++++++++++++++---------------------------
+ 1 files changed, 31 insertions(+), 31 deletions(-)
 
-diff ./fs/nfsd/vfs.c~current~ ./fs/nfsd/vfs.c
---- ./fs/nfsd/vfs.c~current~	2004-09-24 14:47:14.000000000 +1000
-+++ ./fs/nfsd/vfs.c	2004-09-24 14:47:49.000000000 +1000
-@@ -448,39 +448,35 @@ _get_posix_acl(struct dentry *dentry, ch
- 	int buflen, error = 0;
- 	struct posix_acl *pacl = NULL;
- 
--	down(&inode->i_sem);
--
- 	buflen = inode->i_op->getxattr(dentry, key, NULL, 0);
- 	if (buflen <= 0) {
- 		error = buflen < 0 ? buflen : -ENODATA;
--		goto out_sem;
-+		goto out_err;
- 	}
- 
- 	buf = kmalloc(buflen, GFP_KERNEL);
- 	if (buf == NULL) {
- 		error = -ENOMEM;
--		goto out_sem;
-+		goto out_err;
- 	}
- 
- 	error = -EOPNOTSUPP;
- 	if (inode->i_op && inode->i_op->getxattr) {
- 		error = security_inode_getxattr(dentry, key);
- 		if (error)
--			goto out_sem;
-+			goto out_err;
- 		error = inode->i_op->getxattr(dentry, key, buf, buflen);
- 	}
- 	if (error < 0)
--		goto out_sem;
-+		goto out_err;
- 
- 	error = 0;
--	up(&inode->i_sem);
- 
- 	pacl = posix_acl_from_xattr(buf, buflen);
-  out:
- 	kfree(buf);
- 	return pacl;
-- out_sem:
--	up(&inode->i_sem);
-+ out_err:
- 	pacl = ERR_PTR(error);
- 	goto out;
+diff ./fs/nfsd/nfsfh.c~current~ ./fs/nfsd/nfsfh.c
+--- ./fs/nfsd/nfsfh.c~current~	2004-09-24 14:47:14.000000000 +1000
++++ ./fs/nfsd/nfsfh.c	2004-09-24 14:47:35.000000000 +1000
+@@ -71,6 +71,35 @@ int nfsd_acceptable(void *expv, struct d
+ 	return rv;
  }
+ 
++/* Type check. The correct error return for type mismatches does not seem to be
++ * generally agreed upon. SunOS seems to use EISDIR if file isn't S_IFREG; a
++ * comment in the NFSv3 spec says this is incorrect (implementation notes for
++ * the write call).
++ */
++static inline int
++nfsd_mode_check(struct svc_rqst *rqstp, umode_t mode, int type)
++{
++	/* Type can be negative when creating hardlinks - not to a dir */
++	if (type > 0 && (mode & S_IFMT) != type) {
++		if (rqstp->rq_vers == 4 && (mode & S_IFMT) == S_IFLNK)
++			return nfserr_symlink;
++		else if (type == S_IFDIR)
++			return nfserr_notdir;
++		else if ((mode & S_IFMT) == S_IFDIR)
++			return nfserr_isdir;
++		else
++			return nfserr_inval;
++	}
++	if (type < 0 && (mode & S_IFMT) == -type) {
++		if (rqstp->rq_vers == 4 && (mode & S_IFMT) == S_IFLNK)
++			return nfserr_symlink;
++		else if (type == -S_IFDIR)
++			return nfserr_isdir;
++		else
++			return nfserr_notdir;
++	}
++	return 0;
++}
+ 
+ /*
+  * Perform sanity checks on the dentry in a client's file handle.
+@@ -87,7 +116,6 @@ fh_verify(struct svc_rqst *rqstp, struct
+ 	struct knfsd_fh	*fh = &fhp->fh_handle;
+ 	struct svc_export *exp = NULL;
+ 	struct dentry	*dentry;
+-	struct inode	*inode;
+ 	u32		error = 0;
+ 
+ 	dprintk("nfsd: fh_verify(%s)\n", SVCFH_fmt(fhp));
+@@ -223,37 +251,9 @@ fh_verify(struct svc_rqst *rqstp, struct
+ 	}
+ 	cache_get(&exp->h);
+ 
+-	inode = dentry->d_inode;
+-
+-
+-	/* Type check. The correct error return for type mismatches
+-	 * does not seem to be generally agreed upon. SunOS seems to
+-	 * use EISDIR if file isn't S_IFREG; a comment in the NFSv3
+-	 * spec says this is incorrect (implementation notes for the
+-	 * write call).
+-	 */
+-
+-	/* Type can be negative when creating hardlinks - not to a dir */
+-	if (type > 0 && (inode->i_mode & S_IFMT) != type) {
+-		if (rqstp->rq_vers == 4 && (inode->i_mode & S_IFMT) == S_IFLNK)
+-			error = nfserr_symlink;
+-		else if (type == S_IFDIR)
+-			error = nfserr_notdir;
+-		else if ((inode->i_mode & S_IFMT) == S_IFDIR)
+-			error = nfserr_isdir;
+-		else
+-			error = nfserr_inval;
++	error = nfsd_mode_check(rqstp, dentry->d_inode->i_mode, type);
++	if (error)
+ 		goto out;
+-	}
+-	if (type < 0 && (inode->i_mode & S_IFMT) == -type) {
+-		if (rqstp->rq_vers == 4 && (inode->i_mode & S_IFMT) == S_IFLNK)
+-			error = nfserr_symlink;
+-		else if (type == -S_IFDIR)
+-			error = nfserr_isdir;
+-		else
+-			error = nfserr_notdir;
+-		goto out;
+-	}
+ 
+ 	/* Finally, check access permissions. */
+ 	error = nfsd_permission(exp, dentry, access);
 
 
 -------------------------------------------------------
