@@ -1,26 +1,22 @@
-From: Bernd Schubert <bernd-schubert@web.de>
-Subject: Re: Nfsroot
-Date: Fri, 12 Sep 2003 01:46:06 +0200
+From: Arun Sharma <arun.sharma@intel.com>
+Subject: VFS: Busy inodes after unmount on 2 way SMP
+Date: Thu, 11 Sep 2003 17:11:40 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200309120146.06326.bernd-schubert@web.de>
-References: <20030910120300.18865.qmail@webmail17.rediffmail.com>
+Message-ID: <3F610F3C.5040704@intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19xb8y-00012C-00
-	for <nfs@lists.sourceforge.net>; Thu, 11 Sep 2003 16:46:32 -0700
-Received: from smtp03.web.de ([217.72.192.158] helo=smtp.web.de)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.22)
-	id 19xb8x-0006Wh-Ru
-	for nfs@lists.sourceforge.net; Thu, 11 Sep 2003 16:46:32 -0700
-To: "yuvraj agarsinh dodia" <yuvraj_pyarpyar@rediffmail.com>
-In-Reply-To: <20030910120300.18865.qmail@webmail17.rediffmail.com>
+	id 19xbaD-00067g-00
+	for <nfs@lists.sourceforge.net>; Thu, 11 Sep 2003 17:14:41 -0700
+Received: from fmr04.intel.com ([143.183.121.6] helo=caduceus.sc.intel.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
+	id 19xbaD-0000OZ-FY
+	for nfs@lists.sourceforge.net; Thu, 11 Sep 2003 17:14:41 -0700
+To: autofs@linux.kernel.org
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -33,37 +29,22 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wednesday 10 September 2003 14:03, yuvraj agarsinh dodia wrote:
-> Hi
->
-> i want to mount do nfsroot
-> i am using
-> uClinux-2.4,Atmel developmant board,siap-boot bootloader
->
-> i had done some setting
-> i had compile kernel with Nfsroot support
-> i had set all environment varibels
-> like root device, nfsroot directory
-> configure nfs server and explore the filesystem directory
->
-> but i got error
->
-> can not open nfs device when i boot the kernel
->
-> can you please help
->
-> my mail address is yuvraj_pyarpyar@rediffmail.com
 
-Hi,
+We've seen a few "VFS: Busy inodes after unmount. Self-destruct in 5 seconds.  Have a nice day.." messages on a dual processor NFS client. Here's the use case:
 
-without further imformation nobody will be able to help you. What is the exact 
-error message? 
-Please also specify your client-boot-options-append-line, etc. The more 
-information you provide, the higher is the probability that you might get a 
-helping answer ;)
+- Due to network load issues, the NFS server becomes unreachable for some time
+- The automounter tries to expire the mount
+- The unmount finds a couple of busy inodes. Putting some debug printks shows that typically two inodes are busy i.e. have inode->i_count == 1. But they don't have any waiters on inode->i_wait. Further, the inodes that are busy are
+/mnt/foo     -> autofs mount point
+/mnt/foo/bar -> bar is a symbolic link
 
-Cheers,
-	Bernd
+It's not clear if this is a NFS issue or a autofs issue, but it's seen often with autofs. Are there any known race conditions that have been fixed after 2.4.20 ? The two calls I'm worried about are:
+
+fs/autofs/root.c:305:    d_instantiate(dentry, iget(dir->i_sb,ent->ino));
+fs/autofs/root.c:416:    d_instantiate(dentry, iget(dir->i_sb,ino));
+
+    -Arun
+
 
 
 
