@@ -1,78 +1,70 @@
-From: Hirokazu Takahashi <taka@valinux.co.jp>
-Subject: [PATCH] zerocopy NFS for 2.5.35
-Date: Mon, 16 Sep 2002 16:39:36 +0900 (JST)
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <20020916.163936.74738298.taka@valinux.co.jp>
+From: "H. J. Lu" <hjl@lucon.org>
+Subject: Re: Must statd be running before nfs client makes mounts?
+Date: Mon, 16 Sep 2002 07:12:59 -0700
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <20020916071259.B1149@lucon.org>
+References: <20020915225226.GI11002@perlsupport.com> <15749.5917.443602.600792@notabene.cse.unsw.edu.au> <20020915164956.A21841@lucon.org> <15749.7947.298657.940521@notabene.cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: Chip Salzenberg <chip@pobox.com>, nfs@lists.sourceforge.net
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from rwcrmhc52.attbi.com ([216.148.227.88])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17qwcd-0008JZ-00
+	for <nfs@lists.sourceforge.net>; Mon, 16 Sep 2002 07:13:07 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <15749.7947.298657.940521@notabene.cse.unsw.edu.au>; from neilb@cse.unsw.edu.au on Mon, Sep 16, 2002 at 10:00:11AM +1000
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
+On Mon, Sep 16, 2002 at 10:00:11AM +1000, Neil Brown wrote:
+> On Sunday September 15, hjl@lucon.org wrote:
+> > On Mon, Sep 16, 2002 at 09:26:21AM +1000, Neil Brown wrote:
+> > > 
+> > >   (start devices, raid, etc)
+> > >  1/ mount local filesystems
+> > >   (start network, bind, portmap)
+> > 
+> > I am thinking to write a kernel patch to set nlm_udpport and
+> > nlm_tcpport. The current scheme works only with module and /proc
+> > won't work with module. I'd like to be able to set ports used by
+> > lockd according to /etc/services. In my case, I have
+> > 
+> > nlockmgr        3003/tcp
+> > nlockmgr        3003/udp
+> > 
+> > But I have to hard code them in my kernel.
+> 
+> You shouldn't need to hard code them,  kernel parameters:
+>    lockd.udpport=3003 lockd.tcpport=3003
+> should work fine (unless that is what you mean by hardcoding)
 
-I announce to have ported the patches for for zerocopy NFS against
-linux-2.5.35.
-I added new feature that nfsd-write may use writev interface as 
-writev is going to be faster than ever.
-This feature can reduce not only cpu time but also overhead of
-allocating HUGE socket buffers for NFS write.
+It is still hardcoding since can't change it at runtime.
 
-1)
-ftp://ftp.valinux.co.jp/pub/people/taka/2.5.35/va10-hwchecksum-2.5.35.patch
-This patch enables HW-checksum against outgoing packets including UDP frames.
+> 
+> However I don't see a problem with doing this via a sysctl, quite
+> possibly a sysctl under /proc/sys/sunrpc/  (as it is an RPC service).
+> 
 
-2)
-ftp://ftp.valinux.co.jp/pub/people/taka/2.5.35/va11-udpsendfile-2.5.35.patch
-This patch makes sendfile systemcall over UDP work. It also supports
-UDP_CORK interface which is very similar to TCP_CORK. And you can call
-sendmsg/senfile with MSG_MORE flags over UDP sockets.
-
-3)
-ftp://ftp.valinux.co.jp/pub/people/taka/2.5.35/va-csumpartial-fix-2.5.35.patch
-This patch fixes the problem of x86 csum_partilal() routines which
-can't handle odd addressed buffers.
-
-4)
-ftp://ftp.valinux.co.jp/pub/people/taka/2.5.35/va01-zerocopy-rpc-2.5.35.patch
-This patch makes RPC can send some pieces of data and pages without copy.
-
-5)
-ftp://ftp.valinux.co.jp/pub/people/taka/2.5.35/va02-zerocopy-nfsdread-2.5.35.patch
-This patch makes NFSD send pages in pagecache directly when NFS clinets request
-file-read.
-
-6)
-ftp://ftp.valinux.co.jp/pub/people/taka/2.5.35/va03-zerocopy-nfsdreaddir-2.5.35.patch
-nfsd_readdir can also send pages without copy.
-
-7)
-ftp://ftp.valinux.co.jp/pub/people/taka/2.5.35/va04-zerocopy-shadowsock-2.5.35.patch
-This patch makes per-cpu UDP sockets so that NFSD can send UDP frames on
-each prosessor simultaneously.
-Without the patch we can send only one UDP frame at the time as a UDP socket
-have to be locked during sending some pages to serialize them.
-
-8)
-ftp://ftp.valinux.co.jp/pub/people/taka/2.5.35/va05-zerocopy-nfsdwrite-2.5.35.patch
-This patch enables NFS-write uses writev interface. NFSd can handle NFS
-requests without reassembling IP fragments into one UDP frame.
-
-9)
-ftp://ftp.valinux.co.jp/pub/people/taka/2.5.35/va06-writev-2.5.35.patch
-This patch makes writev for regular file work faster.
-
-Caution:
-       XFS doesn't support writev interface yet. NFS write on XFS might
-       slow down with No.8 patch. I wish SGI guys will implement it.
+Does it work with sunrpc as module?
 
 
-10)
-ftp://ftp.valinux.co.jp/pub/people/taka/2.5.35/va09-zerocopy-tempsendto-2.5.35.patch
-If you don't want to use sendfile over UDP yet, you can apply it instead of No.1 and No.2 patches.
+H.J.
 
 
-If you have any requests or comments, could you let me know.
-
-Regards,
-Hirokazu Takahashi
+-------------------------------------------------------
+This sf.net email is sponsored by:ThinkGeek
+Welcome to geek heaven.
+http://thinkgeek.com/sf
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
