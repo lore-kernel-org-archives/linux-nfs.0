@@ -1,24 +1,23 @@
-From: Perceval Anichini <perceval.anichini@laposte.net>
-Subject: NFS : open is failing too slowly...
-Date: 23 Jan 2004 10:58:46 +0100
+From: James Pearson <james-p@moving-picture.com>
+Subject: rpc.mountd: getfh failed: Operation not permitted
+Date: Fri, 23 Jan 2004 13:26:59 +0000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1074851927.599.176.camel@ambre>
+Message-ID: <40112123.D2A8518D@moving-picture.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ajy7b-0004b6-4o
-	for nfs@lists.sourceforge.net; Fri, 23 Jan 2004 02:01:03 -0800
-Received: from avelizy-105-1-1-5.w80-11.abo.wanadoo.fr ([80.11.79.5] helo=ambre.maneex)
-	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.30)
-	id 1Ajy7a-0007gR-Gj
-	for nfs@lists.sourceforge.net; Fri, 23 Jan 2004 02:01:02 -0800
-Received: from ambre.maneex
-	([127.0.0.1] helo=localhost.localdomain ident=corwin)
-	by ambre.maneex with esmtp (Exim 3.35 #1 (Debian))
-	id 1Ajy5P-0000So-00
-	for <nfs@lists.sourceforge.net>; Fri, 23 Jan 2004 10:58:47 +0100
+	id 1Ak1L3-0002jW-4s
+	for nfs@lists.sourceforge.net; Fri, 23 Jan 2004 05:27:09 -0800
+Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1Ak1L2-0001Kn-N6
+	for nfs@lists.sourceforge.net; Fri, 23 Jan 2004 05:27:08 -0800
+Received: from darke.mpc.local ([172.16.11.6] helo=moving-picture.com)
+	by moving-picture.com with esmtp (Exim 4.24)
+	id 1Ak1Kt-00017B-97
+	for nfs@lists.sourceforge.net; Fri, 23 Jan 2004 13:26:59 +0000
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,36 +31,53 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-  Hello !
+I have a strange problem with an NFS client that can not mount file
+systems from some NFS servers.
 
-Here is my problem :
-	I have an application which job is to record an ip stream on a
-NFS server. If the write () fails, the application continue to record
-on a local disk.
+e.g.:
 
-	When the application is recording to the local disk, it stills
-have to check wether or not the main filesystem is back. To perform
-that operation, I try to open () a file on the main filesystem
-regularly.
+mount clark:/disk1 /mnt/tmp
+mount: clark:/disk1 failed, reason given by server: Permission denied
 
-  My problem is that open () is taking far too much time to fail
-(~0.3s) which lead the application to loose datas.
+The server logs:
 
-So my question is : Is their a fast way to know (ioctl, or whatever) if
-a nfs server is available or in timeout mode ?
+Jan 23 12:56:02 clark rpc.mountd: authenticated mount request from
+rc0478:623 for /disk1 (/disk1) 
+Jan 23 12:56:02 clark rpc.mountd: getfh failed: Operation not permitted 
 
-For infos : I am running redhat 9.0 with a kernel 2.6.1 compiled
-	   "by hand"
-	The filesystem is mounted with options nfsvers=3 soft timeo=1 retrans=1
 
-	(Soft mode because I don't want my process to hang when the
-server is stuck, and timeo,retrans = 1 in order to reduce the timeout
-as much as possible. Tell me if i'm wrong...)
+However, doing:
 
-	Thanks a lot !
+mount clark:/disk2 /mnt/tmp
 
-Perceval Anichini.
+works fine - after this mount, /proc/mounts shows:
 
+clark:/disk2 /mnt/tmp nfs
+rw,v3,rsize=32768,wsize=32768,hard,udp,lock,addr=clark 0 0
+
+
+On the server, /disk1 and /disk2 are separate disks exported in exactly
+the same way:
+
+/disk1 *(rw)
+/disk2 *(rw)
+
+
+The server is running a 2.4.19 based kernel with nfs-utils v0.3.3
+(RedHat 7.2) (all a bit old, but they work fine)
+
+The same client (running a 2.4.23 based kernel) is having the same
+problem with a few other servers (but not all). Some of these other
+servers are running a 2.4.21 based kernel.
+
+However, every other client (100's of them) has no problems mounting
+these same filesystems.
+
+Any ideas?
+
+Thanks
+
+James Pearson
 
 
 -------------------------------------------------------
