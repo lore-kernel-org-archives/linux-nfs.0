@@ -1,19 +1,22 @@
-From: seth vidal <skvidal@phy.duke.edu>
-Subject: more fun with hitting the hard quota
-Date: 18 Apr 2002 13:16:06 -0400
+From: Gavin Woodhatch <gavin.woodhatch@netzone.ch>
+Subject: NFS Performance
+Date: Thu, 18 Apr 2002 21:19:02 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1019150166.3140.19.camel@opus>
+Message-ID: <21851575821.20020418211902@netzone.ch>
+Reply-To: Gavin Woodhatch <gavin.woodhatch@netzone.ch>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature";
-	boundary="=-pXx1p0x02ZV+kIePYMjq"
+Content-Type: text/plain; charset=ISO-8859-15
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail.phy.duke.edu ([152.3.182.2])
+Received: from mail1.hostpark.net ([212.243.197.31])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16yFVx-0002yH-00
-	for <nfs@lists.sourceforge.net>; Thu, 18 Apr 2002 10:16:10 -0700
-Received: from opus.phy.duke.edu (opus.phy.duke.edu [152.3.182.42])
-	by mail.phy.duke.edu (Postfix) with ESMTP id E476730199
-	for <nfs@lists.sourceforge.net>; Thu, 18 Apr 2002 13:16:06 -0400 (EDT)
+	id 16yHR1-0003Fy-00
+	for <nfs@lists.sourceforge.net>; Thu, 18 Apr 2002 12:19:12 -0700
+Received: from localhost (localhost [127.0.0.1])
+	by mail1.hostpark.net (Postfix) with ESMTP id F25BF7BC86
+	for <nfs@lists.sourceforge.net>; Thu, 18 Apr 2002 21:25:41 +0200 (CEST)
+Received: from jamie (unknown [195.144.47.58])
+	by mail1.hostpark.net (Postfix) with ESMTP id CF6097BB03
+	for <nfs@lists.sourceforge.net>; Thu, 18 Apr 2002 21:25:40 +0200 (CEST)
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -27,70 +30,57 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
+Hi All
 
---=-pXx1p0x02ZV+kIePYMjq
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+I am new to the list, but have been reading the Archives.
 
-Hi,
- So I've setup a couple of machines to test this in more detail.
+I need to Backup about 50 GB of Data. The Data is on a NFS Mounted
+Partition. A local Backup is not possible.
 
-The server is running rh's skipjack beta2. a 2.4.18 +a bunch of patches
-kernel.
+The Data is mainly small files (HTML Pages, Pictures etc.) But there
+are also some bigger files.
 
-ext3 filesystem, quotas turned on.
-I set the user's hard quota to 200MB
+The Network thruput vary's from about 1-2 MB/s to 9 -10 MB/s. It is a
+100 Mbit Network (Switched), the NFS Server is connected with a 1
+Gbit Link.
 
-if I mount it over nfs and then run:
-
-
-while `true`
-do
-cat /dev/zero >> /mnt/test/dumbfile
-done
-
-Then the nfs server does respond with error messages about being over
-the quota and the current cat job will stop with this error:
-
-cat: write error: Disk quota exceeded
-
-But if I consistently make the request to write to that file (as in the
-above loop) the load on the server goes up to about 4 or 5.
-
-At which point the other clients access becomes almost unbearable.
-
-Does it make sense that one client should be able to abuse the server in
-this way? And why didn't this happen on 2.2.19? I had a lesser powered
-machine doing the same job and this problem never occurred.
-
-I can provide more detailed tcpdumps from the server or client side now
-if that'd help more.
-
-Thanks
--sv
+I am Running a 2.4.17 Kernel with Trond's 2.4.17 NFS-all Patch.
 
 
+I have tried the following mount options :
+
+-o vers=3,async,hard,intr,nolock
+
+Varied with differnt wsize and rsize (from 4096 to 32768, and also not
+specified) , also tried with the option tcp.
+
+The Max thruput changes a bit depending on the options but the
+avg. does not change a great deal. (about 80 - 120 MB/min)
+
+The NFS Server is a Auspex NS2000.
+
+Anyone got an Idea how to get Linux to read the small files faster, or
+howto just generaly make things faster (Read) ?
+
+Any Ideas would be most welcome.
+
+PS Sorry for the bad spelling, my english is rather rusty...
 
 
+--
+
+Freundliche Grüsse (Kind Regards)
 
 
---=20
-GPG Public Key: http://www.phy.duke.edu/~skvidal/skvidal.gpg
+NetZone Ltd.
+Gavin Woodhatch
 
---=-pXx1p0x02ZV+kIePYMjq
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.0.6 (GNU/Linux)
-Comment: For info see http://www.gnupg.org
-
-iD8DBQA8vv9W1Aj3x2mIbMcRArR+AKCLSOX9tC+IAtFBAJCrTG4/CJxj/QCeOFua
-LNnj+QBufWB/tQ8nVK+7VIg=
-=LbdY
------END PGP SIGNATURE-----
-
---=-pXx1p0x02ZV+kIePYMjq--
+******************************************************************
+*  NetZone AG                                        Webhosting  *
+*  http://www.netzone.ch                        info@netzone.ch  *
+*  Alpenweg 12                            Tel. +41 62 724 08 08  *
+*  CH-5035 Unterentfelden                 Fax. +41 62 724 08 06  *
+******************************************************************
 
 
 _______________________________________________
