@@ -1,33 +1,22 @@
-From: Brad Barnett <lists@L8R.net>
-Subject: Re: knfsd brought to its knees, by a simple rsync or cp
- operation
-Date: Tue, 1 Mar 2005 18:10:07 -0500
-Message-ID: <20050301181007.382a1422@be.back.l8r.net>
-References: <20050226082854.2a496ec3@be.back.l8r.net>
-	<20050228100633.GA4822@suse.de>
-	<20050228102307.3788a184@be.back.l8r.net>
-	<20050228154455.GS4822@suse.de>
-	<20050228112018.34fdeb2b@be.back.l8r.net>
-	<20050301095548.GJ14402@suse.de>
-	<20050301065703.7e52cf4e@be.back.l8r.net>
-	<20050301143732.GA22324@suse.de>
+From: nhorman@redhat.com
+Subject: Re: possible client stale filehandle bug?
+Date: Thu, 24 Feb 2005 15:43:59 -0500
+Message-ID: <20050224204359.GA30532@hmsendeavour.rdu.redhat.com>
+References: <482A3FA0050D21419C269D13989C61130853976D@lavender-fe.eng.netapp.com> <4213B9C2.2040709@redhat.com> <1109273623.11433.52.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D6GVZ-00083f-6s
-	for nfs@lists.sourceforge.net; Tue, 01 Mar 2005 15:10:29 -0800
-Received: from l8r.net ([64.26.155.43] ident=aliens)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1D4Pq7-0007D1-Vc
+	for nfs@lists.sourceforge.net; Thu, 24 Feb 2005 12:44:03 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1D6GVE-0003ue-SA
-	for nfs@lists.sourceforge.net; Tue, 01 Mar 2005 15:10:28 -0800
-Received: from be.back.l8r.net (bbarnett@be [10.10.10.10])
-	by l8r.net (8.12.3/8.12.3/Debian-7.1) with ESMTP id j21N9Nuu011779
-	(version=TLSv1/SSLv3 cipher=EDH-RSA-DES-CBC3-SHA bits=168 verify=NO)
-	for <nfs@lists.sourceforge.net>; Tue, 1 Mar 2005 18:09:23 -0500
-To: nfs@lists.sourceforge.net
-In-Reply-To: <20050301143732.GA22324@suse.de>
+	id 1D4Pq6-00079k-KO
+	for nfs@lists.sourceforge.net; Thu, 24 Feb 2005 12:44:03 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1109273623.11433.52.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -41,33 +30,45 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, 1 Mar 2005 15:37:32 +0100
-Olaf Kirch <okir@suse.de> wrote:
-
-> On Tue, Mar 01, 2005 at 06:57:03AM -0500, Brad Barnett wrote:
-> > Within 10 seconds, the output of ls -R /home slows.  Within 20
-> > seconds, it_stop_.  It then sits there for seconds, and spews out a
-> > page in small jumps.  Again, a ls /raid/home on the _server_ barely
-> > slows, and is constant.
-> > 
-> > I'm really scratching my head here.
+On Thu, Feb 24, 2005 at 11:33:43AM -0800, Trond Myklebust wrote:
+> on den 16.02.2005 Klokka 16:23 (-0500) skreiv Neil Horman:
+> > I agree, it probably doesn't re-drive on any operation that doesn't walk 
+> > a path, which is in line with what RHEL is doing currently.  I didn't 
+> > mean to imply that solaris retired ESTALE in all occurances of the 
+> > event.  Anywho, Can you point me to your patches?  I'd be interested to 
+> > know how you managed to implement retry on ESTALE without leaking into 
+> > the VFS, which I think you will recall was the big sticking point that 
+> > we were debating here.
 > 
-> Well, it sounds like something's eating the network bandwidth,
-> or otherwise interfering with nfsd responsiveness. Again, are
-> you using UDP or TCP? If UDP, look at nfsstat output to see if
-> you have a high retransmit count.
+> It does leak into the VFS, but in a way that is non-intrusive. The VFS
+> basically sets a new flag, LOOKUP_REVAL, in the struct nameidata flags
+> (which are passed down to d_op->d_revalidate() on Linux 2.4.x).
+> The NFS code takes that as an command to expire the caches, and force a
+> revalidation.
+> 
+> The exact same trick is performed on Linux-2.6.x: see the patch
+> "linux-2.6.11-31-stale_retry.dif"  in
+>      http://client.linux-nfs.org/Linux-2.6.x/2.6.11-rc5/
+> 
+> Cheers,
+>   Trond
+> 
+> -- 
+> Trond Myklebust <trond.myklebust@fys.uio.no>
 > 
 
-In my original post, I did mention that I can copy large files (isos) over
-the network at excellent speeds.  That is, I get over 6M/sec transfer
-speed...
+Thanks for the pointer!
+Neil
 
-
-> If it's really a problem with scheduling, it should make a difference
-> if you run the rsync job with lower priority, and/or renice the
-> nfsd threads to run with higher priority.
-
-You can't really renice the kernel nfsd threads though :((
+-- 
+/***************************************************
+ *Neil Horman
+ *Software Engineer
+ *Red Hat, Inc.
+ *nhorman@redhat.com
+ *gpg keyid: 1024D / 0x92A74FA1
+ *http://pgp.mit.edu
+ ***************************************************/
 
 
 -------------------------------------------------------
