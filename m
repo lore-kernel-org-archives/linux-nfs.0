@@ -1,24 +1,24 @@
 From: Nathan Ollerenshaw <nathan@valuecommerce.co.jp>
 Subject: Re: Help diagnosing bizarre NFS problem
-Date: Thu, 27 Jan 2005 11:25:13 +0900
-Message-ID: <ACEF13F1-700A-11D9-89EE-000A95A07AB8@valuecommerce.co.jp>
-References: <BA594DD2-65DA-11D9-B0EB-000A95A07AB8@valuecommerce.co.jp> <731336CA-6DE6-11D9-8B4D-000A95A07AB8@valuecommerce.co.jp> <Pine.LNX.4.58.0501241116080.23996@lewis.et.byu.edu>
+Date: Thu, 27 Jan 2005 11:00:53 +0900
+Message-ID: <4678F474-7007-11D9-89EE-000A95A07AB8@valuecommerce.co.jp>
+References: <BA594DD2-65DA-11D9-B0EB-000A95A07AB8@valuecommerce.co.jp> <731336CA-6DE6-11D9-8B4D-000A95A07AB8@valuecommerce.co.jp> <41F4ECD6.90405@redhat.com>
 Mime-Version: 1.0 (Apple Message framework v619)
 Content-Type: text/plain; charset=US-ASCII; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CtzLT-0001UN-Jg
-	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 18:25:19 -0800
+	id 1Ctyxv-0000P2-Fb
+	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 18:00:59 -0800
 Received: from f8a01-0447.din.or.jp
 	([61.122.67.147] helo=elmo.stupendous.net ident=nobody)
 	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1CtzLR-0006eR-3d
-	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 18:25:19 -0800
-In-Reply-To: <Pine.LNX.4.58.0501241116080.23996@lewis.et.byu.edu>
-To: David Dougall <davidd@et.byu.edu>
+	id 1Ctyxu-0004Rc-1Q
+	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 18:00:59 -0800
+In-Reply-To: <41F4ECD6.90405@redhat.com>
+To: Neil Horman <nhorman@redhat.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,21 +32,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Jan 25, 2005, at 3:17 AM, David Dougall wrote:
+On Jan 24, 2005, at 9:40 PM, Neil Horman wrote:
 
-> In that past when I get that error message and dropping the rsize/wsize
-> fixes it, it is directly related to a network problem.
-> buggy network driver
-> speed mismatch between client/server(tcp solves this usually)
-> flaky wiring/switch/etc
-> --David Dougall
+> Dont suppose you can provide access to the tcpdumps, can you?
 
-That was my first guess too, but I checked the switches and the 
-clients; autoneg is working fine and there are no errors on any of the 
-interfaces on the switches or the client machines.
+Probably :) Its quite large.
 
-The vendor is saying they think they have found the problem. I don't 
-know yet, I won't believe it until I see the patch ;)
+At the moment, our vendor is saying they have a possible solution, and 
+that its a problem with the linux client code but they can fix it on 
+their side.
+
+I'll try to get some details out of them that I can forward to you so 
+that you can see whether a fix is needed on the Linux side.
+
+Thanks for the offer of help; I'll see what the vendor has for me over 
+the next few days and if it looks like they are barking up the wrong 
+tree I'll see how we can get the 4 gb of tcpdump data to you.
 
 Nathan.
 
