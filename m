@@ -1,22 +1,23 @@
-From: "Divyesh Amipara" <divyesh@techie.com>
-Subject: Re: Mount hangs forever
-Date: Thu, 22 Jul 2004 00:19:35 -0500
+From: Jolly Frederic <frederic.jolly@ext.bull.net>
+Subject: NFS in WebMin: new interface
+Date: Thu, 22 Jul 2004 17:01:47 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040722051935.7FFA86EEE9@ws1-5.us4.outblaze.com>
+Message-ID: <200407221701.47564.frederic.jolly@ext.bull.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
+Content-Type: text/plain;
+  charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BnVzb-0002mM-BI
-	for nfs@lists.sourceforge.net; Wed, 21 Jul 2004 22:19:43 -0700
-Received: from webmail-outgoing.us4.outblaze.com ([205.158.62.67])
+	id 1Bnf3R-0004gE-5w
+	for nfs@lists.sourceforge.net; Thu, 22 Jul 2004 08:00:17 -0700
+Received: from ecbull20.frec.bull.fr ([129.183.4.3])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1BnVzb-0005y0-3u
-	for nfs@lists.sourceforge.net; Wed, 21 Jul 2004 22:19:43 -0700
-Received: from wfilter.us4.outblaze.com (wfilter.us4.outblaze.com [205.158.62.180])
-	by webmail-outgoing.us4.outblaze.com (Postfix) with QMQP id 93793180046A
-	for <nfs@lists.sourceforge.net>; Thu, 22 Jul 2004 05:19:35 +0000 (GMT)
+	id 1Bnf3Q-000315-FS
+	for nfs@lists.sourceforge.net; Thu, 22 Jul 2004 08:00:17 -0700
+Received: from ecn002.frec.bull.fr (ecn002.frec.bull.fr [129.183.4.6])
+	by ecbull20.frec.bull.fr (8.9.2/8.9.1) with ESMTP id RAA13906
+	for <nfs@lists.sourceforge.net>; Thu, 22 Jul 2004 17:01:51 +0200
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,32 +31,21 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi All,
+Hello,
 
-I am trying to mount from nfs server running linux RH 8 from other
-inux client
-running RH 8
+I'm working on the implementation of NFSv4 in WebMin.
+The two modules that deal with NFSv3 will be modified:  "NFS Exports" and 
+"Disk and Network Filesystems".
 
-using this comman..
+You will find on the following link the design of the old and the new 
+interfaces of these modules:
+http://nfsv4.bullopensource.org/doc/webmin_design/
 
+If you have some questions or suggestions, if you think something is wrong, 
+please do not hesitate to tell me.
 
-$ mount -o timeo=20,soft -t nfs 192.168.9.1:/home /mnt/home
-
-but it hangs forever without getting Time Out. so if i am doing backup
-after NFS mount it will never happen.
-
-So pls suggest me how to resolve this kind of proble so that it
-should come out when
-NFS server will not respond or through some error.
-
-Ok. Fine. Thanks.
-
->> Divyesh A.
-
--- 
-___________________________________________________________
-Sign-up for Ads Free at Mail.com
-http://promo.mail.com/adsfreejump.htm
+Regards,
+Fred.
 
 
 
