@@ -1,13 +1,13 @@
-From: "Brianna Mcintyre" <zsaulog@aol.com>
-Subject: Netsaintplug-devel, please ......apprise
-Date: Sun, 11 May 03 20:15:08 GMT
+From: "Peter Mooney" <5a1i2607l@yahoo.com>
+Subject: look young  idoaauicovsfy
+Date: Mon, 12 May 03 08:20:53 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <m350$70r5c33$eldf$jyd--xi@xvoxv8dn>
+Message-ID: <3-w53$5r-h-7$-gni@ajct.93bpp12>
 Mime-Version: 1.0
 Content-Type: multipart/alternative;
-	boundary="F70_FF8_70_B2.7_FE453"
+	boundary="9EBBB909B.1A4.BA"
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: <netsaintplug-devel@lists.sourceforge.net>, <nfs@lists.sourceforge.net>, <nms-cgi-support@lists.sourceforge.net>, <ofset-members@lists.sourceforge.net>
+To: <nfs@lists.sourceforge.net>, <nms-cgi-support@lists.sourceforge.net>, <ofset-members@lists.sourceforge.net>, <opennap-dev@lists.sourceforge.net>, <phplib-users@lists.sourceforge.net>, <phpweather-devel@lists.sourceforge.net>, <proftp-committers@lists.sourceforge.net>, <ps2hacking-devel@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -22,51 +22,47 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a multi-part message in MIME format.
 
---F70_FF8_70_B2.7_FE453
-Content-Type: text/html;
+--9EBBB909B.1A4.BA
+Content-Type: text/html
 Content-Transfer-Encoding: quoted-printable
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1=
-">
-<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
-<STYLE></STYLE>
+<HTML>
+<HEAD>
+<TITLE>rehabilitation ammonia</TITLE> <META HTTP-EQUIV=3D"Content-Type"=
+ CONTENT=3D"text/html; charset=3Diso-8859-1"> 
 </HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV><FONT face=3D"Comic Sans MS" size=3D4>I am one of many Russian girls =
-that would 
-like to marry a</FONT></DIV>
-<DIV><FONT face=3D"Comic Sans MS" size=3D4>nice American man and come live=
- in the 
-U.S.A. as a citizen.</FONT></DIV>
-<DIV><FONT face=3D"Comic Sans MS" size=3D4>Tanka G.</FONT></DIV>
-<DIV><FONT face=3D"Comic Sans MS" size=3D4>&nbsp;&nbsp;&nbsp;<FONT face=3D=
-Arial 
-size=3D3> (takes a couple seconds for my picture to load)</FONT></FONT></D=
-IV>
-<DIV>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<IMG style=3D"WIDTH: 320px; HEIGHT: 316=
-px" 
-height=3D316 src=3D"http://www.easternwomenwantyou.com/images/photos/phpbq=
-ktqv.jpg" 
-width=3D320></A><BR><BR></DIV>
-<DIV><A href=3D"http://www.easternwomenwantyou.com/?oc=3D5227"><FONT 
-face=3D"Comic Sans MS">Check us out here</FONT></A></DIV>
-<DIV>&nbsp;</DIV>
-<DIV>&nbsp;</DIV>
-<DIV><FONT face=3D"Comic Sans MS">Or let us know and we won't write you 
-again:<BR><BR></FONT><A 
-href=3D"http://www.easternwomenwantyou.com/x/?oc=3D5227"><FONT 
-face=3D"Comic Sans MS">Don't write to me</FONT></A></DIV>
-<DIV>&nbsp;</DIV><FONT color=3D#ffffff size=3D1>adolph apostle =
+<body>
+<center>
+ <p><h3><font color=3D"white">
+    
+monday earth rotation growth attesting</font><br=
+>
+<font color=3D"green">
+This is the health discovery that reverses aging!<br>
+Reported on by the New England Journal of Medicine<br>
+</font>
+<font color=3D"white">
+    
+format language heel calibration nickel</font><br=
+>
 
-convert don't effusive tradesmen cloth %RANDOM_W=
-ORD 
-bedbug escape roundhead autocratic auriga %RANDOM_W=
-ORD 
-cowpunch spoof</FONT> </BODY></HTML>
+Body Fat Loss: <font color=3D"red">82% improvement</font><br>
+Wrinkle Reduction:<font color=3D"red"> 61% improvement</font><br>
+Energy Level:<font color=3D"red"> 84% improvement</font><br>
+Muscle Strength:<font color=3D"red"> 88% improvement</font><br>
+Sexual Potency:<font color=3D"red"> 75% improvement</font><br>
+Memory:<font color=3D"red"> 62% improvement<br></h3>
+<h2>
+Change your life forever!<br>
+<a href=3D"http://Nfs@www.mnjm.com/hgh2/home.html">
+Learn more. Click here</a></h2></font>
+<br>
+</body>
+</html>ynoj  f
+p
 
---F70_FF8_70_B2.7_FE453--
+t  rujwbgdti
+--9EBBB909B.1A4.BA--
 
 
 
