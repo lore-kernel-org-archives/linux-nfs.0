@@ -1,29 +1,30 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH]  Reinstantiating stale inodes
-Date: Mon, 03 May 2004 17:27:28 -0400
+From: Garrick Staples <garrick@usc.edu>
+Subject: Re: mountd segfault on itanium2
+Date: Mon, 3 May 2004 11:18:05 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1083619647.3896.126.camel@lade.trondhjem.org>
-References: <40892507.2030004@RedHat.com>  <4093CCB6.1040500@RedHat.com>
-	 <1083439518.3687.19.camel@lade.trondhjem.org> <4094397C.3030303@RedHat.com>
-	 <1083457337.3687.60.camel@lade.trondhjem.org> <409468B2.40200@RedHat.com>
-	 <1083468517.3687.70.camel@lade.trondhjem.org> <4096A292.8050109@RedHat.com>
-	 <1083615338.3896.92.camel@lade.trondhjem.org> <4096ACA0.9050507@RedHat.com>
+Message-ID: <20040503181805.GO23287@polop.usc.edu>
+References: <20040430212414.GF22498@polop.usc.edu> <20040430234327.GM22498@polop.usc.edu> <20040501030730.GE23287@polop.usc.edu> <20040503133546.GA25469@rx8.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="f9b3biUB1f7FHqGn"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BKkym-0006BA-Vt
-	for nfs@lists.sourceforge.net; Mon, 03 May 2004 14:28:00 -0700
-Received: from dh132.citi.umich.edu
-	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	id 1BKi4U-0005sw-6X
+	for nfs@lists.sourceforge.net; Mon, 03 May 2004 11:21:42 -0700
+Received: from polop.usc.edu ([128.125.10.9])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.30)
-	id 1BKkyH-0003oZ-EZ
-	for nfs@lists.sourceforge.net; Mon, 03 May 2004 14:27:29 -0700
-To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: <4096ACA0.9050507@RedHat.com>
+	id 1BKi4T-0004rX-SZ
+	for nfs@lists.sourceforge.net; Mon, 03 May 2004 11:21:41 -0700
+Received: from polop.usc.edu (localhost.localdomain [127.0.0.1])
+	by polop.usc.edu (8.12.10/8.12.10) with ESMTP id i43II5lv012842
+	for <nfs@lists.sourceforge.net>; Mon, 3 May 2004 11:18:05 -0700
+Received: (from garrick@localhost)
+	by polop.usc.edu (8.12.10/8.12.10/Submit) id i43II5BQ012840
+	for nfs@lists.sourceforge.net; Mon, 3 May 2004 11:18:05 -0700
+To: nfs@lists.sourceforge.net
+In-Reply-To: <20040503133546.GA25469@rx8.ibm.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -36,60 +37,76 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, 2004-05-03 at 16:33, Steve Dickson wrote:
-> >
-> Here are two if the runs I've seen... The first one is without the 
-> patch, the second
-> one is with the patch...
-> 
-> client rpc stats:
-> calls      retrans    authrefrsh
-> 30073      7          0
-> Client nfs v3:
-> null       getattr    setattr    lookup     access     readlink
-> 0       0% 2280    7% 1199    3% 2595    8% 1173    3% 250     0%
-> read       write      create     mkdir      symlink    mknod
-> 3954   13% 11892  39% 893     2% 175     0% 250     0% 0       0%
-> remove     rmdir      rename     link       readdir    readdirplus
-> 1391    4% 175     0% 376     1% 250     0% 0       0% 1119    3%
-> fsstat     fsinfo     pathconf   commit
-> 1500    4% 1       0% 0       0% 600     1%
-> 
-> 
-> Client rpc stats:
-> calls      retrans    authrefrsh
-> 34134      22         0
-> Client nfs v3:
-> null       getattr    setattr    lookup     access     readlink
-> 0       0% 2124    6% 1199    3% 2979    8% 1174    3% 250     0%
-> read       write      create     mkdir      symlink    mknod     
-> 3954   11% 15752  46% 893     2% 175     0% 250     0% 0       0%
-> remove     rmdir      rename     link       readdir    readdirplus
-> 1391    4% 175     0% 380     1% 250     0% 0       0% 1119    3%
-> fsstat     fsinfo     pathconf   commit
-> 1500    4% 1       0% 0       0% 568     1%
-> 
-> The lookups and writes seem to sky rocketing....
 
-Interesting... You've got a few more renames too.
+--f9b3biUB1f7FHqGn
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-I assume those are just extra sillyrenames() if this was a standard
-Connectathon test workload. OK... So the extra sillyrename() might
-explain why you get more lookups() (assuming at least one of the
-sillyrenames is on one of those large directories that Cthon creates).
-The extra writes probably account for the sillyrenames() because they
-change the timing of close()...
+On Mon, May 03, 2004 at 08:35:46AM -0500, Jose R. Santos alleged:
+> On 04/30/04 22:07:30, Garrick Staples wrote:
+> > I have an ugly work-around that seems to be working.  It seems that 2.6=
+ has a
+> > new nfs interface for userspace.  By forcing mountd to use the older 2.4
+> > interface, it doesn't segfault anymore.  So something in the new code p=
+aths is
+> > broken.
+> >=20
+> > In support/nfs/cachio.c:
+> > int
+> > check_new_cache(void)
+> > {
+> >         struct stat stb;
+> >=20
+> >         return 0;  /* DISABLE NEW 2.6 INTERFACE */
+> >=20
+> >         return  (stat("/proc/fs/nfs/filehandle", &stb) =3D=3D 0) ||
+> >                 (stat("/proc/fs/nfsd/filehandle", &stb) =3D=3D 0);
+> > }
+>=20
+> If you want to use the old syscall interface, all you need to do is make=
+=20
+> sure nfsd is not mounted in /proc/fs/nfsd.
 
-So the big question is: *why do you get all those extra writes*?
+Thank you.  That's much easier.
 
-Hmm... Just wanting to check: the above results were indeed made with
-only the patch I sent you applied?
-There weren't any extra changes to nfs_refresh_inode() that might cause
-the actual page cache invalidation to depend on the inode ctime (as
-opposed to just the lookup cache)?
+=20
+> > Am I losing any functionality by doing this?  I can't actually find any
+> > problems.
+>=20
+> I think there are no functionality losses but I have seen issues with usi=
+ng
+> the syscall interface on large memory systems.  The syscall mount and=20
+> unmount the nfsdfs for every syscall.  This will cause the inode and dent=
+ry
+> for this filesystem to be flush, but in order to do that it needs to walk=
+=20
+> through all inode and dentry caches under lock.  If you have a system with
+> 16GB of ram, mounting and unmounting can take a really long time.
+>=20
+> -JRS
 
-Cheers,
-  Trond
+Both machines have 8GB.  I definitly see the slower mounting, but it's not
+prohibitive.  And slow mounting is better than a segfault.
+
+
+--=20
+Garrick Staples, Linux/HPCC Administrator
+University of Southern California
+
+--f9b3biUB1f7FHqGn
+Content-Type: application/pgp-signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.3 (GNU/Linux)
+
+iD8DBQFAlozd0SBUxJbm9HMRAp8iAJ9gnn1JLcf2ExbeVYg0+ncP2FfSQQCggdWY
+hDedSU0s7JT1XzRJBbpFtRo=
+=JWzJ
+-----END PGP SIGNATURE-----
+
+--f9b3biUB1f7FHqGn--
 
 
 -------------------------------------------------------
