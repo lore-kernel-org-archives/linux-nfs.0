@@ -1,24 +1,24 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Steve Dickson <SteveD@redhat.com>
 Subject: Re: [PATCH] NFS: Zeroing NFS and kNFSD stats
-Date: Tue, 13 Jul 2004 10:30:44 -0400
+Date: Tue, 13 Jul 2004 11:08:08 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040713143044.GA3023@fieldses.org>
-References: <40F3D483.8020507@RedHat.com>
+Message-ID: <40F3FAD8.7090707@RedHat.com>
+References: <40F3D483.8020507@RedHat.com> <20040713143044.GA3023@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BkOJ1-0000hw-J6
-	for nfs@lists.sourceforge.net; Tue, 13 Jul 2004 07:30:51 -0700
-Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	id 1BkOtA-0000yr-M1
+	for nfs@lists.sourceforge.net; Tue, 13 Jul 2004 08:08:12 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.34)
-	id 1BkOJ1-0003kU-52
-	for nfs@lists.sourceforge.net; Tue, 13 Jul 2004 07:30:51 -0700
-To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: <40F3D483.8020507@RedHat.com>
+	id 1BkOt9-0005OV-RW
+	for nfs@lists.sourceforge.net; Tue, 13 Jul 2004 08:08:12 -0700
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20040713143044.GA3023@fieldses.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,14 +31,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, Jul 13, 2004 at 08:24:35AM -0400, Steve Dickson wrote:
-> Here is a patch I've been using for quite a while now
-> that will zero out the nfs stats on both the server
-> and client side.
+J. Bruce Fields wrote:
 
-What is it useful for?
+>On Tue, Jul 13, 2004 at 08:24:35AM -0400, Steve Dickson wrote:
+>  
+>
+>>Here is a patch I've been using for quite a while now
+>>that will zero out the nfs stats on both the server
+>>and client side.
+>>    
+>>
+>
+>What is it useful for?
+>  
+>
+A few things... One to see if how traffic is flowing... sure you can 
+look a the numbers go
+up but to be able to start from zero gives you a better idea on how well 
+things are flowing.
+I also use it for testing patchs that deal with caching or  RPC changes 
+to see what impact
+they have on OTW traffic...  Another use it to see what opts are really 
+being tested... Starting
+up a test run, zeroing out the stats give you a very clear picture of 
+what exactly is going on...
+There probably a few more uses that are just not coming to me right 
+now... Its one of those
+tools that I keep finding ways to use... :)
 
---Bruce Fields
+SteveD.
+
+
 
 
 -------------------------------------------------------
