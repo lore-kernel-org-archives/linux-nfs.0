@@ -1,17 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 2 of 7 - Change NFSEXP_CROSSMNT to NFSEXP_CROSSMOUNT
-Date: Tue, 05 Aug 2003 13:59:22 +1000
+Subject: [PATCH] kNFSd - 6 of 7 - Create a mountpoint for the nfsd filesystem.
+Date: Tue, 05 Aug 2003 13:59:23 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19jsyo-0000mr-00@notabene>
+Message-ID: <E19jsyp-0000nP-00@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19jsyw-0001hC-00
-	for <nfs@lists.sourceforge.net>; Mon, 04 Aug 2003 20:59:30 -0700
+	id 19jsz0-0001hf-00
+	for <nfs@lists.sourceforge.net>; Mon, 04 Aug 2003 20:59:34 -0700
 Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
 	(for <torvalds@osdl.org>) (for <nfs@lists.sourceforge.net>) By note
-	With Smtp ; Tue, 5 Aug 2003 13:59:25 +1000
+	With Smtp ; Tue, 5 Aug 2003 13:59:28 +1000
 To: Linus Torvalds <torvalds@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -27,55 +27,29 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 ### Comments for ChangeSet
 
-NFSEXP_CROSSMNT used to mean something different, so
-using a different name reduces the chance of confusion.
-Also there is currently a surplus of vowels, so there is
-no need to be frugal
+Though the nfsd module can create this, having it always
+there makes auto-loading-on-mount work better.
+
+Note: it was previously recommended that the nfsd filesystem be mounted
+on /proc/fs/nfs, which I was never comfortable with.
+Henceforth the recommended location will be /proc/fs/nfsd.
+nfs-utils 1.0.6 and later will support both.
 
  ----------- Diffstat output ------------
- ./fs/nfsd/export.c            |    2 +-
- ./fs/nfsd/vfs.c               |    2 +-
- ./include/linux/nfsd/export.h |    2 +-
- 3 files changed, 3 insertions(+), 3 deletions(-)
+ ./fs/proc/root.c |    1 +
+ 1 files changed, 1 insertion(+)
 
-diff ./fs/nfsd/export.c~current~ ./fs/nfsd/export.c
---- ./fs/nfsd/export.c~current~	2003-08-04 11:07:47.000000000 +1000
-+++ ./fs/nfsd/export.c	2003-08-04 11:07:47.000000000 +1000
-@@ -999,7 +999,7 @@ struct flags {
- 	{ NFSEXP_KERBEROS, { "kerberos", ""}},
- 	{ NFSEXP_SUNSECURE, { "sunsecure", ""}},
- 	{ NFSEXP_NOHIDE, {"nohide", ""}},
--	{ NFSEXP_CROSSMNT, {"crossmnt", ""}},
-+	{ NFSEXP_CROSSMOUNT, {"crossmnt", ""}},
- 	{ NFSEXP_NOSUBTREECHECK, {"no_subtree_check", ""}},
- 	{ NFSEXP_NOAUTHNLM, {"insecure_locks", ""}},
- #ifdef MSNFS
-
-diff ./fs/nfsd/vfs.c~current~ ./fs/nfsd/vfs.c
---- ./fs/nfsd/vfs.c~current~	2003-08-04 11:07:47.000000000 +1000
-+++ ./fs/nfsd/vfs.c	2003-08-04 11:07:47.000000000 +1000
-@@ -99,7 +99,7 @@ nfsd_cross_mnt(struct svc_rqst *rqstp, s
- 		mntput(mnt);
- 		goto out;
- 	}
--	if (exp2 && ((exp->ex_flags & NFSEXP_CROSSMNT) || EX_NOHIDE(exp2))) {
-+	if (exp2 && ((exp->ex_flags & NFSEXP_CROSSMOUNT) || EX_NOHIDE(exp2))) {
- 		/* successfully crossed mount point */
- 		exp_put(exp);
- 		*expp = exp2;
-
-diff ./include/linux/nfsd/export.h~current~ ./include/linux/nfsd/export.h
---- ./include/linux/nfsd/export.h~current~	2003-08-04 11:07:47.000000000 +1000
-+++ ./include/linux/nfsd/export.h	2003-08-04 11:07:47.000000000 +1000
-@@ -40,7 +40,7 @@
- #define	NFSEXP_NOAUTHNLM	0x0800		/* Don't authenticate NLM requests - just trust */
- #define NFSEXP_MSNFS		0x1000	/* do silly things that MS clients expect */
- #define NFSEXP_FSID		0x2000
--#define	NFSEXP_CROSSMNT		0x4000
-+#define	NFSEXP_CROSSMOUNT	0x4000
- #define NFSEXP_ALLFLAGS		0x7FFF
- 
- 
+diff ./fs/proc/root.c~current~ ./fs/proc/root.c
+--- ./fs/proc/root.c~current~	2003-08-04 11:37:38.000000000 +1000
++++ ./fs/proc/root.c	2003-08-04 11:37:48.000000000 +1000
+@@ -65,6 +65,7 @@ void __init proc_root_init(void)
+ #endif
+ 	proc_root_fs = proc_mkdir("fs", 0);
+ 	proc_root_driver = proc_mkdir("driver", 0);
++	proc_mkdir("fs/nfsd", 0); /* somewhere for the nfsd filesystem to be mounted */
+ #if defined(CONFIG_SUN_OPENPROMFS) || defined(CONFIG_SUN_OPENPROMFS_MODULE)
+ 	/* just give it a mountpoint */
+ 	proc_mkdir("openprom", 0);
 
 
 -------------------------------------------------------
