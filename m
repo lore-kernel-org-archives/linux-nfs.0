@@ -1,17 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 7 of 8 - Fix byte counting for NFSv3 readdir replies
+Subject: [PATCH] kNFSd - 1 of 8 - Fix bug in rpc cache_clean introduced by previous patch
 Date: Tue, 24 Jun 2003 16:54:53 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19Uhhd-0001qp-00@notabene>
+Message-ID: <E19Uhhd-0001q1-00@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19Uhhy-0007S8-00
-	for <nfs@lists.sourceforge.net>; Mon, 23 Jun 2003 23:55:14 -0700
+	id 19Uhhx-0007Rm-00
+	for <nfs@lists.sourceforge.net>; Mon, 23 Jun 2003 23:55:13 -0700
 Received: From notabene ([129.94.172.124] == notabene.cse.unsw.EDU.AU)
 	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>) By
-	tone With Smtp ; Tue, 24 Jun 2003 16:55:01 +1000
+	tone With Smtp ; Tue, 24 Jun 2003 16:54:56 +1000
 To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -25,45 +25,33 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+8 patches for kNFSd in 2.5.latest.  Several relating to the export cache.
+Thanks,
+NeilBrown
 ### Comments for ChangeSet
 
-The amount of free space is calculated wrongly so
-nfsv3 readdir replies are shorted than they could be.
+Having a 'continue' at the end of this look it pointless... it should
+be a break.
+
 
  ----------- Diffstat output ------------
- ./fs/nfsd/nfs3xdr.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
+ ./net/sunrpc/cache.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-diff ./fs/nfsd/nfs3xdr.c~current~ ./fs/nfsd/nfs3xdr.c
---- ./fs/nfsd/nfs3xdr.c~current~	2003-06-24 14:09:17.000000000 +1000
-+++ ./fs/nfsd/nfs3xdr.c	2003-06-24 16:29:05.000000000 +1000
-@@ -780,7 +780,7 @@ encode_entry(struct readdir_cd *ccd, con
- {
- 	struct nfsd3_readdirres *cd = container_of(ccd, struct nfsd3_readdirres, common);
- 	u32		*p = cd->buffer;
--	int		buflen, slen, elen;
-+	int		slen, elen;
+diff ./net/sunrpc/cache.c~current~ ./net/sunrpc/cache.c
+--- ./net/sunrpc/cache.c~current~	2003-06-24 12:37:38.000000000 +1000
++++ ./net/sunrpc/cache.c	2003-06-24 12:46:24.000000000 +1000
+@@ -319,8 +319,8 @@ int cache_clean(void)
+ 			if (test_and_clear_bit(CACHE_PENDING, &ch->flags))
+ 				queue_loose(current_detail, ch);
  
- 	if (cd->offset)
- 		xdr_encode_hyper(cd->offset, (u64) offset);
-@@ -797,7 +797,7 @@ encode_entry(struct readdir_cd *ccd, con
- 	slen = XDR_QUADLEN(namlen);
- 	elen = slen + NFS3_ENTRY_BAGGAGE
- 		+ (plus? NFS3_ENTRYPLUS_BAGGAGE : 0);
--	if ((buflen = cd->buflen - elen) < 0) {
-+	if (cd->buflen < elen) {
- 		cd->common.err = nfserr_readdir_nospc;
- 		return -EINVAL;
- 	}
-@@ -836,7 +836,7 @@ encode_entry(struct readdir_cd *ccd, con
- 	}
- 
- out:
--	cd->buflen = buflen;
-+	cd->buflen -= p - cd->buffer;
- 	cd->buffer = p;
- 	cd->common.err = nfs_ok;
- 	return 0;
+-			if (atomic_read(&ch->refcnt))
+-				continue;
++			if (!atomic_read(&ch->refcnt))
++				break;
+ 		}
+ 		if (ch) {
+ 			cache_get(ch);
 
 
 -------------------------------------------------------
