@@ -1,88 +1,53 @@
-From: Hirokazu Takahashi <taka@valinux.co.jp>
-Subject: [PATCH] zerocopy NFS for 2.5.36
-Date: Wed, 18 Sep 2002 17:14:31 +0900 (JST)
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <20020918.171431.24608688.taka@valinux.co.jp>
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: DoS lockd
+Date: Wed, 18 Sep 2002 17:25:07 +1000
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <15752.10835.180301.420321@notabene.cse.unsw.edu.au>
+References: <200209180137.g8I1bQf87489@milan.maths.usyd.edu.au>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: Neil Brown <neilb@cse.unsw.edu.au>, linux-kernel@vger.kernel.org,
-	nfs@lists.sourceforge.net
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17rbHh-0008J4-00
+	for <nfs@lists.sourceforge.net>; Wed, 18 Sep 2002 02:38:13 -0700
+Received: From
+	notabene.cse.unsw.edu.au ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
+	(for <psz@maths.usyd.edu.au>) (for <nfs@lists.sourceforge.net>) By
+	tone With Smtp ; Wed, 18 Sep 2002 19:38:05 +1000
+To: psz@maths.usyd.edu.au (Paul Szabo)
+In-Reply-To: message from Paul Szabo on Wednesday September 18
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-Hello,
+On Wednesday September 18, psz@maths.usyd.edu.au wrote:
+> A Tru64 client may accidentally crash the lockd process on a Debian server.
+> I wonder if this "works" on other Linux versions, and if this attack may be
+> exploited to more than a DoS.
+> 
+> Any followups/replies please send me directly, as I am not subscribed to
+> the nfs@lists.sourceforge.net mailing list.
 
-I ported the zerocopy NFS patches against linux-2.5.36.
+Looks like Trond submitted a fix for this on 10th July this year.
 
-I made va05-zerocopy-nfsdwrite-2.5.36.patch more generic,
-so that it would be easy to merge with NFSv4. Each procedure can
-chose whether it can accept splitted buffers or not.
-And I fixed a probelem that nfsd couldn't handle NFS-symlink
-requests which were very large.
-
-
-1)
-ftp://ftp.valinux.co.jp/pub/people/taka/2.5.36/va10-hwchecksum-2.5.36.patch
-This patch enables HW-checksum against outgoing packets including UDP frames.
-
-2)
-ftp://ftp.valinux.co.jp/pub/people/taka/2.5.36/va11-udpsendfile-2.5.36.patch
-This patch makes sendfile systemcall over UDP work. It also supports
-UDP_CORK interface which is very similar to TCP_CORK. And you can call
-sendmsg/senfile with MSG_MORE flags over UDP sockets.
-
-3)
-ftp://ftp.valinux.co.jp/pub/people/taka/2.5.36/va-csumpartial-fix-2.5.36.patch
-This patch fixes the problem of x86 csum_partilal() routines which
-can't handle odd addressed buffers.
-
-4)
-ftp://ftp.valinux.co.jp/pub/people/taka/2.5.36/va01-zerocopy-rpc-2.5.36.patch
-This patch makes RPC can send some pieces of data and pages without copy.
-
-5)
-ftp://ftp.valinux.co.jp/pub/people/taka/2.5.36/va02-zerocopy-nfsdread-2.5.36.patch
-This patch makes NFSD send pages in pagecache directly when NFS clinets request
-file-read.
-
-6)
-ftp://ftp.valinux.co.jp/pub/people/taka/2.5.36/va03-zerocopy-nfsdreaddir-2.5.36.patch
-nfsd_readdir can also send pages without copy.
-
-7)
-ftp://ftp.valinux.co.jp/pub/people/taka/2.5.36/va04-zerocopy-shadowsock-2.5.36.patch
-This patch makes per-cpu UDP sockets so that NFSD can send UDP frames on
-each prosessor simultaneously.
-Without the patch we can send only one UDP frame at the time as a UDP socket
-have to be locked during sending some pages to serialize them.
-
-8)
-ftp://ftp.valinux.co.jp/pub/people/taka/2.5.36/va05-zerocopy-nfsdwrite-2.5.36.patch
-This patch enables NFS-write uses writev interface. NFSd can handle NFS
-requests without reassembling IP fragments into one UDP frame.
-
-9)
-ftp://ftp.valinux.co.jp/pub/people/taka/2.5.36/taka-writev-2.5.36.patch
-This patch makes writev for regular file work faster.
-It also can be found at
-http://www.zip.com.au/~akpm/linux/patches/2.5/2.5.35/2.5.35-mm1/broken-out/
-
-Caution:
-       XFS doesn't support writev interface yet. NFS write on XFS might
-       slow down with No.8 patch. I wish SGI guys will implement it.
-
-10)
-ftp://ftp.valinux.co.jp/pub/people/taka/2.5.36/va07-nfsbigbuf-2.5.36.patch
-This makes NFS buffer much bigger (60KB).
-60KB buffer is the same to 32KB buffer for linux-kernel as both of them
-require 64KB chunk.
+NeilBrown
 
 
-11)
-ftp://ftp.valinux.co.jp/pub/people/taka/2.5.36/va09-zerocopy-tempsendto-2.5.36.patch
-If you don't want to use sendfile over UDP yet, you can apply it instead of No.1 and No.2 patches.
-
-
-
-Regards,
-Hirokazu Takahashi
+-------------------------------------------------------
+This SF.NET email is sponsored by: AMD - Your access to the experts
+on Hammer Technology! Open Source & Linux Developers, register now
+for the AMD Developer Symposium. Code: EX8664
+http://www.developwithamd.com/developerlab
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
