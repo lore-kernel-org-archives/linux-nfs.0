@@ -1,21 +1,21 @@
-From: linas@linas.org (Linas Vepstas)
-Subject: Re: NFS on a freeswan gateway?
-Date: Mon, 24 Jun 2002 19:42:15 -0500
+From: "webmaster" <webmaster@dglewis.com>
+Subject: Linux -> Sun NFS doesn't mount
+Date: Tue, 25 Jun 2002 20:30:20 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020625004215.GB16309@backlot.linas.org>
-References: <20020624223641.GA16108@backlot.linas.org> <shsptygs21r.fsf@charged.uio.no> <3D17B3F7.1010301@actusa.net>
+Message-ID: <20020625203020.13900.qmail@mail.hostasaurus.com>
+References: <20020624223641.GA16108@backlot.linas.org>
+            <shsptygs21r.fsf@charged.uio.no>
+            <3D17B3F7.1010301@actusa.net>
+            <20020625004215.GB16309@backlot.linas.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="yEPQxsgoJgBvi8ip"
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Linas Vepstas <linas@linas.org>, nfs@lists.sourceforge.net
+Content-Type: text/plain; format=flowed; charset="iso-8859-1"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from www.linas.org ([207.224.61.137] helo=backlot.linas.org)
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17MePT-0005DL-00
-	for <nfs@lists.sourceforge.net>; Mon, 24 Jun 2002 17:42:19 -0700
-To: Stuart Sheldon <stu@actusa.net>
-In-Reply-To: <3D17B3F7.1010301@actusa.net>
+Received: from mail.hostasaurus.com ([64.157.8.4])
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17MwxB-0001dN-00
+	for <nfs@lists.sourceforge.net>; Tue, 25 Jun 2002 13:30:21 -0700
+In-Reply-To: <20020625004215.GB16309@backlot.linas.org> 
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,79 +28,29 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
+After a recent upgrade from solaris 2.6 to 2.8, my linux nfs client can no 
+longer nfs mount to the sun machine.  I can mount to two other 2.8 boxes 
+w/out problems(they were installed fresh as 2.8 and since only patched up).  
+I get permission denied, however dmesg reveals: 
 
---yEPQxsgoJgBvi8ip
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+call_verify: server requires stronger authentication 
 
-On Mon, Jun 24, 2002 at 05:06:15PM -0700, Stuart Sheldon was heard to remar=
-k:
-> Linas,
->=20
-> This looks to me to be a configuration issue. RPC always and has always=
-=20
-> presented it's default route interface IP when connecting.=20
+While googling I came across many references to linux nfs not being capable 
+of kerberos authentication, but haven't found a resolution or work around.  
+I hope this is the appropriate forum.  In trolling here for the past week it 
+seems to be. 
 
-As per other note, it seems that other things (e.g. telnet) 'present
-the default route interface IP' when connecting.   News to me ...
+Can anyone give me more insight or progress of a fix?  Thank you very much 
+in advance for your attention. 
 
-> If you are=20
-> attempting to mount to an NFS server on a network that is reachable from=
-=20
-> the inside interface, you would need to add the default interface IP to=
-=20
-> your /etc/exports file.=20
+Dan 
 
-:-( well, of course, that interface is some dynamcially assigned address
-that some ISP provided.  Hardly a thing I'd want to put in /etc/exports.
-
-Now, I could wire up the internal DNS so that it learns about the=20
-IP address that the ISP assigned.  That way, I could put the name of
-the machine, instead of a dotted numeric address, in the /etc/exports file.
-But this adds more complexity, and I'm somewhat concerned about the security
-implications (dns spoofing & etc.). =20
-
-I would be much happier if mount (and telnet & ping &etc). used a source
-address that corresponded to the interface from which the packets came.
-That way, I could set up my packet filters to roundly reject all traffic
-from external interfaces (other than the secure ipsec traffic).
-
-----
-The basic idea is to allow roaming clients to get nfs access to internal
-networks.  The roaming client has a built in firewall to block almost
-everything, and a freeswan tunnel to get it onto the internal net.
-Having the source address be the default route IP addr rather than=20
-the internal addr just gums it all up.
-
-I think this is a question for the networking gurus.
-
---linas
-
-
---=20
-pub  1024D/01045933 2001-02-01 Linas Vepstas (Labas!) <linas@linas.org>
-PGP Key fingerprint =3D 8305 2521 6000 0B5E 8984  3F54 64A9 9A82 0104 5933
-
---yEPQxsgoJgBvi8ip
-Content-Type: application/pgp-signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.0.6 (GNU/Linux)
-Comment: For info see http://www.gnupg.org
-
-iD8DBQE9F7xnZKmaggEEWTMRAoObAJ9M+5eC14mrhhCu1DoSCH/zn0CXXACfUm7+
-w5jkoIgl7Revjw64Zv3tb4w=
-=9YG/
------END PGP SIGNATURE-----
-
---yEPQxsgoJgBvi8ip--
 
 
 -------------------------------------------------------
-Sponsored by:
-ThinkGeek at http://www.ThinkGeek.com/
+This sf.net email is sponsored by: Jabber Inc.
+Don't miss the IM event of the season | Special offer for OSDN members! 
+JabConf 2002, Aug. 20-22, Keystone, CO http://www.jabberconf.com/osdn
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
