@@ -1,25 +1,27 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: very strange nfs errors with nfsroot
-Date: Tue, 24 Aug 2004 12:08:11 -0400
+From: Per Olofsson <pelle@dsv.su.se>
+Subject: NFSv3+Krb5 and mountd
+Date: Tue, 24 Aug 2004 20:41:38 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1093363691.5745.64.camel@lade.trondhjem.org>
-References: <412B5B3A.6070600@bio.ifi.lmu.de>
+Message-ID: <20040824184138.GB3251@nasse>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BzdqP-0006C2-8d
-	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 09:08:21 -0700
-Received: from dh138.citi.umich.edu
-	([141.211.133.138] helo=lade.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.34)
-	id 1BzdqN-0003d1-TX
-	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 09:08:21 -0700
-To: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
-In-Reply-To: <412B5B3A.6070600@bio.ifi.lmu.de>
+	id 1BzgEv-0001Ty-1x
+	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 11:41:49 -0700
+Received: from amsfep17-int.chello.nl ([213.46.243.15])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
+	id 1BzgEt-0003GA-Cw
+	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 11:41:48 -0700
+Received: from localhost ([213.89.140.172]) by amsfep17-int.chello.nl
+          (InterMail vM.6.00.05.02 201-2115-109-103-20031105) with ESMTP
+          id <20040824184139.VMYJ7145.amsfep17-int.chello.nl@localhost>
+          for <nfs@lists.sourceforge.net>; Tue, 24 Aug 2004 20:41:39 +0200
+Received: from pelle by localhost with local (Exim 4.34)
+	id 1BzgEk-0000rs-4N
+	for nfs@lists.sourceforge.net; Tue, 24 Aug 2004 20:41:38 +0200
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,36 +34,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 ty , 24/08/2004 klokka 11:14, skreiv Frank Steiner:
+Hi,
 
-> Here are the symptoms:
-> - It all started when on about every third boot, the clients
->    complained
->    "ln: /etc/local/printcap: File exists
->     Error: Could not link shared file /etc/local/printcap"
->=20
->    That was caused by a piece of code:
->=20
->    for name in $SHARES
->    do
->      if ! ( rm -f $name && ln -s $COMMON/$name $name )
->      then
->        exitstatus=3D1
->        echo "Error: Could not link shared file $name"
->      fi
->    done
+I'm trying to use NFSv3 with Kerberos 5. I'm using Debian sarge with
+Linux 2.6.7, nfs-utils 1.0.6 with the CITI_NFS4_ALL-13 patch, and
+util-linux mount 2.12 with the CITI_NFS4_ALL patch.
 
-Is the /etc/local shared by all clients? If so, your script is buggy
-since it assumes that some other client cannot come in and ln before you
-do (this is a prime example of what is known as a "race condition").
+I added the following definition to /etc/exports:
 
-As for the ESTALE error. Again, if some other client is screwing with
-deleting and recreating the soft link on the server, then ESTALE is
-entirely expected behaviour. I suggest you read up on the NFS cache
-consistency promises.
+/tmpexp gss/krb5(rw)
 
-Cheers,
-  Trond
+Then, on the client, I run:
+
+# mount -osec=krb5 oberon:/tmpexp /mnt
+mount: oberon:/tmpexp failed, reason given by server: Permission denied
+
+and it fails. According to the log:
+
+Aug 23 19:17:48 oberon rpc.mountd: refused mount request from
+mallinux.dsv.su.se for /tmpexp (/): not exported
+
+Now, I add the client machine's name to /etc/exports:
+
+/tmpexp gss/krb5(rw) mallinux(ro)
+
+And it works! I can tell that it uses Kerberos because I can write to
+the mounted fs if I have a ticket, but not without. The drawback is
+that I am now allowing AUTH_SYS mounting as well, which I want to
+avoid. Is this a bug in mountd? Is it difficult to fix?
+
+-- 
+Pelle
 
 
 -------------------------------------------------------
