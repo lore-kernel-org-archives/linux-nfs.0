@@ -1,23 +1,19 @@
-From: Yusuf Goolamabbas <yusufg@outblaze.com>
-Subject: Re: Re: Slow performance with 2.4.19pre1
-Date: Fri, 5 Jul 2002 17:48:31 +0800
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS/TCP patches against 2.4.18 have problems
+Date: 05 Jul 2002 14:41:28 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020705094831.GA26616@outblaze.com>
-References: <20020704165543.A28955@lucon.org> <Pine.LNX.4.44.0207051009120.715-100000@xpc1.ast.cam.ac.uk>
+Message-ID: <shspty2l53b.fsf@charged.uio.no>
+References: <1025737993.1835.10.camel@plokta.s8.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "H. J. Lu" <hjl@lucon.org>, "Bryan O'Sullivan" <bos@serpentine.com>,
-   nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from 202-77-223-51.outblaze.com ([202.77.223.51] helo=corpmail.outblaze.com)
+Received: from mons.uio.no ([129.240.130.14])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17QPhj-0007AS-00
-	for <nfs@lists.sourceforge.net>; Fri, 05 Jul 2002 02:48:43 -0700
-Received: from yusufg.portal2.com (202-77-223-2.outblaze.com [202.77.223.2])
-	by corpmail.outblaze.com (8.12.3/8.12.3) with SMTP id g659mV28000331
-	for <nfs@lists.sourceforge.net>; Fri, 5 Jul 2002 09:48:31 GMT
-To: Jeremy Sanders <jss@ast.cam.ac.uk>
-In-Reply-To: <Pine.LNX.4.44.0207051009120.715-100000@xpc1.ast.cam.ac.uk>
+	id 17QSP5-0007kt-00
+	for <nfs@lists.sourceforge.net>; Fri, 05 Jul 2002 05:41:39 -0700
+To: Bryan O'Sullivan <bos@serpentine.com>
+In-Reply-To: <1025737993.1835.10.camel@plokta.s8.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,19 +26,24 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-This thread on lkml may provide some insight
+>>>>> " " == Bryan O'Sullivan <bos@serpentine.com> writes:
 
-http://marc.theaimsgroup.com/?t=102519385600004&r=1&w=2
+     > Hi, Trond - I've been taking a look at the following patches
+     > from your web site:
 
-> > Have you tried the 7.3 kernel update. It is 2.4.18-5.
-> 
-> The tests were with 2.4.18-5 on an athlon.
-> 
-> Jeremy
+     >   linux-2.4.18-svc_tcp.dif.bz2 linux-2.4.18-rpc_tweaks.dif.bz2
 
--- 
-Yusuf Goolamabbas
-yusufg@outblaze.com
+     > In the accompanying commentary, you mention that the rpc_tweaks
+     > patch applies on top of the svc_tcp patch, but this is not the
+     > case.  I get two very substantial rejects, in net/sunrpc/xprt.c
+     > and include/linux/sunrpc/xprt.h.
+
+Yes. The rpc_tweaks patch also relies on some other changes. Most
+notably, it assumes that the 'ping' patch (and possibly 'rpc_bkl')
+have been applied...
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
