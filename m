@@ -1,19 +1,21 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Corrupt Data when using NFS on Linux
-Date: 29 Oct 2002 16:36:25 +0100
+From: Hirokazu Takahashi <taka@valinux.co.jp>
+Subject: Re: Re: [PATCH] zerocopy NFS for 2.5.43
+Date: Wed, 30 Oct 2002 01:27:31 +0900 (JST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsptttqmti.fsf@charged.uio.no>
-References: <D38AFB3080F3D311807300B0D0203E53033A92EA@MERCURY>
+Message-ID: <20021030.012731.104039610.taka@valinux.co.jp>
+References: <15805.26221.530836.279218@charged.uio.no>
+	<20021029.153629.55720711.taka@valinux.co.jp>
+	<15806.42148.47823.817360@charged.uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: Text/Plain; charset=us-ascii
+Cc: neilb@cse.unsw.edu.au, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
+Received: from sv1.valinux.co.jp ([202.221.173.100])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 186YPx-0003bI-00
-	for <nfs@lists.sourceforge.net>; Tue, 29 Oct 2002 07:36:33 -0800
-To: pwitting@Cyveillance.com
-In-Reply-To: <D38AFB3080F3D311807300B0D0203E53033A92EA@MERCURY>
+	id 186ZL6-0005ry-00
+	for <nfs@lists.sourceforge.net>; Tue, 29 Oct 2002 08:35:37 -0800
+To: trond.myklebust@fys.uio.no
+In-Reply-To: <15806.42148.47823.817360@charged.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,20 +28,38 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == pwitting  <pwitting@Cyveillance.com> writes:
+Hello,
 
-     > I'm curious now. Is this issue really in the linux kernel or is
-     > this actually a Filesystem issue? It would seem to be a
-     > filesystem issue, specifically how the FS chose to store the
-     > mtime, which could allow a different FS (say, a non-linux fs
-     > such as jfs or xfs) to solve the problem.
+Thank you for your reply.
 
-The problem is that Linux lacks support for >32-bit mtimes in the VFS
-layer. Even if the underlying filesystem is capable of supporting a
-64-bit mtime, the kernel structures are only seeing the high 32 bits.
+>      > Shall we use ZERO_PAGE to pad RPC requests for the purpose of
+>      > its performance?  Using non-page data is a little inefficient
+>      > as the implementation of skbuff doesn't allow to append
+>      > non-page data to a skbuff which already have pages. Only pages
+>      > can be appneded to it.  If we didn't, TCP/IP stack would
+>      > allocate a new page to store the small zero-padded data.
+> 
+> Hmmm... What if we just drop actually storing a pointer to the
+> ZERO_PAGE? Instead, define the convention that
+>
+> if (xdr_buf->tail[0].iov_base == NULL)
+> 	padding = xdr_buf->tail[0].iov_len;
+> 
+> and just have xprt_sendmsg() magically append 'padding' bytes from
+> your ZERO_PAGE.
 
-Cheers,
-  Trond
+Yes, it's possible.
+OK, I'll modify it.
+
+> Unless, of course, you've got another use for the head_page/tail_page?
+
+I just wanted to make it general.
+I guessed head_page (or head_pages) might be usefull for big NFSv4
+COMPOUND messages as we could send a head without any copies.
+But it's just my guess.
+
+Thank you,
+Hirokazu Takahashi.
 
 
 -------------------------------------------------------
