@@ -1,33 +1,91 @@
-From: David Woodhouse <dwmw2@infradead.org>
-Subject: Re: why do i get "Stale NFS file handle" for hours?
-Date: Mon, 06 Sep 2004 10:57:13 +0100
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <1094464633.3986.36.camel@imladris.demon.co.uk>
-References: <chdp06$e56$1@sea.gmane.org>
-	 <1094348385.13791.119.camel@lade.trondhjem.org>  <413A7119.2090709@upb.de>
-	 <1094349744.13791.128.camel@lade.trondhjem.org>  <413A789C.9000501@upb.de>
-	 <1094353267.13791.156.camel@lade.trondhjem.org>
+From: Kedar Sovani <kedars@hotpop.com>
+Subject: Re: [PATCH / RFC] nfs-utils: High Availability NFS
+Date: 06 Sep 2004 18:17:01 +0530
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <1094474821.2284.24.camel@localhost.localdomain>
+References: <4124DB86.9060505@steeleye.com>
+	 <16677.22269.988036.787320@cse.unsw.edu.au> <412E1C10.5020703@steeleye.com>
+	 <20040827073049.GA23324@suse.de> <412F3362.5040707@steeleye.com>
+	 <20040830082510.GD28454@suse.de>
+	 <1094196525.2283.3.camel@localhost.localdomain>
+	 <16699.49563.188086.126554@cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: Sven =?ISO-8859-1?Q?K=F6hler?= <skoehler@upb.de>,
-	linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
-Return-path: <linux-kernel-owner+glk-linux-kernel=40m.gmane.org-S267505AbUIFJ5T@vger.kernel.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1094353267.13791.156.camel@lade.trondhjem.org>
-List-ID: <nfs.lists.sourceforge.net>
+Cc: Olaf Kirch <okir@suse.de>,
+	Paul Clements <paul.clements@steeleye.com>, nfs@lists.sourceforge.net
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1C4IiA-0002HY-3Y
+	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 05:35:06 -0700
+Received: from smtp-out.hotpop.com ([38.113.3.61])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
+	id 1C4Ii6-0003NM-DY
+	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 05:35:06 -0700
+Received: from hotpop.com (kubrick.hotpop.com [38.113.3.103])
+	by smtp-out.hotpop.com (Postfix) with SMTP id 09429805179
+	for <nfs@lists.sourceforge.net>; Mon,  6 Sep 2004 12:34:56 +0000 (UTC)
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <16699.49563.188086.126554@cse.unsw.edu.au>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sat, 2004-09-04 at 23:01 -0400, Trond Myklebust wrote:
->  2) A bug in your initscripts is causing the table of exports to be
-> clobbered. Running "exportfs" in legacy 2.4 mode (without having the
-> nfsd filesystem mounted on /proc/fs/nfsd) appears to be broken for me at
-> least...
->  3) There is some other bug in knfsd that nobody else appears to be
-> seeing.
+On Mon, 2004-09-06 at 07:17, Neil Brown wrote:
+> On  September 3, kedars@hotpop.com wrote:
+> > NFS Server keeps state about the recent responses given to the clients,
+> > in a reply cache.
+> > 
+> > Shouldn't that state be replicated to the failed-over NFS server as well
+> > ?
+> 
+> The reply cache is an optimisation and cannot be relied upon.  Coping
+> it across in a fail-over would be both very expensive (it is highly
+> volatile) and of little benefit.
+> 
+> NeilBrown
 
-The fact that we require a persistent table of exports at all, and can't
-call back to mountd to authenticate 'new' clients instead of just
-telling them to sod off if the kernel doesn't already know about them,
-is considered by some to be a bug in knfsd. 
+Yes, migrating it across server would be very expensive.
 
--- 
-dwmw2
+But isn't reply cache for correctness (idempotency) as against
+optimisation ? 
+E.g. 
+1. NFS Client sends "create" (file) to the server.
+2. Server creates the file and sends a "success" response.
+3. The response is lost.
+4. The Client retries the "create" 
+5. and the NFS Server responds from the _reply cache_ stating that the
+result is true. (as the reply was cached in step 2)
+
+Now if the Server crashes after the 3rd step, and the failed over server
+starts processing requests, it will respond to the step 4 above with a
+FILE EXISTS instead of success, which I think, is incorrect.
+
+Am I missing something ? 
+Or probably such scenarios are rare to occur and if they do, are not
+much significant, I suppose.
+
+I guess this is what you meant by "of little benefit" above.
+
+thanks,
+Kedar.
+
+
+
+
+-------------------------------------------------------
+This SF.Net email is sponsored by BEA Weblogic Workshop
+FREE Java Enterprise J2EE developer tools!
+Get your free copy of BEA WebLogic Workshop 8.1 today.
+http://ads.osdn.com/?ad_id=5047&alloc_id=10808&op=click
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
