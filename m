@@ -1,26 +1,26 @@
-From: Peter Whysall <peter.whysall@serco.com>
-Subject: OpenVMS clients, Linux servers, Version 3, Oh my!
-Date: Wed, 10 Sep 2003 12:45:26 +0100
+From: "Robert Pawlowicz" <robert@pawlowicz.com>
+Subject: Function not implemented
+Date: Wed, 10 Sep 2003 13:57:51 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1063194326.2137.52.camel@localhost>
+Message-ID: <LOBBJFHFAIJCHENJILKBOEJDMAAA.robert@pawlowicz.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_000C_01C377A3.8630B720"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19x3Pj-0007yB-00
-	for <nfs@lists.sourceforge.net>; Wed, 10 Sep 2003 04:45:35 -0700
-Received: from porky.serco.com ([195.50.81.243])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.22)
-	id 19x3Pi-000319-Sh
-	for nfs@lists.sourceforge.net; Wed, 10 Sep 2003 04:45:35 -0700
-Received: from [10.22.1.247] (helo=mail2.technology.serco.com)
-	by porky.serco.com with esmtp (Exim 4.12)
-	id 19x3PC-0003tH-01
-	for nfs@lists.sourceforge.net; Wed, 10 Sep 2003 12:45:02 +0100
-To: nfs@lists.sourceforge.net
+	id 19x4Nz-0007kA-00
+	for <nfs@lists.sourceforge.net>; Wed, 10 Sep 2003 05:47:51 -0700
+Received: from scrabble.freeuk.net ([212.126.144.29])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
+	id 19x4Ny-0000Ka-7U
+	for nfs@lists.sourceforge.net; Wed, 10 Sep 2003 05:47:50 -0700
+Received: from [212.126.148.32] (helo=wolverine)
+	by scrabble.freeuk.net with smtp (Exim 4.22)
+	id 19x4Nw-000M3j-R2
+	for nfs@lists.sourceforge.net; Wed, 10 Sep 2003 13:47:48 +0100
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -33,40 +33,115 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Objective - have an OpenVMS client mount an export on a Linux server
-using NFS version 3.
+This is a multi-part message in MIME format.
 
-I have a Red Hat Enterprise Linux WS 2.1 box acting as NFS server;
-running kernel 2.4.9-e.27 with nfs-utils 0.3.3 and all errata applied.
+------=_NextPart_000_000C_01C377A3.8630B720
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
 
-In /etc/sysconfig/nfs I have set MOUNTD_NFS_V2=no.
+Hello
+I have been pulling my hair out over this because I can't find a solution to
+the problem.
 
-At the client end, it's OVMS 7.3-1 with TCP/IP services 5.3.
+I have a fresh install of debian linux and debian as you may already know
+includes NFS as part of its standard packages. This includes kernel NFS
+server support as well as the other usual packages that come with NFS.
 
-The command line used to mount the export is:
+All the daemons start up fine except for nfsd which doesn't start & gives me
+the message:
 
-$ tcpip mount dnfs1: /sys /struct=5 /host=nfstest /uid=501 /gid=501
-/path="/export/mount_point"
+server.address.com:/var/www: Function not implemented
 
-At this point I should point out that there is not a switch to indicate
-which version of NFS you want to use.
+When I try to mount the file on the client it just says that permission is
+denied.
 
-The output of rpcinfo -p on the server indicates that rpc.mountd is only
-offering v3 mounts, but rpc.nfsd is offering v2 and v3.
+I have seen quite a bit about this function not implemented on the
+discussion forums but have found nothing that adequately answers my problem.
 
-Somehow, despite mountd's best efforts, the VMS box manages to mount the
-export with v2; nfsstat indicates that all the activity is in the v2
-section.
+Please help!
 
-Can anyone shed any light on this?
+Regards,
 
-Many thanks
+Robert Pawlowicz
 
-Peter.
--- 
-Peter Whysall <peter.whysall@serco.com>
+robert@pawlowicz.com
+tel: 0114 250 7786
 
+------=_NextPart_000_000C_01C377A3.8630B720
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; =
+charset=3Diso-8859-1">
+<META content=3D"MSHTML 6.00.2800.1226" name=3DGENERATOR></HEAD>
+<BODY>
+<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana=20
+size=3D2>Hello</FONT></SPAN></DIV>
+<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana size=3D2>I =
+have been=20
+pulling my hair out over this because I can't find a solution to the=20
+problem.</FONT></SPAN></DIV>
+<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana=20
+size=3D2></FONT></SPAN>&nbsp;</DIV>
+<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana size=3D2>I =
+have a fresh=20
+install of debian linux and debian as you may already know includes NFS =
+as part=20
+of its standard packages. This includes kernel NFS server support as =
+well as the=20
+other usual packages that come with NFS.</FONT></SPAN></DIV>
+<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana=20
+size=3D2></FONT></SPAN>&nbsp;</DIV>
+<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana size=3D2>All =
+the daemons=20
+start up fine except for nfsd which doesn't start &amp; gives me the=20
+message:</FONT></SPAN></DIV>
+<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana=20
+size=3D2></FONT></SPAN>&nbsp;</DIV>
+<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana=20
+size=3D2>server.address.com:/var/www: Function not =
+implemented</FONT></SPAN></DIV>
+<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana=20
+size=3D2></FONT></SPAN>&nbsp;</DIV>
+<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana size=3D2>When =
+I try to=20
+mount the file on the client it just says that permission is=20
+denied.</FONT></SPAN></DIV>
+<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana=20
+size=3D2></FONT></SPAN>&nbsp;</DIV>
+<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana size=3D2>I =
+have seen quite=20
+a bit about this function not implemented on the discussion forums but =
+have=20
+found nothing that adequately answers my problem.</FONT></SPAN></DIV>
+<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana=20
+size=3D2></FONT></SPAN>&nbsp;</DIV>
+<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana =
+size=3D2>Please=20
+help!</FONT></SPAN></DIV>
+<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana=20
+size=3D2></FONT></SPAN>&nbsp;</DIV>
+<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana=20
+size=3D2>Regards,</FONT></SPAN></DIV>
+<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana=20
+size=3D2></FONT></SPAN>&nbsp;</DIV>
+<DIV><SPAN class=3D454205012-10092003><FONT face=3DVerdana =
+size=3D2>Robert=20
+Pawlowicz</FONT></SPAN></DIV>
+<DIV><FONT face=3DCourier size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DVerdana size=3D2><A=20
+href=3D"mailto:robert@pawlowicz.com">robert@pawlowicz.com</A></FONT></DIV=
+>
+<DIV><FONT face=3DVerdana size=3D2><FONT =
+color=3D#808080><STRONG>tel:</STRONG></FONT>=20
+0114 250 7786</FONT></DIV>
+<DIV>&nbsp;</DIV></BODY></HTML>
+
+------=_NextPart_000_000C_01C377A3.8630B720--
 
 
 
