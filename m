@@ -1,25 +1,20 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: lockd fails to purge blocked NLM_LOCKs
-Date: Thu, 7 Aug 2003 09:55:22 +1000
+From: Wichert Akkerman <wichert@wiggy.net>
+Subject: mountd getfh failure
+Date: Wed, 6 Aug 2003 11:21:22 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16177.38250.158802.733185@gargle.gargle.HOWL>
-References: <16173.61548.939819.343488@gargle.gargle.HOWL>
-	<Pine.LNX.4.33.0308061158190.1062-300000@localhost.localdomain>
+Message-ID: <20030806092122.GB3069@wiggy.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-    <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19kY7x-0003bN-00
-	for <nfs@lists.sourceforge.net>; Wed, 06 Aug 2003 16:55:33 -0700
-Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <markhe@veritas.com>) (for <trond.myklebust@fys.uio.no>)
-	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
-	Thu, 7 Aug 2003 09:55:23 +1000
-To: Mark Hemment <markhe@veritas.com>
-In-Reply-To: message from Mark Hemment on Wednesday August 6
+Received: from home.wiggy.net ([213.84.101.140] helo=thunder.home.wiggy.net)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:RC4-SHA:128) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19kKUW-0008HK-00
+	for <nfs@lists.sourceforge.net>; Wed, 06 Aug 2003 02:21:56 -0700
+Received: from wichert by thunder.home.wiggy.net with local (Exim 4.20)
+	id 19kKTy-0002BR-BI
+	for nfs@lists.sourceforge.net; Wed, 06 Aug 2003 11:21:22 +0200
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,33 +27,26 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wednesday August 6, markhe@veritas.com wrote:
-> On Mon, 4 Aug 2003, Neil Brown wrote:
-> 
-> > On Friday August 1, markhe@veritas.com wrote:
-> > >   When stopping server-side NFS, or deleting a client (NFSCTL_DELCLIENT),
-> > > lockd fails to purge blocked lockd requests.
-> >
-> > Thanks Mark.  I'm at least largely convinced.
-> >
-> > My only question concerns nlmsvc_traverse_blocks.
-> > This uses b_host and you have (subtley) changed the meaning of b_host.
-> 
->   That is the idea.
+I'm struggling with a problem with nfsd in 2.6.0-test2. Yesterday I had
+some problems with nfsd, but trying to reproduce them today I found that
+mountd no longer works: when I try to mount a NFS export from another
+machine I get the following in my syslog:
 
-Thanks for the extra detail.  I'm convinced now.
+Aug  6 11:11:34 thunder rpc.mountd: authenticated mount request from tornado.home.wiggy.net:857 for /home (/home)
+Aug  6 11:11:34 thunder rpc.mountd: getfh failed: Operation not permitted
 
-I know I must have understood all this code once, because I changed
-this stuff for 2.6 and got rid of the per-export-entry 'host's and
-just kept per-ip-address hosts.  The actual patch can be found at:
+A strace of rpc.mountd confirms the problem:
 
-http://www.cse.unsw.edu.au/~neilb/patches/linux-devel/2.5.34/patch-F-LockdSeparate
+nfsservctl(0x8, 0xbfffdcb0, 0x8057ba0)  = -1 EPERM (Operation not permitted)
 
-I hope it's right :-)
+I'm a bit at a loss as to what the problem is here..
 
-I'll submit your patch for 2.4.23.
+Wichert.
 
-NeilBrown
+-- 
+Wichert Akkerman <wichert@wiggy.net>    It is simple to make things.
+http://www.wiggy.net/                   It is hard to make things simple.
+
 
 
 -------------------------------------------------------
