@@ -1,20 +1,24 @@
-From: Erez Zadok <ezk@cs.sunysb.edu>
-Subject: Re: ALERT - GroupShield ticket number OA2317_1057450427_CVO-EXCHANGE _1 was generated
-Date: Mon, 7 Jul 2003 17:14:37 -0400
+From: Philippe =?ISO-8859-15?Q?Gramoull=E9?= <philippe.gramoulle@mmania.com>
+Subject: Re: ALERT - GroupShield ticket number
+ OA2317_1057450427_CVO-EXCHANGE _1 was generated
+Date: Mon, 7 Jul 2003 23:12:08 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200307072114.h67LEbgO015164@agora.fsl.cs.sunysb.edu>
-References: <20030707225618.0fa972cf.philippe.gramoulle@mmania.com>
+Message-ID: <20030707231208.6a3f2ae7.philippe.gramoulle@mmania.com>
+References: <Pine.LNX.4.33.0307060127100.1200-100000@vangogh>
+	<3F09AAA0.4070000@ixiacom.com>
+	<20030707193031.GA10222@lucon.org>
+	<20030707225618.0fa972cf.philippe.gramoulle@mmania.com>
+	<1057612112.19080.26.camel@opus.phy.duke.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Cc: "H. J. Lu" <hjl@lucon.org>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from filer.fsl.cs.sunysb.edu ([130.245.126.2])
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19ZdJv-0007Mq-00
-	for <nfs@lists.sourceforge.net>; Mon, 07 Jul 2003 14:14:47 -0700
-To: Philippe =?ISO-8859-15?Q?Gramoull=E9?=
-    <philippe.gramoulle@mmania.com>
-In-reply-to: Your message of "Mon, 07 Jul 2003 22:56:18 +0200."
-             <20030707225618.0fa972cf.philippe.gramoulle@mmania.com>
+Received: from pgramoul.net2.nerim.net ([80.65.227.234] helo=philou.aspic.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19ZdHa-0006ZM-00
+	for <nfs@lists.sourceforge.net>; Mon, 07 Jul 2003 14:12:22 -0700
+To: seth vidal <skvidal@phy.duke.edu>
+In-Reply-To: <1057612112.19080.26.camel@opus.phy.duke.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,24 +31,31 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-In message <20030707225618.0fa972cf.philippe.gramoulle@mmania.com>, Philippe =?ISO-8859-15?Q?Gramoull=E9?= writes:
-> 
-> Hello,
-> 
-> Well last time there was a poll on that topic, i'd voted to close the list to
-> non-subscribers but Trond pointed out the problem of bug reports which i had overlooked
-> and making this change would probably make few (but always important) bug reports get lost.
-> 
-> I think that we should keep the list opened to non-subscribers ( and fine
-> tune my spam traps/ white lists / Black lists BTW :)
 
-With Mailman 2.1, there are ways to fwd specific mails to specific people,
-so you could "trap" these bug reports and pass them on to someone who could
-decide to delete the email or fwd it to the list.  That's how I handle true
-bug reports to my list.  It's not the cleanest way, but it works for the
-one-in-many real messages that are sent to my lists.
+Hello Seth,
 
-Erez.
+On 07 Jul 2003 17:08:32 -0400
+seth vidal <skvidal@phy.duke.edu> wrote:
+
+  | > I think that we should keep the list opened to non-subscribers ( and fine
+  | > tune my spam traps/ white lists / Black lists BTW :)
+  | > 
+  | 
+  | It's really not this hard.
+  | all you do is turn on non-subscriber posts require approval in mailman.
+
+Yes, i'm aware of this feature.
+
+  | 
+  | it doesn't drop non-subscriber posts but it will send the mailing list
+  | admin a message saying some messages need to get
+  | checked/approvated/discarded.
+
+Fine with me ;o) as long as there are people out there willing to do the moderation.
+
+Thanks,
+
+Philippe
 
 
 -------------------------------------------------------
