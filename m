@@ -1,22 +1,22 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: [RFC] implementing BSD style locks on NLM (flocks)
-Date: Wed, 2 Mar 2005 16:56:35 +0100
-Message-ID: <20050302155634.GE22736@suse.de>
-References: <20050227192113.GA5778@localhost.localdomain>
+From: Bernd Schubert <bernd-schubert@gmx.de>
+Subject: Re: x86_64: 32bit emulation problems
+Date: Tue, 1 Mar 2005 00:14:41 +0100
+Message-ID: <200503010014.41972.bernd-schubert@gmx.de>
+References: <200502282208.29263.bernd-schubert@web.de> <1109629608.13407.30.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain;
+  charset="iso-8859-1"
 Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D6WDR-0007cQ-GI
-	for nfs@lists.sourceforge.net; Wed, 02 Mar 2005 07:56:49 -0800
-Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.41)
-	id 1D6WDK-0007QK-Gm
-	for nfs@lists.sourceforge.net; Wed, 02 Mar 2005 07:56:49 -0800
-To: nhorman@redhat.com
-In-Reply-To: <20050227192113.GA5778@localhost.localdomain>
+	id 1D5u6I-0003VI-B6
+	for nfs@lists.sourceforge.net; Mon, 28 Feb 2005 15:14:54 -0800
+Received: from mail.gmx.net ([213.165.64.20])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
+	id 1D5u6F-0002DN-IT
+	for nfs@lists.sourceforge.net; Mon, 28 Feb 2005 15:14:54 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1109629608.13407.30.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,28 +30,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+On Monday 28 February 2005 23:26, you wrote:
+> Given that strace shows that both syscalls (stat64() and stat())
+> succeed, I expect the "problem" is probably just glibc setting an
+> EOVERFLOW error in the 32-bit case. That's what it is supposed to do if
+> a 64 bit value overflows the 32-bit buffers.
 
-> 	I was wondering, how much interest there might be in the addition of
-> support for BSD style locks (flocks) over NLM.  I was thinking that a bit could
-> be added to differentiate the two namespaces.  Any thoughts appreciated.  
+Right, thanks. 
 
-I looked into this before, and it's not just two "name spaces".  The major
-difference is that BSD flocks are associated with an open file handle,
-while POSIX locks are associated with a PID.
+>
+> Have you tried looking at errno?
+>
 
-You could possibly encode the notion of a struct file in the owner
-handle that's passed in every lock request, and change the server side
-lockd when comparing lock owners.
+bernd@hitchcock tests>./test_stat32 /mnt/test/yp
+stat for /mnt/test/yp failed
+ernno: 75 (Value too large for defined data type)
 
-But I dimly remember there were other issues that could not be mapped
-easily to the NLM protocol... don't remember the details: I'd have to
-check my archives. These mails may even be in the nfs list archive.
+But why does stat64() on a 64-bit kernel tries to fill in larger data than on 
+a 32-bit kernel and larger data also only for nfs-mount points? Hmm, I will 
+tomorrow compare the tcp-packges sent by the server.
 
-Olaf
--- 
-Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
-okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
+
+Many thanks,
+ Bernd
 
 
 -------------------------------------------------------
