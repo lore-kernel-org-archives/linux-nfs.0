@@ -1,20 +1,19 @@
-From: Jeremy Sanders <jss@ast.cam.ac.uk>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: Permission denied
-Date: Wed, 7 May 2003 17:32:09 +0100 (BST)
+Date: 07 May 2003 18:31:45 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.55.0305071723530.2587@xpc5.ast.cam.ac.uk>
+Message-ID: <shsu1c6zpji.fsf@charged.uio.no>
 References: <Pine.LNX.4.55.0305071639490.2587@xpc5.ast.cam.ac.uk>
- <3EB93285.F40CC32A@moving-picture.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from gold.csi.cam.ac.uk ([131.111.8.12])
+Received: from pat.uio.no ([129.240.130.16])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19DRqT-00080h-00
-	for <nfs@lists.sourceforge.net>; Wed, 07 May 2003 09:32:41 -0700
-To: James Pearson <james-p@moving-picture.com>
-In-Reply-To: <3EB93285.F40CC32A@moving-picture.com>
+	id 19DRpe-0007vp-00
+	for <nfs@lists.sourceforge.net>; Wed, 07 May 2003 09:31:50 -0700
+To: Jeremy Sanders <jss@ast.cam.ac.uk>
+In-Reply-To: <Pine.LNX.4.55.0305071639490.2587@xpc5.ast.cam.ac.uk>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,29 +26,21 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, 7 May 2003, James Pearson wrote:
+>>>>> " " == Jeremy Sanders <jss@ast.cam.ac.uk> writes:
 
-> What version of nfs-utils are you running on the server?
+     > I've seen this problem a couple of times (I think I reported it
+     > to the list before but I can find the posting). Using the
+     > automounter to mount home directories
+     > (rw,v3,rsize=8192,wsize=8192,hard,intr,udp,lock), it seems that
+     > rebooting a Linux server can give a "Permission denied" on the
+     > client.
 
-nfs-utils-0.3.3 on both. From the thread this looks like it has the bug
-(unless RedHat patched it in their rpm).  I'll have a go updating it and
-see whether we still get the bug.
+Can it be duplicated on newer kernels?
 
-> Also, if you manually attempt to umount an NFS file system (automounted
-> or not), but the umount fails because the file system is busy - this
-> will cause a problem as rpc.mountd on the server has already removed the
-> client from /var/lib/nfs/rmtab - which means if the server reboots, the
-> server has no record of the client mount, so you get permission denied
-> on client when it accesses the mount point ... see:
+Which automounter BTW?
 
-That's interesting. Thanks!
-
-Jeremy
-
--- 
-Jeremy Sanders <jss@ast.cam.ac.uk>   http://www-xray.ast.cam.ac.uk/~jss/
-X-Ray Group, Institute of Astronomy, University of Cambridge, UK.
-Public Key Server PGP Key ID: E1AAE053
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
