@@ -1,25 +1,28 @@
-From: "Lisa Williams" <lisa@fastclick.com>
-Subject: Data Corruption Issues
-Date: Wed, 27 Aug 2003 10:51:44 -0700
+From: Martin Pool <mbp@sourcefrog.net>
+Subject: nfs/mmap/rename file corruption
+Date: Wed, 27 Aug 2003 18:02:09 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <008601c36cc3$e1ae87c0$d501010a@Lisa>
+Message-ID: <20030827180209.3286a014.mbp@sourcefrog.net>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: text/plain; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19s4Sw-0005cU-00
-	for <nfs@lists.sourceforge.net>; Wed, 27 Aug 2003 10:52:18 -0700
-Received: from [205.180.85.17] (helo=mail.fastclick.net)
+	id 19rvFy-00085z-00
+	for <nfs@lists.sourceforge.net>; Wed, 27 Aug 2003 01:02:18 -0700
+Received: from sngrel5.hp.com ([192.6.86.210])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 19s4Sw-0001dC-73
-	for nfs@lists.sourceforge.net; Wed, 27 Aug 2003 10:52:18 -0700
-Received: from Lisa (ip193.fastclick.net [205.180.85.193])
-	by mail.fastclick.net (8.12.9/8.12.5) with SMTP id h7RHpWd2003692
-	for <nfs@lists.sourceforge.net>; Wed, 27 Aug 2003 17:51:32 GMT
-To: <nfs@lists.sourceforge.net>
+	id 19rvFx-0006Iu-VF
+	for nfs@lists.sourceforge.net; Wed, 27 Aug 2003 01:02:18 -0700
+Received: from XAUBRG2.AUS.HP.COM (xaubrg2.aus.hp.com [15.23.69.43])
+	by sngrel5.hp.com (Postfix) with SMTP id B274D83B
+	for <nfs@lists.sourceforge.net>; Wed, 27 Aug 2003 16:02:11 +0800 (SGP)
+Received: from localhost ([127.0.0.1] helo=vexed)
+	by vexed with smtp (Exim 3.36 #1 (Debian))
+	id 19rvFp-0000f1-00
+	for <nfs@lists.sourceforge.net>; Wed, 27 Aug 2003 18:02:09 +1000
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,46 +35,101 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi all,
+There is a fairly easily reproducible bug in NFS in 2.4.22 that can
+cause files to read back as full of nulls.  I have a tcpdump that
+shows what is going wrong. 
 
-We are finding corruption in mysql database files that are being copied from
-16 Linux 2.4.20 servers to a Linux 2.4.21 backup server on an hourly basis.
+Gavrie Philipson reported corruption happening when distcc and ccache
+are used together with the cache on NFS.
 
-Here are the details:
+  http://lists.samba.org/pipermail/distcc/2003q3/001556.html
 
-The backup server was originally a FreeBSD box that was having some hardware
-issues.  We decided to swap it out and replace with a Linux server (running
-2.4.21).  We had no issues of data corruption until we swapped machines.
+To reproduce the bug you need to just install ccache 2.2 and distcc
+2.10.1.  Set CCACHE_DIR to an empty directory on an NFS filesystem
+mounted with default/rw options.  Build a file with a command like
+this:
 
-The 16 linux 2.4.20 servers have the backup machine mounted locally and
-after each hour a script is run that flushes the tables and then copies them
-to the mounted backup drive.  There's no real pattern of which machines
-create a corrupt file on the backup machine.  It appears fairly random.  We
-are seeing about 20% of them corrupted.
+  ccache distcc -c ./hello.c
 
-Our network is running at 100MB.
+The first (only the first) time that you run this, the output file
+(hello.o) will be the correct size, but contain only \0 bytes.
 
-The files are around 25MB each.
+What is basically happening here is
 
-We have tried the following settings:
+ - ccache runs distcc with output to a temporary file
+ - distcc opens, mmaps, writes to, munmaps, and closes the temporary
+   file
+ - distcc exits
+ - ccache renames the temporary file to its proper location in the
+   ccache
+ - ccache opens the file read only, and reads from it
 
-    Increasing the number of nfsd server threads to 20 on the backup
-machine.
+ccache ought to see the proper contents as written by mmap, but when
+the cache is on NFS it just sees \0s.  It works correctly and reliably
+on reiserfs and ext3.  However, if you look at the file ccache was
+trying to read a second later then it seems to have the right
+contents.
 
-Changes in the mount options in the 16 fstabs:
+I tried writing a standalone test case but I couldn't reproduce it,
+perhaps because of some timing issue.  It is quite reproducible both
+on my machine and Gavrie's.
 
-    specifying:  tcp, nfsvers=3
-    specifying:  udp, nfsvers=2
-    specifying:  rsize=1024,wsize=1024
+If distcc is configured to not use mmap for writing, the problem is
+hidden.  
 
-There was no real change in the corruption rate after any of these changes.
+A tcpdump of the problem is available here:
 
-Any ideas of what we should try next are appreciated.
+ 
+http://distcc.samba.org/ftp/distcc/misc/mmap-bug/nfs-20030827T1351.pcap.gz
 
-Thank you,
+Here are the significant bits:
 
--Lisa
+frame 79
 
+   renames tmp.hash.vexed.7897.o to the final object filename,
+   cbfc5ca42b1a693a5bca9bb8b23c5b-17387
+
+frame 105
+
+   also frame 107
+
+   look up a filehandle for the final object filename, and gets the
+   hash 0xed8222404
+
+frame 115
+
+   reads back from the final object file, 0xed8222404
+
+frame 116
+
+   is the reply to the read and it is full of nulls
+
+frame 127 
+
+   writes the ELF output into the temporary object file,
+   tmp.hash.vexed.7897.o, which has file hash 0xf27c2204.
+
+The problem is that the NFS client tries to read from the destination
+file before it has written to the temporary file!  Frame 127 is far
+too late.
+
+It seems to me like there are two possible solutions: either flush out
+all cached data for a file before it's renamed, or make the rename
+smart enough to 'take over' any data cached under an old name.  To me
+the first seems more robust if a little slower.
+
+You can see something similar going on in this NFS log:
+
+ 
+http://distcc.samba.org/ftp/distcc/misc/mmap-bug/nfsdebug-20030827T1609.log.gz
+
+The flush(b/49777) call comes long after the rename and the attempt to
+read from the new file.
+
+I'll try to draft a patch for this.
+
+-- 
+Martin
 
 
 -------------------------------------------------------
