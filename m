@@ -1,25 +1,27 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] DefineSimpleCache macro problem
-Date: Thu, 13 May 2004 15:15:33 -0400
+Subject: Re: nfsd, rmtab, failover, and stale filehandles
+Date: Thu, 13 May 2004 17:00:45 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040513191533.GB20649@fieldses.org>
-References: <20040513082245.GM22052@suse.de> <16547.16795.844328.645694@cse.unsw.edu.au> <20040513104552.GT22052@suse.de>
+Message-ID: <20040513210045.GF20649@fieldses.org>
+References: <20040506185603.GM23287@polop.usc.edu> <20040506191351.GP23287@polop.usc.edu> <20040506215311.GA26968@polop.usc.edu> <20040506222455.GP18964@fieldses.org> <20040506230055.GC26968@polop.usc.edu> <20040507182543.GA27341@fieldses.org> <20040507213811.GL30964@polop.usc.edu> <20040507223414.GQ30964@polop.usc.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BOLgI-0000BH-1m
-	for nfs@lists.sourceforge.net; Thu, 13 May 2004 12:15:46 -0700
+	id 1BONJy-00066q-4F
+	for nfs@lists.sourceforge.net; Thu, 13 May 2004 14:00:50 -0700
 Received: from dsl093-002-214.det1.dsl.speakeasy.net
 	([66.93.2.214] helo=pumpkin.fieldses.org ident=Debian-exim)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
 	(Exim 4.30)
-	id 1BOLgH-0002UE-HE
-	for nfs@lists.sourceforge.net; Thu, 13 May 2004 12:15:45 -0700
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20040513104552.GT22052@suse.de>
+	id 1BONJx-0001y8-N8
+	for nfs@lists.sourceforge.net; Thu, 13 May 2004 14:00:49 -0700
+Received: from bfields by pumpkin.fieldses.org with local (Exim 4.33)
+	id 1BONJt-0005oX-NY
+	for nfs@lists.sourceforge.net; Thu, 13 May 2004 17:00:45 -0400
+To: nfs@lists.sourceforge.net
+In-Reply-To: <20040507223414.GQ30964@polop.usc.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,61 +34,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, May 13, 2004 at 12:45:52PM +0200, Olaf Kirch wrote:
-> On Thu, May 13, 2004 at 07:36:27PM +1000, Neil Brown wrote:
-> > That would be wrong.  Always returning an entry (possibly non-VALID)
-> > - except on kmalloc failure - is a design feature.
-> 
-> Does this mean I can eat all your memory by flooding your NFS server
-> with NULL calls from bogus addresses? That would be bad.
+On Fri, May 07, 2004 at 03:34:15PM -0700, Garrick Staples wrote:
+> I'm looking at exportfs.c to see if I can add in a call to flush the caching
+> when unmounting, does the following seem reasonable?
 
-There is an expiration time on those entries (2 minutes), but I don't
-see any bound on the number of them.
+Small note--I think your mailer must be messing up your patches--the
+patch you appended e.g. has all tabs changed to spaces, and doesn't
+apply.
 
-I'm guessing one of those ip_map cache entries is about 80 bytes on
-i386?  I'm not sure what a reasonable assumption is about packet rates,
-but it seems like it could be a problem, unless I'm missing some other
-constraint here.
+> Force a cache flush if unexporting, and don't reread rmtab if we're using the
+> new cache.
 
-> The problem is that somewhere somehow an invalid entry is created,
-> which remains in the cache and the flags don't get updated.
+Hm. I don't understand why unexporting is a special case here; what
+about changing export options?  When I run exportfs, I expect any
+changes to take place before it returns, so I don't understand why
+there's a "force_flush" option at all--shouldn't the kernel's export
+tables be flushed every time exportfs is run?
 
-Ugh, and it's the failure to update the flags that's the bug, I suspect.
-Does this help?  (Caveat: looks straightforward enough, but I haven't
-actually tested it!)
+Can someone explaing what the reason was for adding the -f flag to
+exportfs?
 
---b.
-
-Normally the _lookup functions are only called with set = 1 on items with
-CACHE_NEGATIVE not set; however in the case of the export cache it can happen,
-and is especially likely if mountd isn't listening in on the
-proc/net/rpc/*/content files, since then any lookup (if followed by
-cache_check()) generates a CACHE_NEGATIVE entry.
-
-Make sure we clear the CACHE_NEGATIVE bit on update if necessary in
-DefineCacheLookup.
-
-
- include/linux/sunrpc/cache.h |    5 ++++-
- 1 files changed, 4 insertions(+), 1 deletion(-)
-
-diff -puN include/linux/sunrpc/cache.h~nfsd_cache_update_negative include/linux/sunrpc/cache.h
---- linux-2.6.6-rc3/include/linux/sunrpc/cache.h~nfsd_cache_update_negative	2004-05-13 14:44:13.000000000 -0400
-+++ linux-2.6.6-rc3-bfields/include/linux/sunrpc/cache.h	2004-05-13 14:45:47.000000000 -0400
-@@ -195,7 +195,10 @@ RTN *FNAME ARGS										\
- 				}							\
- 				if (test_bit(CACHE_NEGATIVE,  &item->MEMBER.flags))	\
- 					 set_bit(CACHE_NEGATIVE, &tmp->MEMBER.flags);	\
--				else {UPDATE;}						\
-+				else {							\
-+					clear_bit(CACHE_NEGATIVE, &tmp->MEMBER.flags); \
-+					UPDATE;						\
-+				}							\
- 			}								\
- 			if (set||new) write_unlock(&(DETAIL)->hash_lock);		\
- 			else read_unlock(&(DETAIL)->hash_lock);				\
-
-_
+--Bruce Fields
 
 
 -------------------------------------------------------
