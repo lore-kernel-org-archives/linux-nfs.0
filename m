@@ -1,20 +1,19 @@
-From: Wichert Akkerman <wichert@wiggy.net>
-Subject: mountd getfh failure
-Date: Wed, 6 Aug 2003 11:21:22 +0200
+From: Steve Gonzales <gonzo@eng.lsu.edu>
+Subject: It works, but it doesn't
+Date: Thu, 07 Aug 2003 09:32:26 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030806092122.GB3069@wiggy.net>
+Message-ID: <1060266746.32702.13.camel@engw0002.eng.lsu.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from home.wiggy.net ([213.84.101.140] helo=thunder.home.wiggy.net)
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:RC4-SHA:128) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19kKUW-0008HK-00
-	for <nfs@lists.sourceforge.net>; Wed, 06 Aug 2003 02:21:56 -0700
-Received: from wichert by thunder.home.wiggy.net with local (Exim 4.20)
-	id 19kKTy-0002BR-BI
-	for nfs@lists.sourceforge.net; Wed, 06 Aug 2003 11:21:22 +0200
-To: nfs@lists.sourceforge.net
+Received: from engrsrv8.eng.lsu.edu ([130.39.27.4] helo=engmail01.eng.lsu.edu)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19klpo-00022n-00
+	for <nfs@lists.sourceforge.net>; Thu, 07 Aug 2003 07:33:44 -0700
+Received: from engw0002.eng.lsu.edu (engw0002.eng.lsu.edu [130.39.28.2])
+	by engmail01.eng.lsu.edu (8.12.10.Beta2/8.12.10.Beta2) with ESMTP id h77ETbgN011960
+	for <nfs@lists.sourceforge.net>; Thu, 7 Aug 2003 09:29:37 -0500
+To: NFS List <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,25 +26,42 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I'm struggling with a problem with nfsd in 2.6.0-test2. Yesterday I had
-some problems with nfsd, but trying to reproduce them today I found that
-mountd no longer works: when I try to mount a NFS export from another
-machine I get the following in my syslog:
+Hello all.
 
-Aug  6 11:11:34 thunder rpc.mountd: authenticated mount request from tornado.home.wiggy.net:857 for /home (/home)
-Aug  6 11:11:34 thunder rpc.mountd: getfh failed: Operation not permitted
+Situation:
+One NFS server
+One NFS mount client
+One NFS installation client (for RedHat 9)
 
-A strace of rpc.mountd confirms the problem:
+IPAddr1 = IP Address of Server
+IPAddr2 = IP Address of NFS mount client
+IPAddr3 = IP Address of NFS installation client
 
-nfsservctl(0x8, 0xbfffdcb0, 0x8057ba0)  = -1 EPERM (Operation not permitted)
+------------------------------------------------------
 
-I'm a bit at a loss as to what the problem is here..
+Server /etc/exports:
+/install/RedHat/9	<IPAddr2>(ro,no_root_squash)
+/install/RedHat/9	<IPAddr3>(ro,no_root_squash)
 
-Wichert.
+When I manually mount from <IPAddr2>, it works.
 
--- 
-Wichert Akkerman <wichert@wiggy.net>    It is simple to make things.
-http://www.wiggy.net/                   It is hard to make things simple.
+However, when I attempt to do an NFS installation of RedHat 9 to
+<IPAddr3>, it fails.
+
+IPAddr3 Error Message:
+That directory could not be mounted from the server.
+
+IPAddr1 /var/log/messages entry:
+Aug 7 09:23:56: <servername> rpc.mountd: refused mount request from
+<FQDN for IPAddr3> for /install/RedHat/9 (/): no export entry.
+
+------------------------------------------------------
+
+I hope it's not too confusing.  Any help would be greatly appreciated as
+this is study for the big RHCE test.
+
+Thanks.
+Steve
 
 
 
