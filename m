@@ -1,25 +1,25 @@
 From: Harald Hannelius <harald+nfs@arcada.fi>
-Subject: Poor NFS performance, kernel 2.6.6.
-Date: Thu, 27 May 2004 13:31:57 +0300 (EEST)
+Subject: Re: Poor NFS performance, kernel 2.6.6. (fwd)
+Date: Thu, 27 May 2004 14:40:07 +0300 (EEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.58.0405271331430.7539@penti.sit.fi>
+Message-ID: <Pine.LNX.4.58.0405271439470.10125@penti.sit.fi>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: TEXT/PLAIN; charset=ISO-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BTIB6-0000GO-EQ
-	for nfs@lists.sourceforge.net; Thu, 27 May 2004 03:32:00 -0700
+	id 1BTJF6-0003uK-53
+	for nfs@lists.sourceforge.net; Thu, 27 May 2004 04:40:12 -0700
 Received: from penti.sit.fi ([193.167.33.237])
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BTIB5-0007KH-Qc
-	for nfs@lists.sourceforge.net; Thu, 27 May 2004 03:32:00 -0700
+	id 1BTJF5-0000Nc-Em
+	for nfs@lists.sourceforge.net; Thu, 27 May 2004 04:40:11 -0700
 Received: from penti.sit.fi (harald@localhost [127.0.0.1])
-	by penti.sit.fi (8.12.10/8.12.10) with ESMTP id i4RAVvgT007547
-	for <nfs@lists.sourceforge.net>; Thu, 27 May 2004 13:31:57 +0300
+	by penti.sit.fi (8.12.10/8.12.10) with ESMTP id i4RBe7gT010132
+	for <nfs@lists.sourceforge.net>; Thu, 27 May 2004 14:40:07 +0300
 Received: from localhost (harald@localhost)
-	by penti.sit.fi (8.12.10/8.12.9/Submit) with ESMTP id i4RAVvRX007544
-	for <nfs@lists.sourceforge.net>; Thu, 27 May 2004 13:31:57 +0300
+	by penti.sit.fi (8.12.10/8.12.9/Submit) with ESMTP id i4RBe7hS010129
+	for <nfs@lists.sourceforge.net>; Thu, 27 May 2004 14:40:07 +0300
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,55 +34,55 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Hi there,
-
-I'm running two servers, both Dual Opterons with Broadcom Gb NICs. I'm
-using the bcm5700 driver and I see no errors whatsoever with 'ifconfig'.
-
-I'm using nfs-utils-1.0.6 and the 2.6.6 kernel, compiled with both NFSv3
-and NFSv4 support. The client and servers are identical except for the
-server having a scsi-raid under /home and the client being and IDE-box.
-
-Distribution slackware-9.1 on both computers.
-
-/etc/exports;
-
-   /home   193.167.32.175(ro,no_root_squash,async)
-
-/etc/fstab;
-
-  193.167.32.187:/home    /home   nfs     \
- defaults,noauto,rsize=32768,wsize=32768,nfsvers=3 0 0
-
-(as you can see I have experimented with different rsize,wsize without any
-noticeable effect, same goes for nfsvers 2 and 3. I even mounted the
-filesystem as ext2 on the server and as ext3 with data=journal with no
-effect)
-
-The computers are connected through a HP 8-port Gb switch and are on the
-same subnet.
-
-rsync over ssh gives me roughly 200Mbps (37 GB dataset)
-netcat over tcp with a 2GB file gives me 457 Mbps
-netcat over udp with a 2GB file gives me 640 Mbps
-
-But dd'ing the 2GB file over nfs as some NFS-HOWTO suggests takes over 5
-minutes. That should equal to something around 49 Mbps, correct?
-
-The netcat takes 25 secs to transfer 2GB file.
-
-Is there some way I can look at the nfs-server what it's doing? Any
-suggestions on solutions for this?
-
-And what datarates over NFS could I expect on a setup like this?
-Half-wirespeed maybe?
-
-Thanks in advance,
-
-  Harald
+---------- Forwarded message ----------
+Date: Thu, 27 May 2004 14:38:18 +0300 (EEST)
+From: Harald Hannelius <harald@arcada.fi>
+To: Vincent ROQUETA <vincent.roqueta@ext.bull.net>
+Cc: nfs@lists.sourceforge.net
+Subject: Re: [NFS] Poor NFS performance, kernel 2.6.6.
 
 
--- 
+On Thu, 27 May 2004, Vincent ROQUETA wrote:
+> Le Jeudi 27 Mai 2004 12:31, Harald Hannelius a =E9crit :
+
+> > I'm running two servers, both Dual Opterons with Broadcom Gb NICs. I'm
+> > using the bcm5700 driver and I see no errors whatsoever with 'ifconfig'=
+=2E
+
+> on NFSv3, 1 ethernet 1GB I reached  89% of the avalaible brandwith for NF=
+Sv3,
+> kernel 2.6.3, for file less than the total amount of ram (4Go), and 22% o=
+f
+> the brandwith for file over 6Go, because of the use of harddisk use in th=
+e
+> copy process (swap).
+>
+> What is  your memory configuration?
+
+I have 1GB ram i both computers, hence the 2GB testfile.
+
+> I am trying to setup a protocol performances to test NFS, with this we ca=
+n
+> compare the tests by using the same  tools.
+> Here is a short description of the tools :
+> http://nfsv4.bullopensource.org/tools/testing_tools.html
+>
+> and a survey to determine one tool for perfs :
+> http://nfsv4.bullopensource.org/tools/sondage.php
+
+I took iozone and ran an automatic test;
+
+  http://people.arcada.fi/~harald/nfs/performance.xls
+
+Or in ascii;
+
+  http://people.arcada.fi/~harald/nfs/performance.csv
+
+
+
+
+
+--=20
 A: Top Posters
 Q: What is the most annoying thing on mailing lists?
 
