@@ -1,70 +1,40 @@
-From: neilb@cse.unsw.edu.au (Neil F. Brown)
-Subject: ANNOUNCE: nfs-utils 1.0.4
-Date: Tue, 15 Jul 2003 03:00:01 +1000
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <1030714170001.24267@cse.unsw.edu.au>
-Cc: Janusz Niewiadomski <funkysh@isec.pl>
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+From: pwitting@Cyveillance.com
+Subject: MRTG/RRDtool monitoring
+Date: Mon, 14 Jul 2003 13:57:14 -0400
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <D38AFB3080F3D311807300B0D0203E53033A9654@MERCURY>
+Mime-Version: 1.0
+Content-Type: text/plain
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from [63.100.163.26] (helo=mercury.cyveillance.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19c7a8-00021t-00
+	for <nfs@lists.sourceforge.net>; Mon, 14 Jul 2003 10:57:48 -0700
+To: nfs@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This release of nfs-utils contains:
 
- 1/ Fix for a remotely exploitable buffer-overflow bug.
- 2/ assorted minor bug fixes
- 3/ Extensive changes to make use of new functionality in linux-2.6.0 nfsd
-
-nfs-utils 1.0.4 can be downloaded from 
-  http://sourceforge.net/project/showfiles.php?group_id=14
-or
-  http://www.{countrycode}.kernel.org/pub/linux/utils/nfs/
-
-I consider this release to be a pre-release for 1.1.0 which I hope to
-release before linux-2.6.0-final.  Bug reports are very welcome.
+Does anyone have any handy scripts that monitor NFS performance? I'd love to
+have some graphs to see what sort of activity my servers are really getting,
+any errors (dropped packets, etc), and anything else worth monitorin (Thread
+Utilization?)
 
 
-1/ A buffer-overflow bug was found by 
-    Janusz Niewiadomski
-    iSEC Security Research
-    http://isec.pl/
-
-  It is trivially exploitable to effect a remote denial of service.
-  More subtle exploits may be possible.
-
-  I recommend that all users of nfs-utils either:
-    1/ upgrade to 1.0.4 
-  or
-    2/ Get an update from their vendor (most vendors should have an
-       update available).
-
-  I also recommend that all NFS services be protected from the
-  internet-at-large by a firewall where that is possible.
-
-2/ See the change log in the source for details on bug fixes.
-
-3/ In 2.4 and earlier kernels, the nfs server needed to know about any
- client that expected to be able to access files via NFS.  This
- information would be given to the kernel by "mountd" when the client
- mounted the filesystem, or by "exportfs" at system startup.  exportfs
- would take information about active clients from /var/lib/nfs/rmtab.
-
- This approach is quite fragile as it depends on rmtab being correct
- which is not always easy, particularly when trying to implement
- fail-over.  Even when the system is working well, rmtab suffers from
- getting lots of old entries that never get removed.
-
- With 2.6 we have the option of having the kernel tell mountd when it
- gets a request from an unknown host, and mountd can give appropriate
- export information to the kernel.  This removes the dependancy on
- rmtab and means that the kernel only needs to know about currently
- active clients.
-
- To enable this new functionality, you need to:
-   mount -t nfsd nfsd /proc/fs/nfs
-
- before running exportfs or mountd.  
-
- If you are using 2.6.0-testX and exporting files with NFS *please*
- test this out and let me know of any problems.
-
-NeilBrown - July 2003
+-------------------------------------------------------
+This SF.Net email sponsored by: Parasoft
+Error proof Web apps, automate testing & more.
+Download & eval WebKing and get a free book.
+www.parasoft.com/bulletproofapps1
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
