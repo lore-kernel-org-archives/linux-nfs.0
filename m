@@ -1,14 +1,23 @@
-From: Marc Eshel <eshel@almaden.ibm.com>
-Subject: lockd GRANT_MSG RPC callback
-Date: Wed, 8 Sep 2004 10:33:11 -0700
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: ls hangs on NFS share from Apple Xserve
+Date: Wed, 08 Sep 2004 12:52:07 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <OFECAABC86.319E8CA4-ON88256F09.005FC378-88256F09.00606C10@us.ibm.com>
-References: <OFAF6A9C4E.27A9BF20-ON88256EFB.00020035-88256EFB.0002DABA@LocalDomain>
+Message-ID: <1094662327.9493.42.camel@lade.trondhjem.org>
+References: <412EBAA100062E28@mssbzhh-int.msg.bluewin.ch>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=iso-8859-1
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-In-Reply-To: <OFAF6A9C4E.27A9BF20-ON88256EFB.00020035-88256EFB.0002DABA@LocalDomain>
-To: NFS@lists.sourceforge.net
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1C55gC-0004nH-V3
+	for nfs@lists.sourceforge.net; Wed, 08 Sep 2004 09:52:20 -0700
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1C55gC-0008GV-3X
+	for nfs@lists.sourceforge.net; Wed, 08 Sep 2004 09:52:20 -0700
+To: bnies@bluewin.ch
+In-Reply-To: <412EBAA100062E28@mssbzhh-int.msg.bluewin.ch>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -21,17 +30,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+P=E5 on , 08/09/2004 klokka 04:42, skreiv bnies@bluewin.ch:
 
+> Martin Algesten reported that this might be caused by non-unique NFS cook=
+ies
+> in the same READDIRPLUS reply from the Apple NFS server but in our enviro=
+nment
+> with MacOS X 10.3.5 and SuSE Linux 9.0 (Kernel 2.4.21-243-smp4G, glibc-2.=
+3.2-88)
+> I cannot confirm this. The NFS cookies are unique in the same READDIRPLUS
+> reply but not unique during the same NFS session.
+>=20
 
+What does this mean? That 2 different READDIRPLUS entries for the same
+directory may return the same cookie? That would a server bug...
 
-
-Hi,
-My server sends the async GRANT_MSG RPC to the client for a blocked lock
-but the client either ignoring it or not receiving it. The client wait for
-30 seconds and than tries to get the locks again. Can someone explain what
-might cause this problem ?
-Thanks, Marc.
-
+Cheers,
+  Trond
 
 
 
