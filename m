@@ -1,18 +1,18 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: fragment flooding and self-configuring clients
-Date: Thu, 27 Jun 2002 09:17:41 -0700
+From: Todd Woods <twoods@divms.uiowa.edu>
+Subject: lockd dying
+Date: Thu, 27 Jun 2002 13:23:35 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <6440EA1A6AA1D5118C6900902745938E50D041@black.eng.netapp.com>
+Message-ID: <3D1B5827.7060605@divms.uiowa.edu>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Cc: nfs@lists.sourceforge.net, "'Benjamin LaHaise'" <bcrl@redhat.com>
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mx01-a.netapp.com ([198.95.226.53])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17Nbxy-0006J7-00
-	for <nfs@lists.sourceforge.net>; Thu, 27 Jun 2002 09:17:54 -0700
-To: "'Trond Myklebust'" <trond.myklebust@fys.uio.no>
+Received: from penguin.divms.uiowa.edu ([128.255.44.29])
+	by usw-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17Ndvi-0007AQ-00
+	for <nfs@lists.sourceforge.net>; Thu, 27 Jun 2002 11:23:42 -0700
+Received: from divms.uiowa.edu (bester.divms.uiowa.edu [128.255.44.42]) by penguin.divms.uiowa.edu with id g5RINeO8017798 for <nfs@lists.sourceforge.net>; Thu, 27 Jun 2002 13:23:40 -0500
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,43 +25,46 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-> > the issue i have with the implementation you have chosen in
-> > the rpc_tweak patch is that the socket buffer size it computes
-> > is often too large.  for instance, why (server->rsize + 1024) ?
-> > the real size of a full-sized read request is probably closer to
-> > (server->rsize + 160).  then, after all the multiplication
-> 
-> Actually, the RPC code can in principle be around 600 bytes 
-> long. Don't 
-> forget, the authentication code alone can in principle be 408 
-> bytes long 
-> (although AUTH_SYS is of course significantly shorter).
-> In addition, the socket code likes a bit of padding of its 
-> own. It needs to be 
-> able to split up skbs, juggle them around etc.
-> 
-> > in xprt_set_sockbufsize, it is possible to get an excessively
-> > large buffer size.  there is no cap for this value, and i'm
-> > sure there is a reasonable maximum.  on one of my systems, the
-> > computed value was over 3 megabytes.  might this cause some
-> > kind of data corruption if a buffer of that size can't actually
-> > be allocated?
+	Having a problem with lockd dying.  Using stock RH 7.2 2.4.9-21 
+enterprise kernel right now on an IBM x350. We get this error message 
+when lockd dies
 
-another thought occurred to me.  the interface to all this should
-allow the socket layer to limit rsize and wsize if there isn't
-enough space to allocate a buffer large enough.  instead of this:
+Jun 27 12:32:43 server kernel: Unable to handle
+kernel paging request at virtual address b9bd8060
+Jun 27 12:32:43 server kernel: *pde = bffffebc
 
-   xprt_setbufsize(xprt, server->wsize + 1024, server->rsize + 1024);
+	Then the lockd kernel thread dies. The problem wouldn't be so bad if we 
+could restart nfs/lockd etc. However once lockd dies nfsd's get very 
+unhappy.  nfs services won't shut down, the nfsd kernel threads don't die.
+	So we have to reboot the server and since the nfsd's don't die we can't 
+even gracefully reboot the server, we have to power cycle it. Rebooting 
+causes a problem on the clients (mix of linux/HPUX/IRIX machines). One 
+reboot any existing mount point that was in use before the server 
+shutdown has troubles.  Error is usually along lines of
 
-the interface should look like:
+NFS getattr failed for server server: RPC: Authentication error
 
-    xprt_setbufsize(xprt, server);
+	Simple remount of the NFS mount points on the clients usually fixes the 
+problem.
 
-and if the socket layer needs to, it can lower the wsize and rsize
-values accordingly.  (the magic overhead numbers should probably be
-determined by the RPC layer anyway, not by the NFS client).
 
-just a thought.
+So 3 questions
+
+1) Any way to recover nfs services short of rebooting if the kernel 
+lockd dies?
+
+2) We are somewhat constrained by IBM's support for the hardware we're 
+using so we can't just upgrade to the latest kernel.  Does anyone have 
+any ideas as to the reason why lockd is dying or a fix that doesn't 
+require applying the latest kernel and relevant patches?
+
+3) What is needed to get the clients/server to gracefully recover NFS 
+services from server crash?
+
+	Any help would be greatly appreciated,
+		thanks,
+			Todd Woods
+
 
 
 -------------------------------------------------------
