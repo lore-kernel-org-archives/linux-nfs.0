@@ -1,20 +1,18 @@
-From: Eric Garland <perlfs2@ericgarland.com>
-Subject: NFS support for PerlFS
-Date: Fri, 02 May 2003 03:01:43 -0400
+From: "iSingles - Matching in a Mouseclick" <info@isingles.co.uk>
+Subject: iSingles.co.uk has been re-opened
+Date: Fri, 2 May 2003 10:38:37 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3EB217D7.6080706@ericgarland.com>
+Message-ID: <E19BX01-0006QM-00@sc8-sf-list1.sourceforge.net>
+Reply-To: "iSingles - Matching in a Mouseclick"<info@isingles.co.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: multipart/alternative;
+	boundary="Nextpart_6GA3IPX5HJ"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from h0002b3a89c72.ne.client2.attbi.com ([24.62.242.148] helo=server.ericgarland.com)
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19BUYE-0006I2-00
-	for <nfs@lists.sourceforge.net>; Fri, 02 May 2003 00:01:46 -0700
-Received: from ericgarland.com (lurch [10.0.0.4])
-	by server.ericgarland.com (8.12.5/8.12.5) with ESMTP id h4271eMq002176
-	for <nfs@lists.sourceforge.net>; Fri, 2 May 2003 03:01:41 -0400
-To: nfs@lists.sourceforge.net
+Received: from 6696216150.hostnoc.net ([66.96.216.150] helo=isingles.co.uk)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19BX01-0006QM-00
+	for <nfs@lists.sourceforge.net>; Fri, 02 May 2003 02:38:37 -0700
+To: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,21 +25,120 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-  I'm looking to add support to the PerlFS filesystem so
-it can be exported using NFS.  From reading the
-interface requirements it would seem the way to do
-that would be to turn on the FS_REQUIRES_DEV flag in
-the file_system_type structure that get's registered.
-This works execpt I then need to pass a valid device
-file into the mount command or mount doesn't work. 
-The device I pass in doesn't have any bearing on the
-filesystem that get's mounted which doesn't really make
-much sense.
+This is a multi-part message in MIME format.
 
-Is there any way of making the NFS server not
-check the NFS_REQUIRES_DEV flag?
+--Nextpart_6GA3IPX5HJ
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
 
-    -Eric
+
+Hello,
+
+iSingles.co.uk, in its new reincarnation, is one of the most advanced
+dating communities on the internet today.
+
+iSingles offers many services, from our matching engine to the
+discussion forums and our special chat system, which is integrated with
+the site itself, enabling you to chat with members while viewing their
+personal profiles.
+
+Most important - joining iSingles is FREE of charge!
+
+We could go on and on about iSingles, but we believe that nothing is
+better than seeing for yourself.
+
+So... what are you waiting for? Click here to join!
+
+--
+Sincerely,
+iSingles Team
+
+http://www.iSingles.co.uk
+
+
+
+* This is not spam mail - it was sent to a legally purchased opt-in email list.
+
+  Use this form to remove yourself from our lists. 
+
+
+
+
+ 
+
+--Nextpart_6GA3IPX5HJ
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+
+<HTML>
+<BODY BGCOLOR="#f6f6f5"  leftmargin=0 topmargin=0 marginheight=0 marginwidth=0 BGCOLOR=black>
+<CENTER>
+<BR>
+<TABLE CELLSPACING=0 CELLPADDING=6>
+<TR>
+	<TD BGCOLOR="#e7efff" style="BORDER-RIGHT: black 1px solid; BORDER-TOP: black 1px solid; BORDER-LEFT: black 1px solid; BORDER-BOTTOM: black 1px solid">
+		<TABLE CELLSPACING=0 CELLPADDING=0 BORDER=0 STYLE="FONT-SIZE: 13px; FONT-FAMILY: Arial; TEXT-DECORATION: none">
+		<TR>
+			<TD><NOBR>
+				Hello,<BR>
+				<BR>
+				<A HREF="http://www.isingles.co.uk?is=1" TARGET="_isingles">iSingles.co.uk</A>, in its new reincarnation, is one of the most advanced<BR>
+				dating communities on the internet today.<BR>
+				<BR>
+				iSingles offers many services, from our matching engine to the<BR>
+				discussion forums and our special chat system, which is integrated with<BR>
+				the site itself, enabling you to chat with members while viewing their<BR>
+				personal profiles.<BR>
+				<BR>
+				Most important - joining iSingles is <B>FREE of charge!</B><BR>
+				<BR>
+				We could go on and on about iSingles, but we believe that nothing is<BR>
+				better than seeing for yourself.<BR>
+				<BR>
+				So... what are you waiting for? <A HREF="http://www.isingles.co.uk?is=1" TARGET="_isingles">Click here to join!</A><BR>
+				<BR>
+				--<BR> 
+				Sincerely,<BR>
+				iSingles Team<BR>
+				<BR>
+				<A HREF="http://www.isingles.co.uk?is=1" TARGET="_isingles">http://www.iSingles.co.uk</A><BR>
+				<BR>
+				<BR>
+				<DIV STYLE="FONT-SIZE: 11px; FONT-FAMILY: Arial; TEXT-DECORATION: none">
+				<B>* This is not spam mail - it was sent to a legally purchased opt-in email list.<BR>
+				<BR>
+				&nbsp;&nbsp;Use <A HREF="http://www.isingles.co.uk/asp/list.asp?flag=1" TARGET="_isremove">this form</A> to remove yourself from our lists.
+				</B>
+			</TD>
+			<TD>
+				<TABLE CELLSPACING=0 CELLPADDING=0>
+				<TR>
+					<TD ALIGN=middle>
+						<IMG src="http://www.isingles.co.uk/images/ppl_man&woman1.gif" border=0><BR>
+					</TD>
+				</TR>
+				<TR>
+					<TD ALIGN=middle><BR><BR><BR>
+						<A HREF="http://www.isingles.co.uk?is=1" TARGET="_isingles"><IMG SRC="http://www.isingles.co.uk/images/slate_joinFree2.gif" BORDER='0'></></A>
+					</TD>
+				</TR>
+				</TABLE>
+			</TD>
+		</TR>
+		</TABLE>
+	</TD>
+</TR>
+</TABLE>
+</DIV>
+<BR><BR>
+</BODY>
+</HTML>
+
+--Nextpart_6GA3IPX5HJ--
+
+
 
 
 
