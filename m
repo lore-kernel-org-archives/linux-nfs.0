@@ -1,26 +1,18 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: NFS can support Open GL graphic display interface?
-Date: Mon, 14 Mar 2005 12:23:22 +0100
-Message-ID: <20050314112322.GL14815@suse.de>
-References: <200503041949.OAA18047@leander.cnchost.com>
+From: mehta kiran <kiranmehta1981@yahoo.com>
+Subject: problem starting rpc.svcgssd for NFSv4
+Date: Mon, 14 Mar 2005 05:36:45 -0800 (PST)
+Message-ID: <20050314133645.26617.qmail@web51604.mail.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DAnfw-0006ir-50
-	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 03:23:56 -0800
-Received: from mail.suse.de ([195.135.220.2] helo=Cantor.suse.de)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.41)
-	id 1DAnfu-0004Pj-Fj
-	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 03:23:56 -0800
-Received: from hermes.suse.de (hermes-ext.suse.de [195.135.221.8])
-	(using TLSv1 with cipher EDH-RSA-DES-CBC3-SHA (168/168 bits))
-	(No client certificate requested)
-	by Cantor.suse.de (Postfix) with ESMTP id 24F7215BB8B4
-	for <nfs@lists.sourceforge.net>; Mon, 14 Mar 2005 12:23:22 +0100 (CET)
+	id 1DApkb-0003qA-Q3
+	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 05:36:53 -0800
+Received: from web51604.mail.yahoo.com ([206.190.38.209])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
+	id 1DApkY-0000A0-BS
+	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 05:36:53 -0800
 To: nfs@lists.sourceforge.net
-In-Reply-To: <200503041949.OAA18047@leander.cnchost.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,16 +26,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, Mar 04, 2005 at 11:49:07AM -0800, Robert Myoung wrote:
-> NFS can support Open GL graphic display interface?
+Hi , 
+      I am trying to set up kerberos for NFSv4
+      All the daemons other than rpc.svcgssd start.
 
-Yes, you just need to connect the video cable to the Ethernet
-port. If it doesn't fit, try using a shoehorn.
+      I have krb5kdc and kadmind running on (RHEL4)
+      vcslinux1 system.
 
-Olaf
--- 
-Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
-okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
+      
+      file /etc/krb5.keytab has following contents:
+     
+nfs/vcslinux1.vxindia.veritas.com@VXINDIA.VERITAS.COM
+root/vcslinux1.vxindia.veritas.com@VXINDIA.VERITAS.COM
+
+      #rpc.svcgssd -v -f
+
+      WARNING: unable to locate function 
+      krb5_gss_internal_release_oid in krb5
+      mechanism library: there will be problems
+      if multiple mechanisms are used!
+      ERROR: GSS-API: error in gss_acquire_cred(): 
+      Miscellaneous failure - Unsupported key table
+      format version number unable to obtain root 
+     (machine) credentials
+      do you have a keytab entry for   
+      nfs/<your.host>@<YOUR.REALM> in
+/etc/krb5.keytab?
+
+
+thanks,
+ --kiran
+
+
+
+		
+__________________________________ 
+Do you Yahoo!? 
+Yahoo! Small Business - Try our new resources site!
+http://smallbusiness.yahoo.com/resources/ 
 
 
 -------------------------------------------------------
