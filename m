@@ -1,22 +1,22 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 5 of 34 - NFSv4 locking state fix
+Subject: [PATCH] kNFSd - 11 of 34 - When looking for a shareowner in the nfsd open, make sure we don't get a lockowner instead.
 Date: Tue, 24 Feb 2004 10:49:41 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1AvPpV-0006HR-00@notabene>
+Message-ID: <E1AvPpV-0006IJ-00@notabene>
 References: <20040224104820.23884.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AvPqI-0006tl-DG
+	id 1AvPqI-0006tq-IN
 	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 15:50:30 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
-	id 1AvPpx-0005bv-JD
-	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 15:50:09 -0800
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.30)
+	id 1AvPeJ-0002Le-RP
+	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 15:38:08 -0800
 Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
 	(for <akpm@osdl.org>) (for <nfs@lists.sourceforge.net>) By note With
-	Smtp ; Tue, 24 Feb 2004 10:49:41 +1100
+	Smtp ; Tue, 24 Feb 2004 10:49:42 +1100
 To: Andrew Morton <akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,33 +31,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-It's OK for the find_lockstateowner_str to fail; that just means we haven't
-seen the lockowner, and will compare the request range to all locks on the 
-file.
-
  ----------- Diffstat output ------------
- ./fs/nfsd/nfs4state.c |    8 ++------
- 1 files changed, 2 insertions(+), 6 deletions(-)
+ ./fs/nfsd/nfs4state.c |    2 +-
+ 1 files changed, 1 insertion(+), 1 deletion(-)
 
 diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2004-02-24 10:42:30.000000000 +1100
-+++ ./fs/nfsd/nfs4state.c	2004-02-24 10:42:31.000000000 +1100
-@@ -1993,13 +1993,9 @@ nfsd4_lockt(struct svc_rqst *rqstp, stru
- 	strhashval = lock_ownerstr_hashval(inode, 
- 			lockt->lt_clientid.cl_id, lockt->lt_owner);
+--- ./fs/nfsd/nfs4state.c~current~	2004-02-24 10:42:32.000000000 +1100
++++ ./fs/nfsd/nfs4state.c	2004-02-24 10:42:32.000000000 +1100
+@@ -1139,7 +1139,7 @@ nfsd4_process_open2(struct svc_rqst *rqs
+ 						GFP_KERNEL)) == NULL)
+ 			goto out;
  
--	if (find_lockstateowner_str(strhashval, &lockt->lt_owner, 
-+	find_lockstateowner_str(strhashval, &lockt->lt_owner, 
- 					&lockt->lt_clientid, 
--					&lockt->lt_stateowner)) {
--		printk("NFSD: nsfd4_lockt: lookup_lockowner() failed!\n");
--		goto out;
--	}
--
-+					&lockt->lt_stateowner);
- 	sop = lockt->lt_stateowner;
- 	if (sop) {
- 		file_lock.fl_owner = (fl_owner_t) sop;
+-		if (open->op_share_access && NFS4_SHARE_ACCESS_WRITE)
++		if (open->op_share_access & NFS4_SHARE_ACCESS_WRITE)
+ 			flags = MAY_WRITE;
+ 		else
+ 			flags = MAY_READ;
 
 
 -------------------------------------------------------
