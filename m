@@ -1,25 +1,25 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: statd -o change
-Date: Fri, 04 Mar 2005 11:48:02 -0800
-Message-ID: <1109965682.10173.29.camel@lade.trondhjem.org>
-References: <20050227192113.GA5778@localhost.localdomain>
-	 <1109787034.12460.7.camel@lade.trondhjem.org>
-	 <20050304153436.GA32203@gam3.net>
+From: "G. Allen Morris III" <gam3-nfs@gam3.net>
+Subject: [ 1018450 ] man page typo
+Date: Fri, 4 Mar 2005 16:24:20 -0500
+Message-ID: <20050304212420.GA21390@gam3.net>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nhorman@redhat.com, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D7Imk-0006SY-55
-	for nfs@lists.sourceforge.net; Fri, 04 Mar 2005 11:48:30 -0800
-Received: from pat2.uio.no
-	([129.240.130.19] helo=pat.uio.no ident=7411)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1D7Img-0007lu-Js
-	for nfs@lists.sourceforge.net; Fri, 04 Mar 2005 11:48:30 -0800
-To: "G. Allen Morris III" <gam3@gam3.net>
-In-Reply-To: <20050304153436.GA32203@gam3.net>
+	id 1D7KHh-00032K-Bj
+	for nfs@lists.sourceforge.net; Fri, 04 Mar 2005 13:24:33 -0800
+Received: from mta13.adelphia.net ([68.168.78.44])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1D7KHf-0007wr-O5
+	for nfs@lists.sourceforge.net; Fri, 04 Mar 2005 13:24:33 -0800
+Received: from harpo ([68.235.28.141]) by mta13.adelphia.net
+          (InterMail vM.6.01.04.01 201-2131-118-101-20041129) with ESMTP
+          id <20050304212425.UBBZ4618.mta13.adelphia.net@harpo>
+          for <nfs@lists.sourceforge.net>; Fri, 4 Mar 2005 16:24:25 -0500
+Received: from gam3 by harpo with local (Exim 3.36 #1 (Debian))
+	id 1D7KHU-0005Zh-00
+	for <nfs@lists.sourceforge.net>; Fri, 04 Mar 2005 16:24:20 -0500
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,28 +33,55 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-fr den 04.03.2005 Klokka 10:34 (-0500) skreiv G. Allen Morris III:
-> Trond,
-> 
-> I would think that statd should fail if the requested outgoing port (-o)
-> can't be bound to. The main reason to bind to a particular outgoing port
-> is because of a firewall.  If a random port is used statd will not make
-> it through the firewall, but the log file will have to be checked to
-> find out why statd is not working (falling back on randomly chosen port).
-> 
-> Not starting statd seems to be the failure mode if the rpc.statd port
-> (-p) can't be bound to.
+I plan to commit the patch below.  This will close bug [ 1018450 ] 
 
-I'm not against doing this, but it would be a change w.r.t. existing
-behaviour, so it warrants some discussion first.
+Allen
 
-Anyone have an opinion on this?
-
-Cheers,
-  Trond
--- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
-
+Index: exports.man
+===================================================================
+RCS file: /cvsroot/nfs/nfs-utils/utils/exportfs/exports.man,v
+retrieving revision 1.13
+diff -u -r1.13 exports.man
+--- exports.man	15 Sep 2004 01:58:41 -0000	1.13
++++ exports.man	4 Mar 2005 21:19:54 -0000
+@@ -1,5 +1,4 @@
+-.TH EXPORTS 5 "28 October 1999"
+-.UC 5
++.TH EXPORTS 5 "4 March 2005" "Linux" "Linux File Formats Manual"
+ .SH NAME
+ exports \- NFS file systems being exported (for Kernel based NFS)
+ .SH SYNOPSIS
+@@ -171,7 +170,7 @@
+ .TP
+ .IR no_subtree_check
+ This option disables subtree checking, which has mild security
+-implications, but can improve reliability is some circumstances.
++implications, but can improve reliability in some circumstances.
+ 
+ If a subdirectory of a filesystem is exported, but the whole
+ filesystem isn't then whenever a NFS request arrives, the server must
+@@ -190,7 +189,7 @@
+ directories to which only root has access can only be accessed if the
+ filesystem is exported with
+ .I no_root_squash
+-(see below), even the file itself allows more general access.
++(see below), even if the file itself allows more general access.
+ 
+ As a general guide, a home directory filesystem, which is normally
+ exported at the root and may see lots of file renames, should be
+@@ -487,6 +486,12 @@
+ '''entry.
+ .SH FILES
+ /etc/exports
++.SH SEE ALSO
++.BR exportfs (8),
++.BR netgroup (5),
++.BR mountd (8),
++.BR nfsd (8),
++.BR showmount (8).
+ '''.SH DIAGNOSTICS
+ '''An error parsing the file is reported using syslogd(8) as level NOTICE from
+ '''a DAEMON whenever nfsd(8) or mountd(8) is started up.  Any unknown
 
 
 -------------------------------------------------------
