@@ -1,23 +1,19 @@
-From: Paul Edgar <paule@austin.rr.com>
-Subject: Configuring additional logging capabilites
-Date: Wed, 12 Mar 2003 12:26:08 -0600
+From: Brent Clements <bclem@rice.edu>
+Subject: 32k NFS blocksize not working
+Date: 12 Mar 2003 15:55:46 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3E6F7BC0.BDE09300@austin.rr.com>
+Message-ID: <1047506146.6666.11.camel@batman.ece.rice.edu>
+References: <1047488992.6343.2.camel@batman.ece.rice.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from e6.ny.us.ibm.com ([32.97.182.106])
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18tAwM-0003no-00
-	for <nfs@lists.sourceforge.net>; Wed, 12 Mar 2003 10:26:59 -0800
-Received: from northrelay04.pok.ibm.com (northrelay04.pok.ibm.com [9.56.224.206])
-	by e6.ny.us.ibm.com (8.12.8/8.12.2) with ESMTP id h2CIQ9Zu186874
-	for <nfs@lists.sourceforge.net>; Wed, 12 Mar 2003 13:26:09 -0500
-Received: from austin.rr.com (figmo.austin.ibm.com [9.41.94.76])
-	by northrelay04.pok.ibm.com (8.12.8/NCO/VER6.5) with ESMTP id h2CIQ6lg191834
-	for <nfs@lists.sourceforge.net>; Wed, 12 Mar 2003 13:26:07 -0500
-To: nfs@lists.sourceforge.net
+Received: from handler2.mail.rice.edu ([128.42.58.202])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18tEA3-00012E-00
+	for <nfs@lists.sourceforge.net>; Wed, 12 Mar 2003 13:53:19 -0800
+To: Brent Clements <bclem@rice.edu>
+In-Reply-To: <1047488992.6343.2.camel@batman.ece.rice.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,19 +26,26 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-With NFS, is there a way to configure the log output to show the files
-the user is accessing.  I would like to be able to see if machine
-xxx.xxx.xxx.xxx/machine.domain.com accessed file filename.
+We have a linux server running 2.4.20 plus it has nfsv3 udp/tcp server
+support compiled in.
 
-Thanks
+We have a linux client running 2.4.20 plus it has nfsv3 udp/tcp client
+support compiled.
 
---
-Paul Edgar
-Verification Engineer
-Linux Technology Center / IBM
 
-No trees were destroyed in the sending of this message, however, a
-significant number of electrons were terribly inconvenienced.
+If we specify a read/write size above 8192 on the client, and then mount
+the nfs directory. It gives us the following on /proc/mounts
+
+
+cluster:/usr/local/ /tmp/d nfs
+rw,v3,rsize=8192,wsize=8192,hard,udp,lock,addr=cluster 0 0
+
+Do we have to edit something in a kernel include file to allow NFSV3 to
+mount above 8k?
+
+Thanks,
+Brent 
+
 
 
 
