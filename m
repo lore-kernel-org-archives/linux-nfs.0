@@ -1,18 +1,26 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: nfs over tcp in linux kernel version 2.4.18
-Date: Wed, 21 May 2003 13:47:00 -0700
+From: "Iain Irwin-Powell" <iain@cinesite.co.uk>
+Subject: NFS Performance Between SGI Servers and Linux Clients
+Date: Thu, 22 May 2003 17:32:22 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <482A3FA0050D21419C269D13989C611312751A@lavender-fe.eng.netapp.com>
+Message-ID: <008601c3207f$b8bfd160$0b00430a@granger>
 Mime-Version: 1.0
 Content-Type: text/plain;
-	charset="iso-8859-1"
-Cc: <nfs@lists.sourceforge.net>
+	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mx01.netapp.com ([198.95.226.53])
+Received: from scanman.cinesite.co.uk ([193.203.81.129])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19IaUQ-0004F5-00
-	for <nfs@lists.sourceforge.net>; Wed, 21 May 2003 13:47:10 -0700
-To: "David Myer" <davidmyer800@yahoo.com>
+	id 19It3A-00023m-00
+	for <nfs@lists.sourceforge.net>; Thu, 22 May 2003 09:36:16 -0700
+Received: from sirius.cinesite.co.uk (sirius.cinesite.co.uk [10.66.0.23])
+	by scanman.cinesite.co.uk (8.9.3/8.9.3) with ESMTP id RAA17330
+	for <nfs@lists.sourceforge.net>; Thu, 22 May 2003 17:35:43 +0100 (BST)
+Received: from sirius (sirius.cinesite.co.uk [127.0.0.1])
+	by sirius.cinesite.co.uk (Postfix) with ESMTP id 349A4BFFC
+	for <nfs@lists.sourceforge.net>; Thu, 22 May 2003 17:35:43 +0100 (BST)
+Received: from granger (shirley.cinesite.co.uk [10.65.1.5])
+	by sirius.cinesite.co.uk (Postfix) with ESMTP id 9C234BFFB
+	for <nfs@lists.sourceforge.net>; Thu, 22 May 2003 17:35:42 +0100 (BST)
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,258 +33,67 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-david-
 
-TCP support for the server is enabled on 2.4.20 with
-a kernel build option.  it may only appear if you have
-checked the "Prompt for development and/or incomplete
-code/drivers" box under "Code maturity level options."
+Does anyone have any ideas about this?
 
-i don't see why a 2.4.18 NFS client shouldn't work
-with the 2.4.20 server over TCP, but the server TCP
-support is still under development so it may be a
-little rocky.
+We have been experiencing a number of issues regarding NFS serving on
+SGI IRIX (6.5.19) servers which now appear to point back to Linux NFS
+clients.
 
-> -----Original Message-----
-> From: David Myer [mailto:davidmyer800@yahoo.com]
-> Sent: Wednesday, May 21, 2003 1:25 PM
-> To: David Myer; Dan Brunner; guolin@alexa.com
-> Cc: nfs@lists.sourceforge.net
-> Subject: Re: [NFS] nfs over tcp in linux kernel version 2.4.18
->=20
->=20
-> Any thoughts on my questions guys ? Would appreciate
-> any information.
->=20
-> Also, will 2.4.18 kernel as nfs client work with
-> 2.4.20 kernel as nfs server if trying to tcp ? Anyone
-> have tried this ?
->=20
-> David
-> --- David Myer <davidmyer800@yahoo.com> wrote:
-> > Thanks for the information guys,
-> >=20
-> > Looking at svcsock.c in 2.4.18/linux/net/sunrpc/
-> > it does seem to have STREAM type of socket support.
-> > if I just want to do basic mount/ls/vi type of
-> > operations, which patch do I actually need or is
-> > there
-> > a comiple switch to set during kernel compilation
-> > time
-> > just to enable TCP support on sever side ? Client
-> > side
-> > definitely has this by looking at xprt.c code..
-> >=20
-> > Thanks again
-> > David
-> > --- Dan Brunner <daniel.brunner@duni.com> wrote:
-> > > Guolin,
-> > >=20
-> > > That DOES sound like a pain in the a$$!!!!!!!
-> > >=20
-> > > And yes your right, not everyone has the same
-> > > success...
-> > >=20
-> > > Good Luck!!
-> > >=20
-> > >=20
-> > > Dan
-> > >=20
-> > >=20
-> > > On Tuesday, May 20, 2003, at 02:19  PM,
-> > > guolin@alexa.com wrote:
-> > >=20
-> > > > Dan,
-> > > >
-> > > >  try your luck.
-> > > >
-> > > >  BTW, let you know that I have to take the pain
-> > to
-> > > reboot 400 Linux=20
-> > > > boxes to
-> > > > get rid of "nfs over tcp" in our production
-> > > environment.
-> > > >
-> > > >  --Guolin Cheng
-> > > >
-> > > > -----Original Message-----
-> > > > From: Dan Brunner
-> > [mailto:daniel.brunner@duni.com]
-> > > > Sent: Tuesday, May 20, 2003 12:14 PM
-> > > > To: Guolin Cheng
-> > > > Cc: davidmyer800@yahoo.com;
-> > > nfs@lists.sourceforge.net
-> > > > Subject: Re: [NFS] nfs over tcp in linux kernel
-> > > version 2.4.18
-> > > >
-> > > >
-> > > > Guolin,
-> > > >
-> > > > I can't seem to agree with this...
-> > > >
-> > > > Maybe I don't have that many connections (17),
-> > but
-> > > I've been running
-> > > > NFS over TCP since 2.4.18. And I haven't had
-> > once
-> > > MAJOR crash yet!! My
-> > > > clients however, are all Mac OS X clients.
-> > > 10.0.4-10.2.6.
-> > > >
-> > > > Maybe that has something to do with it....
-> > > >
-> > > >
-> > > > And we don't get a lot of hangs either....
-> > > >
-> > > >
-> > > > later
-> > > >
-> > > >
-> > > > Dan
-> > > >
-> > > >
-> > > > On Tuesday, May 20, 2003, at 01:41  PM,
-> > > guolin@alexa.com wrote:
-> > > >
-> > > >> David,
-> > > >>
-> > > >>  "nfs over tcp" is terribly unstable until now,
-> > I
-> > > use version 2.4.20,
-> > > >> and
-> > > >> find that over 30 simultaneous nfs connection
-> > can
-> > > kill an "nfs over
-> > > >> tcp"
-> > > >> Linux nfs server easily. let clients' processes
-> > > hangs there forever.
-> > > >> But
-> > > >> this didn't happen for Linux nfs server
-> > enabling
-> > > only "nfs over udp".
-> > > >>
-> > > >>  So the best choice now is totally disregard
-> > > Linux "nfs over tcp" in
-> > > >> production environment. just try it in research
-> > > environment.
-> > > >>
-> > > >>  Thanks.
-> > > >>  --Guolin Cheng
-> > > >>
-> > > >>
-> > > >> -----Original Message-----
-> > > >> From: David Myer
-> > [mailto:davidmyer800@yahoo.com]
-> > > >> Sent: Tuesday, May 20, 2003 11:03 AM
-> > > >> To: nfs@lists.sourceforge.net
-> > > >> Subject: [NFS] nfs over tcp in linux kernel
-> > > version 2.4.18
-> > > >>
-> > > >>
-> > > >> Hi,
-> > > >>
-> > > >> Can anyone advise me if nfs server over tcp is
-> > > >> supported in 2.4.18 kernel version ? How to
-> > > >> setup/enable on both server/client side ? Tried
-> > > to
-> > > >> looked at FAQ but information did not seem be
-> > > there.
-> > > >>
-> > > >> Do I need to apply any patches ?
-> > > >>
-> > > >> Thanks
-> > > >> David
-> > > >>
-> > > >> __________________________________
-> > > >> Do you Yahoo!?
-> > > >> The New Yahoo! Search - Faster. Easier. Bingo.
-> > > >> http://search.yahoo.com
-> > > >>
-> > > >>
-> > > >>
-> > >
-> >
-> -------------------------------------------------------
-> > > >> This SF.net email is sponsored by: ObjectStore.
-> > > >> If flattening out C++ or Java code to make your
-> > > application fit in a
-> > > >> relational database is painful, don't do it!
-> > > Check out ObjectStore.
-> > > >> Now part of Progress Software.
-> > > http://www.objectstore.net/sourceforge
-> > > >> _______________________________________________
-> > > >> NFS maillist  -  NFS@lists.sourceforge.net
-> > > >>
-> > https://lists.sourceforge.net/lists/listinfo/nfs
-> > > >>
-> > > >>
-> > > >>
-> > >
-> >
-> -------------------------------------------------------
-> > > >> This SF.net email is sponsored by: ObjectStore.
-> > > >> If flattening out C++ or Java code to make your
-> > > application fit in a
-> > > >> relational database is painful, don't do it!
-> > > Check out ObjectStore.
-> > > >> Now part of Progress Software.
-> > > http://www.objectstore.net/sourceforge
-> > > >> _______________________________________________
-> > > >> NFS maillist  -  NFS@lists.sourceforge.net
-> > > >>
-> > https://lists.sourceforge.net/lists/listinfo/nfs
-> > >=20
-> > >=20
-> > >=20
-> > >
-> >
-> -------------------------------------------------------
-> > > This SF.net email is sponsored by: ObjectStore.
-> > > If flattening out C++ or Java code to make your
-> > > application fit in a
-> > > relational database is painful, don't do it! Check
-> > > out ObjectStore.
-> > > Now part of Progress Software.
-> > > http://www.objectstore.net/sourceforge
-> > > _______________________________________________
-> > > NFS maillist  -  NFS@lists.sourceforge.net
-> > > https://lists.sourceforge.net/lists/listinfo/nfs
-> >=20
-> > __________________________________
-> > Do you Yahoo!?
-> > The New Yahoo! Search - Faster. Easier. Bingo.
-> > http://search.yahoo.com
-> >=20
-> >=20
-> >
-> -------------------------------------------------------
-> > This SF.net email is sponsored by: ObjectStore.
-> > If flattening out C++ or Java code to make your
-> > application fit in a
-> > relational database is painful, don't do it! Check
-> > out ObjectStore.
-> > Now part of Progress Software.
-> > http://www.objectstore.net/sourceforge
-> > _______________________________________________
-> > NFS maillist  -  NFS@lists.sourceforge.net
-> >=20
-> =3D=3D=3D message truncated =3D=3D=3D
->=20
-> __________________________________
-> Do you Yahoo!?
-> The New Yahoo! Search - Faster. Easier. Bingo.
-> http://search.yahoo.com
->=20
->=20
-> -------------------------------------------------------
-> This SF.net email is sponsored by: ObjectStore.
-> If flattening out C++ or Java code to make your application fit in a
-> relational database is painful, don't do it! Check out ObjectStore.
-> Now part of Progress Software. http://www.objectstore.net/sourceforge
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
->=20
+The server is an Origin 2000, quad processors, 1.5GB memory, serving
+over Gigabit. This can be reproduced on connections whether or not they
+are using jumbo frames. The disks that are served are hardware RAID3
+capable of around 80-90MB/s (tested and optimised not theoretical). 
+
+Under certain circumstances will get a load average of 8 (or how ever
+many nfsd's are running). The server itself is not that busy. Most of
+the nfsd's show as sleeping but they are obviously waiting for
+something.
+
+Further investigation revealed that this situation arises when a Linux
+client opens many files in quick succession (doing
+open-read-close,open-read-close). We tend to use files in the range
+3MB-13MB in size generally.
+
+If we do the same test on an SGI client there is very little impact on
+the load average.
+
+We can recreate this by doing (on the client);
+
+find . -type -f -print -exec grep jsdhgkhjfdk {} \;
+
+The same effect appears to happen on Linux servers as well. A single
+Linux client doing this will make the load average creep up towards 2.5.
+
+Linux Version 2.4.20
+nfs-utils-1.0.1-1
+exports are exported with -32bitclients
+
+Looking a bit deeper in a packet trace when the grep is running, Linux
+seems to issue 16 read requests (16KB) at a time whilst an SGI will only
+issue between 2 and 4. May or may not be relevant.
+
+This information has also been passed back to SGI who are looking at it.
+
+Packet traces and more detail is available if anyone wants them.
+
+Any ideas or suggestions would be welcome.
+
+******************************************************************
+Iain Irwin-Powell (AKA Iain Powell)
+Senior Systems Administrator
+Cinesite Europe Limited
+9 Carlisle Street
+London
+W1D 3BP
+ 
+T: +442079734000
+DDI: +442079734053
+*******************************************************************
+It's not broken, it just doesn't work the way you expected.
+*******************************************************************
+
+
 
 
 -------------------------------------------------------
