@@ -1,25 +1,25 @@
 From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: Re: [USN-36-1] NFS statd vulnerability
-Date: Fri, 3 Dec 2004 14:34:37 +1100
-Message-ID: <16815.57037.809107.765969@cse.unsw.edu.au>
-References: <20041201143603.GA15315@box79162.elkhouse.de>
-	<1101951155.32266.47.camel@lade.trondhjem.org>
-	<1101951953.32266.51.camel@lade.trondhjem.org>
+Subject: ANNOUNCE: nfs-utils 1.0.7-pre1
+Date: Fri, 3 Dec 2004 16:23:14 +1100
+Message-ID: <16815.63554.437489.308079@cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net,
-    Martin Pitt <martin.pitt@canonical.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ca4Db-0004O0-CU
-	for nfs@lists.sourceforge.net; Thu, 02 Dec 2004 19:34:51 -0800
+	id 1Ca5uc-0003DB-Cu
+	for nfs@lists.sourceforge.net; Thu, 02 Dec 2004 21:23:22 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1Ca4DZ-0006Kv-6C
-	for nfs@lists.sourceforge.net; Thu, 02 Dec 2004 19:34:50 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: message from Trond Myklebust on Wednesday December 1
+	id 1Ca5uZ-0001kI-O4
+	for nfs@lists.sourceforge.net; Thu, 02 Dec 2004 21:23:21 -0800
+Received: From notabene.cse.unsw.edu.au ([129.94.172.124]) (auth-user neilb)
+	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
+	Fri, 3 Dec 2004 16:23:14 +1100
+Received: from neilb by notabene.cse.unsw.edu.au with local (Exim 4.34)
+	id 1Ca5uU-0003WC-Eq
+	for nfs@lists.sourceforge.net; Fri, 03 Dec 2004 16:23:14 +1100
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,61 +33,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wednesday December 1, trond.myklebust@fys.uio.no wrote:
-> on den 01.12.2004 Klokka 20:32 (-0500) skreiv Trond Myklebust:
-> > on den 01.12.2004 Klokka 15:36 (+0100) skreiv Martin Pitt:
-> > 
-> > > SGI discovered a remote Denial of Service vulnerability in the NFS
-> > > statd server. statd did not ignore the "SIGPIPE" signal which caused
-> > > it to shutdown if a misconfigured or malicious peer terminated the TCP
-> > > connection prematurely.
-> > 
-> > WTF wasn't this first fixed in the actual upstream nfs-utils package?
-> > WTF are we only hearing of this now via bugtraq?
-> > 
-> > Grrr.....
-> 
-> Neil, this appears to be the hunk in question.
-
-Ho humm.... yes, thanks. I have pushed it into CVS and will try to
-make a new tarball soon.
-
-Anyone who is anxious about this (i.e. doesn't have statd suitable
-firewalled) can put 
-
-    trap '' PIPE
-
-in the shell script that runs statd, and it will have the same effect.
-
-NeilBrown
 
 
-> 
-> Cheers,
->   Trond
-> 
-> -- 
-> Trond Myklebust <trond.myklebust@fys.uio.no>
-> 
->  statd.c |    5 +++++
->  1 files changed, 5 insertions(+)
-> 
-> Index: NFS@sourceforge.net/nfs-utils/utils/statd/statd.c
-> ===================================================================
-> --- NFS@sourceforge.net.orig/nfs-utils/utils/statd/statd.c	2004-09-05 22:15:51.000000000 -0400
-> +++ NFS@sourceforge.net/nfs-utils/utils/statd/statd.c	2004-12-01 20:40:45.797338534 -0500
-> @@ -422,6 +422,11 @@ int main (int argc, char **argv)
->  	signal(SIGUSR1, sigusr);
->  	/* WARNING: the following works on Linux and SysV, but not BSD! */
->  	signal(SIGCHLD, SIG_IGN);
-> +	/*
-> +	 * Ignore SIGPIPE to avoid statd dying when peers close their
-> +	 * TCP connection while we're trying to reply to them.
-> +	 */
-> +	signal(SIGPIPE, SIG_IGN);
->  
->  	/* initialize out_port */
->  	statd_get_socket(out_port);
+I have made available a pre-release of nfs-utils 1.0.7.
+
+It can be downloaded from 
+  http://sourceforge.net/project/showfiles.php?group_id=14
+or
+  http://www.{countrycode}.kernel.org/pub/linux/utils/nfs/
+
+
+The reason for the pre-release is that there are a number of changes that
+I haven't had a chance to test properly, and some that I am not in a position
+to test.
+
+There are an assortment of bug-fixes, some support for fail-over clustering,
+and support for 'gss' authentication.
+
+I would appreciate it if people could check that it compiles and works for them,
+and let me know the success rate.
+
+I hope to put this out as a final 1.0.7 before Christmas.  Having lots of people 
+say "Yes, I've tried it, and it works OK" would make a great Christmas present :-)
+
+NeilBrown 03-December-2004
 
 
 -------------------------------------------------------
