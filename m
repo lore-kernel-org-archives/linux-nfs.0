@@ -1,15 +1,26 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Stale fcntl lock never released
-Date: 24 Jun 2003 21:02:10 +0200
+From: Sven Geggus <sven@gegg.us>
+Subject: Re: 2.4.21: NFS client Freeze
+Date: Tue, 24 Jun 2003 21:01:13 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shshe6fti31.fsf@charged.uio.no>
-References: <20030623221405.GA4320@async.com.br>
+Message-ID: <20030624190113.GA2680@diesel.geggus.net>
+References: <20030624101227.GA21744@benzin.geggus.net> <shsptl3tie2.fsf@charged.uio.no>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: NFS@lists.sourceforge.net,  Guilherme Salgado <salgado@async.com.br>
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: Christian Reis <kiko@async.com.br>
-In-Reply-To: <20030623221405.GA4320@async.com.br>
+Received: from benzin.geggus.net ([213.146.112.23] ident=foobar)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19Ut38-0002SM-00
+	for <nfs@lists.sourceforge.net>; Tue, 24 Jun 2003 12:01:51 -0700
+Received: from diesel.geggus.net ([192.168.3.2])
+	by benzin.geggus.net with esmtp
+	(Exim 4.20 id 19Ut2X-0002Lm-NF)
+	for <nfs@lists.sourceforge.net>; Tue, 24 Jun 2003 21:01:13 +0200
+Received: from sven by diesel.geggus.net with local
+	(Exim 3.35 id 19Ut2X-0000i8-00)
+	for <nfs@lists.sourceforge.net>; Tue, 24 Jun 2003 21:01:13 +0200
+To: nfs@lists.sourceforge.net
+In-Reply-To: <shsptl3tie2.fsf@charged.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -22,18 +33,24 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Christian Reis <kiko@async.com.br> writes:
+On Tue, Jun 24, 2003 at 08:55:33PM +0200, Trond Myklebust wrote:
 
-     > (Trond, do any of the lockd patches in
-     > http://www.fys.uio.no/~trondmy/src/2.4.21/ fix something like
-     > this?)
+> Nothing wrong there. Mind filling in the details?
 
-No. This is what rpc.statd is supposed to do. When a client reboots,
-it is supposed to notify the server that it should remove all locks
-belonging to that client.
+what's wrong is the fact, that the machine is frozen after the
 
-Cheers,
-  Trond
+RPC:   26 call_decode (status 760) 
+
+has been logged. As I already said, ping is still working, but nothing else.
+
+Sven
+
+-- 
+begin  .signature
+This signature is for serious Software only, there is no attachment!
+end
+/me is giggls@ircnet, http://sven.gegg.us/ on the Web
+
 
 
 -------------------------------------------------------
