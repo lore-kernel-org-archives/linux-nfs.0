@@ -1,22 +1,23 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
+From: Chris Worley <cworley@lnxi.com>
 Subject: RE: Pb of optimization for a Cluster under Gigabit
-Date: Wed, 7 Apr 2004 13:58:15 -0700
+Date: 07 Apr 2004 15:31:40 -0600
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <482A3FA0050D21419C269D13989C61130435DEAA@lavender-fe.eng.netapp.com>
+Message-ID: <1081373500.2556.16643.camel@localhost>
+References: <482A3FA0050D21419C269D13989C61130435DEAA@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BBK7y-0001FH-Tk
-	for nfs@lists.sourceforge.net; Wed, 07 Apr 2004 13:58:30 -0700
-Received: from mx01.netapp.com ([198.95.226.53])
+	id 1BBKiN-0003kx-DN
+	for nfs@lists.sourceforge.net; Wed, 07 Apr 2004 14:36:07 -0700
+Received: from 208.177.141.226.ptr.us.xo.net ([208.177.141.226] helo=localhost.localdomain)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BBK7y-0000ad-Kk
-	for nfs@lists.sourceforge.net; Wed, 07 Apr 2004 13:58:30 -0700
-To: "Didier CONTIS" <didier@ece.gatech.edu>
+	id 1BBKiM-00040I-T6
+	for nfs@lists.sourceforge.net; Wed, 07 Apr 2004 14:36:06 -0700
+To: didier@ece.gatech.edu
+In-Reply-To: <482A3FA0050D21419C269D13989C61130435DEAA@lavender-fe.eng.netapp.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -29,27 +30,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> >do you really need to use the "sync" mount option on
-> >the clients?  the "sync" export option on the server
-> >should be enough for most applications.
->=20
-> That definitely helped. Now the NFS options passed
-> via automount to the client are:
->=20
-> rw,nfsvers=3D3,udp,hard,intr,rsize=3D8192,wsize=3D8192
->=20
-> However, the load of the nfs server still goes up to 3.5
+On Wed, 2004-04-07 at 14:58, Lever, Charles wrote:
+> > 
+> > That definitely helped. Now the NFS options passed
+> > via automount to the client are:
+> > 
+> > rw,nfsvers=3,udp,hard,intr,rsize=8192,wsize=8192
+> > 
+> > However, the load of the nfs server still goes up to 3.5
 
-that may be completely normal.
+Is that option string coming from /proc/mounts, or actually what you're
+using?  If it's coming from /proc/mounts, then not all options are
+echoed... and, one thing to definitely get the load level up on the
+server is using the "noac" option on the clients.
 
-i don't think the load average is a good indication of
-how hard your server is working.  is your application
-throughput reasonable?  any response time problems?
-
-you should talk a walk through the NFS HOWTO, as it has
-some good server performance tips.
-
-  http://nfs.sourceforge.net/
 
 
 -------------------------------------------------------
