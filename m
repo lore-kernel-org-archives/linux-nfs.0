@@ -1,25 +1,23 @@
 From: "Deepesh Hinduja" <hinduja@andrew.cmu.edu>
 Subject: Hi all
-Date: Wed, 25 Feb 2004 19:03:18 -0500 (EST)
+Date: Wed, 25 Feb 2004 18:40:21 -0500 (EST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <2520.128.2.245.29.1077753798.squirrel@webmail.andrew.cmu.edu>
-References: <200402260000.i1Q00WjH029069@mx7.andrew.cmu.edu>
+Message-ID: <1826.128.2.245.29.1077752421.squirrel@webmail.andrew.cmu.edu>
 Mime-Version: 1.0
 Content-Type: text/plain;charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Aw91K-0006IG-6i
-	for nfs@lists.sourceforge.net; Wed, 25 Feb 2004 16:04:54 -0800
-Received: from smtp1.andrew.cmu.edu ([128.2.10.81])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1Aw8f6-00016p-F2
+	for nfs@lists.sourceforge.net; Wed, 25 Feb 2004 15:41:56 -0800
+Received: from smtp3.andrew.cmu.edu ([128.2.10.83])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.30)
-	id 1Aw8zo-00067M-Ug
-	for nfs@lists.sourceforge.net; Wed, 25 Feb 2004 16:03:21 -0800
+	id 1Aw8QI-0000KL-4I
+	for nfs@lists.sourceforge.net; Wed, 25 Feb 2004 15:26:38 -0800
 Received: from webmail.andrew.cmu.edu (WEBMAIL3.andrew.cmu.edu [128.2.10.93])
-	by smtp1.andrew.cmu.edu (8.12.10/8.12.10) with SMTP id i1Q03JZI023504
-	for <nfs@lists.sourceforge.net>; Wed, 25 Feb 2004 19:03:19 -0500
-In-Reply-To: <200402260000.i1Q00WjH029069@mx7.andrew.cmu.edu>
+	by smtp3.andrew.cmu.edu (8.12.10/8.12.10) with SMTP id i1PNeLiq001901
+	for <nfs@lists.sourceforge.net.>; Wed, 25 Feb 2004 18:40:21 -0500
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
