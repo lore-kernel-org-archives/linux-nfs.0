@@ -1,28 +1,26 @@
-From: David Dougall <davidd@et.byu.edu>
-Subject: rquotad solution
-Date: Thu, 4 Sep 2003 10:16:56 -0600 (MDT)
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: nfs errors clutter up logs after 2.4.20 -> 2.4.22-pre10
+Date: Thu, 4 Sep 2003 16:08:59 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.51.0309041001260.27878@lewis.et.byu.edu>
+Message-ID: <16215.39899.241145.441186@charged.uio.no>
+References: <shsekzcjnbt.fsf@charged.uio.no>
+	<Pine.LNX.4.44.0309041128520.5868-100000@fubar.phlinux.com>
+Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+Cc: NFS List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19uwnJ-0008Qb-00
-	for <nfs@lists.sourceforge.net>; Thu, 04 Sep 2003 09:17:13 -0700
-Received: from postal3.et.byu.edu ([128.187.122.133])
+	id 19v0Pt-0008Fb-00
+	for <nfs@lists.sourceforge.net>; Thu, 04 Sep 2003 13:09:17 -0700
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 19uwnB-0000vB-PC
-	for nfs@lists.sourceforge.net; Thu, 04 Sep 2003 09:17:05 -0700
-Received: from mail by postal3.et.byu.edu with local (Exim 4.20)
-	id 19uwn2-0003I6-Ul
-	for nfs@lists.sourceforge.net; Thu, 04 Sep 2003 10:16:56 -0600
-Received: from lewis.et.byu.edu ([128.187.112.50])
-	by postal3.et.byu.edu with esmtp (Exim 4.20)
-	id 19uwn2-0003H6-M3
-	for nfs@lists.sourceforge.net; Thu, 04 Sep 2003 10:16:56 -0600
-To: nfs@lists.sourceforge.net
+	id 19v0Ps-0005EU-G7
+	for nfs@lists.sourceforge.net; Thu, 04 Sep 2003 13:09:16 -0700
+To: Matt C <wago@phlinux.com>
+In-Reply-To: <Pine.LNX.4.44.0309041128520.5868-100000@fubar.phlinux.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -35,53 +33,42 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I feel quite silly responding to my own query.
-I was mistaken in saying my older servers ran nfs-utils-1.0.1.  They did
-have this, but were not using rpc.rquotad.  I was using rpc.rquotad from
-the quota package.
-nfs-utils rquotad only supports ext2 and ext3 so my xfs filesystems were
-not working.
+>>>>> " " == Matt C <Matt> writes:
 
-Also, whoever is in charge of the rpc.rquotad portion of
-nfs-utils package, the following patch seems to make more sense detecting
-currently mounted filesystems rather than only what is in /etc/fstab.
---David Dougall
+     > Hi Trond- I applied this patch to one of my clients, and it
+     > seems to have helped. However, I'm still getting a lot of the:
 
+     > server x not responding, still trying server x OK server x not
+     > responding, still trying server x OK
 
-diff -ur nfs-utils-1.0.5/utils/rquotad/mntent.h
-nfs-utils-1.0.5-new/utils/rquotad/mntent.h
---- nfs-utils-1.0.5/utils/rquotad/mntent.h      Tue May  9 18:36:19 2000
-+++ nfs-utils-1.0.5-new/utils/rquotad/mntent.h  Thu Sep  4 10:12:34 2003
-@@ -4,7 +4,7 @@
- #include <features.h>
+     > when the server is heavily loaded. what values would be
+     > reasonable for the
+     > #defines below in order to increase this timeout significantly? 
+     > #I tried
+     > changing RPC_RTO_MIN to (HZ/5) and RPC_RTO_INIT to (HZ/2), but
+     > that didn't seem to make a big difference. I'm having a hard
+     > time understanding the rpc_update_rtt() function.
 
- #define MNTTAB "/etc/fstab"
--#define MOUNTED "/etc/mtab"
-+#define MOUNTED "/proc/mounts"
+The rpc_update_rtt() function is pretty standard. It is documented in
+a paper by Van Jacobson from 1998. See:
+    http://www-nrg.ee.lbl.gov/nrg-papers.html
 
- #define MNTMAXSTR      512
+To summarize: that function is just measuring the round-trip-time
+(rtt) for each request, and then using that to build up an estimate
+for the old 'timeo' mount option. The estimate takes into account
+random fluctuations by also maintaining an estimate of the error on
+the rtt. RPC_RTO_MIN is just a minimum value for that estimated error.
 
-diff -ur nfs-utils-1.0.5/utils/rquotad/rquota_server.c
-nfs-utils-1.0.5-new/utils/rquotad/rquota_server.c
---- nfs-utils-1.0.5/utils/rquotad/rquota_server.c       Wed Jun 27
-10:45:56 2001
-+++ nfs-utils-1.0.5-new/utils/rquotad/rquota_server.c   Thu Sep  4
-10:12:49 2003
-@@ -108,7 +108,7 @@
-       }
-    }
+Note: If it is getting the estimate wrong, then that indicates that a
+graph of your round trip time will show large 'spikes' at certain
+moments. I would suggest that you ought to look into why this is the
+case.
+Are you, for instance, running with enough NFS server threads? Are the
+switches/routers between you and the server up to the task, or are
+they perhaps dropping large numbers of packets?
 
--   fp = setmntent(MNTTAB, "r");
-+   fp = setmntent(MOUNTED, "r");
-    while ((mnt = getmntent(fp)) != (struct mntent *)0) {
-       if (stat(mnt->mnt_dir, &stm) == -1)
-          continue;
-
-
-
-______________________________________
-Inflex Virus Scanner - installed on mailserver for domain @et.byu.edu
-Queries to: postmaster@et.byu.edu
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
