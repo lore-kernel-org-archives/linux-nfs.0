@@ -1,19 +1,18 @@
-From: =?iso-8859-1?Q?Thomas_Lang=E5s?= <tlan@stud.ntnu.no>
-Subject: Re: NFS Performance issues...
-Date: Sat, 16 Mar 2002 18:35:54 +0100
+From: Ulrich Hochholdinger <hochhold@fzi.de>
+Subject: Timeout-problems
+Date: Sat, 16 Mar 2002 19:47:35 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020316183554.C9530@stud.ntnu.no>
-References: <038201c1cc7b$5c8be400$2651a641@laptop> <20020316163451.A9226@stud.ntnu.no> <040601c1cd0b$4f707930$2651a641@laptop>
-Reply-To: nfs@lists.sourceforge.net
+Message-ID: <20020316184735.GA13908@lotus.fzi.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Received: from brev.stud.ntnu.no ([129.241.56.70])
+Received: from gate.fzi.de ([141.21.4.3])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16mI63-0004wQ-00
-	for <nfs@lists.sourceforge.net>; Sat, 16 Mar 2002 09:35:59 -0800
-To: Matt Heaton <admin@0catch.com>
-In-Reply-To: <040601c1cd0b$4f707930$2651a641@laptop>; from admin@0catch.com on Sat, Mar 16, 2002 at 09:54:53AM -0700
+	id 16mJDz-0001zI-00
+	for <nfs@lists.sourceforge.net>; Sat, 16 Mar 2002 10:48:16 -0800
+Received: from hochhold by lotus.fzi.de with local (Exim 3.34 #1 (Debian))
+          id 16mJDV-0003dQ-00 for <nfs@lists.sourceforge.net>;
+          Sat, 16 Mar 2002 19:47:45 +0100
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,19 +25,58 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Matt Heaton:
-> Sorry, we have a 100 Mbit Network.  A cisco 2924 switch where everything is
-> plugged into.  An ALTEON Load balancer/firewall.  We are running 2.4.7-10
-> (Redhat 7.2).  I believe it might be something with the kernel as something
-> the
-> memory just spirals down.  Doesn't 7.2 have some virtual memory problem like
-> that?
+Hi,
+I've some strange problems here with my nfs-server.
 
-First off all, try updating to the errata kernel, 2.4.9  (it's in the
-updates-directory on evey redhat-mirror).
+Mounting filesystems works only sometimes and then with long timeouts.
+
+For example:
+On the Client:
+$> mount -tnfs server:/Mirror /Mirror
+the system waits some time and then I get a
+mount: RPC: Timed out
+Then I wait some 5 minutes doing nothing, and try it again, now sometimes
+the mount process will work successfull and I can access all files on the
+mounted drive.
+I tried this with nfsv2 and nfsv3  and with and without tcp.
+
+The next thing is when a mount failed, I try on the server a 
+showmount -e localhost or showmount -a localhost
+and I get a:
+rpc mount export: RPC: Timed out
+the same from the client
+waiting some 2 minutes this wil work again...
+an rpcinfo -p server (from client and server side) shows the same ports
+on the client side I also made all rpc-services available for the server
+(hosts_access)
+Additionally I've no IP-filters/chains running on these machines.
+
+my /etc/exports shows this line:
+-----
+/Mirror @some-netgroup(rw,no_root_squash) client1(rw,no_root_squash) client2(rw,no_root_squash)
+------ (chaneged the original host-names :)
+
+An tcpdump on both sides shows that no packages are lost,
+simply the mountd isn't responding...
+
+
+The Server is a Dual PIII Box with linux-2.4.18 nfs compiled with nfsv3
+support for server and client both as modules. The operating system is
+Debian woody. Network card is a 3com 3c905b.
+The client is a Dell PIII Laptop with built in ethernet card (3Com 3c556
+Laptop Tornado), running linux-2.4.17 also nfs compiled with nfsv3 and 
+as module and running Debian woody.
+They communicate over an 3Com SuperStack II switch 3000
+
+
+Gruss
+	Ulli
 
 -- 
-Thomas
+\ Ulli Hochholdinger                        E-Mail: ulli@hochholdinger.net \
+/ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ /
+\ Sometimes I think the surest sign that intelligent life exists elsewhere \
+/ in the universe is that none of it has tried to contact us. (Calvin)     /
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
