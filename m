@@ -1,20 +1,19 @@
-From: "Jean Bel" <support@masdegrille.com>
-Subject: Starting nfs with xinetd
-Date: Thu, 23 May 2002 12:13:38 +0200
+From: Steffen Persvold <sp@scali.com>
+Subject: Re: Input/output error on hard mounted NFS directory
+Date: Fri, 24 May 2002 13:43:54 +0200 (CEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <001501c20242$82328040$5c01a8c0@LB03>
+Message-ID: <Pine.LNX.4.33.0205241316260.3144-100000@sp-home.isdn.scali.no>
+References: <200205141437.26169.trond.myklebust@fys.uio.no>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0016_01C20253.45BB5040"
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: NFS mailinglist <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from zethes.pt.lu ([194.154.192.53])
+Received: from elin.scali.no ([62.70.89.10])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17ApbD-0007jx-00
-	for <nfs@lists.sourceforge.net>; Thu, 23 May 2002 03:13:35 -0700
-Received: from LB03 (pppoe56-luxdsl-140.pt.lu [213.166.56.140])
-	by zethes.pt.lu (8.10.2/8.11.6) with ESMTP id g4NADT523361
-	for <nfs@lists.sourceforge.net>; Thu, 23 May 2002 12:13:30 +0200 (MEST)
-To: <nfs@lists.sourceforge.net>
+	id 17BDZg-0002NS-00
+	for <nfs@lists.sourceforge.net>; Fri, 24 May 2002 04:49:36 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <200205141437.26169.trond.myklebust@fys.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,65 +26,61 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-This is a multi-part message in MIME format.
+On Tue, 14 May 2002, Trond Myklebust wrote:
 
-------=_NextPart_000_0016_01C20253.45BB5040
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
+> Tysdag 14. mai 2002 13:15 skreiv Steffen Persvold:
+>
+> > > If you want to run a 2.2. client, then grab 2.2.21-rc2, and apply the
+> > > patch from
+> > >
+> > >   http://www.fys.uio.no/~trondmy/src/2.2.21-rc2/linux-2.2.21-NFS.dif
+> >
+> > Do I have to ?
+>
+> Not if you can live with the bugs ;-)
+>
+> > Will it fix my problem ? Other known NFS bugs ?
+>
+> The 2.2.21-NFS patch fixes all the EIO bugs that were found in 2.4.x. You
+> might of course have found totally different bugs, but I really can't tell
+> until you eliminate the first possibility.
+>
 
-Hi,
- 
-I use nfs-utils-0.3.3, xinetd-2.3.4, kernel 2.4.18 and when I start
-xinetd, I have the following error for the mountd service:
-            Cannot register service: RPC: Unable to receive; errno =
-Connection refused
- 
-Is anybody has an idea ?
- 
-Jean Bel
-support@masdegrille.com
 
-------=_NextPart_000_0016_01C20253.45BB5040
-Content-Type: text/html;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+Hi again,
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
-charset=3Diso-8859-1">
-<TITLE>Message</TITLE>
+I have some updates on this problem. As you may remember I had a RH 7.2
+NFS server (i686) running the 2.4.9-21smp kernel, exporting an ext2
+directory (~70GB).
 
-<META content=3D"MSHTML 6.00.2716.2200" name=3DGENERATOR></HEAD>
-<BODY>
-<DIV><FONT face=3DArial size=3D2><SPAN=20
-class=3D895370410-23052002>Hi,</SPAN></FONT></DIV>
-<DIV><FONT face=3DArial size=3D2><SPAN=20
-class=3D895370410-23052002></SPAN></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2><SPAN class=3D895370410-23052002>I use=20
-nfs-utils-0.3.3, xinetd-2.3.4, kernel 2.4.18 and when I start xinetd, I =
-have the=20
-following error for the mountd service:</SPAN></FONT></DIV>
-<DIV><FONT face=3DArial size=3D2><SPAN=20
-class=3D895370410-23052002>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbs=
-p;&nbsp;&nbsp;&nbsp;=20
-Cannot register service: RPC: Unable to receive; errno =3D Connection=20
-refused</SPAN></FONT></DIV>
-<DIV><FONT face=3DArial size=3D2><SPAN=20
-class=3D895370410-23052002></SPAN></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2><SPAN class=3D895370410-23052002>Is =
-anybody has an=20
-idea ?</SPAN></FONT></DIV>
-<DIV><FONT face=3DArial size=3D2><SPAN=20
-class=3D895370410-23052002></SPAN></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2><SPAN class=3D895370410-23052002>Jean=20
-Bel</SPAN></FONT></DIV>
-<DIV><FONT face=3DArial size=3D2><SPAN class=3D895370410-23052002><A=20
-href=3D"mailto:support@masdegrille.com">support@masdegrille.com</A></SPAN=
-></FONT></DIV></BODY></HTML>
+Sometimes I discovered problems when linking together a large static
+library on two clients which had different architecture (ia32 ia64), both
+running RedHat but with different kernels (ia32 was running 2.2.19-6.2.7
+and ia64 was running a stock 2.4.18 with ia64 patchset). The error message
+I got on the ia32 client was :
 
-------=_NextPart_000_0016_01C20253.45BB5040--
+ar: Linux2.i86pc.gnu.dbg/libmpi.a: Input/output error
+gmake[4]: *** [Linux2.i86pc.gnu.dbg/libmpi.a] Error 1
+
+and on the ia64 client it was :
+
+ar: Linux2.ia64.gnu.dbg/libmpi.a: Stale NFS file handle
+gmake[4]: *** [Linux2.ia64.gnu.dbg/libmpi.a] Error 1
+
+Now, since both these clients got almost the same problem (ok the 2.2.19
+client reported -EIO, and the 2.4.18 client -ESTALE), I tried upgrading my
+server to a stock 2.4.18 kernel and that actually helped ...
+
+Can you give me any more details to why it helped upgrading my NFS server
+to 2.4.18 ?
+
+Regards,
+ --
+  Steffen Persvold   | Scalable Linux Systems |   Try out the world's best
+ mailto:sp@scali.com |  http://www.scali.com  | performing MPI implementation:
+Tel: (+47) 2262 8950 |   Olaf Helsets vei 6   |      - ScaMPI 1.13.8 -
+Fax: (+47) 2262 8951 |   N0621 Oslo, NORWAY   | >320MBytes/s and <4uS latency
+
 
 
 _______________________________________________________________
