@@ -1,30 +1,24 @@
-From: Yusuf Goolamabbas <yusufg@outblaze.com>
-Subject: Re: Poor NFS performance, kernel 2.6.6.
-Date: Tue, 1 Jun 2004 08:16:58 +0800
+From: NeilBrown <neilb@cse.unsw.edu.au>
+Subject: [PATCH]  Fix readahead handling in knfsd.
+Date: Tue, 01 Jun 2004 11:22:53 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040601001658.GA7373@outblaze.com>
-References: <Pine.LNX.4.58.0405271331430.7539@penti.sit.fi> <1085695748.23934.94.camel@lade.trondhjem.org> <Pine.LNX.4.58.0405280953240.29286@penti.sit.fi> <20040528135515.GG5657@suse.de> <Pine.LNX.4.58.0405282058300.14886@penti.sit.fi> <1085771968.3882.17.camel@lade.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Harald Hannelius <harald+nfs@arcada.fi>,
-	Olaf Kirch <okir@suse.de>, nfs@lists.sourceforge.net
+Message-ID: <E1BUxzR-0007Qr-TS@notabene.cse.unsw.edu.au>
+References: <20040601112157.28553.patches@notabene>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BUwxm-00079A-1n
-	for nfs@lists.sourceforge.net; Mon, 31 May 2004 17:17:06 -0700
-Received: from corpmail.outblaze.com ([203.86.166.82])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1BUwxl-0000NN-4R
-	for nfs@lists.sourceforge.net; Mon, 31 May 2004 17:17:05 -0700
-Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by corpmail.outblaze.com (Postfix) with ESMTP id A8A4337AD5
-	for <nfs@lists.sourceforge.net>; Tue,  1 Jun 2004 00:16:59 +0000 (GMT)
-Received: from yusufg.portal2.com (210-177-227-130.outblaze.com [210.177.227.130])
-	by corpmail.outblaze.com (Postfix) with SMTP id E193D16DD91
-	for <nfs@lists.sourceforge.net>; Tue,  1 Jun 2004 00:16:58 +0000 (GMT)
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1085771968.3882.17.camel@lade.trondhjem.org>
+	id 1BUxzY-0008Vn-J5
+	for nfs@lists.sourceforge.net; Mon, 31 May 2004 18:23:00 -0700
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BUxzY-00078r-5z
+	for nfs@lists.sourceforge.net; Mon, 31 May 2004 18:23:00 -0700
+Received: From
+	notabene.cse.unsw.edu.au ([129.94.172.124]) (auth-user neilb) (ident-user Debian-exim)
+	(for <akpm@osdl.org>) (for <nfs@lists.sourceforge.net>) By note With
+	Smtp ; Tue, 1 Jun 2004 11:22:54 +1000
+To: Andrew Morton <akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -37,21 +31,64 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> > I guess (as a total don't-know) that nfsd reads and writes files in a
-> > different way than local processes do. I read somewhere something about
-> > read-ahead but that was in 2.6.0-pre-something..
-> 
-> Hmm... The current readahead code does a load of crap in order to
-> determine whether or not the user is doing linear or random I/O. It may
-> be that the nfsd server with all its multi-threading and out-of-sequence
-> I/O is triggering the random I/O readahead code (which of course aims to
-> limit readahead).
 
-Any thoughts on this patch posted to lkml 
+The read-ahead structures were not being initialised
+properly, and were not having the use-count decremented
+after use, making them fairly useless (since Apr 2002!).
 
-http://marc.theaimsgroup.com/?l=linux-kernel&m=108603045809565&w=2
+From: Colin Gibbs <colin@gibbsonline.net>
+Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
-Regards, /yg
+ ----------- Diffstat output ------------
+ ./fs/nfsd/vfs.c |   14 +++++++++-----
+ 1 files changed, 9 insertions(+), 5 deletions(-)
+
+diff ./fs/nfsd/vfs.c~current~ ./fs/nfsd/vfs.c
+--- ./fs/nfsd/vfs.c~current~	2004-06-01 11:20:45.000000000 +1000
++++ ./fs/nfsd/vfs.c	2004-06-01 10:08:51.000000000 +1000
+@@ -567,7 +567,7 @@ nfsd_sync_dir(struct dentry *dp)
+ static spinlock_t ra_lock = SPIN_LOCK_UNLOCKED;
+ 
+ static inline struct raparms *
+-nfsd_get_raparms(dev_t dev, ino_t ino)
++nfsd_get_raparms(dev_t dev, ino_t ino, struct address_space *mapping)
+ {
+ 	struct raparms	*ra, **rap, **frap = NULL;
+ 	int depth = 0;
+@@ -589,7 +589,7 @@ nfsd_get_raparms(dev_t dev, ino_t ino)
+ 	ra = *frap;
+ 	ra->p_dev = dev;
+ 	ra->p_ino = ino;
+-	memset(&ra->p_ra, 0, sizeof(ra->p_ra));
++	file_ra_state_init(&ra->p_ra, mapping);
+ found:
+ 	if (rap != &raparm_cache) {
+ 		*rap = ra->p_next;
+@@ -661,7 +661,8 @@ nfsd_read(struct svc_rqst *rqstp, struct
+ #endif
+ 
+ 	/* Get readahead parameters */
+-	ra = nfsd_get_raparms(inode->i_sb->s_dev, inode->i_ino);
++	ra = nfsd_get_raparms(inode->i_sb->s_dev, inode->i_ino, 
++			      inode->i_mapping->host->i_mapping);
+ 	if (ra)
+ 		file.f_ra = ra->p_ra;
+ 
+@@ -677,9 +678,12 @@ nfsd_read(struct svc_rqst *rqstp, struct
+ 	}
+ 
+ 	/* Write back readahead params */
+-	if (ra)
++	if (ra) {
++		spin_lock(&ra_lock);
+ 		ra->p_ra = file.f_ra;
+-
++		ra->p_count--;
++		spin_unlock(&ra_lock);
++	}
+ 	if (err >= 0) {
+ 		nfsdstats.io_read += err;
+ 		*count = err;
 
 
 -------------------------------------------------------
