@@ -1,19 +1,19 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] 2 of 3 - call svc_sock_setbufsize when socket created.
-Date: Thu, 22 Aug 2002 10:33:47 +1000
+Subject: [PATCH] 1 of 3 - Fix two problems with multiple concurrent nfs/tcp connects.
+Date: Thu, 22 Aug 2002 10:33:46 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E17hfv1-0004zh-00@notabene.cse.unsw.edu.au>
+Message-ID: <E17hfv0-0004ze-00@notabene.cse.unsw.edu.au>
 Cc: nfs@lists.sourceforge.net,  Chuck Lever <cel@citi.umich.edu>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17hfvF-00088w-00
-	for <nfs@lists.sourceforge.net>; Wed, 21 Aug 2002 17:34:01 -0700
+	id 17hfvN-0008Ab-00
+	for <nfs@lists.sourceforge.net>; Wed, 21 Aug 2002 17:34:09 -0700
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
 	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>)
 	(for <cel@citi.umich.edu>) By tone With Smtp ;
-	Thu, 22 Aug 2002 10:33:52 +1000
+	Thu, 22 Aug 2002 10:33:51 +1000
 To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -28,48 +28,45 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 
+These three patches fix some issues with SUNRPC caused by the
+RPC over TCP patch set.  Thanks particularly to
+    erik_habbinga@hp.com
+for helping to find some of them.
+
 ### Comments for ChangeSet
 
-bufsiz is re-evaluated on recv if SK_CHNGBUF is set,
-but recv will never be reached if the buffers are too small.
-So we have to set to to something vaguely reasonable
-at init time.
+1/ connect requests would be get lost...
+  As the comment at the top of svcsock.c says when discussing
+  SK_CONN:
+ *		after a set, svc_sock_enqueue must be called.	
 
+  We didn't and so lost conneciton requests.
+
+2/ set the max accept backlog to a more reasonable number to cope 
+   with bursts of lots of connection requests. 
 
  ----------- Diffstat output ------------
- ./net/sunrpc/svcsock.c |   16 ++++++++++++++++
- 1 files changed, 16 insertions(+)
+ ./net/sunrpc/svcsock.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletion(-)
 
---- ./net/sunrpc/svcsock.c	2002/08/21 23:03:04	1.2
-+++ ./net/sunrpc/svcsock.c	2002/08/21 23:04:58	1.3
-@@ -574,6 +574,14 @@ svc_udp_init(struct svc_sock *svsk)
- 	svsk->sk_recvfrom = svc_udp_recvfrom;
- 	svsk->sk_sendto = svc_udp_sendto;
- 
-+	/* initialise setting must have enough space to
-+	 * receive and respond to one request.  
-+	 * svc_udp_recvfrom will re-adjust if necessary
-+	 */
-+	svc_sock_setbufsize(svsk->sk_sock,
-+			    3 * svsk->sk_server->sv_bufsz,
-+			    3 * svsk->sk_server->sv_bufsz);
+--- ./net/sunrpc/svcsock.c	2002/08/21 23:02:39	1.1
++++ ./net/sunrpc/svcsock.c	2002/08/21 23:03:04	1.2
+@@ -679,6 +679,8 @@ svc_tcp_accept(struct svc_sock *svsk)
+ 		goto failed;		/* aborted connection or whatever */
+ 	}
+ 	set_bit(SK_CONN, &svsk->sk_flags);
++	svc_sock_enqueue(svsk);
 +
- 	set_bit(SK_CHNGBUF, &svsk->sk_flags);
+ 	slen = sizeof(sin);
+ 	err = ops->getname(newsock, (struct sockaddr *) &sin, &slen, 1);
+ 	if (err < 0) {
+@@ -1220,7 +1222,7 @@ svc_create_socket(struct svc_serv *serv,
+ 	}
  
- 	return 0;
-@@ -946,6 +954,14 @@ svc_tcp_init(struct svc_sock *svsk)
- 		svsk->sk_reclen = 0;
- 		svsk->sk_tcplen = 0;
- 
-+		/* initialise setting must have enough space to
-+		 * receive and respond to one request.  
-+		 * svc_tcp_recvfrom will re-adjust if necessary
-+		 */
-+		svc_sock_setbufsize(svsk->sk_sock,
-+				    3 * svsk->sk_server->sv_bufsz,
-+				    3 * svsk->sk_server->sv_bufsz);
-+
- 		set_bit(SK_CHNGBUF, &svsk->sk_flags);
+ 	if (protocol == IPPROTO_TCP) {
+-		if ((error = sock->ops->listen(sock, 5)) < 0)
++		if ((error = sock->ops->listen(sock, 64)) < 0)
+ 			goto bummer;
  	}
  
 
