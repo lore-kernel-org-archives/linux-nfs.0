@@ -1,24 +1,19 @@
-From: Klaus Steinberger <Klaus.Steinberger@Physik.Uni-Muenchen.DE>
+From: Bryan O'Sullivan <bos@serpentine.com>
 Subject: Re: Spam in the NFS list
-Date: Tue, 13 May 2003 17:48:00 +0200
+Date: 13 May 2003 09:03:45 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3EC113B0.2090102@Physik.Uni-Muenchen.DE>
-References: <E19Fb4m-0001Wq-00@sc8-sf-list2.sourceforge.net>
+Message-ID: <1052841825.13572.0.camel@serpentine.internal.keyresearch.com>
+References: <Pine.LNX.4.44.0305131645070.7780-100000@kenzo.iwr.uni-heidelberg.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain
+Cc: Jake Gold <jake@staunch.org>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pigpen.bl.physik.uni-muenchen.de ([129.187.160.7] ident=[jQRvEyOoyW4beXwwN00XwAvEYxzQxUzE])
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19Fc20-0008JJ-00
-	for <nfs@lists.sourceforge.net>; Tue, 13 May 2003 08:49:32 -0700
-Received: from Physik.Uni-Muenchen.DE (cipe-gw.bl.physik.uni-muenchen.de [129.187.160.36])
-	(authenticated bits=0)
-	by pigpen.bl.physik.uni-muenchen.de (8.12.9/8.12.9) with ESMTP id h4DFnPQa010071
-	(version=TLSv1/SSLv3 cipher=RC4-MD5 bits=128 verify=NO)
-	for <nfs@lists.sourceforge.net>; Tue, 13 May 2003 17:49:26 +0200
-To: nfs@lists.sourceforge.net
-In-Reply-To: <E19Fb4m-0001Wq-00@sc8-sf-list2.sourceforge.net>
+Received: from 66-122-194-202.ded.pacbell.net ([66.122.194.202] helo=mail.keyresearch.com)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19FcFm-0005MP-00
+	for <nfs@lists.sourceforge.net>; Tue, 13 May 2003 09:03:46 -0700
+To: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
+In-Reply-To: <Pine.LNX.4.44.0305131645070.7780-100000@kenzo.iwr.uni-heidelberg.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,21 +26,16 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Tue, 2003-05-13 at 07:48, Bogdan Costescu wrote:
 
->>Does anyone on this list object to the list becoming closed?
+> Yes: receiving bug reports. This is the same reason why linux-kernel, 
+> linux-smp and others cannot become closed.
 
-Closing the list on a subscriber only basis is ok for me.
+Have you ever looked at the number of bug reports on l-k from
+non-subscribers that get listened to?  It's approximately zero, and has
+been for years.
 
-I prefer to not get SPAM through the list.
-
-Sincerly,
-Klaus
-
--- 
-Klaus Steinberger         Maier-Leibnitz Labor
-Phone: (+49 89)289 14287  Am Coulombwall 6, D-85748 Garching, Germany
-FAX:   (+49 89)289 14280  EMail: Klaus.Steinberger@Physik.Uni-Muenchen.DE
-URL: http://www.physik.uni-muenchen.de/~k2/
+	<b
 
 
 
