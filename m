@@ -1,21 +1,22 @@
-From: mehta kiran <kiranmehta1981@yahoo.com>
-Subject: Re: address for lockd recovery
-Date: Wed, 26 Jan 2005 02:28:22 -0800 (PST)
-Message-ID: <20050126102822.73360.qmail@web51604.mail.yahoo.com>
-References: <1106720796.10014.10.camel@lade.trondhjem.org>
+From: "Damien \"Zaide\"" <list@zaide.org>
+Subject: NFS changement between 2.6.9 and 2.6.10?
+Date: Wed, 26 Jan 2005 11:44:03 +0100
+Message-ID: <41F77473.70501@zaide.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CtkPW-0005gw-Ec
-	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 02:28:30 -0800
-Received: from web51604.mail.yahoo.com ([206.190.38.209])
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
-	id 1CtkPU-0007WS-TN
-	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 02:28:30 -0800
+	id 1Ctkeo-0006Xq-Nr
+	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 02:44:18 -0800
+Received: from postfix4-1.free.fr ([213.228.0.62])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1Ctken-0000aJ-9E
+	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 02:44:18 -0800
+Received: from [192.168.2.9] (diderot-4-81-57-120-45.fbx.proxad.net [81.57.120.45])
+	by postfix4-1.free.fr (Postfix) with ESMTP id 88EEB271007
+	for <nfs@lists.sourceforge.net>; Wed, 26 Jan 2005 11:44:16 +0100 (CET)
 To: nfs@lists.sourceforge.net
-In-Reply-To: <1106720796.10014.10.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,49 +30,16 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I got your point.
-Please ignore my previous mail.
-
-thanks , 
- --kiran
-
-thanks,
-   kiran
---- Trond Myklebust <trond.myklebust@fys.uio.no>
-wrote:
-
-> ty den 25.01.2005 Klokka 01:16 (-0800) skreiv mehta
-> kiran:
-> > Hi , 
-> >      When i was checking lockd recovery , 
-> >      i noted that clients after getting
-> >      notification messages , use mon_id
-> >      as destination address and not notication
-> >      messages's source address as destination
-> >      address.(as just a reply)
-> > 
-> >      Is there any issue in using notifcation
-> >      messages's source address as destination
-> >      address to reclaim lock. ?
-> 
-> If you have a multi-homed server, it does not follow
-> that the source
-> address used by rpc.statd hosts the same NFS server
-> as the mon_name
-> address.
-> 
-> Cheers,
->   Trond
-> -- 
-> Trond Myklebust <trond.myklebust@fys.uio.no>
-> 
-> 
-
-
-__________________________________________________
-Do You Yahoo!?
-Tired of spam?  Yahoo! Mail has the best spam protection around 
-http://mail.yahoo.com 
+hi,
+I have a nfsV3 server running linux 2.6.9, all is good when I "ls -alR" 
+my nfs exported directory on my client after I chroot() in this 
+directory and ls -alR too that well.
+But when i update my server to linux 2.6.10 and "ls -alR" my nfs 
+directory is allways good but when I chroot() inside, my chroot command 
+is locked and I can't ls my nfs directory.
+I have launch a sniffer and the packet seams to be send.
+Do you have any informations about this? a changement beetwen 2.6.9 and 
+2.6.10? a patch? a bug?
 
 
 -------------------------------------------------------
