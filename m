@@ -1,26 +1,18 @@
-From: Daniel Hartmeier <daniel@benzedrine.cx>
-Subject: Re: Re: pf: to scrub or not to scrub?
-Date: Wed, 31 Jul 2002 15:54:02 +0200
+From: Tom McNeal <trmcneal@attbi.com>
+Subject: Re: Linux release of nfs-utils version 1.0.1
+Date: Wed, 31 Jul 2002 10:41:28 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020731135402.GA25793@insomnia.benzedrine.cx>
-References: <nfs-valinux.15684.6662.207461.819443@charged.uio.no>
+Message-ID: <3D482148.935E56D@attbi.com>
+References: <3D38AD37.640212C9@attbi.com> <3D3EDAB5.9721CEAE@moving-picture.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: NFS maillist <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from insomnia.benzedrine.cx ([62.65.145.30])
-	by usw-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17Ztva-0008UP-00
-	for <nfs@lists.sourceforge.net>; Wed, 31 Jul 2002 06:54:15 -0700
-Received: from insomnia.benzedrine.cx (dhartmei@localhost [127.0.0.1])
-	by insomnia.benzedrine.cx (8.12.5/8.12.5) with ESMTP id g6VDs38r013528
-	(version=TLSv1/SSLv3 cipher=EDH-DSS-DES-CBC3-SHA bits=168 verify=NO)
-	for <nfs@lists.sourceforge.net>; Wed, 31 Jul 2002 15:54:03 +0200 (MEST)
-Received: (from dhartmei@localhost)
-	by insomnia.benzedrine.cx (8.12.5/8.12.5/Submit) id g6VDs2Mh002599
-	for nfs@lists.sourceforge.net; Wed, 31 Jul 2002 15:54:03 +0200 (MEST)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <nfs-valinux.15684.6662.207461.819443@charged.uio.no>
+Received: from sccrmhc02.attbi.com ([204.127.202.62])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17ZxPs-0000Ac-00
+	for <nfs@lists.sourceforge.net>; Wed, 31 Jul 2002 10:37:44 -0700
+To: James Pearson <james-p@moving-picture.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -33,22 +25,26 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On 2002-07-29 02:28:32 PST, Trond Myklebust wrote:
+James Pearson wrote:
+> 
+> I notice that the NFS HOW-TO at LDP has now been updated - any chance
+> the version at http://nfs.sourceforge.net/nfs-howto be updated as well?
+> 
+> James Pearson
+> 
 
-> Hmm... From your forwarded mail. Looks like they were saying that the
-> firewall doesn't like IP_DF + IP_MF. That basically means that it is
-> incompatible with standard Path MTU discovery (see RFC 1191).
+The SourceForge site has been updated as of about 10 minutes ago.
+I kept the old htmls in a local directory called "bak", so you can 
+reach those as well just by adding that directory name to the url.
 
-Where does RFC 1191 (or Stevens, which I also checked) say you're
-supposed to do PMTU discovery using _fragments_? You send complete,
-unfragmented packets with DF set and see if you get an
-ICMP_UNREACH_NEEDFRAG back. You mean a router gets already fragmented
-packets (MF set) and then does PMTU to the destination itself, so the
-fragments themselves don't get fragmented further? Or some host on the
-way actually fragmented a DF packet? PMTU discovery explains the DF, but
-who set the MF, assuming PMTU discovery is happening?
+Regards -
 
-Daniel
+Tom
+
+--
+------------------------------------------------------------
+Tom McNeal       trmcneal@attbi.com     (650)906-0761 (cell) 
+------------------------------------------------------------
 
 
 -------------------------------------------------------
