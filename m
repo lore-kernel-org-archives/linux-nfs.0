@@ -1,23 +1,32 @@
-From: miyoshi@hpc.bs1.fc.nec.co.jp
+From: Neil Brown <neilb@cse.unsw.edu.au>
 Subject: Re: getcwd() returns wrong pathname
-Date: Tue, 03 Dec 2002 13:47:04 +0900
+Date: Tue, 3 Dec 2002 16:41:52 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20021203134704L.miyoshi@hpc.bs1.fc.nec.co.jp>
+Message-ID: <15852.17440.790970.70154@notabene.cse.unsw.edu.au>
 References: <20021203114545W.miyoshi@hpc.bs1.fc.nec.co.jp>
 	<15852.9815.372469.298167@notabene.cse.unsw.edu.au>
+	<20021203134704L.miyoshi@hpc.bs1.fc.nec.co.jp>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net,
+    tanaka-h@mxm.nes.nec.co.jp,
+    hoshi@bsd.tnes.nec.co.jp,
+    yamasita@hpc.necst.nec.co.jp,
+    fuku@hpc.bs1.fc.nec.co.jp,
+    lgml@linuxdb.hpc.bs1.fc.nec.co.jp
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tyo202.gate.nec.co.jp ([202.32.8.202])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18J4vN-0007gS-00
-	for <nfs@lists.sourceforge.net>; Mon, 02 Dec 2002 20:44:45 -0800
-To: neilb@cse.unsw.edu.au
-Cc: tanaka-h@mxm.nes.nec.co.jp, hoshi@bsd.tnes.nec.co.jp,
-   yamasita@hpc.necst.nec.co.jp, fuku@hpc.bs1.fc.nec.co.jp,
-   lgml@linuxdb.hpc.bs1.fc.nec.co.jp
-In-Reply-To: <15852.9815.372469.298167@notabene.cse.unsw.edu.au>
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18J5oy-0004yN-00
+	for <nfs@lists.sourceforge.net>; Mon, 02 Dec 2002 21:42:13 -0800
+Received: From
+	notabene.cse.unsw.edu.au ([129.94.233.169] == wireless-169.wireless.cse.unsw.EDU.AU)
+	(for <miyoshi@hpc.bs1.fc.nec.co.jp>)
+	(for <nfs@lists.sourceforge.net>) (for <tanaka-h@mxm.nes.nec.co.jp>)
+	(for <hoshi@bsd.tnes.nec.co.jp>) (for <yamasita@hpc.necst.nec.co.jp>)
+	By tone With Smtp ; Tue, 3 Dec 2002 16:41:54 +1100
+To: miyoshi@hpc.bs1.fc.nec.co.jp
+In-Reply-To: message from miyoshi@hpc.bs1.fc.nec.co.jp on Tuesday December 3
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,53 +39,72 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-
-Hi,
-
-> > I'm having problems with linux NFS. Here is my situation.
-> > 
-> > When mounting remote linux NFS filesystem to /mnt/xxx/yyy,
-> > pwd or getcwd() sometimes returns imcomplete pathname.
-> > We are using linux kernel 2.4.17.
-> > 
-> > % mount linuxserver:/mnt/xxx /mnt/xxx
-> > % cd /mnt/xxx/yyy
-> > % pwd
-> > /xxx/yyy       <--- should be /mnt/xxx/yyy
-> > 
-> > Is there any ideas or fixes?
-> > I'll be very gratefull to any suggestion.
+On Tuesday December 3, miyoshi@hpc.bs1.fc.nec.co.jp wrote:
 > 
-> Are both client and server Linux?
+> Hi,
+> 
+> > > I'm having problems with linux NFS. Here is my situation.
+> > > 
+> > > When mounting remote linux NFS filesystem to /mnt/xxx/yyy,
+> > > pwd or getcwd() sometimes returns imcomplete pathname.
+> > > We are using linux kernel 2.4.17.
+> > > 
+> > > % mount linuxserver:/mnt/xxx /mnt/xxx
+> > > % cd /mnt/xxx/yyy
+> > > % pwd
+> > > /xxx/yyy       <--- should be /mnt/xxx/yyy
+> > > 
+> > > Is there any ideas or fixes?
+> > > I'll be very gratefull to any suggestion.
+> > 
+> > Are both client and server Linux?
+> 
+> Thank you for your response and sorry for not providing enough
+> information.
+> 
+> Server is Linux, but client is not linux (NEC enhanced UNIX and HP-UX)
+> Also I found bugzilla entry which says about same problem on IRIX.
+> 
+> http://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=46705
+> 
+> It may be a problem or an incompatibility of those unices,
+> but if it is a typical incompatibility, I want to know the root
+> cause of it.
 
-Thank you for your response and sorry for not providing enough
-information.
+The root cause is that pwd works but walking up a path of ..,
+../.. etc finding the name of each component by reading through the
+directory for a name which matches the inode number found by statting
+".." from below (does that make sense?)
 
-Server is Linux, but client is not linux (NEC enhanced UNIX and HP-UX)
-Also I found bugzilla entry which says about same problem on IRIX.
+Anyway, this requires '..' to work reliably, particularly over the
+mount point.
 
-http://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=46705
+On non-linux unixes, the client sends a 'lookup("..")' request to the
+fileserver. In order for the client to recognise the mount point on
+the way up a path of ".." lookups, the filehandle returned by
+lookup(".."),  but be exactly the filehandle that was obtained by the
+mount request.
 
-It may be a problem or an incompatibility of those unices,
-but if it is a typical incompatibility, I want to know the root
-cause of it.
+However, HP-UX (At least) does this comparison wrongly.  In NFSv3,
+filehandles are variable length, up to 64 bytes.  HP-UX however will
+always compare at least 32 bytes (the size of an NFSv2 filehandle).
+If the filehandle returned by the server is less than 32 bytes (which
+is the case with the Linux nfs server) then some of those 32 bytes
+compared will be random garbage, and the comparison will fail.  So pwd
+never finds the mountpoint as it walks up the chain of "..", and gets
+confused.
 
-I will be able to collect information from client and/or server,
-but what information? Tcpdump output? Kernel trace?
+Apparently HP were going to release a fix for this, but I don't know
+if they have.
 
-Any suggestions/help for investigatation are welcome.
+One work-around is to use NFSv2.  It uses fixed sized (zero-padded)
+filehandles and so doesn't suffer this problem.
 
-> What does '/bin/pwd' say?
-> What does
->     ls -l /proc/self/cwd
-> say?
+It is possible to hack the Linux nfs server to return a minimum
+filehandle of 32 bytes, but I don't want that hack in the standard
+kernel.
 
-I will check those information on those unices.
-
---
-MIYOSHI Kazuto <miyoshi@hpc.bs1.fc.nec.co.jp>
- HPC Operating System Group, 1st Computers Software Division,
- Computers Software Operations Unit, NEC Solutions.
+NeilBrown
 
 
 -------------------------------------------------------
