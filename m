@@ -1,16 +1,16 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 15 of 16] nfsd4: fix open returns for other claim types
+Subject: [PATCH kNFSd 13 of 16] nfsd4: rename release_delegation
 Date: Tue, 22 Mar 2005 16:42:02 +1100
-Message-ID: <E1DDc9S-0002L2-3p@notabene.cse.unsw.edu.au>
+Message-ID: <E1DDc9S-0002Ku-0F@notabene.cse.unsw.edu.au>
 References: <20050322163830.8762.patches@notabene>
 Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DDc9b-0006kZ-Pn
+	id 1DDc9b-0006ka-Sm
 	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:11 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1DDc9a-00055v-WC
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1DDc9b-0005e0-1f
 	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:11 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
@@ -27,73 +27,82 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Switch on OPEN claim type instead of if-else. add remaining OPEN claim types.
+Release_delegation is responsible for removing the delegation's connection with
+the v4 state and with the lease subsystem.  The word "unhash" seems closer than
+"release" as a description of this....
 
-Return nfserr_notsupp instead of nfserr_inval for valid claim types.
-
-Signed-off-by: Andy Adamson <andros@citi.umich.edu>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4proc.c |   32 +++++++++++++++++++++-----------
- 1 files changed, 21 insertions(+), 11 deletions(-)
+ ./fs/nfsd/nfs4state.c |   16 ++++++----------
+ 1 files changed, 6 insertions(+), 10 deletions(-)
 
-diff ./fs/nfsd/nfs4proc.c~current~ ./fs/nfsd/nfs4proc.c
---- ./fs/nfsd/nfs4proc.c~current~	2005-03-22 16:36:36.000000000 +1100
-+++ ./fs/nfsd/nfs4proc.c	2005-03-22 16:36:36.000000000 +1100
-@@ -197,30 +197,40 @@ nfsd4_open(struct svc_rqst *rqstp, struc
+diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
+--- ./fs/nfsd/nfs4state.c~current~	2005-03-22 16:36:35.000000000 +1100
++++ ./fs/nfsd/nfs4state.c	2005-03-22 16:36:36.000000000 +1100
+@@ -176,15 +176,11 @@ nfs4_put_delegation(struct nfs4_delegati
  	}
- 	if (status)
- 		goto out;
--	if (open->op_claim_type == NFS4_OPEN_CLAIM_NULL) {
-+	switch (open->op_claim_type) {
-+		case NFS4_OPEN_CLAIM_NULL:
- 	/*
- 	 * This block of code will (1) set CURRENT_FH to the file being opened,
- 	 * creating it if necessary, (2) set open->op_cinfo,
- 	 * (3) set open->op_truncate if the file is to be truncated
- 	 * after opening, (4) do permission checking.
- 	 */
--		status = do_open_lookup(rqstp, current_fh, open);
--		if (status)
--			goto out;
--	} else if (open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS) {
-+			status = do_open_lookup(rqstp, current_fh, open);
-+			if (status)
-+				goto out;
-+			break;
-+		case NFS4_OPEN_CLAIM_PREVIOUS:
- 	/*
- 	* The CURRENT_FH is already set to the file being opened. This
- 	* block of code will (1) set open->op_cinfo, (2) set
- 	* open->op_truncate if the file is to be truncated after opening,
- 	* (3) do permission checking.
- 	*/
--		status = do_open_fhandle(rqstp, current_fh, open);
--		if (status)
-+			status = do_open_fhandle(rqstp, current_fh, open);
-+			if (status)
-+				goto out;
-+			break;
-+		case NFS4_OPEN_CLAIM_DELEGATE_CUR:
-+             	case NFS4_OPEN_CLAIM_DELEGATE_PREV:
-+			printk("NFSD: unsupported OPEN claim type %d\n",
-+				open->op_claim_type);
-+			status = nfserr_notsupp;
-+			goto out;
-+		default:
-+			printk("NFSD: Invalid OPEN claim type %d\n",
-+				open->op_claim_type);
-+			status = nfserr_inval;
+ }
+ 
+-/* release_delegation:
+- *
+- * Remove the associated file_lock first, then remove the delegation.
++/* Remove the associated file_lock first, then remove the delegation.
+  * lease_modify() is called to remove the FS_LEASE file_lock from
+  * the i_flock list, eventually calling nfsd's lock_manager
+  * fl_release_callback.
+- *
+  */
+-
+ static void
+ nfs4_close_delegation(struct nfs4_delegation *dp)
+ {
+@@ -201,7 +197,7 @@ nfs4_close_delegation(struct nfs4_delega
+ 
+ /* Called under the state lock. */
+ static void
+-release_delegation(struct nfs4_delegation *dp)
++unhash_delegation(struct nfs4_delegation *dp)
+ {
+ 	list_del_init(&dp->dl_del_perfile);
+ 	list_del_init(&dp->dl_del_perclnt);
+@@ -345,7 +341,7 @@ expire_client(struct nfs4_client *clp)
+ 	while (!list_empty(&reaplist)) {
+ 		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
+ 		list_del_init(&dp->dl_recall_lru);
+-		release_delegation(dp);
++		unhash_delegation(dp);
+ 	}
+ 	list_del(&clp->cl_idhash);
+ 	list_del(&clp->cl_strhash);
+@@ -1859,7 +1855,7 @@ nfs4_laundromat(void)
+ 	list_for_each_safe(pos, next, &reaplist) {
+ 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
+ 		list_del_init(&dp->dl_recall_lru);
+-		release_delegation(dp);
++		unhash_delegation(dp);
+ 	}
+ 	test_val = NFSD_LEASE_TIME;
+ 	list_for_each_safe(pos, next, &close_lru) {
+@@ -2064,7 +2060,7 @@ nfs4_preprocess_stateid_op(struct svc_fh
  			goto out;
--	} else {
--		printk("NFSD: unsupported OPEN claim type\n");
--		status = nfserr_inval;
--		goto out;
+ 		renew_client(dp->dl_client);
+ 		if (flags & DELEG_RET)
+-			release_delegation(dp);
++			unhash_delegation(dp);
+ 		if (filpp)
+ 			*filpp = dp->dl_vfs_file;
  	}
- 	/*
- 	 * nfsd4_process_open2() does the actual opening of the file.  If
+@@ -3239,7 +3235,7 @@ __nfs4_state_shutdown(void)
+ 	list_for_each_safe(pos, next, &reaplist) {
+ 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
+ 		list_del_init(&dp->dl_recall_lru);
+-		release_delegation(dp);
++		unhash_delegation(dp);
+ 	}
+ 
+ 	release_all_files();
 
 
 -------------------------------------------------------
