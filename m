@@ -1,22 +1,23 @@
-From: "Jocky Wilson" <jocky_wilson@hotmail.com>
-Subject: Re: rsize, wsize > 32Kb : how?
-Date: Fri, 10 Dec 2004 00:02:28 +0000
-Message-ID: <BAY21-F9182AE183E85A116E03F1E4A80@phx.gbl>
-References: <1102636343.3784.27.camel@tesuji.nac.uci.edu>
+From: Bryce Harrington <bryce@osdl.org>
+Subject: Re: [Storage_sig] Re: Question on bug tracking for NFSv4 work
+Date: Thu, 9 Dec 2004 17:07:45 -0800 (PST)
+Message-ID: <Pine.LNX.4.33.0412091610451.8023-100000@osdlab.pdx.osdl.net>
+References: <20041209224837.GE22994@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: "Lever, Charles" <Charles.Lever@netapp.com>, <nfs@lists.sourceforge.net>,
+   <storage_sig@osdl.org>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CcYGO-00042H-Sk
-	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 16:04:00 -0800
-Received: from bay21-f9.bay21.hotmail.com ([65.54.233.98] helo=hotmail.com)
+	id 1CcZG8-0000ut-LV
+	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 17:07:48 -0800
+Received: from fw.osdl.org ([65.172.181.6] helo=mail.osdl.org)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CcYGO-0001ye-KE
-	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 16:04:00 -0800
-In-Reply-To: <1102636343.3784.27.camel@tesuji.nac.uci.edu>
-To: strombrg@dcs.nac.uci.edu
+	id 1CcZG7-00026T-MW
+	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 17:07:48 -0800
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20041209224837.GE22994@fieldses.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,25 +31,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-No, my LAN is fast ethernet and the NAS and PCs are in 100 full duplex. My 
-streaming client even has a 10mb half duplex nic. I noticed a consistent 
-write performance increase when changing wsize from 8192->16384->32768
+On Thu, 9 Dec 2004, J. Bruce Fields wrote:
 
-I did increase rmem and wmem values from 32767 (yes) to 65536, which doesn't 
-seem to make a difference.
+> On Thu, Dec 09, 2004 at 02:24:27PM -0800, Lever, Charles wrote:
+> > we tried this once already.  i set up a cvstrac bug database here at
+> > CITI.  you and i were the only ones who actually touched the thing, and
+> > now it is long since dead.
 
-JockyW
+Do you think any of the bugs in that system still valid?  If so would
+it be possible for us to get a copy in some form (db dump or whatever)?
 
->From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
->Date: Thu, 09 Dec 2004 15:52:23 -0800
->
->
->Is it safe to assume you've enabled jumbo frames?
->
->Without jumbo frames, a huge packet size isn't necessarily going to make
->things faster...
->
+> Part of the problem was just that we didn't have the time to maintain
+> the database.  (It was crashing periodically at one point).
 
+The two options we have both have dedicated sysadmin staff attached.
+The existing nfs bug tracker on SourceForge has the SF administration;
+there's outages every once and a while but it tends to be good enough.
+For the other option, Bugzilla hosted at OSDL, we can get the normal
+admin support as we do for the Linux kernel Bugzilla.
+
+So I think that keeping the bugs themselves up to date (updating status,
+etc.) would be our principle challenge.  Keeping the system running
+shouldn't be a problem.
+
+> > will something like this work if some people use it and others don't?
+>
+> I don't know.  We might be able to deal with a few who didn't if there
+> were testers willing to do some of the work for them.  E.g. retest old
+> bugs and email the list if necessary.
+
+I also don't know how it'll work, however at Inkscape we definitely have
+some people who are more attentive to using it than others, and they
+tend to make up for those who aren't.  Also, a lot of bugs don't ever
+make it to the tracker before getting fixed, and that ends up being
+fine; the main value of the tracker is for bugs that can't (or won't) be
+fixed right away, so they don't get lost.
+
+> To me it seems at least worth a try, if there's people willing to spend
+> the time.
+
+Same here.  I can dedicate time to getting it organized over the coming
+months, if we have enough testers willing to make use of it.
+
+Bryce
 
 
 
