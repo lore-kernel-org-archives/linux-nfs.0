@@ -1,25 +1,26 @@
-From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: Re: NAS server avalanche overload
-Date: Thu, 04 Mar 2004 16:47:16 +1100
+From: Johan van den Dorpe <johan.vandendorpe@framestore-cfc.com>
+Subject: nfsd: terminating on error 104 problem
+Date: Thu, 04 Mar 2004 10:41:02 +0000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <4046C2E4.C33EAEB5@melbourne.sgi.com>
-References: <1078302718.825.67.camel@localhost>
-		 <1078351343.821.28.camel@localhost> <20040304000438.GA25910@sgi.com>
-		 <1078359638.813.71.camel@localhost> <404688FE.69592A2A@melbourne.sgi.com>
-		 <Pine.LNX.4.58.0403041234150.7374@wombat.indigo.net.au> <1078378313.853.3.camel@localhost>
+Message-ID: <404707BE.9070401@framestore-cfc.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ian Kent <raven@themaw.net>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AylnT-0001JI-NM
-	for nfs@lists.sourceforge.net; Wed, 03 Mar 2004 21:53:27 -0800
-Received: from mtvcafw.sgi.com ([192.48.171.6] helo=zok.sgi.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1Aylhl-0003zk-Mv
-	for nfs@lists.sourceforge.net; Wed, 03 Mar 2004 21:47:33 -0800
-To: Erik Walthinsen <omega@pdxcolo.net>
+	id 1AyqOR-0002FO-Si
+	for nfs@lists.sourceforge.net; Thu, 04 Mar 2004 02:47:55 -0800
+Received: from gw.fs-cfc.co.uk ([193.203.83.22])
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.30)
+	id 1Aypz1-0007Nw-IX
+	for nfs@lists.sourceforge.net; Thu, 04 Mar 2004 02:21:39 -0800
+Received: from localhost (localhost [127.0.0.1])
+	by mail.admin.local (Postfix) with ESMTP id 4BAFD7153B4
+	for <nfs@lists.sourceforge.net>; Thu,  4 Mar 2004 10:41:05 +0000 (GMT)
+Received: from framestore-cfc.com (sys33.prod.local [172.18.10.33])
+	by mail.admin.local (Postfix) with ESMTP id 65D4670FF82
+	for <nfs@lists.sourceforge.net>; Thu,  4 Mar 2004 10:41:02 +0000 (GMT)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,25 +33,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Erik Walthinsen wrote:
-> 
-> On Wed, 2004-03-03 at 20:39, Ian Kent wrote:
-> > Bumping the number of threads to 32 or 64 or more would be the first
-> > thing I would try.
-> 
-> Only problem is that if the spike occurs anyway, the load will be 33 or
-> 65 instead of 17.  I don't know if it's ctxswitching itself to death
-> while all these nfsd's are blocking, 
+Hi all
 
-If it's the same as I've seen, an nfsd will be spinning in schedule()
-trying to reacquire the BKL.  Changing the number of nfsds is not
-going to affect the amount of CPU wasted (i.e. pretty much all of
-it) just the number of runnable processes.
+We are currently using quite a number of HP DL380 servers within our 
+company that use the 2.4.25 kernel. These are primarily used for heavy 
+NFS access, so we keep a large number of nfsd processes concurrently 
+running. We have noticed over time however that single instances of nfsd 
+processes periodically die. From inspection of the system logs, we get 
+numerous entries:
 
-Greg.
+Feb 22 12:25:24 ps29 kernel: nfsd: recvfrom returned errno 104
+Feb 22 12:25:24 ps29 kernel: nfsd: terminating on error 104
+
+At the moment we cron a script that counts the number of nfsds and 
+restart rpc.nfsd if they drop below a threshold. Although this is a 
+working solution, it's not ideal and we would really like to get his 
+problem patched up properly.
+
+So from my limited knowledge of the kernel source I can see that 
+"terminating on error 104" corresponds to line 221 of
+/usr/src/linux-2.4.25/fs/nfsd/nfssvc.c. So svc_recv on line 191 is 
+obviously returning -104.
+
+I've noticed that in the 2.6 kernel there are quite a few changes to 
+nfssvc.c, and I wondered if they dealt with this situation.
+
+In the mean time, are there any quick hacks I could add to nfssvc.c to 
+make it tolerate error -104? Could I safely alter the main request loop 
+to simply continue execution if svc_recv returns this code?
+
+Any help would be much appreciated.
+
+Many thanks,
+
 -- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+Johan van den Dorpe
 
 
 -------------------------------------------------------
