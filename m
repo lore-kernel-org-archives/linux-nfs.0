@@ -1,23 +1,24 @@
-From: James Pearson <james-p@moving-picture.com>
-Subject: Re: nfs client monitoring?
-Date: Fri, 30 Jul 2004 17:27:05 +0100
+From: "Rik Schneider" <riks@wni.com>
+Subject: RE: nfs client monitoring?
+Date: Fri, 30 Jul 2004 09:44:49 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <410A76D9.4040807@moving-picture.com>
-References: <A6BFF93825584E488BCF6A855C1936C001A57198@SUW2CXMAIL.wni.com>
+Message-ID: <A6BFF93825584E488BCF6A855C1936C001A5719A@SUW2CXMAIL.wni.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BqaDu-0001Tc-4N
-	for nfs@lists.sourceforge.net; Fri, 30 Jul 2004 09:27:10 -0700
-Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1BqaDt-0002j8-Mq
-	for nfs@lists.sourceforge.net; Fri, 30 Jul 2004 09:27:10 -0700
-To: Rik Schneider <riks@wni.com>
-In-Reply-To: <A6BFF93825584E488BCF6A855C1936C001A57198@SUW2CXMAIL.wni.com>
+	id 1BqaV0-0004d9-CO
+	for nfs@lists.sourceforge.net; Fri, 30 Jul 2004 09:44:50 -0700
+Received: from dragon.wni.com ([12.44.164.3] helo=su-sunsrv-1.wni.com)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1BqaV0-0008QZ-2z
+	for nfs@lists.sourceforge.net; Fri, 30 Jul 2004 09:44:50 -0700
+Received: from SUW2CXMAIL.wni.com (suw2c2mail [172.18.102.22])
+	by su-sunsrv-1.wni.com (8.12.2+Sun/8.12.2) with ESMTP id i6UGiniA005371
+	for <nfs@lists.sourceforge.net>; Fri, 30 Jul 2004 16:44:49 GMT
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,27 +31,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Rik Schneider wrote:
-> </lurk>
-> 
->> I've recently added some hooks to xosview that will graphically
->> show NFS and kNFSD traffic which I find pretty handy....
->> 
->>http://download.fedora.redhat.com/pub/fedora/linux/core/2/i386/os/Fedor
-> 
-> a\
-> 
->>/RPMS/xosview-1.8.0-19.i386.rpm
-> 
-> 
-> Could you please provide source or patches for those of us who don't run
-> fedora.  Source rpms could also be helpful.
+>  Oddly enough,
+>
+>
+http://download.fedora.redhat.com/pub/fedora/linux/core/2/i386/os/SRPMS/
+xosview-1.8.0-19.src.rpm
 
-How about:
+I must admit I didn't look.  Thanks for pointing it out.  Now I get to
+try and build it.
 
-http://download.fedora.redhat.com/pub/fedora/linux/core/2/i386/os/SRPMS/xosview-1.8.0-19.src.rpm
+Thanks all,
+Rik Schneider
+Network Engineer
+Weathernews Americas Inc. (formerly WNI Oceanroutes)
+(405) 701-8941 - Office
+riks@wni.com
+www.weathernews.com
 
-James Pearson
+
 
 
 -------------------------------------------------------
