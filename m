@@ -1,23 +1,21 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: userspace NFS daemon
-Date: Sun, 05 Sep 2004 17:25:52 -0400
+From: Frank van Maarseveen <frankvm@xs4all.nl>
+Subject: broken_suid mount option
+Date: Sun, 5 Sep 2004 23:37:02 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1094419552.8081.33.camel@lade.trondhjem.org>
-References: <20040905210902.GA29182@janus>
+Message-ID: <20040905213702.GA29401@janus>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset=us-ascii
 Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C44X9-0008Fd-LT
-	for nfs@lists.sourceforge.net; Sun, 05 Sep 2004 14:26:47 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 1C44h7-0002ej-Md
+	for nfs@lists.sourceforge.net; Sun, 05 Sep 2004 14:37:05 -0700
+Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1C44X8-0007QY-67
-	for nfs@lists.sourceforge.net; Sun, 05 Sep 2004 14:26:47 -0700
-To: Frank van Maarseveen <frankvm@xs4all.nl>
-In-Reply-To: <20040905210902.GA29182@janus>
+	id 1C44h6-0000ZL-8e
+	for nfs@lists.sourceforge.net; Sun, 05 Sep 2004 14:37:05 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,21 +28,14 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 su , 05/09/2004 klokka 17:09, skreiv Frank van Maarseveen:
-> Isn't this one completely obsolete?
+Is this thing useful anymore? Google came up with this patch submission
+and description from you:
 
-Yes. Debian still keeps it around, though.
+http://www.ussg.iu.edu/hypermail/linux/kernel/0010.1/1178.html
 
-> So maybe we could drop sys_setfsuid() and sys_setfsgid() if those calls
-> have no other use then for running unfsd as root?
 
-That is really a question to be put to lkml rather than this list,
-however note that we still do have userspace file-servers to support.
-Does Samba use it, for instance?
-
-Cheers,
-  Trond
-
+-- 
+Frank
 
 
 -------------------------------------------------------
