@@ -1,23 +1,26 @@
-From: "=?iso-8859-1?q?Mark=20A.=20Tagliaferro?=" <be_lak@yahoo.co.uk>
-Subject: Re: Unable to connect to NFS Server - mountd crashing
-Date: Thu, 9 Oct 2003 10:20:27 +0100 (BST)
+From: "Alex Pavloff" <apavloff@esatechnology.com>
+Subject: Problems connectinh to Microsoft Services for Unix 3.0 NFS server
+Date: Thu, 9 Oct 2003 11:32:33 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20031009092027.77713.qmail@web86010.mail.ukl.yahoo.com>
-References: <20031009084223.32362.qmail@web86006.mail.ukl.yahoo.com>
+Message-ID: <662C51BFF387D9459C4281CD9A3F9D639F4B@tiber.internal.esatechnology.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain;
+	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1A7Wyh-0004Nd-00
-	for <nfs@lists.sourceforge.net>; Thu, 09 Oct 2003 02:20:59 -0700
-Received: from web86010.mail.ukl.yahoo.com ([217.12.12.41])
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.22)
-	id 1A7Wyg-0006WO-KK
-	for nfs@lists.sourceforge.net; Thu, 09 Oct 2003 02:20:58 -0700
-To: NFS <nfs@lists.sourceforge.net>
-In-Reply-To: <20031009084223.32362.qmail@web86006.mail.ukl.yahoo.com>
+	id 1A7faV-0006Ez-00
+	for <nfs@lists.sourceforge.net>; Thu, 09 Oct 2003 11:32:35 -0700
+Received: from eth0.a.smtp.sonic.net ([64.142.16.244])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.22)
+	id 1A7faU-0007SR-21
+	for nfs@lists.sourceforge.net; Thu, 09 Oct 2003 11:32:34 -0700
+Received: from tiber.internal.esatechnology.com (adsl-64-142-24-242.sonic.net [64.142.24.242])
+	by eth0.a.smtp.sonic.net (8.12.10/8.12.7) with ESMTP id h99IWXXN023873
+	for <nfs@lists.sourceforge.net>; Thu, 9 Oct 2003 11:32:33 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,106 +33,34 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Well I'll be darned.
 
-This morning I've tried once again to solve things and lo and behold the error
-has changed now!!!
+Hi folks,=20
 
-Now I'm getting "RPC Error : Timed Out" when I try to mount and the NFS server
-is managing to stay up.  I can't understand why though because the servers are
-communicating otherwise.  Even "rpcinfo -p server" is working.
+I've been trying to figure out why I can't connect my Redhat 8.0 client
+to my Services for Unix 3.0 server.
 
-Mark
+My Redhat 7.0 box (RH kernel 2.2.16 and nfs-utils 0.1.9) works just
+fine.
+My embedded system (stock kernel 2.4.20 and nfs-utils 0.3.3) works just
+fine.
+My Redhat 8.0 box (latest RH kernel 2.4.20, stock nfs-utils and
+nfs-utils 1.0.6) hangs on mount.
 
- --- "Mark A. Tagliaferro" <be_lak@yahoo.co.uk> wrote: > Excuse my ignorance,
-but what exactly is a reverse lookup? Anyway I did not
-> change any settings.  The NFS server has been working happily for the last
-> year
-> and a half.  The only thing that changed was that the hardrive containing the
-> data i want to share was not in the server because there were some bad sector
-> problems.  I copied the data onto another harddrive and inserted the new
-> harddrive.
-> 
-> I tried removing it again but still montd is crashing.
-> 
-> Mark
->  --- Matt Heaton <admin@0catch.com> wrote: > Did you just change the reverse
-> lookup on the IP of the client or server?
-> > They have to match you know.
-> > If you just added a reverse lookup and not a forward lookup sometimes it
-> > will do this.
-> > 
-> > Matt
-> > 
-> > 
-> > ----- Original Message ----- 
-> > From: "Mark A. Tagliaferro" <be_lak@yahoo.co.uk>
-> > To: <nfs@lists.sourceforge.net>
-> > Sent: Tuesday, October 07, 2003 4:51 AM
-> > Subject: [NFS] Unable to connect to NFS Server - mountd crashing
-> > 
-> > 
-> > > Hi all,
-> > >
-> > > This is driving me nuts because up to yesterday the system was working
-> but
-> > > suddenly it went berserk.  I'm trying to connect to m NFS shares on my
-> > SuSE 7.1
-> > > server and I'm getting the following error:
-> > >
-> > > mount: RPC: Unable to receive; errorno = Connection refused
-> > >
-> > > After a lot of investigation I stumbled on what is happening.  When the
-> > nfs
-> > > server is started, 'nfsserver status' gives me 'NFS Server is up'.  When
-> I
-> > > check with rpcinfo -p server I see portmap, mountd, nfs and ypbind (i'm
-> > using
-> > > NIS as well which is still working).
-> > >
-> > > When I try to connect from the client and get the error message something
-> > > really weird happens on the server. 'nfsserver status' returns 'NFS
-> server
-> > > down' and rpcinfo -p server doesn't show mountd anymore.
-> > >
-> > > I figure that somehow when the call is made mountd is crashing thus
-> > shutting
-> > > down the nfs server.
-> > >
-> > > Any idea of why this is happening or how to solve it?
-> > >
-> > > ________________________________________________________________________
-> > > Want to chat instantly with your online friends?  Get the FREE Yahoo!
-> > > Messenger http://mail.messenger.yahoo.co.uk
-> > >
-> > >
-> > > -------------------------------------------------------
-> > > This sf.net email is sponsored by:ThinkGeek
-> > > Welcome to geek heaven.
-> > > http://thinkgeek.com/sf
-> > > _______________________________________________
-> > > NFS maillist  -  NFS@lists.sourceforge.net
-> > > https://lists.sourceforge.net/lists/listinfo/nfs
-> > >
-> >  
-> 
-> ________________________________________________________________________
-> Want to chat instantly with your online friends?  Get the FREE Yahoo!
-> Messenger http://mail.messenger.yahoo.co.uk
-> 
-> 
-> -------------------------------------------------------
-> This SF.net email is sponsored by: SF.net Giveback Program.
-> SourceForge.net hosts over 70,000 Open Source Projects.
-> See the people who have HELPED US provide better services:
-> Click here: http://sourceforge.net/supporters.php
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs 
+The Windows box reports a successful mount, and since the other machines
+can mount just fine, I don't think that the problem is Windows.
 
-________________________________________________________________________
-Want to chat instantly with your online friends?  Get the FREE Yahoo!
-Messenger http://mail.messenger.yahoo.co.uk
+Linux reports that the server times out, returns getattr =3D 5, and =
+strace
+shows that the mount command hangs in mount().
+
+Any ideas or suggestions to get this going?
+
+Thanks!
+
+Alex Pavloff - apavloff@esatechnology.com
+ESA Technology ---- www.esatechnology.com
+------- Linux-based industrial HMI ------
+-------- www.esatechnology.com/5k -------
 
 
 -------------------------------------------------------
