@@ -1,17 +1,19 @@
-From: "Ashlyn Cedeno" <ashlyncedeno@speedsurf.pacific.net.ph>
-Subject: Register me for FREE!!!
-Date: Sun, 18 May 2003 22:20:31 +0800
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: how to enable locking in NFS?
+Date: 18 May 2003 17:43:02 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19HOu8-0001UW-00@sc8-sf-list1.sourceforge.net>
-Reply-To: "Ashlyn Cedeno" <ccedeno@speedsurf.pacific.net.ph>
+Message-ID: <shssmrcjm61.fsf@charged.uio.no>
+References: <20030517061202.38292.qmail@web8201.mail.in.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [66.110.29.249] (helo=speedsurf.pacific.net.ph)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19HOu8-0001UW-00
-	for <nfs@lists.sourceforge.net>; Sun, 18 May 2003 07:12:49 -0700
-To: <nfs@lists.sourceforge.net>
+Received: from pat.uio.no ([129.240.130.16])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19HQJd-0000IX-00
+	for <nfs@lists.sourceforge.net>; Sun, 18 May 2003 08:43:13 -0700
+To: Hank Shah <hankshah@yahoo.co.in>
+In-Reply-To: <20030517061202.38292.qmail@web8201.mail.in.yahoo.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,28 +26,17 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi, my name is Ashlyn Cedeno. I would like to share with you a unique
-internet buyer's club that enables you to get great discounts on
-everything you buy at over 200 online stores worldwide including Wal-Mart,
-Dell Computer, Disney & Staples! Membership is FREE and has many benefits!
+>>>>> " " == Hank Shah <hankshah@yahoo.co.in> writes:
 
-To get your FREE membership ID, send an email to
-ashcedeno@speedsurf.pacific.net.ph and put "REGISTER ME FOR FREE" in the
-subject and your full name in the body of your email. I will then register
-you into the system. You will receive a confirmation email asking you to
-verify. Open it up and activate your free membership immediately.
 
-Remember, there is no cost, no risk and no obligation to join.  You have
-nothing to lose and possibly a lot to gain!
+     > Is fcntl locking used for the same?  If yes,how do we enable
+     > it?  Do we have to include a seperate code for it in nfsd?  We
+     > are using Redhat Linux 7.2 , kernel 2.4.7-10, NFSv3
 
-Best Regards
+There is no support for mandatory locking under NFSv2 or NFSv3.
 
-Ashlyn Cedeno
-
-----------------------------------------------
-If you would prefer not to receive messages from me in the future, please
-send an email to ashcedeno@speedsurf.pacific.net.ph with REMOVE in the
-subject line. Thanks.
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
