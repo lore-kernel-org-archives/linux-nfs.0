@@ -1,24 +1,28 @@
-From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
-Subject: Re: FC2 NFS server + Solaris 9 4/04 strange permissions problem
-Date: Fri, 08 Oct 2004 13:16:38 -0700
+From: Garrick Staples <garrick@usc.edu>
+Subject: identify fs using a particular port
+Date: Fri, 8 Oct 2004 14:02:12 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1097266598.8133.117.camel@tesuji.nac.uci.edu>
-References: <1096996544.4460.769.camel@tesuji.nac.uci.edu>
+Message-ID: <20041008210212.GO7742@polop.usc.edu>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-/TbElx8sWtJvP9zauIbE"
-Cc: Dan Stromberg <strombrg@dcs.nac.uci.edu>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="WrgD/HgqBLyzORPv"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CG1Ak-0001m3-3v
-	for nfs@lists.sourceforge.net; Fri, 08 Oct 2004 13:17:02 -0700
-Received: from dcs.nac.uci.edu ([128.200.34.32] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1CG1sq-000491-41
+	for nfs@lists.sourceforge.net; Fri, 08 Oct 2004 14:02:36 -0700
+Received: from polop.usc.edu ([128.125.10.9])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1CG1AU-0006DT-TO
-	for nfs@lists.sourceforge.net; Fri, 08 Oct 2004 13:17:02 -0700
+	id 1CG1sX-0002bW-F2
+	for nfs@lists.sourceforge.net; Fri, 08 Oct 2004 14:02:36 -0700
+Received: from polop.usc.edu (localhost.localdomain [127.0.0.1])
+	by polop.usc.edu (8.12.11/8.12.11) with ESMTP id i98L2C8v023758
+	for <nfs@lists.sourceforge.net>; Fri, 8 Oct 2004 14:02:12 -0700
+Received: (from garrick@localhost)
+	by polop.usc.edu (8.12.11/8.12.11/Submit) id i98L2CCQ023756
+	for nfs@lists.sourceforge.net; Fri, 8 Oct 2004 14:02:12 -0700
 To: nfs@lists.sourceforge.net
-In-Reply-To: <1096996544.4460.769.camel@tesuji.nac.uci.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,81 +36,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
---=-/TbElx8sWtJvP9zauIbE
-Content-Type: text/plain
+--WrgD/HgqBLyzORPv
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 Content-Transfer-Encoding: quoted-printable
 
+Silly question that I can't find the answer to... is it possible to identify
+which mounted filesystem is using a particular port?
 
-There must be something about the combination of iso9660, loopback
-mounting, and NFS, because when I did a tar pipeline to copy the
-loopback mount into ext3, I was then able to NFS mount that onto the
-same sun from the same NFS server, and all was well.
+$ netstat -an | grep :782
+tcp        0      0 10.125.0.200:782        10.125.0.193:2049       ESTABLI=
+SHED=20
+                                 ^^^ I need this port for another daemon
 
-Thanks.
+I have a 14 filesystems mounted from that machine, all busy with user
+processes.  So I'm trying to figure out which filesystem needs to be unmoun=
+ted
+to free port 782.
 
-On Tue, 2004-10-05 at 10:15, Dan Stromberg wrote:
-> On an FC2 system, I'm:
->=20
-> 1) loopback mounting a .iso, with the following options from "mount":
-> 	/tmp/sol-8-hw4-sparc-v1.iso on /mnt/loop type iso9660
-> 	(ro,loop=3D/dev/loop0)
-> 2) Turning off iptables
-> 3) sharing out the loopback mount over NFS, with the following
-> /etc/exports entry:
-> 	/mnt/loop autoinst.nacs.uci.edu(ro,insecure,no_root_squash)
->=20
-> Then on the Solaris 9 4/04 system, I:
->=20
-> 1) Mount the loopback filesystem, with the following attributes from the
-> "mount| grep /mnt" command:
-> 	remote/read only/setuid/xattr/dev=3D430003c
-> 2) Run a:
-> 	find . -depth -print  | cpio -pdmu /some/local/dir
->=20
-> ...and when I do this, most files are copied fine, however a small
-> number of them give 'cpio: Error with fstatat() of
-> "Product/SUNWxwfnt/reloc/openwin/bin", errno 13, Permission denied'
-> errors.
->=20
-> I suspect that it isn't the same files giving this errror every time.
->=20
-> To make matters more perplexing, every time I do such a find | cpio, I
-> get errors, but when I ls these directories, I do Not Get Consistent
-> Behavior.  Sometimes I see:
-> 	ls -ld ./Product/SUNW1251f/reloc/usr/bin
-> 	./Product/SUNW1251f/reloc/usr/bin: Permission denied
-> ...while other times I see:
-> 	ls -ld ./Product/SUNW1251f/reloc/usr/bin
-> drwxr-xr-x   2 root     other       2048 Jan  8  2004
-> ./Product/SUNW1251f/reloc/usr/bin
->=20
->=20
-> Has anyone else encountered this?
->=20
-> Has anyone come across a solution?
->=20
-> Should I just stop using the loopback mounts, and burn some CD-R's?  :)
->=20
->=20
-> Thanks!
 --=20
-Dan Stromberg DCS/NACS/UCI <strombrg@dcs.nac.uci.edu>
+Garrick Staples, Linux/HPCC Administrator
+University of Southern California
 
-
---=-/TbElx8sWtJvP9zauIbE
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
+--WrgD/HgqBLyzORPv
+Content-Type: application/pgp-signature
+Content-Disposition: inline
 
 -----BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.4 (GNU/Linux)
+Version: GnuPG v1.2.3 (GNU/Linux)
 
-iD8DBQBBZvWmo0feVm00f/8RAiISAJ9a9El2jIhk7geZC964iunkg5QRhgCdFX1Y
-Dr2JdkRXY5WPhMZWKmiNGtM=
-=aU4A
+iD8DBQFBZwBU0SBUxJbm9HMRAvZqAJ4uPDEet8H+cFo0qfhgooF8oylYQgCgmS3i
+WJM3sTAKBA71ez9/LML3uAI=
+=q2Hi
 -----END PGP SIGNATURE-----
 
---=-/TbElx8sWtJvP9zauIbE--
-
+--WrgD/HgqBLyzORPv--
 
 
 -------------------------------------------------------
