@@ -1,23 +1,22 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Using mmap result in data corruption
-Date: Tue, 16 Nov 2004 11:20:23 -0500
-Message-ID: <1100622023.10975.46.camel@lade.trondhjem.org>
-References: <Pine.LNX.4.58.0411161206440.26094@ihme.ihme.org>
-	 <Pine.LNX.4.60.0411160817350.20803@harp.ngdc.noaa.gov>
+Subject: RE: async vs. sync
+Date: Tue, 16 Nov 2004 11:32:59 -0500
+Message-ID: <1100622780.10975.51.camel@lade.trondhjem.org>
+References: <482A3FA0050D21419C269D13989C61130435EB6A@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: Miika Pekkarinen <miipekk@ihme.org>, nfs@lists.sourceforge.net
+Cc: Olaf Kirch <okir@suse.de>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CU64L-0008CE-Ct
-	for nfs@lists.sourceforge.net; Tue, 16 Nov 2004 08:20:37 -0800
+	id 1CU6GW-0000gp-PR
+	for nfs@lists.sourceforge.net; Tue, 16 Nov 2004 08:33:12 -0800
 Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CU64J-0005hu-Ln
-	for nfs@lists.sourceforge.net; Tue, 16 Nov 2004 08:20:37 -0800
-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-In-Reply-To: <Pine.LNX.4.60.0411160817350.20803@harp.ngdc.noaa.gov>
+	id 1CU6GT-0007Hj-TT
+	for nfs@lists.sourceforge.net; Tue, 16 Nov 2004 08:33:12 -0800
+To: Charles Lever <Charles.Lever@netapp.com>
+In-Reply-To: <482A3FA0050D21419C269D13989C61130435EB6A@lavender-fe.eng.netapp.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,23 +30,17 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-ty den 16.11.2004 Klokka 08:21 (-0700) skreiv Ara.T.Howard:
-
-> i think the man page is badly written.  it has confused me too.  i think it
-> should probably say
+ty den 16.11.2004 Klokka 08:15 (-0800) skreiv Lever, Charles:
+> is the effect of the "sync" export option limited to NFSv3 COMMIT, or is
+> it limited to both NFSv3 COMMIT and NFSv3 FILE_SYNC/DATA_SYNC WRITE?
 > 
->    "msync  flushes  changes  made  to  the in-core copy of a file that was
->    mapped into memory using mmap(2) back to disk. Without use of this call
->    there is no guarantee that changes have been written WHEN munmap(2) is
->    called and the map is released."
+> what are the effects on NFSv4 writes and commits?
 
-Yep. That would indeed be more consistent with the actual behaviour of
-munmap(). There have been no guarantees that munmap() would cause any
-data to be flushed to disk either in Linux 2.4.x or with the 2.6.x
-kernels.
+No! It is clearly not just limited to writes and commits.
 
-This is BTW true of *all* filesystems, including local block based
-filesystems. It is not behaviour that is specific to NFS only.
+Look at the code in fs/nfs/vfs.c: there are EX_ISSYNC() exceptions that
+wrap calls to nfsd_sync_dir() in nfsd*_create(), nfsd_symlink(),
+nfsd_link(), nfsd_rename(), and nfsd_unlink().
 
 Cheers,
   Trond
