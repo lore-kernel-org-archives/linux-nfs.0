@@ -1,26 +1,22 @@
-From: Ian Kent <raven@themaw.net>
-Subject: Re: NFS readonly failover and linux?
-Date: Tue, 1 Feb 2005 09:58:59 +0800 (WST)
-Message-ID: <Pine.LNX.4.58.0502010945400.25875@wombat.indigo.net.au>
-References: <1106871309.6181.254.camel@seki.nac.uci.edu>
- <Pine.LNX.4.61.0501291127450.1607@donald.themaw.net>
- <1107205302.4071.17.camel@seki.nac.uci.edu>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Oops on killing process with soft-unmounted NFS3 krb5 mount
+Date: Mon, 31 Jan 2005 18:35:41 -0800
+Message-ID: <1107225341.16985.53.camel@lade.trondhjem.org>
+References: <41FE9A03.1030008@csua.berkeley.edu>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Jeff Moyer <jmoyer@redhat.com>,
-	autofs mailing list <autofs@linux.kernel.org>,
-	nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Content-Type: multipart/mixed; boundary="=-n6CG+Krk5x4HtgKDvNyz"
+Cc: nfs@lists.sourceforge.net
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CvnI6-0005FT-4L
-	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 17:57:18 -0800
-Received: from wombat.indigo.net.au ([202.0.185.19])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1Cvnx5-0007MN-Fj
+	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 18:39:39 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1CvnI5-0001EA-8R
-	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 17:57:18 -0800
-To: Dan Stromberg <strombrg@dcs.nac.uci.edu>
-In-Reply-To: <1107205302.4071.17.camel@seki.nac.uci.edu>
+	id 1Cvnx4-00012i-Rn
+	for nfs@lists.sourceforge.net; Mon, 31 Jan 2005 18:39:39 -0800
+To: Mark Goodman <mgoodman@CSUA.Berkeley.EDU>
+In-Reply-To: <41FE9A03.1030008@csua.berkeley.edu>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,85 +30,64 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, 31 Jan 2005, Dan Stromberg wrote:
 
-> On Sat, 2005-01-29 at 11:46 +0800, raven@themaw.net wrote:
-> > On Thu, 27 Jan 2005, Dan Stromberg wrote:
-> > 
-> > >
-> > > The autofs man pages on Redhat Enterprise Linux 3 as well as Fedora Core
-> > > 3 both say that autofs supports replicated, readonly fileserver failover
-> > > - but then there's a footnote of sorts that says autofs only supports it
-> > > to the extent that mount does.
-> > 
-> > That part of the man page is old and slightly out of date.
-> > 
-> > The reason that this is left there is that autofs cannot support 
-> > dynamic failover as it just uses mount. However, a different host may be 
-> > selected at mount, after a previous timeout, for example. The issue of 
-> > umounting existing mounts from servers that have gone away is not 
-> > explicitly dealt with yet.
-> 
-> I see.
-> 
-> > >
-> > > Upon trying to do such a mount, I get:
-> > >
-> > > seki-root> mount
-> > > dcslib1.nacs.uci.edu,dcslib4.nacs.uci.edu:/dcspdb/rhel-3-i686 /mnt/nfs
-> > > mount: warning: multiple hostnames not supported
-> > > Thu Jan 27 16:12:18
-> 
-> > What version of autofs are you using?
-> > The autofs replicated server code is still relatively new.
+--=-n6CG+Krk5x4HtgKDvNyz
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
 
-But, as we know, mount doesn't know about multiple host names. autofs 
-breaks these out.
+m=E5 den 31.01.2005 Klokka 12:50 (-0800) skreiv Mark Goodman:
+> I am running 2.6.11-rc2 with your patches. I recall this behavior on=20
+> 2.6.8 as well.
+>=20
+> I can consistently reproduce this oops on my Fedora Core 3 machine with=20
+> the following steps:
+>=20
+> Login as a normal user with a home directory on an NFS3 krb5 mount
+> Login as root and run init 1. init 1 unmounts the mount.
+> Kill the normal user's shell.
+>=20
+> In practice, this often happens when switching to runlevel 6 for a reboot=
+.
+>=20
+> Jan 31 12:32:39 soda kernel: net/sunrpc/rpc_pipe.c: rpc_lookup_parent=20
+> failed to find path /nfs/clnt0/krb5
 
-> 
-> FC3: autofs-4.1.3-28
-> RHEL3: autofs-4.1.3-47
+OK. Looks like kill_litter_super() might be the culprit here:
+d_genocide() will give the above symptom. Does the appended patch work?
 
-I believe that the replicated server code should be present in both of 
-these.
+Cheers
+  Trond
 
-Can you confirm please Jeff?
+--=20
+Trond Myklebust <trond.myklebust@fys.uio.no>
 
-Perhaps you are seeing a bug which needs to be addressed.
+--=-n6CG+Krk5x4HtgKDvNyz
+Content-Disposition: inline; filename=linux-2.6.11-20-pipefs_detachmntfix.dif
+Content-Type: text/plain; name=linux-2.6.11-20-pipefs_detachmntfix.dif; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 
-> 
-> The FC3 is yum update'd fairly regulary, and the RHEL3 is up2date'd
-> regularly as well.
-> 
-> > If your autofs supports replicated server map entries then multiple 
-> > host mount requests will not reach the mount command.
-> 
-> Interesting.
-> 
-> > If you are using a RedHat based distro then check
-> > http://people.redhat.com/jmoyer
-> > for the latest patched versions
-> > 
-> > Also, you may need a kernel patch depending on your kernel version. See 
-> > README.patches in the distribution or join the autofs list at
-> > http://linux.kernel.org/mailman/listinfo/autofs
-> 
-> I'm certain my management will only go for this, in the short term, if
-> it works on a mainstream RHEL3 system.  Unfortunately, for me, the rest
-> is academic interest.
+RPC: Fix an oopsable condition on detached mount of rpc_pipefs
 
-Once again I believe that the kernels mentioned here are up to date wrt 
-autofs.
+ Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ rpc_pipe.c |    2 +-
+ 1 files changed, 1 insertion(+), 1 deletion(-)
 
-Certainly, the latest FC3 kernel is at 2.6.10 which has all the autofs4 
-updates included in the base kernel.
+Index: linux-2.6.11-rc2/net/sunrpc/rpc_pipe.c
+===================================================================
+--- linux-2.6.11-rc2.orig/net/sunrpc/rpc_pipe.c
++++ linux-2.6.11-rc2/net/sunrpc/rpc_pipe.c
+@@ -795,7 +795,7 @@ static struct file_system_type rpc_pipe_
+ 	.owner		= THIS_MODULE,
+ 	.name		= "rpc_pipefs",
+ 	.get_sb		= rpc_get_sb,
+-	.kill_sb	= kill_litter_super,
++	.kill_sb	= kill_anon_super,
+ };
+ 
+ static void
 
-I believe the latest update to RHEL3 is also up to date. Jeff?
-
-So perhaps you could send a log trace with the "--debug" option added to 
-the master map entry.
-
-Ian
+--=-n6CG+Krk5x4HtgKDvNyz--
 
 
 
