@@ -1,24 +1,19 @@
-From: Olaf Kirch <okir@suse.de>
+From: <james-p@moving-picture.com>
 Subject: Re: limitations at 5,8 GB?
-Date: Thu, 1 Jan 2004 19:46:29 +0100
+Date: Fri, 2 Jan 2004 09:29:39 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040101184629.GB12146@suse.de>
-References: <200312251945.42382.nuway@gmx.net> <news2mail-bsu6gq$rfj$1@cartman.spoiled.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Cc: nfs@lists.sourceforge.net
+Message-ID: <200401020929.i029TdS23123@pinatubo.mpc.local>
+Cc: nuway@gmx.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1Ac7q5-0003P2-1k
-	for nfs@lists.sourceforge.net; Thu, 01 Jan 2004 10:46:33 -0800
-Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.30)
-	id 1Ac7q4-0007IE-IN
-	for nfs@lists.sourceforge.net; Thu, 01 Jan 2004 10:46:32 -0800
-To: Juri Haberland <juri@koschikode.com>
-In-Reply-To: <news2mail-bsu6gq$rfj$1@cartman.spoiled.org>
+	id 1AcLd9-0000gB-MW
+	for nfs@lists.sourceforge.net; Fri, 02 Jan 2004 01:30:07 -0800
+Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1AcLd9-0006Kf-CW
+	for nfs@lists.sourceforge.net; Fri, 02 Jan 2004 01:30:07 -0800
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,23 +26,21 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, Dec 31, 2003 at 09:56:42AM +0000, Juri Haberland wrote:
-> This what I get from 'df' on one of my clients:
-> ...
-> nfs:/export/data     160066688 150683400   9383288  95% /net/data
-> ...
-> 
-> You can see that I can access an exported disk with the size of 160GB.
+>im new to nfs and i googeld about this problem but i didnt find a solution for
+>the following problem:
+>
+>I got a 100 GIG harddisk on my server and i mounted it on my client without
+>any  warnings or problems. the only thing is that i now have 5.8 GB instead
+>of 100. Are there any restrictions in nfs protocol, or do u know a possible
+>solution for this prob?
 
-I remember there was an integer overflow in the NFS statfs implementation
-some 2.4 kernels that caused df to report silly disk sizes if the kernel
-picked the wrong block size.
+Are you sure you have mounted the 100Gb disk over NFS?
 
-Olaf
--- 
-Olaf Kirch     |  Stop wasting entropy - start using predictable
-okir@suse.de   |  tempfile names today!
----------------+ 
+If the 100Gb disk was not mounted on the server, then you may just be seeing
+the mount point directory (e.g. a directory on the server's root disk), or you
+could have exported/mounted the wrong directory?
+
+James Pearson
 
 
 -------------------------------------------------------
