@@ -1,53 +1,71 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Non-blocking lock requests during the grace period
-Date: 15 Nov 2002 03:33:56 +0100
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <shswunf8stn.fsf@helicity.uio.no>
-References: <OFCACC2A48.A38B3611-ON87256C71.006D0CEB@us.ibm.com>
+From: Hirokazu Takahashi <taka@valinux.co.jp>
+Subject: [PATCH] only udp calls sock_sendmsg() to set destination.
+Date: Fri, 15 Nov 2002 13:27:06 +0900 (JST)
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <20021115.132706.26959611.taka@valinux.co.jp>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: Juan Gomez <juang@us.ibm.com>
-In-Reply-To: <OFCACC2A48.A38B3611-ON87256C71.006D0CEB@us.ibm.com>
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: Text/Plain; charset=us-ascii
+Cc: <nfs@lists.sourceforge.net>
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from panoramix.vasoftware.com ([198.186.202.147])
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18CaCV-0003nU-00
+	for <nfs@lists.sourceforge.net>; Thu, 14 Nov 2002 22:43:35 -0800
+Received: from sv1.valinux.co.jp ([202.221.173.100]:1224)
+	by panoramix.vasoftware.com with esmtp (Exim 4.05-VA-mm1 #1 (Debian))
+	id 18CYDN-0003rh-00
+	for <nfs@lists.sourceforge.net>; Thu, 14 Nov 2002 20:36:21 -0800
+To: <neilb@cse.unsw.edu.au>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Juan Gomez <juang@us.ibm.com> writes:
+Hello Neil,
 
-     > I found out that the current Linux client of lockd blocks
-     > non-blocking lock requests while the server is in the grace
-     > period.  I think this is incorrect behavior and I am wondering
-     > if the will exists out there to correct this and return
-     > "resource not available" to the process when a request is for a
-     > *non-blocking* lock while the server is in the grace period.
+I realized the first sock_sendmsg in svc_sendto() is meaningless
+in case of TCP as the connection is already established.
+I fixed it so that sock_sendmsg is called only if it's UDP.
 
-Would the following fix it?
+Thank you,
+Hirokazu Takahashi.
 
-Cheers,
-  Trond
 
---- linux-2.5.47/fs/lockd/clntproc.c.orig	2002-09-29 10:15:13.000000000 -0400
-+++ linux-2.5.47/fs/lockd/clntproc.c	2002-11-14 21:32:26.000000000 -0500
-@@ -256,10 +256,8 @@
- 		msg.rpc_cred = NULL;
+--- net/sunrpc/svcsock.c.ORG4	Sun Nov  3 08:37:04 2030
++++ net/sunrpc/svcsock.c	Sun Nov  3 08:38:34 2030
+@@ -351,11 +351,13 @@ svc_sendto(struct svc_rqst *rqstp, struc
+ 	down(&svsk->sk_sem);
  
- 	do {
--		if (host->h_reclaiming && !argp->reclaim) {
--			interruptible_sleep_on(&host->h_gracewait);
--			continue;
--		}
-+		if (host->h_reclaiming && !argp->reclaim)
-+			goto wait_on_grace;
+ 	/* set the destination */
+-	oldfs = get_fs(); set_fs(KERNEL_DS);
+-	len = sock_sendmsg(sock, &msg, 0);
+-	set_fs(oldfs);
+-	if (len < 0)
+-		goto out;
++	if (rqstp->rq_prot == IPPROTO_UDP) {
++		oldfs = get_fs(); set_fs(KERNEL_DS);
++		len = sock_sendmsg(sock, &msg, 0);
++		set_fs(oldfs);
++		if (len < 0)
++			goto out;
++	}
  
- 		/* If we have no RPC client yet, create one. */
- 		if ((clnt = nlm_bind_host(host)) == NULL)
-@@ -296,6 +294,9 @@
- 			dprintk("lockd: server returns status %d\n", resp->status);
- 			return 0;	/* Okay, call complete */
- 		}
-+wait_on_grace:
-+		if (!argp->block)
-+			return -EAGAIN;
- 
- 		/* Back off a little and try again */
- 		interruptible_sleep_on_timeout(&host->h_gracewait, 15*HZ);
+ 	/* send head */
+ 	if (slen == xdr->head[0].iov_len)
+
+
+-------------------------------------------------------
+This sf.net email is sponsored by: To learn the basics of securing 
+your web site with SSL, click here to get a FREE TRIAL of a Thawte 
+Server Certificate: http://www.gothawte.com/rd524.html
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
