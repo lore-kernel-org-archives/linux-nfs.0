@@ -1,21 +1,23 @@
-From: "Jocky Wilson" <jocky_wilson@hotmail.com>
-Subject: Re: rsize, wsize > 32Kb : how?
-Date: Fri, 10 Dec 2004 13:54:48 +0000
-Message-ID: <BAY21-F57470B0FF357BCAE964EEE4A80@phx.gbl>
-References: <1102636343.3784.27.camel@tesuji.nac.uci.edu>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: ANNOUNCE: nfs-utils 1.0.7-pre2
+Date: Fri, 10 Dec 2004 09:30:32 -0500
+Message-ID: <20041210143032.GB5886@fieldses.org>
+References: <16825.223.924965.582375@cse.unsw.edu.au> <200412101420.06172.bernd-schubert@web.de>
 Mime-Version: 1.0
-Content-Type: text/plain; format=flowed
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CclEq-0000MI-N5
-	for nfs@lists.sourceforge.net; Fri, 10 Dec 2004 05:55:16 -0800
-Received: from bay21-f5.bay21.hotmail.com ([65.54.233.94] helo=hotmail.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CclEq-0008N1-KE
-	for nfs@lists.sourceforge.net; Fri, 10 Dec 2004 05:55:16 -0800
-In-Reply-To: <1102636343.3784.27.camel@tesuji.nac.uci.edu>
-To: nfs@lists.sourceforge.net
+	id 1Cclmm-0003HA-Gq
+	for nfs@lists.sourceforge.net; Fri, 10 Dec 2004 06:30:20 -0800
+Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.41)
+	id 1Cclml-0008GG-UM
+	for nfs@lists.sourceforge.net; Fri, 10 Dec 2004 06:30:20 -0800
+To: Bernd Schubert <bernd-schubert@web.de>
+In-Reply-To: <200412101420.06172.bernd-schubert@web.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,19 +31,14 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-In http://nfs.sourceforge.net/nfs-howto/performance.html#PACKET-AND-NETWORK 
-it is written:
-"Note that NFS Version 2 is limited to a maximum of 8K, regardless of the 
-maximum block size defined by NFSSVC_MAXBLKSIZE; Version 3 will support up 
-to 64K, if permitted"
+On Fri, Dec 10, 2004 at 02:20:06PM +0100, Bernd Schubert wrote:
+> Should the configure script assume '--disable-gss' when --disable-nfsv4 is 
+> given? 
 
-My question is what requirements must be fullfilled such that NFSv3 daemon 
-will permit 64k blocksizes?
+It's possible someone could want gss but not nfsv4; the two are
+independent, since gss works for all nfs versions.
 
-Cheers,
-JockyW
-
-
+--b.
 
 
 -------------------------------------------------------
