@@ -1,32 +1,21 @@
-From: nhorman@redhat.com
-Subject: [RFC] implementing BSD style locks on NLM (flocks)
-Date: Sun, 27 Feb 2005 14:21:13 -0500
-Message-ID: <20050227192113.GA5778@localhost.localdomain>
+From: "Roger Heflin" <rheflin@atipa.com>
+Subject: RE: knfsd brought to its knees, by a simple rsync or cp operation
+Date: Tue, 1 Mar 2005 08:21:29 -0600
+Message-ID: <EXCHG20031XvpFVjCRG00000008@EXCHG2003.microtech-ks.com>
+References: <20050301065703.7e52cf4e@be.back.l8r.net>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="OgqxwSJOaUobr8KG"
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Content-Type: text/plain;
+	charset="us-ascii"
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D5TyD-0007VW-Lt
-	for nfs@lists.sourceforge.net; Sun, 27 Feb 2005 11:20:49 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1D5TyC-0002hq-4U
-	for nfs@lists.sourceforge.net; Sun, 27 Feb 2005 11:20:49 -0800
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.12.11/8.12.11) with ESMTP id j1RJKftJ014383
-	for <nfs@lists.sourceforge.net>; Sun, 27 Feb 2005 14:20:41 -0500
-Received: from localhost.localdomain (vpn50-32.rdu.redhat.com [172.16.50.32])
-	by int-mx1.corp.redhat.com (8.11.6/8.11.6) with ESMTP id j1RJKfK20176
-	for <nfs@lists.sourceforge.net>; Sun, 27 Feb 2005 14:20:41 -0500
-Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by localhost.localdomain (8.13.1/8.13.1) with ESMTP id j1RJLEfR005786
-	for <nfs@lists.sourceforge.net>; Sun, 27 Feb 2005 14:21:14 -0500
-Received: (from nhorman@localhost)
-	by localhost.localdomain (8.13.1/8.13.1/Submit) id j1RJLDjp005785
-	for nfs@lists.sourceforge.net; Sun, 27 Feb 2005 14:21:13 -0500
-To: nfs@lists.sourceforge.net
+	id 1D68Cu-0002ch-0T
+	for nfs@lists.sourceforge.net; Tue, 01 Mar 2005 06:18:40 -0800
+Received: from host27-37.discord.birch.net ([65.16.27.37] helo=EXCHG2003.microtech-ks.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1D68Cq-00022e-0N
+	for nfs@lists.sourceforge.net; Tue, 01 Mar 2005 06:18:39 -0800
+To: "'Brad Barnett'" <lists@L8R.net>, <nfs@lists.sourceforge.net>
+In-Reply-To: <20050301065703.7e52cf4e@be.back.l8r.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,44 +29,92 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Brad,
 
---OgqxwSJOaUobr8KG
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+My post will bounce, so it won't go to the list, my email and domain
+name don't agree.
 
-Hey all-
-	I was wondering, how much interest there might be in the addition of
-support for BSD style locks (flocks) over NLM.  I was thinking that a bit c=
-ould
-be added to differentiate the two namespaces.  Any thoughts appreciated. =
-=20
+The problem is simple, I have never found a decent solution to it.
 
-Regards,
-Neil
---=20
-/***************************************************
- *Neil Horman
- *Software Engineer
- *Red Hat, Inc.
- *nhorman@redhat.com
- *gpg keyid: 1024D / 0x92A74FA1
- *http://pgp.mit.edu
- ***************************************************/
+The basic issue is that a large local cp quickly fills up the buffer cache
+on the local machine and can cause the nfsd processes to starve and have
+difficulty getting in their io.  Watch what happens to the buffer cache
+and disk when this is happening.   The later versions of linux should 
+be worse as they fill the buffer cache faster.    I suspect that the 
+problem is that there is always a long line of operations to take care
+of and when NFS comes along it has to get in line behind whatever is
+already queued up.
 
---OgqxwSJOaUobr8KG
-Content-Type: application/pgp-signature
-Content-Disposition: inline
+I have seen it on older versions of linux (2.2) and it took around 2-3
+to make things really bad, but 1 would do a good job of making response
+bad.   
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.6 (GNU/Linux)
+                                 Roger
 
-iD8DBQFCIh2pM+bEoZKnT6ERAoM1AJ470ZrdSAsKJ/2eWdvHzkgV17nQFwCeN9TV
-RNy6W21StR+7UrCNn2D1AU8=
-=eVpr
------END PGP SIGNATURE-----
+> -----Original Message-----
+> From: nfs-admin@lists.sourceforge.net 
+> [mailto:nfs-admin@lists.sourceforge.net] On Behalf Of Brad Barnett
+> Sent: Tuesday, March 01, 2005 5:57 AM
+> To: nfs@lists.sourceforge.net
+> Subject: Re: [NFS] knfsd brought to its knees, by a simple 
+> rsync or cp operation
+> 
+> On Tue, 1 Mar 2005 10:55:48 +0100
+> Olaf Kirch <okir@suse.de> wrote:
+> 
+> > On Mon, Feb 28, 2005 at 11:20:18AM -0500, Brad Barnett wrote:
+> > > I start a long and extensive cp -a process on the nfs 
+> server.  Local 
+> > > 'ls' responses are instant.  Write and read operations 
+> are instant 
+> > > (it's a raid 10) on the local box, as well.  However, my single 
+> > > remote client's "ls" operation changes to a jerky, slow 
+> operation.. 
+> > > with upwards of 5 second pauses in reads.
+> > 
+> > Are you using NFS over UDP? If you ping the server from the 
+> client, do 
+> > the round trip time and packet loss rate change when you start the 
+> > heavy IO jobs on the server?
+> 
+> I just tried, and ping times do not visibly change (0.1ms 
+> before and after).
+> 
+> However, this is what is really erking me.  This isn't a 
+> heavy I/O job. 
+> This is just _one_ cp.  Nothing else is happening on the 
+> entire server!  I just did, in the above test:
+> 
+> client: ls -R /home
+> 
+> The client is fine, for very long periods of time...
+> 
+> Then, while the above command is still happening:
+> 
+> server: cp -a /raid/home /raid/hometest
+> 
+> Within 10 seconds, the output of ls -R /home slows.  Within 
+> 20 seconds, it _stop_.  It then sits there for seconds, and 
+> spews out a page in small jumps.  Again, a ls /raid/home on 
+> the _server_ barely slows, and is constant.
+> 
+> I'm really scratching my head here.
+> 
+> 
+> 
+> 
+> 
+> 
+> -------------------------------------------------------
+> SF email is sponsored by - The IT Product Guide Read honest & 
+> candid reviews on hundreds of IT Products from real users.
+> Discover which products truly live up to the hype. Start reading now.
+> http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net 
+> https://lists.sourceforge.net/lists/listinfo/nfs
+> 
 
---OgqxwSJOaUobr8KG--
 
 
 -------------------------------------------------------
