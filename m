@@ -1,25 +1,23 @@
-From: Robert Schwebel <robert@schwebel.de>
-Subject: Makefile system
-Date: Wed, 23 Jun 2004 10:09:42 +0200
+From: James Pearson <james-p@moving-picture.com>
+Subject: acl_extended_file() and NFS file systems
+Date: Wed, 23 Jun 2004 17:11:53 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040623080942.GJ21651@pengutronix.de>
+Message-ID: <40D9ABC9.1070007@moving-picture.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Cc: Benedikt Spranger <b.spranger@pengutronix.de>
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Bd2pT-0002K1-Fw
-	for nfs@lists.sourceforge.net; Wed, 23 Jun 2004 01:09:59 -0700
-Received: from amalthea.dnx.de ([193.108.181.146] ident=mail)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.30)
-	id 1Bd2pT-0001v4-0f
-	for nfs@lists.sourceforge.net; Wed, 23 Jun 2004 01:09:59 -0700
-Received: from metis.pengutronix.de ([213.252.143.165]:55192)
-	by amalthea.dnx.de with asmtp (Exim 4.34)
-	id 1Bd2pC-0001gi-9j
-	for nfs@lists.sourceforge.net; Wed, 23 Jun 2004 10:09:54 +0200
+	id 1BdALw-0005kJ-Lo
+	for nfs@lists.sourceforge.net; Wed, 23 Jun 2004 09:12:00 -0700
+Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1BdALw-0005NH-17
+	for nfs@lists.sourceforge.net; Wed, 23 Jun 2004 09:12:00 -0700
+Received: from minion.mpc.local ([172.16.11.112] helo=moving-picture.com)
+	by moving-picture.com with esmtp (Exim 4.24)
+	id 1BdALp-0005qK-FD
+	for nfs@lists.sourceforge.net; Wed, 23 Jun 2004 17:11:53 +0100
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,39 +31,62 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi, 
+We've just come across a problem with running 'ls -l' on NFS mounted 
+files from a client running Fedora Core 1 with the latest coreutils RPM 
+(5.0-34.1)
 
-While working on the PTXdist build system we noticed that the nfs utils'
-Makefile system is significantly broken when it comes to cross
-compiling. After hacking the old code for some hours we had the
-impression that it was so seriously broken that we re-wrote the
-makefiles with the GNU autotools.
+Running ls -l on a file exported by a RedHat 7.2 system gives
 
-It doesn't make much sense to post a patch - this would probably be
-larger than the packet itself. As a base for further discussion, here's
-our version: 
+% ls -l /some/remote/file
+ls: /some/remote/file: Input/output error
+-rw-rw-r--  1 james user 17373 Jun  1 20:02 /some/remote/file
 
-	http://www.pengutronix.de/software/nfs-utils/
+/var/log/messages on the client gives:
 
-This version does the following things:
+Jun 23 16:00:53 wingnut kernel: call_verify: server accept status: 1
+Jun 23 16:00:53 wingnut last message repeated 2 times
+Jun 23 16:00:53 wingnut kernel: RPC: garbage, exit EIO
 
-	* remove all old Makefiles and replace them with proper
-	  Makefile.am files
-	* tested for cross compilation
-	* tested for out-of-tree builds
-	* currently the Debian/Red Hat support is missing
-	  (might be something for somebody who knows what he 
-	  is doing)
+I've tracked this down to the use of acl_extended_file() by this version 
+of ls - it works OK on local file systems and NFS file systems exported 
+by other FC1 machines and Solaris boxes, but gives this error on file 
+systems exported by RedHat 7.2 and Irix boxes.
 
-Any comments are welcome...
+I can reproduce the errors with a simple bit of 'C':
 
-Robert
--- 
- Dipl.-Ing. Robert Schwebel | http://www.pengutronix.de
- Pengutronix - Linux Solutions for Science and Industry
-   Handelsregister:  Amtsgericht Hildesheim, HRA 2686
-     Hornemannstraﬂe 12,  31137 Hildesheim, Germany
-    Phone: +49-5121-28619-0 |  Fax: +49-5121-28619-4
+#include <sys/types.h>
+#include <acl/libacl.h>
+#include <errno.h>
+
+main(int argc, char **argv)
+{
+         int ret;
+
+         errno = 0;
+         ret = acl_extended_file (argv[1]);
+         printf("ret = %d\nerrno = %d\n", ret, errno);
+         exit (0);
+}
+
+(need to link with -lacl)
+
+I've searched around and come across references to a 'noacl' option to 
+mount that might help, but mount on Fedora doesn't seem to support this 
+- I get:
+
+unknown nfs mount option: noacl
+
+I don't really know if this a real problem (I can easily fix 'ls' by 
+backing out the patch to coreutils that introduces this issue), but I 
+would like to understand more on what is going on ...
+
+
+Thanks
+
+James Pearson
+
+
+
 
 
 -------------------------------------------------------
