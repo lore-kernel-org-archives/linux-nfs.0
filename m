@@ -1,86 +1,45 @@
-From: mehta kiran <kiranmehta1981@yahoo.com>
-Subject: Re: file :"/var/lib/nfs/rmtab"
-Date: Thu, 3 Feb 2005 03:42:41 -0800 (PST)
-Message-ID: <20050203114241.7498.qmail@web51610.mail.yahoo.com>
-References: <42020B15.4030602@moving-picture.com>
+From: "William A.(Andy) Adamson" <andros@citi.umich.edu>
+Subject: apple desktop bus (ADB) hangs on 2.6.10/11 kernels
+Date: Thu, 03 Feb 2005 08:35:55 -0500
+Message-ID: <20050203133555.32FF71BB78@citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CwfNo-0002tS-MU
-	for nfs@lists.sourceforge.net; Thu, 03 Feb 2005 03:42:48 -0800
-Received: from web51610.mail.yahoo.com ([206.190.38.215])
-	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
-	id 1CwfNn-0005F1-4r
-	for nfs@lists.sourceforge.net; Thu, 03 Feb 2005 03:42:48 -0800
-To: James Pearson <james-p@moving-picture.com>
-In-Reply-To: <42020B15.4030602@moving-picture.com>
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Cc: nfsv4@linux-nfs.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+To: nfs@lists.sourceforge.net
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-ID: <nfs.lists.sourceforge.net>
 
-Or is it for security reasons , so as to
-prevent server from fake client handle.
+hello
 
---thanks,.
- --kiran
+i'd really like to get my powerbook g4 running the latest linux kernels. i 
+have no problem with kernels 2.6.6 or earlier. the 2.6.10 or 2.6.11-rcX 
+kernels all hang checking the ADB. any help would be appreciated. a config 
+file would be wonderful!
 
---- James Pearson <james-p@moving-picture.com> wrote:
-
-> mehta kiran wrote:
-> > Hi , 
-> >        In mountd man page , it written that
-> >        rmtab is ornamental and client can contiune
-> >        to use filesystem even after calling umount
-> >        for that filesystem.
-> > 
-> >        Is there any real use of this rmtab file ?
-> >        Does mountd use this file to know the
-> >        clients having access to filesystem ?
-> >        If yes , isn,t filehandle supplied by 
-> >        client enough to prove that client has
-> access
-> >        to filesystem. ?
-> 
-> On 2.4 kernels it is not 'ornamental' - if the
-> server reboots without an 
-> entry for a client mount in /var/lib/nfs/rmtab, then
-> the client will get 
-> a stale NFS file handle when the server reboots.
-> This can happen if 
-> umount fails e.g. the mount point is busy -
-> rpc.mountd on the server 
-> removes the entry from /var/lib/nfs/rmtab, but
-> umount fails, so the file 
-> system remains mounted.
-> 
-> I believe the situation has changed with 2.6.
-> 
-> James Pearson
-> 
+here is my powerbook's /proc/cpuinfo:
 
 
-__________________________________________________
-Do You Yahoo!?
-Tired of spam?  Yahoo! Mail has the best spam protection around 
-http://mail.yahoo.com 
+cpu             : 7457, altivec supported
+clock           : 1249MHz
+revision        : 1.1 (pvr 8002 0101)
+bogomips        : 763.49
+machine         : PowerBook5,2
+motherboard     : PowerBook5,2 MacRISC3 Power Macintosh
+board revision  : 00000002
+detected as     : 287 (Unknown Intrepid-based)
+pmac flags      : 00000008
+L2 cache        : 512K unified
+memory          : 512MB
+pmac-generation : NewWorld
 
 
--------------------------------------------------------
-This SF.Net email is sponsored by: IntelliVIEW -- Interactive Reporting
-Tool for open source databases. Create drag-&-drop reports. Save time
-by over 75%! Publish reports on the web. Export to DOC, XLS, RTF, etc.
-Download a FREE copy at http://www.intelliview.com/go/osdn_nl
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+-->Andy
