@@ -1,20 +1,12 @@
-From: Thomas =?iso-8859-1?Q?Lang=E5s?= <tlan@stud.ntnu.no>
-Subject: Re: Re: Unable to kill processes in D-state
-Date: Sun, 6 Oct 2002 23:40:37 +0200
+From: =?iso-8859-1?q?Victor=20Zamora?= <victor77422@yahoo.com.ar>
+Subject: Export problem ...
+Date: Sun, 6 Oct 2002 20:13:43 -0300 (ART)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20021006214037.GA18115@stud.ntnu.no>
-References: <Pine.LNX.4.44.0210062045001.15836-100000@xpc1.ast.cam.ac.uk>
-Reply-To: nfs@lists.sourceforge.net
+Message-ID: <20021006231343.664.qmail@web14302.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from flaske.stud.ntnu.no ([129.241.56.72])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17yJ8l-00006v-00
-	for <nfs@lists.sourceforge.net>; Sun, 06 Oct 2002 14:40:43 -0700
-To: Jeremy Sanders <jss@ast.cam.ac.uk>
-In-Reply-To: <Pine.LNX.4.44.0210062045001.15836-100000@xpc1.ast.cam.ac.uk>
+To: NFS@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,22 +19,32 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-Jeremy Sanders:
-> This sounds a similar problem (well it has similar symptoms) to what we
-> had with RedHat's kernel for (null) and their rawhide kernel. I think this
-> turned out to be an ext3 interaction bug.
+Hi,
 
-We don't use ext3 on any of our systems...
+ I'm writing to you to because while trying to
+configure the NFS server I had a problem. After
+running nfsd, mountd,portmapd and configuring the
+exports, host.allow and host.deny files, I ran 
+exportfs -ra to make the kernell know about the
+exports I wished to make. But the problem is that when
+I look at xtab, the path I have exported doesn't
+appear. 
+  When I call a mount from the client, I get a
+permison denyal from de server. I guess that the path
+is not well exported but I can't get a solution to
+this problem.
+  Do anybody know what can I be doing wrong? Can this
+problem be related to some security matter?
 
-> See https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=70561
-> (also try ctrl+scrolllock to get a trace of the nfsds on your system).
-> This will provide useful info over where it is stuck.
+  If anybody has any idea of what the problem could
+be, please write me soon.
 
-It's the client systems that have problems, how would it help to get a trace
-of the nfsd's?
+  Thanks for listening to my problems
+ 
 
--- 
-Thomas
+  
+
+Ahora podés usar Yahoo! Messenger desde tu celular. Aprendé cómo hacerlo en Yahoo! Móvil: http://ar.mobile.yahoo.com/sms.html
 
 
 -------------------------------------------------------
