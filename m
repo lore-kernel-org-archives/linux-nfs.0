@@ -1,30 +1,49 @@
-From: "Stephen C. Tweedie" <sct@redhat.com>
-Subject: Wildcards matching ".": exports bug or just documentation bug?
-Date: Fri, 4 Oct 2002 12:57:04 +0100
-Sender: linux-fsdevel-owner@vger.kernel.org
-Message-ID: <20021004125704.A8969@redhat.com>
+From: Hasch@t-online.de (Juergen Hasch)
+Subject: Re: 2.4.19+trond and diskless locking problems
+Date: Fri, 4 Oct 2002 18:00:51 +0200
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <200210041800.51540.hasch@t-online.de>
+References: <20021003184418.K3869@blackjesus.async.com.br> <200210040907.47257.hasch@t-online.de> <20021004101712.A333@blackjesus.async.com.br>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Stephen Tweedie <sct@redhat.com>, linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: nfs@lists.sourceforge.net
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Cc: NFS@lists.sourceforge.net,
+ linux-kernel@vger.kernel.org
+Return-path: <nfs-admin@lists.sourceforge.net>
+To: Christian Reis <kiko@async.com.br>
+In-Reply-To: <20021004101712.A333@blackjesus.async.com.br>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
-Hi,
+Am Freitag, 4. Oktober 2002 15:17 schrieb Christian Reis:
+> On Fri, Oct 04, 2002 at 09:07:47AM +0200, Juergen Hasch wrote:
+> > I got the same messages when mounting an AIX client to a Linux server
+> > after upgrading to 2.4.19 Kernel.
+> > After installing the latest NFS utils, the problem went away.
+>
+> Does this mean nfs-utils-1.0.1 vs 1.0, or were you using a much older
+> version?
 
-mountd treats wildcards in hostnames in the exports file as matching
-anything, including ".".
+Versions 0.3.3 and 1.0.1 are working fine for me, so it looks like
+your problem is different.
 
-However, the exports man page explicitly states that "*" and "?" do not
-match ".":
+=2E..Juergen
 
-    Machine names may contain the wildcard characters * and ?.  This can
-    be used to make the exports file more compact; for instance,
-    *.cs.foo.edu matches all hosts in the domain cs.foo.edu. However,
-    these wildcard characters do not match the dots in a domain name, so
-    the above pattern does not include hosts such as a.b.cs.foo.edu.
 
-So, which is right, the actual behaviour or the documented behaviour?
-I'd tend to lean towards the former.
 
---Stephen
+-------------------------------------------------------
+This sf.net email is sponsored by:ThinkGeek
+Welcome to geek heaven.
+http://thinkgeek.com/sf
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
