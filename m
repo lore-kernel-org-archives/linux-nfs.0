@@ -1,54 +1,70 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH][RESEND2] nfs-utils-1.0.6 permission denied on mount
- after 'exportfs -u'
-Date: Mon, 06 Dec 2004 14:43:06 -0500
-Message-ID: <41B4B64A.3060707@RedHat.com>
-References: <1102099760.4708.13.camel@w-bwa3.beaverton.ibm.com>
+From: Adrian Bunk <bunk@stusta.de>
+Subject: [2.6 patch] NFS: remove an unused function (fwd)
+Date: Tue, 7 Dec 2004 00:02:49 +0100
+Message-ID: <20041206230249.GS7250@stusta.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: neilb@cse.unsw.edu.au, nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CbOil-0000Rx-QT
-	for nfs@lists.sourceforge.net; Mon, 06 Dec 2004 11:40:31 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1CbOij-0001kD-Mp
-	for nfs@lists.sourceforge.net; Mon, 06 Dec 2004 11:40:31 -0800
-To: bwa@us.ibm.com
-In-Reply-To: <1102099760.4708.13.camel@w-bwa3.beaverton.ibm.com>
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-
-Bruce Allan wrote:
-
->Neil,
->
->Have you had a chance to look at this yet? [I assume not since it is not in the latest nfs-utils-1.0.7-pre1]
->  
->
-I can verify that this patch does seem to work...
-
-steved.
+Content-Type: text/plain; charset=us-ascii
+Cc: neilb@cse.unsw.edu.au, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner+glk-linux-kernel=40m.gmane.org-S261692AbULFXHq@vger.kernel.org>
+To: Andrew Morton <akpm@osdl.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
 
--------------------------------------------------------
-SF email is sponsored by - The IT Product Guide
-Read honest & candid reviews on hundreds of IT Products from real users.
-Discover which products truly live up to the hype. Start reading now. 
-http://productguide.itmanagersjournal.com/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+The patch forwarded below still applies and compiles against 
+2.6.10-rc2-mm4.
+
+Please apply.
+
+
+----- Forwarded message from Adrian Bunk <bunk@stusta.de> -----
+
+Date:	Fri, 29 Oct 2004 02:23:38 +0200
+From: Adrian Bunk <bunk@stusta.de>
+To: neilb@cse.unsw.edu.au
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Subject: [2.6 patch] NFS: remove an unused function
+
+The patch below removes an unused function from fs/nfsd/nfs3xdr.c
+
+
+diffstat output:
+ fs/nfsd/nfs3xdr.c |   16 ----------------
+ 1 files changed, 16 deletions(-)
+
+
+Signed-off-by: Adrian Bunk <bunk@stusta.de>
+
+--- linux-2.6.10-rc1-mm1-full/fs/nfsd/nfs3xdr.c.old	2004-10-28 22:42:11.000000000 +0200
++++ linux-2.6.10-rc1-mm1-full/fs/nfsd/nfs3xdr.c	2004-10-28 22:42:25.000000000 +0200
+@@ -102,22 +102,6 @@
+ }
+ 
+ static inline u32 *
+-decode_pathname(u32 *p, char **namp, int *lenp)
+-{
+-	char		*name;
+-	int		i;
+-
+-	if ((p = xdr_decode_string_inplace(p, namp, lenp, NFS3_MAXPATHLEN)) != NULL) {
+-		for (i = 0, name = *namp; i < *lenp; i++, name++) {
+-			if (*name == '\0')
+-				return NULL;
+-		}
+-	}
+-
+-	return p;
+-}
+-
+-static inline u32 *
+ decode_sattr3(u32 *p, struct iattr *iap)
+ {
+ 	u32	tmp;
+-
+To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Please read the FAQ at  http://www.tux.org/lkml/
+
+----- End forwarded message -----
