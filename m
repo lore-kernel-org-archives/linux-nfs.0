@@ -1,64 +1,97 @@
-From: David Mosberger <davidm@napali.hpl.hp.com>
-Subject: make NFS work with 64KB page-size
-Date: Wed, 18 Jun 2003 15:56:31 -0700
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16112.60959.588900.824473@napali.hpl.hp.com>
-Reply-To: davidm@hpl.hp.com
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: make NFS work with 64KB page-size
+Date: Thu, 19 Jun 2003 11:41:25 +1000
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <16113.5317.341448.162576@gargle.gargle.HOWL>
+References: <16112.60959.588900.824473@napali.hpl.hp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
 	davidm@napali.hpl.hp.com
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from palrel13.hp.com ([156.153.255.238])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19Slsa-0005Wl-00
-	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 15:58:12 -0700
-To: neilb@cse.unsw.edu.au
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
+Received: From notabene ([129.94.172.124] == notabene.cse.unsw.EDU.AU)
+	(for <davidm@hpl.hp.com>) (for <nfs@lists.sourceforge.net>)
+	(for <linux-kernel@vger.kernel.org>) (for <davidm@napali.hpl.hp.com>)
+	By tone With Smtp ; Thu, 19 Jun 2003 11:15:06 +1000
+To: davidm@hpl.hp.com
+In-Reply-To: message from David Mosberger on Wednesday June 18
+List-ID: <nfs.lists.sourceforge.net>
 
-NFS currently bugs out on kernels with a page size of 64KB.  The
-reason is a mismatch between RPCSVC_MAXPAGES and a calculation in
-svc_init_buffer().  I'm not entirely certain which calculation is the
-right one, but if I understand the code correctly, RPCSVC_MAXPAGES is
-right and svc_init_buffer() is wrong.  The patch below fixes the
-latter.
+On Wednesday June 18, davidm@napali.hpl.hp.com wrote:
+> NFS currently bugs out on kernels with a page size of 64KB.  The
+> reason is a mismatch between RPCSVC_MAXPAGES and a calculation in
+> svc_init_buffer().  I'm not entirely certain which calculation is the
+> right one, but if I understand the code correctly, RPCSVC_MAXPAGES is
+> right and svc_init_buffer() is wrong.  The patch below fixes the
+> latter.
 
-If the patch looks right, could you make sure it finds its way into
-Linus' tree?
+I think the +2 is right.
 
-Thanks,
+For read/readdir the reply can be slightly larger than the "payload",
+(headers, etc) so we need one payload, plus one for the rest of the
+reply, plus one to hold the request.
 
-	--david
+For write, the request can be large than the payload, so again we need
+payload + 1 (for request) + 1 (for reply).
 
-===== net/sunrpc/svc.c 1.20 vs edited =====
---- 1.20/net/sunrpc/svc.c	Fri Feb  7 12:25:20 2003
-+++ edited/net/sunrpc/svc.c	Wed Jun 18 15:02:19 2003
-@@ -111,7 +111,7 @@
+Something like the following.
+
+NeilBrown
+
+
+ ----------- Diffstat output ------------
+ ./include/linux/sunrpc/svc.h |   15 +++++++++------
+ ./net/sunrpc/svc.c           |    5 ++++-
+ 2 files changed, 13 insertions(+), 7 deletions(-)
+
+diff ./include/linux/sunrpc/svc.h~current~ ./include/linux/sunrpc/svc.h
+--- ./include/linux/sunrpc/svc.h~current~	2003-06-18 11:36:17.000000000 +1000
++++ ./include/linux/sunrpc/svc.h	2003-06-19 11:37:34.000000000 +1000
+@@ -57,11 +57,11 @@ struct svc_serv {
+  * Requests are copied into these pages as they arrive.  Remaining
+  * pages are available to write the reply into.
+  *
+- * Currently pages are all re-used by the same server.  Later we 
+- * will use ->sendpage to transmit pages with reduced copying.  In
+- * that case we will need to give away the page and allocate new ones.
+- * In preparation for this, we explicitly move pages off the recv
+- * list onto the transmit list, and back.
++ * Pages are sent using ->sendpage so each server thread needs to
++ * allocate more to replace those used in sending.  To help keep track
++ * of these pages we have a recieve list where all pages initialy live,
++ * and a send list where pages are moved to when there are to be part
++ * of a reply.
+  *
+  * We use xdr_buf for holding responses as it fits well with NFS
+  * read responses (that have a header, and some data pages, and possibly
+@@ -72,8 +72,11 @@ struct svc_serv {
+  * list.  xdr_buf.tail points to the end of the first page.
+  * This assumes that the non-page part of an rpc reply will fit
+  * in a page - NFSd ensures this.  lockd also has no trouble.
++ *
++ * Each request/reply pair can have atmost one "payload", plus two pages,
++ * one for the request, and one for the reply.
+  */
+-#define RPCSVC_MAXPAGES		((RPCSVC_MAXPAYLOAD+PAGE_SIZE-1)/PAGE_SIZE + 1)
++#define RPCSVC_MAXPAGES		((RPCSVC_MAXPAYLOAD+PAGE_SIZE-1)/PAGE_SIZE + 2)
+ 
+ static inline u32 svc_getu32(struct iovec *iov)
+ {
+
+diff ./net/sunrpc/svc.c~current~ ./net/sunrpc/svc.c
+--- ./net/sunrpc/svc.c~current~	2003-06-18 11:36:17.000000000 +1000
++++ ./net/sunrpc/svc.c	2003-06-19 11:38:30.000000000 +1000
+@@ -113,9 +113,12 @@ svc_destroy(struct svc_serv *serv)
  static int
  svc_init_buffer(struct svc_rqst *rqstp, unsigned int size)
  {
 -	int pages = 2 + (size+ PAGE_SIZE -1) / PAGE_SIZE;
-+	int pages = 1 + (size+ PAGE_SIZE -1) / PAGE_SIZE;
++	int page;
  	int arghi;
  	
++	if (size > RPCSVC_MAXPAYLOAD)
++		size = RPCSVC_MAXPAYLOAD;
++	pages = 2 + (size+ PAGE_SIZE -1) / PAGE_SIZE;
  	rqstp->rq_argused = 0;
-
-
--------------------------------------------------------
-This SF.Net email is sponsored by: INetU
-Attention Web Developers & Consultants: Become An INetU Hosting Partner.
-Refer Dedicated Servers. We Manage Them. You Get 10% Monthly Commission!
-INetU Dedicated Managed Hosting http://www.inetu.net/partner/index.php
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+ 	rqstp->rq_resused = 0;
+ 	arghi = 0;
