@@ -1,31 +1,24 @@
-From: Jeff Blaine <jblaine@mitre.org>
-Subject: General NFSv3 + Linux kernel timeline?
-Date: Tue, 11 Jan 2005 11:32:33 -0500
-Message-ID: <41E3FFA1.8020609@mitre.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] -o intr  mount option prevents core dumps on 2.4
+ kernel
+Date: Tue, 11 Jan 2005 14:36:55 -0500
+Message-ID: <41E42AD7.3030303@RedHat.com>
+References: <41DD8403.7030601@RedHat.com> <1105118040.10979.70.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CoOwh-0006ac-4h
-	for nfs@lists.sourceforge.net; Tue, 11 Jan 2005 08:32:39 -0800
-Received: from smtp-bedford-dr-x.mitre.org ([192.160.51.65] helo=smtp-bedford-dr.mitre.org)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CoOwf-0007Ii-1j
-	for nfs@lists.sourceforge.net; Tue, 11 Jan 2005 08:32:38 -0800
-Received: from smtp-bedford-dr.mitre.org (localhost.localdomain [127.0.0.1])
-	by smtp-bedford-dr.mitre.org (8.11.6/8.11.6) with SMTP id j0BGWZ126654
-	for <nfs@lists.sourceforge.net>; Tue, 11 Jan 2005 11:32:35 -0500
-Received: from smtp-bedford-dr.mitre.org (localhost.localdomain [127.0.0.1])
-	by smtp-bedford-dr.mitre.org (Postfix) with ESMTP id B9E7C4F8DA
-	for <nfs@lists.sourceforge.net>; Tue, 11 Jan 2005 11:32:35 -0500 (EST)
-Received: from linus.mitre.org (linus.mitre.org [129.83.10.1])
-	by smtp-bedford-dr.mitre.org (8.11.6/8.11.6) with ESMTP id j0BGWZ626627
-	for <nfs@lists.sourceforge.net>; Tue, 11 Jan 2005 11:32:35 -0500
-Received: from [127.0.0.1] (unity-17-71.mitre.org [129.83.17.71])
-	by linus.mitre.org (8.12.10/8.12.10) with ESMTP id j0BGWY4o003159
-	for <nfs@lists.sourceforge.net>; Tue, 11 Jan 2005 11:32:35 -0500 (EST)
-To: nfs@lists.sourceforge.net
+	id 1CoRlm-0006Kx-6l
+	for nfs@lists.sourceforge.net; Tue, 11 Jan 2005 11:33:34 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1CoRlj-0004VB-ON
+	for nfs@lists.sourceforge.net; Tue, 11 Jan 2005 11:33:34 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1105118040.10979.70.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,19 +32,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I've read the FAQ.  A lot of the information is not very
-specific as to affected versions:
+Trond Myklebust wrote:
 
-Is there any (or can anyone take 5 minutes to write up)
-timeline that lists the major obvious problems throughout
-2.4.21 to 2.6.9 and where they were fixed and enabled
-(NOT experimental) in the kernel?
+>to den 06.01.2005 Klokka 13:31 (-0500) skreiv Steve Dickson:
+>
+>  
+>
+>>Comments... Suggestions... Crimes against humanity that I'm committing???
+>>    
+>>
+>
+>
+>Firstly, how is "cl_intr" preventing core dumps? Normally, we should be
+>masking all signals except SIGKILL, SIGINT and SIGQUIT. I can see that
+>masking SIGINT and SIGQUIT might be useful here, but not SIGKILL...
+>  
+>
+Because __rpc_execute() notices that signalled() is set and aborts the 
+write by
+returning -ERESTARTSYS makes the core dumping code stop dumping.
 
-Things like the "file corruption when very rapid writes
-from different clients leave the file size unchanged"
-bug, rsize/wsize problems, etc.
+>Secondly: Why not do all this in rpc_clnt_sigmask()?
+>  
+>
+I looked at that.... but I really was not sure if could hack it up
+to turn off signalled() and plus I was sure how I could turn
+signalled() back on at the end of the write.... The way I did
+just seemed less risky and seem to work...
 
-Thanks for any info.
+steved.
 
 
 
