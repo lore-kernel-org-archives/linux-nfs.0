@@ -1,21 +1,19 @@
-From: "G. Allen Morris III" <gam3-nfs@gam3.net>
-Subject: Re: mountd: needless DNS queries when authenticating client against numeric IP
-Date: Wed, 9 Mar 2005 09:27:49 -0500
-Message-ID: <20050309142749.GB5027@gam3.net>
-References: <200503041424.22897.vda@ilport.com.ua> <200503051557.07721.vda@ilport.com.ua> <16939.39051.569756.982757@cse.unsw.edu.au> <200503090950.25722.vda@port.imtp.ilyichevsk.odessa.ua>
+From: Denis Vlasenko <vda@ilport.com.ua>
+Subject: sys/tree.h is missing
+Date: Wed, 9 Mar 2005 17:16:35 +0200
+Message-ID: <200503091716.35737.vda@ilport.com.ua>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Content-Type: text/plain;
+  charset="koi8-r"
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D92AM-0007tt-Lz
-	for nfs@lists.sourceforge.net; Wed, 09 Mar 2005 06:28:02 -0800
-Received: from mta13.adelphia.net ([68.168.78.44])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1D92AL-0004Rf-1w
-	for nfs@lists.sourceforge.net; Wed, 09 Mar 2005 06:28:02 -0800
-To: Denis Vlasenko <vda@ilport.com.ua>
-In-Reply-To: <200503090950.25722.vda@port.imtp.ilyichevsk.odessa.ua>
+	id 1D92w1-0001zd-1C
+	for nfs@lists.sourceforge.net; Wed, 09 Mar 2005 07:17:17 -0800
+Received: from [195.66.192.168] (helo=port.imtp.ilyichevsk.odessa.ua)
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
+	id 1D92vu-0001sj-27
+	for nfs@lists.sourceforge.net; Wed, 09 Mar 2005 07:17:16 -0800
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,39 +27,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, Mar 09, 2005 at 10:49:13AM +0200, Denis Vlasenko wrote:
-[snip]
-> > The problem arises if someone exports one filesystem to an IP address,
-> > and another to the DNS name.  Confusion and failure results.
-> 
-> Like this? /etc/exports:
-> 
-> /home	1.2.3.4(rw)
-> /public	joker(rw)
-> 
-> What is the failure scenario? I don't quite understand where is the problem.
+Whil trying to compile libevent-1.0b:
 
-/home 1.2.3.0/24(ro)
-/home joker(rw)
+ake  all-recursive
+make[1]: Entering directory `/.share/usr/src2/libevent-1.0b/.obj'
+Making all in .
+make[2]: Entering directory `/.share/usr/src2/libevent-1.0b/.obj'
+gcc -DHAVE_CONFIG_H -I. -I.. -I. -Icompat -Wal l -c ../event.c
+../event.c:38:22: sys/tree.h: No such file or directory
 
-If Joker -> 1.2.3.4 then you need to do the lookup because joker is more
-specific than 1.2.3.0/24.  
+I have sort-of Linux-from-scratch system and
+I do not have such file. AFAIK /usr/include/sys
+is part of glibc and mine is from glibc-2.3.2, but there is no tree.h,
+I'm sure of it.
 
-You could get around this by converting host names to IPs at export
-time.
+If you have it, please enlighten me where it should come from.
+--
+vda
 
-The precedence of exports is important as well. To do the least amount
-of look up you need to make it:
-IP address
-hostname  (or get rid of these and only use IP addresses)
-networks
-wildcards
-
-Now if you find and IP you are done. If there are not hostnames and you
-find a network you are done. Otherwise you do the DNS lookup and look
-for wildcards.
-
-Allen Morris
 
 
 -------------------------------------------------------
