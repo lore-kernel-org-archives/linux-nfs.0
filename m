@@ -1,20 +1,17 @@
-From: Bryan O'Sullivan <bos@serpentine.com>
+From: Jeremy Sanders <jss@ast.cam.ac.uk>
 Subject: Re: Re: Slow performance with 2.4.19pre1
-Date: 05 Jul 2002 00:53:37 -0700
+Date: Fri, 5 Jul 2002 10:09:50 +0100 (BST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1025855617.4975.18.camel@camp4.serpentine.com>
-References: <Pine.LNX.4.44.0207041624120.30131-100000@xpc1.ast.cam.ac.uk>
-	<1025814832.2122.14.camel@camp4.serpentine.com>
-	<20020704165543.A28955@lucon.org>
+Message-ID: <Pine.LNX.4.44.0207051009120.715-100000@xpc1.ast.cam.ac.uk>
+References: <20020704165543.A28955@lucon.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature";
-	boundary="=-uZPpifPFidlF/qIiwoB7"
-Cc: Jeremy Sanders <jss@ast.cam.ac.uk>, nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: "Bryan O'Sullivan" <bos@serpentine.com>, <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from dsl092-013-071.sfo1.dsl.speakeasy.net ([66.92.13.71] helo=pelerin.serpentine.com)
+Received: from purple.csi.cam.ac.uk ([131.111.8.4])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17QNuM-0004iF-00
-	for <nfs@lists.sourceforge.net>; Fri, 05 Jul 2002 00:53:38 -0700
+	id 17QP6F-0003er-00
+	for <nfs@lists.sourceforge.net>; Fri, 05 Jul 2002 02:10:00 -0700
 To: "H. J. Lu" <hjl@lucon.org>
 In-Reply-To: <20020704165543.A28955@lucon.org>
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -29,35 +26,31 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
+On Thu, 4 Jul 2002, H. J. Lu wrote:
 
---=-uZPpifPFidlF/qIiwoB7
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
-
-On Thu, 2002-07-04 at 16:55, H. J. Lu wrote:
-
+> On Thu, Jul 04, 2002 at 01:33:52PM -0700, Bryan O'Sullivan wrote:
+> > On Thu, 2002-07-04 at 08:25, Jeremy Sanders wrote:
+> > > Sorry - I know it's bad form to reply to one's own emails. It seems that
+> > > the stock 2.4.19rc1 kernel doesn't have the problem as a client, and so
+> > > it's the RedHat patched 2.4.18 kernel which is a very slow client. This
+> > > looks like a RedHat bug.
+> >
+> > Yes, you're correct.  The kernels Red Hat has been shipping with 7.3
+> > have atrocious NFS client behaviour, and will bring some servers (such
+> > as Netapp boxes) to a halt.
+> >
+>
 > Have you tried the 7.3 kernel update. It is 2.4.18-5.
 
-No, I usually run my own kernels.  I only noticed the horror of the
-2.4.18-3 NFS client performance as I was installing enough bits on a new
-machine to replace the stock kernel with my own.
+The tests were with 2.4.18-5 on an athlon.
 
-	<b
+Jeremy
 
---=-uZPpifPFidlF/qIiwoB7
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
+-- 
+Jeremy Sanders <jss@ast.cam.ac.uk>   http://www-xray.ast.cam.ac.uk/~jss/
+X-Ray Group, Institute of Astronomy, University of Cambridge, UK.
+Public Key Server PGP Key ID: E1AAE053
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.0.6 (GNU/Linux)
-Comment: For info see http://www.gnupg.org
-
-iD8DBQA9JVCBG8PvG6BKogcRAsZfAKDVOHwkgViUIPiNIDWubkcCJOiGiACfSGJw
-QvVloZWagLA2IbwMDaTv4V8=
-=UEHr
------END PGP SIGNATURE-----
-
---=-uZPpifPFidlF/qIiwoB7--
 
 
 -------------------------------------------------------
