@@ -1,15 +1,17 @@
-From: Dan Kegel <dkegel@ixiacom.com>
-Subject: Meaning of 'udp' mount option
-Date: Mon, 30 Jun 2003 12:35:58 -0700
+From: Edward Roper <eroper@wanfear.com>
+Subject: close() / nfs commit performance
+Date: 30 Jun 2003 13:28:12 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3F00911E.5020001@ixiacom.com>
+Message-ID: <1057004892.21354.15.camel@themachine.sanera.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain
+Cc: neilb@cse.unsw.edu.au
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from 64-60-75-69.cust.telepacific.net ([64.60.75.69] helo=racerx.ixiacom.com)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19X4UA-0006FS-00
-	for <nfs@lists.sourceforge.net>; Mon, 30 Jun 2003 12:38:46 -0700
+Received: from ns1.sanera.net ([208.253.254.10] helo=sentinel)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19X5Ge-0008Ll-00
+	for <nfs@lists.sourceforge.net>; Mon, 30 Jun 2003 13:28:52 -0700
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -23,43 +25,41 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Question 1: what does the 'udp' mount option really mean?
-It appears to mean 'Use udp mostly, but use TCP when calling pmap_getmaps()'.
-Question 2: is this a bug or a feature?
-Question 3: if it's a feature, should we add a new mount option to
-mean 'really, dude, use udp for everything'?
+I have a system that I've been running some NFS benchmarks on. I've also
+been running the benchmarks on a Netapp F880. I have been using iozone
+as the testing tool. I am quite impressed with the linux system in every
+regard excepting it's close() / nfs commit performance (iozone -Rac).
+The following URL contains some graphs and spreadsheet data.
 
-The long story:
+http://www.wanfear.com/~eroper/nfs/
 
-Imagine, if you will, an NFS server running on an operating system
-that will shut down all further TCP connects on a given port if that
-port ever encounters more than five simultaneous connects.
-(That's a rather perverse limitation, but unfortunately, it seems to
-be widespread.)
+Both the netapp and the linux system take a significant performance hit
+when close() is involved. However the Linux system drops to an almost
+unbelievably pathetic level.
 
-Imagine further that you have 500 NFS clients that want to connect
-simultaneously to that server.  "Ah, simple, I'll just use UDP, and
-avoid the issue!", you say.
+The graphs may also be of interest as they compare various block sizes,
+transport protos, sync/async options on the same linux server. I also
+have data for tcp,sync,32768 block sizes although it hasn't made it up
+there yet. All nfs data is v3.
 
-Unfortunately, it appears that even when you specify UDP as a
-mount option, util-linux-2.11[nz]'s mount appears
-to always connect to the server's portmapper using TCP.  The
-culprit is glibc's pmap_getmaps, which always uses tcp.
+I'm hoping someone can tell me why there is such a huge write
+performance drop when close() is involved, and why it is such a more
+substantial drop than experienced with the netapp. I've also got data
+for two local iozone runs on the filesystem both with and without the
+close() option in iozone.
 
-I threw together a version of rpcinfo.c that uses udp to do
-the same thing as pmap_getmaps, and it works.
+Just in case anyone is interested in the specs (mordor == linux server):
 
-The next step is for me to patch nfsmount.c's get_mountport()
-to only use the standard pmap_getmaps() if mounting via TCP,
-and to use my pmap_getmaps_via_udp() if mounting via UDP.
+2.4.20-18.7-nfsserv (redhat(7.3) kernel with tcp-nfs built in)
+Pentium III 1.0ghz
+1gb ram
+Intel(R) PRO/1000
+3ware Storage Controller (Escalade 7500-8)(raid-5, 7 ata disks)
+The filesystem is ext3
 
-If that works, then presumably it'd be nice to fold something
-like this in to the main tree.  But making the 'udp' mount
-option really mean 'udp, goddammit' might be too much of a
-change in semantics; perhaps there should be a new mount option
-always_udp?
+Thanks,
+Edward
 
-- Dan
 
 
 
