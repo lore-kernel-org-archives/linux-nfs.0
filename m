@@ -1,23 +1,19 @@
-From: nhorman@redhat.com
-Subject: Re: [RFC] implementing BSD style locks on NLM (flocks)
-Date: Thu, 3 Mar 2005 13:24:19 -0500
-Message-ID: <20050303182419.GI6497@hmsendeavour.rdu.redhat.com>
-References: <20050227192113.GA5778@localhost.localdomain> <1109787034.12460.7.camel@lade.trondhjem.org>
+From: "Robert Myoung" <myoung@ansoft.cncdsl.com>
+Subject: NFS can support Open GL graphic display interface?
+Date: Fri, 4 Mar 2005 11:49:07 -0800
+Message-ID: <200503041949.OAA18047@leander.cnchost.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="eqp4TxRxnD4KrmFZ"
-Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_003C_01C520B0.2C3F0E30"
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D6uzr-0004DD-DQ
-	for nfs@lists.sourceforge.net; Thu, 03 Mar 2005 10:24:27 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1D6uzp-0005dC-RI
-	for nfs@lists.sourceforge.net; Thu, 03 Mar 2005 10:24:27 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1109787034.12460.7.camel@lade.trondhjem.org>
+	id 1D7Inz-0006UN-LA
+	for nfs@lists.sourceforge.net; Fri, 04 Mar 2005 11:49:47 -0800
+Received: from leander.cnchost.com ([207.155.252.112])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1D7Inu-0007sn-JV
+	for nfs@lists.sourceforge.net; Fri, 04 Mar 2005 11:49:47 -0800
+To: <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,57 +27,132 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+This is a multi-part message in MIME format.
 
---eqp4TxRxnD4KrmFZ
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+------=_NextPart_000_003C_01C520B0.2C3F0E30
+Content-Type: text/plain;
+	charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+
+Dear developers and other users,
+
+ 
+
+NFS can support Open GL graphic display interface?
+
+Thanks,
+
+Regards,
+
+ 
+
+Robert Myoung
+
+ 
+
+
+------=_NextPart_000_003C_01C520B0.2C3F0E30
+Content-Type: text/html;
+	charset="us-ascii"
 Content-Transfer-Encoding: quoted-printable
 
-On Wed, Mar 02, 2005 at 10:10:34AM -0800, Trond Myklebust wrote:
-> su den 27.02.2005 Klokka 14:21 (-0500) skreiv nhorman@redhat.com:
-> > Hey all-
-> > 	I was wondering, how much interest there might be in the addition of
-> > support for BSD style locks (flocks) over NLM.  I was thinking that a b=
-it could
-> > be added to differentiate the two namespaces.  Any thoughts appreciated=
-. =20
->=20
-> http://client.linux-nfs.org/Linux-2.6.x/2.6.11-rc5/linux-2.6.11-17-flock.=
-dif
->=20
-> Cheers,
->   Trond
->=20
-> --=20
-> Trond Myklebust <trond.myklebust@fys.uio.no>
->=20
-Do you know when this will get merged with the mainline kernel?
-Thanks!
-Neil
+<html xmlns:v=3D"urn:schemas-microsoft-com:vml" =
+xmlns:o=3D"urn:schemas-microsoft-com:office:office" =
+xmlns:w=3D"urn:schemas-microsoft-com:office:word" =
+xmlns:p=3D"urn:schemas-microsoft-com:office:powerpoint" =
+xmlns:oa=3D"urn:schemas-microsoft-com:office:activation" =
+xmlns=3D"http://www.w3.org/TR/REC-html40">
 
---=20
-/***************************************************
- *Neil Horman
- *Software Engineer
- *Red Hat, Inc.
- *nhorman@redhat.com
- *gpg keyid: 1024D / 0x92A74FA1
- *http://pgp.mit.edu
- ***************************************************/
+<head>
+<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
+charset=3Dus-ascii">
+<meta name=3DGenerator content=3D"Microsoft Word 11 (filtered medium)">
+<style>
+<!--
+ /* Font Definitions */
+ @font-face
+	{font-family:&#48148;&#53461;;
+	panose-1:2 3 6 0 0 1 1 1 1 1;}
+@font-face
+	{font-family:"\@&#48148;&#53461;";
+	panose-1:2 3 6 0 0 1 1 1 1 1;}
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0in;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;}
+span.EmailStyle17
+	{mso-style-type:personal-compose;
+	font-family:Arial;
+	color:windowtext;}
+@page Section1
+	{size:8.5in 11.0in;
+	margin:1.0in 1.25in 1.0in 1.25in;}
+div.Section1
+	{page:Section1;}
+-->
+</style>
 
---eqp4TxRxnD4KrmFZ
-Content-Type: application/pgp-signature
-Content-Disposition: inline
+</head>
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.1 (GNU/Linux)
+<body lang=3DEN-US link=3Dblue vlink=3Dpurple>
 
-iD8DBQFCJ1ZTM+bEoZKnT6ERAnAmAJ0QtF90umonu7VOG3m3917vow7FqwCfVcvb
-J26MK+zMOunvE0rlKBNwQhk=
-=z59z
------END PGP SIGNATURE-----
+<div class=3DSection1>
 
---eqp4TxRxnD4KrmFZ--
+<p class=3DMsoNormal><font size=3D2 color=3Dblack face=3DArial><span =
+style=3D'font-size:
+10.0pt;font-family:Arial;color:black'>Dear </span></font>developers and =
+other users,<o:p></o:p></p>
+
+<p class=3DMsoNormal><font size=3D3 face=3D"Times New Roman"><span =
+style=3D'font-size:
+12.0pt'><o:p>&nbsp;</o:p></span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 color=3Dblack face=3DArial><span =
+style=3D'font-size:
+10.0pt;font-family:Arial;color:black'>NFS can support Open GL graphic =
+display
+interface?<o:p></o:p></span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 color=3Dblack face=3DArial><span =
+style=3D'font-size:
+10.0pt;font-family:Arial;color:black'>Thanks,<o:p></o:p></span></font></p=
+>
+
+<p class=3DMsoNormal><font size=3D2 color=3Dblack face=3DArial><span =
+style=3D'font-size:
+10.0pt;font-family:Arial;color:black'>Regards,<o:p></o:p></span></font></=
+p>
+
+<p class=3DMsoNormal><font size=3D2 color=3Dblack face=3DArial><span =
+style=3D'font-size:
+10.0pt;font-family:Arial;color:black'><o:p>&nbsp;</o:p></span></font></p>=
+
+
+<p class=3DMsoNormal><font size=3D2 color=3Dblack face=3DArial><span =
+style=3D'font-size:
+10.0pt;font-family:Arial;color:black'>Robert =
+Myoung<o:p></o:p></span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
+
+</div>
+
+</body>
+
+</html>
+
+------=_NextPart_000_003C_01C520B0.2C3F0E30--
+
 
 
 -------------------------------------------------------
