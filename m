@@ -1,25 +1,20 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: oops in FC1 update kernel, in refile_inode
-Date: Mon, 26 Apr 2004 17:56:32 -0400
+From: "=?big5?q?aluba1231.tw?=" <aluba1231.tw@yahoo.com.tw>
+Subject: nfs server on mips platform?
+Date: Tue, 27 Apr 2004 17:13:34 +0800 (CST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1083016592.15282.107.camel@lade.trondhjem.org>
-References: <408D7E8E.7040801@collab.net>
+Message-ID: <20040427091334.25006.qmail@web17006.mail.tpe.yahoo.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-Z+cAgSFL26r6JzXJURWC"
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=big5
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BIE5f-0001VM-IW
-	for nfs@lists.sourceforge.net; Mon, 26 Apr 2004 14:56:39 -0700
-Received: from dh132.citi.umich.edu
-	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.30)
-	id 1BIE5f-00023x-7C
-	for nfs@lists.sourceforge.net; Mon, 26 Apr 2004 14:56:39 -0700
-To: Andrew Ryan <andrewr@collab.net>
-In-Reply-To: <408D7E8E.7040801@collab.net>
+	id 1BIOes-0007ur-2G
+	for nfs@lists.sourceforge.net; Tue, 27 Apr 2004 02:13:42 -0700
+Received: from web17006.mail.tpe.yahoo.com ([202.1.236.227])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
+	id 1BIOer-0001Bz-5i
+	for nfs@lists.sourceforge.net; Tue, 27 Apr 2004 02:13:41 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,65 +28,237 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
---=-Z+cAgSFL26r6JzXJURWC
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+ading cache ./config.cache
+checking for gcc... (cached) mipsel-uclibc-gcc
+checking whether the C compiler (mipsel-uclibc-gcc  )
+works... yes
+checking whether the C compiler (mipsel-uclibc-gcc  )
+is a cross-compiler... yes
+checking whether we are using GNU C... (cached) yes
+checking whether mipsel-uclibc-gcc accepts -g...
+(cached) yes
+checking how to run the C preprocessor... (cached)
+mipsel-uclibc-gcc -E
+checking for a BSD compatible install... (cached)
+/usr/bin/install -c
+checking host system type... ./config.guess: line 941:
+./dummy-4248: cannot execute binary file
+i686-pc-linux-gnu
+checking build system type... i686-pc-linux-gnu
+checking for ranlib... (cached) mipsel-uclibc-ranlib
+checking for ar... (cached) mipsel-uclibc-ar
+checking for ld... (cached) mipsel-uclibc-ld
+checking for ANSI C header files... (cached) yes
+checking for GNU libc2... (cached) yes
+checking for main in -lsocket... (cached) no
+checking for main in -lnsl... (cached) yes
+checking for crypt in -lcrypt... (cached) yes
+checking for the tcp wrapper library... (cached) no
+checking for innetgr... (cached) no
+creating ./config.status
+creating config.mk
+creating nfs-utils.spec
+creating utils/Makefile
+creating support/include/config.h
+support/include/config.h is unchanged
+Making all in tools
+Making all in rpcgen
+Building rpcgen done.
+Making all in getiversion
+Building getiversion done.
+Making all in getkversion
+Building getkversion done.
+Making all in rpcdebug
+Building rpcdebug done.
+Making all in locktest
+Building testlk done.
+Making all in support
+Making all in include
+Making all in nfs
+Building libnfs.a done.
+Making all in export
+Building libexport.a done.
+Making all in lib
+Making all in misc
+Building libmisc.a done.
+Making all in utils
+Making all in exportfs
+Building exportfs done.
+Making all in mountd
+mipsel-uclibc-gcc  -L../../support/lib -o mountd
+mountd.o mount_dispatch.o auth.o rmtab.o cache.o
+svc_run.o -lexport -lnfs -lmisc   -lnsl
+mountd.o: In function `killer':
+mountd.o(.text+0xcc): undefined reference to
+`pmap_unset'
+mountd.o(.text+0xf0): undefined reference to
+`pmap_unset'
+mountd.o(.text+0x12c): undefined reference to
+`pmap_unset'
+mount_dispatch.o(.data+0x8): undefined reference to
+`xdr_void'
+mount_dispatch.o(.data+0x10): undefined reference to
+`xdr_void'
+mount_dispatch.o(.data+0x38): undefined reference to
+`xdr_void'
+mount_dispatch.o(.data+0x58): undefined reference to
+`xdr_void'
+mount_dispatch.o(.data+0x68): undefined reference to
+`xdr_void'
+mount_dispatch.o(.data+0x70): more undefined
+references to `xdr_void' follow
+svc_run.o: In function `my_svc_run':
+svc_run.o(.text+0x3c): undefined reference to
+`__rpc_thread_svc_fdset'
+svc_run.o(.text+0x130): undefined reference to
+`svc_getreqset'
+../../support/lib/libexport.a(mount_xdr.o): In
+function `xdr_fhandle':
+mount_xdr.o(.text+0x20): undefined reference to
+`xdr_opaque'
+../../support/lib/libexport.a(mount_xdr.o): In
+function `xdr_fhstatus':
+mount_xdr.o(.text+0x7c): undefined reference to
+`xdr_u_int'
+../../support/lib/libexport.a(mount_xdr.o): In
+function `xdr_dirpath':
+mount_xdr.o(.text+0x12c): undefined reference to
+`xdr_string'
+../../support/lib/libexport.a(mount_xdr.o): In
+function `xdr_name':
+mount_xdr.o(.text+0x17c): undefined reference to
+`xdr_string'
+../../support/lib/libexport.a(mount_xdr.o): In
+function `xdr_mountlist':
+mount_xdr.o(.text+0x1d0): undefined reference to
+`xdr_pointer'
+../../support/lib/libexport.a(mount_xdr.o): In
+function `xdr_groups':
+mount_xdr.o(.text+0x2f0): undefined reference to
+`xdr_pointer'
+../../support/lib/libexport.a(mount_xdr.o): In
+function `xdr_exports':
+mount_xdr.o(.text+0x3e4): undefined reference to
+`xdr_pointer'
+../../support/lib/libexport.a(mount_xdr.o): In
+function `xdr_ppathcnf':
+mount_xdr.o(.text+0x548): undefined reference to
+`xdr_int'
+mount_xdr.o(.text+0x5b4): undefined reference to
+`xdr_short'
+mount_xdr.o(.text+0x5e4): undefined reference to
+`xdr_short'
+mount_xdr.o(.text+0x614): undefined reference to
+`xdr_short'
+mount_xdr.o(.text+0x644): undefined reference to
+`xdr_short'
+mount_xdr.o(.text+0x674): undefined reference to
+`xdr_short'
+mount_xdr.o(.text+0x6a4): undefined reference to
+`xdr_u_char'
+mount_xdr.o(.text+0x6d4): undefined reference to
+`xdr_char'
+mount_xdr.o(.text+0x708): undefined reference to
+`xdr_short'
+mount_xdr.o(.text+0x714): undefined reference to
+`xdr_vector'
+mount_xdr.o(.text+0x840): undefined reference to
+`xdr_u_char'
+mount_xdr.o(.text+0x870): undefined reference to
+`xdr_char'
+mount_xdr.o(.text+0x934): undefined reference to
+`xdr_short'
+mount_xdr.o(.text+0x944): undefined reference to
+`xdr_vector'
+mount_xdr.o(.text+0x980): undefined reference to
+`xdr_int'
+mount_xdr.o(.text+0x9b0): undefined reference to
+`xdr_short'
+mount_xdr.o(.text+0x9e0): undefined reference to
+`xdr_short'
+mount_xdr.o(.text+0xa10): undefined reference to
+`xdr_short'
+mount_xdr.o(.text+0xa40): undefined reference to
+`xdr_short'
+mount_xdr.o(.text+0xa70): undefined reference to
+`xdr_short'
+mount_xdr.o(.text+0xc14): undefined reference to
+`xdr_u_char'
+mount_xdr.o(.text+0xc44): undefined reference to
+`xdr_char'
+mount_xdr.o(.text+0xd28): undefined reference to
+`xdr_int'
+mount_xdr.o(.text+0xd58): undefined reference to
+`xdr_short'
+mount_xdr.o(.text+0xd88): undefined reference to
+`xdr_short'
+mount_xdr.o(.text+0xdb8): undefined reference to
+`xdr_short'
+mount_xdr.o(.text+0xde8): undefined reference to
+`xdr_short'
+mount_xdr.o(.text+0xe18): undefined reference to
+`xdr_short'
+../../support/lib/libexport.a(mount_xdr.o): In
+function `xdr_fhandle3':
+mount_xdr.o(.text+0xe70): undefined reference to
+`xdr_bytes'
+../../support/lib/libexport.a(mount_xdr.o): In
+function `xdr_mountstat3':
+mount_xdr.o(.text+0xebc): undefined reference to
+`xdr_enum'
+../../support/lib/libexport.a(mount_xdr.o): In
+function `xdr_mountres3_ok':
+mount_xdr.o(.text+0xf5c): undefined reference to
+`xdr_int'
+mount_xdr.o(.text+0xf7c): undefined reference to
+`xdr_array'
+../../support/lib/libnfs.a(rpcmisc.o): In function
+`rpc_init':
+rpcmisc.o(.text+0xa4): undefined reference to
+`pmap_unset'
+rpcmisc.o(.text+0x164): undefined reference to
+`svcudp_create'
+rpcmisc.o(.text+0x1a0): undefined reference to
+`svc_register'
+rpcmisc.o(.text+0x328): undefined reference to
+`svctcp_create'
+rpcmisc.o(.text+0x364): undefined reference to
+`svc_register'
+../../support/lib/libnfs.a(rpcmisc.o): In function
+`closedown':
+rpcmisc.o(.text+0x788): undefined reference to
+`__rpc_thread_svc_fdset'
+../../support/lib/libnfs.a(rpcdispatch.o): In function
+`rpc_dispatch':
+rpcdispatch.o(.text+0xa0): undefined reference to
+`svcerr_noproc'
+rpcdispatch.o(.text+0x15c): undefined reference to
+`svcerr_decode'
+rpcdispatch.o(.text+0x1c0): undefined reference to
+`svc_sendreply'
+rpcdispatch.o(.text+0x228): undefined reference to
+`svcerr_systemerr'
+rpcdispatch.o(.text+0x258): undefined reference to
+`svcerr_progvers'
+../../support/lib/libnfs.a(svc_socket.o): In function
+`svc_socket':
+svc_socket.o(.text+0xec): undefined reference to
+`__bzero'
+svc_socket.o(.text+0x124): undefined reference to
+`getrpcbynumber_r'
+svc_socket.o(.text+0x194): undefined reference to
+`bindresvport'
+collect2: ld returned 1 exit status
+make[3]: *** [mountd] Error 1
+make[2]: *** [all] Error 2
+make[1]: *** [all] Error 2
 
-On Mon, 2004-04-26 at 17:26, Andrew Ryan wrote:
-> I realize that this list is the wrong place to go for Fedora/RH support, 
-> but we're having a unpleasant problem and I'm hoping someone here could 
-> shed some light on it. We're running load tests on Subversion with 
-> repositories on NFS-mounted filesystems, and getting reliable oops'es 
-> after a few hours-days of testing. With the repos on local disk, no 
-> oops, and the tests complete normally. For all I know, the bug has 
-> nothing to do with NFS, but there seems to be a correlation.
-> 
-> I filed a RH bugzilla issue today, which has a decoded oops, SysRq+T 
-> output, and vmstat output for the period preceding the crash.
-> https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=121732
-> 
-> The hardware is dual Xeon 3.0GHz, running hyperthreading, kernel
-> 2.4.22-1.2179.nptlsmp. The mount options in use are:
-> rw,tcp,nfsvers=3,rsize=32768,wsize=32768,intr
-> The NFS server is a NetApp. Both NFS client and server are running at
-> 100Mb switched ethernet.
-> 
-> In the 2.4.26 kernel's Changelog
-> (http://kernel.org/pub/linux/kernel/v2.4/ChangeLog-2.4.26) I saw
-> mention of a refile_inode bug fixed by Trond, which made me think
-> perhaps this is what is affecting us, but I don't know. I'm all for 
-> trying out pretty much any patch which might help us.
-
-That is indeed a fix for a generic VFS/mm race. It has pretty much
-nothing to do with NFS itself but just happened to trigger on an NFS
-partition for someone.
-As far as I can see, that patch hasn't yet been applied to the latest
-errata kernel (linux-2.4.22-1.2188.nptl). Have you tried it out to see
-if it fixes your Oops?
-
-Steve, could you make sure that patch makes it into any future errata
-kernels?
-
-Cheers,
-  Trond
 
 
-
---=-Z+cAgSFL26r6JzXJURWC
-Content-Description: 
-Content-Disposition: inline; filename=linux-2.4.26-refile_inode.dif
-Content-Transfer-Encoding: base64
-Content-Type: text/plain; charset=iso-8859-1
-
-LS0tIGxpbnV4LTIuNC4yNi11cC9mcy9pbm9kZS5jLm9yaWcJMjAwNC0wMy0xOSAxNzoxMjo0Ni4w
-MDAwMDAwMDAgLTA1MDANCisrKyBsaW51eC0yLjQuMjYtdXAvZnMvaW5vZGUuYwkyMDA0LTAzLTI2
-IDEzOjAxOjIzLjAwMDAwMDAwMCAtMDUwMA0KQEAgLTMxOSw3ICszMTksOCBAQCB2b2lkIHJlZmls
-ZV9pbm9kZShzdHJ1Y3QgaW5vZGUgKmlub2RlKQ0KIAlpZiAoIWlub2RlKQ0KIAkJcmV0dXJuOw0K
-IAlzcGluX2xvY2soJmlub2RlX2xvY2spOw0KLQlfX3JlZmlsZV9pbm9kZShpbm9kZSk7DQorCWlm
-ICghKGlub2RlLT5pX3N0YXRlICYgSV9MT0NLKSkNCisJCV9fcmVmaWxlX2lub2RlKGlub2RlKTsN
-CiAJc3Bpbl91bmxvY2soJmlub2RlX2xvY2spOw0KIH0NCiANCg==
-
---=-Z+cAgSFL26r6JzXJURWC--
+-----------------------------------------------------------------
+抄近路！！Email處處收！
+免費下載Yahoo!奇摩捷徑列
+http://tw.companion.yahoo.com/
 
 
 -------------------------------------------------------
