@@ -1,15 +1,15 @@
-From: Kilaru Sambaiah <sam_kilaru2000@yahoo.com>
-Subject: problems with Redhat 6.2 client
-Date: Tue, 30 Jul 2002 07:09:58 -0700 (PDT)
+From: "Rongsheng Fang" <rsfang@hotmail.com>
+Subject: no_root_squash made CPU  in heavy load on RH 7.3 NFS server
+Date: Tue, 30 Jul 2002 22:07:38 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020730140958.51526.qmail@web10701.mail.yahoo.com>
+Message-ID: <F90oN5gfUw3ZPpAATnL0002169b@hotmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from web10701.mail.yahoo.com ([216.136.130.209])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17ZXhG-0007RT-00
-	for <nfs@lists.sourceforge.net>; Tue, 30 Jul 2002 07:09:58 -0700
+Received: from f90.law12.hotmail.com ([64.4.19.90] helo=hotmail.com)
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17ZiuG-0007o5-00
+	for <nfs@lists.sourceforge.net>; Tue, 30 Jul 2002 19:08:08 -0700
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -23,24 +23,44 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
+Hello NFS,
 
- Hello All,
-   We are running nfs server on NT with clients 
-Redhat 6.2 and RH 7.0  With Redhat 7.0 we are
-able to mount and create directories and files.
-The problem with 6.2 is we are able to create
-directories but not files under directories.
-It says permission denied. We are able to change
-chmod and then  create them. Is there any solution
-for this.
+I found that the CPU stayed in very high load when I set up a NFS
+server on a RH 7.3 with the following options:
 
-thanks,
-Sam
+/etc/exports:
 
-__________________________________________________
-Do You Yahoo!?
-Yahoo! Health - Feel better, live better
-http://health.yahoo.com
+/usr/local/share           10.0.2.0/255.255.255.0 (rw,no_root_squash)
+
+The CPU load of nfsd from `top` was always between 5-10.
+
+While I change the option to (rw,root_squash), the CPU load decreased
+dramatically to 0.1-0.5.
+
+Actually this NFS server only serves 4 Linux clients,  so the scaring
+CPU load made me very confused.
+
+Here are the basic information:
+
+server ~% uname -a
+Linux server 2.4.18-5 #1 Mon Jun 10 15:38:12 EDT 2002 i686 unknown
+
+server ~% cat /etc/redhat-release
+Red Hat Linux release 7.3 (Valhalla)
+
+Any idea why?
+
+BTW, I'm not in this list. If you've any idea on this, could you
+please CC to me when you reply?
+
+Thanks,
+Rowsen
+
+
+_________________________________________________________________
+MSN Photos is the easiest way to share and print your photos: 
+http://photos.msn.com/support/worldwide.aspx
+
 
 
 -------------------------------------------------------
