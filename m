@@ -1,23 +1,26 @@
-From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd -  Allow nfsv3 readdir to return more than one page of directory entries.
-Date: Tue, 24 Feb 2004 11:10:40 +1100
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: [PATCH] SGI 907674: document fsid export option
+Date: Tue, 24 Feb 2004 14:39:25 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1AvQ9o-0006ob-00@notabene>
-References: <20040224111006.26176.patches@notabene>
-Cc: nfs@lists.sourceforge.net
+Message-ID: <16442.51053.96888.392883@notabene.cse.unsw.edu.au>
+References: <40188282.36FBA905@melbourne.sgi.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AvQAH-0000i5-5t
-	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 16:11:09 -0800
+	id 1AvTQO-0005T3-Em
+	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 19:40:00 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.30)
-	id 1AvQ9u-00088i-Lc
-	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 16:10:46 -0800
+	id 1AvTPx-0000Un-MH
+	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 19:39:33 -0800
 Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <akpm@osdl.org>) (for <nfs@lists.sourceforge.net>) By note With
-	Smtp ; Tue, 24 Feb 2004 11:10:41 +1100
-To: Andrew Morton <akpm@osdl.org>
+	(for <gnb@melbourne.sgi.com>) (for <nfs@lists.sourceforge.net>) By
+	note With Smtp ; Tue, 24 Feb 2004 14:39:26 +1100
+To: Greg Banks <gnb@melbourne.sgi.com>
+In-Reply-To: message from Greg Banks on Thursday January 29
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,319 +33,62 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Thursday January 29, gnb@melbourne.sgi.com wrote:
+> G'day,
+> 
+> This patch against nfs-utils 1.0.6 documents the fsid=num export
+> option.
 
+Thanks.  I've added a paragraph about the special meaning of fsid=0
+for NFSv4 and committed it to CVS.
 
-This requires checking if the entry will fit in the current page and,
-if it doesn't, encoding it into the next page, and then copying it
-back to lie across the boundary between two pages.
+NeilBrown
 
-From: Bruce Allan <bwa@us.ibm.com>
-
- ----------- Diffstat output ------------
- ./fs/nfsd/nfs3proc.c |   30 +++++---
- ./fs/nfsd/nfs3xdr.c  |  190 ++++++++++++++++++++++++++++++++++++++++-----------
- 2 files changed, 172 insertions(+), 48 deletions(-)
-
-diff ./fs/nfsd/nfs3proc.c~current~ ./fs/nfsd/nfs3proc.c
---- ./fs/nfsd/nfs3proc.c~current~	2004-02-24 11:07:48.000000000 +1100
-+++ ./fs/nfsd/nfs3proc.c	2004-02-24 10:53:33.000000000 +1100
-@@ -456,29 +456,43 @@ static int
- nfsd3_proc_readdirplus(struct svc_rqst *rqstp, struct nfsd3_readdirargs *argp,
- 					       struct nfsd3_readdirres  *resp)
- {
--	int	nfserr, count;
-+	int	nfserr, count = 0;
- 	loff_t	offset;
-+	int	i;
-+	caddr_t	page_addr = NULL;
- 
- 	dprintk("nfsd: READDIR+(3) %s %d bytes at %d\n",
- 				SVCFH_fmt(&argp->fh),
- 				argp->count, (u32) argp->cookie);
- 
--	/* Make sure we've room for the NULL ptr & eof flag, and shrink to
--	 * client read size */
--	count = (argp->count >> 2) - 2;
-+	/* Convert byte count to number of words (i.e. >> 2),
-+	 * and reserve room for the NULL ptr & eof flag (-2 words) */
-+	resp->count = (argp->count >> 2) - 2;
- 
- 	/* Read directory and encode entries on the fly */
- 	fh_copy(&resp->fh, &argp->fh);
- 
--	resp->buflen = count;
- 	resp->common.err = nfs_ok;
- 	resp->buffer = argp->buffer;
-+	resp->buflen = resp->count;
- 	resp->rqstp = rqstp;
- 	offset = argp->cookie;
--	nfserr = nfsd_readdir(rqstp, &resp->fh, &offset, 
--			      &resp->common, nfs3svc_encode_entry_plus);
-+	nfserr = nfsd_readdir(rqstp, &resp->fh,
-+				     &offset, 
-+				     &resp->common,
-+				     nfs3svc_encode_entry_plus);
- 	memcpy(resp->verf, argp->verf, 8);
--	resp->count = resp->buffer - argp->buffer;
-+	for (i=1; i<rqstp->rq_resused ; i++) {
-+		page_addr = page_address(rqstp->rq_respages[i]);
-+
-+		if (((caddr_t)resp->buffer >= page_addr) &&
-+		    ((caddr_t)resp->buffer < page_addr + PAGE_SIZE)) {
-+			count += (caddr_t)resp->buffer - page_addr;
-+			break;
-+		}
-+		count += PAGE_SIZE;
-+	}
-+	resp->count = count >> 2;
- 	if (resp->offset)
- 		xdr_encode_hyper(resp->offset, offset);
- 
-
-diff ./fs/nfsd/nfs3xdr.c~current~ ./fs/nfsd/nfs3xdr.c
---- ./fs/nfsd/nfs3xdr.c~current~	2004-02-24 11:07:48.000000000 +1100
-+++ ./fs/nfsd/nfs3xdr.c	2004-02-24 11:09:35.000000000 +1100
-@@ -560,6 +560,8 @@ int
- nfs3svc_decode_readdirplusargs(struct svc_rqst *rqstp, u32 *p,
- 					struct nfsd3_readdirargs *args)
- {
-+	int len, pn;
-+
- 	if (!(p = decode_fh(p, &args->fh)))
- 		return 0;
- 	p = xdr_decode_hyper(p, &args->cookie);
-@@ -567,11 +569,17 @@ nfs3svc_decode_readdirplusargs(struct sv
- 	args->dircount = ntohl(*p++);
- 	args->count    = ntohl(*p++);
- 
--	if (args->count > PAGE_SIZE)
--		args->count = PAGE_SIZE;
--
--	svc_take_page(rqstp);
--	args->buffer = page_address(rqstp->rq_respages[rqstp->rq_resused-1]);
-+	len = (args->count > NFSSVC_MAXBLKSIZE) ? NFSSVC_MAXBLKSIZE :
-+						  args->count;
-+	args->count = len;
-+
-+	while (len > 0) {
-+		pn = rqstp->rq_resused;
-+		svc_take_page(rqstp);
-+		if (!args->buffer)
-+			args->buffer = page_address(rqstp->rq_respages[pn]);
-+		len -= PAGE_SIZE;
-+	}
- 
- 	return xdr_argsize_check(rqstp, p);
- }
-@@ -754,12 +762,64 @@ nfs3svc_encode_readdirres(struct svc_rqs
- 		p = resp->buffer;
- 		*p++ = 0;		/* no more entries */
- 		*p++ = htonl(resp->common.err == nfserr_eof);
--		rqstp->rq_res.page_len = (((unsigned long)p-1) & ~PAGE_MASK)+1;
-+		rqstp->rq_res.page_len = (resp->count + 2) << 2;
- 		return 1;
- 	} else
- 		return xdr_ressize_check(rqstp, p);
- }
- 
-+static inline u32 *
-+encode_entry_baggage(struct nfsd3_readdirres *cd, u32 *p, const char *name,
-+	     int namlen, ino_t ino)
-+{
-+	*p++ = xdr_one;				 /* mark entry present */
-+	p    = xdr_encode_hyper(p, ino);	 /* file id */
-+	p    = xdr_encode_array(p, name, namlen);/* name length & name */
-+
-+	cd->offset = p;				/* remember pointer */
-+	p = xdr_encode_hyper(p, NFS_OFFSET_MAX);/* offset of next entry */
-+	
-+	return p;
-+}
-+
-+static inline u32 *
-+encode_entryplus_baggage(struct nfsd3_readdirres *cd, u32 *p,
-+		struct svc_fh *fhp)
-+{
-+		p = encode_post_op_attr(cd->rqstp, p, fhp);
-+		*p++ = xdr_one;			/* yes, a file handle follows */
-+		p = encode_fh(p, fhp);
-+		fh_put(fhp);
-+		return p;
-+}
-+
-+static int
-+compose_entry_fh(struct nfsd3_readdirres *cd, struct svc_fh *fhp,
-+		const char *name, int namlen)
-+{
-+	struct svc_export	*exp;
-+	struct dentry		*dparent, *dchild;
-+
-+	dparent = cd->fh.fh_dentry;
-+	exp  = cd->fh.fh_export;
-+
-+	fh_init(fhp, NFS3_FHSIZE);
-+	if (isdotent(name, namlen)) {
-+		if (namlen == 2) {
-+			dchild = dget_parent(dparent);
-+		} else
-+			dchild = dget(dparent);
-+	} else
-+		dchild = lookup_one_len(name, dparent, namlen);
-+	if (IS_ERR(dchild))
-+		return 1;
-+	if (d_mountpoint(dchild))
-+		return 1;
-+	if (fh_compose(fhp, exp, dchild, &cd->fh) != 0 || !dchild->d_inode)
-+		return 1;
-+	return 0;
-+}
-+
- /*
-  * Encode a directory entry. This one works for both normal readdir
-  * and readdirplus.
-@@ -776,9 +836,14 @@ static int
- encode_entry(struct readdir_cd *ccd, const char *name,
- 	     int namlen, off_t offset, ino_t ino, unsigned int d_type, int plus)
- {
--	struct nfsd3_readdirres *cd = container_of(ccd, struct nfsd3_readdirres, common);
-+	struct nfsd3_readdirres *cd = container_of(ccd, struct nfsd3_readdirres,
-+		       					common);
- 	u32		*p = cd->buffer;
--	int		slen, elen;
-+	caddr_t		curr_page_addr = NULL;
-+	int		pn;		/* current page number */
-+	int		slen;		/* string (name) length */
-+	int		elen;		/* estimated entry length in words */
-+	int		num_entry_words = 0;	/* actual number of words */
- 
- 	if (cd->offset)
- 		xdr_encode_hyper(cd->offset, (u64) offset);
-@@ -795,48 +860,93 @@ encode_entry(struct readdir_cd *ccd, con
- 	slen = XDR_QUADLEN(namlen);
- 	elen = slen + NFS3_ENTRY_BAGGAGE
- 		+ (plus? NFS3_ENTRYPLUS_BAGGAGE : 0);
-+
- 	if (cd->buflen < elen) {
- 		cd->common.err = nfserr_toosmall;
- 		return -EINVAL;
- 	}
--	*p++ = xdr_one;				 /* mark entry present */
--	p    = xdr_encode_hyper(p, ino);	 /* file id */
--	p    = xdr_encode_array(p, name, namlen);/* name length & name */
- 
--	cd->offset = p;			/* remember pointer */
--	p = xdr_encode_hyper(p, NFS_OFFSET_MAX);	/* offset of next entry */
-+	/* determine which page in rq_respages[] we are currently filling */
-+	for (pn=1; pn < cd->rqstp->rq_resused; pn++) {
-+		curr_page_addr = page_address(cd->rqstp->rq_respages[pn]);
-+
-+		if (((caddr_t)cd->buffer >= curr_page_addr) &&
-+		    ((caddr_t)cd->buffer <  curr_page_addr + PAGE_SIZE))
-+			break;
-+	}
-+
-+	if ((caddr_t)(cd->buffer + elen) < (curr_page_addr + PAGE_SIZE)) {
-+		/* encode entry in current page */
-+
-+		p = encode_entry_baggage(cd, p, name, namlen, ino);
- 
--	/* throw in readdirplus baggage */
--	if (plus) {
--		struct svc_fh	fh;
--		struct svc_export	*exp;
--		struct dentry		*dparent, *dchild;
--
--		dparent = cd->fh.fh_dentry;
--		exp  = cd->fh.fh_export;
--
--		fh_init(&fh, NFS3_FHSIZE);
--		if (isdotent(name, namlen)) {
--			if (namlen == 2) {
--				dchild = dget_parent(dparent);
-+		/* throw in readdirplus baggage */
-+		if (plus) {
-+			struct svc_fh	fh;
-+
-+			if (compose_entry_fh(cd, &fh, name, namlen) > 0)
-+				goto noexec;
-+
-+			p = encode_entryplus_baggage(cd, p, &fh);
-+		}
-+		num_entry_words = p - cd->buffer;
-+	} else if (cd->rqstp->rq_respages[pn+1] != NULL) {
-+		/* temporarily encode entry into next page, then move back to
-+		 * current and next page in rq_respages[] */
-+		u32 *p1, *tmp;
-+		int len1, len2;
-+
-+		/* grab next page for temporary storage of entry */
-+		p1 = tmp = page_address(cd->rqstp->rq_respages[pn+1]);
-+
-+		p1 = encode_entry_baggage(cd, p1, name, namlen, ino);
-+
-+		/* throw in readdirplus baggage */
-+		if (plus) {
-+			struct svc_fh	fh;
-+
-+			if (compose_entry_fh(cd, &fh, name, namlen) > 0) {
-+				/* zero out the filehandle */
-+				*p1++ = 0;
-+				*p1++ = 0;
- 			} else
--				dchild = dget(dparent);
--		} else
--			dchild = lookup_one_len(name, dparent,namlen);
--		if (IS_ERR(dchild))
--			goto noexec;
--		if (d_mountpoint(dchild))
--			goto noexec;
--		if (fh_compose(&fh, exp, dchild, &cd->fh) != 0 || !dchild->d_inode)
--			goto noexec;
--		p = encode_post_op_attr(cd->rqstp, p, &fh);
--		*p++ = xdr_one; /* yes, a file handle follows */
--		p = encode_fh(p, &fh);
--		fh_put(&fh);
-+				p1 = encode_entryplus_baggage(cd, p1, &fh);
-+		}
-+
-+		/* determine entry word length and lengths to go in pages */
-+		num_entry_words = p1 - tmp;
-+		len1 = curr_page_addr + PAGE_SIZE - (caddr_t)cd->buffer;
-+		if ((num_entry_words << 2) <= len1) {
-+			/* the actual number of words in the entry is less
-+			 * than elen and can still fit in the current page
-+			 */
-+			memmove(p, tmp, num_entry_words << 2);
-+			p += num_entry_words;
-+
-+			/* update offset */
-+			cd->offset = cd->buffer + (cd->offset - tmp);
-+		} else {
-+			len2 = (num_entry_words << 2) - len1;
-+
-+			/* move from temp page to current and next pages */
-+			memmove(p, tmp, len1);
-+			memmove(tmp, (caddr_t)tmp+len1, len2);
-+
-+			/* update offset */
-+			if (((cd->offset - tmp) << 2) <= len1)
-+				cd->offset = p + (cd->offset - tmp);
-+			else
-+				cd->offset -= len1 >> 2;
-+			p = tmp + (len2 >> 2);
-+		}
-+	}
-+	else {
-+		cd->common.err = nfserr_toosmall;
-+		return -EINVAL;
- 	}
- 
- out:
--	cd->buflen -= p - cd->buffer;
-+	cd->buflen -= num_entry_words;
- 	cd->buffer = p;
- 	cd->common.err = nfs_ok;
- 	return 0;
+> 
+> --- nfs-utils-sgi/nfs-utils-1.0.6/utils/exportfs/exports.man	Thu Jan 29 13:52:34 2004
+> +++ nfs-utils-work/nfs-utils-1.0.6/utils/exportfs/exports.man	Thu Jan 29 14:22:17
+> 2004
+> @@ -271,6 +271,24 @@
+>  then the nominted path must be a mountpoint for the exportpoint to be
+>  exported.
+>  
+> +.TP
+> +.IR fsid= num
+> +This option forces the filesystem identification portion of the file
+> +handle and file attributes used on the wire to be
+> +.I num
+> +instead of a number derived from the major and minor number of the
+> +block device on which the filesystem is mounted.  Any 32 bit number
+> +can be used, but it must be unique amongst all the exported filesystems.
+> +
+> +This can be useful for NFS failover, to ensure that both servers of
+> +the failover pair use the same NFS file handles for the shared filesystem
+> +thus avoiding stale file handles after failover.
+> +
+> +Some Linux filesystems are not mounted on a block device; exporting
+> +these via NFS requires the use of the 
+> +.I fsid
+> +option (although that may still not be enough).
+> +
+>  .SS User ID Mapping
+>  .PP
+>  .I nfsd
+> 
+> 
+> Greg.
+> -- 
+> Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+> I don't speak for SGI.
+> 
+> 
+> -------------------------------------------------------
+> The SF.Net email is sponsored by EclipseCon 2004
+> Premiere Conference on Open Tools Development and Integration
+> See the breadth of Eclipse activity. February 3-5 in Anaheim, CA.
+> http://www.eclipsecon.org/osdn
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
 
 
 -------------------------------------------------------
