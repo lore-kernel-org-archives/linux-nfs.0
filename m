@@ -1,24 +1,27 @@
 From: Olaf Kirch <okir@suse.de>
-Subject: Re: RE: Race condition in xprt_disconnect
-Date: Tue, 6 Apr 2004 11:24:01 +0200
+Subject: [PATCH] groups_alloc(0) badness
+Date: Tue, 6 Apr 2004 15:43:30 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040406092401.GA29906@suse.de>
-References: <1081197570.2641.133.camel@lade.trondhjem.org>
+Message-ID: <20040406134330.GE29906@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=iso-8859-15
-Cc: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net, Marcus Meissner <meissner@suse.de>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BAmoO-0003a2-DG
-	for nfs@lists.sourceforge.net; Tue, 06 Apr 2004 02:24:04 -0700
+	id 1BAqrV-0004UD-Aq
+	for nfs@lists.sourceforge.net; Tue, 06 Apr 2004 06:43:33 -0700
 Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
 	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.30)
-	id 1BAmoN-0005lS-Nc
-	for nfs@lists.sourceforge.net; Tue, 06 Apr 2004 02:24:04 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1081197570.2641.133.camel@lade.trondhjem.org>
+	id 1BAqrV-00074U-1v
+	for nfs@lists.sourceforge.net; Tue, 06 Apr 2004 06:43:33 -0700
+Received: from hermes.suse.de (Hermes.suse.de [195.135.221.8])
+	(using TLSv1 with cipher EDH-RSA-DES-CBC3-SHA (168/168 bits))
+	(No client certificate requested)
+	by Cantor.suse.de (Postfix) with ESMTP id 0E7E63FB4AC
+	for <nfs@lists.sourceforge.net>; Tue,  6 Apr 2004 15:43:31 +0200 (CEST)
+To: akpm@suse.de
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,75 +34,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Trond,
+Hi,
 
-On Mon, Apr 05, 2004 at 04:39:30PM -0400, Trond Myklebust wrote:
-> The only way I see that we can have duplicate calls to sock_release() is
-> if we are scheduling xprt_socket_autoclose() or xprt_socket_connect()
-> more than once.
-> Normally xprt_lock_write() should protect us against this, and so AFAICS
-> any duplicates must imply that xprt_lock_write() is getting lost before
-> xprt_socket_connect() has had a chance to run.
+We're looking into an nfsd oops that is caused by a corrupted
+group_info struct. I haven't nailed down the exact cause of
+the oops, but Marcus Meissner pointed out one problem in
+the current groups_alloc code.
 
-Yes, that's what it looks like. I had another oops now happening
-in some selinux function called from tcp_connect. This looks like
-two processes in xprt_socket_connect; the first having just opened
-the socket and calling connect, and the second one having released
-the socket inbetween.
+When we do groups_alloc(0), which can happen e.g. in the nfsd
+code, the code allocates a group_info struct with _no_ space for
+group_info->blocks. Nevertheless it proceeds to set 
+group_info->blocks[0] = group_info->small_block, clobbering whatever is
+after the group_info block.
 
-So yes, you're right. My patch is probably not sufficient.
+Here's a pseudo-diff to kernel/sys.c:groups_alloc:
+------------------------------------------------------------------
 
-> Presumably this is
-> occurring because xprt->snd_task is timing out and then being woken up
-> from xprt->pending.
+        nblocks = (gidsetsize/NGROUPS_PER_BLOCK) +
+            (gidsetsize%NGROUPS_PER_BLOCK?1:0);
++	if (unlikely(nblocks == 0))
++		nblocks = 1
+        group_info = kmalloc(sizeof(*group_info) + nblocks*sizeof(gid_t *),
+            GFP_USER);
+        if (!group_info)
 
-I'm not sure it's a timeout, actually. Looking at the syslog, the NFS
-Server closes the connection, and the oops happens one second later.
+------------------------------------------------------------------
 
-I've been looking around the code a little more, and here's a
-different theory.
-
- -	server drops connection
- -	tcp_state_change is called and wakes up all tasks with ENOTCONN
- -	rpciod schedules all tasks. The first one gets the write lock,
- 	and schedules the xprt_socket_connect worker. Goes to
-	sleep on xprt->pending.
- -	xprt_socket_connect runs and calls xprt_close->xprt_disconnect
- 	which wakes up all tasks with ENOTCONN. While xprt_socket_connect
-	is calling various network functions to create a socket, bind
-	and connect it, the following happens on CPU B:
- -	rpciod wakes up, schedules the task that was waiting for the
- 	connect. Oops, we already have the send lock (we're snd_task),
-	so go ahead and try to reconnect. Thus we schedule
-	xprt_socket_connect a second time, which gets run. Note that
-	the workqueue stuff resets the pending bit before calling
-	xprt_socket_connect. First thing xprt_socket_connect does
-	is close xprt->sock.
- -	Back on CPU A, we find the socket we're just trying to
- 	connect is gone. Oops.
-
-My patch proposed earlier to change xprt_close to not wake up all tasks
-when called from xprt_socket_connect should also prevent this race. The
-general case of snd_task waking up before the worker thread has run is
-not covered by this, though. But that should only happen due to timeout,
-and a 60 second timeout should be sufficient for keventd even on a slow
-day.
-
-> Note that in that case we don't actually *want* to schedule a new
-> connect(), since the problem is not that the networking operation timed
-> out, but rather that keventd is being too slow...
-
-The additional XPRT_PENDING bit may help. It should be sufficient to
-set it in xprt_connect and clear it in xprt_connect_status, I think.
-
-Alternatively, it would also help if we canceled the pending work request
-in __xprt_release_write. Unfortunately the workqueue api doesn't seem
-to support cancellation. Alternatively we could just call
-flush_pending_work.
-
-Et ceterum censeo: sunrpc needs a rewrite :)
-I'd like to spend some time on it this summer...
-
+Cheers
 Olaf
 -- 
 Olaf Kirch     |  The Hardware Gods hate me.
