@@ -1,26 +1,26 @@
-From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-Subject: Re: determining if a file is nfs mounted
-Date: Mon, 21 Jun 2004 19:09:16 -0600 (MDT)
+From: Robert Schwebel <robert@schwebel.de>
+Subject: Makefile system
+Date: Wed, 23 Jun 2004 10:09:42 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.60.0406211908290.6387@harp.ngdc.noaa.gov>
-References: <Pine.LNX.4.60.0406211242120.1344@harp.ngdc.noaa.gov>
- <40D74D18.2050509@moving-picture.com>
-Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Message-ID: <20040623080942.GJ21651@pengutronix.de>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-15
+Cc: Benedikt Spranger <b.spranger@pengutronix.de>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BcZmn-0005mp-PY
-	for nfs@lists.sourceforge.net; Mon, 21 Jun 2004 18:09:17 -0700
-Received: from harp.ngdc.noaa.gov ([140.172.187.26])
+	id 1Bd2pT-0002K1-Fw
+	for nfs@lists.sourceforge.net; Wed, 23 Jun 2004 01:09:59 -0700
+Received: from amalthea.dnx.de ([193.108.181.146] ident=mail)
 	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.30)
-	id 1BcZmn-0008Cf-Dk
-	for nfs@lists.sourceforge.net; Mon, 21 Jun 2004 18:09:17 -0700
-To: James Pearson <james-p@moving-picture.com>
-In-Reply-To: <40D74D18.2050509@moving-picture.com>
+	id 1Bd2pT-0001v4-0f
+	for nfs@lists.sourceforge.net; Wed, 23 Jun 2004 01:09:59 -0700
+Received: from metis.pengutronix.de ([213.252.143.165]:55192)
+	by amalthea.dnx.de with asmtp (Exim 4.34)
+	id 1Bd2pC-0001gi-9j
+	for nfs@lists.sourceforge.net; Wed, 23 Jun 2004 10:09:54 +0200
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,38 +33,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, 21 Jun 2004, James Pearson wrote:
+Hi, 
 
-> Doesn't statfs() do this? - from the man page:
->
-> 	struct statfs {
-> 	  long    f_type;     /* type of filesystem (see below) */
-> 	  ...
->
-> File system types:
->
-> 	...
-> 	linux/nfs_fs.h:
-> 	  NFS_SUPER_MAGIC       0x6969
-> 	...
->
-> James Pearson
+While working on the PTXdist build system we noticed that the nfs utils'
+Makefile system is significantly broken when it comes to cross
+compiling. After hacking the old code for some hours we had the
+impression that it was so seriously broken that we re-wrote the
+makefiles with the GNU autotools.
 
-i guess it does!  ;-)
+It doesn't make much sense to post a patch - this would probably be
+larger than the packet itself. As a base for further discussion, here's
+our version: 
 
-the man page isn't exactly inspiring though - sounds pretty platform
-specific... but it is what i'm after.
+	http://www.pengutronix.de/software/nfs-utils/
 
-cheers.
+This version does the following things:
 
--a
---
-===============================================================================
-| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
-| PHONE   :: 303.497.6469
-| A flower falls, even though we love it; and a weed grows, even though we do
-| not love it. --Dogen
-===============================================================================
+	* remove all old Makefiles and replace them with proper
+	  Makefile.am files
+	* tested for cross compilation
+	* tested for out-of-tree builds
+	* currently the Debian/Red Hat support is missing
+	  (might be something for somebody who knows what he 
+	  is doing)
+
+Any comments are welcome...
+
+Robert
+-- 
+ Dipl.-Ing. Robert Schwebel | http://www.pengutronix.de
+ Pengutronix - Linux Solutions for Science and Industry
+   Handelsregister:  Amtsgericht Hildesheim, HRA 2686
+     Hornemannstraﬂe 12,  31137 Hildesheim, Germany
+    Phone: +49-5121-28619-0 |  Fax: +49-5121-28619-4
 
 
 -------------------------------------------------------
