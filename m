@@ -1,19 +1,19 @@
 From: mehta kiran <kiranmehta1981@yahoo.com>
 Subject: Re: problem mounting using NFSv4 when using -o sec=krb5 option
-Date: Thu, 17 Mar 2005 04:53:13 -0800 (PST)
-Message-ID: <20050317125313.3181.qmail@web51603.mail.yahoo.com>
+Date: Thu, 17 Mar 2005 04:56:53 -0800 (PST)
+Message-ID: <20050317125653.70513.qmail@web51608.mail.yahoo.com>
 References: <38c3c48605031704277fd7e83c@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Kevin Coffman <kwc@citi.umich.edu>, nfs@lists.sourceforge.net
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DBuV8-0002v9-7K
-	for nfs@lists.sourceforge.net; Thu, 17 Mar 2005 04:53:22 -0800
-Received: from web51603.mail.yahoo.com ([206.190.38.208])
+	id 1DBuYd-0003BN-Nt
+	for nfs@lists.sourceforge.net; Thu, 17 Mar 2005 04:56:59 -0800
+Received: from web51608.mail.yahoo.com ([206.190.38.213])
 	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
-	id 1DBuV5-0007ju-ED
-	for nfs@lists.sourceforge.net; Thu, 17 Mar 2005 04:53:22 -0800
+	id 1DBuYc-0008FX-W0
+	for nfs@lists.sourceforge.net; Thu, 17 Mar 2005 04:56:59 -0800
 To: Suresh Jayaram <sureshjayaram@gmail.com>
 In-Reply-To: <38c3c48605031704277fd7e83c@mail.gmail.com>
 Sender: nfs-admin@lists.sourceforge.net
@@ -29,26 +29,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Suresh , 
-     #rpc.gssd -f -vvv show the same output.
-     #rpc.svcgssd -f -vvv gives 
-         WARNING: unable to locate function 
-         krb5_gss_internal_release_oid in krb5  
-         mechanism library: there will be problems
-         if multiple mechanisms are used!
-         entering poll
-       
-     /etc/gssmech.conf file has entry 
-    
-/usr/lib/libgssapi_krb5.so mechglue_internal_krb5_init
+one more thing.
 
-and this library exists in /usr/lib
-All machines are in TimeSync.
+On machine running kdc , 
+
+   entry for vcslinux5 is with kvno 3
+   while entry for vcslinux5 on vcslinux5 is with kvno
+   2 . Is this making a difference
 
 thanks,
  --kiran
-   
-   
+
+
+
 --- Suresh Jayaram <sureshjayaram@gmail.com> wrote:
 
 > Hi Kiran,
@@ -271,12 +264,10 @@ http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
 === message truncated ===
 
 
-
-		
-__________________________________ 
-Do you Yahoo!? 
-Yahoo! Small Business - Try our new resources site!
-http://smallbusiness.yahoo.com/resources/ 
+__________________________________________________
+Do You Yahoo!?
+Tired of spam?  Yahoo! Mail has the best spam protection around 
+http://mail.yahoo.com 
 
 
 -------------------------------------------------------
