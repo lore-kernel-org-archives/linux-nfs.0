@@ -1,24 +1,21 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Filipe Brandenburger <branden@terra.com.br>
 Subject: Re: open O_EXCL works?
-Date: Tue, 22 Mar 2005 07:27:15 -0500
-Message-ID: <1111494435.21559.20.camel@lade.trondhjem.org>
-References: <20050321181858.BE73.BRANDEN@terra.com.br>
-	 <1111449675.10980.50.camel@lade.trondhjem.org>
-	 <20050322073459.BE83.BRANDEN@terra.com.br>
+Date: Tue, 22 Mar 2005 10:28:28 -0300
+Message-ID: <20050322101843.BE94.BRANDEN@terra.com.br>
+References: <20050322073459.BE83.BRANDEN@terra.com.br> <1111494435.21559.20.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset="US-ASCII"
 Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DDiTq-0008Hh-EK
-	for nfs@lists.sourceforge.net; Tue, 22 Mar 2005 04:27:30 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1DDiTp-0004l2-NH
-	for nfs@lists.sourceforge.net; Tue, 22 Mar 2005 04:27:30 -0800
-To: Filipe Brandenburger <branden@terra.com.br>
-In-Reply-To: <20050322073459.BE83.BRANDEN@terra.com.br>
+	id 1DDjQ8-0002OA-Rw
+	for nfs@lists.sourceforge.net; Tue, 22 Mar 2005 05:27:44 -0800
+Received: from linares.terra.com.br ([200.154.55.228])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1DDjPo-0002kh-SV
+	for nfs@lists.sourceforge.net; Tue, 22 Mar 2005 05:27:44 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1111494435.21559.20.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,55 +29,64 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-ty den 22.03.2005 Klokka 07:46 (-0300) skreiv Filipe Brandenburger:
-> * Mon, 21 Mar 2005 19:01:15 -0500, Trond Myklebust <trond.myklebust@fys.uio.no>:
-> > For newer kernels, you should read all about the NFS cache consistency
-> > model on
-> > 
-> >    http://nfs.sourceforge.net/#faq_a8
+
+Hi again,
+
+* Tue, 22 Mar 2005 07:27:15 -0500, Trond Myklebust <trond.myklebust@fys.uio.no>:
+> > Isn't there a safe and cheap way to use a lock file that works on NFSv3
+> > on a 2.4.9 kernel?
 > 
-> Which versions? 2.6 and newer? As I read it on the FAQ, close-to-open
-> consistency was introduced in 2.4.20 (although I'm with 2.4.9, but I
-> believe it's really patched, as it's a RedHat thing).
+> The best way to ensure cache consistency is to put a posix (i.e.
+> fcntl()) lock on the file after you have created the lock file. Doing so
+> will flush the stale caches.
 
-I just downloaded the source code for 2.4.9-e49 from RedHat, and the
-dentry revalidation code looks pretty much untouched compared to stock
-2.4.9. No true cto there...
+Let me see if I understand: the lock (with the hardlink) is working fine,
+my problem is actually with the position where to append, is that it?
+Somehow, the information of the size of the file (that is where the append
+will write) is being cached in my clients, and if two clients append at
+the same time, the cache may cause them to overwrite each other, right?
 
-However, I had forgotten how the 2.4.9 code worked. If the file has been
-modified within the last hour, then the kernel should revalidate the
-attribute cache on open. This scheme very much relies on you using ntp
-or something like that to ensure that the clock on the server and client
-are in reasonable sync.
+If so, you suggest me to use fcntl on the file where I'm writing before
+the write operation, right? This would be the code:
 
-> > On an old kernel, like 2.4.20, you will also have to set the "noac"
-> > mount option. It makes everything very slow, but it is necessary in
-> > order to compensate for the lack of close-to-open cache consistency.
-> 
-> Gee, do I need to completely disable attribute caching for that? I
-> really can't afford it, the perofmance penalty for it is too expensive...
-> Isn't the "nocto" enough already (as I read it, "cto" is for
-> "close-to-open")?
-> 
->        nocto          Suppress the retrieval of new attributes when creating a file.
 
-Err... We need to rewrite that manpage. The above doesn't even make
-sense... It should read "Suppress the retrieval of new attributes when
-opening a cached file"
+  f = open("myfile", O_CREAT|O_WRONLY|O_APPEND)
 
-Which is exactly the opposite of what you really want.
+  [repeat the loop below for the data]
+    hardlink("myfile", "myfile.lock")
+    -> if it fails, invalidate information
+    fcntl(f, F_SETLK, F_WRLCK)
+    -> if it fails, invalidate information
+    write(f, "mydata", sizeof(mydata))
+    fcntl(f, F_SETLK, F_UNLCK)
+    unlink("myfile.lock")
+  [end loop]
 
-> Isn't there a safe and cheap way to use a lock file that works on NFSv3
-> on a 2.4.9 kernel?
+  close(f)
 
-The best way to ensure cache consistency is to put a posix (i.e.
-fcntl()) lock on the file after you have created the lock file. Doing so
-will flush the stale caches.
 
-Cheers,
-  Trond
--- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
+Would this work? Also, using fcntl(F_SETLK) implies mounting filesystems
+without the "nolock" option (that is what I'm using now), and implies
+running lockd, right? Also, wouldn't I have problems if some process
+dies between locking and unlocking with fcntl?
+
+Would change the position of "open" and "close" to inside the hardlink
+lock solve the problem? What I mean is, would this code work as I expect,
+with appends being atomic between different clients?
+
+
+  [repeat the loop below for the data]
+    hardlink("myfile", "myfile.lock")
+    -> if it fails, invalidate information
+    f = open("myfile", O_CREAT|O_WRONLY|O_APPEND)
+    write(f, "mydata", sizeof(mydata))
+    close(f)
+    unlink("myfile.lock")
+  [end loop]
+
+
+Thanks a lot,
+Filipe
 
 
 
