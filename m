@@ -1,17 +1,19 @@
-From: =?iso-8859-1?Q?Brasseur_Val=E9ry?= <Valery.Brasseur@atosorigin.com>
-Subject: lock state ?
-Date: Thu, 19 Jun 2003 18:19:17 +0200
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Issues with nfs solaris server
+Date: 19 Jun 2003 10:15:01 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <8147E1B07201DD41B6B9F0D31E07B38444913B@srv-grp-s07.dev.atos.fr>
+Message-ID: <shshe6mq99m.fsf@charged.uio.no>
+References: <EE335453C5C57840823404C684F9F617012D6849@exmbx01sj.Cadence.COM>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: text/plain; charset=us-ascii
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from hermes3.atos-group.com ([160.92.18.10])
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19T28H-000885-00
-	for <nfs@lists.sourceforge.net>; Thu, 19 Jun 2003 09:19:30 -0700
-To: nfs@lists.sourceforge.net
+	id 19T30D-0005li-00
+	for <nfs@lists.sourceforge.net>; Thu, 19 Jun 2003 10:15:13 -0700
+To: "Chris Croswhite" <csc@cadence.com>
+In-Reply-To: <EE335453C5C57840823404C684F9F617012D6849@exmbx01sj.Cadence.COM>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,11 +26,18 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-How can I get the current locks that a linux client nfs hold ?
-is there any lock/statd or whatever command which could dump this info ?
+>>>>> " " == Chris Croswhite <csc@cadence.com> writes:
 
-thanks 
-valery
+     > Guys, We are seeing issues with solaris nfs servers.  Every
+     > once in a while, mount points die and are not recoverable
+     > (except to reboot).  nfsutils 1.0.3 kernel 2.4.19.  I had heard
+     > someone mention that it might be a spinlock within the kernel.
+
+Could you elaborte on what you mean by 'die'? Also, what type of mount
+options are you using (is it TCP or UDP)?
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
