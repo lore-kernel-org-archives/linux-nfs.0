@@ -1,19 +1,17 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: error when insmod nfsd: unresolved symbol nfsd_linkage
-Date: 12 Apr 2002 14:34:09 +0200
+From: "Isaac Liu" <isaac@kuokoa.com>
+Subject: mount & mountd
+Date: Fri, 12 Apr 2002 11:21:10 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsg02185a6.fsf@charged.uio.no>
-References: <20020412135551.D26281@zeus.centre-cired.fr>
+Message-ID: <CE1009281084264787C8D334D5BE259239A86B@elsol.KNI-BA.kuokoa.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
+Received: from [66.89.112.150] (helo=kni-ba.kuokoa.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16w0GN-0007fV-00
-	for <nfs@lists.sourceforge.net>; Fri, 12 Apr 2002 05:34:47 -0700
-To: Dumas Patrice <dumas@centre-cired.fr>
-In-Reply-To: <20020412135551.D26281@zeus.centre-cired.fr>
+	id 16w5g1-0008Vx-00
+	for <nfs@lists.sourceforge.net>; Fri, 12 Apr 2002 11:21:37 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,26 +24,11 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->>>>> " " == Dumas Patrice <dumas@centre-cired.fr> writes:
 
-     > Hi, I have just compiled linux-2.4.18 with
-     > linux-2.4.18-NFS_ALL.dif applied. All the nfs stuff was
-     > compiled as modules (without over TCP support). I made some
-     > changes in lockd/svcproc.c, but I touched nothing anywhere
-     > else. I am on a redhat 7.2, but the kernel is a normal kernel.
+Hello,
 
-     > Now, when I try to insmod the nfsd module (after sunrpc and
-     > lockd), I get
-
-     > ./nfsd.o: unresolved symbol nfsd_linkage
-
-The above usually means that the kernel was compiled without
-'CONFIG_NFSD=m' being set.
-You probably forgot to run 'make oldconfig' after changing the .config
-file by hand or something like that.
-
-Cheers,
-  Trond
+Where can I get the source code for
+mount and mountd ?  I have RH 7.2 installed.
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
