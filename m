@@ -1,19 +1,16 @@
-From: Markus Korth <markus.korth@zn-ag.com>
-Subject: Re: export only to special mac addresses
-Date: Mon, 25 Mar 2002 09:37:51 +0100
+From: "Ozy Ali" <ozzeee@hotmail.com>
+Subject: Re: (no subject)
+Date: Mon, 25 Mar 2002 11:03:12
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3C9EE1DF.458421EB@zn-ag.com>
-References: <200203211807.g2LI74M02426@fubini.pci.uni-heidelberg.de> <20020323161512.GA10804@obelix.home.gunix.de> <200203240125.54414.bernd-schubert@web.de>
+Message-ID: <F97tytQEVFwmiXOlJUQ00007b9b@hotmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Received: from berlin.zn.ruhr-uni-bochum.de ([134.147.254.1] helo=mailserver.zn-ag.com)
+Content-Type: text/plain; format=flowed
+Cc: nfs@lists.sourceforge.net
+Received: from f97.law4.hotmail.com ([216.33.149.97] helo=hotmail.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16pPvN-0005mX-00
-	for <nfs@lists.sourceforge.net>; Mon, 25 Mar 2002 00:33:53 -0800
-Received: from zn-ag.com (london [134.147.254.11])
-	by mailserver.zn-ag.com (Postfix on SuSE Linux eMail Server 3.0) with ESMTP id 058207C72
-	for <nfs@lists.sourceforge.net>; Mon, 25 Mar 2002 09:31:31 +0100 (CET)
-To: nfs@lists.sourceforge.net
+	id 16pSG3-0007SD-00
+	for <nfs@lists.sourceforge.net>; Mon, 25 Mar 2002 03:03:23 -0800
+To: trond.myklebust@fys.uio.no
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,42 +23,57 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Bernd Schubert schrieb:
+my host.deny file is empty, and i cant locate ipchain file that u talk of.  
+the ip that i am attempting to install from is in the host.allow file, as i 
+read it should be in a HOWTO on NFS installation.  furthermore, when i 
+execute the rpcinfo -p command, it says portmapper is running on both tcp 
+and udp protocols.  what am i doing wrong?  by the way...i am a linux 
+newbie, so be patient with me :-)
 
-> > To slightly increase security we would like to allow only clients with
-> > special MAC addresses to mount this fs.
-> > So I'd like to know if there is already support for this.
+
+>From: Trond Myklebust <trond.myklebust@fys.uio.no>
+>To: "Ozy Ali" <ozzeee@hotmail.com>
+>CC: nfs@lists.sourceforge.net
+>Subject: Re: [NFS] (no subject)
+>Date: 22 Mar 2002 15:45:46 +0100
 >
-> i dont know, if therfor is support from nfs directly.
-> but i think, there is a arp filter module in upcominf 2.4.19
-> linux-kernel.
+> >>>>> " " == Ozy Ali <ozzeee@hotmail.com> writes:
 >
-> in combination with this i think it must be
-> possible to realize a nfs export to spezial mac adresses.
+>      > hi,
+>      >    ive got a system running on redhat 6.2.  i am attempting to
+>      >    get another 2 pcs connected up top it as a network.  i am
+>      >    currently trying to install via nfs as i only have 1 cd in
+>      >    the main pc.  i have trawled through many HOWTO's and tried
+>      >    their ideas. (ie. change the file etc\exports) my problem is
+>      >    no matter wot i try i always get the same message wen i boot
+>      >    up the netboot.img floppy in the 2nd pc. the error reads " i
+>      >    could not mount that directory from the server, mount: RPC:
+>      >    port mapper failure - RPC:timed out.
 >
-> i dont tried it, because kernel is not stable yet, but ir will be in
-> near future.
+>
+>      > im going out of my minds with this as ive been at it for about
+>      > 2 weeks.  any help would be greatly appreciated.
+>
+>
+>The error message is fairly explicit: the portmapper program
+>(a.k.a. "/sbin/portmap") on your server appears not to be accessible
+>to this client.
+>
+>Is portmap not running on the server, or is there anything in
+>/etc/hosts.deny or in /etc/sysconfig/ipchains for instance that might
+>be blocking access to that client?
+>
+>Cheers,
+>   Trond
+>
+>_______________________________________________
+>NFS maillist  -  NFS@lists.sourceforge.net
+>https://lists.sourceforge.net/lists/listinfo/nfs
 
-'iptables', the current filter system on Linux, has the ability to match
-by MAC source adresse - this should 
-also work on kernels below 2.4.19 !
 
-Ciao
- Markus
+_________________________________________________________________
+Chat with friends online, try MSN Messenger: http://messenger.msn.com
 
--- 
----------------------------------------------- 
-Senior Executive - Systemadministration
-
-Direct Phone: + 49 / 234 9787-57
-Direct Fax: +49 / 234 9787-77
-
-ZN Vision Technologies AG
-Universitaetsstrasse 160
-44801 Bochum
-Germany
-http://www.zn-ag.com
-----------------------------------------------
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
