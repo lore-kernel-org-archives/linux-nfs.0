@@ -1,18 +1,25 @@
-From: Matt Schillinger <mschilli@vss.fsi.com>
-Subject: kernel recompile nfsd.
-Date: 07 May 2003 10:15:44 -0500
+From: Jeremy Sanders <jss@ast.cam.ac.uk>
+Subject: Permission denied
+Date: Wed, 7 May 2003 16:47:14 +0100 (BST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1052320545.15797.43.camel@mosix>
+Message-ID: <Pine.LNX.4.55.0305071639490.2587@xpc5.ast.cam.ac.uk>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from adsl-66-136-174-212.dsl.stlsmo.swbell.net ([66.136.174.212] helo=esds.vss.fsi.com)
+Received: from gold.csi.cam.ac.uk ([131.111.8.12])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19DQbO-0004ZA-00
-	for <nfs@lists.sourceforge.net>; Wed, 07 May 2003 08:13:02 -0700
-Received: from mosix.vss.fsi.com (mosix [198.51.27.89])
-	by esds.vss.fsi.com (8.9.1a/8.9.1) with ESMTP id KAA29538
-	for <nfs@lists.sourceforge.net>; Wed, 7 May 2003 10:12:46 -0500 (CDT)
+	id 19DR91-0006lm-00
+	for <nfs@lists.sourceforge.net>; Wed, 07 May 2003 08:47:47 -0700
+Received: from cass41.ast.cam.ac.uk ([131.111.69.186])
+	by gold.csi.cam.ac.uk with esmtp (Exim 4.12)
+	id 19DR8V-0004Ln-00
+	for nfs@lists.sourceforge.net; Wed, 07 May 2003 16:47:15 +0100
+Received: from xserv1.ast.cam.ac.uk (IDENT:hA/GUl4d/v342GTMmXqlD4lnuicQ+IZT@xserv1.ast.cam.ac.uk [131.111.69.235])
+	by cass41.ast.cam.ac.uk (8.12.9+Sun/8.12.9) with ESMTP id h47FlEgD018315
+	for <nfs@lists.sourceforge.net>; Wed, 7 May 2003 16:47:15 +0100 (BST)
+Received: from xpc5.ast.cam.ac.uk (IDENT:A80FkjC2RaeT36MULj2jvnVgfLJ4UgEo@xpc5.ast.cam.ac.uk [131.111.68.220])
+	by xserv1.ast.cam.ac.uk (8.11.6/8.11.6) with ESMTP id h47FlEl23332
+	for <nfs@lists.sourceforge.net>; Wed, 7 May 2003 16:47:14 +0100
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -26,85 +33,46 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I'm sorry to bother the list, but I'm over my head on this one.
+I've seen this problem a couple of times (I think I reported it to the
+list before but I can find the posting). Using the automounter to mount
+home directories (rw,v3,rsize=8192,wsize=8192,hard,intr,udp,lock), it
+seems that rebooting a Linux server can give a "Permission denied" on
+the client. Further attempts at accessing the mountpoint give this error.
+It can be fixed my umounting it (if nothing is using it), and reaccessing
+the mountpoint.
 
-I have 2 machines, and I rebuilt them both with the 2.4.19 kernel.
+The server is running RedHat's 2.4.18-27.7.x kernel, and the client is
+using 2.4.18-17.7.x (unfortunately).
 
-the vanilla kernel was patched with the nfsfh patch to cause nfsd to
-workaround a CWD bug in IRIX (pre 6.5.13).
+dmesg on the client shows:
 
-both machines had working nfs functionality previous to install of new
-kernel.
+nfs: server server.ast.cam.ac.uk not responding, still trying
+nfs: task 57889 can't get a request slot
+nfs: server server.ast.cam.ac.uk OK
+nfs: server server.ast.cam.ac.uk OK
 
-On thor, the kernel installed, and there were no problems. it's running
-fine with 2.4.19.
+sendmail gave errors such as:
 
-On loki, the kernel installed, and I can run everything, EXCEPT nfsd. 
+May  7 16:07:39 xserv1 sendmail[22255]: h47EwYl22254: forward
+/home/gmorris: transient error: Timeout on file open
+May  7 16:07:39 xserv1 sendmail[22195]: h47Eljl22194: forward
+/home/gmorris: transient error: Timeout on file open
+May  7 16:07:39 xserv1 sendmail[22255]: h47EwYl22254: forward
+/home/gmorris/.forward: Permission denied
+May  7 16:07:39 xserv1 sendmail[22195]: h47Eljl22194: forward
+/home/gmorris/.forward: Permission denied
 
-Following is the results of an 'insmod nfsd'. I have tried booting into
-the original kernel (redhat 2.4.18-27.8.0smp), and I get the SAME
-errors. I'm sure it was just bad timing that the kernel recompile caused
-this problem, but I don't have a good enough understanding of C to
-figure out what is missing. Am I missing a library?  I cannot recall any
-package removal that would result in such, but i'm at your mercy to help
-me solve this.
+Any ideas? I suppose it's hard to diagnose this without a network traffic
+analysis, and we're not using the standard kernel either. I suppose it
+could be an automounter bug.
 
-Thanks for your help,
 
-Matt Schillinger
-mschilli@vss.fsi.com
-
------ ERROR MESSAGES
-
-[root@loki root]# insmod nfsd
-Using /lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o
-/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
-lockd_up_Rsmp_f6933c48
-/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
-svc_recv_Rsmp_d4b0af86
-/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
-svc_process_Rsmp_6060d411
-/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
-svc_exit_thread_Rsmp_dec6f1d7
-/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
-xdr_decode_string_Rsmp_6755aa62
-/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
-nfsd_debug_Rsmp_bf9d1b96
-/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
-nlmsvc_invalidate_client_Rsmp_b1c3f825
-/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
-svc_proc_register_Rsmp_9f7f54cb
-/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
-svc_proc_unregister_Rsmp_12e280e3
-/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
-svc_proc_read_Rsmp_866b52d3
-/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
-svc_create_Rsmp_d78d9b91
-/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
-xdr_encode_array_Rsmp_716530af
-/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
-svc_reserve_Rsmp_953572d2
-/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
-svc_destroy_Rsmp_f610e525
-/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
-svc_create_thread_Rsmp_ecdbf055
-/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
-nlmsvc_ops_Rsmp_014eb062
-/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
-svc_makesock_Rsmp_0d236ea6
-/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
-xdr_decode_string_inplace_Rsmp_7bd87272
-/lib/modules/2.4.18-27.8.0smp/kernel/fs/nfsd/nfsd.o: unresolved symbol
-lockd_down_Rsmp_a7b91a7b
+Jeremy
 
 -- 
-Matt Schillinger
-System Administrator
-FlightSafety International
-mschilli@vss.fsi.com
-314-551-8403
-
-
+Jeremy Sanders <jss@ast.cam.ac.uk>   http://www-xray.ast.cam.ac.uk/~jss/
+X-Ray Group, Institute of Astronomy, University of Cambridge, UK.
+Public Key Server PGP Key ID: E1AAE053
 
 
 -------------------------------------------------------
