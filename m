@@ -1,21 +1,16 @@
-From: "myciel" <myciel@dotcom.pl>
+From: pwitting@Cyveillance.com
 Subject: Re: nfs performance problem
-Date: Wed, 6 Nov 2002 12:46:58 +0100
+Date: Wed, 6 Nov 2002 12:08:59 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <00b401c2858a$36c4bf80$640a010a@winda>
-References: <005b01c284f5$ae1d6090$640a010a@winda> <20021105201758.I23227@vestdata.no> <007901c28505$51e9c240$640a010a@winda> <20021106003237.L23227@vestdata.no> <003201c28572$c04ea260$640a010a@winda> <20021106111628.Q23227@vestdata.no>
+Message-ID: <D38AFB3080F3D311807300B0D0203E53033A931C@MERCURY>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from rtr.pul.pl ([195.116.89.98] helo=poczta.dotcom.pl)
+Received: from [63.100.163.69] (helo=mercury.cyveillance.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 189Ojm-0003bt-00
-	for <nfs@lists.sourceforge.net>; Wed, 06 Nov 2002 03:52:46 -0800
-Received: from winda (office.interia.pl [213.76.176.114])
-	by poczta.dotcom.pl (Postfix) with ESMTP id 3F7D916ADF
-	for <nfs@lists.sourceforge.net>; Wed,  6 Nov 2002 12:49:57 +0100 (CET)
-To: <nfs@lists.sourceforge.net>
+	id 189Tg7-0007Be-00
+	for <nfs@lists.sourceforge.net>; Wed, 06 Nov 2002 09:09:19 -0800
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,68 +23,40 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+> From: =?iso-8859-1?Q?Ragnar_Kj=F8rstad?= <nfs@ragnark.vestdata.no>
+> On Tue, Nov 05, 2002 at 08:55:41PM +0100, poczta.dotcom.pl wrote:
+> > > How is local performance?
 
-> On Wed, Nov 06, 2002 at 09:59:01AM +0100, myciel wrote:
-> > > > > What filesystem do you use?
-> > > >
-> > > > reiserfs on top of  lvm (to be able to get snapshots)
-> > >
-> > > What reiserfs-version? 3.5 or 3.6?
-> > > What on-disk format? 3.5 or 3.6?
-> >
-> > 3.6.25
->
-> That's the reiserfs-version.
-> The on-disk format must be either "3.5" or "3.6".
-> There should be a message at mount-time telling you wich one, or you can
-> use "debugreiserfs <device>" to check it.
->
+> > local read/writes are ok
 
-format 3.6 with standard journal
+> > > What filesystem do you use?
 
-> > > Unnless you're running reiserfs-3.5 my guess is that it is the
-> > > IO-performance that is the problem. 3ware 7500 controllers have rather
-> > > poor performance on RAID5 - especially for writes.
-> >
-> > reiserfs 3.6.25, raid 5,
-> > ok, I can understand raid 5 is not fast but getting below 2Mbytes/s
-> > is really poor :-(
->
-> Well, updating a single byte is a very very expensive operation on
-> raid5. I agree that 2MB/s is worse than one should expect though, so
-> there may be something else going on.
->
-> The fact that you say local writes are faster could indicate that the
-> problem is not only io-related.
->
-> Maybe there is some packet-loss?
-I don't see any packet losses - at least as I can see with ping big packets
-like 16k or 32k
+> > reiserfs on top of lvm (to be able to get snapshots)
 
->That kills performance on nfs.
-> Is there anything in the kernel-log on the clients to indicate the
-> problem?
->
+I'm just going to throw my two cents in here. It sounds like the box is
+getting a lot of random IO (~500k maildirs) which means he is most likely
+seeing a LOT of seek issues, and RAID 5 is probably a really bad choice.
+Cheap controllers and fast RAID 5 just don't go together, there's too much
+math going on (the parity bit moves, remember) Matt, you really need to
+trust the folks on the list on this and try it. You'll lose some capacity
+(drop from 800GB to 480GB per array), but hopefully the performance boost
+will be worth it.
 
-yesterday evening I switched from udp to tcp,
-performace is much better but I get a lot of kernel messages in syslog:
+Now, on the plus side, you're already using LVM, so I have a better idea
+than RAID 1+0 for your situation. Build six RAID 1 arrays, then use LVM to
+create a single logical volume out of the group. The randomness should
+ensure that if your server receives 4 simultaneous read/write requests, they
+will each have their own "spindle", an there will be no performance robbing
+back and forth seeking, meaning the requests get handled faster, meaning
+there's less chance for the system to start thrashing with seek requests.
 
-Nov  6 12:40:45 intler kernel: RPC request reserved 272 but used 276
-Nov  6 12:40:50 intler kernel: RPC request reserved 240 but used 244
-Nov  6 12:40:54 intler kernel: RPC request reserved 244 but used 248
+I usually think of each RAID volume as a "virtual spindle", capable of
+handling 1 request at a time. While each individual transaction might be
+slower, (no striping to speed things up) there's six lanes to handle the
+requests. Server thinking versus Workstation thinking.
 
-what does above mean?
-
-> >
-> > what kind of IDE-RAID would You suggest?
->
-> A BigStorage IDE-RAID of course :)
-> I'll get back to you off-list about that.
-
-ok
-
-rafal mycielski
-
+Hopefully you can experiment with this, If this things production already it
+may be too late.
 
 
 -------------------------------------------------------
