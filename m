@@ -1,22 +1,22 @@
-From: nhorman@redhat.com
-Subject: Re: possible client stale filehandle bug?
-Date: Thu, 24 Feb 2005 15:43:59 -0500
-Message-ID: <20050224204359.GA30532@hmsendeavour.rdu.redhat.com>
-References: <482A3FA0050D21419C269D13989C61130853976D@lavender-fe.eng.netapp.com> <4213B9C2.2040709@redhat.com> <1109273623.11433.52.camel@lade.trondhjem.org>
+From: Neil Horman <nhorman@redhat.com>
+Subject: Re: NFS using too much memory on diskless system
+Date: Thu, 24 Feb 2005 08:38:12 -0500
+Message-ID: <421DD8C4.6080702@redhat.com>
+References: <BAY101-F38CA29432DA94D86024AD3BD640@phx.gbl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D4Pq7-0007D1-Vc
-	for nfs@lists.sourceforge.net; Thu, 24 Feb 2005 12:44:03 -0800
+	id 1D4JCZ-0006Sn-Hp
+	for nfs@lists.sourceforge.net; Thu, 24 Feb 2005 05:38:47 -0800
 Received: from mx1.redhat.com ([66.187.233.31])
 	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1D4Pq6-00079k-KO
-	for nfs@lists.sourceforge.net; Thu, 24 Feb 2005 12:44:03 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1109273623.11433.52.camel@lade.trondhjem.org>
+	id 1D4JCF-0003bm-NR
+	for nfs@lists.sourceforge.net; Thu, 24 Feb 2005 05:38:47 -0800
+To: Gareth Glaccum <verycoldpenguin@hotmail.com>
+In-Reply-To: <BAY101-F38CA29432DA94D86024AD3BD640@phx.gbl>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,45 +30,62 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Feb 24, 2005 at 11:33:43AM -0800, Trond Myklebust wrote:
-> on den 16.02.2005 Klokka 16:23 (-0500) skreiv Neil Horman:
-> > I agree, it probably doesn't re-drive on any operation that doesn't walk 
-> > a path, which is in line with what RHEL is doing currently.  I didn't 
-> > mean to imply that solaris retired ESTALE in all occurances of the 
-> > event.  Anywho, Can you point me to your patches?  I'd be interested to 
-> > know how you managed to implement retry on ESTALE without leaking into 
-> > the VFS, which I think you will recall was the big sticking point that 
-> > we were debating here.
+Gareth Glaccum wrote:
+> Hi,
+> I have a diskless system built and am having weird issues with the way 
+> NFS client is working. I am using SLES 9.0 with the stock kernel 
+> (2.6.5-7.111-30 I think from memory).
+> I have mounted an NFS partition from another machine without any issues. 
+> However, when I use anything to write to the partition (for example, see 
+> later) the system uses memory to cache the files as I am mounted over GbE.
+> However, the machine is not limiting the memory used at all. In fact, it 
+> is using so much it is crashing the machine or causing other programs to 
+> be OOM'd.
 > 
-> It does leak into the VFS, but in a way that is non-intrusive. The VFS
-> basically sets a new flag, LOOKUP_REVAL, in the struct nameidata flags
-> (which are passed down to d_op->d_revalidate() on Linux 2.4.x).
-> The NFS code takes that as an command to expire the caches, and force a
-> revalidation.
+> To recreate the problem, the following command took the machine out in 
+> less than 3 seconds dd if=/dev/zero of=/mnt/NFSMOUNT bs=1024k count=4000 
+> The machine has 4GB of memory and is using around 300Mb for its OS all 
+> told.
+> Is there some way of limiting the NFS cache size like there used to be 
+> in the 2.4 kernel? (see section B7 of the nfs FAQ I believe)
 > 
-> The exact same trick is performed on Linux-2.6.x: see the patch
-> "linux-2.6.11-31-stale_retry.dif"  in
->      http://client.linux-nfs.org/Linux-2.6.x/2.6.11-rc5/
+> Any ideas gratefully received,
+> Gareth
 > 
-> Cheers,
->   Trond
-> 
-> -- 
-> Trond Myklebust <trond.myklebust@fys.uio.no>
-> 
+It sounds to me your kernel has some sort of vm bug, but if you want to 
+shrink page cache usage, you may want to play with the dirty_vm_* 
+settings in /proc/sys/vm.  I'm still getting used to the 2.6 sysctls, 
+but I believe that those settings allow you to specify when your kernel 
+decides its under sufficient memory pressure to start moving data back 
+to disk.
 
-Thanks for the pointer!
+HTH
 Neil
+> _________________________________________________________________
+> It's fast, it's easy and it's free. Get MSN Messenger today! 
+> http://www.msn.co.uk/messenger
+> 
+> 
+> 
+> -------------------------------------------------------
+> SF email is sponsored by - The IT Product Guide
+> Read honest & candid reviews on hundreds of IT Products from real users.
+> Discover which products truly live up to the hype. Start reading now.
+> http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+
 
 -- 
 /***************************************************
- *Neil Horman
- *Software Engineer
- *Red Hat, Inc.
- *nhorman@redhat.com
- *gpg keyid: 1024D / 0x92A74FA1
- *http://pgp.mit.edu
- ***************************************************/
+  *Neil Horman
+  *Software Engineer
+  *Red Hat, Inc.
+  *nhorman@redhat.com
+  *gpg keyid: 1024D / 0x92A74FA1
+  *http://pgp.mit.edu
+  ***************************************************/
 
 
 -------------------------------------------------------
