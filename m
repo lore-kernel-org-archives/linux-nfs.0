@@ -1,32 +1,23 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
+From: Greg Banks <gnb@melbourne.sgi.com>
 Subject: Re: Different NFSSVC_MAXBLKSIZE for udp and tcp clients?
-Date: Thu, 27 Nov 2003 09:15:10 +1100
+Date: Thu, 27 Nov 2003 11:08:06 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16325.9710.935587.140271@notabene.cse.unsw.edu.au>
-References: <3FC3929C.EFFE5CDF@moving-picture.com>
-	<3FC3FD0C.B2DD2183@melbourne.sgi.com>
-	<3FC483D6.6753DCA3@moving-picture.com>
+Message-ID: <3FC54066.C04EBA49@melbourne.sgi.com>
+References: <482A3FA0050D21419C269D13989C6113020AC79F@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Greg Banks <gnb@melbourne.sgi.com>,
-    Trond Myklebust <trond.myklebust@fys.uio.no>,
-    nfs@lists.sourceforge.net
+Cc: James Pearson <james-p@moving-picture.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AP7wb-00058u-00
-	for <nfs@lists.sourceforge.net>; Wed, 26 Nov 2003 14:15:33 -0800
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.24)
-	id 1AP7wb-0006Em-9t
-	for nfs@lists.sourceforge.net; Wed, 26 Nov 2003 14:15:33 -0800
-Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <james-p@moving-picture.com>) (for <gnb@melbourne.sgi.com>)
-	(for <trond.myklebust@fys.uio.no>) (for <nfs@lists.sourceforge.net>)
-	By note With Smtp ; Thu, 27 Nov 2003 09:15:11 +1100
-To: James Pearson <james-p@moving-picture.com>
-In-Reply-To: message from James Pearson on Wednesday November 26
+	id 1AP9hh-0006qV-00
+	for <nfs@lists.sourceforge.net>; Wed, 26 Nov 2003 16:08:17 -0800
+Received: from mtvcafw.sgi.com ([192.48.171.6] helo=rj.sgi.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
+	id 1AP9hg-0006VU-Ou
+	for nfs@lists.sourceforge.net; Wed, 26 Nov 2003 16:08:16 -0800
+To: "Lever, Charles" <Charles.Lever@netapp.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -39,30 +30,43 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wednesday November 26, james-p@moving-picture.com wrote:
-> Greg Banks wrote:
-> > 
-> > James Pearson wrote:
-> > >
-> > > Is it possible to force a different maximum [rw]size on the server
-> > > depending on whether the client uses udp or tcp?
-> > 
-> > If someone writes the code, e.g. some new export options?
+"Lever, Charles" wrote:
 > 
-> Do you know if this would be possible with 2.4 kernels?
-> 
-> If it is possible, and someone could give me some pointers, I won't mind
-> giving it a a go ...
-> 
+> here's a vote for leaving these values variable rather than
+> fixed on the server side.  48KB maximum for UDP is great on
+> a clean network, but some folks would probably prefer setting
+> it to 8KB to ensure clients on more realistically congested
+> networks retain reasonable UDP performance.
 
-I have yet to see the point, so presumably I am missing something....
+Agreed.
 
-request size is completely under the control of the client via rsize
-and wsize (except that you cannot exceed the server's maximum).  So
-why do you want to add an option to the server? Why not just use the
-already-existing-and-working option on the client?
+> is there any evidence to show that a 4MB TCP maximum will
+> have benefits over something smaller, like say 1MB ?  
 
-NeilBrown
+None at all on Linux.  I mention that specific number only
+because it's the hardcoded maximum on IRIX.
+
+However there is evidence that 8K isn't enough.  In particular,
+it's smaller than an Altix client's PAGE_CACHE_SIZE so all writes
+between two Altix boxes go synchronous.
+
+> [...] there's probably a sweet spot where the sum
+> of both per-op and per-byte costs reach a minimum.  
+
+Yes.
+
+> as
+> far as i can tell that value is around 16KB in the current
+> Linux client implementations.
+
+The value will be higher for Altix clients and servers, which
+have more RAM, CPU, and larger pages than the machines you're
+probably thinking of.
+
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
 
 -------------------------------------------------------
