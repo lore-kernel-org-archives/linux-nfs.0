@@ -1,24 +1,26 @@
-From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: Re: [PATCH] SGI 882960: Busy inodes after unmount, oops
-Date: Fri, 06 Feb 2004 09:23:04 +1100
+From: Chris Newbold <cnewbold@laurelnetworks.com>
+Subject: Revisting mmap() and truncate() related corruption
+Date: 05 Feb 2004 20:56:36 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <4022C248.D4FF17CD@melbourne.sgi.com>
-References: <40209B6D.56ED461E@melbourne.sgi.com> <20040204120952.GA1980@suse.de> <4021751C.B888A15C@melbourne.sgi.com> <20040205161515.GA21344@suse.de>
+Message-ID: <1076032596.30653.24.camel@s4>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------F75F640360C258E2B77670A5"
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-   Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Aoru6-0004i0-8a
-	for nfs@lists.sourceforge.net; Thu, 05 Feb 2004 14:23:22 -0800
-Received: from mtvcafw.sgi.com ([192.48.171.6] helo=zok.sgi.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1Aoru4-000234-N4
-	for nfs@lists.sourceforge.net; Thu, 05 Feb 2004 14:23:20 -0800
-To: Olaf Kirch <okir@suse.de>
+	id 1AovEU-0001l9-JH
+	for nfs@lists.sourceforge.net; Thu, 05 Feb 2004 17:56:38 -0800
+Received: from paperclip.laurelnetworks.com ([63.94.127.69] ident=nobody)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1AovEU-0008Av-5H
+	for nfs@lists.sourceforge.net; Thu, 05 Feb 2004 17:56:38 -0800
+Received: from postit.laurelnetworks.com (postit.laurelnetworks.com [63.94.127.21])
+	by paperclip.laurelnetworks.com (Laurel/Laurel) with ESMTP id i161ubgq021492
+	for <nfs@lists.sourceforge.net>; Thu, 5 Feb 2004 20:56:37 -0500
+Received: from localhost.localdomain (vpn-cnewbold.vpn.pit.laurelnetworks.com [10.0.12.123])
+	by postit.laurelnetworks.com (Laurel/Laurel) with ESMTP id i161ua4K008764
+	for <nfs@lists.sourceforge.net>; Thu, 5 Feb 2004 20:56:36 -0500
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,216 +33,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
---------------F75F640360C258E2B77670A5
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
+We're running a large farm of compile servers, recently upgraded to
+kernel 2.4.20 from 2.2.14. We use distcc for compilation. Shortly after
+the upgrade, we started noticing object files were occasionally
+corrupted, having the right length but full of nulls.
 
-Olaf Kirch wrote:
-> 
-> Hi Greg,
-> 
-> On Thu, Feb 05, 2004 at 09:41:32AM +1100, Greg Banks wrote:
-> > BTW (not directly related to this bug) I found by experiment that I
-> > could umount an NFS mount when there were open file descriptors for
-> > unlinked files in the mount,[...]
-> 
-> Then something else must be wrong big time.
+A little Googling turned up this thread
+http://marc.theaimsgroup.com/?l=linux-nfs&m=104948555032343&w=2 that
+pretty much sums up what we're seeing. I built fsx and tried in on our
+network and it reveals the same type of corruption we're seeing during
+compilation.
 
-Yes, I found that a surprising behaviour.
+(I also tested a 2.4.24 kernel, which exhibited the same problem, and a
+2.6.0-testXX kernel which did not exhibit any problems. The original
+2.2.14 kernel also survived several hours of fsx without incident.)
 
-> > >  -      __rpc_execute notices the task is dead (no tk_action),
-> > >         leaves the loop and invokes task->tk_exit == nfs_async_unlink_done
-> >
-> > No.  In a crash dump taken after the umount has completed, the dir dentry has
-> > 1 leaked d_count for every async unlink present at umount, even though the
-> > async unlink tasks have been cleaned up.  This indicates that task->tk_exit
-> > is not being called but task->tk_release is, so the dput is not happening.
-> 
-> But then prune_dcache shouldn't touch these dentries at all, because their
-> refcount is still 1. They would be leaked, but there would be no crash.
+distcc writes object files received from the network to disk by
+mmap()'ing a file, using ftruncate() on it to get it to the right length
+and then writing the data into it.
 
-That makes sense.  I'll go back and recheck my forensics.
+I have also seen mention of this issue in the distcc FAQ, where they
+recommend using "no_subtree_check" when exporting NFS filesystems, but
+our servers are NetApps, not Linux. So I don't think this is applicable.
 
-> > It's not entirely clear to me how __rpc_execute can do that, but the evidence
-> > is that it does so.
-> 
-> Very strange... maybe we have a refcounting problem elsewhere, and the
-> refcount was 2 before calling tk_exit? But somehow I doubt this... I
-> think we'd see far more massive problems in this case.
-> 
-> Would you share your test case?
+After reading the thread cited above, I could not find any further
+discussion of the problem or any evidence of the patch making it into a
+released kernel.
 
-Sure, attached is a C program and a shell script wrapper.  You need to
-adjust $SERVER and possibly $UDELAY in the shell script.  Then run the
-shell script and watch /var/log/messages.
+So, I'd like to find out what ever happened with this issue and if there
+ever were, or will be, any official fixes against the 2.4.x line...
 
-The C program is fairly generic, you can use it to test the other case
-(umount allowed with open file descriptors) also.
+Thanks.
 
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
---------------F75F640360C258E2B77670A5
-Content-Type: application/x-sh;
- name="fmeh.sh"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="fmeh.sh"
+-Chris Newbold
+Laurel Networks, Inc.
 
-#!/bin/sh
-
-i=1
-SERVER=munch
-EXPORT=/server
-UDELAY=500
-MOUNTPOINTBASE=/tmp/fmeh-mounts
-
-do_silly_rename ()
-{
-    ./dangle "$1" \
-	write"VERY SILLY INDEED" \
-	unlink \
-	write"EVEN SILLIER"
-}
-
-while true ; do
-    MOUNTPOINT=`printf "$MOUNTPOINTBASE/%05d.d" $i`
-    logger -p local7.error "fmeh.sh: $MOUNTPOINT UDELAY=$UDELAY"
-    mkdir -p $MOUNTPOINT
-    mount $SERVER:$EXPORT $MOUNTPOINT
-    mkdir -p $MOUNTPOINT/foo/bar
-    do_silly_rename $MOUNTPOINT/foo/bar/silly1.$i
-    do_silly_rename $MOUNTPOINT/foo/bar/silly2.$i
-    do_silly_rename $MOUNTPOINT/foo/bar/silly3.$i
-    usleep $UDELAY
-    umount $MOUNTPOINT
-    i=`expr $i + 1`
-#    UDELAY=`expr $UDELAY + $UDELAY`
-done
-
---------------F75F640360C258E2B77670A5
-Content-Type: text/plain; charset=us-ascii;
- name="dangle.c"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="dangle.c"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <signal.h>
-#include <string.h>
-#include <fcntl.h>
-
-struct state
-{
-    const char **cmd;
-    int fd;
-    const char *path;
-};
-
-
-static void
-do_one_command(const char *cmd, struct state *state)
-{
-    if (!strcmp(cmd, "unlink"))
-    {
-	fprintf(stderr, "dangle: unlink\n");
-	unlink(state->path);
-    }
-    else if (!strncmp(cmd, "write", 5))
-    {
-	const char *data;
-
-	data = cmd+5;
-	if (!*data)
-	    data = "X";
-	fprintf(stderr, "dangle: write(\"%s\")\n", data);
-	write(state->fd, data, strlen(data));
-    }
-    else if (!strcmp(cmd, "fsync"))
-    {
-	fprintf(stderr, "dangle: fsync\n");
-	fsync(state->fd);
-    }
-    else if (!strcmp(cmd, "fdatasync"))
-    {
-	fprintf(stderr, "dangle: fdatasync\n");
-	fdatasync(state->fd);
-    }
-    else if (!strcmp(cmd, "sigpause"))
-    {
-	fprintf(stderr, "dangle: sigpause\n");
-	sigpause(0);
-    }
-    else if (!strncmp(cmd, "loop", 4))
-    {
-	int i, N;
-
-	N = atoi(cmd+4);
-	fprintf(stderr, "dangle: looping, N=%d\n", N);
-	state->cmd++;
-	if (N == 0)
-	{
-	    for (;;)
-		do_one_command(*state->cmd, state);
-	}
-	else
-	{
-	    for (i = 0 ; i < N ; i++)
-		do_one_command(*state->cmd, state);
-	}
-    }
-    else
-    {
-	fprintf(stderr, "dangle: unknown command \"%s\"\n", cmd);
-	exit(1);
-    }
-}
-
-
-static void
-do_commands(struct state *state)
-{
-    for ( ; *state->cmd != NULL ; state->cmd++)
-    {
-	do_one_command(*state->cmd, state);
-    }
-}
-
-
-
-int
-main(int argc, char **argv)
-{
-    struct state state;
-
-    if (argc < 2)
-    {
-	fprintf(stderr, "Usage: dangle filename [command...]\n");
-	exit(1);
-    }
-    state.path = argv[1];
-    state.cmd = (const char **)argv+2;
-
-    fprintf(stderr, "dangle: open(\"%s\")\n", state.path);
-    state.fd = open(state.path, O_RDWR|O_CREAT, 0);
-    if (state.fd < 0)
-    {
-	perror(state.path);
-	exit(1);
-    }
-
-    do_commands(&state);
-
-    fprintf(stderr, "dangle: exiting\n");
-    return 0;
-}
-
-
---------------F75F640360C258E2B77670A5--
 
 
 
