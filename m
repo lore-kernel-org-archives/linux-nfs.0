@@ -1,19 +1,19 @@
-From: Chuck Lever <cel@monkey.org>
-Subject: Re: [PATCH] 2.4.19-pre10 RPC changes...
-Date: Sat, 29 Jun 2002 14:53:37 -0400 (EDT)
+From: =?iso-8859-1?Q?Ragnar_Kj=F8rstad?= <nfs@ragnark.vestdata.no>
+Subject: Re: nfs-utils patch to statd for multi-homed hosts
+Date: Sat, 1 Jun 2002 12:27:23 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.BSO.4.44.0206291443140.8167-100000@naughty.monkey.org>
-References: <200206212140.34595.trond.myklebust@fys.uio.no>
+Message-ID: <20020601122723.F3799@vestdata.no>
+References: <OFE81A6846.D2A070A1-ON88256BCA.006D5F8B@boulder.ibm.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=iso-8859-1
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from vhost.monkey.org ([204.181.64.9] helo=naughty.monkey.org)
+Received: from stine.vestdata.no ([195.204.68.10])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17ONMW-0003c1-00
-	for <nfs@lists.sourceforge.net>; Sat, 29 Jun 2002 11:54:24 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <200206212140.34595.trond.myklebust@fys.uio.no>
+	id 17E66h-0000vL-00
+	for <nfs@lists.sourceforge.net>; Sat, 01 Jun 2002 03:27:35 -0700
+To: Bruce Allan <bruce.allan@us.ibm.com>
+In-Reply-To: <OFE81A6846.D2A070A1-ON88256BCA.006D5F8B@boulder.ibm.com>; from bruce.allan@us.ibm.com on Fri, May 31, 2002 at 01:18:27PM -0700
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,70 +26,63 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-hi trond-
+On Fri, May 31, 2002 at 01:18:27PM -0700, Bruce Allan wrote:
+> The attached patch provides the capability for statd to work with
+> multi-homed hosts (i.e. NFS servers and clients with more than one IP
+> interface each) as until now listed as a "FIXME" comment in
+> utils/statd/rmtcall.c
+Great! :-)
 
-i'm able to deadlock my dual 1.26GHz P-III with just these patches applied
-to a naked 2.4.19-pre10 kernel:
+> The theory is when a server or client crashes, reboots, and attempts to
+> notify the other of it's status change, if either host's interface on w=
+hich
+> the connection was originally made is no longer functional, statd will
+> attempt to use alternate interfaces if they exist.  This is made possib=
+le
+> by changing the addr member of the notify_list structure to a list of
+> addresses equivalent to that returned by a gethostbyname() call.  Faile=
+d
+> attempts at notifying an address removes that address from the list.
 
-linux-2.4.19-00-fix_refresh.dif
-linux-2.4.19-01-fix_kmap1.dif
-linux-2.4.19-02-fix_kmap2.dif
-linux-2.4.19-03-fix_kmap3.dif
+Are you saying notifications used to be sent out on the interface where
+the connection happened? I thought it only happened on the primary
+interface....
 
-i'm running "make -j2 bzImage" with other minor activity in the same file
-system (editing files, building small packages).  the file system is
-stored on a NetApp filer.
+Does the new code work with aliases as well as physical interfaces?
 
-i was using 19-pre8-NFSALL on other slower systems without trouble, but
-i think 19-pre8-NFSALL may have had some trouble on this system too.
-pre8, pre9, and pre10 work without problem on this system.  fix_refresh
-alone appeared to work OK on this system.
+How does this interact with the "--name" switch?
 
-On Fri, 21 Jun 2002, Trond Myklebust wrote:
+I believe --name originally replaced the gethostbyname() name with the
+user-supplied one. Now that there are multiple interfaces to worry about
+the old approach no longer works well.
+I see a few different alternatives of fixing that:
+1. Remove "--name". It was mostly written to fix the exact same problem
+   that your patch fixes in a bettery way. Unfortenately this will not
+   solve the problem with multiple names mapping to the same ip.
+2. Change "--name" so that it _adds_ the hostname to the list of
+   names to use in the notification-message, rather than replacing
+   the existing one(s). I suppose it should also be changed to accept
+   mulitple hostnames.
+3. Could we possible send the IP to the clients rather than the
+   hostnames? That would eliminate the problem of mulitple names
+   matching the same hostname.
 
->
-> Hi,
->
-> I've put up the full set of RPC changes that I'd like to push into 2.4.20 in
->
->   http://www.fys.uio.no/~trondmy/src/2.4.19-pre10/linux-2.4.19-RPC_ALL.dif
->
-> The full set of partial patches can be found in the same directory.
->
-> Patches contain
->
->   1) Full set of 2.5.x kmap() changes for avoiding highmem deadlocks.
->
->   2) RTT (round trip timing) estimation for improving the UDP timeout + resend
-> mechanism. Algorithm is the standard one as described in the Van Jacobson
-> paper (see http://www-nrg.ee.lbl.gov/papers/congavoid.pdf)
->
->   3) Slow start + congestion avoidance algorithms for UDP. Again see the Van
-> Jacobson paper.
->
->   4) A couple of minor cleanups.
->
-> In particular, it would be nice if people could test out the RTT + congestion
-> avoidance. Although it is probably not a cure for all of our UDP problems, I
-> would expect performance to improve on most platforms. In particular, I'd
-> very much encourage those people who reported a performance slowdown with the
-> previous NFS_ALL patch to test this out.
->
-> Cheers,
->    Trond
->
 
-	- Chuck Lever
---
-corporate:	<cel@netapp.com>
-personal:	<chucklever@bigfoot.com>
+I suppose I should go read the spec and find out how this really work
+before making comments, but I don't have the time just now, so take the
+comments with a grain of salt..
 
 
 
--------------------------------------------------------
-This sf.net email is sponsored by:ThinkGeek
-No, I will not fix your computer.
-http://thinkgeek.com/sf
+--=20
+Ragnar Kj=F8rstad
+Big Storage
+
+_______________________________________________________________
+
+Don't miss the 2002 Sprint PCS Application Developer's Conference
+August 25-28 in Las Vegas -- http://devcon.sprintpcs.com/adp/index.cfm
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
