@@ -1,23 +1,25 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Bug in nfs client handling of EJUKEBOX
-Date: Thu, 24 Feb 2005 12:02:53 -0800
-Message-ID: <1109275373.11433.59.camel@lade.trondhjem.org>
-References: <1109101592/oystr@hugh.cs.washington.edu>
-	 <20050224115531.GF11336@suse.de>
+From: Ian Kent <raven@themaw.net>
+Subject: Re: [PATCH] Fix xprt_bindresvport range
+Date: Fri, 25 Feb 2005 08:54:32 +0800 (WST)
+Message-ID: <Pine.LNX.4.58.0502250853100.1291@wombat.indigo.net.au>
+References: <20050223162808.GB17774@suse.de>  <1109176559.10142.4.camel@lade.trondhjem.org>
+  <Pine.LNX.4.58.0502241055521.2188@wombat.indigo.net.au>
+ <1109218999.11180.49.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-/2Id9e6Tz24KW011j57k"
-Cc: Jan Sanislo <oystr@cs.washington.edu>, nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Olaf Kirch <okir@suse.de>, Charles Lever <cel@citi.umich.edu>,
+	nfs@lists.sourceforge.net
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D4PCW-0005eZ-H3
-	for nfs@lists.sourceforge.net; Thu, 24 Feb 2005 12:03:08 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1D4TiZ-0008B3-2I
+	for nfs@lists.sourceforge.net; Thu, 24 Feb 2005 16:52:31 -0800
+Received: from wombat.indigo.net.au ([202.0.185.19])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.41)
-	id 1D4PCV-0000yF-PO
-	for nfs@lists.sourceforge.net; Thu, 24 Feb 2005 12:03:08 -0800
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20050224115531.GF11336@suse.de>
+	id 1D4TiJ-0002ES-0Q
+	for nfs@lists.sourceforge.net; Thu, 24 Feb 2005 16:52:31 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1109218999.11180.49.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,69 +33,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Wed, 23 Feb 2005, Trond Myklebust wrote:
 
---=-/2Id9e6Tz24KW011j57k
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+> to den 24.02.2005 Klokka 10:59 (+0800) skreiv Ian Kent:
+> > > > The patch below changes xprt_bindresvport to select ports from
+> > > > 650-1023 by default (631 is cups, which we better avoid).
+> > > > It also adds sysctls to allow the admin to select a different
+> > > > port range.
+> > > 
+> > > The patch looks good, and this is definitely a feature we should have.
+> > 
+> > It is certainly useful to be able to define the range but there are 
+> > NFS servers that require the client to use ports < 1024. So the underlying 
+> > problem still remains.
+> 
+> Are you referring to the problem of running out of free privileged
+> ports?  Sure, but that is not the problem that Olaf's patch attempts to
+> address.
 
-to den 24.02.2005 Klokka 12:55 (+0100) skreiv Olaf Kirch:
+I am.
+Sorry to interrupt.
 
-> I think this is a genuine problem. Previously, we would clear the timers
-> only when the task was running, i.e. inside the if (RPC_RUNNING(task))
-> branch. Proposed patch attached.
+> 
+> To address that problem, we certainly also want to add support for
+> sharing of sockets to the same server, and there may be further sharing
+> schemes that we can implement. For instance, UDP sockets don't have a
+> connection protocol, so they can basically talk to anyone.
+> 
+> For TCP sockets, we should also consider playing with the TCP_LINGER2
+> socket option (to enable us to re-use the port without having to wait
+> through a 60 second timeout).
 
-I'm thinking it might make sense to move that code into rpc_delete_timer
-itself, and perhaps change the condition to "!RPC_IS_QUEUED(task)", so
-that we test if the task is queued on a waitqueue, rather than if it is
-still running.
+Cool.
+I've not seen that option before.
 
-How about the following?
-
-Cheers,
-  Trond
--- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
-
---=-/2Id9e6Tz24KW011j57k
-Content-Disposition: inline; filename=linux-2.6.11-02-fix_rpc_delete.dif
-Content-Type: text/plain; name=linux-2.6.11-02-fix_rpc_delete.dif; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-
-RPC: Don't kill timers when calling rpc_restart_call() after rpc_delay()
-
-  Currently, if we restart an RPC call after having set an RPC delay (for
-  instance in the case where an NFS EJUKEBOX error has occurred) the call
-  to rpc_delete_timer() at the top of the rpc_execute() loop will
-  kill off our timer.
-
-  This patch causes rpc_delete_timer() to detect if the rpc_task is still
-  queued on a wait queue, and refuse to delete the timer if this is the case.
-
-  Problem diagnosed by Jan Sanislo and Olaf Kirch.
-  Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- sched.c |    4 +++-
- 1 files changed, 3 insertions(+), 1 deletion(-)
-
-Index: linux-2.6.11-rc4/net/sunrpc/sched.c
-===================================================================
---- linux-2.6.11-rc4.orig/net/sunrpc/sched.c
-+++ linux-2.6.11-rc4/net/sunrpc/sched.c
-@@ -132,9 +132,11 @@ __rpc_add_timer(struct rpc_task *task, r
-  * Delete any timer for the current task. Because we use del_timer_sync(),
-  * this function should never be called while holding queue->lock.
-  */
--static inline void
-+static void
- rpc_delete_timer(struct rpc_task *task)
- {
-+	if (RPC_IS_QUEUED(task))
-+		return;
- 	if (test_and_clear_bit(RPC_TASK_HAS_TIMER, &task->tk_runstate)) {
- 		del_singleshot_timer_sync(&task->tk_timer);
- 		dprintk("RPC: %4d deleting timer\n", task->tk_pid);
-
---=-/2Id9e6Tz24KW011j57k--
+Ian
 
 
 
