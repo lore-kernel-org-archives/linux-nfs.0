@@ -1,24 +1,24 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 5 of 6] lockd: don't try to match callback requests
- against export table
-Date: Thu, 16 Sep 2004 19:34:56 -0400
+Subject: Re: [PATCH 3 of 6] svcrpc: move export table checks to a
+ per-program pg_add_client method
+Date: Thu, 16 Sep 2004 19:38:51 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1095377696.10216.41.camel@lade.trondhjem.org>
-References: <1095375544.839c1c96.5@fieldses.org>
+Message-ID: <1095377931.10216.43.camel@lade.trondhjem.org>
+References: <1095375544.839c1c96.3@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=iso-8859-1
 Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C85mV-0004SH-6H
-	for nfs@lists.sourceforge.net; Thu, 16 Sep 2004 16:35:15 -0700
+	id 1C85qO-0005TE-0d
+	for nfs@lists.sourceforge.net; Thu, 16 Sep 2004 16:39:16 -0700
 Received: from pat.uio.no ([129.240.130.16])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1C85mU-0004sa-NA
-	for nfs@lists.sourceforge.net; Thu, 16 Sep 2004 16:35:15 -0700
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1C85qN-0000uR-Dj
+	for nfs@lists.sourceforge.net; Thu, 16 Sep 2004 16:39:15 -0700
 To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <1095375544.839c1c96.5@fieldses.org>
+In-Reply-To: <1095375544.839c1c96.3@fieldses.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,18 +32,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 P=E5 to , 16/09/2004 klokka 19:16, skreiv J. Bruce Fields:
-> +	/* XXX: correct list?  Add field to proc? */
-> +	/* XXX: SMPROC_NOTIFY may be a special case. */
-> +	/* XXX: double-check: make sure the procedure numbers make sense
-> +	 * across all nlm versions.  Check NOTIFY in particular. */
-> +	return proc =3D=3D NLMPROC_GRANTED
-> +		|| proc =3D=3D NLMPROC_TEST_RES
-> +		|| proc =3D=3D NLMPROC_LOCK_RES
-> +		|| proc =3D=3D NLMPROC_CANCEL_RES
-> +		|| proc =3D=3D NLMPROC_UNLOCK_RES
-> +		|| proc =3D=3D NLMPROC_GRANTED_RES;
 
-|| proc =3D=3D NLMPROC_NSM_NOTIFY
+> diff -L fs/nsfd/nfssvc.c -puN /dev/null /dev/null
+> diff -puN fs/lockd/svc.c~svcrpc_unix_ip_mapping_method fs/lockd/svc.c
+> --- linux-2.6.9-rc2/fs/lockd/svc.c~svcrpc_unix_ip_mapping_method	2004-09-=
+16 16:40:53.000000000 -0400
+> +++ linux-2.6.9-rc2-bfields/fs/lockd/svc.c	2004-09-16 16:40:53.000000000 =
+-0400
+> @@ -398,6 +398,16 @@ static int param_set_##name(const char *
+>  	return 0;							\
+>  }
+> =20
+> +static int lockd_set_client(struct svc_rqst *rqstp)
+> +{
+> +	rqstp->rq_client =3D NULL;
+> +	if (rqstp->rq_proc =3D=3D 0) /* XXX not quite right. */
+> +		return SVC_OK;
+> +	else
+> +		return svcauth_unix_set_client(rqstp);
+> +}
+> +
+
+Is svcauth_unix_set_client() actually exported anywhere?
 
 Cheers,
   Trond
