@@ -1,20 +1,24 @@
-From: Frank van Maarseveen <frankvm@frankvm.com>
-Subject: Re: NFS3PROC_ACCESS bug in 2.6.x
-Date: Tue, 15 Feb 2005 21:23:40 +0100
-Message-ID: <20050215202340.GA18603@janus>
-References: <20050206183913.GA28176@janus>
+From: Olaf Kirch <okir@suse.de>
+Subject: NFS direct IO needs page lock?
+Date: Tue, 15 Feb 2005 21:36:54 +0100
+Message-ID: <20050215203654.GA15634@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D19Ee-0008J9-7B
-	for nfs@lists.sourceforge.net; Tue, 15 Feb 2005 12:23:52 -0800
-Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1D19Ec-0007h8-Lv
-	for nfs@lists.sourceforge.net; Tue, 15 Feb 2005 12:23:52 -0800
-To: Linux NFS mailing list <nfs@lists.sourceforge.net>
-In-Reply-To: <20050206183913.GA28176@janus>
+	id 1D19RT-0000T0-1E
+	for nfs@lists.sourceforge.net; Tue, 15 Feb 2005 12:37:07 -0800
+Received: from cantor.suse.de ([195.135.220.2])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.41)
+	id 1D19RR-0007A5-GK
+	for nfs@lists.sourceforge.net; Tue, 15 Feb 2005 12:37:06 -0800
+Received: from hermes.suse.de (hermes-ext.suse.de [195.135.221.8])
+	(using TLSv1 with cipher EDH-RSA-DES-CBC3-SHA (168/168 bits))
+	(No client certificate requested)
+	by Cantor.suse.de (Postfix) with ESMTP id 0DD1D147F72E
+	for <nfs@lists.sourceforge.net>; Tue, 15 Feb 2005 21:36:55 +0100 (CET)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,15 +32,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sun, Feb 06, 2005 at 07:39:13PM +0100, Frank van Maarseveen wrote:
-> 
-> [blurb]
+Hi,
 
-must have been a "ro" export (automatically appearently, unless "rw"
-specified). user error (*blush*).
+I'm currently looking at a customer problem problem with weird VM oopses
+that is somehow related to a large application doing heavy NFS direct
+IO to/from a POSIX shmem area (hm, what application would *that* be :-).
 
+I haven't had a bright idea so far, and I'm not even convinced this is
+NFS related at all - but one thing that struck me as odd when meditated
+over the code today was that the directio code doesn't lock the pages
+in nfs_get_user_pages.  Is that an oversight, or does it do that
+intentionally?
+
+Olaf
 -- 
-Frank
+Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
+okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 
 -------------------------------------------------------
