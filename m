@@ -1,18 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 3 of 4 - Subject: NFSD binary compatibility breakage
-Date: Sun, 13 Apr 2003 16:18:16 +1000
+Subject: [PATCH] kNFSd - 2 of 4 - Return correct result for ACCESS(READ) on eXecute-only file.
+Date: Sun, 13 Apr 2003 16:18:11 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E194aoi-0007m2-00@notabene.cse.unsw.edu.au>
+Message-ID: <E194aod-0007lx-00@notabene.cse.unsw.edu.au>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 194apm-0006hW-00
-	for <nfs@lists.sourceforge.net>; Sat, 12 Apr 2003 23:19:22 -0700
+	id 194api-0006h9-00
+	for <nfs@lists.sourceforge.net>; Sat, 12 Apr 2003 23:19:18 -0700
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
 	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>) By
-	tone With Smtp ; Sun, 13 Apr 2003 16:19:17 +1000
+	tone With Smtp ; Sun, 13 Apr 2003 16:19:14 +1000
 To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -28,36 +28,45 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 ### Comments for ChangeSet
 
-The removal of "struct nfsctl_uidmap" from "nfsctl_fdparm" broke
-binary compatiblity on 64-bit platforms (strictly speaking: on all
-platforms with alignof(void *) > alignof(int)).  The problem is that
-nfsctl_uidmap contained a "char *", which forced the alignment of the
-entire union to be 64 bits.  With the removal of the uidmap, the
-required alignment drops to 32 bits.  Since the first member is only
-32 bits in size, this breaks compatibility with user-space.  Patch
-below fixes the problem.
+
+Currently, an NFSv3 ACCESS check for READ permission on an
+eXecute-only file will succeed where it should fail.
+
+This is because nfsd_permission allows READ access to eXecute only
+files so that mode 711 executables can be loaded and run, and
+nfsd_access simply uses nfsd_permission.
+
+This patch changes nfsd_permission to only map eXecute permission to
+read permission of MAY_OWNER_OVERRIDE was set.  This is only set
+when trying to read from a file, so ACCESS will no longer be tricked.
+
+This change will only affect callers of nfsd_permission that specify
+MAY_READ and not MAY_OWNER_OVERRIDE, and nfsd_access is the only
+routine that calls nfsd_permission (via fh_verify) that way.
 
  ----------- Diffstat output ------------
- ./include/linux/nfsd/syscall.h |    7 +++++++
- 1 files changed, 7 insertions(+)
+ ./fs/nfsd/vfs.c |    6 ++----
+ 1 files changed, 2 insertions(+), 4 deletions(-)
 
-diff ./include/linux/nfsd/syscall.h~current~ ./include/linux/nfsd/syscall.h
---- ./include/linux/nfsd/syscall.h~current~	2003-04-13 16:15:29.000000000 +1000
-+++ ./include/linux/nfsd/syscall.h	2003-04-13 16:15:29.000000000 +1000
-@@ -91,6 +91,13 @@ struct nfsctl_arg {
- 		struct nfsctl_export	u_export;
- 		struct nfsctl_fdparm	u_getfd;
- 		struct nfsctl_fsparm	u_getfs;
-+		/*
-+		 * The following dummy member is needed to preserve binary compatibility
-+		 * on platforms where alignof(void*)>alignof(int).  It's needed because
-+		 * this union used to contain a member (u_umap) which contained a
-+		 * pointer.
-+		 */
-+		void *u_ptr;
- 	} u;
- #define ca_svc		u.u_svc
- #define ca_client	u.u_client
+diff ./fs/nfsd/vfs.c~current~ ./fs/nfsd/vfs.c
+--- ./fs/nfsd/vfs.c~current~	2003-04-13 16:15:09.000000000 +1000
++++ ./fs/nfsd/vfs.c	2003-04-13 16:15:09.000000000 +1000
+@@ -1568,13 +1568,11 @@ nfsd_permission(struct svc_export *exp, 
+ 	    inode->i_uid == current->fsuid)
+ 		return 0;
+ 
+-	acc &= ~ MAY_OWNER_OVERRIDE; /* This bit is no longer needed,
+-                                        and gets in the way later */
+-
+ 	err = permission(inode, acc & (MAY_READ|MAY_WRITE|MAY_EXEC));
+ 
+ 	/* Allow read access to binaries even when mode 111 */
+-	if (err == -EACCES && S_ISREG(inode->i_mode) && acc == MAY_READ)
++	if (err == -EACCES && S_ISREG(inode->i_mode) &&
++	    acc == (MAY_READ | MAY_OWNER_OVERRIDE))
+ 		err = permission(inode, MAY_EXEC);
+ 
+ 	return err? nfserrno(err) : 0;
 
 
 -------------------------------------------------------
