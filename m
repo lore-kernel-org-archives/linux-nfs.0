@@ -1,25 +1,25 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 2.6.3] Add write throttling to NFS client
-Date: Wed, 03 Mar 2004 19:18:20 -0500
+From: Erik Walthinsen <omega@pdxcolo.net>
+Subject: Re: NAS server avalanche overload
+Date: Wed, 03 Mar 2004 16:20:38 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1078359500.7818.12.camel@nidelv.trondhjem.org>
-References: <20040303235442.31317.qmail@web12826.mail.yahoo.com>
+Message-ID: <1078359638.813.71.camel@localhost>
+References: <1078302718.825.67.camel@localhost>
+	 <1078351343.821.28.camel@localhost>  <20040304000438.GA25910@sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: Shantanu Goel <Shantanu.Goel@lehman.com>, Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>, Charles Lever <Charles.Lever@netapp.com>, Olaf Kirch <okir@suse.de>, Greg Banks <gnb@melbourne.sgi.com>, nfs@lists.sourceforge.net
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Aygew-0005im-15
-	for nfs@lists.sourceforge.net; Wed, 03 Mar 2004 16:24:18 -0800
-Received: from dh197.citi.umich.edu
-	([141.211.133.197] helo=nidelv.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	id 1Aygh9-0005vz-Nh
+	for nfs@lists.sourceforge.net; Wed, 03 Mar 2004 16:26:35 -0800
+Received: from mail.pdxcolo.net ([64.146.134.17] helo=palantir.pdxcolo.net)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.30)
-	id 1AygZM-0005AY-5z
-	for nfs@lists.sourceforge.net; Wed, 03 Mar 2004 16:18:32 -0800
-To: Shantanu Goel <sgoel01@yahoo.com>
-In-Reply-To: <20040303235442.31317.qmail@web12826.mail.yahoo.com>
+	id 1AygIL-0007Yz-Fk
+	for nfs@lists.sourceforge.net; Wed, 03 Mar 2004 16:00:57 -0800
+To: Greg Banks <gnb@sgi.com>
+In-Reply-To: <20040304000438.GA25910@sgi.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,53 +32,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 on , 03/03/2004 klokka 18:54, skreiv Shantanu Goel:
-> >=20
-> > I haven't tested it yet, though...
->=20
-> Trust me, it works... ;-)
+On Wed, 2004-03-03 at 16:04, Greg Banks wrote:
+> And the export options are?  cat /etc/exports on the server.
+/array/01-moria *.nas.pdxcolo.net(rw,no_root_squash,async)
 
-ah... Famous last words 8-)
-=20
-> >         - nfs_writepage_async() really doesn't need
-> > a "how" parameter.
-> >         It only allocates an nfs_page().
-> >        =20
->=20
-> I added it here because of nfs_wb_page.  If the caller
-> is kswapd, wouldn't we want the resultant
-> nfs_sync_file to run at higher priority?
+> The noatime option has no effect over NFS.  Your [rw]sizes are
+> really quite small, try 8K.  Also, try turning off noac.
+The rwsizes were set based on a set of experiments with different sizes,
+with 4k yielding by far the best bandwidth performance.  The limiting
+factor there is that the gig switch we have atm doesn't handle jumbo
+frames.  If increasing the rwsizes will reduce actual IO/sec load, then
+it's worth trying even if it does reduce max bandwidth.  In reality, the
+theoretical max is almost never approached, so it's probably not a huge
+deal.
 
-...but that call to nfs_wb_page() is in nfs_writepage(), not in
-nfs_writepage_async().
+> So did you get the collapse with sync ?
+The sync/async testing was done before migrating everything to the NAS,
+and these spikes started showing up as load increased many months later
+on.  Can only try sync after the next downtime coming up in about a
+month.
 
-> >         - Several of those #defines really ought to
-> > be inline functions.
-> >        =20
->=20
-> Which ones?
+> The problem I've seen is that the data is written out from the page
+> cache with the BKL held, which prevents any nfsd thread from waking up
+> and responding to incoming requests, and NFS traffic drops to zero.
+> In addition, if any of the nfsd's owned some other lock when this
+> happened, some local processes can be blocked too.  This is an
+> inevitable result of the "async" export option.
+That sounds like the kind of scenario I've been imagining.  Are there
+any (stable) patches to get rid of the BKL in this case, or do I have to
+wait until we move to 2.6 for that?  Alternately, would reducing the
+number of nfsd's help?  Since there are only 2 heavy and 2-3 light
+physical clients, is 16 overkill?
 
-Most of them. See Documentation/CodingStyle. The preference is for
-inlined functions, with macros being acceptable only if you can really
-prove that gcc makes a pigs ear of things.
-The reason for this preference is that we want proper type checking of
-arguments. Headers like sched.h are included in all sorts of places, so
-you really do want that...
+> You could try reducing the 1st parameter in /proc/sys/vm/bdflush
+> to say 5 and decrease the 5th parameter by a similar factor.  This
+> will activate kupdated more frequently and it will write data out
+> earlier.  But, did I mention the "sync" export option?
+OK, I'll give that a shot and see if it makes a dent in tonight's
+spike(s).  . . . Oddly enough, I just checked the graphs and a spike is
+going on now, but looks like I caught the tail end only.  I made the
+bdflush changes, but cannot determine whether it's the end of the spike
+or a bdflush-related termination.
 
-Again, a lot of the existing header files are pretty grimy, and do need
-cleaning up w.r.t. this, but that's no reason to be introducing more
-badness if we can avoid it.
+- Omega
+  aka Erik Walthinsen
+  omega@pdxcolo.net
 
-> You mentioned you are already in the process of
-> cleaning up some of the above.  Do you need me to
-> submit anything else?
-
-Nah... ...but I'll be posting a cleaned up version as soon as I'm done
-integrating it with the rest. It would be nice if you could look over
-it, and see if I haven't screwed up then...
-
-Cheers,
-  Trond
 
 
 -------------------------------------------------------
