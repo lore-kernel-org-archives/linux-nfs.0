@@ -1,19 +1,22 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: RE: NFS Performance Between SGI Servers and Linux Clients
-Date: Thu, 22 May 2003 15:07:33 -0700
+Date: Fri, 23 May 2003 00:23:48 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <482A3FA0050D21419C269D13989C6113127DEB@lavender-fe.eng.netapp.com>
+Message-ID: <16077.19956.958830.569577@charged.uio.no>
+References: <482A3FA0050D21419C269D13989C6113127DEB@lavender-fe.eng.netapp.com>
+Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Trond Myklebust" <trond.myklebust@fys.uio.no>,
+    "Iain Irwin-Powell" <iain@cinesite.co.uk>,
+    <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mx01.netapp.com ([198.95.226.53])
+Received: from pat.uio.no ([129.240.130.16])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19IyEU-00055u-00
-	for <nfs@lists.sourceforge.net>; Thu, 22 May 2003 15:08:18 -0700
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>,
-   "Iain Irwin-Powell" <iain@cinesite.co.uk>
+	id 19IyTd-0002u9-00
+	for <nfs@lists.sourceforge.net>; Thu, 22 May 2003 15:23:57 -0700
+To: "Lever, Charles" <Charles.Lever@netapp.com>
+In-Reply-To: <482A3FA0050D21419C269D13989C6113127DEB@lavender-fe.eng.netapp.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,41 +29,22 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> -----Original Message-----
-> From: Trond Myklebust [mailto:trond.myklebust@fys.uio.no]
-> Sent: Thursday, May 22, 2003 5:13 PM
-> To: Iain Irwin-Powell
-> Cc: nfs@lists.sourceforge.net
-> Subject: Re: [NFS] NFS Performance Between SGI Servers and=20
-> Linux Clients
->=20
->=20
-> >>>>> " " =3D=3D Iain Irwin-Powell <iain@cinesite.co.uk> writes:
->=20
->      > Looking a bit deeper in a packet trace when the grep is
->      > running, Linux seems to issue 16 read requests (16KB) at a time
->      > whilst an SGI will only issue between 2 and 4. May or may not
->      > be relevant.
->=20
-> ... and this is a problem because .... ???
->=20
-> The Linux client tries to read ahead as much as it can and as quickly
-> as it can. Why should it doing anything else?
+>>>>> " " == Charles Lever <Lever> writes:
 
-well, this is one reason why NFS O_DIRECT is a desirable
-feature.  no readahead.  certain applications don't need
-it because the workload they generate is entirely random
-small reads.  in these cases, read ahead wastes I/O
-bandwidth and memory space with data that is never used
-by an application.
+     > trond, isn't there a read ahead value in the client that can be
+     > tweaked?  he could trim down vm_max_readahead, unless there is
+     > a max_readahead[] entry for anonymous file systems.
 
-trond, isn't there a read ahead value in the client that
-can be tweaked?  he could trim down vm_max_readahead,=20
-unless there is a max_readahead[] entry for anonymous
-file systems.
+That should partly help to trim it down unless the client is reading
+from > 1 file at a time. In that case the RPC layer will still try to
+issue more reads (up to MIN(16,vm_max_readahead) requests per process)
+if the network and server permits it.
 
-either that will help iain, or prove that the problem
-is not a result of read ahead.
+Beware, though, that vm_max_readahead will effect not only
+NFS. Performance on other tasks may suffer.
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
