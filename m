@@ -1,17 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 41 of 54] nfsd4: remove st_vfs_file checks
-Date: Tue, 08 Mar 2005 17:06:45 +1100
-Message-ID: <E1D8Xrh-00019T-1y@notabene.cse.unsw.edu.au>
+Subject: [PATCH kNFSd 37 of 54] nfsd4: rename release_stateid_lockowner
+Date: Tue, 08 Mar 2005 17:06:44 +1100
+Message-ID: <E1D8Xrg-00019C-NG@notabene.cse.unsw.edu.au>
 References: <20050308165419.3842.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D8Xrr-000281-9m
-	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:55 -0800
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	id 1D8Xrs-00028D-Im
+	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:56 -0800
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1D8Xrp-0007tS-Bg
-	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:55 -0800
+	id 1D8Xrq-0007tn-PF
+	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:56 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -27,62 +27,56 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-The st_vfs_file field *must* be non-NULL as long as the stateid is in use, so
-there's no point testing for it, unless we want to just BUG().  But since we'd
-immediately hit a NULL dereference in every case, there's no need even for
-that.
+
+The name makes it sounds like the job of this function is to release a single
+lockowner; the plural seems clearer.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c |   13 +++++--------
- 1 files changed, 5 insertions(+), 8 deletions(-)
+ ./fs/nfsd/nfs4state.c |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
 
 diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2005-03-07 13:28:51.000000000 +1100
-+++ ./fs/nfsd/nfs4state.c	2005-03-07 13:29:30.000000000 +1100
-@@ -1171,7 +1171,7 @@ release_stateid(struct nfs4_stateid *stp
- 	list_del_perfile++;
- 	list_del(&stp->st_perfile);
- 	list_del(&stp->st_perfilestate);
--	if ((stp->st_vfs_file) && (flags & OPEN_STATE)) {
-+	if (flags & OPEN_STATE) {
- 		list_for_each_entry(dp, &fp->fi_del_perfile, dl_del_perfile) {
- 			if(cmp_clid(&dp->dl_client->cl_clientid,
- 			    &stp->st_stateowner->so_client->cl_clientid)) {
-@@ -1182,7 +1182,7 @@ release_stateid(struct nfs4_stateid *stp
- 		release_stateid_lockowners(stp);
- 		nfsd_close(stp->st_vfs_file);
- 		vfsclose++;
--	} else if ((stp->st_vfs_file) && (flags & LOCK_STATE)) {
-+	} else if (flags & LOCK_STATE) {
- 		struct file *filp = stp->st_vfs_file;
+--- ./fs/nfsd/nfs4state.c~current~	2005-03-07 13:25:47.000000000 +1100
++++ ./fs/nfsd/nfs4state.c	2005-03-07 13:26:15.000000000 +1100
+@@ -81,7 +81,7 @@ u32 free_delegation= 0;
+ struct nfs4_stateid * find_stateid(stateid_t *stid, int flags);
+ static struct nfs4_delegation * find_delegation_stateid(struct inode *ino, stateid_t *stid);
+ static void release_delegation(struct nfs4_delegation *dp);
+-static void release_stateid_lockowner(struct nfs4_stateid *open_stp);
++static void release_stateid_lockowners(struct nfs4_stateid *open_stp);
  
- 		locks_remove_posix(filp, (fl_owner_t) stp->st_stateowner);
-@@ -1921,8 +1921,7 @@ find_openstateowner_id(u32 st_id, int fl
- static inline int
- nfs4_check_fh(struct svc_fh *fhp, struct nfs4_stateid *stp)
- {
--	return (stp->st_vfs_file == NULL ||
--		fhp->fh_dentry->d_inode != stp->st_vfs_file->f_dentry->d_inode);
-+	return fhp->fh_dentry->d_inode != stp->st_vfs_file->f_dentry->d_inode;
+ /* Locking:
+  *
+@@ -207,7 +207,7 @@ release_delegation(struct nfs4_delegatio
+ 		struct file *filp = dp->dl_stp->st_vfs_file;
+ 
+ 		dprintk("NFSD: release_delegation CLOSE\n");
+-		release_stateid_lockowner(dp->dl_stp);
++		release_stateid_lockowners(dp->dl_stp);
+ 		kfree(dp->dl_stp);
+ 		dp->dl_stp = NULL;
+ 		atomic_set(&dp->dl_state, NFS4_RECALL_COMPLETE);
+@@ -1089,7 +1089,7 @@ alloc_init_open_stateowner(unsigned int 
  }
  
- static int
-@@ -3015,10 +3014,8 @@ nfsd4_release_lockowner(struct svc_rqst 
- 		status = nfserr_locks_held;
- 		list_for_each_entry(stp, &local->so_perfilestate,
- 				st_perfilestate) {
--			if (stp->st_vfs_file) {
--				if (check_for_locks(stp->st_vfs_file, local))
--					goto out;
--			}
-+			if (check_for_locks(stp->st_vfs_file, local))
-+				goto out;
+ static void
+-release_stateid_lockowner(struct nfs4_stateid *open_stp)
++release_stateid_lockowners(struct nfs4_stateid *open_stp)
+ {
+ 	struct nfs4_stateowner *lock_sop;
+ 
+@@ -1177,7 +1177,7 @@ release_stateid(struct nfs4_stateid *stp
+ 				return;
+ 			}
  		}
- 		/* no locks held by (lock) stateowner */
- 		status = nfs_ok;
+-		release_stateid_lockowner(stp);
++		release_stateid_lockowners(stp);
+ 		nfsd_close(stp->st_vfs_file);
+ 		vfsclose++;
+ 	} else if ((stp->st_vfs_set) && (flags & LOCK_STATE)) {
 
 
 -------------------------------------------------------
