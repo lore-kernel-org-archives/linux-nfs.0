@@ -1,22 +1,27 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: IOStat with NFS
-Date: Tue, 9 Dec 2003 07:18:04 -0800
+From: Philippe Troin <phil@fifi.org>
+Subject: Re: [NFS client] NFS locks not released on abnormal process termination
+Date: 09 Dec 2003 10:46:44 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <482A3FA0050D21419C269D13989C611302B07ACE@lavender-fe.eng.netapp.com>
+Message-ID: <8765gpvnfv.fsf@ceramic.fifi.org>
+References: <20031208033933.16136.qmail@web20024.mail.yahoo.com>
+	<shszne3risb.fsf@charged.uio.no> <877k17rzai.fsf@ceramic.fifi.org>
+	<1070913367.2941.137.camel@nidelv.trondhjem.org>
+	<87llpms8yr.fsf@ceramic.fifi.org> <shsekvetmat.fsf@guts.uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <jeremymc@sce.carleton.ca>, <nfs@lists.sourceforge.net>
+Content-Type: multipart/mixed; boundary="=-=-="
+Cc: Kenny Simpson <theonetruekenny@yahoo.com>, linux-kernel@vger.kernel.org,
+        nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1ATjcq-0000b3-WD
-	for nfs@lists.sourceforge.net; Tue, 09 Dec 2003 07:18:12 -0800
-Received: from mx01.netapp.com ([198.95.226.53])
+	id 1ATmsu-0003W2-1v
+	for nfs@lists.sourceforge.net; Tue, 09 Dec 2003 10:47:00 -0800
+Received: from tantale.fifi.org ([216.27.190.146] ident=root)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
-	id 1ATjcq-0003vo-OF
-	for nfs@lists.sourceforge.net; Tue, 09 Dec 2003 07:18:12 -0800
-To: <jeremy@mcnicoll.ca>
+	id 1ATmst-0003zN-LZ
+	for nfs@lists.sourceforge.net; Tue, 09 Dec 2003 10:46:59 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <shsekvetmat.fsf@guts.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -29,87 +34,170 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-hi jeremy-
+--=-=-=
 
-iostat for NFS is a good idea, thanks for pursuing it.
+Trond Myklebust <trond.myklebust@fys.uio.no> writes:
 
-some general comments.
+> >>>>> " " == Philippe Troin <phil@fifi.org> writes:
+> 
+>      > From my reading of the patch, it supersedes the old patch, and
+>      > is only
+>      > necessary on the client. Is also does not compile :-)
+> 
+> Yeah, I admit I didn't test it out...
+> 
+>      > Here's an updated patch which does compile.
+> 
+> Thanks.
+> 
+>      > I am still running tests, but so far it looks good (that is all
+>      > locks are freed when a process with locks running on a NFS
+>      > client is killed).
+> 
+> Good...
 
-1.  as you noted, 2.4 is more or less closed for new features,
-    so it would be better to start looking closely at 2.6.
+I've ran test overnight on four boxen, and no locks were lost.
+I guess you can send this patch to Marcello now.
 
-2.  instead of an NFS only solution, you might want to consider
-    a more general solution for all network file systems, like
-    AFS, coda, samba, and so on.
+I've tested with the enclosed program.
 
-3.  instead of simulating block device statistics for file systems
-    that don't use blocks, why not invent a different paradigm for
-    network file systems, and teach iostat to use that?
+ 
+> There are still 2 other issues with the generic POSIX locking code.
+> Both issues have to do with CLONE_VM and have been raised on
+> linux-kernel & linux-fsdevel. Unfortunately they met with no response,
+> so I'm unable to pursue...
 
-4.  you will bump into the minor device limitation with your
-    design, allowing only 250 or so mounts to appear; you should
-    consider how to scale your solution to thousands of mounts.
+Can we help? Pointers?
 
-5.  i've only glanced at your code, but you appear to have some
-    layering violations, like putting NFS-specific code in the
-    generic file system layers.  see if you can find a way of
-    implementing this without violating the interface
-    architecture.
+Phil.
 
-6.  you need to worry about the mounts changing in the background,
-    mostly by automounter, while iostat gathers statistics...
-    maybe you have worried about that, and this is why you have
-    violated the architecture as you did.  some discussion of
-    how your solution handles such races would be illuminating
-    for us poor reviewers.
+--=-=-=
+Content-Type: text/x-csrc
+Content-Disposition: attachment; filename=kill-locks.c
 
-> -----Original Message-----
-> From: jeremy@mcnicoll.ca [mailto:jeremy@mcnicoll.ca]=20
-> Sent: Sunday, December 07, 2003 3:37 PM
-> To: nfs@lists.sourceforge.net
-> Cc: jeremymc@sce.carleton.ca
-> Subject: [NFS] IOStat with NFS
->=20
->=20
-> As a project for school (engineering) I modified IOStat on a=20
-> 2.4.22 or 23=20
-> series kernel to allow for NFS data output.  This may be=20
-> useful for some people=20
-> here.  I am in the middle of exams, so I cant get back to=20
-> anyone too quickly on=20
-> this but if any one is interested in what I did the patches are here.=20
->=20
-http://www.mcnicoll.ca/iostatnfs/iostats.html
+#define _GNU_SOURCE
+#define _LARGEFILE_SOURCE
+#define _FILE_OFFSET_BITS 64
 
-Hopefully people can give me constructive criticism on this work since
-its=20
-getting marked and I would like to see community acceptance.=20
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <signal.h>
+#include <sys/wait.h>
+#include <errno.h>
 
-Any pointers, tips, useful info to help towards the report that I have
-to write=20
-would be greatly appreciated.=20
+#define FNAME	"kill-locks.tmp"
+#define BUFSIZE	16384
+#define DEATHSIG SIGINT
+#define LOCKTRIES       10
+#define STRINGIFY_(x)	#x
+#define STRINGIFY(x)    STRINGIFY_(x)
+#define LOCKTRIESSTR    STRINGIFY(LOCKTRIES)
+#define LOCKSLEEPSECS   1
 
-Some of the things to be done when I finish exams are:=20
-  -clean up code.
-  -look at getting it working on 2.6 since there are no more changes to
-2.4
-  -report bug on the disk stats that  I found while doing the work.
-  -try to get this worked into the kernel.=20
-  -Use the feedback that I get to help with the documenation.=20
+void parent_try_lock(int mfd, int successcount, int status)
+{
+  int		i;
+  struct flock	lck;
 
-Thank you.=20
+  for (i=0; 1 /* always true */; ++i)
+    {
+      lck.l_type   = F_WRLCK;
+      lck.l_whence = SEEK_SET;
+      lck.l_start  = (off_t)0;
+      lck.l_len    = (off_t)0;
+      if (fcntl(mfd, F_SETLK, &lck) == -1)
+	{
+	  if (errno == EAGAIN)
+	    {
+	      if ( i == LOCKTRIES )
+		{
+		  fprintf(stderr,
+			  "unexpected status from child %08X\n"
+			  "successful locking attempts: %d\n",
+			  status, successcount);
+		  exit(1);
+		}
+	      else
+		{
+		  sleep(LOCKSLEEPSECS);
+		}
+	    }
+	  else
+	    perror("[parent] fcntl(F_SETLK)"), exit(1);
+	}
+      else
+	{
+	  lck.l_type   = F_UNLCK;
+	  lck.l_whence = SEEK_SET;
+	  lck.l_start  = (off_t)0;
+	  lck.l_len    = (off_t)0;
+	  if (fcntl(mfd, F_SETLK, &lck) == -1)
+	    perror("[parent] fcntl(F_SETLK) UNLCK"), exit(1);
+	  if (status)
+	    fprintf(stderr, "[parent] transient error, going on...\n");
+	  break;
+	}
+    }
+}
 
+int
+main()
+{
+  int	successcount = 0;
+  int	mfd;
+  /**/
 
+  mfd = open(FNAME, O_RDWR|O_CREAT, 0666);
+  if (mfd == -1)
+    perror("open()"), exit(1);
+  parent_try_lock(mfd, successcount, 0);
 
+  while (1)
+    {
+      pid_t	childpid;
+      int	status;
+      /**/
 
--------------------------------------------------------
-This SF.net email is sponsored by: SF.net Giveback Program.
-Does SourceForge.net help you be more productive?  Does it
-help you create better code?  SHARE THE LOVE, and help us help
-YOU!  Click Here: http://sourceforge.net/donate/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+      childpid = fork();
+      if (childpid == (pid_t) -1)
+	perror("fork()"), exit(1);
+      if (childpid == 0)
+	{
+	  /* Child */
+	  int		fd;
+	  struct flock	lck;
+	  char		buf[BUFSIZE];
+	  /**/
+
+	  fd = open(FNAME, O_RDWR|O_CREAT, 0666);
+	  if (fd == -1)
+	    perror("[child] open()"), exit(1);
+
+	  lck.l_type   = F_WRLCK;
+	  lck.l_whence = SEEK_SET;
+	  lck.l_start  = (off_t)0;
+	  lck.l_len    = (off_t)0;
+	  if (fcntl(fd, F_SETLK, &lck) == -1)
+	    perror("[child] fcntl(F_SETLK)"), exit(1);
+	  memset(buf, 0, sizeof(buf));
+	  while(1)
+	    write(fd, buf, sizeof(buf));
+	}
+
+      usleep(rand()%1000);
+      kill(childpid, DEATHSIG);
+      if (waitpid(childpid, &status, 0) != childpid)
+	perror("waitpid"), exit(1);
+      if ( ! (WIFSIGNALED(status) && WTERMSIG(status) == DEATHSIG))
+	parent_try_lock(mfd, successcount, status);
+      ++successcount;
+    }
+}
+
+--=-=-=--
 
 
 -------------------------------------------------------
