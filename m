@@ -1,11 +1,11 @@
-From: "Andrea Boudreaux" <sta44@aol.com>
-Subject: heteran branqh
-Date: Tue, 01 Apr 03 16:48:50 GMT
+From: "Vicki Sanders" <stacey.jones@aol.com>
+Subject: romplement wrcck
+Date: Tue, 01 Apr 03 16:13:43 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <wf74b$3-xabi6o2@sst3tsl.8o.ogg>
+Message-ID: <1f76ej0307$d@6u4rk.u2>
 Mime-Version: 1.0
 Content-Type: multipart/alternative;
-	boundary="D_BA5_4886"
+	boundary="BF0CF.26F1_9AB_"
 Return-path: <nfs-admin@lists.sourceforge.net>
 To: <netsaintplug-devel@lists.sourceforge.net>, <nfs@lists.sourceforge.net>, <sax-devel@lists.sourceforge.net>, <sax-users@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -22,7 +22,7 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a multi-part message in MIME format.
 
---D_BA5_4886
+--BF0CF.26F1_9AB_
 Content-Type: text/html
 Content-Transfer-Encoding: quoted-printable
 
@@ -116,13 +116,9 @@ href=3D"http://rd.yahoo.com/10000759/154/*http://www.bestdealspharmacy.com=
 size=3D4><STRONG>Please take&nbsp;me</STRONG></FONT></A><FONT 
 size=3D4><STRONG>&nbsp;off your list</STRONG></FONT></FONT>
 <P></P></BODY></HTML>
-qfawf xyjogecwudirf  zjn smvp
-hxfkdifex pwaxchyc
-fawpv
-
-eoel
-rzrcjrxwloq
---D_BA5_4886--
+ar ymcgkcwbp
+zuqdu jjqutasnbgmvn 
+--BF0CF.26F1_9AB_--
 
 
 
