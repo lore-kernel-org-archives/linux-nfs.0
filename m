@@ -1,15 +1,15 @@
 From: "Kendrick M. Smith" <kmsmith@umich.edu>
-Subject: REPOST patch 32/38: SERVER: new argument to nfsd_access()
-Date: Wed, 14 Aug 2002 16:52:05 -0400 (EDT)
+Subject: REPOST patch 33/38: SERVER: tweak nfsd_readdir() for NFSv4
+Date: Wed, 14 Aug 2002 16:52:38 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.SOL.4.44.0208141651420.1834-100000@vanguard.gpcc.itd.umich.edu>
+Message-ID: <Pine.SOL.4.44.0208141652080.1834-100000@vanguard.gpcc.itd.umich.edu>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from berzerk.gpcc.itd.umich.edu ([141.211.2.162])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17f57f-0007pT-00
-	for <nfs@lists.sourceforge.net>; Wed, 14 Aug 2002 13:52:07 -0700
+	id 17f58E-0007um-00
+	for <nfs@lists.sourceforge.net>; Wed, 14 Aug 2002 13:52:42 -0700
 To: linux-kernel@vger.kernel.org, <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -24,71 +24,111 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 
-NFSv4 defines a new field in the ACCESS response: a bitmap to indicate
-which access bits requested by the client are "supported", i.e. meaningful
-for the object in question.
+This patch makes three small changes to nfsd_readdir().
 
-This patch adds a new parameter @supported to nfsd_access(), so that
-nfsd_access() can set the value of this bitmap.
+First, the 'filldir' routine for NFSv4 may return an arbitrary error,
+which should become the return value for nfsd_readdir().  I implemented
+this by adding an 'nfserr' field to the 'struct readdir_cd'.
 
---- old/fs/nfsd/nfs3proc.c	Sun Aug 11 23:08:56 2002
-+++ new/fs/nfsd/nfs3proc.c	Sun Aug 11 23:09:44 2002
-@@ -134,7 +134,7 @@ nfsd3_proc_access(struct svc_rqst *rqstp
+Second, in NFSv4 the caller of nfsd_readdir() will specify an attribute
+bitmap, which must be communicated to the 'filldir' routine.  I implemented
+this by adding a @bitmap parameter to nfsd_readdir() and a corresponding
+field in the 'struct readdir_cd'.  (The bitmap is not interpreted in any
+way by nfsd_readdir().)
 
+Finally, NFSv4 defines a new error nfserr_readdir_nospc, which indicates
+that there was not enough buffer space to encode a single entry.
+
+--- old/fs/nfsd/nfs3proc.c	Sun Aug 11 23:09:50 2002
++++ new/fs/nfsd/nfs3proc.c	Sun Aug 11 23:10:29 2002
+@@ -460,7 +460,7 @@ nfsd3_proc_readdir(struct svc_rqst *rqst
  	fh_copy(&resp->fh, &argp->fh);
- 	resp->access = argp->access;
--	nfserr = nfsd_access(rqstp, &resp->fh, &resp->access);
-+	nfserr = nfsd_access(rqstp, &resp->fh, &resp->access, NULL);
- 	RETURN_STATUS(nfserr);
- }
+ 	nfserr = nfsd_readdir(rqstp, &resp->fh, (loff_t) argp->cookie,
+ 					nfs3svc_encode_entry,
+-					buffer, &count, argp->verf);
++					buffer, &count, argp->verf, NULL);
+ 	memcpy(resp->verf, argp->verf, 8);
+ 	resp->count = count;
 
---- old/fs/nfsd/vfs.c	Sun Aug 11 23:08:56 2002
-+++ new/fs/nfsd/vfs.c	Sun Aug 11 23:09:44 2002
-@@ -348,12 +348,12 @@ static struct accessmap	nfs3_anyaccess[]
- };
+@@ -495,7 +495,7 @@ nfsd3_proc_readdirplus(struct svc_rqst *
+ 	fh_copy(&resp->fh, &argp->fh);
+ 	nfserr = nfsd_readdir(rqstp, &resp->fh, (loff_t) argp->cookie,
+ 					nfs3svc_encode_entry_plus,
+-					buffer, &count, argp->verf);
++					buffer, &count, argp->verf, NULL);
+ 	memcpy(resp->verf, argp->verf, 8);
+ 	resp->count = count;
 
+--- old/fs/nfsd/nfsproc.c	Thu Aug  1 16:16:18 2002
++++ new/fs/nfsd/nfsproc.c	Sun Aug 11 23:10:29 2002
+@@ -492,7 +492,7 @@ nfsd_proc_readdir(struct svc_rqst *rqstp
+ 	/* Read directory and encode entries on the fly */
+ 	nfserr = nfsd_readdir(rqstp, &argp->fh, (loff_t) argp->cookie,
+ 			      nfssvc_encode_entry,
+-			      buffer, &count, NULL);
++			      buffer, &count, NULL, NULL);
+ 	resp->count = count;
+
+ 	fh_put(&argp->fh);
+--- old/fs/nfsd/vfs.c	Sun Aug 11 23:09:50 2002
++++ new/fs/nfsd/vfs.c	Sun Aug 11 23:10:29 2002
+@@ -1381,7 +1381,7 @@ out_nfserr:
+  */
  int
--nfsd_access(struct svc_rqst *rqstp, struct svc_fh *fhp, u32 *access)
-+nfsd_access(struct svc_rqst *rqstp, struct svc_fh *fhp, u32 *access, u32 *supported)
+ nfsd_readdir(struct svc_rqst *rqstp, struct svc_fh *fhp, loff_t offset,
+-             encode_dent_fn func, u32 *buffer, int *countp, u32 *verf)
++             encode_dent_fn func, u32 *buffer, int *countp, u32 *verf, u32 *bmval)
  {
- 	struct accessmap	*map;
- 	struct svc_export	*export;
- 	struct dentry		*dentry;
--	u32			query, result = 0;
-+	u32			query, result = 0, sresult = 0;
- 	unsigned int		error;
+ 	u32		*p;
+ 	int		oldlen, eof, err;
+@@ -1402,6 +1402,10 @@ nfsd_readdir(struct svc_rqst *rqstp, str
+ 	cd.buffer = buffer;
+ 	cd.buflen = *countp; /* count of words */
+ 	cd.dirfh  = fhp;
++	if (bmval) {
++		cd.bmval[0] = bmval[0];
++		cd.bmval[1] = bmval[1];
++	}
 
- 	error = fh_verify(rqstp, fhp, 0, MAY_NOP);
-@@ -375,6 +375,9 @@ nfsd_access(struct svc_rqst *rqstp, stru
- 	for  (; map->access; map++) {
- 		if (map->access & query) {
- 			unsigned int err2;
-+
-+			sresult |= map->access;
-+
- 			err2 = nfsd_permission(export, dentry, map->how);
- 			switch (err2) {
- 			case nfs_ok:
-@@ -395,6 +398,8 @@ nfsd_access(struct svc_rqst *rqstp, stru
- 		}
- 	}
- 	*access = result;
-+	if (supported)
-+		*supported = sresult;
+ 	/*
+ 	 * Read the directory entries. This silly loop is necessary because
+@@ -1417,8 +1421,15 @@ nfsd_readdir(struct svc_rqst *rqstp, str
+ 		if (err < 0)
+ 			goto out_nfserr;
 
-  out:
- 	return error;
---- old/include/linux/nfsd/nfsd.h	Sun Aug 11 23:08:56 2002
-+++ new/include/linux/nfsd/nfsd.h	Sun Aug 11 23:09:44 2002
-@@ -86,7 +86,7 @@ int		nfsd_create(struct svc_rqst *, stru
- 				char *name, int len, struct iattr *attrs,
- 				int type, dev_t rdev, struct svc_fh *res);
- #ifdef CONFIG_NFSD_V3
--int		nfsd_access(struct svc_rqst *, struct svc_fh *, u32 *);
-+int		nfsd_access(struct svc_rqst *, struct svc_fh *, u32 *, u32 *);
- int		nfsd_create_v3(struct svc_rqst *, struct svc_fh *,
- 				char *name, int len, struct iattr *attrs,
- 				struct svc_fh *res, int createmode,
++		err = cd.nfserr;
++		if (err)
++			goto out_close;
+ 	} while (oldlen != cd.buflen && !cd.eob);
+
++	err = nfserr_readdir_nospc;
++	if (rqstp->rq_vers == 4 && cd.eob && cd.buffer == buffer)
++		goto out_close;
++
+ 	/* If we didn't fill the buffer completely, we're at EOF */
+ 	eof = !cd.eob;
+
+--- old/include/linux/nfsd/nfsd.h	Sun Aug 11 23:09:50 2002
++++ new/include/linux/nfsd/nfsd.h	Sun Aug 11 23:10:29 2002
+@@ -55,6 +55,8 @@ struct readdir_cd {
+ 	char			plus;		/* readdirplus */
+ 	char			eob;		/* end of buffer */
+ 	char			dotonly;
++	int			nfserr;		/* v4 only */
++	u32			bmval[2];	/* v4 only */
+ };
+ typedef int		(*encode_dent_fn)(struct readdir_cd *, const char *,
+ 						int, loff_t, ino_t, unsigned int);
+@@ -119,7 +121,8 @@ int		nfsd_truncate(struct svc_rqst *, st
+ 				unsigned long size);
+ int		nfsd_readdir(struct svc_rqst *, struct svc_fh *,
+ 				loff_t, encode_dent_fn,
+-				u32 *buffer, int *countp, u32 *verf);
++				u32 *buffer, int *countp, u32 *verf,
++				u32 *bmval);
+ int		nfsd_statfs(struct svc_rqst *, struct svc_fh *,
+ 				struct statfs *);
+
 
 
 
