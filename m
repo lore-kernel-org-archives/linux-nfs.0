@@ -1,25 +1,25 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [PATCH] kNFSdv4 - 1 of 10 - idmap bugfixes and cleanup
-Date: Thu, 8 Apr 2004 18:05:55 -0400
+Date: Thu, 8 Apr 2004 18:39:11 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040408220555.GB18744@fieldses.org>
-References: <20040408111135.5397.patches@notabene> <E1BBOBq-0001Qe-9u@notabene.cse.unsw.edu.au> <20040407233608.6414089a.akpm@osdl.org> <20040408192803.GB17909@fieldses.org> <20040408125528.5362c910.akpm@osdl.org>
+Message-ID: <20040408223911.GC18744@fieldses.org>
+References: <20040408111135.5397.patches@notabene> <E1BBOBq-0001Qe-9u@notabene.cse.unsw.edu.au> <20040407233608.6414089a.akpm@osdl.org> <20040408192803.GB17909@fieldses.org> <20040408125528.5362c910.akpm@osdl.org> <20040408220555.GB18744@fieldses.org> <20040408153438.41e2c494.akpm@osdl.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: neilb@cse.unsw.edu.au, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BBheu-0005sa-Li
-	for nfs@lists.sourceforge.net; Thu, 08 Apr 2004 15:06:04 -0700
+	id 1BBiB7-0004YY-Se
+	for nfs@lists.sourceforge.net; Thu, 08 Apr 2004 15:39:21 -0700
 Received: from dsl093-002-214.det1.dsl.speakeasy.net
 	([66.93.2.214] helo=pumpkin.fieldses.org ident=Debian-exim)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
 	(Exim 4.30)
-	id 1BBheu-00031y-Au
-	for nfs@lists.sourceforge.net; Thu, 08 Apr 2004 15:06:04 -0700
+	id 1BBiB7-0003U9-BT
+	for nfs@lists.sourceforge.net; Thu, 08 Apr 2004 15:39:21 -0700
 To: Andrew Morton <akpm@osdl.org>
-In-Reply-To: <20040408125528.5362c910.akpm@osdl.org>
+In-Reply-To: <20040408153438.41e2c494.akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,26 +32,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Apr 08, 2004 at 12:55:28PM -0700, Andrew Morton wrote:
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > After the
-> > 
-> > 	set_task_state(current, TASK_INTERRUPTIBLE);
-> > 
-> > either put_mdr, or idmap_wait (which always calls put_mdr) is called,
-> > and put_mdr does a wake_up.  So I believe this is correct, though I do
-> > wish it was clearer.
-> 
-> wake_up() doesn't alter the caller's task->state.
+On Thu, Apr 08, 2004 at 03:34:38PM -0700, Andrew Morton wrote:
+> What do you want me to do?
 
-The caller is on the waitqueue in this case.
+Could you just drop the first 4 for now?  Thanks.
 
-But now that I look at it more carefully, there's more serious problems;
-it'll take another day for me to get this right, sorry; drop the idmap
-patches or not, and that particular code is in almost equally bad
-shape....
+> kNFSdv4-1-of-10-idmap-bugfixes-and-cleanup.patch
+> nfsd_idmap_mdr_put_fix.patch
+> kNFSdv4-2-of-10-better-handling-of-failed-idmap-lookups.patch
+> kNFSdv4-3-of-10-complain-if-idmapd-doesnt-have-channel-open.patch
 
---b.
+And then I'll just resubmit those through Neil when they're fixed.
+Sorry about that.--b.
 
 
 -------------------------------------------------------
