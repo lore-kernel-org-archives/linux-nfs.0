@@ -1,27 +1,23 @@
-From: "Hyatt, Daniel J" <daniel.j.hyatt@boeing.com>
-Subject: LINUX NFS server Solaris NFS client issue
-Date: Tue, 7 Sep 2004 11:43:34 -0700
+From: Greg Banks <gnb@melbourne.sgi.com>
+Subject: Re: LINUX NFS server Solaris NFS client issue
+Date: Wed, 08 Sep 2004 14:08:36 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <0CF6F73B3B779D43B160B85FD0CC2D37026551D7@xch-sw-07.sw.nos.boeing.com>
+Message-ID: <1094616516.20243.173.camel@hole.melbourne.sgi.com>
+References: <0CF6F73B3B779D43B160B85FD0CC2D37026551D7@xch-sw-07.sw.nos.boeing.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: text/plain
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C4kwZ-0004zZ-4C
-	for nfs@lists.sourceforge.net; Tue, 07 Sep 2004 11:43:51 -0700
-Received: from stl-smtpout-01.boeing.com ([130.76.96.56])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1C4kwW-00023i-GC
-	for nfs@lists.sourceforge.net; Tue, 07 Sep 2004 11:43:50 -0700
-Received: from stl-av-01.boeing.com ([192.76.190.6])
-	by stl-smtpout-01.boeing.com (8.9.2.MG.10092003/8.8.5-M2) with ESMTP id NAA19847
-	for <nfs@lists.sourceforge.net>; Tue, 7 Sep 2004 13:43:40 -0500 (CDT)
-Received: from XCH-SWBH-02.sw.nos.boeing.com (localhost [127.0.0.1])
-	by stl-av-01.boeing.com (8.11.3/8.11.3/MBS-LDAP-01) with ESMTP id i87IhdD29115
-	for <nfs@lists.sourceforge.net>; Tue, 7 Sep 2004 13:43:40 -0500 (CDT)
-To: <nfs@lists.sourceforge.net>
+	id 1C4tda-000125-SV
+	for nfs@lists.sourceforge.net; Tue, 07 Sep 2004 21:00:50 -0700
+Received: from omx3-ext.sgi.com ([192.48.171.20] helo=omx3.sgi.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
+	id 1C4tdZ-0002b0-2B
+	for nfs@lists.sourceforge.net; Tue, 07 Sep 2004 21:00:49 -0700
+To: "Hyatt, Daniel J" <daniel.j.hyatt@boeing.com>
+In-Reply-To: <0CF6F73B3B779D43B160B85FD0CC2D37026551D7@xch-sw-07.sw.nos.boeing.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,48 +30,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I am hoping for some recommendations for success. I was just told that
-Linux NFS server is experimental. But I am backed into a corner and need
-to get this working. And Redhat docs and redhat sys admin manual don't
-mention it being experimental.
+On Wed, 2004-09-08 at 04:43, Hyatt, Daniel J wrote:
+> I am hoping for some recommendations for success. I was just told that
+> Linux NFS server is experimental.
+
+No.  Support for *TCP* with the Linux NFS server was marked EXPERIMENTAL
+until recently, but despite that has been stable for some time.
 
 
-I have a Linux NFS server running Redhat 8 "lap"
-I have a Solaris ultra 10 running Solaris8. "hal"
+> Vfstab is:
+> lap:/projects/os -    /proj/os                ufs     -       yes     rw
+> 
+> lap:/appl      -      /appll                  ufs     -       yes     rw
+                                                ^^^
 
-I checked the systems files and both Linux and Solaris offer both TCP
-and UDP for NFS.
+I'm no Solaris expert but you might try specifying "nfs" here.
 
-The file systems shows up=20
-[root@lap init.d]# exportfs -v
-/projects/os    hal(rw,wdelay,insecure,no_root_squash)
-/projects/os    losangeles(rw,wdelay,insecure,no_root_squash)
-/projects/os    larry(rw,async,wdelay,insecure,no_root_squash)
-/appl           hal(rw,async,wdelay,insecure,no_root_squash)
-/appl           losangeles(rw,async,wdelay,insecure,no_root_squash)
-/appl           larry(rw,async,wdelay,insecure,no_root_squash)
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
-The Linux NFS server is successfully exporting the fs to another Linux
-box "larry"
-But when I import it into Solaris 8 (two different boxes) I get=20
-hal# mountall
-/dev/rdsk/c0t0d0s7 already mounted
-=20
-mount: lap:/appl or /appll, no such file or directory
-mount: lap:/projects/os or /proj/os, no such file or directory
-hal#=20
-
-Vfstab is:
-lap:/projects/os -    /proj/os                ufs     -       yes     rw
-
-lap:/appl      -      /appll                  ufs     -       yes     rw
-
-
-
-At one point, I was able to import it into Solaris, but when I went to
-the directory no files were visible.
-Thanks in advance,
-Dan
 
 
 
