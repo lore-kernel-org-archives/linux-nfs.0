@@ -1,17 +1,16 @@
-From: "Tom Proni" <tom_pronoums@aol.com>
-Subject: I know someone perfect for you....                                                                              5361lKBY4-939URs-15
-Date: Thu, 10 Apr 2003 23:26:17 +0200
+From: TELPHONE JOKES <smjojimprentice@hotmail.com >
+Subject: Fwd: TELPHONE JOKES
+Date: Fri, 11 Apr 2003 09:36:04 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <001611d4ab25$ebb86384$45205737@hwoaopk.smf>
+Message-ID: <E193u1Y-0008LC-00@sc8-sf-list1.sourceforge.net>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="----=_NextPart_000_00B3_14B02E4A.D1052E44"
+Content-Type: text/plain; charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: <net-snmp-coders@lists.sourceforge.net>,
-	<net-snmp-users-request@lists.sourceforge.net>,
-	<netsaintplug-devel@lists.sourceforge.net>,
-	<nfs@lists.sourceforge.net>,
-	<nms-cgi-support@lists.sourceforge.net>
+Received: from [61.185.92.154] (helo=129.15.136.89)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 193u1Y-0008LC-00
+	for <nfs@lists.sourceforge.net>; Fri, 11 Apr 2003 01:36:42 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,39 +23,28 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-------=_NextPart_000_00B3_14B02E4A.D1052E44
-Content-Type: text/html;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: base64
+===========TELEPHONE WINDUP===========
 
 
-Njk1M1NQbXE4LTg2NHN0YkcxMTYzV2ZsSDEtNDQwTm5oVDAyMzVsMzYNCjxo
-dG1sPg0KPGhlYWQ+DQo8L2hlYWQ+DQo8Ym9keSBiZ2NvbG9yPSIjRkZGRkZG
-IiB0ZXh0PSIjMDAwMDAwIj4NCjxkaXYgYWxpZ249ImNlbnRlciI+DQogIDx0
-YWJsZSB3aWR0aD0iNTIzIiBoZWlnaHQ9IjI2Ij4NCiAgICA8dHI+IA0KICAg
-ICAgPHRkIGhlaWdodD0iMiIgYWxpZ249ImNlbnRlciIgdmFsaWduPSJtaWRk
-bGUiIGJnY29sb3I9IiNGRkZGRkYiIHdpZHRoPSI1MjEiPg0KICAgICAgICA8
-cCBhbGlnbj0ibGVmdCI+PGZvbnQgc2l6ZT0iMiIgZmFjZT0idmVyZGFuYSIg
-Y29sb3I9IiMwMDAwMDAiPkhleSwgSG93DQogICAgICAgIGRvIHlvdSBsaWtl
-IHRoZSBzaXRlIEkganVzdCBmb3VuZD88L2ZvbnQ+PC9wPg0KICAgICAgPC90
-ZD4NCiAgICA8L3RyPg0KICA8L3RhYmxlPg0KPC9kaXY+DQo8ZGl2IGFsaWdu
-PSJjZW50ZXIiPg0KICA8Y2VudGVyPg0KICA8dGFibGUgYm9yZGVyPSIwIiB3
-aWR0aD0iNjUlIiBoZWlnaHQ9IjAiIGNlbGxzcGFjaW5nPSIwIiBjZWxscGFk
-ZGluZz0iMCI+DQogICAgPHRyPg0KICAgICAgPHRkIHdpZHRoPSIxMDAlIiBo
-ZWlnaHQ9IjExNyI+DQogICAgICAgIDxwIGFsaWduPSJjZW50ZXIiPjxhIGhy
-ZWY9Imh0dHA6Ly9yZC55YWhvby5jb20vKmh0dHA6Ly93d3cuZW1haWxvZmZl
-ci51cy9mcy9pbmRleC5odG1sIj48aW1nIGJvcmRlcj0iMCIgc3JjPSJodHRw
-Oi8vcmQueWFob28uY29tLypodHRwOi8vd3d3LmVtYWlsb2ZmZXIudXMvZnMv
-ZnMyX3RvcC5qcGciIHdpZHRoPSI1MjMiIGhlaWdodD0iMTQ2Ij48L2E+PC90
-ZD4NCiAgICA8L3RyPg0KICAgIDx0cj4NCiAgICAgIDx0ZCB3aWR0aD0iMTAw
-JSIgaGVpZ2h0PSIxIj4NCiAgICAgICAgPHAgYWxpZ249ImNlbnRlciI+PGEg
-aHJlZj0iaHR0cDovL3JkLnlhaG9vLmNvbS8qaHR0cDovL3d3dy5lbWFpbG9m
-ZmVyLnVzL2ZzL2luZGV4Lmh0bWwiPjxpbWcgYm9yZGVyPSIwIiBzcmM9Imh0
-dHA6Ly9yZC55YWhvby5jb20vKmh0dHA6Ly93d3cuZW1haWxvZmZlci51cy9m
-cy9mczJfYm90dG9tLmpwZyIgd2lkdGg9IjUyMyIgaGVpZ2h0PSIxNDYiPjwv
-YT48L3RkPg0KICAgIDwvdHI+DQogIDwvdGFibGU+DQogIDwvY2VudGVyPg0K
-PC9kaXY+DQo8L2JvZHk+DQo8L2h0bWw+DQo0MTE0ZkxaTTMtOTI2ZW9McTY1
-MTRrQ25SNy03MjdEa2tsMWwzMw==
+How to use this service:
+
+1 Dial 0906 664 1902
+2 Select the prank [Eg: Inland Revenue, STD Clinic +  many more].
+3 Enter your victims telephone number.
+4 Listen to their reaction as the computer dials out to them!
+
+
+==Now includes these features==
+
+# Voice recognition.
+# Calls back victim if they hang up..
+# Listen in as your victim is wound up.
+# A total of 17 different pranks to play on your mates.
+
+
+
+
+Data ticket:288. Calls to 0906 664 1902 cost one pound and fifty pence per minute. Service provider: TPX 0871 872 3731. This email was sent from outside the UK. You are not on any distribution list which is controlled by the service provider. Promotion code: qjmm
 
 
 -------------------------------------------------------
@@ -67,6 +55,3 @@ and Linux platforms. Try it free. www.etnus.com
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
-
-------=_NextPart_000_00B3_14B02E4A.D1052E44--
