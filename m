@@ -1,22 +1,21 @@
-From: Andrew Morton <akpm@osdl.org>
-Subject: Re: [PATCH kNFSd 0 of 54] Introduction
-Date: Tue, 8 Mar 2005 00:01:44 -0800
-Message-ID: <20050308000144.6599431b.akpm@osdl.org>
-References: <20050308165419.3842.patches@notabene>
+From: Anoop Thomas <anoop.r.thomas@gmail.com>
+Subject: Trouble with mounting NFS filesystem
+Date: Sun, 13 Mar 2005 17:03:05 +0900
+Message-ID: <358fd27c05031300038ea4a51@mail.gmail.com>
+Reply-To: Anoop Thomas <anoop.r.thomas@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D8ZfU-00079e-F2
-	for nfs@lists.sourceforge.net; Tue, 08 Mar 2005 00:02:16 -0800
-Received: from fire.osdl.org ([65.172.181.4] helo=smtp.osdl.org)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.41)
-	id 1D8ZfS-00075N-Vb
-	for nfs@lists.sourceforge.net; Tue, 08 Mar 2005 00:02:16 -0800
-To: NeilBrown <neilb@cse.unsw.edu.au>
-In-Reply-To: <20050308165419.3842.patches@notabene>
+	id 1DAO4A-0002UW-Cz
+	for nfs@lists.sourceforge.net; Sun, 13 Mar 2005 00:03:14 -0800
+Received: from wproxy.gmail.com ([64.233.184.206])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1DAO48-0007so-0A
+	for nfs@lists.sourceforge.net; Sun, 13 Mar 2005 00:03:14 -0800
+Received: by wproxy.gmail.com with SMTP id 50so1692229wri
+        for <nfs@lists.sourceforge.net>; Sun, 13 Mar 2005 00:03:05 -0800 (PST)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,27 +29,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-NeilBrown <neilb@cse.unsw.edu.au> wrote:
->
->  54 (!!) patches for knfsd. Mostly nfsv4 related from Bruce Fields and co.
+Hi,
 
-Fun, I'm up to 944 patches.
+I'm Anoop from India. I'm doing a project on Diskless cluster for my
+college. I have encountered a problem while setting the client side
+configuration.
 
-I assume that nfsv4 is still "experimental", so we can scoot these in
-fairly promptly?
+I have configured the DHCP, TFTP and PXE servers.
+Plus i have configured the NFS and NIS servers . All of them are on a
+single machine.
+I've even compiled a kernel for the slave nodes .
 
-There were a few rejects against things in Linus's tree now, or something. 
-I fixed them up.  I'll try to do another -mm 24 hours hence - please check
-that everything landed OK.
+Everything works fine while booting up the client. Right from getting
+it's IP address, to loading the kernel, booting with it etc etc. ..
+but
 
-I can tell you right now that the compiler will get huffy about this:
+when it tries to start the portmapper .. it says 
+
+/etc/init.d/portmap .. line 1 : id not found
+/etc/init.d/portmap .. line 39 : [ : = : Unary operator expected
+Mounting NFS Filesystems   : 
 
 
+and here .. it either stuck or taking too much time.. it does not load
+the NFS filesystems..
+i think i waited too long once to see a timeout. 
 
--void static inline nfs4_state_init(void){}
-+int static inline nfs4_state_init(void){}
+Its managed to take the root file system while loadin the kernel... so
+exporting my filesystem from server is ok.
 
-I'll stick a `return 0;' in there...
+This is how my /etc/fstab for the slave looks like :
+
+192.168.1.1:/usr		/usr		nfs	defaults	0 0
+192.168.1.1:/home		/home		nfs	defaults	0 0
+192.168.1.1:/tftpboot/dual2	/		nfs	defaults	0 0	
+none                    /dev/pts       	    	devpts  gid=5,mode=620  0 0
+none                    /proc                   proc    defaults        0 0
+none                    /dev/shm                tmpfs   defaults        0 0
+
+
+ip address for my server is below
+for slave its 192.168.1.2.
+if i remove the first 3 lines of /etc/fstab .. it reaches the login
+screen without the filesystems and bash cant recognise most of the
+usual commands like rpcinfo, ntsysv etc etc ...
+
+Pls help me. I'm just a newbie in linux. Reply to me in this address asap
 
 
 -------------------------------------------------------
