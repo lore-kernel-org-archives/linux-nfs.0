@@ -1,32 +1,21 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: query
-Date: Wed, 22 Oct 2003 12:53:27 +1000
+From: Chang Li <changli_99@yahoo.com>
+Subject: Re: Linux NFS client over TCP
+Date: Thu, 23 Oct 2003 05:44:28 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16277.61735.731705.976287@notabene.cse.unsw.edu.au>
-References: <NGBBKDKMALCPDNMIPMPLKENFCAAA.sundar@cdacb.ernet.in>
+Message-ID: <20031023124428.69700.qmail@web12004.mail.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1ACSls-0000ek-00
-	for <nfs@lists.sourceforge.net>; Wed, 22 Oct 2003 16:52:09 -0700
-Received: from panoramix.vasoftware.com
-	([198.186.202.147] helo=externalmx.vasoftware.com ident=mail)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 1ACRx0-0004un-VK
-	for nfs@lists.sourceforge.net; Wed, 22 Oct 2003 15:59:35 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24]:59232)
-	by externalmx.vasoftware.com with smtp (Exim 4.22 #1 (Debian))
-	id 1AC9mE-0005nK-Mn
-	for <nfs@lists.sourceforge.net>; Tue, 21 Oct 2003 20:35:14 -0700
-Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <sundar@cdacb.ernet.in>) (for <nfs@lists.sourceforge.net>) By
-	note With Smtp ; Wed, 22 Oct 2003 12:53:31 +1000
-To: "Sundareswar Jayakumar" <sundar@cdacb.ernet.in>
-In-Reply-To: message from Sundareswar Jayakumar on Tuesday October 21
+	id 1ACggu-0000bG-00
+	for <nfs@lists.sourceforge.net>; Thu, 23 Oct 2003 07:43:56 -0700
+Received: from web12004.mail.yahoo.com ([216.136.172.212])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.22)
+	id 1ACeql-0000vV-1n
+	for nfs@lists.sourceforge.net; Thu, 23 Oct 2003 05:45:59 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -39,38 +28,42 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tuesday October 21, sundar@cdacb.ernet.in wrote:
-> Hi,
-> 	I am working on adistributed filesytem on linux.I am using
-> nfs source code as a learning resource.I require a clarification.
+> --- Trond Myklebust <trond.myklebust@fys.uio.no>
+> > Subject: Re: [NFS] Linux NFS client over TCP
+> > 
+> > >>>>> " " == Suresh Kodati <kodatisu@yahoo.com>
+> > writes:
+> > 
+> >      > I would like to know if this is an expected
+> > behavior from NFS
+> >      > client side?.
+> > 
+> It is under Linux, yes. I probably will get round to
+finishing the TCP
+> active close stuff at some point, but it is not top
+> of my list of
+> priorities...
 > 
-> 
-> In many entry points the Big Kernel Lock lock/unlock_kernel is
-> used instead of locking just the private data structures of the
-> filesystem.why is it so?.kindly clarify w.r.t to a smp m/c.
+> Cheers,
+>
 
-Because tghe BKL was the easiest way to make it work under SMP, and
-the process of refining the locks hasn't made it into 2.4.
+Trond,
+I would like to know some more details.
+How does nfs client know that the status has gone to
+CLOSE_WAIT state?. 
+NFS client does not seem to bother about the
+connection status while transacting. I thought it is
+rpc that takes care of reconnection.
 
-The 2.6.0 kernel does not use the BKL for nfsd at all, and I have
-patches that remove the BKL for 2.4 but marcelo didn't want them when
-I offered them some months ago, and I haven't offered again since.
+Please let me know How we can implement this. ( I'll
+give a try ).
 
-NeilBrown
+Chang_li
 
-> 
-> Thanks
-> sundar
-> 
-> 
-> -------------------------------------------------------
-> This SF.net email is sponsored by OSDN developer relations
-> Here's your chance to show off your extensive product knowledge
-> We want to know what you know. Tell us and you have a chance to win $100
-> http://www.zoomerang.com/survey.zgi?HRPT1X3RYQNC5V4MLNSV3E54
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+__________________________________
+Do you Yahoo!?
+The New Yahoo! Shopping - with improved product search
+http://shopping.yahoo.com
 
 
 -------------------------------------------------------
