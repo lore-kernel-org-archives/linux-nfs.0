@@ -1,21 +1,21 @@
-From: Chip Salzenberg <chip@debian.org>
-Subject: Re: [chip@debian.org: Debian Bug#203918 - statd request on eth interface, not localhost?]
-Date: Thu, 21 Aug 2003 10:48:11 -0400
+From: Peter Gostelow <gostelow@global.co.za>
+Subject: nfs newbie, where to find portmapper?
+Date: Thu, 21 Aug 2003 04:52:06 +0000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030821144811.GH14355@perlsupport.com>
-References: <20030812152154.GQ24349@perlsupport.com> <16185.47443.33945.603458@gargle.gargle.HOWL> <20030813082216.GA14015@nubol.int.oskuro.net> <20030820175951.GB3639@perlsupport.com> <20030821075826.GA27391@nubol.int.oskuro.net>
+Message-ID: <200308210452.06388.gostelow@global.co.za>
+Reply-To: gostelow@global.co.za
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net,
-	203918-quiet@bugs.debian.org
+Content-Type: text/plain;
+  charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tandu.perlsupport.com ([66.220.6.226] ident=mail)
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19pr3b-0007oE-00
-	for <nfs@lists.sourceforge.net>; Thu, 21 Aug 2003 08:09:00 -0700
-To: Jordi Mallach <jordi@debian.org>
-In-Reply-To: <20030821075826.GA27391@nubol.int.oskuro.net>
+Received: from ctb-mesg1.saix.net ([196.25.240.73])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19qKSt-00029v-00
+	for <nfs@lists.sourceforge.net>; Fri, 22 Aug 2003 15:33:03 -0700
+Received: from kdp53-01-p98.gt.saix.net (kdp53-01-p98.gt.saix.net [155.239.86.98])
+	by ctb-mesg1.saix.net (Postfix) with ESMTP id B4F7F5099
+	for <nfs@lists.sourceforge.net>; Sat, 23 Aug 2003 00:32:51 +0200 (SAST)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,39 +28,52 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-According to Jordi Mallach:
-> I have never used tcpdump more than to play a little, so I could use
-> some pointers about what I should look at.
+Slightly off-topic, but I'm a bit stuck.
 
-First you use 'rpcinfo -p' to see which ports statd is listening to
-on the machine where statd is complaining:
+After building a custom GNU/Linux system, I am attemping to install a LAN 
+using three computers where one is a bridge/router between two ethernet 
+links. Hopefully, nfs will export the main (/usr/share, /home) directories on 
+one host to all the others.
 
-   $ rpcinfo -p | grep status
-       100024    1   udp    936  status
-       100024    1   tcp    939  status
+My problem is I cannot find a recent portmap source tarball, the debian one 
+(file dates range from 1992 - 1996!) is incompatible with glibc headers. The 
+Slackware has a binary only or a similarly old source. Perhaps I'm missing 
+something, but the Sun Microsystem website doesn't list any rpc stuff, 
+either. The alternative rpcbind (as found by web searches) apparently doesn't 
+support the Intel platform.
 
-That's udp port 936 and tcp port 939.  Then you want to watch all
-traffic to/from those ports:
+So, what portmapper are the nfs developers using and is there a source tarball 
+available for it?
 
-   # tcpdump udp port 936 or tcp port 939
+System specs:-
+libc: 2.3.2
+kernel: Linux 2.4.20
+gcc: 3.2.2
+binutils: 2.14
+platform: i686
+portmap: 5beta
 
-You may also need to specify "-i eth1" or whatever if the IP address
-you're seeing isn't on your eth0.
+(
+for what its worth, the compile errors/warnings are:
 
-Then you sit and watch.  A combination of "screen" and "script" may
-also be helpful.  The man page for tcpdump, section "OUTPUT FORMAT",
-explains how to interpret the output.
+portmap.c: In function `xperror':
+portmap.c:299: argument `what' doesn't match prototype
+/usr/lib/gcc-lib/i686-pc-linux-gnu/3.2.2/include/stdio.h:601: prototype 
+declaration [I can pacify gcc here, so this isn't a problem]
+portmap.c: In function `reg_service':
+portmap.c:353: warning: passing arg 2 of `svc_sendreply' from incompatible 
+pointer type [this is a real pain because I can't find where xdrproc_t is 
+defined and the argument passed is a bool_t type]
+..
+similar warnings follow, all related to svc_sendreply() args
+)
 
-The key thing is the source IP and port of whoever's talking to statd.
-Then you go to the source machine and use 'lsof' to see what program
-has bound to that port.  If the program is gone by the time you get
-there, you'll need to prevent statd from answering the request, which
-will entail compiling a custom statd or perhaps using iptables to kill
-any outgoing answer packets.
--- 
-Chip Salzenberg               - a.k.a. -               <chip@pobox.com>
-"I wanted to play hopscotch with the impenetrable mystery of existence,
-    but he stepped in a wormhole and had to go in early."  // MST3K
+I am not (yet) on the mailing list, so please reply to the reply-to address.
+
+tia
+
+Peter
+
 
 
 -------------------------------------------------------
