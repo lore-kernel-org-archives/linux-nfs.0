@@ -1,22 +1,23 @@
-From: Goutham Kurra <kurrag1@yahoo.com>
-Subject: Re: force unmount not working 2.4.22
-Date: Mon, 11 Oct 2004 15:09:42 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: I have two Linux ( 2.6.8 ?)   NFS client/server problems
+Date: Tue, 12 Oct 2004 00:24:27 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20041011220942.96898.qmail@web20525.mail.yahoo.com>
-References: <20041009214156.GV7742@polop.usc.edu>
+Message-ID: <1097533466.6599.78.camel@lade.trondhjem.org>
+References: <20041011.141946.8277.9770@webmail11.lax.untd.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=iso-8859-1
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CH8Ma-0000qk-Ph
-	for nfs@lists.sourceforge.net; Mon, 11 Oct 2004 15:09:52 -0700
-Received: from web20525.mail.yahoo.com ([216.136.227.42])
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
-	id 1CH8MQ-0007IA-MH
-	for nfs@lists.sourceforge.net; Mon, 11 Oct 2004 15:09:52 -0700
-To: Garrick Staples <garrick@usc.edu>, nfs@lists.sourceforge.net
-In-Reply-To: <20041009214156.GV7742@polop.usc.edu>
+	id 1CH8au-00049y-ED
+	for nfs@lists.sourceforge.net; Mon, 11 Oct 2004 15:24:40 -0700
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CH8as-0001wF-WF
+	for nfs@lists.sourceforge.net; Mon, 11 Oct 2004 15:24:40 -0700
+To: Alexander Povolotsky <pevnev@juno.com>
+In-Reply-To: <20041011.141946.8277.9770@webmail11.lax.untd.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -29,76 +30,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+P=E5 m=E5 , 11/10/2004 klokka 23:19, skreiv Alexander Povolotsky:
 
+> # cd /fadsroot
+> #sbin/pivot_root /fadsroot /tmp
+> pivot_root: pivot_root: Device or resource busy
 
-I can see that '-f' tries to stop all active rpc tasks
-to the server, but I guess the reference counts on the
-mount are not dropped. What would be cool is a
-'brute-force' option that kills any process that still
-holds a reference to the filesystem and then also
-unmounts it. 
+What does this have to do with NFS?
 
-The problem with using something like fuser is that it
-will promptly hang on an unreachable server making it
-useless on nfs filesystems. 
+man pivot_root.
+        EBUSY: new_root or put_old are on the current root file=20
+        system,  or  a file system is already mounted on put_old.
 
-Any ideas on what to do in this case (i.e, unreachable
-NFS server, plus a bunch of processes hung on the
-mount)?
+Have you tried the form recommended by the manpage?
 
-I'm uncomfortable using lazy unmounts as I don't have
-a way of knowing if the filesystem has finally been
-dropped or not.
+  pivot_root . /tmp
 
-goutham
+Trond
 
-
---- Garrick Staples <garrick@usc.edu> wrote:
-
-> On Sat, Oct 09, 2004 at 02:22:31PM -0700, Goutham
-> Kurra alleged:
-> > 
-> > Force unmount simply isn't working on a standard
-> linux
-> > 2.4.22 kernel. Isn't it supposed to unmount NFS
-> > filesystems no matter what?
-> > 
-> > In my case, the backend server is still up and
-> > working, I have a "tail -f /mnt/nfs/foo" of some
-> file
-> > on the mount, and "umount -f" fails with "device
-> or
-> > resource is busy"
-> 
-> I don't believe force is useful in this case, what
-> you want is -l.
-> 
->    -f     Force unmount (in case of an unreachable
-> NFS system).  (Requires
->           kernel 2.1.116 or later.)
-> 
->    -l     Lazy unmount. Detach the filesystem from
-> the filesystem  hierar-
->           chy now, and cleanup all references to the
-> filesystem as soon as
->           it is not busy anymore.  (Requires kernel
-> 2.4.11 or later.)
-> 
-> -- 
-> Garrick Staples, Linux/HPCC Administrator
-> University of Southern California
-> 
-
-> ATTACHMENT part 2 application/pgp-signature 
-
-
-
-
-		
-__________________________________
-Do you Yahoo!?
-Yahoo! Mail Address AutoComplete - You start. We finish.
-http://promotions.yahoo.com/new_mail 
 
 
 -------------------------------------------------------
