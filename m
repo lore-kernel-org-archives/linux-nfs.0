@@ -1,211 +1,306 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: [NFS] [PATCH] mmap corruption
-Date: Fri, 04 Apr 2003 14:20:51 -0500
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <3E8DDB13.9020009@RedHat.com>
+From: "tgiMondays" <mail@petersfreetips.com>
+Subject: Personal Development - Motivational Message
+Date: Fri, 4 Apr 2003 21:16:31 +0100
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <E191Xc5-0000z6-00@panoramix.vasoftware.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------010001080807020904040708"
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: nfs@lists.sourceforge.net,
-	linux-kernel <linux-kernel@vger.kernel.org>
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from panoramix.vasoftware.com ([198.186.202.147] ident=mail)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 191XcA-00085V-00
+	for <nfs@lists.sourceforge.net>; Fri, 04 Apr 2003 12:16:43 -0800
+Received: from public1-pete2-4-cust41.pete.broadband.ntl.com ([80.0.220.41]:43716 helo=192.168.2.37)
+	by panoramix.vasoftware.com with smtp (Exim 4.05-VA-mm1 #1 (Debian))
+	id 191Xc5-0000z6-00
+	for <nfs@lists.sourceforge.net>; Fri, 04 Apr 2003 12:16:38 -0800
+To: <nfs@lists.sourceforge.net>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
---------------010001080807020904040708
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
+This is a multipart MIME message.
 
-The following patch stops memory mapped corruption due
-to pages not being flushed in a timely matter. This
-patch is for the 2.4.20 kernel.
-
-The Problem: The corruption occurred when 300 of the File System
-Exerciser (fsx) processes are started simultaneously. These processes do
-random mmap-ed read/writes, file truncations, normal reads/writes,
-and opens/closes one on data file. Just to make things more interesting,
-each process opens a logging file and output file in the same directory
-(a total of three files per process). The corruption occurred on one
-of the data files after 3 to 5 mins.
-
-The Cause: Memory mapped pages were not being flushed out in a timely
-manner. When a file is about to truncated (up or down), nfs_writepage()
-is called (by filemap_fdatasync()) to flush out dirty pages. When this done
-asynchronously, nfs_writepage() will (indirectly) call nfs_strategy().
-nfs_strategy() wants to send groups of pages (in this case 4 pages). Now in
-the error case, only one page was dirty so it was *not* flushed out.
-Eventually that page would be flushed (by kupdate) but it was too late
-because the file size had already change due to a second truncation.
-
-My Solution: When a file is going to be truncated down (i.e. the file
-is going to shrink), _synchronously_ flush out the mmapped pages. I used
-the (unused) NFS_INO_FLUSH flag be to tell nfs_writepage to synchronously
-write out the page. This sync write *only* occurs when there are dirty
-mmapped pages and the file size is going to shrink. And then only the
-mmapped pages are written out synchronously so there should very little
-affect on I/O performance due to this synchronization. Definitely worth
-the price of  correctness, IMHO....
-
-
-SteveD.
-
---------------010001080807020904040708
+--= Multipart Boundary 0404032116
 Content-Type: text/plain;
- name="linux-2.4.20-nfs-mmap-corruption.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="linux-2.4.20-nfs-mmap-corruption.patch"
+	charset="ISO-8859-1"
+Content-Transfer-Encoding: 8bit
 
---- linux-2.4.20/fs/nfs/write.c.orig	2002-11-28 18:53:15.000000000 -0500
-+++ linux-2.4.20/fs/nfs/write.c	2003-02-20 08:17:48.000000000 -0500
-@@ -242,7 +242,7 @@
- 	struct inode *inode = page->mapping->host;
- 	unsigned long end_index;
- 	unsigned offset = PAGE_CACHE_SIZE;
--	int err;
-+	int err, is_sync;
- 
- 	end_index = inode->i_size >> PAGE_CACHE_SHIFT;
- 
-@@ -261,7 +261,8 @@
- 		goto out;
- do_it:
- 	lock_kernel();
--	if (NFS_SERVER(inode)->wsize >= PAGE_CACHE_SIZE && !IS_SYNC(inode)) {
-+	is_sync = (IS_SYNC(inode) || NFS_FLUSH(inode));
-+	if (NFS_SERVER(inode)->wsize >= PAGE_CACHE_SIZE && !is_sync) {
- 		err = nfs_writepage_async(NULL, inode, page, 0, offset);
- 		if (err >= 0)
- 			err = 0;
-@@ -749,15 +750,18 @@
- static void
- nfs_strategy(struct inode *inode)
- {
--	unsigned int	dirty, wpages;
-+	unsigned int	dirty, wpages, flush;
- 
- 	dirty  = inode->u.nfs_i.ndirty;
- 	wpages = NFS_SERVER(inode)->wpages;
-+	flush = NFS_FLUSH(inode);
- #ifdef CONFIG_NFS_V3
- 	if (NFS_PROTO(inode)->version == 2) {
- 		if (dirty >= NFS_STRATEGY_PAGES * wpages)
- 			nfs_flush_file(inode, NULL, 0, 0, 0);
--	} else if (dirty >= wpages)
-+	} else if (dirty >= wpages) {
-+		nfs_flush_file(inode, NULL, 0, 0, 0);
-+	} else if (dirty && flush)
- 		nfs_flush_file(inode, NULL, 0, 0, 0);
- #else
- 	if (dirty >= NFS_STRATEGY_PAGES * wpages)
---- linux-2.4.20/fs/nfs/inode.c.orig	2003-02-18 13:31:44.000000000 -0500
-+++ linux-2.4.20/fs/nfs/inode.c	2003-02-20 07:15:50.000000000 -0500
-@@ -746,12 +746,37 @@
- 	goto out;
- }
- 
-+#define IS_TRUNC_DOWN(_inode, _attr) \
-+	(_attr->ia_valid & ATTR_SIZE  && _attr->ia_size < _inode->i_size)
-+static inline void
-+nfs_inode_flush_on(struct inode *inode)
-+{
-+	atomic_inc(&(NFS_I(inode)->flushers));
-+	lock_kernel(); 
-+	NFS_FLAGS(inode) |= NFS_INO_FLUSH;
-+	unlock_kernel();
-+	return;
-+}
-+
-+static inline void
-+nfs_inode_flush_off(struct inode *inode)
-+{
-+	atomic_dec(&(NFS_I(inode)->flushers));
-+	if (atomic_read(&(NFS_I(inode)->flushers)) == 0) {
-+		lock_kernel();
-+		NFS_FLAGS(inode) &= ~NFS_INO_FLUSH;
-+		wake_up(&inode->i_wait);
-+		unlock_kernel();
-+	}
-+	return;
-+}
-+
- int
- nfs_notify_change(struct dentry *dentry, struct iattr *attr)
- {
- 	struct inode *inode = dentry->d_inode;
- 	struct nfs_fattr fattr;
--	int error;
-+	int error, flusher=0;
- 
- 	/*
- 	 * Make sure the inode is up-to-date.
-@@ -767,11 +792,30 @@
- 	if (!S_ISREG(inode->i_mode))
- 		attr->ia_valid &= ~ATTR_SIZE;
- 
--	filemap_fdatasync(inode->i_mapping);
--	error = nfs_wb_all(inode);
--	filemap_fdatawait(inode->i_mapping);
--	if (error)
--		goto out;
-+	/*
-+	 * If the file is going to be truncated down
-+	 * make sure all of the mmapped pages get flushed
-+	 * by telling nfs_writepage to flush them synchronously.
-+	 * If they are flushed asynchronously and the file size
-+	 * changes (again) before they are flushed, data corruption
-+	 * will occur.
-+	 * XXX: It would be nice if there was an filemap_ api
-+	 * that would tell how many (if any) dirty mmapped pages there
-+	 * are. That way I would have to take the lock_kernel() when
-+	 * its not necessary.
-+	 */
-+	if (IS_TRUNC_DOWN(inode, attr)) { 
-+		flusher = 1;
-+		nfs_inode_flush_on(inode);
-+	}
-+
-+	do {
-+		filemap_fdatasync(inode->i_mapping);
-+		error = nfs_wb_all(inode);
-+		filemap_fdatawait(inode->i_mapping);
-+		if (error)
-+			goto out;
-+	} while (flusher && NFS_I(inode)->npages);
- 
- 	error = NFS_PROTO(inode)->setattr(inode, &fattr, attr);
- 	if (error)
-@@ -801,6 +845,9 @@
- 	NFS_CACHEINV(inode);
- 	error = nfs_refresh_inode(inode, &fattr);
- out:
-+	if (flusher) {
-+		nfs_inode_flush_off(inode);
-+	}
- 	return error;
- }
- 
---- linux-2.4.20/include/linux/nfs_fs_i.h.orig	2003-02-19 08:22:20.000000000 -0500
-+++ linux-2.4.20/include/linux/nfs_fs_i.h	2003-02-20 07:36:01.000000000 -0500
-@@ -75,6 +75,9 @@
- 
- 	/* Credentials for shared mmap */
- 	struct rpc_cred		*mm_cred;
-+
-+	/* The number of threads flushing out dirty mmaps pages */
-+	atomic_t    flushers;
- };
- 
- /*
---- linux-2.4.20/include/linux/nfs_fs.h.orig	2003-02-19 08:22:21.000000000 -0500
-+++ linux-2.4.20/include/linux/nfs_fs.h	2003-02-20 07:36:02.000000000 -0500
-@@ -99,6 +99,7 @@
- #define NFS_FLAGS(inode)		((inode)->u.nfs_i.flags)
- #define NFS_REVALIDATING(inode)		(NFS_FLAGS(inode) & NFS_INO_REVALIDATING)
- #define NFS_STALE(inode)		(NFS_FLAGS(inode) & NFS_INO_STALE)
-+#define NFS_FLUSH(inode)		(NFS_FLAGS(inode) & NFS_INO_FLUSH)
- 
- #define NFS_FILEID(inode)		((inode)->u.nfs_i.fileid)
- 
+Dear Friend
 
---------------010001080807020904040708--
+If this describes you ...
+
+You have a positive mental attitude
+You are focused on being the best you can be
+You fly with the eagles and avoid the turkeys
+You hate the negative ‘BS’ that’s spouted on TV and in newspapers
+You are happy earning the money you deserve
+
+
+Then tgiMondays is definitely for you.
+
+Click here for your Motivational Monday Message
+
+http://www.tgimondays.com
+
+You Receive:
+
+1A Motivational Monday Message
+2
+Substantial DISCOUNTS on personal development products –
+books/tapes/CDs/Videos
+
+3A downloadable Book called: 
+"117 Ways To Grab Your Life By The Throat And Really Make It
+Happen!" – as my thank you for subscribing for your Monday
+Message
+
+
+Click here now for your Monday Message and E Book 
+http://www.tgimondays.com
+
+tgiMondays – The Positive Place For Positive People
+
+Every Success
+
+
+Peter Thomson
+Editor
+
+--= Multipart Boundary 0404032116
+Content-Type: text/html;
+	charset="ISO-8859-1"
+Content-Transfer-Encoding: 8bit
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD><TITLE>tgiMondays</TITLE>
+<META http-equiv=Content-Type content="text/html;
+charset=windows-1252">
+<META content="MSHTML 6.00.2800.1141" name=GENERATOR></HEAD>
+<BODY vLink=#0000ff aLink=#0000ff link=#0000ff>
+<TABLE cellSpacing=0 cellPadding=7 width=568 border=0>
+  <TBODY>
+  <TR>
+    <TD vAlign=top>
+      <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px"><FONT
+size=2><A 
+      href="http://www.tgimondays.com"><IMG height=89 
+      src="http://www.tgimondays.com/images/logo.gif" width=400 
+      border=0></A></FONT></P></TD></TR>
+  <TR>
+    <TD vAlign=top><FONT face=Verdana size=2>
+      <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px">Dear
+Friend</P>
+      <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px">&nbsp;</P>
+      <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px">If this
+describes you 
+      ...</P>
+      <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px">&nbsp;</P>
+      <TABLE id=AutoNumber1 style="BORDER-COLLAPSE: collapse" 
+      borderColor=#111111 cellSpacing=0 cellPadding=0
+width="100%" border=0>
+        <TBODY>
+        <TR>
+          <TD width="4%">
+            <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px"><IMG
+height=21 
+            src="http://www.tgimondays.com/images/tick.gif"
+width=15 
+            border=0></P></TD>
+          <TD width="96%"><FONT face=Verdana>
+            <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px"><FONT
+size=2>You have 
+            a positive mental
+attitude</FONT></P></FONT></TD></TR>
+        <TR>
+          <TD width="4%">
+            <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px"><FONT
+face=Verdana 
+            size=2><IMG height=21 
+            src="http://www.tgimondays.com/images/tick.gif"
+width=15 
+            border=0></FONT></P></TD>
+          <TD width="96%">
+            <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px"><FONT
+face=Verdana 
+            size=2>You are focused on being the best you can
+be</FONT></P></TD></TR>
+        <TR>
+          <TD width="4%">
+            <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px"><FONT
+face=Verdana 
+            size=2><IMG height=21 
+            src="http://www.tgimondays.com/images/tick.gif"
+width=15 
+            border=0></FONT></P></TD>
+          <TD width="96%">
+            <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px"><FONT
+face=Verdana 
+            size=2>You fly with the eagles and avoid the 
+turkeys</FONT></P></TD></TR>
+        <TR>
+          <TD width="4%">
+            <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px"><FONT
+face=Verdana 
+            size=2><IMG height=21 
+            src="http://www.tgimondays.com/images/tick.gif"
+width=15 
+            border=0></FONT></P></TD>
+          <TD width="96%">
+            <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px"><FONT
+face=Verdana 
+            size=2>You hate the negative ‘BS’ that’s spouted on
+TV and in 
+            newspapers</FONT></P></TD></TR>
+        <TR>
+          <TD width="4%">
+            <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px"><FONT
+face=Verdana 
+            size=2><IMG height=21 
+            src="http://www.tgimondays.com/images/tick.gif"
+width=15 
+            border=0></FONT></P></TD>
+          <TD width="96%">
+            <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px"><FONT
+face=Verdana 
+            size=2>You are happy earning the money you 
+        deserve</FONT></P></TD></TR></TBODY></TABLE>
+      <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px">&nbsp;</P>
+      <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px">Then
+</FONT><STRONG><FONT 
+      face=Verdana size=2>tgiMondays</FONT></STRONG><FONT
+face=Verdana size=2> 
+      is definitely for you.</P>
+      <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px">&nbsp;</P>
+      <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px">Click here
+for your 
+      Motivational Monday Message</P>
+      <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px">&nbsp;</P>
+      <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px"><A 
+     
+href="http://www.tgimondays.com">http://www.tgimondays.com</A></P
+>
+      <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM:
+0px">&nbsp;</P><FONT 
+      face=Verdana>
+      <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px">You
+Receive:</P>
+      <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px">&nbsp;</P>
+      <TABLE id=AutoNumber2 style="BORDER-COLLAPSE: collapse" 
+      borderColor=#111111 cellSpacing=0 cellPadding=0
+width="100%" border=0>
+        <TBODY>
+        <TR>
+          <TD width="4%">
+            <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px"><FONT 
+            color=#ff0000><B>1</B></FONT></P></TD>
+          <TD width="96%" colSpan=2>
+            <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px"><FONT
+face=Verdana 
+            size=2>A Motivational Monday
+Message</FONT></P></TD></TR>
+        <TR>
+          <TD width="4%">
+            <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px"><FONT 
+            color=#ff0000><B>2</B></FONT></P></TD>
+          <TD width="96%" colSpan=2>
+            <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM:
+0px">&nbsp;</P>
+            <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px"><FONT
+face=Verdana 
+            size=2>Substantial </FONT><STRONG><FONT face=Verdana 
+            size=2>DISCOUNTS</FONT></STRONG><FONT face=Verdana
+size=2> on 
+            personal development products –
+books/tapes/CDs/Videos</FONT></P>
+            <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM:
+0px">&nbsp;</P></TD></TR>
+        <TR>
+          <TD width="4%">
+            <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px"><FONT 
+            color=#ff0000><B>3</B></FONT></P></TD>
+          <TD width="24%">
+            <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px"><IMG
+height=155 
+           
+src="http://www.tgimondays.com/Booklet/bookcover.jpg" width=115 
+            border=0></P></TD>
+          <TD width="72%"><FONT face=Verdana size=2>
+            <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px">A
+downloadable Book 
+            called: </P>
+            <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM:
+0px"><B>"117 Ways To Grab 
+            Your Life By The Throat And Really Make It
+Happen!"</B> – as my 
+            thank you for subscribing for your Monday
+Message</P></FONT>
+            <P 
+        style="MARGIN-TOP: 0px; MARGIN-BOTTOM:
+0px">&nbsp;</P></TD></TR></TBODY></TABLE></FONT>
+      <DIR>
+      <DIR></FONT><FONT face=Verdana></DIR></DIR></FONT><FONT
+face=Verdana 
+      size=2>
+      <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px">Click here
+now for your 
+      Monday Message and E Book&nbsp;</P>
+      <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px"><A 
+     
+href="http://www.tgimondays.com">http://www.tgimondays.com</A></P
+>
+      <P 
+      style="MARGIN-TOP: 0px; MARGIN-BOTTOM:
+0px">&nbsp;</P></FONT><STRONG><FONT 
+      face=Verdana size=2>
+      <P 
+      style="MARGIN-TOP: 0px; MARGIN-BOTTOM:
+0px">tgiMondays</FONT></STRONG><FONT 
+      face=Verdana size=2> – The Positive Place For Positive
+People</P>
+      <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM:
+0px">&nbsp;</P></FONT><FONT 
+      face=Verdana>
+      <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px"><FONT
+size=2>Every 
+      Success</FONT></P>
+      <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px"><FONT
+size=2><IMG 
+      height=152
+src="http://www.tgimondays.com/images/Peter%20Signature.jpg" 
+      width=139></FONT></P></FONT><FONT face=Verdana size=2>
+      <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px">&nbsp;</P>
+      <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px">Peter
+Thomson</P>
+      <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM:
+0px">Editor</P></FONT>
+      <P style="MARGIN-TOP: 0px; MARGIN-BOTTOM:
+0px">&nbsp;</P></TD></TR>
+  <TR>
+    <TD vAlign=top bgColor=#c0c0c0>
+      <P 
+style="MARGIN-TOP: 0px; MARGIN-BOTTOM:
+0px">&nbsp;</P></TD></TR></TBODY></TABLE>
+<P>&nbsp;</P></BODY></HTML>
+
+--= Multipart Boundary 0404032116--
+
+
+
+-------------------------------------------------------
+This SF.net email is sponsored by: ValueWeb: 
+Dedicated Hosting for just $79/mo with 500 GB of bandwidth! 
+No other company gives more support or power for your dedicated server
+http://click.atdmt.com/AFF/go/sdnxxaff00300020aff/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
