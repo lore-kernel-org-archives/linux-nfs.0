@@ -1,21 +1,23 @@
-From: "jehan.procaccia" <jehan.procaccia@int-evry.fr>
-Subject: Re: how many nfs  thread needed
-Date: Fri, 25 Feb 2005 19:17:07 +0100
-Message-ID: <421F6BA3.7050304@int-evry.fr>
-References: <01e101c51b2a$07a027c0$bef5dc0a@corp.noxiane.net>
+From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
+Subject: Re: FC3 <-> Solaris 10, NFSv4 interop?
+Date: Fri, 25 Feb 2005 10:13:45 -0800
+Message-ID: <1109355225.5897.580.camel@seki.nac.uci.edu>
+References: <1109296629.5897.574.camel@seki.nac.uci.edu>
+	 <200502251706.24315.vincent.roqueta@ext.bull.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-54qeIXEuWUd0Foz6q7qZ"
+Cc: strombrg@dcs.nac.uci.edu, nfs@lists.sourceforge.net
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D4k1p-0005Qp-Ei
-	for nfs@lists.sourceforge.net; Fri, 25 Feb 2005 10:17:29 -0800
-Received: from smtp2.int-evry.fr ([157.159.10.45])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1D4k1n-00042C-J4
-	for nfs@lists.sourceforge.net; Fri, 25 Feb 2005 10:17:29 -0800
-To: DUPRE Julien <julien.dupre-renexter@renault.com>
-In-Reply-To: <01e101c51b2a$07a027c0$bef5dc0a@corp.noxiane.net>
+	id 1D4jyL-0005Fw-IZ
+	for nfs@lists.sourceforge.net; Fri, 25 Feb 2005 10:13:53 -0800
+Received: from dcs.nac.uci.edu ([128.200.34.32] ident=root)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1D4jyJ-0003SL-WB
+	for nfs@lists.sourceforge.net; Fri, 25 Feb 2005 10:13:53 -0800
+To: Vincent Roqueta <vincent.roqueta@ext.bull.net>
+In-Reply-To: <200502251706.24315.vincent.roqueta@ext.bull.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,53 +31,56 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-DUPRE Julien wrote:
 
-> Hi,
->  
-> i'm looking for tunning my NFS configuration on a RedHAt 7.3 ( my 
-> client are in ES3)
-> for increase my performance.
->  
-> I reading some docs but i need help for chose a good value
->  
-> balsa-b#  grep th /proc/net/rpc/nfsd 
-> th 84 203258 22002.912 7932.515 4694.613 6721.031 4074.175 605.630 
-> 396.916 376.582 501.927 2942.259
-> balsa-b#
->  
+--=-54qeIXEuWUd0Foz6q7qZ
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
 
-you've already got 84 Threads and they all seem quite busy ! I'am not 
-sure, but for me unless the last numbers above are near to zero second 
-of use , you should increase the number of threads -> up to 128 in your 
-case ? but will the server support it ? you seem to have many clients ?
-have a look at:
-http://marc.theaimsgroup.com/?l=linux-nfs&m=102824853219024&w=2
-http://www.int-evry.fr/s2ia/user/procacci/Doc/NFS/nfs.html#htoc8
+On Fri, 2005-02-25 at 17:06 +0100, Vincent Roqueta wrote:
+> Le vendredi 25 F=E9vrier 2005 02:57, Dan Stromberg a =E9crit :
+> > Has anyone got NFSv4 working from an FC3 NFS server to a Solaris 10 NFS
+> > client?
+> >
+> > foobar-root /) mount seki.nac.uci.edu:/sdb1 /mnt
+> > nfs mount: mount: /mnt: Not owner
+> > foobar-root /) mount -o vers=3D3 seki.nac.uci.edu:/sdb1 /mnt
+> > foobar-root /)
+>=20
+> Yes. interop works fine.
 
->
-> I think i need to change my number of thread nfsd but how many ?
->  
->  
-> Thanks in advance
->  
->  
->  
->  
->  
->  
->  
->  
->
->  
->
->------------------------------------------------------------------------
->
->-- Disclaimer ------------------------------------
->Ce message ainsi que les eventuelles pieces jointes constituent une correspondance privee et confidentielle a l'attention exclusive du destinataire designe ci-dessus. Si vous n'etes pas le destinataire du present message ou une personne susceptible de pouvoir le lui delivrer, il vous est signifie que toute divulgation, distribution ou copie de cette transmission est strictement interdite. Si vous avez recu ce message par erreur, nous vous remercions d'en informer l'expediteur par telephone ou de lui retourner le present message, puis d'effacer immediatement ce message de votre systeme.
->***
->This e-mail and any attachments is a confidential correspondence intended only for use of the individual or entity named above. If you are not the intended recipient or the agent responsible for delivering the message to the intended recipient, you are hereby notified that any disclosure, distribution or copying of this communication is strictly prohibited. If you have received this communication in error, please notify the sender by phone or by replying this message, and then delete this message from your system.
->
+Cool!
+
+Unfortunately though, I don't know the first thing about setting up
+NFSv4.  I gather on the Solaris side, an NFSv4 domain is needed, and
+Solaris has a "take a guess at a good NFSv4 domain name" option.
+
+So:
+
+1) How do I define the NFSv4 domain on FC3?
+
+2) Is there a "take a guess" option on FC3?
+
+3) Is there anything else I need to set up to get NFSv4 working?
+
+I perhaps should point out that the systems in question are using NIS,
+not kerberos.
+
+Thanks!
+
+
+--=-54qeIXEuWUd0Foz6q7qZ
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.6 (GNU/Linux)
+
+iD8DBQBCH2rZo0feVm00f/8RAttDAJ0V84dSY6Pp114q8fcAdb1Lu+K75wCeIFi+
+uFj0zRjq+n73+QuTAooq+04=
+=LfsX
+-----END PGP SIGNATURE-----
+
+--=-54qeIXEuWUd0Foz6q7qZ--
 
 
 
