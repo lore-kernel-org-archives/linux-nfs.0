@@ -1,24 +1,25 @@
-From: "Paul Smith" <pausmith@nortelnetworks.com>
-Subject: Re: [NFS PATCH] 2.6.0-test10 Invalidate cached inode attributes after rename
-Date: 04 Dec 2003 12:20:57 -0500
+From: seth vidal <skvidal@phy.duke.edu>
+Subject: Re: NFS server not responding
+Date: 04 Dec 2003 15:55:24 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <vpdrn0a8v6rq.fsf@lemming.engeast.baynetworks.com>
-References: <482A3FA0050D21419C269D13989C6113020AC815@lavender-fe.eng.netapp.com>
-Reply-To: "Paul Smith" <pausmith@nortelnetworks.com>
+Message-ID: <1070571324.8472.2.camel@opus>
+References: <Pine.LNX.4.44.0311281257130.22389-100000@kenzo.iwr.uni-heidelberg.de>
+	 <shsptfch1om.fsf@charged.uio.no> <3FCF70D9.1010808@RedHat.com>
+	 <shsr7zk5sw4.fsf@guts.uio.no>  <3FCF86E9.2030300@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Shantanu Goel <Shantanu.Goel@lehman.com>, <nfs@lists.sourceforge.net>
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1ARxA6-0002hx-Sl
-	for nfs@lists.sourceforge.net; Thu, 04 Dec 2003 09:21:10 -0800
-Received: from zrtps0kp.nortelnetworks.com ([47.140.192.56])
+	id 1AS0VU-0003uj-B2
+	for nfs@lists.sourceforge.net; Thu, 04 Dec 2003 12:55:28 -0800
+Received: from mail.phy.duke.edu ([152.3.182.2] ident=[tFGUq6AOBZY7lcvYTEbzTl9a3SYF+ckt])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
-	id 1ARxA6-00032s-0n
-	for nfs@lists.sourceforge.net; Thu, 04 Dec 2003 09:21:10 -0800
-To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: <482A3FA0050D21419C269D13989C6113020AC815@lavender-fe.eng.netapp.com>
+	id 1AS0VT-0002pD-TU
+	for nfs@lists.sourceforge.net; Thu, 04 Dec 2003 12:55:28 -0800
+To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: <3FCF86E9.2030300@RedHat.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,20 +32,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-%% "Lever, Charles" <Charles.Lever@netapp.com> writes:
+> Well... it was in increase at the time I posted the patch.
+> If remember correctly... there was actually some discussion
+> that 1/30th of a second was a bit too long...
+> 
+> >You are setting the minimum timeout value at 1/30th of a second
+> >instead of 1/10th of a second.
+> >  
+> >
+> Right... I did miss this "minor" detail when I did the port....
+> 
+> >This might indeed explain why people are seeing an increase in resends
+> >and 'server not responding' messages.
+> >  
+> >
+> Most definitely... Here is the patch that should take care of the problem...
+> 
 
-  lc> i'll state this more carefully -- the problem is exposed after
-  lc> trond's readdirplus patch is applied to 2.4.2x.
+Steve,
+ Do you know if this change was in place when the 7.X kernels went from
+2.4.18 to 2.4.20?
 
-I'm using Red Hat's 2.4.20-8 and 2.4.18-19.8.0 kernels.  They probably
-applied this patch as well.
+We started noticing a lot of nfs pain on udp connections when we went
+from 2.4.18 to 2.4.20 from rh's kernels.
+(in addition to the kscand nightmare)
 
--- 
--------------------------------------------------------------------------------
- Paul D. Smith <psmith@nortelnetworks.com>   HASMAT--HA Software Mthds & Tools
- "Please remain calm...I may be mad, but I am a professional." --Mad Scientist
--------------------------------------------------------------------------------
-   These are my opinions---Nortel Networks takes no responsibility for them.
+-sv
+
+
 
 
 -------------------------------------------------------
