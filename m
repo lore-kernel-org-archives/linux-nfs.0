@@ -1,25 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
 Subject: Re: userspace NFS daemon
-Date: Sun, 05 Sep 2004 18:10:26 -0400
+Date: Mon, 6 Sep 2004 02:47:42 +0200 (CEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1094422226.8081.51.camel@lade.trondhjem.org>
-References: <20040905210902.GA29182@janus>
-	 <1094419552.8081.33.camel@lade.trondhjem.org>
-	 <20040905220120.GA29596@janus>
+Message-ID: <Pine.LNX.4.44.0409060210030.12696-100000@kenzo.iwr.uni-heidelberg.de>
+References: <1094422226.8081.51.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Frank van Maarseveen <frankvm@xs4all.nl>,
+        Linux NFS mailing list <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C45DY-0003yI-LQ
-	for nfs@lists.sourceforge.net; Sun, 05 Sep 2004 15:10:36 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 1C47fo-0005FH-A7
+	for nfs@lists.sourceforge.net; Sun, 05 Sep 2004 17:47:56 -0700
+Received: from relay2.uni-heidelberg.de ([129.206.210.211])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1C45DY-0004ls-5M
-	for nfs@lists.sourceforge.net; Sun, 05 Sep 2004 15:10:36 -0700
-To: Frank van Maarseveen <frankvm@xs4all.nl>
-In-Reply-To: <20040905220120.GA29596@janus>
+	id 1C47fm-0007dt-Cr
+	for nfs@lists.sourceforge.net; Sun, 05 Sep 2004 17:47:56 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1094422226.8081.51.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,22 +31,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 su , 05/09/2004 klokka 18:01, skreiv Frank van Maarseveen:
+On Sun, 5 Sep 2004, Trond Myklebust wrote:
 
-> Anyway, I found this:
->=20
-> 	http://clusternfs.sourceforge.net
->=20
-> This is not supported by knfsd I think.
+> Wow. People would actually trust their root partition to unfsd? The mind
+> boggles...
 
-Wow. People would actually trust their root partition to unfsd? The mind
-boggles...
+Err, you mean to say that root-NFS only appeared after knfsd ? And 
+that knfsd was absolutely flawless since day 1 ? :-)
 
-Note: there is no reason why this couldn't be done for knfsd (or even
-for local file accesses) using a stackable filesystem.
+Cluster nodes have usually a small number of software packages 
+installed. Most "core" packages (like core-utils, grep, gawk, etc.) 
+don't need locking. As / doesn't see itself much writting (which 
+happens usually in /var and /tmp, but those can be mounted 
+separately), NFSv3 vs. NFSv2 doesn't make much difference either. So 
+what's the problem with using unfsd in these conditions ?
 
-Cheers,
-  Trond
+-- 
+Bogdan Costescu
+
+IWR - Interdisziplinaeres Zentrum fuer Wissenschaftliches Rechnen
+Universitaet Heidelberg, INF 368, D-69120 Heidelberg, GERMANY
+Telephone: +49 6221 54 8869, Telefax: +49 6221 54 8868
+E-mail: Bogdan.Costescu@IWR.Uni-Heidelberg.De
+
 
 
 
