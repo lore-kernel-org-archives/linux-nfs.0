@@ -1,73 +1,72 @@
-From: Ian Kent <raven@themaw.net>
-Subject: Re: VFS: Busy inodes after unmount on 2 way SMP (fwd)
-Date: Sat, 13 Sep 2003 22:21:58 +0800 (WST)
-Sender: autofs-bounces@linux.kernel.org
-Message-ID: <Pine.LNX.4.44.0309132220220.3585-100000@raven.themaw.net>
+From: Ion Badulescu <lists@cs.columbia.edu>
+Subject: Re: VFS: Busy inodes after unmount on 2 way SMP
+Date: Fri, 12 Sep 2003 20:16:27 -0400 (EDT)
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <Pine.LNX.4.44.0309122013380.9830-100000@moisil.badula.org>
+References: <3F62601A.5000105@intel.com>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Return-path: <autofs-bounces@linux.kernel.org>
-To: Arun Sharma <arun.sharma@intel.com>,
-   autofs mailing list <autofs@linux.kernel.org>, <nfs@lists.sourceforge.net>
-List-Unsubscribe: <http://linux.kernel.org/mailman/listinfo/autofs>,
-	<mailto:autofs-request@linux.kernel.org?subject=unsubscribe>
-List-Archive: <http://linux.kernel.org/pipermail/autofs>
-List-Post: <mailto:autofs@linux.kernel.org>
-List-Help: <mailto:autofs-request@linux.kernel.org?subject=help>
-List-Subscribe: <http://linux.kernel.org/mailman/listinfo/autofs>,
-	<mailto:autofs-request@linux.kernel.org?subject=subscribe>
-Errors-To: autofs-bounces@linux.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net, <autofs@linux.kernel.org>
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19xy6I-0004qF-00
+	for <nfs@lists.sourceforge.net>; Fri, 12 Sep 2003 17:17:18 -0700
+Received: from ool-43524450.dyn.optonline.net ([67.82.68.80] helo=buggy.badula.org)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.22)
+	id 19xy6H-0007u2-IJ
+	for nfs@lists.sourceforge.net; Fri, 12 Sep 2003 17:17:17 -0700
+To: Arun Sharma <arun.sharma@intel.com>
+In-Reply-To: <3F62601A.5000105@intel.com>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Fri, 12 Sep 2003, Arun Sharma wrote:
 
-Appologies, think I should have reply-all on this. Oops.
-
----------- Forwarded message ----------
-Date: Sat, 13 Sep 2003 18:25:11 +0800 (WST)
-From: Ian Kent <raven@themaw.net>
-To: H. Peter Anvin <hpa@zytor.com>
-Subject: Re: [autofs] VFS: Busy inodes after unmount on 2 way SMP
-
-On Fri, 12 Sep 2003, H. Peter Anvin wrote:
-
-> Arun Sharma wrote:
-> > H. Peter Anvin wrote:
+> Ion Badulescu wrote:
 > > 
-> >>
-> >> Which version of autofs are you running?  What version of mount(8)?
-> >>
-> > 
-> > autofs-3.1.7 and mount-2.11g
-> > 
-> >> It's possible NFS lets you umount a mount which has busy inodes under
-> >> certain conditions.
-> > 
-> > 
-> > Are you thinking of the MNT_FORCE flag ? I have reasons to believe that
-> > it won't help. Mainly because if it was a RPC task that marked the inode
-> > busy, it'd have put itself on the waitq of the inode. However I found
-> > that waitqueue_active(&inode->i_wait) == 0.
-> > 
+> > I don't know if it's the same issue, but I've seen it many many times 
+> > while testing amd's autofs functionality. It occurs when a non-empty 
+> > autofs filesystem is unmounted, e.g. if it has some leftover 
+> > subdirectories from previous mounts. Therefore I'd say it's quite 
+> > clearly an autofs issue, at least in my case.
 > 
-> No, I'm thinking about the possibility that there is a bug.
-> 
-> autofs depends critically on a filesystem *not* allowing itself to be
-> unmounted when there are busy inodes; however, this is something that
-> things other than autofs doesn't really stress a whole lot.
+> Do you have a case that can deterministically reproduce the issue ? 
 
-I've only ever seen the "busy inodes" message as a result of automount 
-not exiting cleanly, leaving directories behind. autofs-4 has an annoying 
-habit of exiting without cleaning up after itself under adverse 
-conditions. I can't comment on autofs-3.
+Oh yeah, easily. Kill the automounter while some things are mounted,
+unmount everything by hand but do not rmdir the mountpoints. When you
+unmount the autofs filesystem itself, you will get the self destruct
+message.
 
-I believe I have made some progress in this area with the work that I have 
-been doing on autofs-4. I hope to get something into beta soon.
+> Everytime I've seen it, it's during an unmount by /usr/sbin/automount
+> after the mount has expired. It's usually coupled with a temporarily
+> unreachable NFS server.
 
-The autofs-4.0.0 (4.0.0pre10 with a couple of my patches and couple of 
-others) to be released soon is likely to have the same problem.
+So maybe this is a different issue than the one I am describing...
+
+Ion
 
 -- 
+  It is better to keep your mouth shut and be thought a fool,
+            than to open it and remove all doubt.
 
-   ,-._|\    Ian Kent
-  /      \   Perth, Western Australia
-  *_.--._/   E-mail: raven@themaw.net
-        v    Web: http://themaw.net/
+
+
+-------------------------------------------------------
+This sf.net email is sponsored by:ThinkGeek
+Welcome to geek heaven.
+http://thinkgeek.com/sf
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
