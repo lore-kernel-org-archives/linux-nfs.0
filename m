@@ -1,28 +1,25 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: nfs/mmap/rename file corruption
-Date: Thu, 28 Aug 2003 10:04:38 -0400
+From: "Lisa Williams" <lisa@fastclick.com>
+Subject: Data Corruption Issues
+Date: Wed, 27 Aug 2003 10:51:44 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16206.3062.480403.590086@charged.uio.no>
-References: <20030828110309.0e0eff6f.mbp@sourcefrog.net>
-	<shs1xv6ftp9.fsf@charged.uio.no>
-	<20030828121410.4ccc4b45.mbp@sourcefrog.net>
-Reply-To: trond.myklebust@fys.uio.no
+Message-ID: <008601c36cc3$e1ae87c0$d501010a@Lisa>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-    nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19sNOO-0004QJ-00
-	for <nfs@lists.sourceforge.net>; Thu, 28 Aug 2003 07:04:52 -0700
-Received: from pat.uio.no ([129.240.130.16])
+	id 19s4Sw-0005cU-00
+	for <nfs@lists.sourceforge.net>; Wed, 27 Aug 2003 10:52:18 -0700
+Received: from [205.180.85.17] (helo=mail.fastclick.net)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 19sNOJ-0005t4-K8
-	for nfs@lists.sourceforge.net; Thu, 28 Aug 2003 07:04:47 -0700
-To: Martin Pool <mbp@sourcefrog.net>
-In-Reply-To: <20030828121410.4ccc4b45.mbp@sourcefrog.net>
+	id 19s4Sw-0001dC-73
+	for nfs@lists.sourceforge.net; Wed, 27 Aug 2003 10:52:18 -0700
+Received: from Lisa (ip193.fastclick.net [205.180.85.193])
+	by mail.fastclick.net (8.12.9/8.12.5) with SMTP id h7RHpWd2003692
+	for <nfs@lists.sourceforge.net>; Wed, 27 Aug 2003 17:51:32 GMT
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -35,55 +32,46 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Martin Pool <mbp@sourcefrog.net> writes:
+Hi all,
 
+We are finding corruption in mysql database files that are being copied from
+16 Linux 2.4.20 servers to a Linux 2.4.21 backup server on an hourly basis.
 
-     >     In order to perform this check, the server must include
-     >     some information about the location of the file in the
-     >     "filehandle" that is given to the client.  This can cause
-     >     problems with accessing files that are renamed while a
-     >     client has them open (though in many simple cases it will
-     >     still work).
+Here are the details:
 
-     > In this case, the file is not still open at the time it is
-     > renamed.  It just still has some dirty pages in the client's
-     > memory.
+The backup server was originally a FreeBSD box that was having some hardware
+issues.  We decided to swap it out and replace with a Linux server (running
+2.4.21).  We had no issues of data corruption until we swapped machines.
 
-That is the same as being 'open' for the purposes of the above
-paragraph.
+The 16 linux 2.4.20 servers have the backup machine mounted locally and
+after each hour a script is run that flushes the tables and then copies them
+to the mounted backup drive.  There's no real pattern of which machines
+create a corrupt file on the backup machine.  It appears fairly random.  We
+are seeing about 20% of them corrupted.
 
-    >> Without the latter option enabled, I would indeed expect the
-    >> behaviour that you describe.
+Our network is running at 100MB.
 
-     > It seems a bit unfortunate that we can get corruption unless a
-     > special option is set.  Will it work on non-Linux nfs servers?
+The files are around 25MB each.
 
-Yes. 'subtree checking' is a Linux-only concept. Most servers just
-open their files by inode number and leave it at that.
+We have tried the following settings:
 
-     > Wouldn't it still be possible to get the client to flush data
-     > out before renaming it?  I tried naively calling nfs_flush_file
-     > before renaming but that didn't seem to do it.
+    Increasing the number of nfsd server threads to 20 on the backup
+machine.
 
-mmap() is 'special': there are all sorts of silly races possible, and
-many of them appear to lie deep in the mm layer. If you want to
-trigger some really nasty ones, try playing with mmap() +
-truncate()....
+Changes in the mount options in the 16 fstabs:
 
-In principle, you could get what you want by calling the combination
+    specifying:  tcp, nfsvers=3
+    specifying:  udp, nfsvers=2
+    specifying:  rsize=1024,wsize=1024
 
-filemap_fdatasync(inode->i_mapping);
-nfs_wb_all(inode);
-filemap_fdatawait(inode->i_mapping);
+There was no real change in the corruption rate after any of these changes.
 
-like we do in the file locking code. However that too appears to be
-race prone due to races with the swap code.
+Any ideas of what we should try next are appreciated.
 
-In any case, doctoring the client in order to get around a bug in the
-server is not usually my first choice...
+Thank you,
 
-Cheers,
-  Trond
+-Lisa
+
 
 
 -------------------------------------------------------
