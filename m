@@ -1,19 +1,19 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 4 of 18] make sure getxattr inode op is non-NULL before calling it
-Date: Fri, 24 Sep 2004 14:54:53 +1000
+Subject: [PATCH kNFSd 18 of 18] nfsd4: move code to truncate on open to separate function
+Date: Fri, 24 Sep 2004 14:54:54 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1CAi6f-0000k4-9i@notabene.cse.unsw.edu.au>
+Message-ID: <E1CAi6g-0000l8-Am@notabene.cse.unsw.edu.au>
 References: <20040924145130.2689.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CAi7C-00088v-EC
-	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 21:55:26 -0700
+	id 1CAi7r-0008Ec-Qs
+	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 21:56:07 -0700
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CAi7B-0006Be-On
-	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 21:55:26 -0700
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CAi7r-0008Mi-2Y
+	for nfs@lists.sourceforge.net; Thu, 23 Sep 2004 21:56:07 -0700
 To: Andrew Morton <akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,59 +28,79 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
+for OPEN with O_TRUNC, if the truncate fails, the open fails. for
+nfs4_open_upgrade, this means undo the get_write_access. for new OPENs, this
+means release the newly created stateid.
 
-Make sure getxattr inode op is non-NULL before calling it.
-
-Also, security hook should probably be called before calling the getxattr op
-the first time.
-
+Signed-off-by: Andy Adamson <andros@citi.umich.edu>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/vfs.c |   20 +++++++++++---------
- 1 files changed, 11 insertions(+), 9 deletions(-)
+ ./fs/nfsd/nfs4state.c |   32 ++++++++++++++++++++++++--------
+ 1 files changed, 24 insertions(+), 8 deletions(-)
 
-diff ./fs/nfsd/vfs.c~current~ ./fs/nfsd/vfs.c
---- ./fs/nfsd/vfs.c~current~	2004-09-24 14:47:49.000000000 +1000
-+++ ./fs/nfsd/vfs.c	2004-09-24 14:48:07.000000000 +1000
-@@ -448,6 +448,16 @@ _get_posix_acl(struct dentry *dentry, ch
- 	int buflen, error = 0;
- 	struct posix_acl *pacl = NULL;
+diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
+--- ./fs/nfsd/nfs4state.c~current~	2004-09-24 14:48:41.000000000 +1000
++++ ./fs/nfsd/nfs4state.c	2004-09-24 14:48:41.000000000 +1000
+@@ -1301,6 +1301,18 @@ nfs4_upgrade_open(struct svc_rqst *rqstp
+ 		status = get_write_access(inode);
+ 		if (status)
+ 			return nfserrno(status);
++		if (open->op_truncate) {
++			struct iattr iattr = {
++				.ia_valid = ATTR_SIZE,
++				.ia_size = 0,
++			};
++			status = nfsd_setattr(rqstp, cur_fh, &iattr, 0,
++					(time_t)0);
++			if (status) {
++				put_write_access(inode);
++				return status;
++			}
++		}
  
-+	error = -EOPNOTSUPP;
-+	if (inode->i_op == NULL)
-+		goto out_err;
-+	if (inode->i_op->getxattr == NULL)
-+		goto out_err;
-+
-+	error = security_inode_getxattr(dentry, key);
-+	if (error)
-+		goto out_err;
-+
- 	buflen = inode->i_op->getxattr(dentry, key, NULL, 0);
- 	if (buflen <= 0) {
- 		error = buflen < 0 ? buflen : -ENODATA;
-@@ -460,18 +470,10 @@ _get_posix_acl(struct dentry *dentry, ch
- 		goto out_err;
+ 		/* remember the open */
+ 		filp->f_mode = (filp->f_mode | FMODE_WRITE) & ~FMODE_READ;
+@@ -1331,7 +1343,6 @@ nfs4_set_claim_prev(struct nfsd4_open *o
+ int
+ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_open *open)
+ {
+-	struct iattr iattr;
+ 	struct nfs4_stateowner *sop = open->op_stateowner;
+ 	struct nfs4_file *fp = NULL;
+ 	struct inode *ino;
+@@ -1382,18 +1393,23 @@ nfsd4_process_open2(struct svc_rqst *rqs
+ 		if ((status = nfs4_new_open(rqstp, &stp, current_fh, flags)))
+ 			goto out;
+ 		init_stateid(stp, fp, sop, open);
++		if (open->op_truncate) {
++			struct iattr iattr = {
++				.ia_valid = ATTR_SIZE,
++				.ia_size = 0,
++			};
++			status = nfsd_setattr(rqstp, current_fh, &iattr, 0,
++					(time_t)0);
++			if (status) {
++				release_stateid(stp, OPEN_STATE);
++				goto out;
++			}
++		}
  	}
+ 	dprintk("nfs4_process_open2: stateid=(%08x/%08x/%08x/%08x)\n",
+ 	            stp->st_stateid.si_boot, stp->st_stateid.si_stateownerid,
+ 	            stp->st_stateid.si_fileid, stp->st_stateid.si_generation);
  
--	error = -EOPNOTSUPP;
--	if (inode->i_op && inode->i_op->getxattr) {
--		error = security_inode_getxattr(dentry, key);
--		if (error)
--			goto out_err;
--		error = inode->i_op->getxattr(dentry, key, buf, buflen);
+-	if (open->op_truncate) {
+-		iattr.ia_valid = ATTR_SIZE;
+-		iattr.ia_size = 0;
+-		status = nfsd_setattr(rqstp, current_fh, &iattr, 0, (time_t)0);
+-		if (status)
+-			goto out;
 -	}
-+	error = inode->i_op->getxattr(dentry, key, buf, buflen);
- 	if (error < 0)
- 		goto out_err;
+ 	memcpy(&open->op_stateid, &stp->st_stateid, sizeof(stateid_t));
  
--	error = 0;
--
- 	pacl = posix_acl_from_xattr(buf, buflen);
-  out:
- 	kfree(buf);
+ 	open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE;
 
 
 -------------------------------------------------------
