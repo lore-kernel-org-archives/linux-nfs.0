@@ -1,15 +1,16 @@
-From: 包府磊<dummy4@jplans.com>
-Subject: (堡绊)ERP贾风记 魄概犁绊,犁公雀拌,积魂磊犁,牢荤鞭咯,公开包府
-Date: Mon, 28 Apr 2003 10:52:59 -0600
+From: =?GB2312?B?xua8o6OsuuzUwqOs1cu6xb270tc=?= <jjhreds44@163.com>
+Subject: =?GB2312?B?tKvG5qOsvqvB6aOstPO7sKOsxua8o6OsuuzUwqOs1cu6xb270tc=?=
+Date: Mon, 28 Apr 2003 14:32:55 +0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E199xnB-00027J-00@sc8-sf-list1.sourceforge.net>
-Content-Type: text/html; charset="ks_c_5601-1987"
+Message-ID: <E19A29C-0003GI-00@sc8-sf-list1.sourceforge.net>
+Reply-To: jhjfdfdfsf@163.com
+Content-Type: text/html;charset="GB2312"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [218.149.83.178] (helo=jplans.com)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 199xnB-00027J-00
-	for <nfs@lists.sourceforge.net>; Sun, 27 Apr 2003 18:50:54 -0700
-To: <nfs@lists.sourceforge.net>
+Received: from [218.86.51.215] (helo=163.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19A29C-0003GI-00
+	for <nfs@lists.sourceforge.net>; Sun, 27 Apr 2003 23:29:57 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -22,183 +23,91 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-
 <html>
 
-<head>
-<title>配固矫胶袍 皋老惯价</title>
-<meta name="generator" content="Namo WebEditor v4.0">
+<head><STYLE>HTML {
+	TEXT-DECORATION: none
+}
+A:link {
+	COLOR: #000000; TEXT-DECORATION: none
+}
+A:hover {
+	COLOR: rgb(72,59,216); TEXT-DECORATION: underline
+}
+EM {
+	FONT-FAMILY: 宋体; FONT-SIZE: 10pt; FONT-STYLE: normal
+}
+A {
+	FONT-FAMILY: 宋体; FONT-SIZE: 10pt
+}
+TD {
+	FONT-FAMILY: 宋体; FONT-SIZE: 10pt
+}
+P {
+	FONT-FAMILY: 宋体; FONT-SIZE: 10pt
+}
+</STYLE>
+
+
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
+<meta name="GENERATOR" content="Microsoft FrontPage 4.0">
+<meta name="ProgId" content="FrontPage.Editor.Document">
+<title>GO一起上 www.go173.com</title>
+<base target="_blank">
 </head>
 
-<body bgcolor="white" text="black" link="blue" vlink="purple" alink="red">
-<p>&nbsp;</p>
-<table align="center" border="0" cellpadding="0" cellspacing="1" width="652" bgcolor="#21446f">
+<body bgcolor="#99CC00">
+
+<div align="center">
+  <center>
+  <table border="1" cellpadding="0" cellspacing="1" width="85%" height="274" bordercolor="#CC6600">
     <tr>
-        <td bgcolor="white" align="middle" valign="top">
-            <table border="0" cellpadding="0" cellspacing="0" width="650" bgcolor="#386090">
-                <tr>
-                    <td width="326">
-                        <p><a href="http://home.hanmir.com/~tomisystem/" target="_blank"><img src="http://www.jplans.com/images/plusmail_01.jpg" width="326" height="185" border="0"></a></p>
-                    </td>
-                    <td width="324">
-                        <p><img src="http://www.jplans.com/images/plusmail_02.jpg" width="324" height="185" border="0"></p>
-                    </td>
-                </tr>
-                <tr>
-                    <td>
-                        <p><img src="http://www.jplans.com/images/plusmail_03.jpg" width="326" height="154" border="0"></p>
-                    </td>
-                    <td>
-                        <p><img src="http://www.jplans.com/images/plusmail_04.jpg" width="324" height="154" border="0"></p>
-                    </td>
-                </tr>
-                <tr>
-                    <td>
-                        <p><A href="mailto:tomisystem@hanmail.net"><img src="http://www.jplans.com/images/plusmail_05.gif" width="326" height="63" border="0"></A></p>
-                    </td>
-                    <td>
-                        <p><a href="http://home.hanmir.com/~tomisystem/" target="_blank"><img src="http://www.jplans.com/images/plusmail_06.gif" width="324" height="63" border="0"></a></p>
-                    </td>
-                </tr>
-                <tr>
-                    <td height="6" colspan="2"></td>
-                </tr>
-                <tr>
-                    <td height="2" colspan="2" bgcolor="#e8e8e8"></td>
-                </tr>
-            </table>
-            <table border="0" cellpadding="5" cellspacing="0" width="100%">
-                <tr>
-                    <td width="50%" align="middle">
-                        <table border="0" cellpadding="0" cellspacing="1" width="100%" bgcolor="#a2a2a2">
-                            <tr>
-                                <td bgcolor="#bfbfbf">
-                                    <p><img src="http://www.jplans.com/images/plusmail_07.gif" width="185" height="28" border="0"></p>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td bgcolor="white" style="PADDING-RIGHT: 5px; PADDING-LEFT: 5px; PADDING-BOTTOM: 5px; PADDING-TOP: 5px" 
-               >
-                                    <p><img src="http://www.jplans.com/images/plusmail_11.jpg" align="left" width="81" height="110" border="0"><font color="#333333" size="2">傈巩瘤侥 
-                                    绝捞档 颊奖霸 荤侩 啊瓷, 阿 流盔甸苞狼 碍仿茄 
-                                    傈磊搬犁 扁瓷,MS竣伎, MS况靛客 龋券登绢 
-                                    促剧茄 焊绊辑, 弊贰橇 祈笼啊瓷,喊档狼 剧侥瘤 
-                                    鞘夸绝捞 A4侩瘤俊 阿辆 焊绊辑 免仿</font></p>
-                                </td>
-                            </tr>
-                        </table>
-                    </td>
-                    <td width="50%" align="middle">
-                        <table border="0" cellpadding="0" cellspacing="1" width="100%" bgcolor="#a2a2a2">
-                            <tr>
-                                <td bgcolor="#bfbfbf">
-                                    <p><img src="http://www.jplans.com/images/plusmail_08.gif" width="185" height="28" border="0"></p>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td bgcolor="white" style="PADDING-RIGHT: 5px; PADDING-LEFT: 5px; PADDING-BOTTOM: 5px; PADDING-TOP: 5px" 
-               >
-                                    <p><img src="http://www.jplans.com/images/plusmail_12.jpg" align="left" width="81" height="110" border="0"><font color="#333333" size="2">哪腔磐客 
-                                    雀拌 瘤侥捞 绝绢档 穿备唱 颊奖霸荤侩 啊瓷, 
-                                    MS EXCEL, MS WORD客 龋券登绢 促剧茄 焊绊辑, 
-                                    弊贰橇祈笼 啊瓷, 傈魂 概眉脚绊 啊瓷 </font></p>
-                                </td>
-                            </tr>
-                        </table>
-                    </td>
-                </tr>
-                <tr>
-                    <td align="middle">
-                        <table border="0" cellpadding="0" cellspacing="1" width="100%" bgcolor="#a2a2a2">
-                            <tr>
-                                <td bgcolor="#bfbfbf">
-                                    <p><img src="http://www.jplans.com/images/plusmail_09.gif" width="185" height="28" border="0"></p>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td bgcolor="white" style="PADDING-RIGHT: 5px; PADDING-LEFT: 5px; PADDING-BOTTOM: 5px; PADDING-TOP: 5px" 
-               >
-                                    <p><img src="http://www.jplans.com/images/plusmail_13.jpg" align="left" width="81" height="110" border="0"><font size="2" color="#333333">埃窜茄 
-                                    版府厘何 棺 绢澜包府 扁瓷 力傍,80咯辆狼 
-                                    促剧茄 焊绊辑 力傍, MS竣伎, 况靛客 龋券登绢 
-                                    促剧茄 焊绊辑, 弊贰橇 祈笼 啊瓷,喊档狼剧侥瘤啊 
-                                    鞘夸绝捞 A4侩瘤俊 阿辆 焊绊辑客 傈钎 力傍 
-                                    </font></p>
-                                </td>
-                            </tr>
-                        </table>
-                    </td>
-                    <td align="middle">
-                        <table border="0" cellpadding="0" cellspacing="1" width="100%" bgcolor="#a2a2a2">
-                            <tr>
-                                <td bgcolor="#bfbfbf">
-                                    <p><img src="http://www.jplans.com/images/plusmail_10.gif" width="185" height="28" border="0"></p>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td bgcolor="white" style="PADDING-RIGHT: 5px; PADDING-LEFT: 5px; PADDING-BOTTOM: 5px; PADDING-TOP: 5px" 
-               >
-                                    <p><img src="http://www.jplans.com/images/plusmail_14.jpg" align="left" width="81" height="110" border="0"><font color="#333333" size="2">傈巩雀拌 
-                                    瘤侥捞 绝绢档 穿备唱 颊奖霸 荤侩 啊瓷,喊档狼 
-                                    剧侥瘤啊 鞘夸绝捞 A4侩瘤俊 阿辆 焊绊辑客 
-                                    傈钎 力傍, 泅诀何辑客 雀拌何辑狼 碍仿茄 
-                                    傈磊搬犁 扁瓷,岿喊, 何辑喊, 泅厘喊, 概免/厚侩 
-                                    角利 盒籍 啊瓷 </font></p>
-                                </td>
-                            </tr>
-                        </table>
-                    </td>
-                </tr>
-            </table>
-
-            <table border="0" cellpadding="10" cellspacing="0" width="100%">
-                <tr>
-                    <td align="middle" bgcolor="#21446f">
-                        <table border="0" cellpadding="0" cellspacing="0" width="100%">
-                            <tr>
-                                <td width="41%" height="18">
-                                    <p><font size="2" color="white"><b>- 雀荤疙 
-                                    : 配固矫胶袍</b></font></p>
-                                </td>
-                                <td width="59%">
-                                    <p><font size="2" color="white"><b>- 楷遏贸 
-                                    : (H.P) 011-416-2004 &nbsp;&nbsp;(TEL) 02-542-9992 </b></font></p>
-                                </td>
-                            </tr>
-                            <tr> 
-                                <td height="18">
-                                    <p><font size="2" color="white"><b>- E-MAIL 
-                                    : </b></font><A href="mailto:tomisystem@hanmail.net"><b><font size="2" color="white">tomisystem@hanmail.net</font></b></A><font size="2" color="white"><b> </b></font></p>
-                                </td>
-                                <td>
-                                    <p><font size="2" color="white"><b>- 权其捞瘤 
-                                    : </b></font><a href="http://home.hanmir.com/~tomisystem/" target="_blank"><b><font size="2" color="white">http://home.hanmir.com/~tomisystem/</font></b></a></p>
-                                </td>
-                            </tr>
-                        </table>
-                    </td>
-                </tr>
-                <tr>
-                    <td bgcolor="#dadadc">
-                        <p><font size="2">蓖窍狼 铰遏绝捞 全焊己 傈磊 快祈阑 
-                        焊郴霸 等 痢 沥吝洒 荤苞 靛赋聪促. 沥焊烹脚噶捞侩盟柳过 
-                        痹沥阑 霖荐窍咯 堡绊皋老烙阑 钎矫窍看栏哥, 历锐绰 蓖窍狼 
-                        傈磊快祈 林家 寇 绢栋茄 俺牢沥焊档 啊瘤绊 乐瘤 臼栏骨肺 
-                        救缴窍矫扁官而聪促. 荐脚阑 盔摹 臼栏矫搁 荐脚芭何甫 
-                        努腐秦 林绞矫夸. &nbsp;<A href="mailto:kyongse@naver.com"><img src="http://www.jplans.com/images/nobutton.gif" align="top" width="60" height="19" border="0" alt="荐脚芭何"></A></font></p>
-                    </td>
-                </tr>
-            </table>
-
-        </td>
-    </tr>
-</table>
-<IMG height=0 src="http://tomi.jplans.com/scount/count.cgi?tomipage" width=0 border=0>&nbsp;
-</body>
-
-</html>
-
-
+      <td width="20%" height="23" bgcolor="#FEE2FB">
+        <p align="center"><font color="#666666">&nbsp;&nbsp; <a href="http://www.go173.com">首页&nbsp;</a></font></td>      
+      <td width="20%" height="23" bgcolor="#CC6600">      
+        <p align="center"><a href="http://www.go173.com/mm/go.htm"><font color="#000080">激情公社</font></a></td>      
+  </center>      
+      <td width="20%" height="23" bgcolor="#FEE2FB">      
+        <p align="center"><a href="http://mysms.sohu.com/union/index.php?userid=76698">发短信</a></td>     
+  <center>     
+      <td width="20%" height="23" bgcolor="#FEE2FB">     
+        <p align="center"><a href="http://www.go173.com/mm/mm.htm">同城约会</a></td>    
+      <td width="20%" height="23" bgcolor="#FEE2FB">    
+        <p align="center">　</td>   
+    </tr>   
+  </center>   
+  <tr>   
+    <td width="100%" height="174" valign="top" colspan="5">   
+      <p align="left">==============================================================<br> 
+      ==============================================================<br> 
+      您是网络游戏高手吗？您是否有个花费您很大精力和时间，由于各种原因而不得不放弃的游戏账号。这一切已经成为历史，功能强大“GO一起上游戏账号交易平台”闪亮登场。现在，您只要登陆WWW.GO173.COM ，免费注册为会员,您就可以享受交易带来的无限乐趣。   
+      <p align="left"><font color="#666666">传奇，精灵，大话，奇迹，红月，账号交易，详细请进入</font><a href="http://www.go173.com"><font color="#FF0000">WWW.GO173.COM</font></a><font color="#666666">您是网络游戏高手吗？您是否有个花费您很大精力和时间，由于各种原因而不得不放弃的游戏账号。这一切已经成为历史，功能强大“GO一起上游戏账号交易平台”闪亮登场。现在，您只要登陆</font><a href="http://www.go173.com"><font color="#FF0000">WWW.GO173.COM</font></a><font color="#666666"> ，免费注册为会员,您就可以享受交易带来的无限乐趣。<br>            
+      <br>            
+      http://</font><a href="http://www.go173.com"><font color="#666666">www.go173.com</font></a><font color="#666666"><br>          
+    超过万首的FLASH音乐欣赏http://</font><a href="http://www.go173.com/flash"><font color="#666666">www.go173.com/flash</font></a><font color="#666666"><br>          
+      </font>          
+      <a href="http://www.go173.com/bbs"><font color="#FF0000">进入社区&gt;&gt;</font></a>        
+    </td>        
+  </tr>        
+  <tr>        
+    <td width="100%" height="77" valign="middle" colspan="5">       
+    <p align="center">  <center>加入 <A HREF=http://asiafriendfinder.com/go/f112513 target=_top>  
+亚洲交友中心</A> - 最大亚洲个人交友中心网站!<br>  
+<A HREF=http://asiafriendfinder.com/go/f112513 target=_top>  
+<img src=http://banners.asiafriendfinder.com/banners/ffz/gb01.gif   
+width=468 height=60 border=0></A></center>  
+  
+  
+</td>       
+  </tr>      
+  </table>      
+</div>      
+      
+<p align="center">　</p>
+      
+</body>      
+      
+</html>      
 
 
 
