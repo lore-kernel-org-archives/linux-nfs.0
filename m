@@ -1,23 +1,30 @@
-From: "Ogden, Aaron A." <aogden@unocal.com>
-Subject: RE: ~800 mountpoint limitation
-Date: Mon, 15 Dec 2003 09:46:11 -0600
+From: Chip Salzenberg <chip@pobox.com>
+Subject: Must portmap listen on * in NFS clients?
+Date: Mon, 15 Dec 2003 16:48:44 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <6AB920CC10586340BE1674976E0A991D0C6BD1@slexch2.sugarland.unocal.com>
+Message-ID: <20031215214844.GR20533@perlsupport.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: "Ogden, Aaron A." <aogden@unocal.com>, <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AVuva-0000Ce-VQ
-	for nfs@lists.sourceforge.net; Mon, 15 Dec 2003 07:46:34 -0800
-Received: from unogate.unocal.com ([192.94.3.1])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AVuvY-00069I-4r
-	for nfs@lists.sourceforge.net; Mon, 15 Dec 2003 07:46:32 -0800
-To: "Ian Kent" <raven@themaw.net>,
-        "Trond Myklebust" <trond.myklebust@fys.uio.no>
+	id 1AW0a5-0004zQ-No
+	for nfs@lists.sourceforge.net; Mon, 15 Dec 2003 13:48:45 -0800
+Received: from topaz.cx
+	([66.220.6.227] helo=mail.topaz.cx ident=mail)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.24)
+	id 1AW0a5-0003EK-Hu
+	for nfs@lists.sourceforge.net; Mon, 15 Dec 2003 13:48:45 -0800
+Received: from tytlal.hmsonline.com
+	([207.43.94.202] helo=tytlal ident=Debian-exim)
+	by mail.perlsupport.com with asmtp (Exim 3.35 #1 (Debian))
+	id 1AW0a2-0002Hy-00
+	for <nfs@lists.sourceforge.net>; Mon, 15 Dec 2003 13:48:42 -0800
+Received: from chip by tytlal with local (Exim 4.30)
+	id 1AW0a4-00070h-8f
+	for nfs@lists.sourceforge.net; Mon, 15 Dec 2003 16:48:44 -0500
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,39 +37,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+I have a question that will soon be relevant for Debian NFS packaging.
 
+As far as NFS is concerned, need portmap listen on all interfaces when
+the machine it's on is only an NFS *client*?  I know that servers'
+portmaps must listen on * so clients can find mountd.  But, AFAICT,
+clients need not have open portmaps.  Am I right in this?
 
-> -----Original Message-----
-> From: Ian Kent [mailto:raven@themaw.net]=20
-> Sent: Monday, December 15, 2003 7:34 AM
-> To: Trond Myklebust
-> Cc: Ogden, Aaron A.; nfs@lists.sourceforge.net
-> Subject: RE: [NFS] ~800 mountpoint limitation
->=20
-> [---snip---]
->=20
-> If the patch is OK with you then I will have a go at back porting it
-to=20
-> 2.4. If Aaron is able to, we can have him hammer it to death and
-perhaps=20
-> collect some performance data.
->=20
-> Comments please?
-> Ian
-
-Sounds great, I am running autofs-4.1.0 on two test machines and have
-not encountered any problems yet.  The test machines are RH 7.3 with
-kernel 2.4.20-24 + autofs4-20031201.  The patch discussed in this thread
-is intended to correct the RPC problems yes? (limit of ~800 mountpoints,
-etc.)  If it works I feel that it would be a welcome addition to linux
-even if it isn't strictly necessary for most people.
-
-I have other machines I can run the new code on, so yes, I can test it
-out.  We have more than 800 users so I can break the old code just by
-walking down the auto_home map.  Hopefully the new code will be able to
-handle more mounts and at greater speed without failing... =20
-
--A
+PS: I should already know this.  But NFS protocol issues have always
+    given me the screaming heebie jeebies.
+-- 
+Chip Salzenberg               - a.k.a. -               <chip@pobox.com>
+"I wanted to play hopscotch with the impenetrable mystery of existence,
+    but he stepped in a wormhole and had to go in early."  // MST3K
 
 
 -------------------------------------------------------
