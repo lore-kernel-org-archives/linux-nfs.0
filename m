@@ -1,22 +1,27 @@
-From: "Lever, Charles" <cel@netapp.com>
-Subject: RE: sendmail "cannot fsync directory" after 2.4 -> 2.6
-Date: Thu, 9 Sep 2004 11:54:23 -0700
+From: "Hyatt, Daniel J" <daniel.j.hyatt@boeing.com>
+Subject: NFS server on startup on Redhat
+Date: Thu, 9 Sep 2004 12:36:33 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <482A3FA0050D21419C269D13989C61130435E7A8@lavender-fe.eng.netapp.com>
+Message-ID: <0CF6F73B3B779D43B160B85FD0CC2D37035C546D@xch-sw-07.sw.nos.boeing.com>
 Mime-Version: 1.0
 Content-Type: text/plain;
 	charset="us-ascii"
-Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C5U3y-0002Br-RB
-	for nfs@lists.sourceforge.net; Thu, 09 Sep 2004 11:54:30 -0700
-Received: from mx01.netapp.com ([198.95.226.53])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1C5U3y-0007q3-5T
-	for nfs@lists.sourceforge.net; Thu, 09 Sep 2004 11:54:30 -0700
-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+	id 1C5Uj0-0001wA-6d
+	for nfs@lists.sourceforge.net; Thu, 09 Sep 2004 12:36:54 -0700
+Received: from blv-smtpout-01.boeing.com ([130.76.32.69])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1C5Uiw-0004fl-H7
+	for nfs@lists.sourceforge.net; Thu, 09 Sep 2004 12:36:53 -0700
+Received: from slb-av-01.boeing.com ([129.172.13.4])
+	by blv-smtpout-01.boeing.com (8.9.2.MG.10092003/8.8.5-M2) with ESMTP id MAA26261
+	for <nfs@lists.sourceforge.net>; Thu, 9 Sep 2004 12:36:36 -0700 (PDT)
+Received: from XCH-SWBH-02.sw.nos.boeing.com (localhost [127.0.0.1])
+	by slb-av-01.boeing.com (8.11.3/8.11.3/MBS-LDAP-01) with ESMTP id i89JaZ402120
+	for <nfs@lists.sourceforge.net>; Thu, 9 Sep 2004 12:36:35 -0700 (PDT)
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -29,18 +34,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> > Yep. We forgot to add the stub to Linux 2.6.x. Please=20
-> confirm that the=20
-> > following patch fixes the problem for you.
->=20
-> will fsync'ing a directory have any affect on the client=20
-> inode cache for that dir?  eg. will it invalidate that cache?
+I installed Redhat 8 and am using the native NFS server.
+I have it working with one small detail, and it seems to be a Linux
+issue but cannot tell for sure if it is a race condition.
 
-ara-
+When I setup a startup script to run=20
+/etc/init.d/nfs restart=20
+In the rc2.d, rc3.d, or rc6.d=20
+It wont run.
 
-looking at the patch trond posted, it appears to add a "no-op" function
-for fsyncing NFS directories.  this means fsync against an NFS directory
-will not complain, but otherwise does nothing.
+If I run it manually
+/etc/rc2.d/nfs=20
+
+It works perfectly.
+
+But on startup it wont start the NFS server.
+
+Thanks in advance....
+Dan
 
 
 -------------------------------------------------------
