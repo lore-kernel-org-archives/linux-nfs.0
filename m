@@ -1,16 +1,16 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 37 of 54] nfsd4: rename release_stateid_lockowner
+Subject: [PATCH kNFSd 38 of 54] nfsd4: keep lockowners off perclient list
 Date: Tue, 08 Mar 2005 17:06:44 +1100
-Message-ID: <E1D8Xrg-00019C-NG@notabene.cse.unsw.edu.au>
+Message-ID: <E1D8Xrg-00019H-Oe@notabene.cse.unsw.edu.au>
 References: <20050308165419.3842.patches@notabene>
 Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D8Xrs-00028D-Im
+	id 1D8Xrs-00028B-BK
 	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:56 -0800
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1D8Xrq-0007tn-PF
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1D8Xrp-0005Cy-KA
 	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:06:56 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
@@ -27,9 +27,9 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-
-The name makes it sounds like the job of this function is to release a single
-lockowner; the plural seems clearer.
+There's no reason to have the lockowners hang off the same list on the client
+struct as the openowners do; you can always get to the lockowners from their
+original openowners instead.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
@@ -39,44 +39,32 @@ Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
  1 files changed, 4 insertions(+), 4 deletions(-)
 
 diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2005-03-07 13:25:47.000000000 +1100
-+++ ./fs/nfsd/nfs4state.c	2005-03-07 13:26:15.000000000 +1100
-@@ -81,7 +81,7 @@ u32 free_delegation= 0;
- struct nfs4_stateid * find_stateid(stateid_t *stid, int flags);
- static struct nfs4_delegation * find_delegation_stateid(struct inode *ino, stateid_t *stid);
- static void release_delegation(struct nfs4_delegation *dp);
--static void release_stateid_lockowner(struct nfs4_stateid *open_stp);
-+static void release_stateid_lockowners(struct nfs4_stateid *open_stp);
+--- ./fs/nfsd/nfs4state.c~current~	2005-03-07 13:26:15.000000000 +1100
++++ ./fs/nfsd/nfs4state.c	2005-03-07 13:26:43.000000000 +1100
+@@ -1109,9 +1109,11 @@ unhash_stateowner(struct nfs4_stateowner
  
- /* Locking:
-  *
-@@ -207,7 +207,7 @@ release_delegation(struct nfs4_delegatio
- 		struct file *filp = dp->dl_stp->st_vfs_file;
- 
- 		dprintk("NFSD: release_delegation CLOSE\n");
--		release_stateid_lockowner(dp->dl_stp);
-+		release_stateid_lockowners(dp->dl_stp);
- 		kfree(dp->dl_stp);
- 		dp->dl_stp = NULL;
- 		atomic_set(&dp->dl_state, NFS4_RECALL_COMPLETE);
-@@ -1089,7 +1089,7 @@ alloc_init_open_stateowner(unsigned int 
- }
- 
- static void
--release_stateid_lockowner(struct nfs4_stateid *open_stp)
-+release_stateid_lockowners(struct nfs4_stateid *open_stp)
- {
- 	struct nfs4_stateowner *lock_sop;
- 
-@@ -1177,7 +1177,7 @@ release_stateid(struct nfs4_stateid *stp
- 				return;
- 			}
- 		}
--		release_stateid_lockowner(stp);
-+		release_stateid_lockowners(stp);
- 		nfsd_close(stp->st_vfs_file);
- 		vfsclose++;
- 	} else if ((stp->st_vfs_set) && (flags & LOCK_STATE)) {
+ 	list_del(&sop->so_idhash);
+ 	list_del(&sop->so_strhash);
+-	list_del(&sop->so_perclient);
++	if (sop->so_is_open_owner) {
++		list_del(&sop->so_perclient);
++		del_perclient++;
++	}
+ 	list_del(&sop->so_perlockowner);
+-	del_perclient++;
+ 	while (!list_empty(&sop->so_perfilestate)) {
+ 		stp = list_entry(sop->so_perfilestate.next, 
+ 			struct nfs4_stateid, st_perfilestate);
+@@ -2575,9 +2577,7 @@ alloc_init_lock_stateowner(unsigned int 
+ 	sop->so_time = 0;
+ 	list_add(&sop->so_idhash, &lock_ownerid_hashtbl[idhashval]);
+ 	list_add(&sop->so_strhash, &lock_ownerstr_hashtbl[strhashval]);
+-	list_add(&sop->so_perclient, &clp->cl_perclient);
+ 	list_add(&sop->so_perlockowner, &open_stp->st_perlockowner);
+-	add_perclient++;
+ 	sop->so_is_open_owner = 0;
+ 	sop->so_id = current_ownerid++;
+ 	sop->so_client = clp;
 
 
 -------------------------------------------------------
