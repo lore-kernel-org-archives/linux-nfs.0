@@ -1,19 +1,20 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: linux 2.4.20 oops
-Date: Tue, 29 Apr 2003 10:31:26 -0700
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: A Question about the 2.4.21 Pathconf patch
+Date: Tue, 29 Apr 2003 14:41:56 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <6440EA1A6AA1D5118C6900902745938E07D5559E@black.eng.netapp.com>
+Message-ID: <3EAEC774.20402@RedHat.com>
+References: <3EAE956E.9080205@RedHat.com> <shs4r4h5l52.fsf@charged.uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Cc: "Marcelo Tosatti" <marcelo@conectiva.com.br>,
-   "NFS maillist" <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mx01.netapp.com ([198.95.226.53])
+Received: from nat-pool-rdu.redhat.com ([66.187.233.200] helo=lacrosse.corp.redhat.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19AYxA-0002eJ-00
-	for <nfs@lists.sourceforge.net>; Tue, 29 Apr 2003 10:31:40 -0700
-To: <trond.myklebust@fys.uio.no>
+	id 19Aa3H-0007XQ-00
+	for <nfs@lists.sourceforge.net>; Tue, 29 Apr 2003 11:42:03 -0700
+Received: from RedHat.com (dickson.boston.redhat.com [172.16.65.20])
+	by lacrosse.corp.redhat.com (8.11.6/8.9.3) with ESMTP id h3TIfuV08807
+	for <nfs@lists.sourceforge.net>; Tue, 29 Apr 2003 14:41:56 -0400
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,37 +27,33 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-ok, it looks like i was stupid and didn't apply the rc1 patch
-to my rc1 tree.  my copy of the rc1 pre-patch has the right
-stuff in it.
+Hello Trond,
 
-sorry to be a bug.
+Trond Myklebust wrote:
 
-> -----Original Message-----
-> From: Trond Myklebust [mailto:trond.myklebust@fys.uio.no]
-> Sent: Tuesday, April 29, 2003 1:22 PM
-> To: Marcelo Tosatti
-> Cc: Lever, Charles; NFS maillist
-> Subject: RE: [NFS] linux 2.4.20 oops
->=20
->=20
-> >>>>> " " =3D=3D Charles Lever <Lever> writes:
->=20
->      > i built 2.4.21-rc1 from 2.4.20.tar.bz2 and the rc1 upgrade
->      > patch, and its not in my version of rc1.
->=20
-> Hmmm... strange. AFAICS there are no NFS or RPC changes whatsoever in
-> the rc1 patch on ftp.kernel.org.
-> As I said, all the changes (including Ulrich Weigand's patch) appear
-> to still be in the bitkeeper repository (see for instance the kernel
-> source browser on http://linux.bkbits.net:8080/linux-2.4).
->=20
-> Marcelo, is this perhaps a problem with an incorrect generation of the
-> 'official' 2.4.21-rc1 patch?
->=20
-> Cheers,
->   Trond
->=20
+>Why would we want to succeed in that case? If the server operates with
+>some screwed up set of parameters that we are incapable of supporting,
+>surely the best thing to do is to fail immediately?
+>
+Very true... I think we are saying the same thing.... Maybe I
+was not too clear....
+
+>Note: Most of the functionality of NFSPROC3_FSINFO *is* in fact in v2,
+>but it is either part of NFSPROC_STATFS, or (shudder) has been tacked
+>onto the mount protocol.
+>
+Right... but with the difference being that statfs supplies dynamic
+information and fsinfo supplies static info. And some the
+fsinfo info, like readdir sizes, procedures not supported,
+max reads/writes sizes along with preferred read/write sizes
+seems like good information to have about the server, although
+not totally necessary, obviously ;-)
+
+So I'm just curious, why (from a protocol purest standpoint) its
+not being used... and if it ever was used, what were the results...
+
+SteveD.
+
 
 
 -------------------------------------------------------
