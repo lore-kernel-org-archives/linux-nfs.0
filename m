@@ -1,24 +1,16 @@
-From: Philippe =?ISO-8859-15?Q?Gramoull=E9?= <philippe.gramoulle@mmania.com>
-Subject: Re: ALERT - GroupShield ticket number
- OA2317_1057450427_CVO-EXCHANGE _1 was generated
-Date: Mon, 7 Jul 2003 23:12:08 +0200
+From: Juri Haberland <list-linux.nfs@spoiled.org>
+Subject: Re: ALERT - GroupShield ticket number OA2317_1057450427_CVO-EXCHANGE _1 was generated
+Date: Mon, 7 Jul 2003 22:34:19 +0000 (UTC)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030707231208.6a3f2ae7.philippe.gramoulle@mmania.com>
-References: <Pine.LNX.4.33.0307060127100.1200-100000@vangogh>
-	<3F09AAA0.4070000@ixiacom.com>
-	<20030707193031.GA10222@lucon.org>
-	<20030707225618.0fa972cf.philippe.gramoulle@mmania.com>
-	<1057612112.19080.26.camel@opus.phy.duke.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: "H. J. Lu" <hjl@lucon.org>, nfs@lists.sourceforge.net
+Message-ID: <news2mail-becshb$kho$1@cartman.spoiled.org>
+References: <482A3FA0050D21419C269D13989C6113D06A16@lavender-fe.eng.netapp.com> <Pine.LNX.4.56.0307071345180.5779@glenfiddich.cse.ogi.edu> <3F09DFE7.7020208@ixiacom.com>
+Reply-To: Juri Haberland <juri@koschikode.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pgramoul.net2.nerim.net ([80.65.227.234] helo=philou.aspic.com)
+Received: from cartman.spoiled.org ([80.190.101.194] helo=a.mx.spoiled.org)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19ZdHa-0006ZM-00
-	for <nfs@lists.sourceforge.net>; Mon, 07 Jul 2003 14:12:22 -0700
-To: seth vidal <skvidal@phy.duke.edu>
-In-Reply-To: <1057612112.19080.26.camel@opus.phy.duke.edu>
+	id 19ZeYa-0003No-00
+	for <nfs@lists.sourceforge.net>; Mon, 07 Jul 2003 15:34:00 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,31 +23,36 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Dan Kegel <dkegel@ixiacom.com> wrote:
+> Paul Heinlein wrote:
+>> 
+>>>i prefer a moderated list instead of "closed to subscribers only."
+>>>but i am willing to be outvoted ;^)
+>> 
+>> As long as there are pleny of moderators to handle the approval
+>> process. I'd hate to think that one or two people get stuck with the
+>> nasty job of spam deletion.
+> 
+> There *is* the option of adding spam filtering to the list, I suppose.
+> Preferably for new members only, so known good people don't
+> have posts deleted due to false positives...
+> 
+> I'd prefer closing the list to non-subscriber posts as the first move,
+> and then adding spam filtering if the spammers get past that.
 
-Hello Seth,
+Anyone thought about just unsubscribing those people comeing from a
+domain that sends those anti-virus messages?
+It's just like all those misconfigured mail servers, that send out
+vacation messages upon mailing list mails...
 
-On 07 Jul 2003 17:08:32 -0400
-seth vidal <skvidal@phy.duke.edu> wrote:
+Just my 2 Euro cents...
 
-  | > I think that we should keep the list opened to non-subscribers ( and fine
-  | > tune my spam traps/ white lists / Black lists BTW :)
-  | > 
-  | 
-  | It's really not this hard.
-  | all you do is turn on non-subscriber posts require approval in mailman.
+Regards,
+Juri
 
-Yes, i'm aware of this feature.
+-- 
+Juri Haberland  <juri@koschikode.com> 
 
-  | 
-  | it doesn't drop non-subscriber posts but it will send the mailing list
-  | admin a message saying some messages need to get
-  | checked/approvated/discarded.
-
-Fine with me ;o) as long as there are people out there willing to do the moderation.
-
-Thanks,
-
-Philippe
 
 
 -------------------------------------------------------
