@@ -1,22 +1,23 @@
-From: =?iso-8859-1?Q?Peter_=C5strand?= <astrand@cendio.se>
-Subject: Re: [PATCH] xprt sharing (was Re: xprt_bindresvport)
-Date: Thu, 9 Dec 2004 09:54:58 +0100 (CET)
-Message-ID: <Pine.LNX.4.44.0412090954400.23728-100000@maggie.lkpg.cendio.se>
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: xprt_bindresvport
+Date: Thu, 9 Dec 2004 12:01:24 +0100
+Message-ID: <20041209110124.GA15055@suse.de>
+References: <482A3FA0050D21419C269D13989C61130435EC6F@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=iso-8859-1
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CcK4r-00026K-Th
-	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 00:55:09 -0800
-Received: from mail.cendio.se ([193.12.253.69])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CcK4o-00016O-So
-	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 00:55:08 -0800
-Received: from maggie.lkpg.cendio.se (maggie.lkpg.cendio.se [10.47.1.208])
-	by mail.cendio.se (Postfix) with ESMTP id AB0F025DAB4
-	for <nfs@lists.sourceforge.net>; Thu,  9 Dec 2004 09:54:58 +0100 (CET)
-To: nfs@lists.sourceforge.net
+	id 1CcM3A-0002zR-Jd
+	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 03:01:32 -0800
+Received: from cantor.suse.de ([195.135.220.2])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.41)
+	id 1CcM35-0004ku-PC
+	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 03:01:32 -0800
+To: "Lever, Charles" <Charles.Lever@netapp.com>
+In-Reply-To: <482A3FA0050D21419C269D13989C61130435EC6F@lavender-fe.eng.netapp.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,34 +31,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, 8 Dec 2004, Mike Waychison wrote:
-
-> This has been bugging me for a while.  The fact that we are limitting
-> ourselves to a single nfs mount per port.  From what I can tell, Solaris
-> shares the transports between nfs mounts from the same server and saves
-> themselves a lot of trouble with running out of port numbers in doing so.
+On Wed, Dec 08, 2004 at 06:33:15AM -0800, Lever, Charles wrote:
+> > port by counting down from 800 to 0. I think this is a bug, because it
+> > will potentially interfere with services trying to bind to 
+> > low ports as
+> > well.
 > 
-> The attached patch does the same for Linux against 2.6.9.  We share
-> xprts from existing connections, effectively removing any limit on the
-> number of nfs mounts we have in the system.
+> is this idle speculation, or do you actually have a test case that
+> fails?  :^)
 
-Good work! 
+I've seen many cases of glibc's bindresvport (which allocates from
+600-1023) snatching ports used by other services, e.g. cups. The way
+we solve this in user space is by having a file in /etc with a blacklist
+of ports bindresvport isn't allowed to touch.
 
+I admit that I haven't seen NFS step on someone else toes yet. But it
+all depends on the number of mounts you have, and on coincidence.
 
-> The only thing to worry about now is any talking to the portmapper or
-> mountd from userspace using tcp, which will put the reserved ports in
-> TIME_WAIT state.  This can limit the 'speed' at which we mount many
-> mounts.
+At any rate, it really looks like a bug to me. Why should our scan include
+ports in the low range (which is a no-no) but refuse to touch ports in the
+800-1023 range? It's just an inverted test, IMO.
 
-How about using SO_REUSEADDR?
+> i don't agree.  you're just making the bad behavior more rare by
+> choosing ports at random; you are not actually addressing the root
+> problem you describe.  is it possible to fix the RPC client to retry the
+> connection in this case?  and/or fix the server to recognize and remove
+> the context for the old connection?
 
+You cannot fix the RPC client. It will not see any packets from the
+server, so it simply sits there until it times out and retries the
+connection. This can cause system boot to take quite a long time.
+
+You can fix the firewall, this is currently being tossed around on the
+netfilter list. Unfortunately not all routers out there run the latest and
+greatest netfilter code; so we don't really have much control over that.
+
+> introducing randomness here will make reproducing problems in this area
+> very difficult.
+
+I agree. And I would only enable randomization if we change the port
+range to 600-up or something like this.
+
+Olaf
 -- 
-Peter Åstrand		Chief Developer
-Cendio			www.thinlinc.com
-Teknikringen 3		www.cendio.se
-583 30 Linköping        Phone: +46-13-21 46 00
-
-
+Olaf Kirch     | Things that make Monday morning interesting, #2:
+okir@suse.de   |        "We have 8,000 NFS mount points, why do we keep
+---------------+ 	 running out of privileged ports?"
 
 
 -------------------------------------------------------
