@@ -1,19 +1,25 @@
-From: =?iso-8859-1?Q?Peter_=C5strand?= <astrand@lysator.liu.se>
-Subject: NFS configuration question
-Date: Wed, 7 May 2003 08:48:13 +0200 (CEST)
+From: Tim Pickard <tpickard@crossref.org>
+Subject: RE: NFS configuration question + ext3 question
+Date: Wed, 07 May 2003 09:19:49 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0305070846120.6092-100000@aristocat.lysator.liu.se>
+Message-ID: <PGEKLHJLLGLFPCINFLBLCEIFDJAA.tpickard@crossref.org>
+References: <shsd6iv8uep.fsf@charged.uio.no>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=iso-8859-1
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from aristocat.lysator.liu.se ([130.236.254.84])
+Received: from mta8.algx.net ([67.92.168.237] helo=chimta03.algx.net)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19DIiw-0003FO-00
-	for <nfs@lists.sourceforge.net>; Tue, 06 May 2003 23:48:18 -0700
-Received: from localhost (astrand@localhost)
-	by aristocat.lysator.liu.se (8.11.6/8.11.6) with ESMTP id h476mEj06119
-	for <nfs@lists.sourceforge.net>; Wed, 7 May 2003 08:48:14 +0200
-To: nfs@lists.sourceforge.net
+	id 19DOjC-00058O-00
+	for <nfs@lists.sourceforge.net>; Wed, 07 May 2003 06:12:58 -0700
+Received: from TPICKARD
+ (ip67-89-23-170.z23-89-67.customer.algx.net [67.89.23.170])
+ by chimmx03.algx.net
+ (iPlanet Messaging Server 5.2 HotFix 1.10 (built Jan 23 2003))
+ with SMTP id <0HEI003ZIQ1CFW@chimmx03.algx.net> for nfs@lists.sourceforge.net;
+ Wed, 07 May 2003 08:12:49 -0500 (CDT)
+In-reply-to: <shsd6iv8uep.fsf@charged.uio.no>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,18 +32,42 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Thanks for the input.
+
+I am thinking that my simple test is not a valid one.  It does work on same
+machine but not on different machines with a shared volume.
+
+I will be implementing the file locking.
+
+Secondarily, how much of an increase in reliability/speed is there in moving
+to ext3 from ext2 file system?  I am following the optimization steps.
+
+Tim Pickard
+Systems Support Analyst and Administrator
+40 Salem Street
+Lynnfield, MA  01940
+p.781-295-0072
+f.781-295-0077
+tpickard@crossref.org
+
+-----Original Message-----
+From: Trond Myklebust [mailto:trond.myklebust@fys.uio.no]
+Sent: Tuesday, May 06, 2003 8:37 PM
+To: Tim Pickard
+Cc: nfs@lists.sourceforge.net
+Subject: Re: [NFS] NFS configuration question
 
 
->The issue is processes on machines B and C do not get a complete file
->from the shared directory on A.
 
->As an example, tail -f file X on B or C.  Cat data to file X on A.
->The process tail does not catch the change.
+     > What am I missing?
 
-You might want to try "tail --follow=3Dname".=20
+The basic fact that NFS was never designed with data cache consistency
+in mind. The only way to ensure that processes on different machines
+consistently see the same data is to use file locking in order to
+synchronize their caches.
 
---=20
-/Peter =C5strand <altic@lysator.liu.se>
+Cheers,
+  Trond
 
 
 
