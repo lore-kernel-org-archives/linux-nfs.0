@@ -1,16 +1,16 @@
 From: "Kendrick M. Smith" <kmsmith@umich.edu>
-Subject: patch 15/38: CLIENT: add ->setup_read() nfs_rpc_op for async read,
- part 2
-Date: Tue, 13 Aug 2002 19:02:18 -0400 (EDT)
+Subject: patch 16/38: CLIENT: add ->setup_{write,commit}() for async write,
+ part 1
+Date: Tue, 13 Aug 2002 19:02:46 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.SOL.4.44.0208131901580.25942-100000@rastan.gpcc.itd.umich.edu>
+Message-ID: <Pine.SOL.4.44.0208131902210.25942-100000@rastan.gpcc.itd.umich.edu>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from donkeykong.gpcc.itd.umich.edu ([141.211.2.163])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17ekg8-0002RF-00
-	for <nfs@lists.sourceforge.net>; Tue, 13 Aug 2002 16:02:20 -0700
+	id 17ekga-0002TG-00
+	for <nfs@lists.sourceforge.net>; Tue, 13 Aug 2002 16:02:48 -0700
 To: linux-kernel@vger.kernel.org, <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -27,75 +27,50 @@ List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 This is a nontrivial change to the NFS client.
 
-In this patch, we finish modifying the async READ path so that it is
-version-agnostic.  We define a new nfs_rpc_op ->setup_read(), and move
-the v2- and v3-specific code in nfs_read_rpcsetup() there.  We also
-have to change nfs_readpage() result so that the 'count' of bytes
-read is a parameter.  The extra parameter means that it can no longer
-be ->tk_exit().  Instead, it is called from a version-specific ->tk_exit()
-routine which is set in ->read_setup().
+This patch does for the async WRITE and COMMIT paths what patch 14
+did for the async READ path, by changing 'struct nfs_write_data'
+so that the v2- and v3-specific parts are moved into a private area,
+with room for a v4-specific part in parallel.  None of the logic is
+changed.
 
-The upshot of all this is that the version-specific part of the
-async READ path has been encapsulated in a new nfs_rpc_op
-->read_setup(), and NFSv4 can share the logic for asynchronous
-READ's with NFSv2 and v3.
+--- old/fs/nfs/write.c	Sat Aug 10 23:12:28 2002
++++ new/fs/nfs/write.c	Sat Aug 10 23:12:22 2002
+@@ -72,12 +72,19 @@ struct nfs_write_data {
+ 	struct rpc_task		task;
+ 	struct inode		*inode;
+ 	struct rpc_cred		*cred;
+-	struct nfs_writeargs	args;		/* argument struct */
+-	struct nfs_writeres	res;		/* result struct */
+ 	struct nfs_fattr	fattr;
+ 	struct nfs_writeverf	verf;
+ 	struct list_head	pages;		/* Coalesced requests we wish to flush */
+ 	struct page		*pagevec[NFS_WRITE_MAXIOV];
++	union {
++		struct {
++			struct nfs_writeargs args;
++			struct nfs_writeres  res;
++		} v3;
++#ifdef CONFIG_NFS_V4
++		/* NFSv4 data to come here... */
++#endif
++	} u;
+ };
 
---- old/fs/nfs/read.c	Sat Aug 10 22:20:59 2002
-+++ new/fs/nfs/read.c	Thu Aug  8 18:26:06 2002
-@@ -34,34 +34,6 @@
-
- #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
-
--struct nfs_read_data {
--	struct rpc_task		task;
--	struct inode		*inode;
--	struct rpc_cred		*cred;
--	struct nfs_fattr	fattr;	/* fattr storage */
--	struct list_head	pages;	/* Coalesced read requests */
--	struct page		*pagevec[NFS_READ_MAXIOV];
--	union {
--		struct {
--			struct nfs_readargs args;
--			struct nfs_readres  res;
--		} v3;   /* also v2 */
--#ifdef CONFIG_NFS_V4
--		/* NFSv4 data will come here... */
--#endif
--	} u;
--};
--
--/*
-- * Local function declarations
-- */
--static void	nfs_readpage_result(struct rpc_task *task);
--
--/* Hack for future NFS swap support */
--#ifndef IS_SWAPFILE
--# define IS_SWAPFILE(inode)	(0)
--#endif
--
- static kmem_cache_t *nfs_rdata_cachep;
-
- static __inline__ struct nfs_read_data *nfs_readdata_alloc(void)
-@@ -80,7 +52,7 @@ static __inline__ void nfs_readdata_free
- 	kmem_cache_free(nfs_rdata_cachep, p);
+ /*
+@@ -106,7 +113,6 @@ static __inline__ struct nfs_write_data
+ 	if (p) {
+ 		memset(p, 0, sizeof(*p));
+ 		INIT_LIST_HEAD(&p->pages);
+-		p->args.pages = p->pagevec;
+ 	}
+ 	return p;
  }
+@@ -864,10 +870,10 @@ nfs_write_rpcsetup(struct list_head *hea
+ 	/* Set up the RPC argument and reply structs
+ 	 * NB: take care not to mess about with data->commit et al. */
 
--static void nfs_readdata_release(struct rpc_task *task)
-+void nfs_readdata_release(struct rpc_task *task)
- {
-         struct nfs_read_data   *data = (struct nfs_read_data *)task->tk_calldata;
-         nfs_readdata_free(data);
-@@ -196,6 +168,7 @@ nfs_readpage_async(struct file *file, st
- static void
- nfs_read_rpcsetup(struct list_head *head, struct nfs_read_data *data)
- {
-+	struct inode		*inode;
- 	struct nfs_page		*req;
- 	struct page		**pages;
- 	unsigned int		count;
-@@ -203,23 +176,24 @@ nfs_read_rpcsetup(struct list_head *head
- 	pages = data->pagevec;
+-	pages = data->args.pages;
++	pages = data->pagevec;
  	count = 0;
  	while (!list_empty(head)) {
 -		struct nfs_page *req = nfs_list_entry(head->next);
@@ -103,297 +78,116 @@ READ's with NFSv2 and v3.
  		nfs_list_remove_request(req);
  		nfs_list_add_request(req, &data->pages);
  		*pages++ = req->wb_page;
- 		count += req->wb_bytes;
- 	}
+@@ -876,13 +882,14 @@ nfs_write_rpcsetup(struct list_head *hea
  	req = nfs_list_entry(data->pages.next);
--	data->inode	  = req->wb_inode;
-+	data->inode	  = inode = req->wb_inode;
- 	data->cred	  = req->wb_cred;
--	data->u.v3.args.fh     = NFS_FH(req->wb_inode);
--	data->u.v3.args.offset = page_offset(req->wb_page) + req->wb_offset;
--	data->u.v3.args.pgbase = req->wb_offset;
--	data->u.v3.args.pages  = pages;
--	data->u.v3.args.count  = count;
--	data->u.v3.res.fattr   = &data->fattr;
--	data->u.v3.res.count   = count;
--	data->u.v3.res.eof     = 0;
-+
-+	NFS_PROTO(inode)->read_setup(data, count);
-+
-+	dprintk("NFS: %4d initiated read call (req %s/%Ld, %u bytes @ offset %Lu.\n",
-+		data->task.tk_pid,
-+		inode->i_sb->s_id,
-+		(long long)NFS_FILEID(inode),
-+		count,
-+		(unsigned long long)page_offset(req->wb_page) + req->wb_offset);
+ 	data->inode = req->wb_inode;
+ 	data->cred = req->wb_cred;
+-	data->args.fh     = NFS_FH(req->wb_inode);
+-	data->args.offset = page_offset(req->wb_page) + req->wb_offset;
+-	data->args.pgbase = req->wb_offset;
+-	data->args.count  = count;
+-	data->res.fattr   = &data->fattr;
+-	data->res.count   = count;
+-	data->res.verf    = &data->verf;
++	data->u.v3.args.fh     = NFS_FH(req->wb_inode);
++	data->u.v3.args.offset = page_offset(req->wb_page) + req->wb_offset;
++	data->u.v3.args.pgbase = req->wb_offset;
++	data->u.v3.args.pages  = pages;
++	data->u.v3.args.count  = count;
++	data->u.v3.res.fattr   = &data->fattr;
++	data->u.v3.res.count   = count;
++	data->u.v3.res.verf    = &data->verf;
  }
 
- static void
-@@ -243,50 +217,20 @@ nfs_async_read_error(struct list_head *h
- static int
- nfs_pagein_one(struct list_head *head, struct inode *inode)
- {
--	struct rpc_task		*task;
- 	struct rpc_clnt		*clnt = NFS_CLIENT(inode);
- 	struct nfs_read_data	*data;
--	struct rpc_message	msg;
--	int			flags;
- 	sigset_t		oldset;
 
- 	data = nfs_readdata_alloc();
- 	if (!data)
- 		goto out_bad;
--	task = &data->task;
--
--	/* N.B. Do we need to test? Never called for swapfile inode */
--	flags = RPC_TASK_ASYNC | (IS_SWAPFILE(inode)? NFS_RPC_SWAPFLAGS : 0);
+@@ -920,14 +927,14 @@ nfs_flush_one(struct list_head *head, st
+ 	/* Set up the argument struct */
+ 	nfs_write_rpcsetup(head, data);
+ 	if (nfsvers < 3)
+-		data->args.stable = NFS_FILE_SYNC;
++		data->u.v3.args.stable = NFS_FILE_SYNC;
+ 	else if (stable) {
+ 		if (!nfsi->ncommit)
+-			data->args.stable = NFS_FILE_SYNC;
++			data->u.v3.args.stable = NFS_FILE_SYNC;
+ 		else
+-			data->args.stable = NFS_DATA_SYNC;
++			data->u.v3.args.stable = NFS_DATA_SYNC;
+ 	} else
+-		data->args.stable = NFS_UNSTABLE;
++		data->u.v3.args.stable = NFS_UNSTABLE;
 
- 	nfs_read_rpcsetup(head, data);
+ 	/* Finalize the task. */
+ 	rpc_init_task(task, clnt, nfs_writeback_done, flags);
+@@ -940,16 +947,16 @@ nfs_flush_one(struct list_head *head, st
+ #else
+ 	msg.rpc_proc = NFSPROC_WRITE;
+ #endif
+-	msg.rpc_argp = &data->args;
+-	msg.rpc_resp = &data->res;
++	msg.rpc_argp = &data->u.v3.args;
++	msg.rpc_resp = &data->u.v3.res;
+ 	msg.rpc_cred = data->cred;
 
--	/* Finalize the task. */
--	rpc_init_task(task, clnt, nfs_readpage_result, flags);
--	task->tk_calldata = data;
--	/* Release requests */
--	task->tk_release = nfs_readdata_release;
--
--#ifdef CONFIG_NFS_V3
--	msg.rpc_proc = (NFS_PROTO(inode)->version == 3) ? NFS3PROC_READ : NFSPROC_READ;
--#else
--	msg.rpc_proc = NFSPROC_READ;
--#endif
--	msg.rpc_argp = &data->u.v3.args;
--	msg.rpc_resp = &data->u.v3.res;
--	msg.rpc_cred = data->cred;
--
- 	/* Start the async call */
--	dprintk("NFS: %4d initiated read call (req %s/%Ld, %u bytes @ offset %Lu.\n",
--		task->tk_pid,
--		inode->i_sb->s_id,
--		(long long)NFS_FILEID(inode),
--		(unsigned int)data->u.v3.args.count,
--		(unsigned long long)data->u.v3.args.offset);
--
+ 	dprintk("NFS: %4d initiated write call (req %s/%Ld, %u bytes @ offset %Lu)\n",
+ 		task->tk_pid,
+ 		inode->i_sb->s_id,
+ 		(long long)NFS_FILEID(inode),
+-		(unsigned int)data->args.count,
+-		(unsigned long long)data->args.offset);
++		(unsigned int)data->u.v3.args.count,
++		(unsigned long long)data->u.v3.args.offset);
+
  	rpc_clnt_sigmask(clnt, &oldset);
--	rpc_call_setup(task, &msg, 0);
- 	lock_kernel();
--	rpc_execute(task);
-+	rpc_execute(&data->task);
- 	unlock_kernel();
- 	rpc_clnt_sigunmask(clnt, &oldset);
- 	return 0;
-@@ -406,19 +350,15 @@ int nfs_pagein_inode(struct inode *inode
-  * This is the callback from RPC telling us whether a reply was
-  * received or some error occurred (timeout or socket shutdown).
-  */
--static void
--nfs_readpage_result(struct rpc_task *task)
-+void
-+nfs_readpage_result(struct rpc_task *task, unsigned int count)
+ 	rpc_call_setup(task, &msg, 0);
+@@ -1003,8 +1010,8 @@ static void
+ nfs_writeback_done(struct rpc_task *task)
  {
- 	struct nfs_read_data	*data = (struct nfs_read_data *) task->tk_calldata;
+ 	struct nfs_write_data	*data = (struct nfs_write_data *) task->tk_calldata;
+-	struct nfs_writeargs	*argp = &data->args;
+-	struct nfs_writeres	*resp = &data->res;
++	struct nfs_writeargs	*argp = &data->u.v3.args;
++	struct nfs_writeres	*resp = &data->u.v3.res;
  	struct inode		*inode = data->inode;
--	unsigned int		count = data->u.v3.res.count;
+ 	struct nfs_page		*req;
+ 	struct page		*page;
+@@ -1128,11 +1135,11 @@ nfs_commit_rpcsetup(struct list_head *he
 
- 	dprintk("NFS: %4d nfs_readpage_result, (status %d)\n",
- 		task->tk_pid, task->tk_status);
-
--	if (nfs_async_handle_jukebox(task))
--		return;
--
- 	nfs_refresh_inode(inode, &data->fattr);
- 	while (!list_empty(&data->pages)) {
- 		struct nfs_page *req = nfs_list_entry(data->pages.next);
---- old/include/linux/nfs_fs.h	Thu Aug  8 18:17:47 2002
-+++ new/include/linux/nfs_fs.h	Thu Aug  8 18:10:03 2002
-@@ -352,6 +352,11 @@ nfs_wb_file(struct inode *inode, struct
- 	return (error < 0) ? error : 0;
+ 	data->inode	  = inode;
+ 	data->cred	  = first->wb_cred;
+-	data->args.fh     = NFS_FH(inode);
+-	data->args.offset = start;
+-	data->res.count   = data->args.count = (u32)len;
+-	data->res.fattr   = &data->fattr;
+-	data->res.verf    = &data->verf;
++	data->u.v3.args.fh     = NFS_FH(inode);
++	data->u.v3.args.offset = start;
++	data->u.v3.res.count   = data->u.v3.args.count = (u32)len;
++	data->u.v3.res.fattr   = &data->fattr;
++	data->u.v3.res.verf    = &data->verf;
  }
 
-+/* Hack for future NFS swap support */
-+#ifndef IS_SWAPFILE
-+# define IS_SWAPFILE(inode)	(0)
-+#endif
-+
  /*
-  * linux/fs/nfs/read.c
-  */
-@@ -360,6 +365,8 @@ extern int  nfs_pagein_inode(struct inod
- extern int  nfs_pagein_list(struct list_head *, int);
- extern int  nfs_scan_lru_read(struct nfs_server *, struct list_head *);
- extern int  nfs_scan_lru_read_timeout(struct nfs_server *, struct list_head *);
-+extern void nfs_readpage_result(struct rpc_task *task, unsigned int count);
-+extern void nfs_readdata_release(struct rpc_task *task);
+@@ -1169,8 +1176,8 @@ nfs_commit_list(struct list_head *head,
+ 	task->tk_release = nfs_writedata_release;
 
- /*
-  * linux/fs/mount_clnt.c
---- old/include/linux/nfs_xdr.h	Thu Aug  8 18:17:47 2002
-+++ new/include/linux/nfs_xdr.h	Tue Aug  6 10:16:09 2002
-@@ -298,6 +298,24 @@ struct nfs3_readdirres {
- 	int			plus;
- };
-
-+struct nfs_read_data {
-+	struct rpc_task		task;
-+	struct inode		*inode;
-+	struct rpc_cred		*cred;
-+	struct nfs_fattr	fattr;	/* fattr storage */
-+	struct list_head	pages;	/* Coalesced read requests */
-+	struct page		*pagevec[NFS_READ_MAXIOV];
-+	union {
-+		struct {
-+			struct nfs_readargs args;
-+			struct nfs_readres  res;
-+		} v3;   /* also v2 */
-+#ifdef CONFIG_NFS_V4
-+		/* NFSv4 data will come here... */
-+#endif
-+	} u;
-+};
-+
- /*
-  * RPC procedure vector for NFSv2/NFSv3 demuxing
-  */
-@@ -345,6 +361,7 @@ struct nfs_rpc_ops {
- 	int	(*statfs)  (struct nfs_server *, struct nfs_fh *,
- 			    struct nfs_fsinfo *);
- 	u32 *	(*decode_dirent)(u32 *, struct nfs_entry *, int plus);
-+	void	(*read_setup)   (struct nfs_read_data *, unsigned int count);
- };
-
- /*
---- old/fs/nfs/proc.c	Thu Aug  8 12:00:17 2002
-+++ new/fs/nfs/proc.c	Tue Aug  6 10:15:51 2002
-@@ -41,6 +41,7 @@
- #include <linux/nfs.h>
- #include <linux/nfs2.h>
- #include <linux/nfs_fs.h>
-+#include <linux/nfs_page.h>
- #include <linux/smp_lock.h>
-
- #define NFSDBG_FACILITY		NFSDBG_PROC
-@@ -469,6 +470,48 @@ nfs_proc_statfs(struct nfs_server *serve
-
- extern u32 * nfs_decode_dirent(u32 *, struct nfs_entry *, int);
-
-+static void
-+nfs_read_done(struct rpc_task *task)
-+{
-+	struct nfs_read_data *data = (struct nfs_read_data *) task->tk_calldata;
-+	nfs_readpage_result(task, data->u.v3.res.count);
-+}
-+
-+static void
-+nfs_proc_read_setup(struct nfs_read_data *data, unsigned int count)
-+{
-+	struct rpc_task		*task = &data->task;
-+	struct inode		*inode = data->inode;
-+	struct nfs_page		*req;
-+	int			flags;
-+	struct rpc_message	msg;
-+
-+	req = nfs_list_entry(data->pages.next);
-+	data->u.v3.args.fh     = NFS_FH(inode);
-+	data->u.v3.args.offset = page_offset(req->wb_page) + req->wb_offset;
-+	data->u.v3.args.pgbase = req->wb_offset;
-+	data->u.v3.args.pages  = data->pagevec;
-+	data->u.v3.args.count  = count;
-+	data->u.v3.res.fattr   = &data->fattr;
-+	data->u.v3.res.count   = count;
-+	data->u.v3.res.eof     = 0;
-+
-+	/* N.B. Do we need to test? Never called for swapfile inode */
-+	flags = RPC_TASK_ASYNC | (IS_SWAPFILE(inode)? NFS_RPC_SWAPFLAGS : 0);
-+
-+	/* Finalize the task. */
-+	rpc_init_task(task, NFS_CLIENT(inode), nfs_read_done, flags);
-+	task->tk_calldata = data;
-+	/* Release requests */
-+	task->tk_release = nfs_readdata_release;
-+
-+	msg.rpc_proc = NFSPROC_READ;
+ 	msg.rpc_proc = NFS3PROC_COMMIT;
+-	msg.rpc_argp = &data->args;
+-	msg.rpc_resp = &data->res;
 +	msg.rpc_argp = &data->u.v3.args;
 +	msg.rpc_resp = &data->u.v3.res;
-+	msg.rpc_cred = data->cred;
-+	rpc_call_setup(&data->task, &msg, 0);
-+}
-+
- struct nfs_rpc_ops	nfs_v2_clientops = {
- 	version:	2,		       /* protocol version */
- 	getroot:	nfs_proc_get_root,
-@@ -493,4 +536,5 @@ struct nfs_rpc_ops	nfs_v2_clientops = {
- 	mknod:		nfs_proc_mknod,
- 	statfs:		nfs_proc_statfs,
- 	decode_dirent:	nfs_decode_dirent,
-+	read_setup:	nfs_proc_read_setup,
- };
---- old/fs/nfs/nfs3proc.c	Thu Aug  8 12:00:17 2002
-+++ new/fs/nfs/nfs3proc.c	Tue Aug  6 10:15:40 2002
-@@ -14,6 +14,7 @@
- #include <linux/nfs.h>
- #include <linux/nfs3.h>
- #include <linux/nfs_fs.h>
-+#include <linux/nfs_page.h>
- #include <linux/smp_lock.h>
+ 	msg.rpc_cred = data->cred;
 
- #define NFSDBG_FACILITY		NFSDBG_PROC
-@@ -641,6 +642,51 @@ error:
+ 	dprintk("NFS: %4d initiated commit call\n", task->tk_pid);
+@@ -1198,7 +1205,7 @@ static void
+ nfs_commit_done(struct rpc_task *task)
+ {
+ 	struct nfs_write_data	*data = (struct nfs_write_data *)task->tk_calldata;
+-	struct nfs_writeres	*resp = &data->res;
++	struct nfs_writeres	*resp = &data->u.v3.res;
+ 	struct nfs_page		*req;
+ 	struct inode		*inode = data->inode;
 
- extern u32 *nfs3_decode_dirent(u32 *, struct nfs_entry *, int);
-
-+static void
-+nfs3_read_done(struct rpc_task *task)
-+{
-+	struct nfs_read_data *data = (struct nfs_read_data *) task->tk_calldata;
-+
-+	if (nfs_async_handle_jukebox(task))
-+		return;
-+	nfs_readpage_result(task, data->u.v3.res.count);
-+}
-+
-+static void
-+nfs3_proc_read_setup(struct nfs_read_data *data, unsigned int count)
-+{
-+	struct rpc_task		*task = &data->task;
-+	struct inode		*inode = data->inode;
-+	struct nfs_page		*req;
-+	int			flags;
-+	struct rpc_message	msg;
-+
-+	req = nfs_list_entry(data->pages.next);
-+	data->u.v3.args.fh     = NFS_FH(inode);
-+	data->u.v3.args.offset = page_offset(req->wb_page) + req->wb_offset;
-+	data->u.v3.args.pgbase = req->wb_offset;
-+	data->u.v3.args.pages  = data->pagevec;
-+	data->u.v3.args.count  = count;
-+	data->u.v3.res.fattr   = &data->fattr;
-+	data->u.v3.res.count   = count;
-+	data->u.v3.res.eof     = 0;
-+
-+	/* N.B. Do we need to test? Never called for swapfile inode */
-+	flags = RPC_TASK_ASYNC | (IS_SWAPFILE(inode)? NFS_RPC_SWAPFLAGS : 0);
-+
-+	/* Finalize the task. */
-+	rpc_init_task(task, NFS_CLIENT(inode), nfs3_read_done, flags);
-+	task->tk_calldata = data;
-+	/* Release requests */
-+	task->tk_release = nfs_readdata_release;
-+
-+	msg.rpc_proc = NFS3PROC_READ;
-+	msg.rpc_argp = &data->u.v3.args;
-+	msg.rpc_resp = &data->u.v3.res;
-+	msg.rpc_cred = data->cred;
-+	rpc_call_setup(&data->task, &msg, 0);
-+}
-+
- struct nfs_rpc_ops	nfs_v3_clientops = {
- 	version:	3,			/* protocol version */
- 	getroot:	nfs3_proc_get_root,
-@@ -664,4 +710,5 @@ struct nfs_rpc_ops	nfs_v3_clientops = {
- 	mknod:		nfs3_proc_mknod,
- 	statfs:		nfs3_proc_statfs,
- 	decode_dirent:	nfs3_decode_dirent,
-+	read_setup:	nfs3_proc_read_setup,
- };
 
 
 
