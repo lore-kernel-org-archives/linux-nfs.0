@@ -1,16 +1,16 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 25 of 54] nfsd4: don't allow unconfirmed renew
+Subject: [PATCH kNFSd 24 of 54] nfsd4: simplify verify_clientid
 Date: Tue, 08 Mar 2005 17:06:43 +1100
-Message-ID: <E1D8Xrf-00018P-VA@notabene.cse.unsw.edu.au>
+Message-ID: <E1D8Xrf-00018L-Tu@notabene.cse.unsw.edu.au>
 References: <20050308165419.3842.patches@notabene>
 Cc: nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D8XsK-0002BG-Os
+	id 1D8XsK-0002BE-Hy
 	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:07:24 -0800
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1D8XsK-0005HE-8U
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1D8XsJ-0007xH-Ni
 	for nfs@lists.sourceforge.net; Mon, 07 Mar 2005 22:07:24 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
@@ -27,32 +27,51 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Don't bother searching for unconfirmed clients when handling RENEW; a client is
-pretty sick if it's trying to renew state it hasn't even finished acquiring
-yet.
+
+Simplify verify_clientid out of existance.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c |    5 -----
- 1 files changed, 5 deletions(-)
+ ./fs/nfsd/nfs4state.c |   18 ++----------------
+ 1 files changed, 2 insertions(+), 16 deletions(-)
 
 diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
 --- ./fs/nfsd/nfs4state.c~current~	2005-03-07 11:35:57.000000000 +1100
-+++ ./fs/nfsd/nfs4state.c	2005-03-07 11:35:58.000000000 +1100
-@@ -1815,11 +1815,6 @@ nfsd4_renew(clientid_t *clid)
- 		renew_client(clp);
- 		goto out;
- 	}
--	clp = find_unconfirmed_client(clid);
++++ ./fs/nfsd/nfs4state.c	2005-03-07 11:35:57.000000000 +1100
+@@ -1247,21 +1247,6 @@ find_openstateowner_str(unsigned int has
+ 	return 0;
+ }
+ 
+-/* see if clientid is in confirmed hash table */
+-static int
+-verify_clientid(struct nfs4_client **client, clientid_t *clid) {
+-
+-	struct nfs4_client *clp;
+-
+-	clp = find_confirmed_client(clid);
 -	if (clp) {
--		renew_client(clp);
--		goto out;
+-		*client = clp;
+-		return 1;
 -	}
- 	/*
- 	* Couldn't find an nfs4_client for this clientid.  
- 	* Presumably this is because the client took too long to 
+-	*client = NULL;
+-	return 0;
+-}
+-
+ /* search file_hashtbl[] for file */
+ static int
+ find_file(unsigned int hashval, struct inode *ino, struct nfs4_file **fp) {
+@@ -1514,7 +1499,8 @@ nfsd4_process_open1(struct nfsd4_open *o
+ 		 * client's lease expiring.
+ 		 */
+ 		status = nfserr_expired;
+-		if (!verify_clientid(&clp, clientid))
++		clp = find_confirmed_client(clientid);
++		if (clp == NULL)
+ 			goto out;
+ 	}
+ 	status = nfserr_resource;
 
 
 -------------------------------------------------------
