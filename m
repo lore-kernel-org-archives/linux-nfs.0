@@ -1,17 +1,18 @@
-From: Skip Gaede <sgaede@attbi.com>
-Subject: Gotchas with NFS Root filesystem?
-Date: Sat, 22 Jun 2002 15:46:46 -0400
+From: Rock Gordon <rockgordon@yahoo.com>
+Subject: tar returns errors
+Date: Sat, 22 Jun 2002 14:26:24 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200206221546.46925.sgaede@attbi.com>
+Message-ID: <20020622212624.70758.qmail@web14808.mail.yahoo.com>
+References: <2B53AD95B05ED411BE8C0008C7FA33F00467B5DA@EXSP13A>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from rwcrmhc53.attbi.com ([204.127.198.39])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17Lqt7-0001UM-00
-	for <nfs@lists.sourceforge.net>; Sat, 22 Jun 2002 12:49:37 -0700
+Received: from web14808.mail.yahoo.com ([216.136.224.224])
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17LsOo-0002Q0-00
+	for <nfs@lists.sourceforge.net>; Sat, 22 Jun 2002 14:26:26 -0700
 To: nfs@lists.sourceforge.net
+In-Reply-To: <2B53AD95B05ED411BE8C0008C7FA33F00467B5DA@EXSP13A>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,31 +25,34 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Folks,
+Hi all,
 
-I have a Mac client that's running XFree86 (4.2.0) -query +
-Mozilla and losing lots of size-2048 buffers. The rate loss
-is approximately 1000 buffers/hour. I'm seeing this loss of
-memory after I boot with an initrd, get an IP address with
-dhclient and do a pivot_root onto the read-only NFS file
-system.
+When untarring files over an NFS mounted filesystem
+(client and server both 2.4.18 vanilla), tar prints
+errors like "Cannot change mode to rwxr-xr-x". When I
+run  strace on tar, it prints this message:
 
-I can also boot the the client to a bash prompt on the
- local hard drive and then run XFree86 -query + Mozilla as
- before. I went so far as to mung rc.sysinit and leave the
- local filesystem mounted RO and mount -t shm to /var and
- /tmp. Under these conditions, both with and without the
- local filesystem mounted RO, the size-2048 buffer
- utilization is nominal.
+----
+utime("Documentation/", [2002/06/22-17:11:43,
+2002/06/20-19:29:20]) = 72
+chmod("Documentation/", 0755)           = 72
+write(2, "tar: ", 5tar: )                    = 5
+write(2, "Documentation/: Cannot change mo"...,
+47Documentation/: Cannot change mode to rwxr-xr-x) =
+47
+write(2, "\n", 1
+----
 
-Anyone ever seen or heard of this before? Any thoughts on
-how to isolate this to a root cause?
+Now, the return value from utime and chmod are 72, but
+the man page doesn't say anything about them ...
 
-Thanks,
-Skip
+Any clues?
 
--------------------------------------------------------
 
+__________________________________________________
+Do You Yahoo!?
+Yahoo! - Official partner of 2002 FIFA World Cup
+http://fifaworldcup.yahoo.com
 
 
 -------------------------------------------------------
