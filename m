@@ -1,18 +1,17 @@
-From: "iSingles - Matching in a Mouseclick" <info@isingles.co.uk>
-Subject: iSingles.co.uk has been re-opened
-Date: Fri, 2 May 2003 10:38:37 -0700
+From: "David Shirley" <dave@cs.curtin.edu.au>
+Subject: KNFSD information  needed
+Date: Fri, 2 May 2003 20:55:06 +0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19BX01-0006QM-00@sc8-sf-list1.sourceforge.net>
-Reply-To: "iSingles - Matching in a Mouseclick"<info@isingles.co.uk>
+Message-ID: <002301c310aa$0ef33350$6e00a8c0@compaq3>
 Mime-Version: 1.0
 Content-Type: multipart/alternative;
-	boundary="Nextpart_6GA3IPX5HJ"
+	boundary="----=_NextPart_000_0020_01C310ED.1C266E00"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from 6696216150.hostnoc.net ([66.96.216.150] helo=isingles.co.uk)
+Received: from mail-04.iinet.net.au ([203.59.3.36] helo=mail.iinet.net.au)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19BX01-0006QM-00
-	for <nfs@lists.sourceforge.net>; Fri, 02 May 2003 02:38:37 -0700
-To: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
+	id 19BaO1-0006md-00
+	for <nfs@lists.sourceforge.net>; Fri, 02 May 2003 06:15:37 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,118 +26,73 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a multi-part message in MIME format.
 
---Nextpart_6GA3IPX5HJ
+------=_NextPart_000_0020_01C310ED.1C266E00
 Content-Type: text/plain;
 	charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: quoted-printable
 
+Hi All,
 
-Hello,
+For a while now I was under the impression that nfsd provided with =
+Redhat
+was the be all and end all, today after we had some fcntl locking issues =
+it
+appears thats not the case.
 
-iSingles.co.uk, in its new reincarnation, is one of the most advanced
-dating communities on the internet today.
+My first question is knfsd the same as the nfsd included in the =
+nfs-utils package?
 
-iSingles offers many services, from our matching engine to the
-discussion forums and our special chat system, which is integrated with
-the site itself, enabling you to chat with members while viewing their
-personal profiles.
+Secondly If its not how do I go about using knfsd over the stock nfsd?
 
-Most important - joining iSingles is FREE of charge!
+Sorry for these basic questions but the total lack of information online =
 
-We could go on and on about iSingles, but we believe that nothing is
-better than seeing for yourself.
+is quite shocking.
 
-So... what are you waiting for? Click here to join!
+Cheers
+Dave
 
---
-Sincerely,
-iSingles Team
-
-http://www.iSingles.co.uk
-
-
-
-* This is not spam mail - it was sent to a legally purchased opt-in email list.
-
-  Use this form to remove yourself from our lists. 
-
-
-
-
- 
-
---Nextpart_6GA3IPX5HJ
+------=_NextPart_000_0020_01C310ED.1C266E00
 Content-Type: text/html;
 	charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: quoted-printable
 
-<HTML>
-<BODY BGCOLOR="#f6f6f5"  leftmargin=0 topmargin=0 marginheight=0 marginwidth=0 BGCOLOR=black>
-<CENTER>
-<BR>
-<TABLE CELLSPACING=0 CELLPADDING=6>
-<TR>
-	<TD BGCOLOR="#e7efff" style="BORDER-RIGHT: black 1px solid; BORDER-TOP: black 1px solid; BORDER-LEFT: black 1px solid; BORDER-BOTTOM: black 1px solid">
-		<TABLE CELLSPACING=0 CELLPADDING=0 BORDER=0 STYLE="FONT-SIZE: 13px; FONT-FAMILY: Arial; TEXT-DECORATION: none">
-		<TR>
-			<TD><NOBR>
-				Hello,<BR>
-				<BR>
-				<A HREF="http://www.isingles.co.uk?is=1" TARGET="_isingles">iSingles.co.uk</A>, in its new reincarnation, is one of the most advanced<BR>
-				dating communities on the internet today.<BR>
-				<BR>
-				iSingles offers many services, from our matching engine to the<BR>
-				discussion forums and our special chat system, which is integrated with<BR>
-				the site itself, enabling you to chat with members while viewing their<BR>
-				personal profiles.<BR>
-				<BR>
-				Most important - joining iSingles is <B>FREE of charge!</B><BR>
-				<BR>
-				We could go on and on about iSingles, but we believe that nothing is<BR>
-				better than seeing for yourself.<BR>
-				<BR>
-				So... what are you waiting for? <A HREF="http://www.isingles.co.uk?is=1" TARGET="_isingles">Click here to join!</A><BR>
-				<BR>
-				--<BR> 
-				Sincerely,<BR>
-				iSingles Team<BR>
-				<BR>
-				<A HREF="http://www.isingles.co.uk?is=1" TARGET="_isingles">http://www.iSingles.co.uk</A><BR>
-				<BR>
-				<BR>
-				<DIV STYLE="FONT-SIZE: 11px; FONT-FAMILY: Arial; TEXT-DECORATION: none">
-				<B>* This is not spam mail - it was sent to a legally purchased opt-in email list.<BR>
-				<BR>
-				&nbsp;&nbsp;Use <A HREF="http://www.isingles.co.uk/asp/list.asp?flag=1" TARGET="_isremove">this form</A> to remove yourself from our lists.
-				</B>
-			</TD>
-			<TD>
-				<TABLE CELLSPACING=0 CELLPADDING=0>
-				<TR>
-					<TD ALIGN=middle>
-						<IMG src="http://www.isingles.co.uk/images/ppl_man&woman1.gif" border=0><BR>
-					</TD>
-				</TR>
-				<TR>
-					<TD ALIGN=middle><BR><BR><BR>
-						<A HREF="http://www.isingles.co.uk?is=1" TARGET="_isingles"><IMG SRC="http://www.isingles.co.uk/images/slate_joinFree2.gif" BORDER='0'></></A>
-					</TD>
-				</TR>
-				</TABLE>
-			</TD>
-		</TR>
-		</TABLE>
-	</TD>
-</TR>
-</TABLE>
-</DIV>
-<BR><BR>
-</BODY>
-</HTML>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; =
+charset=3Diso-8859-1">
+<META content=3D"MSHTML 6.00.2800.1170" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV><FONT face=3DArial size=3D2>Hi All,</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>For a while now I was under the =
+impression that=20
+nfsd provided with Redhat</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>was the be all and end all, today after =
+we had some=20
+fcntl locking issues it</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>appears thats not the =
+case.</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>My first question is knfsd the same as =
+the nfsd=20
+included in the nfs-utils package?</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>Secondly If its not how do I go about =
+using knfsd=20
+over the stock nfsd?</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>Sorry for these basic questions but the =
+total lack=20
+of information online </FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>is quite shocking.</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>Cheers</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>Dave</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV></BODY></HTML>
 
---Nextpart_6GA3IPX5HJ--
-
-
+------=_NextPart_000_0020_01C310ED.1C266E00--
 
 
 
