@@ -1,22 +1,22 @@
-From: Martin Siegert <siegert@sfu.ca>
-Subject: limit on filesystem size?
-Date: Thu, 1 Aug 2002 12:53:09 -0700
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: RE: Maximum number of nfsd daemons?
+Date: Fri, 2 Aug 2002 10:32:01 +1000 (EST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020801195309.GA26793@stikine.ucs.sfu.ca>
+Message-ID: <15689.54017.692185.573037@notabene.cse.unsw.edu.au>
+References: <FB5B6B9A4BA0104886C8394BB2B7C7B803ACAD5E@TOMBO.legato.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from rm-rstar.sfu.ca ([142.58.120.21])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17aM0e-0002bC-00
-	for <nfs@lists.sourceforge.net>; Thu, 01 Aug 2002 12:53:20 -0700
-Received: from stikine.ucs.sfu.ca (stikine.ucs.sfu.ca [142.58.1.216])
-	by rm-rstar.sfu.ca (8.12.3/8.12.3/SFU-6.0H) with ESMTP id g71JrAmC013384
-	for <nfs@lists.sourceforge.net>; Thu, 1 Aug 2002 12:53:10 -0700 (PDT)
-Received: (from siegert@localhost)
-	by stikine.ucs.sfu.ca (8.11.6/8.9.2/SFU-5.0C) id g71Jr9o26804
-	for nfs@lists.sourceforge.net; Thu, 1 Aug 2002 12:53:09 -0700
-To: nfs@lists.sourceforge.net
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17aQLr-00021C-00
+	for <nfs@lists.sourceforge.net>; Thu, 01 Aug 2002 17:31:31 -0700
+Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
+	(for <dbarbar@legato.com>) (for <nfs@lists.sourceforge.net>) By tone
+	With Smtp ; Fri, 2 Aug 2002 10:31:22 +1000
+To: Daniel Barbar <dbarbar@legato.com>
+In-Reply-To: message from Daniel Barbar on Thursday August 1
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,33 +29,51 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hello,
+On Thursday August 1, dbarbar@legato.com wrote:
+> Neil, Erich:
+> 
+> 	Thanks for the replies. Here is the content of /proc/net/rpc/nfsd:
+> 
+> fiona:~# cat /proc/net/rpc/nfsd 
+> rc 19 123835 15603248
+> fh 10 15227728 0 14 188
+> io 3752095213 1826934055
+> th 128 0 34.710 2.230 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000
 
-we are in the planning process for the setup of a large (~ 100 TB) NFS
-server. My understanding is that there is a limit of 2TB for filesystem
-sizes for local (!) filesystems under Linux (at least for ext2/ext3;
-I am not sure about xfs).
+This line says
+" You have 128 threads.
+  You have never used the last thread.
+  You have used between 1 and 12 threads (10%) for a total of 34.7 seconds.
+  You have used between 13 and 25 threads for a total of 2.23 seconds.
+  You have not noticably used more that 25 threads.
+"
 
-My question really is: is there a limit for the filesystem size that
-a Linux NFS client (2.4.18 or the upcoming 2.4.19 kernel) can mount
-from a (possibly non-Linux) NFS server?
-E.g., can I mount a 20TB filesystem under Linux?
+So if this load is typical, then you don't need more threads.
 
-(I've asked this question on the beowulf mailing list and the answer was
-no. Now I ask the experts - hoping for a different answer :-)
 
-Thanks a lot for your help!
+> ra 256 8316937 462671 10814 6530 3748 4498 2851 3290 1583 1881 402138
+> net 15727611 15727611 0 0
+> rpc 15727102 509 509 0 0
+> proc2 18 856 35104 6 0 9044 349 329927 0 0 83 0 0 0 0 223 0 1890 569
+> proc3 22 144698 1357961 50256 519080 2198920 744533 8887018 60150 5539 710 1
+> 0 4486 383 127 0 268983 1005032 88344 6016 4533 2281
 
-Cheers,
-Martin
+Everything else looks normal, but you haven't been running this server
+for long.  Maybe you need a longer period of data collection.
 
-========================================================================
-Martin Siegert
-Academic Computing Services                        phone: (604) 291-4691
-Simon Fraser University                            fax:   (604) 291-4242
-Burnaby, British Columbia                          email: siegert@sfu.ca
-Canada  V5A 1S6
-========================================================================
+> 
+> 	Most clients are Solaris (IS&T here is very Solaris centric). I was
+> considering installing the patch to enable NFS/TCP, I just wasn't sure
+> because of its "experimental" state. Have you guys gotten a feeling for its
+> stability? Thanks again,
+
+I don't use it.   It should only improve performance if you loose
+packets on your network.  A well switched lan with uniform interface
+speeds should not notice.  If you have a saturated lan, or interfaces
+of different speeds (e.g. Gigabit client, 100M server) then TCP could
+help.
+
+NeilBrown
 
 
 -------------------------------------------------------
