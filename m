@@ -1,13 +1,19 @@
-From: "Audra Rosado" <zorrie@aol.com>
-Subject: Would you accept $100.00 a week from us?
-Date: Mon, 05 May 03 14:10:11 GMT
+From: Xose Vazquez Perez <xose@wanadoo.es>
+Subject: Re: nfs over TCP stable?
+Date: Mon, 05 May 2003 21:43:47 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <zxim$-cx-$vpo@6w084hff5ih7n>
+Message-ID: <3EB6BEF3.5080609@wanadoo.es>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="0_7819CF5_.C3.F0.A4FD."
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: <netsaintplug-devel@lists.sourceforge.net>, <nfs@lists.sourceforge.net>, <nms-cgi-support@lists.sourceforge.net>, <ofset-members@lists.sourceforge.net>
+Received: from smtp3.wanadoo.es ([62.37.236.137] helo=smtp.wanadoo.es)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19ClsM-0004FF-00
+	for <nfs@lists.sourceforge.net>; Mon, 05 May 2003 12:43:50 -0700
+Received: from wanadoo.es ([80.103.136.196])
+	by smtp.wanadoo.es (8.12.8/8.12.8) with ESMTP id h45IpDYf004058
+	for <nfs@lists.sourceforge.net>; Mon, 5 May 2003 20:51:14 +0200 (MEST)
+To: nfs <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -20,53 +26,17 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+Greg Lindahl wrote:
 
---0_7819CF5_.C3.F0.A4FD.
-Content-Type: text/html;
-Content-Transfer-Encoding: quoted-printable
+>Note that they are talking about CONFIG_NFSD_TCP, i.e. the daemon side
+>of TCP support. Client support is much older, and Redhat has had it
+>turned on for ages.
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1=
-">
-<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR></HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV>&nbsp;
-<P align=3Dcenter><STRONG>The TF Express Is Leaving for Moneyville.. All 
-Aboard!!</STRONG></P><FONT color=3D#800000>
-<P align=3Dcenter></P></FONT>
-<DIV align=3Dcenter><STRONG><FONT color=3D#ff0000>TF Express includes the =
-internets 
-only $3,000.00 cash performance guarantee </FONT></STRONG></DIV>
-<DIV align=3Dcenter><STRONG><FONT color=3D#ff0000>to make sure that you ar=
-e 100% 
-satisfied! Start today without any </FONT></STRONG></DIV>
-<DIV align=3Dcenter><STRONG><FONT color=3D#ff0000>risk or obligation! Joe =
-Dunn made 
-$2,300.00 in one week!</FONT></STRONG></DIV><FONT color=3D#0000ff size=3D4=
->
-<P align=3Dcenter><STRONG>Hey - now it's your turn!</STRONG></FONT><FONT 
-color=3D#800000><BR></FONT><FONT color=3D#800000 size=3D2><BR></FONT><U><F=
-ONT 
-color=3D#ff0000 size=3D4><STRONG><A href=3D"http://www.greenroomhost.com/b=
-t/snap">The 
-door to a better future opens here! </A></STRONG></FONT></U></P>
-<P align=3Dcenter><FONT color=3D#ffffff size=3D1>kessler allen=
- 
-texas anisotropy australia simon causate %RANDOM_W=
-ORD 
-escort nimh bitterroot gasket mambo %RANDOM_W=
-ORD 
-assimilate fork nate aeschylus </FONT></P>
-<P align=3Dcenter><FONT color=3D#ff0000 size=3D4><FONT color=3D#000000 siz=
-e=3D2>To be 
-removed from&nbsp;database please <A 
-href=3D"http://www.greenroomhost.com/bt/snap/optout.html">go 
-here.</A></FONT></P></FONT>
-<DIV><FONT size=3D2></FONT>&nbsp;</DIV></DIV></BODY></HTML>
+Yes, I was talking about kernel nfs daemon server.
 
---0_7819CF5_.C3.F0.A4FD.--
+regards,
+-- 
+Galiza nin perdoa nin esquence. Governo demision!
 
 
 
