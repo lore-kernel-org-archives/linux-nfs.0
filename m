@@ -1,20 +1,19 @@
-From: Julian Cowley <julian@lava.net>
-Subject: Re: Re: PATCH - RPC/TCP 2 of 4 - Allow  SO_REUSEADDR for NFS
- sockets
-Date: Tue, 13 Aug 2002 15:04:40 -1000 (HST)
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: General network slowness on SIS 530 with eepro100
+Date: 14 Aug 2002 03:13:55 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.BSI.4.44.0208131439170.7431-100000@malasada.lava.net>
-References: <15704.41158.32143.348415@notabene.cse.unsw.edu.au>
+Message-ID: <8359.24570351399$1029287806@news.gmane.org>
+References: <20020813212923.L2219@blackjesus.async.com.br>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Chuck Lever <cel@citi.umich.edu>, <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: eepro100@scyld.com, nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from cheesecake.lava.net ([64.65.64.31])
+Received: from pat.uio.no ([129.240.130.16])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17emah-00079u-00
-	for <nfs@lists.sourceforge.net>; Tue, 13 Aug 2002 18:04:51 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <15704.41158.32143.348415@notabene.cse.unsw.edu.au>
+	id 17emjj-00009l-00
+	for <nfs@lists.sourceforge.net>; Tue, 13 Aug 2002 18:14:11 -0700
+To: Christian Reis <kiko@async.com.br>
+In-Reply-To: <20020813212923.L2219@blackjesus.async.com.br>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,33 +26,28 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Tue, 13 Aug 2002, Neil Brown wrote:
-> [ cc list trimmed ]
-> On Monday August 12, cel@citi.umich.edu wrote:
-> > it's been suggested that the client should also try reusing the port
-> > number when reconnecting over TCP... any thoughts on that?
->
-> Why?
-> You would not be able to reconnect until the TCP timeout on connection
-> re-use has passed, and by that time any benefit that you might gain is
-> probably lost.
-> How does the TCP timeout compare with the replay-cache timeout??
+>>>>> " " == Christian Reis <kiko@async.com.br> writes:
 
-Just an aside here...
+     > Helle there,
 
-The last time I looked at NFS over TCP on Linux (maybe 6-12 months
-ago?), there was a problem related to this.  With my test setup,
-I required NFS clients to use a reserved port (the "secure" option
-in mountd, although the server was acutally an OpenBSD machine).
-After the server would reboot, the Linux client would reconnect,
-but it would reconnect using a non-reserved port number even though
-the original mount used a reserved port number.  This meant that the
-mount would never come back up.
+     > I've been, for the past days, setting up a fairly big diskless
+     > network based on Linux. I've chosen to use 2.4.19 as the kernel
+     > because there were some hardware requirements, and for most of
+     > the newer boxes, it runs fine. However, for three of the older
+     > boxes, we have had some pretty odd performance and stability
+     > issues. This message is about the latest one, which is an ASUS
+     > P5S-B (has the infamous SIS 530 chipset) on an intel eepro100
+     > card. Details:
 
-If the client used the same port number, at least it would reconnect in
-this case.  A better solution would be to have it keep track of whether
-a reserved port was required for the mount or not.
+Is all this NFS over UDP? If so, numbers should not really have
+changed in 2.4.19 ( - yes my patchset changes things, but stock 2.4.19
+should not be too different w.r.t 2.4.18)
 
+Are you able to determine where in the 2.4.19-pre series the
+performance dies?
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
