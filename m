@@ -1,20 +1,16 @@
-From: Ulrich Gemkow <gemkow@ikr.uni-stuttgart.de>
-Subject: Re: exportfs -u hangs on SMP
-Date: Sat, 26 Jul 2003 12:55:29 +0200
+From: "Deac Mihai Adrian" <adydeac@hotmail.com>
+Subject: A bug or misconfigured?
+Date: Sun, 27 Jul 2003 00:04:54 +0300
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200307261255.29823.gemkow@ikr.uni-stuttgart.de>
-References: <20030720103649.A20763@ikr.uni-stuttgart.de> <16155.8767.278825.712370@gargle.gargle.HOWL>
+Message-ID: <BAY2-F52l8HvNuSNGDQ00006b25@hotmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from gate.ikr.uni-stuttgart.de ([129.69.170.1])
+Received: from bay2-f52.bay2.hotmail.com ([65.54.247.52] helo=hotmail.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19gMiB-00061j-00
-	for <nfs@lists.sourceforge.net>; Sat, 26 Jul 2003 03:55:39 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <16155.8767.278825.712370@gargle.gargle.HOWL>
+	id 19gWDs-0006gr-00
+	for <nfs@lists.sourceforge.net>; Sat, 26 Jul 2003 14:05:00 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,77 +23,47 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello Neil,
+Hi!
+I am using nfs-utils Version 1.0.4. After mounting something (anything) from 
+a client, i get the following line into /var/log/messages:
+rpc.mountd: authenticated mount request from (null):764 for /opt/ltsp/i386 
+(/opt/ltsp/i386)
 
-I tested the patch and our server survived for almost one week now - much
-longer than without the patch. So it seems the patch solves the problem
-and would be helpful in mainline too.
+On the client side seems ok... I can browse and do whatever I want, but if I 
+am trying to access a second time the server it crashes. It is happening the 
+same if I try to unmount the mounted directory.
+Take a look:
+# umount /mnt/temp/
+Bad UMNT RPC: RPC: Unable to receive; errno = Connection refused
+Strange: if I am using the -F flag for rpc.mountd the server doesn't fail, 
+but there is still:
+Jul 26 21:00:33 lightserver rpc.mountd: authenticated mount request from 
+(null):801 for /opt/ltsp/i386 (/opt/ltsp/i386)
+Jul 26 21:00:38 lightserver rpc.mountd: authenticated unmount request from 
+(null):802 for /opt/ltsp/i386 (/opt/ltsp/i386)
+Jul 26 21:01:10 lightserver rpc.mountd: authenticated mount request from 
+(null):802 for /opt/ltsp/i386 (/opt/ltsp/i386)
+Jul 26 21:01:11 lightserver rpc.mountd: authenticated unmount request from 
+(null):805 for /opt/ltsp/i386 (/opt/ltsp/i386)
+Jul 26 21:01:12 lightserver rpc.mountd: authenticated mount request from 
+(null):806 for /opt/ltsp/i386 (/opt/ltsp/i386)
+Jul 26 21:01:13 lightserver rpc.mountd: authenticated unmount request from 
+(null):807 for /opt/ltsp/i386 (/opt/ltsp/i386)
+Jul 26 21:01:14 lightserver rpc.mountd: authenticated mount request from 
+(null):808 for /opt/ltsp/i386 (/opt/ltsp/i386)
+Jul 26 21:01:15 lightserver rpc.mountd: authenticated unmount request from 
+(null):810 for /opt/ltsp/i386 (/opt/ltsp/i386)
 
-Thank you again for your quick help and greetings
+What can I do?
+I am using Sorcerer. I compiled the same utilities on an AMD Duron and i 
+dont get any of these errors. Write now I am using a Intel Celeron 1Ghz.
 
-Ulrich
+Best regards,
+Ady Deac
 
-> On Sunday July 20, gemkow@ikr.uni-stuttgart.de wrote:
-> > Now sometimes we have hangs of "exportfs -u". The process hangs and is
-> > not killable. The server works normal except that it is no longer
-> > responding to NFS requests. Only a reboot of the server helps.
-> >
-> > The "hang rate" is about once per day with 20 users and 5 directories
-> > exported on login for each user. The server has medium to high NFS-load.
-> >
-> > The hangs only happen when the server is running a SMP-enabled kernel.
-> > When using a non-SMP-kernel on the same hardware, the hangs are not
-> > happening.
-> >
-> > Environment is Linux 2.4.21 (vanilla), nfs-utils 1.0.1 (vanilla,
-> > xlog-patch applied), glibc 2.3 (RedHat 9 based) on a 2-processor PIII
-> > hardware.
->
-> Could you try this patch please?
-> Most of the nfsd is under the BigKernelLock in 2.4, so SMP or not
-> shouldn't have much effect.  However I just found a bit that isn't
-> under the lock, and it could be causing your problem.
->
-> If you do test it, please let me know how it goes.
->
-> Thanks,
-> NeilBrown
->
->
-> diff ./fs/nfsd/export.c~current~ ./fs/nfsd/export.c
-> --- ./fs/nfsd/export.c~current~	2003-07-21 09:12:01.000000000 +1000
-> +++ ./fs/nfsd/export.c	2003-07-21 09:12:16.000000000 +1000
-> @@ -19,6 +19,7 @@
->  #include <linux/stat.h>
->  #include <linux/in.h>
->  #include <linux/seq_file.h>
-> +#include <linux/smp_lock.h>
->
->  #include <linux/sunrpc/svc.h>
->  #include <linux/nfsd/nfsd.h>
-> @@ -571,6 +572,7 @@ static void *e_start(struct seq_file *m,
->  	svc_client *clp;
->  	struct list_head *p;
->
-> +	lock_kernel();
->  	exp_readlock();
->  	if (!n--)
->  		return (void *)1;
-> @@ -622,6 +624,7 @@ static void *e_next(struct seq_file *m,
->  static void e_stop(struct seq_file *m, void *p)
->  {
->  	exp_unlock();
-> +	unlock_kernel();
->  }
->
->  struct flags {
-
--- 
-|-----------------------------------------------------------------------
-| Ulrich Gemkow
-| University of Stuttgart
-| Institute of Communication Networks and Computer Engineering (IKR)
-|-----------------------------------------------------------------------
+_________________________________________________________________
+The new MSN 8: smart spam protection and 2 months FREE*  
+http://join.msn.com/?page=features/junkmail
 
 
 
