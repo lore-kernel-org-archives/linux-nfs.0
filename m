@@ -1,24 +1,22 @@
-From: Andreas Gruenbacher <agruen@suse.de>
-Subject: Re: [Acl-Devel] NFSv3 ACL status?
-Date: Thu, 12 Aug 2004 15:49:54 +0200
+From: "Lever, Charles" <cel@netapp.com>
+Subject: RE: NFSv3 ACL status?
+Date: Thu, 12 Aug 2004 07:03:14 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1092318594.31293.7.camel@winden.suse.de>
-References: <Pine.LNX.4.44.0408120858530.14721-100000@maggie.lkpg.cendio.se>
+Message-ID: <482A3FA0050D21419C269D13989C611302B07DC0@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net, acl-devel@bestbits.at
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>, <acl-devel@bestbits.at>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BvFxx-0005vG-JR
-	for nfs@lists.sourceforge.net; Thu, 12 Aug 2004 06:50:01 -0700
-Received: from cantor.suse.de ([195.135.220.2])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.34)
-	id 1BvFxu-0007Hh-4A
-	for nfs@lists.sourceforge.net; Thu, 12 Aug 2004 06:49:58 -0700
-To: Peter Astrand <peter@cendio.se>
-In-Reply-To: <Pine.LNX.4.44.0408120858530.14721-100000@maggie.lkpg.cendio.se>
+	id 1BvGB1-0000cV-17
+	for nfs@lists.sourceforge.net; Thu, 12 Aug 2004 07:03:31 -0700
+Received: from mx01.netapp.com ([198.95.226.53])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
+	id 1BvGB0-0001tx-NI
+	for nfs@lists.sourceforge.net; Thu, 12 Aug 2004 07:03:30 -0700
+To: "Peter Astrand" <peter@cendio.se>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,35 +29,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, 2004-08-12 at 09:01, Peter Astrand wrote:
-> Can someone give an quick overview of the Linux NFSv3 ACL status? The
-> Linux NFS FAQ at http://nfs.sourceforge.net/ says:
-> 
+> Can someone give an quick overview of the Linux NFSv3 ACL=20
+> status? The Linux NFS FAQ at http://nfs.sourceforge.net/ says:
+>=20
 > "D3. What does this mean:  svc: unknown program 100227 (me 100003)
-> 
-> A. It refers to a mount request by a Solaris system that is trying to get
-> ACL information - which linux obviously does not have. "
-> 
-> But: http://acl.bestbits.at/ seems to indicate that ACLs over NFSv3
-> actually works, and provides patches for 2.6.1, but I can't find any
-> information about if this patch is really needed for modern kernels
-> (2.6.7) or modern distributions. Is this patch for the server, client or 
-> both?
+>=20
+> A. It refers to a mount request by a Solaris system that is=20
+> trying to get ACL information - which linux obviously does not have. "
+>=20
+> But: http://acl.bestbits.at/ seems to indicate that ACLs over=20
+> NFSv3 actually works, and provides patches for 2.6.1, but I=20
+> can't find any information about if this patch is really=20
+> needed for modern kernels
+> (2.6.7) or modern distributions. Is this patch for the=20
+> server, client or=20
+> both?=20
 
-The patch is required on both the client and the server side. (You will
-find a more recent version of the patch as part of
-ftp://ftp.suse.com/pub/people/mantel/kotd/i386/kernel-source.src.rpm.)
+Solaris ACL support is in some kernels but not others.  i believe RHEL
+3.0 includes Solaris ACL support for both the NFS client and server, for
+example, as an extra patch.  stock 2.4 does not.
 
-> Also, what about interoperatbility with Solaris?
+i believe there is a plan to include Solaris NFSv3 ACL support in the
+2.6 client and server at some point in the near future so that everyone
+will get the same implementation, and the distributions won't have to
+add a separate patch if they need it.
 
-The implementation is compatible.
+the Linux NFSv4 client/server implementation is getting ACL support
+right now.  there are issues with how to map POSIX ACLs (which Linux
+uses) to NFSv4 ACLs, which are semantically richer but not quite
+compatible, and how to allow user-level programs to access and modify
+NFSv4 ACLs directly.  but NFSv4 ACL support should be wire compatible
+with Sun's Solaris NFSv4 implementation as well.
 
-Cheers,
--- 
-Andreas Gruenbacher <agruen@suse.de>
-SUSE Labs, SUSE LINUX AG
-
-
+at some point when the universe is less complicated i plan to update the
+FAQ to reflect these changes.  (thermodynamically i should not have long
+to wait, right?)
 
 
 -------------------------------------------------------
