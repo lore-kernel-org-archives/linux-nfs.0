@@ -1,20 +1,19 @@
-From: Frank Cusack <fcusack@fcusack.com>
-Subject: Re: nfs root directory security
-Date: Wed, 18 Jun 2003 14:16:15 -0700
+From: David Mosberger <davidm@napali.hpl.hp.com>
+Subject: make NFS work with 64KB page-size
+Date: Wed, 18 Jun 2003 15:56:31 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030618141615.A22386@google.com>
-References: <Pine.LNX.4.44.0306181538500.5031-100000@kenzo.iwr.uni-heidelberg.de> <1055946469.16259.81.camel@sleerssen.racemi.com>
+Message-ID: <16112.60959.588900.824473@napali.hpl.hp.com>
+Reply-To: davidm@hpl.hp.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>,
-   Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
+	davidm@napali.hpl.hp.com
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from 216-239-45-4.google.com ([216.239.45.4])
+Received: from palrel13.hp.com ([156.153.255.238])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19SkIK-0006E0-00
-	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 14:16:40 -0700
-To: Scott Leerssen <scott@leerssen.com>
-In-Reply-To: <1055946469.16259.81.camel@sleerssen.racemi.com>; from scott@leerssen.com on Wed, Jun 18, 2003 at 10:27:50AM -0400
+	id 19Slsa-0005Wl-00
+	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 15:58:12 -0700
+To: neilb@cse.unsw.edu.au
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,16 +26,32 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, Jun 18, 2003 at 10:27:50AM -0400, Scott Leerssen wrote:
-> I agree with everything you say here, and in a controlled and fairly
-> unchanging environment with clients you trust, exporting to specific
-> clients is a perfectly acceptable solution.
+NFS currently bugs out on kernels with a page size of 64KB.  The
+reason is a mismatch between RPCSVC_MAXPAGES and a calculation in
+svc_init_buffer().  I'm not entirely certain which calculation is the
+right one, but if I understand the code correctly, RPCSVC_MAXPAGES is
+right and svc_init_buffer() is wrong.  The patch below fixes the
+latter.
 
-The only solution.
+If the patch looks right, could you make sure it finds its way into
+Linus' tree?
 
-What you need to do is automate, not obfuscate.
+Thanks,
 
-/fc
+	--david
+
+===== net/sunrpc/svc.c 1.20 vs edited =====
+--- 1.20/net/sunrpc/svc.c	Fri Feb  7 12:25:20 2003
++++ edited/net/sunrpc/svc.c	Wed Jun 18 15:02:19 2003
+@@ -111,7 +111,7 @@
+ static int
+ svc_init_buffer(struct svc_rqst *rqstp, unsigned int size)
+ {
+-	int pages = 2 + (size+ PAGE_SIZE -1) / PAGE_SIZE;
++	int pages = 1 + (size+ PAGE_SIZE -1) / PAGE_SIZE;
+ 	int arghi;
+ 	
+ 	rqstp->rq_argused = 0;
 
 
 -------------------------------------------------------
