@@ -1,24 +1,24 @@
 From: Olaf Kirch <okir@suse.de>
 Subject: Re: [PATCH] NFS nolock broken in 2.6.9-rc4
-Date: Fri, 15 Oct 2004 17:12:57 +0200
+Date: Fri, 15 Oct 2004 17:21:56 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20041015151257.GF27307@suse.de>
-References: <20041015095840.GA22992@suse.de> <1097851471.5558.12.camel@lade.trondhjem.org>
+Message-ID: <20041015152156.GH27307@suse.de>
+References: <20041015095840.GA22992@suse.de> <1097851471.5558.12.camel@lade.trondhjem.org> <20041015151257.GF27307@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: multipart/mixed; boundary="O5XBE6gyVG5Rl6Rj"
 Cc: nfs@lists.sourceforge.net, Andrew Morton <akpm@osdl.org>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CITxn-0005l6-Ik
-	for nfs@lists.sourceforge.net; Fri, 15 Oct 2004 08:25:51 -0700
+	id 1CIU2h-0007GE-49
+	for nfs@lists.sourceforge.net; Fri, 15 Oct 2004 08:30:55 -0700
 Received: from cantor.suse.de ([195.135.220.2])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.41)
-	id 1CITxk-0001CL-Qh
-	for nfs@lists.sourceforge.net; Fri, 15 Oct 2004 08:25:51 -0700
+	id 1CIU2f-0003bw-NN
+	for nfs@lists.sourceforge.net; Fri, 15 Oct 2004 08:30:55 -0700
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1097851471.5558.12.camel@lade.trondhjem.org>
+In-Reply-To: <20041015151257.GF27307@suse.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,28 +31,82 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, Oct 15, 2004 at 04:44:31PM +0200, Trond Myklebust wrote:
-> NO! The correct way to do this is to handle it with a call to
-> posix_lock_file() in the NFS code for the particular case of "nolock".
 
-Urrrgh.. this looks complicated and duplicates code. Then I'd rather
-have two struct file_operations, one for normal operations with a .lock
-function, and a second one for nolock without.
+--O5XBE6gyVG5Rl6Rj
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-> for details on why the changes were made (and that should make it
-> obvious why your patch is wrong). The VFS must NOT be allowed to
-> interfere if a filesystem has its own ->lock() method: that will violate
-> the ability of filesystems to impose rigid locking rules.
+> Urrrgh.. this looks complicated and duplicates code. Then I'd rather
+> have two struct file_operations, one for normal operations with a .lock
+> function, and a second one for nolock without.
 
-My patch doesn't interfere; it just falls back to the original code if
-the fs routine returns LOCK_USE_CLNT. In that respect, it doesn't
-interfere with the new code.
+Please find attached proposed fix3 that does just this.
 
 Olaf
 -- 
 Olaf Kirch     | Things that make Monday morning interesting, #1:
 okir@suse.de   |        "I want to use NFS over AX25, can you help me?"
 ---------------+ 
+
+--O5XBE6gyVG5Rl6Rj
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename=nfs-nolock-fix3
+
+Index: linux-2.6.9-rc4/fs/nfs/inode.c
+===================================================================
+--- linux-2.6.9-rc4.orig/fs/nfs/inode.c
++++ linux-2.6.9-rc4/fs/nfs/inode.c
+@@ -666,7 +666,10 @@ nfs_fhget(struct super_block *sb, struct
+ 		 */
+ 		inode->i_op = &nfs_file_inode_operations;
+ 		if (S_ISREG(inode->i_mode)) {
+-			inode->i_fop = &nfs_file_operations;
++			if (NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM)
++				inode->i_fop = &nfs_file_operations_nolock;
++			else
++				inode->i_fop = &nfs_file_operations;
+ 			inode->i_data.a_ops = &nfs_file_aops;
+ 			inode->i_data.backing_dev_info = &NFS_SB(sb)->backing_dev_info;
+ 		} else if (S_ISDIR(inode->i_mode)) {
+Index: linux-2.6.9-rc4/fs/nfs/file.c
+===================================================================
+--- linux-2.6.9-rc4.orig/fs/nfs/file.c
++++ linux-2.6.9-rc4/fs/nfs/file.c
+@@ -60,6 +60,20 @@ struct file_operations nfs_file_operatio
+ 	.sendfile	= nfs_file_sendfile,
+ 	.check_flags	= nfs_check_flags,
+ };
++struct file_operations nfs_file_operations_nolock = {
++	.llseek		= remote_llseek,
++	.read		= do_sync_read,
++	.write		= do_sync_write,
++	.aio_read		= nfs_file_read,
++	.aio_write		= nfs_file_write,
++	.mmap		= nfs_file_mmap,
++	.open		= nfs_file_open,
++	.flush		= nfs_file_flush,
++	.release	= nfs_file_release,
++	.fsync		= nfs_fsync,
++	.sendfile	= nfs_file_sendfile,
++	.check_flags	= nfs_check_flags,
++};
+ 
+ struct inode_operations nfs_file_inode_operations = {
+ 	.permission	= nfs_permission,
+Index: linux-2.6.9-rc4/include/linux/nfs_fs.h
+===================================================================
+--- linux-2.6.9-rc4.orig/include/linux/nfs_fs.h
++++ linux-2.6.9-rc4/include/linux/nfs_fs.h
+@@ -319,6 +319,7 @@ extern u32 root_nfs_parse_addr(char *nam
+  */
+ extern struct inode_operations nfs_file_inode_operations;
+ extern struct file_operations nfs_file_operations;
++extern struct file_operations nfs_file_operations_nolock;
+ extern struct address_space_operations nfs_file_aops;
+ 
+ static inline struct rpc_cred *nfs_file_cred(struct file *file)
+
+--O5XBE6gyVG5Rl6Rj--
 
 
 -------------------------------------------------------
