@@ -1,18 +1,19 @@
 From: "Lever, Charles" <Charles.Lever@netapp.com>
 Subject: RE: linux 2.4.20 oops
-Date: Tue, 29 Apr 2003 10:24:04 -0700
+Date: Tue, 29 Apr 2003 10:31:26 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <6440EA1A6AA1D5118C6900902745938E07D5559C@black.eng.netapp.com>
+Message-ID: <6440EA1A6AA1D5118C6900902745938E07D5559E@black.eng.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain;
 	charset="iso-8859-1"
-Cc: "NFS maillist" <nfs@lists.sourceforge.net>
+Cc: "Marcelo Tosatti" <marcelo@conectiva.com.br>,
+   "NFS maillist" <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from mx01.netapp.com ([198.95.226.53])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19AYqn-00005F-00
-	for <nfs@lists.sourceforge.net>; Tue, 29 Apr 2003 10:25:05 -0700
-To: <trond.myklebust@fys.uio.no>, "Marcelo Tosatti" <marcelo@conectiva.com.br>
+	id 19AYxA-0002eJ-00
+	for <nfs@lists.sourceforge.net>; Tue, 29 Apr 2003 10:31:40 -0700
+To: <trond.myklebust@fys.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,7 +26,11 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-i will verify that i have created 2.4.21-rc1 correctly.
+ok, it looks like i was stupid and didn't apply the rc1 patch
+to my rc1 tree.  my copy of the rc1 pre-patch has the right
+stuff in it.
+
+sorry to be a bug.
 
 > -----Original Message-----
 > From: Trond Myklebust [mailto:trond.myklebust@fys.uio.no]
