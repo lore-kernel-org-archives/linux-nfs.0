@@ -1,25 +1,23 @@
-From: raven@themaw.net
-Subject: Re: [PATCH] SGI 882960: Busy inodes after unmount, oops
-Date: Wed, 4 Feb 2004 22:24:14 +0800 (WST)
+From: =?koi8-r?Q?=22?=Peter Lojkin=?koi8-r?Q?=22=20?=<ia6432@inbox.ru>
+Subject: nfs or autofs related hangs
+Date: Wed, 04 Feb 2004 20:34:51 +0300
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.58.0402042209030.26014@raven.themaw.net>
-References: <40209B6D.56ED461E@melbourne.sgi.com>
+Message-ID: <E1AoQvL-0002NP-00.ia6432-inbox-ru@f21.mail.ru>
+Reply-To: =?koi8-r?Q?=22?=Peter Lojkin=?koi8-r?Q?=22=20?=<ia6432@inbox.ru>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-   Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Content-Type: multipart/mixed;
+	boundary="----56lPrptw-A6HV0Ynf7PnqGzQ8:1075916091"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AoNwj-0008LN-Bd
-	for nfs@lists.sourceforge.net; Wed, 04 Feb 2004 06:24:05 -0800
-Received: from wombat.indigo.net.au ([202.0.185.19])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.30)
-	id 1AoNwi-0005lr-MR
-	for nfs@lists.sourceforge.net; Wed, 04 Feb 2004 06:24:04 -0800
-To: Greg Banks <gnb@melbourne.sgi.com>
-In-Reply-To: <40209B6D.56ED461E@melbourne.sgi.com>
+	id 1AoQvR-0001Mx-4v
+	for nfs@lists.sourceforge.net; Wed, 04 Feb 2004 09:34:57 -0800
+Received: from f21.mail.ru ([194.67.57.54])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1AoQvQ-0006P9-7B
+	for nfs@lists.sourceforge.net; Wed, 04 Feb 2004 09:34:56 -0800
+To: autofs@linux.kernel.org
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,43 +31,185 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Excelent work Greg.
+------56lPrptw-A6HV0Ynf7PnqGzQ8:1075916091
+Content-Type: text/plain; charset=koi8-r
+Content-Transfer-Encoding: 8bit
 
-On Wed, 4 Feb 2004, Greg Banks wrote:
+Hello,
 
-> G'day,
-> 
-> This patch fixes a bug where the forced killing of pending asynchronous
-> unlink rpc_tasks during unmount leaks inode reference counts for the
-> parent of the silly-renamed file and all its ancestor directories,
-> resulting in the message 
-> 
-> VFS: Busy inodes after unmount. Self-destruct in 5 seconds.  Have a nice day...
-> 
-> and a few seconds later an oops with a stack trace ending in
-> prune_dcache -> nfs_dentry_iput -> iput.
-> 
-> This is probably also the bug discussed last September on the autofs
-> mailing list.  The patch posted by Olaf Hering then has no effect
-> at all, but it did put me on the right track (thanks Olaf).
+i'm not sure which list is correct to post about
+our problem so i'm cc'ing both autofs and nfs lists...
 
-This message has occasionally been seen for a very log time when using 
-autofs but I've never seen an oops follow it???
+some of our server keep hanging (well just any nfs
+access hangs) and there're always stuck
+"umount //auto/dir" or "umount //home/dir"
+processes (btw i thought that double "/" problem
+was fixed?). 
 
-Until now I have assumed that it is a bug in the daemon code caused by not 
-removing a directory(s) before the umount. I've caught several bugs in 
-the cleanup code but can't seem to find what else might causing it.
+i've done sysrq-t traces (attached) when this
+happened with stock 2.4.22 + NFS_ALL (by trond) and
+with 2.4.23aa1 + autofs4-2.4.22.patch
+in both cases autofs-4.1.0 were used but there're
+the same hangs with debian autofs-3.9.99-4.0.0pre10-1
+and autofs-3.9.99-4.0.0pre10-16
+there're no oopses or any error messages prior to
+hang. we have no such problem with 2.4.20aa kernels
+but on newer servers we can't go below 2.4.22 because
+of hardware compatibility.
 
-About the only thing that I'm sure of is that this happens at umount time 
-in autofs, and with my latest code, only when there is a accompanying 
-directory removal.
+i can provide any additional info on request...
 
-Do you guys think this might really be the same problem?
 
-This is very hard to trigger so testing is difficult.
- 
-Ian
+------56lPrptw-A6HV0Ynf7PnqGzQ8:1075916091
+Content-Type: application/x-tar; name="2.4.22.log.gz"
+Content-Disposition: attachment; filename="2.4.22.log.gz"
+Content-Transfer-Encoding: base64
 
+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
+u+rrh/31TzLIQ64zXAAA
+
+------56lPrptw-A6HV0Ynf7PnqGzQ8:1075916091
+Content-Type: application/x-tar; name="2.4.23aa1.log.gz"
+Content-Disposition: attachment; filename="2.4.23aa1.log.gz"
+Content-Transfer-Encoding: base64
+
+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
+M6mvz2F1YLXnqHz45WPLg/8BDELWV+d2AAA=
+
+------56lPrptw-A6HV0Ynf7PnqGzQ8:1075916091--
 
 
 -------------------------------------------------------
