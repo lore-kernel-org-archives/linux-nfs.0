@@ -1,23 +1,23 @@
-From: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
+From: Erik Walthinsen <omega@pdxcolo.net>
 Subject: Re: Converting open filehandles to pathnames
-Date: Mon, 10 May 2004 10:02:07 +0200 (CEST)
+Date: Mon, 10 May 2004 07:20:21 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0405100933010.22462-100000@kenzo.iwr.uni-heidelberg.de>
-References: <1084137085.715.26.camel@omikron>
+Message-ID: <1084198818.711.5.camel@omikron>
+References: <Pine.LNX.4.44.0405100933010.22462-100000@kenzo.iwr.uni-heidelberg.de>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Garrick Staples <garrick@usc.edu>, <nfs@lists.sourceforge.net>
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BN5k2-0000IV-TG
-	for nfs@lists.sourceforge.net; Mon, 10 May 2004 01:02:26 -0700
-Received: from relay2.uni-heidelberg.de ([129.206.210.211])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1BN5k2-0008CB-Dg
-	for nfs@lists.sourceforge.net; Mon, 10 May 2004 01:02:26 -0700
-To: Erik Walthinsen <omega@pdxcolo.net>
-In-Reply-To: <1084137085.715.26.camel@omikron>
+	id 1BNIVh-0004jx-5g
+	for nfs@lists.sourceforge.net; Mon, 10 May 2004 14:40:29 -0700
+Received: from [216.99.212.251] (helo=mail.omegacs.net)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BNIVg-000795-P0
+	for nfs@lists.sourceforge.net; Mon, 10 May 2004 14:40:28 -0700
+To: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
+In-Reply-To: <Pine.LNX.4.44.0405100933010.22462-100000@kenzo.iwr.uni-heidelberg.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,54 +30,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sun, 9 May 2004, Erik Walthinsen wrote:
+On Mon, 2004-05-10 at 01:02, Bogdan Costescu wrote:
+> Can't this be done quicker on the server ?
+I never specified one way or another, but yes, this is done on the
+server.
 
-> The biggest challenge for general usage is the inode -> pathname
-> translation.
+However, it doesn't change the problem that in order to do an
+inode->pathname translation, without some tricks I don't know about, you
+have to stat() every single file on the entire filesystem.  Yes, this is
+faster on the server, I never considered running such a search from a
+client.
 
-Can't this be done quicker on the server ?
+The only hack I can think of would be if the server is running ext3 or
+some other filesystem with a debugger, and see if it's possible to
+perform the reverse mapping that way, quickly.  Very much not my
+favorite option though.
 
-I'm not saying that the program should be run on the server because of 
-this reason - only that if it's run on the server it might be more 
-efficient. I see 2 situations here:
-- when you have several clients and one server and wonder who is 
-banging on the server - then you run the program on the server
-- when you have several servers and wonder why has a client which
-mounts FS-es from all a so high I/O-induced load - then you run the
-program on the client
+> IMHO, the most important question is: do you want to convert _all_
+> inodes back to pathnames ? For example, what I'm interested in is the
+> cases where a process has one or a few large files open that are
+> accessed over and over again. I'm not at all interested in finding out
+> the pathnames of all the files in a source directory which will be
+> read exactly once during the build process and those of the
+> corresponding object files that will be written to, also exactly once.
+> Each source/object file can be transferred as one or more NFS chunks,
+> depending on the file size and the NFS chunk size. So I propose to
+> make some kind of caching and counting of the filehandles and only if
+> the same filehandle was present in a certain number of NFS chunks
+> should the program attempt to get the corresponding pathname.
+> However, by setting this number to something low (even 1), the admin 
+> can also see such kind of accessed-once files.
+OK, that can be done fairly easily, esp with Python.
 
-> Any other suggestions on how I can generically convert inodes to
-> pathnames without massive overhead?
-
-IMHO, the most important question is: do you want to convert _all_
-inodes back to pathnames ? For example, what I'm interested in is the
-cases where a process has one or a few large files open that are
-accessed over and over again. I'm not at all interested in finding out
-the pathnames of all the files in a source directory which will be
-read exactly once during the build process and those of the
-corresponding object files that will be written to, also exactly once.
-Each source/object file can be transferred as one or more NFS chunks,
-depending on the file size and the NFS chunk size. So I propose to
-make some kind of caching and counting of the filehandles and only if
-the same filehandle was present in a certain number of NFS chunks
-should the program attempt to get the corresponding pathname.
-However, by setting this number to something low (even 1), the admin 
-can also see such kind of accessed-once files.
-Also, there should be a cache of already converted filenames, such 
-that accessing a file often does not result in many conversions; from 
-what you wrote, it appears that you are already doing this, only that 
-the cache is filled at startup (and probably never deleted from) 
-rather than dynamically at runtime. But be careful here: as the cache 
-grows, so is the time needed to check if the entry is cached or not up 
-to the point that it might be faster to do a new conversion.
-
--- 
-Bogdan Costescu
-
-IWR - Interdisziplinaeres Zentrum fuer Wissenschaftliches Rechnen
-Universitaet Heidelberg, INF 368, D-69120 Heidelberg, GERMANY
-Telephone: +49 6221 54 8869, Telefax: +49 6221 54 8868
-E-mail: Bogdan.Costescu@IWR.Uni-Heidelberg.De
+> Also, there should be a cache of already converted filenames, such 
+> that accessing a file often does not result in many conversions; from 
+> what you wrote, it appears that you are already doing this, only that 
+> the cache is filled at startup (and probably never deleted from) 
+> rather than dynamically at runtime. But be careful here: as the cache 
+> grows, so is the time needed to check if the entry is cached or not up 
+> to the point that it might be faster to do a new conversion.
+The cache I create is static because new files are *extremely* rare. 
+Because I don't have more than 1k files currently, performance
+optimizations will likely be someone else's modification to the script
+once I've got it built.
 
 
 
