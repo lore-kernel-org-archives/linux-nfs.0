@@ -1,24 +1,31 @@
-From: Per Olofsson <pelle@dsv.su.se>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: NFSv3+Krb5 and mountd
-Date: Mon, 30 Aug 2004 23:54:48 +0200
+Date: Mon, 30 Aug 2004 18:25:14 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040830215448.GO3671@nasse>
-References: <20040824184138.GB3251@nasse> <Pine.LNX.4.61.0408300238530.2441@fogarty.jakma.org> <20040830020132.GA28919@fieldses.org> <20040830154541.GA3671@nasse> <1093884302.8729.21.camel@lade.trondhjem.org> <20040830171734.GC1555@fieldses.org>
+Message-ID: <1093904714.8729.106.camel@lade.trondhjem.org>
+References: <20040824184138.GB3251@nasse>
+	 <Pine.LNX.4.61.0408300238530.2441@fogarty.jakma.org>
+	 <20040830020132.GA28919@fieldses.org> <20040830154541.GA3671@nasse>
+	 <1093884302.8729.21.camel@lade.trondhjem.org>
+	 <20040830171734.GC1555@fieldses.org>
+	 <1093887933.8729.35.camel@lade.trondhjem.org>
+	 <20040830180402.GE1555@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Paul Jakma <paul@clubi.ie>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-1
+Cc: Per Olofsson <pelle@dsv.su.se>, Paul Jakma <paul@clubi.ie>,  nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C1u7C-0000DW-CG
-	for nfs@lists.sourceforge.net; Mon, 30 Aug 2004 14:55:02 -0700
-Received: from nl-ams-slo-l4-01-pip-3.chellonetwork.com ([213.46.243.17] helo=amsfep12-int.chello.nl)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1C1u7B-0004ox-Ma
-	for nfs@lists.sourceforge.net; Mon, 30 Aug 2004 14:55:02 -0700
+	id 1C1uag-0006mk-0x
+	for nfs@lists.sourceforge.net; Mon, 30 Aug 2004 15:25:30 -0700
+Received: from dh138.citi.umich.edu
+	([141.211.133.138] helo=lade.trondhjem.org ident=Debian-exim)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.34)
+	id 1C1uae-0000Dl-Ck
+	for nfs@lists.sourceforge.net; Mon, 30 Aug 2004 15:25:29 -0700
 To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <20040830171734.GC1555@fieldses.org>
+In-Reply-To: <20040830180402.GE1555@fieldses.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,27 +38,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-J. Bruce Fields:
-> I think that adding rpcsec_gss support to the userland utilities, and
-> making it easy for people to distribute keytabs to their clients, is the
-> better long-term solution than enabling RFC2623's workarounds.  But
-> maybe too many clients already expect to be able to mount with auth_sys
-> only.
+P=E5 m=E5 , 30/08/2004 klokka 14:04, skreiv J. Bruce Fields:
 
-I think there are some benefits with allowing mounting without
-requiring a keytab. For example, I'd like to give my users the ability
-to mount their home directories from outside of the department
-(e.g. their home computers). I don't think it would be practical to
-distribute keytabs to all of them, and in many cases it simply doesn't
-work (dynamic IPs, NAT, etc.).
+> Since we specify the rpcsec_gss security flavor as the client in
+> /etc/exports, in the place of the ip address/network/whatever, this
+> means in practice we'd need to allow MOUNT from any ip address for a
+> filesystem that's exported to rpcsec_gss.  Which I suppose is OK, though
+> I don't understand why clients really want to do that.
 
-It would also be nice to be able to fallback to something similar to
-auth_sys with all_squash in case there's no ticket/keytab present for
-the current user. This is roughly how AFS behaves. It's not too
-important, though.
+See the RFC. It was basically Sun's decision in order to avoid having to
+assign machine credentials to their automounters. If you want your
+server to work with SunOS clients, then that's all pretty mandatory.
 
--- 
-Pelle
+> > mountd should always support AUTH_SYS, so no changes required there
+> > (apart from the need to add the supported RPCSEC_GSS pseudoflavours to
+> > the "auth_flavors" list).
+> > As far as I know, nobody (not even Sun) has set up NLM to work with
+> > RPCSEC_GSS either.
+>=20
+> Well, I suppose unauthenticated locks are a DOS at worse.  But the
+> lookup of the initial filehandle seems more security-critical to me.
+
+What can an attacker do with that filehandle?
+
+Actually re-reading the RFC, it does not actually restrict MOUNT to
+AUTH_SYS-only, but again - interoperability with Solaris automounters
+means that it is pretty much expected...
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
