@@ -1,18 +1,19 @@
-From: "Choi" <cinch@newmail.naver.com>
-Subject: rpc.statd died with segmentation fault..
-Date: Fri, 15 Nov 2002 01:48:27 +0900 (KST)
+From: Eric Whiting <ewhiting@amis.com>
+Subject: 2.4.20rc1 NFS V3 UDP client problems
+Date: Thu, 14 Nov 2002 10:37:35 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3DD3D3DB.000001.00825@naver779.naver.com>
-Reply-To: <cinch@newmail.naver.com>
+Message-ID: <3DD3DF5F.854AD688@amis.com>
 Mime-Version: 1.0
-Content-Type: Multipart/Alternative;
-  boundary="------------Boundary-00=_R0SKULUXFQQMYJ0CCJD0"
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [211.218.150.188] (helo=naver779.naver.com)
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18CNAN-0002NO-00
-	for <nfs@lists.sourceforge.net>; Thu, 14 Nov 2002 08:48:31 -0800
-To: <nfs@lists.sourceforge.net>
+Received: from dermis.amis.com ([207.141.5.253])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18CNny-0004LN-00
+	for <nfs@lists.sourceforge.net>; Thu, 14 Nov 2002 09:29:26 -0800
+Received: from amis.com (gannett.design.amis.com [172.16.17.181])
+	by mailtest.design.amis.com (Postfix) with ESMTP id A3E4FF524
+	for <nfs@lists.sourceforge.net>; Thu, 14 Nov 2002 11:18:30 -0700 (MST)
+To: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,56 +26,63 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+I'm seeing some 2.4.20rc1 client problems.
 
---------------Boundary-00=_R0SKULUXFQQMYJ0CCJD0
-Content-Type: Text/Plain;
-  charset="euc-kr"
-Content-Transfer-Encoding: base64
+25 seconds to write a 1G file
+13 minutes to read that file back
 
-SSBhbSB1c2luZyBMSU5VWCAyLjQuMTggS2VybmVsLg0KYW5kIExpbnV4IGFzIGEgbmZzIGNsaWVu
-dCwgTmV0QXBwIEZpbGVyIGFzIGEgTkZTIFNlcnZlci4NCnJwYy5zdGF0ZCB2ZXJzaW9uIGlzIDAu
-My4zDQoNCmFmdGVyIHJlYm9vdCwgcnBjLnN0YXRkIGlzIHJ1bm5pbmcgd2l0aG91dCBubyBwcm9i
-bGVtLg0KV2hlbiBteSBwcm9ncmFtIGluIExJTlVYIHRyaWVzIHRvIGdldCBXUklURSBsb2NrIG9u
-IGEgZmlsZSBpbiB0aGUgTkZTIHNlcnZlciwNCnJwYy5zdGF0ZCBkaWVkLi4uDQoNCklmIEkgcnVu
-IHJwYy5zdGF0ZCB3aXRoICIgcnBjc3RhdGQgLUYgLWQgIiwgdGhpcyBwcm9ibGVtIGRvZXNuJ3Qg
-aGFwcGVuLg0KYnV0IHJwYy5zdGF0ZCBpcyBleGVjdXRlZCBhcyBhIGRhZW1vbiwgaXQgZGllZCAu
-Li4NCg0KV2hlbiBJIHRyYWNlZCBycGMuc3RhdGQgd2l0aCBzdHJhY2UgdXRpbGl0eSwgSSBmb3Vu
-ZCBvdXQNCnJwYy5zdGF0ZCBkaWVkIHdpdGggc2VnbWVudGF0aW9uIGZhdWx0IGFmdGVyIHJlcGx5
-aW5nIHJlcXVlc3QuLg0KDQoNCnBsZWFzZSwgbGV0IG1lIGtub3cgd2h5IC4uLj8NCg==
+CLIENT 2.4.20rc1 NFSV3 UDP HIGHMEM SUPPORT ON
+gigE card with jumbo frames enabled 
+Tested with both netgear and intel -- same result
 
---------------Boundary-00=_R0SKULUXFQQMYJ0CCJD0
-Content-Type: Text/HTML;
-  charset="euc-kr"
-Content-Transfer-Encoding: base64
+SERVER
+Netapps 825 ontap 6.3
+gigE card with jumbo frames enabled
 
-PFNUWUxFPgpCT0RZIHtGT05ULUZBTUlMWTogsby4sjtGT05ULVNJWkU6IDEwcHQ7fQpQIHttYXJn
-aW4tdG9wOjJweDttYXJnaW4tYm90dG9tOjJweDt9CjwvU1RZTEU+CkkgYW0gdXNpbmcgTElOVVgg
-Mi40LjE4IEtlcm5lbC4NPEJSPgphbmQgTGludXggYXMgYSBuZnMgY2xpZW50LCBOZXRBcHAgRmls
-ZXIgYXMgYSBORlMgU2VydmVyLg08QlI+CnJwYy5zdGF0ZCB2ZXJzaW9uIGlzIDAuMy4zDTxCUj4K
-DTxCUj4KYWZ0ZXIgcmVib290LCBycGMuc3RhdGQgaXMgcnVubmluZyB3aXRob3V0IG5vIHByb2Js
-ZW0uDTxCUj4KV2hlbiBteSBwcm9ncmFtIGluIExJTlVYIHRyaWVzIHRvIGdldCBXUklURSBsb2Nr
-IG9uIGEgZmlsZSBpbiB0aGUgTkZTIHNlcnZlciwNPEJSPgpycGMuc3RhdGQgZGllZC4uLg08QlI+
-Cg08QlI+CklmIEkgcnVuIHJwYy5zdGF0ZCB3aXRoICIgcnBjc3RhdGQgLUYgLWQgIiwgdGhpcyBw
-cm9ibGVtIGRvZXNuJ3QgaGFwcGVuLg08QlI+CmJ1dCBycGMuc3RhdGQgaXMgZXhlY3V0ZWQgYXMg
-YSBkYWVtb24sIGl0IGRpZWQgLi4uDTxCUj4KDTxCUj4KV2hlbiBJIHRyYWNlZCBycGMuc3RhdGQg
-d2l0aCBzdHJhY2UgdXRpbGl0eSwgSSBmb3VuZCBvdXQNPEJSPgpycGMuc3RhdGQgZGllZCB3aXRo
-IHNlZ21lbnRhdGlvbiBmYXVsdCBhZnRlciByZXBseWluZyByZXF1ZXN0Li4NPEJSPgoNPEJSPgoN
-PEJSPgpwbGVhc2UsIGxldCBtZSBrbm93IHdoeSAuLi4/DTxCUj4KPElNRyBTUkM9aHR0cDovL25h
-dmVyNzc5Lm5hdmVyLmNvbS9tYWlsY2hlY2svY2hlY2s/bWFpbGluZm89VnFuZTF6RjUxNkY5N3Ew
-cU02JTJGVGJya1pwelVtS0xZd2FWWXdhVmVvMTZsbzFWWXNLb3VaRlNtWkt4VTkgYm9yZGVyPTA+
-PFA+Jm5ic3A7PEJSPjwvUD48cD4KPHNtYWxsPgo8dGFibGUgY2VsbHBhZGRpbmc9MSBjZWxsc3Bh
-Y2luZz0wIGJvcmRlcj0wPgo8dHI+PHRkPjxhIGhyZWY9aHR0cDovL3d3dy5uYXZlci5jb20vIHRh
-cmdldD1faGVscD48aW1nIHNyYz1odHRwOi8vc3RhdGljLm5hdmVyLmNvbS9tYWlsL2ltYWdlczIv
-dGFpbC9sb2dvX20uZ2lmIGJvcmRlcj0wPjwvYT48L3RkPjwvdHI+Cjx0cj48dGQgaGVpZ2h0PTQ+
-PHRhYmxlIGhlaWdodD00IGNlbGxwYWRkaW5nPTAgY2VsbHNwYWNpbmc9MCBib3JkZXI9MD48dHI+
-PHRkPjwvdGQ+PC90cj48L3RhYmxlPjwvdGQ+PC90cj4KPHRyPjx0ZD48c21hbGw+u/2wosfPtMIg
-wfa0ycf8ILDLu/Ygs9fAzLn2ILPYvK3EoTwvc21hbGw+PC90ZD48L3RyPgo8dHI+PHRkPjxzbWFs
-bD7Gr7qwx9EgZSC43sDPwLsgv/jH0iC2qSwgvvex17e5wMy15SCz18DMufYguN7Azzwvc21hbGw+
-PC90ZD48L3RyPgo8dHI+PHRkPjxzbWFsbD48YSBocmVmPWh0dHA6Ly93d3cubmF2ZXIuY29tLyB0
-YXJnZXQ9X2hlbHA+PGZvbnQgY29sb3I9IzAwMDBmZj5odHRwOi8vd3d3Lm5hdmVyLmNvbTwvZm9u
-dD48L2E+PC9zbWFsbD48L3RkPjwvdHI+CjwvdGFibGU+Cjwvc21hbGw+Cgo=
+private point-to-point connection.
 
---------------Boundary-00=_R0SKULUXFQQMYJ0CCJD0--
+Is this a HIGHMEM problem? Or is it related to jumbo frames? I'll test
+with both disabled.
+
+I'm seeing network errors on the client -- dropped and overruns are both
+the same.
+
+Anything I should try?
+ 
+eric
+
+
+# time dd if=/dev/zero of=file1 bs=1G count=1
+1+0 records in
+1+0 records out
+
+real    0m25.881s
+user    0m0.000s
+sys     0m4.220s
+
+
+(run a program to calloc 1G of RAM and clear some buffer cache)
+
+
+# time dd if=file1  of=/dev/null
+
+2097152+0 records in
+2097152+0 records out
+
+real    13m7.445s
+user    0m0.370s
+sys     0m2.160s
+
+ # ifconfig eth0
+eth0      Link encap:Ethernet  HWaddr 00:02:B3:AC:52:F5
+          inet addr:10.0.0.2  Bcast:10.255.255.255  Mask:255.0.0.0
+          UP BROADCAST RUNNING MULTICAST  MTU:9000  Metric:1
+          RX packets:1534585 errors:10240 dropped:10240 overruns:10240
+frame:0
+          TX packets:5332748 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:100
+          RX bytes:2069590604 (1973.7 Mb)  TX bytes:587855320 (560.6 Mb)
+          Interrupt:12 Base address:0xc000 Memory:ea020000-ea040000
 
 
 -------------------------------------------------------
