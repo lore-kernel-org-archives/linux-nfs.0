@@ -1,24 +1,22 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: [PATCH] xprt sharing (was Re: xprt_bindresvport)
-Date: Thu, 9 Dec 2004 14:44:41 +0100
-Message-ID: <20041209134441.GB11998@suse.de>
-References: <482A3FA0050D21419C269D13989C61130435EC6F@lavender-fe.eng.netapp.com> <41B74551.5040908@sun.com> <20041209113107.GE15055@suse.de> <1102599415.24133.34.camel@lade.trondhjem.org>
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: RE: [PATCH] xprt sharing (was Re: xprt_bindresvport)
+Date: Thu, 9 Dec 2004 06:03:12 -0800
+Message-ID: <482A3FA0050D21419C269D13989C61130435EC79@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Mike Waychison <Michael.Waychison@sun.com>,
-	Charles Lever <Charles.Lever@netapp.com>, nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: "Mike Waychison" <Michael.Waychison@sun.com>, <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CcOb8-0006Gk-4z
-	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 05:44:46 -0800
-Received: from mail-ex.suse.de ([195.135.220.2] helo=Cantor.suse.de)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.41)
-	id 1CcOb6-0007F3-LE
-	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 05:44:46 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1102599415.24133.34.camel@lade.trondhjem.org>
+	id 1CcOt8-0007i2-0P
+	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 06:03:22 -0800
+Received: from mx2.netapp.com ([216.240.18.37])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CcOt4-0000YE-Kt
+	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 06:03:21 -0800
+To: "Olaf Kirch" <okir@suse.de>,
+        "Trond Myklebust" <trond.myklebust@fys.uio.no>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,25 +30,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Dec 09, 2004 at 08:36:55AM -0500, Trond Myklebust wrote:
-> > Shouldn't we allow NFS mounts to use non-privileged ports? Many
-> > environments don't really care about the "security" provided by privileged
-> > ports, but would be more than happy if they can run with a few hundred
-> > NFS mounts
-> 
-> Most AUTH_SYS based models still require it, however I agree that use of
-> strong security makes the privileged port totally redundant.
+> But two separate mounts with separate sockets do not=20
+> serialize (at least they shouldn't).
 
-The Linux auth_sys works fine with unprivileged ports if you allow it to;
-so why shouldn't we make that configurable on the client too? It'd sure
-help some  installations who for some reason or other habe an excessive
-number of exported file systems (see .sig below :).
+there's so much spin locking and BKL activity in both the RPC client and
+the NFS client that effectively, there is significant serialization
+today.
 
-Olaf
--- 
-Olaf Kirch     | Things that make Monday morning interesting, #2:
-okir@suse.de   |        "We have 8,000 NFS mount points, why do we keep
----------------+ 	 running out of privileged ports?"
+> > Note also that we could also create pools of several=20
+> transport sockets=20
+> > per server: the current locking scheme allows for that too.=20
+> That would=20
+> > improve per-request scalability at the same time as it allows us to=20
+> > limit the privileged port usage.
+>=20
+> Yes, that would help scalability a lot.
+
+that's one direction we would like to take after the transport switch
+API is integrated into 2.6.
 
 
 -------------------------------------------------------
