@@ -1,19 +1,18 @@
-From: Matt Schillinger <mschilli@vss.fsi.com>
-Subject: Hanging exports
-Date: 06 May 2003 09:00:25 -0500
+From: Michael Buesch <fsdeveloper@yahoo.de>
+Subject: processes stuck in D state
+Date: Tue, 6 May 2003 16:51:58 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1052229626.12560.50.camel@mosix>
+Message-ID: <200305061652.13280.fsdeveloper@yahoo.de>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from adsl-66-136-174-212.dsl.stlsmo.swbell.net ([66.136.174.212] helo=esds.vss.fsi.com)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19D2x1-0000Pq-00
-	for <nfs@lists.sourceforge.net>; Tue, 06 May 2003 06:57:47 -0700
-Received: from mosix.vss.fsi.com (mosix [198.51.27.89])
-	by esds.vss.fsi.com (8.9.1a/8.9.1) with ESMTP id IAA20205
-	for <nfs@lists.sourceforge.net>; Tue, 6 May 2003 08:57:41 -0500 (CDT)
-To: nfs@lists.sourceforge.net
+Received: from smtp011.mail.yahoo.com ([216.136.173.31])
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19D3ne-0004GL-00
+	for <nfs@lists.sourceforge.net>; Tue, 06 May 2003 07:52:10 -0700
+To: neilb@cse.unsw.edu.au
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,49 +25,38 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I have built an active-active failover solution for NFS with shared
-scsi. Everything about the failover seems to work fine, but I run into
-some occasional problems on nfs service. I do not believe these to be
-related to clustering, as I can experience these problems when there are
-no kind of failover scenario occuring..
+=2D----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-the problem is this:
+Hi!
 
-exportfs hangs sometimes, both when exporting, and unexporting (exportfs
--u). As a note, I do all of my exportfsing on an export basis. I only
-have 1 export listed in /etc/exports, just to ensure that nfs runs at
-bootup. Aside from that, each export directory is manually exportfs'd by
-a script.
+Please take a look at this problem:
 
-Problem 2 is that the nfs server stops responding to clients. Clients
-are solaris 8,6, and irix 6.5. It only seems to be one export that stops
-responding. There are a total of 3 exports on the machine. Only the ONE
-problem export stops functioning. However, the other exports continue to
-work. exportfs -a does nothing.
+[linux-kernel-mailing-list thread]
+http://marc.theaimsgroup.com/?t=3D98639966100003&r=3D1&w=3D2
 
-In both problem scenarios, no log messages (/var/log/messages) appear. 
+thanks.
+Please cc me, as I'm not subscribed to the nfs-list.
 
-I'm baffled. Hopefully, someone has an idea.
+=2D --=20
+Regards Michael B=FCsch
+http://www.8ung.at/tuxsoft
+ 16:28:34 up 20 min,  1 user,  load average: 1.07, 0.97, 0.66
+=2D----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.1 (GNU/Linux)
 
-I am using Redhat 8.0, linux-2.4.18-27.8.0smp kernel (from redhat)
-
-nfs-utils-1.0.1-2
-
-Thanks for your help,
-
--- 
-Matt Schillinger
-
-mschilli@vss.fsi.com
-
-
+iD8DBQE+t8wdoxoigfggmSgRAm5aAJsGJLPe9yUd4sqah4yiU0GsMIAGzACfSa2+
+gAMZvSHQirHmE8yZChpgH/8=3D
+=3Dpka2
+=2D----END PGP SIGNATURE-----
 
 
 
 -------------------------------------------------------
-This sf.net email is sponsored by:ThinkGeek
-Welcome to geek heaven.
-http://thinkgeek.com/sf
+Enterprise Linux Forum Conference & Expo, June 4-6, 2003, Santa Clara
+The only event dedicated to issues related to Linux enterprise solutions
+www.enterpriselinuxforum.com
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
