@@ -1,16 +1,19 @@
-From: Tobias Burnus <tobias.burnus@physik.fu-berlin.de>
-Subject: Setting ACLs via NFS in 2.5
-Date: Tue, 6 May 2003 11:14:37 +0200 (CEST)
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS problems, UMON, missing directories, wrong permissions
+Date: 06 May 2003 13:48:56 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0305061110200.5937-100000@g31.physik.fu-berlin.de>
+Message-ID: <shsr87c70t3.fsf@charged.uio.no>
+References: <200305061042.02405.c.pollmeier@gmx.net>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from up.physik.fu-berlin.de ([160.45.34.5])
+Received: from pat.uio.no ([129.240.130.16])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19CyXX-0003In-00
-	for <nfs@lists.sourceforge.net>; Tue, 06 May 2003 02:15:11 -0700
-To: nfs@lists.sourceforge.net
+	id 19D0wS-0003qa-00
+	for <nfs@lists.sourceforge.net>; Tue, 06 May 2003 04:49:04 -0700
+To: Cajus Pollmeier <c.pollmeier@gmx.net>
+In-Reply-To: <200305061042.02405.c.pollmeier@gmx.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -23,21 +26,29 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+>>>>> " " == Cajus Pollmeier <c.pollmeier@gmx.net> writes:
 
-I'd like to know whether someone is working on porting the code to set
-ACLs via NFS from Andreas Gruenbacher's 2.4 patches to 2.5 (which supports
-ACLs without the need of extra patches).
+     > * Randomly missing directories / shredded permissions
+     >   Either users don't see shared directories contents or have no
+     >   permissions to access them. In fact they have, "id" shows up
+     >   with the correct group membership and "ls -la" shows the
+     >   directory group writable. After logging out and in again,
+     >   everything's fine.
 
-The 2.4 version is available here:
-  http://acl.bestbits.at/pipermail/acl-devel/2003-April/001416.html
-  http://acl.bestbits.at/current/diff/nfsacl-2.4.20-0.8.56.diff.gz
-  http://acl.bestbits.at/download.html#Kernel
+Please note that NFS doesn't support more than 16 groups. If the
+permissions depend on the 17th group as listed by 'id', then it
+probably won't work.
 
-With best regards,
+However that may not be the cause of your problem:
 
-Tobias
+     >   May 6 07:12:59 terminalserver kernel: nsm:
+     >   xdr_encode_mon(0a010002, -1249509120, 67108864, 268435456)
 
+That's interesting. Looks like a pretty nasty stack corruption to
+me. Are you running an Nvidia-tainted kernel by any chance?
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
