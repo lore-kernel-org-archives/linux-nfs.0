@@ -1,23 +1,23 @@
-From: Peter Astrand <peter@cendio.se>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: userspace NFS daemon
-Date: Mon, 6 Sep 2004 21:43:08 +0200 (CEST)
+Date: Mon, 06 Sep 2004 16:08:25 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0409062139180.18897-100000@maggie.lkpg.cendio.se>
-References: <20040906191343.GA859@janus>
+Message-ID: <1094501305.8342.118.camel@lade.trondhjem.org>
+References: <Pine.LNX.4.44.0409062120550.19152-100000@kenzo.iwr.uni-heidelberg.de>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=iso-8859-1
-Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=iso-8859-1
+Cc: Frank van Maarseveen <frankvm@xs4all.nl>, Linux NFS mailing list <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C4POY-0007gk-L3
-	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 12:43:18 -0700
-Received: from cheddar.cendio.se ([193.12.253.77] helo=mail.cendio.se)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1C4POS-0005LS-EU
-	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 12:43:15 -0700
-To: Frank van Maarseveen <frankvm@xs4all.nl>
-In-Reply-To: <20040906191343.GA859@janus>
+	id 1C4PnB-00065D-Qn
+	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 13:08:45 -0700
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
+	id 1C4PnB-0001CQ-0P
+	for nfs@lists.sourceforge.net; Mon, 06 Sep 2004 13:08:45 -0700
+To: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
+In-Reply-To: <Pine.LNX.4.44.0409062120550.19152-100000@kenzo.iwr.uni-heidelberg.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,23 +30,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> > * Can run the MOUNT and NFS protocol on the same TCP port. Very useful 
-> > when tunneling through SSH. 
-> 
-> Suppose I have an ssh tunnel to a system on which I don't have root
-> access. Can I use unfs3 under a non-root id there to export / and
-> below, mount it [as root] locally, such, that I can work under my own
-> uid locally?
+P=E5 m=E5 , 06/09/2004 klokka 15:35, skreiv Bogdan Costescu:
 
-Yes, that works. 
+> As in Unix tradition, there are several ways to achieve the same goal. =20
+> There are people using 'mount -o bind' (like RHEL's diskless booting
+> setup procedure) or hard-links (what I use). But both of these require
+> some maintenance effort in form of scripts and a general cleanliness
+> in handling software updates or new installs. With clusternfs, the
+> files are created in their place with their intended destination in
+> the name and the daemon takes care of the rest... There are people
+> that prefer to concentrate on science rather than system
+> administration. :-)
 
--- 
-Peter Åstrand		Chief Developer
-Cendio			www.thinlinc.com
-Teknikringen 3		www.cendio.se
-583 30 Linköping        Phone: +46-13-21 46 00
+Hey, it's a free world.
 
+However please beware that most of the hacks that worked around the
+non-rfc-compliant behaviours of unfsd are long since gone from the
+kernel and will not be coming back.
 
+Cheers,
+  Trond
 
 
 
