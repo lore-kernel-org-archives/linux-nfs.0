@@ -1,24 +1,17 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: forwarded message from kaostech.com
-Date: Sat, 16 Nov 2002 02:09:01 +0100
+From: "dan carpenter" <error27@email.com>
+Subject: declaring large variables
+Date: Sat, 16 Nov 2002 18:04:20 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15829.39597.928435.465598@helicity.uio.no>
-Reply-To: trond.myklebust@fys.uio.no
+Message-ID: <20021116230420.29059.qmail@email.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="PItH6NV+DO"
+Content-Type: text/plain; charset="iso-8859-1"
+Cc: smatch-kbugs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mons.uio.no ([129.240.130.14])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18CrSL-0002mQ-00
-	for <nfs@lists.sourceforge.net>; Fri, 15 Nov 2002 17:09:05 -0800
-Received: from helicity.uio.no ([129.240.86.21])
-	by mons.uio.no with esmtp (Exim 2.12 #7)
-	id 18CrSI-0006gZ-00
-	for nfs@lists.sourceforge.net; Sat, 16 Nov 2002 02:09:02 +0100
-Received: from trondmy by helicity.uio.no with local (Exim 2.12 #1)
-	id 18CrSI-00082A-00
-	for nfs@lists.sourceforge.net; Sat, 16 Nov 2002 02:09:02 +0100
-To: NFS maillist <nfs@lists.sourceforge.net>
+Received: from 205-158-62-68.outblaze.com ([205.158.62.68] helo=spf0.us4.outblaze.com)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18DBzG-0003Al-00
+	for <nfs@lists.sourceforge.net>; Sat, 16 Nov 2002 15:04:26 -0800
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,49 +24,21 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+I have a project smatch.sf.net that checks the kernel for certain types of errors.  My newest code checks that functions do not declare too much data to fit on the kernel's 8kB stack.  These functions both use up 2.5kB (16512b) so they're probably not a problem.  But it might be worth declaring nfsctl_export as a pointer and using kmalloc to set aside memory.
 
---PItH6NV+DO
-Content-Type: text/plain; charset=us-ascii
-Content-Description: message body text
-Content-Transfer-Encoding: 7bit
+linux-2.5.44/fs/nfsd/nfsctl.c 212 write_export 16512
+linux-2.5.44/fs/nfsd/nfsctl.c 222 write_unexport 16512
 
+Regards,
+dan carpenter
+-- 
+_______________________________________________
+Sign-up for your own FREE Personalized E-mail at Mail.com
+http://www.mail.com/?sr=signup
 
-Whoever is responsible, please would they fix this. I would rather not
-receive these messages every bloody time I post valid patches to a
-Linux NFS patch discussion list.
+Single & ready to mingle? lavalife.com:  Where singles click. Free to Search!
+http://www.lavalife.com/wp.epl?a=2716
 
-Cheers,
-  Trond
-
-
-
---PItH6NV+DO
-Content-Type: message/rfc822
-Content-Description: forwarded message
-Content-Transfer-Encoding: 7bit
-
-Return-path: <nobody@kaostech.com>
-Envelope-to: trond.myklebust@fys.uio.no
-Received: from te-64-146-83-110.transedge.com ([64.146.83.110] helo=kaostech.com)
-	by pat.uio.no with esmtp (Exim 2.12 #7)
-	id 18CrC5-0002yG-00
-	for trond.myklebust@fys.uio.no; Sat, 16 Nov 2002 01:52:18 +0100
-Received: (from nobody@localhost)
-	by kaostech.com (8.11.2/8.11.2) id gAG0j2p27823;
-	Fri, 15 Nov 2002 16:45:02 -0800
-Message-Id: <200211160045.gAG0j2p27823@kaostech.com>
-From: "kaostech.com" <postmaster@kaostech.com>
-To: trond.myklebust@fys.uio.no
-Subject: kaostech.com Mail error
-Date: Fri, 15 Nov 2002 16:45:02 -0800
-
-This is an automatic error response to a message sent to our site. It could not be processed for the following reason:
-
-Message is larger than 30000 bytes
-
---- MailBag, PostNuke E-mail Processor
-
---PItH6NV+DO--
 
 
 -------------------------------------------------------
