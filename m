@@ -1,20 +1,17 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Andrew Ryan <andrewr@nam-shub.com>
 Subject: Re: v3 client generates too many "access" requests
-Date: Tue, 10 Dec 2002 12:05:03 +0100
+Date: Tue, 10 Dec 2002 03:38:07 -0800 (PST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200212101205.03533.trond.myklebust@fys.uio.no>
-References: <m34r9mei56.fsf@zsu.sush.org> <shsy96yci8j.fsf@charged.uio.no> <m3y96yb0o5.fsf@zsu.sush.org>
+Message-ID: <Pine.LNX.4.40.0212100327350.20026-100000@bolt.sonic.net>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Cc: nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net, Istvan Marko <mi@imarko.dhs.org>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mons.uio.no ([129.240.130.14])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18LiCM-0002Bj-00
-	for <nfs@lists.sourceforge.net>; Tue, 10 Dec 2002 03:05:10 -0800
-To: Istvan Marko <mi@imarko.dhs.org>
-In-Reply-To: <m3y96yb0o5.fsf@zsu.sush.org>
+Received: from a.smtp-out.sonic.net ([208.201.224.38])
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18LiiI-0002If-00
+	for <nfs@lists.sourceforge.net>; Tue, 10 Dec 2002 03:38:10 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,23 +24,29 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tuesday 10 December 2002 11:58, Istvan Marko wrote:
+Trond Myklebust wrote:
+> In 2.4.x, the NFSv3 ACCESS call is not fully implemented: it lacks the
+ability
+> to cache results. For this reason it is only used to check for root
+squashing
+> and for those specific cases where the kernel tries to override the
+standard
+> UNIX mode permission checks.
+>
 
-> Thank you Trond, you are right on the mark! But what exactly is going
-> on here? Is this related to root_squash (or the Netapp equivalent)? Is
-> it just ./configure that does something weird or are there other
-> common situations where this "access storm" might get triggered with
-> an NFS mounted /usr?
+Last week when I reported slowness on 2.4.20+NFS_ALL's TCP client you said
+that it was "probably a consequence of the ACCESS patch". It seems like
+the ACCESS patch should make the client run faster. Can you clarify a bit
+under which conditions the client would run faster and which it would run
+slower if the ACCESS patch is installed? In particular is it a benefit to
+run the ACCESS patch if you are mounting without root_squash and
+performing a lot of actions as the root (or perhaps any other) user? I'm
+sure it depends on workload but perhaps there are some general guidelines.
+Thanks!
 
-In 2.4.x, the NFSv3 ACCESS call is not fully implemented: it lacks the ability 
-to cache results. For this reason it is only used to check for root squashing 
-and for those specific cases where the kernel tries to override the standard 
-UNIX mode permission checks.
 
-In 2.5.x, on the other hand, access checking *is* cached.
+andrew
 
-Cheers,
-  Trond
 
 
 -------------------------------------------------------
