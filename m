@@ -1,34 +1,231 @@
-From: Rik van Riel <riel@redhat.com>
-Subject: Re: [NFS] [PATCH] kNFSd: Fixes a problem with inode clean up for
- vxfs
-Date: Wed, 6 Aug 2003 13:08:01 -0400 (EDT)
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <Pine.LNX.4.44.0308061306380.18793-100000@chimarrao.boston.redhat.com>
-References: <3F3128A4.8030305@RedHat.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: NFS Mount Patch: Making NFS over TCP the default
+Date: Wed, 06 Aug 2003 16:25:42 -0400
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <3F316446.3020808@RedHat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Neil Brown <neilb@cse.unsw.edu.au>, <nfs@lists.sourceforge.net>,
-	linux-kernel <linux-kernel@vger.kernel.org>
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: <3F3128A4.8030305@RedHat.com>
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: multipart/mixed;
+ boundary="------------020601020503030005020209"
+Cc: nfs@lists.sourceforge.net, linux-kernel <linux-kernel@vger.kernel.org>
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from pix-525-pool.redhat.com ([66.187.233.200] helo=lacrosse.corp.redhat.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19kUqk-000495-00
+	for <nfs@lists.sourceforge.net>; Wed, 06 Aug 2003 13:25:34 -0700
+To: util-linux@math.uio.no
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, 6 Aug 2003, Steve Dickson wrote:
+This is a multi-part message in MIME format.
+--------------020601020503030005020209
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
 
-> This a patch I've received from Veritas. Supposedly they have
-> already submitted this but I can't seem to find it in any 2.4 trees..
-> 
-> Does anybody recognize this and are there any known issues with it?
 
-It makes me wonder what is so special about vxfs that they need
-to modify GPL code in order for it to work ...
+This patch changes the default transport of NFS mounts
+from UDP to TCP, iff the transport not explicitly
+specified and the server support TCP mounts.
 
-Not that I'm against this change in principle, but I'd just like
-it to be useful for GPL software too, otherwise it'd just be a
-hook for non-GPL software and a fine line to a GPL violation.
+This patch is backwards compatible with servers that
+don't support TCP mounts since it quarries the server
+(which was already happening for the mount version)
+to see if the server support TCP mounts.
 
--- 
-"Debugging is twice as hard as writing the code in the first place.
-Therefore, if you write the code as cleverly as possible, you are,
-by definition, not smart enough to debug it." - Brian W. Kernighan
+
+SteveD.
+
+
+
+
+--------------020601020503030005020209
+Content-Type: text/plain;
+ name="util-linux-2.11y-mount-nfs-v3tcp.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="util-linux-2.11y-mount-nfs-v3tcp.patch"
+
+--- util-linux-2.11y/mount/nfsmount.c.diff	2003-08-05 09:26:14.000000000 -0400
++++ util-linux-2.11y/mount/nfsmount.c	2003-08-05 10:47:41.000000000 -0400
+@@ -133,6 +133,52 @@ find_kernel_nfs_mount_version(void) {
+ 	     nfs_mount_version = NFS_MOUNT_VERSION;
+ 	return nfs_mount_version;
+ }
++static inline struct pmaplist *
++get_pmaps(struct sockaddr_in *addr)
++{
++	static struct pmaplist *phead = NULL;
++	static struct sockaddr_in *lastaddr = NULL;
++
++	/*
++	 * Make sure we are taking to the same server
++	 */
++	if (lastaddr && (addr->sin_addr.s_addr != lastaddr->sin_addr.s_addr))
++		phead = NULL;
++	
++	if (phead == NULL)
++		phead = pmap_getmaps(addr);
++
++	lastaddr = addr;
++	return phead;
++}
++#define NFS_TCP_CAP 0x01
++#define NFS_V3_CAP  0x02
++
++static unsigned short
++get_nfs_caps(struct sockaddr_in *server_addr)
++{
++	struct pmaplist *pmap;
++	unsigned short nfs_caps = 0;
++
++	if ((pmap = get_pmaps(server_addr)) == NULL)
++		return 0;
++
++	do {
++		if (pmap->pml_map.pm_prog == NFS_PROGRAM) {
++			if (pmap->pml_map.pm_prot == IPPROTO_TCP)
++				nfs_caps |= NFS_TCP_CAP;
++			if (pmap->pml_map.pm_vers == 3)
++				nfs_caps |= NFS_V3_CAP;
++			/*
++			 * Check to see if we are finished
++			 */
++			if ((nfs_caps & (NFS_TCP_CAP|NFS_V3_CAP)) == (NFS_TCP_CAP|NFS_V3_CAP))
++				break;
++		}
++	} while ((pmap = pmap->pml_next));
++	
++	return nfs_caps;
++}
+ 
+ static struct pmap *
+ get_mountport(struct sockaddr_in *server_addr,
+@@ -155,7 +201,7 @@ get_mountport(struct sockaddr_in *server
+ 	p.pm_port = port;
+ 
+ 	server_addr->sin_port = PMAPPORT;
+-	pmap = pmap_getmaps(server_addr);
++	pmap = get_pmaps(server_addr);
+ 
+ 	while (pmap) {
+ 		if (pmap->pml_map.pm_prog != prog)
+@@ -230,6 +276,7 @@ int nfsmount(const char *spec, const cha
+ 	time_t t;
+ 	time_t prevt;
+ 	time_t timeout;
++	unsigned short nfs_caps;
+ 
+ 	/* The version to try is either specified or 0
+ 	   In case it is 0 we tell the caller what we tried */
+@@ -443,6 +490,49 @@ int nfsmount(const char *spec, const cha
+ 			}
+ 		}
+ 	}
++
++	/* create mount deamon client */
++	/* See if the nfs host = mount host. */
++	if (mounthost) {
++		if (mounthost[0] >= '0' && mounthost[0] <= '9') {
++			mount_server_addr.sin_family = AF_INET;
++			mount_server_addr.sin_addr.s_addr = inet_addr(hostname);
++		} else {
++			if ((hp = gethostbyname(mounthost)) == NULL) {
++				fprintf(stderr, _("mount: can't get address for %s\n"),
++					mounthost);
++				goto fail;
++			} else {
++				if (hp->h_length > sizeof(struct in_addr)) {
++					fprintf(stderr,
++						_("mount: got bad hp->h_length?\n"));
++					hp->h_length = sizeof(struct in_addr);
++				}
++				mount_server_addr.sin_family = AF_INET;
++				memcpy(&mount_server_addr.sin_addr,
++				       hp->h_addr, hp->h_length);
++			}
++		}
++	}
++	/*
++	 * Set the defaults to be NFS v3 over TCP iff the
++	 * version or transport have not been explicitly
++	 * set and the server is able to support those
++	 * options.
++	 */
++	if (nfsvers == 0 || tcp == 0) {
++		if ((nfs_caps = get_nfs_caps(&mount_server_addr))) {
++			if (nfsvers == 0) {
++				if (nfs_caps & NFS_V3_CAP)
++					nfsvers = 3;
++			}
++			if (tcp == 0) {
++				if (nfs_caps & NFS_TCP_CAP)
++					tcp = 1;
++			}
++		}
++	}
++
+ 	proto = (tcp) ? IPPROTO_TCP : IPPROTO_UDP;
+ 
+ 	data.flags = (soft ? NFS_MOUNT_SOFT : 0)
+@@ -518,29 +608,6 @@ int nfsmount(const char *spec, const cha
+ 		return retval;
+ 	}
+ 
+-	/* create mount deamon client */
+-	/* See if the nfs host = mount host. */
+-	if (mounthost) {
+-		if (mounthost[0] >= '0' && mounthost[0] <= '9') {
+-			mount_server_addr.sin_family = AF_INET;
+-			mount_server_addr.sin_addr.s_addr = inet_addr(hostname);
+-		} else {
+-			if ((hp = gethostbyname(mounthost)) == NULL) {
+-				fprintf(stderr, _("mount: can't get address for %s\n"),
+-					mounthost);
+-				goto fail;
+-			} else {
+-				if (hp->h_length > sizeof(struct in_addr)) {
+-					fprintf(stderr,
+-						_("mount: got bad hp->h_length?\n"));
+-					hp->h_length = sizeof(struct in_addr);
+-				}
+-				mount_server_addr.sin_family = AF_INET;
+-				memcpy(&mount_server_addr.sin_addr,
+-				       hp->h_addr, hp->h_length);
+-			}
+-		}
+-	}
+ 
+ 	/*
+ 	 * The following loop implements the mount retries. On the first
+@@ -675,7 +742,8 @@ int nfsmount(const char *spec, const cha
+ 		if (t >= timeout)
+ 			goto fail;
+ 	}
+-	nfsvers = (pm_mnt->pm_vers < 2) ? 2 : pm_mnt->pm_vers;
++	if (nfsvers == 0)
++		nfsvers = (pm_mnt->pm_vers < 2) ? 2 : pm_mnt->pm_vers;
+ 
+ 	if (nfsvers == 2) {
+ 		if (status.nfsv2.fhs_status != 0) {
+
+
+--------------020601020503030005020209--
+
+
+
+-------------------------------------------------------
+This SF.Net email sponsored by: Free pre-built ASP.NET sites including
+Data Reports, E-commerce, Portals, and Forums are available now.
+Download today and enter to win an XBOX or Visual Studio .NET.
+http://aspnet.click-url.com/go/psa00100003ave/direct;at.aspnet_072303_01/01
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
