@@ -1,15 +1,23 @@
-From: Paul Jakma <paul@clubi.ie>
-Subject: Re: AW: NFS & Clustering
-Date: Thu, 5 Sep 2002 03:06:34 +0100 (IST)
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: rpc.statd port #, and other similar questions
+Date: Thu, 5 Sep 2002 12:29:01 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0209050305540.5230-100000@fogarty.jakma.org>
-References: <Pine.LNX.4.33L2.0209050052260.14079-100000@jeprox.qsr.com.ph>
+Message-ID: <15734.49517.134859.817217@notabene.cse.unsw.edu.au>
+References: <001d01c25437$0f66b940$d281f6cc@WEASEL>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: NFS@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: "Ian C. Sison" <ian.s@qsr.com.ph>
-In-Reply-To: <Pine.LNX.4.33L2.0209050052260.14079-100000@jeprox.qsr.com.ph>
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17mmON-00036Z-00
+	for <nfs@lists.sourceforge.net>; Wed, 04 Sep 2002 19:29:11 -0700
+Received: From
+	notabene.cse.unsw.edu.au ([129.94.233.132] == wireless-132.wireless.cse.unsw.EDU.AU)
+	(for <nw@codon.com>) (for <nfs@lists.sourceforge.net>) By tone With
+	Smtp ; Thu, 5 Sep 2002 12:29:02 +1000
+To: "Steve Wolfe" <nw@codon.com>
+In-Reply-To: message from Steve Wolfe on Wednesday September 4
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -22,22 +30,15 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Thu, 5 Sep 2002, Ian C. Sison wrote:
+On Wednesday September 4, nw@codon.com wrote:
+> 
+>   On a related note, is it possible to make the lock manager to also use a
+> low-numbered port for firewalling purposes?
 
-> And.. drdb works only with kernel 2.2 \8(
-> THat's according to the sourceforge project mailing list..
+Kernel parameters: lockd.udpport=778 lockd.tcpport=778
+Module parameters: nlm_udpport=778 nlm_tcpport=778
 
-what about using GFS / OpenGFS to store /var/lib/nfs?
-
-any tried this, and does it work?
-
-regards,
--- 
-Paul Jakma	paul@clubi.ie	paul@jakma.org	Key ID: 64A2FF6A
-	warning: do not ever send email to spam@dishone.st
-Fortune:
-Each person has the right to take the subway.
-
+NeilBrown
 
 
 -------------------------------------------------------
