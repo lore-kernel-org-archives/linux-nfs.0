@@ -1,21 +1,18 @@
-From: James Pearson <james-p@moving-picture.com>
-Subject: Re: file :"/var/lib/nfs/rmtab"
-Date: Fri, 04 Feb 2005 10:04:17 +0000
-Message-ID: <420348A1.5020804@moving-picture.com>
-References: <20050204050123.69399.qmail@web51610.mail.yahoo.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+From: NeilBrown <neilb@cse.unsw.edu.au>
+Subject: [PATCH kNFSd 12 of 16] nfsd4: acl error fix
+Date: Tue, 22 Mar 2005 16:42:01 +1100
+Message-ID: <E1DDc9R-0002Kq-Tv@notabene.cse.unsw.edu.au>
+References: <20050322163830.8762.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Cx0K6-0004WT-DL
-	for nfs@lists.sourceforge.net; Fri, 04 Feb 2005 02:04:22 -0800
-Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
+	id 1DDc9d-0006kn-5f
+	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:13 -0800
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1Cx0K4-0004jv-Km
-	for nfs@lists.sourceforge.net; Fri, 04 Feb 2005 02:04:22 -0800
-To: mehta kiran <kiranmehta1981@yahoo.com>
-In-Reply-To: <20050204050123.69399.qmail@web51610.mail.yahoo.com>
+	id 1DDc9b-0005eN-Pl
+	for nfs@lists.sourceforge.net; Mon, 21 Mar 2005 21:42:13 -0800
+To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,135 +26,86 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Did you do 'mount -t nfsd nfsd /proc/fs/nfsd' before starting all the 
-nfs daemons?
 
-James Pearson
+When a client sends an ACL that is a legal NFSv4 ACL, but that we don't support
+(because we can't represent it using a POSIX ACL), the correct error to return
+is NFS4ERR_ATTRNOTSUPP.
 
-mehta kiran wrote:
-> I am using 2.6 kernel
-> --- mehta kiran <kiranmehta1981@yahoo.com> wrote:
-> 
-> 
->>Hi , 
->>         if handle supplied by client is sufficient
->>,
->> then why does the problem given below exists.
->>
->>1. export filesystem to client.
->>2. let client allow to mount it.
->>3. remove all entries from rmtab on server.
->>4. restart all nfs daemons.
->>5. Now if client access filesystem , it gets
->>   permission denied error.Client can access
->>   filesystem only after remounting it.
->>6. This show that mountd still uses rmtab to
->>   check if client had mounted filesystem or not.
->>   No entry in rmtab for a client means it has not
->>   mounted filesystem.
->>
->>thanks,
->> --kiran
->>
->>--- Paul Clements <paul.clements@steeleye.com>
->>wrote:
->>
->>
->>>mehta kiran wrote:
->>>
->>>
->>>>Isn't handle supplied by client
->>>>          enough to verify clients access to
->>>>          filesystem.?
->>>
->>>Yes, it should be. That's why in 2.6, the rmtab
->>
->>file
->>
->>>is no longer relied 
->>>upon. Instead, there is a special filesystem,
->>>/proc/fs/nfsd, that allows 
->>>the kernel to communicate with mountd in order to
->>>authenticate 
->>>unrecognized clients automatically.
->>>
->>>--
->>>Paul
->>>
->>>
->>>
->>
-> -------------------------------------------------------
-> 
->>>This SF.Net email is sponsored by: IntelliVIEW --
->>>Interactive Reporting
->>>Tool for open source databases. Create drag-&-drop
->>>reports. Save time
->>>by over 75%! Publish reports on the web. Export to
->>>DOC, XLS, RTF, etc.
->>>Download a FREE copy at
->>>http://www.intelliview.com/go/osdn_nl
->>>_______________________________________________
->>>NFS maillist  -  NFS@lists.sourceforge.net
->>>https://lists.sourceforge.net/lists/listinfo/nfs
->>>
->>
->>
->>
->>	
->>		
->>__________________________________ 
->>Do you Yahoo!? 
->>Yahoo! Mail - You care about security. So do we. 
->>http://promotions.yahoo.com/new_mail
->>
->>
->>
-> 
-> -------------------------------------------------------
-> 
->>This SF.Net email is sponsored by: IntelliVIEW --
->>Interactive Reporting
->>Tool for open source databases. Create drag-&-drop
->>reports. Save time
->>by over 75%! Publish reports on the web. Export to
->>DOC, XLS, RTF, etc.
->>Download a FREE copy at
->>http://www.intelliview.com/go/osdn_nl
->>_______________________________________________
->>NFS maillist  -  NFS@lists.sourceforge.net
->>https://lists.sourceforge.net/lists/listinfo/nfs
->>
-> 
-> 
-> 
-> 
-> 		
-> __________________________________ 
-> Do you Yahoo!? 
-> Meet the all-new My Yahoo! - Try it today! 
-> http://my.yahoo.com 
->  
-> 
-> 
-> 
-> -------------------------------------------------------
-> This SF.Net email is sponsored by: IntelliVIEW -- Interactive Reporting
-> Tool for open source databases. Create drag-&-drop reports. Save time
-> by over 75%! Publish reports on the web. Export to DOC, XLS, RTF, etc.
-> Download a FREE copy at http://www.intelliview.com/go/osdn_nl
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
-> 
+(rfc3530, section 5.11.1: "If the server recieves a request to set an ACE that
+it cannot store, it MUST reject the request with NFS4ERR_ATTRNOTSUPP.  If the
+server receives a request to set an ACE that it can store but cannot enforce,
+the server SHOULD reject the request with NFS4ERR_ATTRNOTSUPP").
 
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
+
+### Diffstat output
+ ./fs/nfsd/nfs4acl.c |    3 +++
+ ./fs/nfsd/nfs4xdr.c |    5 ++++-
+ ./fs/nfsd/vfs.c     |    7 +++++--
+ 3 files changed, 12 insertions(+), 3 deletions(-)
+
+diff ./fs/nfsd/nfs4acl.c~current~ ./fs/nfsd/nfs4acl.c
+--- ./fs/nfsd/nfs4acl.c~current~	2005-03-22 16:36:36.000000000 +1100
++++ ./fs/nfsd/nfs4acl.c	2005-03-22 16:36:36.000000000 +1100
+@@ -93,6 +93,9 @@ deny_mask(u32 allow_mask, unsigned int f
+ 	return ret;
+ }
+ 
++/* XXX: modify functions to return NFS errors; they're only ever
++ * used by nfs code, after all.... */
++
+ static int
+ mode_from_nfs4(u32 perm, unsigned short *mode, unsigned int flags)
+ {
+
+diff ./fs/nfsd/nfs4xdr.c~current~ ./fs/nfsd/nfs4xdr.c
+--- ./fs/nfsd/nfs4xdr.c~current~	2005-03-22 16:35:20.000000000 +1100
++++ ./fs/nfsd/nfs4xdr.c	2005-03-22 16:36:36.000000000 +1100
+@@ -1331,7 +1331,10 @@ nfsd4_encode_fattr(struct svc_fh *fhp, s
+ 		if (bmval0 & FATTR4_WORD0_ACL) {
+ 			if (status == -EOPNOTSUPP)
+ 				bmval0 &= ~FATTR4_WORD0_ACL;
+-			else if (status != 0)
++			else if (status == -EINVAL) {
++				status = nfserr_attrnotsupp;
++				goto out;
++			} else if (status != 0)
+ 				goto out_nfserr;
+ 		}
+ 	}
+
+diff ./fs/nfsd/vfs.c~current~ ./fs/nfsd/vfs.c
+--- ./fs/nfsd/vfs.c~current~	2005-03-22 16:35:20.000000000 +1100
++++ ./fs/nfsd/vfs.c	2005-03-22 16:36:36.000000000 +1100
+@@ -393,7 +393,7 @@ set_nfsv4_acl_one(struct dentry *dentry,
+ 	}
+ out:
+ 	kfree(buf);
+-	return (error);
++	return error;
+ }
+ 
+ int
+@@ -417,7 +417,10 @@ nfsd4_set_nfs4_acl(struct svc_rqst *rqst
+ 		flags = NFS4_ACL_DIR;
+ 
+ 	error = nfs4_acl_nfsv4_to_posix(acl, &pacl, &dpacl, flags);
+-	if (error < 0)
++	if (error == -EINVAL) {
++		error = nfserr_attrnotsupp;
++		goto out;
++	} else if (error < 0)
+ 		goto out_nfserr;
+ 
+ 	if (pacl) {
 
 
 -------------------------------------------------------
-This SF.Net email is sponsored by: IntelliVIEW -- Interactive Reporting
-Tool for open source databases. Create drag-&-drop reports. Save time
-by over 75%! Publish reports on the web. Export to DOC, XLS, RTF, etc.
-Download a FREE copy at http://www.intelliview.com/go/osdn_nl
+SF email is sponsored by - The IT Product Guide
+Read honest & candid reviews on hundreds of IT Products from real users.
+Discover which products truly live up to the hype. Start reading now.
+http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
