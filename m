@@ -1,23 +1,17 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: Can't mount nfs rw
-Date: Thu, 5 Sep 2002 12:34:08 +1000
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: RE: NetApp nfs server support tcp v3 root file system?
+Date: Wed, 4 Sep 2002 20:51:59 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15734.49824.606700.166745@notabene.cse.unsw.edu.au>
-References: <003e01c2543a$0cb85ac0$9300a8c0@gridlock>
+Message-ID: <6440EA1A6AA1D5118C6900902745938E07D54E10@black.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "nfs" <nfs@lists.sourceforge.net>
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17mmTK-0008Jx-00
-	for <nfs@lists.sourceforge.net>; Wed, 04 Sep 2002 19:34:18 -0700
-Received: From
-	notabene.cse.unsw.edu.au ([129.94.233.132] == wireless-132.wireless.cse.unsw.EDU.AU)
-	(for <nlafferty@pennswoods.net>) (for <nfs@lists.sourceforge.net>) By
-	tone With Smtp ; Thu, 5 Sep 2002 12:34:09 +1000
-To: "Nicholas Lafferty" <nlafferty@pennswoods.net>
-In-Reply-To: message from Nicholas Lafferty on Wednesday September 4
+Received: from mx01-a.netapp.com ([198.95.226.53])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17mngd-0002cv-00
+	for <nfs@lists.sourceforge.net>; Wed, 04 Sep 2002 20:52:07 -0700
+To: "'Hua Qin'" <qinhua@poisson.ecse.rpi.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,37 +24,31 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Wednesday September 4, nlafferty@pennswoods.net wrote:
-> I'm having problems getting my diskless clients to mount NFS directories in
-> Read-Write mode. I'm using bpbatch and tftp to transfer the kernel and a
-> ramdisk for the root file system. I pass an initscript to the kernel that
-> mounts the root file system of the server as read-only (mounts on /ro),
-> /home/guest/share mounts as ro2 (read-only), and /home/guest/01 mounts as
-> /rw (read-write). Then init is invoked. The problem is that all of the
-> mounts are read-only.
-> 
-> #Here is what my initscript does for the mounts.
-> mount-t nfs -o nolock,ro,vers=2 $SERVER:/      /ro
-> mount-t nfs -o nolock,ro,vers=2 $SERVER:/home/guest/share      /ro2
-> mount-t nfs -o nolock,rw,vers=2 $SERVER:/home/guest/$ID      /rw
-> 
-> /sbin/init '#'
-> 
-> # Here is my /etc/exports
-> /
-> 192.168.0.0/255.255.255.0(ro,no_root_squash)
-> /home/guest/share       192.168.0.0(ro,no_root,squash)
-> /home/guest/01            192.168.0.0(rw,no_root_squash)
-> /home/guest/02            192.168.0.0(rw,no_root_squash)
-> /home/guest/03            192.168.0.0(rw,no_root_squash)
-> 
-> Any suggestions on some other things to try?
-> 
+hua-
 
+what does linuxB use by default to mount /dev ?  v2?
+have you tried to get a network trace (pktt on
+the filer) to find out more?
 
-perl -i -p -e 's,192.168.0.0\(,192.168.0.0/255.255.255.0\(,' /etc/exports
-
-NeilBrown
+> I have NetApp as a nfs server, and on the NetApp, 
+> /etc/exports  shows the correct configure: /vol/vol0/dev/  
+> anon=0 I can mount /dev from  linuxA using v3 tcp nfs, then I 
+> try to use /dev as root file to boot linuxB, I [Bcan not boot 
+> successfully. I can see it got the ip address from dhcp 
+> server, then after that:
+> 
+> Looking up port of RPC 100003/3 on 172.29.255.1  
+> Looking up port of RPC 100005/3 on 172.29.255.1
+> mount: server 172.29.255.1 not responding, timed out
+> Root-NFS: Server returned error -5 while mounting /dev
+> VFS: Unable to mount root fs via NFS, trying floppy.
+> VFS: Insert root floppy and press ENTER
+> VFS: Cannot open root device "nfs" or 02:00
+> Please append a correct "root=" boot option
+> Kernel panic: VFS: Unable to mount root fs on 02:00
+> 
+> But I can use udp v3 to boot it. so I am wondering, what will 
+> cause this problem, someone has the same setup?
 
 
 -------------------------------------------------------
