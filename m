@@ -1,24 +1,19 @@
-From: Yu Chen <chen@hhmi.umbc.edu>
-Subject: Darwin nfs mounting question?
-Date: Tue, 23 Jul 2002 10:03:56 -0400
+From: =?iso-8859-1?Q?Ragnar_Kj=F8rstad?= <nfs@ragnark.vestdata.no>
+Subject: Re: Darwin nfs mounting question?
+Date: Tue, 23 Jul 2002 16:22:51 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.SGI.4.44.0207230957070.14795-100000@cobalt.hhmi.umbc.edu>
-References: <E17WiTt-0007SF-00@usw-sf-list2.sourceforge.net>
+Message-ID: <20020723162251.A18908@vestdata.no>
+References: <E17WiTt-0007SF-00@usw-sf-list2.sourceforge.net> <Pine.SGI.4.44.0207230957070.14795-100000@cobalt.hhmi.umbc.edu>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=iso-8859-1
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from zinc.hhmi.umbc.edu ([130.85.139.230])
+Received: from stine.vestdata.no ([195.204.68.10])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17X0Gd-00068X-00
-	for <nfs@lists.sourceforge.net>; Tue, 23 Jul 2002 07:03:59 -0700
-Received: from cobalt.hhmi.umbc.edu (cobalt.hhmi.umbc.edu [130.85.139.161])
-	by zinc.hhmi.umbc.edu (8.9.3/8.9.3) with ESMTP id KAA116012
-	for <nfs@lists.sourceforge.net>; Tue, 23 Jul 2002 10:03:57 -0400 (EDT)
-Received: from localhost (chen@localhost)
-	by cobalt.hhmi.umbc.edu (8.9.3/8.9.3) with ESMTP id KAA14828
-	for <nfs@lists.sourceforge.net>; Tue, 23 Jul 2002 10:03:57 -0400 (EDT)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <E17WiTt-0007SF-00@usw-sf-list2.sourceforge.net>
+	id 17X0Z6-0000cE-00
+	for <nfs@lists.sourceforge.net>; Tue, 23 Jul 2002 07:23:04 -0700
+To: Yu Chen <chen@hhmi.umbc.edu>
+In-Reply-To: <Pine.SGI.4.44.0207230957070.14795-100000@cobalt.hhmi.umbc.edu>; from chen@hhmi.umbc.edu on Tue, Jul 23, 2002 at 10:03:56AM -0400
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,36 +26,19 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Dear all;
+On Tue, Jul 23, 2002 at 10:03:56AM -0400, Yu Chen wrote:
+> Dear all;
+>=20
+> I am tring to mount disks over nfs on Darwin, but failed. Any helps wou=
+ld
+> be highly appreciated. Here are my information:
 
-I am tring to mount disks over nfs on Darwin, but failed. Any helps would
-be highly appreciated. Here are my information:
-
-I was able to nfs mount the disk on Darwin when the nfs disk was in XFS
-file system. Then we formated the disk as ReiserFs file system,and changed
-nothing else. The automount seems work fine on Darwin, it doesn't give any
-error message when started, but when I try to 'cd' to the directory, it
-gives me error message saying:" Operation not permitted".
-
-Anyone has any suggestions? Thanks in advance for the helps!
+Possible it's related to the secure/insecure export-options.
 
 
-
-
-
-===========================================
-Yu Chen
-Howard Hughes Medical Institute
-University of Maryland Baltimore County
-1000 Hilltop Circle
-Baltimore, MD 21250
-
-phone: (410)455-6347
-fax: (410)455-1174
-email: chen@hhmi.umbc.edu
-===========================================
-
-
+--=20
+Ragnar Kj=F8rstad
+Big Storage
 
 
 -------------------------------------------------------
