@@ -1,22 +1,23 @@
-From: Bruce Allan <bruce.allan@us.ibm.com>
-Subject: client breaking large synchronous writes into page-sized operations
-Date: Tue, 14 Sep 2004 16:55:11 -0700
+From: Greg Banks <gnb@melbourne.sgi.com>
+Subject: Re: how to force umount when "Device or resource busy"?
+Date: Wed, 15 Sep 2004 11:14:53 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <OF384027ED.2EEEA6E4-ON88256F0F.0081F2A6-88256F0F.0083657E@us.ibm.com>
+Message-ID: <1095210892.3620.347.camel@hole.melbourne.sgi.com>
+References: <AB813470-0682-11D9-9080-000A95C71776@freezone.co.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C7N8u-0004mr-An
-	for nfs@lists.sourceforge.net; Tue, 14 Sep 2004 16:55:24 -0700
-Received: from e31.co.us.ibm.com ([32.97.110.129])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.34)
-	id 1C7N8s-0007BE-RZ
-	for nfs@lists.sourceforge.net; Tue, 14 Sep 2004 16:55:24 -0700
-To: trond.myklebust@fys.uio.no
+	id 1C7OFx-00086v-Vl
+	for nfs@lists.sourceforge.net; Tue, 14 Sep 2004 18:06:45 -0700
+Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
+	id 1C7OFv-0000Je-Ly
+	for nfs@lists.sourceforge.net; Tue, 14 Sep 2004 18:06:44 -0700
+To: ms419@freezone.co.uk
+In-Reply-To: <AB813470-0682-11D9-9080-000A95C71776@freezone.co.uk>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -29,25 +30,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Trond,
+On Wed, 2004-09-15 at 05:17, ms419@freezone.co.uk wrote:
+> How does one unmount when umount doesn't work?
+> 
+> Somehow, I got an NFS / AutoFS mount that just won't unmount.
+> 
 
->From the FAQ, the answer to B9 states:
-Currently the Linux NFS client has a limitation which prevents it from 
-safely generating large synchronous writes. The client breaks large write 
-requests into on-the-wire write operations that are no larger than a 
-single page to guarantee that write requests arrive on the server's disk 
-in byte order (some applications depend on this behavior). Even if you set 
-wsize larger than a page, the client will break any application write 
-request into page-sized NFS write operations to meet this guarantee.
+See the manpage description of the "-l" flag to umount.
 
-I was wondering if you could explain what the limitation is.
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
-Regards,
----
-Bruce Allan  <bruce.allan@us.ibm.com>
-Software Engineer, Linux Technology Center
-IBM Corporation, Beaverton OR
-503-578-4187   IBM Tie-line 775-4187
 
 
 
