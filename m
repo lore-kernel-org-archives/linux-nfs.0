@@ -1,22 +1,16 @@
-From: Scott Leerssen <scott@leerssen.com>
-Subject: Re: nfs root directory security
-Date: 17 Jun 2003 23:38:17 -0400
+From: Emanuel.Quass@temic.com
+Subject: NFS-Swap
+Date: Wed, 18 Jun 2003 10:15:22 +0300
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1055907497.28760.10.camel@lodge.leerssen.com>
-References: <1055888933.16259.54.camel@sleerssen.racemi.com>
-	 <16111.42521.693155.783206@gargle.gargle.HOWL>
-	 <1055904839.28760.4.camel@lodge.leerssen.com>
-	 <16111.57576.494626.387349@gargle.gargle.HOWL>
+Message-ID: <OF20638864.6CDDD739-ONC1256D49.002783D1-C2256D49.0027DCF2@temic.de>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/alternative; boundary="=_alternative 0027DCE6C2256D49_="
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tisch.mail.mindspring.net ([207.69.200.157])
+Received: from letterman.noris.net ([62.128.1.26] ident=root)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19STyX-00047c-00
-	for <nfs@lists.sourceforge.net>; Tue, 17 Jun 2003 20:51:09 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <16111.57576.494626.387349@gargle.gargle.HOWL>
+	id 19SXAQ-0008Or-00
+	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 00:15:39 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,41 +23,36 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, 2003-06-17 at 23:47, Neil Brown wrote:
-> On  June 17, scott@leerssen.com wrote:
-> > 
-> > Here's a specific example.  Let's say you have a data center and use
-> > network attached storage to maintain filesystems for all of your
-> > customers.  Since all customers have access to the NAS, and all have
-> > their own box with root access, it's not too difficult to go poking
-> > around on the NAS to find other folks' stuff.  One obvious way to deal
-> > with this is to have separate exported filesystems for each customer,
-> > however, that becomes a huge maintenance hassle if you have a few
-> > hundred customers.  This feature allows you to maintain all the
-> > filesystems under one NFS root, while hiding the filesystems of other
-> > customers.
-> 
-> 
-> So you want to hide the names from people who don't know them.
-> Sure removing read permission is enough. Without read permission you
-> cannot "ls" and so cannot find the names.
+This is a multipart message in MIME format.
+--=_alternative 0027DCE6C2256D49_=
+Content-Type: text/plain; charset="us-ascii"
 
-The point is that there's nothing stopping the client from them from
-mounting the directory.  The current NFS implementation permits it, and
-it's a lot easier to catch someone repeatedly attempting to find mount
-points than it is to find someone who just attempts to cd into a
-directory below something that they have mount access to.
+Hello all,
 
-> 
-> Alternately just export the subdirectories rather than the parent.
-> Export different subdirectories to different clients.
-> 
+I'm currently working on a diskless cluster and try to swap over NFS. Some 
+time ago there was a patch for this issue but it's only availabel for 
+2.4.18.
+Does anybody know anything about this patch for 2.4.21. (I would like to 
+do it by myself, but due to my lack of C knowlege I can't :-( )
 
-Try maintaining that for a few hundred (heck even a few dozen) clients.
+Thanks in advance
 
--- 
-Scott Leerssen <scott@leerssen.com>
+        Emanuel Quass
 
+--=_alternative 0027DCE6C2256D49_=
+Content-Type: text/html; charset="us-ascii"
+
+
+<br><font size=2 face="sans-serif">Hello all,</font>
+<br>
+<br><font size=2 face="sans-serif">I'm currently working on a diskless cluster and try to swap over NFS. Some time ago there was a patch for this issue but it's only availabel for &nbsp;2.4.18.</font>
+<br><font size=2 face="sans-serif">Does anybody know anything about this patch for 2.4.21. (I would like to do it by myself, but due to my lack of C knowlege I can't :-( )</font>
+<br>
+<br><font size=2 face="sans-serif">Thanks in advance</font>
+<br>
+<br><font size=2 face="sans-serif">&nbsp; &nbsp; &nbsp; &nbsp; Emanuel Quass</font>
+<br>
+--=_alternative 0027DCE6C2256D49_=--
 
 
 -------------------------------------------------------
