@@ -1,20 +1,14 @@
-From: dJu` <dju.ml@wanadoo.fr>
-Subject: nfs hangs up when listing a directory
-Date: Tue, 27 May 2003 09:20:05 +0200
+From: xiyu@800j.com
+Subject: =?GB2312?B?zvewsre/tdiy+tDFz6LN+NDQ0rXIyMPFu7DM4g==?=
+Date: Tue, 27 May 2003 16:58:21 +0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200305270920.05161.dju.ml@wanadoo.fr>
-Reply-To: dju.ml@wanadoo.fr
-Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="us-ascii"
+Message-ID: <E19KaHE-0005R2-00@sc8-sf-list1.sourceforge.net>
+Content-Type: text/html;charset="GB2312"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from smtp3.wanadoo.fr ([193.252.22.25] helo=mwinf0602.wanadoo.fr)
+Received: from [61.150.19.113] (helo=800j.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19KYkT-0001A5-00
-	for <nfs@lists.sourceforge.net>; Tue, 27 May 2003 00:19:53 -0700
-Received: from wyvern.local.dju (unknown [81.48.138.57])
-	by mwinf0602.wanadoo.fr (SMTP Server) with ESMTP id 134575400241
-	for <nfs@lists.sourceforge.net>; Tue, 27 May 2003 09:19:46 +0200 (CEST)
+	id 19KaHE-0005R2-00
+	for <nfs@lists.sourceforge.net>; Tue, 27 May 2003 01:57:48 -0700
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -28,20 +22,35 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello. I have a strange problem, I hope I'm asking for help at the right 
-place. I have a server (named sterenn) sharing a directory to a client. They 
-are running linux. Mounting is fine, but I get a long hang up when I try to 
-list the shared dir, and then it says there are no files in that dir :
+<html>
 
-/myshareddir# ls
-total: 0
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
+<meta name="GENERATOR" content="Microsoft FrontPage 4.0">
+<meta name="ProgId" content="FrontPage.Editor.Document">
+<title>西安房地产信息网</title>
+</head>
 
-What's wrong ? I have portmap running on each side, rpcinfo -p shows the same 
-information from each side, mounting the exported dir seems to work fine, but 
-listing the files (and of course using them) makes the whole thing hang. I 
-have "[kernel] nfs: server sterenn not responding, timed out" in the logs. 
-Did I miss something ? Thanks.
+<body>
 
+<p class="MsoNormal" align="center"><span lang="EN-US" style="font-size:26.0pt;mso-bidi-font-size:12.0pt;mso-fareast-font-family:
+楷体_GB2312;color:fuchsia"><o:p>
+</span><font color="#0000FF" size="7"><a href="http://www.800j.com.cn"><span lang="EN-US" style="mso-bidi-font-size: 12.0pt"> 
+</o:p> 
+ </span></a></font><b><font color="#0000FF" size="7"><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman"><font face="楷体_GB2312">西安房地产信息网</font></span></a></font></b></p>
+
+<p class="MsoNormal" align="center"><font color="#0000FF"><b><font face="楷体_GB2312" size="6"><a href="http://www.800j.com.cn"><span style="mso-bidi-font-size: 12.0pt; mso-ascii-font-family: Times New Roman">www.800j.cc</span></a></font></b></font></p>
+<p align="center">　
+<p align="center"><a href="http://www.800j.com.cn"><img src="huati001.gif" width="321" height="46"></a></p>
+<p align="center"><a href="http://www.800j.com.cn/800j/fclt/djtbbs/show.asp?bID=&amp;RID=4863&amp;ID=4863"><font color="#FF0000" size="4"><b>非典时期买楼该注重什么？</b></font></a></p>
+<p align="center"><a href="http://www.800j.com.cn/800j/fclt/djtbbs/show.asp?bID=&amp;RID=5014&amp;ID=5014"><font color="#FF0000" size="4"><b>谁来评述“世家星城”</b></font></a></p>
+<p align="center"><font color="#FF0000" size="4"><b>.....</b></font></p>
+<p class="MsoNormal" align="center"><b><font color="#FFFF00" face="楷体_GB2312" size="4"><a href="http://http://www.800j.com.cn/800j/fclt/djtbbs/new.asp">我要发言　</a>　　　　　<a href="http://http://www.800j.com.cn/800j/fclt/djtbbs/index.asp">　进入论坛</a></font></b></p>
+<p align="center">　</p>
+
+</body>
+
+</html>
 
 
 -------------------------------------------------------
