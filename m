@@ -1,25 +1,25 @@
-From: "Amir Hermelin" <amir@montilio.com>
-Subject: Mount wsize and sync options
-Date: Wed, 19 May 2004 12:35:37 +0200
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Mount wsize and sync options
+Date: Wed, 19 May 2004 12:11:25 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <00de01c43d8d$0676f980$0f01a8c0@CARTMAN>
+Message-ID: <1084983085.4223.8.camel@lade.trondhjem.org>
+References: <00de01c43d8d$0676f980$0f01a8c0@CARTMAN>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: text/plain; charset=iso-8859-1
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BQNUM-0005ei-Nw
-	for nfs@lists.sourceforge.net; Wed, 19 May 2004 02:35:50 -0700
-Received: from sphere.barak.net.il ([212.150.48.98])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1BQNUM-0004rb-A2
-	for nfs@lists.sourceforge.net; Wed, 19 May 2004 02:35:50 -0700
-Received: from CARTMAN ([62.90.35.123]) by sphere.barak.net.il
-          (InterMail vK.4.04.00.00 201-232-137 license e5bc39f1001e7dfa47fa92d56cd12779)
-          with ESMTP id <20040519093444.DNLS6118.sphere@CARTMAN>
-          for <nfs@lists.sourceforge.net>; Wed, 19 May 2004 12:34:44 +0300
-To: <nfs@lists.sourceforge.net>
+	id 1BQTfI-0004gP-3h
+	for nfs@lists.sourceforge.net; Wed, 19 May 2004 09:11:32 -0700
+Received: from dh132.citi.umich.edu
+	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.30)
+	id 1BQTfH-0005QF-Mh
+	for nfs@lists.sourceforge.net; Wed, 19 May 2004 09:11:31 -0700
+To: Amir Hermelin <amir@montilio.com>
+In-Reply-To: <00de01c43d8d$0676f980$0f01a8c0@CARTMAN>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,22 +32,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
-I run an nfs server (RH9, kernel 2.4.20), and have experienced a =
-behavior
-with the wsize mount option that I have no explanation for. It appears =
-that
-when I use the sync option, the wsize is ignored (in default v3 UDP =
-mount)
-and is always 4k.
+P=E5 on , 19/05/2004 klokka 06:35, skreiv Amir Hermelin:
+> Hi,
+> I run an nfs server (RH9, kernel 2.4.20), and have experienced a behavior
+> with the wsize mount option that I have no explanation for. It appears th=
+at
+> when I use the sync option, the wsize is ignored (in default v3 UDP mount=
+)
+> and is always 4k.
 
-Maybe someone in the group can explain them to me or refer me to the =
-'rules'
-for using wsize and sync.
+It is not ignored, it is just capped at PAGE_SIZE. 2k or 1k will
+therefore work fine...
 
-Thanks,
-Amir.
-
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
