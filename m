@@ -1,17 +1,25 @@
-From: "Emily" <Services@ywzc.net>
-Subject: Boost Your Marketing
-Date: Mon, 19 May 2003 09:06:49 +0800
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: 2.6 Must-fix list from lkml / lse-tech
+Date: Mon, 19 May 2003 13:21:02 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19HZAa-0004cn-00@sc8-sf-list1.sourceforge.net>
-Reply-To: "Emily" <Order@marketingboosting.com>
+Message-ID: <16072.19870.820016.134584@notabene.cse.unsw.edu.au>
+References: <OFD4267944.08E287EF-ON88256D28.007EB712-88256D28.00809B45@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"
+Content-Type: text/plain; charset=us-ascii
+Cc: trond.myklebust@fys.uio.no,
+    nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [218.86.48.172] (helo=ywzc.net)
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19HZAa-0004cn-00
-	for <nfs@lists.sourceforge.net>; Sun, 18 May 2003 18:10:28 -0700
-To: <nfs@lists.sourceforge.net>
+	id 19HbD4-00005I-00
+	for <nfs@lists.sourceforge.net>; Sun, 18 May 2003 20:21:10 -0700
+Received: From
+	notabene.cse.unsw.edu.au ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
+	(for <bruce.allan@us.ibm.com>) (for <trond.myklebust@fys.uio.no>)
+	(for <nfs@lists.sourceforge.net>) By tone With Smtp ;
+	Mon, 19 May 2003 13:20:58 +1000
+To: Bruce Allan <bruce.allan@us.ibm.com>
+In-Reply-To: message from Bruce Allan on Friday May 16
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,50 +32,53 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Friday May 16, bruce.allan@us.ibm.com wrote:
+> 
+> 
+> 
+> 
+> Hi Trond/Neil,
+> 
+> I noticed you guys have been active in the discussions of akpm's 2.6
+> must-fix list, but have not been following it all that closely.  Is there
+> anything on the list w.r.t. NFS that you would like to submit to this email
+> list to call for participation whether it be to request peoples' time to
+> work on outstanding issues, ask for corroborating evidence of issues,
+> testing of experimental patches, or whatever?
+> 
 
-Email Marketing is one of the most effective and inexpensive ways to 
-promote your products and services.
+Thanks for asking.
 
-We offer a complete Email Marketing solution with quality service and the 
-lowest prices. The result is that you will enjoy more success.
+For the server side:
+  There is nothing on the "must-fix" list.
+  The issues that I know of are: 
+    NFSv4 - which is on-going
 
-1. Targeted Email Addresses 
+    rpcsec-gss which needs me to put a bit more time into working with
+      the guys at Umich who are working on this.
 
-We can supply targeted email addresses according to your requirements,
-which are compiled only on your order, such as region / country / field / 
-occupation / Domain Name etc. We will customize your customer email
-addresses.
+    I want to release a new nfs-utils that makes better use of the new
+    functionality in nfsd.  There is a branch of the sourceforge CVS
+    tagged neilb-devel which has most of the code I want to include,
+    but I need to review it and be sure I am happy with it.
+    Testing that would be nice.
+    To enable the new functionality you
+	mount -t nfsd nfsd /proc/fs/nfs
+    Then mountd only ever gives export data to the kernel in response
+    to an up-call. exportfs never gives data to the kernel but might
+    flush the kernel's cache if it sees a need.  With this, a rejuvenated
+    "crossmnt" export option should work:  If you export a directory
+    with "crossmnt" then any filesystems beneath that directory are
+    automatically exported aswell.  
+    Finally, /var/lib/nfs/rmtab is never used and it you remove it and
+    reboot, any current client mounts should continue to work.
 
-* We have millions of email addresses in a wide variety of categories.
+    Finally I have had reports of poor stability with 2.5 nfsd, but I
+    don't have any specific details.  If anyone wants to hammer nfsd
+    nice and hard and tell me lots of details about any negative
+    results, I would appreciate it.
 
-2. Targeted Mailing  
-
-If you are worried about any complications or consequences with sending 
-out targeted emails, or want to avoid the work of sending out targeted 
-emails. We will do it for you! We will send your email message to your 
-targeted customers.
-
-* We can Bullet Proof your Web Site.
-
-We also offer a wide variety of email marketing software. For more details, 
-you can refer to our web site: http://www.biz-aiding.com
-
-Our services will help you get more business opportunities.
-
-
-Regards!
-
-Mrs Emily
-Marketing Services
-www.biz-aiding.com
-
-Targeted Marketing, at Great Fee.
-
-***************************************************************************
-Receiving this email because you registered to receive special 
-offers from one of our partners. If you would prefer not to receive
-future email, Click here: www.unsubscribe-mail.com
-***************************************************************************
+NeilBrown
 
 
 -------------------------------------------------------
