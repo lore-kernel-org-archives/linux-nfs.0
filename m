@@ -1,18 +1,21 @@
-From: "H . J . Lu" <hjl@lucon.org>
-Subject: Re: Re: Proposed changes for init file in nfs-utils
-Date: Sun, 7 Apr 2002 20:10:43 -0700
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: NFS server reports stale handles intermittently
+Date: Mon, 8 Apr 2002 13:12:03 +1000 (EST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020407201043.A17954@lucon.org>
-References: <20020406205304.C2076@ee.duke.edu> <20020407135505.A6580@lucon.org> <15537.823.811512.451102@notabene.cse.unsw.edu.au>
+Message-ID: <15537.2691.713117.44648@notabene.cse.unsw.edu.au>
+References: <009101c1dc62$2510ac80$47426682@csee.uq.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Sean O'Connell <sean@ee.duke.edu>, nfs@lists.sourceforge.net
-Received: from rwcrmhc54.attbi.com ([216.148.227.87])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16uPYU-0000xt-00
-	for <nfs@lists.sourceforge.net>; Sun, 07 Apr 2002 20:10:54 -0700
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <15537.823.811512.451102@notabene.cse.unsw.edu.au>; from neilb@cse.unsw.edu.au on Mon, Apr 08, 2002 at 12:40:55PM +1000
+Cc: <nfs@Lists.sourceforge.net>
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 16uPWn-0000Sm-00
+	for <nfs@lists.sourceforge.net>; Sun, 07 Apr 2002 20:09:09 -0700
+Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
+	(for <c.pascoe@itee.uq.edu.au>) (for <nfs@lists.sourceforge.net>) By
+	tone With Smtp ; Mon, 8 Apr 2002 13:08:59 +1000
+To: "Chris Pascoe" <c.pascoe@itee.uq.edu.au>
+In-Reply-To: message from Chris Pascoe on Friday April 5
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,33 +28,38 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Mon, Apr 08, 2002 at 12:40:55PM +1000, Neil Brown wrote:
-> On Sunday April 7, hjl@lucon.org wrote:
-> > 
-> > I checked a slightly different patch. Please check it out and make
-> > sure I didn't break anything.
+On Friday April 5, c.pascoe@itee.uq.edu.au wrote:
+> Hi,
 > 
-> ...
-> > +	if [ "$TUNE_QUEUE" = "yes" ]; then
-> > + 	    /sbin/sysctl -w net.core.rmem_default=$NFSD_QS >/dev/null 2>&1
-> > +	    /sbin/sysctl -w net.core.rmem_max=$NFSD_QS >/dev/null 2>&1
-> > +	    /sbin/sysctl -w net.core.wmem_default=$NFSD_QS >/dev/null 2>&1
-> > +	    /sbin/sysctl -w net.core.wmem_max=$NFSD_QS >/dev/null 2>&1
-> > +	fi
-> 
-> Though it possibly doesn't hurt, there is nothing to be gained by
-> setting the wmem_{default,max}.
-> Only the rmem needs to be set.  This is because nfsd doesn't take
-> packets off the udp queue until they are completely processed, so the
-> rmem_{default,max} needs to be big enough to hold all currently active
-> requests.
-> 
+> I'm trying to track down problems with NFS exports of a large XFS
+> partition that's only become apparent when the server went into production
+> (of course it didn't show up in 6 months of stability testing!).
 
-I guess I don't have to tell you feel free to make any necessary
-changes :-).
+Isn't that always the way...
+
+> 
+> In my find test, all the stale handles are returned for directories that I
+> have no access to the contents of;
+
+This seems to suggest that the problem happens when nfsd has to do a
+lookup of ".." in a directory as it has to do when you access a
+directory that has fallen out of cache (it has to put it backin cache
+by finding a full path name).
+However the lookup("..") happens below the normal permission checking
+so this shouldn't be a problem.... I had a look at a couple of XFS
+patches and they don't seem to do any extra permission checking so it
+doesn't seem to be that...
 
 
-H.J.
+>                                    however we have seen stale handles
+> returned for binaries that are most definitely accessible to users (like
+> window managers, etc), and mail folders, etc.
+
+If the problem is related to building a patch back to the root, then
+you can remove the problem for non-directories by exporting with
+"no_subtree_check". 
+
+NeilBrown
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
