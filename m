@@ -1,13 +1,17 @@
 From: "Customer Services" <Promotioner@eyou.com>
 Subject: Promote Our Marketing
-Date: Fri, 21 Mar 2003 00:47:55 +0800
+Date: Fri, 21 Mar 2003 00:47:59 +0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E18w3Em-00049w-00@sc8-sf-list1.sourceforge.net>
+Message-ID: <E18w3Eq-0004Af-00@sc8-sf-list1.sourceforge.net>
 Reply-To: "Customer Services" <Order@marketing-promote.com>
 Mime-Version: 1.0
 Content-Type: text/html; charset="ISO-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: <NFS@lists.sourceforge.net>
+Received: from [218.86.41.97] (helo=eyou.com)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18w3Eq-0004Af-00
+	for <nfs@lists.sourceforge.net>; Thu, 20 Mar 2003 08:50:00 -0800
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
