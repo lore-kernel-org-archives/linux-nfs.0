@@ -1,16 +1,22 @@
-From: Santiago <santi@mleads.com>
-Subject: RedHat/Mandrake NFS - not playing nice
-Date: Mon, 17 Feb 2003 09:41:20 -0700
+From: Fabrizio Nesti <nesti@medialab.sissa.it>
+Subject: 2.4.20 TCP server + solaris client performance
+Date: Mon, 17 Feb 2003 18:36:26 +0100 (MET)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3E5110B0.6000002@mleads.com>
-Reply-To: santi@mleads.com
+Message-ID: <Pine.GSO.4.40.0302171823390.26640-100000@bodoni>
+Reply-To: Fabrizio Nesti <nesti@medialab.sissa.it>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [64.92.112.32] (helo=mail.hosting-advantage.com)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18koK2-0001XB-00
-	for <nfs@lists.sourceforge.net>; Mon, 17 Feb 2003 08:40:50 -0800
+Received: from didot.sissa.it ([147.122.2.50])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18kpES-0002f4-00
+	for <nfs@lists.sourceforge.net>; Mon, 17 Feb 2003 09:39:08 -0800
+Received: from bodoni.sissa.it (bodoni [147.122.2.45])
+	by didot.sissa.it (8.9.3+Sun/8.9.3) with ESMTP id SAA16884
+	for <nfs@lists.sourceforge.net>; Mon, 17 Feb 2003 18:38:38 +0100 (MET)
+Received: from localhost (nesti@localhost)
+	by bodoni.sissa.it (8.9.3+Sun/8.9.3) with ESMTP id SAA26784
+	for <nfs@lists.sourceforge.net>; Mon, 17 Feb 2003 18:36:26 +0100 (MET)
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -24,85 +30,41 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello. I usually don't mail lists without joining. Maybe I won't after 
-this either. Here is the problem:
+Hello to everybody.
+we are reporting a very low performance for nfs access from Solaris clients
+to the linux nfs server on RH8.0. We thought it was udp and upgraded to
+kernel 2.4.20.
 
-Export filesytem (/var/www/html) from RedHat 7.3 to Mandrake 9.0 (mount 
-point /tmp/test or /r/amanda/nitro-html) fails with:
+Now the performance is still low, compared to a solaris server:
+	# time gtar xf /var/tmp/cvs-1.11.5.tar
+	Writing on Linux_2.4.20> real    0m22.132s
+	Writing on Solaris_8>    real    0m7.174s
 
-[root@backup amanda]# mount 10.0.0.48:/var/www/html /r/amanda/nitro-html 
--t nfs
-mount: 10.0.0.48:/var/www/html failed, reason given by server: 
-Permission denied
-[root@backup amanda]#
+Both filesystems are mounted with proto=tcp,rsize=32768,wsize=32768.
+Snooping the traffic however, it appears that the linux server is not
+serving with size=32768, but with a maximum size of 8192.
 
-However, there are no problems mounting the exported dir (or any others) 
-on other Redhat machines or debian machines (only unices handy).
+- Is there a reson for this?
+- May this be the reason for the poor performance above?
 
-The RedHat 7.3 is stock everything (stock nfs-utils, stock kernel 
-(non-enterprise)).
-The Mandrake 9.0 is stock distro with kernel 2.4.19-ac4 (custom) with 
-NFS support compiled in.
+Thanks in advance,
+Fabrizio Nesti
 
-/etc/exports:
-/var/www/html 10.0.0.0/255.255.255.0(rw,no_root_squash)
-#/var/lib/mysql/OldMaid 10.0.0.10/255.255.255.0(rw,no_root_squash)
 
-rpcinfo -p (RedHat 7.3):
-[root@chance proc]# rpcinfo -p
-    program vers proto   port
-     100000    2   tcp    111  portmapper
-     100000    2   udp    111  portmapper
-     100024    1   udp  32768  status
-     100024    1   tcp  32768  status
-     391002    2   tcp  32769  sgi_fam
-     100011    1   udp    740  rquotad
-     100011    2   udp    740  rquotad
-     100011    1   tcp    743  rquotad
-     100011    2   tcp    743  rquotad
-     100005    1   udp  32817  mountd
-     100005    1   tcp  32940  mountd
-     100005    2   udp  32817  mountd
-     100005    2   tcp  32940  mountd
-     100005    3   udp  32817  mountd
-     100005    3   tcp  32940  mountd
-     100003    2   udp   2049  nfs
-     100003    3   udp   2049  nfs
-     100021    1   udp  32818  nlockmgr
-     100021    3   udp  32818  nlockmgr
-     100021    4   udp  32818  nlockmgr
-[root@chance proc]#
-
-rpcinfo -p (Mandrake 9.0):
-[root@backup amanda]# rpcinfo -p
-    program vers proto   port
-     100000    2   tcp    111  portmapper
-     100000    2   udp    111  portmapper
-     100011    1   udp    710  rquotad
-     100011    2   udp    710  rquotad
-     100011    1   tcp    713  rquotad
-     100011    2   tcp    713  rquotad
-     100003    2   udp   2049  nfs
-     100021    1   udp  33816  nlockmgr
-     100021    3   udp  33816  nlockmgr
-     100005    1   udp  33817  mountd
-     100005    1   tcp  32805  mountd
-     100005    2   udp  33817  mountd
-     100005    2   tcp  32805  mountd
-[root@backup amanda]#
-
-I have read the howto and googled for mandrake-RH NFS interaction but 
-not found anything of use to this problem. I have disabled ipchains and 
-iptables on both boxes and verfified that nothing is present in the 
-/etc/hosts.allow | /etc/hosts.deny files on either machine.
-
-Like indicated above, the RH export works fine so long as I don't 
-attempt to mount it on a Mandrake box.
-
-TIA,
-
-Santiago
-
+PS: Some snoop traffic:
+...
+  solaris -> linux  NFS C CREATE3 FH=884D (EXCLUSIVE) check_cvs.in
+linux -> solaris    NFS R CREATE3 OK FH=174A
+ solaris -> linux   NFS C SETATTR3 FH=174A
+linux -> solaris    NFS R SETATTR3 OK
+  solaris -> linux  NFS C WRITE3 FH=174A at 0 for 8192 (ASYNC)
+  solaris -> linux  TCP D=2049 S=793 Ack=633960980 Seq=849797604 Len=1460
+  solaris -> linux  TCP D=2049 S=793 Ack=633960980 Seq=849799064 Len=1460
+  solaris -> linux  TCP D=2049 S=793 Ack=633960980 Seq=849800524 Len=1460
+  solaris -> linux  TCP D=2049 S=793 Ack=633960980 Seq=849801984 Len=1460
+  solaris -> linux  TCP D=2049 S=793 Ack=633960980 Seq=849803444 Len=1056
+linux -> solaris    TCP D=793 S=2049 Ack=849804500 Seq=633960980 Len=0
+...
 
 
 
