@@ -1,23 +1,16 @@
-From: Dax Kelson <dax@gurulabs.com>
-Subject: Re: Will NFSv4 be accepted?
-Date: Wed, 14 Aug 2002 19:51:56 -0600 (MDT)
+From: "Kendrick M. Smith" <kmsmith@umich.edu>
+Subject: REPOST patch 02/38: NFSv4 protocol header
+Date: Wed, 14 Aug 2002 16:36:44 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0208141938350.31203-100000@mooru.gurulabs.com>
-References: <1029375327.28240.35.camel@irongate.swansea.linux.org.uk>
+Message-ID: <11674.7233587832$1029376454@news.gmane.org>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: "Kendrick M. Smith" <kmsmith@umich.edu>,
-    "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-    "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>,
-     <beepy@netapp.com>,  <trond.myklebust@fys.uio.no>,
-     <torvalds@transmeta.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail.gurulabs.com ([208.177.141.7] ident=you)
-	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17f9nq-0001MG-00
-	for <nfs@lists.sourceforge.net>; Wed, 14 Aug 2002 18:51:58 -0700
-To: Alan Cox <alan@lxorguk.ukuu.org.uk>
-In-Reply-To: <1029375327.28240.35.camel@irongate.swansea.linux.org.uk>
+Received: from donkeykong.gpcc.itd.umich.edu ([141.211.2.163])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17f4sp-0003GC-00
+	for <nfs@lists.sourceforge.net>; Wed, 14 Aug 2002 13:36:47 -0700
+To: linux-kernel@vger.kernel.org, <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,35 +24,251 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 
-Q for Linus: What's the prospect of adding crypto to the kernel?
+Instantiate a new file, include/linux/nfs4.h, which contains
+constants and typedef's for the NFSv4 protocol (by analogy with
+include/linux/nfs2.h and include/linux/nfs3.h).
 
-(more below)
+Also #include this file in a few places where it will be needed
+later.
 
-On 15 Aug 2002, Alan Cox wrote:
+--- old/fs/nfs/pagelist.c	Thu Aug  1 16:16:20 2002
++++ new/fs/nfs/pagelist.c	Sun Aug 11 19:20:45 2002
+@@ -14,6 +14,7 @@
+ #include <linux/file.h>
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/nfs3.h>
++#include <linux/nfs4.h>
+ #include <linux/nfs_page.h>
+ #include <linux/nfs_fs.h>
+ #include <linux/nfs_flushd.h>
+--- old/include/linux/nfs_fs.h	Thu Aug  1 16:16:19 2002
++++ new/include/linux/nfs_fs.h	Sun Aug 11 19:20:45 2002
+@@ -24,6 +24,7 @@
+ #include <linux/nfs.h>
+ #include <linux/nfs2.h>
+ #include <linux/nfs3.h>
++#include <linux/nfs4.h>
+ #include <linux/nfs_xdr.h>
 
-> Ok item #1 you authenticate with the server and get a cryptographic key
-> for use as credentials. This solves the bad client problem. Kerberos,
-> gssapi etc will do the job
+ /*
+--- old/include/linux/nfs4.h	Wed Dec 31 18:00:00 1969
++++ new/include/linux/nfs4.h	Sun Aug 11 19:20:45 2002
+@@ -0,0 +1,205 @@
++/*
++ *  include/linux/nfs4.h
++ *
++ *  NFSv4 protocol definitions.
++ *
++ *  Copyright (c) 2002 The Regents of the University of Michigan.
++ *  All rights reserved.
++ *
++ *  Kendrick Smith <kmsmith@umich.edu>
++ *  Andy Adamson   <andros@umich.edu>
++ */
++
++#ifndef _LINUX_NFS4_H
++#define _LINUX_NFS4_H
++
++#define NFS4_VERIFIER_SIZE	8
++#define NFS4_FHSIZE		128
++#define NFS4_MAXNAMLEN		NAME_MAX
++
++#define NFS4_ACCESS_READ        0x0001
++#define NFS4_ACCESS_LOOKUP      0x0002
++#define NFS4_ACCESS_MODIFY      0x0004
++#define NFS4_ACCESS_EXTEND      0x0008
++#define NFS4_ACCESS_DELETE      0x0010
++#define NFS4_ACCESS_EXECUTE     0x0020
++
++#define NFS4_FH_PERISTENT		0x0000
++#define NFS4_FH_NOEXPIRE_WITH_OPEN	0x0001
++#define NFS4_FH_VOLATILE_ANY		0x0002
++#define NFS4_FH_VOL_MIGRATION		0x0004
++#define NFS4_FH_VOL_RENAME		0x0008
++
++#define NFS4_OPEN_RESULT_CONFIRM 0x0002
++
++#define NFS4_SHARE_ACCESS_READ	0x0001
++#define NFS4_SHARE_ACCESS_WRITE	0x0002
++#define NFS4_SHARE_ACCESS_BOTH	0x0003
++
++#define NFS4_SET_TO_SERVER_TIME	0
++#define NFS4_SET_TO_CLIENT_TIME	1
++
++#define NFS4_ACE_ACCESS_ALLOWED_ACE_TYPE 0
++#define NFS4_ACE_ACCESS_DENIED_ACE_TYPE  1
++#define NFS4_ACE_SYSTEM_AUDIT_ACE_TYPE   2
++#define NFS4_ACE_SYSTEM_ALARM_ACE_TYPE   3
++
++typedef char nfs4_verifier[NFS4_VERIFIER_SIZE];
++typedef char nfs4_stateid[16];
++
++enum nfs_opnum4 {
++	OP_ACCESS = 3,
++	OP_CLOSE = 4,
++	OP_COMMIT = 5,
++	OP_CREATE = 6,
++	OP_DELEGPURGE = 7,
++	OP_DELEGRETURN = 8,
++	OP_GETATTR = 9,
++	OP_GETFH = 10,
++	OP_LINK = 11,
++	OP_LOCK = 12,
++	OP_LOCKT = 13,
++	OP_LOCKU = 14,
++	OP_LOOKUP = 15,
++	OP_LOOKUPP = 16,
++	OP_NVERIFY = 17,
++	OP_OPEN = 18,
++	OP_OPENATTR = 19,
++	OP_OPEN_CONFIRM = 20,
++	OP_OPEN_DOWNGRADE = 21,
++	OP_PUTFH = 22,
++	OP_PUTPUBFH = 23,
++	OP_PUTROOTFH = 24,
++	OP_READ = 25,
++	OP_READDIR = 26,
++	OP_READLINK = 27,
++	OP_REMOVE = 28,
++	OP_RENAME = 29,
++	OP_RENEW = 30,
++	OP_RESTOREFH = 31,
++	OP_SAVEFH = 32,
++	OP_SECINFO = 33,
++	OP_SETATTR = 34,
++	OP_SETCLIENTID = 35,
++	OP_SETCLIENTID_CONFIRM = 36,
++	OP_VERIFY = 37,
++	OP_WRITE = 38,
++};
++
++/*
++ * Note: NF4BAD is not actually part of the protocol; it is just used
++ * internally by nfsd.
++ */
++enum nfs_ftype4 {
++	NF4BAD		= 0,
++        NF4REG          = 1,    /* Regular File */
++        NF4DIR          = 2,    /* Directory */
++        NF4BLK          = 3,    /* Special File - block device */
++        NF4CHR          = 4,    /* Special File - character device */
++        NF4LNK          = 5,    /* Symbolic Link */
++        NF4SOCK         = 6,    /* Special File - socket */
++        NF4FIFO         = 7,    /* Special File - fifo */
++        NF4ATTRDIR      = 8,    /* Attribute Directory */
++        NF4NAMEDATTR    = 9     /* Named Attribute */
++};
++
++enum open_claim_type4 {
++	NFS4_OPEN_CLAIM_NULL = 0,
++	NFS4_OPEN_CLAIM_PREVIOUS = 1,
++	NFS4_OPEN_CLAIM_DELEGATE_CUR = 2,
++	NFS4_OPEN_CLAIM_DELEGATE_PREV = 3
++};
++
++enum opentype4 {
++	NFS4_OPEN_NOCREATE = 0,
++	NFS4_OPEN_CREATE = 1
++};
++
++enum createmode4 {
++	NFS4_CREATE_UNCHECKED = 0,
++	NFS4_CREATE_GUARDED = 1,
++	NFS4_CREATE_EXCLUSIVE = 2
++};
++
++enum limit_by4 {
++	NFS4_LIMIT_SIZE = 1,
++	NFS4_LIMIT_BLOCKS = 2
++};
++
++enum open_delegation_type4 {
++	NFS4_OPEN_DELEGATE_NONE = 0,
++	NFS4_OPEN_DELEGATE_READ = 1,
++	NFS4_OPEN_DELEGATE_WRITE = 2
++};
++
++/* Mandatory Attributes */
++#define FATTR4_WORD0_SUPPORTED_ATTRS    (1)
++#define FATTR4_WORD0_TYPE               (1 << 1)
++#define FATTR4_WORD0_FH_EXPIRE_TYPE     (1 << 2)
++#define FATTR4_WORD0_CHANGE             (1 << 3)
++#define FATTR4_WORD0_SIZE               (1 << 4)
++#define FATTR4_WORD0_LINK_SUPPORT       (1 << 5)
++#define FATTR4_WORD0_SYMLINK_SUPPORT    (1 << 6)
++#define FATTR4_WORD0_NAMED_ATTR         (1 << 7)
++#define FATTR4_WORD0_FSID               (1 << 8)
++#define FATTR4_WORD0_UNIQUE_HANDLES     (1 << 9)
++#define FATTR4_WORD0_LEASE_TIME         (1 << 10)
++#define FATTR4_WORD0_RDATTR_ERROR       (1 << 11)
++
++/* Recommended Attributes */
++#define FATTR4_WORD0_ACL                (1 << 12)
++#define FATTR4_WORD0_ACLSUPPORT         (1 << 13)
++#define FATTR4_WORD0_ARCHIVE            (1 << 14)
++#define FATTR4_WORD0_CANSETTIME         (1 << 15)
++#define FATTR4_WORD0_CASE_INSENSITIVE   (1 << 16)
++#define FATTR4_WORD0_CASE_PRESERVING    (1 << 17)
++#define FATTR4_WORD0_CHOWN_RESTRICTED   (1 << 18)
++#define FATTR4_WORD0_FILEHANDLE         (1 << 19)
++#define FATTR4_WORD0_FILEID             (1 << 20)
++#define FATTR4_WORD0_FILES_AVAIL        (1 << 21)
++#define FATTR4_WORD0_FILES_FREE         (1 << 22)
++#define FATTR4_WORD0_FILES_TOTAL        (1 << 23)
++#define FATTR4_WORD0_FS_LOCATIONS       (1 << 24)
++#define FATTR4_WORD0_HIDDEN             (1 << 25)
++#define FATTR4_WORD0_HOMOGENEOUS        (1 << 26)
++#define FATTR4_WORD0_MAXFILESIZE        (1 << 27)
++#define FATTR4_WORD0_MAXLINK            (1 << 28)
++#define FATTR4_WORD0_MAXNAME            (1 << 29)
++#define FATTR4_WORD0_MAXREAD            (1 << 30)
++#define FATTR4_WORD0_MAXWRITE           (1 << 31)
++#define FATTR4_WORD1_MIMETYPE           (1)
++#define FATTR4_WORD1_MODE               (1 << 1)
++#define FATTR4_WORD1_NO_TRUNC           (1 << 2)
++#define FATTR4_WORD1_NUMLINKS           (1 << 3)
++#define FATTR4_WORD1_OWNER              (1 << 4)
++#define FATTR4_WORD1_OWNER_GROUP        (1 << 5)
++#define FATTR4_WORD1_QUOTA_HARD         (1 << 6)
++#define FATTR4_WORD1_QUOTA_SOFT         (1 << 7)
++#define FATTR4_WORD1_QUOTA_USED         (1 << 8)
++#define FATTR4_WORD1_RAWDEV             (1 << 9)
++#define FATTR4_WORD1_SPACE_AVAIL        (1 << 10)
++#define FATTR4_WORD1_SPACE_FREE         (1 << 11)
++#define FATTR4_WORD1_SPACE_TOTAL        (1 << 12)
++#define FATTR4_WORD1_SPACE_USED         (1 << 13)
++#define FATTR4_WORD1_SYSTEM             (1 << 14)
++#define FATTR4_WORD1_TIME_ACCESS        (1 << 15)
++#define FATTR4_WORD1_TIME_ACCESS_SET    (1 << 16)
++#define FATTR4_WORD1_TIME_BACKUP        (1 << 17)
++#define FATTR4_WORD1_TIME_CREATE        (1 << 18)
++#define FATTR4_WORD1_TIME_DELTA         (1 << 19)
++#define FATTR4_WORD1_TIME_METADATA      (1 << 20)
++#define FATTR4_WORD1_TIME_MODIFY        (1 << 21)
++#define FATTR4_WORD1_TIME_MODIFY_SET    (1 << 22)
++
++#define NFSPROC4_NULL 0
++#define NFSPROC4_COMPOUND 1
++#define NFS4_MINOR_VERSION 0
++#define NFS4_DEBUG 1
++
++#endif
++
++/*
++ * Local variables:
++ *  c-basic-offset: 8
++ * End:
++ */
+--- old/include/linux/nfsd/const.h	Thu Aug  1 16:16:29 2002
++++ new/include/linux/nfsd/const.h	Sun Aug 11 19:20:45 2002
+@@ -12,6 +12,7 @@
+ #include <linux/nfs.h>
+ #include <linux/nfs2.h>
+ #include <linux/nfs3.h>
++#include <linux/nfs4.h>
 
-Right, I do understand that Kerberized/GSS NFS is not exclusive to NFSv4.  
-However, right now, there is only one way to get Kerberized NFS. The CITI
-NFSv4 patches.
-
-Those patches are, in their estimation, ready for inclusion.  NFSv3 
-support is "coming down the pipeline". 
-
-I would rather see Kerberos V5 NFS data integrity and privacy support
-first (also in the pipeline).  What the current status of including crypto
-in the kernel?
-
-> Item #2 is a bug in our NFS page cache handling. Its not legal in NFS to
-> assume we can share caches between processes unless they have the same
-> NFS credentials for the query. 
-
-I wasn't aware of this.
-
-Thanks,
-Dax
+ /*
+  * Maximum protocol version supported by knfsd
 
 
 
