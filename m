@@ -1,17 +1,17 @@
-From: "Emily" <Saleslister@peoplemail.com.cn>
-Subject: Re:
-Date: Tue, 13 May 2003 17:43:33 +0800
+From: James Pearson <james-p@moving-picture.com>
+Subject: Spam in the NFS list
+Date: Tue, 13 May 2003 11:43:28 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E19FWMw-0007sb-00@sc8-sf-list1.sourceforge.net>
-Reply-To: "Emily" <Order@marketingboosting.com>
+Message-ID: <3EC0CC50.C2D6BD62@moving-picture.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"
+Content-Type: text/plain; charset=us-ascii
+Cc: hjl@gnu.org
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [218.86.47.66] (helo=peoplemail.com.cn)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19FWMw-0007sb-00
-	for <nfs@lists.sourceforge.net>; Tue, 13 May 2003 02:46:48 -0700
-To: <nfs@lists.sourceforge.net>
+Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19FXGQ-00033l-00
+	for <nfs@lists.sourceforge.net>; Tue, 13 May 2003 03:44:06 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,50 +24,13 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+I'm getting more and more spam that's sent to this list (not a great
+amount at the moment, but it's not likely to reduce) - is there anything
+that can be done to prevent this happening by the list administrators?
 
-Email Marketing is one of the most effective and inexpensive ways to 
-promote your products and services.
+Thanks
 
-We offer a complete Email Marketing solution with quality service and the 
-lowest prices. The result is that you will enjoy more success.
-
-1. Targeted Email Addresses 
-
-We can supply targeted email addresses according to your requirements,
-which are compiled only on your order, such as region / country / field / 
-occupation / Domain Name etc. We will customize your customer email
-addresses.
-
-* We have millions of email addresses in a wide variety of categories.
-
-2. Targeted Mailing  
-
-If you are worried about any complications or consequences with sending 
-out targeted emails, or want to avoid the work of sending out targeted 
-emails. We will do it for you! We will send your email message to your 
-targeted customers.
-
-* We can Bullet Proof your Web Site.
-
-We also offer a wide variety of email marketing software. For more details, 
-you can refer to our web site: http://www.biz-aiding.com
-
-Our services will help you get more business opportunities.
-
-
-Regards!
-
-Barbara Clayton
-Marketing Services
-www.biz-aiding.com
-
-Targeted Marketing, at Great Fee.
-
-***************************************************************************
-Receiving this email because you registered to receive special 
-offers from one of our partners. If you would prefer not to receive
-future email, Click here: www.unsubscribe-mail.com
-***************************************************************************
+James Pearson
 
 
 -------------------------------------------------------
