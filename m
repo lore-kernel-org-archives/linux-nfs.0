@@ -1,20 +1,23 @@
-From: Michael <mogmios@mlug.missouri.edu>
-Subject: auto-discovery of exports?
-Date: Wed, 07 Apr 2004 01:03:33 -0700
+From: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
+Subject: Re: Pb of optimization for a Cluster under Gigabit
+Date: Wed, 7 Apr 2004 13:40:47 +0200 (CEST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <4073B5D5.3050507@mlug.missouri.edu>
+Message-ID: <Pine.LNX.4.44.0404071339080.25211-100000@kenzo.iwr.uni-heidelberg.de>
+References: <40737404.7000401@ece.gatech.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BB82U-0004Aq-6k
-	for nfs@lists.sourceforge.net; Wed, 07 Apr 2004 01:04:02 -0700
-Received: from 100m.mpr200-1.esr.lvcm.net ([24.234.0.78] ident=mirapoint)
+	id 1BBBQP-0000Jt-IE
+	for nfs@lists.sourceforge.net; Wed, 07 Apr 2004 04:40:57 -0700
+Received: from relay2.uni-heidelberg.de ([129.206.210.211])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1BB82U-0004GG-3V
-	for nfs@lists.sourceforge.net; Wed, 07 Apr 2004 01:04:02 -0700
-To: nfs@lists.sourceforge.net
+	id 1BBBQP-0000FG-4I
+	for nfs@lists.sourceforge.net; Wed, 07 Apr 2004 04:40:57 -0700
+To: Didier CONTIS <didier@ece.gatech.edu>
+In-Reply-To: <40737404.7000401@ece.gatech.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -27,17 +30,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Windows with the SFU add-on, allowing it to work as an NFS client, 
-manages to scan my network for NFS servers and then show the exported 
-filesystem under each of those servers. How could I implement the same 
-thing in Linux?
+On Tue, 6 Apr 2004, Didier CONTIS wrote:
 
-I ask because I want to write a program that autoscans my network for 
-certain files (images, music, video) that are readable and displays them 
-in a nice viewer to the user without needing to go searching for them. I 
-want the system to be flexible enough that it can allow machines to be 
-plugged in and out of the network and still detect those shared files 
-when available without any effort by the user.
+> Would anyone have any suggestions or recommendations ? Should
+> I switch rsize / wsize to 1024 ?
+
+If the network cards and switch allow it, you could try first using 
+Jumbo (9k) Ethernet frames; in such a setup, the 8k NFS packets would 
+most likely travel unfragmented between server and clients.
+
+-- 
+Bogdan Costescu
+
+IWR - Interdisziplinaeres Zentrum fuer Wissenschaftliches Rechnen
+Universitaet Heidelberg, INF 368, D-69120 Heidelberg, GERMANY
+Telephone: +49 6221 54 8869, Telefax: +49 6221 54 8868
+E-mail: Bogdan.Costescu@IWR.Uni-Heidelberg.De
+
 
 
 -------------------------------------------------------
