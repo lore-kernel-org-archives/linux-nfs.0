@@ -1,18 +1,17 @@
-From: "Gordon Luk" <gluk@Sequoiabroadband.com>
-Subject: RE: Multiple threads, hard-linking performance problem
-Date: Mon, 7 Apr 2003 14:53:23 -0700
+From: "Virtual Conversations®" <lists@virtualconversations.com>
+Subject: Speak Spanish with a native Hispanic!
+Date: Mon, 07 Apr 2003 17:49:01
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <B1F7BA1946751D4E8FD46319D2306E1C0766CC@mail.sequoiabroadband.com>
+Message-ID: <36039.230056531$1049752381@news.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="utf-8"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: multipart/related;
+  boundary="----=_NextPart_TRRJKKSWCT"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from vpn.sequoiabroadband.com ([12.164.235.93] helo=mail.Sequoiabroadband.com)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 192eMZ-0001ZB-00
-	for <nfs@lists.sourceforge.net>; Mon, 07 Apr 2003 14:41:11 -0700
-To: "Lever, Charles" <Charles.Lever@netapp.com>
+Received: from smtp.virtualconversations.com ([66.7.6.110] helo=mail.sourceforge.net)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 192eUE-0004jo-00
+	for <nfs@lists.sourceforge.net>; Mon, 07 Apr 2003 14:49:06 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,102 +24,45 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-SGkgQ2hhcmxlcywNCg0KQmFzZWQgdXBvbiB0aGUgdGVzdGluZyBJIHBlcmZvcm1lZCBsYXN0IHdl
-ZWssIGhlcmUgd2VyZSB0aGUgcmVzdWx0cyBJIHNhdzoNCg0KUmVkdWNpbmcgdGhlIHdzaXplIGFu
-ZCByc2l6ZSB0byA0ayBhcGllY2UgZGlkIG5vdCBpbXByb3ZlIHBlcmZvcm1hbmNlIHNpZ25pZmlj
-YW50bHkuIA0KDQpIb3dldmVyLCByZWR1Y2luZyB0aGUgd3NpemUvcnNpemUgdG8gNGsgYXMgd2Vs
-bCBhcyBydW5uaW5nIHRoZSBrZXJuZWwgMi40LjIxLXByZTYgb24gYm90aCBuZnMgY2xpZW50IGFu
-ZCBzZXJ2ZXJzIGRyYXN0aWNhbGx5IGltcHJvdmVkIHRoZSBwZXJmb3JtYW5jZSB0byBhY2NlcHRh
-YmxlIGxldmVscyBmb3IgdGhlc2UgbGFyZ2UgbnVtYmVycyBvZiBzbWFsbCBoYXJkLWxpbmsgdHJh
-bnNhY3Rpb25zLiBJIGFsc28gcmFuIGEgdGVzdCB3aXRoIG9ubHkgdGhlIE5GUyBjbGllbnQgbWFj
-aGluZSB1cGdyYWRlZCB0byB0aGlzIG5ld2VyIGtlcm5lbCwgd2hpY2ggc2VlbWVkIHRvIGFsc28g
-cHJvZHVjZSBtdWNoIGJldHRlciBwZXJmb3JtYW5jZSBsZXZlbHMuIEkgZGlkIG5vdCB0ZXN0IFRD
-UCwgYmVjYXVzZSB0aGUgY29ubmVjdGlvbnMgYmV0d2VlbiB0aGUgbWFjaGluZXMgd2VyZSBhbGwg
-Z2lnYWJpdCwgYW5kIEkgZGlkIG5vdCBub3RpY2UgYW55IHNpZ25pZmljYW50IG5ldHdvcmsgY29s
-bGlzaW9ucyB0aHJvdWdoIHRoZSBjb3Vyc2Ugb2YgdGhlIHRlc3QsIGFuZCB0aGUgZXhpc3Rpbmcg
-cmVzdWx0cyB3ZXJlIGVub3VnaCB0byBjb252aW5jZSBtZSB0aGF0IGEga2VybmVsIGNoYW5nZSB3
-YXMgYSBzb2x1dGlvbi4NCg0KVW5mb3J0dW5hdGVseSBmb3IgdXMsIGFmdGVyIHVwZ3JhZGluZyB0
-aGUga2VybmVsLCB3ZSBoYWQgc29tZSBwcm9ibGVtcyB3aXRoIFdlYlNwaGVyZSA0LjAzLCBzbyAg
-d2UgbWF5IG5vdCBiZSBhYmxlIHRvIHVzZSB0aGlzIHNvbHV0aW9uIGluIHByb2R1Y3Rpb24gZW52
-aXJvbm1lbnRzIHdpdGhvdXQgZnVydGhlciB0ZXN0aW5nLiBCdXQgaXQncyBnb29kIHRvIGtub3cg
-dGhhdCB0aGUgbmV3ZXIga2VybmVsIGZpeGVzIHRoZSBoYXJkLWxpbmsgcGVyZm9ybWFuY2UgcHJv
-YmxlbXMgd2Ugb2JzZXJ2ZWQuIFRoYW5rcyBmb3IgeW91ciBhc3Npc3RhbmNlLA0KDQpHb3Jkb24g
-THVrDQoNCg0KLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCkZyb206IExldmVyLCBDaGFybGVz
-IFttYWlsdG86Q2hhcmxlcy5MZXZlckBuZXRhcHAuY29tXQ0KU2VudDogVGh1cnNkYXksIE1hcmNo
-IDI3LCAyMDAzIDk6NDIgQU0NClRvOiBHb3Jkb24gTHVrDQpDYzogbmZzQGxpc3RzLnNvdXJjZWZv
-cmdlLm5ldA0KU3ViamVjdDogUkU6IFtORlNdIE11bHRpcGxlIHRocmVhZHMsIGhhcmQtbGlua2lu
-ZyBwZXJmb3JtYW5jZSBwcm9ibGVtDQoNCg0KaGkgZ29yZG9uLQ0KDQp5b3VyIHByb2JsZW0gbWF5
-IGJlIHJlbGF0ZWQgdG8gdXNpbmcgVURQLiAgeW91IHByb2JhYmx5DQpuZWVkIFVEUCBiZWNhdXNl
-IHlvdSBydW4gYWdhaW5zdCBhIExpbnV4IHNlcnZlciByZWxlYXNlDQp0aGF0IGRvZXNuJ3Qgc3Vw
-cG9ydCBUQ1AuDQoNCnRyeSByZWR1Y2luZyB5b3VyIHJzaXplL3dzaXplIHRvIDhLIG9yIDRLLg0K
-DQppIHN1c3BlY3QgdGhpcyBpcyB0aGUgcHJvYmxlbSBiZWNhdXNlIHlvdSBjbGFpbSB0aGF0DQpz
-aW1pbGFyIHRlc3RzIHJ1biBxdWlja2x5IGFnYWluc3QgbG9jYWwgZmlsZXMuDQoNCnVubGVzcyB5
-b3UgaGF2ZSBhIHN1cHBvcnQgY29udHJhY3QgdGhhdCBjb25zdHJhaW5zIHlvdSwNCmFsc28gdHJ5
-IGJ1aWxkaW5nIDIuNC4yMS1wcmU1IGZvciB5b3VyIGNsaWVudHMuDQoNCj4gLS0tLS1PcmlnaW5h
-bCBNZXNzYWdlLS0tLS0NCj4gRnJvbTogR29yZG9uIEx1ayBbbWFpbHRvOmdsdWtAU2VxdW9pYWJy
-b2FkYmFuZC5jb21dIA0KPiBTZW50OiBUaHVyc2RheSwgTWFyY2ggMjcsIDIwMDMgMTI6MTggUE0N
-Cj4gVG86IG5mc0BsaXN0cy5zb3VyY2Vmb3JnZS5uZXQNCj4gU3ViamVjdDogW05GU10gTXVsdGlw
-bGUgdGhyZWFkcywgaGFyZC1saW5raW5nIHBlcmZvcm1hbmNlIHByb2JsZW0NCj4gDQo+IA0KPiBI
-aSwNCj4gIA0KPiBJJ20gc2VlaW5nIGEgcGVyZm9ybWFuY2UgcHJvYmxlbSB3aXRoIGNyZWF0aW5n
-IGh1bmRyZWRzIG9mIA0KPiBoYXJkIGxpbmtzIHRocm91Z2ggbXVsdGlwbGUgdGhyZWFkcywgb2Nj
-YXNpb25hbGx5IHdoaWxlIGxhcmdlIA0KPiBmaWxlIHdyaXRlcyBhcmUgZ29pbmcgb24uIEZpcnN0
-IGknbGwgZXhwbGFpbiBteSBjb25maWd1cmF0aW9uIA0KPiBhbmQgdGhlbiBnZXQgaW50byB0aGUg
-cHJvYmxlbS4NCj4gIA0KPiBORlMgU2VydmVyOg0KPiBSZWRIYXQgTGludXggNy4yLCBrZXJuZWwg
-Mi40LjE4LTI2LjcNCj4gSUJNIHgzMzUgMi4wR2h6IGNwdSwgMUdCIFJBTQ0KPiBHaWdhYml0IGV0
-aGVybmV0DQo+IERpc2sgaW5mbzoNCj4gSUJNIEVYUDMwMCB3aXRoIDE0IFVsdHJhMzIwIFNDU0kg
-c3BpbmRsZXMsIElCTSBTZXJ2ZVJBSUQtNCg/KSANCj4gcnVubmluZyBSQUlELTEwLCBjaHVuayBz
-aXplIDY0ayBzaW5nbGUgZXh0MyBwYXJ0aXRpb24gbW91bnRlZCANCj4gcncsbm9hdGltZSBleHBv
-cnRlZCBhcyBydyxub19yb290X3NxdWFzaCBuZnN2Mw0KPiAgDQo+IE5GUyBDbGllbnQ6DQo+IFJl
-ZEhhdCBMaW51eCA3LjIsIGtlcm5lbCAyLjQuMTgtMjYuNyANCj4gSUJNIHgzNjAgNHgxLjZHaHog
-Y3B1LCAxR0IgUkFNDQo+IEdpZ2FiaXQgZXRoZXJuZXQgY29ubmVjdGlvbiB0byBORlMgU2VydmVy
-DQo+IG1vdW50cyBuZnMgcGFydGl0aW9uIGFzIHJ3LGhhcmQsaW50cixyc2l6ZT0zMjc2OCx3c2l6
-ZT0zMjc2OA0KPiBuZnN2Mw0KPiAgDQo+IFVzYWdlIGJlaGF2aW9yOg0KPiBUaGUgTkZTIGNsaWVu
-dCByZWFkcyBmcm9tIGEgc2VwYXJhdGUgTkZTIG1vdW50IChzYW1lIG5mcyANCj4gcGFyYW1ldGVy
-cywgaWRlbnRpY2FsIGRyaXZlcyBleGNlcHQgZm9yIHRoZSBub2F0aW1lKSBhbmQgd2lsbCANCj4g
-ZG8gdGhlIGZvbGxvd2luZyB0aHJvdWdoIHRoZSBhZm9yZW1lbnRpb25lZCBORlMgbW91bnQ6DQo+
-IDEpIE11bHRpcGxlIHRocmVhZHMgKGNvbnNpZGVyIDMgbWF4KSBjaGVja2luZyBmaWxlIGV4aXN0
-ZW5jZSANCj4gYW5kIHRpbWVzdGFtcCwgYW5kIGRvaW5nIGEgZmlsZSBjb3B5IHRocm91Z2ggSmF2
-YSBmaWxlIGNvcHkuDQo+IDIpIE11bHRpcGxlIHRocmVhZHMgKGNvbnNpZGVyIDMgbWF4KSBjcmVh
-dGluZyBzb2Z0IGxpbmsgdG8gDQo+IGZpbGVzIGNyZWF0ZWQgYnkgIzENCj4gMykgTXVsdGlwbGUg
-dGhyZWFkcyAoY29uc2lkZXIgMyBtYXgpIGNyZWF0aW5nIGh1bmRyZWRzIA0KPiAoMjAwLDYwMCwy
-MDAwIGZvciBleGFtcGxlKSBoYXJkIGxpbmtzIHRvIHRoaXMgc29mdCBsaW5rLiBJJ20gDQo+IGF3
-YXJlIG9mIHBvcnRhYmlsaXR5IGNvbmNlcm5zIHdpdGggdGhpcyBiZWhhdmlvci4gVGhlc2UgbGlu
-a3MgDQo+IGFyZSBjcmVhdGVkLCAyIHBlciBzdWJkaXJlY3RvcnkgaW4gYSBkaXJlY3RvcnkgdHJl
-ZSB3aXRoIA0KPiBodW5kcmVkcyBvZiBkaXJlY3RvcmllcyAoNTAwLCAxNTAwLCA1MDAwIGNvcnJl
-c3BvbmRpbmcgdG8gdGhlIA0KPiBhYm92ZSBleGFtcGxlKS4NCj4gIA0KPiBTdGF0aXN0aWNzOg0K
-PiBBbGwgdGVzdHMgZG9uZSB3aXRoIDEuNDZHQiBmaWxlOg0KPiBMb2NhbCBFWFAzMDAgdG8gRVhQ
-MzAwIGZpbGUgY29weSAtIDQ4LjkxIHNlYw0KPiBDb3B5IGZyb20gTkZTIENsaWVudCdzIGxvY2Fs
-IGRyaXZlIHRvIE5GUyBzaGFyZSAtIDY4LjIzIHNlYyANCj4gQ29weSBiZXR3ZWVuIE5GUyBDbGll
-bnQncyAyIG1vdW50ZWQgTkZTIHBhcnRpdGlvbnMgKG9uIA0KPiBkaWZmZXJlbnQgc2VydmVycykg
-LSAxMjAgc2VjIFNhbWUgYXMgYWJvdmUsIGJ1dCB3aXRoIG5vYXRpbWUgDQo+IG9uIE5GUyBTZXJ2
-ZXIncyBleHBvcnRlZCBwYXJ0aXRpb24gLSAxMDIgc2VjIEphdmEgZmlsZSBjb3B5IA0KPiB0aHJv
-dWdocHV0IGJldHdlZW4gMiBtb3VudGVkIHBhcnRpdGlvbnMgKGFsb25nIHdpdGggb3RoZXIgDQo+
-IHByb2Nlc3Npbmcgb3ZlcmhlYWQpIDE1MCBzZWMNCj4gIA0KPiBJc3N1ZSBkZXNjcmlwdGlvbjoN
-Cj4gIA0KPiBXaGlsZSAjMSBhbmQgIzIgYXJlIGdvaW5nIGluIHRoZSBiYWNrZ3JvdW5kLCAjMyAt
-IGxpbmtpbmcgMjAwIA0KPiBmaWxlcyBhcHBlYXJlZCB0byB0YWtlIGFwcHJveC4gNyBtaW51dGVz
-IHBlciB0aHJlYWQuIFRoaXMgaXMgDQo+IGFwcHJveCA4NCBoYXJkIGxpbmtzIGNyZWF0ZWQgcGVy
-IG1pbnV0ZSB3aXRoIDMgY29uY3VycmVudCANCj4gdGhyZWFkcywgd2hpY2ggc2VlbXMgbGlrZSBh
-IHBvc3NpYmxlIGlzc3VlLiBHb2luZyBkaXJlY3RseSB0byANCj4gdGhlIGZpbGVzeXN0ZW0gYW5k
-IGNyZWF0aW5nIGhhcmQgbGlua3MgbWFudWFseSBhcHBlYXJlZCB0byBiZSANCj4gZmFzdCwgYW5k
-IGFuIGV4dHJlbWVseSBzbG93ICJscyIgY29tbWFuZCBmcm9tIHRoZSBORlMgY2xpZW50IA0KPiBv
-biB0aGUgTkZTLW1vdW50ZWQgcGFydGl0aW9uIGFwcGVhcmVkIHRvIGJlIHNsb3cuDQo+ICANCj4g
-QW5vdGhlciB0ZXN0LCB3aXRoICMxIGF0IDIgdGhyZWFkcywgIzIgYXQgMyB0aHJlYWRzLCBhbmQg
-IzMgDQo+IGF0IDUgdGhyZWFkcywgd2l0aCA2MDAgbGlua3MgcGVyIHRocmVhZCByZXZlYWxlZCBh
-Ym91dCAyMC0yNSANCj4gbWludXRlcyBwZXIgdGhyZWFkIHRvIGNvbXBsZXRlIHdpdGggNSBjb25j
-dXJyZW50IHRocmVhZHMuIA0KPiBUaGlzIHN0aWxsIHNlZW1zIGxvdyB0byBtZS4NCj4gIA0KPiBJ
-IGhhdmUgcmVhZCB0aHJvdWdoIHRoZSBtYWlsaW5nIGxpc3QgYXJjaGl2ZXMsIGFuZCBhIGNvdXBs
-ZSANCj4gb2YgdGhlIG5vdGVzIHNlZW1lZCBhcyBpZiB0aGV5IG1heSBoYXZlIHJlbGV2YW5jZSB0
-byB0aGlzIA0KPiBpc3N1ZS4gSW4gcGFydGljdWxhciwgcG9vciBoYW5kbGluZyBvZiBsYXJnZSBu
-dW1iZXJzIG9mIHNtYWxsIA0KPiBmaWxlcyBieSBleHQzLCBhbmQgYWxzbyBBbGFuIFBvd2VsbCdz
-IHBvc3QgYWJvdXQgZXh0MyANCj4gZGlyZWN0b3J5IGluZGV4aW5nOiANCj4gaHR0cDovL3NvdXJj
-ZWZvcmdlLm5ldC9tYWlsYXJjaGl2ZS9mb3J1bS5waHA/dGhyZWFkX2lkPTE2NzEzMDkNCiZmb3J1
-bV9pZD00OTMwDQogDQpJIG1heSBjb25zaWRlciB0cnlpbmcgWEZTIG9yIFJlaXNlckZTIG91dCBv
-ZiBjdXJpb3NpdHksIGJ1dCBzaW5jZSB0aGlzIGFyY2hpdGVjdHVyZSB3aWxsIHNvb24gY2hhbmdl
-LCBJIGp1c3Qgd2FzIHdvbmRlcmluZyBpZiB0aGVyZSB3ZXJlIGFueSBvYnZpb3VzIGNvbmZpZ3Vy
-YXRpb24gY2hhbmdlcyBJIHNob3VsZCBtYWtlLCBhbmQgYWxzbyB0aG91Z2h0IHRoYXQgaXQgbWln
-aHQgYmUgZ29vZCB0byBzaGFyZSB0aGlzIGV4cGVyaWVuY2Ugd2l0aCB0aGUgbGlzdC4NCiANClRo
-YW5rcywNCiANCkdvcmRvbiBMdWsNClN5c3RlbSBBZG1pbmlzdHJhdG9yDQpTZXF1b2lhIEJyb2Fk
-YmFuZCwgSW5jLg0KaHR0cDovL3d3dy5zZXF1b2lhYnJvYWRiYW5kLmNvbQ0KDQo=
+This is an HTML email message.  If you see this, your mail client does not support HTML messages.
+
+------=_NextPart_TRRJKKSWCT
+Content-Type: text/html;charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+
+<DIV class=Section1>
+<TABLE class=MsoNormalTable style="MARGIN-LEFT: 1in; WIDTH: 412.5pt; mso-cellspacing: 0in; mso-padding-alt: 0in 0in 0in 0in" height=758 cellSpacing=0 cellPadding=0 width=550 border=0>
+<TBODY>
+<TR style="HEIGHT: 14.25pt; mso-yfti-irow: 0" height=19>
+<TD style="PADDING-RIGHT: 0.75pt; PADDING-LEFT: 0.75pt; BACKGROUND: white 0% 50%; PADDING-BOTTOM: 0.75pt; WIDTH: 100%; PADDING-TOP: 0.75pt; HEIGHT: 14.25pt" width="100%" bgColor=white height=19>
+<P align=center><SPAN style="mso-bidi-font-family: Arial"><FONT face=Tahoma size=1>Help stop the misuse of email addresses</FONT><FONT face=verdana,sans-serif color=#444444 size=1>. </FONT><FONT face=Tahoma size=1>If you consider this to be spam,</FONT><FONT face=Tahoma color=#ffffff size=1> </FONT></SPAN><A href="mailto:remove@virtualconversations.com?subject=Remove"><FONT face=Tahoma color=#ff0000 size=1><B>tell us</B></FONT></A><SPAN style="mso-bidi-font-family: Arial"><FONT size=1>.</FONT></SPAN> </P></TD></TR>
+<TR style="HEIGHT: 90.75pt; mso-yfti-irow: 1" height=121>
+<TD style="PADDING-RIGHT: 0.75pt; PADDING-LEFT: 0.75pt; BACKGROUND: black 0% 50%; PADDING-BOTTOM: 0.75pt; WIDTH: 100%; PADDING-TOP: 0.75pt; HEIGHT: 90.75pt" width="100%" bgColor=black height=121>
+<P style="MARGIN: 0in 0in 0pt; TEXT-ALIGN: center" align=center><FONT face="Times New Roman" size=3><SPAN style="FONT-SIZE: 12pt">&nbsp;</SPAN></FONT></P>
+<P style="MARGIN: 0in 0in 0pt; TEXT-ALIGN: center" align=center><B><I><SPAN style="FONT-WEIGHT: bold; COLOR: white; FONT-STYLE: italic"><FONT face=Tahoma color=white size=2><IMG height=100 hspace=5 src="http://www.idrama.com/images/GHandRoberto.jpg" width=133 align=left border=0 v:shapes="_x0000_i1025"></FONT></SPAN><FONT face=Tahoma color=white size=4><SPAN style="FONT-WEIGHT: bold; FONT-SIZE: 13.5pt; COLOR: white; FONT-STYLE: italic; FONT-FAMILY: Tahoma">Speak Spanish with a native Hispanic!&nbsp;</SPAN></FONT></I></B></P>
+<P style="MARGIN: 0in 0in 0pt; TEXT-ALIGN: center" align=center>&nbsp;</P>
+<P style="MARGIN: 0in 0in 0pt; TEXT-ALIGN: center" align=center><B><FONT face=Tahoma color=white size=2><SPAN style="FONT-WEIGHT: bold; FONT-SIZE: 10pt; COLOR: white; FONT-FAMILY: Tahoma">Virtual Conversations<SUP>®</SUP> Technology: &nbsp;</SPAN></FONT></B></P>
+<P style="MARGIN: 0in 0in 0pt; TEXT-ALIGN: center" align=center><B style="mso-bidi-font-weight: normal"><FONT face=Tahoma color=white size=2><SPAN style="FONT-WEIGHT: bold; FONT-SIZE: 10pt; COLOR: white; FONT-FAMILY: Tahoma; mso-bidi-font-weight: normal">The illusion of a natural conversation with a real person.</SPAN></FONT></B></P>
+<P style="MARGIN: 0in 0in 0pt; TEXT-ALIGN: center" align=center><FONT face="Times New Roman" size=3><SPAN style="FONT-SIZE: 12pt">&nbsp;</SPAN></FONT></P></TD></TR>
+<TR style="HEIGHT: 347.25pt; mso-yfti-irow: 2" height=463>
+<TD style="PADDING-RIGHT: 0.75pt; PADDING-LEFT: 0.75pt; BACKGROUND: white 0% 50%; PADDING-BOTTOM: 0.75pt; WIDTH: 100%; PADDING-TOP: 0.75pt; HEIGHT: 347.25pt" width="100%" bgColor=white height=463>
+<P style="TEXT-ALIGN: center" align=center><B><U><FONT face=Tahoma color=red size=2><SPAN style="FONT-WEIGHT: bold; FONT-SIZE: 10pt; COLOR: red; FONT-FAMILY: Tahoma"><A href="http://idrama.com/Roberto_LP.htm">Virtual Conversations</A></SPAN></FONT></U></B><FONT face=Tahoma><SPAN style="FONT-FAMILY: Tahoma"><A href="http://idrama.com/Roberto_LP.htm"><FONT size=1><SPAN style="FONT-SIZE: 7.5pt">®</SPAN></FONT><B><FONT size=2><SPAN style="FONT-WEIGHT: bold; FONT-SIZE: 10pt"> Roberto's Restaurant</SPAN></FONT></B></A></SPAN></FONT><B><FONT face=Tahoma size=2><SPAN style="FONT-WEIGHT: bold; FONT-SIZE: 10pt; FONT-FAMILY: Tahoma"> is a role-playing<FONT color=navy><SPAN style="COLOR: navy">,&nbsp;<BR></SPAN></FONT>educational experience with the Spanish<FONT color=navy><SPAN style="COLOR: navy"> </SPAN></FONT>language<FONT color=navy><SPAN style="COLOR: navy">.</SPAN></FONT></SPAN></FONT></B><B><FONT face=Tahoma><SPAN style="FONT-WEIGHT: bold; FONT-FAMILY: Tahoma"> </SPAN></FONT></B>
+ </P>
+<P class=MsoNormal style="MARGIN: 0in 7.5pt 0pt" align=left><FONT face=Tahoma size=2><SPAN style="FONT-SIZE: 10pt; FONT-FAMILY: Tahoma">This is the <B style="mso-bidi-font-weight: normal"><I><SPAN style="FONT-WEIGHT: bold; FONT-STYLE: italic; mso-bidi-font-weight: normal">only</SPAN></I></B> language product that allows <B style="mso-bidi-font-weight: normal"><I style="mso-bidi-font-style: normal"><SPAN style="FONT-WEIGHT: bold; FONT-STYLE: italic; mso-bidi-font-weight: normal; mso-bidi-font-style: normal">you</SPAN></I></B> to conduct a continuous, face-to-face,<B><SPAN style="FONT-WEIGHT: bold"> </SPAN></B><SPAN style="mso-bidi-font-weight: bold">natural<B><SPAN style="FONT-WEIGHT: bold"> </SPAN></B>conversation in Spanish</SPAN> with a native Hispanic, which could last for over an hour.</SPAN></FONT></P>
+<P style="MARGIN: 5pt 7.5pt" align=left><FONT size=2><IMG height=80 hspace=5 src="http://idrama.com/images/robertocover.jpg" width=80 align=left border=0 v:shapes="_x0000_s1026"></FONT><B><FONT face=Tahoma size=2><SPAN style="FONT-WEIGHT: bold; FONT-SIZE: 10pt; FONT-FAMILY: Tahoma">Learn to speak Spanish by talking to Roberto.</SPAN></FONT></B><FONT face=Tahoma size=2><SPAN style="FONT-SIZE: 10pt; FONT-FAMILY: Tahoma">&nbsp; This is <I><SPAN style="FONT-STYLE: italic">the natural<B><SPAN style="FONT-WEIGHT: bold"> </SPAN></B></SPAN></I>way to learn a language.&nbsp; It's also fun, easy, and incredibly effective!&nbsp; You can practice speaking, listening to, and understanding Spanish right at your computer through your virtual dialogue with Roberto, the charismatic owner of a Mexican restaurant. <B><SPAN style="FONT-WEIGHT: bold">Ask him questions in Spanish and he will answer you</SPAN></B>--or <I style="mso-bidi-font-style: normal"><U><SPAN style="FONT-STYLE: italic; mso-bi
+ di-font-style: normal">he</SPAN></U></I> will ask <I style="mso-bidi-font-style: normal"><U><SPAN style="FONT-STYLE: italic; mso-bidi-font-style: normal">you</SPAN></U></I> questions and expect an answer.<SPAN style="mso-spacerun: yes">&nbsp; </SPAN>The give-and-take conversation with Roberto seems so real you will feel like you've actually met him.<SPAN style="mso-spacerun: yes">&nbsp; </SPAN>And, by practicing with him, you will <B><SPAN style="FONT-WEIGHT: bold">gain confidence to speak Spanish in real-life situations</SPAN></B>.</SPAN></FONT></P>
+<P style="MARGIN: 5pt 7.5pt" align=left><FONT face=Tahoma size=2><SPAN style="FONT-SIZE: 10pt; FONT-FAMILY: Tahoma">Your interaction with Roberto can last for over an hour, and you can replicate it, in whole or in part, again and again.<SPAN style="mso-spacerun: yes">&nbsp; </SPAN>Virtual Conversations</SPAN></FONT><FONT face=Tahoma size=1><SPAN style="FONT-SIZE: 7.5pt; FONT-FAMILY: Tahoma">®</SPAN></FONT><FONT face=Tahoma size=2><SPAN style="FONT-SIZE: 10pt; FONT-FAMILY: Tahoma"> logic assures that the <I style="mso-bidi-font-style: normal"><SPAN style="FONT-STYLE: italic; mso-bidi-font-style: normal">flow</SPAN></I> of every conversation you have with him will be different.</SPAN></FONT> </P>
+<P style="MARGIN: 5pt 7.5pt" align=left><FONT face=Tahoma size=2><SPAN style="FONT-SIZE: 10pt; FONT-FAMILY: Tahoma">If you purchase this program and periodically "talk" with Roberto, your vocabulary will increase, your pronunciation will improve, and you will feel more confident speaking Spanish.</SPAN></FONT></P>
+<P class=MsoNormal style="TEXT-ALIGN: center" align=center><B><FONT face=Tahoma size=2><SPAN style="FONT-WEIGHT: bold; FONT-SIZE: 10pt; FONT-FAMILY: Tahoma">Specially priced at <A href="http://idrama.com/Roberto_LP.htm">$39.95</A></SPAN><SPAN style="FONT-WEIGHT: bold; FONT-SIZE: 10pt; FONT-FAMILY: Tahoma">.<BR>Click <A href="http://idrama.com/Roberto_LP.htm">here</A> to see virtual dialogue in action and&nbsp;<BR>learn more about this remarkable educational program.</SPAN></FONT></B></P>
+<P class=MsoNormal style="TEXT-ALIGN: center" align=center><FONT face=Tahoma size=2><SPAN style="FONT-SIZE: 10pt; FONT-FAMILY: Tahoma">&nbsp;</SPAN></FONT></P></TD></TR>
+<TR style="HEIGHT: 94.5pt; mso-yfti-irow: 3; mso-yfti-lastrow: yes" height=126>
+<TD style="PADDING-RIGHT: 0.75pt; PADDING-LEFT: 0.75pt; BACKGROUND: black 0% 50%; PADDING-BOTTOM: 0.75pt; WIDTH: 100%; PADDING-TOP: 0.75pt; HEIGHT: 94.5pt" width="100%" bgColor=black height=126>
+<P style="TEXT-ALIGN: center" align=center><B><FONT face=Tahoma color=white size=2><SPAN style="FONT-WEIGHT: bold; FONT-SIZE: 10pt; COLOR: white; FONT-FAMILY: Tahoma">We apologize if this announcement has reached you by mistake.<BR></SPAN></FONT></B><FONT face=Tahoma size=1><SPAN style="mso-bidi-font-family: Arial"><FONT color=#ffffff><BR>Our intent is to bring you valuable information about Virtual Conversations. Technology,&nbsp;<BR></FONT></SPAN></FONT><SPAN style="FONT-SIZE: 7.5pt; COLOR: white; FONT-FAMILY: Tahoma"><FONT face=Tahoma color=white size=1>including interviews with notable experts and other important people<SPAN style="FONT-SIZE: 7.5pt; COLOR: white; FONT-FAMILY: Tahoma">,</SPAN><SPAN style="mso-spacerun: yes">&nbsp;</SPAN></FONT></SPAN><FONT face=Tahoma size=1><SPAN style="mso-bidi-font-family: Arial"><FONT color=#ffffff>unless you wish to </FONT></SPAN><FONT color=#ffffff><A href="mailto:remove@virtualconversations.com?subject=Remove&amp;body=Please%20send%
+ 20this%20email%20to%20our%20automated%20removal%20system;%20your%20removal%20request%20will%20be%20processed%20upon%20receipt.%20If%20you%20receive%20an%20additional%20mailing,%20it%20is%20due%20to%20system%20overlap."><B>opt-out</B></A><SPAN style="mso-bidi-font-family: Arial">.&nbsp;<BR>If you do not use the </SPAN><A href="mailto:remove@virtualconversations.com?subject=Remove&amp;body=Please%20send%20this%20email%20to%20our%20automated%20removal%20system;%20your%20removal%20request%20will%20be%20processed%20upon%20receipt.%20If%20you%20receive%20an%20additional%20mailing,%20it%20is%20due%20to%20system%20overlap."><B>opt-out</B></A> <SPAN style="mso-bidi-font-family: Arial">link, we will not know that you wish to be removed.<BR>Please allow up to 72 hours for your request to take effect. </SPAN>Please do not reply to this message.</FONT></FONT><SPAN style="FONT-SIZE: 7.5pt; COLOR: white; FONT-FAMILY: Tahoma"><FONT face=Tahoma color=white size=1><BR><SPAN style="mso-spacer
+ un: yes"><BR></SPAN>We respect your privacy and we NEVER sell or share addresses.</FONT></SPAN></P></TD></TR></TBODY></TABLE>
+<P class=MsoNormal><FONT face="Times New Roman" size=3><SPAN style="FONT-SIZE: 12pt"><?xml:namespace prefix = o ns = "urn:schemas-microsoft-com:office:office" /><o:p>&nbsp;</o:p></SPAN></FONT></P></DIV>
+------=_NextPart_TRRJKKSWCT--
+
 
 
 -------------------------------------------------------
