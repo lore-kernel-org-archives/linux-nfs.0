@@ -1,30 +1,30 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: File systems mounted "-o intr"
-Date: Mon, 9 Feb 2004 16:34:18 +0100
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Re: [PATCH] kNFSd - 2 of 5 - ip_map_init does a kmalloc which isn't checked...
+Date: Mon, 9 Feb 2004 16:51:51 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040209153418.GC19863@suse.de>
+Message-ID: <20040209215151.GE2776@fieldses.org>
+References: <20040206161050.27799.patches@notabene> <E1AoyIo-0007FS-00@notabene> <20040207012423.396efe73.akpm@osdl.org> <20040208043723.GC13391@fieldses.org> <20040207214637.387d3018.akpm@osdl.org> <20040208055921.GA14053@fieldses.org> <20040208203018.GA27482@fieldses.org> <20040209093206.429ffb7e.akpm@osdl.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="HcAYCG3uE/tztfnV"
+Content-Type: text/plain; charset=us-ascii
+Cc: neilb@cse.unsw.edu.au, nfs@lists.sourceforge.net,
+	Philippe =?iso-8859-1?Q?Gramoull=E9?= <philippe.gramoulle@mmania.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-list1-b.sourceforge.net ([10.3.1.7] helo=sc8-sf-list1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AqLdv-0006rG-Uu
-	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 16:20:47 -0800
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+	id 1AqM0j-0005LA-7W
+	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 16:44:21 -0800
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 4.30)
-	id 1AqDQV-00059c-Ub
-	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 07:34:23 -0800
-Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1AqJJx-0005ax-ND
+	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 13:52:01 -0800
+Received: from dsl093-002-214.det1.dsl.speakeasy.net
+	([66.93.2.214] helo=pumpkin.fieldses.org ident=Debian-exim)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
 	(Exim 4.30)
-	id 1AqDQV-0006y0-AA
-	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 07:34:23 -0800
-Received: from hermes.suse.de (Hermes.suse.de [195.135.221.8])
-	(using TLSv1 with cipher EDH-RSA-DES-CBC3-SHA (168/168 bits))
-	(No client certificate requested)
-	by Cantor.suse.de (Postfix) with ESMTP id 80BF218A92D
-	for <nfs@lists.sourceforge.net>; Mon,  9 Feb 2004 16:34:18 +0100 (CET)
-To: nfs@lists.sourceforge.net
+	id 1AqJJw-00021d-Bw
+	for nfs@lists.sourceforge.net; Mon, 09 Feb 2004 13:52:01 -0800
+To: Andrew Morton <akpm@osdl.org>
+In-Reply-To: <20040209093206.429ffb7e.akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -37,78 +37,96 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Mon, Feb 09, 2004 at 09:32:06AM -0800, Andrew Morton wrote:
+> Bruce, 2.6.3-rc1-mm1 contains your later batch of patches (02 and 03 are
+> still in the wrong order, but that doesn't matter and I have subsequently
+> fixed that).
 
---HcAYCG3uE/tztfnV
-Content-Type: text/plain; charset=iso-8859-15
-Content-Disposition: inline
+The version of nfsd-03-sunrpc-cache-init-fixes.patch in 2.6.3-rc1-mm1
+isn't the one I sent; note that the only change I made was to add a few
+lines to net/sunrpc/svcauth.c (a file that that patch didn't modify
+before), and that chunk isn't in there.
 
-Hi,
+--Bruce Fields
 
-I noticed that Ctrl-C'ing out of an application hanging on a dead
-NFS server doesn't work properly, even if mounted with -o intr.
-Rather than bailing out instantly, the program doesn't receive
-the SIGINT until the next timeout is reached.
+ include/linux/sunrpc/cache.h |   13 ++++++++-----
+ net/sunrpc/svcauth.c         |    6 +++++-
+ 2 files changed, 13 insertions(+), 6 deletions(-)
 
-The attached patch should fix this. Please let me know what you
-think.
+diff -puN include/linux/sunrpc/cache.h~neil_NfsdCacheImprove include/linux/sunrpc/cache.h
+--- linux-2.6.1/include/linux/sunrpc/cache.h~neil_NfsdCacheImprove	2004-02-08 13:54:41.000000000 -0500
++++ linux-2.6.1-bfields/include/linux/sunrpc/cache.h	2004-02-08 13:54:41.000000000 -0500
+@@ -130,12 +130,14 @@ struct cache_deferred_req {
+  * If "set" == 0 :
+  *    If an entry is found, it is returned
+  *    If no entry is found, a new non-VALID entry is created.
+- * If "set" == 1 :
++ * If "set" == 1 and INPLACE == 0 :
+  *    If no entry is found a new one is inserted with data from "template"
+  *    If a non-CACHE_VALID entry is found, it is updated from template using UPDATE
+  *    If a CACHE_VALID entry is found, a new entry is swapped in with data
+  *       from "template"
+- * If set == 2, we UPDATE, but don't swap. i.e. update in place
++ * If set == 1, and INPLACE == 1 :
++ *    As above, except that if a CACHE_VALID entry is found, we UPDATE in place
++ *       instead of swapping in a new entry.
+  *
+  * If the passed handle has the CACHE_NEGATIVE flag set, then UPDATE is not
+  * run but insteead CACHE_NEGATIVE is set in any new item.
+@@ -162,8 +164,8 @@ RTN *FNAME ARGS										\
+ 	RTN *tmp, *new=NULL;								\
+ 	struct cache_head **hp, **head;							\
+ 	SETUP;										\
+- retry:											\
+ 	head = &(DETAIL)->hash_table[HASHFN];						\
++ retry:											\
+ 	if (set||new) write_lock(&(DETAIL)->hash_lock);					\
+ 	else read_lock(&(DETAIL)->hash_lock);						\
+ 	for(hp=head; *hp != NULL; hp = &tmp->MEMBER.next) {				\
+@@ -173,6 +175,8 @@ RTN *FNAME ARGS										\
+ 			if (set && !INPLACE && test_bit(CACHE_VALID, &tmp->MEMBER.flags) && !new) \
+ 				break;							\
+ 											\
++			if (new)							\
++				{INIT;}							\
+ 			cache_get(&tmp->MEMBER);					\
+ 			if (set) {							\
+ 				if (!INPLACE && test_bit(CACHE_VALID, &tmp->MEMBER.flags))\
+@@ -201,6 +205,7 @@ RTN *FNAME ARGS										\
+ 	}										\
+ 	/* Didn't find anything */							\
+ 	if (new) {									\
++		INIT;									\
+ 		new->MEMBER.next = *head;						\
+ 		*head = &new->MEMBER;							\
+ 		(DETAIL)->entries ++;							\
+@@ -222,8 +227,6 @@ RTN *FNAME ARGS										\
+ 	if (new) {									\
+ 		cache_init(&new->MEMBER);						\
+ 		cache_get(&new->MEMBER);						\
+-		INIT;									\
+-		tmp = new;								\
+ 		goto retry;								\
+ 	}										\
+ 	return NULL;									\
+diff -puN net/sunrpc/svcauth.c~neil_NfsdCacheImprove net/sunrpc/svcauth.c
+--- linux-2.6.1/net/sunrpc/svcauth.c~neil_NfsdCacheImprove	2004-02-08 13:54:41.000000000 -0500
++++ linux-2.6.1-bfields/net/sunrpc/svcauth.c	2004-02-08 14:09:08.000000000 -0500
+@@ -150,7 +150,11 @@ DefineCacheLookup(struct auth_domain,
+ 		  &auth_domain_cache,
+ 		  auth_domain_hash(item),
+ 		  auth_domain_match(tmp, item),
+-		  kfree(new); if(!set) return NULL;
++		  kfree(new); if(!set) {
++		  if (new) write_unlock(&auth_domain_cache.hash_lock);
++		  else read_unlock(&auth_domain_cache.hash_lock);
++		  return NULL;
++		  }
+ 		  new=item; atomic_inc(&new->h.refcnt),
+ 		  /* no update */,
+ 		  0 /* no inplace updates */
 
-Olaf
--- 
-Olaf Kirch     |  Stop wasting entropy - start using predictable
-okir@suse.de   |  tempfile names today!
----------------+ 
-
---HcAYCG3uE/tztfnV
-Content-Type: text/plain; charset=iso-8859-15
-Content-Disposition: attachment; filename=nfs-interruptible
-
---- linux-2.6.2/net/sunrpc/sched.c.orig	2004-02-06 23:11:55.000000000 +0100
-+++ linux-2.6.2/net/sunrpc/sched.c	2004-02-06 23:19:59.000000000 +0100
-@@ -554,21 +554,28 @@
- 			if (current->pid == rpciod_pid)
- 				printk(KERN_ERR "RPC: rpciod waiting on sync task!\n");
- 
--			__wait_event(task->tk_wait, !RPC_IS_SLEEPING(task));
--			dprintk("RPC: %4d sync task resuming\n", task->tk_pid);
--
--			/*
--			 * When a sync task receives a signal, it exits with
--			 * -ERESTARTSYS. In order to catch any callbacks that
--			 * clean up after sleeping on some queue, we don't
--			 * break the loop here, but go around once more.
--			 */
--			if (task->tk_client->cl_intr && signalled()) {
--				dprintk("RPC: %4d got signal\n", task->tk_pid);
--				task->tk_flags |= RPC_TASK_KILLED;
--				rpc_exit(task, -ERESTARTSYS);
--				rpc_wake_up_task(task);
-+			if (!task->tk_client->cl_intr) {
-+				__wait_event(task->tk_wait, !RPC_IS_SLEEPING(task));
-+			} else {
-+				__wait_event_interruptible(task->tk_wait,
-+					       	!RPC_IS_SLEEPING(task), status);
-+
-+				/*
-+				 * When a sync task receives a signal, it exits with
-+				 * -ERESTARTSYS. In order to catch any callbacks that
-+				 * clean up after sleeping on some queue, we don't
-+				 * break the outer loop here, but go around once more.
-+				 */
-+				if (status == -ERESTARTSYS) {
-+					dprintk("RPC: %4d got signal\n", task->tk_pid);
-+					task->tk_flags |= RPC_TASK_KILLED;
-+					rpc_exit(task, -ERESTARTSYS);
-+					rpc_wake_up_task(task);
-+					break;
-+				}
- 			}
-+
-+			dprintk("RPC: %4d sync task resuming\n", task->tk_pid);
- 		}
- 	}
- 
-
---HcAYCG3uE/tztfnV--
+_
 
 
 -------------------------------------------------------
