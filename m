@@ -1,12 +1,13 @@
-From: CDROM@biozak.com
-Subject: 13,000+ life science customers for your data management solutions
-Date: Tue, 22 Apr 2003 20:32:42 UT
+From: "Chuck Burris" <carlos_19662@aol.com>
+Subject: Here’s your extra income for the next 10 years..
+Date: Wed, 23 Apr 03 07:23:19 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200304222032.NAA22723@main.biozak.com>
+Message-ID: <7r-2rfy5ds$sfp-6w@f6f.66.fl.1tm>
 Mime-Version: 1.0
-Content-Type: multipart/alternative; boundary="_----------=_105104356220955275"
+Content-Type: multipart/alternative;
+	boundary="4CB_CD.DAF"
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: nfs@sourceforge.net
+To: <netsaintplug-devel@lists.sourceforge.net>, <nfs@lists.sourceforge.net>, <nms-cgi-support@lists.sourceforge.net>, <ofset-members@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -21,72 +22,54 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a multi-part message in MIME format.
 
---_----------=_105104356220955275
-Content-Disposition: inline
-Content-Length: 610
-Content-Transfer-Encoding: binary
-Content-Type: text/plain
+--4CB_CD.DAF
+Content-Type: text/html;
+Content-Transfer-Encoding: quoted-printable
 
-Put your data management solutions in front of  13,000+ life science companies and 25,000+ executives worldwide with BioZak InfoBase CD-Rom databases
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1=
+">
+<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV><FONT color=3D#0000ff size=3D4>&nbsp;</FONT> 
+<P align=3Dcenter><STRONG>The TF Express Is Leaving for Moneyville.. All 
+Aboard!!</STRONG></P><FONT color=3D#800000>
+<P align=3Dcenter></P></FONT>
+<DIV align=3Dcenter><STRONG><FONT color=3D#ff0000>TF Express includes the =
+internets 
+only $3,000.00 cash performance guarantee </FONT></STRONG></DIV>
+<DIV align=3Dcenter><STRONG><FONT color=3D#ff0000>to make sure that you ar=
+e 100% 
+satisfied! Start today without any </FONT></STRONG></DIV>
+<DIV align=3Dcenter><STRONG><FONT color=3D#ff0000>risk or obligation! Joe =
+Dunn made 
+$2,300.00 in one week!</FONT></STRONG></DIV><FONT color=3D#0000ff size=3D4=
+>
+<P align=3Dcenter><STRONG>Hey - now it's your turn!</STRONG></FONT><FONT 
+color=3D#800000><BR></FONT><FONT color=3D#800000 size=3D2><BR></FONT><U><F=
+ONT 
+color=3D#ff0000 size=3D4><STRONG><A 
+href=3D"http://1.freetrixiehost.org/bt/snap/index.html">The door to a bett=
+er 
+future opens here! </A></STRONG></FONT></U></P>
+<P align=3Dcenter><FONT color=3D#ffffff size=3D1>crevice entranceway=
+ 
+teletype herodotus handgun whoever bye %RANDOM_W=
+ORD 
+glory colossal fabian boeing bridal %RANDOM_W=
+ORD 
+midwinter tuba chatty celebrant </FONT></P>
+<P align=3Dcenter><FONT color=3D#ff0000 size=3D4><FONT color=3D#000000 siz=
+e=3D2>To be 
+removed from&nbsp;database please <A 
+href=3D"http://1.freetrixiehost.org/bt/snap/optout.html">go 
+here.</A></FONT></P></FONT>
+<DIV><FONT size=3D2></FONT>&nbsp;</DIV></DIV></BODY></HTML>
 
-Ideal tool for:
-* direct marketing
-* teleprospecting
-* partner search
-
-Now  only $956 (20% off regular price of $1,195) - that's less than 7 cents per contact!
-
-Interested?
-
-Email CDROM@biozak.com or visit
-http://main.biozak.com/cgi-bin/BIOZAK/sublinks.pl?type=CD
-
-
-Enter/mention promotion code int_service_providers_DM when asked.
-
-
-Sincerely,
---
-Ekaterina Kalygina,
-Marketing Director,
-BioZak InfoBase, Inc. - business intelligence for life science markets!
---_----------=_105104356220955275
-Content-Disposition: inline
-Content-Length: 1253
-Content-Transfer-Encoding: binary
-Content-Type: text/html
-
-Put your data management solutions in front of 13,000+ life science companies and 25,000+ executives worldwide with BioZak InfoBase CD-Rom databases <BR><BR>
-
-Ideal tool for:<BR><BR>
-<ul>
-<li> direct marketing<BR><BR>
-<li> teleprospecting<BR><BR>
-<li> partner search<BR><BR>
-</ul>
-
-Act now and pay only $956 (20% off regular price of $1195) - that's <b>less than 7 cents per contact!</b><BR><BR>
-
-Interested? <BR><BR>
-
-Email <a href="mailto:CDROM@biozak.com">CDROM@biozak.com</a> or visit
-<a href="http://main.biozak.com/cgi-bin/BIOZAK/sublinks.pl?type=CD">http://main.biozak.com/cgi-bin/BIOZAK/sublinks.pl?type=CD</a><BR><BR><BR>
-
-Enter/mention promotion code int_service_providers_DM when asked.<BR><BR><BR>
-
-Sincerely,<BR>
---<BR>
-Ekaterina Kalygina,<BR>
-Marketing Director,<BR>
-BioZak InfoBase, Inc. - business intelligence for life science markets!<BR>
-<BR><BR><BR><BR>
-
-
------<BR>
-Every effort is made to ensure that this message is received only by interested parties. If this message was sent to you in error, please reply with 'remove' in the subject line - you will get no further email from us.<BR>
-
-<IMG SRC="http://main.biozak.com/cgi-bin/BIOZAK/tracker.pl?type=image&source=promo_email&ID=int_service_providers_DM" WIDTH=1 HEIGHT=1 alt=" ">
---_----------=_105104356220955275--
+--4CB_CD.DAF--
 
 
 
