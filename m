@@ -1,22 +1,25 @@
-From: "Guolin Cheng" <guolin@alexa.com>
-Subject: NFS over TCP reports strange messags on Fedora FC1
-Date: Tue, 30 Mar 2004 12:52:45 -0800
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS over TCP reports strange messags on Fedora FC1
+Date: Tue, 30 Mar 2004 16:30:03 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <41089CB27BD8D24E8385C8003EDAF7AB08483C@karl.alexa.com>
+Message-ID: <1080682203.2557.61.camel@lade.trondhjem.org>
+References: <41089CB27BD8D24E8385C8003EDAF7AB08483C@karl.alexa.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Cc: "ops" <ops@alexa.com>
+Content-Type: text/plain
+Cc: "NFSUserList (E-mail)" <nfs@lists.sourceforge.net>, ops <ops@alexa.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B8QE8-0002Vr-Kk
-	for nfs@lists.sourceforge.net; Tue, 30 Mar 2004 12:52:52 -0800
-Received: from birdwell-public.alexa.com ([67.107.182.10] helo=karl.presidio.alexa.com)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B8QE8-0006tu-8v
-	for nfs@lists.sourceforge.net; Tue, 30 Mar 2004 12:52:52 -0800
-To: "NFSUserList (E-mail)" <nfs@lists.sourceforge.net>
+	id 1B8QoB-0004DX-Ha
+	for nfs@lists.sourceforge.net; Tue, 30 Mar 2004 13:30:07 -0800
+Received: from dh132.citi.umich.edu
+	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.30)
+	id 1B8QoB-0006iV-AQ
+	for nfs@lists.sourceforge.net; Tue, 30 Mar 2004 13:30:07 -0800
+To: Guolin Cheng <guolin@alexa.com>
+In-Reply-To: <41089CB27BD8D24E8385C8003EDAF7AB08483C@karl.alexa.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -29,26 +32,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+On Tue, 2004-03-30 at 15:52, Guolin Cheng wrote:
+> Hi,
+> 
+>   I got a strange problem on my newly installed Fedora FC1 box. On the FC1 box'es console I got the following error messages:
+> 
+>   RPC: bad TCP reclen 0x*********** (non-terminal)
+>   RPC: bad TCP reclen 0x*********** (large)
+>   ... (same, omitted) ....
+> 
+> 
+>   Any one know why? The nfs function seems working fine...
 
-  I got a strange problem on my newly installed Fedora FC1 box. On the =
-FC1 box'es console I got the following error messages:
+Could be that someone trying to crash your NFS server. The above is the
+sort of output you would see if someone is feeding it random garbage.
 
-  RPC: bad TCP reclen 0x*********** (non-terminal)
-  RPC: bad TCP reclen 0x*********** (large)
-  ... (same, omitted) ....
+Only a tcpdump that catches the offending behaviour could tell...
 
-
-  Any one know why? The nfs function seems working fine...
-
-  The box is FC1, customized vanlina 2.4.25 kernel with libata patch,  =
-"nfs server over tcp" is enabled.  The box works as a nfs server, while =
-another redhat 8.0 box works as  a new client trying to mount FC1 by =
-means of amd (similar to automount).
-
-   Thanks.
-   --Guolin Cheng
-
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
