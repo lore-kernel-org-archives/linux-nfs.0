@@ -1,21 +1,32 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: Intermittent RHE3-u3 client mount failures to Netapp fileserver
-Date: Wed, 15 Dec 2004 08:19:16 -0800
-Message-ID: <482A3FA0050D21419C269D13989C61130853955E@lavender-fe.eng.netapp.com>
+From: Mike Waychison <Michael.Waychison@Sun.COM>
+Subject: Re: Intermittent RHE3-u3 client mount failures to Netapp
+ fileserver
+Date: Wed, 15 Dec 2004 11:43:29 -0500
+Message-ID: <41C069B1.9090608@sun.com>
+References: <482A3FA0050D21419C269D13989C61130853955E@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: David Meleedy <david.meleedy@analog.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Cebs7-0006zf-Pg
-	for nfs@lists.sourceforge.net; Wed, 15 Dec 2004 08:19:27 -0800
-Received: from mx1.netapp.com ([216.240.18.38])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1Cebs6-0006nm-IA
-	for nfs@lists.sourceforge.net; Wed, 15 Dec 2004 08:19:27 -0800
-To: "David Meleedy" <david.meleedy@analog.com>
+	id 1CecFo-0008Uw-95
+	for nfs@lists.sourceforge.net; Wed, 15 Dec 2004 08:43:56 -0800
+Received: from brmea-mail-4.sun.com ([192.18.98.36])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1CecFn-0000HQ-2S
+	for nfs@lists.sourceforge.net; Wed, 15 Dec 2004 08:43:55 -0800
+Received: from phys-mpk-1 ([129.146.11.81])
+	by brmea-mail-4.sun.com (8.12.10/8.12.9) with ESMTP id iBFGhodv008887
+	for <nfs@lists.sourceforge.net>; Wed, 15 Dec 2004 09:43:50 -0700 (MST)
+Received: from conversion-daemon.mpk-mail1.sfbay.sun.com by
+ mpk-mail1.sfbay.sun.com
+ (iPlanet Messaging Server 5.2 HotFix 1.24 (built Dec 19 2003))
+ id <0I8R00401VOCWX@mpk-mail1.sfbay.sun.com>
+ (original mail from Michael.Waychison@Sun.COM) for nfs@lists.sourceforge.net;
+ Wed, 15 Dec 2004 08:43:50 -0800 (PST)
+In-reply-to: <482A3FA0050D21419C269D13989C61130853955E@lavender-fe.eng.netapp.com>
+To: "Lever, Charles" <Charles.Lever@netapp.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,29 +40,43 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> I have been trying to troubleshoot this problem on Redhat Enterprise 3
-> WS update 3, both iX86 and amd64 versions.  I have already sent this
-> to the automounter mailing list, and I suspect they don't have a
-> solution because it is more nfs related.
->=20
-> The problem is that intermittently, a previously mounted=20
-> directory that
-> had been mounted with the automounter, and then unmounted becomes
-> unavailable.  The amount of time of unavailability seems to be related
-> to the --timeout=3D60 option specified to the automount program.
->=20
-> I don't believe the routing equipment is at fault because using the
-> same network ports, we have had Redhat 8 clients working just fine.
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-what's running on port 98 on your RHEL 3.0 boxes?  (netstat)
+Lever, Charles wrote:
+> 
+> and check the hardware too.  we had an IPMI hardware implementation from
+> Intel at one point that took a port without notifying the operating
+> system, and that caused similar failures.
+> 
 
-and check the hardware too.  we had an IPMI hardware implementation from
-Intel at one point that took a port without notifying the operating
-system, and that caused similar failures.
+I've seen this too with e1000 hardware.  I usually blacklist the ports
+by adding the 623 for udp / tcp to my (x)inetd config and pointing them
+to /bin/true.
 
-vers=3D2 and nolock are probably not necessary, and will likely cause =
-more
-problems than they solve.
+I'm wondering if anybody has figured out a way to 'blacklist' these
+ports somehow from within the drivers..    ..probably best left as a
+hotplug event.
+
+
+- --
+Mike Waychison
+Sun Microsystems, Inc.
+1 (650) 352-5299 voice
+1 (416) 202-8336 voice
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+NOTICE:  The opinions expressed in this email are held by me,
+and may not represent the views of Sun Microsystems, Inc.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.5 (GNU/Linux)
+Comment: Using GnuPG with Thunderbird - http://enigmail.mozdev.org
+
+iD8DBQFBwGmxdQs4kOxk3/MRApeFAJkBj5Dn2KDsdkmknxUh+fmunZrALQCfTGm6
+7N0fuLRQ22ff2MIUtzTS6KM=
+=xdDY
+-----END PGP SIGNATURE-----
 
 
 -------------------------------------------------------
