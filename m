@@ -1,21 +1,21 @@
-From: James Pearson <james-p@moving-picture.com>
+From: mehta kiran <kiranmehta1981@yahoo.com>
 Subject: Re: file :"/var/lib/nfs/rmtab"
-Date: Thu, 03 Feb 2005 11:29:25 +0000
-Message-ID: <42020B15.4030602@moving-picture.com>
-References: <20050203060844.3898.qmail@web51603.mail.yahoo.com>
+Date: Thu, 3 Feb 2005 03:38:20 -0800 (PST)
+Message-ID: <20050203113820.811.qmail@web51601.mail.yahoo.com>
+References: <42020B15.4030602@moving-picture.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CwfAw-0002Ia-0I
-	for nfs@lists.sourceforge.net; Thu, 03 Feb 2005 03:29:30 -0800
-Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CwfAu-0003hs-HA
-	for nfs@lists.sourceforge.net; Thu, 03 Feb 2005 03:29:29 -0800
-To: mehta kiran <kiranmehta1981@yahoo.com>
-In-Reply-To: <20050203060844.3898.qmail@web51603.mail.yahoo.com>
+	id 1CwfJb-0002a1-7p
+	for nfs@lists.sourceforge.net; Thu, 03 Feb 2005 03:38:27 -0800
+Received: from web51601.mail.yahoo.com ([206.190.38.206])
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
+	id 1CwfJa-0004fV-KO
+	for nfs@lists.sourceforge.net; Thu, 03 Feb 2005 03:38:27 -0800
+To: James Pearson <james-p@moving-picture.com>
+In-Reply-To: <42020B15.4030602@moving-picture.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,30 +29,67 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-mehta kiran wrote:
-> Hi , 
->        In mountd man page , it written that
->        rmtab is ornamental and client can contiune
->        to use filesystem even after calling umount
->        for that filesystem.
+Hi James , 
+          I know that if there is no entry for
+          particualr client in rmtab (due to whatever
+          reasons) it gets permission denied error
+          because mountd verifies clients access  to
+          filesystem using rmtab. But what i want to
+          know is why does  mountd 
+          use rmtab ? Isn't handle supplied by client
+          enough to verify clients access to
+          filesystem.?
+
+          I have seen that server uses entry from
+         rmtab only once when client access
+         filesystem (after server restart).Later if
+         entry from rmtab is removed client is still
+         able to access filesystem without any
+         problem.
+         
+thanks , 
+ --kiran         
+        
+
+--- James Pearson <james-p@moving-picture.com> wrote:
+
+> mehta kiran wrote:
+> > Hi , 
+> >        In mountd man page , it written that
+> >        rmtab is ornamental and client can contiune
+> >        to use filesystem even after calling umount
+> >        for that filesystem.
+> > 
+> >        Is there any real use of this rmtab file ?
+> >        Does mountd use this file to know the
+> >        clients having access to filesystem ?
+> >        If yes , isn,t filehandle supplied by 
+> >        client enough to prove that client has
+> access
+> >        to filesystem. ?
 > 
->        Is there any real use of this rmtab file ?
->        Does mountd use this file to know the
->        clients having access to filesystem ?
->        If yes , isn,t filehandle supplied by 
->        client enough to prove that client has access
->        to filesystem. ?
+> On 2.4 kernels it is not 'ornamental' - if the
+> server reboots without an 
+> entry for a client mount in /var/lib/nfs/rmtab, then
+> the client will get 
+> a stale NFS file handle when the server reboots.
+> This can happen if 
+> umount fails e.g. the mount point is busy -
+> rpc.mountd on the server 
+> removes the entry from /var/lib/nfs/rmtab, but
+> umount fails, so the file 
+> system remains mounted.
+> 
+> I believe the situation has changed with 2.6.
+> 
+> James Pearson
+> 
 
-On 2.4 kernels it is not 'ornamental' - if the server reboots without an 
-entry for a client mount in /var/lib/nfs/rmtab, then the client will get 
-a stale NFS file handle when the server reboots. This can happen if 
-umount fails e.g. the mount point is busy - rpc.mountd on the server 
-removes the entry from /var/lib/nfs/rmtab, but umount fails, so the file 
-system remains mounted.
 
-I believe the situation has changed with 2.6.
-
-James Pearson
+__________________________________________________
+Do You Yahoo!?
+Tired of spam?  Yahoo! Mail has the best spam protection around 
+http://mail.yahoo.com 
 
 
 -------------------------------------------------------
