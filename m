@@ -1,22 +1,21 @@
-From: dumas@centre-cired.fr (Patrice DUMAS - DOCT)
-Subject: lockd clients and server have the same rpc_clnt for each host
-Date: Wed, 15 May 2002 18:35:11 +0200
+From: Greg Lindahl <lindahl@keyresearch.com>
+Subject: Re: Performance problem
+Date: Wed, 15 May 2002 10:42:25 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020515183511.E27252@zeus.centre-cired.fr>
+Message-ID: <20020515104225.B1754@wumpus.keyresearch.com>
+References: <62D26CC4CB1CD3118EAA00805FBB65FA0B8B905E@perm01.woodside.com.au> <1021452381.32242.5.camel@nb>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from boukha.centre-cired.fr ([193.51.120.234])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1781kZ-0003Zu-00
-	for <nfs@lists.sourceforge.net>; Wed, 15 May 2002 09:35:39 -0700
-Received: from zeus.centre-cired.fr ([193.51.120.192])
-          by boukha.centre-cired.fr (8.9.3+Sun/jtpda-5.3.3) with ESMTP id SAA01515
-          for <nfs@lists.sourceforge.net>; Wed, 15 May 2002 18:34:29 +0100 (WEST)
-Received: (from dumas@localhost)
-	by zeus.centre-cired.fr (8.11.6/8.11.6) id g4FGZB527312
-	for nfs@lists.sourceforge.net; Wed, 15 May 2002 18:35:11 +0200
+Received: from nixon.xkey.com ([209.245.148.124])
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 1782ms-00016c-00
+	for <nfs@lists.sourceforge.net>; Wed, 15 May 2002 10:42:06 -0700
+Received: (from lindahl@localhost)
+	by localhost.conservativecomputer.com (8.11.6/8.11.0) id g4FHgPh01823
+	for nfs@lists.sourceforge.net; Wed, 15 May 2002 10:42:25 -0700
 To: nfs@lists.sourceforge.net
+In-Reply-To: <1021452381.32242.5.camel@nb>; from nb@many.be on Wed, May 15, 2002 at 10:46:20AM +0200
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,22 +28,28 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hi,
+On Wed, May 15, 2002 at 10:46:20AM +0200, Nicolas Brainez wrote:
 
-I admit the subject is rather cryptic. Here is the explaination.
+> - Change the NIC (old was rtl8139, new is AMD pcnet32): no changes
 
-It seems to me that the hosts structure is common to all the lockd clients and
-the lockd server. Is it true (because nlm_hosts is a static array) ?
+The rtl8139 is a terrible NIC. It doesn't seem to work under high load
+under any OS.
 
-If it is true, then it seems to me that there is a problem with the fact that
-the rpc clients are tied to hosts. If there is a client allready defined, it is
-used, although it may have incorrect settings with respect with softrtry,
-chatty and intr. Otherwise said, the first rpc call determines the client
-options. I think this is not what should be.
+> - Pinging server with 8192 bytes: high packet loss ! (between 30 & 90%)
 
-Should I try to correct it (if the hosts are really shared) ?
+Well, there's your problem. As you could imagine, NFS with 8k packets
+won't work so well, but you won't notice for telnet.
 
-Pat
+You have 2 choices to cover up the problem:
+
+1) Use NFS over TCP.
+2) Use NFS with UDP and 1k packets.
+
+As for what the underlying problem is, I don't really know. I would
+follow up by using "netperf" or another TCP-related test to see if the
+TCP bandwidth is acceptable. If it is, then you can not fix it...
+
+greg
 
 _______________________________________________________________
 
