@@ -1,8 +1,8 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: [PATCH] RPC over UDP congestion control updates [5/8]
-Date: Tue, 16 Jul 2002 19:59:42 +0200
+Subject: [PATCH] RPC over UDP congestion control updates [4/8]
+Date: Tue, 16 Jul 2002 19:59:25 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15668.24334.163508.811101@charged.uio.no>
+Message-ID: <15668.24317.288351.710242@charged.uio.no>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
@@ -10,8 +10,8 @@ Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from pat.uio.no ([129.240.130.16])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17UWc8-0005d8-00
-	for <nfs@lists.sourceforge.net>; Tue, 16 Jul 2002 10:59:56 -0700
+	id 17UWbs-0005cL-00
+	for <nfs@lists.sourceforge.net>; Tue, 16 Jul 2002 10:59:40 -0700
 To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -26,137 +26,138 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 
-Clean up the Van Jacobson network congestion control code.
+Cleanups for the socket locking mechanism.
+
+Improve RPC request ordering by ensuring that RPC tasks that are
+already queued on xprt->sending get sent before tasks that happen to
+get scheduled just when there is a free slot.
+
+In case the socket send buffer is full, queue the tasks on
+xprt->pending rather than xprt->sending in order to eliminate the risk
+of accidental wakeups from xprt_release_write() and xprt_write_space().
 
 Cheers,
   Trond
 
-diff -u --recursive --new-file linux-2.5.25-xprt_write/include/linux/sunrpc/xprt.h linux-2.5.25-rpc_cong1/include/linux/sunrpc/xprt.h
---- linux-2.5.25-xprt_write/include/linux/sunrpc/xprt.h	Tue Jul 16 15:28:49 2002
-+++ linux-2.5.25-rpc_cong1/include/linux/sunrpc/xprt.h	Tue Jul 16 15:32:03 2002
-@@ -19,7 +19,7 @@
-  * The transport code maintains an estimate on the maximum number of out-
-  * standing RPC requests, using a smoothed version of the congestion
-  * avoidance implemented in 44BSD. This is basically the Van Jacobson
-- * slow start algorithm: If a retransmit occurs, the congestion window is
-+ * congestion algorithm: If a retransmit occurs, the congestion window is
-  * halved; otherwise, it is incremented by 1/cwnd when
-  *
-  *	-	a reply is received and
-@@ -32,15 +32,13 @@
-  * Note: on machines with low memory we should probably use a smaller
-  * MAXREQS value: At 32 outstanding reqs with 8 megs of RAM, fragment
-  * reassembly will frequently run out of memory.
-- * Come Linux 2.3, we'll handle fragments directly.
-  */
- #define RPC_MAXCONG		16
- #define RPC_MAXREQS		(RPC_MAXCONG + 1)
- #define RPC_CWNDSCALE		256
- #define RPC_MAXCWND		(RPC_MAXCONG * RPC_CWNDSCALE)
- #define RPC_INITCWND		RPC_CWNDSCALE
--#define RPCXPRT_CONGESTED(xprt) \
--	((xprt)->cong >= (xprt)->cwnd)
-+#define RPCXPRT_CONGESTED(xprt) ((xprt)->cong >= (xprt)->cwnd)
- 
- /* Default timeout values */
- #define RPC_MAX_UDP_TIMEOUT	(60*HZ)
-@@ -83,6 +81,7 @@
- 	struct rpc_task *	rq_task;	/* RPC task data */
- 	__u32			rq_xid;		/* request XID */
- 	struct rpc_rqst *	rq_next;	/* free list */
-+	int			rq_cong;	/* has incremented xprt->cong */
- 	int			rq_received;	/* receive completed */
- 
- 	struct list_head	rq_list;
-diff -u --recursive --new-file linux-2.5.25-xprt_write/net/sunrpc/xprt.c linux-2.5.25-rpc_cong1/net/sunrpc/xprt.c
---- linux-2.5.25-xprt_write/net/sunrpc/xprt.c	Tue Jul 16 15:30:05 2002
-+++ linux-2.5.25-rpc_cong1/net/sunrpc/xprt.c	Tue Jul 16 15:32:03 2002
-@@ -89,6 +89,7 @@
- static void	xprt_reconn_status(struct rpc_task *task);
- static struct socket *xprt_create_socket(int, struct rpc_timeout *);
- static int	xprt_bind_socket(struct rpc_xprt *, struct socket *);
-+static int      __xprt_get_cong(struct rpc_xprt *, struct rpc_task *);
- 
- #ifdef RPC_DEBUG_DATA
- /*
-@@ -254,6 +255,40 @@
+diff -u --recursive --new-file linux-2.5.25-rtt3/net/sunrpc/xprt.c linux-2.5.25-xprt_write/net/sunrpc/xprt.c
+--- linux-2.5.25-rtt3/net/sunrpc/xprt.c	Tue Jul 16 15:28:49 2002
++++ linux-2.5.25-xprt_write/net/sunrpc/xprt.c	Tue Jul 16 15:30:05 2002
+@@ -154,17 +154,35 @@
+ 	return retval;
  }
  
- /*
-+ * Van Jacobson congestion avoidance. Check if the congestion window
-+ * overflowed. Put the task to sleep if this is the case.
-+ */
-+static int
-+__xprt_get_cong(struct rpc_xprt *xprt, struct rpc_task *task)
++static void
++__xprt_lock_write_next(struct rpc_xprt *xprt)
 +{
-+	struct rpc_rqst *req = task->tk_rqstp;
++	struct rpc_task *task;
 +
-+	if (req->rq_cong)
-+		return 1;
-+	dprintk("RPC: %4d xprt_cwnd_limited cong = %ld cwnd = %ld\n",
-+			task->tk_pid, xprt->cong, xprt->cwnd);
-+	if (RPCXPRT_CONGESTED(xprt))
-+		return 0;
-+	req->rq_cong = 1;
-+	xprt->cong += RPC_CWNDSCALE;
-+	return 1;
++	if (xprt->snd_task)
++		return;
++	task = rpc_wake_up_next(&xprt->sending);
++	if (!task)
++		return;
++	xprt->snd_task = task;
 +}
 +
-+/*
-+ * Adjust the congestion window, and wake up the next task
-+ * that has been sleeping due to congestion
-+ */
-+static void
-+__xprt_put_cong(struct rpc_xprt *xprt, struct rpc_rqst *req)
+ /*
+  * Releases the socket for use by other requests.
+  */
+ static void
++__xprt_release_write(struct rpc_xprt *xprt, struct rpc_task *task)
 +{
-+	if (!req->rq_cong)
-+		return;
-+	req->rq_cong = 0;
-+	xprt->cong -= RPC_CWNDSCALE;
++	if (xprt->snd_task == task)
++		xprt->snd_task = NULL;
 +	__xprt_lock_write_next(xprt);
 +}
 +
-+/*
-  * Adjust RPC congestion window
-  * We use a time-smoothed congestion estimator to avoid heavy oscillation.
-  */
-@@ -1146,8 +1181,6 @@
- 	if (task->tk_rqstp)
- 		return 0;
- 
--	dprintk("RPC: %4d xprt_reserve cong = %ld cwnd = %ld\n",
--				task->tk_pid, xprt->cong, xprt->cwnd);
- 	spin_lock_bh(&xprt->xprt_lock);
- 	xprt_reserve_status(task);
- 	if (task->tk_rqstp) {
-@@ -1181,13 +1214,14 @@
- 	} else if (task->tk_rqstp) {
- 		/* We've already been given a request slot: NOP */
- 	} else {
--		if (RPCXPRT_CONGESTED(xprt) || !(req = xprt->free))
-+		if (!(req = xprt->free))
-+			goto out_nofree;
-+		if (!(xprt->nocong || __xprt_get_cong(xprt, req)))
- 			goto out_nofree;
- 		/* OK: There's room for us. Grab a free slot and bump
- 		 * congestion value */
- 		xprt->free     = req->rq_next;
- 		req->rq_next   = NULL;
--		xprt->cong    += RPC_CWNDSCALE;
- 		task->tk_rqstp = req;
- 		xprt_request_init(task, xprt);
- 
-@@ -1252,9 +1286,7 @@
- 	req->rq_next = xprt->free;
- 	xprt->free   = req;
- 
--	/* Decrease congestion value. */
--	xprt->cong -= RPC_CWNDSCALE;
--
-+	__xprt_put_cong(xprt, req);
- 	xprt_clear_backlog(xprt);
- 	spin_unlock_bh(&xprt->xprt_lock);
++static inline void
+ xprt_release_write(struct rpc_xprt *xprt, struct rpc_task *task)
+ {
+ 	spin_lock_bh(&xprt->sock_lock);
+-	if (xprt->snd_task == task) {
+-		xprt->snd_task = NULL;
+-		rpc_wake_up_next(&xprt->sending);
+-	}
++	__xprt_release_write(xprt, task);
+ 	spin_unlock_bh(&xprt->sock_lock);
  }
+ 
+@@ -429,7 +447,7 @@
+ 			/* if the socket is already closing, delay 5 secs */
+ 			if ((1<<inet->state) & ~(TCP_SYN_SENT|TCP_SYN_RECV))
+ 				task->tk_timeout = 5*HZ;
+-			rpc_sleep_on(&xprt->sending, task, xprt_reconn_status, NULL);
++			rpc_sleep_on(&xprt->pending, task, xprt_reconn_status, NULL);
+ 			release_sock(inet);
+ 			return;
+ 		}
+@@ -883,7 +901,7 @@
+ 		xprt->tcp_flags = XPRT_COPY_RECM | XPRT_COPY_XID;
+ 
+ 		spin_lock(&xprt->sock_lock);
+-		if (xprt->snd_task && xprt->snd_task->tk_rpcwait == &xprt->sending)
++		if (xprt->snd_task && xprt->snd_task->tk_rpcwait == &xprt->pending)
+ 			rpc_wake_up_task(xprt->snd_task);
+ 		spin_unlock(&xprt->sock_lock);
+ 		break;
+@@ -920,7 +938,7 @@
+ 
+ 	if (!xprt_test_and_set_wspace(xprt)) {
+ 		spin_lock(&xprt->sock_lock);
+-		if (xprt->snd_task && xprt->snd_task->tk_rpcwait == &xprt->sending)
++		if (xprt->snd_task && xprt->snd_task->tk_rpcwait == &xprt->pending)
+ 			rpc_wake_up_task(xprt->snd_task);
+ 		spin_unlock(&xprt->sock_lock);
+ 	}
+@@ -1078,7 +1096,7 @@
+ 		spin_lock_bh(&xprt->sock_lock);
+ 		if (!xprt_wspace(xprt)) {
+ 			task->tk_timeout = req->rq_timeout.to_current;
+-			rpc_sleep_on(&xprt->sending, task, NULL, NULL);
++			rpc_sleep_on(&xprt->pending, task, NULL, NULL);
+ 		}
+ 		spin_unlock_bh(&xprt->sock_lock);
+ 		return;
+@@ -1094,9 +1112,10 @@
+ 		if (xprt->stream)
+ 			xprt_disconnect(xprt);
+ 		req->rq_bytes_sent = 0;
+-		goto out_release;
+ 	}
+-
++ out_release:
++	xprt_release_write(xprt, task);
++	return;
+  out_receive:
+ 	dprintk("RPC: %4d xmit complete\n", task->tk_pid);
+ 	/* Set the task's receive timeout value */
+@@ -1111,9 +1130,8 @@
+ 	spin_lock_bh(&xprt->sock_lock);
+ 	if (!req->rq_received)
+ 		rpc_sleep_on(&xprt->pending, task, NULL, xprt_timer);
++	__xprt_release_write(xprt, task);
+ 	spin_unlock_bh(&xprt->sock_lock);
+- out_release:
+-	xprt_release_write(xprt, task);
+ }
+ 
+ /*
+@@ -1218,14 +1236,10 @@
+ 	struct rpc_xprt	*xprt = task->tk_xprt;
+ 	struct rpc_rqst	*req;
+ 
+-	if (xprt->snd_task == task) {
+-		if (xprt->stream)
+-			xprt_disconnect(xprt);
+-		xprt_release_write(xprt, task);
+-	}
+ 	if (!(req = task->tk_rqstp))
+ 		return;
+ 	spin_lock_bh(&xprt->sock_lock);
++	__xprt_release_write(xprt, task);
+ 	if (!list_empty(&req->rq_list))
+ 		list_del(&req->rq_list);
+ 	spin_unlock_bh(&xprt->sock_lock);
 
 
 -------------------------------------------------------
