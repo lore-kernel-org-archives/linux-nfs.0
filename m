@@ -1,19 +1,19 @@
-From: Steve Gonzales <gonzo@eng.lsu.edu>
-Subject: It works, but it doesn't
-Date: Thu, 07 Aug 2003 09:32:26 -0500
+From: Marc Schmitt <mschmitt@inf.ethz.ch>
+Subject: Re: It works, but it doesn't
+Date: Thu, 07 Aug 2003 16:49:10 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1060266746.32702.13.camel@engw0002.eng.lsu.edu>
+Message-ID: <3F3266E6.5020508@inf.ethz.ch>
+References: <1060266746.32702.13.camel@engw0002.eng.lsu.edu>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: NFS List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from engrsrv8.eng.lsu.edu ([130.39.27.4] helo=engmail01.eng.lsu.edu)
+Received: from medoc.inf.ethz.ch ([129.132.178.200])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19klpo-00022n-00
-	for <nfs@lists.sourceforge.net>; Thu, 07 Aug 2003 07:33:44 -0700
-Received: from engw0002.eng.lsu.edu (engw0002.eng.lsu.edu [130.39.28.2])
-	by engmail01.eng.lsu.edu (8.12.10.Beta2/8.12.10.Beta2) with ESMTP id h77ETbgN011960
-	for <nfs@lists.sourceforge.net>; Thu, 7 Aug 2003 09:29:37 -0500
-To: NFS List <nfs@lists.sourceforge.net>
+	id 19km4n-0006ZX-00
+	for <nfs@lists.sourceforge.net>; Thu, 07 Aug 2003 07:49:13 -0700
+To: Steve Gonzales <gonzo@eng.lsu.edu>
+In-Reply-To: <1060266746.32702.13.camel@engw0002.eng.lsu.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,42 +26,19 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello all.
+Hi Steve,
 
-Situation:
-One NFS server
-One NFS mount client
-One NFS installation client (for RedHat 9)
-
-IPAddr1 = IP Address of Server
-IPAddr2 = IP Address of NFS mount client
-IPAddr3 = IP Address of NFS installation client
-
-------------------------------------------------------
+Try:
 
 Server /etc/exports:
-/install/RedHat/9	<IPAddr2>(ro,no_root_squash)
-/install/RedHat/9	<IPAddr3>(ro,no_root_squash)
+/install/RedHat/9 <IPAddr2>(ro,no_root_squash) <IPAddr3>(ro,no_root_squash)
 
-When I manually mount from <IPAddr2>, it works.
+AFAIK, one can only have one entry per exported directory (in your case /install/RedHat/9).
 
-However, when I attempt to do an NFS installation of RedHat 9 to
-<IPAddr3>, it fails.
+Greetings
+   Marc
 
-IPAddr3 Error Message:
-That directory could not be mounted from the server.
 
-IPAddr1 /var/log/messages entry:
-Aug 7 09:23:56: <servername> rpc.mountd: refused mount request from
-<FQDN for IPAddr3> for /install/RedHat/9 (/): no export entry.
-
-------------------------------------------------------
-
-I hope it's not too confusing.  Any help would be greatly appreciated as
-this is study for the big RHCE test.
-
-Thanks.
-Steve
 
 
 
