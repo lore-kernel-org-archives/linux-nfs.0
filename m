@@ -1,30 +1,28 @@
 From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: Re: Premission denied
-Date: Thu, 30 Oct 2003 16:24:28 +1100
+Subject: Re: slow create/delete performance
+Date: Thu, 30 Oct 2003 16:28:06 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16288.41100.10180.44099@notabene.cse.unsw.edu.au>
-References: <10334.62.49.205.2.1067421598.squirrel@squirrelmail.bim7.com>
-	<20031029215815.GO29526@perlsupport.com>
+Message-ID: <16288.41318.607973.261843@notabene.cse.unsw.edu.au>
+References: <20031029152433.A1917@oppie.phys.uwm.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Gareth <gareth@bim7.com>,
-    nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AF5Iv-0000W6-00
-	for <nfs@lists.sourceforge.net>; Wed, 29 Oct 2003 21:25:05 -0800
+	id 1AF5MG-0000rv-00
+	for <nfs@lists.sourceforge.net>; Wed, 29 Oct 2003 21:28:32 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.24)
-	id 1AF5Ia-0002e7-KU
-	for nfs@lists.sourceforge.net; Wed, 29 Oct 2003 21:24:44 -0800
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.24)
+	id 1AF5Lv-0005LV-RX
+	for nfs@lists.sourceforge.net; Wed, 29 Oct 2003 21:28:12 -0800
 Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <chip@pobox.com>) (for <gareth@bim7.com>)
+	(for <apgarcia@gravity.phys.uwm.edu>)
 	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
-	Thu, 30 Oct 2003 16:24:28 +1100
-To: Chip Salzenberg <chip@pobox.com>
-In-Reply-To: message from Chip Salzenberg on Wednesday October 29
+	Thu, 30 Oct 2003 16:28:06 +1100
+To: Phil Garcia <apgarcia@gravity.phys.uwm.edu>
+In-Reply-To: message from Phil Garcia on Wednesday October 29
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -37,34 +35,19 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wednesday October 29, chip@pobox.com wrote:
-> According to Gareth:
-> > Oct 29 09:25:44 paris rpc.mountd: Fake hostname paris.bim for 192.168.17.4
-> > - forward lookup doesn't match reverse
-> > Oct 29 09:25:44 paris rpc.mountd: refused mount request from 192.168.17.4
-> > for /nfsroot (/): no export entry
-> > Oct 29 09:29:09 paris rpc.mountd: export request from 127.0.0.1
-> > Oct 29 09:39:37 paris rpc.mountd: refused mount request from paris.bim for
-> > /nfsroot (/): no export entry
+On Wednesday October 29, apgarcia@gravity.phys.uwm.edu wrote:
+> Hi,
 > 
-> You have two failures there.  One says DNS, the other doesn't.
+> We've been running some benchmarks on both local and nfs mounts.  The
+> read and write speeds are comparable, but creating and deleting small
+> files is much slower over nfs than it is locally.  Is there a patch to
+> fix this problem?
 > 
-> > Someone at work suggested its a reverse DNS problem... but running
-> > nslookup hostname returns my IP address, and vice versa.
-> 
-> The log says there was a reverse DNS problem.  It says it clearly,
-> right there in the log.  Are you suggesting that it's lying?
 
-Funny, but I don't see the letters "DNS" in the log at all :-)
+No. This is the nature of NFS.  A file create must be synchronous with
+the server.  Data writes don't (in NFSv3).
 
-What does /etc/nsswitch.conf say about hosts? Does "files" come before
-"dns"?
-If so, what does 
-	grep 192.168.17.4 /etc/hosts | head -1
-show? Presumably paris.bim.
-But what does
-	grep paris.bim /etc/hosts | head -1
-show?  My guest is *not* 192.168.17.4
+Creating lots of little files is *the* pathological case for NFS.
 
 NeilBrown
 
