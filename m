@@ -1,15 +1,13 @@
-From: trmcneal@attbi.com
-Subject: nfs-utils (fwd)
-Date: Thu, 20 Mar 2003 16:18:16 +0000
+From: "Customer Services" <Promotioner@eyou.com>
+Subject: Promote Our Marketing
+Date: Fri, 21 Mar 2003 00:47:55 +0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E18w2kM-000629-00@sc8-sf-list1.sourceforge.net>
-Cc: NFS maillist <nfs@lists.sourceforge.net>
+Message-ID: <E18w3Em-00049w-00@sc8-sf-list1.sourceforge.net>
+Reply-To: "Customer Services" <Order@marketing-promote.com>
+Mime-Version: 1.0
+Content-Type: text/html; charset="ISO-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from rwcrmhc51.attbi.com ([204.127.198.38])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18w2kM-000629-00
-	for <nfs@lists.sourceforge.net>; Thu, 20 Mar 2003 08:18:26 -0800
-To: volrath@sbcglobal.net 
+To: <NFS@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -22,210 +20,179 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-The NFS Mailing list is the best place to get the fastest answer.  I'll
-look at it in the meantime.
+<!-- saved from url=(0022)http://internet.e-mail -->
+<html>
 
-Tom
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<meta name="GENERATOR" content="Microsoft FrontPage 4.0">
+<meta name="ProgId" content="FrontPage.Editor.Document">
+<title>Targeted Marketing</title>
 
---
-Tom McNeal
-(650)906-0761(cell)
-(650)964-8459(fax)
-----------------------  Forwarded Message:  ---------------------
-From:    Michael Butler <volrath@sbcglobal.net>
-To:      trmcneal@attbi.com
-Subject: nfs-utils
-Date:    Wed, 19 Mar 2003 17:22:12 -0800
+</head>
 
-I am having some problems, and I thought that maybe you could enlighten 
-me.  I am attempting to compile nfs-utils with gcc 3.2 running linux 
-2.4.20 with nfs, nfsv3, etc enabled in the kernel.  It doesn't seem to 
-like the unions in mountd at all.  Attached is a copy of the compile 
-error.
+<body>
 
-Hope you can help.
-
-Making all in mountd
-gcc -g -O2 -D_GNU_SOURCE -I../../support/include -Wall  -pipe  
--DVERSION="\"nfs-utils 1.0.1\"" -DNFS3_SUPPORTED   -c -o mountd.o mountd.c
-In file included from mountd.c:24:
-mountd.h:19: parse error before "dirpath"
-mountd.h:19: warning: no semicolon at end of struct or union
-mountd.h:23: parse error before "fhstatus"
-mountd.h:23: warning: no semicolon at end of struct or union
-mountd.h:24: warning: type defaults to `int' in declaration of `mountlist'
-mountd.h:24: warning: data definition has no type or storage class
-mountd.h:25: parse error before "exports"
-mountd.h:25: warning: type defaults to `int' in declaration of `exports'
-mountd.h:25: warning: data definition has no type or storage class
-mountd.h:32: parse error before "dirpath"
-mountd.h:33: parse error before "mountlist"
-mountd.h:34: parse error before "dirpath"
-mountd.h:36: parse error before "exports"
-mountd.h:37: parse error before "exports"
-mountd.h:38: parse error before "dirpath"
-mountd.h:39: parse error before "dirpath"
-mountd.h:51: parse error before "mountlist_list"
-mountd.h:51: warning: type defaults to `int' in declaration of `mountlist_list'
-mountd.h:51: warning: data definition has no type or storage class
-mountd.c:28: parse error before "get_exportlist"
-mountd.c:28: warning: type defaults to `int' in declaration of `get_exportlist'
-mountd.c:28: warning: data definition has no type or storage class
-mountd.c:29: parse error before "dirpath"
-mountd.c: In function `killer':
-mountd.c:55: `MOUNTPROG' undeclared (first use in this function)
-mountd.c:55: (Each undeclared identifier is reported only once
-mountd.c:55: for each function it appears in.)
-mountd.c:55: `MOUNTVERS' undeclared (first use in this function)
-mountd.c:57: `MOUNTVERS_POSIX' undeclared (first use in this function)
-mountd.c:59: `MOUNTVERS_NFSV3' undeclared (first use in this function)
-mountd.c: At top level:
-mountd.c:70: parse error before "dirpath"
-mountd.c: In function `mount_mnt_1_svc':
-mountd.c:74: `path' undeclared (first use in this function)
-mountd.c:75: `rqstp' undeclared (first use in this function)
-mountd.c:75: `res' undeclared (first use in this function)
-mountd.c: At top level:
-mountd.c:81: parse error before "mountlist"
-mountd.c: In function `mount_dump_1_svc':
-mountd.c:84: `rqstp' undeclared (first use in this function)
-mountd.c:88: `res' undeclared (first use in this function)
-mountd.c: At top level:
-mountd.c:93: parse error before "dirpath"
-mountd.c: In function `mount_umnt_1_svc':
-mountd.c:96: `rqstp' undeclared (first use in this function)
-mountd.c:98: `argp' undeclared (first use in this function)
-mountd.c: At top level:
-mountd.c:128: parse error before "exports"
-mountd.c: In function `mount_export_1_svc':
-mountd.c:131: `rqstp' undeclared (first use in this function)
-mountd.c:134: `resp' undeclared (first use in this function)
-mountd.c: At top level:
-mountd.c:139: parse error before "exports"
-mountd.c: In function `mount_exportall_1_svc':
-mountd.c:142: `rqstp' undeclared (first use in this function)
-mountd.c:145: `resp' undeclared (first use in this function)
-mountd.c: At top level:
-mountd.c:161: parse error before "dirpath"
-mountd.c: In function `mount_pathconf_2_svc':
-mountd.c:164: `rqstp' undeclared (first use in this function)
-mountd.c:168: `path' undeclared (first use in this function)
-mountd.c:170: `res' undeclared (first use in this function)
-mountd.c: At top level:
-mountd.c:215: parse error before "dirpath"
-mountd.c: In function `mount_mnt_3_svc':
-mountd.c:220: `path' undeclared (first use in this function)
-mountd.c:221: `rqstp' undeclared (first use in this function)
-mountd.c:221: `res' undeclared (first use in this function)
-mountd.c:224: dereferencing pointer to incomplete type
-mountd.c:225: dereferencing pointer to incomplete type
-mountd.c:226: dereferencing pointer to incomplete type
-mountd.c:227: dereferencing pointer to incomplete type
-mountd.c: At top level:
-mountd.c:233: parse error before "dirpath"
-mountd.c: In function `get_rootfh':
-mountd.c:236: `rqstp' undeclared (first use in this function)
-mountd.c:240: `path' undeclared (first use in this function)
-mountd.c:256: `error' undeclared (first use in this function)
-mountd.c:275: `v3' undeclared (first use in this function)
-mountd.c: At top level:
-mountd.c:299: parse error before "get_exportlist"
-mountd.c:300: warning: return type defaults to `int'
-mountd.c: In function `get_exportlist':
-mountd.c:301: syntax error before "elist"
-mountd.c:307: `elist' undeclared (first use in this function)
-mountd.c:311: dereferencing pointer to incomplete type
-mountd.c:312: dereferencing pointer to incomplete type
-mountd.c:313: dereferencing pointer to incomplete type
-mountd.c:314: dereferencing pointer to incomplete type
-mountd.c:317: dereferencing pointer to incomplete type
-mountd.c:324: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:325: dereferencing pointer to incomplete type
-mountd.c:329: dereferencing pointer to incomplete type
-mountd.c:330: dereferencing pointer to incomplete type
-mountd.c:331: dereferencing pointer to incomplete type
-mountd.c:332: dereferencing pointer to incomplete type
-mountd.c:338: dereferencing pointer to incomplete type
-mountd.c:339: dereferencing pointer to incomplete type
-mountd.c:340: dereferencing pointer to incomplete type
-mountd.c:341: dereferencing pointer to incomplete type
-mountd.c:344: dereferencing pointer to incomplete type
-mountd.c:348: dereferencing pointer to incomplete type
-mountd.c:351: dereferencing pointer to incomplete type
-mountd.c:353: dereferencing pointer to incomplete type
-mountd.c:354: dereferencing pointer to incomplete type
-mountd.c:357: dereferencing pointer to incomplete type
-mountd.c:358: dereferencing pointer to incomplete type
-mountd.c:367: dereferencing pointer to incomplete type
-mountd.c:372: dereferencing pointer to incomplete type
-mountd.c:372: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:374: dereferencing pointer to incomplete type
-mountd.c:378: dereferencing pointer to incomplete type
-mountd.c:379: dereferencing pointer to incomplete type
-mountd.c:380: dereferencing pointer to incomplete type
-mountd.c:380: dereferencing pointer to incomplete type
-mountd.c:381: dereferencing pointer to incomplete type
-mountd.c: In function `main':
-mountd.c:495: `MOUNTPROG' undeclared (first use in this function)
-mountd.c:495: `MOUNTVERS' undeclared (first use in this function)
-mountd.c:498: `MOUNTVERS_POSIX' undeclared (first use in this function)
-mountd.c:501: `MOUNTVERS_NFSV3' undeclared (first use in this function)
-make[2]: *** [mountd.o] Error 1
-make[1]: *** [all] Error 2
-make: *** [all] Error 2
-
-Michael Butler
-volrath@sbcglobal.net
+<div align="center">
+  <center>
+  <table cellSpacing="1" width="730" border="0">
+    <tbody>
+      <tr>
+        <td>
+          <div>
+            <font face="Arial" size="2">
+            &nbsp;
+            <br>
+            </font><font face="Arial" size="2" color="#000000">E-mail Marketing
+            is spreading&nbsp;around the whole&nbsp;world because of its&nbsp;high
+            effectiveness,&nbsp;speed and<br>
+            low cost.</font>          
+            <p><font face="Arial" size="2">Now if you want to introduce and sell        
+            your product or service. The best way for you&nbsp;would be&nbsp;to&nbsp;use&nbsp;<br>       
+            e-mail to contact your targeted customers (of course, first,&nbsp;you&nbsp;have        
+            to&nbsp;know&nbsp;their email addresses).<br>   
+            <br>   
+            </font>         
+          </div>         
+          <div>         
+            <font face="Arial" color="#000000" size="2">Targeted E-mail is no            
+            doubt very effective. If you can introduce your product or service          
+            through&nbsp;e-mail&nbsp;<br>       
+ directly to the clients&nbsp;who are interested&nbsp;in            
+            them, this will&nbsp;bring&nbsp;your&nbsp;business&nbsp;a&nbsp;better opportunities.&nbsp;</font>           
+          </div>           
+          <p>           
+          <font color="#000000" size="2" face="Arial">We offer a complete
+          Targeted E-mail Marketing solution with quality service and the&nbsp;lowest        
+          prices:</font></p>          
+          <div align="left">          
+            <table borderColor="#000000" height="90" cellSpacing="1" width="577" border="1">          
+              <tbody>          
+                <tr>          
+                  <td width="188" height="17"><b><font face="Arial" color="#000000" size="2">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;E-mails&nbsp;            
+                    or&nbsp; Software</font></b></td>           
+                  <td width="329" height="17"><b><font face="Arial" color="#000000" size="2">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Remarks</font></b></td>           
+                  <td width="48" height="17"><b><font face="Arial" color="#000000" size="2">&nbsp;       
+                    Price</font></b></td>         
+                </tr>         
+                <tr>         
+                  <td width="188" height="88"><font face="Arial" color="#000000" size="2">&nbsp;&nbsp;&nbsp;       
+                    Targeted e-mail addresses&nbsp;</font></td>           
+                  <td width="329" height="88"><font face="Arial" color="#000000" size="2"><br>        
+                    We            
+                    are able to supply valid targeted e-mail addresses according            
+                    to your requirements,&nbsp; which are compiled<br>           
+                    only on your order, such as region / country / field /            
+                    occupation / Domain Name etc.<br>          
+                    <br>           
+                    * We will customize your customer e-mail lists.<br>        
+                    </font></td>        
+                  <td width="48" height="112"><font face="Arial" size="1" color="#000000">&nbsp;
+                    $ 30.00<br>        
+                    </font></td>        
+                </tr>        
+                <tr>       
+                  <td width="188" height="18"><font face="Arial" size="2">&nbsp;&nbsp;&nbsp;Classified e-mail addresses</font></td>          
+                  <td width="329" height="18"><font face="Arial" size="2"><br>       
+                    Our database contains more than 1600 sorts of e-mail        
+                    addresses,and can meet&nbsp;your most&nbsp;stringent        
+                    demands.<br>       
+                    <br>       
+                    </font></td>        
+                  <td width="48" height="16"><font face="Arial" size="1" color="#FFFFFF">1</font></td>        
+                </tr>       
+                <tr>        
+                  <td width="188" height="15"><font face="Arial" color="#000000" size="2">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;       
+                    Targeted mailing&nbsp;</font></td>           
+                  <td width="329" height="15"><font face="Arial" color="#000000" size="2"><br>           
+                    If you are worried about any of the complications with            
+                    sending out Targeted E-mails, we will do it for you!&nbsp;</font>           
+                    <p><font face="Arial" color="#000000" size="2">We are able            
+                    to send Targeted&nbsp;E-mails according to&nbsp;<br>           
+                    your requirements. The result is that you will enjoy&nbsp;<br>           
+                    more success.<br>           
+                    <br>           
+                    * We also can Bullet Proof your Web Site.</font></p>          
+                  </td>          
+                  <td width="48" height="19"><font face="Arial" size="1" color="#000000">&nbsp;
+                    $ 99.00</font></td>          
+                </tr>          
+                <tr>           
+                  <td width="188" height="4"><font face="Arial" color="#000000" size="2">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Wcast software&nbsp;</font></td>           
+                  <td width="329" height="4"><font face="Arial" color="#000000" size="2"><br>           
+                    Software for fast-sending e-mails. You can use Wcast&nbsp; to            
+                    easily and professionally send your targeted e-mails.<br>          
+                    <br>          
+                    </font></td>          
+                  <td width="48" height="4"><font face="Arial" size="1" color="#000000">&nbsp;$        
+                    39.00</font><font face="Arial" color="#000000" size="2">&nbsp;</font></td>         
+                </tr>         
+                <tr>         
+                  <td width="188" height="47"><font face="Arial" color="#000000" size="2">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;E-mail searcher software&nbsp;</font></td>           
+                  <td width="329" height="47"><font face="Arial" color="#000000" size="2">Software            
+                    for searching for targeted e-mail addresses.<br>           
+                    </font></td>           
+                  <td width="48" height="47"><font face="Arial" color="#000000" size="2">&nbsp;&nbsp;<br>           
+                    &nbsp;</font><font face="Arial" size="1" color="#000000">$ 98.00</font><font face="Arial" color="#000000" size="2"><br>          
+                    </font></td>          
+                </tr>          
+                <tr>          
+                  <td width="188" height="11"><font color="#000000" size="2" face="Arial"><b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;        
+                    </b>&nbsp;&nbsp;&nbsp;&nbsp;Trade Poster</font></td>           
+                  <td width="329" height="11"><font face="Arial" color="#000000" size="2"><br>           
+                    Spread information about your business and your products to            
+                    over 1600 trade message boards and newsgroups.<br>           
+                    <br>           
+                    </font></td>           
+                  <td width="48" height="11"><font face="Arial" color="#000000" size="2">&nbsp;</font><font face="Arial" size="1" color="#000000">$135.00</font></td>         
+                </tr>         
+              </tbody>         
+            </table>         
+          </div>         
+          <font face="Arial">         
+          <p><font color="#000000" size="2" face="Arial">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;       
+          &gt;&gt;&gt;&gt;&nbsp; </font><a href="http://www.biz-aiding.com"><font size="2" color="#0000FF">More            
+          information</font></a></p>           
+          <p>           
+          <font size="2">We can supply you with everything you need to launch a        
+          successful Targeted Marketing&nbsp;campaign.&nbsp;<br>       
+          W</font><font color="#000000" size="2" face="Arial">ith our cooperation,&nbsp;many enterprises and           
+          individuals&nbsp;have&nbsp;greatly raised&nbsp;the&nbsp;fame&nbsp;of&nbsp;their&nbsp;product&nbsp;<br>       
+ and service, and found           
+          many potential customers.&nbsp;<br>        
+          <br>          
+          Please do not hesitate to contact us&nbsp;with any queries or concern            
+          you may have.&nbsp;We&nbsp;will&nbsp;be&nbsp;happy&nbsp;<br>       
+ to&nbsp;serve you.</font></p>           
+          <p><font size="2"><font color="#000000">       
+          <br>         
+          Regards!<br>         
+          <br>         
+          <span class="906304400-09012003">Mr Keng</span><br>       
+          </font>Customer Services<br>
+          <br>
+          Professional Marketing, at Great Prices.</font></p>           
+          </font>           
+          <hr>           
+          <p><font face="Arial" color="#000000" size="2">You are receiving this            
+          email because you registered to receive special offers from one of our            
+          partners.<br>        
+          If you would prefer not to receive future email, please </font> <a href="http://unsubscribe-mail.com/index.html?clientid=15"><font face="Arial" size="2" color="#0000FF">click            
+          here</font></a><font color="#000000" size="2" face="Arial">.</font></p>      
+          <hr>      
+        </td>      
+      </tr>      
+    </tbody>      
+  </table>      
+  </center>      
+</div>      
+<script language="vbscript">      
+      
+</script>      
+      
+</body>      
+      
+</html>      
 
 
 -------------------------------------------------------
