@@ -1,23 +1,26 @@
-From: Ian Kent <raven@themaw.net>
+From: dwight@supercomputer.org
 Subject: Re: RE: Linux client on Solaris 7 NFS server
-Date: Tue, 6 Jan 2004 12:59:08 +0800 (WST)
+Date: Mon, 05 Jan 2004 23:38:17 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.33.0401061258380.26529-100000@wombat.indigo.net.au>
-References: <3FF9BEFC.6030609@nsc1.net>
+Message-ID: <200401060738.i067cHF16900@supercomputer.org>
+References: <Charles.Lever@netapp.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: <dwight@supercomputer.org>, <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AdjJ8-0005c8-V2
-	for nfs@lists.sourceforge.net; Mon, 05 Jan 2004 20:59:10 -0800
-Received: from wombat.indigo.net.au ([202.0.185.19])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1AdjJ8-0005IO-8J
-	for nfs@lists.sourceforge.net; Mon, 05 Jan 2004 20:59:10 -0800
-To: Wade Hampton <wade.hampton@nsc1.net>
-In-Reply-To: <3FF9BEFC.6030609@nsc1.net>
+	id 1Adln9-0001bI-WA
+	for nfs@lists.sourceforge.net; Mon, 05 Jan 2004 23:38:19 -0800
+Received: from supercomputer.org ([69.17.34.169] helo=mail.supercomputer.org)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1Adln9-0006NS-Mk
+	for nfs@lists.sourceforge.net; Mon, 05 Jan 2004 23:38:19 -0800
+Received: (from watcher@localhost)
+	by mail.supercomputer.org (8.11.6/8.11.6) id i066UcB20625
+	for <nfs@lists.sourceforge.net>; Mon, 5 Jan 2004 22:30:38 -0800 (PST)
+To: nfs@lists.sourceforge.net
+In-Reply-To: Message from "Lever, Charles" <Charles.Lever@netapp.com>
+   of "Mon, 05 Jan 2004 10:21:59 PST." <482A3FA0050D21419C269D13989C6113020AC981@lavender-fe.eng.netapp.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,20 +33,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, 5 Jan 2004, Wade Hampton wrote:
+Hi Charles,
 
-> Slightly off topic, but have either of you seen a problem with
-> a Solaris 7 server locking up or having networking problems
-> when moving data to a linux client (read only)?
->
-> I was locked up my solaris 7 x86 server several times
-> with Fedora 1.0 (kernel 2.4.22-1.2115).  I changed
-> rsize=32768,wsize=32768 and have not seen a problem
-> since.
+I actually have lots of data on this, since I ran tcpdump on every major
+run when I was gathering data. Each tcpdump output file is about 20 MB.
 
-Don't use x86 Solaris, sorry.
+That's the good news. =
 
-Ian
+
+The bad news is I don't know if I can release that specific data. My =
+
+guess is that I'll have to cut over to a totally isolated subnet and =
+
+rerun things. =
+
+
+However, if such data can be released, and if there's enough interest in
+looking the tcpdump output, I'd be willing to go to the efforts of doing =
+
+so for those who'd be interested in looking at the tcpdump data.
+
+So I'll investigate further. =
+
+
+Best Regards,
+
+	-dwight-
+
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Date: Mon, 5 Jan 2004 10:21:59 -0800
+> hi dwight-
+> =
+
+> please capture some network traces of both a fast run and
+> a slow run (using UDP for both, preferrably).  the traces
+> don't need to be large (in the neighborhood of 10MB), but
+> they do need to be raw format, and be sure you capture
+> at least 256 bytes of each frame (-s256).
+> =
+
+> the v2/v3 performance delta is usually a red herring; it
+> is almost always the result of some other problem.
+> =
+
 
 
 
