@@ -1,27 +1,32 @@
-From: Vincent ROQUETA <vincent.roqueta@ext.bull.net>
-Subject: Re: [PATCH] oops when unloading sunrpc module.
-Date: Mon, 28 Jun 2004 14:09:49 +0200
+From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Subject: Re: client side noac
+Date: Mon, 28 Jun 2004 08:09:58 -0600 (MDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200406281409.49253.vincent.roqueta@ext.bull.net>
-References: <Pine.LNX.4.58.0406241542480.2427@localhost.localdomain>
-Reply-To: vincent.roqueta@ext.bull.net
+Message-ID: <Pine.LNX.4.60.0406280754520.31370@harp.ngdc.noaa.gov>
+References: <Pine.LNX.4.60.0406251148570.3197@harp.ngdc.noaa.gov>
+ <1088186851.4333.65.camel@lade.trondhjem.org>  <Pine.LNX.4.60.0406251252570.3683@harp.ngdc.noaa.gov>
+  <1088191021.4333.75.camel@lade.trondhjem.org>
+ <Pine.LNX.4.60.0406251321030.3853@harp.ngdc.noaa.gov>
+ <1088192302.4333.83.camel@lade.trondhjem.org>  <Pine.LNX.4.60.0406261615060.10096@harp.ngdc.noaa.gov>
+  <1088364509.4295.14.camel@lade.trondhjem.org>
+ <Pine.LNX.4.60.0406272148170.31370@harp.ngdc.noaa.gov>
+ <1088397445.4295.51.camel@lade.trondhjem.org>
+Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BeusT-0007Nf-TN
-	for nfs@lists.sourceforge.net; Mon, 28 Jun 2004 05:04:49 -0700
-Received: from ecbull20.frec.bull.fr ([129.183.4.3])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1BeusO-0000LM-CO
-	for nfs@lists.sourceforge.net; Mon, 28 Jun 2004 05:04:49 -0700
-Received: from roquetav (roquetav.frec.bull.fr [129.183.101.52])
-	by ecbull20.frec.bull.fr (8.9.2/8.9.1) with ESMTP id OAA18192
-	for <nfs@lists.sourceforge.net>; Mon, 28 Jun 2004 14:05:39 +0200
-To: nfs@lists.sourceforge.net
-In-Reply-To: <Pine.LNX.4.58.0406241542480.2427@localhost.localdomain>
+	id 1Bewpf-0000cF-RG
+	for nfs@lists.sourceforge.net; Mon, 28 Jun 2004 07:10:03 -0700
+Received: from harp.ngdc.noaa.gov ([140.172.187.26])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.34)
+	id 1Bewpf-00008m-5k
+	for nfs@lists.sourceforge.net; Mon, 28 Jun 2004 07:10:03 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1088397445.4295.51.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,84 +39,67 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Le Vendredi 25 Juin 2004 00:49, Sridhar Samudrala a =E9crit :
-> I am seeing the following warning message followed by a oops when unloadi=
-ng
-> sunrpc module in linux 2.6.7. This happens only if lock operations are
-> performed on a file that is mounted on the client before unloading nfs
-> modules.
->
-> Badness in remove_proc_entry at fs/proc/generic.c:685
->  [<c018e799>] remove_proc_entry+0x109/0x150
->  [<d091dfdc>] rpc_proc_exit+0x3c/0x50 [sunrpc]
->  [<c0134386>] sys_delete_module+0x176/0x1b0
->  [<c014c2d8>] do_munmap+0x178/0x1e0
->  [<c010462b>] syscall_call+0x7/0xb
->
-> Unable to handle kernel paging request at virtual address d0929c74
->  printing eip:
-> c01258d0
-> *pde =3D 0fdc0067
-> *pte =3D 00000000
-> Oops: 0000 [#1]
-> PREEMPT SMP
-> Modules linked in: netconsole 3c59x e100
-> CPU:    0
-> EIP:    0060:[<c01258d0>]    Not tainted
-> EFLAGS: 00010006   (2.6.7)
-> EIP is at cascade+0x30/0x70
-> eax: cb5afeb8   ebx: d0929c58   ecx: 0009c000   edx: c1202e04
-> esi: c12030e4   edi: c12025a0   ebp: 00000027   esp: c0383f10
-> ds: 007b   es: 007b   ss: 0068
-> Process swapper (pid: 0, threadinfo=3Dc0382000 task=3Dc030b180)
-> Stack: c12025a0 cfdb01f0 c12025a0 00000000 0000000a c0382000 c0125fa7
-> c12025a0 c1202fac 00000027 c030dc8c c0382000 c0383f40 c0383f40 00000000
-> 00000001 c0381008 0000000a c0383f94 c0121527 c0381008 00000046 00000000
-> c03a70a4 Call Trace:
->  [<c0125fa7>] run_timer_softirq+0x197/0x1e0
->  [<c0121527>] __do_softirq+0xb7/0xc0
->  [<c012155d>] do_softirq+0x2d/0x30
->  [<c0111a47>] smp_apic_timer_interrupt+0xe7/0x160
->  [<c0102310>] default_idle+0x0/0x40
->  [<c010501a>] apic_timer_interrupt+0x1a/0x20
->  [<c0102310>] default_idle+0x0/0x40
->  [<c010233d>] default_idle+0x2d/0x40
->  [<c01023d6>] cpu_idle+0x46/0x50
->  [<c0384919>] start_kernel+0x179/0x1b0
->  [<c0384380>] unknown_bootoption+0x0/0x140
->
-> Code: 39 7b 1c 89 d8 75 21 8b 1b 89 3c 24 89 44 24 04 e8 9b f9 ff
->  <0>Kernel panic: Fatal exception in interrupt
-> In interrupt handler - not syncing
->
-> The following simple patch fixes the problem.
->
-> diff -Nru a/fs/nfsd/lockd.c b/fs/nfsd/lockd.c
-> --- a/fs/nfsd/lockd.c   Thu Jun 24 15:38:29 2004
-> +++ b/fs/nfsd/lockd.c   Thu Jun 24 15:38:29 2004
-> @@ -40,7 +40,6 @@
->                 mntget(filp->f_vfsmnt);
->         }
->         fh_put(&fh);
-> -       rqstp->rq_client =3D NULL;
->         exp_readunlock();
->         /* nlm and nfsd don't share error codes.
->          * we invent: 0 =3D no error
->
-> I am not sure why rqstp->rq_client is set to NULL in nlm_fopen. This
-> results in leaking of auth_domain cache entries.
-> I think we should do a auth_domain_put() before clearing rq_client. This =
-is
-> done in the release function(eg:svcauth_unix_release).
->
-> Thanks
-> Sridhar
->
+On Mon, 28 Jun 2004, Trond Myklebust wrote:
 
-This bug appends only on the server or the client is also concerned ?
+> In 2.6.x kernels, we don't do strict revalidation of the parent directories
+> in the path: only the target file itself, so if someone deletes the current
+> directory, you may end up with a stale filehandle.
+> Please also note that renaming directories (and files) into other
+> directories is also prone to this sort of ESTALE errors if your Linux server
+> isn't exporting using the "no_subtree_check".
+>
+> Otherwise, the file itself should always be strictly checked (unless
+> you've also got the "nocto" mount flag set). I won't exclude that the
+> lookup may be using stale data if there turns out to be some race with
+> readdirplus on NFSv3 that we've overlooked. You could check by comparing
+> with a NFSv2 mount.
+>
+> Cheers,
+>  Trond
 
-Vincent
+we are using
 
+   ~ > uname -srm && cat /etc/redhat-release; mount | grep nfs
+   Linux 2.4.21-15.0.2.ELsmp i686
+   Red Hat Enterprise Linux WS release 3 (Taroon Update 2)
+   moby.b:/raid/array0/part1/export on /dmsp/moby-0-1 type nfs (rw,bg,hard,intr,rsize=8192,wsize=8192,addr=10.1.186.54)
+   moby.b:/raid/array1/part1/export on /dmsp/moby-1-1 type nfs (rw,bg,hard,intr,rsize=8192,wsize=8192,addr=10.1.186.54)
+   moby.b:/raid/array1/part2/export on /dmsp/moby-1-2 type nfs (rw,bg,hard,intr,rsize=8192,wsize=8192,addr=10.1.186.54)
+   moby.b:/raid/array1/part3/export on /dmsp/moby-1-3 type nfs (rw,bg,hard,intr,rsize=8192,wsize=8192,addr=10.1.186.54)
+   moby.b:/raid/array1/part4/export on /dmsp/moby-1-4 type nfs (rw,bg,hard,intr,rsize=8192,wsize=8192,addr=10.1.186.54)
+   moby.b:/raid/array1/part5/export on /dmsp/moby-1-5 type nfs (rw,bg,hard,intr,rsize=8192,wsize=8192,addr=10.1.186.54)
+   moby.b:/raid/array1/part6/export on /dmsp/moby-1-6 type nfs (rw,bg,hard,intr,rsize=8192,wsize=8192,addr=10.1.186.54)
+
+so i guess that first bit does not apply.  the code IS renaming files but only
+into the same directory, the directory is never removed and we are not using
+the 'nocto' mount option.  i am 99.9% positive that we are using nfsv3 - how
+can i determine this from the client side?  am i reading you correctly in
+saying that this setup/usage pattern (demo scripts) should result in strict
+chcking of files and that ESTALE should not be returned to client from open()?
+or have i mis-understood?
+
+sorry this is dragging on....  in summary i am wanting to know:
+
+0)
+     if you think this is a possible bug which i should explore further
+
+1)  the behaviour i am seeing (demonstrated by scripts sent earlier) is
+     consistent with our software configuration and, if so, if the 'correct'
+     thing for user code to do in this case is simply to retry one time if open
+     returns ESTALE, or if user code should attempt to force cache
+     invalidation, etc.?
+
+cheers (again!).
+
+-a
+--
+===============================================================================
+| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
+| PHONE   :: 303.497.6469
+| A flower falls, even though we love it;
+| and a weed grows, even though we do not love it. 
+|   --Dogen
+===============================================================================
 
 
 -------------------------------------------------------
