@@ -1,15 +1,16 @@
-From: Krushita Shah <get2krush@yahoo.com>
-Subject: NFS timeouts
-Date: Fri, 16 May 2003 23:51:55 -0700 (PDT)
+From: "Nishit Shah" <nshah1001@hotmail.com>
+Subject: how to make NFS server thread sleep?
+Date: Sat, 17 May 2003 12:35:00 +0530
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030517065155.6676.qmail@web20504.mail.yahoo.com>
+Message-ID: <BAY2-F32Ib61LF1g0Mc00009e18@hotmail.com>
+Reply-To: nishit@ieee.org
 Mime-Version: 1.0
-Content-Type: multipart/alternative; boundary="0-1512381092-1053154315=:5906"
+Content-Type: text/plain; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from web20504.mail.yahoo.com ([216.136.226.139])
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19GvXw-00022j-00
-	for <nfs@lists.sourceforge.net>; Fri, 16 May 2003 23:51:56 -0700
+Received: from bay2-f32.bay2.hotmail.com ([65.54.247.32] helo=hotmail.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19Gvkg-0007el-00
+	for <nfs@lists.sourceforge.net>; Sat, 17 May 2003 00:05:06 -0700
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -23,42 +24,26 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
---0-1512381092-1053154315=:5906
-Content-Type: text/plain; charset=us-ascii
-
- 
-Hi,
- 
-How do I to increase the NFS request timeout value?
- 
-I need the NFS client to wait for a longer time after sending a request to the server.
- 
-Any suggestions are welcome.
- 
-Thanks in advance,
-Krushita.
 
 
----------------------------------
-Do you Yahoo!?
-The New Yahoo! Search - Faster. Easier. Bingo.
---0-1512381092-1053154315=:5906
-Content-Type: text/html; charset=us-ascii
+  Hello,
 
-<DIV>&nbsp;</DIV>
-<DIV>Hi,</DIV>
-<DIV>&nbsp;</DIV>
-<DIV>How do I&nbsp;to increase the NFS request timeout value?</DIV>
-<DIV>&nbsp;</DIV>
-<DIV>I need the NFS client to wait for a longer time after sending a request to the server.</DIV>
-<DIV>&nbsp;</DIV>
-<DIV>Any suggestions are welcome.</DIV>
-<DIV>&nbsp;</DIV>
-<DIV>Thanks in advance,</DIV>
-<DIV>Krushita.</DIV><p><hr SIZE=1>
-Do you Yahoo!?<br>
-<a href="http://us.rd.yahoo.com/search/mailsig/*http://search.yahoo.com">The New Yahoo! Search</a> - Faster. Easier. Bingo.
---0-1512381092-1053154315=:5906--
+
+  I am trying to make NFS server sleep by giving sleep command in the NFS 
+server READ procedure.
+
+However,doing so causes the server to stop responding to all clients.
+
+How do I make a single server thread go to sleep so that any other client 
+can continue interacting with  the server?
+
+Thank You,
+Nishit.
+
+_________________________________________________________________
+Bridge gaps. Reconnect with old friends. http://www.batchmates.com/msn.asp 
+On batchmates.com
+
 
 
 -------------------------------------------------------
