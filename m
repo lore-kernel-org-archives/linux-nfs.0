@@ -1,20 +1,21 @@
-From: Peter Astrand <peter@cendio.se>
-Subject: Re: statd simplified
-Date: Tue, 3 Feb 2004 21:06:06 +0100 (CET)
+From: Greg Banks <gnb@melbourne.sgi.com>
+Subject: [PATCH] SGI 882960: Busy inodes after unmount, oops
+Date: Wed, 04 Feb 2004 18:12:45 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0402031627450.27418-100000@maggie.lkpg.cendio.se>
+Message-ID: <40209B6D.56ED461E@melbourne.sgi.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=iso-8859-1
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ao85r-0008Uf-9T
-	for nfs@lists.sourceforge.net; Tue, 03 Feb 2004 13:28:27 -0800
-Received: from mail.cendio.se ([193.12.253.66])
+	id 1AoHET-0000MB-AQ
+	for nfs@lists.sourceforge.net; Tue, 03 Feb 2004 23:13:57 -0800
+Received: from mtvcafw.sgi.com ([192.48.171.6] helo=rj.sgi.com)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ao85q-0002ra-FC
-	for nfs@lists.sourceforge.net; Tue, 03 Feb 2004 13:28:26 -0800
-To: Olaf Kirch <okir@suse.de>, <nfs@lists.sourceforge.net>
+	id 1AoHES-0004h5-9n
+	for nfs@lists.sourceforge.net; Tue, 03 Feb 2004 23:13:56 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -27,29 +28,78 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+G'day,
 
->I've never really liked statd for a number of reasons (the following
->list is not exhaustive):
->...
->So I sat down last week and dusted off some old ideas how to simplify
->NLM/NSM interaction quite a bit.
+This patch fixes a bug where the forced killing of pending asynchronous
+unlink rpc_tasks during unmount leaks inode reference counts for the
+parent of the silly-renamed file and all its ancestor directories,
+resulting in the message 
 
-Here is something to add to the wishlist: HA support. 
-http://marc.theaimsgroup.com/?l=linux-nfs&m=106880965906133&w=2 lists some 
-problems with using statd in a HA environment. 
+VFS: Busy inodes after unmount. Self-destruct in 5 seconds.  Have a nice day...
+
+and a few seconds later an oops with a stack trace ending in
+prune_dcache -> nfs_dentry_iput -> iput.
+
+This is probably also the bug discussed last September on the autofs
+mailing list.  The patch posted by Olaf Hering then has no effect
+at all, but it did put me on the right track (thanks Olaf).
 
 
+The first part makes sure that dput() will unhash and kill dentries
+and their parents if called while the unmount is underway.
+
+The second part moves the dput() call from the tk_exit callback of
+the async unlink rpc_task to the tk_release callback so that it
+will be called if the rpc_task is killed by rpc_killall_tasks()
+instead of completing normally.
+
+===========================================================================
+linux/linux/fs/nfs/dir.c
+===========================================================================
+
+--- /usr/tmp/TmpDir.27555-0/linux/linux/fs/nfs/dir.c_1.32	Wed Feb  4 17:57:23 2004
++++ linux/linux/fs/nfs/dir.c	Wed Feb  4 17:52:20 2004
+@@ -551,6 +551,11 @@ static int nfs_dentry_delete(struct dent
+ 		/* Unhash it, so that ->d_iput() would be called */
+ 		return 1;
+ 	}
++	if (!(dentry->d_sb->s_flags & MS_ACTIVE)) {
++		/* Unhash it, so that ancestors of killed async unlink
++		 * files will be cleaned up during umount */
++		return 1;
++	}
+ 	return 0;
+ 
+ }
+
+===========================================================================
+linux/linux/fs/nfs/unlink.c
+===========================================================================
+
+--- /usr/tmp/TmpDir.27555-0/linux/linux/fs/nfs/unlink.c_1.6	Wed Feb  4 17:57:23 2004
++++ linux/linux/fs/nfs/unlink.c	Wed Feb  4 17:56:57 2004
+@@ -51,6 +51,7 @@ static void
+ nfs_put_unlinkdata(struct nfs_unlinkdata *data)
+ {
+ 	if (--data->count == 0) {
++		dput(data->dir);
+ 		nfs_detach_unlinkdata(data);
+ 		if (data->name.name != NULL)
+ 			kfree(data->name.name);
+@@ -132,7 +133,6 @@ nfs_async_unlink_done(struct rpc_task *t
+ 	NFS_PROTO(dir_i)->unlink_done(dir, &task->tk_msg);
+ 	put_rpccred(data->cred);
+ 	data->cred = NULL;
+-	dput(dir);
+ }
+ 
+ /**
+
+
+Greg.
 -- 
-Peter Åstrand		www.thinlinc.com
-Cendio			www.cendio.se
-Teknikringen 3		Phone: +46-13-21 46 00
-583 30 Linköping
-
-
-
-
-
-
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
 
 -------------------------------------------------------
