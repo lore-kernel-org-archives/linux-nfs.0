@@ -1,22 +1,24 @@
-From: Goutham Kurra <kurrag1@yahoo.com>
-Subject: force unmount for NFSv3 client
-Date: Wed, 11 Aug 2004 11:22:47 -0700 (PDT)
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: Strange delays on NFS server
+Date: Wed, 11 Aug 2004 15:07:32 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040811182247.81731.qmail@web20527.mail.yahoo.com>
-References: <1091461098.3980.22.camel@lade.trondhjem.org>
+Message-ID: <411A6E74.1060000@RedHat.com>
+References: <4119FB15.7010205@stams.strath.ac.uk> <411A17F2.2060203@RedHat.com> <411A448D.3080205@stams.strath.ac.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BuxkT-0001LL-80
-	for nfs@lists.sourceforge.net; Wed, 11 Aug 2004 11:22:53 -0700
-Received: from web20527.mail.yahoo.com ([216.136.227.62])
-	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.34)
-	id 1BuxkS-0000e9-18
-	for nfs@lists.sourceforge.net; Wed, 11 Aug 2004 11:22:52 -0700
-To: nfs@lists.sourceforge.net
-In-Reply-To: <1091461098.3980.22.camel@lade.trondhjem.org>
+	id 1BuyRW-0005my-C0
+	for nfs@lists.sourceforge.net; Wed, 11 Aug 2004 12:07:22 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.34)
+	id 1BuyRV-0008BA-Uh
+	for nfs@lists.sourceforge.net; Wed, 11 Aug 2004 12:07:22 -0700
+To: Ian Thurlbeck <ian@stams.strath.ac.uk>
+In-Reply-To: <411A448D.3080205@stams.strath.ac.uk>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,44 +32,15 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Hi,
 
-I notice some strange problems while trying to unmount
-an NFS filesystem after the remote NFS server has died
-(while some applications are hung blocked accessing
-it)
+Ian Thurlbeck wrote:
 
-1. unmount fails with device busy - expected behaviour
-2. fuser hangs, so I can't find out which processes
-are hung blocked on the mount.
-3. umount -f doesn't work - same error device busy.
+> I'm simultaneously looking at a graphical network tool to try
+> and see the traffic going to the server - anyone got a better suggestion?
 
-I've mounted using -intr option. 
+Grab the latest xosview.... it show disk,cpu and nfs activity graphically...
 
-Questions:
-
-1. Why does fuser hang?
-2. Why do some processes which are hung on that mount
-not respond even to SIGKILL (despite the -intr option)
-3. Why doesn't force unmount work?
-
-Essentially, under what circumstances is this sort of
-behavior likely to happen? I see this very often.
-
-I'm using NFSv3 client on the 2.4.22 kernel with
-patches from Trond's 2.4.23-pre-8.
-
-
-thanks,
-goutham
-
-
-
-		
-__________________________________
-Do you Yahoo!?
-New and Improved Yahoo! Mail - Send 10MB messages!
-http://promotions.yahoo.com/new_mail 
+SteveD.
 
 
 -------------------------------------------------------
