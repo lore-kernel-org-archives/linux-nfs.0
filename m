@@ -1,21 +1,25 @@
-From: Rex Dieter <rdieter@math.unl.edu>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: redhat 2.4.18-5 client huge slowdownB
-Date: Wed, 10 Jul 2002 14:46:51 -0500 (CDT)
+Date: 10 Jul 2002 22:19:34 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0207101440370.7151-100000@duran.unl.edu>
-References: <E17SMj4-0006L1-00@usw-sf-list2.sourceforge.net>
+Message-ID: <shs4rf7gwtl.fsf@charged.uio.no>
+References: <Pine.LNX.4.44.0207101440370.7151-100000@duran.unl.edu>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mathstat.unl.edu ([129.93.48.14])
+Received: from mons.uio.no ([129.240.130.14])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17SNQO-0004Tj-00
-	for <nfs@lists.sourceforge.net>; Wed, 10 Jul 2002 12:46:56 -0700
-Received: from duran.unl.edu (IDENT:9AtTk6HHKVHJMo54D3uJouioTDKoGA7j@duran.unl.edu [129.93.50.93])
-	by mathstat.unl.edu (8.9.3/8.9.3) with ESMTP id OAA15162
-	for <nfs@lists.sourceforge.net>; Wed, 10 Jul 2002 14:46:54 -0500
+	id 17SNwZ-0006kX-00
+	for <nfs@lists.sourceforge.net>; Wed, 10 Jul 2002 13:20:11 -0700
+Received: from charged.uio.no ([129.240.86.49])
+	by mons.uio.no with esmtp (Exim 2.12 #7)
+	id 17SNwR-00041Z-00
+	for nfs@lists.sourceforge.net; Wed, 10 Jul 2002 22:20:03 +0200
+Received: from trondmy by charged.uio.no with local (Exim 2.12 #1)
+	id 17SNvy-00087J-00
+	for nfs@lists.sourceforge.net; Wed, 10 Jul 2002 22:19:34 +0200
 To: nfs@lists.sourceforge.net
-In-Reply-To: <E17SMj4-0006L1-00@usw-sf-list2.sourceforge.net>
+In-Reply-To: <Pine.LNX.4.44.0207101440370.7151-100000@duran.unl.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,25 +32,35 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Raphael Clifford wrote:
-> I was wondering if everyone else is experiencing huge nfs write 
-> slowdowns using redhat kernel 2.4.18-5 (as opposed to 2.4.18-4).  I am 
+>>>>> " " == Rex Dieter <rdieter@math.unl.edu> writes:
 
-Yes, I've also experienced a huge nfs client slowdown (~50k/sec writes) on 
-'sync' nfs mounts with the 2.4.18-5 kernel... See me bugzilla report:
-http://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=67199
-and a similar report as well:
-http://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=67461
+     > Raphael Clifford wrote:
+    >> I was wondering if everyone else is experiencing huge nfs write
+    >> slowdowns using redhat kernel 2.4.18-5 (as opposed to
+    >> 2.4.18-4).  I am
 
-The only way I found to get any sort of respectable performance out of 
-2.4.18-5 was to mount 'async'. *ack*
+     > Yes, I've also experienced a huge nfs client slowdown (~50k/sec
+     > writes) on 'sync' nfs mounts with the 2.4.18-5 kernel... See me
+     > bugzilla report:
+     > http://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=67199 and a
+     > similar report as well:
+     > http://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=67461
 
--- 
-Rex A. Dieter			rdieter@unl.edu 
-Computer System Administrator 	http://www.math.unl.edu/~rdieter/
-Mathematics and Statistics  		 
-University of Nebraska Lincoln
+     > The only way I found to get any sort of respectable performance
+     > out of 2.4.18-5 was to mount 'async'. *ack*
 
+For 2.4.18-5 RedHat appears to have decided to set the default r/wsize
+to 4k. To override, just specify larger values for rsize and wsize on
+the mount option. Use something like
+
+mount -t nfs -ohard,intr,rsize=32768,wsize=32768 nonlinux_server:/foo /bar
+
+or
+
+mount -t nfs -ohard,intr,rsize=8192,wsize=8192 linux_server:/foo /bar
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
