@@ -1,16 +1,22 @@
-From: pwitting@Cyveillance.com
-Subject: Re: nfs performance problem
-Date: Wed, 6 Nov 2002 12:08:59 -0500
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] Convert NFS client to use ->readpages()
+Date: Wed, 6 Nov 2002 18:42:10 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <D38AFB3080F3D311807300B0D0203E53033A931C@MERCURY>
+Message-ID: <15817.21618.999074.513995@charged.uio.no>
+References: <shssmyfe8nt.fsf@charged.uio.no>
+	<3DC8E23A.2578323F@digeo.com>
+Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
+    NFS maillist <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [63.100.163.69] (helo=mercury.cyveillance.com)
+Received: from mons.uio.no ([129.240.130.14])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 189Tg7-0007Be-00
-	for <nfs@lists.sourceforge.net>; Wed, 06 Nov 2002 09:09:19 -0800
-To: nfs@lists.sourceforge.net
+	id 189VRJ-0001KP-00
+	for <nfs@lists.sourceforge.net>; Wed, 06 Nov 2002 11:02:09 -0800
+To: Andrew Morton <akpm@digeo.com>
+In-Reply-To: <3DC8E23A.2578323F@digeo.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -23,40 +29,28 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> From: =?iso-8859-1?Q?Ragnar_Kj=F8rstad?= <nfs@ragnark.vestdata.no>
-> On Tue, Nov 05, 2002 at 08:55:41PM +0100, poczta.dotcom.pl wrote:
-> > > How is local performance?
+>>>>> Andrew Morton <akpm@digeo.com> writes:
 
-> > local read/writes are ok
+     > Or should it be
 
-> > > What filesystem do you use?
+     > 	while (!list_empty(...))
 
-> > reiserfs on top of lvm (to be able to get snapshots)
+Duh. No idea how that crept in.
 
-I'm just going to throw my two cents in here. It sounds like the box is
-getting a lot of random IO (~500k maildirs) which means he is most likely
-seeing a LOT of seek issues, and RAID 5 is probably a really bad choice.
-Cheap controllers and fast RAID 5 just don't go together, there's too much
-math going on (the parity bit moves, remember) Matt, you really need to
-trust the folks on the list on this and try it. You'll lose some capacity
-(drop from 800GB to 480GB per array), but hopefully the performance boost
-will be worth it.
+Concerning your other query: the code is correct as it stands since
+nfs_pagein_list() is guaranteed to drain the entire list.
 
-Now, on the plus side, you're already using LVM, so I have a better idea
-than RAID 1+0 for your situation. Build six RAID 1 arrays, then use LVM to
-create a single logical volume out of the group. The randomness should
-ensure that if your server receives 4 simultaneous read/write requests, they
-will each have their own "spindle", an there will be no performance robbing
-back and forth seeking, meaning the requests get handled faster, meaning
-there's less chance for the system to start thrashing with seek requests.
-
-I usually think of each RAID volume as a "virtual spindle", capable of
-handling 1 request at a time. While each individual transaction might be
-slower, (no striping to speed things up) there's six lanes to handle the
-requests. Server thinking versus Workstation thinking.
-
-Hopefully you can experiment with this, If this things production already it
-may be too late.
+--- linux-2.5.45-02-readpages2/fs/nfs/read.c.orig	2002-11-05 19:45:07.000000000 -0500
++++ linux-2.5.45-02-readpages2/fs/nfs/read.c	2002-11-06 12:35:06.000000000 -0500
+@@ -387,7 +387,7 @@
+ 			       is_sync ? readpage_sync_filler :
+ 					 readpage_async_filler,
+ 			       &desc);
+-	if (!list_empty(pages)) {
++	while (!list_empty(pages)) {
+ 		struct page *page = list_entry(pages->prev, struct page, list);
+ 		list_del(&page->list);
+ 		page_cache_release(page);
 
 
 -------------------------------------------------------
