@@ -1,23 +1,21 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: NFS servers stop answering
-Date: Wed, 5 Jan 2005 23:07:53 +0000
-Message-ID: <20050105230753.GA9474@infradead.org>
-References: <FZKMSX4Gxd3gWicigQk00050a35@FZKMSX4.ka.fzk.de> <41DC725C.7050203@iwr.fzk.de>
+From: "nac kawathekar" <nascomp19@rediffmail.com>
+Subject: Primary NFS doubts.           plz..................help
+Date: 6 Jan 2005 10:34:06 -0000
+Message-ID: <20050106103406.15539.qmail@webmail8.rediffmail.com>
+Reply-To: "nac kawathekar" <nascomp19@rediffmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/alternative;
+	boundary="Next_1105007645---0-202.54.124.153-15500"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CmKG2-0006h3-6K
-	for nfs@lists.sourceforge.net; Wed, 05 Jan 2005 15:08:02 -0800
-Received: from [213.146.154.40] (helo=pentafluge.infradead.org)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1CmKFy-0008Id-Mq
-	for nfs@lists.sourceforge.net; Wed, 05 Jan 2005 15:08:02 -0800
-To: Jos van Wezel <jvw@iwr.fzk.de>
-In-Reply-To: <41DC725C.7050203@iwr.fzk.de>
+	id 1CmUwk-0005Uu-0B
+	for nfs@lists.sourceforge.net; Thu, 06 Jan 2005 02:32:50 -0800
+Received: from [202.54.124.153] (helo=rediffmail.com)
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
+	id 1CmUwh-00024H-D1
+	for nfs@lists.sourceforge.net; Thu, 06 Jan 2005 02:32:49 -0800
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,15 +29,38 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Jan 06, 2005 at 12:03:56AM +0100, Jos van Wezel wrote:
-> We run a couple of NFS servers (RedHat 3.0, 2.4.21-15.0.3, nfs-utils 
-> 1.0.6) that have access to the same underlying file system (GPFS). 
-> Sometimes the servers stop responding to mount requests. Clients give up 
-> with 'RPC: Timed out messages'. A second later all is green again and 
-> mount requests go through without a hitch.
+ This is a multipart mime message
 
-Can your reproduce the issues without propritary (GFPS) or know
-totally buggy (it's clue code) modules loaded?
+
+--Next_1105007645---0-202.54.124.153-15500
+Content-type: text/plain;
+	charset=iso-8859-1
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
+
+ =A0=0AHello,=0A=0AHow NFS authenticates the client ? What information need=
+s to be send by the client for authentication ? Is it uid,gid or what ?=0A=
+=0ATo use NFS is it necessary to use NIS ? Is NIS a compulsory thing to use=
+ NFS? If not what is done ?=0A=0ACan any windows client mount  NFS share ?=
+=0A=0ACan i get any explaination of NFS code on net and control flow of how=
+ NFS works exactly in detail.=0A=0A =0A
+--Next_1105007645---0-202.54.124.153-15500
+Content-type: text/html;
+	charset=iso-8859-1
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
+
+<P>=0A&nbsp; <BR>=0AHello,<BR>=0A<BR>=0AHow NFS authenticates the client ? =
+What information needs to be send by the client for authentication ? Is it =
+uid,gid or what ?<BR>=0A<BR>=0ATo use NFS is it necessary to use NIS ? Is N=
+IS a compulsory thing to use NFS? If not what is done ?<BR>=0A<BR>=0ACan an=
+y windows client mount&nbsp; NFS share ?<BR>=0A<BR>=0ACan i get any explain=
+ation of NFS code on net and control flow of how NFS works exactly in detai=
+l.<BR>=0A<BR>=0A <BR>=0A=0A</P>=0A<br><br>=0A<A target=3D"_blank" HREF=3D"h=
+ttp://clients.rediff.com/signature/track_sig.asp"><IMG SRC=3D"http://ads.re=
+diff.com/RealMedia/ads/adstream_nx.cgi/www.rediffmail.com/inbox.htm@Bottom"=
+ BORDER=3D0 VSPACE=3D0 HSPACE=3D0></a>=0A
+--Next_1105007645---0-202.54.124.153-15500--
 
 
 
