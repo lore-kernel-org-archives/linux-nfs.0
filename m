@@ -1,19 +1,19 @@
 From: mehta kiran <kiranmehta1981@yahoo.com>
 Subject: Re: file :"/var/lib/nfs/rmtab"
-Date: Thu, 3 Feb 2005 03:38:20 -0800 (PST)
-Message-ID: <20050203113820.811.qmail@web51601.mail.yahoo.com>
+Date: Thu, 3 Feb 2005 03:38:57 -0800 (PST)
+Message-ID: <20050203113858.91960.qmail@web51609.mail.yahoo.com>
 References: <42020B15.4030602@moving-picture.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CwfJb-0002a1-7p
-	for nfs@lists.sourceforge.net; Thu, 03 Feb 2005 03:38:27 -0800
-Received: from web51601.mail.yahoo.com ([206.190.38.206])
+	id 1CwfKC-0002h5-C3
+	for nfs@lists.sourceforge.net; Thu, 03 Feb 2005 03:39:04 -0800
+Received: from web51609.mail.yahoo.com ([206.190.38.214])
 	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
-	id 1CwfJa-0004fV-KO
-	for nfs@lists.sourceforge.net; Thu, 03 Feb 2005 03:38:27 -0800
+	id 1CwfKB-0004ih-R7
+	for nfs@lists.sourceforge.net; Thu, 03 Feb 2005 03:39:04 -0800
 To: James Pearson <james-p@moving-picture.com>
 In-Reply-To: <42020B15.4030602@moving-picture.com>
 Sender: nfs-admin@lists.sourceforge.net
@@ -86,10 +86,12 @@ thanks ,
 > 
 
 
-__________________________________________________
-Do You Yahoo!?
-Tired of spam?  Yahoo! Mail has the best spam protection around 
-http://mail.yahoo.com 
+
+		
+__________________________________ 
+Do you Yahoo!? 
+Yahoo! Mail - Easier than ever with enhanced search. Learn more.
+http://info.mail.yahoo.com/mail_250
 
 
 -------------------------------------------------------
