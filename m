@@ -1,23 +1,21 @@
-From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
+From: "Lever, Charles" <Charles.Lever@netapp.com>
 Subject: RE: async vs. sync
-Date: Tue, 23 Nov 2004 08:33:03 -0800
-Message-ID: <1101227582.13960.1.camel@soot.ess.uci.edu>
-References: <482A3FA0050D21419C269D13989C61130435EBD8@lavender-fe.eng.netapp.com>
+Date: Tue, 23 Nov 2004 08:36:41 -0800
+Message-ID: <482A3FA0050D21419C269D13989C61130435EBDF@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-wm4jlTjJXRmFgg0FYzZB"
-Cc: strombrg@dcs.nac.uci.edu, nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CWdbG-0006Wh-F9
-	for nfs@lists.sourceforge.net; Tue, 23 Nov 2004 08:33:06 -0800
-Received: from dcs.nac.uci.edu ([128.200.34.32] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1CWdbF-0006rj-5z
-	for nfs@lists.sourceforge.net; Tue, 23 Nov 2004 08:33:05 -0800
-To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: <482A3FA0050D21419C269D13989C61130435EBD8@lavender-fe.eng.netapp.com>
+	id 1CWdet-0007C4-Fk
+	for nfs@lists.sourceforge.net; Tue, 23 Nov 2004 08:36:51 -0800
+Received: from mx2.netapp.com ([216.240.18.37])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1CWdeq-00069Y-9h
+	for nfs@lists.sourceforge.net; Tue, 23 Nov 2004 08:36:51 -0800
+To: "Dan Stromberg" <strombrg@dcs.nac.uci.edu>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,44 +29,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-
---=-wm4jlTjJXRmFgg0FYzZB
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
-
-On Mon, 2004-11-22 at 19:53, Lever, Charles wrote:
-> > > not to mention "soft" mounts are also truly the spawn of satan.
+> On Mon, 2004-11-22 at 19:53, Lever, Charles wrote:
+> > > > not to mention "soft" mounts are also truly the spawn of satan.
+> > >=20
+> > > Unless your filesystem is also readonly...
 > >=20
-> > Unless your filesystem is also readonly...
+> > unfortunately that is a myth.  even a readonly file system can fall=20
+> > victim to the evils of soft mounts, i'm told.
 >=20
-> unfortunately that is a myth.  even a readonly file system can fall
-> victim to the evils of soft mounts, i'm told.
+> Ummmm...  How?
+>=20
+> About all that can happen, is you lose the mount.  You pretty much
+> -can't- toast any data.
+>=20
+> > the cached version of the file on the client can become=20
+> corrupted if=20
+> > the file is changing remotely and one or more cache-refresh reads=20
+> > times out.
+>=20
+> In which case it wasn't truly read only....
 
-Ummmm...  How?
+let's be precise.
 
-About all that can happen, is you lose the mount.  You pretty much
--can't- toast any data.
+there is only one case where a soft mount won't cause data corruption.
+that is when the local file system on the server is mounted read only
+and exported read only, and the client mounts the NFS export read only.
 
-> the cached version of the file on the client can become corrupted if the
-> file is changing remotely and one or more cache-refresh reads times out.
-
-In which case it wasn't truly read only....
-
-
---=-wm4jlTjJXRmFgg0FYzZB
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.4 (GNU/Linux)
-
-iD8DBQBBo2Y+o0feVm00f/8RApZ7AJ4qcsUlCrywK4TykQ0n9rISujUu7QCgov90
-5HLeDs6svHrL0D517TU7GBg=
-=9kdT
------END PGP SIGNATURE-----
-
---=-wm4jlTjJXRmFgg0FYzZB--
-
+maybe good for sharing CD-ROMs via NFS, but otherwise not terribly
+useful.
 
 
 -------------------------------------------------------
