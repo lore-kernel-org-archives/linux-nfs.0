@@ -1,19 +1,20 @@
-From: "Steven N. Hirsch" <shirsch@adelphia.net>
-Subject: Re: 2.4.19-pre5-ac3 NFS problems
-Date: Thu, 11 Apr 2002 07:54:17 -0400 (EDT)
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: IRIX NFS server and Linux NFS client
+Date: 11 Apr 2002 14:09:22 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0204110751100.7442-100000@atx.fast.net>
-References: <Pine.LNX.4.44.0204110730460.6902-100000@atx.fast.net>
+Message-ID: <shs662yjv2l.fsf@charged.uio.no>
+References: <Pine.LNX.4.30.0204111218440.30970-100000@elin.scali.no>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Neil Brown <neilb@cse.unsw.edu.au>
+Content-Type: text/plain; charset=us-ascii
+Cc: <nfs@lists.sourceforge.net>,  <linux-kernel@vger.kernel.org>,
+	  <trond.myklebust@fys.uio.no>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from smtprelay8.dc2.adelphia.net ([64.8.50.40])
+Received: from pat.uio.no ([129.240.130.16])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16vd2Z-0005hl-00
-	for <nfs@lists.sourceforge.net>; Thu, 11 Apr 2002 04:47:00 -0700
-To: nfs@lists.sourceforge.net
-In-Reply-To: <Pine.LNX.4.44.0204110730460.6902-100000@atx.fast.net>
+	id 16vdOT-00017W-00
+	for <nfs@lists.sourceforge.net>; Thu, 11 Apr 2002 05:09:38 -0700
+To: Steffen Persvold <sp@scali.com>
+In-Reply-To: <Pine.LNX.4.30.0204111218440.30970-100000@elin.scali.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,42 +27,23 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Thu, 11 Apr 2002, Steven N. Hirsch wrote:
+>>>>> " " == Steffen Persvold <sp@scali.com> writes:
 
-> On Mon, 8 Apr 2002, Neil Brown wrote:
-> 
-> > On Sunday April 7, shirsch@adelphia.net wrote:
-> 
-> > > I'm not sure exactly what has been integrated into Alan's pre5-ac3 kernel,
-> > > but there are serious problems with NFS over TCP.  Twice in a row I've had
-> > > locked processes on the client when attempting to lock a mail spool on the
-> > > server.  Required reboot on both ends to clear :-(.
-> > > 
-> 
-> > I am interest to know if  
-> >   "netstat -t"
-> > shows anything on the input queue for the lockd connection: quite
-> > possibly the connection to port 32768.
-> 
-> Neil,
-> 
-> I finally got the chance to bang on this.  I'm not seeing anything 
-> queueing on port 32768, but during the period when 'pine' hangs there 
-> seems to be a large number number of requests on port 32771 server-side.  
-> At no point does the backlog fall below about 160.  What should I be 
-> seeing?
+     > I forgot to mention that NFSv3 works when an IRIX client mounts
+     > the same directory (i.e the directory shows up as "nfs" and not
+     > "nfs2" in the mount table on the IRIX client).
 
-Following up on my own followup..  When I restart the server with 
-2.4.19-pre2 + Trond's older TCP server patch (which I had been using for 
-some weeks incident-free), I'm never seeing anything backed up on high 
-port numbers.  With your TCP server patch, it's permanently backlogged at 
-numbers which are never < 160.
+     > Could it be that IRIX only supports NFSv3 with TCP and not UDP
+     > (I didn't try TCP mounting on the Linux client) ?
 
-Hopefully this provides a clue to underlying problem?
+Have you applied
 
-Steve
+  http://www.fys.uio.no/~trondmy/src/2.4.18/linux-2.4.18-seekdir.dif
 
+in order to work around the glibc-2.x readdir bugs?
 
+Cheers,
+  Trond
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
