@@ -1,22 +1,19 @@
-From: Andrew Morton <akpm@digeo.com>
-Subject: Re: [PATCH] Convert NFS client to use ->readpages()
-Date: Wed, 06 Nov 2002 01:34:50 -0800
+From: =?iso-8859-1?Q?Ragnar_Kj=F8rstad?= <nfs@ragnark.vestdata.no>
+Subject: Re: nfs performance problem
+Date: Wed, 6 Nov 2002 11:16:28 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3DC8E23A.2578323F@digeo.com>
-References: <shssmyfe8nt.fsf@charged.uio.no>
+Message-ID: <20021106111628.Q23227@vestdata.no>
+References: <005b01c284f5$ae1d6090$640a010a@winda> <20021105201758.I23227@vestdata.no> <007901c28505$51e9c240$640a010a@winda> <20021106003237.L23227@vestdata.no> <003201c28572$c04ea260$640a010a@winda>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
-        NFS maillist <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=iso-8859-1
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from packet.digeo.com ([12.110.80.53])
+Received: from stine.vestdata.no ([195.204.68.10])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 189MaP-0005Tv-00
-	for <nfs@lists.sourceforge.net>; Wed, 06 Nov 2002 01:34:57 -0800
-Received: from digeo-nav01.digeo.com (digeo-nav01.digeo.com [192.168.1.233])
-	by packet.digeo.com (8.9.3+Sun/8.9.3) with SMTP id BAA05671
-	for <nfs@lists.sourceforge.net>; Wed, 6 Nov 2002 01:34:51 -0800 (PST)
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+	id 189NEn-0001XO-00
+	for <nfs@lists.sourceforge.net>; Wed, 06 Nov 2002 02:16:41 -0800
+To: myciel <myciel@dotcom.pl>
+In-Reply-To: <003201c28572$c04ea260$640a010a@winda>; from myciel@dotcom.pl on Wed, Nov 06, 2002 at 09:59:01AM +0100
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,47 +26,61 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust wrote:
-> 
-> +int
-> +nfs_readpages(struct file *filp, struct address_space *mapping,
-> +               struct list_head *pages, unsigned nr_pages)
-> +{
-> +       LIST_HEAD(head);
-> +       struct nfs_readdesc desc = {
-> +               .filp           = filp,
-> +               .head           = &head,
-> +       };
-> +       struct nfs_server *server = NFS_SERVER(mapping->host);
-> +       int is_sync = server->rsize < PAGE_CACHE_SIZE;
-> +       int ret;
-> +
-> +       ret = read_cache_pages(mapping, pages,
-> +                              is_sync ? readpage_sync_filler :
-> +                                        readpage_async_filler,
-> +                              &desc);
-> +       if (!list_empty(pages)) {
-> +               struct page *page = list_entry(pages->prev, struct page, list);
-> +               list_del(&page->list);
-> +               page_cache_release(page);
-> +       }
+On Wed, Nov 06, 2002 at 09:59:01AM +0100, myciel wrote:
+> > > > What filesystem do you use?
+> > >
+> > > reiserfs on top of  lvm (to be able to get snapshots)
+> >
+> > What reiserfs-version? 3.5 or 3.6?
+> > What on-disk format? 3.5 or 3.6?
+>=20
+> 3.6.25
 
-What are the above few lines doing?  Looks odd.
+That's the reiserfs-version.
+The on-disk format must be either "3.5" or "3.6".
+There should be a message at mount-time telling you wich one, or you can
+use "debugreiserfs <device>" to check it.
 
-Or should it be
+> > Unnless you're running reiserfs-3.5 my guess is that it is the
+> > IO-performance that is the problem. 3ware 7500 controllers have rathe=
+r
+> > poor performance on RAID5 - especially for writes.
+>=20
+> reiserfs 3.6.25, raid 5,
+> ok, I can understand raid 5 is not fast but getting below 2Mbytes/s
+> is really poor :-(
 
-	while (!list_empty(...))
+Well, updating a single byte is a very very expensive operation on
+raid5. I agree that 2MB/s is worse than one should expect though, so
+there may be something else going on.
 
-?
+The fact that you say local writes are faster could indicate that the
+problem is not only io-related.=20
 
-> +       if (!list_empty(&head)) {
-> +               int err = nfs_pagein_list(&head, server->rpages);
-> +               if (!ret)
-> +                       ret = err;
-> +       }
-> +       return ret;
-> +}
-> +
+Maybe there is some packet-loss? That kills performance on nfs.
+Is there anything in the kernel-log on the clients to indicate the
+problem?
+
+> > If that's correct, then switching to a different RAID-level or replac=
+ing
+> > the 3ware-controller should solve the problem. SCSI- or FC- RAIDS are
+> > easily 10 or 20 times faster than the 3ware RAID for some types of
+> > operations, and if you want something cheaper there is also different
+> > types of IDE-RAIDs.
+>=20
+> what kind of IDE-RAID would You suggest?
+
+A BigStorage IDE-RAID of course :)
+I'll get back to you off-list about that.
+
+But it's still not clear if your problems are raid-related or
+network-related. Possible a combination.
+
+
+
+--=20
+Ragnar Kj=F8rstad
+Big Storage
 
 
 -------------------------------------------------------
