@@ -1,72 +1,95 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: nfsroot problems on RedHat 8 with kernel linux-2.4.18-27.8.0
-Date: Sun, 25 May 2003 23:53:13 +0200
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16081.15177.472767.206769@charged.uio.no>
-References: <3ECE0EF3.5080004@ti.com>
-	<shs4r3lx1ux.fsf@charged.uio.no>
-	<3ECE2479.3000706@ti.com>
-	<16078.12509.988134.109974@charged.uio.no>
-	<003401c321ad$9a438180$6464a8c0@foxie>
+Subject: intent patches
+Date: Mon, 26 May 2003 00:31:46 +0200
+Sender: linux-fsdevel-owner@vger.kernel.org
+Message-ID: <16081.17490.889937.791357@charged.uio.no>
+References: <20030525074243.GF18405@localhost.localdomain>
 Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: <trond.myklebust@fys.uio.no>,
-    <nfs@lists.sourceforge.net>
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19K3Qr-0000yg-00
-	for <nfs@lists.sourceforge.net>; Sun, 25 May 2003 14:53:33 -0700
-To: "Martynas Buozis" <martynas@ti.com>
-In-Reply-To: <003401c321ad$9a438180$6464a8c0@foxie>
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Cc: viro@parcelfarce.linux.theplanet.co.uk,
+	Linux FSdevel <linux-fsdevel@vger.kernel.org>,
+	Linux Kernel <linux-kernel@vger.kernel.org>,
+	NFS maillist <nfs@lists.sourceforge.net>,
+	lustre-devel@lists.sf.net
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: Peter Braam <braam@clusterfs.com>
+In-Reply-To: <20030525074243.GF18405@localhost.localdomain>
+List-ID: <nfs.lists.sourceforge.net>
 
->>>>> " " == Martynas Buozis <martynas@ti.com> writes:
+>>>>> " " == Peter Braam <braam@clusterfs.com> writes:
 
-     > informtion as required by Celerra, so mount request is
-     > denied. When I use mount from command line on booted RedHat 8
-     > system to mount same file system - it sends all required
-     > information and Celerra accepts mount request.
+     > We _do_ have resources to sort it all out very agressively in
+     > the next few weeks.
 
-OK. I misunderstood you (sorry). You were talking about the mount
-protocol, and I was thinking about the NFS protocol itself.
+Good. Let's do that...
 
-The following patch ought to suffice...
+     > We currently use intents for two methods:
+     > - getattr
+     > - open
+     > For other methods, we would like the intents also, but they did
+     > not solve all our woes.  We may have overlooked one or two,
+     > like permission.
+
+Permission provides a pretty major source of optimization as far as
+NFS is concerned: we can ignore it for all operations *except* open(),
+and cached lookup().
+
+     > We introduced lookup2 and d_revalidate2 to avoid changing all
+     > file systems and in 2.5 we give them a namei data parameter.
+
+Is this really desirable? It makes maintenance easy when you are
+making add-on patches for the kernel, but IMHO it otherwise just makes
+for a confusing interface.
+
+     > We would like to pass a pointer to nameidata to:
+
+     > - open (file method)
+     > - create directory (inode method)
+     > - lookup (inode method)
+     > - revalidate (dentry method)
+
+All those are good as far as I'm concerned.
+
+     > - revalidate (inode method)
+
+That's no longer in 2.5.x. Do you perhaps mean the new getattr()?
+
+     > and perhaps also to mkdir, rmdir, unlink, rename, mknod,
+     > setattr.
+
+setattr() may help for NFSv4 where we can do open(O_TRUNC) atomically
+on the server, and could optimize away the truncation.
+
+The other ops aren't really prime candidates for optimization,
+although we could possibly plonk the lookup+op into a single RPC call
+by means of the COMPOUND call (again NFSv4 only).
+
+     >   We have not done so yet, and can work aroud this by adding a
+     >   field
+     >      struct lookup_intent *d_it
+     > in a dentry. This is not elegant, and the protection of this
+     > field is delicate, but avoids large scale api changes.
+
+Hmmm...
+
+     > Trond changes all callers instead of adding lookup2 (better
+     > long term, very invasive for pre-2.6)
+
+We could mitigate the effects by making the nameidata field an
+optional one. Of course, that would make it harder to add support for
+credentials.
+
+     > he has vfsintent point to nameidata and inside "opendata" and
+     > we have the exact opposite...
+
+Swapping will fail to offend any deeply held religious beliefs of
+mine. No problems there...
+
+     > We do all methods.
+
+Yep. As you can see I've looked only at those methods that are known
+to have the largest impact w.r.t. the NFS client.
 
 Cheers,
   Trond
-
---- linux-2.4.21-up/fs/nfs/mount_clnt.c.orig	2002-10-15 18:32:18.000000000 +0200
-+++ linux-2.4.21-up/fs/nfs/mount_clnt.c	2003-05-25 23:50:12.000000000 +0200
-@@ -75,7 +75,7 @@
- 
- 	clnt = rpc_create_client(xprt, hostname,
- 				&mnt_program, version,
--				RPC_AUTH_NULL);
-+				RPC_AUTH_UNIX);
- 	if (!clnt) {
- 		xprt_destroy(xprt);
- 	} else {
-
-
-
-
--------------------------------------------------------
-This SF.net email is sponsored by: ObjectStore.
-If flattening out C++ or Java code to make your application fit in a
-relational database is painful, don't do it! Check out ObjectStore.
-Now part of Progress Software. http://www.objectstore.net/sourceforge
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
