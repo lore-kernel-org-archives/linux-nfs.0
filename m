@@ -1,13 +1,17 @@
-From: Emanuel.Quass@temic.com
-Subject: Antwort: what is dump ?
-Date: Fri, 23 May 2003 13:52:15 +0300
+From: "Kiernan, Michael" <mkiernan@netapp.com>
+Subject: RE: NFS Performance Between SGI Servers and Linux Clients
+Date: Fri, 23 May 2003 13:14:39 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <OF2BB3F38D.F3E3370F-ONC1256D2F.003B6C4D-C2256D2F.003BB7E8@temic.de>
+Message-ID: <765B6B38B4D29D498077F8E644E23B7FED83EC@nlhoe2k02.europe.netapp.com>
 Mime-Version: 1.0
-Content-Type: multipart/alternative; boundary="=_alternative 003BB7DDC2256D2F_="
-Cc: nfs@lists.sourceforge.net, nfs-admin@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: "jacky" <jacky.xia@raidtec.ie>
+Received: from mx01.netapp.com ([198.95.226.53])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19JAWE-0002jA-00
+	for <nfs@lists.sourceforge.net>; Fri, 23 May 2003 04:15:26 -0700
+To: "Iain Irwin-Powell" <iain@cinesite.co.uk>, <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -20,76 +24,90 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multipart message in MIME format.
---=_alternative 003BB7DDC2256D2F_=
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+Iain,
 
-Hi Jacky,
+6.5.19 (and 6.5.17/18/20 for that matter) have a number of known
+fundamental problems [we've seen some nasty client side problems,
+though I've obviously not been involved in server side issues]
 
-this is a normal behavior. This simply means someone is doing a "showmount =
+NFS patch (5021 or 5022 [don't ask me which one is for 6.5.19,=20
+I'm not *that* into irix!] contains a number of important fixes.
+What you're describing is possibly, or is closely related to the
+buf_relse_age bug 886112. you might try the workaround online:
+sgi-hd 2# systune buf_relse_age 10
+        buf_relse_age =3D 0 (0x0)
+        Do you really want to change buf_relse_age to 10 (0xa)? (y/n)  y
+sgi-hd 3# systune buf_relse_age
+        buf_relse_age =3D 10 (0xa)
 
--e <servername>"
-I asume you have some solaris boxes as nfs clients (or linux with autofs).
+- Mike
 
-I don't know where to stop this messages, but you can safely ignore this=20
-messages (as far as I know)
+-----Original Message-----
+From: Iain Irwin-Powell [mailto:iain@cinesite.co.uk]
+Sent: 22 May 2003 18:32
+To: nfs@lists.sourceforge.net
+Subject: [NFS] NFS Performance Between SGI Servers and Linux Clients
 
-Best wishes=20
 
-        Emanuel Quass
 
---
+Does anyone have any ideas about this?
 
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+We have been experiencing a number of issues regarding NFS serving on
+SGI IRIX (6.5.19) servers which now appear to point back to Linux NFS
+clients.
 
- - Continental Automotive Systems -
+The server is an Origin 2000, quad processors, 1.5GB memory, serving
+over Gigabit. This can be reproduced on connections whether or not they
+are using jumbo frames. The disks that are served are hardware RAID3
+capable of around 80-90MB/s (tested and optimised not theoretical).=20
+
+Under certain circumstances will get a load average of 8 (or how ever
+many nfsd's are running). The server itself is not that busy. Most of
+the nfsd's show as sleeping but they are obviously waiting for
+something.
+
+Further investigation revealed that this situation arises when a Linux
+client opens many files in quick succession (doing
+open-read-close,open-read-close). We tend to use files in the range
+3MB-13MB in size generally.
+
+If we do the same test on an SGI client there is very little impact on
+the load average.
+
+We can recreate this by doing (on the client);
+
+find . -type -f -print -exec grep jsdhgkhjfdk {} \;
+
+The same effect appears to happen on Linux servers as well. A single
+Linux client doing this will make the load average creep up towards 2.5.
+
+Linux Version 2.4.20
+nfs-utils-1.0.1-1
+exports are exported with -32bitclients
+
+Looking a bit deeper in a packet trace when the grep is running, Linux
+seems to issue 16 read requests (16KB) at a time whilst an SGI will only
+issue between 2 and 4. May or may not be relevant.
+
+This information has also been passed back to SGI who are looking at it.
+
+Packet traces and more detail is available if anyone wants them.
+
+Any ideas or suggestions would be welcome.
+
+******************************************************************
+Iain Irwin-Powell (AKA Iain Powell)
+Senior Systems Administrator
+Cinesite Europe Limited
+9 Carlisle Street
+London
+W1D 3BP
 =20
-Conti TEMIC microelectronic GmbH
-Dipl.Inf.(FH) Emanuel Quass
-FIE1.1/IN, Abteilung M-CAD/CAE
-Ringlerstra=DFe 17
-D-85057 Ingolstadt
-E-Mail :  emanuel.quass@temic.com=20
-
-Besuchen Sie unsere Web-Seite:
-http://www.temic.com
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-
-
-
-
-
-"jacky" <jacky.xia@raidtec.ie>
-Gesendet von: nfs-admin@lists.sourceforge.net
-23.05.2003 13:28
-
-=20
-        An:     <nfs@lists.sourceforge.net>
-        Kopie:=20
-        Thema:  [NFS] what is dump ?
-
-
-Since I've installed and run and NFS, I've my log=20
-flooded with this message=20
-(every 10 seconds) :=20
----=20
-Feb 24 12:03:50 [rpc.mountd] dump request from 1.2.3.4=20
-Feb 24 12:03:53 [rpc.mountd] dump request from 1.2.3.4=20
-Feb 24 12:03:56 [rpc.mountd] dump request from 1.2.3.4=20
-Feb 24 12:03:59 [rpc.mountd] dump request from 1.2.3.4=20
-Feb 24 12:04:02 [rpc.mountd] dump request from 1.2.3.4=20
----=20
-(where 1.2.3.4 is the fixed ip of the NFS server).=20
-
-Therefore I have 2 questions:=20
-- What's this dump request ? (can I safely turn it off=20
-(and how) ?)=20
-- If it's normal feature where can I specify that I=20
-don't want such logging=20
-(especially every 10 seconds) ?=20
+T: +442079734000
+DDI: +442079734053
+*******************************************************************
+It's not broken, it just doesn't work the way you expected.
+*******************************************************************
 
 
 
@@ -99,112 +117,9 @@ This SF.net email is sponsored by: ObjectStore.
 If flattening out C++ or Java code to make your application fit in a
 relational database is painful, don't do it! Check out ObjectStore.
 Now part of Progress Software. http://www.objectstore.net/sourceforge
-=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=
-=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F
+_______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
-
-
-
---=_alternative 003BB7DDC2256D2F_=
-Content-Type: text/html; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-
-
-<br><font size=3D2 face=3D"sans-serif">Hi Jacky,</font>
-<br>
-<br><font size=3D2 face=3D"sans-serif">this is a normal behavior. This simp=
-ly means someone is doing a &quot;showmount -e &lt;servername&gt;&quot;</fo=
-nt>
-<br><font size=3D2 face=3D"sans-serif">I asume you have some solaris boxes =
-as nfs clients (or linux with autofs).</font>
-<br>
-<br><font size=3D2 face=3D"sans-serif">I don't know where to stop this mess=
-ages, but you can safely ignore this messages (as far as I know)</font>
-<br>
-<br><font size=3D2 face=3D"sans-serif">Best wishes </font>
-<br>
-<br><font size=3D2 face=3D"sans-serif">&nbsp; &nbsp; &nbsp; &nbsp; Emanuel =
-Quass</font>
-<br><font size=3D2 face=3D"sans-serif"><br>
---<br>
-<br>
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D<br>
-<br>
- - Continental Automotive Systems -<br>
- <br>
-Conti TEMIC microelectronic GmbH<br>
-Dipl.Inf.(FH) Emanuel Quass<br>
-FIE1.1/IN, Abteilung M-CAD/CAE<br>
-Ringlerstra=DFe 17<br>
-D-85057 Ingolstadt<br>
-E-Mail : &nbsp;emanuel.quass@temic.com <br>
-<br>
-Besuchen Sie unsere Web-Seite:<br>
-http://www.temic.com<br>
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D<br>
-</font>
-<br>
-<br>
-<br>
-<table width=3D100%>
-<tr valign=3Dtop>
-<td>
-<td><font size=3D1 face=3D"sans-serif"><b>&quot;jacky&quot; &lt;jacky.xia@r=
-aidtec.ie&gt;</b></font>
-<br><font size=3D1 face=3D"sans-serif">Gesendet von: nfs-admin@lists.source=
-forge.net</font>
-<p><font size=3D1 face=3D"sans-serif">23.05.2003 13:28</font>
-<br>
-<td><font size=3D1 face=3D"Arial">&nbsp; &nbsp; &nbsp; &nbsp; </font>
-<br><font size=3D1 face=3D"sans-serif">&nbsp; &nbsp; &nbsp; &nbsp; An: &nbs=
-p; &nbsp; &nbsp; &nbsp;&lt;nfs@lists.sourceforge.net&gt;</font>
-<br><font size=3D1 face=3D"sans-serif">&nbsp; &nbsp; &nbsp; &nbsp; Kopie: &=
-nbsp; &nbsp; &nbsp; &nbsp;</font>
-<br><font size=3D1 face=3D"sans-serif">&nbsp; &nbsp; &nbsp; &nbsp; Thema: &=
-nbsp; &nbsp; &nbsp; &nbsp;[NFS] what is dump ?</font></table>
-<br>
-<br>
-<br><font size=3D2 face=3D"Courier New">Since I've installed and run and NF=
-S, I've my log <br>
-flooded with this message <br>
-(every 10 seconds) : <br>
---- <br>
-Feb 24 12:03:50 [rpc.mountd] dump request from 1.2.3.4 <br>
-Feb 24 12:03:53 [rpc.mountd] dump request from 1.2.3.4 <br>
-Feb 24 12:03:56 [rpc.mountd] dump request from 1.2.3.4 <br>
-Feb 24 12:03:59 [rpc.mountd] dump request from 1.2.3.4 <br>
-Feb 24 12:04:02 [rpc.mountd] dump request from 1.2.3.4 <br>
---- <br>
-(where 1.2.3.4 is the fixed ip of the NFS server). <br>
-<br>
-Therefore I have 2 questions: <br>
-- What's this dump request ? (can I safely turn it off <br>
-(and how) ?) <br>
-- If it's normal feature where can I specify that I <br>
-don't want such logging <br>
-(especially every 10 seconds) ? <br>
-<br>
-<br>
-<br>
-<br>
--------------------------------------------------------<br>
-This SF.net email is sponsored by: ObjectStore.<br>
-If flattening out C++ or Java code to make your application fit in a<br>
-relational database is painful, don't do it! Check out ObjectStore.<br>
-Now part of Progress Software. http://www.objectstore.net/sourceforge<br>
-=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=
-=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F<br>
-NFS maillist &nbsp;- &nbsp;NFS@lists.sourceforge.net<br>
-https://lists.sourceforge.net/lists/listinfo/nfs<br>
-<br>
-</font>
-<br>
-<br>
---=_alternative 003BB7DDC2256D2F_=--
 
 
 -------------------------------------------------------
