@@ -1,17 +1,23 @@
-From: Ion Badulescu <ionut@cs.columbia.edu>
-Subject: Re: Null characters in files on NFS mounted volume....
-Date: Fri, 24 May 2002 17:34:41 -0400
+From: "Juan Gomez" <juang@us.ibm.com>
+Subject: Clustered NFS?
+Date: Fri, 24 May 2002 16:46:22 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200205242134.g4OLYf825100@buggy.badula.org>
-References: <3CEE6DEB.B6153F2D@fnal.gov>
-Cc: nfs@lists.sourceforge.net
+Message-ID: <OF9BD0A326.21A8F516-ON88256BC3.008259B0@boulder.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from bgp401130bgs.jersyc01.nj.comcast.net ([68.36.96.125] helo=buggy.badula.org)
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17BMi8-0006US-00
-	for <nfs@lists.sourceforge.net>; Fri, 24 May 2002 14:34:56 -0700
-To: Dan Yocum <yocum@fnal.gov>
-In-Reply-To: <3CEE6DEB.B6153F2D@fnal.gov>
+Received: from e1.ny.us.ibm.com ([32.97.182.101])
+	by usw-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17BOlX-0006MK-00
+	for <nfs@lists.sourceforge.net>; Fri, 24 May 2002 16:46:35 -0700
+Received: from westrelay02.boulder.ibm.com (westrelay02.boulder.ibm.com [9.17.194.23])
+	by e1.ny.us.ibm.com (8.12.2/8.12.2) with ESMTP id g4ONkOg5173316
+	for <nfs@lists.sourceforge.net>; Fri, 24 May 2002 19:46:25 -0400
+Received: from d03nm041.boulder.ibm.com (d03nm041.boulder.ibm.com [9.17.194.41])
+	by westrelay02.boulder.ibm.com (8.11.1m3/NCO/VER6.1) with ESMTP id g4ONkOH50074
+	for <nfs@lists.sourceforge.net>; Fri, 24 May 2002 17:46:24 -0600
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,21 +30,13 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Fri, 24 May 2002 11:44:27 -0500, Dan Yocum <yocum@fnal.gov> wrote:
-> Just an update - the null characters problem hasn't cropped up again, and I
-> haven't done anything to "fix" the problem, either - the mounts are still
-> 'soft', etc.
-> 
-> I'm about ready to declare it a non-reproducable network error and nothing
-> to do with NFS, but if it turns up again, I'll let you know.
+Is there any software project/patch attempting to create a clustered
+version of NFS? What I mean is a version of NFS where lockd/statd state can
+be migrated from server to server? Any standard for this?
 
-With 'soft' mounts, it's not 'if', but 'when'...
 
-Ion
+Thanks, Juan
 
--- 
-  It is better to keep your mouth shut and be thought a fool,
-            than to open it and remove all doubt.
 
 _______________________________________________________________
 
