@@ -1,35 +1,103 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: NFS_ALL patchsets updated for Linux-2.4.26...
-Date: Wed, 14 Apr 2004 14:23:20 -0700
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <1081977800.2575.144.camel@lade.trondhjem.org>
+From: Bernd Schubert <bernd-schubert@web.de>
+Subject: nfsprog support
+Date: Thu, 15 Apr 2004 17:50:39 +0200
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <200404151750.53209.bernd-schubert@web.de>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BE98l-00069m-6Q
+	for nfs@lists.sourceforge.net; Thu, 15 Apr 2004 08:50:59 -0700
+Received: from relay.uni-heidelberg.de ([129.206.100.212])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1BE98k-0002zB-GE
+	for nfs@lists.sourceforge.net; Thu, 15 Apr 2004 08:50:58 -0700
+Received: from euklid.pci.uni-heidelberg.de (euklid.pci.uni-heidelberg.de [129.206.21.104])
+	by relay.uni-heidelberg.de (8.12.10/8.12.10) with ESMTP id i3FFosni029697
+	for <nfs@lists.sourceforge.net>; Thu, 15 Apr 2004 17:50:55 +0200 (MET DST)
+Received: from bernd by euklid.pci.uni-heidelberg.de with local (Exim 3.35 #1 (Debian))
+	id 1BE98f-0003Vl-00
+	for <nfs@lists.sourceforge.net>; Thu, 15 Apr 2004 17:50:53 +0200
 To: nfs@lists.sourceforge.net
-List-ID: <nfs.lists.sourceforge.net>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-A number of people have written to ask for updates of the 2.4.x NFS_ALL
-patchsets which were unchanged since 2.4.23 or so. I haven't done this
-because the 2.4.23 patches should have applied fine to all kernels
-between 2.4.23 and the 2.4.26-pre series.
+=2D----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-Since we've now merged in several of the bugfixes that were already in
-NFS_ALL into Marcelo's kernel, I have put out an updated NFS_ALL for
-2.4.26. Please assume that it can be applied to any future 2.4.x kernels
-until further notice.
+Hello,
 
-Please also assume that, 2.4.x is feature-frozen. None of these patches
-are therefore slated for inclusion into Marcelo's kernel. They are only
-being provided in order to allow people who are currently relying on
-these features in their private 2.4.x builds to continue to use them.
+about a year ago I already asked about nfsprog support and that time Trond
+told me that the kernel doesn't support it yet.
 
-Please see
+Background: We are using both, the ClusterNFSD and the KNFSD on our server
+(/etc and /var by the cNFSd and everything else by the knfsd).
+Since ClusterNFS is based on unfsd, which only supports NFSv2, we were able
+work around the nfsprog problem by simply using knfs for nfsv3 and clustern=
+fs
+for nfsv2. However, now we would like to use unfs3, but wouldn't like to
+switch knfs to NFSv2.
 
-   http://www.fys.uio.no/~trondmy/src/Linux-2.4.x/2.4.26/
+I already looked into the source and it was pretty easy to add nfsprog supp=
+ort
+by adding a nfsprog variable to the mount structure. However I guess
+something like this will never go into the kernel.
+Then I tried to figure out how the mountprog variable is read from the kern=
+el,
+unfortunality I only found out that the fs/nfs/mount_clnt.c isn't even
+compiled. So I can only guess that this somehow works via the get_mountport=
+()
+function from userspace, but so far I didn't find out which kernel functions
+are responsible for that.
 
-for further details.
+Can someone help me and tell me what would be the best way to add nfsprog
+support to the kernel?
 
-Cheers,
-  Trond
+
+Thanks in advance,
+	Bernd
+
+
+PS: Our diskless environment based on ClusterNFS+KNFS really works pretty w=
+ell
+for more than one year and we only need to reboot the clients in case of an
+kernel, glibc or init update. I'm currently writing a howto for that.
+
+
+=2D --
+Bernd Schubert
+Physikalisch Chemisches Institut / Theoretische Chemie
+Universit=E4t Heidelberg
+INF 229
+69120 Heidelberg
+e-mail: bernd.schubert@pci.uni-heidelberg.de
+
+=2D----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.4 (GNU/Linux)
+
+iD8DBQFAfq9VC8BUnAF+ydYRAm7bAJ9eUDSnkyWe7ph7invkXv758PxMCwCggfit
+2dqBPsaimV9d6TR5exHaLPo=3D
+=3DBKVI
+=2D----END PGP SIGNATURE-----
+
+
+-------------------------------------------------------
+This SF.Net email is sponsored by: IBM Linux Tutorials
+Free Linux tutorial presented by Daniel Robbins, President and CEO of
+GenToo technologies. Learn everything from fundamentals to system
+administration.http://ads.osdn.com/?ad_id=1470&alloc_id=3638&op=click
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
