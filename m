@@ -1,23 +1,24 @@
-From: Miika Pekkarinen <miipekk@ihme.org>
-Subject: Re: Using mmap result in data corruption
-Date: Tue, 16 Nov 2004 12:07:13 +0200 (EET)
-Message-ID: <Pine.LNX.4.58.0411161206440.26094@ihme.ihme.org>
+From: Marian Eichholz <marian.eichholz@freenet-ag.de>
+Subject: Kernel freezes on "exportfs -a"
+Date: Tue, 16 Nov 2004 12:22:37 +0100
+Message-ID: <20041116112237.GQ20889@urmel.freenet-ag.de>
+Reply-To: marian.eichholz@freenet-ag.de
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CU0FI-0001Ra-0Y
-	for nfs@lists.sourceforge.net; Tue, 16 Nov 2004 02:07:32 -0800
-Received: from ihme.org ([212.226.113.138] ident=mail)
+	id 1CU1Q3-0006Fq-4V
+	for nfs@lists.sourceforge.net; Tue, 16 Nov 2004 03:22:43 -0800
+Received: from mout1.freenet.de ([194.97.50.132])
 	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1CU0FH-00013W-7K
-	for nfs@lists.sourceforge.net; Tue, 16 Nov 2004 02:07:31 -0800
-Received: from miipekk (helo=localhost)
-	by ihme.org with local-esmtp (Exim 4.24)
-	id 1CU0Ez-0003P7-Dj
-	for nfs@lists.sourceforge.net; Tue, 16 Nov 2004 12:07:13 +0200
+	id 1CU1Q1-0001tx-R1
+	for nfs@lists.sourceforge.net; Tue, 16 Nov 2004 03:22:42 -0800
+Received: from [194.97.50.144] (helo=mx1.freenet.de)
+	by mout1.freenet.de with esmtpa (Exim 4.43)
+	id 1CU1Py-0004cO-4d
+	for nfs@lists.sourceforge.net; Tue, 16 Nov 2004 12:22:38 +0100
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -32,31 +33,58 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, 12 Nov 2004, Trond Myklebust wrote:
+Hello all, hi Neil, hi Olaf,
 
-> > I have found a reproducable issue with NFS that will lead to file
-> > corruption on server. When a file is created with O_TRUNC and data is
-> > copied using mmap, the new file on the server will be filled with null bytes.
->
-> mmap() offers absolutely NO guarantees that the file will be synced to
-> disk on close. Use msync(MS_SYNC) if you want such a guarantee.
+we recently found a strange bug in the recent 2.6 kernels
+that freezes the whole kernel (down to even no response to
+the Magic SysRq keys). And in fact sticks us to the 2.4
+series we want to get rid of :)
 
-Hmm, with msync (right before munmap) the file gets synced to disk
-correctly. However, I am
-still wondering what is wrong with munmap. I checked the manual page
-of msync and it said: "msync  flushes  changes  made  to  the in-core copy
-of a file that was mapped into memory using mmap(2) back to disk. Without
-use of this call there is no guarantee that changes are written back
-before munmap(2) is called." So I understood that munmap should do the
-same thing than msync but I doesn't sync the file. Probably I am missing
-some point or there is a bug somewhere else (either in manual pages or in
-some library)?
+This happens during "exportfs -a" when the following
+sequence commences (tested by manual command execution,
+with some seconds betweeen the commands):
 
--- 
-Miika Pekkarinen <miika at ihme.org>
+	rpc.nfsd 128
+	rpc.mountd
+	rpc.statd
+	exportfs -a
 
+We cannot reproduce it on a "normal" machine.
 
+The most recently tested kernel is a 2.6.9-rc1 (since each
+test breaks the production service). exportfs is 1.0.6.
 
+The particular server is the NFS file repository for a high
+volume FTP cluster, thus beeing requested by the still
+online 4 ftp backend servers *heavily*.
+
+It has 2 Fast Ethernet ports in *bonding* mode (in peak hours they can
+be filled with ease).
+
+Probably it is this combinations that makes a problem.
+
+There are only two directories being exported to 5 machines
+each with really standard options.
+
+The freeze can be reproduced even when the exported
+directories are empty (no mount of the *some* GB to be
+checked afterwards, nice for testing :)) and even with "strace
+exportfs -a".
+
+strace stops during the call of
+
+	nfsservctl(0x1,...,0)
+
+right after reading the still empty /proc/fs/nfs/exports.
+
+I just hope that something helps.
+If we can run a special test or provide suitable
+information about the system, please let me know.
+
+Thank You in advance, probably it's something easily fixed.
+
+Yours sincerely,
+- Marian
 
 
 -------------------------------------------------------
