@@ -1,24 +1,21 @@
-From: James Pearson <james-p@moving-picture.com>
-Subject: Different NFSSVC_MAXBLKSIZE for udp and tcp clients?
-Date: Tue, 25 Nov 2003 17:34:20 +0000
+From: moiz kohari <moiz_kohari@yahoo.com>
+Subject: posix record locking?
+Date: Mon, 24 Nov 2003 16:29:02 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3FC3929C.EFFE5CDF@moving-picture.com>
+Message-ID: <3FC2781E.4010107@yahoo.com>
+Reply-To: moiz_kohari@yahoo.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AOh55-0004oO-00
-	for <nfs@lists.sourceforge.net>; Tue, 25 Nov 2003 09:34:31 -0800
-Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
-	id 1AOh54-0000ga-Ms
-	for nfs@lists.sourceforge.net; Tue, 25 Nov 2003 09:34:30 -0800
-Received: from darke.mpc.local ([172.16.11.6] helo=moving-picture.com)
-	by moving-picture.com with esmtp (Exim 4.24)
-	id 1AOh4u-0005c4-EG
-	for nfs@lists.sourceforge.net; Tue, 25 Nov 2003 17:34:20 +0000
+	id 1AOR0H-0003wo-00
+	for <nfs@lists.sourceforge.net>; Mon, 24 Nov 2003 16:24:29 -0800
+Received: from smtp018.mail.yahoo.com ([216.136.174.115])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.24)
+	id 1AOR0H-00057P-Hr
+	for nfs@lists.sourceforge.net; Mon, 24 Nov 2003 16:24:29 -0800
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -32,22 +29,34 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Is it possible to force a different maximum [rw]size on the server
-depending on whether the client uses udp or tcp?
+Hi,
 
-Currently, when a client NFS mounts a file system without specifying a
-[rw]size, it defaults to whatever NFSSVC_MAXBLKSIZE was defined as (at
-compile time) on the server. However, this is the same for udp and tcp
-clients.
+I am looking at posix record locking with nfs and I have a couple of 
+questions:
 
-What I would like is to have a smaller default [rw]size for udp clients,
-but allow tcp clients to use 32k.
+1. The fcntl_setlk() calls nfs_lock() (towards the end of fcntl_setlk by 
+calling filp->f_op->lock), fcntl_setlk() then calls posix_lock_file() 
+(where all the vfs magic happens for file locks).  If nfs_lock() returns 
+successful (server has granted the lock) but the subsequent 
+posix_lock_file() fails (due to deadlock, conflict or low memory), we 
+never go back to the server to clean up this lock.  Is this a problem or 
+am I missing something?
 
-Is this possible?
+2. nfs_lock() calls nlmclnt_proc() after we pick up the kernel lock 
+(lock_kernel()).  The nlmclnt_proc() goes on to call:
+    nlmclnt_lock()
+    nlmclnt_call()
+    rpc...
 
-Thanks
+Is this OK?  Are we going over the wire while holding the kernel lock?
 
-James Pearson
+Thanks for your help and please cc my email on any responses.
+
+Best Regards,
+
+Moiz
+
+
 
 
 -------------------------------------------------------
