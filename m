@@ -1,14 +1,14 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 2 of 8 - Export news symbols in sunrpc
+Subject: [PATCH] kNFSd - 6 of 8 - switch knfsd to vfs_read/vfs_write
 Date: Wed, 16 Oct 2002 16:03:15 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E181hH1-0000J2-00@notabene.cse.unsw.edu.au>
+Message-ID: <E181hH1-0000JL-00@notabene.cse.unsw.edu.au>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 181hHC-0002mi-00
-	for <nfs@lists.sourceforge.net>; Tue, 15 Oct 2002 23:03:26 -0700
+	id 181hHD-0002mo-00
+	for <nfs@lists.sourceforge.net>; Tue, 15 Oct 2002 23:03:27 -0700
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.233.204] == wireless-204.wireless.cse.unsw.EDU.AU)
 	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>) By
@@ -29,42 +29,65 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 ### Comments for ChangeSet
 
-The new caching and auth code needs symbols to be exported.
+From: Christoph Hellwig <hch@sgi.com>
+
+Switch knfsd to vfs_read/vfs_write to work on aio-only filesystems.
+This also gets stuff like the LSM checks and mandatory lock checking
+for free.
 
 
 
  ----------- Diffstat output ------------
- ./net/sunrpc/sunrpc_syms.c |   19 +++++++++++++++++++
- 1 files changed, 19 insertions(+)
+ ./fs/nfsd/vfs.c |   12 +++---------
+ 1 files changed, 3 insertions(+), 9 deletions(-)
 
---- ./net/sunrpc/sunrpc_syms.c	2002/10/16 04:46:08	1.1
-+++ ./net/sunrpc/sunrpc_syms.c	2002/10/16 04:46:11	1.2
-@@ -92,6 +92,25 @@ EXPORT_SYMBOL(svc_proc_unregister);
- EXPORT_SYMBOL(svc_proc_read);
- #endif
+--- ./fs/nfsd/vfs.c	2002/10/16 04:47:13	1.2
++++ ./fs/nfsd/vfs.c	2002/10/16 04:47:20	1.3
+@@ -589,8 +589,6 @@ nfsd_read(struct svc_rqst *rqstp, struct
+ 	if (err)
+ 		goto out;
+ 	err = nfserr_perm;
+-	if (!file.f_op->read)
+-		goto out_close;
+ 	inode = file.f_dentry->d_inode;
+ #ifdef MSNFS
+ 	if ((fhp->fh_export->ex_flags & NFSEXP_MSNFS) &&
+@@ -602,11 +600,10 @@ nfsd_read(struct svc_rqst *rqstp, struct
+ 	ra = nfsd_get_raparms(inode->i_dev, inode->i_ino);
+ 	if (ra)
+ 		file.f_ra = ra->p_ra;
+-	file.f_pos = offset;
  
-+/* caching... */
-+EXPORT_SYMBOL(auth_domain_find);
-+EXPORT_SYMBOL(cache_fresh);
-+EXPORT_SYMBOL(unix_domain_find);
-+EXPORT_SYMBOL(auth_domain_put);
-+EXPORT_SYMBOL(cache_flush);
-+EXPORT_SYMBOL(cache_unregister);
-+EXPORT_SYMBOL(add_hex);
-+EXPORT_SYMBOL(cache_check);
-+EXPORT_SYMBOL(svcauth_unix_purge);
-+EXPORT_SYMBOL(get_word);
-+EXPORT_SYMBOL(cache_clean);
-+EXPORT_SYMBOL(cache_register);
-+EXPORT_SYMBOL(auth_unix_lookup);
-+EXPORT_SYMBOL(auth_unix_add_addr);
-+EXPORT_SYMBOL(cache_init);
-+EXPORT_SYMBOL(auth_unix_forget_old);
-+EXPORT_SYMBOL(add_word);
+ 	oldfs = get_fs();
+ 	set_fs(KERNEL_DS);
+-	err = file.f_op->read(&file, buf, *count, &file.f_pos);
++	err = vfs_read(&file, buf, *count, &offset);
+ 	set_fs(oldfs);
+ 
+ 	/* Write back readahead params */
+@@ -648,8 +645,7 @@ nfsd_write(struct svc_rqst *rqstp, struc
+ 	if (!cnt)
+ 		goto out_close;
+ 	err = nfserr_perm;
+-	if (!file.f_op->write)
+-		goto out_close;
 +
- /* Generic XDR */
- EXPORT_SYMBOL(xdr_encode_array);
- EXPORT_SYMBOL(xdr_encode_string);
+ #ifdef MSNFS
+ 	if ((fhp->fh_export->ex_flags & NFSEXP_MSNFS) &&
+ 		(!lock_may_write(file.f_dentry->d_inode, offset, cnt)))
+@@ -679,11 +675,9 @@ nfsd_write(struct svc_rqst *rqstp, struc
+ 	if (stable && !EX_WGATHER(exp))
+ 		file.f_flags |= O_SYNC;
+ 
+-	file.f_pos = offset;		/* set write offset */
+-
+ 	/* Write the data. */
+ 	oldfs = get_fs(); set_fs(KERNEL_DS);
+-	err = file.f_op->write(&file, buf, cnt, &file.f_pos);
++	err = vfs_write(&file, buf, cnt, &offset);
+ 	if (err >= 0)
+ 		nfsdstats.io_write += cnt;
+ 	set_fs(oldfs);
 
 
 -------------------------------------------------------
