@@ -1,23 +1,23 @@
-From: pou64 <pou64@ig.com.br>
-Subject: on Linux: strange behavior of cliente nfs with soft option
-Date: Thu, 27 Jan 2005 12:22:44 -0200
-Message-ID: <20050127_142244_030940.pou64@ig.com.br>
+From: Spencer Shepler <spencer.shepler@sun.com>
+Subject: Re: Re: EJUKEBOX and nfs3_proc_read()/nfs3_proc_write()
+Date: Thu, 27 Jan 2005 22:15:29 -0800
+Message-ID: <20050128061529.GA944944@jurassic.eng.sun.com>
+References: <20050127225911.GA24398@janus> <1106867997.7192.14.camel@lade.trondhjem.org> <20050127233831.GA24817@janus>
+Reply-To: spencer.shepler@sun.com
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="Message-Boundary-by-Mail-Sender-1106835764"
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Linux NFS mailing list <nfs@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CuAXx-0002Oe-05
-	for nfs@lists.sourceforge.net; Thu, 27 Jan 2005 06:22:57 -0800
-Received: from smtp-30.ig.com.br ([200.226.132.30])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CuAXv-0008Jq-2L
-	for nfs@lists.sourceforge.net; Thu, 27 Jan 2005 06:22:57 -0800
-Received: from 121.131.226.200.in-addr.arpa.ig.com.br (HELO localhost.localdomain) ([200.226.131.121])
-          (envelope-sender <pou64@ig.com.br>)
-          by email-30.ig.com.br (qmail-ldap-1.03) with SMTP
-          for <nfs@lists.sourceforge.net>; 27 Jan 2005 14:22:44 -0000
-To: nfs@lists.sourceforge.net
+	id 1CuPPv-0002e2-Ln
+	for nfs@lists.sourceforge.net; Thu, 27 Jan 2005 22:15:39 -0800
+Received: from nwkea-mail-1.sun.com ([192.18.42.13])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1CuPPv-0007Zk-3Z
+	for nfs@lists.sourceforge.net; Thu, 27 Jan 2005 22:15:39 -0800
+To: Frank van Maarseveen <frankvm@frankvm.com>
+In-Reply-To: <20050127233831.GA24817@janus>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,28 +31,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This message is in MIME format. Since your mail reader does not understand
-this format, some or all of this message may not be legible.
+On Fri, Frank van Maarseveen wrote:
+> On Thu, Jan 27, 2005 at 03:19:57PM -0800, Trond Myklebust wrote:
+> > to den 27.01.2005 Klokka 23:59 (+0100) skreiv Frank van Maarseveen:
+> > > I think that the EJUKEBOX wrapper in fs/nfs/nfs3proc.c is not necessary
+> > > for nfs3_proc_read() and nfs3_proc_write().
+> > > 
+> > > Can you confirm this?
+> > 
+> > Why do you believe that?
+> 
+> Because you have to open a file first. Well, as you said NFS is stateless
+> so my guess is that the final lookup would return EJUKEBOX rather
+> than any I/O on the file-handle. It seems unrealistic to me for a file to
+> be archived _during_ I/O.
+> 
+> Sure the protocol has the possibility to return EJUKEBOX in the middle
+> of file I/O but does it make sense?
 
---Message-Boundary-by-Mail-Sender-1106835764
-Content-type: text/plain; charset=ISO-8859-1
-Content-description: Mail message body
-Content-disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Yes. It makes sense.  There are HSM solutions that keep the first
+portion of the file on disk to be provided to things like the file
+command.  If the whole file is read, then subsequent READ requests
+may receive EJUKEBOX.
 
-I have the following entry in fstab file=20
-nfsserver:/usr/exec /usr/exec_test nfs soft,bg,noac,timeo=3D2,retrans=3D2=
- 0 0=20
+> 
+> BTW, I didn't see EJUKEBOX handling in NFSv4.
 
-I need the cliente asnwer a I/O error message in, at most,=20
-10 seconds, because i would try by another net.=20
-If I take off the ethernet cable and try to acess the filesystem, the=20
-first time it answer in 2-5 seconds (OK). But at the second=20
-(third, ...) time it answer in 60 seconds.=20
+NFS4ERR_DELAY
 
-Can someone help me?=20
-
---Message-Boundary-by-Mail-Sender-1106835764--
+Spencer
 
 
 
