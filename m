@@ -1,19 +1,24 @@
-From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd ] Fix d_find_alias brokenness
-Date: Fri, 12 Nov 2004 10:57:16 +1100
-Message-ID: <E1CSOoW-0006Mv-OF@notabene.cse.unsw.edu.au>
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: [PATCH kNFSd ] Fix d_find_alias brokenness
+Date: Fri, 12 Nov 2004 11:28:21 +1100
+Message-ID: <16788.933.584756.363743@cse.unsw.edu.au>
 References: <20041112105449.24459.patches@notabene>
+	<E1CSOoW-0006Mv-OF@notabene.cse.unsw.edu.au>
+	<20041111160305.0a12aaff.akpm@osdl.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CSOmG-0001IH-HK
-	for nfs@lists.sourceforge.net; Thu, 11 Nov 2004 15:54:56 -0800
+	id 1CSPGI-0003tg-1i
+	for nfs@lists.sourceforge.net; Thu, 11 Nov 2004 16:25:58 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CSOmF-0003jT-Ma
-	for nfs@lists.sourceforge.net; Thu, 11 Nov 2004 15:54:56 -0800
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CSPGH-00052l-Dd
+	for nfs@lists.sourceforge.net; Thu, 11 Nov 2004 16:25:57 -0800
 To: Andrew Morton <akpm@osdl.org>
+In-Reply-To: message from Andrew Morton on Thursday November 11
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,61 +32,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Andrew,
- it wold be great if this could get into 2.6.10 as it fixed a very noticable 
-problem with knfsd.
+On Thursday November 11, akpm@osdl.org wrote:
+> 
+> Could I trouble you for a more complete description?  Which was the
+> offending change, and in what way was it broken?
 
-Thanks,
+10 weeks ago,
+ http://linux.bkbits.com:8080/linux-2.5/cset@415b3380pxf4sB97gM8ujLqDxi6GfQ
+
+The patch was mostly right, and fixed a real problem, but missed a
+bit.
+It passed the job of checking if an inode had a current alias off to 
+d_find_alias instead of open-coding it in d_alloc_anon.  However there
+is one case where d_alloc_anon would not  return the right
+dentry.  That case being when the inode was for the root of the
+filesystem.
+The root is a special case because it is not hashed.  All other dentries
+that are not hashed are quite un-interesting: There are "unlinked" but
+not yet closed.  The root of a filesystem is unhashed, but is
+interesting. 
+
+Allowing d_find_alias to return an unhashed alias for a directory
+solves this problem.  It is safe because callers of d_find_alias on a
+directory inode either have a name for the inode already (so finding
+an unlinked directory by mistake is impossible) or will soon be
+looking for a name and will drop the dentry if a name is not found.
+
 NeilBrown
-
-### Comments for Changeset
-A recent change to d_alloc_anon was a little broken, and needs 
-a small change to d_find_alias to fix it.
-
-Without this, a dcache flush on the server can cause stale file handles on the client.
-
-Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
-
-### Diffstat output
- ./fs/dcache.c |   16 ++++++++++------
- 1 files changed, 10 insertions(+), 6 deletions(-)
-
-diff ./fs/dcache.c~current~ ./fs/dcache.c
---- ./fs/dcache.c~current~	2004-11-11 09:55:18.000000000 +1100
-+++ ./fs/dcache.c	2004-11-11 09:55:18.000000000 +1100
-@@ -279,14 +279,18 @@ struct dentry * dget_locked(struct dentr
- /**
-  * d_find_alias - grab a hashed alias of inode
-  * @inode: inode in question
-+ * @want_discon:  flag, used by d_splice_alias, to request 
-+ *          that only a DISCONNECTED alias be returned.
-  *
-- * If inode has a hashed alias - acquire the reference to alias and
-- * return it. Otherwise return NULL. Notice that if inode is a directory
-- * there can be only one alias and it can be unhashed only if it has
-- * no children.
-+ * If inode has a hashed alias, or is a directory and has any alias,
-+ * acquire the reference to alias and return it. Otherwise return NULL.
-+ * Notice that if inode is a directory there can be only one alias and
-+ * it can be unhashed only if it has no children, or if it is the root 
-+ * of a filesystem.
-  *
-  * If the inode has a DCACHE_DISCONNECTED alias, then prefer
-- * any other hashed alias over that one.
-+ * any other hashed alias over that one unless @want_discon is set,
-+ * in which case only return a DCACHE_DISCONNECTED alias.
-  */
- 
- static struct dentry * __d_find_alias(struct inode *inode, int want_discon)
-@@ -301,7 +305,7 @@ static struct dentry * __d_find_alias(st
- 		next = tmp->next;
- 		prefetch(next);
- 		alias = list_entry(tmp, struct dentry, d_alias);
-- 		if (!d_unhashed(alias)) {
-+ 		if (S_ISDIR(inode->i_mode) || !d_unhashed(alias)) {
- 			if (alias->d_flags & DCACHE_DISCONNECTED)
- 				discon_alias = alias;
- 			else if (!want_discon) {
 
 
 -------------------------------------------------------
