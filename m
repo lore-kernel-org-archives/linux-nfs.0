@@ -1,22 +1,19 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: nfs-utils 1.0.5 break amd?
-Date: Fri, 1 Aug 2003 13:12:50 +1000
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS attrib cache problems in 2.4.20 - 2.4.22-pre9
+Date: 01 Aug 2003 08:42:41 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16169.55986.854984.818132@gargle.gargle.HOWL>
-References: <1059672742.21271.58.camel@ikarus>
+Message-ID: <shsel05dgke.fsf@charged.uio.no>
+References: <Pine.LNX.4.44.0307311351050.17863-100000@fubar.phlinux.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Cc: NFS List <nfs@lists.sourceforge.net>,  cel@citi.umich.edu
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19iQLs-00012s-00
-	for <nfs@lists.sourceforge.net>; Thu, 31 Jul 2003 20:13:08 -0700
-Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <mschmitt@inf.ethz.ch>) (for <nfs@lists.sourceforge.net>) By
-	note With Smtp ; Fri, 1 Aug 2003 13:12:55 +1000
-To: Marc Schmitt <mschmitt@inf.ethz.ch>
-In-Reply-To: message from Marc Schmitt on  July 31
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19iTcr-0003km-00
+	for <nfs@lists.sourceforge.net>; Thu, 31 Jul 2003 23:42:53 -0700
+To: Matt C <wago@phlinux.com>
+In-Reply-To: <Pine.LNX.4.44.0307311351050.17863-100000@fubar.phlinux.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,39 +26,20 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On  July 31, mschmitt@inf.ethz.ch wrote:
-> Hi all,
-> 
-> After upgrading a RedHat 7.3 box with kernel 2.4.18-27.7xsmp from
-> nfs-utils 1.0.3 to 1.0.5, amd stopped working.
-> 
-> On the client (am-utils-6.0.7-4, nfs-utils-0.3.3-6.73), I issue:
-> 
-> ls /net/<fileserver>
-> 
-> With 1.0.3, I get the correct directory listing under /net/<fileserver>
-> 
-> With 1.0.5, I get:
-> ls: /net/<fileserver>: Input/output error
+>>>>> " " == Matt C <Matt> writes:
 
-Wierd.
+     > Hi NFS List, chuck, trond: I have a fun NFS problem with the
+     > recent 2.4 kernel NFS client. We have an application that is
+     > failing when it tries to move then open a file in very quick
+     > succession -- it fails because it can't find the file in the
+     > new location.
 
-> 
-> 
-> On the server, with 1.0.3, I'd see an entry for every export in
-> /etc/exports in /var/log/messages, mount refused or granted, according
-> to the export permissions. 
-> With 1.0.5, I get one single entry:
-> Jul 31 19:14:34 <fileserver> rpc.mountd: export request from <client>
-> 
+It's a known issue. mmap() writes appear to be screwed up
+w.r.t. truncate. I still don't have a proper solution for this
+problem since it appears to be more of a VM bug than a NFS one.
 
-Can you run
-   showmount -e <fileserver>
-on <client> and see what it returns?
-If it doesn't return the right stuff, maybe strace mountd on the
-server while you are running the showmout on the client.
-
-NeilBrown
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
