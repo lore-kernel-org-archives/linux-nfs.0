@@ -1,26 +1,24 @@
-From: Johan van den Dorpe <johan.vandendorpe@framestore-cfc.com>
-Subject: nfsd: terminating on error 104 problem
-Date: Thu, 04 Mar 2004 10:41:02 +0000
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: nfsd: terminating on error 104 problem
+Date: Thu, 4 Mar 2004 12:11:38 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <404707BE.9070401@framestore-cfc.com>
+Message-ID: <20040304111138.GO22726@suse.de>
+References: <404707BE.9070401@framestore-cfc.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: multipart/mixed; boundary="R3G7APHDIzY6R/pk"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AyqOR-0002FO-Si
-	for nfs@lists.sourceforge.net; Thu, 04 Mar 2004 02:47:55 -0800
-Received: from gw.fs-cfc.co.uk ([193.203.83.22])
-	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.30)
-	id 1Aypz1-0007Nw-IX
-	for nfs@lists.sourceforge.net; Thu, 04 Mar 2004 02:21:39 -0800
-Received: from localhost (localhost [127.0.0.1])
-	by mail.admin.local (Postfix) with ESMTP id 4BAFD7153B4
-	for <nfs@lists.sourceforge.net>; Thu,  4 Mar 2004 10:41:05 +0000 (GMT)
-Received: from framestore-cfc.com (sys33.prod.local [172.18.10.33])
-	by mail.admin.local (Postfix) with ESMTP id 65D4670FF82
-	for <nfs@lists.sourceforge.net>; Thu,  4 Mar 2004 10:41:02 +0000 (GMT)
-To: nfs@lists.sourceforge.net
+	id 1AyqrI-0000Qj-7K
+	for nfs@lists.sourceforge.net; Thu, 04 Mar 2004 03:17:44 -0800
+Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.30)
+	id 1AyqRq-0004FA-9N
+	for nfs@lists.sourceforge.net; Thu, 04 Mar 2004 02:51:26 -0800
+To: Johan van den Dorpe <johan.vandendorpe@framestore-cfc.com>
+In-Reply-To: <404707BE.9070401@framestore-cfc.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -33,41 +31,50 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi all
 
-We are currently using quite a number of HP DL380 servers within our 
-company that use the 2.4.25 kernel. These are primarily used for heavy 
-NFS access, so we keep a large number of nfsd processes concurrently 
-running. We have noticed over time however that single instances of nfsd 
-processes periodically die. From inspection of the system logs, we get 
-numerous entries:
+--R3G7APHDIzY6R/pk
+Content-Type: text/plain; charset=iso-8859-15
+Content-Disposition: inline
 
-Feb 22 12:25:24 ps29 kernel: nfsd: recvfrom returned errno 104
-Feb 22 12:25:24 ps29 kernel: nfsd: terminating on error 104
+On Thu, Mar 04, 2004 at 10:41:02AM +0000, Johan van den Dorpe wrote:
+> So from my limited knowledge of the kernel source I can see that 
+> "terminating on error 104" corresponds to line 221 of
+> /usr/src/linux-2.4.25/fs/nfsd/nfssvc.c. So svc_recv on line 191 is 
+> obviously returning -104.
 
-At the moment we cron a script that counts the number of nfsds and 
-restart rpc.nfsd if they drop below a threshold. Although this is a 
-working solution, it's not ideal and we would really like to get his 
-problem patched up properly.
+104 is ECONNRESET, this means the client reset the connection.
+The server should really clean up the socket in this case.
 
-So from my limited knowledge of the kernel source I can see that 
-"terminating on error 104" corresponds to line 221 of
-/usr/src/linux-2.4.25/fs/nfsd/nfssvc.c. So svc_recv on line 191 is 
-obviously returning -104.
+Does the attached patch help? 
 
-I've noticed that in the 2.6 kernel there are quite a few changes to 
-nfssvc.c, and I wondered if they dealt with this situation.
+Beware - totally untested, better not try this on a production
+machine :)
 
-In the mean time, are there any quick hacks I could add to nfssvc.c to 
-make it tolerate error -104? Could I safely alter the main request loop 
-to simply continue execution if svc_recv returns this code?
-
-Any help would be much appreciated.
-
-Many thanks,
-
+Olaf
 -- 
-Johan van den Dorpe
+Olaf Kirch     |  Stop wasting entropy - start using predictable
+okir@suse.de   |  tempfile names today!
+---------------+ 
+
+--R3G7APHDIzY6R/pk
+Content-Type: text/plain; charset=iso-8859-15
+Content-Disposition: attachment; filename=nfsd-handle-econnreset
+
+--- svcsock.c.orig	2004-03-04 12:08:51.000000000 +0100
++++ svcsock.c	2004-03-04 12:10:08.000000000 +0100
+@@ -904,6 +904,10 @@
+ 	if (len == -EAGAIN) {
+ 		dprintk("RPC: TCP recvfrom got EAGAIN\n");
+ 		svc_sock_received(svsk);
++	} else if (len == -ECONNRESET) {
++		dprintk("RPC: TCP recvfrom got ECONNRESET\n");
++		svc_sock_received(svsk);
++		set_bit(SK_DEAD, &svsk->sk_flags);
+ 	} else {
+ 		printk(KERN_NOTICE "%s: recvfrom returned errno %d\n",
+ 					svsk->sk_server->sv_name, -len);
+
+--R3G7APHDIzY6R/pk--
 
 
 -------------------------------------------------------
