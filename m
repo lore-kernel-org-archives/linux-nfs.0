@@ -1,25 +1,17 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] NFS mount hang fix
-Date: Wed, 1 Dec 2004 09:54:11 -0500
-Message-ID: <20041201145411.GA27612@fieldses.org>
-References: <20041026141148.GM6408@fi.muni.cz> <20041026150640.GA24881@fieldses.org> <20041027121543.GH4724@fi.muni.cz> <20041125122902.GE27939@fi.muni.cz>
+From: Calum Mackay <calum.mackay@sun.com>
+Subject: Re: [patch] lockd control of grace period for HA NFS
+Date: Wed, 01 Dec 2004 17:17:46 +0000
+Message-ID: <41ADFCBA.6040605@sun.com>
+References: <OF7203D852.9E05A09B-ON88256F5C.005C4DD8-88256F5C.005DB624@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net,
-	trond.myklebust@fys.uio.no, neilb@cse.unsw.edu.au,
-	torvalds@osdl.org
+Content-Type: text/plain; charset=US-ASCII; format=flowed
+Cc: "William A.(Andy) Adamson" <andros@citi.umich.edu>,
+        Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net,
+        nfs-admin@lists.sourceforge.net,
+        Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CZVrs-0003g6-A7
-	for nfs@lists.sourceforge.net; Wed, 01 Dec 2004 06:54:08 -0800
-Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
-	(Exim 4.41)
-	id 1CZVrr-00051t-Oj
-	for nfs@lists.sourceforge.net; Wed, 01 Dec 2004 06:54:08 -0800
-To: Jan Kasprzak <kas@fi.muni.cz>
-In-Reply-To: <20041125122902.GE27939@fi.muni.cz>
+To: Marc Eshel <eshel@almaden.ibm.com>
+In-Reply-To: <OF7203D852.9E05A09B-ON88256F5C.005C4DD8-88256F5C.005DB624@us.ibm.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,11 +25,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Nov 25, 2004 at 01:29:02PM +0100, Jan Kasprzak wrote:
-> 	It seems this patch did not make it into Linus' tree
-> (at least it is not in 2.6.10-rc2). Can you resend it to Linus, please?
+Hi Marc, Andy,
 
-It's in recent -bk snapshots.--b.
+Forgive my late joining of this thread, and apologies if I'm missing 
+anything...
+
+How do you intend to handle the stable storage issue? It seems to me 
+that to comply with the RFC's requirement that stable storage be used 
+when a grace period is offered, there needs to be a Cluster-wide, 
+always-consistent, stable-storage, available to all nodes. I imagine 
+that a correct implementation of this isn't a trivial exercise... :)
+
+best regards,
+calum.
 
 
 -------------------------------------------------------
