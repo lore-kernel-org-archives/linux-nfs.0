@@ -1,23 +1,30 @@
-From: Raphael Clifford <raphael@clifford.net>
-Subject: Re: solaris server and firewalls
-Date: Mon, 08 Sep 2003 12:09:41 +0100
+From: Chip Salzenberg <chip@pobox.com>
+Subject: DOS bug in 1.0.5 mountd DNS code [ard@kwaak.net: rpc.mountd SEGVs (found the bug)]
+Date: Tue, 9 Sep 2003 11:29:27 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3F5C6375.9070907@clifford.net>
-References: <3F4D1089.2050207@clifford.net>
+Message-ID: <20030909152927.GD2460@perlsupport.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-15; format=flowed
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19wcG0-0004cv-00
-	for <nfs@lists.sourceforge.net>; Mon, 08 Sep 2003 23:45:44 -0700
-Received: from netmail02.services.quay.plus.net ([212.159.14.221])
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.22)
-	id 19wUJa-000426-RP
-	for nfs@lists.sourceforge.net; Mon, 08 Sep 2003 15:16:55 -0700
+	id 19wkRB-0007TX-00
+	for <nfs@lists.sourceforge.net>; Tue, 09 Sep 2003 08:29:49 -0700
+Received: from tandu.perlsupport.com ([66.220.6.226] ident=mail)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.22)
+	id 19wkR9-000251-QO
+	for nfs@lists.sourceforge.net; Tue, 09 Sep 2003 08:29:47 -0700
+Received: from tytlal.hmsonline.com
+	([207.43.94.202] helo=tytlal ident=mail)
+	by tandu.perlsupport.com with asmtp (Exim 3.35 #1 (Debian))
+	id 19wkQd-0003sR-00
+	for <nfs@lists.sourceforge.net>; Tue, 09 Sep 2003 08:29:15 -0700
+Received: from chip by tytlal with local (Exim 3.35 #1 (Debian))
+	id 19wkQq-0004AV-00
+	for <nfs@lists.sourceforge.net>; Tue, 09 Sep 2003 11:29:28 -0400
 To: nfs@lists.sourceforge.net
-In-Reply-To: <3F4D1089.2050207@clifford.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,107 +37,77 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+Looks like mountd crashes when the client has no forward DNS to match
+its reverse DNS.  I'll patch it.
 
-Is it safe to assume that
+This bug probably qualifies as important enough to release 1.0.6,
+since it's a potential DOS.  After all, a client may deliberately
+access a server *because* that client has no matching DNS, causing
+a server crash.
 
-a) There is no solution for using linux with solaris nfs servers with 
-respect to the linux firewall and
-b) There is no project working on this problem?
-
-If so, would it be a good idea to add this to the HOWTO?
-
-Cheers,
-Raphael
+I don't know if this bug has anything to do with the crashes that are
+fixed by the pthread.so LD_PRELOAD, but Ard's machine *is* SMP....
 
 
-Raphael Clifford wrote:
+----- Forwarded message from Ard van Breemen <ard@kwaak.net> -----
 
-> Hi,
->
-> I am trying to mount a solaris nfs server from my linux client.  The 
-> problem is how to do this without effectively disabling the linux 
-> firewall.
->
-> I understand that the official Sun solution for Sun clients is to 
-> mount using the -o public option.  However, I can't find any support 
-> for this in linux. I have copied a section of the man page below for 
-> completeness that describes what this option does.  My questions are
-> a) What can I do?
-> b) Could the answer be added to the firewall section of the HOWTO.  It 
-> must be a common situation. Where I work, for example, there are 
-> hundreds of linux clients per Solaris server.
->
-> Cheers,
-> Raphael
->
-> ------- excerpt from Solaris man page --------------
->
->  URLs and the public option
->           If the public option is specified, or if the  resource
->           includes and NFS URL, mount will attempt to connect to
->           the server using the public file handle lookup  proto-
->           col.  See Internet RFC 2054 - WebNFS Client Specifica-
->           tion. If the server supports the public  file  handle,
->           the attempt is successful; mount will not need to con-
->           tact the server's rpcbind(1M), and the mountd(1M) dae-
->           mons  to  get  the port number of the mount server and
->           the initial file handle of pathname, respectively.  If
->           the  NFS client and server are separated by a firewall
->           that allows all outbount connections through  specific
->           ports,  such as NFS_PORT, then this enables NFS opera-
->           tions through the firewall. The public option and  the
->           NFS  URL  can  be specified independently or together.
->           They interact as specified in the following matrix:
-> [...]
->
-> and from the Solaris docs
->
->
->    How to Mount an NFS File System Through a Firewall
->
->   1.
->
->      Become superuser.
->
->   2.
->
->      Manually mount the file system, using a command like:
->
->
-> # *mount -F nfs -o public bee:/export/share/local /mnt*
->
->      In this example the file system /export/share/local is mounted on
->      the local client using the public file handle. An NFS URL can be
->      used instead of the standard path name. If the public file handle
->      is not supported by the server bee, the mount operation will fail.
->
->      
-> ------------------------------------------------------------------------
->      *Note - *
->
->      This procedure requires that the file system on the NFS server be
->      shared using the public option and any firewalls between the
->      client and the server allow TCP connections on port 2049. Starting
->      with the 2.6 release, all file systems that are shared allow for
->      public file handle access.
->
->
->
->
->
->
-> -------------------------------------------------------
-> This sf.net email is sponsored by:ThinkGeek
-> Welcome to geek heaven.
-> http://thinkgeek.com/sf
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
->
->
+Subject: Bug#209318: rpc.mountd SEGVs (found the bug)
+From: Ard van Breemen <ard@kwaak.net>
+To: 209318@bugs.debian.org
+Date: Tue, 9 Sep 2003 15:56:01 +0200
+
+Some more info:
+Before the crashing started:
+Sep  9 09:30:26 upa001 rpc.mountd: Fake hostname capio-6d099b.ws.alkmaar.upa.nl for 192.168.1.252 - forward lookup doesn't match reverse 
+Sep  9 09:30:26 upa001 rpc.mountd: authenticated mount request from 192.168.1.252:635 for /var/lib/diskless/scratch/192.168.1.252 (/var/lib/diskless/scratch/192.168.1.252
+Sep  9 09:30:26 upa001 rpc.mountd: Fake hostname capio-6d099b.ws.alkmaar.upa.nl for 192.168.1.252 - forward lookup doesn't match reverse 
+Sep  9 09:30:26 upa001 rpc.mountd: authenticated mount request from 192.168.1.252:648 for /var/lib/diskless/scratch/192.168.1.252/swap (/var/lib/diskless/scratch/192.168.
+Sep  9 09:30:27 upa001 rpc.mountd: Fake hostname capio-6d099b.ws.alkmaar.upa.nl for 192.168.1.252 - forward lookup doesn't match reverse 
+Sep  9 09:30:27 upa001 rpc.mountd: authenticated mount request from 192.168.1.252:651 for /var/lib/opnames (/var/lib/opnames) 
+
+That was correct. capio-6d099b.ws.alkmaar.upa.nl was pointing to something
+different then 192.168.1.252. The reversed was correct.  I then deleted the
+capio-6d099b.ws.alkmaar.upa.nl entries from the dns (using nsupdate), and
+then rebooted the client. No new dns entries were made. The client tried to
+mount something at a time where the reversed existed, but the forward
+didn't.
+
+Hmmm, ok, found it:
+nfs-utils-1.0.5/support/export/hostname.c
+get_reliable_hostbyaddr(const char *addr, int len, int type)
+{
+<snip>
+        if (tmpname) {
+                forward = gethostbyname(tmpname);
+                free(tmpname);
+        }
+        if (forward) {
+<snip>
+        }
+        else {
+                /* never heard of it. misconfigured DNS? */
+                xlog(L_WARNING, "Fake hostname %s for %s - forward lookup
+doesn't exist",
+                     forward->h_name, inet_ntoa(*(struct in_addr*)addr));
+                return NULL;
+        }
+
+So, what we see here is that it tries to print the Fake hostname using
+forward->h_name, and forward==NULL.
+
+-- 
+mail          up   21+16:44,    11 users,  load 0.01, 0.05, 0.10
+Let your government know you value your freedom: sign the petition:
+http://petition.eurolinux.org
 
 
+
+----- End forwarded message -----
+
+-- 
+Chip Salzenberg               - a.k.a. -               <chip@pobox.com>
+"I wanted to play hopscotch with the impenetrable mystery of existence,
+    but he stepped in a wormhole and had to go in early."  // MST3K
 
 
 -------------------------------------------------------
