@@ -1,26 +1,21 @@
-From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-Subject: nfs and iptables
-Date: Mon, 7 Feb 2005 22:44:04 -0700 (MST)
-Message-ID: <Pine.LNX.4.60.0502072228370.22564@harp.ngdc.noaa.gov>
-Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: kernel Oops in rpc.mountd
+Date: Tue, 8 Feb 2005 16:58:07 +1100
+Message-ID: <16904.21743.337045.348886@cse.unsw.edu.au>
+References: <200502080447.j184lA2k012260@m27.ligo.caltech.edu>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CyOAR-0004Fo-F9
-	for nfs@lists.sourceforge.net; Mon, 07 Feb 2005 21:44:07 -0800
-Received: from harp.ngdc.noaa.gov ([140.172.178.33])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1CyOAQ-0003mz-0Z
-	for nfs@lists.sourceforge.net; Mon, 07 Feb 2005 21:44:07 -0800
-Received: from harp.ngdc.noaa.gov (harp.ngdc.noaa.gov [127.0.0.1])
-	by harp.ngdc.noaa.gov (8.12.11/8.12.11) with ESMTP id j185i4Xb022796
-	for <nfs@lists.sourceforge.net>; Mon, 7 Feb 2005 22:44:04 -0700
-Received: from localhost (ahoward@localhost)
-	by harp.ngdc.noaa.gov (8.12.11/8.12.11/Submit) with ESMTP id j185i4eg022792
-	for <nfs@lists.sourceforge.net>; Mon, 7 Feb 2005 22:44:04 -0700
-To: nfs@lists.sourceforge.net
+	id 1CyOO4-0004lr-59
+	for nfs@lists.sourceforge.net; Mon, 07 Feb 2005 21:58:12 -0800
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1CyOO3-00050M-Ci
+	for nfs@lists.sourceforge.net; Mon, 07 Feb 2005 21:58:11 -0800
+To: Stuart Anderson <anderson@ligo.caltech.edu>
+In-Reply-To: message from Stuart Anderson on Monday February 7
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,30 +29,61 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Monday February 7, anderson@ligo.caltech.edu wrote:
+> We are going to rebuild 2.6.10-1.760_FC3smp with 8k stack (just my
+> paranoia about the 4k stacks), and remove absolutely everything we do
+> not need, however, I will add in the CONFIG_DEBUG_SLAB. Are there any
+> other kernel debug flags that might be helpful?
 
-after finally solving our client reboot lockd recovery issues (as per the nfs
-faq and note about muti-homed clients needing statd hostname set : note to
-self - rtfm) we are pushing this change out to all our nodes.  as it turns out
-the firewall rules we had in place previously actually do allow lockd
-recovery.  i am worried about other scenarios however; does the server need to
-be able to initiate connections to the client, eg. does true bi-directional
-coms need to be enabled?  our lock recovery seems to work without this but what else
-might not?
+No.  However the following patch might be worth a try.
+It adds some extra locking.  I'm pretty sure there is a race that this
+closes that could possibly cause your problem.  I also think the
+locking here is a bit heavy handed, but I am sure it is safe.
 
-in summary: we allow *any* incoming connection to our server(s) from clients
-on the backdoor (nfs on backdoor only); do we need anything special on any of
-the clients or is all communication initiated from the client?
+> 
+> Perhaps the bug is due to having a large list of static NFS mounts (290)?
 
-kind regards.
+Having lots of mounts won't hurt.  But having lots of clients mount
+this server might have make it more likely to trigger the bug as there
+is more activity on the export cache.
 
--a
--- 
-===============================================================================
-| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
-| PHONE   :: 303.497.6469
-| When you do something, you should burn yourself completely, like a good
-| bonfire, leaving no trace of yourself.  --Shunryu Suzuki
-===============================================================================
+NeilBrown
+
+
+Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
+
+### Diffstat output
+ ./include/linux/sunrpc/cache.h |   14 +++++++++-----
+ 1 files changed, 9 insertions(+), 5 deletions(-)
+
+diff ./include/linux/sunrpc/cache.h~current~ ./include/linux/sunrpc/cache.h
+--- ./include/linux/sunrpc/cache.h~current~	2005-02-08 16:23:21.000000000 +1100
++++ ./include/linux/sunrpc/cache.h	2005-02-08 16:41:09.000000000 +1100
+@@ -268,15 +268,19 @@ static inline struct cache_head  *cache_
+ 
+ static inline int cache_put(struct cache_head *h, struct cache_detail *cd)
+ {
+-	atomic_dec(&h->refcnt);
++	int rv = 0;
++	read_lock(&cd->hash_lock);
++	if (atomic_dec_and_test(&h->refcnt))
++		rv = 1;
+ 	if (!atomic_read(&h->refcnt) &&
+ 	    h->expiry_time < cd->nextcheck)
+ 		cd->nextcheck = h->expiry_time;
+-	if (!test_bit(CACHE_HASHED, &h->flags) &&
+-	    !atomic_read(&h->refcnt))
+-		return 1;
++	if (test_bit(CACHE_HASHED, &h->flags) ||
++	    atomic_read(&h->refcnt))
++		rv = 0;
++	read_unlock(&cd->hash_lock);
+ 
+-	return 0;
++	return rv;
+ }
+ 
+ extern void cache_init(struct cache_head *h);
 
 
 -------------------------------------------------------
