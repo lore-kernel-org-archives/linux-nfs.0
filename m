@@ -1,30 +1,53 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: 2.4.21: NFS client Freeze
-Date: 24 Jun 2003 20:55:33 +0200
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <shsptl3tie2.fsf@charged.uio.no>
-References: <20030624101227.GA21744@benzin.geggus.net>
+Subject: Re: nfs lock question...
+Date: 24 Jun 2003 20:59:44 +0200
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <shsllvrti73.fsf@charged.uio.no>
+References: <8147E1B07201DD41B6B9F0D31E07B384449147@srv-grp-s07.dev.atos.fr>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: Sven Geggus <sven@gegg.us>
-In-Reply-To: <20030624101227.GA21744@benzin.geggus.net>
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=iso-8859-1
+Cc: nfs@lists.sourceforge.net
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19Ut1H-0001w9-00
+	for <nfs@lists.sourceforge.net>; Tue, 24 Jun 2003 11:59:55 -0700
+To: Brasseur =?iso-8859-1?q?Val=E9ry?= <Valery.Brasseur@atosorigin.com>
+In-Reply-To: <8147E1B07201DD41B6B9F0D31E07B384449147@srv-grp-s07.dev.atos.fr>
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Sven Geggus <sven@gegg.us> writes:
+>>>>> " " =3D=3D Brasseur Val=E9ry <Valery.Brasseur@atosorigin.com> writes:
 
-     > Hi there, After mounting an NFS-Volume exported from a Windows
-     > Machine (Hummingbird-NFS Maestro Server) a simple ls of the
-     > mount point causes an almost complete freeze of the system
-     > (ping does still work, but nothing else).
+     > is it normal that when a process is stoppped (ctrl-z ;-) and he
+     > has locks on a nfs-server
 
-     > This did work fine in 2.4.20 but does not work on 2.4.21
-     > anymore!
+Yes. ctrl-z will normally suspend the process. It does nothing to kill
+it...
 
-     > Here is the debug output I produced using:
+     > if this nfs server reboot the stopped process does'nt reclaim
+     > it's locks ?!!!
 
-Nothing wrong there. Mind filling in the details?
+Why not? That's a separate thread...
 
 Cheers,
   Trond
+
+
+-------------------------------------------------------
+This SF.Net email is sponsored by: INetU
+Attention Web Developers & Consultants: Become An INetU Hosting Partner.
+Refer Dedicated Servers. We Manage Them. You Get 10% Monthly Commission!
+INetU Dedicated Managed Hosting http://www.inetu.net/partner/index.php
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
