@@ -1,24 +1,25 @@
 From: Neil Brown <neilb@cse.unsw.edu.au>
 Subject: Re: Re: [PATCH] zerocopy NFS for 2.5.43
-Date: Fri, 1 Nov 2002 11:54:39 +1100
+Date: Fri, 1 Nov 2002 12:10:43 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15809.53455.211796.730215@notabene.cse.unsw.edu.au>
-References: <20021031.082927.74744491.taka@valinux.co.jp>
-	<15808.28897.595522.855723@notabene.cse.unsw.edu.au>
+Message-ID: <15809.54419.341980.683179@notabene.cse.unsw.edu.au>
+References: <15808.28897.595522.855723@notabene.cse.unsw.edu.au>
 	<20021031.110659.42769812.taka@valinux.co.jp>
 	<20021101.004052.85418463.taka@valinux.co.jp>
+	<20021101.015623.48537031.taka@valinux.co.jp>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net, "David S. Miller" <davem@redhat.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 187Q5Q-0001gn-00
-	for <nfs@lists.sourceforge.net>; Thu, 31 Oct 2002 16:54:56 -0800
+	id 187QKx-0008Dc-00
+	for <nfs@lists.sourceforge.net>; Thu, 31 Oct 2002 17:10:59 -0800
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <taka@valinux.co.jp>) (for <nfs@lists.sourceforge.net>) By tone
-	With Smtp ; Fri, 1 Nov 2002 11:54:43 +1100
+	(for <taka@valinux.co.jp>) (for <nfs@lists.sourceforge.net>)
+	(for <davem@redhat.com>) By tone With Smtp ;
+	Fri, 1 Nov 2002 12:10:48 +1100
 To: Hirokazu Takahashi <taka@valinux.co.jp>
 In-Reply-To: message from Hirokazu Takahashi on Friday November 1
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -36,39 +37,44 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 On Friday November 1, taka@valinux.co.jp wrote:
 > Hello,
 > 
-> > The rest of the zero copy stuff should fit in quite easily, with the
-> > possible exception of single-copy writes: I haven't looked very hard
-> > at that yet.
+> > > The rest of the zero copy stuff should fit in quite easily, with the
+> > > possible exception of single-copy writes: I haven't looked very hard
+> > > at that yet.
+> > 
+> > I just ported part of the zero copy stuff against linux-2.5.45.
+> > single-copy writes and per-cpu sokcets are not included yet.
+> > And I fixed a problem that NFS over TCP wouldn't work. 
 > 
-> I just ported part of the zero copy stuff against linux-2.5.45.
-> single-copy writes and per-cpu sokcets are not included yet.
-> And I fixed a problem that NFS over TCP wouldn't work. 
+> I also ported the per-cpu socket patch against linux2.5.45.
 > 
-> 
-> va-nfsd-sendpage.patch        ....use sendpage instead of sock_sendmsg.
-> va-sunrpc-zeropage.patch      ....zero filled page for padding.
-> va-nfsd-vfsread.patch         ....zero-copy nfsd_read/nfsd_readdir.
 
-A lot of this looks fine.
+I still don't really like this patch.
+I appreciate that some sort of SMP awareness may be appropriate for
+nfsd, but this just doesn't feel right.
 
-I would like to leave the tail pointing into the end of the first page
-(just after the head) rather than using the sunrpc_zero_page thing as
-the later doesn't seem necessary.
-Also, I would like to send the head and tail with sendpage rather
-than using sock_sendmsg.
-To give the destination address, you can call sock_sendmsg with
-a length of 0, and then call ->sendpage for each page or page
-fragment.
+Once possibility that I have considered goes like this:
 
+- Allow a (udp) socket to have 'cpu affinity' registered.
+- Get udp_v4_lookup  add to the score for sockets that
+  like the current cpu, and reject sockets that don't like this
+  cpu.
+- Have some cpu affinity with the nfsd threads, probably having
+  a separate idle-server-queue for each cpu.  Possibly half the
+  threads would be tied to a cpu, the other half would float, and
+  only be used if no cpu-local threads were available.
 
-You should be able to remove the calls to svcbuf_reserve in
-nfsd_proc_readdir and nfsd3_proc_readdir, and then discard the
-'buffer' variable as well.
+Then instead of have special 'shadow' sockets, we just create NCPUS
+normal udp sockets, instead of one, and give each a cpu affinity.
+This would mean that receiving would benefit from multiple sockets
+as well as sending.
 
+I have very little experience with these sort of SMP issues, so I may
+be missing something obvious, but to me, this approach seems cleaner
+and more general.
 
-If you could make those changes (or convince me otherwise), I will
-forward the patches to Linus,
-Thanks.
+Dave: what would you think of having a "unsigned long cpus_allowed"
+in struct inet_opt and putting the appropriate checks in
+udp_v4_lookup??  Is it worth experimenting with?
 
 NeilBrown
 
