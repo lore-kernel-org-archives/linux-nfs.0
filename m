@@ -1,21 +1,13 @@
-From: amyphillips@soulmatchmaker.com
-Subject: Delete this if you are not single.
-Date: Fri, 13 Jun 2003 22:30:57 +0100
+From: Fanying Jen <fanying@lillecorp.com>
+Subject: NFS Crashes LTSP and NFS Servers and Corrupts Data! Need Help!
+Date: Fri, 13 Jun 2003 21:21:20 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200306132130.h5DLUvl18569@garyw-23404-002.dsvr.co.uk>
-Reply-To: amyphillips@soulmatchmaker.com
-Content-Type: text/html; charset=iso-8859-1
+Message-ID: <3EEA7890.3010902@lillecorp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net, ltsp-discuss@lists.sourceforge.net,
+   redhat-list@redhat.com, jrosen@lillecorp.com
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from smtp-relay03.x-mailer.co.uk ([212.69.217.32])
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19Qw8Y-0005tM-00
-	for <nfs@lists.sourceforge.net>; Fri, 13 Jun 2003 14:31:06 -0700
-Received: from [212.69.199.220] (helo=garyw-23404-002.dsvr.co.uk)
-	by smtp-relay03.x-mailer.co.uk with esmtp (Exim 4.12)
-	id 19Qw8P-0005to-00
-	for nfs@lists.sourceforge.net; Fri, 13 Jun 2003 22:30:57 +0100
-To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,176 +20,175 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+I am a senior system administrator at Lille Corp whom provides thin 
+client (LTSP or Linux Terminal Server Project) Linux solutions to the 
+medical industry. We have a very serious problem with the reliability of 
+NFS over both Fast Ethernet (100BaseT) and WANs including T1s point to 
+point, and IPSEC VPNs where the other node is on business cable modem. 
+The customer is a mid size medical assoicate with over three hundred 
+staff members and two hundred terminals and PC, mostly Linux spread over 
+three states.
 
-<html>
-<head>
-<title>Untitled Document</title>
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
-</head>
+There are two major problems with NFS. One is NFS crashing the entire 
+three hundred person organization in one swoop and bringing it to a 
+grinding halt in front of users and the patients (customers of the 
+customer) which is not good particularily since Linux is branded to be 
+more stable.
 
-<body bgcolor="#FFFFFF" text="#000000" leftmargin="0" topmargin="0" marginwidth="0" marginheight="0" link="#FFCCFF" vlink="#FFFFFF" alink="#CCCCCC">
-<div align="left"> 
-  <table width="522" border="0" cellpadding="0" cellspacing="0">
-    <tr> 
-      <td>&nbsp; </td>
-    </tr>
-    <tr> 
-      <td> 
-        <table width="522" border="0" cellpadding="0" cellspacing="0">
-          <tr> 
-            <td rowspan="3" width="10"><img src="http://www.soulmatchmaker.com/images/20x20_trans.gif" width="10" height="3"></td>
-            <td width="26" background="http://www.soulmatchmaker.com/images/mailbox_top.gif" valign="top"><img src="http://www.soulmatchmaker.com/images/mailbox_topleft.gif" width="26" height="19"></td>
-            <td width="460" valign="middle" background="http://www.soulmatchmaker.com/images/mailbox_top.gif"> 
-              <div align="center"><font size="1" color="#FFFFFF" face="Arial, Helvetica, sans-serif">START 
-                SEARCHING FOR YOUR SOULMATE - JOIN FREE TODAY</font></div></td>
-            <td width="76" align="right"><img src="http://www.soulmatchmaker.com/images/mailbox_topright.gif" width="26" height="19"></td>
-          </tr>
-          <tr> 
-            <td width="26" background="http://www.soulmatchmaker.com/images/email_border_left.gif">&nbsp;</td>
-            <td valign="top"> <font size="1" color="#000000" face="Arial, Helvetica, sans-serif">&nbsp;</font> 
-              <table width="460" height="451" border="0" cellpadding="0" cellspacing="0">
-                <tr> 
-                  <td width="558" valign="top"><table width="459" height="214" border="0" cellpadding="0" cellspacing="0" background="http://www.soulmatchmaker.com/images/email_2.jpg">
-                      <tr> 
-                        <td width="14" height="96">&nbsp;</td>
-                        <td width="446">&nbsp;</td>
-                      </tr>
-                      <tr> 
-                        <td>&nbsp;</td>
-                        <td valign="top"><p><font size="3" face="Arial, Helvetica, sans-serif"><strong>Looking 
-                            for Love?</strong></font></p>
-                          <p><font size="2" face="Arial, Helvetica, sans-serif"><strong>This 
-                            is your invitation to<br>
-                            join one of the best <br>
-                            online dating agencies<br>
-                            </strong></font><font size="2" face="Arial, Helvetica, sans-serif"><strong>to 
-                            launch this year<br>
-                            <font color="#660066">soulmatchmaker.com</font></strong></font></p></td>
-                      </tr>
-                    </table></td>
-                </tr>
-                <tr> 
-                  <td align="center" valign="top"> <div align="justify"> 
-                      <table width="460" border="0" cellpadding="2" cellspacing="0" bgcolor="#660066">
-                        <tr> 
-                          <td align="center"><font size="1" face="Arial, Helvetica, sans-serif"><strong><font size="4" face="Arial, Helvetica, sans-serif"><strong><font color="#FF0000"><a href="http://www.soulmatchmaker.com"><font color="#FFFFFF">JOIN 
-                            FREE NOW</font></a></font></strong></font></strong></font></td>
-                        </tr>
-                      </table>
-                      <table width="460" border="0" cellpadding="2" cellspacing="0">
-                        <tr> 
-                          <td width="282" valign="top"> <p><font size="1" face="Arial, Helvetica, sans-serif"><strong><font size="2"><font color="#660066"><br>
-                              What makes us different? We promote and encourage 
-                              honesty to ensure we only attract people who are 
-                              truly seeking their soulmate.</font></font></strong></font></p></td>
-                          <td width="178" rowspan="3" valign="top"><table width="173" border="0" cellpadding="0" cellspacing="5" bgcolor="#FFCCFF">
-                              <tr> 
-                                <td height="18" align="center" valign="middle" bgcolor="#660066"> 
-                                  <p><font size="2" face="Arial, Helvetica, sans-serif"><font color="#FFFFFF" size="1">BENEFITS 
-                                    INCLUDE:</font></font></p></td>
-                              </tr>
-                              <tr> 
-                                <td valign="top"><font size="2" face="Arial, Helvetica, sans-serif"><strong><font color="#000000"><strong><font size="2" face="Arial, Helvetica, sans-serif">Chat 
-                                  live online</font></strong></font></strong></font></td>
-                              </tr>
-                              <tr> 
-                                <td valign="top"><font color="#000000"><strong><font size="2" face="Arial, Helvetica, sans-serif">Total 
-                                  site flexibility</font></strong></font></td>
-                              </tr>
-                              <tr> 
-                                <td valign="top"><font color="#000000"><strong><font size="2" face="Arial, Helvetica, sans-serif">Freeze 
-                                  your account<br>
-                                  </font><font color="#000000"><strong><font size="2" face="Arial, Helvetica, sans-serif">when 
-                                  it suits you</font></strong></font></strong></font></td>
-                              </tr>
-                              <tr> 
-                                <td valign="top"><font color="#000000"><strong><font size="2" face="Arial, Helvetica, sans-serif">Online 
-                                  Soul Guidance</font></strong></font></td>
-                              </tr>
-                              <tr> 
-                                <td valign="top"><font size="2" face="Arial, Helvetica, sans-serif"><strong><font color="#000000">Two 
-                                  way matching</font></strong></font><strong><font color="#000000" size="2" face="Arial, Helvetica, sans-serif"></font></strong><font color="#000000"><strong></strong></font></td>
-                              </tr>
-                            </table></td>
-                        </tr>
-                        <tr> 
-                          <td valign="top"><font size="2" face="Arial, Helvetica, sans-serif"><font size="1">There 
-                            are many reasons why your first experience of falling 
-                            in love may well be with the site itself! Join free 
-                            now and see what makes soulmatchmaker.com unique.</font></font></td>
-                        </tr>
-                        <tr> 
-                          <td valign="top"><font size="2" face="Arial, Helvetica, sans-serif"><font size="1">Please 
-                            feel free to forward this message to your friends, 
-                            they will thank you for it!</font></font></td>
-                        </tr>
-                      </table>
-                      <table width="460" border="0" cellpadding="2" cellspacing="0" bgcolor="#660066">
-                        <tr> 
-                          <td align="center"><a href="http://www.soulmatchmaker.com"><font color="#FFCCFF" size="2" face="Arial, Helvetica, sans-serif"><strong>IF 
-                            YOU'RE AS SERIOUS AS WE ARE ABOUT FINDING LOVE <br>
-                            JOIN SOULMATCHMAKER TODAY</strong></font></a></td>
-                        </tr>
-                      </table>
-                      <table border="0" cellpadding="0" cellspacing="0">
-                        <tr> 
-                          <td valign="top"> <p><font color="#000000" size="1" face="Arial, Helvetica, sans-serif"><br>
-                              </font><font size="1" face="Arial, Helvetica, sans-serif"><font size="2"><font color="#000000" size="1">We 
-                              constantly listen to what people really want, and 
-                              provide this time and time again ensuring your journey 
-                              ends with finding your soulmate.</font></font><br>
-                              <br>
-                              </font><font size="2" face="Arial, Helvetica, sans-serif"><font size="1">Your 
-                              comments are important, please forward these to 
-                              us.</font></font><font size="1" face="Arial, Helvetica, sans-serif"><br>
-                              <br>
-                              </font><font size="2" face="Arial, Helvetica, sans-serif"><font size="1">Our 
-                              best wishes in your search.</font></font></p>
-                            <p><font size="2" face="Arial, Helvetica, sans-serif"><strong><font color="#660066"><img src="http://www.soulmatchmaker.com/images/amy.gif" width="75" height="62"><br>
-                              Amy Phillips</font></strong><font size="1"><br>
-                              soulmatchmaker.com<br>
-                              <br>
-                              <em>The honest approach to online dating</em></font></font><font size="2" face="Arial, Helvetica, sans-serif"><font size="1"><br>
-                              <br>
-                              </font></font> </p></td>
-                        </tr>
-                      </table>
-                      <font size="2" face="Arial, Helvetica, sans-serif"><font size="1">
-					  
-                      
-					 
-                      </font></font></div>
-                    </td>
-                </tr>
-              </table></td>
-            <td width="76" background="http://www.soulmatchmaker.com/images/email_border_right.gif">&nbsp;</td>
-          </tr>
-          <tr> 
-            <td width="26" background="http://www.soulmatchmaker.com/images/mailbox_bot.gif"><img src="http://www.soulmatchmaker.com/images/mailbox_botleft.gif" width="26" height="28"></td>
-            <td background="http://www.soulmatchmaker.com/images/mailbox_bot.gif" valign="top" align="center">&nbsp;</td>
-            <td width="76" align="right"><img src="http://www.soulmatchmaker.com/images/mailbox_botright.gif" width="26" height="28"></td>
-          </tr>
-          <tr align="center"> 
-            <td>&nbsp;</td>
-            <td colspan="3"> 
-              <p><font size="2" face="Arial, Helvetica, sans-serif"><font size="1">This 
-                is a one time mailing, your details will not be kept by soulmatchmaker.com 
-                <br>
-                for any other marketing campaigns without your prior consent.</font></font></p>
-              <p><strong><font size="2" face="Arial, Helvetica, sans-serif"><font size="2" face="Arial, Helvetica, sans-serif"><font size="1">You 
-                need to be 18 years or over to join soulmatchmaker.com.</font></font></font></strong></p>
-              <p><font size="2" face="Arial, Helvetica, sans-serif"><font size="2" face="Arial, Helvetica, sans-serif"><font size="1">Joining 
-                is free of charge, however some site functionality is only available 
-                to 'Full' and 'Gold' members</font></font></font></p></td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-  <br>
-</div>
-</body>
-</html>
+The other major problem is when NFS is not crashing systems, it looses 
+data particularily with OpenOffice costing many man hours of work. In 
+addition, even simple commands like "ls" have trouble displaying the 
+entire directory and users sometimes get into a stale lock as well.
+
+I will provide the network topology along with the system specs, 
+configuration, and the software components.
+
+Network Topology
+
+
+
+                                       Local [LTSP]
+                                               |
+                         Fast Ethernet Segement|
+Remote                                        |
+[LTSP]---Cable Modem to T1 over IPSEC VPN---[NFS] Local
+                                               | 
+ 
+                                                          			     Point 
+to Point T1|
+                                               |
+                                       Remote[LTSP]
+
+
+Network Hardware - Total
+
+1x Cisco Pix 515E (Local)
+2x Cisco Pix 515R (Remote)
+1x Cisco 3620 w/ 1x 10BaseT Ethernet and 3x Serial (T1) - Active (Local)
+1x Dell PowerConnect 3024 24 port 10/100 managed switch (Local)
+4x D-Link 10/100 Dumb Hub(Remote - Upgrading to Switch soon)
+3x Cisco 2500 w/ 1x 10BaseT Ethernet and 1x Serial (T1) (Remote)
+Misc Unmanaged Switches (Remote)
+
+Network Hardware - Location
+
+Local
+
+1x Cisco Pix 515E (Local)
+1x Cisco 3620 w/ 1x 10BaseT Ethernet and 3x Serial (T1) - Active (Local)
+1x Dell PowerConnect 3024 24 port 10/100 managed switch (Local)
+
+Remote A
+
+1x Cisco 2500 w/ 1x 10BaseT Ethernet and 1x Serial (T1) (Remote)
+2x D-Link 10/100 Dumb Hub(Remote - Upgrading to Switch soon)
+
+Remote B
+
+1x Cisco 2500 w/ 1x 10BaseT Ethernet and 1x Serial (T1) (Remote)
+1x D-Link 10/100 Dumb Hub(Remote - Upgrading to Switch soon)
+
+Remote C
+
+1x Cisco 2500 w/ 1x 10BaseT Ethernet and 1x Serial (T1) (Remote)
+1x D-Link 10/100 Dumb Hub(Remote - Upgrading to Switch soon)
+
+Remote D
+
+1x Cisco Pix 515R (Remote)
+Unmanaged Dumb Switch
+
+Remote E
+
+1x Cisco Pix 515R (Remote)
+Unmanaged Dumb Switch
+
+Network Bandwidth
+
+Local - 100BaseT
+Remote A - T1 Full 1.544 Mbps
+Remote B - T1 Fractional ~1.088 Mbps
+Remote C - T1 Fractional ~1.118 Mbps
+Remote D - Cable Modem ~768 kbps Mbps U/D
+Remote E - Cable Modem ~512 kbps U/D
+
+System Hardware - Total
+
+2x Dell PowerEdge 1650 (Local)
+	Dual Pentium III 1.4GHz,
+	Dual 10/100/1000 NIC,
+	2GB Memory
+	36GB RAID 1 Ultra160 SCSI
+5x IBM xSeries 205 (Remote)
+	Single Pentium 4 2.66GHz
+	Single 10/100/1000 NIC
+	256MB Memory
+	40GB Single IDE
+
+The Dells serve as the NFS and LTSP servers on separate machines at the 
+central location.
+
+The IBMs serve as the LTSP for the remote sites and NFS mount the /home 
+only directory from one of the Dell NFS servers.
+
+Major Software Applications
+
+RedHat 8.0 with all patches including kernel and glibc updated
+OpenOffice 1.0.1 stock
+ICEWM 1.2.6
+Mozilla 1.3
+Pine (Email)
+RDesktop 1.1.0 (for Windows Terminal Server)
+Konqueror 3.0.3 (for file management)
+
+NFS Configuration (Server)
+
+# /etc/exports
+/home    *(rw,sync,no_root_squash) # Actual hostname removed
+
+NFS Configuration (LTSP - All Local and Remote)
+
+# /etc/fstab
+nfsserver:/home  /home   nfs     defaults        0 0
+
+All other configuration are defaults as per initial install.
+
+NFS Problem 1 (Crashing)
+
+The LTSP would create stale locks and eventually the LTSP server 
+crashes. Furthermore, data is corrupted during the process.
+
+NFS Problem 2 (Corruption)
+
+This happens mostly in OpenOffice, more than once, data gets corrupted 
+and when working with both Microsoft and native OpenOffice formats. On 
+full local workstations where the files are save to the local disk, this 
+does not happen. The office docuements are normally saved to an NFS 
+filesystem.
+
+NFS Problem 3 (Performance)
+
+NFS is very slow over T1 and cable links but is just fine on the Local 
+Fast Ethernet. It is slow enough to either knock people off or cause 
+write errors. We are thinking the hubs play a major role and are 
+replacing with high end managed switches. However we believe that there 
+is more than meets the eye and the T1 also has something to do with.
+
+Summary
+
+Those are the problems and I give as much information as I possibly can. 
+I would be appreciate if anyone can point us in the right direction. We 
+commercial organization and our customer are also commercial and we all 
+want Linux to success not only on the server but also on the desktop. 
+This customer is one of the boldest I have seen in the embracing of 
+Linux on the desktop and we want them to success to the fullest, 
+therefore we are asking for your assistance so we can do what many 
+people say you can't, make money with Linux!
+
+Thank you and Sincerely,
+Fanying Jen
+Senior System Administration
+Lille Corp.
 
 
 
