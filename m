@@ -1,32 +1,49 @@
 From: Chip Salzenberg <chip@pobox.com>
-Subject: Re: nfs-utils-1.0.5 is not backwards compatible with 2.4
-Date: Fri, 1 Aug 2003 10:38:07 -0400
-Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <20030801143807.GB24358@perlsupport.com>
-References: <3F294DE3.9020304@RedHat.com> <16169.54918.472349.928145@gargle.gargle.HOWL>
+Subject: Nobody put a "nfs-utils-1-0-5" tag on CVS
+Date: Fri, 1 Aug 2003 10:43:09 -0400
+Sender: nfs-admin@lists.sourceforge.net
+Message-ID: <20030801144309.GD24358@perlsupport.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Steve Dickson <SteveD@redhat.com>, nfs@lists.sourceforge.net,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>
-Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: Neil Brown <neilb@cse.unsw.edu.au>
-In-Reply-To: <16169.54918.472349.928145@gargle.gargle.HOWL>
-List-ID: <nfs.lists.sourceforge.net>
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from tandu.perlsupport.com ([66.220.6.226] ident=mail)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19ib81-0003i3-00
+	for <nfs@lists.sourceforge.net>; Fri, 01 Aug 2003 07:43:33 -0700
+Received: from tytlal.hmsonline.com
+	([207.43.94.202] helo=tytlal ident=mail)
+	by tandu.perlsupport.com with asmtp (Exim 3.35 #1 (Debian))
+	id 19ib7X-0004vg-00
+	for <nfs@lists.sourceforge.net>; Fri, 01 Aug 2003 07:43:03 -0700
+Received: from chip by tytlal with local (Exim 3.35 #1 (Debian))
+	id 19ib7d-0000mP-00
+	for <nfs@lists.sourceforge.net>; Fri, 01 Aug 2003 10:43:09 -0400
+To: nfs@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-According to Neil Brown:
-> I don't know if there is any such code, but if there is I apoligize for
-> breaking it and suggest that the best fix is to not use the header
-> file it was using but it explicitly include the values for NFSEXP_* in
-> that code.
-
-The only really bad thing about the current situation is that the name
-"NFSEXP_CROSSMNT" is poisoned by having had two historical
-definitions.  So it that name should be dropped, IMO, and replaced by
-something textually different.  "NFSEXP_XMOUNT", perhaps.  Even
-"NFSEXP_CROSSMNT2" would work.  Just as long as code that said
-"CROSSMNT" to mean "NOHIDE" wouldn't accidentally get CROSSMNT instead.
+Shall I do so?
 -- 
 Chip Salzenberg               - a.k.a. -               <chip@pobox.com>
 "I wanted to play hopscotch with the impenetrable mystery of existence,
     but he stepped in a wormhole and had to go in early."  // MST3K
+
+
+-------------------------------------------------------
+This SF.Net email sponsored by: Free pre-built ASP.NET sites including
+Data Reports, E-commerce, Portals, and Forums are available now.
+Download today and enter to win an XBOX or Visual Studio .NET.
+http://aspnet.click-url.com/go/psa00100003ave/direct;at.aspnet_072303_01/01
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
