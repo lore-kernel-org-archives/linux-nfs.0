@@ -1,22 +1,21 @@
-From: Olaf Hering <olh@suse.de>
-Subject: Re: [PATCH] remove unneeded ext2 include from nfsd
-Date: Mon, 14 Feb 2005 10:33:00 +0100
-Message-ID: <20050214093300.GA15790@suse.de>
-References: <20050213155257.GA21488@suse.de> <20050214093142.GA23861@suse.de>
+From: Suresh Jayaram <sureshjayaram@gmail.com>
+Subject: Kerberized NFSv3 Client for Linux
+Date: Mon, 14 Feb 2005 19:23:40 +0530
+Message-ID: <38c3c48605021405536f044f64@mail.gmail.com>
+Reply-To: Suresh Jayaram <sureshjayaram@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Content-Type: text/plain; charset=US-ASCII
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D0cbH-000301-9b
-	for nfs@lists.sourceforge.net; Mon, 14 Feb 2005 01:33:03 -0800
-Received: from mail.suse.de ([195.135.220.2] helo=Cantor.suse.de)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.41)
-	id 1D0cbG-0000oS-Ly
-	for nfs@lists.sourceforge.net; Mon, 14 Feb 2005 01:33:03 -0800
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20050214093142.GA23861@suse.de>
+	id 1D0gfc-0008O8-S8
+	for nfs@lists.sourceforge.net; Mon, 14 Feb 2005 05:53:48 -0800
+Received: from wproxy.gmail.com ([64.233.184.207])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1D0gfb-0008Rx-FU
+	for nfs@lists.sourceforge.net; Mon, 14 Feb 2005 05:53:48 -0800
+Received: by wproxy.gmail.com with SMTP id 69so612504wra
+        for <nfs@lists.sourceforge.net>; Mon, 14 Feb 2005 05:53:41 -0800 (PST)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,15 +29,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
- On Mon, Feb 14, Olaf Kirch wrote:
+Iam trying to setup kerberized NFS(v3) client for Linux.
 
-> On Sun, Feb 13, 2005 at 04:52:57PM +0100, Olaf Hering wrote:
-> > nfs3proc.c includes ext2 headers for some constants, strange.
-> 
-> It used to be that nfsd accessed the ext2 inode generation number
-> directly, that's where the include came from, probably.
+My setup details
+NFS client: Suse Linux Enterprise Server (SLES 9) which has
+kernel - 2.6.5-7.97 (CONFIG_SUNRPC=y, CONFIG_SUNRPC_GSS=y,
+CONFIG_RPCSEC_GSS_KRB5=y )
 
-It looks for ext2/ext3 and msdos magic to tweak some settings.
+nfs-utils-1.0.7 (patched - nfs-utils-1.0.7-CITI_NFS4_ALL-1.dif)
+util-linux-2.12 (patched - util-linux-2.12-CITI_NFS4_ALL-3.dif)
+
+KDC Server: RedHat Linux
+NFS Server: Kerberized Solaris server (KDC Server & NFS Server are
+Tested and working fine)
+
+To setup kerberized Linux Client, I presume a kernel with rpcsecgss
+support, patched nfs-utils pkg and patched util-linux pkg is
+sufficient. (Let me know any other pkg/configuration is required)
+
+My NFS Server export entry is:
+share -F nfs -o sec=krb5 /export/home
+
+Server has nfs principal registered to KDC and the user principal of
+client also registered to the Server.
+After doing a kinit if I try to mount the exported path, Iam getting
+
+"mount: nfsserver:/export/home failed, reason given by server:
+Permission denied"
+Then I specified the client name in the exports file make gave
+readonly perms. Then also I got the same error.
+
+Am I missing something ? Any pointers ..
+
+thanks,
+Suresh
 
 
 -------------------------------------------------------
