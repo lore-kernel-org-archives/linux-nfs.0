@@ -1,23 +1,26 @@
-From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
-Subject: Re: sendmail "cannot fsync directory" after 2.4 -> 2.6
-Date: Thu, 09 Sep 2004 12:39:05 +0200
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: lockd GRANT_MSG RPC callback
+Date: Thu, 9 Sep 2004 08:56:25 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <414032C9.7090105@bio.ifi.lmu.de>
-References: <413FF4EB.2070607@bio.ifi.lmu.de>
+Message-ID: <20040909125625.GC11991@fieldses.org>
+References: <OFEFF11E74.090F2AA4-ON88256F09.00709621-88256F09.00712392@us.ibm.com> <1094676655.8363.47.camel@lade.trondhjem.org> <1094699316.19981.79.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Marc Eshel <eshel@almaden.ibm.com>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C5MKd-0006MM-Kc
-	for nfs@lists.sourceforge.net; Thu, 09 Sep 2004 03:39:11 -0700
-Received: from acheron.informatik.uni-muenchen.de ([129.187.214.135])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1C5MKc-0000S4-BE
-	for nfs@lists.sourceforge.net; Thu, 09 Sep 2004 03:39:11 -0700
-To: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
-In-Reply-To: <413FF4EB.2070607@bio.ifi.lmu.de>
+	id 1C5OTf-0002YW-0i
+	for nfs@lists.sourceforge.net; Thu, 09 Sep 2004 05:56:39 -0700
+Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.34)
+	id 1C5OTe-0000Ze-77
+	for nfs@lists.sourceforge.net; Thu, 09 Sep 2004 05:56:38 -0700
+To: Greg Banks <gnb@melbourne.sgi.com>
+In-Reply-To: <1094699316.19981.79.camel@hole.melbourne.sgi.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,35 +33,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I wrote a little c program to test fsync on nfs directories (must be
-called in the directory you want to check):
+On Thu, Sep 09, 2004 at 01:08:36PM +1000, Greg Banks wrote:
+> On Thu, 2004-09-09 at 06:50, Trond Myklebust wrote:
+> > OK. Bruce has promised to work on splitting out the "domain" code from
+> > the svcauth_unix code. Once that is done, we can fix up GRANT_MSG and
+> > NOTIFY as well as any other routines that do not need to be
+> > authenticated by rpc.mountd.
+> 
+> Any idea how long is this likely to take?
 
-#include <fcntl.h>
+I'll try to have something out by early next week.
 
-int main() {
-int dirfd;
-dirfd = open(".",O_RDONLY, 0700);
-if (fsync(dirfd) < 0)
-   printf("failed\n");
-else
-   printf("succeeded\n");
-}
+The problem is that the server-side rpc code is checking *all* incoming
+auth_unix and auth_null requests (whether for nfsd or for some other
+service) against the exports table.  So as a temporary workaround, lockd
+will work if the client lists the server in the exports file.  Or
+something like
 
+echo nfsd server.ip.address.here 0x7FFFFFFF server.name.here \
+	>/proc/net/rpc/auth.unix.ip/content
 
-Indeed it fails for all nfs-mounted directories when the client is running
-kernel 2.6 (tried 2.6.6 and 2.6.8.1), and succeeds for clients running
-kernel 2.4, with the same nfs server (regardless if the server is running
-2.6 or 2.4).
+may also work, though the entry you add to the auth.unix.ip cache by
+doing this may end up getting purged next time you run exportfs.
 
-cu,
-Frank
-
--- 
-Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
-Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
-LMU, Amalienstr. 17           Phone: +49 89 2180-4049
-80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
-
+--Bruce Fields
 
 
 -------------------------------------------------------
