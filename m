@@ -1,18 +1,24 @@
-From: Matthew Moldvan <mmoldvan@trilogyintl.com>
-Subject: Solaris 8 to Linux Red Hat 9 - NFS Goes up and down and up and do
- wn ...
-Date: Mon, 25 Aug 2003 10:39:58 -0400
+From: Matt C <wago@phlinux.com>
+Subject: 3 NFS client panics in 2.4.21. Fixed in 2.4.22?
+Date: Mon, 25 Aug 2003 16:20:47 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <2840B2764868D51189420090277B7699FD8F30@trilogy_pub.trilogyintl.com>
+Message-ID: <Pine.LNX.4.44.0308251617050.26067-400000@fubar.phlinux.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: MULTIPART/MIXED; BOUNDARY="-19359178-2067290929-1061853647=:26067"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [209.187.237.19] (helo=proxy.trilogyintl.com)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19rIbW-00065q-00
-	for <nfs@lists.sourceforge.net>; Mon, 25 Aug 2003 07:45:58 -0700
-To: nfs@lists.sourceforge.net
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19rQeQ-0000rb-00
+	for <nfs@lists.sourceforge.net>; Mon, 25 Aug 2003 16:21:30 -0700
+Received: from fubar.phlinux.com ([216.254.54.154])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
+	id 19rQeE-0002WS-Eb
+	for nfs@lists.sourceforge.net; Mon, 25 Aug 2003 16:21:18 -0700
+Received: from localhost (localhost.phlinux.com [127.0.0.1])
+	by fubar.phlinux.com (Postfix) with ESMTP id 8C7F48050
+	for <nfs@lists.sourceforge.net>; Mon, 25 Aug 2003 16:20:47 -0700 (PDT)
+To: NFS List <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,41 +31,203 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi everyone,
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
+  Send mail to mime@docserver.cac.washington.edu for more info.
 
-I've finally just about given up on trying to figure this out myself ...
-here's my issue:
+---19359178-2067290929-1061853647=:26067
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 
-We have a Sun E450 running Solaris 8 with not enough disk space on a few of
-the partitions.  Our solution: an x86 machine running Red Hat 9 with a 3Ware
-Escalade 4 port IDE RAID card and a few big HDDs.
+hey all-
 
-So, we have the two machines communicating just fine through a Gigabit
-ethernet interface with a subnet.  Now, we've tried the rest two ways: 
+I've had 3 very similar panics on 3 seperate machines under 2.4.21. All 
+appear to be in the NFS client stack. All are SMP/Bigmem machines, and the 
+kernel was pretty close to vanilla. All machines are redhat-7.2 using ext3 
+filesystems.
 
-	1. Our E450 mounts the RH9 NFS share, then exports that as it's own
-NFS share
-		or
-	2. We mount the RH9 NFS share directly from the other Solaris
-workstations
+Before I hop on the latest kernel out of the hopper for production 
+systems, do you know if these are known/fixed bugs in 2.4.22 or in BK?
 
-Now, the issue we're facing is this: The whole setup works fine for awhile,
-with a minor amount of collisions ... BUT, after a few hours, the whole
-thing falls apart.  Workstations can't login because NFS shares aren't being
-mounted, the main server is not allowing connections because it can't mount
-the NFS itself, etc etc etc.
+decoded oopses attached...
 
-This is all incredibly frustrating to me, and we've tried everything from
-changing the gigabit ethernet configuration to trying new network cards to
-blaming it on wiring to god knows what now ...
+thanks
 
-Any ideas??
+-matt corddry
+wago@phlinux.com
 
-Regards,
-Matthew Moldvan
- 
-System Administrator
-Trilogy International, Inc.
+---19359178-2067290929-1061853647=:26067
+Content-Type: TEXT/plain; name="oops-2.4.21-nfs-3.txt"
+Content-Transfer-Encoding: BASE64
+Content-ID: <Pine.LNX.4.44.0308251620470.26067@fubar.phlinux.com>
+Content-Description: 
+Content-Disposition: attachment; filename="oops-2.4.21-nfs-3.txt"
+
+VW5hYmxlIHRvIGhhbmRsZSBrZXJuZWwgTlVMTCBwb2ludGVyIGRlcmVmZXJl
+bmNlIGF0IHZpcnR1YWwgYWRkcmVzcyAwMDAwMDAyMA0KYzAxNTI2OGQNCipw
+ZGUgPSAwMDAwMDAwMA0KT29wczogMDAwMA0KQ1BVOiAgICAxDQpFSVA6ICAg
+IDAwMTA6WzxjMDE1MjY4ZD5dICAgIE5vdCB0YWludGVkDQpVc2luZyBkZWZh
+dWx0cyBmcm9tIGtzeW1vb3BzIC10IGVsZjMyLWkzODYgLWEgaTM4Ng0KRUZM
+QUdTOiAwMDAxMDIwMg0KZWF4OiAwMDAwMDAwOCAgIGVieDogZjA0ODUwYTAg
+ICBlY3g6IGYwNDg1MGIwICAgZWR4OiBmMDQ4NTBhMA0KZXNpOiBlYmE5MzAw
+MCAgIGVkaTogMDAwMDAwMDggICBlYnA6IGYxY2I5ZWVjICAgZXNwOiBmMWNi
+OWVkMA0KZHM6IDAwMTggICBlczogMDAxOCAgIHNzOiAwMDE4DQpQcm9jZXNz
+IHdlYnNpdGUtaW5zdGFsbCAocGlkOiAyODgyMywgc3RhY2twYWdlPWYxY2I5
+MDAwKQ0KU3RhY2s6IGQwZmRkMjIwIGMwMzI1NzAwIGYxY2I5ZWVjIGMwMTg4
+ZTRhIGY2MDY2M2I4IGY2MDY2M2EwIGYwNDg1MGEwIGYxY2I5ZjI4DQogICAg
+ICAgYzAxNGZlMDAgZjA0ODUwYTAgZjA0ODUwYTAgZjFjYjlmOTAgZjFjYjlm
+NzQgYzAxNDZmOWYgZTExNTc5ZTAgMDAwMDAwMDENCiAgICAgICBmNzA1MTM0
+OCAwMDAwMDE0YSBmNzA1MTMyMCBmNzA1MTMyMCBmZmZmZmZmMCBlMTE1Nzll
+MCBmMWNiOWYzOCBjMDE1MDFiNg0KQ2FsbCBUcmFjZTogICAgWzxjMDE4OGU0
+YT5dIFs8YzAxNGZlMDA+XSBbPGMwMTQ2ZjlmPl0gWzxjMDE1MDFiNj5dIFs8
+YzAxNDgyOTQ+XQ0KICBbPGMwMTQ4NDkyPl0gWzxjMDE0ODVmNT5dIFs8YzAx
+MDhlYzM+XQ0KQ29kZTogOGIgNDcgMTggODUgYzAgNzQgMDQgNTMgZmYgZDAg
+NTggNjggZmMgMmUgMmMgYzAgOGQgNDMgMmMgNTANCg0KPj5FSVA7IGMwMTUy
+NjhkIDxpcHV0KzNkLzI4MD4gICA8PT09PT0NClRyYWNlOyBjMDE4OGU0YSA8
+bmZzX2RlbnRyeV9pcHV0KzVhLzgwPg0KVHJhY2U7IGMwMTRmZTAwIDxwcnVu
+ZV9kY2FjaGUrZTAvMTkwPg0KVHJhY2U7IGMwMTQ2ZjlmIDxsaW5rX3BhdGhf
+d2Fsays5ZmYvYTIwPg0KVHJhY2U7IGMwMTUwMWI2IDxzaHJpbmtfZGNhY2hl
+X3BhcmVudCsxNi8zMD4NClRyYWNlOyBjMDE0ODI5NCA8ZF91bmhhc2grNDQv
+ODA+DQpUcmFjZTsgYzAxNDg0OTIgPHZmc19ybWRpcisxYzIvMjkwPg0KVHJh
+Y2U7IGMwMTQ4NWY1IDxzeXNfcm1kaXIrOTUvZTA+DQpUcmFjZTsgYzAxMDhl
+YzMgPHN5c3RlbV9jYWxsKzMzLzM4Pg0KQ29kZTsgIGMwMTUyNjhkIDxpcHV0
+KzNkLzI4MD4NCjAwMDAwMDAwIDxfRUlQPjoNCkNvZGU7ICBjMDE1MjY4ZCA8
+aXB1dCszZC8yODA+ICAgPD09PT09DQogICAwOiAgIDhiIDQ3IDE4ICAgICAg
+ICAgICAgICAgICAgbW92ICAgIDB4MTgoJWVkaSksJWVheCAgIDw9PT09PQ0K
+Q29kZTsgIGMwMTUyNjkwIDxpcHV0KzQwLzI4MD4NCiAgIDM6ICAgODUgYzAg
+ICAgICAgICAgICAgICAgICAgICB0ZXN0ICAgJWVheCwlZWF4DQpDb2RlOyAg
+YzAxNTI2OTIgPGlwdXQrNDIvMjgwPg0KICAgNTogICA3NCAwNCAgICAgICAg
+ICAgICAgICAgICAgIGplICAgICBiIDxfRUlQKzB4Yj4gYzAxNTI2OTggPGlw
+dXQrNDgvMjgwPg0KQ29kZTsgIGMwMTUyNjk0IDxpcHV0KzQ0LzI4MD4NCiAg
+IDc6ICAgNTMgICAgICAgICAgICAgICAgICAgICAgICBwdXNoICAgJWVieA0K
+Q29kZTsgIGMwMTUyNjk1IDxpcHV0KzQ1LzI4MD4NCiAgIDg6ICAgZmYgZDAg
+ICAgICAgICAgICAgICAgICAgICBjYWxsICAgKiVlYXgNCkNvZGU7ICBjMDE1
+MjY5NyA8aXB1dCs0Ny8yODA+DQogICBhOiAgIDU4ICAgICAgICAgICAgICAg
+ICAgICAgICAgcG9wICAgICVlYXgNCkNvZGU7ICBjMDE1MjY5OCA8aXB1dCs0
+OC8yODA+DQogICBiOiAgIDY4IGZjIDJlIDJjIGMwICAgICAgICAgICAgcHVz
+aCAgICQweGMwMmMyZWZjDQpDb2RlOyAgYzAxNTI2OWQgPGlwdXQrNGQvMjgw
+Pg0KICAxMDogICA4ZCA0MyAyYyAgICAgICAgICAgICAgICAgIGxlYSAgICAw
+eDJjKCVlYngpLCVlYXgNCkNvZGU7ICBjMDE1MjZhMCA8aXB1dCs1MC8yODA+
+DQogIDEzOiAgIDUwICAgICAgICAgICAgICAgICAgICAgICAgcHVzaCAgICVl
+YXgNCg0KDQoNCg==
+---19359178-2067290929-1061853647=:26067
+Content-Type: TEXT/plain; name="oops-2.4.21-nfs-2.txt"
+Content-Transfer-Encoding: BASE64
+Content-ID: <Pine.LNX.4.44.0308251620471.26067@fubar.phlinux.com>
+Content-Description: 
+Content-Disposition: attachment; filename="oops-2.4.21-nfs-2.txt"
+
+VW5hYmxlIHRvIGhhbmRsZSBrZXJuZWwgTlVMTCBwb2ludGVyIGRlcmVmZXJl
+bmNlIGF0IHZpcnR1YWwgYWRkcmVzcyAwMDAwMDAyMA0KKnBkZSA9IDAwMDAw
+MDAwDQpPb3BzOiAwMDAwDQpDUFU6ICAgIDENCkVJUDogICAgMDAxMDpbPGMw
+MTUyNjhkPl0gICAgTm90IHRhaW50ZWQNClVzaW5nIGRlZmF1bHRzIGZyb20g
+a3N5bW9vcHMgLXQgZWxmMzItaTM4NiAtYSBpMzg2DQpFRkxBR1M6IDAwMDEw
+MjAyDQplYXg6IDAwMDAwMDA4ICAgZWJ4OiBmNTYxMTYyMCAgIGVjeDogZjU2
+MTE2MzAgICBlZHg6IGY1NjExNjIwDQplc2k6IGY1OGM2YzAwICAgZWRpOiAw
+MDAwMDAwOCAgIGVicDogYzNiYzNmMDggICBlc3A6IGMzYmMzZWVjDQpkczog
+MDAxOCAgIGVzOiAwMDE4ICAgc3M6IDAwMTgNClByb2Nlc3Mga3N3YXBkIChw
+aWQ6IDksIHN0YWNrcGFnZT1jM2JjMzAwMCkNClN0YWNrOiBmNzY0YWIyMCBj
+MDMyNTcwMCBjM2JjM2YwOCBjMDE4OGU0YSBmNTY0MjgzOCBmNTY0MjgyMCBm
+NTYxMTYyMCBjM2JjM2Y0NA0KICAgICAgIGMwMTRmZTAwIGY1NjExNjIwIGY1
+NjExNjIwIGMwMTMzZWRiIGYxODczYzAwIGMzYmMyMDAwIGZmZmZmZmZmIDAw
+MDFlMzIwDQogICAgICAgMDAwMDAxZDAgYzAyYzIwODggYzNiZDVhODAgMDAw
+MDAwMGUgMDAwMDAxZDAgMDAwMDAwMDYgYzNiYzNmNTAgYzAxNTAxZjINCkNh
+bGwgVHJhY2U6ICAgIFs8YzAxODhlNGE+XSBbPGMwMTRmZTAwPl0gWzxjMDEz
+M2VkYj5dIFs8YzAxNTAxZjI+XSBbPGMwMTM0MGU3Pl0NCiAgWzxjMDEzNDEz
+Yz5dIFs8YzAxMzQyNmY+XSBbPGMwMTM0MmU2Pl0gWzxjMDEzNDQxZj5dIFs8
+YzAxMzQzODA+XSBbPGMwMTA1MDAwPl0NCiAgWzxjMDEwNzQ3Nj5dIFs8YzAx
+MzQzODA+XQ0KQ29kZTogOGIgNDcgMTggODUgYzAgNzQgMDQgNTMgZmYgZDAg
+NTggNjggZmMgMmUgMmMgYzAgOGQgNDMgMmMgNTANCg0KPj5FSVA7IGMwMTUy
+NjhkIDxpcHV0KzNkLzI4MD4gICA8PT09PT0NClRyYWNlOyBjMDE4OGU0YSA8
+bmZzX2RlbnRyeV9pcHV0KzVhLzgwPg0KVHJhY2U7IGMwMTRmZTAwIDxwcnVu
+ZV9kY2FjaGUrZTAvMTkwPg0KVHJhY2U7IGMwMTMzZWRiIDxzaHJpbmtfY2Fj
+aGUrMzFiLzNiMD4NClRyYWNlOyBjMDE1MDFmMiA8c2hyaW5rX2RjYWNoZV9t
+ZW1vcnkrMjIvNDA+DQpUcmFjZTsgYzAxMzQwZTcgPHNocmlua19jYWNoZXMr
+NjcvODA+DQpUcmFjZTsgYzAxMzQxM2MgPHRyeV90b19mcmVlX3BhZ2VzX3pv
+bmUrM2MvNjA+DQpUcmFjZTsgYzAxMzQyNmYgPGtzd2FwZF9iYWxhbmNlX3Bn
+ZGF0KzRmL2EwPg0KVHJhY2U7IGMwMTM0MmU2IDxrc3dhcGRfYmFsYW5jZSsy
+Ni80MD4NClRyYWNlOyBjMDEzNDQxZiA8a3N3YXBkKzlmL2I4Pg0KVHJhY2U7
+IGMwMTM0MzgwIDxrc3dhcGQrMC9iOD4NClRyYWNlOyBjMDEwNTAwMCA8X3N0
+ZXh0KzAvMD4NClRyYWNlOyBjMDEwNzQ3NiA8YXJjaF9rZXJuZWxfdGhyZWFk
+KzI2LzQwPg0KVHJhY2U7IGMwMTM0MzgwIDxrc3dhcGQrMC9iOD4NCkNvZGU7
+ICBjMDE1MjY4ZCA8aXB1dCszZC8yODA+DQowMDAwMDAwMCA8X0VJUD46DQpD
+b2RlOyAgYzAxNTI2OGQgPGlwdXQrM2QvMjgwPiAgIDw9PT09PQ0KICAgMDog
+ICA4YiA0NyAxOCAgICAgICAgICAgICAgICAgIG1vdiAgICAweDE4KCVlZGkp
+LCVlYXggICA8PT09PT0NCkNvZGU7ICBjMDE1MjY5MCA8aXB1dCs0MC8yODA+
+DQogICAzOiAgIDg1IGMwICAgICAgICAgICAgICAgICAgICAgdGVzdCAgICVl
+YXgsJWVheA0KQ29kZTsgIGMwMTUyNjkyIDxpcHV0KzQyLzI4MD4NCiAgIDU6
+ICAgNzQgMDQgICAgICAgICAgICAgICAgICAgICBqZSAgICAgYiA8X0VJUCsw
+eGI+IGMwMTUyNjk4IDxpcHV0KzQ4LzI4MD4NCkNvZGU7ICBjMDE1MjY5NCA8
+aXB1dCs0NC8yODA+DQogICA3OiAgIDUzICAgICAgICAgICAgICAgICAgICAg
+ICAgcHVzaCAgICVlYngNCkNvZGU7ICBjMDE1MjY5NSA8aXB1dCs0NS8yODA+
+DQogICA4OiAgIGZmIGQwICAgICAgICAgICAgICAgICAgICAgY2FsbCAgICol
+ZWF4DQpDb2RlOyAgYzAxNTI2OTcgPGlwdXQrNDcvMjgwPg0KICAgYTogICA1
+OCAgICAgICAgICAgICAgICAgICAgICAgIHBvcCAgICAlZWF4DQpDb2RlOyAg
+YzAxNTI2OTggPGlwdXQrNDgvMjgwPg0KICAgYjogICA2OCBmYyAyZSAyYyBj
+MCAgICAgICAgICAgIHB1c2ggICAkMHhjMDJjMmVmYw0KQ29kZTsgIGMwMTUy
+NjlkIDxpcHV0KzRkLzI4MD4NCiAgMTA6ICAgOGQgNDMgMmMgICAgICAgICAg
+ICAgICAgICBsZWEgICAgMHgyYyglZWJ4KSwlZWF4DQpDb2RlOyAgYzAxNTI2
+YTAgPGlwdXQrNTAvMjgwPg0KICAxMzogICA1MCAgICAgICAgICAgICAgICAg
+ICAgICAgIHB1c2ggICAlZWF4DQoNCg==
+---19359178-2067290929-1061853647=:26067
+Content-Type: TEXT/plain; name="oops-2.4.21-nfs-1.txt"
+Content-Transfer-Encoding: BASE64
+Content-ID: <Pine.LNX.4.44.0308251620472.26067@fubar.phlinux.com>
+Content-Description: 
+Content-Disposition: attachment; filename="oops-2.4.21-nfs-1.txt"
+
+VW5hYmxlIHRvIGhhbmRsZSBrZXJuZWwgcGFnaW5nIHJlcXVlc3QgYXQgdmly
+dHVhbCBhZGRyZXNzIDBjNDU4YjI0DQpjMDE1MjY4ZA0KKnBkZSA9IDAwMDAw
+MDAwDQpPb3BzOiAwMDAwDQpDUFU6ICAgIDQNCkVJUDogICAgMDAxMDpbPGMw
+MTUyNjhkPl0gICAgTm90IHRhaW50ZWQNClVzaW5nIGRlZmF1bHRzIGZyb20g
+a3N5bW9vcHMgLXQgZWxmMzItaTM4NiAtYSBpMzg2DQpFRkxBR1M6IDAwMDEw
+MjA2DQplYXg6IDBjNDU4YjBjICAgZWJ4OiBmMjAwYTg2MCAgIGVjeDogZjIw
+MGE4NzAgICBlZHg6IGYyMDBhODYwDQplc2k6IGQ5ZTVlYzAwICAgZWRpOiAw
+YzQ1OGIwYyAgIGVicDogYzNiYzNmMDggICBlc3A6IGMzYmMzZWVjDQpkczog
+MDAxOCAgIGVzOiAwMDE4ICAgc3M6IDAwMTgNClByb2Nlc3Mga3N3YXBkIChw
+aWQ6IDksIHN0YWNrcGFnZT1jM2JjMzAwMCkNClN0YWNrOiBkZTBmMGMyMCBj
+MDMyNTcwMCBjM2JjM2YwOCBjMDE4OGU0YSBlOTNlZmYzOCBlOTNlZmYyMCBm
+MjAwYTg2MCBjM2JjM2Y0NA0KICAgICAgIGMwMTRmZTAwIGYyMDBhODYwIGYy
+MDBhODYwIGMwMTMzZWRiIGRhNDQwMDIwIGMzYmMyMDAwIGZmZmZmZmZmIDAw
+MDE0NDJlDQogICAgICAgMDAwMDAxZDAgYzAyYzIwODggYzNiZGNhNjAgMDAw
+MDAwMWMgMDAwMDAxZDAgMDAwMDAwMDYgYzNiYzNmNTAgYzAxNTAxZjINCkNh
+bGwgVHJhY2U6ICAgIFs8YzAxODhlNGE+XSBbPGMwMTRmZTAwPl0gWzxjMDEz
+M2VkYj5dIFs8YzAxNTAxZjI+XSBbPGMwMTM0MGU3Pl0NCiAgWzxjMDEzNDEz
+Yz5dIFs8YzAxMzQyNmY+XSBbPGMwMTM0MmU2Pl0gWzxjMDEzNDQxZj5dIFs8
+YzAxMzQzODA+XSBbPGMwMTA1MDAwPl0NCiAgWzxjMDEwNzQ3Nj5dIFs8YzAx
+MzQzODA+XQ0KQ29kZTogOGIgNDcgMTggODUgYzAgNzQgMDQgNTMgZmYgZDAg
+NTggNjggZmMgMmUgMmMgYzAgOGQgNDMgMmMgNTANCg0KPj5FSVA7IGMwMTUy
+NjhkIDxpcHV0KzNkLzI4MD4gICA8PT09PT0NClRyYWNlOyBjMDE4OGU0YSA8
+bmZzX2RlbnRyeV9pcHV0KzVhLzgwPg0KVHJhY2U7IGMwMTRmZTAwIDxwcnVu
+ZV9kY2FjaGUrZTAvMTkwPg0KVHJhY2U7IGMwMTMzZWRiIDxzaHJpbmtfY2Fj
+aGUrMzFiLzNiMD4NClRyYWNlOyBjMDE1MDFmMiA8c2hyaW5rX2RjYWNoZV9t
+ZW1vcnkrMjIvNDA+DQpUcmFjZTsgYzAxMzQwZTcgPHNocmlua19jYWNoZXMr
+NjcvODA+DQpUcmFjZTsgYzAxMzQxM2MgPHRyeV90b19mcmVlX3BhZ2VzX3pv
+bmUrM2MvNjA+DQpUcmFjZTsgYzAxMzQyNmYgPGtzd2FwZF9iYWxhbmNlX3Bn
+ZGF0KzRmL2EwPg0KVHJhY2U7IGMwMTM0MmU2IDxrc3dhcGRfYmFsYW5jZSsy
+Ni80MD4NClRyYWNlOyBjMDEzNDQxZiA8a3N3YXBkKzlmL2I4Pg0KVHJhY2U7
+IGMwMTM0MzgwIDxrc3dhcGQrMC9iOD4NClRyYWNlOyBjMDEwNTAwMCA8X3N0
+ZXh0KzAvMD4NClRyYWNlOyBjMDEwNzQ3NiA8YXJjaF9rZXJuZWxfdGhyZWFk
+KzI2LzQwPg0KVHJhY2U7IGMwMTM0MzgwIDxrc3dhcGQrMC9iOD4NCkNvZGU7
+ICBjMDE1MjY4ZCA8aXB1dCszZC8yODA+DQowMDAwMDAwMCA8X0VJUD46DQpD
+b2RlOyAgYzAxNTI2OGQgPGlwdXQrM2QvMjgwPiAgIDw9PT09PQ0KICAgMDog
+ICA4YiA0NyAxOCAgICAgICAgICAgICAgICAgIG1vdiAgICAweDE4KCVlZGkp
+LCVlYXggICA8PT09PT0NCkNvZGU7ICBjMDE1MjY5MCA8aXB1dCs0MC8yODA+
+DQogICAzOiAgIDg1IGMwICAgICAgICAgICAgICAgICAgICAgdGVzdCAgICVl
+YXgsJWVheA0KQ29kZTsgIGMwMTUyNjkyIDxpcHV0KzQyLzI4MD4NCiAgIDU6
+ICAgNzQgMDQgICAgICAgICAgICAgICAgICAgICBqZSAgICAgYiA8X0VJUCsw
+eGI+IGMwMTUyNjk4IDxpcHV0KzQ4LzI4MD4NCkNvZGU7ICBjMDE1MjY5NCA8
+aXB1dCs0NC8yODA+DQogICA3OiAgIDUzICAgICAgICAgICAgICAgICAgICAg
+ICAgcHVzaCAgICVlYngNCkNvZGU7ICBjMDE1MjY5NSA8aXB1dCs0NS8yODA+
+DQogICA4OiAgIGZmIGQwICAgICAgICAgICAgICAgICAgICAgY2FsbCAgICol
+ZWF4DQpDb2RlOyAgYzAxNTI2OTcgPGlwdXQrNDcvMjgwPg0KICAgYTogICA1
+OCAgICAgICAgICAgICAgICAgICAgICAgIHBvcCAgICAlZWF4DQpDb2RlOyAg
+YzAxNTI2OTggPGlwdXQrNDgvMjgwPg0KICAgYjogICA2OCBmYyAyZSAyYyBj
+MCAgICAgICAgICAgIHB1c2ggICAkMHhjMDJjMmVmYw0KQ29kZTsgIGMwMTUy
+NjlkIDxpcHV0KzRkLzI4MD4NCiAgMTA6ICAgOGQgNDMgMmMgICAgICAgICAg
+ICAgICAgICBsZWEgICAgMHgyYyglZWJ4KSwlZWF4DQpDb2RlOyAgYzAxNTI2
+YTAgPGlwdXQrNTAvMjgwPg0KICAxMzogICA1MCAgICAgICAgICAgICAgICAg
+ICAgICAgIHB1c2ggICAlZWF4DQoNCg==
+---19359178-2067290929-1061853647=:26067--
 
 
 -------------------------------------------------------
