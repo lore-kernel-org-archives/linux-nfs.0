@@ -1,22 +1,25 @@
-From: Andrew Theurer <habanero@us.ibm.com>
-Subject: Re: Re: [PATCH] zerocopy NFS for 2.5.36
-Date: Tue, 22 Oct 2002 16:16:23 -0500
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: [PATCH] zerocopy NFS for 2.5.43
+Date: Wed, 23 Oct 2002 11:18:42 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200210221616.23282.habanero@us.ibm.com>
-References: <shs8z0w1f3k.fsf@charged.uio.no> <004d01c276bb$39b32980$2a060e09@beavis> <20021020.053424.41629995.taka@valinux.co.jp>
-Reply-To: habanero@us.ibm.com
+Message-ID: <15797.63730.223181.75888@notabene.cse.unsw.edu.au>
+References: <20020918.171431.24608688.taka@valinux.co.jp>
+	<15786.23306.84580.323313@notabene.cse.unsw.edu.au>
+	<20021018.221103.35656279.taka@valinux.co.jp>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Cc: trond.myklebust@fys.uio.no, neilb@cse.unsw.edu.au, davem@redhat.com,
-        linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mg01.austin.ibm.com ([192.35.232.18])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1846Nz-000837-00
-	for <nfs@lists.sourceforge.net>; Tue, 22 Oct 2002 14:16:23 -0700
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 184AAj-0000n6-00
+	for <nfs@lists.sourceforge.net>; Tue, 22 Oct 2002 18:18:57 -0700
+Received: From
+	notabene.cse.unsw.edu.au ([129.94.233.204] == wireless-204.wireless.cse.unsw.EDU.AU)
+	(for <taka@valinux.co.jp>) (for <nfs@lists.sourceforge.net>) By tone
+	With Smtp ; Wed, 23 Oct 2002 11:18:41 +1000
 To: Hirokazu Takahashi <taka@valinux.co.jp>
-In-Reply-To: <20021020.053424.41629995.taka@valinux.co.jp>
+In-Reply-To: message from Hirokazu Takahashi on Friday October 18
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,58 +32,56 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Saturday 19 October 2002 15:34, Hirokazu Takahashi wrote:
+On Friday October 18, taka@valinux.co.jp wrote:
 > Hello,
->
-> > > Congestion avoidance mechanism of NFS clients might cause this
-> > > situation.  I think the congestion window size is not enough
-> > > for high end machines.  You can make the window be larger as a
-> > > test.
-> >
-> > Is this a concern on the client only?  I can run a test with just one
-> > client and see if I can saturate the 100Mbit adapter.  If I can, woul=
-d we
-> > need to make any adjustments then?  FYI, at 115 MB/sec total throughp=
-ut,
-> > that's only 2.875 MB/sec for each of the 40 clients.  For the TCP res=
-ult
-> > of 181 MB/sec, that's 4.525 MB/sec, IMO, both of which are comfortabl=
-e
-> > throughputs for a 100Mbit client.
->
-> I think it's a client issue. NFS servers don't care about cogestion of =
-UDP
-> traffic and they will try to response to all NFS requests as fast as th=
-ey
-> can.
->
-> You can try to increase the number of clients or the number of mount po=
-ints
-> for a test. It's easy to mount the same directory of the server on some
-> directries of the client so that each of them can work simultaneously.
->    # mount -t nfs server:/foo   /baa1
->    # mount -t nfs server:/foo   /baa2
->    # mount -t nfs server:/foo   /baa3
+> 
+> I've ported the zerocopy patches against linux-2.5.43 with
+> davem's udp-sendfile patches and your patches which you posted
+> on Wed,16 Oct.
 
-I don't think it is a client congestion issue at this point.  I can run t=
-he=20
-test with just one client on UDP and achieve 11.2 MB/sec with just one mo=
-unt=20
-point.  The client has 100 Mbit Ethernet, so should be the upper limit (o=
-r=20
-really close).  In the 40 client read test, I have only achieved 2.875 MB=
-/sec=20
-per client.  That and the fact that there are never more than 2 nfsd thre=
-ads=20
-in a run state at one time (for UDP only) leads me to believe there is st=
-ill=20
-a scaling problem on the server for UDP.  I will continue to run the test=
- and=20
-poke a prod around.  Hopefully something will jump out at me.  Thanks for=
- all=20
-the input!
+Thanks for these...
 
-Andrew Theurer
+I have been thinking some more about this, trying to understand the
+big picture, and I'm afraid that I think I want some more changes.
+
+In particular, I think it would be good to use 'struct xdr_buf' from
+sunrpc/xdr.h instead of svc_buf.  This is what the nfs client uses and
+we could share some of the infrastructure.
+
+I think this would work quite well for sending read responses as there
+is a 'head' iovec for the interesting bits of the packet, an array of
+pages for the data, and a 'tail' iovec for the padding.
+
+I'm not certain about receiving write requests.
+I imagine that it might work to:
+  1/ call xdr_partial_copy_from_skb to just copy the first 1K from the
+    skb into the head iovec, and hold onto the skbuf (like we
+    currently do).
+  2/ enter the nfs server to parse that header.
+  3/ When the server finds it needs more data for a write, it
+     collects the pages and calls xdr_partial_copy_from_skb
+     to copy the rest of the skb directly into the page cache.
+
+Does that make any sense?
+
+Also, I am wondering about the way that you put zero-copy support into
+nfsd_readdir.
+
+Presumably the gain is that sock_sendmsg does a copy into a
+skbuf and then a DMA out of that, while ->sendpage does just the DMA.
+In that case, maybe it would be better to get "struct page *" pointers
+for the pages in the default buffer, and pass them to 
+->sendpage.
+
+
+I would like to get the a situation where we don't need to do a 64K
+kmalloc for each server, but can work entirely with individual pages.
+
+I might try converting svcsock etc to use xdr_buf later today or
+tomorrow unless I heard a good reason why it wont work, or someone
+else beats me to it...
+
+NeilBrown
 
 
 -------------------------------------------------------
