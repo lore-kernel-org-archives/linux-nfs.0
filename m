@@ -1,16 +1,18 @@
-From: =?GB2312?B?0rDC+cWuyfo=?= <ffff43f@21cn.com>
-Subject: =?GB2312?B?0rDC+cWuyfo=?=
-Date: Sat, 15 Mar 2003 16:58:23 +0800
+From: "=?ks_c_5601-1987?B?waTH/Li4?=" <kyongse@naver.com>
+Subject: =?ks_c_5601-1987?B?W7GksO1dNjm4uL/4ILjCw+PH/CDIqMbkwMzB9iDBpsDb?=
+Date: Sun, 16 Mar 2003 08:29:20 +0900
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E18u7Wu-00086L-00@sc8-sf-list1.sourceforge.net>
-Reply-To: 746@21cn.com
-Content-Type: text/html;charset="GB2312"
+Message-ID: <006244c26285$2164e3d0$01006760@jkekrsmk.net>
+Reply-To: "=?ks_c_5601-1987?B?waTH/Li4?=" <kyongse@naver.com>
+Mime-Version: 1.0
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_0012_04EB6375.2D9560F0"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [218.86.43.225] (helo=21cn.com)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18u7Wu-00086L-00
-	for <nfs@lists.sourceforge.net>; Sat, 15 Mar 2003 01:00:36 -0800
-To: nfs@lists.sourceforge.net
+Received: from [61.80.142.177] (helo=localhost)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18uL3N-00046P-00
+	for <nfs@lists.sourceforge.net>; Sat, 15 Mar 2003 15:27:01 -0800
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -23,131 +25,217 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-<html>
+This is a multi-part message in MIME format.
 
-<head><STYLE>HTML {
-	TEXT-DECORATION: none
-}
-A:link {
-	COLOR: #000000; TEXT-DECORATION: none
-}
-A:hover {
-	COLOR: rgb(72,59,216); TEXT-DECORATION: underline
-}
-EM {
-	FONT-FAMILY: 宋体; FONT-SIZE: 10pt; FONT-STYLE: normal
-}
-A {
-	FONT-FAMILY: 宋体; FONT-SIZE: 10pt
-}
-TD {
-	FONT-FAMILY: 宋体; FONT-SIZE: 10pt
-}
-P {
-	FONT-FAMILY: 宋体; FONT-SIZE:10pt
-}
-</STYLE>
+------=_NextPart_000_0012_04EB6375.2D9560F0
+Content-Type: text/plain;
+	charset="ks_c_5601-1987"
+Content-Transfer-Encoding: base64
 
-<title>GO一起上·野蛮女生</title>
-</head>
+bmZzwMy6pcauud+827jewM8gICAgICANCg0KICAgICAgICAgICANCiANCiAgIA0KICAgICAgICAN
+Cg0KICAgICAgICANCg0KICAgDQogICAtICCz9MC6IMT3uK7GvMDHIMbkwMzB9g0KICAgLSAgwabH
+sCDEq7Tet86x1w0KICAgLSAgsNS9w8bHLCDBorzTxeuw6CwgxKu/7sXNLCDA2rfhvccgIMGmsPgg
+ICAgICAgDQogICAgICAgIA0KDQogICAgIA0KDQogICAgICAgIA0KDQogICANCiAgIC0gwPq3xcfR
+ICCwobDdwLi3ziC68b/rus604yDD1rzSyK0NCiAgIC0gvcW32rCoICDA1rTCILvnwMzGriC18MDa
+wM4NCiAgIC0gtKmxuLOqIL/uv7XH0rz2ICDA1rTCIL2sv+4gsPy4rsDaILjwteUNCiAgICAgICAg
+DQogICAgICAgIA0KDQogICAgICAgICANCrvnvvfA2rXut8+5+MijIDogNDA4LTA4LTk5ODI5ICAv
+ICAgVEVMIDogKDA2MikzNzMtNTU0NSAgIC8gICBGQVggIDogKDA2MikzNzMtNTU0Ng0KICAgICAN
+Crq7uN7AzyC537zbwda80rTCILnfvcUgwPy/68DMuce3ziAgua7Ax7TCILvztOMgsNS9w8bHwLsg
+wMy/68fYIMHWvcq9w7/ADQogICAgIA0KfCAgIMi4u+e80rCzICAgIHwgICAgxvfGrsb6uK6/wCAg
+IHwgICAgu/O047DUvcPGxyAgIHwNCiAgICAgICAgDQoNCiAgIA0Ksc3Hz8DHICC9wrb0vvjAzCDI
+q7q4vLogwPzA2iC/7MbtwLsgurizu7DUILXIIMGhICDBpMHfyPcgu+ew+iC15biztM+02S4gwaS6
+uMXrvcW4wcDMv+vDy8H4uf0gILHUwaTAuyDB2Lz2x8+/qSCxpLDtuN7Az8DTwLsgx6W9w8fPv7TA
+uLjnLCAgwPrI8bTCICCxzcfPwMcgwPzA2r/sxu0gwda80iC/3CC+7rawx9EgsLPAzsGkuri1tSAg
+sKHB9rDtIMDWwfYgvsrAuLnHt84gvsi9ycfPvcOx4iC52bb4tM+02S4gILz2vcXAuyC/+MShIL7K
+wLi9w7jpILz2vcWwxbrOuKYgIMWsuK/H2CDB1r3KvcO/5C4gICAgICAgICAgDQogICAgICAgIA==
 
-<body>
 
-<div align="center">
-  <center>
-  <table border="0" cellpadding="0" cellspacing="0" width="71%" height="278" background="../reg_02.gif">
-    <tr>
-      <td width="100%" height="38">
-        <p align="center"><STRONG><font color="#000080">登录/注册游戏 </font></STRONG><font size="2" color="#CC00FF">详细请进入<b>http://</b></font><b><a href="http://www.go173.com/mm" target="_blank"><font size="2" color="#CC00FF">www.go173.com/mm</font></a></b></td>
-    </tr>
-    <tr>
-      <td width="100%" height="222" valign="top">
-        <div align="center">
-          <table border="0" cellpadding="0" cellspacing="0" width="563" height="339">
-            <tr>
-              <td width="23" height="27">
-                <p align="center"></td>
-              <td width="536" height="27"></td>             
-            </tr>             
-            <tr>             
-              <td width="23" height="1" rowspan="3"></td>             
-              <td width="536" height="1" valign="top"></td>             
-            </tr>             
-            <tr>             
-              <td width="536" height="21" valign="top">             
-                <hr size="1" color="#CCCCCC" align="left">             
-              </td>             
-            </tr>             
-            <tr>       
-              <td width="536" height="6" valign="top">             
-                <p align="center"><b><font size="3" color="#800080">我的野蛮女生</font></b>            
-              </td>            
-            </tr>      
-            <tr>            
-              <td width="23" height="211"></td>            
-  </center>          
-              <td width="536" height="211" valign="top">             
-                <p style="line-height: 150%" align="left">  <SCRIPT language=JavaScript>             
-                 
-<!--//                 
-var version = "other"                 
-browserName = navigator.appName;                    
-browserVer = parseInt(navigator.appVersion);                 
-                 
-if (browserName == "Netscape" && browserVer >= 3) version = "n3";                 
-else if (browserName == "Netscape" && browserVer < 3) version = "n2";                 
-else if (browserName == "Microsoft Internet Explorer" && browserVer >= 4) version = "e4";                 
-else if (browserName == "Microsoft Internet Explorer" && browserVer < 4) version = "e3";                 
-                 
-                 
-function marquee1()                 
-{                 
-	if (version == "e4")                 
-	{                 
-		document.write("<marquee behavior=scroll direction=up width=523 height=200 scrollamount=1 scrolldelay=50 onmouseover='this.stop()' onmouseout='this.start()'>")                 
-	}                 
-}                 
-                 
-function marquee2()                 
-{                 
-	if (version == "e4")                 
-	{                 
-		document.write("</marquee>")                 
-	}                 
-}                 
-                 
-//-->                 
-</SCRIPT>             
-             
-                        <SCRIPT language=JavaScript>marquee1();</SCRIPT><font color="#FF178B">想当女王，想被人领养吗</font><font color="#CCCC00">，</font><font color="#000080">请加入我们的野蛮女生游戏</font><font color="#800000">，</font><font color="#FF0066">如果你是男生</font><font color="#000080">您将会被你的女主人领养，在这里你将接受所有的考验，你要学会忍辱负重，就象只可怜的小狗忠实你的女主人，你是否愿意接受这样的挑战，如果您愿意，那好吧，让我们把小男人进行到底。请输入以上手机号，马上进入游戏。</font><font color="#CCCC00"><br>     
-                </font><font color="#FF0066">如果您是女生</font><font color="#000080">你将享受女王的待遇，你可以拥有服侍你的男仆，你甚至拥有生杀大权，用你女王的权利赐毒酒给那些不听话的小男生，心动了吗！那就请快快加入当你的女王。请输入以上手机号，马上进入游戏。<br>     
-                </font><font color="#CCCC00">     
-                <br>     
-                </font><font color="#800000">说明:本游戏每月服务费10元，从手机费用扣除。<br>     
-                如果你忍无可忍，不想当女王或是小男人你可以选择注销服务：如下编写Q发送163028<br>     
-                </font></p>         
-          
-</td>          
-            </tr>          
-  <center>     
-          </table>          
-        </div>          
-      </center>          
-      </td>          
-    </tr>          
-    <tr>          
-      <td width="100%" height="18">      
-        <p align="center"><b><font color="#FF0066">请访问我们的首页http://</font><a href="http://www.go173.com" target="_blank"><font color="#FF0066">www.go173.com</font></a></b></p>    
-      </td>        
-    </tr>        
-  </table>        
-</div>        
-        
-<p align="center"></p>          
-            
-</body>            
-            
-</html>            
+------=_NextPart_000_0012_04EB6375.2D9560F0
+Content-Type: text/html;
+	charset="ks_c_5601-1987"
+Content-Transfer-Encoding: base64
+
+PGh0bWw+DQoNCjxoZWFkPg0KPHRpdGxlPm5mc8DMuqXGrrnfvNu43sDPPC90aXRsZT4NCjxzdHls
+ZT4NCjwhLS0NCmJvZHksYSx0ZCwgeyBmb250LWZhbWlseTqxvLiyOyBmb250LXNpemU6OXB0OyBj
+b2xvcjpyZ2IoNTEsNTEsNTEpOyAgdGV4dC1kZWNvcmF0aW9uOm5vbmU7IH0NCmE6bGluayB7IGNv
+bG9yOnJlZDsgdGV4dC1kZWNvcmF0aW9uOm5vbmU7IH0NCmE6dmlzaXRlZCB7IGNvbG9yOnB1cnBs
+ZTsgdGV4dC1kZWNvcmF0aW9uOm5vbmU7IH0NCmE6YWN0aXZlIHsgdGV4dC1kZWNvcmF0aW9uOm5v
+bmU7IH0NCmE6aG92ZXIgeyBjb2xvcjpyZ2IoMCwwLDIwNCk7IHRleHQtZGVjb3JhdGlvbjp1bmRl
+cmxpbmU7IH0NCi0tPg0KPC9zdHlsZT4NCjwvaGVhZD4NCg0KPGJvZHkgYmdjb2xvcj0id2hpdGUi
+IHRleHQ9ImJsYWNrIj4NCjx0YWJsZSBib3JkZXI9IjAiIGNlbGxwYWRkaW5nPSIwIiBjZWxsc3Bh
+Y2luZz0iMSIgd2lkdGg9IjYwMCIgYmdjb2xvcj0iYmxhY2siIGFsaWduPSJjZW50ZXIiPg0KICAg
+IDx0cj4NCiAgICAgICAgPHRkIGJnY29sb3I9IndoaXRlIj4NCiAgICAgICAgICAgIDx0YWJsZSBi
+b3JkZXI9IjAiIGNlbGxwYWRkaW5nPSIwIiBjZWxsc3BhY2luZz0iMCIgd2lkdGg9IjEwMCUiPg0K
+ICAgICAgICAgICAgICAgIDx0cj4NCiAgICAgICAgICAgICAgICAgICAgPHRkIGFsaWduPSJsZWZ0
+IiB2YWxpZ249InRvcCIgYmFja2dyb3VuZD0iaHR0cDovL3d3dy5pc2Flc29uLmNvbS9tYWlsL2lt
+YWdlcy9tYWlsX2xvZ29iZy5naWYiPg0KICAgICAgICAgICAgICAgICAgICAgICAgPHA+PGEgaHJl
+Zj0iaHR0cDovL3d3dy5pc2Flc29uLmNvbSIgdGFyZ2V0PSJfYmxhbmsiPjxpbWcgc3JjPSJodHRw
+Oi8vd3d3LmlzYWVzb24uY29tL21haWwvaW1hZ2VzL21haWxfbG9nby5naWYiIHdpZHRoPSIxNjUi
+IGhlaWdodD0iMjciIGJvcmRlcj0iMCI+PC9hPjwvcD4NCiAgICAgICAgICAgICAgICAgICAgPC90
+ZD4NCiAgICAgICAgICAgICAgICA8L3RyPg0KICAgICAgICAgICAgICAgIDx0cj4NCiAgICAgICAg
+ICAgICAgICAgICAgPHRkIGFsaWduPSJjZW50ZXIiIHZhbGlnbj0idG9wIj4NCiAgICAgICAgICAg
+ICAgICAgICAgICAgIDx0YWJsZSBib3JkZXI9IjAiIGNlbGxwYWRkaW5nPSIwIiBjZWxsc3BhY2lu
+Zz0iMCIgd2lkdGg9IjU5OCI+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgPHRyPg0KICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8dGQ+DQogICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICA8dGFibGUgYm9yZGVyPSIwIiBjZWxscGFkZGluZz0iMCIgY2VsbHNwYWNp
+bmc9IjAiIHdpZHRoPSI1OTgiIGhlaWdodD0iMTgxIiBiYWNrZ3JvdW5kPSJodHRwOi8vd3d3Lmlz
+YWVzb24uY29tL21haWwvaW1hZ2VzL21haWwyXzAxLmpwZyI+DQogICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgPHRyPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICA8dGQgd2lkdGg9IjQwNiI+DQogICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICA8cD4mbmJzcDs8L3A+DQogICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgIDwvdGQ+DQogICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgIDx0ZCB3aWR0aD0iMTkyIiB2YWxpZ249ImJvdHRvbSI+DQogICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8cCBhbGlnbj0iY2Vu
+dGVyIj48YSBocmVmPSJodHRwOi8vaXNhZXNvbi5jb20vYmJzL2Jicy5waHA/a2luZD13X3Bob3Rv
+IiB0YXJnZXQ9Il9ibGFuayI+PGltZyBzcmM9Imh0dHA6Ly93d3cuaXNhZXNvbi5jb20vbWFpbC9p
+bWFnZXMvcG9ydGZvbGlvLmdpZiIgd2lkdGg9IjExNiIgaGVpZ2h0PSI2NSIgYm9yZGVyPSIwIiBh
+bHQ9Isb3xq7G+riuv8C52bfOsKGx4iI+PC9hPjwvcD4NCiAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgPC90ZD4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICA8L3RyPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPC90
+YWJsZT4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPC90ZD4NCiAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICA8L3RyPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDx0cj4N
+CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPHRkPg0KICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgPHA+PGltZyBzcmM9Imh0dHA6Ly93d3cuaXNhZXNvbi5jb20vbWFp
+bC9pbWFnZXMvbWFpbDJfMDIuanBnIiB3aWR0aD0iNTk4IiBoZWlnaHQ9IjEwMSIgYm9yZGVyPSIw
+Ij48L3A+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvdGQ+DQogICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgPC90cj4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICA8dHI+
+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDx0ZCBhbGlnbj0ibGVmdCI+DQogICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8dGFibGUgYm9yZGVyPSIwIiBjZWxscGFk
+ZGluZz0iMCIgY2VsbHNwYWNpbmc9IjAiIHdpZHRoPSI1NTAiPg0KICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgIDx0cj4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgPHRkIHdpZHRoPSIyMDYiPg0KICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgPHA+PGltZyBzcmM9Imh0dHA6Ly93d3cuaXNhZXNvbi5j
+b20vbWFpbC9pbWFnZXMvbWFpbDJfMDMuanBnIiB3aWR0aD0iMjA2IiBoZWlnaHQ9IjEwOSIgYm9y
+ZGVyPSIwIj48L3A+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+IDwvdGQ+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDx0ZCB3
+aWR0aD0iMzQ0IiBiZ2NvbG9yPSIjRTBGOEE1Ij4NCiAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgIDxwPiZuYnNwOyZuYnNwOyZuYnNwOy0gDQogICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICCz9MC6IMT3uK7GvMDHIMbkwMzB
+9jxicj4mbmJzcDsmbmJzcDsmbmJzcDstIA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgwabHsCDEq7Tet86x1zxicj4mbmJzcDsmbmJzcDsmbmJzcDstIA0K
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgsNS9w8bHLCDB
+orzTxeuw6CwgxKu/7sXNLCDA2rfhvccgDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICDBprD4PHAgYWxpZ249InJpZ2h0Ij48YSBocmVmPSJodHRwOi8vd3d3
+LmlzYWVzb24uY29tL2NvbnN1bHQvd2ViX2NvbnN1bHQucGhwIiB0YXJnZXQ9Il9ibGFuayI+PGlt
+ZyBzcmM9Imh0dHA6Ly93d3cuaXNhZXNvbi5jb20vbWFpbC9pbWFnZXMvdmlldy5qcGciIHdpZHRo
+PSI5MCIgaGVpZ2h0PSIyNiIgYm9yZGVyPSIwIiBhbHQ9IsDavLzI97q4seIiPjwvYT4gDQogICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAmbmJzcDsmbmJzcDs8
+YSBocmVmPSJodHRwOi8vd3d3LmlzYWVzb24uY29tL2Jicy9iYnMucGhwP2tpbmQ9d19waG90byIg
+dGFyZ2V0PSJfYmxhbmsiPjxpbWcgc3JjPSJodHRwOi8vd3d3LmlzYWVzb24uY29tL21haWwvaW1h
+Z2VzL3BvcnQuanBnIiB3aWR0aD0iOTAiIGhlaWdodD0iMjYiIGJvcmRlcj0iMCIgYWx0PSLG98au
+xvq4rr/AIj48L2E+IA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgJm5ic3A7PC9wPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgPC90ZD4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8L3RyPg0K
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPC90YWJsZT4NCiAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgPC90ZD4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICA8
+L3RyPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDx0cj4NCiAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgPHRkIGFsaWduPSJsZWZ0Ij4NCiAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgIDxwPjxpbWcgc3JjPSJodHRwOi8vd3d3LmlzYWVzb24uY29tL21haWwvaW1h
+Z2VzL21haWwyXzA0LmpwZyIgd2lkdGg9IjIzNCIgaGVpZ2h0PSI2NiIgYm9yZGVyPSIwIj48L3A+
+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvdGQ+DQogICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgPC90cj4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICA8dHI+DQogICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgIDx0ZD4NCiAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgIDxwPjxpbWcgc3JjPSJodHRwOi8vd3d3LmlzYWVzb24uY29tL21haWwvaW1h
+Z2VzL21haWwyXzA1LmpwZyIgd2lkdGg9IjU0OSIgaGVpZ2h0PSI1MCIgYm9yZGVyPSIwIj48L3A+
+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvdGQ+DQogICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgPC90cj4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICA8dHI+DQogICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgIDx0ZCBhbGlnbj0ibGVmdCI+DQogICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICA8dGFibGUgYm9yZGVyPSIwIiBjZWxscGFkZGluZz0i
+MCIgY2VsbHNwYWNpbmc9IjAiIHdpZHRoPSI1NTAiPg0KICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgIDx0cj4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgPHRkIHdpZHRoPSIyMDYiPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgPHA+PGltZyBzcmM9Imh0dHA6Ly93d3cuaXNhZXNvbi5jb20vbWFp
+bC9pbWFnZXMvbWFpbDJfMDYuanBnIiB3aWR0aD0iMjA2IiBoZWlnaHQ9IjExMSIgYm9yZGVyPSIw
+Ij48L3A+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvdGQ+
+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDx0ZCB3aWR0aD0i
+MzQ0IiBiZ2NvbG9yPSIjRjBFQUFDIj4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgIDxwPiZuYnNwOyZuYnNwOyZuYnNwOy0gwPq3xcfRIA0KICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgsKGw3cC4t84guvG/67rOtOMg
+w9a80sitPGJyPiZuYnNwOyZuYnNwOyZuYnNwOy0gvcW32rCoIA0KICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgwNa0wiC758DMxq4gtfDA2sDOPGJyPiZuYnNw
+OyZuYnNwOyZuYnNwOy0gtKmxuLOqIL/uv7XH0rz2IA0KICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgwNa0wiC9rL/uILD8uK7A2iC48LXlPGJyPjxwIGFsaWdu
+PSJyaWdodCI+PGEgaHJlZj0iaHR0cDovL3d3dy5pc2Flc29uLmNvbS9jb25zdWx0L3Nob3BfY29u
+c3VsdC5waHAiIHRhcmdldD0iX2JsYW5rIj48aW1nIHNyYz0iaHR0cDovL3d3dy5pc2Flc29uLmNv
+bS9tYWlsL2ltYWdlcy92aWV3LmpwZyIgd2lkdGg9IjkwIiBoZWlnaHQ9IjI2IiBib3JkZXI9IjAi
+IGFsdD0iwNq8vMj3urix4iI+PC9hPiANCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICZuYnNwOyZuYnNwOzxhIGhyZWY9Imh0dHA6Ly93d3cuaXNhZXNvbi5j
+b20vYmJzL2Jicy5waHA/a2luZD13X3Bob3RvIiB0YXJnZXQ9Il9ibGFuayI+PGltZyBzcmM9Imh0
+dHA6Ly93d3cuaXNhZXNvbi5jb20vbWFpbC9pbWFnZXMvcG9ydC5qcGciIHdpZHRoPSI5MCIgaGVp
+Z2h0PSIyNiIgYm9yZGVyPSIwIiBhbHQ9Isb3xq7G+riuv8AiPjwvYT4gDQogICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAmbmJzcDsmbmJzcDs8L3A+DQogICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvdGQ+DQogICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPC90cj4NCiAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgIDwvdGFibGU+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+IDwvdGQ+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgPC90cj4NCiAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICA8dHI+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDx0ZCBh
+bGlnbj0ibGVmdCI+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8cD48aW1n
+IHNyYz0iaHR0cDovL3d3dy5pc2Flc29uLmNvbS9tYWlsL2ltYWdlcy9tYWlsMl8wNy5qcGciIHdp
+ZHRoPSIyMDYiIGhlaWdodD0iMTIiIGJvcmRlcj0iMCI+PC9wPg0KICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICA8L3RkPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvdHI+DQog
+ICAgICAgICAgICAgICAgICAgICAgICA8L3RhYmxlPg0KICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgPGltZyBzcmM9J2h0dHA6Ly93d3cuaXNhZXNvbi5jb20vc2NvdW50L2NvdW50LmNnaT9tYWls
+X2V2ZW50MicgYm9yZGVyPScwJyB3aWR0aD0nMCcgaGVpZ2h0PScwJz4NCiAgICAgICAgICAgICAg
+ICAgICAgPC90ZD4NCiAgICAgICAgICAgICAgICA8L3RyPg0KICAgICAgICAgICAgICAgIDx0cj4N
+CiAgICAgICAgICAgICAgICAgICAgPHRkIGJnY29sb3I9IiMzMzMzMzMiIGhlaWdodD0iMjEiIGFs
+aWduPSJjZW50ZXIiPg0KICAgICAgICAgICAgICAgICAgICAgICAgPHA+PGZvbnQgY29sb3I9Indo
+aXRlIj675773wNq17rfPufjIoyA6IDQwOC0wOC05OTgyOSAmbmJzcDsvIA0KICAgICAgICAgICAg
+ICAgICAgICAgICAgJm5ic3A7VEVMIDogKDA2MikzNzMtNTU0NSAmbmJzcDsmbmJzcDsvICZuYnNw
+OyZuYnNwO0ZBWCANCiAgICAgICAgICAgICAgICAgICAgICAgIDogKDA2MikzNzMtNTU0NjwvZm9u
+dD48L3A+DQogICAgICAgICAgICAgICAgICAgIDwvdGQ+DQogICAgICAgICAgICAgICAgPC90cj4N
+CiAgICAgICAgICAgICAgICA8dHI+DQogICAgICAgICAgICAgICAgICAgIDx0ZCBiZ2NvbG9yPSIj
+MzMzMzMzIiBoZWlnaHQ9IjIxIiBhbGlnbj0iY2VudGVyIj4NCiAgICAgICAgICAgICAgICAgICAg
+ICAgIDxwPjxmb250IGNvbG9yPSJ3aGl0ZSI+uru43sDPILnfvNvB1rzStMIgud+9xSDA/L/rwMy5
+x7fOIA0KICAgICAgICAgICAgICAgICAgICAgICAgua7Ax7TCILvztOMgsNS9w8bHwLsgwMy/68fY
+IMHWvcq9w7/APC9mb250PjwvcD4NCiAgICAgICAgICAgICAgICAgICAgPC90ZD4NCiAgICAgICAg
+ICAgICAgICA8L3RyPg0KICAgICAgICAgICAgICAgIDx0cj4NCiAgICAgICAgICAgICAgICAgICAg
+PHRkIGJnY29sb3I9IiMzMzMzMzMiIGhlaWdodD0iMjEiIGFsaWduPSJjZW50ZXIiPg0KICAgICAg
+ICAgICAgICAgICAgICAgICAgPHA+PGZvbnQgY29sb3I9IndoaXRlIj58ICZuYnNwOyZuYnNwOzwv
+Zm9udD48YSBocmVmPSJodHRwOi8vd3d3LmlzYWVzb24uY29tL2NvbXBhbnkvaW50cm9kdWNlLnBo
+cCIgdGFyZ2V0PSJfYmxhbmsiPjxmb250IGNvbG9yPSJ3aGl0ZSI+yLi757zSsLM8L2ZvbnQ+PC9h
+Pjxmb250IHNpemU9IjEiIGNvbG9yPSJ3aGl0ZSI+IA0KICAgICAgICAgICAgICAgICAgICAgICAg
+Jm5ic3A7Jm5ic3A7fCAmbmJzcDsmbmJzcDsmbmJzcDs8L2ZvbnQ+PGEgaHJlZj0iaHR0cDovL3d3
+dy5pc2Flc29uLmNvbS9iYnMvYmJzLnBocD9raW5kPXdfcGhvdG8iIHRhcmdldD0iX2JsYW5rIj48
+Zm9udCBjb2xvcj0id2hpdGUiPsb3xq7G+riuv8A8L2ZvbnQ+PC9hPjxmb250IHNpemU9IjEiIGNv
+bG9yPSJ3aGl0ZSI+ICZuYnNwOyZuYnNwO3wgDQogICAgICAgICAgICAgICAgICAgICAgICAmbmJz
+cDsmbmJzcDs8L2ZvbnQ+PGEgaHJlZj0iaHR0cDovL3d3dy5pc2Flc29uLmNvbS9jb25zdWx0L2Nv
+bnN1bHQucGhwIiB0YXJnZXQ9Il9ibGFuayI+PGZvbnQgY29sb3I9IndoaXRlIj6787TjsNS9w8bH
+PC9mb250PjwvYT48Zm9udCBzaXplPSIxIiBjb2xvcj0id2hpdGUiPiAmbmJzcDsmbmJzcDt8PC9m
+b250PjwvcD4NCiAgICAgICAgICAgICAgICAgICAgPC90ZD4NCiAgICAgICAgICAgICAgICA8L3Ry
+Pg0KICAgICAgICAgICAgICAgIDx0cj4NCiAgICAgICAgICAgICAgICAgICAgPHRkIGJnY29sb3I9
+IiNDQ0NDQ0MiPg0KICAgICAgICAgICAgICAgICAgICAgICAgPHRhYmxlIGJvcmRlcj0iMCIgY2Vs
+bHBhZGRpbmc9IjAiIGNlbGxzcGFjaW5nPSIwIiB3aWR0aD0iNjAwIj4NCiAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICA8dHI+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDx0ZCB3
+aWR0aD0iMTQwIiBhbGlnbj0ibGVmdCIgdmFsaWduPSJ0b3AiPg0KICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgPHA+PGEgaHJlZj0iaHR0cDovL3d3dy5pc2Flc29uLmNvbSIgdGFy
+Z2V0PSJfYmxhbmsiPjxpbWcgc3JjPSJodHRwOi8vd3d3LmlzYWVzb24uY29tL21haWwvaW1hZ2Vz
+L21haWxfbG9nbzIuZ2lmIiB3aWR0aD0iMTQwIiBoZWlnaHQ9IjkwIiBib3JkZXI9IjAiPjwvYT48
+L3A+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvdGQ+DQogICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgIDx0ZCB3aWR0aD0iNDgwIiBzdHlsZT0iZm9udC1zaXplOjlwdDsg
+Y29sb3I6cmdiKDEwMiwxMDIsMTAyKTsgbGluZS1oZWlnaHQ6MTQwJTsgcGFkZGluZzo1OyI+DQog
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8cD6xzcfPwMcgDQogICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICC9wrb0vvjAzCDIq7q4vLogwPzA2iC/7MbtwLsguriz
+u7DUILXIIMGhIA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgwaTB38j3ILvn
+sPogteW4s7TPtNkuIMGkurjF673FuMHAzL/rw8vB+Ln9IA0KICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgsdTBpMC7IMHYvPbHz7+pILGksO243sDPwNPAuyDHpb3Dx8+/tMC4uOcs
+IA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgwPrI8bTCIA0KICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgsc3Hz8DHIMD8wNq/7MbtIMHWvNIgv9wgvu62sMfR
+ILCzwM7BpLq4tbUgDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICCwocH2sO0g
+wNbB9iC+ysC4uce3ziC+yL3Jx8+9w7HiILnZtvi0z7TZLiANCiAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgILz2vcXAuyC/+MShIL7KwLi9w7jpILz2vcWwxbrOuKYgDQogICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICDFrLivx9ggwda9yr3Dv+QuICZuYnNwOyZuYnNw
+OyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOzxhIGhyZWY9Imh0dHA6Ly93d3cu
+Y3J1c2FkZS5jby5rci9yZWplY3QvcmVqZWN0LnBocD9pZD0yMjYxJm1vZGU9d3JpdGUmbWFpbD1u
+ZnNAbGlzdHMuc291cmNlZm9yZ2UubmV0Ij48aW1nIHNyYz0iaHR0cDovL3d3dy5pc2Flc29uLmNv
+bS9tYWlsL2ltYWdlcy9tYWlsX3ZldG8uZ2lmIiBhbGlnbj0idGV4dHRvcCIgd2lkdGg9IjYzIiBo
+ZWlnaHQ9IjE5IiBib3JkZXI9IjAiIGFsdD0ivPa9xbDFus4iPjwvYT4gPC9wPg0KICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICA8L3RkPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAg
+IDwvdHI+DQogICAgICAgICAgICAgICAgICAgICAgICA8L3RhYmxlPg0KICAgICAgICAgICAgICAg
+ICAgICA8L3RkPg0KICAgICAgICAgICAgICAgIDwvdHI+DQogICAgICAgICAgICA8L3RhYmxlPg0K
+ICAgICAgICA8L3RkPg0KICAgIDwvdHI+DQo8L3RhYmxlPg0KPC9ib2R5Pg0KDQo8L2h0bWw+
+
+------=_NextPart_000_0012_04EB6375.2D9560F0--
+
 
 
 -------------------------------------------------------
