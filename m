@@ -1,24 +1,24 @@
-From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH]  Fix deadlock problem in lockd.
-Date: Wed, 29 Oct 2003 09:09:55 +1100
+From: "Gareth" <gareth@bim7.com>
+Subject: Premission denied
+Date: Wed, 29 Oct 2003 09:59:58 -0000 (GMT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1AEc2F-0005mL-00@notabene>
-Cc: nfs@lists.sourceforge.net
+Message-ID: <10334.62.49.205.2.1067421598.squirrel@squirrelmail.bim7.com>
+Mime-Version: 1.0
+Content-Type: text/plain;charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AEcc4-0004zN-00
-	for <nfs@lists.sourceforge.net>; Tue, 28 Oct 2003 14:46:56 -0800
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.24)
-	id 1AEcY0-0003p7-6A
-	for nfs@lists.sourceforge.net; Tue, 28 Oct 2003 14:42:44 -0800
-Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <marcelo.tosatti@cyclades.com.br>)
-	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
-	Wed, 29 Oct 2003 09:42:30 +1100
-To: Marcelo Tosatti <marcelo.tosatti@cyclades.com.br>
+	id 1AEn7T-0005vV-00
+	for <nfs@lists.sourceforge.net>; Wed, 29 Oct 2003 02:00:03 -0800
+Received: from bim7dsl.plus.com ([81.174.146.28] helo=mailgate.bim7.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
+	id 1AEn7S-0001Mu-3J
+	for nfs@lists.sourceforge.net; Wed, 29 Oct 2003 02:00:02 -0800
+Received: from squirrelmail.bim7.com (unknown [127.0.0.1])
+	by mailgate.bim7.com (Postfix) with SMTP id 269CA102A7
+	for <nfs@lists.sourceforge.net>; Wed, 29 Oct 2003 09:59:58 +0000 (GMT)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,56 +31,73 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hi Guys
 
-nlmsvc_lock calls nlmsvc_create_block with file->f_sema
-held.
-nlmsvc_create_block calls nlmclnt_lookup_host which might
-call nlm_gc_hosts which might, eventually, try to claim
-file->f_sema for the same file -> deadlock.
+I'm trying to install Debian on a Cobalt Raq2, this is installed using NFS
+running on a remote server, but am having problems with NFS. I can't even
+mount an NFS drive locally.
 
-nlmsvc_create_block does not need any protection under
-any lock as lockd is single-threaded and _create_block
-only plays with internal data structures.
+I'm running RH8.0, and nfs-utils 1.0.6.
 
-So we release the f_sema before calling in, and make sure
-it gets claimed again afterwards.
+I've got the following entries in my /etc/export file
 
-(This was fixed in 2.5 8 months ago)
+/nfsroot        192.168.17.0/255.255.255.0(ro)
+/mnt/nfsroot    192.168.17.0/255.255.255.0(ro)
+
+My hosts.allow and hosts.deny are completely empty, I assume this allows
+everyone and anyone access. I have also disabled my firewall, iptables
+during testing.
+
+When I run 'showmount -e localhost', nothing is returned :-(
+
+I am running 'exportfs -ra' after making changes to /etc/exports.
+
+Running 'rpcinfo -p' produces the following....
+
+   program vers proto   port
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    100024    1   udp  32768  status
+    100024    1   tcp  32768  status
+    391002    2   tcp  32769  sgi_fam
+    100011    1   udp    849  rquotad
+    100011    2   udp    849  rquotad
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
+    100021    1   udp  32788  nlockmgr
+    100021    3   udp  32788  nlockmgr
+    100021    4   udp  32788  nlockmgr
+    100005    1   udp    867  mountd
+    100005    1   tcp    870  mountd
+    100005    2   udp    867  mountd
+    100005    2   tcp    870  mountd
+    100005    3   udp    867  mountd
+    100005    3   tcp    870  mountd
+
+When I try to mount an NFS drive (even locally), I get the following error
+on the screen...
+
+# mount paris:/nfsroot /tmp/test
+mount: paris:/nfsroot failed, reason given by server: Permission denied
+
+In /var/log/messages, I get...
+
+Oct 29 09:25:44 paris rpc.mountd: Fake hostname paris.bim for 192.168.17.4
+- forward lookup doesn't match reverse
+Oct 29 09:25:44 paris rpc.mountd: refused mount request from 192.168.17.4
+for /nfsroot (/): no export entry
+Oct 29 09:29:09 paris rpc.mountd: export request from 127.0.0.1
+Oct 29 09:39:37 paris rpc.mountd: refused mount request from paris.bim for
+/nfsroot (/): no export entry
+
+Someone at work suggested its a reverse DNS problem... but running
+nslookup hostname returns my IP address, and vice versa.
+
+Sorry this post is long... has anyone got any useful suggestions?
 
 
-diff ./fs/lockd/svclock.c~current~ ./fs/lockd/svclock.c
---- ./fs/lockd/svclock.c~current~	2003-10-29 09:07:10.000000000 +1100
-+++ ./fs/lockd/svclock.c	2003-10-29 09:07:10.000000000 +1100
-@@ -317,8 +317,6 @@ nlmsvc_lock(struct svc_rqst *rqstp, stru
- 				(long long)lock->fl.fl_end,
- 				wait);
- 
--	/* Lock file against concurrent access */
--	down(&file->f_sema);
- 
- 	/* Get existing block (in case client is busy-waiting) */
- 	block = nlmsvc_lookup_block(file, lock, 0);
-@@ -326,6 +324,9 @@ nlmsvc_lock(struct svc_rqst *rqstp, stru
- 	lock->fl.fl_flags |= FL_LOCKD;
- 
- again:
-+	/* Lock file against concurrent access */
-+	down(&file->f_sema);
-+
- 	if (!(conflock = posix_test_lock(&file->f_file, &lock->fl))) {
- 		error = posix_lock_file(&file->f_file, &lock->fl, 0);
- 
-@@ -358,7 +359,10 @@ again:
- 
- 	/* If we don't have a block, create and initialize it. Then
- 	 * retry because we may have slept in kmalloc. */
-+	/* We have to release f_sema as nlmsvc_create_block may try to
-+	 * claim it while doing host garbage collection */
- 	if (block == NULL) {
-+		up(&file->f_sema);
- 		dprintk("lockd: blocking on this lock (allocating).\n");
- 		if (!(block = nlmsvc_create_block(rqstp, file, lock, cookie)))
- 			return nlm_lck_denied_nolocks;
+
+Gareth
 
 
 -------------------------------------------------------
