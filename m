@@ -1,24 +1,19 @@
-From: Jeff Layton <jeffrey.b.layton@lmco.com>
-Subject: RH 7.3 kernels and NFS performance
-Date: Wed, 07 Aug 2002 11:35:50 -0400
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: fsid syntax
+Date: 07 Aug 2002 17:26:37 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3D513E56.CAF735B6@lmco.com>
-Reply-To: jeffrey.b.layton@lmco.com
+Message-ID: <shsk7n2d70y.fsf@charged.uio.no>
+References: <200208071711.00712.bernd-schubert@web.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mailgw2a.lmco.com ([192.91.147.7])
+Received: from pat.uio.no ([129.240.130.16])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17cSZT-0002hI-00
-	for <nfs@lists.sourceforge.net>; Wed, 07 Aug 2002 08:17:59 -0700
-Received: from emss03g01.ems.lmco.com (emss03g01.ems.lmco.com [141.240.4.144])
-	by mailgw2a.lmco.com (8.11.6/8.11.6) with ESMTP id g77FHr430121
-	for <nfs@lists.sourceforge.net>; Wed, 7 Aug 2002 11:17:54 -0400 (EDT)
-Received: from CONVERSION-DAEMON.lmco.com by lmco.com (PMDF V6.1-1 #40646)
- id <0H0H00101BTR3S@lmco.com> for nfs@lists.sourceforge.net; Wed, 07 Aug 2002 11:17:52 -0400 (EDT)
-Received: from lmco.com ([134.5.193.209]) by lmco.com (PMDF V6.1-1 #40646) with ESMTP id <0H0H0006IBTQC5@lmco.com> for
- nfs@lists.sourceforge.net; Wed, 07 Aug 2002 11:17:51 -0400 (EDT)
-To: nfs@lists.sourceforge.net
+	id 17cShw-0004E4-00
+	for <nfs@lists.sourceforge.net>; Wed, 07 Aug 2002 08:26:44 -0700
+To: Bernd Schubert <bernd-schubert@web.de>
+In-Reply-To: <200208071711.00712.bernd-schubert@web.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,21 +26,28 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hello,
+>>>>> " " == Bernd Schubert <bernd-schubert@web.de> writes:
 
-   I remember reading on the list about the terrible NFS
-performance of the latest RH kernels. Would someone
-care to summarize this for me (UDP or TCP, etc.)? Also,
-does anyone have any rough estimates of the performance
-hit?
+     > Hi, probably on Friday I need to make use of setting the fsid
+     > in the /etc/exports.
 
-Thanks!
+     > Since I can't find the syntax in the exports manpage (manpage
+     > was last time changed on Januar, while the fsid-feature seems
+     > to be become added to cvs on February).
 
-Jeff Layton
+     > So I'd like to know the exact sytanx, is for example:
 
-Lockheed-Martin Aeronautical Company - Marietta
+     > /testdir testnode(fsid=/dev/sdb)
 
+The fsid is a number, not a device. In principle you can set it to any
+number you like as long as you keep it consistent over reboots.
 
+One suggestion is to use the device major/minor number in the format
+minor + (major * 256). (That's what nfsd uses by default for block
+devices.)
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
