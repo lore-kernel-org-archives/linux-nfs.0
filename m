@@ -1,19 +1,17 @@
-From: Steffen Persvold <sp@scali.com>
-Subject: Re: Input/output error on hard mounted NFS directory
-Date: Fri, 24 May 2002 13:43:54 +0200 (CEST)
+From: Steven Timm <timm@fnal.gov>
+Subject: kernel: nfs: task xxxxx can't get a request slot--plus hang
+Date: Fri, 24 May 2002 10:05:52 -0500 (CDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.33.0205241316260.3144-100000@sp-home.isdn.scali.no>
-References: <200205141437.26169.trond.myklebust@fys.uio.no>
+Message-ID: <Pine.LNX.4.31.0205240952030.16344-100000@boxer.fnal.gov>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: NFS mailinglist <nfs@lists.sourceforge.net>
+Cc: <scs-farm@fnal.gov>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from elin.scali.no ([62.70.89.10])
+Received: from boxer.fnal.gov ([131.225.80.86])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17BDZg-0002NS-00
-	for <nfs@lists.sourceforge.net>; Fri, 24 May 2002 04:49:36 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <200205141437.26169.trond.myklebust@fys.uio.no>
+	id 17BGde-0008S8-00
+	for <nfs@lists.sourceforge.net>; Fri, 24 May 2002 08:05:54 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,61 +24,54 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Tue, 14 May 2002, Trond Myklebust wrote:
 
-> Tysdag 14. mai 2002 13:15 skreiv Steffen Persvold:
->
-> > > If you want to run a 2.2. client, then grab 2.2.21-rc2, and apply the
-> > > patch from
-> > >
-> > >   http://www.fys.uio.no/~trondmy/src/2.2.21-rc2/linux-2.2.21-NFS.dif
-> >
-> > Do I have to ?
->
-> Not if you can live with the bugs ;-)
->
-> > Will it fix my problem ? Other known NFS bugs ?
->
-> The 2.2.21-NFS patch fixes all the EIO bugs that were found in 2.4.x. You
-> might of course have found totally different bugs, but I really can't tell
-> until you eliminate the first possibility.
->
+I am seeing a large number of error messages in NFS clients
+
+kernel: nfs: task xxxxx can't get a request slot
+
+Once this happens, any attempts to access the nfs volume that the NFS
+client was trying to access at the time will hang and add one to the
+load.  It is impossible to kill these processes without stopping
+and restarting the network. In fact it is impossible to reboot without
+stopping the network first.
+
+However, other nfs volumes that are mounted can still be accessed
+with no problem.  The volume that hangs is different on different
+machines.  It was suggested last week on this list that I should
+upgrade the driver for the ethernet card, which I did.  The errors
+went away for a week or so and now are back with a vengeance.
+
+These are Linux nfs v3 clients (169 of them), running kernel 2.4.9-31smp
+plus Intel's e100 driver version 1.8.38.  No special NFS patches added in.
+
+The server is an SGI Origin 2000 running IRIX 6.5.14.
+
+There is some evidence that the problems are correlated to the
+overall network load on the server, but the server is capable of
+servicing many more calls than the level it was at (about 3000 calls/sec)
+at the time these errors happen.  Also, these errors did not happen
+with 2.2.19 kernels and NFS v2.  Furthermore, they happen
+in only one of the four hardware types on my cluster--hardware
+that is based on SuperMicro 370 DLE boards with Serverworks chipset.
 
 
-Hi again,
+My questions;
+1) Is an upgrade to the 2.4.18 kernel likely to help this situation?
 
-I have some updates on this problem. As you may remember I had a RH 7.2
-NFS server (i686) running the 2.4.9-21smp kernel, exporting an ext2
-directory (~70GB).
+2) Are there any special nfs mount options I should be using
+in the mount statement on the clients?  (The NFS clients
+are reading a lot of small files, not a few big huge files).
 
-Sometimes I discovered problems when linking together a large static
-library on two clients which had different architecture (ia32 ia64), both
-running RedHat but with different kernels (ia32 was running 2.2.19-6.2.7
-and ia64 was running a stock 2.4.18 with ia64 patchset). The error message
-I got on the ia32 client was :
+3) Is NFS over TCP likely to help this situation at all...if so,
+what would be required to make the conversion?  Is it supported
+in the stock kernel that comes with RedHAt 7.3?
 
-ar: Linux2.i86pc.gnu.dbg/libmpi.a: Input/output error
-gmake[4]: *** [Linux2.i86pc.gnu.dbg/libmpi.a] Error 1
+Steve Timm
 
-and on the ia64 client it was :
-
-ar: Linux2.ia64.gnu.dbg/libmpi.a: Stale NFS file handle
-gmake[4]: *** [Linux2.ia64.gnu.dbg/libmpi.a] Error 1
-
-Now, since both these clients got almost the same problem (ok the 2.2.19
-client reported -EIO, and the 2.4.18 client -ESTALE), I tried upgrading my
-server to a stock 2.4.18 kernel and that actually helped ...
-
-Can you give me any more details to why it helped upgrading my NFS server
-to 2.4.18 ?
-
-Regards,
- --
-  Steffen Persvold   | Scalable Linux Systems |   Try out the world's best
- mailto:sp@scali.com |  http://www.scali.com  | performing MPI implementation:
-Tel: (+47) 2262 8950 |   Olaf Helsets vei 6   |      - ScaMPI 1.13.8 -
-Fax: (+47) 2262 8951 |   N0621 Oslo, NORWAY   | >320MBytes/s and <4uS latency
-
+------------------------------------------------------------------
+Steven C. Timm (630) 840-8525  timm@fnal.gov  http://home.fnal.gov/~timm/
+Fermilab Computing Division/Operating Systems Support
+Scientific Computing Support Group--Computing Farms Operations
 
 
 _______________________________________________________________
