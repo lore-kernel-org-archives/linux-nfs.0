@@ -1,32 +1,22 @@
-From: Stephan Koledin <skoledin@neolinear.com>
-Subject: Re: NFS lockups with 2.4.18
-Date: Fri, 26 Sep 2003 11:47:49 -0400
+From: "Bowman, John" <John.Bowman@Williams.com>
+Subject: Strange sporadic delay with NFS
+Date: Fri, 26 Sep 2003 15:39:02 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3F745FA5.5010907@neolinear.com>
-References: <3F71CB8A.3090208@neolinear.com> <3F7347FF.2000403@neolinear.com>
+Message-ID: <CC7E9749B61C8346B1D0AF308E5D40A61845F7@wmstutem02.williams.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain;
+	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1A2viG-00008q-00
-	for <nfs@lists.sourceforge.net>; Fri, 26 Sep 2003 09:45:00 -0700
-Received: from panoramix.vasoftware.com
-	([198.186.202.147] helo=externalmx.vasoftware.com ident=mail)
+	id 1A2zQ4-0003Ak-00
+	for <nfs@lists.sourceforge.net>; Fri, 26 Sep 2003 13:42:28 -0700
+Received: from securit-v1.twc.com ([151.142.239.11] helo=wmstutem02.WILLIAMS.COM)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 1A2viF-0005Ab-G9
-	for nfs@lists.sourceforge.net; Fri, 26 Sep 2003 09:44:59 -0700
-Received: from n5.neolinear.com ([208.20.218.5]:57391 helo=flood.neolinear.com)
-	by externalmx.vasoftware.com with esmtp (Exim 4.22 #1 (Debian))
-	id 1A2us1-00082o-Gn
-	for <nfs@lists.sourceforge.net>; Fri, 26 Sep 2003 08:51:01 -0700
-Received: from rain ([192.9.200.77])
-	by flood.neolinear.com with esmtp (Exim 3.35 #1 (Debian))
-	id 1A2uow-0006eA-00
-	for <nfs@lists.sourceforge.net>; Fri, 26 Sep 2003 11:47:50 -0400
-To: nfs@lists.sourceforge.net
-In-Reply-To: <3F7347FF.2000403@neolinear.com>
+	id 1A2zQ2-0001nK-UI
+	for nfs@lists.sourceforge.net; Fri, 26 Sep 2003 13:42:27 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -39,36 +29,34 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Some more observations on this issue...
 
-I've noticed that lockd appears to be the culprit. It is the first 
-process to get stuck in a 'D' state. Eventually, all the nfsd processes 
-follow it, apparently one at a time.
+Greetings!
 
-I think I've narrowed the cause down to some questionable SETLK calls 
-from Solaris 8 clients. The suspect 3rd party app is a bit complex, 
-however, so still trying to isolate the exact triggering sequence of events.
+	I'm noticing a weird issue with my application (Matlab) and nfs.
+I'm currently running nfs-utils-1.0.1-2.9 on a Red Hat 9 with kernel
+2.4.20 kernel.  What I'm trying to determine if this is strictly an
+application issue or something with nfs itself (either version or
+patch).
 
-In the process of trying to dig up some clues, I ran into a similar 
-problem reported on the lkml (http://lkml.org/lkml/2003/1/29/59). From 
-private correspondence with the submitter, he is still encountering 
-problems, and continues to experiment with the 2.4.2x series and NFS 
-patches in hope of relief. It may not be the exact same problem, but it 
-is very similar.
+	Here's the basic details.  I have a server exporting a directory
+with *(rw) in /etc/exports and and filesystem mounted with
+noatime,nodiratime.  The clients mount that directory with
+noatime,nodiratime.  Client1 runs the application and writes a file to
+the nfs share, Client2 polls that directory by doing a test to see if
+that file is there and if it is update it while Client1 checks it and if
+its updated deletes it.
 
-If anyone has any ideas about this problem, please let me know. I 
-certainly don't mind trying a more recent kernel, but hate to just dive 
-in blindly hoping for a fix that may not be there... Any debugging 
-suggestions?
+	This whole thing normally takes a matter of seconds but at
+irregular intervals Client2 will never see that the new file is there
+and it will time out, BUT it may never time out if there is any kind of
+activity on that nfs mount such as doing a while loop and ls -la.
 
-Thanks.
--Stephan
+	Has anyone seen this or is this just something that is most
+likely specific to the application?
 
--- 
-Stephan B Koledin
-Network Systems Developer
-http://neolinear.com/
 
+Thanks for any help!
+John Bowman
 
 
 -------------------------------------------------------
