@@ -1,23 +1,23 @@
-From: Sting YC Tao <stingtao@tw.ibm.com>
-Subject: Linux NFS server vs Solaris NFS client performance problem
-Date: Thu, 8 May 2003 01:19:30 +0800
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: PATCH - > 256 NFS mounts. Was: Re: Linux NFS FAQ updates
+Date: Thu, 8 May 2003 11:02:18 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <OF10F6D17F.EB18DF1E-ON48256D1F.005DC811@tw.ibm.com>
+Message-ID: <16057.44186.465124.590551@notabene.cse.unsw.edu.au>
+References: <6440EA1A6AA1D5118C6900902745938E07D55565@black.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from ausmtp02.au.ibm.com ([202.135.136.105])
-	by sc8-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19DSXt-0007Zh-00
-	for <nfs@lists.sourceforge.net>; Wed, 07 May 2003 10:17:34 -0700
-Received: from d23rh902.au.ibm.com (d23rh902.au.ibm.com [9.185.167.101])
-	by ausmtp02.au.ibm.com (8.12.9/8.12.9) with ESMTP id h47HHNil179330
-	for <nfs@lists.sourceforge.net>; Thu, 8 May 2003 03:17:23 +1000
-Received: from d23ml050.tw.ibm.com (d23av02.au.ibm.com [9.185.167.107])
-	by d23rh902.au.ibm.com (8.12.8/NCO/VER6.5) with ESMTP id h47HHSGj116494
-	for <nfs@lists.sourceforge.net>; Thu, 8 May 2003 03:17:29 +1000
-To: nfs@lists.sourceforge.net
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
+	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19DZnj-0005el-00
+	for <nfs@lists.sourceforge.net>; Wed, 07 May 2003 18:02:23 -0700
+Received: From
+	notabene.cse.unsw.edu.au ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
+	(for <Charles.Lever@netapp.com>) (for <nfs@lists.sourceforge.net>) By
+	tone With Smtp ; Thu, 8 May 2003 11:02:16 +1000
+To: "Lever, Charles" <Charles.Lever@netapp.com>
+In-Reply-To: message from Lever, Charles on Thursday April 24
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,25 +30,102 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Recently, I've got trouble in an nfs performance problem.
+On Thursday April 24, Charles.Lever@netapp.com wrote:
 
-I've setup Redhat 7.3(2.4.18-10) as nfs server on Gigabit network. When
-Solaris 5.8 mount it and copy a large file from linux nfs server, the r/w
-performance is aweful(at most 25% compared to solaris-to-solaris).
-I've tried to modify  ./include/linux/nfsd/const.h NFSSVC_MAXBLKSIZE from
-8192 to 32768 and rebuild kernel image. That didn't help the performance a
-lot.
+>                       and question B3 discusses the
+> "255 NFS mounts per client" limitation.
 
-I have the following questions:
-1. Is there a known issue between Solaris NFS client and Linux NFS Server
-in terms of performance?
-2. I'd like to try NFS over TCP at this exact kernle level(2.4.18-10), I
-don't know where to start...(The information I found mentioned the patches
-are for 2.4.18-17 and later??)
+You could add something more to this section if you like....
 
-Please help shed some light for me. Thanks!
+"It is possible to exceed the limit of 256 filesystems using 
+<a href="See Below">this</a> patch.  It utilised 3 more major numbers
+(which have been allocated by lanana) and so allows upto
+1024 non-device mounts (such as NFS).
+This patch does <b>not</b> address issues of running out of privileged 
+ports and so the effective limit is still well below 1024 ( but can be
+maximised by mixing UDP and TCP mounts)."
 
+I will probably submit this patch for inclusion in 2.4.22-pre1.
 
+In the mean time I would welcome success/failure reports.
+
+NeilBrown
+
+----------------------------------
+Allow more than 256 nfs mounts
+
+Utilise 3 extra major device numbers for anonymous
+devices so that more than 256 NFS mounts are possible.
+
+ ----------- Diffstat output ------------
+ ./fs/super.c            |   22 +++++++++++++++++-----
+ ./include/linux/major.h |    7 +++++++
+ 2 files changed, 24 insertions(+), 5 deletions(-)
+
+diff ./fs/super.c~current~ ./fs/super.c
+--- ./fs/super.c~current~	2003-05-08 09:58:56.000000000 +1000
++++ ./fs/super.c	2003-05-08 10:51:26.000000000 +1000
+@@ -572,7 +572,14 @@ int do_remount_sb(struct super_block *sb
+  * filesystems which don't use real block-devices.  -- jrs
+  */
+ 
+-enum {Max_anon = 256};
++static int anon_majors[]= {UNNAMED_MAJOR, 
++			   UNNAMED_MAJOR_1, 
++			   UNNAMED_MAJOR_2,
++			   UNNAMED_MAJOR_3,
++};
++#define	num_anon_majors (sizeof(anon_majors)/sizeof(anon_majors[0]))
++#define Max_anon (num_anon_majors<<8)
++
+ static unsigned long unnamed_dev_in_use[Max_anon/(8*sizeof(unsigned long))];
+ static spinlock_t unnamed_dev_lock = SPIN_LOCK_UNLOCKED;/* protects the above */
+ 
+@@ -582,9 +589,14 @@ static spinlock_t unnamed_dev_lock = SPI
+  */
+ static void put_anon_dev(kdev_t dev)
+ {
+-	spin_lock(&unnamed_dev_lock);
+-	clear_bit(MINOR(dev), unnamed_dev_in_use);
+-	spin_unlock(&unnamed_dev_lock);
++	int i;
++	for (i=0; i<num_anon_majors; i++)
++		if (MAJOR(dev) == anon_majors[i]) {
++			spin_lock(&unnamed_dev_lock);
++			clear_bit(MINOR(dev)+(i<<8), unnamed_dev_in_use);
++			spin_unlock(&unnamed_dev_lock);
++			break;
++		}
+ }
+ 
+ /**
+@@ -643,7 +655,7 @@ retry:
+ 	set_bit(dev, unnamed_dev_in_use);
+ 	spin_unlock(&unnamed_dev_lock);
+ 
+-	s->s_dev = dev;
++	s->s_dev = MKDEV(anon_majors[dev>>8],dev&255);
+ 	insert_super(s, type);
+ 	return s;
+ }
+
+diff ./include/linux/major.h~current~ ./include/linux/major.h
+--- ./include/linux/major.h~current~	2003-05-08 09:59:26.000000000 +1000
++++ ./include/linux/major.h	2003-05-08 10:05:42.000000000 +1000
+@@ -143,6 +143,13 @@
+ 
+ #define	UMEM_MAJOR	116	/* http://www.umem.com/ Battery Backed RAM */
+ 
++/* combined with UNNAMED_MAJOR, these allow upto
++ * 1024 non device (e.g. nfs) mounts
++ */
++#define	UNNAMED_MAJOR_1	144
++#define	UNNAMED_MAJOR_2	145
++#define	UNNAMED_MAJOR_3 146
++
+ #define RTF_MAJOR	150
+ #define RAW_MAJOR	162
+ 
 
 
 -------------------------------------------------------
