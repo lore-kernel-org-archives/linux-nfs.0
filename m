@@ -1,19 +1,19 @@
-From: Ruben van Royen <ruben@guidedbees.com>
-Subject: Locking on HP-UX
-Date: Tue, 7 May 2002 19:56:47 +0200
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS v.3 I18N
+Date: 07 May 2002 22:01:13 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020507195647.B27332@tor.guidedbees.com>
+Message-ID: <shsk7qfhgmu.fsf@charged.uio.no>
+References: <85offst0ou.fsf@pc213.belcaf.minsk.by>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from node1755f.a2000.nl ([24.132.117.95] helo=ns.linux.bogus)
+Received: from mons.uio.no ([129.240.130.14])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1759Cl-0004UK-00
-	for <nfs@lists.sourceforge.net>; Tue, 07 May 2002 10:56:51 -0700
-Received: from ruben by ns.linux.bogus with local (Exim 3.12 #1 (Debian))
-	id 1759Ch-00079b-00
-	for <nfs@lists.sourceforge.net>; Tue, 07 May 2002 19:56:47 +0200
-To: nfs@lists.sourceforge.net
+	id 175B9O-0007Ic-00
+	for <nfs@lists.sourceforge.net>; Tue, 07 May 2002 13:01:31 -0700
+To: ed@sam-solutions.net (Ed V. Bartosh)
+In-Reply-To: <85offst0ou.fsf@pc213.belcaf.minsk.by>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,21 +26,21 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hi all, 
+>>>>> " " == Ed V Bartosh <ed@sam-solutions.net> writes:
 
-I'm having trouble getting file locking to work on hpux. I already searched
-your archives, but cannot find the problem from there. 
-I have statd and lockd running, and also set insecure_locks. All to no avail.
-The request does arrive at the linux client, I can see the ip-nr. of the hpux
-machine in /var/lib/nfs/statd/sm after trying to lock a file. But apperently 
-the hp does not like the answer it receives. 
+     > Hello, Can anyone tell me about NFS3 KNFSD I18N solutions ?  Is
+     > it already implemented somewhere or may be somebody works on it
+     > ?  Any ideas, explanations, links are welcome.
 
-I'm running a redhat 7.2 server with 2.4.9-31 redhat kernel and hpux 11.00
-on the client.
+I presume you are talking about the supporting userland daemons
+(mountd, statd, portmap...)?  Please note that Linus has banned any
+i18n stuff in the kernel itself...
 
-File locking does work from both sun and linux clients.
+AFAIK, nobody has bothered yet, so if you are feeling like giving it a
+shot, then by all means do...
 
-Ruben
+Cheers,
+  Trond
 
 _______________________________________________________________
 
