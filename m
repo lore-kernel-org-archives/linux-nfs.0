@@ -1,24 +1,25 @@
-From: Matthew Galgoci <mgalgoci@redhat.com>
-Subject: Re: TCP: Server unavailable
-Date: Fri, 24 Oct 2003 17:00:00 -0400 (EDT)
+From: "Chimento, Douglas" <Douglas.Chimento@FMR.COM>
+Subject: RE: TCP: Server unavailable
+Date: Fri, 24 Oct 2003 17:04:44 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0310241653400.13191-100000@lacrosse.corp.redhat.com>
-References: <5C4853FD4EFB164A8F4FE5AFF1306321037B6D@MSGBOSCLD2WIN.DMN1.FMR.COM>
+Message-ID: <5C4853FD4EFB164A8F4FE5AFF13063219DA8FB@MSGBOSCLD2WIN.DMN1.FMR.COM>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain
 Cc: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AD95b-0002At-00
-	for <nfs@lists.sourceforge.net>; Fri, 24 Oct 2003 14:03:19 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
+	id 1AD9BZ-000354-00
+	for <nfs@lists.sourceforge.net>; Fri, 24 Oct 2003 14:09:29 -0700
+Received: from maillnx-us111.fmr.com ([192.223.198.26])
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AD92R-000456-OH
-	for nfs@lists.sourceforge.net; Fri, 24 Oct 2003 14:00:03 -0700
-To: "Chimento, Douglas" <Douglas.Chimento@FMR.COM>
-In-Reply-To: <5C4853FD4EFB164A8F4FE5AFF1306321037B6D@MSGBOSCLD2WIN.DMN1.FMR.COM>
+	id 1AD97N-0004dD-IT
+	for nfs@lists.sourceforge.net; Fri, 24 Oct 2003 14:05:09 -0700
+Received: from virmmk110nts.fmr.com (VIRMMK110NTS.fmr.com [172.25.107.117])
+	by maillnx-us111.fmr.com (Switch-2.2.8/Switch-2.2.8) with SMTP id h9OL52X10884
+	for <nfs@lists.sourceforge.net>; Fri, 24 Oct 2003 17:05:02 -0400
+To: "'Matthew Galgoci'" <mgalgoci@redhat.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,6 +31,21 @@ List-Id: Discussion of NFS under Linux development,
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+
+Thank you,
+In fact that was the issue, I recompiled the kernel with TCP support and the
+client was able to mount via tcp.
+I wish to add the performance over TCP appears to be better than udp
+
+Thanks
+
+-----Original Message-----
+From: Matthew Galgoci [mailto:mgalgoci@redhat.com] 
+Sent: Friday, October 24, 2003 5:00 PM
+To: Chimento, Douglas
+Cc: 'nfs@lists.sourceforge.net'
+Subject: Re: [NFS] TCP: Server unavailable
+
 
 > 
 > # rpcinfo -p
@@ -51,8 +67,10 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 >     100003    2   udp   2049  nfs
 >     100003    3   udp   2049  nfs
 
-The server is not advertising nfs v3 over tcp support. Perhaps the kernel the server
-is running does not support nfsv3 over tcp? I don't think any of the Red Hat Linux 9
+The server is not advertising nfs v3 over tcp support. Perhaps the kernel
+the server
+is running does not support nfsv3 over tcp? I don't think any of the Red Hat
+Linux 9
 kernels include nfs v3 over tcp support.
 
 -- 
@@ -61,7 +79,6 @@ Matthew Galgoci		"If you were a woman I'd kiss you right now."
 System Administrator
 Red Hat, Inc
 919.754.3700 x44155
-
 
 
 -------------------------------------------------------
