@@ -1,132 +1,74 @@
-From: mike@waychison.com
-Subject: RE: [PATCH/RFC 0/2] Userspace RPC proxying
-Date: Tue, 8 Mar 2005 13:22:59 -0500 (EST)
-Message-ID: <37835.66.11.176.22.1110306179.squirrel@webmail1.hrnoc.net>
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: [PATCH kNFSd 0 of 54] Introduction
+Date: Wed, 9 Mar 2005 14:12:50 +1100
+Message-ID: <16942.27058.554431.452175@cse.unsw.edu.au>
+References: <20050308165419.3842.patches@notabene>
+	<20050308000144.6599431b.akpm@osdl.org>
 Mime-Version: 1.0
-Content-Type: text/plain;charset=iso-8859-1
-Cc: autofs mailing list <autofs@linux.kernel.org>,
-        linux-nfs <nfs@lists.sourceforge.net>, mike@waychison.com
-To: "Lever, Charles" <Charles.Lever@netapp.com>
-List-Unsubscribe: <http://linux.kernel.org/mailman/listinfo/autofs>,
-	<mailto:autofs-request@linux.kernel.org?subject=unsubscribe>
-List-Archive: <http://linux.kernel.org/pipermail/autofs>
-List-Post: <mailto:autofs@linux.kernel.org>
-List-Help: <mailto:autofs-request@linux.kernel.org?subject=help>
-List-Subscribe: <http://linux.kernel.org/mailman/listinfo/autofs>,
-	<mailto:autofs-request@linux.kernel.org?subject=subscribe>
-Sender: autofs-bounces@linux.kernel.org
-Errors-To: autofs-bounces@linux.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1D8rd4-0005Td-8O
+	for nfs@lists.sourceforge.net; Tue, 08 Mar 2005 19:12:58 -0800
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1D8rd2-0000HX-P1
+	for nfs@lists.sourceforge.net; Tue, 08 Mar 2005 19:12:58 -0800
+To: Andrew Morton <akpm@osdl.org>
+In-Reply-To: message from Andrew Morton on Tuesday March 8
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> hi mike-
->
->> Every once in a while, we see complaints that nfs mounts are
->> failing due
->> to there being no more reserved ports available for outbound rpc
->> communication.  This often happens when using TCP transports,
->> because all
->> outbound connections that are closed go into a TIME_WAIT state.
->
-> i know that steved has also been looking at this problem.  he found that
-> user-land uses TCP connections with abandon and has put it on a diet.
-> and, the client side should take care to avoid using reserved ports
-> unless it is absolutely necessary.
+On Tuesday March 8, akpm@osdl.org wrote:
+> NeilBrown <neilb@cse.unsw.edu.au> wrote:
+> >
+> >  54 (!!) patches for knfsd. Mostly nfsv4 related from Bruce Fields and co.
+> 
+> Fun, I'm up to 944 patches.
+> 
+> I assume that nfsv4 is still "experimental", so we can scoot these in
+> fairly promptly?
 
-Yup. I tested out SteveD's stuff and it certainly cut down on reserved
-port usage.  However, I was still able locally DOS my test client by
-mounting several thousand mounts within a minute or so.  The problem is
-that talking to mountd still requires the reserved port :\
+Yes. 
 
->
->> For various reasons, avoiding the TIME_WAIT state using connect(fd,
->> {AF_UNSPEC}, ...) or doing SO_REUSEADDR may not be the safest way to
->> handle things.
->
-> i have a patch for the kernel RPC client to use AF_UNSPEC to reuse the
-> port number on connections.  before i head into the wilderness, what's
-> unsafe about that?
+> 
+> There were a few rejects against things in Linus's tree now, or something. 
+> I fixed them up.  I'll try to do another -mm 24 hours hence - please check
+> that everything landed OK.
 
-It's less unsafe than SO_REUSEADDR, however it completely ignores
-TIME_WAIT,  which has two purposes (according to W.R. Stevens):
+I checked. It all looks fine. 
 
-- If the client performs the active close, it allows the socket to
-remember to resend the final ACK in response to the server's FIN. 
-Otherwise the client would respond with a RST.
+> 
+> I can tell you right now that the compiler will get huffy about this:
+> 
+> 
+> 
+> -void static inline nfs4_state_init(void){}
+> +int static inline nfs4_state_init(void){}
+> 
+> I'll stick a `return 0;' in there...
 
-- It ensures that no re-incarnations of the same four-tuple occur within 2
-* MSL, ensuring that no packets that were lost on the network from the
-first incarnation get used as part of the new incarnation.
+:-)  Thanks.
 
-Avoiding TIME_WAIT altogether keeps TCP from doing a proper full-duplex
-close and also allows old packets to screw up TCP state.
+NeilBrown
 
->
->> rpcproxyd will create outbound connections and multiplex the
->> transports
->> with any number of simultaneous clients.  There is no support for
->> re-binding your transport once created.  It will also cache outbound
->> server connections for 30 seconds after last use, which
->> greatly helps keep the number of ports used down in a mount-storm
-> situation.
->
-> the typical RPC client-side connection timeout is 5 minutes.  any reason
-> not to use that value instead of 30 seconds?
 
-The timeouts used currently in rpcproxyd were chosen arbitrarily.
-
-Which timeout is 5 minutes? (sparing me the trouble of finding it myself).
-
-I figured 30 for caching un-used tcp connections sounded like a good
-number as it means that if TIME_WAIT period is 2 minutes, that the most
-TIME_WAIT connections that you can have to a given remote service at any
-time is 4.
-
-A bit more thought could be had for timeouts (wishlist):
-- TCP connect()s aren't timedout. (uses EINPROGRESS, but will wait
-indefinitely, which I think is bounded by the kernel anyway).
-- UDP retransmission occurs in the proxy itself, which is currently
-hardcoded to retry 5 times, once every two seconds.  I can trivially set
-it up so that it gets the actual timeout values from the client though and
-use those parameters.
-
->
-> you will also need a unique connection for each program/version number
-> combination to a given server; ie you can't share a single socket among
-> different program/version numbers (even though some implementations try
-> to do this, it is a bad practice, in my opinion).
->
-
-So, I know I discussed this with you last week, however I was under the
-impression that that was needed for the case where you support re-binding
-of the transport.  I'm not up to speed of who are the users of such a
-thing (I'm assuming NFSv4).
-
-Also, AFAICT, the glibc sunrpc stuff will actually bind you to a program
-even if the version doesn't exist.  This is used by rpcinfo [-u | -t] for
-udpping / tcpping.
-
-> to support IPv6 you will need support for rpcbind versions 3 and 4; but
-> that may be an issue outside of rpcproxyd.
->
-
-Okay.  I'm not so familiar with RPCB, but it is just a PMAP on steroids,
-right?
-
-It wouldn't be needed for the basic common use of rpcproxyd, however it
-would likely be required for cases where clntproxy_create has to do some
-lookups (eg: port == 0, maybe even addr == NULL).
-
->> rpcproxyd is written as a single-threaded/no-signals/select-based
-> daemon.
->
-> will using select be a scalability issue?  you might be better off with
-> something like libevent or using epoll.
->
-
-It may become a scalability issue, although I don't know what the typical
-numbers are for live descriptors.  It was written with select cause that's
-what I know ;)
-
-In any event, using epoll would likely be a good thing to do.
-
-Mike Waychison
+-------------------------------------------------------
+SF email is sponsored by - The IT Product Guide
+Read honest & candid reviews on hundreds of IT Products from real users.
+Discover which products truly live up to the hype. Start reading now.
+http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
