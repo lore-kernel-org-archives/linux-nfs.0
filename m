@@ -1,27 +1,30 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Garrick Staples <garrick@usc.edu>
 Subject: Re: 2.6.6 lockupy
-Date: Wed, 26 May 2004 17:37:32 -0400
+Date: Wed, 26 May 2004 14:44:36 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040526213732.GG2827@fieldses.org>
-References: <20040526211115.GI6931@polop.usc.edu>
+Message-ID: <20040526214435.GK6931@polop.usc.edu>
+References: <20040526211115.GI6931@polop.usc.edu> <20040526213732.GG2827@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="ZGtad4bun3m+J/4B"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BT65h-00037x-8A
-	for nfs@lists.sourceforge.net; Wed, 26 May 2004 14:37:37 -0700
-Received: from dsl093-002-214.det1.dsl.speakeasy.net
-	([66.93.2.214] helo=pumpkin.fieldses.org ident=Debian-exim)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	id 1BT6CS-0004i8-Qm
+	for nfs@lists.sourceforge.net; Wed, 26 May 2004 14:44:36 -0700
+Received: from polop.usc.edu ([128.125.10.9])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.30)
-	id 1BT65g-0004rw-Sa
-	for nfs@lists.sourceforge.net; Wed, 26 May 2004 14:37:37 -0700
-Received: from bfields by pumpkin.fieldses.org with local (Exim 4.34)
-	id 1BT65d-0001Cg-3b
-	for nfs@lists.sourceforge.net; Wed, 26 May 2004 17:37:33 -0400
+	id 1BT6CS-0008VL-Fp
+	for nfs@lists.sourceforge.net; Wed, 26 May 2004 14:44:36 -0700
+Received: from polop.usc.edu (localhost.localdomain [127.0.0.1])
+	by polop.usc.edu (8.12.11/8.12.11) with ESMTP id i4QLiaGf016935
+	for <nfs@lists.sourceforge.net>; Wed, 26 May 2004 14:44:36 -0700
+Received: (from garrick@localhost)
+	by polop.usc.edu (8.12.11/8.12.11/Submit) id i4QLiaW2016933
+	for nfs@lists.sourceforge.net; Wed, 26 May 2004 14:44:36 -0700
 To: nfs@lists.sourceforge.net
-In-Reply-To: <20040526211115.GI6931@polop.usc.edu>
+In-Reply-To: <20040526213732.GG2827@fieldses.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,14 +37,46 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, May 26, 2004 at 02:11:16PM -0700, Garrick Staples wrote:
-> I tried Trond's 2.6.6 patches at his website, but those brokes things
-> considerably.  Since I don't have any actual Oops messages, anyone have any
-> experimental deadlock-fixing patches they want me to test? :)
 
-Note that Trond's patches are client-side only, so shouldn't affect your
-servers one way or another (unless I'm misunderstanding what your
-setup).--b.
+--ZGtad4bun3m+J/4B
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
+
+On Wed, May 26, 2004 at 05:37:32PM -0400, J. Bruce Fields alleged:
+> On Wed, May 26, 2004 at 02:11:16PM -0700, Garrick Staples wrote:
+> > I tried Trond's 2.6.6 patches at his website, but those brokes things
+> > considerably.  Since I don't have any actual Oops messages, anyone have=
+ any
+> > experimental deadlock-fixing patches they want me to test? :)
+>=20
+> Note that Trond's patches are client-side only, so shouldn't affect your
+> servers one way or another (unless I'm misunderstanding what your
+> setup).--b.
+
+You didn't misunderstand... but I was at a complete loss with production
+machines suddenly dropping like flies.  I'm now at the stage where I just t=
+ry
+random things =3DP
+
+
+--=20
+Garrick Staples, Linux/HPCC Administrator
+University of Southern California
+
+--ZGtad4bun3m+J/4B
+Content-Type: application/pgp-signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.3 (GNU/Linux)
+
+iD8DBQFAtQ/D0SBUxJbm9HMRAkHMAJ92V1fhB8a7+38yyc6YTY4IN5kLfACdG7Ta
+q6TfDK+vffBYP7v6fHlAWFE=
+=9LHy
+-----END PGP SIGNATURE-----
+
+--ZGtad4bun3m+J/4B--
 
 
 -------------------------------------------------------
