@@ -1,73 +1,83 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: Announcing Release Two of NFSv4 on Linux 2.4
-Date: Mon, 21 Jul 2003 08:27:02 -0700
+From: Andreas Gruenbacher <agruen@suse.de>
+Subject: Re: [PATCH] Add `no_acl' nfs export option
+Date: 21 Jul 2003 17:38:30 +0200
 Sender: linux-fsdevel-owner@vger.kernel.org
-Message-ID: <482A3FA0050D21419C269D13989C6113D06AB9@lavender-fe.eng.netapp.com>
+Message-ID: <1058801910.22199.20.camel@chaos.suse.de>
+References: <200307081655.17510.agruen@suse.de>
+	 <200307141309.44623.agruen@suse.de>
+	 <16147.14612.324419.294401@gargle.gargle.HOWL>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net, linux-fsdevel@vger.kernel.org,
+	Steve Dickson <SteveD@redhat.com>,
+	=?ISO-8859-1?Q?R=FCdiger?= Oertl <ro@suse.de>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: <nfs@lists.sourceforge.net>,
-	"Linux FS development (E-mail)" <linux-fsdevel@vger.kernel.org>
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <16147.14612.324419.294401@gargle.gargle.HOWL>
 List-ID: <nfs.lists.sourceforge.net>
 
-A new release of CITI U-M's NFSv4 on Linux 2.4 is
-available.  For information on this release, see:
+On Tue, 2003-07-15 at 01:13, Neil Brown wrote:
+> On Monday July 14, agruen@suse.de wrote:
+> > Hello,
+> > 
+> > I noticed that the bit I wanted is already reserved in nfs-utils-1.0.4. Here 
+> > is an updated nfs-utils patch. I am also attaching a patch against 
+> > linux-2.6.0-test1.
+> > 
+> > Could someone please reserve the bit? Thanks.
+> 
+> I'll definately reserve the bit, but I'm not very comfortable about
+> this concept.
+> My problem is that it doesn't seem clear how a sysadmin would decide
+> how to set this bit.  It is not clear, at least from the manpage
+> entry, exactly what the costs/benefits are of each setting, or how to
+> find out whether given clients need a particular setting.
 
- https://linux24-nfsv4.citi.umich.edu/wiki
-
-
->From the Release Notes:
-
-The NFSv4 implementation on Linux 2.4 is intended
-for early adopters of NFSv4 who want to help beta
-test commercial NFSv4-based products, or test the
-Linux NFSv4 implementation. Our intention is to
-provide a stable NFSv4 implementation on Linux with
-these releases until a complete official Linux NFSv4
-implementation appears in Linux 2.6. It is not
-intended for use in production NFSv4 environments.
-Think of this as beta quality software.
-
-These releases provide an implementation of an NFSv4
-client and server on a stable Linux kernel in an
-easy-to-install set of packages. This allows more
-intensive and broad-based testing of the Linux
-NFSv4 implementation outside of developers' labs.
-
-The NFSv4 implementation in all these releases
-tracks the implementation contained in Linux 2.6
-kernels as closely as possible. Our code base
-should reflect the current state of the art (the
-2.6 NFS implementation). We plan to be conservative
-in including new 2.6 features, but aggressive in
-including bug fixes, to make these releases stable
-enough for testing under realistic workloads.
+You are right, this setting isn't particularly clear. The underlying
+problem is the following (quoted from
+http://acl.bestbits.at/problems.html).
 
 
-Main Features of Release Two
+> Version 2 of the NFS protocol (NFSv2) does not implement the ACCESS remote procedure call, and instead performs some access control decisions at the client machine based on the file mode permission bits. It grants the user access to cached files if it thinks access is granted be the file mode permission bits. This logic is no longer correct if access control lists are in effect; both false positives and denials might result.
+> 
+> Write access is not affected, as all writes are authenticated on the
+> server in all cases. As a workaround to this problem the ACL patch
+> adds the nfs_permission_mode parameter to the kernel NFS daemon. If
+> nfs_permission_mode is set to 0 (the default setting), file mode
+> permission bits are sent to clients unchanged. If nfs_permission_mode
+> is set to 1, file mode permission bits are modified so that clients
+> are never granted read access to files to which they do not have
+> access on the server. See the acl(5) manual page for details.
 
-Release Two, like Release One, is not feature-complete.
-Release Two supplements the features of Release One
-with an NFSv4 server, support for ACLs and some support
-for NFSv4 state in the client.  It also contains
-support for RPCSEC-GSS Kerberos 5 integrity on the
-client.
 
-Features of Release Two include:
+> Also, the manpage entry says in part:
+> 
+> >    The
+> > +.I no_acl
+> > +option should be used for nfs exports with acl support that are exported
+> > +to NFSv2 clients, or to NFSv3 clients that don't use the ACCESS RPC.
+> 
+> Surely the nfs server can detect itself if a filesystem supports ACLs,
+> and if a given request is arriving via NFSv2 or not, so it should be
+> able to assume "no_acl" in that case.
+> 
+> However this is actually a bit simplistic.  I think some NFSv2
+> clients, solaris in particular, does not depend on the mode but
+> performs zero-byte read and write requests to perform an equivalent
+> function to ACCESS.
+> 
+> Can you tell me concisely but precisely, possibly in the form of a
+> manpage entry,
+>   What is the cost of always using no_acl?
+>   What is the cost of never using no_acl?
+>   How do I determine which cost is greater in a given situation?
+> 
+> It would really like it if the option could be avoided altogether.
+> e.g. default to assume "no_acl" but switch to "acl" for a given client
+> for v3 access if an ACCESS request is seen, and for v2 access if a
+> zero byte READ or WRITE is seen.  Would that even come close to
+> working?
+> 
+> NeilBrown
+> 
 
- *  NFS client for NFSv2, NFSv3, and NFSv4
- *  NFS server for NFSv2, NFSv3, and NFSv4 over
-    UDP and TCP
- *  RPCSEC-GSS Kerberos 5 mutual authentication
-    and integrity (client only)
- *  NFSv4 ACL support (client only)
- *  Initial support for NFSv4 state model (client
-    only)
- *  Initial support for authentication against
-    Windows 2000 Active Directory KDCs
-
-        -- Chuck Lever
---
-corporate: <cel at netapp dot com>
-personal:  <chucklever at bigfoot dot com>
