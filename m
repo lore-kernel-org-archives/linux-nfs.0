@@ -1,22 +1,22 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 24 of 34 - add OP_ILLEGAL, and fix processing of compounds with out of bounds op numbers.
-Date: Tue, 24 Feb 2004 10:49:42 +1100
+Subject: [PATCH] kNFSd - 17 of 34 - correct symlink related error returns.
+Date: Tue, 24 Feb 2004 10:49:41 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1AvPpW-0006KC-00@notabene>
+Message-ID: <E1AvPpV-0006JB-00@notabene>
 References: <20040224104820.23884.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1AvPr3-0006xj-Ra
+	id 1AvPr3-0006xi-P1
 	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 15:51:17 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.30)
-	id 1AvPf2-0002QC-CR
+	id 1AvPf2-0002QF-AS
 	for nfs@lists.sourceforge.net; Mon, 23 Feb 2004 15:38:52 -0800
 Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
 	(for <akpm@osdl.org>) (for <nfs@lists.sourceforge.net>) By note With
-	Smtp ; Tue, 24 Feb 2004 10:50:42 +1100
+	Smtp ; Tue, 24 Feb 2004 10:49:42 +1100
 To: Andrew Morton <akpm@osdl.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,69 +31,78 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
+unlike v2/v3, nfsv4 returns nfserr_inval when attempting to read, write,
+commit or test lock a symlink. nfsv4 does return nfserr_symlink
+on lookup and open, so a simple fix in fh_verify() will not work.
+
  ----------- Diffstat output ------------
- ./fs/nfsd/nfs4xdr.c         |   16 +++++++++-------
- ./include/linux/nfs4.h      |    1 +
- ./include/linux/nfsd/nfsd.h |    1 +
- 3 files changed, 11 insertions(+), 7 deletions(-)
+ ./fs/nfsd/nfs4proc.c  |   14 +++++++++++---
+ ./fs/nfsd/nfs4state.c |    2 ++
+ ./fs/nfsd/nfs4xdr.c   |    2 ++
+ 3 files changed, 15 insertions(+), 3 deletions(-)
+
+diff ./fs/nfsd/nfs4proc.c~current~ ./fs/nfsd/nfs4proc.c
+--- ./fs/nfsd/nfs4proc.c~current~	2004-02-24 10:42:33.000000000 +1100
++++ ./fs/nfsd/nfs4proc.c	2004-02-24 10:42:33.000000000 +1100
+@@ -224,11 +224,16 @@ nfsd4_access(struct svc_rqst *rqstp, str
+ static inline int
+ nfsd4_commit(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_commit *commit)
+ {
++	int status;
++
+ 	u32 *p = (u32 *)commit->co_verf.data;
+ 	*p++ = nfssvc_boot.tv_sec;
+ 	*p++ = nfssvc_boot.tv_usec;
+ 
+-	return nfsd_commit(rqstp, current_fh, commit->co_offset, commit->co_count);
++	status = nfsd_commit(rqstp, current_fh, commit->co_offset, commit->co_count);
++	if (status == nfserr_symlink)
++		status = nfserr_inval;
++	return status;
+ }
+ 
+ static inline int
+@@ -558,9 +563,12 @@ zero_stateid:
+ 	*p++ = nfssvc_boot.tv_sec;
+ 	*p++ = nfssvc_boot.tv_usec;
+ 
+-	return (nfsd_write(rqstp, current_fh, write->wr_offset,
++	status =  nfsd_write(rqstp, current_fh, write->wr_offset,
+ 			  write->wr_vec, write->wr_vlen, write->wr_buflen,
+-			  &write->wr_how_written));
++			  &write->wr_how_written);
++	if (status == nfserr_symlink)
++		status = nfserr_inval;
++	return status;
+ out:
+ 	nfs4_unlock_state();
+ 	return status;
+
+diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
+--- ./fs/nfsd/nfs4state.c~current~	2004-02-24 10:42:32.000000000 +1100
++++ ./fs/nfsd/nfs4state.c	2004-02-24 10:42:33.000000000 +1100
+@@ -1973,6 +1973,8 @@ nfsd4_lockt(struct svc_rqst *rqstp, stru
+ 
+ 	if ((status = fh_verify(rqstp, current_fh, S_IFREG, 0))) {
+ 		printk("NFSD: nfsd4_lockt: fh_verify() failed!\n");
++		if (status == nfserr_symlink)
++			status = nfserr_inval;
+ 		goto out;
+ 	}
+ 
 
 diff ./fs/nfsd/nfs4xdr.c~current~ ./fs/nfsd/nfs4xdr.c
---- ./fs/nfsd/nfs4xdr.c~current~	2004-02-24 10:42:34.000000000 +1100
-+++ ./fs/nfsd/nfs4xdr.c	2004-02-24 10:42:35.000000000 +1100
-@@ -1078,6 +1078,13 @@ nfsd4_decode_compound(struct nfsd4_compo
- 		op->opnum = ntohl(*argp->p++);
- 
- 		switch (op->opnum) {
-+		case 2: /* Reserved operation */
-+			op->opnum = OP_ILLEGAL;
-+			if (argp->minorversion == 0)
-+				op->status = nfserr_op_illegal;
-+			else 
-+				op->status = nfserr_minor_vers_mismatch;
-+			break;
- 		case OP_ACCESS:
- 			op->status = nfsd4_decode_access(argp, &op->u.access);
- 			break;
-@@ -1175,13 +1182,8 @@ nfsd4_decode_compound(struct nfsd4_compo
- 			op->status = nfsd4_decode_release_lockowner(argp, &op->u.release_lockowner);
- 			break;
- 		default:
--			/*
--			 * According to spec, anything greater than OP_WRITE
--			 * is treated as OP_WRITE+1 in the response.
--			 */
--			if (op->opnum > OP_WRITE)
--			op->opnum = OP_WRITE + 1;
--			op->status = nfserr_notsupp;
-+			op->opnum = OP_ILLEGAL;
-+			op->status = nfserr_op_illegal;
- 			break;
- 		}
- 
-
-diff ./include/linux/nfs4.h~current~ ./include/linux/nfs4.h
---- ./include/linux/nfs4.h~current~	2004-02-24 10:42:34.000000000 +1100
-+++ ./include/linux/nfs4.h	2004-02-24 10:42:35.000000000 +1100
-@@ -87,6 +87,7 @@ enum nfs_opnum4 {
- 	OP_VERIFY = 37,
- 	OP_WRITE = 38,
- 	OP_RELEASE_LOCKOWNER = 39,
-+	OP_ILLEGAL = 10044,
- };
- 
- enum nfsstat4 {
-
-diff ./include/linux/nfsd/nfsd.h~current~ ./include/linux/nfsd/nfsd.h
---- ./include/linux/nfsd/nfsd.h~current~	2004-02-24 10:42:34.000000000 +1100
-+++ ./include/linux/nfsd/nfsd.h	2004-02-24 10:42:35.000000000 +1100
-@@ -195,6 +195,7 @@ void		nfsd_lockd_shutdown(void);
- #define	nfserr_bad_xdr		__constant_htonl(NFSERR_BAD_XDR)
- #define	nfserr_openmode		__constant_htonl(NFSERR_OPENMODE)
- #define	nfserr_locks_held	__constant_htonl(NFSERR_LOCKS_HELD)
-+#define	nfserr_op_illegal	__constant_htonl(NFSERR_OP_ILLEGAL)
- 
- /* error codes for internal use */
- /* if a request fails due to kmalloc failure, it gets dropped.
+--- ./fs/nfsd/nfs4xdr.c~current~	2004-02-24 10:42:33.000000000 +1100
++++ ./fs/nfsd/nfs4xdr.c	2004-02-24 10:42:33.000000000 +1100
+@@ -2005,6 +2005,8 @@ nfsd4_encode_read(struct nfsd4_compoundr
+ 			   read->rd_offset,
+ 			   read->rd_iov, read->rd_vlen,
+ 			   &maxcount);
++	if (nfserr == nfserr_symlink)
++		nfserr = nfserr_inval;
+ 	if (nfserr)
+ 		return nfserr;
+ 	eof = (read->rd_offset + maxcount >= read->rd_fhp->fh_dentry->d_inode->i_size);
 
 
 -------------------------------------------------------
