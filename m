@@ -1,18 +1,18 @@
-From: James Pearson <james-p@moving-picture.com>
-Subject: Re: stale NFS file handle (2.4.20) ext3 LVM
-Date: Thu, 19 Jun 2003 15:44:06 +0100
+From: =?iso-8859-1?Q?Brasseur_Val=E9ry?= <Valery.Brasseur@atosorigin.com>
+Subject: Re: strange lock problem
+Date: Thu, 19 Jun 2003 18:16:25 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3EF1CC36.8F3EC825@moving-picture.com>
-References: <m3isr2kanm.fsf@merlin.emma.line.org>
+Message-ID: <8147E1B07201DD41B6B9F0D31E07B38444913A@srv-grp-s07.dev.atos.fr>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Cc: "'Lever, Charles'" <Charles.Lever@netapp.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
+Received: from hermes4.atos-group.com ([160.92.18.11])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19T0ek-0003Jt-00
-	for <nfs@lists.sourceforge.net>; Thu, 19 Jun 2003 07:44:54 -0700
-To: Matthias Andree <ma@dt.e-technik.uni-dortmund.de>
+	id 19T25T-0006UW-00
+	for <nfs@lists.sourceforge.net>; Thu, 19 Jun 2003 09:16:35 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,108 +25,61 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-[Sorry -  sent the message before I had finished ...]
+Having investigate more, I know see that sometimes 2 process are able =
+to
+obtain the same file lock !
 
-There are a number of things that can cause stale NFS file handles on
-all clients with file systems mounted from the server when the server
-reboots - they include:
- 
-The device on the server containing the file system changes e.g. change
-of SCSI ID.
- 
-The file system not being mounted on the server when exported i.e. the
-'wrong' file system is exported.
- 
-The contents of /var/lib/nfs/rmtab being missing or corrupt. If a
-client's entry is missing in rmtab after a server reboot, then the
-server no nothing about the clients claim to have mounted the file
-system - and gives a stale NFS file handle.
+in this case the 2 processes have 10 minutes interval of start ! and =
+the
+last one is the one in the filer lock table !! not the first !!!
 
- 
-As you didn't change anything between reboots, then I guess it could be
-the last case above. 
+any ideas ?
 
-I've seen similar problems - I use XFS for my file systems and I _think_
-the rmtab file contents got replaced with NULLs when the file server
-crashed (a known 'problem' with XFS).
-
-Also, if a client attempts to umount the file system from the server,
-but the file system is busy, then rpc.mountd on the server will remove
-the client's entry from rmtab, but the umount on the client will fail
-and remain active. If the server now reboots, the client will get stale
-NFS file handles when the server comes back up.
-
-James Pearson
-
-
-Matthias Andree wrote:
-> 
-> Hi,
-> 
-> I rebooted one of my NFS servers (no configuration changed), and when it
-> came back up, all clients that had the exported file system mounted
-> (NFSv3 hard mount) reported stale NFS file handles, for the file system
-> root and for files within. The STALE error travelled across the wire
-> according to ethereal.
-> 
-> The server system runs SuSE Linux 8.2, they ship a 2.4.20 kernel with
-> some patches (POSIX ACL stuff, SuSE claim it's Solaris compatible,
-> haven't tested yet). Their start script is below.
-> 
-> The clients run SuSE Linux 8.1 with a patched 2.4.19 (no ACL stuff). The
-> server configuration wasn't changed across the reboot except for
-> replacing a SCSI terminator (I borrowed one I gave back when my own
-> arrived.)
-> 
-> Is there any known issue with NFS-exporting file systems that are hosted
-> in LVM volumes? Is there an issue with SuSE's ACL patches?
-> 
-> How is the file handle obtained and under what circumstances will it
-> become stale after a reboot? SuSE's RPM on the server is
-> nfs-utils-1.0.1-89.
-> 
-> I was under the impression that rebooting a server into the same
-> configuration would NOT give stale NFS file handles, in fact, this has
-> worked before with a SuSE Linux 8.1 server (but that one didn't use LVM
-> either, so there are two -- for me inseparable -- major differences
-> here.)
-> 
-> Sometimes on frustrated days like these I think I should just replace
-> this Linux NFS with Solaris. :-/
-> 
-> Can somebody point me to documents about NFS file handle internals or
-> try to explain the situation? Testing directions are welcome, as are
-> "kill LVM" or "kill ACL patches", the server isn't in production yet, so
-> there's still time to fix things for good. (Even kill SuSE, replace with
-> Debian/RedHat is an acceptable suggestion if there are technical
-> reasons.)
-> 
-> I also wonder if NFS clients should have a "masochistically_hard" mount
-> options that issue SIGKILL to processes that use stale NFS file handles,
-> I could use this...
-> 
-> SuSE 8.2 nfsserver start script excerpt (the nfslock daemon is started
-> before execution of this script):
-> 
->       PARAMS=3
->       test "$USE_KERNEL_NFSD_NUMBER" -gt 0 && PARAMS="$USE_KERNEL_NFSD_NUMBER"
-> 
->       echo -n "Starting kernel based NFS server"
->       /usr/sbin/exportfs -r
->       /usr/sbin/rpc.nfsd $PARAMS
->       startproc /usr/sbin/rpc.mountd
-> 
-> --
-> Matthias 'NFS sucks some days' Andree
-> 
+> -----Original Message-----
+> From: Brasseur Val=E9ry=20
+> Sent: Wednesday, June 18, 2003 3:13 PM
+> To: nfs@lists.sourceforge.net
+> Subject: [NFS] strange lock problem
+>=20
+>=20
+> I am running Linux client (2.4.20 + NFS-ALL) mounting NetApp filer
+> (DataOnTap 6.4).
+>=20
+> sometime I see lock which are not associated whit a process !
+>=20
+> ie:  on the filer i do a lock_dump -h : get list of lock
+>=20
+> on the client, I match the pid's form the list if my running=20
+> pid's... and
+> some are not found, even in the /proc/locks !!!
+>=20
+>=20
+> if I clear the locks on the filer (by a sm_mon -l) they are=20
+> all claimed !
+>=20
+>=20
+> but after some time (a couple of hours !) a new sm_mon -l=20
+> clear these locks
+> !!!!
+>=20
+>=20
+> did someone have ideas ?
+>=20
+> thanks=20
+>=20
+>=20
 > -------------------------------------------------------
 > This SF.Net email is sponsored by: INetU
-> Attention Web Developers & Consultants: Become An INetU Hosting Partner.
-> Refer Dedicated Servers. We Manage Them. You Get 10% Monthly Commission!
-> INetU Dedicated Managed Hosting http://www.inetu.net/partner/index.php
+> Attention Web Developers & Consultants: Become An INetU=20
+> Hosting Partner.
+> Refer Dedicated Servers. We Manage Them. You Get 10% Monthly=20
+> Commission!
+> INetU Dedicated Managed Hosting =
+http://www.inetu.net/partner/index.php
 > _______________________________________________
 > NFS maillist  -  NFS@lists.sourceforge.net
 > https://lists.sourceforge.net/lists/listinfo/nfs
+>=20
 
 
 -------------------------------------------------------
