@@ -1,27 +1,28 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Greg Banks <gnb@melbourne.sgi.com>
 Subject: Re: Different NFSSVC_MAXBLKSIZE for udp and tcp clients?
-Date: 26 Nov 2003 19:53:04 -0500
+Date: Thu, 27 Nov 2003 12:33:50 +1100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shs1xrutyxb.fsf@charged.uio.no>
-References: <482A3FA0050D21419C269D13989C6113020AC79F@lavender-fe.eng.netapp.com>
-	<3FC54066.C04EBA49@melbourne.sgi.com>
+Message-ID: <3FC5547E.7EBF817@melbourne.sgi.com>
+References: <3FC3929C.EFFE5CDF@moving-picture.com>
+		<3FC3FD0C.B2DD2183@melbourne.sgi.com>
+		<3FC483D6.6753DCA3@moving-picture.com>
+		<16325.9710.935587.140271@notabene.cse.unsw.edu.au>
+		<3FC54373.EC448BB1@melbourne.sgi.com> <16325.18142.376089.406722@notabene.cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Lever, Charles" <Charles.Lever@netapp.com>,
-	  James Pearson <james-p@moving-picture.com>,
-	  nfs@lists.sourceforge.net
+Cc: James Pearson <james-p@moving-picture.com>,
+   Trond Myklebust <trond.myklebust@fys.uio.no>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1APAPF-0001UM-00
-	for <nfs@lists.sourceforge.net>; Wed, 26 Nov 2003 16:53:17 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
-	id 1APAPE-0003In-Tx
-	for nfs@lists.sourceforge.net; Wed, 26 Nov 2003 16:53:17 -0800
-To: Greg Banks <gnb@melbourne.sgi.com>
-In-Reply-To: <3FC54066.C04EBA49@melbourne.sgi.com>
+	id 1APB2x-0007ln-00
+	for <nfs@lists.sourceforge.net>; Wed, 26 Nov 2003 17:34:19 -0800
+Received: from mtvcafw.sgi.com ([192.48.171.6] helo=rj.sgi.com)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
+	id 1APB2v-0005gC-BT
+	for nfs@lists.sourceforge.net; Wed, 26 Nov 2003 17:34:17 -0800
+To: Neil Brown <neilb@cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -34,28 +35,46 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Greg Banks <gnb@melbourne.sgi.com> writes:
+Neil Brown wrote:
+> 
+> On Thursday November 27, gnb@melbourne.sgi.com wrote:
+> > Neil Brown wrote:
+> >
+> > The point is that the server's maximum is too low, [...]
+> 
+> Why didn't you say so then (or did you and I missed it?).
 
-    >> is there any evidence to show that a 4MB TCP maximum will have
-    >> benefits over something smaller, like say 1MB ?
+Sorry, just being obscure ;-)
 
-     > None at all on Linux.  I mention that specific number only
-     > because it's the hardcoded maximum on IRIX.
+> The code in 2.4 is not ready to cope well with larger NFS packets. [...]
+> For a 32k write, that means a
+> kmalloc(32768) has to succeed, and very often free memory is too
+> fragmented for it to succeed.
+> 
+> For tcp, the request will be copied into a pre-allocated buffer.  The
+> (large) buffer is allocated when the nfsd thread is started,[...]
 
-Actually, there is plenty of evidence that this would help Linux too.
+Ok, so if physical memory fragmentation is the only issue I'll just
+try it.  With 16K pages the allocation orders will be more reasonable.
 
-A couple of the 64-bit architectures with large page sizes would
-definitely benefit, since the NFS client code currently is forced to
-doing synchronous reads/writes if the r/wsize is less than the page
-size (yes - fixing this in the client is on the agenda too).
+> 2.6 copes with page-lists and so can handle requests and replies that
+> are not cntiguous in memory, so this is not an issue and MAXBLKSIZE
+> can safely be increased.
 
-Those that still want to use NFSv2, or that wish to write short files
-under NFSv3 will benefit too (the latter from the fact that you can
-coalesce the unstable writes + commit into 1 stable write). Ditto for
-smallish O_SYNC writes.
+Excellent, this sounds like it deals with my long-term issue.
 
-Cheers,
-  Trond
+> I suggest that you simply recompile the kernel with a larger
+> NFSSVC_MAXBLKSIZE and see how well it works.
+> I can see no reasonable for having different values for udp and tcp
+> though.  Just make it uniformly 32768 and see how it goes.
+
+How about I conditionally define NFSSVC_MAXBLKSIZE to 32k if the
+page size is sufficently large?  Would such a patch make it into 2.4?
+
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
 
 -------------------------------------------------------
