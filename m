@@ -1,23 +1,25 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Subject: Re: sendmail "cannot fsync directory" after 2.4 -> 2.6
-Date: Thu, 09 Sep 2004 10:58:39 -0400
+Date: Thu, 9 Sep 2004 11:54:25 -0600 (MDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1094741919.7972.5.camel@lade.trondhjem.org>
-References: <413FF4EB.2070607@bio.ifi.lmu.de>
+Message-ID: <Pine.LNX.4.60.0409091153420.17332@harp.ngdc.noaa.gov>
+References: <413FF4EB.2070607@bio.ifi.lmu.de> <1094741919.7972.5.camel@lade.trondhjem.org>
+Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-1IipP6agcrr0e546maVT"
-Cc: nfs@lists.sourceforge.net
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1235949913-1094752465=:17332"
+Cc: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C5QO3-0001ad-Rc
-	for nfs@lists.sourceforge.net; Thu, 09 Sep 2004 07:58:59 -0700
-Received: from pat.uio.no ([129.240.130.16])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1C5QO0-0005C6-M5
-	for nfs@lists.sourceforge.net; Thu, 09 Sep 2004 07:58:58 -0700
-To: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
-In-Reply-To: <413FF4EB.2070607@bio.ifi.lmu.de>
+	id 1C5T8i-00077Z-TF
+	for nfs@lists.sourceforge.net; Thu, 09 Sep 2004 10:55:20 -0700
+Received: from harp.ngdc.noaa.gov ([140.172.187.26])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.34)
+	id 1C5T8h-0006Us-4V
+	for nfs@lists.sourceforge.net; Thu, 09 Sep 2004 10:55:20 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1094741919.7972.5.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -30,76 +32,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
---=-1IipP6agcrr0e546maVT
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: quoted-printable
+--8323328-1235949913-1094752465=:17332
+Content-Type: TEXT/PLAIN; charset=X-UNKNOWN; format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 
-P=E5 to , 09/09/2004 klokka 02:15, skreiv Frank Steiner:
+On Thu, 9 Sep 2004, Trond Myklebust wrote:
 
-> Sep  9 08:03:13 galois sendmail[21596]: sync_dir: cannot fsync directory =
-.: Invalid argument
-> Sep  9 08:04:02 galois sendmail[21649]: i89641NZ021648: SYSERR(root): syn=
-c_dir: cannot fsync directory .: Invalid argument
+> P=E5 to , 09/09/2004 klokka 02:15, skreiv Frank Steiner:
+>
+>> Sep  9 08:03:13 galois sendmail[21596]: sync_dir: cannot fsync directory=
+ .: Invalid argument
+>> Sep  9 08:04:02 galois sendmail[21649]: i89641NZ021648: SYSERR(root): sy=
+nc_dir: cannot fsync directory .: Invalid argument
+>
+> Yep. We forgot to add the stub to Linux 2.6.x. Please confirm that the
+> following patch fixes the problem for you.
 
-Yep. We forgot to add the stub to Linux 2.6.x. Please confirm that the
-following patch fixes the problem for you.
+will fsync'ing a directory have any affect on the client inode cache for th=
+at
+dir?  eg. will it invalidate that cache?
 
-Cheers,
-  Trond
+cheers.
 
-
---=-1IipP6agcrr0e546maVT
-Content-Disposition: inline; filename=linux-2.6.9-01-add_dummy_fsync.dif
-Content-Type: text/plain; name=linux-2.6.9-01-add_dummy_fsync.dif; charset=iso-8859-1
-Content-Transfer-Encoding: 7bit
-
-NFS: add an fsync() stub for directories
-
-Signed-off-by: Trond Myklebust <trond.myklebust@fys.uio.no>
-
----
- dir.c |   11 +++++++++++
- 1 files changed, 11 insertions(+)
-
-Index: linux-2.6.9-rc1/fs/nfs/dir.c
-===================================================================
---- linux-2.6.9-rc1.orig/fs/nfs/dir.c	2004-09-08 21:14:12.000000000 -0400
-+++ linux-2.6.9-rc1/fs/nfs/dir.c	2004-09-09 10:53:49.332399870 -0400
-@@ -51,12 +51,14 @@
- static int nfs_mknod(struct inode *, struct dentry *, int, dev_t);
- static int nfs_rename(struct inode *, struct dentry *,
- 		      struct inode *, struct dentry *);
-+static int nfs_fsync_dir(struct file *, struct dentry *, int);
- 
- struct file_operations nfs_dir_operations = {
- 	.read		= generic_read_dir,
- 	.readdir	= nfs_readdir,
- 	.open		= nfs_opendir,
- 	.release	= nfs_release,
-+	.fsync		= nfs_fsync_dir,
- };
- 
- struct inode_operations nfs_dir_inode_operations = {
-@@ -493,6 +495,15 @@
- }
- 
- /*
-+ * All directory operations under NFS are synchronous, so fsync()
-+ * is a dummy operation.
-+ */
-+int nfs_fsync_dir(struct file *filp, struct dentry *dentry, int datasync)
-+{
-+	return 0;
-+}
-+
-+/*
-  * A check for whether or not the parent directory has changed.
-  * In the case it has, we assume that the dentries are untrustworthy
-  * and may need to be looked up again.
-
---=-1IipP6agcrr0e546maVT--
-
+-a
+--
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D
+| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
+| PHONE   :: 303.497.6469
+| A flower falls, even though we love it;
+| and a weed grows, even though we do not love it.=20
+|   --Dogen
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D
+--8323328-1235949913-1094752465=:17332--
 
 
 -------------------------------------------------------
