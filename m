@@ -1,18 +1,18 @@
 From: mehta kiran <kiranmehta1981@yahoo.com>
 Subject: Re: problem mounting using NFSv4 when using -o sec=krb5  option
-Date: Wed, 16 Mar 2005 06:36:50 -0800 (PST)
-Message-ID: <20050316143650.41782.qmail@web51603.mail.yahoo.com>
+Date: Wed, 16 Mar 2005 06:36:47 -0800 (PST)
+Message-ID: <20050316143647.52000.qmail@web51607.mail.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DBZdp-0001A2-JF
-	for nfs@lists.sourceforge.net; Wed, 16 Mar 2005 06:36:57 -0800
-Received: from web51603.mail.yahoo.com ([206.190.38.208])
+	id 1DBZds-0001A9-N8
+	for nfs@lists.sourceforge.net; Wed, 16 Mar 2005 06:37:00 -0800
+Received: from web51607.mail.yahoo.com ([206.190.38.212])
 	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
-	id 1DBZdo-0000Gk-TF
-	for nfs@lists.sourceforge.net; Wed, 16 Mar 2005 06:36:57 -0800
+	id 1DBZdr-0000H1-4l
+	for nfs@lists.sourceforge.net; Wed, 16 Mar 2005 06:37:00 -0800
 To: Kevin Coffman <kwc@citi.umich.edu>
 In-Reply-To: 6667
 Sender: nfs-admin@lists.sourceforge.net
