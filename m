@@ -1,22 +1,22 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: PATCH - knfsd - Reorganise sock init in rpcsvc to avoid
- races.
-Date: Tue, 17 Dec 2002 13:11:02 +1100
+From: "Irina Slutsky" <ira@ibrix.com>
+Subject: RE: [PATCH] kNFSd - 2 of 7 - Revlaidate inodes after filehandle and name lookup in nfsd
+Date: Tue, 17 Dec 2002 09:36:25 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15870.34742.326536.705138@notabene.cse.unsw.edu.au>
+Message-ID: <000201c2a5d9$adcec250$6902a8c0@Iralaptop>
+References: <E18O714-0000ot-00@notabene.cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: "'Brian Dixon'" <dixonbp@us.ibm.com>,
+   "'NeilBrown'" <neilb@cse.unsw.edu.au>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18O7CN-00061I-00
-	for <nfs@lists.sourceforge.net>; Mon, 16 Dec 2002 18:11:08 -0800
-Received: From
-	notabene.cse.unsw.edu.au ([129.94.233.239] == wireless-239.wireless.cse.unsw.EDU.AU)
-	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>) By
-	tone With Smtp ; Tue, 17 Dec 2002 13:11:02 +1100
-To: Linus Torvalds <torvalds@transmeta.com>
+Received: from mail3.atl.registeredsite.com ([64.224.219.77] ident=nobody)
+	by sc8-sf-list1.sourceforge.net with esmtp
+	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18OIpx-0004zT-00
+	for <nfs@lists.sourceforge.net>; Tue, 17 Dec 2002 06:36:46 -0800
+To: <nfs@lists.sourceforge.net>
+In-Reply-To: <E18O714-0000ot-00@notabene.cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,153 +29,100 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Thanks for this patch. Problem, this patch is addressing is very
+important for me. This is the behaviors I am missing and is trying to
+work around. When do you think this patch can be incorporated in the
+official kernel release?
+
+Small note: there is an inline routine 
+do_reavlidate(struct denty *) in the kernel
+that could be used instead. It has all the "if"s checking inside.
+
+I also have a question on the same topic:
+
+Is there any particular reason for not allowing a fs to create file
+handle for exported entry? I know the code is easier this way, but it
+would be very useful. 
+
+Thanks
+Irina Slutsky 
 
 
-If one of the callbacks (e.g. data ready) is called 
-before socket setup is complete, an oops may occur.
+-----Original Message-----
+From: nfs-admin@lists.sourceforge.net
+[mailto:nfs-admin@lists.sourceforge.net] On Behalf Of NeilBrown
+Sent: Monday, December 16, 2002 8:59 PM
+To: Marcelo Tosatti
+Cc: nfs@lists.sourceforge.net
+Subject: [NFS] [PATCH] kNFSd - 2 of 7 - Revlaidate inodes after
+filehandle and name lookup in nfsd
 
-With this patch, socket is kept SK_BUSY until all is
-ready to avoid this.
-
-Also some code is moved around to make it cleaner.
 
 
-
-
+The patch was written by Marc Eshel and Frank Schmuck. 
+It was received from  "Brian Dixon" <dixonbp@us.ibm.com>
+though I changed it slightly.
 
  ----------- Diffstat output ------------
- ./net/sunrpc/svcsock.c |   55 ++++++++++++++++++++++---------------------------
- 1 files changed, 25 insertions(+), 30 deletions(-)
+ ./fs/nfsd/nfsfh.c |    7 +++++++
+ ./fs/nfsd/vfs.c   |   12 +++++++-----
+ 2 files changed, 14 insertions(+), 5 deletions(-)
 
-diff ./net/sunrpc/svcsock.c~current~ ./net/sunrpc/svcsock.c
---- ./net/sunrpc/svcsock.c~current~	2002-12-09 15:48:09.000000000 +1100
-+++ ./net/sunrpc/svcsock.c	2002-12-09 15:48:09.000000000 +1100
-@@ -627,7 +627,7 @@ svc_udp_sendto(struct svc_rqst *rqstp)
- 	return error;
- }
- 
--static int
-+static void
- svc_udp_init(struct svc_sock *svsk)
- {
- 	svsk->sk_sk->data_ready = svc_udp_data_ready;
-@@ -643,9 +643,8 @@ svc_udp_init(struct svc_sock *svsk)
- 			    3 * svsk->sk_server->sv_bufsz,
- 			    3 * svsk->sk_server->sv_bufsz);
- 
-+	set_bit(SK_DATA, &svsk->sk_flags); /* might have come in before data_ready set up */
- 	set_bit(SK_CHNGBUF, &svsk->sk_flags);
--
--	return 0;
- }
- 
- /*
-@@ -773,19 +772,14 @@ svc_tcp_accept(struct svc_sock *svsk)
- 	dprintk("%s: connect from %u.%u.%u.%u:%04x\n", serv->sv_name,
- 			NIPQUAD(sin.sin_addr.s_addr), ntohs(sin.sin_port));
- 
--	if (!(newsvsk = svc_setup_socket(serv, newsock, &err, 0)))
--		goto failed;
--
- 	/* make sure that a write doesn't block forever when
- 	 * low on memory
- 	 */
- 	newsock->sk->sndtimeo = HZ*30;
- 
--	/* Precharge. Data may have arrived on the socket before we
--	 * installed the data_ready callback. 
--	 */
--	set_bit(SK_DATA, &newsvsk->sk_flags);
--	svc_sock_enqueue(newsvsk);
-+	if (!(newsvsk = svc_setup_socket(serv, newsock, &err, 0)))
-+		goto failed;
-+
- 
- 	/* make sure that we don't have too many active connections.
- 	 * If we have, something must be dropped.
-@@ -1006,7 +1000,7 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
- 	return sent;
- }
- 
--static int
-+static void
- svc_tcp_init(struct svc_sock *svsk)
- {
- 	struct sock	*sk = svsk->sk_sk;
-@@ -1017,6 +1011,7 @@ svc_tcp_init(struct svc_sock *svsk)
- 	if (sk->state == TCP_LISTEN) {
- 		dprintk("setting up TCP socket for listening\n");
- 		sk->data_ready = svc_tcp_listen_data_ready;
-+		set_bit(SK_CONN, &svsk->sk_flags);
- 	} else {
- 		dprintk("setting up TCP socket for reading\n");
- 		sk->state_change = svc_tcp_state_change;
-@@ -1035,9 +1030,8 @@ svc_tcp_init(struct svc_sock *svsk)
- 				    3 * svsk->sk_server->sv_bufsz);
- 
- 		set_bit(SK_CHNGBUF, &svsk->sk_flags);
-+		set_bit(SK_DATA, &svsk->sk_flags);
+diff ./fs/nfsd/nfsfh.c~current~ ./fs/nfsd/nfsfh.c
+--- ./fs/nfsd/nfsfh.c~current~	2002-12-16 16:28:47.000000000 +1100
++++ ./fs/nfsd/nfsfh.c	2002-12-16 16:28:47.000000000 +1100
+@@ -620,6 +620,13 @@ fh_verify(struct svc_rqst *rqstp, struct
+ 			switch (fh->fh_fileid_type) {
+ 			case 0:
+ 				dentry = dget(exp->ex_dentry);
++				/* need to revalidate the inode */
++				inode = dentry->d_inode;
++				if (inode->i_op &&
+inode->i_op->revalidate)
++					if
+(inode->i_op->revalidate(dentry)) {
++						dput(dentry);
++						dentry =
+ERR_PTR(-ESTALE);
++					}
+ 				break;
+ 			default:
+ 				dentry =
+find_fh_dentry(exp->ex_dentry->d_inode->i_sb,
+
+diff ./fs/nfsd/vfs.c~current~ ./fs/nfsd/vfs.c
+--- ./fs/nfsd/vfs.c~current~	2002-12-16 16:28:47.000000000 +1100
++++ ./fs/nfsd/vfs.c	2002-12-16 16:28:47.000000000 +1100
+@@ -168,11 +168,13 @@ nfsd_lookup(struct svc_rqst *rqstp, stru
+ 			mntput(mnt);
+ 		}
  	}
--
--	return 0;
- }
- 
- void
-@@ -1258,6 +1252,18 @@ svc_setup_socket(struct svc_serv *serv, 
- 	memset(svsk, 0, sizeof(*svsk));
- 
- 	inet = sock->sk;
+-	/*
+-	 * Note: we compose the file handle now, but as the
+-	 * dentry may be negative, it may need to be updated.
+-	 */
+-	err = fh_compose(resfh, exp, dentry, fhp);
 +
-+	/* Register socket with portmapper */
-+	if (*errp >= 0 && pmap_register)
-+		*errp = svc_register(serv, inet->protocol,
-+				     ntohs(inet_sk(inet)->sport));
-+
-+	if (*errp < 0) {
-+		kfree(svsk);
-+		return NULL;
-+	}
-+
-+	set_bit(SK_BUSY, &svsk->sk_flags);
- 	inet->user_data = svsk;
- 	svsk->sk_sock = sock;
- 	svsk->sk_sk = inet;
-@@ -1271,23 +1277,9 @@ svc_setup_socket(struct svc_serv *serv, 
- 
- 	/* Initialize the socket */
- 	if (sock->type == SOCK_DGRAM)
--		*errp = svc_udp_init(svsk);
-+		svc_udp_init(svsk);
- 	else
--		*errp = svc_tcp_init(svsk);
--if (svsk->sk_sk == NULL)
--	printk(KERN_WARNING "svsk->sk_sk == NULL after svc_prot_init!\n");
--
--	/* Register socket with portmapper */
--	if (*errp >= 0 && pmap_register)
--		*errp = svc_register(serv, inet->protocol,
--				     ntohs(inet_sk(inet)->sport));
--
--	if (*errp < 0) {
--		inet->user_data = NULL;
--		kfree(svsk);
--		return NULL;
--	}
--
-+		svc_tcp_init(svsk);
- 
- 	spin_lock_bh(&serv->sv_lock);
- 	if (!pmap_register) {
-@@ -1302,6 +1294,9 @@ if (svsk->sk_sk == NULL)
- 
- 	dprintk("svc: svc_setup_socket created %p (inet %p)\n",
- 				svsk, svsk->sk_sk);
-+
-+	clear_bit(SK_BUSY, &svsk->sk_flags);
-+	svc_sock_enqueue(svsk);
- 	return svsk;
- }
- 
++	if (dentry->d_inode && dentry->d_inode->i_op &&
++	    dentry->d_inode->i_op->revalidate &&
++	    dentry->d_inode->i_op->revalidate(dentry))
++		err = nfserr_noent;
++	else
++		err = fh_compose(resfh, exp, dentry, fhp);
+ 	if (!err && !dentry->d_inode)
+ 		err = nfserr_noent;
+ out:
+
+
+-------------------------------------------------------
+This sf.net email is sponsored by:
+With Great Power, Comes Great Responsibility 
+Learn to use your power at OSDN's High Performance Computing Channel
+http://hpc.devchannel.org/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+
 
 
 -------------------------------------------------------
