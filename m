@@ -1,17 +1,18 @@
-From: William Lee Irwin III <wli@holomorphy.com>
-Subject: performance much improved
-Date: Sat, 6 Apr 2002 23:29:45 -0800
+From: "Steven N. Hirsch" <shirsch@adelphia.net>
+Subject: 2.4.19-pre5-ac3 NFS problems
+Date: Sun, 7 Apr 2002 13:05:42 -0400 (EDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020407072945.GN30807@holomorphy.com>
+Message-ID: <Pine.LNX.4.44.0204071301260.3017-100000@atx.fast.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Received: from holomorphy.com ([66.224.33.161] helo=holomorphy)
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Received: from smtprelay9.dc2.adelphia.net ([64.8.50.53])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16u77w-0001pJ-00
-	for <nfs@lists.sourceforge.net>; Sat, 06 Apr 2002 23:30:16 -0800
-Received: from wli by holomorphy with local (Exim 3.34 #1 (Debian))
-	id 16u77R-0004ss-00
-	for <nfs@lists.sourceforge.net>; Sat, 06 Apr 2002 23:29:45 -0800
+	id 16uFzh-0005va-00
+	for <nfs@lists.sourceforge.net>; Sun, 07 Apr 2002 09:58:21 -0700
+Received: from atx.fast.net ([24.50.57.192]) by
+          smtprelay9.dc2.adelphia.net (Netscape Messaging Server 4.15)
+          with ESMTP id GU7JC902.73M for <nfs@lists.sourceforge.net>; Sun,
+          7 Apr 2002 13:02:33 -0400
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -25,25 +26,23 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Earlier in the 2.4.x series I noted a strange anomaly:
+All,
 
-NetBSD nfsroot clients were able to drive up the load on a 2.4.x NFS
-server to 10 or 20. This was doubly surprising as the clients were
-machines of far lesser power than the NFS server (e.g. sun3/60 vs. a
-600MHz Athlon running Linux ~2.4.8).
+I'm not sure exactly what has been integrated into Alan's pre5-ac3 kernel,
+but there are serious problems with NFS over TCP.  Twice in a row I've had
+locked processes on the client when attempting to lock a mail spool on the
+server.  Required reboot on both ends to clear :-(.
 
-A pleasant surprise occurred today while doing make build simultaneously
-on all 3 of my NetBSD toasters (sun3/60, ss1, and decstation 5000/200):
+FWIW, I had been running for almost a month prior with 2.4.19-pre2 + 
+Trond's 2.4.18_NFS_ALL using NFS over TCP and saw no problems.  I moved to 
+the new kernel ONLY on the server.  After reverting back, all seems stable 
+again.
 
-The load average on my main machine (the NFS server, 2.4.18-pre7-ac3)
-remained quite low, and the machine quite responsive.
+What is the current status of the various 2.4.x patches floating around?  
 
-I confess I haven't been following the developments closely, but I can
-say thank you, and congratulations on the performance improvement.
+Steve
 
 
-Cheers,
-Bill
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
