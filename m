@@ -1,22 +1,26 @@
-From: "Lever, Charles" <cel@netapp.com>
-Subject: RE: Re: more on silly names
-Date: Sat, 4 Sep 2004 16:46:11 -0700
+From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Subject: Re: Re: more on silly names
+Date: Sat, 4 Sep 2004 18:15:04 -0600 (MDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <482A3FA0050D21419C269D13989C61130435E768@lavender-fe.eng.netapp.com>
+Message-ID: <Pine.LNX.4.60.0409041813340.17016@harp.ngdc.noaa.gov>
+References: <Pine.LNX.4.60.0409041610230.17016@harp.ngdc.noaa.gov>
+ <1094338737.13791.15.camel@lade.trondhjem.org>
+Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1724085044-1094343304=:17016"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C3kEe-00039c-41
-	for nfs@lists.sourceforge.net; Sat, 04 Sep 2004 16:46:20 -0700
-Received: from mx01.netapp.com ([198.95.226.53])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.34)
-	id 1C3kEb-00031o-TK
-	for nfs@lists.sourceforge.net; Sat, 04 Sep 2004 16:46:20 -0700
-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+	id 1C3kgb-0000pR-Dq
+	for nfs@lists.sourceforge.net; Sat, 04 Sep 2004 17:15:13 -0700
+Received: from harp.ngdc.noaa.gov ([140.172.187.26])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.34)
+	id 1C3kgV-0004Pf-VS
+	for nfs@lists.sourceforge.net; Sat, 04 Sep 2004 17:15:11 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1094338737.13791.15.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -29,13 +33,56 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> If mmapped data needs to be committed to disk before the=20
-> flushd/pdflush daemon gets round to doing it, you need to=20
-> explicitly call msync().
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-msync() is broken on NFS files before 2.4.24-ish.  so be sure you are on
-a recent kernel, or are running the latest update of RHEL 3.0, if you
-need msync() to work correctly.
+--8323328-1724085044-1094343304=:17016
+Content-Type: TEXT/PLAIN; charset=X-UNKNOWN; format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+
+On Sat, 4 Sep 2004, Trond Myklebust wrote:
+
+> P=E5 lau , 04/09/2004 klokka 18:27, skreiv Ara.T.Howard:
+>> i think i've found the cause of the sillnames appearing in my directory:
+>> for transaction sqlite aquires a lock, writes changes first to a db-jour=
+nal
+>> file, then to the actual db, closes the journal, unlinks the journal, an=
+d
+>> releases the lock.  this sequence should not create a silly file, but se=
+ems
+>> to do so:
+>
+> I believe that the Berkeley database code uses mmap() to read/write the
+> data, in which case close() will not actually suffice to sync the data
+> to the server (unlike the case of ordinary file write).
+>
+> If mmapped data needs to be committed to disk before the flushd/pdflush
+> daemon gets round to doing it, you need to explicitly call msync().
+
+it's sqlite - not berkeley db - so there is no mmap'ing at all going on
+(confirmed by strace).
+
+i've been able to reproduce the problem with a single client using the
+database - eg. the client causes a sillyname on one of it's own files via t=
+he
+sequence i outlined before.
+
+-a
+--
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D
+| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
+| PHONE   :: 303.497.6469
+| A flower falls, even though we love it;
+| and a weed grows, even though we do not love it.=20
+|   --Dogen
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D
+--8323328-1724085044-1094343304=:17016--
 
 
 -------------------------------------------------------
