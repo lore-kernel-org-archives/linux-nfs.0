@@ -1,26 +1,16 @@
-From: Yusuf Goolamabbas <yusufg@outblaze.com>
-Subject: Re: nfsd tuning - please help me!
-Date: Mon, 17 Feb 2003 10:59:22 +0800
+From: James Pearson <james-p@moving-picture.com>
+Subject: Server/client mismatch over status of a mount ...
+Date: Mon, 17 Feb 2003 14:06:09 +0000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030217025922.GA20685@outblaze.com>
-References: <20030214174453.11719.qmail@web12201.mail.yahoo.com> <200302142032.h1EKWCIJ006931@buggy.badula.org>
+Message-ID: <3E50EC51.6022D3A7@moving-picture.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Alan Powell <lakerfaniam2@yahoo.com>,
-	Steve Dickson <SteveD@RedHat.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from 202-77-223-51.outblaze.com ([202.77.223.51] helo=corpmail.outblaze.com)
+Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18kbU7-0007w8-00
-	for <nfs@lists.sourceforge.net>; Sun, 16 Feb 2003 18:58:23 -0800
-Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by corpmail.outblaze.com (Postfix) with ESMTP id 38FDB7F85
-	for <nfs@lists.sourceforge.net>; Mon, 17 Feb 2003 03:06:39 +0000 (GMT)
-Received: from yusufg.portal2.com (202-77-223-125.outblaze.com [202.77.223.125])
-	by corpmail.outblaze.com (Postfix) with SMTP id 97941520CC
-	for <nfs@lists.sourceforge.net>; Mon, 17 Feb 2003 03:06:38 +0000 (GMT)
-To: Ion Badulescu <ionut@badula.org>
-In-Reply-To: <200302142032.h1EKWCIJ006931@buggy.badula.org>
+	id 18klux-0008Ed-00
+	for <nfs@lists.sourceforge.net>; Mon, 17 Feb 2003 06:06:47 -0800
+To: nfs@lists.sourceforge.net, autofs@linux.kernel.org
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -33,33 +23,63 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Maybe RH can put their kernel's through a fstress routine
+We've had a number of cases recently whereby NFS servers think a client
+has umounted a disk, but the client still has the disk mounted.
 
-http://www.cs.duke.edu/ari/fstress/
+i.e. the client's entry in the server's /var/lib/nfs/rmtab has been
+removed.
 
-According to the author Darell Anderson,
+The clients mount the NFS disks using autofs
 
-http://docs.freebsd.org/cgi/getmsg.cgi?fetch=1126014+0+archive/2003/freebsd-current/20030216.freebsd-current
+This doesn't cause a problem in normal use (processes running on the
+client can access the mounted file system OK) - but if the server
+reboots, processes on the client get 'permission denied' when accessing
+the mounted file system from the server (not surprising, as the server
+has no record on the mount).
 
-It can emulates SPECsfs
+The problem _seems_ to occur with processes on the client that are in a
+defunct state, and may have been so for days (or weeks) e.g. here is the
+edited logs from a client and server:
 
-> > Unfortunately, we've tried all that already. So given
-> > that we are not hardware/network constrained, does all
-> > this mean that the Linux kernel NFS runs into
-> > performance issues beyond 100 file reads/sec?
-> 
-> It's quite possible...
-> 
-> What I'd recommend, however, is testing this again with a non-RedHat
-> kernel on the client. More precisely, try running 2.4.20 plus the 
-> NFSALL patch from Trond's site <http://www.fys.uio.no/~trondmy/src/>.
-> 
-> We've had significant performance problems over here with the RedHat
-> kernels, which mostly went away when we replaced the NFS client code
-> with 2.4.20+NFSALL.
-> 
-> Hope this helps,
-> Ion
+client:
+
+messages.4:Jan 20 13:00:04 client automount[505]: attempting to mount
+entry /export/server1
+messages.4:Jan 20 13:09:55 client automount[2416]: expired
+/export/server1
+messages.4:Jan 20 13:21:48 client automount[505]: attempting to mount
+entry /export/server1
+
+
+server:
+
+messages.4:Jan 20 13:00:04 server rpc.mountd: authenticated mount
+request from client:641 for /disk1 (/disk1) 
+messages.4:Jan 20 13:09:55 server rpc.mountd: authenticated unmount
+request from client:898 for /disk1 (/disk1) 
+messages.4:Jan 20 13:21:48 server rpc.mountd: authenticated mount
+request from client:709 for /disk1 (/disk1) 
+messages.4:Jan 20 14:09:40 server rpc.mountd: authenticated unmount
+request from client:912 for /disk1 (/disk1) 
+
+
+As you can see, rpc.mountd on the server has recorded an unmount request
+at 14:09:40, but there is no corresponding automount 'expired' message
+on the client for this file system ... the file system is still mounted
+on the client (and usable) - however, if the server were to reboot, then
+the client would no longer be able to access the file system.
+
+If I kill the parent process of the defunct process, autofs will not
+umount the mount, but I can manually umount the file system and then
+access it again as normal.
+
+I'm using a 2.4.18 based kernels on the client and server. The server is
+using nfs-utils 0.3.3 and the client autofs 4.0.0pre10
+
+Could there be a case where automount tells the server it's umounting a
+mount, but then finds it can't actually do the umount?
+
+James Pearson
 
 
 -------------------------------------------------------
