@@ -1,23 +1,28 @@
-From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
-Subject: Re: NFSv4 needs restart (permission denied)
-Date: Fri, 03 Dec 2004 10:52:26 -0800
-Message-ID: <1102099946.3618.10.camel@tesuji.nac.uci.edu>
-References: <41B0A7C0.1020209@drzeus.cx>
+From: Chip Salzenberg <chip@pobox.com>
+Subject: Debian, SIGPIPE, "libnfsidmap", and init.d vs. umount
+Date: Sat, 4 Dec 2004 17:15:04 -0500
+Message-ID: <20041204221504.GD6146@perlsupport.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-vKWcxUIssPB3Ln26Ua1S"
-Cc: strombrg@dcs.nac.uci.edu, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CaIXn-0003G9-2a
-	for nfs@lists.sourceforge.net; Fri, 03 Dec 2004 10:52:39 -0800
-Received: from dcs.nac.uci.edu ([128.200.34.32] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1CaiBD-0002we-EI
+	for nfs@lists.sourceforge.net; Sat, 04 Dec 2004 14:15:03 -0800
+Received: from perlsupport.com
+	([66.220.6.226] helo=mail.perlsupport.com ident=Debian-exim)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
 	(Exim 4.41)
-	id 1CaIXm-0003mv-F6
-	for nfs@lists.sourceforge.net; Fri, 03 Dec 2004 10:52:38 -0800
-To: Pierre Ossman <drzeus-list@drzeus.cx>
-In-Reply-To: <41B0A7C0.1020209@drzeus.cx>
+	id 1CaiBB-0000iF-M8
+	for nfs@lists.sourceforge.net; Sat, 04 Dec 2004 14:15:02 -0800
+Received: from pcp03344017pcs.malvrn01.pa.comcast.net ([68.54.140.48] helo=tytlal)
+	by mail.perlsupport.com (Exim 4) with asmtp (TLS-1.0:RSA_ARCFOUR_SHA:16)
+	id 1CaiB6-0001Cs-EL
+	for nfs@lists.sourceforge.net; Sat, 04 Dec 2004 14:14:56 -0800
+Received: from chip by tytlal with local (Exim 4.34)
+	id 1CaiBE-0001SS-8z
+	for nfs@lists.sourceforge.net; Sat, 04 Dec 2004 17:15:04 -0500
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,66 +36,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Debian needs a bugfix release of nfs-utils, because of the SIGPIPE
+bug.  This being my job, I figured I could grab the HEAD version of
+nfs-utils.  And since the Debian sarge release is coming up soon (no,
+really), I hoped I'd find something unlikely to crash; instead I'm
+having difficulty with the build.
 
---=-vKWcxUIssPB3Ln26Ua1S
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+I gather that "libnfsidmap" is what I'll find in:
 
-On Fri, 2004-12-03 at 18:52 +0100, Pierre Ossman wrote:
-> Whenever I reboot my file server one of my clients has trouble accessing
-> the exports. I just get permission denied. However, when I restart nfsd
-> it works fine. The other clients have no problems mounting.
->=20
-> The server is a FC2 machine running 2.6.9-1.6_FC2.
-> The problem client is a FC3 machine running 2.6.9.
-> The working clients are both FC2 machines running 2.6.9-1.6_FC2.
->=20
-> Any ideas on what can be wrong or how I can find out what the problem
-> is? The server does not say anything during these mount requests.
->=20
-> Rgds
-> Pierre
+  http://www.citi.umich.edu/projects/nfsv4/linux/libnfsidmap/
 
-We've had much the same problem with linux NFS servers, but not with
-NFSv4 - it was either NFSv3 or v2.
+Is there some reason this hasn't been made part of Debian already,
+seeing as how it already contains Debian build infrastructure?
 
-These are my notes on the subject:
-
-The difficulty is that we have to exportfs -auv; exportfs -av to get
-mounting (both static and auto) to work.  It gives "permission denied"
-when trying to do a static mount.  getfh() was failing too, according to
-an strace of rpc.mountd.
-
-Jed has an RHEL 3 server having trouble with an FC1 host.
-
-Jed also has an RHEL 3 server having trouble with a Redhat 9 host.
-
->=20
->=20
-> -------------------------------------------------------
-> SF email is sponsored by - The IT Product Guide
-> Read honest & candid reviews on hundreds of IT Products from real users.
-> Discover which products truly live up to the hype. Start reading now.=20
-> http://productguide.itmanagersjournal.com/
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
->=20
-
---=-vKWcxUIssPB3Ln26Ua1S
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.6 (GNU/Linux)
-
-iD8DBQBBsLXqo0feVm00f/8RAkr7AJoCjH32qIZ0O26l+2Fnh6beDJYqPgCfZy9F
-6F45se11wpr0GQupd8clvKo=
-=udJ1
------END PGP SIGNATURE-----
-
---=-vKWcxUIssPB3Ln26Ua1S--
-
+Also, is it a bug or a feature that the NFS startup scripts know how
+to mount special-purpose filesystems, but not unmount them?
+-- 
+Chip Salzenberg              - a.k.a. -           <chip@pobox.com>
+People are supposed to die for freedom.  Not the other way around.
 
 
 -------------------------------------------------------
