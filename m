@@ -1,29 +1,19 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: setting default permissions
-Date: Fri, 13 Sep 2002 10:46:34 +1000
+From: "H. J. Lu" <hjl@lucon.org>
+Subject: Re: Lock recovery doesn't work in debian statd/lockd ordering
+Date: Fri, 13 Sep 2002 09:37:20 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15745.13674.55694.645325@notabene.cse.unsw.edu.au>
-References: <5CE83B571395D311A2160008C7B12CDE17B523B8@ammex003.amp.com>
+Message-ID: <20020913093720.A32168@lucon.org>
+References: <15743.63908.531152.357021@notabene.cse.unsw.edu.au> <wv1y7z6en4.fsf@freeze.oslo.dnmi.no> <15744.7383.324897.912595@notabene.cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
+Cc: Adrian Phillips <a.phillips@met.no>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from panoramix.vasoftware.com ([198.186.202.147])
-	by usw-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17phrS-0000de-00
-	for <nfs@lists.sourceforge.net>; Thu, 12 Sep 2002 21:15:18 -0700
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28]:58833)
-	by panoramix.vasoftware.com with smtp (Exim 4.05-VA-mm1 #1 (Debian))
-	id 17peeQ-0005Sh-00
-	for <nfs@lists.sourceforge.net>; Thu, 12 Sep 2002 17:49:38 -0700
-Received: From
-	notabene.cse.unsw.edu.au ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <Travis.Smith@tycoelectronics.com>)
-	(for <nfs@lists.sourceforge.net>) By tone With Smtp ;
-	Fri, 13 Sep 2002 10:46:38 +1000
-To: "Smith, Travis" <Travis.Smith@tycoelectronics.com>
-In-Reply-To: message from Smith, Travis on Thursday September 12
+Received: from rwcrmhc52.attbi.com ([216.148.227.88])
+	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17ptRi-0005nL-00
+	for <nfs@lists.sourceforge.net>; Fri, 13 Sep 2002 09:37:30 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <15744.7383.324897.912595@notabene.cse.unsw.edu.au>; from neilb@cse.unsw.edu.au on Thu, Sep 12, 2002 at 02:49:27PM +1000
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -34,26 +24,35 @@ List-Id: Discussion of NFS under Linux development,
 	and testing. <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php=nfs>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thursday September 12, Travis.Smith@tycoelectronics.com wrote:
-> Is there a way to specify the permissions on an exported directory beyond
-> that of locking it down to certain machines/users.  What I want to do is
-> export a directory from a linux box to some HP boxen and make sure that any
-> file they write to the directory has full 777 permissions.  Security isn't
-> an issue.
+On Thu, Sep 12, 2002 at 02:49:27PM +1000, Neil Brown wrote:
+> On  September 12, a.phillips@met.no wrote:
+> > >>>>> "Neil" == Neil Brown <neilb@cse.unsw.edu.au> writes:
+> > 
+> >     Neil>  I just noticed that lock recovery doesn't work with a
+> >     Neil> Debian NFS server.  i.e.  server shuts down, restarts, and
+> >     Neil> the client *Doesn't* reclaim the locks.
+> > 
+> > Um, which version ? On my woody box lockd is started in nfs-common
+> > after statd still though :-
 > 
-> Thanks,
-> Travis Smith
+> /sbin/rpc.lockd is an aberation that only applies to a small range of
+> kernels, about 2.2.14 to 2.2.17 I think.
+> 
 
-I see two options:
+Just for the record, I have a need to run the nlockmgr service at a
+fixed port.  I have
 
- 1/ make everybody on HP boxen set
-       umask 0
+nlockmgr        3003/tcp
+nlockmgr        3003/udp
 
- 2/ hack the sourcecode for the server.
+in my /etc/services. But I have to hard code it in my kernel. No, I
+don't use kernel modules.  It will be nice to for rpc.lockd to passes
+the port number to kernel. It doesn't have to start lockd.
 
-NeilBrown
+
+H.J.
 
 
 -------------------------------------------------------
