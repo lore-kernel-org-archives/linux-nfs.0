@@ -1,25 +1,21 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] add MODULE_DESCRIPTION to nfs module, update NFS references in MAINTAINERS
-Date: Wed, 26 Jan 2005 08:05:47 +0000
-Message-ID: <20050126080547.GA6067@infradead.org>
-References: <1106692805.4420.34.camel@w-bwa3.beaverton.ibm.com> <20050125230829.GA30641@infradead.org> <1106698790.4420.64.camel@w-bwa3.beaverton.ibm.com>
+From: mehta kiran <kiranmehta1981@yahoo.com>
+Subject: Re: address for lockd recovery
+Date: Wed, 26 Jan 2005 02:20:15 -0800 (PST)
+Message-ID: <20050126102015.65833.qmail@web51605.mail.yahoo.com>
+References: <1106720796.10014.10.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-nfs <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CtiBd-00076q-Ao
-	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 00:06:01 -0800
-Received: from pentafluge.infradead.org ([213.146.154.40])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1CtiBb-0002zf-F3
-	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 00:06:01 -0800
-To: Bruce Allan <bwa@us.ibm.com>
-In-Reply-To: <1106698790.4420.64.camel@w-bwa3.beaverton.ibm.com>
+	id 1CtkHe-0005F9-PC
+	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 02:20:22 -0800
+Received: from web51605.mail.yahoo.com ([206.190.38.210])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
+	id 1CtkHd-0006Pe-7d
+	for nfs@lists.sourceforge.net; Wed, 26 Jan 2005 02:20:22 -0800
+To: nfs@lists.sourceforge.net
+In-Reply-To: <1106720796.10014.10.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,13 +29,56 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, Jan 25, 2005 at 04:19:50PM -0800, Bruce Allan wrote:
-> Besides the NFS configuration comments in ./fs/Kconfig and the
-> MAINTAINERS file (which might not be present on a system), can you
-> suggest an alternative location to provide this pointer?
+thanks Trond.
+           What i could get from  this statement is
+that source address and mon_id in notification
+message cannot be guaranteed to belong to same
+machine. 
+But two different machines can have same
+mon_id(nfs never pings mon_id , mon_ids can be faked)
+but will have different source address.so doesn't
+source address of notification message  uniquely
+isentify nfs server rather than mon_id and
+hence safe to reclaim locks.
 
-MAINTAINERS is exactly the right place.
+--thanks
+   kiran
 
+--- Trond Myklebust <trond.myklebust@fys.uio.no>
+wrote:
+
+> ty den 25.01.2005 Klokka 01:16 (-0800) skreiv mehta
+> kiran:
+> > Hi , 
+> >      When i was checking lockd recovery , 
+> >      i noted that clients after getting
+> >      notification messages , use mon_id
+> >      as destination address and not notication
+> >      messages's source address as destination
+> >      address.(as just a reply)
+> > 
+> >      Is there any issue in using notifcation
+> >      messages's source address as destination
+> >      address to reclaim lock. ?
+> 
+> If you have a multi-homed server, it does not follow
+> that the source
+> address used by rpc.statd hosts the same NFS server
+> as the mon_name
+> address.
+> 
+> Cheers,
+>   Trond
+> -- 
+> Trond Myklebust <trond.myklebust@fys.uio.no>
+> 
+> 
+
+
+__________________________________________________
+Do You Yahoo!?
+Tired of spam?  Yahoo! Mail has the best spam protection around 
+http://mail.yahoo.com 
 
 
 -------------------------------------------------------
