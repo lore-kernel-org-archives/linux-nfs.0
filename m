@@ -1,16 +1,14 @@
-From: =?iso-8859-1?q?Hank=20Shah?= <hankshah@yahoo.co.in>
-Subject: How to intercept NFS requests
-Date: Sun, 27 Apr 2003 11:27:28 +0100 (BST)
+From: "Horace Clement" <9d671pqa48m2@yahoo.com.hk>
+Subject: Apply for a online mortgage loan AA zh
+Date: Wed, 09 Jan 02 19:11:30 GMT
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030427102728.37018.qmail@web8206.mail.in.yahoo.com>
+Message-ID: <yb3c-5-1--2npof$5@flhfpq73tit>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: multipart/alternative;
+	boundary="8_40F_CE.09___F8.2_.C22_"
+Cc: <nfs@lists.sourceforge.net>, <nms-cgi-support@lists.sourceforge.net>, <nms-cgi.support@lists.sourceforge.net>, <ofset-members@lists.sourceforge.net>, <opennap-admin@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from web8206.mail.in.yahoo.com ([203.199.70.75])
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 199jNd-0006tA-00
-	for <nfs@lists.sourceforge.net>; Sun, 27 Apr 2003 03:27:33 -0700
-To: nfs@lists.sourceforge.net
+To: netsaintplug-devel@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -23,33 +21,27 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-   
-   hi,
-   We are trying to go through the NFS procedures to
-intercept file requests so that if the files are not
-available with the NFS server,we would be able to
-fetch it from some other location and make that file
-available on the server's disk physically.To do this
-we need to know the point where the NFS server checks
-to see if a file is present or not.If not then it
-would call our procedure to fetch a file from the
-appropriate location.That file would now be used by 
-the NFS server to serve its clients.
+This is a multi-part message in MIME format.
 
-Any ideas how to go about it?
+--8_40F_CE.09___F8.2_.C22_
+Content-Type: text/html;
+Content-Transfer-Encoding: quoted-printable
 
-Thanks- 
- HANKS.
+<html><head>
+<title>czar</title></head>Netsaintplug-devel<body><center><a href=3D"http://=
+bannedcd.org/lead2345/"><img border=3D"0" src=3D"http://bannedcd.org/p4X.j=
+pg" width=3D"427" height=3D"252">
+</a>
+</center>
+<p><a href=3D"http://www.n0hastlem0rtgage.com/remove.html">No mail!</a></p=
+>
+</body></html>
+wendell
+wskv oolei ya exdf qinqqei wki x 
+brptepylmjkqtlfvwk
 
-=====
-H arshit  Shah
-A nkit    Shah
-N ishit   Shah
-K rushita Shah
+--8_40F_CE.09___F8.2_.C22_--
 
-________________________________________________________________________
-Missed your favourite TV serial last night? Try the new, Yahoo! TV.
-       visit http://in.tv.yahoo.com
 
 
 -------------------------------------------------------
