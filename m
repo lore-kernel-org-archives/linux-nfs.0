@@ -1,31 +1,25 @@
-From: mb/nfs@dcs.qmul.ac.uk
-Subject: Re: trouble with file locking
-Date: Mon, 24 Nov 2003 14:24:28 +0000 (GMT)
+From: James Pearson <james-p@moving-picture.com>
+Subject: Different NFSSVC_MAXBLKSIZE for udp and tcp clients?
+Date: Tue, 25 Nov 2003 17:34:20 +0000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.58.0311241416240.7849@lucy.dcs.qmul.ac.uk>
-References: <20031112105043.020c1548.erik@thiele-hydraulik.de>
- <Pine.LNX.4.58.0311191259400.846@lewis.et.byu.edu> <shsd6bohzxw.fsf@charged.uio.no>
- <20031120070531.7886de98.erik@thiele-hydraulik.de> <16316.23490.266052.855506@charged.uio.no>
+Message-ID: <3FC3929C.EFFE5CDF@moving-picture.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AOHdl-00032D-00
-	for <nfs@lists.sourceforge.net>; Mon, 24 Nov 2003 06:24:37 -0800
-Received: from vicar.dcs.qmul.ac.uk ([138.37.88.163] helo=mail.dcs.qmul.ac.uk)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.24)
-	id 1AOHdk-0004bU-OD
-	for nfs@lists.sourceforge.net; Mon, 24 Nov 2003 06:24:36 -0800
-Received: from lucy.dcs.qmul.ac.uk ([138.37.88.16])
-	by mail.dcs.qmul.ac.uk with asmtp (TLSv1:DHE-RSA-AES256-SHA:256)
-	(Exim 4.24)
-	id 1AOHdd-0000xS-FT
-	for nfs@lists.sourceforge.net; Mon, 24 Nov 2003 14:24:29 +0000
+	id 1AOh55-0004oO-00
+	for <nfs@lists.sourceforge.net>; Tue, 25 Nov 2003 09:34:31 -0800
+Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
+	id 1AOh54-0000ga-Ms
+	for nfs@lists.sourceforge.net; Tue, 25 Nov 2003 09:34:30 -0800
+Received: from darke.mpc.local ([172.16.11.6] helo=moving-picture.com)
+	by moving-picture.com with esmtp (Exim 4.24)
+	id 1AOh4u-0005c4-EG
+	for nfs@lists.sourceforge.net; Tue, 25 Nov 2003 17:34:20 +0000
 To: nfs@lists.sourceforge.net
-In-Reply-To: <16316.23490.266052.855506@charged.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -38,36 +32,22 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Nov 20 Trond Myklebust wrote:
+Is it possible to force a different maximum [rw]size on the server
+depending on whether the client uses udp or tcp?
 
->Then you have been using POSIX locks (i.e. fcntl()/lockf()). They
->should work fine.
+Currently, when a client NFS mounts a file system without specifying a
+[rw]size, it defaults to whatever NFSSVC_MAXBLKSIZE was defined as (at
+compile time) on the server. However, this is the same for udp and tcp
+clients.
 
-Possibly unrelated [hence CC trimmed]:
+What I would like is to have a smaller default [rw]size for udp clients,
+but allow tcp clients to use 32k.
 
-I can't get Debian testing to log in to GNOME when home directories are
-mounted over NFS (Linux 2.6-mm client -> Linux 2.4-ac server). It claims 
-not to be able to lock a file..
+Is this possible?
 
-I tried writing a trivial program to test lockf() and it returns ENOLCK 
-over NFS, but succeeds locally. The client kernel offers some grumbles:
+Thanks
 
-RPC: Can't bind to reserved port (13).
-RPC: can't bind to reserved port.
-nsm_mon_unmon: rpc failed, status=-5
-lockd: cannot monitor a.b.c.d
-lockd: failed to monitor a.b.c.d
-
-[where a.b.c.d is our NFS server]
-
-/sbin/rpc.statd is running on both client and server, and with a 2.4 
-kernel on the client (as the only change) GNOME logins work just fine.
-
-Any ideas? I'm stumped at this point.
-
-Cheers,
-
-Matt
+James Pearson
 
 
 -------------------------------------------------------
