@@ -1,29 +1,21 @@
-From: mike@waychison.com
-Subject: Re: [PATCH/RFC 1/2] rpcproxyd
-Date: Mon, 14 Mar 2005 12:34:58 -0500 (EST)
-Message-ID: <48275.66.11.176.22.1110821698.squirrel@webmail1.hrnoc.net>
-References: <37086.66.11.176.22.1110228763.squirrel@webmail1.hrnoc.net>
-    <37093.66.11.176.22.1110228819.squirrel@webmail1.hrnoc.net>
-    <20050314105249.GH14815@suse.de>
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: RE: NFS FAQ updates
+Date: Mon, 14 Mar 2005 09:48:05 -0800
+Message-ID: <482A3FA0050D21419C269D13989C611308539875@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain;charset=iso-8859-1
-Cc: mike@waychison.com, "linux-nfs" <nfs@lists.sourceforge.net>,
-	"autofs mailing list" <autofs@linux.kernel.org>
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DAtT7-0007Ag-OP
-	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 09:35:05 -0800
-Received: from relay3.hrnoc.net ([216.120.225.15])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1DAtT5-0002Pw-4F
-	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 09:35:05 -0800
-Received: from smtp-1.hrnoc.net ([216.120.225.37])
-	by relay3.hrnoc.net with esmtp (Exim 4.32; FreeBSD)
-	id 1DAtSq-0005lL-FY
-	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 12:34:48 -0500
-In-Reply-To: <20050314105249.GH14815@suse.de>
-To: "Olaf Kirch" <okir@suse.de>
+	id 1DAtfs-0007va-HW
+	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 09:48:16 -0800
+Received: from mx1.netapp.com ([216.240.18.38])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1DAtfr-0003no-1F
+	for nfs@lists.sourceforge.net; Mon, 14 Mar 2005 09:48:16 -0800
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+	"Trond Myklebust" <trond.myklebust@fys.uio.no>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,88 +29,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> Hi Mike,
->
-> I'm somewhat wary of this idea, because it creates a very attractive
-> target for crackers. Once an attacker managers to fool this proxy
-> daemon, he can talk to your NFS Server, concealing his identity or
-> even posing as root, etc.
->
-> I looked at the code in the light of this, and there are a few
-> soft spots.
->
->  -	you retrieve credentials in the initial negotiation
->  	only. But client credentials can change, and should be
-> 	checked with every packet.
->
-> 	For instance, I can connect to your service, and fork off
-> 	some setuid root application, with stderr connected to that
-> 	socket. Any error message the application prints will be arrive
-> 	with uid 0. If I manage to make that message appear valid to you,
-> 	your daemon will accept any future input unquestioned.
->
+thanks for your comments, guys.  i've simplified C7 a bit, see if it
+helps:
 
-Interesting attack, although I doubt the setuid program would be attachin=
-g
-an SCM_CREDENTIALS to it's stderr writes.  I'll fix it up to check
-credentials on all packets nevertheless.
-
-> 	So my recommendation would be to validate credentials on
-> 	every packet, and if they change from the original values
-> 	received during negotiation, drop the connection.
->
-> 	I'd also recommend to change the permissions on the Unix
-> 	socket to 700.
->
-
-Yup.  Sounds good to me.
-
->  -	This mechanism is really a special-case workaround for the
->  	mount problem, but you're creating a general purpose framework.
-> 	That means if it's attacked successfully, it can be abused
-> 	to attack any RPC based service on any host.
->
-> 	If you make it less generic, and allow only mount calls, you'll
-> 	be much safer, because in the case of a bug, an attacker will
-> 	be able to send fake MOUNT packets, but nothing else.
->
-
-Hmm.  I like the idea of keeping it generic as it may very well solve
-someone else's problem as well.   As for locking it down to MOUNT (and
-possibly PMAP/RPCB), how about some sort of config file that limits
-PROG/VERS tuples?
-
->  -	In several places, you keep packet offsets (pos, bufferpos)
-> 	in signed variables and compare them to unsigneds; that's
-> 	dangerous.
+  http://nfs.sourceforge.net/index.cel.php#faq_c7
 
 
-Noted.  I'll try and audit to resolve any signedness issues.
-
->
->  -	Your code assumes sizeof(unsigned long) =3D=3D 4, eg here
->
-> 	unsigned long len;
-> 	[...]
-> 		memcpy(&len, conn->buffer, 4);
-> 		len =3D ntohl(len);
-> 		buf =3D &conn->buffer[4];
->
-> 	It's better to use uint32_t in such cases.
-
-Yup.  Will fix.
-
-Thanks for looking it over,
-
-Mike Waychison
-
+> -----Original Message-----
+> From: J. Bruce Fields [mailto:bfields@fieldses.org]=20
+> Sent: Sunday, March 13, 2005 5:45 PM
+> To: Trond Myklebust
+> Cc: Lever, Charles; nfs@lists.sourceforge.net
+> Subject: Re: [NFS] NFS FAQ updates
+>=20
+>=20
+> On Sun, Mar 13, 2005 at 05:10:11PM -0500, Trond Myklebust wrote:
+> > The subtree_check option attempts to decide whether or not=20
+> a file lies
+> > within an exported subtree. If you turn it off, then people can
+> > theoretically try to guess filehandles and gain access to the files
+> > (assuming the access permissions on the file itself allow that).
+>=20
+> I wouldn't put too much emphasis on that "theoretically".  The root
+> directory on all my ext2/3 filesystems has inode number 2,=20
+> and as far as
+> I can tell guessing the rest of the rest of the filehandle just comes
+> down to guessing the root device, which on my machines is always
+> /dev/hdaN for some very small N.  Add a few more for people with scsi
+> and so on, and I bet you could cover most linux NFS servers=20
+> with a dozen
+> guesses.  Now just lookup and readdir down to wherever you want.  Am I
+> missing anything here?
+>=20
+> If the administrator tightened down directory permissions a=20
+> bit, you'll
+> be forced to guess filehandles for objects deeper in the filesystem,
+> which may be a little harder.  I wouldn't count on it.
+>=20
+> --b.
+>=20
 
 
 -------------------------------------------------------
 SF email is sponsored by - The IT Product Guide
 Read honest & candid reviews on hundreds of IT Products from real users.
 Discover which products truly live up to the hype. Start reading now.
-http://ads.osdn.com/?ad_id=3D6595&alloc_id=3D14396&op=3Dclick
+http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
