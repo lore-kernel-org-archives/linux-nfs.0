@@ -1,30 +1,20 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: Re: Premission denied
-Date: Fri, 31 Oct 2003 12:19:19 +1100
+From: Robert Sander <ml-linux-nfs@epigenomics.com>
+Subject: nfs client's local cache
+Date: Fri, 31 Oct 2003 16:28:50 +0000 (UTC)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16289.47255.469257.741134@notabene.cse.unsw.edu.au>
-References: <10334.62.49.205.2.1067421598.squirrel@squirrelmail.bim7.com>
-	<20031029215815.GO29526@perlsupport.com>
-	<16288.41100.10180.44099@notabene.cse.unsw.edu.au>
-	<18043.62.49.205.2.1067515125.squirrel@squirrelmail.bim7.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Message-ID: <news2mail-slrnbq53e2.8a3.gurubert-dated-1067588488.lakkeclf@moneta.epigenomics.epi>
+Reply-To: Robert Sander <gurubert-dated-1067588488.lakkeclf@epigenomics.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AFNwu-00088m-00
-	for <nfs@lists.sourceforge.net>; Thu, 30 Oct 2003 17:19:36 -0800
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.24)
-	id 1AFNwt-0007CQ-L9
-	for nfs@lists.sourceforge.net; Thu, 30 Oct 2003 17:19:35 -0800
-Received: From notabene ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <gareth@bim7.com>) (for <nfs@lists.sourceforge.net>) By note
-	With Smtp ; Fri, 31 Oct 2003 12:19:29 +1100
-To: "Gareth" <gareth@bim7.com>
-In-Reply-To: message from Gareth on Thursday October 30
+	id 1AFc8u-0006qz-00
+	for <nfs@lists.sourceforge.net>; Fri, 31 Oct 2003 08:28:56 -0800
+Received: from gk.ka.epigenomics.net ([62.159.77.106] ident=qmailr)
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.24)
+	id 1AFc8t-0004AT-BB
+	for nfs@lists.sourceforge.net; Fri, 31 Oct 2003 08:28:55 -0800
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -37,50 +27,31 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thursday October 30, gareth@bim7.com wrote:
-> >> > Someone at work suggested its a reverse DNS problem... but running
-> >> > nslookup hostname returns my IP address, and vice versa.
-> >>
-> >> The log says there was a reverse DNS problem.  It says it clearly,
-> >> right there in the log.  Are you suggesting that it's lying?
-> >
-> > Funny, but I don't see the letters "DNS" in the log at all :-)
-> >
-> > What does /etc/nsswitch.conf say about hosts? Does "files" come before
-> > "dns"?
-> 
-> files is before dns...
-> 
-> the only entries in my /etc/hosts are...
-> 
-> # Do not remove the following line, or various programs
-> # that require network functionality will fail.
-> 127.0.0.1               localhost.localdomain localhost
-> 192.168.17.4            paris.bim paris
-> 
-> does that look okay?
+Hi!
 
-Yes it does.  Which makes it all very strange.
-Looking back at the original message: if /etc/exports is
+I have a questions that may be a FAQ:
 
- /nfsroot        192.168.17.0/255.255.255.0(ro)
- /mnt/nfsroot    192.168.17.0/255.255.255.0(ro)
- 
-then hostname lookup shouldn't matter.
-Also:
+An NFS client machine has several processes that open a file on a NFS
+server read-only for quite a long time (server processes).
 
-Oct 29 09:25:44 paris rpc.mountd: Fake hostname paris.bim for 192.168.17.4 - forward lookup doesn't match reverse
-Oct 29 09:25:44 paris rpc.mountd: refused mount request from 192.168.17.4 for /nfsroot (/): no export entry
-Oct 29 09:29:09 paris rpc.mountd: export request from 127.0.0.1
-Oct 29 09:39:37 paris rpc.mountd: refused mount request from paris.bim for /nfsroot (/): no export entry
+The file gets replaced on the NFS server.
 
-seems to indicate that at 09:39:37 hostname lookup did the right
-thing.
-But either way, "no export entry" was found.
+The client processes still have the old copy open.
 
-What is in /var/lib/nfs/?tab  ??
+A new process on the NFS client also only sees the old copy of that
+file. Only after the running processes are killed or close() the
+filehandle and the filesystems gets remounted the NFS client machine
+sees the new version of that file.
 
-NeilBrown
+Is that expected behaviour? Is there any local NFS client cache timeout
+involved?
+
+Greetings
+-- 
+Robert Sander
+Manager
+Information Systems        www.epigenomics.com        Kastanienallee 24
++493024345330                                              10435 Berlin
 
 
 -------------------------------------------------------
