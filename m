@@ -1,58 +1,47 @@
-From: Donavan Pantke <avatar@dcr.net>
-Subject: Re: huge number of intr/s on large nfs server
-Date: Wed, 16 Oct 2002 19:28:36 -0400
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200210161928.36801.avatar@dcr.net>
-References: <CFEAJJEGMGECBCJFLGDBEELLCFAA.enorwood@effrem.com>
-Reply-To: avatar@dcr.net
+From: "Andrew Theurer" <habanero@us.ibm.com>
+Subject: Re: [NFS] Re: [PATCH] zerocopy NFS for 2.5.36
+Date: Wed, 16 Oct 2002 21:03:33 -0500
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <012d01c27581$677d2180$2a060e09@beavis>
+References: <15786.23306.84580.323313@notabene.cse.unsw.edu.au><20021014.210144.74732842.taka@valinux.co.jp><15788.57476.858253.961941@notabene.cse.unsw.edu.au> <20021015.213102.80213000.davem@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain;
-  charset="iso-8859-1"
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from ns1.dcr.net ([216.7.64.2] helo=andrew.dcr.net)
-	by usw-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 181xaM-0005WD-00
-	for <nfs@lists.sourceforge.net>; Wed, 16 Oct 2002 16:28:18 -0700
-To: "Eff Norwood" <enorwood@effrem.com>, <nfs@lists.sourceforge.net>
-In-Reply-To: <CFEAJJEGMGECBCJFLGDBEELLCFAA.enorwood@effrem.com>
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+	charset="iso-8859-1"
+Cc: <taka@valinux.co.jp>, <linux-kernel@vger.kernel.org>,
+	<nfs@lists.sourceforge.net>
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
+To: <neilb@cse.unsw.edu.au>, "David S. Miller" <davem@redhat.com>
+List-ID: <nfs.lists.sourceforge.net>
 
-On Wednesday 16 October 2002 19:18, Eff Norwood wrote:
-> > =09Umm... just a small interjection, but can't you just pass
-> > the parameters
-> > through LILO or GRUB?
+>    From: Neil Brown <neilb@cse.unsw.edu.au>
+>    Date: Wed, 16 Oct 2002 13:44:04 +1000
 >
-> That's an *excellent* suggestion. I had forgotten you could do that! So
-> yes, everything can be built into the kernel. Anyone know of a good how=
-to
-> on this subject?
+>    Presumably on a sufficiently large SMP machine that this became an
+>    issue, there would be multiple NICs.  Maybe it would make sense to
+>    have one udp socket for each NIC.  Would that make sense? or work?
+>    It feels to me to be cleaner than one for each CPU.
+>
+> Doesn't make much sense.
+>
+> Usually we are talking via one IP address, and thus over
+> one device.  It could be using multiple NICs via BONDING,
+> but that would be transparent to anything at the socket
+> level.
+>
+> Really, I think there is real value to making the socket
+> per-cpu even on a 2 or 4 way system.
 
-=09Umm... stadard linuxdoc.org should have one, but real quick, in LILO i=
-t=20
-involves this:
 
-append=3D"eth0=3D<module parameters> eth1=3D<module parameters>"
+I am still seeing some sort of problem on an 8 way (hyperthreaded 8
+logical/4 physical) on UDP with these patches.  I cannot get more than 2
+NFSd threads in a run state at one time.  TCP usually has 8 or more.  The
+test involves 40 100Mbit clients reading a 200 MB file on one server (4
+acenic adapters) in cache.  I am fighting some other issues at the moment
+(acpi wierdness), but so far before the patches, 82 MB/sec for NFSv2,UDP and
+138 MB/sec for NFSv2,TCP.  With the patches, 115 MB/sec for NFSv2,UDP and
+181 MB/sec for NFSv2,TCP.  One CPU is maxed due to acpi int storm, so I
+think the results will get better.  I'm not sure what other lock or
+contention point this is hitting on UDP.  If there is anything I can do to
+help, please let me know, thanks.
 
-
-=09Donavan
-
-
--------------------------------------------------------
-This sf.net email is sponsored by: viaVerio will pay you up to
-$1,000 for every account that you consolidate with us.
-http://ad.doubleclick.net/clk;4749864;7604308;v?
-http://www.viaverio.com/consolidator/osdn.cfm
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Andrew Theurer
