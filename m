@@ -1,27 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Olaf Kirch <okir@suse.de>
 Subject: Re: [PATCH]  Reinstantiating stale inodes
-Date: Fri, 23 Apr 2004 13:49:07 -0400
+Date: Fri, 23 Apr 2004 19:55:52 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1082742547.2617.86.camel@lade.trondhjem.org>
-References: <40892507.2030004@RedHat.com>
-	 <1082730973.2617.23.camel@lade.trondhjem.org> <40893DEF.3010506@RedHat.com>
-	 <1082737270.2617.80.camel@lade.trondhjem.org> <40895096.9020507@RedHat.com>
+Message-ID: <20040423175552.GA13755@suse.de>
+References: <40892507.2030004@RedHat.com> <20040423143308.GW3491@suse.de> <40893B51.2080302@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BH4nX-0003DC-MT
-	for nfs@lists.sourceforge.net; Fri, 23 Apr 2004 10:49:11 -0700
-Received: from dh132.citi.umich.edu
-	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	id 1BH4u5-0004KI-8d
+	for nfs@lists.sourceforge.net; Fri, 23 Apr 2004 10:55:57 -0700
+Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.30)
-	id 1BH4nX-0008Sd-AO
-	for nfs@lists.sourceforge.net; Fri, 23 Apr 2004 10:49:11 -0700
+	id 1BH4u4-0001Nz-PR
+	for nfs@lists.sourceforge.net; Fri, 23 Apr 2004 10:55:56 -0700
 To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: <40895096.9020507@RedHat.com>
+In-Reply-To: <40893B51.2080302@RedHat.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,29 +31,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, 2004-04-23 at 13:21, Steve Dickson wrote:
+On Fri, Apr 23, 2004 at 11:50:41AM -0400, Steve Dickson wrote:
+> client: writes 100m file called foo
+> server: renames foo to foo.old and immediately creates foo
+> client: failed with ESTALE
 
-> Question: if (atomic_read(&dentry->d_count) < 2)
-> can I assume that the current process is the only one
-> attached to the dentry and it would be safe reinstantiate
-> the dentry?
+This shouldn't fail, because the file still exists, just
+under a different name.
 
-You can if and only if
+What will get you into trouble is if your client writes
+to "foo" and you do a "mv bar foo".
 
-  - The dentry is unhashed, and you are holding the semaphore dir->i_sem
-on the parent directory.
-OR
-  - You are holding the spin lock dcache_lock.
+> Again only getattrs will be followed up with lookups..
 
-Both of these two methods will prevent the VFS from looking the dentry
-up.
+Yes, but it's just a matter of probabilities if the first
+call that returns ESTALE is a write or a getattr (called from
+revalidate_inode).
 
-Note: on 2.6.x, the second condition needs to be modified a bit: you
-probably need to hold dentry->d_lock too since the 2.6.x version of
-d_lookup() is by and large lockless...
+> >At a minimum, the lookup should occur at file open, and only if
+> >there are no other users of the inode.
+> > 
+> >
+> Unfortunately, in this particular case, there were no opens...
 
-Cheers,
- Trond
+So what exactly went wrong? A stat() on the files that just got
+replaced?
+
+Olaf
+-- 
+Olaf Kirch     |  The Hardware Gods hate me.
+okir@suse.de   |
+---------------+ 
 
 
 -------------------------------------------------------
