@@ -1,18 +1,12 @@
-From: Tom McNeal <trmcneal@attbi.com>
-Subject: Re: Re: NFS as a Cluster File System (Locking question)
-Date: Sat, 25 Jan 2003 12:32:27 -0800
+From: Christian Reis <kiko@async.com.br>
+Subject: nfsroot.c handling of v3 vs. nfsvers=3
+Date: Sun, 26 Jan 2003 13:24:19 -0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3E32F45B.3020903@attbi.com>
-References: <6440EA1A6AA1D5118C6900902745938E07D551E9@black.eng.netapp.com>
+Message-ID: <20030126132419.A25395@blackjesus.async.com.br>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=x-mac-roman; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sccrmhc01.attbi.com ([204.127.202.61])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18cWxj-0004Qo-00
-	for <nfs@lists.sourceforge.net>; Sat, 25 Jan 2003 12:31:36 -0800
-To: "Lever, Charles" <Charles.Lever@netapp.com>
+To: NFS@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,79 +19,33 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi -
 
- > best.  however, on Linux, the client purges the entire file
- > from its cache when a file is locked, rather than just the
- > areas that were byte-range locked.
+Hey there,
 
-The purge must occur at lock time (or lock attempt time), right?  Or
-does the metadata also keep lock status, and therefore should occur
-even when just a stat is done? (I don't think this is the case, but I
-thought I'd make sure, not having looked at it recently)
+It seems nfsroot.c's parsing of commandline options uses the strings
+'v2' and 'v3' for detecting which version should be used, and that no
+parsing occurs of the nfsvers parameter. Trond has actually reminded us
+of this just a while back [1].
 
-Tom
+This is at least confusing, since most docs (and nfs(5) more
+importantly) indicate nfsvers=3 as the correct approach. Even worse,
+nfsroot.txt says "Standard NFS options", which seems to indicate the
+same ones as mount would accept.
 
+I'd be happy to either patch nfsroot.c to have this fixed if Trond
+thinks its a good idea. It would have to backwards compatible, of
+course, and in the case of multiple settings, the last one parsed would
+be used. Sounds okay?
 
-Lever, Charles wrote:
+If not, I'll send in a patch for nfsroot.txt at least that makes things
+easier to understand.
 
->>On Thursday January 9, alanr@unix.sh wrote:
->>
->>>NFS V3 and before have problems with "cache coherency".  
->>>
->>That is, the
->>
->>>different nodes in the cluster are not guaranteed to see 
->>>
->>the same contents.
->>
->>>I think this is supposed to be fixed in v4.
->>>
->>>
->>NFSv4 does not try to "fix" this.  It makes no attempts at 
->>"cache coherency" beyond what NFSv2/3 provide which is "close 
->>to open" cohenrence, meaning that if only one process has a 
->>file open at a time, then everythnig will appear coherent, 
->>and if multiple processes have the file open at the same 
->>time, they need to use record locking.
->>
-> 
-> well, coherency is partially addressed in NFSv4 with delegations.
-> a server can delegate a file to a client, allowing the client
-> to cache the file and trust that the server will notify it when
-> another client wants to access the file (read or write).
-> 
-> for an aggressively shared file, this doesn't perform well, but
-> NFS has always assumed that there is little concurrent sharing
-> of files.
-> 
-> this paradigm probably doesn't fit well with typical file
-> usage in clusters, where files are very very large, and many
-> nodes may be working on independent pieces of the same file
-> at the same time.  in that case, record locking might be
-> best.  however, on Linux, the client purges the entire file
-> from its cache when a file is locked, rather than just the
-> areas that were byte-range locked.
-> 
-> 
-> -------------------------------------------------------
-> This SF.NET email is sponsored by: FREE  SSL Guide from Thawte
-> are you planning your Web Server Security? Click here to get a FREE
-> Thawte SSL guide and find the answers to all your  SSL security issues.
-> http://ads.sourceforge.net/cgi-bin/redirect.pl?thaw0026en
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
-> 
-> 
+[1] http://www.uwsg.iu.edu/hypermail/linux/kernel/0201.3/0056.html
 
-
--- 
-Tom McNeal
-(650)906-0761(cell)
-(650)964-8459(fax)
-Email: trmcneal@attbi.com
-
+Take care,
+--
+Christian Reis, Senior Engineer, Async Open Source, Brazil.
+http://async.com.br/~kiko/ | [+55 16] 261 2331 | NMFL
 
 
 -------------------------------------------------------
