@@ -1,22 +1,25 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: client side noac
-Date: Fri, 25 Jun 2004 11:02:46 -0700
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: client side noac
+Date: Fri, 25 Jun 2004 14:07:31 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <482A3FA0050D21419C269D13989C61130435E35F@lavender-fe.eng.netapp.com>
+Message-ID: <1088186851.4333.65.camel@lade.trondhjem.org>
+References: <Pine.LNX.4.60.0406251148570.3197@harp.ngdc.noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=iso-8859-1
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Bdv2Q-0005ac-6E
-	for nfs@lists.sourceforge.net; Fri, 25 Jun 2004 11:02:58 -0700
-Received: from mx01.netapp.com ([198.95.226.53])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Bdv2P-0005AT-T1
-	for nfs@lists.sourceforge.net; Fri, 25 Jun 2004 11:02:57 -0700
+	id 1Bdv6u-0006jh-0b
+	for nfs@lists.sourceforge.net; Fri, 25 Jun 2004 11:07:36 -0700
+Received: from dh132.citi.umich.edu
+	([141.211.133.132] helo=lade.trondhjem.org ident=Debian-exim)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.30)
+	id 1Bdv6s-0006mu-9e
+	for nfs@lists.sourceforge.net; Fri, 25 Jun 2004 11:07:34 -0700
 To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+In-Reply-To: <Pine.LNX.4.60.0406251148570.3197@harp.ngdc.noaa.gov>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -29,10 +32,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> is there any way for user code to make nfs file handles=20
-> behave as if they were mounted noac?
+P=E5 fr , 25/06/2004 klokka 13:49, skreiv Ara.T.Howard:
+> is there any way for user code to make nfs file handles behave as if they=
+ were
+> mounted noac?
 
-can you be more specific about what you need?
+I don't understand the question.
+
+Filehandles are used as the unique identifier of a file. If a filehandle
+changes, it is considered to belong to a different file. In consequence,
+the only time you can revalidate a filehandle is at file lookup time.
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
