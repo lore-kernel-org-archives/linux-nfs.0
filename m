@@ -1,30 +1,31 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Subject: Re: debugging hanging locks
-Date: Tue, 17 Aug 2004 20:40:37 -0400
+Date: Tue, 17 Aug 2004 19:49:50 -0600 (MDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1092789637.9393.19.camel@lade.trondhjem.org>
+Message-ID: <Pine.LNX.4.60.0408171943380.16703@harp.ngdc.noaa.gov>
 References: <Pine.LNX.4.60.0408161741020.5649@harp.ngdc.noaa.gov>
-	 <1092702159.11722.77.camel@lade.trondhjem.org>
-	 <Pine.LNX.4.60.0408161846440.5649@harp.ngdc.noaa.gov>
-	 <1092757186.4030.11.camel@lade.trondhjem.org>
-	 <Pine.LNX.4.60.0408171146190.12428@harp.ngdc.noaa.gov>
-	 <1092765798.4030.59.camel@lade.trondhjem.org>
-	 <Pine.LNX.4.60.0408171718050.12428@harp.ngdc.noaa.gov>
+ <1092702159.11722.77.camel@lade.trondhjem.org>
+ <Pine.LNX.4.60.0408161846440.5649@harp.ngdc.noaa.gov>
+ <1092757186.4030.11.camel@lade.trondhjem.org>  <Pine.LNX.4.60.0408171146190.12428@harp.ngdc.noaa.gov>
+  <1092765798.4030.59.camel@lade.trondhjem.org>
+ <Pine.LNX.4.60.0408171718050.12428@harp.ngdc.noaa.gov>
+ <1092789637.9393.19.camel@lade.trondhjem.org>
+Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BxEVl-0007tu-Id
-	for nfs@lists.sourceforge.net; Tue, 17 Aug 2004 17:41:05 -0700
-Received: from dh154.citi.umich.edu ([141.211.133.154] helo=lade.trondhjem.org)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	id 1BxFab-000093-8U
+	for nfs@lists.sourceforge.net; Tue, 17 Aug 2004 18:50:09 -0700
+Received: from harp.ngdc.noaa.gov ([140.172.187.26])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.34)
-	id 1BxEVj-0007cQ-LB
-	for nfs@lists.sourceforge.net; Tue, 17 Aug 2004 17:41:04 -0700
-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-In-Reply-To: <Pine.LNX.4.60.0408171718050.12428@harp.ngdc.noaa.gov>
+	id 1BxFaa-00055f-Ny
+	for nfs@lists.sourceforge.net; Tue, 17 Aug 2004 18:50:09 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1092789637.9393.19.camel@lade.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -37,33 +38,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 ty , 17/08/2004 klokka 19:30, skreiv Ara.T.Howard:
-> On Tue, 17 Aug 2004, Trond Myklebust wrote:
->=20
-> > P ty , 17/08/2004 klokka 13:50, skreiv Ara.T.Howard:
-> >
-> >> any ideas how one might try to exercise the kernel's clean-up beyond s=
-imply
-> >> sending SIGKILL to processes holding locks?  perhaps calls to _exit an=
-d
-> >> sendend one's self SIGKILL?
-> >
-> > Just failing to lockf(F_ULOCK) will cause it to trigger, however the
-> > races tend to occur if/when you interrupt the actual lockf(F_LOCK) call=
-,
-> > since that may cause the client to miss a reply from the server.
->=20
-> so this code seems to expose the soft timeout bug and/or the kernel not
-> cleaning up properly - if you run this and compile it:
+On Tue, 17 Aug 2004, Trond Myklebust wrote:
 
-...but are you seeing it with a recent 2.4 kernel (2.4.26 or 2.4.27)?
+> ...but are you seeing it with a recent 2.4 kernel (2.4.26 or 2.4.27)?
 
-The test you are providing would trigger precisely the race that was
-supposed to be fixed by patch I sent you. AFAICS that patch has not been
-applied to the 2.4.21-15 source tree.
+yes: 2.4.21-15.0.4.EL
 
-Cheers,
-  Trond
+> The test you are providing would trigger precisely the race that was
+> supposed to be fixed by patch I sent you. AFAICS that patch has not been
+> applied to the 2.4.21-15 source tree.
+
+o.k. then - good to confirm.  i'll have to wait for the patch - our sysads run
+only rpms from up2date... ;-(
+
+gotta wonder why we are paying redhat when the enterprise version moves so
+slowly - two months ago i found a bug in mmap that caused kernel panic -
+ugggh.
+
+so - one more tidbit that's really odd.  when i saw the hang before not only
+had none of the processes exited uncleanly - they had not exited at all!  eg.
+i had many processes humming along, getting and releasing a lock on an empty
+file (used as a semaphore file), when suddenly none could get the lock... this
+is very strange indeed...
+
+i guess i will just have to wait until the problem arises again, hopefully the
+info you've given me about determiniing which processes have locks will come
+in handy.  thanks for all the asistance again.
+
+cheers.
+
+-a
+--
+===============================================================================
+| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
+| PHONE   :: 303.497.6469
+| A flower falls, even though we love it;
+| and a weed grows, even though we do not love it. 
+|   --Dogen
+===============================================================================
 
 
 -------------------------------------------------------
