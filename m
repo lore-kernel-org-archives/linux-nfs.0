@@ -1,17 +1,20 @@
-From: Ion Badulescu <ionut@badula.org>
-Subject: Re: (autofs) Re: Direct mounts on Linux
-Date: Tue, 21 Jan 2003 17:59:33 -0500
+From: Marco.Schwarz@Freudenberg.de
+Subject: Using DHCP for booting diskless clients
+Date: Wed, 22 Jan 2003 14:43:19 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200301212259.h0LMxXj07960@buggy.badula.org>
-References: <p5iswjyocn.fsf@lemming.engeast.baynetworks.com>
-Cc: nfs@lists.sourceforge.net, Scott Mcdermott <smcdermott@questra.com>
+Message-ID: <95AF67BA7F70D511829B0002A551737001CA12@faw-e01.faw.freudenberg.de>
+Mime-Version: 1.0
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from ool-4351594a.dyn.optonline.net ([67.81.89.74] helo=buggy.badula.org)
+Received: from mailhost.freudenberg.de ([153.95.95.27] helo=itnts27.freudenberg.de)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18b7Mx-0006PO-00
-	for <nfs@lists.sourceforge.net>; Tue, 21 Jan 2003 14:59:47 -0800
-To: "Paul Smith" <pausmith@nortelnetworks.com>
-In-Reply-To: <p5iswjyocn.fsf@lemming.engeast.baynetworks.com>
+	id 18bLBb-0005vl-00
+	for <nfs@lists.sourceforge.net>; Wed, 22 Jan 2003 05:45:00 -0800
+Received: from fgnts03.fit.freudenberg.de (unverified) by itnts27.freudenberg.de
+ (Content Technologies SMTPRS 2.0.15) with ESMTP id <B0017846171@itnts27.freudenberg.de> for <nfs@lists.sourceforge.net>;
+ Wed, 22 Jan 2003 14:39:16 +0100
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -24,65 +27,20 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On 21 Jan 2003 02:05:28 -0500, Paul Smith <pausmith@nortelnetworks.com> wrote:
-> %% Scott Mcdermott <smcdermott@questra.com> writes:
-> 
->  >> Well, sure, but there's still getcwd() ... :)
-> 
->  sm> which is also kept track of in the shell (talking about bash only,
->  sm> don't know what other shells do)
-> 
-> No, I mean getcwd(3), the C runtime library function... if my program
-> invokes this then it doesn't matter what the shell does.
+Hi all,
 
-getcwd() on a modern Linux kernel (2.2 or newer) is a system call so the
-library doesn't need to play any tricks with stat() and readdir(). Thus
-it doesn't matter how many direct mounts you have.
+this is not exactly NFS related but maybe someone can help me ;-)
 
-Of course, this is a Linux-only optimization, other systems will still
-have the same old problems if a mount hangs.
+I am switching from bootp to dhcp for booting my clients, but so far I am
+not very sucessfull
 
-As for the direct mount support in am-utils:
+(error message on client: PXE-E53: No boot filename received)
 
-- Linux autofs doesn't support direct mounts. Period. It's a kernel
-  limitation,   and nothing amd does can work around it. So if you're
-  using amd in it's new autofs mode, direct mounts won't work. I think
-  we try to emulate them using the non-autofs mode, but read the next
-  paragraph...
+Maybe someone has a small example for me on how to configure the parameters
+for dhcp.conf, that would be great !
 
-- The trick amd uses (currently) to provide direct-mounts is rather ugly:
-  it mounts a filesystem (its own) and then it claims that the root of 
-  that filesystem is a symlink. Crossing that symlink is what triggers
-  the automount. The kernel gets rather upset about this, because it
-  makes the (rather reasonable) assumption that the root of a filesystem
-  is always a directory.
-
-I haven't looked into this for some time, but indeed, the kernel patch we
-used to provide stopped working around 2.4.10 or so. Al Viro suggested an
-alternative way of implementing direct mounts, using bind mounts, but there
-are a few problems with it:
-
-- It's very Linux-specific. Not an insurmountable problem, but a headache
-  nonetheless.
-
-- It necessarily needs to know a _lot_ about the kernel internals,
-  specifically about the order in which the kernel does calls to the
-  filesystem during path_walk() -- and cached_path_walk() -- so that
-  we trigger the mount at the right time, not too early and not too late.
-  This is bound to break on a lot of kernel versions, and is a nightmare
-  to maintain, especially in a package like am-utils that strives to be
-  relatively OS-independent.
-
-I'm willing to look over patches that implement the bind-mount alternative,
-or I may even do it myself when I get way too much free time on my hands
-(heh!).  Nevertheless, due to the above reasons, direct mounts will always
-be a second rate citizen on Linux.
-
-Ion
-
--- 
-  It is better to keep your mouth shut and be thought a fool,
-            than to open it and remove all doubt.
+Thanks,
+Marco
 
 
 -------------------------------------------------------
