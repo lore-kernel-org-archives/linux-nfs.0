@@ -1,24 +1,12 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: client breaking large synchronous writes into page-sized
- operations
-Date: Wed, 15 Sep 2004 11:16:20 +0200
+From: Andrew Schretter <schrett@math.duke.edu>
+Subject: 2.6.8.1 kernel NFS client connectathon failure
+Date: Wed, 15 Sep 2004 16:54:29 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1095239780.7648.1.camel@lade.trondhjem.org>
-References: <OF384027ED.2EEEA6E4-ON88256F0F.0081F2A6-88256F0F.0083657E@us.ibm.com>
+Message-ID: <200409152054.i8FKsTNV002355@roma.math.duke.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="----=GPMAIL_ATT_0.775036035316649"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C7Vu8-0008CM-UR
-	for nfs@lists.sourceforge.net; Wed, 15 Sep 2004 02:16:44 -0700
-Received: from pat.uio.no ([129.240.130.16])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1C7Vu7-00046c-4g
-	for nfs@lists.sourceforge.net; Wed, 15 Sep 2004 02:16:44 -0700
-To: Bruce Allan <bruce.allan@us.ibm.com>
-In-Reply-To: <OF384027ED.2EEEA6E4-ON88256F0F.0081F2A6-88256F0F.0083657E@us.ibm.com>
+To: NFS@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,18 +19,63 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-P=E5 on , 15/09/2004 klokka 01:55, skreiv Bruce Allan:
+This is a multi-part message in MIME format.
 
-> I was wondering if you could explain what the limitation is.
->=20
+------=GPMAIL_ATT_0.775036035316649
+Content-Type: text/plain; charset=US-ASCII
 
-The limitation is that writepage and friends all work using single
-pages.
+The attached code is a blatant rip from the latest connectathon code that
+was stripped down to show exactly where it fails on my 2.6.8.1 NFS client.
+Note that this code works on the local disk and on a 2.4.22 client (both to
+a 2.6.8.1 server and a 2.4.22 server) but fail from a 2.6.8.1 client to
+both 2.4.22 and 2.6.8.1 servers.
 
-It is therefore not an NFS client limitation, it is a VFS limitation...
+The problem has something to do with hard links and using rename(2) to
+overwrite hard linked files.
 
-Cheers,
- Trond
+Compile stright with gcc and run on a local disk partition and then on a
+remote partition.  It creates a directory TEMP, creates a file FOO, links
+it to TEMP/BAR, renames TEMP/BAR to FOO, then removes FOO and does an 
+ls on FOO and TEMP/BAR. 
+
+On local disk runs, TEMP/BAR still exists (I don't know why though).  On NFS
+runs, it does not exists.  This breaks connectathon's test.
+
+Any ideas?
+
+Andrew Schretter
+Systems Programmer, Duke University
+Dept. of Mathematics (919) 660-2866
+
+
+
+------=GPMAIL_ATT_0.775036035316649
+Content-Type: text/plain; name="lnk.c"
+Content-Transfer-Encoding: base64
+Content-Description: lnk.c
+Content-Disposition: ATTACHMENT; FILENAME="lnk.c"
+
+I2luY2x1ZGUgPHVuaXN0ZC5oPgojaW5jbHVkZSA8c3RkaW8uaD4KI2luY2x1ZGUgPHN0ZGxpYi5o
+PgojaW5jbHVkZSA8c3RyaW5nLmg+CiNpbmNsdWRlIDxmY250bC5oPgojaW5jbHVkZSA8ZXJybm8u
+aD4KI2luY2x1ZGUgPHN5cy9zdGF0Lmg+CgojaWZuZGVmIE1BWFBBVEhMRU4KI2RlZmluZSBNQVhQ
+QVRITEVOCTEyOAojZW5kaWYKCi8qIG1heGltdW0gbnVtYmVyIG9mIGNoYXJzIGZvciB0aGUgbWVz
+c2FnZSBzdHJpbmcgKi8KI2RlZmluZSBTVFJDSEFSUwkxMDAKCm1haW4oaW50IGFjLCBjaGFyICph
+dltdKSB7CglpbnQgY291bnQsIGZkLCBzbGVuLCBsZXJyLCBzbGVycjsKCWNoYXIgKmZuOwoJc3Ry
+dWN0IHN0YXQgc2I7CiAgICAgICAgY2hhciBzdHJbMjU1XTsKCiAgICAgICAgaWYgKG1rZGlyKCJU
+RU1QIiwgMDc1NSkpIHsKICAgICAgICAJcGVycm9yKCJta2RpciBURU1QIik7CiAgICAgICAgCWV4
+aXQoMCk7CiAgICAgICAgfQoJZmQgPSBvcGVuKCJGT08iLCBPX1JEV1J8T19DUkVBVCwgMDY2Nik7
+CglpZiAoZmQgPCAwKSB7CgkJcGVycm9yKCJjcmVhdCIpOwoJCWV4aXQoMCk7Cgl9CiAgICAgICAg
+c3ByaW50ZihzdHIsICIuLi4iKTsKICAgICAgICBzbGVuID0gc3RybGVuKHN0cik7CglpZiAod3Jp
+dGUoZmQsIHN0ciwgc2xlbikgIT0gc2xlbikgewoJCXBlcnJvcigid3JpdGUiKTsKCQkodm9pZCkg
+Y2xvc2UoZmQpOwoJCWV4aXQoMCk7Cgl9CglpZiAoY2xvc2UoZmQpKSB7CgkJcGVycm9yKCJjbG9z
+ZSIpOwoJCWV4aXQoMCk7Cgl9CglpZiAobGVyciA9IGxpbmsoIkZPTyIsICJURU1QL0JBUiIpKSB7
+CgkJaWYgKGVycm5vICE9IEVPUE5PVFNVUFApIHsKCQkJcGVycm9yKCJsaW5rIik7CgkJCWV4aXQo
+MCk7CgkJfQoJfSBlbHNlIGlmIChyZW5hbWUoIlRFTVAvQkFSIiwgIkZPTyIpKSB7CgkJcGVycm9y
+KCJyZXJlbmFtZSIpOwoJCWV4aXQoMCk7Cgl9CglpZiAodW5saW5rKCJGT08iKSkgewoJCXBlcnJv
+cigidW5saW5rIDEiKTsKCQlleGl0KDApOwoJfQogICAgICAgIHN5c3RlbSgibHMgLWwgRk9PIFRF
+TVAvQkFSIik7CglleGl0KGVycm5vKTsKfQo=
+
+------=GPMAIL_ATT_0.775036035316649--
 
 
 
