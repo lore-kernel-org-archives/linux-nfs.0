@@ -1,24 +1,29 @@
-From: "H. J. Lu" <hjl@lucon.org>
-Subject: Re: Hiya
-Date: Mon, 20 Oct 2003 11:55:42 -0700
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: [PATCH] SGI 901086: NFSv2 SETATTR current server time support
+Date: Tue, 21 Oct 2003 16:40:46 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20031020185542.GA8226@lucon.org>
-References: <Pine.LNX.4.44.0310171631560.4219-100000@njlxdev10.lehman.com>
+Message-ID: <16276.54510.792744.40216@notabene.cse.unsw.edu.au>
+References: <3F93B35F.EAFC7028@melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+    Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1ABlkA-0002ZP-00
-	for <nfs@lists.sourceforge.net>; Mon, 20 Oct 2003 18:55:30 -0700
-Received: from rwcrmhc13.comcast.net ([204.127.198.39])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 1ABfTq-0000hC-9m
-	for nfs@lists.sourceforge.net; Mon, 20 Oct 2003 12:14:14 -0700
-To: "Brown, Rodney" <rodney@lehman.com>
-In-Reply-To: <Pine.LNX.4.44.0310171631560.4219-100000@njlxdev10.lehman.com>
+	id 1ABrWR-0008MQ-00
+	for <nfs@lists.sourceforge.net>; Tue, 21 Oct 2003 01:05:43 -0700
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.22)
+	id 1ABqa3-0004K7-Uj
+	for nfs@lists.sourceforge.net; Tue, 21 Oct 2003 00:05:24 -0700
+Received: From notabene ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
+	(for <gnb@melbourne.sgi.com>) (for <trond.myklebust@fys.uio.no>)
+	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
+	Tue, 21 Oct 2003 16:40:47 +1000
+To: Greg Banks <gnb@melbourne.sgi.com>
+In-Reply-To: message from Greg Banks on Monday October 20
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,21 +36,28 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I forwarded your email to the Linux NFS mailing list.
-
-
-H.J.
-----
-On Fri, Oct 17, 2003 at 04:33:13PM -0400, Brown, Rodney wrote:
-> We have been having some serious NFS client side issues with RedHat Advanced
-> Server 2.1 kernel e12 and e24.  The backend NFS server is Solaris 8 (fully
-> patched).
+On Monday October 20, gnb@melbourne.sgi.com wrote:
+> G'day,
 > 
-> I noticed you posted a bug tracker reg some locking issues with NFS a while
-> back and had a patched connectathon testsuite.  I was hoping you could toss me
-> a URL to get that so i can compile on our Linux nodes and run a similar test
-> to see if we can pinpoint the issues.
+> SGI bug 901086.
+...
 > 
+> The NFSv2 RFC defines no such encoding for the sattr structure.  However
+> Solaris and Irix machine obey a convention where passing the invalid value
+> mtime.useconds=1000000 means "set both mtime and atime to the current
+> server time".  The convention is documented in the book "NFS Illustrated"
+> by Brent Callaghan.  The patch below implements this convention for the
+> Linux client and server (hence multiple To:s).
+> 
+
+Hmmm... how delightful :-(
+
+But, it seems not unreasonable.  I will forward nfsd patches to Linus and
+Marcelo.
+
+Thanks.
+
+NeilBrown
 
 
 -------------------------------------------------------
