@@ -1,24 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Linux NFS client over TCP
-Date: 17 Oct 2003 08:24:26 -0400
+From: Ralph Churchill <mrchucho@yahoo.com>
+Subject: Re: NFS slow for Linux server and Solaris client
+Date: Fri, 17 Oct 2003 06:53:42 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsu1683vd1.fsf@charged.uio.no>
-References: <20031017105918.32827.qmail@web13101.mail.yahoo.com>
+Message-ID: <20031017135342.76619.qmail@web11401.mail.yahoo.com>
+References: <3F8F3705.9000502@sciencesoft.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AATen-00038D-00
-	for <nfs@lists.sourceforge.net>; Fri, 17 Oct 2003 05:24:37 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.22)
-	id 1AATel-0005CK-7u
-	for nfs@lists.sourceforge.net; Fri, 17 Oct 2003 05:24:35 -0700
-To: Suresh Kodati <kodatisu@yahoo.com>
-In-Reply-To: <20031017105918.32827.qmail@web13101.mail.yahoo.com>
+	id 1AAV5l-00026E-00
+	for <nfs@lists.sourceforge.net>; Fri, 17 Oct 2003 06:56:33 -0700
+Received: from web11401.mail.yahoo.com ([216.136.131.231])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.22)
+	id 1AAV49-0006Yc-3P
+	for nfs@lists.sourceforge.net; Fri, 17 Oct 2003 06:54:53 -0700
+To: nfs@lists.sourceforge.net
+In-Reply-To: <3F8F3705.9000502@sciencesoft.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -31,17 +30,22 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Suresh Kodati <kodatisu@yahoo.com> writes:
 
-     > I would like to know if this is an expected behavior from NFS
-     > client side?.
+--- Reinhard Dunkel <dunkel@sciencesoft.net> wrote:
+> We changed to a RH Linux 9 file server (3 GHz Intel
+> PC).
 
-It is under Linux, yes. I probably will get round to finishing the TCP
-active close stuff at some point, but it is not top of my list of
-priorities...
+What did you switch FROM? I've perceived performance
+issues switching from RH7x to RH9. Two differences
+here being kernel version and moving from nfs-utils
+0.3.x(?) to nfs-utils(1.0.1).
 
-Cheers,
-  Trond
+RMC
+
+__________________________________
+Do you Yahoo!?
+The New Yahoo! Shopping - with improved product search
+http://shopping.yahoo.com
 
 
 -------------------------------------------------------
