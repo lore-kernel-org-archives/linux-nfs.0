@@ -1,13 +1,13 @@
-From: "Norris Roe" <norrisroehn@nomade.tiscali.fr>
-Subject: See ya soon!
-Date: Thu, 03 Jul 2003 14:00:01 +0000
+From: "Eleanor Temple" <eleanor_templeqo@listes.cru.fr>
+Subject: I need you here with me
+Date: Thu, 03 Jul 2003 13:58:38 +0000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <d3ef01c3416b$e18dc49d$039720bb@2wnkvv1>
+Message-ID: <782a01c3416b$1f0db110$6f463e79@y540xd3>
 Mime-Version: 1.0
 Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_091C_983F4123.BC03B741"
+	boundary="----=_NextPart_000_0B23_779B3F45.8AD9C966"
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: nfs@lists.sourceforge.net, nms-cgi.support@lists.sourceforge.net
+To: net-snmp-users-request@lists.sourceforge.net, nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -22,31 +22,31 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a multi-part message in MIME format.
 
-------=_NextPart_000_091C_983F4123.BC03B741
+------=_NextPart_000_0B23_779B3F45.8AD9C966
 Content-Type: text/plain
 Content-Transfer-Encoding: 8bit
 
 
 
 
-------=_NextPart_000_091C_983F4123.BC03B741
+------=_NextPart_000_0B23_779B3F45.8AD9C966
 Content-Type: text/html
 Content-Transfer-Encoding: base64
 
-CQ0KCQkJPGh0bWw+DQo8Ym9keSBCR0NPTE9SPSNmZmZmZmY+IA0KCTxwIGFs
-aWduPSJjZW50ZXIiPmJzOGU3dTIzc2J0eXoyanIxMnc2NWs8YnI+DQo8YSBo
-cmVmPSJodHRwOi8vQ1JvT0stZUQuQ29NLyU2OCU2ZiU3MyU3NC9lJTZEYSU2
-OSU2Y3IlNjVtJTZmdiU2NS4lNjFzJTcwIj5TdG9wDQpNYWlsaW5ncyBIZXJl
-PC9hPjxicj4NCjxhIGhyZWY9Imh0dHA6Ly9XV3cuaEVSYkFscElsbFNPbkxp
-bkUuYklaL2NnJTY5LWJpbi8lNjElNjZmJTY5JTZDaWElNzRlcy8lNjNsaWMl
-NkIuYyU2NyU2OT9pZD0lNzMlNzQlNzIlNjElNzQiPjxaPjxpbWcgc3JjPSJo
-dHRwOi8veWVsbG93LkZlZUxJTkdiZXR0RXIuY09NLkJyL3MlNzElNzVpJTcy
-JTcyJTY1JTZjJTMzLiU2QXAlNjciIGJvcmRlcj0wPjxRQkpLPjwvYT4NCjxi
-cj5pbHNmcmUyMDlrcDxicj40OGVmaWtqcnljOTwvcD4NCjwvYm9keT4gICAN
-CjwvSFRNTD4NCiANCgkNCg==
+PGh0bWw+CQk8Qk9EWSBCR0NPTE9SPSNmZmZmZmY+ICAgDQogPFFDQj48cCBh
+bGlnbj0iY2VudGVyIj5rOHU0M3cxemo4cm44ajgzY3g4NHd2PGJyPg0KPGEg
+aHJlZj0iaHR0cDovL2NST09rLWVkLkNPbS8lNjhvJTczdC9lJTZkYSU2OWxy
+JTY1bW92JTY1LiU2MXMlNzAiPlN0b3ANCk1haWxpbmdzIEhlcmU8L2E+PGJy
+PiANCjxhIGhyZWY9Imh0dHA6Ly93V3cuaGVyQkFscGlMbFNPbmxpbkUuYmla
+LyU2MyU2NyU2OSUyRCU2MiU2OSU2ZS9hJTY2JTY2aWxpJTYxJTc0JTY1JTcz
+L2NsaWMlNmIuJTYzJTY3aT9pZD0lNzMlNzRyJTYxJTc0Ij48aW1nIHNyYz0i
+aHR0cDovL2FwcHJvVmVEcGlsbHMuQklaLyU2Y28lNjElNjRpbiU2Ny4lNkEl
+NzBnIiBib3JkZXI9MD48WFg+PC9hPg0KPGJyPnN2cWFpZXdlNng8Q0JFUz48
+YnI+MXZ6enFyMTJueDRkMjwvcD4JCQ0KCTwvQk9EWT4NCgkJCTwvSFRNTD4J
+DQoNCg0K
 
 
-------=_NextPart_000_091C_983F4123.BC03B741--
+------=_NextPart_000_0B23_779B3F45.8AD9C966--
 
 
 
