@@ -1,18 +1,19 @@
-From: =?iso-8859-1?Q?Brasseur_Val=E9ry?= <Valery.Brasseur@atosorigin.com>
-Subject: RE: nfs unlink perf !
-Date: Tue, 13 Aug 2002 17:09:14 +0200
+From: Daniel Brunner <daniel.brunner@dunidester.com>
+Subject: Re: nfs permissions / access problem
+Date: Tue, 13 Aug 2002 10:20:49 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <8D7D56C6ED3DD411998D009027DC685E0874E223@srv-grp-s1.segin.com>
-Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Message-ID: <3FB52D0C-AED0-11D6-92E7-00306589E6DA@dunidester.com>
+References: <20020813143423.QHGF221.sccrmhc02.attbi.com@there>
+Mime-Version: 1.0 (Apple Message framework v482)
+Content-Type: text/plain; charset=US-ASCII; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from hermes8.atos-group.com ([160.92.18.57] helo=hermes8.segin.com)
+Received: from [65.168.147.194] (helo=mkeweb01.duni.com)
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17edII-0001eY-00
-	for <nfs@lists.sourceforge.net>; Tue, 13 Aug 2002 08:09:14 -0700
-To: "'Lever, Charles'" <Charles.Lever@netapp.com>,
-	nfs@lists.sourceforge.net
+	id 17edST-0004sC-00
+	for <nfs@lists.sourceforge.net>; Tue, 13 Aug 2002 08:19:45 -0700
+To: nl@lippman.org
+In-Reply-To: <20020813143423.QHGF221.sccrmhc02.attbi.com@there>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,67 +26,79 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-I check nfsstat, and see a bunch of retrans...
-but now when then following your suggestion I 've try to put :
-   tcp + rsize/wsize=3D32768 and :
- * take the same time
- * hang on D state under moderate load so I need to reboot very =
-frequently.
+Hello!!
 
-my previous setup was :
- * nfs v3, rsize/wsize=3D8192, udp
+What's you /etc/exports look like!?!?
 
-my client (DL360) and server  (F880) are connected through a dedicated
-switch each with 100FD network link to the switch.
+/shared	195.168.100.0/255.255.255.0(rw)
+....
 
-any ideas ?
 
-> -----Original Message-----
-> From: Lever, Charles [mailto:Charles.Lever@netapp.com]
-> Sent: Monday, August 12, 2002 5:48 PM
-> To: 'Brasseur Val=E9ry'; nfs@lists.sourceforge.net
-> Subject: RE: [NFS] nfs unlink perf !
->=20
->=20
-> link RPCs can be very large (much larger than wsize, for instance).
-> if you use UDP and your network drops lots of packets, large link
-> requests will probably require several retransmissions to complete.
->=20
-> enlarge your transport socket buffer size on the client (see FAQ)
-> and/or try NFS over TCP.  also examine your network to see if it
-> is clean, and is working optimally.  if your client is attached
-> via a more slow link than your server, that can be the source of
-> bursty packet loss.
->=20
-> > -----Original Message-----
-> > From: Brasseur Val=E9ry [mailto:Valery.Brasseur@atosorigin.com]
-> > Sent: Monday, August 12, 2002 8:09 AM
-> > To: nfs@lists.sourceforge.net
-> > Subject: [NFS] nfs unlink perf !
-> >=20
-> >=20
-> > I am testing an application which to a lot of link/unlink
-> >=20
-> > server is a NetApp filer, client is linux 2.4.19+nfs patches.
-> >=20
-> > under load it seems that the unlink call is very long when=20
-> > all over calls
-> > response time seems to be OK.
-> > is there any problems with the unlink code ?
-> >=20
-> > thanks
-> >=20
-> >=20
-> >=20
-> > -------------------------------------------------------
-> > This sf.net email is sponsored by:ThinkGeek
-> > Welcome to geek heaven.
-> > http://thinkgeek.com/sf
-> > _______________________________________________
-> > NFS maillist  -  NFS@lists.sourceforge.net
-> > https://lists.sourceforge.net/lists/listinfo/nfs
-> >=20
->=20
+Use whatever your ip number is...
+
+
+Dan
+
+
+
+On Tuesday, August 13, 2002, at 09:38 AM, nl@lippman.org wrote:
+
+> I am hoping someone can provide some advice. The situation is that I 
+> want to
+> have available on my nfs server a share that is accessible to a group of
+> people connecting from their workstations, but am having trouble doing 
+> so.
+>
+> Following what I would have done for a local directory, I created the
+> directory: /shared and set its ownship to root, with group=sharedgroup, 
+> and
+> then gave group permissions of rwx. I made sure each user who needs to 
+> use
+> the shared directory is in the sharedgroup on the server, and for good
+> measure also did so on each workstation (and yes, the gid's are the 
+> same on
+> each machine). Unfortunately, the directory remains inaccessible via 
+> nfs with
+> this scheme.
+>
+> I suspect the problem here is that nfs receives from the client the uid 
+> and
+> gid that the client process is currently executing under, but does not
+> received the extended group list, and also does not look up that user's
+> extended group list on the server but rather just does permission 
+> checking
+> with the single active uid and gid it received from the client, and so 
+> cannot
+> access via extended group information.
+>
+> That doesn't strike me as the best way for nfs to operate, although I 
+> am am
+> sure there was sound design decision involved (maybe overhead of 
+> looking up
+> the groups on each access, which the os does not have locally as that 
+> info is
+> already in the process's state information, placed there at login).
+>
+> In any case, it means that I cannot easily export a shared directory in 
+> this
+> fashion.
+>
+> So my question is: How do I make an exported folder accessible to a 
+> group of
+> users?
+>
+> Thanks.
+> nl
+>
+>
+> -------------------------------------------------------
+> This sf.net email is sponsored by: Dice - The leading online job board
+> for high-tech professionals. Search and apply for tech jobs today!
+> http://seeker.dice.com/seeker.epl?rel_code=31
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+
 
 
 -------------------------------------------------------
