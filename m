@@ -1,25 +1,22 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] Fix xprt_bindresvport range
-Date: Wed, 23 Feb 2005 20:23:19 -0800
-Message-ID: <1109218999.11180.49.camel@lade.trondhjem.org>
-References: <20050223162808.GB17774@suse.de>
-	 <1109176559.10142.4.camel@lade.trondhjem.org>
-	 <Pine.LNX.4.58.0502241055521.2188@wombat.indigo.net.au>
+From: Neil Horman <nhorman@redhat.com>
+Subject: Re: possible client stale filehandle bug?
+Date: Wed, 16 Feb 2005 16:23:14 -0500
+Message-ID: <4213B9C2.2040709@redhat.com>
+References: <482A3FA0050D21419C269D13989C61130853976D@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Olaf Kirch <okir@suse.de>, Charles Lever <cel@citi.umich.edu>,
-	nfs@lists.sourceforge.net
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Garrick Staples <garrick@usc.edu>, nfs@lists.sourceforge.net
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D4AXX-00014x-Nx
-	for nfs@lists.sourceforge.net; Wed, 23 Feb 2005 20:23:51 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1D1Wdg-0003xJ-Dh
+	for nfs@lists.sourceforge.net; Wed, 16 Feb 2005 13:23:16 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1D4AXR-0001Wu-FY
-	for nfs@lists.sourceforge.net; Wed, 23 Feb 2005 20:23:51 -0800
-To: Ian Kent <raven@themaw.net>
-In-Reply-To: <Pine.LNX.4.58.0502241055521.2188@wombat.indigo.net.au>
+	id 1D1Wdf-00058x-Ri
+	for nfs@lists.sourceforge.net; Wed, 16 Feb 2005 13:23:16 -0800
+To: "Lever, Charles" <Charles.Lever@netapp.com>
+In-Reply-To: <482A3FA0050D21419C269D13989C61130853976D@lavender-fe.eng.netapp.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,37 +30,76 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-to den 24.02.2005 Klokka 10:59 (+0800) skreiv Ian Kent:
-> > > The patch below changes xprt_bindresvport to select ports from
-> > > 650-1023 by default (631 is cups, which we better avoid).
-> > > It also adds sysctls to allow the admin to select a different
-> > > port range.
-> > 
-> > The patch looks good, and this is definitely a feature we should have.
+Lever, Charles wrote:
+> hi neil-
 > 
-> It is certainly useful to be able to define the range but there are 
-> NFS servers that require the client to use ports < 1024. So the underlying 
-> problem still remains.
+> 
+>>>>It seems that the Solaris clients never report any such 
+>>
+>>errors, only the Linux
+>>
+>>>>clients.  However, watching 'snoop' on the Solaris NFS 
+>>
+>>server, I see that it IS
+>>
+>>>>returning stale file handles to both OSes, but Solaris 
+>>
+>>clients seem to retry
+>>
+>>>>the request several times; and the Linux clients 
+>>
+>>immediately pass the error up
+>>
+>>>>to the application.
+>>>>
+>>>>Is there some condition that the 2.4 kernel is handling incorrectly?
+>>>
+>>>
+>>>I do not believe that Solaris redrives ESTALE on read, but 
+>>
+>>they may do
+>>
+>>>it on open(). Linux does not redrive either case. See the many
+>>>discussions in the NFS list archives for why.
+>>>
+>>
+>>Solaris does in fact retry on operations on ESTALE errors, 
+>>definately on 
+>>open, and I think on read/readdir/stat/etc. as well.  We had some 
+>>discussion about tht here recently.
+> 
+> 
+> as far as i know Solaris doesn't redrive on read or write, but only
+> during pathname resolution.  redriving a read or write will only work in
+> the case where the server has taken the export offline temporarily; if
+> the file handle really is bad, then redriving a read or write is
+> probably safe, but won't accomplish anything.
+> 
+> i have a patch that adds support for pathname resolution retry to 2.6
+> (now in Trond's NFS_ALL for 2.6.11-rc4) and a pair of patches that
+> implement this for RHEL 3.0 that i've sent to steve and al viro for
+> review.
 
-Are you referring to the problem of running out of free privileged
-ports?  Sure, but that is not the problem that Olaf's patch attempts to
-address.
+I agree, it probably doesn't re-drive on any operation that doesn't walk 
+a path, which is in line with what RHEL is doing currently.  I didn't 
+mean to imply that solaris retired ESTALE in all occurances of the 
+event.  Anywho, Can you point me to your patches?  I'd be interested to 
+know how you managed to implement retry on ESTALE without leaking into 
+the VFS, which I think you will recall was the big sticking point that 
+we were debating here.
 
-To address that problem, we certainly also want to add support for
-sharing of sockets to the same server, and there may be further sharing
-schemes that we can implement. For instance, UDP sockets don't have a
-connection protocol, so they can basically talk to anyone.
-
-For TCP sockets, we should also consider playing with the TCP_LINGER2
-socket option (to enable us to re-use the port without having to wait
-through a 60 second timeout).
-
-Cheers,
-  Trond
+Thanks! :)
+Neil
 
 -- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
-
+/***************************************************
+  *Neil Horman
+  *Software Engineer
+  *Red Hat, Inc.
+  *nhorman@redhat.com
+  *gpg keyid: 1024D / 0x92A74FA1
+  *http://pgp.mit.edu
+  ***************************************************/
 
 
 -------------------------------------------------------
