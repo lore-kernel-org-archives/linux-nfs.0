@@ -1,27 +1,22 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [NFS client] NFS locks not released on abnormal process termination
-Date: 09 Dec 2003 03:42:02 -0500
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: RE: IOStat with NFS
+Date: Tue, 9 Dec 2003 07:18:04 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsekvetmat.fsf@guts.uio.no>
-References: <20031208033933.16136.qmail@web20024.mail.yahoo.com>
-	<shszne3risb.fsf@charged.uio.no> <877k17rzai.fsf@ceramic.fifi.org>
-	<1070913367.2941.137.camel@nidelv.trondhjem.org>
-	<87llpms8yr.fsf@ceramic.fifi.org>
+Message-ID: <482A3FA0050D21419C269D13989C611302B07ACE@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Kenny Simpson <theonetruekenny@yahoo.com>,
-	  linux-kernel@vger.kernel.org,  nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <jeremymc@sce.carleton.ca>, <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1ATdRi-0008OM-7P
-	for nfs@lists.sourceforge.net; Tue, 09 Dec 2003 00:42:18 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 1ATjcq-0000b3-WD
+	for nfs@lists.sourceforge.net; Tue, 09 Dec 2003 07:18:12 -0800
+Received: from mx01.netapp.com ([198.95.226.53])
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
-	id 1ATdRh-0003KQ-Qb
-	for nfs@lists.sourceforge.net; Tue, 09 Dec 2003 00:42:18 -0800
-To: Philippe Troin <phil@fifi.org>
-In-Reply-To: <87llpms8yr.fsf@ceramic.fifi.org>
+	id 1ATjcq-0003vo-OF
+	for nfs@lists.sourceforge.net; Tue, 09 Dec 2003 07:18:12 -0800
+To: <jeremy@mcnicoll.ca>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,31 +29,87 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Philippe Troin <phil@fifi.org> writes:
+hi jeremy-
 
-     > From my reading of the patch, it supersedes the old patch, and
-     > is only
-     > necessary on the client. Is also does not compile :-)
+iostat for NFS is a good idea, thanks for pursuing it.
 
-Yeah, I admit I didn't test it out...
+some general comments.
 
-     > Here's an updated patch which does compile.
+1.  as you noted, 2.4 is more or less closed for new features,
+    so it would be better to start looking closely at 2.6.
 
-Thanks.
+2.  instead of an NFS only solution, you might want to consider
+    a more general solution for all network file systems, like
+    AFS, coda, samba, and so on.
 
-     > I am still running tests, but so far it looks good (that is all
-     > locks are freed when a process with locks running on a NFS
-     > client is killed).
+3.  instead of simulating block device statistics for file systems
+    that don't use blocks, why not invent a different paradigm for
+    network file systems, and teach iostat to use that?
 
-Good...
+4.  you will bump into the minor device limitation with your
+    design, allowing only 250 or so mounts to appear; you should
+    consider how to scale your solution to thousands of mounts.
 
-There are still 2 other issues with the generic POSIX locking code.
-Both issues have to do with CLONE_VM and have been raised on
-linux-kernel & linux-fsdevel. Unfortunately they met with no response,
-so I'm unable to pursue...
+5.  i've only glanced at your code, but you appear to have some
+    layering violations, like putting NFS-specific code in the
+    generic file system layers.  see if you can find a way of
+    implementing this without violating the interface
+    architecture.
 
-Cheers,
-  Trond
+6.  you need to worry about the mounts changing in the background,
+    mostly by automounter, while iostat gathers statistics...
+    maybe you have worried about that, and this is why you have
+    violated the architecture as you did.  some discussion of
+    how your solution handles such races would be illuminating
+    for us poor reviewers.
+
+> -----Original Message-----
+> From: jeremy@mcnicoll.ca [mailto:jeremy@mcnicoll.ca]=20
+> Sent: Sunday, December 07, 2003 3:37 PM
+> To: nfs@lists.sourceforge.net
+> Cc: jeremymc@sce.carleton.ca
+> Subject: [NFS] IOStat with NFS
+>=20
+>=20
+> As a project for school (engineering) I modified IOStat on a=20
+> 2.4.22 or 23=20
+> series kernel to allow for NFS data output.  This may be=20
+> useful for some people=20
+> here.  I am in the middle of exams, so I cant get back to=20
+> anyone too quickly on=20
+> this but if any one is interested in what I did the patches are here.=20
+>=20
+http://www.mcnicoll.ca/iostatnfs/iostats.html
+
+Hopefully people can give me constructive criticism on this work since
+its=20
+getting marked and I would like to see community acceptance.=20
+
+Any pointers, tips, useful info to help towards the report that I have
+to write=20
+would be greatly appreciated.=20
+
+Some of the things to be done when I finish exams are:=20
+  -clean up code.
+  -look at getting it working on 2.6 since there are no more changes to
+2.4
+  -report bug on the disk stats that  I found while doing the work.
+  -try to get this worked into the kernel.=20
+  -Use the feedback that I get to help with the documenation.=20
+
+Thank you.=20
+
+
+
+
+-------------------------------------------------------
+This SF.net email is sponsored by: SF.net Giveback Program.
+Does SourceForge.net help you be more productive?  Does it
+help you create better code?  SHARE THE LOVE, and help us help
+YOU!  Click Here: http://sourceforge.net/donate/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
 
 
 -------------------------------------------------------
