@@ -1,22 +1,24 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: NFSv4 support on SuSE 9 sp1
-Date: Thu, 10 Mar 2005 15:23:29 +0100
-Message-ID: <20050310142329.GA22161@suse.de>
-References: <20050310135558.51770.qmail@web51603.mail.yahoo.com>
+From: mehta kiran <kiranmehta1981@yahoo.com>
+Subject: Re: exportfs nohide option for nfsv4
+Date: Thu, 10 Mar 2005 04:13:05 -0800 (PST)
+Message-ID: <20050310121305.26756.qmail@web51608.mail.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1D9OZa-0005Se-II
-	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 06:23:34 -0800
-Received: from mail.suse.de ([195.135.220.2] helo=Cantor.suse.de)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1D9OeJ-0005iG-Q6
+	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 06:28:27 -0800
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1D9OZZ-0006Di-E5
-	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 06:23:34 -0800
-To: mehta kiran <kiranmehta1981@yahoo.com>
-In-Reply-To: <20050310135558.51770.qmail@web51603.mail.yahoo.com>
+	id 1D9Oan-00067x-Js
+	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 06:24:51 -0800
+Received: from web51608.mail.yahoo.com ([206.190.38.213])
+	by externalmx-1.sourceforge.net with smtp (Exim 4.41)
+	id 1D9MYN-000793-7l
+	for nfs@lists.sourceforge.net; Thu, 10 Mar 2005 04:14:12 -0800
+To: nfs@lists.sourceforge.net
+In-Reply-To: 6667
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,17 +32,78 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Mar 10, 2005 at 05:55:58AM -0800, mehta kiran wrote:
->   Is nfsv4 supported on SuSE 9 sp1 rc5.
->   SuSE 9 sp1 rc5 is not able to mount
->   nfs4 filesystems.
+one change.
+As per man page , nohide is not needed if  the
+filesystems mounted on child directories are not
+exported.So that user can access them even if 
+top level direcotry is exported
 
-No, we don't support NFSv4 in SLES9.
 
-Olaf
--- 
-Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
-okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
+
+
+--- mehta kiran <kiranmehta1981@yahoo.com> wrote:
+> Hi , 
+>         I am using RHEL 4 GA.
+>         i created directories /export ,
+> /export/exp1.
+>         Then i started all the nfs daemons.
+>         I mounted a disk on /export/exp1.
+> 
+>         Then i exported /export using
+>         exportfs -o rw,no_root_squash,fsid=0
+> *:/export
+> 
+>         I exported /export/exp1 using
+>        exportfs -o rw,no_root_squash *:/export/exp1
+> 
+>       I mounted exported fs on client side using
+>       mount -t nfs4 server:/  /share
+> 
+>       but i am not able to see contents of
+> /share/exp1
+>       When i used nohide attribute for exporting fs 
+>       then everyting works fine.
+> 
+>       As per man page , nohide is not needed if  the
+>       filesystems mounted on child directories are
+>       exported.
+>       Please let me know if i ma wrong
+> 
+> thanks,
+>  --kiran
+> 
+> 
+> 
+> 
+> 
+> 		
+> __________________________________ 
+> Do you Yahoo!? 
+> Yahoo! Mail - Easier than ever with enhanced search.
+> Learn more. 
+> http://info.mail.yahoo.com/mail_250
+> 
+> 
+>
+-------------------------------------------------------
+> SF email is sponsored by - The IT Product Guide
+> Read honest & candid reviews on hundreds of IT
+> Products from real users.
+> Discover which products truly live up to the hype.
+> Start reading now.
+>
+http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+> 
+
+
+		
+__________________________________ 
+Do you Yahoo!? 
+Yahoo! Small Business - Try our new resources site!
+http://smallbusiness.yahoo.com/resources/ 
 
 
 -------------------------------------------------------
