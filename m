@@ -1,25 +1,31 @@
-From: Stephen Beahm <stephenbeahm@adelphia.net>
-Subject: NFS write speed and file permissions (2.6.0-test10 kernel)
-Date: Mon, 24 Nov 2003 03:58:17 -0500
+From: mb/nfs@dcs.qmul.ac.uk
+Subject: Re: trouble with file locking
+Date: Mon, 24 Nov 2003 14:24:28 +0000 (GMT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20031124085817.GA1680@pc1.sbeahm.net>
+Message-ID: <Pine.LNX.4.58.0311241416240.7849@lucy.dcs.qmul.ac.uk>
+References: <20031112105043.020c1548.erik@thiele-hydraulik.de>
+ <Pine.LNX.4.58.0311191259400.846@lewis.et.byu.edu> <shsd6bohzxw.fsf@charged.uio.no>
+ <20031120070531.7886de98.erik@thiele-hydraulik.de> <16316.23490.266052.855506@charged.uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain; Format=Flowed; DelSp=Yes; charset=ISO-8859-1
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AOCY5-0000WE-00
-	for <nfs@lists.sourceforge.net>; Mon, 24 Nov 2003 00:58:25 -0800
-Received: from mta13.mail.adelphia.net ([68.168.78.44] helo=mta13.adelphia.net)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
-	id 1AOCY4-00058f-Uh
-	for nfs@lists.sourceforge.net; Mon, 24 Nov 2003 00:58:25 -0800
-Received: from pc1 ([67.23.51.126]) by mta13.adelphia.net
-          (InterMail vM.5.01.06.05 201-253-122-130-105-20030824) with ESMTP
-          id <20031124085818.DQJH4878.mta13.adelphia.net@pc1>
-          for <nfs@lists.sourceforge.net>; Mon, 24 Nov 2003 03:58:18 -0500
+	id 1AOHdl-00032D-00
+	for <nfs@lists.sourceforge.net>; Mon, 24 Nov 2003 06:24:37 -0800
+Received: from vicar.dcs.qmul.ac.uk ([138.37.88.163] helo=mail.dcs.qmul.ac.uk)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.24)
+	id 1AOHdk-0004bU-OD
+	for nfs@lists.sourceforge.net; Mon, 24 Nov 2003 06:24:36 -0800
+Received: from lucy.dcs.qmul.ac.uk ([138.37.88.16])
+	by mail.dcs.qmul.ac.uk with asmtp (TLSv1:DHE-RSA-AES256-SHA:256)
+	(Exim 4.24)
+	id 1AOHdd-0000xS-FT
+	for nfs@lists.sourceforge.net; Mon, 24 Nov 2003 14:24:29 +0000
 To: nfs@lists.sourceforge.net
+In-Reply-To: <16316.23490.266052.855506@charged.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,48 +38,36 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
+On Nov 20 Trond Myklebust wrote:
 
-I am seeing huge speed differences in NFS file writes based on file
-permissions.
+>Then you have been using POSIX locks (i.e. fcntl()/lockf()). They
+>should work fine.
 
-create a test file:
-dd if=/dev/zero of=testfile bs=4k count=65535
+Possibly unrelated [hence CC trimmed]:
 
-chmod 664 testfile
-time cp testfile /mnt/gwpub
-real    0m36.818s
-user    0m0.018s
-sys     0m2.574s
+I can't get Debian testing to log in to GNOME when home directories are
+mounted over NFS (Linux 2.6-mm client -> Linux 2.4-ac server). It claims 
+not to be able to lock a file..
 
-chmod 755 testfile
-time cp testfile /mnt/gwpub
-real    4m6.056s
-user    0m0.054s
-sys     0m5.835s
+I tried writing a trivial program to test lockf() and it returns ENOLCK 
+over NFS, but succeeds locally. The client kernel offers some grumbles:
 
+RPC: Can't bind to reserved port (13).
+RPC: can't bind to reserved port.
+nsm_mon_unmon: rpc failed, status=-5
+lockd: cannot monitor a.b.c.d
+lockd: failed to monitor a.b.c.d
 
-I can consistently reproduce this problem with a 2.6.0-test9 or 2.6.0- 
-test10 kernel on the client side. There does not seem to be any  
-problems here with a 2.4.22 kernel. Reading does not seem to be  
-affected, only writes. Neither export nor mount options make a  
-difference. If the test is performed as root, all is fast.
+[where a.b.c.d is our NFS server]
 
-I am using NFSv3 and nfs-utils-1.06.
+/sbin/rpc.statd is running on both client and server, and with a 2.4 
+kernel on the client (as the only change) GNOME logins work just fine.
 
-This is only an observation and not mean anything:
-using a 2.4.22 client, open() does not pass any mode,
-but a 2.6.0-testX client does this: open("/mnt/gwpub/testfile",  
-O_WRONLY|O_CREAT|O_LARGEFILE, 0100755)
+Any ideas? I'm stumped at this point.
 
+Cheers,
 
-Thanks,
-
-
--- 
-Stephen Beahm
-mailto:stephenbeahm@adelphia.net
-
+Matt
 
 
 -------------------------------------------------------
