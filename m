@@ -1,18 +1,21 @@
-From: Jason Holmes <jholmes@psu.edu>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: 2.4 vs. 2.6 nfs client performance
-Date: Fri, 14 Nov 2003 13:37:24 -0500
+Date: Fri, 14 Nov 2003 16:11:34 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3FB520E4.133AF7DB@psu.edu>
+Message-ID: <16309.17670.931812.401791@charged.uio.no>
 References: <3FB27670.4C878A84@psu.edu>
-		<shssmkttk34.fsf@charged.uio.no>
-		<3FB29D43.A618973D@psu.edu>
-		<16306.41898.291062.36209@charged.uio.no>
-		<3FB2A738.3F2C90B8@psu.edu>
-		<16306.49310.195265.145519@charged.uio.no>
-		<3FB2DC60.FA7D3E08@psu.edu>
-		<16306.59249.857512.354675@charged.uio.no>
-		<3FB3924B.7450E9F7@psu.edu>
-		<3FB3FDE8.47E819FF@psu.edu> <16308.8254.89284.377113@charged.uio.no>
+	<shssmkttk34.fsf@charged.uio.no>
+	<3FB29D43.A618973D@psu.edu>
+	<16306.41898.291062.36209@charged.uio.no>
+	<3FB2A738.3F2C90B8@psu.edu>
+	<16306.49310.195265.145519@charged.uio.no>
+	<3FB2DC60.FA7D3E08@psu.edu>
+	<16306.59249.857512.354675@charged.uio.no>
+	<3FB3924B.7450E9F7@psu.edu>
+	<3FB3FDE8.47E819FF@psu.edu>
+	<16308.8254.89284.377113@charged.uio.no>
+	<3FB520E4.133AF7DB@psu.edu>
+Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
@@ -20,13 +23,14 @@ Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AKip4-0000Ta-00
-	for <nfs@lists.sourceforge.net>; Fri, 14 Nov 2003 10:37:34 -0800
-Received: from vpn-19-8.aset.psu.edu ([146.186.19.8] helo=funkmachine.cac.psu.edu)
+	id 1AKlEI-0008Le-00
+	for <nfs@lists.sourceforge.net>; Fri, 14 Nov 2003 13:11:46 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AKip3-0002xm-V9
-	for nfs@lists.sourceforge.net; Fri, 14 Nov 2003 10:37:34 -0800
-To: trond.myklebust@fys.uio.no
+	id 1AKlEI-0008V7-D2
+	for nfs@lists.sourceforge.net; Fri, 14 Nov 2003 13:11:46 -0800
+To: Jason Holmes <jholmes@psu.edu>
+In-Reply-To: <3FB520E4.133AF7DB@psu.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -39,31 +43,34 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust wrote:
-> 
-> IOW this all appears to be doing synchronous I/O only (both in the
-> case of 2.4.22 and 2.6.0).
-> Note: most of these RPC calls do indeed appear to be something other
-> than WRITE calls. Are they perhaps GETATTR calls? Have you for
-> instance set 'noac', 'actimeo' or something like that?
+>>>>> " " == Jason Holmes <jholmes@psu.edu> writes:
 
-This was my mistake - I had changed the export to sync for a test right
-before the debug runs and forgot to change it back.
+     > Files should be up there (http://magicbus.cac.psu.edu/nfs).  I
+     > do have to admit that something odd is going on - 2.4.22 still
+     > is faster than 2.6.0-test9-bk17 and test9-bk17 is still showing
+     > the large amount of commits, but both of them are running
+     > faster than they did before on the sync mounts and I'm not sure
+     > what I might have changed to cause this.
 
-> Could you please try using
-> 
-> echo "9" >/proc/sys/sunrpc/nfs_debug
+Hmm... It looks like you are doing a succession of 4k commits. I'll
+bet the read() code is involved in this...
 
-Files should be up there (http://magicbus.cac.psu.edu/nfs).  I do have
-to admit that something odd is going on - 2.4.22 still is faster than
-2.6.0-test9-bk17 and test9-bk17 is still showing the large amount of
-commits, but both of them are running faster than they did before on the
-sync mounts and I'm not sure what I might have changed to cause this.
+Could you try the following patch and see if it improves things?
 
-Thanks,
+Cheers,
+  Trond
 
---
-Jason Holmes
+--- linux-2.6.0-test9/fs/nfs/write.c.orig	2003-11-13 18:39:34.000000000 -0500
++++ linux-2.6.0-test9/fs/nfs/write.c	2003-11-14 16:04:58.000000000 -0500
+@@ -1103,7 +1103,7 @@
+ 			error = nfs_flush_file(inode, file, idx_start, npages, how);
+ #if defined(CONFIG_NFS_V3) || defined(CONFIG_NFS_V4)
+ 		if (error == 0)
+-			error = nfs_commit_file(inode, file, idx_start, npages, how);
++			error = nfs_commit_file(inode, file, 0, 0, how);
+ #endif
+ 	} while (error > 0);
+ 	return error;
 
 
 -------------------------------------------------------
