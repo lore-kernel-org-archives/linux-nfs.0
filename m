@@ -1,19 +1,19 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 11 of 12 - NFSv4: new argument to nfsd_access()
-Date: Thu, 22 Aug 2002 10:35:14 +1000
+Subject: [PATCH] kNFSd - 7 of 12 - NFSv4: allow resfh==fhp in fh_compose()
+Date: Thu, 22 Aug 2002 10:34:59 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E17hfwQ-00051r-00@notabene.cse.unsw.edu.au>
+Message-ID: <E17hfwB-00051T-00@notabene.cse.unsw.edu.au>
 Cc: nfs@lists.sourceforge.net,  "Kendrick M. Smith" <kmsmith@umich.edu>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17hfwp-0000qp-00
-	for <nfs@lists.sourceforge.net>; Wed, 21 Aug 2002 17:35:39 -0700
+	id 17hfwZ-0000JT-00
+	for <nfs@lists.sourceforge.net>; Wed, 21 Aug 2002 17:35:23 -0700
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
 	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>)
 	(for <kmsmith@umich.edu>) By tone With Smtp ;
-	Thu, 22 Aug 2002 10:35:30 +1000
+	Thu, 22 Aug 2002 10:35:15 +1000
 To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -32,79 +32,65 @@ List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
 From:	"Kendrick M. Smith" <kmsmith@umich.edu>
 
-NFSv4 defines a new field in the ACCESS response: a bitmap to indicate
-which access bits requested by the client are "supported", i.e. meaningful
-for the object in question.
+Change fh_compose() so that it will do the right thing if fhp==res_fh.
+(This is convenient in the NFSv4 LOOKUP operation, which _replaces_
+CURRENT_FH with the filehandle obtained by lookup.)
 
-This patch adds a new parameter @supported to nfsd_access(), so that
-nfsd_access() can set the value of this bitmap.
+This requires extracting the interesting parts of the reference
+filehandle first, then calling fh_put if it is a re-use.
 
 
 
  ----------- Diffstat output ------------
- ./fs/nfsd/nfs3proc.c        |    2 +-
- ./fs/nfsd/vfs.c             |    9 +++++++--
- ./include/linux/nfsd/nfsd.h |    2 +-
- 3 files changed, 9 insertions(+), 4 deletions(-)
+ ./fs/nfsd/nfsfh.c |   16 ++++++++++++----
+ 1 files changed, 12 insertions(+), 4 deletions(-)
 
---- ./include/linux/nfsd/nfsd.h	2002/08/21 23:25:58	1.3
-+++ ./include/linux/nfsd/nfsd.h	2002/08/21 23:26:20	1.4
-@@ -86,7 +86,7 @@ int		nfsd_create(struct svc_rqst *, stru
- 				char *name, int len, struct iattr *attrs,
- 				int type, dev_t rdev, struct svc_fh *res);
- #ifdef CONFIG_NFSD_V3
--int		nfsd_access(struct svc_rqst *, struct svc_fh *, u32 *);
-+int		nfsd_access(struct svc_rqst *, struct svc_fh *, u32 *, u32 *);
- int		nfsd_create_v3(struct svc_rqst *, struct svc_fh *,
- 				char *name, int len, struct iattr *attrs,
- 				struct svc_fh *res, int createmode,
---- ./fs/nfsd/vfs.c	2002/08/21 23:25:58	1.5
-+++ ./fs/nfsd/vfs.c	2002/08/21 23:26:20	1.6
-@@ -348,12 +348,12 @@ static struct accessmap	nfs3_anyaccess[]
- };
- 
- int
--nfsd_access(struct svc_rqst *rqstp, struct svc_fh *fhp, u32 *access)
-+nfsd_access(struct svc_rqst *rqstp, struct svc_fh *fhp, u32 *access, u32 *supported)
- {
- 	struct accessmap	*map;
- 	struct svc_export	*export;
- 	struct dentry		*dentry;
--	u32			query, result = 0;
-+	u32			query, result = 0, sresult = 0;
- 	unsigned int		error;
- 
- 	error = fh_verify(rqstp, fhp, 0, MAY_NOP);
-@@ -375,6 +375,9 @@ nfsd_access(struct svc_rqst *rqstp, stru
- 	for  (; map->access; map++) {
- 		if (map->access & query) {
- 			unsigned int err2;
+--- ./fs/nfsd/nfsfh.c	2002/08/21 23:23:26	1.5
++++ ./fs/nfsd/nfsfh.c	2002/08/21 23:23:46	1.6
+@@ -316,7 +316,9 @@ fh_compose(struct svc_fh *fhp, struct sv
+ 	 * Then create a 32byte filehandle using nfs_fhbase_old
+ 	 *
+ 	 */
+-	
 +
-+			sresult |= map->access;
++	u8 ref_fh_version = 0;
++	u8 ref_fh_fsid_type = 0;
+ 	struct inode * inode = dentry->d_inode;
+ 	struct dentry *parent = dentry->d_parent;
+ 	__u32 *datap;
+@@ -326,6 +328,13 @@ fh_compose(struct svc_fh *fhp, struct sv
+ 		parent->d_name.name, dentry->d_name.name,
+ 		(inode ? inode->i_ino : 0));
+ 
++	if (ref_fh) {
++		ref_fh_version = ref_fh->fh_handle.fh_version;
++		ref_fh_fsid_type = ref_fh->fh_handle.fh_fsid_type;
++		if (ref_fh == fhp)
++			fh_put(ref_fh);
++	}
 +
- 			err2 = nfsd_permission(export, dentry, map->how);
- 			switch (err2) {
- 			case nfs_ok:
-@@ -395,6 +398,8 @@ nfsd_access(struct svc_rqst *rqstp, stru
- 		}
- 	}
- 	*access = result;
-+	if (supported)
-+		*supported = sresult;
+ 	if (fhp->fh_locked || fhp->fh_dentry) {
+ 		printk(KERN_ERR "fh_compose: fh %s/%s not initialized!\n",
+ 			parent->d_name.name, dentry->d_name.name);
+@@ -337,8 +346,7 @@ fh_compose(struct svc_fh *fhp, struct sv
+ 	fhp->fh_dentry = dentry; /* our internal copy */
+ 	fhp->fh_export = exp;
  
-  out:
- 	return error;
---- ./fs/nfsd/nfs3proc.c	2002/08/21 23:25:58	1.2
-+++ ./fs/nfsd/nfs3proc.c	2002/08/21 23:26:21	1.3
-@@ -134,7 +134,7 @@ nfsd3_proc_access(struct svc_rqst *rqstp
- 
- 	fh_copy(&resp->fh, &argp->fh);
- 	resp->access = argp->access;
--	nfserr = nfsd_access(rqstp, &resp->fh, &resp->access);
-+	nfserr = nfsd_access(rqstp, &resp->fh, &resp->access, NULL);
- 	RETURN_STATUS(nfserr);
- }
- 
+-	if (ref_fh &&
+-	    ref_fh->fh_handle.fh_version == 0xca) {
++	if (ref_fh_version == 0xca) {
+ 		/* old style filehandle please */
+ 		memset(&fhp->fh_handle.fh_base, 0, NFS_FHSIZE);
+ 		fhp->fh_handle.fh_size = NFS_FHSIZE;
+@@ -354,7 +362,7 @@ fh_compose(struct svc_fh *fhp, struct sv
+ 		fhp->fh_handle.fh_auth_type = 0;
+ 		datap = fhp->fh_handle.fh_auth+0;
+ 		if ((exp->ex_flags & NFSEXP_FSID) &&
+-		    (!ref_fh || ref_fh->fh_handle.fh_fsid_type == 1)) {
++		    (ref_fh_fsid_type == 1)) {
+ 			fhp->fh_handle.fh_fsid_type = 1;
+ 			/* fsid_type 1 == 4 bytes filesystem id */
+ 			*datap++ = exp->ex_fsid;
 
 
 -------------------------------------------------------
