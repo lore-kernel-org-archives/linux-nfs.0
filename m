@@ -1,20 +1,19 @@
-From: Scott Leerssen <scott@leerssen.com>
-Subject: RE: nfs root directory security
-Date: 18 Jun 2003 11:59:54 -0400
+From: Matt Schillinger <mschilli@vss.fsi.com>
+Subject: Re: exportfs operations hang
+Date: 18 Jun 2003 11:47:46 -0500
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1055951993.16625.104.camel@sleerssen.racemi.com>
-References: <31B1521BD986E84E9D43651F8DF99BDC0134B416@POEXMB1.conoco.net>
+Message-ID: <1055954867.13314.8.camel@mosix>
+References: <1055879177.10166.3.camel@mosix>  <3EEF914A.8030000@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>,
-   Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from user-vc8ft6h.biz.mindspring.com ([216.135.244.209] helo=racemi.com)
+Received: from adsl-66-136-174-212.dsl.stlsmo.swbell.net ([66.136.174.212] helo=esds.vss.fsi.com)
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19SfL1-0004Y3-00
-	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 08:59:07 -0700
-To: "Heflin, Roger A." <Roger.A.Heflin@conocophillips.com>
-In-Reply-To: <31B1521BD986E84E9D43651F8DF99BDC0134B416@POEXMB1.conoco.net>
+	id 19Sg5u-0002jZ-00
+	for <nfs@lists.sourceforge.net>; Wed, 18 Jun 2003 09:47:34 -0700
+To: Steve Dickson <SteveD@RedHat.com>
+In-Reply-To: <3EEF914A.8030000@RedHat.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -27,78 +26,80 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, 2003-06-18 at 11:27, Heflin, Roger A. wrote:
-> Scott,
+On Tue, 2003-06-17 at 17:08, Steve Dickson wrote:
+> Here does strace say its hanging?
 > 
-> If you really want to be scared, try 
-> "showmount -a servername"
-> This will tell the server to list the clients and what filesystems they have
-> mounted.  And unguessable becomes a non-issue, and anyone can grab anyone
-> elses data since they know exactly what partition to mount.
-> 
-> 
-> 		Roger
-> 
+> SteveD.
 
-That's the magic of open source...  anything can be turned off if so
-desired :)
+Duh! No I haven't.. I will do that when issues occur again.. However, I
+may or may not have found the problem..
 
+A few new things that I've found.
 
-> > -----Original Message-----
-> > From:	Scott Leerssen [SMTP:scott@leerssen.com]
-> > Sent:	Wednesday, June 18, 2003 9:28 AM
-> > To:	Bogdan Costescu
-> > Cc:	Neil Brown; nfs@lists.sourceforge.net
-> > Subject:	Re: [NFS] nfs root directory security
-> > 
-> > I agree with everything you say here, and in a controlled and fairly
-> > unchanging environment with clients you trust, exporting to specific
-> > clients is a perfectly acceptable solution.  All I'm suggesting is
-> > adding an extra "layer of the onion" by restricting the ability to mount
-> > read-restricted directories.  It gives us the ability to create
-> > mountable filesystems for each server in a path that can not be
-> > traversed by mounting higher level directories.
-> > 
-> > Imagine if the B and C paths of /A/B/C/root are cryptographically
-> > generated names, and that C is different for every mount point, B is
-> > different for every "repository", and A is simply an anchor in the root
-> > of my NAS.  I can export my clients root filesystems as:
-> > 
-> >    /A 192.168.100.0/255.255.255.0(rw,no_root_squash,...)
-> > 
-> > If B and C are unmountable and unguessable (without a lot of failed and
-> > obvious nfs mount attempts), I don't have to worry about anyone but the
-> > intended client mounting its root filesystem (assuming the network is
-> > safe from sniffing DHCP and mount requests).  Plus, I don't have to have
-> > an entry for every single client.  I could, and that would buy me an
-> > added bit of assurance, but I don't need one so it's much easier to
-> > maintain hundreds of mount points.
-> > 
-> > Of course, there's a lot more to securing an NFS environment such as
-> > this, particularly when you can't trust the clients to behave.  This
-> > tweak just eases the burden of managing exports for hundreds (or
-> > thousands) of clients on as many NAS as you can imagine.  The burden is
-> > shifted to managing unreadable pathnames in the management software...
-> > (sigh).
-> > 
-> > That's about all I have to add on this... feel free to use the patch or,
-> > if you haven't already, delete it from your inbox.
-> > 
-> > -- 
-> > Scott Leerssen <scott@leerssen.com>
-> > 
-> > 
-> > 
-> > -------------------------------------------------------
-> > This SF.Net email is sponsored by: INetU
-> > Attention Web Developers & Consultants: Become An INetU Hosting Partner.
-> > Refer Dedicated Servers. We Manage Them. You Get 10% Monthly Commission!
-> > INetU Dedicated Managed Hosting http://www.inetu.net/partner/index.php
-> > _______________________________________________
-> > NFS maillist  -  NFS@lists.sourceforge.net
-> > https://lists.sourceforge.net/lists/listinfo/nfs
--- 
-Scott Leerssen <scott@leerssen.com>
+rpc.mountd is not displaying any syslog entries when hangs occur on
+clients.. the client gets 'Permission Denied' when trying to mount (via
+automount). Other clients are accessing the mounts just fine.. 
+
+I found that there is a -o or --descriptor option for file descriptors,
+which the default operation is 256 file descriptors. This got me
+thinking about how many file descriptors that I should have.. I couldn't
+find anything about tuning file descriptors for rpc.mountd. Could
+someone give me a guideline or idea?
+
+I went ahead and bumped the file descriptors up to 512 for good measure.
+( this required a kill of the current rpc.mountd and restart of it.)
+After the restart, the clients that were getting 'Permission Denied',
+were able to access the mounts. I do not know yet if the restart fixed
+the problem, or the increased file descriptors, or both.
+
+I would really like to know what the recommended file descriptor number
+should be.
+
+Default is 256, but the default nfsd threads is 8. 
+I am running 64 threads, with an Input Queue of 2097152
+
+Should rpc.mountd file descriptors move up in relation to number of
+threads?
+
+Thanks for your help,
+
+Matt Schillinger
+mschilli@vss.fsi.com
+> 
+> Matt Schillinger wrote:
+> 
+> >Hello,
+> >
+> >I am having reproducible problems with exportfs.
+> >
+> >When I try to run exportfs or exportfs -u, it simply stalls and never
+> >drops back to commandline.. if i CTRL+C, i see that (in the case of an
+> >exportfs) the mountpoint is still not shared. In the case of an exportfs
+> >-u, If i CTRL+C it, the mountpoint IS still shared.  I do not know what
+> >is causing the problem.. the only workaround that I have found is to
+> >restart nfsd.. Is there something in rmtab/xtab/etab that could cause an
+> >exportfs hangup?
+> >
+> >I am using 64 threads, and am having no thread utilization issues
+> >according to /proc/net/rpc/nfsd
+> >
+> >Has anyone else had this problem?
+> >
+> >Thanks for your help
+> >  
+> >
+> 
+> 
+> 
+> -------------------------------------------------------
+> This SF.Net email is sponsored by: INetU
+> Attention Web Developers & Consultants: Become An INetU Hosting Partner.
+> Refer Dedicated Servers. We Manage Them. You Get 10% Monthly Commission!
+> INetU Dedicated Managed Hosting http://www.inetu.net/partner/index.php
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+
 
 
 
