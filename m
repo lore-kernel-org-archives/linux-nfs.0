@@ -1,21 +1,25 @@
-From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 15 of 17 - get_int and get_expiry to help in parsing.
-Date: Fri, 11 Oct 2002 15:27:59 +1000
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: PATCH(nfs-utils) Fix bug in statd notify mode
+Date: Fri, 11 Oct 2002 16:19:08 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E17zsL9-0003c1-00@notabene.cse.unsw.edu.au>
-Cc: nfs@lists.sourceforge.net
+Message-ID: <15782.27996.915466.3245@notabene.cse.unsw.edu.au>
+References: <Pine.GSO.4.05.10210091536420.17500-100000@eniac>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net,
+    juang@us.ibm.com
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28])
 	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17zshq-0004lZ-00
-	for <nfs@lists.sourceforge.net>; Thu, 10 Oct 2002 22:51:26 -0700
+	id 17zt9h-0000z7-00
+	for <nfs@lists.sourceforge.net>; Thu, 10 Oct 2002 23:20:14 -0700
 Received: From
 	notabene.cse.unsw.edu.au ([129.94.242.45] == bartok.orchestra.cse.unsw.EDU.AU)
-	(for <torvalds@transmeta.com>) (for <nfs@lists.sourceforge.net>)
-	(for <linux-kernel@vger.kernel.org>) By tone With Smtp ;
-	Fri, 11 Oct 2002 15:51:18 +1000
-To: Linus Torvalds <torvalds@transmeta.com>
-cc: linux-kernel@vger.kernel.org
+	(for <gomez@cs.sjsu.edu>) (for <nfs@lists.sourceforge.net>)
+	(for <juang@us.ibm.com>) By tone With Smtp ;
+	Fri, 11 Oct 2002 16:19:22 +1000
+To: Juan Gomez  <gomez@cs.sjsu.edu>
+In-Reply-To: message from Juan Gomez on Wednesday October 9
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -28,44 +32,49 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
+On Wednesday October 9, gomez@cs.sjsu.edu wrote:
+> 
+> Neil,
+> 
+> While further testing the statd mode I introduced previously (-N opt) I
+> found that
+> I forgot to skip pmap_unset() while in the notify mode.
+> 
+> If we do not do that a statd running in notify mode will disable
+> any other local statd running in the non-notify mode which is undesirable.
+> 
+> Would you please apply the current patch to the HEAD of the cvs repository
+> for nfs-utils?
 
-### Comments for ChangeSet
+Ok, it's checked in.
 
- ----------- Diffstat output ------------
- ./include/linux/sunrpc/cache.h |   24 ++++++++++++++++++++++++
- 1 files changed, 24 insertions(+)
+I also protected the pmap_unset in 'killer' (called if statd gets a
+signal) so that it only runs if not MODE_NOTIFY_ONLY.
 
---- ./include/linux/sunrpc/cache.h	2002/10/11 03:09:10	1.6
-+++ ./include/linux/sunrpc/cache.h	2002/10/11 03:19:49	1.7
-@@ -275,4 +275,28 @@ extern void add_word(char **bpp, int *lp
- extern void add_hex(char **bpp, int *lp, char *buf, int blen);
- extern int get_word(char **bpp, char *dest, int bufsize);
- 
-+static inline int get_int(char **bpp, int *anint)
-+{
-+	char buf[50];
-+	char *ep;
-+	int rv;
-+	int len = get_word(bpp, buf, 50);
-+	if (len < 0) return -EINVAL;
-+	if (len ==0) return -ENOENT;
-+	rv = simple_strtol(buf, &ep, 0);
-+	if (*ep) return -EINVAL;
-+	*anint = rv;
-+	return 0;
-+}
-+
-+static inline time_t get_expiry(char **bpp)
-+{
-+	int rv;
-+	if (get_int(bpp, &rv))
-+		return 0;
-+	if (rv < 0)
-+		return 0;
-+	return rv;
-+}
-+
- #endif /*  _LINUX_SUNRPC_CACHE_H_ */
+NeilBrown
+
+> 
+> Regards, Juan
+> 
+> diff -ur nfs-utils/utils/statd/statd.c nfs-utils-new/utils/statd/statd.c
+> --- nfs-utils/utils/statd/statd.c	Sun Sep  1 19:31:23 2002
+> +++ nfs-utils-new/utils/statd/statd.c	Wed Oct  9 22:28:26 2002
+> @@ -307,7 +307,14 @@
+>  	statd_get_socket(out_port);
+>  
+>  	for (;;) {
+> -		pmap_unset (SM_PROG, SM_VERS);
+> +                /* Do not do pmap_unset() when running in notify mode.
+> +                 * We may clear the portmapper record for a statd not
+> +                 * running in notify mode disabling it.
+> +                 * Juan C. Gomez j_carlos_gomez@yahoo.com
+> +                 */
+> +		if (!(run_mode & MODE_NOTIFY_ONLY)) {
+> +                        pmap_unset (SM_PROG, SM_VERS);
+> +                }
+>  		change_state ();
+>  		shuffle_dirs ();	/* Move directory names around */
+>  		notify_hosts ();	/* Send out notify requests */
 
 
 -------------------------------------------------------
