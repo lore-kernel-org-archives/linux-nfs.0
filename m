@@ -1,29 +1,24 @@
-From: Dwight Marzolf <dwight.marzolf@analog.com>
-Subject: nfs over tcp for RedHat 8 kernel 2.4.20-20.8
-Date: Thu, 28 Oct 2004 17:02:09 -0400
+From: upendra gandhi <upendra.gandhi@oracle.com>
+Subject: Re: how to force umount when "Device or resource busy"?
+Date: Thu, 28 Oct 2004 16:58:26 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <41815E51.6010805@analog.com>
+Message-ID: <418187A2.6070702@oracle.com>
+References: <AB813470-0682-11D9-9080-000A95C71776@freezone.co.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CNHPR-00076Y-It
-	for nfs@lists.sourceforge.net; Thu, 28 Oct 2004 14:02:13 -0700
-Received: from nwd2mail2.analog.com ([137.71.25.51])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1CNHPQ-0003P7-M9
-	for nfs@lists.sourceforge.net; Thu, 28 Oct 2004 14:02:13 -0700
-Received: from nwd2mhb2.analog.com (nwd2mhb2.analog.com [137.71.6.12])
-	by nwd2mail2.analog.com (8.12.10/8.12.10) with ESMTP id i9SL2DHB025413
-	for <nfs@lists.sourceforge.net>; Thu, 28 Oct 2004 17:02:13 -0400
-Received: from titania.adsdesign.analog.com (titania.adsdesign.analog.com [10.66.62.63])
-	by nwd2mhb2.analog.com (8.9.3 (PHNE_28810+JAGae91741)/8.9.3) with ESMTP id RAA07327
-	for <nfs@lists.sourceforge.net>; Thu, 28 Oct 2004 17:02:10 -0400 (EDT)
-Received: from [10.66.22.21] (clapon [10.66.22.21])
-	by titania.adsdesign.analog.com (8.10.2+Sun/8.10.2) with ESMTP id i9SL2BS17324
-	for <nfs@lists.sourceforge.net>; Thu, 28 Oct 2004 17:02:11 -0400 (EDT)
-To: nfs@lists.sourceforge.net
+	id 1CNKAL-0005Rn-U6
+	for nfs@lists.sourceforge.net; Thu, 28 Oct 2004 16:58:49 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.41)
+	id 1CNKAK-0000Dv-2e
+	for nfs@lists.sourceforge.net; Thu, 28 Oct 2004 16:58:49 -0700
+To: ms419@freezone.co.uk
+In-Reply-To: <AB813470-0682-11D9-9080-000A95C71776@freezone.co.uk>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -36,26 +31,65 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Everyone,
+is there an answer to this we are facing this issue in autofs4
 
-I am trying to get nfs over tcp working with kernel 2.4.20-20.8smp in 
-RedHat8.  In searching the nfs email archives I found someone who had 
-asked how to rebuild the redhat 2.4.20-30.9smp kernel to activate tcp 
-for nfs.  The instructions were :
+thks
 
-$ make mrproper oldconfig
- Edit the config file to turn on NFS over TCP
- $ make bzImage modules
+ms419@freezone.co.uk wrote:
 
-I followed these instructions and the kernel rebuilt without errors.  I 
-installed the rebuilt kernel and rebooted the machine into the new 
-kernel.  But when I did a rpcinfo -p tcp still was not started for nfs.  
-Only udp was started.  Is there something else I have to do once the 
-kernel is rebuilt with tcp for nfs turned on in order to actually have 
-the service started and visible in the rpcinfo -p command?
+> How does one unmount when umount doesn't work?
+>
+> Somehow, I got an NFS / AutoFS mount that just won't unmount.
+>
+> I noticed /var/autofs/net was mounted twice, so I stopped AutoFS & 
+> tried killing the remaining automount process. "kill 14986" didn't 
+> work; I needed "kill -9 14986". The following mounts remain:
+>
+> wum:~# mount
+> [...]
+> automount(pid14986) on /var/autofs/net type autofs 
+> (rw,fd=5,pgrp=14986,minproto=2,maxproto=4)
+> tor:/home on /var/autofs/net/tor/home type nfs 
+> (rw,nosuid,nodev,hard,intr,addr=192.168.103.158)
+>
+> & I can't unmount them:
+>
+> wum:~# umount /var/autofs/net/tor/home
+> umount: /var/autofs/net/tor/home: device is busy
+> umount: /var/autofs/net/tor/home: device is busy
+> wum:~# umount -f /var/autofs/net/tor/home
+> umount2: Device or resource busy
+> umount: /var/autofs/net/tor/home: Illegal seek
+> umount2: Device or resource busy
+> umount: /var/autofs/net/tor/home: device is busy
+> wum:~# umount /var/autofs/net
+> umount: /var/autofs/net: device is busy
+> umount: /var/autofs/net: device is busy
+> wum:~# umount -f /var/autofs/net
+> umount2: Device or resource busy
+> umount: automount(pid14986): not found
+> umount: /var/autofs/net: Illegal seek
+> umount2: Device or resource busy
+> umount: /var/autofs/net: device is busy
+>
+> I triple checked that no process is using these mounts. How do I 
+> unmount them?
+>
+> Thanks!
+>
+> Jack
+>
+>
+>
+> -------------------------------------------------------
+> This SF.Net email is sponsored by: thawte's Crypto Challenge Vl
+> Crack the code and win a Sony DCRHC40 MiniDV Digital Handycam
+> Camcorder. More prizes in the weekly Lunch Hour Challenge.
+> Sign up NOW http://ad.doubleclick.net/clk;10740251;10262165;m
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
 
-thanks,
-dwight
 
 
 
