@@ -1,32 +1,25 @@
-From: "David S. Miller" <davem@redhat.com>
+From: Andi Kleen <ak@suse.de>
 Subject: Re: [NFS] Re: [PATCH] zerocopy NFS for 2.5.36
-Date: Thu, 19 Sep 2002 18:27:39 -0700 (PDT)
+Date: Fri, 20 Sep 2002 04:06:19 +0200
 Sender: linux-kernel-owner@vger.kernel.org
-Message-ID: <20020919.182739.48496975.davem@redhat.com>
-References: <p73lm5xtqyv.fsf@oldwotan.suse.de>
-	<3D8A754E.5BA2E28D@digeo.com>
-	<20020920032346.A22949@wotan.suse.de>
+Message-ID: <20020920040619.A30304@wotan.suse.de>
+References: <p73lm5xtqyv.fsf@oldwotan.suse.de> <3D8A754E.5BA2E28D@digeo.com> <20020920032346.A22949@wotan.suse.de> <20020919.182739.48496975.davem@redhat.com>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Cc: akpm@digeo.com, taka@valinux.co.jp, alan@lxorguk.ukuu.org.uk,
-	neilb@cse.unsw.edu.au, linux-kernel@vger.kernel.org,
-	nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: ak@suse.de, akpm@digeo.com, taka@valinux.co.jp,
+	alan@lxorguk.ukuu.org.uk, neilb@cse.unsw.edu.au,
+	linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
 Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
-To: ak@suse.de
-In-Reply-To: <20020920032346.A22949@wotan.suse.de>
+To: "David S. Miller" <davem@redhat.com>
+In-Reply-To: <20020919.182739.48496975.davem@redhat.com>
 List-ID: <nfs.lists.sourceforge.net>
 
-   From: Andi Kleen <ak@suse.de>
-   Date: Fri, 20 Sep 2002 03:23:46 +0200
+> See "montdq/movnti", the latter of which even works on register
+> registers.  Ben LaHaise pointed this out to me earlier today.
 
-   On Thu, Sep 19, 2002 at 06:09:34PM -0700, Andrew Morton wrote:
-   > Can you control the cachability of the memory reads as well?
-   
-   SSE2 has hints for that (prefetchnti and even prefetcht0,1 etc. for different
-   cache hierarchies), but it's not completely clear on how much
-   the CPUs follow these. 
-   
-   For writing it's much more obvious and usually documented even.
+The issue is that you really want to do prefetching in these loops
+(waiting for the hardware prefetch is too slow because it needs several
+cache misses to trigger) so for cache hints on reading only prefetch
+instructions are interesting.
 
-See "montdq/movnti", the latter of which even works on register
-registers.  Ben LaHaise pointed this out to me earlier today.
+-Andi
