@@ -1,19 +1,16 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: "NFS: readdir reply truncated!" messages
-Date: 17 Jul 2003 01:29:27 +0200
+From: "H. J. Lu" <hjl@lucon.org>
+Subject: The rpc.mountd program in 1.0.4:
+Date: Wed, 16 Jul 2003 18:14:22 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shslluykq3s.fsf@charged.uio.no>
-References: <OFB8B66654.D2A7A332-ON85256D64.00769E59-86256D64.007727EB@pok.ibm.com>
+Message-ID: <20030717011422.GA16081@lucon.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: NFS maillist <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+Received: from rwcrmhc12.comcast.net ([216.148.227.85])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19cviQ-00057R-00
-	for <nfs@lists.sourceforge.net>; Wed, 16 Jul 2003 16:29:42 -0700
-To: "Robert Williamson" <robbiew@us.ibm.com>
-In-Reply-To: <OFB8B66654.D2A7A332-ON85256D64.00769E59-86256D64.007727EB@pok.ibm.com>
+	id 19cxLr-0008Rw-00
+	for <nfs@lists.sourceforge.net>; Wed, 16 Jul 2003 18:14:31 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,28 +23,29 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->>>>> " " == Robert Williamson <robbiew@us.ibm.com> writes:
+----- Forwarded message from Chris Rankin <cj.rankin@ntlworld.com> -----
 
-     > I'm these seeing messages occaisionally using 'dmesg' on both
-     > of my test clients.  What exactly does this mean? Is the packet
-     > size being truncated?
+Delivered-To: hjl@localhost.lucon.org
+From: Chris Rankin <cj.rankin@ntlworld.com>
 
-It means that the packet sent by the server caused the client to
-overrun because the end-marker was not found (i.e. the client found
-itself attempting to read beyond the end of the packet).
+Jul 15 22:05:50 wellhouse rpc.mountd: authenticated mount request from (null):759 for /home (/home) 
 
-Two possibilities:
-  - The server is failing to set the end-marker.
-  - The server is sending a packet that exceeds the 4k buffer
-    advertised by the client, and so the packet is truncated before we
-    reach the end-marker.
+Notice that (null) where it should give the name of the remote client?
+And the server crashed when I issued a umount request, too.
 
-This is a non-fatal error, since the client should have no problems
-recovering (it detect the overrun, and inserts its own end-marker)
-however we still send out a warning message.
+My setup is: gcc-3.2.3, glibc-2.3.2, libwrap.a, Linux 2.4.21.
+
+CFLAGS='-O2 -fomit-frame-pointer'
+./configure --prefix=/usr
+            --enable-secure-statd
+            --enable-nfsv3
+            --enable-rquotad
+            --with-statduser=nobody
 
 Cheers,
-  Trond
+Chris
+
+----- End forwarded message -----
 
 
 -------------------------------------------------------
