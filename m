@@ -1,164 +1,196 @@
-From: Christoph Simon <ciccio@kiosknet.com.br>
-Subject: NFS lock and timeout problems
-Date: Fri, 13 Sep 2002 14:45:48 -0300
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020913144548.455bc477.ciccio@kiosknet.com.br>
+From: Chuck Lever <cel@citi.umich.edu>
+Subject: [PATCH] (2/2) clean up RPC over TCP transport socket connect
+Date: Fri, 13 Sep 2002 15:18:13 -0400 (EDT)
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <Pine.LNX.4.44.0209131516010.1460-100000@dexter.citi.umich.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from adsl-nrp3-sao-c8b6cf1e.brdterra.com.br ([200.182.207.30] helo=tione.haus)
-	by usw-sf-list1.sourceforge.net with esmtp
-	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17puWB-0000ri-00
-	for <nfs@lists.sourceforge.net>; Fri, 13 Sep 2002 10:46:12 -0700
-Received: from baco.haus (baco.haus [192.168.254.15])
-	by tione.haus (8.12.3/8.12.3/Debian -4) with ESMTP id g8DHjnjD003279
-	(version=TLSv1/SSLv3 cipher=EDH-RSA-DES-CBC3-SHA bits=168 verify=NO)
-	for <nfs@lists.sourceforge.net>; Fri, 13 Sep 2002 14:45:49 -0300
-Received: from baco.haus (localhost [127.0.0.1])
-	by baco.haus (8.12.6/8.12.6/Debian-4) with SMTP id g8DHjm2n028518
-	for <nfs@lists.sourceforge.net>; Fri, 13 Sep 2002 14:45:48 -0300
-To: nfs@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	Linux NFS List <nfs@lists.sourceforge.net>
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
+To: Linus Torvalds <torvalds@transmeta.com>
+List-ID: <nfs.lists.sourceforge.net>
 
-Hi!
+hi Linus-
 
-I'm experiencing two problems, one seems to be related to NFS locking,
-and the other seems to be some kind of timeout.
+this patch renames *reconn* to *conn* since the same code now handles both
+initial TCP connect, and TCP reconnection, and corrects some comments.
+against 2.5.34, requires earlier patch (1/1).
 
-I'm trying to create a CD which will boot the root file system on
-NFS. The CD can mount the nfs file system and run programs from
-there. Also makeing this the root file system works fine. But when
-init starts, I get error messages on the server and client, related to
-lockd and rpc.statd. The system boots and I can make a user login from
-outside via ssh. But getting super-user will take some 3 minutes. I'm
-also running an X server there. Sometimes I can make a login there but
-it also would take some 3 minutes to succeed. Other times, it just
-hangs there, or the keyboard stops working. The keyboard actually
-fails always, because if I manage to login, at most after a few
-minutes it's dead.
-
-The files on the server are the extraction of a tarball I created
-from a working HD. There are no firewalls running and both the server
-and client use pidentd. I used tcpdump to see if there are any network
-errors, but I couldn't find any.
-
-The server is a debian sid machine with an unpatched 2.4.19 kernel und
-the official debian packages for the kernel server. The client is a
-debian 3.0 (stable) machine with the same kernel, but having only NFS
-client compiled into it, not the kernel nfs server.
-
-This is what the client reports (repeatedly).
-
-	nsm_mon_unmon: rpc failed, status=-13
-	lockd: cannot monitor 192.168.254.15
-	lockd: failed to monitor 192.168.254.15
-
-I tried to trace the command from the rcS.d scripts which would cause
-them, and, if there is no delay, the first comes in checkroot.sh, when
-"mount -f -o remount /" is given. I've read that status=-13 tells that
-statd is missing, but at this time it's running on the server and on
-the client (I checked it inserting a ps command into that
-script). There seem to be other commands which also trigger these
-error messages.
-
-At the same times, the server reports in /var/log/daemon.log:
-
-	rpc.statd[9117]: Can't callback 127.0.0.1 (100021,4), giving up.
-	rpc.statd[9117]: Received erroneous SM_UNMON request from baco \
-		for 192.168.254.101
-	rpc.statd[9117]: notify_host: failed to notify 127.0.0.1 
-
-192.168.254.15 is the server (baco) and 192.168.254.101 is the client.
-
-The /etc/exports file on the server has:
-
-	/nfsvol      192.168.254.101(rw,sync,no_root_squash)
-
-I also tried with no_auth_nlm, but there was no change. Also on the
-server, /etc/hosts.allow has:
-
-	ALL: 127.0.0.1
-	ALL: 192.168.254.0/255.255.255.0
-
-I added the first line later for the error message, but that didn't
-help neither. /etc/hosts.deny on the server has no uncommented
-line. The /etc/export and /etc/hosts.deny files on the client is also
-empty, while /etc/hosts.allow on the client has:
-
-	portmap: 192.168.254.15
-	lockd:   192.168.254.15
-	rquotad: 192.168.254.15
-	mountd:  192.168.254.15
-	statd:   192.168.254.15
-
-This is the server's IP. As soon as I can log in, "rpcinfo -p" on the
-client answers:
-
-   program vers proto   port
-    100000    2   tcp    111  portmapper
-    100000    2   udp    111  portmapper
-    100024    1   udp   1025  status
-    100024    1   tcp   1024  status
-
-and on the server:
-
-   program vers proto   port
-    100000    2   tcp    111  portmapper
-    100000    2   udp    111  portmapper
-    100024    1   udp  37824  status
-    100024    1   tcp  57427  status
-    100003    2   udp   2049  nfs
-    100003    3   udp   2049  nfs
-    100021    1   udp  37825  nlockmgr
-    100021    3   udp  37825  nlockmgr
-    100021    4   udp  37825  nlockmgr
-    100005    1   udp  37826  mountd
-    100005    1   tcp  57428  mountd
-    100005    2   udp  37826  mountd
-    100005    2   tcp  57428  mountd
-    100005    3   udp  37826  mountd
-    100005    3   tcp  57428  mountd
-
-The client's /etc/fstab is:
-
-	192.168.254.15:/nfsvol / nfs rw,hard,intr       0     0
-
-I also tried with nolock, but that didn't change it.
-
-I also found it strange, that "cat /proc/mount" on the client will
-always give:
-
-	192.168.254.15:/nfsvol / \
-	  nfs rw,v3,rsize=8192,wsize=8192,hard,udp,lock,addr=192.168.254.15
-
-where v3, rsize, wsize, udp and lock are options I never gave. I've
-read that the defaults for rsize,wsize is 1024, so I don't know where
-it comes from. While watching tcpdump, I've seen fragmentations, but
-assembling seems to have succeeded always.
-
-I would be grateful for any hint for how to solve this. Please CC me,
-as I am not on this mailing list.
+diff -drN -U2 01-connect1/include/linux/sunrpc/xprt.h 02-connect2/include/linux/sunrpc/xprt.h
+--- 01-connect1/include/linux/sunrpc/xprt.h	Fri Sep 13 14:56:29 2002
++++ 02-connect2/include/linux/sunrpc/xprt.h	Fri Sep 13 14:56:39 2002
+@@ -191,5 +191,5 @@
+ int			xprt_adjust_timeout(struct rpc_timeout *);
+ void			xprt_release(struct rpc_task *);
+-void			xprt_reconnect(struct rpc_task *);
++void			xprt_connect(struct rpc_task *);
+ int			xprt_clear_backlog(struct rpc_xprt *);
+ void			xprt_sock_setbufsize(struct rpc_xprt *);
+diff -drN -U2 01-connect1/net/sunrpc/clnt.c 02-connect2/net/sunrpc/clnt.c
+--- 01-connect1/net/sunrpc/clnt.c	Tue Sep 10 15:27:11 2002
++++ 02-connect2/net/sunrpc/clnt.c	Tue Sep 10 15:29:07 2002
+@@ -8,5 +8,5 @@
+  *  -	RPC header generation and argument serialization.
+  *  -	Credential refresh.
+- *  -	TCP reconnect handling (when finished).
++ *  -	TCP connect handling.
+  *  -	Retry of operation when it is suspected the operation failed because
+  *	of uid squashing on the server, or when the credentials were stale
+@@ -56,7 +56,7 @@
+ static void	call_refreshresult(struct rpc_task *task);
+ static void	call_timeout(struct rpc_task *task);
+-static void	call_reconnect(struct rpc_task *task);
+-static void	child_reconnect(struct rpc_task *);
+-static void	child_reconnect_status(struct rpc_task *);
++static void	call_connect(struct rpc_task *task);
++static void	child_connect(struct rpc_task *task);
++static void	child_connect_status(struct rpc_task *task);
+ static u32 *	call_header(struct rpc_task *task);
+ static u32 *	call_verify(struct rpc_task *task);
+@@ -562,8 +562,8 @@
+ 			xprt, (xprt_connected(xprt) ? "is" : "is not"));
+ 
+-	task->tk_action = (xprt_connected(xprt)) ? call_transmit : call_reconnect;
++	task->tk_action = (xprt_connected(xprt)) ? call_transmit : call_connect;
+ 
+ 	if (!clnt->cl_port) {
+-		task->tk_action = call_reconnect;
++		task->tk_action = call_connect;
+ 		task->tk_timeout = RPC_CONNECT_TIMEOUT;
+ 		rpc_getport(task, clnt);
+@@ -572,13 +572,13 @@
+ 
+ /*
+- * 4a.	Reconnect to the RPC server (TCP case)
++ * 4a.	Connect to the RPC server (TCP case)
+  */
+ static void
+-call_reconnect(struct rpc_task *task)
++call_connect(struct rpc_task *task)
+ {
+ 	struct rpc_clnt *clnt = task->tk_client;
+ 	struct rpc_task *child;
+ 
+-	dprintk("RPC: %4d call_reconnect status %d\n",
++	dprintk("RPC: %4d call_connect status %d\n",
+ 				task->tk_pid, task->tk_status);
+ 
+@@ -587,24 +587,27 @@
+ 		return;
+ 
+-	/* Run as a child to ensure it runs as an rpciod task */
++	/* Run as a child to ensure it runs as an rpciod task.  Rpciod
++	 * guarantees we have the correct capabilities for socket bind
++	 * to succeed. */
+ 	child = rpc_new_child(clnt, task);
+ 	if (child) {
+-		child->tk_action = child_reconnect;
++		child->tk_action = child_connect;
+ 		rpc_run_child(task, child, NULL);
+ 	}
+ }
+ 
+-static void child_reconnect(struct rpc_task *task)
++static void
++child_connect(struct rpc_task *task)
+ {
+-	task->tk_client->cl_stats->netreconn++;
+ 	task->tk_status = 0;
+-	task->tk_action = child_reconnect_status;
+-	xprt_reconnect(task);
++	task->tk_action = child_connect_status;
++	xprt_connect(task);
+ }
+ 
+-static void child_reconnect_status(struct rpc_task *task)
++static void
++child_connect_status(struct rpc_task *task)
+ {
+ 	if (task->tk_status == -EAGAIN)
+-		task->tk_action = child_reconnect;
++		task->tk_action = child_connect;
+ 	else
+ 		task->tk_action = NULL;
+diff -drN -U2 01-connect1/net/sunrpc/xprt.c 02-connect2/net/sunrpc/xprt.c
+--- 01-connect1/net/sunrpc/xprt.c	Tue Sep 10 15:27:11 2002
++++ 02-connect2/net/sunrpc/xprt.c	Tue Sep 10 15:29:07 2002
+@@ -87,5 +87,5 @@
+ static inline void	do_xprt_reserve(struct rpc_task *);
+ static void	xprt_disconnect(struct rpc_xprt *);
+-static void	xprt_reconn_status(struct rpc_task *task);
++static void	xprt_conn_status(struct rpc_task *task);
+ static struct rpc_xprt * xprt_setup(int proto, struct sockaddr_in *ap,
+ 						struct rpc_timeout *to);
+@@ -137,5 +137,5 @@
+  * Serialize write access to sockets, in order to prevent different
+  * requests from interfering with each other.
+- * Also prevents TCP socket reconnections from colliding with writes.
++ * Also prevents TCP socket connects from colliding with writes.
+  */
+ static int
+@@ -410,10 +410,10 @@
+ 
+ /*
+- * Reconnect a broken TCP connection.
++ * Attempt to connect a TCP socket.
+  *
+- * Note: This cannot collide with the TCP reads, as both run from rpciod
++ * NB: This never collides with TCP reads, as both run from rpciod
+  */
+ void
+-xprt_reconnect(struct rpc_task *task)
++xprt_connect(struct rpc_task *task)
+ {
+ 	struct rpc_xprt	*xprt = task->tk_xprt;
+@@ -422,5 +422,5 @@
+ 	int		status;
+ 
+-	dprintk("RPC: %4d xprt_reconnect xprt %p %s connected\n", task->tk_pid,
++	dprintk("RPC: %4d xprt_connect xprt %p %s connected\n", task->tk_pid,
+ 			xprt, (xprt_connected(xprt) ? "is" : "is not"));
+ 
+@@ -472,5 +472,5 @@
+ 			if ((1 << inet->state) & ~(TCPF_SYN_SENT|TCPF_SYN_RECV))
+ 				task->tk_timeout = RPC_REESTABLISH_TIMEOUT;
+-			rpc_sleep_on(&xprt->pending, task, xprt_reconn_status,
++			rpc_sleep_on(&xprt->pending, task, xprt_conn_status,
+ 									NULL);
+ 			release_sock(inet);
+@@ -524,9 +524,8 @@
+ 
+ /*
+- * Reconnect timeout. We just mark the transport as not being in the
+- * process of reconnecting, and leave the rest to the upper layers.
++ * We arrive here when awoken from waiting on connection establishment.
+  */
+ static void
+-xprt_reconn_status(struct rpc_task *task)
++xprt_conn_status(struct rpc_task *task)
+ {
+ 	struct rpc_xprt	*xprt = task->tk_xprt;
+@@ -534,9 +533,9 @@
+ 	switch (task->tk_status) {
+ 	case 0:
+-		dprintk("RPC: %4d xprt_reconn_status: connection established\n",
++		dprintk("RPC: %4d xprt_conn_status: connection established\n",
+ 				task->tk_pid);
+ 		goto out;
+ 	case -ETIMEDOUT:
+-		dprintk("RPC: %4d xprt_reconn_status: timed out\n",
++		dprintk("RPC: %4d xprt_conn_status: timed out\n",
+ 				task->tk_pid);
+ 		/* prevent TCP from continuing to retry SYNs */
+@@ -1488,5 +1487,6 @@
+ 
+ /*
+- * Create a client socket given the protocol and peer address.
++ * Datastream sockets are created here, but xprt_connect will create
++ * and connect stream sockets.
+  */
+ static struct socket *
 
 -- 
-Christoph Simon
-ciccio@kiosknet.com.br
 
-
--------------------------------------------------------
-This sf.net email is sponsored by:ThinkGeek
-Welcome to geek heaven.
-http://thinkgeek.com/sf
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+corporate:	<cel at netapp dot com>
+personal:	<chucklever at bigfoot dot com>
