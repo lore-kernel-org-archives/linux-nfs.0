@@ -1,24 +1,25 @@
-From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
-Subject: Re: new NFS FAQ question
-Date: Wed, 30 Mar 2005 06:46:38 -0700 (MST)
-Message-ID: <Pine.LNX.4.60.0503300644570.3699@harp.ngdc.noaa.gov>
-References: <482A3FA0050D21419C269D13989C611308539920@lavender-fe.eng.netapp.com>
-Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+From: Chris Penney <cpenney@gmail.com>
+Subject: Re: SMP, NFS, and 2.6
+Date: Wed, 30 Mar 2005 11:40:03 -0500
+Message-ID: <111aefd05033008401742da5@mail.gmail.com>
+References: <111aefd050329125848955802@mail.gmail.com>
+	 <20050329211324.GK22447@hmsendeavour.rdu.redhat.com>
+Reply-To: penney@msu.edu
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DGdWy-00031d-D2
-	for nfs@lists.sourceforge.net; Wed, 30 Mar 2005 05:46:48 -0800
-Received: from harp.ngdc.noaa.gov ([140.172.178.33])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1DGdWx-0004eO-U9
-	for nfs@lists.sourceforge.net; Wed, 30 Mar 2005 05:46:48 -0800
-To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: <482A3FA0050D21419C269D13989C611308539920@lavender-fe.eng.netapp.com>
+	id 1DGgEm-0002CR-Kd
+	for nfs@lists.sourceforge.net; Wed, 30 Mar 2005 08:40:12 -0800
+Received: from wproxy.gmail.com ([64.233.184.196])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1DGgEl-0006lq-VR
+	for nfs@lists.sourceforge.net; Wed, 30 Mar 2005 08:40:12 -0800
+Received: by wproxy.gmail.com with SMTP id 69so216748wra
+        for <nfs@lists.sourceforge.net>; Wed, 30 Mar 2005 08:40:06 -0800 (PST)
+To: nfs@lists.sourceforge.net
+In-Reply-To: <20050329211324.GK22447@hmsendeavour.rdu.redhat.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,27 +33,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, 29 Mar 2005, Lever, Charles wrote:
+On Tue, 29 Mar 2005 16:13:24 -0500, Neil Horman <nhorman@redhat.com> wrote:
+> On Tue, Mar 29, 2005 at 03:58:02PM -0500, Chris Penney wrote:
+> > I've heard from some (via google searchs) that there are issues with
+> > NFS + SMP when using the 2.6 kernel.  Assuming I'm using 2.6.11.5 w/
+> > the NFS-ALL patches applied should I be concerned about running SMP
+> > (dual cpu pentium 4 doing pretty much only NFSv3 TCP, but looking
+> > toward NFSv4)?
+> >
+> > Assuming it's ok to use SMP on a heavy use NFS server, should I enable
+> > or disable hyperthreading?  I'd assume that for NFS hyperthreading
+> > would be good, but that's only a guess.
+> >
+> > Thanks,
+> >
+> >    Chris
+> >
+> Are you referring to the dcache problems with XFS?  I think it was only a
+> problem when the NFS server was exporting an XFS file system.  I also haven't
+> checked in some time, but I believe those problems have since been fixed.
+> 
+> Neil
 
-> to help people cope with the strangeness of ESTALE...  i added a new
-> question, A10, to the Linux NFS FAQ.
->
->  http://nfs.sourceforge.net/index.php#faq_a10
+Yes, most of what I read was regarding XFS.  I was not sure if there
+were any issues outside of that (I'm using JFS right now).
 
-very nice chuck - you've no idea how much time that could have saved me in the
-past.  at this rate i will completly understand v3 by the time i start using
-v4 ;-)
+As far as HyperThreading my testing so far has shown that under heavy
+loads enabling HyperThreading on a dual-cpu P4 box seems to be a good
+thing.  I would grab 30s of packets with ethereal and look at the NFS
+stats and the responce time on writes/commits (which we see a fair bit
+of) were at least 33% faster if not more.  I'm not sure if that's an
+accurate way to measure though -- I know enough to be dangerous, but
+I'm not an expert.
 
-cheers.
-
--a
--- 
-===============================================================================
-| email   :: ara [dot] t [dot] howard [at] noaa [dot] gov
-| phone   :: 303.497.6469
-| if you love the sacred and despise the ordinary, you are still bobbing in the
-| ocean of delusion.  --lin-chi
-===============================================================================
+   Chris
 
 
 -------------------------------------------------------
