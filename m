@@ -1,22 +1,19 @@
-From: Dumas Patrice <dumas@centre-cired.fr>
-Subject: standard and lockd
-Date: Wed, 10 Apr 2002 16:50:23 +0200
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: standard and lockd
+Date: 10 Apr 2002 19:14:25 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020410165023.D23279@zeus.centre-cired.fr>
+Message-ID: <shslmbvlbm6.fsf@charged.uio.no>
+References: <20020410165023.D23279@zeus.centre-cired.fr>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from boukha.centre-cired.fr ([193.51.120.234])
+Received: from mons.uio.no ([129.240.130.14])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16vJUL-0001x0-00
-	for <nfs@lists.sourceforge.net>; Wed, 10 Apr 2002 07:54:21 -0700
-Received: from zeus.centre-cired.fr ([193.51.120.192])
-          by boukha.centre-cired.fr (8.9.3+Sun/jtpda-5.3.3) with ESMTP id QAA07729
-          for <nfs@lists.sourceforge.net>; Wed, 10 Apr 2002 16:53:14 +0100 (WEST)
-Received: (from dumas@localhost)
-	by zeus.centre-cired.fr (8.11.6/8.11.6) id g3AEoNi23520
-	for nfs@lists.sourceforge.net; Wed, 10 Apr 2002 16:50:23 +0200
-To: nfs@lists.sourceforge.net
+	id 16vLgw-00089E-00
+	for <nfs@lists.sourceforge.net>; Wed, 10 Apr 2002 10:15:30 -0700
+To: Dumas Patrice <dumas@centre-cired.fr>
+In-Reply-To: <20020410165023.D23279@zeus.centre-cired.fr>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -29,24 +26,35 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-Hi,
-If the standard for lockd is described in
-http://www.opengroup.org/onlinepubs/009629799/chap9.htm#tagcjh_10,
-then the linux lockd breaks the standard in numerous parts, mainly
+>>>>> " " == Dumas Patrice <dumas@centre-cired.fr> writes:
 
-- the protocole structures aren't the same (because on linux the structure used
-is file_lock)
+     > Hi, If the standard for lockd is described in
+     > http://www.opengroup.org/onlinepubs/009629799/chap9.htm#tagcjh_10,
+     > then the linux lockd breaks the standard in numerous parts,
+     > mainly
 
-- lockd doesn't responds with the right message type for granted locks (more
-precisely it uses a GRANTED_MSG in cases it should use GRANTED).
+     > - the protocole structures aren't the same (because on linux
+     >   the structure used
+     > is file_lock)
 
-I have no problem with breaking the standard per se, and I fully understand the
-reasons behind that, however it seems to me that it should lead to
-interoperability issues. Does it ? According to the nfs howto (but it is an old
-one there isn't such issues. Does it means that other nfs implementation also
-use the file_lock structure ?
+I don't follow you at all here. Examples please of where this is a
+problem with the standard?
 
-Pat
+     > - lockd doesn't responds with the right message type for
+     >   granted locks (more
+     > precisely it uses a GRANTED_MSG in cases it should use
+     > GRANTED).
+
+See the comment about HP clients above nlmsvc_grant_blocked().
+
+Of course, if you are planning on writing proper support for the
+asynchronous RPC, then we can indeed go ahead and make
+nlmsvc_grant_blocked() call either NLM_GRANTED or NLM_GRANTED_MSG
+depending on whether the client originally called NLM_LOCK or
+NLM_LOCK_MSG.
+
+Cheers,
+  Trond
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
