@@ -1,25 +1,22 @@
-From: "Iozone" <capps@iozone.org>
-Subject: Re: 2.4.21 NFSv3 performance graph
-Date: Sat, 29 Jan 2005 11:31:39 -0600
-Message-ID: <007701c50628$63e94e60$06000800@americas.hpqcorp.net>
-References: <41E816B3.4030702@mitre.org>	 <1105747170.28849.22.camel@lade.trondhjem.org>	 <41F13749.4090900@int-evry.fr> <1106329537.9849.68.camel@lade.trondhjem.org> <41FB6A10.6000001@int-evry.fr>
-Reply-To: "Iozone" <capps@iozone.org>
+From: Neil Horman <nhorman@redhat.com>
+Subject: Re: Help diagnosing bizarre NFS problem
+Date: Mon, 24 Jan 2005 07:40:54 -0500
+Message-ID: <41F4ECD6.90405@redhat.com>
+References: <BA594DD2-65DA-11D9-B0EB-000A95A07AB8@valuecommerce.co.jp> <731336CA-6DE6-11D9-8B4D-000A95A07AB8@valuecommerce.co.jp>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	format=flowed;
-	charset="iso-8859-1";
-	reply-type=response
-Cc: "Jeff Blaine" <jblaine@mitre.org>, <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: nfs@lists.sourceforge.net
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CuwRl-0006fH-BJ
-	for nfs@lists.sourceforge.net; Sat, 29 Jan 2005 09:31:45 -0800
-Received: from out001pub.verizon.net ([206.46.170.140] helo=out001.verizon.net)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CuwRk-0005jg-Ll
-	for nfs@lists.sourceforge.net; Sat, 29 Jan 2005 09:31:45 -0800
-To: "jehan.procaccia" <jehan.procaccia@int-evry.fr>,
-	"Trond Myklebust" <trond.myklebust@fys.uio.no>
+	id 1Ct3Wg-0002LK-Od
+	for nfs@lists.sourceforge.net; Mon, 24 Jan 2005 04:41:02 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1Ct3Wf-0000zF-TX
+	for nfs@lists.sourceforge.net; Mon, 24 Jan 2005 04:41:02 -0800
+To: Nathan Ollerenshaw <nathan@valuecommerce.co.jp>
+In-Reply-To: <731336CA-6DE6-11D9-8B4D-000A95A07AB8@valuecommerce.co.jp>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,126 +30,194 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Jehan,
+Nathan Ollerenshaw wrote:
+> Hi folks,
+> 
+> I posted this a couple of weeks ago, hoping someone could give us a clue.
+> 
+> We've dropped back to UDP and 1024 wsize and rsize, which seems to have 
+> killed the problem for our webservers (yay) but also killed performance 
+> (boo).
+> 
+> I'm wondering if any of you would have any insight as to why this would 
+> fix the problem, and what the root cause might be?
+> 
+> Currently the vendor is blaming the network and the linux NFS client 
+> code for the issue; I need a better idea than just "its your 
+> network/linux os fault".
+> 
+> Thanks,
+> 
+> Nathan.
+> 
+Dont suppose you can provide access to the tcpdumps, can you?
+Neil
 
-    In my previous email I mentioned the use of the -U option.
-    This option will un-mount and re-mount the filesystem
-    on the client. This will cause the client to flush, and invalidate
-    it's cache.  It will not cause the server to flush, or invalidate
-    it's cache. If you wish to measure the physical I/O subsystem
-    on the server, then you will need to either use a file size
-    that is larger than the amount of RAM on the server, (see: -s option)
-    or an aggregate data set size that is larger than the amount
-    of RAM on the server. ( see: -s and -t options)
-
-Enjoy,
-Don Capps
-
------ Original Message ----- 
-From: "jehan.procaccia" <jehan.procaccia@int-evry.fr>
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
-Cc: "Jeff Blaine" <jblaine@mitre.org>; <nfs@lists.sourceforge.net>; 
-<capps@iozone.org>
-Sent: Saturday, January 29, 2005 4:48 AM
-Subject: Re: [NFS] 2.4.21 NFSv3 performance graph
-
-
-> OK so now I run with your recommanded options and I get Output perfs as 
-> high as my network speed !! I am very surprised ! I don't think I am 
-> measuring NFS perfs here but network speed :-( .
-> Indeed for any couple filesize/record lenght I get wites result (see 
-> sample below) around 11000Kbytes/sec -> so if I am right -> 11MB/s -> or 
-> 88Mbits/s ~= my 100Mbits ethernet througput ! (less ethernet/ip overhead 
-> !)
->
-> here's what I did:
-> $mount cobra3:/p2v5f3 /mnt/cobra3/ -o async,nfsvers=3
-> [root@arvouin /mnt/cobra3/iozone/arvouin]
-> $time iozone -a -c -e -i 0 -i 1 > arvouin-cobra3-i01-a-c-e.iozone
->
-> Command line used: iozone -a -c -e -i 0 -i 1
->        Output is in Kbytes/sec
-> Processor cache size set to 1024 Kbytes.
->        Processor cache line size set to 32 bytes.
->        File stride size set to 17 * record size.
->                                                            random  random 
-> bkwd
-> record  stride
->              KB  reclen   write rewrite    read    reread    read   write 
-> read rewrite    read   fwrite frewrite   fread  freread
->            1024       4   10529   10603   409270   408936 
-> 1024       8   10571   10666   472558   533076
-> ....
->            262144      64   11146   11156    11230    11225 
-> 262144     128   11152   11172    11228    10948
->
-> here only read/reread changes as filesize increases , anyway 400/500MB/s 
-> reads is well over my 12.5 theorical ethernet througput, I suspect cache 
-> intervention here, no ? although I did put -e -c  options !
->
-> Any comment , advices ? what kind of result do you get for NFS writings 
-> with iozone ? as high as I get ? which options I am missing ?
->
-> Thanks.
-> Trond Myklebust wrote:
->
->>fr den 21.01.2005 Klokka 18:09 (+0100) skreiv Jehan PROCACCIA:
+> ps. If this is completely the wrong place to ask about technical 
+> difficulties with the Linux NFS client stack please point me in the 
+> right direction. I kinda got no response from the last email so I'm 
+> assuming either a) nobody knows or b) nobody cares or c) I'm posting to 
+> the wrong list ;)
+> 
+> On Jan 14, 2005, at 12:16 PM, Nathan Ollerenshaw wrote:
+> 
+>> Hi All,
 >>
->>>more generaly, what tool do you recommand to bench NFS ?
->>>I tried bonnie, bonnie++ and iozone.
->>>for the latest here's the kind of command I ran (so that it doesn't takes 
->>>hours to run the test!):
->>>/opt/iozone/bin/iozone -p -s 10k -s 100k -s 1m -s 5m -s 10m -s 100m -i 
->>>  -i 1 -r 4 -r 64 -r 256 -r 512 -r 1024 -r 4096 -r8192 -r 16384 -c -U 
->>>/mnt/cobra3 -f /mnt/cobra3/iozone.nagiostux > iozone-result
->>>
->>>My problem is that my NFS server has 4Go of ram, and bench programs 
->>>always recommand to use filesize for tests higher than RAM size and even 
->>>double size of the RAM so that it is not messuring cache activities !
->>>
+>> I need some help diagnosing a bizarre problem that has been affecting 
+>> our NFS based system for the past 4 weeks or so. We've tried getting 
+>> help from our NAS vendor (EMC) and we've been trawling google (and 
+>> these list archives) and so far not found any real indication of what 
+>> the problem might be.
 >>
->>For tests of reading, this is undoubtedly true. For tests of writing
->>over NFS, this may be false: see the discussions of the iozone "-c" and
->>"-e" flags below.
+>> Please, if you have any ideas of how to diagnose the problem, please 
+>> let us know.
 >>
->>Note that bonnie and bonnie++ lack the equivalent of the "-e", "-c"
->>flags, and so are indeed not good for testing wire speeds unless you use
->>very large files.
+>> THE SETUP:
+>>
+>> We have an EMC NAS box, a Celerra, running DART (so they tell us, we 
+>> don't have access to it, so I have no idea whats going on in the 
+>> server side).
+>>
+>> We have a pair of foundry networks 48 port 10/100 switches providing a 
+>> switched network for the machines. There are 6 mail servers and 4 web 
+>> servers (soon to be 8) that mount a filesystem each from the NAS. We 
+>> have a filesystem for mail data (stored in Maildir format) and a 
+>> filesystem for web content. The webservers see about 20 million 
+>> requests a day, load balanced across all of them with a pair of 
+>> foundries.
+>>
+>> Mail is stored in the format of 
+>> /data/mail/xx/xx/domain/user@domain/Maildir/. Web is stored in the 
+>> format of /data/web/xx/xx/domain/ with directories under here for the 
+>> www docroot, cgi-bin, etc. Customers can upload their stuff with FTP, 
+>> and they can put cgis into the cgi-bin if they want. We have a wrapper 
+>> that runs the CGIs as the user's UID/GID in their cgi-bin.
+>>
+>> We have a box that runs a custom 'administration UI' that makes all 
+>> the changes to DNS files, apache configs, filesystem etc to provision 
+>> customer's websites/email etc. There is a box that is currently doing 
+>> a backup over the NFS (because the snapshots were misconfigured by me 
+>> on the NAS, ha ha). It takes about 12 hours to read all the data and 
+>> tar it up.
+>>
+>> All the client machines are recently patched Fedora Core 2 machines 
+>> running 2.6.9 (currently, we will probably try 2.6.10 in the near future)
+>>
+>> THE PROBLEM:
+>>
+>> regularly, about once a day, at no specific time, each of the web 
+>> servers NFS mount will 'lock up'. This seems to manifest itself in one 
+>> of the deeper directories first, until it works its way down to the 
+>> actual mount point, at which time the machine basically is unable to 
+>> serve any traffic.
+>>
+>> When we log into the machine, we see:
+>>
+>> Jan  6 09:17:00 www4 kernel: nfs: server nfs not responding, still trying
+>> Jan  6 09:17:00 www4 kernel: nfs: server nfs not responding, still trying
+>> Jan  6 09:20:47 www4 kernel: nfs: server nfs not responding, still trying
+>>
+>> Sometimes we will see a message like this:
+>>
+>> Dec 27 10:41:51 www2 kernel: nfs_statfs: statfs error = 512
+>>
+>> Messages such as this are also common:
+>>
+>> nfs_proc_symlink: lock/DGMDNP-042.txt_lock_lock already exists??
+>>
+>> Doing a tethereal at the time, we see stuff like this:
+>>
+>>  62.303877  10.128.1.11 -> 10.128.2.33  NFS V3 WRITE Reply (Call In 
+>> 27) Error:ERR_STALE
+>>
+>> Now, the "statfs error = 512" seems to be indicating that the NAS is 
+>> having a problem. But this isn't the case. I can at least check the 
+>> uptime of the EMC from the control panel UI that EMC provide (which 
+>> I'm not very happy with, but thats another saga you can ask me about 
+>> in private if your interested). The NAS itself is not rebooting. The 
+>> RPC services it provides are not going away either; I have a script 
+>> running on another machine that checks the services every second on 
+>> the server, and they have never even flinched. So I don't think its a 
+>> problem with the EMC crashing or whatnot.
+>>
+>> What IS interesting is that the www servers have this problem about 
+>> once or twice a day, each. The mailservers rarely have this problem. 
+>> The machine that does the backup never seems to have the problem.
+>>
+>> This issue is really doing my head in. If someone could tell me a way 
+>> of getting more information out of the clients to enable us to see 
+>> what is going on, that'd be awesome.
+>>
+>> We've tried using UDP, dropping the packet size, dropping back to the 
+>> latest vanilla 2.4.x kernel, everything we can think of. Nothing seems 
+>> to be helping right now.
+>>
+>> Our vendor is of course helping us, they have done tcp dumps on the 
+>> server side, done whatever diagnosis they can on their side and right 
+>> now they are saying its a client side issue, but they are unable to 
+>> provide any hard evidence either way.
+>>
+>> Vendor currently says:
+>>
+>>> Anyway, at the present moment, we can say, we haven't finished analyzing
+>>> network traces completely, however, we found some strange point in the
+>>> network trace. As per customer, customer uses the file locking over NFS.
+>>> Indeed, we can see NLM protocol in the network trace. Some of  
+>>> clients keep
+>>> sending NLM_UNLOCK for some of files without sending NLM_LOCK. 
+>>> Generally, if
+>>> using NLM, the sequence is NLM_LOCK call for relevant file is 
+>>> executed from
+>>> NFS client and then NLM_UNLOCK for that file is executed from NFS 
+>>> client.
+>>> Thus, the file locking will be completed. We can't see any corresponds
+>>> between LOCK and UNLOCK. From the beginning of the trace, some of client
+>>> keep sending only NLM_UNLOCK. That is very strange.
 >>
 >>
->>>Can you give me a sample of the iozone arguments you used ?
->>>Any other tools ?
->>>
+>> There is nothing in the RFC that says that NLM_LOCK and NLM_UNLOCK 
+>> counts must be equal. Additionally, the extra NLM_UNLOCK messages 
+>> simply indicates that there was a failure to lock or unlock a file. 
+>> From what I understand, this technique is used in crash recovery, 
+>> which seems to indicate SOMETHING is crashing, if not the EMC, what? 
+>> How can I prove it either way?
 >>
->>It depends on what I want to test 8-)
+>> If anyone on this list can suggest anything obvious or not, it will be 
+>> appreciated :)
 >>
+>> Regards,
 >>
->>Something like "iozone -c -a" should be fine for a basic test of the
->>generic read/write code functionality.
->>Note the "-c" which *is* usually necessary under NFS since any cached
->>writes are going to be flushed to disk by the "close()" (or when the
->>process exits). This means that close() will normally end up dominating
->>your write timings for files < memory size.
+>> Nathan.
 >>
->>If you want to test mmap(), something like "iozone -e -B -a". I believe
->>that "-e" should normally ensure that any writes are flushed to disk
->>using the fsync() command, and that this is timed.
->>Note that if you don't care about knowing how long it takes for the
->>writes to be flushed to disk then you can drop the "-e": unlike ordinary
->>read/write, mmap() does not guarantee that writes are flushed to disk
->>after the file is closed.
->>
->>For direct IO, "iozone -I -a" suffices. Since direct IO is uncached, all
->>write operations are synchronous, so "-c" and "-e" are unnecessary.
+>> -- 
+>> "It is change, continuing change, inevitable change, that is
+>>  the dominant factor in society today. No sensible decision can
+>>  be made any longer without taking into account not only the
+>>  world as it is, but the world as it will be." - Isaac Asimov
 >>
 >>
->>Cheers,
->>  Trond
 >>
->
+>> -------------------------------------------------------
+>> The SF.Net email is sponsored by: Beat the post-holiday blues
+>> Get a FREE limited edition SourceForge.net t-shirt from ThinkGeek.
+>> It's fun and FREE -- well, almost....http://www.thinkgeek.com/sfshirt
+>> _______________________________________________
+>> NFS maillist  -  NFS@lists.sourceforge.net
+>> https://lists.sourceforge.net/lists/listinfo/nfs
+>>
+>>
 > 
 
 
+-- 
+/***************************************************
+  *Neil Horman
+  *Software Engineer
+  *Red Hat, Inc.
+  *nhorman@redhat.com
+  *gpg keyid: 1024D / 0x92A74FA1
+  *http://pgp.mit.edu
+  ***************************************************/
 
 
 -------------------------------------------------------
