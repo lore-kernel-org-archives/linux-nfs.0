@@ -1,116 +1,109 @@
-From: Juan Gomez  <gomez@cs.sjsu.edu>
-Subject: Patch to enable rmtab's that are symbolic links
-Date: Sat, 12 Oct 2002 01:06:16 -0700 (PDT)
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.GSO.4.05.10210120103230.11528-100000@eniac>
+From: Olaf Dietsche <olaf.dietsche#list.linux-kernel@t-online.de>
+Subject: [PATCH] 2.5.42: build nfsd as module broken
+Date: Sat, 12 Oct 2002 20:18:14 +0200
+Sender: linux-kernel-owner@vger.kernel.org
+Message-ID: <871y6vwmft.fsf@goat.bogus.local>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: juang@us.ibm.com
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mailhub.cs.sjsu.edu ([130.65.86.58])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 180HIl-0005jz-00
-	for <nfs@lists.sourceforge.net>; Sat, 12 Oct 2002 01:07:11 -0700
-To: nfs@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner+linux-kernel=40quimby.gnus.org@vger.kernel.org>
+To: neilb@cse.unsw.edu.au
+List-ID: <nfs.lists.sourceforge.net>
 
+# make modules_install
+gives the following error:
 
-In clustered NAS environments we have found useful to support
-symbolic links to the rmtab files. I would like to propose the following
-patch for review and future inclusion on nfs-utils so that this feature
-can be supported.
+[...]
+if [ -r System.map ]; then /sbin/depmod -ae -F System.map  2.5.42; fi
+depmod: *** Unresolved symbols in /lib/modules/2.5.42/kernel/fs/nfsd/nfsd.o
+depmod:         auth_domain_find
+depmod:         cache_fresh
+depmod:         unix_domain_find
+depmod:         auth_domain_put
+depmod:         cache_flush
+depmod:         cache_unregister
+depmod:         add_hex
+depmod:         cache_check
+depmod:         svcauth_unix_purge
+depmod:         get_word
+depmod:         cache_clean
+depmod:         cache_register
+depmod:         auth_unix_lookup
+depmod:         auth_unix_add_addr
+depmod:         cache_init
+depmod:         auth_unix_forget_old
+depmod:         add_word
 
-Regards, Juan
+This patch adds several EXPORT_SYMBOL() to net/sunrpc/*.c. The kernel
+builds and boots. I haven't tested nfsd yet.
 
-diff -ur nfs-utils/utils/mountd/rmtab.c nfs-utils-new-mountd/utils/mountd/rmtab.c
---- nfs-utils/utils/mountd/rmtab.c	Wed May 31 17:57:13 2000
-+++ nfs-utils-new-mountd/utils/mountd/rmtab.c	Sat Oct 12 07:54:01 2002
-@@ -8,7 +8,9 @@
+Regards, Olaf.
+
+diff -urN a/net/sunrpc/Makefile b/net/sunrpc/Makefile
+--- a/net/sunrpc/Makefile	Sat Oct 12 14:24:21 2002
++++ b/net/sunrpc/Makefile	Sat Oct 12 19:37:20 2002
+@@ -4,7 +4,7 @@
  
- #include "config.h"
+ obj-$(CONFIG_SUNRPC) += sunrpc.o
  
-+#include <sys/types.h>
- #include <sys/stat.h>
-+#include <unistd.h>
- #include <netinet/in.h>
- #include <arpa/inet.h>
- #include <netdb.h>
-@@ -18,6 +20,40 @@
- #include "xio.h"
- #include "mountd.h"
+-export-objs := sunrpc_syms.o
++export-objs := sunrpc_syms.o svcauth.o svcauth_unix.o cache.o
  
-+#include <limits.h> /* PATH_MAX */
+ sunrpc-y := clnt.o xprt.o sched.o \
+ 	    auth.o auth_null.o auth_unix.o \
+diff -urN a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+--- a/net/sunrpc/cache.c	Sat Oct 12 14:24:21 2002
++++ b/net/sunrpc/cache.c	Sat Oct 12 18:26:05 2002
+@@ -925,3 +925,14 @@
+ 		return len;
+ 	return -1;
+ }
 +
-+/* If new path is a link do not destroy it but place the
-+ * file where the link points.
-+ */
++EXPORT_SYMBOL(cache_fresh);
++EXPORT_SYMBOL(cache_flush);
++EXPORT_SYMBOL(cache_unregister);
++EXPORT_SYMBOL(cache_check);
++EXPORT_SYMBOL(cache_clean);
++EXPORT_SYMBOL(cache_register);
++EXPORT_SYMBOL(cache_init);
++EXPORT_SYMBOL(add_word);
++EXPORT_SYMBOL(add_hex);
++EXPORT_SYMBOL(get_word);
+diff -urN a/net/sunrpc/svcauth.c b/net/sunrpc/svcauth.c
+--- a/net/sunrpc/svcauth.c	Sat Oct 12 14:24:21 2002
++++ b/net/sunrpc/svcauth.c	Sat Oct 12 19:36:38 2002
+@@ -16,6 +16,7 @@
+ #include <linux/sunrpc/svcsock.h>
+ #include <linux/sunrpc/svcauth.h>
+ #include <linux/err.h>
++#include <linux/module.h>
+ 
+ #define RPCDBG_FACILITY	RPCDBG_AUTH
+ 
+@@ -189,3 +190,6 @@
+ 	rv = auth_domain_lookup(&ad, 0);
+ 	return rv;
+ }
 +
-+static int 
-+slink_safe_rename(const char * oldpath, const char * newpath)
-+{
-+  int r;
-+  struct stat s;
-+  char slink_path[PATH_MAX];
-+  char real_newpath = newpath;
-+
-+  if((lstat(newpath, &s) == 0) && (S_ISLNK(s.st_mode))) {
-+
-+    /* New path is a symbolic link, do not destroy but follow */
-+
-+    if((r = readlink(newpath, slink_path, PATH_MAX))==-1) {
-+
-+      return -1;
-+
-+    }
-+
-+    slink_path[ (r < PATH_MAX) ? (r + 1) : (PATH_MAX - 1)] = '\0';
-+
-+    real_newpath = slink_path;
-+
-+  }
-+
-+  return rename(oldpath, real_newpath);
-+
-+}/* static int slink_safe_rename() */
-+
- void
- mountlist_add(nfs_export *exp, const char *path)
- {
-@@ -82,7 +118,7 @@
- 		if (!match || rep->r_count)
- 			fputrmtabent(fp, rep, NULL);
- 	}
--	if (rename(_PATH_RMTABTMP, _PATH_RMTAB) < 0) {
-+	if (slink_safe_rename(_PATH_RMTABTMP, _PATH_RMTAB) < 0) {
- 		xlog(L_ERROR, "couldn't rename %s to %s",
- 				_PATH_RMTABTMP, _PATH_RMTAB);
- 	}
-@@ -130,7 +166,7 @@
- 		}
- 		fputrmtabent(fp, rep, NULL);
- 	}
--	if (rename(_PATH_RMTABTMP, _PATH_RMTAB) < 0) {
-+	if (slink_safe_rename(_PATH_RMTABTMP, _PATH_RMTAB) < 0) {
- 		xlog(L_ERROR, "couldn't rename %s to %s",
- 				_PATH_RMTABTMP, _PATH_RMTAB);
- 	}
-
-
-
--------------------------------------------------------
-This sf.net email is sponsored by:ThinkGeek
-Welcome to geek heaven.
-http://thinkgeek.com/sf
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
++EXPORT_SYMBOL(auth_domain_find);
++EXPORT_SYMBOL(auth_domain_put);
+diff -urN a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+--- a/net/sunrpc/svcauth_unix.c	Sat Oct 12 14:24:21 2002
++++ b/net/sunrpc/svcauth_unix.c	Sat Oct 12 18:25:16 2002
+@@ -5,6 +5,7 @@
+ #include <linux/sunrpc/svcsock.h>
+ #include <linux/sunrpc/svcauth.h>
+ #include <linux/err.h>
++#include <linux/module.h>
+ 
+ #define RPCDBG_FACILITY	RPCDBG_AUTH
+ 
+@@ -462,3 +463,8 @@
+ 	.release	= svcauth_unix_release,
+ };
+ 
++EXPORT_SYMBOL(unix_domain_find);
++EXPORT_SYMBOL(auth_unix_lookup);
++EXPORT_SYMBOL(auth_unix_add_addr);
++EXPORT_SYMBOL(auth_unix_forget_old);
++EXPORT_SYMBOL(svcauth_unix_purge);
