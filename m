@@ -1,19 +1,21 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Utils package testing
-Date: 12 Jun 2002 14:21:39 +0200
+From: "The Story's" <storys@attbi.com>
+Subject: Getting the Latest NFS Distribution
+Date: Wed, 12 Jun 2002 09:05:16 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <shsy9dkwuuk.fsf@charged.uio.no>
-References: <3D062664.C93B7399@attbi.com>
+Message-ID: <NEBBIGDKOLHAFMMFCNGPMEPGDCAA.storys@attbi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: NFS maillist <nfs@lists.sourceforge.net>
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
+Received: from sccrmhc01.attbi.com ([204.127.202.61])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17I78M-0001ZJ-00
-	for <nfs@lists.sourceforge.net>; Wed, 12 Jun 2002 05:21:54 -0700
-To: Tom McNeal <trmcneal@attbi.com>
-In-Reply-To: <3D062664.C93B7399@attbi.com>
+	id 17I7oQ-00055m-00
+	for <nfs@lists.sourceforge.net>; Wed, 12 Jun 2002 06:05:22 -0700
+Received: from tigger ([24.147.148.40]) by sccrmhc01.attbi.com
+          (InterMail vM.4.01.03.27 201-229-121-127-20010626) with SMTP
+          id <20020612130516.JFFC1024.sccrmhc01.attbi.com@tigger>
+          for <nfs@lists.sourceforge.net>; Wed, 12 Jun 2002 13:05:16 +0000
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,31 +28,20 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->>>>> " " == Tom McNeal <trmcneal@attbi.com> writes:
+Greetings,
 
-     >  - Does locking take a much longer time in ext3 file systems,
-     >    or in the patched environment?  In the patched kernel,
-     >    exporting ext3, the connectathon lock tests seemed to take
-     >    up to 10x as long, but that was over many hours, with a big
-     >    load.  When run just once with the other connectathon tests,
-     >    it didn't seem so different.
+I am trying to upgrade my SuSE 7.2 to use NFS V3. 
+It doesn't seem that the -N 1 -N 2 options are available
+so i belive my version is just too old.
 
-Flushing to disk would be slower with ext3. As this is done every time
-somebody takes or releases a lock...
+What do i need to download to get the latest, and where do
+i get it ?
 
-     >  - The client net statistics in /proc/net/rpc/nfs seems to remain
-     >    at 0 regardless of the activity and regardless of the
-     >    kernel.  I'm going to start browsing through the kernel code
-     >    to see if there is something obvious, but maybe someone
-     >    knows about this already.  I didn't see anything in the
-     >    mailing list.
+I suspect i need nfsd, portmap, mountd ?
 
-I've never touched the 'net statistics' field, and I've no idea what
-it purports to measure. As far as I'm concerned it can be removed
-entirely...
 
-Cheers,
-  Trond
+Thanks for your help,
+Lenny
 
 _______________________________________________________________
 
