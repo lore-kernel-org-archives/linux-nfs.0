@@ -1,27 +1,22 @@
-From: Paul Jakma <paul@clubi.ie>
-Subject: Re: Re: "nfs warning: mount version older than kernel" reported
- for 2.6.4 kernel on Fedora Core 1.0
-Date: Sun, 4 Apr 2004 00:08:41 +0100 (IST)
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: RE: [PATCH] 1/3 - RPC metrics support
+Date: Sat, 3 Apr 2004 18:35:48 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.58.0404040006440.25515@hibernia.jakma.org>
-References: <41089CB27BD8D24E8385C8003EDAF7AB084833@karl.alexa.com>
- <20040319184931.GF29237@perlsupport.com> <1079725155.2530.30.camel@lade.trondhjem.org>
+Message-ID: <482A3FA0050D21419C269D13989C611302B07BFD@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Chip Salzenberg <chip@pobox.com>, Guolin Cheng <guolin@alexa.com>,
-        "NFSUserList (E-mail)" <nfs@lists.sourceforge.net>
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B9uMz-00051A-Qg
-	for nfs@lists.sourceforge.net; Sat, 03 Apr 2004 15:16:09 -0800
-Received: from hibernia.jakma.org ([212.17.55.49])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.30)
-	id 1B9uMy-00082X-Vn
-	for nfs@lists.sourceforge.net; Sat, 03 Apr 2004 15:16:09 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1079725155.2530.30.camel@lade.trondhjem.org>
+	id 1B9xUP-0001DS-Pf
+	for nfs@lists.sourceforge.net; Sat, 03 Apr 2004 18:36:01 -0800
+Received: from mx01.netapp.com ([198.95.226.53])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
+	id 1B9xUO-0007lK-RS
+	for nfs@lists.sourceforge.net; Sat, 03 Apr 2004 18:36:00 -0800
+To: "Greg Banks" <gnb@sgi.com>, "Trond Myklebust" <trond.myklebust@fys.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,24 +29,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, 19 Mar 2004, Trond Myklebust wrote:
+> On Thu, Apr 01, 2004 at 07:36:27PM -0500, Trond Myklebust wrote:
+> > On Thu, 2004-04-01 at 12:05, Lever, Charles wrote:
+> >=20
+> > > if we saved the export path somewhere in the nfs_server
+> > > structure, that would be mighty convenient for iostats
+> > > and i don't think that would break namespaces.
+> >=20
+> > ...but it would force us to introduce a new mount_data=20
+> structure, and
+> > hence a new "mount" ABI so that will have to wait until 2.7.x.
+>=20
+> Why not just save a copy of @devname in nfs_get_sb() ?  It's
+> the same name that's stored in struct vfsmount and reported
+> in /proc/mounts.
 
-> One such change is to allow NFSv2/v3 to use RPCSEC_GSS (BTW: we're
-> *still* waiting to hear from this list about including the
-> RPCSEC_GSS + NFSv4 support daemons into the official nfs-utils) 
+unless i've missed something, there are only two NFS functions
+that take vfsmount as an argument.  one is nfs_show_options, and
+the other is nfs_getattr.
 
-I dont know what the pitfalls would be, but if there arent too many, 
-my vote is "in". As soon as fedora has v4 enabled nfs-utils, i intend 
-to try it with rpcsec_gss.
-
-regards,
--- 
-Paul Jakma	paul@clubi.ie	paul@jakma.org	Key ID: 64A2FF6A
-	warning: do not ever send email to spam@dishone.st
-Fortune:
-There appears to be irrefutable evidence that the mere fact of overcrowding
-induces violence.
-		-- Harvey Wheeler
+the vfsmount struct is not available to the NFS client during a
+mount operation.
 
 
 -------------------------------------------------------
