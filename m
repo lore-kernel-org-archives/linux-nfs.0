@@ -1,16 +1,19 @@
 From: Brian Pontz <axehind007@yahoo.com>
-Subject: bash-2.05b$ touch foo
-Date: Thu, 7 Aug 2003 15:37:34 -0700 (PDT)
+Subject: Re: bash-2.05b$ touch foo
+Date: Thu, 7 Aug 2003 16:00:39 -0700 (PDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030807223734.71021.qmail@web14409.mail.yahoo.com>
+Message-ID: <20030807230039.73452.qmail@web14405.mail.yahoo.com>
+References: <20030807224852.GA810@quasar.nro.au.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from web14409.mail.yahoo.com ([216.136.173.220])
+Received: from web14405.mail.yahoo.com ([216.136.174.62])
 	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19ktO2-0008NI-00
-	for <nfs@lists.sourceforge.net>; Thu, 07 Aug 2003 15:37:34 -0700
-To: nfs@lists.sourceforge.net
+	id 19ktkN-0002Jk-00
+	for <nfs@lists.sourceforge.net>; Thu, 07 Aug 2003 16:00:39 -0700
+To: Lawrence Ong <lawrence.ong@netregistry.com.au>
+In-Reply-To: <20030807224852.GA810@quasar.nro.au.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -23,33 +26,25 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello all,
+Thanks for the reply.
 
-I know I must be missing something here. I'm trying to
-get all creates to my nfs mounted fs to be created as
-a certain user. But when I try to create a file with
-touch I get
+That wouldnt work for me. Different users will be
+creating files on the nfs mount and there are many
+files already there. So I couldnt do a chown -R type
+of solution either.
 
-bash-2.05b$ touch foo
-touch: setting times of `foo': Permission denied
+But it does bring up something else I noticed. root
+doesnt have the mentioned problem.
 
-but it does create the file with the right uid/gid.
-
-The export for the fs looks like this
-
-/nfs/home 
-10.0.0.200(rw,async,wdelay,root_squash,all_squash,anonuid=500,anongid=15000)
-
-and the nfs client fstab entry looks like
-
-10.0.0.201:/nfs/home/data       nfs     
-noatime,exec,dev,nosuid,rw,bg,hard,int
-r 1 1
-
-What am I doing wrong? They are both RH9 systems.
-
-Thanks
+Thanks,
 Brian
+
+--- Lawrence Ong <lawrence.ong@netregistry.com.au>
+wrote:
+> Try creating it as root and chown it to that user
+> 
+> Cheers,
+> Lawrence
 
 
 __________________________________
