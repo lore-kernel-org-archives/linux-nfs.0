@@ -1,17 +1,17 @@
-From: Marc Schmitt <mschmitt@inf.ethz.ch>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: It works, but it doesn't
-Date: Thu, 07 Aug 2003 16:49:10 +0200
+Date: 07 Aug 2003 16:58:36 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3F3266E6.5020508@inf.ethz.ch>
+Message-ID: <shsadalecpv.fsf@charged.uio.no>
 References: <1060266746.32702.13.camel@engw0002.eng.lsu.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain; charset=us-ascii
 Cc: NFS List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from medoc.inf.ethz.ch ([129.132.178.200])
+Received: from pat.uio.no ([129.240.130.16])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19km4n-0006ZX-00
-	for <nfs@lists.sourceforge.net>; Thu, 07 Aug 2003 07:49:13 -0700
+	id 19kmE8-0000cM-00
+	for <nfs@lists.sourceforge.net>; Thu, 07 Aug 2003 07:58:52 -0700
 To: Steve Gonzales <gonzo@eng.lsu.edu>
 In-Reply-To: <1060266746.32702.13.camel@engw0002.eng.lsu.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -26,20 +26,20 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Steve,
+>>>>> " " == Steve Gonzales <gonzo@eng.lsu.edu> writes:
 
-Try:
+     > Server /etc/exports:
+     > /install/RedHat/9 <IPAddr2>(ro,no_root_squash)
+     > /install/RedHat/9 <IPAddr3>(ro,no_root_squash)
 
-Server /etc/exports:
+Put them both on one line (separated with spaces), and it will
+work. i.e.
+
 /install/RedHat/9 <IPAddr2>(ro,no_root_squash) <IPAddr3>(ro,no_root_squash)
 
-AFAIK, one can only have one entry per exported directory (in your case /install/RedHat/9).
 
-Greetings
-   Marc
-
-
-
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
