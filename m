@@ -1,19 +1,21 @@
-From: Joel Votaw <jovotaw@cs.nmsu.edu>
-Subject: Stale file handle, kernel 2.4.7, RedHat 7.2
-Date: Thu, 19 Sep 2002 09:31:03 -0600 (MDT)
+From: Hirokazu Takahashi <taka@valinux.co.jp>
+Subject: Re: [BUG] kNFSd may get a freeing inode.
+Date: Fri, 20 Sep 2002 00:53:00 +0900 (JST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0209190916140.2466-100000@quito>
+Message-ID: <20020920.005300.74726524.taka@valinux.co.jp>
+References: <15752.7496.463707.865953@notabene.cse.unsw.edu.au>
+	<20020918.160913.73658160.taka@valinux.co.jp>
+	<15752.22931.241819.210428@notabene.cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: Text/Plain; charset=us-ascii
+Cc: viro@math.psu.edu, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail.cs.nmsu.edu ([128.123.64.3])
+Received: from sv1.valinux.co.jp ([202.221.173.100])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17s3Gj-0003Tb-00
-	for <nfs@lists.sourceforge.net>; Thu, 19 Sep 2002 08:31:05 -0700
-Received: from quito (IDENT:1628@quito [128.123.64.162])
-	by mail.cs.nmsu.edu (8.11.6/8.11.5) with ESMTP id g8JFV3s17513
-	for <nfs@lists.sourceforge.net.>; Thu, 19 Sep 2002 09:31:03 -0600 (MDT)
-To: nfs@lists.sourceforge.net
+	id 17s3kB-0005EF-00
+	for <nfs@lists.sourceforge.net>; Thu, 19 Sep 2002 09:01:31 -0700
+To: neilb@cse.unsw.edu.au
+In-Reply-To: <15752.22931.241819.210428@notabene.cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,37 +28,97 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchives/forum.php?forum=nfs>
 
+Hi,
 
-Hello NFS hackers,
+I was thinking about your code and I've changed my mind that
+your aproach isn't bad.
 
-I'm running into a problem with NFS stale file handles... I seem to get
-them even after just stopping and restarting NFS services on our file
-server.
+> Brief description of patch:
+> 
+>  leaf about-to-be-delete inodes in hash table until 
+> filesystem has signed off on them, then remove from table and
+> wake_up_inode.
+>  If a FREEING inode is found on hash table, sleep on
+> the inodes wait_queue (which usefully is separate from the inode and
+> won't be freed when the inode goes) and then try again.
+.....
+	
+I refined your patch, how do you think about it?
+  (This patch is just sample)
 
-The server is running RedHat 7.2 and kernel 2.4.7-10 (no SMP support).
-Clients include some RedHat 7.1 through 7.3 machines, and Solaris 2.6
-through 8 machines.
-
-My first suspect is the fairly ancient kernel.  Are there known issues
-with kernels from that era?  I'd like to upgrade kernels but am kind of
-stuck -- this is a Dell server, we like being able to monitor the
-hardware, and last I heard they didn't support OpenManage on newer
-kernels.
-
-If there aren't problems with these kernels and there is a possible
-work-around ... am I doing something wrong?  My /etc/exports contains only
-
-	/export *(rw,sync,wdelay,no_subtree_check)
-
-I'm not exporting anything else (especially subdirectories), but clients
-may mount subdirectories (for example /export/home as /home).  I set
-no_subtree_check in the hopes that it would eliminate any state from the
-file handles.
-
-Thanks in advance for any info,
-
-	-Joel
-
+--- inode.c.ORG	Wed Sep 18 15:58:03 2030
++++ inode.c	Fri Sep 20 00:48:31 2030
+@@ -444,6 +444,20 @@ int shrink_icache_memory(int priority, i
+ 	return 0;
+ }
+ 
++void __wait_on_freeing_inode(struct inode *inode)
++{
++	DECLARE_WAITQUEUE(wait, current);
++	wait_queue_head_t *wq = i_waitq_head(inode);
++
++	add_wait_queue(wq, &wait);
++	set_current_state(TASK_UNINTERRUPTIBLE);
++	spin_unlock(&inode_lock);
++	schedule();
++	remove_wait_queue(wq, &wait);
++	current->state = TASK_RUNNING;
++	spin_lock(&inode_lock);
++}
++
+ /*
+  * Called with the inode lock held.
+  * NOTE: we are not increasing the inode-refcount, you must call __iget()
+@@ -466,6 +480,10 @@ static struct inode * find_inode(struct 
+ 			continue;
+ 		if (!test(inode, data))
+ 			continue;
++		if (inode->i_state & (I_FREEING|I_CLEAR)) {
++			__wait_on_freeing_inode(inode);
++			goto retry;
++		}
+ 		break;
+ 	}
+ 	return inode;
+@@ -479,7 +497,7 @@ static struct inode * find_inode_fast(st
+ {
+ 	struct list_head *tmp;
+ 	struct inode * inode;
+-
++retry:
+ 	tmp = head;
+ 	for (;;) {
+ 		tmp = tmp->next;
+@@ -491,6 +509,10 @@ static struct inode * find_inode_fast(st
+ 			continue;
+ 		if (inode->i_sb != sb)
+ 			continue;
++		if (inode->i_state & (I_FREEING|I_CLEAR)) {
++			__wait_on_freeing_inode(inode);
++			goto retry;
++		}
+ 		break;
+ 	}
+ 	return inode;
+@@ -793,7 +815,6 @@ void generic_delete_inode(struct inode *
+ {
+ 	struct super_operations *op = inode->i_sb->s_op;
+ 
+-	list_del_init(&inode->i_hash);
+ 	list_del_init(&inode->i_list);
+ 	inode->i_state|=I_FREEING;
+ 	inodes_stat.nr_inodes--;
+@@ -812,6 +833,10 @@ void generic_delete_inode(struct inode *
+ 		delete(inode);
+ 	} else
+ 		clear_inode(inode);
++	spin_lock(&inode_lock);
++	list_del_init(&inode->i_hash);
++	spin_unlock(&inode_lock);
++	wake_up_inode(inode);
+ 	if (inode->i_state != I_CLEAR)
+ 		BUG();
+ 	destroy_inode(inode);
 
 
 -------------------------------------------------------
