@@ -1,16 +1,19 @@
-From: David Myer <davidmyer800@yahoo.com>
-Subject: nfs client question -- kernel version 2.4.18
-Date: Mon, 19 May 2003 16:41:29 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: nfs client question -- kernel version 2.4.18
+Date: 20 May 2003 04:22:29 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030519234129.20427.qmail@web21008.mail.yahoo.com>
+Message-ID: <shsaddiqrve.fsf@charged.uio.no>
+References: <20030519234129.20427.qmail@web21008.mail.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from web21008.mail.yahoo.com ([216.136.227.62])
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19HuG1-0003Fx-00
-	for <nfs@lists.sourceforge.net>; Mon, 19 May 2003 16:41:29 -0700
-To: nfs@lists.sourceforge.net
+Received: from pat.uio.no ([129.240.130.16])
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19Hwlw-0000dR-00
+	for <nfs@lists.sourceforge.net>; Mon, 19 May 2003 19:22:36 -0700
+To: David Myer <davidmyer800@yahoo.com>
+In-Reply-To: <20030519234129.20427.qmail@web21008.mail.yahoo.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -23,43 +26,46 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+>>>>> " " == David Myer <davidmyer800@yahoo.com> writes:
 
-I am trying to understand nfs client code in 2.4.18.
-Would appreciate the following advise.
+     > Hi, I am trying to understand nfs client code in 2.4.18.  Would
+     > appreciate the following advise.
 
-1) in call_encode function (clnt.c), it initializes
-the iov base and len for send and recv, why it is only
-init iov[0] ? Does it mean it only use ONE IOV for
-data send and receive ? If so, if I have use my own
-type of buffer underneath, can I just copy it into
-iov[0] ?
+     > 1) in call_encode function (clnt.c), it initializes
+     > the iov base and len for send and recv, why it is only init
+     > iov[0] ? Does it mean it only use ONE IOV for data send and
+     > receive ?
 
-2) In nfs2xdr.c's nfs_xdr_readdirres function, when
-nfs tries to get XDR data, it uses iov[1], I am not
-sure when the header and payload got splitted into
-iov[0] and iov[1]. I assume this happened ( in case of
-udp), in data copy in udp_data_ready, but I did not
-see this "split copy" happening.
+The code shold be pretty clear there: half the buffer goes to the send
+iovec, the other half goes to the receive iovec.
 
-3) In command line, I am trying to mount using tcp by
-mount address1:/dir /address2:/mydir -o tcp
-it returned 
-nfs server reported service unavailable: Protocol not
-available..
+     > If so, if I have use my own type of buffer underneath, can I
+     > just copy it into iov[0] ?
 
-I saw on server side, when doing rpcinfo -p, mount
-daemon does have tcp, what else special I need to
-configure, on server or client side in order to mount
-using tcp ?
+I suppose. Why would you do that though?
 
-Thanks much
-Dave
+     > 2) In nfs2xdr.c's nfs_xdr_readdirres function, when
+     > nfs tries to get XDR data, it uses iov[1], I am not sure when
+     > the header and payload got splitted into iov[0] and iov[1]. I
+     > assume this happened ( in case of udp), in data copy in
+     > udp_data_ready, but I did not see this "split copy" happening.
 
-__________________________________
-Do you Yahoo!?
-The New Yahoo! Search - Faster. Easier. Bingo.
-http://search.yahoo.com
+That's what csum_partial_copy_to_page_cache() does. In
+nfs*_xdr_readdirargs(), we preallocate the RPC header (== iov[0]) so
+that the readdir data ends up in the page cache page iov[1].
+
+     > 3) In command line, I am trying to mount using tcp by
+     > mount address1:/dir /address2:/mydir -o tcp it returned nfs
+     > server reported service unavailable: Protocol not available..
+
+     > I saw on server side, when doing rpcinfo -p, mount daemon does
+     > have tcp, what else special I need to configure, on server or
+     > client side in order to mount using tcp ?
+
+Err... An actual NFS daemon that supports TCP?
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
