@@ -1,25 +1,27 @@
-From: Matthew Moldvan <mmoldvan@trilogyintl.com>
-Subject: Re: Solaris 8 to Linux Red Hat 9 - NFS Goes up and down and
-	up and do wn ...
-Date: Thu, 18 Sep 2003 11:22:19 -0400
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: Re: [autofs] VFS: Busy inodes after unmount on 2 way SMP
+Date: Thu, 18 Sep 2003 10:26:58 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <1063898538.31782.22.camel@matt>
-References: <2840B2764868D51189420090277B7699FD8F30@trilogy_pub.trilogyintl.com>
-Reply-To: mmoldvan@trilogyintl.com
+Message-ID: <20030918082658.GA24464@suse.de>
+References: <Pine.LNX.4.33.0309171251290.25153-100000@wombat.indigo.net.au> <3F689E40.6090802@intel.com> <3F68C6EB.2080706@zytor.com> <20030917210023.GA15099@suse.de> <shsd6dyabju.fsf@charged.uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=iso-8859-15
+Cc: Olaf Hering <olh@suse.de>, "H. Peter Anvin" <hpa@zytor.com>,
+	Arun Sharma <arun.sharma@intel.com>, autofs@linux.kernel.org,
+	nfs@lists.sourceforge.net, Ian Kent <raven@themaw.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1A00cX-0000Xg-00
-	for <nfs@lists.sourceforge.net>; Thu, 18 Sep 2003 08:23:01 -0700
-Received: from [209.187.237.19] (helo=proxy.trilogyintl.com)
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.22)
-	id 1A00cW-0006nU-IA
-	for nfs@lists.sourceforge.net; Thu, 18 Sep 2003 08:23:00 -0700
-To: nfs@lists.sourceforge.net
-In-Reply-To: <2840B2764868D51189420090277B7699FD8F30@trilogy_pub.trilogyintl.com>
+	id 19zu7z-0004OJ-00
+	for <nfs@lists.sourceforge.net>; Thu, 18 Sep 2003 01:27:03 -0700
+Received: from ns.suse.de ([195.135.220.2] helo=Cantor.suse.de)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.22)
+	id 19zu7y-0006gR-KT
+	for nfs@lists.sourceforge.net; Thu, 18 Sep 2003 01:27:02 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <shsd6dyabju.fsf@charged.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,72 +34,44 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-FYI, we figured this out.
+On Thu, Sep 18, 2003 at 01:52:05AM -0400, Trond Myklebust wrote:
+> ...and is indeed wrong... It does the exact opposite of what
+> sillydelete should do. Instead of causing the last application that
+> closes the file to perform the sillydelete, you are asking the *first*
+> application that closes it to do so.
 
-Our problem didn't have to do with NFS, it was APM daemons that were
-running ... we had to boot with apm=off as a boot option to disable the
-kernal apmd (kapmd) and do service apmd stop and chkconfig etc etc. to
-disable all of the APM stuff.
+I know. I was not claiming it's perfectly right, what I'm interested
+in whether it cures the oopses we're seeing. If that were true, one
+could still look for The Right Solution...
 
-That was it!
+> Sillydelete *has* to be tied to dentries. Not files, and not
+> inodes. It is purely a namespace operation...
+> 
+> So exactly what are you trying to do, and why?
 
-Horray!
+We have seen several reports of autofs+nfs leading to oopses, preceded by
+"Busy inodes on umount, self-destruct in 5 seconds".
+It's somewhat hard to reproduce, so I'm currently trying to come up with
+possible patches by looking at the source.
 
-We now return you to your regularly scheduled NFS talk.
+You cannot umount if the vfsmount mnt_count is != 2.  So either something
+hosed the mnt_count completely (by doing too many mntput() calls for
+instance), or something holds dentry references without bumping mnt_count
+along with it. Do you agree?
 
-Regards,
-Matthew Moldvan.
+The only place in the nfs client code that actually does a dget is
+the sillydelete stuff in unlink.c. So my idea in generating this patch
+was that the nfs_complete_unlink was happening too late, when the file
+is already closed and the vfsmount reference is gone.
 
-System Administrator
-Trilogy International, Inc.
+It's a long shot admittedly...
 
-On Mon, 2003-08-25 at 10:39, Matthew Moldvan wrote:
-> Hi everyone,
-> 
-> I've finally just about given up on trying to figure this out myself ...
-> here's my issue:
-> 
-> We have a Sun E450 running Solaris 8 with not enough disk space on a few of
-> the partitions.  Our solution: an x86 machine running Red Hat 9 with a 3Ware
-> Escalade 4 port IDE RAID card and a few big HDDs.
-> 
-> So, we have the two machines communicating just fine through a Gigabit
-> ethernet interface with a subnet.  Now, we've tried the rest two ways: 
-> 
-> 	1. Our E450 mounts the RH9 NFS share, then exports that as it's own
-> NFS share
-> 		or
-> 	2. We mount the RH9 NFS share directly from the other Solaris
-> workstations
-> 
-> Now, the issue we're facing is this: The whole setup works fine for awhile,
-> with a minor amount of collisions ... BUT, after a few hours, the whole
-> thing falls apart.  Workstations can't login because NFS shares aren't being
-> mounted, the main server is not allowing connections because it can't mount
-> the NFS itself, etc etc etc.
-> 
-> This is all incredibly frustrating to me, and we've tried everything from
-> changing the gigabit ethernet configuration to trying new network cards to
-> blaming it on wiring to god knows what now ...
-> 
-> Any ideas??
-> 
-> Regards,
-> Matthew Moldvan
->  
-> System Administrator
-> Trilogy International, Inc.
-> 
-> 
-> -------------------------------------------------------
-> This SF.net email is sponsored by: VM Ware
-> With VMware you can run multiple operating systems on a single machine.
-> WITHOUT REBOOTING! Mix Linux / Windows / Novell virtual machines
-> at the same time. Free trial click here:http://www.vmware.com/wl/offer/358/0
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
-
+Have a nice day,
+Olaf
+-- 
+Olaf Kirch     |  Anyone who has had to work with X.509 has probably
+okir@suse.de   |  experienced what can best be described as
+---------------+  ISO water torture. -- Peter Gutmann
 
 
 -------------------------------------------------------
