@@ -1,18 +1,19 @@
-From: "Gordon Luk" <gluk@Sequoiabroadband.com>
-Subject: RE: Multiple threads, hard-linking performance problem
-Date: Mon, 7 Apr 2003 17:57:47 -0700
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: [BK] NFS client updates for 2.5.67
+Date: Tue, 8 Apr 2003 03:20:26 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <B1F7BA1946751D4E8FD46319D2306E1C1004FA@mail.sequoiabroadband.com>
+Message-ID: <16018.9178.354140.998203@charged.uio.no>
+Reply-To: trond.myklebust@fys.uio.no
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="utf-8"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: NFS maillist <nfs@lists.sourceforge.net>,
+    Linux Kernel <linux-kernel@vger.kernel.org>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from vpn.sequoiabroadband.com ([12.164.235.93] helo=mail.Sequoiabroadband.com)
+Received: from pat.uio.no ([129.240.130.16])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 192hF2-0008O8-00
-	for <nfs@lists.sourceforge.net>; Mon, 07 Apr 2003 17:45:36 -0700
-To: "Lever, Charles" <Charles.Lever@netapp.com>
+	id 192hmz-0007xF-00
+	for <nfs@lists.sourceforge.net>; Mon, 07 Apr 2003 18:20:41 -0700
+To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,119 +26,84 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-SGkgQ2hhcmxlcywNCg0KSSB3b3VsZCBsb3ZlIHRvIHJ1biB0aG9zZSB0ZXN0cyB3aGVuIG91ciBj
-b21wYW55IGhhcyBhbm90aGVyIGNoYW5jZSB0byBkbyBzby4gVGhhdCBtYXkgYmUgc29tZSB0aW1l
-IGluIHRoZSBmdXR1cmUsIGJ1dCBJIHdpbGwgZGVmaW5pdGVseSBwb3N0IGFueSByZXN1bHRzIHRo
-YXQgSSBkbyBmaW5kIHRvIHRoaXMgbGlzdC4NCg0KVGhhbmtzIGZvciB5b3VyIGhlbHAsDQoNCkdv
-cmRvbg0KDQotLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KRnJvbTogTGV2ZXIsIENoYXJsZXMg
-W21haWx0bzpDaGFybGVzLkxldmVyQG5ldGFwcC5jb21dDQpTZW50OiBNb25kYXksIEFwcmlsIDA3
-LCAyMDAzIDU6MTkgUE0NClRvOiBHb3Jkb24gTHVrDQpDYzogbmZzQGxpc3RzLnNvdXJjZWZvcmdl
-Lm5ldA0KU3ViamVjdDogUkU6IFtORlNdIE11bHRpcGxlIHRocmVhZHMsIGhhcmQtbGlua2luZyBw
-ZXJmb3JtYW5jZSBwcm9ibGVtDQoNCg0KaGkgZ29yZG9uLQ0KDQo+IEhvd2V2ZXIsIHJlZHVjaW5n
-IHRoZSB3c2l6ZS9yc2l6ZSB0byA0ayBhcyB3ZWxsIGFzIHJ1bm5pbmcgDQo+IHRoZSBrZXJuZWwg
-Mi40LjIxLXByZTYgb24gYm90aCBuZnMgY2xpZW50IGFuZCBzZXJ2ZXJzIA0KPiBkcmFzdGljYWxs
-eSBpbXByb3ZlZCB0aGUgcGVyZm9ybWFuY2UgdG8gYWNjZXB0YWJsZSBsZXZlbHMgZm9yIA0KPiB0
-aGVzZSBsYXJnZSBudW1iZXJzIG9mIHNtYWxsIGhhcmQtbGluayB0cmFuc2FjdGlvbnMuIEkgYWxz
-byANCj4gcmFuIGEgdGVzdCB3aXRoIG9ubHkgdGhlIE5GUyBjbGllbnQgbWFjaGluZSB1cGdyYWRl
-ZCB0byB0aGlzIA0KPiBuZXdlciBrZXJuZWwsIHdoaWNoIHNlZW1lZCB0byBhbHNvIHByb2R1Y2Ug
-bXVjaCBiZXR0ZXIgDQo+IHBlcmZvcm1hbmNlIGxldmVscy4gSSBkaWQgbm90IHRlc3QgVENQLCBi
-ZWNhdXNlIHRoZSANCj4gY29ubmVjdGlvbnMgYmV0d2VlbiB0aGUgbWFjaGluZXMgd2VyZSBhbGwg
-Z2lnYWJpdCwgYW5kIEkgZGlkIA0KPiBub3Qgbm90aWNlIGFueSBzaWduaWZpY2FudCBuZXR3b3Jr
-IGNvbGxpc2lvbnMgdGhyb3VnaCB0aGUgDQo+IGNvdXJzZSBvZiB0aGUgdGVzdCwgYW5kIHRoZSBl
-eGlzdGluZyByZXN1bHRzIHdlcmUgZW5vdWdoIHRvIA0KPiBjb252aW5jZSBtZSB0aGF0IGEga2Vy
-bmVsIGNoYW5nZSB3YXMgYSBzb2x1dGlvbi4NCj4gDQo+IFVuZm9ydHVuYXRlbHkgZm9yIHVzLCBh
-ZnRlciB1cGdyYWRpbmcgdGhlIGtlcm5lbCwgd2UgaGFkIHNvbWUgDQo+IHByb2JsZW1zIHdpdGgg
-V2ViU3BoZXJlIDQuMDMsIHNvICB3ZSBtYXkgbm90IGJlIGFibGUgdG8gdXNlIA0KPiB0aGlzIHNv
-bHV0aW9uIGluIHByb2R1Y3Rpb24gZW52aXJvbm1lbnRzIHdpdGhvdXQgZnVydGhlciANCj4gdGVz
-dGluZy4gQnV0IGl0J3MgZ29vZCB0byBrbm93IHRoYXQgdGhlIG5ld2VyIGtlcm5lbCBmaXhlcyAN
-Cj4gdGhlIGhhcmQtbGluayBwZXJmb3JtYW5jZSBwcm9ibGVtcyB3ZSBvYnNlcnZlZC4gVGhhbmtz
-IGZvciANCj4geW91ciBhc3Npc3RhbmNlLA0KDQppZiB5b3UgdHJ5IGEgZmV3IGRpZmZlcmVudCBr
-ZXJuZWwgcmVsZWFzZXMgYmV0d2VlbiAyLjQuMTkNCmFuZCAyLjQuMjEtcHJlNiwgeW91IG1pZ2h0
-IGJlIGFibGUgdG8gZmlndXJlIG91dCBleGFjdGx5DQp3aGVyZSB0aGUgaGFyZC1saW5rIGZpeCBv
-Y2N1cnJlZC4gIHRoZW4gd2UgY2FuIGZpbmQgb3V0DQpleGFjdGx5IHdoYXQgZml4ZWQgaXQuICB5
-b3UgbWlnaHQgYWxzbyBiZSBhYmxlIHRvIGZpZ3VyZQ0Kb3V0IHdoZXJlIFdlYlNwaGVyZSBicmVh
-a3MsIHNvIHdlIGNhbiBmaWd1cmUgaG93IHRvIGZpeA0KdGhhdCB0b28uDQoNCg0KDQoNCj4gDQo+
-IEdvcmRvbiBMdWsNCj4gDQo+IA0KPiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9t
-OiBMZXZlciwgQ2hhcmxlcyBbbWFpbHRvOkNoYXJsZXMuTGV2ZXJAbmV0YXBwLmNvbV0NCj4gU2Vu
-dDogVGh1cnNkYXksIE1hcmNoIDI3LCAyMDAzIDk6NDIgQU0NCj4gVG86IEdvcmRvbiBMdWsNCj4g
-Q2M6IG5mc0BsaXN0cy5zb3VyY2Vmb3JnZS5uZXQNCj4gU3ViamVjdDogUkU6IFtORlNdIE11bHRp
-cGxlIHRocmVhZHMsIGhhcmQtbGlua2luZyBwZXJmb3JtYW5jZSBwcm9ibGVtDQo+IA0KPiANCj4g
-aGkgZ29yZG9uLQ0KPiANCj4geW91ciBwcm9ibGVtIG1heSBiZSByZWxhdGVkIHRvIHVzaW5nIFVE
-UC4gIHlvdSBwcm9iYWJseQ0KPiBuZWVkIFVEUCBiZWNhdXNlIHlvdSBydW4gYWdhaW5zdCBhIExp
-bnV4IHNlcnZlciByZWxlYXNlDQo+IHRoYXQgZG9lc24ndCBzdXBwb3J0IFRDUC4NCj4gDQo+IHRy
-eSByZWR1Y2luZyB5b3VyIHJzaXplL3dzaXplIHRvIDhLIG9yIDRLLg0KPiANCj4gaSBzdXNwZWN0
-IHRoaXMgaXMgdGhlIHByb2JsZW0gYmVjYXVzZSB5b3UgY2xhaW0gdGhhdA0KPiBzaW1pbGFyIHRl
-c3RzIHJ1biBxdWlja2x5IGFnYWluc3QgbG9jYWwgZmlsZXMuDQo+IA0KPiB1bmxlc3MgeW91IGhh
-dmUgYSBzdXBwb3J0IGNvbnRyYWN0IHRoYXQgY29uc3RyYWlucyB5b3UsDQo+IGFsc28gdHJ5IGJ1
-aWxkaW5nIDIuNC4yMS1wcmU1IGZvciB5b3VyIGNsaWVudHMuDQo+IA0KPiA+IC0tLS0tT3JpZ2lu
-YWwgTWVzc2FnZS0tLS0tDQo+ID4gRnJvbTogR29yZG9uIEx1ayBbbWFpbHRvOmdsdWtAU2VxdW9p
-YWJyb2FkYmFuZC5jb21dIA0KPiA+IFNlbnQ6IFRodXJzZGF5LCBNYXJjaCAyNywgMjAwMyAxMjox
-OCBQTQ0KPiA+IFRvOiBuZnNAbGlzdHMuc291cmNlZm9yZ2UubmV0DQo+ID4gU3ViamVjdDogW05G
-U10gTXVsdGlwbGUgdGhyZWFkcywgaGFyZC1saW5raW5nIHBlcmZvcm1hbmNlIHByb2JsZW0NCj4g
-PiANCj4gPiANCj4gPiBIaSwNCj4gPiAgDQo+ID4gSSdtIHNlZWluZyBhIHBlcmZvcm1hbmNlIHBy
-b2JsZW0gd2l0aCBjcmVhdGluZyBodW5kcmVkcyBvZiANCj4gPiBoYXJkIGxpbmtzIHRocm91Z2gg
-bXVsdGlwbGUgdGhyZWFkcywgb2NjYXNpb25hbGx5IHdoaWxlIGxhcmdlIA0KPiA+IGZpbGUgd3Jp
-dGVzIGFyZSBnb2luZyBvbi4gRmlyc3QgaSdsbCBleHBsYWluIG15IGNvbmZpZ3VyYXRpb24gDQo+
-ID4gYW5kIHRoZW4gZ2V0IGludG8gdGhlIHByb2JsZW0uDQo+ID4gIA0KPiA+IE5GUyBTZXJ2ZXI6
-DQo+ID4gUmVkSGF0IExpbnV4IDcuMiwga2VybmVsIDIuNC4xOC0yNi43DQo+ID4gSUJNIHgzMzUg
-Mi4wR2h6IGNwdSwgMUdCIFJBTQ0KPiA+IEdpZ2FiaXQgZXRoZXJuZXQNCj4gPiBEaXNrIGluZm86
-DQo+ID4gSUJNIEVYUDMwMCB3aXRoIDE0IFVsdHJhMzIwIFNDU0kgc3BpbmRsZXMsIElCTSBTZXJ2
-ZVJBSUQtNCg/KSANCj4gPiBydW5uaW5nIFJBSUQtMTAsIGNodW5rIHNpemUgNjRrIHNpbmdsZSBl
-eHQzIHBhcnRpdGlvbiBtb3VudGVkIA0KPiA+IHJ3LG5vYXRpbWUgZXhwb3J0ZWQgYXMgcncsbm9f
-cm9vdF9zcXVhc2ggbmZzdjMNCj4gPiAgDQo+ID4gTkZTIENsaWVudDoNCj4gPiBSZWRIYXQgTGlu
-dXggNy4yLCBrZXJuZWwgMi40LjE4LTI2LjcgDQo+ID4gSUJNIHgzNjAgNHgxLjZHaHogY3B1LCAx
-R0IgUkFNDQo+ID4gR2lnYWJpdCBldGhlcm5ldCBjb25uZWN0aW9uIHRvIE5GUyBTZXJ2ZXINCj4g
-PiBtb3VudHMgbmZzIHBhcnRpdGlvbiBhcyBydyxoYXJkLGludHIscnNpemU9MzI3Njgsd3NpemU9
-MzI3NjgNCj4gPiBuZnN2Mw0KPiA+ICANCj4gPiBVc2FnZSBiZWhhdmlvcjoNCj4gPiBUaGUgTkZT
-IGNsaWVudCByZWFkcyBmcm9tIGEgc2VwYXJhdGUgTkZTIG1vdW50IChzYW1lIG5mcyANCj4gPiBw
-YXJhbWV0ZXJzLCBpZGVudGljYWwgZHJpdmVzIGV4Y2VwdCBmb3IgdGhlIG5vYXRpbWUpIGFuZCB3
-aWxsIA0KPiA+IGRvIHRoZSBmb2xsb3dpbmcgdGhyb3VnaCB0aGUgYWZvcmVtZW50aW9uZWQgTkZT
-IG1vdW50Og0KPiA+IDEpIE11bHRpcGxlIHRocmVhZHMgKGNvbnNpZGVyIDMgbWF4KSBjaGVja2lu
-ZyBmaWxlIGV4aXN0ZW5jZSANCj4gPiBhbmQgdGltZXN0YW1wLCBhbmQgZG9pbmcgYSBmaWxlIGNv
-cHkgdGhyb3VnaCBKYXZhIGZpbGUgY29weS4NCj4gPiAyKSBNdWx0aXBsZSB0aHJlYWRzIChjb25z
-aWRlciAzIG1heCkgY3JlYXRpbmcgc29mdCBsaW5rIHRvIA0KPiA+IGZpbGVzIGNyZWF0ZWQgYnkg
-IzENCj4gPiAzKSBNdWx0aXBsZSB0aHJlYWRzIChjb25zaWRlciAzIG1heCkgY3JlYXRpbmcgaHVu
-ZHJlZHMgDQo+ID4gKDIwMCw2MDAsMjAwMCBmb3IgZXhhbXBsZSkgaGFyZCBsaW5rcyB0byB0aGlz
-IHNvZnQgbGluay4gSSdtIA0KPiA+IGF3YXJlIG9mIHBvcnRhYmlsaXR5IGNvbmNlcm5zIHdpdGgg
-dGhpcyBiZWhhdmlvci4gVGhlc2UgbGlua3MgDQo+ID4gYXJlIGNyZWF0ZWQsIDIgcGVyIHN1YmRp
-cmVjdG9yeSBpbiBhIGRpcmVjdG9yeSB0cmVlIHdpdGggDQo+ID4gaHVuZHJlZHMgb2YgZGlyZWN0
-b3JpZXMgKDUwMCwgMTUwMCwgNTAwMCBjb3JyZXNwb25kaW5nIHRvIHRoZSANCj4gPiBhYm92ZSBl
-eGFtcGxlKS4NCj4gPiAgDQo+ID4gU3RhdGlzdGljczoNCj4gPiBBbGwgdGVzdHMgZG9uZSB3aXRo
-IDEuNDZHQiBmaWxlOg0KPiA+IExvY2FsIEVYUDMwMCB0byBFWFAzMDAgZmlsZSBjb3B5IC0gNDgu
-OTEgc2VjDQo+ID4gQ29weSBmcm9tIE5GUyBDbGllbnQncyBsb2NhbCBkcml2ZSB0byBORlMgc2hh
-cmUgLSA2OC4yMyBzZWMgDQo+ID4gQ29weSBiZXR3ZWVuIE5GUyBDbGllbnQncyAyIG1vdW50ZWQg
-TkZTIHBhcnRpdGlvbnMgKG9uIA0KPiA+IGRpZmZlcmVudCBzZXJ2ZXJzKSAtIDEyMCBzZWMgU2Ft
-ZSBhcyBhYm92ZSwgYnV0IHdpdGggbm9hdGltZSANCj4gPiBvbiBORlMgU2VydmVyJ3MgZXhwb3J0
-ZWQgcGFydGl0aW9uIC0gMTAyIHNlYyBKYXZhIGZpbGUgY29weSANCj4gPiB0aHJvdWdocHV0IGJl
-dHdlZW4gMiBtb3VudGVkIHBhcnRpdGlvbnMgKGFsb25nIHdpdGggb3RoZXIgDQo+ID4gcHJvY2Vz
-c2luZyBvdmVyaGVhZCkgMTUwIHNlYw0KPiA+ICANCj4gPiBJc3N1ZSBkZXNjcmlwdGlvbjoNCj4g
-PiAgDQo+ID4gV2hpbGUgIzEgYW5kICMyIGFyZSBnb2luZyBpbiB0aGUgYmFja2dyb3VuZCwgIzMg
-LSBsaW5raW5nIDIwMCANCj4gPiBmaWxlcyBhcHBlYXJlZCB0byB0YWtlIGFwcHJveC4gNyBtaW51
-dGVzIHBlciB0aHJlYWQuIFRoaXMgaXMgDQo+ID4gYXBwcm94IDg0IGhhcmQgbGlua3MgY3JlYXRl
-ZCBwZXIgbWludXRlIHdpdGggMyBjb25jdXJyZW50IA0KPiA+IHRocmVhZHMsIHdoaWNoIHNlZW1z
-IGxpa2UgYSBwb3NzaWJsZSBpc3N1ZS4gR29pbmcgZGlyZWN0bHkgdG8gDQo+ID4gdGhlIGZpbGVz
-eXN0ZW0gYW5kIGNyZWF0aW5nIGhhcmQgbGlua3MgbWFudWFseSBhcHBlYXJlZCB0byBiZSANCj4g
-PiBmYXN0LCBhbmQgYW4gZXh0cmVtZWx5IHNsb3cgImxzIiBjb21tYW5kIGZyb20gdGhlIE5GUyBj
-bGllbnQgDQo+ID4gb24gdGhlIE5GUy1tb3VudGVkIHBhcnRpdGlvbiBhcHBlYXJlZCB0byBiZSBz
-bG93Lg0KPiA+ICANCj4gPiBBbm90aGVyIHRlc3QsIHdpdGggIzEgYXQgMiB0aHJlYWRzLCAjMiBh
-dCAzIHRocmVhZHMsIGFuZCAjMyANCj4gPiBhdCA1IHRocmVhZHMsIHdpdGggNjAwIGxpbmtzIHBl
-ciB0aHJlYWQgcmV2ZWFsZWQgYWJvdXQgMjAtMjUgDQo+ID4gbWludXRlcyBwZXIgdGhyZWFkIHRv
-IGNvbXBsZXRlIHdpdGggNSBjb25jdXJyZW50IHRocmVhZHMuIA0KPiA+IFRoaXMgc3RpbGwgc2Vl
-bXMgbG93IHRvIG1lLg0KPiA+ICANCj4gPiBJIGhhdmUgcmVhZCB0aHJvdWdoIHRoZSBtYWlsaW5n
-IGxpc3QgYXJjaGl2ZXMsIGFuZCBhIGNvdXBsZSANCj4gPiBvZiB0aGUgbm90ZXMgc2VlbWVkIGFz
-IGlmIHRoZXkgbWF5IGhhdmUgcmVsZXZhbmNlIHRvIHRoaXMgDQo+ID4gaXNzdWUuIEluIHBhcnRp
-Y3VsYXIsIHBvb3IgaGFuZGxpbmcgb2YgbGFyZ2UgbnVtYmVycyBvZiBzbWFsbCANCj4gPiBmaWxl
-cyBieSBleHQzLCBhbmQgYWxzbyBBbGFuIFBvd2VsbCdzIHBvc3QgYWJvdXQgZXh0MyANCj4gPiBk
-aXJlY3RvcnkgaW5kZXhpbmc6IA0KPiA+IGh0dHA6Ly9zb3VyY2Vmb3JnZS5uZXQvbWFpbGFyY2hp
-dmUvZm9ydW0ucGhwP3RocmVhZF9pZD0xNjcxMzA5DQo+ICZmb3J1bV9pZD00OTMwDQo+ICANCj4g
-SSBtYXkgY29uc2lkZXIgdHJ5aW5nIFhGUyBvciBSZWlzZXJGUyBvdXQgb2YgY3VyaW9zaXR5LCBi
-dXQgDQo+IHNpbmNlIHRoaXMgYXJjaGl0ZWN0dXJlIHdpbGwgc29vbiBjaGFuZ2UsIEkganVzdCB3
-YXMgDQo+IHdvbmRlcmluZyBpZiB0aGVyZSB3ZXJlIGFueSBvYnZpb3VzIGNvbmZpZ3VyYXRpb24g
-Y2hhbmdlcyBJIA0KPiBzaG91bGQgbWFrZSwgYW5kIGFsc28gdGhvdWdodCB0aGF0IGl0IG1pZ2h0
-IGJlIGdvb2QgdG8gc2hhcmUgDQo+IHRoaXMgZXhwZXJpZW5jZSB3aXRoIHRoZSBsaXN0Lg0KPiAg
-DQo+IFRoYW5rcywNCj4gIA0KPiBHb3Jkb24gTHVrDQo+IFN5c3RlbSBBZG1pbmlzdHJhdG9yDQo+
-IFNlcXVvaWEgQnJvYWRiYW5kLCBJbmMuDQo+IGh0dHA6Ly93d3cuc2VxdW9pYWJyb2FkYmFuZC5j
-b20NCj4gDQo+IA0K
+Linus, please do a
+
+	bk pull http://nfsclient.bkbits.net/linux-2.5
+
+This will update the following files:
+
+ fs/nfs/Makefile           |    3 
+ fs/nfs/dir.c              |   23 +
+ fs/nfs/file.c             |   27 +
+ fs/nfs/idmap.c            |  474 ++++++++++++++++++++++++++++++++++
+ fs/nfs/inode.c            |   38 +-
+ fs/nfs/nfs4proc.c         |  535 ++++++++++++++++++++++++++-------------
+ fs/nfs/nfs4state.c        |  178 +++++++++++-
+ fs/nfs/nfs4xdr.c          |  630 ++++++++++++++++++++++++++++++----------------
+ include/linux/nfs4.h      |    4 
+ include/linux/nfs_fs.h    |   73 ++++-
+ include/linux/nfs_fs_sb.h |    1 
+ include/linux/nfs_idmap.h |   69 +++++
+ include/linux/nfs_xdr.h   |   77 +++++
+ net/sunrpc/xprt.c         |   10 
+ 14 files changed, 1718 insertions(+), 424 deletions(-)
+
+through these ChangeSets:
+
+<marius@citi.umich.edu> (03/04/08 1.1054)
+   Add hooks into the NFSv4 XDR code to make use of the new uid/gid
+   mapper upcall mechanism.
+
+<marius@citi.umich.edu> (03/04/08 1.1053)
+   Add support for mapping NFSv4 remote user/group names into local
+   unix-style uid/gids.
+   
+   Note that this makes use of the RPC client upcall mechanism
+   (rpc_pipefs) to notify a userland daemon that does the actual mapping.
+   The results are then cached in the kernel.
+   The userland daemon can be downloaded from the CITI NFSv4 page at
+   
+        http://www.citi.umich.edu/projects/nfsv4/
+
+<trond.myklebust@fys.uio.no> (03/04/08 1.1052)
+   Make the NFSv4 write code use the stateid if it exists.
+
+<trond.myklebust@fys.uio.no> (03/04/08 1.1051)
+   Make NFSv4 'read' code use the cached stateid if it exists.
+
+<trond.myklebust@fys.uio.no> (03/04/08 1.1050)
+   Make NFSv4 'setattr()' method use the cached stateid if the file is
+   already open.
+
+<trond.myklebust@fys.uio.no> (03/04/08 1.1049)
+   Setup code to tear down the NFSv4 state once we're done with a file.
+
+<trond.myklebust@fys.uio.no> (03/04/08 1.1048)
+   Implement stateful open() for NFSv4 as per RFC3010-bis.
+   The resulting state is saved in the NFS-specific part of the
+   struct inode.
+   
+   Initially we just start with 3 possible states:
+     - open for read
+     - open for write
+     - open for read/write
+
+<trond.myklebust@fys.uio.no> (03/04/08 1.1047)
+   Prepare for the introduction of NFSv4 state code.
+   
+   Split out the open() method for regular files from that of
+   directories.
+
+<trond.myklebust@fys.uio.no> (03/04/08 1.1046)
+   Remove bogus check on the size of NFSv4 'readdir' cookies.
+
+<trond.myklebust@fys.uio.no> (03/04/08 1.1045)
+   Fix a series of NFS read/readdir/readlink errors.
+   
+   Tightens consistency checks on the process of reading the reply skb in
+   the SunRPC client. Reject a reply if we didn't succeed in reading the
+   entire skb.
+
 
 
 -------------------------------------------------------
