@@ -1,68 +1,35 @@
-From: "Dave Gilbert (Home)" <gilbertd@treblig.org>
-Subject: Re: of rmtab and 'Invalid argument' and permission denied]
-Date: Thu, 13 Mar 2003 13:43:48 +0000
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3E708B14.1060000@treblig.org>
-References: <20030309213151.GK747@gallifrey>
+From: "William A.(Andy) Adamson" <andros@citi.umich.edu>
+Subject: Announcing a stable NFSv4 Linux 2.4 release
+Date: Thu, 13 Mar 2003 17:04:34 -0500
+Sender: nfsv4-admin@ietf.org
+Message-ID: <20030313220434.7A0E6207D0@citi.umich.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from dsl-212-23-25-139.zen.co.uk ([212.23.25.139] helo=butternut.transitive.com)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18tT1v-0008AL-00
-	for <nfs@lists.sourceforge.net>; Thu, 13 Mar 2003 05:45:55 -0800
-To: neilb@cse.unsw.edu.au,  nfs@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
+Return-path: <nfsv4-admin@ietf.org>
+To: nfsv4@ietf.org
+Errors-To: nfsv4-admin@ietf.org
+List-Unsubscribe: <https://www1.ietf.org/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
+List-Post: <mailto:nfsv4@ietf.org>
+List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
+List-Subscribe: <https://www1.ietf.org/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@ietf.org?subject=subscribe>
+List-Archive: <https://www1.ietf.org/pipermail/nfsv4/>
+List-ID: <nfs.lists.sourceforge.net>
 
-Neil Brown wrote thus:
+CITI's NFS Version 4 Open Source Reference Implementation project announces 
+the release of a stable 2.4 NFSv4 implementation in RPM form, based on the 2.5 
+implementation that has been accepted into Linus's kernel. This first release 
+is a client-only release, with subsequent releases containing full support for 
+an NFSv4 server.
 
-    that I wrote:
->>Sometimes the client will get a permission denied on attempting to mount
->>from the server even though it managed it a few hours earlier with no
->>change to config of the server.
->>
->>Restarting the nfs server gives a line of the form:
->>
->>clienthostname: Invalid argument
-
-> What does your /etc/exports file look like?  Does it have both host
-> names and IP addresses?  
-> Do you export both a directory and an ancestor of that directory on
-> the same filesystem?
-> 
-> Both of these can cause this sort of problem.
-
-Thank you!  It was exporting both a directory and an ancestor.
-Can we have something which screams/shouts/warns/rejects this
-rather than failing in an evil and confusing way?
-
-(oh and add it to the NFS FAQ)
-
-> What version of nfs-utils is in SuSE 8.1?
-> 
->  showmount -v
-
-showmount for nfs-utils 0.3.3
-
-Dave
+http://www.citi.umich.edu/projects/nfsv4
 
 
+-->CITI NFSv4 project team
 
--------------------------------------------------------
-This SF.net email is sponsored by:Crypto Challenge is now open! 
-Get cracking and register here for some mind boggling fun and 
-the chance of winning an Apple iPod:
-http://ads.sourceforge.net/cgi-bin/redirect.pl?thaw0031en
 _______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+nfsv4 mailing list
+nfsv4@ietf.org
+https://www1.ietf.org/mailman/listinfo/nfsv4
