@@ -1,18 +1,16 @@
-From: "H . J . Lu" <hjl@lucon.org>
-Subject: Re: Broken NFS client in RedHat skipjack-beta2?
-Date: Mon, 8 Apr 2002 11:28:58 -0700
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: RE: Broken NFS client in RedHat skipjack-beta2?
+Date: Mon, 8 Apr 2002 14:53:36 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20020408112858.A31533@lucon.org>
-References: <20020408101828.A30419@lucon.org> <shsk7ri2gtz.fsf@charged.uio.no>
+Message-ID: <6440EA1A6AA1D5118C6900902745938E50CE52@black.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Received: from rwcrmhc52.attbi.com ([216.148.227.88])
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Received: from mx01-a.netapp.com ([198.95.226.53])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 16udt4-00032E-00
-	for <nfs@lists.sourceforge.net>; Mon, 08 Apr 2002 11:29:06 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <shsk7ri2gtz.fsf@charged.uio.no>; from trond.myklebust@fys.uio.no on Mon, Apr 08, 2002 at 08:19:52PM +0200
+	id 16uh5B-0002MQ-00
+	for <nfs@lists.sourceforge.net>; Mon, 08 Apr 2002 14:53:49 -0700
+To: "'H . J . Lu'" <hjl@lucon.org>, nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,26 +23,16 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Mon, Apr 08, 2002 at 08:19:52PM +0200, Trond Myklebust wrote:
-> >>>>> " " == hjl  <H> writes:
+> Has anyone seen the NFS client crash the NetApp NFS sever? See 
 > 
->      > Has anyone seen the NFS client crash the NetApp NFS sever? See
->      > http://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=62967
-> 
-> What patches have they put into the skipjack-beta?
+> http://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=62967
 
-It is linux-2.4.18 plus vairous Red Hat patches. The following patches
-
-linux-2.4.16-sh-20011213.patch
-linux-2.4.17-scheduler.patch
-linux-2.4.17-selected-ac-bits.patch
-linux-2.4.18-rh-aio-20020326.patch
-
-touch fs/nfs/.
-
-
-H.J.
+nope.  which version of OnTAP is the filer running?  did it
+actually crash, or did the skipjack client simply stop talking
+to it?
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+Sponsored by http://www.ThinkGeek.com/
