@@ -1,56 +1,73 @@
-From: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
-Subject: Re: rpc.rexd source for Linux?
-Date: Mon, 21 Jul 2003 15:21:54 +0200 (CEST)
-Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0307211511590.32628-100000@kenzo.iwr.uni-heidelberg.de>
-References: <15FDCE057B48784C80836803AE3598D53B8CDB@racerx.ixiacom.com>
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: Announcing Release Two of NFSv4 on Linux 2.4
+Date: Mon, 21 Jul 2003 08:27:02 -0700
+Sender: linux-fsdevel-owner@vger.kernel.org
+Message-ID: <482A3FA0050D21419C269D13989C6113D06AB9@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from mail.iwr.uni-heidelberg.de ([129.206.104.30])
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19eacA-0002Jn-00
-	for <nfs@lists.sourceforge.net>; Mon, 21 Jul 2003 06:22:06 -0700
-To: Dan Kegel <dkegel@ixiacom.com>
-In-Reply-To: <15FDCE057B48784C80836803AE3598D53B8CDB@racerx.ixiacom.com>
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain;
+	charset="us-ascii"
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: <nfs@lists.sourceforge.net>,
+	"Linux FS development (E-mail)" <linux-fsdevel@vger.kernel.org>
+List-ID: <nfs.lists.sourceforge.net>
 
-On Fri, 18 Jul 2003, Dan Kegel wrote:
+A new release of CITI U-M's NFSv4 on Linux 2.4 is
+available.  For information on this release, see:
 
-> That got me thinking -- why not add that execve wrapper to Linux's
-> native NFS package?  Then I went looking, and discovered that 
-> (perhaps wisely) Linux's NFS package doesn't include 'on' or 'rpc.rexd'.
-
-I don't follow your logic here. What has on/rpc.rexd to do with NFS ? 
-Sure, they are both supposed to use RPC as do lots of others (look in 
-/etc/rpc), but other than this ? So why bundle on with NFS ?
-
--- 
-Bogdan Costescu
-
-IWR - Interdisziplinaeres Zentrum fuer Wissenschaftliches Rechnen
-Universitaet Heidelberg, INF 368, D-69120 Heidelberg, GERMANY
-Telephone: +49 6221 54 8869, Telefax: +49 6221 54 8868
-E-mail: Bogdan.Costescu@IWR.Uni-Heidelberg.De
+ https://linux24-nfsv4.citi.umich.edu/wiki
 
 
+>From the Release Notes:
 
--------------------------------------------------------
-This SF.net email is sponsored by: VM Ware
-With VMware you can run multiple operating systems on a single machine.
-WITHOUT REBOOTING! Mix Linux / Windows / Novell virtual machines at the
-same time. Free trial click here: http://www.vmware.com/wl/offer/345/0
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+The NFSv4 implementation on Linux 2.4 is intended
+for early adopters of NFSv4 who want to help beta
+test commercial NFSv4-based products, or test the
+Linux NFSv4 implementation. Our intention is to
+provide a stable NFSv4 implementation on Linux with
+these releases until a complete official Linux NFSv4
+implementation appears in Linux 2.6. It is not
+intended for use in production NFSv4 environments.
+Think of this as beta quality software.
+
+These releases provide an implementation of an NFSv4
+client and server on a stable Linux kernel in an
+easy-to-install set of packages. This allows more
+intensive and broad-based testing of the Linux
+NFSv4 implementation outside of developers' labs.
+
+The NFSv4 implementation in all these releases
+tracks the implementation contained in Linux 2.6
+kernels as closely as possible. Our code base
+should reflect the current state of the art (the
+2.6 NFS implementation). We plan to be conservative
+in including new 2.6 features, but aggressive in
+including bug fixes, to make these releases stable
+enough for testing under realistic workloads.
+
+
+Main Features of Release Two
+
+Release Two, like Release One, is not feature-complete.
+Release Two supplements the features of Release One
+with an NFSv4 server, support for ACLs and some support
+for NFSv4 state in the client.  It also contains
+support for RPCSEC-GSS Kerberos 5 integrity on the
+client.
+
+Features of Release Two include:
+
+ *  NFS client for NFSv2, NFSv3, and NFSv4
+ *  NFS server for NFSv2, NFSv3, and NFSv4 over
+    UDP and TCP
+ *  RPCSEC-GSS Kerberos 5 mutual authentication
+    and integrity (client only)
+ *  NFSv4 ACL support (client only)
+ *  Initial support for NFSv4 state model (client
+    only)
+ *  Initial support for authentication against
+    Windows 2000 Active Directory KDCs
+
+        -- Chuck Lever
+--
+corporate: <cel at netapp dot com>
+personal:  <chucklever at bigfoot dot com>
