@@ -1,24 +1,23 @@
 From: Greg Banks <gnb@melbourne.sgi.com>
 Subject: Re: [PATCH] 1/3 - RPC metrics support
-Date: Fri, 02 Apr 2004 12:33:03 +1000
+Date: Fri, 02 Apr 2004 12:42:32 +1000
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <406CD0DF.26DA81A0@melbourne.sgi.com>
-References: <482A3FA0050D21419C269D13989C611302B07BF6@lavender-fe.eng.netapp.com>
-		 <20040401235803.GA9409@sgi.com> <1080866042.10521.11.camel@lade.trondhjem.org>
+Message-ID: <406CD318.F48841F3@melbourne.sgi.com>
+References: <482A3FA0050D21419C269D13989C61130435DE4C@lavender-fe.eng.netapp.com>
+		 <1080866187.10521.14.camel@lade.trondhjem.org>
+		 <20040402004924.GG9409@sgi.com> <1080870078.10521.53.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Charles Lever <Charles.Lever@netapp.com>,
-        Jeremy McNicoll <jeremy@mcnicoll.ca>,
-        Patrick Mochel <mochel@digitalimplant.org>, nfs@lists.sourceforge.net
+Cc: Charles Lever <Charles.Lever@netapp.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B9EUg-0002oQ-TF
-	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 18:33:18 -0800
-Received: from mtvcafw.sgi.com ([192.48.171.6] helo=omx2.sgi.com)
+	id 1B9Edm-000414-Fe
+	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 18:42:42 -0800
+Received: from mtvcafw.sgi.com ([192.48.171.6] helo=omx3.sgi.com)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
-	id 1B9EUg-0007x4-Ig
-	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 18:33:18 -0800
+	id 1B9Edm-0004S2-4Z
+	for nfs@lists.sourceforge.net; Thu, 01 Apr 2004 18:42:42 -0800
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,21 +33,29 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 Trond Myklebust wrote:
 > 
-> On Thu, 2004-04-01 at 18:58, Greg Banks wrote:
+> On Thu, 2004-04-01 at 19:49, Greg Banks wrote:
 > 
-> > struct rpc_metric_totals {
-> >       u64 mt_ops;         /* count of operations */
+> > Why not just save a copy of @devname in nfs_get_sb() ? 
 > 
-> Let's not go there... 64-bit arithmetic on a 32-bit platform is still
-> not one of gcc's strong points, 
+> That is very different. That we can do...
+> 
+> Please don't confuse the export path and the device name. nfss->mnt_path
+> is the former: 
 
-This is of course not something I considered ;-)
+> The device name OTOH is just whatever label the caller of sys_mount()
+> feels like passing down to the kernel. It will usually contain the name
+> of the server and the export path ('cos that's what the nfs-utils
+> "mount" does), but it does not have to, and we currently do not depend
+> on it taking any particular value.
 
-> so let's not force everything into one
-> mold simply in order to save a couple of lines of code. Performance does
-> matter too...
-
-Fair enough.
+If all we care about is identifying the sb for purposes of iostat and
+post-mortem debugging (I for one would find this useful), the precise
+semantics placed on the string by the mount program don't matter that
+much.  You could add a `devname' field to nfs_server and document
+that it doesn't mean anything at all.  Alternatively you could check
+that the first part matches (modulo domain names) the `hostname' field
+and is followed by a ':' and a path, and if all that matches, save the
+path.
 
 Greg.
 -- 
