@@ -1,24 +1,25 @@
-From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH] kNFSd - 7 of 11 - nfsd-releaselkowner.patch
-Date: Fri, 28 May 2004 14:37:31 +1000
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] kNFSd - 5 of 11 - gss_svc_module_ref.patch
+Date: Mon, 31 May 2004 15:33:55 -0400
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <E1BTZ7b-0008Ec-7A@notabene.cse.unsw.edu.au>
-References: <20040528143518.31534.patches@notabene>
-Cc: nfs@lists.sourceforge.net
+Message-ID: <20040531193355.GB27622@fieldses.org>
+References: <20040528143518.31534.patches@notabene> <E1BTZ7b-0008ES-04@notabene.cse.unsw.edu.au>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: NeilBrown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BUkZp-0006vt-5t
-	for nfs@lists.sourceforge.net; Mon, 31 May 2004 04:03:33 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1BUkZo-0003Mw-2m
-	for nfs@lists.sourceforge.net; Mon, 31 May 2004 04:03:32 -0700
-Received: From
-	notabene.cse.unsw.edu.au ([129.94.172.124]) (auth-user neilb) (ident-user Debian-exim)
-	(for <akpm@osdl.org>) (for <nfs@lists.sourceforge.net>) By note With
-	Smtp ; Fri, 28 May 2004 14:37:31 +1000
+	id 1BUsXu-000635-6S
+	for nfs@lists.sourceforge.net; Mon, 31 May 2004 12:34:06 -0700
+Received: from dsl093-002-214.det1.dsl.speakeasy.net
+	([66.93.2.214] helo=pumpkin.fieldses.org ident=Debian-exim)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
+	(Exim 4.30)
+	id 1BUsXt-0004TG-RV
+	for nfs@lists.sourceforge.net; Mon, 31 May 2004 12:34:05 -0700
 To: Andrew Morton <akpm@osdl.org>
+In-Reply-To: <E1BTZ7b-0008ES-04@notabene.cse.unsw.edu.au>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,74 +32,54 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Fri, May 28, 2004 at 02:37:30PM +1000, NeilBrown wrote:
+> 
+> The server sunrpc code should take a reference on the relevant module before
+> calling any authentication code.
+
+That patch has two small but critical typos; could you also apply the
+following?  Thanks.--Bruce Fields
 
 
-Fix oops in release_lockowner.
-We need to break out to two loops, not just one,
-and if the loop finds nothing, 'local' won't be NULL.
-So just put the body of the 'if' inside the loop.
+Fix a null deference if svc_authorise is called twice for a request, and fix
+the test in svcauth_register which otherwise causes initialization of the gss
+module to fail.
+
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 
 
-From: Andy Adamson <andros@citi.umich.edu>
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
+ net/sunrpc/svcauth.c |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
 
- ----------- Diffstat output ------------
- ./fs/nfsd/nfs4state.c |   41 ++++++++++++++++++++---------------------
- 1 files changed, 20 insertions(+), 21 deletions(-)
-
-diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2004-05-28 14:20:00.000000000 +1000
-+++ ./fs/nfsd/nfs4state.c	2004-05-28 14:22:40.000000000 +1000
-@@ -2334,28 +2334,27 @@ nfsd4_release_lockowner(struct svc_rqst 
+diff -puN net/sunrpc/auth_gss/svcauth_gss.c~gss_svc_module_ref_fix net/sunrpc/auth_gss/svcauth_gss.c
+diff -puN net/sunrpc/svcauth.c~gss_svc_module_ref_fix net/sunrpc/svcauth.c
+--- linux-2.6.7-rc1/net/sunrpc/svcauth.c~gss_svc_module_ref_fix	2004-05-30 17:19:57.000000000 -0400
++++ linux-2.6.7-rc1-bfields/net/sunrpc/svcauth.c	2004-05-30 17:49:08.000000000 -0400
+@@ -70,10 +70,10 @@ int svc_authorise(struct svc_rqst *rqstp
  
- 	/* find the lockowner */
-         status = nfs_ok;
--	for (i=0; i < LOCK_HASH_SIZE; i++) {
--		list_for_each_entry(local, &lock_ownerstr_hashtbl[i], so_strhash) {
--			if(cmp_owner_str(local, owner, clid))
--				break;
--		}
--	}
--	if (local) {
--		struct nfs4_stateid *stp;
+ 	rqstp->rq_authop = NULL;
+ 	
+-	if (aops) 
++	if (aops) {
+ 		rv = aops->release(rqstp);
 -
--		/* check for any locks held by any stateid associated with the
--		 * (lock) stateowner */
--		status = nfserr_locks_held;
--		list_for_each_entry(stp, &local->so_perfilestate, st_perfilestate) {
--			if(stp->st_vfs_set) {
--				if (check_for_locks(&stp->st_vfs_file, local))
--					goto out;
-+	for (i=0; i < LOCK_HASH_SIZE; i++)
-+		list_for_each_entry(local, &lock_ownerstr_hashtbl[i], so_strhash)
-+			if(cmp_owner_str(local, owner, clid)) {
-+				struct nfs4_stateid *stp;
-+
-+				/* check for any locks held by any stateid 
-+				 * associated with the (lock) stateowner */
-+				status = nfserr_locks_held;
-+				list_for_each_entry(stp, &local->so_perfilestate,
-+						    st_perfilestate) {
-+					if(stp->st_vfs_set) {
-+						if (check_for_locks(&stp->st_vfs_file,
-+								    local))
-+							goto out;
-+					}
-+				}
-+				/* no locks held by (lock) stateowner */
-+				status = nfs_ok;
-+				release_stateowner(local);
-+				goto out;
- 			}
--		}
--		/* no locks held by (lock) stateowner */
--		status = nfs_ok;
--		release_stateowner(local);
--	}
- out:
- 	nfs4_unlock_state();
- 	return status;
+-	module_put(aops->owner);
++		module_put(aops->owner);
++	}
+ 	return rv;
+ }
+ 
+@@ -82,7 +82,7 @@ svc_auth_register(rpc_authflavor_t flavo
+ {
+ 	int rv = -EINVAL;
+ 	spin_lock(&authtab_lock);
+-	if (flavor < RPC_AUTH_MAXFLAVOR && authtab[flavor] != NULL) {
++	if (flavor < RPC_AUTH_MAXFLAVOR && authtab[flavor] == NULL) {
+ 		authtab[flavor] = aops;
+ 		rv = 0;
+ 	}
+
+_
 
 
 -------------------------------------------------------
