@@ -1,24 +1,28 @@
-From: "Roger Heflin" <rheflin@atipa.com>
-Subject: RE: async vs. sync
-Date: Mon, 22 Nov 2004 13:10:23 -0600
-Message-ID: <EXCHG20034NQhEP9w0z00007249@EXCHG2003.microtech-ks.com>
-References: <41A23422.202@int-evry.fr>
+From: Dwight Marzolf <dwight.marzolf@analog.com>
+Subject: udp ports not being released
+Date: Mon, 22 Nov 2004 14:42:50 -0500
+Message-ID: <41A2413A.9020800@analog.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: "'Olaf Kirch'" <okir@suse.de>, <nfs@lists.sourceforge.net>,
-	<trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CWJa2-00050u-DA
-	for nfs@lists.sourceforge.net; Mon, 22 Nov 2004 11:10:30 -0800
-Received: from host27-44.discord.birch.net ([65.16.27.44] helo=EXCHG2003.microtech-ks.com)
+	id 1CWK5V-0003Gf-44
+	for nfs@lists.sourceforge.net; Mon, 22 Nov 2004 11:43:01 -0800
+Received: from nwd2mail2.analog.com ([137.71.25.51])
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1CWJa1-0002h5-4f
-	for nfs@lists.sourceforge.net; Mon, 22 Nov 2004 11:10:30 -0800
-To: "'jehan.procaccia'" <jehan.procaccia@int-evry.fr>
-In-Reply-To: <41A23422.202@int-evry.fr>
+	id 1CWK5T-0000L7-Lt
+	for nfs@lists.sourceforge.net; Mon, 22 Nov 2004 11:43:00 -0800
+Received: from nwd2mhb1.analog.com (nwd2mhb1.analog.com [137.71.5.12])
+	by nwd2mail2.analog.com (8.12.10/8.12.10) with ESMTP id iAMJgrid002929
+	for <nfs@lists.sourceforge.net>; Mon, 22 Nov 2004 14:42:53 -0500
+Received: from titania.adsdesign.analog.com (titania.adsdesign.analog.com [10.66.62.63])
+	by nwd2mhb1.analog.com (8.9.3 (PHNE_28810+JAGae91741)/8.9.3) with ESMTP id OAA19073
+	for <nfs@lists.sourceforge.net>; Mon, 22 Nov 2004 14:42:50 -0500 (EST)
+Received: from [10.66.22.21] (clapon [10.66.22.21])
+	by titania.adsdesign.analog.com (8.10.2+Sun/8.10.2) with ESMTP id iAMJgsS17268
+	for <nfs@lists.sourceforge.net>; Mon, 22 Nov 2004 14:42:54 -0500 (EST)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,263 +36,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
- 
-After looking a bit closer, I am not sure that there is anything
-wrong with your mount options.   The one thing I would suggest
-is changing your rsize/wsize blocksize and seeing what that
-does to your performance.   You should be able to go as high
-as 32k.
+We are running RedHat 8, kernel 2.4.20-20.8smp and autofs 4.1.2.  We 
+were having a variety of automount problems until a kernel patch was 
+recommended.  We added this patch, recompiled our kernel, and 
+distributed the patched kernel to all of our workstations.  About 90% of 
+our problems disappeared.  But one problem seems to remain.
 
-Your test may also be somewhat misleading as it is performing
-a lot of file creates and those take a lot of time no matter
-how you do it, do the normal user applications do a lot of 
-file creates/opens or do the normal users do a lot of large
-file writes?   How many files are in that tar file? And what
-is their average size?    File creates and file opens are one
-place that NFS tends to have a large difference in speed.
+When /net is used to mount directories, most of the time the udp port 
+used for that nfs mount operation is not released once the /net mount 
+times out.   Depending on the level of activity on a machine, over the 
+period of several days, all the available reserved ports are used up.  
+At that point the user on the workstation cannot cd to any mount points 
+in our automount maps except the ones already mounted.  In the 
+/var/log/messages the following error occurs for attempted mounts:
 
-                                 Roger
+RPC: Can't bind to reserved port
 
-> -----Original Message-----
-> From: jehan.procaccia [mailto:jehan.procaccia@int-evry.fr] 
-> Sent: Monday, November 22, 2004 12:47 PM
-> To: Roger Heflin
-> Cc: 'Olaf Kirch'; nfs@lists.sourceforge.net; 
-> trond.myklebust@fys.uio.no; mci-unix@int-evry.fr
-> Subject: Re: [NFS] async vs. sync
-> 
-> OK , thanks for the explanation . So now I try:
-> 
-> exports          mount
-> sync             async     -> Safe and fast
-> 
-> [root@arvouin ~]
-> $mount cobra3:/p2v5f1/ -o async /mnt/cobra3
-> 
-> unfortunatly the async mount option  doesn't shows up in 
-> /proc/mounts, so I am not sure my client is using async, how 
-> can I check that ?
-> 
-> [root@arvouin ~]
-> $cat /proc/mounts
-> cobra3:/p2v5f1/ /mnt/cobra3 nfs
-> rw,v3,rsize=8192,wsize=8192,hard,tcp,lock,addr=cobra3 0 0
-> 
-> Anyway, I untar again my httpd, I'am late so I didn't wait 13 
-> minute or so but it started to be as long as it was :-(
-> 
-> Now on the server I removed ACL (nerver asked for it though 
-> !?) $ cat /proc/fs/nfs/exports | grep arvouin
-> /p2v5f1 arvouin.int-evry.fr(rw,no_root_squash,sync,wdelay,no_acl) #
-> 157.159.21.55
-> again I cannot check on the client that this option is 
-> removed  ?, anyway again I untar my httpd,  I'am still late 
-> ... but seeing each file (tar -v !) shouwing up every second 
-> or so in the tty tells me that it will take at least 10 
-> minutes ... :-(
-> 
-> Any other idea ? what is wrong in my config ?
-> 
-> thanks.
-> 
-> 
-> 
-> 
-> Roger Heflin wrote:
-> 
-> >This might be the issue, (and someone correct this if I am 
-> incorrect), 
-> >I know I ran into it a couple of years ago, and it is not 
-> the easiest 
-> >to understand exactly what is actually going on.
-> >
-> >There are 2 places where you can put sync and async, one is 
-> the exports 
-> >and one is on the mount command.  They are different.
-> >
-> >You want sync on the exports, this will allow a client to 
-> survive without
-> >data loss if the server reboots.   You want async on the 
-> client mount end
-> >and
-> >this will generally give you the speed.   With async on the 
-> client end
-> >the client is keeping track of what is outstanding if the server 
-> >crashes, so you won't lose data.  With async on both ends the server 
-> >tells one that the data is safe when it is not, and if the server 
-> >crashes the client things that the data was safe when it 
-> really was not.
-> >
-> >If you put sync in both locations then your NFS disk is fully synced 
-> >and the application won't even start another write until the 
-> last one 
-> >is confirmed
-> >finished and on the actual disk.   With async on the client 
-> end the next
-> >write
-> >will start before the client has received an ack from the 
-> server, and 
-> >this will be reasonably fast.
-> >
-> >So basically:
-> >
-> >exports          mount
-> >sync             sync      -> really safe and really slow
-> >sync             async     -> Safe and fast
-> >async            either    -> unsafe and fast.
-> >
-> >Running async exports and async mount did not appear (under 
-> my testing) 
-> >to be faster under a sustained load than did sync exports 
-> and async mount.
-> >When
-> >the initial test was started async/async was faster but that quick 
-> >changed once the buffer cache filled up.
-> >
-> >                       Roger
-> >
-> >
-> >  
-> >
-> >>-----Original Message-----
-> >>From: nfs-admin@lists.sourceforge.net 
-> >>[mailto:nfs-admin@lists.sourceforge.net] On Behalf Of 
-> jehan.procaccia
-> >>Sent: Monday, November 22, 2004 11:55 AM
-> >>To: Olaf Kirch
-> >>Cc: nfs@lists.sourceforge.net; trond.myklebust@fys.uio.no; 
-> >>mci-unix@int-evry.fr
-> >>Subject: Re: [NFS] async vs. sync
-> >>
-> >>Olaf Kirch wrote:
-> >>
-> >>    
-> >>
-> >>>On Tue, Nov 16, 2004 at 10:48:12AM -0800, Lever, Charles wrote:
-> >>> 
-> >>>
-> >>>      
-> >>>
-> >>>>i'm just looking for clarification so i can provide a good
-> >>>>        
-> >>>>
-> >>explanation
-> >>    
-> >>
-> >>>>in the Linux NFS FAQ about the evils of using "async."  
-> i'll cruise 
-> >>>>through the server code.
-> >>>>   
-> >>>>
-> >>>>        
-> >>>>
-> >>>Just about the only reason for async I can think of is if
-> >>>      
-> >>>
-> >>you have an
-> >>    
-> >>
-> >>>incoming data stream you need to write at a constant rate
-> >>>      
-> >>>
-> >>(think of a
-> >>    
-> >>
-> >>>diskless set top box writing an mpeg2 stream)
-> >>>
-> >>>Olaf
-> >>> 
-> >>>
-> >>>      
-> >>>
-> >>OK, but using sync at my site is really really slow ... 
-> >>compare to async ! here's a detailed (options printed) 
-> demonstration 
-> >>for an untar operation that takes 13 minutes in async mode 
-> and only 14 
-> >>secondes in sync mode !!
-> >>
-> >>1) Export in sync mode
-> >>NFS server  (RedHat ES3 kernel 2.4.21-4.ELsmp) options for that 
-> >>export:
-> >>$ cat /proc/fs/nfs/exports | grep arvouin
-> >>/p2v5f1 arvouin.int-evry.fr(rw,no_root_squash,sync,wdelay,acl) #
-> >>157.159.21.55
-> >>$ cat /var/lib/nfs/xtab  | grep arvouin
-> >>/p2v5f1
-> >>arvouin.int-evry.fr(rw,sync,wdelay,hide,nocrossmnt,secure,no_r
-> >>    
-> >>
-> >oot_squash,no_all_squash,subtree_check,secure_locks,acl,mappi
-> ng=identit
-> >y,ano
-> >nuid=-2,anongid=-2)
-> >  
-> >
-> >>Client running Fedora Core 2, kernel 2.6.8-1.521 [root@arvouin 
-> >>/mnt/cobra3/mci/test/Test-sync] $cat /proc/mounts
-> >>cobra3:/p2v5f1 /mnt/cobra3 nfs
-> >>rw,v3,rsize=8192,wsize=8192,hard,tcp,lock,addr=cobra3 0 0 $time tar 
-> >>xvfz /usr/src/redhat/SOURCES/httpd-2.0.51.tar.gz
-> >>real    13m3.686s
-> >>user    0m1.055s
-> >>sys     0m4.354s
-> >>
-> >>2) Export in async mode:
-> >>Same NFS server, options for that export:
-> >>$ cat /proc/fs/nfs/exports | grep arvouin
-> >>/p2v5f1 arvouin.int-evry.fr(rw,no_root_squash,async,wdelay,acl) #
-> >>157.159.21.55
-> >>$ cat /var/lib/nfs/xtab  | grep arvouin
-> >>/p2v5f2
-> >>arvouin.int-evry.fr(rw,async,wdelay,hide,nocrossmnt,secure,no_
-> >>    
-> >>
-> >root_squash,no_all_squash,subtree_check,secure_locks,acl,mapp
-> ing=identi
-> >ty,an
-> >onuid=-2,anongid=-2)
-> >  
-> >
-> >>Same client running Fedora Core 2, kernel 2.6.8-1.521
-> >>cobra3:/p2v5f1 /mnt/cobra3 nfs
-> >>rw,v3,rsize=8192,wsize=8192,hard,tcp,lock,addr=cobra3 0 0 
-> >>[root@arvouin /mnt/cobra3/mci/test/Test-sync] $time tar xvfz 
-> >>/usr/src/redhat/SOURCES/httpd-2.0.51.tar.gz
-> >>real    0m14.802s
-> >>user    0m0.867s
-> >>sys     0m2.886s
-> >>
-> >>My users won't accept the sync performances ! . I have no 
-> choice, but 
-> >>is running in async mode is really evil as you mentioned it 
-> ? is there 
-> >>a way to have better performances in sync in my case ?  As 
-> anyone had 
-> >>the same gap in performance as me ( here 55 times longer in 
-> sync mode 
-> >>!)  ?
-> >>
-> >>Thanks.
-> >>
-> >>
-> >>-------------------------------------------------------
-> >>SF email is sponsored by - The IT Product Guide Read honest 
-> & candid 
-> >>reviews on hundreds of IT Products from real users.
-> >>Discover which products truly live up to the hype. Start 
-> reading now. 
-> >>http://productguide.itmanagersjournal.com/
-> >>_______________________________________________
-> >>NFS maillist  -  NFS@lists.sourceforge.net 
-> >>https://lists.sourceforge.net/lists/listinfo/nfs
-> >>
-> >>    
-> >>
-> >
-> >  
-> >
-> 
+In my experiments I found that doing a "umount -l /net" releases all the 
+udp ports immediately.  Our workaround has been to kill all the autofs 
+processes, do a umount -l on all mount points in /etc/mtab, and them 
+restart the autofs process.
+
+My question is (1) is there any fix for this problem or some switch I 
+need to turn on/off in order for these udp ports to be released when the 
+mount point times out and (2) is there some command that I can use to 
+release these ports rather than going through the multiple step process 
+I described above to clean up a machine?
+
+Dwight Marzolf
+
 
 
 
