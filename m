@@ -1,25 +1,25 @@
-From: "Isabelle, Francois" <Francois.Isabelle@ca.kontron.com>
-Subject: RE: File modification bug (mismatch with stat)
-Date: Fri, 7 Nov 2003 12:35:20 -0500
+From: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
+Subject: Re: XFS NFS Fileserver, kernel: nfs: server server not
+ responding, still trying
+Date: Fri, 7 Nov 2003 18:34:59 +0100 (CET)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <5009AD9521A8D41198EE00805F85F18F039D3C59@sembo111.teknor.com>
+Message-ID: <Pine.LNX.4.44.0311071830050.25909-100000@kenzo.iwr.uni-heidelberg.de>
+References: <200311071736.09000.jojo@automatix.de>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>,
-	"David Roy-Moder (E-mail)" <david.roy-moder@intel.com>,
-	"Ryan. J. Kummet (E-mail)" <ryan.j.kummet@intel.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 1AIAW8-0001lM-00
-	for <nfs@lists.sourceforge.net>; Fri, 07 Nov 2003 09:35:28 -0800
-Received: from [205.205.44.10] (helo=sembo111.teknor.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.24)
-	id 1AIAW7-00035c-W2
-	for nfs@lists.sourceforge.net; Fri, 07 Nov 2003 09:35:28 -0800
-To: 'Trond Myklebust' <trond.myklebust@fys.uio.no>, "Isabelle, Francois"
-	 <Francois.Isabelle@ca.kontron.com>
+	id 1AIAVm-0001e4-00
+	for <nfs@lists.sourceforge.net>; Fri, 07 Nov 2003 09:35:06 -0800
+Received: from relay.uni-heidelberg.de ([129.206.100.212])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.24)
+	id 1AIAVl-00019a-D8
+	for nfs@lists.sourceforge.net; Fri, 07 Nov 2003 09:35:05 -0800
+To: Juergen Sauer <jojo@automatix.de>
+In-Reply-To: <200311071736.09000.jojo@automatix.de>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,39 +32,31 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Exacly
+On Fri, 7 Nov 2003, Juergen Sauer wrote:
 
-Francois Isabelle
-Francois.Isabelle@ca.kontron.com
-Concepteur de logiciel
-Software designer 
-Kontron Canada
+> calls      retrans    authrefrsh
+> 1483912    21137      0
+> ...
+> calls      retrans    authrefrsh
+> 1752966    23343      0
+
+The number of "retrans" is pretty high...
+
+> ...rsize=32768,wsize=32768...
+
+... and I think that this is the problem. Try lowering the sizes to 
+something more closely matched to the network that you are using, like 8k 
+or even lower. Although you said that you followed the NFS FAQ ???
+
+-- 
+Bogdan Costescu
+
+IWR - Interdisziplinaeres Zentrum fuer Wissenschaftliches Rechnen
+Universitaet Heidelberg, INF 368, D-69120 Heidelberg, GERMANY
+Telephone: +49 6221 54 8869, Telefax: +49 6221 54 8868
+E-mail: Bogdan.Costescu@IWR.Uni-Heidelberg.De
 
 
->-----Original Message-----
->From: Trond Myklebust [mailto:trond.myklebust@fys.uio.no]
->Sent: 7 novembre, 2003 12:22
->To: Isabelle, Francois
->Cc: 'nfs@lists.sourceforge.net'; David Roy-Moder (E-mail); Ryan. J.
->Kummet (E-mail)
->Subject: Re: [NFS] File modification bug (mismatch with stat)
->
->
->>>>>> " " == Francois Isabelle <Isabelle> writes:
->
->     > Size : 9586 , time: 1068133738 <= Real time Size : 9586 , time:
->     > 1068141476 <= Time got higher for a little while Size : 9586 ,
->     > time: 1068141476 Size : 9586 , time: 1068141476 Size : 9586 ,
->     > time: 1068133738 <= Time got back to normal on file
->
->     > All calls to 'stat' occured in the same second.
->
->I assume nobody was writing to the file at the time (either on the
->client or the server)?
->
->Cheers,
->  Trond
->
 
 
 -------------------------------------------------------
