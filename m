@@ -1,25 +1,19 @@
-From: Hans-Peter Jansen <hpj@urpla.net>
-Subject: nfs errors clutter up logs after 2.4.20 -> 2.4.22-pre10
-Date: Sat, 23 Aug 2003 14:04:34 +0200
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: nfs errors clutter up logs after 2.4.20 -> 2.4.22-pre10
+Date: 23 Aug 2003 10:28:06 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200308231404.34087.hpj@urpla.net>
+Message-ID: <shsekzcjnbt.fsf@charged.uio.no>
+References: <200308231404.34087.hpj@urpla.net>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="us-ascii"
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from moutng.kundenserver.de ([212.227.126.189])
+Received: from pat.uio.no ([129.240.130.16])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19qX8K-0002Ur-00
-	for <nfs@lists.sourceforge.net>; Sat, 23 Aug 2003 05:04:40 -0700
-Received: from [212.227.126.160] (helo=mrelayng.kundenserver.de)
-	by moutng.kundenserver.de with esmtp (Exim 3.35 #1)
-	id 19qX8I-0002bI-00
-	for nfs@lists.sourceforge.net; Sat, 23 Aug 2003 14:04:38 +0200
-Received: from [217.231.159.217] (helo=mail.lisa.de)
-	by mrelayng.kundenserver.de with asmtp (Exim 3.35 #1)
-	id 19qX8H-0002Og-00
-	for nfs@lists.sourceforge.net; Sat, 23 Aug 2003 14:04:38 +0200
-To: nfs@lists.sourceforge.net
+	id 19qcid-0003yB-00
+	for <nfs@lists.sourceforge.net>; Sat, 23 Aug 2003 11:02:32 -0700
+To: Hans-Peter Jansen <hpj@urpla.net>
+In-Reply-To: <200308231404.34087.hpj@urpla.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,40 +26,29 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+>>>>> " " == Hans-Peter Jansen <hpj@urpla.net> writes:
 
-after kernel update all my (diskless) systems clutter up the syslog
-with:
+     > Hi, after kernel update all my (diskless) systems clutter up
+     > the syslog with:
 
-Aug 23 13:41:42 yogi kernel: nfs: server shrek not responding, still trying
-Aug 23 13:41:42 yogi last message repeated 8 times
-Aug 23 13:41:44 yogi kernel: nfs: server xxx.yy.zz.102 not responding, still trying
-Aug 23 13:41:45 yogi kernel: nfs: server xxx.yy.zz.102 OK
-Aug 23 13:41:45 yogi kernel: nfs: server shrek OK
-Aug 23 13:41:45 yogi last message repeated 8 times
-Aug 23 13:43:17 yogi kernel: nfs: server shrek not responding, still trying
-Aug 23 13:43:17 yogi last message repeated 8 times
-Aug 23 13:43:19 yogi kernel: nfs: server xxx.yy.zz.102 not responding, still trying
-Aug 23 13:43:20 yogi kernel: nfs: server xxx.yy.zz.102 OK
-Aug 23 13:43:20 yogi kernel: nfs: server shrek OK
-Aug 23 13:43:20 yogi last message repeated 8 times
-Aug 23 13:44:53 yogi kernel: nfs: server shrek not responding, still trying
-Aug 23 13:44:53 yogi last message repeated 15 times
-Aug 23 13:44:54 yogi kernel: nfs: server xxx.yy.zz.102 not responding, still trying
-Aug 23 13:44:54 yogi kernel: nfs: server shrek not responding, still trying
-Aug 23 13:44:56 yogi kernel: nfs: server shrek OK
-Aug 23 13:44:56 yogi kernel: nfs: server xxx.yy.zz.102 OK
-Aug 23 13:44:56 yogi kernel: nfs: server shrek OK
-Aug 23 13:44:56 yogi last message repeated 15 times
+     > Aug 23 13:41:42 yogi kernel: nfs: server shrek not responding,
 
-Funny is the continous change of name <-> ip address. I would rule out 
-named problems, but who knows... It happens predictable with 
-2.4.22-pre10, while it doesn't happen with 2.4.20.
+Does the following patch help?
 
-Anybody with an idea, whats going on here?
+Cheers,
+  Trond
 
-TIA,
-Pete
+--- linux-2.4.22-up/net/sunrpc/timer.c.orig	2002-08-14 17:52:52.000000000 -0700
++++ linux-2.4.22-up/net/sunrpc/timer.c	2003-08-23 10:26:36.000000000 -0700
+@@ -8,7 +8,7 @@
+ 
+ #define RPC_RTO_MAX (60*HZ)
+ #define RPC_RTO_INIT (HZ/5)
+-#define RPC_RTO_MIN (2)
++#define RPC_RTO_MIN (HZ/10)
+ 
+ void
+ rpc_init_rtt(struct rpc_rtt *rt, long timeo)
 
 
 -------------------------------------------------------
