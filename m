@@ -1,19 +1,19 @@
-From: Philippe =?ISO-8859-15?Q?Gramoull=E9?= <philippe.gramoulle@mmania.com>
-Subject: Problems with statd and lockd
-Date: Sat, 5 Apr 2003 01:56:38 +0200
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Problems with statd and lockd
+Date: 05 Apr 2003 12:14:48 +0200
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030405015638.5118fbb9.philippe.gramoulle@mmania.com>
+Message-ID: <shsadf5s12f.fsf@charged.uio.no>
+References: <20030405015638.5118fbb9.philippe.gramoulle@mmania.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+Cc: NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pgramoul.net2.nerim.net ([80.65.227.234] helo=philou.aspic.com)
+Received: from mons.uio.no ([129.240.130.14])
 	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 191b3J-0000f3-00
-	for <nfs@lists.sourceforge.net>; Fri, 04 Apr 2003 15:56:57 -0800
-Received: from philou.gramoulle.local (philou.gramoulle.local [192.168.254.2])
-	by philou.aspic.com (Postfix) with SMTP id 91CA8278E
-	for <nfs@lists.sourceforge.net>; Sat,  5 Apr 2003 01:56:38 +0200 (CEST)
-To: NFS Mailing List <nfs@lists.sourceforge.net>
+	id 191khM-0006m8-00
+	for <nfs@lists.sourceforge.net>; Sat, 05 Apr 2003 02:14:57 -0800
+To: Philippe Gramoull~ <philippe.gramoulle@mmania.com>
+In-Reply-To: <20030405015638.5118fbb9.philippe.gramoulle@mmania.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -26,31 +26,19 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+>>>>> " " == Philippe Gramoull <Philippe> writes:
 
-Hi,
+     > We have filesystems that are exported sync, other are exported
+     > async.
 
-Recently we started to get the following error messages on an Linux NFS server, running
-2.4.21-pre5 vanilla, Debian unstable
+     > Can you tell me what the "-5" return code means ?
 
- > statd: server localhost not responding, timed out
- > nsm_mon_unmon: rpc failed, status=-5
- > lockd: cannot monitor <Client IP here>
+-5 == -EIO. For a soft RPC call it usually means that a timeout has
+occured. This would be consistent with the logged 'localhost not
+responding'.
 
-A restart of nfs-kernel-server cleared the problem.
-
-We have filesystems that are exported sync, other are exported async.
-
-Can you tell me what the "-5" return code means ?
-
-I've looked at the source code (nsm_mon_unmon in mon.c
-that sends back to nfs3proc.c and the rpc_call wrapper
-but i'm lost after that :)
-
-Can someone enlighten me ?
-
-Thanks,
-
-Philippe
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
