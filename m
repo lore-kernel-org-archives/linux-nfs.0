@@ -1,25 +1,17 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: RedHat 8.0 nfs
-Date: Thu, 27 Mar 2003 10:43:51 +1100
+From: "Gordon Luk" <gluk@Sequoiabroadband.com>
+Subject: Multiple threads, hard-linking performance problem
+Date: Thu, 27 Mar 2003 09:17:57 -0800
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <16002.15159.815179.262920@notabene.cse.unsw.edu.au>
-References: <D38AFB3080F3D311807300B0D0203E53033A94E5@MERCURY>
+Message-ID: <B1F7BA1946751D4E8FD46319D2306E1C0766B9@mail.sequoiabroadband.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net,
-    davidd@et.byu.edu
+Content-Type: text/plain;
+	charset="utf-8"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.28] ident=root)
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18yKZ8-0002g1-00
-	for <nfs@lists.sourceforge.net>; Wed, 26 Mar 2003 15:44:18 -0800
-Received: From
-	notabene.cse.unsw.edu.au ([129.94.211.194] == dulcimer.orchestra.cse.unsw.EDU.AU)
-	(for <pwitting@cyveillance.com>) (for <nfs@lists.sourceforge.net>)
-	(for <davidd@et.byu.edu>) By tone With Smtp ;
-	Thu, 27 Mar 2003 10:44:06 +1100
-To: pwitting@Cyveillance.com
-In-Reply-To: message from pwitting@Cyveillance.com on Wednesday March 26
+Received: from vpn.sequoiabroadband.com ([12.164.235.93] helo=mail.Sequoiabroadband.com)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 18yapN-0007Xg-00
+	for <nfs@lists.sourceforge.net>; Thu, 27 Mar 2003 09:06:09 -0800
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -32,102 +24,63 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wednesday March 26, pwitting@Cyveillance.com wrote:
-> From: Neil Brown <neilb@cse.unsw.edu.au>
-> 
-> > Well.... I wrote some of the code, so hopefully I understand what is
-> > going on, but don't bet on it :-)
-> > 
-> > Firstly, for kernels later than about 2.4.20-pre4, this setting is not
-> > needed and is ignored.  The nfsd code does 'the right thing'.
-> > The setting is only needed for earlier kernels.
-> 
-> While this sounds great, what exactly is the right thing? Is the code itself
-> adjusting the buffers to 256k? 512k? Or is it addressing the problem from a
-> different angle? (Could be why I saw a 10-15% speed improvement going from
-> RH's 2.4.18 kernel to a stock 2.4.20 kernel.)
-
-Check the calls to "svc_sock_setbufsize" in net/sunrpc/svcsock.c
-
-For UDP, rsize and wsize are (nr_threads+3) * bufsize
-For TCP, rsize and wsize are 3 * bufsize
-
-Bufsize is 8K, so you can work it out yourself.
-
-Remember, all this is doing is allowing the networking layer to
-allocate enough memory for all threads to working on something
-concurrently.
-
-> 
-> Does this mean that altering the queue no longer has an effect?
-
-Yes.  The setting no longer has any effect on nfsd.
-
-> 
-> > The amount of memory you assign when you write a number out to  
-> > /proc/sys/net/core/rmem_default is a per-socket (not per-thread) maximum.
-> 
-> So is a socket an ip:port thing, or is it an srcip:srcport>dstip:dstport
-> pair. 
-
-For UDP, which is the only protocol supported in kernels where this
-tuning has any effect, it is *:port.  An NFSd only listens on one
-socket (no matter how many IP addresses you machine has).
-
-> >
-> > I raised it to "average packet size * number of threads" and the
-> > problem went away.  256K seems a reasonable sort of number.
-> 
-> Which comes back to my original post, 
-> 
-> NFS_QS >= RPCNFSDCOUNT * MTU [ Currently 220 * 1500 = 330000, suggesting I
-> should up my NFSQS from 262144 to 524288 ]
-> 
-> Or should I be thinking at a higher level of the network stack, 
-> 
-> NFS_QS >= RPCNFSDCOUNT * MAX(rsize,wsize) [ Currently 220 * 8192 = 1802240,
-> suggesting I should up my NFSQS from 262144 to 2097152 ]
-> 
-
-Yes. MTU is not relevant.  We are talking about NFS requests, not ethernet
-packets.  The largest NFS request is a full sized WRITE, which would
-be slightly more than 8K.
-To be sure that all your 220 threads can be processing a full sized
-write concurrently (which is unlikely, as there tend to be a lot of
-getattrs spread around) you would need about 1.8Meg.
-
-
-> While it sounds like a huge number, were only talking about 2MB RAM on a
-> machine more or less dedicated to NFS.  
-
-Exactly.  If you're machine has 32Meg of ram, probably you don't need
-220 threads.  But if you have 1Gig of RAM, then you won't notice 220
-threads (or even more).
-
-> 
-> > This doesn't means that 256K *will* be using, but that (if it is
-> > available) it *may* be used.  Certainly 256K * number-of-threads will
-> > NOT be used.
-> 
-> Ah, which raises the question: When will it not be used? I assume we dump
-> file cache to open these queues, would we swap stuff out of RAM into VM? Or
-> do we only not get them when there's a real live RAM crunch?
-
-That's all up to the VM subsystem.
-The VM tries to keep some amount of free memory.  When a network
-packet comes in, some of the free memory will be allocated to store
-the packet.  If there is no free memory, the packet will be dropped,
-but if there is no  free memory then the VM system is already trying
-to dump file cache or write out to SWAP to make some free memory.
-
-Also, most of the time your server will have maybe a dozen threads
-active and they will be handling small (read/lookup/getatrr etc)
-requests that don't take up so much memory.  It is just when lots of
-write come in that you use the memory.  And when that happens, you
-really want the memory to be used to hold the requests rather than
-having the requests be silently dropped.
-
-NeilBrown
+SGksDQogDQpJJ20gc2VlaW5nIGEgcGVyZm9ybWFuY2UgcHJvYmxlbSB3aXRoIGNyZWF0aW5nIGh1
+bmRyZWRzIG9mIGhhcmQgbGlua3MgdGhyb3VnaCBtdWx0aXBsZSB0aHJlYWRzLCBvY2Nhc2lvbmFs
+bHkgd2hpbGUgbGFyZ2UgZmlsZSB3cml0ZXMgYXJlIGdvaW5nIG9uLiBGaXJzdCBpJ2xsIGV4cGxh
+aW4gbXkgY29uZmlndXJhdGlvbiBhbmQgdGhlbiBnZXQgaW50byB0aGUgcHJvYmxlbS4NCiANCk5G
+UyBTZXJ2ZXI6DQpSZWRIYXQgTGludXggNy4yLCBrZXJuZWwgMi40LjE4LTI2LjcNCklCTSB4MzM1
+IDIuMEdoeiBjcHUsIDFHQiBSQU0NCkdpZ2FiaXQgZXRoZXJuZXQNCkRpc2sgaW5mbzoNCklCTSBF
+WFAzMDAgd2l0aCAxNCBVbHRyYTMyMCBTQ1NJIHNwaW5kbGVzLCBJQk0gU2VydmVSQUlELTQoPykg
+cnVubmluZyBSQUlELTEwLCBjaHVuayBzaXplIDY0aw0Kc2luZ2xlIGV4dDMgcGFydGl0aW9uIG1v
+dW50ZWQgcncsbm9hdGltZQ0KZXhwb3J0ZWQgYXMgcncsbm9fcm9vdF9zcXVhc2gNCm5mc3YzDQog
+DQpORlMgQ2xpZW50Og0KUmVkSGF0IExpbnV4IDcuMiwga2VybmVsIDIuNC4xOC0yNi43IA0KSUJN
+IHgzNjAgNHgxLjZHaHogY3B1LCAxR0IgUkFNDQpHaWdhYml0IGV0aGVybmV0IGNvbm5lY3Rpb24g
+dG8gTkZTIFNlcnZlcg0KbW91bnRzIG5mcyBwYXJ0aXRpb24gYXMgcncsaGFyZCxpbnRyLHJzaXpl
+PTMyNzY4LHdzaXplPTMyNzY4DQpuZnN2Mw0KIA0KVXNhZ2UgYmVoYXZpb3I6DQpUaGUgTkZTIGNs
+aWVudCByZWFkcyBmcm9tIGEgc2VwYXJhdGUgTkZTIG1vdW50IChzYW1lIG5mcyBwYXJhbWV0ZXJz
+LCBpZGVudGljYWwgZHJpdmVzIGV4Y2VwdCBmb3IgdGhlIG5vYXRpbWUpIGFuZCB3aWxsIGRvIHRo
+ZSBmb2xsb3dpbmcgdGhyb3VnaCB0aGUgYWZvcmVtZW50aW9uZWQgTkZTIG1vdW50Og0KMSkgTXVs
+dGlwbGUgdGhyZWFkcyAoY29uc2lkZXIgMyBtYXgpIGNoZWNraW5nIGZpbGUgZXhpc3RlbmNlIGFu
+ZCB0aW1lc3RhbXAsIGFuZCBkb2luZyBhIGZpbGUgY29weSB0aHJvdWdoIEphdmEgZmlsZSBjb3B5
+Lg0KMikgTXVsdGlwbGUgdGhyZWFkcyAoY29uc2lkZXIgMyBtYXgpIGNyZWF0aW5nIHNvZnQgbGlu
+ayB0byBmaWxlcyBjcmVhdGVkIGJ5ICMxDQozKSBNdWx0aXBsZSB0aHJlYWRzIChjb25zaWRlciAz
+IG1heCkgY3JlYXRpbmcgaHVuZHJlZHMgKDIwMCw2MDAsMjAwMCBmb3IgZXhhbXBsZSkgaGFyZCBs
+aW5rcyB0byB0aGlzIHNvZnQgbGluay4gSSdtIGF3YXJlIG9mIHBvcnRhYmlsaXR5IGNvbmNlcm5z
+IHdpdGggdGhpcyBiZWhhdmlvci4gVGhlc2UgbGlua3MgYXJlIGNyZWF0ZWQsIDIgcGVyIHN1YmRp
+cmVjdG9yeSBpbiBhIGRpcmVjdG9yeSB0cmVlIHdpdGggaHVuZHJlZHMgb2YgZGlyZWN0b3JpZXMg
+KDUwMCwgMTUwMCwgNTAwMCBjb3JyZXNwb25kaW5nIHRvIHRoZSBhYm92ZSBleGFtcGxlKS4NCiAN
+ClN0YXRpc3RpY3M6DQpBbGwgdGVzdHMgZG9uZSB3aXRoIDEuNDZHQiBmaWxlOg0KTG9jYWwgRVhQ
+MzAwIHRvIEVYUDMwMCBmaWxlIGNvcHkgLSA0OC45MSBzZWMNCkNvcHkgZnJvbSBORlMgQ2xpZW50
+J3MgbG9jYWwgZHJpdmUgdG8gTkZTIHNoYXJlIC0gNjguMjMgc2VjDQpDb3B5IGJldHdlZW4gTkZT
+IENsaWVudCdzIDIgbW91bnRlZCBORlMgcGFydGl0aW9ucyAob24gZGlmZmVyZW50IHNlcnZlcnMp
+IC0gMTIwIHNlYw0KU2FtZSBhcyBhYm92ZSwgYnV0IHdpdGggbm9hdGltZSBvbiBORlMgU2VydmVy
+J3MgZXhwb3J0ZWQgcGFydGl0aW9uIC0gMTAyIHNlYw0KSmF2YSBmaWxlIGNvcHkgdGhyb3VnaHB1
+dCBiZXR3ZWVuIDIgbW91bnRlZCBwYXJ0aXRpb25zIChhbG9uZyB3aXRoIG90aGVyIHByb2Nlc3Np
+bmcgb3ZlcmhlYWQpIDE1MCBzZWMNCiANCklzc3VlIGRlc2NyaXB0aW9uOg0KIA0KV2hpbGUgIzEg
+YW5kICMyIGFyZSBnb2luZyBpbiB0aGUgYmFja2dyb3VuZCwgIzMgLSBsaW5raW5nIDIwMCBmaWxl
+cyBhcHBlYXJlZCB0byB0YWtlIGFwcHJveC4gNyBtaW51dGVzIHBlciB0aHJlYWQuIFRoaXMgaXMg
+YXBwcm94IDg0IGhhcmQgbGlua3MgY3JlYXRlZCBwZXIgbWludXRlIHdpdGggMyBjb25jdXJyZW50
+IHRocmVhZHMsIHdoaWNoIHNlZW1zIGxpa2UgYSBwb3NzaWJsZSBpc3N1ZS4gR29pbmcgZGlyZWN0
+bHkgdG8gdGhlIGZpbGVzeXN0ZW0gYW5kIGNyZWF0aW5nIGhhcmQgbGlua3MgbWFudWFseSBhcHBl
+YXJlZCB0byBiZSBmYXN0LCBhbmQgYW4gZXh0cmVtZWx5IHNsb3cgImxzIiBjb21tYW5kIGZyb20g
+dGhlIE5GUyBjbGllbnQgb24gdGhlIE5GUy1tb3VudGVkIHBhcnRpdGlvbiBhcHBlYXJlZCB0byBi
+ZSBzbG93Lg0KIA0KQW5vdGhlciB0ZXN0LCB3aXRoICMxIGF0IDIgdGhyZWFkcywgIzIgYXQgMyB0
+aHJlYWRzLCBhbmQgIzMgYXQgNSB0aHJlYWRzLCB3aXRoIDYwMCBsaW5rcyBwZXIgdGhyZWFkIHJl
+dmVhbGVkIGFib3V0IDIwLTI1IG1pbnV0ZXMgcGVyIHRocmVhZCB0byBjb21wbGV0ZSB3aXRoIDUg
+Y29uY3VycmVudCB0aHJlYWRzLiBUaGlzIHN0aWxsIHNlZW1zIGxvdyB0byBtZS4NCiANCkkgaGF2
+ZSByZWFkIHRocm91Z2ggdGhlIG1haWxpbmcgbGlzdCBhcmNoaXZlcywgYW5kIGEgY291cGxlIG9m
+IHRoZSBub3RlcyBzZWVtZWQgYXMgaWYgdGhleSBtYXkgaGF2ZSByZWxldmFuY2UgdG8gdGhpcyBp
+c3N1ZS4gSW4gcGFydGljdWxhciwgcG9vciBoYW5kbGluZyBvZiBsYXJnZSBudW1iZXJzIG9mIHNt
+YWxsIGZpbGVzIGJ5IGV4dDMsIGFuZCBhbHNvIEFsYW4gUG93ZWxsJ3MgcG9zdCBhYm91dCBleHQz
+IGRpcmVjdG9yeSBpbmRleGluZzoNCmh0dHA6Ly9zb3VyY2Vmb3JnZS5uZXQvbWFpbGFyY2hpdmUv
+Zm9ydW0ucGhwP3RocmVhZF9pZD0xNjcxMzA5JmZvcnVtX2lkPTQ5MzANCiANCkkgbWF5IGNvbnNp
+ZGVyIHRyeWluZyBYRlMgb3IgUmVpc2VyRlMgb3V0IG9mIGN1cmlvc2l0eSwgYnV0IHNpbmNlIHRo
+aXMgYXJjaGl0ZWN0dXJlIHdpbGwgc29vbiBjaGFuZ2UsIEkganVzdCB3YXMgd29uZGVyaW5nIGlm
+IHRoZXJlIHdlcmUgYW55IG9idmlvdXMgY29uZmlndXJhdGlvbiBjaGFuZ2VzIEkgc2hvdWxkIG1h
+a2UsIGFuZCBhbHNvIHRob3VnaHQgdGhhdCBpdCBtaWdodCBiZSBnb29kIHRvIHNoYXJlIHRoaXMg
+ZXhwZXJpZW5jZSB3aXRoIHRoZSBsaXN0Lg0KIA0KVGhhbmtzLA0KIA0KR29yZG9uIEx1aw0KU3lz
+dGVtIEFkbWluaXN0cmF0b3INClNlcXVvaWEgQnJvYWRiYW5kLCBJbmMuDQpodHRwOi8vd3d3LnNl
+cXVvaWFicm9hZGJhbmQuY29tDQo=
 
 
 -------------------------------------------------------
