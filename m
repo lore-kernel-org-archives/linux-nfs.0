@@ -1,19 +1,19 @@
-From: Steve Dickson <SteveD@redhat.com>
+From: Bogdan Costescu <bogdan.costescu@iwr.uni-heidelberg.de>
 Subject: Re: NFSv4 daemons...
-Date: Fri, 09 Jan 2004 10:27:27 -0500
+Date: Fri, 9 Jan 2004 18:09:20 +0100 (CET)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <3FFEC85F.9060706@RedHat.com>
-References: <1073608448.1380.22.camel@nidelv.trondhjem.org>
+Message-ID: <Pine.LNX.4.44.0401091803430.30771-100000@kenzo.iwr.uni-heidelberg.de>
+References: <1073621173.1398.55.camel@nidelv.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: hjl@users.sourceforge.net, nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: hjl@users.sourceforge.net, <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.24)
-	id 1AeyXr-0007Wq-4P
-	for nfs@lists.sourceforge.net; Fri, 09 Jan 2004 07:27:31 -0800
+	id 1Af08Y-00048N-Oi
+	for nfs@lists.sourceforge.net; Fri, 09 Jan 2004 09:09:30 -0800
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1073608448.1380.22.camel@nidelv.trondhjem.org>
+In-Reply-To: <1073621173.1398.55.camel@nidelv.trondhjem.org>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -26,15 +26,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust wrote:
+On Thu, 8 Jan 2004, Trond Myklebust wrote:
 
->Would it make sense to add these to the existing nfs-utils package?
->  
->
-Yes.. I think so... Since NFS will be the only one using them
-I think is makes a lot of sense to put them in nfs-utils...
+> The idmapper in particular is essential if you want to use NFSv4.
 
-SteveD.
+Is there already a well agreed way and place (init scripts) to start/stop  
+these daemons ?
+
+-- 
+Bogdan Costescu
+
+IWR - Interdisziplinaeres Zentrum fuer Wissenschaftliches Rechnen
+Universitaet Heidelberg, INF 368, D-69120 Heidelberg, GERMANY
+Telephone: +49 6221 54 8869, Telefax: +49 6221 54 8868
+E-mail: Bogdan.Costescu@IWR.Uni-Heidelberg.De
 
 
 
