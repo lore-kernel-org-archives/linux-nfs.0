@@ -1,23 +1,16 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: PATCH - SUNRPC 1 of 3 - The new "sk_flags" word in struct svc_sock must be long....
-Date: Wed, 21 Aug 2002 01:44:52 +0200
+From: Suresh Chadive <n8d11007@ccs.iitb.ac.in>
+Subject: NFS problem
+Date: Wed, 21 Aug 2002 05:31:08 +0530 (IST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <15714.54388.413574.360810@charged.uio.no>
-References: <15713.50328.541517.124690@notabene.cse.unsw.edu.au>
-	<20020820185357.O21269@redhat.com>
-	<shsy9b1yvcz.fsf@charged.uio.no>
-	<20020820192158.P21269@redhat.com>
-Reply-To: trond.myklebust@fys.uio.no
+Message-ID: <Pine.GHP.4.43.0208210529460.22003-100000@hp10.ccs.iitb.ernet.in>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from pat.uio.no ([129.240.130.16])
-	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17hIgC-0007jM-00
-	for <nfs@lists.sourceforge.net>; Tue, 20 Aug 2002 16:44:57 -0700
-To: Benjamin LaHaise <bcrl@redhat.com>
-In-Reply-To: <20020820192158.P21269@redhat.com>
+Received: from mailhost.iitb.ac.in ([203.197.74.142])
+	by usw-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 17hIsi-0001A3-00
+	for <nfs@lists.sourceforge.net>; Tue, 20 Aug 2002 16:57:52 -0700
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -30,20 +23,85 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
->>>>> " " == Benjamin LaHaise <bcrl@redhat.com> writes:
 
-     > You've missed the point.  Between sk_inuse and sk_flags is 7
-     > bytes of padding.  Yes, I'm aware that sk_flags has 7 bytes of
-     > unused space, but that's the unavoidable part.  Personally, I
-     > think the sunrpc code should do this particular operation
-     > differently.
 
-Fair enough: I agree that sk_flags could be moved to the top of the
-struct. However in practice I doubt you'll see any gain whatsoever,
-given that all the struct svc_sock get kmalloc()ed one by one...
+There has been a problem in mounting the directory
+on the client.
 
-Cheers,
-  Trond
+PROBLEM :-
+----------
+If the command :
+  $ mount serverIPaddress:/home /home
+is issued, then the output is
+  mount: RPC: Timed out
+
+
+INFO THAT MAY BE USEFUL :-
+-------------------------
+
+SERVER SIDE :
+
+  $ rpcinfo -p
+   program vers proto   port
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    391002    2   tcp   1025  sgi_fam
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
+    100021    1   udp   1027  nlockmgr
+    100021    3   udp   1027  nlockmgr
+    100021    4   udp   1027  nlockmgr
+    100011    1   udp    755  rquotad
+    100011    2   udp    755  rquotad
+    100011    1   tcp    758  rquotad
+    100011    2   tcp    758  rquotad
+    100005    1   udp   1028  mountd
+    100005    1   tcp   1030  mountd
+    100005    2   udp   1028  mountd
+    100005    2   tcp   1030  mountd
+    100005    3   udp   1028  mountd
+    100005    3   tcp   1030  mountd
+    100024    1   udp   1029  status
+    100024    1   tcp   1031  status
+
+
+
+CLIENT SIDE:
+
+    $  rpcinfo -p
+   program vers proto   port
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    100024    1   udp  32768  status
+    100024    1   tcp  32768  status
+    391002    2   tcp  32769  sgi_fam
+
+Here, I explicitly run rpc.lockd (on client)
+but still, I do not see lock daemon (nslockmanager or some thing of that
+sort) ! Any clue?
+---------------------------------------------------
+
+Please, give some way to sort it out...
+
+-suresh
+
+
+----------------------
+SURESH CHADIVE
+
+V Yr,
+Dual degree Programme
+
+H9, #319,
+Indian Instt. of Technology,
+Bombay
+
+e-mail :  csuresh@iitbombay.org
+
+
+
+
+
 
 
 -------------------------------------------------------
