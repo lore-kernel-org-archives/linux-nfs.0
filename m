@@ -1,21 +1,25 @@
-From: Jack Malmostoso <jackmalmostoso@freesurf.ch>
-Subject: nfs does not work anymore after kernel panic
-Date: Fri, 13 Feb 2004 20:47:35 +0100
+From: wim delvaux <wim.delvaux@adaptiveplanet.com>
+Subject: nfs / cdroms / autofs - revisited
+Date: Sat, 14 Feb 2004 16:51:11 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20040213204735.6bafce1c@coppermine>
+Message-ID: <200402141651.11820.wim.delvaux@adaptiveplanet.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain;
+  charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ArjMB-0006eV-8H
-	for nfs@lists.sourceforge.net; Fri, 13 Feb 2004 11:52:11 -0800
-Received: from freesurfmta07.sunrise.ch ([194.230.0.19] helo=freesurfmail.sunrise.ch)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.30)
-	id 1ArjKF-000380-1u
-	for nfs@lists.sourceforge.net; Fri, 13 Feb 2004 11:50:11 -0800
-Received: from coppermine (62.167.36.198) by freesurfmail.sunrise.ch (7.0.024.3)
-        id 400FC260003EBDBC for nfs@lists.sourceforge.net; Fri, 13 Feb 2004 20:50:08 +0100
+	id 1As278-0005k7-UA
+	for nfs@lists.sourceforge.net; Sat, 14 Feb 2004 07:53:54 -0800
+Received: from amsfep16-int.chello.nl ([213.46.243.26])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.30)
+	id 1As20u-0004Y4-RX
+	for nfs@lists.sourceforge.net; Sat, 14 Feb 2004 07:47:29 -0800
+Received: from cable-62-205-65-11.upc.chello.be ([62.205.65.11])
+          by amsfep16-int.chello.nl
+          (InterMail vM.6.00.05.02 201-2115-109-103-20031105) with ESMTP
+          id <20040214155115.CPND17439.amsfep16-int.chello.nl@cable-62-205-65-11.upc.chello.be>
+          for <nfs@lists.sourceforge.net>; Sat, 14 Feb 2004 16:51:15 +0100
 To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,59 +33,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi everybody,
+Hi all,
 
-I have set up a small LAN with this configuration:
+Just read that many of you have the same problem as I do : how to unmount a 
+cdrom using autofs and nfs.
 
-Server: Fedora Core 1 machine, kernel 2.4.22, nfs-utils 1.0.6-1, connected to internet via a USB ADSL modem. Hostname is coppermine.
+It seems that you do not even have to mount the nfs-exported cdrom from some 
+client for the cdrom to become unusable.  If you insert a medium and reboot 
+the export (the nfsd) mounts but never unlocks the cdrom even if no remote 
+nfs-mount request was issued.
 
-Client: Yellowdog 3.0.1 iBook, kernel 2.4.24, connected via eth0 to the server. Hostname is iBook.
+I wonder why this happens ? What are the ussues here ? Why can't nfs 
+lazy-mount filesystems ? I am using 2.6 kernel.
 
-/etc/exports is:
+Thx
 
-[jack@coppermine jack]$ cat /etc/exports
-/mnt/share               iBook(rw,sync)
+W
 
-and rpcinfo says:
-
-[root@coppermine root]# rpcinfo -p
-   program vers proto   port
-    100000    2   tcp    111  portmapper
-    100000    2   udp    111  portmapper
-    100024    1   udp  32916  status
-    100024    1   tcp  35327  status
-    100011    1   udp    744  rquotad
-    100011    2   udp    744  rquotad
-    100011    1   tcp    747  rquotad
-    100011    2   tcp    747  rquotad
-    100003    2   udp   2049  nfs
-    100003    3   udp   2049  nfs
-    100003    2   tcp   2049  nfs
-    100003    3   tcp   2049  nfs
-    100021    1   udp  32948  nlockmgr
-    100021    3   udp  32948  nlockmgr
-    100021    4   udp  32948  nlockmgr
-    100021    1   tcp  36967  nlockmgr
-    100021    3   tcp  36967  nlockmgr
-    100021    4   tcp  36967  nlockmgr
-    100005    1   udp    764  mountd
-    100005    1   tcp    767  mountd
-
-Now, everything was correctly working for a while, then I was downloading a file on the client from the server, and the server had a kernel panic with flashing lights and everything.
-Since that, I have tried to setup again the network, but when I check with
-
-[root@coppermine root]# showmount -e
-
-if everything is ok, the shell just sits there with no output and no CPU consumption or anything.
-
-In the meanwhile my iBook can surf the internet sharing the connection with coppermine, and the network itself is setup correctly, since the two machines ping each other without problems.
-
-Now, do you have any help to give me? Thank you in advance!
-
--- 
-Leela: "Great. We're two days from earth with no food."                                                                           
-Bender: "Problem solved. You two fight to the death and I'll cook the
-loser."                                                     
 
 
 -------------------------------------------------------
