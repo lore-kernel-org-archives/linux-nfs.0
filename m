@@ -1,24 +1,30 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH]  Reinstantiating stale inodes
-Date: Mon, 03 May 2004 16:33:36 -0400
+From: Garrick Staples <garrick@usc.edu>
+Subject: Re: mountd segfault on itanium2
+Date: Mon, 3 May 2004 13:47:08 -0700
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <4096ACA0.9050507@RedHat.com>
-References: <40892507.2030004@RedHat.com>  <4093CCB6.1040500@RedHat.com>	 <1083439518.3687.19.camel@lade.trondhjem.org> <4094397C.3030303@RedHat.com>	 <1083457337.3687.60.camel@lade.trondhjem.org> <409468B2.40200@RedHat.com>	 <1083468517.3687.70.camel@lade.trondhjem.org> <4096A292.8050109@RedHat.com> <1083615338.3896.92.camel@lade.trondhjem.org>
+Message-ID: <20040503204707.GU23287@polop.usc.edu>
+References: <20040430212414.GF22498@polop.usc.edu> <20040430234327.GM22498@polop.usc.edu> <20040501030730.GE23287@polop.usc.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="niUlcCfh/sMBwTxc"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BKk8C-00079a-LV
-	for nfs@lists.sourceforge.net; Mon, 03 May 2004 13:33:40 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1BKkMz-0000rG-Ag
+	for nfs@lists.sourceforge.net; Mon, 03 May 2004 13:48:57 -0700
+Received: from polop.usc.edu ([128.125.10.9])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.30)
-	id 1BKk8C-0002lc-8e
-	for nfs@lists.sourceforge.net; Mon, 03 May 2004 13:33:40 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1083615338.3896.92.camel@lade.trondhjem.org>
+	id 1BKkMU-0005hL-I8
+	for nfs@lists.sourceforge.net; Mon, 03 May 2004 13:48:26 -0700
+Received: from polop.usc.edu (localhost.localdomain [127.0.0.1])
+	by polop.usc.edu (8.12.10/8.12.10) with ESMTP id i43Kl8lv013058
+	for <nfs@lists.sourceforge.net>; Mon, 3 May 2004 13:47:08 -0700
+Received: (from garrick@localhost)
+	by polop.usc.edu (8.12.10/8.12.10/Submit) id i43Kl8nL013056
+	for nfs@lists.sourceforge.net; Mon, 3 May 2004 13:47:08 -0700
+To: nfs@lists.sourceforge.net
+In-Reply-To: <20040501030730.GE23287@polop.usc.edu>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -31,68 +37,53 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust wrote:
 
->On Mon, 2004-05-03 at 15:50, Steve Dickson wrote:
->
->  
->
->>So I would like to propose a less intrusive patch what will simply zap
->>the directories caches when nfs_revalidate() sees an ESTALE.
->>
->>This patch does not effect traffic and only the first dir entry is 
->>failed with ESTALE
->>and finally subsequent ls will not fail with ESTALEs....
->>
->>Comments?
->>    
->>
->
->That one looks fine (although it will not apply to 2.6.x).
->  
->
-Its a 2.4 patch...
+--niUlcCfh/sMBwTxc
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
->I'm still curious to find out which operations are changing ctime on the
->parent directory without changing mtime, though.
->  
->
-Here are two if the runs I've seen... The first one is without the 
-patch, the second
-one is with the patch...
+On Fri, Apr 30, 2004 at 08:07:30PM -0700, Garrick Staples alleged:
+> On Fri, Apr 30, 2004 at 04:43:27PM -0700, Garrick Staples alleged:
+> > I just spotted a pattern.  After collecting several strace samples, it =
+always
+> > segfaults after read() or write() to fd 5.  And fd 5 is always:
+> >=20
+> >    open("/proc/net/rpc/nfsd.fh/channel", O_RDWR) =3D 5
 
-client rpc stats:
-calls      retrans    authrefrsh
-30073      7          0
-Client nfs v3:
-null       getattr    setattr    lookup     access     readlink
-0       0% 2280    7% 1199    3% 2595    8% 1173    3% 250     0%
-read       write      create     mkdir      symlink    mknod
-3954   13% 11892  39% 893     2% 175     0% 250     0% 0       0%
-remove     rmdir      rename     link       readdir    readdirplus
-1391    4% 175     0% 376     1% 250     0% 0       0% 1119    3%
-fsstat     fsinfo     pathconf   commit
-1500    4% 1       0% 0       0% 600     1%
+More info:
+
+Program received signal SIGSEGV, Segmentation fault.
+0x20000000002899d0 in svc_getreq_common_internal () from /lib/tls/libc.so.6=
+=2E1
+(gdb) bt
+#0  0x20000000002899d0 in svc_getreq_common_internal ()
+   from /lib/tls/libc.so.6.1
+#1  0x2000000000289720 in svc_getreqset_internal () from /lib/tls/libc.so.6=
+=2E1
+#2  0x4000000000009d60 in my_svc_run () at svc_run.c:62
+#3  0x4000000000006160 in main (argc=3D4, argv=3D0x60000fffffffb8c8)
+    at mountd.c:436
 
 
-Client rpc stats:
-calls      retrans    authrefrsh
-34134      22         0
-Client nfs v3:
-null       getattr    setattr    lookup     access     readlink
-0       0% 2124    6% 1199    3% 2979    8% 1174    3% 250     0%
-read       write      create     mkdir      symlink    mknod     
-3954   11% 15752  46% 893     2% 175     0% 250     0% 0       0%
-remove     rmdir      rename     link       readdir    readdirplus
-1391    4% 175     0% 380     1% 250     0% 0       0% 1119    3%
-fsstat     fsinfo     pathconf   commit
-1500    4% 1       0% 0       0% 568     1%
 
-The lookups and writes seem to sky rocketing.... and I've seen other
-runs (with using both mtime and ctimes) where the lookups, getattrs
-and reads sky rocket
+--=20
+Garrick Staples, Linux/HPCC Administrator
+University of Southern California
 
-SteveD.
+--niUlcCfh/sMBwTxc
+Content-Type: application/pgp-signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.3 (GNU/Linux)
+
+iD8DBQFAlq/L0SBUxJbm9HMRAnCAAKC15Ya3/5EQnMErUyFU4iC3wIOdQQCgt465
+0oVmZMWeaPq8k2UCekKrc04=
+=eLD7
+-----END PGP SIGNATURE-----
+
+--niUlcCfh/sMBwTxc--
 
 
 -------------------------------------------------------
