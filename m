@@ -1,25 +1,28 @@
-From: Bernd Schubert <bernd-schubert@web.de>
-Subject: Re: client: 2.6.7 client much slower than 2.4.26
-Date: Fri, 2 Jul 2004 00:32:25 +0200
+From: Shylendra Bhat <shylendra.bhat@hp.com>
+Subject: machine hangs - SLES9/NFS
+Date: Fri, 02 Jul 2004 08:40:57 +0530
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <200407020032.28335.bernd-schubert@web.de>
-References: <200407012318.18934.bernd-schubert@web.de> <1088718192.4349.91.camel@lade.trondhjem.org>
+Message-ID: <1088737857.3552.21.camel@nt2624.india.hp.com>
+Reply-To: shylendra.bhat@hp.com
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1BgA6i-0003HJ-Vw
-	for nfs@lists.sourceforge.net; Thu, 01 Jul 2004 15:32:40 -0700
-Received: from smtp06.web.de ([217.72.192.224])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1BgES9-0002XT-D8
+	for nfs@lists.sourceforge.net; Thu, 01 Jul 2004 20:11:05 -0700
+Received: from atlrel7.hp.com ([156.153.255.213])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.34)
-	id 1BgA6h-0007bQ-Qq
-	for nfs@lists.sourceforge.net; Thu, 01 Jul 2004 15:32:40 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1088718192.4349.91.camel@lade.trondhjem.org>
+	id 1BgES9-0008OX-1i
+	for nfs@lists.sourceforge.net; Thu, 01 Jul 2004 20:11:05 -0700
+Received: from iconsrv6.india.hp.com (iconsrv6.india.hp.com [15.42.227.74])
+	by atlrel7.hp.com (Postfix) with ESMTP id 530F613B
+	for <nfs@lists.sourceforge.net>; Thu,  1 Jul 2004 23:11:02 -0400 (EDT)
+Received: from [15.42.226.24] (lx2624.india.hp.com [15.42.226.24])
+	by iconsrv6.india.hp.com (8.9.3 (PHNE_29774)/8.9.3 SMKit7.02) with ESMTP id IAA07071
+	for <nfs@lists.sourceforge.net>; Fri, 2 Jul 2004 08:41:33 +0530 (IST)
+To: nfs@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -32,66 +35,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thursday 01 July 2004 23:43, you wrote:
-> P=E5 to , 01/07/2004 klokka 17:18, skreiv Bernd Schubert:
-> > benchmarks:
-> >
-> > copy a file to the server (2.6.7): ~ 3MB/s
-> > copy a file to the server (2.4.26): ~ 9MB/s
-> >
-> > copy a file from the server (2.6.7): ~ 3MB/s
-> > copy a file from the server (2.4.26): ~ 11MB/s
->
-> Looks like the wire speeds on read/write are the same. How does the
-> above compare to ttcp transfer speeds of a 300MB file?
+Hello,
 
-Thanks, I didn't know about this tool and I think you are right, it seems t=
-hat=20
-the general network speed is much slower with 2.6.7:
+I am looking answers for the following questions.
 
-2.4.26:
-bernd@euklid bernd>nttcp -T taylor
-     Bytes  Real s   CPU s Real-MBit/s  CPU-MBit/s   Calls  Real-C/s   CPU-=
-C/s
-l  8388608    0.70    0.06     95.2480   1118.4811    2048   2906.74   3413=
-3.3
-1  8388608    0.71    0.03     94.1283   2485.7897    5793   8125.38  21457=
-9.4
+Is nfs file lock acquired by client, persistent across the nfs server
+reboot?
+I know that this feature was not there in NFSv3. Does NFSv4 supports
+this?
 
-2.6.7:
-bernd@euklid bernd>nttcp -T taylor
-     Bytes  Real s   CPU s Real-MBit/s  CPU-MBit/s   Calls  Real-C/s   CPU-=
-C/s
-l  8388608    2.67    2.64     25.1472     25.4046    2048    767.43     77=
-5.3
-1  8388608    2.67    0.03     25.1442   2237.3350    6145   2302.40  20486=
-7.5
+Following is the exercise which I did to test nfs file lock.
 
-Its already too late, so I will do the 300MB test tomorrow, but I think the=
-=20
-numbers from the default 8MB test are already convincing.
+I have two machines. One among them is the NFS server running on
+SLES9(kernel 2.6.5-7.79). The other machine mounts the NFS exported
+filesystem.
 
+I have written a application which locks the files over this nfs mount.
 
-> How much memory does this thing have? The main difference between 2.4.x
+After acquiring the lock, I am restarting the nfs service using
+"rcnfsserver restart" command.
 
-Somehow this system didn't like to have more than 2x128MB, when we added=20
-another DIMM, the system crashed pretty often, though memtest86 showed no=20
-problems.=20
+After the nfs service restart, the client fails to release the lock and
+is in a hung state. If the mount directory is listed, it shows
 
-> and 2.6.x is the fact that the 2.6.x caches a lot more data and for
-> longer (the VM is what decides when to flush the cache).
-> You might want to try twiddling around with the vm sysctl parameters to
-> see if that makes a difference.
->
+"bash: cd: /export: Stale NFS file handle"
 
-I will try to play with this over the weekend.
+After this behavior of the client, server stops responding. Only way to
+bring back the machine is reboot.
 
+Any help is really appreciated.
 
-Thanks again a lot for your help!
+Thanks & regards
+Shylendra
 
-
-Cheers,
-	Bernd
 
 
 -------------------------------------------------------
