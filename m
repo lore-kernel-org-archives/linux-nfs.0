@@ -1,27 +1,25 @@
-From: "Hyatt, Daniel J" <daniel.j.hyatt@boeing.com>
-Subject: NFS server on startup on Redhat
-Date: Thu, 9 Sep 2004 12:36:33 -0700
+From: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
+Subject: RE: sendmail "cannot fsync directory" after 2.4 -> 2.6
+Date: Thu, 9 Sep 2004 14:36:35 -0600 (MDT)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <0CF6F73B3B779D43B160B85FD0CC2D37035C546D@xch-sw-07.sw.nos.boeing.com>
+Message-ID: <Pine.LNX.4.60.0409091435560.17332@harp.ngdc.noaa.gov>
+References: <482A3FA0050D21419C269D13989C61130435E7A8@lavender-fe.eng.netapp.com>
+Reply-To: "Ara.T.Howard" <Ara.T.Howard@noaa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1C5Uj0-0001wA-6d
-	for nfs@lists.sourceforge.net; Thu, 09 Sep 2004 12:36:54 -0700
-Received: from blv-smtpout-01.boeing.com ([130.76.32.69])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.34)
-	id 1C5Uiw-0004fl-H7
-	for nfs@lists.sourceforge.net; Thu, 09 Sep 2004 12:36:53 -0700
-Received: from slb-av-01.boeing.com ([129.172.13.4])
-	by blv-smtpout-01.boeing.com (8.9.2.MG.10092003/8.8.5-M2) with ESMTP id MAA26261
-	for <nfs@lists.sourceforge.net>; Thu, 9 Sep 2004 12:36:36 -0700 (PDT)
-Received: from XCH-SWBH-02.sw.nos.boeing.com (localhost [127.0.0.1])
-	by slb-av-01.boeing.com (8.11.3/8.11.3/MBS-LDAP-01) with ESMTP id i89JaZ402120
-	for <nfs@lists.sourceforge.net>; Thu, 9 Sep 2004 12:36:35 -0700 (PDT)
-To: <nfs@lists.sourceforge.net>
+	id 1C5Vf3-0004hQ-NU
+	for nfs@lists.sourceforge.net; Thu, 09 Sep 2004 13:36:53 -0700
+Received: from harp.ngdc.noaa.gov ([140.172.187.26])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.34)
+	id 1C5Vf2-0006ai-Uk
+	for nfs@lists.sourceforge.net; Thu, 09 Sep 2004 13:36:53 -0700
+To: "Lever, Charles" <cel@netapp.com>
+In-Reply-To: <482A3FA0050D21419C269D13989C61130435E7A8@lavender-fe.eng.netapp.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
@@ -34,24 +32,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I installed Redhat 8 and am using the native NFS server.
-I have it working with one small detail, and it seems to be a Linux
-issue but cannot tell for sure if it is a race condition.
+On Thu, 9 Sep 2004, Lever, Charles wrote:
 
-When I setup a startup script to run=20
-/etc/init.d/nfs restart=20
-In the rc2.d, rc3.d, or rc6.d=20
-It wont run.
+>>> Yep. We forgot to add the stub to Linux 2.6.x. Please
+>> confirm that the
+>>> following patch fixes the problem for you.
+>>
+>> will fsync'ing a directory have any affect on the client
+>> inode cache for that dir?  eg. will it invalidate that cache?
+>
+> ara-
+>
+> looking at the patch trond posted, it appears to add a "no-op" function
+> for fsyncing NFS directories.  this means fsync against an NFS directory
+> will not complain, but otherwise does nothing.
 
-If I run it manually
-/etc/rc2.d/nfs=20
+yeah - i wasn't sure if that was for the client or server side.  i'm am
+concerned with invalidation ot the client side cache.
 
-It works perfectly.
+thanks for the clarification.
 
-But on startup it wont start the NFS server.
-
-Thanks in advance....
-Dan
+-a
+--
+===============================================================================
+| EMAIL   :: Ara [dot] T [dot] Howard [at] noaa [dot] gov
+| PHONE   :: 303.497.6469
+| A flower falls, even though we love it;
+| and a weed grows, even though we do not love it. 
+|   --Dogen
+===============================================================================
 
 
 -------------------------------------------------------
