@@ -1,26 +1,23 @@
 From: Alan Cox <alan@lxorguk.ukuu.org.uk>
-Subject: Re: Will NFSv4 be accepted?
-Date: 15 Aug 2002 02:09:47 +0100
+Subject: Re: Re: Will NFSv4 be accepted?
+Date: 15 Aug 2002 02:10:29 +0100
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <21654.7858472497$1029374038@news.gmane.org>
-References: <Pine.LNX.4.44.0208141435210.30333-100000@mooru.gurulabs.com>
+Message-ID: <36912.9300503575$1029374067@news.gmane.org>
+References: <200208142234.g7EMYvQ21700@tooting-fe.eng>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: Linus Torvalds <torvalds@transmeta.com>,
-   "Kendrick M. Smith"
-	 <kmsmith@umich.edu>,
-   "linux-kernel@vger.kernel.org"
-	 <linux-kernel@vger.kernel.org>,
-   "nfs@lists.sourceforge.net"
-	 <nfs@lists.sourceforge.net>
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>, dax@gurulabs.com,
+   Linus
+	Torvalds <torvalds@transmeta.com>, kmsmith@umich.edu,
+   linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from pc2-cwma1-5-cust12.swa.cable.ntl.com ([80.5.121.12] helo=irongate.swansea.linux.org.uk)
 	by usw-sf-list1.sourceforge.net with esmtp
 	(Cipher TLSv1:DES-CBC3-SHA:168) (Exim 3.31-VA-mm2 #1 (Debian))
-	id 17f9Aw-00061u-00
-	for <nfs@lists.sourceforge.net>; Wed, 14 Aug 2002 18:11:46 -0700
-To: Dax Kelson <dax@gurulabs.com>
-In-Reply-To: <Pine.LNX.4.44.0208141435210.30333-100000@mooru.gurulabs.com>
+	id 17f9Bi-0006BG-00
+	for <nfs@lists.sourceforge.net>; Wed, 14 Aug 2002 18:12:35 -0700
+To: Brian Pawlowski <beepy@netapp.com>
+In-Reply-To: <200208142234.g7EMYvQ21700@tooting-fe.eng>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -33,16 +30,14 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://www.geocrawler.com/redir-sf.php3?list=nfs>
 
-On Wed, 2002-08-14 at 21:49, Dax Kelson wrote:
-> The fact that any janitor with a laptop (or any client with a malicious
-> root user) can nuke all home directories from a standard NFS home
-> directory server bothers me greatly.
+On Wed, 2002-08-14 at 23:34, Brian Pawlowski wrote:
+> But ACL support over the wire is an argument for V4 - and fine grained
+> authorization coupled to strong authentication makes for a flexible 
+> security package.
 
-Thats not an NFS2 or NFS3 issue, thats an implementation matter. A
-proper NFS credential system prevents that from occurring. You also have
-to fix some bogon assumptions in our NFS client too I grant. 
+ACL works in NFSv2 and nicely in NFSv3 - again the problems Linux has
+are the client failing to respect basic NFS rules of operation.
 
-Alan (who is rapidly becoming an intermezzo freak instead)
 
 
 -------------------------------------------------------
