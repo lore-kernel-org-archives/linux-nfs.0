@@ -1,8 +1,8 @@
 From: Chuck Lever <cel@citi.umich.edu>
-Subject: [PATCH] refine RPC over TCP socket connect behavior
-Date: Tue, 12 Nov 2002 18:06:29 -0500 (EST)
+Subject: [PATCH] new timeout behavior for RPC requests on TCP sockets
+Date: Tue, 12 Nov 2002 18:15:48 -0500 (EST)
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <Pine.LNX.4.44.0211121800460.3001-100000@spacewalker.citi.umich.edu>
+Message-ID: <Pine.LNX.4.44.0211121806300.3001-100000@spacewalker.citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: Linux NFS List <nfs@lists.sourceforge.net>,
@@ -10,8 +10,8 @@ Cc: Linux NFS List <nfs@lists.sourceforge.net>,
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from spacewalker.citi.umich.edu ([141.211.133.39])
 	by usw-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 18Bk7B-00079E-00
-	for <nfs@lists.sourceforge.net>; Tue, 12 Nov 2002 15:06:37 -0800
+	id 18BkGC-0001Tg-00
+	for <nfs@lists.sourceforge.net>; Tue, 12 Nov 2002 15:15:57 -0800
 To: Linus Torvalds <torvalds@transmeta.com>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
@@ -25,151 +25,152 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-further refine TCP socket connect behavior in the RPC client.  this patch 
-implements the following behavior changes:
+make RPC timeout behavior over TCP sockets behave more like reference
+client implementations.  reference behavior is to transmit the same
+request three times at 60 second intervals; if there is no response, close
+and reestablish the socket connection.  we modify the Linux RPC client as
+follows:
 
-+  the TCP connect timeout is now the same as the TCP retransmit timeout
-   value, giving sysadmins a means to adjust the connect timeout for
-   links with long RTTs.
++  after a minor retransmit timeout, use the same timeout value when
+   retrying on a TCP socket rather than doubling the value
++  after a major retransmit timeout, close the socket and attempt
+   to reestablish a fresh TCP connection
 
-+  if multiple RPC requests notice the TCP transport socket is
-   disconnected, cause them all to wait at least RPC_REESTABLISH_TIMEOUT
-   seconds before retrying to connect.  before, only one would wait, and
-   the rest would retry immediately.
-
-+  if an unrecognized error occurs when trying to establish a connection,
-   just exit without retrying.
+note that today mount uses a 6 second timeout with 5 retries for NFS over
+TCP by default; proper default behavior is 2 retries each with 60 second
+timeouts.  a separate patch for mount is pending.
 
 against 2.5.47.
 
 
-diff -ruN 05-odirect2/include/linux/sunrpc/xprt.h 10-connect3/include/linux/sunrpc/xprt.h
---- 05-odirect2/include/linux/sunrpc/xprt.h	Sun Nov 10 22:28:27 2002
-+++ 10-connect3/include/linux/sunrpc/xprt.h	Tue Nov 12 16:18:57 2002
-@@ -45,13 +45,6 @@
- #define RPC_MAX_TCP_TIMEOUT	(600*HZ)
+diff -ruN 10-connect3/include/linux/sunrpc/xprt.h 11-timeout/include/linux/sunrpc/xprt.h
+--- 10-connect3/include/linux/sunrpc/xprt.h	Tue Nov 12 16:18:57 2002
++++ 11-timeout/include/linux/sunrpc/xprt.h	Tue Nov 12 17:06:16 2002
+@@ -182,9 +182,10 @@
+ void			xprt_reserve(struct rpc_task *);
+ void			xprt_transmit(struct rpc_task *);
+ void			xprt_receive(struct rpc_task *);
+-int			xprt_adjust_timeout(struct rpc_timeout *);
++void			xprt_adjust_timeout(struct rpc_timeout *);
+ void			xprt_release(struct rpc_task *);
+ void			xprt_connect(struct rpc_task *);
++void			xprt_disconnect(struct rpc_xprt *);
+ int			xprt_clear_backlog(struct rpc_xprt *);
+ void			xprt_sock_setbufsize(struct rpc_xprt *);
  
- /*
-- * Wait duration for an RPC TCP connection to be established.  Solaris
-- * NFS over TCP uses 60 seconds, for example, which is in line with how
-- * long a server takes to reboot.
-- */
--#define RPC_CONNECT_TIMEOUT	(60*HZ)
--
--/*
-  * Delay an arbitrary number of seconds before attempting to reconnect
-  * after an error.
+diff -ruN 10-connect3/net/sunrpc/clnt.c 11-timeout/net/sunrpc/clnt.c
+--- 10-connect3/net/sunrpc/clnt.c	Tue Nov 12 16:19:25 2002
++++ 11-timeout/net/sunrpc/clnt.c	Tue Nov 12 17:13:24 2002
+@@ -667,6 +667,9 @@
+ 		if (clnt->cl_autobind)
+ 			clnt->cl_port = 0;
+ 		task->tk_action = call_bind;
++		/* A disconnect can happen after only part of an RPC was
++		 * sent on a TCP socket.  send all of this request again */
++		req->rq_bytes_sent = 0;
+ 		break;
+ 	case -EAGAIN:
+ 		task->tk_action = call_transmit;
+@@ -688,20 +691,34 @@
+  * 6a.	Handle RPC timeout
+  * 	We do not release the request slot, so we keep using the
+  *	same XID for all retransmits.
++ *	For stream transports, shut down the transport socket when
++ *	a request sees a major time out.  When any request on this
++ *	connection is retried, the FSM notices the socket has been
++ *	shut down, and attempts to reconnect.
   */
-diff -ruN 05-odirect2/net/sunrpc/clnt.c 10-connect3/net/sunrpc/clnt.c
---- 05-odirect2/net/sunrpc/clnt.c	Sun Nov 10 22:28:10 2002
-+++ 10-connect3/net/sunrpc/clnt.c	Tue Nov 12 16:19:25 2002
-@@ -566,7 +566,7 @@
+ static void
+ call_timeout(struct rpc_task *task)
+ {
+ 	struct rpc_clnt	*clnt = task->tk_client;
+-	struct rpc_timeout *to = &task->tk_rqstp->rq_timeout;
++	struct rpc_xprt *xprt = clnt->cl_xprt;
++	struct rpc_rqst *req = task->tk_rqstp;
++	struct rpc_timeout *to = &req->rq_timeout;
  
- 	if (!clnt->cl_port) {
- 		task->tk_action = call_connect;
--		task->tk_timeout = RPC_CONNECT_TIMEOUT;
-+		task->tk_timeout = xprt->timeout.to_initval;
- 		rpc_getport(task, clnt);
+-	if (xprt_adjust_timeout(to)) {
+-		dprintk("RPC: %4d call_timeout (minor)\n", task->tk_pid);
++	if (!xprt->stream)
++		xprt_adjust_timeout(to);
++
++	if (to->to_retries--) {
++		dprintk("RPC: %4d call_timeout (minor, retries=%d)\n",
++				task->tk_pid, to->to_retries);
+ 		goto retry;
  	}
- }
-diff -ruN 05-odirect2/net/sunrpc/xprt.c 10-connect3/net/sunrpc/xprt.c
---- 05-odirect2/net/sunrpc/xprt.c	Sun Nov 10 22:28:26 2002
-+++ 10-connect3/net/sunrpc/xprt.c	Tue Nov 12 16:31:08 2002
-@@ -461,7 +461,7 @@
- 		if (inet->state != TCP_ESTABLISHED) {
- 			dprintk("RPC: %4d  waiting for connection\n",
- 					task->tk_pid);
--			task->tk_timeout = RPC_CONNECT_TIMEOUT;
-+			task->tk_timeout = xprt->timeout.to_initval;
- 			/* if the socket is already closing, delay briefly */
- 			if ((1 << inet->state) & ~(TCPF_SYN_SENT|TCPF_SYN_RECV))
- 				task->tk_timeout = RPC_REESTABLISH_TIMEOUT;
-@@ -481,7 +481,7 @@
- 		if (inet->state != TCP_ESTABLISHED) {
- 			xprt_close(xprt);
- 			task->tk_status = -EAGAIN;
--			goto out_write;
-+			break;
- 		}
+-	to->to_retries = clnt->cl_timeout.to_retries;
++	to->to_retries = xprt->timeout.to_retries;
  
- 		/* Otherwise, the connection is already established. */
-@@ -491,24 +491,14 @@
- 	case -EPIPE:
- 		xprt_close(xprt);
- 		task->tk_status = -ENOTCONN;
--		goto out_write;
-+		break;
- 
- 	default:
--		/* Report myriad other possible returns.  If this file
--		 * system is soft mounted, just error out, like Solaris.  */
-+		/* Report myriad other possible returns, and exit. */
- 		xprt_close(xprt);
--		if (task->tk_client->cl_softrtry) {
--			printk(KERN_WARNING
-+		printk(KERN_WARNING
- 			"RPC: error %d connecting to server %s, exiting\n",
- 					-status, task->tk_client->cl_server);
--			task->tk_status = -EIO;
--		} else {
--			printk(KERN_WARNING
--			"RPC: error %d connecting to server %s\n",
--					-status, task->tk_client->cl_server);
--			rpc_delay(task, RPC_REESTABLISH_TIMEOUT);
--			task->tk_status = status;
--		}
- 		break;
+ 	dprintk("RPC: %4d call_timeout (major)\n", task->tk_pid);
++
++	if (xprt->stream)
++		xprt_disconnect(xprt);
++
+ 	if (clnt->cl_softrtry) {
+ 		if (clnt->cl_chatty && !task->tk_exit)
+ 			printk(KERN_NOTICE "%s: server %s not responding, timed out\n",
+@@ -710,15 +727,18 @@
+ 		return;
  	}
  
-@@ -528,26 +518,37 @@
- 	case 0:
- 		dprintk("RPC: %4d xprt_conn_status: connection established\n",
- 				task->tk_pid);
--		goto out;
-+		xprt_release_write(xprt, task);
-+		return;
- 	case -ETIMEDOUT:
- 		dprintk("RPC: %4d xprt_conn_status: timed out\n",
- 				task->tk_pid);
--		/* prevent TCP from continuing to retry SYNs */
--		xprt_close(xprt);
-+		task->tk_status = -EAGAIN;
-+		if (task->tk_client->cl_softrtry)
-+			task->tk_status = -EIO;
-+		break;
-+	case -ENOTCONN:
-+		dprintk("RPC: %4d xprt_conn_status: no network path\n",
-+				task->tk_pid);
-+		if (!task->tk_client->cl_softrtry) {
-+			rpc_delay(task, RPC_REESTABLISH_TIMEOUT);
-+			task->tk_status = -EAGAIN;
-+		} else
-+			task->tk_status = -EIO;
- 		break;
- 	default:
--		printk(KERN_ERR "RPC: error %d connecting to server %s\n",
-+		printk(KERN_WARNING
-+			"RPC: error %d connecting to server %s, exiting\n",
- 				-task->tk_status, task->tk_client->cl_server);
--		xprt_close(xprt);
--		rpc_delay(task, RPC_REESTABLISH_TIMEOUT);
- 		break;
+-	if (clnt->cl_chatty && !(task->tk_flags & RPC_CALL_MAJORSEEN) && rpc_ntimeo(&clnt->cl_rtt) > 7) {
+-		task->tk_flags |= RPC_CALL_MAJORSEEN;
+-		printk(KERN_NOTICE "%s: server %s not responding, still trying\n",
+-			clnt->cl_protname, clnt->cl_server);
++	if (clnt->cl_chatty && !(task->tk_flags & RPC_CALL_MAJORSEEN)) {
++		if (xprt->stream || (rpc_ntimeo(&clnt->cl_rtt) > 7)) {
++			task->tk_flags |= RPC_CALL_MAJORSEEN;
++			printk(KERN_NOTICE "%s: server %s not responding, still trying\n",
++				clnt->cl_protname, clnt->cl_server);
++		}
  	}
--	/* if soft mounted, cause this RPC to fail */
--	if (task->tk_client->cl_softrtry)
--		task->tk_status = -EIO;
-+	/* prevent TCP from continuing to retry SYNs */
-+	xprt_close(xprt);
+ 	if (clnt->cl_autobind)
+ 		clnt->cl_port = 0;
  
-- out:
--	xprt_release_write(xprt, task);
-+	/* if we're retrying, hold the write lock to prevent other
-+	 * requests from retrying the connect */
-+	if (task->tk_status != -EAGAIN)
-+		xprt_release_write(xprt, task);
+ retry:
++	req->rq_bytes_sent = 0;		/* send all of this request again */
+ 	clnt->cl_stats->rpcretrans++;
+ 	task->tk_action = call_bind;
+ 	task->tk_status = 0;
+diff -ruN 10-connect3/net/sunrpc/xprt.c 11-timeout/net/sunrpc/xprt.c
+--- 10-connect3/net/sunrpc/xprt.c	Tue Nov 12 16:31:08 2002
++++ 11-timeout/net/sunrpc/xprt.c	Tue Nov 12 17:06:16 2002
+@@ -85,7 +85,6 @@
+ static void	xprt_request_init(struct rpc_task *, struct rpc_xprt *);
+ static void	do_xprt_transmit(struct rpc_task *);
+ static inline void	do_xprt_reserve(struct rpc_task *);
+-static void	xprt_disconnect(struct rpc_xprt *);
+ static void	xprt_conn_status(struct rpc_task *task);
+ static struct rpc_xprt * xprt_setup(int proto, struct sockaddr_in *ap,
+ 						struct rpc_timeout *to);
+@@ -336,7 +335,7 @@
+ /*
+  * Adjust timeout values etc for next retransmit
+  */
+-int
++void
+ xprt_adjust_timeout(struct rpc_timeout *to)
+ {
+ 	if (to->to_retries > 0) {
+@@ -362,7 +361,7 @@
+ 	}
+ 	pprintk("RPC: %lu %s\n", jiffies,
+ 			to->to_retries? "retrans" : "timeout");
+-	return to->to_retries-- > 0;
++	return;
  }
  
  /*
+@@ -394,7 +393,7 @@
+ /*
+  * Mark a transport as disconnected
+  */
+-static void
++void
+ xprt_disconnect(struct rpc_xprt *xprt)
+ {
+ 	dprintk("RPC:      disconnected transport %p\n", xprt);
 
 
 
