@@ -1,28 +1,22 @@
-From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
-Subject: Re: [PATCH] xprt sharing (was Re: xprt_bindresvport)
-Date: Thu, 09 Dec 2004 14:29:42 -0800
-Message-ID: <1102631382.3784.20.camel@tesuji.nac.uci.edu>
-References: <482A3FA0050D21419C269D13989C61130435EC6F@lavender-fe.eng.netapp.com>
-	 <41B74551.5040908@sun.com>  <20041209113107.GE15055@suse.de>
-	 <1102620880.3784.3.camel@tesuji.nac.uci.edu>
-	 <1102628037.10668.86.camel@lade.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-YTC/DC0lFcfxCbEMTKNI"
-Cc: strombrg@dcs.nac.uci.edu, Olaf Kirch <okir@suse.de>,
-        Mike Waychison <Michael.Waychison@sun.com>,
-        Charles Lever <Charles.Lever@netapp.com>, nfs@lists.sourceforge.net
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH 1 of 6] svcrpc: add a per-flavor set_client method
+Date: Thu, 09 Dec 2004 17:28:37 -0500
+Message-ID: <1102628809.16c39937.1@fieldses.org>
+References: <1102628809.16c39937.0@fieldses.org>
+Cc: nfs@lists.sourceforge.net, Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1CcWnN-0005KQ-L6
-	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 14:29:57 -0800
-Received: from dcs.nac.uci.edu ([128.200.34.32] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1CcWlq-0005GH-R4
+	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 14:28:22 -0800
+Received: from dh173.citi.umich.edu
+	([141.211.133.173] helo=puzzle.fieldses.org ident=Debian-exim)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:RC4-SHA:128)
 	(Exim 4.41)
-	id 1CcWnK-0006dH-M8
-	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 14:29:57 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1102628037.10668.86.camel@lade.trondhjem.org>
+	id 1CcWlh-0006Pz-6u
+	for nfs@lists.sourceforge.net; Thu, 09 Dec 2004 14:28:22 -0800
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <1102628809.16c39937.0@fieldses.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,53 +31,115 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
---=-YTC/DC0lFcfxCbEMTKNI
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+Add a set_client method to the server rpc auth_ops struct, used to set the
+client (for the purposes of nfsd export authorization) using flavor-specific
+information.
 
-On Thu, 2004-12-09 at 16:33 -0500, Trond Myklebust wrote:
-> to den 09.12.2004 Klokka 11:34 (-0800) skreiv Dan Stromberg:
->=20
-> > It'd probably be worthwhile to have options to make NFS (and my
-> > printsystem) generate any port (not just reserved ones), and accept onl=
-y
-> > reserved ports - but the default probably should be to accept any port,
-> > and send only reserved ports - not because reserved ports are effective
-> > at all, but because it'll avoid never ending questions about why NFS
-> > isn't working.
->=20
-> Sure. The questions will no longer read "why isn't NFS working". They'll
-> read "why can any Tom, Dick and Harry suddenly read my private email
-> directly from the NFS server?". 8-)
->=20
-> The standard AUTH_SYS/AUTH_UNIX authentication scheme only checks the
-> source IP address, and trusts the client 100% when it comes to supplying
-> the correct uid/gid/.... (see RFC1831). By placing the additional
-> requirement that the source must be a privileged port, one is at least
-> able to prevent ordinary users on an authorized client from being able
-> to spoof NFS requests.
->=20
-> Cheers,
->   Trond
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
 
-I bow before your superior geekiness.  :)
+ linux-2.6.10-rc3-bfields/include/linux/sunrpc/svcauth.h    |    2 +
+ linux-2.6.10-rc3-bfields/net/sunrpc/auth_gss/svcauth_gss.c |   14 +++++++++++++
+ linux-2.6.10-rc3-bfields/net/sunrpc/sunrpc_syms.c          |    1 
+ linux-2.6.10-rc3-bfields/net/sunrpc/svcauth.c              |    5 ++++
+ linux-2.6.10-rc3-bfields/net/sunrpc/svcauth_unix.c         |    2 +
+ 5 files changed, 24 insertions(+)
 
-
-
---=-YTC/DC0lFcfxCbEMTKNI
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.6 (GNU/Linux)
-
-iD8DBQBBuNHWo0feVm00f/8RAoHFAJ9h90/QTIYI3nUFU78b3nBNi01NiwCfRSbj
-EXfy2AlmTVkmuzP8gJY4NM8=
-=NZoT
------END PGP SIGNATURE-----
-
---=-YTC/DC0lFcfxCbEMTKNI--
-
+diff -puN include/linux/sunrpc/svcauth.h~svcrpc_per_flavor_set_client_method include/linux/sunrpc/svcauth.h
+--- linux-2.6.10-rc3/include/linux/sunrpc/svcauth.h~svcrpc_per_flavor_set_client_method	2004-12-09 16:37:51.000000000 -0500
++++ linux-2.6.10-rc3-bfields/include/linux/sunrpc/svcauth.h	2004-12-09 16:37:51.000000000 -0500
+@@ -92,6 +92,7 @@ struct auth_ops {
+ 	int	(*accept)(struct svc_rqst *rq, u32 *authp);
+ 	int	(*release)(struct svc_rqst *rq);
+ 	void	(*domain_release)(struct auth_domain *);
++	int	(*set_client)(struct svc_rqst *rq);
+ };
+ 
+ #define	SVC_GARBAGE	1
+@@ -107,6 +108,7 @@ struct auth_ops {
+ 
+ extern int	svc_authenticate(struct svc_rqst *rqstp, u32 *authp);
+ extern int	svc_authorise(struct svc_rqst *rqstp);
++extern int	svc_set_client(struct svc_rqst *rqstp);
+ extern int	svc_auth_register(rpc_authflavor_t flavor, struct auth_ops *aops);
+ extern void	svc_auth_unregister(rpc_authflavor_t flavor);
+ 
+diff -puN net/sunrpc/auth_gss/svcauth_gss.c~svcrpc_per_flavor_set_client_method net/sunrpc/auth_gss/svcauth_gss.c
+--- linux-2.6.10-rc3/net/sunrpc/auth_gss/svcauth_gss.c~svcrpc_per_flavor_set_client_method	2004-12-09 16:37:51.000000000 -0500
++++ linux-2.6.10-rc3-bfields/net/sunrpc/auth_gss/svcauth_gss.c	2004-12-09 16:37:51.000000000 -0500
+@@ -730,6 +730,19 @@ struct gss_svc_data {
+ 	struct rsc			*rsci;
+ };
+ 
++static int
++svcauth_gss_set_client(struct svc_rqst *rqstp)
++{
++	struct gss_svc_data *svcdata = rqstp->rq_auth_data;
++	struct rsc *rsci = svcdata->rsci;
++	struct rpc_gss_wire_cred *gc = &svcdata->clcred;
++
++	rqstp->rq_client = find_gss_auth_domain(rsci->mechctx, gc->gc_svc);
++	if (rqstp->rq_client == NULL)
++		return SVC_DENIED;
++	return SVC_OK;
++}
++
+ /*
+  * Accept an rpcsec packet.
+  * If context establishment, punt to user space
+@@ -1052,6 +1065,7 @@ struct auth_ops svcauthops_gss = {
+ 	.accept		= svcauth_gss_accept,
+ 	.release	= svcauth_gss_release,
+ 	.domain_release = svcauth_gss_domain_release,
++	.set_client	= svcauth_gss_set_client,
+ };
+ 
+ int
+diff -puN net/sunrpc/sunrpc_syms.c~svcrpc_per_flavor_set_client_method net/sunrpc/sunrpc_syms.c
+--- linux-2.6.10-rc3/net/sunrpc/sunrpc_syms.c~svcrpc_per_flavor_set_client_method	2004-12-09 16:37:51.000000000 -0500
++++ linux-2.6.10-rc3-bfields/net/sunrpc/sunrpc_syms.c	2004-12-09 16:37:51.000000000 -0500
+@@ -90,6 +90,7 @@ EXPORT_SYMBOL(svc_reserve);
+ EXPORT_SYMBOL(svc_auth_register);
+ EXPORT_SYMBOL(auth_domain_lookup);
+ EXPORT_SYMBOL(svc_authenticate);
++EXPORT_SYMBOL(svc_set_client);
+ 
+ /* RPC statistics */
+ #ifdef CONFIG_PROC_FS
+diff -puN net/sunrpc/svcauth.c~svcrpc_per_flavor_set_client_method net/sunrpc/svcauth.c
+--- linux-2.6.10-rc3/net/sunrpc/svcauth.c~svcrpc_per_flavor_set_client_method	2004-12-09 16:37:51.000000000 -0500
++++ linux-2.6.10-rc3-bfields/net/sunrpc/svcauth.c	2004-12-09 16:37:51.000000000 -0500
+@@ -59,6 +59,11 @@ svc_authenticate(struct svc_rqst *rqstp,
+ 	return aops->accept(rqstp, authp);
+ }
+ 
++int svc_set_client(struct svc_rqst *rqstp)
++{
++	return rqstp->rq_authop->set_client(rqstp);
++}
++
+ /* A request, which was authenticated, has now executed.
+  * Time to finalise the the credentials and verifier
+  * and release and resources
+diff -puN net/sunrpc/svcauth_unix.c~svcrpc_per_flavor_set_client_method net/sunrpc/svcauth_unix.c
+--- linux-2.6.10-rc3/net/sunrpc/svcauth_unix.c~svcrpc_per_flavor_set_client_method	2004-12-09 16:37:51.000000000 -0500
++++ linux-2.6.10-rc3-bfields/net/sunrpc/svcauth_unix.c	2004-12-09 16:37:51.000000000 -0500
+@@ -430,6 +430,7 @@ struct auth_ops svcauth_null = {
+ 	.flavour	= RPC_AUTH_NULL,
+ 	.accept 	= svcauth_null_accept,
+ 	.release	= svcauth_null_release,
++	.set_client	= svcauth_unix_set_client,
+ };
+ 
+ 
+@@ -511,5 +512,6 @@ struct auth_ops svcauth_unix = {
+ 	.accept 	= svcauth_unix_accept,
+ 	.release	= svcauth_unix_release,
+ 	.domain_release	= svcauth_unix_domain_release,
++	.set_client	= svcauth_unix_set_client,
+ };
+ 
+_
 
 
 -------------------------------------------------------
