@@ -1,18 +1,16 @@
-From: s o f i a <sofiavalera@yahoo.com>
-Subject: RE: Linux client network performance
-Date: Thu, 26 Jun 2003 09:50:26 -0700 (PDT)
+From: raysrv05@ray.fi
+Subject: Report to Sender
+Date: Thu, 26 Jun 2003 23:40:19 +0300
 Sender: nfs-admin@lists.sourceforge.net
-Message-ID: <20030626165026.77910.qmail@web41804.mail.yahoo.com>
-References: <482A3FA0050D21419C269D13989C6113127E5C@lavender-fe.eng.netapp.com>
+Message-ID: <OFFAAA81B3.0F118971-ONC2256D51.00718E13@ray.fi>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from web41804.mail.yahoo.com ([66.218.93.138])
-	by sc8-sf-list1.sourceforge.net with smtp (Exim 3.31-VA-mm2 #1 (Debian))
-	id 19VZxD-0006Uf-00
-	for <nfs@lists.sourceforge.net>; Thu, 26 Jun 2003 09:50:35 -0700
-To: nfs@lists.sourceforge.net
-In-Reply-To: <482A3FA0050D21419C269D13989C6113127E5C@lavender-fe.eng.netapp.com>
+Received: from ws-002.ray.fi ([193.64.14.2] helo=raysrv11.ray.fi)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 3.31-VA-mm2 #1 (Debian))
+	id 19VdVu-000135-00
+	for <nfs@lists.sourceforge.net>; Thu, 26 Jun 2003 13:38:38 -0700
+To: <nfs@lists.sourceforge.net>
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Post: <mailto:nfs@lists.sourceforge.net>
@@ -25,53 +23,20 @@ List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Charles thank you so much for
-your pointers.  I have downloaded
-the Netapp paper, and will review
-it....
+Incident Information:-
 
-> that's not a very clear description of the problem.
-> it sounds like your client is retransmitting NFS
-> write operations, but there isn't enough in your
-> description to determine why that might occur.
+Database:   d:/domino/data/mail2.box
+Originator: <nfs@list.sourceforge.net>
+Recipients: <vpomares@altekconsulting.com>, jd@ts.ray.fi
+Subject:    Re: Movie
+Date/Time:  26.06.2003 23:40:06
 
-yes you are right, and apologize for the
-vague characterization ... the issue is actually:
+The file attachment your_details.zip (details.pif) you sent to the
+recipients listed above was infected with the W32/Sobig.e@MM virus and was
+deleted.
 
-I have an application that performs an "NFS-copy"
-on an NFS Linux client.  This Linux client is
-mounted to *source* volume in a Netapp Filer; 
-copying files to an NFS mounted volume on a
-*destination* host: SUN Solaris 8, VERITAS Foundation
-Suite. both have GigE network adapters.
-The application's data movement is NFS over UDP.
 
-The symptom I saw was that, at about 30-50%
-completion of the operation, we do see the client
-retransmitting NFS write operations.  In fact,
-in running tcpdump on the linux client and snoop
-on the Solaris host, I saw the following sequence:
 
-- NFS write attempt from client
-- is received in destination
-- NFS 2nd write attempt from client
-- is received in destination
-- destination sends back a reply
-- NFS transaction completed.
-... note: the host replies to the FIRST
-NFS write_attempt, not the SECOND... therefore
-based on timestamps.
-
-any thoughts or comments will be most welcome.
-
-thank you again,
-
- - s o f i a
-
-__________________________________
-Do you Yahoo!?
-SBC Yahoo! DSL - Now only $29.95 per month!
-http://sbc.yahoo.com
 
 
 -------------------------------------------------------
