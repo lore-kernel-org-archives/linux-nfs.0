@@ -1,27 +1,18 @@
-From: Chip Salzenberg <chip@pobox.com>
-Subject: Any other Debian developers on this list?
-Date: Wed, 6 Apr 2005 20:55:56 -0400
-Message-ID: <20050407005556.GU12946@perlsupport.com>
+From: mehta kiran <kiranmehta1981@yahoo.com>
+Subject: busy umounts (due to io ?)
+Date: Thu, 7 Apr 2005 02:10:35 -0700 (PDT)
+Message-ID: <20050407091035.86294.qmail@web51608.mail.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DJLJT-0000RQ-5f
-	for nfs@lists.sourceforge.net; Wed, 06 Apr 2005 17:56:03 -0700
-Received: from perlsupport.com
-	([66.180.163.120] helo=mail.perlsupport.com ident=7aa0a1386b81163f6cfaa30d78379e20)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1DJLJS-0005Zx-8V
-	for nfs@lists.sourceforge.net; Wed, 06 Apr 2005 17:56:02 -0700
-Received: from pcp03344017pcs.malvrn01.pa.comcast.net ([68.54.140.48] helo=tytlal)
-	by mail.perlsupport.com (Exim 4) with esmtpsa (TLS-1.0:RSA_AES_256_CBC_SHA:32)
-	id 1DJLJO-0001Ym-S0
-	for nfs@lists.sourceforge.net; Wed, 06 Apr 2005 20:55:59 -0400
-Received: from chip by tytlal with local (Exim 4.50)
-	id 1DJLJM-0003RF-He
-	for nfs@lists.sourceforge.net; Wed, 06 Apr 2005 20:55:56 -0400
+	id 1DJT2A-0002rX-1K
+	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 02:10:42 -0700
+Received: from web51608.mail.yahoo.com ([206.190.38.213])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
+	id 1DJT29-0003y4-Bi
+	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 02:10:41 -0700
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -36,11 +27,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-If any other Debian developers are on this NFS list, please mail me.
--- 
-Chip Salzenberg            - a.k.a. -            <chip@pobox.com>
-         Open Source is not an excuse to write fun code
-            then leave the actual work to others.
+Hi , 
+       I have RHEL4 GA installed on my machine.
+       filesystems do net get umounted even
+       after unexporting all exported filesystems.
+       This happens only if client was doing io to
+       server.
+
+       #cat /proc/net/rpc/nfsd
+
+        rc 6 5158 3068
+        fh 174 0 0 0 0
+        io 3423168 148232768
+        th 16 4 6.168 2.532 5.040 1.934 3.607 0.171   
+          0.028 0.071 0.005 0.006
+        ra 32 0 0 0 0 0 0 0 0 0 0 283
+        net 8236 8194 30 30
+        rpc 8232 0 0 0 0
+        proc2 18 31 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
+        proc3 22 30 1082 0 741 413 0 283 4567 288 240
+          0 0 42 26 1 0 0 181 10 2 0 295
+        proc4 2 0 0
+
+        After huge number of retries (30-40) , umount
+        succeeds.
+        From above output , nfs server does not
+        seemsto be much busy.
+        Umount is successful immediately after
+        killing nfsd
+        Using iostat command , i ca nsee that io is
+        going on disk and hence is busy but why does
+        it take  such a long time to complete the io,
+        though nfs servers are not busy.
+        Systems on which nfs is running are not at
+        all heavily loaded.
+        This problem is only on RedHat(GA,update1)
+        and not on  suSE 9
+
+thanks,
+ --kiran
+
+
+		
+__________________________________ 
+Yahoo! Messenger 
+Show us what our next emoticon should look like. Join the fun. 
+http://www.advision.webevents.yahoo.com/emoticontest
 
 
 -------------------------------------------------------
