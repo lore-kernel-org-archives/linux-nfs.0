@@ -1,21 +1,23 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: NFS experince story, questions.
-Date: Thu, 7 Apr 2005 10:34:22 -0700
-Message-ID: <482A3FA0050D21419C269D13989C611308539985@lavender-fe.eng.netapp.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS experince story, questions.
+Date: Thu, 07 Apr 2005 13:39:40 -0400
+Message-ID: <1112895580.10366.71.camel@lade.trondhjem.org>
+References: <1112894081.6230.9.camel@vasiliy.coinfotech.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DJaw8-0008D5-Rb
-	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 10:37:00 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DJaw7-0005eZ-7i
-	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 10:37:00 -0700
-To: <vasiliy@lohankin.com>
+	id 1DJayx-0008Gk-Ly
+	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 10:39:55 -0700
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1DJayx-0005vg-4l
+	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 10:39:55 -0700
+To: vasiliy@lohankin.com
+In-Reply-To: <1112894081.6230.9.camel@vasiliy.coinfotech.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,30 +31,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-hi vasiliy-
+to den 07.04.2005 Klokka 11:14 (-0600) skreiv Vasiliy Boulytchev:
+> 	A new task has come up, and we are looking back at NFS, since samba
+> really does not allow us to have proper user arrangements.  I really am
+> afraid of having stale mounts again.  Is this a common newbie problem,
+> or is this the nature of NFS?  When either of the nodes becomes
+> unstable, has to reboot, (or a failover occurs), does this mean the
+> other node will have a stale mount point and will need a reboot?
 
-> 	A new task has come up, and we are looking back at NFS,=20
-> since samba really does not allow us to have proper user=20
-> arrangements.  I really am afraid of having stale mounts=20
-> again.
+A server reboot should not require a client reboot, given a properly
+configured system, however you do need to understand some of the
+limitations of the NFS model.
 
-i'm not sure what you mean by "stale mount".  can you describe the
-problem in detail?
+NFS relies heavily on the use of "filehandles" in order to ensure that
+we can retain posix behaviour in cases where a rename() of the file or
+some element of the path occurs on the server.
+In order to have the required properties, filehandles tend to have to
+encode information such as device id (known as the "fsid" in NFS-lingo)
+and file inode number. If one or more of those changes, then an ESTALE
+is likely to occur.
 
-> Is this a common newbie problem, or is this the=20
-> nature of NFS?
+One common cause of ESTALE on reboot is that the device id changes after
+reboot (fibre channel being a notable culprit). In order to fix the
+problem of the filehandles going stale, the Linux kernel server has an
+export option "fsid" which allows you to fix the device id to some
+arbitrary value. (See the "exports" manpage for more info)
 
-take a look at the Linux NFS FAQ to see if there are useful answers for
-you:
+The other common problem is that the filesystem may not support any
+equivalent of the inode number in permanent storage (MS filesystems tend
+to have a problem here). We currently have no good solution for that
+problem on Linux (partly because the NFSv2/v3 protocols did not really
+allow for it at all). We are certainly planning on hardening the client,
+and allowing for some recovery, but the whole problem can be avoided, by
+choosing a filesystem with good NFS support (ext2/ext3, XFS, reiserfs3
+are among the list of good choices). The NFS FAQ has a more complete
+section on this issue.
 
-  http://nfs.sourceforge.net/
+Cheers,
+  Trond
+-- 
+Trond Myklebust <trond.myklebust@fys.uio.no>
 
-> 	Please assure me that this is not the case, and I can=20
-> safely go on experimenting.  What is the latest material I=20
-> should get?  Any good O'reilly books come to mind?
-
-the FAQ (mentioned above) has links to some generic NFS references you
-may find helpful.
 
 
 -------------------------------------------------------
