@@ -1,18 +1,18 @@
 From: mehta kiran <kiranmehta1981@yahoo.com>
-Subject: busy umounts (due to io ?)
-Date: Thu, 7 Apr 2005 02:10:35 -0700 (PDT)
-Message-ID: <20050407091035.86294.qmail@web51608.mail.yahoo.com>
+Subject: busy mounts (due to io ?)
+Date: Thu, 7 Apr 2005 02:10:58 -0700 (PDT)
+Message-ID: <20050407091058.53015.qmail@web51610.mail.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DJT2A-0002rX-1K
-	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 02:10:42 -0700
-Received: from web51608.mail.yahoo.com ([206.190.38.213])
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
-	id 1DJT29-0003y4-Bi
-	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 02:10:41 -0700
+	id 1DJT2W-0002sZ-PH
+	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 02:11:04 -0700
+Received: from web51610.mail.yahoo.com ([206.190.38.215])
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
+	id 1DJT2W-0004lz-6x
+	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 02:11:04 -0700
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -70,9 +70,10 @@ thanks,
 
 		
 __________________________________ 
-Yahoo! Messenger 
-Show us what our next emoticon should look like. Join the fun. 
-http://www.advision.webevents.yahoo.com/emoticontest
+Do you Yahoo!? 
+Yahoo! Personals - Better first dates. More second dates. 
+http://personals.yahoo.com
+
 
 
 -------------------------------------------------------
