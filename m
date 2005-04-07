@@ -1,23 +1,21 @@
-From: Vasiliy Boulytchev <vasiliy@lohankin.com>
-Subject: NFS experince story, questions.
-Date: Thu, 07 Apr 2005 11:14:41 -0600
-Message-ID: <1112894081.6230.9.camel@vasiliy.coinfotech.com>
-Reply-To: vasiliy@lohankin.com
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: RE: NFS experince story, questions.
+Date: Thu, 7 Apr 2005 10:34:22 -0700
+Message-ID: <482A3FA0050D21419C269D13989C611308539985@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DJaad-0007Dg-Lh
-	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 10:14:47 -0700
-Received: from mail.mailsvc.com ([63.247.192.101] helo=mailsvc.com)
+	id 1DJaw8-0008D5-Rb
+	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 10:37:00 -0700
+Received: from mx2.netapp.com ([216.240.18.37])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DJaad-00037e-1x
-	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 10:14:47 -0700
-Received: from [63.247.192.30] (HELO [10.0.0.137])
-  by mailsvc.com (CommuniGate Pro SMTP 4.2)
-  with ESMTP id 184207671 for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 11:14:41 -0600
-To: nfs@lists.sourceforge.net
+	id 1DJaw7-0005eZ-7i
+	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 10:37:00 -0700
+To: <vasiliy@lohankin.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,37 +29,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+hi vasiliy-
 
-Ladies and Gents,
-	In my previous experience, I have never had good luck with NFS.  We
-used NFS to balance mail server queues (for spam and virus filtering)
-between scanning nodes, and we ran into tons of problems, probably due
-to lack of complete understanding and proper configuration on my part.
-The performance was great, however, we kept getting stale mounts, and to
-get things back, both sides needed to be rebooted, I could not just
-unmount.  Maybe we were not mounting properly, but who knows.  Anyways,
-as an alternative we looked into samba, and that solved all our issues.
-We still run samba as the networking protocol, and are happy with it.
+> 	A new task has come up, and we are looking back at NFS,=20
+> since samba really does not allow us to have proper user=20
+> arrangements.  I really am afraid of having stale mounts=20
+> again.
 
-	A new task has come up, and we are looking back at NFS, since samba
-really does not allow us to have proper user arrangements.  I really am
-afraid of having stale mounts again.  Is this a common newbie problem,
-or is this the nature of NFS?  When either of the nodes becomes
-unstable, has to reboot, (or a failover occurs), does this mean the
-other node will have a stale mount point and will need a reboot?
+i'm not sure what you mean by "stale mount".  can you describe the
+problem in detail?
 
-	Please assure me that this is not the case, and I can safely go on
-experimenting.  What is the latest material I should get?  Any good
-O'reilly books come to mind?
+> Is this a common newbie problem, or is this the=20
+> nature of NFS?
 
-	Thanks for paying attention.
+take a look at the Linux NFS FAQ to see if there are useful answers for
+you:
 
--- 
--------------
-Vasiliy Boulytchev
-Colorado Information Technologies Inc.
-http://www.coinfotech.com
+  http://nfs.sourceforge.net/
 
+> 	Please assure me that this is not the case, and I can=20
+> safely go on experimenting.  What is the latest material I=20
+> should get?  Any good O'reilly books come to mind?
+
+the FAQ (mentioned above) has links to some generic NFS references you
+may find helpful.
 
 
 -------------------------------------------------------
