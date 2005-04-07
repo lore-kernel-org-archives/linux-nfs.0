@@ -1,21 +1,22 @@
-From: Andrew Brooks <arb@sat.dundee.ac.uk>
-Subject: Enable NFS over TCP
-Date: Thu, 07 Apr 2005 16:17:15 +0100
-Message-ID: <42554EFB.9E4@sat.dundee.ac.uk>
+From: Vasiliy Boulytchev <vasiliy@lohankin.com>
+Subject: NFS experince story, questions.
+Date: Thu, 07 Apr 2005 11:14:41 -0600
+Message-ID: <1112894081.6230.9.camel@vasiliy.coinfotech.com>
+Reply-To: vasiliy@lohankin.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DJYl1-0001sx-R8
-	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 08:17:23 -0700
-Received: from cerise.sat.dundee.ac.uk ([134.36.22.46] helo=sat.dundee.ac.uk)
+	id 1DJaad-0007Dg-Lh
+	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 10:14:47 -0700
+Received: from mail.mailsvc.com ([63.247.192.101] helo=mailsvc.com)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DJYl1-00077a-9i
-	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 08:17:23 -0700
-Received: from modis (modis [134.36.22.44])
-	by sat.dundee.ac.uk (8.12.10/8.12.10) with SMTP id j37FHFth020533
-	for <nfs@lists.sourceforge.net>; Thu, 7 Apr 2005 16:17:16 +0100 (BST)
+	id 1DJaad-00037e-1x
+	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 10:14:47 -0700
+Received: from [63.247.192.30] (HELO [10.0.0.137])
+  by mailsvc.com (CommuniGate Pro SMTP 4.2)
+  with ESMTP id 184207671 for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 11:14:41 -0600
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -30,25 +31,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
 
-Sorry to bring up this old chestnut but I can't get my server to
-advertise the TCP service; rpcinfo shows only udp and mount -o tcp
-reports "nfs server reported service unavailable: Address already
-in use".
+Ladies and Gents,
+	In my previous experience, I have never had good luck with NFS.  We
+used NFS to balance mail server queues (for spam and virus filtering)
+between scanning nodes, and we ran into tons of problems, probably due
+to lack of complete understanding and proper configuration on my part.
+The performance was great, however, we kept getting stale mounts, and to
+get things back, both sides needed to be rebooted, I could not just
+unmount.  Maybe we were not mounting properly, but who knows.  Anyways,
+as an alternative we looked into samba, and that solved all our issues.
+We still run samba as the networking protocol, and are happy with it.
 
-I've rebuilt the kernel 2.4.26 with all NFS patches and both ticked:
-CONFIG_EXPERIMENTAL and CONFIG_NFSD_TCP.
+	A new task has come up, and we are looking back at NFS, since samba
+really does not allow us to have proper user arrangements.  I really am
+afraid of having stale mounts again.  Is this a common newbie problem,
+or is this the nature of NFS?  When either of the nodes becomes
+unstable, has to reboot, (or a failover occurs), does this mean the
+other node will have a stale mount point and will need a reboot?
 
-nfs-utils 1.0.7 has been installed (on the server at least).
+	Please assure me that this is not the case, and I can safely go on
+experimenting.  What is the latest material I should get?  Any good
+O'reilly books come to mind?
 
-/etc/init.d/nfs and /etc/sysconfig/nfs look ok.
+	Thanks for paying attention.
 
-Now I'm out of ideas!
+-- 
+-------------
+Vasiliy Boulytchev
+Colorado Information Technologies Inc.
+http://www.coinfotech.com
 
-Thanks,
-
-Andrew
 
 
 -------------------------------------------------------
