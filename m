@@ -1,17 +1,16 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 005 of 16] nfsd4: nfs4_check_delegmode
-Date: Fri, 08 Apr 2005 11:00:16 +1000
-Message-ID: <E1DJhr6-0006de-3Z@notabene.cse.unsw.edu.au>
-References: <20050408105936.25374.patches@notabene>
+Subject: [PATCH kNFSd 000 of 16] Introduction
+Date: Fri, 08 Apr 2005 11:00:14 +1000
+Message-ID: <20050408105936.25374.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DJikO-0006Ty-Ag
+	id 1DJikO-0006Tw-9O
 	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 18:57:24 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DJikM-0000uX-0o
+	id 1DJikL-0000uZ-Kn
 	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 18:57:24 -0700
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
@@ -28,52 +27,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
+16 patches for knfsd.
+The first three are bug fixes that would be good to get into 2.6.12
+The rest are continuing work on tidying and extending the V4 server.
 
-Additional minor code reshuffling to prepare for claim_deleg_cur support.
+Thanks,
+NeilBrown
 
-Signed-off-by: Andy Adamson <andros@citi.umich.edu>
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
-### Diffstat output
- ./fs/nfsd/nfs4state.c |   18 +++++++++---------
- 1 files changed, 9 insertions(+), 9 deletions(-)
+ [PATCH kNFSd 001 of 16] nfsd: clear signals before exiting the nfsd() thread
+ [PATCH kNFSd 002 of 16] nfsd4: callback create rpc client returns
+ [PATCH kNFSd 003 of 16] nfsd4: fix struct file leak
 
-diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2005-04-08 10:38:38.000000000 +1000
-+++ ./fs/nfsd/nfs4state.c	2005-04-08 10:39:12.000000000 +1000
-@@ -1526,6 +1526,15 @@ out:
- 	return status;
- }
- 
-+static inline int
-+nfs4_check_delegmode(struct nfs4_delegation *dp, int flags)
-+{
-+	if ((flags & WR_STATE) && (dp->dl_type == NFS4_OPEN_DELEGATE_READ))
-+		return nfserr_openmode;
-+	else
-+		return nfs_ok;
-+}
-+
- static struct nfs4_delegation *
- find_delegation_file(struct nfs4_file *fp, stateid_t *stid)
- {
-@@ -1961,15 +1970,6 @@ out:
- }
- 
- static inline int
--nfs4_check_delegmode(struct nfs4_delegation *dp, int flags)
--{
--	if ((flags & WR_STATE) && (dp->dl_type == NFS4_OPEN_DELEGATE_READ))
--		return nfserr_openmode;
--	else
--		return nfs_ok;
--}
--
--static inline int
- check_special_stateids(svc_fh *current_fh, stateid_t *stateid, int flags)
- {
- 	/* Trying to call delegreturn with a special stateid? Yuch: */
+ [PATCH kNFSd 004 of 16] nfsd4: find_delegation_file()
+ [PATCH kNFSd 005 of 16] nfsd4: nfs4_check_delegmode
+ [PATCH kNFSd 006 of 16] nfsd4: don't reopen for delegated client
+ [PATCH kNFSd 007 of 16] nfsd4: add open state code for CLAIM_DELEGATE_CUR
+ [PATCH kNFSd 008 of 16] nfsd4: support CLAIM_DELEGATE_CUR
+ [PATCH kNFSd 009 of 16] nfsd4: fix fh_expire_type
+ [PATCH kNFSd 010 of 16] nfsd4: block metadata ops during grace period
+ [PATCH kNFSd 011 of 16] nfsd4: slabify nfs4_files
+ [PATCH kNFSd 012 of 16] nfsd4: slabify stateids
+ [PATCH kNFSd 013 of 16] nfsd4: slabify delegations
+ [PATCH kNFSd 014 of 16] nfsd4: remove debugging counters
+ [PATCH kNFSd 015 of 16] nfsd4: rename nfs4_file fields
+ [PATCH kNFSd 016 of 16] nfsd4: reference count struct nfs4_file
 
 
 -------------------------------------------------------
