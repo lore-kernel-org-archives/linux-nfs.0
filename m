@@ -1,24 +1,19 @@
-From: Vasiliy Boulytchev <vasiliy@lohankin.com>
-Subject: Re: NFS experince story, questions.
-Date: Thu, 07 Apr 2005 15:23:50 -0600
-Message-ID: <1112909031.6230.11.camel@vasiliy.coinfotech.com>
-References: <1112894081.6230.9.camel@vasiliy.coinfotech.com>
-	 <1112895580.10366.71.camel@lade.trondhjem.org>
-Reply-To: vasiliy@lohankin.com
-Mime-Version: 1.0
-Content-Type: text/plain
+From: NeilBrown <neilb@cse.unsw.edu.au>
+Subject: [PATCH kNFSd 007 of 16] nfsd4: add open state code for CLAIM_DELEGATE_CUR
+Date: Fri, 08 Apr 2005 11:00:16 +1000
+Message-ID: <E1DJhr6-0006dm-7T@notabene.cse.unsw.edu.au>
+References: <20050408105936.25374.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DJeTv-0001SQ-HQ
-	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 14:24:07 -0700
-Received: from mail.mailsvc.com ([63.247.192.101] helo=mailsvc.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DJeTt-0002DG-2E
-	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 14:24:07 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1112895580.10366.71.camel@lade.trondhjem.org>
+	id 1DJikO-0006Tr-4F
+	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 18:57:24 -0700
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1DJikL-0004DP-UV
+	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 18:57:22 -0700
+To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,54 +28,70 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Thank you very much. I will read on!
+State logic for OPEN with claim type CLAIM_DELEGATE_CUR, which the NFSv4
+client uses to report local OPENs on a delegated file back to the NFSv4 server.
 
-On Thu, 2005-04-07 at 13:39 -0400, Trond Myklebust wrote:
-> to den 07.04.2005 Klokka 11:14 (-0600) skreiv Vasiliy Boulytchev:
-> > 	A new task has come up, and we are looking back at NFS, since samba
-> > really does not allow us to have proper user arrangements.  I really am
-> > afraid of having stale mounts again.  Is this a common newbie problem,
-> > or is this the nature of NFS?  When either of the nodes becomes
-> > unstable, has to reboot, (or a failover occurs), does this mean the
-> > other node will have a stale mount point and will need a reboot?
-> 
-> A server reboot should not require a client reboot, given a properly
-> configured system, however you do need to understand some of the
-> limitations of the NFS model.
-> 
-> NFS relies heavily on the use of "filehandles" in order to ensure that
-> we can retain posix behaviour in cases where a rename() of the file or
-> some element of the path occurs on the server.
-> In order to have the required properties, filehandles tend to have to
-> encode information such as device id (known as the "fsid" in NFS-lingo)
-> and file inode number. If one or more of those changes, then an ESTALE
-> is likely to occur.
-> 
-> One common cause of ESTALE on reboot is that the device id changes after
-> reboot (fibre channel being a notable culprit). In order to fix the
-> problem of the filehandles going stale, the Linux kernel server has an
-> export option "fsid" which allows you to fix the device id to some
-> arbitrary value. (See the "exports" manpage for more info)
-> 
-> The other common problem is that the filesystem may not support any
-> equivalent of the inode number in permanent storage (MS filesystems tend
-> to have a problem here). We currently have no good solution for that
-> problem on Linux (partly because the NFSv2/v3 protocols did not really
-> allow for it at all). We are certainly planning on hardening the client,
-> and allowing for some recovery, but the whole problem can be avoided, by
-> choosing a filesystem with good NFS support (ext2/ext3, XFS, reiserfs3
-> are among the list of good choices). The NFS FAQ has a more complete
-> section on this issue.
-> 
-> Cheers,
->   Trond
--- 
+nfs4_check_deleg() performs input delegation stateid lookup and sanity check.
 
--------------
-Vasiliy Boulytchev
-Colorado Information Technologies Inc.
-http://www.coinfotech.com
+Signed-off-by: Andy Adamson <andros@citi.umich.edu>
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
+### Diffstat output
+ ./fs/nfsd/nfs4state.c |   21 ++++++++++++++++-----
+ 1 files changed, 16 insertions(+), 5 deletions(-)
+
+diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
+--- ./fs/nfsd/nfs4state.c~current~	2005-04-08 10:39:52.000000000 +1000
++++ ./fs/nfsd/nfs4state.c	2005-04-08 10:41:30.000000000 +1000
+@@ -1547,22 +1547,28 @@ find_delegation_file(struct nfs4_file *f
+ 	return NULL;
+ }
+ 
+-static void
++static int
+ nfs4_check_deleg(struct nfs4_file *fp, struct nfsd4_open *open,
+ 		struct nfs4_delegation **dp)
+ {
+ 	int flags;
+-	int status;
++	int status = nfserr_bad_stateid;
+ 
+ 	*dp = find_delegation_file(fp, &open->op_delegate_stateid);
+ 	if (*dp == NULL)
+-		return;
++		goto out;
+ 	flags = open->op_share_access == NFS4_SHARE_ACCESS_READ ?
+ 						RD_STATE : WR_STATE;
+ 	status = nfs4_check_delegmode(*dp, flags);
+ 	if (status)
+ 		*dp = NULL;
+-	return;
++out:
++	if (open->op_claim_type != NFS4_OPEN_CLAIM_DELEGATE_CUR)
++		return nfs_ok;
++	if (status)
++		return status;
++	open->op_stateowner->so_confirmed = 1;
++	return nfs_ok;
+ }
+ 
+ static int
+@@ -1760,8 +1766,13 @@ nfsd4_process_open2(struct svc_rqst *rqs
+ 	if (fp) {
+ 		if ((status = nfs4_check_open(fp, open, &stp)))
+ 			goto out;
+-		nfs4_check_deleg(fp, open, &dp);
++		status = nfs4_check_deleg(fp, open, &dp);
++		if (status)
++			goto out;
+ 	} else {
++		status = nfserr_bad_stateid;
++		if (open->op_claim_type == NFS4_OPEN_CLAIM_DELEGATE_CUR)
++			goto out;
+ 		status = nfserr_resource;
+ 		fp = alloc_init_file(ino);
+ 		if (fp == NULL)
 
 
 -------------------------------------------------------
