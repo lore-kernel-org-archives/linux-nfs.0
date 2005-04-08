@@ -1,18 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 013 of 16] nfsd4: slabify delegations
-Date: Fri, 08 Apr 2005 11:00:17 +1000
-Message-ID: <E1DJhr7-0006eA-Co@notabene.cse.unsw.edu.au>
+Subject: [PATCH kNFSd 004 of 16] nfsd4: find_delegation_file()
+Date: Fri, 08 Apr 2005 11:00:16 +1000
+Message-ID: <E1DJhr6-0006da-1e@notabene.cse.unsw.edu.au>
 References: <20050408105936.25374.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DJikO-0006Tz-An
+	id 1DJikO-0006Tt-5W
 	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 18:57:24 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DJikM-0000uO-0E
-	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 18:57:24 -0700
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1DJikL-0004DD-85
+	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 18:57:23 -0700
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -28,93 +28,64 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Allocate delegations from a slab cache.
+Factor out a bit of common code that will be useful elsewhere.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c |   19 +++++++++----------
- 1 files changed, 9 insertions(+), 10 deletions(-)
+ ./fs/nfsd/nfs4state.c |   25 ++++++++++++++-----------
+ 1 files changed, 14 insertions(+), 11 deletions(-)
 
 diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2005-04-08 10:45:52.000000000 +1000
-+++ ./fs/nfsd/nfs4state.c	2005-04-08 10:46:03.000000000 +1000
-@@ -72,8 +72,6 @@ u32 add_perclient = 0;
- u32 del_perclient = 0;
- u32 vfsopen = 0;
- u32 vfsclose = 0;
--u32 alloc_delegation= 0;
--u32 free_delegation= 0;
- 
- /* forward declarations */
- struct nfs4_stateid * find_stateid(stateid_t *stid, int flags);
-@@ -91,6 +89,7 @@ static DECLARE_MUTEX(client_sema);
- kmem_cache_t *stateowner_slab = NULL;
- kmem_cache_t *file_slab = NULL;
- kmem_cache_t *stateid_slab = NULL;
-+kmem_cache_t *deleg_slab = NULL;
- 
- void
- nfs4_lock_state(void)
-@@ -138,8 +137,8 @@ alloc_init_deleg(struct nfs4_client *clp
- 	struct nfs4_callback *cb = &stp->st_stateowner->so_client->cl_callback;
- 
- 	dprintk("NFSD alloc_init_deleg\n");
--	if ((dp = kmalloc(sizeof(struct nfs4_delegation),
--		GFP_KERNEL)) == NULL)
-+	dp = kmem_cache_alloc(deleg_slab, GFP_KERNEL);
-+	if (dp == NULL)
- 		return dp;
- 	INIT_LIST_HEAD(&dp->dl_del_perfile);
- 	INIT_LIST_HEAD(&dp->dl_del_perclnt);
-@@ -164,7 +163,6 @@ alloc_init_deleg(struct nfs4_client *clp
- 	atomic_set(&dp->dl_count, 1);
- 	list_add(&dp->dl_del_perfile, &fp->fi_del_perfile);
- 	list_add(&dp->dl_del_perclnt, &clp->cl_del_perclnt);
--	alloc_delegation++;
- 	return dp;
+--- ./fs/nfsd/nfs4state.c~current~	2005-04-08 10:35:24.000000000 +1000
++++ ./fs/nfsd/nfs4state.c	2005-04-08 10:38:38.000000000 +1000
+@@ -1526,6 +1526,18 @@ out:
+ 	return status;
  }
  
-@@ -173,8 +171,7 @@ nfs4_put_delegation(struct nfs4_delegati
- {
- 	if (atomic_dec_and_test(&dp->dl_count)) {
- 		dprintk("NFSD: freeing dp %p\n",dp);
--		kfree(dp);
--		free_delegation++;
-+		kmem_cache_free(deleg_slab, dp);
- 	}
- }
- 
-@@ -1012,6 +1009,7 @@ nfsd4_free_slabs(void)
- 	nfsd4_free_slab(&stateowner_slab);
- 	nfsd4_free_slab(&file_slab);
- 	nfsd4_free_slab(&stateid_slab);
-+	nfsd4_free_slab(&deleg_slab);
- }
- 
++static struct nfs4_delegation *
++find_delegation_file(struct nfs4_file *fp, stateid_t *stid)
++{
++	struct nfs4_delegation *dp;
++
++	list_for_each_entry(dp, &fp->fi_del_perfile, dl_del_perfile) {
++		if (dp->dl_stateid.si_stateownerid == stid->si_stateownerid)
++			return dp;
++	}
++	return NULL;
++}
++
  static int
-@@ -1029,6 +1027,10 @@ nfsd4_init_slabs(void)
- 			sizeof(struct nfs4_stateid), 0, 0, NULL, NULL);
- 	if (stateid_slab == NULL)
- 		goto out_nomem;
-+	deleg_slab = kmem_cache_create("nfsd4_delegations",
-+			sizeof(struct nfs4_delegation), 0, 0, NULL, NULL);
-+	if (deleg_slab == NULL)
-+		goto out_nomem;
- 	return 0;
- out_nomem:
- 	nfsd4_free_slabs();
-@@ -3312,9 +3314,6 @@ __nfs4_state_shutdown(void)
- 			add_perclient, del_perclient);
- 	dprintk("NFSD: vfsopen %d vfsclose %d\n",
- 			vfsopen, vfsclose);
--	dprintk("NFSD: alloc_delegation %d free_delegation %d\n",
--			alloc_delegation, free_delegation);
--
+ nfs4_check_open(struct nfs4_file *fp, struct nfsd4_open *open, struct nfs4_stateid **stpp)
+ {
+@@ -2419,24 +2431,15 @@ find_stateid(stateid_t *stid, int flags)
+ static struct nfs4_delegation *
+ find_delegation_stateid(struct inode *ino, stateid_t *stid)
+ {
+-	struct nfs4_delegation *dp = NULL;
+ 	struct nfs4_file *fp = NULL;
+-	u32 st_id;
+ 
+ 	dprintk("NFSD:find_delegation_stateid stateid=(%08x/%08x/%08x/%08x)\n",
+                     stid->si_boot, stid->si_stateownerid,
+                     stid->si_fileid, stid->si_generation);
+ 
+-	st_id = stid->si_stateownerid;
+ 	fp = find_file(ino);
+-	if (fp) {
+-		list_for_each_entry(dp, &fp->fi_del_perfile, dl_del_perfile) {
+-			if(dp->dl_stateid.si_stateownerid == st_id) {
+-				dprintk("NFSD: find_delegation dp %p\n",dp);
+-				return dp;
+-			}
+-		}
+-	}
++	if (fp)
++		return find_delegation_file(fp, stid);
+ 	return NULL;
  }
  
- void
 
 
 -------------------------------------------------------
