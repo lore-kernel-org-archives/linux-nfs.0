@@ -1,25 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NAT & lockd
-Date: Fri, 08 Apr 2005 11:12:48 -0400
-Message-ID: <1112973168.9974.18.camel@lade.trondhjem.org>
-References: <111aefd050408062546161db8@mail.gmail.com>
-	 <1112967554.15565.58.camel@lade.trondhjem.org>
-	 <111aefd050408070844511651@mail.gmail.com>
+From: Beschorner Daniel <Daniel.Beschorner@facton.com>
+Subject: Can't callback server
+Date: Fri, 8 Apr 2005 17:36:34 +0200
+Message-ID: <BB1F4EFD574E9F409035BDA71C961250023B38@exchange.i-bn>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DJvAL-0004Lu-9D
-	for nfs@lists.sourceforge.net; Fri, 08 Apr 2005 08:13:01 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1DJvWv-0005Ud-AD
+	for nfs@lists.sourceforge.net; Fri, 08 Apr 2005 08:36:21 -0700
+Received: from loewe.unit-netz.de ([212.202.148.42])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.41)
-	id 1DJvAJ-0003pf-Jp
-	for nfs@lists.sourceforge.net; Fri, 08 Apr 2005 08:13:01 -0700
-To: penney@msu.edu
-In-Reply-To: <111aefd050408070844511651@mail.gmail.com>
+	id 1DJvWt-00008o-Jj
+	for nfs@lists.sourceforge.net; Fri, 08 Apr 2005 08:36:21 -0700
+Received: from exchange.i-bn (exchange.catsgroup [192.168.100.120])
+	by loewe.unit-netz.de (8.12.3/8.12.3/Unit) with ESMTP id j38FaBPE015041
+	for <nfs@lists.sourceforge.net>; Fri, 8 Apr 2005 17:36:11 +0200
+To: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,20 +31,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-fr den 08.04.2005 Klokka 10:08 (-0400) skreiv Chris Penney:
+After some tests it seems to be 2.6.11 related (when clients reboot), with
+2.6.10 the message doesn't appear.
+Has anyone an idea?
+Are there a any NFS patches from .10 to .11 causing this I can revert for
+testing purposes?
 
-> In this situation (behind NAT), what happens with the client?  Will a
-> lock request fail or simply appear to always work?
-> 
+Thank you
+Daniel
 
-The server will refuse to grant the lock if it fails to set up
-monitoring with the client, so you should be "safe".
-
-Cheers,
-  Trond
--- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
-
+Apr  8 03:05:46 server rpc.statd[3203]: recv_rply: [127.0.0.1] RPC status 1
+Apr  8 03:06:04 server last message repeated 3 times
+Apr  8 03:06:10 server rpc.statd[3203]: Can't callback server (100021,4),
+giving up.
 
 
 -------------------------------------------------------
