@@ -1,17 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 000 of 16] Introduction
-Date: Fri, 08 Apr 2005 11:00:14 +1000
-Message-ID: <20050408105936.25374.patches@notabene>
+Subject: [PATCH kNFSd 012 of 16] nfsd4: slabify stateids
+Date: Fri, 08 Apr 2005 11:00:17 +1000
+Message-ID: <E1DJhr7-0006e6-Ag@notabene.cse.unsw.edu.au>
+References: <20050408105936.25374.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DJikO-0006Tw-9O
+	id 1DJikO-0006Tu-5Q
 	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 18:57:24 -0700
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DJikL-0000uZ-Kn
-	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 18:57:24 -0700
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1DJikL-0004DG-Et
+	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 18:57:23 -0700
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -27,31 +28,97 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-16 patches for knfsd.
-The first three are bug fixes that would be good to get into 2.6.12
-The rest are continuing work on tidying and extending the V4 server.
 
-Thanks,
-NeilBrown
+Allocate stateid's from a slab cache.
 
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
- [PATCH kNFSd 001 of 16] nfsd: clear signals before exiting the nfsd() thread
- [PATCH kNFSd 002 of 16] nfsd4: callback create rpc client returns
- [PATCH kNFSd 003 of 16] nfsd4: fix struct file leak
+### Diffstat output
+ ./fs/nfsd/nfs4state.c |   22 +++++++++++++++++-----
+ 1 files changed, 17 insertions(+), 5 deletions(-)
 
- [PATCH kNFSd 004 of 16] nfsd4: find_delegation_file()
- [PATCH kNFSd 005 of 16] nfsd4: nfs4_check_delegmode
- [PATCH kNFSd 006 of 16] nfsd4: don't reopen for delegated client
- [PATCH kNFSd 007 of 16] nfsd4: add open state code for CLAIM_DELEGATE_CUR
- [PATCH kNFSd 008 of 16] nfsd4: support CLAIM_DELEGATE_CUR
- [PATCH kNFSd 009 of 16] nfsd4: fix fh_expire_type
- [PATCH kNFSd 010 of 16] nfsd4: block metadata ops during grace period
- [PATCH kNFSd 011 of 16] nfsd4: slabify nfs4_files
- [PATCH kNFSd 012 of 16] nfsd4: slabify stateids
- [PATCH kNFSd 013 of 16] nfsd4: slabify delegations
- [PATCH kNFSd 014 of 16] nfsd4: remove debugging counters
- [PATCH kNFSd 015 of 16] nfsd4: rename nfs4_file fields
- [PATCH kNFSd 016 of 16] nfsd4: reference count struct nfs4_file
+diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
+--- ./fs/nfsd/nfs4state.c~current~	2005-04-08 10:45:18.000000000 +1000
++++ ./fs/nfsd/nfs4state.c	2005-04-08 10:45:52.000000000 +1000
+@@ -90,6 +90,7 @@ static DECLARE_MUTEX(client_sema);
+ 
+ kmem_cache_t *stateowner_slab = NULL;
+ kmem_cache_t *file_slab = NULL;
++kmem_cache_t *stateid_slab = NULL;
+ 
+ void
+ nfs4_lock_state(void)
+@@ -1010,6 +1011,7 @@ nfsd4_free_slabs(void)
+ {
+ 	nfsd4_free_slab(&stateowner_slab);
+ 	nfsd4_free_slab(&file_slab);
++	nfsd4_free_slab(&stateid_slab);
+ }
+ 
+ static int
+@@ -1023,6 +1025,10 @@ nfsd4_init_slabs(void)
+ 			sizeof(struct nfs4_file), 0, 0, NULL, NULL);
+ 	if (file_slab == NULL)
+ 		goto out_nomem;
++	stateid_slab = kmem_cache_create("nfsd4_stateids",
++			sizeof(struct nfs4_stateid), 0, 0, NULL, NULL);
++	if (stateid_slab == NULL)
++		goto out_nomem;
+ 	return 0;
+ out_nomem:
+ 	nfsd4_free_slabs();
+@@ -1173,7 +1179,7 @@ release_stateid(struct nfs4_stateid *stp
+ 		vfsclose++;
+ 	} else if (flags & LOCK_STATE)
+ 		locks_remove_posix(filp, (fl_owner_t) stp->st_stateowner);
+-	kfree(stp);
++	kmem_cache_free(stateid_slab, stp);
+ 	stp = NULL;
+ }
+ 
+@@ -1606,6 +1612,12 @@ out:
+ 	return status;
+ }
+ 
++static inline struct nfs4_stateid *
++nfs4_alloc_stateid(void)
++{
++	return kmem_cache_alloc(stateid_slab, GFP_KERNEL);
++}
++
+ static int
+ nfs4_new_open(struct svc_rqst *rqstp, struct nfs4_stateid **stpp,
+ 		struct nfs4_delegation *dp,
+@@ -1613,7 +1625,7 @@ nfs4_new_open(struct svc_rqst *rqstp, st
+ {
+ 	struct nfs4_stateid *stp;
+ 
+-	stp = kmalloc(sizeof(struct nfs4_stateid), GFP_KERNEL);
++	stp = nfs4_alloc_stateid();
+ 	if (stp == NULL)
+ 		return nfserr_resource;
+ 
+@@ -1627,7 +1639,7 @@ nfs4_new_open(struct svc_rqst *rqstp, st
+ 		if (status) {
+ 			if (status == nfserr_dropit)
+ 				status = nfserr_jukebox;
+-			kfree(stp);
++			kmem_cache_free(stateid_slab, stp);
+ 			return status;
+ 		}
+ 	}
+@@ -2627,8 +2639,8 @@ alloc_init_lock_stateid(struct nfs4_stat
+ 	struct nfs4_stateid *stp;
+ 	unsigned int hashval = stateid_hashval(sop->so_id, fp->fi_id);
+ 
+-	if ((stp = kmalloc(sizeof(struct nfs4_stateid), 
+-					GFP_KERNEL)) == NULL)
++	stp = nfs4_alloc_stateid();
++	if (stp == NULL)
+ 		goto out;
+ 	INIT_LIST_HEAD(&stp->st_hash);
+ 	INIT_LIST_HEAD(&stp->st_perfile);
 
 
 -------------------------------------------------------
