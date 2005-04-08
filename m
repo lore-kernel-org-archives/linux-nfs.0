@@ -1,17 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 003 of 16] nfsd4: fix struct file leak
-Date: Fri, 08 Apr 2005 11:00:15 +1000
-Message-ID: <E1DJhr5-0006dW-Vv@notabene.cse.unsw.edu.au>
+Subject: [PATCH kNFSd 008 of 16] nfsd4: support CLAIM_DELEGATE_CUR
+Date: Fri, 08 Apr 2005 11:00:16 +1000
+Message-ID: <E1DJhr6-0006dq-9U@notabene.cse.unsw.edu.au>
 References: <20050408105936.25374.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DJikP-0006UJ-3d
-	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 18:57:25 -0700
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
+	id 1DJikO-0006U6-Kg
+	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 18:57:24 -0700
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DJikO-0000uV-Ac
+	id 1DJikM-0000ue-Ku
 	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 18:57:24 -0700
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
@@ -28,45 +28,43 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
+Add OPEN claim type NFS4_OPEN_CLAIM_DELEGATE_CUR to nfsd4_open().
 
-We were failing to close on an error path, resulting in a leak of struct files
-which could take a v4 server down fairly quickly....
-So call nfs4_close_delegation instead of just open-coding parts of it.
+A delegation stateid and a name are provided. OPEN with O_CREAT is not legal
+with this claim type; otherwise, use the NFS4_OPEN_CLAIM_NULL code path to
+lookup the filename to be opened.
 
-Simplify the cleanup on delegation failure while we're at it.
-
+Signed-off-by: Andy Adamson <andros@citi.umich.edu>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c |    8 +++-----
- 1 files changed, 3 insertions(+), 5 deletions(-)
+ ./fs/nfsd/nfs4proc.c |    6 +++++-
+ 1 files changed, 5 insertions(+), 1 deletion(-)
 
-diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2005-04-08 10:31:12.000000000 +1000
-+++ ./fs/nfsd/nfs4state.c	2005-04-08 10:35:24.000000000 +1000
-@@ -190,7 +190,8 @@ nfs4_close_delegation(struct nfs4_delega
- 	dp->dl_vfs_file = NULL;
- 	/* The following nfsd_close may not actually close the file,
- 	 * but we want to remove the lease in any case. */
--	setlease(filp, F_UNLCK, &dp->dl_flock);
-+	if (dp->dl_flock)
-+		setlease(filp, F_UNLCK, &dp->dl_flock);
- 	nfsd_close(filp);
- 	vfsclose++;
- }
-@@ -1673,10 +1674,7 @@ nfs4_open_delegation(struct svc_fh *fh, 
- 	if ((status = setlease(stp->st_vfs_file,
- 		flag == NFS4_OPEN_DELEGATE_READ? F_RDLCK: F_WRLCK, &flp))) {
- 		dprintk("NFSD: setlease failed [%d], no delegation\n", status);
--		list_del(&dp->dl_del_perfile);
--		list_del(&dp->dl_del_perclnt);
--		nfs4_put_delegation(dp);
--		free_delegation++;
-+		unhash_delegation(dp);
- 		flag = NFS4_OPEN_DELEGATE_NONE;
+diff ./fs/nfsd/nfs4proc.c~current~ ./fs/nfsd/nfs4proc.c
+--- ./fs/nfsd/nfs4proc.c~current~	2005-04-08 10:31:12.000000000 +1000
++++ ./fs/nfsd/nfs4proc.c	2005-04-08 10:42:30.000000000 +1000
+@@ -198,6 +198,11 @@ nfsd4_open(struct svc_rqst *rqstp, struc
+ 	if (status)
  		goto out;
- 	}
+ 	switch (open->op_claim_type) {
++		case NFS4_OPEN_CLAIM_DELEGATE_CUR:
++			status = nfserr_inval;
++			if (open->op_create)
++				goto out;
++			/* fall through */
+ 		case NFS4_OPEN_CLAIM_NULL:
+ 			/*
+ 			 * (1) set CURRENT_FH to the file being opened,
+@@ -220,7 +225,6 @@ nfsd4_open(struct svc_rqst *rqstp, struc
+ 			if (status)
+ 				goto out;
+ 			break;
+-		case NFS4_OPEN_CLAIM_DELEGATE_CUR:
+              	case NFS4_OPEN_CLAIM_DELEGATE_PREV:
+ 			printk("NFSD: unsupported OPEN claim type %d\n",
+ 				open->op_claim_type);
 
 
 -------------------------------------------------------
