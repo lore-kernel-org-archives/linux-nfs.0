@@ -1,17 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 010 of 16] nfsd4: block metadata ops during grace period
-Date: Fri, 08 Apr 2005 11:00:17 +1000
-Message-ID: <E1DJhr7-0006dy-6u@notabene.cse.unsw.edu.au>
+Subject: [PATCH kNFSd 003 of 16] nfsd4: fix struct file leak
+Date: Fri, 08 Apr 2005 11:00:15 +1000
+Message-ID: <E1DJhr5-0006dW-Vv@notabene.cse.unsw.edu.au>
 References: <20050408105936.25374.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DJikO-0006Tx-AQ
-	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 18:57:24 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	id 1DJikP-0006UJ-3d
+	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 18:57:25 -0700
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DJikL-0000uM-FX
+	id 1DJikO-0000uV-Ac
 	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 18:57:24 -0700
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
@@ -29,44 +29,44 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
 
-We currently return err_grace if a user attempts a non-reclaim open during the
-grace period.  But we also need to prevent renames and removes, at least, to
-ensure clients have the chance to recover state on files before they are moved
-or deleted.
+We were failing to close on an error path, resulting in a leak of struct files
+which could take a v4 server down fairly quickly....
+So call nfs4_close_delegation instead of just open-coding parts of it.
 
-Of course, local users could also do renames and removes during the lease
-period, and there's not much we can do about that.  This at least will help
-with remote users.
+Simplify the cleanup on delegation failure while we're at it.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4proc.c |    5 +++++
- 1 files changed, 5 insertions(+)
+ ./fs/nfsd/nfs4state.c |    8 +++-----
+ 1 files changed, 3 insertions(+), 5 deletions(-)
 
-diff ./fs/nfsd/nfs4proc.c~current~ ./fs/nfsd/nfs4proc.c
---- ./fs/nfsd/nfs4proc.c~current~	2005-04-08 10:42:30.000000000 +1000
-+++ ./fs/nfsd/nfs4proc.c	2005-04-08 10:44:51.000000000 +1000
-@@ -536,6 +536,8 @@ nfsd4_remove(struct svc_rqst *rqstp, str
- {
- 	int status;
- 
-+	if (nfs4_in_grace())
-+		return nfserr_grace;
- 	status = nfsd_unlink(rqstp, current_fh, 0, remove->rm_name, remove->rm_namelen);
- 	if (status == nfserr_symlink)
- 		return nfserr_notdir;
-@@ -554,6 +556,9 @@ nfsd4_rename(struct svc_rqst *rqstp, str
- 
- 	if (!save_fh->fh_dentry)
- 		return status;
-+	if (nfs4_in_grace() && !(save_fh->fh_export->ex_flags
-+					& NFSEXP_NOSUBTREECHECK))
-+		return nfserr_grace;
- 	status = nfsd_rename(rqstp, save_fh, rename->rn_sname,
- 			     rename->rn_snamelen, current_fh,
- 			     rename->rn_tname, rename->rn_tnamelen);
+diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
+--- ./fs/nfsd/nfs4state.c~current~	2005-04-08 10:31:12.000000000 +1000
++++ ./fs/nfsd/nfs4state.c	2005-04-08 10:35:24.000000000 +1000
+@@ -190,7 +190,8 @@ nfs4_close_delegation(struct nfs4_delega
+ 	dp->dl_vfs_file = NULL;
+ 	/* The following nfsd_close may not actually close the file,
+ 	 * but we want to remove the lease in any case. */
+-	setlease(filp, F_UNLCK, &dp->dl_flock);
++	if (dp->dl_flock)
++		setlease(filp, F_UNLCK, &dp->dl_flock);
+ 	nfsd_close(filp);
+ 	vfsclose++;
+ }
+@@ -1673,10 +1674,7 @@ nfs4_open_delegation(struct svc_fh *fh, 
+ 	if ((status = setlease(stp->st_vfs_file,
+ 		flag == NFS4_OPEN_DELEGATE_READ? F_RDLCK: F_WRLCK, &flp))) {
+ 		dprintk("NFSD: setlease failed [%d], no delegation\n", status);
+-		list_del(&dp->dl_del_perfile);
+-		list_del(&dp->dl_del_perclnt);
+-		nfs4_put_delegation(dp);
+-		free_delegation++;
++		unhash_delegation(dp);
+ 		flag = NFS4_OPEN_DELEGATE_NONE;
+ 		goto out;
+ 	}
 
 
 -------------------------------------------------------
