@@ -1,18 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 006 of 16] nfsd4: don't reopen for delegated client
-Date: Fri, 08 Apr 2005 11:00:16 +1000
-Message-ID: <E1DJhr6-0006di-5d@notabene.cse.unsw.edu.au>
+Subject: [PATCH kNFSd 001 of 16] nfsd: clear signals before exiting the nfsd() thread
+Date: Fri, 08 Apr 2005 11:00:15 +1000
+Message-ID: <E1DJhr5-0006dO-0p@notabene.cse.unsw.edu.au>
 References: <20050408105936.25374.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DJikO-0006U5-KH
+	id 1DJikO-0006Ts-5F
 	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 18:57:24 -0700
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DJikM-0000uc-GV
-	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 18:57:24 -0700
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1DJikL-0004DF-8u
+	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 18:57:23 -0700
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -29,107 +29,29 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
 
-We don't really need to be doing a separate open for every stateid.  And in the
-case of an open from a client that already has a delegation on a file, it
-unnecessarily results in a delegation recall.
+Fixes the error "RPC: failed to contact portmap (errno -512)." when the
+server later tries to unregister from the portmapper.
 
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c |   44 ++++++++++++++++++++++++++++++++++++--------
- 1 files changed, 36 insertions(+), 8 deletions(-)
+ ./fs/nfsd/nfssvc.c |    2 ++
+ 1 files changed, 2 insertions(+)
 
-diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2005-04-08 10:39:12.000000000 +1000
-+++ ./fs/nfsd/nfs4state.c	2005-04-08 10:39:52.000000000 +1000
-@@ -1547,6 +1547,24 @@ find_delegation_file(struct nfs4_file *f
- 	return NULL;
- }
- 
-+static void
-+nfs4_check_deleg(struct nfs4_file *fp, struct nfsd4_open *open,
-+		struct nfs4_delegation **dp)
-+{
-+	int flags;
-+	int status;
-+
-+	*dp = find_delegation_file(fp, &open->op_delegate_stateid);
-+	if (*dp == NULL)
-+		return;
-+	flags = open->op_share_access == NFS4_SHARE_ACCESS_READ ?
-+						RD_STATE : WR_STATE;
-+	status = nfs4_check_delegmode(*dp, flags);
-+	if (status)
-+		*dp = NULL;
-+	return;
-+}
-+
- static int
- nfs4_check_open(struct nfs4_file *fp, struct nfsd4_open *open, struct nfs4_stateid **stpp)
- {
-@@ -1572,21 +1590,28 @@ out:
- 
- static int
- nfs4_new_open(struct svc_rqst *rqstp, struct nfs4_stateid **stpp,
-+		struct nfs4_delegation *dp,
- 		struct svc_fh *cur_fh, int flags)
- {
- 	struct nfs4_stateid *stp;
--	int status;
- 
- 	stp = kmalloc(sizeof(struct nfs4_stateid), GFP_KERNEL);
- 	if (stp == NULL)
- 		return nfserr_resource;
- 
--	status = nfsd_open(rqstp, cur_fh, S_IFREG, flags, &stp->st_vfs_file);
--	if (status) {
--		if (status == nfserr_dropit)
--			status = nfserr_jukebox;
--		kfree(stp);
--		return status;
-+	if (dp) {
-+		get_file(dp->dl_vfs_file);
-+		stp->st_vfs_file = dp->dl_vfs_file;
-+	} else {
-+		int status;
-+		status = nfsd_open(rqstp, cur_fh, S_IFREG, flags,
-+				&stp->st_vfs_file);
-+		if (status) {
-+			if (status == nfserr_dropit)
-+				status = nfserr_jukebox;
-+			kfree(stp);
-+			return status;
-+		}
+diff ./fs/nfsd/nfssvc.c~current~ ./fs/nfsd/nfssvc.c
+--- ./fs/nfsd/nfssvc.c~current~	2005-04-08 10:31:12.000000000 +1000
++++ ./fs/nfsd/nfssvc.c	2005-04-08 10:33:13.000000000 +1000
+@@ -259,6 +259,8 @@ nfsd(struct svc_rqst *rqstp)
+ 				break;
+ 		err = signo;
  	}
- 	vfsopen++;
- 	*stpp = stp;
-@@ -1720,6 +1745,7 @@ nfsd4_process_open2(struct svc_rqst *rqs
- 	struct nfs4_file *fp = NULL;
- 	struct inode *ino = current_fh->fh_dentry->d_inode;
- 	struct nfs4_stateid *stp = NULL;
-+	struct nfs4_delegation *dp = NULL;
- 	int status;
++	/* Clear signals before calling lockd_down() and svc_exit_thread() */
++	flush_signals(current);
  
- 	status = nfserr_inval;
-@@ -1734,6 +1760,7 @@ nfsd4_process_open2(struct svc_rqst *rqs
- 	if (fp) {
- 		if ((status = nfs4_check_open(fp, open, &stp)))
- 			goto out;
-+		nfs4_check_deleg(fp, open, &dp);
- 	} else {
- 		status = nfserr_resource;
- 		fp = alloc_init_file(ino);
-@@ -1757,7 +1784,8 @@ nfsd4_process_open2(struct svc_rqst *rqs
- 			flags = MAY_WRITE;
- 		else
- 			flags = MAY_READ;
--		if ((status = nfs4_new_open(rqstp, &stp, current_fh, flags)))
-+		status = nfs4_new_open(rqstp, &stp, dp, current_fh, flags);
-+		if (status)
- 			goto out;
- 		init_stateid(stp, fp, open);
- 		status = nfsd4_truncate(rqstp, current_fh, open);
+ 	lock_kernel();
+ 
 
 
 -------------------------------------------------------
