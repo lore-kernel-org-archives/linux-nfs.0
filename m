@@ -1,22 +1,23 @@
-From: Chris Penney <cpenney@gmail.com>
-Subject: NAT & lockd
-Date: Fri, 8 Apr 2005 09:25:08 -0400
-Message-ID: <111aefd050408062546161db8@mail.gmail.com>
-Reply-To: penney@msu.edu
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NAT & lockd
+Date: Fri, 08 Apr 2005 09:39:14 -0400
+Message-ID: <1112967554.15565.58.camel@lade.trondhjem.org>
+References: <111aefd050408062546161db8@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DJtU6-00080E-EI
-	for nfs@lists.sourceforge.net; Fri, 08 Apr 2005 06:25:18 -0700
-Received: from wproxy.gmail.com ([64.233.184.197])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DJtU4-00080C-VI
-	for nfs@lists.sourceforge.net; Fri, 08 Apr 2005 06:25:18 -0700
-Received: by wproxy.gmail.com with SMTP id 69so841155wra
-        for <nfs@lists.sourceforge.net>; Fri, 08 Apr 2005 06:25:08 -0700 (PDT)
-To: nfs@lists.sourceforge.net
+	id 1DJtiS-0000JM-PM
+	for nfs@lists.sourceforge.net; Fri, 08 Apr 2005 06:40:08 -0700
+Received: from pat.uio.no ([129.240.130.16])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1DJtiR-0002G6-0k
+	for nfs@lists.sourceforge.net; Fri, 08 Apr 2005 06:40:08 -0700
+To: penney@msu.edu
+In-Reply-To: <111aefd050408062546161db8@mail.gmail.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,23 +31,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I have an new NFS server (2.6.11.5 w/ NFS-ALL) that serves some
-clients that sit behind a NAT box (linux clusters).  It replaced a
-SLES 8 file server.   The NAT box is a old RH8 box (soone to be
-upgraded to SLES 9).  On the new NFS server I'm getting the following
-messages from lockd:
+fr den 08.04.2005 Klokka 09:25 (-0400) skreiv Chris Penney:
 
-nsm_mon_unmon: rpc failed, status=-13
-lockd: cannot monitor x.x.x.x
+> nsm_mon_unmon: rpc failed, status=-13
+> lockd: cannot monitor x.x.x.x
+> 
+> With our old NFS server I never got any messages.  The IP address
+> x.x.x.x is that of the NAT box.  I'm curious if this means locking
+> does not work behind nat or if it means something else.  Is there
+> anything I can do here?  Would a 2.6.x based NAT box have a more up to
+> date iptables that supports lockd?  This is non-critical, I'm just
+> trying to understand.
 
-With our old NFS server I never got any messages.  The IP address
-x.x.x.x is that of the NAT box.  I'm curious if this means locking
-does not work behind nat or if it means something else.  Is there
-anything I can do here?  Would a 2.6.x based NAT box have a more up to
-date iptables that supports lockd?  This is non-critical, I'm just
-trying to understand.
+Locking under NFSv2/v3 is not very NAT or firewall-friendly and was one
+of the motivations for developing NFSv4.
 
-   Chris
+The problem is that under NFSv2/v3, the protocol requires bi-directional
+communication (by which I mean that the server needs to be able to
+connect to the client, which is a problem for NAT as you can see above)
+and requires a bunch of helper-protocols that use different ports (which
+is a problem for firewalls).
+
+Cheers,
+  Trond
+-- 
+Trond Myklebust <trond.myklebust@fys.uio.no>
+
 
 
 -------------------------------------------------------
