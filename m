@@ -1,18 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 012 of 16] nfsd4: slabify stateids
-Date: Fri, 08 Apr 2005 11:00:17 +1000
-Message-ID: <E1DJhr7-0006e6-Ag@notabene.cse.unsw.edu.au>
+Subject: [PATCH kNFSd 002 of 16] nfsd4: callback create rpc client returns
+Date: Fri, 08 Apr 2005 11:00:15 +1000
+Message-ID: <E1DJhr5-0006dS-4m@notabene.cse.unsw.edu.au>
 References: <20050408105936.25374.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DJikO-0006Tu-5Q
+	id 1DJikO-0006U0-B5
 	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 18:57:24 -0700
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1DJikL-0004DG-Et
-	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 18:57:23 -0700
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1DJikM-0000uT-BF
+	for nfs@lists.sourceforge.net; Thu, 07 Apr 2005 18:57:24 -0700
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -29,96 +29,38 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
 
-Allocate stateid's from a slab cache.
+rpc_create_clnt and friends return errors, not NULL, on failure.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c |   22 +++++++++++++++++-----
- 1 files changed, 17 insertions(+), 5 deletions(-)
+ ./fs/nfsd/nfs4callback.c |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
 
-diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2005-04-08 10:45:18.000000000 +1000
-+++ ./fs/nfsd/nfs4state.c	2005-04-08 10:45:52.000000000 +1000
-@@ -90,6 +90,7 @@ static DECLARE_MUTEX(client_sema);
+diff ./fs/nfsd/nfs4callback.c~current~ ./fs/nfsd/nfs4callback.c
+--- ./fs/nfsd/nfs4callback.c~current~	2005-04-08 10:31:12.000000000 +1000
++++ ./fs/nfsd/nfs4callback.c	2005-04-08 10:34:37.000000000 +1000
+@@ -405,7 +405,8 @@ nfsd4_probe_callback(struct nfs4_client 
+ 	timeparms.to_exponential = 1;
  
- kmem_cache_t *stateowner_slab = NULL;
- kmem_cache_t *file_slab = NULL;
-+kmem_cache_t *stateid_slab = NULL;
- 
- void
- nfs4_lock_state(void)
-@@ -1010,6 +1011,7 @@ nfsd4_free_slabs(void)
- {
- 	nfsd4_free_slab(&stateowner_slab);
- 	nfsd4_free_slab(&file_slab);
-+	nfsd4_free_slab(&stateid_slab);
- }
- 
- static int
-@@ -1023,6 +1025,10 @@ nfsd4_init_slabs(void)
- 			sizeof(struct nfs4_file), 0, 0, NULL, NULL);
- 	if (file_slab == NULL)
- 		goto out_nomem;
-+	stateid_slab = kmem_cache_create("nfsd4_stateids",
-+			sizeof(struct nfs4_stateid), 0, 0, NULL, NULL);
-+	if (stateid_slab == NULL)
-+		goto out_nomem;
- 	return 0;
- out_nomem:
- 	nfsd4_free_slabs();
-@@ -1173,7 +1179,7 @@ release_stateid(struct nfs4_stateid *stp
- 		vfsclose++;
- 	} else if (flags & LOCK_STATE)
- 		locks_remove_posix(filp, (fl_owner_t) stp->st_stateowner);
--	kfree(stp);
-+	kmem_cache_free(stateid_slab, stp);
- 	stp = NULL;
- }
- 
-@@ -1606,6 +1612,12 @@ out:
- 	return status;
- }
- 
-+static inline struct nfs4_stateid *
-+nfs4_alloc_stateid(void)
-+{
-+	return kmem_cache_alloc(stateid_slab, GFP_KERNEL);
-+}
-+
- static int
- nfs4_new_open(struct svc_rqst *rqstp, struct nfs4_stateid **stpp,
- 		struct nfs4_delegation *dp,
-@@ -1613,7 +1625,7 @@ nfs4_new_open(struct svc_rqst *rqstp, st
- {
- 	struct nfs4_stateid *stp;
- 
--	stp = kmalloc(sizeof(struct nfs4_stateid), GFP_KERNEL);
-+	stp = nfs4_alloc_stateid();
- 	if (stp == NULL)
- 		return nfserr_resource;
- 
-@@ -1627,7 +1639,7 @@ nfs4_new_open(struct svc_rqst *rqstp, st
- 		if (status) {
- 			if (status == nfserr_dropit)
- 				status = nfserr_jukebox;
--			kfree(stp);
-+			kmem_cache_free(stateid_slab, stp);
- 			return status;
- 		}
+ 	/* Create RPC transport */
+-	if (!(xprt = xprt_create_proto(IPPROTO_TCP, &addr, &timeparms))) {
++	xprt = xprt_create_proto(IPPROTO_TCP, &addr, &timeparms);
++	if (IS_ERR(xprt)) {
+ 		dprintk("NFSD: couldn't create callback transport!\n");
+ 		goto out_err;
  	}
-@@ -2627,8 +2639,8 @@ alloc_init_lock_stateid(struct nfs4_stat
- 	struct nfs4_stateid *stp;
- 	unsigned int hashval = stateid_hashval(sop->so_id, fp->fi_id);
- 
--	if ((stp = kmalloc(sizeof(struct nfs4_stateid), 
--					GFP_KERNEL)) == NULL)
-+	stp = nfs4_alloc_stateid();
-+	if (stp == NULL)
- 		goto out;
- 	INIT_LIST_HEAD(&stp->st_hash);
- 	INIT_LIST_HEAD(&stp->st_perfile);
+@@ -426,7 +427,8 @@ nfsd4_probe_callback(struct nfs4_client 
+ 	 * XXX AUTH_UNIX only - need AUTH_GSS....
+ 	 */
+ 	sprintf(hostname, "%u.%u.%u.%u", NIPQUAD(addr.sin_addr.s_addr));
+-	if (!(clnt = rpc_create_client(xprt, hostname, program, 1, RPC_AUTH_UNIX))) {
++	clnt = rpc_create_client(xprt, hostname, program, 1, RPC_AUTH_UNIX);
++	if (IS_ERR(clnt)) {
+ 		dprintk("NFSD: couldn't create callback client\n");
+ 		goto out_err;
+ 	}
 
 
 -------------------------------------------------------
