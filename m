@@ -1,47 +1,97 @@
-From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: Re: O_NONBLOCK for regular files
-Date: Wed, 13 Apr 2005 17:06:12 +1000
-Message-ID: <1113375971.1956.634.camel@hole.melbourne.sgi.com>
-References: <405C0DC0.3E61994@melbourne.sgi.com>
-	 <1113353153.1956.481.camel@hole.melbourne.sgi.com>
-	 <1113371790.9903.3.camel@lade.trondhjem.org>
-	 <1113372223.1956.628.camel@hole.melbourne.sgi.com>
-	 <1113373891.9903.7.camel@lade.trondhjem.org>
+From: <eh@dataconnection.com>
+Subject: clear_locks on Linux?
+Date: Wed, 13 Apr 2005 11:28:21 +0100
+Message-ID: <9E621559095AA746B22B21CD4FAF99A50A4E94@EDINMAIL1.datcon.co.uk>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Linux Filesystem Development List <linux-fsdevel@vger.kernel.org>,
-	Al Viro <viro@parcelfarce.linux.theplanet.co.uk>,
-	Neil Brown <neilb@cse.unsw.edu.au>,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1113373891.9903.7.camel@lade.trondhjem.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: multipart/alternative;
+	boundary="----_=_NextPart_001_01C54013.83E47326"
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1DLf6w-0001ZL-V2
+	for nfs@lists.sourceforge.net; Wed, 13 Apr 2005 03:28:42 -0700
+Received: from smtp.dataconnection.com ([192.91.191.4])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1DLf6f-0002Yw-LX
+	for nfs@lists.sourceforge.net; Wed, 13 Apr 2005 03:28:42 -0700
+To: <nfs@lists.sourceforge.net>
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, 2005-04-13 at 16:31, Trond Myklebust wrote:
-> on den 13.04.2005 Klokka 16:03 (+1000) skreiv Greg Banks:
-> 
-> > Any other issues?
-> > 
-> > Greg.
-> 
-> Well, I'm sa bit curious as to what "iap->ia_valid |= ATTR_NO_BLOCK"
-> will do. AFAICS, there is nothing that actually tests for it.
+This is a multi-part message in MIME format.
 
-fs/xfs/linux-2.6/xfs_iops.c:linvfs_setattr() does
+------_=_NextPart_001_01C54013.83E47326
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-    535 #ifdef ATTR_NO_BLOCK
-    536         if ((ia_valid & ATTR_NO_BLOCK))
-    537                 flags |= ATTR_NONBLOCK;
-    538 #endif
+Solaris has a command clear_locks, to remove locks held by a specific =
+remote host.
 
-and later ATTR_NONBLOCK is used to change the behaviour of
-DMAPI callouts from XFS.
+Does Linux have a similar command?  I'm having trouble finding one.  I =
+have very occasionally seen a situation where a client crashes hard, =
+leaving a file lock held on an NFS server, and I want to have a way to =
+remove it.
 
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+Alternatively, could I achieve a similar effect by restarting lockd to =
+encourage all active clients to reacquire their locks?
+
+Edward.
+
+------_=_NextPart_001_01C54013.83E47326
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+<HEAD>
+<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
+charset=3Diso-8859-1">
+<META NAME=3D"Generator" CONTENT=3D"MS Exchange Server version =
+6.5.7226.0">
+<TITLE>clear_locks on Linux?</TITLE>
+</HEAD>
+<BODY>
+<!-- Converted from text/rtf format -->
+
+<P><FONT COLOR=3D"#FF00FF" SIZE=3D2 FACE=3D"Arial">Solaris has a command =
+clear_locks, to remove locks held by a specific remote host.</FONT>
+</P>
+
+<P><FONT COLOR=3D"#FF00FF" SIZE=3D2 FACE=3D"Arial">Does Linux have a =
+similar command?&nbsp; I'm having trouble finding one.&nbsp; I have very =
+occasionally seen a situation where a client crashes hard, leaving a =
+file lock held on an NFS server, and I want to have a way to remove =
+it.</FONT></P>
+
+<P><FONT COLOR=3D"#FF00FF" SIZE=3D2 FACE=3D"Arial">Alternatively, could =
+I achieve a similar effect by restarting lockd to encourage all active =
+clients to reacquire their locks?</FONT></P>
+
+<P><FONT COLOR=3D"#FF00FF" SIZE=3D2 FACE=3D"Arial">Edward.</FONT>
+</P>
+
+</BODY>
+</HTML>
+------_=_NextPart_001_01C54013.83E47326--
 
 
+-------------------------------------------------------
+SF email is sponsored by - The IT Product Guide
+Read honest & candid reviews on hundreds of IT Products from real users.
+Discover which products truly live up to the hype. Start reading now.
+http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
