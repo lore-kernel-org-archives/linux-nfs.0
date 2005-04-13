@@ -1,20 +1,23 @@
-From: <eh@dataconnection.com>
-Subject: clear_locks on Linux?
-Date: Wed, 13 Apr 2005 12:14:36 +0100
-Message-ID: <9E621559095AA746B22B21CD4FAF99A50A4EA6@EDINMAIL1.datcon.co.uk>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: Problem with NLM on Fedora
+Date: Wed, 13 Apr 2005 19:43:55 -0400
+Message-ID: <425DAEBB.2000806@RedHat.com>
+References: <9E621559095AA746B22B21CD4FAF99A50A4E76@EDINMAIL1.ad.datcon.co.uk>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----_=_NextPart_001_01C54019.FA2AABFD"
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DLfpY-0003d4-5Q
-	for nfs@lists.sourceforge.net; Wed, 13 Apr 2005 04:14:48 -0700
-Received: from smtp2.dataconnection.com ([192.91.191.8])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DLfpW-0002dY-6E
-	for nfs@lists.sourceforge.net; Wed, 13 Apr 2005 04:14:48 -0700
-To: <nfs@lists.sourceforge.net>
+	id 1DLrWk-0007Ft-Oe
+	for nfs@lists.sourceforge.net; Wed, 13 Apr 2005 16:44:10 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1DLrWe-00029v-SW
+	for nfs@lists.sourceforge.net; Wed, 13 Apr 2005 16:44:10 -0700
+To: eh@dataconnection.com
+In-Reply-To: <9E621559095AA746B22B21CD4FAF99A50A4E76@EDINMAIL1.ad.datcon.co.uk>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,63 +31,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+eh@dataconnection.com wrote:
+> I've just installed Fedora, and am having problems with NFS. 
+> 
+> What I'm seeing is that NLM requests are not issued to the NFS server 
+> (which is a SNAP Server).  Instead the application hangs for about 7 
+> seconds, and then returns successfully (i.e. the locks are ostensibly 
+> granted).  The delay happens both on locks and unlock requests.  Via 
+> tcpdump I see NFS requests/responses, but no RPC calls for NLM.
+Could you post a bzip2-ed ethereal trace (meaning
+tethereal -w /tmp/dump.pcap; bzip2 /tmp/dump.pcap) of this?
 
-------_=_NextPart_001_01C54019.FA2AABFD
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+There are some know locking issue with FC3
+(see: https://bugzilla.redhat.com/beta/show_bug.cgi?id=150151)
+but this appears to be a bit different...
 
-> Solaris has a command clear_locks, to remove locks held by a specific =
-remote host.
->=20
-> Does Linux have a similar command?  I'm having trouble finding one.  I =
-have very occasionally seen a situation where a client crashes hard, =
-leaving a file lock held on an NFS server, and I want to have a way to =
-remove it.
->=20
-> Alternatively, could I achieve a similar effect by restarting lockd to =
-encourage all active clients to reacquire their locks?
->=20
-> Edward.
-
-------_=_NextPart_001_01C54019.FA2AABFD
-Content-Type: text/html;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
-<HTML>
-<HEAD>
-<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
-charset=3Diso-8859-1">
-<META NAME=3D"Generator" CONTENT=3D"MS Exchange Server version =
-6.5.7226.0">
-<TITLE>clear_locks on Linux?</TITLE>
-</HEAD>
-<BODY>
-<!-- Converted from text/rtf format -->
-
-<P><FONT COLOR=3D"#FF00FF" SIZE=3D2 FACE=3D"Arial">Solaris has a command =
-clear_locks, to remove locks held by a specific remote host.</FONT>
-</P>
-
-<P><FONT COLOR=3D"#FF00FF" SIZE=3D2 FACE=3D"Arial">Does Linux have a =
-similar command?&nbsp; I'm having trouble finding one.&nbsp; I have very =
-occasionally seen a situation where a client crashes hard, leaving a =
-file lock held on an NFS server, and I want to have a way to remove =
-it.</FONT></P>
-
-<P><FONT COLOR=3D"#FF00FF" SIZE=3D2 FACE=3D"Arial">Alternatively, could =
-I achieve a similar effect by restarting lockd to encourage all active =
-clients to reacquire their locks?</FONT></P>
-
-<P><FONT COLOR=3D"#FF00FF" SIZE=3D2 FACE=3D"Arial">Edward.</FONT>
-</P>
-
-</BODY>
-</HTML>
-------_=_NextPart_001_01C54019.FA2AABFD--
+steved.
 
 
 -------------------------------------------------------
