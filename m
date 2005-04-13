@@ -1,20 +1,20 @@
-From: mehta kiran <kiranmehta1981@yahoo.com>
-Subject: Re: clear_locks on Linux?
-Date: Wed, 13 Apr 2005 06:31:51 -0700 (PDT)
-Message-ID: <20050413133151.79772.qmail@web51602.mail.yahoo.com>
+From: <eh@dataconnection.com>
+Subject: clear_locks on Linux?
+Date: Wed, 13 Apr 2005 12:14:36 +0100
+Message-ID: <9E621559095AA746B22B21CD4FAF99A50A4EA6@EDINMAIL1.datcon.co.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: multipart/alternative;
+	boundary="----_=_NextPart_001_01C54019.FA2AABFD"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DLhyL-0006xi-3Q
-	for nfs@lists.sourceforge.net; Wed, 13 Apr 2005 06:32:01 -0700
-Received: from web51602.mail.yahoo.com ([206.190.38.207])
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
-	id 1DLhyH-0002nN-PI
-	for nfs@lists.sourceforge.net; Wed, 13 Apr 2005 06:32:00 -0700
-To: eh@dataconnection.com, nfs@lists.sourceforge.net
-In-Reply-To: 6667
+	id 1DLfpY-0003d4-5Q
+	for nfs@lists.sourceforge.net; Wed, 13 Apr 2005 04:14:48 -0700
+Received: from smtp2.dataconnection.com ([192.91.191.8])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1DLfpW-0002dY-6E
+	for nfs@lists.sourceforge.net; Wed, 13 Apr 2005 04:14:48 -0700
+To: <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,43 +28,63 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi , 
-    1.You can definitely restart nfsd so that clients 
-      will reacquire their locks.
-    2.If you only want to release all locks , use
-      kill -9 <lockd pid> but in this case all 
-      clients will looose their locks permanently.
-      
-I dont think that currently there is any way to
-release locks held  by --a-- particlar client. 
+This is a multi-part message in MIME format.
 
-regards,
- kiran
+------_=_NextPart_001_01C54019.FA2AABFD
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-
---- eh@dataconnection.com wrote:
-> Solaris has a command clear_locks, to remove locks
-> held by a specific remote host.
-> 
-> Does Linux have a similar command?  I'm having
-> trouble finding one.  I have very occasionally seen
-> a situation where a client crashes hard, leaving a
-> file lock held on an NFS server, and I want to have
-> a way to remove it.
-> 
-> Alternatively, could I achieve a similar effect by
-> restarting lockd to encourage all active clients to
-> reacquire their locks?
-> 
+> Solaris has a command clear_locks, to remove locks held by a specific =
+remote host.
+>=20
+> Does Linux have a similar command?  I'm having trouble finding one.  I =
+have very occasionally seen a situation where a client crashes hard, =
+leaving a file lock held on an NFS server, and I want to have a way to =
+remove it.
+>=20
+> Alternatively, could I achieve a similar effect by restarting lockd to =
+encourage all active clients to reacquire their locks?
+>=20
 > Edward.
-> 
 
+------_=_NextPart_001_01C54019.FA2AABFD
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-		
-__________________________________ 
-Do you Yahoo!? 
-Make Yahoo! your home page 
-http://www.yahoo.com/r/hs
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+<HEAD>
+<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
+charset=3Diso-8859-1">
+<META NAME=3D"Generator" CONTENT=3D"MS Exchange Server version =
+6.5.7226.0">
+<TITLE>clear_locks on Linux?</TITLE>
+</HEAD>
+<BODY>
+<!-- Converted from text/rtf format -->
+
+<P><FONT COLOR=3D"#FF00FF" SIZE=3D2 FACE=3D"Arial">Solaris has a command =
+clear_locks, to remove locks held by a specific remote host.</FONT>
+</P>
+
+<P><FONT COLOR=3D"#FF00FF" SIZE=3D2 FACE=3D"Arial">Does Linux have a =
+similar command?&nbsp; I'm having trouble finding one.&nbsp; I have very =
+occasionally seen a situation where a client crashes hard, leaving a =
+file lock held on an NFS server, and I want to have a way to remove =
+it.</FONT></P>
+
+<P><FONT COLOR=3D"#FF00FF" SIZE=3D2 FACE=3D"Arial">Alternatively, could =
+I achieve a similar effect by restarting lockd to encourage all active =
+clients to reacquire their locks?</FONT></P>
+
+<P><FONT COLOR=3D"#FF00FF" SIZE=3D2 FACE=3D"Arial">Edward.</FONT>
+</P>
+
+</BODY>
+</HTML>
+------_=_NextPart_001_01C54019.FA2AABFD--
 
 
 -------------------------------------------------------
