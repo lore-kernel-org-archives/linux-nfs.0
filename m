@@ -1,23 +1,27 @@
-From: Nix <nix@esperi.org.uk>
-Subject: NFSv3 GETATTR/ACCESS requests flooding the network since upgrading
- to 2.6
-Date: Thu, 21 Apr 2005 18:31:55 +0100
-Message-ID: <87r7h4gho4.fsf@amaterasu.srvr.nix>
+From: Annette Bitz <bitz@human-solutions.com>
+Subject: nfsserver (Suse Linux 9.2) has problems with unix-clients
+Date: Wed, 20 Apr 2005 10:06:07 +0200
+Message-ID: <200504201006.07814.bitz@human-solutions.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain;
+  charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DOfX4-0002ER-2i
-	for nfs@lists.sourceforge.net; Thu, 21 Apr 2005 10:32:06 -0700
-Received: from 41-052.adsl.zetnet.co.uk
-	([194.247.41.52] helo=mail.esperi.org.uk ident=user62540)
+	id 1DOADq-0000Tf-Bf
+	for nfs@lists.sourceforge.net; Wed, 20 Apr 2005 01:06:10 -0700
+Received: from www.human-solutions.com ([194.55.1.65] helo=mail.human-solutions.com)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DOfX2-0004re-6j
-	for nfs@lists.sourceforge.net; Thu, 21 Apr 2005 10:32:05 -0700
-Received: from esperi.org.uk (nix@amaterasu.srvr.nix [192.168.14.14])
-	by mail.esperi.org.uk (8.12.11/8.12.11) with ESMTP id j3LHVupJ029594
-	for <nfs@lists.sourceforge.net>; Thu, 21 Apr 2005 18:31:56 +0100
+	id 1DOADp-0004By-Q5
+	for nfs@lists.sourceforge.net; Wed, 20 Apr 2005 01:06:10 -0700
+Received: from [192.168.98.1] (helo=superserver.humanmodeling.tecmath.de)
+	by mail.human-solutions.com with esmtp (Exim 3.36 #5)
+	id 1DOADn-0005D3-00
+	for nfs@lists.sourceforge.net; Wed, 20 Apr 2005 10:06:07 +0200
+Received: from aldea.humanmodeling.tecmath.de ([192.168.98.39])
+	by superserver.humanmodeling.tecmath.de with esmtp (Exim 4.42)
+	id 1DOADn-0002IP-AF
+	for nfs@lists.sourceforge.net; Wed, 20 Apr 2005 10:06:07 +0200
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -32,59 +36,45 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I upgraded from 2.4.28 to 2.6.10 (and then .11) a month ago. In 2.6.11
-at least, and probably in 2.6.10 (alas, I didn't notice this behaviour
-early enough to be sure: I can reboot into 2.6.10 and see if it
-disappears if anyone wants), the Linux NFS client / kernel server
-combination has been absolutely *flooding* the network with ACCESS
-requests (and to a somewhat lesser extent GETATTR).
+Hi!
 
+I just installed a new server, one of it's roles being our nfsserver.
 
-This is far worse than anything I've seen in 2.4: even on a 100Mb/s net,
-it slows (e.g.) configure runs down to a tenth or less of their normal
-speed. A packet dump of ten seconds worth of a run of bfd configure
-shows more than 40,000 UDP packets, 95% of them GETATTR and ACCESS
-requests for the same inodes repeated over and over again microseconds
-apart. There appears to be no caching of ACCESS results being done
-whatsoever.
+I installed an actual Suse 9.2 professional (from DVD) using the following 
+things:
+- Linux ... 2.6.8-24-smp #1 SMP Wed Oct 6 09:16:23 UTC 2004 i686 i686 i386 
+GNU/Linux
+	-> kernel-smp-2.6.8-24
+	kernel-source-2.6.8-24
+	kernel-smp-nongpl-2.6.8-24
+- yast2-nfs-server-2.10.5-2
+- nfs-server-2.2beta51-208
+- yast2-nfs-client-2.10.5-2
 
-(Packet dumps from this ten-second slice of configure run are available,
-but they're >8Mb, so I'm not attaching them here.)
+The connection Linux server -> Linux client runs without any problem, but...
+I also try to connect from some Unix boxes with different unices. There are:
+- SunOS ... 5.8 Generic_108528-29 sun4u sparc SUNW,Sun-Blade-1000
+- HP-UX ... B.11.11 U 9000/782 2011691852 unlimited-user license
+- HP-UX ... B.11.00 A 9000/785 2009266684 two-user license
+- IRIX64 ... 6.5 04091957 IP30
+- AIX ... 2 5 0041192C4C00
 
+All platforms make problems with the new server. I can mount the shares, but 
+the performance is really poor. I get many nfs stale-file handles. 
+On Sun (only there?) I have the problem, that when I touch a file/directory, I 
+don't see it resp. the changes immediately.
 
-The filesystem I tested this on (and where I see most of the problems,
-but it's the most heavily used of my NFS filesystems, so this is
-unsurprising) is exported from a 2.6.11.6 SPARC64 box as
-`rw,no_root_squash,async,wdelay,no_subtree_check' (from
-/proc/fs/nfs/exports), and imported onto a number of 2.6.11.6 i386-class
-boxes (Pentium, Athlon IV...) all of which show the same symptoms.
+I googled around, but I can't find anything. I only found somesthing like 
+"Just watch out that NFS can make assumptions about inodes - particularly
+the kernel-mode NFS daemon.", but I don't know what this means (but it sounds 
+good ;-) ).
 
-I'm running nfs-utils 1.0.7 across the board, but this doesn't seem to
-be the class of problems I've seen before where mount fails to
-communicate the NFS options properly to the kernel and leaves out the
-async or something like that. (I think this has to be a client bug
-or obscure feature or something.)
+Please help me! 
+And please send a copy of your answer directly to me, for I'm new to the list 
+and I don't know, if I receive the mails yet.
 
-
-I speculate that this line from the NFS FAQ is relevant:
-
-> The Linux NFS client should cache the results of these ACCESS
-> operations. In fact, in the new 2.6.x kernels, it does this and it
-> extends ACCESS checking to all users to allow for generic uid/gid
-> mapping on the server.
-
-If this means `massive numbers of ACCESS requests will happen when using
-2.6', then, well, I'm not using UID/GID mapping[1] and I don't need ACLs
-if they do *this* to performance: how do I turn this behaviour off?
-
-
-[1] in fact, until I read this FAQ entry I was unaware it existed: I
-    mourned its loss when I moved away from unfsd / ugidd, so if
-    it's back, excellent!
-
--- 
-This is like system("/usr/funky/bin/perl -e 'exec sleep 1'");
-   --- Peter da Silva
+Thanks in advance,
+Annette
 
 
 -------------------------------------------------------
