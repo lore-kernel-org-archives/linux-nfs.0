@@ -1,24 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS crash problem in readdirplus
-Date: Wed, 20 Apr 2005 16:10:02 -0400
-Message-ID: <1114027802.15795.34.camel@lade.trondhjem.org>
-References: <20050401173053.32F551154F4@dead.void.org>
-	 <20050420084935.GA30863@suse.de> <20050420183438.10F691165A4@dead.void.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: order of starting nfsd and mountd
+Date: Wed, 20 Apr 2005 16:50:02 -0400
+Message-ID: <4266C07A.1010403@RedHat.com>
+References: <20050420145111.90658.qmail@web51610.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Olaf Kirch <okir@suse.de>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DOLWk-0004xx-BJ
-	for nfs@lists.sourceforge.net; Wed, 20 Apr 2005 13:10:26 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1DOM9E-0006ok-9R
+	for nfs@lists.sourceforge.net; Wed, 20 Apr 2005 13:50:12 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1DOLWi-00065R-Qa
-	for nfs@lists.sourceforge.net; Wed, 20 Apr 2005 13:10:26 -0700
-To: Steven <steven@void.org>
-In-Reply-To: <20050420183438.10F691165A4@dead.void.org>
+	id 1DOM9C-00084R-RS
+	for nfs@lists.sourceforge.net; Wed, 20 Apr 2005 13:50:12 -0700
+To: mehta kiran <kiranmehta1981@yahoo.com>
+In-Reply-To: <20050420145111.90658.qmail@web51610.mail.yahoo.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,23 +31,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-on den 20.04.2005 Klokka 11:34 (-0700) skreiv Steven:
 
-> I think that a maxcount of 0 is an invalid argument.  The rfc says that
-> the size must include all XDR overhead so there is no way to reply
-> successfully when maxcount is 0.
 
-Note that _strictly_ speaking, maxcount gives the maximum size for the
-entire READDIRPLUS3resok structure (including post_op attr and cookie
-verifier).
-This is something we appear to have overlooked in both the client and
-server and applies to READDIR too. It also applies to NFSv4.
+mehta kiran wrote:
+>      I tried starting rpc.mountd before nfsd and
+>      when nfs restarts , client gets nfs stale handle 
+>      error(RHEL4 GA 2.6.9-5.ELsmp).
+>      If mountd is started after nfsd , everything
+> works
+>      find.
+>      Why is this dependency or ordering ?
+Due to the way rpc.mountd and the kernel (i.e. nfsd)
+communicate. rpc.mountd need to open files under
+/proc/net/rpc and if nfsd is not running, those
+opens will fail.
 
-Cheers,
-  Trond
--- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
-
+steved.
 
 
 -------------------------------------------------------
