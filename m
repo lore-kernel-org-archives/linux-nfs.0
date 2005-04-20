@@ -1,19 +1,22 @@
-From: mehta kiran <kiranmehta1981@yahoo.com>
-Subject: order of starting nfsd and mountd
-Date: Wed, 20 Apr 2005 07:51:10 -0700 (PDT)
-Message-ID: <20050420145111.90658.qmail@web51610.mail.yahoo.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+From: Steven <steven@void.org>
+Subject: Re: NFS crash problem in readdirplus
+Date: Wed, 20 Apr 2005 11:34:37 -0700
+Message-ID: <20050420183438.10F691165A4@dead.void.org>
+References: <20050401173053.32F551154F4@dead.void.org>  <20050420084935.GA30863@suse.de>
+Cc: Steven <steven@void.org>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DOGXv-0004nA-2w
-	for nfs@lists.sourceforge.net; Wed, 20 Apr 2005 07:51:19 -0700
-Received: from web51610.mail.yahoo.com ([206.190.38.215])
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
-	id 1DOGXt-0007wH-Cr
-	for nfs@lists.sourceforge.net; Wed, 20 Apr 2005 07:51:18 -0700
-To: nfs@lists.sourceforge.net
+	id 1DOK3V-0008UD-VZ
+	for nfs@lists.sourceforge.net; Wed, 20 Apr 2005 11:36:09 -0700
+Received: from dsl092-218-023.sfo2.dsl.speakeasy.net ([66.92.218.23] helo=chaotic.void.org)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1DOK3U-0002nd-JO
+	for nfs@lists.sourceforge.net; Wed, 20 Apr 2005 11:36:09 -0700
+To: Olaf Kirch <okir@suse.de>
+In-Reply-To: Message from Olaf Kirch <okir@suse.de>
+   of "Wed, 20 Apr 2005 10:49:35 +0200." <20050420084935.GA30863@suse.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,22 +30,45 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi , 
-     I tried starting rpc.mountd before nfsd and
-     when nfs restarts , client gets nfs stale handle 
-     error(RHEL4 GA 2.6.9-5.ELsmp).
-     If mountd is started after nfsd , everything
-works
-     find.
-     Why is this dependency or ordering ?
+Right, resp->buffer is set here;
 
-regards,
- --kiran
+int
+nfs3svc_decode_readdirplusargs(struct svc_rqst *rqstp, u32 *p,
+					struct nfsd3_readdirargs *args)
+{
+	int len, pn;
 
-__________________________________________________
-Do You Yahoo!?
-Tired of spam?  Yahoo! Mail has the best spam protection around 
-http://mail.yahoo.com 
+	if (!(p = decode_fh(p, &args->fh)))
+		return 0;
+	p = xdr_decode_hyper(p, &args->cookie);
+	args->verf     = p; p += 2;
+	args->dircount = ntohl(*p++);
+	args->count    = ntohl(*p++);
+
+	len = (args->count > NFSSVC_MAXBLKSIZE) ? NFSSVC_MAXBLKSIZE :
+						  args->count;
+	args->count = len;
+
+	while (len > 0) {
+		pn = rqstp->rq_resused;
+		svc_take_page(rqstp);
+		if (!args->buffer)
+here -->		args->buffer = page_address(rqstp->rq_respages[pn]);
+		len -= PAGE_SIZE;
+	}
+
+	return xdr_argsize_check(rqstp, p);
+}
+
+If len == 0 then the conditional on that loop never holds and
+args->buffer is never set.
+
+I think that a maxcount of 0 is an invalid argument.  The rfc says that
+the size must include all XDR overhead so there is no way to reply
+successfully when maxcount is 0.
+
+--Steven
+
 
 
 -------------------------------------------------------
