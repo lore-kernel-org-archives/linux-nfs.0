@@ -1,22 +1,24 @@
-From: Kenneth Sumrall <ksumrall@pacbell.net>
-Subject: NFS server hang, looking for suggestions
-Date: Wed, 20 Apr 2005 22:10:36 -0700
-Message-ID: <426735CC.9020900@pacbell.net>
+From: =?iso-8859-1?Q?Peter_=C5strand?= <astrand@cendio.se>
+Subject: Re: Detectiong Network and umount / mount NFS
+Date: Thu, 21 Apr 2005 10:14:47 +0200 (CEST)
+Message-ID: <Pine.LNX.4.61.0504211009380.3889@maggie.lkpg.cendio.se>
+References: <1114027379.4266b57354785@webmail.tusofona.com>
+ <4266C21D.9030305@RedHat.com>  <1114038052.4266df245e54e@webmail.tusofona.com>
+ <1114042784.17214.11.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: MULTIPART/MIXED; BOUNDARY="789237761-858191671-1114071252=:3889"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DOTxa-00083j-4u
-	for nfs@lists.sourceforge.net; Wed, 20 Apr 2005 22:10:42 -0700
-Received: from gateway-1237.mvista.com ([12.44.186.158] helo=av.mvista.com)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1DOTxW-0006rN-HJ
-	for nfs@lists.sourceforge.net; Wed, 20 Apr 2005 22:10:42 -0700
-Received: from pacbell.net (av [127.0.0.1])
-	by av.mvista.com (8.9.3/8.9.3) with ESMTP id WAA04505
-	for <nfs@lists.sourceforge.net>; Wed, 20 Apr 2005 22:10:36 -0700
-To: nfs@lists.sourceforge.net
+	id 1DOWpw-0007jr-K1
+	for nfs@lists.sourceforge.net; Thu, 21 Apr 2005 01:15:00 -0700
+Received: from mail.cendio.se ([193.12.253.69])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1DOWpv-0005LK-2m
+	for nfs@lists.sourceforge.net; Thu, 21 Apr 2005 01:15:00 -0700
+To: esqueleto@tusofona.com
+In-Reply-To: <1114042784.17214.11.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,60 +32,46 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-At work, we have a very large (5.6 Tb) SCSI raid unit, which is formatted
-as 1 XFS filesystem.  It is connected to a SuperMicro 6012P-6 dual CPU
-Pentium-4 server.  The server is running on Suse 9.2, but we've upgraded
-the kernel from the 2.6.8 that shipped with it to 2.6.11.7 from kernel.org.
-The server exports the XFS filesystem using the kernel NFSD Version 3.
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-The machine has recently been hanging on a regular basis.  We think it's
-related to NFS as the hangs often occur during a time in our nightly builds
-when a bunch of machines are all writing data to the server at the same time.
-However, sometimes the hangs occur when the write load is not as heavy.
+--789237761-858191671-1114071252=:3889
+Content-Type: TEXT/PLAIN; CHARSET=iso-8859-1; format=flowed
+Content-ID: <Pine.LNX.4.61.0504211014211.3889@maggie.lkpg.cendio.se>
+Content-Transfer-Encoding: quoted-printable
 
-The things we've tried are:
-   Swap the server box with a spare.  Just to make sure it's not a hardware
-   problem.
+On Wed, 20 Apr 2005, Trond Myklebust wrote:
 
-   Tried booting with "nosmp noapic" in case SMP was causing us problems.
+>> Why? There is no Network!! Why the NFS mantain the connection? Should =
+the NFS
+>> umount the mount points?
+>>
+>
+> Umm... Perhaps because there is a general consensus among NFS developer=
+s
+> that throwing away people's data, and killing off their processes
+> without their consent might be a bad thing?
 
-   Update to 2.6.11.7, because I read about a problem exporting XFS over NFS
-   in 2.6.8.  One thing I'm not clear on, with the 2.6.8 XFS over NFS bug,
-   could that cause XFS filesystem corruption.  Should I run xfs_check on
-   my XFS filesystem?
+The problem is that it's hard to get rid of the mount even if you want.=20
+There is no --force-I-really-want-this.
 
-   We recently re-cabled a bunch of the clients for this machine, and in the
-   process, removed a choke point where 13 of our clients were funnelled through
-   a 100 Mbs ethernet switch.  That could have caused major fragmentation issues,
-   which I've read are a bad thing.  It's only been 1 day since we did that, so
-   no data yet on if things are better.
 
-Other things to note.  Because the RAID is so big, we are running XFS directly
-on the raw disk device, not a partition.  The partition format seems to have
-problems with sizes over 2 terabytes.  Of course, I had to turn on CONFIG_LBD
-in order to access such a large block device.
+> If you want that sort of behaviour, then read all about the "soft" moun=
+t
+> option ("man 5 nfs", and http://nfs.sourceforge.net/#faq_d6).
 
-The ethernet interface is an e1000 gigabit interface.  It plugs directly into
-our main Foundry ethernet switch.  The clients all have 100 Mbit interfaces, but
-there's a bunch of them.
+I think Esqueleto wants a Solaris-type "umount -f". I'd like to have that=
+=20
+too.
 
-Also, the RAID uses a sector size of 2048 bytes, not the typical 512 bytes.
-The SCSI controller in the server is an Adaptec Ultra160 chip, and we're using
-the aic7xxx driver.
+Is there any bug in http://bugzilla.kernel.org/ that I can vote for?
 
-Does anyone have any suggestions on how to further diagnose our problem?  I've
-not used magic sysrq before, but I'm thinking maybe trying to dump a list of
-current tasks, and the registers might be useful to see if it hangs in the
-same place everytime.  Or I could apply the KGDB patch, and try using that.
-
-Does anyone have any other ideas on how to diagnose this?  Any known problems
-I'm not aware of?  I'd really like to make this server rock solid.
-
-Thanks.
-
-Ken Sumrall
-ksumrall@pacbell.net
-
+--=20
+Peter =C5strand		Chief Developer
+Cendio			www.thinlinc.com
+Teknikringen 3		www.cendio.se
+583 30 Link=F6ping        Phone: +46-13-21 46 00
+--789237761-858191671-1114071252=:3889--
 
 
 -------------------------------------------------------
