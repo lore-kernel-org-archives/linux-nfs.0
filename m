@@ -1,27 +1,21 @@
-From: Annette Bitz <bitz@human-solutions.com>
-Subject: nfsserver (Suse Linux 9.2) has problems with unix-clients
-Date: Wed, 20 Apr 2005 10:06:07 +0200
-Message-ID: <200504201006.07814.bitz@human-solutions.com>
+From: Alejandra <alejamilis@gmail.com>
+Subject: help with nfs
+Date: Fri, 22 Apr 2005 09:55:37 -0300
+Message-ID: <3dd7287a05042205554e966492@mail.gmail.com>
+Reply-To: Alejandra <alejamilis@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="us-ascii"
+Content-Type: text/plain; charset=ISO-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DOADq-0000Tf-Bf
-	for nfs@lists.sourceforge.net; Wed, 20 Apr 2005 01:06:10 -0700
-Received: from www.human-solutions.com ([194.55.1.65] helo=mail.human-solutions.com)
+	id 1DOxhB-00050i-PU
+	for nfs@lists.sourceforge.net; Fri, 22 Apr 2005 05:55:45 -0700
+Received: from zproxy.gmail.com ([64.233.162.195])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DOADp-0004By-Q5
-	for nfs@lists.sourceforge.net; Wed, 20 Apr 2005 01:06:10 -0700
-Received: from [192.168.98.1] (helo=superserver.humanmodeling.tecmath.de)
-	by mail.human-solutions.com with esmtp (Exim 3.36 #5)
-	id 1DOADn-0005D3-00
-	for nfs@lists.sourceforge.net; Wed, 20 Apr 2005 10:06:07 +0200
-Received: from aldea.humanmodeling.tecmath.de ([192.168.98.39])
-	by superserver.humanmodeling.tecmath.de with esmtp (Exim 4.42)
-	id 1DOADn-0002IP-AF
-	for nfs@lists.sourceforge.net; Wed, 20 Apr 2005 10:06:07 +0200
+	id 1DOxhA-0003Dy-1p
+	for nfs@lists.sourceforge.net; Fri, 22 Apr 2005 05:55:45 -0700
+Received: by zproxy.gmail.com with SMTP id 16so1190752nzp
+        for <nfs@lists.sourceforge.net>; Fri, 22 Apr 2005 05:55:37 -0700 (PDT)
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -36,45 +30,45 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi!
+I'm trying to share some directories using nfs, and although I've
+modified the hosts.allow,hosts.deny and export files as the tutorial
+says, it doesn't work. I'm working in a simple workgroup of four
+computers  - three of them have both w2k and Fedora Core 3.
+Nfs-utils : version 1.0.6-39
+Kernel: 2.6.9
+=20
+This is my /etc/export:
 
-I just installed a new server, one of it's roles being our nfsserver.
+#Archivos a compartir
 
-I installed an actual Suse 9.2 professional (from DVD) using the following 
-things:
-- Linux ... 2.6.8-24-smp #1 SMP Wed Oct 6 09:16:23 UTC 2004 i686 i686 i386 
-GNU/Linux
-	-> kernel-smp-2.6.8-24
-	kernel-source-2.6.8-24
-	kernel-smp-nongpl-2.6.8-24
-- yast2-nfs-server-2.10.5-2
-- nfs-server-2.2beta51-208
-- yast2-nfs-client-2.10.5-2
+/exportaciones=09192.168.1.21(rw) 192.168.1.15(rw) 192.168.1.48(rw)
 
-The connection Linux server -> Linux client runs without any problem, but...
-I also try to connect from some Unix boxes with different unices. There are:
-- SunOS ... 5.8 Generic_108528-29 sun4u sparc SUNW,Sun-Blade-1000
-- HP-UX ... B.11.11 U 9000/782 2011691852 unlimited-user license
-- HP-UX ... B.11.00 A 9000/785 2009266684 two-user license
-- IRIX64 ... 6.5 04091957 IP30
-- AIX ... 2 5 0041192C4C00
+This is /etc/hosts.allow:
 
-All platforms make problems with the new server. I can mount the shares, but 
-the performance is really poor. I get many nfs stale-file handles. 
-On Sun (only there?) I have the problem, that when I touch a file/directory, I 
-don't see it resp. the changes immediately.
+portmap: 192.168.1.48 , 192.168.1.15 , 192.168.1.48
+lockd: 192.168.1.48 , 192.168.1.15 , 192.168.1.48
+mountd: 192.168.1.48 , 192.168.1.15 , 192.168.1.48
+rquotad: 192.168.1.48 , 192.168.1.15 , 192.168.1.48
+statd: 192.168.1.48 , 192.168.1.15 , 192.168.1.48
 
-I googled around, but I can't find anything. I only found somesthing like 
-"Just watch out that NFS can make assumptions about inodes - particularly
-the kernel-mode NFS daemon.", but I don't know what this means (but it sounds 
-good ;-) ).
+This is /etc/hosts.deny:
 
-Please help me! 
-And please send a copy of your answer directly to me, for I'm new to the list 
-and I don't know, if I receive the mails yet.
+portmap:ALL
+lockd:ALL
+mountd:ALL
+rquotad:ALL
+statd:ALL
 
-Thanks in advance,
-Annette
+The problem is that, when the client tries to mount /export, the
+following error apprears:
+<server not mounted>
+
+I've strictly followed the instructions in the tutorial, but I cannot
+solve this problem, I hope you can help me.
+
+Thank you in advance
+
+Alejandra Jamilis
 
 
 -------------------------------------------------------
