@@ -1,30 +1,31 @@
-From: =?iso-8859-1?Q?Peter_=C5strand?= <astrand@cendio.se>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: Detectiong Network and umount / mount NFS
-Date: Fri, 22 Apr 2005 09:12:32 +0200 (CEST)
-Message-ID: <Pine.LNX.4.61.0504220857510.28175@maggie.lkpg.cendio.se>
+Date: Fri, 22 Apr 2005 09:31:44 -0400
+Message-ID: <1114176705.10450.43.camel@lade.trondhjem.org>
 References: <1114027379.4266b57354785@webmail.tusofona.com>
- <4266C21D.9030305@RedHat.com>  <1114038052.4266df245e54e@webmail.tusofona.com>
-  <1114042784.17214.11.camel@lade.trondhjem.org>
- <Pine.LNX.4.61.0504211009380.3889@maggie.lkpg.cendio.se>
- <1114088708.10727.9.camel@lade.trondhjem.org>
- <Pine.LNX.4.61.0504212119170.16285@maggie.lkpg.cendio.se>
- <1114118453.12750.44.camel@lade.trondhjem.org>
+	 <4266C21D.9030305@RedHat.com>
+	 <1114038052.4266df245e54e@webmail.tusofona.com>
+	 <1114042784.17214.11.camel@lade.trondhjem.org>
+	 <Pine.LNX.4.61.0504211009380.3889@maggie.lkpg.cendio.se>
+	 <1114088708.10727.9.camel@lade.trondhjem.org>
+	 <Pine.LNX.4.61.0504212119170.16285@maggie.lkpg.cendio.se>
+	 <1114118453.12750.44.camel@lade.trondhjem.org>
+	 <Pine.LNX.4.61.0504220857510.28175@maggie.lkpg.cendio.se>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="789237761-269219917-1114153952=:28175"
+Content-Type: text/plain; charset=UTF-8
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DOsLC-0006jd-3s
-	for nfs@lists.sourceforge.net; Fri, 22 Apr 2005 00:12:42 -0700
-Received: from mail.cendio.se ([193.12.253.69])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1DOsLA-0006gI-1S
-	for nfs@lists.sourceforge.net; Fri, 22 Apr 2005 00:12:41 -0700
-Received: from maggie.lkpg.cendio.se (maggie.lkpg.cendio.se [10.47.1.208])
-	by mail.cendio.se (Postfix) with ESMTP id 7089125DB21
-	for <nfs@lists.sourceforge.net>; Fri, 22 Apr 2005 09:12:32 +0200 (CEST)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <1114118453.12750.44.camel@lade.trondhjem.org>
+	id 1DOyGQ-0006oW-BN
+	for nfs@lists.sourceforge.net; Fri, 22 Apr 2005 06:32:10 -0700
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1DOyGL-0006Il-Hn
+	for nfs@lists.sourceforge.net; Fri, 22 Apr 2005 06:32:10 -0700
+To: Peter =?ISO-8859-1?Q?=C5strand?= <astrand@cendio.se>
+In-Reply-To: <Pine.LNX.4.61.0504220857510.28175@maggie.lkpg.cendio.se>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,76 +39,71 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+fr den 22.04.2005 Klokka 09:12 (+0200) skreiv Peter =C3=85strand:
 
---789237761-269219917-1114153952=:28175
-Content-Type: TEXT/PLAIN; charset=iso-8859-1; format=flowed
-Content-Transfer-Encoding: quoted-printable
+> > The kernel already aborts all pending I/O and returns EIO with "umount
+> > -f".
+>=20
+> Interesting. How long has this been the case? I've never heard of it=20
+> before; i thought that "-f" was only for not careing about the UMNT call.
 
-On Thu, 21 Apr 2005, Trond Myklebust wrote:
+Huh? I've never heard anyone say anything about UMNT call behaviour, nor
+can I understand where you might have picked that up from the
+documentation.
+The behaviour of umount and umount -f should be exactly the same: if the
+server doesn't respond, the call times out and the return value is
+ignored.
 
->>> You didn't actually read that FAQ entry, that I pointed to, did you?
->>> Please do.
->>
->> I did not, because I thought it was only about soft mounts. I don't wa=
-nt
->> soft mounts.
->>
->> I've read it now, but it didn't make me much wiser. It talks about sof=
-t
->> mounts, which I don't want. It takes about killing processes, which I
->> don't want to do by hand: I think "umount -f" should suffice. The the
->> processes itself can decide what to do with the EIO.
->
-> The kernel already aborts all pending I/O and returns EIO with "umount
-> -f".
+> Perhaps the man-page could say something about this?
 
-Interesting. How long has this been the case? I've never heard of it=20
-before; i thought that "-f" was only for not careing about the UMNT call.
+The manpage says
 
-Perhaps the man-page could say something about this?
+       -f     Force unmount (in case of an unreachable NFS system).  (Requi=
+res
+              kernel 2.1.116 or later.)
 
-A few other interesting things: I've tested this on Fedora. I did a=20
-"strace cat /mnt/foo". The first "umount -f" call gave:
+The behaviour of the kernel w.r.t. that flag has been the same since
+2.1.116.
 
-# umount -f /mnt
-umount2: Device or resource busy
-umount: /mnt: device is busy
-umount2: Device or resource busy
-umount: /mnt: device is busy
-
-The cat process was still hanged. When doing a second "umount -f",=20
-open("/mnt/foo") returned EIO. This time, the umount command said:
-
-# umount -f /mnt
-umount2: Device or resource busy
-umount: /mnt: device is bus
-
-One other interesting thing was that then, the kernel crashed... I'm usin=
+> The cat process was still hanged. When doing a second "umount -f",=20
+> open("/mnt/foo") returned EIO. This time, the umount command said:
+>=20
+> # umount -f /mnt
+> umount2: Device or resource busy
+> umount: /mnt: device is bus
+>=20
+> One other interesting thing was that then, the kernel crashed... I'm usin=
 g=20
-kernel 2.6.11-1.14_FC3.
-
-I'm able to reproduce this problem. I have a screen shot of the call trac=
+> kernel 2.6.11-1.14_FC3.
+>=20
+> I'm able to reproduce this problem. I have a screen shot of the call trac=
 e=20
-on http://www.cendio.se/~peter/fc3-umount-crash.png, if anyone is=20
-interested.
+> on http://www.cendio.se/~peter/fc3-umount-crash.png, if anyone is=20
+> interested.
 
+That's certainly an "interesting" Oops. ebp=3D0x1b, esp=3D0xc0446f98,
+together with a timer list corruption. Is that running under vmware? If
+so, can you reproduce with a normal kernel (no vmware module) and given
+that weird value of ebp, with stack overflow checking turned on.
 
-> Three reasons:
->
->  1) That bugzilla is meant for reporting kernel bugs, not for feature
-> requests
+On my machine, the "umount -f" complains a bit about "Cannot MOUNTPROG
+RPC (tcp): RPC: Program not registered", and there may be a few "device
+is busy" here and there, but the umount definitely succeeds in killing
+off the hanging programs, and it fails to Oops.
 
-In my opinion, an "unkillable" process is a bug.
+> >  1) That bugzilla is meant for reporting kernel bugs, not for feature
+> > requests
+>=20
+> In my opinion, an "unkillable" process is a bug.
 
+That's entirely _your_ personal opinion. A lot of other people will
+argue that causing processes to lose data is a bug. In order to
+accommodate both camps, there are mount options to allow for one or the
+other behaviour, there are manpage entries, and there are FAQ entries.
 
 --=20
-Peter =C5strand		Chief Developer
-Cendio			www.thinlinc.com
-Teknikringen 3		www.cendio.se
-583 30 Link=F6ping        Phone: +46-13-21 46 00
---789237761-269219917-1114153952=:28175--
+Trond Myklebust <trond.myklebust@fys.uio.no>
+
 
 
 -------------------------------------------------------
