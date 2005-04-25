@@ -1,409 +1,154 @@
-From: Adrian Bunk <bunk@stusta.de>
-Subject: [2.6 patch] fs/nfsd/: possible cleanups
-Date: Sat, 23 Apr 2005 02:07:55 +0200
-Message-ID: <20050423000755.GN4355@stusta.de>
+From: Chris Penney <cpenney@gmail.com>
+Subject: Kernel Oops
+Date: Mon, 25 Apr 2005 12:31:19 -0400
+Message-ID: <111aefd05042509317c139b02@mail.gmail.com>
+Reply-To: penney@msu.edu
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel=40m.gmane.org-S261369AbVDWAKn@vger.kernel.org>
-To: neilb@cse.unsw.edu.au
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=ISO-8859-1
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1DQ6Uo-0005Lm-Kj
+	for nfs@lists.sourceforge.net; Mon, 25 Apr 2005 09:31:42 -0700
+Received: from wproxy.gmail.com ([64.233.184.207])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1DQ6UX-0007ZG-Oo
+	for nfs@lists.sourceforge.net; Mon, 25 Apr 2005 09:31:42 -0700
+Received: by wproxy.gmail.com with SMTP id 69so1289717wra
+        for <nfs@lists.sourceforge.net>; Mon, 25 Apr 2005 09:31:19 -0700 (PDT)
+To: nfs@lists.sourceforge.net
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This patch contains the following possible cleanups:
-- make needlessly global code static
-- remove the following unused global function:
-  - nfs4state.c: set_no_grace
+I have a 2.6.11.5 NFS server that serves a directory /s that had light
+to moderate activity.  I had another file server mounted as /nicfs7
+and was doing a local rsync (moving some data) from /s/path to
+/nicfs7/path when (for some unknown reason) it hung.  I hit ctrl-c and
+then kill -9'ed the two remaining rsync processes.  I then unmounted
+/nicfs7 (which seemed ok right after).  I then saw what I pasted in
+below in messages.
 
-Signed-off-by: Adrian Bunk <bunk@stusta.de>
+At this point NFS service seems ok; however, one of the nfsd threads
+is missing.  I specify to start 128 and only 127 are running.  Is a
+missing nfsd a problem?  It's no clear to me why an nfsd did in the
+first place either when I was using nfs client -> local disk.
 
----
+   Chris
 
- fs/nfsd/nfs4acl.c          |    4 +-
- fs/nfsd/nfs4callback.c     |    7 +--
- fs/nfsd/nfs4idmap.c        |   12 +++---
- fs/nfsd/nfs4state.c        |   65 +++++++++++++++++--------------------
- fs/nfsd/nfs4xdr.c          |    4 +-
- include/linux/nfsd/state.h |    8 ----
- 6 files changed, 44 insertions(+), 56 deletions(-)
 
---- linux-2.6.12-rc2-mm3-full/fs/nfsd/nfs4acl.c.old	2005-04-20 23:57:56.000000000 +0200
-+++ linux-2.6.12-rc2-mm3-full/fs/nfsd/nfs4acl.c	2005-04-20 23:58:07.000000000 +0200
-@@ -125,7 +125,7 @@
- static int _posix_to_nfsv4_one(struct posix_acl *, struct nfs4_acl *, unsigned int);
- static struct posix_acl *_nfsv4_to_posix_one(struct nfs4_acl *, unsigned int);
- int nfs4_acl_add_ace(struct nfs4_acl *, u32, u32, u32, int, uid_t);
--int nfs4_acl_split(struct nfs4_acl *, struct nfs4_acl *);
-+static int nfs4_acl_split(struct nfs4_acl *, struct nfs4_acl *);
- 
- struct nfs4_acl *
- nfs4_acl_posix_to_nfsv4(struct posix_acl *pacl, struct posix_acl *dpacl,
-@@ -775,7 +775,7 @@
- 	return pacl;
- }
- 
--int
-+static int
- nfs4_acl_split(struct nfs4_acl *acl, struct nfs4_acl *dacl)
- {
- 	struct list_head *h, *n;
---- linux-2.6.12-rc2-mm3-full/fs/nfsd/nfs4callback.c.old	2005-04-20 23:58:22.000000000 +0200
-+++ linux-2.6.12-rc2-mm3-full/fs/nfsd/nfs4callback.c	2005-04-21 00:06:23.000000000 +0200
-@@ -54,7 +54,6 @@
- 
- /* declarations */
- static void nfs4_cb_null(struct rpc_task *task);
--extern spinlock_t recall_lock;
- 
- /* Index of predefined Linux callback client operations */
- 
-@@ -329,12 +328,12 @@
-         .p_bufsiz = MAX(NFS4_##argtype##_sz,NFS4_##restype##_sz) << 2,  \
- }
- 
--struct rpc_procinfo     nfs4_cb_procedures[] = {
-+static struct rpc_procinfo     nfs4_cb_procedures[] = {
-     PROC(CB_NULL,      NULL,     enc_cb_null,     dec_cb_null),
-     PROC(CB_RECALL,    COMPOUND,   enc_cb_recall,      dec_cb_recall),
- };
- 
--struct rpc_version              nfs_cb_version4 = {
-+static struct rpc_version       nfs_cb_version4 = {
-         .number                 = 1,
-         .nrprocs                = sizeof(nfs4_cb_procedures)/sizeof(nfs4_cb_procedures[0]),
-         .procs                  = nfs4_cb_procedures
-@@ -348,7 +347,7 @@
- /*
-  * Use the SETCLIENTID credential
-  */
--struct rpc_cred *
-+static struct rpc_cred *
- nfsd4_lookupcred(struct nfs4_client *clp, int taskflags)
- {
-         struct auth_cred acred;
---- linux-2.6.12-rc2-mm3-full/fs/nfsd/nfs4idmap.c.old	2005-04-20 23:59:38.000000000 +0200
-+++ linux-2.6.12-rc2-mm3-full/fs/nfsd/nfs4idmap.c	2005-04-21 00:00:46.000000000 +0200
-@@ -104,7 +104,7 @@
- 	ent_init(new, itm);
- }
- 
--void
-+static void
- ent_put(struct cache_head *ch, struct cache_detail *cd)
- {
- 	if (cache_put(ch, cd)) {
-@@ -186,7 +186,7 @@
- static int         idtoname_parse(struct cache_detail *, char *, int);
- static struct ent *idtoname_lookup(struct ent *, int);
- 
--struct cache_detail idtoname_cache = {
-+static struct cache_detail idtoname_cache = {
- 	.hash_size	= ENT_HASHMAX,
- 	.hash_table	= idtoname_table,
- 	.name		= "nfs4.idtoname",
-@@ -277,7 +277,7 @@
- 	return hash_str(ent->name, ENT_HASHBITS);
- }
- 
--void
-+static void
- nametoid_request(struct cache_detail *cd, struct cache_head *ch, char **bpp,
-     int *blen)
- {
-@@ -317,9 +317,9 @@
- }
- 
- static struct ent *nametoid_lookup(struct ent *, int);
--int                nametoid_parse(struct cache_detail *, char *, int);
-+static int         nametoid_parse(struct cache_detail *, char *, int);
- 
--struct cache_detail nametoid_cache = {
-+static struct cache_detail nametoid_cache = {
- 	.hash_size	= ENT_HASHMAX,
- 	.hash_table	= nametoid_table,
- 	.name		= "nfs4.nametoid",
-@@ -330,7 +330,7 @@
- 	.warn_no_listener = warn_no_idmapd,
- };
- 
--int
-+static int
- nametoid_parse(struct cache_detail *cd, char *buf, int buflen)
- {
- 	struct ent ent, *res;
---- linux-2.6.12-rc2-mm3-full/include/linux/nfsd/state.h.old	2005-04-21 00:04:52.000000000 +0200
-+++ linux-2.6.12-rc2-mm3-full/include/linux/nfsd/state.h	2005-04-21 00:10:17.000000000 +0200
-@@ -61,11 +61,6 @@
- #define si_stateownerid   si_opaque.so_stateownerid
- #define si_fileid         si_opaque.so_fileid
- 
--extern stateid_t zerostateid;
--extern stateid_t onestateid;
--
--#define ZERO_STATEID(stateid)       (!memcmp((stateid), &zerostateid, sizeof(stateid_t)))
--#define ONE_STATEID(stateid)        (!memcmp((stateid), &onestateid, sizeof(stateid_t)))
- 
- struct nfs4_cb_recall {
- 	u32			cbr_ident;
-@@ -268,12 +263,9 @@
- 	((err) != nfserr_stale_stateid) &&      \
- 	((err) != nfserr_bad_stateid))
- 
--extern time_t nfs4_laundromat(void);
- extern int nfsd4_renew(clientid_t *clid);
- extern int nfs4_preprocess_stateid_op(struct svc_fh *current_fh, 
- 		stateid_t *stateid, int flags, struct file **filp);
--extern int nfs4_share_conflict(struct svc_fh *current_fh, 
--		unsigned int deny_type);
- extern void nfs4_lock_state(void);
- extern void nfs4_unlock_state(void);
- extern int nfs4_in_grace(void);
---- linux-2.6.12-rc2-mm3-full/fs/nfsd/nfs4state.c.old	2005-04-21 00:02:27.000000000 +0200
-+++ linux-2.6.12-rc2-mm3-full/fs/nfsd/nfs4state.c	2005-04-21 00:21:45.000000000 +0200
-@@ -55,18 +55,22 @@
- static time_t lease_time = 90;     /* default lease time */
- static time_t old_lease_time = 90; /* past incarnation lease time */
- static u32 nfs4_reclaim_init = 0;
--time_t boot_time;
-+static time_t boot_time;
- static time_t grace_end = 0;
- static u32 current_clientid = 1;
- static u32 current_ownerid = 1;
- static u32 current_fileid = 1;
- static u32 current_delegid = 1;
- static u32 nfs4_init;
--stateid_t zerostateid;             /* bits all 0 */
--stateid_t onestateid;              /* bits all 1 */
-+static stateid_t zerostateid;             /* bits all 0 */
-+static stateid_t onestateid;              /* bits all 1 */
-+
-+#define ZERO_STATEID(stateid)       (!memcmp((stateid), &zerostateid, sizeof(stateid_t)))
-+#define ONE_STATEID(stateid)        (!memcmp((stateid), &onestateid, sizeof(stateid_t)))
-+
- 
- /* forward declarations */
--struct nfs4_stateid * find_stateid(stateid_t *stid, int flags);
-+static struct nfs4_stateid * find_stateid(stateid_t *stid, int flags);
- static struct nfs4_delegation * find_delegation_stateid(struct inode *ino, stateid_t *stid);
- static void release_stateid_lockowners(struct nfs4_stateid *open_stp);
- 
-@@ -78,10 +82,10 @@
-  */
- static DECLARE_MUTEX(client_sema);
- 
--kmem_cache_t *stateowner_slab = NULL;
--kmem_cache_t *file_slab = NULL;
--kmem_cache_t *stateid_slab = NULL;
--kmem_cache_t *deleg_slab = NULL;
-+static kmem_cache_t *stateowner_slab = NULL;
-+static kmem_cache_t *file_slab = NULL;
-+static kmem_cache_t *stateid_slab = NULL;
-+static kmem_cache_t *deleg_slab = NULL;
- 
- void
- nfs4_lock_state(void)
-@@ -117,7 +121,7 @@
-  */
- 
- /* recall_lock protects the del_recall_lru */
--spinlock_t recall_lock;
-+static spinlock_t recall_lock;
- static struct list_head del_recall_lru;
- 
- static void
-@@ -458,7 +462,7 @@
- 	return 1;
- }
- 
--void
-+static void
- add_to_unconfirmed(struct nfs4_client *clp, unsigned int strhashval)
- {
- 	unsigned int idhashval;
-@@ -470,7 +474,7 @@
- 	clp->cl_time = get_seconds();
- }
- 
--void
-+static void
- move_to_confirmed(struct nfs4_client *clp)
- {
- 	unsigned int idhashval = clientid_hashval(clp->cl_clientid.cl_id);
-@@ -546,7 +550,7 @@
- }
- 
- /* parse and set the setclientid ipv4 callback address */
--int
-+static int
- parse_ipv4(unsigned int addr_len, char *addr_val, unsigned int *cbaddrp, unsigned short *cbportp)
- {
- 	int temp = 0;
-@@ -582,7 +586,7 @@
- 	return 1;
- }
- 
--void
-+static void
- gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se)
- {
- 	struct nfs4_callback *cb = &clp->cl_callback;
-@@ -1177,7 +1181,7 @@
- 	stp = NULL;
- }
- 
--void
-+static void
- move_to_close_lru(struct nfs4_stateowner *sop)
- {
- 	dprintk("NFSD: move_to_close_lru nfs4_stateowner %p\n", sop);
-@@ -1187,7 +1191,7 @@
- 	sop->so_time = get_seconds();
- }
- 
--void
-+static void
- release_state_owner(struct nfs4_stateid *stp, int flag)
- {
- 	struct nfs4_stateowner *sop = stp->st_stateowner;
-@@ -1241,7 +1245,7 @@
- #define TEST_ACCESS(x) ((x > 0 || x < 4)?1:0)
- #define TEST_DENY(x) ((x >= 0 || x < 5)?1:0)
- 
--void
-+static void
- set_access(unsigned int *access, unsigned long bmap) {
- 	int i;
- 
-@@ -1252,7 +1256,7 @@
- 	}
- }
- 
--void
-+static void
- set_deny(unsigned int *deny, unsigned long bmap) {
- 	int i;
- 
-@@ -1278,7 +1282,7 @@
-  * Called to check deny when READ with all zero stateid or
-  * WRITE with all zero or all one stateid
-  */
--int
-+static int
- nfs4_share_conflict(struct svc_fh *current_fh, unsigned int deny_type)
- {
- 	struct inode *ino = current_fh->fh_dentry->d_inode;
-@@ -1433,7 +1437,7 @@
- 		return -EAGAIN;
- }
- 
--struct lock_manager_operations nfsd_lease_mng_ops = {
-+static struct lock_manager_operations nfsd_lease_mng_ops = {
- 	.fl_break = nfsd_break_deleg_cb,
- 	.fl_release_private = nfsd_release_deleg_cb,
- 	.fl_copy_lock = nfsd_copy_lock_deleg_cb,
-@@ -1878,7 +1882,7 @@
- 	return status;
- }
- 
--time_t
-+static time_t
- nfs4_laundromat(void)
- {
- 	struct nfs4_client *clp;
-@@ -1957,7 +1961,7 @@
- /* search ownerid_hashtbl[] and close_lru for stateid owner
-  * (stateid->si_stateownerid)
-  */
--struct nfs4_stateowner *
-+static struct nfs4_stateowner *
- find_openstateowner_id(u32 st_id, int flags) {
- 	struct nfs4_stateowner *local = NULL;
- 
-@@ -2131,7 +2135,7 @@
- /* 
-  * Checks for sequence id mutating operations. 
-  */
--int
-+static int
- nfs4_preprocess_seqid_op(struct svc_fh *current_fh, u32 seqid, stateid_t *stateid, int flags, struct nfs4_stateowner **sopp, struct nfs4_stateid **stpp, clientid_t *lockclid)
- {
- 	int status;
-@@ -2447,7 +2451,7 @@
- static struct list_head	lock_ownerstr_hashtbl[LOCK_HASH_SIZE];
- static struct list_head lockstateid_hashtbl[STATEID_HASH_SIZE];
- 
--struct nfs4_stateid *
-+static struct nfs4_stateid *
- find_stateid(stateid_t *stid, int flags)
- {
- 	struct nfs4_stateid *local = NULL;
-@@ -2511,7 +2515,7 @@
- 		lock->fl_end = OFFSET_MAX;
- }
- 
--int
-+static int
- nfs4_verify_lock_stateowner(struct nfs4_stateowner *sop, unsigned int hashval)
- {
- 	struct nfs4_stateowner *local = NULL;
-@@ -2621,7 +2625,7 @@
- 	return sop;
- }
- 
--struct nfs4_stateid *
-+static struct nfs4_stateid *
- alloc_init_lock_stateid(struct nfs4_stateowner *sop, struct nfs4_file *fp, struct nfs4_stateid *open_stp)
- {
- 	struct nfs4_stateid *stp;
-@@ -2652,7 +2656,7 @@
- 	return stp;
- }
- 
--int
-+static int
- check_lock_length(u64 offset, u64 length)
- {
- 	return ((length == 0)  || ((length != ~(u64)0) &&
-@@ -3123,7 +3127,7 @@
- 
- /*
-  * called from OPEN, CLAIM_PREVIOUS with a new clientid. */
--struct nfs4_client_reclaim *
-+static struct nfs4_client_reclaim *
- nfs4_find_reclaim_client(clientid_t *clid)
- {
- 	unsigned int strhashval;
-@@ -3239,13 +3243,6 @@
- 	return get_seconds() < grace_end;
- }
- 
--void
--set_no_grace(void)
--{
--	printk("NFSD: ERROR in reboot recovery.  State reclaims will fail.\n");
--	grace_end = get_seconds();
--}
--
- time_t
- nfs4_lease_time(void)
- {
---- linux-2.6.12-rc2-mm3-full/fs/nfsd/nfs4xdr.c.old	2005-04-21 00:07:53.000000000 +0200
-+++ linux-2.6.12-rc2-mm3-full/fs/nfsd/nfs4xdr.c	2005-04-21 00:08:45.000000000 +0200
-@@ -136,7 +136,7 @@
- 	}					\
- } while (0)
- 
--u32 *read_buf(struct nfsd4_compoundargs *argp, int nbytes)
-+static u32 *read_buf(struct nfsd4_compoundargs *argp, int nbytes)
- {
- 	/* We want more bytes than seem to be available.
- 	 * Maybe we need a new page, maybe we have just run out
-@@ -190,7 +190,7 @@
- 	return 0;
- }
- 
--char *savemem(struct nfsd4_compoundargs *argp, u32 *p, int nbytes)
-+static char *savemem(struct nfsd4_compoundargs *argp, u32 *p, int nbytes)
- {
- 	void *new = NULL;
- 	if (p == argp->tmp) {
+
+Apr 25 10:51:31 nicfs2 kernel: nfs_statfs: statfs error =3D 512
+Apr 25 10:53:18 nicfs2 kernel: VFS: Busy inodes after unmount.
+Self-destruct in 5 seconds.  Have a nice day...
+Apr 25 10:54:40 nicfs2 kernel: Unable to handle kernel paging request
+at virtual address 00200038
+ printing eip:
+c01786b0
+*pde =3D 00000000
+Oops: 0000 [#1]
+SMP
+Modules linked in: nls_utf8 af_packet usbhid nfsd exportfs ipv6
+ohci_hcd e1000 i2c_piix4 sworks_agp agpgart i2c_core evdev usbcore jfs
+dm_round_robin dm_multipath dm_mod ext3 jbd qla2300 qla2xxx
+scsi_transport_fc ips sd_mod scsi_mod
+CPU:    1
+EIP:    0060:[<c01786b0>]    Not tainted VLI
+EFLAGS: 00010202   (2.6.11.5)
+EIP is at clear_inode+0x70/0x150
+eax: f5759200   ebx: d8dca3bc   ecx: f5759200   edx: 00200034
+esi: d8dca4e8   edi: da2bd918   ebp: 00000005   esp: dff8bec8
+ds: 007b   es: 007b   ss: 0068
+Process kswapd0 (pid: 185, threadinfo=3Ddff8a000 task=3Ddffeea60)
+Stack: f5759200 d8dca3bc f5759200 c0179780 d8dca3bc da2bd910 c0179813 d8dca=
+3bc
+       c0176c06 00000000 00000080 00000000 dfffea20 c0177004 c014a5cc 0007b=
+700
+       00000000 0007876d 00000001 00000000 000000d0 00000020 c0393780 00000=
+002
+Call Trace:
+ [<c0179780>] generic_forget_inode+0xf0/0x110
+ [<c0179813>] iput+0x53/0x70
+ [<c0176c06>] prune_dcache+0x176/0x1a0
+ [<c0177004>] shrink_dcache_memory+0x14/0x40
+ [<c014a5cc>] shrink_slab+0x11c/0x170
+ [<c014b9bd>] balance_pgdat+0x24d/0x3a0
+ [<c014bbec>] kswapd+0xdc/0x140
+ [<c0134b60>] autoremove_wake_function+0x0/0x50
+ [<c0103f92>] ret_from_fork+0x6/0x14
+ [<c0134b60>] autoremove_wake_function+0x0/0x50
+ [<c014bb10>] kswapd+0x0/0x140
+ [<c0102345>] kernel_thread_helper+0x5/0x10
+Code: 01 00 00 a8 08 0f 85 83 00 00 00 f6 83 34 01 00 00 20 0f 85 a3
+00 00 00 8b 83 a0 00 00 00 85 c0 89 c1 74 47 8b 50 28 85 d2 74 20 <8b>
+52 04 85 d2 74 19 31 d2 8b b4 93 00 01 00 00 85 f6 0f 85 b1
+Apr 25 10:54:40 nicfs2 kernel:  <1>Unable to handle kernel paging
+request at virtual address 5d3e324d
+ printing eip:
+c01797dd
+*pde =3D 00000000
+Oops: 0000 [#2]
+SMP
+Modules linked in: nls_utf8 af_packet usbhid nfsd exportfs ipv6
+ohci_hcd e1000 i2c_piix4 sworks_agp agpgart i2c_core evdev usbcore jfs
+dm_round_robin dm_multipath dm_mod ext3 jbd qla2300 qla2xxx
+scsi_transport_fc ips sd_mod scsi_mod
+CPU:    0
+EIP:    0060:[<c01797dd>]    Not tainted VLI
+EFLAGS: 00010206   (2.6.11.5)
+EIP is at iput+0x1d/0x70
+eax: 5d3e3239   ebx: f134e1cc   ecx: c01b2ba0   edx: f134e1cc
+esi: e1e4276c   edi: e1e42774   ebp: 00000080   esp: f5c23cf0
+ds: 007b   es: 007b   ss: 0068
+Process nfsd (pid: 4052, threadinfo=3Df5c22000 task=3Df63d9020)
+Stack: f134e1cc c0176c06 00000000 00000080 00000000 dfffea20 c0177004 c014a=
+5cc
+       000f3c00 00000000 00078889 00000002 00000000 000001d2 00000040 00000=
+00c
+       f5c23da8 c0395ca0 00000000 c014b6b4 00078888 00000000 000001d2 00000=
+020
+Call Trace:
+ [<c0176c06>] prune_dcache+0x176/0x1a0
+ [<c0177004>] shrink_dcache_memory+0x14/0x40
+ [<c014a5cc>] shrink_slab+0x11c/0x170
+ [<c014b6b4>] try_to_free_pages+0xc4/0x180
+ [<c014461f>] __alloc_pages+0x1bf/0x3b0
+ [<c0146aa7>] __do_page_cache_readahead+0x107/0x150
+ [<c0146c62>] blockable_page_cache_readahead+0x22/0x60
+ [<c0146d95>] page_cache_readahead+0xf5/0x2a0
+ [<c0140375>] do_generic_mapping_read+0x355/0x510
+ [<f8a62a67>] jfs_open+0x17/0xa0 [jfs]
+ [<c0140a7b>] generic_file_sendfile+0x6b/0x90
+ [<f8b64f00>] nfsd_read_actor+0x0/0x100 [nfsd]
+ [<f8b65262>] nfsd_read+0x262/0x360 [nfsd]
+ [<f8b64f00>] nfsd_read_actor+0x0/0x100 [nfsd]
+ [<f8b6c2c5>] nfsd3_proc_read+0xd5/0x170 [nfsd]
+ [<f8b6dfc0>] nfs3svc_decode_readargs+0x0/0x190 [nfsd]
+ [<f8b61696>] nfsd_dispatch+0x136/0x200 [nfsd]
+ [<c0322587>] svc_authenticate+0x87/0xe0
+ [<c031fae9>] svc_process+0x409/0x620
+ [<f8b613d6>] nfsd+0x196/0x320 [nfsd]
+ [<f8b61240>] nfsd+0x0/0x320 [nfsd]
+ [<c0102345>] kernel_thread_helper+0x5/0x10
+Code: fe ff ff 8d 74 26 00 8d bc 27 00 00 00 00 53 85 c0 89 c3 74 4c
+83 bb 2c 01 00 00 20 8b 80 a0 00 00 00 8b 40 24 74 3c 85 c0 74 07 <8b>
+50 14 85 d2 75 3c 8d 43 24 ba 6c 6e 39 c0 e8 5f 8a 08 00 85
+
+
+-------------------------------------------------------
+SF email is sponsored by - The IT Product Guide
+Read honest & candid reviews on hundreds of IT Products from real users.
+Discover which products truly live up to the hype. Start reading now.
+http://ads.osdn.com/?ad_id=6595&alloc_id=14396&op=click
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
