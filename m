@@ -1,21 +1,23 @@
-From: Chris Penney <cpenney@gmail.com>
-Subject: Kernel Oops
-Date: Mon, 25 Apr 2005 12:31:19 -0400
-Message-ID: <111aefd05042509317c139b02@mail.gmail.com>
-Reply-To: penney@msu.edu
+From: Kris Vassallo <kris@linuxcertified.com>
+Subject: Stale File handles keep coming back
+Date: Mon, 25 Apr 2005 14:07:33 -0700
+Message-ID: <1114463253.2487.73.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: multipart/alternative; boundary="=-USNP2UU1IfoWbWj8WrJP"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DQ6Uo-0005Lm-Kj
-	for nfs@lists.sourceforge.net; Mon, 25 Apr 2005 09:31:42 -0700
-Received: from wproxy.gmail.com ([64.233.184.207])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DQ6UX-0007ZG-Oo
-	for nfs@lists.sourceforge.net; Mon, 25 Apr 2005 09:31:42 -0700
-Received: by wproxy.gmail.com with SMTP id 69so1289717wra
-        for <nfs@lists.sourceforge.net>; Mon, 25 Apr 2005 09:31:19 -0700 (PDT)
+	id 1DQAo7-0001t7-9N
+	for nfs@lists.sourceforge.net; Mon, 25 Apr 2005 14:07:55 -0700
+Received: from meteor.hosting4less.com ([63.99.109.5])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1DQAnr-0001kH-E2
+	for nfs@lists.sourceforge.net; Mon, 25 Apr 2005 14:07:55 -0700
+Received: from [10.113.1.100] (morpheus.berkeley-da.com [66.134.41.194])
+	(authenticated bits=0)
+	by meteor.hosting4less.com (8.12.10/8.12.8) with ESMTP id j3PKmbnl001258
+	for <nfs@lists.sourceforge.net>; Mon, 25 Apr 2005 13:48:37 -0700
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -30,118 +32,100 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I have a 2.6.11.5 NFS server that serves a directory /s that had light
-to moderate activity.  I had another file server mounted as /nicfs7
-and was doing a local rsync (moving some data) from /s/path to
-/nicfs7/path when (for some unknown reason) it hung.  I hit ctrl-c and
-then kill -9'ed the two remaining rsync processes.  I then unmounted
-/nicfs7 (which seemed ok right after).  I then saw what I pasted in
-below in messages.
 
-At this point NFS service seems ok; however, one of the nfsd threads
-is missing.  I specify to start 128 and only 127 are running.  Is a
-missing nfsd a problem?  It's no clear to me why an nfsd did in the
-first place either when I was using nfs client -> local disk.
+--=-USNP2UU1IfoWbWj8WrJP
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-   Chris
+I am experiencing a problem with stale file handles, and I have not been
+able to find an answer in the archives nor has doing anything in the
+readme helped. I apologize if an answer has already been posted
+regarding an issue such as this. After many frustrating hours of
+troubleshooting I am hoping for some help. The mail is long but I am
+hoping that it answers all the questions. 
+    
+    I am experiencing the following problem: I have a group of  ~20 nfs
+clients (2.4.22-1.2115.nptlsmp) which are all mounting a /home directory
+off of 1 NFS server (2.6.11-1.14_FC3smp); the server was upgraded FROM
+2.4.22-1.2115.nptlsmp last week. All servers are running NFS v3 over
+UDP. 
+    As soon as I did the upgrade people started getting stale file
+handles, so I shut down all clients and the server, booted the server
+back up and then brought the clients back up so that everything would be
+in sync. However, this did not resolve the issue. 
+    I now have people complaining that if they do a ls in a specific
+directory within their home directory, (this happens for all users in
+their own private home directory, which I believe rules out the issue of
+having someone else manipulating the file) they get an error thats says:
+ls: .: Stale NFS file handle .
+
+    *What I don't understand is that if you were to touch a file within
+that directory, all of a sudden the contents of the directory magically
+become visible.  Removing the directory, recopying the directory back,
+and then using for a while works but then all of a sudden it goes stale
+again!! 
+
+The following is the content of my /etc/exports
+/home        10.113.1.0/26(sync,rw,no_wdelay,no_root_squash) \
+                10.113.1.64/26(sync,no_wdelay,rw) \
+                10.113.1.128/26(sync,no_wdelay,rw) \
+                10.113.1.192/26(sync,no_wdelay,rw)
+
+Clients mount the share with defaults. 
+
+I am not changing anything in the /etc/exports file. The directory has
+not actally been deleted as I can go to the server and do a ls on the
+directory and see the contents of it (strangely this makes the stale
+file handle go away). I have just added no_subtree_check to the exports
+file and have not yet tested this. We have not hot swapped any hard
+disks in our RAID array. This is an ext3 file system which I believe
+supports permanent inode numbers. This is really weird and I can't think
+of anything that would cause this but something with nfs and the 2.6.11
+kernel?
+
+Please CC me on any responses.
+Thank you very much in advance for any help. 
+-Kris
 
 
+--=-USNP2UU1IfoWbWj8WrJP
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: 7bit
 
-Apr 25 10:51:31 nicfs2 kernel: nfs_statfs: statfs error =3D 512
-Apr 25 10:53:18 nicfs2 kernel: VFS: Busy inodes after unmount.
-Self-destruct in 5 seconds.  Have a nice day...
-Apr 25 10:54:40 nicfs2 kernel: Unable to handle kernel paging request
-at virtual address 00200038
- printing eip:
-c01786b0
-*pde =3D 00000000
-Oops: 0000 [#1]
-SMP
-Modules linked in: nls_utf8 af_packet usbhid nfsd exportfs ipv6
-ohci_hcd e1000 i2c_piix4 sworks_agp agpgart i2c_core evdev usbcore jfs
-dm_round_robin dm_multipath dm_mod ext3 jbd qla2300 qla2xxx
-scsi_transport_fc ips sd_mod scsi_mod
-CPU:    1
-EIP:    0060:[<c01786b0>]    Not tainted VLI
-EFLAGS: 00010202   (2.6.11.5)
-EIP is at clear_inode+0x70/0x150
-eax: f5759200   ebx: d8dca3bc   ecx: f5759200   edx: 00200034
-esi: d8dca4e8   edi: da2bd918   ebp: 00000005   esp: dff8bec8
-ds: 007b   es: 007b   ss: 0068
-Process kswapd0 (pid: 185, threadinfo=3Ddff8a000 task=3Ddffeea60)
-Stack: f5759200 d8dca3bc f5759200 c0179780 d8dca3bc da2bd910 c0179813 d8dca=
-3bc
-       c0176c06 00000000 00000080 00000000 dfffea20 c0177004 c014a5cc 0007b=
-700
-       00000000 0007876d 00000001 00000000 000000d0 00000020 c0393780 00000=
-002
-Call Trace:
- [<c0179780>] generic_forget_inode+0xf0/0x110
- [<c0179813>] iput+0x53/0x70
- [<c0176c06>] prune_dcache+0x176/0x1a0
- [<c0177004>] shrink_dcache_memory+0x14/0x40
- [<c014a5cc>] shrink_slab+0x11c/0x170
- [<c014b9bd>] balance_pgdat+0x24d/0x3a0
- [<c014bbec>] kswapd+0xdc/0x140
- [<c0134b60>] autoremove_wake_function+0x0/0x50
- [<c0103f92>] ret_from_fork+0x6/0x14
- [<c0134b60>] autoremove_wake_function+0x0/0x50
- [<c014bb10>] kswapd+0x0/0x140
- [<c0102345>] kernel_thread_helper+0x5/0x10
-Code: 01 00 00 a8 08 0f 85 83 00 00 00 f6 83 34 01 00 00 20 0f 85 a3
-00 00 00 8b 83 a0 00 00 00 85 c0 89 c1 74 47 8b 50 28 85 d2 74 20 <8b>
-52 04 85 d2 74 19 31 d2 8b b4 93 00 01 00 00 85 f6 0f 85 b1
-Apr 25 10:54:40 nicfs2 kernel:  <1>Unable to handle kernel paging
-request at virtual address 5d3e324d
- printing eip:
-c01797dd
-*pde =3D 00000000
-Oops: 0000 [#2]
-SMP
-Modules linked in: nls_utf8 af_packet usbhid nfsd exportfs ipv6
-ohci_hcd e1000 i2c_piix4 sworks_agp agpgart i2c_core evdev usbcore jfs
-dm_round_robin dm_multipath dm_mod ext3 jbd qla2300 qla2xxx
-scsi_transport_fc ips sd_mod scsi_mod
-CPU:    0
-EIP:    0060:[<c01797dd>]    Not tainted VLI
-EFLAGS: 00010206   (2.6.11.5)
-EIP is at iput+0x1d/0x70
-eax: 5d3e3239   ebx: f134e1cc   ecx: c01b2ba0   edx: f134e1cc
-esi: e1e4276c   edi: e1e42774   ebp: 00000080   esp: f5c23cf0
-ds: 007b   es: 007b   ss: 0068
-Process nfsd (pid: 4052, threadinfo=3Df5c22000 task=3Df63d9020)
-Stack: f134e1cc c0176c06 00000000 00000080 00000000 dfffea20 c0177004 c014a=
-5cc
-       000f3c00 00000000 00078889 00000002 00000000 000001d2 00000040 00000=
-00c
-       f5c23da8 c0395ca0 00000000 c014b6b4 00078888 00000000 000001d2 00000=
-020
-Call Trace:
- [<c0176c06>] prune_dcache+0x176/0x1a0
- [<c0177004>] shrink_dcache_memory+0x14/0x40
- [<c014a5cc>] shrink_slab+0x11c/0x170
- [<c014b6b4>] try_to_free_pages+0xc4/0x180
- [<c014461f>] __alloc_pages+0x1bf/0x3b0
- [<c0146aa7>] __do_page_cache_readahead+0x107/0x150
- [<c0146c62>] blockable_page_cache_readahead+0x22/0x60
- [<c0146d95>] page_cache_readahead+0xf5/0x2a0
- [<c0140375>] do_generic_mapping_read+0x355/0x510
- [<f8a62a67>] jfs_open+0x17/0xa0 [jfs]
- [<c0140a7b>] generic_file_sendfile+0x6b/0x90
- [<f8b64f00>] nfsd_read_actor+0x0/0x100 [nfsd]
- [<f8b65262>] nfsd_read+0x262/0x360 [nfsd]
- [<f8b64f00>] nfsd_read_actor+0x0/0x100 [nfsd]
- [<f8b6c2c5>] nfsd3_proc_read+0xd5/0x170 [nfsd]
- [<f8b6dfc0>] nfs3svc_decode_readargs+0x0/0x190 [nfsd]
- [<f8b61696>] nfsd_dispatch+0x136/0x200 [nfsd]
- [<c0322587>] svc_authenticate+0x87/0xe0
- [<c031fae9>] svc_process+0x409/0x620
- [<f8b613d6>] nfsd+0x196/0x320 [nfsd]
- [<f8b61240>] nfsd+0x0/0x320 [nfsd]
- [<c0102345>] kernel_thread_helper+0x5/0x10
-Code: fe ff ff 8d 74 26 00 8d bc 27 00 00 00 00 53 85 c0 89 c3 74 4c
-83 bb 2c 01 00 00 20 8b 80 a0 00 00 00 8b 40 24 74 3c 85 c0 74 07 <8b>
-50 14 85 d2 75 3c 8d 43 24 ba 6c 6e 39 c0 e8 5f 8a 08 00 85
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 TRANSITIONAL//EN">
+<HTML>
+<HEAD>
+  <META HTTP-EQUIV="Content-Type" CONTENT="text/html; CHARSET=UTF-8">
+  <META NAME="GENERATOR" CONTENT="GtkHTML/3.0.10">
+</HEAD>
+<BODY>
+I am experiencing a problem with stale file handles, and I have not been able to find an answer in the archives nor has doing anything in the readme helped. I apologize if an answer has already been posted regarding an issue such as this. After many frustrating hours of troubleshooting I am hoping for some help. The mail is long but I am hoping that it answers all the questions. <BR>
+&nbsp;&nbsp;&nbsp; <BR>
+&nbsp;&nbsp;&nbsp; I am experiencing the following problem: I have a group of&nbsp; ~20 nfs clients (2.4.22-1.2115.nptlsmp) which are all mounting a /home directory off of 1 NFS server (2.6.11-1.14_FC3smp); the server was upgraded FROM 2.4.22-1.2115.nptlsmp last week. All servers are running NFS v3 over UDP. <BR>
+&nbsp;&nbsp;&nbsp; As soon as I did the upgrade people started getting stale file handles, so I shut down all clients and the server, booted the server back up and then brought the clients back up so that everything would be in sync. However, this did not resolve the issue. <BR>
+&nbsp;&nbsp;&nbsp; I now have people complaining that if they do a ls in a specific directory within their home directory, (this happens for all users in their own private home directory, which I believe rules out the issue of having someone else manipulating the file) they get an error thats says<FONT SIZE="3">: </FONT><FONT SIZE="2">ls: .: Stale NFS file handle</FONT><FONT SIZE="3"> .<BR>
+<BR>
+&nbsp;&nbsp;&nbsp; *What I don't understand is that if you were to touch a file within that directory, all of a sudden the contents of the directory magically become visible.&nbsp; Removing the directory, recopying the directory back, and then using for a while works but then all of a sudden it goes stale again!! <BR>
+<BR>
+The following is the content of my /etc/exports<BR>
+/home&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 10.113.1.0/26(sync,rw,no_wdelay,no_root_squash) \<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 10.113.1.64/26(sync,no_wdelay,rw) \<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 10.113.1.128/26(sync,no_wdelay,rw) \<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 10.113.1.192/26(sync,no_wdelay,rw)<BR>
+<BR>
+Clients mount the share with defaults. <BR>
+<BR>
+I am not changing anything in the /etc/exports file. The directory has not actally been deleted as I can go to the server and do a ls on the directory and see the contents of it (strangely this makes the stale file handle go away). I have just added no_subtree_check to the exports file and have not yet tested this. We have not hot swapped any hard disks in our RAID array. This is an ext3 file system which I believe supports permanent inode numbers. This is really weird and I can't think of anything that would cause this but something with nfs and the 2.6.11 kernel?<BR>
+<BR>
+Please CC me on any responses.<BR>
+Thank you very much in advance for any help. <BR>
+-Kris<BR>
+</FONT><BR>
+</BODY>
+</HTML>
+
+--=-USNP2UU1IfoWbWj8WrJP--
+
 
 
 -------------------------------------------------------
