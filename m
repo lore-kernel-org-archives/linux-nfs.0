@@ -1,22 +1,24 @@
-From: Alejandra <alejamilis@gmail.com>
-Subject: help with nfs
-Date: Fri, 22 Apr 2005 09:55:37 -0300
-Message-ID: <3dd7287a05042205554e966492@mail.gmail.com>
-Reply-To: Alejandra <alejamilis@gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [2.6 patch] fs/nfsd/: possible cleanups
+Date: Tue, 26 Apr 2005 12:37:40 -0400
+Message-ID: <20050426163740.GA26367@fieldses.org>
+References: <20050423000755.GN4355@stusta.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+Cc: neilb@cse.unsw.edu.au, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DOxhB-00050i-PU
-	for nfs@lists.sourceforge.net; Fri, 22 Apr 2005 05:55:45 -0700
-Received: from zproxy.gmail.com ([64.233.162.195])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DOxhA-0003Dy-1p
-	for nfs@lists.sourceforge.net; Fri, 22 Apr 2005 05:55:45 -0700
-Received: by zproxy.gmail.com with SMTP id 16so1190752nzp
-        for <nfs@lists.sourceforge.net>; Fri, 22 Apr 2005 05:55:37 -0700 (PDT)
-To: nfs@lists.sourceforge.net
+	id 1DQT4O-0003bB-CL
+	for nfs@lists.sourceforge.net; Tue, 26 Apr 2005 09:37:56 -0700
+Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1DQT4M-0001o9-RI
+	for nfs@lists.sourceforge.net; Tue, 26 Apr 2005 09:37:56 -0700
+To: Adrian Bunk <bunk@stusta.de>
+In-Reply-To: <20050423000755.GN4355@stusta.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,45 +32,13 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I'm trying to share some directories using nfs, and although I've
-modified the hosts.allow,hosts.deny and export files as the tutorial
-says, it doesn't work. I'm working in a simple workgroup of four
-computers  - three of them have both w2k and Fedora Core 3.
-Nfs-utils : version 1.0.6-39
-Kernel: 2.6.9
-=20
-This is my /etc/export:
+On Sat, Apr 23, 2005 at 02:07:55AM +0200, Adrian Bunk wrote:
+> This patch contains the following possible cleanups:
+> - make needlessly global code static
+> - remove the following unused global function:
+>   - nfs4state.c: set_no_grace
 
-#Archivos a compartir
-
-/exportaciones=09192.168.1.21(rw) 192.168.1.15(rw) 192.168.1.48(rw)
-
-This is /etc/hosts.allow:
-
-portmap: 192.168.1.48 , 192.168.1.15 , 192.168.1.48
-lockd: 192.168.1.48 , 192.168.1.15 , 192.168.1.48
-mountd: 192.168.1.48 , 192.168.1.15 , 192.168.1.48
-rquotad: 192.168.1.48 , 192.168.1.15 , 192.168.1.48
-statd: 192.168.1.48 , 192.168.1.15 , 192.168.1.48
-
-This is /etc/hosts.deny:
-
-portmap:ALL
-lockd:ALL
-mountd:ALL
-rquotad:ALL
-statd:ALL
-
-The problem is that, when the client tries to mount /export, the
-following error apprears:
-<server not mounted>
-
-I've strictly followed the instructions in the tutorial, but I cannot
-solve this problem, I hope you can help me.
-
-Thank you in advance
-
-Alejandra Jamilis
+Got it, thanks.--b.
 
 
 -------------------------------------------------------
