@@ -1,21 +1,22 @@
-From: mehta kiran <kiranmehta1981@yahoo.com>
-Subject: RE: Client sees delay  in io when nfs server starts after failover
-Date: Tue, 26 Apr 2005 07:40:42 -0700 (PDT)
-Message-ID: <20050426144042.14867.qmail@web51603.mail.yahoo.com>
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: Stale File handles keep coming back
+Date: Tue, 26 Apr 2005 22:27:37 +1000
+Message-ID: <17006.13241.129839.558300@cse.unsw.edu.au>
+References: <1114463253.2487.73.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DQRFB-0002p4-HJ
-	for nfs@lists.sourceforge.net; Tue, 26 Apr 2005 07:40:57 -0700
-Received: from web51603.mail.yahoo.com ([206.190.38.208])
-	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
-	id 1DQRF5-0008QA-Gh
-	for nfs@lists.sourceforge.net; Tue, 26 Apr 2005 07:40:57 -0700
-To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: 6667
+	id 1DQPAK-0006qR-9r
+	for nfs@lists.sourceforge.net; Tue, 26 Apr 2005 05:27:48 -0700
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1DQPAI-00011u-PH
+	for nfs@lists.sourceforge.net; Tue, 26 Apr 2005 05:27:48 -0700
+To: Kris Vassallo <kris@linuxcertified.com>
+In-Reply-To: message from Kris Vassallo on Monday April 25
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,35 +30,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Monday April 25, kris@linuxcertified.com wrote:
+> I am experiencing a problem with stale file handles, and I have not been
+> able to find an answer in the archives nor has doing anything in the
+> readme helped. I apologize if an answer has already been posted
+> regarding an issue such as this. After many frustrating hours of
+> troubleshooting I am hoping for some help. The mail is long but I am
+> hoping that it answers all the questions. 
 
---- "Lever, Charles" <Charles.Lever@netapp.com> wrote:
- 
-1 if the client hasn't managed to establish a new
-2 connection yet, then, yes you can expect to see the 
-3 rpcinfo results like the above and still
-4 have a delay in response.  the RPC client can't send
-5 RPC requests or receive replies until a TCP 
-6 connection has been established with the
-7 server.  that can take a while; SYN retries have an
-8 exponential backoff.
+Very odd...
 
--------
-  I didnt quiet get the  line 3-8 .
-  What i undestand is that connection is not 
-  established but still rpc request returns info
-  which should appear only if connection is existing.
-  How can rpc request return success if connection
-  through which it passes does not exist ?
+The output of:
 
-thanks ,
- kiran
+  echo 2048 > /proc/sys/sunrpc/rpc_debug
+  grep . /proc/net/rpc/*/content
+  ls -l /proc/fs/nfsd
+  cat /proc/fs/nfs/exports
 
-  
+might help.
 
-__________________________________________________
-Do You Yahoo!?
-Tired of spam?  Yahoo! Mail has the best spam protection around 
-http://mail.yahoo.com 
+Thanks,
+NeilBrown
 
 
 -------------------------------------------------------
