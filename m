@@ -1,24 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFSv3 GETATTR/ACCESS requests flooding the network since
-	upgrading to 2.6
-Date: Tue, 26 Apr 2005 12:49:04 -0400
-Message-ID: <1114534144.13568.57.camel@lade.trondhjem.org>
-References: <87r7h4gho4.fsf@amaterasu.srvr.nix>
+From: Christian Leber <christian@leber.de>
+Subject: Re: nfsserver (Suse Linux 9.2) has problems with unix-clients
+Date: Tue, 26 Apr 2005 21:01:30 +0200
+Message-ID: <20050426190130.GA12057@core.home>
+References: <200504201006.07814.bitz@human-solutions.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DQTFP-0004T8-01
-	for nfs@lists.sourceforge.net; Tue, 26 Apr 2005 09:49:19 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 1DQVJN-0004zi-Sn
+	for nfs@lists.sourceforge.net; Tue, 26 Apr 2005 12:01:33 -0700
+Received: from mail4.worldserver.net ([217.13.200.24])
 	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1DQTFM-0003Eb-Ca
-	for nfs@lists.sourceforge.net; Tue, 26 Apr 2005 09:49:18 -0700
-To: Nix <nix@esperi.org.uk>
-In-Reply-To: <87r7h4gho4.fsf@amaterasu.srvr.nix>
+	id 1DQVJM-0002xA-0s
+	for nfs@lists.sourceforge.net; Tue, 26 Apr 2005 12:01:33 -0700
+To: Annette Bitz <bitz@human-solutions.com>
+In-Reply-To: <200504201006.07814.bitz@human-solutions.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,23 +31,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-to den 21.04.2005 Klokka 18:31 (+0100) skreiv Nix:
-> I upgraded from 2.4.28 to 2.6.10 (and then .11) a month ago. In 2.6.11
-> at least, and probably in 2.6.10 (alas, I didn't notice this behaviour
-> early enough to be sure: I can reboot into 2.6.10 and see if it
-> disappears if anyone wants), the Linux NFS client / kernel server
-> combination has been absolutely *flooding* the network with ACCESS
-> requests (and to a somewhat lesser extent GETATTR).
+On Wed, Apr 20, 2005 at 10:06:07AM +0200, Annette Bitz wrote:
 
-The following patch has already been applied to the 2.6.12-rc series.
+> - nfs-server-2.2beta51-208
 
-http://client.linux-nfs.org/Linux-2.6.x/2.6.12-rc1/linux-2.6.12-00-fix_access.dif
+This is the userspace NFS server.
+Please retry with the kernel nfsd.
+(no idea, perhaps it's enough to remove the package)
 
-Cheers,
-  Trond
+Important HINT for all users of SuSE 9.2:
+when you are replacing this old kernel with something recent vanilla you have to
+get and start a rpc.lockd, because the SuSE kernel has some funky NFS
+patches and with them a kernelspace lockd.
+
+
+Christian Leber
 
 -- 
-Trond Myklebust <trond.myklebust@fys.uio.no>
+http://www.nosoftwarepatents.com
 
 
 
