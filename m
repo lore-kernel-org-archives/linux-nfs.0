@@ -1,23 +1,25 @@
-From: Olaf Kirch <okir@suse.de>
+From: Christian Leber <christian@leber.de>
 Subject: Re: nfsserver (Suse Linux 9.2) has problems with unix-clients
-Date: Wed, 27 Apr 2005 08:52:25 +0200
-Message-ID: <20050427065225.GB4232@suse.de>
-References: <200504201006.07814.bitz@human-solutions.com>
+Date: Wed, 27 Apr 2005 11:29:44 +0200
+Message-ID: <20050427092944.GA5684@core.home>
+References: <200504201006.07814.bitz@human-solutions.com> <20050426190130.GA12057@core.home> <20050427065009.GA4232@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DQgPu-0002kF-Km
-	for nfs@lists.sourceforge.net; Tue, 26 Apr 2005 23:53:02 -0700
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	id 1DQirj-0002Tv-Bv
+	for nfs@lists.sourceforge.net; Wed, 27 Apr 2005 02:29:55 -0700
+Received: from mail4.worldserver.net ([217.13.200.24])
 	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1DQgPP-0008RT-J5
-	for nfs@lists.sourceforge.net; Tue, 26 Apr 2005 23:53:02 -0700
-To: Annette Bitz <bitz@human-solutions.com>
-In-Reply-To: <200504201006.07814.bitz@human-solutions.com>
+	id 1DQird-0001X3-1h
+	for nfs@lists.sourceforge.net; Wed, 27 Apr 2005 02:29:55 -0700
+Received: from ijuz by core with local (Exim 3.36 #1 (Debian))
+	id 1DQirY-0001UD-00
+	for <nfs@lists.sourceforge.net>; Wed, 27 Apr 2005 11:29:44 +0200
+To: nfs@lists.sourceforge.net
+In-Reply-To: <20050427065009.GA4232@suse.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,17 +33,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, Apr 20, 2005 at 10:06:07AM +0200, Annette Bitz wrote:
-> - nfs-server-2.2beta51-208
+On Wed, Apr 27, 2005 at 08:50:10AM +0200, Olaf Kirch wrote:
+> Lockd has been a kernel thread all along from day one. What you're
+> referring to is the kernel space statd.
 
-As already pointed out, please do not use unfsd anymore.  It's included in
-the distribution for some very special use scenarios, but the default
-should be the kernel nfsd.
+Yes, of course.
+Just wanted to give this hint, took me more than 2 days :-)
 
-Olaf
+
+Christian Leber
+
 -- 
-Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
-okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
+http://www.nosoftwarepatents.com
+
 
 
 -------------------------------------------------------
