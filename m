@@ -1,24 +1,23 @@
 From: Olaf Kirch <okir@suse.de>
 Subject: Re: nfsserver (Suse Linux 9.2) has problems with unix-clients
-Date: Wed, 27 Apr 2005 08:50:10 +0200
-Message-ID: <20050427065009.GA4232@suse.de>
-References: <200504201006.07814.bitz@human-solutions.com> <20050426190130.GA12057@core.home>
+Date: Wed, 27 Apr 2005 08:52:25 +0200
+Message-ID: <20050427065225.GB4232@suse.de>
+References: <200504201006.07814.bitz@human-solutions.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Annette Bitz <bitz@human-solutions.com>,
-	nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DQgNW-0002eU-9Z
-	for nfs@lists.sourceforge.net; Tue, 26 Apr 2005 23:50:34 -0700
-Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	id 1DQgPu-0002kF-Km
+	for nfs@lists.sourceforge.net; Tue, 26 Apr 2005 23:53:02 -0700
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1DQgNT-0000iC-Nu
-	for nfs@lists.sourceforge.net; Tue, 26 Apr 2005 23:50:34 -0700
-To: Christian Leber <christian@leber.de>
-In-Reply-To: <20050426190130.GA12057@core.home>
+	id 1DQgPP-0008RT-J5
+	for nfs@lists.sourceforge.net; Tue, 26 Apr 2005 23:53:02 -0700
+To: Annette Bitz <bitz@human-solutions.com>
+In-Reply-To: <200504201006.07814.bitz@human-solutions.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,14 +31,12 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, Apr 26, 2005 at 09:01:30PM +0200, Christian Leber wrote:
-> Important HINT for all users of SuSE 9.2:
-> when you are replacing this old kernel with something recent vanilla you have to
-> get and start a rpc.lockd, because the SuSE kernel has some funky NFS
-> patches and with them a kernelspace lockd.
+On Wed, Apr 20, 2005 at 10:06:07AM +0200, Annette Bitz wrote:
+> - nfs-server-2.2beta51-208
 
-Lockd has been a kernel thread all along from day one. What you're
-referring to is the kernel space statd.
+As already pointed out, please do not use unfsd anymore.  It's included in
+the distribution for some very special use scenarios, but the default
+should be the kernel nfsd.
 
 Olaf
 -- 
