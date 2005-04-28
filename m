@@ -1,110 +1,92 @@
-From: Neil Horman <nhorman@redhat.com>
-Subject: Re: help with nfs
-Date: Wed, 27 Apr 2005 08:10:06 -0400
-Message-ID: <20050427121006.GB3305@hmsendeavour.rdu.redhat.com>
-References: <3dd7287a05042205554e966492@mail.gmail.com>
+From: Ian Kent <raven@themaw.net>
+Subject: Re: nested mounts -- supported?
+Date: Thu, 28 Apr 2005 16:38:20 +0800 (WST)
+Message-ID: <Pine.LNX.4.58.0504281551050.13323@wombat.indigo.net.au>
+References: <17008.3537.313570.647302@segfault.boston.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DQlN6-00024b-G3
-	for nfs@lists.sourceforge.net; Wed, 27 Apr 2005 05:10:28 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1DQlMm-0002wS-QS
-	for nfs@lists.sourceforge.net; Wed, 27 Apr 2005 05:10:28 -0700
-To: Alejandra <alejamilis@gmail.com>
-In-Reply-To: <3dd7287a05042205554e966492@mail.gmail.com>
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: autofs mailing list <autofs@linux.kernel.org>, nfs@lists.sourceforge.net
+Return-path: <autofs-bounces@linux.kernel.org>
+To: Jeff Moyer <jmoyer@redhat.com>
+In-Reply-To: <17008.3537.313570.647302@segfault.boston.redhat.com>
+List-Unsubscribe: <http://linux.kernel.org/mailman/listinfo/autofs>,
+	<mailto:autofs-request@linux.kernel.org?subject=unsubscribe>
+List-Archive: <http://hera.kernel.org/pipermail/autofs>
+List-Post: <mailto:autofs@linux.kernel.org>
+List-Help: <mailto:autofs-request@linux.kernel.org?subject=help>
+List-Subscribe: <http://linux.kernel.org/mailman/listinfo/autofs>,
+	<mailto:autofs-request@linux.kernel.org?subject=subscribe>
+Sender: autofs-bounces@linux.kernel.org
+Errors-To: autofs-bounces@linux.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Fri, Apr 22, 2005 at 09:55:37AM -0300, Alejandra wrote:
-> I'm trying to share some directories using nfs, and although I've
-> modified the hosts.allow,hosts.deny and export files as the tutorial
-> says, it doesn't work. I'm working in a simple workgroup of four
-> computers  - three of them have both w2k and Fedora Core 3.
-> Nfs-utils : version 1.0.6-39
-> Kernel: 2.6.9
-> =20
-> This is my /etc/export:
->=20
-> #Archivos a compartir
->=20
-> /exportaciones	192.168.1.21(rw) 192.168.1.15(rw) 192.168.1.48(rw)
->=20
-> This is /etc/hosts.allow:
->=20
-> portmap: 192.168.1.48 , 192.168.1.15 , 192.168.1.48
-> lockd: 192.168.1.48 , 192.168.1.15 , 192.168.1.48
-> mountd: 192.168.1.48 , 192.168.1.15 , 192.168.1.48
-> rquotad: 192.168.1.48 , 192.168.1.15 , 192.168.1.48
-> statd: 192.168.1.48 , 192.168.1.15 , 192.168.1.48
->=20
-> This is /etc/hosts.deny:
->=20
-> portmap:ALL
-> lockd:ALL
-> mountd:ALL
-> rquotad:ALL
-> statd:ALL
->=20
-> The problem is that, when the client tries to mount /export, the
-> following error apprears:
-> <server not mounted>
->=20
-They should be trying to mount:
-<server_ip_address>:/exportaciones
+On Wed, 27 Apr 2005, Jeff Moyer wrote:
 
-not just /export.  Or were you paraphrasing there?
-HTH
-Neil
+> Hi, Ian,
+> 
+> I've got customers running 4.1.3 that complain about long mount times when
+> using nested mounts.  Basically, they have maps that look like so:
+> 
+> auto.master:
+> /foo	/etc/auto.foo
+> /bar	/etc/auto.bar
+> 
+> auto.foo
+> baz	localhost:/bar/baz/bat
+> 
+> auto.bar
+> baz	server:/export/baz
+> 
+> So what ends up happening is /bar/baz is an nfs mountpoint, and
+> /foo/baz/bat is a bind mount inside that nfs mountpoint.  Yuck.
+> 
+> The long timeouts are due to the fact that we are doing a wait_for_lock
+> before calling the mount binary.  Since this is a nested call, we are
+> essentially deadlocked (though the 4.1.3 code simply declared the lock
+> stale and overwrote it after 10 seconds).
 
-> I've strictly followed the instructions in the tutorial, but I cannot
-> solve this problem, I hope you can help me.
->=20
-> Thank you in advance
->=20
-> Alejandra Jamilis
->=20
->=20
-> -------------------------------------------------------
-> SF.Net email is sponsored by: Tell us your software development plans!
-> Take this survey and enter to win a one-year sub to SourceForge.net
-> Plus IDC's 2005 look-ahead and a copy of this survey
-> Click here to start!  http://www.idcswdc.com/cgi-bin/survey?id=105hix
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+This is an unusual way to do things.
 
---=20
-/***************************************************
- *Neil Horman
- *Software Engineer
- *Red Hat, Inc.
- *nhorman@redhat.com
- *gpg keyid: 1024D / 0x92A74FA1
- *http://pgp.mit.edu
- ***************************************************/
+The main thing to remember here is that the only reason that locking is 
+in autofs at all is that mount(8)s' locking is (was) broken. That's easily 
+demonstarted by putting 50 or so entries in a master map and getting rid 
+of the lock calls. Often you will see mtab corruption.
 
+The corruption causes autofs to become very confused.
 
--------------------------------------------------------
-SF.Net email is sponsored by: Tell us your software development plans!
-Take this survey and enter to win a one-year sub to SourceForge.net
-Plus IDC's 2005 look-ahead and a copy of this survey
-Click here to start!  http://www.idcswdc.com/cgi-bin/survey?id=105hix
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+> 
+> Anyway, is this sort of thing supported?  It seems to work, though I am
+> uneasy about the whole setup.
+
+I think this probably should be supported and probably will work if the 
+locking in monnt(8) was fixed.
+
+However, if we find that fixed locking mount(8) can't do these mounts 
+either then we're stuck.
+
+> 
+> Further, if this is something we strive to support, then we have to
+> consider that this won't work under 4.1.4.  The reason is that the revamped
+> locking code will not overwrite the old lock, and so nested mounts will
+> fail.  We will not hang, mind you, we will simply time out waiting for the
+> lock.
+
+Right.
+
+But will the work that's been done in autofs translate to a fix for the 
+locking in mount(8). mount(8)s' locking is used only to update mtab so the 
+mount call deadlock we see in autofs shouldn't happen. The locking code I 
+have now was taken from mount in the first place so it might fit in fairly 
+well. But I'm not sure what to propose as, given the locking code in 
+mount(8), I can't actually work out what their requirements were in the 
+first place (eg. exclusive lock, stagered delay, etc.).
+
+I'd like to get rid of the locking code altogether in autofs as it's just 
+unwanted overhead layered on top of not working overhead. I'd be willing 
+carry a patch for mount in the distribution with a big warning. Perhaps we 
+could actually get a response from whoever maintains mount? I've only 
+tried once without success.
+
+Sorry to rant about this but it burned a lot of my time in the past.
+
+Ian
