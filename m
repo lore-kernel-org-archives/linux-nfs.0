@@ -1,104 +1,80 @@
-From: Jeff Moyer <jmoyer@redhat.com>
-Subject: Re: nested mounts -- supported?
-Date: Thu, 28 Apr 2005 10:21:15 -0400
-Message-ID: <17008.61787.345590.727206@segfault.boston.redhat.com>
-References: <17008.3537.313570.647302@segfault.boston.redhat.com>
-	<Pine.LNX.4.58.0504281551050.13323@wombat.indigo.net.au>
-Reply-To: jmoyer@redhat.com
+From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
+Subject: Re: Stale File handles keep coming back
+Date: Fri, 29 Apr 2005 09:01:07 +0200
+Message-ID: <4271DBB3.3090402@bio.ifi.lmu.de>
+References: <1114463253.2487.73.camel@localhost.localdomain>	<17006.13241.129839.558300@cse.unsw.edu.au>	<1114554149.4470.5.camel@localhost.localdomain> <17006.64544.860436.620665@cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: autofs mailing list <autofs@linux.kernel.org>, nfs@lists.sourceforge.net
-Return-path: <autofs-bounces@linux.kernel.org>
-To: Ian Kent <raven@themaw.net>
-In-Reply-To: <Pine.LNX.4.58.0504281551050.13323@wombat.indigo.net.au>
-List-Unsubscribe: <http://linux.kernel.org/mailman/listinfo/autofs>,
-	<mailto:autofs-request@linux.kernel.org?subject=unsubscribe>
-List-Archive: <http://hera.kernel.org/pipermail/autofs>
-List-Post: <mailto:autofs@linux.kernel.org>
-List-Help: <mailto:autofs-request@linux.kernel.org?subject=help>
-List-Subscribe: <http://linux.kernel.org/mailman/listinfo/autofs>,
-	<mailto:autofs-request@linux.kernel.org?subject=subscribe>
-Sender: autofs-bounces@linux.kernel.org
-Errors-To: autofs-bounces@linux.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Kris Vassallo <kris@linuxcertified.com>,
+	nfs@lists.sourceforge.net, Olaf Kirch <okir@suse.de>
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1DRPUw-0007nM-68
+	for nfs@lists.sourceforge.net; Fri, 29 Apr 2005 00:01:14 -0700
+Received: from acheron.ifi.lmu.de ([129.187.214.135])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1DRPUt-0003bz-Jm
+	for nfs@lists.sourceforge.net; Fri, 29 Apr 2005 00:01:14 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <17006.64544.860436.620665@cse.unsw.edu.au>
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-==> Regarding Re: nested mounts -- supported?; Ian Kent <raven@themaw.net> adds:
+Hi all,
 
-raven> On Wed, 27 Apr 2005, Jeff Moyer wrote:
->> Hi, Ian,
->> 
->> I've got customers running 4.1.3 that complain about long mount times
->> when using nested mounts.  Basically, they have maps that look like so:
->> 
->> auto.master: /foo /etc/auto.foo /bar /etc/auto.bar
->> 
->> auto.foo baz localhost:/bar/baz/bat
->> 
->> auto.bar baz server:/export/baz
->> 
->> So what ends up happening is /bar/baz is an nfs mountpoint, and
->> /foo/baz/bat is a bind mount inside that nfs mountpoint.  Yuck.
->> 
->> The long timeouts are due to the fact that we are doing a wait_for_lock
->> before calling the mount binary.  Since this is a nested call, we are
->> essentially deadlocked (though the 4.1.3 code simply declared the lock
->> stale and overwrote it after 10 seconds).
+just for the records: I'm experiencing the same problem after
+I upgraded from the SuSE kernel 2.6.8-24.11 to 2.6.8-24.14
+(official SuSE update). The PC server and the client are running
+the 2.6.8-24.14 kernel, we have an additional NFS server running
+the SLES 9 kernel-pseries64-2.6.5-7.151.
 
-raven> This is an unusual way to do things.
+Our users have exactly the same symptoms, either on their homes
+or on directories mounted from the pSeries. It happens when
+they e.g. have an xterm with a shell and chdir to a directory,
+do sth. in there, and then leave the shell untouched for say 30
+minutes. After this time, they do a "ls" and get
 
-raven> The main thing to remember here is that the only reason that locking
-raven> is in autofs at all is that mount(8)s' locking is (was)
-raven> broken. That's easily demonstarted by putting 50 or so entries in a
-raven> master map and getting rid of the lock calls. Often you will see
-raven> mtab corruption.
+ls: .: Stale NFS file handle
 
-raven> The corruption causes autofs to become very confused.
+Calling "cd .." and then "cd <former_directory>", the ls works
+again.
 
->> Anyway, is this sort of thing supported?  It seems to work, though I am
->> uneasy about the whole setup.
+I'm currently trying to the cut the environment down to a base
+scenario by e.g. throwing out all other NFS mounts that we have
+from other domains etc. I will try the things you proposed and
+send the results here.
 
-raven> I think this probably should be supported and probably will work if
-raven> the locking in monnt(8) was fixed.
+Just to report that... Maybe it makes it easier to find the bug when
+it's known to happen in 2.4 and 2.6...
 
-raven> However, if we find that fixed locking mount(8) can't do these
-raven> mounts either then we're stuck.
+cu,
+Frank
 
->> Further, if this is something we strive to support, then we have to
->> consider that this won't work under 4.1.4.  The reason is that the
->> revamped locking code will not overwrite the old lock, and so nested
->> mounts will fail.  We will not hang, mind you, we will simply time out
->> waiting for the lock.
 
-raven> Right.
+-- 
+Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
+Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
+LMU, Amalienstr. 17           Phone: +49 89 2180-4049
+80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
+* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
 
-raven> But will the work that's been done in autofs translate to a fix for
-raven> the locking in mount(8). mount(8)s' locking is used only to update
-raven> mtab so the mount call deadlock we see in autofs shouldn't
-raven> happen. The locking code I have now was taken from mount in the
-raven> first place so it might fit in fairly well. But I'm not sure what to
-raven> propose as, given the locking code in mount(8), I can't actually
-raven> work out what their requirements were in the first place
-raven> (eg. exclusive lock, stagered delay, etc.).
 
-The locking in mount is used to ensure that we don't corrupt /etc/mtab.  It
-is an exclusive lock, and it will timeout (leaving /etc/mtab inconsistent
-with /proc/mounts).
-
-raven> I'd like to get rid of the locking code altogether in autofs as it's
-raven> just unwanted overhead layered on top of not working overhead. I'd
-raven> be willing carry a patch for mount in the distribution with a big
-raven> warning. Perhaps we could actually get a response from whoever
-raven> maintains mount? I've only tried once without success.
-
-This is the wrong thing to do.  The locking in autofs is used to serialize
-access to mount.  Since autofs can perform many simultaneous mounts, we
-increase the chance of starving one of the mount programs of the lock.  In
-this case, we end up with an inconsistent mtab.
-
-raven> Sorry to rant about this but it burned a lot of my time in the past.
-
-Mount will work fine with nested mounts.  It doesn't take the mtab lock
-until it needs to update the mtab file.  Of course, this discussion is all
-academic as you point out in your follow-up.
-
--Jeff
+-------------------------------------------------------
+SF.Net email is sponsored by: Tell us your software development plans!
+Take this survey and enter to win a one-year sub to SourceForge.net
+Plus IDC's 2005 look-ahead and a copy of this survey
+Click here to start!  http://www.idcswdc.com/cgi-bin/survey?id=105hix
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
