@@ -1,23 +1,32 @@
-From: =?ks_c_5601-1987?B?seiw5sel?= <kpkim@gluesys.com>
-Subject: The actimeo seems not work
-Date: Mon, 2 May 2005 19:49:43 +0900
-Message-ID: <003001c54f04$a6fd2a80$6b00a8c0@hgichon>
+From: Neil Horman <nhorman@redhat.com>
+Subject: Re: The actimeo seems not work
+Date: Mon, 2 May 2005 08:37:46 -0400
+Message-ID: <20050502123746.GB3486@hmsendeavour.rdu.redhat.com>
+References: <003001c54f04$a6fd2a80$6b00a8c0@hgichon>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_002D_01C54F50.162D1B40"
+Content-Type: text/plain; charset=utf-8
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DSYTm-00011p-8i
-	for nfs@lists.sourceforge.net; Mon, 02 May 2005 03:48:46 -0700
-Received: from mailgate4.kt-idc.co.kr ([211.62.35.99] helo=mailgate4.mailhost2.kornet.net)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1DSYTl-0004LT-AB
-	for nfs@lists.sourceforge.net; Mon, 02 May 2005 03:48:46 -0700
-Received: from hgichon ([218.153.76.250]) by mailgate4.mailhost2.kornet.net
-          with ESMTP id <20050502104840.IGLI19933.mailgate4@hgichon>
-          for <nfs@lists.sourceforge.net>; Mon, 2 May 2005 19:48:40 +0900
-To: <nfs@lists.sourceforge.net>
+	id 1DSaBJ-0004UC-TM
+	for nfs@lists.sourceforge.net; Mon, 02 May 2005 05:37:49 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1DSaBI-0006YL-8p
+	for nfs@lists.sourceforge.net; Mon, 02 May 2005 05:37:49 -0700
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.12.11/8.12.11) with ESMTP id j42Cbli4013581
+	for <nfs@lists.sourceforge.net>; Mon, 2 May 2005 08:37:47 -0400
+Received: from hmsendeavour.rdu.redhat.com (hmsendeavour.rdu.redhat.com [172.16.57.156])
+	by int-mx1.corp.redhat.com (8.11.6/8.11.6) with ESMTP id j42CblO03716
+	for <nfs@lists.sourceforge.net>; Mon, 2 May 2005 08:37:47 -0400
+Received: from hmsendeavour.rdu.redhat.com (localhost.localdomain [127.0.0.1])
+	by hmsendeavour.rdu.redhat.com (8.13.1/8.13.1) with ESMTP id j42CbkM2003715
+	for <nfs@lists.sourceforge.net>; Mon, 2 May 2005 08:37:46 -0400
+To: nfs@lists.sourceforge.net
+In-Reply-To: <003001c54f04$a6fd2a80$6b00a8c0@hgichon>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,202 +40,139 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+On Mon, May 02, 2005 at 07:49:43PM +0900, =EF=BF=BD=EF=BF=BD=EF=BF=BD=EF=BF=
+=BD=C7=A5 wrote:
+> hello list.
+> I have some question how to work of  linux nfs client cache.
+>=20
+> I was proceeding two test.
+> One is solaris 9 client with linux server.
+> The other is linux client with linux server.
+>=20
+> Linux server and client kernel version is 2.4.27.
+> nfs-util version is 1.0.4.
+>=20
+> [ mount option list ]
+> Linux server export option is rw,async.
+> Linux client mount optione is just actimeo=3D0.
+> Another linux client mount option is  actimeo=3D100.
+> Solaris9 mount option is soft,xattr,rw.
+>=20
+> [ linux client setting ]
+> 192.168.1.212:/vol1 /mnt1 nfs rw,v3,rsize=3D8192,wsize=3D8192,acregmin=3D=
+0,acregmax=3D0,acdirmin=3D0,acdirmax=3D0,hard,udp,lock,addr=3D192.168.1.2=
+12 0 0
+> 192.168.1.212:/vol1 /mnt nfs rw,v3,rsize=3D8192,wsize=3D8192,acregmin=3D=
+100,acregmax=3D100,acdirmin=3D100,acdirmax=3D100,hard,udp,lock,addr=3D192=
+.168.1.212 0 0
+>=20
+> [ Solaris 9 test ]
+> 2 solaris 9 clients ----> linux server.=20
+>=20
+> After i touch a file on one solaris client, I type ls -al the file on t=
+he other solaris client.
+> And i found that the file attribute(mtime) was updated randomly.(0 sec =
+~ 30sec)
+> The solais9 client is my customer machine.
+> My client want that the file attribute update interval is to 0 sec.
+> So I recommand to check nfs mount option in solaris 9 ( actimeo, acregX=
+XX...).
+>=20
+> [ linux client test ]
+>=20
+> Test procedure is same with solaris9.
+> But, resut is not same.
+> Linux client shows up-to-dated file attribute.
+> As I know, linux nfs client default mount option is acregmin is 3.
+> So i change the mount option to  actimeo=3D100.
+> But result is not different.
+> So I wonder that actimeo option is a available.
+> i tried tcpdump.
+>=20
+You're probably seeing the close-to-open cache consistency mechanism work=
+ing.
+Every time a file is closed on a linux system (with no outstanding open f=
+d's,
+IIRC), a setattr transaction is sent to the server to update file metadat=
+a.  On
+every file open (if there are no already open fd's, IIRC), a getattr tran=
+saction
+is sent to the server to get the latest file metadata on the server.  Thi=
+s is
+probably why it seems that the attribute cache timeouts aren't working li=
+ke you
+would expect.  To get a clearer view of how they operate, moun the linux =
+clients
+using the nocto nfs mount option.  Of course, I wouldn't recommend doing =
+this,
+as it provides better consistency between nfs nodes, but it will make the=
+ ac*
+options work a little more like you might expect.
 
-------=_NextPart_000_002D_01C54F50.162D1B40
-Content-Type: text/plain;
-	charset="ks_c_5601-1987"
-Content-Transfer-Encoding: base64
+Regards
+Neil
 
-aGVsbG8gbGlzdC4NCkkgaGF2ZSBzb21lIHF1ZXN0aW9uIGhvdyB0byB3b3JrIG9mICBsaW51eCBu
-ZnMgY2xpZW50IGNhY2hlLg0KDQpJIHdhcyBwcm9jZWVkaW5nIHR3byB0ZXN0Lg0KT25lIGlzIHNv
-bGFyaXMgOSBjbGllbnQgd2l0aCBsaW51eCBzZXJ2ZXIuDQpUaGUgb3RoZXIgaXMgbGludXggY2xp
-ZW50IHdpdGggbGludXggc2VydmVyLg0KDQpMaW51eCBzZXJ2ZXIgYW5kIGNsaWVudCBrZXJuZWwg
-dmVyc2lvbiBpcyAyLjQuMjcuDQpuZnMtdXRpbCB2ZXJzaW9uIGlzIDEuMC40Lg0KDQpbIG1vdW50
-IG9wdGlvbiBsaXN0IF0NCkxpbnV4IHNlcnZlciBleHBvcnQgb3B0aW9uIGlzIHJ3LGFzeW5jLg0K
-TGludXggY2xpZW50IG1vdW50IG9wdGlvbmUgaXMganVzdCBhY3RpbWVvPTAuDQpBbm90aGVyIGxp
-bnV4IGNsaWVudCBtb3VudCBvcHRpb24gaXMgIGFjdGltZW89MTAwLg0KU29sYXJpczkgbW91bnQg
-b3B0aW9uIGlzIHNvZnQseGF0dHIscncuDQoNClsgbGludXggY2xpZW50IHNldHRpbmcgXQ0KMTky
-LjE2OC4xLjIxMjovdm9sMSAvbW50MSBuZnMgcncsdjMscnNpemU9ODE5Mix3c2l6ZT04MTkyLGFj
-cmVnbWluPTAsYWNyZWdtYXg9MCxhY2Rpcm1pbj0wLGFjZGlybWF4PTAsaGFyZCx1ZHAsbG9jayxh
-ZGRyPTE5Mi4xNjguMS4yMTIgMCAwDQoxOTIuMTY4LjEuMjEyOi92b2wxIC9tbnQgbmZzIHJ3LHYz
-LHJzaXplPTgxOTIsd3NpemU9ODE5MixhY3JlZ21pbj0xMDAsYWNyZWdtYXg9MTAwLGFjZGlybWlu
-PTEwMCxhY2Rpcm1heD0xMDAsaGFyZCx1ZHAsbG9jayxhZGRyPTE5Mi4xNjguMS4yMTIgMCAwDQoN
-ClsgU29sYXJpcyA5IHRlc3QgXQ0KMiBzb2xhcmlzIDkgY2xpZW50cyAtLS0tPiBsaW51eCBzZXJ2
-ZXIuIA0KDQpBZnRlciBpIHRvdWNoIGEgZmlsZSBvbiBvbmUgc29sYXJpcyBjbGllbnQsIEkgdHlw
-ZSBscyAtYWwgdGhlIGZpbGUgb24gdGhlIG90aGVyIHNvbGFyaXMgY2xpZW50Lg0KQW5kIGkgZm91
-bmQgdGhhdCB0aGUgZmlsZSBhdHRyaWJ1dGUobXRpbWUpIHdhcyB1cGRhdGVkIHJhbmRvbWx5Ligw
-IHNlYyB+IDMwc2VjKQ0KVGhlIHNvbGFpczkgY2xpZW50IGlzIG15IGN1c3RvbWVyIG1hY2hpbmUu
-DQpNeSBjbGllbnQgd2FudCB0aGF0IHRoZSBmaWxlIGF0dHJpYnV0ZSB1cGRhdGUgaW50ZXJ2YWwg
-aXMgdG8gMCBzZWMuDQpTbyBJIHJlY29tbWFuZCB0byBjaGVjayBuZnMgbW91bnQgb3B0aW9uIGlu
-IHNvbGFyaXMgOSAoIGFjdGltZW8sIGFjcmVnWFhYLi4uKS4NCg0KWyBsaW51eCBjbGllbnQgdGVz
-dCBdDQoNClRlc3QgcHJvY2VkdXJlIGlzIHNhbWUgd2l0aCBzb2xhcmlzOS4NCkJ1dCwgcmVzdXQg
-aXMgbm90IHNhbWUuDQpMaW51eCBjbGllbnQgc2hvd3MgdXAtdG8tZGF0ZWQgZmlsZSBhdHRyaWJ1
-dGUuDQpBcyBJIGtub3csIGxpbnV4IG5mcyBjbGllbnQgZGVmYXVsdCBtb3VudCBvcHRpb24gaXMg
-YWNyZWdtaW4gaXMgMy4NClNvIGkgY2hhbmdlIHRoZSBtb3VudCBvcHRpb24gdG8gIGFjdGltZW89
-MTAwLg0KQnV0IHJlc3VsdCBpcyBub3QgZGlmZmVyZW50Lg0KU28gSSB3b25kZXIgdGhhdCBhY3Rp
-bWVvIG9wdGlvbiBpcyBhIGF2YWlsYWJsZS4NCmkgdHJpZWQgdGNwZHVtcC4NCg0Kd2hlbiBtb3Vu
-dCBvcHRpb24gaXMgYWN0aW1lbz0wICggaW4gbGludXggY2xpZW50KQ0KbGludXgtY2xpZW50PiBs
-cyAtYWwgL21udC90ZXN0LnRlc3QgDQpsaW51eC1jbGllbnQ+LXJ3eHJ3eHJ3eCAgICAxIHJvb3Qg
-ICAgIHJvb3QgICAgICAgICAgIDEyIEFwciAyOSAxNjo1OSAvbW50L3Rlc3QudGVzdA0KDQpsaW51
-eC1zZXJ2ZXIgdGNwZHVtcCBvdXRwdXQNCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQoxODo1MTo1Mi41NjE1NTggR1JWQy1DLjQxMDU4
-Nzg5NDQgPiAxOTIuMTY4LjEuMjEyLm5mczogMTIwIGFjY2VzcyBbfG5mc10gKERGKQ0KMTg6NTE6
-NTIuNTYxNTg4IDE5Mi4xNjguMS4yMTIubmZzID4gR1JWQy1DLjQxMDU4Nzg5NDQ6IHJlcGx5IG9r
-IDEyMCBhY2Nlc3MgYyAwMDAwIChERikNCjE4OjUxOjUyLjU2MTY4MyBHUlZDLUMuNDEyMjY1NjE2
-MCA+IDE5Mi4xNjguMS4yMTIubmZzOiAxMzIgZ2V0YXR0ciBbfG5mc10gKERGKQ0KMTg6NTE6NTIu
-NTYxNzU5IDE5Mi4xNjguMS4yMTIubmZzID4gR1JWQy1DLjQxMjI2NTYxNjA6IHJlcGx5IG9rIDEx
-MiBnZXRhdHRyIFJFRyAxMDA3NzcgaWRzIDAvMCBbfG5mc10gKERGKQ0KLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KDQp3aGVuIG1v
-dW50IG9wdGlvbiBpcyBhY3RpbWVvPTEwMCAoIGluIGxpbnV4IGNsaWVudCkNCmxpbnV4LWNsaWVu
-dD4gbHMgLWFsIC9tbnQxL3Rlc3QudGVzdCANCmxpbnV4LWNsaWVudD4tcnd4cnd4cnd4ICAgIDEg
-cm9vdCAgICAgcm9vdCAgICAgICAgICAgMTIgQXByIDI5IDE2OjU5IC9tbnQvdGVzdC50ZXN0DQoN
-CmxpbnV4LXNlcnZlciB0Y3BkdW1wIG91dHB1dA0KLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KMTg6NTU6MzcuODYwNjI3IEdSVkMt
-Qy40MTg5NzY1MDI0ID4gMTkyLjE2OC4xLjIxMi5uZnM6IDEyMCBhY2Nlc3MgW3xuZnNdIChERikN
-CjE4OjU1OjM3Ljg2MDY5NCAxOTIuMTY4LjEuMjEyLm5mcyA+IEdSVkMtQy40MTg5NzY1MDI0OiBy
-ZXBseSBvayAxMjAgYWNjZXNzIGMgMDAwMCAoREYpDQoxODo1NTozNy44NjA4NzQgR1JWQy1DLjQy
-MDY1NDIyNDAgPiAxOTIuMTY4LjEuMjEyLm5mczogMTE2IGdldGF0dHIgW3xuZnNdIChERikNCjE4
-OjU1OjM3Ljg2MDkzMiAxOTIuMTY4LjEuMjEyLm5mcyA+IEdSVkMtQy40MjA2NTQyMjQwOiByZXBs
-eSBvayAxMTIgZ2V0YXR0ciBESVIgNDA3NzcgaWRzIDk5Lzk5IFt8bmZzXSAoREYpDQoxODo1NToz
-Ny44NjExMjMgR1JWQy1DLjQyMjMzMTk0NTYgPiAxOTIuMTY4LjEuMjEyLm5mczogMTMyIGdldGF0
-dHIgW3xuZnNdIChERikNCjE4OjU1OjM3Ljg2MTE0NyAxOTIuMTY4LjEuMjEyLm5mcyA+IEdSVkMt
-Qy40MjIzMzE5NDU2OiByZXBseSBvayAxMTIgZ2V0YXR0ciBSRUcgMTAwNzc3IGlkcyAwLzAgW3xu
-ZnNdIChERikNCjE4OjU1OjM3Ljg2MTM3MyBHUlZDLUMuNDI0MDA5NjY3MiA+IDE5Mi4xNjguMS4y
-MTIubmZzOiAxMzIgZ2V0YXR0ciBbfG5mc10gKERGKQ0KMTg6NTU6MzcuODYxMzg3IDE5Mi4xNjgu
-MS4yMTIubmZzID4gR1JWQy1DLjQyNDAwOTY2NzI6IHJlcGx5IG9rIDExMiBnZXRhdHRyIFJFRyAx
-MDA3NzcgaWRzIDAvMCBbfG5mc10gKERGKQ0KLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KDQpBcyB5b3Ugc2VlLCB0d28gbW9yZSBn
-ZXRhdHRyIGFwcGVhcmVkIGluIGFjdGltZW89MTAwLg0KDQpsaW51eCBuZnMgY2xpZW50IGNvZGUg
-c2VlbXMgZGlmZmVyZW50IGJ5IGFjdGltZW8gb3B0aW9uLg0KYnV0IEkgY2FuJ3QgdmVyaWZ5IHRo
-ZSBhZmZlY3Qgb2YgbmZzIGNsaWVudCBjYWNoZSAuICggYXNwZWN0IG9mIGZpbGUgYXR0cmlidXRl
-IGNhY2hlaW5nKQ0KDQphbnlib2R5IGhlbHAgbWU/DQpIb3cgY2FuIGkgdmVyaWZ5IHRoZSBhZmZl
-Y3Qgb2YgbmZzIGNsaWVudCBjYWNoZS4NCnNvcnJ5IHBvb3IgbXkgZW5nbGlzaC4=
 
-------=_NextPart_000_002D_01C54F50.162D1B40
-Content-Type: text/html;
-	charset="ks_c_5601-1987"
-Content-Transfer-Encoding: base64
-
-PCFET0NUWVBFIEhUTUwgUFVCTElDICItLy9XM0MvL0RURCBIVE1MIDQuMCBUcmFuc2l0aW9uYWwv
-L0VOIj4NCjxIVE1MPjxIRUFEPg0KPE1FVEEgaHR0cC1lcXVpdj1Db250ZW50LVR5cGUgY29udGVu
-dD0idGV4dC9odG1sOyBjaGFyc2V0PWtzX2NfNTYwMS0xOTg3Ij4NCjxNRVRBIGNvbnRlbnQ9Ik1T
-SFRNTCA2LjAwLjI4MDAuMTQ5OCIgbmFtZT1HRU5FUkFUT1I+DQo8U1RZTEU+PC9TVFlMRT4NCjwv
-SEVBRD4NCjxCT0RZIGJnQ29sb3I9I2ZmZmZmZj4NCjxESVY+PEZPTlQgc2l6ZT0yPg0KPERJVj4N
-CjxESVY+PEZPTlQgc2l6ZT0yPmhlbGxvIGxpc3QuPC9GT05UPjwvRElWPg0KPERJVj48Rk9OVCBz
-aXplPTI+SSZuYnNwO2hhdmUgc29tZSBxdWVzdGlvbiZuYnNwO2hvdyZuYnNwO3RvIHdvcmsgb2Yg
-Jm5ic3A7bGludXggDQpuZnMgY2xpZW50IGNhY2hlLjwvRk9OVD48L0RJVj4NCjxESVY+PEZPTlQg
-c2l6ZT0yPjwvRk9OVD4mbmJzcDs8L0RJVj4NCjxESVY+PEZPTlQgc2l6ZT0yPkkmbmJzcDt3YXMg
-cHJvY2VlZGluZyB0d28gdGVzdC48L0ZPTlQ+PC9ESVY+DQo8RElWPjxGT05UIHNpemU9Mj5PbmUg
-aXMgc29sYXJpcyA5IGNsaWVudCB3aXRoIGxpbnV4IHNlcnZlci48L0ZPTlQ+PC9ESVY+DQo8RElW
-PjxGT05UIHNpemU9Mj5UaGUgb3RoZXIgaXMgbGludXggY2xpZW50IHdpdGggbGludXggc2VydmVy
-LjwvRk9OVD48L0RJVj4NCjxESVY+PEZPTlQgc2l6ZT0yPjwvRk9OVD4mbmJzcDs8L0RJVj4NCjxE
-SVY+PEZPTlQgc2l6ZT0yPkxpbnV4IHNlcnZlciBhbmQgY2xpZW50IGtlcm5lbCB2ZXJzaW9uIGlz
-IDIuNC4yNy48L0ZPTlQ+PC9ESVY+DQo8RElWPjxGT05UIHNpemU9Mj5uZnMtdXRpbCB2ZXJzaW9u
-IGlzIDEuMC40LjwvRk9OVD48L0RJVj4NCjxESVY+PEZPTlQgc2l6ZT0yPg0KPERJVj48Rk9OVCBz
-aXplPTI+PC9GT05UPiZuYnNwOzwvRElWPg0KPERJVj48Rk9OVCBzaXplPTI+WyBtb3VudCBvcHRp
-b24gbGlzdCBdPC9GT05UPjwvRElWPg0KPERJVj48Rk9OVCBzaXplPTI+TGludXggc2VydmVyIGV4
-cG9ydCZuYnNwO29wdGlvbiBpcyZuYnNwO3J3LGFzeW5jLjwvRk9OVD48L0RJVj4NCjxESVY+PEZP
-TlQgc2l6ZT0yPkxpbnV4IGNsaWVudCBtb3VudCBvcHRpb25lIGlzIGp1c3QgYWN0aW1lbz0wLjwv
-Rk9OVD48L0RJVj4NCjxESVY+PEZPTlQgc2l6ZT0yPkFub3RoZXIgbGludXggY2xpZW50IG1vdW50
-IG9wdGlvbiBpcyANCiZuYnNwO2FjdGltZW89MTAwLjwvRk9OVD48L0RJVj4NCjxESVY+PEZPTlQg
-c2l6ZT0yPlNvbGFyaXM5IG1vdW50IG9wdGlvbiBpcyBzb2Z0LHhhdHRyLHJ3LjwvRk9OVD48L0RJ
-Vj4NCjxESVY+PEZPTlQgc2l6ZT0yPjwvRk9OVD4mbmJzcDs8L0RJVj4NCjxESVY+PEZPTlQgc2l6
-ZT0yPlsgbGludXggY2xpZW50IHNldHRpbmcgXTwvRk9OVD48L0RJVj4NCjxESVY+PEZPTlQgc2l6
-ZT0yPjE5Mi4xNjguMS4yMTI6L3ZvbDEgL21udDEgbmZzIA0KcncsdjMscnNpemU9ODE5Mix3c2l6
-ZT04MTkyLGFjcmVnbWluPTAsYWNyZWdtYXg9MCxhY2Rpcm1pbj0wLGFjZGlybWF4PTAsaGFyZCx1
-ZHAsbG9jayxhZGRyPTE5Mi4xNjguMS4yMTIgDQowIDA8QlI+MTkyLjE2OC4xLjIxMjovdm9sMSAv
-bW50IG5mcyANCnJ3LHYzLHJzaXplPTgxOTIsd3NpemU9ODE5MixhY3JlZ21pbj0xMDAsYWNyZWdt
-YXg9MTAwLGFjZGlybWluPTEwMCxhY2Rpcm1heD0xMDAsaGFyZCx1ZHAsbG9jayxhZGRyPTE5Mi4x
-NjguMS4yMTIgDQowIDA8L0ZPTlQ+PC9ESVY+DQo8RElWPjxGT05UIHNpemU9Mj48L0ZPTlQ+Jm5i
-c3A7PC9ESVY+PC9GT05UPjwvRElWPg0KPERJVj48Rk9OVCBzaXplPTI+WyBTb2xhcmlzIDkgdGVz
-dCBdPC9GT05UPjwvRElWPg0KPERJVj48Rk9OVCBzaXplPTI+MiBzb2xhcmlzIDkgY2xpZW50cyZu
-YnNwOy0tLS0mZ3Q7IGxpbnV4IA0Kc2VydmVyLiZuYnNwOzwvRk9OVD48L0RJVj4NCjxESVY+PEZP
-TlQgc2l6ZT0yPjwvRk9OVD4mbmJzcDs8L0RJVj4NCjxESVY+PEZPTlQgc2l6ZT0yPkFmdGVyJm5i
-c3A7aSB0b3VjaCBhIGZpbGUgb24gb25lIHNvbGFyaXMgY2xpZW50LCBJIHR5cGUgbHMgLWFsIA0K
-dGhlIGZpbGUgb24gdGhlIG90aGVyIHNvbGFyaXMgY2xpZW50LjwvRk9OVD48L0RJVj4NCjxESVY+
-PEZPTlQgc2l6ZT0yPkFuZCBpIGZvdW5kIHRoYXQgdGhlIGZpbGUgYXR0cmlidXRlKG10aW1lKSZu
-YnNwO3dhcyB1cGRhdGVkIA0KcmFuZG9tbHkuPC9GT05UPjxGT05UIHNpemU9Mj4oMCBzZWMgfiAz
-MHNlYyk8L0ZPTlQ+PC9ESVY+DQo8RElWPjxGT05UIHNpemU9Mj5UaGUgc29sYWlzOSBjbGllbnQg
-aXMgbXkgY3VzdG9tZXIgbWFjaGluZS48L0ZPTlQ+PC9ESVY+DQo8RElWPjxGT05UIHNpemU9Mj5N
-eSBjbGllbnQgd2FudCB0aGF0IHRoZSBmaWxlIGF0dHJpYnV0ZSB1cGRhdGUgaW50ZXJ2YWwgaXMg
-dG8gMCANCnNlYy48L0ZPTlQ+PC9ESVY+DQo8RElWPjxGT05UIHNpemU9Mj4NCjxESVY+PEZPTlQg
-c2l6ZT0yPlNvIEkgcmVjb21tYW5kJm5ic3A7dG8gY2hlY2smbmJzcDtuZnMgbW91bnQgb3B0aW9u
-IGluIHNvbGFyaXMgDQo5ICggYWN0aW1lbywgYWNyZWdYWFguLi4pLjwvRk9OVD48L0RJVj4NCjxE
-SVY+Jm5ic3A7PC9ESVY+DQo8RElWPlsmbmJzcDtsaW51eCBjbGllbnQgdGVzdCBdPC9ESVY+PC9G
-T05UPjwvRElWPg0KPERJVj48Rk9OVCBzaXplPTI+PC9GT05UPiZuYnNwOzwvRElWPg0KPERJVj48
-Rk9OVCBzaXplPTI+VGVzdCBwcm9jZWR1cmUgaXMgc2FtZSB3aXRoIHNvbGFyaXM5LjwvRk9OVD48
-L0RJVj4NCjxESVY+PEZPTlQgc2l6ZT0yPkJ1dCwgcmVzdXQgaXMgbm90IHNhbWUuPC9GT05UPjwv
-RElWPg0KPERJVj48Rk9OVCBzaXplPTI+TGludXggY2xpZW50IHNob3dzIHVwLXRvLWRhdGVkIGZp
-bGUgYXR0cmlidXRlLjwvRk9OVD48L0RJVj4NCjxESVY+PEZPTlQgc2l6ZT0yPkFzIEkga25vdywg
-bGludXggbmZzIGNsaWVudCBkZWZhdWx0IG1vdW50IG9wdGlvbiBpcyBhY3JlZ21pbiANCmlzIDMu
-PC9GT05UPjwvRElWPg0KPERJVj48Rk9OVCBzaXplPTI+U28gaSZuYnNwO2NoYW5nZSZuYnNwO3Ro
-ZSBtb3VudCBvcHRpb24gdG8gDQombmJzcDthY3RpbWVvPTEwMC48L0ZPTlQ+PC9ESVY+DQo8RElW
-PjxGT05UIHNpemU9Mj5CdXQgcmVzdWx0IGlzIG5vdCBkaWZmZXJlbnQuPC9GT05UPjwvRElWPg0K
-PERJVj48Rk9OVCBzaXplPTI+U28gSSB3b25kZXIgdGhhdCZuYnNwO2FjdGltZW8gb3B0aW9uIGlz
-IA0KYSZuYnNwO2F2YWlsYWJsZS48L0ZPTlQ+PC9ESVY+DQo8RElWPjxGT05UIHNpemU9Mj5pIHRy
-aWVkIHRjcGR1bXAuPC9GT05UPjwvRElWPg0KPERJVj48Rk9OVCBzaXplPTI+PC9GT05UPiZuYnNw
-OzwvRElWPg0KPERJVj48Rk9OVCBzaXplPTI+d2hlbiBtb3VudCBvcHRpb24gaXMgYWN0aW1lbz0w
-ICggaW4gbGludXggY2xpZW50KTwvRk9OVD48L0RJVj4NCjxESVY+PEZPTlQgc2l6ZT0yPmxpbnV4
-LWNsaWVudCZndDsgbHMgLWFsIC9tbnQvdGVzdC50ZXN0IDwvRk9OVD48L0RJVj4NCjxESVY+PEZP
-TlQgc2l6ZT0yPmxpbnV4LWNsaWVudCZndDstcnd4cnd4cnd4Jm5ic3A7Jm5ic3A7Jm5ic3A7IDEg
-DQpyb290Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7IA0Kcm9vdCZuYnNwOyZuYnNwOyZuYnNwOyZu
-YnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyAxMiBBcHIgMjkgMTY6NTkg
-DQovbW50L3Rlc3QudGVzdDwvRk9OVD48L0RJVj4NCjxESVY+PEZPTlQgc2l6ZT0yPjwvRk9OVD4m
-bmJzcDs8L0RJVj4NCjxESVY+PEZPTlQgc2l6ZT0yPmxpbnV4LXNlcnZlciB0Y3BkdW1wIG91dHB1
-dDwvRk9OVD48L0RJVj4NCjxESVY+PEZPTlQgDQpzaXplPTI+LS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS08L0ZPTlQ+PC9ESVY+DQo8RElW
-PjxGT05UIHNpemU9Mj4xODo1MTo1Mi41NjE1NTggR1JWQy1DLjQxMDU4Nzg5NDQgJmd0OyAxOTIu
-MTY4LjEuMjEyLm5mczogMTIwIA0KYWNjZXNzIFt8bmZzXSAoREYpPEJSPjE4OjUxOjUyLjU2MTU4
-OCAxOTIuMTY4LjEuMjEyLm5mcyAmZ3Q7IEdSVkMtQy40MTA1ODc4OTQ0OiANCnJlcGx5IG9rIDEy
-MCBhY2Nlc3MgYyAwMDAwIChERik8QlI+MTg6NTE6NTIuNTYxNjgzIEdSVkMtQy40MTIyNjU2MTYw
-ICZndDsgDQoxOTIuMTY4LjEuMjEyLm5mczogMTMyIGdldGF0dHIgW3xuZnNdIChERik8QlI+MTg6
-NTE6NTIuNTYxNzU5IDE5Mi4xNjguMS4yMTIubmZzIA0KJmd0OyBHUlZDLUMuNDEyMjY1NjE2MDog
-cmVwbHkgb2sgMTEyIGdldGF0dHIgUkVHIDEwMDc3NyBpZHMgMC8wIFt8bmZzXSANCihERik8L0ZP
-TlQ+PC9ESVY+DQo8RElWPjxGT05UIA0Kc2l6ZT0yPi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS08L0ZPTlQ+PC9ESVY+DQo8RElWPg0K
-PERJVj48Rk9OVCBzaXplPTI+PC9GT05UPiZuYnNwOzwvRElWPg0KPERJVj48Rk9OVCBzaXplPTI+
-d2hlbiBtb3VudCBvcHRpb24gaXMgYWN0aW1lbz0xMDAgKCBpbiBsaW51eCANCmNsaWVudCk8L0ZP
-TlQ+PC9ESVY+DQo8RElWPjxGT05UIHNpemU9Mj5saW51eC1jbGllbnQmZ3Q7IGxzIC1hbCAvbW50
-MS90ZXN0LnRlc3QgPC9GT05UPjwvRElWPg0KPERJVj48Rk9OVCBzaXplPTI+bGludXgtY2xpZW50
-Jmd0Oy1yd3hyd3hyd3gmbmJzcDsmbmJzcDsmbmJzcDsgMSANCnJvb3QmbmJzcDsmbmJzcDsmbmJz
-cDsmbmJzcDsgDQpyb290Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7
-Jm5ic3A7Jm5ic3A7Jm5ic3A7IDEyIEFwciAyOSAxNjo1OSANCi9tbnQvdGVzdC50ZXN0PC9GT05U
-PjwvRElWPg0KPERJVj48Rk9OVCBzaXplPTI+PC9GT05UPiZuYnNwOzwvRElWPg0KPERJVj48Rk9O
-VCBzaXplPTI+bGludXgtc2VydmVyIHRjcGR1bXAgb3V0cHV0PC9GT05UPjwvRElWPg0KPERJVj48
-Rk9OVCANCnNpemU9Mj4tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tPC9GT05UPjwvRElWPg0KPERJVj48Rk9OVCBzaXplPTI+MTg6NTU6
-MzcuODYwNjI3IEdSVkMtQy40MTg5NzY1MDI0ICZndDsgMTkyLjE2OC4xLjIxMi5uZnM6IDEyMCAN
-CmFjY2VzcyBbfG5mc10gKERGKTxCUj4xODo1NTozNy44NjA2OTQgMTkyLjE2OC4xLjIxMi5uZnMg
-Jmd0OyBHUlZDLUMuNDE4OTc2NTAyNDogDQpyZXBseSBvayAxMjAgYWNjZXNzIGMgMDAwMCAoREYp
-PEJSPjE4OjU1OjM3Ljg2MDg3NCBHUlZDLUMuNDIwNjU0MjI0MCAmZ3Q7IA0KMTkyLjE2OC4xLjIx
-Mi5uZnM6IDExNiBnZXRhdHRyIFt8bmZzXSAoREYpPEJSPjE4OjU1OjM3Ljg2MDkzMiAxOTIuMTY4
-LjEuMjEyLm5mcyANCiZndDsgR1JWQy1DLjQyMDY1NDIyNDA6IHJlcGx5IG9rIDExMiBnZXRhdHRy
-IERJUiA0MDc3NyBpZHMgOTkvOTkgW3xuZnNdIA0KKERGKTxCUj4xODo1NTozNy44NjExMjMgR1JW
-Qy1DLjQyMjMzMTk0NTYgJmd0OyAxOTIuMTY4LjEuMjEyLm5mczogMTMyIGdldGF0dHIgDQpbfG5m
-c10gKERGKTxCUj4xODo1NTozNy44NjExNDcgMTkyLjE2OC4xLjIxMi5uZnMgJmd0OyBHUlZDLUMu
-NDIyMzMxOTQ1NjogcmVwbHkgDQpvayAxMTIgZ2V0YXR0ciBSRUcgMTAwNzc3IGlkcyAwLzAgW3xu
-ZnNdIChERik8QlI+MTg6NTU6MzcuODYxMzczIA0KR1JWQy1DLjQyNDAwOTY2NzIgJmd0OyAxOTIu
-MTY4LjEuMjEyLm5mczogMTMyIGdldGF0dHIgW3xuZnNdIA0KKERGKTxCUj4xODo1NTozNy44NjEz
-ODcgMTkyLjE2OC4xLjIxMi5uZnMgJmd0OyBHUlZDLUMuNDI0MDA5NjY3MjogcmVwbHkgb2sgMTEy
-IA0KZ2V0YXR0ciBSRUcgMTAwNzc3IGlkcyAwLzAgW3xuZnNdIChERik8L0ZPTlQ+PC9ESVY+DQo8
-RElWPjxGT05UIA0Kc2l6ZT0yPi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS08L0ZPTlQ+PC9ESVY+DQo8RElWPjxGT05UIHNpemU9Mj48
-L0ZPTlQ+Jm5ic3A7PC9ESVY+DQo8RElWPjxGT05UIHNpemU9Mj5BcyB5b3Ugc2VlLCZuYnNwO3R3
-byBtb3JlIGdldGF0dHIgYXBwZWFyZWQgaW4gDQphY3RpbWVvPTEwMC48L0ZPTlQ+PC9ESVY+DQo8
-RElWPjxGT05UIHNpemU9Mj48L0ZPTlQ+Jm5ic3A7PC9ESVY+DQo8RElWPjxGT05UIHNpemU9Mj5s
-aW51eCBuZnMgY2xpZW50IGNvZGUmbmJzcDtzZWVtcyBkaWZmZXJlbnQgYnkgYWN0aW1lbyANCm9w
-dGlvbi48L0ZPTlQ+PC9ESVY+DQo8RElWPjxGT05UIHNpemU9Mj5idXQgSSBjYW4ndCB2ZXJpZnkg
-dGhlIGFmZmVjdCBvZiBuZnMgY2xpZW50IGNhY2hlIC4mbmJzcDsoIA0KYXNwZWN0IG9mIGZpbGUg
-YXR0cmlidXRlIGNhY2hlaW5nKTwvRk9OVD48L0RJVj4NCjxESVY+PEZPTlQgc2l6ZT0yPjwvRk9O
-VD4mbmJzcDs8L0RJVj4NCjxESVY+PEZPTlQgc2l6ZT0yPmFueWJvZHkgaGVscCBtZT88L0ZPTlQ+
-PC9ESVY+DQo8RElWPjxGT05UIHNpemU9Mj5Ib3cgY2FuIGkgdmVyaWZ5IHRoZSBhZmZlY3Qgb2Ym
-bmJzcDtuZnMgY2xpZW50IA0KY2FjaGUuPC9GT05UPjwvRElWPg0KPERJVj48Rk9OVCBzaXplPTI+
-c29ycnkgcG9vciBteSANCmVuZ2xpc2guPC9GT05UPjwvRElWPjwvRElWPjwvRElWPjwvRk9OVD48
-L0RJVj48L0JPRFk+PC9IVE1MPg0K
-
-------=_NextPart_000_002D_01C54F50.162D1B40--
-
+> when mount option is actimeo=3D0 ( in linux client)
+> linux-client> ls -al /mnt/test.test=20
+> linux-client>-rwxrwxrwx    1 root     root           12 Apr 29 16:59 /m=
+nt/test.test
+>=20
+> linux-server tcpdump output
+> -----------------------------------------------------------
+> 18:51:52.561558 GRVC-C.4105878944 > 192.168.1.212.nfs: 120 access [|nfs=
+] (DF)
+> 18:51:52.561588 192.168.1.212.nfs > GRVC-C.4105878944: reply ok 120 acc=
+ess c 0000 (DF)
+> 18:51:52.561683 GRVC-C.4122656160 > 192.168.1.212.nfs: 132 getattr [|nf=
+s] (DF)
+> 18:51:52.561759 192.168.1.212.nfs > GRVC-C.4122656160: reply ok 112 get=
+attr REG 100777 ids 0/0 [|nfs] (DF)
+> -------------------------------------------------------------
+>=20
+> when mount option is actimeo=3D100 ( in linux client)
+> linux-client> ls -al /mnt1/test.test=20
+> linux-client>-rwxrwxrwx    1 root     root           12 Apr 29 16:59 /m=
+nt/test.test
+>=20
+> linux-server tcpdump output
+> -------------------------------------------------------------
+> 18:55:37.860627 GRVC-C.4189765024 > 192.168.1.212.nfs: 120 access [|nfs=
+] (DF)
+> 18:55:37.860694 192.168.1.212.nfs > GRVC-C.4189765024: reply ok 120 acc=
+ess c 0000 (DF)
+> 18:55:37.860874 GRVC-C.4206542240 > 192.168.1.212.nfs: 116 getattr [|nf=
+s] (DF)
+> 18:55:37.860932 192.168.1.212.nfs > GRVC-C.4206542240: reply ok 112 get=
+attr DIR 40777 ids 99/99 [|nfs] (DF)
+> 18:55:37.861123 GRVC-C.4223319456 > 192.168.1.212.nfs: 132 getattr [|nf=
+s] (DF)
+> 18:55:37.861147 192.168.1.212.nfs > GRVC-C.4223319456: reply ok 112 get=
+attr REG 100777 ids 0/0 [|nfs] (DF)
+> 18:55:37.861373 GRVC-C.4240096672 > 192.168.1.212.nfs: 132 getattr [|nf=
+s] (DF)
+> 18:55:37.861387 192.168.1.212.nfs > GRVC-C.4240096672: reply ok 112 get=
+attr REG 100777 ids 0/0 [|nfs] (DF)
+> -------------------------------------------------------------
+>=20
+> As you see, two more getattr appeared in actimeo=3D100.
+>=20
+> linux nfs client code seems different by actimeo option.
+> but I can't verify the affect of nfs client cache . ( aspect of file at=
+tribute cacheing)
+>=20
+> anybody help me?
+> How can i verify the affect of nfs client cache.
+> sorry poor my english.
+--=20
+/***************************************************
+ *Neil Horman
+ *Software Engineer
+ *Red Hat, Inc.
+ *nhorman@redhat.com
+ *gpg keyid: 1024D / 0x92A74FA1
+ *http://pgp.mit.edu
+ ***************************************************/
 
 
 -------------------------------------------------------
