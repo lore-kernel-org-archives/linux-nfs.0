@@ -1,19 +1,19 @@
 From: David Cureton <david.cureton@catapult.com>
 Subject: The missing link
-Date: Mon, 02 May 2005 17:50:40 +1000
-Message-ID: <4275DBD0.1040309@catapult.com>
+Date: Mon, 02 May 2005 17:51:43 +1000
+Message-ID: <4275DC0F.7020502@catapult.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DSVhY-0003Px-6v
-	for nfs@lists.sourceforge.net; Mon, 02 May 2005 00:50:48 -0700
+	id 1DSViZ-0003SX-EP
+	for nfs@lists.sourceforge.net; Mon, 02 May 2005 00:51:51 -0700
 Received: from [192.94.66.29] (helo=catapult-mx.catapult.com)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.41)
-	id 1DSVhX-0002s8-NU
-	for nfs@lists.sourceforge.net; Mon, 02 May 2005 00:50:48 -0700
+	id 1DSViY-0003OE-V1
+	for nfs@lists.sourceforge.net; Mon, 02 May 2005 00:51:51 -0700
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
