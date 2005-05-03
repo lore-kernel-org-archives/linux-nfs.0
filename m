@@ -1,7 +1,7 @@
 From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
 Subject: Re: Stale File handles keep coming back
-Date: Tue, 03 May 2005 12:45:45 +0200
-Message-ID: <42775659.5080905@bio.ifi.lmu.de>
+Date: Tue, 03 May 2005 13:11:18 +0200
+Message-ID: <42775C56.9000703@bio.ifi.lmu.de>
 References: <1114463253.2487.73.camel@localhost.localdomain>	<17006.13241.129839.558300@cse.unsw.edu.au>	<1114554149.4470.5.camel@localhost.localdomain> <17006.64544.860436.620665@cse.unsw.edu.au> <4271DBB3.3090402@bio.ifi.lmu.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
@@ -9,14 +9,14 @@ Cc: Neil Brown <neilb@cse.unsw.edu.au>,
 	Kris Vassallo <kris@linuxcertified.com>, nfs@lists.sourceforge.net,
 	Olaf Kirch <okir@suse.de>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DSuua-0006ae-1S
-	for nfs@lists.sourceforge.net; Tue, 03 May 2005 03:45:56 -0700
+	id 1DSvJE-00084V-UN
+	for nfs@lists.sourceforge.net; Tue, 03 May 2005 04:11:24 -0700
 Received: from acheron.ifi.lmu.de ([129.187.214.135])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DSuuU-0002QV-F6
-	for nfs@lists.sourceforge.net; Tue, 03 May 2005 03:45:55 -0700
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1DSvJD-0004Px-CJ
+	for nfs@lists.sourceforge.net; Tue, 03 May 2005 04:11:24 -0700
 To: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
 In-Reply-To: <4271DBB3.3090402@bio.ifi.lmu.de>
 Sender: nfs-admin@lists.sourceforge.net
@@ -34,25 +34,28 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 Frank Steiner wrote
 
-> just for the records: I'm experiencing the same problem after
-> I upgraded from the SuSE kernel 2.6.8-24.11 to 2.6.8-24.14
+> minutes. After this time, they do a "ls" and get
+> 
+> ls: .: Stale NFS file handle
+> 
+> Calling "cd .." and then "cd <former_directory>", the ls works
+> again.
 
-Ok, no longer true. Doing intensive tests I also ran into the problem
-in a test suite where server and client were both running 2.6.8-24.11.
-Looks like it takes a little longer to trigger on -24.11, so that's
-why we might not have stepped on it earlier.
+We just figured out that the files in the directory can be viewed when
+doing "ls specific_file":
 
-Just to keep Olaf from banging his head on the changeset between -24.11
-and 24.14 :-)
+wirth [13:09] lx003umv.default 55) ls -la
+ls: .: Stale NFS file handle
+wirth [13:10] lx003umv.default 56) ls -la defaults.ini
+-rw-------    1 tester   users          24 Apr 29 13:10 defaults.ini
+wirth [13:10] lx003umv.default 57) ls -la
+ls: .: Stale NFS file handle
 
-I could not yet test if the acess/getattr-patch helps because I can't
-apply it to 2.6.8. Looks very different to 2.6.11, so I've no idea how
-to hack that in 2.6.8.
-
-Still hoping someone here finds the bug :-)
+So just "." goes stale, everything below seems to be sane. Maybe that
+info is helpful...
 
 cu,
-frank
+Frank
 
 -- 
 Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
