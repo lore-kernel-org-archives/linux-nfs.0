@@ -1,22 +1,25 @@
-From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
-Subject: Re: Stale File handles keep coming back
-Date: Wed, 04 May 2005 07:44:40 +0200
-Message-ID: <42786148.1000201@bio.ifi.lmu.de>
-References: <1114463253.2487.73.camel@localhost.localdomain>	 <17006.13241.129839.558300@cse.unsw.edu.au> <1115155275.2894.20.camel@localhost.localdomain>
+From: Benjamin Jeeves <benjamin@benjamin76.plus.com>
+Subject: Help needed
+Date: Wed, 4 May 2005 12:06:20 +0100
+Message-ID: <200505041206.20407.benjamin@benjamin76.plus.com>
+Reply-To: benjamin@benjamin76.plus.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-15; format=flowed
-Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
+Content-Type: text/plain;
+  charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DTChN-0001fQ-31
-	for nfs@lists.sourceforge.net; Tue, 03 May 2005 22:45:29 -0700
-Received: from acheron.ifi.lmu.de ([129.187.214.135])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1DTChL-0000og-Ij
-	for nfs@lists.sourceforge.net; Tue, 03 May 2005 22:45:28 -0700
-To: Kris Vassallo <kris@linuxcertified.com>
-In-Reply-To: <1115155275.2894.20.camel@localhost.localdomain>
+	id 1DTHkF-0004Vg-10
+	for nfs@lists.sourceforge.net; Wed, 04 May 2005 04:08:47 -0700
+Received: from ptb-relay03.plus.net ([212.159.14.214])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1DTHkC-0004Y8-JK
+	for nfs@lists.sourceforge.net; Wed, 04 May 2005 04:08:46 -0700
+Received: from [80.229.196.83] (helo=deve-box.thelab)
+	 by ptb-relay03.plus.net with esmtp (Exim) id 1DTHk5-0007Ab-OU
+	for nfs@lists.sourceforge.net; Wed, 04 May 2005 12:08:37 +0100
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,33 +33,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Kris Vassallo wrote
+Hi all
 
-> So in reference to this bug
-> https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=150759
-> it seems as if ridding the system of the journal by instead using ext2
-> is fixing the problem? I can't tell if that bug has anything to do with
-> providing ESTALE errors but it seems to have the same effect where you
-> can't see files even though they are there. 
+This is the first time posting to this list so please understand if this 
+quistion has been posted before.
 
-Yes, sounds very similar...
+I have one server with 4 ethernet card in all running on 192.168.1.* network 
+what i want to do is run nfs on.
 
+eth2 192.168.1.6 running nfs
+eth3 192.168.1.7 running nfs
 
-> 
->  Has anyone tried using the journal_data_ordered option? I am not sure
-> there is a way to do that in reiser but I know it can be done with ext3.
+eth2 would export samething like this /backup then /store.
 
-According to the man page, "data=ordered" is the default. Have you
-explicitely changed it?
+eth3 would export samething like this /folder3 /folder4
 
-I couldn't find any option to change this in reiserfs...
+but at this time all I can do is make it work on all of the ethernet cards and 
+only work on the first ethernet card eth0 for all requests.
 
--- 
-Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
-Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
-LMU, Amalienstr. 17           Phone: +49 89 2180-4049
-80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
-* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
+I have search gooogle and man pages but can not find anything or would I need 
+to do load balancing for this to work?
+
+I have tryed this in the /etc/exports file:
+192.168.1.6:/backup	192.168.1.12(rw,root_squash,sync)
+192.168.1.6:/store	192.168.1.12(rw,root_squash,sync)
+192.168.1.7:/folder3	192.168.1.14(rw,root_squash,sync)
+192.168.1.7:/folder4	192.168.1.14(rw,root_squash,sync)
+
+#mount 192.168.1.6:/mad-backup /backup
+
+But when i try to mount it on the client I get a this msg
+mount: 192.168.1.6:/backup failed, reason given by server: Permission denied
+
+please help me?
+
+Thank you
+
+Benjamin Jeeves 
+
 
 
 -------------------------------------------------------
