@@ -1,27 +1,27 @@
 From: Benjamin Jeeves <benjamin@benjamin76.plus.com>
 Subject: Re: Help needed
-Date: Wed, 4 May 2005 13:35:04 +0100
-Message-ID: <200505041335.04210.benjamin@benjamin76.plus.com>
-References: <200505041206.20407.benjamin@benjamin76.plus.com> <20050504122601.GA5439@hmsendeavour.rdu.redhat.com>
+Date: Wed, 4 May 2005 13:39:37 +0100
+Message-ID: <200505041339.37074.benjamin@benjamin76.plus.com>
+References: <200505041206.20407.benjamin@benjamin76.plus.com> <1115210110.10831.10.camel@lade.trondhjem.org>
 Reply-To: benjamin@benjamin76.plus.com
 Mime-Version: 1.0
 Content-Type: text/plain;
-  charset="iso-8859-1"
+  charset="utf-8"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DTJ88-0001LJ-BF
-	for nfs@lists.sourceforge.net; Wed, 04 May 2005 05:37:32 -0700
-Received: from pih-relay06.plus.net ([212.159.14.133])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1DTJCU-0001hC-86
+	for nfs@lists.sourceforge.net; Wed, 04 May 2005 05:42:02 -0700
+Received: from pih-relay05.plus.net ([212.159.14.132])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1DTJ86-0001PT-OM
-	for nfs@lists.sourceforge.net; Wed, 04 May 2005 05:37:32 -0700
+	id 1DTJCT-0004cI-Gb
+	for nfs@lists.sourceforge.net; Wed, 04 May 2005 05:42:02 -0700
 Received: from [80.229.196.83] (helo=deve-box.thelab)
-	 by pih-relay06.plus.net with esmtp (Exim) id 1DTJ7x-0008FJ-GK
-	for nfs@lists.sourceforge.net; Wed, 04 May 2005 13:37:21 +0100
+	 by pih-relay05.plus.net with esmtp (Exim) id 1DTJCM-0007HU-9S
+	for nfs@lists.sourceforge.net; Wed, 04 May 2005 13:41:54 +0100
 To: nfs@lists.sourceforge.net
-In-Reply-To: <20050504122601.GA5439@hmsendeavour.rdu.redhat.com>
+In-Reply-To: <1115210110.10831.10.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,17 +37,13 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 Hi
 
-So what you are saying is that nfs server will not bind to one or more specify 
-interfaces which would mean that you would have to do load balancing if you 
-wanted it to work over two ethernet card YES/NO? if Yes then where is the 
-best place to start?
+Thank you I have thought of that option but was not sure if i should go down 
+that route but it does look like it now?
 
 Thank you
 
-Benjamin Jeeves
-
-On Wednesday 04 May 2005 13:26, Neil Horman wrote:
-> On Wed, May 04, 2005 at 12:06:20PM +0100, Benjamin Jeeves wrote:
+On Wednesday 04 May 2005 13:35, Trond Myklebust wrote:
+> on den 04.05.2005 Klokka 12:06 (+0100) skreiv Benjamin Jeeves:
 > > Hi all
 > >
 > > This is the first time posting to this list so please understand if this
@@ -74,38 +70,30 @@ On Wednesday 04 May 2005 13:26, Neil Horman wrote:
 > > 192.168.1.6:/store	192.168.1.12(rw,root_squash,sync)
 > > 192.168.1.7:/folder3	192.168.1.14(rw,root_squash,sync)
 > > 192.168.1.7:/folder4	192.168.1.14(rw,root_squash,sync)
-> >
-> > #mount 192.168.1.6:/mad-backup /backup
-> >
-> > But when i try to mount it on the client I get a this msg
-> > mount: 192.168.1.6:/backup failed, reason given by server: Permission
-> > denied
-> >
-> > please help me?
-> >
-> > Thank you
-> >
-> > Benjamin Jeeves
 >
-> I believe that your export file is written incorrectly.  The export file
-> lists directories to export, you can't use it to specify which interfaces
-> on your server will serve those exports.  The NFS service is probably
-> reading your exports file and interpreting 192.168.1.[6|7] as part of the
-> path to export, so when you have a client try to mount 192.168.1.6:/backup,
-> it fails, because /backup isn't actually exported, 192.168.1.6:/backup is. 
-> Remove the leading ip addresses from your exports file and restart the
-> service, and your mount will likely start to work just fine.
-> Regards
-> Neil
+> That sort of syntax is definitely not supported. NFS shouldn't have to
+> know or care about how you want to organise your network.
 >
-> > -------------------------------------------------------
-> > This SF.Net email is sponsored by: NEC IT Guy Games.
-> > Get your fingers limbered up and give it your best shot. 4 great events,
-> > 4 opportunities to win big! Highest score wins.NEC IT Guy Games. Play to
-> > win an NEC 61 plasma display. Visit http://www.necitguy.com/?r=20
-> > _______________________________________________
-> > NFS maillist  -  NFS@lists.sourceforge.net
-> > https://lists.sourceforge.net/lists/listinfo/nfs
+> If you want to enforce no NFS traffic on eth0, then how about using
+> iptables to block traffic to port 2049 on that interface?
+>
+> You might then add static routes to 192.168.1.12 and 192.168.1.14 and/or
+> set up iptables rules on the server if you want to enforce which
+> interface those machines are allowed to talk to.
+>
+> Cheers,
+>   Trond
+>
+>
+>
+> -------------------------------------------------------
+> This SF.Net email is sponsored by: NEC IT Guy Games.
+> Get your fingers limbered up and give it your best shot. 4 great events, 4
+> opportunities to win big! Highest score wins.NEC IT Guy Games. Play to
+> win an NEC 61 plasma display. Visit http://www.necitguy.com/?r=20
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
 
 
 -------------------------------------------------------
