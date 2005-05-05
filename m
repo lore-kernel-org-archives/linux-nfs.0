@@ -1,19 +1,26 @@
-From: Holger Burde <hburde@t-online.de>
-Subject: NFSv4 problem ..
-Date: Sun, 15 May 2005 14:02:02 +0200
-Message-ID: <1116158522.12936.28.camel@marvin.hb-consult.de>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: Problem related to directory caches
+Date: Thu, 05 May 2005 19:48:38 -0400
+Message-ID: <1115336918.6532.22.camel@lade.trondhjem.org>
+References: <20050505172123.4629.BRANDEN@terra.com.br>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-list1-b.sourceforge.net ([10.3.1.7] helo=sc8-sf-list1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DXIiE-0001N4-Ld
-	for nfs@lists.sourceforge.net; Sun, 15 May 2005 05:59:18 -0700
-Received: from mailout09.sul.t-online.com ([194.25.134.84])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1DXIiD-0004MS-Jw
-	for nfs@lists.sourceforge.net; Sun, 15 May 2005 05:59:18 -0700
-To: nfs@lists.sourceforge.net
+	id 1DTq8W-0008KW-EU
+	for nfs@lists.sourceforge.net; Thu, 05 May 2005 16:52:08 -0700
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 4.30)
+	id 1DTq5F-0002ki-KH
+	for nfs@lists.sourceforge.net; Thu, 05 May 2005 16:48:45 -0700
+Received: from mx1.netapp.com ([216.240.18.38])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1DTq5F-0002Md-AL
+	for nfs@lists.sourceforge.net; Thu, 05 May 2005 16:48:45 -0700
+To: Filipe Brandenburger <branden@terra.com.br>
+In-Reply-To: <20050505172123.4629.BRANDEN@terra.com.br>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,117 +34,56 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi;
+to den 05.05.2005 Klokka 18:08 (-0300) skreiv Filipe Brandenburger: 
 
-Doing some experiments with NFSv4 i stumbled over a problem were 'some'
-progs hang on writes others do not. The hangs are 100% reproducable. vi,
-ar hang on every write and nedit works (4 whatever reason ..).
-The progs are only killable with -9. Restarting Services, rebooting etc.
-does not help. The configuration seems ok. I did the test with selinux
-and without (no enforcing) - same result.=20
+> I thought of two solutions, but I have some questions about it:
+> 
+> 1) I could set flags such as "noac" or "acdirmax=0" or something like
+> that (what would be the right ones to force no cache for directory
+> entries?). But I also would like to know what other impact can I have
+> for doing this, I guess that probably changing this would impact other
+> applications as well...
 
-Both boxes are Dual Xeon's with smp Kernel
-Server : FC3 with latest patches (2.6.11-1.14_FC3smp)
-Client : FC3 with latest patches (2.6.11-1.14_FC3smp)
+It would mainly impact the server since it will be bombarded with
+GETATTR calls every time you do something in a directory.
 
-Clients mounts homedir from Server (no automount involved)
-No Kerberos/GSS at the moment.
+> 2) I read about using "fcntl" with "FLOCK" to flush a file's cache on
+> Linux (even mounting with "nolock" this is supposed to work). Is that so?
+> Can I use it on a directory entry? In that case, should I fcntl the
+> directory itself?
 
-Server: Test Setup
+You would have to set a read lock, since you cannot open a directory for
+writing. That would normally suffice to flush the readdir cache, though.
 
-/etc/exports
+> Well, what do you think? Can you help me on this? Can you tell me if on
+> of my two options would give me data that is not subject to
+> inconsistency because of the cache? Can you tell me if there is a better
+> way to do it? Can a more recent kernel solve this kind of problem?
 
-/NFS4 a.b.c.d/e
-(rw,insecure,no_subtree_check,sync,wdelay,no_all_squash,no_root_squash,fs=
-id=3D0)
-/NFS4/joe    a.b.c.d/e
-(rw,nohide,insecure,no_subtree_check,sync,wdelay,no_all_squash,no_root_sq=
-uash)
-....
+No. This will not suffice to ensure consistency.
 
-/etc/fstab
-....
-/home/joe            /NFS4/joe	           none    bind            0 0
-/home/opt            /NFS4/opt             none    bind            0 0
-...
+Even on a single client, 2 threads that both call readdir() and then
+print out the result can race. The thread that called readdir() first
+can get preemptively scheduled before it prints the result, the printing
+may be buffered (as I believe is the case for syslogd), etc...
+The only way to ensure that they don't race is to use a mutex or some
+other form of lock to ensure that the threads synchronise the operation
+readdir()+printf()+flush().
 
+The same sort of thing applies when you are comparing the output from
+two different processes running on different NFS clients: you would need
+some form of exclusive lock in order to synchronise the two processes.
+Most of the time, it is not worth the trouble.
 
-[root@neutrino ~]# rpcinfo -p neutrino
-   Program Vers Proto   Port
-    100000    2   tcp    111  portmapper
-    100000    2   udp    111  portmapper
-    100011    1   udp    701  rquotad
-    100011    2   udp    701  rquotad
-    100011    1   tcp    704  rquotad
-    100011    2   tcp    704  rquotad
-    100003    2   udp   2049  nfs
-    100003    3   udp   2049  nfs
-    100003    4   udp   2049  nfs
-    100003    2   tcp   2049  nfs
-    100003    3   tcp   2049  nfs
-    100003    4   tcp   2049  nfs
-    100021    1   udp  32770  nlockmgr
-    100021    3   udp  32770  nlockmgr
-    100021    4   udp  32770  nlockmgr
-    100021    1   tcp  32771  nlockmgr
-    100021    3   tcp  32771  nlockmgr
-    100021    4   tcp  32771  nlockmgr
-    100005    1   udp    716  mountd
-    100005    1   tcp    719  mountd
-    100005    2   udp    716  mountd
-    100005    2   tcp    719  mountd
-    100005    3   udp    716  mountd
-    100005    3   tcp    719  mountd
-    100024    1   udp  32779  status
-    100024    1   tcp  32774  status
-
-rpc.idmapd,rpc.statd, rpc.rquotad, rpc.mountd running
-
-Client : Test Setup
-
-
-Options: (tried also with sync and no rsize,wsize)
-async,auto,exec,_netdev,nodev,rw,retry=3D5,rsize=3D32768,
-wsize=3D32768,proto=3Dtcp,soft,intr
-
-mount -v -t nfs4 -o $OPTIONS  host:/joe /home/joe
-
-#mount -v -t nfs4 $OP $HOST:/opt /home/opt
-[root@wimp bin]# rpcinfo -p wimp
-   Program Vers Proto   Port
-    100000    2   tcp    111  portmapper
-    100000    2   udp    111  portmapper
-    100024    1   udp  32768  status
-    100024    1   tcp  32768  status
-1073741824    1   tcp  32770
-
-
-rpc.statd,  rpc.idmapd are running
-
-On both boxes no visable errors (/var/log/messages etc.)
-
-Any idea what may cause this problem? or how to get rid of it ????
-
-
-Thx in advance
-
-hb
-
-  =20
---=20
-Dipl. Inform. H. Burde
-----------------------------------------------------
-EMail: hburde@t-online.de ; hburde@uni-bremen.de
-Wenn Gau=C3=9F heute lebte, w=C3=A4re er ein Hacker. /P.Sarnak=20
-----------------------------------------------------
-
+Cheers,
+  Trond
 
 
 -------------------------------------------------------
 This SF.Net email is sponsored by Oracle Space Sweepstakes
 Want to be the first software developer in space?
 Enter now for the Oracle Space Sweepstakes!
-http://ads.osdn.com/?ad_id=3D7393&alloc_id=3D16281&op=3Dclick
+http://ads.osdn.com/?ad_id=7393&alloc_id=16281&op=click
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
