@@ -1,21 +1,22 @@
-From: Christoph Hellwig <hch@lst.de>
-Subject: [PATCH] tiny cleanups in nfscache.c
-Date: Wed, 4 May 2005 21:36:28 +0200
-Message-ID: <20050504193628.GB21618@lst.de>
+From: Filipe Brandenburger <branden@terra.com.br>
+Subject: Problem related to directory caches
+Date: Thu, 05 May 2005 18:08:09 -0300
+Message-ID: <20050505172123.4629.BRANDEN@terra.com.br>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="US-ASCII"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DTPfr-0006JT-C2
-	for nfs@lists.sourceforge.net; Wed, 04 May 2005 12:36:47 -0700
-Received: from verein.lst.de ([213.95.11.210] helo=mail.lst.de)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.41)
-	id 1DTPfp-0002ep-Oe
-	for nfs@lists.sourceforge.net; Wed, 04 May 2005 12:36:47 -0700
-To: neilb@cse.unsw.edu.au
+	id 1DTnZw-00058r-4p
+	for nfs@lists.sourceforge.net; Thu, 05 May 2005 14:08:16 -0700
+Received: from loncoche.terra.com.br ([200.154.55.229])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1DTnZt-0006US-BT
+	for nfs@lists.sourceforge.net; Thu, 05 May 2005 14:08:16 -0700
+Received: from pasto.terra.com.br (pasto.terra.com.br [200.154.55.137])
+	by loncoche.terra.com.br (Postfix) with ESMTP id D3630E78536
+	for <nfs@lists.sourceforge.net>; Thu,  5 May 2005 18:08:09 -0300 (BRT)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,42 +30,64 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
---- 1.11/fs/nfsd/nfscache.c	2005-03-05 07:32:50 +01:00
-+++ edited/fs/nfsd/nfscache.c	2005-03-07 06:31:01 +01:00
-@@ -32,7 +32,7 @@
- #define REQHASH(xid)		((((xid) >> 24) ^ (xid)) & (HASHSIZE-1))
- 
- static struct hlist_head *	hash_list;
--static struct list_head 	lru_head;
-+static				LIST_HEAD(lru_head);
- static int			cache_disabled = 1;
- 
- static int	nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *vec);
-@@ -50,11 +50,11 @@
- 	struct svc_cacherep	*rp;
- 	int			i;
- 
--	INIT_LIST_HEAD(&lru_head);
- 	i = CACHESIZE;
--	while(i) {
-+	while (i) {
- 		rp = kmalloc(sizeof(*rp), GFP_KERNEL);
--		if (!rp) break;
-+		if (!rp)
-+			break;
- 		list_add(&rp->c_lru, &lru_head);
- 		rp->c_state = RC_UNUSED;
- 		rp->c_type = RC_NOCACHE;
-@@ -104,8 +104,7 @@
- static void
- lru_put_end(struct svc_cacherep *rp)
- {
--	list_del(&rp->c_lru);
--	list_add_tail(&rp->c_lru, &lru_head);
-+	list_move_tail(&rp->c_lru, &lru_head);
- }
- 
- /*
+
+Hello, there.
+
+First of all, I'd like to thank all on the list for helping with my
+previous doubts, it was very helpful.
+
+Now, I'm having a problem, and I believe it may be related to cache of
+directory entries. My environment is:
+- clients are Linux RH7.3 with kernel 2.4.9
+- servers are EMC Celerra, NS700 and Netapp FAS740
+- mount options are rw,vers=3,proto=udp,nolock,rsize=8192,wsize=8192
+
+The behaviour I'm getting is: I'm creating files in a directory, only
+creating not removing, but sometimes, one of the clients reports a
+number of files that is less than one other client reported some time
+ago. For example, this is what I have in logs:
+
+May  1 05:49:00 cabue trrmfsbuilder[23479]: ... Msgs [20], Read [0], New [20], Bytes [179742]
+
+May  1 05:49:02 lusaca trrmfsbuilder[11519]: ... Msgs [19], Read [0], New [19], Bytes [176448]
+
+What these logs mean:
+1) At 5:49:00, host cabue found 20 files on the directory
+2) At 5:49:02 (two seconds later), host lusaca found only 19 files on
+the same directory.
+
+This is a NFS directory. I checked time differences, but both hosts are
+running NTP (without problems) and they certainly don't have as much as
+2 seconds difference, they certainly have less than 1 second difference...
+
+Can this be caused by NFS cache of the directory entry? I know that host
+lusaca probably saw this same directory some seconds before it counted
+19 files, so that I believe this could be cached somehow and causing the
+problem of not finding the 20 files that probably were there...
+
+If the problem is this, how can I solve it?
+
+I thought of two solutions, but I have some questions about it:
+
+1) I could set flags such as "noac" or "acdirmax=0" or something like
+that (what would be the right ones to force no cache for directory
+entries?). But I also would like to know what other impact can I have
+for doing this, I guess that probably changing this would impact other
+applications as well...
+
+2) I read about using "fcntl" with "FLOCK" to flush a file's cache on
+Linux (even mounting with "nolock" this is supposed to work). Is that so?
+Can I use it on a directory entry? In that case, should I fcntl the
+directory itself?
+
+Well, what do you think? Can you help me on this? Can you tell me if on
+of my two options would give me data that is not subject to
+inconsistency because of the cache? Can you tell me if there is a better
+way to do it? Can a more recent kernel solve this kind of problem?
+
+Thanks a lot on advance! I hope you can help!
+Filipe
+
 
 
 -------------------------------------------------------
