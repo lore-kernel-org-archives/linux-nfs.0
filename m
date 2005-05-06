@@ -1,24 +1,23 @@
-From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
-Subject: Re: Stale File handles keep coming back
-Date: Fri, 06 May 2005 08:38:47 +0200
-Message-ID: <427B10F7.3090600@bio.ifi.lmu.de>
-References: <1114463253.2487.73.camel@localhost.localdomain>	 <17006.13241.129839.558300@cse.unsw.edu.au>	 <1114554149.4470.5.camel@localhost.localdomain>	 <17006.64544.860436.620665@cse.unsw.edu.au>	 <4271DBB3.3090402@bio.ifi.lmu.de>  <42775C56.9000703@bio.ifi.lmu.de> <1115252134.2523.87.camel@localhost.localdomain>
+From: David Cureton <david.cureton@catapult.com>
+Subject: Re: ADV: Re: The missing link -
+Date: Fri, 06 May 2005 16:50:22 +1000
+Message-ID: <427B13AE.1020105@catapult.com>
+References: <4275DB78.8090603@catapult.com> <1115038201.10853.1.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-15; format=flowed
-Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net,
-	Olaf Kirch <okir@suse.de>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DTwUU-0005pd-4T
-	for nfs@lists.sourceforge.net; Thu, 05 May 2005 23:39:14 -0700
-Received: from acheron.ifi.lmu.de ([129.187.214.135])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1DTwUR-0002RQ-JZ
-	for nfs@lists.sourceforge.net; Thu, 05 May 2005 23:39:14 -0700
-To: Kris Vassallo <kris@linuxcertified.com>
-In-Reply-To: <1115252134.2523.87.camel@localhost.localdomain>
+	id 1DTwfQ-0007ge-UY
+	for nfs@lists.sourceforge.net; Thu, 05 May 2005 23:50:32 -0700
+Received: from [192.94.66.29] (helo=catapult-mx.catapult.com)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.41)
+	id 1DTwfO-0005eg-Ds
+	for nfs@lists.sourceforge.net; Thu, 05 May 2005 23:50:32 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1115038201.10853.1.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,49 +31,79 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Kris Vassallo wrote
+Hi Trond and List,
+  =20
+      It happened again today. The /server/Staff link went missing.
 
-> Ok a question for you. Let me explain what I am noticing: As soon as a
-> client gets the stale file error, I go to the actual NFS server, and do
-> a ls in the directory in question. Then without doing anything else, the
-> client does another ls and then the contents can be seen. I don't know
-> exactly what an ls does that would make the clients suddenly work again.
-> 
-> Are you able to do something similar?
+    "ls -l /server/Staff" explicitly specifying the missing link=20
+returned an  "No such file or directory" error. =20
+  =20
+    "ls -l" in /server  on the effected client shows all but the=20
+/server/Staff link.
 
-No. The client still gets the stale handle. However, it works again
-if I do  "cd `pwd`" on the client. So, reading Tronds comment
+        Previously I have monitored the NFS traffic where the client=20
+does a getattr on the directory /server/Staff.
+    Then if proceeds to getattr on the contents of the directory.=20
+(Assuming it does not issue a getattr for /server/Staff. It is difficult=20
+to map
+the raw file handles onto the filenames. How can I do this?)
 
- > That client-side patch can do nothing to prevent errors from being
- > returned if a server is erroneously generating ESTALE.
- >
- > It will just make it unnecessary to do the equivalent of "cd
- > `pwd`" (i.e. rewalk the path) on the client once the server manages to
- > sort itself out.
+    Since the client is only doing getattr on the files and directories=20
+I am assuming the client thinks that it's cache is OK  and proceeds with=20
+it's local
+    version of the truth. One that does not include the /server/Staff lin=
+k.
 
-I'm a bit confused if this patch would help or not. I will test it.
+    Therefore I tried the following:
+       On the NFS server:  'touch test' in the /server diectory=20
+therefore causing the client cache of /server to be invalid.
+  =20
+    On the client ls -la /server...... low and behold  the /server/Staff=20
+link is back.
+
+    Therefore it appears to be a client side issue.  It appears that the=20
+client forgets about /server/Staff in it's cache?  Anyone else had this=20
+issue?
+
+Thanks,
+    David
 
 
 
-This might be interesting for Olaf: The problem does not exist in the
-kotd sles9-i386/SLES9_SP2_BRANCH/
 
-cu,
-Frank
 
--- 
-Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
-Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
-LMU, Amalienstr. 17           Phone: +49 89 2180-4049
-80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
-* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
+Trond Myklebust wrote:
+
+>m=E5 den 02.05.2005 Klokka 17:49 (+1000) skreiv David Cureton:
+>
+> =20
+>
+>>However on occasion we have noticed that the /server/Staff link just
+>>disappears for some SuSE9.2 clients and the user no longer has access t=
+o
+>>there home directory. All other clients still have the link available
+>>and they are fine.
+>>   =20
+>>
+>
+>What kind of filesystem are you exporting?
+>
+>When this behaviour happens, what does the client report when you do an
+>'ls -l' on /server/Staff?
+>
+>Cheers,
+>  Trond
+> =20
+>
+
 
 
 -------------------------------------------------------
 This SF.Net email is sponsored by: NEC IT Guy Games.
-Get your fingers limbered up and give it your best shot. 4 great events, 4
+Get your fingers limbered up and give it your best shot. 4 great events, =
+4
 opportunities to win big! Highest score wins.NEC IT Guy Games. Play to
-win an NEC 61 plasma display. Visit http://www.necitguy.com/?r=20
+win an NEC 61 plasma display. Visit http://www.necitguy.com/?r=3D20
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
