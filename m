@@ -1,18 +1,22 @@
-From: mehta kiran <kiranmehta1981@yahoo.com>
-Subject: statd cannot talk to lockd
-Date: Fri, 6 May 2005 01:28:02 -0700 (PDT)
-Message-ID: <20050506082802.19766.qmail@web51601.mail.yahoo.com>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: how to test rpc_pipefs
+Date: Fri, 6 May 2005 17:10:18 +0100
+Message-ID: <20050506161018.GA3979@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DTyBu-0007dk-3O
-	for nfs@lists.sourceforge.net; Fri, 06 May 2005 01:28:10 -0700
-Received: from web51601.mail.yahoo.com ([206.190.38.206])
-	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
-	id 1DTyBs-0002on-Db
-	for nfs@lists.sourceforge.net; Fri, 06 May 2005 01:28:10 -0700
+	id 1DU5PD-0000kE-To
+	for nfs@lists.sourceforge.net; Fri, 06 May 2005 09:10:23 -0700
+Received: from pentafluge.infradead.org ([213.146.154.40])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1DU5PA-0001jk-Ab
+	for nfs@lists.sourceforge.net; Fri, 06 May 2005 09:10:23 -0700
+Received: from hch by pentafluge.infradead.org with local (Exim 4.43 #1 (Red Hat Linux))
+	id 1DU5P8-00012c-35
+	for nfs@lists.sourceforge.net; Fri, 06 May 2005 17:10:18 +0100
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -27,25 +31,9 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi , 
-     Can anybody please let me know what
-     is the reason for this error.
-     "statd : cannot talk to lockd".
-      I tried restarting statd and lockd
-      but still i get the same error.
-      Please let me know if anybody has 
-      faced this issue.
-thanks,
- kiran          
-   
-     
-
-
-		
-__________________________________ 
-Do you Yahoo!? 
-Yahoo! Small Business - Try our new resources site!
-http://smallbusiness.yahoo.com/resources/ 
+I have some simple changes to make rpc_pipefs use less obscure VFS
+APIs and I'd like to test it before submitting, any idea how to give
+rpc_pipefs some coverage without settign up a full-blown NFSv4 env?
 
 
 -------------------------------------------------------
