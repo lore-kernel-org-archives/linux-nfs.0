@@ -1,14 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: export loopback mounted .iso`s failed
-Date: Thu, 05 May 2005 19:03:02 -0400
-Message-ID: <1115334182.12780.141.camel@lade.trondhjem.org>
-References: <31436.1114712840@www27.gmx.net>
+From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
+Subject: Re: Stale File handles keep coming back
+Date: Fri, 06 May 2005 08:38:47 +0200
+Message-ID: <427B10F7.3090600@bio.ifi.lmu.de>
+References: <1114463253.2487.73.camel@localhost.localdomain>	 <17006.13241.129839.558300@cse.unsw.edu.au>	 <1114554149.4470.5.camel@localhost.localdomain>	 <17006.64544.860436.620665@cse.unsw.edu.au>	 <4271DBB3.3090402@bio.ifi.lmu.de>  <42775C56.9000703@bio.ifi.lmu.de> <1115252134.2523.87.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: NFS@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-15; format=flowed
+Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net,
+	Olaf Kirch <okir@suse.de>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: for_spam@gmx.de
-In-Reply-To: <31436.1114712840@www27.gmx.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1DTwUU-0005pd-4T
+	for nfs@lists.sourceforge.net; Thu, 05 May 2005 23:39:14 -0700
+Received: from acheron.ifi.lmu.de ([129.187.214.135])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1DTwUR-0002RQ-JZ
+	for nfs@lists.sourceforge.net; Thu, 05 May 2005 23:39:14 -0700
+To: Kris Vassallo <kris@linuxcertified.com>
+In-Reply-To: <1115252134.2523.87.camel@localhost.localdomain>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -22,46 +32,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-to den 28.04.2005 Klokka 20:27 (+0200) skreiv for_spam@gmx.de:
-> Hello !
-> I have a cdrom-server based on SuSE 9.1 (kernel 2.6.4) wich exports all it
-> cd-roms via nfs, too.
+Kris Vassallo wrote
 
-Are these stored as ISO-files or are they really cdroms in some jukebox
-type device?
-
-> All CD-Roms (>50 so far) are loopback mounted on the server and exported to
-> the public as a single nfs-share "server:/cdroms"
+> Ok a question for you. Let me explain what I am noticing: As soon as a
+> client gets the stale file error, I go to the actual NFS server, and do
+> a ls in the directory in question. Then without doing anything else, the
+> client does another ls and then the contents can be seen. I don't know
+> exactly what an ls does that would make the clients suddenly work again.
 > 
-> this works perfectly so far - but now i realize that this doesn`t seem to
-> work under suse 9.3 (kernel 2.6.11) anymore, because of (kernel based)
-> nfsV4. I just don`t see the contents of the loopback mounted iso`s - just
-> empty shares.
+> Are you able to do something similar?
 
-Why do you think NFSv4 would matter?
+No. The client still gets the stale handle. However, it works again
+if I do  "cd `pwd`" on the client. So, reading Tronds comment
 
-Anyhow, exports of loopback mounted iso-files works fine for me both
-with and without NFSv4 support:
+ > That client-side patch can do nothing to prevent errors from being
+ > returned if a server is erroneously generating ESTALE.
+ >
+ > It will just make it unnecessary to do the equivalent of "cd
+ > `pwd`" (i.e. rewalk the path) on the client once the server manages to
+ > sort itself out.
 
-lade:~# uname -a
-Linux lade.trondhjem.org 2.6.12-rc3-up #1 Mon Apr 25 08:59:39 EDT 2005 i686 GNU/Linux
-lade:~# mount -ro,loop=/dev/loop/0 /home/linux/Ubuntu/ubuntu-5.04-live-i386.iso /mnt
-lade:~# exportfs -rv
-exportfs: /etc/exports [6]: No 'sync' or 'async' option specified for export "localhost:/mnt".
-  Assuming default behaviour ('sync').
-  NOTE: this default has changed from previous versions
-exporting lade.trondhjem.org:/mnt
-reexporting lade.trondhjem.org:/mnt to kernel
-lade:~# mount -t nfs -oro localhost:/mnt /tmp/gnurr
-lade:~# ls /tmp/gnurr/
-README.diskdefines  disctree  isolinux    preseed    start.ini
-autorun.inf         dists     md5sum.txt  programs   tools
-bin                 doc       pics        start.bmp  ubuntu
-casper              install   pool        start.exe
+I'm a bit confused if this patch would help or not. I will test it.
 
-Cheers,
-  Trond
 
+
+This might be interesting for Olaf: The problem does not exist in the
+kotd sles9-i386/SLES9_SP2_BRANCH/
+
+cu,
+Frank
+
+-- 
+Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
+Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
+LMU, Amalienstr. 17           Phone: +49 89 2180-4049
+80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
+* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
 
 
 -------------------------------------------------------
