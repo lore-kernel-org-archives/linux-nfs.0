@@ -1,32 +1,28 @@
-From: Haakon Riiser <haakon.riiser@fys.uio.no>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: read(2) hangs on the client side
-Date: Sun, 8 May 2005 15:21:27 +0200
-Message-ID: <20050508132127.GA1744@fox>
-References: <20050508113343.GA629@fox> <1115556864.11308.1.camel@lade.trondhjem.org>
+Date: Sun, 08 May 2005 09:59:25 -0400
+Message-ID: <1115560765.11308.6.camel@lade.trondhjem.org>
+References: <20050508113343.GA629@fox>
+	 <1115556864.11308.1.camel@lade.trondhjem.org>  <20050508132127.GA1744@fox>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DUlj5-0000Mu-CP
-	for nfs@lists.sourceforge.net; Sun, 08 May 2005 06:21:43 -0700
+	id 1DUmJq-0006vI-EY
+	for nfs@lists.sourceforge.net; Sun, 08 May 2005 06:59:42 -0700
 Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1DUlj3-0000zS-Q7
-	for nfs@lists.sourceforge.net; Sun, 08 May 2005 06:21:43 -0700
-Received: from mail-mx1.uio.no ([129.240.10.29])
+	id 1DUmJo-0000Ir-TU
+	for nfs@lists.sourceforge.net; Sun, 08 May 2005 06:59:42 -0700
+Received: from mail-mx4.uio.no ([129.240.10.45])
 	by pat.uio.no with esmtp (Exim 4.43)
-	id 1DUlix-0006bV-Jb
-	for nfs@lists.sourceforge.net; Sun, 08 May 2005 15:21:35 +0200
-Received: from 115.80-203-46.nextgentel.com ([80.203.46.115] helo=fox.venod.com)
-	by mail-mx1.uio.no with esmtpsa (TLSv1:AES256-SHA:256)
-	(Exim 4.43)
-	id 1DUliv-00029Y-CW
-	for nfs@lists.sourceforge.net; Sun, 08 May 2005 15:21:33 +0200
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1115556864.11308.1.camel@lade.trondhjem.org>
+	id 1DUmJj-0002Gp-9Q
+	for nfs@lists.sourceforge.net; Sun, 08 May 2005 15:59:35 +0200
+To: Haakon Riiser <haakon.riiser@fys.uio.no>
+In-Reply-To: <20050508132127.GA1744@fox>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,25 +36,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond,
+su den 08.05.2005 Klokka 15:21 (+0200) skreiv Haakon Riiser:
 
-> su den 08.05.2005 Klokka 13:33 (+0200) skreiv Haakon Riiser:
+> > Are oplocks enabled on the Samba server?
 > 
-> > I have no idea how Samba + eMule's access patterns look like,
-> > but I know with 100 % certainty that it is the cause.  If I move
-> > the file in question out of eMule's shared directory, I can never
-> > hang the NFS client no matter how long I run the above program.
-> > If I move it back in, it hangs almost instantly. :-(
-> 
-> Are oplocks enabled on the Samba server?
+> Probably.  I haven't touched the oplock setting, but according
+> to smb.conf(5), kernel oplocks are enabled by default, and they
+> translate to no-ops when the kernel doesn't support them.  How do
+> I determine if I have kernel support?
 
-Probably.  I haven't touched the oplock setting, but according
-to smb.conf(5), kernel oplocks are enabled by default, and they
-translate to no-ops when the kernel doesn't support them.  How do
-I determine if I have kernel support?
+Kernel support for oplocks has been in Linux since version 2.4 - see the
+"lease" locks on the fcntl manpage. They haven't been maintained for
+quite some while, though until Andy started working on the NFSv4 server
+delegation code (in 2.6.11 or so).
 
--- 
- Haakon
+Anyhow, try turning oplocks off in smb.conf and see if the hangs
+disappear.
+
+Cheers,
+  Trond
+
 
 
 -------------------------------------------------------
