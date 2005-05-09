@@ -1,22 +1,32 @@
-From: Murray Trainer <mtrainer@central-data.net>
-Subject: Accessing other shares from NFS mounted home directories
-Date: Mon, 09 May 2005 22:11:06 +0800
-Message-ID: <1115647866.21417.51.camel@vserver.central-data.net>
+From: Haakon Riiser <haakon.riiser@fys.uio.no>
+Subject: Re: read(2) hangs on the client side
+Date: Mon, 9 May 2005 16:13:39 +0200
+Message-ID: <20050509141339.GA3216@fox>
+References: <20050508113343.GA629@fox> <1115556864.11308.1.camel@lade.trondhjem.org> <20050508132127.GA1744@fox> <1115560765.11308.6.camel@lade.trondhjem.org> <20050508143754.GA492@fox> <1115635107.24625.0.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DV8vx-0002B3-Rb
-	for nfs@lists.sourceforge.net; Mon, 09 May 2005 07:08:33 -0700
-Received: from [202.81.208.11] (helo=mx.central-data.net)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1DV8vw-0007eV-50
-	for nfs@lists.sourceforge.net; Mon, 09 May 2005 07:08:33 -0700
-Received: from [192.168.245.52] (unknown [192.168.245.52])
-	by mx.central-data.net (Postfix) with ESMTP id D337333E97
-	for <nfs@lists.sourceforge.net>; Mon,  9 May 2005 21:43:18 +0800 (WST)
-To: NFS Mailing List <nfs@lists.sourceforge.net>
+	id 1DV91C-0002f2-NR
+	for nfs@lists.sourceforge.net; Mon, 09 May 2005 07:13:58 -0700
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1DV919-0000CD-Dr
+	for nfs@lists.sourceforge.net; Mon, 09 May 2005 07:13:58 -0700
+Received: from mail-mx1.uio.no ([129.240.10.29])
+	by pat.uio.no with esmtp (Exim 4.43)
+	id 1DV912-0007cs-2v
+	for nfs@lists.sourceforge.net; Mon, 09 May 2005 16:13:48 +0200
+Received: from 115.80-203-46.nextgentel.com ([80.203.46.115] helo=fox.venod.com)
+	by mail-mx1.uio.no with esmtpsa (TLSv1:AES256-SHA:256)
+	(Exim 4.43)
+	id 1DV90y-0002Ux-Os
+	for nfs@lists.sourceforge.net; Mon, 09 May 2005 16:13:44 +0200
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1115635107.24625.0.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,35 +40,15 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi All,
+Trond,
 
-We mount /home on our front end Linux machines via NFS from a backend
-Linux NFS file server.  This is nice and simple and reliable so far.  We
-want our user's to be able to access other shares but make them appear
-under their home directory, eg mount remote_share under
-/home/username/Shares/remote_share.  We could use automount or pam_mount
-to do the mounting when the user logs in.  But the problem is 
-that, unless there is some trick or new feature I am unaware of, NFS
-doesn't appear to be able to mount remote filesystems under these NFS
-home directories on the front-end Linux NFS client machine.  
+> Do you have a tcpdump of the traffic?
 
-Mounting the remote filesystems elsewhere on the server and using
-symbolic links to point to make them appear to be under the user's home
-directory appears to be the only solution.  If anyone knows of a better
-way to achieve this I would greatly appreciate hearing about it.  If we
-go the symbolic links way, automating the process of creating the mounts
-and the symbolic links appears to be messy.  It was also suggested to me
-that I use the mount with the --bind option but I can't see how this
-would allow me to achieve mounts under the home directory.  Automount
-may be another option but I not that familiar with it.
+Should I run tcpdump on the server or the client, or perhaps it
+doesn't matter?
 
-Does anyone have any suggestions on how best to implement a solution for
-the above situation?
-
-Thanks
-
-Murray
-
+-- 
+ Haakon
 
 
 -------------------------------------------------------
