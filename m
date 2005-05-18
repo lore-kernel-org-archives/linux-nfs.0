@@ -1,24 +1,24 @@
-From: Joshua Baker-LePain <jlb17@duke.edu>
-Subject: Re: NFS server problem with kernel 2.6.8.1
-Date: Wed, 18 May 2005 13:37:11 -0400 (EDT)
-Message-ID: <Pine.LNX.4.58.0505181328230.6834@chaos.egr.duke.edu>
-References: <428A57C1.7070807@pauli.utmb.edu>  <Pine.LNX.4.58.0505171649400.6834@chaos.egr.duke.edu>
- <1116364789.21501.13.camel@pauli.utmb.edu>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: Extremely high load on NFS clients wen the NFS server is
+ down...
+Date: Wed, 18 May 2005 14:01:14 -0400
+Message-ID: <428B82EA.7050509@RedHat.com>
+References: <200505181429.j4IET8GK023074@s7.stat.tamu.edu>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DYSU3-0007Jt-Gy
-	for nfs@lists.sourceforge.net; Wed, 18 May 2005 10:37:27 -0700
-Received: from chaos.egr.duke.edu ([152.3.195.82])
+	id 1DYSrD-0002B8-T9
+	for nfs@lists.sourceforge.net; Wed, 18 May 2005 11:01:23 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
 	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1DYSU2-0004kR-U6
-	for nfs@lists.sourceforge.net; Wed, 18 May 2005 10:37:27 -0700
-To: Yuan Xu <yuan@pauli.utmb.edu>
-In-Reply-To: <1116364789.21501.13.camel@pauli.utmb.edu>
+	id 1DYSrD-0004nk-DQ
+	for nfs@lists.sourceforge.net; Wed, 18 May 2005 11:01:23 -0700
+To: Henrik Schmiediche <henrik@stat.tamu.edu>
+In-Reply-To: <200505181429.j4IET8GK023074@s7.stat.tamu.edu>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,47 +32,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Please keep replies on the list so that all can chip in.
 
-On Tue, 17 May 2005 at 4:19pm, Yuan Xu wrote
 
-> All I did was upgrading via RHN and yes I was running Enterprise AS3
-> EHEL3 before. I even did not know I got a new kernel till I booted the
-> machine after running RHN. Believe me that 2.6.x was what I got from
-> running up2date. 
+Henrik Schmiediche wrote:
+> I have two Redhat AS3 servers. One of them (among other things) serves NFS
+> file systems to my other systems including to the other server. When my NFS
+> file server goes down or is restarted the load on the other AS3 server
+> increases to the point it is completely useless (it goes to 50+ in a minute
+> or two). I never observed this behavior when I was serving NFS file systems
+> using a Solaris system.
+> 
+> Has anyone observed this phenomenon?  Any solution to it?
+No... Please define "completely useless". Is there a ton of
+network traffic? If so, please produce a bzip2 binary tethereal
+trace of the traffic. If the cpu is pined or the system hangs please
+produce a system trace (i.e. echo t > /proc/sysrq-trigger).
+Also what is the exact kernel version (i.e. uname -r).
 
-I'm sorry, but no, you didn't.  There isn't and there never will be a 2.6 
-kernel release from Red Hat for RHEL3.
-
-> > > When I was running  kernel  2.4.21-27.0.2.ELsmp my nfs server worked 
-> > > fine and after upgrading to 2.6.x via Redhat RHN my NFS sever no longer 
-> > > works.
-
-That doesn't surprise me, as there are lots of differences between 2.4 and 
-2.6 and RHEL3 isn't a 2.6 ready distro out of the box.
-
-> > The first kernel is from RHEL3, which has no option for a 2.6 kernel via 
-> > RHN.  Did you try to up2date the server to RHEL4?  In general, that is not 
-> > recommended.
-> No, I did not try to upgrade to RHEL4 via up2date since I support
-> expired not long ago. It sees to me FC3 works much better.
-> I do not want to go into FC3 on this machine b/c it loaded with lots of
-> stuff (3rd party programs). Just want to make NFS server work again
-> > 
-> > > Right now the NFS server is running kernel 2.6.8.1 SMP, x86_64 and I can 
-> > 
-> > That's not a Red Hat kernel.
-> So it is a FC3 kernel?
-
-No.  2.6.8.1 is a vanilla kernel, i.e. from kernel.org.  Someone else must 
-have installed that, b/c RHN sure didn't.  Your best bet is to move the 
-system back to the most recent official RH kernel you have access to (the 
-most recent RHEL3 kernel is 2.4.21-27.0.4.EL).
-
--- 
-Joshua Baker-LePain
-Department of Biomedical Engineering
-Duke University
+steved.
 
 
 -------------------------------------------------------
