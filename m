@@ -1,24 +1,24 @@
-From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
-Subject: Re: Extremely high load on NFS clients wen the NFS server is
-	down...
-Date: Wed, 18 May 2005 11:52:13 -0700
-Message-ID: <1116442333.25985.57.camel@seki.nac.uci.edu>
-References: <200505181429.j4IET8GK023074@s7.stat.tamu.edu>
+From: "Henrik Schmiediche" <henrik@stat.tamu.edu>
+Subject: RE: Extremely high load on NFS clients wen the NFS server is down...
+Date: Wed, 18 May 2005 14:11:58 -0500
+Message-ID: <200505181912.j4IJCS8v011808@s7.stat.tamu.edu>
+References: <428B82EA.7050509@RedHat.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-K9l/4ZICfV+EcEacjuA8"
-Cc: strombrg@dcs.nac.uci.edu, nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DYTeX-0008MY-Qo
-	for nfs@lists.sourceforge.net; Wed, 18 May 2005 11:52:21 -0700
-Received: from dcs.nac.uci.edu ([128.200.34.32])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1DYTy5-0002Pq-M5
+	for nfs@lists.sourceforge.net; Wed, 18 May 2005 12:12:33 -0700
+Received: from s7.stat.tamu.edu ([165.91.117.61])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1DYTeV-0004ni-7r
-	for nfs@lists.sourceforge.net; Wed, 18 May 2005 11:52:21 -0700
-To: Henrik Schmiediche <henrik@stat.tamu.edu>
-In-Reply-To: <200505181429.j4IET8GK023074@s7.stat.tamu.edu>
+	id 1DYTy4-0000WR-3D
+	for nfs@lists.sourceforge.net; Wed, 18 May 2005 12:12:33 -0700
+To: "'Steve Dickson'" <SteveD@redhat.com>
+In-Reply-To: <428B82EA.7050509@RedHat.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,60 +32,73 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+     Steve,
+Thanks for your response. The command 'echo t > /proc/sysrq-trigger' does
+nothing that I can tell. Is there something I need to do to enable this
+feature?
 
---=-K9l/4ZICfV+EcEacjuA8
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+Completely useless means that the load continues to increase on the server
+that has the NFS file systems mounted to the point it become sluggish and
+ultimately stops responding altogether. As the load increases the system (at
+the beginning) is still responsive so I can monitor it. 'top' suggests there
+is no process eating up a significant amount of CPU as the load is
+increasing. I do not know if the load ever plateaus, the system stops
+responding before that point.
 
-On Wed, 2005-05-18 at 09:28 -0500, Henrik Schmiediche wrote:
->     Hello,
-> I have two Redhat AS3 servers. One of them (among other things) serves NF=
-S
-> file systems to my other systems including to the other server. When my N=
-FS
+The kernel is 2.6.11.4-20a-smp --- the latest one as far as I know.
+
+There is a lot of network traffic on the server. I will get an ethereal dump
+when I can.
+
+Sincerely,
+
+    - Henrik
+
+
+
+
+
+
+-----Original Message-----
+From: nfs-admin@lists.sourceforge.net
+[mailto:nfs-admin@lists.sourceforge.net] On Behalf Of Steve Dickson
+Sent: Wednesday, May 18, 2005 1:01 PM
+To: Henrik Schmiediche
+Cc: nfs@lists.sourceforge.net
+Subject: Re: [NFS] Extremely high load on NFS clients wen the NFS server is
+down...
+
+
+
+Henrik Schmiediche wrote:
+> I have two Redhat AS3 servers. One of them (among other things) serves NFS
+> file systems to my other systems including to the other server. When my
+NFS
 > file server goes down or is restarted the load on the other AS3 server
-> increases to the point it is completely useless (it goes to 50+ in a minu=
-te
-> or two). I never observed this behavior when I was serving NFS file syste=
-ms
+> increases to the point it is completely useless (it goes to 50+ in a
+minute
+> or two). I never observed this behavior when I was serving NFS file
+systems
 > using a Solaris system.
->=20
+> 
 > Has anyone observed this phenomenon?  Any solution to it?
->=20
-> Sincerely,
->=20
->    - Henrik
+No... Please define "completely useless". Is there a ton of
+network traffic? If so, please produce a bzip2 binary tethereal
+trace of the traffic. If the cpu is pined or the system hangs please
+produce a system trace (i.e. echo t > /proc/sysrq-trigger).
+Also what is the exact kernel version (i.e. uname -r).
 
-I've seen this a number of times.  In fact, I just sorted out such a
-situation again over the weekend - but running jack the ripper to get a
-list of accounts with bad passwords, and digging up one that had a local
-shell, rather than a shell on NFS.
-
-Far from a fix, but this program can help a lot when the load on a
-system gets so high, and the NFS timeouts are so bad, that you cannot
-ssh in or get any other form of interactive shell:
-
-http://dcs.nac.uci.edu/~strombrg/fallback-reboot/
-
-In fact, it can often even allow you reboot a system when the system's
-hard disks have gone temporarily useless.
-
-(Yes, it's a shameless plug of my own program :)
+steved.
 
 
---=-K9l/4ZICfV+EcEacjuA8
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.6 (GNU/Linux)
-
-iD8DBQBCi47do0feVm00f/8RAuiiAJoDjB4B54L6KLtipb61MS2MZSQDgACeNHI+
-Z+AaTg1oLbv963wocs6HGqM=
-=E06i
------END PGP SIGNATURE-----
-
---=-K9l/4ZICfV+EcEacjuA8--
+-------------------------------------------------------
+This SF.Net email is sponsored by Oracle Space Sweepstakes
+Want to be the first software developer in space?
+Enter now for the Oracle Space Sweepstakes!
+http://ads.osdn.com/?ad_id=7412&alloc_id=16344&op=click
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
 
 
 
