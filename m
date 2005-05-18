@@ -1,23 +1,25 @@
-From: Joshua Baker-LePain <jlb17@duke.edu>
-Subject: Re: NFS server problem with kernel 2.6.8.1
-Date: Tue, 17 May 2005 16:51:55 -0400 (EDT)
-Message-ID: <Pine.LNX.4.58.0505171649400.6834@chaos.egr.duke.edu>
-References: <428A57C1.7070807@pauli.utmb.edu>
+From: "Henrik Schmiediche" <henrik@stat.tamu.edu>
+Subject: Extremely high load on NFS clients wen the NFS server is down...
+Date: Wed, 18 May 2005 09:28:38 -0500
+Message-ID: <200505181429.j4IET8GK023074@s7.stat.tamu.edu>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DY92k-0008Fw-UC
-	for nfs@lists.sourceforge.net; Tue, 17 May 2005 13:51:58 -0700
-Received: from chaos.egr.duke.edu ([152.3.195.82])
+	id 1DYPXy-0002Th-Ll
+	for nfs@lists.sourceforge.net; Wed, 18 May 2005 07:29:18 -0700
+Received: from s7.stat.tamu.edu ([165.91.117.61])
 	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1DY92j-0007VK-D7
-	for nfs@lists.sourceforge.net; Tue, 17 May 2005 13:51:58 -0700
-To: Yuan Xu <yuan@pauli.utmb.edu>
-In-Reply-To: <428A57C1.7070807@pauli.utmb.edu>
+	id 1DYPXx-0005Rb-64
+	for nfs@lists.sourceforge.net; Wed, 18 May 2005 07:29:18 -0700
+Received: from luthien (luthien [165.91.114.154])
+	by s7.stat.tamu.edu (8.12.11/8.12.11) with ESMTP id j4IET8GK023074
+	(version=TLSv1/SSLv3 cipher=RC4-MD5 bits=128 verify=NO)
+	for <nfs@lists.sourceforge.net>; Wed, 18 May 2005 09:29:08 -0500
+To: <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,30 +33,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, 17 May 2005 at 3:44pm, Yuan Xu wrote
 
-> Dear all
-> This problem is caused by running up2date of Redhat linux!!!
+    Hello,
+I have two Redhat AS3 servers. One of them (among other things) serves NFS
+file systems to my other systems including to the other server. When my NFS
+file server goes down or is restarted the load on the other AS3 server
+increases to the point it is completely useless (it goes to 50+ in a minute
+or two). I never observed this behavior when I was serving NFS file systems
+using a Solaris system.
 
-There is no Redhat Linux.  There is Red Hat Enterprise Linux, and there is 
-Fedora.  Which you are running makes a big difference.
+Has anyone observed this phenomenon?  Any solution to it?
 
-> When I was running  kernel  2.4.21-27.0.2.ELsmp my nfs server worked 
-> fine and after upgrading to 2.6.x via Redhat RHN my NFS sever no longer 
-> works.
+Sincerely,
 
-The first kernel is from RHEL3, which has no option for a 2.6 kernel via 
-RHN.  Did you try to up2date the server to RHEL4?  In general, that is not 
-recommended.
+   - Henrik
 
-> Right now the NFS server is running kernel 2.6.8.1 SMP, x86_64 and I can 
 
-That's not a Red Hat kernel.
-
--- 
-Joshua Baker-LePain
-Department of Biomedical Engineering
-Duke University
 
 
 -------------------------------------------------------
