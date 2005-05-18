@@ -1,23 +1,24 @@
-From: "Eric S. Johnson" <esj@cs.fiu.edu>
-Subject: Re: Extremely high load on NFS clients wen the NFS server is down...
-Date: Wed, 18 May 2005 16:14:51 -0400
-Message-ID: <20050518201451.62925312765@cheetah.cs.fiu.edu>
-References: <henrik@stat.tamu.edu>
+From: "Henrik Schmiediche" <henrik@stat.tamu.edu>
+Subject: RE: Extremely high load on NFS clients wen the NFS server is down...
+Date: Wed, 18 May 2005 15:29:29 -0500
+Message-ID: <200505182030.j4IKU0ss019011@s7.stat.tamu.edu>
+References: <20050518201451.62925312765@cheetah.cs.fiu.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DYUwQ-0000Pr-Pe
-	for nfs@lists.sourceforge.net; Wed, 18 May 2005 13:14:54 -0700
-Received: from cheetah.cs.fiu.edu ([131.94.130.107])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1DYUwP-0008Uo-CZ
-	for nfs@lists.sourceforge.net; Wed, 18 May 2005 13:14:54 -0700
-To: "Henrik Schmiediche" <henrik@stat.tamu.edu>
-In-Reply-To: Message from "Henrik Schmiediche" <henrik@stat.tamu.edu>
-   of "Wed, 18 May 2005 09:28:38 CDT." <200505181429.j4IET8GK023074@s7.stat.tamu.edu>
+	id 1DYVB7-0001zc-F4
+	for nfs@lists.sourceforge.net; Wed, 18 May 2005 13:30:05 -0700
+Received: from s7.stat.tamu.edu ([165.91.117.61])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1DYVB4-0003Ze-Gb
+	for nfs@lists.sourceforge.net; Wed, 18 May 2005 13:30:05 -0700
+To: "'Eric S. Johnson'" <esj@cs.fiu.edu>
+In-Reply-To: <20050518201451.62925312765@cheetah.cs.fiu.edu>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,6 +31,25 @@ List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+
+
+Thanks for this. I will experiment with your suggestion. The load may be
+artificial, but my system definitively become sluggish (after a while) to
+the point of non-responsiveness.
+
+Sincerely,
+
+   - Henrik
+
+
+-----Original Message-----
+From: nfs-admin@lists.sourceforge.net
+[mailto:nfs-admin@lists.sourceforge.net] On Behalf Of Eric S. Johnson
+Sent: Wednesday, May 18, 2005 3:15 PM
+To: Henrik Schmiediche
+Cc: nfs@lists.sourceforge.net
+Subject: Re: [NFS] Extremely high load on NFS clients wen the NFS server is
+down... 
 
 
 Henrik,
@@ -52,6 +72,17 @@ regain control of things enough to do further diagnose and recovery
 steps.
 
 E
+
+
+
+-------------------------------------------------------
+This SF.Net email is sponsored by Oracle Space Sweepstakes
+Want to be the first software developer in space?
+Enter now for the Oracle Space Sweepstakes!
+http://ads.osdn.com/?ad_id=7412&alloc_id=16344&op=click
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
 
 
 
