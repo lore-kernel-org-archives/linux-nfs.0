@@ -1,23 +1,25 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: nfs v4 exports
-Date: Wed, 18 May 2005 21:30:50 -0400
-Message-ID: <1116466250.11340.8.camel@lade.trondhjem.org>
-References: <200505190314.22576.rauchwolke@gmx.net>
+From: Olaf Kirch <okir@suse.de>
+Subject: Small nfs-utils patch
+Date: Mon, 23 May 2005 12:15:57 +0200
+Message-ID: <20050523101557.GD24634@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="sm4nu43k4a2Rpi4c"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DYZse-0003Q9-Ij
-	for nfs@lists.sourceforge.net; Wed, 18 May 2005 18:31:20 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 1Da9ya-0008N6-UT
+	for nfs@lists.sourceforge.net; Mon, 23 May 2005 03:16:00 -0700
+Received: from mx2.suse.de ([195.135.220.15])
 	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1DYZsc-00082S-Rt
-	for nfs@lists.sourceforge.net; Wed, 18 May 2005 18:31:20 -0700
-To: Rauch Wolke <rauchwolke@gmx.net>
-In-Reply-To: <200505190314.22576.rauchwolke@gmx.net>
+	id 1Da9ya-0002kK-68
+	for nfs@lists.sourceforge.net; Mon, 23 May 2005 03:16:00 -0700
+Received: from hermes.suse.de (hermes-ext.suse.de [195.135.221.8])
+	(using TLSv1 with cipher EDH-RSA-DES-CBC3-SHA (168/168 bits))
+	(No client certificate requested)
+	by mx2.suse.de (Postfix) with ESMTP id 18656109C5
+	for <nfs@lists.sourceforge.net>; Mon, 23 May 2005 12:15:58 +0200 (CEST)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,52 +33,57 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-to den 19.05.2005 Klokka 03:14 (+0200) skreiv Rauch Wolke:
-> hello,
-> 
-> i use gentoo linux and i exported this directories
-> 
-> root@Server puchu # exportfs -v
-> /home/puchu     Tux(rw,wdelay,insecure,root_squash,no_subtree_check,fsid=0)
-> /mnt/backup     Tux(rw,wdelay,insecure,root_squash,no_subtree_check,fsid=0)
-> 
-> 
-> but when i do (a on the client)
-> 
-> mount -t nfs4 server:/ /mnt/server
-> 
-> i can only see the content of /home/puchu....
 
-What did you expect to see?
+--sm4nu43k4a2Rpi4c
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-Firstly, you can only have one directory with fsid=0.
-Secondly, you can only export a single directory tree.
-Lastly, you have to export mount points that you want to allow the
-client to cross using the "nohide" option.
+Without this patch, showmount -e would sometimes display
+host names that should really have been subsumed under a
+wildcard entry.
 
-IOW: if you do something like
+The problem was that the code in get_exportlist would always
+skip the next group entry after removing one FQDN.
 
-mkdir /home/puchu/backup
-mount --bind /mnt/backup /home/puchu/backup
+Olaf
+-- 
+Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
+okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
-and then set /etc/exports to
+--sm4nu43k4a2Rpi4c
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename="nfs-utils-1.0.6-showmount.patch"
 
-/home/puchu     Tux(rw,wdelay,insecure,root_squash,no_subtree_check,fsid=0)
-/home/puchu/backup     Tux(rw,wdelay,insecure,root_squash,no_subtree_check,nohide,fsid=1)
 
-then your client will see both directories...
+Without this patch, showmount -e would sometimes display
+host names that should really have been subsumed under a
+wildcard entry.
 
-> with wrong group and owner ...think its the nobody user...explained in man 
-> exports...but the gid and guid is the same on the client and on the server 
-> for  all files 
+The problem was that the code in get_exportlist would always
+skip the next group entry after removing one FQDN.
 
-You also need to set up idmapd on both client and server.  See for
-instance
-  http://www.vanemery.com/Linux/NFSv4/NFSv4-no-rpcsec.html
+Signed-off-by: Olaf Kirch <okir@suse.de>
 
-Cheers,
-  Trond
+Index: nfs-utils-1.0.7/utils/mountd/mountd.c
+===================================================================
+--- nfs-utils-1.0.7.orig/utils/mountd/mountd.c
++++ nfs-utils-1.0.7/utils/mountd/mountd.c
+@@ -409,11 +409,9 @@ get_exportlist(void)
+ 				xfree(c->gr_name);
+ 				xfree(c);
+ 				xfree (hp);
+-				if ((c = *cp) == NULL)
+-				  break;
++				continue;
+ 			      }
+-			      else
+-				xfree (hp);
++			      xfree (hp);
+ 			    }
+ 			    cp = &(c->gr_next);
+ 			  }
 
+--sm4nu43k4a2Rpi4c--
 
 
 -------------------------------------------------------
