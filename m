@@ -1,23 +1,26 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Disabling the client cache using file locks
-Date: Mon, 23 May 2005 11:13:36 -0400
-Message-ID: <1116861216.10814.24.camel@lade.trondhjem.org>
-References: <9E621559095AA746B22B21CD4FAF99A50FA5C8@EDINMAIL1.ad.datcon.co.uk>
+From: Jack Neely <jjneely@pams.ncsu.edu>
+Subject: nfs_statfs64: statfs error = 2
+Date: Mon, 23 May 2005 15:29:18 -0400
+Message-ID: <20050523192918.GX17945@anduril.pams.ncsu.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DaEdA-0005nx-DQ
-	for nfs@lists.sourceforge.net; Mon, 23 May 2005 08:14:12 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 1DaIc4-0002Jd-UX
+	for nfs@lists.sourceforge.net; Mon, 23 May 2005 12:29:20 -0700
+Received: from anduril.pams.ncsu.edu ([152.1.120.18])
 	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1DaEd7-0006nJ-IV
-	for nfs@lists.sourceforge.net; Mon, 23 May 2005 08:14:12 -0700
-To: Edward Hibbert <Edward.Hibbert@dataconnection.com>
-In-Reply-To: <9E621559095AA746B22B21CD4FAF99A50FA5C8@EDINMAIL1.ad.datcon.co.uk>
+	id 1DaIc3-0001EA-3w
+	for nfs@lists.sourceforge.net; Mon, 23 May 2005 12:29:20 -0700
+Received: from anduril.pams.ncsu.edu (localhost.localdomain [127.0.0.1])
+	by anduril.pams.ncsu.edu (8.12.11/8.12.11) with ESMTP id j4NJTILP024168
+	for <nfs@lists.sourceforge.net>; Mon, 23 May 2005 15:29:18 -0400
+Received: (from slack@localhost)
+	by anduril.pams.ncsu.edu (8.12.11/8.12.11/Submit) id j4NJTIv4024166
+	for nfs@lists.sourceforge.net; Mon, 23 May 2005 15:29:18 -0400
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,33 +34,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-m=C3=A5 den 23.05.2005 Klokka 15:43 (+0100) skreiv Edward Hibbert:
-> So I'm looking for ways of reducing the number of locks.
-> Possibilities:=20
-> - Make a patch to the kernel (or NFS utils?) to _entirely_ disable
-> client-side caching of file contents over NFS.  I have dedicated boxes
-> which have no requirement to do client-side caching at all so this is
-> a serious option.  Any code pointers?
+Hi,
 
-Why doesn't the existing O_DIRECT support suffice for your purposes?
+I'm getting some pecular NFS behavior that google seems to know nothing
+about.  
 
-> - Use nolock to prevent the locks hitting the NFS server - but I think
-> that would still hit lockd/statd on the client?=20
-> - Not to bother with the locks round the writes, but use fsync
-> instead.  Do folk think that would work?
+I have two very special users on my Beowulf.  When autofs tries to
+unmount their home directories the mount points go stale wheather the
+users are accessing the directory or not.
 
-That depends entirely on _why_ you are using locking. Is it to ensure
-that two processes don't overwrite the same byte range, or is it to
-ensure that writes are flushed to disk?
+The ls command reports no file or directory.  If I cd into to the
+directory that works but the directory is a stale NFS handle.
 
-If the latter, then O_SYNC or O_DIRECT will suffice.
+My logs report "May 23 15:04:27 login-1 kernel: nfs_statfs64: statfs
+error = 2".  Ocasionally, I also receive "nfs_notify_change: revalidate
+failed, error=-2".
 
-If the former, then locking is your only option, and you will be stuck
-with your current performance numbers.
+File server is a RHEL 4 machine running 2.6.9-5.ELsmp.  Clients are
+running RHEL 3 2.4.21-27.0.2.ELsmp.
 
-Cheers,
-  Trond
+Any suggestions?
 
+Jack Neely
+-- 
+Jack Neely <slack@quackmaster.net>
+Realm Linux Administration and Development
+PAMS Computer Operations at NC State University
+GPG Fingerprint: 1917 5AC1 E828 9337 7AA4  EA6B 213B 765F 3B6A 5B89
 
 
 -------------------------------------------------------
