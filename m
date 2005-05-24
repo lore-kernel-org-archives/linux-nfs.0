@@ -1,21 +1,20 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: Disabling the client cache - O_DIRECT?
-Date: Mon, 23 May 2005 17:22:21 -0700
-Message-ID: <482A3FA0050D21419C269D13989C611308539B88@lavender-fe.eng.netapp.com>
+From: "Edward Hibbert" <Edward.Hibbert@dataconnection.com>
+Subject: Control over RPC retransmissions
+Date: Tue, 24 May 2005 22:35:09 +0100
+Message-ID: <9E621559095AA746B22B21CD4FAF99A50FA623@EDINMAIL1.ad.datcon.co.uk>
 Mime-Version: 1.0
 Content-Type: multipart/alternative;
-	boundary="----_=_NextPart_001_01C55FF6.A6D23416"
-Cc: <nfs@lists.sourceforge.net>
+	boundary="----_=_NextPart_001_01C560A8.75B7F3AB"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DaNBk-0002V1-KQ
-	for nfs@lists.sourceforge.net; Mon, 23 May 2005 17:22:28 -0700
-Received: from mx1.netapp.com ([216.240.18.38])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DaNBj-0006n7-VI
-	for nfs@lists.sourceforge.net; Mon, 23 May 2005 17:22:28 -0700
-To: "Edward Hibbert" <Edward.Hibbert@dataconnection.com>
+	id 1Dah3Z-0005fL-OQ
+	for nfs@lists.sourceforge.net; Tue, 24 May 2005 14:35:21 -0700
+Received: from smtp2.dataconnection.com ([192.91.191.8])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1Dah3X-0006G7-Rl
+	for nfs@lists.sourceforge.net; Tue, 24 May 2005 14:35:21 -0700
+To: <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,349 +30,253 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a multi-part message in MIME format.
 
-------_=_NextPart_001_01C55FF6.A6D23416
+------_=_NextPart_001_01C560A8.75B7F3AB
 Content-Type: text/plain;
-	charset="us-ascii"
+	charset="iso-8859-1"
 Content-Transfer-Encoding: quoted-printable
 
-offset and alignment of memory buffer and byte offset in the file
-shouldn't matter for NFS files.  in 2.6.9, there is a 16MB per request
-size limit on systems with 4KB pages.
+The timeo and retrans mount options give control over how RPC =
+retransmissions are handled, e.g:
 =20
+ timeo=3Dn        The value in <http://seth.positivism.org/man.cgi/8/in> =
+ tenths of a second before sending the first
+                      retransmission after =
+<http://seth.positivism.org/man.cgi/n/after>  an RPC timeout.  The =
+default  value
+                      is  7  tenths of a second.  After the first =
+timeout <http://seth.positivism.org/man.cgi/3x/timeout> , the
+                      timeout =
+<http://seth.positivism.org/man.cgi/3x/timeout>  is doubled after =
+<http://seth.positivism.org/man.cgi/n/after>  each successive timeout =
+<http://seth.positivism.org/man.cgi/3x/timeout>  until a
+                      maximum  timeout =
+<http://seth.positivism.org/man.cgi/3x/timeout>   of 60 seconds is =
+reached or the enough
+                      retransmissions have occured to cause a  major  =
+timeout.
+                      Then,  if <http://seth.positivism.org/man.cgi/if> =
+( 3 <http://seth.positivism.org/man.cgi/3/if> , n =
+<http://seth.positivism.org/man.cgi/n/if> ) the filesystem is hard =
+mounted, each new time <http://seth.positivism.org/man.cgi/3x/timeout> -
+                      out =
+<http://seth.positivism.org/man.cgi/3x/timeout>  cascade restarts at =
+twice the initial value  of  the
+                      previous cascade, again doubling at each =
+retransmission.
+                      The maximum timeout =
+<http://seth.positivism.org/man.cgi/3x/timeout>  is always 60 seconds.  =
+Better  over-
+                      all  performance may be achieved by increasing the =
+time <http://seth.positivism.org/man.cgi/3x/timeout> -
+                      out =
+<http://seth.positivism.org/man.cgi/3x/timeout>  when mounting on a busy =
+network, to a  slow  server,
+                      or through several routers or gateways.
 
+       retrans=3Dn      The  number  of  minor timeouts and =
+retransmissions that
+                      must occur before a major timeout =
+<http://seth.positivism.org/man.cgi/3x/timeout>  occurs.   The  default
+                      is  3  timeouts.   When a major timeout =
+<http://seth.positivism.org/man.cgi/3x/timeout>  occurs, the file =
+<http://seth.positivism.org/man.cgi/file> ( 1 =
+<http://seth.positivism.org/man.cgi/1/file> , n =
+<http://seth.positivism.org/man.cgi/n/file> )
+                      operation is either aborted or a "server not =
+responding"
+                      message =
+<http://seth.positivism.org/man.cgi/n/message>  is printed on the =
+console.
+=20
+60s is quite a long time.  I'd like to be able to cap the timeout at a =
+lower level. Is there any way of doing this?
+=20
+Edward.
 
-  _____ =20
-
-	From: Edward Hibbert [mailto:Edward.Hibbert@dataconnection.com]=20
-	Sent: Monday, May 23, 2005 4:57 PM
-	To: Lever, Charles
-	Cc: nfs@lists.sourceforge.net
-	Subject: RE: [NFS] Disabling the client cache - O_DIRECT?
-=09
-=09
-	I'm most interested in a 2.6 kernel (2.6.9).
-	=20
-	You mention the offset and alignment (of the memory buffer, I
-presume).  Are there any restrictions on the length of data?
-	=20
-	I have a simple test program, which seems to show that I need to
-use 512-byte alignment on a 2.6.9 kernel, but given what you say I'll
-need to look into it more carefully.
-	=20
-	Edward.
-
-		-----Original Message-----
-		From: Lever, Charles [mailto:Charles.Lever@netapp.com]
-		Sent: 23 May 2005 21:47
-		To: Edward Hibbert
-		Cc: nfs@lists.sourceforge.net
-		Subject: RE: [NFS] Disabling the client cache -
-O_DIRECT?
-	=09
-	=09
-		the alignment issues are different depending on which
-kernel you use.
-		=20
-		in 2.6 there should be no alignment issues, you can do
-O_DIRECT I/O on NFS files at any offset and alignment.
-		=20
-		in 2.4, O_DIRECT is supported on NFS files after 2.4.22
-ish.  buffer and offset alignment is restricted.  at some point we may
-have changed the behavior, but i'm not remembering when and which
-kernels, because we backported some of the 2.6 behavior into the Red Hat
-kernels.  i believe it depends on what your server returns as its
-on-disk block size (NFSv3 PATHCONF).
-		=20
-
-			-----Original Message-----
-			From: Edward Hibbert
-[mailto:Edward.Hibbert@dataconnection.com]=20
-			Sent: Monday, May 23, 2005 4:13 PM
-			To: nfs@lists.sourceforge.net
-			Subject: RE: [NFS] Disabling the client cache -
-O_DIRECT?
-		=09
-		=09
-			And then there's O_DIRECT, which might do just
-what I want.  Is that working over NFS now? =20
-			=20
-			I'm trying to use it but getting EINVAL back -
-can someone explain whether O_DIRECT over NFS has the alignment
-restrictions that O_DIRECT does in general?
-			=20
-
-				-----Original Message-----
-				From: nfs-admin@lists.sourceforge.net
-[mailto:nfs-admin@lists.sourceforge.net]On Behalf Of Edward Hibbert
-				Sent: 23 May 2005 15:43
-				To: nfs@lists.sourceforge.net
-				Subject: [NFS] Disabling the client
-cache using file locks
-			=09
-			=09
-
-				The NFS FAQ says:=20
-
-				For greater consistency among clients,
-applications can use file locking, where a client purges file data when
-a file is locked, and flushes changes back to the server before
-unlocking a file.
-
-				My experience with this is that to force
-a read to go to the NFS server, I:=20
-				- lock an area in the file (I think any
-area works, it doesn't need to overlap with what you want to read)=20
-				- read the data=20
-				- unlock it=20
-
-				When I want a write to go to the NFS
-server, I do the same.  Obviously if I'm reading and writing the same
-area, I can save on the locks.
-
-				This produces a lot of lock and unlock
-operations, and I find that:=20
-				- NFS servers aren't as good at handling
-a high volume of these as they are at reads and writes. =20
-				- lockd/statd on the client may also be
-a serialisation point (I have suggestive but not conclusive evidence).=20
-
-				So I'm looking for ways of reducing the
-number of locks.  Possibilities:=20
-				- Make a patch to the kernel (or NFS
-utils?) to _entirely_ disable client-side caching of file contents over
-NFS.  I have dedicated boxes which have no requirement to do client-side
-caching at all so this is a serious option.  Any code pointers?
-
-				- Use nolock to prevent the locks
-hitting the NFS server - but I think that would still hit lockd/statd on
-the client?=20
-				- Not to bother with the locks round the
-writes, but use fsync instead.  Do folk think that would work?=20
-
-				Any comments or other ideas?=20
-
-				Edward.=20
-
-
-
-
-------_=_NextPart_001_01C55FF6.A6D23416
+------_=_NextPart_001_01C560A8.75B7F3AB
 Content-Type: text/html;
-	charset="us-ascii"
+	charset="iso-8859-1"
 Content-Transfer-Encoding: quoted-printable
 
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD><TITLE>Message</TITLE>
-<META http-equiv=3DContent-Type content=3D"text/html; =
-charset=3Dus-ascii">
-<META content=3D"MSHTML 6.00.2800.1479" name=3DGENERATOR></HEAD>
+<HTML><HEAD>
+<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
+charset=3Diso-8859-1">
+<TITLE>Message</TITLE>
+
+<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR></HEAD>
 <BODY>
-<DIV dir=3Dltr align=3Dleft><SPAN class=3D741201900-24052005><FONT =
-face=3DArial=20
-color=3D#0000ff size=3D2>offset and alignment of memory buffer and byte =
-offset in=20
-the file shouldn't matter for NFS files.&nbsp; in 2.6.9, there is a 16MB =
-per=20
-request size limit on systems with 4KB pages.</FONT></SPAN></DIV>
-<DIV dir=3Dltr align=3Dleft><SPAN class=3D741201900-24052005><FONT =
-face=3DArial=20
-color=3D#0000ff size=3D2></FONT></SPAN>&nbsp;</DIV><BR>
-<BLOCKQUOTE dir=3Dltr=20
-style=3D"PADDING-LEFT: 5px; MARGIN-LEFT: 5px; BORDER-LEFT: #0000ff 2px =
-solid; MARGIN-RIGHT: 0px">
-  <DIV class=3DOutlookMessageHeader lang=3Den-us dir=3Dltr align=3Dleft>
-  <HR tabIndex=3D-1>
-  <FONT face=3DTahoma size=3D2><B>From:</B> Edward Hibbert=20
-  [mailto:Edward.Hibbert@dataconnection.com] <BR><B>Sent:</B> Monday, =
-May 23,=20
-  2005 4:57 PM<BR><B>To:</B> Lever, Charles<BR><B>Cc:</B>=20
-  nfs@lists.sourceforge.net<BR><B>Subject:</B> RE: [NFS] Disabling the =
-client=20
-  cache - O_DIRECT?<BR></FONT><BR></DIV>
-  <DIV></DIV>
-  <DIV><SPAN class=3D401104920-23052005><FONT face=3DArial =
-color=3D#ff00ff size=3D2>I'm=20
-  most interested in a 2.6 kernel (2.6.9).</FONT></SPAN></DIV>
-  <DIV><SPAN class=3D401104920-23052005><FONT face=3DArial =
-color=3D#ff00ff=20
-  size=3D2></FONT></SPAN>&nbsp;</DIV>
-  <DIV><SPAN class=3D401104920-23052005><FONT face=3DArial =
-color=3D#ff00ff size=3D2>You=20
-  mention the offset and alignment (of the memory buffer, I =
-presume).&nbsp; Are=20
-  there any restrictions on the length of data?</FONT></SPAN></DIV>
-  <DIV><SPAN class=3D401104920-23052005><FONT face=3DArial =
-color=3D#ff00ff=20
-  size=3D2></FONT></SPAN>&nbsp;</DIV>
-  <DIV><SPAN class=3D401104920-23052005><FONT face=3DArial =
-color=3D#ff00ff size=3D2>I=20
-  have a simple test program, which seems to show that I need to use =
-512-byte=20
-  alignment on a 2.6.9 kernel, but given what you say I'll need to look =
-into it=20
-  more carefully.</FONT></SPAN></DIV>
-  <DIV><SPAN class=3D401104920-23052005><FONT face=3DArial =
-color=3D#ff00ff=20
-  size=3D2></FONT></SPAN>&nbsp;</DIV>
-  <DIV><SPAN class=3D401104920-23052005><FONT face=3DArial =
-color=3D#ff00ff=20
-  size=3D2>Edward.</FONT></SPAN></DIV>
-  <BLOCKQUOTE dir=3Dltr style=3D"MARGIN-RIGHT: 0px">
-    <DIV class=3DOutlookMessageHeader dir=3Dltr align=3Dleft><FONT =
-face=3DTahoma=20
-    size=3D2>-----Original Message-----<BR><B>From:</B> Lever, Charles=20
-    [mailto:Charles.Lever@netapp.com]<BR><B>Sent:</B> 23 May 2005=20
-    21:47<BR><B>To:</B> Edward Hibbert<BR><B>Cc:</B>=20
-    nfs@lists.sourceforge.net<BR><B>Subject:</B> RE: [NFS] Disabling the =
-client=20
-    cache - O_DIRECT?<BR><BR></FONT></DIV>
-    <DIV><SPAN class=3D823254320-23052005><FONT face=3DArial =
-color=3D#0000ff=20
-    size=3D2>the alignment issues are different depending on which =
-kernel you=20
-    use.</FONT></SPAN></DIV>
-    <DIV><SPAN class=3D823254320-23052005><FONT face=3DArial =
-color=3D#0000ff=20
-    size=3D2></FONT></SPAN>&nbsp;</DIV>
-    <DIV><SPAN class=3D823254320-23052005><FONT face=3DArial =
-color=3D#0000ff size=3D2>in=20
-    2.6 there should be no alignment issues, you can do O_DIRECT I/O on =
-NFS=20
-    files at any offset and alignment.</FONT></SPAN></DIV>
-    <DIV><SPAN class=3D823254320-23052005><FONT face=3DArial =
-color=3D#0000ff=20
-    size=3D2></FONT></SPAN>&nbsp;</DIV>
-    <DIV><SPAN class=3D823254320-23052005><FONT face=3DArial =
-color=3D#0000ff size=3D2>in=20
-    2.4, O_DIRECT is supported on NFS files after 2.4.22 ish.&nbsp; =
-buffer and=20
-    offset alignment is restricted.&nbsp; at some point we may have =
-changed the=20
-    behavior, but i'm not remembering when and which kernels, because we =
+<DIV><SPAN class=3D354233121-24052005><FONT face=3DArial color=3D#ff00ff =
+size=3D2>The=20
+timeo and retrans mount options give control over how RPC =
+retransmissions are=20
+handled, e.g:</FONT></SPAN></DIV>
+<DIV><SPAN class=3D354233121-24052005><FONT face=3DArial color=3D#ff00ff =
 
-    backported some of the 2.6 behavior into the Red Hat kernels.&nbsp; =
-i=20
-    believe it depends on what your server returns as its on-disk block =
-size=20
-    (NFSv3 PATHCONF).</FONT></SPAN></DIV>
-    <DIV><SPAN class=3D823254320-23052005><FONT face=3DArial =
-color=3D#0000ff=20
-    size=3D2></FONT></SPAN>&nbsp;</DIV>
-    <BLOCKQUOTE dir=3Dltr=20
-    style=3D"PADDING-LEFT: 5px; MARGIN-LEFT: 5px; BORDER-LEFT: #0000ff =
-2px solid; MARGIN-RIGHT: 0px">
-      <DIV></DIV>
-      <DIV class=3DOutlookMessageHeader lang=3Den-us dir=3Dltr =
-align=3Dleft><FONT=20
-      face=3DTahoma size=3D2>-----Original Message-----<BR><B>From:</B> =
-Edward=20
-      Hibbert [mailto:Edward.Hibbert@dataconnection.com] =
-<BR><B>Sent:</B>=20
-      Monday, May 23, 2005 4:13 PM<BR><B>To:</B>=20
-      nfs@lists.sourceforge.net<BR><B>Subject:</B> RE: [NFS] Disabling =
+size=3D2></FONT></SPAN>&nbsp;</DIV>
+<DIV><SPAN class=3D354233121-24052005>&nbsp;<SPAN=20
+class=3Dunderline>timeo=3Dn</SPAN>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nb=
+sp; The=20
+value <A title=3D"in(8) - fingerd - remote user information server"=20
+href=3D"http://seth.positivism.org/man.cgi/8/in">in</A> tenths of a =
+second before=20
+sending the=20
+first<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbs=
+p;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+retransmission <A=20
+title=3D"after(n) - after - Execute a command after a time delay"=20
+href=3D"http://seth.positivism.org/man.cgi/n/after">after</A> an RPC=20
+timeout.&nbsp; The default&nbsp;=20
+value<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbs=
+p;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+is&nbsp; 7&nbsp; tenths of a second.&nbsp; After the first <A=20
+title=3D"timeout(3x) - cbreak, echo, halfdelay, intrflush, keypad, meta, =
+nocbreak, nodelay, noecho, noqiflush, noraw, notimeout, qiflush, raw, =
+timeout, typeahead, wtimeout - curses input options"=20
+href=3D"http://seth.positivism.org/man.cgi/3x/timeout">timeout</A>,=20
+the<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+<A=20
+title=3D"timeout(3x) - cbreak, echo, halfdelay, intrflush, keypad, meta, =
+nocbreak, nodelay, noecho, noqiflush, noraw, notimeout, qiflush, raw, =
+timeout, typeahead, wtimeout - curses input options"=20
+href=3D"http://seth.positivism.org/man.cgi/3x/timeout">timeout</A> is =
+doubled <A=20
+title=3D"after(n) - after - Execute a command after a time delay"=20
+href=3D"http://seth.positivism.org/man.cgi/n/after">after</A> each =
+successive <A=20
+title=3D"timeout(3x) - cbreak, echo, halfdelay, intrflush, keypad, meta, =
+nocbreak, nodelay, noecho, noqiflush, noraw, notimeout, qiflush, raw, =
+timeout, typeahead, wtimeout - curses input options"=20
+href=3D"http://seth.positivism.org/man.cgi/3x/timeout">timeout</A> until =
+
+a<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&n=
+bsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+maximum&nbsp; <A=20
+title=3D"timeout(3x) - cbreak, echo, halfdelay, intrflush, keypad, meta, =
+nocbreak, nodelay, noecho, noqiflush, noraw, notimeout, qiflush, raw, =
+timeout, typeahead, wtimeout - curses input options"=20
+href=3D"http://seth.positivism.org/man.cgi/3x/timeout">timeout</A>&nbsp; =
+of 60=20
+seconds is reached or the=20
+enough<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nb=
+sp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+retransmissions have occured to cause a&nbsp; major&nbsp;=20
+timeout.<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&=
+nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+Then,&nbsp; <SPAN class=3Dcluster><A title=3D"Manual for if"=20
+href=3D"http://seth.positivism.org/man.cgi/if">if</A><SPAN =
+class=3Dsections>(<A=20
+title=3D"if(3) - if - use a Perl module if a condition holds"=20
+href=3D"http://seth.positivism.org/man.cgi/3/if">3</A>,<A=20
+title=3D"if(n) - if - Execute scripts conditionally"=20
+href=3D"http://seth.positivism.org/man.cgi/n/if">n</A>)</SPAN></SPAN> =
 the=20
-      client cache - O_DIRECT?<BR><BR></FONT></DIV>
-      <DIV><SPAN class=3D838394019-23052005><FONT face=3DArial =
-color=3D#ff00ff=20
-      size=3D2>And then there's O_DIRECT, which might do just what I =
-want.&nbsp;=20
-      Is that working over NFS now?&nbsp; </FONT></SPAN></DIV>
-      <DIV><SPAN class=3D838394019-23052005><FONT face=3DArial =
-color=3D#ff00ff=20
-      size=3D2></FONT></SPAN>&nbsp;</DIV>
-      <DIV><SPAN class=3D838394019-23052005><FONT face=3DArial =
-color=3D#ff00ff=20
-      size=3D2>I'm trying to use it but getting EINVAL back - can =
-someone explain=20
-      whether O_DIRECT over NFS has the alignment restrictions that =
-O_DIRECT=20
-      does in general?</FONT></SPAN></DIV>
-      <DIV><SPAN class=3D838394019-23052005><FONT face=3DArial =
-color=3D#ff00ff=20
-      size=3D2></FONT></SPAN>&nbsp;</DIV>
-      <BLOCKQUOTE>
-        <DIV class=3DOutlookMessageHeader dir=3Dltr align=3Dleft><FONT =
-face=3DTahoma=20
-        size=3D2>-----Original Message-----<BR><B>From:</B>=20
-        nfs-admin@lists.sourceforge.net=20
-        [mailto:nfs-admin@lists.sourceforge.net]<B>On Behalf Of =
-</B>Edward=20
-        Hibbert<BR><B>Sent:</B> 23 May 2005 15:43<BR><B>To:</B>=20
-        nfs@lists.sourceforge.net<BR><B>Subject:</B> [NFS] Disabling the =
-client=20
-        cache using file locks<BR><BR></FONT></DIV><!-- Converted from =
-text/rtf format -->
-        <P><FONT face=3D"Courier New" size=3D2>The NFS FAQ says:</FONT> =
-</P>
-        <P><FONT face=3D"Courier New" size=3D2>For greater consistency =
-among=20
-        clients, applications can use file locking, where a client =
-purges file=20
-        data when a file is locked, and flushes changes back to the =
-server=20
-        before unlocking a file.</FONT></P>
-        <P><FONT face=3D"Courier New" size=3D2>My experience with this =
-is that to=20
-        force a read to go to the NFS server, I:</FONT> <BR><FONT=20
-        face=3D"Courier New" size=3D2>- lock an area in the file (I =
-think any area=20
-        works, it doesn't need to overlap with what you want to =
-read)</FONT>=20
-        <BR><FONT face=3D"Courier New" size=3D2>- read the data</FONT> =
-<BR><FONT=20
-        face=3D"Courier New" size=3D2>- unlock it </FONT></P>
-        <P><FONT face=3D"Courier New" size=3D2>When I want a write to go =
-to the NFS=20
-        server, I do the same.&nbsp; Obviously if I'm reading and =
-writing the=20
-        same area, I can save on the locks.</FONT></P>
-        <P><FONT face=3D"Courier New" size=3D2>This produces a lot of =
-lock and=20
-        unlock operations, and I find that:</FONT> <BR><FONT =
-face=3D"Courier New"=20
-        size=3D2>- NFS servers aren't as good at handling a high volume =
-of these=20
-        as they are at reads and writes.&nbsp; </FONT><BR><FONT=20
-        face=3D"Courier New" size=3D2>- lockd/statd on the client may =
-also be a=20
-        serialisation point (I have suggestive but not conclusive=20
-        evidence).</FONT> </P>
-        <P><FONT face=3D"Courier New" size=3D2>So I'm looking for ways =
-of reducing=20
-        the number of locks.&nbsp; Possibilities:</FONT> <BR><FONT=20
-        face=3D"Courier New" size=3D2>- Make a patch to the kernel (or =
-NFS utils?)=20
-        to _entirely_ disable client-side caching of file contents over=20
-        NFS.&nbsp; I have dedicated boxes which have no requirement to =
-do=20
-        client-side caching at all so this is a serious option.&nbsp; =
-Any code=20
-        pointers?</FONT></P>
-        <P><FONT face=3D"Courier New" size=3D2>- Use nolock to prevent =
-the locks=20
-        hitting the NFS server - but I think that would still hit =
-lockd/statd on=20
-        the client?</FONT> <BR><FONT face=3D"Courier New" size=3D2>- Not =
-to bother=20
-        with the locks round the writes, but use fsync instead.&nbsp; Do =
-folk=20
-        think that would work?</FONT> </P>
-        <P><FONT face=3D"Courier New" size=3D2>Any comments or other =
-ideas?</FONT>=20
-        </P>
-        <P><FONT face=3D"Courier New" size=3D2>Edward.</FONT>=20
-    =
-</P><BR><BR></BLOCKQUOTE></BLOCKQUOTE></BLOCKQUOTE></BLOCKQUOTE></BODY></=
-HTML>
+filesystem is hard mounted, each new <A=20
+title=3D"timeout(3x) - cbreak, echo, halfdelay, intrflush, keypad, meta, =
+nocbreak, nodelay, noecho, noqiflush, noraw, notimeout, qiflush, raw, =
+timeout, typeahead, wtimeout - curses input options"=20
+href=3D"http://seth.positivism.org/man.cgi/3x/timeout">time</A>-<BR>&nbsp=
+;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+<A=20
+title=3D"timeout(3x) - cbreak, echo, halfdelay, intrflush, keypad, meta, =
+nocbreak, nodelay, noecho, noqiflush, noraw, notimeout, qiflush, raw, =
+timeout, typeahead, wtimeout - curses input options"=20
+href=3D"http://seth.positivism.org/man.cgi/3x/timeout">out</A> cascade =
+restarts at=20
+twice the initial value&nbsp; of&nbsp;=20
+the<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+previous cascade, again doubling at each=20
+retransmission.<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =
 
-------_=_NextPart_001_01C55FF6.A6D23416--
+The maximum <A=20
+title=3D"timeout(3x) - cbreak, echo, halfdelay, intrflush, keypad, meta, =
+nocbreak, nodelay, noecho, noqiflush, noraw, notimeout, qiflush, raw, =
+timeout, typeahead, wtimeout - curses input options"=20
+href=3D"http://seth.positivism.org/man.cgi/3x/timeout">timeout</A> is =
+always 60=20
+seconds.&nbsp; Better&nbsp;=20
+over-<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbs=
+p;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+all&nbsp; performance may be achieved by increasing the <A=20
+title=3D"timeout(3x) - cbreak, echo, halfdelay, intrflush, keypad, meta, =
+nocbreak, nodelay, noecho, noqiflush, noraw, notimeout, qiflush, raw, =
+timeout, typeahead, wtimeout - curses input options"=20
+href=3D"http://seth.positivism.org/man.cgi/3x/timeout">time</A>-<BR>&nbsp=
+;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+<A=20
+title=3D"timeout(3x) - cbreak, echo, halfdelay, intrflush, keypad, meta, =
+nocbreak, nodelay, noecho, noqiflush, noraw, notimeout, qiflush, raw, =
+timeout, typeahead, wtimeout - curses input options"=20
+href=3D"http://seth.positivism.org/man.cgi/3x/timeout">out</A> when =
+mounting on a=20
+busy network, to a&nbsp; slow&nbsp;=20
+server,<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&n=
+bsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+or through several routers or=20
+gateways.<BR><BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <SPAN=20
+class=3Dunderline>retrans=3Dn</SPAN>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =
+The&nbsp;=20
+number&nbsp; of&nbsp; minor timeouts and retransmissions=20
+that<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp=
+;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+must occur before a major <A=20
+title=3D"timeout(3x) - cbreak, echo, halfdelay, intrflush, keypad, meta, =
+nocbreak, nodelay, noecho, noqiflush, noraw, notimeout, qiflush, raw, =
+timeout, typeahead, wtimeout - curses input options"=20
+href=3D"http://seth.positivism.org/man.cgi/3x/timeout">timeout</A>=20
+occurs.&nbsp;&nbsp; The&nbsp;=20
+default<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&n=
+bsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+is&nbsp; 3&nbsp; timeouts.&nbsp;&nbsp; When a major <A=20
+title=3D"timeout(3x) - cbreak, echo, halfdelay, intrflush, keypad, meta, =
+nocbreak, nodelay, noecho, noqiflush, noraw, notimeout, qiflush, raw, =
+timeout, typeahead, wtimeout - curses input options"=20
+href=3D"http://seth.positivism.org/man.cgi/3x/timeout">timeout</A> =
+occurs, the=20
+<SPAN class=3Dcluster><A title=3D"Manual for file"=20
+href=3D"http://seth.positivism.org/man.cgi/file">file</A><SPAN =
+class=3Dsections>(<A=20
+title=3D"file(1) - file - determine file type"=20
+href=3D"http://seth.positivism.org/man.cgi/1/file">1</A>,<A=20
+title=3D"file(n) - file - Manipulate file names and attributes"=20
+href=3D"http://seth.positivism.org/man.cgi/n/file">n</A>)</SPAN></SPAN><B=
+R>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp=
+;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+operation is either aborted or a "server not=20
+responding"<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbs=
+p;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+<A title=3D"message(n) - message - Create and manipulate message =
+widgets"=20
+href=3D"http://seth.positivism.org/man.cgi/n/message">message</A> is =
+printed on=20
+the console.</SPAN></DIV>
+<DIV><SPAN class=3D354233121-24052005><FONT face=3DArial color=3D#ff00ff =
+
+size=3D2></FONT></SPAN>&nbsp;</DIV><FONT face=3DArial><FONT =
+size=3D2><FONT=20
+color=3D#ff00ff>
+<DIV><SPAN class=3D354233121-24052005>60s is quite a long time.&nbsp; =
+I'd like to=20
+be able to cap the timeout at a lower level. Is there any way of doing=20
+this?</SPAN></DIV>
+<DIV><SPAN class=3D354233121-24052005></SPAN>&nbsp;</DIV>
+<DIV><SPAN=20
+class=3D354233121-24052005>Edward.</DIV></SPAN></BODY></HTML></FONT></FON=
+T></FONT>
+
+------_=_NextPart_001_01C560A8.75B7F3AB--
 
 
 -------------------------------------------------------
-This SF.Net email is sponsored by Oracle Space Sweepstakes
-Want to be the first software developer in space?
-Enter now for the Oracle Space Sweepstakes!
-http://ads.osdn.com/?ad_id=7412&alloc_id=16344&op=click
+This SF.Net email is sponsored by Yahoo.
+Introducing Yahoo! Search Developer Network - Create apps using Yahoo!
+Search APIs Find out how you can build Yahoo! directly into your own
+Applications - visit http://developer.yahoo.net/?fr=offad-ysdn-ostg-q22005
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
