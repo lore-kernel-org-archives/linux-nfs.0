@@ -1,25 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Anton Starikov <A.Starikov@utwente.nl>
 Subject: Re: NFS cache problem
-Date: Wed, 25 May 2005 20:12:33 -0400
-Message-ID: <1117066353.12336.82.camel@lade.trondhjem.org>
-References: <429503BA.4060908@utwente.nl>
-	 <1117064050.12336.67.camel@lade.trondhjem.org>
-	 <42950DCE.9050109@utwente.nl>
+Date: Thu, 26 May 2005 02:29:06 +0200
+Message-ID: <42951852.6050501@utwente.nl>
+References: <429503BA.4060908@utwente.nl>	 <1117064050.12336.67.camel@lade.trondhjem.org>	 <42950DCE.9050109@utwente.nl> <1117066353.12336.82.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=KOI8-R
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Db5zR-0003WZ-9j
-	for nfs@lists.sourceforge.net; Wed, 25 May 2005 17:12:45 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1Db5zQ-0001CS-Qx
-	for nfs@lists.sourceforge.net; Wed, 25 May 2005 17:12:45 -0700
-To: Anton Starikov <A.Starikov@utwente.nl>
-In-Reply-To: <42950DCE.9050109@utwente.nl>
+	id 1Db6FN-0005PH-0m
+	for nfs@lists.sourceforge.net; Wed, 25 May 2005 17:29:13 -0700
+Received: from netlx050.vf.utwente.nl ([192.87.17.19])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1Db6FM-0003W3-IN
+	for nfs@lists.sourceforge.net; Wed, 25 May 2005 17:29:13 -0700
+Received: from [130.89.204.129] (hantst.kabel.utwente.nl [130.89.204.129])
+          by netlx050.vf.utwente.nl (8.11.7/HKD) with ESMTP id j4Q0T7t13927
+          for <nfs@lists.sourceforge.net>; Thu, 26 May 2005 02:29:07 +0200
+In-Reply-To: <1117066353.12336.82.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,28 +32,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-to den 26.05.2005 Klokka 01:44 (+0200) skreiv Anton Starikov:
-> Trond Myklebust wrote:
-> > The NFS cache consistency model is discussed in the FAQ. Please see
-> > http://nfs.sourceforge.net/#faq_a8
-> 
-> I did it long time ago. I've reread it now.
-> My usage fits this. I have "noac" and "sync" on client side. What's more? :)
+Trond Myklebust wrote:
+> "noac" just means that the client rereads the attributes every time it
+> reads or writes.
+> If the size and the mtime on the file haven't changed, then the client
+> assumes the data in the file itself also hasn't changed. That is usually
+> a good assumption on something like XFS (which has nanosecond precision
+> on mtime). It can be rather inaccurate on something like EXT3 (which has
+> a precision of only 1 second on mtime).
+I use ReiserFS.
+And here we talk not about seconds...we talk about hours sometimes.
+That's seems too strange for me. For seconds I can find plenty of
+explanations :)
+In principal even if it will be one minute, I'll be much more happy than
+now.
 
-"noac" just means that the client rereads the attributes every time it
-reads or writes.
-If the size and the mtime on the file haven't changed, then the client
-assumes the data in the file itself also hasn't changed. That is usually
-a good assumption on something like XFS (which has nanosecond precision
-on mtime). It can be rather inaccurate on something like EXT3 (which has
-a precision of only 1 second on mtime).
+> If you seriously need uncached reads and writes, then you should rather,
+> consider using O_DIRECT.
+Unfortunatelly this is not trivial problem. A lot of software are
+involved here. And I beleive that NFS should be able to work in this
+conditions properly. At least it did with solaris in similar environment.
 
-If you seriously need uncached reads and writes, then you should rather
-consider using O_DIRECT.
-
-Cheers,
-  Trond
-
+Best,
+	Anton.
 
 
 -------------------------------------------------------
