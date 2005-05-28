@@ -1,22 +1,21 @@
-From: George Garvey <tmwg-nfs@inxservices.com>
-Subject: Re: NFS Performance with sync or async
-Date: Sat, 28 May 2005 05:53:43 -0700
-Message-ID: <20050528125343.GY4944@inxservices.com>
-References: <482A3FA0050D21419C269D13989C611308539BBA@lavender-fe.eng.netapp.com>
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: RE: NFS Performance with sync or async
+Date: Sat, 28 May 2005 09:13:54 -0700
+Message-ID: <482A3FA0050D21419C269D13989C611307CF4CC1@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Dc0pM-0001bh-LJ
-	for nfs@lists.sourceforge.net; Sat, 28 May 2005 05:54:08 -0700
-Received: from [63.193.79.19] (helo=mwg.inxservices.lan)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1Dc0pK-0001g9-6j
-	for nfs@lists.sourceforge.net; Sat, 28 May 2005 05:54:08 -0700
-To: nfs@lists.sourceforge.net
-In-Reply-To: <482A3FA0050D21419C269D13989C611308539BBA@lavender-fe.eng.netapp.com>
+	id 1Dc3wo-0005nI-MP
+	for nfs@lists.sourceforge.net; Sat, 28 May 2005 09:14:02 -0700
+Received: from mx1.netapp.com ([216.240.18.38])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1Dc3wn-0003xA-A2
+	for nfs@lists.sourceforge.net; Sat, 28 May 2005 09:14:02 -0700
+To: "George Garvey" <tmwg-nfs@inxservices.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,25 +29,56 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, May 27, 2005 at 07:45:12PM -0700, Lever, Charles wrote:
-> to clarify, you are using the "sync" mount option on your NFS clients?
-   Yes.
-> why did you initially decide to use "sync"?
-   Reading urgings from some of the NFS authors ...
-   Also, for a while we were using an app that had a shared data base
-base on NFS store. Async concerned me in that scenario. That has also
-ended.
-> 
-> without knowing more details about your situation, let me suggest you
-> might find something useful in the Linux NFS FAQ:
-> 
->   http://nfs.sourceforge.net/
-   I don't understand. I've resolved the situation, as I said.
-   But I still don't understand why the sync option caused such a
-dramatic slowdown. The actual part of the program that does the
-writing went from several minutes to three seconds. If more details
-or investigation are required to answer that question, I'd love to
-know what they are so they can be provided.
+> > why did you initially decide to use "sync"?
+>    Reading urgings from some of the NFS authors ...
+>    Also, for a while we were using an app that had a shared data base
+> base on NFS store. Async concerned me in that scenario. That has also
+> ended.
+
+generally there is no need to use the "sync" mount option unless your
+application depends on single system semantics (ie as soon as a write()
+system call completes, all other instances of the application must be
+able to see the new data).  in most cases these days, applications are
+smart enough to use "fsync" and "fflush" appropriately so that "sync"
+isn't necessary.
+
+>    But I still don't understand why the sync option caused such a
+> dramatic slowdown. The actual part of the program that does the
+> writing went from several minutes to three seconds. If more details
+> or investigation are required to answer that question, I'd love to
+> know what they are so they can be provided.
+
+the "sync" mount option on Linux restricts the behavior of the NFS
+client.
+
+1.  like opening a file with O_SYNC, the client no longer caches writes.
+it always pushes written data to the server before a write() system call
+returns.  normally the client allows the write() system call to return
+before it has started to commit the data to lessen the write latency
+experienced by applications.
+
+2.  unlike O_SYNC, however, the "sync" mount option also causes writes
+to go over the wire in page-size chunks no matter how large the wsize
+is.
+
+3.  also unlike O_SYNC, the "sync" mount option forces all application
+write requests to be sent on the wire serially (ie one NFS write at a
+time) and in byte order.  the reason for this behavior is to ensure that
+if a large write is interrupted, at least the first portion of the write
+request is guaranteed to be on permanent storage.  this makes it easier
+to detect and recover from an interrupted write.
+
+so normally, an application can make a 1MB write request via write(2)
+and the client will return control immediately to the application and
+push the written data to the server in the background by sending all NFS
+write requests containing "wsize" (probably 32KB) bytes, all at once,
+then waiting once for the result of the writes.  with the "sync" mount
+option, that 1MB write request will go to the server as 256 separate 4KB
+write requests, each being sent one at a time.
+
+if the latency of a write request is 3-4msec, the "sync" case will wait
+about 1 second for that 1MB write to complete.  the normal case will
+return immediately to the application with only a small latency.
 
 
 -------------------------------------------------------
