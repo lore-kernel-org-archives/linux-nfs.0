@@ -1,21 +1,22 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: NFS Performance with sync or async
-Date: Fri, 27 May 2005 19:45:12 -0700
-Message-ID: <482A3FA0050D21419C269D13989C611308539BBA@lavender-fe.eng.netapp.com>
+From: George Garvey <tmwg-nfs@inxservices.com>
+Subject: Re: NFS Performance with sync or async
+Date: Sat, 28 May 2005 05:53:43 -0700
+Message-ID: <20050528125343.GY4944@inxservices.com>
+References: <482A3FA0050D21419C269D13989C611308539BBA@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DbrKG-0004Nc-N1
-	for nfs@lists.sourceforge.net; Fri, 27 May 2005 19:45:24 -0700
-Received: from mx1.netapp.com ([216.240.18.38])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DbrKF-0006Sa-2A
-	for nfs@lists.sourceforge.net; Fri, 27 May 2005 19:45:24 -0700
-To: "George Garvey" <tmwg-nfs@inxservices.com>
+	id 1Dc0pM-0001bh-LJ
+	for nfs@lists.sourceforge.net; Sat, 28 May 2005 05:54:08 -0700
+Received: from [63.193.79.19] (helo=mwg.inxservices.lan)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1Dc0pK-0001g9-6j
+	for nfs@lists.sourceforge.net; Sat, 28 May 2005 05:54:08 -0700
+To: nfs@lists.sourceforge.net
+In-Reply-To: <482A3FA0050D21419C269D13989C611308539BBA@lavender-fe.eng.netapp.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,30 +30,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->    We use a copy of each client's data and their installed program
-> version for testing and support issues. The data can be updated using
-> a simple zip file from the client.
->    This is all stored on an NFS server for support's use. Server and
-> client are both on the same gigabit switch. The LAN she is connected
-> to has only gigabit connections on the switch. We're using TCP anyway
-> for everything (including NFS over a PTP T1: the T1 does go through
-> the same switch).
->    Just FYI, I tried both UDP and TCP, and it seems that TCP was
-> slightly faster. However, I was using a system I couldn't shut down,
-> etc., so I didn't remove caching effects well.
->=20
->    However, what changed things was removing sync from the mount. I
-> remounted the directory that stores the client systems without async
-> instead of sync (it is a subdirectory of a directory already mounted
-> sync).
-
-to clarify, you are using the "sync" mount option on your NFS clients?
-why did you initially decide to use "sync"?
-
-without knowing more details about your situation, let me suggest you
-might find something useful in the Linux NFS FAQ:
-
-  http://nfs.sourceforge.net/
+On Fri, May 27, 2005 at 07:45:12PM -0700, Lever, Charles wrote:
+> to clarify, you are using the "sync" mount option on your NFS clients?
+   Yes.
+> why did you initially decide to use "sync"?
+   Reading urgings from some of the NFS authors ...
+   Also, for a while we were using an app that had a shared data base
+base on NFS store. Async concerned me in that scenario. That has also
+ended.
+> 
+> without knowing more details about your situation, let me suggest you
+> might find something useful in the Linux NFS FAQ:
+> 
+>   http://nfs.sourceforge.net/
+   I don't understand. I've resolved the situation, as I said.
+   But I still don't understand why the sync option caused such a
+dramatic slowdown. The actual part of the program that does the
+writing went from several minutes to three seconds. If more details
+or investigation are required to answer that question, I'd love to
+know what they are so they can be provided.
 
 
 -------------------------------------------------------
