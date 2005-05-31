@@ -1,28 +1,22 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: "nfs warning: mount version older than kernel"
-Date: Mon, 27 Jun 2005 09:44:37 -0400
-Message-ID: <1119879878.8462.4.camel@lade.trondhjem.org>
-References: <42C000FC.5080000@web.de>
+From: Julius Schwartzenberg <julius@zgod.cjb.net>
+Subject: Problems getting NFS over SSH to work
+Date: Tue, 31 May 2005 23:45:45 +0200
+Message-ID: <429CDB09.1060301@zgod.cjb.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DmvNG-00032j-Kk
-	for nfs@lists.sourceforge.net; Mon, 27 Jun 2005 08:18:14 -0700
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1DmvNE-00013p-3l
-	for nfs@lists.sourceforge.net; Mon, 27 Jun 2005 08:18:14 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by externalmx-1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1DmtxL-0005Hs-1w
-	for nfs@lists.sourceforge.net; Mon, 27 Jun 2005 06:47:24 -0700
-To: "R. Adelsberger" <xiphias@web.de>
-In-Reply-To: <42C000FC.5080000@web.de>
+	id 1DdEZl-0005uT-5X
+	for nfs@lists.sourceforge.net; Tue, 31 May 2005 14:47:05 -0700
+Received: from netlx010.civ.utwente.nl ([130.89.1.92])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1DdEZj-0003Vg-DK
+	for nfs@lists.sourceforge.net; Tue, 31 May 2005 14:47:05 -0700
+Received: from [130.89.166.98] (middelvinger.student.utwente.nl [130.89.166.98])
+          by netlx010.civ.utwente.nl (8.11.7/HKD) with ESMTP id j4VLjMf29857
+          for <nfs@lists.sourceforge.net>; Tue, 31 May 2005 23:45:23 +0200
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,28 +30,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-m=C3=A5 den 27.06.2005 Klokka 15:37 (+0200) skreiv R. Adelsberger:
-> Hi!
->=20
-> I receive this message since I decided to mount some parts of my home
-> folder (via autofs) from a server.
-> Although I searched during several months for a solution and reviewed my
-> configs several times, I was not able to resolve this issue.
-> Could anybody tell me, where the problem lies - or, if you need more
-> information, tell me what I should further reveal...
->=20
-> My kernel (2.6 series - currently 2.6.11) on the client machine has the
-> nfs v3 support and the server the apropriate server support.
-> Nevertheless, my logfile is full of the messages mentioned in the
-> subject. I have the most recent (stable) version of mount installed...
+Hi,
+I've got a server & client on a campus network on which it is easy to 
+'overtake' another computer by spoofing it's MAC address. Since I would 
+like to access the server easily from my workstation, I thought NFS over 
+SSH would be a good solution.
+The server uses Slackware 10.1, the workstation uses Slackware 10.0 with 
+some updates including kernel 2.6.9.
+I installed UNFS3 version 0.9.12 on the server and I followed the exact 
+instructions from the NFS how-to on how to set up the tunnel over SSH. 
+When I run the mount command on my client, I get the following error 
+message though:
+mount: RPC: Cannot receive; errno = Connection refused (translated from 
+dutch)
+Everything works fine when I try to do the mount on the server itself 
+though, so that seems to be working.
+My /etc/exports file has this:
+/         localhost(rw)
 
-Those messages are harmless and can be ignored. The 2.6.13 kernel will
-contain a patch (already merged into Linus' git repository) that
-suppresses them.
+rpcinfo -p gives me on the server:
+    program vers proto   port
+     100000    2   tcp    111  portmapper
+     100000    2   udp    111  portmapper
+     100003    3   udp   2049  nfs
+     100003    3   tcp   2049  nfs
+     100005    1   udp  32767  mountd
+     100005    3   udp  32767  mountd
+     100005    1   tcp  32767  mountd
+     100005    3   tcp  32767  mountd
 
-Cheers,
-  Trond
-
+Is there any way I can see what is going on (and what might be going 
+wrong) with the SSH tunnel?
+Thanks in advance,
+Julius
 
 
 -------------------------------------------------------
