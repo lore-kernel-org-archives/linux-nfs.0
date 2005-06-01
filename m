@@ -1,17 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 017 of 28] nfsd4: fix uncomfirmed list
-Date: Thu, 02 Jun 2005 08:50:57 +1000
-Message-ID: <E1Ddc37-0006iZ-Fe@notabene.cse.unsw.edu.au>
+Subject: [PATCH kNFSd 005 of 28] nfsd4: create separate laundromat workqueue
+Date: Thu, 02 Jun 2005 08:50:56 +1000
+Message-ID: <E1Ddc36-0006hs-7v@notabene.cse.unsw.edu.au>
 References: <20050602084410.25538.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ddc3I-0005va-6n
-	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 15:51:08 -0700
+	id 1Ddc3H-0005vX-MX
+	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 15:51:07 -0700
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1Ddc3G-0002Pe-W9
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1Ddc3G-0005MZ-MJ
 	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 15:51:07 -0700
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
@@ -28,38 +28,58 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Setclientid code assumes there is only one match in unconfirmed list.
-Make sure that assumption holds.
+We're running the laundromat work on the default kevent worker thread.  But the
+laundromat takes the nfsv4 state semaphore, which is used for way too much
+stuff, and the potential for deadlocks is high.  Better to have this on a
+separate workqueue.
 
->From Fred Isaman
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c |   11 +++++++----
- 1 files changed, 7 insertions(+), 4 deletions(-)
+ ./fs/nfsd/nfs4state.c |    9 ++++++---
+ 1 files changed, 6 insertions(+), 3 deletions(-)
 
 diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2005-05-31 14:21:03.000000000 +1000
-+++ ./fs/nfsd/nfs4state.c	2005-05-31 14:21:03.000000000 +1000
-@@ -743,10 +743,13 @@ nfsd4_setclientid(struct svc_rqst *rqstp
- 		 * nfs4_client,  but with the new callback info and a 
- 		 * new cl_confirm
- 		 */
--		if ((unconf) && 
--		    cmp_verf(&unconf->cl_verifier, &conf->cl_verifier) &&
--		     cmp_clid(&unconf->cl_clientid, &conf->cl_clientid)) {
--				expire_client(unconf);
-+		if (unconf) {
-+			/* Note this is removing unconfirmed {*x***},
-+			 * which is stronger than RFC recommended {vxc**}.
-+			 * This has the advantage that there is at most
-+			 * one {*x***} in either list at any time.
-+			 */
-+			expire_client(unconf);
- 		}
- 		new = create_client(clname, dname);
- 		if (new == NULL)
+--- ./fs/nfsd/nfs4state.c~current~	2005-05-31 14:20:59.000000000 +1000
++++ ./fs/nfsd/nfs4state.c	2005-05-31 14:20:59.000000000 +1000
+@@ -1844,6 +1844,7 @@ out:
+ 	return status;
+ }
+ 
++static struct workqueue_struct *laundry_wq;
+ static struct work_struct laundromat_work;
+ static void laundromat_main(void *);
+ static DECLARE_WORK(laundromat_work, laundromat_main, NULL);
+@@ -1951,7 +1952,7 @@ laundromat_main(void *not_used)
+ 
+ 	t = nfs4_laundromat();
+ 	dprintk("NFSD: laundromat_main - sleeping for %ld seconds\n", t);
+-	schedule_delayed_work(&laundromat_work, t*HZ);
++	queue_delayed_work(laundry_wq, &laundromat_work, t*HZ);
+ }
+ 
+ /* search ownerid_hashtbl[] and close_lru for stateid owner
+@@ -3211,7 +3212,8 @@ __nfs4_state_init(void)
+ 		printk("NFSD: starting %ld-second grace period\n", grace_time);
+ 	grace_end = boot_time + grace_time;
+ 	INIT_WORK(&laundromat_work,laundromat_main, NULL);
+-	schedule_delayed_work(&laundromat_work, NFSD_LEASE_TIME*HZ);
++	laundry_wq = create_singlethread_workqueue("nfsd4");
++	queue_delayed_work(laundry_wq, &laundromat_work, NFSD_LEASE_TIME*HZ);
+ }
+ 
+ int
+@@ -3287,7 +3289,8 @@ __nfs4_state_shutdown(void)
+ 	}
+ 
+ 	cancel_delayed_work(&laundromat_work);
+-	flush_scheduled_work();
++	flush_workqueue(laundry_wq);
++	destroy_workqueue(laundry_wq);
+ 	nfs4_init = 0;
+ }
+ 
 
 
 -------------------------------------------------------
