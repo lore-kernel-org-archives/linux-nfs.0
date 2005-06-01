@@ -1,19 +1,19 @@
-From: Jim Farley <j_farley1@yahoo.ca>
-Subject: stale nfs handles
-Date: Wed, 1 Jun 2005 17:53:19 -0400 (EDT)
-Message-ID: <20050601215319.78208.qmail@web33613.mail.mud.yahoo.com>
-Mime-Version: 1.0
-Content-Type: multipart/alternative; boundary="0-76675851-1117662799=:78201"
+From: NeilBrown <neilb@cse.unsw.edu.au>
+Subject: [PATCH kNFSd 015 of 28] nfsd4: grace period end
+Date: Thu, 02 Jun 2005 08:50:56 +1000
+Message-ID: <E1Ddc36-0006iR-VV@notabene.cse.unsw.edu.au>
+References: <20050602084410.25538.patches@notabene>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ddb9W-0001ok-2P
-	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 14:53:30 -0700
-Received: from web33613.mail.mud.yahoo.com ([68.142.199.245])
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
-	id 1Ddb9U-0002SF-9l
-	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 14:53:29 -0700
-To: nfs@lists.sourceforge.net
+	id 1Ddc3P-0005xA-Hj
+	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 15:51:15 -0700
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1Ddc3N-0002RF-58
+	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 15:51:15 -0700
+To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,88 +27,88 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
---0-76675851-1117662799=:78201
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: quoted-printable
 
-Hi,
-=20
-We have been running an nfs environment for a couple of years now without=
- difficulties.
-Unfortunately when we upgraded the nfs server from RedHat9 to Fedora Core=
- 3 (2.6.9-1.667smp), clients (10 RedHat 9 systems, 2.4.20-8smp) started g=
-etting stale NFS file handles.
-I used tcpdump and verified that the messages are exchanged between the s=
-erver and client without delay which would indicate the network is not a =
-problem. I have also verified that the server is not under heavy load (cp=
-u, memory, network), nor are the clients.
-=20
-We basically take the defaults on the client and on the server:
-=20
-Client:
-cat /proc/mounts:
-192.168.11.10:/home /home nfs rw,v3,rsize=3D4096,wsize=3D4096,hard,intr,u=
-dp,lock,addr=3D192.168.11.10 0 0
+For the purposes of reboot recovery, we want to do some work during the
+transition period at the end of the grace period.  Some of that work must be
+guaranteed to have a certain relationship with the end of the grace period, so
+we want to control the transition there.
 
-Server:
-cat /etc/exports
-/home 192.168.11.0/255.255.255.0(rw,no_subtree_check)
-=20
-What I have done:
-- increase number of nfsd's to 32
-- disabled caching on one client (noac)
-- reverted the server from the ext3 filesystem to ext2
-=20
-None of this has helped. Is there anything else I can try?
-=20
-Thanks,
-Jimmy
-=20
+Our approach is to modify the in_grace() checks to consult a global variable
+instead of checking the time directly, to schedule the first run of the
+laundromat thread at the end of the grace period, and to set the global
+end-of-grace-period there.
 
-__________________________________________________
-Do You Yahoo!?
-Tired of spam?  Yahoo! Mail has the best spam protection around=20
-http://mail.yahoo.com=20
---0-76675851-1117662799=:78201
-Content-Type: text/html; charset=iso-8859-1
-Content-Transfer-Encoding: quoted-printable
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
-<DIV>Hi,</DIV>
-<DIV>&nbsp;</DIV>
-<DIV>We have been running an nfs environment for a couple of years now wi=
-thout difficulties.</DIV>
-<DIV>Unfortunately when we upgraded the nfs server from RedHat9 to Fedora=
- Core 3 (2.6.9-1.667smp), clients (10 RedHat 9 systems, 2.4.20-8smp) star=
-ted getting stale NFS file handles.</DIV>
-<DIV>I used tcpdump and verified that the messages are exchanged between =
-the server and client without delay which would indicate the network is n=
-ot a problem. I have also verified that the server is not under heavy loa=
-d (cpu, memory, network), nor are the clients.</DIV>
-<DIV>&nbsp;</DIV>
-<DIV>We basically take the defaults on the client and on the&nbsp;server:=
-</DIV>
-<DIV>&nbsp;</DIV>
-<DIV>Client:</DIV>
-<DIV>cat /proc/mounts:</DIV>
-<DIV>192.168.11.10:/home /home nfs rw,v3,rsize=3D4096,wsize=3D4096,hard,i=
-ntr,udp,lock,addr=3D192.168.11.10 0 0<BR></DIV>
-<DIV>Server:</DIV>
-<DIV>cat /etc/exports<BR>/home 192.168.11.0/255.255.255.0(rw,no_subtree_c=
-heck)</DIV>
-<DIV>&nbsp;</DIV>
-<DIV>What I have done:</DIV>
-<DIV>- increase number of nfsd's to 32</DIV>
-<DIV>- disabled caching on one client (noac)</DIV>
-<DIV>- reverted the server from the ext3 filesystem to ext2</DIV>
-<DIV>&nbsp;</DIV>
-<DIV>None of this has helped. Is there anything else I can try?</DIV>
-<DIV>&nbsp;</DIV>
-<DIV>Thanks,</DIV>
-<DIV>Jimmy</DIV>
-<DIV>&nbsp;</DIV><p>__________________________________________________<br=
->Do You Yahoo!?<br>Tired of spam?  Yahoo! Mail has the best spam protecti=
-on around <br>http://mail.yahoo.com=20
---0-76675851-1117662799=:78201--
+### Diffstat output
+ ./fs/nfsd/nfs4state.c |   24 +++++++++++++-----------
+ 1 files changed, 13 insertions(+), 11 deletions(-)
+
+diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
+--- ./fs/nfsd/nfs4state.c~current~	2005-05-31 14:21:02.000000000 +1000
++++ ./fs/nfsd/nfs4state.c	2005-05-31 14:21:02.000000000 +1000
+@@ -55,7 +55,7 @@
+ static time_t lease_time = 90;     /* default lease time */
+ static time_t user_lease_time = 90;
+ time_t boot_time;
+-static time_t grace_end = 0;
++static int in_grace = 1;
+ static u32 current_clientid = 1;
+ static u32 current_ownerid = 1;
+ static u32 current_fileid = 1;
+@@ -1908,6 +1908,13 @@ out:
+ 	return status;
+ }
+ 
++static void
++end_grace(void)
++{
++	dprintk("NFSD: end of grace period\n");
++	in_grace = 0;
++}
++
+ time_t
+ nfs4_laundromat(void)
+ {
+@@ -1922,6 +1929,8 @@ nfs4_laundromat(void)
+ 	nfs4_lock_state();
+ 
+ 	dprintk("NFSD: laundromat service - starting\n");
++	if (in_grace)
++		end_grace();
+ 	list_for_each_safe(pos, next, &client_lru) {
+ 		clp = list_entry(pos, struct nfs4_client, cl_lru);
+ 		if (time_after((unsigned long)clp->cl_time, (unsigned long)cutoff)) {
+@@ -3223,10 +3232,10 @@ __nfs4_state_start(void)
+ 	boot_time = get_seconds();
+ 	grace_time = max(user_lease_time, lease_time);
+ 	lease_time = user_lease_time;
++	in_grace = 1;
+ 	printk("NFSD: starting %ld-second grace period\n", grace_time);
+-	grace_end = boot_time + grace_time;
+ 	laundry_wq = create_singlethread_workqueue("nfsd4");
+-	queue_delayed_work(laundry_wq, &laundromat_work, NFSD_LEASE_TIME*HZ);
++	queue_delayed_work(laundry_wq, &laundromat_work, grace_time*HZ);
+ }
+ 
+ int
+@@ -3247,14 +3256,7 @@ nfs4_state_start(void)
+ int
+ nfs4_in_grace(void)
+ {
+-	return get_seconds() < grace_end;
+-}
+-
+-void
+-set_no_grace(void)
+-{
+-	printk("NFSD: ERROR in reboot recovery.  State reclaims will fail.\n");
+-	grace_end = get_seconds();
++	return in_grace;
+ }
+ 
+ time_t
 
 
 -------------------------------------------------------
