@@ -1,18 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 005 of 28] nfsd4: create separate laundromat workqueue
-Date: Thu, 02 Jun 2005 08:50:56 +1000
-Message-ID: <E1Ddc36-0006hs-7v@notabene.cse.unsw.edu.au>
+Subject: [PATCH kNFSd 002 of 28] nfs4: hold filp while reading or writing
+Date: Thu, 02 Jun 2005 08:50:55 +1000
+Message-ID: <E1Ddc35-0006hg-Vn@notabene.cse.unsw.edu.au>
 References: <20050602084410.25538.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ddc3H-0005vX-MX
-	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 15:51:07 -0700
+	id 1Ddc3J-0005w2-5h
+	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 15:51:09 -0700
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1Ddc3G-0005MZ-MJ
-	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 15:51:07 -0700
+	id 1Ddc3G-0005M8-4S
+	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 15:51:09 -0700
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -28,58 +28,87 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-We're running the laundromat work on the default kevent worker thread.  But the
-laundromat takes the nfsv4 state semaphore, which is used for way too much
-stuff, and the potential for deadlocks is high.  Better to have this on a
-separate workqueue.
+We're trying to read and write from a struct file that we may not hold a
+reference to any more (since a close could be processed as soon as we drop the
+state lock).
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c |    9 ++++++---
- 1 files changed, 6 insertions(+), 3 deletions(-)
+ ./fs/nfsd/nfs4proc.c |   15 ++++++++++++---
+ 1 files changed, 12 insertions(+), 3 deletions(-)
 
-diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2005-05-31 14:20:59.000000000 +1000
-+++ ./fs/nfsd/nfs4state.c	2005-05-31 14:20:59.000000000 +1000
-@@ -1844,6 +1844,7 @@ out:
+diff ./fs/nfsd/nfs4proc.c~current~ ./fs/nfsd/nfs4proc.c
+--- ./fs/nfsd/nfs4proc.c~current~	2005-05-31 14:20:58.000000000 +1000
++++ ./fs/nfsd/nfs4proc.c	2005-05-31 14:20:58.000000000 +1000
+@@ -45,6 +45,7 @@
+ #include <linux/param.h>
+ #include <linux/major.h>
+ #include <linux/slab.h>
++#include <linux/file.h>
+ 
+ #include <linux/sunrpc/svc.h>
+ #include <linux/nfsd/nfsd.h>
+@@ -477,26 +478,27 @@ static inline int
+ nfsd4_read(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_read *read)
+ {
+ 	int status;
+-	struct file *filp = NULL;
+ 
+ 	/* no need to check permission - this will be done in nfsd_read() */
+ 
++	read->rd_filp = NULL;
+ 	if (read->rd_offset >= OFFSET_MAX)
+ 		return nfserr_inval;
+ 
+ 	nfs4_lock_state();
+ 	/* check stateid */
+ 	if ((status = nfs4_preprocess_stateid_op(current_fh, &read->rd_stateid,
+-					CHECK_FH | RD_STATE, &filp))) {
++				CHECK_FH | RD_STATE, &read->rd_filp))) {
+ 		dprintk("NFSD: nfsd4_read: couldn't process stateid!\n");
+ 		goto out;
+ 	}
++	if (read->rd_filp)
++		get_file(read->rd_filp);
+ 	status = nfs_ok;
+ out:
+ 	nfs4_unlock_state();
+ 	read->rd_rqstp = rqstp;
+ 	read->rd_fhp = current_fh;
+-	read->rd_filp = filp;
  	return status;
  }
  
-+static struct workqueue_struct *laundry_wq;
- static struct work_struct laundromat_work;
- static void laundromat_main(void *);
- static DECLARE_WORK(laundromat_work, laundromat_main, NULL);
-@@ -1951,7 +1952,7 @@ laundromat_main(void *not_used)
+@@ -633,6 +635,8 @@ nfsd4_write(struct svc_rqst *rqstp, stru
+ 		dprintk("NFSD: nfsd4_write: couldn't process stateid!\n");
+ 		goto out;
+ 	}
++	if (filp)
++		get_file(filp);
+ 	nfs4_unlock_state();
  
- 	t = nfs4_laundromat();
- 	dprintk("NFSD: laundromat_main - sleeping for %ld seconds\n", t);
--	schedule_delayed_work(&laundromat_work, t*HZ);
-+	queue_delayed_work(laundry_wq, &laundromat_work, t*HZ);
- }
+ 	write->wr_bytes_written = write->wr_buflen;
+@@ -644,6 +648,8 @@ nfsd4_write(struct svc_rqst *rqstp, stru
+ 	status =  nfsd_write(rqstp, current_fh, filp, write->wr_offset,
+ 			write->wr_vec, write->wr_vlen, write->wr_buflen,
+ 			&write->wr_how_written);
++	if (filp)
++		fput(filp);
  
- /* search ownerid_hashtbl[] and close_lru for stateid owner
-@@ -3211,7 +3212,8 @@ __nfs4_state_init(void)
- 		printk("NFSD: starting %ld-second grace period\n", grace_time);
- 	grace_end = boot_time + grace_time;
- 	INIT_WORK(&laundromat_work,laundromat_main, NULL);
--	schedule_delayed_work(&laundromat_work, NFSD_LEASE_TIME*HZ);
-+	laundry_wq = create_singlethread_workqueue("nfsd4");
-+	queue_delayed_work(laundry_wq, &laundromat_work, NFSD_LEASE_TIME*HZ);
- }
- 
- int
-@@ -3287,7 +3289,8 @@ __nfs4_state_shutdown(void)
+ 	if (status == nfserr_symlink)
+ 		status = nfserr_inval;
+@@ -932,6 +938,9 @@ encode_op:
+ 			nfs4_put_stateowner(replay_owner);
+ 			replay_owner = NULL;
+ 		}
++		/* XXX Ugh, we need to get rid of this kind of special case: */
++		if (op->opnum == OP_READ && op->u.read.rd_filp)
++			fput(op->u.read.rd_filp);
  	}
  
- 	cancel_delayed_work(&laundromat_work);
--	flush_scheduled_work();
-+	flush_workqueue(laundry_wq);
-+	destroy_workqueue(laundry_wq);
- 	nfs4_init = 0;
- }
- 
+ out:
 
 
 -------------------------------------------------------
