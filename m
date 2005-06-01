@@ -1,18 +1,23 @@
-From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 000 of 2] Introduction
-Date: Wed, 01 Jun 2005 11:20:26 +1000
-Message-ID: <20050601111730.4494.patches@notabene>
+From: Neil Horman <nhorman@redhat.com>
+Subject: Re: How to detect using whether NFS server is down or not
+Date: Wed, 1 Jun 2005 07:28:58 -0400
+Message-ID: <20050601112858.GE24276@hmsendeavour.rdu.redhat.com>
+References: <b0c71d02050531055138f6b435@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DdHuQ-0004KI-DP
-	for nfs@lists.sourceforge.net; Tue, 31 May 2005 18:20:38 -0700
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DdHuN-0002Ox-AO
-	for nfs@lists.sourceforge.net; Tue, 31 May 2005 18:20:37 -0700
-To: Marcelo Tosatti <marcelo.tosatti@cyclades.com>
+	id 1DdRPT-0002OY-7M
+	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 04:29:19 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1DdRPR-0008Kg-Nl
+	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 04:29:19 -0700
+To: Kapil Dhakad <dhakad@gmail.com>
+In-Reply-To: <b0c71d02050531055138f6b435@mail.gmail.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,16 +31,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
- here are two patches for 2.4, which appear to be too late for 2.4.31...
- The first fixes a small semantic problem.
- The second adds some missing locking, that would only be a possible problem if using
- direct_io with xfs (I think).
+On Tue, May 31, 2005 at 06:21:02PM +0530, Kapil Dhakad wrote:
+> Hello,
+> 
+> I am using WebNFS SDK client provided by sun, with NFS server.
+> I implemented this client-server architecture in web application,
+> my web application create some document on the fly and store
+> it on different server.
+> 
+> I am facing problem, suppose NFS server is down. At that time
+> WebNFS client continuously make requrest to server and goes into
+> infinite. How to avoid this problem ?
+> Is there any way using "JAVA" to detect whether server is down or not ?
+> What will be solution over it ?
+> 
+> Please reply urgently
+> 
+> Thanks
+> - Kapil Dhakad
 
-NeilBrown
+you can use rpcinfo -u as an rpc ping mechanism to see if the apprpriate
+services are still active on the remote host, but doing so won't avoid
+occasional hangs on your file system.
+Neil
 
- [PATCH kNFSd 001 of 2] Don't drop setuid on directories when ownership changed by NFSd
- [PATCH kNFSd 002 of 2] Claim i_alloc_sem while changing file size in nfsd
+-- 
+/***************************************************
+ *Neil Horman
+ *Software Engineer
+ *Red Hat, Inc.
+ *nhorman@redhat.com
+ *gpg keyid: 1024D / 0x92A74FA1
+ *http://pgp.mit.edu
+ ***************************************************/
 
 
 -------------------------------------------------------
