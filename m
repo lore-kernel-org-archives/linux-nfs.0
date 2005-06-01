@@ -1,16 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 000 of 28] Introduction
-Date: Thu, 02 Jun 2005 08:50:55 +1000
-Message-ID: <20050602084410.25538.patches@notabene>
+Subject: [PATCH kNFSd 003 of 28] nfsd4: fix probe_callback
+Date: Thu, 02 Jun 2005 08:50:56 +1000
+Message-ID: <E1Ddc36-0006hl-1o@notabene.cse.unsw.edu.au>
+References: <20050602084410.25538.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ddc3I-0005vb-7V
-	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 15:51:08 -0700
+	id 1Ddc3J-0005w0-2a
+	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 15:51:09 -0700
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1Ddc3G-0002Pk-Pc
+	id 1Ddc3G-0002Ov-N2
 	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 15:51:08 -0700
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
@@ -27,49 +28,45 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Following are a bunch of patches for nfsd-v4 (and a little lockd fix).
-They should all wait for after 2.6.12
+rpc_create_client was modified recently to do its own (synchronous) NULL ping
+of the server.  We'd rather do that on our own, asynchronously, so that we
+don't have to block the nfsd thread doing the probe, and so that setclientid
+handling (hence, client mounts) can proceed normally whether the callback is
+succesful or not.  (We can still function fine without the callback channel--we
+just won't be able to give out delegations till it's verified to work.)
 
-The last three are probably the most interesting.  
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
-The NFSv4 server needs to keep state information about clients in
-stable storage.  To do this it is given a directory name (via a write
-to the NFSd filesystem) and it creates subdirectories (which may later
-contain files) inside this directory.
+### Diffstat output
+ ./fs/nfsd/nfs4callback.c   |    2 +-
+ ./net/sunrpc/sunrpc_syms.c |    1 +
+ 2 files changed, 2 insertions(+), 1 deletion(-)
 
-This is implemented in patches 26-28
+diff ./fs/nfsd/nfs4callback.c~current~ ./fs/nfsd/nfs4callback.c
+--- ./fs/nfsd/nfs4callback.c~current~	2005-05-31 14:20:58.000000000 +1000
++++ ./fs/nfsd/nfs4callback.c	2005-05-31 14:20:58.000000000 +1000
+@@ -427,7 +427,7 @@ nfsd4_probe_callback(struct nfs4_client 
+ 	 * XXX AUTH_UNIX only - need AUTH_GSS....
+ 	 */
+ 	sprintf(hostname, "%u.%u.%u.%u", NIPQUAD(addr.sin_addr.s_addr));
+-	clnt = rpc_create_client(xprt, hostname, program, 1, RPC_AUTH_UNIX);
++	clnt = rpc_new_client(xprt, hostname, program, 1, RPC_AUTH_UNIX);
+ 	if (IS_ERR(clnt)) {
+ 		dprintk("NFSD: couldn't create callback client\n");
+ 		goto out_err;
 
-NeilBrown
-
-
- [PATCH kNFSd 001 of 28] lockd: flush signals on shutdown
- [PATCH kNFSd 002 of 28] nfs4: hold filp while reading or writing
- [PATCH kNFSd 003 of 28] nfsd4: fix probe_callback
- [PATCH kNFSd 004 of 28] nfsd4: nfs4_check_open_reclaim cleanup
- [PATCH kNFSd 005 of 28] nfsd4: create separate laundromat workqueue
- [PATCH kNFSd 006 of 28] nfsd4: simplify lease changing
- [PATCH kNFSd 007 of 28] nfsd4: delegation recovery
- [PATCH kNFSd 008 of 28] nfsd4: rename nfs4_state_init
- [PATCH kNFSd 009 of 28] nfsd4: clean up state initialization
- [PATCH kNFSd 010 of 28] nfsd4: remove nfs4_reclaim_init
- [PATCH kNFSd 011 of 28] nfsd4: idmap initialization
- [PATCH kNFSd 012 of 28] nfsd4: setclientid simplification
- [PATCH kNFSd 013 of 28] nfsd4: reboot hash
- [PATCH kNFSd 014 of 28] nfsd4: add find_{un}conf_by_str functions to simplify setclientid
- [PATCH kNFSd 015 of 28] nfsd4: grace period end
- [PATCH kNFSd 016 of 28] nfsd4: make needlessly global code static
- [PATCH kNFSd 017 of 28] nfsd4: fix uncomfirmed list
- [PATCH kNFSd 018 of 28] nfsd4: fix setclientid_confirm cases
- [PATCH kNFSd 019 of 28] nfsd4: fix setclientid_confirm error return
- [PATCH kNFSd 020 of 28] nfsd4: setclientid_confirm gotoectomy
- [PATCH kNFSd 021 of 28] nfsd4: setclientid_confirm comments
- [PATCH kNFSd 022 of 28] nfsd4: miscellaneous setclientid_confirm cleanup
- [PATCH kNFSd 023 of 28] nfsd4: rename state list fields
- [PATCH kNFSd 024 of 28] nfsd4: allow multiple lockowners
- [PATCH kNFSd 025 of 28] nfsd4: remove cb_parsed
- [PATCH kNFSd 026 of 28] nfsd4: initialize recovery directory
- [PATCH kNFSd 027 of 28] nfsd4: reboot recovery
- [PATCH kNFSd 028 of 28] nfsd4-reboot-dirname
+diff ./net/sunrpc/sunrpc_syms.c~current~ ./net/sunrpc/sunrpc_syms.c
+--- ./net/sunrpc/sunrpc_syms.c~current~	2005-05-31 14:20:58.000000000 +1000
++++ ./net/sunrpc/sunrpc_syms.c	2005-05-31 14:20:58.000000000 +1000
+@@ -41,6 +41,7 @@ EXPORT_SYMBOL(rpc_release_task);
+ 
+ /* RPC client functions */
+ EXPORT_SYMBOL(rpc_create_client);
++EXPORT_SYMBOL(rpc_new_client);
+ EXPORT_SYMBOL(rpc_clone_client);
+ EXPORT_SYMBOL(rpc_bind_new_program);
+ EXPORT_SYMBOL(rpc_destroy_client);
 
 
 -------------------------------------------------------
