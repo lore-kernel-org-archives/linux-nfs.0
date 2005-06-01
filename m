@@ -1,18 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 018 of 28] nfsd4: fix setclientid_confirm cases
-Date: Thu, 02 Jun 2005 08:50:57 +1000
-Message-ID: <E1Ddc37-0006ic-HF@notabene.cse.unsw.edu.au>
+Subject: [PATCH kNFSd 001 of 28] lockd: flush signals on shutdown
+Date: Thu, 02 Jun 2005 08:50:55 +1000
+Message-ID: <E1Ddc35-0006hd-Tp@notabene.cse.unsw.edu.au>
 References: <20050602084410.25538.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ddc3Q-0005xM-ER
-	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 15:51:16 -0700
+	id 1Ddc3P-0005x2-54
+	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 15:51:15 -0700
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1Ddc3O-0002RN-3y
-	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 15:51:16 -0700
+	id 1Ddc3N-0002RG-Oz
+	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 15:51:14 -0700
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -28,59 +28,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Setclientid_confirm code confused states 1 and 3 (numbering from the
-IMPLEMENTATION section of rfc3530, section 14.2.33). Fix this.
+Silence another annoying "failed to contact portmap (errno -512)" on shutdown.
 
-State 1 allows the client to change the callback channel on the fly.  We don't
-implement this currently, so just turn off the callback channel in this case.
-
->From Fred Isaman
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c |   19 +++++++++++++++----
- 1 files changed, 15 insertions(+), 4 deletions(-)
+ ./fs/lockd/svc.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletion(-)
 
-diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2005-05-31 14:21:03.000000000 +1000
-+++ ./fs/nfsd/nfs4state.c	2005-05-31 14:21:04.000000000 +1000
-@@ -887,10 +887,14 @@ nfsd4_setclientid_confirm(struct svc_rqs
- 		if (!cmp_creds(&conf->cl_cred, &unconf->cl_cred)) 
- 			status = nfserr_clid_inuse;
- 		else {
--			expire_client(conf);
--			clp = unconf;
--			move_to_confirmed(unconf);
-+			/* XXX: We just turn off callbacks until we can handle
-+			  * change request correctly. */
-+			clp = conf;
-+			clp->cl_callback.cb_parsed = 0;
-+			gen_confirm(clp);
-+			expire_client(unconf);
- 			status = nfs_ok;
+diff ./fs/lockd/svc.c~current~ ./fs/lockd/svc.c
+--- ./fs/lockd/svc.c~current~	2005-05-31 14:20:58.000000000 +1000
++++ ./fs/lockd/svc.c	2005-05-31 14:20:58.000000000 +1000
+@@ -191,7 +191,9 @@ lockd(struct svc_rqst *rqstp)
+ 		printk(KERN_DEBUG
+ 			"lockd: new process, skipping host shutdown\n");
+ 	wake_up(&lockd_exit);
+-		
 +
- 		}
- 		goto out;
- 	} 
-@@ -920,9 +924,16 @@ nfsd4_setclientid_confirm(struct svc_rqs
- 		if (!cmp_creds(&unconf->cl_cred, &rqstp->rq_cred)) {
- 			status = nfserr_clid_inuse;
- 		} else {
--			status = nfs_ok;
-+			unsigned int hash =
-+				clientstr_hashval(unconf->cl_recdir);
-+			conf = find_confirmed_client_by_str(unconf->cl_recdir,
-+									hash);
-+			if (conf) {
-+				expire_client(conf);
-+			}
- 			clp = unconf;
- 			move_to_confirmed(unconf);
-+			status = nfs_ok;
- 		}
- 		goto out;
- 	}
++	flush_signals(current);
++
+ 	/* Exit the RPC thread */
+ 	svc_exit_thread(rqstp);
+ 
 
 
 -------------------------------------------------------
