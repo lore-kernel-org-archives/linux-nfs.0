@@ -1,25 +1,19 @@
-From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
-Subject: Re: How to detect using whether NFS server is down or not
-Date: Wed, 01 Jun 2005 11:07:51 -0700
-Message-ID: <1117649271.22751.32.camel@seki.nac.uci.edu>
-References: <b0c71d02050531055138f6b435@mail.gmail.com>
-	 <20050601112858.GE24276@hmsendeavour.rdu.redhat.com>
+From: Jim Farley <j_farley1@yahoo.ca>
+Subject: stale nfs handles
+Date: Wed, 1 Jun 2005 17:53:19 -0400 (EDT)
+Message-ID: <20050601215319.78208.qmail@web33613.mail.mud.yahoo.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-Tc1Pe9crgSfhionfUJnv"
-Cc: strombrg@dcs.nac.uci.edu, Kapil Dhakad <dhakad@gmail.com>,
-	nfs@lists.sourceforge.net
+Content-Type: multipart/alternative; boundary="0-76675851-1117662799=:78201"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DdXdL-0005Rk-QZ
-	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 11:08:03 -0700
-Received: from dcs.nac.uci.edu ([128.200.34.32])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1DdXdI-0002pY-6J
-	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 11:08:03 -0700
-To: Neil Horman <nhorman@redhat.com>
-In-Reply-To: <20050601112858.GE24276@hmsendeavour.rdu.redhat.com>
+	id 1Ddb9W-0001ok-2P
+	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 14:53:30 -0700
+Received: from web33613.mail.mud.yahoo.com ([68.142.199.245])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
+	id 1Ddb9U-0002SF-9l
+	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 14:53:29 -0700
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,55 +27,88 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-
---=-Tc1Pe9crgSfhionfUJnv
-Content-Type: text/plain
+--0-76675851-1117662799=:78201
+Content-Type: text/plain; charset=iso-8859-1
 Content-Transfer-Encoding: quoted-printable
 
-On Wed, 2005-06-01 at 07:28 -0400, Neil Horman wrote:
-> On Tue, May 31, 2005 at 06:21:02PM +0530, Kapil Dhakad wrote:
-> > Hello,
-> >=20
-> > I am using WebNFS SDK client provided by sun, with NFS server.
-> > I implemented this client-server architecture in web application,
-> > my web application create some document on the fly and store
-> > it on different server.
-> >=20
-> > I am facing problem, suppose NFS server is down. At that time
-> > WebNFS client continuously make requrest to server and goes into
-> > infinite. How to avoid this problem ?
-> > Is there any way using "JAVA" to detect whether server is down or not ?
-> > What will be solution over it ?
-> >=20
-> > Please reply urgently
-> >=20
-> > Thanks
-> > - Kapil Dhakad
->=20
-> you can use rpcinfo -u as an rpc ping mechanism to see if the apprpriate
-> services are still active on the remote host, but doing so won't avoid
-> occasional hangs on your file system.
-> Neil
+Hi,
+=20
+We have been running an nfs environment for a couple of years now without=
+ difficulties.
+Unfortunately when we upgraded the nfs server from RedHat9 to Fedora Core=
+ 3 (2.6.9-1.667smp), clients (10 RedHat 9 systems, 2.4.20-8smp) started g=
+etting stale NFS file handles.
+I used tcpdump and verified that the messages are exchanged between the s=
+erver and client without delay which would indicate the network is not a =
+problem. I have also verified that the server is not under heavy load (cp=
+u, memory, network), nor are the clients.
+=20
+We basically take the defaults on the client and on the server:
+=20
+Client:
+cat /proc/mounts:
+192.168.11.10:/home /home nfs rw,v3,rsize=3D4096,wsize=3D4096,hard,intr,u=
+dp,lock,addr=3D192.168.11.10 0 0
 
-On a related note:
+Server:
+cat /etc/exports
+/home 192.168.11.0/255.255.255.0(rw,no_subtree_check)
+=20
+What I have done:
+- increase number of nfsd's to 32
+- disabled caching on one client (noac)
+- reverted the server from the ext3 filesystem to ext2
+=20
+None of this has helped. Is there anything else I can try?
+=20
+Thanks,
+Jimmy
+=20
 
-http://dcs.nac.uci.edu/~strombrg/rpc-health.html
+__________________________________________________
+Do You Yahoo!?
+Tired of spam?  Yahoo! Mail has the best spam protection around=20
+http://mail.yahoo.com=20
+--0-76675851-1117662799=:78201
+Content-Type: text/html; charset=iso-8859-1
+Content-Transfer-Encoding: quoted-printable
 
-
---=-Tc1Pe9crgSfhionfUJnv
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.6 (GNU/Linux)
-
-iD8DBQBCnfl3o0feVm00f/8RAv0AAJ9UOyAOSCcEcJ/M//nm+tQBNBQMIACghrOt
-6xyIIQEgR+qEQaA9gc6Eojk=
-=lNgq
------END PGP SIGNATURE-----
-
---=-Tc1Pe9crgSfhionfUJnv--
-
+<DIV>Hi,</DIV>
+<DIV>&nbsp;</DIV>
+<DIV>We have been running an nfs environment for a couple of years now wi=
+thout difficulties.</DIV>
+<DIV>Unfortunately when we upgraded the nfs server from RedHat9 to Fedora=
+ Core 3 (2.6.9-1.667smp), clients (10 RedHat 9 systems, 2.4.20-8smp) star=
+ted getting stale NFS file handles.</DIV>
+<DIV>I used tcpdump and verified that the messages are exchanged between =
+the server and client without delay which would indicate the network is n=
+ot a problem. I have also verified that the server is not under heavy loa=
+d (cpu, memory, network), nor are the clients.</DIV>
+<DIV>&nbsp;</DIV>
+<DIV>We basically take the defaults on the client and on the&nbsp;server:=
+</DIV>
+<DIV>&nbsp;</DIV>
+<DIV>Client:</DIV>
+<DIV>cat /proc/mounts:</DIV>
+<DIV>192.168.11.10:/home /home nfs rw,v3,rsize=3D4096,wsize=3D4096,hard,i=
+ntr,udp,lock,addr=3D192.168.11.10 0 0<BR></DIV>
+<DIV>Server:</DIV>
+<DIV>cat /etc/exports<BR>/home 192.168.11.0/255.255.255.0(rw,no_subtree_c=
+heck)</DIV>
+<DIV>&nbsp;</DIV>
+<DIV>What I have done:</DIV>
+<DIV>- increase number of nfsd's to 32</DIV>
+<DIV>- disabled caching on one client (noac)</DIV>
+<DIV>- reverted the server from the ext3 filesystem to ext2</DIV>
+<DIV>&nbsp;</DIV>
+<DIV>None of this has helped. Is there anything else I can try?</DIV>
+<DIV>&nbsp;</DIV>
+<DIV>Thanks,</DIV>
+<DIV>Jimmy</DIV>
+<DIV>&nbsp;</DIV><p>__________________________________________________<br=
+>Do You Yahoo!?<br>Tired of spam?  Yahoo! Mail has the best spam protecti=
+on around <br>http://mail.yahoo.com=20
+--0-76675851-1117662799=:78201--
 
 
 -------------------------------------------------------
