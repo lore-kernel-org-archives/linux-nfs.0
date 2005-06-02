@@ -1,23 +1,23 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: [PATCH] Smooth out NFS client writeback
-Date: Wed, 01 Jun 2005 21:56:09 -0400
-Message-ID: <1117677369.10822.52.camel@lade.trondhjem.org>
-References: <20050602013816.79953.qmail@web30707.mail.mud.yahoo.com>
+Date: Thu, 02 Jun 2005 00:38:30 -0400
+Message-ID: <1117687110.10822.114.camel@lade.trondhjem.org>
+References: <20050602032609.47381.qmail@web30715.mail.mud.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ddewb-00038K-Q0
-	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 18:56:25 -0700
+	id 1DdhTp-0004Da-NN
+	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 21:38:53 -0700
 Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1Ddewa-0002e4-2E
-	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 18:56:25 -0700
+	id 1DdhTn-0003nr-Pi
+	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 21:38:53 -0700
 To: Shantanu Goel <sgoel01@yahoo.com>
-In-Reply-To: <20050602013816.79953.qmail@web30707.mail.mud.yahoo.com>
+In-Reply-To: <20050602032609.47381.qmail@web30715.mail.mud.yahoo.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,31 +31,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-on den 01.06.2005 Klokka 18:38 (-0700) skreiv Shantanu Goel:
-> Hi Trond,
-> 
-> The current NFS client can cause a program to stall
-> for long periods of time because it flushes all dirty
-> pages at once.  The attached patch addresses this by
-> only writing back the amount requested by the VM
-> layer.  It also reduces the # commit requests by
-> waiting for some writeback to complete before issuing
-> a commit.  The patch also speeds up writebacks of
-> mmap'ed data by accumulating dirty pages but sending
-> commits earlier and omitting FLUSH_STABLE.
+on den 01.06.2005 Klokka 20:26 (-0700) skreiv Shantanu Goel:
+> Here are some numbers with iozone (avg of 3 runs). 
+> The command was run as: iozone -i0 -r4k -s64m -c -t4
+> I manually booted the client machine with mem=256M.
 
-Hi Shantanu,
+What happens when you increase the file size to significantly beyond the
+memory size on a slow network. That is the interesting case.
+Try, for instance, booting with mem=32m and iozone -s 
 
-Do you have any figures on this subject? I'd very much like to see how
-this changes the figures for both the throughput and the latency. We
-should look at both slow and fast networks (say 10Mbit, 100Mbit &
-1GigE).
+> I also ran iozone in mmap mode with same options as
+> above but specifying -B as well.  The machine hung
+> with the stock client so could not complete the test. 
+> Here are the numbers with the patched client.
 
-My other question is how it affects stability in the case of low memory
-situations?
+Where was the machine hanging?
 
 Cheers,
   Trond
+
+BTW: how did you determine the values for NFS_WRITE_CLUSTER and
+NFS_COMMIT_CLUSTER. they appear to be completely arbitrary AFAICS.
+
+Also, have you compared to the latest NFS_ALL kernels? They contain a
+bunch of extra latency fixes that came from Ingo's RT work.
+
+Finally, please explain _why_ have you removed the FLUSH_STABLE from
+nfs_writepage()? The reason for it in the existing code is to avoid the
+extra COMMIT call in situations where we know we are already very low on
+memory. I don't see anything new in your patches that avoids these low
+memory situations.
 
 
 
