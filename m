@@ -1,19 +1,23 @@
-From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 007 of 28] nfsd4: delegation recovery
-Date: Thu, 02 Jun 2005 08:50:56 +1000
-Message-ID: <E1Ddc36-0006hz-B9@notabene.cse.unsw.edu.au>
-References: <20050602084410.25538.patches@notabene>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] Smooth out NFS client writeback
+Date: Wed, 01 Jun 2005 21:56:09 -0400
+Message-ID: <1117677369.10822.52.camel@lade.trondhjem.org>
+References: <20050602013816.79953.qmail@web30707.mail.mud.yahoo.com>
+Mime-Version: 1.0
+Content-Type: text/plain
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ddc3X-0005y9-7e
-	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 15:51:23 -0700
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1Ddc3V-0002Sc-Uf
-	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 15:51:22 -0700
-To: Andrew Morton <akpm@osdl.org>
+	id 1Ddewb-00038K-Q0
+	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 18:56:25 -0700
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1Ddewa-0002e4-2E
+	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 18:56:25 -0700
+To: Shantanu Goel <sgoel01@yahoo.com>
+In-Reply-To: <20050602013816.79953.qmail@web30707.mail.mud.yahoo.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,96 +31,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+on den 01.06.2005 Klokka 18:38 (-0700) skreiv Shantanu Goel:
+> Hi Trond,
+> 
+> The current NFS client can cause a program to stall
+> for long periods of time because it flushes all dirty
+> pages at once.  The attached patch addresses this by
+> only writing back the amount requested by the VM
+> layer.  It also reduces the # commit requests by
+> waiting for some writeback to complete before issuing
+> a commit.  The patch also speeds up writebacks of
+> mmap'ed data by accumulating dirty pages but sending
+> commits earlier and omitting FLUSH_STABLE.
 
-Allow recovery of delegations after reboot.
+Hi Shantanu,
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
+Do you have any figures on this subject? I'd very much like to see how
+this changes the figures for both the throughput and the latency. We
+should look at both slow and fast networks (say 10Mbit, 100Mbit &
+1GigE).
 
-### Diffstat output
- ./fs/nfsd/nfs4state.c       |   36 ++++++++++++++++++++++++++++--------
- ./fs/nfsd/nfs4xdr.c         |    2 +-
- ./include/linux/nfsd/xdr4.h |    1 +
- 3 files changed, 30 insertions(+), 9 deletions(-)
+My other question is how it affects stability in the case of low memory
+situations?
 
-diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2005-05-31 14:20:59.000000000 +1000
-+++ ./fs/nfsd/nfs4state.c	2005-05-31 14:20:59.000000000 +1000
-@@ -1709,14 +1709,30 @@ nfs4_open_delegation(struct svc_fh *fh, 
- 	int status, flag = 0;
- 
- 	flag = NFS4_OPEN_DELEGATE_NONE;
--	if (open->op_claim_type != NFS4_OPEN_CLAIM_NULL
--	     || !atomic_read(&cb->cb_set) || !sop->so_confirmed)
--		goto out;
--
--	if (open->op_share_access & NFS4_SHARE_ACCESS_WRITE)
--		flag = NFS4_OPEN_DELEGATE_WRITE;
--	else
--		flag = NFS4_OPEN_DELEGATE_READ;
-+	open->op_recall = 0;
-+	switch (open->op_claim_type) {
-+		case NFS4_OPEN_CLAIM_PREVIOUS:
-+			if (!atomic_read(&cb->cb_set))
-+				open->op_recall = 1;
-+			flag = open->op_delegate_type;
-+			if (flag == NFS4_OPEN_DELEGATE_NONE)
-+				goto out;
-+			break;
-+		case NFS4_OPEN_CLAIM_NULL:
-+			/* Let's not give out any delegations till everyone's
-+			 * had the chance to reclaim theirs.... */
-+			if (nfs4_in_grace())
-+				goto out;
-+			if (!atomic_read(&cb->cb_set) || !sop->so_confirmed)
-+				goto out;
-+			if (open->op_share_access & NFS4_SHARE_ACCESS_WRITE)
-+				flag = NFS4_OPEN_DELEGATE_WRITE;
-+			else
-+				flag = NFS4_OPEN_DELEGATE_READ;
-+			break;
-+		default:
-+			goto out;
-+	}
- 
- 	dp = alloc_init_deleg(sop->so_client, stp, fh, flag);
- 	if (dp == NULL) {
-@@ -1750,6 +1766,10 @@ nfs4_open_delegation(struct svc_fh *fh, 
- 	             dp->dl_stateid.si_fileid,
- 	             dp->dl_stateid.si_generation);
- out:
-+	if (open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS
-+			&& flag == NFS4_OPEN_DELEGATE_NONE
-+			&& open->op_delegate_type != NFS4_OPEN_DELEGATE_NONE)
-+		printk("NFSD: WARNING: refusing delegation reclaim\n");
- 	open->op_delegate_type = flag;
- }
- 
+Cheers,
+  Trond
 
-diff ./fs/nfsd/nfs4xdr.c~current~ ./fs/nfsd/nfs4xdr.c
---- ./fs/nfsd/nfs4xdr.c~current~	2005-05-31 14:20:59.000000000 +1000
-+++ ./fs/nfsd/nfs4xdr.c	2005-05-31 14:20:59.000000000 +1000
-@@ -1972,7 +1972,7 @@ nfsd4_encode_open(struct nfsd4_compoundr
- 	case NFS4_OPEN_DELEGATE_READ:
- 		RESERVE_SPACE(20 + sizeof(stateid_t));
- 		WRITEMEM(&open->op_delegate_stateid, sizeof(stateid_t));
--		WRITE32(0);
-+		WRITE32(open->op_recall);
- 
- 		/*
- 		 * TODO: ACE's in delegations
-
-diff ./include/linux/nfsd/xdr4.h~current~ ./include/linux/nfsd/xdr4.h
---- ./include/linux/nfsd/xdr4.h~current~	2005-05-31 14:20:59.000000000 +1000
-+++ ./include/linux/nfsd/xdr4.h	2005-05-31 14:20:59.000000000 +1000
-@@ -210,6 +210,7 @@ struct nfsd4_open {
- 	u32		op_share_access;    /* request */
- 	u32		op_share_deny;      /* request */
- 	stateid_t	op_stateid;         /* response */
-+	u32		op_recall;          /* recall */
- 	struct nfsd4_change_info  op_cinfo; /* response */
- 	u32		op_rflags;          /* response */
- 	int		op_truncate;        /* used during processing */
 
 
 -------------------------------------------------------
